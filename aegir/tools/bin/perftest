@@ -724,11 +724,11 @@ _boa_grade_cpu_speed() {
   # Based on typical BOA workloads (Drupal PHP)
   awk -v eps="$1" 'BEGIN{
     if (eps=="" || eps=="N/A") print "unknown";
-    else if (eps>=5300) print "ultra";
-    else if (eps>=4300) print "excellent";
-    else if (eps>=3300) print "good";
-    else if (eps>=2300) print "average";
-    else if (eps>=1300) print "acceptable";
+    else if (eps>=5000) print "ultra";
+    else if (eps>=4000) print "excellent";
+    else if (eps>=3000) print "good";
+    else if (eps>=2000) print "average";
+    else if (eps>=1000) print "acceptable";
     else print "poor";
   }'
 }
