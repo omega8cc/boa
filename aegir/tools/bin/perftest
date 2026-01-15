@@ -218,6 +218,37 @@ _run_ioping_quick() {
   _ioping_seqread="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" . 2>/dev/null | tail -n 2 | head -n 1)"
 }
 
+_run_ioping_quick_mounts() {
+  # Requires _test_mounts[] already populated.
+  # Fills associative arrays:
+  #   _ioping_seek_line["/mount"]    (last line of ioping -DR output)
+  #   _ioping_seqread_line["/mount"] (seq read snippet)
+  # Keeps legacy globals _ioping_seek/_ioping_seqread as root (/) values.
+  _ioping_seek="N/A"
+  _ioping_seqread="N/A"
+  _ensure_ioping || return 0
+  [ -n "${_ioping_cmd}" ] || return 0
+
+  local _mp
+  for _mp in "${_test_mounts[@]}"; do
+    if [ -d "${_mp}" ]; then
+      _ioping_seek_line["${_mp}"]="$("${_ioping_cmd}" -DR -w "${_IOPING_SECONDS}" "${_mp}" 2>/dev/null | tail -n 1)"
+      _ioping_seqread_line["${_mp}"]="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" "${_mp}" 2>/dev/null | tail -n 2 | head -n 1)"
+    else
+      _ioping_seek_line["${_mp}"]="N/A"
+      _ioping_seqread_line["${_mp}"]="N/A"
+    fi
+  done
+
+  # Backward-compatible globals (root only)
+  if [ -n "${_ioping_seek_line["/"]:-}" ]; then
+    _ioping_seek="${_ioping_seek_line["/"]}"
+  fi
+  if [ -n "${_ioping_seqread_line["/"]:-}" ]; then
+    _ioping_seqread="${_ioping_seqread_line["/"]}"
+  fi
+}
+
 # AES throughput test (captures AES-NI issues better than sysbench cpu)
 _run_aes_throughput_test() {
   _aes_mibps="N/A"
@@ -784,6 +815,78 @@ _boa_grade_network() {
   }'
 }
 
+_print_disk_compact_section() {
+  # $1 = mountpoint, $2 = short description (shown in header)
+  local _mp="$1"
+  local _desc="$2"
+
+  local _seqw _seqr _riops _wiops _meta _seek_line _ioping_avg _rbw _wbw _rlat _wlat
+  local _seqw_num _seqr_num _riops_num _wiops_num _meta_num _disk_grade
+
+  _seqw="${_fio_seqwrite_bw_write["${_mp}"]:-N/A}"
+  _seqr="${_fio_seqread_bw_read["${_mp}"]:-N/A}"
+  _riops="${_fio_rand_iops_read["${_mp}"]:-N/A}"
+  _wiops="${_fio_rand_iops_write["${_mp}"]:-N/A}"
+  _meta="${_meta_ops["${_mp}"]:-N/A}"
+
+  _rbw="${_fio_rand_bw_read["${_mp}"]:-N/A}"
+  _wbw="${_fio_rand_bw_write["${_mp}"]:-N/A}"
+  _rlat="${_fio_rand_latency_read["${_mp}"]:-N/A}"
+  _wlat="${_fio_rand_latency_write["${_mp}"]:-N/A}"
+
+  _seek_line="${_ioping_seek_line["${_mp}"]:-N/A}"
+  _ioping_avg="$(echo "${_seek_line}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 2>/dev/null)"
+  [ -n "${_ioping_avg}" ] || _ioping_avg="N/A"
+
+  _seqw_num="$(_num_or_empty "$(echo "${_seqw}" | awk '{print $1}')")"
+  _seqr_num="$(_num_or_empty "$(echo "${_seqr}" | awk '{print $1}')")"
+  _riops_num="$(_num_or_empty "${_riops}")"
+  _wiops_num="$(_num_or_empty "${_wiops}")"
+  _meta_num="$(_num_or_empty "$(echo "${_meta}" | awk '{print $1}')")"
+
+  # Extract numeric ioping avg in us for grading (e.g. "133.6 us" => 133.6)
+  local _ioping_avg_us
+  _ioping_avg_us="$(echo "${_seek_line}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+
+  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}")"
+
+  echo " ============================================================================="
+  if [ "${_mp}" = "/" ]; then
+    echo " == 3. DISK (Root dominates; other mounts displayed separately)             =="
+  else
+    printf " == 3. DISK (%s) (Displayed separately; not used for rating)                ==\n" "${_mp}"
+  fi
+  if [ -n "${_desc}" ] && [ "${_mp}" = "/" ]; then
+    : # keep header short in compact mode; root description already included
+  fi
+  echo " ============================================================================="
+  echo ""
+  printf "   Sequential write (CRITICAL): %s\n" "${_seqw}"
+  printf "   Sequential read:             %s\n" "${_seqr}"
+  printf "   Random 4K IOPS:              %s read / %s write\n" "${_riops}" "${_wiops}"
+  printf "   Real latency (ioping avg):   %s\n" "${_ioping_avg}"
+  printf "   Metadata ops:                %s\n" "${_meta}"
+  echo ""
+  printf "   Details (fio synthetic latency):\n"
+  printf "     Random 4K read:   %s @ %s\n" "${_rbw}" "${_rlat}"
+  printf "     Random 4K write:  %s @ %s\n" "${_wbw}" "${_wlat}"
+  echo ""
+
+  if [ "${_disk_grade}" = "bad" ]; then
+    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
+    echo "      This will severely impact BOA performance (cache writes, logs, DB)"
+  elif [ "${_disk_grade}" = "poor" ]; then
+    echo "   ⚠️  Disk profile looks weak (slow SSD/attached)"
+  elif [ "${_disk_grade}" = "average" ]; then
+    echo "   ✓  Average disk performance for BOA workloads"
+  elif [ "${_disk_grade}" = "good" ]; then
+    echo "   🌟  Good disk performance for BOA workloads"
+  elif [ "${_disk_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent disk performance (NVMe-class)"
+  fi
+  echo ""
+}
+
 _print_compact_summary() {
   echo " ============================================================================="
   echo " ==                 BOA Performance Test - Compact Summary                  =="
@@ -888,34 +991,15 @@ _print_compact_summary() {
   fi
   echo ""
 
-  echo " ============================================================================="
-  echo " == 3. DISK (Root dominates; attached storage influences vendor grading)    =="
-  echo " ============================================================================="
-  echo ""
-  printf "   Sequential write (CRITICAL): %s\n" "${_root_seqwrite_bw_write}"
-  printf "   Sequential read:             %s\n" "${_root_seqread_bw_read}"
-  printf "   Random 4K IOPS:              %s read / %s write\n" "${_fio_rand_iops_read["/"]}" "${_fio_rand_iops_write["/"]}"
-  printf "   Real latency (ioping avg):   %s\n" "$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 || echo "N/A")"
-  printf "   Metadata ops:                %s\n" "${_root_meta_ops}"
-  echo ""
-  printf "   Details (fio synthetic latency):\n"
-  printf "     Random 4K read:   %s @ %s\n" "${_root_rand_bw_read}" "${_root_rand_lat_read}"
-  printf "     Random 4K write:  %s @ %s\n" "${_root_rand_bw_write}" "${_root_rand_lat_write}"
-  echo ""
 
-  if [ "${disk_grade}" = "bad" ]; then
-    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
-    echo "      This will severely impact BOA performance (cache writes, logs, DB)"
-  elif [ "${disk_grade}" = "poor" ]; then
-    echo "   ⚠️  Disk profile looks weak (slow SSD/attached)"
-  elif [ "${disk_grade}" = "average" ]; then
-    echo "   ✓  Average disk performance for BOA workloads"
-  elif [ "${disk_grade}" = "good" ]; then
-    echo "   🌟  Good disk performance for BOA workloads"
-  elif [ "${disk_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent disk performance (NVMe-class)"
+# DISK (root is used for overall rating; other mounts are informational)
+_print_disk_compact_section "/" ""
+local _mp
+for _mp in "${_test_mounts[@]}"; do
+  if [ "${_mp}" != "/" ]; then
+    _print_disk_compact_section "${_mp}" ""
   fi
-  echo ""
+done
 
   echo " ============================================================================="
   echo " == 4. NETWORK (Sanity check)                                               =="
@@ -1107,7 +1191,9 @@ mapfile -t _test_mounts < <(_get_test_mounts)
 
 # ioping latency (nench-inspired)
 echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
-_run_ioping_quick
+declare -A _ioping_seek_line
+declare -A _ioping_seqread_line
+_run_ioping_quick_mounts
 
 # IPv4 network sanity check (CDN with fallback)
 echo "Running IPv4 network check (4 tests, ${_NET_TIMEOUT}s timeout)..."
