@@ -71,7 +71,7 @@ _if_solr_nine() {
   fi
 
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    if [ "${_OS_CODE}" = "excalibur" ]; then
+    if [ "${_OS_CODE}" = "excalibur" ] || [ -x "/usr/lib/jvm/java-21-openjdk-amd64/bin/java" ]; then
       _useJava=21
     else
       _useJava=17
@@ -100,7 +100,7 @@ _if_solr_nine() {
       if [ "${_OS_CODE}" = "excalibur" ] \
         || [ "${_OS_CODE}" = "daedalus" ] \
         || [ "${_OS_CODE}" = "chimaera" ]; then
-        if [ "${_OS_CODE}" = "excalibur" ]; then
+        if [ "${_OS_CODE}" = "excalibur" ] || [ -x "/usr/lib/jvm/java-21-openjdk-amd64/bin/java" ]; then
           echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-21-openjdk\" # BOA ${_xSrl} Path to Java 21 on ${_OS_CODE}" >> /etc/default/${_N_SOLR}.in.sh
         else
           echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17 on ${_OS_CODE}" >> /etc/default/${_N_SOLR}.in.sh
