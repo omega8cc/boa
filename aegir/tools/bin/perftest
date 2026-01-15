@@ -700,7 +700,8 @@ _boa_grade_mem_bw() {
   # input: numeric MiB/s
   # Only warn if truly low; NUMA/cgroup can limit single-thread sysbench
   awk -v v="$1" 'BEGIN{
-    if (v>=6000) print "excellent";
+    if (v>=9000) print "ultra";
+    else if (v>=5000) print "excellent";
     else if (v>=3000) print "good";
     else if (v>=2000) print "average";
     else print "low";
@@ -723,9 +724,11 @@ _boa_grade_cpu_speed() {
   # Based on typical BOA workloads (Drupal PHP)
   awk -v eps="$1" 'BEGIN{
     if (eps=="" || eps=="N/A") print "unknown";
-    else if (eps>=3500) print "excellent";
-    else if (eps>=2500) print "good";
-    else if (eps>=1500) print "average";
+    else if (eps>=5300) print "ultra";
+    else if (eps>=4300) print "excellent";
+    else if (eps>=3300) print "good";
+    else if (eps>=2300) print "average";
+    else if (eps>=1300) print "acceptable";
     else print "poor";
   }'
 }
@@ -808,8 +811,9 @@ _boa_grade_network() {
   # input: numeric MiB/s
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
-    else if (n>=200) print "excellent";
-    else if (n>=100) print "good";
+    else if (n>=150) print "ultra";
+    else if (n>=100) print "excellent";
+    else if (n>=75) print "good";
     else if (n>=50) print "average";
     else print "poor";
   }'
@@ -852,12 +856,9 @@ _print_disk_compact_section() {
 
   echo " ============================================================================="
   if [ "${_mp}" = "/" ]; then
-    echo " == 3. DISK (Root dominates; other mounts displayed separately)             =="
+    echo " == 3. DISK (Root partition / main filesystem)                              =="
   else
-    printf " == 3. DISK (%s) (Displayed separately; not used for rating) \n" "${_mp}"
-  fi
-  if [ -n "${_desc}" ] && [ "${_mp}" != "/" ]; then
-    printf " == %-71s ==\n" "${_desc}"
+    printf " == 3. DISK (%s) (Mounted extra filesystem) \n" "${_mp}"
   fi
   echo " ============================================================================="
   echo ""
@@ -878,7 +879,7 @@ _print_disk_compact_section() {
   elif [ "${_disk_grade}" = "poor" ]; then
     echo "   ⚠️  Disk profile looks weak (slow SSD/attached)"
   elif [ "${_disk_grade}" = "average" ]; then
-    echo "   ✓  Average disk performance for BOA workloads"
+    echo "   ✅  Average disk performance for BOA workloads"
   elif [ "${_disk_grade}" = "good" ]; then
     echo "   🌟  Good disk performance for BOA workloads"
   elif [ "${_disk_grade}" = "excellent" ]; then
@@ -948,11 +949,13 @@ _print_compact_summary() {
   if [ "${mem_grade}" = "low" ]; then
     echo "   ⚠️  Low memory bandwidth - may limit BOA caching under heavy load"
   elif [ "${mem_grade}" = "average" ]; then
-    echo "   ✓  Average memory bandwidth for in-memory caching"
+    echo "   ✅  Average memory bandwidth for in-memory caching"
   elif [ "${mem_grade}" = "good" ]; then
     echo "   🌟  Good memory bandwidth for in-memory caching"
   elif [ "${mem_grade}" = "excellent" ]; then
     echo "   🏆  Excellent memory bandwidth for in-memory caching"
+  elif [ "${mem_grade}" = "ultra" ]; then
+    echo "   🚀  Ultra memory bandwidth for in-memory caching"
   fi
   echo ""
 
@@ -974,28 +977,31 @@ _print_compact_summary() {
     elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
       echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact"
     elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<3)}' 2>/dev/null; then
-      echo "   ✓  Minimal CPU steal - but may cause latency spikes under load"
+      echo "   ☑️  Minimal CPU steal - but may cause latency spikes under load"
     fi
   fi
 
   if [ "${cpu_grade}" = "poor" ]; then
     echo "   ❌ CPU performance too slow for BOA"
+  elif [ "${cpu_grade}" = "acceptable" ]; then
+    echo "   ☑️  Acceptable CPU performance but not optimal"
   elif [ "${cpu_grade}" = "average" ]; then
-    echo "   ✓  Average CPU performance but not optimal"
+    echo "   ✅  Average CPU performance"
   elif [ "${cpu_grade}" = "good" ]; then
     echo "   🌟  Good CPU performance "
   elif [ "${cpu_grade}" = "excellent" ]; then
     echo "   🏆  Excellent CPU performance"
-
+  elif [ "${cpu_grade}" = "ultra" ]; then
+    echo "   🚀  Ultra CPU performance"
   fi
   echo ""
 
   # DISK (root is used for overall rating; other mounts are informational)
-  _print_disk_compact_section "/" "Root dominates; other mounts displayed separately; rating uses / only"
+  _print_disk_compact_section "/" "Root partition / main filesystem"
   local _mp
   for _mp in "${_test_mounts[@]}"; do
     if [ "${_mp}" != "/" ]; then
-      _print_disk_compact_section "${_mp}" "Mounted filesystem (displayed separately; not used for rating)"
+      _print_disk_compact_section "${_mp}" "Mounted extra filesystem"
     fi
   done
 
@@ -1021,11 +1027,13 @@ _print_compact_summary() {
   if [ "${net_grade}" = "poor" ]; then
     echo "   ⚠️  Slow network - may affect external API calls and package updates"
   elif [ "${net_grade}" = "average" ]; then
-    echo "   ✓  Average network speed"
+    echo "   ✅  Average network speed"
   elif [ "${net_grade}" = "good" ]; then
     echo "   🌟  Good network speed"
   elif [ "${net_grade}" = "excellent" ]; then
     echo "   🏆  Excellent network speed"
+  elif [ "${net_grade}" = "ultra" ]; then
+    echo "   🚀  Ultra network speed"
   fi
   echo ""
 
@@ -1069,8 +1077,8 @@ _print_compact_summary() {
   # Summary
   if [ "${_issues}" -eq 0 ] && [ "${_warnings}" -eq 0 ]; then
     echo ""
-    echo "   ✓  This host is well-suited for BOA deployment"
-    echo "   ✓  All critical metrics meet recommended thresholds"
+    echo "   ✅  This host is well-suited for BOA deployment"
+    echo "   ✅  All critical metrics meet recommended thresholds"
   elif [ "${_issues}" -eq 0 ]; then
     echo ""
     echo "   ⚠️  This host is acceptable for BOA (${_warnings} minor warning(s))"
