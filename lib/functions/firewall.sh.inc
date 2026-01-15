@@ -120,7 +120,7 @@ _csf_install() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    _mrun "apt-get install ipset ${_aptYesUnth}"
+    _mrun "apt-get install ipset ${_nrmUpArg}"
   fi
 
   _ensure_ipset_symlinks
@@ -330,7 +330,7 @@ _csf_lfd_install_upgrade() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    _mrun "apt-get install ipset ${_aptYesUnth}"
+    _mrun "apt-get install ipset ${_nrmUpArg}"
   fi
 
   _ensure_ipset_symlinks
