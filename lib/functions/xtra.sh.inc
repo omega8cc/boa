@@ -586,7 +586,7 @@ _if_install_ffmpeg() {
           echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         fi
         _apt_clean_update
-        _mrun "apt-get install deb-multimedia-keyring ${_nrmUpArg}"
+        _mrun "apt-get install deb-multimedia-keyring ${_aptYesUnth}"
         _apt_clean_update
         for _PKG in ffmpeg; do
           if ! _pkg_installed "${_PKG}"; then

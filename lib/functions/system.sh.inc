@@ -99,7 +99,7 @@ _if_reinstall_curl_src() {
   _CURL_VRN=8.17.0
   if ! command -v lsb_release &> /dev/null; then
     _mrun "apt-get update -qq"
-    _mrun "apt-get install lsb-release ${_nrmUpArg}"
+    _mrun "apt-get install lsb-release ${_aptYesUnth} -qq"
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -119,10 +119,10 @@ _if_reinstall_curl_src() {
       _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
     fi
     _mrun "apt-get autoremove -y"
-    _mrun "apt-get install libssl-dev ${_nrmUpArg}"
-    _mrun "apt-get build-dep curl ${_nrmUpArg}"
+    _mrun "apt-get install libssl-dev ${_aptYesUnth} -qq"
+    _mrun "apt-get build-dep curl ${_aptYesUnth}"
     if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-      _mrun "apt-get install curl --reinstall ${_nrmUpArg}"
+      _mrun "apt-get install curl --reinstall ${_aptYesUnth} -qq"
     fi
     if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _msg "INFO: Installing curl from sources..."
@@ -3022,8 +3022,8 @@ _run_apt_get_dist_upgrade() {
   _mrun "apt-get dist-upgrade ${_dstUpArg}"
   _mrun "apt-get dist-upgrade ${_dstUpArg}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  _mrun "apt-get dist-upgrade ${_nrmUpArg}"
-  _mrun "apt-get dist-upgrade ${_nrmUpArg}"
+  _mrun "apt-get dist-upgrade ${_aptYesUnth}"
+  _mrun "apt-get dist-upgrade ${_aptYesUnth}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   _mrun "apt-get install lsb-release ${_dstUpArg}"
   ### Update rsyslog configuration early
@@ -3112,9 +3112,9 @@ _do_install_latest_git() {
     _msg "WAIT: This may take a while, please wait..."
     if [ ! -x "/usr/local/bin/git" ]; then
       _apt_clean_update
-      _mrun "apt-get install libcurl4 -y ${_nrmUpArg}"
-      _mrun "apt-get install libcurl4-openssl-dev -y ${_nrmUpArg}"
-      _mrun "apt-get install libcurl4-gnutls-dev -y ${_nrmUpArg}"
+      _mrun "apt-get install libcurl4 -y ${_aptAllow}"
+      _mrun "apt-get install libcurl4-openssl-dev -y ${_aptAllow}"
+      _mrun "apt-get install libcurl4-gnutls-dev -y ${_aptAllow}"
       if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
         _mrun "apt-get remove git-core -y --purge --auto-remove"
       fi
@@ -4810,7 +4810,7 @@ _curl_install_src() {
   fi
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
-    apt-get install lsb-release ${_nrmUpArg} &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -6579,8 +6579,8 @@ _if_post_major_os_upgrade() {
       _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     else
-      _mrun "apt-get dist-upgrade ${_nrmUpArg}"
-      _mrun "apt-get dist-upgrade ${_nrmUpArg}"
+      _mrun "apt-get dist-upgrade ${_aptYesUnth}"
+      _mrun "apt-get dist-upgrade ${_aptYesUnth}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     fi
     _mrun "apt-get install lsb-release ${_dstUpArg}"
@@ -7310,8 +7310,8 @@ _if_major_os_upgrade() {
         _apt_clean_update
         for _PKG in libldap-common libldap2-dev; do
           if ! _pkg_installed "${_PKG}"; then
-            _mrun "apt-get install -t ${_useFast} ${_PKG} ${_nrmUpArg}"
-            _mrun "apt-get install -t ${_useFast}-security ${_PKG} ${_nrmUpArg}"
+            _mrun "apt-get install -t ${_useFast} ${_PKG} ${_aptYesUnth}"
+            _mrun "apt-get install -t ${_useFast}-security ${_PKG} ${_aptYesUnth}"
           fi
         done
         ###
@@ -7521,7 +7521,7 @@ _if_major_os_upgrade() {
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
         _apt_clean_update_no_releaseinfo_change
-        _mrun "apt-get install udev ${_nrmUpArg}"
+        _mrun "apt-get install udev ${_aptYesUnth}"
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
       fi
@@ -7741,8 +7741,8 @@ _other_sys_java_install() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "TRCK: Installing now openjdk-${_javaVer}-jre-headless from ${_systVer}"
     fi
-    _mrun "apt-get install -t ${_systVer} openjdk-${_javaVer}-jre-headless ${_nrmUpArg}"
-    _mrun "apt-get install -t ${_systVer}-security openjdk-${_javaVer}-jre-headless ${_nrmUpArg}"
+    _mrun "apt-get install -t ${_systVer} openjdk-${_javaVer}-jre-headless ${_aptYesUnth}"
+    _mrun "apt-get install -t ${_systVer}-security openjdk-${_javaVer}-jre-headless ${_aptYesUnth}"
     rm -f /etc/apt/sources.list.d/${_systVer}.list
     rm -f /etc/apt/apt.conf
     _apt_clean_update
@@ -7779,7 +7779,7 @@ _sys_packages_install() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
         fi
-        _mrun "apt-get install -t bullseye openjdk-11-jre-headless ${_nrmUpArg}"
+        _mrun "apt-get install -t bullseye openjdk-11-jre-headless ${_aptYesUnth}"
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         _apt_clean_update
@@ -7828,7 +7828,7 @@ _sys_packages_install() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
         fi
-        _mrun "apt-get install -t bullseye openjdk-11-jre-headless ${_nrmUpArg}"
+        _mrun "apt-get install -t bullseye openjdk-11-jre-headless ${_aptYesUnth}"
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         _apt_clean_update
@@ -9801,7 +9801,7 @@ _apticron_update() {
         sed -i "s/^EMAIL=.*/EMAIL="${_MY_EMAIL}"/g" ${_aPc}
       else
         _mrun "apt-get remove apticron -y --purge --auto-remove -qq"
-        _mrun "apt-get install apticron ${_nrmUpArg}"
+        _mrun "apt-get install apticron ${_aptYesUnth}"
         sed -i "s/^NOTIFY_HOLDS=.*/NOTIFY_HOLDS=\"0\"/g" ${_aPc}
         sed -i "s/notify@omega8.cc/${_MY_EMAIL}/g" ${_aPc}
         sed -i "s/^EMAIL=.*/EMAIL="${_MY_EMAIL}"/g" ${_aPc}
