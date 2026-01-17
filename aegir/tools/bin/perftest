@@ -724,11 +724,11 @@ _boa_grade_cpu_speed() {
   # Based on typical BOA workloads (Drupal PHP)
   awk -v eps="$1" 'BEGIN{
     if (eps=="" || eps=="N/A") print "unknown";
-    else if (eps>=5300) print "ultra";
-    else if (eps>=4300) print "excellent";
-    else if (eps>=3300) print "good";
-    else if (eps>=2300) print "average";
-    else if (eps>=1300) print "acceptable";
+    else if (eps>=5000) print "ultra";
+    else if (eps>=4000) print "excellent";
+    else if (eps>=3000) print "good";
+    else if (eps>=2000) print "average";
+    else if (eps>=1000) print "acceptable";
     else print "poor";
   }'
 }
@@ -1054,8 +1054,8 @@ _print_compact_summary() {
   if [ "${cpu_grade}" = "poor" ]; then
     echo "   ❌ CPU performance too slow for BOA"
     _issues=$((_issues + 1))
-  elif [ "${cpu_grade}" = "average" ]; then
-    echo "   ⚠️  CPU performance average but not optimal"
+  elif [ "${cpu_grade}" = "acceptable" ]; then
+    echo "   ⚠️  CPU performance acceptable but not optimal"
     _warnings=$((_warnings + 1))
   fi
 
@@ -1069,8 +1069,17 @@ _print_compact_summary() {
   fi
 
   # Disk
-  if [ "${disk_grade}" = "poor" ]; then
+  if [ "${disk_grade}" = "bad" ]; then
+    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
+    _warnings=$((_warnings + 1))
+  elif [ "${disk_grade}" = "poor" ]; then
     echo "   ⚠️  Slow disk - may impact deployments"
+    _warnings=$((_warnings + 1))
+  fi
+
+  # Network
+  if [ "${net_grade}" = "poor" ]; then
+    echo "   ⚠️  Slow network - not suitable for high traffic sites"
     _warnings=$((_warnings + 1))
   fi
 
