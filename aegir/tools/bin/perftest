@@ -11,7 +11,7 @@ _PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
 _SYSBENCH_CPU_TIME=30 # seconds
 _SYSBENCH_MEM_TIME=30 # seconds
 _MEM_BENCH_TIME=10 # seconds (DRAM-focused membench, per run)
-_MEM_BENCH_REPEATS=3 # repeats for stability; best-of-3 is used
+_MEM_BENCH_REPEATS=3 # repeats for stability; median-of-3 is used
 _MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
 _MEM_BENCH_SIZE_MAX_MIB=1024 # MiB working set (cap to avoid OOM)
 _MEM_BENCH_THREADS_MAX=8 # cap threads used for memory bandwidth
@@ -1059,6 +1059,7 @@ _parse_fio_json() {
   # Optional percentiles (fio3+): clat_ns.percentile
   local _read_p95_ns _read_p99_ns _write_p95_ns _write_p99_ns
   local _read_p95_ms _read_p99_ms _write_p95_ms _write_p99_ms
+  local _sync_p95_ns _sync_p99_ns _sync_p95_ms _sync_p99_ms
 
   _read_p95_ns="$(jq -r '([.jobs[].read.clat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
   _read_p99_ns="$(jq -r '([.jobs[].read.clat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
@@ -1078,6 +1079,16 @@ _parse_fio_json() {
     _write_p99_ms="$(awk -v ns="${_write_p99_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
   fi
 
+  # Optional percentiles for sync/fsync (fio JSON uses a separate sync section)
+  _sync_p95_ns="$(jq -r '([.jobs[].sync.lat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // ([.jobs[].sync.clat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  _sync_p99_ns="$(jq -r '([.jobs[].sync.lat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // ([.jobs[].sync.clat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  if [ -n "${_sync_p95_ns}" ]; then
+    _sync_p95_ms="$(awk -v ns="${_sync_p95_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+  if [ -n "${_sync_p99_ns}" ]; then
+    _sync_p99_ms="$(awk -v ns="${_sync_p99_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+
   echo "READ_IOPS=${_read_iops}"
   echo "WRITE_IOPS=${_write_iops}"
   echo "READ_BW_MB=${_read_bw_mb}"
@@ -1088,6 +1099,8 @@ _parse_fio_json() {
   echo "READ_P99_MS=${_read_p99_ms}"
   echo "WRITE_P95_MS=${_write_p95_ms}"
   echo "WRITE_P99_MS=${_write_p99_ms}"
+echo "SYNC_P95_MS=${_sync_p95_ms}"
+echo "SYNC_P99_MS=${_sync_p99_ms}"
 }
 
 # Simple metadata / small file operations test
@@ -1227,45 +1240,84 @@ _num_or_empty() {
   printf '%s' "$1" | grep -Eo '^[0-9]+(\.[0-9]+)?' || true
 }
 
+
 _boa_grade_mem_bw() {
-  # input: numeric MiB/s (bandwidth)
-  # Kept for backward compatibility; prefers DRAM-focused membench output.
-  awk -v v="$1" 'BEGIN{
-    if (v>=60000) print "ultra";
-    else if (v>=40000) print "excellent";
-    else if (v>=25000) print "good";
-    else if (v>=15000) print "average";
-    else print "low";
-  }'
+  # Bandwidth in MiB/s; optionally pass number of threads used.
+  # For VMs with 1-3 vCPU, bandwidth won't fully saturate memory channels, so we scale
+  # thresholds down slightly based on threads (up to 4).
+  local bw="$1"
+  local threads="${2:-4}"
+  local scale="1.00"
+
+  if [ -n "${threads}" ] && awk -v t="${threads}" 'BEGIN{exit !(t<4)}' 2>/dev/null; then
+    scale="$(awk -v t="${threads}" 'BEGIN{printf "%.2f", t/4.0}')"
+  fi
+
+  local thr_avg thr_good thr_exc thr_ultra
+  # Tuned for membench (>=128 MiB buffers) on typical VPS hardware.
+  thr_avg="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 14000*s}')"
+  thr_good="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 20000*s}')"
+  thr_exc="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 32000*s}')"
+  thr_ultra="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 48000*s}')"
+
+  if [ -z "${bw}" ]; then
+    echo "low"
+    return
+  fi
+
+  if awk -v bw="${bw}" -v t="${thr_ultra}" 'BEGIN{exit !(bw>=t)}' 2>/dev/null; then
+    echo "ultra"; return
+  fi
+  if awk -v bw="${bw}" -v t="${thr_exc}" 'BEGIN{exit !(bw>=t)}' 2>/dev/null; then
+    echo "excellent"; return
+  fi
+  if awk -v bw="${bw}" -v t="${thr_good}" 'BEGIN{exit !(bw>=t)}' 2>/dev/null; then
+    echo "good"; return
+  fi
+  if awk -v bw="${bw}" -v t="${thr_avg}" 'BEGIN{exit !(bw>=t)}' 2>/dev/null; then
+    echo "average"; return
+  fi
+
+  echo "low"
 }
 
+
 _boa_grade_mem_final() {
-  # Inputs:
-  #   $1 = bandwidth MiB/s
-  #   $2 = pointer-chase latency in ns (optional)
-  # BOA in-memory heavy workloads benefit from both high bandwidth and low tail-ish latency.
-  local _bw _lat _g
-  _bw="$(_num_or_empty "$1")"
-  _lat="$(_num_or_empty "$2")"
+  local mem_bw_mibps="$1"
+  local mem_latency_ns="$2"
+  local threads_used="$3"
+  local grade
 
-  _g="$(_boa_grade_mem_bw "${_bw}")"
+  grade="$(_boa_grade_mem_bw "${mem_bw_mibps}" "${threads_used}")"
 
-  # Apply latency caps (best-effort; prevents "ultra" on cache-only measurements)
-  if [ -n "${_lat}" ]; then
-    if awk -v n="${_lat}" 'BEGIN{exit !(n>=220)}' 2>/dev/null; then
-      _g="low"
-    elif awk -v n="${_lat}" 'BEGIN{exit !(n>=170)}' 2>/dev/null; then
-      if [ "${_g}" = "ultra" ] || [ "${_g}" = "excellent" ] || [ "${_g}" = "good" ]; then
-        _g="average"
+  # BOA is latency-sensitive (Redis/Valkey, MySQL buffer pool, Opcache/APCu):
+  # allow low latency to lift a borderline bandwidth result.
+  if [ -n "${mem_latency_ns}" ]; then
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=130)}' 2>/dev/null; then
+      if [ "${grade}" = "average" ] && awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=18000)}' 2>/dev/null; then
+        grade="good"
       fi
-    elif awk -v n="${_lat}" 'BEGIN{exit !(n>=130)}' 2>/dev/null; then
-      if [ "${_g}" = "ultra" ] || [ "${_g}" = "excellent" ]; then
-        _g="good"
+    fi
+
+    # Latency caps (more realistic for VM setups than the earlier strict thresholds)
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=220)}' 2>/dev/null; then
+      grade="low"
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=190)}' 2>/dev/null; then
+      if [ "${grade}" != "low" ]; then
+        grade="average"
+      fi
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=160)}' 2>/dev/null; then
+      if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
+        grade="good"
+      fi
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=140)}' 2>/dev/null; then
+      if [ "${grade}" = "ultra" ]; then
+        grade="excellent"
       fi
     fi
   fi
 
-  echo "${_g}"
+  echo "${grade}"
 }
 
 _boa_grade_cpu_steal() {
@@ -1448,6 +1500,12 @@ _boa_guess_storage_tier() {
   # NOTE: Use multiple signals to reduce misclassification on bursty network storage.
 
   # Production: local fast NVMe
+  # Some providers cap sequential throughput, so prefer QD=1 tail latency + ioping when available.
+  if [ -n "${p99r}" ] && [ -n "${p99w}" ] && [ -n "${ioping_us}" ] && \
+     awk -v pr="${p99r}" -v pw="${p99w}" -v u="${ioping_us}" 'BEGIN{exit !(pr<=0.25 && pw<=0.25 && u<=350)}' 2>/dev/null; then
+    echo "PROD_LOCAL_NVME"
+    return
+  fi
   if [ -n "${sr}" ] && [ -n "${sw}" ] && \
      awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=1200 && sr>=2500)}' 2>/dev/null; then
     if [ -n "${p99w}" ] && awk -v p="${p99w}" 'BEGIN{exit !(p<=5)}' 2>/dev/null; then
@@ -1477,7 +1535,7 @@ _boa_guess_storage_tier() {
   if [ -n "${sr}" ] && [ -n "${sw}" ] && \
      awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=450 && sr>=450)}' 2>/dev/null; then
     if [ -n "${p99w}" ] && awk -v p="${p99w}" 'BEGIN{exit !(p<=60)}' 2>/dev/null; then
-      if [ -n "${p99wf}" ] && awk -v p="${p99wf}" 'BEGIN{exit !(p>120)}' 2>/dev/null; then
+      if [ -n "${p99wf}" ] && awk -v p="${p99wf}" 'BEGIN{exit !(p>30)}' 2>/dev/null; then
         # Durability is slow -> treat as network SSD tier
         echo "BACKUP_NET_SSD"
         return
@@ -1543,7 +1601,7 @@ _print_disk_compact_section() {
   _qd1_p99_w_num="$(_num_or_empty "$(echo "${_qd1_p99_w}" | awk "{print \$1}")")"
   _qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_qd1_fsync_p99_w}" | awk "{print \$1}")")"
 
-  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p99_w_num}")"
+  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
   _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
 
   echo " ============================================================================="
@@ -1627,13 +1685,13 @@ _print_compact_summary() {
 
   # Calculate grades
   local mem_grade steal_grade cpu_grade disk_grade net_grade
-  mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}")"
+  mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
   root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
   root_qd1_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_p99_write}" | awk "{print \$1}")")"
   root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
-  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}")"
+  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
 
   echo " ============================================================================="
@@ -1952,8 +2010,8 @@ _root_qd1_p95_read=""
 _root_qd1_p95_write=""
 _root_qd1_p99_read=""
 _root_qd1_p99_write=""
-    _root_qd1_fsync_p95_write="${_fio_qd1_fsync_p95_write["${_mount_point}"]}"
-    _root_qd1_fsync_p99_write="${_fio_qd1_fsync_p99_write["${_mount_point}"]}"
+_root_qd1_fsync_p95_write=""
+_root_qd1_fsync_p99_write=""
 
 for _mount_point in "${_test_mounts[@]}"; do
   echo "Running Disk I/O tests on ${_mount_point}..."
@@ -2039,8 +2097,10 @@ for _mount_point in "${_test_mounts[@]}"; do
   if _run_fio_qd1_fsync_test "${_mount_point}" "${_qd1_fsync_output}"; then
     while IFS="=" read -r _k _v; do
       case "${_k}" in
-        WRITE_P95_MS) [ -n "${_v}" ] && _fio_qd1_fsync_p95_write["${_mount_point}"]="${_v} ms" ;;
-        WRITE_P99_MS) [ -n "${_v}" ] && _fio_qd1_fsync_p99_write["${_mount_point}"]="${_v} ms" ;;
+        SYNC_P95_MS) [ -n "${_v}" ] && _fio_qd1_fsync_p95_write["${_mount_point}"]="${_v} ms" ;;
+        SYNC_P99_MS) [ -n "${_v}" ] && _fio_qd1_fsync_p99_write["${_mount_point}"]="${_v} ms" ;;
+        WRITE_P95_MS) [ -z "${_fio_qd1_fsync_p95_write["${_mount_point}"]}" ] && [ -n "${_v}" ] && _fio_qd1_fsync_p95_write["${_mount_point}"]="${_v} ms" ;;
+        WRITE_P99_MS) [ -z "${_fio_qd1_fsync_p99_write["${_mount_point}"]}" ] && [ -n "${_v}" ] && _fio_qd1_fsync_p99_write["${_mount_point}"]="${_v} ms" ;;
       esac
     done < <(_parse_fio_json "${_qd1_fsync_output}")
   else
@@ -2067,6 +2127,8 @@ for _mount_point in "${_test_mounts[@]}"; do
     _root_qd1_p95_write="${_fio_qd1_p95_write["${_mount_point}"]}"
     _root_qd1_p99_read="${_fio_qd1_p99_read["${_mount_point}"]}"
     _root_qd1_p99_write="${_fio_qd1_p99_write["${_mount_point}"]}"
+    _root_qd1_fsync_p95_write="${_fio_qd1_fsync_p95_write["${_mount_point}"]}"
+    _root_qd1_fsync_p99_write="${_fio_qd1_fsync_p99_write["${_mount_point}"]}"
   fi
 done
 
