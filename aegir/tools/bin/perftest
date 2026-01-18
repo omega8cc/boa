@@ -10,8 +10,16 @@ _PHP_BENCH_RUNS=5 # single-thread runs for median
 _PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
 _SYSBENCH_CPU_TIME=30 # seconds
 _SYSBENCH_MEM_TIME=30 # seconds
+_MEM_BENCH_TIME=10 # seconds (DRAM-focused membench, per run)
+_MEM_BENCH_REPEATS=3 # repeats for stability; best-of-3 is used
+_MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
+_MEM_BENCH_SIZE_MAX_MIB=1024 # MiB working set (cap to avoid OOM)
+_MEM_BENCH_THREADS_MAX=8 # cap threads used for memory bandwidth
+_MEM_BENCH_LAT_SIZE_MIB=256 # MiB pointer-chase working set (DRAM latency)
 _FIO_RAND_RUNTIME=60 # seconds
 _FIO_SEQ_RUNTIME=60 # seconds
+_FIO_QD1_RUNTIME=20 # seconds (QD=1 random latency for tiering)
+_FIO_QD1_SIZE_M=256 # MiB per QD=1 test
 _METADATA_FILE_COUNT=5000 # small-file ops per mount
 _NET_TIMEOUT=10 # seconds for curl speedtest
 _AES_TEST_MIB=500 # MiB encrypted for AES throughput test
@@ -116,7 +124,443 @@ _ensure_sysbench() {
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
 }
 
-# Convert bytes/sec to MiB/s (numeric only)
+# Best-effort C compiler (for DRAM-focused membench)
+_ensure_cc() {
+  if command -v gcc >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v cc >/dev/null 2>&1; then
+    return 0
+  fi
+  _check_and_install_package "gcc"
+}
+
+_get_l3_cache_mib() {
+  # Best-effort detection of L3 cache size (MiB) for sizing the memory benchmark.
+  # Returns empty string if unknown.
+  local _idx _lvl _sz _val
+
+  # Prefer sysfs (works in most Linux guests).
+  for _idx in /sys/devices/system/cpu/cpu0/cache/index*; do
+    [ -d "${_idx}" ] || continue
+    _lvl="$(cat "${_idx}/level" 2>/dev/null)"
+    if [ "${_lvl}" = "3" ]; then
+      _sz="$(cat "${_idx}/size" 2>/dev/null)"
+      case "${_sz}" in
+        *K) _val="${_sz%K}"; echo $(( _val / 1024 )); return 0 ;;
+        *M) _val="${_sz%M}"; echo "${_val}"; return 0 ;;
+      esac
+    fi
+  done
+
+  # Fallback to lscpu output.
+  if command -v lscpu >/dev/null 2>&1; then
+    _sz="$(lscpu 2>/dev/null | awk -F: '/L3 cache/ {gsub(/^[ 	]+/,"",$2); print $2; exit}')"
+    case "${_sz}" in
+      *K) _val="${_sz%K}"; echo $(( _val / 1024 )); return 0 ;;
+      *M) _val="${_sz%M}"; echo "${_val}"; return 0 ;;
+    esac
+  fi
+
+  echo ""
+}
+
+_calc_mem_bench_size_mib() {
+  # Choose a working set intended to exceed LLC but avoid OOM.
+  # NOTE: membench allocates *two* buffers of this size (src+dst), so the
+  # actual resident footprint is roughly 2x.
+  local _avail_kb _avail_mib _mib _l3_mib _target _max_by_avail
+
+  _avail_kb="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null)"
+  if [ -z "${_avail_kb}" ]; then
+    _avail_kb="$(awk '/MemFree:/ {print $2}' /proc/meminfo 2>/dev/null)"
+  fi
+  _avail_mib=0
+  if [ -n "${_avail_kb}" ]; then
+    _avail_mib=$(( _avail_kb / 1024 ))
+  fi
+
+  _l3_mib="$(_get_l3_cache_mib)"
+
+  # Start from 4x L3 (if known), otherwise 25% of MemAvailable.
+  if [ -n "${_l3_mib}" ] && [ "${_l3_mib}" -gt 0 ]; then
+    _target=$(( _l3_mib * 4 ))
+  else
+    if [ "${_avail_mib}" -gt 0 ]; then
+      _target=$(( _avail_mib / 4 ))
+    else
+      _target="${_MEM_BENCH_SIZE_MIN_MIB}"
+    fi
+  fi
+
+  # Clamp to configured min/max.
+  _mib="${_target}"
+  if [ "${_mib}" -lt "${_MEM_BENCH_SIZE_MIN_MIB}" ]; then
+    _mib="${_MEM_BENCH_SIZE_MIN_MIB}"
+  fi
+  if [ "${_mib}" -gt "${_MEM_BENCH_SIZE_MAX_MIB}" ]; then
+    _mib="${_MEM_BENCH_SIZE_MAX_MIB}"
+  fi
+
+  # Headroom guard: keep 2x buffers under ~60% of MemAvailable.
+  # (2 buffers + overhead + other daemons)
+  if [ "${_avail_mib}" -gt 0 ]; then
+    _max_by_avail=$(( (_avail_mib * 60 / 100) / 2 ))
+    if [ "${_max_by_avail}" -gt 0 ] && [ "${_mib}" -gt "${_max_by_avail}" ]; then
+      _mib="${_max_by_avail}"
+      if [ "${_mib}" -lt "${_MEM_BENCH_SIZE_MIN_MIB}" ]; then
+        _mib="${_MEM_BENCH_SIZE_MIN_MIB}"
+      fi
+    fi
+  fi
+
+  echo "${_mib}"
+}
+
+_build_membench() {
+  # Builds /tmp/perftest_membench if missing.
+  local _bin _c _cc
+  _bin="/tmp/perftest_membench"
+  [ -x "${_bin}" ] && return 0
+
+  _ensure_cc
+
+  if command -v gcc >/dev/null 2>&1; then
+    _cc="gcc"
+  else
+    _cc="cc"
+  fi
+
+  _c="/tmp/perftest_membench.c"
+
+  cat > "${_c}" <<'C'
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <time.h>
+#include <pthread.h>
+#include <unistd.h>
+
+typedef struct {
+  uint8_t *src;
+  uint8_t *dst;
+  size_t offset;
+  size_t len;
+  double seconds;
+  uint64_t bytes;
+} worker_t;
+
+static inline double now_sec(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
+static void *bw_worker(void *arg) {
+  worker_t *w = (worker_t *)arg;
+  uint8_t *src = w->src + w->offset;
+  uint8_t *dst = w->dst + w->offset;
+  size_t len = w->len;
+  uint64_t bytes = 0;
+
+  // Warm-up touch
+  for (size_t i = 0; i < len; i += 4096) {
+    dst[i] = (uint8_t)(src[i] ^ 0x5a);
+  }
+
+  const double end = now_sec() + w->seconds;
+  while (1) {
+    // Do a small batch of copies before re-checking time (reduces timer overhead)
+    for (int k = 0; k < 8; k++) {
+      memcpy(dst, src, len);
+      // Prevent overly aggressive optimization / dead-store elimination
+      dst[0] ^= src[0];
+      bytes += (uint64_t)len;
+    }
+    if (now_sec() >= end) break;
+  }
+
+  w->bytes = bytes;
+  return NULL;
+}
+
+static uint64_t xorshift64(uint64_t *state) {
+  uint64_t x = *state;
+  x ^= x << 13;
+  x ^= x >> 7;
+  x ^= x << 17;
+  *state = x;
+  return x;
+}
+
+static double pointer_chase_latency_ns(size_t bytes, double seconds) {
+  // Pointer chasing over a large random cycle to approximate DRAM latency.
+  // bytes should exceed LLC to avoid cache-only results.
+
+  size_t n = bytes / sizeof(uint32_t);
+  if (n < 1024) n = 1024;
+
+  uint32_t *next = NULL;
+  if (posix_memalign((void **)&next, 64, n * sizeof(uint32_t)) != 0) {
+    return 0.0;
+  }
+
+  // Build a random permutation (single cycle)
+  uint32_t *perm = NULL;
+  if (posix_memalign((void **)&perm, 64, n * sizeof(uint32_t)) != 0) {
+    free(next);
+    return 0.0;
+  }
+
+  for (size_t i = 0; i < n; i++) perm[i] = (uint32_t)i;
+
+  uint64_t seed = 0x12345678abcdef00ULL;
+  for (size_t i = n - 1; i > 0; i--) {
+    size_t j = (size_t)(xorshift64(&seed) % (i + 1));
+    uint32_t tmp = perm[i];
+    perm[i] = perm[j];
+    perm[j] = tmp;
+  }
+
+  for (size_t i = 0; i < n; i++) {
+    next[perm[i]] = perm[(i + 1) % n];
+  }
+
+  // Warm-up: walk a bit
+  volatile uint32_t idx = 0;
+  for (size_t i = 0; i < (n < 100000 ? n : 100000); i++) {
+    idx = next[idx];
+  }
+
+  const double end = now_sec() + seconds;
+  uint64_t ops = 0;
+  double t0 = now_sec();
+
+  while (1) {
+    // Batch pointer derefs to reduce timer overhead
+    for (int k = 0; k < 4096; k++) {
+      idx = next[idx];
+    }
+    ops += 4096;
+    if (now_sec() >= end) break;
+  }
+
+  double t1 = now_sec();
+  (void)idx;
+
+  free(perm);
+  free(next);
+
+  double elapsed = t1 - t0;
+  if (ops == 0 || elapsed <= 0.0) return 0.0;
+  return (elapsed * 1e9) / (double)ops;
+}
+
+int main(int argc, char **argv) {
+  long size_mib = 256;
+  long lat_mib = 0;
+  int threads = 1;
+  double seconds = 5.0;
+
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--size-mib") && i + 1 < argc) {
+      size_mib = atol(argv[++i]);
+    } else if (!strcmp(argv[i], "--threads") && i + 1 < argc) {
+      threads = atoi(argv[++i]);
+    } else if (!strcmp(argv[i], "--lat-mib") && i + 1 < argc) {
+      lat_mib = atol(argv[++i]);
+    } else if (!strcmp(argv[i], "--seconds") && i + 1 < argc) {
+      seconds = atof(argv[++i]);
+    }
+  }
+
+  if (size_mib < 64) size_mib = 64;
+  if (threads < 1) threads = 1;
+
+  size_t total = (size_t)size_mib * 1024 * 1024;
+
+  uint8_t *src = NULL;
+  uint8_t *dst = NULL;
+  if (posix_memalign((void **)&src, 64, total) != 0) return 2;
+  if (posix_memalign((void **)&dst, 64, total) != 0) return 2;
+
+  // Fill src with a pattern to avoid special zero-page behaviors
+  for (size_t i = 0; i < total; i += 4096) {
+    src[i] = (uint8_t)((i >> 12) ^ 0xa5);
+  }
+
+  // Partition work among threads
+  pthread_t *t = calloc((size_t)threads, sizeof(pthread_t));
+  worker_t *w = calloc((size_t)threads, sizeof(worker_t));
+  if (!t || !w) return 3;
+
+  size_t chunk = total / (size_t)threads;
+  // Align chunk to 64 bytes
+  chunk = (chunk / 64) * 64;
+
+  double start = now_sec();
+  for (int i = 0; i < threads; i++) {
+    w[i].src = src;
+    w[i].dst = dst;
+    w[i].offset = (size_t)i * chunk;
+    w[i].len = chunk;
+    w[i].seconds = seconds;
+    w[i].bytes = 0;
+    pthread_create(&t[i], NULL, bw_worker, &w[i]);
+  }
+  for (int i = 0; i < threads; i++) pthread_join(t[i], NULL);
+  double end = now_sec();
+
+  uint64_t total_bytes = 0;
+  for (int i = 0; i < threads; i++) total_bytes += w[i].bytes;
+
+  double elapsed = end - start;
+  double mibps = 0.0;
+  if (elapsed > 0.0) mibps = ((double)total_bytes / 1024.0 / 1024.0) / elapsed;
+
+  // Latency test: pointer-chase over a large random cycle
+  // Default: derive from bandwidth working set; override with --lat-mib
+  size_t lat_bytes;
+  if (lat_mib > 0) {
+    lat_bytes = (size_t)lat_mib * 1024 * 1024;
+  } else {
+    lat_bytes = total;
+  }
+  if (lat_bytes > (size_t)512 * 1024 * 1024) lat_bytes = (size_t)512 * 1024 * 1024;
+  if (lat_bytes < (size_t)128 * 1024 * 1024) lat_bytes = (size_t)128 * 1024 * 1024;
+  double lat_ns = pointer_chase_latency_ns(lat_bytes, 1.5);
+
+  printf("BW_MIBPS=%.2f\n", mibps);
+  printf("LAT_NS=%.2f\n", lat_ns);
+  printf("SIZE_MIB=%ld\n", size_mib);
+  printf("THREADS=%d\n", threads);
+
+  free(w);
+  free(t);
+  free(dst);
+  free(src);
+
+  return 0;
+}
+C
+
+  "${_cc}" -O3 -pthread "${_c}" -o "${_bin}" >/dev/null 2>&1
+  if [ ! -x "${_bin}" ]; then
+    return 1
+  fi
+  return 0
+}
+
+_run_membench() {
+  # Outputs key=value lines on success.
+  local _size_mib="$1"
+  local _threads="$2"
+  local _seconds="$3"
+  local _lat_mib="$4"
+  local _bin="/tmp/perftest_membench"
+
+  _build_membench || return 1
+
+  if [ -n "${_lat_mib}" ]; then
+    "${_bin}" --size-mib "${_size_mib}" --threads "${_threads}" --seconds "${_seconds}" --lat-mib "${_lat_mib}" 2>/dev/null
+  else
+    "${_bin}" --size-mib "${_size_mib}" --threads "${_threads}" --seconds "${_seconds}" 2>/dev/null
+  fi
+}
+
+_run_mem_benchmarks() {
+  # Sets globals:
+  #   _mem_transfer_speed ("NNNNN MiB/s")
+  #   _mem_latency        ("NN.NN" in ns)
+  #   _mem_latency_unit   ("ns")
+  #   _mem_bench_size_mib (per-buffer size)
+  #   _mem_bench_threads
+  #   _mem_bw_min/_mem_bw_max (numeric MiB/s, for variance hint)
+  #   _mem_lat_min/_mem_lat_max (numeric ns, for variance hint)
+  local _size_mib _threads _lat_mib _rep _out _bw _lat
+  local _bw_vals _lat_vals _bw_med _lat_med
+
+  _size_mib="$(_calc_mem_bench_size_mib)"
+  _mem_bench_size_mib="${_size_mib}"
+  _mem_bench_total_mib=$(( _size_mib * 2 ))
+
+  _threads="$(nproc 2>/dev/null || echo 1)"
+  if [ "${_threads}" -gt "${_MEM_BENCH_THREADS_MAX}" ]; then
+    _threads="${_MEM_BENCH_THREADS_MAX}"
+  fi
+  if [ "${_threads}" -lt 1 ]; then
+    _threads=1
+  fi
+  _mem_bench_threads="${_threads}"
+
+  _lat_mib="${_MEM_BENCH_LAT_SIZE_MIB}"
+  if [ "${_lat_mib}" -gt "${_size_mib}" ]; then
+    _lat_mib="${_size_mib}"
+  fi
+  if [ "${_lat_mib}" -gt 512 ]; then
+    _lat_mib=512
+  fi
+  if [ "${_lat_mib}" -lt 128 ]; then
+    _lat_mib=128
+  fi
+
+  _bw_vals=""
+  _lat_vals=""
+
+  _rep=1
+  while [ "${_rep}" -le "${_MEM_BENCH_REPEATS}" ]; do
+    _out="$(_run_membench "${_size_mib}" "${_threads}" "${_MEM_BENCH_TIME}" "${_lat_mib}")"
+    _bw="$(printf '%s\n' "${_out}" | awk -F= '/^BW_MIBPS=/{print $2}' | head -n1)"
+    _lat="$(printf '%s\n' "${_out}" | awk -F= '/^LAT_NS=/{print $2}' | head -n1)"
+
+    if [ -n "${_bw}" ]; then
+      _bw_vals="${_bw_vals}${_bw}\n"
+    fi
+    if [ -n "${_lat}" ]; then
+      _lat_vals="${_lat_vals}${_lat}\n"
+    fi
+
+    _rep=$((_rep + 1))
+  done
+
+  # Median-of-N to reduce noise (best-of was too optimistic and hides contention).
+  _bw_med=""
+  _lat_med=""
+  _mem_bw_min=""
+  _mem_bw_max=""
+  _mem_lat_min=""
+  _mem_lat_max=""
+
+  if [ -n "${_bw_vals}" ]; then
+    _bw_med="$(printf '%b' "${_bw_vals}" | sort -n | awk '{a[NR]=$1} END{ if(NR==0) exit; if(NR%2==1) print a[(NR+1)/2]; else print (a[NR/2]+a[NR/2+1])/2 }')"
+    _mem_bw_min="$(printf '%b' "${_bw_vals}" | sort -n | head -n1)"
+    _mem_bw_max="$(printf '%b' "${_bw_vals}" | sort -n | tail -n1)"
+  fi
+
+  if [ -n "${_lat_vals}" ]; then
+    _lat_med="$(printf '%b' "${_lat_vals}" | sort -n | awk '{a[NR]=$1} END{ if(NR==0) exit; if(NR%2==1) print a[(NR+1)/2]; else print (a[NR/2]+a[NR/2+1])/2 }')"
+    _mem_lat_min="$(printf '%b' "${_lat_vals}" | sort -n | head -n1)"
+    _mem_lat_max="$(printf '%b' "${_lat_vals}" | sort -n | tail -n1)"
+  fi
+
+  if [ -n "${_bw_med}" ]; then
+    _mem_transfer_speed="${_bw_med} MiB/s"
+  else
+    # Fallback to sysbench if membench failed
+    _mem_test="$(sysbench memory --memory-block-size=256M --memory-oper=read --memory-access-mode=seq --memory-total-size=10G --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
+    _mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
+  fi
+
+  _mem_latency_unit="ns"
+  if [ -n "${_lat_med}" ]; then
+    _mem_latency="${_lat_med}"
+  else
+    _mem_latency=""
+  fi
+}
+
+# Convert bytes/sec to MiB/s (numeric only) (numeric only)
 _bps_to_mibps_num() {
   awk '{ if (NR>0) printf "%.2f", $0 / 1024 / 1024 }'
 }
@@ -521,6 +965,35 @@ _run_fio_seq_write_test() {
   rm -rf "${_test_dir}" >/dev/null 2>&1
 }
 
+# Run fio random 4k randrw QD=1 test (latency-focused)
+_run_fio_qd1_test() {
+  # $1 = mountpoint
+  # $2 = output_file
+  local _mount_point="$1"
+  local _output_file="$2"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_qd1_${_safe_mount_point}_$$"
+  mkdir -p "${_test_dir}" || return 1
+  fio \
+    --name=randrw_qd1 \
+    --directory="${_test_dir}" \
+    --ioengine=libaio \
+    --iodepth=1 \
+    --rw=randrw \
+    --rwmixread=50 \
+    --bs=4k \
+    --direct=1 \
+    --size="${_FIO_QD1_SIZE_M}M" \
+    --numjobs=1 \
+    --runtime="${_FIO_QD1_RUNTIME}" \
+    --time_based \
+    --group_reporting \
+    --output-format=json \
+    > "${_output_file}" 2>/dev/null
+  rm -rf "${_test_dir}" >/dev/null 2>&1
+}
+
 # Parse fio JSON and return values via stdout (key=value lines)
 _parse_fio_json() {
   # $1 = json file
@@ -537,8 +1010,8 @@ _parse_fio_json() {
 
   local _read_lat_ms _write_lat_ms
   if [ -n "${_read_clat_ns_mean}" ] && [ -n "${_write_clat_ns_mean}" ]; then
-    _read_lat_ms="$(awk -v ns="${_read_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/10000.0}')"
-    _write_lat_ms="$(awk -v ns="${_write_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/10000.0}')"
+    _read_lat_ms="$(awk -v ns="${_read_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+    _write_lat_ms="$(awk -v ns="${_write_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
   else
     local _read_clat_usec_mean _write_clat_usec_mean
     _read_clat_usec_mean="$(jq -r '([.jobs[].read.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
@@ -551,12 +1024,39 @@ _parse_fio_json() {
   _read_bw_mb="$(awk -v kib="${_read_bw_kib:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
   _write_bw_mb="$(awk -v kib="${_write_bw_kib:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
 
+
+  # Optional percentiles (fio3+): clat_ns.percentile
+  local _read_p95_ns _read_p99_ns _write_p95_ns _write_p99_ns
+  local _read_p95_ms _read_p99_ms _write_p95_ms _write_p99_ms
+
+  _read_p95_ns="$(jq -r '([.jobs[].read.clat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  _read_p99_ns="$(jq -r '([.jobs[].read.clat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  _write_p95_ns="$(jq -r '([.jobs[].write.clat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  _write_p99_ns="$(jq -r '([.jobs[].write.clat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+
+  if [ -n "${_read_p95_ns}" ]; then
+    _read_p95_ms="$(awk -v ns="${_read_p95_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+  if [ -n "${_read_p99_ns}" ]; then
+    _read_p99_ms="$(awk -v ns="${_read_p99_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+  if [ -n "${_write_p95_ns}" ]; then
+    _write_p95_ms="$(awk -v ns="${_write_p95_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+  if [ -n "${_write_p99_ns}" ]; then
+    _write_p99_ms="$(awk -v ns="${_write_p99_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+
   echo "READ_IOPS=${_read_iops}"
   echo "WRITE_IOPS=${_write_iops}"
   echo "READ_BW_MB=${_read_bw_mb}"
   echo "WRITE_BW_MB=${_write_bw_mb}"
   echo "READ_LAT_MS=${_read_lat_ms}"
   echo "WRITE_LAT_MS=${_write_lat_ms}"
+  echo "READ_P95_MS=${_read_p95_ms}"
+  echo "READ_P99_MS=${_read_p99_ms}"
+  echo "WRITE_P95_MS=${_write_p95_ms}"
+  echo "WRITE_P99_MS=${_write_p99_ms}"
 }
 
 # Simple metadata / small file operations test
@@ -697,15 +1197,44 @@ _num_or_empty() {
 }
 
 _boa_grade_mem_bw() {
-  # input: numeric MiB/s
-  # Only warn if truly low; NUMA/cgroup can limit single-thread sysbench
+  # input: numeric MiB/s (bandwidth)
+  # Kept for backward compatibility; prefers DRAM-focused membench output.
   awk -v v="$1" 'BEGIN{
-    if (v>=9000) print "ultra";
-    else if (v>=5000) print "excellent";
-    else if (v>=3000) print "good";
-    else if (v>=2000) print "average";
+    if (v>=60000) print "ultra";
+    else if (v>=40000) print "excellent";
+    else if (v>=25000) print "good";
+    else if (v>=15000) print "average";
     else print "low";
   }'
+}
+
+_boa_grade_mem_final() {
+  # Inputs:
+  #   $1 = bandwidth MiB/s
+  #   $2 = pointer-chase latency in ns (optional)
+  # BOA in-memory heavy workloads benefit from both high bandwidth and low tail-ish latency.
+  local _bw _lat _g
+  _bw="$(_num_or_empty "$1")"
+  _lat="$(_num_or_empty "$2")"
+
+  _g="$(_boa_grade_mem_bw "${_bw}")"
+
+  # Apply latency caps (best-effort; prevents "ultra" on cache-only measurements)
+  if [ -n "${_lat}" ]; then
+    if awk -v n="${_lat}" 'BEGIN{exit !(n>=220)}' 2>/dev/null; then
+      _g="low"
+    elif awk -v n="${_lat}" 'BEGIN{exit !(n>=170)}' 2>/dev/null; then
+      if [ "${_g}" = "ultra" ] || [ "${_g}" = "excellent" ] || [ "${_g}" = "good" ]; then
+        _g="average"
+      fi
+    elif awk -v n="${_lat}" 'BEGIN{exit !(n>=130)}' 2>/dev/null; then
+      if [ "${_g}" = "ultra" ] || [ "${_g}" = "excellent" ]; then
+        _g="good"
+      fi
+    fi
+  fi
+
+  echo "${_g}"
 }
 
 _boa_grade_cpu_steal() {
@@ -734,7 +1263,7 @@ _boa_grade_cpu_speed() {
 }
 
 _boa_grade_disk_final() {
-  # Inputs: $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops
+  # Inputs: $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops, $7=qd1_p99_read_ms, $8=qd1_p99_write_ms
   # BOA-realistic: Sequential WRITE is critical (Drupal writes, cache, logs)
   # Priority: seq_write (blocker) > seq_read > IOPS > ioping > metadata
   local ioping_us="$1"
@@ -743,6 +1272,8 @@ _boa_grade_disk_final() {
   local read_iops="$4"
   local write_iops="$5"
   local meta_ops="$6"
+  local qd1_p99_read_ms="$7"
+  local qd1_p99_write_ms="$8"
 
   # Extract numeric values
   ioping_us="$(_num_or_empty "${ioping_us}")"
@@ -751,6 +1282,8 @@ _boa_grade_disk_final() {
   read_iops="$(_num_or_empty "${read_iops}")"
   write_iops="$(_num_or_empty "${write_iops}")"
   meta_ops="$(_num_or_empty "${meta_ops}")"
+  qd1_p99_read_ms="$(_num_or_empty "${qd1_p99_read_ms}")"
+  qd1_p99_write_ms="$(_num_or_empty "${qd1_p99_write_ms}")"
 
   # CRITICAL CHECK: Sequential write < 100 MB/s = BAD (throttled/failing disk)
   if [ -n "${seq_write_mbps}" ]; then
@@ -804,6 +1337,24 @@ _boa_grade_disk_final() {
     fi
   fi
 
+  # QD=1 p99 latency caps (Drupal/DB feel). Best-effort: if missing, no effect.
+  if [ -n "${qd1_p99_write_ms}" ]; then
+    # Force-poor if p99 write latency is extremely high
+    if awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>150)}' 2>/dev/null; then
+      grade="poor"
+    elif awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>60)}' 2>/dev/null; then
+      # cap at average
+      case "${grade}" in
+        excellent|good) grade="average" ;;
+      esac
+    elif awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>20)}' 2>/dev/null; then
+      # cap at good
+      case "${grade}" in
+        excellent) grade="good" ;;
+      esac
+    fi
+  fi
+
   echo "${grade}"
 }
 
@@ -817,6 +1368,81 @@ _boa_grade_network() {
     else if (n>=50) print "average";
     else print "poor";
   }'
+}
+
+_boa_guess_storage_tier() {
+  # Inputs (numeric, best-effort):
+  # $1 = ioping_avg_us
+  # $2 = seq_read_mbps
+  # $3 = seq_write_mbps
+  # $4 = qd1_p99_read_ms
+  # $5 = qd1_p99_write_ms
+  local ioping_us="$1"
+  local sr="$2"
+  local sw="$3"
+  local p99r="$4"
+  local p99w="$5"
+
+  # Hard fail / severely throttled
+  if [ -n "${sw}" ] && awk -v sw="${sw}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
+    echo "CRITICAL_DEGRADED"
+    return
+  fi
+
+  # Normalize unknowns
+  [ -n "${ioping_us}" ] || ioping_us=""
+  [ -n "${p99r}" ] || p99r=""
+  [ -n "${p99w}" ] || p99w=""
+
+  # Helper lambdas (awk comparisons)
+  # Tiering heuristics (production vs backup tiers)
+  # NOTE: Use multiple signals to reduce misclassification on bursty network storage.
+
+  # Production: local fast NVMe
+  if [ -n "${sr}" ] && [ -n "${sw}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=1200 && sr>=2500)}' 2>/dev/null; then
+    if [ -n "${p99w}" ] && awk -v p="${p99w}" 'BEGIN{exit !(p<=5)}' 2>/dev/null; then
+      echo "PROD_LOCAL_NVME"
+      return
+    fi
+    if [ -n "${ioping_us}" ] && awk -v u="${ioping_us}" 'BEGIN{exit !(u<=400)}' 2>/dev/null; then
+      echo "PROD_LOCAL_NVME"
+      return
+    fi
+  fi
+
+  # Production: local SSD / slower NVMe
+  if [ -n "${sr}" ] && [ -n "${sw}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=400 && sr>=800)}' 2>/dev/null; then
+    if [ -n "${p99w}" ] && awk -v p="${p99w}" 'BEGIN{exit !(p<=20)}' 2>/dev/null; then
+      echo "PROD_LOCAL_SSD"
+      return
+    fi
+    if [ -n "${ioping_us}" ] && awk -v u="${ioping_us}" 'BEGIN{exit !(u<=1200)}' 2>/dev/null; then
+      echo "PROD_LOCAL_SSD"
+      return
+    fi
+  fi
+
+  # Backup: network NVMe-ish / good network block storage
+  if [ -n "${sr}" ] && [ -n "${sw}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=600 && sr>=1200)}' 2>/dev/null; then
+    if [ -n "${p99w}" ] && awk -v p="${p99w}" 'BEGIN{exit !(p<=60)}' 2>/dev/null; then
+      echo "BACKUP_NET_NVME"
+      return
+    fi
+  fi
+
+  # Backup: network SSD / slower attached
+  if [ -n "${sr}" ] && [ -n "${sw}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=200 && sr>=400)}' 2>/dev/null; then
+    if [ -n "${p99w}" ] && awk -v p="${p99w}" 'BEGIN{exit !(p<=150)}' 2>/dev/null; then
+      echo "BACKUP_NET_SSD"
+      return
+    fi
+  fi
+
+  echo "DEGRADED"
 }
 
 _print_disk_compact_section() {
@@ -852,7 +1478,16 @@ _print_disk_compact_section() {
   _wiops_num="$(_num_or_empty "${_wiops}")"
   _meta_num="$(_num_or_empty "$(echo "${_meta}" | awk '{print $1}')")"
 
-  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}")"
+  _qd1_p95_r="${_fio_qd1_p95_read["${_mp}"]:-N/A}"
+  _qd1_p95_w="${_fio_qd1_p95_write["${_mp}"]:-N/A}"
+  _qd1_p99_r="${_fio_qd1_p99_read["${_mp}"]:-N/A}"
+  _qd1_p99_w="${_fio_qd1_p99_write["${_mp}"]:-N/A}"
+
+  _qd1_p99_r_num="$(_num_or_empty "$(echo "${_qd1_p99_r}" | awk "{print \$1}")")"
+  _qd1_p99_w_num="$(_num_or_empty "$(echo "${_qd1_p99_w}" | awk "{print \$1}")")"
+
+  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}")"
+  _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}")"
 
   echo " ============================================================================="
   if [ "${_mp}" = "/" ]; then
@@ -867,6 +1502,8 @@ _print_disk_compact_section() {
   printf "   Random 4K IOPS:              %s read / %s write\n" "${_riops}" "${_wiops}"
   printf "   Real latency (ioping avg):   %s\n" "${_ioping_avg}"
   printf "   Metadata ops:                %s\n" "${_meta}"
+  printf "   Random 4K QD1 p95/p99:        %s / %s read, %s / %s write\n" "${_qd1_p95_r}" "${_qd1_p99_r}" "${_qd1_p95_w}" "${_qd1_p99_w}"
+  printf "   Storage tier guess:          %s\n" "${_storage_tier}"
   echo ""
   printf "   Details (fio synthetic latency):\n"
   printf "     Random 4K read:   %s @ %s\n" "${_rbw}" "${_rlat}"
@@ -932,10 +1569,12 @@ _print_compact_summary() {
 
   # Calculate grades
   local mem_grade steal_grade cpu_grade disk_grade net_grade
-  mem_grade="$(_boa_grade_mem_bw "${mem_mibps:-0}")"
+  mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
-  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}")"
+  root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
+  root_qd1_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_p99_write}" | awk "{print \$1}")")"
+  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
 
   echo " ============================================================================="
@@ -943,7 +1582,17 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo ""
   printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
-  printf "   Latency:    %-20s\n" "${_mem_latency} ms"
+  if [ -n "${_mem_latency}" ]; then
+    printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
+  else
+    printf "   Latency:    %-20s\n" "N/A"
+  fi
+  if [ -n "${_mem_bench_size_mib:-}" ]; then
+    echo "   Bench:      ${_mem_bench_size_mib} MiB per buffer x2 (~${_mem_bench_total_mib} MiB total), ${_mem_bench_threads} threads (median of ${_MEM_BENCH_REPEATS})"
+    if [ -n "${_mem_bw_min}" ] && [ -n "${_mem_bw_max}" ]; then
+      echo "   Variance:   ${_mem_bw_min}-${_mem_bw_max} MiB/s (bw), ${_mem_lat_min}-${_mem_lat_max} ns (lat)"
+    fi
+  fi
   echo ""
 
   if [ "${mem_grade}" = "low" ]; then
@@ -1186,12 +1835,9 @@ _run_sysbench_cpu 1 "ST"
 # 4-thread
 _run_sysbench_cpu 4 "MT4"
 
-# Memory Performance Test
-echo "Running Memory performance test with sysbench..."
-_mem_test="$(sysbench memory --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
-_mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
-_mem_transfer_speed=$(echo -n "${_mem_transfer_speed}" | tr -d ")" 2>&1)
-_mem_latency="$(echo "${_mem_test}" | awk '/avg:/ {print $2}')"
+# Memory Performance Test (DRAM-focused)
+echo "Running Memory performance test (DRAM-focused membench)..."
+_run_mem_benchmarks
 
 # AES throughput (nench-inspired)
 echo "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
@@ -1225,6 +1871,10 @@ declare -A _fio_seqread_bw_read
 declare -A _fio_seqread_latency_read
 declare -A _fio_seqwrite_bw_write
 declare -A _fio_seqwrite_latency_write
+declare -A _fio_qd1_p95_read
+declare -A _fio_qd1_p95_write
+declare -A _fio_qd1_p99_read
+declare -A _fio_qd1_p99_write
 declare -A _meta_ops
 
 # For CSV summary (root mount)
@@ -1237,6 +1887,10 @@ _root_seqread_lat_read=""
 _root_seqwrite_bw_write=""
 _root_seqwrite_lat_write=""
 _root_meta_ops=""
+_root_qd1_p95_read=""
+_root_qd1_p95_write=""
+_root_qd1_p99_read=""
+_root_qd1_p99_write=""
 
 for _mount_point in "${_test_mounts[@]}"; do
   echo "Running Disk I/O tests on ${_mount_point}..."
@@ -1295,6 +1949,27 @@ for _mount_point in "${_test_mounts[@]}"; do
   fi
   rm -f "${_seqwrite_output}" >/dev/null 2>&1
 
+
+  # Random 4k randrw QD=1 (latency percentiles for tiering)
+  echo "Running QD=1 random latency test on ${_mount_point}..."
+  _qd1_output="/tmp/fio_qd1_${_safe_mount_point}_$$.json"
+  if _run_fio_qd1_test "${_mount_point}" "${_qd1_output}"; then
+    while IFS="=" read -r _k _v; do
+      case "${_k}" in
+        READ_P95_MS) [ -n "${_v}" ] && _fio_qd1_p95_read["${_mount_point}"]="${_v} ms" ;;
+        WRITE_P95_MS) [ -n "${_v}" ] && _fio_qd1_p95_write["${_mount_point}"]="${_v} ms" ;;
+        READ_P99_MS) [ -n "${_v}" ] && _fio_qd1_p99_read["${_mount_point}"]="${_v} ms" ;;
+        WRITE_P99_MS) [ -n "${_v}" ] && _fio_qd1_p99_write["${_mount_point}"]="${_v} ms" ;;
+      esac
+    done < <(_parse_fio_json "${_qd1_output}")
+  else
+    _fio_qd1_p95_read["${_mount_point}"]="ERROR"
+    _fio_qd1_p95_write["${_mount_point}"]="ERROR"
+    _fio_qd1_p99_read["${_mount_point}"]="ERROR"
+    _fio_qd1_p99_write["${_mount_point}"]="ERROR"
+  fi
+  rm -f "${_qd1_output}" >/dev/null 2>&1
+
   # Metadata test
   _run_metadata_test "${_mount_point}" "_meta_ops[\"${_mount_point}\"]"
 
@@ -1309,6 +1984,10 @@ for _mount_point in "${_test_mounts[@]}"; do
     _root_seqwrite_bw_write="${_fio_seqwrite_bw_write["${_mount_point}"]}"
     _root_seqwrite_lat_write="${_fio_seqwrite_latency_write["${_mount_point}"]}"
     _root_meta_ops="${_meta_ops["${_mount_point}"]}"
+    _root_qd1_p95_read="${_fio_qd1_p95_read["${_mount_point}"]}"
+    _root_qd1_p95_write="${_fio_qd1_p95_write["${_mount_point}"]}"
+    _root_qd1_p99_read="${_fio_qd1_p99_read["${_mount_point}"]}"
+    _root_qd1_p99_write="${_fio_qd1_p99_write["${_mount_point}"]}"
   fi
 done
 
@@ -1352,7 +2031,17 @@ else
   echo ""
   echo "Memory Performance:"
   echo "  - Transfer Speed: ${_mem_transfer_speed}"
-  echo "  - Average Latency: ${_mem_latency} ms"
+  if [ -n "${_mem_latency}" ]; then
+    echo "  - Pointer-chase latency: ${_mem_latency} ${_mem_latency_unit}"
+  else
+    echo "  - Pointer-chase latency: N/A"
+  fi
+  if [ -n "${_mem_bench_size_mib:-}" ]; then
+    echo "  - Working set: ${_mem_bench_size_mib} MiB per buffer x2 (~${_mem_bench_total_mib} MiB total), Threads: ${_mem_bench_threads} (median of ${_MEM_BENCH_REPEATS})"
+    if [ -n "${_mem_bw_min}" ] && [ -n "${_mem_bw_max}" ]; then
+      echo "  - Variance: ${_mem_bw_min}-${_mem_bw_max} MiB/s (bw), ${_mem_lat_min}-${_mem_lat_max} ns (lat)"
+    fi
+  fi
   echo ""
   echo "AES Performance (openssl enc):"
   echo "  - Time: ${_aes_seconds} s"
@@ -1397,6 +2086,17 @@ else
     echo "    - Write Bandwidth: ${_fio_rand_bw_write["${_mount_point}"]}"
     echo "    - Avg Read Latency: ${_fio_rand_latency_read["${_mount_point}"]}"
     echo "    - Avg Write Latency: ${_fio_rand_latency_write["${_mount_point}"]}"
+    echo ""
+    echo "  QD=1 randrw (p95/p99):"
+    echo "    - Read p95/p99: ${_fio_qd1_p95_read["${_mount_point}"]} / ${_fio_qd1_p99_read["${_mount_point}"]}"
+    echo "    - Write p95/p99: ${_fio_qd1_p95_write["${_mount_point}"]} / ${_fio_qd1_p99_write["${_mount_point}"]}"
+    _tier_ioping_us="$(echo "${_ioping_seek_line["${_mount_point}"]:-}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+    _tier_ioping_us="$(_num_or_empty "${_tier_ioping_us}")"
+    _tier_srw_num="$(_num_or_empty "$(echo "${_fio_seqread_bw_read["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_sww_num="$(_num_or_empty "$(echo "${_fio_seqwrite_bw_write["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_p99r_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_read["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_write["${_mount_point}"]}" | awk '{print $1}')")"
+    echo "    - Storage tier guess: $(_boa_guess_storage_tier "${_tier_ioping_us}" "${_tier_srw_num}" "${_tier_sww_num}" "${_tier_p99r_num}" "${_tier_p99w_num}")"
     echo ""
     echo "  Sequential Read (128k):"
     echo "    - Read Bandwidth: ${_fio_seqread_bw_read["${_mount_point}"]}"
@@ -1444,3 +2144,30 @@ _csv_aes_mibps="$(_strip_unit "${_aes_mibps}")"
 _csv_net_download="$(_strip_unit "${_net_download}")"
 
 echo "CSV_SUMMARY:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_aes_mibps},${_csv_net_download}"
+
+# ----
+# CSV summary v2: adds QD=1 latency percentiles and a storage-tier guess for root
+# Fields are still comma-separated, no header; safe for grep-ing.
+# ----
+_csv_root_qd1_p95_read="$(_strip_unit "${_root_qd1_p95_read}")"
+_csv_root_qd1_p95_write="$(_strip_unit "${_root_qd1_p95_write}")"
+_csv_root_qd1_p99_read="$(_strip_unit "${_root_qd1_p99_read}")"
+_csv_root_qd1_p99_write="$(_strip_unit "${_root_qd1_p99_write}")"
+_csv_root_ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+_csv_root_ioping_avg_us="$(_num_or_empty "${_csv_root_ioping_avg_us}")"
+_csv_root_seqr_num="$(_num_or_empty "${_csv_root_seqread_bw_read}")"
+_csv_root_seqw_num="$(_num_or_empty "${_csv_root_seqwrite_bw_write}")"
+_csv_root_p99r_num="$(_num_or_empty "${_csv_root_qd1_p99_read}")"
+_csv_root_p99w_num="$(_num_or_empty "${_csv_root_qd1_p99_write}")"
+_csv_root_storage_tier="$(_boa_guess_storage_tier "${_csv_root_ioping_avg_us}" "${_csv_root_seqr_num}" "${_csv_root_seqw_num}" "${_csv_root_p99r_num}" "${_csv_root_p99w_num}")"
+
+echo "CSV_SUMMARY_V2:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
+
+
+# ----
+# CSV summary v3: adds DRAM pointer-chase latency (ns) to help memory grading
+# ----
+_csv_mem_lat_ns="${_mem_latency}"
+[ -z "${_csv_mem_lat_ns}" ] && _csv_mem_lat_ns="N/A"
+
+echo "CSV_SUMMARY_V3:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
