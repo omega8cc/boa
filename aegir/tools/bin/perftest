@@ -43,7 +43,7 @@ Usage: perftest [--compact|--quiet] [--verbose] [-h|--help]
 
   --compact, --quiet  Print BOA-focused compact summary only (default)
                       (prioritizes memory > CPU > disk > network)
-  --verbose           Print full detailed output
+  --verbose           Print full detailed output or just CSV summary with | grep CSV_
   -h, --help          Show this help
 
 BOA context: This script evaluates VM vendor/host quality for BOA stack
