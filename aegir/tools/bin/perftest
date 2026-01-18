@@ -31,6 +31,11 @@ _IOPING_SECONDS=5 # seconds for ioping checks
 _VERBOSE=0   # default: full output
 _COMPACT=1   # compact BOA-focused mode
 
+# CSV output
+# By default we emit only the latest CSV line(s) to keep ingestion simple.
+# Set _CSV_LEGACY_MODE=YES in the environment if you still want CSV_SUMMARY/V2/V3.
+_CSV_LEGACY_MODE="${_CSV_LEGACY_MODE:-NO}"
+
 # ----
 # Usage
 # ----
@@ -2248,7 +2253,7 @@ else
     _tier_sww_num="$(_num_or_empty "$(echo "${_fio_seqwrite_bw_write["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_p99r_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_read["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_write["${_mount_point}"]}" | awk '{print $1}')")"
-    _tier_fsync_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_fsync_p99_write["${_mp}"]}" | awk "{print \$1}")")"
+    _tier_fsync_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_fsync_p99_write["${_mount_point}"]}" | awk '{print $1}')")"
     echo "    - Storage tier guess: $(_boa_guess_storage_tier "${_tier_ioping_us}" "${_tier_srw_num}" "${_tier_sww_num}" "${_tier_p99r_num}" "${_tier_p99w_num}" "${_tier_fsync_p99w_num}")"
     echo ""
     echo "  Sequential Read (128k):"
@@ -2296,7 +2301,9 @@ _csv_root_meta_ops="$(_strip_unit "${_root_meta_ops}")"
 _csv_aes_mibps="$(_strip_unit "${_aes_mibps}")"
 _csv_net_download="$(_strip_unit "${_net_download}")"
 
-echo "CSV_SUMMARY:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_aes_mibps},${_csv_net_download}"
+if [ "${_CSV_LEGACY_MODE}" = "YES" ]; then
+  echo "CSV_SUMMARY:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_aes_mibps},${_csv_net_download}"
+fi
 
 # ----
 # CSV summary v2: adds QD=1 latency percentiles and a storage-tier guess for root
@@ -2317,7 +2324,9 @@ _csv_root_p99w_num="$(_num_or_empty "${_csv_root_qd1_p99_write}")"
 _csv_root_fsync_p99w_num="$(_num_or_empty "${_csv_root_qd1_fsync_p99_write}")"
 _csv_root_storage_tier="$(_boa_guess_storage_tier "${_csv_root_ioping_avg_us}" "${_csv_root_seqr_num}" "${_csv_root_seqw_num}" "${_csv_root_p99r_num}" "${_csv_root_p99w_num}" "${_csv_root_fsync_p99w_num}")"
 
-echo "CSV_SUMMARY_V2:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
+if [ "${_CSV_LEGACY_MODE}" = "YES" ]; then
+  echo "CSV_SUMMARY_V2:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
+fi
 
 
 # ----
@@ -2326,5 +2335,7 @@ echo "CSV_SUMMARY_V2:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_M
 _csv_mem_lat_ns="${_mem_latency}"
 [ -z "${_csv_mem_lat_ns}" ] && _csv_mem_lat_ns="N/A"
 
-echo "CSV_SUMMARY_V3:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
+if [ "${_CSV_LEGACY_MODE}" = "YES" ]; then
+  echo "CSV_SUMMARY_V3:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
+fi
 echo "CSV_SUMMARY_V4:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
