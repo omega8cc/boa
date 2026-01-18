@@ -20,6 +20,8 @@ _FIO_RAND_RUNTIME=60 # seconds
 _FIO_SEQ_RUNTIME=60 # seconds
 _FIO_QD1_RUNTIME=20 # seconds (QD=1 random latency for tiering)
 _FIO_QD1_SIZE_M=256 # MiB per QD=1 test
+_FIO_QD1_FSYNC_RUNTIME=15 # seconds (QD=1 randwrite with fsync for DB realism)
+_FIO_QD1_FSYNC_SIZE_M=128 # MiB (file size for fsync test)
 _METADATA_FILE_COUNT=5000 # small-file ops per mount
 _NET_TIMEOUT=10 # seconds for curl speedtest
 _AES_TEST_MIB=500 # MiB encrypted for AES throughput test
@@ -994,6 +996,35 @@ _run_fio_qd1_test() {
   rm -rf "${_test_dir}" >/dev/null 2>&1
 }
 
+
+# Run fio random 4k randwrite QD=1 with fsync (durability-focused)
+_run_fio_qd1_fsync_test() {
+  # $1 = mountpoint
+  # $2 = output_file
+  local _mount_point="$1"
+  local _output_file="$2"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_qd1_fsync_${_safe_mount_point}_$$"
+  mkdir -p "${_test_dir}" || return 1
+  fio \
+    --name=randwrite_qd1_fsync \
+    --directory="${_test_dir}" \
+    --ioengine=sync \
+    --iodepth=1 \
+    --rw=randwrite \
+    --bs=4k \
+    --direct=0 \
+    --fsync=1 \
+    --size="${_FIO_QD1_FSYNC_SIZE_M}M" \
+    --numjobs=1 \
+    --runtime="${_FIO_QD1_FSYNC_RUNTIME}" \
+    --time_based \
+    --group_reporting \
+    --output-format=json \
+    > "${_output_file}" 2>/dev/null
+  rm -rf "${_test_dir}" >/dev/null 2>&1
+}
 # Parse fio JSON and return values via stdout (key=value lines)
 _parse_fio_json() {
   # $1 = json file
@@ -1274,6 +1305,7 @@ _boa_grade_disk_final() {
   local meta_ops="$6"
   local qd1_p99_read_ms="$7"
   local qd1_p99_write_ms="$8"
+  local qd1_fsync_p99_write_ms="$9"
 
   # Extract numeric values
   ioping_us="$(_num_or_empty "${ioping_us}")"
@@ -1284,6 +1316,7 @@ _boa_grade_disk_final() {
   meta_ops="$(_num_or_empty "${meta_ops}")"
   qd1_p99_read_ms="$(_num_or_empty "${qd1_p99_read_ms}")"
   qd1_p99_write_ms="$(_num_or_empty "${qd1_p99_write_ms}")"
+  qd1_fsync_p99_write_ms="$(_num_or_empty "${qd1_fsync_p99_write_ms}")"
 
   # CRITICAL CHECK: Sequential write < 100 MB/s = BAD (throttled/failing disk)
   if [ -n "${seq_write_mbps}" ]; then
@@ -1355,6 +1388,21 @@ _boa_grade_disk_final() {
     fi
   fi
 
+
+  # QD=1 fsync p99 write latency caps (DB durability realism). Best-effort: if missing, no effect.
+  if [ -n "${qd1_fsync_p99_write_ms}" ]; then
+    if awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>250)}' 2>/dev/null; then
+      grade="poor"
+    elif awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>120)}' 2>/dev/null; then
+      case "${grade}" in
+        excellent|good) grade="average" ;;
+      esac
+    elif awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>40)}' 2>/dev/null; then
+      case "${grade}" in
+        excellent) grade="good" ;;
+      esac
+    fi
+  fi
   echo "${grade}"
 }
 
@@ -1382,6 +1430,7 @@ _boa_guess_storage_tier() {
   local sw="$3"
   local p99r="$4"
   local p99w="$5"
+  local p99wf="$6"
 
   # Hard fail / severely throttled
   if [ -n "${sw}" ] && awk -v sw="${sw}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
@@ -1426,8 +1475,13 @@ _boa_guess_storage_tier() {
 
   # Backup: network NVMe-ish / good network block storage
   if [ -n "${sr}" ] && [ -n "${sw}" ] && \
-     awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=600 && sr>=1200)}' 2>/dev/null; then
+     awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=450 && sr>=450)}' 2>/dev/null; then
     if [ -n "${p99w}" ] && awk -v p="${p99w}" 'BEGIN{exit !(p<=60)}' 2>/dev/null; then
+      if [ -n "${p99wf}" ] && awk -v p="${p99wf}" 'BEGIN{exit !(p>120)}' 2>/dev/null; then
+        # Durability is slow -> treat as network SSD tier
+        echo "BACKUP_NET_SSD"
+        return
+      fi
       echo "BACKUP_NET_NVME"
       return
     fi
@@ -1482,12 +1536,15 @@ _print_disk_compact_section() {
   _qd1_p95_w="${_fio_qd1_p95_write["${_mp}"]:-N/A}"
   _qd1_p99_r="${_fio_qd1_p99_read["${_mp}"]:-N/A}"
   _qd1_p99_w="${_fio_qd1_p99_write["${_mp}"]:-N/A}"
+  _qd1_fsync_p95_w="${_fio_qd1_fsync_p95_write["${_mp}"]:-N/A}"
+  _qd1_fsync_p99_w="${_fio_qd1_fsync_p99_write["${_mp}"]:-N/A}"
 
   _qd1_p99_r_num="$(_num_or_empty "$(echo "${_qd1_p99_r}" | awk "{print \$1}")")"
   _qd1_p99_w_num="$(_num_or_empty "$(echo "${_qd1_p99_w}" | awk "{print \$1}")")"
+  _qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_qd1_fsync_p99_w}" | awk "{print \$1}")")"
 
-  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}")"
-  _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}")"
+  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p99_w_num}")"
+  _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
 
   echo " ============================================================================="
   if [ "${_mp}" = "/" ]; then
@@ -1503,6 +1560,7 @@ _print_disk_compact_section() {
   printf "   Real latency (ioping avg):   %s\n" "${_ioping_avg}"
   printf "   Metadata ops:                %s\n" "${_meta}"
   printf "   Random 4K QD1 p95/p99:        %s / %s read, %s / %s write\n" "${_qd1_p95_r}" "${_qd1_p99_r}" "${_qd1_p95_w}" "${_qd1_p99_w}"
+  printf "   Random 4K QD1 fsync p95/p99:  %s / %s write\n" "${_qd1_fsync_p95_w}" "${_qd1_fsync_p99_w}"
   printf "   Storage tier guess:          %s\n" "${_storage_tier}"
   echo ""
   printf "   Details (fio synthetic latency):\n"
@@ -1574,6 +1632,7 @@ _print_compact_summary() {
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
   root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
   root_qd1_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_p99_write}" | awk "{print \$1}")")"
+  root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
   disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
 
@@ -1875,6 +1934,8 @@ declare -A _fio_qd1_p95_read
 declare -A _fio_qd1_p95_write
 declare -A _fio_qd1_p99_read
 declare -A _fio_qd1_p99_write
+declare -A _fio_qd1_fsync_p95_write
+declare -A _fio_qd1_fsync_p99_write
 declare -A _meta_ops
 
 # For CSV summary (root mount)
@@ -1891,6 +1952,8 @@ _root_qd1_p95_read=""
 _root_qd1_p95_write=""
 _root_qd1_p99_read=""
 _root_qd1_p99_write=""
+    _root_qd1_fsync_p95_write="${_fio_qd1_fsync_p95_write["${_mount_point}"]}"
+    _root_qd1_fsync_p99_write="${_fio_qd1_fsync_p99_write["${_mount_point}"]}"
 
 for _mount_point in "${_test_mounts[@]}"; do
   echo "Running Disk I/O tests on ${_mount_point}..."
@@ -1969,6 +2032,22 @@ for _mount_point in "${_test_mounts[@]}"; do
     _fio_qd1_p99_write["${_mount_point}"]="ERROR"
   fi
   rm -f "${_qd1_output}" >/dev/null 2>&1
+
+  # Random 4k randwrite QD=1 with fsync (durability realism)
+  echo "Running QD=1 fsync write test on ${_mount_point}..."
+  _qd1_fsync_output="/tmp/fio_qd1_fsync_${_safe_mount_point}_$$.json"
+  if _run_fio_qd1_fsync_test "${_mount_point}" "${_qd1_fsync_output}"; then
+    while IFS="=" read -r _k _v; do
+      case "${_k}" in
+        WRITE_P95_MS) [ -n "${_v}" ] && _fio_qd1_fsync_p95_write["${_mount_point}"]="${_v} ms" ;;
+        WRITE_P99_MS) [ -n "${_v}" ] && _fio_qd1_fsync_p99_write["${_mount_point}"]="${_v} ms" ;;
+      esac
+    done < <(_parse_fio_json "${_qd1_fsync_output}")
+  else
+    _fio_qd1_fsync_p95_write["${_mount_point}"]="ERROR"
+    _fio_qd1_fsync_p99_write["${_mount_point}"]="ERROR"
+  fi
+  rm -f "${_qd1_fsync_output}" >/dev/null 2>&1
 
   # Metadata test
   _run_metadata_test "${_mount_point}" "_meta_ops[\"${_mount_point}\"]"
@@ -2096,7 +2175,8 @@ else
     _tier_sww_num="$(_num_or_empty "$(echo "${_fio_seqwrite_bw_write["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_p99r_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_read["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_write["${_mount_point}"]}" | awk '{print $1}')")"
-    echo "    - Storage tier guess: $(_boa_guess_storage_tier "${_tier_ioping_us}" "${_tier_srw_num}" "${_tier_sww_num}" "${_tier_p99r_num}" "${_tier_p99w_num}")"
+    _tier_fsync_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_fsync_p99_write["${_mp}"]}" | awk "{print \$1}")")"
+    echo "    - Storage tier guess: $(_boa_guess_storage_tier "${_tier_ioping_us}" "${_tier_srw_num}" "${_tier_sww_num}" "${_tier_p99r_num}" "${_tier_p99w_num}" "${_tier_fsync_p99w_num}")"
     echo ""
     echo "  Sequential Read (128k):"
     echo "    - Read Bandwidth: ${_fio_seqread_bw_read["${_mount_point}"]}"
@@ -2153,13 +2233,16 @@ _csv_root_qd1_p95_read="$(_strip_unit "${_root_qd1_p95_read}")"
 _csv_root_qd1_p95_write="$(_strip_unit "${_root_qd1_p95_write}")"
 _csv_root_qd1_p99_read="$(_strip_unit "${_root_qd1_p99_read}")"
 _csv_root_qd1_p99_write="$(_strip_unit "${_root_qd1_p99_write}")"
+_csv_root_qd1_fsync_p95_write="$(_strip_unit "${_root_qd1_fsync_p95_write}")"
+_csv_root_qd1_fsync_p99_write="$(_strip_unit "${_root_qd1_fsync_p99_write}")"
 _csv_root_ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
 _csv_root_ioping_avg_us="$(_num_or_empty "${_csv_root_ioping_avg_us}")"
 _csv_root_seqr_num="$(_num_or_empty "${_csv_root_seqread_bw_read}")"
 _csv_root_seqw_num="$(_num_or_empty "${_csv_root_seqwrite_bw_write}")"
 _csv_root_p99r_num="$(_num_or_empty "${_csv_root_qd1_p99_read}")"
 _csv_root_p99w_num="$(_num_or_empty "${_csv_root_qd1_p99_write}")"
-_csv_root_storage_tier="$(_boa_guess_storage_tier "${_csv_root_ioping_avg_us}" "${_csv_root_seqr_num}" "${_csv_root_seqw_num}" "${_csv_root_p99r_num}" "${_csv_root_p99w_num}")"
+_csv_root_fsync_p99w_num="$(_num_or_empty "${_csv_root_qd1_fsync_p99_write}")"
+_csv_root_storage_tier="$(_boa_guess_storage_tier "${_csv_root_ioping_avg_us}" "${_csv_root_seqr_num}" "${_csv_root_seqw_num}" "${_csv_root_p99r_num}" "${_csv_root_p99w_num}" "${_csv_root_fsync_p99w_num}")"
 
 echo "CSV_SUMMARY_V2:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
 
@@ -2171,3 +2254,4 @@ _csv_mem_lat_ns="${_mem_latency}"
 [ -z "${_csv_mem_lat_ns}" ] && _csv_mem_lat_ns="N/A"
 
 echo "CSV_SUMMARY_V3:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
+echo "CSV_SUMMARY_V4:${_hostname},"${_cpu_info}",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},"${_php_concurrency_throughput}",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},"${_csv_root_storage_tier}",${_csv_aes_mibps},${_csv_net_download}"
