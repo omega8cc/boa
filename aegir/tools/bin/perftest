@@ -1291,28 +1291,35 @@ _boa_grade_mem_final() {
   grade="$(_boa_grade_mem_bw "${mem_bw_mibps}" "${threads_used}")"
 
   # BOA is latency-sensitive (Redis/Valkey, MySQL buffer pool, Opcache/APCu):
-  # allow low latency to lift a borderline bandwidth result.
+  #  - allow low latency to lift borderline bandwidth
+  #  - apply latency-led caps so higher grades reflect snappy cache-heavy workloads
   if [ -n "${mem_latency_ns}" ]; then
+    # Low-latency boost: keep small-vCPU VMs from being unfairly rated.
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=130)}' 2>/dev/null; then
       if [ "${grade}" = "average" ] && awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=18000)}' 2>/dev/null; then
         grade="good"
       fi
     fi
 
-    # Latency caps (more realistic for VM setups than the earlier strict thresholds)
+    # If latency is excellent, ensure at least "excellent" (BOA in-RAM stacks feel this).
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=115)}' 2>/dev/null; then
+      if [ "${grade}" = "average" ] || [ "${grade}" = "good" ]; then
+        grade="excellent"
+      fi
+    fi
+
+    # Latency-led caps (tuned from real VM distributions):
+    #  - >140ns: do not call it ultra/excellent
+    #  - >165ns: do not call it good/excellent/ultra
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=220)}' 2>/dev/null; then
       grade="low"
-    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=190)}' 2>/dev/null; then
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>165)}' 2>/dev/null; then
       if [ "${grade}" != "low" ]; then
         grade="average"
       fi
-    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=160)}' 2>/dev/null; then
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>140)}' 2>/dev/null; then
       if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
         grade="good"
-      fi
-    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=140)}' 2>/dev/null; then
-      if [ "${grade}" = "ultra" ]; then
-        grade="excellent"
       fi
     fi
   fi
@@ -1638,6 +1645,10 @@ _print_disk_compact_section() {
   elif [ "${_disk_grade}" = "excellent" ]; then
     echo "   🏆  Excellent disk performance (NVMe-class)"
   fi
+  if [ "${_VERBOSE}" -eq 1 ]; then
+    echo "CSV_DISK_V1:${_hostname},\"${_mp}\",${_seqr_num},${_seqw_num},${_riops_num},${_wiops_num},${_meta_num},${_ioping_avg_us},${_qd1_p99_r_num},${_qd1_p99_w_num},${_qd1_fsync_p99_w_num},\"${_storage_tier}\",\"${_disk_grade}\""
+  fi
+
   echo ""
 }
 
@@ -2316,4 +2327,4 @@ _csv_mem_lat_ns="${_mem_latency}"
 [ -z "${_csv_mem_lat_ns}" ] && _csv_mem_lat_ns="N/A"
 
 echo "CSV_SUMMARY_V3:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
-echo "CSV_SUMMARY_V4:${_hostname},"${_cpu_info}",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},"${_php_concurrency_throughput}",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},"${_csv_root_storage_tier}",${_csv_aes_mibps},${_csv_net_download}"
+echo "CSV_SUMMARY_V4:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
