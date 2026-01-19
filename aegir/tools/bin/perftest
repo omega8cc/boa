@@ -43,7 +43,7 @@ Usage: perftest [--compact|--quiet] [--verbose] [-h|--help]
 
   --compact, --quiet  Print BOA-focused compact summary only (default)
                       (prioritizes memory > CPU > disk > network)
-  --verbose           Print full detailed output
+  --verbose           Print full detailed output or just CSV summary with | grep CSV_
   -h, --help          Show this help
 
 BOA context: This script evaluates VM vendor/host quality for BOA stack
@@ -1284,7 +1284,6 @@ _boa_grade_mem_bw() {
   echo "low"
 }
 
-
 _boa_grade_mem_final() {
   local mem_bw_mibps="$1"
   local mem_latency_ns="$2"
@@ -1293,9 +1292,9 @@ _boa_grade_mem_final() {
 
   grade="$(_boa_grade_mem_bw "${mem_bw_mibps}" "${threads_used}")"
 
-  # BOA is latency-sensitive (Redis/Valkey, MySQL buffer pool, Opcache/APCu):
-  #  - allow low latency to lift borderline bandwidth
-  #  - apply latency-led caps so higher grades reflect snappy cache-heavy workloads
+  # BOA is latency-sensitive (Valkey/Redis, MySQL buffer pool, Opcache/APCu):
+  #   - allow low latency to lift borderline bandwidth
+  #   - apply latency-led caps so higher grades reflect snappy cache-heavy workloads
   if [ -n "${mem_latency_ns}" ]; then
     # Low-latency boost: keep small-vCPU VMs from being unfairly rated.
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=130)}' 2>/dev/null; then
@@ -1311,13 +1310,13 @@ _boa_grade_mem_final() {
       fi
     fi
 
-    # Latency-led caps (calibrated for DRAM-focused membench on VPS):
-    #  - >140ns: cap ultra/excellent to good
-    #  - >165ns: cap to average
-    #  - >200ns: cap to average (typically noisy-neighbor/NUMA/host contention)
-    #  - >=260ns: treat as low ONLY when bandwidth is also weak
+    # Latency-led caps (calibrated from real v9 fleet distribution):
+    #   - >140ns: cap ultra/excellent to good
+    #   - >165ns: cap ultra/excellent to good (still production-worthy, but not top tier)
+    #   - >200ns: cap to average (typically noisy-neighbor/NUMA/host contention)
+    #   - >=260ns: treat as low ONLY when bandwidth is also weak
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=260)}' 2>/dev/null; then
-      # If bandwidth is strong, this is likely an outlier rather than "bad RAM".
+      # If bandwidth is strong, this is likely a contention outlier rather than "bad RAM".
       if awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=30000)}' 2>/dev/null; then
         grade="average"
       else
@@ -1328,8 +1327,8 @@ _boa_grade_mem_final() {
         grade="average"
       fi
     elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>165)}' 2>/dev/null; then
-      if [ "${grade}" != "low" ]; then
-        grade="average"
+      if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
+        grade="good"
       fi
     elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>140)}' 2>/dev/null; then
       if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
@@ -1367,9 +1366,14 @@ _boa_grade_cpu_speed() {
 }
 
 _boa_grade_disk_final() {
-  # Inputs: $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops, $7=qd1_p99_read_ms, $8=qd1_p99_write_ms
-  # BOA-realistic: Sequential WRITE is critical (Drupal writes, cache, logs)
-  # Priority: seq_write (blocker) > seq_read > IOPS > ioping > metadata
+  # Inputs (best-effort numeric):
+  #  $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops,
+  #  $7=qd1_p99_read_ms, $8=qd1_p99_write_ms, $9=qd1_fsync_p99_write_ms
+  #
+  # Design goal:
+  # - Preserve the original (v9) multi-signal logic (seq, iops, ioping, metadata) so you can reason about *why* a grade was chosen.
+  # - Add DB-realistic *caps* driven by QD=1 p99 + fsync p99 so we never call high-tail storage “excellent”.
+
   local ioping_us="$1"
   local seq_read_mbps="$2"
   local seq_write_mbps="$3"
@@ -1391,15 +1395,13 @@ _boa_grade_disk_final() {
   qd1_p99_write_ms="$(_num_or_empty "${qd1_p99_write_ms}")"
   qd1_fsync_p99_write_ms="$(_num_or_empty "${qd1_fsync_p99_write_ms}")"
 
-  # CRITICAL CHECK: Sequential write < 100 MB/s = BAD (throttled/failing disk)
-  if [ -n "${seq_write_mbps}" ]; then
-    if awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
-      echo "bad"
-      return
-    fi
+  # CRITICAL: Sequential write throttled/failing
+  if [ -n "${seq_write_mbps}" ] && awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
+    echo "bad"
+    return
   fi
 
-  # Now grade based on combined metrics
+  # Base grade (throughput-first, like v9)
   local grade="poor"
 
   # Check if we have both read and write
@@ -1419,63 +1421,90 @@ _boa_grade_disk_final() {
     fi
   fi
 
-  # Boost grade if IOPS are excellent (11k+ = NVMe-class)
+  # Helper: rank for min/max comparisons
+  _grade_rank() {
+    case "$1" in
+      bad) echo 0 ;;
+      poor) echo 1 ;;
+      average) echo 2 ;;
+      good) echo 3 ;;
+      excellent) echo 4 ;;
+      *) echo 1 ;;
+    esac
+  }
+
+  _rank_to_grade() {
+    case "$1" in
+      0) echo bad ;;
+      1) echo poor ;;
+      2) echo average ;;
+      3) echo good ;;
+      4) echo excellent ;;
+      *) echo poor ;;
+    esac
+  }
+
+  # Compute DB-realistic cap from QD1+fsync (if available)
+  local cap_grade=""
+  if [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
+    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}"       'BEGIN{exit !(f<=2 && r<=0.5 && w<=0.5 && io<=200)}' 2>/dev/null; then
+      cap_grade="excellent"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}"       'BEGIN{exit !(f<=5 && r<=1.0 && w<=1.0)}' 2>/dev/null; then
+      cap_grade="good"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}"       'BEGIN{exit !(f<=12 && r<=3.0 && w<=3.0)}' 2>/dev/null; then
+      cap_grade="average"
+    else
+      cap_grade="poor"
+    fi
+  fi
+
+  # IOPS boost (same spirit as v9), but never above cap_grade if present
   if [ -n "${read_iops}" ] && [ -n "${write_iops}" ]; then
     if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>10000 && wi>10000)}' 2>/dev/null; then
-      # Excellent IOPS - upgrade one level
+      local r=$(_grade_rank "${grade}")
+      if [ "${r}" -lt 4 ]; then
+        r=$((r+1))
+        grade="$(_rank_to_grade "${r}")"
+      fi
+    fi
+  fi
+
+  # Metadata boost (small): only if already >= average
+  if [ -n "${meta_ops}" ]; then
+    if awk -v m="${meta_ops}" 'BEGIN{exit !(m>5000)}' 2>/dev/null; then
       case "${grade}" in
-        poor) grade="average" ;;
         average) grade="good" ;;
         good) grade="excellent" ;;
       esac
     fi
   fi
 
-  # ioping reality check: if ioping shows bad latency, downgrade
-  if [ -n "${ioping_us}" ]; then
-    if awk -v i="${ioping_us}" 'BEGIN{exit !(i>2000)}' 2>/dev/null; then
-      # Very bad real latency - downgrade one level
-      case "${grade}" in
-        excellent) grade="good" ;;
-        good) grade="average" ;;
-        average) grade="poor" ;;
-      esac
+  # ioping reality check: very bad latency downgrades one level
+  if [ -n "${ioping_us}" ] && awk -v i="${ioping_us}" 'BEGIN{exit !(i>2000)}' 2>/dev/null; then
+    case "${grade}" in
+      excellent) grade="good" ;;
+      good) grade="average" ;;
+      average) grade="poor" ;;
+    esac
+  fi
+
+  # Apply DB-realistic cap (prevents “excellent” on high-tail storage)
+  if [ -n "${cap_grade}" ]; then
+    local gr=$(_grade_rank "${grade}")
+    local cr=$(_grade_rank "${cap_grade}")
+    if [ "${gr}" -gt "${cr}" ]; then
+      grade="${cap_grade}"
     fi
   fi
 
-  # QD=1 p99 latency caps (Drupal/DB feel). Best-effort: if missing, no effect.
-  if [ -n "${qd1_p99_write_ms}" ]; then
-    # Force-poor if p99 write latency is extremely high
-    if awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>150)}' 2>/dev/null; then
-      grade="poor"
-    elif awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>60)}' 2>/dev/null; then
-      # cap at average
-      case "${grade}" in
-        excellent|good) grade="average" ;;
-      esac
-    elif awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>20)}' 2>/dev/null; then
-      # cap at good
-      case "${grade}" in
-        excellent) grade="good" ;;
-      esac
-    fi
+  # Extra safety: extreme tails force poor even if cap_grade not available
+  if [ -n "${qd1_p99_write_ms}" ] && awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>150)}' 2>/dev/null; then
+    grade="poor"
+  fi
+  if [ -n "${qd1_fsync_p99_write_ms}" ] && awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>250)}' 2>/dev/null; then
+    grade="poor"
   fi
 
-
-  # QD=1 fsync p99 write latency caps (DB durability realism). Best-effort: if missing, no effect.
-  if [ -n "${qd1_fsync_p99_write_ms}" ]; then
-    if awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>250)}' 2>/dev/null; then
-      grade="poor"
-    elif awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>120)}' 2>/dev/null; then
-      case "${grade}" in
-        excellent|good) grade="average" ;;
-      esac
-    elif awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>40)}' 2>/dev/null; then
-      case "${grade}" in
-        excellent) grade="good" ;;
-      esac
-    fi
-  fi
   echo "${grade}"
 }
 
