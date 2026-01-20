@@ -58,9 +58,9 @@ Usage: perftest [--compact|--quiet] [--verbose] [-h|--help]
   --compact, --quiet  Print BOA-focused compact summary only (default)
                       (prioritizes memory > CPU > disk > network)
   --verbose           Print full detailed output or just CSV summary with | grep CSV_
-  --no-dbtest          Skip MySQL sysbench OLTP benchmark (default: run in --verbose mode)
-  --dbtest-heavy       Use larger dataset for DB test (more disk pressure)
-  --keep-db            Keep sysbench DB after run (for debugging)
+  --no-dbtest         Skip MySQL sysbench OLTP benchmark (default: run in --verbose mode)
+  --dbtest-heavy      Use larger dataset for DB test (more disk pressure)
+  --keep-db           Keep sysbench DB after run (for debugging)
   -h, --help          Show this help
 
 BOA context: This script evaluates VM vendor/host quality for BOA stack
