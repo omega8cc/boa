@@ -119,13 +119,37 @@ _check_and_install_package() {
   fi
 }
 
-# Prefer sysbench build-from-source without MySQL/MariaDB
+# Prefer sysbench build-from-source without MySQL/MariaDB, but:
+# - If MySQL is installed and sysbench lacks the mysql driver, rebuild with MySQL support.
 _ensure_sysbench() {
-  if command -v sysbench >/dev/null 2>&1; then
-    return 0
+  _MYSQL_PRESENT="NO"
+  _SYSBENCH_NEEDS_REBUILD="NO"
+
+  # Detect MySQL presence (broad + cheap checks)
+  if command -v mysql >/dev/null 2>&1 \
+    || command -v mysqld >/dev/null 2>&1 \
+    || [ -d "/var/lib/mysql/mysql" ]; then
+    _MYSQL_PRESENT="YES"
   fi
-  # Always compile sysbench from source without MySQL/MariaDB
-  _log "Compiling sysbench from source..."
+
+  if command -v sysbench >/dev/null 2>&1; then
+    # If MySQL is present, verify sysbench was built with mysql driver support
+    if [ "${_MYSQL_PRESENT}" = "YES" ]; then
+      if sysbench --db-driver=mysql --help >/dev/null 2>&1; then
+        return 0
+      fi
+      _SYSBENCH_NEEDS_REBUILD="YES"
+    else
+      return 0
+    fi
+  fi
+
+  if [ "${_SYSBENCH_NEEDS_REBUILD}" = "YES" ]; then
+    _log "sysbench detected but missing mysql driver; rebuilding with MySQL support..."
+  else
+    _log "Compiling sysbench from source..."
+  fi
+
   _check_and_install_package "git"
   _check_and_install_package "make"
   _check_and_install_package "gcc"
@@ -133,17 +157,36 @@ _ensure_sysbench() {
   _check_and_install_package "libtool"
   _check_and_install_package "pkg-config"
   _check_and_install_package "libaio-dev"
+
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
   mkdir -p /tmp/sysbench-build || exit 1
   cd /tmp/sysbench-build || exit 1
-  git clone --depth 1 https://github.com/akopytov/sysbench.git >/dev/null 2>&1 || exit 1
+
+  git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1 || exit 1
   cd sysbench || exit 1
+
   ./autogen.sh >/dev/null 2>&1 || exit 1
-  ./configure --without-mysql >/dev/null 2>&1 || exit 1
+
+  if [ "${_MYSQL_PRESENT}" = "YES" ]; then
+    # Only attempt MySQL-enabled build if mysql_config/mariadb_config is available
+    if command -v mysql_config >/dev/null 2>&1 || command -v mariadb_config >/dev/null 2>&1; then
+      ./configure >/dev/null 2>&1 || exit 1
+    else
+      _log "MySQL detected but mysql_config/mariadb_config missing; building sysbench without MySQL support."
+      ./configure --without-mysql >/dev/null 2>&1 || exit 1
+    fi
+  else
+    ./configure --without-mysql >/dev/null 2>&1 || exit 1
+  fi
+
   make -j"$(nproc)" >/dev/null 2>&1 || exit 1
   make install >/dev/null 2>&1 || exit 1
+
   cd /root || exit 1
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
+
+  # Ensure shell picks up any newly installed sysbench in PATH
+  hash -r >/dev/null 2>&1
 }
 
 # Best-effort C compiler (for DRAM-focused membench)
