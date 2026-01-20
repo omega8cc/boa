@@ -1604,6 +1604,14 @@ _boa_guess_storage_tier() {
     _class="NVME"
   fi
 
+  # NVMe-class (throughput override): some providers cap per-VM throughput/latency,
+  # but multi-GB/s sequential strongly indicates NVMe-class when not network.
+  if [ "${_class}" = "UNKNOWN" ] && [ "${_net}" = "NO" ] && [ "${_degraded}" = "NO" ] && \
+     [ -n "${sr}" ] && [ -n "${sw}" ] && [ -n "${ioping_us}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" -v u="${ioping_us}" 'BEGIN{exit !((sr>=1500 || sw>=1200) && u<=350)}' 2>/dev/null; then
+    _class="NVME"
+  fi
+
   # SSD-class: still decent tails, but not NVMe-like
   if [ "${_class}" = "UNKNOWN" ] && [ -n "${p99w}" ] && [ -n "${p99wf}" ] && \
      awk -v w="${p99w}" -v f="${p99wf}" 'BEGIN{exit !(w<=2.0 && f<=20)}' 2>/dev/null; then
