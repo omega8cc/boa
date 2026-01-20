@@ -153,8 +153,8 @@ _install_goaccess() {
   cd /var/opt
   rm -rf /var/opt/goaccess*
   if [ -e "${_USE_GITHUB}" ]; then
-    echo "Downloading from https://github.com/allinurl/goaccess.git"
-    git clone https://github.com/allinurl/goaccess.git
+    echo "Downloading from https://github.com/omega8cc/goaccess.git"
+    git clone https://github.com/omega8cc/goaccess.git
     cd /var/opt/goaccess
     autoreconf -fi
   else
