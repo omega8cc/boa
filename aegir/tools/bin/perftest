@@ -150,11 +150,24 @@ _sysbench_has_mysql_driver() {
   return 1
 }
 
+_ensure_dependencies() {
+  _check_and_install_package "git"
+  _check_and_install_package "make"
+  _check_and_install_package "gcc"
+  _check_and_install_package "automake"
+  _check_and_install_package "libtool"
+  _check_and_install_package "pkg-config"
+  _check_and_install_package "libaio-dev"
+}
+
 # Prefer sysbench build-from-source without MySQL/MariaDB, but:
 # - If MySQL server is installed AND the right client package is installed
 #   (Percona 5.7/8.0/8.4 via libperconaserverclient2[0-2]-dev, or MySQL 8.4 via libmysqlclient24),
 #   ensure sysbench has mysql driver; rebuild if not.
 _ensure_sysbench() {
+
+  _ensure_dependencies
+
   _MYSQL_PRESENT="NO"
   _MYSQL_CLIENT_PKG_PRESENT="NO"
   _MYSQL_CONFIG_PRESENT="NO"
@@ -200,14 +213,6 @@ _ensure_sysbench() {
   else
     _log "Compiling sysbench from source..."
   fi
-
-  _check_and_install_package "git"
-  _check_and_install_package "make"
-  _check_and_install_package "gcc"
-  _check_and_install_package "automake"
-  _check_and_install_package "libtool"
-  _check_and_install_package "pkg-config"
-  _check_and_install_package "libaio-dev"
 
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
   mkdir -p /tmp/sysbench-build || exit 1
