@@ -10,6 +10,13 @@ _PHP_BENCH_RUNS=5 # single-thread runs for median
 _PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
 _SYSBENCH_CPU_TIME=30 # seconds
 _SYSBENCH_MEM_TIME=30 # seconds
+_DB_SYSBENCH_TIME_RO=30 # seconds (read-only OLTP)
+_DB_SYSBENCH_TIME_RW=30 # seconds (read-write OLTP)
+_DB_SYSBENCH_TABLES=4 # number of tables
+_DB_SYSBENCH_TABLE_SIZE=100000 # rows per table (light)
+_DB_SYSBENCH_TABLE_SIZE_HEAVY=1000000 # rows per table (heavy)
+_DB_SYSBENCH_THREADS_MAX=16 # cap threads
+_DB_SYSBENCH_THREADS_MIN=2 # min threads
 _MEM_BENCH_TIME=10 # seconds (DRAM-focused membench, per run)
 _MEM_BENCH_REPEATS=3 # repeats for stability; median-of-3 is used
 _MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
@@ -33,6 +40,11 @@ _IOPING_SECONDS=5 # seconds for ioping checks
 _VERBOSE=0   # default: full output
 _COMPACT=1   # compact BOA-focused mode
 
+# DB benchmark (sysbench OLTP)
+_DBTEST_ENABLED=YES
+_DBTEST_HEAVY=NO
+_DBTEST_KEEP_DB=NO
+
 # CSV output
 # Printed only in --verbose mode (no CSV in compact mode).
 
@@ -46,6 +58,9 @@ Usage: perftest [--compact|--quiet] [--verbose] [-h|--help]
   --compact, --quiet  Print BOA-focused compact summary only (default)
                       (prioritizes memory > CPU > disk > network)
   --verbose           Print full detailed output or just CSV summary with | grep CSV_
+  --no-dbtest          Skip MySQL sysbench OLTP benchmark (default: run in --verbose mode)
+  --dbtest-heavy       Use larger dataset for DB test (more disk pressure)
+  --keep-db            Keep sysbench DB after run (for debugging)
   -h, --help          Show this help
 
 BOA context: This script evaluates VM vendor/host quality for BOA stack
@@ -2020,6 +2035,266 @@ _print_compact_summary() {
   echo ""
 }
 
+
+
+# ----
+# DB benchmark (sysbench OLTP, MySQL root)
+# Runs only in --verbose mode by default.
+# ----
+_db_ro_tps=""
+_db_ro_p95_ms=""
+_db_rw_tps=""
+_db_rw_p95_ms=""
+_db_test_status="SKIPPED"
+_db_test_reason=""
+
+_read_mysql_root_pass() {
+  if [ ! -e "/root/.my.pass.txt" ]; then
+    echo ""
+    return
+  fi
+  head -n 1 /root/.my.pass.txt 2>/dev/null | tr -d '
+'
+}
+
+_guess_mysql_socket() {
+  if [ -S "/var/run/mysqld/mysqld.sock" ]; then
+    echo "/var/run/mysqld/mysqld.sock"
+    return
+  fi
+  if [ -S "/run/mysqld/mysqld.sock" ]; then
+    echo "/run/mysqld/mysqld.sock"
+    return
+  fi
+  if [ -S "/var/lib/mysql/mysql.sock" ]; then
+    echo "/var/lib/mysql/mysql.sock"
+    return
+  fi
+  echo ""
+}
+
+_sysbench_lua() {
+  # Args: file name (e.g. oltp_read_only.lua)
+  if [ -f "/usr/share/sysbench/$1" ]; then
+    echo "/usr/share/sysbench/$1"
+    return
+  fi
+  # Older locations (rare)
+  if [ -f "/usr/local/share/sysbench/$1" ]; then
+    echo "/usr/local/share/sysbench/$1"
+    return
+  fi
+  echo ""
+}
+
+_parse_sysbench_tps() {
+  awk '/transactions:/ { for (i=1;i<=NF;i++) { if ($i=="per") { v=$(i-1); gsub(/[()]/,"",v); print v; exit } } }'
+}
+
+_parse_sysbench_p95() {
+  awk '/95th percentile:/ { print $3; exit }'
+}
+
+_run_db_sysbench() {
+  # Args: mode(ro|rw), dbname, threads, table_size, tables, time
+  local mode="$1"
+  local dbname="$2"
+  local threads="$3"
+  local table_size="$4"
+  local tables="$5"
+  local time_s="$6"
+
+  local pass sock lua out tps p95
+  pass="$(_read_mysql_root_pass)"
+  [ -n "${pass}" ] || return 2
+
+  sock="$(_guess_mysql_socket)"
+
+  if [ "${mode}" = "ro" ]; then
+    lua="$(_sysbench_lua "oltp_read_only.lua")"
+  else
+    lua="$(_sysbench_lua "oltp_read_write.lua")"
+  fi
+  [ -n "${lua}" ] || return 3
+
+  # Common args
+  local args=(
+    "--db-driver=mysql"
+    "--mysql-user=root"
+    "--mysql-password=${pass}"
+    "--mysql-db=${dbname}"
+    "--tables=${tables}"
+    "--table-size=${table_size}"
+    "--threads=${threads}"
+    "--time=${time_s}"
+    "--report-interval=0"
+  )
+
+  # Prefer socket if available
+  if [ -n "${sock}" ]; then
+    args+=("--mysql-socket=${sock}")
+  else
+    args+=("--mysql-host=127.0.0.1" "--mysql-port=3306")
+  fi
+
+  out="$(sysbench "${lua}" "${args[@]}" run 2>/dev/null)"
+
+  tps="$(printf '%s
+' "${out}" | _parse_sysbench_tps | head -n1)"
+  p95="$(printf '%s
+' "${out}" | _parse_sysbench_p95 | head -n1)"
+
+  # Validate numeric
+  if ! printf '%s' "${tps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    tps=""
+  fi
+  if ! printf '%s' "${p95}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    p95=""
+  fi
+
+  printf '%s|%s
+' "${tps}" "${p95}"
+}
+
+_db_benchmark_sysbench() {
+  # Default: run only in --verbose mode
+  if [ "${_VERBOSE}" -ne 1 ]; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="run with --verbose"
+    return
+  fi
+  if [ "${_DBTEST_ENABLED}" != "YES" ]; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="disabled"
+    return
+  fi
+  if ! command -v sysbench >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench not installed"
+    return
+  fi
+  if ! command -v mysql >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="mysql client not installed"
+    return
+  fi
+
+  local pass
+  pass="$(_read_mysql_root_pass)"
+  if [ -z "${pass}" ]; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="/root/.my.pass.txt missing/empty"
+    return
+  fi
+
+  # Ensure mysqld responds
+  local sock extra
+  sock="$(_guess_mysql_socket)"
+  extra=""
+  if [ -n "${sock}" ]; then
+    extra="--socket=${sock}"
+  fi
+
+  if ! mysql -uroot -p"${pass}" ${extra} -e 'SELECT 1' >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="cannot connect to MySQL as root"
+    return
+  fi
+
+  echo "Running MySQL OLTP (sysbench: RO+RW, ${_DB_SYSBENCH_TIME_RO}s+${_DB_SYSBENCH_TIME_RW}s)..."
+
+  # Threads = min(vCPU*2, cap)
+  local threads
+  threads=$(( $(nproc 2>/dev/null || echo 1) * 2 ))
+  if [ "${threads}" -gt "${_DB_SYSBENCH_THREADS_MAX}" ]; then
+    threads="${_DB_SYSBENCH_THREADS_MAX}"
+  fi
+  if [ "${threads}" -lt "${_DB_SYSBENCH_THREADS_MIN}" ]; then
+    threads="${_DB_SYSBENCH_THREADS_MIN}"
+  fi
+
+  _db_threads_used="${threads}"
+
+  local table_size tables time_ro time_rw
+  tables="${_DB_SYSBENCH_TABLES}"
+  time_ro="${_DB_SYSBENCH_TIME_RO}"
+  time_rw="${_DB_SYSBENCH_TIME_RW}"
+  if [ "${_DBTEST_HEAVY}" = "YES" ]; then
+    table_size="${_DB_SYSBENCH_TABLE_SIZE_HEAVY}"
+  else
+    table_size="${_DB_SYSBENCH_TABLE_SIZE}"
+  fi
+
+  # Unique db name (<=64 chars)
+  local dbname
+  dbname="perftest_sb_${_hostname}_$$"
+  dbname="$(printf '%s' "${dbname}" | tr -c 'A-Za-z0-9_' '_' | cut -c1-63)"
+
+  # Create db
+  if ! mysql -uroot -p"${pass}" ${extra} -e "CREATE DATABASE IF NOT EXISTS ${dbname}" >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="failed to create db"
+    return
+  fi
+
+  # Prepare tables once (read-only/read-write share dataset)
+  local lua_prepare
+  lua_prepare="$(_sysbench_lua "oltp_read_write.lua")"
+  if [ -z "${lua_prepare}" ]; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench lua not found"
+    return
+  fi
+
+  local sb_args=(
+    "--db-driver=mysql"
+    "--mysql-user=root"
+    "--mysql-password=${pass}"
+    "--mysql-db=${dbname}"
+    "--tables=${tables}"
+    "--table-size=${table_size}"
+    "--threads=${threads}"
+    "--report-interval=0"
+  )
+  if [ -n "${sock}" ]; then
+    sb_args+=("--mysql-socket=${sock}")
+  else
+    sb_args+=("--mysql-host=127.0.0.1" "--mysql-port=3306")
+  fi
+
+  if ! sysbench "${lua_prepare}" "${sb_args[@]}" prepare >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench prepare failed"
+    [ "${_DBTEST_KEEP_DB}" = "YES" ] && return
+    mysql -uroot -p"${pass}" ${extra} -e "DROP DATABASE IF EXISTS ${dbname}" >/dev/null 2>&1 || true
+    return
+  fi
+
+  # Run RO and RW, capture tps + p95 latency
+  local ro rw
+  ro="$(_run_db_sysbench ro "${dbname}" "${threads}" "${table_size}" "${tables}" "${time_ro}")"
+  rw="$(_run_db_sysbench rw "${dbname}" "${threads}" "${table_size}" "${tables}" "${time_rw}")"
+
+  _db_ro_tps="$(printf '%s' "${ro}" | cut -d'|' -f1)"
+  _db_ro_p95_ms="$(printf '%s' "${ro}" | cut -d'|' -f2)"
+  _db_rw_tps="$(printf '%s' "${rw}" | cut -d'|' -f1)"
+  _db_rw_p95_ms="$(printf '%s' "${rw}" | cut -d'|' -f2)"
+
+  if [ -n "${_db_ro_tps}" ] && [ -n "${_db_rw_tps}" ]; then
+    _db_test_status="OK"
+    _db_test_reason=""
+  else
+    _db_test_status="WARN"
+    _db_test_reason="could not parse results"
+  fi
+
+  # Cleanup tables
+  sysbench "${lua_prepare}" "${sb_args[@]}" cleanup >/dev/null 2>&1 || true
+
+  if [ "${_DBTEST_KEEP_DB}" != "YES" ]; then
+    mysql -uroot -p"${pass}" ${extra} -e "DROP DATABASE IF EXISTS ${dbname}" >/dev/null 2>&1 || true
+  fi
+}
 # ----
 # Main
 # ----
@@ -2029,6 +2304,9 @@ for arg in "$@"; do
   case "$arg" in
     --compact|--quiet) _VERBOSE=0; _COMPACT=1 ;;
     --verbose) _VERBOSE=1; _COMPACT=0 ;;
+    --no-dbtest) _DBTEST_ENABLED=NO ;;
+    --dbtest-heavy) _DBTEST_HEAVY=YES ;;
+    --keep-db) _DBTEST_KEEP_DB=YES ;;
     -h|--help) _usage; exit 0 ;;
     *)
       echo "Unknown option: $arg"
@@ -2060,6 +2338,14 @@ echo ""
 _hostname="$(hostname)"
 _cpu_info="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
 _cpu_cores="$(nproc 2>/dev/null || echo N/A)"
+
+# DB bench outputs (sysbench OLTP)
+_db_test_status="SKIPPED"
+_db_test_reason=""
+_db_ro_tps=""
+_db_ro_p95_ms=""
+_db_rw_tps=""
+_db_rw_p95_ms=""
 
 if [ "${_VERBOSE}" -eq 1 ]; then
   echo "Host: ${_hostname}"
@@ -2112,6 +2398,9 @@ _run_aes_throughput_test
 # PHP Performance Tests (single + concurrent)
 echo "Running PHP performance tests..."
 _run_php_benchmarks
+
+# Database OLTP experience proxy (sysbench + MySQL root)
+_db_benchmark_sysbench
 
 # Disk I/O Performance Tests
 _log "Detecting mounted filesystems to test (root + real mounted partitions; excluding /boot*)..."
@@ -2400,6 +2689,23 @@ else
     echo "  - PHP not installed"
   fi
 
+  echo ""
+  echo "Database OLTP (sysbench, MySQL root):"
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+      echo "  - Threads: ${_db_threads_used:-N/A}"
+    echo "  - Read-only:  ${_db_ro_tps} TPS, p95 ${_db_ro_p95_ms} ms"
+    echo "  - Read-write: ${_db_rw_tps} TPS, p95 ${_db_rw_p95_ms} ms"
+    if [ "${_db_test_status}" = "WARN" ]; then
+      echo "  - Note: results parsed with warning (${_db_test_reason})"
+    fi
+  else
+    if [ -n "${_db_test_reason}" ]; then
+      echo "  - ${_db_test_status}: ${_db_test_reason}"
+    else
+      echo "  - ${_db_test_status}"
+    fi
+  fi
+
   for _mount_point in "${_test_mounts[@]}"; do
     [ -z "${_mount_point}" ] && continue
     echo ""
@@ -2510,4 +2816,5 @@ _csv_mem_lat_ns="${_mem_latency}"
 
 if [ "${_VERBOSE}" -eq 1 ]; then
   echo "CSV_SUMMARY_V4:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
+  echo "CSV_DB_V1:${_hostname},${_db_ro_tps},${_db_ro_p95_ms},${_db_rw_tps},${_db_rw_p95_ms},${_db_test_status}"
 fi
