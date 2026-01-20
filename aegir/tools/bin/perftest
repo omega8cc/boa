@@ -22,6 +22,8 @@ _FIO_QD1_RUNTIME=20 # seconds (QD=1 random latency for tiering)
 _FIO_QD1_SIZE_M=256 # MiB per QD=1 test
 _FIO_QD1_FSYNC_RUNTIME=15 # seconds (QD=1 randwrite with fsync for DB realism)
 _FIO_QD1_FSYNC_SIZE_M=128 # MiB (file size for fsync test)
+_FIO_QD1_REPEATS=3 # repeats for QD=1 tests to reduce noise (median-of-N used)
+_FIO_QD1_FSYNC_REPEATS=3 # repeats for QD=1 fsync tests to reduce noise (median-of-N used)
 _METADATA_FILE_COUNT=5000 # small-file ops per mount
 _NET_TIMEOUT=10 # seconds for curl speedtest
 _AES_TEST_MIB=500 # MiB encrypted for AES throughput test
@@ -1243,6 +1245,25 @@ _num_or_empty() {
   printf '%s' "$1" | grep -Eo '^[0-9]+(\.[0-9]+)?' || true
 }
 
+_median_num() {
+  # Median of numeric arguments (prints empty if no valid inputs)
+  # Uses simple sort; intended for small N (default repeats=3).
+  if [ "$#" -eq 0 ]; then
+    echo ""
+    return
+  fi
+  printf '%s\n' "$@" | awk 'NF{print}' | sort -n | awk '{a[NR]=$1} END{if(NR==0){print ""; exit} mid=int((NR+1)/2); printf "%.3f", a[mid]}'
+}
+
+_max_num() {
+  # Max of numeric arguments (prints empty if no valid inputs)
+  if [ "$#" -eq 0 ]; then
+    echo ""
+    return
+  fi
+  printf '%s\n' "$@" | awk 'NF{print}' | sort -n | tail -n 1
+}
+
 
 _boa_grade_mem_bw() {
   # Bandwidth in MiB/s; optionally pass number of threads used.
@@ -1637,6 +1658,15 @@ _boa_guess_storage_tier() {
     else
       echo "LOCAL_DEGRADED"
     fi
+    return
+  fi
+
+  # LOCAL NVMe that is clearly capped by policy/limits (common on some vendors).
+  # We infer this when latency looks local+NVMe-like, but sequential sits in a well-known ceiling band.
+  if [ "${_net}" = "NO" ] && [ -n "${sr}" ] && [ -n "${sw}" ] && [ -n "${ioping_us}" ] && [ -n "${p99wf}" ] && [ -n "${p99w}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" -v u="${ioping_us}" -v f="${p99wf}" -v w="${p99w}" \
+       'BEGIN{exit !((sr>=450 && sr<=750) && (sw>=350 && sw<=750) && (u<=250) && (f<=5) && (w<=1.0))}' 2>/dev/null; then
+    echo "LOCAL_NVME_CAPPED"
     return
   fi
 
@@ -2191,43 +2221,77 @@ for _mount_point in "${_test_mounts[@]}"; do
   rm -f "${_seqwrite_output}" >/dev/null 2>&1
 
 
-  # Random 4k randrw QD=1 (latency percentiles for tiering)
-  echo "Running QD=1 random latency test on ${_mount_point}..."
-  _qd1_output="/tmp/fio_qd1_${_safe_mount_point}_$$.json"
-  if _run_fio_qd1_test "${_mount_point}" "${_qd1_output}"; then
-    while IFS="=" read -r _k _v; do
-      case "${_k}" in
-        READ_P95_MS) [ -n "${_v}" ] && _fio_qd1_p95_read["${_mount_point}"]="${_v} ms" ;;
-        WRITE_P95_MS) [ -n "${_v}" ] && _fio_qd1_p95_write["${_mount_point}"]="${_v} ms" ;;
-        READ_P99_MS) [ -n "${_v}" ] && _fio_qd1_p99_read["${_mount_point}"]="${_v} ms" ;;
-        WRITE_P99_MS) [ -n "${_v}" ] && _fio_qd1_p99_write["${_mount_point}"]="${_v} ms" ;;
-      esac
-    done < <(_parse_fio_json "${_qd1_output}")
+  # Random 4k randrw QD=1 (latency percentiles for tiering) - repeated for stability
+  echo "Running QD=1 random latency test (x${_FIO_QD1_REPEATS}) on ${_mount_point}..."
+  _qd1_rep=""
+  _qd1_p95_r_list=() _qd1_p95_w_list=() _qd1_p99_r_list=() _qd1_p99_w_list=()
+  _qd1_ok="YES"
+  for _qd1_rep in $(seq 1 "${_FIO_QD1_REPEATS}"); do
+    _qd1_output="/tmp/fio_qd1_${_safe_mount_point}_${_qd1_rep}_$$.json"
+    if _run_fio_qd1_test "${_mount_point}" "${_qd1_output}"; then
+      _tmp_r95="" _tmp_w95="" _tmp_r99="" _tmp_w99=""
+      while IFS="=" read -r _k _v; do
+        case "${_k}" in
+          READ_P95_MS) _tmp_r95="${_v}" ;;
+          WRITE_P95_MS) _tmp_w95="${_v}" ;;
+          READ_P99_MS) _tmp_r99="${_v}" ;;
+          WRITE_P99_MS) _tmp_w99="${_v}" ;;
+        esac
+      done < <(_parse_fio_json "${_qd1_output}")
+      [ -n "${_tmp_r95}" ] && _qd1_p95_r_list+=("${_tmp_r95}")
+      [ -n "${_tmp_w95}" ] && _qd1_p95_w_list+=("${_tmp_w95}")
+      [ -n "${_tmp_r99}" ] && _qd1_p99_r_list+=("${_tmp_r99}")
+      [ -n "${_tmp_w99}" ] && _qd1_p99_w_list+=("${_tmp_w99}")
+    else
+      _qd1_ok="NO"
+    fi
+    rm -f "${_qd1_output}" >/dev/null 2>&1
+  done
+
+  if [ "${_qd1_ok}" = "YES" ] && [ "${#_qd1_p99_r_list[@]}" -gt 0 ] && [ "${#_qd1_p99_w_list[@]}" -gt 0 ]; then
+    _fio_qd1_p95_read["${_mount_point}"]="$(_median_num "${_qd1_p95_r_list[@]}") ms"
+    _fio_qd1_p95_write["${_mount_point}"]="$(_median_num "${_qd1_p95_w_list[@]}") ms"
+    _fio_qd1_p99_read["${_mount_point}"]="$(_median_num "${_qd1_p99_r_list[@]}") ms"
+    _fio_qd1_p99_write["${_mount_point}"]="$(_median_num "${_qd1_p99_w_list[@]}") ms"
   else
     _fio_qd1_p95_read["${_mount_point}"]="ERROR"
     _fio_qd1_p95_write["${_mount_point}"]="ERROR"
     _fio_qd1_p99_read["${_mount_point}"]="ERROR"
     _fio_qd1_p99_write["${_mount_point}"]="ERROR"
   fi
-  rm -f "${_qd1_output}" >/dev/null 2>&1
 
-  # Random 4k randwrite QD=1 with fsync (durability realism)
-  echo "Running QD=1 fsync write test on ${_mount_point}..."
-  _qd1_fsync_output="/tmp/fio_qd1_fsync_${_safe_mount_point}_$$.json"
-  if _run_fio_qd1_fsync_test "${_mount_point}" "${_qd1_fsync_output}"; then
-    while IFS="=" read -r _k _v; do
-      case "${_k}" in
-        SYNC_P95_MS) [ -n "${_v}" ] && _fio_qd1_fsync_p95_write["${_mount_point}"]="${_v} ms" ;;
-        SYNC_P99_MS) [ -n "${_v}" ] && _fio_qd1_fsync_p99_write["${_mount_point}"]="${_v} ms" ;;
-        WRITE_P95_MS) [ -z "${_fio_qd1_fsync_p95_write["${_mount_point}"]}" ] && [ -n "${_v}" ] && _fio_qd1_fsync_p95_write["${_mount_point}"]="${_v} ms" ;;
-        WRITE_P99_MS) [ -z "${_fio_qd1_fsync_p99_write["${_mount_point}"]}" ] && [ -n "${_v}" ] && _fio_qd1_fsync_p99_write["${_mount_point}"]="${_v} ms" ;;
-      esac
-    done < <(_parse_fio_json "${_qd1_fsync_output}")
+  # Random 4k randwrite QD=1 with fsync (durability realism) - repeated for stability
+  echo "Running QD=1 fsync write test (x${_FIO_QD1_FSYNC_REPEATS}) on ${_mount_point}..."
+  _fs_rep=""
+  _fs_p95_list=() _fs_p99_list=()
+  _fs_ok="YES"
+  for _fs_rep in $(seq 1 "${_FIO_QD1_FSYNC_REPEATS}"); do
+    _qd1_fsync_output="/tmp/fio_qd1_fsync_${_safe_mount_point}_${_fs_rep}_$$.json"
+    if _run_fio_qd1_fsync_test "${_mount_point}" "${_qd1_fsync_output}"; then
+      _tmp_fs95="" _tmp_fs99=""
+      while IFS="=" read -r _k _v; do
+        case "${_k}" in
+          SYNC_P95_MS) _tmp_fs95="${_v}" ;;
+          SYNC_P99_MS) _tmp_fs99="${_v}" ;;
+          WRITE_P95_MS) [ -z "${_tmp_fs95}" ] && _tmp_fs95="${_v}" ;;
+          WRITE_P99_MS) [ -z "${_tmp_fs99}" ] && _tmp_fs99="${_v}" ;;
+        esac
+      done < <(_parse_fio_json "${_qd1_fsync_output}")
+      [ -n "${_tmp_fs95}" ] && _fs_p95_list+=("${_tmp_fs95}")
+      [ -n "${_tmp_fs99}" ] && _fs_p99_list+=("${_tmp_fs99}")
+    else
+      _fs_ok="NO"
+    fi
+    rm -f "${_qd1_fsync_output}" >/dev/null 2>&1
+  done
+
+  if [ "${_fs_ok}" = "YES" ] && [ "${#_fs_p99_list[@]}" -gt 0 ]; then
+    _fio_qd1_fsync_p95_write["${_mount_point}"]="$(_median_num "${_fs_p95_list[@]}") ms"
+    _fio_qd1_fsync_p99_write["${_mount_point}"]="$(_median_num "${_fs_p99_list[@]}") ms"
   else
     _fio_qd1_fsync_p95_write["${_mount_point}"]="ERROR"
     _fio_qd1_fsync_p99_write["${_mount_point}"]="ERROR"
   fi
-  rm -f "${_qd1_fsync_output}" >/dev/null 2>&1
 
   # Metadata test
   _run_metadata_test "${_mount_point}" "_meta_ops[\"${_mount_point}\"]"
