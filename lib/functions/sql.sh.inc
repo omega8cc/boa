@@ -23,6 +23,7 @@ _install_local_ordered() {
   _mrun "dpkg -i ./mysql-common_*_amd64.deb"
   _mrun "dpkg -i ./mysql-community-client-plugins_*_amd64.deb"
   _mrun "dpkg -i ./libmysqlclient24_*_amd64.deb"
+  _mrun "dpkg -i ./libmysqlclient-dev_*_amd64.deb"
   _mrun "dpkg -i ./mysql-community-client-core_*_amd64.deb"
   _mrun "dpkg -i ./mysql-community-client_*_amd64.deb"
   _mrun "dpkg -i ./mysql-client_*_amd64.deb"
@@ -85,6 +86,7 @@ _dpkg_install_mysql() {
 mysql-common
 mysql-community-client-plugins
 libmysqlclient24
+libmysqlclient-dev
 mysql-community-client-core
 mysql-community-client
 mysql-client
@@ -310,7 +312,17 @@ _if_sql_keyring_apt_update() {
       echo "deb http://${_percRepo} ${_SQL_OS_CODE} main" >> ${_percList}
       echo "deb-src http://${_percRepo} ${_SQL_OS_CODE} main" >> ${_percList}
     fi
-    if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
+    if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
+      echo " " >> ${_percList}
+      echo "## Percona Telemetry APT Repository" >> ${_percList}
+      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percTelem} ${_SQL_OS_CODE} main" >> ${_percList}
+        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percTelem} ${_SQL_OS_CODE} main" >> ${_percList}
+      else
+        echo "deb http://${_percTelem} ${_SQL_OS_CODE} main" >> ${_percList}
+        echo "deb-src http://${_percTelem} ${_SQL_OS_CODE} main" >> ${_percList}
+      fi
+    elif [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
       echo " " >> ${_percList}
       echo "## Percona Tools APT Repository" >> ${_percList}
       if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
@@ -986,7 +998,7 @@ _prep_for_install_db_sql() {
     _SQL_OS_CODE="${_OS_CODE}"
   fi
   if [ "${_SQL_OS_CODE}" = "trixie" ]; then
-    _SQL_SCR=DPKG
+    _SQL_SCR=APT
   fi
   _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
@@ -1088,7 +1100,7 @@ _prep_for_install_db_sql() {
   elif [ "${_DB_SERIES}" = "8.0" ]; then
     _SQLADD="libperconaserverclient21 libperconaserverclient21-dev"
   else
-    _SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
+    _SQLADD="libperconaserverclient22 libperconaserverclient22-dev percona-telemetry-agent"
   fi
 
   if [ "${_DB_SERVER}" = "MySQL" ]; then
@@ -1357,7 +1369,7 @@ _db_server_install() {
     _SQL_OS_CODE="${_OS_CODE}"
   fi
   if [ "${_SQL_OS_CODE}" = "trixie" ]; then
-    _SQL_SCR=DPKG
+    _SQL_SCR=APT
   fi
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
