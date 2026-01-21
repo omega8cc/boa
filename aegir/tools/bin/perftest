@@ -175,17 +175,24 @@ _version_ge() {
 
 # Detect whether sysbench was built with mysql driver
 _sysbench_has_mysql_driver() {
-  # sysbench supports: --db-driver=help (lists compiled-in drivers without needing DB credentials)
-  if sysbench --db-driver=help 2>/dev/null | grep -Eqi '^\s*mysql(\s|$)'; then
-    return 0
+  # Never allow this check to hang perftest (and don't let sysbench read from stdin).
+  if command -v timeout >/dev/null 2>&1; then
+    _SB_HELP="$(timeout 3s sysbench --help </dev/null 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
+  else
+    _SB_HELP="$(sysbench --help </dev/null 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
   fi
-  # Fallbacks for different sysbench versions/help formats
-  if sysbench --help 2>/dev/null | grep -Eqi '^\s*mysql\s+-\s+MySQL'; then
-    return 0
+
+  # If sysbench was killed by timeout or produced nothing, treat as "no mysql driver"
+  if [ -z "${_SB_HELP}" ]; then
+    return 1
   fi
-  if sysbench --help 2>/dev/null | grep -Eqi '^\s*mysql options:'; then
-    return 0
-  fi
+
+  # Match either:
+  # - the "Compiled-in database drivers:" section mentioning mysql (even if it was multiline originally), OR
+  # - the explicit "mysql - MySQL driver" entry
+  printf '%s\n' "${_SB_HELP}" | grep -Eqi 'Compiled-in database drivers:.*(^|[[:space:],])mysql([[:space:],]|$)' && return 0
+  printf '%s\n' "${_SB_HELP}" | grep -Eqi '(^|[[:space:]])mysql[[:space:]]*-[[:space:]]*MySQL driver([[:space:]]|$)' && return 0
+
   return 1
 }
 
