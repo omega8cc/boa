@@ -119,38 +119,8 @@ _check_and_install_package() {
   fi
 }
 
-# Helpers (Debian/Devuan)
-_is_pkg_installed() {
-  dpkg-query -W -f='${Status}' "${1}" 2>/dev/null | grep -q "install ok installed"
-}
-
-_sysbench_has_mysql_driver() {
-  _SYSBENCH_HELP="$(sysbench --help 2>/dev/null)"
-
-  # Preferred: sysbench usually prints: "Compiled-in database drivers: mysql"
-  if printf '%s\n' "${_SYSBENCH_HELP}" | grep -i "Compiled-in database drivers" | grep -Eqi '(^|[[:space:],])mysql([[:space:],]|$)'; then
-    return 0
-  fi
-
-  # Fallbacks (in case help format differs)
-  _SYSBENCH_BIN="$(command -v sysbench 2>/dev/null)" || return 1
-
-  if command -v ldd >/dev/null 2>&1; then
-    if ldd "${_SYSBENCH_BIN}" 2>/dev/null | grep -Eqi '(libmysqlclient|libperconaserverclient)'; then
-      return 0
-    fi
-  fi
-
-  if command -v strings >/dev/null 2>&1; then
-    if strings "${_SYSBENCH_BIN}" 2>/dev/null | grep -Eqi '(mysql_real_connect|mysql_init|mysql_options)'; then
-      return 0
-    fi
-  fi
-
-  return 1
-}
-
-_ensure_dependencies() {
+# Ensure sysbench build dependencies are present (always run)
+_ensure_sysbench_build_deps() {
   _check_and_install_package "git"
   _check_and_install_package "make"
   _check_and_install_package "gcc"
@@ -160,58 +130,125 @@ _ensure_dependencies() {
   _check_and_install_package "libaio-dev"
 }
 
-# Prefer sysbench build-from-source without MySQL/MariaDB, but:
-# - If MySQL server is installed AND the right client package is installed
-#   (Percona 5.7/8.0/8.4 via libperconaserverclient2[0-2]-dev, or MySQL 8.4 via libmysqlclient24),
-#   ensure sysbench has mysql driver; rebuild if not.
-_ensure_sysbench() {
+# Extract sysbench version (first X.Y[.Z...] token)
+_sysbench_get_version() {
+  sysbench --version 2>/dev/null | grep -Eo '[0-9]+(\.[0-9]+)+' | head -n 1
+}
 
-  _ensure_dependencies
+# Return 0 if version A >= version B (dot-separated numeric)
+_version_ge() {
+  # Usage: _version_ge "1.0.20" "1.0.18"
+  _A="${1}"
+  _B="${2}"
 
-  _MYSQL_PRESENT="NO"
-  _MYSQL_CLIENT_PKG_PRESENT="NO"
-  _MYSQL_CONFIG_PRESENT="NO"
-  _MYSQL_SUPPORT_POSSIBLE="NO"
-  _SYSBENCH_NEEDS_REBUILD="NO"
+  # Empty versions => fail safe
+  if [ -z "${_A}" ] || [ -z "${_B}" ]; then
+    return 1
+  fi
 
-  # MySQL/Percona server present?
+  # shellcheck disable=SC2206
+  _A_ARR=(${_A//./ })
+  # shellcheck disable=SC2206
+  _B_ARR=(${_B//./ })
+
+  _I=0
+  _MAX="${#_A_ARR[@]}"
+  if [ "${#_B_ARR[@]}" -gt "${_MAX}" ]; then
+    _MAX="${#_B_ARR[@]}"
+  fi
+
+  while [ "${_I}" -lt "${_MAX}" ]; do
+    _AI="${_A_ARR[${_I}]:-0}"
+    _BI="${_B_ARR[${_I}]:-0}"
+
+    # Force base-10 numeric compare (avoid 08/09 octal edge)
+    if [ "$((10#${_AI}))" -gt "$((10#${_BI}))" ]; then
+      return 0
+    fi
+    if [ "$((10#${_AI}))" -lt "$((10#${_BI}))" ]; then
+      return 1
+    fi
+
+    _I=$((_I + 1))
+  done
+
+  return 0
+}
+
+# Detect whether sysbench was built with mysql driver
+_sysbench_has_mysql_driver() {
+  _SYSBENCH_HELP="$(sysbench --help 2>/dev/null)"
+  if printf '%s\n' "${_SYSBENCH_HELP}" \
+    | grep -i "Compiled-in database drivers" \
+    | grep -Eqi '(^|[[:space:],])mysql([[:space:],]|$)'; then
+    return 0
+  fi
+  return 1
+}
+
+_mysql_is_present() {
   if command -v mysqld >/dev/null 2>&1 || [ -d "/var/lib/mysql/mysql" ]; then
-    _MYSQL_PRESENT="YES"
+    return 0
+  fi
+  return 1
+}
+
+_mysql_build_support_ok() {
+  if ! command -v mysql_config >/dev/null 2>&1; then
+    return 1
+  fi
+  mysql_config --cflags >/dev/null 2>&1 || return 1
+  mysql_config --libs   >/dev/null 2>&1 || return 1
+  return 0
+}
+
+# Prefer sysbench build-from-source without MySQL, but rebuild with mysql support when appropriate.
+# Rebuild triggers:
+# - sysbench missing
+# - sysbench version < ${_SYSBENCH_MIN_VER} (defaults below)
+# - mysql is present + mysql_config works + sysbench lacks mysql driver
+_ensure_sysbench() {
+  # Dummy default; override elsewhere if you want.
+  if [ -z "${_SYSBENCH_MIN_VER}" ]; then
+    _SYSBENCH_MIN_VER="1.1.0"
   fi
 
-  # Only care about the packages BOA is using
-  if _is_pkg_installed "libperconaserverclient20-dev" \
-    || _is_pkg_installed "libperconaserverclient21-dev" \
-    || _is_pkg_installed "libperconaserverclient22-dev" \
-    || _is_pkg_installed "libmysqlclient24"; then
-    _MYSQL_CLIENT_PKG_PRESENT="YES"
-  fi
+  _MYSQL_SUPPORT_POSSIBLE="NO"
+  _NEEDS_BUILD="NO"
 
-  # mysql_config is still the practical gate for a MySQL-enabled sysbench build
-  if command -v mysql_config >/dev/null 2>&1; then
-    _MYSQL_CONFIG_PRESENT="YES"
-  fi
+  # Always ensure prerequisites (even if we end up doing nothing)
+  _ensure_sysbench_build_deps
 
-  if [ "${_MYSQL_PRESENT}" = "YES" ] \
-    && [ "${_MYSQL_CLIENT_PKG_PRESENT}" = "YES" ] \
-    && [ "${_MYSQL_CONFIG_PRESENT}" = "YES" ]; then
+  if _mysql_is_present && _mysql_build_support_ok; then
     _MYSQL_SUPPORT_POSSIBLE="YES"
   fi
 
-  if command -v sysbench >/dev/null 2>&1; then
-    if [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
+  if ! command -v sysbench >/dev/null 2>&1; then
+    _NEEDS_BUILD="YES"
+  else
+    _SYSBENCH_CUR_VER="$(_sysbench_get_version)"
+
+    # Version gate: rebuild if current version cannot be read or is too old
+    if ! _version_ge "${_SYSBENCH_CUR_VER}" "${_SYSBENCH_MIN_VER}"; then
+      _NEEDS_BUILD="YES"
+    fi
+
+    # MySQL driver gate: rebuild only when MySQL support is actually possible
+    if [ "${_NEEDS_BUILD}" != "YES" ] && [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
       if ! _sysbench_has_mysql_driver; then
-        _SYSBENCH_NEEDS_REBUILD="YES"
+        _NEEDS_BUILD="YES"
       fi
     fi
+  fi
 
-    if [ "${_SYSBENCH_NEEDS_REBUILD}" = "NO" ]; then
-      return 0
-    fi
+  if [ "${_NEEDS_BUILD}" != "YES" ]; then
+    return 0
+  fi
 
-    _log "sysbench detected but missing mysql driver; rebuilding with MySQL support..."
+  if command -v sysbench >/dev/null 2>&1; then
+    _log "Rebuilding sysbench from source (min ${_SYSBENCH_MIN_VER}; MySQL support possible: ${_MYSQL_SUPPORT_POSSIBLE})..."
   else
-    _log "Compiling sysbench from source..."
+    _log "Compiling sysbench from source (min ${_SYSBENCH_MIN_VER})..."
   fi
 
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
@@ -223,8 +260,7 @@ _ensure_sysbench() {
 
   ./autogen.sh >/dev/null 2>&1 || exit 1
 
-  # Default stays --without-mysql to avoid dependency conflicts,
-  # but if MySQL support is possible (server+client already present), build with mysql.
+  # Default: without mysql. Enable mysql only when we proved build support is present.
   if [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
     ./configure >/dev/null 2>&1 || exit 1
   else
