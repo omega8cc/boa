@@ -1334,7 +1334,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/boa" ] \
-    || [ ! -e "${_pthLog}/boa.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/boa.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/boa)
     if (( _CNT > 0 )); then
       echo "The boa is running!"
@@ -1346,7 +1346,7 @@ _update_agents() {
       if [ -e "${_optBin}/boa" ]; then
         chmod 700 ${_optBin}/boa
         chown root:root ${_optBin}/boa
-        touch ${_pthLog}/boa.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/boa.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/boa.old" ]; then
           mv -f ${_optBin}/boa.old ${_optBin}/boa
@@ -1356,7 +1356,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/barracuda" ] \
-    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/barracuda)
     if (( _CNT > 0 )); then
       echo "The barracuda is running!"
@@ -1368,7 +1368,7 @@ _update_agents() {
       if [ -e "${_optBin}/barracuda" ]; then
         chmod 700 ${_optBin}/barracuda
         chown root:root ${_optBin}/barracuda
-        touch ${_pthLog}/barracuda.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/barracuda.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/barracuda.old" ]; then
           mv -f ${_optBin}/barracuda.old ${_optBin}/barracuda
@@ -1378,7 +1378,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/octopus" ] \
-    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/octopus)
     if (( _CNT > 0 )); then
       echo "The octopus is running!"
@@ -1390,7 +1390,7 @@ _update_agents() {
       if [ -e "${_optBin}/octopus" ]; then
         chmod 700 ${_optBin}/octopus
         chown root:root ${_optBin}/octopus
-        touch ${_pthLog}/octopus.sh.ctrl.f96.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/octopus.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/octopus.old" ]; then
           mv -f ${_optBin}/octopus.old ${_optBin}/octopus
@@ -2155,7 +2155,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/autoupboa.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/autoupboa.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autoupboa)
     if (( _CNT > 0 )); then
       echo "The autoupboa is running!"
@@ -2167,7 +2167,7 @@ _update_agents() {
       if [ -e "${_optBin}/autoupboa" ]; then
         chmod 700 ${_optBin}/autoupboa
         chown root:root ${_optBin}/autoupboa
-        touch ${_pthLog}/autoupboa.ctrl.f87.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autoupboa.ctrl.f86.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autoupboa.old" ]; then
           mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
