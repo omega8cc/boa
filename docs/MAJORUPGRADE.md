@@ -10,13 +10,11 @@ But if you prefer to have all major OS upgrade multi-steps and versions automate
 
 You can easily upgrade your system from any supported Debian version, starting with Debian Jessie, to Devuan Daedalus or Devuan Excalibur, which are both systemd-free equivalents of Debian Bookworm and Debian Trixie. You can upgrade from Devuan Beowulf or Chimaera to the recommended Devuan Daedalus using the same procedure.
 
-**NOTE:** While by default BOA installs Percona 5.7 in Devuan Daedalus, it will not install Percona but vanilla MySQL 8.4 in Devuan Excalibur.
+**NOTE:** While by default BOA installs Percona 5.7 in Devuan Daedalus, it will install Percona 8.4 in Devuan Excalibur.
 
 **NOTE:** You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 only on Devuan Daedalus.
 
 **NOTE:** You can't upgrade from Percona 5.7 to Percona 8.4 directly, so you first run `barracuda up-lts system percona-8.0` and then `barracuda up-lts system percona-8.4`
-
-**NOTE:** You can't install any Percona version on Devuan Excalibur (yet) which currently supports only MySQL 8.4.
 
 Please follow the required steps closely!
 
