@@ -1253,8 +1253,8 @@ _parse_fio_json() {
   echo "READ_P99_MS=${_read_p99_ms}"
   echo "WRITE_P95_MS=${_write_p95_ms}"
   echo "WRITE_P99_MS=${_write_p99_ms}"
-echo "SYNC_P95_MS=${_sync_p95_ms}"
-echo "SYNC_P99_MS=${_sync_p99_ms}"
+  echo "SYNC_P95_MS=${_sync_p95_ms}"
+  echo "SYNC_P99_MS=${_sync_p99_ms}"
 }
 
 # Simple metadata / small file operations test
@@ -1534,7 +1534,6 @@ _boa_grade_cpu_speed() {
     else print "poor";
   }'
 }
-
 
 _boa_grade_db_oltp() {
   # Inputs:
