@@ -23,6 +23,7 @@ _install_local_ordered() {
   _mrun "dpkg -i ./mysql-common_*_amd64.deb"
   _mrun "dpkg -i ./mysql-community-client-plugins_*_amd64.deb"
   _mrun "dpkg -i ./libmysqlclient24_*_amd64.deb"
+  _mrun "dpkg -i ./libmysqlclient-dev_*_amd64.deb"
   _mrun "dpkg -i ./mysql-community-client-core_*_amd64.deb"
   _mrun "dpkg -i ./mysql-community-client_*_amd64.deb"
   _mrun "dpkg -i ./mysql-client_*_amd64.deb"
@@ -85,6 +86,7 @@ _dpkg_install_mysql() {
 mysql-common
 mysql-community-client-plugins
 libmysqlclient24
+libmysqlclient-dev
 mysql-community-client-core
 mysql-community-client
 mysql-client
@@ -986,7 +988,7 @@ _prep_for_install_db_sql() {
     _SQL_OS_CODE="${_OS_CODE}"
   fi
   if [ "${_SQL_OS_CODE}" = "trixie" ]; then
-    _SQL_SCR=DPKG
+    _SQL_SCR=APT
   fi
   _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
@@ -1357,7 +1359,7 @@ _db_server_install() {
     _SQL_OS_CODE="${_OS_CODE}"
   fi
   if [ "${_SQL_OS_CODE}" = "trixie" ]; then
-    _SQL_SCR=DPKG
+    _SQL_SCR=APT
   fi
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
