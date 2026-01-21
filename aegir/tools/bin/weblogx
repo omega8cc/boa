@@ -82,7 +82,7 @@ _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
@@ -153,8 +153,8 @@ _install_goaccess() {
   cd /var/opt
   rm -rf /var/opt/goaccess*
   if [ -e "${_USE_GITHUB}" ]; then
-    echo "Downloading from https://github.com/allinurl/goaccess.git"
-    git clone https://github.com/allinurl/goaccess.git
+    echo "Downloading from https://github.com/omega8cc/goaccess.git"
+    git clone https://github.com/omega8cc/goaccess.git
     cd /var/opt/goaccess
     autoreconf -fi
   else

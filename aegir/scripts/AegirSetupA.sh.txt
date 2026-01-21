@@ -205,7 +205,7 @@ _satellite_add_user_dirs
 _satellite_prepare_child_scripts
 _satellite_run_pre_install
 if [ "${_OS_CODE}" = "excalibur" ]; then
-  _DB_SERVER=MySQL
+  _DB_SERVER=Percona
 else
   _DB_SERVER=Percona
 fi

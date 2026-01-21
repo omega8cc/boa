@@ -233,7 +233,7 @@ fi
 ### Download helpers and libs
 ###
 if [ "${_OS_CODE}" = "excalibur" ]; then
-  _DB_SERVER=MySQL
+  _DB_SERVER=Percona
 else
   _DB_SERVER=Percona
 fi

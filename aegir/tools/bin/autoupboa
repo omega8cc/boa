@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=585ltsT00
+export _tRee=dev
+export _xSrl=585devT01
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -536,7 +536,7 @@ _status_vm_postinstall() {
     chattr +i ${_VM_N_SYS}
   fi
   if [ "${_OS_CODE}" = "excalibur" ]; then
-    _DB_SERVER=MySQL
+    _DB_SERVER=Percona
   else
     _DB_SERVER=Percona
   fi
@@ -915,7 +915,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   fi
 
   if [ ! -e "/var/log/boa/.etc_csf_allow_ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mkdir -p /var/backups/csf
+    [ -d "/var/backups/csf" ] || mkdir -p /var/backups/csf
     cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${_tRee}.${_xSrl}.txt
     cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${_tRee}.${_xSrl}.txt
     rm -f /root/.*.pid

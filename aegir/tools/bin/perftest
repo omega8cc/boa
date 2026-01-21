@@ -4,14 +4,109 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-# -------------------------------
-# Helpers
-# -------------------------------
+# Tunables
+_PHP_BENCH_ITERATIONS=50000 # per process
+_PHP_BENCH_RUNS=5 # single-thread runs for median
+_PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
+_SYSBENCH_CPU_TIME=30 # seconds
+_SYSBENCH_MEM_TIME=30 # seconds
+_DB_SYSBENCH_TIME_RO=30 # seconds (read-only OLTP)
+_DB_SYSBENCH_TIME_RW=30 # seconds (read-write OLTP)
+_DB_SYSBENCH_TABLES=4 # number of tables
+_DB_SYSBENCH_TABLE_SIZE=100000 # rows per table (light)
+_DB_SYSBENCH_TABLE_SIZE_HEAVY=1000000 # rows per table (heavy)
+_DB_SYSBENCH_THREADS_MAX=16 # cap threads
+_DB_SYSBENCH_THREADS_MIN=2 # min threads
+_MEM_BENCH_TIME=10 # seconds (DRAM-focused membench, per run)
+_MEM_BENCH_REPEATS=3 # repeats for stability; median-of-3 is used
+_MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
+_MEM_BENCH_SIZE_MAX_MIB=1024 # MiB working set (cap to avoid OOM)
+_MEM_BENCH_THREADS_MAX=8 # cap threads used for memory bandwidth
+_MEM_BENCH_LAT_SIZE_MIB=256 # MiB pointer-chase working set (DRAM latency)
+_FIO_RAND_RUNTIME=60 # seconds
+_FIO_SEQ_RUNTIME=60 # seconds
+_FIO_QD1_RUNTIME=20 # seconds (QD=1 random latency for tiering)
+_FIO_QD1_SIZE_M=256 # MiB per QD=1 test
+_FIO_QD1_FSYNC_RUNTIME=15 # seconds (QD=1 randwrite with fsync for DB realism)
+_FIO_QD1_FSYNC_SIZE_M=128 # MiB (file size for fsync test)
+_FIO_QD1_REPEATS=3 # repeats for QD=1 tests to reduce noise (median-of-N used)
+_FIO_QD1_FSYNC_REPEATS=3 # repeats for QD=1 fsync tests to reduce noise (median-of-N used)
+_METADATA_FILE_COUNT=5000 # small-file ops per mount
+_NET_TIMEOUT=10 # seconds for curl speedtest
+_AES_TEST_MIB=500 # MiB encrypted for AES throughput test
+_IOPING_SECONDS=5 # seconds for ioping checks
 
+# Output mode
+_VERBOSE=0   # default: full output
+_COMPACT=1   # compact BOA-focused mode
+
+# DB benchmark (sysbench OLTP)
+_DBTEST_ENABLED=YES
+_DBTEST_HEAVY=NO
+_DBTEST_KEEP_DB=NO
+
+# CSV output
+# Printed only in --verbose mode (no CSV in compact mode).
+
+# ----
+# Usage
+# ----
+_usage() {
+  cat <<'USAGE'
+Usage: perftest [--compact|--quiet] [--verbose] [-h|--help]
+
+  --compact, --quiet  Print BOA-focused compact summary only (default)
+                      (prioritizes memory > CPU > disk > network)
+  --verbose           Print full detailed output or just CSV summary with | grep CSV_
+  --no-dbtest         Skip MySQL sysbench OLTP benchmark (default: run in --verbose mode)
+  --dbtest-heavy      Use larger dataset for DB test (more disk pressure)
+  --keep-db           Keep sysbench DB after run (for debugging)
+  -h, --help          Show this help
+
+BOA context: This script evaluates VM vendor/host quality for BOA stack
+(Drupal + APC/Valkey/OPcache/Nginx microcaching). Compact mode highlights
+the metrics that matter most for in-memory caching performance.
+USAGE
+}
+
+# ----
+# Helpers
+# ----
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
     echo "ERROR: This script must be run as root"
     exit 1
+  fi
+}
+
+_log() {
+  [ "${_VERBOSE}" -eq 1 ] && echo "$@"
+}
+
+_find_fast_mirror_early() {
+  _USE_MIR=
+  _urlDld=
+  _ffMirr=/opt/local/bin/ffmirror
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    [ -d "/var/backups" ] || mkdir -p /var/backups
+    if [ ! -e "${_ffList}" ]; then
+      echo "eu.files.aegir.cc"  > ${_ffList}
+      echo "us.files.aegir.cc" >> ${_ffList}
+      echo "ao.files.aegir.cc" >> ${_ffList}
+    fi
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR=
+      fi
+    fi
+  fi
+  if [ -n "${_USE_MIR}" ]; then
+    _urlDld="http://${_USE_MIR}/dev/solr-4.2.1.tgz"
   fi
 }
 
@@ -24,53 +119,898 @@ _check_and_install_package() {
   fi
 }
 
-# Prefer apt sysbench, fallback to build-from-source without MySQL
-_ensure_sysbench() {
-  if command -v sysbench >/dev/null 2>&1; then
-    return 0
-  fi
-
-  # Try Debian package first (usually good enough and avoids build deps)
-  _check_and_install_package "sysbench"
-  if command -v sysbench >/dev/null 2>&1; then
-    return 0
-  fi
-
-  # Fallback: compile from source without MySQL support
-  echo "sysbench package not available; compiling sysbench from source (without MySQL)..."
+# Ensure sysbench build dependencies are present (always run)
+_ensure_sysbench_build_deps() {
   _check_and_install_package "git"
   _check_and_install_package "make"
   _check_and_install_package "gcc"
   _check_and_install_package "automake"
   _check_and_install_package "libtool"
   _check_and_install_package "pkg-config"
+  _check_and_install_package "libaio-dev"
+}
+
+# Extract sysbench version (first X.Y[.Z...] token)
+_sysbench_get_version() {
+  sysbench --version 2>/dev/null | grep -Eo '[0-9]+(\.[0-9]+)+' | head -n 1
+}
+
+# Return 0 if version A >= version B (dot-separated numeric)
+_version_ge() {
+  # Usage: _version_ge "1.0.20" "1.0.18"
+  _A="${1}"
+  _B="${2}"
+
+  # Empty versions => fail safe
+  if [ -z "${_A}" ] || [ -z "${_B}" ]; then
+    return 1
+  fi
+
+  # shellcheck disable=SC2206
+  _A_ARR=(${_A//./ })
+  # shellcheck disable=SC2206
+  _B_ARR=(${_B//./ })
+
+  _I=0
+  _MAX="${#_A_ARR[@]}"
+  if [ "${#_B_ARR[@]}" -gt "${_MAX}" ]; then
+    _MAX="${#_B_ARR[@]}"
+  fi
+
+  while [ "${_I}" -lt "${_MAX}" ]; do
+    _AI="${_A_ARR[${_I}]:-0}"
+    _BI="${_B_ARR[${_I}]:-0}"
+    # Force base-10 numeric compare (avoid 08/09 octal edge)
+    if [ "$((10#${_AI}))" -gt "$((10#${_BI}))" ]; then
+      return 0
+    fi
+    if [ "$((10#${_AI}))" -lt "$((10#${_BI}))" ]; then
+      return 1
+    fi
+    _I=$((_I + 1))
+  done
+
+  return 0
+}
+
+# Detect whether sysbench was built with mysql driver
+_sysbench_has_mysql_driver() {
+  # Never allow this check to hang perftest (and don't let sysbench read from stdin).
+  if command -v timeout >/dev/null 2>&1; then
+    _SB_HELP="$(timeout 3s sysbench --help </dev/null 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
+  else
+    _SB_HELP="$(sysbench --help </dev/null 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
+  fi
+
+  # If sysbench was killed by timeout or produced nothing, treat as "no mysql driver"
+  if [ -z "${_SB_HELP}" ]; then
+    return 1
+  fi
+
+  # Match either:
+  # - the "Compiled-in database drivers:" section mentioning mysql (even if it was multiline originally), OR
+  # - the explicit "mysql - MySQL driver" entry
+  printf '%s\n' "${_SB_HELP}" | grep -Eqi 'Compiled-in database drivers:.*(^|[[:space:],])mysql([[:space:],]|$)' && return 0
+  printf '%s\n' "${_SB_HELP}" | grep -Eqi '(^|[[:space:]])mysql[[:space:]]*-[[:space:]]*MySQL driver([[:space:]]|$)' && return 0
+
+  return 1
+}
+
+_mysql_is_present() {
+  if command -v mysqld >/dev/null 2>&1 || [ -d "/var/lib/mysql/mysql" ]; then
+    return 0
+  fi
+  return 1
+}
+
+_mysql_build_support_ok() {
+  if ! command -v mysql_config >/dev/null 2>&1; then
+    return 1
+  fi
+  mysql_config --cflags >/dev/null 2>&1 || return 1
+  mysql_config --libs   >/dev/null 2>&1 || return 1
+  return 0
+}
+
+# Prefer sysbench build-from-source without MySQL, but rebuild with mysql support when appropriate.
+# Rebuild triggers:
+# - sysbench missing
+# - sysbench version < ${_SYSBENCH_MIN_VER} (defaults below)
+# - mysql is present + mysql_config works + sysbench lacks mysql driver
+_ensure_sysbench() {
+  # Dummy default; override elsewhere if you want.
+  if [ -z "${_SYSBENCH_MIN_VER}" ]; then
+    _SYSBENCH_MIN_VER="1.1.0"
+  fi
+
+  _MYSQL_SUPPORT_POSSIBLE="NO"
+  _NEEDS_BUILD="NO"
+
+  # Always ensure prerequisites (even if we end up doing nothing)
+  _ensure_sysbench_build_deps
+
+  if _mysql_is_present && _mysql_build_support_ok; then
+    _MYSQL_SUPPORT_POSSIBLE="YES"
+  fi
+
+  if ! command -v sysbench >/dev/null 2>&1; then
+    _NEEDS_BUILD="YES"
+    _log "The sysbench is not installed yet, building from source..."
+  else
+    _SYSBENCH_CUR_VER="$(_sysbench_get_version)"
+
+    # Version gate: rebuild if current version cannot be read or is too old
+    if ! _version_ge "${_SYSBENCH_CUR_VER}" "${_SYSBENCH_MIN_VER}"; then
+      _NEEDS_BUILD="YES"
+      _log "The sysbench version is ${_SYSBENCH_CUR_VER} while minimum is ${_SYSBENCH_MIN_VER}, building from source..."
+    fi
+
+    # MySQL driver gate: rebuild only when MySQL support is actually possible
+    if [ "${_NEEDS_BUILD}" != "YES" ] && [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
+      if ! _sysbench_has_mysql_driver; then
+        _NEEDS_BUILD="YES"
+        _log "The sysbench MySQL support is missing, compiling from source..."
+      fi
+    fi
+  fi
+
+  if [ "${_NEEDS_BUILD}" != "YES" ]; then
+    return 0
+  fi
+
+  if command -v sysbench >/dev/null 2>&1; then
+    _log "Rebuilding sysbench from source (min ${_SYSBENCH_MIN_VER}; MySQL support possible: ${_MYSQL_SUPPORT_POSSIBLE})..."
+  else
+    _log "Compiling sysbench from source (min ${_SYSBENCH_MIN_VER})..."
+  fi
 
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
   mkdir -p /tmp/sysbench-build || exit 1
   cd /tmp/sysbench-build || exit 1
 
-  git clone --depth 1 https://github.com/akopytov/sysbench.git >/dev/null 2>&1 || exit 1
+  git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1 || exit 1
   cd sysbench || exit 1
+
   ./autogen.sh >/dev/null 2>&1 || exit 1
-  ./configure --without-mysql >/dev/null 2>&1 || exit 1
+
+  # Default: without mysql. Enable mysql only when we proved build support is present.
+  if [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
+    ./configure >/dev/null 2>&1 || exit 1
+  else
+    ./configure --without-mysql >/dev/null 2>&1 || exit 1
+  fi
+
   make -j"$(nproc)" >/dev/null 2>&1 || exit 1
   make install >/dev/null 2>&1 || exit 1
 
   cd /root || exit 1
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
+
+  # Ensure shell picks up any newly installed sysbench in PATH
+  hash -r >/dev/null 2>&1
+}
+
+# Best-effort C compiler (for DRAM-focused membench)
+_ensure_cc() {
+  if command -v gcc >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v cc >/dev/null 2>&1; then
+    return 0
+  fi
+  _check_and_install_package "gcc"
+}
+
+_get_l3_cache_mib() {
+  # Best-effort detection of L3 cache size (MiB) for sizing the memory benchmark.
+  # Returns empty string if unknown.
+  local _idx _lvl _sz _val
+
+  # Prefer sysfs (works in most Linux guests).
+  for _idx in /sys/devices/system/cpu/cpu0/cache/index*; do
+    [ -d "${_idx}" ] || continue
+    _lvl="$(cat "${_idx}/level" 2>/dev/null)"
+    if [ "${_lvl}" = "3" ]; then
+      _sz="$(cat "${_idx}/size" 2>/dev/null)"
+      case "${_sz}" in
+        *K) _val="${_sz%K}"; echo $(( _val / 1024 )); return 0 ;;
+        *M) _val="${_sz%M}"; echo "${_val}"; return 0 ;;
+      esac
+    fi
+  done
+
+  # Fallback to lscpu output.
+  if command -v lscpu >/dev/null 2>&1; then
+    _sz="$(lscpu 2>/dev/null | awk -F: '/L3 cache/ {gsub(/^[ 	]+/,"",$2); print $2; exit}')"
+    case "${_sz}" in
+      *K) _val="${_sz%K}"; echo $(( _val / 1024 )); return 0 ;;
+      *M) _val="${_sz%M}"; echo "${_val}"; return 0 ;;
+    esac
+  fi
+
+  echo ""
+}
+
+_calc_mem_bench_size_mib() {
+  # Choose a working set intended to exceed LLC but avoid OOM.
+  # NOTE: membench allocates *two* buffers of this size (src+dst), so the
+  # actual resident footprint is roughly 2x.
+  local _avail_kb _avail_mib _mib _l3_mib _target _max_by_avail
+
+  _avail_kb="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null)"
+  if [ -z "${_avail_kb}" ]; then
+    _avail_kb="$(awk '/MemFree:/ {print $2}' /proc/meminfo 2>/dev/null)"
+  fi
+  _avail_mib=0
+  if [ -n "${_avail_kb}" ]; then
+    _avail_mib=$(( _avail_kb / 1024 ))
+  fi
+
+  _l3_mib="$(_get_l3_cache_mib)"
+
+  # Start from 4x L3 (if known), otherwise 25% of MemAvailable.
+  if [ -n "${_l3_mib}" ] && [ "${_l3_mib}" -gt 0 ]; then
+    _target=$(( _l3_mib * 4 ))
+  else
+    if [ "${_avail_mib}" -gt 0 ]; then
+      _target=$(( _avail_mib / 4 ))
+    else
+      _target="${_MEM_BENCH_SIZE_MIN_MIB}"
+    fi
+  fi
+
+  # Clamp to configured min/max.
+  _mib="${_target}"
+  if [ "${_mib}" -lt "${_MEM_BENCH_SIZE_MIN_MIB}" ]; then
+    _mib="${_MEM_BENCH_SIZE_MIN_MIB}"
+  fi
+  if [ "${_mib}" -gt "${_MEM_BENCH_SIZE_MAX_MIB}" ]; then
+    _mib="${_MEM_BENCH_SIZE_MAX_MIB}"
+  fi
+
+  # Headroom guard: keep 2x buffers under ~60% of MemAvailable.
+  # (2 buffers + overhead + other daemons)
+  if [ "${_avail_mib}" -gt 0 ]; then
+    _max_by_avail=$(( (_avail_mib * 60 / 100) / 2 ))
+    if [ "${_max_by_avail}" -gt 0 ] && [ "${_mib}" -gt "${_max_by_avail}" ]; then
+      _mib="${_max_by_avail}"
+      if [ "${_mib}" -lt "${_MEM_BENCH_SIZE_MIN_MIB}" ]; then
+        _mib="${_MEM_BENCH_SIZE_MIN_MIB}"
+      fi
+    fi
+  fi
+
+  echo "${_mib}"
+}
+
+_build_membench() {
+  # Builds /tmp/perftest_membench if missing.
+  local _bin _c _cc
+  _bin="/tmp/perftest_membench"
+  [ -x "${_bin}" ] && return 0
+
+  _ensure_cc
+
+  if command -v gcc >/dev/null 2>&1; then
+    _cc="gcc"
+  else
+    _cc="cc"
+  fi
+
+  _c="/tmp/perftest_membench.c"
+
+  cat > "${_c}" <<'C'
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <time.h>
+#include <pthread.h>
+#include <unistd.h>
+
+typedef struct {
+  uint8_t *src;
+  uint8_t *dst;
+  size_t offset;
+  size_t len;
+  double seconds;
+  uint64_t bytes;
+} worker_t;
+
+static inline double now_sec(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
+static void *bw_worker(void *arg) {
+  worker_t *w = (worker_t *)arg;
+  uint8_t *src = w->src + w->offset;
+  uint8_t *dst = w->dst + w->offset;
+  size_t len = w->len;
+  uint64_t bytes = 0;
+
+  // Warm-up touch
+  for (size_t i = 0; i < len; i += 4096) {
+    dst[i] = (uint8_t)(src[i] ^ 0x5a);
+  }
+
+  const double end = now_sec() + w->seconds;
+  while (1) {
+    // Do a small batch of copies before re-checking time (reduces timer overhead)
+    for (int k = 0; k < 8; k++) {
+      memcpy(dst, src, len);
+      // Prevent overly aggressive optimization / dead-store elimination
+      dst[0] ^= src[0];
+      bytes += (uint64_t)len;
+    }
+    if (now_sec() >= end) break;
+  }
+
+  w->bytes = bytes;
+  return NULL;
+}
+
+static uint64_t xorshift64(uint64_t *state) {
+  uint64_t x = *state;
+  x ^= x << 13;
+  x ^= x >> 7;
+  x ^= x << 17;
+  *state = x;
+  return x;
+}
+
+static double pointer_chase_latency_ns(size_t bytes, double seconds) {
+  // Pointer chasing over a large random cycle to approximate DRAM latency.
+  // bytes should exceed LLC to avoid cache-only results.
+
+  size_t n = bytes / sizeof(uint32_t);
+  if (n < 1024) n = 1024;
+
+  uint32_t *next = NULL;
+  if (posix_memalign((void **)&next, 64, n * sizeof(uint32_t)) != 0) {
+    return 0.0;
+  }
+
+  // Build a random permutation (single cycle)
+  uint32_t *perm = NULL;
+  if (posix_memalign((void **)&perm, 64, n * sizeof(uint32_t)) != 0) {
+    free(next);
+    return 0.0;
+  }
+
+  for (size_t i = 0; i < n; i++) perm[i] = (uint32_t)i;
+
+  uint64_t seed = 0x12345678abcdef00ULL;
+  for (size_t i = n - 1; i > 0; i--) {
+    size_t j = (size_t)(xorshift64(&seed) % (i + 1));
+    uint32_t tmp = perm[i];
+    perm[i] = perm[j];
+    perm[j] = tmp;
+  }
+
+  for (size_t i = 0; i < n; i++) {
+    next[perm[i]] = perm[(i + 1) % n];
+  }
+
+  // Warm-up: walk a bit
+  volatile uint32_t idx = 0;
+  for (size_t i = 0; i < (n < 100000 ? n : 100000); i++) {
+    idx = next[idx];
+  }
+
+  const double end = now_sec() + seconds;
+  uint64_t ops = 0;
+  double t0 = now_sec();
+
+  while (1) {
+    // Batch pointer derefs to reduce timer overhead
+    for (int k = 0; k < 4096; k++) {
+      idx = next[idx];
+    }
+    ops += 4096;
+    if (now_sec() >= end) break;
+  }
+
+  double t1 = now_sec();
+  (void)idx;
+
+  free(perm);
+  free(next);
+
+  double elapsed = t1 - t0;
+  if (ops == 0 || elapsed <= 0.0) return 0.0;
+  return (elapsed * 1e9) / (double)ops;
+}
+
+int main(int argc, char **argv) {
+  long size_mib = 256;
+  long lat_mib = 0;
+  int threads = 1;
+  double seconds = 5.0;
+
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--size-mib") && i + 1 < argc) {
+      size_mib = atol(argv[++i]);
+    } else if (!strcmp(argv[i], "--threads") && i + 1 < argc) {
+      threads = atoi(argv[++i]);
+    } else if (!strcmp(argv[i], "--lat-mib") && i + 1 < argc) {
+      lat_mib = atol(argv[++i]);
+    } else if (!strcmp(argv[i], "--seconds") && i + 1 < argc) {
+      seconds = atof(argv[++i]);
+    }
+  }
+
+  if (size_mib < 64) size_mib = 64;
+  if (threads < 1) threads = 1;
+
+  size_t total = (size_t)size_mib * 1024 * 1024;
+
+  uint8_t *src = NULL;
+  uint8_t *dst = NULL;
+  if (posix_memalign((void **)&src, 64, total) != 0) return 2;
+  if (posix_memalign((void **)&dst, 64, total) != 0) return 2;
+
+  // Fill src with a pattern to avoid special zero-page behaviors
+  for (size_t i = 0; i < total; i += 4096) {
+    src[i] = (uint8_t)((i >> 12) ^ 0xa5);
+  }
+
+  // Partition work among threads
+  pthread_t *t = calloc((size_t)threads, sizeof(pthread_t));
+  worker_t *w = calloc((size_t)threads, sizeof(worker_t));
+  if (!t || !w) return 3;
+
+  size_t chunk = total / (size_t)threads;
+  // Align chunk to 64 bytes
+  chunk = (chunk / 64) * 64;
+
+  double start = now_sec();
+  for (int i = 0; i < threads; i++) {
+    w[i].src = src;
+    w[i].dst = dst;
+    w[i].offset = (size_t)i * chunk;
+    w[i].len = chunk;
+    w[i].seconds = seconds;
+    w[i].bytes = 0;
+    pthread_create(&t[i], NULL, bw_worker, &w[i]);
+  }
+  for (int i = 0; i < threads; i++) pthread_join(t[i], NULL);
+  double end = now_sec();
+
+  uint64_t total_bytes = 0;
+  for (int i = 0; i < threads; i++) total_bytes += w[i].bytes;
+
+  double elapsed = end - start;
+  double mibps = 0.0;
+  if (elapsed > 0.0) mibps = ((double)total_bytes / 1024.0 / 1024.0) / elapsed;
+
+  // Latency test: pointer-chase over a large random cycle
+  // Default: derive from bandwidth working set; override with --lat-mib
+  size_t lat_bytes;
+  if (lat_mib > 0) {
+    lat_bytes = (size_t)lat_mib * 1024 * 1024;
+  } else {
+    lat_bytes = total;
+  }
+  if (lat_bytes > (size_t)512 * 1024 * 1024) lat_bytes = (size_t)512 * 1024 * 1024;
+  if (lat_bytes < (size_t)128 * 1024 * 1024) lat_bytes = (size_t)128 * 1024 * 1024;
+  double lat_ns = pointer_chase_latency_ns(lat_bytes, 1.5);
+
+  printf("BW_MIBPS=%.2f\n", mibps);
+  printf("LAT_NS=%.2f\n", lat_ns);
+  printf("SIZE_MIB=%ld\n", size_mib);
+  printf("THREADS=%d\n", threads);
+
+  free(w);
+  free(t);
+  free(dst);
+  free(src);
+
+  return 0;
+}
+C
+
+  "${_cc}" -O3 -pthread "${_c}" -o "${_bin}" >/dev/null 2>&1
+  if [ ! -x "${_bin}" ]; then
+    return 1
+  fi
+  return 0
+}
+
+_run_membench() {
+  # Outputs key=value lines on success.
+  local _size_mib="$1"
+  local _threads="$2"
+  local _seconds="$3"
+  local _lat_mib="$4"
+  local _bin="/tmp/perftest_membench"
+
+  _build_membench || return 1
+
+  if [ -n "${_lat_mib}" ]; then
+    "${_bin}" --size-mib "${_size_mib}" --threads "${_threads}" --seconds "${_seconds}" --lat-mib "${_lat_mib}" 2>/dev/null
+  else
+    "${_bin}" --size-mib "${_size_mib}" --threads "${_threads}" --seconds "${_seconds}" 2>/dev/null
+  fi
+}
+
+_run_mem_benchmarks() {
+  # Sets globals:
+  #   _mem_transfer_speed ("NNNNN MiB/s")
+  #   _mem_latency        ("NN.NN" in ns)
+  #   _mem_latency_unit   ("ns")
+  #   _mem_bench_size_mib (per-buffer size)
+  #   _mem_bench_threads
+  #   _mem_bw_min/_mem_bw_max (numeric MiB/s, for variance hint)
+  #   _mem_lat_min/_mem_lat_max (numeric ns, for variance hint)
+  local _size_mib _threads _lat_mib _rep _out _bw _lat
+  local _bw_vals _lat_vals _bw_med _lat_med
+
+  _size_mib="$(_calc_mem_bench_size_mib)"
+  _mem_bench_size_mib="${_size_mib}"
+  _mem_bench_total_mib=$(( _size_mib * 2 ))
+
+  _threads="$(nproc 2>/dev/null || echo 1)"
+  if [ "${_threads}" -gt "${_MEM_BENCH_THREADS_MAX}" ]; then
+    _threads="${_MEM_BENCH_THREADS_MAX}"
+  fi
+  if [ "${_threads}" -lt 1 ]; then
+    _threads=1
+  fi
+  _mem_bench_threads="${_threads}"
+
+  _lat_mib="${_MEM_BENCH_LAT_SIZE_MIB}"
+  if [ "${_lat_mib}" -gt "${_size_mib}" ]; then
+    _lat_mib="${_size_mib}"
+  fi
+  if [ "${_lat_mib}" -gt 512 ]; then
+    _lat_mib=512
+  fi
+  if [ "${_lat_mib}" -lt 128 ]; then
+    _lat_mib=128
+  fi
+
+  _bw_vals=""
+  _lat_vals=""
+
+  _rep=1
+  while [ "${_rep}" -le "${_MEM_BENCH_REPEATS}" ]; do
+    _out="$(_run_membench "${_size_mib}" "${_threads}" "${_MEM_BENCH_TIME}" "${_lat_mib}")"
+    _bw="$(printf '%s\n' "${_out}" | awk -F= '/^BW_MIBPS=/{print $2}' | head -n1)"
+    _lat="$(printf '%s\n' "${_out}" | awk -F= '/^LAT_NS=/{print $2}' | head -n1)"
+
+    if [ -n "${_bw}" ]; then
+      _bw_vals="${_bw_vals}${_bw}\n"
+    fi
+    if [ -n "${_lat}" ]; then
+      _lat_vals="${_lat_vals}${_lat}\n"
+    fi
+
+    _rep=$((_rep + 1))
+  done
+
+  # Median-of-N to reduce noise (best-of was too optimistic and hides contention).
+  _bw_med=""
+  _lat_med=""
+  _mem_bw_min=""
+  _mem_bw_max=""
+  _mem_lat_min=""
+  _mem_lat_max=""
+
+  if [ -n "${_bw_vals}" ]; then
+    _bw_med="$(printf '%b' "${_bw_vals}" | sort -n | awk '{a[NR]=$1} END{ if(NR==0) exit; if(NR%2==1) print a[(NR+1)/2]; else print (a[NR/2]+a[NR/2+1])/2 }')"
+    _mem_bw_min="$(printf '%b' "${_bw_vals}" | sort -n | head -n1)"
+    _mem_bw_max="$(printf '%b' "${_bw_vals}" | sort -n | tail -n1)"
+  fi
+
+  if [ -n "${_lat_vals}" ]; then
+    _lat_med="$(printf '%b' "${_lat_vals}" | sort -n | awk '{a[NR]=$1} END{ if(NR==0) exit; if(NR%2==1) print a[(NR+1)/2]; else print (a[NR/2]+a[NR/2+1])/2 }')"
+    _mem_lat_min="$(printf '%b' "${_lat_vals}" | sort -n | head -n1)"
+    _mem_lat_max="$(printf '%b' "${_lat_vals}" | sort -n | tail -n1)"
+  fi
+
+  if [ -n "${_bw_med}" ]; then
+    _mem_transfer_speed="${_bw_med} MiB/s"
+  else
+    # Fallback to sysbench if membench failed
+    _mem_test="$(sysbench memory --memory-block-size=256M --memory-oper=read --memory-access-mode=seq --memory-total-size=10G --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
+    _mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
+  fi
+
+  _mem_latency_unit="ns"
+  if [ -n "${_lat_med}" ]; then
+    _mem_latency="${_lat_med}"
+  else
+    _mem_latency=""
+  fi
+}
+
+# Convert bytes/sec to MiB/s (numeric only) (numeric only)
+_bps_to_mibps_num() {
+  awk '{ if (NR>0) printf "%.2f", $0 / 1024 / 1024 }'
+}
+
+# Convert bytes/sec to pretty "X.XX MiB/s"
+_bps_to_mibps_pretty() {
+  awk '{ if (NR>0) printf "%.2f MiB/s", $0 / 1024 / 1024; else printf "error" }'
+}
+
+_redact_ip() {
+  case "$1" in
+    *.*) printf '%s.xxxx' "$(printf '%s\n' "$1" | cut -d . -f 1-3)" ;;
+    *:*) printf '%s:xxxx' "$(printf '%s\n' "$1" | cut -d : -f 1-3)" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+_get_public_ipv4() {
+  curl -4 -s --max-time 5 http://icanhazip.com/ 2>/dev/null | tr -d '\r\n'
+}
+
+_download_benchmark_v4() {
+  # Single-stream IPv4 download speed probe (curl).
+  #
+  # Uses a byte-range request to keep it fast and to avoid false positives from
+  # empty/placeholder responses.
+  #
+  # Args:
+  #   $1 = URL
+  #   $2 = expected_min_bytes (optional, default 1 MiB)
+  #   $3 = range_end_byte (optional, default ~10 MiB)
+  #
+  # Output (on success):
+  #   speed_bps|size_bytes|time_total|http_code
+  #
+  # Output (on failure): empty line
+  local url="$1"
+  local min_bytes="${2:-1048576}"   # 1 MiB
+  local range_end="${3:-10485759}"  # ~10 MiB
+
+  local out http_code size_download speed_bps time_total
+
+  out="$(curl -4 -sL --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
+    -w '%{http_code} %{size_download} %{speed_download} %{time_total}\n' "${url}" 2>/dev/null)"
+
+  [ -n "${out}" ] || return 0
+
+  http_code="$(printf '%s\n' "${out}" | awk '{print $1}')"
+  size_download="$(printf '%s\n' "${out}" | awk '{print $2}')"
+  speed_bps="$(printf '%s\n' "${out}" | awk '{print $3}')"
+  time_total="$(printf '%s\n' "${out}" | awk '{print $4}')"
+
+  # Validate HTTP status (200 OK or 206 Partial Content are expected)
+  case "${http_code}" in
+    200|206) : ;;
+    *) return 0 ;;
+  esac
+
+  # Validate payload size (protects against empty/placeholder/truncated responses)
+  if ! printf '%s' "${size_download}" | grep -Eq '^[0-9]+$'; then
+    return 0
+  fi
+  if [ "${size_download}" -lt "${min_bytes}" ]; then
+    _log "Network test INVALID (${url}): got ${size_download} bytes, expected >=${min_bytes}"
+    return 0
+  fi
+
+  # Validate speed numeric
+  if ! printf '%s' "${speed_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    return 0
+  fi
+
+  printf '%s|%s|%s|%s\n' "${speed_bps}" "${size_download}" "${time_total}" "${http_code}"
+}
+
+# Best-effort ioping setup (download static binary like nench if not installed)
+_ensure_ioping() {
+  if command -v ioping >/dev/null 2>&1; then
+    _ioping_cmd="ioping"
+    return 0
+  fi
+  local dst="/tmp/ioping.static"
+  if curl -s --max-time 10 -o "${dst}" http://wget.racing/ioping.static 2>/dev/null; then
+    chmod +x "${dst}" 2>/dev/null || true
+    _ioping_cmd="${dst}"
+    return 0
+  fi
+  _ioping_cmd=""
+  return 1
+}
+
+_run_ioping_quick() {
+  _ioping_seek="N/A"
+  _ioping_seqread="N/A"
+  _ensure_ioping || return 0
+  [ -n "${_ioping_cmd}" ] || return 0
+  # Keep it short; these lines match nench-style output snippets
+  _ioping_seek="$("${_ioping_cmd}" -DR -w "${_IOPING_SECONDS}" . 2>/dev/null | tail -n 1)"
+  _ioping_seqread="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" . 2>/dev/null | tail -n 2 | head -n 1)"
+}
+
+_run_ioping_quick_mounts() {
+  # Requires _test_mounts[] already populated.
+  # Populates:
+  #   _ioping_seek_line["/mount"]    (last line of ioping -DR output)
+  #   _ioping_seqread_line["/mount"] (seq read snippet)
+  # Keeps legacy globals _ioping_seek/_ioping_seqread as root (/) values.
+  _ioping_seek="N/A"
+  _ioping_seqread="N/A"
+  _ensure_ioping || return 0
+  [ -n "${_ioping_cmd}" ] || return 0
+
+  local _mp
+  for _mp in "${_test_mounts[@]}"; do
+    if [ -d "${_mp}" ]; then
+      _ioping_seek_line["${_mp}"]="$("${_ioping_cmd}" -DR -w "${_IOPING_SECONDS}" "${_mp}" 2>/dev/null | tail -n 1)"
+      _ioping_seqread_line["${_mp}"]="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" "${_mp}" 2>/dev/null | tail -n 2 | head -n 1)"
+    else
+      _ioping_seek_line["${_mp}"]="N/A"
+      _ioping_seqread_line["${_mp}"]="N/A"
+    fi
+  done
+
+  # Backward-compatible globals (root only)
+  if [ -n "${_ioping_seek_line["/"]:-}" ]; then
+    _ioping_seek="${_ioping_seek_line["/"]}"
+  fi
+  if [ -n "${_ioping_seqread_line["/"]:-}" ]; then
+    _ioping_seqread="${_ioping_seqread_line["/"]}"
+  fi
+}
+
+# AES throughput test (captures AES-NI issues better than sysbench cpu)
+_run_aes_throughput_test() {
+  _aes_mibps="N/A"
+  _aes_seconds="N/A"
+  if ! command -v openssl >/dev/null 2>&1; then
+    return 0
+  fi
+  local start end elapsed
+  start="$(date +%s.%N)"
+  # Use fixed key/iv to avoid KDF overhead; measures raw AES speed better
+  dd if=/dev/zero bs=1M count="${_AES_TEST_MIB}" 2>/dev/null \
+    | openssl enc -aes-256-cbc \
+      -K 0000 \
+      -iv 0000 \
+      -nosalt 2>/dev/null \
+    > /dev/null
+  end="$(date +%s.%N)"
+  elapsed="$(echo "${end} - ${start}" | bc -l 2>/dev/null || echo 0)"
+  if [ "${elapsed}" != "0" ]; then
+    _aes_seconds="$(printf '%.3f' "${elapsed}")"
+    _aes_mibps="$(echo "${_AES_TEST_MIB} / ${elapsed}" | bc -l 2>/dev/null | awk '{printf "%.2f MiB/s",$0}')"
+  fi
+}
+
+_run_ipv4_net_check() {
+  _net_ipv4="N/A"
+  _net_download="N/A"
+
+  # Per-test results (used later by output sections)
+  _net_dl_name=()
+  _net_dl_url=()
+  _net_dl_pretty=()
+  _net_dl_bps=()
+  _net_dl_bytes=()
+  _net_dl_time=()
+  _net_dl_http=()
+  _net_dl_top2=""
+
+  local ip
+  ip="$(_get_public_ipv4)"
+  [ -n "${ip}" ] || return 0
+  _net_ipv4="$(_redact_ip "${ip}")"
+
+  # Fixed URLs + BOA mirror (region-aware via custom speed test)
+  local cf_url cachefly_url gh_url boa_url
+  cf_url="https://speed.cloudflare.com/__down?bytes=104857600"
+  cachefly_url="http://cachefly.cachefly.net/100mb.test"
+  gh_url="https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf"
+
+  boa_url=""
+  _find_fast_mirror_early
+  if [ -n "${_urlDld}" ]; then
+    boa_url="${_urlDld}"
+  fi
+
+  # Require at least 1 MiB downloaded within timeout; request up to ~10 MiB
+  local min_bytes range_end
+  min_bytes=1048576
+  range_end=10485759
+
+  # Append tests in a stable order
+  _net_dl_name+=("Cloudflare")
+  _net_dl_url+=("${cf_url}")
+  _net_dl_name+=("CacheFly")
+  _net_dl_url+=("${cachefly_url}")
+  _net_dl_name+=("GitHub")
+  _net_dl_url+=("${gh_url}")
+  _net_dl_name+=("BOA")
+  _net_dl_url+=("${boa_url}")
+
+  local i name url line bps bytes ttotal code pretty
+  i=0
+  while [ "${i}" -lt "${#_net_dl_name[@]}" ]; do
+    name="${_net_dl_name[${i}]}"
+    url="${_net_dl_url[${i}]}"
+    if [ -z "${url}" ]; then
+      _net_dl_pretty+=("N/A")
+      _net_dl_bps+=("")
+      _net_dl_bytes+=("")
+      _net_dl_time+=("")
+      _net_dl_http+=("")
+      i=$((i + 1))
+      continue
+    fi
+
+    _log "Network test: ${name} (${url})"
+    line="$(_download_benchmark_v4 "${url}" "${min_bytes}" "${range_end}")"
+    if [ -n "${line}" ]; then
+      bps="$(printf '%s\n' "${line}" | cut -d'|' -f1)"
+      bytes="$(printf '%s\n' "${line}" | cut -d'|' -f2)"
+      ttotal="$(printf '%s\n' "${line}" | cut -d'|' -f3)"
+      code="$(printf '%s\n' "${line}" | cut -d'|' -f4)"
+      pretty="$(printf '%s\n' "${bps}" | _bps_to_mibps_pretty)"
+      _net_dl_pretty+=("${pretty}")
+      _net_dl_bps+=("${bps}")
+      _net_dl_bytes+=("${bytes}")
+      _net_dl_time+=("${ttotal}")
+      _net_dl_http+=("${code}")
+    else
+      _net_dl_pretty+=("error")
+      _net_dl_bps+=("")
+      _net_dl_bytes+=("")
+      _net_dl_time+=("")
+      _net_dl_http+=("")
+    fi
+    i=$((i + 1))
+  done
+
+  # Score = average of the best 2 successful tests (bytes/sec)
+  local ranked rank_cnt best1_bps best2_bps best1_idx best2_idx avg_bps
+  ranked="$(for i in "${!_net_dl_bps[@]}"; do
+    if printf '%s' "${_net_dl_bps[${i}]}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+      printf '%s|%s\n' "${_net_dl_bps[${i}]}" "${i}"
+    fi
+  done | sort -t'|' -k1,1nr)"
+
+  rank_cnt="$(printf '%s\n' "${ranked}" | grep -c '|' 2>/dev/null || echo 0)"
+
+  if [ "${rank_cnt}" -ge 2 ]; then
+    best1_bps="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f1)"
+    best1_idx="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f2)"
+    best2_bps="$(printf '%s\n' "${ranked}" | head -n 2 | tail -n 1 | cut -d'|' -f1)"
+    best2_idx="$(printf '%s\n' "${ranked}" | head -n 2 | tail -n 1 | cut -d'|' -f2)"
+    avg_bps="$(awk -v a="${best1_bps}" -v b="${best2_bps}" 'BEGIN{printf "%.2f",(a+b)/2}')"
+    _net_dl_top2="${_net_dl_name[${best1_idx}]} + ${_net_dl_name[${best2_idx}]}"
+  elif [ "${rank_cnt}" -eq 1 ]; then
+    best1_bps="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f1)"
+    best1_idx="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f2)"
+    avg_bps="${best1_bps}"
+    _net_dl_top2="${_net_dl_name[${best1_idx}]}"
+  else
+    avg_bps=""
+    _net_dl_top2=""
+  fi
+
+  if printf '%s' "${avg_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    _net_download="$(printf '%s\n' "${avg_bps}" | _bps_to_mibps_pretty) (avg best 2/4)"
+  else
+    _net_download="error"
+  fi
 }
 
 # Return average %steal while running for N seconds (requires mpstat)
 _measure_cpu_steal() {
   # $1 = seconds
-  _SECONDS="$1"
+  local _seconds="$1"
   if ! command -v mpstat >/dev/null 2>&1; then
     echo ""
     return 0
   fi
-
   # mpstat output: header + per-second lines; %steal column exists on Linux
-  mpstat 1 "${_SECONDS}" 2>/dev/null \
+  mpstat 1 "${_seconds}" 2>/dev/null \
     | awk '
       /^[0-9]/ { steal_sum += $(NF); steal_cnt++ }
       END {
@@ -85,56 +1025,42 @@ _measure_cpu_steal() {
 # - include other mounted filesystems (separate partitions/volumes)
 # - exclude /boot*, pseudo fs, and tiny mounts
 _get_test_mounts() {
-  # Output: one mountpoint per line
-  # df columns: Filesystem Type 1B-blocks Used Available Use% Mounted on
   df -P -T -B1 \
     | awk 'NR>1 {print $2 "|" $7 "|" $3}' \
-    | while IFS="|" read -r _FSTYPE _MOUNT _SIZE_BYTES; do
-        # Only consider "real" filesystems commonly used for disks.
-        case "${_FSTYPE}" in
-          ext4|xfs|btrfs|zfs|f2fs) : ;;
-          *) continue ;;
-        esac
-
-        # Never test boot partitions or pseudo mounts.
-        case "${_MOUNT}" in
-          /boot|/boot/*|/boot/efi|/boot/efi/*) continue ;;
-          /proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/run|/run/*) continue ;;
-          /snap|/snap/*) continue ;;
-        esac
-
-        # Skip tiny mounts (< 2 GiB) to avoid noise and accidental small partitions.
-        if [ "${_SIZE_BYTES}" -lt $((2 * 1024 * 1024 * 1024)) ]; then
-          continue
-        fi
-
-        # Must be an absolute path mountpoint.
-        case "${_MOUNT}" in
-          /*) echo "${_MOUNT}" ;;
-          *) : ;;
-        esac
-      done \
-    | awk '
-        # De-dup while preserving order
-        !seen[$0]++ { print $0 }
-      '
+    | while IFS="|" read -r _fstype _mount _size_bytes; do
+      case "${_fstype}" in
+        ext4|xfs|btrfs|zfs|f2fs) : ;;
+        *) continue ;;
+      esac
+      case "${_mount}" in
+        /boot|/boot/*|/boot/efi|/boot/efi/*) continue ;;
+        /proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/run|/run/*) continue ;;
+        /snap|/snap/*) continue ;;
+      esac
+      if [ "${_size_bytes}" -lt $((2 * 1024 * 1024 * 1024)) ]; then
+        continue
+      fi
+      case "${_mount}" in
+        /*) echo "${_mount}" ;;
+        *) : ;;
+      esac
+    done \
+    | awk '!seen[$0]++ { print $0 }'
 }
 
-# Run fio in a mount and write JSON output to a file
-_run_fio_test() {
+# Run fio random 4k randrw test in a mount and write JSON output to a file
+_run_fio_rand_test() {
   # $1 = mountpoint
   # $2 = output_file
-  _MOUNT_POINT="$1"
-  _OUTPUT_FILE="$2"
-
-  _SAFE_MOUNT_POINT="$(echo "${_MOUNT_POINT}" | sed 's#/#_#g')"
-  _TEST_DIR="${_MOUNT_POINT}/.perftest_fio_${_SAFE_MOUNT_POINT}_$$"
-
-  mkdir -p "${_TEST_DIR}" || return 1
-
+  local _mount_point="$1"
+  local _output_file="$2"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_rand_${_safe_mount_point}_$$"
+  mkdir -p "${_test_dir}" || return 1
   fio \
     --name=randreadwrite \
-    --directory="${_TEST_DIR}" \
+    --directory="${_test_dir}" \
     --ioengine=libaio \
     --iodepth=64 \
     --rw=randrw \
@@ -143,55 +1069,1490 @@ _run_fio_test() {
     --direct=1 \
     --size=1G \
     --numjobs=4 \
-    --runtime=60 \
+    --runtime="${_FIO_RAND_RUNTIME}" \
     --time_based \
     --group_reporting \
     --output-format=json \
-    > "${_OUTPUT_FILE}" 2>/dev/null
-
-  rm -rf "${_TEST_DIR}" >/dev/null 2>&1
+    > "${_output_file}" 2>/dev/null
+  rm -rf "${_test_dir}" >/dev/null 2>&1
 }
 
+# Run fio sequential read test
+_run_fio_seq_read_test() {
+  # $1 = mountpoint
+  # $2 = output_file
+  local _mount_point="$1"
+  local _output_file="$2"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_seqread_${_safe_mount_point}_$$"
+  mkdir -p "${_test_dir}" || return 1
+  fio \
+    --name=seqread \
+    --directory="${_test_dir}" \
+    --ioengine=libaio \
+    --iodepth=32 \
+    --rw=read \
+    --bs=128k \
+    --direct=1 \
+    --size=2G \
+    --runtime="${_FIO_SEQ_RUNTIME}" \
+    --time_based \
+    --group_reporting \
+    --output-format=json \
+    > "${_output_file}" 2>/dev/null
+  rm -rf "${_test_dir}" >/dev/null 2>&1
+}
+
+# Run fio sequential write test
+_run_fio_seq_write_test() {
+  # $1 = mountpoint
+  # $2 = output_file
+  local _mount_point="$1"
+  local _output_file="$2"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_seqwrite_${_safe_mount_point}_$$"
+  mkdir -p "${_test_dir}" || return 1
+  fio \
+    --name=seqwrite \
+    --directory="${_test_dir}" \
+    --ioengine=libaio \
+    --iodepth=32 \
+    --rw=write \
+    --bs=128k \
+    --direct=1 \
+    --size=2G \
+    --runtime="${_FIO_SEQ_RUNTIME}" \
+    --time_based \
+    --group_reporting \
+    --output-format=json \
+    > "${_output_file}" 2>/dev/null
+  rm -rf "${_test_dir}" >/dev/null 2>&1
+}
+
+# Run fio random 4k randrw QD=1 test (latency-focused)
+_run_fio_qd1_test() {
+  # $1 = mountpoint
+  # $2 = output_file
+  local _mount_point="$1"
+  local _output_file="$2"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_qd1_${_safe_mount_point}_$$"
+  mkdir -p "${_test_dir}" || return 1
+  fio \
+    --name=randrw_qd1 \
+    --directory="${_test_dir}" \
+    --ioengine=libaio \
+    --iodepth=1 \
+    --rw=randrw \
+    --rwmixread=50 \
+    --bs=4k \
+    --direct=1 \
+    --size="${_FIO_QD1_SIZE_M}M" \
+    --numjobs=1 \
+    --runtime="${_FIO_QD1_RUNTIME}" \
+    --time_based \
+    --group_reporting \
+    --output-format=json \
+    > "${_output_file}" 2>/dev/null
+  rm -rf "${_test_dir}" >/dev/null 2>&1
+}
+
+
+# Run fio random 4k randwrite QD=1 with fsync (durability-focused)
+_run_fio_qd1_fsync_test() {
+  # $1 = mountpoint
+  # $2 = output_file
+  local _mount_point="$1"
+  local _output_file="$2"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_qd1_fsync_${_safe_mount_point}_$$"
+  mkdir -p "${_test_dir}" || return 1
+  fio \
+    --name=randwrite_qd1_fsync \
+    --directory="${_test_dir}" \
+    --ioengine=sync \
+    --iodepth=1 \
+    --rw=randwrite \
+    --bs=4k \
+    --direct=0 \
+    --fsync=1 \
+    --size="${_FIO_QD1_FSYNC_SIZE_M}M" \
+    --numjobs=1 \
+    --runtime="${_FIO_QD1_FSYNC_RUNTIME}" \
+    --time_based \
+    --group_reporting \
+    --output-format=json \
+    > "${_output_file}" 2>/dev/null
+  rm -rf "${_test_dir}" >/dev/null 2>&1
+}
 # Parse fio JSON and return values via stdout (key=value lines)
 _parse_fio_json() {
   # $1 = json file
-  _JSON_FILE="$1"
+  local _json_file="$1"
+  local _read_iops _write_iops _read_bw_kib _write_bw_kib
+  _read_iops="$(jq -r '[.jobs[].read.iops] | add' "${_json_file}" 2>/dev/null)"
+  _write_iops="$(jq -r '[.jobs[].write.iops] | add' "${_json_file}" 2>/dev/null)"
+  _read_bw_kib="$(jq -r '[.jobs[].read.bw] | add' "${_json_file}" 2>/dev/null)" # KiB/s
+  _write_bw_kib="$(jq -r '[.jobs[].write.bw] | add' "${_json_file}" 2>/dev/null)" # KiB/s
 
-  # Sum across jobs (because --numjobs=4)
-  _READ_IOPS="$(jq -r '[.jobs[].read.iops] | add' "${_JSON_FILE}" 2>/dev/null)"
-  _WRITE_IOPS="$(jq -r '[.jobs[].write.iops] | add' "${_JSON_FILE}" 2>/dev/null)"
-  _READ_BW_KIB="$(jq -r '[.jobs[].read.bw] | add' "${_JSON_FILE}" 2>/dev/null)"     # KiB/s
-  _WRITE_BW_KIB="$(jq -r '[.jobs[].write.bw] | add' "${_JSON_FILE}" 2>/dev/null)"   # KiB/s
+  local _read_clat_ns_mean _write_clat_ns_mean
+  _read_clat_ns_mean="$(jq -r '([.jobs[].read.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
+  _write_clat_ns_mean="$(jq -r '([.jobs[].write.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
 
-  # Latency: prefer clat_ns.mean if present; fallback to clat.mean (usually usec)
-  _READ_CLAT_NS_MEAN="$(jq -r '([.jobs[].read.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_JSON_FILE}" 2>/dev/null)"
-  _WRITE_CLAT_NS_MEAN="$(jq -r '([.jobs[].write.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_JSON_FILE}" 2>/dev/null)"
-
-  if [ -n "${_READ_CLAT_NS_MEAN}" ] && [ -n "${_WRITE_CLAT_NS_MEAN}" ]; then
-    _READ_LAT_MS="$(awk -v ns="${_READ_CLAT_NS_MEAN}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
-    _WRITE_LAT_MS="$(awk -v ns="${_WRITE_CLAT_NS_MEAN}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  local _read_lat_ms _write_lat_ms
+  if [ -n "${_read_clat_ns_mean}" ] && [ -n "${_write_clat_ns_mean}" ]; then
+    _read_lat_ms="$(awk -v ns="${_read_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+    _write_lat_ms="$(awk -v ns="${_write_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
   else
-    _READ_CLAT_USEC_MEAN="$(jq -r '([.jobs[].read.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_JSON_FILE}" 2>/dev/null)"
-    _WRITE_CLAT_USEC_MEAN="$(jq -r '([.jobs[].write.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_JSON_FILE}" 2>/dev/null)"
-
-    _READ_LAT_MS="$(awk -v us="${_READ_CLAT_USEC_MEAN:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
-    _WRITE_LAT_MS="$(awk -v us="${_WRITE_CLAT_USEC_MEAN:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
+    local _read_clat_usec_mean _write_clat_usec_mean
+    _read_clat_usec_mean="$(jq -r '([.jobs[].read.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
+    _write_clat_usec_mean="$(jq -r '([.jobs[].write.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
+    _read_lat_ms="$(awk -v us="${_read_clat_usec_mean:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
+    _write_lat_ms="$(awk -v us="${_write_clat_usec_mean:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
   fi
 
-  _READ_BW_MB="$(awk -v kib="${_READ_BW_KIB:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
-  _WRITE_BW_MB="$(awk -v kib="${_WRITE_BW_KIB:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
+  local _read_bw_mb _write_bw_mb
+  _read_bw_mb="$(awk -v kib="${_read_bw_kib:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
+  _write_bw_mb="$(awk -v kib="${_write_bw_kib:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
 
-  echo "READ_IOPS=${_READ_IOPS}"
-  echo "WRITE_IOPS=${_WRITE_IOPS}"
-  echo "READ_BW_MB=${_READ_BW_MB}"
-  echo "WRITE_BW_MB=${_WRITE_BW_MB}"
-  echo "READ_LAT_MS=${_READ_LAT_MS}"
-  echo "WRITE_LAT_MS=${_WRITE_LAT_MS}"
+
+  # Optional percentiles (fio3+): clat_ns.percentile
+  local _read_p95_ns _read_p99_ns _write_p95_ns _write_p99_ns
+  local _read_p95_ms _read_p99_ms _write_p95_ms _write_p99_ms
+  local _sync_p95_ns _sync_p99_ns _sync_p95_ms _sync_p99_ms
+
+  _read_p95_ns="$(jq -r '([.jobs[].read.clat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  _read_p99_ns="$(jq -r '([.jobs[].read.clat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  _write_p95_ns="$(jq -r '([.jobs[].write.clat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  _write_p99_ns="$(jq -r '([.jobs[].write.clat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+
+  if [ -n "${_read_p95_ns}" ]; then
+    _read_p95_ms="$(awk -v ns="${_read_p95_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+  if [ -n "${_read_p99_ns}" ]; then
+    _read_p99_ms="$(awk -v ns="${_read_p99_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+  if [ -n "${_write_p95_ns}" ]; then
+    _write_p95_ms="$(awk -v ns="${_write_p95_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+  if [ -n "${_write_p99_ns}" ]; then
+    _write_p99_ms="$(awk -v ns="${_write_p99_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+
+  # Optional percentiles for sync/fsync (fio JSON uses a separate sync section)
+  _sync_p95_ns="$(jq -r '([.jobs[].sync.lat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // ([.jobs[].sync.clat_ns.percentile["95.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  _sync_p99_ns="$(jq -r '([.jobs[].sync.lat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // ([.jobs[].sync.clat_ns.percentile["99.000000"]?] | map(select(.!=null)) | max) // empty' "${_json_file}" 2>/dev/null)"
+  if [ -n "${_sync_p95_ns}" ]; then
+    _sync_p95_ms="$(awk -v ns="${_sync_p95_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+  if [ -n "${_sync_p99_ns}" ]; then
+    _sync_p99_ms="$(awk -v ns="${_sync_p99_ns}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  fi
+
+  echo "READ_IOPS=${_read_iops}"
+  echo "WRITE_IOPS=${_write_iops}"
+  echo "READ_BW_MB=${_read_bw_mb}"
+  echo "WRITE_BW_MB=${_write_bw_mb}"
+  echo "READ_LAT_MS=${_read_lat_ms}"
+  echo "WRITE_LAT_MS=${_write_lat_ms}"
+  echo "READ_P95_MS=${_read_p95_ms}"
+  echo "READ_P99_MS=${_read_p99_ms}"
+  echo "WRITE_P95_MS=${_write_p95_ms}"
+  echo "WRITE_P99_MS=${_write_p99_ms}"
+  echo "SYNC_P95_MS=${_sync_p95_ms}"
+  echo "SYNC_P99_MS=${_sync_p99_ms}"
 }
 
-# -------------------------------
+# Simple metadata / small file operations test
+_run_metadata_test() {
+  # $1 = mountpoint
+  # $2 = output var name (global)
+  local _mount_point="$1"
+  local _outvar="$2"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_meta_${_safe_mount_point}_$$"
+  mkdir -p "${_test_dir}" || { eval "${_outvar}=\"ERROR\""; return; }
+
+  local _count="${_METADATA_FILE_COUNT}"
+  local _start _end _elapsed _ops _ops_per_sec
+
+  _start="$(date +%s.%N)"
+  local _i
+  for _i in $(seq 1 "${_count}"); do
+    echo "x" > "${_test_dir}/file_${_i}" || break
+  done
+  for _i in $(seq 1 "${_count}"); do
+    cat "${_test_dir}/file_${_i}" >/dev/null 2>&1 || break
+  done
+  rm -f "${_test_dir}"/file_* >/dev/null 2>&1
+  rmdir "${_test_dir}" >/dev/null 2>&1 || true
+  _end="$(date +%s.%N)"
+
+  _elapsed="$(echo "${_end} - ${_start}" | bc -l 2>/dev/null || echo 0)"
+  _ops=$((_count * 2))
+  if [ "${_elapsed}" != "0" ]; then
+    _ops_per_sec="$(echo "${_ops} / ${_elapsed}" | bc -l 2>/dev/null || echo 0)"
+    eval "${_outvar}=\"$(printf '%.2f' "${_ops_per_sec}") ops/s\""
+  else
+    eval "${_outvar}=\"ERROR\""
+  fi
+}
+
+# Run sysbench CPU and extract events/sec and avg latency
+_run_sysbench_cpu() {
+  # $1 = threads
+  # $2 = label (for variable names)
+  local _threads="$1"
+  local _label="$2"
+  local _test
+  _test="$(sysbench cpu --threads="${_threads}" --time="${_SYSBENCH_CPU_TIME}" run 2>/dev/null)"
+  local _events _lat
+  _events="$(echo "${_test}" | awk '/events per second:/ {print $4}')"
+  _lat="$(echo "${_test}" | awk '/avg:/ {print $2}')"
+  eval "_cpu_events_${_label}=\"${_events}\""
+  eval "_cpu_latency_${_label}=\"${_lat}\""
+}
+
+# PHP micro-benchmark: multi-run median + concurrent throughput
+_run_php_benchmarks() {
+  if ! command -v php >/dev/null 2>&1; then
+    _php_time_median="N/A (php not installed)"
+    _php_time_runs=""
+    _php_concurrency_wall="N/A"
+    _php_concurrency_throughput="N/A"
+    return
+  fi
+
+  local _script="/tmp/phpbench.php"
+  cat << 'EOF' > "${_script}"
+<?php
+$iterations = getenv('PHP_BENCH_ITERATIONS') ? intval(getenv('PHP_BENCH_ITERATIONS')) : 50000;
+$start = microtime(true);
+$acc = 0;
+for ($i = 0; $i < $iterations; $i++) {
+  $s = "the quick brown fox jumps over the lazy dog " . $i;
+  $h = hash('sha256', $s, false);
+  $acc += ord($h[0]);
+}
+$elapsed = microtime(true) - $start;
+printf("%.6f\n", $elapsed);
+EOF
+
+  local _runs="${_PHP_BENCH_RUNS}"
+  local _times=()
+  local _i
+  echo "Running PHP single-thread benchmark (${_runs} runs, iterations=${_PHP_BENCH_ITERATIONS})..."
+  for _i in $(seq 1 "${_runs}"); do
+    local _t
+    _t="$(PHP_BENCH_ITERATIONS="${_PHP_BENCH_ITERATIONS}" php "${_script}" 2>/dev/null || echo 0)"
+    _log " Run ${_i}: ${_t} seconds"
+    _times+=("${_t}")
+  done
+
+  # Median (PHP_BENCH_RUNS is 5, so 3rd value after sort)
+  local _sorted
+  _sorted=($(printf '%s\n' "${_times[@]}" | sort -n))
+  _php_time_median="${_sorted[2]}"
+  _php_time_runs="$(printf '%s ' "${_times[@]}")"
+
+  # Concurrent benchmark
+  local _conc
+  local _nproc
+  _nproc="$(nproc)"
+  if [ "${_nproc}" -le 0 ]; then
+    _nproc=1
+  fi
+  if [ "${_nproc}" -gt "${_PHP_BENCH_CONCURRENCY_MAX}" ]; then
+    _conc="${_PHP_BENCH_CONCURRENCY_MAX}"
+  else
+    _conc="${_nproc}"
+  fi
+
+  echo "Running PHP concurrent benchmark (${_conc} processes, iterations=${_PHP_BENCH_ITERATIONS} each)..."
+  local _start _end _elapsed
+  _start="$(date +%s.%N)"
+  for _i in $(seq 1 "${_conc}"); do
+    PHP_BENCH_ITERATIONS="${_PHP_BENCH_ITERATIONS}" php "${_script}" >/dev/null 2>&1 &
+  done
+  wait
+  _end="$(date +%s.%N)"
+  _elapsed="$(echo "${_end} - ${_start}" | bc -l 2>/dev/null || echo 0)"
+  _php_concurrency_wall="$(printf '%.6f' "${_elapsed}")"
+
+  if [ "${_elapsed}" != "0" ]; then
+    local _total_ops
+    _total_ops="$(echo "${_conc} * ${_PHP_BENCH_ITERATIONS}" | bc -l 2>/dev/null || echo 0)"
+    local _thr
+    _thr="$(echo "${_total_ops} / ${_elapsed}" | bc -l 2>/dev/null || echo 0)"
+    _php_concurrency_throughput="$(printf '%.2f ops/sec' "${_thr}")"
+  else
+    _php_concurrency_throughput="N/A"
+  fi
+
+  rm -f "${_script}" >/dev/null 2>&1
+}
+
+# ----
+# BOA-specific grading helpers
+# ----
+_num_or_empty() {
+  printf '%s' "$1" | grep -Eo '^[0-9]+(\.[0-9]+)?' || true
+}
+
+_median_num() {
+  # Median of numeric arguments (prints empty if no valid inputs)
+  # Uses simple sort; intended for small N (default repeats=3).
+  if [ "$#" -eq 0 ]; then
+    echo ""
+    return
+  fi
+  printf '%s\n' "$@" | awk 'NF{print}' | sort -n | awk '{a[NR]=$1} END{if(NR==0){print ""; exit} mid=int((NR+1)/2); printf "%.3f", a[mid]}'
+}
+
+_max_num() {
+  # Max of numeric arguments (prints empty if no valid inputs)
+  if [ "$#" -eq 0 ]; then
+    echo ""
+    return
+  fi
+  printf '%s\n' "$@" | awk 'NF{print}' | sort -n | tail -n 1
+}
+
+
+_boa_grade_mem_bw() {
+  # Bandwidth in MiB/s; optionally pass number of threads used.
+  # For VMs with 1-3 vCPU, bandwidth won't fully saturate memory channels, so we scale
+  # thresholds down slightly based on threads (up to 4).
+  local bw="$1"
+  local threads="${2:-4}"
+  local scale="1.00"
+
+  if [ -n "${threads}" ] && awk -v t="${threads}" 'BEGIN{exit !(t<4)}' 2>/dev/null; then
+    scale="$(awk -v t="${threads}" 'BEGIN{printf "%.2f", t/4.0}')"
+  fi
+
+  local thr_avg thr_good thr_exc thr_ultra
+  # Tuned for membench (>=128 MiB buffers) on typical VPS hardware.
+  thr_avg="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 14000*s}')"
+  thr_good="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 20000*s}')"
+  thr_exc="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 32000*s}')"
+  thr_ultra="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 48000*s}')"
+
+  if [ -z "${bw}" ]; then
+    echo "low"
+    return
+  fi
+
+  if awk -v bw="${bw}" -v t="${thr_ultra}" 'BEGIN{exit !(bw>=t)}' 2>/dev/null; then
+    echo "ultra"; return
+  fi
+  if awk -v bw="${bw}" -v t="${thr_exc}" 'BEGIN{exit !(bw>=t)}' 2>/dev/null; then
+    echo "excellent"; return
+  fi
+  if awk -v bw="${bw}" -v t="${thr_good}" 'BEGIN{exit !(bw>=t)}' 2>/dev/null; then
+    echo "good"; return
+  fi
+  if awk -v bw="${bw}" -v t="${thr_avg}" 'BEGIN{exit !(bw>=t)}' 2>/dev/null; then
+    echo "average"; return
+  fi
+
+  echo "low"
+}
+
+_boa_grade_mem_final() {
+  local mem_bw_mibps="$1"
+  local mem_latency_ns="$2"
+  local threads_used="$3"
+  local grade
+
+  grade="$(_boa_grade_mem_bw "${mem_bw_mibps}" "${threads_used}")"
+
+  # BOA is latency-sensitive (Valkey/Redis, MySQL buffer pool, Opcache/APCu):
+  #   - allow low latency to lift borderline bandwidth
+  #   - apply latency-led caps so higher grades reflect snappy cache-heavy workloads
+  if [ -n "${mem_latency_ns}" ]; then
+    # Low-latency boost: keep small-vCPU VMs from being unfairly rated.
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=130)}' 2>/dev/null; then
+      if [ "${grade}" = "average" ] && awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=18000)}' 2>/dev/null; then
+        grade="good"
+      fi
+    fi
+
+    # If latency is excellent, ensure at least "excellent" (BOA in-RAM stacks feel this).
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=115)}' 2>/dev/null; then
+      if [ "${grade}" = "average" ] || [ "${grade}" = "good" ]; then
+        grade="excellent"
+      fi
+    fi
+
+    # Latency-led caps (calibrated from real v9 fleet distribution):
+    #   - >140ns: cap ultra/excellent to good
+    #   - >165ns: cap ultra/excellent to good (still production-worthy, but not top tier)
+    #   - >200ns: cap to average (typically noisy-neighbor/NUMA/host contention)
+    #   - >=260ns: treat as low ONLY when bandwidth is also weak
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=260)}' 2>/dev/null; then
+      # If bandwidth is strong, this is likely a contention outlier rather than "bad RAM".
+      if awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=30000)}' 2>/dev/null; then
+        grade="average"
+      else
+        grade="low"
+      fi
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+      if [ "${grade}" != "low" ]; then
+        grade="average"
+      fi
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>165)}' 2>/dev/null; then
+      if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
+        grade="good"
+      fi
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>140)}' 2>/dev/null; then
+      if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
+        grade="good"
+      fi
+    fi
+  fi
+
+  echo "${grade}"
+}
+
+_boa_grade_cpu_steal() {
+  # input: percent
+  awk -v s="$1" 'BEGIN{
+    if (s=="" || s=="N/A") print "unknown";
+    else if (s<1) print "excellent";
+    else if (s<3) print "good";
+    else if (s<7) print "warning";
+    else print "bad";
+  }'
+}
+
+_boa_grade_cpu_speed() {
+  # input: single-thread events/sec
+  # Based on typical BOA workloads (Drupal PHP)
+  awk -v eps="$1" 'BEGIN{
+    if (eps=="" || eps=="N/A") print "unknown";
+    else if (eps>=5000) print "ultra";
+    else if (eps>=4000) print "excellent";
+    else if (eps>=3000) print "good";
+    else if (eps>=2000) print "average";
+    else if (eps>=1000) print "acceptable";
+    else print "poor";
+  }'
+}
+
+_boa_grade_db_oltp() {
+  # Inputs:
+  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional)
+  #
+  # This is a lightweight "experience proxy" for Drupal workloads (cache misses + writes).
+  # We grade primarily on RW TPS per vCPU, with latency caps on RW p95.
+  local rw_tps rw_p95 vcpus ro_p95 per_vcpu
+  rw_tps="$(_num_or_empty "$1")"
+  rw_p95="$(_num_or_empty "$2")"
+  vcpus="$(_num_or_empty "$3")"
+  ro_p95="$(_num_or_empty "$4")"
+
+  [ -n "${vcpus}" ] || vcpus="1"
+
+  if [ -z "${rw_tps}" ] || [ -z "${rw_p95}" ]; then
+    echo "unknown"
+    return
+  fi
+
+  per_vcpu="$(awk -v t="${rw_tps}" -v c="${vcpus}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
+    echo "poor"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
+    echo "average"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
+    echo "good"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
+    echo "excellent"; return
+  fi
+
+  echo "ultra"
+}
+
+_boa_grade_disk_final() {
+  # Inputs (best-effort numeric):
+  #  $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops,
+  #  $7=qd1_p99_read_ms, $8=qd1_p99_write_ms, $9=qd1_fsync_p99_write_ms
+  #
+  # Design goal:
+  # - Preserve the original (v9) multi-signal logic (seq, iops, ioping, metadata) so you can reason about *why* a grade was chosen.
+  # - Add DB-realistic *caps* driven by QD=1 p99 + fsync p99 so we never call high-tail storage “excellent”.
+
+  local ioping_us="$1"
+  local seq_read_mbps="$2"
+  local seq_write_mbps="$3"
+  local read_iops="$4"
+  local write_iops="$5"
+  local meta_ops="$6"
+  local qd1_p99_read_ms="$7"
+  local qd1_p99_write_ms="$8"
+  local qd1_fsync_p99_write_ms="$9"
+
+  # Extract numeric values
+  ioping_us="$(_num_or_empty "${ioping_us}")"
+  seq_read_mbps="$(_num_or_empty "${seq_read_mbps}")"
+  seq_write_mbps="$(_num_or_empty "${seq_write_mbps}")"
+  read_iops="$(_num_or_empty "${read_iops}")"
+  write_iops="$(_num_or_empty "${write_iops}")"
+  meta_ops="$(_num_or_empty "${meta_ops}")"
+  qd1_p99_read_ms="$(_num_or_empty "${qd1_p99_read_ms}")"
+  qd1_p99_write_ms="$(_num_or_empty "${qd1_p99_write_ms}")"
+  qd1_fsync_p99_write_ms="$(_num_or_empty "${qd1_fsync_p99_write_ms}")"
+
+  # CRITICAL: Sequential write throttled/failing
+  if [ -n "${seq_write_mbps}" ] && awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
+    echo "bad"
+    return
+  fi
+
+  # Base grade (throughput-first, like v9)
+  local grade="poor"
+
+  # Check if we have both read and write
+  if [ -n "${seq_read_mbps}" ] && [ -n "${seq_write_mbps}" ]; then
+    # EXCELLENT: NVMe-class (write > 1000 AND read > 2000)
+    if awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>1000 && sr>2000)}' 2>/dev/null; then
+      grade="excellent"
+    # GOOD: Healthy SSD (write > 500 AND read > 1000)
+    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>500 && sr>1000)}' 2>/dev/null; then
+      grade="good"
+    # OK: Moderate (write > 300 AND read > 500)
+    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>300 && sr>500)}' 2>/dev/null; then
+      grade="average"
+    # POOR: Below thresholds but not catastrophic
+    else
+      grade="poor"
+    fi
+  fi
+
+  # Helper: rank for min/max comparisons
+  _grade_rank() {
+    case "$1" in
+      bad) echo 0 ;;
+      poor) echo 1 ;;
+      average) echo 2 ;;
+      good) echo 3 ;;
+      excellent) echo 4 ;;
+      *) echo 1 ;;
+    esac
+  }
+
+  _rank_to_grade() {
+    case "$1" in
+      0) echo bad ;;
+      1) echo poor ;;
+      2) echo average ;;
+      3) echo good ;;
+      4) echo excellent ;;
+      *) echo poor ;;
+    esac
+  }
+
+  # Compute DB-realistic cap from QD1+fsync (if available)
+  local cap_grade=""
+  if [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
+    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}"       'BEGIN{exit !(f<=2 && r<=0.5 && w<=0.5 && io<=200)}' 2>/dev/null; then
+      cap_grade="excellent"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}"       'BEGIN{exit !(f<=5 && r<=1.0 && w<=1.0)}' 2>/dev/null; then
+      cap_grade="good"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}"       'BEGIN{exit !(f<=12 && r<=3.0 && w<=3.0)}' 2>/dev/null; then
+      cap_grade="average"
+    else
+      cap_grade="poor"
+    fi
+  fi
+
+  # IOPS boost (same spirit as v9), but never above cap_grade if present
+  if [ -n "${read_iops}" ] && [ -n "${write_iops}" ]; then
+    if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>10000 && wi>10000)}' 2>/dev/null; then
+      local r=$(_grade_rank "${grade}")
+      if [ "${r}" -lt 4 ]; then
+        r=$((r+1))
+        grade="$(_rank_to_grade "${r}")"
+      fi
+    fi
+  fi
+
+  # Metadata boost (small): only if already >= average
+  if [ -n "${meta_ops}" ]; then
+    if awk -v m="${meta_ops}" 'BEGIN{exit !(m>5000)}' 2>/dev/null; then
+      case "${grade}" in
+        average) grade="good" ;;
+        good) grade="excellent" ;;
+      esac
+    fi
+  fi
+
+  # ioping reality check: very bad latency downgrades one level
+  if [ -n "${ioping_us}" ] && awk -v i="${ioping_us}" 'BEGIN{exit !(i>2000)}' 2>/dev/null; then
+    case "${grade}" in
+      excellent) grade="good" ;;
+      good) grade="average" ;;
+      average) grade="poor" ;;
+    esac
+  fi
+
+  # Apply DB-realistic cap (prevents “excellent” on high-tail storage)
+  if [ -n "${cap_grade}" ]; then
+    local gr=$(_grade_rank "${grade}")
+    local cr=$(_grade_rank "${cap_grade}")
+    if [ "${gr}" -gt "${cr}" ]; then
+      grade="${cap_grade}"
+    fi
+  fi
+
+  # Extra safety: extreme tails force poor even if cap_grade not available
+  if [ -n "${qd1_p99_write_ms}" ] && awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>150)}' 2>/dev/null; then
+    grade="poor"
+  fi
+  if [ -n "${qd1_fsync_p99_write_ms}" ] && awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>250)}' 2>/dev/null; then
+    grade="poor"
+  fi
+
+  echo "${grade}"
+}
+
+_boa_grade_network() {
+  # input: numeric MiB/s
+  awk -v n="$1" 'BEGIN{
+    if (n=="" || n=="N/A") print "unknown";
+    else if (n>=150) print "ultra";
+    else if (n>=100) print "excellent";
+    else if (n>=75) print "good";
+    else if (n>=50) print "average";
+    else print "poor";
+  }'
+}
+
+_boa_guess_storage_tier() {
+  # Behavior-first storage guess for BOA/Drupal.
+  # We *can* usually infer LOCAL vs NET from latency/variance/caps.
+  # We *cannot* reliably infer the physical media behind network block storage,
+  # so network labels use *_CLASS suffix to mean "behaves like".
+  #
+  # Inputs (numeric, best-effort):
+  # $1 = ioping_avg_us
+  # $2 = seq_read_mbps
+  # $3 = seq_write_mbps
+  # $4 = qd1_p99_read_ms
+  # $5 = qd1_p99_write_ms
+  # $6 = qd1_fsync_p99_write_ms
+  local ioping_us="$1"
+  local sr="$2"
+  local sw="$3"
+  local p99r="$4"
+  local p99w="$5"
+  local p99wf="$6"
+
+  # Hard fail / severely throttled
+  if [ -n "${sw}" ] && awk -v sw="${sw}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
+    echo "CRITICAL_DEGRADED"
+    return
+  fi
+
+  # Normalize unknowns
+  [ -n "${ioping_us}" ] || ioping_us=""
+  [ -n "${sr}" ] || sr=""
+  [ -n "${sw}" ] || sw=""
+  [ -n "${p99r}" ] || p99r=""
+  [ -n "${p99w}" ] || p99w=""
+  [ -n "${p99wf}" ] || p99wf=""
+
+  # ----
+  # Step 0: DEGRADED detection (HDD-ish / ancient SSD / extremely contended)
+  # ----
+  local _degraded="NO"
+  if [ -n "${sw}" ] && awk -v sw="${sw}" 'BEGIN{exit !(sw<150)}' 2>/dev/null; then
+    _degraded="YES"
+  fi
+  if [ "${_degraded}" = "NO" ] && [ -n "${p99wf}" ] && awk -v f="${p99wf}" 'BEGIN{exit !(f>50)}' 2>/dev/null; then
+    _degraded="YES"
+  fi
+  if [ "${_degraded}" = "NO" ] && [ -n "${p99w}" ] && awk -v w="${p99w}" 'BEGIN{exit !(w>10)}' 2>/dev/null; then
+    _degraded="YES"
+  fi
+  if [ "${_degraded}" = "NO" ] && [ -n "${ioping_us}" ] && awk -v u="${ioping_us}" 'BEGIN{exit !(u>1500)}' 2>/dev/null; then
+    _degraded="YES"
+  fi
+
+  # ----
+  # Step 1: LOCAL vs NET guess
+  # ----
+  local _net="NO"
+
+  # Strong signal: ioping in high hundreds of microseconds usually means network/storage fabric.
+  if [ -n "${ioping_us}" ] && awk -v u="${ioping_us}" 'BEGIN{exit !(u>=350)}' 2>/dev/null; then
+    _net="YES"
+  fi
+
+  # Durability tail + random tail suggests network block, even if sequential is OK.
+  if [ "${_net}" = "NO" ] && [ -n "${p99wf}" ] && [ -n "${p99w}" ] && \
+     awk -v f="${p99wf}" -v w="${p99w}" 'BEGIN{exit !(f>=8 && (w>=1.0))}' 2>/dev/null; then
+    _net="YES"
+  fi
+
+  # Classic capped-block signature (e.g., ~500-600 MB/s ceilings)
+  if [ "${_net}" = "NO" ] && [ -n "${sr}" ] && [ -n "${sw}" ] && [ -n "${ioping_us}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" -v u="${ioping_us}" 'BEGIN{exit !(sr>=450 && sr<=700 && sw>=350 && sw<=700 && u>=250)}' 2>/dev/null; then
+    _net="YES"
+  fi
+
+  # ----
+  # Step 2: Performance class (NVMe vs SSD) based on observed behavior
+  # ----
+  local _class="UNKNOWN"
+
+  # NVMe-class: very low QD=1 tail + low ioping
+  if [ -n "${p99r}" ] && [ -n "${p99w}" ] && [ -n "${ioping_us}" ] && \
+     awk -v pr="${p99r}" -v pw="${p99w}" -v u="${ioping_us}" 'BEGIN{exit !(pr<=0.20 && pw<=0.20 && u<=200)}' 2>/dev/null; then
+    _class="NVME"
+  fi
+
+  # NVMe-class (throughput override): some providers cap per-VM throughput/latency,
+  # but multi-GB/s sequential strongly indicates NVMe-class when not network.
+  if [ "${_class}" = "UNKNOWN" ] && [ "${_net}" = "NO" ] && [ "${_degraded}" = "NO" ] && \
+     [ -n "${sr}" ] && [ -n "${sw}" ] && [ -n "${ioping_us}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" -v u="${ioping_us}" 'BEGIN{exit !((sr>=1500 || sw>=1200) && u<=350)}' 2>/dev/null; then
+    _class="NVME"
+  fi
+
+  # SSD-class: still decent tails, but not NVMe-like
+  if [ "${_class}" = "UNKNOWN" ] && [ -n "${p99w}" ] && [ -n "${p99wf}" ] && \
+     awk -v w="${p99w}" -v f="${p99wf}" 'BEGIN{exit !(w<=2.0 && f<=20)}' 2>/dev/null; then
+    _class="SSD"
+  fi
+
+  # Fallback when tails are missing: use seq + ioping
+  if [ "${_class}" = "UNKNOWN" ] && [ -n "${sr}" ] && [ -n "${sw}" ] && [ -n "${ioping_us}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" -v u="${ioping_us}" 'BEGIN{exit !(sw>=1200 && sr>=1800 && u<=350)}' 2>/dev/null; then
+    _class="NVME"
+  fi
+  if [ "${_class}" = "UNKNOWN" ] && [ -n "${sr}" ] && [ -n "${sw}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" 'BEGIN{exit !(sw>=300 && sr>=600)}' 2>/dev/null; then
+    _class="SSD"
+  fi
+
+  # ----
+  # Final label
+  # ----
+  if [ "${_degraded}" = "YES" ]; then
+    if [ "${_net}" = "YES" ]; then
+      echo "NET_DEGRADED"
+    else
+      echo "LOCAL_DEGRADED"
+    fi
+    return
+  fi
+
+  # LOCAL NVMe that is clearly capped by policy/limits (common on some vendors).
+  # We infer this when latency looks local+NVMe-like, but sequential sits in a well-known ceiling band.
+  if [ "${_net}" = "NO" ] && [ -n "${sr}" ] && [ -n "${sw}" ] && [ -n "${ioping_us}" ] && [ -n "${p99wf}" ] && [ -n "${p99w}" ] && \
+     awk -v sr="${sr}" -v sw="${sw}" -v u="${ioping_us}" -v f="${p99wf}" -v w="${p99w}" \
+       'BEGIN{exit !((sr>=450 && sr<=750) && (sw>=350 && sw<=750) && (u<=250) && (f<=5) && (w<=1.0))}' 2>/dev/null; then
+    echo "LOCAL_NVME_CAPPED"
+    return
+  fi
+
+  if [ "${_net}" = "YES" ]; then
+    if [ "${_class}" = "NVME" ]; then
+      echo "NET_NVME_CLASS"
+    else
+      # default for net block: SSD-class behavior is most common
+      echo "NET_SSD_CLASS"
+    fi
+  else
+    if [ "${_class}" = "NVME" ]; then
+      echo "LOCAL_NVME"
+    else
+      echo "LOCAL_SSD"
+    fi
+  fi
+}
+
+_print_disk_compact_section() {
+  # $1 = mountpoint, $2 = short description (header hint)
+  local _mp="$1"
+  local _desc="$2"
+
+  local _seqw _seqr _riops _wiops _meta
+  local _rbw _wbw _rlat _wlat
+  local _seek_line _ioping_avg _ioping_avg_us
+  local _seqw_num _seqr_num _riops_num _wiops_num _meta_num
+  local _disk_grade
+
+  _seqw="${_fio_seqwrite_bw_write["${_mp}"]:-N/A}"
+  _seqr="${_fio_seqread_bw_read["${_mp}"]:-N/A}"
+  _riops="${_fio_rand_iops_read["${_mp}"]:-N/A}"
+  _wiops="${_fio_rand_iops_write["${_mp}"]:-N/A}"
+  _meta="${_meta_ops["${_mp}"]:-N/A}"
+
+  _rbw="${_fio_rand_bw_read["${_mp}"]:-N/A}"
+  _wbw="${_fio_rand_bw_write["${_mp}"]:-N/A}"
+  _rlat="${_fio_rand_latency_read["${_mp}"]:-N/A}"
+  _wlat="${_fio_rand_latency_write["${_mp}"]:-N/A}"
+
+  _seek_line="${_ioping_seek_line["${_mp}"]:-N/A}"
+  _ioping_avg="$(echo "${_seek_line}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 2>/dev/null)"
+  [ -n "${_ioping_avg}" ] || _ioping_avg="N/A"
+  _ioping_avg_us="$(echo "${_seek_line}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+
+  _seqw_num="$(_num_or_empty "$(echo "${_seqw}" | awk '{print $1}')")"
+  _seqr_num="$(_num_or_empty "$(echo "${_seqr}" | awk '{print $1}')")"
+  _riops_num="$(_num_or_empty "${_riops}")"
+  _wiops_num="$(_num_or_empty "${_wiops}")"
+  _meta_num="$(_num_or_empty "$(echo "${_meta}" | awk '{print $1}')")"
+
+  _qd1_p95_r="${_fio_qd1_p95_read["${_mp}"]:-N/A}"
+  _qd1_p95_w="${_fio_qd1_p95_write["${_mp}"]:-N/A}"
+  _qd1_p99_r="${_fio_qd1_p99_read["${_mp}"]:-N/A}"
+  _qd1_p99_w="${_fio_qd1_p99_write["${_mp}"]:-N/A}"
+  _qd1_fsync_p95_w="${_fio_qd1_fsync_p95_write["${_mp}"]:-N/A}"
+  _qd1_fsync_p99_w="${_fio_qd1_fsync_p99_write["${_mp}"]:-N/A}"
+
+  _qd1_p99_r_num="$(_num_or_empty "$(echo "${_qd1_p99_r}" | awk "{print \$1}")")"
+  _qd1_p99_w_num="$(_num_or_empty "$(echo "${_qd1_p99_w}" | awk "{print \$1}")")"
+  _qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_qd1_fsync_p99_w}" | awk "{print \$1}")")"
+
+  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
+  _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
+
+  echo " ============================================================================="
+  if [ "${_mp}" = "/" ]; then
+    echo " == 3. DISK (Root partition / main filesystem)                              =="
+  else
+    printf " == 3. DISK (%s) (Mounted extra filesystem) \n" "${_mp}"
+  fi
+  echo " ============================================================================="
+  echo ""
+  printf "   Sequential write (CRITICAL): %s\n" "${_seqw}"
+  printf "   Sequential read:             %s\n" "${_seqr}"
+  printf "   Random 4K IOPS:              %s read / %s write\n" "${_riops}" "${_wiops}"
+  printf "   Real latency (ioping avg):   %s\n" "${_ioping_avg}"
+  printf "   Metadata ops:                %s\n" "${_meta}"
+  printf "   Random 4K QD1 p95/p99:       %s / %s read, %s / %s write\n" "${_qd1_p95_r}" "${_qd1_p99_r}" "${_qd1_p95_w}" "${_qd1_p99_w}"
+  printf "   Random 4K QD1 fsync p95/p99: %s / %s write\n" "${_qd1_fsync_p95_w}" "${_qd1_fsync_p99_w}"
+  printf "   Storage tier guess:          %s\n" "${_storage_tier}"
+  echo ""
+  printf "   Details (fio synthetic latency):\n"
+  printf "     Random 4K read:   %s @ %s\n" "${_rbw}" "${_rlat}"
+  printf "     Random 4K write:  %s @ %s\n" "${_wbw}" "${_wlat}"
+  echo ""
+
+  if [ "${_disk_grade}" = "bad" ]; then
+    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
+    echo "      This will severely impact BOA performance (cache writes, logs, DB)"
+  elif [ "${_disk_grade}" = "poor" ]; then
+    echo "   ⚠️  Disk profile looks weak (slow SSD/attached)"
+  elif [ "${_disk_grade}" = "average" ]; then
+    echo "   ✅  Average disk performance for BOA workloads"
+  elif [ "${_disk_grade}" = "good" ]; then
+    echo "   🌟  Good disk performance for BOA workloads"
+  elif [ "${_disk_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent disk performance (NVMe-class)"
+  fi
+  echo ""
+}
+
+_print_compact_summary() {
+  echo " ============================================================================="
+  echo " ==                 BOA Performance Test - Compact Summary                  =="
+  echo " ==              Priority: Memory > CPU > Disk > DB > Network               =="
+  echo " ============================================================================="
+  echo ""
+  echo "System:"
+  echo ""
+  if [ -x "/opt/local/bin/screenfetch" ]; then
+    bash /opt/local/bin/screenfetch -n
+  else
+    echo "Host:  ${_hostname}"
+    echo "CPU:   ${_cpu_info}"
+    echo "vCPUs: ${_cpu_cores}"
+    _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
+    echo "RAM:   ${_total_ram_mb} MB"
+  fi
+  echo ""
+
+  # Extract numeric values
+  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps
+  local rand_read_lat seq_read_mbps seq_write_mbps ioping_avg_us meta_ops_num
+  local read_iops write_iops
+
+  mem_mibps="$(_num_or_empty "$(echo "${_mem_transfer_speed}" | awk '{print $1}')")"
+  mem_lat="$(_num_or_empty "${_mem_latency}")"
+  cpu_steal="${_cpu_steal_mt}"
+  st_eps="$(_num_or_empty "${_cpu_events_ST}")"
+  mt_eps="$(_num_or_empty "${_cpu_events_MT_NPROC}")"
+  aes_mibps="$(_num_or_empty "$(echo "${_aes_mibps}" | awk '{print $1}')")"
+  net_mibps="$(_num_or_empty "$(echo "${_net_download}" | awk '{print $1}')")"
+
+  rand_read_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
+  seq_read_mbps="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
+  seq_write_mbps="$(_num_or_empty "$(echo "${_root_seqwrite_bw_write}" | awk '{print $1}')")"
+  meta_ops_num="$(_num_or_empty "$(echo "${_root_meta_ops}" | awk '{print $1}')")"
+  read_iops="$(_num_or_empty "${_fio_rand_iops_read["/"]}")"
+  write_iops="$(_num_or_empty "${_fio_rand_iops_write["/"]}")"
+
+  # Extract ioping avg latency (format: "min/avg/max/mdev = 28.3 us / 126.5 us / ...")
+  ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1)"
+
+  # Calculate grades
+  local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade
+  mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads}")"
+  steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
+  cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
+  root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
+  root_qd1_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_p99_write}" | awk "{print \$1}")")"
+  root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
+  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}")"
+  net_grade="$(_boa_grade_network "${net_mibps}")"
+
+  # Database grade (optional; only if DB test ran)
+  db_grade="unknown"
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    local _vcpus_num
+    _vcpus_num="$(_num_or_empty "${_cpu_cores}")"
+    [ -n "${_vcpus_num}" ] || _vcpus_num="1"
+    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}")"
+  fi
+
+
+  echo " ============================================================================="
+  echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
+  echo " ============================================================================="
+  echo ""
+  printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
+  if [ -n "${_mem_latency}" ]; then
+    printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
+  else
+    printf "   Latency:    %-20s\n" "N/A"
+  fi
+  if [ -n "${_mem_bench_size_mib:-}" ]; then
+    echo "   Bench:      ${_mem_bench_size_mib} MiB per buffer x2 (~${_mem_bench_total_mib} MiB total), ${_mem_bench_threads} threads (median of ${_MEM_BENCH_REPEATS})"
+    if [ -n "${_mem_bw_min}" ] && [ -n "${_mem_bw_max}" ]; then
+      echo "   Variance:   ${_mem_bw_min}-${_mem_bw_max} MiB/s (bw), ${_mem_lat_min}-${_mem_lat_max} ns (lat)"
+    fi
+  fi
+  echo ""
+
+  if [ "${mem_grade}" = "low" ]; then
+    if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+      echo "   ⚠️  High/variable memory latency - may hurt cache-heavy BOA workloads (rerun to confirm)"
+    else
+      echo "   ⚠️  Low memory bandwidth - may limit BOA caching under heavy load"
+    fi
+  elif [ "${mem_grade}" = "average" ]; then
+    if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+      echo "   ☑️  Strong bandwidth but higher latency - likely host contention/NUMA; monitor under load"
+    else
+      echo "   ✅  Average memory performance for in-memory caching"
+    fi
+  elif [ "${mem_grade}" = "good" ]; then
+    echo "   🌟  Good memory performance for in-memory caching"
+  elif [ "${mem_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent memory performance for in-memory caching"
+  elif [ "${mem_grade}" = "ultra" ]; then
+    echo "   🚀  Ultra memory performance for in-memory caching"
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
+  echo " ============================================================================="
+  echo ""
+  printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
+  printf "   Multi-thread:   %-15s events/sec  (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
+  printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
+  printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
+  echo ""
+
+  if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
+    if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
+      echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production"
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
+      echo "   ⚠️  Elevated CPU steal - will cause latency spikes under load"
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
+      echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact"
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<3)}' 2>/dev/null; then
+      echo "   ☑️  Minimal CPU steal - but may cause latency spikes under load"
+    fi
+  fi
+
+  if [ "${cpu_grade}" = "poor" ]; then
+    echo "   ❌ CPU performance too slow for BOA"
+  elif [ "${cpu_grade}" = "acceptable" ]; then
+    echo "   ☑️  Acceptable CPU performance but not optimal"
+  elif [ "${cpu_grade}" = "average" ]; then
+    echo "   ✅  Average CPU performance"
+  elif [ "${cpu_grade}" = "good" ]; then
+    echo "   🌟  Good CPU performance "
+  elif [ "${cpu_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent CPU performance"
+  elif [ "${cpu_grade}" = "ultra" ]; then
+    echo "   🚀  Ultra CPU performance"
+  fi
+  echo ""
+
+  # DISK (root is used for overall rating; other mounts are informational)
+  _print_disk_compact_section "/" "Root partition / main filesystem"
+  local _mp
+  for _mp in "${_test_mounts[@]}"; do
+    if [ "${_mp}" != "/" ]; then
+      _print_disk_compact_section "${_mp}" "Mounted extra filesystem"
+    fi
+  done
+
+
+
+  echo " ============================================================================="
+  echo " == 4. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
+  echo " ============================================================================="
+  echo ""
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    printf "   Threads used:            %s
+" "${_db_threads_used:-N/A}"
+    printf "   Read-only (tps / p95):   %-10s / %s ms
+" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
+    printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]
+" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
+    echo ""
+    if [ "${db_grade}" = "poor" ]; then
+      echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
+    elif [ "${db_grade}" = "average" ]; then
+      echo "   ✅ Average DB OLTP performance"
+    elif [ "${db_grade}" = "good" ]; then
+      echo "   🌟 Good DB OLTP performance"
+    elif [ "${db_grade}" = "excellent" ]; then
+      echo "   🏆 Excellent DB OLTP performance"
+    elif [ "${db_grade}" = "ultra" ]; then
+      echo "   🚀 Ultra DB OLTP performance"
+    fi
+    if [ "${_db_test_status}" = "WARN" ] && [ -n "${_db_test_reason}" ]; then
+      echo "   ⚠️  Note: ${_db_test_reason}"
+    fi
+  else
+    printf "   Status: %s
+" "${_db_test_status}"
+    if [ -n "${_db_test_reason}" ]; then
+      printf "   Reason: %s
+" "${_db_test_reason}"
+    fi
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == 5. NETWORK (Sanity check)                                               =="
+  echo " ============================================================================="
+  echo ""
+  printf "   Public IPv4:        %s\n" "${_net_ipv4}"
+  printf "   Download score:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
+  printf "   Score: avg of best 2/4 single-stream pulls (range ~10 MiB, timeout %ss)\n" "${_NET_TIMEOUT}"
+  if [ "${#_net_dl_name[@]}" -gt 0 ]; then
+    local _i
+    _i=0
+    while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
+      printf "     - %-10s %s\n" "${_net_dl_name[${_i}]}:" "${_net_dl_pretty[${_i}]}"
+      _i=$((_i + 1))
+    done
+    [ -n "${_net_dl_top2}" ] && printf "   Top 2: %s\n" "${_net_dl_top2}"
+  fi
+  echo ""
+
+  if [ "${net_grade}" = "poor" ]; then
+    echo "   ⚠️  Slow network - may affect external API calls and package updates"
+  elif [ "${net_grade}" = "average" ]; then
+    echo "   ✅  Average network speed"
+  elif [ "${net_grade}" = "good" ]; then
+    echo "   🌟  Good network speed"
+  elif [ "${net_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent network speed"
+  elif [ "${net_grade}" = "ultra" ]; then
+    echo "   🚀  Ultra network speed"
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == BOA SUITABILITY SUMMARY                                                 =="
+  echo " ============================================================================="
+
+  local _issues=0
+  local _warnings=0
+
+  # Memory
+  # Treat "low" as a critical issue only when bandwidth is genuinely weak.
+  # Higher latency alone is a warning (VM contention/NUMA effects), not a hard fail.
+  if [ "${mem_grade}" = "low" ]; then
+    if [ -n "${mem_mibps}" ] && awk -v b="${mem_mibps}" 'BEGIN{exit !(b>=20000)}' 2>/dev/null; then
+      echo "   ⚠️  Memory latency/variance looks high (bandwidth is strong) - monitor under load"
+      _warnings=$((_warnings + 1))
+    else
+      echo "   ❌ Memory bandwidth too low for BOA"
+      _issues=$((_issues + 1))
+    fi
+  elif [ "${mem_grade}" = "average" ]; then
+    if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+      echo "   ⚠️  Memory latency higher than expected - may reduce cache hit performance"
+      _warnings=$((_warnings + 1))
+    fi
+  fi
+
+  # CPU speed
+  if [ "${cpu_grade}" = "poor" ]; then
+    echo "   ❌ CPU performance too slow for BOA"
+    _issues=$((_issues + 1))
+  elif [ "${cpu_grade}" = "acceptable" ]; then
+    echo "   ⚠️  CPU performance acceptable but not optimal"
+    _warnings=$((_warnings + 1))
+  fi
+
+  # CPU steal
+  if [ "${steal_grade}" = "bad" ]; then
+    echo "   ❌ CPU steal critically high - oversold host, NOT recommended"
+    _issues=$((_issues + 1))
+  elif [ "${steal_grade}" = "warning" ]; then
+    echo "   ⚠️  CPU steal elevated - may cause latency spikes"
+    _warnings=$((_warnings + 1))
+  fi
+
+  # Disk
+  if [ "${disk_grade}" = "bad" ]; then
+    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
+    _warnings=$((_warnings + 1))
+  elif [ "${disk_grade}" = "poor" ]; then
+    echo "   ⚠️  Slow disk - may impact deployments"
+    _warnings=$((_warnings + 1))
+  fi
+
+
+  # Database (optional)
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    if [ "${db_grade}" = "poor" ]; then
+      echo "   ⚠️  DB OLTP is slow - cache misses and write-heavy workloads may suffer"
+      _warnings=$((_warnings + 1))
+    fi
+  fi
+
+  # Network
+  if [ "${net_grade}" = "poor" ]; then
+    echo "   ⚠️  Slow network - not suitable for high traffic sites"
+    _warnings=$((_warnings + 1))
+  fi
+
+  # Summary
+  if [ "${_issues}" -eq 0 ] && [ "${_warnings}" -eq 0 ]; then
+    echo ""
+    echo "   ✅  This host is well-suited for BOA deployment"
+    echo "   ✅  All critical metrics meet recommended thresholds"
+  elif [ "${_issues}" -eq 0 ]; then
+    echo ""
+    echo "   ⚠️  This host is acceptable for BOA (${_warnings} minor warning(s))"
+    echo "      Should work fine for most BOA workloads"
+  else
+    echo ""
+    echo "   ❌ This host has ${_issues} critical issue(s)"
+    echo "      NOT recommended for production BOA deployment"
+  fi
+
+  echo ""
+  echo " ============================================================================="
+  echo ""
+  echo "For detailed metrics, run: perftest --verbose"
+  echo ""
+}
+
+
+
+# ----
+# DB benchmark (sysbench OLTP, MySQL root)
+# Runs only in --verbose mode by default.
+# ----
+_db_ro_tps=""
+_db_ro_p95_ms=""
+_db_rw_tps=""
+_db_rw_p95_ms=""
+_db_test_status="SKIPPED"
+_db_test_reason=""
+
+_read_mysql_root_pass() {
+  if [ ! -e "/root/.my.pass.txt" ]; then
+    echo ""
+    return
+  fi
+  head -n 1 /root/.my.pass.txt 2>/dev/null | tr -d '
+'
+}
+
+_guess_mysql_socket() {
+  if [ -S "/var/run/mysqld/mysqld.sock" ]; then
+    echo "/var/run/mysqld/mysqld.sock"
+    return
+  fi
+  if [ -S "/run/mysqld/mysqld.sock" ]; then
+    echo "/run/mysqld/mysqld.sock"
+    return
+  fi
+  if [ -S "/var/lib/mysql/mysql.sock" ]; then
+    echo "/var/lib/mysql/mysql.sock"
+    return
+  fi
+  echo ""
+}
+
+_sysbench_lua() {
+  # Args: file name (e.g. oltp_read_only.lua)
+  if [ -f "/usr/share/sysbench/$1" ]; then
+    echo "/usr/share/sysbench/$1"
+    return
+  fi
+  # Older locations (rare)
+  if [ -f "/usr/local/share/sysbench/$1" ]; then
+    echo "/usr/local/share/sysbench/$1"
+    return
+  fi
+  echo ""
+}
+
+_parse_sysbench_tps() {
+  awk '/transactions:/ { for (i=1;i<=NF;i++) { if ($i=="per") { v=$(i-1); gsub(/[()]/,"",v); print v; exit } } }'
+}
+
+_parse_sysbench_p95() {
+  awk '/95th percentile:/ { print $3; exit }'
+}
+
+_run_db_sysbench() {
+  # Args: mode(ro|rw), dbname, threads, table_size, tables, time
+  local mode="$1"
+  local dbname="$2"
+  local threads="$3"
+  local table_size="$4"
+  local tables="$5"
+  local time_s="$6"
+
+  local pass sock lua out tps p95
+  pass="$(_read_mysql_root_pass)"
+  [ -n "${pass}" ] || return 2
+
+  sock="$(_guess_mysql_socket)"
+
+  if [ "${mode}" = "ro" ]; then
+    lua="$(_sysbench_lua "oltp_read_only.lua")"
+  else
+    lua="$(_sysbench_lua "oltp_read_write.lua")"
+  fi
+  [ -n "${lua}" ] || return 3
+
+  # Common args
+  local args=(
+    "--db-driver=mysql"
+    "--mysql-user=root"
+    "--mysql-password=${pass}"
+    "--mysql-db=${dbname}"
+    "--tables=${tables}"
+    "--table-size=${table_size}"
+    "--threads=${threads}"
+    "--time=${time_s}"
+    "--report-interval=0"
+  )
+
+  # Prefer socket if available
+  if [ -n "${sock}" ]; then
+    args+=("--mysql-socket=${sock}")
+  else
+    args+=("--mysql-host=127.0.0.1" "--mysql-port=3306")
+  fi
+
+  out="$(sysbench "${lua}" "${args[@]}" run 2>/dev/null)"
+
+  tps="$(printf '%s
+' "${out}" | _parse_sysbench_tps | head -n1)"
+  p95="$(printf '%s
+' "${out}" | _parse_sysbench_p95 | head -n1)"
+
+  # Validate numeric
+  if ! printf '%s' "${tps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    tps=""
+  fi
+  if ! printf '%s' "${p95}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    p95=""
+  fi
+
+  printf '%s|%s
+' "${tps}" "${p95}"
+}
+
+_db_benchmark_sysbench() {
+  # Runs when enabled and MySQL root access is available.
+  if [ "${_DBTEST_ENABLED}" != "YES" ]; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="disabled"
+    return
+  fi
+  if ! command -v sysbench >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench not installed"
+    return
+  fi
+  if ! command -v mysql >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="mysql client not installed"
+    return
+  fi
+
+  if ! _sysbench_has_mysql_driver; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench built without mysql driver"
+    return
+  fi
+
+  local pass
+  pass="$(_read_mysql_root_pass)"
+  if [ -z "${pass}" ]; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="/root/.my.pass.txt missing/empty"
+    return
+  fi
+
+  # Ensure mysqld responds
+  local sock extra
+  sock="$(_guess_mysql_socket)"
+  extra=""
+  if [ -n "${sock}" ]; then
+    extra="--socket=${sock}"
+  fi
+
+  if ! mysql -uroot -p"${pass}" ${extra} -e 'SELECT 1' >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="cannot connect to MySQL as root"
+    return
+  fi
+
+  echo "Running MySQL OLTP (sysbench: RO+RW, ${_DB_SYSBENCH_TIME_RO}s+${_DB_SYSBENCH_TIME_RW}s)..."
+
+  # Threads = min(vCPU*2, cap)
+  local threads
+  threads=$(( $(nproc 2>/dev/null || echo 1) * 2 ))
+  if [ "${threads}" -gt "${_DB_SYSBENCH_THREADS_MAX}" ]; then
+    threads="${_DB_SYSBENCH_THREADS_MAX}"
+  fi
+  if [ "${threads}" -lt "${_DB_SYSBENCH_THREADS_MIN}" ]; then
+    threads="${_DB_SYSBENCH_THREADS_MIN}"
+  fi
+
+  _db_threads_used="${threads}"
+
+  local table_size tables time_ro time_rw
+  tables="${_DB_SYSBENCH_TABLES}"
+  time_ro="${_DB_SYSBENCH_TIME_RO}"
+  time_rw="${_DB_SYSBENCH_TIME_RW}"
+  if [ "${_DBTEST_HEAVY}" = "YES" ]; then
+    table_size="${_DB_SYSBENCH_TABLE_SIZE_HEAVY}"
+  else
+    table_size="${_DB_SYSBENCH_TABLE_SIZE}"
+  fi
+
+  # Unique db name (<=64 chars)
+  local dbname
+  dbname="perftest_sb_${_hostname}_$$"
+  dbname="$(printf '%s' "${dbname}" | tr -c 'A-Za-z0-9_' '_' | cut -c1-63)"
+
+  # Create db
+  if ! mysql -uroot -p"${pass}" ${extra} -e "CREATE DATABASE IF NOT EXISTS ${dbname}" >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="failed to create db"
+    return
+  fi
+
+  # Prepare tables once (read-only/read-write share dataset)
+  local lua_prepare
+  lua_prepare="$(_sysbench_lua "oltp_read_write.lua")"
+  if [ -z "${lua_prepare}" ]; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench lua not found"
+    return
+  fi
+
+  local sb_args=(
+    "--db-driver=mysql"
+    "--mysql-user=root"
+    "--mysql-password=${pass}"
+    "--mysql-db=${dbname}"
+    "--tables=${tables}"
+    "--table-size=${table_size}"
+    "--threads=${threads}"
+    "--report-interval=0"
+  )
+  if [ -n "${sock}" ]; then
+    sb_args+=("--mysql-socket=${sock}")
+  else
+    sb_args+=("--mysql-host=127.0.0.1" "--mysql-port=3306")
+  fi
+
+  if ! sysbench "${lua_prepare}" "${sb_args[@]}" prepare >/dev/null 2>&1; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench prepare failed"
+    [ "${_DBTEST_KEEP_DB}" = "YES" ] && return
+    mysql -uroot -p"${pass}" ${extra} -e "DROP DATABASE IF EXISTS ${dbname}" >/dev/null 2>&1 || true
+    return
+  fi
+
+  # Run RO and RW, capture tps + p95 latency
+  local ro rw
+  ro="$(_run_db_sysbench ro "${dbname}" "${threads}" "${table_size}" "${tables}" "${time_ro}")"
+  rw="$(_run_db_sysbench rw "${dbname}" "${threads}" "${table_size}" "${tables}" "${time_rw}")"
+
+  _db_ro_tps="$(printf '%s' "${ro}" | cut -d'|' -f1)"
+  _db_ro_p95_ms="$(printf '%s' "${ro}" | cut -d'|' -f2)"
+  _db_rw_tps="$(printf '%s' "${rw}" | cut -d'|' -f1)"
+  _db_rw_p95_ms="$(printf '%s' "${rw}" | cut -d'|' -f2)"
+
+  if [ -n "${_db_ro_tps}" ] && [ -n "${_db_rw_tps}" ]; then
+    _db_test_status="OK"
+    _db_test_reason=""
+  else
+    _db_test_status="WARN"
+    _db_test_reason="could not parse results"
+  fi
+
+  # Cleanup tables
+  sysbench "${lua_prepare}" "${sb_args[@]}" cleanup >/dev/null 2>&1 || true
+
+  if [ "${_DBTEST_KEEP_DB}" != "YES" ]; then
+    mysql -uroot -p"${pass}" ${extra} -e "DROP DATABASE IF EXISTS ${dbname}" >/dev/null 2>&1 || true
+  fi
+}
+# ----
 # Main
-# -------------------------------
+# ----
+
+# Parse arguments
+for arg in "$@"; do
+  case "$arg" in
+    --compact|--quiet) _VERBOSE=0; _COMPACT=1 ;;
+    --verbose) _VERBOSE=1; _COMPACT=0 ;;
+    --no-dbtest) _DBTEST_ENABLED=NO ;;
+    --dbtest-heavy) _DBTEST_HEAVY=YES ;;
+    --keep-db) _DBTEST_KEEP_DB=YES ;;
+    -h|--help) _usage; exit 0 ;;
+    *)
+      echo "Unknown option: $arg"
+      _usage
+      exit 1
+      ;;
+  esac
+done
 
 _check_root
 
@@ -199,148 +2560,501 @@ _check_root
 apt-get update -qq >/dev/null 2>&1
 
 # Required packages
+_check_and_install_package "curl"
+_check_and_install_package "openssl"
 _check_and_install_package "fio"
 _check_and_install_package "jq"
-_check_and_install_package "sysstat"  # mpstat
-
+_check_and_install_package "sysstat" # mpstat
+_check_and_install_package "bc"
 _ensure_sysbench
 
 echo ""
-echo "Starting performance tests..."
-echo ""
+echo "Starting extended performance tests, please wait..."
 
-# CPU Performance Test - Multi-threaded
-echo "Running CPU performance test (multi-threaded) with sysbench..."
-_CPU_STEAL_MT="$(_measure_cpu_steal 1)"  # warm-up check (may be empty)
+# Basic system info
+_hostname="$(hostname)"
+_cpu_info="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
+_cpu_cores="$(nproc 2>/dev/null || echo N/A)"
 
-# measure steal during the actual run if mpstat exists
-if command -v mpstat >/dev/null 2>&1; then
-  # Run mpstat in background during sysbench (30s)
-  mpstat 1 30 >/tmp/perftest_mpstat_mt.txt 2>/dev/null &
-  _MPSTAT_PID="$!"
+# DB bench outputs (sysbench OLTP)
+_db_test_status="SKIPPED"
+_db_test_reason=""
+_db_ro_tps=""
+_db_ro_p95_ms=""
+_db_rw_tps=""
+_db_rw_p95_ms=""
+
+if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Host: ${_hostname}"
+  echo "CPU: ${_cpu_info}"
+  echo "vCPUs: ${_cpu_cores}"
+  echo ""
+  echo "Block devices (lsblk):"
+  lsblk -o NAME,TYPE,SIZE,ROTA | sed 's/^/  /'
+  echo ""
 fi
 
-_CPU_TEST_MT="$(sysbench cpu --threads="$(nproc)" --time=30 run 2>/dev/null)"
+if command -v php >/dev/null 2>&1 && [ "${_VERBOSE}" -eq 1 ]; then
+  echo "PHP version:"
+  php -v | sed 's/^/  /'
+  echo ""
+fi
 
-if [ -n "${_MPSTAT_PID}" ]; then
-  wait "${_MPSTAT_PID}" >/dev/null 2>&1
-  _CPU_STEAL_MT="$(awk '/^[0-9]/ { steal_sum += $(NF); steal_cnt++ } END { if (steal_cnt>0) printf "%.2f", steal_sum/steal_cnt }' /tmp/perftest_mpstat_mt.txt 2>/dev/null)"
+# CPU Performance Tests
+echo "Running CPU performance tests with sysbench..."
+_cpu_steal_mt="$(_measure_cpu_steal 1)" # initial check
+
+# Multi-threaded: nproc
+if command -v mpstat >/dev/null 2>&1; then
+  mpstat 1 "${_SYSBENCH_CPU_TIME}" >/tmp/perftest_mpstat_mt.txt 2>/dev/null &
+  _mpstat_pid="$!"
+fi
+
+_run_sysbench_cpu "$(nproc)" "MT_NPROC"
+
+if [ -n "${_mpstat_pid:-}" ]; then
+  wait "${_mpstat_pid}" >/dev/null 2>&1
+  _cpu_steal_mt="$(awk '/^[0-9]/ { steal_sum += $(NF); steal_cnt++ } END { if (steal_cnt>0) printf "%.2f", steal_sum/steal_cnt }' /tmp/perftest_mpstat_mt.txt 2>/dev/null)"
   rm -f /tmp/perftest_mpstat_mt.txt >/dev/null 2>&1
 fi
 
-_CPU_EVENTS_MT="$(echo "${_CPU_TEST_MT}" | awk '/events per second:/ {print $4}')"
-_CPU_LATENCY_MT="$(echo "${_CPU_TEST_MT}" | awk '/avg:/ {print $2}')"
+# Single-threaded
+echo "Running Single-threaded CPU performance tests..."
+_run_sysbench_cpu 1 "ST"
 
-# CPU Performance Test - Single-threaded
-echo "Running CPU performance test (single-threaded) with sysbench..."
-_CPU_TEST_ST="$(sysbench cpu --threads=1 --time=30 run 2>/dev/null)"
-_CPU_EVENTS_ST="$(echo "${_CPU_TEST_ST}" | awk '/events per second:/ {print $4}')"
-_CPU_LATENCY_ST="$(echo "${_CPU_TEST_ST}" | awk '/avg:/ {print $2}')"
+# 4-thread
+echo "Running Multi-threaded CPU tests..."
+_run_sysbench_cpu 4 "MT4"
 
-# Memory Performance Test
-echo "Running Memory performance test with sysbench..."
-_MEM_TEST="$(sysbench memory --threads="$(nproc)" --time=30 run 2>/dev/null)"
-_MEM_TRANSFER_SPEED="$(echo "${_MEM_TEST}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
-_MEM_LATENCY="$(echo "${_MEM_TEST}" | awk '/avg:/ {print $2}')"
+# Memory Performance Test (DRAM-focused)
+echo "Running Memory performance test (DRAM-focused membench)..."
+_run_mem_benchmarks
 
-# PHP Performance Test
-if command -v php >/dev/null 2>&1; then
-  echo "Running PHP performance test..."
-  _PHP_TEST_SCRIPT="/tmp/phpbench.php"
-  cat << 'EOF' > "${_PHP_TEST_SCRIPT}"
-<?php
-$start = microtime(true);
-$iterations = 500000;
-$acc = 0;
-for ($i=0; $i<$iterations; $i++) {
-  $s = "the quick brown fox jumps over the lazy dog " . $i;
-  $h = hash('sha256', $s, false);
-  $acc += ord($h[0]);
-}
-$elapsed = microtime(true) - $start;
-printf("%.4f\n", $elapsed);
-EOF
-  _PHP_TEST_TIME="$(php "${_PHP_TEST_SCRIPT}" 2>/dev/null)"
-  rm -f "${_PHP_TEST_SCRIPT}" >/dev/null 2>&1
-else
-  _PHP_TEST_TIME="N/A (php not installed)"
-fi
+# AES throughput (nench-inspired)
+echo "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
+_run_aes_throughput_test
 
-# Disk I/O Performance Test with fio
-echo "Detecting mounted filesystems to test (root + real mounted partitions; excluding /boot*)..."
-mapfile -t _TEST_MOUNTS < <(_get_test_mounts)
+# PHP Performance Tests (single + concurrent)
+echo "Running PHP performance tests..."
+_run_php_benchmarks
 
-declare -A _FIO_IOPS_READ
-declare -A _FIO_IOPS_WRITE
-declare -A _FIO_BW_READ
-declare -A _FIO_BW_WRITE
-declare -A _FIO_LATENCY_READ
-declare -A _FIO_LATENCY_WRITE
+# Database OLTP experience proxy (sysbench + MySQL root)
+echo "Running Database performance tests..."
+_db_benchmark_sysbench
 
-for _MOUNT_POINT in "${_TEST_MOUNTS[@]}"; do
-  echo "Running Disk I/O test on ${_MOUNT_POINT}..."
-  _SAFE_MOUNT_POINT="$(echo "${_MOUNT_POINT}" | sed 's#/#_#g')"
-  _OUTPUT_FILE="/tmp/fio_output_${_SAFE_MOUNT_POINT}_$$.json"
+# Disk I/O Performance Tests
+_log "Detecting mounted filesystems to test (root + real mounted partitions; excluding /boot*)..."
+mapfile -t _test_mounts < <(_get_test_mounts)
 
-  if _run_fio_test "${_MOUNT_POINT}" "${_OUTPUT_FILE}"; then
-    while IFS="=" read -r _K _V; do
-      case "${_K}" in
-        READ_IOPS)   _FIO_IOPS_READ["${_MOUNT_POINT}"]="${_V}" ;;
-        WRITE_IOPS)  _FIO_IOPS_WRITE["${_MOUNT_POINT}"]="${_V}" ;;
-        READ_BW_MB)  _FIO_BW_READ["${_MOUNT_POINT}"]="${_V} MB/s" ;;
-        WRITE_BW_MB) _FIO_BW_WRITE["${_MOUNT_POINT}"]="${_V} MB/s" ;;
-        READ_LAT_MS) _FIO_LATENCY_READ["${_MOUNT_POINT}"]="${_V} ms" ;;
-        WRITE_LAT_MS)_FIO_LATENCY_WRITE["${_MOUNT_POINT}"]="${_V} ms" ;;
+# ioping latency (nench-inspired)
+echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
+declare -A _ioping_seek_line
+declare -A _ioping_seqread_line
+_run_ioping_quick_mounts
+
+# IPv4 network sanity check (CDN with fallback)
+echo "Running IPv4 network check (4 tests, ${_NET_TIMEOUT}s timeout)..."
+_run_ipv4_net_check
+
+declare -A _fio_rand_iops_read
+declare -A _fio_rand_iops_write
+declare -A _fio_rand_bw_read
+declare -A _fio_rand_bw_write
+declare -A _fio_rand_latency_read
+declare -A _fio_rand_latency_write
+declare -A _fio_seqread_bw_read
+declare -A _fio_seqread_latency_read
+declare -A _fio_seqwrite_bw_write
+declare -A _fio_seqwrite_latency_write
+declare -A _fio_qd1_p95_read
+declare -A _fio_qd1_p95_write
+declare -A _fio_qd1_p99_read
+declare -A _fio_qd1_p99_write
+declare -A _fio_qd1_fsync_p95_write
+declare -A _fio_qd1_fsync_p99_write
+declare -A _meta_ops
+
+# For CSV summary (root mount)
+_root_rand_bw_read=""
+_root_rand_bw_write=""
+_root_rand_lat_read=""
+_root_rand_lat_write=""
+_root_seqread_bw_read=""
+_root_seqread_lat_read=""
+_root_seqwrite_bw_write=""
+_root_seqwrite_lat_write=""
+_root_meta_ops=""
+_root_qd1_p95_read=""
+_root_qd1_p95_write=""
+_root_qd1_p99_read=""
+_root_qd1_p99_write=""
+_root_qd1_fsync_p95_write=""
+_root_qd1_fsync_p99_write=""
+
+for _mount_point in "${_test_mounts[@]}"; do
+  [ -z "${_mount_point}" ] && continue
+  echo "Running Disk I/O tests on ${_mount_point}..."
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+
+  # Random 4k read/write
+  _rand_output="/tmp/fio_rand_${_safe_mount_point}_$$.json"
+  if _run_fio_rand_test "${_mount_point}" "${_rand_output}"; then
+    while IFS="=" read -r _k _v; do
+      case "${_k}" in
+        READ_IOPS) _fio_rand_iops_read["${_mount_point}"]="${_v}" ;;
+        WRITE_IOPS) _fio_rand_iops_write["${_mount_point}"]="${_v}" ;;
+        READ_BW_MB) _fio_rand_bw_read["${_mount_point}"]="${_v} MB/s" ;;
+        WRITE_BW_MB) _fio_rand_bw_write["${_mount_point}"]="${_v} MB/s" ;;
+        READ_LAT_MS) _fio_rand_latency_read["${_mount_point}"]="${_v} ms" ;;
+        WRITE_LAT_MS) _fio_rand_latency_write["${_mount_point}"]="${_v} ms" ;;
       esac
-    done < <(_parse_fio_json "${_OUTPUT_FILE}")
-
-    rm -f "${_OUTPUT_FILE}" >/dev/null 2>&1
+    done < <(_parse_fio_json "${_rand_output}")
   else
-    rm -f "${_OUTPUT_FILE}" >/dev/null 2>&1
-    _FIO_IOPS_READ["${_MOUNT_POINT}"]="ERROR"
-    _FIO_IOPS_WRITE["${_MOUNT_POINT}"]="ERROR"
-    _FIO_BW_READ["${_MOUNT_POINT}"]="ERROR"
-    _FIO_BW_WRITE["${_MOUNT_POINT}"]="ERROR"
-    _FIO_LATENCY_READ["${_MOUNT_POINT}"]="ERROR"
-    _FIO_LATENCY_WRITE["${_MOUNT_POINT}"]="ERROR"
+    _fio_rand_iops_read["${_mount_point}"]="ERROR"
+    _fio_rand_iops_write["${_mount_point}"]="ERROR"
+    _fio_rand_bw_read["${_mount_point}"]="ERROR"
+    _fio_rand_bw_write["${_mount_point}"]="ERROR"
+    _fio_rand_latency_read["${_mount_point}"]="ERROR"
+    _fio_rand_latency_write["${_mount_point}"]="ERROR"
+  fi
+  rm -f "${_rand_output}" >/dev/null 2>&1
+
+  # Sequential read
+  _seqread_output="/tmp/fio_seqread_${_safe_mount_point}_$$.json"
+  if _run_fio_seq_read_test "${_mount_point}" "${_seqread_output}"; then
+    while IFS="=" read -r _k _v; do
+      case "${_k}" in
+        READ_BW_MB) _fio_seqread_bw_read["${_mount_point}"]="${_v} MB/s" ;;
+        READ_LAT_MS) _fio_seqread_latency_read["${_mount_point}"]="${_v} ms" ;;
+      esac
+    done < <(_parse_fio_json "${_seqread_output}")
+  else
+    _fio_seqread_bw_read["${_mount_point}"]="ERROR"
+    _fio_seqread_latency_read["${_mount_point}"]="ERROR"
+  fi
+  rm -f "${_seqread_output}" >/dev/null 2>&1
+
+  # Sequential write
+  _seqwrite_output="/tmp/fio_seqwrite_${_safe_mount_point}_$$.json"
+  if _run_fio_seq_write_test "${_mount_point}" "${_seqwrite_output}"; then
+    while IFS="=" read -r _k _v; do
+      case "${_k}" in
+        WRITE_BW_MB) _fio_seqwrite_bw_write["${_mount_point}"]="${_v} MB/s" ;;
+        WRITE_LAT_MS) _fio_seqwrite_latency_write["${_mount_point}"]="${_v} ms" ;;
+      esac
+    done < <(_parse_fio_json "${_seqwrite_output}")
+  else
+    _fio_seqwrite_bw_write["${_mount_point}"]="ERROR"
+    _fio_seqwrite_latency_write["${_mount_point}"]="ERROR"
+  fi
+  rm -f "${_seqwrite_output}" >/dev/null 2>&1
+
+
+  # Random 4k randrw QD=1 (latency percentiles for tiering) - repeated for stability
+  echo "Running QD=1 random latency test (x${_FIO_QD1_REPEATS}) on ${_mount_point}..."
+  _qd1_rep=""
+  _qd1_p95_r_list=() _qd1_p95_w_list=() _qd1_p99_r_list=() _qd1_p99_w_list=()
+  _qd1_ok="YES"
+  for _qd1_rep in $(seq 1 "${_FIO_QD1_REPEATS}"); do
+    _qd1_output="/tmp/fio_qd1_${_safe_mount_point}_${_qd1_rep}_$$.json"
+    if _run_fio_qd1_test "${_mount_point}" "${_qd1_output}"; then
+      _tmp_r95="" _tmp_w95="" _tmp_r99="" _tmp_w99=""
+      while IFS="=" read -r _k _v; do
+        case "${_k}" in
+          READ_P95_MS) _tmp_r95="${_v}" ;;
+          WRITE_P95_MS) _tmp_w95="${_v}" ;;
+          READ_P99_MS) _tmp_r99="${_v}" ;;
+          WRITE_P99_MS) _tmp_w99="${_v}" ;;
+        esac
+      done < <(_parse_fio_json "${_qd1_output}")
+      [ -n "${_tmp_r95}" ] && _qd1_p95_r_list+=("${_tmp_r95}")
+      [ -n "${_tmp_w95}" ] && _qd1_p95_w_list+=("${_tmp_w95}")
+      [ -n "${_tmp_r99}" ] && _qd1_p99_r_list+=("${_tmp_r99}")
+      [ -n "${_tmp_w99}" ] && _qd1_p99_w_list+=("${_tmp_w99}")
+    else
+      _qd1_ok="NO"
+    fi
+    rm -f "${_qd1_output}" >/dev/null 2>&1
+  done
+
+  if [ "${_qd1_ok}" = "YES" ] && [ "${#_qd1_p99_r_list[@]}" -gt 0 ] && [ "${#_qd1_p99_w_list[@]}" -gt 0 ]; then
+    _fio_qd1_p95_read["${_mount_point}"]="$(_median_num "${_qd1_p95_r_list[@]}") ms"
+    _fio_qd1_p95_write["${_mount_point}"]="$(_median_num "${_qd1_p95_w_list[@]}") ms"
+    _fio_qd1_p99_read["${_mount_point}"]="$(_median_num "${_qd1_p99_r_list[@]}") ms"
+    _fio_qd1_p99_write["${_mount_point}"]="$(_median_num "${_qd1_p99_w_list[@]}") ms"
+  else
+    _fio_qd1_p95_read["${_mount_point}"]="ERROR"
+    _fio_qd1_p95_write["${_mount_point}"]="ERROR"
+    _fio_qd1_p99_read["${_mount_point}"]="ERROR"
+    _fio_qd1_p99_write["${_mount_point}"]="ERROR"
+  fi
+
+  # Random 4k randwrite QD=1 with fsync (durability realism) - repeated for stability
+  echo "Running QD=1 fsync write test (x${_FIO_QD1_FSYNC_REPEATS}) on ${_mount_point}..."
+  _fs_rep=""
+  _fs_p95_list=() _fs_p99_list=()
+  _fs_ok="YES"
+  for _fs_rep in $(seq 1 "${_FIO_QD1_FSYNC_REPEATS}"); do
+    _qd1_fsync_output="/tmp/fio_qd1_fsync_${_safe_mount_point}_${_fs_rep}_$$.json"
+    if _run_fio_qd1_fsync_test "${_mount_point}" "${_qd1_fsync_output}"; then
+      _tmp_fs95="" _tmp_fs99=""
+      while IFS="=" read -r _k _v; do
+        case "${_k}" in
+          SYNC_P95_MS) _tmp_fs95="${_v}" ;;
+          SYNC_P99_MS) _tmp_fs99="${_v}" ;;
+          WRITE_P95_MS) [ -z "${_tmp_fs95}" ] && _tmp_fs95="${_v}" ;;
+          WRITE_P99_MS) [ -z "${_tmp_fs99}" ] && _tmp_fs99="${_v}" ;;
+        esac
+      done < <(_parse_fio_json "${_qd1_fsync_output}")
+      [ -n "${_tmp_fs95}" ] && _fs_p95_list+=("${_tmp_fs95}")
+      [ -n "${_tmp_fs99}" ] && _fs_p99_list+=("${_tmp_fs99}")
+    else
+      _fs_ok="NO"
+    fi
+    rm -f "${_qd1_fsync_output}" >/dev/null 2>&1
+  done
+
+  if [ "${_fs_ok}" = "YES" ] && [ "${#_fs_p99_list[@]}" -gt 0 ]; then
+    _fio_qd1_fsync_p95_write["${_mount_point}"]="$(_median_num "${_fs_p95_list[@]}") ms"
+    _fio_qd1_fsync_p99_write["${_mount_point}"]="$(_median_num "${_fs_p99_list[@]}") ms"
+  else
+    _fio_qd1_fsync_p95_write["${_mount_point}"]="ERROR"
+    _fio_qd1_fsync_p99_write["${_mount_point}"]="ERROR"
+  fi
+
+  # Metadata test
+  _run_metadata_test "${_mount_point}" "_meta_ops[\"${_mount_point}\"]"
+
+  # Capture root mount metrics for CSV
+  if [ "${_mount_point}" = "/" ]; then
+    _root_rand_bw_read="${_fio_rand_bw_read["${_mount_point}"]}"
+    _root_rand_bw_write="${_fio_rand_bw_write["${_mount_point}"]}"
+    _root_rand_lat_read="${_fio_rand_latency_read["${_mount_point}"]}"
+    _root_rand_lat_write="${_fio_rand_latency_write["${_mount_point}"]}"
+    _root_seqread_bw_read="${_fio_seqread_bw_read["${_mount_point}"]}"
+    _root_seqread_lat_read="${_fio_seqread_latency_read["${_mount_point}"]}"
+    _root_seqwrite_bw_write="${_fio_seqwrite_bw_write["${_mount_point}"]}"
+    _root_seqwrite_lat_write="${_fio_seqwrite_latency_write["${_mount_point}"]}"
+    _root_meta_ops="${_meta_ops["${_mount_point}"]}"
+    _root_qd1_p95_read="${_fio_qd1_p95_read["${_mount_point}"]}"
+    _root_qd1_p95_write="${_fio_qd1_p95_write["${_mount_point}"]}"
+    _root_qd1_p99_read="${_fio_qd1_p99_read["${_mount_point}"]}"
+    _root_qd1_p99_write="${_fio_qd1_p99_write["${_mount_point}"]}"
+    _root_qd1_fsync_p95_write="${_fio_qd1_fsync_p95_write["${_mount_point}"]}"
+    _root_qd1_fsync_p99_write="${_fio_qd1_fsync_p99_write["${_mount_point}"]}"
   fi
 done
 
+# ----
 # Display Results
+# ----
 echo ""
-echo "======= Performance Test Summary ======="
-echo ""
-echo "CPU Performance (Multi-threaded):"
-echo " - Events per Second: ${_CPU_EVENTS_MT}"
-echo " - Average Latency:   ${_CPU_LATENCY_MT} ms"
-if [ -n "${_CPU_STEAL_MT}" ]; then
-  echo " - Avg CPU Steal:     ${_CPU_STEAL_MT} %"
+
+if [ "${_COMPACT}" -eq 1 ]; then
+  _print_compact_summary
+else
+  echo ""
+  echo "==== Performance Test Summary ===="
+  echo ""
+  echo "System:"
+  echo ""
+  if [ -x "/opt/local/bin/screenfetch" ]; then
+    bash /opt/local/bin/screenfetch -n
+  else
+    echo "  - Hostname: ${_hostname}"
+    echo "  - CPU: ${_cpu_info}"
+    echo "  - vCPUs: ${_cpu_cores}"
+    _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
+    echo "  - RAM: ${_total_ram_mb} MB"
+  fi
+  echo ""
+  echo "CPU Performance (Multi-threaded, nproc=$(nproc)):"
+  echo "  - Events per Second: ${_cpu_events_MT_NPROC}"
+  echo "  - Average Latency: ${_cpu_latency_MT_NPROC} ms"
+  if [ -n "${_cpu_steal_mt}" ]; then
+    echo "  - Avg CPU Steal: ${_cpu_steal_mt} %"
+  fi
+  echo ""
+  echo "CPU Performance (4 threads):"
+  echo "  - Events per Second: ${_cpu_events_MT4}"
+  echo "  - Average Latency: ${_cpu_latency_MT4} ms"
+  echo ""
+  echo "CPU Performance (Single-threaded):"
+  echo "  - Events per Second: ${_cpu_events_ST}"
+  echo "  - Average Latency: ${_cpu_latency_ST} ms"
+  echo ""
+  echo "Memory Performance:"
+  echo "  - Transfer Speed: ${_mem_transfer_speed}"
+  if [ -n "${_mem_latency}" ]; then
+    echo "  - Pointer-chase latency: ${_mem_latency} ${_mem_latency_unit}"
+  else
+    echo "  - Pointer-chase latency: N/A"
+  fi
+  if [ -n "${_mem_bench_size_mib:-}" ]; then
+    echo "  - Working set: ${_mem_bench_size_mib} MiB per buffer x2 (~${_mem_bench_total_mib} MiB total), Threads: ${_mem_bench_threads} (median of ${_MEM_BENCH_REPEATS})"
+    if [ -n "${_mem_bw_min}" ] && [ -n "${_mem_bw_max}" ]; then
+      echo "  - Variance: ${_mem_bw_min}-${_mem_bw_max} MiB/s (bw), ${_mem_lat_min}-${_mem_lat_max} ns (lat)"
+    fi
+  fi
+  echo ""
+  echo "AES Performance (openssl enc):"
+  echo "  - Time: ${_aes_seconds} s"
+  echo "  - Throughput: ${_aes_mibps}"
+  echo ""
+  echo "Disk Latency (ioping):"
+  echo "  - Seek rate: ${_ioping_seek}"
+  echo "  - Sequential read: ${_ioping_seqread}"
+  echo ""
+  echo "Network (IPv4 single-stream):"
+  echo "  - Public IPv4: ${_net_ipv4}"
+  echo "  - Download score (avg best 2/4): ${_net_download}"
+  if [ "${#_net_dl_name[@]}" -gt 0 ]; then
+    echo "  - Tests:"
+    _i=0
+    while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
+      echo "    - ${_net_dl_name[${_i}]}: ${_net_dl_pretty[${_i}]}"
+      _i=$((_i + 1))
+    done
+    [ -n "${_net_dl_top2}" ] && echo "  - Top 2: ${_net_dl_top2}"
+  fi
+  echo ""
+  echo "PHP Performance (CLI Micro-benchmark):"
+  if command -v php >/dev/null 2>&1; then
+    echo "  - Runs (seconds): ${_php_time_runs}"
+    echo "  - Median Time: ${_php_time_median} seconds"
+    echo "  - Concurrent Procs: $( [ "$(nproc)" -gt "${_PHP_BENCH_CONCURRENCY_MAX}" ] && echo "${_PHP_BENCH_CONCURRENCY_MAX}" || nproc )"
+    echo "  - Wall Time (conc.): ${_php_concurrency_wall} seconds"
+    echo "  - Throughput (conc.): ${_php_concurrency_throughput}"
+  else
+    echo "  - PHP not installed"
+  fi
+
+  echo ""
+  echo "Database OLTP (sysbench, MySQL root):"
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+      echo "  - Threads: ${_db_threads_used:-N/A}"
+    echo "  - Read-only:  ${_db_ro_tps} TPS, p95 ${_db_ro_p95_ms} ms"
+    echo "  - Read-write: ${_db_rw_tps} TPS, p95 ${_db_rw_p95_ms} ms"
+    if [ "${_db_test_status}" = "WARN" ]; then
+      echo "  - Note: results parsed with warning (${_db_test_reason})"
+    fi
+  else
+    if [ -n "${_db_test_reason}" ]; then
+      echo "  - ${_db_test_status}: ${_db_test_reason}"
+    else
+      echo "  - ${_db_test_status}"
+    fi
+  fi
+
+  for _mount_point in "${_test_mounts[@]}"; do
+    [ -z "${_mount_point}" ] && continue
+    echo ""
+    echo "Disk I/O Performance on ${_mount_point}:"
+    echo ""
+    echo "  Random 4k randrw:"
+    echo "    - Read IOPS: ${_fio_rand_iops_read["${_mount_point}"]}"
+    echo "    - Write IOPS: ${_fio_rand_iops_write["${_mount_point}"]}"
+    echo "    - Read Bandwidth: ${_fio_rand_bw_read["${_mount_point}"]}"
+    echo "    - Write Bandwidth: ${_fio_rand_bw_write["${_mount_point}"]}"
+    echo "    - Avg Read Latency: ${_fio_rand_latency_read["${_mount_point}"]}"
+    echo "    - Avg Write Latency: ${_fio_rand_latency_write["${_mount_point}"]}"
+    echo ""
+    echo "  QD=1 randrw (p95/p99):"
+    echo "    - Read p95/p99: ${_fio_qd1_p95_read["${_mount_point}"]} / ${_fio_qd1_p99_read["${_mount_point}"]}"
+    echo "    - Write p95/p99: ${_fio_qd1_p95_write["${_mount_point}"]} / ${_fio_qd1_p99_write["${_mount_point}"]}"
+    _tier_ioping_us="$(echo "${_ioping_seek_line["${_mount_point}"]:-}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+    _tier_ioping_us="$(_num_or_empty "${_tier_ioping_us}")"
+    _tier_srw_num="$(_num_or_empty "$(echo "${_fio_seqread_bw_read["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_sww_num="$(_num_or_empty "$(echo "${_fio_seqwrite_bw_write["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_p99r_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_read["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_write["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_fsync_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_fsync_p99_write["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_storage_tier="$(_boa_guess_storage_tier "${_tier_ioping_us}" "${_tier_srw_num}" "${_tier_sww_num}" "${_tier_p99r_num}" "${_tier_p99w_num}" "${_tier_fsync_p99w_num}")"
+    echo "    - Storage tier guess: ${_tier_storage_tier}"
+    echo ""
+    echo "  Sequential Read (128k):"
+    echo "    - Read Bandwidth: ${_fio_seqread_bw_read["${_mount_point}"]}"
+    echo "    - Avg Read Latency: ${_fio_seqread_latency_read["${_mount_point}"]}"
+    echo ""
+    echo "  Sequential Write (128k):"
+    echo "    - Write Bandwidth: ${_fio_seqwrite_bw_write["${_mount_point}"]}"
+    echo "    - Avg Write Latency: ${_fio_seqwrite_latency_write["${_mount_point}"]}"
+    echo ""
+    echo "  Metadata (small file create+read+delete):"
+    echo "    - Ops per second: ${_meta_ops["${_mount_point}"]}"
+
+    # CSV per-mount disk line (verbose mode only)
+    # Format:
+    # CSV_DISK_V1:hostname,"/mount",seq_read_MBps,seq_write_MBps,rand_iops_r,rand_iops_w,meta_ops,ioping_us,qd1_p99_r,qd1_p99_w,qd1_fsync_p99_w,"tier","grade"
+    if [ "${_VERBOSE}" -eq 1 ]; then
+      _csv_seqr_num="${_tier_srw_num}"
+      _csv_seqw_num="${_tier_sww_num}"
+      _csv_riops_num="$(_num_or_empty "${_fio_rand_iops_read["${_mount_point}"]}")"
+      _csv_wiops_num="$(_num_or_empty "${_fio_rand_iops_write["${_mount_point}"]}")"
+      _csv_meta_num="$(_num_or_empty "$(echo "${_meta_ops["${_mount_point}"]}" | awk '{print $1}')")"
+      _csv_ioping_avg_us="${_tier_ioping_us}"
+      _csv_p99r_num="${_tier_p99r_num}"
+      _csv_p99w_num="${_tier_p99w_num}"
+      _csv_fsync_p99w_num="${_tier_fsync_p99w_num}"
+      _csv_disk_grade="$(_boa_grade_disk_final "${_csv_ioping_avg_us}" "${_csv_seqr_num}" "${_csv_seqw_num}" "${_csv_riops_num}" "${_csv_wiops_num}" "${_csv_meta_num}" "${_csv_p99r_num}" "${_csv_p99w_num}" "${_csv_fsync_p99w_num}")"
+      echo "CSV_DISK_V1:${_hostname},\"${_mount_point}\",${_csv_seqr_num},${_csv_seqw_num},${_csv_riops_num},${_csv_wiops_num},${_csv_meta_num},${_csv_ioping_avg_us},${_csv_p99r_num},${_csv_p99w_num},${_csv_fsync_p99w_num},\"${_tier_storage_tier}\",\"${_csv_disk_grade}\""
+    fi
+  done
+
+  echo ""
+  echo "Performance tests completed."
+  echo ""
 fi
 
-echo ""
-echo "CPU Performance (Single-threaded):"
-echo " - Events per Second: ${_CPU_EVENTS_ST}"
-echo " - Average Latency:   ${_CPU_LATENCY_ST} ms"
+# ----
+# CSV summary line (focus on root mount) for easy ingest
+# ----
+# Fields (comma-separated, no header):
+# hostname,cpu_model,vcpus,cpu_mt_eps,cpu_4t_eps,cpu_st_eps,mem_bw,php_median_s,php_conc_thr_ops,
+# root_rand_bw_read,root_rand_bw_write,root_rand_lat_r,root_rand_lat_w,
+# root_seqread_bw,root_seqread_lat_r,root_seqwrite_bw,root_seqwrite_lat_w,root_meta_ops,
+# aes_mibps,net_mibps
 
-echo ""
-echo "Memory Performance:"
-echo " - Transfer Speed:    ${_MEM_TRANSFER_SPEED}"
-echo " - Average Latency:   ${_MEM_LATENCY} ms"
+# Strip units from some disk fields for CSV
+_strip_unit() {
+  # $1 = value like "195.67 MB/s" or "1.23 ms"
+  echo "$1" | awk '{print $1}'
+}
 
-echo ""
-echo "PHP Performance:"
-echo " - Script Time:       ${_PHP_TEST_TIME} seconds"
+_csv_mem_bw="$(_strip_unit "${_mem_transfer_speed}")"
+_csv_root_rand_bw_read="$(_strip_unit "${_root_rand_bw_read}")"
+_csv_root_rand_bw_write="$(_strip_unit "${_root_rand_bw_write}")"
+_csv_root_rand_lat_read="$(_strip_unit "${_root_rand_lat_read}")"
+_csv_root_rand_lat_write="$(_strip_unit "${_root_rand_lat_write}")"
+_csv_root_seqread_bw_read="$(_strip_unit "${_root_seqread_bw_read}")"
+_csv_root_seqread_lat_read="$(_strip_unit "${_root_seqread_lat_read}")"
+_csv_root_seqwrite_bw_write="$(_strip_unit "${_root_seqwrite_bw_write}")"
+_csv_root_seqwrite_lat_write="$(_strip_unit "${_root_seqwrite_lat_write}")"
+_csv_root_meta_ops="$(_strip_unit "${_root_meta_ops}")"
+_csv_aes_mibps="$(_strip_unit "${_aes_mibps}")"
+_csv_net_download="$(_strip_unit "${_net_download}")"
 
-for _MOUNT_POINT in "${_TEST_MOUNTS[@]}"; do
-  echo ""
-  echo "Disk I/O Performance on ${_MOUNT_POINT}:"
-  echo " - Read IOPS:         ${_FIO_IOPS_READ["${_MOUNT_POINT}"]}"
-  echo " - Write IOPS:        ${_FIO_IOPS_WRITE["${_MOUNT_POINT}"]}"
-  echo " - Read Bandwidth:    ${_FIO_BW_READ["${_MOUNT_POINT}"]}"
-  echo " - Write Bandwidth:   ${_FIO_BW_WRITE["${_MOUNT_POINT}"]}"
-  echo " - Avg Read Latency:  ${_FIO_LATENCY_READ["${_MOUNT_POINT}"]}"
-  echo " - Avg Write Latency: ${_FIO_LATENCY_WRITE["${_MOUNT_POINT}"]}"
-done
+# Root-only extras for grading/tiering
+_csv_root_qd1_p95_read="$(_strip_unit "${_root_qd1_p95_read}")"
+_csv_root_qd1_p95_write="$(_strip_unit "${_root_qd1_p95_write}")"
+_csv_root_qd1_p99_read="$(_strip_unit "${_root_qd1_p99_read}")"
+_csv_root_qd1_p99_write="$(_strip_unit "${_root_qd1_p99_write}")"
+_csv_root_qd1_fsync_p95_write="$(_strip_unit "${_root_qd1_fsync_p95_write}")"
+_csv_root_qd1_fsync_p99_write="$(_strip_unit "${_root_qd1_fsync_p99_write}")"
+_csv_root_ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+_csv_root_ioping_avg_us="$(_num_or_empty "${_csv_root_ioping_avg_us}")"
+_csv_root_seqr_num="$(_num_or_empty "${_csv_root_seqread_bw_read}")"
+_csv_root_seqw_num="$(_num_or_empty "${_csv_root_seqwrite_bw_write}")"
+_csv_root_p99r_num="$(_num_or_empty "${_csv_root_qd1_p99_read}")"
+_csv_root_p99w_num="$(_num_or_empty "${_csv_root_qd1_p99_write}")"
+_csv_root_fsync_p99w_num="$(_num_or_empty "${_csv_root_qd1_fsync_p99_write}")"
+_csv_root_storage_tier="$(_boa_guess_storage_tier "${_csv_root_ioping_avg_us}" "${_csv_root_seqr_num}" "${_csv_root_seqw_num}" "${_csv_root_p99r_num}" "${_csv_root_p99w_num}" "${_csv_root_fsync_p99w_num}")"
 
-echo ""
-echo "Performance tests completed."
+# DRAM pointer-chase latency (ns) helps distinguish true RAM vs cache effects
+_csv_mem_lat_ns="${_mem_latency}"
+[ -z "${_csv_mem_lat_ns}" ] && _csv_mem_lat_ns="N/A"
+
+if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "CSV_SUMMARY_V4:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
+  echo "CSV_DB_V1:${_hostname},${_db_ro_tps},${_db_ro_p95_ms},${_db_rw_tps},${_db_rw_p95_ms},${_db_test_status}"
+fi

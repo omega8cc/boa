@@ -96,7 +96,7 @@ _if_reinstall_curl_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_reinstall_curl_src"
   fi
-  _CURL_VRN=8.16.0
+  _CURL_VRN=8.17.0
   if ! command -v lsb_release &> /dev/null; then
     _mrun "apt-get update -qq"
     _mrun "apt-get install lsb-release ${_aptYesUnth} -qq"
@@ -1391,12 +1391,18 @@ EOF
       wait
     fi
   else
-    if [ -e "/usr/bin/screenfetch" ]; then
+    if [ -f "/usr/bin/screenfetch" ]; then
+      _mrun "apt-get remove screenfetch -y --purge --auto-remove -qq"
+    fi
+    if [ -e "/opt/local/bin/screenfetch" ]; then
+      if [ ! -L "/usr/bin/screenfetch" ]; then
+        ln -sf /opt/local/bin/screenfetch /usr/bin/screenfetch
+      fi
       _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
       if [[ ! "${_FANCY_TEST}" =~ "fancynow" ]]; then
         echo "if [ ! -z "\$PS1" ]; then" >> /root/.bashrc
         echo "  /opt/local/bin/fancynow" >> /root/.bashrc
-        echo "  /usr/bin/screenfetch" >> /root/.bashrc
+        echo "  /opt/local/bin/screenfetch" >> /root/.bashrc
         echo "fi" >> /root/.bashrc
         printf "\n" >> /root/.bashrc
       fi
@@ -2861,13 +2867,13 @@ _barracuda_cnf() {
     fi
 
     if [ "${_OS_CODE}" = "excalibur" ]; then
-      _DB_SERVER=MySQL
+      _DB_SERVER=Percona
       _DB_SERIES=8.4
       _DBS_VRN="${_PERCONA_8_4_VRN}"
       if [ -e "${_barCnf}" ]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g" ${_barCnf}
         wait
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g" ${_barCnf}
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${_barCnf}
         wait
       fi
     fi
@@ -3168,7 +3174,7 @@ _if_install_git_src() {
     fi
   fi
   if [ "${_OS_CODE}" = "excalibur" ]; then
-    _DB_SERVER=MySQL
+    _DB_SERVER=Percona
   else
     _DB_SERVER=Percona
   fi
@@ -3837,18 +3843,24 @@ _sources_list_update() {
       fi
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
-      echo "deb ${_MIRROR} ${_OS_CODE} main" >> ${_aptLiSys}
-      echo "deb-src ${_MIRROR} ${_OS_CODE} main" >> ${_aptLiSys}
+      echo "deb ${_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src ${_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
       if [ "${_OS_CODE}" != "beowulf" ]; then
-        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-        echo "deb ${_MIRROR} ${_OS_CODE}-updates main" >> ${_aptLiSys}
-        echo "deb-src ${_MIRROR} ${_OS_CODE}-updates main" >> ${_aptLiSys}
+        echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "" >> ${_aptLiSys}
+        if [ "${_USE_BACKPORTS}" = "YES" ]; then
+          echo "## DEVUAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
+          echo "deb ${_MIRROR} ${_OS_CODE}-backports main contrib non-free" >> ${_aptLiSys}
+          echo "deb-src ${_MIRROR} ${_OS_CODE}-backports main contrib non-free" >> ${_aptLiSys}
+          echo "" >> ${_aptLiSys}
+        fi
       fi
       echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb ${_MIRROR} ${_OS_CODE}-security main" >> ${_aptLiSys}
-      echo "deb-src ${_MIRROR} ${_OS_CODE}-security main" >> ${_aptLiSys}
+      echo "deb ${_MIRROR} ${_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src ${_MIRROR} ${_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
     elif [ "${_OS_DIST}" = "Debian" ]; then
       _MIRROR_CHECK=NO
       if [ "${_OS_CODE}" = "deprecated" ]; then
@@ -3920,13 +3932,19 @@ _sources_list_update() {
       echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+      echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
       echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      if [ "${_USE_BACKPORTS}" = "YES" ]; then
+        echo "" >> ${_aptLiSys}
+        echo "## DEBIAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
+        echo "deb http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      fi
     fi
     mkdir -p ${_pthLog}
     touch ${_pthLog}/apt-deb-src-updates-${_xSrl}.txt
@@ -6189,7 +6207,7 @@ _run_aptitude_deps_install() {
     done
     ###
   else
-    for _PKG in toilet figlet screenfetch; do
+    for _PKG in toilet figlet; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -7012,18 +7030,24 @@ _if_major_os_upgrade() {
         fi
       fi
       echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
-      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
-      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
+      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
       if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
-        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-        echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
-        echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+        echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "" >> ${_aptLiSys}
+        if [ "${_USE_BACKPORTS}" = "YES" ]; then
+          echo "## DEVUAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
+          echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-backports main contrib non-free" >> ${_aptLiSys}
+          echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-backports main contrib non-free" >> ${_aptLiSys}
+          echo "" >> ${_aptLiSys}
+        fi
       fi
       echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
-      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
+      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
       fi
@@ -7058,13 +7082,19 @@ _if_major_os_upgrade() {
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+      echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
       echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      if [ "${_USE_BACKPORTS}" = "YES" ]; then
+        echo "" >> ${_aptLiSys}
+        echo "## DEBIAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
+        echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      fi
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
       fi
@@ -7260,16 +7290,22 @@ _if_major_os_upgrade() {
           fi
         fi
         echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast} main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast} main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast}-updates main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast}-updates main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast}-security main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast}-security main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        if [ "${_USE_BACKPORTS}" = "YES" ]; then
+          echo "" >> /etc/apt/sources.list.d/${_useFast}.list
+          echo "## DEVUAN BACKPORTS REPOSITORY" >> /etc/apt/sources.list.d/${_useFast}.list
+          echo "deb ${_MIRROR} ${_useFast}-backports main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+          echo "deb-src ${_MIRROR} ${_useFast}-backports main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        fi
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         for _PKG in libldap-common libldap2-dev; do
@@ -7665,6 +7701,209 @@ _sys_packages_update() {
   fi
 }
 
+_other_sys_java21_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _other_sys_java21_install"
+  fi
+
+  _debArch="$1"
+
+  # Map Debian arch -> Corretto arch tokens
+  case "${_debArch}" in
+    amd64)  _crtArch="x64" ;;
+    arm64)  _crtArch="aarch64" ;;
+    *)
+      _crtArch="x64"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "WARN: Unsupported arch '${_debArch}', falling back to x64"
+      fi
+    ;;
+  esac
+
+  _javaHome="/usr/lib/jvm/java-21-openjdk-${_debArch}"
+  if [ -x "${_javaHome}/bin/java" ]; then
+    return 0
+  fi
+
+  _base="amazon-corretto-21-${_crtArch}-linux"
+  _tmpDir="/tmp"
+  _optDir="/opt/jdk"
+  _linkOpt="${_optDir}/corretto-21"
+  _linkJvm="${_javaHome}"
+
+  _mrun "mkdir -p ${_optDir}"
+  _mrun "mkdir -p /usr/lib/jvm"
+
+  # Prefer JRE tarball; fall back to JDK tarball if needed.
+  _kind="jre"
+  _tar="${_base}-${_kind}.tar.gz"
+  _url="https://corretto.aws/downloads/latest/${_tar}"
+  _shaUrl="https://corretto.aws/downloads/latest_sha256/${_tar}"
+
+  if command -v curl >/dev/null 2>&1; then
+    _SHA="$(curl -fsSL "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    if [ -z "${_SHA}" ]; then
+      _kind="jdk"
+      _tar="${_base}-${_kind}.tar.gz"
+      _url="https://corretto.aws/downloads/latest/${_tar}"
+      _shaUrl="https://corretto.aws/downloads/latest_sha256/${_tar}"
+      _SHA="$(curl -fsSL "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    fi
+    if [ -z "${_SHA}" ]; then
+      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      return 1
+    fi
+    _mrun "rm -f ${_tmpDir}/${_tar}"
+    _mrun "curl -fL --retry 3 --retry-delay 2 -o ${_tmpDir}/${_tar} ${_url}"
+  elif command -v wget >/dev/null 2>&1; then
+    _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    if [ -z "${_SHA}" ]; then
+      _kind="jdk"
+      _tar="${_base}-${_kind}.tar.gz"
+      _url="https://corretto.aws/downloads/latest/${_tar}"
+      _shaUrl="https://corretto.aws/downloads/latest_sha256/${_tar}"
+      _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    fi
+    if [ -z "${_SHA}" ]; then
+      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      return 1
+    fi
+    _mrun "rm -f ${_tmpDir}/${_tar}"
+    _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
+  else
+    # If neither exists, install wget from the current OS repos only (no extra sources).
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "TRCK: curl/wget missing; installing wget + ca-certificates from current OS repos"
+    fi
+    _mrun "apt-get update ${_aptYesUnth}"
+    _mrun "apt-get install -y wget ca-certificates ${_aptYesUnth}"
+    _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    if [ -z "${_SHA}" ]; then
+      _kind="jdk"
+      _tar="${_base}-${_kind}.tar.gz"
+      _url="https://corretto.aws/downloads/latest/${_tar}"
+      _shaUrl="https://corretto.aws/downloads/latest_sha256/${_tar}"
+      _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    fi
+    if [ -z "${_SHA}" ]; then
+      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      return 1
+    fi
+    _mrun "rm -f ${_tmpDir}/${_tar}"
+    _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
+  fi
+
+  # Verify integrity
+  _mrun "cd ${_tmpDir} && echo ${_SHA}  ${_tar} | sha256sum -c -"
+
+  # Extract and point stable symlinks
+  _topDir="$(tar -tzf "${_tmpDir}/${_tar}" 2>/dev/null | head -n1 | cut -d/ -f1)"
+  if [ -z "${_topDir}" ]; then
+    _msg "ERROR: Unable to read Corretto archive structure: ${_tmpDir}/${_tar}"
+    return 1
+  fi
+
+  _mrun "tar -xzf ${_tmpDir}/${_tar} -C ${_optDir}"
+
+  _real="${_optDir}/${_topDir}"
+  if [ ! -x "${_real}/bin/java" ]; then
+    _msg "ERROR: Extracted Corretto path missing bin/java: ${_real}"
+    return 1
+  fi
+
+  _mrun "ln -sfn ${_real} ${_linkOpt}"
+  _mrun "ln -sfn ${_linkOpt} ${_linkJvm}"
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DONE: Java 21 installed at ${_linkJvm}"
+  fi
+}
+
+_other_sys_java_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _other_sys_java_install"
+  fi
+
+  _systVer="$1"
+  _javaVer="$2"
+  _aptList="/etc/apt/sources.list.d/${_systVer}.list"
+
+  # Detect Debian arch token for /usr/lib/jvm paths
+  _debArch="$(dpkg --print-architecture 2>/dev/null)"
+  if [ -z "${_debArch}" ]; then
+    case "$(uname -m 2>/dev/null)" in
+      x86_64) _debArch="amd64" ;;
+      aarch64|arm64) _debArch="arm64" ;;
+      *) _debArch="amd64" ;;
+    esac
+  fi
+
+  _javaHome="/usr/lib/jvm/java-${_javaVer}-openjdk-${_debArch}"
+
+  # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
+  if [ "${_javaVer}" = "21" ]; then
+    if [ ! -x "${_javaHome}/bin/java" ] && [ "${_OS_CODE}" != "excalibur" ]; then
+      _other_sys_java21_install "${_debArch}"
+    fi
+    return 0
+  fi
+
+  if [ ! -x "${_javaHome}/bin/java" ]; then
+    if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+      _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+    else
+      _DVN_MRR="$(_find_fast_devuan_mirror)"
+      if [ -n "${_DVN_MRR}" ]; then
+        _MIRROR="${_DVN_MRR}"
+      else
+        _MIRROR="http://deb.devuan.org/merged"
+      fi
+    fi
+
+    # Safer than clobbering /etc/apt/apt.conf
+    _aptNoValidUntil="/etc/apt/apt.conf.d/99-${_systVer}-no-check-valid-until.conf"
+
+    cat > "${_aptList}" <<EOF
+## DEVUAN MAIN REPOSITORIES
+deb ${_MIRROR} ${_systVer} main contrib non-free
+deb-src ${_MIRROR} ${_systVer} main contrib non-free
+
+## DEVUAN MAJOR BUG FIX UPDATES produced after the final release
+deb ${_MIRROR} ${_systVer}-updates main contrib non-free
+deb-src ${_MIRROR} ${_systVer}-updates main contrib non-free
+
+## DEVUAN SECURITY UPDATES
+deb ${_MIRROR} ${_systVer}-security main contrib non-free
+deb-src ${_MIRROR} ${_systVer}-security main contrib non-free
+EOF
+
+    if [ "${_USE_BACKPORTS}" = "YES" ]; then
+      cat >> "${_aptList}" <<EOF
+
+## DEVUAN BACKPORTS REPOSITORY
+deb ${_MIRROR} ${_systVer}-backports main contrib non-free
+deb-src ${_MIRROR} ${_systVer}-backports main contrib non-free
+EOF
+    fi
+
+    echo "Acquire::Check-Valid-Until false;" > "${_aptNoValidUntil}"
+
+    _apt_clean_update
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "TRCK: Installing now openjdk-${_javaVer}-jre-headless from ${_systVer}"
+    fi
+
+    _mrun "apt-get install -t ${_systVer} openjdk-${_javaVer}-jre-headless ${_aptYesUnth}"
+    _mrun "apt-get install -t ${_systVer}-security openjdk-${_javaVer}-jre-headless ${_aptYesUnth}"
+
+    rm -f "${_aptList}"
+    rm -f "${_aptNoValidUntil}"
+
+    _apt_clean_update
+  fi
+}
+
 _sys_packages_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sys_packages_install"
@@ -7705,48 +7944,12 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "excalibur" ]; then
         _APT_XTRA="openjdk-21-jre-headless ca-certificates-java nginx"
+        _other_sys_java_install "daedalus" "17"
+        _other_sys_java_install "chimaera" "11"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
-        if [ "${_OS_CODE}" = "excalibur" ]; then
-          _useFast=daedalus
-        elif [ "${_OS_CODE}" = "daedalus" ]; then
-          _useFast=chimaera
-        fi
-        if [ "${_OS_CODE}" = "daedalus" ]; then
-          if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-            if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
-              _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
-            else
-              _DVN_MRR="$(_find_fast_devuan_mirror)"
-              if [ -n "${_DVN_MRR}" ]; then
-                _MIRROR="${_DVN_MRR}"
-              else
-                _MIRROR="http://deb.devuan.org/merged"
-              fi
-            fi
-            echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-            _apt_clean_update
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
-            fi
-            _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
-            _mrun "apt-get install -t ${_useFast}-security openjdk-11-jre-headless ${_aptYesUnth}"
-            rm -f /etc/apt/sources.list.d/${_useFast}.list
-            rm -f /etc/apt/apt.conf
-            _apt_clean_update
-          fi
-        fi
+        _other_sys_java_install "chimaera" "11"
+        _other_sys_java_install "excalibur" "21"
       fi
     else
       _APT_XTRA="nginx"
@@ -7790,52 +7993,12 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "excalibur" ]; then
         _APT_XTRA="openjdk-21-jre-headless ca-certificates-java"
+        _other_sys_java_install "daedalus" "17"
+        _other_sys_java_install "chimaera" "11"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
-        if [ "${_OS_CODE}" = "excalibur" ]; then
-          _useFast=daedalus
-        elif [ "${_OS_CODE}" = "daedalus" ]; then
-          _useFast=chimaera
-        fi
-        if [ "${_OS_CODE}" = "daedalus" ]; then
-          if [ -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-            _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
-          fi
-          if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] \
-            || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.29" ]]; then
-            if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
-              _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
-            else
-              _DVN_MRR="$(_find_fast_devuan_mirror)"
-              if [ -n "${_DVN_MRR}" ]; then
-                _MIRROR="${_DVN_MRR}"
-              else
-                _MIRROR="http://deb.devuan.org/merged"
-              fi
-            fi
-            echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-            _apt_clean_update
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
-            fi
-            _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
-            _mrun "apt-get install -t ${_useFast}-security openjdk-11-jre-headless ${_aptYesUnth}"
-            rm -f /etc/apt/sources.list.d/${_useFast}.list
-            rm -f /etc/apt/apt.conf
-            _apt_clean_update
-          fi
-        fi
+        _other_sys_java_install "chimaera" "11"
+        _other_sys_java_install "excalibur" "21"
       fi
     else
       _APT_XTRA=""
@@ -8358,7 +8521,7 @@ _install_myquick_src() {
           fi
         done
       else
-        for _PKG in libperconaserverclient22 libperconaserverclient22-dev; do
+        for _PKG in libperconaserverclient22 libperconaserverclient22-dev percona-telemetry-agent; do
           if ! _pkg_installed "${_PKG}"; then
             _mrun "${_INSTAPP} ${_PKG}"
           fi
@@ -8575,10 +8738,12 @@ _xdrago_install_upgrade() {
     chmod 600 /var/spool/cron/crontabs/root
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-      wait
-      sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-      wait
+      _ROTATE_TEST=$(grep "rotate 9999" /etc/logrotate.d/nginx 2>&1)
+      if [[ ! "${_ROTATE_TEST}" =~ "rotate 9999" ]]; then
+        sed -i "s/rotate 52/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+        sed -i "s/rotate 74/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+        sed -i "s/rotate 14/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+      fi
     fi
     if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
       _DO_NOTHING=YES
@@ -8637,10 +8802,12 @@ _xdrago_install_upgrade() {
           sed -i "s/3600/1800/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
           wait
         fi
-        sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-        wait
-        sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-        wait
+        _ROTATE_TEST=$(grep "rotate 9999" /etc/logrotate.d/nginx 2>&1)
+        if [[ ! "${_ROTATE_TEST}" =~ "rotate 9999" ]]; then
+          sed -i "s/rotate 52/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+          sed -i "s/rotate 74/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+          sed -i "s/rotate 14/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+        fi
       fi
     fi
   fi
@@ -9311,7 +9478,7 @@ _sshd_armour() {
         echo "HostKey /etc/ssh/ssh_host_rsa_key" >> /etc/ssh/sshd_config
       fi
       if [ ! -e "/etc/ssh/.ssh_host_ed25519_key.pid" ]; then
-        mkdir -p /var/backups/sshd
+        [ -d "/var/backups/sshd" ] || mkdir -p /var/backups/sshd
         mv -f /etc/ssh/ssh_host_*key* /var/backups/sshd/
         _msg "INFO: Generating new ssh_host_ed25519_key..."
         ssh-keygen -t ed25519 -N "" -q -f /etc/ssh/ssh_host_ed25519_key < /dev/null
