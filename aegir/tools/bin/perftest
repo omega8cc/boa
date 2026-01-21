@@ -225,18 +225,21 @@ _ensure_sysbench() {
 
   if ! command -v sysbench >/dev/null 2>&1; then
     _NEEDS_BUILD="YES"
+    _log "The sysbench is not installed yet, building from source..."
   else
     _SYSBENCH_CUR_VER="$(_sysbench_get_version)"
 
     # Version gate: rebuild if current version cannot be read or is too old
     if ! _version_ge "${_SYSBENCH_CUR_VER}" "${_SYSBENCH_MIN_VER}"; then
       _NEEDS_BUILD="YES"
+      _log "The sysbench version is ${_SYSBENCH_CUR_VER} while minimum is ${_SYSBENCH_MIN_VER}, building from source..."
     fi
 
     # MySQL driver gate: rebuild only when MySQL support is actually possible
     if [ "${_NEEDS_BUILD}" != "YES" ] && [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
       if ! _sysbench_has_mysql_driver; then
         _NEEDS_BUILD="YES"
+        _log "The sysbench MySQL support is missing, compiling from source..."
       fi
     fi
   fi
