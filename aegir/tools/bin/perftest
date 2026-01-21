@@ -2569,8 +2569,7 @@ _check_and_install_package "bc"
 _ensure_sysbench
 
 echo ""
-echo "Starting performance tests..."
-echo ""
+echo "Starting extended performance tests, please wait..."
 
 # Basic system info
 _hostname="$(hostname)"
@@ -2620,9 +2619,11 @@ if [ -n "${_mpstat_pid:-}" ]; then
 fi
 
 # Single-threaded
+echo "Running Single-threaded CPU performance tests..."
 _run_sysbench_cpu 1 "ST"
 
 # 4-thread
+echo "Running Multi-threaded CPU tests..."
 _run_sysbench_cpu 4 "MT4"
 
 # Memory Performance Test (DRAM-focused)
@@ -2638,6 +2639,7 @@ echo "Running PHP performance tests..."
 _run_php_benchmarks
 
 # Database OLTP experience proxy (sysbench + MySQL root)
+echo "Running Database performance tests..."
 _db_benchmark_sysbench
 
 # Disk I/O Performance Tests
