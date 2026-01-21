@@ -160,7 +160,6 @@ _version_ge() {
   while [ "${_I}" -lt "${_MAX}" ]; do
     _AI="${_A_ARR[${_I}]:-0}"
     _BI="${_B_ARR[${_I}]:-0}"
-
     # Force base-10 numeric compare (avoid 08/09 octal edge)
     if [ "$((10#${_AI}))" -gt "$((10#${_BI}))" ]; then
       return 0
@@ -168,7 +167,6 @@ _version_ge() {
     if [ "$((10#${_AI}))" -lt "$((10#${_BI}))" ]; then
       return 1
     fi
-
     _I=$((_I + 1))
   done
 
@@ -177,10 +175,15 @@ _version_ge() {
 
 # Detect whether sysbench was built with mysql driver
 _sysbench_has_mysql_driver() {
-  _SYSBENCH_HELP="$(sysbench --help 2>/dev/null)"
-  if printf '%s\n' "${_SYSBENCH_HELP}" \
-    | grep -i "Compiled-in database drivers" \
-    | grep -Eqi '(^|[[:space:],])mysql([[:space:],]|$)'; then
+  # sysbench supports: --db-driver=help (lists compiled-in drivers without needing DB credentials)
+  if sysbench --db-driver=help 2>/dev/null | grep -Eqi '^\s*mysql(\s|$)'; then
+    return 0
+  fi
+  # Fallbacks for different sysbench versions/help formats
+  if sysbench --help 2>/dev/null | grep -Eqi '^\s*mysql\s+-\s+MySQL'; then
+    return 0
+  fi
+  if sysbench --help 2>/dev/null | grep -Eqi '^\s*mysql options:'; then
     return 0
   fi
   return 1
@@ -2107,7 +2110,7 @@ _print_compact_summary() {
 
 
   echo " ============================================================================="
-  echo " == 4. DATABASE (Percona/MySQL OLTP proxy via sysbench)                      =="
+  echo " == 4. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
   echo " ============================================================================="
   echo ""
   if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
