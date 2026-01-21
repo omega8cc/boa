@@ -19,6 +19,7 @@ _DB_SYSBENCH_THREADS_MAX=16 # cap threads
 _DB_SYSBENCH_THREADS_MIN=2 # min threads
 _DB_SYSBENCH_REPEATS=3 # median-of-N to reduce noise (DB can be bursty)
 _DB_SYSBENCH_WARMUP=5 # seconds (optional warmup run, discarded)
+_DB_SYSBENCH_PERCENTILE=95 # explicit percentile for p95 parsing
 _MEM_BENCH_TIME=10 # seconds (DRAM-focused membench, per run)
 _MEM_BENCH_REPEATS=3 # repeats for stability; median-of-3 is used
 _MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
@@ -1549,15 +1550,14 @@ _boa_grade_cpu_speed() {
 
 _boa_grade_db_oltp() {
   # Inputs:
-  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional)
+  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus
   #
-  # This is a lightweight "experience proxy" for Drupal workloads (cache misses + writes).
-  # We grade primarily on RW TPS per vCPU, with latency caps on RW p95.
-  local rw_tps rw_p95 vcpus ro_p95 per_vcpu
+  # Goal: stable "experience proxy" that doesn't punish good VMs for small scaling losses.
+  # We grade primarily on RW TPS per vCPU, with latency as a limiter (not an over-aggressive OR).
+  local rw_tps rw_p95 vcpus per_vcpu grade
   rw_tps="$(_num_or_empty "$1")"
   rw_p95="$(_num_or_empty "$2")"
   vcpus="$(_num_or_empty "$3")"
-  ro_p95="$(_num_or_empty "$4")"
 
   [ -n "${vcpus}" ] || vcpus="1"
 
@@ -1566,22 +1566,48 @@ _boa_grade_db_oltp() {
     return
   fi
 
-  per_vcpu="$(awk -v t="${rw_tps}" -v c="${vcpus}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+  per_vcpu="$(awk -v t="${rw_tps}" -v c="${vcpus}" 'BEGIN{ if (c>0) printf "%.2f", t/c; else print "" }')"
+  [ -n "${per_vcpu}" ] || { echo "unknown"; return; }
 
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
+  # Hard latency caps (only when clearly bad)
+  if awk -v l="${rw_p95}" 'BEGIN{exit !(l>=30)}' 2>/dev/null; then
     echo "poor"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
+  if awk -v l="${rw_p95}" 'BEGIN{exit !(l>=22)}' 2>/dev/null; then
     echo "average"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
-    echo "good"; return
-  fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
-    echo "excellent"; return
+
+  # Throughput tiers (TPS per vCPU)
+  if awk -v p="${per_vcpu}" 'BEGIN{exit !(p<220)}' 2>/dev/null; then
+    grade="poor"
+  elif awk -v p="${per_vcpu}" 'BEGIN{exit !(p<320)}' 2>/dev/null; then
+    # Borderline TPS/vCPU but very good latency still feels "good"
+    if awk -v l="${rw_p95}" 'BEGIN{exit !(l<12)}' 2>/dev/null; then
+      grade="good"
+    else
+      grade="average"
+    fi
+  elif awk -v p="${per_vcpu}" 'BEGIN{exit !(p<520)}' 2>/dev/null; then
+    grade="good"
+  elif awk -v p="${per_vcpu}" 'BEGIN{exit !(p<760)}' 2>/dev/null; then
+    grade="excellent"
+  else
+    grade="ultra"
   fi
 
-  echo "ultra"
+  # Soft latency limiter: don't award top grades when p95 is mediocre
+  if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
+    if awk -v l="${rw_p95}" 'BEGIN{exit !(l>=15)}' 2>/dev/null; then
+      echo "good"; return
+    fi
+    if [ "${grade}" = "ultra" ]; then
+      if awk -v l="${rw_p95}" 'BEGIN{exit !(l>=11)}' 2>/dev/null; then
+        echo "excellent"; return
+      fi
+    fi
+  fi
+
+  echo "${grade}"
 }
 
 _boa_grade_disk_final() {
@@ -2123,12 +2149,25 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo ""
   if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
-    printf "   Threads used:            %s
-" "${_db_threads_used:-N/A}"
-    printf "   Read-only (tps / p95):   %-10s / %s ms
-" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
-    printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]
-" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
+    printf "   Threads used:            %s\n" "${_db_threads_used:-N/A}"
+    printf "   Read-only (tps / p95):   %-10s / %s ms\n" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
+    printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]\n" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
+
+    # Extra compact indicators (helps explain "good VM, noisy DB" cases)
+    local _db_vcpus _db_rw_per_vcpu _db_rw_var
+    _db_vcpus="$(_num_or_empty "${_cpu_cores}")"
+    [ -n "${_db_vcpus}" ] || _db_vcpus="1"
+    _db_rw_per_vcpu="$(awk -v t="${_db_rw_tps}" -v c="${_db_vcpus}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+    [ -n "${_db_rw_per_vcpu}" ] && printf "   RW TPS per vCPU:         %s\n" "${_db_rw_per_vcpu}"
+    if [ -n "${_db_rw_tps_min}" ] && [ -n "${_db_rw_tps_max}" ]; then
+      _db_rw_var="$(awk -v mn="${_db_rw_tps_min}" -v mx="${_db_rw_tps_max}" 'BEGIN{if(mn>0) printf "%.2f", mx/mn; else print ""}')"
+      if [ -n "${_db_rw_var}" ] && awk -v r="${_db_rw_var}" 'BEGIN{exit !(r>=1.25)}' 2>/dev/null; then
+        printf "   Variance (max/min):      %sx  ⚠️ bursty\n" "${_db_rw_var}"
+      else
+        [ -n "${_db_rw_var}" ] && printf "   Variance (max/min):      %sx\n" "${_db_rw_var}"
+      fi
+    fi
+
     echo ""
     if [ "${db_grade}" = "poor" ]; then
       echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
@@ -2349,9 +2388,11 @@ _run_db_sysbench() {
   local pass sock lua out tps p95
   local _tps_list=()
   local _p95_list=()
+  local _tps_min=""
+  local _tps_max=""
 
   pass="$(_read_mysql_root_pass)"
-  [ -n "${pass}" ] || { printf '%s|%s\n' "" ""; return; }
+  printf '%s|%s|%s|%s\n' "${tps_med}" "${p95_med}" "${_tps_min}" "${_tps_max}"
 
   sock="$(_guess_mysql_socket)"
 
@@ -2371,6 +2412,7 @@ _run_db_sysbench() {
     "--table-size=${table_size}"
     "--threads=${threads}"
     "--time=${time_s}"
+    "--percentile=${_DB_SYSBENCH_PERCENTILE}"
     "--report-interval=0"
   )
 
@@ -2395,6 +2437,8 @@ _run_db_sysbench() {
 
     if printf '%s' "${tps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
       _tps_list+=("${tps}")
+      if [ -z "${_tps_min}" ] || awk -v a="${tps}" -v b="${_tps_min}" 'BEGIN{exit !(a<b)}' 2>/dev/null; then _tps_min="${tps}"; fi
+      if [ -z "${_tps_max}" ] || awk -v a="${tps}" -v b="${_tps_max}" 'BEGIN{exit !(a>b)}' 2>/dev/null; then _tps_max="${tps}"; fi
     fi
     if printf '%s' "${p95}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
       _p95_list+=("${p95}")
@@ -2535,6 +2579,10 @@ _db_benchmark_sysbench() {
   _db_ro_p95_ms="$(printf '%s' "${ro}" | cut -d'|' -f2)"
   _db_rw_tps="$(printf '%s' "${rw}" | cut -d'|' -f1)"
   _db_rw_p95_ms="$(printf '%s' "${rw}" | cut -d'|' -f2)"
+  _db_ro_tps_min="$(printf '%s' "${ro}" | cut -d'|' -f3)"
+  _db_ro_tps_max="$(printf '%s' "${ro}" | cut -d'|' -f4)"
+  _db_rw_tps_min="$(printf '%s' "${rw}" | cut -d'|' -f3)"
+  _db_rw_tps_max="$(printf '%s' "${rw}" | cut -d'|' -f4)"
 
   if [ -n "${_db_ro_tps}" ] && [ -n "${_db_rw_tps}" ]; then
     _db_test_status="OK"
