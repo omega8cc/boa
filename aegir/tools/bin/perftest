@@ -160,7 +160,6 @@ _version_ge() {
   while [ "${_I}" -lt "${_MAX}" ]; do
     _AI="${_A_ARR[${_I}]:-0}"
     _BI="${_B_ARR[${_I}]:-0}"
-
     # Force base-10 numeric compare (avoid 08/09 octal edge)
     if [ "$((10#${_AI}))" -gt "$((10#${_BI}))" ]; then
       return 0
@@ -168,7 +167,6 @@ _version_ge() {
     if [ "$((10#${_AI}))" -lt "$((10#${_BI}))" ]; then
       return 1
     fi
-
     _I=$((_I + 1))
   done
 
@@ -177,12 +175,24 @@ _version_ge() {
 
 # Detect whether sysbench was built with mysql driver
 _sysbench_has_mysql_driver() {
-  _SYSBENCH_HELP="$(sysbench --help 2>/dev/null)"
-  if printf '%s\n' "${_SYSBENCH_HELP}" \
-    | grep -i "Compiled-in database drivers" \
-    | grep -Eqi '(^|[[:space:],])mysql([[:space:],]|$)'; then
-    return 0
+  # Never allow this check to hang perftest (and don't let sysbench read from stdin).
+  if command -v timeout >/dev/null 2>&1; then
+    _SB_HELP="$(timeout 3s sysbench --help </dev/null 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
+  else
+    _SB_HELP="$(sysbench --help </dev/null 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
   fi
+
+  # If sysbench was killed by timeout or produced nothing, treat as "no mysql driver"
+  if [ -z "${_SB_HELP}" ]; then
+    return 1
+  fi
+
+  # Match either:
+  # - the "Compiled-in database drivers:" section mentioning mysql (even if it was multiline originally), OR
+  # - the explicit "mysql - MySQL driver" entry
+  printf '%s\n' "${_SB_HELP}" | grep -Eqi 'Compiled-in database drivers:.*(^|[[:space:],])mysql([[:space:],]|$)' && return 0
+  printf '%s\n' "${_SB_HELP}" | grep -Eqi '(^|[[:space:]])mysql[[:space:]]*-[[:space:]]*MySQL driver([[:space:]]|$)' && return 0
+
   return 1
 }
 
@@ -225,18 +235,21 @@ _ensure_sysbench() {
 
   if ! command -v sysbench >/dev/null 2>&1; then
     _NEEDS_BUILD="YES"
+    _log "The sysbench is not installed yet, building from source..."
   else
     _SYSBENCH_CUR_VER="$(_sysbench_get_version)"
 
     # Version gate: rebuild if current version cannot be read or is too old
     if ! _version_ge "${_SYSBENCH_CUR_VER}" "${_SYSBENCH_MIN_VER}"; then
       _NEEDS_BUILD="YES"
+      _log "The sysbench version is ${_SYSBENCH_CUR_VER} while minimum is ${_SYSBENCH_MIN_VER}, building from source..."
     fi
 
     # MySQL driver gate: rebuild only when MySQL support is actually possible
     if [ "${_NEEDS_BUILD}" != "YES" ] && [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
       if ! _sysbench_has_mysql_driver; then
         _NEEDS_BUILD="YES"
+        _log "The sysbench MySQL support is missing, compiling from source..."
       fi
     fi
   fi
@@ -1250,8 +1263,8 @@ _parse_fio_json() {
   echo "READ_P99_MS=${_read_p99_ms}"
   echo "WRITE_P95_MS=${_write_p95_ms}"
   echo "WRITE_P99_MS=${_write_p99_ms}"
-echo "SYNC_P95_MS=${_sync_p95_ms}"
-echo "SYNC_P99_MS=${_sync_p99_ms}"
+  echo "SYNC_P95_MS=${_sync_p95_ms}"
+  echo "SYNC_P99_MS=${_sync_p99_ms}"
 }
 
 # Simple metadata / small file operations test
@@ -1530,6 +1543,43 @@ _boa_grade_cpu_speed() {
     else if (eps>=1000) print "acceptable";
     else print "poor";
   }'
+}
+
+_boa_grade_db_oltp() {
+  # Inputs:
+  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional)
+  #
+  # This is a lightweight "experience proxy" for Drupal workloads (cache misses + writes).
+  # We grade primarily on RW TPS per vCPU, with latency caps on RW p95.
+  local rw_tps rw_p95 vcpus ro_p95 per_vcpu
+  rw_tps="$(_num_or_empty "$1")"
+  rw_p95="$(_num_or_empty "$2")"
+  vcpus="$(_num_or_empty "$3")"
+  ro_p95="$(_num_or_empty "$4")"
+
+  [ -n "${vcpus}" ] || vcpus="1"
+
+  if [ -z "${rw_tps}" ] || [ -z "${rw_p95}" ]; then
+    echo "unknown"
+    return
+  fi
+
+  per_vcpu="$(awk -v t="${rw_tps}" -v c="${vcpus}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
+    echo "poor"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
+    echo "average"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
+    echo "good"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
+    echo "excellent"; return
+  fi
+
+  echo "ultra"
 }
 
 _boa_grade_disk_final() {
@@ -1919,7 +1969,7 @@ _print_disk_compact_section() {
 _print_compact_summary() {
   echo " ============================================================================="
   echo " ==                 BOA Performance Test - Compact Summary                  =="
-  echo " ==      Priority: Memory > CPU > Disk > Network (for Drupal caching)       =="
+  echo " ==              Priority: Memory > CPU > Disk > DB > Network               =="
   echo " ============================================================================="
   echo ""
   echo "System:"
@@ -1959,7 +2009,7 @@ _print_compact_summary() {
   ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1)"
 
   # Calculate grades
-  local mem_grade steal_grade cpu_grade disk_grade net_grade
+  local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade
   mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
@@ -1968,6 +2018,16 @@ _print_compact_summary() {
   root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
   disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
+
+  # Database grade (optional; only if DB test ran)
+  db_grade="unknown"
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    local _vcpus_num
+    _vcpus_num="$(_num_or_empty "${_cpu_cores}")"
+    [ -n "${_vcpus_num}" ] || _vcpus_num="1"
+    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}")"
+  fi
+
 
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
@@ -2055,8 +2115,45 @@ _print_compact_summary() {
   done
 
 
+
   echo " ============================================================================="
-  echo " == 4. NETWORK (Sanity check)                                               =="
+  echo " == 4. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
+  echo " ============================================================================="
+  echo ""
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    printf "   Threads used:            %s
+" "${_db_threads_used:-N/A}"
+    printf "   Read-only (tps / p95):   %-10s / %s ms
+" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
+    printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]
+" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
+    echo ""
+    if [ "${db_grade}" = "poor" ]; then
+      echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
+    elif [ "${db_grade}" = "average" ]; then
+      echo "   ✅ Average DB OLTP performance"
+    elif [ "${db_grade}" = "good" ]; then
+      echo "   🌟 Good DB OLTP performance"
+    elif [ "${db_grade}" = "excellent" ]; then
+      echo "   🏆 Excellent DB OLTP performance"
+    elif [ "${db_grade}" = "ultra" ]; then
+      echo "   🚀 Ultra DB OLTP performance"
+    fi
+    if [ "${_db_test_status}" = "WARN" ] && [ -n "${_db_test_reason}" ]; then
+      echo "   ⚠️  Note: ${_db_test_reason}"
+    fi
+  else
+    printf "   Status: %s
+" "${_db_test_status}"
+    if [ -n "${_db_test_reason}" ]; then
+      printf "   Reason: %s
+" "${_db_test_reason}"
+    fi
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == 5. NETWORK (Sanity check)                                               =="
   echo " ============================================================================="
   echo ""
   printf "   Public IPv4:        %s\n" "${_net_ipv4}"
@@ -2136,6 +2233,15 @@ _print_compact_summary() {
   elif [ "${disk_grade}" = "poor" ]; then
     echo "   ⚠️  Slow disk - may impact deployments"
     _warnings=$((_warnings + 1))
+  fi
+
+
+  # Database (optional)
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    if [ "${db_grade}" = "poor" ]; then
+      echo "   ⚠️  DB OLTP is slow - cache misses and write-heavy workloads may suffer"
+      _warnings=$((_warnings + 1))
+    fi
   fi
 
   # Network
@@ -2288,12 +2394,7 @@ _run_db_sysbench() {
 }
 
 _db_benchmark_sysbench() {
-  # Default: run only in --verbose mode
-  if [ "${_VERBOSE}" -ne 1 ]; then
-    _db_test_status="SKIPPED"
-    _db_test_reason="run with --verbose"
-    return
-  fi
+  # Runs when enabled and MySQL root access is available.
   if [ "${_DBTEST_ENABLED}" != "YES" ]; then
     _db_test_status="SKIPPED"
     _db_test_reason="disabled"
@@ -2307,6 +2408,12 @@ _db_benchmark_sysbench() {
   if ! command -v mysql >/dev/null 2>&1; then
     _db_test_status="SKIPPED"
     _db_test_reason="mysql client not installed"
+    return
+  fi
+
+  if ! _sysbench_has_mysql_driver; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench built without mysql driver"
     return
   fi
 

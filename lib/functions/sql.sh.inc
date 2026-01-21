@@ -1393,7 +1393,7 @@ _db_server_install() {
     cp -af ${_locCnf}/var/mysql /etc/init.d/mysql
     chmod 755 /etc/init.d/mysql
     _mrun "update-rc.d mysql defaults"
-    _mrun "service mysql start"
+    _mrun "service mysql restart"
   else
     ###
     ### Update keyring and apt if needed
