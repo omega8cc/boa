@@ -8521,7 +8521,7 @@ _install_myquick_src() {
           fi
         done
       else
-        for _PKG in libperconaserverclient22 libperconaserverclient22-dev; do
+        for _PKG in libperconaserverclient22 libperconaserverclient22-dev percona-telemetry-agent; do
           if ! _pkg_installed "${_PKG}"; then
             _mrun "${_INSTAPP} ${_PKG}"
           fi
