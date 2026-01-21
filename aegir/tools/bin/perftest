@@ -194,18 +194,12 @@ _mysql_is_present() {
 }
 
 _mysql_build_support_ok() {
-  # Compile-time MySQL driver support for sysbench requires Percona client *-dev libs.
-  # We intentionally do NOT rely on mysql_config because it is not always shipped/available.
-  if dpkg -s "libperconaserverclient22-dev" >/dev/null 2>&1; then
-    return 0
+  if ! command -v mysql_config >/dev/null 2>&1; then
+    return 1
   fi
-  if dpkg -s "libperconaserverclient21-dev" >/dev/null 2>&1; then
-    return 0
-  fi
-  if dpkg -s "libperconaserverclient20-dev" >/dev/null 2>&1; then
-    return 0
-  fi
-  return 1
+  mysql_config --cflags >/dev/null 2>&1 || return 1
+  mysql_config --libs   >/dev/null 2>&1 || return 1
+  return 0
 }
 
 # Prefer sysbench build-from-source without MySQL, but rebuild with mysql support when appropriate.
