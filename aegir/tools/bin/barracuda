@@ -932,9 +932,9 @@ _up_action() {
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"          ${_barCnf}
     wait
     if [ "${_OS_CODE}" = "excalibur" ]; then
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g"           ${_vBs}/${_filIncB}
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"         ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g"                    ${_barCnf}
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                  ${_barCnf}
       wait
     else
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"         ${_vBs}/${_filIncB}
@@ -1325,7 +1325,7 @@ _up_finish() {
     service postfix restart &> /dev/null
   fi
   if [ "${_OS_CODE}" = "excalibur" ]; then
-    _DB_SERVER=MySQL
+    _DB_SERVER=Percona
   else
     _DB_SERVER=Percona
   fi

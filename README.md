@@ -92,7 +92,7 @@ Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/
 
 ### Devuan (recommended)
 
-- Excalibur (supported, but only with MySQL 8.4)
+- Excalibur (supported, but only with Percona 8.4)
 - Daedalus (default, with Percona 5.7, 8.0 or 8.4)
 - Chimaera (supported but upgrade recommended)
 - Beowulf (supported for upgrades)

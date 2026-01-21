@@ -2867,13 +2867,13 @@ _barracuda_cnf() {
     fi
 
     if [ "${_OS_CODE}" = "excalibur" ]; then
-      _DB_SERVER=MySQL
+      _DB_SERVER=Percona
       _DB_SERIES=8.4
       _DBS_VRN="${_PERCONA_8_4_VRN}"
       if [ -e "${_barCnf}" ]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g" ${_barCnf}
         wait
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g" ${_barCnf}
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${_barCnf}
         wait
       fi
     fi
@@ -3174,7 +3174,7 @@ _if_install_git_src() {
     fi
   fi
   if [ "${_OS_CODE}" = "excalibur" ]; then
-    _DB_SERVER=MySQL
+    _DB_SERVER=Percona
   else
     _DB_SERVER=Percona
   fi
