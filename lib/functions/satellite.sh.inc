@@ -3596,7 +3596,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
         _NOW=$(date +%y%m%d-%H%M%S)
-        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         [ "${_DEBUG_MODE}" = "YES" ] && echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
         mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
       fi
@@ -3641,7 +3641,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
         _NOW=$(date +%y%m%d-%H%M%S)
-        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
       for _Codebase in `find ${i}/* \
@@ -3899,7 +3899,7 @@ _satellite_make() {
     _writeTo="${_vBs}/${_filIncO}"
   fi
 
-  export _xSrl=585ltsT00
+  export _xSrl=585ltsT01
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
@@ -4423,17 +4423,17 @@ _satellite_check_octopus_vs_barracuda_ver() {
   if [ ! -f "/var/log/barracuda_log.txt" ]; then
     _msg "ERROR: This octopus installer can be used only when the same version"
     _msg "of boa or barracuda installer was used before. Your system must be"
-    _msg "upgraded with barracuda installer version ${_X_VERSION} first!"
+    _msg "upgraded with barracuda installer version ${_rLsn} first!"
     _msg "Bye"
     _clean_pid_exit _satellite_check_octopus_vs_barracuda_ver_a
   else
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
+    if [[ "${_VERSIONS_TEST}" =~ "Barracuda ${_rLsn}-" ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       _msg "ERROR: This octopus installer can be used only when the same version"
       _msg "of boa or barracuda installer was used before. Your system must be"
-      _msg "upgraded with barracuda installer version ${_X_VERSION} first!"
+      _msg "upgraded with barracuda installer version ${_rLsn} first!"
       _msg "Bye"
       _clean_pid_exit _satellite_check_octopus_vs_barracuda_ver_b
     fi
@@ -5094,7 +5094,7 @@ _satellite_batch_cleanup() {
   find ${_ROOT}/static/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
   find ${_ROOT}/static/*/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
   if [ -d "${_CORE}/${_DRUPAL7}" ]; then
-    mkdir -p /var/backups/trash
+    [ -d "/var/backups/trash" ] || mkdir -p /var/backups/trash
     rm -rf /var/backups/trash/*
     mv -f ${_CORE}/${_DRUPAL7} /var/backups/trash/ &> /dev/null
   fi

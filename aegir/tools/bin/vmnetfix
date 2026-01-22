@@ -263,6 +263,27 @@ _iface_has_onlink_default_helpers() {
 _cidr_prefix() { printf '%s\n' "${1#*/}"; }
 _rfc1918() { case "$1" in 10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) printf YES;; *) printf NO;; esac; }
 
+_is_nat_only_setup() {
+  # Returns 0 (true) if ALL interfaces with IPv4 have only RFC1918 (private) IPs.
+  # This indicates a NAT scenario (e.g., LunaNode) where the public IP is outside the VM.
+  _HAS_ANY_IPV4="NO"
+  for _I in $(_list_ifaces); do
+    _ALL_V4="$(_live_v4_list_if "${_I}")"
+    [ -z "${_ALL_V4}" ] && continue
+    _HAS_ANY_IPV4="YES"
+    for _CIDR in ${_ALL_V4}; do
+      _IP="${_CIDR%/*}"
+      if [ "$(_rfc1918 "${_IP}")" = "NO" ]; then
+        # Found a public IP, so not NAT-only
+        return 1
+      fi
+    done
+  done
+  # If we found IPv4 addresses and all were private, it's NAT-only
+  [ "${_HAS_ANY_IPV4}" = "YES" ] && return 0
+  return 1
+}
+
 _ip_to_int() { IFS=. read -r a b c d <<EOF
 $1
 EOF
@@ -393,6 +414,24 @@ _ensure_sysv_prereqs() {
 _write_networking_init_if_missing() {
   # For ifupdown2 only; add minimal boot hook if missing, with safe LSB headers.
   [ "$(_ifup_variant)" = "ifupdown2" ] || { _msg "ifup variant not ifupdown2 — no networking shim needed."; return 0; }
+
+  # Ensure /etc/default/networking exists and CONFIGURE_INTERFACES is enabled
+  if [ ! -f /etc/default/networking ]; then
+    [ "${_DRY_RUN}" = "YES" ] || echo "# This file can be used to override the default networking behavior" > /etc/default/networking
+  fi
+
+  # Ensure CONFIGURE_INTERFACES is set to yes (critical for ifupdown)
+  if ! grep -q "^CONFIGURE_INTERFACES=yes" /etc/default/networking 2>/dev/null; then
+    if [ "${_DRY_RUN}" = "YES" ]; then
+      echo "[DRY-RUN] Would enable CONFIGURE_INTERFACES in /etc/default/networking"
+    else
+      # Remove any commented or incorrect lines
+      sed -i '/^[#[:space:]]*CONFIGURE_INTERFACES/d' /etc/default/networking
+      echo "CONFIGURE_INTERFACES=yes" >> /etc/default/networking
+      _msg "Enabled CONFIGURE_INTERFACES in /etc/default/networking"
+    fi
+  fi
+
   if [ -x "/etc/init.d/networking" ]; then
     _msg "/etc/init.d/networking already present."
     chmod 0755 /etc/init.d/networking || true
@@ -583,11 +622,20 @@ _write_interfaces_all() {
 
       _V6_LIST="$(_iface_v6_list "${_IF}")"
       if [ -n "${_V6_LIST}" ]; then
-        _V6P="$(printf '%s\n' "${_V6_LIST}" | head -n1)"
-        echo
-        echo "iface ${_IF} inet6 static"
-        echo "  address ${_V6P}"
-        # (No default IPv6 gateway by default; add manually if needed)
+        # Skip adding static IPv6 if IPv4 on this interface is DHCP (avoid mixed config)
+        _SKIP_V6="NO"
+        if [ "${_IF}" = "${_DEF}" ] && [ "${_DEF_WAS_DHCP}" = "YES" ]; then
+          _SKIP_V6="YES"
+          _msg "Skipping static IPv6 on ${_IF} because IPv4 is DHCP (avoiding mixed config)"
+        fi
+
+        if [ "${_SKIP_V6}" = "NO" ]; then
+          _V6P="$(printf '%s\n' "${_V6_LIST}" | head -n1)"
+          echo
+          echo "iface ${_IF} inet6 static"
+          echo "  address ${_V6P}"
+          # (No default IPv6 gateway by default; add manually if needed)
+        fi
       fi
 
       echo
@@ -658,10 +706,22 @@ _config_is_sane() {
   # Sane if:
   # 1) default route & IF exist, and
   # 2a) cloud-init DHCP manages that IF, or
-  # 2b) interfaces has matching static stanza (and for /32, has onlink helpers).
+  # 2b) interfaces has matching static stanza (and for /32, has onlink helpers), or
+  # 2c) NAT-only setup with working DHCP (default route exists).
+
   _DEF_IF="$(_default_route_if)"; _GW="$(_default_gw_v4)"
   [ -n "${_DEF_IF}" ] || { _msg "No default IF -> not sane"; return 1; }
   [ -n "${_GW}" ]  || { _msg "No default GW -> not sane"; return 1; }
+  _LIVE="$(_live_v4_cidr "${_DEF_IF}")"; [ -n "${_LIVE}" ] || { _msg "No live IPv4 -> not sane"; return 1; }
+
+  # NAT-only scenario: if all IPs are private and DHCP is active with a default route, consider it sane
+  if _is_nat_only_setup; then
+    if _iface_v4_is_dynamic "${_DEF_IF}" || _default_route_is_dhcp; then
+      _msg "NAT-only setup with working DHCP and default route — sane."
+      return 0
+    fi
+  fi
+
   _LIVE="$(_live_v4_cidr "${_DEF_IF}")"; [ -n "${_LIVE}" ] || { _msg "No live IPv4 -> not sane"; return 1; }
 
   if _has_ci_dhcp_for_if "${_DEF_IF}"; then
@@ -791,7 +851,8 @@ _disable_systemd_networkd_for_next_boot() {
   # must not stay enabled, otherwise it can race with ifupdown at boot and leave
   # the VM offline.
   #
-  # IMPORTANT: Do NOT stop services live over SSH; just disable/mask for next boot.
+  # IMPORTANT: We disable/mask networkd for next boot, then start networking.service
+  # to take over immediately (safe even over SSH since config is already written).
 
   # Only meaningful if systemd is PID 1.
   [ -d /run/systemd/system ] || return 0
@@ -801,6 +862,7 @@ _disable_systemd_networkd_for_next_boot() {
     echo "[DRY-RUN] Would enable networking.service"
     echo "[DRY-RUN] Would disable systemd-networkd + systemd-networkd-wait-online"
     echo "[DRY-RUN] Would mask systemd-networkd + systemd-networkd-wait-online"
+    echo "[DRY-RUN] Would start networking.service to take over"
     return 0
   fi
 
@@ -810,6 +872,11 @@ _disable_systemd_networkd_for_next_boot() {
   # Prevent networkd from coming back on reboot (common on cloud images).
   systemctl disable systemd-networkd systemd-networkd-wait-online >/dev/null 2>&1 || true
   systemctl mask systemd-networkd systemd-networkd-wait-online >/dev/null 2>&1 || true
+
+  # Start networking.service now to take over from systemd-networkd immediately.
+  # This is safe because /etc/network/interfaces is already written with correct config.
+  systemctl start networking >/dev/null 2>&1 || true
+  _msg "Started networking.service to take over from systemd-networkd"
 }
 
 # ----------------------------- Main flow --------------------------------------

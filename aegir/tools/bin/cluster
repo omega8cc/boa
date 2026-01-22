@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=585ltsT00
+export _xSrl=585ltsT01
 
 _DB_SERIES=5.7
 _CSF_VRN=15.00
@@ -678,7 +678,7 @@ _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}

@@ -93,7 +93,7 @@ _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
@@ -132,7 +132,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.16.0
+  _CURL_VRN=8.17.0
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
