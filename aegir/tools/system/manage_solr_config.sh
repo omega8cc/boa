@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=585ltsT00
+export _xSrl=585ltsT01
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
@@ -810,7 +810,7 @@ _start_up() {
 
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
-mkdir -p /var/backups/solr/log
+[ -d "/var/backups/solr/log" ] || mkdir -p /var/backups/solr/log
 find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 _start_up >/var/backups/solr/log/solr-${_NOW}.log 2>&1
 exit 0

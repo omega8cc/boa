@@ -915,7 +915,7 @@ _os_detection() {
   fi
 
   if [ "${_OS_CODE}" = "excalibur" ]; then
-    _DB_SERVER=MySQL
+    _DB_SERVER=Percona
     _DB_SERIES=8.4
     _DBS_VRN=8.4
   else

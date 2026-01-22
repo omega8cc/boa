@@ -4,11 +4,13 @@ _fix_php_ini_ioncube() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_ioncube $1"
   fi
-  if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
-    _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
-    if [[ "${_IONCUBE_INI_TEST}" =~ "ioncube_loader" ]]; then
-      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
-      wait
+  if [ -e "${_THIS_FILE}" ]; then
+    if [ "${_PHP_IONCUBE}" = "NO" ]; then
+      _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
+      if [[ "${_IONCUBE_INI_TEST}" =~ "ioncube_loader" ]]; then
+        sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
+        wait
+      fi
     fi
   fi
 }
@@ -1094,7 +1096,7 @@ _install_php_extensions() {
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
-        mkdir -p /var/backups/libyaml
+        [ -d "/var/backups/libyaml" ] || mkdir -p /var/backups/libyaml
         mkdir -p /usr/lib/x86_64-linux-gnu
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
@@ -1549,7 +1551,7 @@ _php_extensions_update() {
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
-        mkdir -p /var/backups/libyaml
+        [ -d "/var/backups/libyaml" ] || mkdir -p /var/backups/libyaml
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
           rm -f /usr/lib/x86_64-linux-gnu/libyaml*
@@ -2811,8 +2813,8 @@ _php_single_initd_cleanup() {
     fi
     rm -f /opt/local/bin/php
   fi
-  mkdir -p /var/backups/php-logs/${_NOW}/
-  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
+  [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/ &> /dev/null
 }
 
 #

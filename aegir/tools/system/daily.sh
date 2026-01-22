@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=585ltsT00
+export _xSrl=585ltsT01
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -118,7 +118,7 @@ _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
@@ -732,7 +732,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.8.5-lts. As a bonus, you will be able to speed up your sites
+by BOA-5.8.5-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -798,7 +798,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.8.5-lts. As a bonus, you will be able to speed up your sites
+by BOA-5.8.5-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -2457,6 +2457,8 @@ _daily_process() {
               fi
               _le_ssl_check_update
               if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${_usEr}/static/control/goaccess/${_Dom}.info" ]; then
+                _noPrefixDom="${_Dom#www.}"
+                _if_gen_goaccess ${_noPrefixDom}
                 _if_gen_goaccess ${_Dom}
               fi
               ;;
@@ -2749,7 +2751,7 @@ _purge_cruft_machine() {
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
         _NOW=$(date +%y%m%d-%H%M%S)
-        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
         mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
       fi
@@ -2794,7 +2796,7 @@ _purge_cruft_machine() {
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
         _NOW=$(date +%y%m%d-%H%M%S)
-        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
       for _Codebase in `find ${i}/* \

@@ -932,9 +932,9 @@ _up_action() {
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"          ${_barCnf}
     wait
     if [ "${_OS_CODE}" = "excalibur" ]; then
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g"           ${_vBs}/${_filIncB}
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"         ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g"                    ${_barCnf}
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                  ${_barCnf}
       wait
     else
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"         ${_vBs}/${_filIncB}
@@ -1239,8 +1239,8 @@ _up_finish() {
     rm -f ${_vBs}/*.sh.cnf*
     rm -f ${_vBs}/BARRACUDA.sh*
   fi
-  mkdir -p /var/backups/php-logs/${_NOW}/
-  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
+  [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/ &> /dev/null
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
@@ -1325,7 +1325,7 @@ _up_finish() {
     service postfix restart &> /dev/null
   fi
   if [ "${_OS_CODE}" = "excalibur" ]; then
-    _DB_SERVER=MySQL
+    _DB_SERVER=Percona
   else
     _DB_SERVER=Percona
   fi
@@ -1362,7 +1362,7 @@ _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
@@ -1389,7 +1389,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.16.0
+  _CURL_VRN=8.17.0
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null

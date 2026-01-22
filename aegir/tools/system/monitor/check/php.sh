@@ -130,8 +130,8 @@ _fpm_duplicate_instances_detection() {
     if (( _cnt > 1 )); then
       _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
       echo ${_thisErrLog} >> ${_pthOml}
-      mkdir -p /var/backups/php-logs/${_NOW}/
-      mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
+      [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+      mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
       service "php${e}-fpm" restart
       wait
     fi
@@ -154,8 +154,8 @@ _fpm_listen_conflict_detection() {
       sleep 2
       _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "already listen on")
       if [ "${_hit2}" -gt 0 ]; then
-        mkdir -p /var/backups/php-logs/${_NOW}/
-        mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/
+        [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+        mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
         _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ ! -S "/run/www${e}.fpm.socket" ]; then
@@ -185,8 +185,8 @@ _fpm_sockets_healing() {
     sleep 2
     _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "Address already in use")
     if [ "${_hit2}" -gt 0 ]; then
-      mkdir -p /var/backups/php-logs/${_NOW}/
-      mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/
+      [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+      mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
       _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ ! -S "/run/www${e}.fpm.socket" ]; then
@@ -256,8 +256,8 @@ _fpm_health_check_fix() {
         : > /run/restarting_fmp_wait.pid
 
         echo "$(date) php${e}-fpm health failed (master=${_ok_master} socket=${_ok_socket} pid=${_ok_pid}) — restart" >> ${_pthOml}
-        mkdir -p /var/backups/php-logs/${_NOW}/
-        mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
+        [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+        mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
         service "php${e}-fpm" restart
         wait
         sleep 1
@@ -277,8 +277,8 @@ _fpm_health_check_fix() {
           echo "$(date) php${e}-fpm still unhealthy after restart; stop/start" >> ${_pthOml}
           service "php${e}-fpm" stop
           sleep 1
-          mkdir -p /var/backups/php-logs/${_NOW}/
-          mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
+          [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+          mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
           service "php${e}-fpm" start
           date +%s > "${_cd}"
         fi

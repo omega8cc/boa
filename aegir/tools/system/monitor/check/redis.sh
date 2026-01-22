@@ -140,8 +140,8 @@ _fpm_reload() {
   : > /run/fmp_wait.pid
   : > /run/restarting_fmp_wait.pid
   sleep 3
-  mkdir -p /var/backups/php-logs/${_NOW}/
-  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
+  [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/ &> /dev/null
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
