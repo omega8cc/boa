@@ -9,6 +9,7 @@ _PHP_BENCH_ITERATIONS=50000 # per process
 _PHP_BENCH_RUNS=5 # single-thread runs for median
 _PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
 _SYSBENCH_CPU_TIME=30 # seconds
+_SYSBENCH_CPU_THREADS_SAT=8 # cap MT CPU threads (informational; avoids regression/noise on large vCPU VMs)
 _SYSBENCH_MEM_TIME=30 # seconds
 _DB_SYSBENCH_TIME_RO=30 # seconds (read-only OLTP)
 _DB_SYSBENCH_TIME_RW=30 # seconds (read-write OLTP)
@@ -17,11 +18,13 @@ _DB_SYSBENCH_TABLE_SIZE=100000 # rows per table (light)
 _DB_SYSBENCH_TABLE_SIZE_HEAVY=1000000 # rows per table (heavy)
 _DB_SYSBENCH_THREADS_MAX=16 # cap threads
 _DB_SYSBENCH_THREADS_MIN=2 # min threads
+_DB_SYSBENCH_THREADS_SAT=8 # saturation cap (avoid penalizing bigger VMs due to concurrency regression)
 _MEM_BENCH_TIME=10 # seconds (DRAM-focused membench, per run)
 _MEM_BENCH_REPEATS=3 # repeats for stability; median-of-3 is used
 _MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
 _MEM_BENCH_SIZE_MAX_MIB=1024 # MiB working set (cap to avoid OOM)
 _MEM_BENCH_THREADS_MAX=8 # cap threads used for memory bandwidth
+_MEM_BENCH_THREADS_SAT=4 # cap threads for membench (avoid bandwidth dip on >4 vCPU VMs; keeps grading comparable)
 _MEM_BENCH_LAT_SIZE_MIB=256 # MiB pointer-chase working set (DRAM latency)
 _FIO_RAND_RUNTIME=60 # seconds
 _FIO_SEQ_RUNTIME=60 # seconds
@@ -265,25 +268,25 @@ _ensure_sysbench() {
   fi
 
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
-  mkdir -p /tmp/sysbench-build || exit 1
-  cd /tmp/sysbench-build || exit 1
+  mkdir -p /tmp/sysbench-build
+  cd /tmp/sysbench-build
 
-  git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1 || exit 1
-  cd sysbench || exit 1
+  git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1
+  cd sysbench
 
-  ./autogen.sh >/dev/null 2>&1 || exit 1
+  ./autogen.sh >/dev/null 2>&1
 
   # Default: without mysql. Enable mysql only when we proved build support is present.
   if [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
-    ./configure >/dev/null 2>&1 || exit 1
+    ./configure >/dev/null 2>&1
   else
-    ./configure --without-mysql >/dev/null 2>&1 || exit 1
+    ./configure --without-mysql >/dev/null 2>&1
   fi
 
-  make -j"$(nproc)" >/dev/null 2>&1 || exit 1
-  make install >/dev/null 2>&1 || exit 1
+  make -j"$(nproc)" >/dev/null 2>&1
+  make install >/dev/null 2>&1
 
-  cd /root || exit 1
+  cd /root
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
 
   # Ensure shell picks up any newly installed sysbench in PATH
@@ -655,10 +658,16 @@ _run_mem_benchmarks() {
   if [ "${_threads}" -gt "${_MEM_BENCH_THREADS_MAX}" ]; then
     _threads="${_MEM_BENCH_THREADS_MAX}"
   fi
+  # Many VPSes won't improve (and can even *lose*) bandwidth past ~4 threads due to contention/boost behavior.
+  # Cap the bandwidth run at _MEM_BENCH_THREADS_SAT to keep results comparable across VM sizes.
+  if [ -n "${_MEM_BENCH_THREADS_SAT:-}" ] && [ "${_MEM_BENCH_THREADS_SAT}" -gt 0 ] && [ "${_threads}" -gt "${_MEM_BENCH_THREADS_SAT}" ]; then
+    _threads="${_MEM_BENCH_THREADS_SAT}"
+  fi
   if [ "${_threads}" -lt 1 ]; then
     _threads=1
   fi
   _mem_bench_threads="${_threads}"
+  _mem_bench_threads_grade="${_threads}"
 
   _lat_mib="${_MEM_BENCH_LAT_SIZE_MIB}"
   if [ "${_lat_mib}" -gt "${_size_mib}" ]; then
@@ -710,11 +719,23 @@ _run_mem_benchmarks() {
     _mem_lat_max="$(printf '%b' "${_lat_vals}" | sort -n | tail -n1)"
   fi
 
+  _mem_bench_tool="membench"
+
   if [ -n "${_bw_med}" ]; then
     _mem_transfer_speed="${_bw_med} MiB/s"
   else
+    _mem_bench_tool="sysbench"
+
     # Fallback to sysbench if membench failed
-    _mem_test="$(sysbench memory --memory-block-size=256M --memory-oper=read --memory-access-mode=seq --memory-total-size=10G --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
+    # IMPORTANT: keep thread count consistent with membench grading logic (avoid nproc-penalty on larger VMs).
+    # sysbench memory throughput is not perfectly comparable to membench, but it is still useful as a fallback signal.
+    _mem_test="$(sysbench memory \
+      --memory-block-size=1M \
+      --memory-oper=write \
+      --memory-access-mode=seq \
+      --memory-total-size=100G \
+      --threads="${_mem_bench_threads:-1}" \
+      --time="${_SYSBENCH_MEM_TIME}" run </dev/null 2>/dev/null)"
     _mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
   fi
 
@@ -1424,24 +1445,42 @@ _max_num() {
 }
 
 
-_boa_grade_mem_bw() {
-  # Bandwidth in MiB/s; optionally pass number of threads used.
-  # For VMs with 1-3 vCPU, bandwidth won't fully saturate memory channels, so we scale
-  # thresholds down slightly based on threads (up to 4).
-  local bw="$1"
-  local threads="${2:-4}"
+_boa_mem_thresholds() {
+  # Prints: thr_avg thr_good thr_exc thr_ultra (MiB/s)
+  # Soft-scaling for very small VMs (threads 1-3) to avoid unfairly strict grading,
+  # but WITHOUT giving 2-vCPU VMs an outsized advantage over larger instances.
+  local threads="${1:-4}"
   local scale="1.00"
 
   if [ -n "${threads}" ] && awk -v t="${threads}" 'BEGIN{exit !(t<4)}' 2>/dev/null; then
-    scale="$(awk -v t="${threads}" 'BEGIN{printf "%.2f", t/4.0}')"
+    # 1 -> 0.85, 2 -> 0.90, 3 -> 0.95 (clamped)
+    scale="$(awk -v t="${threads}" 'BEGIN{
+      s = 0.80 + (0.05 * t);
+      if (s < 0.85) s = 0.85;
+      if (s > 0.95) s = 0.95;
+      printf "%.2f", s
+    }')"
   fi
 
   local thr_avg thr_good thr_exc thr_ultra
   # Tuned for membench (>=128 MiB buffers) on typical VPS hardware.
-  thr_avg="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 14000*s}')"
-  thr_good="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 20000*s}')"
-  thr_exc="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 32000*s}')"
-  thr_ultra="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 48000*s}')"
+  # NOTE: BOA tends to "feel" latency more than raw memcpy bandwidth, so thresholds are conservative.
+  thr_avg="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 12000*s}')"
+  thr_good="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 18000*s}')"
+  thr_exc="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 28000*s}')"
+  thr_ultra="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 42000*s}')"
+
+  printf '%s %s %s %s\n' "${thr_avg}" "${thr_good}" "${thr_exc}" "${thr_ultra}"
+}
+
+_boa_grade_mem_bw() {
+  # Bandwidth in MiB/s; optionally pass number of threads used.
+  local bw="$1"
+  local threads="${2:-4}"
+  local thr_avg thr_good thr_exc thr_ultra
+
+  set -- $(_boa_mem_thresholds "${threads}")
+  thr_avg="$1"; thr_good="$2"; thr_exc="$3"; thr_ultra="$4"
 
   if [ -z "${bw}" ]; then
     echo "low"
@@ -1469,21 +1508,27 @@ _boa_grade_mem_final() {
   local mem_latency_ns="$2"
   local threads_used="$3"
   local grade
+  local thr_avg thr_good thr_exc thr_ultra
 
   grade="$(_boa_grade_mem_bw "${mem_bw_mibps}" "${threads_used}")"
+
+  set -- $(_boa_mem_thresholds "${threads_used}")
+  thr_avg="$1"; thr_good="$2"; thr_exc="$3"; thr_ultra="$4"
 
   # BOA is latency-sensitive (Valkey/Redis, MySQL buffer pool, Opcache/APCu):
   #   - allow low latency to lift borderline bandwidth
   #   - apply latency-led caps so higher grades reflect snappy cache-heavy workloads
   if [ -n "${mem_latency_ns}" ]; then
-    # Low-latency boost: keep small-vCPU VMs from being unfairly rated.
-    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=130)}' 2>/dev/null; then
-      if [ "${grade}" = "average" ] && awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=18000)}' 2>/dev/null; then
-        grade="good"
+    # Excellent-latency rescue: avoid "low" when bandwidth is only slightly under the average cutoff.
+    # This prevents confusing outcomes where a larger VM (using more threads) scores worse than a smaller VM
+    # despite having comparable real-world caching behavior.
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=115)}' 2>/dev/null; then
+      if [ "${grade}" = "low" ] && awk -v b="${mem_bw_mibps}" -v t="${thr_avg}" 'BEGIN{exit !(b>=(t*0.90))}' 2>/dev/null; then
+        grade="average"
       fi
     fi
 
-    # If latency is excellent, ensure at least "excellent" (BOA in-RAM stacks feel this).
+    # If latency is excellent, ensure at least "excellent" for average/good bandwidth.
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=115)}' 2>/dev/null; then
       if [ "${grade}" = "average" ] || [ "${grade}" = "good" ]; then
         grade="excellent"
@@ -1497,7 +1542,7 @@ _boa_grade_mem_final() {
     #   - >=260ns: treat as low ONLY when bandwidth is also weak
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=260)}' 2>/dev/null; then
       # If bandwidth is strong, this is likely a contention outlier rather than "bad RAM".
-      if awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=30000)}' 2>/dev/null; then
+      if awk -v b="${mem_bw_mibps}" -v t="${thr_exc}" 'BEGIN{exit !(b>=t)}' 2>/dev/null; then
         grade="average"
       else
         grade="low"
@@ -1547,15 +1592,16 @@ _boa_grade_cpu_speed() {
 
 _boa_grade_db_oltp() {
   # Inputs:
-  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional)
+  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional), $5 = threads_used (optional)
   #
   # This is a lightweight "experience proxy" for Drupal workloads (cache misses + writes).
   # We grade primarily on RW TPS per vCPU, with latency caps on RW p95.
-  local rw_tps rw_p95 vcpus ro_p95 per_vcpu
+  local rw_tps rw_p95 vcpus ro_p95 threads_used norm_cores per_core
   rw_tps="$(_num_or_empty "$1")"
   rw_p95="$(_num_or_empty "$2")"
   vcpus="$(_num_or_empty "$3")"
   ro_p95="$(_num_or_empty "$4")"
+  threads_used="$(_num_or_empty "$5")"
 
   [ -n "${vcpus}" ] || vcpus="1"
 
@@ -1564,18 +1610,35 @@ _boa_grade_db_oltp() {
     return
   fi
 
-  per_vcpu="$(awk -v t="${rw_tps}" -v c="${vcpus}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+  # Normalize TPS to a bounded "effective core" count so larger VMs aren't penalized
+  # when OLTP stops scaling linearly with concurrency.
+  #
+  # - If threads_used is known, approximate "cores exercised" as ceil(threads/2)
+  # - Cap normalization at 4 cores (experience-focused; avoids punishing large VMs)
+  norm_cores="$(awk -v v="${vcpus}" -v th="${threads_used}" 'BEGIN{
+  nc=v;
+  if(th>0){
+    tc=int((th+1)/2); # ceil(th/2)
+    if(tc<1) tc=1;
+    if(tc<nc) nc=tc;
+  }
+  if(nc>4) nc=4;
+  if(nc<1) nc=1;
+  printf "%d", nc;
+}')"
 
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
+  per_core="$(awk -v t="${rw_tps}" -v c="${norm_cores}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
     echo "poor"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
     echo "average"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
     echo "good"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
     echo "excellent"; return
   fi
 
@@ -1986,7 +2049,7 @@ _print_compact_summary() {
   echo ""
 
   # Extract numeric values
-  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps
+  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps _mt_note
   local rand_read_lat seq_read_mbps seq_write_mbps ioping_avg_us meta_ops_num
   local read_iops write_iops
 
@@ -2010,7 +2073,7 @@ _print_compact_summary() {
 
   # Calculate grades
   local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade
-  mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads}")"
+  mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads_grade:-${_mem_bench_threads}}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
   root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
@@ -2025,7 +2088,7 @@ _print_compact_summary() {
     local _vcpus_num
     _vcpus_num="$(_num_or_empty "${_cpu_cores}")"
     [ -n "${_vcpus_num}" ] || _vcpus_num="1"
-    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}")"
+    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}" "${_db_threads_used:-0}")"
   fi
 
 
@@ -2033,7 +2096,7 @@ _print_compact_summary() {
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
   echo " ============================================================================="
   echo ""
-  printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
+  printf "   Bandwidth:  %-20s Grade: [%s]%s\n" "${_mem_transfer_speed}" "${mem_grade}" "$( [ "${_mem_bench_tool:-membench}" = "sysbench" ] && echo " (fallback: sysbench)" || echo "" )"
   if [ -n "${_mem_latency}" ]; then
     printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
   else
@@ -2073,7 +2136,12 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo ""
   printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
-  printf "   Multi-thread:   %-15s events/sec  (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
+  if [ -n "${_cpu_mt_threads_used:-}" ] && [ -n "${_cpu_cores:-}" ] && [ "${_cpu_mt_threads_used}" -lt "${_cpu_cores}" ] 2>/dev/null; then
+    _mt_note="(${_cpu_cores} vCPUs; measured @ ${_cpu_mt_threads_used} threads cap)"
+  else
+    _mt_note="(${_cpu_cores} vCPUs)"
+  fi
+  printf "   Multi-thread:   %-15s events/sec  %s\n" "${_cpu_events_MT_NPROC}" "${_mt_note}"
   printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
   printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
@@ -2447,6 +2515,11 @@ _db_benchmark_sysbench() {
   if [ "${threads}" -gt "${_DB_SYSBENCH_THREADS_MAX}" ]; then
     threads="${_DB_SYSBENCH_THREADS_MAX}"
   fi
+  # Many DB OLTP workloads (and VPS hosts) stop scaling before vCPU*2 threads.
+  # Cap threads for grading consistency so bigger VMs are not penalized by concurrency regression.
+  if [ -n "${_DB_SYSBENCH_THREADS_SAT:-}" ] && [ "${_DB_SYSBENCH_THREADS_SAT}" -gt 0 ] && [ "${threads}" -gt "${_DB_SYSBENCH_THREADS_SAT}" ]; then
+    threads="${_DB_SYSBENCH_THREADS_SAT}"
+  fi
   if [ "${threads}" -lt "${_DB_SYSBENCH_THREADS_MIN}" ]; then
     threads="${_DB_SYSBENCH_THREADS_MIN}"
   fi
@@ -2570,6 +2643,8 @@ _ensure_sysbench
 
 echo ""
 echo "Starting extended performance tests, please wait..."
+echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes.."
+service cron stop
 
 # Basic system info
 _hostname="$(hostname)"
@@ -2610,7 +2685,16 @@ if command -v mpstat >/dev/null 2>&1; then
   _mpstat_pid="$!"
 fi
 
-_run_sysbench_cpu "$(nproc)" "MT_NPROC"
+_cpu_mt_threads_raw="$(nproc 2>/dev/null || echo 1)"
+_cpu_mt_threads_used="${_cpu_mt_threads_raw}"
+if [ -n "${_SYSBENCH_CPU_THREADS_SAT:-}" ] && [ "${_SYSBENCH_CPU_THREADS_SAT}" -gt 0 ] && [ "${_cpu_mt_threads_used}" -gt "${_SYSBENCH_CPU_THREADS_SAT}" ]; then
+  _cpu_mt_threads_used="${_SYSBENCH_CPU_THREADS_SAT}"
+fi
+if [ "${_cpu_mt_threads_used}" -lt 1 ]; then
+  _cpu_mt_threads_used=1
+fi
+
+_run_sysbench_cpu "${_cpu_mt_threads_used}" "MT_NPROC"
 
 if [ -n "${_mpstat_pid:-}" ]; then
   wait "${_mpstat_pid}" >/dev/null 2>&1
@@ -2868,7 +2952,7 @@ else
     echo "  - RAM: ${_total_ram_mb} MB"
   fi
   echo ""
-  echo "CPU Performance (Multi-threaded, nproc=$(nproc)):"
+  echo "CPU Performance (Multi-threaded, nproc=${_cpu_mt_threads_raw:-$(nproc)}, used=${_cpu_mt_threads_used:-$(nproc)}):"
   echo "  - Events per Second: ${_cpu_events_MT_NPROC}"
   echo "  - Average Latency: ${_cpu_latency_MT_NPROC} ms"
   if [ -n "${_cpu_steal_mt}" ]; then
@@ -3058,3 +3142,6 @@ if [ "${_VERBOSE}" -eq 1 ]; then
   echo "CSV_SUMMARY_V4:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
   echo "CSV_DB_V1:${_hostname},${_db_ro_tps},${_db_ro_p95_ms},${_db_rw_tps},${_db_rw_p95_ms},${_db_test_status}"
 fi
+
+service cron restart
+
