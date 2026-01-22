@@ -265,25 +265,25 @@ _ensure_sysbench() {
   fi
 
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
-  mkdir -p /tmp/sysbench-build || exit 1
-  cd /tmp/sysbench-build || exit 1
+  mkdir -p /tmp/sysbench-build
+  cd /tmp/sysbench-build
 
-  git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1 || exit 1
-  cd sysbench || exit 1
+  git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1
+  cd sysbench
 
-  ./autogen.sh >/dev/null 2>&1 || exit 1
+  ./autogen.sh >/dev/null 2>&1
 
   # Default: without mysql. Enable mysql only when we proved build support is present.
   if [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
-    ./configure >/dev/null 2>&1 || exit 1
+    ./configure >/dev/null 2>&1
   else
-    ./configure --without-mysql >/dev/null 2>&1 || exit 1
+    ./configure --without-mysql >/dev/null 2>&1
   fi
 
-  make -j"$(nproc)" >/dev/null 2>&1 || exit 1
-  make install >/dev/null 2>&1 || exit 1
+  make -j"$(nproc)" >/dev/null 2>&1
+  make install >/dev/null 2>&1
 
-  cd /root || exit 1
+  cd /root
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
 
   # Ensure shell picks up any newly installed sysbench in PATH
