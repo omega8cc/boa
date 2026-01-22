@@ -119,38 +119,8 @@ _check_and_install_package() {
   fi
 }
 
-# Helpers (Debian/Devuan)
-_is_pkg_installed() {
-  dpkg-query -W -f='${Status}' "${1}" 2>/dev/null | grep -q "install ok installed"
-}
-
-_sysbench_has_mysql_driver() {
-  _SYSBENCH_HELP="$(sysbench --help 2>/dev/null)"
-
-  # Preferred: sysbench usually prints: "Compiled-in database drivers: mysql"
-  if printf '%s\n' "${_SYSBENCH_HELP}" | grep -i "Compiled-in database drivers" | grep -Eqi '(^|[[:space:],])mysql([[:space:],]|$)'; then
-    return 0
-  fi
-
-  # Fallbacks (in case help format differs)
-  _SYSBENCH_BIN="$(command -v sysbench 2>/dev/null)" || return 1
-
-  if command -v ldd >/dev/null 2>&1; then
-    if ldd "${_SYSBENCH_BIN}" 2>/dev/null | grep -Eqi '(libmysqlclient|libperconaserverclient)'; then
-      return 0
-    fi
-  fi
-
-  if command -v strings >/dev/null 2>&1; then
-    if strings "${_SYSBENCH_BIN}" 2>/dev/null | grep -Eqi '(mysql_real_connect|mysql_init|mysql_options)'; then
-      return 0
-    fi
-  fi
-
-  return 1
-}
-
-_ensure_dependencies() {
+# Ensure sysbench build dependencies are present (always run)
+_ensure_sysbench_build_deps() {
   _check_and_install_package "git"
   _check_and_install_package "make"
   _check_and_install_package "gcc"
@@ -160,58 +130,138 @@ _ensure_dependencies() {
   _check_and_install_package "libaio-dev"
 }
 
-# Prefer sysbench build-from-source without MySQL/MariaDB, but:
-# - If MySQL server is installed AND the right client package is installed
-#   (Percona 5.7/8.0/8.4 via libperconaserverclient2[0-2]-dev, or MySQL 8.4 via libmysqlclient24),
-#   ensure sysbench has mysql driver; rebuild if not.
-_ensure_sysbench() {
+# Extract sysbench version (first X.Y[.Z...] token)
+_sysbench_get_version() {
+  sysbench --version 2>/dev/null | grep -Eo '[0-9]+(\.[0-9]+)+' | head -n 1
+}
 
-  _ensure_dependencies
+# Return 0 if version A >= version B (dot-separated numeric)
+_version_ge() {
+  # Usage: _version_ge "1.0.20" "1.0.18"
+  _A="${1}"
+  _B="${2}"
 
-  _MYSQL_PRESENT="NO"
-  _MYSQL_CLIENT_PKG_PRESENT="NO"
-  _MYSQL_CONFIG_PRESENT="NO"
-  _MYSQL_SUPPORT_POSSIBLE="NO"
-  _SYSBENCH_NEEDS_REBUILD="NO"
+  # Empty versions => fail safe
+  if [ -z "${_A}" ] || [ -z "${_B}" ]; then
+    return 1
+  fi
 
-  # MySQL/Percona server present?
+  # shellcheck disable=SC2206
+  _A_ARR=(${_A//./ })
+  # shellcheck disable=SC2206
+  _B_ARR=(${_B//./ })
+
+  _I=0
+  _MAX="${#_A_ARR[@]}"
+  if [ "${#_B_ARR[@]}" -gt "${_MAX}" ]; then
+    _MAX="${#_B_ARR[@]}"
+  fi
+
+  while [ "${_I}" -lt "${_MAX}" ]; do
+    _AI="${_A_ARR[${_I}]:-0}"
+    _BI="${_B_ARR[${_I}]:-0}"
+    # Force base-10 numeric compare (avoid 08/09 octal edge)
+    if [ "$((10#${_AI}))" -gt "$((10#${_BI}))" ]; then
+      return 0
+    fi
+    if [ "$((10#${_AI}))" -lt "$((10#${_BI}))" ]; then
+      return 1
+    fi
+    _I=$((_I + 1))
+  done
+
+  return 0
+}
+
+# Detect whether sysbench was built with mysql driver
+_sysbench_has_mysql_driver() {
+  # Never allow this check to hang perftest (and don't let sysbench read from stdin).
+  if command -v timeout >/dev/null 2>&1; then
+    _SB_HELP="$(timeout 3s sysbench --help </dev/null 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
+  else
+    _SB_HELP="$(sysbench --help </dev/null 2>/dev/null | tr '\n' ' ' | tr -s ' ')"
+  fi
+
+  # If sysbench was killed by timeout or produced nothing, treat as "no mysql driver"
+  if [ -z "${_SB_HELP}" ]; then
+    return 1
+  fi
+
+  # Match either:
+  # - the "Compiled-in database drivers:" section mentioning mysql (even if it was multiline originally), OR
+  # - the explicit "mysql - MySQL driver" entry
+  printf '%s\n' "${_SB_HELP}" | grep -Eqi 'Compiled-in database drivers:.*(^|[[:space:],])mysql([[:space:],]|$)' && return 0
+  printf '%s\n' "${_SB_HELP}" | grep -Eqi '(^|[[:space:]])mysql[[:space:]]*-[[:space:]]*MySQL driver([[:space:]]|$)' && return 0
+
+  return 1
+}
+
+_mysql_is_present() {
   if command -v mysqld >/dev/null 2>&1 || [ -d "/var/lib/mysql/mysql" ]; then
-    _MYSQL_PRESENT="YES"
+    return 0
+  fi
+  return 1
+}
+
+_mysql_build_support_ok() {
+  if ! command -v mysql_config >/dev/null 2>&1; then
+    return 1
+  fi
+  mysql_config --cflags >/dev/null 2>&1 || return 1
+  mysql_config --libs   >/dev/null 2>&1 || return 1
+  return 0
+}
+
+# Prefer sysbench build-from-source without MySQL, but rebuild with mysql support when appropriate.
+# Rebuild triggers:
+# - sysbench missing
+# - sysbench version < ${_SYSBENCH_MIN_VER} (defaults below)
+# - mysql is present + mysql_config works + sysbench lacks mysql driver
+_ensure_sysbench() {
+  # Dummy default; override elsewhere if you want.
+  if [ -z "${_SYSBENCH_MIN_VER}" ]; then
+    _SYSBENCH_MIN_VER="1.1.0"
   fi
 
-  # Only care about the packages BOA is using
-  if _is_pkg_installed "libperconaserverclient20-dev" \
-    || _is_pkg_installed "libperconaserverclient21-dev" \
-    || _is_pkg_installed "libperconaserverclient22-dev" \
-    || _is_pkg_installed "libmysqlclient24"; then
-    _MYSQL_CLIENT_PKG_PRESENT="YES"
-  fi
+  _MYSQL_SUPPORT_POSSIBLE="NO"
+  _NEEDS_BUILD="NO"
 
-  # mysql_config is still the practical gate for a MySQL-enabled sysbench build
-  if command -v mysql_config >/dev/null 2>&1; then
-    _MYSQL_CONFIG_PRESENT="YES"
-  fi
+  # Always ensure prerequisites (even if we end up doing nothing)
+  _ensure_sysbench_build_deps
 
-  if [ "${_MYSQL_PRESENT}" = "YES" ] \
-    && [ "${_MYSQL_CLIENT_PKG_PRESENT}" = "YES" ] \
-    && [ "${_MYSQL_CONFIG_PRESENT}" = "YES" ]; then
+  if _mysql_is_present && _mysql_build_support_ok; then
     _MYSQL_SUPPORT_POSSIBLE="YES"
   fi
 
-  if command -v sysbench >/dev/null 2>&1; then
-    if [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
+  if ! command -v sysbench >/dev/null 2>&1; then
+    _NEEDS_BUILD="YES"
+    _log "The sysbench is not installed yet, building from source..."
+  else
+    _SYSBENCH_CUR_VER="$(_sysbench_get_version)"
+
+    # Version gate: rebuild if current version cannot be read or is too old
+    if ! _version_ge "${_SYSBENCH_CUR_VER}" "${_SYSBENCH_MIN_VER}"; then
+      _NEEDS_BUILD="YES"
+      _log "The sysbench version is ${_SYSBENCH_CUR_VER} while minimum is ${_SYSBENCH_MIN_VER}, building from source..."
+    fi
+
+    # MySQL driver gate: rebuild only when MySQL support is actually possible
+    if [ "${_NEEDS_BUILD}" != "YES" ] && [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
       if ! _sysbench_has_mysql_driver; then
-        _SYSBENCH_NEEDS_REBUILD="YES"
+        _NEEDS_BUILD="YES"
+        _log "The sysbench MySQL support is missing, compiling from source..."
       fi
     fi
+  fi
 
-    if [ "${_SYSBENCH_NEEDS_REBUILD}" = "NO" ]; then
-      return 0
-    fi
+  if [ "${_NEEDS_BUILD}" != "YES" ]; then
+    return 0
+  fi
 
-    _log "sysbench detected but missing mysql driver; rebuilding with MySQL support..."
+  if command -v sysbench >/dev/null 2>&1; then
+    _log "Rebuilding sysbench from source (min ${_SYSBENCH_MIN_VER}; MySQL support possible: ${_MYSQL_SUPPORT_POSSIBLE})..."
   else
-    _log "Compiling sysbench from source..."
+    _log "Compiling sysbench from source (min ${_SYSBENCH_MIN_VER})..."
   fi
 
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
@@ -223,8 +273,7 @@ _ensure_sysbench() {
 
   ./autogen.sh >/dev/null 2>&1 || exit 1
 
-  # Default stays --without-mysql to avoid dependency conflicts,
-  # but if MySQL support is possible (server+client already present), build with mysql.
+  # Default: without mysql. Enable mysql only when we proved build support is present.
   if [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
     ./configure >/dev/null 2>&1 || exit 1
   else
@@ -1214,8 +1263,8 @@ _parse_fio_json() {
   echo "READ_P99_MS=${_read_p99_ms}"
   echo "WRITE_P95_MS=${_write_p95_ms}"
   echo "WRITE_P99_MS=${_write_p99_ms}"
-echo "SYNC_P95_MS=${_sync_p95_ms}"
-echo "SYNC_P99_MS=${_sync_p99_ms}"
+  echo "SYNC_P95_MS=${_sync_p95_ms}"
+  echo "SYNC_P99_MS=${_sync_p99_ms}"
 }
 
 # Simple metadata / small file operations test
@@ -1494,6 +1543,43 @@ _boa_grade_cpu_speed() {
     else if (eps>=1000) print "acceptable";
     else print "poor";
   }'
+}
+
+_boa_grade_db_oltp() {
+  # Inputs:
+  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional)
+  #
+  # This is a lightweight "experience proxy" for Drupal workloads (cache misses + writes).
+  # We grade primarily on RW TPS per vCPU, with latency caps on RW p95.
+  local rw_tps rw_p95 vcpus ro_p95 per_vcpu
+  rw_tps="$(_num_or_empty "$1")"
+  rw_p95="$(_num_or_empty "$2")"
+  vcpus="$(_num_or_empty "$3")"
+  ro_p95="$(_num_or_empty "$4")"
+
+  [ -n "${vcpus}" ] || vcpus="1"
+
+  if [ -z "${rw_tps}" ] || [ -z "${rw_p95}" ]; then
+    echo "unknown"
+    return
+  fi
+
+  per_vcpu="$(awk -v t="${rw_tps}" -v c="${vcpus}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
+    echo "poor"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
+    echo "average"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
+    echo "good"; return
+  fi
+  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
+    echo "excellent"; return
+  fi
+
+  echo "ultra"
 }
 
 _boa_grade_disk_final() {
@@ -1883,7 +1969,7 @@ _print_disk_compact_section() {
 _print_compact_summary() {
   echo " ============================================================================="
   echo " ==                 BOA Performance Test - Compact Summary                  =="
-  echo " ==      Priority: Memory > CPU > Disk > Network (for Drupal caching)       =="
+  echo " ==              Priority: Memory > CPU > Disk > DB > Network               =="
   echo " ============================================================================="
   echo ""
   echo "System:"
@@ -1923,7 +2009,7 @@ _print_compact_summary() {
   ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1)"
 
   # Calculate grades
-  local mem_grade steal_grade cpu_grade disk_grade net_grade
+  local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade
   mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
@@ -1932,6 +2018,16 @@ _print_compact_summary() {
   root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
   disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
+
+  # Database grade (optional; only if DB test ran)
+  db_grade="unknown"
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    local _vcpus_num
+    _vcpus_num="$(_num_or_empty "${_cpu_cores}")"
+    [ -n "${_vcpus_num}" ] || _vcpus_num="1"
+    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}")"
+  fi
+
 
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
@@ -2019,8 +2115,45 @@ _print_compact_summary() {
   done
 
 
+
   echo " ============================================================================="
-  echo " == 4. NETWORK (Sanity check)                                               =="
+  echo " == 4. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
+  echo " ============================================================================="
+  echo ""
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    printf "   Threads used:            %s
+" "${_db_threads_used:-N/A}"
+    printf "   Read-only (tps / p95):   %-10s / %s ms
+" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
+    printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]
+" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
+    echo ""
+    if [ "${db_grade}" = "poor" ]; then
+      echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
+    elif [ "${db_grade}" = "average" ]; then
+      echo "   ✅ Average DB OLTP performance"
+    elif [ "${db_grade}" = "good" ]; then
+      echo "   🌟 Good DB OLTP performance"
+    elif [ "${db_grade}" = "excellent" ]; then
+      echo "   🏆 Excellent DB OLTP performance"
+    elif [ "${db_grade}" = "ultra" ]; then
+      echo "   🚀 Ultra DB OLTP performance"
+    fi
+    if [ "${_db_test_status}" = "WARN" ] && [ -n "${_db_test_reason}" ]; then
+      echo "   ⚠️  Note: ${_db_test_reason}"
+    fi
+  else
+    printf "   Status: %s
+" "${_db_test_status}"
+    if [ -n "${_db_test_reason}" ]; then
+      printf "   Reason: %s
+" "${_db_test_reason}"
+    fi
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == 5. NETWORK (Sanity check)                                               =="
   echo " ============================================================================="
   echo ""
   printf "   Public IPv4:        %s\n" "${_net_ipv4}"
@@ -2100,6 +2233,15 @@ _print_compact_summary() {
   elif [ "${disk_grade}" = "poor" ]; then
     echo "   ⚠️  Slow disk - may impact deployments"
     _warnings=$((_warnings + 1))
+  fi
+
+
+  # Database (optional)
+  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+    if [ "${db_grade}" = "poor" ]; then
+      echo "   ⚠️  DB OLTP is slow - cache misses and write-heavy workloads may suffer"
+      _warnings=$((_warnings + 1))
+    fi
   fi
 
   # Network
@@ -2252,12 +2394,7 @@ _run_db_sysbench() {
 }
 
 _db_benchmark_sysbench() {
-  # Default: run only in --verbose mode
-  if [ "${_VERBOSE}" -ne 1 ]; then
-    _db_test_status="SKIPPED"
-    _db_test_reason="run with --verbose"
-    return
-  fi
+  # Runs when enabled and MySQL root access is available.
   if [ "${_DBTEST_ENABLED}" != "YES" ]; then
     _db_test_status="SKIPPED"
     _db_test_reason="disabled"
@@ -2271,6 +2408,12 @@ _db_benchmark_sysbench() {
   if ! command -v mysql >/dev/null 2>&1; then
     _db_test_status="SKIPPED"
     _db_test_reason="mysql client not installed"
+    return
+  fi
+
+  if ! _sysbench_has_mysql_driver; then
+    _db_test_status="SKIPPED"
+    _db_test_reason="sysbench built without mysql driver"
     return
   fi
 
@@ -2426,8 +2569,7 @@ _check_and_install_package "bc"
 _ensure_sysbench
 
 echo ""
-echo "Starting performance tests..."
-echo ""
+echo "Starting extended performance tests, please wait..."
 
 # Basic system info
 _hostname="$(hostname)"
@@ -2477,9 +2619,11 @@ if [ -n "${_mpstat_pid:-}" ]; then
 fi
 
 # Single-threaded
+echo "Running Single-threaded CPU performance tests..."
 _run_sysbench_cpu 1 "ST"
 
 # 4-thread
+echo "Running Multi-threaded CPU tests..."
 _run_sysbench_cpu 4 "MT4"
 
 # Memory Performance Test (DRAM-focused)
@@ -2495,6 +2639,7 @@ echo "Running PHP performance tests..."
 _run_php_benchmarks
 
 # Database OLTP experience proxy (sysbench + MySQL root)
+echo "Running Database performance tests..."
 _db_benchmark_sysbench
 
 # Disk I/O Performance Tests
