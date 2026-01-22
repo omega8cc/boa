@@ -9,6 +9,7 @@ _PHP_BENCH_ITERATIONS=50000 # per process
 _PHP_BENCH_RUNS=5 # single-thread runs for median
 _PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
 _SYSBENCH_CPU_TIME=30 # seconds
+_SYSBENCH_CPU_THREADS_SAT=8 # cap MT CPU threads (informational; avoids regression/noise on large vCPU VMs)
 _SYSBENCH_MEM_TIME=30 # seconds
 _DB_SYSBENCH_TIME_RO=30 # seconds (read-only OLTP)
 _DB_SYSBENCH_TIME_RW=30 # seconds (read-write OLTP)
@@ -2048,7 +2049,7 @@ _print_compact_summary() {
   echo ""
 
   # Extract numeric values
-  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps
+  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps _mt_note
   local rand_read_lat seq_read_mbps seq_write_mbps ioping_avg_us meta_ops_num
   local read_iops write_iops
 
@@ -2135,7 +2136,12 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo ""
   printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
-  printf "   Multi-thread:   %-15s events/sec  (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
+  if [ -n "${_cpu_mt_threads_used:-}" ] && [ -n "${_cpu_cores:-}" ] && [ "${_cpu_mt_threads_used}" -lt "${_cpu_cores}" ] 2>/dev/null; then
+    _mt_note="(${_cpu_cores} vCPUs; measured @ ${_cpu_mt_threads_used} threads cap)"
+  else
+    _mt_note="(${_cpu_cores} vCPUs)"
+  fi
+  printf "   Multi-thread:   %-15s events/sec  %s\n" "${_cpu_events_MT_NPROC}" "${_mt_note}"
   printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
   printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
@@ -2679,7 +2685,16 @@ if command -v mpstat >/dev/null 2>&1; then
   _mpstat_pid="$!"
 fi
 
-_run_sysbench_cpu "$(nproc)" "MT_NPROC"
+_cpu_mt_threads_raw="$(nproc 2>/dev/null || echo 1)"
+_cpu_mt_threads_used="${_cpu_mt_threads_raw}"
+if [ -n "${_SYSBENCH_CPU_THREADS_SAT:-}" ] && [ "${_SYSBENCH_CPU_THREADS_SAT}" -gt 0 ] && [ "${_cpu_mt_threads_used}" -gt "${_SYSBENCH_CPU_THREADS_SAT}" ]; then
+  _cpu_mt_threads_used="${_SYSBENCH_CPU_THREADS_SAT}"
+fi
+if [ "${_cpu_mt_threads_used}" -lt 1 ]; then
+  _cpu_mt_threads_used=1
+fi
+
+_run_sysbench_cpu "${_cpu_mt_threads_used}" "MT_NPROC"
 
 if [ -n "${_mpstat_pid:-}" ]; then
   wait "${_mpstat_pid}" >/dev/null 2>&1
@@ -2937,7 +2952,7 @@ else
     echo "  - RAM: ${_total_ram_mb} MB"
   fi
   echo ""
-  echo "CPU Performance (Multi-threaded, nproc=$(nproc)):"
+  echo "CPU Performance (Multi-threaded, nproc=${_cpu_mt_threads_raw:-$(nproc)}, used=${_cpu_mt_threads_used:-$(nproc)}):"
   echo "  - Events per Second: ${_cpu_events_MT_NPROC}"
   echo "  - Average Latency: ${_cpu_latency_MT_NPROC} ms"
   if [ -n "${_cpu_steal_mt}" ]; then
