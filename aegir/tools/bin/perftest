@@ -22,6 +22,7 @@ _MEM_BENCH_REPEATS=3 # repeats for stability; median-of-3 is used
 _MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
 _MEM_BENCH_SIZE_MAX_MIB=1024 # MiB working set (cap to avoid OOM)
 _MEM_BENCH_THREADS_MAX=8 # cap threads used for memory bandwidth
+_MEM_BENCH_THREADS_SAT=4 # cap threads for membench (avoid bandwidth dip on >4 vCPU VMs; keeps grading comparable)
 _MEM_BENCH_LAT_SIZE_MIB=256 # MiB pointer-chase working set (DRAM latency)
 _FIO_RAND_RUNTIME=60 # seconds
 _FIO_SEQ_RUNTIME=60 # seconds
@@ -655,10 +656,16 @@ _run_mem_benchmarks() {
   if [ "${_threads}" -gt "${_MEM_BENCH_THREADS_MAX}" ]; then
     _threads="${_MEM_BENCH_THREADS_MAX}"
   fi
+  # Many VPSes won't improve (and can even *lose*) bandwidth past ~4 threads due to contention/boost behavior.
+  # Cap the bandwidth run at _MEM_BENCH_THREADS_SAT to keep results comparable across VM sizes.
+  if [ -n "${_MEM_BENCH_THREADS_SAT:-}" ] && [ "${_MEM_BENCH_THREADS_SAT}" -gt 0 ] && [ "${_threads}" -gt "${_MEM_BENCH_THREADS_SAT}" ]; then
+    _threads="${_MEM_BENCH_THREADS_SAT}"
+  fi
   if [ "${_threads}" -lt 1 ]; then
     _threads=1
   fi
   _mem_bench_threads="${_threads}"
+  _mem_bench_threads_grade="${_threads}"
 
   _lat_mib="${_MEM_BENCH_LAT_SIZE_MIB}"
   if [ "${_lat_mib}" -gt "${_size_mib}" ]; then
@@ -1424,24 +1431,42 @@ _max_num() {
 }
 
 
-_boa_grade_mem_bw() {
-  # Bandwidth in MiB/s; optionally pass number of threads used.
-  # For VMs with 1-3 vCPU, bandwidth won't fully saturate memory channels, so we scale
-  # thresholds down slightly based on threads (up to 4).
-  local bw="$1"
-  local threads="${2:-4}"
+_boa_mem_thresholds() {
+  # Prints: thr_avg thr_good thr_exc thr_ultra (MiB/s)
+  # Soft-scaling for very small VMs (threads 1-3) to avoid unfairly strict grading,
+  # but WITHOUT giving 2-vCPU VMs an outsized advantage over larger instances.
+  local threads="${1:-4}"
   local scale="1.00"
 
   if [ -n "${threads}" ] && awk -v t="${threads}" 'BEGIN{exit !(t<4)}' 2>/dev/null; then
-    scale="$(awk -v t="${threads}" 'BEGIN{printf "%.2f", t/4.0}')"
+    # 1 -> 0.85, 2 -> 0.90, 3 -> 0.95 (clamped)
+    scale="$(awk -v t="${threads}" 'BEGIN{
+      s = 0.80 + (0.05 * t);
+      if (s < 0.85) s = 0.85;
+      if (s > 0.95) s = 0.95;
+      printf "%.2f", s
+    }')"
   fi
 
   local thr_avg thr_good thr_exc thr_ultra
   # Tuned for membench (>=128 MiB buffers) on typical VPS hardware.
-  thr_avg="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 14000*s}')"
-  thr_good="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 20000*s}')"
-  thr_exc="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 32000*s}')"
-  thr_ultra="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 48000*s}')"
+  # NOTE: BOA tends to "feel" latency more than raw memcpy bandwidth, so thresholds are conservative.
+  thr_avg="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 12000*s}')"
+  thr_good="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 18000*s}')"
+  thr_exc="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 28000*s}')"
+  thr_ultra="$(awk -v s="${scale}" 'BEGIN{printf "%.0f", 42000*s}')"
+
+  printf '%s %s %s %s\n' "${thr_avg}" "${thr_good}" "${thr_exc}" "${thr_ultra}"
+}
+
+_boa_grade_mem_bw() {
+  # Bandwidth in MiB/s; optionally pass number of threads used.
+  local bw="$1"
+  local threads="${2:-4}"
+  local thr_avg thr_good thr_exc thr_ultra
+
+  set -- $(_boa_mem_thresholds "${threads}")
+  thr_avg="$1"; thr_good="$2"; thr_exc="$3"; thr_ultra="$4"
 
   if [ -z "${bw}" ]; then
     echo "low"
@@ -1469,21 +1494,27 @@ _boa_grade_mem_final() {
   local mem_latency_ns="$2"
   local threads_used="$3"
   local grade
+  local thr_avg thr_good thr_exc thr_ultra
 
   grade="$(_boa_grade_mem_bw "${mem_bw_mibps}" "${threads_used}")"
+
+  set -- $(_boa_mem_thresholds "${threads_used}")
+  thr_avg="$1"; thr_good="$2"; thr_exc="$3"; thr_ultra="$4"
 
   # BOA is latency-sensitive (Valkey/Redis, MySQL buffer pool, Opcache/APCu):
   #   - allow low latency to lift borderline bandwidth
   #   - apply latency-led caps so higher grades reflect snappy cache-heavy workloads
   if [ -n "${mem_latency_ns}" ]; then
-    # Low-latency boost: keep small-vCPU VMs from being unfairly rated.
-    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=130)}' 2>/dev/null; then
-      if [ "${grade}" = "average" ] && awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=18000)}' 2>/dev/null; then
-        grade="good"
+    # Excellent-latency rescue: avoid "low" when bandwidth is only slightly under the average cutoff.
+    # This prevents confusing outcomes where a larger VM (using more threads) scores worse than a smaller VM
+    # despite having comparable real-world caching behavior.
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=115)}' 2>/dev/null; then
+      if [ "${grade}" = "low" ] && awk -v b="${mem_bw_mibps}" -v t="${thr_avg}" 'BEGIN{exit !(b>=(t*0.90))}' 2>/dev/null; then
+        grade="average"
       fi
     fi
 
-    # If latency is excellent, ensure at least "excellent" (BOA in-RAM stacks feel this).
+    # If latency is excellent, ensure at least "excellent" for average/good bandwidth.
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=115)}' 2>/dev/null; then
       if [ "${grade}" = "average" ] || [ "${grade}" = "good" ]; then
         grade="excellent"
@@ -1497,7 +1528,7 @@ _boa_grade_mem_final() {
     #   - >=260ns: treat as low ONLY when bandwidth is also weak
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=260)}' 2>/dev/null; then
       # If bandwidth is strong, this is likely a contention outlier rather than "bad RAM".
-      if awk -v b="${mem_bw_mibps}" 'BEGIN{exit !(b>=30000)}' 2>/dev/null; then
+      if awk -v b="${mem_bw_mibps}" -v t="${thr_exc}" 'BEGIN{exit !(b>=t)}' 2>/dev/null; then
         grade="average"
       else
         grade="low"
@@ -2010,7 +2041,7 @@ _print_compact_summary() {
 
   # Calculate grades
   local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade
-  mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads}")"
+  mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads_grade:-${_mem_bench_threads}}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
   root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
