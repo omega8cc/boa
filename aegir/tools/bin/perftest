@@ -17,6 +17,7 @@ _DB_SYSBENCH_TABLE_SIZE=100000 # rows per table (light)
 _DB_SYSBENCH_TABLE_SIZE_HEAVY=1000000 # rows per table (heavy)
 _DB_SYSBENCH_THREADS_MAX=16 # cap threads
 _DB_SYSBENCH_THREADS_MIN=2 # min threads
+_DB_SYSBENCH_THREADS_SAT=8 # saturation cap (avoid penalizing bigger VMs due to concurrency regression)
 _MEM_BENCH_TIME=10 # seconds (DRAM-focused membench, per run)
 _MEM_BENCH_REPEATS=3 # repeats for stability; median-of-3 is used
 _MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
@@ -1578,15 +1579,16 @@ _boa_grade_cpu_speed() {
 
 _boa_grade_db_oltp() {
   # Inputs:
-  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional)
+  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional), $5 = threads_used (optional)
   #
   # This is a lightweight "experience proxy" for Drupal workloads (cache misses + writes).
   # We grade primarily on RW TPS per vCPU, with latency caps on RW p95.
-  local rw_tps rw_p95 vcpus ro_p95 per_vcpu
+  local rw_tps rw_p95 vcpus ro_p95 threads_used norm_cores per_core
   rw_tps="$(_num_or_empty "$1")"
   rw_p95="$(_num_or_empty "$2")"
   vcpus="$(_num_or_empty "$3")"
   ro_p95="$(_num_or_empty "$4")"
+  threads_used="$(_num_or_empty "$5")"
 
   [ -n "${vcpus}" ] || vcpus="1"
 
@@ -1595,18 +1597,35 @@ _boa_grade_db_oltp() {
     return
   fi
 
-  per_vcpu="$(awk -v t="${rw_tps}" -v c="${vcpus}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+  # Normalize TPS to a bounded "effective core" count so larger VMs aren't penalized
+  # when OLTP stops scaling linearly with concurrency.
+  #
+  # - If threads_used is known, approximate "cores exercised" as ceil(threads/2)
+  # - Cap normalization at 4 cores (experience-focused; avoids punishing large VMs)
+  norm_cores="$(awk -v v="${vcpus}" -v th="${threads_used}" 'BEGIN{
+  nc=v;
+  if(th>0){
+    tc=int((th+1)/2); # ceil(th/2)
+    if(tc<1) tc=1;
+    if(tc<nc) nc=tc;
+  }
+  if(nc>4) nc=4;
+  if(nc<1) nc=1;
+  printf "%d", nc;
+}')"
 
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
+  per_core="$(awk -v t="${rw_tps}" -v c="${norm_cores}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
     echo "poor"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
     echo "average"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
     echo "good"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
     echo "excellent"; return
   fi
 
@@ -2056,7 +2075,7 @@ _print_compact_summary() {
     local _vcpus_num
     _vcpus_num="$(_num_or_empty "${_cpu_cores}")"
     [ -n "${_vcpus_num}" ] || _vcpus_num="1"
-    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}")"
+    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}" "${_db_threads_used:-0}")"
   fi
 
 
@@ -2477,6 +2496,11 @@ _db_benchmark_sysbench() {
   threads=$(( $(nproc 2>/dev/null || echo 1) * 2 ))
   if [ "${threads}" -gt "${_DB_SYSBENCH_THREADS_MAX}" ]; then
     threads="${_DB_SYSBENCH_THREADS_MAX}"
+  fi
+  # Many DB OLTP workloads (and VPS hosts) stop scaling before vCPU*2 threads.
+  # Cap threads for grading consistency so bigger VMs are not penalized by concurrency regression.
+  if [ -n "${_DB_SYSBENCH_THREADS_SAT:-}" ] && [ "${_DB_SYSBENCH_THREADS_SAT}" -gt 0 ] && [ "${threads}" -gt "${_DB_SYSBENCH_THREADS_SAT}" ]; then
+    threads="${_DB_SYSBENCH_THREADS_SAT}"
   fi
   if [ "${threads}" -lt "${_DB_SYSBENCH_THREADS_MIN}" ]; then
     threads="${_DB_SYSBENCH_THREADS_MIN}"
