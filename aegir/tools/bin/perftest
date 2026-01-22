@@ -718,11 +718,23 @@ _run_mem_benchmarks() {
     _mem_lat_max="$(printf '%b' "${_lat_vals}" | sort -n | tail -n1)"
   fi
 
+  _mem_bench_tool="membench"
+
   if [ -n "${_bw_med}" ]; then
     _mem_transfer_speed="${_bw_med} MiB/s"
   else
+    _mem_bench_tool="sysbench"
+
     # Fallback to sysbench if membench failed
-    _mem_test="$(sysbench memory --memory-block-size=256M --memory-oper=read --memory-access-mode=seq --memory-total-size=10G --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
+    # IMPORTANT: keep thread count consistent with membench grading logic (avoid nproc-penalty on larger VMs).
+    # sysbench memory throughput is not perfectly comparable to membench, but it is still useful as a fallback signal.
+    _mem_test="$(sysbench memory \
+      --memory-block-size=1M \
+      --memory-oper=write \
+      --memory-access-mode=seq \
+      --memory-total-size=100G \
+      --threads="${_mem_bench_threads:-1}" \
+      --time="${_SYSBENCH_MEM_TIME}" run </dev/null 2>/dev/null)"
     _mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
   fi
 
@@ -2083,7 +2095,7 @@ _print_compact_summary() {
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
   echo " ============================================================================="
   echo ""
-  printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
+  printf "   Bandwidth:  %-20s Grade: [%s]%s\n" "${_mem_transfer_speed}" "${mem_grade}" "$( [ "${_mem_bench_tool:-membench}" = "sysbench" ] && echo " (fallback: sysbench)" || echo "" )"
   if [ -n "${_mem_latency}" ]; then
     printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
   else
