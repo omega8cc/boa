@@ -265,25 +265,25 @@ _ensure_sysbench() {
   fi
 
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
-  mkdir -p /tmp/sysbench-build || exit 1
-  cd /tmp/sysbench-build || exit 1
+  mkdir -p /tmp/sysbench-build
+  cd /tmp/sysbench-build
 
-  git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1 || exit 1
-  cd sysbench || exit 1
+  git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1
+  cd sysbench
 
-  ./autogen.sh >/dev/null 2>&1 || exit 1
+  ./autogen.sh >/dev/null 2>&1
 
   # Default: without mysql. Enable mysql only when we proved build support is present.
   if [ "${_MYSQL_SUPPORT_POSSIBLE}" = "YES" ]; then
-    ./configure >/dev/null 2>&1 || exit 1
+    ./configure >/dev/null 2>&1
   else
-    ./configure --without-mysql >/dev/null 2>&1 || exit 1
+    ./configure --without-mysql >/dev/null 2>&1
   fi
 
-  make -j"$(nproc)" >/dev/null 2>&1 || exit 1
-  make install >/dev/null 2>&1 || exit 1
+  make -j"$(nproc)" >/dev/null 2>&1
+  make install >/dev/null 2>&1
 
-  cd /root || exit 1
+  cd /root
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
 
   # Ensure shell picks up any newly installed sysbench in PATH
@@ -2570,6 +2570,8 @@ _ensure_sysbench
 
 echo ""
 echo "Starting extended performance tests, please wait..."
+echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes..""
+service cron stop
 
 # Basic system info
 _hostname="$(hostname)"
@@ -3058,3 +3060,6 @@ if [ "${_VERBOSE}" -eq 1 ]; then
   echo "CSV_SUMMARY_V4:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
   echo "CSV_DB_V1:${_hostname},${_db_ro_tps},${_db_ro_p95_ms},${_db_rw_tps},${_db_rw_p95_ms},${_db_test_status}"
 fi
+
+service cron restart
+
