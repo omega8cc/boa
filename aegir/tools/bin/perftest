@@ -2570,7 +2570,7 @@ _ensure_sysbench
 
 echo ""
 echo "Starting extended performance tests, please wait..."
-echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes..""
+echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes.."
 service cron stop
 
 # Basic system info
