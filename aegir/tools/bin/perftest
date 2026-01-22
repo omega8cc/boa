@@ -9,6 +9,7 @@ _PHP_BENCH_ITERATIONS=50000 # per process
 _PHP_BENCH_RUNS=5 # single-thread runs for median
 _PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
 _SYSBENCH_CPU_TIME=30 # seconds
+_SYSBENCH_CPU_THREADS_SAT=8 # cap MT CPU threads (informational; avoids regression/noise on large vCPU VMs)
 _SYSBENCH_MEM_TIME=30 # seconds
 _DB_SYSBENCH_TIME_RO=30 # seconds (read-only OLTP)
 _DB_SYSBENCH_TIME_RW=30 # seconds (read-write OLTP)
@@ -17,6 +18,7 @@ _DB_SYSBENCH_TABLE_SIZE=100000 # rows per table (light)
 _DB_SYSBENCH_TABLE_SIZE_HEAVY=1000000 # rows per table (heavy)
 _DB_SYSBENCH_THREADS_MAX=16 # cap threads
 _DB_SYSBENCH_THREADS_MIN=2 # min threads
+_DB_SYSBENCH_THREADS_SAT=8 # saturation cap (avoid penalizing bigger VMs due to concurrency regression)
 _MEM_BENCH_TIME=10 # seconds (DRAM-focused membench, per run)
 _MEM_BENCH_REPEATS=3 # repeats for stability; median-of-3 is used
 _MEM_BENCH_SIZE_MIN_MIB=128 # MiB working set (min; must exceed LLC)
@@ -717,11 +719,23 @@ _run_mem_benchmarks() {
     _mem_lat_max="$(printf '%b' "${_lat_vals}" | sort -n | tail -n1)"
   fi
 
+  _mem_bench_tool="membench"
+
   if [ -n "${_bw_med}" ]; then
     _mem_transfer_speed="${_bw_med} MiB/s"
   else
+    _mem_bench_tool="sysbench"
+
     # Fallback to sysbench if membench failed
-    _mem_test="$(sysbench memory --memory-block-size=256M --memory-oper=read --memory-access-mode=seq --memory-total-size=10G --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
+    # IMPORTANT: keep thread count consistent with membench grading logic (avoid nproc-penalty on larger VMs).
+    # sysbench memory throughput is not perfectly comparable to membench, but it is still useful as a fallback signal.
+    _mem_test="$(sysbench memory \
+      --memory-block-size=1M \
+      --memory-oper=write \
+      --memory-access-mode=seq \
+      --memory-total-size=100G \
+      --threads="${_mem_bench_threads:-1}" \
+      --time="${_SYSBENCH_MEM_TIME}" run </dev/null 2>/dev/null)"
     _mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
   fi
 
@@ -1578,15 +1592,16 @@ _boa_grade_cpu_speed() {
 
 _boa_grade_db_oltp() {
   # Inputs:
-  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional)
+  #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional), $5 = threads_used (optional)
   #
   # This is a lightweight "experience proxy" for Drupal workloads (cache misses + writes).
   # We grade primarily on RW TPS per vCPU, with latency caps on RW p95.
-  local rw_tps rw_p95 vcpus ro_p95 per_vcpu
+  local rw_tps rw_p95 vcpus ro_p95 threads_used norm_cores per_core
   rw_tps="$(_num_or_empty "$1")"
   rw_p95="$(_num_or_empty "$2")"
   vcpus="$(_num_or_empty "$3")"
   ro_p95="$(_num_or_empty "$4")"
+  threads_used="$(_num_or_empty "$5")"
 
   [ -n "${vcpus}" ] || vcpus="1"
 
@@ -1595,18 +1610,35 @@ _boa_grade_db_oltp() {
     return
   fi
 
-  per_vcpu="$(awk -v t="${rw_tps}" -v c="${vcpus}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+  # Normalize TPS to a bounded "effective core" count so larger VMs aren't penalized
+  # when OLTP stops scaling linearly with concurrency.
+  #
+  # - If threads_used is known, approximate "cores exercised" as ceil(threads/2)
+  # - Cap normalization at 4 cores (experience-focused; avoids punishing large VMs)
+  norm_cores="$(awk -v v="${vcpus}" -v th="${threads_used}" 'BEGIN{
+  nc=v;
+  if(th>0){
+    tc=int((th+1)/2); # ceil(th/2)
+    if(tc<1) tc=1;
+    if(tc<nc) nc=tc;
+  }
+  if(nc>4) nc=4;
+  if(nc<1) nc=1;
+  printf "%d", nc;
+}')"
 
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
+  per_core="$(awk -v t="${rw_tps}" -v c="${norm_cores}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
+
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
     echo "poor"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
     echo "average"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
     echo "good"; return
   fi
-  if awk -v p="${per_vcpu}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
+  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
     echo "excellent"; return
   fi
 
@@ -2017,7 +2049,7 @@ _print_compact_summary() {
   echo ""
 
   # Extract numeric values
-  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps
+  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps _mt_note
   local rand_read_lat seq_read_mbps seq_write_mbps ioping_avg_us meta_ops_num
   local read_iops write_iops
 
@@ -2056,7 +2088,7 @@ _print_compact_summary() {
     local _vcpus_num
     _vcpus_num="$(_num_or_empty "${_cpu_cores}")"
     [ -n "${_vcpus_num}" ] || _vcpus_num="1"
-    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}")"
+    db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}" "${_db_threads_used:-0}")"
   fi
 
 
@@ -2064,7 +2096,7 @@ _print_compact_summary() {
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
   echo " ============================================================================="
   echo ""
-  printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
+  printf "   Bandwidth:  %-20s Grade: [%s]%s\n" "${_mem_transfer_speed}" "${mem_grade}" "$( [ "${_mem_bench_tool:-membench}" = "sysbench" ] && echo " (fallback: sysbench)" || echo "" )"
   if [ -n "${_mem_latency}" ]; then
     printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
   else
@@ -2104,7 +2136,12 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo ""
   printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
-  printf "   Multi-thread:   %-15s events/sec  (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
+  if [ -n "${_cpu_mt_threads_used:-}" ] && [ -n "${_cpu_cores:-}" ] && [ "${_cpu_mt_threads_used}" -lt "${_cpu_cores}" ] 2>/dev/null; then
+    _mt_note="(${_cpu_cores} vCPUs; measured @ ${_cpu_mt_threads_used} threads cap)"
+  else
+    _mt_note="(${_cpu_cores} vCPUs)"
+  fi
+  printf "   Multi-thread:   %-15s events/sec  %s\n" "${_cpu_events_MT_NPROC}" "${_mt_note}"
   printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
   printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
@@ -2478,6 +2515,11 @@ _db_benchmark_sysbench() {
   if [ "${threads}" -gt "${_DB_SYSBENCH_THREADS_MAX}" ]; then
     threads="${_DB_SYSBENCH_THREADS_MAX}"
   fi
+  # Many DB OLTP workloads (and VPS hosts) stop scaling before vCPU*2 threads.
+  # Cap threads for grading consistency so bigger VMs are not penalized by concurrency regression.
+  if [ -n "${_DB_SYSBENCH_THREADS_SAT:-}" ] && [ "${_DB_SYSBENCH_THREADS_SAT}" -gt 0 ] && [ "${threads}" -gt "${_DB_SYSBENCH_THREADS_SAT}" ]; then
+    threads="${_DB_SYSBENCH_THREADS_SAT}"
+  fi
   if [ "${threads}" -lt "${_DB_SYSBENCH_THREADS_MIN}" ]; then
     threads="${_DB_SYSBENCH_THREADS_MIN}"
   fi
@@ -2643,7 +2685,16 @@ if command -v mpstat >/dev/null 2>&1; then
   _mpstat_pid="$!"
 fi
 
-_run_sysbench_cpu "$(nproc)" "MT_NPROC"
+_cpu_mt_threads_raw="$(nproc 2>/dev/null || echo 1)"
+_cpu_mt_threads_used="${_cpu_mt_threads_raw}"
+if [ -n "${_SYSBENCH_CPU_THREADS_SAT:-}" ] && [ "${_SYSBENCH_CPU_THREADS_SAT}" -gt 0 ] && [ "${_cpu_mt_threads_used}" -gt "${_SYSBENCH_CPU_THREADS_SAT}" ]; then
+  _cpu_mt_threads_used="${_SYSBENCH_CPU_THREADS_SAT}"
+fi
+if [ "${_cpu_mt_threads_used}" -lt 1 ]; then
+  _cpu_mt_threads_used=1
+fi
+
+_run_sysbench_cpu "${_cpu_mt_threads_used}" "MT_NPROC"
 
 if [ -n "${_mpstat_pid:-}" ]; then
   wait "${_mpstat_pid}" >/dev/null 2>&1
@@ -2901,7 +2952,7 @@ else
     echo "  - RAM: ${_total_ram_mb} MB"
   fi
   echo ""
-  echo "CPU Performance (Multi-threaded, nproc=$(nproc)):"
+  echo "CPU Performance (Multi-threaded, nproc=${_cpu_mt_threads_raw:-$(nproc)}, used=${_cpu_mt_threads_used:-$(nproc)}):"
   echo "  - Events per Second: ${_cpu_events_MT_NPROC}"
   echo "  - Average Latency: ${_cpu_latency_MT_NPROC} ms"
   if [ -n "${_cpu_steal_mt}" ]; then
