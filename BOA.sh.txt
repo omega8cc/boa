@@ -1048,9 +1048,9 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
-    if [ ! -e "${_pthLog}/.force.f91.${_tRee}.${_xSrl}.ctrl" ]; then
+    if [ ! -e "${_pthLog}/.force.f90.${_tRee}.${_xSrl}.ctrl" ]; then
       rm -f ${_pthLog}/*.ctrl.*.pid
-      touch ${_pthLog}/.force.f91.${_tRee}.${_xSrl}.ctrl
+      touch ${_pthLog}/.force.f90.${_tRee}.${_xSrl}.ctrl
     fi
 
     [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
