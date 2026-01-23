@@ -2629,6 +2629,12 @@ done
 
 _check_root
 
+echo ""
+echo "Starting extended performance tests, please wait..."
+echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes.."
+service cron stop
+sleep 15
+
 # Update package list silently
 apt-get update -qq >/dev/null 2>&1
 
@@ -2640,11 +2646,6 @@ _check_and_install_package "jq"
 _check_and_install_package "sysstat" # mpstat
 _check_and_install_package "bc"
 _ensure_sysbench
-
-echo ""
-echo "Starting extended performance tests, please wait..."
-echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes.."
-service cron stop
 
 # Basic system info
 _hostname="$(hostname)"
