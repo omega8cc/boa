@@ -4858,8 +4858,6 @@ _boa_setup() {
     echo "${_CLEANED_DESIRED_APT_CONFIG}" | tee "${_APT_CONFIG_FILE}" > /dev/null
   fi
 
-  _apt_clean_update
-
   if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
 #     apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
 #     apt-get remove dbus -y --purge --auto-remove -qq &> /dev/null
