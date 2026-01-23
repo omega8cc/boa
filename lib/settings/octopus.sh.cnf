@@ -702,16 +702,10 @@ _os_detection_minimal
 ### Apt cleanup
 ###
 _apt_clean_update() {
-  if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: _apt_clean_update in octopus"
-  fi
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  if [ -e "/root/.dev.server.cnf" ]; then
-    ${_APT_UPDATE} -qq 2> /dev/null
-  else
-    ${_APT_UPDATE} -qq &> /dev/null
-  fi
+  ${_APT_UPDATE} -qq 2>/dev/null
+  _CALLER_SCRIPT="$(basename "${BASH_SOURCE[-1]}")"
+  _CALLER_SCRIPT="${_CALLER_SCRIPT//[^a-zA-Z0-9._-]/_}"
+  date +%s > "/run/_latest_apt_clean_update.${_CALLER_SCRIPT}.pid"
 }
 
 

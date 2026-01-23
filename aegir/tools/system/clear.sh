@@ -50,12 +50,11 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  touch /run/clear_m.pid
   _os_detection_minimal
   ${_APT_UPDATE} -qq 2> /dev/null
-  rm -f /run/clear_m.pid
+  _CALLER_SCRIPT="$(basename "${BASH_SOURCE[-1]}")"
+  _CALLER_SCRIPT="${_CALLER_SCRIPT//[^a-zA-Z0-9._-]/_}"
+  date +%s > "/run/_latest_apt_clean_update.${_CALLER_SCRIPT}.pid"
 }
 
 _FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")

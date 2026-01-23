@@ -136,7 +136,10 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  ${_APT_UPDATE} -qq &> /dev/null
+  ${_APT_UPDATE} -qq 2>/dev/null
+  _CALLER_SCRIPT="$(basename "${BASH_SOURCE[-1]}")"
+  _CALLER_SCRIPT="${_CALLER_SCRIPT//[^a-zA-Z0-9._-]/_}"
+  date +%s > "/run/_latest_apt_clean_update.${_CALLER_SCRIPT}.pid"
 }
 
 _if_hosted_sys() {
@@ -4857,8 +4860,6 @@ _boa_setup() {
   if [[ "${_CURRENT_APT_CONFIG}" != "${_NORMALIZED_DESIRED_APT_CONFIG}" ]]; then
     echo "${_CLEANED_DESIRED_APT_CONFIG}" | tee "${_APT_CONFIG_FILE}" > /dev/null
   fi
-
-  _apt_clean_update
 
   if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
 #     apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
