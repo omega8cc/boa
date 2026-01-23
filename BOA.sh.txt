@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 export _xSrl=585devT01
 export _rLsn="BOA-5.8.5"
-export _bTs=585v01
+export _bTs=585v02
 
 ###
 ### Avoid too many questions
