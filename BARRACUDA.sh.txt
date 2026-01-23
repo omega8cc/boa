@@ -560,6 +560,7 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _if_install_ftpd
     _if_install_vnstat
     _if_install_wkhtmltox
+    _if_install_chromium
     _if_install_git_src
     _if_install_ffmpeg
     _if_install_bzr

@@ -53,6 +53,7 @@
   /opt/local/bin/websh mrix,
   /usr/bin/advdef mrix,
   /usr/bin/advpng mrix,
+  /usr/bin/chromium mrix,
   /usr/bin/convert mrix,
   /usr/bin/id mrix,
   /usr/bin/jpegoptim mrix,
