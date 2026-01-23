@@ -96,7 +96,7 @@ _if_reinstall_curl_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_reinstall_curl_src"
   fi
-  _CURL_VRN=8.17.0
+  _CURL_VRN=8.18.0
   if ! command -v lsb_release &> /dev/null; then
     _mrun "apt-get update -qq"
     _mrun "apt-get install lsb-release ${_aptYesUnth} -qq"
@@ -3541,6 +3541,36 @@ _if_install_wkhtmltox() {
 }
 
 #
+# Install chromium.
+_if_install_chromium() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_install_chromium"
+  fi
+  ###--------------------###
+  _isChromium="$(which chromium)"
+  if [ -z "${_isChromium}" ] \
+    || [ ! -e "${_isChromium}" ] \
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Installing chromium from ${_OS_CODE} packages..."
+    fi
+    _apt_clean_update
+    for _PKG in chromium fontconfig fonts-dejavu fonts-liberation fonts-noto-core fonts-noto-extra xfonts-75dpi xfonts-base; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+  fi
+  _CHR_ITD=$(chromium --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}')
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Installed chromium ${_CHR_ITD}"
+  fi
+}
+
+#
 # Clean Drush 11.
 _clean_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5397,6 +5427,7 @@ _strict_bin_permissions() {
                   aptitude \
                   avconv \
                   bash \
+                  chromium \
                   clambc \
                   clamconf \
                   clamd \
@@ -7919,15 +7950,15 @@ _sys_packages_install() {
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [ "${_hostedSys}" = "YES" ]; then
       if [ "${_OS_CODE}" = "jessie" ]; then
-        _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-7-jre-headless nginx"
       elif [ "${_OS_CODE}" = "stretch" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-8-jre-headless nginx"
       elif [ "${_OS_CODE}" = "buster" ]; then
-        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless nginx"
       elif [ "${_OS_CODE}" = "bullseye" ]; then
-        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless nginx"
       elif [ "${_OS_CODE}" = "bookworm" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-17-jre-headless nginx"
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
@@ -7939,15 +7970,15 @@ _sys_packages_install() {
         rm -f /etc/apt/apt.conf
         _apt_clean_update
       elif [ "${_OS_CODE}" = "beowulf" ]; then
-        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless nginx"
       elif [ "${_OS_CODE}" = "chimaera" ]; then
-        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless nginx"
       elif [ "${_OS_CODE}" = "excalibur" ]; then
-        _APT_XTRA="openjdk-21-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-21-jre-headless nginx"
         _other_sys_java_install "daedalus" "17"
         _other_sys_java_install "chimaera" "11"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-17-jre-headless nginx"
         _other_sys_java_install "chimaera" "11"
         _other_sys_java_install "excalibur" "21"
       fi
@@ -7968,15 +7999,15 @@ _sys_packages_install() {
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [ "${_hostedSys}" = "YES" ]; then
       if [ "${_OS_CODE}" = "jessie" ]; then
-        _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-7-jre-headless"
       elif [ "${_OS_CODE}" = "stretch" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-8-jre-headless"
       elif [ "${_OS_CODE}" = "buster" ]; then
-        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless"
       elif [ "${_OS_CODE}" = "bullseye" ]; then
-        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless"
       elif [ "${_OS_CODE}" = "bookworm" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-17-jre-headless"
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
@@ -7988,15 +8019,15 @@ _sys_packages_install() {
         rm -f /etc/apt/apt.conf
         _apt_clean_update
       elif [ "${_OS_CODE}" = "beowulf" ]; then
-        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless"
       elif [ "${_OS_CODE}" = "chimaera" ]; then
-        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless"
       elif [ "${_OS_CODE}" = "excalibur" ]; then
-        _APT_XTRA="openjdk-21-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-21-jre-headless"
         _other_sys_java_install "daedalus" "17"
         _other_sys_java_install "chimaera" "11"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-17-jre-headless"
         _other_sys_java_install "chimaera" "11"
         _other_sys_java_install "excalibur" "21"
       fi
@@ -8242,6 +8273,8 @@ _sys_packages_install() {
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [ "${_hostedSys}" = "YES" ]; then
     _EXTRA_PACKAGES="advancecomp \
+                     ca-certificates \
+                     ca-certificates-java \
                      jpegoptim \
                      libjpeg-progs \
                      optipng \

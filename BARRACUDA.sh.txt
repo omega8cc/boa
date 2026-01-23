@@ -41,7 +41,7 @@ _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3
 _COMPOSER_VRN=2.8.2
 _CSF_VRN=15.00
-_CURL_VRN=8.17.0
+_CURL_VRN=8.18.0
 _DB_SRC=repo.percona.com
 ###
 ###
@@ -560,6 +560,7 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _if_install_ftpd
     _if_install_vnstat
     _if_install_wkhtmltox
+    _if_install_chromium
     _if_install_git_src
     _if_install_ffmpeg
     _if_install_bzr
