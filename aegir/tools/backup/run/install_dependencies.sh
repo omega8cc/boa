@@ -14,7 +14,10 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
 _apt_clean_update() {
-  ${_APT_UPDATE} -qq 2> /dev/null
+  ${_APT_UPDATE} -qq 2>/dev/null
+  _CALLER_SCRIPT="$(basename "${BASH_SOURCE[-1]}")"
+  _CALLER_SCRIPT="${_CALLER_SCRIPT//[^a-zA-Z0-9._-]/_}"
+  date +%s > "/run/_latest_apt_clean_update.${_CALLER_SCRIPT}.pid"
 }
 
 _check_root() {

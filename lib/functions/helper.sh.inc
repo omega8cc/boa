@@ -860,14 +860,10 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
   _mrun "${_APT_UPDATE} -qq"
 }
 
 _apt_clean_update_no_releaseinfo_change() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
   _mrun "apt-get update -qq"
 }
 
