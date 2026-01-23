@@ -123,6 +123,7 @@
   /etc/init.d/nginx mrix,
   /sbin/killall5 mrix,
   /sbin/unix_chkpwd mrix,
+  /usr/bin/chromium mrix,
   /usr/bin/convert mrix,
   /usr/bin/find mrix,
   /usr/bin/id mrix,
