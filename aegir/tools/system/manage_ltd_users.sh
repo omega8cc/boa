@@ -2225,6 +2225,8 @@ fi
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 [ -d "/var/backups/ltd/conf" ] || mkdir -p /var/backups/ltd/{conf,log,old}
+[ -d "/var/backups/ltd/log" ] || mkdir -p /var/backups/ltd/{conf,log,old}
+[ -d "/var/backups/ltd/old" ] || mkdir -p /var/backups/ltd/{conf,log,old}
 [ -d "/var/backups/zombie/deleted" ] || mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
 if [ -e "/run/manage_ruby_users.pid" ] \
