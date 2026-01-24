@@ -69,6 +69,23 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
 
+###
+### Uninstall cloud-utils if not required
+###
+_if_remove_cloud_utils() {
+  _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+  _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
+  if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
+    || [ -e "${_etcCloudCfgd}" ]; then
+    _msg "[init] rcld ==> Removing problematic cloud-utils detected on this system..." >> "${_logInt}"
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/apt-get remove cloud-utils cloud-init -y -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq >> "${_logSlt}"
+    [ -d "/var/backups" ] || mkdir -p /var/backups
+    [ -e "${_etcCloudCfgd}" ] && mv -f /etc/cloud /var/backups/ >> "${_logSlt}"
+  fi
+}
+
 # Resolve vmnetfix path (autoinit historically used /opt/local/bin/vmnetfix).
 # Prefer locally patched versions first.
 _VMNETFIX_BIN="vmnetfix"
@@ -1226,6 +1243,9 @@ _init_offsystemd() {
   # Ensure SysV init will actually bring networking up on boot (Devuan goal).
   _init_sysv_net_repair
   _init_vmnetfix_failsafe_install
+
+  # Uninstall cloud-utils if not required
+  [ -e "/root/.mode.selected.full.cnf" ] && _if_remove_cloud_utils
 
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
