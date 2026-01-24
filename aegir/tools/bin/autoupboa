@@ -75,50 +75,78 @@ _optimize_ram() {
   fi
 }
 
-# Define the function to turn off AppArmor and Auditd
+###
+### Return 0 if package is installed, 1 otherwise.
+###
+_pkg_installed() {
+  /usr/bin/dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
+}
+
+###
+### Turn off AppArmor
+###
 _turn_off_apparmor() {
-    # Fix shell in AppArmor scripts (only do this if needed)
-    grep -q "/usr/bin/sh" /lib/apparmor/apparmor.systemd && \
-      sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/apparmor.systemd
-    grep -q "/bin/sh" /lib/apparmor/apparmor.systemd && \
-      sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/apparmor.systemd
 
-    grep -q "/usr/bin/sh" /lib/apparmor/rc.apparmor.functions && \
-      sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/rc.apparmor.functions
-    grep -q "/bin/sh" /lib/apparmor/rc.apparmor.functions && \
-      sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/rc.apparmor.functions
+  # Fix shell in AppArmor scripts (only do this if needed)
+  grep -q "/usr/bin/sh" /lib/apparmor/apparmor.systemd && \
+    sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/apparmor.systemd
+  grep -q "/bin/sh" /lib/apparmor/apparmor.systemd && \
+    sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/apparmor.systemd
 
-    grep -q "/usr/bin/sh" /lib/apparmor/profile-load && \
-      sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/profile-load
-    grep -q "/bin/sh" /lib/apparmor/profile-load && \
-      sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/profile-load
+  grep -q "/usr/bin/sh" /lib/apparmor/rc.apparmor.functions && \
+    sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/rc.apparmor.functions
+  grep -q "/bin/sh" /lib/apparmor/rc.apparmor.functions && \
+    sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/rc.apparmor.functions
 
-    # Disable AppArmor and Auditd
+  grep -q "/usr/bin/sh" /lib/apparmor/profile-load && \
+    sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/profile-load
+  grep -q "/bin/sh" /lib/apparmor/profile-load && \
+    sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/profile-load
+
+  # Disable AppArmor and Auditd
+  if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
     rm -rf /var/cache/apparmor/* &> /dev/null
     rm -f /etc/apparmor.d/*~ &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
     rm -f /etc/apparmor.d/*~ &> /dev/null
     aa-complain /etc/apparmor.d/* &> /dev/null
-    service apparmor stop &> /dev/null      # stop AppArmor service (unload profiles)
-    aa-teardown &> /dev/null                # unload all AppArmor profiles
-    service auditd stop &> /dev/null        # stop the audit daemon
+  fi
+  if [ -x "/etc/init.d/apparmor" ]; then
+    service apparmor stop &> /dev/null
+    update-rc.d -f apparmor remove &> /dev/null
+    service auditd stop &> /dev/null
+    update-rc.d -f auditd remove &> /dev/null
+  fi
+  if [ -x "/usr/sbin/aa-teardown" ]; then
+    aa-teardown &> /dev/null
+  fi
+  for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra; do
+    if _pkg_installed "${_PKG}"; then
+      /usr/bin/apt-get remove ${_PKG} -y -qq &> /dev/null
+    fi
+  done
+  _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  mkdir -p /etc/default/grub.d
+  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' | tee ${_isAppArmorGrubFile} &> /dev/null
+  update-grub &> /dev/null
+  [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
 
-# Only disable AppArmor if it’s active (profiles currently loaded)
-if [ ! -e "/root/.keep_apparmor_on.cnf" ] && [ -e "/lib/apparmor/apparmor.systemd" ]; then
-  if command -v aa-status >/dev/null; then
-    aa-status --verbose >/dev/null 2>&1
-    case $? in
-      0)  _turn_off_apparmor ;;  # AppArmor enabled *and* profiles loaded – disable it
-      1|2) ;;                    # 1: not enabled, 2: no profiles – no action needed
-    esac
-  else
-    # Fallback: check kernel module flag if aa-status isn’t available
-    if [ -e "/sys/module/apparmor/parameters/enabled" ] && grep -q "Y" /sys/module/apparmor/parameters/enabled; then
+###
+### Only disable AppArmor if it’s active (profiles currently loaded)
+###
+_if_off_apparmor() {
+  if [ ! -e "/root/.keep_apparmor_on.cnf" ]; then
+    _isAppArmOn=N
+    if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
+      _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
+    fi
+    if [ "${_isAppArmOn}" = "Y" ]; then
       _turn_off_apparmor
     fi
   fi
-fi
+}
+_if_off_apparmor
 
 # Define default values
 _DEFAULT_CPU_CRIT_RATIO="6.1"
