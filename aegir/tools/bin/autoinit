@@ -310,8 +310,8 @@ _init_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     _msg "[init] root ==> ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     _msg "[init] root ==> ERROR: We can not proceed until it is below 90/100"
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
+    sed -i "s/.*killer.*//gi" /etc/crontab >> "${_logSlt}"
     exit 1
   fi
 }
@@ -448,7 +448,7 @@ _init_mnfr() {
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    ${_INITINS} dmidecode &> /dev/null
+    ${_INITINS} dmidecode >> "${_logSlt}"
   fi
   # Check if dmidecode is available
   _DMI_TEST="$(which dmidecode)"
@@ -466,8 +466,8 @@ _init_mnfr() {
     echo "[init] mnfr ==> Not supported environment detected: ${_HOST_INFO}"
     echo "[init] mnfr ==> Please check https://bit.ly/boa-caveats"
     echo "[init] mnfr ==> Bye!"
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
+    sed -i "s/.*killer.*//gi" /etc/crontab >> "${_logSlt}"
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
     _msg "[init] mnfr ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
@@ -476,8 +476,8 @@ _init_mnfr() {
     echo "[init] mnfr ==> Mysterious environment: ${_HOST_INFO}"
     echo "[init] mnfr ==> Please check https://bit.ly/boa-caveats"
     echo "[init] mnfr ==> Bye!"
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
+    sed -i "s/.*killer.*//gi" /etc/crontab >> "${_logSlt}"
     exit 1
   fi
 }
@@ -490,7 +490,7 @@ _init_aegir() {
     echo
     echo "[init] aegir ==> ERROR: This script can not be used once BOA is installed"
     echo
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
     exit 1
   fi
 }
@@ -514,8 +514,8 @@ _init_locales() {
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    ${_INITINS} locales &> /dev/null
-    [ "${_SET_MODE}" = "full" ] && ${_INITINS} locales-all &> /dev/null
+    ${_INITINS} locales >> "${_logSlt}"
+    [ "${_SET_MODE}" = "full" ] && ${_INITINS} locales-all >> "${_logSlt}"
   fi
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
@@ -530,8 +530,8 @@ _init_locales() {
       echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
     sed -i "/^$/d" /etc/locale.gen
-    locale-gen &> /dev/null
-    locale-gen en_US.UTF-8 &> /dev/null
+    locale-gen >> "${_logSlt}"
+    locale-gen en_US.UTF-8 >> "${_logSlt}"
     # Explicitly enforce all locale settings
     update-locale \
       LANG=en_US.UTF-8 \
@@ -547,42 +547,42 @@ _init_locales() {
       LC_TELEPHONE=en_US.UTF-8 \
       LC_MEASUREMENT=en_US.UTF-8 \
       LC_IDENTIFICATION=en_US.UTF-8 \
-      LC_ALL= &> /dev/null
+      LC_ALL= >> "${_logSlt}"
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
-    export LANG=en_US.UTF-8 &> /dev/null
-    export LC_CTYPE=en_US.UTF-8 &> /dev/null
-    export LC_COLLATE=POSIX &> /dev/null
-    export LC_NUMERIC=POSIX &> /dev/null
-    export LC_TIME=en_US.UTF-8 &> /dev/null
-    export LC_MONETARY=en_US.UTF-8 &> /dev/null
-    export LC_MESSAGES=en_US.UTF-8 &> /dev/null
-    export LC_PAPER=en_US.UTF-8 &> /dev/null
-    export LC_NAME=en_US.UTF-8 &> /dev/null
-    export LC_ADDRESS=en_US.UTF-8 &> /dev/null
-    export LC_TELEPHONE=en_US.UTF-8 &> /dev/null
-    export LC_MEASUREMENT=en_US.UTF-8 &> /dev/null
-    export LC_IDENTIFICATION=en_US.UTF-8 &> /dev/null
-    export LC_ALL= &> /dev/null
+    export LANG=en_US.UTF-8 >> "${_logSlt}"
+    export LC_CTYPE=en_US.UTF-8 >> "${_logSlt}"
+    export LC_COLLATE=POSIX >> "${_logSlt}"
+    export LC_NUMERIC=POSIX >> "${_logSlt}"
+    export LC_TIME=en_US.UTF-8 >> "${_logSlt}"
+    export LC_MONETARY=en_US.UTF-8 >> "${_logSlt}"
+    export LC_MESSAGES=en_US.UTF-8 >> "${_logSlt}"
+    export LC_PAPER=en_US.UTF-8 >> "${_logSlt}"
+    export LC_NAME=en_US.UTF-8 >> "${_logSlt}"
+    export LC_ADDRESS=en_US.UTF-8 >> "${_logSlt}"
+    export LC_TELEPHONE=en_US.UTF-8 >> "${_logSlt}"
+    export LC_MEASUREMENT=en_US.UTF-8 >> "${_logSlt}"
+    export LC_IDENTIFICATION=en_US.UTF-8 >> "${_logSlt}"
+    export LC_ALL= >> "${_logSlt}"
   else
     _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
     if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
       echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
     sed -i "/^$/d" /etc/locale.gen
-    locale-gen &> /dev/null
-    locale-gen en_US.UTF-8 &> /dev/null
+    locale-gen >> "${_logSlt}"
+    locale-gen en_US.UTF-8 >> "${_logSlt}"
     # Explicitly enforce locale settings required for consistency
     update-locale \
       LANG=en_US.UTF-8 \
       LC_CTYPE=en_US.UTF-8 \
       LC_COLLATE=POSIX \
       LC_NUMERIC=POSIX \
-      LC_ALL= &> /dev/null
+      LC_ALL= >> "${_logSlt}"
     # Define locale settings required for consistency also on the fly
-    export LC_COLLATE=POSIX &> /dev/null
-    export LC_NUMERIC=POSIX &> /dev/null
-    export LC_ALL= &> /dev/null
+    export LC_COLLATE=POSIX >> "${_logSlt}"
+    export LC_NUMERIC=POSIX >> "${_logSlt}"
+    export LC_ALL= >> "${_logSlt}"
   fi
   _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
   if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
@@ -636,6 +636,7 @@ _if_launch_boa_install() {
       _msg "_if_launch_boa_install ==> Time for ${_BOA_INSTALL_COMMAND} noscreen" >> "${_logInt}"
       eval "${_BOA_INSTALL_COMMAND} noscreen"
       wait
+      [ -d "/var/backups" ] || mkdir -p /var/backups
       mv -f ${_BOA_LOGFILE} /var/backups/
     fi
   fi
@@ -671,20 +672,20 @@ _turn_off_apparmor() {
 
   # Disable AppArmor and Auditd
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
-    rm -rf /var/cache/apparmor/* &> /dev/null
-    rm -f /etc/apparmor.d/*~ &> /dev/null
-    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-    rm -f /etc/apparmor.d/*~ &> /dev/null
-    aa-complain /etc/apparmor.d/* &> /dev/null
+    rm -rf /var/cache/apparmor/* >> "${_logSlt}"
+    rm -f /etc/apparmor.d/*~ >> "${_logSlt}"
+    apparmor_parser -r /etc/apparmor.d/* >> "${_logSlt}"
+    rm -f /etc/apparmor.d/*~ >> "${_logSlt}"
+    aa-complain /etc/apparmor.d/* >> "${_logSlt}"
   fi
   if [ -x "/etc/init.d/apparmor" ]; then
-    service apparmor stop &> /dev/null
-    update-rc.d -f apparmor remove &> /dev/null
-    service auditd stop &> /dev/null
-    update-rc.d -f auditd remove &> /dev/null
+    service apparmor stop >> "${_logSlt}"
+    update-rc.d -f apparmor remove >> "${_logSlt}"
+    service auditd stop >> "${_logSlt}"
+    update-rc.d -f auditd remove >> "${_logSlt}"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    aa-teardown &> /dev/null
+    aa-teardown >> "${_logSlt}"
   fi
   for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra; do
     if _pkg_installed "${_PKG}"; then
@@ -693,7 +694,7 @@ _turn_off_apparmor() {
   done
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
   mkdir -p /etc/default/grub.d
-  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' | tee ${_isAppArmorGrubFile} &> /dev/null
+  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' | tee ${_isAppArmorGrubFile} >> "${_logSlt}"
   update-grub >> "${_logSlt}"
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
@@ -892,10 +893,10 @@ _init_prepare() {
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     touch /run/autoinit.pid
     update-grub >> "${_logSlt}"
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
-      sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+      sed -i "s/.*killer.*//gi" /etc/crontab >> "${_logSlt}"
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
     _msg "[init] prep ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
@@ -944,10 +945,10 @@ _init_prepare() {
       ${_INITINS} net-tools >> "${_logSlt}"
       ${_INITINS} netcat-traditional  >> "${_logSlt}"
       ${_INITINS} ntpsec-ntpdate      >> "${_logSlt}"
-      sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+      sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
-        sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+        sed -i "s/.*killer.*//gi" /etc/crontab >> "${_logSlt}"
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
       touch ${_initFile}
@@ -1338,8 +1339,8 @@ _init_cycle() {
   else
     _msg "[init] cycl ==> This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
     _msg "[init] cycl ==> Bye!" >> "${_logInt}"
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
+    sed -i "s/.*killer.*//gi" /etc/crontab >> "${_logSlt}"
     echo " " >> "${_logInt}"
     exit 1
   fi
@@ -1463,7 +1464,7 @@ _init_cycle() {
       wait
       _msg "[init] cycl ==> The system is now ready for boa install" >> "${_logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
-      sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+      sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
       _if_launch_boa_install
     else
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
@@ -1513,7 +1514,7 @@ _init_conf() {
       _init_mnfr
       _init_info
     fi
-    _init_prepare &> /dev/null
+    _init_prepare >> "${_logSlt}"
   fi
 }
 
