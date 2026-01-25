@@ -131,6 +131,7 @@ _ensure_sysbench_build_deps() {
   _check_and_install_package "libtool"
   _check_and_install_package "pkg-config"
   _check_and_install_package "libaio-dev"
+  _check_and_install_package "pciutils"
 }
 
 # Extract sysbench version (first X.Y[.Z...] token)
@@ -302,6 +303,34 @@ _ensure_cc() {
     return 0
   fi
   _check_and_install_package "gcc"
+}
+
+_pci_init() {
+  _HAS_LSPCI="NO"
+  _LSPCI_CACHE=""
+  _PCI_STORAGE_SUMMARY=""
+  _PCI_NIC_SUMMARY=""
+  _PCI_NET_STORAGE_HINT="NO"
+
+  if command -v lspci >/dev/null 2>&1; then
+    _HAS_LSPCI="YES"
+    _LSPCI_CACHE="$(lspci -nn 2>/dev/null)"
+
+    # Storage-ish controllers (best-effort, first match)
+    _PCI_STORAGE_SUMMARY="$(printf "%s\n" "${_LSPCI_CACHE}" | \
+      grep -Eim1 'Non-Volatile memory controller|SATA controller|RAID bus controller|SCSI storage controller|Mass storage controller|IDE interface|Virtio.*block|Virtio.*SCSI' | \
+      sed 's/^[0-9a-fA-F:.]*[[:space:]]*//')"
+
+    # NIC-ish controllers (best-effort, first match)
+    _PCI_NIC_SUMMARY="$(printf "%s\n" "${_LSPCI_CACHE}" | \
+      grep -Eim1 'Ethernet controller|Network controller' | \
+      sed 's/^[0-9a-fA-F:.]*[[:space:]]*//')"
+
+    # Strong hint for network-backed “NVMe” storage (extend patterns as you like)
+    if printf "%s\n" "${_LSPCI_CACHE}" | grep -Eqi 'NVMe.*EBS|EBS Controller|Elastic Block Store'; then
+      _PCI_NET_STORAGE_HINT="YES"
+    fi
+  fi
 }
 
 _get_l3_cache_mib() {
@@ -1873,6 +1902,11 @@ _boa_guess_storage_tier() {
     _net="YES"
   fi
 
+  # Strong vendor/controller hint for network-backed NVMe
+  if [ "${_PCI_NET_STORAGE_HINT:-NO}" = "YES" ]; then
+    _net="YES"
+  fi
+
   # ----
   # Step 2: Performance class (NVMe vs SSD) based on observed behavior
   # ----
@@ -2039,12 +2073,20 @@ _print_compact_summary() {
   echo ""
   if [ -x "/opt/local/bin/screenfetch" ]; then
     bash /opt/local/bin/screenfetch -n
+    if [ "${_HAS_LSPCI:-NO}" = "YES" ]; then
+      [ -n "${_PCI_STORAGE_SUMMARY}" ] && echo " PCI storage: ${_PCI_STORAGE_SUMMARY}"
+      [ -n "${_PCI_NIC_SUMMARY}" ] && echo " PCI NIC: ${_PCI_NIC_SUMMARY}"
+    fi
   else
-    echo "Host:  ${_hostname}"
-    echo "CPU:   ${_cpu_info}"
+    echo "Host: ${_hostname}"
+    echo "CPU: ${_cpu_info}"
     echo "vCPUs: ${_cpu_cores}"
     _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
     echo "RAM:   ${_total_ram_mb} MB"
+    if [ "${_HAS_LSPCI:-NO}" = "YES" ]; then
+      [ -n "${_PCI_STORAGE_SUMMARY}" ] && echo "PCI storage: ${_PCI_STORAGE_SUMMARY}"
+      [ -n "${_PCI_NIC_SUMMARY}" ] && echo "PCI NIC: ${_PCI_NIC_SUMMARY}"
+    fi
   fi
   echo ""
 
@@ -2651,6 +2693,7 @@ _ensure_sysbench
 _hostname="$(hostname)"
 _cpu_info="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
 _cpu_cores="$(nproc 2>/dev/null || echo N/A)"
+_pci_init
 
 # DB bench outputs (sysbench OLTP)
 _db_test_status="SKIPPED"
@@ -2945,12 +2988,20 @@ else
   echo ""
   if [ -x "/opt/local/bin/screenfetch" ]; then
     bash /opt/local/bin/screenfetch -n
+    if [ "${_HAS_LSPCI:-NO}" = "YES" ]; then
+      [ -n "${_PCI_STORAGE_SUMMARY}" ] && echo " PCI storage: ${_PCI_STORAGE_SUMMARY}"
+      [ -n "${_PCI_NIC_SUMMARY}" ] && echo " PCI NIC: ${_PCI_NIC_SUMMARY}"
+    fi
   else
     echo "  - Hostname: ${_hostname}"
     echo "  - CPU: ${_cpu_info}"
     echo "  - vCPUs: ${_cpu_cores}"
     _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
     echo "  - RAM: ${_total_ram_mb} MB"
+    if [ "${_HAS_LSPCI:-NO}" = "YES" ]; then
+      [ -n "${_PCI_STORAGE_SUMMARY}" ] && echo "  - PCI storage: ${_PCI_STORAGE_SUMMARY}"
+      [ -n "${_PCI_NIC_SUMMARY}" ] && echo "  - PCI NIC: ${_PCI_NIC_SUMMARY}"
+    fi
   fi
   echo ""
   echo "CPU Performance (Multi-threaded, nproc=${_cpu_mt_threads_raw:-$(nproc)}, used=${_cpu_mt_threads_used:-$(nproc)}):"
