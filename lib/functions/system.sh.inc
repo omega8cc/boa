@@ -6228,7 +6228,7 @@ _run_aptitude_deps_install() {
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     ###
-    for _PKG in toilet figlet screenfetch; do
+    for _PKG in toilet figlet screenfetch pciutils; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
