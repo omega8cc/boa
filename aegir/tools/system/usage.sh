@@ -126,6 +126,9 @@ _read_account_data() {
 }
 
 _send_notice_php() {
+  if [ "${_hostedSys}" != "YES" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
@@ -189,6 +192,9 @@ _detect_deprecated_php() {
 }
 
 _send_notice_core() {
+  if [ "${_hostedSys}" != "YES" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
@@ -368,6 +374,9 @@ _usage_count() {
 }
 
 _send_notice_sql() {
+  if [ "${_hostedSys}" != "YES" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _MODE=$1
   if [ "${_MODE}" = "DEV" ]; then
     _SQL_LIM=${_SQL_DEV_LIMIT}
@@ -428,6 +437,9 @@ EOF
 }
 
 _send_notice_disk() {
+  if [ "${_hostedSys}" != "YES" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
@@ -465,6 +477,9 @@ EOF
 
 
 _send_notice_gprd() {
+  if [ "${_hostedSys}" != "YES" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
@@ -919,6 +934,34 @@ EOF
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
+            _check_limits
+            if [ ! -e "${_usEr}/log/CANCELLED" ] \
+              && [ "${_DEV_EXC}" = "NO" ] \
+              && [ ! -e "${_usEr}/log/proxied.pid" ]; then
+              _eMail=${_CLIENT_EMAIL//\\\@/\@}
+              _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
+              if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+                _Files="!x!FilesAll"
+              else
+                _Files="FilesAll"
+              fi
+              if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
+                _DbsL="!x!DbsLive"
+              else
+                _DbsL="DbsLive"
+              fi
+              if [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
+                _DbsD="!x!DbsDev"
+              else
+                _DbsD="DbsDev"
+              fi
+              if [ "${_THIS_MODE}" = "verbose" ] || [ -z "${_THIS_MODE}" ]; then
+                _LOG_FILE="usage-latest-verbose.log"
+              elif [ "${_THIS_MODE}" = "silent" ]; then
+                _LOG_FILE="usage-latest-silent.log"
+              fi
+              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/log/boa/usage/${_LOG_FILE}
+            fi
             su -s /bin/bash - ${_THIS_U} \
               -c "drush8 @hostmaster variable-set \
               --always-set site_footer ''" &> /dev/null
