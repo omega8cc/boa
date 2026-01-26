@@ -42,8 +42,9 @@ _AES_TEST_MIB=500 # MiB encrypted for AES throughput test
 _IOPING_SECONDS=5 # seconds for ioping checks
 
 # Output mode
-_VERBOSE=0   # default: full output
-_COMPACT=1   # compact BOA-focused mode
+_VERBOSE=0   # raw output without grading
+_COMPACT=0   # compact BOA-focused mode with grading
+_FANCY=1     # fancy BOA-focused mode with grading
 
 # DB benchmark (sysbench OLTP)
 _DBTEST_ENABLED=YES
@@ -60,8 +61,8 @@ _usage() {
   cat <<'USAGE'
 Usage: perftest [--compact|--quiet] [--verbose] [-h|--help]
 
-  --compact, --quiet  Print BOA-focused compact summary only (default)
-                      (prioritizes memory > CPU > disk > network)
+  --fancy             Print BOA-focused fancy summary with grading (default)
+  --compact           Print BOA-focused compact summary with grading
   --verbose           Print full detailed output or just CSV summary with | grep CSV_
   --no-dbtest         Skip MySQL sysbench OLTP benchmark (default: run in --verbose mode)
   --dbtest-heavy      Use larger dataset for DB test (more disk pressure)
@@ -2186,19 +2187,21 @@ _print_disk_compact_section() {
     printf " == 3. DISK (%s) (Mounted extra filesystem) \n" "${_mp}"
   fi
   echo " ============================================================================="
-  echo ""
-  printf "   Sequential write (CRITICAL): %s\n" "${_seqw}"
-  printf "   Sequential read:             %s\n" "${_seqr}"
-  printf "   Random 4K IOPS:              %s read / %s write\n" "${_riops}" "${_wiops}"
-  printf "   Real latency (ioping avg):   %s\n" "${_ioping_avg}"
-  printf "   Metadata ops:                %s\n" "${_meta}"
-  printf "   Random 4K QD1 p95/p99:       %s / %s read, %s / %s write\n" "${_qd1_p95_r}" "${_qd1_p99_r}" "${_qd1_p95_w}" "${_qd1_p99_w}"
-  printf "   Random 4K QD1 fsync p95/p99: %s / %s write\n" "${_qd1_fsync_p95_w}" "${_qd1_fsync_p99_w}"
-  printf "   Storage tier guess:          %s\n" "${_storage_tier}"
-  echo ""
-  printf "   Details (fio synthetic latency):\n"
-  printf "     Random 4K read:   %s @ %s\n" "${_rbw}" "${_rlat}"
-  printf "     Random 4K write:  %s @ %s\n" "${_wbw}" "${_wlat}"
+  if [ "${_FANCY}" -eq 1 ]; then
+    echo ""
+    printf "   Sequential write (CRITICAL): %s\n" "${_seqw}"
+    printf "   Sequential read:             %s\n" "${_seqr}"
+    printf "   Random 4K IOPS:              %s read / %s write\n" "${_riops}" "${_wiops}"
+    printf "   Real latency (ioping avg):   %s\n" "${_ioping_avg}"
+    printf "   Metadata ops:                %s\n" "${_meta}"
+    printf "   Random 4K QD1 p95/p99:       %s / %s read, %s / %s write\n" "${_qd1_p95_r}" "${_qd1_p99_r}" "${_qd1_p95_w}" "${_qd1_p99_w}"
+    printf "   Random 4K QD1 fsync p95/p99: %s / %s write\n" "${_qd1_fsync_p95_w}" "${_qd1_fsync_p99_w}"
+    printf "   Storage tier guess:          %s\n" "${_storage_tier}"
+    echo ""
+    printf "   Details (fio synthetic latency):\n"
+    printf "     Random 4K read:   %s @ %s\n" "${_rbw}" "${_rlat}"
+    printf "     Random 4K write:  %s @ %s\n" "${_wbw}" "${_wlat}"
+  fi
   echo ""
 
   if [ "${_disk_grade}" = "bad" ]; then
@@ -2216,7 +2219,7 @@ _print_disk_compact_section() {
   echo ""
 }
 
-_print_compact_summary() {
+_print_grading_summary() {
   echo " ============================================================================="
   echo " ==                 BOA Performance Test - Compact Summary                  =="
   echo " ==              Priority: Memory > CPU > Disk > DB > Network               =="
@@ -2290,17 +2293,19 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
   echo " ============================================================================="
-  echo ""
-  printf "   Bandwidth:  %-20s Grade: [%s]%s\n" "${_mem_transfer_speed}" "${mem_grade}" "$( [ "${_mem_bench_tool:-membench}" = "sysbench" ] && echo " (fallback: sysbench)" || echo "" )"
-  if [ -n "${_mem_latency}" ]; then
-    printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
-  else
-    printf "   Latency:    %-20s\n" "N/A"
-  fi
-  if [ -n "${_mem_bench_size_mib:-}" ]; then
-    echo "   Bench:      ${_mem_bench_size_mib} MiB per buffer x2 (~${_mem_bench_total_mib} MiB total), ${_mem_bench_threads} threads (median of ${_MEM_BENCH_REPEATS})"
-    if [ -n "${_mem_bw_min}" ] && [ -n "${_mem_bw_max}" ]; then
-      echo "   Variance:   ${_mem_bw_min}-${_mem_bw_max} MiB/s (bw), ${_mem_lat_min}-${_mem_lat_max} ns (lat)"
+  if [ "${_FANCY}" -eq 1 ]; then
+    echo ""
+    printf "   Bandwidth:  %-20s Grade: [%s]%s\n" "${_mem_transfer_speed}" "${mem_grade}" "$( [ "${_mem_bench_tool:-membench}" = "sysbench" ] && echo " (fallback: sysbench)" || echo "" )"
+    if [ -n "${_mem_latency}" ]; then
+      printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
+    else
+      printf "   Latency:    %-20s\n" "N/A"
+    fi
+    if [ -n "${_mem_bench_size_mib:-}" ]; then
+      echo "   Bench:      ${_mem_bench_size_mib} MiB per buffer x2 (~${_mem_bench_total_mib} MiB total), ${_mem_bench_threads} threads (median of ${_MEM_BENCH_REPEATS})"
+      if [ -n "${_mem_bw_min}" ] && [ -n "${_mem_bw_max}" ]; then
+        echo "   Variance:   ${_mem_bw_min}-${_mem_bw_max} MiB/s (bw), ${_mem_lat_min}-${_mem_lat_max} ns (lat)"
+      fi
     fi
   fi
   echo ""
@@ -2329,16 +2334,18 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
   echo " ============================================================================="
-  echo ""
-  printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
-  if [ -n "${_cpu_mt_threads_used:-}" ] && [ -n "${_cpu_cores:-}" ] && [ "${_cpu_mt_threads_used}" -lt "${_cpu_cores}" ] 2>/dev/null; then
-    _mt_note="(${_cpu_cores} vCPUs; measured @ ${_cpu_mt_threads_used} threads cap)"
-  else
-    _mt_note="(${_cpu_cores} vCPUs)"
+  if [ "${_FANCY}" -eq 1 ]; then
+    echo ""
+    printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
+    if [ -n "${_cpu_mt_threads_used:-}" ] && [ -n "${_cpu_cores:-}" ] && [ "${_cpu_mt_threads_used}" -lt "${_cpu_cores}" ] 2>/dev/null; then
+      _mt_note="(${_cpu_cores} vCPUs; measured @ ${_cpu_mt_threads_used} threads cap)"
+    else
+      _mt_note="(${_cpu_cores} vCPUs)"
+    fi
+    printf "   Multi-thread:   %-15s events/sec  %s\n" "${_cpu_events_MT_NPROC}" "${_mt_note}"
+    printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
+    printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   fi
-  printf "   Multi-thread:   %-15s events/sec  %s\n" "${_cpu_events_MT_NPROC}" "${_mt_note}"
-  printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
-  printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
 
   if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
@@ -2377,20 +2384,20 @@ _print_compact_summary() {
     fi
   done
 
-
-
   echo " ============================================================================="
   echo " == 4. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
   echo " ============================================================================="
   echo ""
   if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
-    printf "   Threads used:            %s
+    if [ "${_FANCY}" -eq 1 ]; then
+      printf "   Threads used:            %s
 " "${_db_threads_used:-N/A}"
-    printf "   Read-only (tps / p95):   %-10s / %s ms
+      printf "   Read-only (tps / p95):   %-10s / %s ms
 " "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
-    printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]
+      printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]
 " "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
-    echo ""
+      echo ""
+    fi
     if [ "${db_grade}" = "poor" ]; then
       echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
     elif [ "${db_grade}" = "average" ]; then
@@ -2418,18 +2425,20 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 5. NETWORK (Sanity check)                                               =="
   echo " ============================================================================="
-  echo ""
-  printf "   Public IPv4:        %s\n" "${_net_ipv4}"
-  printf "   Download score:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
-  printf "   Score: avg of best 2/4 single-stream pulls (range ~10 MiB, timeout %ss)\n" "${_NET_TIMEOUT}"
-  if [ "${#_net_dl_name[@]}" -gt 0 ]; then
-    local _i
-    _i=0
-    while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
-      printf "     - %-10s %s\n" "${_net_dl_name[${_i}]}:" "${_net_dl_pretty[${_i}]}"
-      _i=$((_i + 1))
-    done
-    [ -n "${_net_dl_top2}" ] && printf "   Top 2: %s\n" "${_net_dl_top2}"
+  if [ "${_FANCY}" -eq 1 ]; then
+    echo ""
+    printf "   Public IPv4:        %s\n" "${_net_ipv4}"
+    printf "   Download score:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
+    printf "   Score: avg of best 2/4 single-stream pulls (range ~10 MiB, timeout %ss)\n" "${_NET_TIMEOUT}"
+    if [ "${#_net_dl_name[@]}" -gt 0 ]; then
+      local _i
+      _i=0
+      while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
+        printf "     - %-10s %s\n" "${_net_dl_name[${_i}]}:" "${_net_dl_pretty[${_i}]}"
+        _i=$((_i + 1))
+      done
+      [ -n "${_net_dl_top2}" ] && printf "   Top 2: %s\n" "${_net_dl_top2}"
+    fi
   fi
   echo ""
 
@@ -2808,8 +2817,9 @@ _db_benchmark_sysbench() {
 # Parse arguments
 for arg in "$@"; do
   case "$arg" in
-    --compact|--quiet) _VERBOSE=0; _COMPACT=1 ;;
-    --verbose) _VERBOSE=1; _COMPACT=0 ;;
+    --fancy) _FANCY=1; _VERBOSE=0; _COMPACT=0 ;;
+    --compact) _FANCY=0; _VERBOSE=0; _COMPACT=1 ;;
+    --verbose) _FANCY=0; _VERBOSE=1; _COMPACT=0 ;;
     --no-dbtest) _DBTEST_ENABLED=NO ;;
     --dbtest-heavy) _DBTEST_HEAVY=YES ;;
     --keep-db) _DBTEST_KEEP_DB=YES ;;
@@ -3131,8 +3141,8 @@ done
 # ----
 echo ""
 
-if [ "${_COMPACT}" -eq 1 ]; then
-  _print_compact_summary
+if [ "${_FANCY}" -eq 1 ] || [ "${_COMPACT}" -eq 1 ]; then
+  _print_grading_summary
 else
   echo ""
   echo "==== Performance Test Summary ===="
