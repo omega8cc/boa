@@ -311,10 +311,25 @@ _pci_init() {
   _PCI_STORAGE_SUMMARY=""
   _PCI_NIC_SUMMARY=""
   _PCI_NET_STORAGE_HINT="NO"
+  _PCI_VIRTIO_STORAGE_HINT="NO"
+  _PCI_NVME_CTRL_HINT="NO"
+  _HAS_NVME_SYS="NO"
+
+  # Linux-visible NVMe devices (guest-level)
+  if [ -d /sys/class/nvme ] && [ "$(ls -1 /sys/class/nvme 2>/dev/null | wc -l)" -gt 0 ]; then
+    _HAS_NVME_SYS="YES"
+  fi
 
   if command -v lspci >/dev/null 2>&1; then
     _HAS_LSPCI="YES"
     _LSPCI_CACHE="$(lspci -nn 2>/dev/null)"
+
+    if printf "%s\n" "${_LSPCI_CACHE}" | grep -Eqi 'Non-Volatile memory controller|NVMe'; then
+      _PCI_NVME_CTRL_HINT="YES"
+    fi
+    if printf "%s\n" "${_LSPCI_CACHE}" | grep -Eqi 'Virtio.*(block|SCSI)'; then
+      _PCI_VIRTIO_STORAGE_HINT="YES"
+    fi
 
     # Storage-ish controllers (best-effort, first match)
     _PCI_STORAGE_SUMMARY="$(printf "%s\n" "${_LSPCI_CACHE}" | \
@@ -868,6 +883,64 @@ _ensure_ioping() {
   return 1
 }
 
+# Parse ioping "min/avg/max/mdev = ..." line and extract AVG.
+# Returns:
+#  - _parse_ioping_avg_us: numeric microseconds (rounded, empty if unknown)
+#  - _parse_ioping_avg_display: "N.NN us|ms" (empty if unknown)
+_parse_ioping_avg_us() {
+  # $1 = seek line
+  local line="$1"
+  [ -n "${line}" ] || return 0
+  local avg_token
+  avg_token="$(printf "%s" "${line}" | awk -F'=' '{print $2}' | awk -F'/' '{print $2}' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  [ -n "${avg_token}" ] || return 0
+  local v u
+  v="$(printf "%s" "${avg_token}" | awk '{print $1}')"
+  u="$(printf "%s" "${avg_token}" | awk '{print $2}')"
+  v="$(_num_or_empty "${v}")"
+  [ -n "${v}" ] || return 0
+
+  case "${u}" in
+    ms|msec|msecs)
+      awk -v v="${v}" 'BEGIN{printf "%.0f", v*1000}' 2>/dev/null
+      ;;
+    us|usec|usecs|'')
+      # Default to microseconds if unit is missing but looks like ioping output
+      awk -v v="${v}" 'BEGIN{printf "%.0f", v}' 2>/dev/null
+      ;;
+    *)
+      # Unknown unit
+      ;;
+  esac
+}
+
+_parse_ioping_avg_display() {
+  # $1 = seek line
+  local line="$1"
+  [ -n "${line}" ] || return 0
+  local avg_token
+  avg_token="$(printf "%s" "${line}" | awk -F'=' '{print $2}' | awk -F'/' '{print $2}' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  [ -n "${avg_token}" ] || return 0
+  local v u
+  v="$(printf "%s" "${avg_token}" | awk '{print $1}')"
+  u="$(printf "%s" "${avg_token}" | awk '{print $2}')"
+  v="$(_num_or_empty "${v}")"
+  [ -n "${v}" ] || return 0
+
+  case "${u}" in
+    ms|msec|msecs)
+      printf "%.2f ms" "${v}"
+      ;;
+    us|usec|usecs|'')
+      printf "%.1f us" "${v}"
+      ;;
+    *)
+      # Fall back to raw token if it looks sane
+      printf "%s" "${avg_token}"
+      ;;
+  esac
+}
+
 _run_ioping_quick() {
   _ioping_seek="N/A"
   _ioping_seqread="N/A"
@@ -1224,12 +1297,12 @@ _run_fio_qd1_fsync_test() {
   fio \
     --name=randwrite_qd1_fsync \
     --directory="${_test_dir}" \
-    --ioengine=sync \
+    --ioengine=libaio \
     --iodepth=1 \
     --rw=randwrite \
     --bs=4k \
-    --direct=0 \
-    --fsync=1 \
+    --direct=1 \
+    --fdatasync=1 \
     --size="${_FIO_QD1_FSYNC_SIZE_M}M" \
     --numjobs=1 \
     --runtime="${_FIO_QD1_FSYNC_RUNTIME}" \
@@ -1971,13 +2044,63 @@ _boa_guess_storage_tier() {
       echo "NET_SSD_CLASS"
     fi
   else
-    if [ "${_class}" = "NVME" ]; then
-      echo "LOCAL_NVME"
+    # Virtual controllers (virtio) cannot prove "local" even if the backing is NVMe.
+    # Avoid asserting locality; report behavior class instead.
+    if [ "${_PCI_VIRTIO_STORAGE_HINT:-NO}" = "YES" ] && [ "${_HAS_NVME_SYS:-NO}" = "NO" ] && [ "${_PCI_NVME_CTRL_HINT:-NO}" = "NO" ]; then
+      if [ "${_class}" = "NVME" ]; then
+        echo "VIRTIO_NVME_CLASS"
+      else
+        echo "VIRTIO_SSD_CLASS"
+      fi
     else
-      echo "LOCAL_SSD"
+      if [ "${_class}" = "NVME" ]; then
+        echo "LOCAL_NVME"
+      else
+        echo "LOCAL_SSD"
+      fi
     fi
   fi
 }
+
+_boa_disk_profile_note() {
+  # Human-readable hint for "poor" disk grade, focusing on DB/CMS impact.
+  # Inputs:
+  #  $1=ioping_avg_display, $2=ioping_avg_us, $3=qd1_fsync_p99_display, $4=qd1_fsync_p99_ms,
+  #  $5=qd1_p99_write_display, $6=qd1_p99_write_ms, $7=seq_write_display, $8=seq_write_mbps
+  local io_disp="$1"
+  local io_us="$2"
+  local fs_disp="$3"
+  local fs_ms="$4"
+  local w_disp="$5"
+  local w_ms="$6"
+  local sw_disp="$7"
+  local sw_mbps="$8"
+
+  io_us="$(_num_or_empty "${io_us}")"
+  fs_ms="$(_num_or_empty "${fs_ms}")"
+  w_ms="$(_num_or_empty "${w_ms}")"
+  sw_mbps="$(_num_or_empty "${sw_mbps}")"
+
+  if [ -n "${sw_mbps}" ] && awk -v sw="${sw_mbps}" 'BEGIN{exit !(sw<150)}' 2>/dev/null; then
+    printf "low sequential write (%s)" "${sw_disp}"
+    return
+  fi
+  if [ -n "${fs_ms}" ] && awk -v f="${fs_ms}" 'BEGIN{exit !(f>=8)}' 2>/dev/null; then
+    printf "high durable-write tail (QD1 fsync p99 %s)" "${fs_disp}"
+    return
+  fi
+  if [ -n "${io_us}" ] && awk -v u="${io_us}" 'BEGIN{exit !(u>=1000)}' 2>/dev/null; then
+    printf "high latency (ioping avg %s)" "${io_disp}"
+    return
+  fi
+  if [ -n "${w_ms}" ] && awk -v w="${w_ms}" 'BEGIN{exit !(w>=3)}' 2>/dev/null; then
+    printf "high random-write tail (QD1 write p99 %s)" "${w_disp}"
+    return
+  fi
+
+  printf "inconsistent latency/tails for DB/CMS workloads"
+}
+
 
 _print_disk_compact_section() {
   # $1 = mountpoint, $2 = short description (header hint)
@@ -2002,9 +2125,9 @@ _print_disk_compact_section() {
   _wlat="${_fio_rand_latency_write["${_mp}"]:-N/A}"
 
   _seek_line="${_ioping_seek_line["${_mp}"]:-N/A}"
-  _ioping_avg="$(echo "${_seek_line}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 2>/dev/null)"
+  _ioping_avg="$(_parse_ioping_avg_display "${_seek_line}")"
+  _ioping_avg_us="$(_parse_ioping_avg_us "${_seek_line}")"
   [ -n "${_ioping_avg}" ] || _ioping_avg="N/A"
-  _ioping_avg_us="$(echo "${_seek_line}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
 
   _seqw_num="$(_num_or_empty "$(echo "${_seqw}" | awk '{print $1}')")"
   _seqr_num="$(_num_or_empty "$(echo "${_seqr}" | awk '{print $1}')")"
@@ -2025,6 +2148,8 @@ _print_disk_compact_section() {
 
   _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
   _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
+  _disk_note="$(_boa_disk_profile_note "${_ioping_avg}" "${_ioping_avg_us}" "${_qd1_fsync_p99_w}" "${_qd1_fsync_p99_w_num}" "${_qd1_p99_w}" "${_qd1_p99_w_num}" "${_seqw}" "${_seqw_num}")"
+
 
   echo " ============================================================================="
   if [ "${_mp}" = "/" ]; then
@@ -2052,7 +2177,7 @@ _print_disk_compact_section() {
     echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
     echo "      This will severely impact BOA performance (cache writes, logs, DB)"
   elif [ "${_disk_grade}" = "poor" ]; then
-    echo "   ⚠️  Disk profile looks weak (slow SSD/attached)"
+    echo "   ⚠️  Disk profile is inconsistent: ${_disk_note}"
   elif [ "${_disk_grade}" = "average" ]; then
     echo "   ✅  Average disk performance for BOA workloads"
   elif [ "${_disk_grade}" = "good" ]; then
