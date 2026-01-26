@@ -1153,6 +1153,27 @@ _run_ipv4_net_check() {
   fi
 }
 
+# Parse mpstat output and return average %steal.
+# Works across sysstat versions where column order may vary (do NOT assume last column).
+_parse_mpstat_steal_avg() {
+  # Reads from stdin by default; or from a file if $1 is provided.
+  local _src="${1:-/dev/stdin}"
+  awk '
+    BEGIN { col = 0 }
+    /%steal/ {
+      # Locate the %steal column dynamically from the header line.
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /%steal/) { col = i }
+      }
+    }
+    /^[0-9]/ {
+      if (col > 0) { steal_sum += $(col); steal_cnt++ }
+    }
+    END {
+      if (steal_cnt > 0) { printf "%.2f", steal_sum / steal_cnt }
+    }' "${_src}" 2>/dev/null
+}
+
 # Return average %steal while running for N seconds (requires mpstat)
 _measure_cpu_steal() {
   # $1 = seconds
@@ -1161,15 +1182,7 @@ _measure_cpu_steal() {
     echo ""
     return 0
   fi
-  # mpstat output: header + per-second lines; %steal column exists on Linux
-  mpstat 1 "${_seconds}" 2>/dev/null \
-    | awk '
-      /^[0-9]/ { steal_sum += $(NF); steal_cnt++ }
-      END {
-        if (steal_cnt > 0) {
-          printf "%.2f", steal_sum / steal_cnt
-        }
-      }'
+  mpstat 1 "${_seconds}" 2>/dev/null | _parse_mpstat_steal_avg
 }
 
 # Decide which mounts to test:
@@ -2905,7 +2918,7 @@ _run_sysbench_cpu "${_cpu_mt_threads_used}" "MT_NPROC"
 
 if [ -n "${_mpstat_pid:-}" ]; then
   wait "${_mpstat_pid}" >/dev/null 2>&1
-  _cpu_steal_mt="$(awk '/^[0-9]/ { steal_sum += $(NF); steal_cnt++ } END { if (steal_cnt>0) printf "%.2f", steal_sum/steal_cnt }' /tmp/perftest_mpstat_mt.txt 2>/dev/null)"
+  _cpu_steal_mt="$(_parse_mpstat_steal_avg /tmp/perftest_mpstat_mt.txt)"
   rm -f /tmp/perftest_mpstat_mt.txt >/dev/null 2>&1
 fi
 
