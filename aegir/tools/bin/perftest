@@ -3,6 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+export LC_ALL=C
+export LANG=C
 
 # Tunables
 _PHP_BENCH_ITERATIONS=50000 # per process
@@ -84,6 +86,18 @@ _check_root() {
 
 _log() {
   [ "${_VERBOSE}" -eq 1 ] && echo "$@"
+}
+
+_cron_stop_quiet() {
+  if [ -x "/etc/init.d/cron" ] && command -v service >/dev/null 2>&1; then
+    service cron stop >/dev/null 2>&1 || true
+  fi
+}
+
+_cron_restart_quiet() {
+  if [ -x "/etc/init.d/cron" ] && command -v service >/dev/null 2>&1; then
+    service cron restart >/dev/null 2>&1 || true
+  fi
 }
 
 _find_fast_mirror_early() {
@@ -867,18 +881,32 @@ _download_benchmark_v4() {
   printf '%s|%s|%s|%s\n' "${speed_bps}" "${size_download}" "${time_total}" "${http_code}"
 }
 
-# Best-effort ioping setup (download static binary like nench if not installed)
+# Best-effort ioping setup
 _ensure_ioping() {
   if command -v ioping >/dev/null 2>&1; then
     _ioping_cmd="ioping"
     return 0
   fi
-  local dst="/tmp/ioping.static"
-  if curl -s --max-time 10 -o "${dst}" http://wget.racing/ioping.static 2>/dev/null; then
-    chmod +x "${dst}" 2>/dev/null || true
-    _ioping_cmd="${dst}"
-    return 0
+
+  # Try package install first (preferred and safer than fetching binaries).
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y ioping >/dev/null 2>&1 || true
+    if command -v ioping >/dev/null 2>&1; then
+      _ioping_cmd="ioping"
+      return 0
+    fi
   fi
+
+  # Fallback: fetch static binary (HTTPS first, then HTTP).
+  local dst="/tmp/ioping.static"
+  if command -v curl >/dev/null 2>&1; then
+    if curl -fsSL --max-time 10 -o "${dst}" https://wget.racing/ioping.static 2>/dev/null || curl -fsSL --max-time 10 -o "${dst}" http://wget.racing/ioping.static 2>/dev/null; then
+      chmod +x "${dst}" 2>/dev/null || true
+      _ioping_cmd="${dst}"
+      return 0
+    fi
+  fi
+
   _ioping_cmd=""
   return 1
 }
@@ -2236,7 +2264,7 @@ _print_compact_summary() {
   write_iops="$(_num_or_empty "${_fio_rand_iops_write["/"]}")"
 
   # Extract ioping avg latency (format: "min/avg/max/mdev = 28.3 us / 126.5 us / ...")
-  ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1)"
+  ioping_avg_us="$(_parse_ioping_avg_us "${_ioping_seek}")"
 
   # Calculate grades
   local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade
@@ -2799,7 +2827,7 @@ _check_root
 echo ""
 echo "Starting extended performance tests, please wait..."
 echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes.."
-service cron stop
+_cron_stop_quiet
 sleep 15
 
 # Update package list silently
@@ -3223,7 +3251,7 @@ else
     echo "  QD=1 randrw (p95/p99):"
     echo "    - Read p95/p99: ${_fio_qd1_p95_read["${_mount_point}"]} / ${_fio_qd1_p99_read["${_mount_point}"]}"
     echo "    - Write p95/p99: ${_fio_qd1_p95_write["${_mount_point}"]} / ${_fio_qd1_p99_write["${_mount_point}"]}"
-    _tier_ioping_us="$(echo "${_ioping_seek_line["${_mount_point}"]:-}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+    _tier_ioping_us="$(_parse_ioping_avg_us "${_ioping_seek_line["${_mount_point}"]:-}")"
     _tier_ioping_us="$(_num_or_empty "${_tier_ioping_us}")"
     _tier_srw_num="$(_num_or_empty "$(echo "${_fio_seqread_bw_read["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_sww_num="$(_num_or_empty "$(echo "${_fio_seqwrite_bw_write["${_mount_point}"]}" | awk '{print $1}')")"
@@ -3302,7 +3330,7 @@ _csv_root_qd1_p99_read="$(_strip_unit "${_root_qd1_p99_read}")"
 _csv_root_qd1_p99_write="$(_strip_unit "${_root_qd1_p99_write}")"
 _csv_root_qd1_fsync_p95_write="$(_strip_unit "${_root_qd1_fsync_p95_write}")"
 _csv_root_qd1_fsync_p99_write="$(_strip_unit "${_root_qd1_fsync_p99_write}")"
-_csv_root_ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+_csv_root_ioping_avg_us="$(_parse_ioping_avg_us "${_ioping_seek}")"
 _csv_root_ioping_avg_us="$(_num_or_empty "${_csv_root_ioping_avg_us}")"
 _csv_root_seqr_num="$(_num_or_empty "${_csv_root_seqread_bw_read}")"
 _csv_root_seqw_num="$(_num_or_empty "${_csv_root_seqwrite_bw_write}")"
@@ -3319,6 +3347,4 @@ if [ "${_VERBOSE}" -eq 1 ]; then
   echo "CSV_SUMMARY_V4:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_csv_mem_lat_ns},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_root_qd1_p95_read},${_csv_root_qd1_p95_write},${_csv_root_qd1_p99_read},${_csv_root_qd1_p99_write},${_csv_root_qd1_fsync_p95_write},${_csv_root_qd1_fsync_p99_write},\"${_csv_root_storage_tier}\",${_csv_aes_mibps},${_csv_net_download}"
   echo "CSV_DB_V1:${_hostname},${_db_ro_tps},${_db_ro_p95_ms},${_db_rw_tps},${_db_rw_p95_ms},${_db_test_status}"
 fi
-
-service cron restart
-
+_cron_restart_quiet
