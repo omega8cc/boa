@@ -7879,7 +7879,38 @@ _other_sys_java_install() {
     return 0
   fi
 
-  if [ ! -x "${_javaHome}/bin/java" ]; then
+  _FORCE_JAVA_UPGRADE=
+
+  # Special-case Java 11/17 force install if version is too old
+  if [ "${_javaVer}" = "11" ]; then
+    _JAVA_NEW=11.0.30
+    _JAVA_ITD=$(java11 --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Installing Java ${_JAVA_NEW}..."
+        _FORCE_JAVA_UPGRADE=YES
+      fi
+    fi
+  elif [ "${_javaVer}" = "17" ]; then
+    _JAVA_NEW=17.0.18
+    _JAVA_ITD=$(java17 --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Installing Java ${_JAVA_NEW}..."
+        _FORCE_JAVA_UPGRADE=YES
+      fi
+    fi
+  fi
+
+  if [ ! -x "${_javaHome}/bin/java" ] || [ -n "${_FORCE_JAVA_UPGRADE}" ]; then
     if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
       _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
     else
