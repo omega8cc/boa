@@ -279,6 +279,7 @@ _nginx_install_upgrade() {
     _NGINX_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
       | cut -d"/" -f2 | awk '{ print $1}' 2>&1)
     _NGINX_V_ITD=$(/usr/sbin/nginx -V 2>&1)
+    _NGINX_V_ITD="$(printf '%s' "${_NGINX_V_ITD}" | tr '\n\t' '  ')"
     if [ "${_NGINX_F_ITD}" = "${_NGINX_VRN}" ] \
       && [ "${_STATUS}" = "UPGRADE" ]; then
       _NGINX_INSTALL_REQUIRED=NO
@@ -298,19 +299,25 @@ _nginx_install_upgrade() {
       fi
     fi
     if [ "${_NGINX_F_ITD}" = "${_NGINX_VRN}" ]; then
-      if [[ ! "${_NGINX_V_ITD}" =~ "geoip" ]]; then
+      if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'geoip'; then
         _NGINX_INSTALL_REQUIRED=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
           _msg "INFO: Nginx forced rebuild to include geoip module"
         fi
       fi
-      if [[ "${_NGINX_V_ITD}" =~ "nginx-development-kit" ]]; then
+      if printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'nginx-development-kit'; then
         _NGINX_INSTALL_REQUIRED=YES
         _msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
       fi
-      if [[ ! "${_NGINX_V_ITD}" =~ "http_flv_module" ]] \
-        || [[ ! "${_NGINX_V_ITD}" =~ "http_mp4_module" ]]; then
+      if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- ' --with-http_flv_module'; then
+        _NGINX_INSTALL_REQUIRED=YES
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+          _msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
+        fi
+      fi
+      if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- ' --with-http_mp4_module'; then
         _NGINX_INSTALL_REQUIRED=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
@@ -337,7 +344,7 @@ _nginx_install_upgrade() {
       else
         _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
       fi
-      if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NEW_VRN}" ]]; then
+      if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'openssl-${_OPENSSL_NEW_VRN}'; then
         _NGINX_INSTALL_REQUIRED=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
@@ -345,7 +352,7 @@ _nginx_install_upgrade() {
         fi
       fi
       if [ "${_NGINX_HEADERS}" = "YES" ]; then
-        if [[ ! "${_NGINX_V_ITD}" =~ "nginx-headers-more" ]]; then
+        if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'nginx-headers-more'; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
@@ -354,7 +361,7 @@ _nginx_install_upgrade() {
         fi
       fi
       if [ "${_NGINX_LDAP}" = "YES" ]; then
-        if [[ ! "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
+        if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'nginx-auth-ldap'; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
@@ -363,7 +370,7 @@ _nginx_install_upgrade() {
         fi
       fi
       if [ "${_PURGE_MODE}" = "ON" ]; then
-        if [[ ! "${_NGINX_V_ITD}" =~ "purge" ]]; then
+        if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'purge'; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
@@ -372,7 +379,7 @@ _nginx_install_upgrade() {
         fi
       fi
       if [ "${_NGINX_NAXSI}" = "YES" ]; then
-        if [[ ! "${_NGINX_V_ITD}" =~ "naxsi" ]]; then
+        if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'naxsi'; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
@@ -381,19 +388,27 @@ _nginx_install_upgrade() {
         fi
       fi
       if [ "${_NGINX_SPDY}" = "YES" ]; then
-        if [[ ! "${_NGINX_V_ITD}" =~ "http_v2_module" ]]; then
+        if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- ' --with-http_v2_module'; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
             _msg "INFO: Nginx forced rebuild to include HTTP/2 support"
           fi
         fi
-        if [[ ! "${_NGINX_V_ITD}" =~ "http_v3_module" ]] \
-          && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
-          _NGINX_INSTALL_REQUIRED=YES
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-            _msg "INFO: Nginx forced rebuild to include HTTP/3 support"
+        if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
+          if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- ' --with-http_v3_module'; then
+            _NGINX_INSTALL_REQUIRED=YES
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+              _msg "INFO: Nginx forced rebuild to include HTTP/3 support"
+            fi
+          fi
+          if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'enable-ktls'; then
+            _NGINX_INSTALL_REQUIRED=YES
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+              _msg "INFO: Nginx forced rebuild to include kTLS support"
+            fi
           fi
         fi
       fi
