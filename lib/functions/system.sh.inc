@@ -4570,6 +4570,8 @@ _ssl_install_src() {
     _mrun "sh ./config \
       shared \
       no-tests \
+      no-ssl3 \
+      enable-ktls \
       zlib-dynamic \
       enable-ec_nistp_64_gcc_128 \
       ${_SSL_BUILD_ARGS}"
