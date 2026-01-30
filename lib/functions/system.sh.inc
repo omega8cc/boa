@@ -4569,14 +4569,17 @@ _ssl_install_src() {
     fi
     _mrun "sh ./config \
       shared \
+      no-tests \
       no-ssl3 \
+      enable-ktls \
       zlib-dynamic \
       enable-ec_nistp_64_gcc_128 \
       ${_SSL_BUILD_ARGS}"
     if [ "${_patchMakefile}" = "YES" ]; then
       sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
     fi
-    _mrun "make depend"
+    _mrun "make dclean" || true
+    _mrun "make depend" || true
     _mrun "make -j $(nproc)"
     _mrun "make install"
   fi
@@ -7752,10 +7755,6 @@ _other_sys_java21_install() {
   esac
 
   _javaHome="/usr/lib/jvm/java-21-openjdk-${_debArch}"
-  if [ -x "${_javaHome}/bin/java" ]; then
-    return 0
-  fi
-
   _base="amazon-corretto-21-${_crtArch}-linux"
   _tmpDir="/tmp"
   _optDir="/opt/jdk"
@@ -7871,15 +7870,27 @@ _other_sys_java_install() {
 
   _javaHome="/usr/lib/jvm/java-${_javaVer}-openjdk-${_debArch}"
 
+  _FORCE_JAVA_UPGRADE=
+
   # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
-  if [ "${_javaVer}" = "21" ]; then
-    if [ ! -x "${_javaHome}/bin/java" ] && [ "${_OS_CODE}" != "excalibur" ]; then
+  if [ "${_javaVer}" = "21" ] && [ "${_OS_CODE}" != "excalibur" ]; then
+    _JAVA_NEW=21.0.10
+    _JAVA_ITD=$(java21 --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Installing Java ${_JAVA_NEW}..."
+        _FORCE_JAVA_UPGRADE=YES
+      fi
+    fi
+    if [ ! -x "${_javaHome}/bin/java" ] || [ -n "${_FORCE_JAVA_UPGRADE}" ]; then
       _other_sys_java21_install "${_debArch}"
     fi
     return 0
   fi
-
-  _FORCE_JAVA_UPGRADE=
 
   # Special-case Java 11/17 force install if version is too old
   if [ "${_javaVer}" = "11" ]; then

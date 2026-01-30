@@ -110,6 +110,11 @@ _read_account_data() {
     _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
   fi
+  if [ -e "/data/disk/${_THIS_U}/log/extra_aero.txt" ]; then
+    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_aero.txt 2>&1)
+    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
+    _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x AERO"
+  fi
   if [ -e "/data/disk/${_THIS_U}/log/extra_power.txt" ]; then
     _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_power.txt 2>&1)
     _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
@@ -562,42 +567,66 @@ _check_limits() {
     if [ -z "${_DSK_CLU_LIMIT}" ]; then
       _DSK_CLU_LIMIT=1
     fi
-    _SQL_MIN_LIMIT=10240
-    _DSK_MIN_LIMIT=204800
-    _DSK_MAX_LIMIT=215040
+    _SQL_MIN_LIMIT=20480
+    _DSK_MIN_LIMIT=409600
+    _DSK_MAX_LIMIT=430080
     _SQL_DEV_EXTRA=2
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 2048 ))
     _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
     _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
   elif [ "${_CLIENT_OPTION}" = "POWER" ]; then
+    _SQL_MIN_LIMIT=10240
+    _DSK_MIN_LIMIT=204800
+    _SQL_DEV_EXTRA=2
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
+    _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
+  elif [ "${_CLIENT_OPTION}" = "AERO" ]; then
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=102400
     _SQL_DEV_EXTRA=2
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
+  elif [ "${_CLIENT_OPTION}" = "AGAIN" ]; then
+    _SQL_MIN_LIMIT=40960
+    _DSK_MIN_LIMIT=409600
+    _SQL_DEV_EXTRA=0
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 512 ))
+    _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
+  elif [ "${_CLIENT_OPTION}" = "HEADSPACE" ]; then
+    _SQL_MIN_LIMIT=20480
+    _DSK_MIN_LIMIT=204800
+    _SQL_DEV_EXTRA=0
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 512 ))
+    _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
+  elif [ "${_CLIENT_OPTION}" = "QUIET" ]; then
+    _SQL_MIN_LIMIT=10240
+    _DSK_MIN_LIMIT=102400
+    _SQL_DEV_EXTRA=0
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 512 ))
+    _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
   elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
     || [ "${_CLIENT_OPTION}" = "SSD" ] \
     || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
     _CLIENT_OPTION=EDGE
-    _SQL_MIN_LIMIT=1024
-    _DSK_MIN_LIMIT=30720
+    _SQL_MIN_LIMIT=2048
+    _DSK_MIN_LIMIT=61440
     _SQL_DEV_EXTRA=2
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 512 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
   elif [ "${_CLIENT_OPTION}" = "MINI" ]; then
-    _SQL_MIN_LIMIT=1024
+    _SQL_MIN_LIMIT=2048
     _DSK_MIN_LIMIT=30720
     _SQL_DEV_EXTRA=1
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 512 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
   elif [ "${_CLIENT_OPTION}" = "MICRO" ]; then
-    _SQL_MIN_LIMIT=512
+    _SQL_MIN_LIMIT=1024
     _DSK_MIN_LIMIT=10240
     _SQL_DEV_EXTRA=1
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 256 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 640 ))
   else
-    _SQL_MIN_LIMIT=512
+    _SQL_MIN_LIMIT=1024
     _DSK_MIN_LIMIT=15360
     _SQL_DEV_EXTRA=1
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 256 ))
@@ -612,11 +641,14 @@ _check_limits() {
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _SQL_DEV_EXTRA ))
   if [ ! -z "${_EXTRA_ENGINE}" ]; then
     if [ -e "/data/disk/${_THIS_U}/log/extra_edge.txt" ]; then
-      _SQL_ADD_LIMIT=1024
-      _DSK_ADD_LIMIT=30720
-    elif [ -e "/data/disk/${_THIS_U}/log/extra_power.txt" ]; then
+      _SQL_ADD_LIMIT=2048
+      _DSK_ADD_LIMIT=61440
+    elif [ -e "/data/disk/${_THIS_U}/log/extra_aero.txt" ]; then
       _SQL_ADD_LIMIT=5120
       _DSK_ADD_LIMIT=102400
+    elif [ -e "/data/disk/${_THIS_U}/log/extra_power.txt" ]; then
+      _SQL_ADD_LIMIT=10240
+      _DSK_ADD_LIMIT=204800
     fi
     _SQL_ADD_LIMIT=$(( _SQL_ADD_LIMIT *= _EXTRA_ENGINE ))
     _DSK_ADD_LIMIT=$(( _DSK_ADD_LIMIT *= _EXTRA_ENGINE ))
