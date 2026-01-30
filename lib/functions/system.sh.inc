@@ -4569,6 +4569,7 @@ _ssl_install_src() {
     fi
     _mrun "sh ./config \
       shared \
+      no-tests \
       no-ssl3 \
       zlib-dynamic \
       enable-ec_nistp_64_gcc_128 \
@@ -4576,7 +4577,8 @@ _ssl_install_src() {
     if [ "${_patchMakefile}" = "YES" ]; then
       sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
     fi
-    _mrun "make depend"
+    _mrun "make dclean" || true
+    _mrun "make depend" || true
     _mrun "make -j $(nproc)"
     _mrun "make install"
   fi

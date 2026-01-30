@@ -480,11 +480,8 @@ _nginx_install_upgrade() {
     fi
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt
-      rm -rf openssl*
+      rm -rf "/var/opt/openssl-${_OPENSSL_NEW_VRN}" "/var/opt/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
       _get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-      if [ -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}/Makefile" ]; then
-        sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_NEW_VRN}/Makefile
-      fi
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
     _mrun "bash ./configure \
@@ -512,6 +509,7 @@ _nginx_install_upgrade() {
       --without-mail_pop3_module \
       --without-mail_smtp_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
+      --with-openssl-opt="no-tests no-ssl3 zlib-dynamic enable-ec_nistp_64_gcc_128" \
       --with-debug ${_NGINX_EXTRA}"
     _mrun "make -j $(nproc)"
     _mrun "make install"
