@@ -509,7 +509,7 @@ _nginx_install_upgrade() {
       --without-mail_pop3_module \
       --without-mail_smtp_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
-      --with-openssl-opt="no-tests no-ssl3 zlib-dynamic enable-ec_nistp_64_gcc_128" \
+      --with-openssl-opt="no-tests zlib-dynamic enable-ec_nistp_64_gcc_128" \
       --with-debug ${_NGINX_EXTRA}"
     _mrun "make -j $(nproc)"
     _mrun "make install"
