@@ -1090,13 +1090,16 @@ _satellite_tune_fpm_workers() {
         _LIM_FPM=8
       fi
     elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
+      || [ "${_CLIENT_OPTION}" = "AGAIN" ] \
       || [ "${_CLIENT_OPTION}" = "SSD" ] \
       || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=2
       fi
     elif [ "${_CLIENT_OPTION}" = "MINI" ] \
-      || [ "${_CLIENT_OPTION}" = "MICRO" ]; then
+      || [ "${_CLIENT_OPTION}" = "MICRO" ] \
+      || [ "${_CLIENT_OPTION}" = "QUIET" ] \
+      || [ "${_CLIENT_OPTION}" = "HEADSPACE" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=1
       fi
@@ -1120,7 +1123,9 @@ _satellite_tune_fpm_workers() {
     _LIM_FPM=100
   fi
 
-  _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
+  if [ "${_CLIENT_OPTION}" != "QUIET" ]; then
+    _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
+  fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "DEBUG: _LIM_FPM is ${_LIM_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log

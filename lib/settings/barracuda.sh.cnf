@@ -1423,10 +1423,12 @@ _download_helpers_libs() {
   _isGit="$(which git)"
   if [ -z "${_isGit}" ] || [ ! -x "${_isGit}" ]; then
     _apt_clean_update
+    echo "git install"      | dpkg --set-selections &> /dev/null
     echo "git-core install" | dpkg --set-selections &> /dev/null
-    echo "git install" | dpkg --set-selections &> /dev/null
+    echo "git-man install"  | dpkg --set-selections &> /dev/null
     apt-get install git-core ${_aptYesUnth} -qq &> /dev/null
     apt-get install git ${_aptYesUnth} -qq &> /dev/null
+    apt-get install git-man ${_aptYesUnth} -qq &> /dev/null
     _isGit="$(which git)"
   fi
   _gCb="${_isGit} clone --branch"
