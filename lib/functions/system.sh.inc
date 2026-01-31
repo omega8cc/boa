@@ -9932,6 +9932,11 @@ _sysctl_update() {
     _apt_clean_update
     _mrun "${_INITINS} tcpdump"
   fi
+  # Check if traceroute is available
+  if ! command -v traceroute &> /dev/null; then
+    _apt_clean_update
+    _mrun "${_INITINS} traceroute"
+  fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "${_pthLog}/sysctl.conf-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
