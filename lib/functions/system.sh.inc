@@ -4560,7 +4560,7 @@ _ssl_install_src() {
     cd /var/opt/openssl-${_OPENSSL_BUILD_VRN}
     if [ "${1}" = "Modern" ]; then
       _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-        --openssldir=/usr/local/ssl3"
+        --openssldir=/usr/local/ssl3 enable-ktls"
       _patchMakefile=YES
     else
       _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
@@ -4571,14 +4571,15 @@ _ssl_install_src() {
       shared \
       no-tests \
       no-ssl3 \
-      enable-ktls \
       zlib-dynamic \
       enable-ec_nistp_64_gcc_128 \
       ${_SSL_BUILD_ARGS}"
     if [ "${_patchMakefile}" = "YES" ]; then
       sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
     fi
-    _mrun "make dclean" || true
+    if [ "${1}" = "Modern" ]; then
+      _mrun "make dclean" || true
+    fi
     _mrun "make depend" || true
     _mrun "make -j $(nproc)"
     _mrun "make install"
@@ -9931,6 +9932,11 @@ _sysctl_update() {
   if ! command -v tcpdump &> /dev/null; then
     _apt_clean_update
     _mrun "${_INITINS} tcpdump"
+  fi
+  # Check if traceroute is available
+  if ! command -v traceroute &> /dev/null; then
+    _apt_clean_update
+    _mrun "${_INITINS} traceroute"
   fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "${_pthLog}/sysctl.conf-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
