@@ -12,6 +12,12 @@ _PHP_BENCH_RUNS=5 # single-thread runs for median
 _PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
 _SYSBENCH_CPU_TIME=30 # seconds
 _SYSBENCH_CPU_THREADS_SAT=8 # cap MT CPU threads (informational; avoids regression/noise on large vCPU VMs)
+
+# MySQL durability mode hint (used to interpret disk fsync tail).
+# If MySQL is configured with innodb_flush_log_at_trx_commit!=1 or sync_binlog!=1,
+# fsync-per-commit behavior is relaxed and a high fio fsync p99 can be less predictive of DB OLTP results.
+_DB_DURABILITY_RELAXED="NO"
+_DB_DURABILITY_PROBED="NO"
 _SYSBENCH_MEM_TIME=30 # seconds
 _DB_SYSBENCH_TIME_RO=30 # seconds (read-only OLTP)
 _DB_SYSBENCH_TIME_RW=30 # seconds (read-write OLTP)
@@ -1792,6 +1798,45 @@ _boa_grade_cpu_speed() {
   }'
 }
 
+_detect_mysql_durability_relaxed() {
+  # Sets global _DB_DURABILITY_RELAXED="YES"/"NO".
+  if [ "${_DB_DURABILITY_PROBED}" = "YES" ]; then
+    return
+  fi
+  _DB_DURABILITY_PROBED="YES"
+  _DB_DURABILITY_RELAXED="NO"
+
+  if ! command -v mysql >/dev/null 2>&1; then
+    return
+  fi
+  if [ ! -e "/root/.my.pass.txt" ]; then
+    return
+  fi
+
+  local _pass _sock _vals _trx _bin
+  _pass="$(head -n 1 /root/.my.pass.txt 2>/dev/null | tr -d '\n')"
+  if [ -z "${_pass}" ]; then
+    return
+  fi
+
+  _sock="$(_guess_mysql_socket)"
+  if [ -z "${_sock}" ]; then
+    return
+  fi
+
+  # Query in one round-trip; keep it simple and quiet.
+  _vals="$(mysql --protocol=socket -uroot -p"${_pass}" -S "${_sock}" -Nse "SELECT @@innodb_flush_log_at_trx_commit, @@sync_binlog;" 2>/dev/null | head -n 1)"
+  _trx="$(echo "${_vals}" | awk '{print $1}')"
+  _bin="$(echo "${_vals}" | awk '{print $2}')"
+
+  # Treat anything other than strict 1/1 as relaxed durability.
+  if [ -n "${_trx}" ] && [ -n "${_bin}" ]; then
+    if [ "${_trx}" != "1" ] || [ "${_bin}" != "1" ]; then
+      _DB_DURABILITY_RELAXED="YES"
+    fi
+  fi
+}
+
 _boa_grade_db_oltp() {
   # Inputs:
   #  $1 = rw_tps, $2 = rw_p95_ms, $3 = vcpus, $4 = ro_p95_ms (optional), $5 = threads_used (optional)
@@ -1880,7 +1925,7 @@ _boa_grade_db_oltp() {
 _boa_grade_disk_final() {
   # Inputs (best-effort numeric):
   #  $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops,
-  #  $7=qd1_p99_read_ms, $8=qd1_p99_write_ms, $9=qd1_fsync_p99_write_ms
+  #  $7=qd1_p99_read_ms, $8=qd1_p99_write_ms, $9=qd1_fsync_p99_write_ms, $10=qd1_fsync_p95_write_ms
   #
   # Design goal:
   # - Preserve the original (v9) multi-signal logic (seq, iops, ioping, metadata) so you can reason about *why* a grade was chosen.
@@ -1895,6 +1940,7 @@ _boa_grade_disk_final() {
   local qd1_p99_read_ms="$7"
   local qd1_p99_write_ms="$8"
   local qd1_fsync_p99_write_ms="$9"
+  local qd1_fsync_p95_write_ms="$10"
 
   # Extract numeric values
   ioping_us="$(_num_or_empty "${ioping_us}")"
@@ -1906,6 +1952,7 @@ _boa_grade_disk_final() {
   qd1_p99_read_ms="$(_num_or_empty "${qd1_p99_read_ms}")"
   qd1_p99_write_ms="$(_num_or_empty "${qd1_p99_write_ms}")"
   qd1_fsync_p99_write_ms="$(_num_or_empty "${qd1_fsync_p99_write_ms}")"
+  qd1_fsync_p95_write_ms="$(_num_or_empty "${qd1_fsync_p95_write_ms}")"
 
   # CRITICAL: Sequential write throttled/failing
   if [ -n "${seq_write_mbps}" ] && awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
@@ -1974,6 +2021,21 @@ _boa_grade_disk_final() {
       cap_grade="average"
     else
       cap_grade="poor"
+    fi
+
+    # If MySQL durability is relaxed (e.g. innodb_flush_log_at_trx_commit!=1 or sync_binlog!=1),
+    # a high fio fsync p99 can reflect occasional host-level stalls while DB OLTP remains strong.
+    # In that case, avoid collapsing "fast-but-spiky" local NVMe into "average" when p95 is still good
+    # and the rest of the signals clearly indicate high-performance storage.
+    if [ "${cap_grade}" = "average" ] && [ "${_DB_DURABILITY_RELAXED}" = "YES" ]; then
+      if [ -n "${qd1_fsync_p95_write_ms}" ] \
+        && awk -v p95="${qd1_fsync_p95_write_ms}" 'BEGIN{exit !(p95<=3.5)}' 2>/dev/null \
+        && awk -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" 'BEGIN{exit !(r<=1.0 && w<=2.0 && io<=250)}' 2>/dev/null; then
+        if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>=30000 && wi>=30000)}' 2>/dev/null \
+          || awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw>=900)}' 2>/dev/null; then
+          cap_grade="good"
+        fi
+      fi
     fi
   fi
 
@@ -2309,9 +2371,10 @@ _print_disk_compact_section() {
 
   _qd1_p99_r_num="$(_num_or_empty "$(echo "${_qd1_p99_r}" | awk "{print \$1}")")"
   _qd1_p99_w_num="$(_num_or_empty "$(echo "${_qd1_p99_w}" | awk "{print \$1}")")"
+  _qd1_fsync_p95_w_num="$(_num_or_empty "$(echo "${_qd1_fsync_p95_w}" | awk "{print \$1}")")"
   _qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_qd1_fsync_p99_w}" | awk "{print \$1}")")"
 
-  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
+  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}" "${_qd1_fsync_p95_w_num}")"
   _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
   _disk_note="$(_boa_disk_profile_note "${_ioping_avg}" "${_ioping_avg_us}" "${_qd1_fsync_p99_w}" "${_qd1_fsync_p99_w_num}" "${_qd1_p99_w}" "${_qd1_p99_w_num}" "${_seqw}" "${_seqw_num}")"
 
@@ -2414,8 +2477,9 @@ _print_grading_summary() {
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
   root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
   root_qd1_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_p99_write}" | awk "{print \$1}")")"
+  root_qd1_fsync_p95_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p95_write}" | awk "{print \$1}")")"
   root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
-  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}")"
+  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p95_w_num}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
 
   # Database grade (optional; only if DB test ran)
@@ -2514,6 +2578,7 @@ _print_grading_summary() {
   echo ""
 
   # DISK (root is used for overall rating; other mounts are informational)
+  _detect_mysql_durability_relaxed
   _print_disk_compact_section "/" "Root partition / main filesystem"
   local _mp
   for _mp in "${_test_mounts[@]}"; do
@@ -3405,6 +3470,7 @@ else
     _tier_sww_num="$(_num_or_empty "$(echo "${_fio_seqwrite_bw_write["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_p99r_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_read["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_p99_write["${_mount_point}"]}" | awk '{print $1}')")"
+    _tier_fsync_p95w_num="$(_num_or_empty "$(echo "${_fio_qd1_fsync_p95_write["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_fsync_p99w_num="$(_num_or_empty "$(echo "${_fio_qd1_fsync_p99_write["${_mount_point}"]}" | awk '{print $1}')")"
     _tier_storage_tier="$(_boa_guess_storage_tier "${_tier_ioping_us}" "${_tier_srw_num}" "${_tier_sww_num}" "${_tier_p99r_num}" "${_tier_p99w_num}" "${_tier_fsync_p99w_num}")"
     echo "    - Storage tier guess: ${_tier_storage_tier}"
@@ -3432,8 +3498,9 @@ else
       _csv_ioping_avg_us="${_tier_ioping_us}"
       _csv_p99r_num="${_tier_p99r_num}"
       _csv_p99w_num="${_tier_p99w_num}"
+      _csv_fsync_p95w_num="${_tier_fsync_p95w_num}"
       _csv_fsync_p99w_num="${_tier_fsync_p99w_num}"
-      _csv_disk_grade="$(_boa_grade_disk_final "${_csv_ioping_avg_us}" "${_csv_seqr_num}" "${_csv_seqw_num}" "${_csv_riops_num}" "${_csv_wiops_num}" "${_csv_meta_num}" "${_csv_p99r_num}" "${_csv_p99w_num}" "${_csv_fsync_p99w_num}")"
+      _csv_disk_grade="$(_boa_grade_disk_final "${_csv_ioping_avg_us}" "${_csv_seqr_num}" "${_csv_seqw_num}" "${_csv_riops_num}" "${_csv_wiops_num}" "${_csv_meta_num}" "${_csv_p99r_num}" "${_csv_p99w_num}" "${_csv_fsync_p99w_num}" "${_csv_fsync_p95w_num}")"
       echo "CSV_DISK_V1:${_hostname},\"${_mount_point}\",${_csv_seqr_num},${_csv_seqw_num},${_csv_riops_num},${_csv_wiops_num},${_csv_meta_num},${_csv_ioping_avg_us},${_csv_p99r_num},${_csv_p99w_num},${_csv_fsync_p99w_num},\"${_tier_storage_tier}\",\"${_csv_disk_grade}\""
     fi
   done
