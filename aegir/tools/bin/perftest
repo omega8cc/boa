@@ -37,6 +37,7 @@ _FIO_QD1_FSYNC_SIZE_M=128 # MiB (file size for fsync test)
 _FIO_QD1_REPEATS=3 # repeats for QD=1 tests to reduce noise (median-of-N used)
 _FIO_QD1_FSYNC_REPEATS=3 # repeats for QD=1 fsync tests to reduce noise (median-of-N used)
 _METADATA_FILE_COUNT=5000 # small-file ops per mount
+_GRADE_NEAR_BAND_PCT=0.10 # top-of-band promotion window (10%); keeps grades strict but not harsh near upper boundaries
 _NET_TIMEOUT=10 # seconds for curl speedtest
 _AES_TEST_MIB=500 # MiB encrypted for AES throughput test
 _IOPING_SECONDS=5 # seconds for ioping checks
@@ -1706,6 +1707,33 @@ _boa_grade_mem_final() {
     fi
   fi
 
+# Soft promotion near upper bandwidth boundaries (strict by default; forgiving only near the top of a band)
+if [ -n "${mem_bw_mibps}" ]; then
+  if [ "${grade}" = "good" ]; then
+    # Promote good->excellent only when latency isn't the limiting factor.
+    if [ -z "${mem_latency_ns}" ] || awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=140)}' 2>/dev/null; then
+      if awk -v b="${mem_bw_mibps}" -v g="${thr_good}" -v e="${thr_exc}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
+        thr = e - (pct * (e-g));
+        exit !(b>=thr);
+      }' 2>/dev/null; then
+        grade="excellent"
+      fi
+    fi
+  fi
+
+  if [ "${grade}" = "excellent" ]; then
+    # Promote excellent->ultra only when latency isn't the limiting factor.
+    if [ -z "${mem_latency_ns}" ] || awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=140)}' 2>/dev/null; then
+      if awk -v b="${mem_bw_mibps}" -v e="${thr_exc}" -v u="${thr_ultra}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
+        thr = u - (pct * (u-e));
+        exit !(b>=thr);
+      }' 2>/dev/null; then
+        grade="ultra"
+      fi
+    fi
+  fi
+fi
+
   echo "${grade}"
 }
 
@@ -1723,10 +1751,19 @@ _boa_grade_cpu_steal() {
 _boa_grade_cpu_speed() {
   # input: single-thread events/sec
   # Based on typical BOA workloads (Drupal PHP)
-  awk -v eps="$1" 'BEGIN{
-    if (eps=="" || eps=="N/A") print "unknown";
-    else if (eps>=5000) print "ultra";
+  # Soft promotion near upper boundaries (keeps grades strict, avoids harsh demotions when "almost there"):
+  #  - promote excellent->ultra in the top ${_GRADE_NEAR_BAND_PCT} of [4000..5000)
+  #  - promote good->excellent in the top ${_GRADE_NEAR_BAND_PCT} of [3000..4000)
+  awk -v eps="$1" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
+    if (eps=="" || eps=="N/A") { print "unknown"; exit }
+    band = 1000.0
+    near_ultra = 5000.0 - (pct * band)
+    near_exc   = 4000.0 - (pct * band)
+
+    if (eps>=5000) print "ultra";
+    else if (eps>=near_ultra) print "ultra";
     else if (eps>=4000) print "excellent";
+    else if (eps>=near_exc) print "excellent";
     else if (eps>=3000) print "good";
     else if (eps>=2000) print "average";
     else if (eps>=1000) print "acceptable";
@@ -1740,7 +1777,10 @@ _boa_grade_db_oltp() {
   #
   # This is a lightweight "experience proxy" for Drupal workloads (cache misses + writes).
   # We grade primarily on RW TPS per vCPU, with latency caps on RW p95.
-  local rw_tps rw_p95 vcpus ro_p95 threads_used norm_cores per_core
+  #
+  # Soft promotion near upper boundaries is allowed ONLY when the limiting metric is very close
+  # to the next grade threshold (top ${_GRADE_NEAR_BAND_PCT} of the band).
+  local rw_tps rw_p95 vcpus ro_p95 threads_used norm_cores per_core grade
   rw_tps="$(_num_or_empty "$1")"
   rw_p95="$(_num_or_empty "$2")"
   vcpus="$(_num_or_empty "$3")"
@@ -1773,20 +1813,47 @@ _boa_grade_db_oltp() {
 
   per_core="$(awk -v t="${rw_tps}" -v c="${norm_cores}" 'BEGIN{if(c>0) printf "%.2f", t/c; else print ""}')"
 
+  # Base grade (strict thresholds)
   if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<250 || l>=25)}' 2>/dev/null; then
-    echo "poor"; return
-  fi
-  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
-    echo "average"; return
-  fi
-  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
-    echo "good"; return
-  fi
-  if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<900 || l>=7)}' 2>/dev/null; then
-    echo "excellent"; return
+    grade="poor"
+  elif awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<400 || l>=15)}' 2>/dev/null; then
+    grade="average"
+  elif awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p<600 || l>=10)}' 2>/dev/null; then
+    grade="good"
+  else
+    # Excellent vs Ultra split (strict)
+    if awk -v p="${per_core}" -v l="${rw_p95}" 'BEGIN{exit !(p>=900 && l<7)}' 2>/dev/null; then
+      grade="ultra"
+    else
+      grade="excellent"
+    fi
   fi
 
-  echo "ultra"
+  # Soft promotion windows near upper boundaries (strict by default; forgiving only at the very top of a band)
+  if [ "${grade}" = "good" ]; then
+    # Promote good->excellent if TPS/core is within top pct of [400..600) AND latency is already in the excellent range (<10ms).
+    if awk -v p="${per_core}" -v l="${rw_p95}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
+      p_near = 600 - (pct * (600-400));
+      exit !(p>=p_near && l<10);
+    }' 2>/dev/null; then
+      grade="excellent"
+    fi
+  fi
+
+  if [ "${grade}" = "excellent" ]; then
+    # Promote excellent->ultra if very close to the ultra split on BOTH dimensions:
+    # - TPS/core in top pct of [600..900)
+    # - latency within a small band above 7ms
+    if awk -v p="${per_core}" -v l="${rw_p95}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
+      p_near = 900 - (pct * (900-600));
+      l_near = 7 + (pct * (10-7));
+      exit !(p>=p_near && l<l_near);
+    }' 2>/dev/null; then
+      grade="ultra"
+    fi
+  fi
+
+  echo "${grade}"
 }
 
 _boa_grade_disk_final() {
@@ -1912,12 +1979,27 @@ _boa_grade_disk_final() {
     esac
   fi
 
+  # Save pre-cap grade (for near-boundary soft promotion when cap barely misses)
+  local grade_pre_cap="${grade}"
+
   # Apply DB-realistic cap (prevents “excellent” on high-tail storage)
   if [ -n "${cap_grade}" ]; then
     local gr=$(_grade_rank "${grade}")
     local cr=$(_grade_rank "${cap_grade}")
     if [ "${gr}" -gt "${cr}" ]; then
       grade="${cap_grade}"
+    fi
+    # Near-boundary soft promotion: if we reached "excellent" but cap missed slightly,
+    # allow the final grade to stay "excellent" only when multiple independent signals agree.
+    if [ "${grade_pre_cap}" = "excellent" ] && [ "${grade}" = "good" ] && [ "${cap_grade}" = "good" ] \
+      && [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
+      if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
+        'BEGIN{exit !(f<=2.6 && r<=0.6 && w<=0.6 && io<=260)}' 2>/dev/null; then
+        if awk -v ri="${read_iops}" -v wi="${write_iops}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" \
+          'BEGIN{exit !((ri>=50000 && wi>=50000) || sr>=3000 || sw>=900)}' 2>/dev/null; then
+          grade="excellent"
+        fi
+      fi
     fi
   fi
 
