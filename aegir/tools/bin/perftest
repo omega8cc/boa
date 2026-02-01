@@ -1696,10 +1696,10 @@ _boa_grade_mem_final() {
       fi
     fi
 
-    # Latency-led caps (calibrated from real v9 fleet distribution):
-    #   - >140ns: cap ultra/excellent to good
-    #   - >165ns: cap ultra/excellent to good (still production-worthy, but not top tier)
-    #   - >200ns: cap to average (typically noisy-neighbor/NUMA/host contention)
+    # Latency-led caps (widened to avoid harsh demotions on high-throughput / many-core hosts):
+    #   - >200ns: cap to average (typically contention/NUMA/host noise)
+    #   - 165-200ns: cap ultra/excellent to good, BUT allow "excellent" when bandwidth is ultra-class
+    #   - 140-165ns: cap ultra -> excellent (keep excellent)
     #   - >=260ns: treat as low ONLY when bandwidth is also weak
     if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>=260)}' 2>/dev/null; then
       # If bandwidth is strong, this is likely a contention outlier rather than "bad RAM".
@@ -1714,11 +1714,16 @@ _boa_grade_mem_final() {
       fi
     elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>165)}' 2>/dev/null; then
       if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
-        grade="good"
+        # If bandwidth is clearly ultra-class, keep "excellent" even with 165-200ns latency.
+        if awk -v b="${mem_bw_mibps}" -v t="${thr_ultra}" 'BEGIN{exit !(b>=t)}' 2>/dev/null; then
+          grade="excellent"
+        else
+          grade="good"
+        fi
       fi
     elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>140)}' 2>/dev/null; then
-      if [ "${grade}" = "ultra" ] || [ "${grade}" = "excellent" ]; then
-        grade="good"
+      if [ "${grade}" = "ultra" ]; then
+        grade="excellent"
       fi
     fi
   fi
@@ -1727,7 +1732,7 @@ _boa_grade_mem_final() {
   if [ -n "${mem_bw_mibps}" ]; then
     if [ "${grade}" = "good" ]; then
       # Promote good->excellent only when latency isn't the limiting factor.
-      if [ -z "${mem_latency_ns}" ] || awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=140)}' 2>/dev/null; then
+      if [ -z "${mem_latency_ns}" ] || awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=165)}' 2>/dev/null; then
         if awk -v b="${mem_bw_mibps}" -v g="${thr_good}" -v e="${thr_exc}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
           thr = e - (pct * (e-g));
           exit !(b>=thr);
@@ -1913,8 +1918,11 @@ _boa_grade_disk_final() {
 
   # Check if we have both read and write
   if [ -n "${seq_read_mbps}" ] && [ -n "${seq_write_mbps}" ]; then
+    # ULTRA: top-tier NVMe (write > 3000 AND read > 5000)
+    if awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>3000 && sr>5000)}' 2>/dev/null; then
+      grade="ultra"
     # EXCELLENT: NVMe-class (write > 1000 AND read > 2000)
-    if awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>1000 && sr>2000)}' 2>/dev/null; then
+    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>1000 && sr>2000)}' 2>/dev/null; then
       grade="excellent"
     # GOOD: Healthy SSD (write > 500 AND read > 1000)
     elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>500 && sr>1000)}' 2>/dev/null; then
@@ -1936,6 +1944,7 @@ _boa_grade_disk_final() {
       average) echo 2 ;;
       good) echo 3 ;;
       excellent) echo 4 ;;
+      ultra) echo 5 ;;
       *) echo 1 ;;
     esac
   }
@@ -1947,6 +1956,7 @@ _boa_grade_disk_final() {
       2) echo average ;;
       3) echo good ;;
       4) echo excellent ;;
+      5) echo ultra ;;
       *) echo poor ;;
     esac
   }
@@ -1954,7 +1964,9 @@ _boa_grade_disk_final() {
   # Compute DB-realistic cap from QD1+fsync (if available)
   local cap_grade=""
   if [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
-    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}"       'BEGIN{exit !(f<=2 && r<=0.5 && w<=0.5 && io<=200)}' 2>/dev/null; then
+    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}"       'BEGIN{exit !(f<=1.5 && r<=0.3 && w<=0.3 && io<=150)}' 2>/dev/null; then
+      cap_grade="ultra"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}"       'BEGIN{exit !(f<=2 && r<=0.5 && w<=0.5 && io<=200)}' 2>/dev/null; then
       cap_grade="excellent"
     elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}"       'BEGIN{exit !(f<=5 && r<=1.0 && w<=1.0)}' 2>/dev/null; then
       cap_grade="good"
@@ -1969,7 +1981,7 @@ _boa_grade_disk_final() {
   if [ -n "${read_iops}" ] && [ -n "${write_iops}" ]; then
     if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>10000 && wi>10000)}' 2>/dev/null; then
       local r=$(_grade_rank "${grade}")
-      if [ "${r}" -lt 4 ]; then
+      if [ "${r}" -lt 5 ]; then
         r=$((r+1))
         grade="$(_rank_to_grade "${r}")"
       fi
@@ -2339,6 +2351,8 @@ _print_disk_compact_section() {
     echo "   🌟  Good disk performance for BOA workloads"
   elif [ "${_disk_grade}" = "excellent" ]; then
     echo "   🏆  Excellent disk performance (NVMe-class)"
+  elif [ "${_disk_grade}" = "ultra" ]; then
+    echo "   🚀  Ultra disk performance (top-tier NVMe)"
   fi
   echo ""
 }
