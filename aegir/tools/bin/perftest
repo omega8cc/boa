@@ -1680,6 +1680,22 @@ _boa_grade_mem_final() {
       fi
     fi
 
+    # Near-excellent latency grace window:
+    # Small measurement variance (e.g., 115ns vs 120ns) should not swing two full tiers
+    # when bandwidth is solidly in the upper part of the current band.
+    # If latency is close to excellent (<=130ns) and bandwidth is in the upper ~55% of the "average" band,
+    # treat it as excellent.
+    if awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=130)}' 2>/dev/null; then
+      if [ "${grade}" = "average" ] || [ "${grade}" = "good" ]; then
+        if awk -v b="${mem_bw_mibps}" -v a="${thr_avg}" -v g="${thr_good}" 'BEGIN{
+          thr = a + (0.45 * (g-a));
+          exit !(b>=thr);
+        }' 2>/dev/null; then
+          grade="excellent"
+        fi
+      fi
+    fi
+
     # Latency-led caps (calibrated from real v9 fleet distribution):
     #   - >140ns: cap ultra/excellent to good
     #   - >165ns: cap ultra/excellent to good (still production-worthy, but not top tier)
@@ -1707,32 +1723,32 @@ _boa_grade_mem_final() {
     fi
   fi
 
-# Soft promotion near upper bandwidth boundaries (strict by default; forgiving only near the top of a band)
-if [ -n "${mem_bw_mibps}" ]; then
-  if [ "${grade}" = "good" ]; then
-    # Promote good->excellent only when latency isn't the limiting factor.
-    if [ -z "${mem_latency_ns}" ] || awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=140)}' 2>/dev/null; then
-      if awk -v b="${mem_bw_mibps}" -v g="${thr_good}" -v e="${thr_exc}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
-        thr = e - (pct * (e-g));
-        exit !(b>=thr);
-      }' 2>/dev/null; then
-        grade="excellent"
+  # Soft promotion near upper bandwidth boundaries (strict by default; forgiving only near the top of a band)
+  if [ -n "${mem_bw_mibps}" ]; then
+    if [ "${grade}" = "good" ]; then
+      # Promote good->excellent only when latency isn't the limiting factor.
+      if [ -z "${mem_latency_ns}" ] || awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=140)}' 2>/dev/null; then
+        if awk -v b="${mem_bw_mibps}" -v g="${thr_good}" -v e="${thr_exc}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
+          thr = e - (pct * (e-g));
+          exit !(b>=thr);
+        }' 2>/dev/null; then
+          grade="excellent"
+        fi
       fi
     fi
-  fi
 
-  if [ "${grade}" = "excellent" ]; then
-    # Promote excellent->ultra only when latency isn't the limiting factor.
-    if [ -z "${mem_latency_ns}" ] || awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=140)}' 2>/dev/null; then
-      if awk -v b="${mem_bw_mibps}" -v e="${thr_exc}" -v u="${thr_ultra}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
-        thr = u - (pct * (u-e));
-        exit !(b>=thr);
-      }' 2>/dev/null; then
-        grade="ultra"
+    if [ "${grade}" = "excellent" ]; then
+      # Promote excellent->ultra only when latency isn't the limiting factor.
+      if [ -z "${mem_latency_ns}" ] || awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l<=140)}' 2>/dev/null; then
+        if awk -v b="${mem_bw_mibps}" -v e="${thr_exc}" -v u="${thr_ultra}" -v pct="${_GRADE_NEAR_BAND_PCT}" 'BEGIN{
+          thr = u - (pct * (u-e));
+          exit !(b>=thr);
+        }' 2>/dev/null; then
+          grade="ultra"
+        fi
       fi
     fi
   fi
-fi
 
   echo "${grade}"
 }
@@ -1999,6 +2015,19 @@ _boa_grade_disk_final() {
           'BEGIN{exit !((ri>=50000 && wi>=50000) || sr>=3000 || sw>=900)}' 2>/dev/null; then
           grade="excellent"
         fi
+      fi
+    fi
+  fi
+
+  # Near-boundary soft floor: if cap demoted to "average" only because fsync p99 barely exceeds the "good" cap,
+  # allow the final grade to be at least "good" when multiple independent signals agree.
+  if [ "${grade}" = "average" ] && [ "${cap_grade}" = "average" ] \
+    && [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
+    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
+      'BEGIN{exit !(f<=6.5 && r<=1.0 && w<=1.2 && io<=260)}' 2>/dev/null; then
+      if awk -v ri="${read_iops}" -v wi="${write_iops}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" \
+        'BEGIN{exit !((ri>=20000 && wi>=20000) || sr>=2500 || sw>=900)}' 2>/dev/null; then
+        grade="good"
       fi
     fi
   fi
