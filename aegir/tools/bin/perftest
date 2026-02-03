@@ -6,6 +6,10 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export LC_ALL=C
 export LANG=C
 
+### Avoid too many questions
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+
 # Tunables
 _PHP_BENCH_ITERATIONS=50000 # per process
 _PHP_BENCH_RUNS=5 # single-thread runs for median
@@ -142,9 +146,15 @@ _find_fast_mirror_early() {
 # Function to check if a package is installed
 _check_and_install_package() {
   # $1 = package name
+  if [ "${1}" = "iperf3" ]; then
+    printf 'iperf3 iperf3/start_daemon boolean false\n' | debconf-set-selections >/dev/null 2>&1 || true
+  fi
   if ! dpkg -s "$1" >/dev/null 2>&1; then
     echo "Installing package: $1"
-    apt-get install -y "$1" >/dev/null 2>&1
+    apt-get install -y -qq --no-install-recommends \
+      -o Dpkg::Options::=--force-confdef \
+      -o Dpkg::Options::=--force-confold \
+      "$1" </dev/null >/dev/null 2>&1 || true
   fi
 }
 
@@ -3204,7 +3214,7 @@ grep -qE '^TCP_OUT[[:space:]]*=[[:space:]]*".*\b5201\b' /etc/csf/csf.conf || { s
 sleep 15
 
 # Update package list silently
-apt-get update -qq >/dev/null 2>&1
+apt-get update -qq >/dev/null 2>&1 || true
 
 # Required packages
 _check_and_install_package "curl"
