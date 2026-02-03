@@ -1232,11 +1232,6 @@ _run_ipv4_net_check() {
   fi
 
   # iPerf3 port throughput (best-effort; multiple regions; median of successes)
-  # Attempt to install iperf3 if missing (perftest already installs other deps)
-  if ! command -v iperf3 >/dev/null 2>&1; then
-    _check_and_install_package "iperf3"
-    grep -qE '^TCP_OUT[[:space:]]*=[[:space:]]*".*\b5201\b' /etc/csf/csf.conf || { sed -i -E 's/^(TCP_OUT[[:space:]]*=[[:space:]]*"[^"]*)"/\1,5201:5209"/' /etc/csf/csf.conf && csf -r; }
-  fi
 
   if command -v iperf3 >/dev/null 2>&1; then
     local _cand entry _n _h _p res dl_mbps ul_mbps ok
@@ -3205,6 +3200,7 @@ echo ""
 echo "Starting extended performance tests, please wait..."
 echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes.."
 _cron_stop_quiet
+grep -qE '^TCP_OUT[[:space:]]*=[[:space:]]*".*\b5201\b' /etc/csf/csf.conf || { sed -i -E 's/^(TCP_OUT[[:space:]]*=[[:space:]]*"[^"]*)"/\1,5201:5209"/' /etc/csf/csf.conf && csf -r; }
 sleep 15
 
 # Update package list silently
@@ -3217,6 +3213,7 @@ _check_and_install_package "fio"
 _check_and_install_package "jq"
 _check_and_install_package "sysstat" # mpstat
 _check_and_install_package "bc"
+_check_and_install_package "iperf3"
 _ensure_sysbench
 
 # Basic system info
