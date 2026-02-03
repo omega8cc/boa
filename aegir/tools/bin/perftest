@@ -839,6 +839,16 @@ _bps_to_mibps_pretty() {
   awk '{ if (NR>0) printf "%.2f MiB/s", $0 / 1024 / 1024; else printf "error" }'
 }
 
+# Convert bytes/sec to Mbit/s (numeric only; decimal megabits, 10^6)
+_bps_to_mbitps_num() {
+  awk '{ if (NR>0) printf "%.2f", ($0*8)/1000000 }'
+}
+
+# Convert bytes/sec to pretty "X.XX Mbit/s"
+_bps_to_mbitps_pretty() {
+  awk '{ if (NR>0) printf "%.2f Mbit/s", ($0*8)/1000000; else printf "error" }'
+}
+
 _redact_ip() {
   case "$1" in
     *.*) printf '%s.xxxx' "$(printf '%s\n' "$1" | cut -d . -f 1-3)" ;;
@@ -872,7 +882,7 @@ _download_benchmark_v4() {
 
   local out http_code size_download speed_bps time_total
 
-  out="$(curl -4 -A "perftest/v45" -sL --retry 1 --retry-delay 0 --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
+  out="$(curl -4 -A "perftest/v46" -sL --retry 1 --retry-delay 0 --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
     -w '%{http_code} %{size_download} %{speed_download} %{time_total}\n' "${url}" 2>/dev/null)"
 
   [ -n "${out}" ] || return 0
@@ -1157,10 +1167,14 @@ _net_region_from_city() {
 _run_ipv4_net_check() {
   _net_ipv4="N/A"
   _net_download="N/A"
+  _net_download_mibps_num=""
+  _net_download_mbps_num=""
   _net_http_ok="0"
   _net_http_total="0"
   _net_iperf_dl="N/A"
   _net_iperf_ul="N/A"
+  _net_iperf_dl_mbps_med=""
+  _net_iperf_ul_mbps_med=""
   _net_region="GLOBAL"
   _net_region_pretty="GLOBAL (unknown)"
 
@@ -1318,7 +1332,7 @@ _run_ipv4_net_check() {
       bytes="$(printf '%s\n' "${line}" | cut -d'|' -f2)"
       ttotal="$(printf '%s\n' "${line}" | cut -d'|' -f3)"
       code="$(printf '%s\n' "${line}" | cut -d'|' -f4)"
-      pretty="$(printf '%s\n' "${bps}" | _bps_to_mibps_pretty)"
+      pretty="$(printf '%s\n' "${bps}" | _bps_to_mbitps_pretty)"
       _net_dl_pretty+=("${pretty}")
       _net_dl_bps+=("${bps}")
       _net_dl_bytes+=("${bytes}")
@@ -1345,8 +1359,12 @@ _run_ipv4_net_check() {
   med_bps="$(_median_num "${_ok_bps[@]}")"
 
   if printf '%s' "${med_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
-    _net_download="$(printf '%s\n' "${med_bps}" | _bps_to_mibps_pretty) (median ${_net_http_ok}/${_net_http_total})"
+    _net_download_mibps_num="$(printf '%s\n' "${med_bps}" | _bps_to_mibps_num)"
+    _net_download_mbps_num="$(printf '%s\n' "${med_bps}" | _bps_to_mbitps_num)"
+    _net_download="$(printf '%s\n' "${med_bps}" | _bps_to_mbitps_pretty) (median ${_net_http_ok}/${_net_http_total})"
   else
+    _net_download_mibps_num=""
+    _net_download_mbps_num=""
     _net_download="error"
   fi
 
@@ -1407,9 +1425,11 @@ _run_ipv4_net_check() {
       _dl_med="$(_median_num "${_net_iperf_dl_mbps[@]}")"
       _ul_med="$(_median_num "${_net_iperf_ul_mbps[@]}")"
       if printf '%s' "${_dl_med}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+        _net_iperf_dl_mbps_med="${_dl_med}"
         _net_iperf_dl="${_dl_med} Mbit/s"
       fi
       if printf '%s' "${_ul_med}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+        _net_iperf_ul_mbps_med="${_ul_med}"
         _net_iperf_ul="${_ul_med} Mbit/s"
       fi
     fi
@@ -1833,13 +1853,27 @@ _num_or_empty() {
 }
 
 _median_num() {
-  # Median of numeric arguments (prints empty if no valid inputs)
-  # Uses simple sort; intended for small N (default repeats=3).
+  # Median of numeric arguments (prints empty if no valid inputs).
+  # Proper even/odd handling:
+  #  - odd  N: middle element
+  #  - even N: average of the two middle elements
   if [ "$#" -eq 0 ]; then
     echo ""
     return
   fi
-  printf '%s\n' "$@" | awk 'NF{print}' | sort -n | awk '{a[NR]=$1} END{if(NR==0){print ""; exit} mid=int((NR+1)/2); printf "%.3f", a[mid]}'
+  printf '%s\n' "$@" | awk 'NF{print}' | sort -n | awk '{
+      a[NR]=$1
+    }
+    END{
+      if(NR==0){print ""; exit}
+      if(NR%2==1){
+        mid=(NR+1)/2
+        printf "%.3f", a[mid]
+      } else {
+        mid=NR/2
+        printf "%.3f", (a[mid]+a[mid+1])/2
+      }
+    }'
 }
 
 _max_num() {
@@ -2373,16 +2407,50 @@ _boa_grade_disk_final() {
   echo "${grade}"
 }
 
-_boa_grade_network() {
-  # input: numeric MiB/s
+_boa_grade_network_http() {
+  # input: numeric Mbit/s (HTTP range pull median)
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
-    else if (n>=150) print "ultra";
-    else if (n>=100) print "excellent";
-    else if (n>=75) print "good";
-    else if (n>=50) print "average";
+    else if (n>=2000) print "ultra";       # ~2 Gbit/s+
+    else if (n>=1000) print "excellent";   # ~1 Gbit/s+
+    else if (n>=300) print "good";         # ~300 Mbit/s+
+    else if (n>=100) print "average";      # ~100 Mbit/s+
     else print "poor";
   }'
+}
+
+_boa_grade_network_tcp() {
+  # input: numeric Mbit/s (iPerf3 DL median)
+  awk -v n="$1" 'BEGIN{
+    if (n=="" || n=="N/A") print "unknown";
+    else if (n>=10000) print "ultra";      # 10 Gbit/s+
+    else if (n>=5000) print "excellent";   # 5 Gbit/s+
+    else if (n>=2000) print "good";        # 2 Gbit/s+
+    else if (n>=500) print "average";      # 500 Mbit/s+
+    else print "poor";
+  }'
+}
+
+_boa_grade_network_rank() {
+  case "$1" in
+    ultra) echo 5 ;;
+    excellent) echo 4 ;;
+    good) echo 3 ;;
+    average) echo 2 ;;
+    poor) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
+
+_boa_grade_network_from_rank() {
+  case "$1" in
+    5) echo "ultra" ;;
+    4) echo "excellent" ;;
+    3) echo "good" ;;
+    2) echo "average" ;;
+    1) echo "poor" ;;
+    *) echo "unknown" ;;
+  esac
 }
 
 _boa_guess_storage_tier() {
@@ -2731,7 +2799,7 @@ _print_grading_summary() {
   echo ""
 
   # Extract numeric values
-  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps _mt_note
+  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps net_mbps net_tcp_dl_mbps _mt_note
   local rand_read_lat seq_read_mbps seq_write_mbps ioping_avg_us meta_ops_num
   local read_iops write_iops
 
@@ -2741,7 +2809,9 @@ _print_grading_summary() {
   st_eps="$(_num_or_empty "${_cpu_events_ST}")"
   mt_eps="$(_num_or_empty "${_cpu_events_MT_NPROC}")"
   aes_mibps="$(_num_or_empty "$(echo "${_aes_mibps}" | awk '{print $1}')")"
-  net_mibps="$(_num_or_empty "$(echo "${_net_download}" | awk '{print $1}')")"
+  net_mibps="$(_num_or_empty "${_net_download_mibps_num}")"
+  net_mbps="$(_num_or_empty "${_net_download_mbps_num}")"
+  net_tcp_dl_mbps="$(_num_or_empty "${_net_iperf_dl_mbps_med}")"
 
   rand_read_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
   seq_read_mbps="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
@@ -2754,7 +2824,7 @@ _print_grading_summary() {
   ioping_avg_us="$(_parse_ioping_avg_us "${_ioping_seek}")"
 
   # Calculate grades
-  local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade
+  local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade net_http_grade net_tcp_grade net_note net_grade_rank _http_rank _tcp_rank
   mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads_grade:-${_mem_bench_threads}}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
@@ -2763,7 +2833,31 @@ _print_grading_summary() {
   root_qd1_fsync_p95_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p95_write}" | awk "{print \$1}")")"
   root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
   disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p95_w_num}")"
-  net_grade="$(_boa_grade_network "${net_mibps}")"
+  net_http_grade="$(_boa_grade_network_http "${net_mbps}")"
+  net_tcp_grade="$(_boa_grade_network_tcp "${net_tcp_dl_mbps}")"
+
+  _http_rank="$(_boa_grade_network_rank "${net_http_grade}")"
+  _tcp_rank="$(_boa_grade_network_rank "${net_tcp_grade}")"
+
+  # Overall network grade: if TCP is strong but HTTP is weak, cap the penalty at "average"
+  # (common when some public endpoints are slow or variable).
+  net_grade_rank="0"
+  net_note=""
+  if [ "${_tcp_rank}" -ge 3 ] && [ "${_http_rank}" -le 2 ]; then
+    net_grade_rank="2"
+    net_note="HTTP slower than TCP (variable routing/CDN)"
+  elif [ "${_tcp_rank}" -gt 0 ] && [ "${_http_rank}" -gt 0 ]; then
+    if [ "${_http_rank}" -le "${_tcp_rank}" ]; then
+      net_grade_rank="${_http_rank}"
+    else
+      net_grade_rank="${_tcp_rank}"
+    fi
+  elif [ "${_tcp_rank}" -gt 0 ]; then
+    net_grade_rank="${_tcp_rank}"
+  else
+    net_grade_rank="${_http_rank}"
+  fi
+  net_grade="$(_boa_grade_network_from_rank "${net_grade_rank}")"
 
   # Database grade (optional; only if DB test ran)
   db_grade="unknown"
@@ -2917,6 +3011,13 @@ _print_grading_summary() {
     printf "   Region:             %s
 " "${_net_region_pretty}"
     printf "   HTTP download:      %-15s [%s]\n" "${_net_download}" "${net_grade}"
+    echo ""
+    if [ -n "${net_http_grade}" ] && [ -n "${net_tcp_grade}" ] && [ "${net_tcp_grade}" != "unknown" ]; then
+      printf "   Grades:             HTTP %s | TCP %s\n" "${net_http_grade}" "${net_tcp_grade}"
+    fi
+    if [ -n "${net_note}" ]; then
+      printf "   Note:               %s\n" "${net_note}"
+    fi
     printf "   Score: median of %s/%s single-stream Range pulls (~10 MiB, timeout %ss)\n" "${_net_http_ok}" "${_net_http_total}" "${_NET_TIMEOUT}"
     if [ "${#_net_dl_name[@]}" -gt 0 ]; then
       local _i
@@ -2927,6 +3028,7 @@ _print_grading_summary() {
       done
       if [ "${_NET_IPERF_ENABLED}" = "YES" ]; then
         if [ "${#_net_iperf_name[@]}" -gt 0 ]; then
+          echo ""
           printf "   iPerf3 (TCP) median: DL %s | UL %s (%s servers, %s streams, %ss)\n" "${_net_iperf_dl}" "${_net_iperf_ul}" "${#_net_iperf_name[@]}" "${_NET_IPERF_PARALLEL}" "${_NET_IPERF_TIME}"
           _i=0
           while [ "${_i}" -lt "${#_net_iperf_name[@]}" ]; do
