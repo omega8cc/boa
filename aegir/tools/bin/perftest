@@ -45,6 +45,10 @@ _FIO_QD1_FSYNC_REPEATS=3 # repeats for QD=1 fsync tests to reduce noise (median-
 _METADATA_FILE_COUNT=5000 # small-file ops per mount
 _GRADE_NEAR_BAND_PCT=0.10 # top-of-band promotion window (10%); keeps grades strict but not harsh near upper boundaries
 _NET_TIMEOUT=10 # seconds for curl speedtest
+_NET_IPERF_TIME=8 # seconds per iperf3 direction
+_NET_IPERF_TIMEOUT=15 # seconds hard timeout wrapper for iperf3
+_NET_IPERF_PARALLEL=4 # iperf3 parallel streams
+_NET_IPERF_MAX_SERVERS=3 # max iperf3 servers to test
 _AES_TEST_MIB=500 # MiB encrypted for AES throughput test
 _IOPING_SECONDS=5 # seconds for ioping checks
 
@@ -889,6 +893,56 @@ _download_benchmark_v4() {
   printf '%s|%s|%s|%s\n' "${speed_bps}" "${size_download}" "${time_total}" "${http_code}"
 }
 
+_iperf3_benchmark_v4() {
+  # Best-effort iPerf3 TCP throughput probe (IPv4), download + upload.
+  #
+  # Args:
+  #   $1 = host
+  #   $2 = port (optional; default 5201)
+  #
+  # Output (on success):
+  #   dl_mbps|ul_mbps
+  #
+  # Output (on failure): empty line
+  local host="${1}"
+  local port="${2:-5201}"
+
+  if [ -z "${host}" ]; then
+    return 0
+  fi
+
+  if ! command -v iperf3 >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local dl ul _cmd _out
+
+  # Download (client receives) uses reverse mode (-R)
+  if command -v timeout >/dev/null 2>&1; then
+    _out="$(timeout "${_NET_IPERF_TIMEOUT}s" iperf3 -4 -f m -c "${host}" -p "${port}" -P "${_NET_IPERF_PARALLEL}" -t "${_NET_IPERF_TIME}" -R 2>/dev/null)"
+  else
+    _out="$(iperf3 -4 -f m -c "${host}" -p "${port}" -P "${_NET_IPERF_PARALLEL}" -t "${_NET_IPERF_TIME}" -R 2>/dev/null)"
+  fi
+  dl="$(printf '%s\n' "${_out}" | awk '/receiver/ {v=$(NF-2)} END{print v}')"
+
+  # Upload (client sends)
+  if command -v timeout >/dev/null 2>&1; then
+    _out="$(timeout "${_NET_IPERF_TIMEOUT}s" iperf3 -4 -f m -c "${host}" -p "${port}" -P "${_NET_IPERF_PARALLEL}" -t "${_NET_IPERF_TIME}" 2>/dev/null)"
+  else
+    _out="$(iperf3 -4 -f m -c "${host}" -p "${port}" -P "${_NET_IPERF_PARALLEL}" -t "${_NET_IPERF_TIME}" 2>/dev/null)"
+  fi
+  ul="$(printf '%s\n' "${_out}" | awk '/receiver/ {v=$(NF-2)} END{print v}')"
+
+  if ! printf '%s' "${dl}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    return 0
+  fi
+  if ! printf '%s' "${ul}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    return 0
+  fi
+
+  printf '%s|%s\n' "${dl}" "${ul}"
+}
+
 # Best-effort ioping setup
 _ensure_ioping() {
   if command -v ioping >/dev/null 2>&1; then
@@ -1045,8 +1099,12 @@ _run_aes_throughput_test() {
 _run_ipv4_net_check() {
   _net_ipv4="N/A"
   _net_download="N/A"
+  _net_http_ok="0"
+  _net_http_total="0"
+  _net_iperf_dl="N/A"
+  _net_iperf_ul="N/A"
 
-  # Per-test results (used later by output sections)
+  # Per-test HTTP results (used later by output sections)
   _net_dl_name=()
   _net_dl_url=()
   _net_dl_pretty=()
@@ -1054,19 +1112,39 @@ _run_ipv4_net_check() {
   _net_dl_bytes=()
   _net_dl_time=()
   _net_dl_http=()
-  _net_dl_top2=""
+
+  # Per-test iPerf3 results
+  _net_iperf_name=()
+  _net_iperf_host=()
+  _net_iperf_port=()
+  _net_iperf_dl_mbps=()
+  _net_iperf_ul_mbps=()
 
   local ip
   ip="$(_get_public_ipv4)"
   [ -n "${ip}" ] || return 0
   _net_ipv4="$(_redact_ip "${ip}")"
 
-  # Fixed URLs + BOA mirror (region-aware via custom speed test)
-  local cf_url cachefly_url gh_url boa_url
-  cf_url="https://speed.cloudflare.com/__down?bytes=104857600"
-  cachefly_url="http://cachefly.cachefly.net/100mb.test"
-  gh_url="https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf"
+  # Stable HTTP endpoints (Range pulls; avoids "speedtest" bot blocks)
+  # Hetzner region endpoints
+  local h_nbg h_fsn h_ash
+  h_nbg="https://nbg1-speed.hetzner.com/100MB.bin"
+  h_fsn="https://fsn1-speed.hetzner.com/100MB.bin"
+  h_ash="https://ash-speed.hetzner.com/100MB.bin"
 
+  # OVH proof file
+  local ovh_100m
+  ovh_100m="https://proof.ovh.net/files/100Mb.dat"
+
+  # Leaseweb speedtest files (multi-region)
+  local lw_ams lw_fra lw_wdc lw_syd
+  lw_ams="https://speedtest.ams1.nl.leaseweb.net/100mb.bin"
+  lw_fra="https://speedtest.fra1.de.leaseweb.net/100mb.bin"
+  lw_wdc="https://speedtest.wdc2.us.leaseweb.net/100mb.bin"
+  lw_syd="https://speedtest.syd12.au.leaseweb.net/100mb.bin"
+
+  # Optional BOA mirror
+  local boa_url
   boa_url=""
   _find_fast_mirror_early
   if [ -n "${_urlDld}" ]; then
@@ -1078,17 +1156,28 @@ _run_ipv4_net_check() {
   min_bytes=1048576
   range_end=10485759
 
-  # Append tests in a stable order
-  _net_dl_name+=("Cloudflare")
-  _net_dl_url+=("${cf_url}")
-  _net_dl_name+=("CacheFly")
-  _net_dl_url+=("${cachefly_url}")
-  _net_dl_name+=("GitHub")
-  _net_dl_url+=("${gh_url}")
-  _net_dl_name+=("BOA")
+  # Append tests in a stable order (more than 3 sources to reduce false swings)
+  _net_dl_name+=("Hetzner NBG1")
+  _net_dl_url+=("${h_nbg}")
+  _net_dl_name+=("Hetzner FSN1")
+  _net_dl_url+=("${h_fsn}")
+  _net_dl_name+=("Hetzner ASH")
+  _net_dl_url+=("${h_ash}")
+  _net_dl_name+=("OVH proof")
+  _net_dl_url+=("${ovh_100m}")
+  _net_dl_name+=("Leaseweb AMS")
+  _net_dl_url+=("${lw_ams}")
+  _net_dl_name+=("Leaseweb FRA")
+  _net_dl_url+=("${lw_fra}")
+  _net_dl_name+=("Leaseweb WDC")
+  _net_dl_url+=("${lw_wdc}")
+  _net_dl_name+=("Leaseweb SYD")
+  _net_dl_url+=("${lw_syd}")
+  _net_dl_name+=("BOA mirror")
   _net_dl_url+=("${boa_url}")
 
   local i name url line bps bytes ttotal code pretty
+  local _ok_bps=()
   i=0
   while [ "${i}" -lt "${#_net_dl_name[@]}" ]; do
     name="${_net_dl_name[${i}]}"
@@ -1103,7 +1192,7 @@ _run_ipv4_net_check() {
       continue
     fi
 
-    _log "Network test: ${name} (${url})"
+    _log "Network HTTP test: ${name} (${url})"
     line="$(_download_benchmark_v4 "${url}" "${min_bytes}" "${range_end}")"
     if [ -n "${line}" ]; then
       bps="$(printf '%s\n' "${line}" | cut -d'|' -f1)"
@@ -1116,6 +1205,9 @@ _run_ipv4_net_check() {
       _net_dl_bytes+=("${bytes}")
       _net_dl_time+=("${ttotal}")
       _net_dl_http+=("${code}")
+      if printf '%s' "${bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+        _ok_bps+=("${bps}")
+      fi
     else
       _net_dl_pretty+=("error")
       _net_dl_bps+=("")
@@ -1126,37 +1218,75 @@ _run_ipv4_net_check() {
     i=$((i + 1))
   done
 
-  # Score = average of the best 2 successful tests (bytes/sec)
-  local ranked rank_cnt best1_bps best2_bps best1_idx best2_idx avg_bps
-  ranked="$(for i in "${!_net_dl_bps[@]}"; do
-    if printf '%s' "${_net_dl_bps[${i}]}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
-      printf '%s|%s\n' "${_net_dl_bps[${i}]}" "${i}"
-    fi
-  done | sort -t'|' -k1,1nr)"
+  _net_http_total="${#_net_dl_name[@]}"
+  _net_http_ok="${#_ok_bps[@]}"
 
-  rank_cnt="$(printf '%s\n' "${ranked}" | grep -c '|' 2>/dev/null || echo 0)"
+  # Score = median of successful HTTP pulls (bytes/sec)
+  local med_bps
+  med_bps="$(_median_num "${_ok_bps[@]}")"
 
-  if [ "${rank_cnt}" -ge 2 ]; then
-    best1_bps="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f1)"
-    best1_idx="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f2)"
-    best2_bps="$(printf '%s\n' "${ranked}" | head -n 2 | tail -n 1 | cut -d'|' -f1)"
-    best2_idx="$(printf '%s\n' "${ranked}" | head -n 2 | tail -n 1 | cut -d'|' -f2)"
-    avg_bps="$(awk -v a="${best1_bps}" -v b="${best2_bps}" 'BEGIN{printf "%.2f",(a+b)/2}')"
-    _net_dl_top2="${_net_dl_name[${best1_idx}]} + ${_net_dl_name[${best2_idx}]}"
-  elif [ "${rank_cnt}" -eq 1 ]; then
-    best1_bps="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f1)"
-    best1_idx="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f2)"
-    avg_bps="${best1_bps}"
-    _net_dl_top2="${_net_dl_name[${best1_idx}]}"
-  else
-    avg_bps=""
-    _net_dl_top2=""
-  fi
-
-  if printf '%s' "${avg_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
-    _net_download="$(printf '%s\n' "${avg_bps}" | _bps_to_mibps_pretty) (avg best 2/4)"
+  if printf '%s' "${med_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    _net_download="$(printf '%s\n' "${med_bps}" | _bps_to_mibps_pretty) (median ${_net_http_ok}/${_net_http_total})"
   else
     _net_download="error"
+  fi
+
+  # iPerf3 port throughput (best-effort; multiple regions; median of successes)
+  # Attempt to install iperf3 if missing (perftest already installs other deps)
+  if ! command -v iperf3 >/dev/null 2>&1; then
+    _check_and_install_package "iperf3"
+    grep -qE '^TCP_OUT[[:space:]]*=[[:space:]]*".*\b5201\b' /etc/csf/csf.conf || { sed -i -E 's/^(TCP_OUT[[:space:]]*=[[:space:]]*"[^"]*)"/\1,5201:5209"/' /etc/csf/csf.conf && csf -r; }
+  fi
+
+  if command -v iperf3 >/dev/null 2>&1; then
+    local _cand entry _n _h _p res dl_mbps ul_mbps ok
+    ok=0
+
+    # Prefer multi-port pools (less "server busy" risk)
+    _cand=(
+      "LW-AMS|speedtest.ams1.nl.leaseweb.net|5201"
+      "LW-FRA|speedtest.fra1.de.leaseweb.net|5201"
+      "LW-LON|speedtest.lon1.uk.leaseweb.net|5201"
+      "LW-WDC|speedtest.wdc2.us.leaseweb.net|5201"
+      "LW-NYC|speedtest.nyc1.us.leaseweb.net|5201"
+      "LW-SIN|speedtest.sin1.sg.leaseweb.net|5201"
+      "LW-SYD|speedtest.syd12.au.leaseweb.net|5201"
+      "Serverius|speedtest.serverius.net|5002"
+      "Moji|iperf3.moji.fr|5200"
+      "Online.net|ping.online.net|5200"
+    )
+
+    for entry in "${_cand[@]}"; do
+      [ "${ok}" -ge "${_NET_IPERF_MAX_SERVERS}" ] && break
+      _n="$(printf '%s' "${entry}" | cut -d'|' -f1)"
+      _h="$(printf '%s' "${entry}" | cut -d'|' -f2)"
+      _p="$(printf '%s' "${entry}" | cut -d'|' -f3)"
+
+      _log "Network iPerf3 test: ${_n} (${_h}:${_p})"
+      res="$(_iperf3_benchmark_v4 "${_h}" "${_p}")"
+      if [ -n "${res}" ]; then
+        dl_mbps="$(printf '%s\n' "${res}" | cut -d'|' -f1)"
+        ul_mbps="$(printf '%s\n' "${res}" | cut -d'|' -f2)"
+        _net_iperf_name+=("${_n}")
+        _net_iperf_host+=("${_h}")
+        _net_iperf_port+=("${_p}")
+        _net_iperf_dl_mbps+=("${dl_mbps}")
+        _net_iperf_ul_mbps+=("${ul_mbps}")
+        ok=$((ok + 1))
+      fi
+    done
+
+    if [ "${#_net_iperf_dl_mbps[@]}" -gt 0 ]; then
+      local _dl_med _ul_med
+      _dl_med="$(_median_num "${_net_iperf_dl_mbps[@]}")"
+      _ul_med="$(_median_num "${_net_iperf_ul_mbps[@]}")"
+      if printf '%s' "${_dl_med}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+        _net_iperf_dl="${_dl_med} Mbit/s"
+      fi
+      if printf '%s' "${_ul_med}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+        _net_iperf_ul="${_ul_med} Mbit/s"
+      fi
+    fi
   fi
 }
 
@@ -2631,8 +2761,8 @@ _print_grading_summary() {
   if [ "${_FANCY}" -eq 1 ]; then
     echo ""
     printf "   Public IPv4:        %s\n" "${_net_ipv4}"
-    printf "   Download score:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
-    printf "   Score: avg of best 2/4 single-stream pulls (range ~10 MiB, timeout %ss)\n" "${_NET_TIMEOUT}"
+    printf "   HTTP download:      %-15s [%s]\n" "${_net_download}" "${net_grade}"
+    printf "   Score: median of %s/%s single-stream Range pulls (~10 MiB, timeout %ss)\n" "${_net_http_ok}" "${_net_http_total}" "${_NET_TIMEOUT}"
     if [ "${#_net_dl_name[@]}" -gt 0 ]; then
       local _i
       _i=0
@@ -2640,7 +2770,14 @@ _print_grading_summary() {
         printf "     - %-10s %s\n" "${_net_dl_name[${_i}]}:" "${_net_dl_pretty[${_i}]}"
         _i=$((_i + 1))
       done
-      [ -n "${_net_dl_top2}" ] && printf "   Top 2: %s\n" "${_net_dl_top2}"
+      if [ "${#_net_iperf_name[@]}" -gt 0 ]; then
+        printf "   iPerf3 (TCP) median: DL %s | UL %s (%s servers, %s streams, %ss)\n" "${_net_iperf_dl}" "${_net_iperf_ul}" "${#_net_iperf_name[@]}" "${_NET_IPERF_PARALLEL}" "${_NET_IPERF_TIME}"
+        _i=0
+        while [ "${_i}" -lt "${#_net_iperf_name[@]}" ]; do
+          printf "     - %-10s DL %s Mbit/s | UL %s Mbit/s\n" "${_net_iperf_name[${_i}]}:" "${_net_iperf_dl_mbps[${_i}]}" "${_net_iperf_ul_mbps[${_i}]}"
+          _i=$((_i + 1))
+        done
+      fi
     fi
   fi
   echo ""
@@ -3407,9 +3544,10 @@ else
   echo "  - Seek rate: ${_ioping_seek}"
   echo "  - Sequential read: ${_ioping_seqread}"
   echo ""
-  echo "Network (IPv4 single-stream):"
+  echo "Network (IPv4 HTTP Range pulls):"
   echo "  - Public IPv4: ${_net_ipv4}"
-  echo "  - Download score (avg best 2/4): ${_net_download}"
+  echo "  - HTTP download (median ${_net_http_ok}/${_net_http_total}): ${_net_download}"
+  echo "  - iPerf3 TCP median: DL ${_net_iperf_dl} | UL ${_net_iperf_ul}"
   if [ "${#_net_dl_name[@]}" -gt 0 ]; then
     echo "  - Tests:"
     _i=0
@@ -3417,7 +3555,6 @@ else
       echo "    - ${_net_dl_name[${_i}]}: ${_net_dl_pretty[${_i}]}"
       _i=$((_i + 1))
     done
-    [ -n "${_net_dl_top2}" ] && echo "  - Top 2: ${_net_dl_top2}"
   fi
   echo ""
   echo "PHP Performance (CLI Micro-benchmark):"
