@@ -2550,13 +2550,40 @@ _print_disk_compact_section() {
   echo ""
 }
 
+_find_server_city() {
+  if [ -e "/root/.found_correct_city.cnf" ]; then
+    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
+  else
+    if [ -e "/root/.found_correct_ipv4.cnf" ]; then
+      _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+      _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
+      _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+    fi
+    if [ ! -z "${_LOC_CITY}" ]; then
+      _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
+      echo ${_LOC_CITY} > /root/.found_correct_city.cnf
+    fi
+  fi
+}
+
+_print_host_info() {
+  _find_server_city
+  [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
+  [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
+  echo "${_LOC_CITY}"
+}
+
 _print_grading_summary() {
   echo " ============================================================================="
   echo " ==                 BOA Performance Test - Compact Summary                  =="
   echo " ==              Priority: Memory > CPU > Disk > DB > Network               =="
   echo " ============================================================================="
   echo ""
-  echo "System:"
+  echo "Host and system details"
+  echo ""
+  echo " Date: [$(date)]"
+  echo " City: $(_print_host_info)"
+  echo " Info: $(boa version)"
   echo ""
   if [ -x "/opt/local/bin/screenfetch" ]; then
     bash /opt/local/bin/screenfetch -n
@@ -3487,7 +3514,11 @@ else
   echo ""
   echo "==== Performance Test Summary ===="
   echo ""
-  echo "System:"
+  echo "Host and system details"
+  echo ""
+  echo " Date: [$(date)]"
+  echo " City: $(_print_host_info)"
+  echo " Info: $(boa version)"
   echo ""
   if [ -x "/opt/local/bin/screenfetch" ]; then
     bash /opt/local/bin/screenfetch -n
