@@ -51,7 +51,7 @@ _GRADE_NEAR_BAND_PCT=0.10 # top-of-band promotion window (10%); keeps grades str
 _NET_TIMEOUT=10 # seconds for curl speedtest
 _NET_IPERF_TIME=8 # seconds per iperf3 direction
 _NET_IPERF_TIMEOUT=15 # seconds hard timeout wrapper for iperf3
-_NET_IPERF_PARALLEL=4 # iperf3 parallel streams
+_NET_IPERF_PARALLEL=1 # iperf3 parallel streams
 _NET_IPERF_MAX_SERVERS=3 # max iperf3 servers to test
 _AES_TEST_MIB=500 # MiB encrypted for AES throughput test
 _IOPING_SECONDS=5 # seconds for ioping checks
@@ -909,6 +909,7 @@ _iperf3_benchmark_v4() {
   # Args:
   #   $1 = host
   #   $2 = port (optional; default 5201)
+  #   $3 = parallel streams override (optional; default ${_NET_IPERF_PARALLEL})
   #
   # Output (on success):
   #   dl_mbps|ul_mbps
@@ -916,6 +917,7 @@ _iperf3_benchmark_v4() {
   # Output (on failure): empty line
   local host="${1}"
   local port="${2:-5201}"
+  local parallel="${3:-${_NET_IPERF_PARALLEL}}"
 
   if [ -z "${host}" ]; then
     return 0
@@ -929,17 +931,17 @@ _iperf3_benchmark_v4() {
 
   # Download (client receives) uses reverse mode (-R)
   if command -v timeout >/dev/null 2>&1; then
-    _out="$(timeout "${_NET_IPERF_TIMEOUT}s" iperf3 -4 -f m -c "${host}" -p "${port}" -P "${_NET_IPERF_PARALLEL}" -t "${_NET_IPERF_TIME}" -R 2>/dev/null)"
+    _out="$(timeout "${_NET_IPERF_TIMEOUT}s" iperf3 -4 -f m -c "${host}" -p "${port}" -P "${parallel}" -t "${_NET_IPERF_TIME}" -R 2>/dev/null)"
   else
-    _out="$(iperf3 -4 -f m -c "${host}" -p "${port}" -P "${_NET_IPERF_PARALLEL}" -t "${_NET_IPERF_TIME}" -R 2>/dev/null)"
+    _out="$(iperf3 -4 -f m -c "${host}" -p "${port}" -P "${parallel}" -t "${_NET_IPERF_TIME}" -R 2>/dev/null)"
   fi
   dl="$(printf '%s\n' "${_out}" | awk '/receiver/ {v=$(NF-2)} END{print v}')"
 
   # Upload (client sends)
   if command -v timeout >/dev/null 2>&1; then
-    _out="$(timeout "${_NET_IPERF_TIMEOUT}s" iperf3 -4 -f m -c "${host}" -p "${port}" -P "${_NET_IPERF_PARALLEL}" -t "${_NET_IPERF_TIME}" 2>/dev/null)"
+    _out="$(timeout "${_NET_IPERF_TIMEOUT}s" iperf3 -4 -f m -c "${host}" -p "${port}" -P "${parallel}" -t "${_NET_IPERF_TIME}" 2>/dev/null)"
   else
-    _out="$(iperf3 -4 -f m -c "${host}" -p "${port}" -P "${_NET_IPERF_PARALLEL}" -t "${_NET_IPERF_TIME}" 2>/dev/null)"
+    _out="$(iperf3 -4 -f m -c "${host}" -p "${port}" -P "${parallel}" -t "${_NET_IPERF_TIME}" 2>/dev/null)"
   fi
   ul="$(printf '%s\n' "${_out}" | awk '/receiver/ {v=$(NF-2)} END{print v}')"
 
@@ -1106,6 +1108,39 @@ _run_aes_throughput_test() {
   fi
 }
 
+_net_region_from_city() {
+  # Determine rough region based on ipinfo city name (best-effort).
+  # Returns: EU | NA | APAC | GLOBAL
+  local _city="${1:-}"
+  _city="$(printf '%s' "${_city}" | tr '+' ' ' | tr '[:upper:]' '[:lower:]' 2>/dev/null)"
+
+  [ -n "${_city}" ] || { echo "GLOBAL"; return 0; }
+
+  case "${_city}" in
+    *sydney*|*melbourne*|*auckland*|*wellington*|*singapore*|*tokyo*|*osaka*|*seoul*|*hong*kong*|*taipei*|*manila*|*bangkok*|*jakarta*|*kuala*lumpur*|*mumbai*|*delhi*|*bangalore*|*perth*|*brisbane*|*adelaide*|*chennai*)
+      echo "APAC"
+      return 0
+      ;;
+    *new*york*|*nyc*|*chicago*|*dallas*|*atlanta*|*miami*|*los*angeles*|*san*francisco*|*seattle*|*boston*|*washington*|*ashburn*|*phoenix*|*denver*|*toronto*|*montreal*|*vancouver*|*ottawa*)
+      echo "NA"
+      return 0
+      ;;
+    *amsterdam*|*frankfurt*|*london*|*paris*|*warsaw*|*berlin*|*munich*|*nuremberg*|*vienna*|*prague*|*brussels*|*zurich*|*geneva*|*milan*|*rome*|*madrid*|*lisbon*|*stockholm*|*oslo*|*helsinki*|*copenhagen*|*dublin*|*manchester*|*barcelona*|*budapest*|*bucharest*|*sofia*|*zagreb*|*ljubljana*)
+      echo "EU"
+      return 0
+      ;;
+  esac
+
+  echo "GLOBAL"
+}
+
+_net_is_region_match() {
+  # $1 = target_region, $2 = current_region
+  [ "${1}" = "${2}" ] && return 0
+  [ "${1}" = "GLOBAL" ] && return 0
+  return 1
+}
+
 _run_ipv4_net_check() {
   _net_ipv4="N/A"
   _net_download="N/A"
@@ -1135,7 +1170,14 @@ _run_ipv4_net_check() {
   [ -n "${ip}" ] || return 0
   _net_ipv4="$(_redact_ip "${ip}")"
 
-  # Stable HTTP endpoints (Range pulls; avoids "speedtest" bot blocks)
+  # Determine region from server city (best-effort).
+  # This prevents meaningless probes like "NYC from Australia".
+  _find_server_city
+  local _net_city _net_region
+  _net_city="$(printf '%s' "${_LOC_CITY}" | tr '+' ' ' 2>/dev/null)"
+  _net_region="$(_net_region_from_city "${_net_city}")"
+
+  # Stable HTTP endpoints (Range pulls; avoids common "speedtest" bot blocks)
   # Hetzner region endpoints
   local h_nbg h_fsn h_ash
   h_nbg="https://nbg1-speed.hetzner.com/100MB.bin"
@@ -1147,13 +1189,29 @@ _run_ipv4_net_check() {
   ovh_100m="https://proof.ovh.net/files/100Mb.dat"
 
   # Leaseweb speedtest files (multi-region)
-  local lw_ams lw_fra lw_wdc lw_syd
+  local lw_ams lw_fra lw_lon lw_wdc lw_nyc lw_sin lw_syd
   lw_ams="https://speedtest.ams1.nl.leaseweb.net/100mb.bin"
   lw_fra="https://speedtest.fra1.de.leaseweb.net/100mb.bin"
+  lw_lon="https://speedtest.lon1.uk.leaseweb.net/100mb.bin"
   lw_wdc="https://speedtest.wdc2.us.leaseweb.net/100mb.bin"
+  lw_nyc="https://speedtest.nyc1.us.leaseweb.net/100mb.bin"
+  lw_sin="https://speedtest.sin1.sg.leaseweb.net/100mb.bin"
   lw_syd="https://speedtest.syd12.au.leaseweb.net/100mb.bin"
 
-  # Optional BOA mirror
+  # Akamai Connected Cloud / Linode speedtest files (multi-region)
+  # (These are simple file URLs used by their speedtest pages.)
+  local a_ams a_fra a_lon a_chi a_dal a_new a_syd a_sin a_tyo2
+  a_ams="https://speedtest.amsterdam.linode.com/100MB-amsterdam.bin"
+  a_fra="https://speedtest.frankfurt.linode.com/100MB-frankfurt.bin"
+  a_lon="https://speedtest.london.linode.com/100MB-london.bin"
+  a_chi="https://speedtest.chicago.linode.com/100MB-chicago.bin"
+  a_dal="https://speedtest.dallas.linode.com/100MB-dallas.bin"
+  a_new="https://speedtest.newark.linode.com/100MB-newark.bin"
+  a_syd="https://speedtest.sydney.linode.com/100MB-sydney.bin"
+  a_sin="https://speedtest.singapore.linode.com/100MB-singapore.bin"
+  a_tyo2="https://speedtest.tokyo2.linode.com/100MB-tokyo2.bin"
+
+  # Optional BOA mirror (best-effort; typically close to the VM already)
   local boa_url
   boa_url=""
   _find_fast_mirror_early
@@ -1166,25 +1224,49 @@ _run_ipv4_net_check() {
   min_bytes=1048576
   range_end=10485759
 
-  # Append tests in a stable order (more than 3 sources to reduce false swings)
-  _net_dl_name+=("Hetzner NBG1")
-  _net_dl_url+=("${h_nbg}")
-  _net_dl_name+=("Hetzner FSN1")
-  _net_dl_url+=("${h_fsn}")
-  _net_dl_name+=("Hetzner ASH")
-  _net_dl_url+=("${h_ash}")
-  _net_dl_name+=("OVH proof")
-  _net_dl_url+=("${ovh_100m}")
-  _net_dl_name+=("Leaseweb AMS")
-  _net_dl_url+=("${lw_ams}")
-  _net_dl_name+=("Leaseweb FRA")
-  _net_dl_url+=("${lw_fra}")
-  _net_dl_name+=("Leaseweb WDC")
-  _net_dl_url+=("${lw_wdc}")
-  _net_dl_name+=("Leaseweb SYD")
-  _net_dl_url+=("${lw_syd}")
-  _net_dl_name+=("BOA mirror")
-  _net_dl_url+=("${boa_url}")
+  # Append tests in a stable order (multiple sources; REGION-ONLY for usefulness)
+  if [ "${_net_region}" = "EU" ]; then
+    _net_dl_name+=("Hetzner NBG1"); _net_dl_url+=("${h_nbg}")
+    _net_dl_name+=("Hetzner FSN1"); _net_dl_url+=("${h_fsn}")
+    _net_dl_name+=("Leaseweb AMS"); _net_dl_url+=("${lw_ams}")
+    _net_dl_name+=("Leaseweb FRA"); _net_dl_url+=("${lw_fra}")
+    _net_dl_name+=("Leaseweb LON"); _net_dl_url+=("${lw_lon}")
+    _net_dl_name+=("Akamai AMS");   _net_dl_url+=("${a_ams}")
+    _net_dl_name+=("Akamai FRA");   _net_dl_url+=("${a_fra}")
+    _net_dl_name+=("Akamai LON");   _net_dl_url+=("${a_lon}")
+    _net_dl_name+=("OVH proof");    _net_dl_url+=("${ovh_100m}")
+  elif [ "${_net_region}" = "NA" ]; then
+    _net_dl_name+=("Hetzner ASH");  _net_dl_url+=("${h_ash}")
+    _net_dl_name+=("Leaseweb WDC"); _net_dl_url+=("${lw_wdc}")
+    _net_dl_name+=("Leaseweb NYC"); _net_dl_url+=("${lw_nyc}")
+    _net_dl_name+=("Akamai CHI");   _net_dl_url+=("${a_chi}")
+    _net_dl_name+=("Akamai DAL");   _net_dl_url+=("${a_dal}")
+    _net_dl_name+=("Akamai NEW");   _net_dl_url+=("${a_new}")
+  elif [ "${_net_region}" = "APAC" ]; then
+    _net_dl_name+=("Leaseweb SIN"); _net_dl_url+=("${lw_sin}")
+    _net_dl_name+=("Leaseweb SYD"); _net_dl_url+=("${lw_syd}")
+    _net_dl_name+=("Akamai SIN");   _net_dl_url+=("${a_sin}")
+    _net_dl_name+=("Akamai SYD");   _net_dl_url+=("${a_syd}")
+    _net_dl_name+=("Akamai TYO2");  _net_dl_url+=("${a_tyo2}")
+  else
+    # Unknown city: keep a small, diverse but still sensible set.
+    _net_dl_name+=("Hetzner NBG1"); _net_dl_url+=("${h_nbg}")
+    _net_dl_name+=("Leaseweb AMS"); _net_dl_url+=("${lw_ams}")
+    _net_dl_name+=("Akamai FRA");   _net_dl_url+=("${a_fra}")
+    _net_dl_name+=("Leaseweb WDC"); _net_dl_url+=("${lw_wdc}")
+    _net_dl_name+=("Akamai CHI");   _net_dl_url+=("${a_chi}")
+    _net_dl_name+=("Leaseweb SYD"); _net_dl_url+=("${lw_syd}")
+    _net_dl_name+=("Akamai SYD");   _net_dl_url+=("${a_syd}")
+  fi
+
+  if [ -n "${boa_url}" ]; then
+    _net_dl_name+=("BOA mirror")
+    _net_dl_url+=("${boa_url}")
+  fi
+
+  # Persist region for output sections.
+  _NET_REGION="${_net_region}"
+  _NET_CITY="${_net_city}"
 
   local i name url line bps bytes ttotal code pretty
   local _ok_bps=()
@@ -1241,25 +1323,57 @@ _run_ipv4_net_check() {
     _net_download="error"
   fi
 
-  # iPerf3 port throughput (best-effort; multiple regions; median of successes)
+  # iPerf3 port throughput (best-effort; regional targets; median of successes)
+
+  # Ensure CSF allows outbound TCP connections to common iPerf3 port range.
+  # This matters only if you restrict outgoing ports (TCP_OUT).
+  if [ -f "/etc/csf/csf.conf" ] && command -v csf >/dev/null 2>&1; then
+    if ! grep -Eq '^TCP_OUT\s*=\s*".*\b5201:5210\b' /etc/csf/csf.conf 2>/dev/null; then
+      sed -i 's/^\(TCP_OUT\s*=\s*"[^"]*\)"/\1,5201:5210"/' /etc/csf/csf.conf
+      csf -r >/dev/null 2>&1
+    fi
+  fi
 
   if command -v iperf3 >/dev/null 2>&1; then
     local _cand entry _n _h _p res dl_mbps ul_mbps ok
     ok=0
 
     # Prefer multi-port pools (less "server busy" risk)
-    _cand=(
-      "LW-AMS|speedtest.ams1.nl.leaseweb.net|5201"
-      "LW-FRA|speedtest.fra1.de.leaseweb.net|5201"
-      "LW-LON|speedtest.lon1.uk.leaseweb.net|5201"
-      "LW-WDC|speedtest.wdc2.us.leaseweb.net|5201"
-      "LW-NYC|speedtest.nyc1.us.leaseweb.net|5201"
-      "LW-SIN|speedtest.sin1.sg.leaseweb.net|5201"
-      "LW-SYD|speedtest.syd12.au.leaseweb.net|5201"
-      "Serverius|speedtest.serverius.net|5002"
-      "Moji|iperf3.moji.fr|5200"
-      "Online.net|ping.online.net|5200"
-    )
+    local _cand
+    if [ "${_net_region}" = "EU" ]; then
+      # Europe-only targets
+      _cand=(
+        "LW-AMS|speedtest.ams1.nl.leaseweb.net|5201"
+        "LW-FRA|speedtest.fra1.de.leaseweb.net|5201"
+        "LW-LON|speedtest.lon1.uk.leaseweb.net|5201"
+        "Serverius|speedtest.serverius.net|5002"
+        "Moji|iperf3.moji.fr|5200"
+        "Online.net|ping.online.net|5200"
+      )
+    elif [ "${_net_region}" = "NA" ]; then
+      # North America-only targets
+      _cand=(
+        "LW-WDC|speedtest.wdc2.us.leaseweb.net|5201"
+        "LW-NYC|speedtest.nyc1.us.leaseweb.net|5201"
+        "LW-DAL|speedtest.dal13.us.leaseweb.net|5201"
+        "HE|iperf.he.net|5201"
+        "Nocix|speedtest.nocix.net|5201"
+      )
+    elif [ "${_net_region}" = "APAC" ]; then
+      # Asia-Pacific-only targets
+      _cand=(
+        "LW-SIN|speedtest.sin1.sg.leaseweb.net|5201"
+        "LW-SYD|speedtest.syd12.au.leaseweb.net|5201"
+      )
+    else
+      # Unknown city: small but diverse set
+      _cand=(
+        "LW-AMS|speedtest.ams1.nl.leaseweb.net|5201"
+        "LW-WDC|speedtest.wdc2.us.leaseweb.net|5201"
+        "LW-SYD|speedtest.syd12.au.leaseweb.net|5201"
+        "HE|iperf.he.net|5201"
+      )
+    fi
 
     for entry in "${_cand[@]}"; do
       [ "${ok}" -ge "${_NET_IPERF_MAX_SERVERS}" ] && break
@@ -1267,14 +1381,36 @@ _run_ipv4_net_check() {
       _h="$(printf '%s' "${entry}" | cut -d'|' -f2)"
       _p="$(printf '%s' "${entry}" | cut -d'|' -f3)"
 
-      _log "Network iPerf3 test: ${_n} (${_h}:${_p})"
-      res="$(_iperf3_benchmark_v4 "${_h}" "${_p}")"
+      local _par _try_p _p_used
+      _par="${_NET_IPERF_PARALLEL}"
+      # Public iPerf3 endpoints often allow only one test/flow per port.
+      if printf '%s' "${_h}" | grep -Eq 'leaseweb\.net$|iperf\.fr$|online\.net$|serverius\.net$|nocix\.net$|he\.net$'; then
+        _par="1"
+      fi
+
+      res=""
+      _p_used="${_p}"
+      if printf '%s' "${_h}" | grep -Eq 'leaseweb\.net$'; then
+        # Leaseweb runs multiple iperf3 daemons on a port range (5201-5210). Try a free port.
+        for _try_p in 5201 5202 5203 5204 5205 5206 5207 5208 5209 5210; do
+          _log "Network iPerf3 test: ${_n} (${_h}:${_try_p}, ${_par} stream)"
+          res="$(_iperf3_benchmark_v4 "${_h}" "${_try_p}" "${_par}")"
+          if [ -n "${res}" ]; then
+            _p_used="${_try_p}"
+            break
+          fi
+        done
+      else
+        _log "Network iPerf3 test: ${_n} (${_h}:${_p}, ${_par} stream)"
+        res="$(_iperf3_benchmark_v4 "${_h}" "${_p}" "${_par}")"
+      fi
+
       if [ -n "${res}" ]; then
         dl_mbps="$(printf '%s\n' "${res}" | cut -d'|' -f1)"
         ul_mbps="$(printf '%s\n' "${res}" | cut -d'|' -f2)"
         _net_iperf_name+=("${_n}")
         _net_iperf_host+=("${_h}")
-        _net_iperf_port+=("${_p}")
+        _net_iperf_port+=("${_p_used}")
         _net_iperf_dl_mbps+=("${dl_mbps}")
         _net_iperf_ul_mbps+=("${ul_mbps}")
         ok=$((ok + 1))
@@ -2793,8 +2929,12 @@ _print_grading_summary() {
   if [ "${_FANCY}" -eq 1 ]; then
     echo ""
     printf "   Public IPv4:        %s\n" "${_net_ipv4}"
+    if [ -n "${_NET_REGION:-}" ] || [ -n "${_NET_CITY:-}" ]; then
+      printf "   Region:             %s (%s)\n" "${_NET_REGION:-N/A}" "${_NET_CITY:-N/A}"
+    fi
     printf "   HTTP download:      %-15s [%s]\n" "${_net_download}" "${net_grade}"
-    printf "   Score: median of %s/%s single-stream Range pulls (~10 MiB, timeout %ss)\n" "${_net_http_ok}" "${_net_http_total}" "${_NET_TIMEOUT}"
+    echo ""
+    printf "   Score: median of %s/%s single-stream Range pulls (regional targets, ~10 MiB, timeout %ss)\n" "${_net_http_ok}" "${_net_http_total}" "${_NET_TIMEOUT}"
     if [ "${#_net_dl_name[@]}" -gt 0 ]; then
       local _i
       _i=0
@@ -2803,6 +2943,7 @@ _print_grading_summary() {
         _i=$((_i + 1))
       done
       if [ "${#_net_iperf_name[@]}" -gt 0 ]; then
+        echo ""
         printf "   iPerf3 (TCP) median: DL %s | UL %s (%s servers, %s streams, %ss)\n" "${_net_iperf_dl}" "${_net_iperf_ul}" "${#_net_iperf_name[@]}" "${_NET_IPERF_PARALLEL}" "${_NET_IPERF_TIME}"
         _i=0
         while [ "${_i}" -lt "${#_net_iperf_name[@]}" ]; do
@@ -3210,7 +3351,7 @@ echo ""
 echo "Starting extended performance tests, please wait..."
 echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes.."
 _cron_stop_quiet
-grep -qE '^TCP_OUT[[:space:]]*=[[:space:]]*".*\b5201\b' /etc/csf/csf.conf || { sed -i -E 's/^(TCP_OUT[[:space:]]*=[[:space:]]*"[^"]*)"/\1,5201:5209"/' /etc/csf/csf.conf && csf -r; }
+grep -qE '^TCP_OUT[[:space:]]*=[[:space:]]*".*\b5210\b' /etc/csf/csf.conf || { sed -i -E 's/^(TCP_OUT[[:space:]]*=[[:space:]]*"[^"]*)"/\1,5201:5210"/' /etc/csf/csf.conf && csf -r; }
 sleep 15
 
 # Update package list silently
