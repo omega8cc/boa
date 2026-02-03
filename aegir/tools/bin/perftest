@@ -54,8 +54,8 @@ _NET_IPERF_TIMEOUT=15 # seconds hard timeout wrapper for iperf3
 _NET_IPERF_PARALLEL=1 # iperf3 parallel streams
 _NET_IPERF_MAX_SERVERS=3 # max iperf3 servers to test
 _NET_IPERF_ENABLED="${_NET_IPERF_ENABLED:-YES}" # YES to enable iperf3 test + CSF edits + iperf3 install
-_NET_HTTP_OUTLIER_RATIO="${_NET_HTTP_OUTLIER_RATIO:-0.30}" # ignore HTTP results < best*ratio
-_NET_IPERF_OUTLIER_RATIO="${_NET_IPERF_OUTLIER_RATIO:-0.30}" # ignore iPerf3 results < best*ratio
+_NET_HTTP_OUTLIER_RATIO="${_NET_HTTP_OUTLIER_RATIO:-0.30}" # ignore HTTP results < (median*ratio) to drop very weak endpoints
+_NET_IPERF_OUTLIER_RATIO="${_NET_IPERF_OUTLIER_RATIO:-0.30}" # ignore iPerf3 results < (median*ratio) to drop very weak remotes
 _NET_APAC_LOCAL_ONLY="${_NET_APAC_LOCAL_ONLY:-YES}" # if YES, AU/NZ hosts test only AU/NZ endpoints
 _NET_IPERF_MIN_Mbps="${_NET_IPERF_MIN_Mbps:-1.0}" # treat < this as failure (filters "0.00" pseudo-results)
 _AES_TEST_MIB=500 # MiB encrypted for AES throughput test
@@ -885,7 +885,7 @@ _download_benchmark_v4() {
 
   local out http_code size_download speed_bps time_total
 
-  out="$(curl -4 -A "perftest/v47" -sL --retry 1 --retry-delay 0 --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
+  out="$(curl -4 -A "perftest/v49" -sL --retry 1 --retry-delay 0 --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
     -w '%{http_code} %{size_download} %{speed_download} %{time_total}\n' "${url}" 2>/dev/null)"
 
   [ -n "${out}" ] || return 0
@@ -1390,13 +1390,14 @@ _run_ipv4_net_check() {
   _net_http_ok="${#_ok_bps[@]}"
 
   # Score = filtered median of successful HTTP pulls (bytes/sec)
-  # We ignore results far below the best to avoid penalizing a healthy link due to a weak remote.
-  local med_bps max_bps thr_bps
+  # Drop only the *very weak* endpoints relative to the unfiltered median.
+  # This avoids (a) punishing a healthy link because one remote is slow, but also (b) inflating the score
+  # by effectively keeping only the single fastest mirror.
+  local med_bps raw_med_bps thr_bps
   local _ok_bps_filt=()
-  if [ "${#_ok_bps[@]}" -gt 0 ]; then
-    max_bps="$(printf '%s
-' "${_ok_bps[@]}" | sort -n | tail -n 1)"
-    thr_bps="$(awk -v m="${max_bps}" -v r="${_NET_HTTP_OUTLIER_RATIO}" 'BEGIN{printf "%.6f", m*r}')"
+  raw_med_bps="$(_median_num "${_ok_bps[@]}")"
+  if printf '%s' "${raw_med_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    thr_bps="$(awk -v m="${raw_med_bps}" -v r="${_NET_HTTP_OUTLIER_RATIO}" 'BEGIN{printf "%.6f", m*r}')"
     local _j
     _j=0
     while [ "${_j}" -lt "${#_ok_bps[@]}" ]; do
@@ -1409,7 +1410,7 @@ _run_ipv4_net_check() {
   if [ "${#_ok_bps_filt[@]}" -ge 2 ]; then
     med_bps="$(_median_num "${_ok_bps_filt[@]}")"
   else
-    med_bps="$(_median_num "${_ok_bps[@]}")"
+    med_bps="${raw_med_bps}"
   fi
 
 
@@ -1479,13 +1480,13 @@ _run_ipv4_net_check() {
     done
 
     if [ "${#_net_iperf_dl_mbps[@]}" -gt 0 ]; then
-      # Filter out weak remote results relative to the best DL, then take median of the remaining set.
-      local _dl_med _ul_med _max_dl _thr_dl
+      # Filter out very weak remote results relative to the unfiltered DL median,
+      # then take median of the remaining set.
+      local _dl_med _ul_med _raw_dl_med _thr_dl
       local _dl_filt=()
       local _ul_filt=()
-      _max_dl="$(printf '%s
-' "${_net_iperf_dl_mbps[@]}" | sort -n | tail -n 1)"
-      _thr_dl="$(awk -v m="${_max_dl}" -v r="${_NET_IPERF_OUTLIER_RATIO}" 'BEGIN{printf "%.3f", m*r}')"
+      _raw_dl_med="$(_median_num "${_net_iperf_dl_mbps[@]}")"
+      _thr_dl="$(awk -v m="${_raw_dl_med}" -v r="${_NET_IPERF_OUTLIER_RATIO}" 'BEGIN{printf "%.3f", m*r}')"
       local _k
       _k=0
       while [ "${_k}" -lt "${#_net_iperf_dl_mbps[@]}" ]; do
@@ -2941,7 +2942,6 @@ _print_grading_summary() {
     db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}" "${_db_threads_used:-0}")"
   fi
 
-
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
   echo " ============================================================================="
@@ -3083,7 +3083,12 @@ _print_grading_summary() {
     printf "   Public IPv4:        %s\n" "${_net_ipv4}"
     printf "   Region:             %s
 " "${_net_region_pretty}"
-    printf "   HTTP download:      %-15s [%s]\n" "${_net_download}" "${net_grade}"
+    _http_show_grade="${net_http_grade}"
+    if [ -z "${_http_show_grade}" ] || [ "${_http_show_grade}" = "unknown" ]; then
+      _http_show_grade="${net_grade}"
+    fi
+    printf "   HTTP download:      %-15s [%s]\n" "${_net_download}" "${_http_show_grade}"
+    printf "   Overall grade:      %s\n" "${net_grade}"
     if [ -n "${net_http_grade}" ] && [ -n "${net_tcp_grade}" ] && [ "${net_tcp_grade}" != "unknown" ]; then
       printf "   Grades:             HTTP %s | TCP %s\n" "${net_http_grade}" "${net_tcp_grade}"
     fi
