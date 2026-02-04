@@ -9793,7 +9793,7 @@ _initd_update() {
           _mrun "service php${e}-fpm reload"
         fi
       done
-      _mrun "service nginx quietupgrade"
+      _mrun "service nginx restart"
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         _check_mysql_version
