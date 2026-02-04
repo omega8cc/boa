@@ -2504,8 +2504,8 @@ _boa_grade_network_http() {
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
     else if (n>=900) print "ultra";     # ~900 Mbit/s+
-    else if (n>=450) print "excellent"; # ~450 Mbit/s+
-    else if (n>=150) print "good";      # ~150 Mbit/s+
+    else if (n>=300) print "excellent"; # ~300 Mbit/s+
+    else if (n>=100) print "good";      # ~100 Mbit/s+
     else if (n>=50)  print "average";   #  ~50 Mbit/s+
     else print "poor";
   }'
@@ -2519,10 +2519,10 @@ _boa_grade_network_tcp() {
   # variance than HTTP pulls, so we grade TCP with higher expectations.
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
-    else if (n>=2000) print "ultra";      # ~2 Gbit/s+
-    else if (n>=1000) print "excellent";  # ~1 Gbit/s+
-    else if (n>=500)  print "good";       # ~500 Mbit/s+
-    else if (n>=250)  print "average";    # ~250 Mbit/s+
+    else if (n>=1500) print "ultra";      # ~1500 Mbit/s+
+    else if (n>=800)  print "excellent";  #  ~800 Mbit/s+
+    else if (n>=300)  print "good";       #  ~300 Mbit/s+
+    else if (n>=150)  print "average";    #  ~150 Mbit/s+
     else print "poor";
   }'
 }
