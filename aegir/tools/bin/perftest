@@ -1416,7 +1416,6 @@ _run_ipv4_net_check() {
     med_bps="${raw_med_bps}"
   fi
 
-
   if printf '%s' "${med_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
     _net_download_mibps_num="$(printf '%s\n' "${med_bps}" | _bps_to_mibps_num)"
     _net_download_mbps_num="$(printf '%s\n' "${med_bps}" | _bps_to_mbitps_num)"
@@ -1695,7 +1694,6 @@ _run_fio_qd1_test() {
   rm -rf "${_test_dir}" >/dev/null 2>&1
 }
 
-
 # Run fio random 4k randwrite QD=1 with fsync (durability-focused)
 _run_fio_qd1_fsync_test() {
   # $1 = mountpoint
@@ -1753,7 +1751,6 @@ _parse_fio_json() {
   local _read_bw_mb _write_bw_mb
   _read_bw_mb="$(awk -v kib="${_read_bw_kib:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
   _write_bw_mb="$(awk -v kib="${_write_bw_kib:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
-
 
   # Optional percentiles (fio3+): clat_ns.percentile
   local _read_p95_ns _read_p99_ns _write_p95_ns _write_p99_ns
@@ -1971,7 +1968,6 @@ _max_num() {
   fi
   printf '%s\n' "$@" | awk 'NF{print}' | sort -n | tail -n 1
 }
-
 
 _boa_mem_thresholds() {
   # Prints: thr_avg thr_good thr_exc thr_ultra (MiB/s)
@@ -2748,7 +2744,6 @@ _boa_disk_profile_note() {
   printf "inconsistent latency/tails for DB/CMS workloads"
 }
 
-
 _print_disk_compact_section() {
   # $1 = mountpoint, $2 = short description (header hint)
   local _mp="$1"
@@ -2797,7 +2792,6 @@ _print_disk_compact_section() {
   _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}" "${_qd1_fsync_p95_w_num}")"
   _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
   _disk_note="$(_boa_disk_profile_note "${_ioping_avg}" "${_ioping_avg_us}" "${_qd1_fsync_p99_w}" "${_qd1_fsync_p99_w_num}" "${_qd1_p99_w}" "${_qd1_p99_w_num}" "${_seqw}" "${_seqw_num}")"
-
 
   echo " ============================================================================="
   if [ "${_mp}" = "/" ]; then
@@ -3159,6 +3153,7 @@ _print_grading_summary() {
   echo " ============================================================================="
   echo " == BOA SUITABILITY SUMMARY                                                 =="
   echo " ============================================================================="
+  echo ""
 
   local _issues=0
   local _warnings=0
@@ -3208,7 +3203,6 @@ _print_grading_summary() {
     _warnings=$((_warnings + 1))
   fi
 
-
   # Database (optional)
   if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
     if [ "${db_grade}" = "poor" ]; then
@@ -3225,15 +3219,12 @@ _print_grading_summary() {
 
   # Summary
   if [ "${_issues}" -eq 0 ] && [ "${_warnings}" -eq 0 ]; then
-    echo ""
     echo "   ✅ This host is well-suited for BOA deployment"
     echo "   ✅ All critical metrics meet recommended thresholds"
   elif [ "${_issues}" -eq 0 ]; then
-    echo ""
     echo "   ⚠️ This host is acceptable for BOA with ${_warnings} warning(s)"
     echo "   Should work fine for most BOA workloads"
   else
-    echo ""
     echo "   ❌ This host has ${_issues} critical issue(s)"
     echo "   NOT recommended for production BOA deployment"
   fi
@@ -3244,8 +3235,6 @@ _print_grading_summary() {
   echo "For detailed metrics, run: perftest --verbose"
   echo ""
 }
-
-
 
 # ----
 # DB benchmark (sysbench OLTP, MySQL root)
@@ -3753,7 +3742,6 @@ for _mount_point in "${_test_mounts[@]}"; do
     _fio_seqwrite_latency_write["${_mount_point}"]="ERROR"
   fi
   rm -f "${_seqwrite_output}" >/dev/null 2>&1
-
 
   # Random 4k randrw QD=1 (latency percentiles for tiering) - repeated for stability
   echo "Running QD=1 random latency test (x${_FIO_QD1_REPEATS}) on ${_mount_point}..."
