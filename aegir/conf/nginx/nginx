@@ -116,6 +116,18 @@ fi
 #                               Functions
 #------------------------------------------------------------------------------
 
+
+# Load kTLS module only if it is not already loaded
+_load_ktls_module() {
+  if ! lsmod 2>/dev/null | awk '{print $1}' | grep -qx "tls"; then
+    if [ -e "/lib/modules/$(uname -r)/kernel/net/tls/tls.ko" ] \
+      || modinfo tls >/dev/null 2>&1; then
+      modprobe -q tls >/dev/null 2>&1 || true
+      grep -qxF "tls" /etc/modules 2>/dev/null || printf '%s\n' "tls" >> /etc/modules
+    fi
+  fi
+}
+
 setFilePerms(){
     if [ -f $PIDSPATH/$PIDFILE ]; then
         chmod 400 $PIDSPATH/$PIDFILE
@@ -208,6 +220,8 @@ removePIDFile(){
 
 start() {
     log_daemon_msg "Starting $DESCRIPTION"
+
+    _load_ktls_module
 
     isRunning
     isAlive=$?
