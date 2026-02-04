@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v52
+_PT_VERSION=v53
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -2170,7 +2170,7 @@ _boa_grade_cpu_speed() {
     else if (eps>=near_exc) print "excellent";
     else if (eps>=3000) print "good";
     else if (eps>=2000) print "average";
-    else if (eps>=1000) print "acceptable";
+    else if (eps>=1000) print "weak";
     else print "poor";
   }'
 }
@@ -2825,17 +2825,17 @@ _print_disk_compact_section() {
 
   if [ "${_disk_grade}" = "bad" ]; then
     echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
-    echo "      This will severely impact BOA performance (cache writes, logs, DB)"
+    echo "   This will severely impact BOA performance (cache writes, logs, DB)"
   elif [ "${_disk_grade}" = "poor" ]; then
-    echo "   ⚠️  Disk profile is inconsistent: ${_disk_note}"
+    echo "   ⚠️ Disk profile is inconsistent: ${_disk_note}"
   elif [ "${_disk_grade}" = "average" ]; then
-    echo "   ✅  Average disk performance for BOA workloads"
+    echo "   ☑️ Average disk performance for BOA workloads"
   elif [ "${_disk_grade}" = "good" ]; then
-    echo "   🌟  Good disk performance for BOA workloads"
+    echo "   🌟 Good disk performance for BOA workloads"
   elif [ "${_disk_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent disk performance (NVMe-class)"
+    echo "   🏆 Excellent disk performance (NVMe-class)"
   elif [ "${_disk_grade}" = "ultra" ]; then
-    echo "   🚀  Ultra disk performance (top-tier NVMe)"
+    echo "   🚀 Ultra disk performance (top-tier NVMe)"
   fi
   echo ""
 }
@@ -2871,6 +2871,7 @@ _print_grading_summary() {
   echo ""
   echo "Host and system details"
   echo ""
+  echo " Perftest ${_PT_VERSION}"
   echo " Date: [$(date)]"
   echo " City: $(_print_host_info)"
   echo " Info: $(boa version)"
@@ -2980,22 +2981,22 @@ _print_grading_summary() {
 
   if [ "${mem_grade}" = "low" ]; then
     if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
-      echo "   ⚠️  High/variable memory latency - may hurt cache-heavy BOA workloads (rerun to confirm)"
+      echo "   ⚠️ High/variable memory latency - may hurt cache-heavy BOA workloads"
     else
-      echo "   ⚠️  Low memory bandwidth - may limit BOA caching under heavy load"
+      echo "   ⚠️ Low memory bandwidth - may limit BOA caching under heavy load"
     fi
   elif [ "${mem_grade}" = "average" ]; then
     if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
-      echo "   ☑️  Strong bandwidth but higher latency - likely host contention/NUMA; monitor under load"
+      echo "   ⚠️  Strong bandwidth but higher latency - likely host contention/NUMA"
     else
-      echo "   ✅  Average memory performance for in-memory caching"
+      echo "   ☑️ Average memory performance for in-memory caching"
     fi
   elif [ "${mem_grade}" = "good" ]; then
-    echo "   🌟  Good memory performance for in-memory caching"
+    echo "   🌟 Good memory performance for in-memory caching"
   elif [ "${mem_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent memory performance for in-memory caching"
+    echo "   🏆 Excellent memory performance for in-memory caching"
   elif [ "${mem_grade}" = "ultra" ]; then
-    echo "   🚀  Ultra memory performance for in-memory caching"
+    echo "   🚀 Ultra memory performance for in-memory caching"
   fi
   echo ""
 
@@ -3019,27 +3020,29 @@ _print_grading_summary() {
   if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
     if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
       echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production"
+      steal_grade=bad
     elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
-      echo "   ⚠️  Elevated CPU steal - will cause latency spikes under load"
+      echo "   ⚠️ Elevated CPU steal - will cause latency spikes under load"
+      steal_grade=warning
     elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
-      echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact"
+      echo "   🏆 Excellent CPU steal - minimal noisy neighbor impact"
     elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<3)}' 2>/dev/null; then
-      echo "   ☑️  Minimal CPU steal - but may cause latency spikes under load"
+      echo "   ☑️ Minimal CPU steal - but may cause latency spikes under load"
     fi
   fi
 
   if [ "${cpu_grade}" = "poor" ]; then
     echo "   ❌ CPU performance too slow for BOA"
-  elif [ "${cpu_grade}" = "acceptable" ]; then
-    echo "   ☑️  Acceptable CPU performance but not optimal"
+  elif [ "${cpu_grade}" = "weak" ]; then
+    echo "   ⚠️ Weak CPU performance, not optimal"
   elif [ "${cpu_grade}" = "average" ]; then
-    echo "   ✅  Average CPU performance"
+    echo "   ☑️ Average CPU performance"
   elif [ "${cpu_grade}" = "good" ]; then
-    echo "   🌟  Good CPU performance "
+    echo "   🌟 Good CPU performance "
   elif [ "${cpu_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent CPU performance"
+    echo "   🏆 Excellent CPU performance"
   elif [ "${cpu_grade}" = "ultra" ]; then
-    echo "   🚀  Ultra CPU performance"
+    echo "   🚀 Ultra CPU performance"
   fi
   echo ""
 
@@ -3070,7 +3073,7 @@ _print_grading_summary() {
     if [ "${db_grade}" = "poor" ]; then
       echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
     elif [ "${db_grade}" = "average" ]; then
-      echo "   ✅ Average DB OLTP performance"
+      echo "   ☑️ Average DB OLTP performance"
     elif [ "${db_grade}" = "good" ]; then
       echo "   🌟 Good DB OLTP performance"
     elif [ "${db_grade}" = "excellent" ]; then
@@ -3079,7 +3082,7 @@ _print_grading_summary() {
       echo "   🚀 Ultra DB OLTP performance"
     fi
     if [ "${_db_test_status}" = "WARN" ] && [ -n "${_db_test_reason}" ]; then
-      echo "   ⚠️  Note: ${_db_test_reason}"
+      echo "   ⚠️ Note: ${_db_test_reason}"
     fi
   else
     printf "   Status: %s
@@ -3140,15 +3143,16 @@ _print_grading_summary() {
   echo ""
 
   if [ "${net_grade}" = "poor" ]; then
-    echo "   ⚠️  Slow network - may affect external API calls and package updates"
+    echo "   ⚠️ Slow network - may affect external API calls and package updates"
+    _warnings=$((_warnings + 1))
   elif [ "${net_grade}" = "average" ]; then
-    echo "   ✅  Average network speed"
+    echo "   ☑️ Average network speed"
   elif [ "${net_grade}" = "good" ]; then
-    echo "   🌟  Good network speed"
+    echo "   🌟 Good network speed"
   elif [ "${net_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent network speed"
+    echo "   🏆 Excellent network speed"
   elif [ "${net_grade}" = "ultra" ]; then
-    echo "   🚀  Ultra network speed"
+    echo "   🚀 Ultra network speed"
   fi
   echo ""
 
@@ -3164,7 +3168,7 @@ _print_grading_summary() {
   # Higher latency alone is a warning (VM contention/NUMA effects), not a hard fail.
   if [ "${mem_grade}" = "low" ]; then
     if [ -n "${mem_mibps}" ] && awk -v b="${mem_mibps}" 'BEGIN{exit !(b>=20000)}' 2>/dev/null; then
-      echo "   ⚠️  Memory latency/variance looks high (bandwidth is strong) - monitor under load"
+      echo "   ⚠️ Memory latency/variance looks high (bandwidth is strong) - monitor under load"
       _warnings=$((_warnings + 1))
     else
       echo "   ❌ Memory bandwidth too low for BOA"
@@ -3172,7 +3176,7 @@ _print_grading_summary() {
     fi
   elif [ "${mem_grade}" = "average" ]; then
     if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
-      echo "   ⚠️  Memory latency higher than expected - may reduce cache hit performance"
+      echo "   ⚠️ Memory latency higher than expected - may reduce cache hit performance"
       _warnings=$((_warnings + 1))
     fi
   fi
@@ -3181,8 +3185,8 @@ _print_grading_summary() {
   if [ "${cpu_grade}" = "poor" ]; then
     echo "   ❌ CPU performance too slow for BOA"
     _issues=$((_issues + 1))
-  elif [ "${cpu_grade}" = "acceptable" ]; then
-    echo "   ⚠️  CPU performance acceptable but not optimal"
+  elif [ "${cpu_grade}" = "weak" ]; then
+    echo "   ⚠️ CPU performance weak, not optimal"
     _warnings=$((_warnings + 1))
   fi
 
@@ -3191,16 +3195,16 @@ _print_grading_summary() {
     echo "   ❌ CPU steal critically high - oversold host, NOT recommended"
     _issues=$((_issues + 1))
   elif [ "${steal_grade}" = "warning" ]; then
-    echo "   ⚠️  CPU steal elevated - may cause latency spikes"
+    echo "   ⚠️ CPU steal elevated - may cause latency spikes"
     _warnings=$((_warnings + 1))
   fi
 
   # Disk
   if [ "${disk_grade}" = "bad" ]; then
     echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
-    _warnings=$((_warnings + 1))
+    _issues=$((_issues + 1))
   elif [ "${disk_grade}" = "poor" ]; then
-    echo "   ⚠️  Slow disk - may impact deployments"
+    echo "   ⚠️ Slow disk - may impact deployments"
     _warnings=$((_warnings + 1))
   fi
 
@@ -3208,30 +3212,30 @@ _print_grading_summary() {
   # Database (optional)
   if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
     if [ "${db_grade}" = "poor" ]; then
-      echo "   ⚠️  DB OLTP is slow - cache misses and write-heavy workloads may suffer"
-      _warnings=$((_warnings + 1))
+      echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
+      _issues=$((_issues + 1))
     fi
   fi
 
   # Network
   if [ "${net_grade}" = "poor" ]; then
-    echo "   ⚠️  Slow network - not suitable for high traffic sites"
-    _warnings=$((_warnings + 1))
+    echo "   ❌ Slow network - not suitable for high traffic sites"
+    _issues=$((_issues + 1))
   fi
 
   # Summary
   if [ "${_issues}" -eq 0 ] && [ "${_warnings}" -eq 0 ]; then
     echo ""
-    echo "   ✅  This host is well-suited for BOA deployment"
-    echo "   ✅  All critical metrics meet recommended thresholds"
+    echo "   ✅ This host is well-suited for BOA deployment"
+    echo "   ✅ All critical metrics meet recommended thresholds"
   elif [ "${_issues}" -eq 0 ]; then
     echo ""
-    echo "   ⚠️  This host is acceptable for BOA (${_warnings} minor warning(s))"
-    echo "      Should work fine for most BOA workloads"
+    echo "   ⚠️ This host is acceptable for BOA with ${_warnings} warning(s)"
+    echo "   Should work fine for most BOA workloads"
   else
     echo ""
     echo "   ❌ This host has ${_issues} critical issue(s)"
-    echo "      NOT recommended for production BOA deployment"
+    echo "   NOT recommended for production BOA deployment"
   fi
 
   echo ""
@@ -3855,7 +3859,7 @@ if [ "${_FANCY}" -eq 1 ] || [ "${_COMPACT}" -eq 1 ]; then
   _print_grading_summary
 else
   echo ""
-  echo "==== Performance Test Summary ===="
+  echo "==== Perftest ${_PT_VERSION} Summary ===="
   echo ""
   echo "Host and system details"
   echo ""
@@ -3945,7 +3949,7 @@ else
   echo ""
   echo "Database OLTP (sysbench, MySQL root):"
   if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
-      echo "  - Threads: ${_db_threads_used:-N/A}"
+    echo "  - Threads: ${_db_threads_used:-N/A}"
     echo "  - Read-only:  ${_db_ro_tps} TPS, p95 ${_db_ro_p95_ms} ms"
     echo "  - Read-write: ${_db_rw_tps} TPS, p95 ${_db_rw_p95_ms} ms"
     if [ "${_db_test_status}" = "WARN" ]; then
