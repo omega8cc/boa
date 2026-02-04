@@ -5094,11 +5094,97 @@ _load_ktls_module() {
   fi
 }
 
+# Fix CSF config only if Quic HTTP3 support is not enabled yet
+_csf_allow_quic_udp_443() {
+  _CSF_CONF="/etc/csf/csf.conf"
+  _CSF_CHANGED="NO"
+
+  if ! command -v csf >/dev/null 2>&1; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: csf not found - skipping UDP/443 (QUIC) firewall check"
+    fi
+    return 0
+  fi
+
+  if [ ! -s "${_CSF_CONF}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "WARN: ${_CSF_CONF} not found or empty - skipping"
+    fi
+    return 0
+  fi
+
+  _csf_add_port_to_list_var() {
+    # $1 = VAR (UDP_IN / UDP6_IN), $2 = PORT (443)
+    _VAR="${1}"
+    _PORT="${2}"
+
+    # Extract current value between quotes
+    _CUR="$(grep -E "^${_VAR}[[:space:]]*=" "${_CSF_CONF}" 2>/dev/null | head -n1 | sed -E 's/^[^"]*"([^"]*)".*$/\1/')"
+
+    # If var not present, do nothing
+    if ! grep -q -E "^${_VAR}[[:space:]]*=" "${_CSF_CONF}" 2>/dev/null; then
+      return 0
+    fi
+
+    # If already present as a whole list item, do nothing
+    if echo ",${_CUR}," | grep -q ",${_PORT},"; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        echo "INFO: CSF ${_VAR} already includes ${_PORT}"
+      fi
+      return 0
+    fi
+
+    # Append port (handle empty list)
+    if [ -n "${_CUR}" ]; then
+      _NEW="${_CUR},${_PORT}"
+    else
+      _NEW="${_PORT}"
+    fi
+
+    # Replace only the FIRST matching line for this var, keep surrounding quotes
+    # Make a backup once (csf.conf.bak) if not already present
+    if [ ! -e "${_CSF_CONF}.bak" ]; then
+      cp -af "${_CSF_CONF}" "${_CSF_CONF}.bak"
+    fi
+
+    sed -i -E "0,/^${_VAR}[[:space:]]*=/{s|^(${_VAR}[[:space:]]*=[[:space:]]*\").*(\".*)|\1${_NEW}\2|}" "${_CSF_CONF}"
+
+    _CSF_CHANGED="YES"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: CSF updated: ${_VAR}=\"${_NEW}\""
+    fi
+  }
+
+  # QUIC needs inbound UDP/443
+  _csf_add_port_to_list_var "UDP_IN" "443"
+
+  # If your CSF has separate IPv6 var, update it too
+  if grep -q -E '^UDP6_IN[[:space:]]*=' "${_CSF_CONF}" 2>/dev/null; then
+    _csf_add_port_to_list_var "UDP6_IN" "443"
+  fi
+
+  if [ "${_CSF_CHANGED}" = "YES" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: Reloading CSF to apply UDP/443 change"
+    fi
+    csf -r >/dev/null 2>&1 || csf -ra >/dev/null 2>&1
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: CSF config unchanged"
+    fi
+  fi
+
+  return 0
+}
+
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
 
   # Load kTLS module only if it is not already loaded
   _load_ktls_module
+
+  # Fix CSF config only if Quic HTTP3 support is not enabled yet
+  _csf_allow_quic_udp_443
 
   if ! command -v bc &> /dev/null; then
     apt-get update -qq &> /dev/null
