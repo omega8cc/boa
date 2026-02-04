@@ -4930,6 +4930,7 @@ _satellite_letsencrypt_vhost_setup() {
         fi
         _satellite_letsencrypt_crt_key_copy
         _HTTP3_TEST=$(grep http3 ${_Ssl} 2>&1)
+        _KTLS_TEST=$(grep KTLS ${_Ssl} 2>&1)
         _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
@@ -4941,6 +4942,7 @@ _satellite_letsencrypt_vhost_setup() {
         fi
         if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
           || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
+          || [[ ! "${_KTLS_TEST}" =~ "KTLS" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
