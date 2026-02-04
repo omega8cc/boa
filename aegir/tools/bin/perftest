@@ -6,6 +6,9 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export LC_ALL=C
 export LANG=C
 
+###
+_PT_VERSION=v51
+
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
@@ -872,20 +875,20 @@ _download_benchmark_v4() {
   #
   # Args:
   #   $1 = URL
-  #   $2 = expected_min_bytes (optional, default 1 MiB)
-  #   $3 = range_end_byte (optional, default ~10 MiB)
+  #   $2 = expected_min_bytes (optional, default 5 MiB)
+  #   $3 = range_end_byte (optional, default ~100 MiB)
   #
   # Output (on success):
   #   speed_bps|size_bytes|time_total|http_code
   #
   # Output (on failure): empty line
   local url="$1"
-  local min_bytes="${2:-1048576}"   # 1 MiB
-  local range_end="${3:-10485759}"  # ~10 MiB
+  local min_bytes="${2:-5242880}"   # ~5 MiB
+  local range_end="${3:-104857590}" # ~100 MiB
 
   local out http_code size_download speed_bps time_total
 
-  out="$(curl -4 -A "perftest/v49" -sL --retry 1 --retry-delay 0 --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
+  out="$(curl -4 -A "perftest/${_PT_VERSION}" -sL --retry 1 --retry-delay 0 --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
     -w '%{http_code} %{size_download} %{speed_download} %{time_total}\n' "${url}" 2>/dev/null)"
 
   [ -n "${out}" ] || return 0
@@ -1286,10 +1289,10 @@ _run_ipv4_net_check() {
     boa_url="${_urlDld}"
   fi
 
-  # Require at least 1 MiB downloaded within timeout; request up to ~10 MiB
+  # Require at least 5 MiB downloaded within timeout; request up to ~100 MiB
   local min_bytes range_end
-  min_bytes=1048576
-  range_end=10485759
+  min_bytes=5242880
+  range_end=104857590
 
   # Build regional target list (HTTP)
   case "${_net_region}" in
@@ -1480,13 +1483,15 @@ _run_ipv4_net_check() {
     done
 
     if [ "${#_net_iperf_dl_mbps[@]}" -gt 0 ]; then
-      # Filter out very weak remote results relative to the unfiltered DL median,
-      # then take median of the remaining set.
-      local _dl_med _ul_med _raw_dl_med _thr_dl
+      # Filter out very weak remote results relative to the *best* DL result, then take the median
+      # of the remaining set. This prevents a single distant/poor route from dragging the capacity
+      # estimate down (TCP here is used as the primary "port capacity" signal).
+      local _dl_med _ul_med _thr_dl _best_dl
       local _dl_filt=()
       local _ul_filt=()
-      _raw_dl_med="$(_median_num "${_net_iperf_dl_mbps[@]}")"
-      _thr_dl="$(awk -v m="${_raw_dl_med}" -v r="${_NET_IPERF_OUTLIER_RATIO}" 'BEGIN{printf "%.3f", m*r}')"
+      _best_dl="$(printf '%s
+' "${_net_iperf_dl_mbps[@]}" | sort -n | tail -n 1)"
+      _thr_dl="$(awk -v b="${_best_dl}" -v r="${_NET_IPERF_OUTLIER_RATIO}" 'BEGIN{printf "%.3f", b*r}')"
       local _k
       _k=0
       while [ "${_k}" -lt "${#_net_iperf_dl_mbps[@]}" ]; do
@@ -1499,6 +1504,9 @@ _run_ipv4_net_check() {
       if [ "${#_dl_filt[@]}" -ge 2 ]; then
         _dl_med="$(_median_num "${_dl_filt[@]}")"
         _ul_med="$(_median_num "${_ul_filt[@]}")"
+      elif [ "${#_dl_filt[@]}" -eq 1 ]; then
+        _dl_med="${_dl_filt[0]}"
+        _ul_med="${_ul_filt[0]}"
       else
         _dl_med="$(_median_num "${_net_iperf_dl_mbps[@]}")"
         _ul_med="$(_median_num "${_net_iperf_ul_mbps[@]}")"
@@ -2488,25 +2496,33 @@ _boa_grade_disk_final() {
 
 _boa_grade_network_http() {
   # input: numeric Mbit/s (HTTP range pull median)
+  #
+  # NOTE: HTTP here is a *single-flow* short download (~100 MiB via Range) from a few public endpoints.
+  # It is a useful sanity check, but it is often limited by the *remote endpoint* (per-connection caps,
+  # busy servers), CDN routing variance, and TCP slow-start on short transfers.
+  # Therefore HTTP grades use different thresholds than iPerf3/TCP capacity grades.
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
-    else if (n>=2000) print "ultra";       # ~2 Gbit/s+
-    else if (n>=1000) print "excellent";   # ~1 Gbit/s+
-    else if (n>=300) print "good";         # ~300 Mbit/s+
-    else if (n>=100) print "average";      # ~100 Mbit/s+
+    else if (n>=900) print "ultra";     # ~900 Mbit/s+
+    else if (n>=450) print "excellent"; # ~450 Mbit/s+
+    else if (n>=150) print "good";      # ~150 Mbit/s+
+    else if (n>=50)  print "average";   #  ~50 Mbit/s+
     else print "poor";
   }'
 }
 
 _boa_grade_network_tcp() {
   # input: numeric Mbit/s (iPerf3 DL median)
-  # Primary indicator of link capacity (ports), less sensitive to CDN/WAF variance than HTTP pulls.
+  #
+  # iPerf3 measures *raw TCP port capacity* and is the primary indicator of link capability for things
+  # like rsync/scp/ssh transfers and sustained bulk traffic. It is far less sensitive to CDN/WAF
+  # variance than HTTP pulls, so we grade TCP with higher expectations.
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
-    else if (n>=8000) print "ultra";      # ~8 Gbit/s+
-    else if (n>=4000) print "excellent";  # ~4 Gbit/s+
-    else if (n>=1500) print "good";       # ~1.5 Gbit/s+
-    else if (n>=300) print "average";     # ~300 Mbit/s+
+    else if (n>=2000) print "ultra";      # ~2 Gbit/s+
+    else if (n>=1000) print "excellent";  # ~1 Gbit/s+
+    else if (n>=500)  print "good";       # ~500 Mbit/s+
+    else if (n>=250)  print "average";    # ~250 Mbit/s+
     else print "poor";
   }'
 }
@@ -3105,8 +3121,8 @@ _print_grading_summary() {
         _i=$((_i + 1))
       done
       if [ "${_NET_IPERF_ENABLED}" = "YES" ]; then
+        echo ""
         if [ "${#_net_iperf_name[@]}" -gt 0 ]; then
-          echo ""
           printf "   iPerf3 (TCP) median: DL %s | UL %s (%s servers, %s streams, %ss)\n" "${_net_iperf_dl}" "${_net_iperf_ul}" "${#_net_iperf_name[@]}" "${_NET_IPERF_PARALLEL}" "${_NET_IPERF_TIME}"
           _i=0
           while [ "${_i}" -lt "${#_net_iperf_name[@]}" ]; do
@@ -3516,8 +3532,9 @@ done
 _check_root
 
 echo ""
-echo "Starting extended performance tests, please wait..."
-echo "Disabling cron temporarily to avoid auto-healing intervention on high load spikes.."
+echo "Starting Perftest ${_PT_VERSION}, please wait.."
+echo "System Time is [$(date)]"
+echo "Disabling cron temporarily to avoid auto-healing intervention.."
 _cron_stop_quiet
 
 # Ensure outbound TCP allows iperf3 public ports (Leaseweb uses 5201-5210).
