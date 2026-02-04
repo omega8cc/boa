@@ -347,7 +347,7 @@ _nginx_install_upgrade() {
       else
         _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
       fi
-      if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'openssl-${_OPENSSL_NEW_VRN}'; then
+      if ! printf '%s' "${_NGINX_V_ITD}" | grep -Fq -- 'built with OpenSSL ${_OPENSSL_NEW_VRN}'; then
         _NGINX_INSTALL_REQUIRED=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
