@@ -548,7 +548,7 @@ _nginx_install_upgrade() {
     _mrun "make install"
     ldconfig 2> /dev/null
     _nginx_clean_legacy_config
-    _mrun "service nginx quietupgrade"
+    _mrun "service nginx restart"
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
@@ -674,7 +674,7 @@ _nginx_wildcard_ssl_install() {
     elif [ -e "/etc/init.d/redis-server" ]; then
       _redis_password_update
     fi
-    _mrun "service nginx quietupgrade"
+    _mrun "service nginx restart"
   else
     _WILD_SSL_PROXY_UP=NO
     _HTTP3_TEST=$(grep http3 ${_WILD_SSL_VHOST} 2>&1)
