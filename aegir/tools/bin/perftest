@@ -885,7 +885,7 @@ _download_benchmark_v4() {
 
   local out http_code size_download speed_bps time_total
 
-  out="$(curl -4 -A "perftest/v49" -sL --retry 1 --retry-delay 0 --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
+  out="$(curl -4 -A "perftest/v50" -sL --retry 1 --retry-delay 0 --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
     -w '%{http_code} %{size_download} %{speed_download} %{time_total}\n' "${url}" 2>/dev/null)"
 
   [ -n "${out}" ] || return 0
@@ -1480,13 +1480,15 @@ _run_ipv4_net_check() {
     done
 
     if [ "${#_net_iperf_dl_mbps[@]}" -gt 0 ]; then
-      # Filter out very weak remote results relative to the unfiltered DL median,
-      # then take median of the remaining set.
-      local _dl_med _ul_med _raw_dl_med _thr_dl
+      # Filter out very weak remote results relative to the *best* DL result, then take the median
+      # of the remaining set. This prevents a single distant/poor route from dragging the capacity
+      # estimate down (TCP here is used as the primary "port capacity" signal).
+      local _dl_med _ul_med _thr_dl _best_dl
       local _dl_filt=()
       local _ul_filt=()
-      _raw_dl_med="$(_median_num "${_net_iperf_dl_mbps[@]}")"
-      _thr_dl="$(awk -v m="${_raw_dl_med}" -v r="${_NET_IPERF_OUTLIER_RATIO}" 'BEGIN{printf "%.3f", m*r}')"
+      _best_dl="$(printf '%s
+' "${_net_iperf_dl_mbps[@]}" | sort -n | tail -n 1)"
+      _thr_dl="$(awk -v b="${_best_dl}" -v r="${_NET_IPERF_OUTLIER_RATIO}" 'BEGIN{printf "%.3f", b*r}')"
       local _k
       _k=0
       while [ "${_k}" -lt "${#_net_iperf_dl_mbps[@]}" ]; do
@@ -1499,6 +1501,9 @@ _run_ipv4_net_check() {
       if [ "${#_dl_filt[@]}" -ge 2 ]; then
         _dl_med="$(_median_num "${_dl_filt[@]}")"
         _ul_med="$(_median_num "${_ul_filt[@]}")"
+      elif [ "${#_dl_filt[@]}" -eq 1 ]; then
+        _dl_med="${_dl_filt[0]}"
+        _ul_med="${_ul_filt[0]}"
       else
         _dl_med="$(_median_num "${_net_iperf_dl_mbps[@]}")"
         _ul_med="$(_median_num "${_net_iperf_ul_mbps[@]}")"
@@ -2488,25 +2493,33 @@ _boa_grade_disk_final() {
 
 _boa_grade_network_http() {
   # input: numeric Mbit/s (HTTP range pull median)
+  #
+  # NOTE: HTTP here is a *single-flow* short download (~10 MiB via Range) from a few public endpoints.
+  # It is a useful sanity check, but it is often limited by the *remote endpoint* (per-connection caps,
+  # busy servers), CDN routing variance, and TCP slow-start on short transfers.
+  # Therefore HTTP grades use different thresholds than iPerf3/TCP capacity grades.
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
     else if (n>=2000) print "ultra";       # ~2 Gbit/s+
-    else if (n>=1000) print "excellent";   # ~1 Gbit/s+
-    else if (n>=300) print "good";         # ~300 Mbit/s+
-    else if (n>=100) print "average";      # ~100 Mbit/s+
+    else if (n>=500)  print "excellent";   # ~0.5 Gbit/s+
+    else if (n>=200)  print "good";        # ~200 Mbit/s+
+    else if (n>=80)   print "average";     # ~80 Mbit/s+
     else print "poor";
   }'
 }
 
 _boa_grade_network_tcp() {
   # input: numeric Mbit/s (iPerf3 DL median)
-  # Primary indicator of link capacity (ports), less sensitive to CDN/WAF variance than HTTP pulls.
+  #
+  # iPerf3 measures *raw TCP port capacity* and is the primary indicator of link capability for things
+  # like rsync/scp/ssh transfers and sustained bulk traffic. It is far less sensitive to CDN/WAF
+  # variance than HTTP pulls, so we grade TCP with higher expectations.
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
     else if (n>=8000) print "ultra";      # ~8 Gbit/s+
-    else if (n>=4000) print "excellent";  # ~4 Gbit/s+
-    else if (n>=1500) print "good";       # ~1.5 Gbit/s+
-    else if (n>=300) print "average";     # ~300 Mbit/s+
+    else if (n>=2000) print "excellent";  # ~2 Gbit/s+
+    else if (n>=800)  print "good";       # ~800 Mbit/s+
+    else if (n>=300)  print "average";    # ~300 Mbit/s+
     else print "poor";
   }'
 }
