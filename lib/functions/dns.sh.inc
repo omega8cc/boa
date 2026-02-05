@@ -67,10 +67,13 @@ _check_dns_settings() {
 #
 # Check repo status.
 _check_git_repos() {
+  if [ "${_DL_MODE}" != "GIT" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_git_repos"
   fi
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
+  if [ "${_DL_MODE}" = "GIT" ]; then
     _GITHUB_WORKS=NO
     _GITLAB_WORKS=NO
     if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
@@ -607,13 +610,8 @@ _check_github_for_aegir_head_mode() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_github_for_aegir_head_mode"
   fi
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
-    _USE_AEGIR_VER=SRC
-  else
-    _USE_AEGIR_VER=STATIC
-  fi
   if [ "${_SYSTEM_UP_ONLY}" = "NO" ] \
-    && [ "${_USE_AEGIR_VER}" = "SRC" ]; then
+    && [ "${_DL_MODE}" = "GIT" ]; then
     rm -rf /opt/tmp/test-*
     _check_connection
     _GITHUB_TEST=$(git clone ${_gitHub}/provision.git \
@@ -627,35 +625,6 @@ _check_github_for_aegir_head_mode() {
       rm -rf /opt/tmp/test-*
       _clean_pid_exit _check_github_for_aegir_head_mode_a
     fi
-    _GITHUB_TEST=$(git clone ${_gitHub}/hostmaster.git \
-      /opt/tmp/test-hostmaster 2>&1)
-    if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
-      echo " "
-      _msg "EXIT on error (hostmaster) due to GitHub downtime"
-      _msg "Please try to run this script again in a few minutes"
-      _msg "You may want to check https://www.githubstatus.com"
-      _msg "Bye"
-      rm -rf /opt/tmp/test-*
-      _clean_pid_exit _check_github_for_aegir_head_mode_b
-    fi
-    rm -rf /opt/tmp/test-*
-  fi
-  if [[ "${_X_VERSION}" =~ "-dev" ]] \
-    || [[ "${_X_VERSION}" =~ "-lts" ]] \
-    || [[ "${_X_VERSION}" =~ "-pro" ]]; then
-    rm -rf /opt/tmp/test-*
-    _GITHUB_TEST=$(git clone ${_gitHub}/boa.git \
-      /opt/tmp/test-boa 2>&1)
-    if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
-      echo " "
-      _msg "EXIT on error (boa) due to GitHub downtime"
-      _msg "Please try to run this script again in a few minutes"
-      _msg "You may want to check https://www.githubstatus.com"
-      _msg "Bye"
-      rm -rf /opt/tmp/test-*
-      _clean_pid_exit _check_github_for_aegir_head_mode_c
-    fi
-    rm -rf /opt/tmp/test-*
   fi
 }
 
