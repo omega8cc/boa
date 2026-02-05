@@ -2,6 +2,10 @@
 
 BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11, as well as Backdrop CMS and Grav CMS (soon).
 
+## Strap in, your sites are getting an F1 engine
+
+We’re rolling out a meaningful upgrade across BOA/Omega8.cc nodes: HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and responsive (and stay that way during spikes), this is genuinely good news. Why this is a big deal? What visitors should notice? Why it matters for *your server* too [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-dev/HTTP3.md)
+
 ## 30 Years of Heritage
 
 We are unique within the hosting industry for many important reasons. Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take **Open Source seriously** — it’s not a buzzword for us. It’s about freedom from corporate control. Here's a short look back at our 15-year Ægir journey and 19 years with Drupal. [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-lts/DIFFERENT30Y.md)
