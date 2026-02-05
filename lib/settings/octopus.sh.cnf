@@ -871,6 +871,61 @@ _get_dev_src_pre() {
 }
 
 
+#
+# Extract archive.
+_extract_archive() {
+  if [ ! -z "$1" ]; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.tar.xz)    tar xvf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+    rm -f $1
+  fi
+}
+
+
+#
+# Download and extract from dev/version mirror.
+_get_dev_ext() {
+  if [ ! -z "$1" ]; then
+    _max_attempts=10
+    _attempt_num=1
+    _success=0
+    while [ ${_attempt_num} -le ${_max_attempts} ]; do
+      [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1" -o "$1"; then
+        _success=1
+        break
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} failed."
+        _attempt_num=$((_attempt_num+1))
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Retrying in 9 seconds..."
+          sleep 9
+        fi
+      fi
+    done
+    if [ "${_success}" -eq 1 ]; then
+      _extract_archive "$1"
+    else
+      echo "OOPS: Failed to download ${_urlDev}/${_tRee}/$1 after ${_max_attempts} attempts"
+      return 1  # Exit the function but continue the script
+    fi
+  fi
+}
+
+
 ###
 ### Cleanup for boa code
 ###
