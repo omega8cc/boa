@@ -500,29 +500,19 @@ _mode_detection() {
   [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
   [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
   pkill -9 -f systemd-udevd
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
-    _USE_AEGIR_VER=SRC
-  else
-    _USE_AEGIR_VER=STATIC
-  fi
+
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
   fi
-  if [ "${_USE_AEGIR_VER}" = "SRC" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
-    if [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
-      _INSTAPP="/usr/bin/aptitude-fast -f -y -q \
-        -o Dpkg::Options::=--force-confmiss \
-        -o Dpkg::Options::=--force-confdef \
-        -o Dpkg::Options::=--force-${_DPKG_CNF} install"
-    else
-      _INSTAPP="/usr/bin/aptitude -f -y -q \
-        --allow-untrusted \
-        -o Dpkg::Options::=--force-confmiss \
-        -o Dpkg::Options::=--force-confdef \
-        -o Dpkg::Options::=--force-${_DPKG_CNF} install"
-    fi
+
+  if [ -x "/opt/local/bin/aptfast" ]; then
+    _INSTAPP="/opt/local/bin/aptfast -f -y -q \
+      --allow-untrusted \
+      -o Dpkg::Options::=--force-confmiss \
+      -o Dpkg::Options::=--force-confdef \
+      -o Dpkg::Options::=--force-${_DPKG_CNF} install"
   else
     _INSTAPP="/usr/bin/aptitude -f -y -q \
       --allow-untrusted \

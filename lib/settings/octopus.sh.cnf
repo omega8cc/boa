@@ -918,12 +918,4 @@ _download_helpers_libs() {
   _SRCDIR="/opt/tmp/files"
   mkdir -p ${_SRCDIR}
   cd ${_SRCDIR}
-  #
-  # Get axelerator
-  if [ ! -e "/usr/bin/aptitude-fast" ]; then
-    git clone ${_gitHub}/apt-fast.git /opt/tmp/apt-fast &> /dev/null
-    cp -af /opt/tmp/apt-fast/apt-fast /usr/bin/aptitude-fast &> /dev/null
-    chmod +x /usr/bin/aptitude-fast &> /dev/null
-    cd /opt/tmp
-  fi
 }
