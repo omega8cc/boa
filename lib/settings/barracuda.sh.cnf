@@ -1480,8 +1480,11 @@ _get_dev_ext() {
 _cleanup_boa_code() {
   mkdir -p /opt/tmp
   cd /opt/tmp
-  rm -rf /opt/tmp/boa
-  rm -f /opt/tmp/boa.tar.gz
+  [ -e "/opt/tmp/boa.tar.gz" ] && rm -f /opt/tmp/boa.tar.gz
+  if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
+    rm -rf /opt/tmp/boa
+  fi
 }
 
 
@@ -1493,7 +1496,7 @@ _download_boa_code() {
   _get_dev_ext "boa.tar.gz"
   if [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
     && [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
-    [ -e "boa.tar.gz" ] && rm -f boa.tar.gz
+    [ -e "/opt/tmp/boa.tar.gz" ] && rm -f /opt/tmp/boa.tar.gz
   fi
 }
 
