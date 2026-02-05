@@ -680,6 +680,13 @@ _nginx_wildcard_ssl_install() {
     _mrun "service nginx restart"
   else
     _WILD_SSL_PROXY_UP=NO
+    _RSPRT_TEST=$(grep "quic reuseport" ${_WILD_SSL_VHOST} 2>&1)
+    if [[ ! "${_RSPRT_TEST}" =~ "quic reuseport" ]]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs quic reuseport update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     _HTTP3_TEST=$(grep http3 ${_WILD_SSL_VHOST} 2>&1)
     if [[ ! "${_HTTP3_TEST}" =~ "http3" ]]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
