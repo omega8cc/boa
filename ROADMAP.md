@@ -30,6 +30,7 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 ## MAJOR NEW FEATURES RELEASED IN BOA LTS/PRO
 
+- **HTTP/3 on QUIC with KTLS Magic**: Strap in, your sites are getting an F1 engine (PRO/LTS)
 - **Drupal 11 with Aegir 3**: They Said It Couldn’t Be Done — We Did It Anyway (PRO/LTS)
 - **Debian Trixie and Devuan Excalibur**: Ensure compatibility for installation and automated upgrades (PRO/LTS)
 - **Debian Bookworm and Devuan Daedalus**: Ensure compatibility for installation and automated upgrades (PRO/LTS)
