@@ -260,10 +260,13 @@ _hostmaster_go_up() {
     rm -rf ${_ROOT}/.drush/{sys,xts,usr}
     rm -rf ${_ROOT}/.drush/{provision,drush_make}
     _get_dev_ext "backend.tar.gz"
+    mv -f ${_ROOT}/.drush/backend/sys ${_ROOT}/.drush/
+    mv -f ${_ROOT}/.drush/backend/xts ${_ROOT}/.drush/
+    mv -f ${_ROOT}/.drush/backend/usr ${_ROOT}/.drush/
     if [ -e "${_ROOT}/.drush/sys/provision/provision.inc" ] \
       && [ -d "${_ROOT}/.drush/xts/security_review" ] \
       && [ -d "${_ROOT}/.drush/usr/registry_rebuild" ]; then
-      [ -e "backend.tar.gz" ] && rm -f backend.tar.gz
+      [ -e "${_ROOT}/.drush/backend" ] && rm -rf ${_ROOT}/.drush/backend*
     fi
   elif [ "${_DL_MODE}" = "GIT" ]; then
     cd ${_ROOT}/.drush

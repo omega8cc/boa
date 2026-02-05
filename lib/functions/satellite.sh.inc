@@ -2915,7 +2915,7 @@ _satellite_download_for_local_build() {
     if [ "${_DL_MODE}" = "BATCH" ]; then
       rm -rf /opt/tmp/make_local
       cd /opt/tmp
-      _get_dev_stc "make_local.tar.gz"
+      _get_dev_ext "make_local.tar.gz"
       if [ -e "${_mL}/hostmaster/hostmaster.make" ] \
         && [ -e "${_mL}/hosting/hosting.module" ] \
         && [ -e "${_mL}/drupal/modules/system/system.module" ]; then
@@ -5312,10 +5312,13 @@ _satellite_child_b_drush_xts_install() {
     rm -rf ${_ROOT}/.drush/{sys,xts,usr}
     rm -rf ${_ROOT}/.drush/{provision,drush_make}
     _get_dev_ext "backend.tar.gz"
+    mv -f ${_ROOT}/.drush/backend/sys ${_ROOT}/.drush/
+    mv -f ${_ROOT}/.drush/backend/xts ${_ROOT}/.drush/
+    mv -f ${_ROOT}/.drush/backend/usr ${_ROOT}/.drush/
     if [ -e "${_ROOT}/.drush/sys/provision/provision.inc" ] \
       && [ -d "${_ROOT}/.drush/xts/security_review" ] \
       && [ -d "${_ROOT}/.drush/usr/registry_rebuild" ]; then
-      [ -e "backend.tar.gz" ] && rm -f backend.tar.gz
+      [ -e "${_ROOT}/.drush/backend" ] && rm -rf ${_ROOT}/.drush/backend*
     fi
   elif [ "${_DL_MODE}" = "GIT" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
