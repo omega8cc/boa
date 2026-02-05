@@ -279,7 +279,7 @@ _hostmaster_go_up() {
   rm -rf ${_ROOT}/.drush/drush_make
   rm -rf ${_ROOT}/.drush/sys/drush_make
   cd ${_ROOT}/.drush
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
+  if [ "${_DL_MODE}" = "BATCH" ]; then
     cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading Drush and Provision extensions..."

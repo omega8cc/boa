@@ -194,6 +194,17 @@ _DEBUG_MODE=NO
 
 
 ###----------------------------------------###
+### AEGIR PACKAGES DOWNLOAD MODE           ###
+###----------------------------------------###
+###
+### _DL_MODE=BATCH (default, multi-download)
+### _DL_MODE=GIT   (src from GIT repositories)
+### _DL_MODE=OLD   (legacy, static mode)
+###
+_DL_MODE=BATCH
+
+
+###----------------------------------------###
 ### FORCED IP MODE                         ###
 ###----------------------------------------###
 ###

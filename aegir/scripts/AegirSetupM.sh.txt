@@ -197,7 +197,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "INFO: Installing Aegir Provision backend..."
 fi
 mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-if [ "${_AEGIR_VERSION}" != "static" ]; then
+if [ "${_DL_MODE}" = "BATCH" ]; then
   cd ${_ROOT}/.drush
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Downloading Drush and Provision extensions..."

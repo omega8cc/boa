@@ -2223,6 +2223,7 @@ _barracuda_cnf() {
     echo "###"                                                >> ${_barCnf}
     echo "_AUTOPILOT=${_AUTOPILOT}"                           >> ${_barCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                         >> ${_barCnf}
+    echo "_DL_MODE=${_DL_MODE}"                               >> ${_barCnf}
     echo "_INCIDENT_REPORT=\"${_INCIDENT_REPORT}\""           >> ${_barCnf}
     echo "_MY_EMAIL=\"${_MY_EMAIL}\""                         >> ${_barCnf}
 
@@ -2712,6 +2713,11 @@ _barracuda_cnf() {
     _LOCAL_DEVUAN_MIRROR_TEST=$(grep _LOCAL_DEVUAN_MIRROR ${_barCnf} 2>&1)
     if [[ ! "${_LOCAL_DEVUAN_MIRROR_TEST}" =~ "_LOCAL_DEVUAN_MIRROR" ]]; then
       echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}" >> ${_barCnf}
+    fi
+
+    _DL_MODE_TEST=$(grep _DL_MODE ${_barCnf} 2>&1)
+    if [[ ! "${_DL_MODE_TEST}" =~ "_DL_MODE" ]]; then
+      echo "_DL_MODE=${_DL_MODE}" >> ${_barCnf}
     fi
 
     sleep 1

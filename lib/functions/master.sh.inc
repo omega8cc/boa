@@ -591,6 +591,7 @@ _aegir_master_upgrade() {
     echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_vBs}/${_filIncB}
     echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_vBs}/${_filIncB}
     echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_vBs}/${_filIncB}
+    echo "_DL_MODE=\"${_DL_MODE}\""                     >> ${_vBs}/${_filIncB}
     echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${_vBs}/${_filIncB}
     echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${_vBs}/${_filIncB}
     echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_vBs}/${_filIncB}
@@ -935,6 +936,7 @@ EOFMYSQL
     echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_vBs}/${_filIncB}
     echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_vBs}/${_filIncB}
     echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_vBs}/${_filIncB}
+    echo "_DL_MODE=\"${_DL_MODE}\""                     >> ${_vBs}/${_filIncB}
     echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${_vBs}/${_filIncB}
     echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_vBs}/${_filIncB}
     echo "_ESC_PASS=\"${_ESC_PASS}\""                   >> ${_vBs}/${_filIncB}

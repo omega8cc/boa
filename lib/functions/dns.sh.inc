@@ -67,10 +67,13 @@ _check_dns_settings() {
 #
 # Check repo status.
 _check_git_repos() {
+  if [ "${_DL_MODE}" != "GIT" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_git_repos"
   fi
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
+  if [ "${_DL_MODE}" = "GIT" ]; then
     _GITHUB_WORKS=NO
     _GITLAB_WORKS=NO
     if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
@@ -607,13 +610,8 @@ _check_github_for_aegir_head_mode() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_github_for_aegir_head_mode"
   fi
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
-    _USE_AEGIR_VER=SRC
-  else
-    _USE_AEGIR_VER=STATIC
-  fi
   if [ "${_SYSTEM_UP_ONLY}" = "NO" ] \
-    && [ "${_USE_AEGIR_VER}" = "SRC" ]; then
+    && [ "${_DL_MODE}" = "GIT" ]; then
     rm -rf /opt/tmp/test-*
     _check_connection
     _GITHUB_TEST=$(git clone ${_gitHub}/provision.git \

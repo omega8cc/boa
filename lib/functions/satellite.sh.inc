@@ -614,6 +614,7 @@ _satellite_cnf() {
     echo "_AUTOPILOT=${_AUTOPILOT}"                             >> ${_octCnf}
     echo "_HM_ONLY=${_HM_ONLY}"                                 >> ${_octCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
+    echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
     echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""           >> ${_octCnf}
     echo "_THIS_DB_HOST=${_THIS_DB_HOST}"                       >> ${_octCnf}
@@ -980,6 +981,13 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_SQL_CONVERT=${_SQL_CONVERT}" >> ${_octCnf}
+    fi
+
+    _DL_MODE_TEST=$(grep _DL_MODE ${_octCnf} 2>&1)
+    if [[ "${_DL_MODE_TEST}" =~ "_DL_MODE" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_DL_MODE=${_DL_MODE}" >> ${_octCnf}
     fi
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3919,6 +3927,7 @@ _satellite_make() {
   echo "export _CLIENT_EMAIL=\"${_CLIENT_EMAIL}\""           >> ${_writeTo}
   echo "export _CLIENT_OPTION=\"${_CLIENT_OPTION}\""         >> ${_writeTo}
   echo "export _DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_writeTo}
+  echo "export _DL_MODE=\"${_DL_MODE}\""                     >> ${_writeTo}
   echo "export _DISTRO=\"${_DISTRO}\""                       >> ${_writeTo}
   echo "export _DOMAIN=\"${_DOMAIN}\""                       >> ${_writeTo}
 
@@ -4153,7 +4162,7 @@ _satellite_if_head_github_connection_test() {
     _debug_proc
   fi
   ###--------------------###
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
+  if [ "${_DL_MODE}" = "GIT" ]; then
     rm -rf /opt/tmp/test-*
     _check_connection
     _GITHUB_TEST=$(git clone ${_gitHub}/provision.git \
@@ -5315,7 +5324,7 @@ _satellite_child_b_drush_xts_install() {
   fi
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   cd ${_ROOT}/.drush
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
+  if [ "${_DL_MODE}" = "BATCH" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     fi
