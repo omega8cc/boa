@@ -53,7 +53,7 @@
   /var/www/ r,
   /var/www/** r,
 
-  # Specific directories used by Aegir (if applicable)
+  # Specific directories used by Ægir (if applicable)
   /var/aegir/.drush/ r,
   /var/aegir/.drush/** r,
   /var/aegir/config/ r,

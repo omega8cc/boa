@@ -94,7 +94,7 @@ if (isset($_SERVER['HTTP_USER_AGENT']) &&
 
 
 /**
- * Use Aegir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
+ * Use Ægir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
  */
 if (isset($_SERVER['MAIN_SITE_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];
@@ -577,7 +577,7 @@ if (!$is_backend) {
         $settings['cache']['bins']['render'] = 'cache.backend.null';
         $settings['cache']['bins']['dynamic_page_cache'] = 'cache.backend.null';
         //
-        // Warning: you must clear caches via Aegir interface or with Drush
+        // Warning: you must clear caches via Ægir interface or with Drush
         // before these lines will start working on .dev. alias without error 500
         // saying: You have requested a non-existent service "cache.backend.null"
         //

@@ -3,7 +3,7 @@
 
 ###----------------------------------------###
 ###
-###  Octopus Aegir Installer
+###  Octopus Ægir Installer
 ###
 ###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
@@ -196,7 +196,7 @@ fi
 ###---### User check.
 #
 if [ "${_DEBUG_MODE}" = "YES" ]; then
-  _msg "${_STATUS} C: Aegir automated install script part C"
+  _msg "${_STATUS} C: Ægir automated install script part C"
 fi
 if [ "$(id -u)" -eq 0 ]; then
   _msg "${_STATUS} C: FATAL ERROR: This script should be run as a non-root user"
@@ -1643,7 +1643,7 @@ cd ${_CORE}
 
 ###----------------------------------------###
 ###
-###  Octopus Aegir Installer
+###  Octopus Ægir Installer
 ###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###

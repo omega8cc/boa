@@ -132,7 +132,7 @@ if ($hidden_uri) {
 
 
 /**
- * Use Aegir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
+ * Use Ægir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
  */
 if (isset($_SERVER['MAIN_SITE_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];

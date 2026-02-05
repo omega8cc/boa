@@ -398,7 +398,7 @@ _enforce_load_policy() {
 # System-wide guard via cron (every minute)
 #   * * * * * root /bin/bash /opt/local/bin/loadguard enforce >/var/log/boa/load_guard.log 2>&1
 #
-# Gate Aegir backend runner
+# Gate Ægir backend runner
 # Decide whether to run _proc_control
 if _ok_to_run_backend_tasks; then
   nohup ionice -c2 -n7 nice -n5 bash /var/xdrago/runner.sh > /dev/null 2>&1 &

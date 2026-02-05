@@ -3,7 +3,7 @@
 
 ###----------------------------------------###
 ###
-###  Octopus Aegir Installer
+###  Octopus Ægir Installer
 ###
 ###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
@@ -321,7 +321,7 @@ exit 0
 
 ###----------------------------------------###
 ###
-###  Octopus Aegir Installer
+###  Octopus Ægir Installer
 ###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###

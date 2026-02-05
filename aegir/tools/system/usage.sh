@@ -139,7 +139,7 @@ _send_notice_php() {
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Ægir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
 Our monitoring detected that you are still using deprecated
@@ -153,7 +153,7 @@ which doesn't support many deprecated PHP versions.
 The upgrade will happen in the first week of May, 2023,
 and there are no exceptions possible to avoid it.
 
-This means that all Aegir instances still running PHP $1
+This means that all Ægir instances still running PHP $1
 will stop working if not switched to one of currently
 supported versions: 8.1, 8.2, 8.3, 8.4, 8.5
 
@@ -169,7 +169,7 @@ to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc
 
 --
-This email has been sent by your Aegir system monitor
+This email has been sent by your Ægir system monitor
 
 EOF
   fi
@@ -228,7 +228,7 @@ to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
 --
-This email has been sent by your Aegir platform core monitor.
+This email has been sent by your Ægir platform core monitor.
 
 EOF
   fi
@@ -399,15 +399,15 @@ _send_notice_sql() {
 Hello,
 
 You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
+You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
 Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
 but you are currently using ${_SQL_NOW} MB of databases space.
 
 Please reduce your usage by deleting no longer used sites, or purchase
-enough Aegir Engines to cover your current usage.
+enough Ægir Engines to cover your current usage.
 
-You can purchase more Aegir Engines easily online:
+You can purchase more Ægir Engines easily online:
 
   https://omega8.cc/pricing
 
@@ -433,7 +433,7 @@ usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
 --
-This email has been sent by your Aegir resources usage daily monitor.
+This email has been sent by your Ægir resources usage daily monitor.
 
 EOF
   fi
@@ -454,25 +454,25 @@ _send_notice_disk() {
 Hello,
 
 You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
+You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
 Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
 You are currently using ${_TotSizH} MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
-and no longer used sites, or purchase enough Aegir Engines
+and no longer used sites, or purchase enough Ægir Engines
 to cover your current usage.
 
-You can purchase more Aegir Engines easily online:
+You can purchase more Ægir Engines easily online:
 
   https://omega8.cc/buy
 
 Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all DEV/TEST sites, if they exist,
-even if they are marked as disabled in your Aegir control panel.
+even if they are marked as disabled in your Ægir control panel.
 
 --
-This email has been sent by your Aegir resources usage daily monitor.
+This email has been sent by your Ægir resources usage daily monitor.
 
 EOF
   fi
@@ -490,7 +490,7 @@ _send_notice_gprd() {
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
+    -s "GDPR compliance for your Ægir account" ${_CLIENT_EMAIL}
 Hello,
 
 Yes, yet another GDPR email, but it's important that you read and understand
@@ -837,7 +837,7 @@ excluded from your allocated databases limits for LIVE sites.
 
 Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all DEV/TEST sites, if they exist,
-even if they are marked as disabled in your Aegir control panel.
+even if they are marked as disabled in your Ægir control panel.
 
   _DirSize is the site files usage in kB
   _DatSize is the site database usage in kB

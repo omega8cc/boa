@@ -1311,7 +1311,7 @@ _satellite_force_advanced_nginx_config() {
 }
 
 #
-# Update local INI for PHP CLI on the Aegir Satellite Instance.
+# Update local INI for PHP CLI on the Ægir Satellite Instance.
 _satellite_update_ini_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_update_ini_php_cli"
@@ -2931,11 +2931,11 @@ _satellite_download_for_local_build() {
       ### Drupal Core
       _get_core_ext "${_DRUPAL7}.tar.gz"
       mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
-      ### Aegir Core
+      ### Ægir Core
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
-      ### Aegir Golden + BOA Settings
+      ### Ægir Golden + BOA Settings
         ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
@@ -2946,7 +2946,7 @@ _satellite_download_for_local_build() {
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
         rm -rf */.git
-      ### Aegir Drupal Contrib
+      ### Ægir Drupal Contrib
       _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
       _get_dev_stc "betterlogin-7.x-1.5.tar.gz"
       _get_dev_stc "ctools-7.x-1.21.tar.gz"
@@ -2961,7 +2961,7 @@ _satellite_download_for_local_build() {
       _get_dev_stc "timeago-7.x-2.3.tar.gz"
       _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
       _get_dev_stc "views-7.x-3.29.tar.gz"
-      ### Aegir Third Party Libraries
+      ### Ægir Third Party Libraries
       _get_dev_stc "qrcodejs.tar.gz"
       _get_dev_stc "timeagojs.tar.gz"
       _get_dev_stc "vuejs.tar.gz"
@@ -3009,7 +3009,7 @@ _satellite_run_child_b() {
     chattr +i ${_U_HD}/php.ini
     chmod 0700 /data/u &> /dev/null
     chown root:root /data/u &> /dev/null
-    _msg "${_STATUS} A: Aegir Satellite Instance installed"
+    _msg "${_STATUS} A: Ægir Satellite Instance installed"
   else
     if [ "${_PLATFORMS_ONLY}" = "YES" ]; then
       _msg "${_STATUS} A: Satellite Instance Hostmaster upgrade skipped"
@@ -3080,7 +3080,7 @@ _satellite_run_child_b() {
       wait
       chmod 0700 /data/u &> /dev/null
       chown root:root /data/u &> /dev/null
-      _msg "${_STATUS} A: Aegir Satellite Instance upgrade completed"
+      _msg "${_STATUS} A: Ægir Satellite Instance upgrade completed"
     fi
   fi
 }
@@ -3865,7 +3865,7 @@ _satellite_send_welcome_email() {
       _msg "${_STATUS} A: Sending setup email on init..."
     fi
     _TIME=$(date)
-    _Q="Your Aegir Install on ${_TIME} [${_USER}]"
+    _Q="Your Ægir Install on ${_TIME} [${_USER}]"
     echo ${_TIME} > ${_ROOT}/log/date-init.txt
     if [ -e "${_ROOT}/log/setupmail.txt" ] \
       || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
@@ -3882,7 +3882,7 @@ _satellite_send_welcome_email() {
         _msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
       _TIME=$(date)
-      _Q="[${_X_VERSION}] Aegir Upgrade [${_USER}]"
+      _Q="[${_X_VERSION}] Ægir Upgrade [${_USER}]"
       echo ${_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
         if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
@@ -4312,7 +4312,7 @@ _satellite_check_sanitize_domain_name() {
   if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/${_DOMAIN}" ]; then
     _DO_NOTHING=YES
   else
-    _msg "ERROR: ${_DOMAIN} is already used on the Aegir Master Instance"
+    _msg "ERROR: ${_DOMAIN} is already used on the Ægir Master Instance"
     _msg "Please change the value for _DOMAIN to make it unique"
     _msg "Bye"
     _clean_pid_exit
@@ -4729,9 +4729,9 @@ _satellite_checkpoint() {
 
     * Your email address is ${_MY_OCTO_EMAIL}
     * Your client email address is ${_CLIENT_EMAIL}
-    * Your Aegir control panel for this instance will be available at:
+    * Your Ægir control panel for this instance will be available at:
         https://${_DOMAIN}
-    * Your Aegir system user for this instance will be ${_USER}
+    * Your Ægir system user for this instance will be ${_USER}
     * This Octopus will use PHP-CLI ${_PHP_CLI_VERSION} for all sites
     * This Octopus will use PHP-FPM ${_PHP_FPM_VERSION} for all sites
     * This Octopus includes platforms: ${_PLATFORMS_LIST}
@@ -4744,9 +4744,9 @@ EOF
       _optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
       cat <<EOF
 
-    * Your Aegir control panel for this instance is available at:
+    * Your Ægir control panel for this instance is available at:
         https://${_DOMAIN}
-    * Your Aegir system user for this instance is ${_USER}
+    * Your Ægir system user for this instance is ${_USER}
     * This Octopus will use PHP-CLI ${_PHP_CLI_VERSION} for all sites
     * This Octopus will use PHP-FPM ${_PHP_FPM_VERSION} for all sites
     * This Octopus includes platforms: ${_PLATFORMS_LIST}
@@ -5117,14 +5117,14 @@ _satellite_display_url_finalize() {
       _AEGIR_LOGIN_URL=$(tail --lines=11 ${_ROOT}/log/install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
-        _msg "INFO: Congratulations, Aegir Satellite have been installed successfully!"
-#         _msg "NOTE! Please wait 2 min before visiting Aegir at:"
+        _msg "INFO: Congratulations, Ægir Satellite have been installed successfully!"
+#         _msg "NOTE! Please wait 2 min before visiting Ægir at:"
 #         echo " "
 #         _msg "LINK: ${_AEGIR_LOGIN_URL}"
 #         echo " "
 #         _msg "NOTE! The initial one-time login link will no longer work."
 #         sleep 3
-#         _msg "To access your Octopus Aegir control panel after the procedure is finished..."
+#         _msg "To access your Octopus Ægir control panel after the procedure is finished..."
 #         _msg "...please generate a new link by running the following command:"
 #         sleep 3
 #         echo " "
@@ -5311,7 +5311,7 @@ _satellite_child_b_drush_xts_install() {
     _debug_proc
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "${_STATUS} B: Installing Aegir Provision backend..."
+    _msg "${_STATUS} B: Installing Ægir Provision backend..."
   fi
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   cd ${_ROOT}/.drush
@@ -5862,10 +5862,10 @@ _satellite_child_b_aegir_health_check() {
     _MSG_STATUS="upgrade"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "${_STATUS} B: Simple check if Aegir ${_MSG_STATUS} is successful"
+    _msg "${_STATUS} B: Simple check if Ægir ${_MSG_STATUS} is successful"
   fi
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
-    _msg "${_STATUS} B: Aegir ${_MSG_STATUS} test result: OK"
+    _msg "${_STATUS} B: Ægir ${_MSG_STATUS} test result: OK"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Reloading Nginx..."
       sudo /etc/init.d/nginx reload
@@ -6003,7 +6003,7 @@ _satellite_child_b_aegir_ui_enhance() {
     _msg "PROC: _satellite_child_b_aegir_ui_enhance"
     _debug_proc
   fi
-  _msg "${_STATUS} B: Enhancing Aegir UI, please wait..."
+  _msg "${_STATUS} B: Enhancing Ægir UI, please wait..."
   mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
   mkdir -p ${_HM_ROOT}/profiles/hostmaster/modules/{aegir,contrib}
   cd ${_HM_ROOT}/sites/${_DOMAIN}
