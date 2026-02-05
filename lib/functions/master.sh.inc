@@ -5,6 +5,94 @@ export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
+
+#
+# Update local INI for PHP CLI on the Aegir Master Instance.
+_php_cli_local_ini_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_cli_local_ini_update"
+  fi
+  _U_HD="/var/aegir/.drush"
+  _U_TP="/var/aegir/.tmp"
+  _U_II="${_U_HD}/php.ini"
+  _PHP_CLI_UPDATE=NO
+  _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
+  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
+      _PHP_CLI_UPDATE=YES
+    fi
+  done
+  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
+    || [ ! -e "${_U_II}" ] \
+    || [ ! -d "${_U_TP}" ] \
+    || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mkdir -p ${_U_TP}
+    touch ${_U_TP}
+    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+    chmod 02755 ${_U_TP}
+    mkdir -p ${_U_HD}
+    rm -f ${_U_HD}/.ctrl.php*
+    rm -f ${_U_II}
+    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
+        cp -af /opt/php${e}/lib/php.ini ${_U_II}
+        _U_INI=${e}
+      fi
+    done
+    if [ -e "${_U_II}" ]; then
+      _INI="open_basedir = \".: \
+        /data/all:           \
+        /data/conf:          \
+        /data/disk/all:      \
+        /opt/php56:          \
+        /opt/php70:          \
+        /opt/php71:          \
+        /opt/php72:          \
+        /opt/php73:          \
+        /opt/php74:          \
+        /opt/php80:          \
+        /opt/php81:          \
+        /opt/php82:          \
+        /opt/php83:          \
+        /opt/php84:          \
+        /opt/php85:          \
+        /opt/tika:           \
+        /opt/tika7:          \
+        /opt/tika8:          \
+        /opt/tika9:          \
+        /dev/urandom:        \
+        /opt/tmp/make_local: \
+        /opt/tools/drush:    \
+        /tmp:                \
+        /usr/bin:            \
+        /usr/local/bin:      \
+        /var/aegir\""
+      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
+      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
+      _INI=${_INI//\//\\\/}
+      _QTP=${_U_TP//\//\\\/}
+      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      wait
+      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      wait
+      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      wait
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      wait
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      wait
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
+      wait
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid
+      echo > ${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid
+    fi
+  fi
+}
+
+
 #
 # Download and extract from core archive.
 _get_core_ext() {
@@ -1280,88 +1368,3 @@ _aegir_master_display_login_link() {
   fi
 }
 
-#
-# Update local INI for PHP CLI on the Aegir Master Instance.
-_php_cli_local_ini_update() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _php_cli_local_ini_update"
-  fi
-  _U_HD="/var/aegir/.drush"
-  _U_TP="/var/aegir/.tmp"
-  _U_II="${_U_HD}/php.ini"
-  _PHP_CLI_UPDATE=NO
-  _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
-      _PHP_CLI_UPDATE=YES
-    fi
-  done
-  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
-    || [ ! -e "${_U_II}" ] \
-    || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mkdir -p ${_U_TP}
-    touch ${_U_TP}
-    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-    chmod 02755 ${_U_TP}
-    mkdir -p ${_U_HD}
-    rm -f ${_U_HD}/.ctrl.php*
-    rm -f ${_U_II}
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-    for e in ${_PHP_V}; do
-      if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
-        cp -af /opt/php${e}/lib/php.ini ${_U_II}
-        _U_INI=${e}
-      fi
-    done
-    if [ -e "${_U_II}" ]; then
-      _INI="open_basedir = \".: \
-        /data/all:           \
-        /data/conf:          \
-        /data/disk/all:      \
-        /opt/php56:          \
-        /opt/php70:          \
-        /opt/php71:          \
-        /opt/php72:          \
-        /opt/php73:          \
-        /opt/php74:          \
-        /opt/php80:          \
-        /opt/php81:          \
-        /opt/php82:          \
-        /opt/php83:          \
-        /opt/php84:          \
-        /opt/php85:          \
-        /opt/tika:           \
-        /opt/tika7:          \
-        /opt/tika8:          \
-        /opt/tika9:          \
-        /dev/urandom:        \
-        /opt/tmp/make_local: \
-        /opt/tools/drush:    \
-        /tmp:                \
-        /usr/bin:            \
-        /usr/local/bin:      \
-        /var/aegir\""
-      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
-      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
-      _INI=${_INI//\//\\\/}
-      _QTP=${_U_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
-      wait
-      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
-      wait
-      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
-      wait
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
-      wait
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
-      wait
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
-      wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid
-      echo > ${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid
-    fi
-  fi
-}
