@@ -89,8 +89,8 @@ More details: *(link coming soon — we’ll share it as soon as it’s live)*
 
 After the system upgrade:
 
-Aegir → Platforms → Verify (all platforms)
-Aegir → Sites → Verify (use bulk actions if you have many sites)
+1. Aegir → Platforms → Verify (all platforms)
+2. Aegir → Sites → Verify (use bulk actions if you have many sites)
 
 That’s it. Once Verify is done, you’re ready to benefit automatically — and your visitors get a faster, smoother ride. Enjoy!
 
