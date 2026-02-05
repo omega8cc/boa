@@ -145,70 +145,6 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 #
-# Update php-cli for Drush.
-_php_cli_drush_update() {
-  if [ ! -z "${1}" ]; then
-    _DRUSH_FILE="${_ROOT}/drush/${1}"
-  else
-    _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  fi
-  if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
-    && [ -x "/opt/php85/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "8.4" ] \
-    && [ -x "/opt/php84/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
-    && [ -x "/opt/php83/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
-    && [ -x "/opt/php82/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
-    && [ -x "/opt/php81/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
-    && [ -x "/opt/php80/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
-    && [ -x "/opt/php74/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
-    && [ -x "/opt/php73/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
-    && [ -x "/opt/php72/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
-    && [ -x "/opt/php71/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-    && [ -x "/opt/php70/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
-    && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  else
-    _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported versions"
-    _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
-    touch /opt/tmp/status-AegirUpgrade-FAIL
-    exit 1
-  fi
-}
-#
-#
 _hostmaster_mv_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Moving old directories"
@@ -244,33 +180,6 @@ _hostmaster_mv_up() {
   done
 }
 #
-_hostmaster_dr_up() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Downloading drush ${_DRUSH_VERSION}..."
-  fi
-  mkdir -p ${_ROOT}/backups/system
-  chmod 700 ${_ROOT}/backups/system
-  cd ${_ROOT}
-  mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
-  _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
-  cd ${_ROOT}/drush/
-  find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
-  chmod 755 ${_ROOT}/drush/drush
-  chmod 755 ${_ROOT}/drush/drush.complete.sh
-  chmod 755 ${_ROOT}/drush/drush.launcher
-  chmod 755 ${_ROOT}/drush/drush.php
-  chmod 755 ${_ROOT}/drush/unish.sh
-  chmod 755 ${_ROOT}/drush/examples/drush.wrapper
-  chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
-  chmod 755 ${_ROOT}/drush/examples/helloworld.script
-  _DRUSH_FILES="drush.php drush"
-  for _df in ${_DRUSH_FILES}; do
-    _php_cli_drush_update "${_df}"
-  done
-  _php_cli_local_ini_update
-}
-#
 _hostmaster_go_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Installing Aegir Provision backend..."
@@ -279,29 +188,38 @@ _hostmaster_go_up() {
   rm -rf ${_ROOT}/.drush/drush_make
   rm -rf ${_ROOT}/.drush/sys/drush_make
   cd ${_ROOT}/.drush
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
+  if [ "${_DL_MODE}" = "BATCH" ]; then
     cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Downloading Drush and Provision extensions..."
+      _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
+    fi
+    rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/{provision,drush_make}
+    _get_dev_ext "backend.tar.gz"
+    mv -f ${_ROOT}/.drush/backend/sys ${_ROOT}/.drush/
+    mv -f ${_ROOT}/.drush/backend/xts ${_ROOT}/.drush/
+    mv -f ${_ROOT}/.drush/backend/usr ${_ROOT}/.drush/
+    if [ -e "${_ROOT}/.drush/sys/provision/provision.inc" ] \
+      && [ -d "${_ROOT}/.drush/xts/security_review" ] \
+      && [ -d "${_ROOT}/.drush/usr/registry_rebuild" ]; then
+      [ -e "${_ROOT}/.drush/backend" ] && rm -rf ${_ROOT}/.drush/backend*
+    fi
+  elif [ "${_DL_MODE}" = "GIT" ]; then
+    cd ${_ROOT}/.drush
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
     fi
     rm -rf ${_ROOT}/.drush/{sys,xts,usr}
     rm -rf ${_ROOT}/.drush/{provision,drush_make}
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
     _rD="${_ROOT}/.drush"
-    ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-      ${_rD}/sys/provision &> /dev/null
-    ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git \
-      ${_rD}/usr/drupalgeddon &> /dev/null
-    ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git \
-      ${_rD}/usr/drush_ecl &> /dev/null
-    ${_gCb} 7.x-1.x ${_gitHub}/security_review.git \
-      ${_rD}/xts/security_review &> /dev/null
-    ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git \
-      ${_rD}/xts/provision_boost &> /dev/null
-    ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git \
-      ${_rD}/usr/registry_rebuild &> /dev/null
-    ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git \
-      ${_rD}/usr/safe_cache_form_clear &> /dev/null
+    ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git      ${_rD}/sys/provision &> /dev/null
+    ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git      ${_rD}/usr/drupalgeddon &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git             ${_rD}/usr/drush_ecl &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/security_review.git       ${_rD}/xts/security_review &> /dev/null
+    ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git       ${_rD}/xts/provision_boost &> /dev/null
+    ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git      ${_rD}/usr/registry_rebuild &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git ${_rD}/usr/safe_cache_form_clear &> /dev/null
     rm -rf ${_rD}/*/.git
     rm -rf ${_rD}/*/*/.git
     cd ${_rD}/usr
@@ -309,7 +227,7 @@ _hostmaster_go_up() {
     _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Downloading Drush and Provision extensions..."
+      _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
     fi
     cd ${_ROOT}/.drush/sys
     _get_dev_ext "provision.tar.gz"
@@ -326,8 +244,7 @@ _hostmaster_go_up() {
   fi
   rm -rf ${_ROOT}/.drush/*/.git
   rm -rf ${_ROOT}/.drush/*/*/.git
-  sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-    ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+  sed -i "s/files.aegir.cc/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   cd ${_PREV_HM_ROOT}
 }
 #
