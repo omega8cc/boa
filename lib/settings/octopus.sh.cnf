@@ -944,8 +944,13 @@ _cleanup_boa_code() {
 ### Download boa code
 ###
 _download_boa_code() {
-  _cleanup_boa_code
-  _get_dev_ext "boa.tar.gz"
+  if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
+    rm -rf /opt/tmp/boa
+    mkdir -p /opt/tmp
+    cd /opt/tmp
+    _get_dev_ext "boa.tar.gz"
+  fi
   if [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
     && [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
     [ -e "/opt/tmp/boa.tar.gz" ] && rm -f /opt/tmp/boa.tar.gz
