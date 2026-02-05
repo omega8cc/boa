@@ -90,6 +90,8 @@ _php_cli_local_ini_update() {
       echo > ${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
+  chown -R aegir:aegir ${_U_HD}
+  chown -R aegir:aegir ${_U_TP}
 }
 
 
@@ -597,6 +599,46 @@ _master_download_for_local_build() {
   fi
 }
 
+#
+_php_cli_drush_update() {
+  if [ ! -z "${1}" ]; then
+    _DRUSH_FILE="${_ROOT}/drush/${1}"
+  else
+    _DRUSH_FILE="${_ROOT}/drush/drush.php"
+  fi
+  if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+    && [ -x "/opt/php85/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+    && [ -x "/opt/php84/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+    && [ -x "/opt/php83/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+    && [ -x "/opt/php82/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
+    && [ -x "/opt/php81/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+    && [ -x "/opt/php74/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  else
+    _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+    _msg "FATAL ERROR: Aborting AegirM installer NOW!"
+    touch /opt/tmp/status-AegirM-FAIL
+    exit 1
+  fi
+}
+
+#
 _provision_backend_up() {
   if [ "${_DL_MODE}" = "BATCH" ]; then
     cd ${_ROOT}/.drush
@@ -682,12 +724,7 @@ _hostmaster_dr_up() {
     chmod 755 ${_ROOT}/drush/examples/drush.wrapper
     chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
     chmod 755 ${_ROOT}/drush/examples/helloworld.script
-    _DRUSH_FILES="drush.php drush"
-    for _df in ${_DRUSH_FILES}; do
-      _php_cli_drush_update "${_df}"
-    done
   fi
-  ### _php_cli_local_ini_update
 }
 
 #
@@ -760,6 +797,11 @@ _aegir_master_upgrade() {
     chown -R aegir ${_THIS_HM_ROOT}
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
+
+    _DRUSH_FILES="drush.php drush"
+    for _df in ${_DRUSH_FILES}; do
+      _php_cli_drush_update "${_df}"
+    done
 
     export _xSrl=585devT01
     export _X_VERSION="${_X_VERSION}"
@@ -846,6 +888,7 @@ _aegir_master_upgrade() {
     find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
     find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
     chown -R aegir:aegir /var/aegir/.drush &> /dev/null
+    chown -R aegir:aegir /var/aegir/.tmp &> /dev/null
     find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
     find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 0440 /var/aegir/.drush/*.php &> /dev/null
@@ -1158,6 +1201,8 @@ EOFMYSQL
       >/var/log/boa/aegir_install.log 2>&1
     fi
     wait
+
+    _php_cli_local_ini_update
 
     if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
       _msg "FATAL ERROR: AegirSetupM installer failed"

@@ -1402,9 +1402,9 @@ _satellite_child_b_update_ini_php_cli() {
 
 #
 # Update php-cli for Drush.
-_satellite_child_b_update_php_cli() {
+_satellite_update_drush_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_child_b_update_php_cli"
+    _msg "PROC: _satellite_update_drush_php_cli"
     _debug_proc
   fi
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
@@ -3052,6 +3052,8 @@ _satellite_run_child_b() {
       chmod 0771 /data/u &> /dev/null
       su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
       wait
+      chown -R ${_USER}:users ${_ROOT}/tools/drush
+      _satellite_update_drush_php_cli
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -5233,17 +5235,21 @@ _satellite_child_b_install_drush() {
         ln -sfn ${_ROOT}/config ${_ROOT}/aegir/config
       fi
     fi
-    if [ -d "${_ROOT}/tools/drush" ]; then
-      cd ${_ROOT}/tools
-      mv -f drush \
-        ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
+  fi
+  if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
+    cd ${_ROOT}/tools
+    mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
+    cp -af /opt/tools/drush/8/drush ${_ROOT}/tools/
+  else
+    cd ${_ROOT}/tools
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
     fi
+    _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   fi
-  cd ${_ROOT}/tools
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
+  if [ ! -f "${_ROOT}/tools/drush/drush.php" ]; then
+    mv -f ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} ${_ROOT}/tools/
   fi
-  _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   cd ${_ROOT}/tools/drush/
   find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/tools/drush -type f -exec chmod 0644 {} \; &> /dev/null
@@ -5255,7 +5261,6 @@ _satellite_child_b_install_drush() {
   chmod 755 ${_ROOT}/tools/drush/examples/drush.wrapper
   chmod 755 ${_ROOT}/tools/drush/examples/git-bisect.example.sh
   chmod 755 ${_ROOT}/tools/drush/examples/helloworld.script
-  _satellite_child_b_update_php_cli
   _satellite_child_b_update_ini_php_cli
 }
 
