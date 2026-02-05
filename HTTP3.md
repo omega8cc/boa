@@ -4,7 +4,6 @@ We’re rolling out a meaningful upgrade across BOA/Omega8.cc nodes: HTTP/3 and 
 
 If you run Drupal sites that should feel fast and responsive (and stay that way during spikes), this is genuinely good news. It’s not a “new feature in the control panel” kind of update — it’s the kind that improves the *experience* visitors have without you touching a single line of code.
 
----
 
 ## Why this is a big deal
 
@@ -25,7 +24,6 @@ The upgrades are all about making secure browsing feel lighter and faster.
 
 In short: faster for users, more efficient for servers, and no application changes required.
 
----
 
 ## What’s being enabled (friendly version)
 
@@ -51,7 +49,6 @@ KTLS helps the operating system handle part of the secure connection workload mo
 
 It’s one of those improvements that quietly makes a platform feel “stronger” and less stressed during peak times.
 
----
 
 ## What you need to do (this is the important part)
 
@@ -67,7 +64,6 @@ We’ll make sure the server side is ready after the upgrades — but to actuall
 
 This ensures your platform and site configs are refreshed and the upgraded stack is applied consistently.
 
----
 
 ## “Will anything break?” (No — it’s designed not to)
 
@@ -76,7 +72,6 @@ This ensures your platform and site configs are refreshed and the upgraded stack
 * Your Drupal code stays the same.
 * Your visitors don’t have to do anything.
 
----
 
 ## Want more detail?
 
@@ -88,7 +83,6 @@ We’ll publish our own concise, friendly explainer that goes deeper into:
 
 More details: *(link coming soon — we’ll share it as soon as it’s live)*
 
----
 
 ## Quick checklist (save this)
 
