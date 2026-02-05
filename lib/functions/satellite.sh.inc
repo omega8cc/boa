@@ -1312,9 +1312,9 @@ _satellite_force_advanced_nginx_config() {
 
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
-_satellite_child_b_update_ini_php_cli() {
+_satellite_update_ini_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_child_b_update_ini_php_cli"
+    _msg "PROC: _satellite_update_ini_php_cli"
     _debug_proc
   fi
   _U_HD="${_ROOT}/.drush"
@@ -3054,6 +3054,7 @@ _satellite_run_child_b() {
       wait
       chown -R ${_USER}:users ${_ROOT}/tools/drush
       _satellite_update_drush_php_cli
+      _satellite_update_ini_php_cli
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -5261,7 +5262,6 @@ _satellite_child_b_install_drush() {
   chmod 755 ${_ROOT}/tools/drush/examples/drush.wrapper
   chmod 755 ${_ROOT}/tools/drush/examples/git-bisect.example.sh
   chmod 755 ${_ROOT}/tools/drush/examples/helloworld.script
-  _satellite_child_b_update_ini_php_cli
 }
 
 _satellite_child_b_drush_xts_cleanup() {
