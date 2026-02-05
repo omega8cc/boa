@@ -1,5 +1,5 @@
 
-export _tRee=dev
+export _tRee=lts
 export _rLsn="BOA-5.8.5"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
