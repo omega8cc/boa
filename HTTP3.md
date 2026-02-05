@@ -24,6 +24,7 @@ The upgrades are all about making secure browsing feel lighter and faster.
 
 In short: faster for users, more efficient for servers, and no application changes required.
 
+<img width="1050" height="1218" alt="screenshot 2026-02-05 at 10 35 06" src="https://github.com/user-attachments/assets/4e179e7b-97ac-4808-ace6-b0f29e6b66a8" />
 
 ## What’s being enabled (friendly version)
 
