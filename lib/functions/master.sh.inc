@@ -684,7 +684,7 @@ _hostmaster_dr_up() {
       _php_cli_drush_update "${_df}"
     done
   fi
-  _php_cli_local_ini_update
+  ### _php_cli_local_ini_update
 }
 
 #
