@@ -625,35 +625,6 @@ _check_github_for_aegir_head_mode() {
       rm -rf /opt/tmp/test-*
       _clean_pid_exit _check_github_for_aegir_head_mode_a
     fi
-    _GITHUB_TEST=$(git clone ${_gitHub}/hostmaster.git \
-      /opt/tmp/test-hostmaster 2>&1)
-    if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
-      echo " "
-      _msg "EXIT on error (hostmaster) due to GitHub downtime"
-      _msg "Please try to run this script again in a few minutes"
-      _msg "You may want to check https://www.githubstatus.com"
-      _msg "Bye"
-      rm -rf /opt/tmp/test-*
-      _clean_pid_exit _check_github_for_aegir_head_mode_b
-    fi
-    rm -rf /opt/tmp/test-*
-  fi
-  if [[ "${_X_VERSION}" =~ "-dev" ]] \
-    || [[ "${_X_VERSION}" =~ "-lts" ]] \
-    || [[ "${_X_VERSION}" =~ "-pro" ]]; then
-    rm -rf /opt/tmp/test-*
-    _GITHUB_TEST=$(git clone ${_gitHub}/boa.git \
-      /opt/tmp/test-boa 2>&1)
-    if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
-      echo " "
-      _msg "EXIT on error (boa) due to GitHub downtime"
-      _msg "Please try to run this script again in a few minutes"
-      _msg "You may want to check https://www.githubstatus.com"
-      _msg "Bye"
-      rm -rf /opt/tmp/test-*
-      _clean_pid_exit _check_github_for_aegir_head_mode_c
-    fi
-    rm -rf /opt/tmp/test-*
   fi
 }
 

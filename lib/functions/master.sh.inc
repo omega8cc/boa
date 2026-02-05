@@ -436,64 +436,167 @@ _master_download_for_local_build() {
     _msg "PROC: _master_download_for_local_build"
   fi
   _mL="/opt/tmp/make_local"
-  if [ ! -e "${_mL}/hosting/hosting.info" ] \
-    || [ ! -e "${_mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
+  mkdir -p ${_mL}
+  if [ ! -e "${_mL}/hostmaster/hostmaster.make" ] \
+    || [ ! -e "${_mL}/hosting/hosting.module" ] \
+    || [ ! -e "${_mL}/drupal/modules/system/system.module" ]; then
     rm -rf ${_mL}
-    mkdir -p ${_mL}
-    cd ${_mL}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading hostmaster modules..."
     fi
-    ### Drupal Core
-    _get_core_ext "${_DRUPAL7}.tar.gz"
-    mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
-    ### Aegir Core
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
-    ### Aegir Golden + BOA Settings
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                 &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                    &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                     &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git          &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
-      rm -rf */.git
-    ### Aegir Drupal Contrib
-    _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
-    _get_dev_stc "betterlogin-7.x-1.5.tar.gz"
-    _get_dev_stc "ctools-7.x-1.21.tar.gz"
-    _get_dev_stc "entity-7.x-1.11.tar.gz"
-    _get_dev_stc "libraries-7.x-2.5.tar.gz"
-    _get_dev_stc "module_filter-7.x-2.3.tar.gz"
-    _get_dev_stc "openidadmin-7.x-1.0.tar.gz"
-    _get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
-    _get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    _get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
-    _get_dev_stc "tfa-7.x-2.1.tar.gz"
-    _get_dev_stc "timeago-7.x-2.3.tar.gz"
-    _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
-    _get_dev_stc "views-7.x-3.29.tar.gz"
-    ### Aegir Third Party Libraries
-    _get_dev_stc "qrcodejs.tar.gz"
-    _get_dev_stc "timeagojs.tar.gz"
-    _get_dev_stc "vuejs.tar.gz"
-    ### BOA Drupal Contrib
-    _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
-    _get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    _get_dev_stc "features-7.x-2.15.tar.gz"
-    _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
-    _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
-    _get_dev_stc "strongarm-7.x-2.0.tar.gz"
-    _get_dev_stc "userprotect-7.x-1.3.tar.gz"
-    _get_dev_stc "environment_indicator-7.x-2.9.tar.gz"
+    if [ "${_DL_MODE}" = "BATCH" ]; then
+      rm -rf /opt/tmp/make_local
+      cd /opt/tmp
+      _get_dev_stc "make_local.tar.gz"
+      if [ -e "${_mL}/hostmaster/hostmaster.make" ] \
+        && [ -e "${_mL}/hosting/hosting.module" ] \
+        && [ -e "${_mL}/drupal/modules/system/system.module" ]; then
+        [ -e "make_local.tar.gz" ] && rm -f make_local.tar.gz
+      fi
+    else
+      mkdir -p ${_mL}
+      cd ${_mL}
+      ### Drupal Core
+      _get_core_ext "${_DRUPAL7}.tar.gz"
+      mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
+      ### Aegir Core
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
+      ### Aegir Golden + BOA Settings
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                 &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                    &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                     &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git          &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
+        rm -rf */.git
+      ### Aegir Drupal Contrib
+      _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
+      _get_dev_stc "betterlogin-7.x-1.5.tar.gz"
+      _get_dev_stc "ctools-7.x-1.21.tar.gz"
+      _get_dev_stc "entity-7.x-1.11.tar.gz"
+      _get_dev_stc "libraries-7.x-2.5.tar.gz"
+      _get_dev_stc "module_filter-7.x-2.3.tar.gz"
+      _get_dev_stc "openidadmin-7.x-1.0.tar.gz"
+      _get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
+      _get_dev_stc "r4032login-7.x-1.8.tar.gz"
+      _get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
+      _get_dev_stc "tfa-7.x-2.1.tar.gz"
+      _get_dev_stc "timeago-7.x-2.3.tar.gz"
+      _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
+      _get_dev_stc "views-7.x-3.29.tar.gz"
+      ### Aegir Third Party Libraries
+      _get_dev_stc "qrcodejs.tar.gz"
+      _get_dev_stc "timeagojs.tar.gz"
+      _get_dev_stc "vuejs.tar.gz"
+      ### BOA Drupal Contrib
+      _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
+      _get_dev_stc "features_extra-7.x-1.0.tar.gz"
+      _get_dev_stc "features-7.x-2.15.tar.gz"
+      _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
+      _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
+      _get_dev_stc "strongarm-7.x-2.0.tar.gz"
+      _get_dev_stc "userprotect-7.x-1.3.tar.gz"
+      _get_dev_stc "environment_indicator-7.x-2.9.tar.gz"
+    fi
+    find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
+    chown -R root:root ${_mL}
   fi
-  find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R root:root ${_mL}
+}
+
+_provision_backend_up() {
+  if [ "${_DL_MODE}" = "BATCH" ]; then
+    cd ${_ROOT}/.drush
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
+    fi
+    rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/{provision,drush_make}
+    _get_dev_ext "backend.tar.gz"
+    if [ -e "${_ROOT}/.drush/sys/provision/provision.inc" ] \
+      && [ -d "${_ROOT}/.drush/xts/security_review" ] \
+      && [ -d "${_ROOT}/.drush/usr/registry_rebuild" ]; then
+      [ -e "backend.tar.gz" ] && rm -f backend.tar.gz
+    fi
+  elif [ "${_DL_MODE}" = "GIT" ]; then
+    cd ${_ROOT}/.drush
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
+    fi
+    rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/{provision,drush_make}
+    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+    _rD="${_ROOT}/.drush"
+    ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git      ${_rD}/sys/provision &> /dev/null
+    ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git      ${_rD}/usr/drupalgeddon &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git             ${_rD}/usr/drush_ecl &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/security_review.git       ${_rD}/xts/security_review &> /dev/null
+    ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git       ${_rD}/xts/provision_boost &> /dev/null
+    ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git      ${_rD}/usr/registry_rebuild &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git ${_rD}/usr/safe_cache_form_clear &> /dev/null
+    rm -rf ${_rD}/*/.git
+    rm -rf ${_rD}/*/*/.git
+    cd ${_rD}/usr
+    _get_dev_ext "clean_missing_modules.tar.gz"
+    _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
+    fi
+    rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/{provision,drush_make}
+    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+    cd ${_ROOT}/.drush/sys
+    _get_dev_ext "provision.tar.gz"
+    cd ${_ROOT}/.drush/usr
+    _get_dev_ext "clean_missing_modules.tar.gz"
+    _get_dev_ext "drupalgeddon.tar.gz"
+    _get_dev_ext "drush_ecl.tar.gz"
+    _get_dev_ext "registry_rebuild.tar.gz"
+    _get_dev_ext "safe_cache_form_clear.tar.gz"
+    _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
+    cd ${_ROOT}/.drush/xts
+    _get_dev_ext "provision_boost.tar.gz"
+    _get_dev_ext "security_review.tar.gz"
+  fi
+}
+
+#
+_hostmaster_dr_up() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Downloading drush ${_DRUSH_VERSION}..."
+  fi
+  mkdir -p ${_ROOT}/backups/system
+  chmod 700 ${_ROOT}/backups/system
+  cd ${_ROOT}
+  if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
+    mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
+    cp -af /opt/tools/drush/8/drush ${_ROOT}/
+  else
+    mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
+    _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
+    cd ${_ROOT}/drush/
+    find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 755 ${_ROOT}/drush/drush
+    chmod 755 ${_ROOT}/drush/drush.complete.sh
+    chmod 755 ${_ROOT}/drush/drush.launcher
+    chmod 755 ${_ROOT}/drush/drush.php
+    chmod 755 ${_ROOT}/drush/unish.sh
+    chmod 755 ${_ROOT}/drush/examples/drush.wrapper
+    chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
+    chmod 755 ${_ROOT}/drush/examples/helloworld.script
+    _DRUSH_FILES="drush.php drush"
+    for _df in ${_DRUSH_FILES}; do
+      _php_cli_drush_update "${_df}"
+    done
+  fi
+  _php_cli_local_ini_update
 }
 
 #
@@ -532,29 +635,15 @@ _aegir_master_upgrade() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
+
+    _hostmaster_dr_up
+
     if [ ! -d "/var/aegir/.drush/sys/provision/http" ] \
       || [ ! -d "/var/aegir/drush/includes" ]; then
       rm -rf /var/aegir/.drush/{sys,xts,usr}
       rm -rf /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
-      ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-        /var/aegir/.drush/sys/provision &> /dev/null
-      sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-        /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
-      rm -rf /var/aegir/drush
-      cd /var/aegir
-      _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
-      cd /var/aegir/drush/
-      find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
-      find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
-      chmod 755 /var/aegir/drush/drush
-      chmod 755 /var/aegir/drush/drush.complete.sh
-      chmod 755 /var/aegir/drush/drush.launcher
-      chmod 755 /var/aegir/drush/drush.php
-      chmod 755 /var/aegir/drush/unish.sh
-      chmod 755 /var/aegir/drush/examples/drush.wrapper
-      chmod 755 /var/aegir/drush/examples/git-bisect.example.sh
-      chmod 755 /var/aegir/drush/examples/helloworld.script
+      ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git /var/aegir/.drush/sys/provision &> /dev/null
     fi
     _THIS_HM_ROOT=$(cat /var/aegir/.drush/hm.alias.drushrc.php \
       | grep "root'" \

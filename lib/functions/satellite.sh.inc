@@ -2904,64 +2904,77 @@ _satellite_download_for_local_build() {
     _debug_proc
   fi
   _mL="/opt/tmp/make_local"
-  if [ ! -e "${_mL}/hosting/hosting.info" ] \
-    || [ ! -e "${_mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
+  mkdir -p ${_mL}
+  if [ ! -e "${_mL}/hostmaster/hostmaster.make" ] \
+    || [ ! -e "${_mL}/hosting/hosting.module" ] \
+    || [ ! -e "${_mL}/drupal/modules/system/system.module" ]; then
     rm -rf ${_mL}
-    mkdir -p ${_mL}
-    cd ${_mL}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} A: Downloading hostmaster modules..."
+      _msg "INFO: Downloading hostmaster modules..."
     fi
-    ### Drupal Core
-    _get_core_ext "${_DRUPAL7}.tar.gz"
-    mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
-    ### Aegir Core
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
-    ### Aegir Golden + BOA Settings
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                 &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                    &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                     &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git          &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
-      rm -rf */.git
-    ### Aegir Drupal Contrib
-    _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
-    _get_dev_stc "betterlogin-7.x-1.5.tar.gz"
-    _get_dev_stc "ctools-7.x-1.21.tar.gz"
-    _get_dev_stc "entity-7.x-1.11.tar.gz"
-    _get_dev_stc "libraries-7.x-2.5.tar.gz"
-    _get_dev_stc "module_filter-7.x-2.3.tar.gz"
-    _get_dev_stc "openidadmin-7.x-1.0.tar.gz"
-    _get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
-    _get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    _get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
-    _get_dev_stc "tfa-7.x-2.1.tar.gz"
-    _get_dev_stc "timeago-7.x-2.3.tar.gz"
-    _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
-    _get_dev_stc "views-7.x-3.29.tar.gz"
-    ### Aegir Third Party Libraries
-    _get_dev_stc "qrcodejs.tar.gz"
-    _get_dev_stc "timeagojs.tar.gz"
-    _get_dev_stc "vuejs.tar.gz"
-    ### BOA Drupal Contrib
-    _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
-    _get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    _get_dev_stc "features-7.x-2.15.tar.gz"
-    _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
-    _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
-    _get_dev_stc "strongarm-7.x-2.0.tar.gz"
-    _get_dev_stc "userprotect-7.x-1.3.tar.gz"
-    _get_dev_stc "environment_indicator-7.x-2.9.tar.gz"
+    if [ "${_DL_MODE}" = "BATCH" ]; then
+      rm -rf /opt/tmp/make_local
+      cd /opt/tmp
+      _get_dev_stc "make_local.tar.gz"
+      if [ -e "${_mL}/hostmaster/hostmaster.make" ] \
+        && [ -e "${_mL}/hosting/hosting.module" ] \
+        && [ -e "${_mL}/drupal/modules/system/system.module" ]; then
+        [ -e "make_local.tar.gz" ] && rm -f make_local.tar.gz
+      fi
+    else
+      mkdir -p ${_mL}
+      cd ${_mL}
+      ### Drupal Core
+      _get_core_ext "${_DRUPAL7}.tar.gz"
+      mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
+      ### Aegir Core
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
+      ### Aegir Golden + BOA Settings
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                 &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                    &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                     &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git          &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
+        ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
+        rm -rf */.git
+      ### Aegir Drupal Contrib
+      _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
+      _get_dev_stc "betterlogin-7.x-1.5.tar.gz"
+      _get_dev_stc "ctools-7.x-1.21.tar.gz"
+      _get_dev_stc "entity-7.x-1.11.tar.gz"
+      _get_dev_stc "libraries-7.x-2.5.tar.gz"
+      _get_dev_stc "module_filter-7.x-2.3.tar.gz"
+      _get_dev_stc "openidadmin-7.x-1.0.tar.gz"
+      _get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
+      _get_dev_stc "r4032login-7.x-1.8.tar.gz"
+      _get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
+      _get_dev_stc "tfa-7.x-2.1.tar.gz"
+      _get_dev_stc "timeago-7.x-2.3.tar.gz"
+      _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
+      _get_dev_stc "views-7.x-3.29.tar.gz"
+      ### Aegir Third Party Libraries
+      _get_dev_stc "qrcodejs.tar.gz"
+      _get_dev_stc "timeagojs.tar.gz"
+      _get_dev_stc "vuejs.tar.gz"
+      ### BOA Drupal Contrib
+      _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
+      _get_dev_stc "features_extra-7.x-1.0.tar.gz"
+      _get_dev_stc "features-7.x-2.15.tar.gz"
+      _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
+      _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
+      _get_dev_stc "strongarm-7.x-2.0.tar.gz"
+      _get_dev_stc "userprotect-7.x-1.3.tar.gz"
+      _get_dev_stc "environment_indicator-7.x-2.9.tar.gz"
+    fi
+    find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
+    chown -R root:root ${_mL}
   fi
-  find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R root:root ${_mL}
 }
 
 #
@@ -3003,9 +3016,6 @@ _satellite_run_child_b() {
         rm -rf ${_ROOT}/.drush/sys/provision
         ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
           ${_ROOT}/.drush/sys/provision &> /dev/null
-        sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-          ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
-        wait
       fi
       rm -rf ${_ROOT}/.drush/drush_make
       rm -rf ${_ROOT}/.drush/sys/drush_make
@@ -4165,8 +4175,7 @@ _satellite_if_head_github_connection_test() {
   if [ "${_DL_MODE}" = "GIT" ]; then
     rm -rf /opt/tmp/test-*
     _check_connection
-    _GITHUB_TEST=$(git clone ${_gitHub}/provision.git \
-      /opt/tmp/test-provision 2>&1)
+    _GITHUB_TEST=$(git clone ${_gitHub}/provision.git /opt/tmp/test-provision 2>&1)
     if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
       echo " "
       _msg "EXIT on error (provision) due to GitHub downtime"
@@ -4176,35 +4185,6 @@ _satellite_if_head_github_connection_test() {
       rm -rf /opt/tmp/test-*
       _clean_pid_exit _satellite_if_head_github_connection_test_a
     fi
-    _GITHUB_TEST=$(git clone ${_gitHub}/hostmaster.git \
-      /opt/tmp/test-hostmaster 2>&1)
-    if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
-      echo " "
-      _msg "EXIT on error (hostmaster) due to GitHub downtime"
-      _msg "Please try to run this script again in a few minutes"
-      _msg "You may want to check https://www.githubstatus.com"
-      _msg "Bye"
-      rm -rf /opt/tmp/test-*
-      _clean_pid_exit _satellite_if_head_github_connection_test_b
-    fi
-    rm -rf /opt/tmp/test-*
-  fi
-  if [[ "${_X_VERSION}" =~ "-dev" ]] \
-    || [[ "${_X_VERSION}" =~ "-lts" ]] \
-    || [[ "${_X_VERSION}" =~ "-pro" ]]; then
-    rm -rf /opt/tmp/test-*
-    _GITHUB_TEST=$(git clone ${_gitHub}/boa.git \
-      /opt/tmp/test-boa 2>&1)
-    if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
-      echo " "
-      _msg "EXIT on error (boa) due to GitHub downtime"
-      _msg "Please try to run this script again in a few minutes"
-      _msg "You may want to check https://www.githubstatus.com"
-      _msg "Bye"
-      rm -rf /opt/tmp/test-*
-      _clean_pid_exit _satellite_if_head_github_connection_test_c
-    fi
-    rm -rf /opt/tmp/test-*
   fi
 }
 
@@ -5325,27 +5305,33 @@ _satellite_child_b_drush_xts_install() {
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   cd ${_ROOT}/.drush
   if [ "${_DL_MODE}" = "BATCH" ]; then
+    cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} B: Downloading Drush and Provision extensions..."
+      _msg "${_STATUS} B: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
+    fi
+    rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/{provision,drush_make}
+    _get_dev_ext "backend.tar.gz"
+    if [ -e "${_ROOT}/.drush/sys/provision/provision.inc" ] \
+      && [ -d "${_ROOT}/.drush/xts/security_review" ] \
+      && [ -d "${_ROOT}/.drush/usr/registry_rebuild" ]; then
+      [ -e "backend.tar.gz" ] && rm -f backend.tar.gz
+    fi
+  elif [ "${_DL_MODE}" = "GIT" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "${_STATUS} B: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
     fi
     rm -rf ${_ROOT}/.drush/{sys,xts,usr}
     rm -rf ${_ROOT}/.drush/{provision,drush_make}
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
     _rD="${_ROOT}/.drush"
-    ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-      ${_rD}/sys/provision &> /dev/null
-    ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git \
-      ${_rD}/usr/drupalgeddon &> /dev/null
-    ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git \
-      ${_rD}/usr/drush_ecl &> /dev/null
-    ${_gCb} 7.x-1.x ${_gitHub}/security_review.git \
-      ${_rD}/xts/security_review &> /dev/null
-    ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git \
-      ${_rD}/xts/provision_boost &> /dev/null
-    ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git \
-      ${_rD}/usr/registry_rebuild &> /dev/null
-    ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git \
-      ${_rD}/usr/safe_cache_form_clear &> /dev/null
+    ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git      ${_rD}/sys/provision &> /dev/null
+    ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git      ${_rD}/usr/drupalgeddon &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git             ${_rD}/usr/drush_ecl &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/security_review.git       ${_rD}/xts/security_review &> /dev/null
+    ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git       ${_rD}/xts/provision_boost &> /dev/null
+    ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git      ${_rD}/usr/registry_rebuild &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git ${_rD}/usr/safe_cache_form_clear &> /dev/null
     rm -rf ${_rD}/*/.git
     rm -rf ${_rD}/*/*/.git
     cd ${_rD}/usr
@@ -5353,7 +5339,7 @@ _satellite_child_b_drush_xts_install() {
     _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} B: Downloading Drush and Provision extensions..."
+      _msg "${_STATUS} B: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
     fi
     cd ${_ROOT}/.drush/sys
     _get_dev_ext "provision.tar.gz"
@@ -5369,8 +5355,7 @@ _satellite_child_b_drush_xts_install() {
     _get_dev_ext "security_review.tar.gz"
     cd ${_ROOT}/.drush
   fi
-  sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-    ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+  sed -i "s/files.aegir.cc/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   wait
 }
 
