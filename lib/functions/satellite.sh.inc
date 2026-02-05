@@ -984,10 +984,14 @@ _satellite_cnf() {
     fi
 
     _DL_MODE_TEST=$(grep _DL_MODE ${_octCnf} 2>&1)
-    if [[ "${_DL_MODE_TEST}" =~ "_DL_MODE" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo "_DL_MODE=${_DL_MODE}" >> ${_octCnf}
+    if [[ ! "${_DL_MODE_TEST}" =~ "_DL_MODE" ]]; then
+      if [ -n "${_DL_MODE}" ]; then
+        echo "_DL_MODE=${_DL_MODE}" >> ${_octCnf}
+        export _DL_MODE=${_DL_MODE}
+      else
+        echo "_DL_MODE=BATCH" >> ${_octCnf}
+        export _DL_MODE=BATCH
+      fi
     fi
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then

@@ -2717,7 +2717,13 @@ _barracuda_cnf() {
 
     _DL_MODE_TEST=$(grep _DL_MODE ${_barCnf} 2>&1)
     if [[ ! "${_DL_MODE_TEST}" =~ "_DL_MODE" ]]; then
-      echo "_DL_MODE=${_DL_MODE}" >> ${_barCnf}
+      if [ -n "${_DL_MODE}" ]; then
+        echo "_DL_MODE=${_DL_MODE}" >> ${_barCnf}
+        export _DL_MODE=${_DL_MODE}
+      else
+        echo "_DL_MODE=BATCH" >> ${_barCnf}
+        export _DL_MODE=BATCH
+      fi
     fi
 
     sleep 1
