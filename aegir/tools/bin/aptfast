@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# apt-fast v1.4 by Matt Parnell http://www.mattparnell.com, GNU GPLv3
+# Use this just like aptitude for faster package downloading.
+
+###################################################################
+# CONFIGURATION OPTIONS                                           #
+###################################################################
+
+# Maximum number of connections
+_MAXNUM=5
+
+# Note that the download manager you choose has other options - feel free
+# to setup your own _DOWNLOADER line or customize one of the ones below...
+# they're simply there for example purposes, and to provide sane defaults
+
+# Download manager selection (choose one by uncommenting one #_DOWNLOADER line)
+
+# aria2c:
+#_DOWNLOADER='aria2c -c -j ${_MAXNUM} --input-file=/opt/tmp/apt-fast.list --connect-timeout=600 --timeout=600 -m0'
+
+# aria2c with a proxy (set username, proxy, ip and password!)
+#_DOWNLOADER='aria2c -s 20 -j ${_MAXNUM} --http-proxy=http://username:password@proxy_ip:proxy_port -i apt-fast.list'
+
+# axel:
+_DOWNLOADER='cat /opt/tmp/apt-fast.list | xargs -l1 axel -n ${_MAXNUM} -a' # axel
+
+###################################################################
+# DO NOT EDIT BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING! #
+###################################################################
+
+_unlock()
+{
+	rm -f $LCK_FILE
+}
+
+# Check for proper priveliges
+[ "`whoami`" = root ] || exec sudo "$0" "$@"
+
+# Define our lock location
+LCK_FILE=/var/lock/apt-fast.lck
+
+trap " [ -f ${LCK_FILE} ] && _unlock" 0 1 2 3 13 15
+
+# Make sure one of the download managers is enabled
+[ -z "$_DOWNLOADER" ] && echo "You must configure apt-fast to use axel or aria2c" && _unlock && exit 1;
+
+# If the user entered arguments contain upgrade, install, or dist-upgrade
+if echo "$@" | grep -q "upgrade\|install\|dist-upgrade"; then
+  echo "Working...";
+
+  # Go into the directory aptitude normally puts downloaded packages
+  cd /var/cache/apt/archives/;
+
+  # Have aptitude print the information, including the URI's to the packages
+  # Strip out the URI's, and download the packages with Axel for speediness
+  # I found this regex elsewhere, showing how to manually strip package URI's you may need...thanks to whoever wrote it
+  apt-get -y --print-uris $@ | egrep -o -e "(ht|f)tp://[^\']+" > /opt/tmp/apt-fast.list
+  if [ -e "/opt/tmp/apt-fast.list" ] ; then
+	eval ${_DOWNLOADER}
+  fi
+  # Install our downloaded packages
+  aptitude $@;
+
+  echo -e "\nDone!\nVerify that all packages were installed successfully.\nIf errors are found, run aptitude clean as root\nand try again using aptitude directly.\n";
+
+else
+   aptitude $@;
+fi
+
+# Remove our lock
+
+_unlock

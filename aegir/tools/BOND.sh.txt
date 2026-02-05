@@ -1755,6 +1755,9 @@ _tune_memory_limits() {
 }
 #
 _check_git_repos() {
+  if [ "${_DL_MODE}" != "GIT" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _GITHUB_WORKS=NO
   _GITLAB_WORKS=NO
   if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
@@ -1822,7 +1825,7 @@ touch /run/boa_run.pid
 #
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="https://github.com/omega8cc"
-if [ "${_AEGIR_VERSION}" != "static" ]; then
+if [ "${_DL_MODE}" = "GIT" ]; then
   _check_git_repos
 fi
 #
@@ -1861,7 +1864,7 @@ mkdir -p ${_SRCDIR}
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -rf /opt/tmp/boa
-if [ "${_AEGIR_VERSION}" != "static" ]; then
+if [ "${_DL_MODE}" = "GIT" ]; then
   ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
   curl ${_crlGet} "${_urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
