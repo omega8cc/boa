@@ -26,6 +26,7 @@ _XTRAS_LIST="" #---------------- See docs/NOTES.md for details on add-ons
 ###
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable verbose BOA mode when YES
+_DL_MODE=BATCH #---------------- Allows to switch to GIT src or OLD static
 _INCIDENT_REPORT=MINI #--------- Control incidents reports via OFF/ALL/MINI/CRIT
 _MY_EMAIL="my@email" #---------- System admin email address
 ###
