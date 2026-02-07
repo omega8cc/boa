@@ -1,5 +1,250 @@
 
 ###
+### Stable BOA-5.9.1-pro/lts - HTTP/3 Edition
+### Date: Sun Feb 8 05:28:17 AM NZDT 2026 in Auckland
+### Welcome Fast Lane HTTPS: HTTP/3 and KTLS
+### 321 commits since BOA-5.8.5-pro
+###
+
+@=> 4 NEW, 12 UPDATED, 32 TOTAL Drupal distros/platforms available
+
+  While most of you typically build your own codebases/platforms with Composer
+  these days, we still deliver a list of 32 platforms ready to use in your Ægir.
+
+  Since these platforms are updated only with BOA releases, they are not really
+  intended for production use per se, because you typically need a faster
+  lifecycle to keep your sites secure.
+
+  However, they provide a wide range of testing playgrounds, because you can
+  install only those you wish to test or use, and reinstall if needed, with
+  the help of our BOA-only feature that allows you to upgrade your Ægir
+  on demand with two simple control files, as described in the built-in docs
+  you can always find in ~/static/control/README.txt.
+
+  The complete list of 32 is further below, in the section "Drupal platforms
+  available for installation".
+
+@=> Going Local with Infrastructure
+
+  We’ve expanded our network considerably to meet the growing expectations of
+  the Data Sovereignty movement. This isn’t just about adding more cities
+  to our hosting map — it’s also about going local with infrastructure
+  wherever we can.
+
+  We no longer rely solely on big-name vendors and hyperscalers. Instead, we’re
+  gradually migrating to local providers and data centers in every country where
+  we offer hosted BOA for Drupal.
+
+  For example, in Canada you can now choose not only Toronto, but also Montreal,
+  Calgary, and Vancouver. In Australia, it’s no longer just Sydney — we also
+  offer Adelaide, Brisbane, and Perth.
+
+  We’ve also added an excellent facility in New Zealand.
+
+  Of course, we continue to support our original Singapore location and still
+  offer EU, UK, and US options.
+
+@=> Usage disk/sql limits x2 + Aero and Archive plans added to hosted BOA
+
+  It's worth mentioning that our hosted BOA plans have received a huge upgrade:
+  several new locations have been added around the world, our vendors are now
+  local (instead of the previous US-only hyperscalers), and an entirely new
+  Archive Tier has been added for those looking to host collections of
+  low-traffic sites at low cost.
+
+  Take a look if you are interested: https://omega8.cc/hosted
+
+@=> New BOA-5.9.1 PRO/LTS Release
+
+  Yes, we said that BOA-LTS would enter complete code freeze for 2026, but
+  we think that the major new features and many security updates introduced in
+  the last two months must be shared with the entire community before we enter
+  a less rapid feature development cycle for the next few months.
+
+  The future of 100% Open Source Drupal hosting is brighter than ever!
+
+  With BOA-5.9.1 PRO/LTS, we proudly deliver full HTTP/3 and KTLS support —
+  a fundamental change in the way modern browsers communicate with modern
+  HTTPS web servers — along with the latest OpenSSL 3.5 LTS, which made it
+  possible, a clever and very professional tool to diagnose your server hardware
+  performance in the context of BOA-specific requirements and capabilities,
+  and many critical security and bug fixes related to system components.
+
+  This groundbreaking feature not only pushes the boundaries of what BOA
+  can achieve but also reaffirms our commitment to staying ahead of the curve
+  for modern Drupal deployments.
+
+  We are thrilled to introduce BOA-5.9.1 PRO/LTS, our 8th release under the
+  new branch structure and dual licensing model. It merges 2 months of
+  intense development from the DEV branch, delivering 321 commits packed
+  with powerful features, critical fixes, and enhancements.
+
+  Thank you to everyone who supports our work by purchasing a BOA PRO license:
+  https://omega8.cc/boapro.
+
+@=> Key Improvements Explained
+
+ * HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and
+   responsive (and stay that way during spikes), this is genuinely good news.
+   Why is this a big deal? What should visitors notice?
+
+   Read the full story: https://github.com/omega8cc/boa/tree/5.x-dev/HTTP3.md
+
+ * Percona 8.4 comes to Excalibur. We no longer need vanilla MySQL 8.4 now that
+   Percona has released its own build for Debian Trixie, which can be used on
+   Devuan Excalibur. There is no MySQL-to-Percona upgrade option yet, though.
+   Please note that we still recommend Devuan Daedalus as the most versatile
+   system, which can also support Percona 8.0 and 5.7.
+
+ * Curious if your VM is good enough to fully benefit from BOA optimisations
+   and deliver a first-class Drupal hosting environment? There’s a deep
+   hardware and network analysis tool available: simply type `perftest` as root.
+
+ * From now on, all BOA installers will download their components as packaged
+   batches instead of dozens of separate little modules. They will also no longer
+   rely on fetching complete repositories from GitHub, instead downloading only
+   the latest packaged code from our mirrors. You can revert to the old method
+   by changing _DL_MODE=BATCH to _DL_MODE=GIT in /root/.barracuda.cnf
+
+@=> New Features
+
+    * Add chromium as alternative for wkhtmltopdf
+    * Add Java 21 for Solr 9 and Jenkins
+    * Add kTLS support in Nginx config
+    * Add Red Hat KVM guest to supported virtualization systems
+    * Allow access to site-specific well-known/mta-sts.txt file
+    * Enable quic/http3 support in Nginx
+    * Percona 8.4 comes to Excalibur to replace vanilla MySQL 8.4
+
+@=> New Improvements
+
+    * Add _disable_systemd_networkd_for_next_boot
+    * Add _init_debian_networkd_handoff in autoinit
+    * Add _install_net_rollback in vmnetfix
+    * Add aptfast as multi-lane aptitude wrapper for faster downloads
+    * Add ciphers required by kTLS in Nginx
+    * Add triple check for base-files
+    * Improve and modernize Nginx build configuration options
+    * Improve autoinit support for some vendors with _init_sysv_net_repair
+    * Improve autoinit with _init_sysv_insserv_repair
+    * Improve DHCP/NAT support in vmnetfix
+    * Improve ffmirror
+    * Improve reliability of autoinit on 10+ vendors tested
+    * Improve usage info
+    * Improve vmnetfix with _iface_has_dhcp_for_if
+    * Modernize 301 redirects
+    * Nginx: extend log_format to include protocol used
+    * Prefer ifupdown over ifupdown2
+    * Simplify and sync _if_off_apparmor/_turn_off_apparmor
+    * Special-case Java 11/17/21 force install if version is too old
+    * Sync Ægir naming convention
+    * Sync config for GeoLite2
+    * Uninstall cloud-utils if not required -- makes reboot faster
+    * Update networking with vmnetfix early
+    * Update SSL proxy vhosts if KTLS is missing
+    * Use _DL_MODE=BATCH by default
+    * Use Java 21 also on older systems if installed
+
+@=> Changes
+
+    * Add strict locking to /etc/resolv.conf
+    * Enable access_log in proxy so DoS-guard can still work
+    * Prioritize modern ed25519 SSH keys
+    * Run /var/xdrago/clear.sh every 3 minutes
+    * Run /var/xdrago/ip_access.sh every 2 minutes
+    * Run /var/xdrago/manage_ltd_users.sh every minute
+    * Run /var/xdrago/manage_solr_config.sh every minute
+    * Switch default PHP to 8.4
+    * Turn off AppArmor in autoinit phase
+    * Use nginx restart instead of quietupgrade
+
+@=> Upgrades
+
+    * cURL 8.17.0
+    * cURL 8.18.0
+    * GoAccess 1.9.4
+    * ionCube 15.0.0 (up to PHP 8.4)
+    * Nginx 1.29.4
+    * Nginx 1.29.5
+    * OpenSSL 3.4.4
+    * OpenSSL 3.5.5 LTS
+    * PHP 8.1.34
+    * PHP 8.2.30
+    * PHP 8.3.29
+    * PHP 8.3.30
+    * PHP 8.4.16
+    * PHP 8.4.17
+    * PHP 8.5.1
+    * PHP 8.5.2
+    * screenFetch 3.9.9
+    * Sync dehydrated updates
+    * Valkey 9.0.1
+    * Valkey 9.0.2
+
+@=> Important Fixes
+
+    * Block language-prefix chain URL mutation crawlers spam
+    * Block node-chain URL mutation crawlers spam
+    * Fix for PHP 5.6 in Block node and language-prefix chain URL mutation spam
+    * Percona 8.4 from Trixie requires percona-telemetry-agent
+    * Remove unconditional _apt_clean_update running every 3 minutes
+    * Removing all .drush.inc files under modules/contrib/webform
+    * Restore less noisy _manage_sec_access_paths
+    * Restore nginx auto-reload after PHP version update
+    * Sync all PHP logs backup/cleanup after upgrade to force PHP-FPM reload
+    * Use _check_virt/_not_supported_virt early
+
+@=> Drupal platforms available for installation -- docs/PLATFORMS.md
+
+	## Drupal 11
+
+	CK3 - [Commerce 3.2.0] with core (11.3.3) (UPDATED)
+	CMS - [Drupal CMS 2.0.0] with core (11.3.3) (NEW)
+	DE1 - [Drupal 11.1.9] with Drush included -- dev/stage/prod
+	DE2 - [Drupal 11.2.10] with Drush included -- dev/stage/prod (UPDATED)
+	DE3 - [Drupal 11.3.3] with Drush included -- dev/stage/prod (NEW)
+	SCR - [Sector 11.0.x-dev] with core (11.3.3) (UPDATED)
+	THR - [Thunder 8.3.1] with core (11.3.3) (UPDATED)
+	VBX - [Varbase 10.1.0] with core (11.3.1) (NEW)
+
+	## Drupal 10
+
+	CK2 - [Commerce v.2] with core (10.1.8)
+	DX0 - [Drupal 10.0.11] with Drush included -- dev/stage/prod
+	DX1 - [Drupal 10.1.8] with Drush included -- dev/stage/prod
+	DX2 - [Drupal 10.2.12] with Drush included -- dev/stage/prod
+	DX3 - [Drupal 10.3.14] with Drush included -- dev/stage/prod
+	DX4 - [Drupal 10.4.9] with Drush included -- dev/stage/prod
+	DX5 - [Drupal 10.5.8] with Drush included -- dev/stage/prod (UPDATED)
+	DX6 - [Drupal 10.6.3] with Drush included -- dev/stage/prod (NEW)
+	DXP - [DXPR Marketing 10.3.0] with core (10.3.6)
+	EZC - [EzContent 2.2.15] with core (10.3.6)
+	FOS - [farmOS 3.5.1] with core (10.6.2) (UPDATED)
+	LGV - [LocalGov 3.4.0] with core (10.6.3) (UPDATED)
+	OCS - [OpenCulturas 2.5.4] with core (10.5.8) (UPDATED)
+	OFD - [OpenFed 12.2.4] with core (10.2.10)
+	SOC - [Social 12.4.5] with core (10.2.10)
+	VB9 - [Varbase 9.1.13] with core (10.6.1) (UPDATED)
+
+	## Drupal 9
+
+	DL9 - [Drupal 9.5.11] -- dev/stage/prod
+	OLS - [OpenLucius 2.0.0] with core (9.5.11)
+	OPG - [Opigno LMS 3.1.0] with core (9.5.11)
+
+	## Drupal 7
+
+	CK1 - [Commerce v.1] with core (7.105.1) (UPDATED)
+	DL7 - [Drupal 7.105.1] -- dev/stage/prod (UPDATED)
+	UC7 - [Ubercart 3.13] with core (7.105.1) (UPDATED)
+
+	## Drupal 6
+
+	DL6 - [Pressflow 6.60.1] -- dev/stage/prod
+	UC6 - [Ubercart 2.15] with core (6.60.1)
+
+
+###
 ### Stable BOA-5.8.5-pro/lts - 30 Years of Heritage Edition
 ### Date: Mon Dec 1 09:58:58 AM AEDT 2025 in Sydney
 ### Welcome Devuan Excalibur and PHP 8.5
