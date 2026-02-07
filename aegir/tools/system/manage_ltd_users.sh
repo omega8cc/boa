@@ -835,7 +835,7 @@ for _Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 
 done
 }
 #
-# Update local INI for PHP CLI on the Aegir Satellite Instance.
+# Update local INI for PHP CLI on the Ægir Satellite Instance.
 _php_cli_local_ini_update() {
   _U_HD="${_dscUsr}/.drush"
   _U_TP="${_dscUsr}/.tmp"
@@ -1928,7 +1928,7 @@ _manage_site_drush_alias_mirror() {
       su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
       wait
       chage -M 90 ${_USER}.ftp &> /dev/null
-      ### Update Drush yml sites aliases also for Aegir system user
+      ### Update Drush yml sites aliases also for Ægir system user
       su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/*.yml"
       wait
       su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/.checksums/*.md5"
