@@ -132,7 +132,7 @@ if ($hidden_uri) {
 
 
 /**
- * Use Aegir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
+ * Use Ægir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
  */
 if (isset($_SERVER['MAIN_SITE_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];
@@ -161,7 +161,7 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.29.4';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.29.5';
   }
 }
 

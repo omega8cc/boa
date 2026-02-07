@@ -53,11 +53,11 @@ It’s one of those improvements that quietly makes a platform feel “stronger�
 
 ## What you need to do (this is the important part)
 
-We’ll make sure the server side is ready after the upgrades — but to actually *apply* the new capabilities cleanly across your BOA/Aegir-managed stack, you need to run Verify so configurations are regenerated with the updated features.
+We’ll make sure the server side is ready after the upgrades — but to actually *apply* the new capabilities cleanly across your BOA/Ægir-managed stack, you need to run Verify so configurations are regenerated with the updated features.
 
 ### After the maintenance completes:
 
-1. Log in to your Aegir Control Panel
+1. Log in to your Ægir Control Panel
 2. Go to Platforms → run Verify on all platforms you use to host sites
 3. Go to Sites → run Verify on your hosted sites
 
@@ -89,8 +89,8 @@ More details: *(link coming soon — we’ll share it as soon as it’s live)*
 
 After the system upgrade:
 
-1. Aegir → Platforms → Verify (all platforms)
-2. Aegir → Sites → Verify (use bulk actions if you have many sites)
+1. Ægir → Platforms → Verify (all platforms)
+2. Ægir → Sites → Verify (use bulk actions if you have many sites)
 
 That’s it. Once Verify is done, you’re ready to benefit automatically — and your visitors get a faster, smoother ride. Enjoy!
 

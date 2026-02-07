@@ -1,6 +1,6 @@
 You can modify some system defaults on the fly by using control files,
 which will affect either some system-wide services, maintenance agents
-behaviours and/or all hosted Aegir instances, so these controls belong
+behaviours and/or all hosted Ægir instances, so these controls belong
 to the system root, and are located, if needed, in the root home directory.
 
 These system-level control files use .cnf file extension, so for extra
@@ -54,7 +54,7 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.fast.cron.cnf
 
-  This file, if exists, allows to speed up the Aegir tasks and sites cron queues
+  This file, if exists, allows to speed up the Ægir tasks and sites cron queues
   on all hosted Octopus instances, so instead of runing every minute, it will
   run every 10 seconds. Note that while it may be handy during development,
   it will cause higher system load, even with its built-in prevention from
@@ -144,7 +144,7 @@ by the BOA install and upgrade tools exclusively.
   mysqldump mode for automatic daily backups of all databases, stored
   in the /data/disk/arch/sql/ directory. It will not affect any Octopus
   instance configuration with ~/static/control/MyQuick.info file present,
-  since it's used only by Aegir tasks.
+  since it's used only by Ægir tasks.
 
  @=> /root/.valkey.no.new.password.cnf
 

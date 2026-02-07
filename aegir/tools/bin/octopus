@@ -226,7 +226,7 @@ _check_report() {
   _SEND_ALERT=NO
   _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
-  _RESULT_ALREADY=$(grep "This Aegir Instance is already up" ${_UP_LOG} 2>&1)
+  _RESULT_ALREADY=$(grep "This Ægir Instance is already up" ${_UP_LOG} 2>&1)
   _RESULT_BYE=$(grep "BYE" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_ALRT}" =~ "ALRT" ]] \
     || [[ "${_RESULT_ALRT}" =~ "binary file matches" ]]; then
@@ -236,7 +236,7 @@ _check_report() {
     || [[ "${_RESULT_FATAL}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
   fi
-  if [[ "${_RESULT_ALREADY}" =~ "This Aegir Instance is already up" ]] \
+  if [[ "${_RESULT_ALREADY}" =~ "This Ægir Instance is already up" ]] \
     || [[ "${_RESULT_ALREADY}" =~ "binary file matches" ]]; then
     _SEND_ALERT=NO
   fi
@@ -382,7 +382,7 @@ _satellite_check_strict_php_cli() {
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
     if [[ ! "${_PHP_CLI}" =~ php8[1-5] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]]; then
       echo
-      echo "NOTE: This Aegir version requires at least PHP 7.4 during upgrade."
+      echo "NOTE: This Ægir version requires at least PHP 7.4 during upgrade."
       echo "NOTE: It will be reconfigured on the fly now, but you can change it"
       echo "NOTE: later for hosted sites management in ~/static/control/cli.info"
       echo
@@ -508,7 +508,7 @@ _satellite_check_supported_php_cli() {
           _fMdy=force
           if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
             echo
-            echo "This Aegir Instance ${_octUsr} is already up to date!"
+            echo "This Ægir Instance ${_octUsr} is already up to date!"
             echo "If you wish to run/force the upgrade again,"
             echo "please use the forced upgrade mode, as shown below"
             echo
@@ -579,7 +579,7 @@ _up_one() {
         && [ -e "${_usEr}/.drush/sys/provision/http" ]; then
         if [ -z "${_fMdy}" ]; then
           echo
-          echo "This Aegir Instance is already up to date!"
+          echo "This Ægir Instance is already up to date!"
           echo "If you wish to run/force the upgrade again,"
           echo "please specify desired upgrade mode:"
           echo "aegir, platforms or both - as shown below"
@@ -1137,7 +1137,7 @@ _check_root() {
         echo
         echo "STATUS: BOA Skynet Agent is Inactive!"
         echo
-        echo "NOTE: With _SKYNET_MODE=OFF octopus can not upgrade your Aegir."
+        echo "NOTE: With _SKYNET_MODE=OFF octopus can not upgrade your Ægir."
         echo
         echo "HINT: Please remove the _SKYNET_MODE=OFF line from"
         echo "HINT: ${_barCnf} to enable it."
@@ -1228,9 +1228,9 @@ _if_display_help() {
       o1 <----------- upgrade only listed Octopus instance (system name)
 
     {mode}
-      aegir <-------- upgrade only Aegir Hostmaster
-      platforms <---- upgrade only Aegir Platforms
-      both <--------- upgrade both Aegir Hostmaster and Platforms
+      aegir <-------- upgrade only Ægir Hostmaster
+      platforms <---- upgrade only Ægir Platforms
+      both <--------- upgrade both Ægir Hostmaster and Platforms
       force <-------- force upgrade of either specified instance or all
 
     See docs/UPGRADE.md for more details.
