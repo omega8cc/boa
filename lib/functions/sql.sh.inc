@@ -1151,7 +1151,6 @@ _install_with_aptitude_sql() {
     fi
   fi
   usermod -aG users mysql
-  _sql_conf_update
 }
 
 #
@@ -1388,7 +1387,6 @@ _db_server_install() {
     _db_server_apt_cleanup
     [ -e "/etc/mysql/my.cnf" ] && mv -f /etc/mysql/my.cnf /var/backups/package.my.cnf
     cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
-    _sql_conf_update
     if [ "${_DB_SERIES}" = "8.4" ]; then
       # Enable legacy mysql_native_password for Percona 8.4
       sed -i -E \
@@ -1528,7 +1526,6 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
-          _sql_conf_update
           _mrun "bash /var/xdrago/move_sql.sh"
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
@@ -1816,7 +1813,6 @@ _sql_root_credentials_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
-        _sql_conf_update
         _mrun "bash /var/xdrago/move_sql.sh"
         wait
         if [ "${_DEBUG_MODE}" = "YES" ]; then
