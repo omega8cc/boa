@@ -1,18 +1,40 @@
 Hello,
 
-We are pleased to inform you that your Ægir instance has been successfully upgraded to our special anniversary edition [boa.version]
+We are pleased to inform you that your Ægir instance has been successfully upgraded to our new HTTP/3 Edition [boa.version]
 
-@=> 30 Years of Heritage -- Why We’re Different
+@=> The future of 100% Open Source Drupal hosting is brighter than ever!
 
-We are unique within the hosting industry for many important reasons. Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take Open Source seriously, it's not a buzzword for us. It's about freedom from corporate control. Here's a short look back at our 15-year Ægir journey and 19 years with Drupal.
+With BOA-5.9.1 PRO/LTS, we proudly deliver full HTTP/3 and KTLS support — a fundamental change in the way modern browsers communicate with modern HTTPS web servers — along with the latest OpenSSL 3.5 LTS, which made it possible, and many critical security and bug fixes related to system components.
 
-Read the full story: https://bit.ly/different30y
+@=> Key Improvements Explained
 
-@=> The Future of Ægir 3 is Bryght!
+HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and responsive (and stay that way during spikes), this is genuinely good news. Why is this a big deal? What should visitors notice?
 
-Omega8.cc is now the lead developer team for Ægir 3 running on BOA (Barracuda-Octopus-Ægir stack). We want to thank all past contributors who brought Ægir to life – your work makes today’s progress possible. Because of you, there is still a Bryght Future for Ægir. What to Expect?
+  Read the full story: https://github.com/omega8cc/boa/tree/5.x-lts/HTTP3.md
 
-Read the full story: https://bit.ly/aegirbryghtfuture
+@=> Usage disk/sql limits x2 + Aero and Archive plans added to hosted BOA
+
+It's worth mentioning that our hosted BOA plans have received a huge upgrade: several new locations have been added around the world, our vendors are now local (instead of the previous US-only hyperscalers), and an entirely new Archive Tier has been added for those looking to host collections of low-traffic sites at low cost.
+
+  Take a look if you are interested: https://omega8.cc/hosted
+
+@=> Going Local with Infrastructure
+
+We’ve expanded our network considerably to meet the growing expectations of the Data Sovereignty movement. This isn’t just about adding more cities to our hosting map — it’s also about going local with infrastructure wherever we can. We no longer rely solely on big-name vendors and hyperscalers. Instead, we’re gradually migrating to local providers and data centers in every country where we offer hosted BOA for Drupal.
+
+For example, in Canada you can now choose not only Toronto, but also Montreal, Calgary, and Vancouver. In Australia, it’s no longer just Sydney — we also offer Adelaide, Brisbane, and Perth. We’ve also added an excellent facility in New Zealand. Of course, we continue to support our original Singapore location and still offer EU, UK, and US options.
+
+@=> 4 NEW, 12 UPDATED, 32 TOTAL Drupal distros/platforms available
+
+While most of you typically build your own codebases/platforms with Composer these days, we still deliver a list of 32 platforms ready to use in your Ægir.
+
+Since these platforms are updated only with BOA releases, they are not really intended for production use per se, because you typically need a faster lifecycle to keep your sites secure.
+
+However, they provide a wide range of testing playgrounds, because you can install only those you wish to test or use, and reinstall if needed, with the help of our BOA-only feature that allows you to upgrade your Ægir on demand with two simple control files, as described in the built-in docs you can always find in ~/static/control/README.txt.
+
+The complete list of 32 can be found at:
+
+  https://github.com/omega8cc/boa/blob/5.x-lts/docs/PLATFORMS.md
 
 @=> You can access your upgraded Ægir instance at the following URL:
 
