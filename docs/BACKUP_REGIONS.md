@@ -308,7 +308,7 @@ For more detailed information, please refer to Akamai's official [Object Storage
 #### User (`mybackup`) Behavior:
 - Buckets are associated with the Octopus system user running the command.
 - User-specific bucket names follow the convention: `back-to-USER-HOSTNAME-PROVIDER`.
-- The `USER` is your Aegir system user as visible in the `/data/disk/USER/static` path.
+- The `USER` is your Ægir system user as visible in the `/data/disk/USER/static` path.
 - The `HOSTNAME` is your system hostname, but with dots replaced by hyphens.
 - The `PROVIDER` is the short name of the vendor, with underscores replaced by hyphens:
 
@@ -328,7 +328,7 @@ For more detailed information, please refer to Akamai's official [Object Storage
 
 How to determine correct `HOSTNAME` and `USER` to be used as your Bucket name?
 
-It's easy to find because your Aegir URL is actually `USER`.`HOSTNAME` -- For example in `o123.fr8.eu.aegir.cc` the `o123` is `USER` and `fr8.eu.aegir.cc` is a `HOSTNAME`
+It's easy to find because your Ægir URL is actually `USER`.`HOSTNAME` -- For example in `o123.fr8.eu.aegir.cc` the `o123` is `USER` and `fr8.eu.aegir.cc` is a `HOSTNAME`
 
 However, when used in the bucket name, it becomes `back-to-USER-HOSTNAME-PROVIDER`, so in this example: `back-to-o123-fr8-eu-aegir-cc-wasabi`
 

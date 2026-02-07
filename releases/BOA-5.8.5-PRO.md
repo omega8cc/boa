@@ -4,30 +4,30 @@
 
   We are unique within the hosting industry for many important reasons.
 
-  Our 15 years of Aegir-based hosting, plus earlier experience with Adgrafix
+  Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix
   (the first company to offer a control panel for website management in 1995),
   have helped shape what makes us different today.
 
   We take Open Source seriously, it's not a buzzword for us. It's about freedom
-  from corporate control. Here's a short look back at our 15-year Aegir journey
+  from corporate control. Here's a short look back at our 15-year Ægir journey
   and 19 years with Drupal.
 
   Read the full story: https://bit.ly/different30y
 
-## The Future of Aegir 3 is Bryght!
+## The Future of Ægir 3 is Bryght!
 
-  Omega8.cc is now the lead developer team for Aegir 3 running on BOA
-  (Barracuda-Octopus-Aegir stack). We want to thank all past contributors
-  who brought Aegir to life – your work makes today’s progress possible.
+  Omega8.cc is now the lead developer team for Ægir 3 running on BOA
+  (Barracuda-Octopus-Ægir stack). We want to thank all past contributors
+  who brought Ægir to life – your work makes today’s progress possible.
 
-  Because of you, there is still a Bryght Future for Aegir. What to Expect?
+  Because of you, there is still a Bryght Future for Ægir. What to Expect?
 
   Read the full story: https://bit.ly/aegirbryghtfuture
 
 ## New BOA-5.8.5 PRO/LTS Release
 
   The future of Drupal hosting is here! With BOA-5.8.5 PRO/LTS, we proudly
-  deliver both full Drupal 11 support integrated with Aegir and latest PHP 8.5,
+  deliver both full Drupal 11 support integrated with Ægir and latest PHP 8.5,
   now available on the latest Devuan Excalibur / Debian Trixie system.
 
   This groundbreaking feature not only pushes the boundaries of what the BOA
@@ -56,9 +56,9 @@
    from 2-3 minutes to 10-14 seconds on average thanks to our improvements
    across the board in the BOA system logic.
 
- * BOA now consistently pauses Aegir tasks queue if any system-backend tasks
+ * BOA now consistently pauses Ægir tasks queue if any system-backend tasks
    are running -- this includes any barracuda/octopus upgrades, the heavy
-   daily.sh script and nightly DB backups, so no Aegir tasks should ever
+   daily.sh script and nightly DB backups, so no Ægir tasks should ever
    collide with those important system tasks.
 
  * The auto-healing system has been rewritten from scratch and greatly

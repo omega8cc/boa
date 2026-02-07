@@ -1,20 +1,20 @@
 Hello,
 
-Welcome to your new Aegir control panel, designed for easy Drupal multi-site deployment, development, and management.
+Welcome to your new Ægir control panel, designed for easy Drupal multi-site deployment, development, and management.
 
-Your Aegir control panel [version boa.version] is available at:
+Your Ægir control panel [version boa.version] is available at:
 
 https://aegir.url.name
 
 This Email Covers:
-1. Logging into your Aegir control panel
-2. Deploying Aegir default websites
+1. Logging into your Ægir control panel
+2. Deploying Ægir default websites
 3. Adding modules & themes
 4. Managing your databases
 5. Advanced user information
 6. Articles and video tutorials
 
-Please read this email thoroughly. It contains important information required to properly leverage all your available Aegir features.
+Please read this email thoroughly. It contains important information required to properly leverage all your available Ægir features.
 
 ----------------------------------------
 1. LOGGING INTO YOUR AEGIR CONTROL PANEL
@@ -30,20 +30,20 @@ Please double-check your spam folder to ensure all emails are delivered.
 2. DEPLOYING YOUR WEBSITES
 ----------------------------------------
 
-Log into the control panel and start exploring how Aegir works. We are ready to assist and guide you step by step, so please don’t hesitate to ask questions!
+Log into the control panel and start exploring how Ægir works. We are ready to assist and guide you step by step, so please don’t hesitate to ask questions!
 
 To create a new site:
 1. Click the Add Site tab.
-2. After adding a site, click the Home icon on the site's node in Aegir to access the admin area.
+2. After adding a site, click the Home icon on the site's node in Ægir to access the admin area.
 
 If the Home icon no longer links to the one-time login page, run the "Reset password" task on the site's node, and once complete, click the Home icon again.
 
 For more details on site import and platform management, refer to:
-- Import Your Sites to Aegir: https://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
+- Import Your Sites to Ægir: https://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
 - Add Custom Platform: https://omega8.cc/how-to-add-custom-platform-properly-140
 - Drupal Site Upgrade Workflow: https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
-To make a site "live" using any domain name, point its A or CNAME DNS record to your Aegir instance public IP address:
+To make a site "live" using any domain name, point its A or CNAME DNS record to your Ægir instance public IP address:
 
 yourdomain.com.           IN  A      166.84.6.231
 subdomain.yourdomain.com. IN  CNAME  aegir.url.name.
@@ -68,7 +68,7 @@ port: 22 (SSH/SFTP)
 2. Type "help" when logged in via SSH to see all available shell commands.
 3. Change your password via SSH with the "passwd" command every 3 months.
 
-Note: Use Explicit TLS mode with port 21 for FTPS and port 22 for SFTP (unless your Aegir instance uses a non-standard SSH port).
+Note: Use Explicit TLS mode with port 21 for FTPS and port 22 for SFTP (unless your Ægir instance uses a non-standard SSH port).
 
 Refer to Compatible FTP-SSL/TLS Clients: https://omega8.cc/dev/ftp-tls.txt for more information.
 
@@ -98,7 +98,7 @@ Directory Information:
 
 Custom Platform Information:
 - Upload custom Drupal platforms to ~/static/platforms in separate subdirectories.
-- Enable custom platforms via the "Add platform" option in your Aegir control panel.
+- Enable custom platforms via the "Add platform" option in your Ægir control panel.
 
 Note: Only Pressflow (LTS) core-based platforms are allowed for Drupal 6.x versions; standard Drupal core can be used for Drupal 7 and newer versions.
 

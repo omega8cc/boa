@@ -53,7 +53,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### but this option allows you to install also
 ### other experimental PHP versions and then
 ### choose different version for PHP and
-### PHP-CLI per Aegir Master and per Satellite
+### PHP-CLI per Ægir Master and per Satellite
 ### Instance with variables: _PHP_FPM_VERSION
 ### and _PHP_CLI_VERSION.
 ###
@@ -101,7 +101,7 @@ _PHP_SINGLE_INSTALL=
 ### PHP-FPM VERSION                        ###
 ###----------------------------------------###
 ###
-### You can choose PHP-FPM version per Aegir
+### You can choose PHP-FPM version per Ægir
 ### Master and Satellite Instance - both on
 ### install and upgrade.
 ###
@@ -121,7 +121,7 @@ _PHP_FPM_VERSION=8.4
 ### PHP-CLI VERSION                        ###
 ###----------------------------------------###
 ###
-### You can choose PHP-CLI version per Aegir
+### You can choose PHP-CLI version per Ægir
 ### Master and Satellite Instance - both on
 ### install and upgrade.
 ###
@@ -208,12 +208,12 @@ _AUTOPILOT=NO
 ###----------------------------------------###
 ###
 ### Use YES to upgrade system only and skip
-### Aegir Master Instance upgrade.
+### Ægir Master Instance upgrade.
 ###
 _SYSTEM_UP_ONLY=NO
 
 ###
-### Use YES to upgrade Aegir Master Instance
+### Use YES to upgrade Ægir Master Instance
 ### only and skip system upgrade.
 ###
 _AEGIR_UPGRADE_ONLY=NO
@@ -329,7 +329,7 @@ _TRIXIE_TO_EXCALIBUR=NO
 ### DRUSH DEBUG MODE                       ###
 ###----------------------------------------###
 ###
-### When set to YES it will run Aegir Master
+### When set to YES it will run Ægir Master
 ### Instance install/upgrade with -d option,
 ### displaying complete Drush backend report.
 ###
@@ -383,8 +383,8 @@ _DB_SERIES=5.7
 ### listen on standard port and 127.0.0.1 IP.
 ###
 ### When set to any other IP address, it will
-### switch ALL your Aegir Satellite Instances
-### along with your Aegir Master Instance from
+### switch ALL your Ægir Satellite Instances
+### along with your Ægir Master Instance from
 ### local Valkey server to the remote Valkey
 ### server you have installed in your network.
 ### It will also permanently disable your
@@ -416,8 +416,8 @@ _VALKEY_MAJOR_RELEASE=9
 ### listen on standard port and 127.0.0.1 IP.
 ###
 ### When set to any other IP address, it will
-### switch ALL your Aegir Satellite Instances
-### along with your Aegir Master Instance from
+### switch ALL your Ægir Satellite Instances
+### along with your Ægir Master Instance from
 ### local Redis server to the remote Redis
 ### server you have installed in your network.
 ### It will also permanently disable your
@@ -512,7 +512,7 @@ _FORCE_GIT_MIRROR=""
 ### DNS MANUAL CONFIG                      ###
 ###----------------------------------------###
 ###
-### Starting with release 0.4-alpha9 Aegir
+### Starting with release 0.4-alpha9 Ægir
 ### requires proper DNS configuration
 ### of your server. Your hostname has to be
 ### FQDN and has to match your server IP.
@@ -522,12 +522,12 @@ _FORCE_GIT_MIRROR=""
 ### if something doesn't look right.
 ###
 ### This script will also use your FQDN
-### hostname as a web address of your Aegir
+### hostname as a web address of your Ægir
 ### frontend (control panel) by default.
 ###
 ### You may want to change the automatic
 ### defaults by setting up your IP address,
-### your FQDN hostname and your Aegir frontend
+### your FQDN hostname and your Ægir frontend
 ### web address below - it is recommended!
 ###
 ### It may be useful when you are using local
@@ -536,7 +536,7 @@ _FORCE_GIT_MIRROR=""
 ### public IPs on eth0 and you wish to use
 ### non-default (first) IP address, or when
 ### you want to use non-hostname (sub)domain
-### to access your Aegir frontend.
+### to access your Ægir frontend.
 ###
 ### It is also useful when you plan to use
 ### available in Barracuda optional installs,
@@ -562,7 +562,7 @@ _FORCE_GIT_MIRROR=""
 ### they will be still validated, therefore
 ### make sure your _MY_HOSTN and _MY_FRONT
 ### both matches your _MY_OWNIP or the script
-### will fail to install Aegir (unless you
+### will fail to install Ægir (unless you
 ### will disable the DNS test completely
 ### below in _DNS_SETUP_TEST).
 ###
@@ -642,13 +642,13 @@ _THIS_DB_HOST=localhost
 ### This mode will work only if the remote DB
 ### server has been already configured with
 ### the same default dummy mysql root password
-### as your Aegir system you are about to
+### as your Ægir system you are about to
 ### install, and if the mysql port 3306 is
 ### already open for incoming and outgoing
 ### TCP connections on all servers expected
 ### to communicate in this mode.
 ###
-### HINT: you may want to add WEB head (Aegir)
+### HINT: you may want to add WEB head (Ægir)
 ### IP as allowed on the DB head with standard
 ### command: 'csf -a 12.34.56.789 my web head'
 ###
@@ -661,7 +661,7 @@ _THIS_DB_HOST=localhost
 ###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
 ###
 ### The same password will be used for the
-### Aegir special DB user 'aegir_root'.
+### Ægir special DB user 'aegir_root'.
 ###
 ### Furthermore, BOA will not create separate
 ### special DB users per Octopus instance
@@ -673,7 +673,7 @@ _THIS_DB_HOST=localhost
 ### both mysql 'root' and 'aegir_root' users
 ### on the remote DB server, but you will
 ### have to manually update them in every
-### Aegir instance (Master and Satellites)
+### Ægir instance (Master and Satellites)
 ### db server node settings.
 ###
 ### However, BOA will always check and use
@@ -690,13 +690,13 @@ _THIS_DB_HOST=localhost
 ### When installing BOA on a machine expected
 ### to work as a remote DB server, you should
 ### create a special file containing your
-### WEB head (Aegir) hostname:
+### WEB head (Ægir) hostname:
 ###
 ###  /root/.remote.web.head.txt
 ###
 ### BOA will use this file to add required
 ### DB GRANT for 'aegir_root' on the DB head
-### so the WEB head (Aegir) hosted on the
+### so the WEB head (Ægir) hosted on the
 ### machine with hostname specified in this
 ### file will be able to manage databases
 ### remotely. Make sure that this file
@@ -749,7 +749,7 @@ _SMTP_RELAY_HOST=""
 ### In this example "aegir.local" will be used
 ### as your hostname and all connections and
 ### grants will use "aegir.local" instead of
-### FQDN. Also your Aegir Master Instance
+### FQDN. Also your Ægir Master Instance
 ### will be available at http://aegir.local
 ###
 ### This option is useful when your server is
@@ -895,7 +895,7 @@ _CUSTOM_CONFIG_SQL=NO
 ### also required by Collectd Graph Panel,
 ### if installed.
 ###
-### This option affects only Aegir Master
+### This option affects only Ægir Master
 ### Instance plus all scripts running outside
 ### of Octopus Satellite Instances.
 ###
@@ -947,7 +947,7 @@ _RESERVED_RAM=0
 ### privileges (the SUPER which can't be added
 ### for obvious security reasons) or binary
 ### logging disabled. Otherwise almost all
-### Aegir tasks against any site with CiviCRM
+### Ægir tasks against any site with CiviCRM
 ### system active will fail, so we disable
 ### binary logging by default. It will also
 ### improve system performance on servers
@@ -981,7 +981,7 @@ _USE_MYSQLTUNER=NO
 ### all running PHP, Drush, Wget and Curl processes
 ### until the load stabilizes.
 ###
-### This shouldn't affect any innocent Aegir tasks,
+### This shouldn't affect any innocent Ægir tasks,
 ### including cron for sites, because the system
 ### never starts them anyway, if the average load
 ### in the last minute is higher than 3.1
@@ -1154,7 +1154,7 @@ _PHP_FPM_WORKERS=AUTO
 
 ###
 ### Max default TTL for Speed Booster Cache.
-### It will affect all Aegir Instances, but
+### It will affect all Ægir Instances, but
 ### it is used only for spiders and with not
 ### enabled by default control file per site
 ### or per platform modules/cache_hour/YES.txt
