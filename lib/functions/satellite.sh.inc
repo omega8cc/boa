@@ -2967,7 +2967,7 @@ _satellite_download_for_local_build() {
       _get_dev_stc "vuejs.tar.gz"
       ### BOA Drupal Contrib
       _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
-      _get_dev_stc "features_extra-7.x-1.0.tar.gz"
+      _get_dev_stc "features_extra-7.x-1.2.tar.gz"
       _get_dev_stc "features-7.x-2.15.tar.gz"
       _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
       _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
