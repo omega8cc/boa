@@ -27,7 +27,7 @@ _send_notice_migration_complete() {
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
-This is a notification to inform you that the migration of your Aegir hosting system has been successfully completed. Below are important details and instructions regarding the changes.
+This is a notification to inform you that the migration of your Ægir hosting system has been successfully completed. Below are important details and instructions regarding the changes.
 
 YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
 
@@ -37,11 +37,11 @@ Please update DNS for all your sites as soon as possible to point traffic direct
 
 Important Changes to Note:
 
-1. New Aegir Control Panel URL
-   Your new welcome email will include details about the updated Aegir URL, including SQL Adminer access.
+1. New Ægir Control Panel URL
+   Your new welcome email will include details about the updated Ægir URL, including SQL Adminer access.
 
 2. Access Credentials
-   Aegir Control Panel access credentials for all current admins remain the same. Updated SSH/SFTP credentials (with a new password) are in your welcome email.
+   Ægir Control Panel access credentials for all current admins remain the same. Updated SSH/SFTP credentials (with a new password) are in your welcome email.
 
 3. SSH Key Transfer
    Only the main SSH account keys have been transferred.
@@ -50,8 +50,8 @@ Important Changes to Note:
 4. Main SSH Account Directory
    The contents of your main SSH account’s home directory have NOT been migrated. Please download any necessary files from the old server.
 
-5. Aegir Backend Key Update
-   The public SSH key (USER.id_ed25519.pub) for the Aegir backend has changed. This is important if you use integration with a remote Git repository.
+5. Ægir Backend Key Update
+   The public SSH key (USER.id_ed25519.pub) for the Ægir backend has changed. This is important if you use integration with a remote Git repository.
 
 6. SSL Certificates
    SSL/Let’s Encrypt certificates have been migrated automatically. Renewals will be handled on the new server, so updating DNS promptly is advised.
@@ -59,7 +59,7 @@ Important Changes to Note:
 7. Paused Cron Tasks
    All scheduled tasks were paused during migration and will resume within 1-3 hours.
 
-8. Old Aegir Control Panel
+8. Old Ægir Control Panel
    The old control panel has been disabled to secure proxy configurations.
 
 ---
@@ -80,13 +80,13 @@ _send_notice_migration_start() {
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
-This notification is to inform you that the migration of your Aegir hosting system to the new platform has started.
+This notification is to inform you that the migration of your Ægir hosting system to the new platform has started.
 
 YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
 
 You will receive another message once the migration is complete, along with a separate New Welcome Email containing important details about your updated system.
 
-Please do not run any tasks in your old Aegir Control Panel during this migration, as it may interfere with special proxy configurations set up to ensure service continuity.
+Please do not run any tasks in your old Ægir Control Panel during this migration, as it may interfere with special proxy configurations set up to ensure service continuity.
 
 Important: Update DNS for All Your Sites
 Once migrated, update DNS for all your sites to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for up to 10 days after migration to assist in the transition.
@@ -95,11 +95,11 @@ Once migrated, update DNS for all your sites to point traffic directly to the ne
 
 Important Changes to Note:
 
-1. New Aegir Control Panel URL
-   Your New Welcome Email will include details about the updated Aegir URL, including SQL Adminer access.
+1. New Ægir Control Panel URL
+   Your New Welcome Email will include details about the updated Ægir URL, including SQL Adminer access.
 
 2. Access Credentials
-   Aegir Control Panel credentials for all current admins will remain the same. Updated SSH/SFTP credentials (with a new password) will be provided in your welcome email.
+   Ægir Control Panel credentials for all current admins will remain the same. Updated SSH/SFTP credentials (with a new password) will be provided in your welcome email.
 
 3. SSH Key Transfer
    Only the main SSH account keys will be transferred.
@@ -108,8 +108,8 @@ Important Changes to Note:
 4. Main SSH Account Directory
    The contents of your main SSH account’s home directory will NOT be migrated. Please download any necessary files from the old server.
 
-5. Aegir Backend Key Update
-   The public SSH key (USER.id_ed25519.pub) for the Aegir backend will change. This is important if you use integration with a remote Git repository.
+5. Ægir Backend Key Update
+   The public SSH key (USER.id_ed25519.pub) for the Ægir backend will change. This is important if you use integration with a remote Git repository.
 
 6. SSL Certificates
    SSL/Let’s Encrypt certificates will be migrated automatically. Renewals will be handled on the new server, so updating DNS promptly is advised.
@@ -117,7 +117,7 @@ Important Changes to Note:
 7. Paused Cron Tasks
    All scheduled tasks will be paused during migration and for an additional 1-3 hours afterward.
 
-8. Old Aegir Control Panel
+8. Old Ægir Control Panel
    The old control panel will be disabled to secure proxy configurations.
 
 ---

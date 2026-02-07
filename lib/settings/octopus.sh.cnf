@@ -3,7 +3,7 @@
 ### PHP-FPM VERSION                        ###
 ###----------------------------------------###
 ###
-### You can choose PHP-FPM version per Aegir
+### You can choose PHP-FPM version per Ægir
 ### Satellite Instance - both on install and
 ### upgrade.
 ###
@@ -23,7 +23,7 @@ _PHP_FPM_VERSION=8.4
 ### PHP-CLI VERSION                        ###
 ###----------------------------------------###
 ###
-### You can choose PHP-CLI version per Aegir
+### You can choose PHP-CLI version per Ægir
 ### Satellite Instance - both on install and
 ### upgrade.
 ###
@@ -56,30 +56,38 @@ _PHP_CLI_VERSION=8.4
 ### using the symbols listed below.
 ###
 
-### Drupal 11.2
+### Drupal 11.3
 #
-# DE2 — Drupal 11.2 prod/stage/dev
+# DE3 — Drupal 11.3 prod/stage/dev
 # CK3 — Commerce v.3
 # CMS — Drupal CMS
 # SCR — Sector
 # THR — Thunder
+# VBX — Varbase 10
+
+### Drupal 11.2
+#
+# DE2 — Drupal 11.2 prod/stage/dev
 
 ### Drupal 11.1
 #
 # DE1 — Drupal 11.1 prod/stage/dev
 
+### Drupal 10.6
+#
+# DX6 — Drupal 10.6 prod/stage/dev
+# FOS — farmOS
+# LGV — LocalGov
+# VB9 — Varbase 9
+
 ### Drupal 10.5
 #
 # DX5 — Drupal 10.5 prod/stage/dev
-# LGV — LocalGov
 # OCS — OpenCulturas
-# VB9 — Varbase 9
-# VBX — Varbase 10
 
 ### Drupal 10.4
 #
 # DX4 — Drupal 10.4 prod/stage/dev
-# FOS — farmOS
 
 ### Drupal 10.3
 #
@@ -172,7 +180,7 @@ _HM_ONLY=NO
 ### PLATFORMS MODE                         ###
 ###----------------------------------------###
 ###
-### To install ONLY new Aegir platforms,
+### To install ONLY new Ægir platforms,
 ### change this to YES.
 ###
 ### _PLATFORMS_ONLY=YES
@@ -208,7 +216,7 @@ _DL_MODE=BATCH
 ### FORCED IP MODE                         ###
 ###----------------------------------------###
 ###
-### To install or upgrade Aegir Satellite
+### To install or upgrade Ægir Satellite
 ### Instance on any non-default IP address
 ### available on your server/machine, please
 ### define it below. For default, main IP
@@ -311,13 +319,13 @@ _THIS_DB_HOST=localhost
 ### This mode will work only if the remote DB
 ### server has been already configured with
 ### the same default dummy mysql root password
-### as your Aegir system you are about to
+### as your Ægir system you are about to
 ### install, and if the mysql port 3306 is
 ### already open for incoming and outgoing
 ### TCP connections on all servers expected
 ### to communicate in this mode.
 ###
-### HINT: you may want to add WEB head (Aegir)
+### HINT: you may want to add WEB head (Ægir)
 ### IP as allowed on the DB head with standard
 ### command: 'csf -a 12.34.56.789 my web head'
 ###
@@ -330,7 +338,7 @@ _THIS_DB_HOST=localhost
 ###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
 ###
 ### The same password will be used for the
-### Aegir special DB user 'aegir_root'.
+### Ægir special DB user 'aegir_root'.
 ###
 ### Furthermore, BOA will not create separate
 ### special DB users per Octopus instance
@@ -342,7 +350,7 @@ _THIS_DB_HOST=localhost
 ### both mysql 'root' and 'aegir_root' users
 ### on the remote DB server, but you will
 ### have to manually update them in every
-### Aegir instance (Master and Satellites)
+### Ægir instance (Master and Satellites)
 ### db server node settings.
 ###
 ### However, BOA will always check and use
@@ -359,13 +367,13 @@ _THIS_DB_HOST=localhost
 ### When installing BOA on a machine expected
 ### to work as a remote DB server, you should
 ### create a special file containing your
-### WEB head (Aegir) hostname:
+### WEB head (Ægir) hostname:
 ###
 ###  /root/.remote.web.head.txt
 ###
 ### BOA will use this file to add required
 ### DB GRANT for 'aegir_root' on the DB head
-### so the WEB head (Aegir) hosted on the
+### so the WEB head (Ægir) hosted on the
 ### machine with hostname specified in this
 ### file will be able to manage databases
 ### remotely. Make sure that this file
@@ -403,9 +411,9 @@ _THIS_DB_PORT=3306
 ### DISTRO INITIAL VERSION NR              ###
 ###----------------------------------------###
 ###
-### By default every new Aegir Satellite
+### By default every new Ægir Satellite
 ### Instance will use shared code for its
-### platforms, created during previous Aegir
+### platforms, created during previous Ægir
 ### Satellite Instance install or upgrade,
 ### resulting with new 00x number in the
 ### /data/all directory.
@@ -417,7 +425,7 @@ _THIS_DB_PORT=3306
 ### install/upgrade was performed a few months
 ### ago.
 ###
-### If you don't want to build a new Aegir
+### If you don't want to build a new Ægir
 ### Satellite Instance with latest code, then
 ### leave it at default value. Otherwise
 ### change it to:
@@ -433,7 +441,7 @@ _HOT_SAUCE=NO
 ###
 ### We changed the default to YES to avoid
 ### creating many duplicated platforms on
-### every Aegir Satellite Instance upgrade,
+### every Ægir Satellite Instance upgrade,
 ### when there is no new core, thus no reason
 ### to create newer platforms for the same
 ### distributions versions.

@@ -1850,7 +1850,7 @@ _php_if_versions_cleanup_cnf() {
     fi
     if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _AUTO_PHP_CLEANUP=NO
-      _msg "ALRT: Your Aegir Master Instance looks broken!"
+      _msg "ALRT: Your Ægir Master Instance looks broken!"
       sleep 8
       _msg "HINT: Please run full upgrade with 'barracuda up-lts' command"
       sleep 3
@@ -5864,7 +5864,7 @@ _finale() {
   sleep 2
   _msg "CARD: It will take a moment to process your payment..."
   sleep 5
-  _msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
+  _msg "JOKE: Just kidding !!! Enjoy your Ægir Hosting System :)"
   sleep 3
   echo " "
   _KERNEL_UP=NO
@@ -7574,13 +7574,13 @@ _if_major_os_upgrade() {
       fi
     fi
     ###
-    ### Make sure that Aegir Master system user is added to sudo.
+    ### Make sure that Ægir Master system user is added to sudo.
     _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
     ###
-    ### Make sure that Aegir special system-wide scripts are added to sudo.
+    ### Make sure that Ægir special system-wide scripts are added to sudo.
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
@@ -7590,7 +7590,7 @@ _if_major_os_upgrade() {
       fi
     done
     ###
-    ### Make sure that Aegir Octopus system users are added to sudo.
+    ### Make sure that Ægir Octopus system users are added to sudo.
     if [ -d "/data/u" ]; then
       for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \

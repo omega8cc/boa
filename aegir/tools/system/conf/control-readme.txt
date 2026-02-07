@@ -1,15 +1,15 @@
 
 ###
-### Aegir upgrade on-demand
+### Ægir upgrade on-demand
 ###
-### You can now launch Aegir upgrade to (re)install platforms listed in the file
+### You can now launch Ægir upgrade to (re)install platforms listed in the file
 ### ~/static/control/platforms.info (see further below) by creating empty file:
 ###
 ###   ~/static/control/run-upgrade.pid
 ###
-### This file, if exists, will launch your Aegir upgrade in just a few minutes,
+### This file, if exists, will launch your Ægir upgrade in just a few minutes,
 ### and will be automatically deleted afterwards. This means that you can
-### upgrade your Aegir instance easily to install supported platforms
+### upgrade your Ægir instance easily to install supported platforms
 ### even if you don't have root access or are on hosted BOA system.
 ###
 ### Note that this pid file will be ignored if there will be no platforms.info
@@ -31,7 +31,7 @@
 ###
 ### This file, if exists, will enable a super fast per table and parallel DB
 ### dump and import, although without leaving a conventional complete database
-### dump file in the site archive normally created by Aegir when you run
+### dump file in the site archive normally created by Ægir when you run
 ### not only the backup task, but also clone, migrate and delete tasks, hence
 ### also restore task will not work anymore.
 ###
@@ -42,7 +42,7 @@
 ###
 ### Of course the system still maintains nightly backups of all your sites
 ### using the new split sql dump archives, but with this control file present
-### you won't be able to use restore task in Aegir, because the site archive
+### you won't be able to use restore task in Ægir, because the site archive
 ### won't include the database dump -- you can still find that sql dump split
 ### into per table files in the backups directory, though, in the subdirectory
 ### with timestamp added, so you can still access it manually, if needed.
@@ -72,7 +72,7 @@
 ### The potential reasons to disable these extra tasks with the help of
 ### this new control file can be twofold:
 ###
-###  1. To restore default and much faster Aegir own behaviour
+###  1. To restore default and much faster Ægir own behaviour
 ###  2. To help those running mass migrations to avoid running duplicate tasks
 ###
 ### Still, it's your responsibility to run these extra verify tasks when you
@@ -85,8 +85,8 @@
 
 
 ###
-### Aegir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
-### so both can be used as default versions in the Aegir PHP configuration files
+### Ægir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
+### so both can be used as default versions in the Ægir PHP configuration files
 ### ~/static/control/cli.info and ~/static/control/fpm.info
 ###
 ### !!! >>> PHP CAVEATS for Drupal core 7-10 versions:
@@ -191,7 +191,7 @@
 ### most of the sites hosted, never before tested for PHP 8.1 compatibility.
 ###
 ### IMPORTANT: this file will affect only Drush on command line and Drush
-### in Aegir backend, used for all tasks on hosted sites, but it will not
+### in Ægir backend, used for all tasks on hosted sites, but it will not
 ### affect PHP-CLI version used by Composer on command line, because Composer
 ### is installed globally and not per Octopus account, so it will use system
 ### default PHP version, which is, since BOA-5.0.0, PHP 8.1 and can be
@@ -208,7 +208,7 @@
 ### This file, if exists and contains a list of symbols used to define supported
 ### platforms, allows to control/override the value of _PLATFORMS_LIST variable
 ### normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
-### modified by the Aegir instance owner with no system root access.
+### modified by the Ægir instance owner with no system root access.
 ###
 ### IMPORTANT: If used, it will replace/override the value defined on initial
 ### instance install and all previous upgrades. It takes effect on every future
@@ -219,30 +219,38 @@
 ### or one per line:
 ###
 
-### Drupal 11.2
+### Drupal 11.3
 #
-# DE2 — Drupal 11.2 prod/stage/dev
+# DE3 — Drupal 11.3 prod/stage/dev
 # CK3 — Commerce v.3
 # CMS — Drupal CMS
 # SCR — Sector
 # THR — Thunder
+# VBX — Varbase 10
+
+### Drupal 11.2
+#
+# DE2 — Drupal 11.2 prod/stage/dev
 
 ### Drupal 11.1
 #
 # DE1 — Drupal 11.1 prod/stage/dev
 
+### Drupal 10.6
+#
+# DX6 — Drupal 10.6 prod/stage/dev
+# FOS — farmOS
+# LGV — LocalGov
+# VB9 — Varbase 9
+
 ### Drupal 10.5
 #
 # DX5 — Drupal 10.5 prod/stage/dev
-# LGV — LocalGov
 # OCS — OpenCulturas
-# VB9 — Varbase 9
-# VBX — Varbase 10
 
 ### Drupal 10.4
 #
 # DX4 — Drupal 10.4 prod/stage/dev
-# FOS — farmOS
 
 ### Drupal 10.3
 #
@@ -305,7 +313,7 @@
 
 
 ###
-### Support for forced Drush cache clear in the Aegir backend
+### Support for forced Drush cache clear in the Ægir backend
 ###
 ###  ~/static/control/clear-drush-cache.info
 ###
@@ -321,7 +329,7 @@
 ### to not break any running builds.
 ###
 ### If you need to unlock the tasks queue by forcefully removing everything
-### from the Aegir backend Drush cache, you can create an empty control file:
+### from the Ægir backend Drush cache, you can create an empty control file:
 ### ~/static/control/clear-drush-cache.info
 ###
 

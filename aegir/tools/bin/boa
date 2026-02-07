@@ -419,7 +419,7 @@ _system_check_ready() {
     || [ ! -e "/etc/mysql" ] \
     || [ ! -e "/var/lib/mysql/mysql" ]; then
     echo "ERROR: Please install complete BOA system before trying"
-    echo "ERROR: to install additional Aegir / Octopus instances"
+    echo "ERROR: to install additional Ægir / Octopus instances"
     echo "Bye"
     _clean_pid_exit _system_check_ready_a
   fi
@@ -2553,7 +2553,7 @@ _display_info() {
         | cut -d '/' -f4 \
         | sed "s/ Barracuda //g"`
       _crlBoav=${_crlBoav//[^a-zA-Z0-9-.]/}
-      echo "Aegir ${_crlBoav} on ${_thiSys}"
+      echo "Ægir ${_crlBoav} on ${_thiSys}"
     else
       _crlBoav="Vanilla System"
       echo "Ready for BOA ${_crlBoav} on ${_thiSys}"

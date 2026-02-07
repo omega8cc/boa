@@ -11,7 +11,7 @@ case "$1" in
   *)  echo
       echo " This command is not available directly!"
       echo
-      echo " You should use Aegir for code and db updates,"
+      echo " You should use Ægir for code and db updates,"
       echo " but if you really know what are you doing,"
       echo " you could use these aliases instead:"
       echo

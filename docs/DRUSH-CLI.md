@@ -13,7 +13,7 @@ BOA provides two mechanisms for managing the PHP-CLI version used in command-lin
 
 ### How Instant PHP-CLI Switching Works
 
-In addition to the `cli.info` file, BOA supports **instant PHP-CLI switching** through **specific configuration files** located in `~/static/control/`. The filenames of these configuration files dictate the PHP version to use, and their content is irrelevant. This enables you to switch the PHP-CLI version for Drush, Composer, and other CLI operations, including Aegir tasks, instantly.
+In addition to the `cli.info` file, BOA supports **instant PHP-CLI switching** through **specific configuration files** located in `~/static/control/`. The filenames of these configuration files dictate the PHP version to use, and their content is irrelevant. This enables you to switch the PHP-CLI version for Drush, Composer, and other CLI operations, including Ægir tasks, instantly.
 
 #### Example Instant Switch Files:
 
