@@ -859,8 +859,8 @@ EOF
     elif [ ! -z "${_MY_FRONT}" ]; then
       _THIS_FRONT="${_MY_FRONT}"
     else
-      _msg "EXIT on error due to not found or not specified Aegir domain"
-      _msg "Please specify your working Aegir domain as a value of _MY_FRONT"
+      _msg "EXIT on error due to not found or not specified Ægir domain"
+      _msg "Please specify your working Ægir domain as a value of _MY_FRONT"
       _clean_pid_exit _check_ip_hostname_e
     fi
     : "${_DISPLAY_CHECKPOINT:=YES}"

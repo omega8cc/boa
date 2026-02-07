@@ -29,7 +29,7 @@ When you log into your SSH account, you will be presented with a helpful intro:
 
 ```
 
-      ======== Welcome to the Aegir, Drush and Compass Shell ========
+      ======== Welcome to the Ægir, Drush and Compass Shell ========
 
          Type '?' or 'help' to get the list of allowed commands
              Note that not all Drush commands are available

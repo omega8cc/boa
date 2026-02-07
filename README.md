@@ -14,7 +14,7 @@ We are unique within the hosting industry for many important reasons. Our 15 yea
 
 Ægir, named after the Norse god of the sea, is an open-source hosting system for managing multiple Drupal sites. The name Ægir was chosen to reflect the relationship between Drupal's water drop logo, symbolizing individual sites, and Ægir's role as the god of the ocean, representing the hosting of many Drupal sites together. It automates tasks such as site installation, upgrades, and maintenance, making your life easier.
 
-**Announcement from Omega8.cc team**: [**The Future of Aegir 3 is Bryght!**](https://github.com/omega8cc/boa/tree/5.x-dev/ANNOUNCEMENT.md)
+**Announcement from Omega8.cc team**: [**The Future of Ægir 3 is Bryght!**](https://github.com/omega8cc/boa/tree/5.x-dev/ANNOUNCEMENT.md)
 
 ### Key Features of Ægir:
 
@@ -25,7 +25,7 @@ We are unique within the hosting industry for many important reasons. Our 15 yea
 - **Open-Source**: Customize and extend Ægir to fit your needs.
 - **Integration with Drush**: Use powerful command-line tools for site administration.
 
-<img width="1215" height="1264" alt="Aegir-BOA" src="https://github.com/user-attachments/assets/b2417cc7-2fb8-422c-96f8-71d12c1c2fd7" />
+<img width="1215" height="1264" alt="Ægir-BOA" src="https://github.com/user-attachments/assets/b2417cc7-2fb8-422c-96f8-71d12c1c2fd7" />
 
 ## Why Barracuda?
 

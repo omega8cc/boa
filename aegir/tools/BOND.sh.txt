@@ -40,7 +40,7 @@
 ###       enough to start this script with
 ###       any values defined below and answer
 ###       NO when it prompts for confirmation
-###       "Are you ready to tune your Aegir".
+###       "Are you ready to tune your Ægir".
 ###
 
 
@@ -58,7 +58,7 @@
 ### Note: most of values tuned by this script
 ###       are server-vide, while some, like
 ###       mod_evasive settings will affect
-###       only sites hosted on the Aegir
+###       only sites hosted on the Ægir
 ###       Satellite Instance defined below.
 ###
 _TUNE_HOSTMASTER=/data/disk/o1
@@ -85,7 +85,7 @@ _TUNE_NGINX_CONNECT=OFF
 ###       by Barracuda (not Octopus!)
 ###       will restore default value
 ###       for the server and all existing
-###       Aegir Satellite Instances.
+###       Ægir Satellite Instances.
 ###
 _TUNE_NGINX_TIMEOUT=9999
 
@@ -1877,14 +1877,14 @@ _LOG=/var/backups/bond-${_NOW}.log
 #
 
 
-###---### Tune Your Aegir Hosting System
+###---### Tune Your Ægir Hosting System
 #
 echo " "
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "TUNER START -> checkpoint: "
   cat <<EOF
 
-  * Aegir Satellite Instance to tune: ${_TUNE_HOSTMASTER}
+  * Ægir Satellite Instance to tune: ${_TUNE_HOSTMASTER}
   * Nginx server mod_evasive will be set to ${_TUNE_NGINX_CONNECT}
   * Nginx server fastcgi timeout will be set to ${_TUNE_NGINX_TIMEOUT} seconds
   * Nginx firewall limit of allowed requests will be set to ${_TUNE_NGINX_FIREWALL}/300

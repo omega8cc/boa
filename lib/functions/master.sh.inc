@@ -7,7 +7,7 @@ _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 
 
 #
-# Update local INI for PHP CLI on the Aegir Master Instance.
+# Update local INI for PHP CLI on the Ægir Master Instance.
 _php_cli_local_ini_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_cli_local_ini_update"
@@ -549,11 +549,11 @@ _master_download_for_local_build() {
       ### Drupal Core
       _get_core_ext "${_DRUPAL7}.tar.gz"
       mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
-      ### Aegir Core
+      ### Ægir Core
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
-      ### Aegir Golden + BOA Settings
+      ### Ægir Golden + BOA Settings
         ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
@@ -564,7 +564,7 @@ _master_download_for_local_build() {
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
         ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
         rm -rf */.git
-      ### Aegir Drupal Contrib
+      ### Ægir Drupal Contrib
       _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
       _get_dev_stc "betterlogin-7.x-1.5.tar.gz"
       _get_dev_stc "ctools-7.x-1.21.tar.gz"
@@ -579,7 +579,7 @@ _master_download_for_local_build() {
       _get_dev_stc "timeago-7.x-2.3.tar.gz"
       _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
       _get_dev_stc "views-7.x-3.29.tar.gz"
-      ### Aegir Third Party Libraries
+      ### Ægir Third Party Libraries
       _get_dev_stc "qrcodejs.tar.gz"
       _get_dev_stc "timeagojs.tar.gz"
       _get_dev_stc "vuejs.tar.gz"
@@ -728,15 +728,15 @@ _hostmaster_dr_up() {
 }
 
 #
-# Upgrade Aegir Master Instance.
+# Upgrade Ægir Master Instance.
 _aegir_master_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _aegir_master_upgrade"
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-  if _prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
+  if _prompt_yes_no "Do you want to upgrade Ægir Master Instance?" ; then
     true
-    _msg "INFO: Running Aegir Master Instance upgrade"
+    _msg "INFO: Running Ægir Master Instance upgrade"
     if [ -x "/usr/bin/mysql_upgrade" ]; then
       _check_mysql_version
       if [ "${_DB_V}" = "5.7" ]; then
@@ -893,9 +893,9 @@ _aegir_master_upgrade() {
     find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 0440 /var/aegir/.drush/*.php &> /dev/null
     chmod 0711 /var/aegir/.drush &> /dev/null
-    _msg "INFO: Aegir Master Instance upgrade completed"
+    _msg "INFO: Ægir Master Instance upgrade completed"
   else
-    _msg "INFO: Aegir Master Instance not upgraded this time"
+    _msg "INFO: Ægir Master Instance not upgraded this time"
   fi
   rm -f /var/aegir/*install.sh.txt
 }
@@ -965,7 +965,7 @@ _aegir_master_install_upgrade() {
     fi
 
   ###--------------------###
-    _msg "INFO: Installing Aegir Master Instance..."
+    _msg "INFO: Installing Ægir Master Instance..."
     adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
@@ -1262,7 +1262,7 @@ EOFMYSQL
       _DO_NOTHING=YES
       [ -e "/root/.force.reinstall.cnf" ] && rm -f /root/.force.reinstall.cnf
     else
-      _msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
+      _msg "FATAL ERROR: Something went wrong, Ægir Master Instance not installed!"
       _msg "HINT: Please check /var/log/boa/aegir_install.log for details, and then"
       _msg "HINT: run the same install command again to complete installation."
       _msg "HINT: You can also enforce installation with empty control file:"
@@ -1309,7 +1309,7 @@ EOFMYSQL
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
     fi
     _mrun "service nginx reload"
-    _msg "INFO: Aegir Master Instance installed"
+    _msg "INFO: Ægir Master Instance installed"
   else
     if [ "${_tRee}" = "lts" ]; then
       _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
@@ -1329,15 +1329,15 @@ EOFMYSQL
     fi
     _if_to_do_fix
     if [ "${_DO_FIX}" = "YES" ]; then
-      _msg "INFO: Aegir Master Instance upgrade skipped!"
+      _msg "INFO: Ægir Master Instance upgrade skipped!"
       echo " "
       _msg "NOTE! You must reboot the server and run barracuda upgrade"
       _msg "NOTE! again to complete all system upgrades and upgrade also"
-      _msg "NOTE! Aegir Master Instance."
+      _msg "NOTE! Ægir Master Instance."
       echo " "
     elif [ "${_SYSTEM_UP_ONLY}" = "YES" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Aegir Master Instance upgrade skipped"
+        _msg "INFO: Ægir Master Instance upgrade skipped"
       fi
     else
       if [ ! -e "/run/mysqld/mysqld.pid" ] \
@@ -1390,14 +1390,14 @@ _aegir_master_display_login_link() {
       _AEGIR_LOGIN_URL=$(tail --lines=11 /var/log/boa/aegir_install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
-        _msg "INFO: Congratulations, Aegir Master have been installed successfully!"
-#         _msg "NOTE! Please wait 3 min before visiting Aegir at:"
+        _msg "INFO: Congratulations, Ægir Master have been installed successfully!"
+#         _msg "NOTE! Please wait 3 min before visiting Ægir at:"
 #         echo " "
 #         _msg "LINK: ${_AEGIR_LOGIN_URL}"
 #         echo " "
 #         _msg "NOTE! The initial one-time login link will no longer work."
 #         sleep 3
-#         _msg "To access your Barracuda Aegir control panel after the procedure is finished..."
+#         _msg "To access your Barracuda Ægir control panel after the procedure is finished..."
 #         _msg "...please generate a new link by running the following command:"
 #         sleep 3
 #         echo " "

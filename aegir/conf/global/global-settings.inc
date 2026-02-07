@@ -4,6 +4,10 @@
 /**
  * Forced default settings
  */
+if ($drupal_core >= 11) {
+  // Drupal core Package Manager: prevent Status report "error" about early testing.
+  $settings['testing_package_manager'] = TRUE;
+}
 if ($drupal_core >= 8) {
   //
   // Drupal 8 behaviour is confusing, because while it is possible
@@ -97,7 +101,7 @@ if (!$is_backend) {
         $settings['cache']['bins']['render'] = 'cache.backend.null';
         $settings['cache']['bins']['dynamic_page_cache'] = 'cache.backend.null';
         //
-        // Warning: you must clear caches via Aegir interface or with Drush
+        // Warning: you must clear caches via Ægir interface or with Drush
         // before these lines will start working on .dev. alias without error 500
         // saying: You have requested a non-existent service "cache.backend.null"
         //

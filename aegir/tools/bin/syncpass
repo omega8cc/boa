@@ -165,7 +165,7 @@ EOFMYSQL
         echo "ERROR: did not work as expected, please try again"
         exit 1
       fi
-      echo "INFO: Fixed Aegir Master Instance system user=aegir_root"
+      echo "INFO: Fixed Ægir Master Instance system user=aegir_root"
       echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
       echo "BYE!"
     else
@@ -248,20 +248,20 @@ EOFMYSQL
         echo "\$oct_db_dirs = \"/data/disk/${_uname}/backups\";" >> ${_L_SYS_PHP}
         chown ${_uname}:users ${_L_SYS_PHP}
         chmod 0600 ${_L_SYS_PHP}
-        echo "INFO: Fixed Aegir Satellite Instance system user=${_uname}"
+        echo "INFO: Fixed Ægir Satellite Instance system user=${_uname}"
         echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
         echo "INFO: With Satellite oct_db_host=${_THIS_DB_HOST}"
         echo "INFO: With Satellite oct_db_port=${_THIS_DB_PORT}"
         echo "BYE!"
       else
-        echo "ERROR: You must specify the existing Aegir \
+        echo "ERROR: You must specify the existing Ægir \
           instance username to fix"
         exit 1
       fi
     fi
     exit 0
   else
-    echo "ERROR: You must specify the existing Aegir instance username to fix"
+    echo "ERROR: You must specify the existing Ægir instance username to fix"
     exit 1
   fi
 }

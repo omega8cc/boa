@@ -157,7 +157,7 @@ drwxr-sr-x  7 o3x users 4096 Nov 26 22:20 varbase-9.1.12-10.5.2
 o3x@modern:~/static/november-26$
 ```
 
-## Add them all as platforms in Aegir
+## Add them all as platforms in Ægir
 
 Use paths like `november-26/thunder-8.2.6-11.2.8` and run tests for sites install, clone and migration.
 

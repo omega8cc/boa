@@ -31,7 +31,7 @@ For continued access to new features, ongoing improvements, and a future-proof s
 ## MAJOR NEW FEATURES RELEASED IN BOA LTS/PRO
 
 - **HTTP/3 on QUIC with KTLS Magic**: Strap in, your sites are getting an F1 engine (PRO/LTS)
-- **Drupal 11 with Aegir 3**: They Said It Couldn’t Be Done — We Did It Anyway (PRO/LTS)
+- **Drupal 11 with Ægir 3**: They Said It Couldn’t Be Done — We Did It Anyway (PRO/LTS)
 - **Debian Trixie and Devuan Excalibur**: Ensure compatibility for installation and automated upgrades (PRO/LTS)
 - **Debian Bookworm and Devuan Daedalus**: Ensure compatibility for installation and automated upgrades (PRO/LTS)
 - **Percona for MySQL 8.4**: Add support for Percona Server 8.4, the new Percona LTS (PRO/LTS)
@@ -50,5 +50,5 @@ For continued access to new features, ongoing improvements, and a future-proof s
 - **Solr 9 Support**: Add latest Solr Server 9 as supported via BOA automation (PRO/LTS)
 - **Ruby Gems and Node/NPM Support 3x Faster**: From 15 to 5 minutes, with improved security (PRO/LTS)
 - **Ægir Task for SQL Backup**: Enable classic mysqldump backups for individual site downloads (PRO/LTS)
-- **Drush 12/13 in Aegir Tasks**: Dynamically Utilize Site-Local Drush for `updatedb` Operations on Drupal 10+ (PRO/LTS)
+- **Drush 12/13 in Ægir Tasks**: Dynamically Utilize Site-Local Drush for `updatedb` Operations on Drupal 10+ (PRO/LTS)
 - **Documentation Conversion to Markdown**: Update all BOA documentation from legacy TXT to Markdown.

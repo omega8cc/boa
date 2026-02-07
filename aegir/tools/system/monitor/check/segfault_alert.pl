@@ -45,7 +45,7 @@ INTRO
 Note that any vhost file (not the site) listed below as causing
 segfault has been automatically (re)moved to the /var/backups/segfault/
 directory, so affected site will display standard UnderConstruction page
-until you will run Verify task in the Aegir control panel for this site.
+until you will run Verify task in the Ægir control panel for this site.
 
 However, if the problem is not fixed and it still causes segfault,
 any affected site will be disabled again after another segfault
