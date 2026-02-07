@@ -10,7 +10,7 @@ With BOA-5.9.1 PRO/LTS, we proudly deliver full HTTP/3 and KTLS support — a fu
 
 HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and responsive (and stay that way during spikes), this is genuinely good news. Why is this a big deal? What should visitors notice?
 
-  Read the full story: https://github.com/omega8cc/boa/tree/5.x-dev/HTTP3.md
+  Read the full story: https://github.com/omega8cc/boa/tree/5.x-lts/HTTP3.md
 
 @=> Usage disk/sql limits x2 + Aero and Archive plans added to hosted BOA
 
@@ -34,7 +34,7 @@ However, they provide a wide range of testing playgrounds, because you can insta
 
 The complete list of 32 can be found at:
 
-  https://github.com/omega8cc/boa/blob/5.x-dev/docs/PLATFORMS.md
+  https://github.com/omega8cc/boa/blob/5.x-lts/docs/PLATFORMS.md
 
 @=> You can access your upgraded Ægir instance at the following URL:
 
