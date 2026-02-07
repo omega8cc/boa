@@ -4,6 +4,10 @@
 /**
  * Forced default settings
  */
+if ($drupal_core >= 11) {
+  // Drupal core Package Manager: prevent Status report "error" about early testing.
+  $settings['testing_package_manager'] = TRUE;
+}
 if ($drupal_core >= 8) {
   //
   // Drupal 8 behaviour is confusing, because while it is possible
