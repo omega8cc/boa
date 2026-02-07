@@ -2950,7 +2950,7 @@ _satellite_download_for_local_build() {
       _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
       _get_dev_stc "betterlogin-7.x-1.5.tar.gz"
       _get_dev_stc "ctools-7.x-1.21.tar.gz"
-      _get_dev_stc "entity-7.x-1.11.tar.gz"
+      _get_dev_stc "entity-7.x-1.12.tar.gz"
       _get_dev_stc "libraries-7.x-2.5.tar.gz"
       _get_dev_stc "module_filter-7.x-2.3.tar.gz"
       _get_dev_stc "openidadmin-7.x-1.0.tar.gz"
@@ -2960,14 +2960,14 @@ _satellite_download_for_local_build() {
       _get_dev_stc "tfa-7.x-2.1.tar.gz"
       _get_dev_stc "timeago-7.x-2.3.tar.gz"
       _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
-      _get_dev_stc "views-7.x-3.29.tar.gz"
+      _get_dev_stc "views-7.x-3.30.tar.gz"
       ### Ægir Third Party Libraries
       _get_dev_stc "qrcodejs.tar.gz"
       _get_dev_stc "timeagojs.tar.gz"
       _get_dev_stc "vuejs.tar.gz"
       ### BOA Drupal Contrib
       _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
-      _get_dev_stc "features_extra-7.x-1.0.tar.gz"
+      _get_dev_stc "features_extra-7.x-1.2.tar.gz"
       _get_dev_stc "features-7.x-2.15.tar.gz"
       _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
       _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
@@ -5624,7 +5624,7 @@ _satellite_child_b_aegir_build() {
       _msg "${_STATUS} B: Fixing broken Entity module..."
       rm -rf ${_PREV_HM_ROOT}/${_pthA}
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
-      _get_dev_stc "entity-7.x-1.11.tar.gz"
+      _get_dev_stc "entity-7.x-1.12.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')" &> /dev/null
