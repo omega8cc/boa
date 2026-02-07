@@ -1,5 +1,250 @@
 
 ###
+### Stable BOA-5.9.1-pro/lts - HTTP/3 Edition
+### Date: Sun Feb 8 05:28:17 AM NZDT 2026 in Auckland
+### Welcome Fast Lane HTTPS: HTTP/3 and KTLS
+### 321 commits since BOA-5.8.5-pro
+###
+
+@=> 4 NEW, 12 UPDATED, 32 TOTAL Drupal distros/platforms available
+
+  While most of you typically build your own codebases/platforms with Composer
+  these days, we still deliver a list of 32 platforms ready to use in your Ægir.
+
+  Since these platforms are updated only with BOA releases, they are not really
+  intended for production use per se, because you typically need a faster
+  lifecycle to keep your sites secure.
+
+  However, they provide a wide range of testing playgrounds, because you can
+  install only those you wish to test or use, and reinstall if needed, with
+  the help of our BOA-only feature that allows you to upgrade your Ægir
+  on demand with two simple control files, as described in the built-in docs
+  you can always find in ~/static/control/README.txt.
+
+  The complete list of 32 is further below, in the section "Drupal platforms
+  available for installation".
+
+@=> Going Local with Infrastructure
+
+  We’ve expanded our network considerably to meet the growing expectations of
+  the Data Sovereignty movement. This isn’t just about adding more cities
+  to our hosting map — it’s also about going local with infrastructure
+  wherever we can.
+
+  We no longer rely solely on big-name vendors and hyperscalers. Instead, we’re
+  gradually migrating to local providers and data centers in every country where
+  we offer hosted BOA for Drupal.
+
+  For example, in Canada you can now choose not only Toronto, but also Montreal,
+  Calgary, and Vancouver. In Australia, it’s no longer just Sydney — we also
+  offer Adelaide, Brisbane, and Perth.
+
+  We’ve also added an excellent facility in New Zealand.
+
+  Of course, we continue to support our original Singapore location and still
+  offer EU, UK, and US options.
+
+@=> Usage disk/sql limits x2 + Aero and Archive plans added to hosted BOA
+
+  It's worth mentioning that our hosted BOA plans have received a huge upgrade:
+  several new locations have been added around the world, our vendors are now
+  local (instead of the previous US-only hyperscalers), and an entirely new
+  Archive Tier has been added for those looking to host collections of
+  low-traffic sites at low cost.
+
+  Take a look if you are interested: https://omega8.cc/hosted
+
+@=> New BOA-5.9.1 PRO/LTS Release
+
+  Yes, we said that BOA-LTS would enter complete code freeze for 2026, but
+  we think that the major new features and many security updates introduced in
+  the last two months must be shared with the entire community before we enter
+  a less rapid feature development cycle for the next few months.
+
+  The future of 100% Open Source Drupal hosting is brighter than ever!
+
+  With BOA-5.9.1 PRO/LTS, we proudly deliver full HTTP/3 and KTLS support —
+  a fundamental change in the way modern browsers communicate with modern
+  HTTPS web servers — along with the latest OpenSSL 3.5 LTS, which made it
+  possible, a clever and very professional tool to diagnose your server hardware
+  performance in the context of BOA-specific requirements and capabilities,
+  and many critical security and bug fixes related to system components.
+
+  This groundbreaking feature not only pushes the boundaries of what BOA
+  can achieve but also reaffirms our commitment to staying ahead of the curve
+  for modern Drupal deployments.
+
+  We are thrilled to introduce BOA-5.9.1 PRO/LTS, our 8th release under the
+  new branch structure and dual licensing model. It merges 2 months of
+  intense development from the DEV branch, delivering 321 commits packed
+  with powerful features, critical fixes, and enhancements.
+
+  Thank you to everyone who supports our work by purchasing a BOA PRO license:
+  https://omega8.cc/boapro.
+
+@=> Key Improvements Explained
+
+ * HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and
+   responsive (and stay that way during spikes), this is genuinely good news.
+   Why is this a big deal? What should visitors notice?
+
+   Read the full story: https://github.com/omega8cc/boa/tree/5.x-pro/HTTP3.md
+
+ * Percona 8.4 comes to Excalibur. We no longer need vanilla MySQL 8.4 now that
+   Percona has released its own build for Debian Trixie, which can be used on
+   Devuan Excalibur. There is no MySQL-to-Percona upgrade option yet, though.
+   Please note that we still recommend Devuan Daedalus as the most versatile
+   system, which can also support Percona 8.0 and 5.7.
+
+ * Curious if your VM is good enough to fully benefit from BOA optimisations
+   and deliver a first-class Drupal hosting environment? There’s a deep
+   hardware and network analysis tool available: simply type `perftest` as root.
+
+ * From now on, all BOA installers will download their components as packaged
+   batches instead of dozens of separate little modules. They will also no longer
+   rely on fetching complete repositories from GitHub, instead downloading only
+   the latest packaged code from our mirrors. You can revert to the old method
+   by changing _DL_MODE=BATCH to _DL_MODE=GIT in /root/.barracuda.cnf
+
+@=> New Features
+
+    * Add chromium as alternative for wkhtmltopdf
+    * Add Java 21 for Solr 9 and Jenkins
+    * Add kTLS support in Nginx config
+    * Add Red Hat KVM guest to supported virtualization systems
+    * Allow access to site-specific well-known/mta-sts.txt file
+    * Enable quic/http3 support in Nginx
+    * Percona 8.4 comes to Excalibur to replace vanilla MySQL 8.4
+
+@=> New Improvements
+
+    * Add _disable_systemd_networkd_for_next_boot
+    * Add _init_debian_networkd_handoff in autoinit
+    * Add _install_net_rollback in vmnetfix
+    * Add aptfast as multi-lane aptitude wrapper for faster downloads
+    * Add ciphers required by kTLS in Nginx
+    * Add triple check for base-files
+    * Improve and modernize Nginx build configuration options
+    * Improve autoinit support for some vendors with _init_sysv_net_repair
+    * Improve autoinit with _init_sysv_insserv_repair
+    * Improve DHCP/NAT support in vmnetfix
+    * Improve ffmirror
+    * Improve reliability of autoinit on 10+ vendors tested
+    * Improve usage info
+    * Improve vmnetfix with _iface_has_dhcp_for_if
+    * Modernize 301 redirects
+    * Nginx: extend log_format to include protocol used
+    * Prefer ifupdown over ifupdown2
+    * Simplify and sync _if_off_apparmor/_turn_off_apparmor
+    * Special-case Java 11/17/21 force install if version is too old
+    * Sync Ægir naming convention
+    * Sync config for GeoLite2
+    * Uninstall cloud-utils if not required -- makes reboot faster
+    * Update networking with vmnetfix early
+    * Update SSL proxy vhosts if KTLS is missing
+    * Use _DL_MODE=BATCH by default
+    * Use Java 21 also on older systems if installed
+
+@=> Changes
+
+    * Add strict locking to /etc/resolv.conf
+    * Enable access_log in proxy so DoS-guard can still work
+    * Prioritize modern ed25519 SSH keys
+    * Run /var/xdrago/clear.sh every 3 minutes
+    * Run /var/xdrago/ip_access.sh every 2 minutes
+    * Run /var/xdrago/manage_ltd_users.sh every minute
+    * Run /var/xdrago/manage_solr_config.sh every minute
+    * Switch default PHP to 8.4
+    * Turn off AppArmor in autoinit phase
+    * Use nginx restart instead of quietupgrade
+
+@=> Upgrades
+
+    * cURL 8.17.0
+    * cURL 8.18.0
+    * GoAccess 1.9.4
+    * ionCube 15.0.0 (up to PHP 8.4)
+    * Nginx 1.29.4
+    * Nginx 1.29.5
+    * OpenSSL 3.4.4
+    * OpenSSL 3.5.5 LTS
+    * PHP 8.1.34
+    * PHP 8.2.30
+    * PHP 8.3.29
+    * PHP 8.3.30
+    * PHP 8.4.16
+    * PHP 8.4.17
+    * PHP 8.5.1
+    * PHP 8.5.2
+    * screenFetch 3.9.9
+    * Sync dehydrated updates
+    * Valkey 9.0.1
+    * Valkey 9.0.2
+
+@=> Important Fixes
+
+    * Block language-prefix chain URL mutation crawlers spam
+    * Block node-chain URL mutation crawlers spam
+    * Fix for PHP 5.6 in Block node and language-prefix chain URL mutation spam
+    * Percona 8.4 from Trixie requires percona-telemetry-agent
+    * Remove unconditional _apt_clean_update running every 3 minutes
+    * Removing all .drush.inc files under modules/contrib/webform
+    * Restore less noisy _manage_sec_access_paths
+    * Restore nginx auto-reload after PHP version update
+    * Sync all PHP logs backup/cleanup after upgrade to force PHP-FPM reload
+    * Use _check_virt/_not_supported_virt early
+
+@=> Drupal platforms available for installation -- docs/PLATFORMS.md
+
+	## Drupal 11
+
+	CK3 - [Commerce 3.2.0] with core (11.3.3) (UPDATED)
+	CMS - [Drupal CMS 2.0.0] with core (11.3.3) (NEW)
+	DE1 - [Drupal 11.1.9] with Drush included -- dev/stage/prod
+	DE2 - [Drupal 11.2.10] with Drush included -- dev/stage/prod (UPDATED)
+	DE3 - [Drupal 11.3.3] with Drush included -- dev/stage/prod (NEW)
+	SCR - [Sector 11.0.x-dev] with core (11.3.3) (UPDATED)
+	THR - [Thunder 8.3.1] with core (11.3.3) (UPDATED)
+	VBX - [Varbase 10.1.0] with core (11.3.1) (NEW)
+
+	## Drupal 10
+
+	CK2 - [Commerce v.2] with core (10.1.8)
+	DX0 - [Drupal 10.0.11] with Drush included -- dev/stage/prod
+	DX1 - [Drupal 10.1.8] with Drush included -- dev/stage/prod
+	DX2 - [Drupal 10.2.12] with Drush included -- dev/stage/prod
+	DX3 - [Drupal 10.3.14] with Drush included -- dev/stage/prod
+	DX4 - [Drupal 10.4.9] with Drush included -- dev/stage/prod
+	DX5 - [Drupal 10.5.8] with Drush included -- dev/stage/prod (UPDATED)
+	DX6 - [Drupal 10.6.3] with Drush included -- dev/stage/prod (NEW)
+	DXP - [DXPR Marketing 10.3.0] with core (10.3.6)
+	EZC - [EzContent 2.2.15] with core (10.3.6)
+	FOS - [farmOS 3.5.1] with core (10.6.2) (UPDATED)
+	LGV - [LocalGov 3.4.0] with core (10.6.3) (UPDATED)
+	OCS - [OpenCulturas 2.5.4] with core (10.5.8) (UPDATED)
+	OFD - [OpenFed 12.2.4] with core (10.2.10)
+	SOC - [Social 12.4.5] with core (10.2.10)
+	VB9 - [Varbase 9.1.13] with core (10.6.1) (UPDATED)
+
+	## Drupal 9
+
+	DL9 - [Drupal 9.5.11] -- dev/stage/prod
+	OLS - [OpenLucius 2.0.0] with core (9.5.11)
+	OPG - [Opigno LMS 3.1.0] with core (9.5.11)
+
+	## Drupal 7
+
+	CK1 - [Commerce v.1] with core (7.105.1) (UPDATED)
+	DL7 - [Drupal 7.105.1] -- dev/stage/prod (UPDATED)
+	UC7 - [Ubercart 3.13] with core (7.105.1) (UPDATED)
+
+	## Drupal 6
+
+	DL6 - [Pressflow 6.60.1] -- dev/stage/prod
+	UC6 - [Ubercart 2.15] with core (6.60.1)
+
+
+###
 ### Stable BOA-5.8.5-pro/lts - 30 Years of Heritage Edition
 ### Date: Mon Dec 1 09:58:58 AM AEDT 2025 in Sydney
 ### Welcome Devuan Excalibur and PHP 8.5
@@ -10,30 +255,30 @@
 
   We are unique within the hosting industry for many important reasons.
 
-  Our 15 years of Aegir-based hosting, plus earlier experience with Adgrafix
+  Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix
   (the first company to offer a control panel for website management in 1995),
   have helped shape what makes us different today.
 
   We take Open Source seriously, it's not a buzzword for us. It's about freedom
-  from corporate control. Here's a short look back at our 15-year Aegir journey
+  from corporate control. Here's a short look back at our 15-year Ægir journey
   and 19 years with Drupal.
 
   Read the full story: https://bit.ly/different30y
 
-@=> The Future of Aegir 3 is Bryght!
+@=> The Future of Ægir 3 is Bryght!
 
-  Omega8.cc is now the lead developer team for Aegir 3 running on BOA
-  (Barracuda-Octopus-Aegir stack). We want to thank all past contributors
-  who brought Aegir to life – your work makes today’s progress possible.
+  Omega8.cc is now the lead developer team for Ægir 3 running on BOA
+  (Barracuda-Octopus-Ægir stack). We want to thank all past contributors
+  who brought Ægir to life – your work makes today’s progress possible.
 
-  Because of you, there is still a Bryght Future for Aegir. What to Expect?
+  Because of you, there is still a Bryght Future for Ægir. What to Expect?
 
   Read the full story: https://bit.ly/aegirbryghtfuture
 
 @=> New BOA-5.8.5 PRO/LTS Release
 
   The future of Drupal hosting is here! With BOA-5.8.5 PRO/LTS, we proudly
-  deliver both full Drupal 11 support integrated with Aegir and latest PHP 8.5,
+  deliver both full Drupal 11 support integrated with Ægir and latest PHP 8.5,
   now available on the latest Devuan Excalibur / Debian Trixie system.
 
   This groundbreaking feature not only pushes the boundaries of what the BOA
@@ -62,9 +307,9 @@
    from 2-3 minutes to 10-14 seconds on average thanks to our improvements
    across the board in the BOA system logic.
 
- * BOA now consistently pauses Aegir tasks queue if any system-backend tasks
+ * BOA now consistently pauses Ægir tasks queue if any system-backend tasks
    are running -- this includes any barracuda/octopus upgrades, the heavy
-   daily.sh script and nightly DB backups, so no Aegir tasks should ever
+   daily.sh script and nightly DB backups, so no Ægir tasks should ever
    collide with those important system tasks.
 
  * The auto-healing system has been rewritten from scratch and greatly
@@ -110,7 +355,7 @@
     * Add cooldown to max/critical load actions in auto-healing
     * Add dhcpfix tool used to fix vendor-specific forced-dns issues if needed
     * Add Droplet Agent to auto-healing
-    * Add environment_indicator to Aegir hostmaster control panel
+    * Add environment_indicator to Ægir hostmaster control panel
     * Add ffdevuan tool to update the list of reliable and fastest mirrors
     * Add instant SQL fallback for Valkey/Redis to global-valkey.inc
     * Add loadguard as future auto-healing orchestrator for testing
@@ -138,20 +383,20 @@
     * Do not install Git from sources on BOA install
     * Do not send email on Spider Protection on/off
     * Enable APCu by default
-    * Improve Aegir accelerated task queue
+    * Improve Ægir accelerated task queue
     * Make Solr/Java versions mapping strict
     * No automatic task queue on CI instance
     * Notify if multiback backups seem to run for too long
-    * Pause Aegir queue when /run/boa_run.pid is present
-    * Pause Aegir queue when daily.sh runs
-    * Pause Aegir tasks queue during system DB backups
+    * Pause Ægir queue when /run/boa_run.pid is present
+    * Pause Ægir queue when daily.sh runs
+    * Pause Ægir tasks queue during system DB backups
     * Prevent a flood of alerts on services up/down status if uptime < 15 min
     * Reload nginx if access log is missing or empty
     * Run _CHECK_MIRROR twice to prime DNS cache before the final speed test
     * Run _satellite_download_for_local_build only once on install
     * Run auto-healing only on fully installed system
     * Run improved scan_nginx.sh every 5 seconds
-    * Save CPU cycles by disabling never used master Aegir cron/task queue
+    * Save CPU cycles by disabling never used master Ægir cron/task queue
     * Sync /root/.allow.clamav.cnf and /root/.deny.clamav.cnf logic
     * Update APT sources on each upgrade
     * Update Devuan mirrors daily
@@ -175,7 +420,7 @@
     * Don't run codebasecheck daily unless /root/.allow-codebasecheck.cnf exists
     * Drop legacy IMAP in PHP on Excalibur
     * Force _VALKEY_MAJOR_RELEASE=9 unless _CUSTOM_CONFIG_VALKEY=YES
-    * Force slow Aegir tasks cron mode on VM with 4GB RAM or less
+    * Force slow Ægir tasks cron mode on VM with 4GB RAM or less
     * Move APCu config to parent INI
     * Move Zend OPcache config to parent INI
     * Remove 60s wait on boa reboot
@@ -183,7 +428,7 @@
     * Restore the _SQLMONITOR feature
     * Turn _INCIDENT_REPORT globally off by default
     * Use _BINLOG_KEEP_HOURS 24
-    * Use Aegir install check for /var/aegir/.drush/hm.alias.drushrc.php
+    * Use Ægir install check for /var/aegir/.drush/hm.alias.drushrc.php
     * Use cache.backend.chainedfast for selected bins
     * Use slower _iteration in second.sh in auto-healing system
 
@@ -246,8 +491,8 @@
 
     * Add _fix_stop_solr to Fix Solr 7/9 conflicting ports
     * Add _if_drupal_patches_update — fixes #1892
-    * Allow cron web based requests even with HTTP Basic enabled in Aegir
-    * Always call updatedb with -y in Aegir Provision backend
+    * Allow cron web based requests even with HTTP Basic enabled in Ægir
+    * Always call updatedb with -y in Ægir Provision backend
     * Always fix /etc/hosts before checking /etc/hostname
     * Auto-update hostname if doesn’t match /etc/hostname
     * Cron-only PHP entrypoint for Drupal 8+ w/ auth_basic turned off on the fly
@@ -256,7 +501,7 @@
     * Do not run duplicate unbound-control reload
     * Don't execute daily.sh until all installation procedures are finalized
     * Duplicity backups: replace --file-to-restore w/ --path-to-restore (#1901)
-    * Fix access control for packages view in Aegir control panel
+    * Fix access control for packages view in Ægir control panel
     * Fix broken _XTRAS_LIST logic and document changes
     * Hotfix for legacy vnStat installs — fixes #1908
     * Improve _if_mydumper_is_locked procedure action/reporting in auto-healing
@@ -358,15 +603,15 @@
 ###
 ### Stable BOA-5.7.11-pro - Full Edition
 ### Date: Fri Jul 25 06:53:03 PM BST 2025 in London
-### Welcome Drupal 11—Aegir Mission Impossible—Again!
+### Welcome Drupal 11—Ægir Mission Impossible—Again!
 ###
 
 @=> New BOA-5.7.11 PRO Release
 
-  Drupal 11 with Aegir 3: They Said It Couldn’t Be Done — We Did It Anyway
+  Drupal 11 with Ægir 3: They Said It Couldn’t Be Done — We Did It Anyway
 
   The future of Drupal hosting is here! With BOA-5.7.11 PRO, we proudly deliver
-  what many thought impossible—full Drupal 11 support integrated with Aegir 3.
+  what many thought impossible—full Drupal 11 support integrated with Ægir 3.
 
   This groundbreaking feature not only pushes the boundaries of what the BOA
   can achieve but also reaffirms our commitment to staying ahead of the curve
@@ -424,7 +669,7 @@
 
 @=> Changes
 
-    * Always use system Drush 8 PHAR instead of Aegir local Drush
+    * Always use system Drush 8 PHAR instead of Ægir local Drush
     * Install System Drush 8 as PHAR (self-contained)
     * Mark Apache Solr 4 with Jetty 9 as (deprecated)
     * Solr is no longer included via ALL keyword in the _XTRAS_LIST
@@ -565,13 +810,13 @@
     * Add d7security_client-7.x-1.3 to o_contrib_seven and Hostmaster
     * Add early aa-teardown on init to make sure that AppArmor is turned off
     * Add function to auto-repair incomplete backup sets
-    * Add local Aegir Third Party Libraries
+    * Add local Ægir Third Party Libraries
     * Add more checks to make sure that OpenSSL is fully up to date
     * Add support for /root/.turn.off.auto.update.cnf
     * Add support for cloudflare-dns-ssl-py.info and cloudflare-dns-ssl-sh.info
     * Add wkhtmltox_0.12.6.1-3 for Daedalus
-    * Aegir Hostmaster: Log wget cron runs
-    * Aegir Provision: Install local Drush automatically on platform verify and unlock
+    * Ægir Hostmaster: Log wget cron runs
+    * Ægir Provision: Install local Drush automatically on platform verify and unlock
     * Always run dist-upgrade twice -- helps with slow access to Devuan servers
     * Configure backups --concurrency dynamically
     * Disable _if_start_screen with noscreen in the args
@@ -656,17 +901,17 @@
 
 @=> Important Fixes
 
-    * Aegir Hostmaster: Improve hosting_cron_queue reliability
-    * Aegir Hostmaster: Unset variables at the end of the loop
-    * Aegir Provision: Add backup mode ctrl file cleanup on clone and migrate
-    * Aegir Provision: Add more supported compression variants
-    * Aegir Provision: Do not confuse PDO and MySQLi conventions
-    * Aegir Provision: Fix Drush 13 support by invoking vendor/drush/drush/drush.php
-    * Aegir Provision: Follow symlinks to include all files in custom backup task only
-    * Aegir Provision: Improve function revoke()
-    * Aegir Provision: Prioritize '.tar.zst' as provision_backup_suffix
-    * Aegir Provision: Use supported localhost in can_grant_privileges()
-    * Allow _php_if_versions_cleanup_cnf if Master Aegir was not upgraded yet
+    * Ægir Hostmaster: Improve hosting_cron_queue reliability
+    * Ægir Hostmaster: Unset variables at the end of the loop
+    * Ægir Provision: Add backup mode ctrl file cleanup on clone and migrate
+    * Ægir Provision: Add more supported compression variants
+    * Ægir Provision: Do not confuse PDO and MySQLi conventions
+    * Ægir Provision: Fix Drush 13 support by invoking vendor/drush/drush/drush.php
+    * Ægir Provision: Follow symlinks to include all files in custom backup task only
+    * Ægir Provision: Improve function revoke()
+    * Ægir Provision: Prioritize '.tar.zst' as provision_backup_suffix
+    * Ægir Provision: Use supported localhost in can_grant_privileges()
+    * Allow _php_if_versions_cleanup_cnf if Master Ægir was not upgraded yet
     * Barracuda downgrade protection should not rely on key/barracuda_key.txt
     * Constant E_STRICT is deprecated in PHP 8.4
     * Disable shell wrapper on system stop/start early
@@ -712,7 +957,7 @@
   which has been actively developed over the past several months, incorporating
   nearly 400 commits since BOA-5.4.0.
 
-  BOA-5.5.0 PRO also comes equipped with 26 Aegir-ready platforms, supporting
+  BOA-5.5.0 PRO also comes equipped with 26 Ægir-ready platforms, supporting
   either Drupal core alone or various popular Drupal distributions—seven of
   which are new! These platforms include options like Commerce, DXPR Marketing,
   EzContent, farmOS, LocalGov, OpenCulturas, OpenFed, OpenLucius, Opigno LMS,
@@ -736,7 +981,7 @@
     * Added support for non-standard /hdd mount point
     * Added support for /mnt/ paths in Drush
     * Added sqlclean and vhostcheck tools for root
-    * SQL Adminer access moved to Octopus Aegir HTTPS vhost URL at /sqladmin
+    * SQL Adminer access moved to Octopus Ægir HTTPS vhost URL at /sqladmin
     * Added incident_email_report() feature to all monitor/check/ scripts
     * Allow SSH based access authorization to SQL Adminer at new /sqladmin/ URL
     * Added incident detection and email reporting for LE certs renewal failures
@@ -899,11 +1144,11 @@
 
     * AppArmor BOA integration for more strict system protection (needs docs)
     * Barracuda install without Octopus is now possible -- docs/INSTALL.md
-    * Enable instant php-cli version switch for Aegir backend -- docs/DRUSH.md
+    * Enable instant php-cli version switch for Ægir backend -- docs/DRUSH.md
     * Improve Ruby Gems and Node/NPM security and speed x3 -- docs/GEM.md
-    * Let's Encrypt for Aegir Hostmaster installed automatically -- docs/SSL.md
+    * Let's Encrypt for Ægir Hostmaster installed automatically -- docs/SSL.md
     * Let's Encrypt Live Mode is enabled by default -- docs/SSL.md
-    * Add three manual backup modes in Aegir (incomplete feature at the moment)
+    * Add three manual backup modes in Ægir (incomplete feature at the moment)
     * New Relic support with Octopus/Platform/Site Config -- docs/NEWRELIC.md
     * Restore _AEGIR_UPGRADE_ONLY {aegir} as supported barracuda upgrade mode
     * Restore {aegir|platforms|both} as supported octopus upgrade modes
@@ -911,16 +1156,16 @@
     * Use /root/.deny.clamav.cnf to auto-disable clamav if installed
     * Use /root/.deny.java.cnf to auto-disable Solr and Jetty if not used
 
-    * Drush 12 in Aegir Tasks: Dynamically Utilize Site-Local Drush for
+    * Drush 12 in Ægir Tasks: Dynamically Utilize Site-Local Drush for
       the updatedb Operations on Drupal 10+ (needs docs).
 
       For now here is a brief explanation on how it works:
 
-    # Both Migrate and Clone tasks in Aegir by default run the updatedb
-      with Aegir own Drush 8 in the final deploy internal procedure.
+    # Both Migrate and Clone tasks in Ægir by default run the updatedb
+      with Ægir own Drush 8 in the final deploy internal procedure.
 
     # This may cause unexpected issues in Drupal 10 and newer versions, so
-      we have added a switch which allows you to tell Aegir to skip running
+      we have added a switch which allows you to tell Ægir to skip running
       `updatedb` on Drupal 10+ -- either globally with empty control file
       ~/static/control/DisAutoUpDb.info or per site with empty control file
       ~/static/control/sitename_DisAutoUpDb.info where `sitename` is the site
@@ -935,17 +1180,17 @@
       1. Platform Verify task locks Site-Local Drush and patches Drupal core.
 
       2. If the site is migrated to different platform or cloned to different
-         platform, Aegir will check if **both old and new** platforms have
+         platform, Ægir will check if **both old and new** platforms have
          the Site-Local Drush in their codebases.
 
-      3. If Site-Local Drush is detected in both platforms Aegir will unlock
+      3. If Site-Local Drush is detected in both platforms Ægir will unlock
          Drush in both platforms, will also revert the Drupal core patch it
          normally needs to use its own Drush 8.
 
-      4. Now Aegir will run the Site-Local Drush for `updatedb` command and
+      4. Now Ægir will run the Site-Local Drush for `updatedb` command and
          will report all details in the task log in the admin interface.
 
-      5. Once the `updatedb` is complete, Aegir will automatically apply
+      5. Once the `updatedb` is complete, Ægir will automatically apply
          the Drupal core patch again and will lock Site-Local Drush, so you
          could run any other tasks in the control panel as usual. Magic!
 
@@ -976,8 +1221,8 @@
 @=> Improvements
 
     * Add better protection from duplicate sql tasks
-    * Improve Aegir tasks messages to identify new improvements in the backend
-    * Update Drush 10+ aliases on the fly within Aegir deploy procedure
+    * Improve Ægir tasks messages to identify new improvements in the backend
+    * Update Drush 10+ aliases on the fly within Ægir deploy procedure
     * Add BOA Roadmap & Progress Update in ROADMAP.md
     * Add bring_all_ram_cpu_online
     * Add CSF self-update debugging log in /var/backups/csf/water/
@@ -1162,7 +1407,7 @@
     * Composer 2.7.7
     * cURL 8.7.1
     * Drupal 7.101.1
-    * Enable ClassicTrack for Aegir tasks by default
+    * Enable ClassicTrack for Ægir tasks by default
     * ionCube 13.0.2
     * Nginx 1.26.0
     * OpenSSH 9.8p1
@@ -1255,12 +1500,12 @@
 
 @=> Changes and Upgrades
 
-    * Aegir D10 Platforms: 3x Drupal core 10.0.11
-    * Aegir D10 Platforms: 3x Drupal core 10.1.8
-    * Aegir D10 Platforms: 3x Drupal core 10.2.4
-    * Aegir D10 Platforms: Social 12.2.2 with core 10.2.4
-    * Aegir D10 Platforms: Thunder 7.2.0 with core 10.2.4
-    * Aegir D10 Platforms: Varbase 9.1.1 with core 10.2.4
+    * Ægir D10 Platforms: 3x Drupal core 10.0.11
+    * Ægir D10 Platforms: 3x Drupal core 10.1.8
+    * Ægir D10 Platforms: 3x Drupal core 10.2.4
+    * Ægir D10 Platforms: Social 12.2.2 with core 10.2.4
+    * Ægir D10 Platforms: Thunder 7.2.0 with core 10.2.4
+    * Ægir D10 Platforms: Varbase 9.1.1 with core 10.2.4
     * Disable support for several built-in legacy D7 distros
     * Do not enable /root/.fast.cron.cnf by default
     * Drush 8.4.12.9
@@ -1282,7 +1527,7 @@
     * Improve auto-healing for duplicate move_sql and mysql_backup
     * Improve downgrade_protection
     * Revert "Sync /etc/security/limits.conf"
-    * Update Drush yml sites aliases also for Aegir system user
+    * Update Drush yml sites aliases also for Ægir system user
 
 
 ###
@@ -1295,24 +1540,24 @@
 @=> New Features
 
     * Automatically detect and add known web-root dir names on Add New Platform
-    * Lock Drush in any platform with Aegir task: Verify + Lock Drush
+    * Lock Drush in any platform with Ægir task: Verify + Lock Drush
     * Manage pid files in platforms web-root for Drush Lock/Unlock status
-    * Unlock Drush in any platform with new Aegir task: Unlock Local Drush
+    * Unlock Drush in any platform with new Ægir task: Unlock Local Drush
 
 @=> Improvements
 
     * Document ~/static/control/FastTrack.info in docs/FASTTRACK.txt
-    * Improve BOA forks compatibility with standalone Aegir paths
-    * Improve tasks labels in the Aegir control panel
-    * Use Aegir backend built-in chmod for Unlock Drush w/o external scripts
+    * Improve BOA forks compatibility with standalone Ægir paths
+    * Improve tasks labels in the Ægir control panel
+    * Use Ægir backend built-in chmod for Unlock Drush w/o external scripts
 
 @=> Changes and Upgrades
 
-    * Aegir D10 Platforms: 3x Drupal core 10.1.6
-    * Aegir D10 Platforms: Social 12.0.0-rc3 with core 10.0.11
-    * Aegir D10 Platforms: Thunder 7.1.2 with core 10.1.6
-    * Aegir D10 Platforms: Varbase 9.0.16 with core 10.1.6
-    * Enable hosting_site_backup_manager Aegir extension by default again
+    * Ægir D10 Platforms: 3x Drupal core 10.1.6
+    * Ægir D10 Platforms: Social 12.0.0-rc3 with core 10.0.11
+    * Ægir D10 Platforms: Thunder 7.1.2 with core 10.1.6
+    * Ægir D10 Platforms: Varbase 9.0.16 with core 10.1.6
+    * Enable hosting_site_backup_manager Ægir extension by default again
     * Fix permissions and ownership on every Platform Verify for Drupal 8/9/10
     * OpenSSL 3.1.4
     * PHP 8.1.25
@@ -1321,8 +1566,8 @@
 @=> Important Fixes
 
     * Added missing web-root paths in built-in platforms for Drupal 9/10
-    * Fix the ability to rename existing platforms in the Aegir control panel
-    * Multiple fixes for built-in permissions and ownership Aegir scripts
+    * Fix the ability to rename existing platforms in the Ægir control panel
+    * Multiple fixes for built-in permissions and ownership Ægir scripts
 
 
 ###
@@ -1335,7 +1580,7 @@
 @=> New Features
 
     * Add support for verbose Drush like 'drush -vvv @site status'
-    * Aegir in BOA is now fully compatible with PHP 8.1 and 8.2
+    * Ægir in BOA is now fully compatible with PHP 8.1 and 8.2
     * Do not purge cache tables listed in /root/.my.cache.exceptions.cnf
     * Drupal 10 is fully supported (needs docs)
     * Drupal 10 platforms available: Thunder, Varbase, Drupal 10.1 and 10.0
@@ -1352,21 +1597,21 @@
 
 @=> Changes and Upgrades
 
-    * Aegir D10 Platforms: 3x Drupal core 10.0.11
-    * Aegir D10 Platforms: 3x Drupal core 10.1.5
-    * Aegir D10 Platforms: Thunder 7.1.2 with core 10.1.5
-    * Aegir D10 Platforms: Varbase 9.0.16 with core 10.1.5
-    * Aegir D7 Platforms: Commerce 1.72 with core 7.98.1
-    * Aegir D7 Platforms: Commerce 2.77 with core 7.98.1
-    * Aegir D7 Platforms: Guardr 2.57 with core 7.98.1
-    * Aegir D7 Platforms: OpenOutreach 1.69 with core 7.98.1
-    * Aegir D7 Platforms: Opigno LMS 1.59 with core 7.98.1
-    * Aegir D7 Platforms: Panopoly 1.92 with core 7.98.1
-    * Aegir D7 Platforms: Ubercart 3.13 with core 7.98.1
-    * Aegir D9 Platforms: 3x Drupal 9.5.11
-    * Aegir D9 Platforms: OpenLucius 2.0.0 with core 9.5.11
-    * Aegir D9 Platforms: Opigno LMS 3.1.0 with core 9.5.11
-    * Aegir D9 Platforms: Social 11.9.14 with core 9.5.11
+    * Ægir D10 Platforms: 3x Drupal core 10.0.11
+    * Ægir D10 Platforms: 3x Drupal core 10.1.5
+    * Ægir D10 Platforms: Thunder 7.1.2 with core 10.1.5
+    * Ægir D10 Platforms: Varbase 9.0.16 with core 10.1.5
+    * Ægir D7 Platforms: Commerce 1.72 with core 7.98.1
+    * Ægir D7 Platforms: Commerce 2.77 with core 7.98.1
+    * Ægir D7 Platforms: Guardr 2.57 with core 7.98.1
+    * Ægir D7 Platforms: OpenOutreach 1.69 with core 7.98.1
+    * Ægir D7 Platforms: Opigno LMS 1.59 with core 7.98.1
+    * Ægir D7 Platforms: Panopoly 1.92 with core 7.98.1
+    * Ægir D7 Platforms: Ubercart 3.13 with core 7.98.1
+    * Ægir D9 Platforms: 3x Drupal 9.5.11
+    * Ægir D9 Platforms: OpenLucius 2.0.0 with core 9.5.11
+    * Ægir D9 Platforms: Opigno LMS 3.1.0 with core 9.5.11
+    * Ægir D9 Platforms: Social 11.9.14 with core 9.5.11
     * BOA requires at least PHP 7.4 or newer as default version
     * Change redis_perm_ttl from 6h to 24h
     * Do not inlcude advagg/cdn in o_contrib_eight
@@ -1380,9 +1625,9 @@
     * Enable /root/.fast.cron.cnf by default (needs docs)
     * Remove confusing -bin suffix from Drush 10+ (needs docs)
     * Set _PURGE_BACKUPS default to 14 or 7 on hosted BOA
-    * Set Composer Install Support in Aegir Backend as disabled by default
+    * Set Composer Install Support in Ægir Backend as disabled by default
     * The redis_use_modern is no longer optional in the INI files
-    * Update vendor code in the Aegir backend / Provision
+    * Update vendor code in the Ægir backend / Provision
     * Use _STRONG_PASSWORDS=YES by default
     * Use _USE_MYSQLTUNER=NO by default
 
@@ -1528,7 +1773,7 @@
   release policy. Detailed changelog will follow.
 
   This BOA update provides latest PHP versions, system updates, including
-  security fixes, many bug fixes, latest Aegir version ..but no Aegir platforms
+  security fixes, many bug fixes, latest Ægir version ..but no Ægir platforms
   are installed by default anymore, unless their keywords are listed in the file
 
     ~/static/control/platforms.info (please read further below for details)
@@ -1551,7 +1796,7 @@
 
   This file, if exists, will enable a super fast per table and parallel DB
   dump and import, although without leaving a conventional complete database
-  dump file in the site archive normally created by Aegir when you run
+  dump file in the site archive normally created by Ægir when you run
   not only the backup task, but also clone, migrate and delete tasks, hence
   also restore task will not work anymore.
 
@@ -1562,7 +1807,7 @@
 
   Of course the system still maintains nightly backups of all your sites
   using the new split sql dump archives, but with this control file present
-  you won't be able to use restore task in Aegir, because the site archive
+  you won't be able to use restore task in Ægir, because the site archive
   won't include the database dump -- you can still find that sql dump split
   into per table files in the backups directory, though, in the subdirectory
   with timestamp added, so you can still access it manually, if needed.
@@ -1572,14 +1817,14 @@
   We no longer install any supported Drupal distros as platforms by default, but
   you can customize Octopus platform list via control file, which will be used
   on the next Octopus upgrade (you can request it individually if you are on
-  hosted Aegir service):
+  hosted Ægir service):
 
     ~/static/control/platforms.info
 
   This file, if exists and contains a list of symbols used to define supported
   platforms, allows to control/override the value of _PLATFORMS_LIST variable
   normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
-  modified by the Aegir instance owner with no system root access.
+  modified by the Ægir instance owner with no system root access.
 
   IMPORTANT: If used, it will replace/override the value defined on initial
   instance install and all previous upgrades. It takes effect on every future
@@ -1672,7 +1917,7 @@
 # Release Notes:
 
   This BOA release provides three new PHP versions, system updates, including
-  security fixes, many bug fixes, latest Aegir version, plus all included
+  security fixes, many bug fixes, latest Ægir version, plus all included
   Drupal distributions updated to latest versions, and supplied with latest
   Drupal 7 or Drupal 8 core, if possible. Yes, BOA still supports Pressflow 6.
   Yes, Debian Stretch is supported. No newer Ubuntu releases are supported yet.
@@ -1732,7 +1977,7 @@
   your new Solr core with correct credentials.
 
   Side note: the sites/foo.com/solr.php will be automatically deleted on every
-  site Verify task in Aegir, to prevent copying it across with incorrect
+  site Verify task in Ægir, to prevent copying it across with incorrect
   access credentials when you clone the site. As soon as the site is verified,
   its sites/foo.com/solr.php will get re-created automatically within 5-10 min.
   and the cloned site will also get its own Solr core created.
@@ -1768,16 +2013,16 @@
   platform-name/docroot or something similar depending on the distro design.
 
   As you have discovered if you have already tried, the path you should use
-  in Aegir when adding Composer based codebase as a platform is the directory
+  in Ægir when adding Composer based codebase as a platform is the directory
   where index.php resides, so effectively anything above that directory is not
   available for web requests and thus safely protected.
 
-  The information from Aegir project docs saying "When verifying a platform,
-  Aegir runs composer install if a composer.json file is found." doesn't apply
+  The information from Ægir project docs saying "When verifying a platform,
+  Ægir runs composer install if a composer.json file is found." doesn't apply
   to BOA. We have disabled this. There are several reasons, most importantly:
 
   a/ having this feature enabled is actually against the codebase management
-  workflow in Aegir, because it may modify codebase on a live site,
+  workflow in Ægir, because it may modify codebase on a live site,
 
   b/ some tasks launch verify many times during clone and migrate, which
   results with giant overhead and conflicts if we allowed it to run composer
@@ -1835,7 +2080,7 @@
   waiting for stable release.
 
   BOA project is very complex, build atop of many packages and individually
-  built from sources components, plus other projects like Aegir, Drush and
+  built from sources components, plus other projects like Ægir, Drush and
   Drupal core and distributions -- each of them with their own release policy.
 
   After years of efforts to keep healthy balance between providing necessary
@@ -1844,7 +2089,7 @@
   including requirement to keep new versions backward compatible with 2-3 years
   old releases, we have decided that it's time to introduce Rolling Release
   policy for Barracuda while still using standard point releases policy for
-  Octopus installer, which covers Aegir, Drush and Drupal platforms updates.
+  Octopus installer, which covers Ægir, Drush and Drupal platforms updates.
 
   We will still use point releases for Barracuda when there will be major
   changes introduced, like deprecating old PHP versions or changing components
@@ -2031,7 +2276,7 @@
 # Release Notes:
 
   This BOA release provides system security upgrades, many bug fixes,
-  latest Aegir version, plus all supported Drupal distributions updated
+  latest Ægir version, plus all supported Drupal distributions updated
   to latest versions, and supplied with latest Drupal 7 core, if possible.
   Thanks to Drush 8.1.15-dev we support also the newest Drupal 8.4.4 core.
 
@@ -2099,7 +2344,7 @@
 # Release Notes:
 
   This BOA release provides system security upgrades, many bug fixes,
-  latest Aegir version, plus all supported Drupal distributions updated
+  latest Ægir version, plus all supported Drupal distributions updated
   to latest versions, and supplied with latest Drupal 7 core, if possible.
   Thanks to Drush 8.1.15-dev we support also the newest Drupal 8.4 core.
 
@@ -2204,7 +2449,7 @@
 # Release Notes:
 
   This BOA release provides many new features, system security upgrades, many
-  improvements and bug fixes, latest Aegir version, plus all supported Drupal
+  improvements and bug fixes, latest Ægir version, plus all supported Drupal
   platforms updated to latest versions, and supplied with latest Drupal 7 core,
   if possible.
 
@@ -2221,7 +2466,7 @@
 
 @=> Magic permissions fix now happens on-the-fly
 
-  The most interesting new Aegir feature is probably the ability to fix files
+  The most interesting new Ægir feature is probably the ability to fix files
   permissions and ownership on any site and platform, without waiting for
   the running daily magic fix. Now it happens on-the-fly, when you run normal
   platform and site Verify tasks.
@@ -2242,8 +2487,8 @@
   * Add support for fix_ownership and fix_permissions on-the-fly
   * Add support for latest 3.18.44-vs2.3.7.5-beng VS kernel
   * Add support for latest 4.1.33-vs2.3.8.5.2-beng VS kernel
-  * Add support for the Open Lucius Distribution to Aegir —- #888
-  * Add support for the Opigno LMS Distribution to Aegir —- #953
+  * Add support for the Open Lucius Distribution to Ægir —- #888
+  * Add support for the Opigno LMS Distribution to Ægir —- #953
   * Automatically whitelist CloudFlare and Sucuri IPs (faster version)
   * Bundle Opigno LMS dependencies: TinCanPHP and pdf.js
   * Configure _INNODB_LOG_FILE_SIZE automatically
@@ -2321,13 +2566,13 @@
 # Release Notes:
 
   This BOA release provides system security upgrades, many improvements
-  and bug fixes, latest Aegir version, plus all supported Drupal platforms
+  and bug fixes, latest Ægir version, plus all supported Drupal platforms
   updated to latest versions, and supplied with latest Drupal 7 core,
   if possible.
 
 @=> Magic permissions fix now happens on-the-fly
 
-  The most interesting new Aegir feature included in this release is probably
+  The most interesting new Ægir feature included in this release is probably
   the ability to fix files permissions and ownership on any site and platform,
   without waiting for the running daily magic fix. Now it happens on-the-fly,
   when you run normal platform and site Verify tasks.
@@ -2591,7 +2836,7 @@
   * Fix permissions on sites directories
   * Fix sites/all/drush permissions compatibility with Drush 8.2
   * Improve protection for custom solrconfig.xml and schema.xml -- fixes #969
-  * Migration: xboa supports only Aegir 2.x -- #960
+  * Migration: xboa supports only Ægir 2.x -- #960
   * Reinstall default-jre on major OS upgrade, if needed -- fixes #986
   * Remote Drush support regression -- fixes #984
   * The ~/static/control/README.txt is not updated on octopus upgrade #965
@@ -2608,8 +2853,8 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.0
 ### Latest hotfix added on: Mon May 30 08:55:03 PDT 2016
 
-  @=> Includes Aegir Hostmaster 3.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 3.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 8 customized for BOA
 
 # Release Notes:
@@ -2618,17 +2863,17 @@
   and bug fixes, with most notable features and changes listed below.
   All supported Drupal platforms have been updated to latest versions.
 
-  @=> Let's Encrypt free SSL certificates are supported directly in Aegir
+  @=> Let's Encrypt free SSL certificates are supported directly in Ægir
   @=> PHP-FPM version can be switched per site hosted on the same instance
-  @=> Both Aegir control panel and its backend are compatible with PHP 7.0.7
-  @=> Support for forced Drush cache clear in the Aegir backend
+  @=> Both Ægir control panel and its backend are compatible with PHP 7.0.7
+  @=> Support for forced Drush cache clear in the Ægir backend
   @=> BOA can run Debian Wheezy to Debian Jessie upgrades easily
 
   More details on new features, enhancements and changes can be found below.
 
 
   ###
-#-### Let's Encrypt free SSL certificates are supported directly in Aegir
+#-### Let's Encrypt free SSL certificates are supported directly in Ægir
   ###
 
   You can find these important Let's Encrypt topics discussed below:
@@ -2636,7 +2881,7 @@
   # Introduction
   # How it works?
   # How to add Letsencrypt.org SSL certificate to hosted site?
-  # How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+  # How to add Letsencrypt.org SSL certificate to the Ægir Hostmaster site?
   # How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
   # Are there any requirements, limitations or exceptions?
   # How to enable live mode?
@@ -2651,14 +2896,14 @@
   NOTE ###===>>>
 
   The old how-to is still useful if you prefer to use SSL termination separated
-  from your Aegir system, or if you don't want to use built-in Letsencrypt.org
+  from your Ægir system, or if you don't want to use built-in Letsencrypt.org
   SSL certificates support (available since BOA-3.1.0).
 
   But if you can use Letsencrypt.org SSL certificates, or you are willing to use
   also built-in BOA feature which allows you to replace Letsencrypt.org SSL
   certificate with any third-party certificate per site, while still managing SSL
-  via Aegir control panel (for redirects, forced/required SSL mode), we highly
-  recommend to use Aegir built-in SSL support, which is enabled and ready to use
+  via Ægir control panel (for redirects, forced/required SSL mode), we highly
+  recommend to use Ægir built-in SSL support, which is enabled and ready to use
   in all Octopus instances since BOA-3.1.0 release.
 
   NOTE ###===>>>
@@ -2666,8 +2911,8 @@
   * How it works?
 
     BOA leverages letsencrypt.sh utility to talk to Letsencrypt.org servers,
-    and on the Aegir side it's using new `hosting_le` extension, which replaces
-    self-signed SSL certificates generated by Aegir with Let's Encrypt ones.
+    and on the Ægir side it's using new `hosting_le` extension, which replaces
+    self-signed SSL certificates generated by Ægir with Let's Encrypt ones.
     You can find more information on both at these URLs:
 
       https://github.com/lukas2511/letsencrypt.sh
@@ -2675,20 +2920,20 @@
 
   * How to add Letsencrypt.org SSL certificate to hosted site?
 
-    In your Aegir control panel please go to the site's node Edit tab, then
+    In your Ægir control panel please go to the site's node Edit tab, then
     under `SSL Settings > Encryption` choose either `Enabled` or `Required`,
     if you want to enable HTTP->HTTPS redirection on the fly. Now click `Save`
     and wait until you will see the Verify task completed. Done!
 
     NOTE: SSL Settings are not available in the Add Site form, only in Edit.
 
-  * How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+  * How to add Letsencrypt.org SSL certificate to the Ægir Hostmaster site?
 
     !!! WARNING
-    !!! ###===>>> Don't enable SSL option for the Hostmaster site in Aegir
+    !!! ###===>>> Don't enable SSL option for the Hostmaster site in Ægir
     !!! WARNING
 
-    Let's Encrypt SSL for Aegir control panel is handled in BOA outside of
+    Let's Encrypt SSL for Ægir control panel is handled in BOA outside of
     the control panel, and you should never enable it within control panel.
 
     During octopus upgrade you will see this message, explaining what to do:
@@ -2701,7 +2946,7 @@
 
   * How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
 
-    When you modify aliases or redirections, Aegir will re-create the SSL
+    When you modify aliases or redirections, Ægir will re-create the SSL
     certificate on the fly, to match current settings and aliases to list.
 
     BOA runs auto-renewal checks for you weekly, and forces renewal if there is
@@ -2735,7 +2980,7 @@
 
     NOTE: All sites with one or more keywords (listed below) in the site's
     main name (this exception rule doesn't apply to aliases) will be ignored,
-    and they will receive only self-signed SSL certificates generated by Aegir,
+    and they will receive only self-signed SSL certificates generated by Ægir,
     once you will switch their SSL settings to `Enabled` or `Required`.
 
       `.(dev|devel|temp|tmp|temporary|test|testing|stage|staging).`
@@ -2793,7 +3038,7 @@
 
        `[aegir_root]/tools/le/certs/example.com/`
 
-    4. Run Verify task for your site in the Aegir control panel. Done!
+    4. Run Verify task for your site in the Ægir control panel. Done!
 
     NOTE: If you are on hosted BOA, you don't have an access to this location
     on your system, so please open a ticket at: https://omega8.cc/support
@@ -2855,10 +3100,10 @@
   ### it will do this for all hosted sites. There is no option to switch this
   ### or override per site hosted.
   ###
-  ### NOTE: While current Aegir version 3.x included in BOA works fine with
+  ### NOTE: While current Ægir version 3.x included in BOA works fine with
   ### latest PHP 7.0, many hosted sites, especially using Pressflow 6 core or
   ### older Drupal 7 core without required patch we have included since 7.43.2,
-  ### will not work properly and Aegir tasks run against those sites may fail,
+  ### will not work properly and Ægir tasks run against those sites may fail,
   ### so it's recommended to use PHP-CLI 5.6, unless you have verified that all
   ### sites on the instance support PHP 7.0 without issues.
   ###
@@ -2876,7 +3121,7 @@
 
 
   ###
-#-### Support for forced Drush cache clear in the Aegir backend
+#-### Support for forced Drush cache clear in the Ægir backend
   ###
 
   ### ~/static/control/clear-drush-cache.info
@@ -2893,7 +3138,7 @@
   ### to not break any running builds.
   ###
   ### If you need to unlock the tasks queue by forcefully removing everything
-  ### from the Aegir backend Drush cache, you can create an empty control file:
+  ### from the Ægir backend Drush cache, you can create an empty control file:
   ### ~/static/control/clear-drush-cache.info
   ###
 
@@ -2965,7 +3210,7 @@
   * Feature: _WHEEZY_TO_JESSIE major upgrade procedure -- #870
   * Let's encrypt support -- #500
   * New Relic integration compatibility with multi-FPM mode
-  * Support for forced Drush cache clear in the Aegir backend
+  * Support for forced Drush cache clear in the Ægir backend
   * Use Let's encrypt for Hostmaster site (after Octopus upgrade) -- #940
 
 # Changes:
@@ -2991,7 +3236,7 @@
 
   * Add compatibility with "config.sh" renamed to "config" in letsencrypt.sh
   * Add ssl_trusted_certificate directive required by ssl_stapling
-  * Add warning: "Don't enable SSL option for the Hostmaster site in Aegir" -- #962
+  * Add warning: "Don't enable SSL option for the Hostmaster site in Ægir" -- #962
   * Check if parent dir exists before touching ctrl file -- #945
   * Do not clear drush cache on every hosting-dispatch -- #943
   * Do not create Letsencrypt cert for Hostmaster if still in demo mode
@@ -3011,7 +3256,7 @@
   * Skynet upgrades for limited shell configuration -- #950
   * Something is stuck after BOA upgrade to 3.0.2 -- #951
   * The makefile based platform creation fails with permissions error -- #943
-  * The site's files should have Aegir backend user as an owner
+  * The site's files should have Ægir backend user as an owner
   * Use strict paths checks to avoid running chown/chmod on parent dirs
 
 # Known problems:
@@ -3024,8 +3269,8 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.2
 ### Latest hotfix added on: Fri May  6 08:42:13 PDT 2016
 
-  @=> Includes Aegir Hostmaster 3.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 3.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 8 customized for BOA
 
 # Release Notes:
@@ -3036,7 +3281,7 @@
   @=> Latest Drupal 7 core version used in BOA in all built-in platforms is
       compatible with latest PHP 7.0.6 -- you can switch your Octopus instance
       easily via fpm.info control file: https://omega8.cc/node/330 but please
-      don't use 7.0 in cli.info, because it is not supported in the Aegir
+      don't use 7.0 in cli.info, because it is not supported in the Ægir
       backend yet. PHP 7.0 can't be used if you have any Pressflow 6 site.
 
 # New features and enhancements:
@@ -3106,8 +3351,8 @@
 ### Date: Mon Apr 11 18:49:43 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.1
 
-  @=> Includes Aegir Hostmaster 3.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 3.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 8 customized for BOA
 
 # Release Notes:
@@ -3121,10 +3366,10 @@
   @=> BOA will not include built-in Drupal 8 platforms until Drupal 8 will
       support symlinks in the codebase, like all previous core versions.
 
-  @=> Octopus Aegir instances hosted on Power Engine option will *not* receive
+  @=> Octopus Ægir instances hosted on Power Engine option will *not* receive
       upgrade to BOA-3.x unless requested via https://omega8.cc/support
       to prevent issues with (often) customized Hostmaster modules not ready
-      for Drupal 7 based Aegir control panel. All hosted BOA systems will still
+      for Drupal 7 based Ægir control panel. All hosted BOA systems will still
       continue to receive the Barracuda system upgrades.
 
   @=> It is possible to host previous stable BOA-2.4.9 Octopus instances
@@ -3187,25 +3432,25 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
 ### Latest hotfix added on: Wed Apr  6 17:40:12 PDT 2016
 
-  @=> Includes Aegir Hostmaster 3.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 3.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 8 customized for BOA
 
 # Release Notes:
 
-  This BOA release includes complete Aegir 3 with Drush 8, and introduces
+  This BOA release includes complete Ægir 3 with Drush 8, and introduces
   full support for latest Drupal 8.0.5 and Drupal 8.1.0-beta2 as custom
   platforms you can create in the ~/static directory tree.
 
   @=> BOA will not include built-in Drupal 8 platforms until Drupal 8 will
       support symlinks in the codebase, like all previous core versions.
 
-  @=> All supported Aegir platforms have been updated to their latest releases
+  @=> All supported Ægir platforms have been updated to their latest releases
 
-  @=> Octopus Aegir instances hosted on Power Engine option will *not* receive
+  @=> Octopus Ægir instances hosted on Power Engine option will *not* receive
       upgrade to BOA-3.x unless requested via https://omega8.cc/support
       to prevent issues with (often) customized Hostmaster modules not ready
-      for Drupal 7 based Aegir control panel. All hosted BOA systems will still
+      for Drupal 7 based Ægir control panel. All hosted BOA systems will still
       continue to receive the Barracuda system upgrades.
 
   @=> It is possible to host previous stable BOA-2.4.9 Octopus instances
@@ -3237,7 +3482,7 @@
   * Add support for ap-northeast-2 Asia Pacific (Seoul) S3
   * Add support for PHP 7.0 -- experimental ! -- fixes #716
   * Add support for VServer kernel 4.1.19-vs2.3.8.4-beng
-  * BOA with Aegir Hostmaster 3.x -- fixes #715
+  * BOA with Ægir Hostmaster 3.x -- fixes #715
   * Switch to Drush 8 for Drupal 8 -- fixes #729
   * Allow to randomize duplicity full backup schedule
   * Monitor and block SSH connections flood
@@ -3249,7 +3494,7 @@
   * Deny sudo/su switch if used for root access - fixes #879
   * Do not install / remove auditd on VServer systems
   * Do not install / remove udev on VServer systems
-  * Merge hosting_advanced_cron into Aegir core cron
+  * Merge hosting_advanced_cron into Ægir core cron
   * Use Redis 7.x-3.x integration module
 
 # System upgrades:
@@ -3293,8 +3538,8 @@
 ### Date: Sat Feb 27 15:22:11 GMT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.9
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7 customized for BOA
 
 # Release Notes:
@@ -3302,7 +3547,7 @@
   This BOA release includes latest Drupal 7 and Pressflow 6 security updates,
   along with bug fixes and other system software updates.
 
-  @=> All supported Aegir platforms have been updated to their latest releases
+  @=> All supported Ægir platforms have been updated to their latest releases
 
   @=> What are BOA plans for Drupal 6 support after February 24th, 2016?
 
@@ -3340,8 +3585,8 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.8
 ### Latest hotfix added on: Mon Feb 22 18:28:51 GMT 2016
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7 customized for BOA
 
 # Release Notes:
@@ -3351,7 +3596,7 @@
 
   @=> Debian 8 Jessie is fully supported, but includes only PHP 5.5 and 5.6
 
-  @=> All supported Aegir platforms have been updated with latest Drupal cores
+  @=> All supported Ægir platforms have been updated with latest Drupal cores
 
   @=> Even if deprecated PHP versions are still included in this release,
       any Octopus instance running PHP older than 5.5 will not be able to
@@ -3457,8 +3702,8 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.7
 ### Latest hotfix added on: Thu Dec 10 10:10:26 PST 2015
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7 customized for BOA
 
 # Release Notes:
@@ -3466,7 +3711,7 @@
   This BOA release includes several important system upgrades and bug fixes,
   with most notable features and changes listed below.
 
-  @=> All supported Aegir platforms have been updated with latest Drupal cores
+  @=> All supported Ægir platforms have been updated with latest Drupal cores
 
   @=> Drupal 8 support for custom platforms in the ~/static directory tree
       will be included, along with Drush 8 and PHP 7 in the *upcoming*
@@ -3584,14 +3829,14 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.6
 ### Latest hotfix added on: Mon Sep 21 05:18:33 PDT 2015
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7 customized for BOA
 
 # Release Notes:
 
   This BOA release includes several important system upgrades and bug fixes.
-  All supported Aegir platforms have been updated with latest Drupal cores.
+  All supported Ægir platforms have been updated with latest Drupal cores.
 
 # Changes:
 
@@ -3648,8 +3893,8 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.5
 ### Latest hotfix added on: Fri Jul 10 14:49:11 PDT 2015
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7 customized for BOA
 
 # Release Notes:
@@ -3688,15 +3933,15 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.4
 ### Latest hotfix added on: Thu Jul  9 10:28:42 PDT 2015
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7 customized for BOA
 
 # Release Notes:
 
   This BOA release includes several important system upgrades and bug fixes.
 
-  All supported Aegir platforms have been updated with latest Drupal cores.
+  All supported Ægir platforms have been updated with latest Drupal cores.
 
   This version automatically switches all hosted sites to PHP 5.5 on systems
   hosted and managed remotely by Omega8.cc support team, unless you have
@@ -3753,13 +3998,13 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.3
 ### Latest hotfix added on: Fri Jun  5 04:43:50 PDT 2015
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7 customized for BOA
 
 # Release Notes:
 
-  This BOA release is focused on Aegir platforms update with latest Drupal core
+  This BOA release is focused on Ægir platforms update with latest Drupal core
   included. There are also a few system updates and bug fixes, as listed below.
 
 # Changes:
@@ -3792,13 +4037,13 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.2
 ### Latest hotfix added on: Fri May  1 02:07:54 PDT 2015
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7 customized for BOA
 
 # Release Notes:
 
-  This BOA release includes 15 updated Aegir platforms with latest Drupal core,
+  This BOA release includes 15 updated Ægir platforms with latest Drupal core,
   2 new features and enhancements, 13 new software versions, 3 other changes,
   plus over 20 bug fixes.
 
@@ -3823,7 +4068,7 @@
   @=> NOTE: Drupal 8 support is broken in this release, because latest Drush
       doesn't support older Drupal 8 beta versions, while new D8 beta is not
       released and tested yet, and we really need latest Drush to fix broken
-      D6->D7 upgrade path, so we could prepare for full Aegir 3, which comes
+      D6->D7 upgrade path, so we could prepare for full Ægir 3, which comes
       with D7 in the frontend.
 
 # New features and enhancements:
@@ -3882,13 +4127,13 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.1
 ### Latest hotfix added on: Wed Mar 11 11:58:52 PDT 2015
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7.0.0-alpha9 customized for BOA
 
 # Release Notes:
 
-  This new BOA release includes one new and 12 updated Aegir platforms,
+  This new BOA release includes one new and 12 updated Ægir platforms,
   8 new features and enhancements, 15 new software versions, 10 other changes,
   plus over 38 bug fixes, with most notable features and changes listed below:
 
@@ -4011,13 +4256,13 @@
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.0
 ### Latest hotfix added on: Sat Feb 21 10:18:15 UTC 2015
 
-  @=> Includes Aegir Hostmaster 2.x-head with improvements
-  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Ægir Hostmaster 2.x-head with improvements
+  @=> Includes Ægir Provision 3.x-head with improvements
   @=> Includes Drush 7.0.0-alpha8 customized for BOA
 
 # Release Notes:
 
-  This new BOA release includes 7 updated Aegir platforms, over 28 new features
+  This new BOA release includes 7 updated Ægir platforms, over 28 new features
   and enhancements, 12 new software versions, over 36 important changes, plus
   over 100 bug fixes, with most notable features and changes listed below:
 
@@ -4095,7 +4340,7 @@
 
 # Changes:
 
-  * Alter the cron_interval for existing sites to match Aegir default.
+  * Alter the cron_interval for existing sites to match Ægir default.
   * Change required exceptions keywords to .temporary. and .testing.
   * Dev mode detection and URLs protection - now works only for aliases.
   * Do not display .cnf files contents if _DEBUG_MODE is not set to YES.
@@ -4129,7 +4374,7 @@
   * Use 86400 as a default cron_interval to sync with Drupal default.
   * Use MySQLTuner only if _USE_MYSQLTUNER=YES is set in .barracuda.cnf
   * Use provision_civicrm 6.x-2.x directly.
-  * Use separate versioning for Aegir extensions download URLs.
+  * Use separate versioning for Ægir extensions download URLs.
   * Run built-in registry-rebuild on Verify only if empty ctrl file
     sites/all/modules/registry-rebuild.ini exists.
 
@@ -4192,7 +4437,7 @@
   * Force _THIS_DB_HOST=localhost on AWS.
   * HHVM: Add /home/ to open_basedir so access to the .tmp works - fixes #569
   * HHVM: Add workarounds for potential security issues - fixes #443
-  * Improve Aegir tasks scheduling and load spikes protection.
+  * Improve Ægir tasks scheduling and load spikes protection.
   * Improve docs for backboa.
   * Improve pdnsd configuration update by removing non-IP lines early enough.
   * Improve procs monitor.
@@ -4229,7 +4474,7 @@
   * Skip extra SQL connection test on AWS.
   * Standardize platforms version and naming convention.
   * Support for _NGINX_NAXSI is experimental (don't use)
-  * Symlinks directories expected by Drush/Aegir in D8 root.
+  * Symlinks directories expected by Drush/Ægir in D8 root.
   * Sync defaults for hosting_advanced_cron_default_interval
   * Syntax error - fixes #587
   * Syntax error - fixes #588
@@ -4254,7 +4499,7 @@
 
 ### Stable BOA-2.3.8 Release - Full Edition
 ### Date: Sat Nov 29 09:58:45 SGT 2014
-### Includes Aegir 2.x-head with improvements
+### Includes Ægir 2.x-head with improvements
 
 # Release Notes:
 
@@ -4319,7 +4564,7 @@
 
 ### Stable BOA-2.3.7 Release - Full Edition
 ### Date: Tue Nov 25 15:44:48 PST 2014
-### Includes Aegir 2.x-head with improvements
+### Includes Ægir 2.x-head with improvements
 
 # Release Notes:
 
@@ -4365,7 +4610,7 @@
 
   BOA now protects all your codebases by reverting (daily) ownership on all
   files and directories in your codebase (modules and themes) so they are
-  owned by the Aegir backend user and not your shell/ftps user.
+  owned by the Ægir backend user and not your shell/ftps user.
 
   While this new default procedure protects all your codebases in the ~/static
   directory tree, and even in the sites/all directory tree, and even in the
@@ -4434,7 +4679,7 @@
 
 ### Stable BOA-2.3.6 Release - Full Edition
 ### Date: Mon Nov 17 08:11:17 SGT 2014
-### Includes Aegir 2.x-head with improvements
+### Includes Ægir 2.x-head with improvements
 
 # Release Notes:
 
@@ -4551,7 +4796,7 @@
 
 ### Stable BOA-2.3.5 Release - Full Edition
 ### Date: Wed Oct 15 16:28:25 PDT 2014
-### Includes Aegir 2.1 with improvements
+### Includes Ægir 2.1 with improvements
 ### Latest hotfix added on: Thu Oct 16 08:55:02 PDT 2014
 
 # Release Notes:
@@ -4564,14 +4809,14 @@
   * All existing Drupal 7 built-in platforms will receive a hot-fix for
     this known vulnerability: https://www.drupal.org/SA-CORE-2014-005
     once you will run 'barracuda up-stable' command on your server.
-    This procedure is automated on hosted and managed Aegir at Omega8.cc
+    This procedure is automated on hosted and managed Ægir at Omega8.cc
 
   * Your custom D7 platforms created in the ~/static directory tree
     will be checked in the next 12 hours after the upgrade, and if you
     have not applied this patch yet, it will be applied automatically
     for you - but only if there is at least one active site present
     in the given custom D7 platform. Note that while this procedure is
-    automated on hosted and managed Aegir at Omega8.cc, on self-hosted
+    automated on hosted and managed Ægir at Omega8.cc, on self-hosted
     BOA systems it will work only if you will set _PERMISSIONS_FIX=YES
     in /root/.barracuda.cnf (default is NO)
 
@@ -4640,7 +4885,7 @@
   * Issue #441 - New Relic is not disabled after removing newrelic.info file.
   * Issue #442 - Skip locked/fpmcheck if /root/.high_traffic.cnf exists.
   * Issue #444 - PHP: Remove useless sed replacement in pool.d/www{*}.conf
-  * Issue #445 - Remote Import: update 6.x-2.x branch for Aegir 2.x and Drush 6
+  * Issue #445 - Remote Import: update 6.x-2.x branch for Ægir 2.x and Drush 6
   * Issue #447 - Export LANG, LANGUAGE and all LC_ environment variables.
   * Issue #447 - Improve locales consistency.
   * Issue #447 - Set default LC_CTYPE and LC_COLLATE environment variables.
@@ -4662,7 +4907,7 @@
 
 ### Stable BOA-2.3.4 Release - Full Edition
 ### Date: Wed Oct 15 09:51:08 PDT 2014
-### Includes Aegir 2.1 with improvements
+### Includes Ægir 2.1 with improvements
 
   Release Notes and changelog for BOA-2.3.4 has been merged into BOA-2.3.5
   above after security upgrades related to OpenSSL and SSLv3 have been added
@@ -4671,7 +4916,7 @@
 
 ### Stable BOA-2.3.3 Release - Full Edition
 ### Date: Sat Sep 27 01:25:46 PDT 2014
-### Includes Aegir 2.1 with improvements
+### Includes Ægir 2.1 with improvements
 
 # Release Notes:
 
@@ -4776,7 +5021,7 @@
 
 ### Stable BOA-2.3.2 Release - Full Edition
 ### Date: Thu Sep 18 15:16:33 PDT 2014
-### Includes Aegir 2.1 with improvements
+### Includes Ægir 2.1 with improvements
 
   Release Notes and changelog for BOA-2.3.2 has been merged into BOA-2.3.3
   above after several hotfixes and various updates have been added shortly
@@ -4785,7 +5030,7 @@
 
 ### Stable BOA-2.3.1 Release - Full Edition
 ### Date: Sun Sep 14 15:53:25 SGT 2014
-### Includes Aegir 2.1 with improvements
+### Includes Ægir 2.1 with improvements
 ### Latest hotfix added on: Mon Sep 15 19:10:07 SGT 2014
 
 # Release Notes:
@@ -4806,13 +5051,13 @@
 
   @=> Key new features:
 
-  * BOA-2.3.1 comes with new, shiny Aegir 2.1 stable version!
+  * BOA-2.3.1 comes with new, shiny Ægir 2.1 stable version!
   * Support for Drupal sites in subdirectories is enabled by default
   * Solr 4 cores can be added/updated/deleted via site level INI settings
   * Super-easy to use New Relic support with per Octopus license key
   * Ability to add new Octopus instances with new, simple command syntax
 
-  @=> Aegir control panel new features:
+  @=> Ægir control panel new features:
 
   * The list of sites is searchable by name or installation profile
   * Sites have dedicated tabs: Backups, Task log, Edit and Packages
@@ -4829,7 +5074,7 @@
     as a redirect target, but without the need to rename the site --
     it will just re-verify the site and create new vhost automatically
 
-  @=> Aegir control panel changes:
+  @=> Ægir control panel changes:
 
   * The hosting/signup form is still available but not included in the menu
   * The node/add/site form is no longer included in the main menu
@@ -4842,7 +5087,7 @@
   * All existing vhosts must use wildcard in the Nginx 'listen' directive
   * Legacy mode for Install and Upgrade moves to 2.2.x branch
   * DB credentials are no longer in settings.php, only in drushrc.php
-  * Latest Drush 6 version is used in the Aegir backend by default
+  * Latest Drush 6 version is used in the Ægir backend by default
 
   But what if you are not ready for this major upgrade and you would like
   to have more time for testing, but still be able to run system upgrades,
@@ -4880,7 +5125,7 @@
 #-### Caveats: This upgrade will force wildcard in the Nginx 'listen' directive
 
   If you have old enough BOA system which still uses legacy IP mode and not
-  a wildcard in the Nginx 'listen' directive, which is both Aegir and BOA
+  a wildcard in the Nginx 'listen' directive, which is both Ægir and BOA
   standard for a long time already, this upgrade will fix the problem and
   update directives only in vhosts known and controlled by BOA.
 
@@ -4904,7 +5149,7 @@
   separation between SSL enabled IPs and their associated certificates,
   while their associated 'upstream' block may even point to either local or
   remote IP address, so there is no wildcard to use in this case, and it will
-  not conflict with all other vhosts managed by Aegir, because all SSL enabled
+  not conflict with all other vhosts managed by Ægir, because all SSL enabled
   vhosts listen on other IP addresses than the main system IP, which is
   by default used by all vhosts with wildcard in the 'listen' directive.
 
@@ -4913,11 +5158,11 @@
   which may happen also unintentionally during upgrade to BOA-2.3.0 or never,
   if there are either vhosts BOA doesn't control, or there are ghost vhosts
   not yet purged if you didn't upgrade to BOA-2.2.9 before, or there are
-  some disabled sites, so their vhosts will not be re-created by Aegir
+  some disabled sites, so their vhosts will not be re-created by Ægir
   during this major upgrade (because only active sites can be re-verified).
 
   While BOA will fix also any such ghost vhosts anyway, it will not be able
-  to detect and fix vhosts outside of the standard directories managed by Aegir.
+  to detect and fix vhosts outside of the standard directories managed by Ægir.
 
 #-### Ability to add new Octopus instances with new, simple command syntax
 
@@ -4940,7 +5185,7 @@
 
   where 'o1' is your corresponding Octopus system username.
 
-  Note that if you have custom vhosts or includes in the Aegir Master Instance,
+  Note that if you have custom vhosts or includes in the Ægir Master Instance,
   you should instead replace 'fastcgi_pass 127.0.0.1:9090;' with:
 
     fastcgi_pass unix:/var/run/www53.fpm.socket;
@@ -4956,7 +5201,7 @@
   or newer in both FPM and CLI mode can be upgraded to Octopus 2.3.1 Edition.
 
   If you are still using PHP 5.2 in your Octopus instance, you will not
-  receive Aegir nor Drupal Platforms upgrade, but the Barracuda part of your
+  receive Ægir nor Drupal Platforms upgrade, but the Barracuda part of your
   system will receive upgrade to 2.3.1 anyway, so it will be ready to support
   your outdated Octopus instance upgrade as soon as you will switch it to
   modern and secure PHP version -- which is easy!
@@ -4971,9 +5216,9 @@
   which available PHP version should be used (if installed): 5.5 or 5.4 or 5.3
 
   Only one of them can be set, but you can use separate versions for web access
-  (fpm.info) and the Aegir backend (cli.info). The system will switch versions
+  (fpm.info) and the Ægir backend (cli.info). The system will switch versions
   defined via these control files in 5 minutes or less. We use external control
-  files and not any option in the Aegir interface to make sure you will never
+  files and not any option in the Ægir interface to make sure you will never
   lock yourself by switching to version which may cause unexpected problems.
 
 #-### Support for New Relic monitoring with per Octopus instance license key
@@ -5063,7 +5308,7 @@
 ;;
 ;;  To use customized version of either schema.xml or solrconfig.xml, you need
 ;;  to switch solr_custom_config to YES below and if you are using hosted
-;;  Aegir service, submit a support ticket to get these files updated with
+;;  Ægir service, submit a support ticket to get these files updated with
 ;;  your custom versions. On self-hosted BOA simply update these files directly.
 ;;
 ;;  Please remember to use Solr 4 compatible config files.
@@ -5223,7 +5468,7 @@
   * Silence early sed replacements to avoid confusion.
   * Simplify colorbox-1.3.18 download.
   * Simplify colorbox-1.5.13 download.
-  * Switch branch on the fly and add support for Aegir vanilla mode.
+  * Switch branch on the fly and add support for Ægir vanilla mode.
   * Sync /tmp access restrictions.
   * The hosting_civicrm_cron is now a submodule and should be also auto-enabled.
   * The wildcard transition **doesn't** affect vhosts for SSL enabled sites.
@@ -5243,12 +5488,12 @@
   * Install latest Git even if not specified via _XTRAS_LIST but previous
     version built from sources is detected.
   * Issue #2278847 - Derivatives can't be created on install with Drush and
-    Aegir or when no vhost is available yet (Drupal Commons)
+    Ægir or when no vhost is available yet (Drupal Commons)
 
 
 ### Stable BOA-2.3.0 Release - Full Edition
 ### Date: Mon Sep  8 08:42:01 PDT 2014
-### Includes Aegir 2.1 with improvements
+### Includes Ægir 2.1 with improvements
 
   Release Notes and changelog for BOA-2.3.0 has been merged into BOA-2.3.1
   above after several hotfixes and some great new features have been added
@@ -5257,7 +5502,7 @@
 
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 ### Latest hotfix added on: Fri Aug 15 09:37:04 PDT 2014
 
 # Release Notes:
@@ -5274,8 +5519,8 @@
 
   IMPORTANT! This is the last Edition in the 2.2.x series, which marks the end
   of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will open 2.3.x series,
-  which will allow us to provide newer Aegir version with built-in Drush 6
-  support, sites in subdirectories, and many Aegir User Interface improvements.
+  which will allow us to provide newer Ægir version with built-in Drush 6
+  support, sites in subdirectories, and many Ægir User Interface improvements.
 
   If you still host any Drupal 5 sites or you are using PHP 5.2 for D6 sites,
   you will not be able to upgrade to the next 2.3.x Edition and you will have to
@@ -5377,7 +5622,7 @@
 
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 ### Latest hotfix added on: Tue Aug  5 14:47:17 PDT 2014
 
 # Release Notes:
@@ -5393,8 +5638,8 @@
 
   IMPORTANT! This is the last Edition in the 2.2.x series, which marks the end
   of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will open 2.3.x series,
-  which will allow us to provide newer Aegir version with built-in Drush 6
-  support, sites in subdirectories, and many Aegir User Interface improvements.
+  which will allow us to provide newer Ægir version with built-in Drush 6
+  support, sites in subdirectories, and many Ægir User Interface improvements.
 
   If you still host any Drupal 5 sites or you are using PHP 5.2 for D6 sites,
   you will not be able to upgrade to the next 2.3.x Edition and you will have to
@@ -5453,7 +5698,7 @@
 
 ### Stable BOA-2.2.7 Release - Full Edition
 ### Date: Thu Jul 17 03:11:47 CEST 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 ### Latest hotfix added on: Fri Jul 18 18:21:40 CDT 2014
 
 # Release Notes:
@@ -5469,8 +5714,8 @@
 
   IMPORTANT! This is the last Edition in the 2.2.x series, which marks the end
   of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will open 2.3.x series,
-  which will allow us to provide newer Aegir version with built-in Drush 6
-  support, sites in subdirectories, and many Aegir User Interface improvements.
+  which will allow us to provide newer Ægir version with built-in Drush 6
+  support, sites in subdirectories, and many Ægir User Interface improvements.
 
   If you still host any Drupal 5 sites or you are using PHP 5.2 for D6 sites,
   you will not be able to upgrade to the next 2.3.x Edition and you will have to
@@ -5571,7 +5816,7 @@
 
 ### Stable BOA-2.2.6 Release - Full Edition
 ### Date: Sat Jun 21 06:14:18 PDT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 ### Latest hotfix added on: Mon Jul 14 14:54:04 CDT 2014
 
 # Release Notes:
@@ -5581,8 +5826,8 @@
 
   IMPORTANT! This is the last Edition in the 2.2.x series, which marks the end
   of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will open 2.3.x series,
-  which will allow us to provide newer Aegir version with built-in Drush 6
-  support, sites in subdirectories, and many Aegir User Interface improvements.
+  which will allow us to provide newer Ægir version with built-in Drush 6
+  support, sites in subdirectories, and many Ægir User Interface improvements.
 
   If you still host any Drupal 5 sites or you are using PHP 5.2 for D6 sites,
   you will not be able to upgrade to the next 2.3.x Edition and you will have to
@@ -5635,7 +5880,7 @@
     This file, if exists and contains a single line with supported platforms
     symbols, allows to control/override the value of _PLATFORMS_LIST variable
     normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
-    modified by the Aegir instance owner with no system root access.
+    modified by the Ægir instance owner with no system root access.
 
     IMPORTANT: If used, it will replace/override the value defined on initial
     instance install and all previous upgrades. It takes effect on every
@@ -5801,7 +6046,7 @@
 
 ### Stable BOA-2.2.5 Release - Full Edition
 ### Date: Thu May  8 11:59:23 PDT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 ### Latest hotfix added on: Sat May 10 09:05:19 PDT 2014
 
 # Release Notes:
@@ -5890,7 +6135,7 @@
 
 ### Stable BOA-2.2.4 Release - Full Edition
 ### Date: Wed Apr 30 17:03:36 PDT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 ### Latest hotfix added on: Fri May  2 04:54:25 PDT 2014
 
 # Release Notes:
@@ -5991,7 +6236,7 @@
 
 ### Stable BOA-2.2.3 Release - Full Edition
 ### Date: Fri Apr 18 12:57:40 PDT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 
 # Release Notes:
 
@@ -6066,7 +6311,7 @@
 
 ### Stable BOA-2.2.2 Release - Barracuda Edition
 ### Date: Tue Apr  8 07:24:18 PDT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 
 # Release Notes:
 
@@ -6078,7 +6323,7 @@
 
   To learn more please visit: http://heartbleed.com
 
-  @=> Note for those on self-hosted BOA (skip this if you are on a hosted Aegir)
+  @=> Note for those on self-hosted BOA (skip this if you are on a hosted Ægir)
 
   We recommend that you enable _SSL_FROM_SOURCES=YES option in your system
   /root/.barracuda.cnf file, to always build latest OpenSSL from sources.
@@ -6139,7 +6384,7 @@
 
 ### Stable BOA-2.2.1 Release - Full Edition
 ### Date: Tue Apr  1 10:28:45 SGT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 
 # Release Notes:
 
@@ -6178,7 +6423,7 @@
   $ wget -q -U iCab http://files.aegir.cc/update/boa221fix.txt
   $ bash boa221fix.txt
 
-  We have fixed this on all hosted and remotely managed Aegir instances already.
+  We have fixed this on all hosted and remotely managed Ægir instances already.
 
   @=> Other issues fixed in BOA head (run 'barracuda up-head system' to apply):
 
@@ -6188,7 +6433,7 @@
 
 ### Stable BOA-2.2.0 Release - Full Edition
 ### Date: Mon Mar 31 06:44:08 SGT 2014
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 
 # Release Notes:
 
@@ -6201,7 +6446,7 @@
   Here is a list of topics covered in detail further below:
 
   * New 'legacy' mode available for installs and upgrades
-  * Important Note For Those Using Our Hosted Aegir Service!
+  * Important Note For Those Using Our Hosted Ægir Service!
   * Custom php.ini protection has changed and will not honor old settings
   * Barracuda no longer supports Percona since 2.2.0 release
   * Support for PHP FPM/CLI version safe switch per Octopus instance
@@ -6248,8 +6493,8 @@
   Edition. It will come with terminated support for Drush 4, Drupal 5 and, yes,
   PHP 5.2 (finally). This step is required to use latest Drush 6+ with supported
   Drupal cores versions and supported PHP versions, which in fact is required
-  to introduce the real Aegir 2.0 in BOA -- we are still using older, customized
-  for backward compatibility, Aegir 2 HEAD version, so it is time to move on and
+  to introduce the real Ægir 2.0 in BOA -- we are still using older, customized
+  for backward compatibility, Ægir 2 HEAD version, so it is time to move on and
   stay up to date with everything, get new features like ability to manage
   Drupal sites in subdirectories etc.
 
@@ -6257,18 +6502,18 @@
   mode at 2.2.x series level, which will receive only security upgrades and
   no further feature nor bugfix releases. At that point you will have to stick
   to the 'legacy' BOA version if you will need to run PHP 5.2 and Drupal 5
-  with Aegir based on Drush 4. It will be still possible, but not recommended
+  with Ægir based on Drush 4. It will be still possible, but not recommended
   and not really supported, besides security related issues outside of Drupal.
   This also means that at that point the 'legacy' version will no longer
   receive Drupal core upgrades, even if there will be security core releases.
 
   Note that we don't use the term "major release" in the known convention
   for versions naming. It is because the first digit, for historical reasons,
-  refers to the Aegir version supported, the second digit refers to BOA stack
+  refers to the Ægir version supported, the second digit refers to BOA stack
   major release, and the last digit refers to both feature and bugfix BOA
   stack upgrades.
 
-#-### Important Note For Those Using Our Hosted Aegir Service!
+#-### Important Note For Those Using Our Hosted Ægir Service!
 
   NOW is the time (and last chance) to upgrade all your legacy Drupal 5 sites
   and outdated Drupal 6 sites still not compatible with at least PHP 5.3,
@@ -6276,7 +6521,7 @@
   possible to still run Drupal sites not compatible with PHP 5.3 -- there
   were literally years of this legacy support provided, and this finally
   comes to the end, because we will not use the BOA 'legacy' mode on our own
-  servers. It will be still available for remotely managed 'Aegir on Your Own
+  servers. It will be still available for remotely managed 'Ægir on Your Own
   Server' option, though, but only on request: https://omega8.cc/support
 
 #-### Custom php.ini protection has changed and will not honor old settings
@@ -6312,9 +6557,9 @@
   which available PHP version should be used (if installed): 5.5 or 5.4 or 5.3
 
   Only one of them can be set, but you can use separate versions for web access
-  (fpm.info) and the Aegir backend (cli.info). The system will switch versions
+  (fpm.info) and the Ægir backend (cli.info). The system will switch versions
   defined via these control files in 5 minutes or less. We use external control
-  files and not any option in the Aegir interface to make sure you will never
+  files and not any option in the Ægir interface to make sure you will never
   lock yourself by switching to version which may cause unexpected problems.
 
   Note that the same version will be used in all platforms and all sites hosted
@@ -6345,7 +6590,7 @@
 
 #-### Drush aliases are now automatically copied to all relevant accounts
 
-  While Aegir manages Drush aliases for its backend needs, they are normally
+  While Ægir manages Drush aliases for its backend needs, they are normally
   not available for the main nor the extra shell users on the instance.
 
   But starting with 2.2.0, BOA automatically manages copies of all Drush
@@ -6359,12 +6604,12 @@
 
 #-### Drush is now restricted to use only trusted modules installed by default
 
-  Note: this change affects only Aegir backend/system user, typically o1,
+  Note: this change affects only Ægir backend/system user, typically o1,
   while all other limited shell accounts are not affected, because they are
   already individually jailed with protected custom php.ini and special
   Drush wrappers and settings.
 
-  This means that you can skip this section if you are on a hosted Aegir.
+  This means that you can skip this section if you are on a hosted Ægir.
 
   Customized Drush now included in BOA by default, will be able to use only
   extensions/commands bundled with contrib modules which are either a part
@@ -6383,9 +6628,9 @@
   no matter where uploaded: core, profiles, sites/all or sites/foo.com space.
 
   This is not a problem in hosted environments, where users normally never
-  should have an access to the Aegir backend user, anyway.
+  should have an access to the Ægir backend user, anyway.
 
-  If you have any reason to use Drush on command line as an Aegir backend/system
+  If you have any reason to use Drush on command line as an Ægir backend/system
   user, for example to escape limited shell restrictions, we recommend to
   install vanilla Drush 6, for example in /opt/tools/drush/vanilla/drush/ and
   then symlink it into /usr/local/bin/ with custom name, so it will be available
@@ -6393,7 +6638,7 @@
 
   Further improvements to secure sites and instances in a completely locked
   virtual jails are planned in next BOA releases, which will address all other
-  known and even potential security issues in Aegir.
+  known and even potential security issues in Ægir.
 
 #-### The ~/.drush and other important directories and symlinks are protected
 
@@ -6471,7 +6716,7 @@
   This feature can be useful when you prefer to manage custom platform in
   a monolithic codebase mode in Git, so forcing permissions could conflict
   with your workflow or development tools. Otherwise you should never disable
-  this to avoid issues with Aegir tasks related to sites on this platform.
+  this to avoid issues with Ægir tasks related to sites on this platform.
 
   Note that the system level option _PERMISSIONS_FIX (introduced in BOA-2.1.0
   and set to NO by default) should be also enabled with YES in the system level
@@ -6618,7 +6863,7 @@
   * Make it crystal clear that Ubuntu is barely supported, rarely tested and
     thus not recommended.
   * The "Run cron" extra task has been removed for security reasons. Site cron
-    can be run either via standard, scheduled in Aegir procedure, which uses
+    can be run either via standard, scheduled in Ægir procedure, which uses
     local, but web based request to the protected /cron.php URL, or on command
     line, or from the site admin area, as usual.
 
@@ -6660,7 +6905,7 @@
   * Fix for broken cURL from sources install logic.
   * Fix for drush make broken by websh fix for cd wildcard crash fix.
   * Fix for multi-IP cron access.
-  * Fix missing /dev/fd early enough to avoid broken tasks in Aegir.
+  * Fix missing /dev/fd early enough to avoid broken tasks in Ægir.
   * Fix the logic in manage_ip_auth_access()
   * Fix to avoid daily services maintenance/cron freeze if Jetty didn't stop.
   * Force backward compatible SERVER_SOFTWARE to silence core warnings.
@@ -6744,7 +6989,7 @@
 
 ### Stable BOA-2.1.3 Release - Full Edition
 ### Date: Thu Nov 21 17:55:47 SGT 2013
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 
 # Release Notes:
 
@@ -6863,7 +7108,7 @@
 
 ### Stable BOA-2.1.2 Release - Full Edition
 ### Date: Mon Nov 18 00:03:30 SGT 2013
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 
 # Release Notes:
 
@@ -6916,9 +7161,9 @@
 
   * Add detection and auto-config for the allow_private_file_downloads variable.
   * Issue #1978066 - Add _RESERVED_RAM variable for "reserved" memory.
-  * Map all old_short_name profiles relations in the Aegir Provision directly.
+  * Map all old_short_name profiles relations in the Ægir Provision directly.
 
-# Updated Aegir modules or extensions:
+# Updated Ægir modules or extensions:
 
   * Newer aegir_custom_settings 6.x-2.3 with site clone added for client role.
   * Newer registry_rebuild 7.x-2.1 with fixed critical bug - see: #2130905
@@ -6961,7 +7206,7 @@
   * Issue #2136413 - Use sudo to avoid lshell protection in DB auto-conversion.
   * Make sure that /usr/local/bin is in the PATH.
   * Make the check_if_required test in daily.sh six (6) times faster.
-  * Nginx: Fix too restrictive access policy for Aegir specific /hosting URI.
+  * Nginx: Fix too restrictive access policy for Ægir specific /hosting URI.
   * Redis: Add some debugging on dev URLs to make sure permissions are correct.
   * Redis: Added prefix support for lock backend.
   * Redis: Disable persistent mode to never use on-disk storage, see #2135545
@@ -7015,7 +7260,7 @@
 
 ### Stable BOA-2.1.1 Release - Full Edition
 ### Date: Sat Nov  9 17:00:00 EST 2013
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 
 # Release Notes:
 
@@ -7033,7 +7278,7 @@
   with cached, Views based pages and panels: https://omega8.cc/node/292
 
   Note also that since BOA-2.1.0 all D6 based sites are forced to use PHP 5.3.27
-  on hosted and managed Aegir instances, even if they were previously configured
+  on hosted and managed Ægir instances, even if they were previously configured
   to use deprecated, insecure, unstable and outdated PHP 5.2 for D6 based sites.
 
   This means that if you are using either too old D6 core (older than 6.28.x)
@@ -7044,9 +7289,9 @@
   to upgrade to latest Pressflow 6.x version and we no longer can extend
   this allowance, for obvious security and systems stability reasons.
 
-  Furthermore, sticking with PHP 5.2 would not allow us to use latest Aegir 2.x
-  version (BOA still includes a bit older Aegir 2.x for backward compatibility),
-  since newer Aegir versions need newer Drush (BOA still uses ancient Drush 4.6)
+  Furthermore, sticking with PHP 5.2 would not allow us to use latest Ægir 2.x
+  version (BOA still includes a bit older Ægir 2.x for backward compatibility),
+  since newer Ægir versions need newer Drush (BOA still uses ancient Drush 4.6)
   and newer Drush requires newer PHP version.
 
   It is even more important because Drupal 8 will not run on older PHP nor Drush
@@ -7069,7 +7314,7 @@
   PHP 5.3, we can temporarily revert it to PHP 5.2 for the last time, but it is
   really a bad idea. Much better idea is to find those 15 minutes and upgrade
   your site, so we could continue to provide future upgrades and new amazing
-  features also for your Aegir instance.
+  features also for your Ægir instance.
 
   Enjoy new, shiny BOA Edition!
 
@@ -7126,7 +7371,7 @@
 
 # Fixes in this release:
 
-  * All-in-One Site Health Check in Aegir not displayed for non-uid=1 users.
+  * All-in-One Site Health Check in Ægir not displayed for non-uid=1 users.
   * Always prepare shared D6 and D7 cores.
   * Always remove www. from the Redis cache key prefix.
   * Better check for not yet updated Octopus instances in a batch upgrade mode.
@@ -7208,7 +7453,7 @@
 
 ### Stable BOA-2.1.0 Release - Full Edition - Now NSA-proof
 ### Date: Sat Nov  2 18:15:19 EDT 2013
-### Includes Aegir 2.x-boa-custom version.
+### Includes Ægir 2.x-boa-custom version.
 
 # Release Notes:
 
@@ -7268,9 +7513,9 @@
   Remotely managed BOA systems can have this feature enabled and configured
   upon request submitted via https://omega8.cc/support
 
-#-### All-in-One Site Health Check in your Aegir control panel
+#-### All-in-One Site Health Check in your Ægir control panel
 
-  You will notice a new Task available on every site page in your Aegir
+  You will notice a new Task available on every site page in your Ægir
   Control Panel, named "Run health check". This new task will run a few
   important tests on your site and will store all results in the Task Log,
   so you easily review all results by clicking on the "View" button to the
@@ -7288,7 +7533,7 @@
   2. The "drush6 pm-updatestatus" command is a native Drush command which
      tells you if there are any waiting module/code updates in the site.
      Note: it will *not* upgrade anything, it is a check only.
-     Of course there should be no updates waiting if you follow Aegir
+     Of course there should be no updates waiting if you follow Ægir
      site upgrade best practices and your site's code is up to date.
      Yes, this check will automatically enable the "update" module for you,
      but it will not auto-disable it afterwards (to not break things in case
@@ -7301,7 +7546,7 @@
   4. The "drush6 updatedb-status" command is a native Drush command
      which tells you if there are any waiting database updates in the site.
      Note: it will *not* apply these updates, it is a check only.
-     Of course there should be no updates waiting if you follow Aegir
+     Of course there should be no updates waiting if you follow Ægir
      site upgrade best practices, but who knows, hence the check.
 
   5. The "drush security-review" command will run only on Drupal 7 based sites
@@ -7485,7 +7730,7 @@
   * Generate static sites/foo.com/files/robots.txt file per site, which is
     mapped to /robots.txt
 
-# New and updated Aegir modules or extensions:
+# New and updated Ægir modules or extensions:
 
   * Add security_review extension
   * Use registry_rebuild 7.x-2.x
@@ -7650,7 +7895,7 @@
   * Shell: Fix FTPS compatibility after switching to MySecureShell
   * Shell: Sync IdleTimeOut for MSS with SSH and FTPS default 15m.
   * Shorten some too long status messages.
-  * Silent Mode Option: aegir == Only stock Aegir forced up-head upgrade.
+  * Silent Mode Option: aegir == Only stock Ægir forced up-head upgrade.
   * Simplify vnstat setup.
   * Split usage monitor into two separate scripts.
   * SQL auto-healing should always stop-stop-start and not just restart it.
@@ -7674,23 +7919,23 @@
 
 ### Stable BOA-2.0.9 Release - Barracuda Edition
 ### Date: Thu May  9 11:25:59 EDT 2013
-### Includes Aegir from BOA-2.0.8 Edition
+### Includes Ægir from BOA-2.0.8 Edition
 
 # This is the first Barracuda-only Edition, released to address important
   security issue with Nginx server and provide system level upgrades.
 
-  This Edition will not upgrade Aegir Master nor Aegir Satellite Instances,
+  This Edition will not upgrade Ægir Master nor Ægir Satellite Instances,
   because there was no new Drupal core released since BOA-2.0.8 Edition and
   there were not enough updates to built-in platforms or contrib accumulated.
 
   Releasing Barracuda-only Edition separately from full Edition allows us
   to address system/services security issues without any extra delay,
   while releasing Octopus-only Edition will allow us to provide Drupal core
-  or Aegir version upgrades, without affecting system level services.
+  or Ægir version upgrades, without affecting system level services.
 
   There is also another reason why separate releases will be useful.
-  BOA-2.0.9 is the last Edition where Aegir 2.x still uses old Drush 4.6
-  in the backend. We need to sync BOA specific Aegir 2.x with upstream
+  BOA-2.0.9 is the last Edition where Ægir 2.x still uses old Drush 4.6
+  in the backend. We need to sync BOA specific Ægir 2.x with upstream
   and finally switch to Drush 5, or even Drush 6, if possible.
 
   This change, however, may cause issues if you still host legacy Drupal 5
@@ -7716,7 +7961,7 @@
   * Issue #1974640 - Allow to use Midnight Commander for limited shell users.
   * Limited Shell Logs Monitor enabled by default.
   * Nginx: Check for Linux/Cdorked.A malware and delete if discovered.
-  * Re-generate and sync Aegir passwords before and after instance upgrade.
+  * Re-generate and sync Ægir passwords before and after instance upgrade.
   * The silent 'system' mode documented in docs/UPGRADE.txt
   * Allow to exclude platform from otherwise forced `drush en entitycache -y`
     if sites/all/modules/entitycache_dont_enable.info control file is present.
@@ -7752,7 +7997,7 @@
   * Issue #1974542 - Use /root/.home.no.wildcard.chmod.cnf control file.
   * Issue #1987936 - Restore ability to install PHP 5.2 for FPM and CLI.
   * Make sure that /dev/null is writable for everyone.
-  * Make sure that all drushrc.php files are owned by Aegir system user.
+  * Make sure that all drushrc.php files are owned by Ægir system user.
   * Make sure that all expected sites/all/{modules,themes,libraries} dirs exist.
   * Make sure that DB server is restarted on upgrade after config tuning.
   * Make sure that pdnsd and resolvconf are properly installed.
@@ -7772,12 +8017,12 @@
   * Update docs for _BUILD_FROM_SRC option.
   * Use aggressive enough Jetty restart procedure on nightly services reload.
   * Use correct status messages on install and upgrade.
-  * Use installer and not Aegir version download on stable install/upgrade.
+  * Use installer and not Ægir version download on stable install/upgrade.
 
 
 ### Stable Edition BOA-2.0.8
 ### Date: Mon Apr  8 01:41:36 CEST 2013
-### Installs Aegir 2.x
+### Installs Ægir 2.x
 
 # Updated Octopus platforms:
 
@@ -7807,7 +8052,7 @@
 
 ### Stable Edition BOA-2.0.7
 ### Date: Thu Apr  4 00:00:17 EDT 2013
-### Installs Aegir 2.x
+### Installs Ægir 2.x
 
 # Updated Octopus platforms:
 
@@ -7831,7 +8076,7 @@
 
 ### Stable Edition BOA-2.0.6
 ### Date: Mon Apr  1 21:34:04 EDT 2013
-### Installs Aegir 2.x
+### Installs Ægir 2.x
 
 # New Octopus platforms:
 
@@ -7908,7 +8153,7 @@
   * Allow to force SERVER_NAME based $cookie_domain with special
     modules/cookie_domain.info control file per site.
 
-# New Aegir modules or extensions:
+# New Ægir modules or extensions:
 
   * Add drush clean-modules command - clean_missing_modules extension.
   * Add drush_ecl extension - Drush Entity Cache Loader.
@@ -7927,8 +8172,8 @@
   * Drupal 8.0-dev-tested deprecated and moved to unsupported group.
   * ELMS 1.0-beta1 deprecated and moved to unsupported group.
   * Enable entitycache module by default.
-  * Master Aegir: Re-create secure db password on every barracuda upgrade.
-  * Master Aegir: Sync generating secure db password also on barracuda install.
+  * Master Ægir: Re-create secure db password on every barracuda upgrade.
+  * Master Ægir: Sync generating secure db password also on barracuda install.
   * Nginx: Set 24h Speed Booster cache TTL for spiders/bots by default.
   * NodeStream 1.5.1 deprecated and moved to unsupported group.
   * Open default MongoDB port 27017 for outgoing connections.
@@ -7940,7 +8185,7 @@
   * PHP: Switch to FPM 5.3 also for D6 sites by default.
   * Pressflow 5.23 deprecated and moved to unsupported group.
   * Redis: Re-create secure password on every barracuda upgrade.
-  * Satellite Aegir: Re-create secure db password on every octopus upgrade.
+  * Satellite Ægir: Re-create secure db password on every octopus upgrade.
   * SQL: Do not run DB OPTIMIZE unless /root/.my.optimize.cnf ctrl file exists.
   * SQL: Re-generate new secure mysql root password on every barracuda upgrade.
   * SQL: Use key_buffer = 2M by default.
@@ -7986,7 +8231,7 @@
   * Force proper pdnsd and resolvconf re-installation if needed.
   * Force proper resolvconf configuration to support and use pdnsd server.
   * FTPS on all modern systems requires lshell path added in /etc/shells.
-  * Hostmaster/Octopus contrib modules are now added via Aegir makefile.
+  * Hostmaster/Octopus contrib modules are now added via Ægir makefile.
   * Improve autonomous IDS auto-cleaning and permanent block mgmt.
   * Improve compatibility testing with Drush 5 and Drush 6.
   * Improve kernel default tuning.
@@ -8085,7 +8330,7 @@
 
 ### Stable Edition BOA-2.0.5
 ### Date: Sun Dec 23 15:35:46 EST 2012
-### Installs Aegir 2.0.5 compatible with Aegir 1.9
+### Installs Ægir 2.0.5 compatible with Ægir 1.9
 
 # Updated Octopus platforms:
 
@@ -8105,7 +8350,7 @@
   All other not listed above platforms are available with latest
   D6 or D7 core, even if there were no new distro version released.
 
-# New Aegir modules or extensions:
+# New Ægir modules or extensions:
 
   * Add drush clean-modules command - clean_missing_modules extension.
 
@@ -8194,7 +8439,7 @@
 
 ### Stable Edition BOA-2.0.4
 ### Date: Thu Nov  8 18:31:01 EST 2012
-### Installs Aegir 2.0.4 compatible with Aegir 1.9
+### Installs Ægir 2.0.4 compatible with Ægir 1.9
 
 # New Octopus platforms:
 
@@ -8252,13 +8497,13 @@
   * Add support for aegir|platforms|both modes on octopus upgrade.
   * Allow for another one upgrade daily but only to add more platforms.
   * Allow to install unsupported distros with option _ALLOW_UNSUPPORTED=YES
-  * Allow to install vanilla Aegir 2.x and Drush 5.7 with "stock" option.
+  * Allow to install vanilla Ægir 2.x and Drush 5.7 with "stock" option.
   * Improved databases backup with added OPTIMIZE TABLE foo action per table.
   * New Relic PHP Agent version 3.0 compatibility.
   * Pseudo-streaming server-side support for Flash Video (FLV) and H.264/AAC.
   * Support for Wysiwyg Fields module.
 
-# New Aegir modules or extensions:
+# New Ægir modules or extensions:
 
   * Add hosting_tasks_extra module and provision_tasks_extra extension.
 
@@ -8344,7 +8589,7 @@
   * Issue #1606146 - The manage_ltd_users.sh script locks important tasks.
   * Issue #1614162 - CRON Not Running on Octopus Satellites and Sites.
   * Issue #1643616 - APC is missing in the Ubuntu Precise based install.
-  * Issue #1659452 - Add support for Aegir HTTPS header in the Speed Booster.
+  * Issue #1659452 - Add support for Ægir HTTPS header in the Speed Booster.
   * Issue #1663262 - Fix FMG install on Ubuntu Precise.
   * Issue #1679114 - New user name check in Octopus is too restrictive.
   * Issue #1689656 - Avoid caching /civicrm* and known webform requests.
@@ -8427,7 +8672,7 @@
 
 ### Stable Edition BOA-2.0.3
 ### Date: Thu May 17 18:17:40 EST 2012
-### Installs Aegir 2.0.3 compatible with Aegir 1.9
+### Installs Ægir 2.0.3 compatible with Ægir 1.9
 
 # There are major improvements and new features added in this BOA Edition.
 
@@ -8474,10 +8719,10 @@
     packages for PHP 5.3, so initial setup takes just 10-15 minutes.
 
   * You can easily grant limited shell and FTPS access for developers,
-    simply by creating "Clients" in the Aegir control panel and define
+    simply by creating "Clients" in the Ægir control panel and define
     them as 'owners' of one or more sites. Their access will be limited
     to only sites they can manage, but only if you will send them their
-    access credentials, which are independent of their Aegir control
+    access credentials, which are independent of their Ægir control
     panel credentials and stored in the ~/users/ directory in your main account.
     You will find there files with passwords for every "Client" with at least
     one site attached. For example ~/users/o1.username file means that
@@ -8487,24 +8732,24 @@
     How to change any extra user's password? Simply delete his ~/users/o1.username
     file and wait up to 5 minutes - the system will re-create his account
     with new password. And how to delete the user completely? Simply
-    delete this user "Client" account in the Aegir control panel and allow
+    delete this user "Client" account in the Ægir control panel and allow
     the system to delete also his SSH/FTPS access in the next 5 minutes.
 
   * We have added segfault monitor for php-fpm and nginx, enabled by default.
     It is pretty aggressive, because it disables vhost of any site causing
     segfault errors and sends email alert to the Octopus instance owner
-    and server owner email addresses. Simple site re-verify in Aegir enables
+    and server owner email addresses. Simple site re-verify in Ægir enables
     the site again - but until the next segfault only, so read the info
     included in the email alert message, if this will happen. If you prefer
     to not run this monitor: `rm -f /var/xdrago/monitor/check/segfault_alert`
 
   * Previously recommended site and platforms re-verify on Clone or Migrate
-    is now fully automated. Aegir will run these extra tasks as a part
+    is now fully automated. Ægir will run these extra tasks as a part
     of Clone or Migrate task, to make sure that there are no errors
-    and that Aegir is using up-to-date information collected about
+    and that Ægir is using up-to-date information collected about
     platforms and sites. It also automatically fixes the known problem
     with domain aliases incorrectly written in the original and cloned sites,
-    as reported in the Aegir queue: http://drupal.org/node/1004526
+    as reported in the Ægir queue: http://drupal.org/node/1004526
 
   * Apps are now fully supported. If the App is not downloaded yet, installing
     it via browser only requires write permissions, normally never available
@@ -8576,11 +8821,11 @@
   * Add Compass compatibility in the limited shell (Compass is not installed by default).
   * Add ssh-copy-id and ssh-add commands as allowed over SSH.
   * Add X-Speed-Cache-Key header for Speed Booster debugging.
-  * All Clone/Migrate forms in the Aegir control panel have useful inline help added.
+  * All Clone/Migrate forms in the Ægir control panel have useful inline help added.
   * Allow to easily re-start BOA failed install, just by running boa installer again.
   * Allow to install PHP 5.3 only with option _PHP_MODERN_ONLY=YES (default).
   * Deny HTTPS access on Nginx level for all known bots and crawlers.
-  * Do not force HTTPS for Aegir if /data/conf/no-https-aegir.inc control file exists.
+  * Do not force HTTPS for Ægir if /data/conf/no-https-aegir.inc control file exists.
   * Fix system time hourly via auto-healing.
   * Install wkhtmltopdf by default - available at /usr/bin/wkhtmltopdf
   * Issue #1263602 - New Relic Server and Apps Monitor with per Site/Instance reporting.
@@ -8593,13 +8838,13 @@
   * Lock temporarily almost all known crawlers on high load with error 503.
   * Make _NGINX_DOS_LIMIT configurable and allow higher load by default.
   * Make both 1 and 5 minute max allowed load configurable in the auto-healing.
-  * Support for automatically managed extra SSH/FTPS accounts per Aegir Client.
+  * Support for automatically managed extra SSH/FTPS accounts per Ægir Client.
   * The _LOAD_LIMIT used in the auto-healing system is now configurable.
   * The _SPEED_VALID_MAX used as a Speed Booster cache TTL is now configurable.
   * Ubuntu Precise 12.04 is fully supported.
   * Use nice default /root/.bashrc config.
 
-# New Aegir modules or extensions:
+# New Ægir modules or extensions:
 
   * Add hosting_advanced_cron module - enabled by default.
   * Add hosting_civicrm_cron module - enabled by default.
@@ -8637,7 +8882,7 @@
   * Plain FTP access disabled with FTPS-only mode available.
   * Pure-FTPd server install is now optional, but still default.
   * Send all known bots to $args free URLs.
-  * Use _HTTP_WILDCARD=YES by default to match Aegir standard setup.
+  * Use _HTTP_WILDCARD=YES by default to match Ægir standard setup.
 
 # Fixes:
 
@@ -8674,13 +8919,13 @@
   * Issue #1377492 - Improve Install / Upgrade mode detection and move away any zombies.
   * Issue #1398050 - Use our mirror for all downloads on install and upgrade.
   * Issue #1436522 - Add missing php.ini for PHP-CLI 5.3
-  * Issue #1440796 - Aegir support broken due to duplicate db update in Commons/OG.
+  * Issue #1440796 - Ægir support broken due to duplicate db update in Commons/OG.
   * Issue #1441366 - The _USE_SPEED_BOOSTER switch is deprecated.
   * Issue #1443284 - Early start of CSF may lockout the ssh user and break the install.
   * Issue #1445460 - Broken Git install on Ubuntu Lucid.
   * Issue #1451262 - Do not lock the access to phpinfo.
   * Issue #1472460 #1524738 - Nginx denies request methods: PUT, DELETE and OPTIONS.
-  * Issue #1475416 - Unable to install Barracuda due to Aegir failed install.
+  * Issue #1475416 - Unable to install Barracuda due to Ægir failed install.
   * Issue #1478984 - Add Access-Control-Allow-Origin header with wildcard where required.
   * Issue #1479188 - Octopus does not respect _DNS_SETUP_TEST setting on upgrade.
   * Issue #1505370 - Conflict between Mime Type and Document Type in Nginx.
@@ -8725,7 +8970,7 @@
 
 ### Stable Edition BOA-2.0.2
 ### Date: Thu Feb 9 14:00:00 EST 2012
-### Installs Aegir 2.0.2
+### Installs Ægir 2.0.2
 
 # Note on new and updated platforms and new Drupal core:
 
@@ -8797,7 +9042,7 @@
 
   * All new 7.x sites now run on latest PHP-FPM 5.3.10 by default.
     For existing sites it is enough to re-verify them in your
-    Aegir control panel to get them on PHP-FPM 5.3.10 automatically.
+    Ægir control panel to get them on PHP-FPM 5.3.10 automatically.
 
     All existing and new 5.x sites run on the old PHP-FPM 5.2.17
     version by default and you can't change that.
@@ -8812,8 +9057,8 @@
     instance and 5.2.17 on another - on the same server. Just one more
     reason to use Octopus built-in intelligence :)
 
-    All of this works the same both for Aegir Master Instance
-    and all Aegir Satellite Instances.
+    All of this works the same both for Ægir Master Instance
+    and all Ægir Satellite Instances.
 
   * Both Speed Booster, Boost and Redis/Memcached supports separate
     caches per mobile device, so it is safe to use separate themes
@@ -8840,7 +9085,7 @@
     with: 'curl -I http://your-domain' - you will see GeoIP headers.
 
   * You can safely manage Clients/Users attached to hosted sites
-    in your Aegir interface. Make sure that all sites have its
+    in your Ægir interface. Make sure that all sites have its
     associated Client! Otherwise the site will be listed as available
     for all Clients/Users you have added. The site can lost its
     association with Client after Clone task if there is any
@@ -8927,13 +9172,13 @@
   * We no longer need to use Percona for Maverick on Natty and Oneiric.
   * We use _THIS_DB_HOST=localhost by default.
   * Secure/restricted access to manage users/clients is open by default
-    in every Aegir Satellite Instance also for the extra non-uid=1 admin.
-  * Users in every Aegir Satellite Instance are protected with userprotect
+    in every Ægir Satellite Instance also for the extra non-uid=1 admin.
+  * Users in every Ægir Satellite Instance are protected with userprotect
     and protect_critical_users modules.
   * Some default SQL limits have been increased.
   * The insecure D7 plugin manager is now forced as disabled by default.
-  * The hosting_platform_pathauto module is now enabled in Aegir by default.
-  * The provision_boost module is now added and enabled in Aegir by default.
+  * The hosting_platform_pathauto module is now enabled in Ægir by default.
+  * The provision_boost module is now added and enabled in Ægir by default.
 
 # Fixes:
 
@@ -8952,7 +9197,7 @@
   * Fix for broken regex on lshell.conf update per user.
   * All broken symlinks in the clients directory now deleted daily.
   * All broken symlinks in the lshell user home directory now deleted daily.
-  * Avoid breaking Aegir upgrade because of high load.
+  * Avoid breaking Ægir upgrade because of high load.
   * Set correct loglevel for Redis to avoid useless I/O noise.
   * Add curl as allowed command to lshell default config.
   * Use faster download instead of git for Pressflow core.
@@ -8974,7 +9219,7 @@
 
 ### Stable Edition BOA-2.0.1
 ### Date: Wed Dec 28 07:00:00 EST 2011
-### Installs Aegir 2.0.1
+### Installs Ægir 2.0.1
 
 # New Octopus platforms:
 
@@ -9005,7 +9250,7 @@
     applied automatically also to already installed platforms:
     https://github.com/omega8cc/pressflow6
   * Added access to the "clients" directory with shortcuts/symlinks
-    to all hosted sites per Aegir "client".
+    to all hosted sites per Ægir "client".
 
 # New o_contrib modules:
 
@@ -9040,7 +9285,7 @@
 
 ### Stable Edition BOA-1.4S
 ### Date: Mon, 24 October 2011 14:00:00 +0200
-### Installs Aegir stable 1.4S
+### Installs Ægir stable 1.4S
 
 # Updated Octopus platforms:
 
@@ -9100,7 +9345,7 @@
 
 ### Stable Edition 1.0-boa-T-8.10
 ### Date: Mon, 5 September 2011 16:15:00 +0200.
-### Installs Aegir stable 1.3.1
+### Installs Ægir stable 1.3.1
 
 # New Octopus platforms:
 
@@ -9141,7 +9386,7 @@
 
 ### Stable Edition 1.0-boa-T-8.9
 ### Date: Sat, 30 July 2011 23:50:00 +0200.
-### Installs Aegir HEAD 1.2.1
+### Installs Ægir HEAD 1.2.1
 
 # Updated Octopus platforms:
 
@@ -9167,7 +9412,7 @@
 
   * Nginx upgrade to 1.0.5
   * Chive upgrade to 0.5.1
-  * Web-based method set by default for sites cron in Aegir.
+  * Web-based method set by default for sites cron in Ægir.
 
 # New features:
 
@@ -9178,7 +9423,7 @@
 
 ### Stable Edition 1.0-boa-T-8.8
 ### Date: Thu, 15 July 2011 08:00:00 +0200
-### Installs Aegir stable 1.2
+### Installs Ægir stable 1.2
 
 # New Octopus platforms:
 
@@ -9249,7 +9494,7 @@
 
 ### Stable Edition 1.0-boa-T-8.7
 ### Date: Mon, 30 May 2011 11:40:00 +0200
-### Installs Aegir HEAD 1.1.2
+### Installs Ægir HEAD 1.1.2
 
 1. Fixed critical issue with MariaDB upgrade from 5.1 to 5.2
 2. Fixed critical issue with Nginx build.
@@ -9259,7 +9504,7 @@
 
 ### Stable Edition 1.0-boa-T-8.6
 ### Date: Sun, 29 May 2011 13:30:00 +0200
-### Installs Aegir HEAD 1.1.2
+### Installs Ægir HEAD 1.1.2
 
 ----------------------------------------
 # Added or upgraded since January 2011
@@ -9317,7 +9562,7 @@
 # Improvements since January 2011
 ----------------------------------------
 
-* Speed Booster now works also in the Aegir Master Instance.
+* Speed Booster now works also in the Ægir Master Instance.
 * Full Barracuda install takes only 30 minutes (tested on Linode).
 * Nginx abuse guard is now integrated with csf firewall.
 * Bots/crawlers are now denied on any "dev" type subdomain.
@@ -9325,7 +9570,7 @@
 * The csf/lfd firewall install is now optional.
 * Limited shell configuration is now updated on every upgrade.
 * Auto-tuning in Barracuda leaves more memory for MyISAM etc.
-* Aegir runs cron for D5 and D6 sites using Wget instead of Drush
+* Ægir runs cron for D5 and D6 sites using Wget instead of Drush
   to leverage APC cache, while D7 can use built-in poormanscron.
 * Many improvements in the Speed Booster cache configuration.
 * Improved memcached/redis cache bins configuration.
@@ -9341,16 +9586,16 @@
 * Nginx config - now doesn't use php-fpm to serve fckeditor files.
 * Introduced possibility to add upgrade-safe custom Nginx rewrite
   rules to support transparent migration of legacy URLs/content.
-* Aegir Hostmaster control panel received extra caching and speed.
+* Ægir Hostmaster control panel received extra caching and speed.
 * Better support for securepages 1.9 with forced secure cookies.
 * Better support for dynamically created base_url for http/https.
 * Too generic D7 profile names replaced with unique Drupal 7 names.
-* A few new commands have been added to your Aegir Drush Shell (SSH).
+* A few new commands have been added to your Ægir Drush Shell (SSH).
 * You can use git to manage the code and rsync to manage backups.
 * Useful new commands from Drush v.4 are now available.
-* Now it is possible to delete old sites backups created in Aegir.
-* You can access Aegir backups also via SSH or SFTP/FTPS.
-* You can cancel queued task in Aegir before it is started.
+* Now it is possible to delete old sites backups created in Ægir.
+* You can access Ægir backups also via SSH or SFTP/FTPS.
+* You can cancel queued task in Ægir before it is started.
 * The "dev" anywhere in the subdomain enables all PHP errors.
 * You can use "dev" type alias for live site for easier debugging.
 * Added support for imagecache_external module.
@@ -9393,10 +9638,10 @@
 * Fixed issue with Nginx configuration for private files access.
 * The authorize.php added to allowed php files - required in D7.
 * Known issue with paths to files not rewritten is now fixed.
-* Known issue with sites cron semaphore in Aegir now resolved.
-* Known issue with PHP notices breaking some Aegir tasks resolved.
+* Known issue with sites cron semaphore in Ægir now resolved.
+* Known issue with PHP notices breaking some Ægir tasks resolved.
 * Fixed web server rewrites to support "ad" module.
-* Fixed Aegir issue with .info and .pl domains extensions.
+* Fixed Ægir issue with .info and .pl domains extensions.
 * Drush make via SSH now works as expected.
 * Fixed Nginx issue with /system/ paths and static files or images.
 * Fixed issue with broken site when non-lowercase domain was used.
@@ -9408,7 +9653,7 @@
 
 * Forced public downloads for all 6.x platforms, except of ubercart.
 * Boost crawler option is now denied for performance reasons.
-* Forced log-out on browser quit only for Aegir control panel.
+* Forced log-out on browser quit only for Ægir control panel.
 
 
 ### Project and issue queue moved to Drupal.org
@@ -9418,35 +9663,35 @@
 
 ### Stable Edition 1.0-boa-T-8.5
 ### Date: Tue, 3 May 2011 14:30:00 +0200
-### Installs Aegir stable 1.1
+### Installs Ægir stable 1.1
 
 ### Stable Edition 1.0-boa-T-8.4
 ### Date: Sun, 1 May 2011 23:30:00 +0200
-### Installs Aegir stable 1.1
+### Installs Ægir stable 1.1
 
 ### Stable Edition 1.0-boa-T-8.3
 ### Date: Sat, 30 Apr 2011 20:15:00 +0200
-### Installs Aegir stable 1.1
+### Installs Ægir stable 1.1
 
 ### Stable Edition 1.0-boa-T-8.2
 ### Date: Tue, 26 Apr 2011 21:45:00 +0200
-### Installs Aegir stable 1.1
+### Installs Ægir stable 1.1
 
 ### Stable Edition 1.0-boa-T-8.1
 ### Date: Wed, 20 Apr 2011 19:30:00 +0200
-### Installs Aegir stable 1.1
+### Installs Ægir stable 1.1
 
 ### Stable Edition 1.0-boa-T-8
 ### Date: Mon, 18 Apr 2011 20:15:00 +0200
-### Installs Aegir stable 1.0
+### Installs Ægir stable 1.0
 
 ### Stable Edition 1.0-boa-T-5
 ### Date: Fri, 8 Apr 2011 19:15:00 +0200
-### Installs Aegir working HEAD after 1.0-rc6
+### Installs Ægir working HEAD after 1.0-rc6
 
 ### Stable Edition 1.0-boa-T-2
 ### Date: Wed, 6 Apr 2011 01:34:40 +0200
-### Installs Aegir working HEAD before 1.0-rc3
+### Installs Ægir working HEAD before 1.0-rc3
 
 ### Stable Edition 1.0-boa-T
 ### Date: Mon, 14 Mar 2011 02:43:15 +0100
@@ -9475,7 +9720,7 @@ Added/Fixed: (upgrade for all pre-A14.A required)
     with aliases and SSL settings/modes.
 
 3.  Barracuda and Octopus by default installs still
-    Aegir HEAD, but the latest alpha14 also works.
+    Ægir HEAD, but the latest alpha14 also works.
 
 4.  Octopus can define its separate IP address
     if available.
@@ -9500,7 +9745,7 @@ Added/Fixed: (upgrade for all pre-A14.A required)
 9.  Fix for the already installed and possibly broken
     git-core.
 
-10. Fix for Aegir sites with .info domains, the path
+10. Fix for Ægir sites with .info domains, the path
     alias should now work without 403 error.
 
 
@@ -9509,7 +9754,7 @@ Added/Fixed: (upgrade for all pre-A14.A required)
 Added/Fixed: (upgrade required)
 
 1. Barracuda and Octopus by default installs now
-   Aegir HEAD to use the fix for critical issue
+   Ægir HEAD to use the fix for critical issue
    on sites import. It will be included in alpha14,
    please don't use alpha13.
 
@@ -9545,30 +9790,30 @@ Added/Fixed: (upgrade required)
 Added/Fixed: (upgrade recommended)
 
 1.  Octopus now creates SSH/FTPS separate, non-aegir
-    account for every Aegir Satellite Instance,
+    account for every Ægir Satellite Instance,
     with limited shell to avoid using commands
     like "drush up" since they should never be used
-    on sites managed in the Aegir system.
+    on sites managed in the Ægir system.
 
 2.  Octopus now by default sends a welcome email
     with some useful intro information and access
     details to the address defined as _CLIENT_EMAIL.
 
 3.  When Octopus is used the first time to create
-    an Aegir Satellite Instance, it doesn't allow
+    an Ægir Satellite Instance, it doesn't allow
     to skip installing all platforms, since it is
     recommended to add all available platforms with
     initial install, for easier re-using the code
-    by next Aegir Satellite Instances.
+    by next Ægir Satellite Instances.
 
 4.  The second and all future non-core Hostmaster
     installs allow to choose one or more platforms
     or to skip adding platforms at all.
 
 5.  Octopus by default honors initial domain used
-    for the Aegir Satellite Instance on every
+    for the Ægir Satellite Instance on every
     upgrade to avoid mistakes with using different
-    copies of the script for different Aegir
+    copies of the script for different Ægir
     Satellite Instances upgrades.
 
 6.  Also Barracuda will always honor initial
@@ -9584,7 +9829,7 @@ Added/Fixed: (upgrade recommended)
 
 10. Nginx version set to 0.8.50.
 
-11. By default Aegir 0.4-HEAD instead of alpha13
+11. By default Ægir 0.4-HEAD instead of alpha13
     is now installed to fix critical issues with
     importing sites.
 
@@ -9626,17 +9871,17 @@ Added/Fixed: (upgrade recommended)
 
 Added/Fixed: (upgrade recommended because it works!)
 
-1. Upgrade of Aegir Master Instance by Barracuda
-   and upgrade of Aegir Satellite Instances by Octopus
+1. Upgrade of Ægir Master Instance by Barracuda
+   and upgrade of Ægir Satellite Instances by Octopus
    finally works as expected.
 
 2. It is now possible to use Barracuda to install
-   environment and Aegir Master Instance, to
-   upgrade only environment, to upgrade only Aegir
+   environment and Ægir Master Instance, to
+   upgrade only environment, to upgrade only Ægir
    Master Instance, or both at the same time.
 
 3. Octopus now can separately install and/or upgrade
-   any Aegir Satellite Instance or any platform
+   any Ægir Satellite Instance or any platform
    on any instance, separately, using detailed prompt
    with version numbers and links to distributions
    home pages.
@@ -9649,14 +9894,14 @@ Added/Fixed: (upgrade recommended because it works!)
 
 Added/Fixed: (upgrade recommended)
 
-1. By default Aegir 0.4-HEAD with Drush 3.3
+1. By default Ægir 0.4-HEAD with Drush 3.3
    is now installed to fix critical issues with
    importing sites. The fix is also available
    as a patch for alpha12:
    http://drupal.org/node/882970#comment-3382542
 
 2. Both Barracuda and Octopus now allow to choose
-   if the Aegir Hostmaster will be upgraded or not.
+   if the Ægir Hostmaster will be upgraded or not.
 
 3. Added versions numbers and links to all platforms
    Yes/no prompts.
@@ -9673,7 +9918,7 @@ Added/Fixed: (upgrade recommended)
 
 Added/Fixed: (upgrade optional)
 
-1. Octopus now allows to install or upgrade only Aegir
+1. Octopus now allows to install or upgrade only Ægir
    Satellite Instance without any platforms added.
 
 2. Enabled again early exit on the first error to avoid
@@ -9691,9 +9936,9 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 2. Barracuda now can upgrade packages selectively.
    Just run it again to upgrade the system and the
-   Aegir Master Instance.
+   Ægir Master Instance.
 
-3. Octopus can create many Aegir Satellite Instances
+3. Octopus can create many Ægir Satellite Instances
    on the same server, each with different set of platforms,
    but with ability to share the code between instances,
    so you can use this system even on the low end VPS.
@@ -9706,7 +9951,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 Added/Fixed: (upgrade from previous versions recommended)
 
-1. By default Aegir 0.4-alpha12 with Drush 3.3
+1. By default Ægir 0.4-alpha12 with Drush 3.3
    is now installed.
 
 2. Introduced new Octopus and Barracuda installers.
@@ -9720,7 +9965,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 Added/Fixed: (upgrade from previous versions recommended)
 
-1. By default Aegir 0.4-HEAD with Drush 3.3
+1. By default Ægir 0.4-HEAD with Drush 3.3
    is now installed.
 
 2. Introduced support for Virtuozzo/OpenVZ IP address
@@ -9731,7 +9976,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 Added/Fixed: (upgrade from previous versions recommended)
 
-1. By default Aegir 0.4-alpha11 with Drush 3.3
+1. By default Ægir 0.4-alpha11 with Drush 3.3
    is now installed.
 
 2. PHP-FPM version is now 5.2.14.
@@ -9740,14 +9985,14 @@ Added/Fixed: (upgrade from previous versions recommended)
    are now displayed.
 
 4. Hostmaster root directory now properly named using
-   Aegir version: '-0.4-alpha11' or '-HEAD'.
+   Ægir version: '-0.4-alpha11' or '-HEAD'.
 
 
 ### Thu, 2010-08-12 06:10 - Edition 0.4-alpha10-A10.A
 
 Added/Fixed: (upgrade from previous versions recommended)
 
-1. By default Aegir 0.4-alpha10 with Drush 3.3
+1. By default Ægir 0.4-alpha10 with Drush 3.3
    is now installed.
 
 2. Nginx version is now 0.8.49, MariaDB is 5.1.49
@@ -9788,11 +10033,11 @@ Added/Fixed: (upgrade of existing installs not required)
    change of URL to the required php library:
    http://drupal.org/node/875196
 
-2. Aegir version is now configurable. By default latest
+2. Ægir version is now configurable. By default latest
    0.4-alpha9 will be installed, but it is also possible
    to install latest HEAD from git.aegirproject.org.
 
-3. Aegir front-end (sub)domain is now configurable and
+3. Ægir front-end (sub)domain is now configurable and
    can be different than machine FQDN hostname.
 
 4. Machine FQDN hostname and IP is now configurable.
@@ -9839,7 +10084,7 @@ Added/Fixed:
 Added/Removed:
 
 1. New all-in-one installer for Debian 5.0 Lenny
-   Aegir 0.4-alpha9 compatible.
+   Ægir 0.4-alpha9 compatible.
 
 2. Removed deprecated scripts & how-to.
 

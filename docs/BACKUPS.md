@@ -45,7 +45,7 @@
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default 'warning' -- [ewnid]
-    _AWS_EXB='Exclude Aegir Backups'      ### [O] By default 'YES' -- can be YES/NO
+    _AWS_EXB='Exclude Ægir Backups'       ### [O] By default 'YES' -- can be YES/NO
 ```
 
     For more detailed exclude/include configuration see notes further below.

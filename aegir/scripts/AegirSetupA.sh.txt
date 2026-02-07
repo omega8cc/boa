@@ -3,7 +3,7 @@
 
 ###----------------------------------------###
 ###
-###  Octopus Aegir Installer
+###  Octopus Ægir Installer
 ###
 ###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
@@ -187,7 +187,7 @@ fi
 ###
 if [ "$(id -u)" -eq 0 ]; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "${_STATUS} A: Aegir automated install script part A"
+    _msg "${_STATUS} A: Ægir automated install script part A"
   fi
 else
   _msg "${_STATUS} A: FATAL ERROR: This script should be run as a root user"
@@ -225,7 +225,7 @@ _satellite_run_child_b
 ### Run accelerated tasks queue
 ###
 if [ -e "/var/xdrago/run-${_USER}" ]; then
-  _msg "${_STATUS} A: Aegir accelerated task queue will run for 60 seconds..."
+  _msg "${_STATUS} A: Ægir accelerated task queue will run for 60 seconds..."
   su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${_vSet} hosting_queue_tasks_items 3" &> /dev/null
   _msg "${_STATUS} A: Please wait..."
   for _iteration in {1..10}; do
@@ -260,7 +260,7 @@ _satellite_display_url_finalize
 
 ###----------------------------------------###
 ###
-###  Octopus Aegir Installer
+###  Octopus Ægir Installer
 ###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
