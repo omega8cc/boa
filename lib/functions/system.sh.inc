@@ -5620,6 +5620,7 @@ _if_enforce_apparmor_profiles() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "ARMR: Restarting services to switch them to the enforced mode"
         fi
+        _sql_conf_update
         _mrun "bash /var/xdrago/move_sql.sh"
         wait
         if [ -e "/etc/init.d/valkey-server" ]; then
@@ -9888,14 +9889,15 @@ _initd_update() {
           _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
           _msg "INFO: ${_DB_SERVER} ${_myUptime}"
         fi
-        if [ "${_myRstrd}" = "YES" ]; then
-          _myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} already restarted!"
-        fi
+#         if [ "${_myRstrd}" = "YES" ]; then
+#           _myCnfUpdate=NO
+#           _msg "INFO: ${_DB_SERVER} already restarted!"
+#         fi
         if [ "${_myCnfUpdate}" = "YES" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
+          _sql_conf_update
           _mrun "bash /var/xdrago/move_sql.sh"
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
