@@ -2960,7 +2960,7 @@ _satellite_download_for_local_build() {
       _get_dev_stc "tfa-7.x-2.1.tar.gz"
       _get_dev_stc "timeago-7.x-2.3.tar.gz"
       _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
-      _get_dev_stc "views-7.x-3.29.tar.gz"
+      _get_dev_stc "views-7.x-3.30.tar.gz"
       ### Ægir Third Party Libraries
       _get_dev_stc "qrcodejs.tar.gz"
       _get_dev_stc "timeagojs.tar.gz"
