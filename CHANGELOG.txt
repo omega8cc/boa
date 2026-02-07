@@ -88,7 +88,7 @@
    responsive (and stay that way during spikes), this is genuinely good news.
    Why is this a big deal? What should visitors notice?
 
-   Read the full story: https://github.com/omega8cc/boa/tree/5.x-dev/HTTP3.md
+   Read the full story: https://github.com/omega8cc/boa/tree/5.x-pro/HTTP3.md
 
  * Percona 8.4 comes to Excalibur. We no longer need vanilla MySQL 8.4 now that
    Percona has released its own build for Debian Trixie, which can be used on
