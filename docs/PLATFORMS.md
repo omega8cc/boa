@@ -33,7 +33,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.6.3](https://drupal.org/project/drupal/releases/10.6.3)
 - [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [farmOS 3.5.1](https://drupal.org/project/farm) (10.6.3)
+- [farmOS 3.5.1](https://drupal.org/project/farm) (10.6.2)
 - [LocalGov 3.4.0](https://drupal.org/project/localgov) (10.6.3)
 - [OpenCulturas 2.5.4](https://drupal.org/project/openculturas) (10.5.8)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
