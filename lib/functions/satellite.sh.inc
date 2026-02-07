@@ -1920,7 +1920,7 @@ _satellite_download_o_contrib_eleven() {
     _msg "${_STATUS} A: Downloading o_contrib_eleven modules..."
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
-  _get_dev_contrib "readonlymode-8.x-1.3.tar.gz"
+  _get_dev_contrib "readonlymode-8.x-1.4.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1945,7 +1945,7 @@ _satellite_download_o_contrib_ten() {
     _msg "${_STATUS} A: Downloading o_contrib_ten modules..."
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
-  _get_dev_contrib "readonlymode-8.x-1.3.tar.gz"
+  _get_dev_contrib "readonlymode-8.x-1.4.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
