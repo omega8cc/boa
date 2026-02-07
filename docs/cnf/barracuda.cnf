@@ -11,7 +11,7 @@
 _EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_SETUP
 _LOCAL_NETWORK_HN="" #---------- Hostname if in localhost mode - auto-conf
 _LOCAL_NETWORK_IP="" #---------- Web server IP if in localhost mode - auto-conf
-_MY_FRONT="master.f-q-d-n" #---- URL of the Aegir Master Instance control panel
+_MY_FRONT="master.f-q-d-n" #---- URL of the Ægir Master Instance control panel
 _MY_HOSTN="f-q-d-n" #----------- Allows to define server hostname
 _MY_OWNIP="123.45.67.89" #------ Allows to specify web server IP if not default
 _SMTP_RELAY_HOST="" #----------- Allows to configure simple SMTP relay (w/o pwd)
@@ -136,8 +136,8 @@ _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ###
 ### Note that weekly system upgrade will start shortly after midnight on the
 ### specified weekday, while the day/month upgrades for both Barracuda
-### and all Octopus instances will start at ~3 AM for system and Aegir Master
-### instance, and ~4 AM for all Octopus based Aegir instances.
+### and all Octopus instances will start at ~3 AM for system and Ægir Master
+### instance, and ~4 AM for all Octopus based Ægir instances.
 ###
 ### NOTE: All three _AUTO_UP_* variables must be defined to enable auto-upgrade.
 ###

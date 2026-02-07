@@ -668,7 +668,7 @@ sent before, this site is scheduled for automated shutdown
 to prevent further damage for the site owner and visitors.
 
 Once the site is disabled, the only way to re-enable it again
-is to run the Verify task in your Aegir control panel.
+is to run the Verify task in your Ægir control panel.
 
 But if you will enable the site and not fix it immediately,
 it will be shut down automatically again.
@@ -691,7 +691,7 @@ how to survive #Drupageddon, please read:
   https://omega8.cc/drupageddon-psa-2014-003-342
 
 --
-This email has been sent by your Aegir automatic system monitor.
+This email has been sent by your Ægir automatic system monitor.
 
 EOF
   fi
@@ -745,7 +745,7 @@ The how-to for PHP-FPM version switch can be found at:
   https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
 --
-This email has been sent by your Aegir automatic system monitor.
+This email has been sent by your Ægir automatic system monitor.
 
 EOF
   fi
@@ -811,7 +811,7 @@ The how-to for PHP-FPM version switch can be found at:
   https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
 --
-This email has been sent by your Aegir automatic system monitor.
+This email has been sent by your Ægir automatic system monitor.
 
 EOF
   fi
