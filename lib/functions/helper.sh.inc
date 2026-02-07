@@ -432,7 +432,7 @@ _mode_detection() {
         rm -f /usr/bin/drush
       else
         ###--------------------###
-        _msg "FATAL ERROR: Something went wrong, Aegir Master exists but looks broken!"
+        _msg "FATAL ERROR: Something went wrong, Ægir Master exists but looks broken!"
         _msg "HINT: Please check /var/log/boa/aegir_install.log for details, and then"
         _msg "HINT: run the same install command again to complete installation."
         _msg "HINT: You can also enforce installation with empty control file:"
@@ -927,7 +927,7 @@ _os_detection() {
   echo " "
   _thiSys="${_OS_DIST}/${_OS_CODE}"
   _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys}"
-  _msg "Aegir on ${_thiSys}"
+  _msg "Ægir on ${_thiSys}"
   echo " "
 }
 

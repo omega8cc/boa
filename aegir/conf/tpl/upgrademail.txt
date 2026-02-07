@@ -1,20 +1,20 @@
 Hello,
 
-We are pleased to inform you that your Aegir instance has been successfully upgraded to our special anniversary edition [boa.version]
+We are pleased to inform you that your Ægir instance has been successfully upgraded to our special anniversary edition [boa.version]
 
 @=> 30 Years of Heritage -- Why We’re Different
 
-We are unique within the hosting industry for many important reasons. Our 15 years of Aegir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take Open Source seriously, it's not a buzzword for us. It's about freedom from corporate control. Here's a short look back at our 15-year Aegir journey and 19 years with Drupal.
+We are unique within the hosting industry for many important reasons. Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take Open Source seriously, it's not a buzzword for us. It's about freedom from corporate control. Here's a short look back at our 15-year Ægir journey and 19 years with Drupal.
 
 Read the full story: https://bit.ly/different30y
 
-@=> The Future of Aegir 3 is Bryght!
+@=> The Future of Ægir 3 is Bryght!
 
-Omega8.cc is now the lead developer team for Aegir 3 running on BOA (Barracuda-Octopus-Aegir stack). We want to thank all past contributors who brought Aegir to life – your work makes today’s progress possible. Because of you, there is still a Bryght Future for Aegir. What to Expect?
+Omega8.cc is now the lead developer team for Ægir 3 running on BOA (Barracuda-Octopus-Ægir stack). We want to thank all past contributors who brought Ægir to life – your work makes today’s progress possible. Because of you, there is still a Bryght Future for Ægir. What to Expect?
 
 Read the full story: https://bit.ly/aegirbryghtfuture
 
-@=> You can access your upgraded Aegir instance at the following URL:
+@=> You can access your upgraded Ægir instance at the following URL:
 
   https://aegir.url.name
 
@@ -26,7 +26,7 @@ Read the full story: https://bit.ly/aegirbryghtfuture
 
   ~/static/control/README.txt
 
-Thank you for choosing Aegir!
+Thank you for choosing Ægir!
 
 Best regards,
 The BOA Dev Team

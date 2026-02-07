@@ -3,7 +3,7 @@
 
 ###----------------------------------------###
 ###
-###  Barracuda Aegir Installer
+###  Barracuda Ægir Installer
 ###
 ###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
@@ -182,7 +182,7 @@ _hostmaster_mv_up() {
 #
 _hostmaster_go_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Installing Aegir Provision backend..."
+    _msg "INFO: Installing Ægir Provision backend..."
   fi
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   rm -rf ${_ROOT}/.drush/drush_make
@@ -543,7 +543,7 @@ fi
 
 ###----------------------------------------###
 ###
-###  Barracuda Aegir Installer
+###  Barracuda Ægir Installer
 ###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###

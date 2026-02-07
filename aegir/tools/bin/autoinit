@@ -483,7 +483,7 @@ _init_mnfr() {
 }
 
 ###
-### Check Aegir
+### Check Ægir
 ###
 _init_aegir() {
   if [ -e "/var/aegir" ]; then

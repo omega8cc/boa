@@ -1,6 +1,6 @@
-# Drupal 11 with Aegir 3: They Said It Couldn’t Be Done — We Did It Anyway
+# Drupal 11 with Ægir 3: They Said It Couldn’t Be Done — We Did It Anyway
 
-The future of Drupal hosting is here! With BOA-5.7.11 PRO, we proudly deliver what many thought impossible—full Drupal 11 support integrated with Aegir 3.
+The future of Drupal hosting is here! With BOA-5.7.11 PRO, we proudly deliver what many thought impossible—full Drupal 11 support integrated with Ægir 3.
 
 This groundbreaking feature not only pushes the boundaries of what the BOA can achieve but also reaffirms our commitment to staying ahead of the curve for modern Drupal deployments.
 

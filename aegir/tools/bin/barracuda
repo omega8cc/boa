@@ -540,7 +540,7 @@ _check_report() {
   _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
   _RESULT_KERNEL=$(grep "NOTE: Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
   _RESULT_REBOOT=$(grep "NOTE: Please reboot this server" ${_UP_LOG} 2>&1)
-  _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" ${_UP_LOG} 2>&1)
+  _RESULT_ENJOY=$(grep "Enjoy your Ægir Hosting System" ${_UP_LOG} 2>&1)
   _RESULT_RLLY=$(grep "RLLY: No errors" ${_UP_LOG} 2>&1)
   _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
   _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
@@ -552,7 +552,7 @@ _check_report() {
     || [[ "${_RESULT_TEST_CARD}" =~ "binary file matches" ]] \
     || [[ "${_RESULT_RLLY}" =~ "RLLY: No errors" ]] \
     || [[ "${_RESULT_RLLY}" =~ "binary file matches" ]] \
-    || [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir" ]] \
+    || [[ "${_RESULT_ENJOY}" =~ "Enjoy your Ægir" ]] \
     || [[ "${_RESULT_ENJOY}" =~ "binary file matches" ]]; then
     if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]] \
       || [[ "${_RESULT_APT_FAIL}" =~ "binary file matches" ]]; then
@@ -1915,9 +1915,9 @@ _if_display_help() {
       php-idle <----- disable not used PHP versions or enable them again
 
     {mode}
-      system <------- upgrade only system without Aegir Master (silent mode)
-      aegir <-------- upgrade only Aegir Master Hostmaster (silent mode)
-      log <---------- upgrade both system and Aegir Master (silent mode)
+      system <------- upgrade only system without Ægir Master (silent mode)
+      aegir <-------- upgrade only Ægir Master Hostmaster (silent mode)
+      log <---------- upgrade both system and Ægir Master (silent mode)
 
     {options}
       newrelickey <-- activate New Relic integration with valid license key

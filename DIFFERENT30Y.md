@@ -24,7 +24,7 @@ At the same time, we stayed away from MariaDB, because it drifted away from MySQ
 
 Bottom line: BOA is **architected around technological freedom and independence**. We work for you — not for Oracle, Red Hat, investors or proprietary agendas. That matters, especially for universities, NGOs, and businesses who rely on no-compromise sovereignty. Make your high-traffic demanding Drupal sites **Lightning Fast and Secure** with our [**Pro Hosted Plans &raquo;**](https://omega8.cc/pro)
 
-<img width="1215" height="1264" alt="Aegir-BOA" src="https://github.com/user-attachments/assets/b2417cc7-2fb8-422c-96f8-71d12c1c2fd7" />
+<img width="1215" height="1264" alt="Ægir-BOA" src="https://github.com/user-attachments/assets/b2417cc7-2fb8-422c-96f8-71d12c1c2fd7" />
 
 ## Support for legacy Drupal versions
 

@@ -14,13 +14,13 @@
    When invoked via `boa` command, it will run installation is several steps, automatically:
 
    1. The `autoinit` phase to upgrade vendor provided OS to Devuan Daedalus
-   2. The `barracuda install` phase to install BOA system and Aegir Master
+   2. The `barracuda install` phase to install BOA system and Ægir Master
    3. The `barracuda upgrade` phase to complete system installation
-   4. The `octopus install` phase to install your first Aegir Satellite
-   5. The `octopus upgrade` phase to enable Let's Encrypt certificate for your Aegir
+   4. The `octopus install` phase to install your first Ægir Satellite
+   5. The `octopus upgrade` phase to enable Let's Encrypt certificate for your Ægir
    6. The `barracuda upgrade` phase again to install CSF firewall and DNS cache
 
-   **NOTE!** While steps 2-5 will be visible to you in your SSH terminal (unless you will use silent mode explained further below), the last step will happen within 30 minutes launched from cron in the background, so it's important that you don't reboot and don't use the installed Aegir before the last step is complete.
+   **NOTE!** While steps 2-5 will be visible to you in your SSH terminal (unless you will use silent mode explained further below), the last step will happen within 30 minutes launched from cron in the background, so it's important that you don't reboot and don't use the installed Ægir before the last step is complete.
 
    **But how you will know it's ready?** Once all procedures are finalized you will see **three (3) lines** reported by this command:
 

@@ -1,6 +1,6 @@
-# Troubleshooting Common Aegir Workflow Issues
+# Troubleshooting Common Ægir Workflow Issues
 
-This guide addresses common issues that may arise when working with Aegir, Drush, and Composer, and outlines steps to resolve them.
+This guide addresses common issues that may arise when working with Ægir, Drush, and Composer, and outlines steps to resolve them.
 
 ### 1. **Task Failure: Error - Declaration of `Drupal\Core\Logger\LoggerChannel`**
 
@@ -19,7 +19,7 @@ If a task fails due to this error, it is crucial to follow the **full recovery c
 3. **Platform Verify + Lock Drush Again:**
    After unlocking Drush, run `Platform Verify + Lock Drush` once more to finalize the recovery.
 
-This full cycle is necessary because certain tasks in Aegir may patch or unpatch the core on the fly or adjust file permissions. When an issue like a PHP version mismatch or a codebase error occurs, the platform can go out of sync, requiring multiple steps to fully restore it.
+This full cycle is necessary because certain tasks in Ægir may patch or unpatch the core on the fly or adjust file permissions. When an issue like a PHP version mismatch or a codebase error occurs, the platform can go out of sync, requiring multiple steps to fully restore it.
 
-By following this process, you ensure that the platform and site are properly aligned, allowing future Aegir tasks to succeed.
+By following this process, you ensure that the platform and site are properly aligned, allowing future Ægir tasks to succeed.
 
