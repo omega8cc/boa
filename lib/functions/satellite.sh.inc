@@ -3993,6 +3993,11 @@ _satellite_make() {
   echo "export _DRUPAL10_5_P=\"${_DRUPAL10_5}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL10_5_S=\"${_DRUPAL10_5}-stage\""       >> ${_writeTo}
 
+  echo "export _DRUPAL10_6=\"${_DRUPAL10_6}\""               >> ${_writeTo}
+  echo "export _DRUPAL10_6_D=\"${_DRUPAL10_6}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL10_6_P=\"${_DRUPAL10_6}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL10_6_S=\"${_DRUPAL10_6}-stage\""       >> ${_writeTo}
+
   echo "export _DRUPAL11_1=\"${_DRUPAL11_1}\""               >> ${_writeTo}
   echo "export _DRUPAL11_1_D=\"${_DRUPAL11_1}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL11_1_P=\"${_DRUPAL11_1}-prod\""        >> ${_writeTo}
@@ -4002,6 +4007,11 @@ _satellite_make() {
   echo "export _DRUPAL11_2_D=\"${_DRUPAL11_2}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL11_2_P=\"${_DRUPAL11_2}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_2_S=\"${_DRUPAL11_2}-stage\""       >> ${_writeTo}
+
+  echo "export _DRUPAL11_3=\"${_DRUPAL11_3}\""               >> ${_writeTo}
+  echo "export _DRUPAL11_3_D=\"${_DRUPAL11_3}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL11_3_P=\"${_DRUPAL11_3}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL11_3_S=\"${_DRUPAL11_3}-stage\""       >> ${_writeTo}
 
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}

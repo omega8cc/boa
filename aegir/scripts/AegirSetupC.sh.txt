@@ -867,31 +867,33 @@ declare -A _distros_names=(
   ["DX3"]="Drupal"
   ["DX4"]="Drupal"
   ["DX5"]="Drupal"
+  ["DX6"]="Drupal"
   ["DE1"]="Drupal"
   ["DE2"]="Drupal"
+  ["DE3"]="Drupal"
 )
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CMS"]="1.2.8"
+  ["CMS"]="2.0.0"
   ["CK1"]="2.77"
   ["CK2"]="2.40"
   ["CK3"]="3.2.0"
   ["DXP"]="10.3.0"
   ["EZC"]="2.2.15"
-  ["FOS"]="3.4.6"
-  ["LGV"]="3.3.1"
+  ["FOS"]="3.5.1"
+  ["LGV"]="3.4.0"
   ["OCS"]="2.5.4"
   ["OFD"]="12.2.4"
   ["OLS"]="2.0.0"
   ["OPG"]="3.1.0"
   ["SCR"]="11.0.x-dev"
   ["SOC"]="12.4.5"
-  ["THR"]="8.2.6"
+  ["THR"]="8.3.1"
   ["UC6"]="2.15"
   ["UC7"]="3.13"
-  ["VB9"]="9.1.12"
-  ["VBX"]="10.0.8"
+  ["VB9"]="9.1.13"
+  ["VBX"]="10.1.0"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
@@ -901,31 +903,33 @@ declare -A _distros_versions=(
   ["DX3"]="${_SMALLCORE10_3_V}"
   ["DX4"]="${_SMALLCORE10_4_V}"
   ["DX5"]="${_SMALLCORE10_5_V}"
+  ["DX6"]="${_SMALLCORE10_6_V}"
   ["DE1"]="${_SMALLCORE11_1_V}"
   ["DE2"]="${_SMALLCORE11_2_V}"
+  ["DE3"]="${_SMALLCORE11_3_V}"
 )
 
 # Define distros Drupal cores versions for configuration
 declare -A _distros_drupal_cores=(
-  ["CMS"]="${_SMALLCORE11_2_V}"
+  ["CMS"]="${_SMALLCORE11_3_V}"
   ["CK1"]="${_SMALLCORE7_V}"
   ["CK2"]="${_SMALLCORE10_1_V}"
-  ["CK3"]="${_SMALLCORE11_2_V}"
+  ["CK3"]="${_SMALLCORE11_3_V}"
   ["DXP"]="10.3.6"
   ["EZC"]="10.3.6"
-  ["FOS"]="${_SMALLCORE10_4_V}"
-  ["LGV"]="${_SMALLCORE10_5_V}"
+  ["FOS"]="${_SMALLCORE10_6_V}"
+  ["LGV"]="${_SMALLCORE10_6_V}"
   ["OCS"]="${_SMALLCORE10_5_V}"
   ["OFD"]="10.2.10"
   ["OLS"]="${_SMALLCORE9_V}"
   ["OPG"]="${_SMALLCORE9_V}"
-  ["SCR"]="${_SMALLCORE11_2_V}"
+  ["SCR"]="${_SMALLCORE11_3_V}"
   ["SOC"]="10.2.10"
   ["THR"]="${_SMALLCORE11_2_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
-  ["VB9"]="10.5.2"
-  ["VBX"]="${_SMALLCORE10_5_V}"
+  ["VB9"]="10.6.1"
+  ["VBX"]="11.3.1"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
@@ -935,8 +939,10 @@ declare -A _distros_drupal_cores=(
   ["DX3"]="${_SMALLCORE10_3_V}"
   ["DX4"]="${_SMALLCORE10_4_V}"
   ["DX5"]="${_SMALLCORE10_5_V}"
+  ["DX6"]="${_SMALLCORE10_6_V}"
   ["DE1"]="${_SMALLCORE11_1_V}"
   ["DE2"]="${_SMALLCORE11_2_V}"
+  ["DE3"]="${_SMALLCORE11_3_V}"
 )
 
 # Define distros profiles names for configuration
@@ -969,8 +975,10 @@ declare -A _distros_profiles_names=(
   ["DX3"]="standard"
   ["DX4"]="standard"
   ["DX5"]="standard"
+  ["DX6"]="standard"
   ["DE1"]="standard"
   ["DE2"]="standard"
+  ["DE3"]="standard"
 )
 
 # Define distros profiles paths for configuration
@@ -1003,8 +1011,10 @@ declare -A _distros_profiles_paths=(
   ["DX3"]="/"
   ["DX4"]="/"
   ["DX5"]="/"
+  ["DX6"]="/"
   ["DE1"]="/"
   ["DE2"]="/"
+  ["DE3"]="/"
 )
 
 # Define distros web dirs for configuration
@@ -1037,8 +1047,10 @@ declare -A _distros_web_dirs=(
   ["DX3"]="/web"
   ["DX4"]="/web"
   ["DX5"]="/web"
+  ["DX6"]="/web"
   ["DE1"]="/web"
   ["DE2"]="/web"
+  ["DE3"]="/web"
 )
 
 # Define distros names and their URLs for information
@@ -1071,13 +1083,15 @@ declare -A _distros_urls=(
   ["DX3"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_3_V}"
   ["DX4"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_4_V}"
   ["DX5"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_5_V}"
+  ["DX6"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_6_V}"
   ["DE1"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_1_V}"
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
+  ["DE3"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_3_V}"
 )
 
 # Define distros names and their compatible max PHP versions for information
 declare -A _distros_php_versions=(
-  ["CMS"]="8.3"
+  ["CMS"]="8.4"
   ["CK1"]="7.4"
   ["CK2"]="8.3"
   ["CK3"]="8.4"
@@ -1095,7 +1109,7 @@ declare -A _distros_php_versions=(
   ["UC6"]="7.4"
   ["UC7"]="7.4"
   ["VB9"]="8.3"
-  ["VBX"]="8.3"
+  ["VBX"]="8.4"
   ["DL6"]="7.4"
   ["DL7"]="8.3"
   ["DL9"]="8.3"
@@ -1105,8 +1119,10 @@ declare -A _distros_php_versions=(
   ["DX3"]="8.3"
   ["DX4"]="8.3"
   ["DX5"]="8.3"
+  ["DX6"]="8.3"
   ["DE1"]="8.4"
   ["DE2"]="8.4"
+  ["DE3"]="8.4"
 )
 
 
@@ -1464,14 +1480,22 @@ _d_dist_platform_install() {
 _d_core_platform_install() {
 ###---### Template function for core-only-type platforms
 #
-  if [ "${1}" = "DE2" ]; then
-    _CORE_DEV="${_DRUPAL11_2_D}"
-    _CORE_STG="${_DRUPAL11_2_S}"
-    _CORE_PRD="${_DRUPAL11_2_P}"
-  elif [ "${1}" = "DE1" ]; then
+  if [ "${1}" = "DE1" ]; then
     _CORE_DEV="${_DRUPAL11_1_D}"
     _CORE_STG="${_DRUPAL11_1_S}"
     _CORE_PRD="${_DRUPAL11_1_P}"
+  elif [ "${1}" = "DE2" ]; then
+    _CORE_DEV="${_DRUPAL11_2_D}"
+    _CORE_STG="${_DRUPAL11_2_S}"
+    _CORE_PRD="${_DRUPAL11_2_P}"
+  elif [ "${1}" = "DE3" ]; then
+    _CORE_DEV="${_DRUPAL11_3_D}"
+    _CORE_STG="${_DRUPAL11_3_S}"
+    _CORE_PRD="${_DRUPAL11_3_P}"
+  elif [ "${1}" = "DX6" ]; then
+    _CORE_DEV="${_DRUPAL10_6_D}"
+    _CORE_STG="${_DRUPAL10_6_S}"
+    _CORE_PRD="${_DRUPAL10_6_P}"
   elif [ "${1}" = "DX5" ]; then
     _CORE_DEV="${_DRUPAL10_5_D}"
     _CORE_STG="${_DRUPAL10_5_S}"
