@@ -44,10 +44,10 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=585ltsT01
+export _tRee=dev
+export _xSrl=591devT01
 export _rLsn="BOA-5.9.1"
-export _bTs=585v02
+export _bTs=591v01
 
 ###
 ### Avoid too many questions
