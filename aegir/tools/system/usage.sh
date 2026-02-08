@@ -909,8 +909,8 @@ EOF
 
         _if_hosted_sys
         if [ "${_hostedSys}" = "YES" ]; then
-          _check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
+            _check_limits
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
               variable-set --always-set site_footer 'Usage on ${_DATE} \
               | Files <strong>${_TotSizH}</strong> MB \
@@ -967,6 +967,16 @@ EOF
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
             _check_limits
+            su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
+              variable-set --always-set site_footer 'Usage on ${_DATE} \
+              | Files <strong>${_TotSizH}</strong> MB \
+              | LiveDb <strong>${_SumDatH}</strong> MB \
+              | DevDb <strong>${_SkipDtH}</strong> MB \
+              | <strong>${_CLIENT_CORES}</strong> \
+              ${_CLIENT_OPTION} ${_ENGINE_NR} \
+              | CLI <strong>${_CLIENT_CLI}</strong> \
+              | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
+            wait
             if [ ! -e "${_usEr}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
               && [ ! -e "${_usEr}/log/proxied.pid" ]; then
