@@ -1,5 +1,6 @@
 
 _check_mysql_version() {
+  _DB_V=
   _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -15,6 +16,9 @@ _check_mysql_version() {
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DBST: via _check_mysql_version ${_DB_V}"
   fi
 }
 
@@ -574,20 +578,26 @@ _sql_conf_update() {
     else
       # Determine the Percona version (assuming _DB_V is set to the version number, e.g., "5.7" or "8.0" or "8.4")
       if [ "${_DB_V}" = "8.4" ]; then
-        # Enable legacy mysql_native_password for Percona 8.4
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DBST: Enable legacy mysql_native_password for Percona ${_DB_V}"
+        fi
         sed -i -E \
           -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
           -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
           /etc/mysql/my.cnf &> /dev/null
       fi
       if [ "${_DB_V}" = "5.7" ]; then
-        # Disable performance_schema for Percona 5.7
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DBST: Disable performance_schema for Percona ${_DB_V}"
+        fi
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=OFF/" \
           -e "s/^(\s*)performance_schema_.*=.*/\1#&/" \
           /etc/mysql/my.cnf &> /dev/null
       else
-        # Enable performance_schema for Percona 8.0
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DBST: Enable performance_schema for Percona ${_DB_V}"
+        fi
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
           -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
@@ -1100,7 +1110,11 @@ _prep_for_install_db_sql() {
   elif [ "${_DB_SERIES}" = "8.0" ]; then
     _SQLADD="libperconaserverclient21 libperconaserverclient21-dev"
   else
-    _SQLADD="libperconaserverclient22 libperconaserverclient22-dev percona-telemetry-agent"
+    _SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
+  fi
+
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _SQLADD="${_SQLADD} percona-telemetry-agent"
   fi
 
   if [ "${_DB_SERVER}" = "MySQL" ]; then
@@ -1225,8 +1239,14 @@ _forced_mysql_root_password_update() {
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_V}" = "5.7" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "DBST: WITH mysql_native_password BY for Percona ${_DB_V}"
+      fi
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
     else
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "DBST: WITH caching_sha2_password BY for Percona ${_DB_V}"
+      fi
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     fi
     echo "[client]" > /root/.my.cnf

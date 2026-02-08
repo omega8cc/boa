@@ -3,7 +3,7 @@
 ### Stable BOA-5.9.1-pro/lts - HTTP/3 Edition
 ### Date: Sun Feb 8 05:28:17 AM NZDT 2026 in Auckland
 ### Welcome Fast Lane HTTPS: HTTP/3 and KTLS
-### 321 commits since BOA-5.8.5-pro
+### 330 commits since BOA-5.8.5-pro
 ###
 
 @=> 4 NEW, 12 UPDATED, 32 TOTAL Drupal distros/platforms available
@@ -76,7 +76,7 @@
 
   We are thrilled to introduce BOA-5.9.1 PRO/LTS, our 8th release under the
   new branch structure and dual licensing model. It merges 2 months of
-  intense development from the DEV branch, delivering 321 commits packed
+  intense development from the DEV branch, delivering 330 commits packed
   with powerful features, critical fixes, and enhancements.
 
   Thank you to everyone who supports our work by purchasing a BOA PRO license:

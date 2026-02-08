@@ -22,7 +22,7 @@
 
   We are thrilled to introduce BOA-5.9.1 PRO/LTS, our 8th release under the
   new branch structure and dual licensing model. It merges 2 months of
-  intense development from the DEV branch, delivering 321 commits packed
+  intense development from the DEV branch, delivering 330 commits packed
   with powerful features, critical fixes, and enhancements.
 
   Thank you to everyone who supports our work by purchasing a BOA PRO license:
@@ -80,10 +80,8 @@
   we offer hosted BOA for Drupal.
 
   For example, in Canada you can now choose not only **Toronto**, but also
-  **Montreal**, **Calgary**, and **Vancouver**.
-
-  In Australia, it’s no longer just **Sydney** — we also offer **Adelaide**,
-  **Brisbane**, and **Perth**.
+  **Montreal**, **Calgary**, and **Vancouver**. In Australia, it’s no longer
+  just **Sydney** — we also offer **Adelaide**, **Brisbane**, and **Perth**.
 
   We’ve also added an excellent facility in **New Zealand**.
 
