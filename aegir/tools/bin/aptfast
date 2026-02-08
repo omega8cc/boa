@@ -23,7 +23,7 @@ _MAXNUM=5
 #_DOWNLOADER='aria2c -s 20 -j ${_MAXNUM} --http-proxy=http://username:password@proxy_ip:proxy_port -i apt-fast.list'
 
 # axel:
-_DOWNLOADER='cat /opt/tmp/apt-fast.list | xargs -l1 axel -n ${_MAXNUM} -a' # axel
+_DOWNLOADER='cat /opt/tmp/apt-fast.list | xargs -r -l1 axel -n ${_MAXNUM} -a' # axel
 
 ###################################################################
 # DO NOT EDIT BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING! #
@@ -56,7 +56,7 @@ if echo "$@" | grep -q "upgrade\|install\|dist-upgrade"; then
   # Strip out the URI's, and download the packages with Axel for speediness
   # I found this regex elsewhere, showing how to manually strip package URI's you may need...thanks to whoever wrote it
   apt-get -y --print-uris $@ | egrep -o -e "(ht|f)tp://[^\']+" > /opt/tmp/apt-fast.list
-  if [ -e "/opt/tmp/apt-fast.list" ] ; then
+  if [ -s "/opt/tmp/apt-fast.list" ] ; then
 	eval ${_DOWNLOADER}
   fi
   # Install our downloaded packages
