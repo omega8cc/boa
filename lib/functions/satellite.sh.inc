@@ -682,12 +682,6 @@ _satellite_cnf() {
     else
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${_octCnf}
     fi
-    _if_hosted_sys
-    if [ "${_hostedSys}" = "YES" ]; then
-      _LD_DOM=YES
-    else
-      _LD_DOM=NO
-    fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
       if [ -e "${_ROOT}/log/fpm.txt" ]; then
@@ -966,9 +960,6 @@ _satellite_cnf() {
       echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}" >> ${_octCnf}
     fi
 
-    if [ "${_LD_DOM}" = "YES" ]; then
-      _STRONG_PASSWORDS=YES
-    fi
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${_octCnf} 2>&1)
     if [[ "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
       _DO_NOTHING=YES
