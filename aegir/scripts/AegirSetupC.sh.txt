@@ -825,11 +825,17 @@ _create_drupal_core_basic() {
     "DX5")
       _create_drupal_basic_version "10_5"
       ;;
+    "DX6")
+      _create_drupal_basic_version "10_6"
+      ;;
     "DE1")
       _create_drupal_basic_version "11_1"
       ;;
     "DE2")
       _create_drupal_basic_version "11_2"
+      ;;
+    "DE3")
+      _create_drupal_basic_version "11_3"
       ;;
     *)
       echo "Unsupported version code: $version_code"
@@ -925,7 +931,7 @@ declare -A _distros_drupal_cores=(
   ["OPG"]="${_SMALLCORE9_V}"
   ["SCR"]="${_SMALLCORE11_3_V}"
   ["SOC"]="10.2.10"
-  ["THR"]="${_SMALLCORE11_2_V}"
+  ["THR"]="${_SMALLCORE11_3_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
   ["VB9"]="10.6.1"

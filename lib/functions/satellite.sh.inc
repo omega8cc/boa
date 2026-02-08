@@ -4044,8 +4044,10 @@ _satellite_make() {
   echo "export _SMALLCORE10_3_V=\"${_SMALLCORE10_3_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE10_4_V=\"${_SMALLCORE10_4_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE10_5_V=\"${_SMALLCORE10_5_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE10_6_V=\"${_SMALLCORE10_6_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_1_V=\"${_SMALLCORE11_1_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_2_V=\"${_SMALLCORE11_2_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE11_3_V=\"${_SMALLCORE11_3_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
