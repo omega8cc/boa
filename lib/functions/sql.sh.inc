@@ -579,7 +579,7 @@ _sql_conf_update() {
       # Determine the Percona version (assuming _DB_V is set to the version number, e.g., "5.7" or "8.0" or "8.4")
       if [ "${_DB_V}" = "8.4" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PROC: Enable legacy mysql_native_password for Percona ${_DB_V}"
+          _msg "DBST: Enable legacy mysql_native_password for Percona ${_DB_V}"
         fi
         sed -i -E \
           -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
@@ -588,7 +588,7 @@ _sql_conf_update() {
       fi
       if [ "${_DB_V}" = "5.7" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PROC: Disable performance_schema for Percona ${_DB_V}"
+          _msg "DBST: Disable performance_schema for Percona ${_DB_V}"
         fi
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=OFF/" \
@@ -596,7 +596,7 @@ _sql_conf_update() {
           /etc/mysql/my.cnf &> /dev/null
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PROC: Enable performance_schema for Percona ${_DB_V}"
+          _msg "DBST: Enable performance_schema for Percona ${_DB_V}"
         fi
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
@@ -1240,12 +1240,12 @@ _forced_mysql_root_password_update() {
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_V}" = "5.7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "PROC: WITH mysql_native_password BY for Percona ${_DB_V}"
+        _msg "DBST: WITH mysql_native_password BY for Percona ${_DB_V}"
       fi
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "PROC: WITH caching_sha2_password BY for Percona ${_DB_V}"
+        _msg "DBST: WITH caching_sha2_password BY for Percona ${_DB_V}"
       fi
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     fi
