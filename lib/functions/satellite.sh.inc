@@ -6143,16 +6143,13 @@ _satellite_child_b_aegir_ui_enhance() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
-      _if_hosted_sys
-      if [ "${_hostedSys}" = "YES" ]; then
-        pBy="Octopus System powered by Barracuda"
-        ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}" &> /dev/null
-        cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
-        mv -f make_home.php.txt make_home.php &> /dev/null
-        ${_DRUSHCMD} php-script make_home &> /dev/null
-        rm -f make_home.php
-      fi
+      SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
+      pBy="Octopus System powered by Barracuda"
+      ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}" &> /dev/null
+      cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
+      mv -f make_home.php.txt make_home.php &> /dev/null
+      ${_DRUSHCMD} php-script make_home &> /dev/null
+      rm -f make_home.php
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM field_data_body \
         WHERE body_format IS NULL" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
