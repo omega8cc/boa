@@ -23,11 +23,11 @@
 ## Build them one by one and document results
 
 ```sh
-farmos     # farmos-3.5.1-10.6.3
+farmos     # farm-3.5.1-10.6.3
            # visit: https://github.com/farmOS/farmOS/releases
            # wget https://github.com/farmOS/farmOS/releases/download/3.5.1/farmOS-3.5.1.tar.gz
            # tar -xzf farmOS-3.5.1.tar.gz
-           # mv farmOS farmos-3.5.1-10.6.3
+           # mv farmOS farm-3.5.1-10.6.3
            # (10.6.3)
 ```
 
@@ -47,7 +47,7 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # mv * ~/static/february-6/openculturas-2.5.4-10.5.8/web/profiles/contrib/
            # cd ~/static/february-6/openculturas-2.5.4-10.5.8/web/profiles/contrib/
            # rm -rf openculturas-distribution
-           # cp ~/static/february-6/farmos-3.5.1-10.6.3/web/sites/example.sites.php ~/static/february-6/openculturas-2.5.4-10.5.8/web/sites/
+           # cp ~/static/february-6/farm-3.5.1-10.6.3/web/sites/example.sites.php ~/static/february-6/openculturas-2.5.4-10.5.8/web/sites/
            # (10.5.8)
 ```
 
@@ -180,7 +180,7 @@ o3x@modern:~/static/february-6$ ls -la
 -rw-r--r-- 1 o3x users 22M Feb  7 20:10 drupal-11.2.10.tar.gz
 -rw-r--r-- 1 o3x users 22M Feb  7 20:09 drupal-11.3.3.tar.gz
 -rw-r--r-- 1 o3x users 89M Feb  7 20:15 drupal_cms_installer-2.0.0-11.3.3.tar.gz
--rw-r--r-- 1 o3x users 25M Feb  7 20:14 farmos-3.5.1-10.6.2.tar.gz
+-rw-r--r-- 1 o3x users 25M Feb  7 20:14 farm-3.5.1-10.6.2.tar.gz
 -rw-r--r-- 1 o3x users 83M Feb  7 20:18 localgov-3.4.0-10.6.3.tar.gz
 -rw-r--r-- 1 o3x users 71M Feb  7 20:17 openculturas-2.5.4-10.5.8.tar.gz
 -rw-r--r-- 1 o3x users 34M Feb  7 20:17 sector-11.0.x-dev-11.3.3.tar.gz
