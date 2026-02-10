@@ -189,7 +189,6 @@ _hostmaster_go_up() {
   rm -rf ${_ROOT}/.drush/sys/drush_make
   cd ${_ROOT}/.drush
   if [ "${_DL_MODE}" = "BATCH" ]; then
-    cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
     fi
@@ -205,7 +204,6 @@ _hostmaster_go_up() {
       [ -e "${_ROOT}/.drush/backend" ] && rm -rf ${_ROOT}/.drush/backend*
     fi
   elif [ "${_DL_MODE}" = "GIT" ]; then
-    cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
     fi
