@@ -641,6 +641,9 @@ _php_cli_drush_update() {
 #
 _provision_backend_up() {
   if [ "${_DL_MODE}" = "BATCH" ]; then
+    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/drush_make
+    rm -rf ${_ROOT}/.drush/sys/drush_make
     cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
@@ -657,6 +660,9 @@ _provision_backend_up() {
       [ -e "${_ROOT}/.drush/backend" ] && rm -rf ${_ROOT}/.drush/backend*
     fi
   elif [ "${_DL_MODE}" = "GIT" ]; then
+    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/drush_make
+    rm -rf ${_ROOT}/.drush/sys/drush_make
     cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
