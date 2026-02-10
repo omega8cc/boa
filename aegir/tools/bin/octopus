@@ -308,7 +308,7 @@ _php_cli_local_ini_update() {
 _php_cli_drush_update() {
   _usrGroup=users
   _DRUSH_FILE="${_usEr}/tools/drush/drush.php"
-  if [ -x "/opt/php74/bin/php" ]; then
+  if [ -x "/opt/php74/bin/php" ] && [ -e "${_DRUSH_FILE}" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php74/bin
   fi
@@ -378,7 +378,11 @@ _up_mode() {
 }
 
 _satellite_check_strict_php_cli() {
-  _PHP_CLI=$(grep "/opt/php" ${_usEr}/tools/drush/drush.php 2>&1)
+  if [ -e "{_usEr}/tools/drush/drush.php" ]; then
+    _PHP_CLI=$(grep "/opt/php" ${_usEr}/tools/drush/drush.php 2>&1)
+  else
+    _PHP_CLI=
+  fi
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
     if [[ ! "${_PHP_CLI}" =~ php8[1-5] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]]; then
       echo
