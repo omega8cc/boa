@@ -1344,6 +1344,13 @@ _init_cycle() {
     echo " " >> "${_logInt}"
     exit 1
   fi
+  if [ "${_OLD_SYS}" = "Debian" ]; then
+    [ -e "/etc/apt/apt.conf.d/20listchanges" ] && mv -f /etc/apt/apt.conf.d/20listchanges /root/20listchanges.disabled 2>/dev/null || true
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    APT_LISTCHANGES_FRONTEND=none /usr/bin/apt-get full-upgrade ${_nrmUpArg} >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
+    [ -e "/root/20listchanges.disabled" ] && mv -f /root/20listchanges.disabled /etc/apt/apt.conf.d/20listchanges 2>/dev/null || true
+  fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
