@@ -12,10 +12,18 @@ _php_cli_local_ini_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_cli_local_ini_update"
   fi
+  if [ ! -z "${1}" ]; then
+    _DRUSH_FILE="/var/aegir/drush/${1}"
+  else
+    _DRUSH_FILE="/var/aegir/drush/drush.php"
+  fi
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
+  if [ ! -e "${_DRUSH_FILE}" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -606,6 +614,9 @@ _php_cli_drush_update() {
   else
     _DRUSH_FILE="${_ROOT}/drush/drush.php"
   fi
+  if [ ! -e "${_DRUSH_FILE}" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
     && [ -x "/opt/php85/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g" \
@@ -641,6 +652,9 @@ _php_cli_drush_update() {
 #
 _provision_backend_up() {
   if [ "${_DL_MODE}" = "BATCH" ]; then
+    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/drush_make
+    rm -rf ${_ROOT}/.drush/sys/drush_make
     cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
@@ -657,6 +671,9 @@ _provision_backend_up() {
       [ -e "${_ROOT}/.drush/backend" ] && rm -rf ${_ROOT}/.drush/backend*
     fi
   elif [ "${_DL_MODE}" = "GIT" ]; then
+    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/drush_make
+    rm -rf ${_ROOT}/.drush/sys/drush_make
     cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."

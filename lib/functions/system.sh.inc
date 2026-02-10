@@ -19,7 +19,9 @@ _find_fast_devuan_mirror() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
-    _BROKEN_FFLIST=$(grep "merged" ${_ffList} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFLIST=$(grep "merged" ${_ffList} 2>&1)
+    fi
     if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
       echo "https://mirrors.dotsrc.org/devuan/merged"  > ${_ffList}
       echo "https://mirror.akardam.net/devuan/merged" >> ${_ffList}

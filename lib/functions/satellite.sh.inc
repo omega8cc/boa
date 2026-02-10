@@ -1312,6 +1312,9 @@ _satellite_update_ini_php_cli() {
   _U_TP="${_ROOT}/.tmp"
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
+  if [ ! -e "${_DRUSH_FILE}" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -5317,9 +5320,10 @@ _satellite_child_b_drush_xts_install() {
     _msg "${_STATUS} B: Installing Ægir Provision backend..."
   fi
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+  rm -rf ${_ROOT}/.drush/drush_make
+  rm -rf ${_ROOT}/.drush/sys/drush_make
   cd ${_ROOT}/.drush
   if [ "${_DL_MODE}" = "BATCH" ]; then
-    cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Downloading Drush and Provision extensions from ${_DL_MODE}-${_AEGIR_VERSION}..."
     fi
