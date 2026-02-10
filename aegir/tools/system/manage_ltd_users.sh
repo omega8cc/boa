@@ -197,8 +197,12 @@ _enable_chattr() {
       fi
     fi
 
-    _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
-      ${_dscUsr}/tools/drush/drush.php 2>&1)
+    if [ -e "${_dscUsr}/tools/drush/drush.php" ]; then
+      _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_dscUsr}/tools/drush/drush.php 2>&1)
+    else
+      _CHECK_USE_PHP_CLI=php84
+    fi
+
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
@@ -219,8 +223,11 @@ _enable_chattr() {
         echo "_USE_PHP_CLI is ${_USE_PHP_CLI} for $1 at ${_USER} WTF"
         echo "_T_CLI_VRN is ${_T_CLI_VRN}"
       else
-        _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
-          ${_dscUsr}/tools/drush/drush.php 2>&1)
+        if [ -e "${_dscUsr}/tools/drush/drush.php" ]; then
+          _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_dscUsr}/tools/drush/drush.php 2>&1)
+        else
+          _CHECK_USE_PHP_CLI=php84
+        fi
         echo "_CHECK_USE_PHP_CLI is ${_CHECK_USE_PHP_CLI} for $1 at ${_USER}"
         if [[ "${_CHECK_USE_PHP_CLI}" =~ "php85" ]]; then
           _USE_PHP_CLI=8.5
@@ -837,10 +844,18 @@ done
 #
 # Update local INI for PHP CLI on the Ægir Satellite Instance.
 _php_cli_local_ini_update() {
+  if [ ! -z "${1}" ]; then
+    _DRUSH_FILE="${_dscUsr}/tools/drush/${1}"
+  else
+    _DRUSH_FILE="${_dscUsr}/tools/drush/drush.php"
+  fi
   _U_HD="${_dscUsr}/.drush"
   _U_TP="${_dscUsr}/.tmp"
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
+  if [ ! -e "${_DRUSH_FILE}" ]; then
+    return 1  # Exit the function but continue the script
+  fi
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -959,6 +974,9 @@ _php_cli_drush_update() {
     _DRUSH_FILE="${_dscUsr}/tools/drush/${1}"
   else
     _DRUSH_FILE="${_dscUsr}/tools/drush/drush.php"
+  fi
+  if [ ! -e "${_DRUSH_FILE}" ]; then
+    return 1  # Exit the function but continue the script
   fi
   if [ "${_T_CLI_VRN}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
