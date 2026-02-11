@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v53
+_PT_VERSION=v54
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -2300,9 +2300,19 @@ _boa_grade_disk_final() {
   #  $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops,
   #  $7=qd1_p99_read_ms, $8=qd1_p99_write_ms, $9=qd1_fsync_p99_write_ms, $10=qd1_fsync_p95_write_ms
   #
-  # Design goal:
-  # - Preserve the original (v9) multi-signal logic (seq, iops, ioping, metadata) so you can reason about *why* a grade was chosen.
-  # - Add DB-realistic *caps* driven by QD=1 p99 + fsync p99 so we never call high-tail storage “excellent”.
+  # Long-term disk grading improvements (v54):
+  # - Produce THREE grades:
+  #     1) throughput grade (seq read/write; BOA backups/rsync/archives)
+  #     2) tail grade (QD1 p99 + fsync p99 + ioping; OLTP / stall sensitivity)
+  #     3) overall grade (mode-dependent)
+  #
+  # - Default mode is BOA-weighted: throughput is more important than tail latency:
+  #     DISK_GRADE_MODE=BOA (default): overall = 70% throughput + 30% tail
+  #     DISK_GRADE_MODE=THROUGHPUT:    overall = throughput only
+  #     DISK_GRADE_MODE=OLTP_STRICT:   overall = min(throughput, strict tail cap)
+  #
+  # Output (space-separated, for easy parsing):
+  #   "<overall> <throughput> <tail>"
 
   local ioping_us="$1"
   local seq_read_mbps="$2"
@@ -2327,167 +2337,161 @@ _boa_grade_disk_final() {
   qd1_fsync_p99_write_ms="$(_num_or_empty "${qd1_fsync_p99_write_ms}")"
   qd1_fsync_p95_write_ms="$(_num_or_empty "${qd1_fsync_p95_write_ms}")"
 
+  # Mode switch (default: BOA)
+  local _mode="${DISK_GRADE_MODE:-BOA}"
+
   # CRITICAL: Sequential write throttled/failing
   if [ -n "${seq_write_mbps}" ] && awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
-    echo "bad"
+    echo "bad poor poor"
     return
   fi
 
-  # Base grade (throughput-first, like v9)
-  local grade="poor"
+  #
+  # 1) Throughput grade (bulk operations: backups/rsync/archives)
+  #
+  local tp_grade="poor"
 
-  # Check if we have both read and write
-  if [ -n "${seq_read_mbps}" ] && [ -n "${seq_write_mbps}" ]; then
-    # ULTRA: top-tier NVMe (write > 3000 AND read > 5000)
-    if awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>3000 && sr>5000)}' 2>/dev/null; then
-      grade="ultra"
-    # EXCELLENT: NVMe-class (write > 1000 AND read > 2000)
-    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>1000 && sr>2000)}' 2>/dev/null; then
-      grade="excellent"
-    # GOOD: Healthy SSD (write > 500 AND read > 1000)
-    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>500 && sr>1000)}' 2>/dev/null; then
-      grade="good"
-    # OK: Moderate (write > 300 AND read > 500)
-    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>300 && sr>500)}' 2>/dev/null; then
-      grade="average"
-    # POOR: Below thresholds but not catastrophic
+  if [ -n "${seq_write_mbps}" ] && [ -n "${seq_read_mbps}" ]; then
+    if awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>=2000 && sr>=4000)}' 2>/dev/null; then
+      tp_grade="ultra"
+    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>=1000 && sr>=2000)}' 2>/dev/null; then
+      tp_grade="excellent"
+    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>=500 && sr>=1000)}' 2>/dev/null; then
+      tp_grade="good"
+    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>=250 && sr>=500)}' 2>/dev/null; then
+      tp_grade="average"
     else
-      grade="poor"
+      tp_grade="poor"
     fi
   fi
 
-  # Helper: rank for min/max comparisons
-  _grade_rank() {
-    case "$1" in
-      bad) echo 0 ;;
-      poor) echo 1 ;;
-      average) echo 2 ;;
-      good) echo 3 ;;
-      excellent) echo 4 ;;
-      ultra) echo 5 ;;
-      *) echo 1 ;;
-    esac
-  }
+  # Gentle IOPS influence (avoid "any >10k => +1 grade" under BOA mode)
+  if [ -n "${read_iops}" ] && [ -n "${write_iops}" ]; then
+    local tp_r
+    tp_r="$(_grade_rank "${tp_grade}")"
 
-  _rank_to_grade() {
-    case "$1" in
-      0) echo bad ;;
-      1) echo poor ;;
-      2) echo average ;;
-      3) echo good ;;
-      4) echo excellent ;;
-      5) echo ultra ;;
-      *) echo poor ;;
-    esac
-  }
-
-  # Compute DB-realistic cap from QD1+fsync (if available)
-  local cap_grade=""
-  if [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
-    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}"       'BEGIN{exit !(f<=1.5 && r<=0.3 && w<=0.3 && io<=150)}' 2>/dev/null; then
-      cap_grade="ultra"
-    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}"       'BEGIN{exit !(f<=2 && r<=0.5 && w<=0.5 && io<=200)}' 2>/dev/null; then
-      cap_grade="excellent"
-    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}"       'BEGIN{exit !(f<=5 && r<=1.0 && w<=1.0)}' 2>/dev/null; then
-      cap_grade="good"
-    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}"       'BEGIN{exit !(f<=12 && r<=3.0 && w<=3.0)}' 2>/dev/null; then
-      cap_grade="average"
-    else
-      cap_grade="poor"
+    if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>=100000 && wi>=100000)}' 2>/dev/null; then
+      [ "${tp_r}" -lt 5 ] && tp_r=$((tp_r+1))
+    elif awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>=50000 && wi>=50000)}' 2>/dev/null; then
+      [ "${tp_r}" -lt 4 ] && tp_r=$((tp_r+1))
+    elif awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>=20000 && wi>=20000)}' 2>/dev/null; then
+      [ "${tp_r}" -lt 3 ] && tp_r=$((tp_r+1))
     fi
 
+    tp_grade="$(_rank_to_grade "${tp_r}")"
+  fi
+
+  #
+  # 2) Tail grade (stalls / OLTP sensitivity)
+  #    - strict thresholds for "OLTP_STRICT"
+  #    - relaxed thresholds for BOA-weighted mode (virtualization reality)
+  #
+  local tail_grade="unknown"
+  local strict_tail_grade="unknown"
+
+  if [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
+
+    # Strict (historical cap behavior)
+    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
+      'BEGIN{exit !(f<=1.5 && r<=0.3 && w<=0.3 && io<=150)}' 2>/dev/null; then
+      strict_tail_grade="ultra"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
+      'BEGIN{exit !(f<=2 && r<=0.5 && w<=0.5 && io<=200)}' 2>/dev/null; then
+      strict_tail_grade="excellent"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" \
+      'BEGIN{exit !(f<=5 && r<=1.0 && w<=1.0)}' 2>/dev/null; then
+      strict_tail_grade="good"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" \
+      'BEGIN{exit !(f<=12 && r<=3.0 && w<=3.0)}' 2>/dev/null; then
+      strict_tail_grade="average"
+    else
+      strict_tail_grade="poor"
+    fi
+
+    # Relaxed (BOA-weighted): allow "fast NVMe under virtualization" to still be excellent.
+    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
+      'BEGIN{exit !(f<=1.5 && r<=0.30 && w<=0.30 && io<=150)}' 2>/dev/null; then
+      tail_grade="ultra"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
+      'BEGIN{exit !(f<=2.5 && r<=1.00 && w<=0.80 && io<=250)}' 2>/dev/null; then
+      tail_grade="excellent"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
+      'BEGIN{exit !(f<=5.0 && r<=2.00 && w<=2.00 && io<=400)}' 2>/dev/null; then
+      tail_grade="good"
+    elif awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
+      'BEGIN{exit !(f<=12.0 && r<=5.00 && w<=5.00 && io<=800)}' 2>/dev/null; then
+      tail_grade="average"
+    else
+      tail_grade="poor"
+    fi
+
+    # Durability-relaxed softening (keep the original intent, apply to BOTH tail grades)
     # If MySQL durability is relaxed (e.g. innodb_flush_log_at_trx_commit!=1 or sync_binlog!=1),
     # a high fio fsync p99 can reflect occasional host-level stalls while DB OLTP remains strong.
-    # In that case, avoid collapsing "fast-but-spiky" local NVMe into "average" when p95 is still good
-    # and the rest of the signals clearly indicate high-performance storage.
-    if [ "${cap_grade}" = "average" ] && [ "${_DB_DURABILITY_RELAXED}" = "YES" ]; then
-      if [ -n "${qd1_fsync_p95_write_ms}" ] \
-        && awk -v p95="${qd1_fsync_p95_write_ms}" 'BEGIN{exit !(p95<=3.5)}' 2>/dev/null \
-        && awk -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" 'BEGIN{exit !(r<=1.0 && w<=2.0 && io<=250)}' 2>/dev/null; then
-        if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>=30000 && wi>=30000)}' 2>/dev/null \
-          || awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw>=900)}' 2>/dev/null; then
-          cap_grade="good"
+    if [ "${_DB_DURABILITY_RELAXED}" = "YES" ]; then
+
+      # For relaxed tail grade
+      if [ "${tail_grade}" = "average" ] && [ -n "${qd1_fsync_p95_write_ms}" ]; then
+        if awk -v p95="${qd1_fsync_p95_write_ms}" 'BEGIN{exit !(p95<=3.5)}' 2>/dev/null \
+          && awk -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" 'BEGIN{exit !(r<=1.0 && w<=2.0 && io<=250)}' 2>/dev/null; then
+          if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>=30000 && wi>=30000)}' 2>/dev/null \
+            || awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw>=900)}' 2>/dev/null; then
+            tail_grade="good"
+          fi
+        fi
+      fi
+
+      # For strict tail grade
+      if [ "${strict_tail_grade}" = "average" ] && [ -n "${qd1_fsync_p95_write_ms}" ]; then
+        if awk -v p95="${qd1_fsync_p95_write_ms}" 'BEGIN{exit !(p95<=3.5)}' 2>/dev/null \
+          && awk -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" 'BEGIN{exit !(r<=1.0 && w<=2.0 && io<=250)}' 2>/dev/null; then
+          if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>=30000 && wi>=30000)}' 2>/dev/null \
+            || awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw>=900)}' 2>/dev/null; then
+            strict_tail_grade="good"
+          fi
         fi
       fi
     fi
   fi
 
-  # IOPS boost (same spirit as v9), but never above cap_grade if present
-  if [ -n "${read_iops}" ] && [ -n "${write_iops}" ]; then
-    if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>10000 && wi>10000)}' 2>/dev/null; then
-      local r=$(_grade_rank "${grade}")
-      if [ "${r}" -lt 5 ]; then
-        r=$((r+1))
-        grade="$(_rank_to_grade "${r}")"
-      fi
-    fi
+  # If tail metrics missing, fall back so we don't produce "unknown"
+  [ "${tail_grade}" = "unknown" ] && tail_grade="${tp_grade}"
+  [ "${strict_tail_grade}" = "unknown" ] && strict_tail_grade="${tail_grade}"
+
+  #
+  # 3) Overall grade (mode-dependent)
+  #
+  local overall_grade="poor"
+
+  if [ "${_mode}" = "THROUGHPUT" ]; then
+    overall_grade="${tp_grade}"
+  elif [ "${_mode}" = "OLTP_STRICT" ]; then
+    # Never claim "ultra" if throughput cannot support it.
+    local tr sr
+    tr="$(_grade_rank "${tp_grade}")"
+    sr="$(_grade_rank "${strict_tail_grade}")"
+    [ "${sr}" -le "${tr}" ] && overall_grade="${strict_tail_grade}" || overall_grade="${tp_grade}"
+  else
+    # BOA-weighted default: 70% throughput + 30% tail
+    local tr sr
+    tr="$(_grade_rank "${tp_grade}")"
+    sr="$(_grade_rank "${tail_grade}")"
+    local weighted
+    weighted="$(awk -v tr="${tr}" -v sr="${sr}" 'BEGIN{w=(0.7*tr)+(0.3*sr); printf "%.0f", (w+0.0000001)}' 2>/dev/null)"
+    [ -n "${weighted}" ] || weighted="${tr}"
+    [ "${weighted}" -lt 1 ] && weighted=1
+    [ "${weighted}" -gt 5 ] && weighted=5
+    overall_grade="$(_rank_to_grade "${weighted}")"
   fi
 
-  # Metadata boost (small): only if already >= average
-  if [ -n "${meta_ops}" ]; then
-    if awk -v m="${meta_ops}" 'BEGIN{exit !(m>5000)}' 2>/dev/null; then
-      case "${grade}" in
-        average) grade="good" ;;
-        good) grade="excellent" ;;
-      esac
-    fi
+  # Safety: if throughput is poor, do not inflate overall beyond "average"
+  if [ "${tp_grade}" = "poor" ]; then
+    local or
+    or="$(_grade_rank "${overall_grade}")"
+    [ "${or}" -gt 2 ] && overall_grade="average"
   fi
 
-  # ioping reality check: very bad latency downgrades one level
-  if [ -n "${ioping_us}" ] && awk -v i="${ioping_us}" 'BEGIN{exit !(i>2000)}' 2>/dev/null; then
-    case "${grade}" in
-      excellent) grade="good" ;;
-      good) grade="average" ;;
-      average) grade="poor" ;;
-    esac
-  fi
-
-  # Save pre-cap grade (for near-boundary soft promotion when cap barely misses)
-  local grade_pre_cap="${grade}"
-
-  # Apply DB-realistic cap (prevents “excellent” on high-tail storage)
-  if [ -n "${cap_grade}" ]; then
-    local gr=$(_grade_rank "${grade}")
-    local cr=$(_grade_rank "${cap_grade}")
-    if [ "${gr}" -gt "${cr}" ]; then
-      grade="${cap_grade}"
-    fi
-    # Near-boundary soft promotion: if we reached "excellent" but cap missed slightly,
-    # allow the final grade to stay "excellent" only when multiple independent signals agree.
-    if [ "${grade_pre_cap}" = "excellent" ] && [ "${grade}" = "good" ] && [ "${cap_grade}" = "good" ] \
-      && [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
-      if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
-        'BEGIN{exit !(f<=2.6 && r<=0.6 && w<=0.6 && io<=260)}' 2>/dev/null; then
-        if awk -v ri="${read_iops}" -v wi="${write_iops}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" \
-          'BEGIN{exit !((ri>=50000 && wi>=50000) || sr>=3000 || sw>=900)}' 2>/dev/null; then
-          grade="excellent"
-        fi
-      fi
-    fi
-  fi
-
-  # Near-boundary soft floor: if cap demoted to "average" only because fsync p99 barely exceeds the "good" cap,
-  # allow the final grade to be at least "good" when multiple independent signals agree.
-  if [ "${grade}" = "average" ] && [ "${cap_grade}" = "average" ] \
-    && [ -n "${qd1_fsync_p99_write_ms}" ] && [ -n "${qd1_p99_read_ms}" ] && [ -n "${qd1_p99_write_ms}" ] && [ -n "${ioping_us}" ]; then
-    if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
-      'BEGIN{exit !(f<=6.5 && r<=1.0 && w<=1.2 && io<=260)}' 2>/dev/null; then
-      if awk -v ri="${read_iops}" -v wi="${write_iops}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" \
-        'BEGIN{exit !((ri>=20000 && wi>=20000) || sr>=2500 || sw>=900)}' 2>/dev/null; then
-        grade="good"
-      fi
-    fi
-  fi
-
-  # Extra safety: extreme tails force poor even if cap_grade not available
-  if [ -n "${qd1_p99_write_ms}" ] && awk -v p="${qd1_p99_write_ms}" 'BEGIN{exit !(p>150)}' 2>/dev/null; then
-    grade="poor"
-  fi
-  if [ -n "${qd1_fsync_p99_write_ms}" ] && awk -v p="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(p>250)}' 2>/dev/null; then
-    grade="poor"
-  fi
-
-  echo "${grade}"
+  echo "${overall_grade} ${tp_grade} ${tail_grade}"
 }
 
 _boa_grade_network_http() {
@@ -2789,7 +2793,8 @@ _print_disk_compact_section() {
   _qd1_fsync_p95_w_num="$(_num_or_empty "$(echo "${_qd1_fsync_p95_w}" | awk "{print \$1}")")"
   _qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_qd1_fsync_p99_w}" | awk "{print \$1}")")"
 
-  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}" "${_qd1_fsync_p95_w_num}")"
+  local _disk_grade_tp _disk_grade_tail
+  read -r _disk_grade _disk_grade_tp _disk_grade_tail <<< "$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}" "${_qd1_fsync_p95_w_num}")"
   _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
   _disk_note="$(_boa_disk_profile_note "${_ioping_avg}" "${_ioping_avg_us}" "${_qd1_fsync_p99_w}" "${_qd1_fsync_p99_w_num}" "${_qd1_p99_w}" "${_qd1_p99_w_num}" "${_seqw}" "${_seqw_num}")"
 
@@ -2830,6 +2835,12 @@ _print_disk_compact_section() {
     echo "   🏆 Excellent disk performance (NVMe-class)"
   elif [ "${_disk_grade}" = "ultra" ]; then
     echo "   🚀 Ultra disk performance (top-tier NVMe)"
+  fi
+
+  # v54: show grading breakdown (overall vs throughput vs tail) in verbose output
+  if [ "${_FANCY}" -eq 1 ]; then
+    printf "   Grade breakdown:            %s overall (mode=%s), %s throughput, %s tail
+" "${_disk_grade}" "${DISK_GRADE_MODE:-BOA}" "${_disk_grade_tp}" "${_disk_grade_tail}"
   fi
   echo ""
 }
@@ -2923,7 +2934,8 @@ _print_grading_summary() {
   root_qd1_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_p99_write}" | awk "{print \$1}")")"
   root_qd1_fsync_p95_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p95_write}" | awk "{print \$1}")")"
   root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
-  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p95_w_num}")"
+  local disk_grade_tp disk_grade_tail
+  read -r disk_grade disk_grade_tp disk_grade_tail <<< "$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p95_w_num}")"
   net_http_grade="$(_boa_grade_network_http "${net_mbps}")"
   net_tcp_grade="$(_boa_grade_network_tcp "${net_tcp_dl_mbps}")"
 
@@ -4003,7 +4015,8 @@ else
       _csv_p99w_num="${_tier_p99w_num}"
       _csv_fsync_p95w_num="${_tier_fsync_p95w_num}"
       _csv_fsync_p99w_num="${_tier_fsync_p99w_num}"
-      _csv_disk_grade="$(_boa_grade_disk_final "${_csv_ioping_avg_us}" "${_csv_seqr_num}" "${_csv_seqw_num}" "${_csv_riops_num}" "${_csv_wiops_num}" "${_csv_meta_num}" "${_csv_p99r_num}" "${_csv_p99w_num}" "${_csv_fsync_p99w_num}" "${_csv_fsync_p95w_num}")"
+      local _csv_disk_grade_tp _csv_disk_grade_tail
+      read -r _csv_disk_grade _csv_disk_grade_tp _csv_disk_grade_tail <<< "$(_boa_grade_disk_final "${_csv_ioping_avg_us}" "${_csv_seqr_num}" "${_csv_seqw_num}" "${_csv_riops_num}" "${_csv_wiops_num}" "${_csv_meta_num}" "${_csv_p99r_num}" "${_csv_p99w_num}" "${_csv_fsync_p99w_num}" "${_csv_fsync_p95w_num}")"
       echo "CSV_DISK_V1:${_hostname},\"${_mount_point}\",${_csv_seqr_num},${_csv_seqw_num},${_csv_riops_num},${_csv_wiops_num},${_csv_meta_num},${_csv_ioping_avg_us},${_csv_p99r_num},${_csv_p99w_num},${_csv_fsync_p99w_num},\"${_tier_storage_tier}\",\"${_csv_disk_grade}\""
     fi
   done
