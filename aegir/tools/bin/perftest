@@ -1156,7 +1156,7 @@ _net_region_from_city() {
       return 0
       ;;
     # North America
-    *new*york*|*nyc*|*chicago*|*dallas*|*atlanta*|*miami*|*los*angeles*|*san*francisco*|*seattle*|*boston*|*washington*|*ashburn*|*manassas*|*orangeburg*|*phoenix*|*denver*|*toronto*|*montreal*|*vancouver*|*ottawa*|*kelowna*)
+    *new*york*|*nyc*|*chicago*|*dallas*|*atlanta*|*miami*|*los*angeles*|*san*francisco*|*seattle*|*boston*|*washington*|*ashburn*|*manassas*|*orangeburg*|*woodbury*|*phoenix*|*denver*|*toronto*|*montreal*|*vancouver*|*ottawa*|*kelowna*)
       echo "NA"
       return 0
       ;;
