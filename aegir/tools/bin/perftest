@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v55
+_PT_VERSION=v56
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -2300,19 +2300,19 @@ _boa_grade_disk_final() {
   #  $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops,
   #  $7=qd1_p99_read_ms, $8=qd1_p99_write_ms, $9=qd1_fsync_p99_write_ms, $10=qd1_fsync_p95_write_ms
   #
-  # Long-term disk grading improvements (v54):
-  # - Produce THREE grades:
-  #     1) throughput grade (seq read/write; BOA backups/rsync/archives)
-  #     2) tail grade (QD1 p99 + fsync p99 + ioping; OLTP / stall sensitivity)
-  #     3) overall grade (mode-dependent)
+  # Disk grading improvements (v56):
+  # - Produce three grades:
+  #     overall: BOA-weighted (default) or mode-dependent
+  #     throughput: bulk transfer (backups/rsync/archives)
+  #     tail: stall risk (QD1 p99 + fsync p99 + ioping)
   #
-  # - Default mode is BOA-weighted: throughput is more important than tail latency:
-  #     DISK_GRADE_MODE=BOA (default): overall = 70% throughput + 30% tail
-  #     DISK_GRADE_MODE=THROUGHPUT:    overall = throughput only
-  #     DISK_GRADE_MODE=OLTP_STRICT:   overall = min(throughput, strict tail cap)
+  # Modes:
+  #   DISK_GRADE_MODE=BOA (default): overall = 70% throughput + 30% tail
+  #   DISK_GRADE_MODE=THROUGHPUT:    overall = throughput only
+  #   DISK_GRADE_MODE=OLTP_STRICT:   overall = min(throughput, strict tail)
   #
-  # Output (space-separated, for easy parsing):
-  #   "<overall> <throughput> <tail>"
+  # Output (space-separated):
+  #   "<overall> <throughput> <tail> <tp_gmean> <imbalance> <meta> <fsync_p99> <qd1p99r> <qd1p99w> <ioping_us>"
 
   local ioping_us="$1"
   local seq_read_mbps="$2"
@@ -2367,30 +2367,54 @@ _boa_grade_disk_final() {
 
   # CRITICAL: Sequential write throttled/failing
   if [ -n "${seq_write_mbps}" ] && awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
-    echo "bad poor poor"
+    echo "bad poor poor N/A N/A ${meta_ops:-N/A} ${qd1_fsync_p99_write_ms:-N/A} ${qd1_p99_read_ms:-N/A} ${qd1_p99_write_ms:-N/A} ${ioping_us:-N/A}"
     return
   fi
 
   #
-  # 1) Throughput grade (bulk operations: backups/rsync/archives)
+  # 1) Throughput grade
   #
   local tp_grade="poor"
+  local tp_gmean=""
+  local imbalance=""
 
   if [ -n "${seq_write_mbps}" ] && [ -n "${seq_read_mbps}" ]; then
-    if awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>=2000 && sr>=4000)}' 2>/dev/null; then
+    tp_gmean="$(awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{if (sw>0 && sr>0) printf "%.0f", sqrt(sw*sr); else print ""}' 2>/dev/null)"
+    imbalance="$(awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{if (sw>0 && sr>0){r=sr/sw; if(r<1) r=1/r; printf "%.2f", r}else print ""}' 2>/dev/null)"
+  fi
+
+  # Map throughput gmean to grade (more discrimination than an AND gate)
+  if [ -n "${tp_gmean}" ]; then
+    if awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=3000)}' 2>/dev/null; then
       tp_grade="ultra"
-    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>=1000 && sr>=2000)}' 2>/dev/null; then
+    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=1800)}' 2>/dev/null; then
       tp_grade="excellent"
-    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>=500 && sr>=1000)}' 2>/dev/null; then
+    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=900)}' 2>/dev/null; then
       tp_grade="good"
-    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>=250 && sr>=500)}' 2>/dev/null; then
+    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=450)}' 2>/dev/null; then
       tp_grade="average"
     else
       tp_grade="poor"
     fi
   fi
 
-  # Gentle IOPS influence (avoid "any >10k => +1 grade" under BOA mode)
+  # Imbalance penalty: if read/write are >3x apart, drop one throughput rank
+  if [ -n "${imbalance}" ] && awk -v r="${imbalance}" 'BEGIN{exit !(r>=3.0)}' 2>/dev/null; then
+    local _tr
+    _tr="$(_grade_rank "${tp_grade}")"
+    [ "${_tr}" -gt 1 ] && _tr=$((_tr-1))
+    tp_grade="$(_rank_to_grade "${_tr}")"
+  fi
+
+  # Metadata influence: if metadata ops are notably low, drop one rank (deploys/caches)
+  if [ -n "${meta_ops}" ] && awk -v m="${meta_ops}" 'BEGIN{exit !(m>0 && m<2000)}' 2>/dev/null; then
+    local _tr
+    _tr="$(_grade_rank "${tp_grade}")"
+    [ "${_tr}" -gt 2 ] && _tr=$((_tr-1))
+    tp_grade="$(_rank_to_grade "${_tr}")"
+  fi
+
+  # Gentle IOPS influence
   if [ -n "${read_iops}" ] && [ -n "${write_iops}" ]; then
     local tp_r
     tp_r="$(_grade_rank "${tp_grade}")"
@@ -2407,9 +2431,7 @@ _boa_grade_disk_final() {
   fi
 
   #
-  # 2) Tail grade (stalls / OLTP sensitivity)
-  #    - strict thresholds for "OLTP_STRICT"
-  #    - relaxed thresholds for BOA-weighted mode (virtualization reality)
+  # 2) Tail grade
   #
   local tail_grade="unknown"
   local strict_tail_grade="unknown"
@@ -2433,7 +2455,7 @@ _boa_grade_disk_final() {
       strict_tail_grade="poor"
     fi
 
-    # Relaxed (BOA-weighted): allow "fast NVMe under virtualization" to still be excellent.
+    # Relaxed (BOA-weighted)
     if awk -v f="${qd1_fsync_p99_write_ms}" -v r="${qd1_p99_read_ms}" -v w="${qd1_p99_write_ms}" -v io="${ioping_us}" \
       'BEGIN{exit !(f<=1.5 && r<=0.30 && w<=0.30 && io<=150)}' 2>/dev/null; then
       tail_grade="ultra"
@@ -2450,9 +2472,7 @@ _boa_grade_disk_final() {
       tail_grade="poor"
     fi
 
-    # Durability-relaxed softening (keep the original intent, apply to BOTH tail grades)
-    # If MySQL durability is relaxed (e.g. innodb_flush_log_at_trx_commit!=1 or sync_binlog!=1),
-    # a high fio fsync p99 can reflect occasional host-level stalls while DB OLTP remains strong.
+    # Durability-relaxed softening (keep original intent)
     if [ "${_DB_DURABILITY_RELAXED}" = "YES" ]; then
 
       # For relaxed tail grade
@@ -2484,24 +2504,25 @@ _boa_grade_disk_final() {
   [ "${strict_tail_grade}" = "unknown" ] && strict_tail_grade="${tail_grade}"
 
   #
-  # 3) Overall grade (mode-dependent)
+  # 3) Overall grade
   #
   local overall_grade="poor"
 
   if [ "${_mode}" = "THROUGHPUT" ]; then
     overall_grade="${tp_grade}"
   elif [ "${_mode}" = "OLTP_STRICT" ]; then
-    # Never claim "ultra" if throughput cannot support it.
     local tr sr
     tr="$(_grade_rank "${tp_grade}")"
     sr="$(_grade_rank "${strict_tail_grade}")"
-    [ "${sr}" -le "${tr}" ] && overall_grade="${strict_tail_grade}" || overall_grade="${tp_grade}"
+    if [ "${sr}" -le "${tr}" ]; then
+      overall_grade="${strict_tail_grade}"
+    else
+      overall_grade="${tp_grade}"
+    fi
   else
-    # BOA-weighted default: 70% throughput + 30% tail
-    local tr sr
+    local tr sr weighted
     tr="$(_grade_rank "${tp_grade}")"
     sr="$(_grade_rank "${tail_grade}")"
-    local weighted
     weighted="$(awk -v tr="${tr}" -v sr="${sr}" 'BEGIN{w=(0.7*tr)+(0.3*sr); printf "%.0f", (w+0.0000001)}' 2>/dev/null)"
     [ -n "${weighted}" ] || weighted="${tr}"
     [ "${weighted}" -lt 1 ] && weighted=1
@@ -2509,14 +2530,26 @@ _boa_grade_disk_final() {
     overall_grade="$(_rank_to_grade "${weighted}")"
   fi
 
-  # Safety: if throughput is poor, do not inflate overall beyond "average"
+  # Ultra overall requires ultra throughput from sequential (no IOPS-only ultra)
+  if [ "${overall_grade}" = "ultra" ] && [ "${tp_grade}" != "ultra" ]; then
+    overall_grade="excellent"
+  fi
+
+  # Fsync stall penalty (BOA mode): if fsync p99 is very high, reduce overall by one rank
+  if [ "${_mode}" = "BOA" ] && [ -n "${qd1_fsync_p99_write_ms}" ] && awk -v f="${qd1_fsync_p99_write_ms}" 'BEGIN{exit !(f>=10.0)}' 2>/dev/null; then
+    local or
+    or="$(_grade_rank "${overall_grade}")"
+    [ "${or}" -gt 1 ] && overall_grade="$(_rank_to_grade "$((or-1))")"
+  fi
+
+  # Safety: if throughput is poor, do not inflate overall beyond average
   if [ "${tp_grade}" = "poor" ]; then
     local or
     or="$(_grade_rank "${overall_grade}")"
     [ "${or}" -gt 2 ] && overall_grade="average"
   fi
 
-  echo "${overall_grade} ${tp_grade} ${tail_grade}"
+  echo "${overall_grade} ${tp_grade} ${tail_grade} ${tp_gmean:-N/A} ${imbalance:-N/A} ${meta_ops:-N/A} ${qd1_fsync_p99_write_ms:-N/A} ${qd1_p99_read_ms:-N/A} ${qd1_p99_write_ms:-N/A} ${ioping_us:-N/A}"
 }
 
 _boa_grade_network_http() {
@@ -2819,7 +2852,8 @@ _print_disk_compact_section() {
   _qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_qd1_fsync_p99_w}" | awk "{print \$1}")")"
 
   local _disk_grade_tp _disk_grade_tail
-  read -r _disk_grade _disk_grade_tp _disk_grade_tail <<< "$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}" "${_qd1_fsync_p95_w_num}")"
+  local _disk_gmean _disk_imbalance _disk_meta _disk_fsync_p99 _disk_qd1p99r _disk_qd1p99w _disk_ioping
+  read -r _disk_grade _disk_grade_tp _disk_grade_tail _disk_gmean _disk_imbalance _disk_meta _disk_fsync_p99 _disk_qd1p99r _disk_qd1p99w _disk_ioping <<< "$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}" "${_qd1_fsync_p95_w_num}")"
   _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
   _disk_note="$(_boa_disk_profile_note "${_ioping_avg}" "${_ioping_avg_us}" "${_qd1_fsync_p99_w}" "${_qd1_fsync_p99_w_num}" "${_qd1_p99_w}" "${_qd1_p99_w_num}" "${_seqw}" "${_seqw_num}")"
 
@@ -2864,8 +2898,9 @@ _print_disk_compact_section() {
 
   # v54: show grading breakdown (overall vs throughput vs tail) in verbose output
   if [ "${_FANCY}" -eq 1 ]; then
-    printf "   Grade breakdown:            %s overall (mode=%s), %s throughput, %s tail
-" "${_disk_grade}" "${DISK_GRADE_MODE:-BOA}" "${_disk_grade_tp}" "${_disk_grade_tail}"
+      printf "   Breakdown:                 %s overall (mode=%s)\n" "${_disk_grade}" "${DISK_GRADE_MODE:-BOA}"
+      printf "     - Throughput (bulk):     %s (gmean=%s MB/s, R/W ratio=%sx)\n" "${_disk_grade_tp}" "${_disk_gmean:-N/A}" "${_disk_imbalance:-N/A}"
+      printf "     - Tail (stall risk):     %s (fsync p99=%sms, QD1 p99 R/W=%s/%sms, ioping=%sus)\n" "${_disk_grade_tail}" "${_disk_fsync_p99:-N/A}" "${_disk_qd1p99r:-N/A}" "${_disk_qd1p99w:-N/A}" "${_disk_ioping:-N/A}"
   fi
   echo ""
 }
@@ -2960,7 +2995,8 @@ _print_grading_summary() {
   root_qd1_fsync_p95_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p95_write}" | awk "{print \$1}")")"
   root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
   local disk_grade_tp disk_grade_tail
-  read -r disk_grade disk_grade_tp disk_grade_tail <<< "$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p95_w_num}")"
+  local disk_gmean disk_imbalance disk_meta disk_fsync_p99 disk_qd1p99r disk_qd1p99w disk_ioping
+  read -r disk_grade disk_grade_tp disk_grade_tail disk_gmean disk_imbalance disk_meta disk_fsync_p99 disk_qd1p99r disk_qd1p99w disk_ioping <<< "$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p95_w_num}")"
   net_http_grade="$(_boa_grade_network_http "${net_mbps}")"
   net_tcp_grade="$(_boa_grade_network_tcp "${net_tcp_dl_mbps}")"
 
@@ -3093,12 +3129,9 @@ _print_grading_summary() {
   echo ""
   if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
     if [ "${_FANCY}" -eq 1 ]; then
-      printf "   Threads used:            %s
-" "${_db_threads_used:-N/A}"
-      printf "   Read-only (tps / p95):   %-10s / %s ms
-" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
-      printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]
-" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
+      printf "   Threads used:            %s\n" "${_db_threads_used:-N/A}"
+      printf "   Read-only (tps / p95):   %-10s / %s ms\n" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
+      printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]\n" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
       echo ""
     fi
     if [ "${db_grade}" = "poor" ]; then
@@ -3116,11 +3149,9 @@ _print_grading_summary() {
       echo "   ⚠️ Note: ${_db_test_reason}"
     fi
   else
-    printf "   Status: %s
-" "${_db_test_status}"
+    printf "   Status: %s\n" "${_db_test_status}"
     if [ -n "${_db_test_reason}" ]; then
-      printf "   Reason: %s
-" "${_db_test_reason}"
+      printf "   Reason: %s\n" "${_db_test_reason}"
     fi
   fi
   echo ""
@@ -3131,8 +3162,7 @@ _print_grading_summary() {
   if [ "${_FANCY}" -eq 1 ]; then
     echo ""
     printf "   Public IPv4:        %s\n" "${_net_ipv4}"
-    printf "   Region:             %s
-" "${_net_region_pretty}"
+    printf "   Region:             %s\n" "${_net_region_pretty}"
     _http_show_grade="${net_http_grade}"
     if [ -z "${_http_show_grade}" ] || [ "${_http_show_grade}" = "unknown" ]; then
       _http_show_grade="${net_grade}"
@@ -4041,7 +4071,8 @@ else
       _csv_fsync_p95w_num="${_tier_fsync_p95w_num}"
       _csv_fsync_p99w_num="${_tier_fsync_p99w_num}"
       local _csv_disk_grade_tp _csv_disk_grade_tail
-      read -r _csv_disk_grade _csv_disk_grade_tp _csv_disk_grade_tail <<< "$(_boa_grade_disk_final "${_csv_ioping_avg_us}" "${_csv_seqr_num}" "${_csv_seqw_num}" "${_csv_riops_num}" "${_csv_wiops_num}" "${_csv_meta_num}" "${_csv_p99r_num}" "${_csv_p99w_num}" "${_csv_fsync_p99w_num}" "${_csv_fsync_p95w_num}")"
+      local _csv_disk_gmean _csv_disk_imbalance _csv_disk_meta _csv_disk_fsync_p99 _csv_disk_qd1p99r _csv_disk_qd1p99w _csv_disk_ioping
+      read -r _csv_disk_grade _csv_disk_grade_tp _csv_disk_grade_tail _csv_disk_gmean _csv_disk_imbalance _csv_disk_meta _csv_disk_fsync_p99 _csv_disk_qd1p99r _csv_disk_qd1p99w _csv_disk_ioping <<< "$(_boa_grade_disk_final "${_csv_ioping_avg_us}" "${_csv_seqr_num}" "${_csv_seqw_num}" "${_csv_riops_num}" "${_csv_wiops_num}" "${_csv_meta_num}" "${_csv_p99r_num}" "${_csv_p99w_num}" "${_csv_fsync_p99w_num}" "${_csv_fsync_p95w_num}")"
       echo "CSV_DISK_V1:${_hostname},\"${_mount_point}\",${_csv_seqr_num},${_csv_seqw_num},${_csv_riops_num},${_csv_wiops_num},${_csv_meta_num},${_csv_ioping_avg_us},${_csv_p99r_num},${_csv_p99w_num},${_csv_fsync_p99w_num},\"${_tier_storage_tier}\",\"${_csv_disk_grade}\""
     fi
   done
