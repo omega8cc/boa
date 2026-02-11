@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v54
+_PT_VERSION=v55
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -2339,6 +2339,31 @@ _boa_grade_disk_final() {
 
   # Mode switch (default: BOA)
   local _mode="${DISK_GRADE_MODE:-BOA}"
+
+  # Helper rank mapping (kept local on purpose)
+  _grade_rank() {
+    case "$1" in
+      bad) echo 0 ;;
+      poor) echo 1 ;;
+      average) echo 2 ;;
+      good) echo 3 ;;
+      excellent) echo 4 ;;
+      ultra) echo 5 ;;
+      *) echo 1 ;;
+    esac
+  }
+
+  _rank_to_grade() {
+    case "$1" in
+      0) echo bad ;;
+      1) echo poor ;;
+      2) echo average ;;
+      3) echo good ;;
+      4) echo excellent ;;
+      5) echo ultra ;;
+      *) echo poor ;;
+    esac
+  }
 
   # CRITICAL: Sequential write throttled/failing
   if [ -n "${seq_write_mbps}" ] && awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
