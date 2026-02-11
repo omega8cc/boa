@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v57
+_PT_VERSION=v58
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -2385,13 +2385,13 @@ _boa_grade_disk_final() {
 
   # Map throughput gmean to grade (more discrimination than an AND gate)
   if [ -n "${tp_gmean}" ]; then
-    if awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=6000)}' 2>/dev/null; then
+    if awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=4800)}' 2>/dev/null; then
       tp_grade="ultra"
-    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=3000)}' 2>/dev/null; then
+    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=2400)}' 2>/dev/null; then
       tp_grade="excellent"
-    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=1500)}' 2>/dev/null; then
+    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=1200)}' 2>/dev/null; then
       tp_grade="good"
-    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=700)}' 2>/dev/null; then
+    elif awk -v g="${tp_gmean}" 'BEGIN{exit !(g>=600)}' 2>/dev/null; then
       tp_grade="average"
     else
       tp_grade="poor"
