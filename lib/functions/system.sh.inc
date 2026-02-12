@@ -1128,10 +1128,20 @@ _tune_memory_limits() {
   if [ -e "/etc/valkey/valkey.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
     sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
+    if ! grep -nE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
+      sed -i -E 's/^[[:space:]]*#[[:space:]]*save[[:space:]]*""[[:space:]]*$/save ""/' /etc/valkey/valkey.conf 2>/dev/null
+    else
+      printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/valkey/valkey.conf
+    fi
   fi
   if [ -e "/etc/redis/redis.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
     sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/redis/redis.conf &> /dev/null
+    if ! grep -nE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
+      sed -i -E 's/^[[:space:]]*#[[:space:]]*save[[:space:]]*""[[:space:]]*$/save ""/' /etc/redis/redis.conf 2>/dev/null
+    else
+      printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/redis/redis.conf
+    fi
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _MAX_MEM_VALKEY is ${_MAX_MEM_VALKEY}"
