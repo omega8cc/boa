@@ -1127,9 +1127,11 @@ _tune_memory_limits() {
   _MAX_VALKEY="${_MAX_MEM_VALKEY}MB"
   if [ -e "/etc/valkey/valkey.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
+    sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
   fi
   if [ -e "/etc/redis/redis.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
+    sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/redis/redis.conf &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _MAX_MEM_VALKEY is ${_MAX_MEM_VALKEY}"
