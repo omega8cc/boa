@@ -69,6 +69,7 @@ _valkey_no_rdb() {
     fi
   fi
 }
+_valkey_no_rdb
 
 # Function to calculate RAM usage percentage as an integer
 _calculate_ram_usage_percent() {
