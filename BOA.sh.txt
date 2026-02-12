@@ -2180,7 +2180,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/autoupboa.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/autoupboa.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autoupboa)
     if (( _CNT > 0 )); then
       echo "The autoupboa is running!"
@@ -2192,7 +2192,7 @@ _update_agents() {
       if [ -e "${_optBin}/autoupboa" ]; then
         chmod 700 ${_optBin}/autoupboa
         chown root:root ${_optBin}/autoupboa
-        touch ${_pthLog}/autoupboa.ctrl.f86.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autoupboa.ctrl.f85.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autoupboa.old" ]; then
           mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
