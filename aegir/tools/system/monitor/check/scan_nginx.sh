@@ -265,8 +265,8 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
   fi
-  # Combine checks for HTTP status 400, 404, 403, 500 to increment counters in one go
-  if [[ "${_line}" =~ \"\ (400|404|403|500) ]]; then
+  # Combine checks for HTTP status 400, 404, 403, 444, 500 to increment counters in one go
+  if [[ "${_line}" =~ \"\ (400|404|403|444|500) ]]; then
     local _code="${BASH_REMATCH[1]}"
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "${_code} flood protection"
