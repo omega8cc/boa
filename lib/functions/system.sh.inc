@@ -1125,14 +1125,47 @@ _tune_memory_limits() {
 
   _MAX_MEM_VALKEY=$(( _RAM / 6 ))
   _MAX_VALKEY="${_MAX_MEM_VALKEY}MB"
+
   if [ -e "/etc/valkey/valkey.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
-    sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
+    _NEEDS_VALKEY_RESTART=
+    if ! grep -nE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/valkey/valkey.conf; then
+      sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
+      _NEEDS_VALKEY_RESTART=YES
+    fi
+    if ! grep -nE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
+      sed -i "s/^# save \"\"/save \"\"/g" /etc/valkey/valkey.conf &> /dev/null
+      _NEEDS_VALKEY_RESTART=YES
+    fi
+    if ! grep -nE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
+      printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/valkey/valkey.conf
+      _NEEDS_VALKEY_RESTART=YES
+    fi
+    if [ -n "${_NEEDS_VALKEY_RESTART}" ]; then
+      service valkey-server restart &> /dev/null
+    fi
   fi
+
   if [ -e "/etc/redis/redis.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
-    sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/redis/redis.conf &> /dev/null
+    _NEEDS_VALKEY_RESTART=
+    if ! grep -nE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/redis/redis.conf; then
+      sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/redis/redis.conf &> /dev/null
+      _NEEDS_VALKEY_RESTART=YES
+    fi
+    if ! grep -nE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
+      sed -i "s/^# save \"\"/save \"\"/g" /etc/redis/redis.conf &> /dev/null
+      _NEEDS_VALKEY_RESTART=YES
+    fi
+    if ! grep -nE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
+      printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/redis/redis.conf
+      _NEEDS_VALKEY_RESTART=YES
+    fi
+    if [ -n "${_NEEDS_VALKEY_RESTART}" ]; then
+      service redis-server restart &> /dev/null
+    fi
   fi
+
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _MAX_MEM_VALKEY is ${_MAX_MEM_VALKEY}"
     _msg "TUNE: _MAX_VALKEY is ${_MAX_VALKEY}"
