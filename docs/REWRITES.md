@@ -79,7 +79,7 @@ location = /about_us.php {
   if ($host ~* ^(www\.)?(foo\.com)$) {
     return 301 $scheme://$host/node/19;
   }
-  return 403;
+  return 444;
 }
 ```
 
