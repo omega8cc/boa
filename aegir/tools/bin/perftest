@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v58
+_PT_VERSION=v59
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -1582,6 +1582,146 @@ _get_test_mounts() {
     | awk '!seen[$0]++ { print $0 }'
 }
 
+# Extract Use% for a mount (robust across df variants / extra columns).
+_df_get_used_pct() {
+  # $1 = mountpoint
+  local _mp="$1"
+  command df -P -l "${_mp}" 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
+    NR==2 { if (u>0) { gsub(/%/,"",$u); print $u } }
+  '
+}
+
+# Extract inode Use% for a mount.
+_df_get_iused_pct() {
+  # $1 = mountpoint
+  local _mp="$1"
+  command df -P -i -l "${_mp}" 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
+    NR==2 { if (u>0) { gsub(/%/,"",$u); print $u } }
+  '
+}
+
+# List relevant mounted filesystems (real disk mounts only).
+_list_real_mounts() {
+  # Output: mountpoint|source|fstype|options
+  command findmnt -rno TARGET,SOURCE,FSTYPE,OPTIONS 2>/dev/null \
+    | awk -F' ' '{
+        mp=$1; src=$2; fs=$3; opt=$4;
+        if (fs ~ /^(ext4|xfs|btrfs|f2fs|zfs)$/) {
+          if (mp ~ /^\/boot(\/|$)/) next;
+          print mp "|" src "|" fs "|" opt;
+        }
+      }' \
+    | awk '!seen[$0]++{print $0}'
+}
+
+# Analyze /etc/fstab for performance/operational hints.
+_analyze_fstab_mount_opts() {
+  # Output lines: mountpoint|fstype|opts|spec
+  [ -e /etc/fstab ] || return 0
+  awk '
+    BEGIN{OFS="|"}
+    /^[[:space:]]*#/ {next}
+    /^[[:space:]]*$/ {next}
+    NF<4 {next}
+    {
+      spec=$1; mp=$2; fs=$3; opt=$4;
+      if (mp ~ /^\// && fs ~ /^(ext4|xfs|btrfs|f2fs|zfs)$/) {
+        print mp,fs,opt,spec;
+      }
+    }' /etc/fstab 2>/dev/null
+}
+
+_print_fs_section() {
+  local _line _mp _src _fs _opt
+  local _used _iused
+
+  echo " ============================================================================="
+  echo " == 4. FILESYSTEMS (type/options + space/inodes sanity)                     =="
+  echo " ============================================================================="
+  echo ""
+
+  if ! command -v findmnt >/dev/null 2>&1; then
+    echo "   Note: findmnt not found - skipping filesystem details"
+    echo ""
+    return 0
+  fi
+
+  local _any
+  _any="NO"
+  while IFS='|' read -r _mp _src _fs _opt; do
+    [ -n "${_mp}" ] || continue
+    _any="YES"
+
+    _used="$(_df_get_used_pct "${_mp}")"
+    _used="${_used//[^0-9]/}"
+    _iused="$(_df_get_iused_pct "${_mp}")"
+    _iused="${_iused//[^0-9]/}"
+
+    printf "   %-18s %-6s  used %3s%%  inodes %3s%%  src=%s\n" "${_mp}" "${_fs}" "${_used:-N/A}" "${_iused:-N/A}" "${_src}"
+
+    # Lightweight hints (do not attempt to enforce; just surface).
+    case ",${_opt}," in
+      *,noatime,*) : ;;
+      *)
+        echo "     - Hint: consider 'noatime' to reduce metadata writes (helps many-small-files workloads)"
+        ;;
+    esac
+    case ",${_opt}," in
+      *,discard,*)
+        echo "     - Note: 'discard' is enabled; for steady performance, periodic fstrim is often preferred"
+        ;;
+    esac
+    if [ -n "${_used}" ] && [ "${_used}" -ge 90 ] 2>/dev/null; then
+      echo "     - ⚠️ ALERT: filesystem is >90% used (risk of failures)"
+    fi
+    if [ -n "${_iused}" ] && [ "${_iused}" -ge 90 ] 2>/dev/null; then
+      echo "     - ⚠️ ALERT: inode usage is >90% (many-small-files risk; Composer/vendor trees can trigger this)"
+    fi
+  done < <(_list_real_mounts)
+
+  if [ "${_any}" = "NO" ]; then
+    echo "   No disk-backed ext4/xfs/btrfs/f2fs mounts detected"
+    echo ""
+    return 0
+  fi
+
+  echo ""
+  echo "   /etc/fstab hints (only for real filesystems):"
+  local _had
+  _had="NO"
+  while IFS='|' read -r _mp _fs _opt _spec; do
+    [ -n "${_mp}" ] || continue
+    _had="YES"
+    # Keep output compact: print only when there is something worth mentioning.
+    local _notes
+    _notes=""
+    case ",${_opt}," in
+      *,noatime,*) : ;;
+      *) _notes="${_notes} noatime" ;;
+    esac
+    if [ "${_mp}" != "/" ]; then
+      case ",${_opt}," in
+        *,nofail,*) : ;;
+        *) _notes="${_notes} nofail" ;;
+      esac
+    fi
+    case ",${_opt}," in
+      *,discard,*) _notes="${_notes} (discard present)" ;;
+    esac
+    if [ -n "${_notes}" ]; then
+      printf "     - %-18s %-6s opts=%s  -> consider:%s\n" "${_mp}" "${_fs}" "${_opt}" "${_notes}"
+    fi
+  done < <(_analyze_fstab_mount_opts)
+
+  if [ "${_had}" = "NO" ]; then
+    echo "     - No matching entries found in /etc/fstab"
+  fi
+
+  echo ""
+}
+
 # Run fio random 4k randrw test in a mount and write JSON output to a file
 _run_fio_rand_test() {
   # $1 = mountpoint
@@ -3112,6 +3252,9 @@ _print_grading_summary() {
     echo "   🚀 Ultra CPU performance"
   fi
   echo ""
+
+  # Filesystem details + fstab hints + space/inodes sanity (informational)
+  _print_fs_section
 
   # DISK (root is used for overall rating; other mounts are informational)
   _detect_mysql_durability_relaxed

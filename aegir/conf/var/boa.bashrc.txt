@@ -65,7 +65,7 @@ else
   alias lr='ls -lR'   # recursive ls
 fi
 
-alias df='df -kTh'
+alias df='df -kTPh'
 alias wget='wget --no-check-certificate'
 
 function xtitle() {
