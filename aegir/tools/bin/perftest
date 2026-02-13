@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v60
+_PT_VERSION=v61
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -1668,23 +1668,18 @@ _print_fs_section() {
     echo "     type: ${_fs}  src: ${_src}"
     echo "     usage: ${_used:-N/A}%  inodes: ${_iused:-N/A}%"
 
-    # Mount-level hints (attached to this mount).
-    _notes=""
+    # Mount-level hints (attached to this mount; keep them human-readable).
     case ",${_opt}," in
       *,noatime,*) : ;;
-      *) _notes="${_notes} noatime" ;;
+      *)
+        echo "     hint: consider adding 'noatime' to reduce metadata writes"
+        ;;
     esac
     case ",${_opt}," in
-      *,discard,*) _notes="${_notes} discard" ;;
+      *,discard,*)
+        echo "     hint: 'discard' is enabled (online TRIM); periodic fstrim is often preferred"
+        ;;
     esac
-    if [ -n "${_notes}" ]; then
-      echo "     hint:${_notes}"
-      case ",${_opt}," in
-        *,discard,*)
-          echo "     note: 'discard' is enabled; periodic fstrim is often preferred for steady performance"
-          ;;
-      esac
-    fi
 
     # Alerts (space / inodes) attached to mount.
     if [ -n "${_used}" ] && [ "${_used}" -ge 90 ] 2>/dev/null; then
@@ -1705,20 +1700,24 @@ _print_fs_section() {
         _fstab_fs="$(echo "${_fstab_line}" | awk '{print $2}')"
         _fstab_opt="$(echo "${_fstab_line}" | awk '{print $3}')"
         _fstab_spec="$(echo "${_fstab_line}" | awk '{print $4}')"
-        _notes=""
+
+        # /etc/fstab hints for this mount (keep them explicit and attached).
+        echo "     fstab: opts=${_fstab_opt}"
         case ",${_fstab_opt}," in
           *,noatime,*) : ;;
-          *) _notes="${_notes} noatime" ;;
+          *) echo "       - consider adding: noatime (reduces metadata writes)";;
         esac
         if [ "${_mp}" != "/" ]; then
           case ",${_fstab_opt}," in
             *,nofail,*) : ;;
-            *) _notes="${_notes} nofail" ;;
+            *) echo "       - consider adding: nofail (boot continues even if this disk is missing)";;
           esac
         fi
-        if [ -n "${_notes}" ]; then
-          echo "     fstab: opts=${_fstab_opt} -> consider:${_notes}"
-        fi
+        case ",${_fstab_opt}," in
+          *,x-systemd.growfs,*|*,x-systemd.growfs|x-systemd.growfs,*|x-systemd.growfs)
+            echo "       - consider removing: x-systemd.growfs (systemd-only; not useful on Devuan)"
+            ;;
+        esac
       fi
     fi
   done < <(_list_real_mounts)
