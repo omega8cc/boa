@@ -1129,15 +1129,15 @@ _tune_memory_limits() {
   if [ -e "/etc/valkey/valkey.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
     _NEEDS_VALKEY_RESTART=
-    if ! grep -nE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/valkey/valkey.conf; then
+    if ! grep -qE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/valkey/valkey.conf; then
       sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
-    if ! grep -nE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
+    if ! grep -qE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
       sed -i "s/^# save \"\"/save \"\"/g" /etc/valkey/valkey.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
-    if ! grep -nE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
+    if ! grep -qE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
       printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/valkey/valkey.conf
       _NEEDS_VALKEY_RESTART=YES
     fi
@@ -1149,15 +1149,15 @@ _tune_memory_limits() {
   if [ -e "/etc/redis/redis.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
     _NEEDS_VALKEY_RESTART=
-    if ! grep -nE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/redis/redis.conf; then
+    if ! grep -qE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/redis/redis.conf; then
       sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/redis/redis.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
-    if ! grep -nE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
+    if ! grep -qE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
       sed -i "s/^# save \"\"/save \"\"/g" /etc/redis/redis.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
-    if ! grep -nE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
+    if ! grep -qE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
       printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/redis/redis.conf
       _NEEDS_VALKEY_RESTART=YES
     fi
