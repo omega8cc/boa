@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v59
+_PT_VERSION=v60
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -1634,13 +1634,14 @@ _analyze_fstab_mount_opts() {
 }
 
 _print_fs_section() {
-  local _line _mp _src _fs _opt
+  local _mp _src _fs _opt
   local _used _iused
+  local _fstab_cache _fstab_line _fstab_opt _fstab_fs _fstab_spec
+  local _notes _had
 
   echo " ============================================================================="
-  echo " == 4. FILESYSTEMS (type/options + space/inodes sanity)                     =="
+  echo " == 3. FILESYSTEMS (type/options + space/inodes sanity)                     =="
   echo " ============================================================================="
-  echo ""
 
   if ! command -v findmnt >/dev/null 2>&1; then
     echo "   Note: findmnt not found - skipping filesystem details"
@@ -1648,79 +1649,90 @@ _print_fs_section() {
     return 0
   fi
 
-  local _any
-  _any="NO"
+  _fstab_cache="$(mktemp /tmp/perftest.fstab.XXXXXX 2>/dev/null)"
+  if [ -n "${_fstab_cache}" ]; then
+    _analyze_fstab_mount_opts > "${_fstab_cache}" 2>/dev/null || true
+  fi
+
+  _had="NO"
   while IFS='|' read -r _mp _src _fs _opt; do
     [ -n "${_mp}" ] || continue
-    _any="YES"
+    _had="YES"
 
     _used="$(_df_get_used_pct "${_mp}")"
     _used="${_used//[^0-9]/}"
     _iused="$(_df_get_iused_pct "${_mp}")"
     _iused="${_iused//[^0-9]/}"
 
-    printf "   %-18s %-6s  used %3s%%  inodes %3s%%  src=%s\n" "${_mp}" "${_fs}" "${_used:-N/A}" "${_iused:-N/A}" "${_src}"
+    echo "   ${_mp}"
+    echo "     type: ${_fs}  src: ${_src}"
+    echo "     usage: ${_used:-N/A}%  inodes: ${_iused:-N/A}%"
 
-    # Lightweight hints (do not attempt to enforce; just surface).
+    # Mount-level hints (attached to this mount).
+    _notes=""
     case ",${_opt}," in
       *,noatime,*) : ;;
-      *)
-        echo "     - Hint: consider 'noatime' to reduce metadata writes (helps many-small-files workloads)"
-        ;;
+      *) _notes="${_notes} noatime" ;;
     esac
     case ",${_opt}," in
-      *,discard,*)
-        echo "     - Note: 'discard' is enabled; for steady performance, periodic fstrim is often preferred"
-        ;;
+      *,discard,*) _notes="${_notes} discard" ;;
     esac
+    if [ -n "${_notes}" ]; then
+      echo "     hint:${_notes}"
+      case ",${_opt}," in
+        *,discard,*)
+          echo "     note: 'discard' is enabled; periodic fstrim is often preferred for steady performance"
+          ;;
+      esac
+    fi
+
+    # Alerts (space / inodes) attached to mount.
     if [ -n "${_used}" ] && [ "${_used}" -ge 90 ] 2>/dev/null; then
       echo "     - ⚠️ ALERT: filesystem is >90% used (risk of failures)"
     fi
     if [ -n "${_iused}" ] && [ "${_iused}" -ge 90 ] 2>/dev/null; then
       echo "     - ⚠️ ALERT: inode usage is >90% (many-small-files risk; Composer/vendor trees can trigger this)"
     fi
+
+    # /etc/fstab suggestion for this mount (attached; avoid duplicates).
+    _fstab_line=""
+    _fstab_opt=""
+    _fstab_fs=""
+    _fstab_spec=""
+    if [ -n "${_fstab_cache}" ] && [ -e "${_fstab_cache}" ]; then
+      _fstab_line="$(awk -v mp="${_mp}" '$1==mp {print $0; exit}' "${_fstab_cache}" 2>/dev/null)"
+      if [ -n "${_fstab_line}" ]; then
+        _fstab_fs="$(echo "${_fstab_line}" | awk '{print $2}')"
+        _fstab_opt="$(echo "${_fstab_line}" | awk '{print $3}')"
+        _fstab_spec="$(echo "${_fstab_line}" | awk '{print $4}')"
+        _notes=""
+        case ",${_fstab_opt}," in
+          *,noatime,*) : ;;
+          *) _notes="${_notes} noatime" ;;
+        esac
+        if [ "${_mp}" != "/" ]; then
+          case ",${_fstab_opt}," in
+            *,nofail,*) : ;;
+            *) _notes="${_notes} nofail" ;;
+          esac
+        fi
+        if [ -n "${_notes}" ]; then
+          echo "     fstab: opts=${_fstab_opt} -> consider:${_notes}"
+        fi
+      fi
+    fi
   done < <(_list_real_mounts)
 
-  if [ "${_any}" = "NO" ]; then
+  if [ "${_had}" = "NO" ]; then
     echo "   No disk-backed ext4/xfs/btrfs/f2fs mounts detected"
     echo ""
-    return 0
+  else
+    echo ""
   fi
 
-  echo ""
-  echo "   /etc/fstab hints (only for real filesystems):"
-  local _had
-  _had="NO"
-  while IFS='|' read -r _mp _fs _opt _spec; do
-    [ -n "${_mp}" ] || continue
-    _had="YES"
-    # Keep output compact: print only when there is something worth mentioning.
-    local _notes
-    _notes=""
-    case ",${_opt}," in
-      *,noatime,*) : ;;
-      *) _notes="${_notes} noatime" ;;
-    esac
-    if [ "${_mp}" != "/" ]; then
-      case ",${_opt}," in
-        *,nofail,*) : ;;
-        *) _notes="${_notes} nofail" ;;
-      esac
-    fi
-    case ",${_opt}," in
-      *,discard,*) _notes="${_notes} (discard present)" ;;
-    esac
-    if [ -n "${_notes}" ]; then
-      printf "     - %-18s %-6s opts=%s  -> consider:%s\n" "${_mp}" "${_fs}" "${_opt}" "${_notes}"
-    fi
-  done < <(_analyze_fstab_mount_opts)
-
-  if [ "${_had}" = "NO" ]; then
-    echo "     - No matching entries found in /etc/fstab"
-  fi
-
-  echo ""
+  [ -n "${_fstab_cache}" ] && [ -e "${_fstab_cache}" ] && rm -f "${_fstab_cache}" >/dev/null 2>&1 || true
 }
+
 
 # Run fio random 4k randrw test in a mount and write JSON output to a file
 _run_fio_rand_test() {
@@ -2999,9 +3011,9 @@ _print_disk_compact_section() {
 
   echo " ============================================================================="
   if [ "${_mp}" = "/" ]; then
-    echo " == 3. DISK (Root partition / main filesystem)                              =="
+    echo " == 4. DISK (Root partition / main filesystem)                              =="
   else
-    printf " == 3. DISK (%s) (Mounted extra filesystem) \n" "${_mp}"
+    printf " == 4. DISK (%s) (Mounted extra filesystem) \n" "${_mp}"
   fi
   echo " ============================================================================="
   if [ "${_FANCY}" -eq 1 ]; then
@@ -3267,7 +3279,7 @@ _print_grading_summary() {
   done
 
   echo " ============================================================================="
-  echo " == 4. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
+  echo " == 5. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
   echo " ============================================================================="
   echo ""
   if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
@@ -3300,7 +3312,7 @@ _print_grading_summary() {
   echo ""
 
   echo " ============================================================================="
-  echo " == 5. NETWORK (Sanity check)                                               =="
+  echo " == 6. NETWORK (Sanity check)                                               =="
   echo " ============================================================================="
   if [ "${_FANCY}" -eq 1 ]; then
     echo ""
