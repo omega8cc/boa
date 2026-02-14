@@ -52,15 +52,15 @@ _find_correct_ip() {
 _valkey_no_rdb() {
   if [ -e "/etc/valkey/valkey.conf" ]; then
     _NEEDS_VALKEY_RESTART=
-    if ! grep -nE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/valkey/valkey.conf; then
+    if ! grep -qE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/valkey/valkey.conf; then
       sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
-    if ! grep -nE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
+    if ! grep -qE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
       sed -i "s/^# save \"\"/save \"\"/g" /etc/valkey/valkey.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
-    if ! grep -nE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
+    if ! grep -qE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
       printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/valkey/valkey.conf
       _NEEDS_VALKEY_RESTART=YES
     fi
