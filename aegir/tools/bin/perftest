@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v61
+_PT_VERSION=v63
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -69,6 +69,50 @@ _VERBOSE=0   # raw output without grading
 _COMPACT=0   # compact BOA-focused mode with grading
 _FANCY=1     # fancy BOA-focused mode with grading
 
+# Test selection (must be explicit: use --all or one/more test flags)
+_DO_SYSINFO=NO
+_DO_CPU=NO
+_DO_MEM=NO
+_DO_AES=NO
+_DO_DISK=NO
+_DO_NET=NO
+_DO_PHP=NO
+_DO_DB=NO
+_DO_FS=NO
+
+# Ensure maps used with mountpoint keys are associative arrays (prevents bash treating "/" as arithmetic index).
+declare -A _ioping_seek_line
+declare -A _fio_seqwrite_bw_write
+declare -A _fio_seqread_bw_read
+declare -A _fio_rand_iops_read
+declare -A _fio_rand_iops_write
+declare -A _fio_rand_bw_read
+declare -A _fio_rand_bw_write
+declare -A _fio_rand_latency_read
+declare -A _fio_rand_latency_write
+declare -A _fio_qd1_p95_read
+declare -A _fio_qd1_p95_write
+declare -A _fio_qd1_p99_read
+declare -A _fio_qd1_p99_write
+declare -A _fio_qd1_fsync_p95_write
+declare -A _fio_qd1_fsync_p99_write
+declare -A _meta_ops
+
+_list_tests() {
+  cat <<'TESTS'
+Available tests:
+  sysinfo   Basic system info (hostname, CPU model, vCPUs, block devices, PCI summary)
+  cpu       CPU benchmark (sysbench cpu)
+  mem       Memory benchmark (membench)
+  aes       AES throughput (openssl enc)
+  disk      Disk latency + fio I/O (ioping + fio)
+  net       Network tests (HTTP download + optional iperf3)
+  php       PHP CLI micro-benchmark
+  db        MySQL sysbench OLTP benchmark
+  fs        Filesystems: fstype/options + /etc/fstab hints + space/inodes sanity
+TESTS
+}
+
 # DB benchmark (sysbench OLTP)
 _DBTEST_ENABLED=YES
 _DBTEST_HEAVY=NO
@@ -82,12 +126,24 @@ _DBTEST_KEEP_DB=NO
 # ----
 _usage() {
   cat <<'USAGE'
-Usage: perftest [--compact|--quiet] [--verbose] [-h|--help]
+Usage: perftest (--all | one/more test flags) [--compact|--fancy|--verbose] [other options] [-h|--help]
 
   --fancy             Print BOA-focused fancy summary with grading (default)
   --compact           Print BOA-focused compact summary with grading
   --verbose           Print full detailed output or just CSV summary with | grep CSV_
-  --no-dbtest         Skip MySQL sysbench OLTP benchmark (default: run in --verbose mode)
+  --all               Run all tests
+  --only TEST         Run only one test (see --list-tests)
+  --sysinfo           Run system info test
+  --cpu               Run CPU benchmark
+  --mem               Run memory benchmark
+  --aes               Run AES throughput benchmark
+  --disk              Run disk benchmarks (ioping + fio)
+  --net               Run network benchmarks (HTTP + optional iperf3)
+  --php               Run PHP CLI micro-benchmark
+  --db                Run MySQL sysbench OLTP benchmark
+  --fs                Run filesystem + fstab/inodes sanity checks
+  --list-tests        List available tests and exit
+  --no-dbtest         Skip MySQL sysbench OLTP benchmark (even if --db/--all)
   --dbtest-heavy      Use larger dataset for DB test (more disk pressure)
   --keep-db           Keep sysbench DB after run (for debugging)
   -h, --help          Show this help
@@ -3126,28 +3182,34 @@ _print_grading_summary() {
   net_mbps="$(_num_or_empty "${_net_download_mbps_num}")"
   net_tcp_dl_mbps="$(_num_or_empty "${_net_iperf_dl_mbps_med}")"
 
-  rand_read_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
-  seq_read_mbps="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
-  seq_write_mbps="$(_num_or_empty "$(echo "${_root_seqwrite_bw_write}" | awk '{print $1}')")"
-  meta_ops_num="$(_num_or_empty "$(echo "${_root_meta_ops}" | awk '{print $1}')")"
-  read_iops="$(_num_or_empty "${_fio_rand_iops_read["/"]}")"
-  write_iops="$(_num_or_empty "${_fio_rand_iops_write["/"]}")"
+  if [ "${_DO_DISK}" = "YES" ]; then
+    rand_read_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
+    seq_read_mbps="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
+    seq_write_mbps="$(_num_or_empty "$(echo "${_root_seqwrite_bw_write}" | awk '{print $1}')")"
+    meta_ops_num="$(_num_or_empty "$(echo "${_root_meta_ops}" | awk '{print $1}')")"
+    read_iops="$(_num_or_empty "${_fio_rand_iops_read["/"]}")"
+    write_iops="$(_num_or_empty "${_fio_rand_iops_write["/"]}")"
 
-  # Extract ioping avg latency (format: "min/avg/max/mdev = 28.3 us / 126.5 us / ...")
-  ioping_avg_us="$(_parse_ioping_avg_us "${_ioping_seek}")"
+    # Extract ioping avg latency (format: "min/avg/max/mdev = 28.3 us / 126.5 us / ...")
+    ioping_avg_us="$(_parse_ioping_avg_us "${_ioping_seek}")"
+  fi
 
   # Calculate grades
   local mem_grade steal_grade cpu_grade disk_grade db_grade net_grade net_http_grade net_tcp_grade net_note net_grade_rank _http_rank _tcp_rank
   mem_grade="$(_boa_grade_mem_final "${mem_mibps:-0}" "${mem_lat}" "${_mem_bench_threads_grade:-${_mem_bench_threads}}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
-  root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
-  root_qd1_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_p99_write}" | awk "{print \$1}")")"
-  root_qd1_fsync_p95_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p95_write}" | awk "{print \$1}")")"
-  root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
-  local disk_grade_tp disk_grade_tail
-  local disk_gmean disk_imbalance disk_meta disk_fsync_p99 disk_qd1p99r disk_qd1p99w disk_ioping
-  read -r disk_grade disk_grade_tp disk_grade_tail disk_gmean disk_imbalance disk_meta disk_fsync_p99 disk_qd1p99r disk_qd1p99w disk_ioping <<< "$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p95_w_num}")"
+  if [ "${_DO_DISK}" = "YES" ]; then
+    root_qd1_p99_r_num="$(_num_or_empty "$(echo "${_root_qd1_p99_read}" | awk "{print \$1}")")"
+    root_qd1_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_p99_write}" | awk "{print \$1}")")"
+    root_qd1_fsync_p95_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p95_write}" | awk "{print \$1}")")"
+    root_qd1_fsync_p99_w_num="$(_num_or_empty "$(echo "${_root_qd1_fsync_p99_write}" | awk "{print \$1}")")"
+    local disk_grade_tp disk_grade_tail
+    local disk_gmean disk_imbalance disk_meta disk_fsync_p99 disk_qd1p99r disk_qd1p99w disk_ioping
+    read -r disk_grade disk_grade_tp disk_grade_tail disk_gmean disk_imbalance disk_meta disk_fsync_p99 disk_qd1p99r disk_qd1p99w disk_ioping <<< "$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}" "${root_qd1_p99_r_num}" "${root_qd1_p99_w_num}" "${root_qd1_fsync_p99_w_num}" "${root_qd1_fsync_p95_w_num}")"
+  else
+    disk_grade="unknown"
+  fi
   net_http_grade="$(_boa_grade_network_http "${net_mbps}")"
   net_tcp_grade="$(_boa_grade_network_tcp "${net_tcp_dl_mbps}")"
 
@@ -3177,284 +3239,298 @@ _print_grading_summary() {
     db_grade="$(_boa_grade_db_oltp "${_db_rw_tps}" "${_db_rw_p95_ms}" "${_vcpus_num}" "${_db_ro_p95_ms}" "${_db_threads_used:-0}")"
   fi
 
-  echo " ============================================================================="
-  echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
-  echo " ============================================================================="
-  if [ "${_FANCY}" -eq 1 ]; then
-    echo ""
-    printf "   Bandwidth:  %-20s Grade: [%s]%s\n" "${_mem_transfer_speed}" "${mem_grade}" "$( [ "${_mem_bench_tool:-membench}" = "sysbench" ] && echo " (fallback: sysbench)" || echo "" )"
-    if [ -n "${_mem_latency}" ]; then
-      printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
-    else
-      printf "   Latency:    %-20s\n" "N/A"
-    fi
-    if [ -n "${_mem_bench_size_mib:-}" ]; then
-      echo "   Bench:      ${_mem_bench_size_mib} MiB per buffer x2 (~${_mem_bench_total_mib} MiB total), ${_mem_bench_threads} threads (median of ${_MEM_BENCH_REPEATS})"
-      if [ -n "${_mem_bw_min}" ] && [ -n "${_mem_bw_max}" ]; then
-        echo "   Variance:   ${_mem_bw_min}-${_mem_bw_max} MiB/s (bw), ${_mem_lat_min}-${_mem_lat_max} ns (lat)"
+  if [ "${_DO_MEM}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
+    echo " ============================================================================="
+    if [ "${_FANCY}" -eq 1 ]; then
+      echo ""
+      printf "   Bandwidth:  %-20s Grade: [%s]%s\n" "${_mem_transfer_speed}" "${mem_grade}" "$( [ "${_mem_bench_tool:-membench}" = "sysbench" ] && echo " (fallback: sysbench)" || echo "" )"
+      if [ -n "${_mem_latency}" ]; then
+        printf "   Latency:    %-20s\n" "${_mem_latency} ${_mem_latency_unit}"
+      else
+        printf "   Latency:    %-20s\n" "N/A"
+      fi
+      if [ -n "${_mem_bench_size_mib:-}" ]; then
+        echo "   Bench:      ${_mem_bench_size_mib} MiB per buffer x2 (~${_mem_bench_total_mib} MiB total), ${_mem_bench_threads} threads (median of ${_MEM_BENCH_REPEATS})"
+        if [ -n "${_mem_bw_min}" ] && [ -n "${_mem_bw_max}" ]; then
+          echo "   Variance:   ${_mem_bw_min}-${_mem_bw_max} MiB/s (bw), ${_mem_lat_min}-${_mem_lat_max} ns (lat)"
+        fi
       fi
     fi
-  fi
-  echo ""
-
-  if [ "${mem_grade}" = "low" ]; then
-    if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
-      echo "   ⚠️ High/variable memory latency - may hurt cache-heavy BOA workloads"
-    else
-      echo "   ⚠️ Low memory bandwidth - may limit BOA caching under heavy load"
-    fi
-  elif [ "${mem_grade}" = "average" ]; then
-    if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
-      echo "   ⚠️  Strong bandwidth but higher latency - likely host contention/NUMA"
-    else
-      echo "   ☑️ Average memory performance for in-memory caching"
-    fi
-  elif [ "${mem_grade}" = "good" ]; then
-    echo "   🌟 Good memory performance for in-memory caching"
-  elif [ "${mem_grade}" = "excellent" ]; then
-    echo "   🏆 Excellent memory performance for in-memory caching"
-  elif [ "${mem_grade}" = "ultra" ]; then
-    echo "   🚀 Ultra memory performance for in-memory caching"
-  fi
-  echo ""
-
-  echo " ============================================================================="
-  echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
-  echo " ============================================================================="
-  if [ "${_FANCY}" -eq 1 ]; then
     echo ""
-    printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
-    if [ -n "${_cpu_mt_threads_used:-}" ] && [ -n "${_cpu_cores:-}" ] && [ "${_cpu_mt_threads_used}" -lt "${_cpu_cores}" ] 2>/dev/null; then
-      _mt_note="(${_cpu_cores} vCPUs; measured @ ${_cpu_mt_threads_used} threads cap)"
-    else
-      _mt_note="(${_cpu_cores} vCPUs)"
-    fi
-    printf "   Multi-thread:   %-15s events/sec  %s\n" "${_cpu_events_MT_NPROC}" "${_mt_note}"
-    printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
-    printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
-  fi
-  echo ""
 
-  if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
-    if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
-      echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production"
-      steal_grade=bad
-    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
-      echo "   ⚠️ Elevated CPU steal - will cause latency spikes under load"
-      steal_grade=warning
-    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
-      echo "   🏆 Excellent CPU steal - minimal noisy neighbor impact"
-    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<3)}' 2>/dev/null; then
-      echo "   ☑️ Minimal CPU steal - but may cause latency spikes under load"
+    if [ "${mem_grade}" = "low" ]; then
+      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+        echo "   ⚠️ High/variable memory latency - may hurt cache-heavy BOA workloads"
+      else
+        echo "   ⚠️ Low memory bandwidth - may limit BOA caching under heavy load"
+      fi
+    elif [ "${mem_grade}" = "average" ]; then
+      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+        echo "   ⚠️  Strong bandwidth but higher latency - likely host contention/NUMA"
+      else
+        echo "   ☑️ Average memory performance for in-memory caching"
+      fi
+    elif [ "${mem_grade}" = "good" ]; then
+      echo "   🌟 Good memory performance for in-memory caching"
+    elif [ "${mem_grade}" = "excellent" ]; then
+      echo "   🏆 Excellent memory performance for in-memory caching"
+    elif [ "${mem_grade}" = "ultra" ]; then
+      echo "   🚀 Ultra memory performance for in-memory caching"
     fi
+    echo ""
   fi
 
-  if [ "${cpu_grade}" = "poor" ]; then
-    echo "   ❌ CPU performance too slow for BOA"
-  elif [ "${cpu_grade}" = "weak" ]; then
-    echo "   ⚠️ Weak CPU performance, not optimal"
-  elif [ "${cpu_grade}" = "average" ]; then
-    echo "   ☑️ Average CPU performance"
-  elif [ "${cpu_grade}" = "good" ]; then
-    echo "   🌟 Good CPU performance "
-  elif [ "${cpu_grade}" = "excellent" ]; then
-    echo "   🏆 Excellent CPU performance"
-  elif [ "${cpu_grade}" = "ultra" ]; then
-    echo "   🚀 Ultra CPU performance"
+  if [ "${_DO_CPU}" = "YES" ] || [ "${_DO_AES}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
+    echo " ============================================================================="
+    if [ "${_FANCY}" -eq 1 ]; then
+      echo ""
+      printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
+      if [ -n "${_cpu_mt_threads_used:-}" ] && [ -n "${_cpu_cores:-}" ] && [ "${_cpu_mt_threads_used}" -lt "${_cpu_cores}" ] 2>/dev/null; then
+        _mt_note="(${_cpu_cores} vCPUs; measured @ ${_cpu_mt_threads_used} threads cap)"
+      else
+        _mt_note="(${_cpu_cores} vCPUs)"
+      fi
+      printf "   Multi-thread:   %-15s events/sec  %s\n" "${_cpu_events_MT_NPROC}" "${_mt_note}"
+      printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
+      printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
+    fi
+    echo ""
+
+    if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
+      if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
+        echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production"
+        steal_grade=bad
+      elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
+        echo "   ⚠️ Elevated CPU steal - will cause latency spikes under load"
+        steal_grade=warning
+      elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
+        echo "   🏆 Excellent CPU steal - minimal noisy neighbor impact"
+      elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<3)}' 2>/dev/null; then
+        echo "   ☑️ Minimal CPU steal - but may cause latency spikes under load"
+      fi
+    fi
+
+    if [ "${cpu_grade}" = "poor" ]; then
+      echo "   ❌ CPU performance too slow for BOA"
+    elif [ "${cpu_grade}" = "weak" ]; then
+      echo "   ⚠️ Weak CPU performance, not optimal"
+    elif [ "${cpu_grade}" = "average" ]; then
+      echo "   ☑️ Average CPU performance"
+    elif [ "${cpu_grade}" = "good" ]; then
+      echo "   🌟 Good CPU performance "
+    elif [ "${cpu_grade}" = "excellent" ]; then
+      echo "   🏆 Excellent CPU performance"
+    elif [ "${cpu_grade}" = "ultra" ]; then
+      echo "   🚀 Ultra CPU performance"
+    fi
+    echo ""
   fi
-  echo ""
 
   # Filesystem details + fstab hints + space/inodes sanity (informational)
-  _print_fs_section
-
-  # DISK (root is used for overall rating; other mounts are informational)
-  _detect_mysql_durability_relaxed
-  _print_disk_compact_section "/" "Root partition / main filesystem"
-  local _mp
-  for _mp in "${_test_mounts[@]}"; do
-    if [ "${_mp}" != "/" ]; then
-      _print_disk_compact_section "${_mp}" "Mounted extra filesystem"
-    fi
-  done
-
-  echo " ============================================================================="
-  echo " == 5. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
-  echo " ============================================================================="
-  echo ""
-  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
-    if [ "${_FANCY}" -eq 1 ]; then
-      printf "   Threads used:            %s\n" "${_db_threads_used:-N/A}"
-      printf "   Read-only (tps / p95):   %-10s / %s ms\n" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
-      printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]\n" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
-      echo ""
-    fi
-    if [ "${db_grade}" = "poor" ]; then
-      echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
-    elif [ "${db_grade}" = "average" ]; then
-      echo "   ☑️ Average DB OLTP performance"
-    elif [ "${db_grade}" = "good" ]; then
-      echo "   🌟 Good DB OLTP performance"
-    elif [ "${db_grade}" = "excellent" ]; then
-      echo "   🏆 Excellent DB OLTP performance"
-    elif [ "${db_grade}" = "ultra" ]; then
-      echo "   🚀 Ultra DB OLTP performance"
-    fi
-    if [ "${_db_test_status}" = "WARN" ] && [ -n "${_db_test_reason}" ]; then
-      echo "   ⚠️ Note: ${_db_test_reason}"
-    fi
-  else
-    printf "   Status: %s\n" "${_db_test_status}"
-    if [ -n "${_db_test_reason}" ]; then
-      printf "   Reason: %s\n" "${_db_test_reason}"
-    fi
+  if [ "${_DO_FS}" = "YES" ]; then
+    _print_fs_section
   fi
-  echo ""
 
-  echo " ============================================================================="
-  echo " == 6. NETWORK (Sanity check)                                               =="
-  echo " ============================================================================="
-  if [ "${_FANCY}" -eq 1 ]; then
+  if [ "${_DO_DISK}" = "YES" ]; then
+    # DISK (root is used for overall rating; other mounts are informational)
+    _detect_mysql_durability_relaxed
+    _print_disk_compact_section "/" "Root partition / main filesystem"
+    local _mp
+    for _mp in "${_test_mounts[@]}"; do
+      if [ "${_mp}" != "/" ]; then
+        _print_disk_compact_section "${_mp}" "Mounted extra filesystem"
+      fi
+    done
+  fi
+
+  if [ "${_DO_DB}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == 5. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
+    echo " ============================================================================="
     echo ""
-    printf "   Public IPv4:        %s\n" "${_net_ipv4}"
-    printf "   Region:             %s\n" "${_net_region_pretty}"
-    _http_show_grade="${net_http_grade}"
-    if [ -z "${_http_show_grade}" ] || [ "${_http_show_grade}" = "unknown" ]; then
-      _http_show_grade="${net_grade}"
-    fi
-    printf "   HTTP download:      %-15s [%s]\n" "${_net_download}" "${_http_show_grade}"
-    printf "   Overall grade:      %s\n" "${net_grade}"
-    if [ -n "${net_http_grade}" ] && [ -n "${net_tcp_grade}" ] && [ "${net_tcp_grade}" != "unknown" ]; then
-      printf "   Grades:             HTTP %s | TCP %s\n" "${net_http_grade}" "${net_tcp_grade}"
-    fi
-    if [ -n "${net_note}" ]; then
-      printf "   Note:               %s\n" "${net_note}"
-    fi
-    echo ""
-    printf "   Score: median of %s/%s single-stream Range pulls (~100 MiB, timeout %ss)\n" "${_net_http_ok}" "${_net_http_total}" "${_NET_TIMEOUT}"
-    if [ "${#_net_dl_name[@]}" -gt 0 ]; then
-      local _i
-      _i=0
-      while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
-        printf "     - %-10s %s\n" "${_net_dl_name[${_i}]}:" "${_net_dl_pretty[${_i}]}"
-        _i=$((_i + 1))
-      done
-      if [ "${_NET_IPERF_ENABLED}" = "YES" ]; then
+    if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+      if [ "${_FANCY}" -eq 1 ]; then
+        printf "   Threads used:            %s\n" "${_db_threads_used:-N/A}"
+        printf "   Read-only (tps / p95):   %-10s / %s ms\n" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
+        printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]\n" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
         echo ""
-        if [ "${#_net_iperf_name[@]}" -gt 0 ]; then
-          printf "   iPerf3 (TCP) median: DL %s | UL %s (%s servers, %s streams, %ss)\n" "${_net_iperf_dl}" "${_net_iperf_ul}" "${#_net_iperf_name[@]}" "${_NET_IPERF_PARALLEL}" "${_NET_IPERF_TIME}"
-          _i=0
-          while [ "${_i}" -lt "${#_net_iperf_name[@]}" ]; do
-            printf "     - %-10s DL %s Mbit/s | UL %s Mbit/s\n" "${_net_iperf_name[${_i}]}:" "${_net_iperf_dl_mbps[${_i}]}" "${_net_iperf_ul_mbps[${_i}]}"
-            _i=$((_i + 1))
-          done
-        else
-          printf "   iPerf3 (TCP):       no data (all tests failed or busy)\n"
-        fi
-      else
-        printf "   iPerf3 (TCP):       disabled\n"
+      fi
+      if [ "${db_grade}" = "poor" ]; then
+        echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
+      elif [ "${db_grade}" = "average" ]; then
+        echo "   ☑️ Average DB OLTP performance"
+      elif [ "${db_grade}" = "good" ]; then
+        echo "   🌟 Good DB OLTP performance"
+      elif [ "${db_grade}" = "excellent" ]; then
+        echo "   🏆 Excellent DB OLTP performance"
+      elif [ "${db_grade}" = "ultra" ]; then
+        echo "   🚀 Ultra DB OLTP performance"
+      fi
+      if [ "${_db_test_status}" = "WARN" ] && [ -n "${_db_test_reason}" ]; then
+        echo "   ⚠️ Note: ${_db_test_reason}"
+      fi
+    else
+      printf "   Status: %s\n" "${_db_test_status}"
+      if [ -n "${_db_test_reason}" ]; then
+        printf "   Reason: %s\n" "${_db_test_reason}"
       fi
     fi
+    echo ""
   fi
-  echo ""
 
-  if [ "${net_grade}" = "poor" ]; then
-    echo "   ⚠️ Slow network - may affect external API calls and package updates"
-    _warnings=$((_warnings + 1))
-  elif [ "${net_grade}" = "average" ]; then
-    echo "   ☑️ Average network speed"
-  elif [ "${net_grade}" = "good" ]; then
-    echo "   🌟 Good network speed"
-  elif [ "${net_grade}" = "excellent" ]; then
-    echo "   🏆 Excellent network speed"
-  elif [ "${net_grade}" = "ultra" ]; then
-    echo "   🚀 Ultra network speed"
-  fi
-  echo ""
+  if [ "${_DO_NET}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == 6. NETWORK (Sanity check)                                               =="
+    echo " ============================================================================="
+    if [ "${_FANCY}" -eq 1 ]; then
+      echo ""
+      printf "   Public IPv4:        %s\n" "${_net_ipv4}"
+      printf "   Region:             %s\n" "${_net_region_pretty}"
+      _http_show_grade="${net_http_grade}"
+      if [ -z "${_http_show_grade}" ] || [ "${_http_show_grade}" = "unknown" ]; then
+        _http_show_grade="${net_grade}"
+      fi
+      printf "   HTTP download:      %-15s [%s]\n" "${_net_download}" "${_http_show_grade}"
+      printf "   Overall grade:      %s\n" "${net_grade}"
+      if [ -n "${net_http_grade}" ] && [ -n "${net_tcp_grade}" ] && [ "${net_tcp_grade}" != "unknown" ]; then
+        printf "   Grades:             HTTP %s | TCP %s\n" "${net_http_grade}" "${net_tcp_grade}"
+      fi
+      if [ -n "${net_note}" ]; then
+        printf "   Note:               %s\n" "${net_note}"
+      fi
+      echo ""
+      printf "   Score: median of %s/%s single-stream Range pulls (~100 MiB, timeout %ss)\n" "${_net_http_ok}" "${_net_http_total}" "${_NET_TIMEOUT}"
+      if [ "${#_net_dl_name[@]}" -gt 0 ]; then
+        local _i
+        _i=0
+        while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
+          printf "     - %-10s %s\n" "${_net_dl_name[${_i}]}:" "${_net_dl_pretty[${_i}]}"
+          _i=$((_i + 1))
+        done
+        if [ "${_NET_IPERF_ENABLED}" = "YES" ]; then
+          echo ""
+          if [ "${#_net_iperf_name[@]}" -gt 0 ]; then
+            printf "   iPerf3 (TCP) median: DL %s | UL %s (%s servers, %s streams, %ss)\n" "${_net_iperf_dl}" "${_net_iperf_ul}" "${#_net_iperf_name[@]}" "${_NET_IPERF_PARALLEL}" "${_NET_IPERF_TIME}"
+            _i=0
+            while [ "${_i}" -lt "${#_net_iperf_name[@]}" ]; do
+              printf "     - %-10s DL %s Mbit/s | UL %s Mbit/s\n" "${_net_iperf_name[${_i}]}:" "${_net_iperf_dl_mbps[${_i}]}" "${_net_iperf_ul_mbps[${_i}]}"
+              _i=$((_i + 1))
+            done
+          else
+            printf "   iPerf3 (TCP):       no data (all tests failed or busy)\n"
+          fi
+        else
+          printf "   iPerf3 (TCP):       disabled\n"
+        fi
+      fi
+    fi
+    echo ""
 
-  echo " ============================================================================="
-  echo " == BOA SUITABILITY SUMMARY                                                 =="
-  echo " ============================================================================="
-  echo ""
-
-  local _issues=0
-  local _warnings=0
-
-  # Memory
-  # Treat "low" as a critical issue only when bandwidth is genuinely weak.
-  # Higher latency alone is a warning (VM contention/NUMA effects), not a hard fail.
-  if [ "${mem_grade}" = "low" ]; then
-    if [ -n "${mem_mibps}" ] && awk -v b="${mem_mibps}" 'BEGIN{exit !(b>=20000)}' 2>/dev/null; then
-      echo "   ⚠️ Memory latency/variance looks high (bandwidth is strong) - monitor under load"
+    if [ "${net_grade}" = "poor" ]; then
+      echo "   ⚠️ Slow network - may affect external API calls and package updates"
       _warnings=$((_warnings + 1))
+    elif [ "${net_grade}" = "average" ]; then
+      echo "   ☑️ Average network speed"
+    elif [ "${net_grade}" = "good" ]; then
+      echo "   🌟 Good network speed"
+    elif [ "${net_grade}" = "excellent" ]; then
+      echo "   🏆 Excellent network speed"
+    elif [ "${net_grade}" = "ultra" ]; then
+      echo "   🚀 Ultra network speed"
+    fi
+    echo ""
+  fi
+
+  if [ "${_DO_MEM}" = "YES" ] && [ "${_DO_CPU}" = "YES" ] && [ "${_DO_DISK}" = "YES" ] && [ "${_DO_NET}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == BOA SUITABILITY SUMMARY                                                 =="
+    echo " ============================================================================="
+    echo ""
+
+    local _issues=0
+    local _warnings=0
+
+    # Memory
+    # Treat "low" as a critical issue only when bandwidth is genuinely weak.
+    # Higher latency alone is a warning (VM contention/NUMA effects), not a hard fail.
+    if [ "${mem_grade}" = "low" ]; then
+      if [ -n "${mem_mibps}" ] && awk -v b="${mem_mibps}" 'BEGIN{exit !(b>=20000)}' 2>/dev/null; then
+        echo "   ⚠️ Memory latency/variance looks high (bandwidth is strong) - monitor under load"
+        _warnings=$((_warnings + 1))
+      else
+        echo "   ❌ Memory bandwidth too low for BOA"
+        _issues=$((_issues + 1))
+      fi
+    elif [ "${mem_grade}" = "average" ]; then
+      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+        echo "   ⚠️ Memory latency higher than expected - may reduce cache hit performance"
+        _warnings=$((_warnings + 1))
+      fi
+    fi
+
+    # CPU speed
+    if [ "${cpu_grade}" = "poor" ]; then
+      echo "   ❌ CPU performance too slow for BOA"
+      _issues=$((_issues + 1))
+    elif [ "${cpu_grade}" = "weak" ]; then
+      echo "   ⚠️ CPU performance weak, not optimal"
+      _warnings=$((_warnings + 1))
+    fi
+
+    # CPU steal
+    if [ "${steal_grade}" = "bad" ]; then
+      echo "   ❌ CPU steal critically high - oversold host, NOT recommended"
+      _issues=$((_issues + 1))
+    elif [ "${steal_grade}" = "warning" ]; then
+      echo "   ⚠️ CPU steal elevated - may cause latency spikes"
+      _warnings=$((_warnings + 1))
+    fi
+
+    # Disk
+    if [ "${disk_grade}" = "bad" ]; then
+      echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
+      _issues=$((_issues + 1))
+    elif [ "${disk_grade}" = "poor" ]; then
+      echo "   ⚠️ Slow disk - may impact deployments"
+      _warnings=$((_warnings + 1))
+    fi
+
+    # Database (optional)
+    if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
+      if [ "${db_grade}" = "poor" ]; then
+        echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
+        _issues=$((_issues + 1))
+      fi
+    fi
+
+    # Network
+    if [ "${net_grade}" = "poor" ]; then
+      echo "   ❌ Slow network - not suitable for high traffic sites"
+      _issues=$((_issues + 1))
+    fi
+
+    # Summary
+    if [ "${_issues}" -eq 0 ] && [ "${_warnings}" -eq 0 ]; then
+      echo "   ✅ This host is well-suited for BOA deployment"
+      echo "   ✅ All critical metrics meet recommended thresholds"
+    elif [ "${_issues}" -eq 0 ]; then
+      echo "   ⚠️ This host is acceptable for BOA with ${_warnings} warning(s)"
+      echo "   Should work fine for most BOA workloads"
     else
-      echo "   ❌ Memory bandwidth too low for BOA"
-      _issues=$((_issues + 1))
+      echo "   ❌ This host has ${_issues} critical issue(s)"
+      echo "   NOT recommended for production BOA deployment"
     fi
-  elif [ "${mem_grade}" = "average" ]; then
-    if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
-      echo "   ⚠️ Memory latency higher than expected - may reduce cache hit performance"
-      _warnings=$((_warnings + 1))
-    fi
-  fi
 
-  # CPU speed
-  if [ "${cpu_grade}" = "poor" ]; then
-    echo "   ❌ CPU performance too slow for BOA"
-    _issues=$((_issues + 1))
-  elif [ "${cpu_grade}" = "weak" ]; then
-    echo "   ⚠️ CPU performance weak, not optimal"
-    _warnings=$((_warnings + 1))
+    echo ""
+    echo " ============================================================================="
+    echo ""
+    echo "For detailed metrics, run: perftest --verbose"
+    echo ""
   fi
-
-  # CPU steal
-  if [ "${steal_grade}" = "bad" ]; then
-    echo "   ❌ CPU steal critically high - oversold host, NOT recommended"
-    _issues=$((_issues + 1))
-  elif [ "${steal_grade}" = "warning" ]; then
-    echo "   ⚠️ CPU steal elevated - may cause latency spikes"
-    _warnings=$((_warnings + 1))
-  fi
-
-  # Disk
-  if [ "${disk_grade}" = "bad" ]; then
-    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
-    _issues=$((_issues + 1))
-  elif [ "${disk_grade}" = "poor" ]; then
-    echo "   ⚠️ Slow disk - may impact deployments"
-    _warnings=$((_warnings + 1))
-  fi
-
-  # Database (optional)
-  if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
-    if [ "${db_grade}" = "poor" ]; then
-      echo "   ❌ Slow DB OLTP - cache misses and admin tasks may feel sluggish"
-      _issues=$((_issues + 1))
-    fi
-  fi
-
-  # Network
-  if [ "${net_grade}" = "poor" ]; then
-    echo "   ❌ Slow network - not suitable for high traffic sites"
-    _issues=$((_issues + 1))
-  fi
-
-  # Summary
-  if [ "${_issues}" -eq 0 ] && [ "${_warnings}" -eq 0 ]; then
-    echo "   ✅ This host is well-suited for BOA deployment"
-    echo "   ✅ All critical metrics meet recommended thresholds"
-  elif [ "${_issues}" -eq 0 ]; then
-    echo "   ⚠️ This host is acceptable for BOA with ${_warnings} warning(s)"
-    echo "   Should work fine for most BOA workloads"
-  else
-    echo "   ❌ This host has ${_issues} critical issue(s)"
-    echo "   NOT recommended for production BOA deployment"
-  fi
-
-  echo ""
-  echo " ============================================================================="
-  echo ""
-  echo "For detailed metrics, run: perftest --verbose"
-  echo ""
 }
 
 # ----
@@ -3725,23 +3801,96 @@ _db_benchmark_sysbench() {
 # Main
 # ----
 
-# Parse arguments
-for arg in "$@"; do
-  case "$arg" in
+# Parse arguments (explicit test selection required)
+if [ "$#" -eq 0 ]; then
+  _usage
+  exit 1
+fi
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
     --fancy) _FANCY=1; _VERBOSE=0; _COMPACT=0 ;;
     --compact) _FANCY=0; _VERBOSE=0; _COMPACT=1 ;;
     --verbose) _FANCY=0; _VERBOSE=1; _COMPACT=0 ;;
     --no-dbtest) _DBTEST_ENABLED=NO ;;
     --dbtest-heavy) _DBTEST_HEAVY=YES ;;
     --keep-db) _DBTEST_KEEP_DB=YES ;;
+    --list-tests) _list_tests; exit 0 ;;
+    --all)
+      _DO_SYSINFO=YES
+      _DO_CPU=YES
+      _DO_MEM=YES
+      _DO_AES=YES
+      _DO_DISK=YES
+      _DO_NET=YES
+      _DO_PHP=YES
+      _DO_DB=YES
+      _DO_FS=YES
+      ;;
+    --only)
+      shift
+      [ -n "${1:-}" ] || { echo "ERROR: --only requires a test name"; _usage; exit 1; }
+      _DO_SYSINFO=NO
+      _DO_CPU=NO
+      _DO_MEM=NO
+      _DO_AES=NO
+      _DO_DISK=NO
+      _DO_NET=NO
+      _DO_PHP=NO
+      _DO_DB=NO
+      _DO_FS=NO
+      case "$1" in
+        sysinfo) _DO_SYSINFO=YES ;;
+        cpu) _DO_CPU=YES ;;
+        mem) _DO_MEM=YES ;;
+        aes) _DO_AES=YES ;;
+        disk) _DO_DISK=YES ;;
+        net) _DO_NET=YES ;;
+        php) _DO_PHP=YES ;;
+        db) _DO_DB=YES ;;
+        fs) _DO_FS=YES ;;
+        *) echo "ERROR: Unknown test for --only: $1"; _list_tests; exit 1 ;;
+      esac
+      ;;
+    --sysinfo) _DO_SYSINFO=YES ;;
+    --cpu) _DO_CPU=YES ;;
+    --mem) _DO_MEM=YES ;;
+    --aes) _DO_AES=YES ;;
+    --disk) _DO_DISK=YES ;;
+    --net) _DO_NET=YES ;;
+    --php) _DO_PHP=YES ;;
+    --db) _DO_DB=YES ;;
+    --fs) _DO_FS=YES ;;
     -h|--help) _usage; exit 0 ;;
     *)
-      echo "Unknown option: $arg"
+      echo "Unknown option: $1"
       _usage
       exit 1
       ;;
   esac
+  shift
 done
+
+# Require explicit test selection
+if [ "${_DO_SYSINFO}" != "YES" ] \
+  && [ "${_DO_CPU}" != "YES" ] \
+  && [ "${_DO_MEM}" != "YES" ] \
+  && [ "${_DO_AES}" != "YES" ] \
+  && [ "${_DO_DISK}" != "YES" ] \
+  && [ "${_DO_NET}" != "YES" ] \
+  && [ "${_DO_PHP}" != "YES" ] \
+  && [ "${_DO_DB}" != "YES" ] \
+  && [ "${_DO_FS}" != "YES" ]; then
+  echo "ERROR: You must select tests explicitly with --all or one/more test flags."
+  echo ""
+  _usage
+  exit 1
+fi
+
+# DB test runs only when requested (unless explicitly forced off)
+if [ "${_DO_DB}" != "YES" ]; then
+  _DBTEST_ENABLED=NO
+fi
 
 _check_root
 
@@ -3761,26 +3910,66 @@ fi
 # so it doesn't interfere with perftest under load.
 sleep 15
 
-# Update package list silently
-apt-get update -qq >/dev/null 2>&1 || true
+# Required packages (install only what is needed for selected tests)
+_DO_NEED_PKGS="NO"
+if [ "${_DO_NET}" = "YES" ]; then _DO_NEED_PKGS="YES"; fi
+if [ "${_DO_AES}" = "YES" ]; then _DO_NEED_PKGS="YES"; fi
+if [ "${_DO_DISK}" = "YES" ]; then _DO_NEED_PKGS="YES"; fi
+if [ "${_DO_CPU}" = "YES" ] || [ "${_DO_DB}" = "YES" ] || [ "${_DO_MEM}" = "YES" ]; then _DO_NEED_PKGS="YES"; fi
+if [ "${_DO_PHP}" = "YES" ]; then _DO_NEED_PKGS="YES"; fi
+if [ "${_DO_SYSINFO}" = "YES" ]; then _DO_NEED_PKGS="YES"; fi
 
-# Required packages
-_check_and_install_package "curl"
-_check_and_install_package "openssl"
-_check_and_install_package "fio"
-_check_and_install_package "jq"
-_check_and_install_package "sysstat" # mpstat
-_check_and_install_package "bc"
-if [ "${_NET_IPERF_ENABLED}" = "YES" ]; then
-  _check_and_install_package "iperf3"
+# Update package list silently only if we may need to install anything
+if [ "${_DO_NEED_PKGS}" = "YES" ]; then
+  apt-get update -qq >/dev/null 2>&1 || true
 fi
-_ensure_sysbench
+
+# Minimal deps per test group
+if [ "${_DO_NET}" = "YES" ]; then
+  _check_and_install_package "curl"
+  if [ "${_NET_IPERF_ENABLED}" = "YES" ]; then
+    _check_and_install_package "iperf3"
+  fi
+fi
+
+if [ "${_DO_AES}" = "YES" ]; then
+  _check_and_install_package "openssl"
+fi
+
+if [ "${_DO_DISK}" = "YES" ]; then
+  _check_and_install_package "fio"
+  _check_and_install_package "jq"
+fi
+
+# bc is used by grading/math across several tests
+if [ "${_DO_CPU}" = "YES" ] || [ "${_DO_DB}" = "YES" ] || [ "${_DO_MEM}" = "YES" ] || [ "${_DO_DISK}" = "YES" ] || [ "${_DO_NET}" = "YES" ] || [ "${_DO_AES}" = "YES" ] || [ "${_DO_PHP}" = "YES" ]; then
+  _check_and_install_package "bc"
+fi
+
+if [ "${_DO_CPU}" = "YES" ] || [ "${_DO_DB}" = "YES" ]; then
+  _check_and_install_package "sysstat" # mpstat
+  _ensure_sysbench
+fi
+
+# membench is compiled on demand; ensure toolchain only if memory test is requested
+if [ "${_DO_MEM}" = "YES" ]; then
+  _check_and_install_package "gcc" >/dev/null 2>&1 || true
+  _check_and_install_package "make" >/dev/null 2>&1 || true
+fi
+
+# PCI inventory is optional; install only when sysinfo is requested
+if [ "${_DO_SYSINFO}" = "YES" ]; then
+  _check_and_install_package "pciutils" >/dev/null 2>&1 || true
+fi
+
 
 # Basic system info
 _hostname="$(hostname)"
 _cpu_info="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
 _cpu_cores="$(nproc 2>/dev/null || echo N/A)"
-_pci_init
+if [ "${_DO_SYSINFO}" = "YES" ]; then
+  _pci_init
+fi
 
 # DB bench outputs (sysbench OLTP)
 _db_test_status="SKIPPED"
@@ -3790,7 +3979,7 @@ _db_ro_p95_ms=""
 _db_rw_tps=""
 _db_rw_p95_ms=""
 
-if [ "${_VERBOSE}" -eq 1 ]; then
+if [ "${_VERBOSE}" -eq 1 ] && [ "${_DO_SYSINFO}" = "YES" ]; then
   echo "Host: ${_hostname}"
   echo "CPU: ${_cpu_info}"
   echo "vCPUs: ${_cpu_cores}"
@@ -3807,69 +3996,136 @@ if command -v php >/dev/null 2>&1 && [ "${_VERBOSE}" -eq 1 ]; then
 fi
 
 # CPU Performance Tests
-echo "Running CPU performance tests with sysbench..."
-_cpu_steal_mt="$(_measure_cpu_steal 1)" # initial check
+if [ "${_DO_CPU}" = "YES" ]; then
+  echo "Running CPU performance tests with sysbench..."
+  _cpu_steal_mt="$(_measure_cpu_steal 1)" # initial check
 
-# Multi-threaded: nproc
-if command -v mpstat >/dev/null 2>&1; then
-  mpstat 1 "${_SYSBENCH_CPU_TIME}" >/tmp/perftest_mpstat_mt.txt 2>/dev/null &
-  _mpstat_pid="$!"
+  # Multi-threaded: nproc
+  if command -v mpstat >/dev/null 2>&1; then
+    mpstat 1 "${_SYSBENCH_CPU_TIME}" >/tmp/perftest_mpstat_mt.txt 2>/dev/null &
+    _mpstat_pid="$!"
+  fi
+
+  _cpu_mt_threads_raw="$(nproc 2>/dev/null || echo 1)"
+  _cpu_mt_threads_used="${_cpu_mt_threads_raw}"
+  if [ -n "${_SYSBENCH_CPU_THREADS_SAT:-}" ] && [ "${_SYSBENCH_CPU_THREADS_SAT}" -gt 0 ] && [ "${_cpu_mt_threads_used}" -gt "${_SYSBENCH_CPU_THREADS_SAT}" ]; then
+    _cpu_mt_threads_used="${_SYSBENCH_CPU_THREADS_SAT}"
+  fi
+  if [ "${_cpu_mt_threads_used}" -lt 1 ]; then
+    _cpu_mt_threads_used=1
+  fi
+
+  _run_sysbench_cpu "${_cpu_mt_threads_used}" "MT_NPROC"
+
+  if [ -n "${_mpstat_pid:-}" ]; then
+    wait "${_mpstat_pid}" >/dev/null 2>&1
+    _cpu_steal_mt="$(_parse_mpstat_steal_avg /tmp/perftest_mpstat_mt.txt)"
+    rm -f /tmp/perftest_mpstat_mt.txt >/dev/null 2>&1
+  fi
+
+  # Single-threaded
+  echo "Running Single-threaded CPU performance tests..."
+  _run_sysbench_cpu 1 "ST"
+
+  # 4-thread
+  echo "Running Multi-threaded CPU tests..."
+  _run_sysbench_cpu 4 "MT4"
+else
+  if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Skipping CPU test (--cpu not selected)"
+  fi
+  _cpu_events_MT_NPROC="SKIPPED"
+  _cpu_latency_MT_NPROC="SKIPPED"
+  _cpu_events_ST="SKIPPED"
+  _cpu_latency_ST="SKIPPED"
+  _cpu_events_MT4="SKIPPED"
+  _cpu_latency_MT4="SKIPPED"
 fi
-
-_cpu_mt_threads_raw="$(nproc 2>/dev/null || echo 1)"
-_cpu_mt_threads_used="${_cpu_mt_threads_raw}"
-if [ -n "${_SYSBENCH_CPU_THREADS_SAT:-}" ] && [ "${_SYSBENCH_CPU_THREADS_SAT}" -gt 0 ] && [ "${_cpu_mt_threads_used}" -gt "${_SYSBENCH_CPU_THREADS_SAT}" ]; then
-  _cpu_mt_threads_used="${_SYSBENCH_CPU_THREADS_SAT}"
-fi
-if [ "${_cpu_mt_threads_used}" -lt 1 ]; then
-  _cpu_mt_threads_used=1
-fi
-
-_run_sysbench_cpu "${_cpu_mt_threads_used}" "MT_NPROC"
-
-if [ -n "${_mpstat_pid:-}" ]; then
-  wait "${_mpstat_pid}" >/dev/null 2>&1
-  _cpu_steal_mt="$(_parse_mpstat_steal_avg /tmp/perftest_mpstat_mt.txt)"
-  rm -f /tmp/perftest_mpstat_mt.txt >/dev/null 2>&1
-fi
-
-# Single-threaded
-echo "Running Single-threaded CPU performance tests..."
-_run_sysbench_cpu 1 "ST"
-
-# 4-thread
-echo "Running Multi-threaded CPU tests..."
-_run_sysbench_cpu 4 "MT4"
 
 # Memory Performance Test (DRAM-focused)
-echo "Running Memory performance test (DRAM-focused membench)..."
-_run_mem_benchmarks
+if [ "${_DO_MEM}" = "YES" ]; then
+  echo "Running Memory performance test (DRAM-focused membench)..."
+  _run_mem_benchmarks
+else
+  if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Skipping memory test (--mem not selected)"
+  fi
+  _mem_transfer_speed="SKIPPED"
+  _mem_latency="SKIPPED"
+fi
 
 # AES throughput (nench-inspired)
-echo "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
-_run_aes_throughput_test
+if [ "${_DO_AES}" = "YES" ]; then
+  echo "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
+  _run_aes_throughput_test
+else
+  if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Skipping AES test (--aes not selected)"
+  fi
+  _aes_seconds="SKIPPED"
+  _aes_mibps="SKIPPED"
+fi
 
 # PHP Performance Tests (single + concurrent)
-echo "Running PHP performance tests..."
-_run_php_benchmarks
+if [ "${_DO_PHP}" = "YES" ]; then
+  echo "Running PHP performance tests..."
+  _run_php_benchmarks
+else
+  if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Skipping PHP test (--php not selected)"
+  fi
+  _php_time_runs="SKIPPED"
+  _php_time_median="SKIPPED"
+  _php_concurrency_wall="SKIPPED"
+  _php_concurrency_throughput="SKIPPED"
+fi
 
 # Database OLTP experience proxy (sysbench + MySQL root)
-echo "Running Database performance tests..."
-_db_benchmark_sysbench
+if [ "${_DO_DB}" = "YES" ] && [ "${_DBTEST_ENABLED}" = "YES" ]; then
+  echo "Running Database performance tests..."
+  _db_benchmark_sysbench
+else
+  if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Skipping DB test (--db not selected or disabled)"
+  fi
+  _db_test_status="SKIPPED"
+  _db_test_reason=""
+fi
 
 # Disk I/O Performance Tests
-_log "Detecting mounted filesystems to test (root + real mounted partitions; excluding /boot*)..."
-mapfile -t _test_mounts < <(_get_test_mounts)
+if [ "${_DO_DISK}" = "YES" ]; then
+  _log "Detecting mounted filesystems to test (root + real mounted partitions; excluding /boot*)..."
+  mapfile -t _test_mounts < <(_get_test_mounts)
 
-# ioping latency (nench-inspired)
-echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
-declare -A _ioping_seek_line
-declare -A _ioping_seqread_line
-_run_ioping_quick_mounts
+  # ioping latency (nench-inspired)
+  echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
+  declare -A _ioping_seek_line
+  declare -A _ioping_seqread_line
+  _run_ioping_quick_mounts
+else
+  if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Skipping disk tests (--disk not selected)"
+  fi
+  _test_mounts=()
+  _ioping_seek="SKIPPED"
+  _ioping_seqread="SKIPPED"
+fi
 
 # IPv4 network sanity check (CDN with fallback)
-echo "Running IPv4 network check (4 tests, ${_NET_TIMEOUT}s timeout)..."
-_run_ipv4_net_check
+if [ "${_DO_NET}" = "YES" ]; then
+  echo "Running IPv4 network check (4 tests, ${_NET_TIMEOUT}s timeout)..."
+  _run_ipv4_net_check
+else
+  if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Skipping network tests (--net not selected)"
+  fi
+  _net_ipv4="SKIPPED"
+  _net_download="SKIPPED"
+  _net_http_ok="0"
+  _net_http_total="0"
+  _net_iperf_dl="SKIPPED"
+  _net_iperf_ul="SKIPPED"
+fi
 
 declare -A _fio_rand_iops_read
 declare -A _fio_rand_iops_write
