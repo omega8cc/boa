@@ -71,6 +71,21 @@ _valkey_no_rdb() {
 }
 _valkey_no_rdb
 
+# Function to enable fstrim instead of discard
+_if_enable_fstrim() {
+  if [ -x "/usr/sbin/fstrim" ] && [ -d "/etc/cron.daily" ] && [ ! -e "/etc/cron.daily/fstrim" ]; then
+    cat > /etc/cron.daily/fstrim <<'EOF'
+#!/bin/bash
+# Run TRIM periodically instead of using mount option "discard"
+command -v fstrim >/dev/null 2>&1 || exit 0
+fstrim -av >/dev/null 2>&1
+exit 0
+EOF
+    chmod 0755 /etc/cron.daily/fstrim
+  fi
+}
+_if_enable_fstrim
+
 # Function to calculate RAM usage percentage as an integer
 _calculate_ram_usage_percent() {
   _total_ram_kb=$1
