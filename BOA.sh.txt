@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=lts
 export _xSrl=591ltsT01
 export _rLsn="BOA-5.9.1"
-export _bTs=591v01
+export _bTs=591v02
 
 ###
 ### Avoid too many questions
@@ -1403,7 +1403,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/perftest" ] \
-    || [ ! -e "${_pthLog}/perftest.sh.ctrl.f19.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/perftest.sh.ctrl.f16.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/perftest)
     if (( _CNT > 0 )); then
       echo "The perftest is running!"
@@ -1415,7 +1415,7 @@ _update_agents() {
       if [ -e "${_optBin}/perftest" ]; then
         chmod 700 ${_optBin}/perftest
         chown root:root ${_optBin}/perftest
-        touch ${_pthLog}/perftest.sh.ctrl.f19.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/perftest.sh.ctrl.f16.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/perftest.old" ]; then
           mv -f ${_optBin}/perftest.old ${_optBin}/perftest
@@ -2180,7 +2180,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/autoupboa.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/autoupboa.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autoupboa)
     if (( _CNT > 0 )); then
       echo "The autoupboa is running!"
@@ -2192,7 +2192,7 @@ _update_agents() {
       if [ -e "${_optBin}/autoupboa" ]; then
         chmod 700 ${_optBin}/autoupboa
         chown root:root ${_optBin}/autoupboa
-        touch ${_pthLog}/autoupboa.ctrl.f84.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autoupboa.ctrl.f83.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autoupboa.old" ]; then
           mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
