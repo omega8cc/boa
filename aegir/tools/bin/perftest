@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION="v71"
+_PT_VERSION="v70"
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -2134,7 +2134,7 @@ EOF
   local _runs="${_PHP_BENCH_RUNS}"
   local _times=()
   local _i
-  [ "${_COMPACT}" -eq 0 ] && echo "Running PHP single-thread benchmark (${_runs} runs, iterations=${_PHP_BENCH_ITERATIONS})..."
+  echo "Running PHP single-thread benchmark (${_runs} runs, iterations=${_PHP_BENCH_ITERATIONS})..."
   for _i in $(seq 1 "${_runs}"); do
     local _t
     _t="$(PHP_BENCH_ITERATIONS="${_PHP_BENCH_ITERATIONS}" php "${_script}" 2>/dev/null || echo 0)"
@@ -2161,7 +2161,7 @@ EOF
     _conc="${_nproc}"
   fi
 
-  [ "${_COMPACT}" -eq 0 ] && echo "Running PHP concurrent benchmark (${_conc} processes, iterations=${_PHP_BENCH_ITERATIONS} each)..."
+  echo "Running PHP concurrent benchmark (${_conc} processes, iterations=${_PHP_BENCH_ITERATIONS} each)..."
   local _start _end _elapsed
   _start="$(date +%s.%N)"
   for _i in $(seq 1 "${_conc}"); do
@@ -3289,10 +3289,10 @@ _print_grading_summary() {
   fi
 
   if [ "${_DO_MEM}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
+    echo " ============================================================================="
     if [ "${_FANCY}" -eq 1 ]; then
-      echo " ============================================================================="
-      echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
-      echo " ============================================================================="
       echo ""
       printf "   Bandwidth:  %-20s Grade: [%s]%s\n" "${_mem_transfer_speed}" "${mem_grade}" "$( [ "${_mem_bench_tool:-membench}" = "sysbench" ] && echo " (fallback: sysbench)" || echo "" )"
       if [ -n "${_mem_latency}" ]; then
@@ -3332,10 +3332,10 @@ _print_grading_summary() {
   fi
 
   if [ "${_DO_CPU}" = "YES" ] || [ "${_DO_AES}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
+    echo " ============================================================================="
     if [ "${_FANCY}" -eq 1 ]; then
-      echo " ============================================================================="
-      echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
-      echo " ============================================================================="
       echo ""
       printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
       if [ -n "${_cpu_mt_threads_used:-}" ] && [ -n "${_cpu_cores:-}" ] && [ "${_cpu_mt_threads_used}" -lt "${_cpu_cores}" ] 2>/dev/null; then
@@ -3380,7 +3380,7 @@ _print_grading_summary() {
   fi
 
   # Filesystem details + fstab hints + space/inodes sanity (informational)
-  if [ "${_DO_FS}" = "YES" ] && [ "${_FANCY}" -eq 1 ]; then
+  if [ "${_DO_FS}" = "YES" ]; then
     _print_fs_section
   fi
 
@@ -3397,12 +3397,12 @@ _print_grading_summary() {
   fi
 
   if [ "${_DO_DB}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == 5. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
+    echo " ============================================================================="
+    echo ""
     if [ "${_db_test_status}" = "OK" ] || [ "${_db_test_status}" = "WARN" ]; then
       if [ "${_FANCY}" -eq 1 ]; then
-        echo " ============================================================================="
-        echo " == 5. DATABASE (Percona/MySQL OLTP proxy via sysbench)                     =="
-        echo " ============================================================================="
-        echo ""
         printf "   Threads used:            %s\n" "${_db_threads_used:-N/A}"
         printf "   Read-only (tps / p95):   %-10s / %s ms\n" "${_db_ro_tps:-N/A}" "${_db_ro_p95_ms:-N/A}"
         printf "   Read-write (tps / p95):  %-10s / %s ms  [%s]\n" "${_db_rw_tps:-N/A}" "${_db_rw_p95_ms:-N/A}" "${db_grade}"
@@ -3432,10 +3432,10 @@ _print_grading_summary() {
   fi
 
   if [ "${_DO_NET}" = "YES" ]; then
+    echo " ============================================================================="
+    echo " == 6. NETWORK (Sanity check)                                               =="
+    echo " ============================================================================="
     if [ "${_FANCY}" -eq 1 ]; then
-      echo " ============================================================================="
-      echo " == 6. NETWORK (Sanity check)                                               =="
-      echo " ============================================================================="
       echo ""
       printf "   Public IPv4:        %s\n" "${_net_ipv4}"
       printf "   Region:             %s\n" "${_net_region_pretty}"
@@ -3747,7 +3747,7 @@ _db_benchmark_sysbench() {
     return
   fi
 
-  [ "${_COMPACT}" -eq 0 ] && echo "Running MySQL OLTP (sysbench: RO+RW, ${_DB_SYSBENCH_TIME_RO}s+${_DB_SYSBENCH_TIME_RW}s)..."
+  echo "Running MySQL OLTP (sysbench: RO+RW, ${_DB_SYSBENCH_TIME_RO}s+${_DB_SYSBENCH_TIME_RW}s)..."
 
   # Threads = min(vCPU*2, cap)
   local threads
@@ -4046,7 +4046,7 @@ fi
 
 # CPU Performance Tests
 if [ "${_DO_CPU}" = "YES" ]; then
-  [ "${_COMPACT}" -eq 0 ] && echo "Running CPU performance tests with sysbench..."
+  echo "Running CPU performance tests with sysbench..."
   _cpu_steal_mt="$(_measure_cpu_steal 1)" # initial check
 
   # Multi-threaded: nproc
@@ -4073,11 +4073,11 @@ if [ "${_DO_CPU}" = "YES" ]; then
   fi
 
   # Single-threaded
-  [ "${_COMPACT}" -eq 0 ] && echo "Running Single-threaded CPU performance tests..."
+  echo "Running Single-threaded CPU performance tests..."
   _run_sysbench_cpu 1 "ST"
 
   # 4-thread
-  [ "${_COMPACT}" -eq 0 ] && echo "Running Multi-threaded CPU tests..."
+  echo "Running Multi-threaded CPU tests..."
   _run_sysbench_cpu 4 "MT4"
 else
   if [ "${_VERBOSE}" -eq 1 ]; then
@@ -4093,7 +4093,7 @@ fi
 
 # Memory Performance Test (DRAM-focused)
 if [ "${_DO_MEM}" = "YES" ]; then
-  [ "${_COMPACT}" -eq 0 ] && echo "Running Memory performance test (DRAM-focused membench)..."
+  echo "Running Memory performance test (DRAM-focused membench)..."
   _run_mem_benchmarks
 else
   if [ "${_VERBOSE}" -eq 1 ]; then
@@ -4105,7 +4105,7 @@ fi
 
 # AES throughput (nench-inspired)
 if [ "${_DO_AES}" = "YES" ]; then
-  [ "${_COMPACT}" -eq 0 ] && echo "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
+  echo "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
   _run_aes_throughput_test
 else
   if [ "${_VERBOSE}" -eq 1 ]; then
@@ -4117,7 +4117,7 @@ fi
 
 # PHP Performance Tests (single + concurrent)
 if [ "${_DO_PHP}" = "YES" ]; then
-  [ "${_COMPACT}" -eq 0 ] && echo "Running PHP performance tests..."
+  echo "Running PHP performance tests..."
   _run_php_benchmarks
 else
   if [ "${_VERBOSE}" -eq 1 ]; then
@@ -4131,7 +4131,7 @@ fi
 
 # Database OLTP experience proxy (sysbench + MySQL root)
 if [ "${_DO_DB}" = "YES" ] && [ "${_DBTEST_ENABLED}" = "YES" ]; then
-  [ "${_COMPACT}" -eq 0 ] && echo "Running Database performance tests..."
+  echo "Running Database performance tests..."
   _db_benchmark_sysbench
 else
   if [ "${_VERBOSE}" -eq 1 ]; then
@@ -4147,7 +4147,7 @@ if [ "${_DO_DISK}" = "YES" ]; then
   mapfile -t _test_mounts < <(_get_test_mounts)
 
   # ioping latency (nench-inspired)
-  [ "${_COMPACT}" -eq 0 ] && echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
+  echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
   declare -A _ioping_seek_line
   declare -A _ioping_seqread_line
   _run_ioping_quick_mounts
@@ -4162,7 +4162,7 @@ fi
 
 # IPv4 network sanity check (CDN with fallback)
 if [ "${_DO_NET}" = "YES" ]; then
-  [ "${_COMPACT}" -eq 0 ] && echo "Running IPv4 network check (4 tests, ${_NET_TIMEOUT}s timeout)..."
+  echo "Running IPv4 network check (4 tests, ${_NET_TIMEOUT}s timeout)..."
   _run_ipv4_net_check
 else
   if [ "${_VERBOSE}" -eq 1 ]; then
@@ -4213,7 +4213,7 @@ _root_qd1_fsync_p99_write=""
 
 for _mount_point in "${_test_mounts[@]}"; do
   [ -z "${_mount_point}" ] && continue
-  [ "${_COMPACT}" -eq 0 ] && echo "Running Disk I/O tests on ${_mount_point}..."
+  echo "Running Disk I/O tests on ${_mount_point}..."
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
 
   # Random 4k read/write
@@ -4270,7 +4270,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   rm -f "${_seqwrite_output}" >/dev/null 2>&1
 
   # Random 4k randrw QD=1 (latency percentiles for tiering) - repeated for stability
-  [ "${_COMPACT}" -eq 0 ] && echo "Running QD=1 random latency test (x${_FIO_QD1_REPEATS}) on ${_mount_point}..."
+  echo "Running QD=1 random latency test (x${_FIO_QD1_REPEATS}) on ${_mount_point}..."
   _qd1_rep=""
   _qd1_p95_r_list=() _qd1_p95_w_list=() _qd1_p99_r_list=() _qd1_p99_w_list=()
   _qd1_ok="YES"
@@ -4309,7 +4309,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   fi
 
   # Random 4k randwrite QD=1 with fsync (durability realism) - repeated for stability
-  [ "${_COMPACT}" -eq 0 ] && echo "Running QD=1 fsync write test (x${_FIO_QD1_FSYNC_REPEATS}) on ${_mount_point}..."
+  echo "Running QD=1 fsync write test (x${_FIO_QD1_FSYNC_REPEATS}) on ${_mount_point}..."
   _fs_rep=""
   _fs_p95_list=() _fs_p99_list=()
   _fs_ok="YES"
