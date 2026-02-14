@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v67
+_PT_VERSION=v68
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -1694,6 +1694,10 @@ _print_fs_section() {
   local _used _iused
   local _fstab_cache _fstab_line _fstab_opt _fstab_fs _fstab_spec
   local _notes _had
+  local _first
+  local _mp_has_noatime _mp_has_discard
+  local _fs_has_noatime _fs_has_discard
+  local _want_noatime _want_nofail _want_rm_growfs
 
   echo " ============================================================================="
   echo " == 3. FILESYSTEMS (type/options + space/inodes sanity)                     =="
@@ -1711,6 +1715,7 @@ _print_fs_section() {
   fi
 
   _had="NO"
+  _first="YES"
   while IFS='|' read -r _mp _src _fs _opt; do
     [ -n "${_mp}" ] || continue
     _had="YES"
@@ -1725,18 +1730,11 @@ _print_fs_section() {
     echo "     type: ${_fs}  src: ${_src}"
     echo "     usage: ${_used:-N/A}%  inodes: ${_iused:-N/A}%"
 
-    # Mount-level hints (attached to this mount; keep them human-readable).
-    case ",${_opt}," in
-      *,noatime,*) : ;;
-      *)
-        echo "     hint: consider adding 'noatime' to reduce metadata writes"
-        ;;
-    esac
-    case ",${_opt}," in
-      *,discard,*)
-        echo "     hint: 'discard' is enabled (online TRIM); periodic fstrim is often preferred"
-        ;;
-    esac
+    # Flags from live mount options.
+    _mp_has_noatime="NO"
+    _mp_has_discard="NO"
+    case ",${_opt}," in *,noatime,*) _mp_has_noatime="YES";; esac
+    case ",${_opt}," in *,discard,*) _mp_has_discard="YES";; esac
 
     # Alerts (space / inodes) attached to mount.
     if [ -n "${_used}" ] && [ "${_used}" -ge 90 ] 2>/dev/null; then
@@ -1746,11 +1744,16 @@ _print_fs_section() {
       echo "     - ⚠️ ALERT: inode usage is >90% (many-small-files risk; Composer/vendor trees can trigger this)"
     fi
 
-    # /etc/fstab suggestion for this mount (attached; avoid duplicates).
+    # /etc/fstab lookup for this mount (so hints can be attached and deduplicated).
     _fstab_line=""
     _fstab_opt=""
     _fstab_fs=""
     _fstab_spec=""
+    _fs_has_noatime="NO"
+    _fs_has_discard="NO"
+    _want_noatime="NO"
+    _want_nofail="NO"
+    _want_rm_growfs="NO"
     if [ -n "${_fstab_cache}" ] && [ -e "${_fstab_cache}" ]; then
       _fstab_line="$(awk -F'|' -v mp="${_mp}" '$1==mp {print $0; exit}' "${_fstab_cache}" 2>/dev/null)"
       if [ -n "${_fstab_line}" ]; then
@@ -1758,23 +1761,51 @@ _print_fs_section() {
         _fstab_opt="$(echo "${_fstab_line}" | awk -F'|' '{print $3}')"
         _fstab_spec="$(echo "${_fstab_line}" | awk -F'|' '{print $4}')"
 
-        # /etc/fstab hints for this mount (keep them explicit and attached).
-        echo "     fstab: opts=${_fstab_opt}"
-        case ",${_fstab_opt}," in
-          *,noatime,*) : ;;
-          *) echo "       - consider adding: noatime (reduces metadata writes)";;
-        esac
+        case ",${_fstab_opt}," in *,noatime,*) _fs_has_noatime="YES";; esac
+        case ",${_fstab_opt}," in *,discard,*) _fs_has_discard="YES";; esac
+
+        if [ "${_fs_has_noatime}" != "YES" ]; then
+          _want_noatime="YES"
+        fi
         if [ "${_mp}" != "/" ]; then
           case ",${_fstab_opt}," in
             *,nofail,*) : ;;
-            *) echo "       - consider adding: nofail (boot continues even if this disk is missing)";;
+            *) _want_nofail="YES";;
           esac
         fi
         case ",${_fstab_opt}," in
           *,x-systemd.growfs,*|*,x-systemd.growfs|x-systemd.growfs,*|x-systemd.growfs)
-            echo "       - consider removing: x-systemd.growfs (systemd-only; not useful on Devuan)"
+            _want_rm_growfs="YES"
             ;;
         esac
+      fi
+    fi
+
+    # Mount-level hints (only when we can't attach a clear fstab hint).
+    if [ -z "${_fstab_line}" ]; then
+      if [ "${_mp_has_noatime}" != "YES" ]; then
+        echo "     hint: consider adding 'noatime' to reduce metadata writes"
+      fi
+    fi
+
+    # 'discard' note (print once, even if both live mount and fstab include it).
+    if [ "${_mp_has_discard}" = "YES" ] || [ "${_fs_has_discard}" = "YES" ]; then
+      echo "     note: 'discard' is enabled (online TRIM); periodic fstrim is often preferred"
+    fi
+
+    # /etc/fstab hints for this mount (attached; print only when actionable).
+    if [ -n "${_fstab_line}" ]; then
+      if [ "${_want_noatime}" = "YES" ] || [ "${_want_nofail}" = "YES" ] || [ "${_want_rm_growfs}" = "YES" ]; then
+        echo "     fstab: opts=${_fstab_opt}"
+        if [ "${_want_noatime}" = "YES" ]; then
+          echo "       - consider adding: noatime (reduces metadata writes)"
+        fi
+        if [ "${_want_nofail}" = "YES" ]; then
+          echo "       - consider adding: nofail (boot continues even if this disk is missing)"
+        fi
+        if [ "${_want_rm_growfs}" = "YES" ]; then
+          echo "       - consider removing: x-systemd.growfs (systemd-only; not useful on Devuan)"
+        fi
       fi
     fi
   done < <(_list_real_mounts)
