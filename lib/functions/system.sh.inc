@@ -5540,7 +5540,6 @@ _strict_bin_permissions() {
                   optipng \
                   pngcrush \
                   pngquant \
-                  redis-cli \
                   redis-server \
                   rrdtool \
                   ruby \
@@ -5548,7 +5547,6 @@ _strict_bin_permissions() {
                   sass-convert \
                   scss \
                   sendmail \
-                  valkey-cli \
                   valkey-server \
                   wget \
                   which \
@@ -5588,9 +5586,7 @@ _strict_bin_permissions() {
                     redis-benchmark \
                     redis-check-aof \
                     redis-check-dump \
-                    valkey-benchmark \
-                    valkey-check-aof \
-                    valkey-check-dump \
+                    redis-cli \
                     rkhunter \
                     sendmail \
                     sftp-admin \
@@ -5599,7 +5595,11 @@ _strict_bin_permissions() {
                     sftp-user \
                     sftp-verif \
                     sftp-who \
-                    syncpass"
+                    syncpass \
+                    valkey-benchmark \
+                    valkey-check-aof \
+                    valkey-check-dump \
+                    valkey-cli"
 
   for i in ${_PROTECTED_ITEMS}; do
     # type -ap prints *all* matching paths (one per line); resolve symlinks; de-dup
