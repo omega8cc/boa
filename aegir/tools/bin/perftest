@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v63
+_PT_VERSION=v66
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -4481,8 +4481,6 @@ else
       _csv_p99w_num="${_tier_p99w_num}"
       _csv_fsync_p95w_num="${_tier_fsync_p95w_num}"
       _csv_fsync_p99w_num="${_tier_fsync_p99w_num}"
-      local _csv_disk_grade_tp _csv_disk_grade_tail
-      local _csv_disk_gmean _csv_disk_imbalance _csv_disk_meta _csv_disk_fsync_p99 _csv_disk_qd1p99r _csv_disk_qd1p99w _csv_disk_ioping
       read -r _csv_disk_grade _csv_disk_grade_tp _csv_disk_grade_tail _csv_disk_gmean _csv_disk_imbalance _csv_disk_meta _csv_disk_fsync_p99 _csv_disk_qd1p99r _csv_disk_qd1p99w _csv_disk_ioping <<< "$(_boa_grade_disk_final "${_csv_ioping_avg_us}" "${_csv_seqr_num}" "${_csv_seqw_num}" "${_csv_riops_num}" "${_csv_wiops_num}" "${_csv_meta_num}" "${_csv_p99r_num}" "${_csv_p99w_num}" "${_csv_fsync_p99w_num}" "${_csv_fsync_p95w_num}")"
       echo "CSV_DISK_V1:${_hostname},\"${_mount_point}\",${_csv_seqr_num},${_csv_seqw_num},${_csv_riops_num},${_csv_wiops_num},${_csv_meta_num},${_csv_ioping_avg_us},${_csv_p99r_num},${_csv_p99w_num},${_csv_fsync_p99w_num},\"${_tier_storage_tier}\",\"${_csv_disk_grade}\""
     fi
