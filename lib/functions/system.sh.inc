@@ -5577,6 +5577,7 @@ _strict_bin_permissions() {
                     valkey-check-aof \
                     valkey-check-dump \
                     rkhunter \
+                    sendmail \
                     sftp-admin \
                     sftp-kill \
                     sftp-state \
