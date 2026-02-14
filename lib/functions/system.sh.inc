@@ -5508,6 +5508,9 @@ _strict_bin_permissions() {
                   gs \
                   id \
                   java \
+                  java11 \
+                  java17 \
+                  java21 \
                   java6 \
                   java7 \
                   java8 \
@@ -5537,6 +5540,7 @@ _strict_bin_permissions() {
                   optipng \
                   pngcrush \
                   pngquant \
+                  redis-cli \
                   redis-server \
                   rrdtool \
                   ruby \
@@ -5544,11 +5548,13 @@ _strict_bin_permissions() {
                   sass-convert \
                   scss \
                   sendmail \
+                  valkey-cli \
+                  valkey-server \
                   wget \
                   which \
+                  wkhtmltoimage \
                   wkhtmltoimage-0.12.4 \
                   wkhtmltopdf-0.12.4 \
-                  wkhtmltoimage \
                   wkhtmltopdf"
 
   if [ ! -z "${_BACKEND_ITEMS_LIST}" ]; then
