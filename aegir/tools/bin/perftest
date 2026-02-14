@@ -3113,14 +3113,14 @@ _print_disk_compact_section() {
   _storage_tier="$(_boa_guess_storage_tier "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_qd1_p99_r_num}" "${_qd1_p99_w_num}" "${_qd1_fsync_p99_w_num}")"
   _disk_note="$(_boa_disk_profile_note "${_ioping_avg}" "${_ioping_avg_us}" "${_qd1_fsync_p99_w}" "${_qd1_fsync_p99_w_num}" "${_qd1_p99_w}" "${_qd1_p99_w_num}" "${_seqw}" "${_seqw_num}")"
 
+  echo " ============================================================================="
+  if [ "${_mp}" = "/" ]; then
+    echo " == 4. DISK (Root partition / main filesystem)                              =="
+  else
+    printf " == 4. DISK (%s) (Mounted extra filesystem) \n" "${_mp}"
+  fi
+  echo " ============================================================================="
   if [ "${_FANCY}" -eq 1 ]; then
-    echo " ============================================================================="
-    if [ "${_mp}" = "/" ]; then
-      echo " == 4. DISK (Root partition / main filesystem)                              =="
-    else
-      printf " == 4. DISK (%s) (Mounted extra filesystem) \n" "${_mp}"
-    fi
-    echo " ============================================================================="
     echo ""
     printf "   Sequential write (CRITICAL): %s\n" "${_seqw}"
     printf "   Sequential read:             %s\n" "${_seqr}"
@@ -3209,7 +3209,7 @@ _print_grading_summary() {
     echo "vCPUs: ${_cpu_cores}"
     _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
     echo "RAM:   ${_total_ram_mb} MB"
-    if [ "${_HAS_LSPCI:-NO}" = "YES" ] && [ "${_FANCY}" -eq 1 ]; then
+    if [ "${_HAS_LSPCI:-NO}" = "YES" ]; then
       [ -n "${_PCI_STORAGE_SUMMARY}" ] && echo "PCI storage: ${_PCI_STORAGE_SUMMARY}"
       [ -n "${_PCI_NIC_SUMMARY}" ] && echo "PCI NIC: ${_PCI_NIC_SUMMARY}"
     fi
@@ -4393,7 +4393,7 @@ else
     echo "  - vCPUs: ${_cpu_cores}"
     _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
     echo "  - RAM: ${_total_ram_mb} MB"
-    if [ "${_HAS_LSPCI:-NO}" = "YES" ] && [ "${_FANCY}" -eq 1 ]; then
+    if [ "${_HAS_LSPCI:-NO}" = "YES" ]; then
       [ -n "${_PCI_STORAGE_SUMMARY}" ] && echo "  - PCI storage: ${_PCI_STORAGE_SUMMARY}"
       [ -n "${_PCI_NIC_SUMMARY}" ] && echo "  - PCI NIC: ${_PCI_NIC_SUMMARY}"
     fi
