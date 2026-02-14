@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION=v69
+_PT_VERSION="v71"
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -1698,6 +1698,7 @@ _print_fs_section() {
   local _mp_has_noatime _mp_has_discard
   local _fs_has_noatime _fs_has_discard
   local _want_noatime _want_nofail _want_rm_growfs
+  local _rootflags_discard
 
   echo " ============================================================================="
   echo " == 3. FILESYSTEMS (type/options + space/inodes sanity)                     =="
@@ -1707,6 +1708,11 @@ _print_fs_section() {
     echo "   Note: findmnt not found - skipping filesystem details"
     echo ""
     return 0
+  fi
+
+  _rootflags_discard="NO"
+  if [ -r /proc/cmdline ] && grep -qE '(^|[[:space:]])rootflags=[^[:space:]]*discard' /proc/cmdline 2>/dev/null; then
+    _rootflags_discard="YES"
   fi
 
   _fstab_cache="$(mktemp /tmp/perftest.fstab.XXXXXX 2>/dev/null)"
@@ -1797,7 +1803,11 @@ _print_fs_section() {
 
     # 'discard' note (print once, even if both live mount and fstab include it).
     if [ "${_mp_has_discard}" = "YES" ] || [ "${_fs_has_discard}" = "YES" ]; then
-      echo "     note: 'discard' is enabled (online TRIM); periodic fstrim is often preferred"
+      if [ "${_mp}" = "/" ] && [ "${_rootflags_discard}" = "YES" ]; then
+        echo "     note: 'discard' is enforced for / via kernel cmdline (rootflags=discard); remove it in GRUB to disable"
+      else
+        echo "     note: 'discard' is enabled (online TRIM); periodic fstrim is often preferred"
+      fi
     fi
 
     # /etc/fstab hints for this mount (attached; print only when actionable).
