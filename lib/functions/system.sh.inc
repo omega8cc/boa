@@ -5459,6 +5459,7 @@ _strict_bin_permissions() {
                         /usr/local/bin \
                         /usr/local/sbin \
                         /usr/sbin"
+
   for p in ${_WEBSERVER_BIN_PATHS}; do
     for f in `find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf`; do
       if [ -e "$f" ]; then
@@ -5549,6 +5550,7 @@ _strict_bin_permissions() {
                   wkhtmltopdf-0.12.4 \
                   wkhtmltoimage \
                   wkhtmltopdf"
+
   if [ ! -z "${_BACKEND_ITEMS_LIST}" ]; then
     _BACKEND_ITEMS="${_BACKEND_ITEMS} ${_BACKEND_ITEMS_LIST}"
   fi
@@ -5592,6 +5594,7 @@ _strict_bin_permissions() {
                     sftp-verif \
                     sftp-who \
                     syncpass"
+
   for i in ${_PROTECTED_ITEMS}; do
     # type -ap prints *all* matching paths (one per line); resolve symlinks; de-dup
     type -ap -- "${i}" 2>/dev/null \
