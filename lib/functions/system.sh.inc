@@ -5593,11 +5593,18 @@ _strict_bin_permissions() {
                     sftp-who \
                     syncpass"
   for i in ${_PROTECTED_ITEMS}; do
-    _BIN_ITEM="$(which ${i})"
-    if [ -e "${_BIN_ITEM}" ]; then
-      chown root:root ${_BIN_ITEM} &> /dev/null
-      chmod 700 ${_BIN_ITEM} &> /dev/null
-    fi
+    # type -ap prints *all* matching paths (one per line); resolve symlinks; de-dup
+    type -ap -- "${i}" 2>/dev/null \
+      | while IFS= read -r _BIN_ITEM; do
+          readlink -f -- "${_BIN_ITEM}" 2>/dev/null || echo "${_BIN_ITEM}"
+        done \
+      | sort -u \
+      | while IFS= read -r _BIN_ITEM; do
+          if [ -e "${_BIN_ITEM}" ]; then
+            chown root:root "${_BIN_ITEM}" &> /dev/null
+            chmod 700 "${_BIN_ITEM}" &> /dev/null
+          fi
+        done
   done
 
   chown root:root /usr/bin/mysecureshell
