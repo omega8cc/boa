@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION="v70"
+_PT_VERSION="v71"
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
