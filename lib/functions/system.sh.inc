@@ -5573,7 +5573,9 @@ _strict_bin_permissions() {
                     redis-benchmark \
                     redis-check-aof \
                     redis-check-dump \
-                    redis-cli \
+                    valkey-benchmark \
+                    valkey-check-aof \
+                    valkey-check-dump \
                     rkhunter \
                     sftp-admin \
                     sftp-kill \
