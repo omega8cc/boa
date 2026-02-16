@@ -285,6 +285,12 @@ _turn_off_apparmor_in_octopus
 
 
 ###
+### Unlock sendmail for allow-snail group
+###
+_unlock_sendmail_for_snail
+
+
+###
 ### Switch to dash while running octopus
 ###
 _switch_to_dash_in_octopus
