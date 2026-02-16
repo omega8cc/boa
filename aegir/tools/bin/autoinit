@@ -932,17 +932,10 @@ _init_prepare() {
       if _pkg_installed "chrony"; then
         /usr/bin/apt-get remove chrony -y -qq >> "${_logSlt}"
       fi
-      ${_INITINS} aptitude  >> "${_logSlt}"
-      ${_INITINS} sudo      >> "${_logSlt}"
-      ${_INITINS} bc        >> "${_logSlt}"
-      ${_INITINS} cron      >> "${_logSlt}"
-      ${_INITINS} curl      >> "${_logSlt}"
-      ${_INITINS} dnsutils  >> "${_logSlt}"
-      ${_INITINS} hostname  >> "${_logSlt}"
-      ${_INITINS} mc        >> "${_logSlt}"
-      ${_INITINS} net-tools >> "${_logSlt}"
-      ${_INITINS} netcat-traditional  >> "${_logSlt}"
-      ${_INITINS} ntpsec-ntpdate      >> "${_logSlt}"
+      ${_INITINS} sudo screen mc aptitude bc cron curl >> "${_logSlt}"
+      ${_INITINS} dnsutils hostname net-tools netcat-traditional ntpsec-ntpdate >> "${_logSlt}"
+      ${_INITINS} sudo screen mc aptitude bc cron curl >> "${_logSlt}"
+      ${_INITINS} dnsutils hostname net-tools netcat-traditional ntpsec-ntpdate >> "${_logSlt}"
       sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
