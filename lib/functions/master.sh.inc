@@ -979,9 +979,6 @@ _unlock_sendmail_for_snail() {
   _add_allow_snail_if_not_exists
   chown root /usr/sbin/sendmail &> /dev/null
   chgrp allow-snail /usr/sbin/sendmail &> /dev/null
-  if [ ! -e "/root/.allow.sendmail.cnf" ]; then
-    chmod 750 /usr/sbin/sendmail &> /dev/null
-  fi
 }
 
 _aegir_master_install_upgrade() {
@@ -989,12 +986,6 @@ _aegir_master_install_upgrade() {
     _msg "PROC: _aegir_master_install_upgrade"
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-
-  _unlock_sendmail_for_snail
-  if getent group allow-snail >/dev/null 2>&1 && \
-    ! id -nG "aegir" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
-    usermod -aG allow-snail "aegir"
-  fi
 
   if [ "${_STATUS}" = "INIT" ]; then
 
@@ -1019,6 +1010,14 @@ _aegir_master_install_upgrade() {
     usermod -aG www-data aegir
     usermod -aG users aegir
     echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+
+    _unlock_sendmail_for_snail
+    if getent group allow-snail >/dev/null 2>&1 && \
+      ! id -nG "aegir" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
+      usermod -aG allow-snail aegir
+    fi
+    chmod 755 /usr/sbin/sendmail &> /dev/null
+
     ln -sfn /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
     _nginx_conf_update
 
