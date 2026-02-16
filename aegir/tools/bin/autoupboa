@@ -71,6 +71,19 @@ _valkey_no_rdb() {
 }
 _valkey_no_rdb
 
+#
+# Add allow-snail group if not exists.
+_add_allow_snail_if_not_exists() {
+  _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
+  if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
+    addgroup --system allow-snail &> /dev/null
+    chown root /usr/sbin/sendmail &> /dev/null
+    chgrp allow-snail /usr/sbin/sendmail &> /dev/null
+    chmod 750 /usr/sbin/sendmail &> /dev/null
+  fi
+}
+_add_allow_snail_if_not_exists
+
 # Function to enable fstrim instead of discard
 _if_enable_fstrim() {
   if [ -x "/usr/sbin/fstrim" ] && [ -d "/etc/cron.daily" ] && [ ! -e "/etc/cron.daily/fstrim" ]; then

@@ -5546,7 +5546,6 @@ _strict_bin_permissions() {
                   sass \
                   sass-convert \
                   scss \
-                  sendmail \
                   valkey-server \
                   wget \
                   which \
@@ -5588,7 +5587,6 @@ _strict_bin_permissions() {
                     redis-check-dump \
                     redis-cli \
                     rkhunter \
-                    sendmail \
                     sftp-admin \
                     sftp-kill \
                     sftp-state \
