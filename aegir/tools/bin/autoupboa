@@ -71,19 +71,6 @@ _valkey_no_rdb() {
 }
 _valkey_no_rdb
 
-#
-# Add allow-snail group if not exists.
-_add_allow_snail_if_not_exists() {
-  _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
-  if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
-    addgroup --system allow-snail &> /dev/null
-    chown root /usr/sbin/sendmail &> /dev/null
-    chgrp allow-snail /usr/sbin/sendmail &> /dev/null
-    chmod 750 /usr/sbin/sendmail &> /dev/null
-  fi
-}
-_add_allow_snail_if_not_exists
-
 # Function to enable fstrim instead of discard
 _if_enable_fstrim() {
   if [ -x "/usr/sbin/fstrim" ] && [ -d "/etc/cron.daily" ] && [ ! -e "/etc/cron.daily/fstrim" ]; then
@@ -207,10 +194,9 @@ _DEFAULT_CPU_TASK_RATIO="3.1"
 _DEFAULT_CPU_SPIDER_RATIO="2.1"
 _LOCK_CPU_CONFIG="/root/.lock.cpu.update.f98.cnf"
 _UPDATE_CPU_PID="/var/log/boa/.update_conf_variable.ctrl.f98.${_tRee}.${_xSrl}.pid"
-
 _LOCK_DOS_CONFIG="/root/.lock.dos.update.f98.cnf"
 _LOCK_DOS_PID="/var/log/boa/.sync_scan_nginx.ctrl.f98.${_tRee}.${_xSrl}.pid"
-
+_ALLOW_SENDMAIL_PID="/var/log/boa/.allow_sendmail.ctrl.f98.${_tRee}.${_xSrl}.pid"
 _DEFAULT_NGINX_DOS_LINES=1999
 _DEFAULT_NGINX_DOS_LIMIT=399
 _DEFAULT_NGINX_DOS_MODE=2
@@ -246,6 +232,28 @@ if [ ! -e "${_LOCK_CPU_CONFIG}" ]; then
     touch ${_UPDATE_CPU_PID}
     touch ${_LOCK_CPU_CONFIG}
   fi
+fi
+
+# Restrict sendmail access unless /root/.allow.sendmail.cnf exists
+_restrict_sendmail() {
+  _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
+  if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
+    addgroup --system allow-snail &> /dev/null
+    chown root /usr/sbin/sendmail &> /dev/null
+    chgrp allow-snail /usr/sbin/sendmail &> /dev/null
+    if [ ! -e "/root/.allow.sendmail.cnf" ]; then
+      chmod 750 /usr/sbin/sendmail &> /dev/null
+    fi
+  fi
+}
+
+if [ -e "/root/.allow.sendmail.cnf" ]; then
+  if [ ! -e "${_ALLOW_SENDMAIL_PID}" ]; then
+    chmod 755 /usr/sbin/sendmail &> /dev/null
+    touch "${_ALLOW_SENDMAIL_PID}"
+  fi
+else
+  _restrict_sendmail
 fi
 
 # Define directories and error log path
