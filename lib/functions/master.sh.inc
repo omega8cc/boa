@@ -803,7 +803,9 @@ _aegir_master_upgrade() {
     mkdir -p ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
     chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
     _U_HD="/var/aegir/.drush"
-    chattr -i ${_U_HD}/php.ini
+    if [ -e "${_U_HD}/php.ini" ]; then
+      chattr -i ${_U_HD}/php.ini
+    fi
     mkdir -p /var/aegir/backups/system
     chmod 700 /var/aegir/backups/system
     chown -R aegir:aegir /var/aegir/.drush
@@ -868,7 +870,9 @@ _aegir_master_upgrade() {
       touch /opt/tmp/status-Barracuda-FAIL
       _clean_pid_exit _aegir_master_upgrade_a
     else
-      chattr +i ${_U_HD}/php.ini
+      if [ -e "${_U_HD}/php.ini" ]; then
+        chattr +i ${_U_HD}/php.ini
+      fi
       _hostmaster_frontend_dbpass_sync
     fi
     if [ ! -L "${_mtrInc}/global.inc" ] && [ -e "${_mtrInc}/global.inc" ]; then
@@ -1273,7 +1277,9 @@ EOFMYSQL
       fi
     fi
     _U_HD="/var/aegir/.drush"
-    chattr +i ${_U_HD}/php.ini
+    if [ -e "${_U_HD}/php.ini" ]; then
+      chattr +i ${_U_HD}/php.ini
+    fi
     su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
     wait
     rm -rf /var/aegir/.tmp/cache
