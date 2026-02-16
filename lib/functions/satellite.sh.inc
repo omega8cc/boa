@@ -691,7 +691,6 @@ _satellite_cnf() {
         _PHP_FPM_VERSION=8.4
       fi
       echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
-      chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
     fi
 
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
@@ -803,7 +802,6 @@ _satellite_cnf() {
         _PHP_CLI_VERSION=8.4
       fi
       echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
-      chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
     fi
 
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
