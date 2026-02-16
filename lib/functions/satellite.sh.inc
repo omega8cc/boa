@@ -691,7 +691,6 @@ _satellite_cnf() {
         _PHP_FPM_VERSION=8.4
       fi
       echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
-      chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
     fi
 
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
@@ -803,7 +802,6 @@ _satellite_cnf() {
         _PHP_CLI_VERSION=8.4
       fi
       echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
-      chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
     fi
 
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
@@ -3263,7 +3261,9 @@ _unlock_sendmail_for_snail() {
   _add_allow_snail_if_not_exists
   chown root /usr/sbin/sendmail &> /dev/null
   chgrp allow-snail /usr/sbin/sendmail &> /dev/null
-  chmod 750 /usr/sbin/sendmail &> /dev/null
+  if [ ! -e "/root/.allow.sendmail.cnf" ]; then
+    chmod 750 /usr/sbin/sendmail &> /dev/null
+  fi
 }
 
 _satellite_if_add_snail_access() {
