@@ -234,28 +234,6 @@ if [ ! -e "${_LOCK_CPU_CONFIG}" ]; then
   fi
 fi
 
-# Restrict sendmail access unless /root/.allow.sendmail.cnf exists
-_restrict_sendmail() {
-  _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
-  if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
-    addgroup --system allow-snail &> /dev/null
-    chown root /usr/sbin/sendmail &> /dev/null
-    chgrp allow-snail /usr/sbin/sendmail &> /dev/null
-    if [ ! -e "/root/.allow.sendmail.cnf" ]; then
-      chmod 750 /usr/sbin/sendmail &> /dev/null
-    fi
-  fi
-}
-
-if [ -e "/root/.allow.sendmail.cnf" ]; then
-  if [ ! -e "${_ALLOW_SENDMAIL_PID}" ]; then
-    chmod 755 /usr/sbin/sendmail &> /dev/null
-    touch "${_ALLOW_SENDMAIL_PID}"
-  fi
-else
-  _restrict_sendmail
-fi
-
 # Define directories and error log path
 _SSL_DIR="/etc/ssl/private"
 _NGINX_ERROR_LOG="/var/log/nginx/error.log"
@@ -611,6 +589,37 @@ _generic_vm_postinstall() {
   fi
 }
 
+# Restrict sendmail access unless /root/.allow.sendmail.cnf exists
+_restrict_sendmail() {
+  _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
+  if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
+    addgroup --system allow-snail &> /dev/null
+    chown root /usr/sbin/sendmail &> /dev/null
+    chgrp allow-snail /usr/sbin/sendmail &> /dev/null
+  fi
+  if [ ! -e "/root/.allow.sendmail.cnf" ]; then
+    chmod 750 /usr/sbin/sendmail &> /dev/null
+  fi
+}
+
+_if_restrict_sendmail() {
+  if [ -e "/root/.allow.sendmail.cnf" ]; then
+    if [ ! -e "${_ALLOW_SENDMAIL_PID}" ]; then
+      chmod 755 /usr/sbin/sendmail &> /dev/null
+      touch "${_ALLOW_SENDMAIL_PID}"
+    fi
+  else
+    _restrict_sendmail
+  fi
+}
+
+if [ "$(boa info | grep -c Percona)" -ge 3 ] && [ -e "/usr/sbin/csf" ]; then
+  _is_protected_run
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    _if_restrict_sendmail
+  fi
+fi
+
 _status_vm_postinstall() {
   _check_system_manufacturer
   _VM_N_PID="/var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid"
@@ -624,12 +633,7 @@ _status_vm_postinstall() {
     touch ${_VM_N_SYS}
     chattr +i ${_VM_N_SYS}
   fi
-  if [ "${_OS_CODE}" = "excalibur" ]; then
-    _DB_SERVER=Percona
-  else
-    _DB_SERVER=Percona
-  fi
-  if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+  if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
     [ -n "${_SYS_MANUFACTURER_LC}" ] && _generic_vm_postinstall
