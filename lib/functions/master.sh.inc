@@ -958,11 +958,41 @@ _php_cli_cron_update() {
   fi
 }
 
+#
+# Add allow-snail group if not exists.
+_add_allow_snail_if_not_exists() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _add_allow_snail_if_not_exists"
+  fi
+  _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
+  if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
+    addgroup --system allow-snail &> /dev/null
+  fi
+}
+
+#
+# Unlock sendmail for allow-snail group
+_unlock_sendmail_for_snail() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _unlock_sendmail_for_snail"
+  fi
+  _add_allow_snail_if_not_exists
+  chown root /usr/sbin/sendmail &> /dev/null
+  chgrp allow-snail /usr/sbin/sendmail &> /dev/null
+  chmod 750 /usr/sbin/sendmail &> /dev/null
+}
+
 _aegir_master_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _aegir_master_install_upgrade"
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+
+  _unlock_sendmail_for_snail
+  if getent group allow-snail >/dev/null 2>&1 && \
+    ! id -nG "aegir" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
+    usermod -aG allow-snail "aegir"
+  fi
 
   if [ "${_STATUS}" = "INIT" ]; then
 
