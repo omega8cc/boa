@@ -1132,6 +1132,30 @@ _barracuda_log_update() {
 }
 
 #
+# Add allow-snail group if not exists.
+_add_allow_snail_if_not_exists() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _add_allow_snail_if_not_exists"
+  fi
+  _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
+  if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
+    addgroup --system allow-snail &> /dev/null
+  fi
+}
+
+#
+# Unlock sendmail for allow-snail group
+_unlock_sendmail_for_snail() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _unlock_sendmail_for_snail"
+  fi
+  _add_allow_snail_if_not_exists
+  chown root /usr/sbin/sendmail &> /dev/null
+  chgrp allow-snail /usr/sbin/sendmail &> /dev/null
+  chmod 750 /usr/sbin/sendmail &> /dev/null
+}
+
+#
 # Turn Off AppArmor In Octopus.
 _turn_off_apparmor_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
