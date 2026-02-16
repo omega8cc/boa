@@ -2998,7 +2998,9 @@ _satellite_run_child_b() {
       exit 1
     fi
     _U_HD="${_ROOT}/.drush"
-    chattr +i ${_U_HD}/php.ini
+    if [ -e "${_U_HD}/php.ini" ]; then
+      chattr +i ${_U_HD}/php.ini
+    fi
     chmod 0700 /data/u &> /dev/null
     chown root:root /data/u &> /dev/null
     _msg "${_STATUS} A: Ægir Satellite Instance installed"
@@ -3031,7 +3033,9 @@ _satellite_run_child_b() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _U_HD="${_ROOT}/.drush"
-      chattr -i ${_U_HD}/php.ini
+      if [ -e "${_U_HD}/php.ini" ]; then
+        chattr -i ${_U_HD}/php.ini
+      fi
       chown -R ${_USER}:${_USRG} ${_ROOT}/.drush
       chown -R ${_USER}:${_USRG} ${_ROOT}/backups
       chown -R ${_USER}:${_USRG} ${_ROOT}/clients
@@ -3053,7 +3057,9 @@ _satellite_run_child_b() {
         touch /opt/tmp/status-AegirSetupA-FAIL
         exit 1
       else
-        chattr +i ${_U_HD}/php.ini
+        if [ -e "${_U_HD}/php.ini" ]; then
+          chattr +i ${_U_HD}/php.ini
+        fi
         mkdir -p ${_ROOT}/backups/system/old_hostmaster
         chmod 700 ${_ROOT}/backups/system/old_hostmaster
         chmod 700 ${_ROOT}/backups/system
