@@ -3261,9 +3261,7 @@ _unlock_sendmail_for_snail() {
   _add_allow_snail_if_not_exists
   chown root /usr/sbin/sendmail &> /dev/null
   chgrp allow-snail /usr/sbin/sendmail &> /dev/null
-  if [ ! -e "/root/.allow.sendmail.cnf" ]; then
-    chmod 750 /usr/sbin/sendmail &> /dev/null
-  fi
+  chmod 755 /usr/sbin/sendmail &> /dev/null
 }
 
 _satellite_if_add_snail_access() {
