@@ -126,12 +126,18 @@ _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 #
+# Add allow-snail group if not exists.
+_add_allow_snail_if_not_exists() {
+  _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
+  if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
+    addgroup --system allow-snail &> /dev/null
+  fi
+}
+#
 # Add ltd-shell group if not exists.
 _add_ltd_group_if_not_exists() {
   _LTD_EXISTS=$(getent group ltd-shell 2>&1)
-  if [[ "${_LTD_EXISTS}" =~ "ltd-shell" ]]; then
-    _DO_NOTHING=YES
-  else
+  if [[ ! "${_LTD_EXISTS}" =~ "ltd-shell" ]]; then
     addgroup --system ltd-shell &> /dev/null
   fi
 }
@@ -1971,11 +1977,14 @@ _manage_user() {
       _USER=""
       _USER=$(echo ${_pthParen_tUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       echo "_USER is == ${_USER} == at _manage_user"
+      if getent group allow-snail >/dev/null 2>&1 && \
+        ! id -nG "${_USER}" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
+        usermod -aG allow-snail "${_USER}"
+      fi
       _WEB="${_USER}.web"
       _dscUsr="/data/disk/${_USER}"
       _octInc="${_dscUsr}/config/includes"
       _octTpl="${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
-      usrDgn="${_dscUsr}/.drush/usr/drupalgeddon"
       if [ -e "${_dscUsr}/log/imported.pid" ] \
         && [ -e "${_dscUsr}/log/post-merge-fix.pid" ]; then
         [ -e "${_dscUsr}/log/imported.pid" ] && mv -f ${_dscUsr}/log/imported.pid ${_dscUsr}/src/
@@ -2294,6 +2303,7 @@ else
     wait
   fi
   _add_ltd_group_if_not_exists
+  _add_allow_snail_if_not_exists
   _kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
