@@ -22,7 +22,7 @@ _fix_dns_settings() {
     rm -f /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     chmod 0644 /etc/resolv.conf
-    chattr +i /etc/resolv.conf
+    [ -d "/data/u" ] && chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
@@ -397,7 +397,7 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       chmod 0644 /etc/resolv.conf
-      chattr +i /etc/resolv.conf
+      [ -d "/data/u" ] && chattr +i /etc/resolv.conf
     fi
     _apt_clean_update
     [ -e "/usr/etc/unbound/unbound.pid" ] && _isUnbndFix=YES
@@ -432,7 +432,7 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       chmod 0644 /etc/resolv.conf
-      chattr +i /etc/resolv.conf
+      [ -d "/data/u" ] && chattr +i /etc/resolv.conf
     fi
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
@@ -510,7 +510,7 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       chmod 0644 /etc/resolv.conf
-      chattr +i /etc/resolv.conf
+      [ -d "/data/u" ] && chattr +i /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
       [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
       _mrun "pkill -u unbound -x unbound"
@@ -526,7 +526,7 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     chmod 0644 /etc/resolv.conf
-    chattr +i /etc/resolv.conf
+    [ -d "/data/u" ] && chattr +i /etc/resolv.conf
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _mrun "pkill -u unbound -x unbound"
