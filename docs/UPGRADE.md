@@ -137,11 +137,11 @@ You can install or modify PHP versions active on your system during `barracuda` 
 
 `barracuda php-idle enable` -- re-enables and re-builds versions previously disabled
 
-`barracuda up-lts php-8.2` -- forces the system to use only single version (will cause sites brief downtime)
+`barracuda up-lts php-8.5` -- forces the system to use only single version (will cause sites brief downtime)
 
 `barracuda up-lts php-max` -- installs all supported versions if not installed before
 
-`barracuda up-lts php-min` -- installs PHP 8.5, 8.4, 8.3, 8.2, 8.1, 7.4, and uses 8.3 by default
+`barracuda up-lts php-min` -- installs PHP 8.5, 8.4, 8.3, and uses 8.4 by default
 
 If you wish to define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file before running the upgrade, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables.
 
@@ -150,7 +150,7 @@ However, you will also need to add dummy entries for versions not installed and 
 ```sh
 place.holder1.dont.remove 7.3
 place.holder2.dont.remove 8.0
-place.holder3.dont.remove 7.1
+place.holder3.dont.remove 5.6
 ```
 
 The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).

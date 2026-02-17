@@ -683,10 +683,6 @@ _up_action() {
         _phpS="8.4"
       elif [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
         _phpS="8.3"
-      elif [ "${_rKey}" = "php-82" ] || [ "${_rKey}" = "php-8.2" ]; then
-        _phpS="8.2"
-      elif [ "${_rKey}" = "php-81" ] || [ "${_rKey}" = "php-8.1" ]; then
-        _phpS="8.1"
       elif [ "${_rKey}" = "php-all" ] || [ "${_rKey}" = "php-min" ]; then
         _phpS="MIN"
         [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
@@ -809,7 +805,7 @@ _up_action() {
         if [ "${_phpS}" = "MAX" ]; then
           _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5"
         else
-          _phpM="7.4 8.1 8.2 8.3 8.4 8.5"
+          _phpM="8.3 8.4 8.5"
         fi
         _phpS="8.4"
 
@@ -1919,11 +1915,11 @@ _if_display_help() {
 
     {options}
       newrelickey <-- activate New Relic integration with valid license key
-      php-8.4 <------ enable single-PHP mode (8.1-8.5 or 7.4)
-      php-min <------ install PHP 8.1-8.5, 7.4, use 8.4 by default (php-all)
+      php-8.5 <------ enable single-PHP mode (8.5 or 8.4 or 8.3)
+      php-min <------ install PHP 8.5, 8.4, 8.3, use 8.4 by default (php-all)
       php-max <------ install PHP 8.0-8.5, 7.0-7.4, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
-      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.4)
+      percona-8.4 <-- specify Percona version to use (5.7, 8.0, 8.4)
 
     See docs/UPGRADE.md for more details.
 

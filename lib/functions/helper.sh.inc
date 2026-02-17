@@ -937,43 +937,41 @@ _check_boa_php_compatibility() {
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "8.5" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.4" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]]; then
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]]; then
     _DO_NOTHING=YES
   else
-    _msg "ERROR: This BOA version depends on PHP 8.1 or newer"
-    _msg "Please add at least 8.1 to _PHP_MULTI_INSTALL"
+    _msg "ERROR: This BOA version depends on PHP 8.3 or newer"
+    _msg "Please add at least 8.3 to _PHP_MULTI_INSTALL"
     _msg "in /root/.barracuda.cnf before trying again"
-    _msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
-    _msg "NOTE: but you must also include at least 8.1 to support Drupal 10"
+    _msg "NOTE: You can still install also legacy PHP 7.x, 8.x and 5.6 versions"
+    _msg "NOTE: but you must also include at least 8.3 to support Drupal 10"
     _msg "Bye"
     _clean_pid_exit _check_boa_php_compatibility_a
   fi
-  if [ "${_PHP_FPM_VERSION}" = "5.3" ] \
-    || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-    || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-    || [ "${_PHP_FPM_VERSION}" = "5.6" ] \
-    || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-    || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
-    || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
-    || [ "${_PHP_FPM_VERSION}" = "7.3" ] \
-    || [ "${_PHP_FPM_VERSION}" = "8.0" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.6" ] \
-    || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-    || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
-    || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
-    || [ "${_PHP_CLI_VERSION}" = "7.3" ] \
-    || [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
-    _msg "ERROR: This BOA version depends on PHP 8.1 or newer"
-    _msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 8.1 or newer"
+
+  if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
+    || [ "${_PHP_FPM_VERSION}" = "8.4" ] \
+    || [ "${_PHP_FPM_VERSION}" = "8.5" ]; then
+    _SUPPORTED_FPM=YES
+  else
+    _SUPPORTED_FPM=NO
+  fi
+
+  if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+    || [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+    || [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
+    _SUPPORTED_CLI=YES
+  else
+    _SUPPORTED_CLI=NO
+  fi
+
+  if [ "${_SUPPORTED_FPM}" = "YES" ] \
+    && [ "${_SUPPORTED_CLI}" = "YES" ]; then
+    _msg "ERROR: This BOA version depends on PHP 8.3 or newer"
+    _msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 8.3 or newer"
     _msg "in /root/.barracuda.cnf before trying again"
-    _msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
-    _msg "NOTE: but you must use as default version 8.1 to support Drupal 10"
+    _msg "NOTE: You can still install also legacy PHP 7.x, 8.x and 5.6 versions"
+    _msg "NOTE: but you must use as default version 8.3 to support Drupal 10"
     _msg "Bye"
     _clean_pid_exit _check_boa_php_compatibility_b
   fi
