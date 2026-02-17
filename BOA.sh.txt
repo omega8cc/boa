@@ -209,7 +209,7 @@ _fix_dns_settings() {
     rm -f /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     chmod 0644 /etc/resolv.conf
-    chattr +i /etc/resolv.conf
+    [ -d "/data/u" ] && [ -d "/data/u" ] && chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
