@@ -1899,10 +1899,7 @@ _php_if_versions_cleanup_cnf() {
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
       if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
         _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
@@ -1924,14 +1921,14 @@ _php_if_versions_cleanup_cnf() {
         _STRICT_LIMIT_PHP=YES
       fi
 
-      ### Include latest PHP 8.2 and 8.3 if conditions are met
+      ### Include PHP 8.3, 8.4 and 8.5 if conditions are met
       _if_hosted_sys
       if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
         if [ -e "/root/.include-php-latest.cnf" ] \
           || [ "${_hostedSys}" = "YES" ]; then
           if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
             && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
-            _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
+            _local_PHP_MULTI_INSTALL="8.3 8.4 8.5 ${_local_PHP_MULTI_INSTALL}"
           fi
         fi
       fi
@@ -2940,10 +2937,7 @@ _barracuda_cnf() {
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
       if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
         _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
