@@ -2768,45 +2768,6 @@ _php_single_initd_cleanup() {
           mv -f /opt/php${e}/bin/php ${_vBs}/bin-php${e}-cli
         fi
       done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
-      _PHP_V="85 84 83 81 80 74 73 72 71 70 56"
-      for e in ${_PHP_V}; do
-        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
-          _mrun "update-rc.d -f php${e}-fpm remove"
-          mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
-          _FPM_INITD_CLEANUP=YES
-        fi
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${_vBs}/bin-php${e}-cli
-        fi
-      done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
-      _PHP_V="85 84 83 82 80 74 73 72 71 70 56"
-      for e in ${_PHP_V}; do
-        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
-          _mrun "update-rc.d -f php${e}-fpm remove"
-          mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
-          _FPM_INITD_CLEANUP=YES
-        fi
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${_vBs}/bin-php${e}-cli
-        fi
-      done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
-      _PHP_V="85 84 83 82 81 80 73 72 71 70 56"
-      for e in ${_PHP_V}; do
-        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
-          _mrun "update-rc.d -f php${e}-fpm remove"
-          mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
-          _FPM_INITD_CLEANUP=YES
-        fi
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${_vBs}/bin-php${e}-cli
-        fi
-      done
     fi
     if [ "${_FPM_INITD_CLEANUP}" = "YES" ]; then
       killall php-fpm &> /dev/null
@@ -2829,12 +2790,6 @@ _re_set_default_php_cli() {
     _switch_php_cli "84"
   elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
     _switch_php_cli "83"
-  elif [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
-    _switch_php_cli "82"
-  elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
-    _switch_php_cli "81"
-  elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
-    _switch_php_cli "74"
   fi
 }
 
@@ -2844,13 +2799,7 @@ _check_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_php_cli ${_PHP_CLI_VERSION}"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
-    _PHP_CLI_PATH="/opt/php74/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
-    _PHP_CLI_PATH="/opt/php81/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
-    _PHP_CLI_PATH="/opt/php82/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
     _PHP_CLI_PATH="/opt/php83/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
     _PHP_CLI_PATH="/opt/php84/bin/php"
@@ -2862,13 +2811,7 @@ _check_php_cli() {
   if [ -x "${_PHP_CLI_PATH}" ]; then
     _USE_PHP_CLI_PATH=${_PHP_CLI_PATH}
   else
-    if  [ -x "/opt/php74/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php74/bin/php"
-    elif  [ -x "/opt/php81/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php81/bin/php"
-    elif  [ -x "/opt/php82/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php82/bin/php"
-    elif  [ -x "/opt/php83/bin/php" ]; then
+    if  [ -x "/opt/php83/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php83/bin/php"
     elif  [ -x "/opt/php84/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php84/bin/php"
