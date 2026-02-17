@@ -65,7 +65,7 @@
 
    **NOTE:** You can omit this step and run `boa` install as explained in step 5. It will record your command, run `autoinit` for you, and then will run your `boa` install command automatically. Once complete, you should receive an email from the system with all output details logged.
 
-   **NOTE:** It's recommended that you simply wait 10 minutes and then log back in to inspect autoinit logs to make sure there is a line at the bottom saying: "Time for reboot and then you can run boa install"
+   **NOTE:** It's recommended that you simply wait 10 minutes and then log back in to inspect autoinit logs to make sure there is a line at the bottom saying: "The system is now ready for boa install"
 
    ```sh
    cat /root/.autoinit.log
@@ -104,13 +104,13 @@
 
    Specifying Octopus `username` is optional. It will use `o1` if empty.
 
-   The last `{percona-8.0|newrelickey|php-8.2|php-min|php-max|nodns}` part is optional and can be used either to install Percona version other than default 5.7 (can be `percona-8.0` or `percona-8.4`) or New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
+   The last `{percona-8.4|newrelickey|php-8.5|php-min|php-max|nodns}` part is optional and can be used either to install Percona version other than default 5.7 (can be `percona-8.0` or `percona-8.4`) or New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
    The `nodns` option allows skipping DNS and SMTP checks.
 
-   When `php-min` is defined, then 6 versions will be installed: `8.5`, `8.4`, `8.3`, `8.2`, `8.1`, `7.4`, with `8.3` configured as default.
+   When `php-min` is defined, then 3 versions will be installed: `8.5`, `8.4`, `8.3`, with `8.4` configured as default.
 
-   When `php-max` is defined, then all supported versions will be installed and `8.3` configured as default.
+   When `php-max` is defined, then all supported versions will be installed and `8.4` configured as default.
 
    You can later install or modify PHP versions active on your system during `barracuda` upgrade with commands like:
 
@@ -118,11 +118,11 @@
 
    `barracuda php-idle enable` -- re-enables and re-builds versions previously disabled
 
-   `barracuda up-lts php-8.2` -- forces the system to use only single version (will cause sites brief downtime)
+   `barracuda up-lts php-8.5` -- forces the system to use only single version (will cause sites brief downtime)
 
    `barracuda up-lts php-max` -- installs all supported versions if not installed before
 
-   `barracuda up-lts php-min` -- installs PHP 8.5, 8.4, 8.3, 8.2, 8.1, 7.4, and uses 8.3 by default
+   `barracuda up-lts php-min` -- installs PHP 8.5, 8.4, 8.3, and uses 8.4 by default
 
    `barracuda up-lts percona-8.0` -- runs upgrade to Percona 8.0 (production ready)
 
@@ -133,7 +133,7 @@
    ```sh
    place.holder1.dont.remove 7.3
    place.holder2.dont.remove 8.0
-   place.holder3.dont.remove 7.1
+   place.holder3.dont.remove 5.6
    ```
 
    The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).
@@ -152,32 +152,32 @@
 
    ### Examples:
 
-   - Barracuda and Octopus with 4 PHP versions in silent non-interactive mode
+   - Barracuda and Octopus with 3 PHP versions in silent non-interactive mode
      ```sh
      boa in-lts public server.mydomain.org my@email o1 php-min silent
      ```
 
-   - Barracuda and Octopus with all 10 PHP versions
+   - Barracuda and Octopus with all 12 PHP versions
      ```sh
      boa in-lts public server.mydomain.org my@email o1 php-max
      ```
 
    - Barracuda and Octopus with 1 PHP version
      ```sh
-     boa in-lts public server.mydomain.org my@email o1 php-8.3
+     boa in-lts public server.mydomain.org my@email o1 php-8.5
      ```
 
-   - Barracuda and Octopus with Percona 8.0 and 4 PHP versions (experimental, do not use in production yet)
+   - Barracuda and Octopus with Percona 8.4 and 3 PHP versions
      ```sh
-     boa in-lts public server.mydomain.org my@email o1 percona-8.0
+     boa in-lts public server.mydomain.org my@email o1 percona-8.4
      ```
 
-   - Barracuda and Octopus with New Relic and 4 PHP versions
+   - Barracuda and Octopus with New Relic and 3 PHP versions
      ```sh
      boa in-lts public server.mydomain.org my@email o1 newrelickey
      ```
 
-   - Barracuda without Octopus with 4 PHP versions in silent non-interactive mode
+   - Barracuda without Octopus with 3 PHP versions in silent non-interactive mode
      ```sh
      boa in-lts public server.mydomain.org my@email system
      ```
@@ -239,17 +239,17 @@ boa in-octopus my@email o2 lts silent
      boa in-lts local my@email
      ```
 
-   - Barracuda and Octopus with 10 PHP versions
+   - Barracuda and Octopus with 12 PHP versions
      ```sh
      boa in-lts local my@email php-max
      ```
 
-   - Barracuda and Octopus with 4 PHP versions
+   - Barracuda and Octopus with 3 PHP versions
      ```sh
      boa in-lts local my@email php-min
      ```
 
    - Barracuda and Octopus with single PHP version
      ```sh
-     boa in-lts local my@email php-8.2
+     boa in-lts local my@email php-8.5
      ```
