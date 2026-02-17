@@ -13,10 +13,10 @@ BOA allows you to manage the PHP-FPM version across all sites hosted on an Octop
 - If used, this will switch PHP-FPM for **all** Drupal sites hosted on the instance, unless a `multi-fpm.info` control file also exists.
 
 ### Supported Values for Single PHP-FPM Mode:
-- 8.5, 8.4, 8.3, 8.2, 8.1, 7.4
+- 8.5, 8.4, 8.3
 
 #### **NOTE**:
-- Only one line and one value (e.g., `8.1`) should be present in this file; otherwise, the system will ignore it.
+- Only one line and one value (e.g., `8.3`) should be present in this file; otherwise, the system will ignore it.
 - If the `fpm.info` file doesn’t exist, the system will create it and set it to the lowest available PHP version installed, not the system default version. This ensures backward compatibility for instances installed before upgrading to BOA-4.1.3 when the default PHP version was 5.6. Without this safeguard, upgrading could break most hosted sites that haven't been tested for PHP 8.1+ compatibility.
 
 ---
