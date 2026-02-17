@@ -324,7 +324,7 @@ _run_aptitude_full_upgrade
 ###
 ### Misc checks
 ###
-_check_boa_php_compatibility
+[ -d "/data/u" ] && _check_boa_php_compatibility
 _check_boa_version
 if [ "${_CHECKS_REMOTE_REPOS}" = "YES" ]; then
   _check_github_for_aegir_head_mode
