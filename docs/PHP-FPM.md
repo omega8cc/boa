@@ -1,13 +1,13 @@
 # PHP-FPM Version Management in BOA
 
-The Ægir version provided by BOA is now fully compatible with PHP 8.3, so it can be used as default version in the Ægir PHP configuration files:
+The Ægir version provided by BOA is now fully compatible with PHP 8.5, so it can be used as default version in the Ægir PHP configuration files:
 `~/static/control/cli.info` and `~/static/control/fpm.info`
 
 ### Global PHP-FPM Version Control
 
 BOA allows you to manage the PHP-FPM version across all sites hosted on an Octopus instance using the `fpm.info` file.
 
-- The `~/static/control/fpm.info` file, if it exists and contains a supported and installed PHP-FPM version, will be used by a system agent running every 2-3 minutes to switch the PHP-FPM version used for all web requests on this Octopus instance.
+- The `~/static/control/fpm.info` file, if it exists and contains a supported and installed PHP-FPM version, will be used by a system agent running every 1-2 minutes to switch the PHP-FPM version used for all web requests on this Octopus instance.
 
 #### **IMPORTANT**:
 - If used, this will switch PHP-FPM for **all** Drupal sites hosted on the instance, unless a `multi-fpm.info` control file also exists.
@@ -17,7 +17,7 @@ BOA allows you to manage the PHP-FPM version across all sites hosted on an Octop
 
 #### **NOTE**:
 - Only one line and one value (e.g., `8.1`) should be present in this file; otherwise, the system will ignore it.
-- If the `fpm.info` file doesn’t exist, the system will create it and set it to the lowest available PHP version installed, not the system default version. This ensures backward compatibility for instances installed before upgrading to BOA-4.1.3 when the default PHP version was 5.6. Without this safeguard, upgrading could break most hosted sites that haven't been tested for PHP 8.1 compatibility.
+- If the `fpm.info` file doesn’t exist, the system will create it and set it to the lowest available PHP version installed, not the system default version. This ensures backward compatibility for instances installed before upgrading to BOA-4.1.3 when the default PHP version was 5.6. Without this safeguard, upgrading could break most hosted sites that haven't been tested for PHP 8.1+ compatibility.
 
 ---
 
@@ -30,7 +30,7 @@ You can enable multiple PHP versions for different sites using the `multi-fpm.in
 
 Example of `multi-fpm.info`:
 ```
-foo.com 8.1
+foo.com 8.4
 bar.com 7.4
 old.com 5.6
 ```
