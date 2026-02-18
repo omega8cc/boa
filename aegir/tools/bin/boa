@@ -736,7 +736,6 @@ _fix_dns_settings() {
     rm -f /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     chmod 0644 /etc/resolv.conf
-    [ -d "/data/u" ] && chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
@@ -1076,6 +1075,9 @@ _octopus_install() {
 
 _barracuda_install() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
+
+    # Unlock /etc/resolv.conf just in case, so it doesn't affect apt-get tasks
+    [ -f "/etc/resolv.conf" ] && chattr -i /etc/resolv.conf
 
     sed -i "s~^_MY_EMAIL=.*~_MY_EMAIL=\"${_eMal}\"~"         ${_vBs}/${_filIncB}
     wait
@@ -1477,6 +1479,8 @@ _init_setup() {
       echo
       echo "  Bye!"
       echo
+      # Unlock /etc/resolv.conf just in case, so it doesn't affect apt-get tasks
+      [ -f "/etc/resolv.conf" ] && chattr -i /etc/resolv.conf
       # Execute the autonit and exit
       nohup /usr/local/bin/autoinit > /dev/null 2>&1 &
       sleep 1
