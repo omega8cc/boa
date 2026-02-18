@@ -66,6 +66,7 @@ _os_detection_minimal() {
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
+  [ -f "/etc/resolv.conf" ] && chattr -i /etc/resolv.conf
 }
 
 _apt_clean_update() {
@@ -376,7 +377,6 @@ _fix_dns_settings() {
     rm -f /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     chmod 0644 /etc/resolv.conf
-    [ -d "/data/u" ] && chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
