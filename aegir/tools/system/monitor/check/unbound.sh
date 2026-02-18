@@ -168,7 +168,6 @@ _unbound_config_fix() {
         echo "nameserver 8.8.8.8" >> /etc/resolv.conf
         echo "nameserver 9.9.9.9" >> /etc/resolv.conf
         chmod 0644 /etc/resolv.conf
-        [ -d "/data/u" ] && chattr +i /etc/resolv.conf
         [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
         if [ "${_in_unbound_cooldown}" = "true" ]; then
           echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}

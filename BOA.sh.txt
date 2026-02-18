@@ -209,7 +209,7 @@ _fix_dns_settings() {
     rm -f /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     chmod 0644 /etc/resolv.conf
-    [ -d "/data/u" ] && [ -d "/data/u" ] && chattr +i /etc/resolv.conf
+    [ ! -d "/data/u" ] && chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
@@ -1404,7 +1404,7 @@ _update_agents() {
 
   if [ ! -e "${_optBin}/perftest" ] \
     || [ ! -L "${_usrBin}/perftest" ] \
-    || [ ! -e "${_pthLog}/perftest.sh.ctrl.f08.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/perftest.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/perftest)
     if (( _CNT > 0 )); then
       echo "The perftest is running!"
@@ -1418,7 +1418,7 @@ _update_agents() {
         chown root:root ${_optBin}/perftest
         ln -sf ${_optBin}/perftest ${_usrBin}/perftest
         rm -f ${_pthLog}/perftest.sh.ctrl.*
-        touch ${_pthLog}/perftest.sh.ctrl.f08.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/perftest.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/perftest.old" ]; then
           mv -f ${_optBin}/perftest.old ${_optBin}/perftest
@@ -3707,14 +3707,14 @@ _fix_start_stop_ports_solr() {
     _SOLR9_WAIT_TEST=$(grep "SOLR_START_WAIT=" /etc/default/solr9.in.sh 2>&1)
     if [ ! -e "/var/log/boa/solr9.in.004.fixed.pid" ] \
       || [[ ! "${_SOLR9_STOP_TEST}" =~ "19099" ]] \
-      || [[ ! "${_SOLR9_WAIT_TEST}" =~ "SOLR_START_WAIT=" ]]; then
+      || [[ ! "${_SOLR9_WAIT_TEST}" =~ "18" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr9.in.sh
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
       sed -i "s/.*mycustomkey9.*//g" /etc/default/solr9.in.sh
       sed -i "s/.*_WAIT.*//g" /etc/default/solr9.in.sh
       echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9\"" >> /etc/default/solr9.in.sh
-      echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr9.in.sh
-      echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+      echo "SOLR_START_WAIT=\"18\"" >> /etc/default/solr9.in.sh
+      echo "SOLR_STOP_WAIT=\"58\"" >> /etc/default/solr9.in.sh
       echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr9.in.sh
       sed -i "/^$/d" /etc/default/solr9.in.sh
       echo "_restartSolr9 at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
@@ -3727,14 +3727,14 @@ _fix_start_stop_ports_solr() {
     _SOLR7_WAIT_TEST=$(grep "SOLR_START_WAIT=" /etc/default/solr7.in.sh 2>&1)
     if [ ! -e "/var/log/boa/solr7.in.004.fixed.pid" ] \
       || [[ ! "${_SOLR7_STOP_TEST}" =~ "17077" ]] \
-      || [[ ! "${_SOLR7_WAIT_TEST}" =~ "SOLR_START_WAIT=" ]]; then
+      || [[ ! "${_SOLR7_WAIT_TEST}" =~ "18" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       sed -i "s/.*mycustomkey7.*//g" /etc/default/solr7.in.sh
       sed -i "s/.*_WAIT.*//g" /etc/default/solr7.in.sh
       echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
-      echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr7.in.sh
-      echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_START_WAIT=\"18\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_STOP_WAIT=\"58\"" >> /etc/default/solr7.in.sh
       echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr7.in.sh
       sed -i "/^$/d" /etc/default/solr7.in.sh
       echo "_restartSolr7 at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
