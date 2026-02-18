@@ -6403,12 +6403,16 @@ _basic_packages_install_on_init() {
       _apt_clean_update
       _mrun "${_INITINS} locales"
       _locales_check_fix
-      _mrun "${_INITINS} aptitude"
-      _mrun "${_INITINS} axel"
-      _mrun "${_INITINS} curl"
-      _mrun "${_INITINS} dnsutils"
-      _mrun "${_INITINS} hostname"
       _mrun "${_INITINS} lsb-release"
+      _mrun "${_INITINS} sudo"
+      _mrun "${_INITINS} dnsutils"
+      _mrun "${_INITINS} netcat-traditional"
+      _mrun "${_INITINS} aptitude"
+      _mrun "${_INITINS} curl"
+      _mrun "${_INITINS} wget"
+      _mrun "${_INITINS} hostname"
+      _mrun "${_INITINS} net-tools"
+      _mrun "${_INITINS} ntpsec-ntpdate"
       touch /root/.step.init.basic.cnf
     fi
   fi
@@ -6436,17 +6440,11 @@ _more_packages_install_on_init() {
     _apt_clean_update
     _mrun "${_INITINS} locales"
     _locales_check_fix
-    _mrun "${_INITINS} bc"
-    _mrun "${_INITINS} build-essential"
+    _mrun "${_INITINS} git"
     _mrun "${_INITINS} git-core"
     _mrun "${_INITINS} git-man"
-    _mrun "${_INITINS} git"
-    _mrun "${_INITINS} mmdb-bin"
-    _mrun "${_INITINS} net-tools"
-    _mrun "${_INITINS} netcat-traditional"
-    _mrun "${_INITINS} ntpsec-ntpdate"
-    _mrun "${_INITINS} sudo"
-    _mrun "${_INITINS} wget"
+    _mrun "${_INITINS} axel"
+    _mrun "${_INITINS} build-essential"
   fi
 }
 
