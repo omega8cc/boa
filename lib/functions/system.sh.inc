@@ -1238,19 +1238,37 @@ _tune_memory_limits() {
 }
 
 #
-# Find server city.
+# Find server city (prefer local GeoLite2, fallback to ipinfo).
 _find_server_city() {
-  if [ -e "/root/.found_correct_city.cnf" ]; then
-    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
-  else
+  if [ -e "/root/.found_correct_city_via_mmdblookup.cnf" ]; then
+    _LOC_CITY=$(cat /root/.found_correct_city_via_mmdblookup.cnf 2>/dev/null | tr -d '\n')
+    return
+  fi
+  _LOC_CITY=""
+  if [ -e "/root/.found_correct_ipv4.cnf" ]; then
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+    if command -v mmdblookup >/dev/null 2>&1 \
+      && [ -r "/usr/share/GeoIP/GeoLite2-City.mmdb" ] \
+      && [ ! -z "${_LOC_IP}" ]; then
+      _LOC_CITY=$(mmdblookup --file "/usr/share/GeoIP/GeoLite2-City.mmdb" --ip "${_LOC_IP}" city names en 2>/dev/null \
+        | awk -F'"' '/"/{print $2; exit}' 2>/dev/null)
+      _LOC_CITY=$(echo "${_LOC_CITY}" | tr -d '\n' 2>/dev/null)
+      if [ ! -z "${_LOC_CITY}" ]; then
+        _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
+        echo ${_LOC_CITY} > /root/.found_correct_city_via_mmdblookup.cnf
+        echo ${_LOC_CITY} > /root/.found_correct_city.cnf
+      fi
+    fi
+  fi
+  if [ -z "${_LOC_CITY}" ]; then
     if [ -e "/root/.found_correct_ipv4.cnf" ]; then
       _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
       _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
       _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
-    fi
-    if [ ! -z "${_LOC_CITY}" ]; then
-      _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
-      echo ${_LOC_CITY} > /root/.found_correct_city.cnf
+      if [ ! -z "${_LOC_CITY}" ]; then
+        _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
+        echo ${_LOC_CITY} > /root/.found_correct_city.cnf
+      fi
     fi
   fi
 }
