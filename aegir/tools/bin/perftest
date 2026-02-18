@@ -1217,7 +1217,7 @@ _net_region_from_city() {
       return 0
       ;;
     # Europe (incl. UK)
-    *amsterdam*|*frankfurt*|*london*|*paris*|*warsaw*|*berlin*|*munich*|*nürnberg*|*nuremberg*|*nuernberg*|*nurnberg*|*vienna*|*prague*|*brussels*|*zurich*|*geneva*|*milan*|*rome*|*madrid*|*lisbon*|*stockholm*|*oslo*|*helsinki*|*copenhagen*|*dublin*|*manchester*|*barcelona*|*budapest*|*bucharest*|*sofia*|*zagreb*|*ljubljana*|*coventry*|*solihull*|*birmingham*)
+    *amsterdam*|*frankfurt*|*london*|*paris*|*warsaw*|*berlin*|*munich*|*nürnberg*|*nuremberg*|*nuernberg*|*nurnberg*|*vienna*|*prague*|*brussels*|*zurich*|*geneva*|*milan*|*rome*|*madrid*|*lisbon*|*stockholm*|*oslo*|*helsinki*|*copenhagen*|*dublin*|*manchester*|*barcelona*|*budapest*|*bucharest*|*sofia*|*zagreb*|*ljubljana*|*coventry*|*solihull*|*birmingham*|*vilnius*|*dronten*)
       echo "EU"
       return 0
       ;;
