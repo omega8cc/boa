@@ -965,8 +965,8 @@ _check_boa_php_compatibility() {
     _SUPPORTED_CLI=NO
   fi
 
-  if [ "${_SUPPORTED_FPM}" = "YES" ] \
-    && [ "${_SUPPORTED_CLI}" = "YES" ]; then
+  if [ "${_SUPPORTED_FPM}" = "NO" ] \
+    || [ "${_SUPPORTED_CLI}" = "NO" ]; then
     _msg "ERROR: This BOA version depends on PHP 8.3 or newer"
     _msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 8.3 or newer"
     _msg "in /root/.barracuda.cnf before trying again"
