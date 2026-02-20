@@ -424,7 +424,9 @@ if [ "${_APPLY}" = "YES" ]; then
   echo
   echo "Next steps (recommended):"
   echo "  1) mount -fav"
-  echo "  2) reboot during maintenance window (especially for /)"
+  echo "  2) mount -o remount /"
+  echo "  3) findmnt -n -o SOURCE,FSTYPE,OPTIONS /"
+  echo "  4) reboot during maintenance window (especially for /)"
 else
   echo
   echo "Dry-run only. To apply:"
