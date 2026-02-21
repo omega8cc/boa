@@ -1404,7 +1404,7 @@ _update_agents() {
 
   if [ ! -e "${_optBin}/perftest" ] \
     || [ ! -L "${_usrBin}/perftest" ] \
-    || [ ! -e "${_pthLog}/perftest.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/perftest.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/perftest)
     if (( _CNT > 0 )); then
       echo "The perftest is running!"
@@ -1418,7 +1418,7 @@ _update_agents() {
         chown root:root ${_optBin}/perftest
         ln -sf ${_optBin}/perftest ${_usrBin}/perftest
         rm -f ${_pthLog}/perftest.sh.ctrl.*
-        touch ${_pthLog}/perftest.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/perftest.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/perftest.old" ]; then
           mv -f ${_optBin}/perftest.old ${_optBin}/perftest
@@ -2199,6 +2199,29 @@ _update_agents() {
       else
         if [ -e "${_optBin}/autoupboa.old" ]; then
           mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/fixmounts.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc fixmounts)
+    if (( _CNT > 0 )); then
+      echo "The fixmounts is running!"
+    else
+      if [ -e "${_optBin}/fixmounts" ]; then
+        mv -f ${_optBin}/fixmounts ${_optBin}/fixmounts.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/fixmounts" -o ${_optBin}/fixmounts
+      if [ -e "${_optBin}/fixmounts" ]; then
+        chmod 700 ${_optBin}/fixmounts
+        chown root:root ${_optBin}/fixmounts
+        touch ${_pthLog}/fixmounts.ctrl.f98.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/fixmounts.old" ]; then
+          mv -f ${_optBin}/fixmounts.old ${_optBin}/fixmounts
         fi
       fi
     fi
@@ -4488,6 +4511,7 @@ _update_boa_tools() {
             fancynow \
             ffdevuan \
             ffmirror \
+            fixmounts \
             killer \
             loadguard \
             lock.inc \
@@ -4558,8 +4582,8 @@ _update_boa_tools() {
     fi
   done
 
-  if [ -e "${_optBin}/aptfast" ] && [ ! -e "${_usrBin}/aptfast" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,automini*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*,ffmirror*}
+  if [ -e "${_optBin}/fixmounts" ] && [ ! -e "${_usrBin}/fixmounts" ]; then
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,automini*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*,ffmirror*,fixmounts*}
     rm -f ${_usrBin}/{aptfast*,killer*,loadguard*,perftest*,octopus*,screenfetch*,vmnetfix*,webserver*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
@@ -4570,6 +4594,7 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/dhcpfix     ${_usrBin}/dhcpfix
     ln -sfn ${_optBin}/ffdevuan    ${_usrBin}/ffdevuan
     ln -sfn ${_optBin}/ffmirror    ${_usrBin}/ffmirror
+    ln -sfn ${_optBin}/fixmounts   ${_usrBin}/fixmounts
     ln -sfn ${_optBin}/killer      ${_usrBin}/killer
     ln -sfn ${_optBin}/loadguard   ${_usrBin}/loadguard
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
@@ -4616,7 +4641,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/synproxy*
 
   # _SYS (700): system utilities
-  chmod 700 ${_optBin}/{dhcpfix,mergecsf,screenfetch,vmnetfix,fancynow,codebasecheck}
+  chmod 700 ${_optBin}/{dhcpfix,fixmounts,mergecsf,screenfetch,vmnetfix,fancynow,codebasecheck}
 
   # _SYS (700): cleanup tools
   chmod 700 ${_optBin}/{aptcleanup,aptfast,autosymlink,sqlclean,verifyvhostsdns,vhostcheck}
