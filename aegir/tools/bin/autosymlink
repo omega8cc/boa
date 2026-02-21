@@ -49,8 +49,13 @@ _STATE_FILE="${_LOG_DIR}/autosymlink.state"
 _DRY_HAS_ERRORS="NO"
 _DRY_HAS_EDGE_CASES="NO"
 
+# Per-site LIVE confirmation flag (reset in _process_site)
+_LIVE_SITE_APPROVED="NO"
+
 # Cache for global FS pair status: key="SRC_DEV|TGT_DEV", value="SPACIOUS" or "TIGHT"
 declare -A _FS_PAIR_STATUS
+# Cumulative planned/reserved KB per target filesystem (used mainly for break-sharing copies)
+declare -A _FS_RESERVED_KB
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -107,12 +112,53 @@ _require_clean_dry_run_or_exit() {
 _finalize_dry_run_state() {
   # Evaluate DRY flags and write state
   if [ "${_DRY_HAS_ERRORS}" = "NO" ] && [ "${_DRY_HAS_EDGE_CASES}" = "NO" ]; then
-    _log "[DRY] CLEAN: no edge cases or errors found. Batch LIVE mode is now allowed."
+    _log "[DRY] OK: checks passed (including any pending break-sharing fixes). Batch LIVE mode is allowed."
     _write_state "CLEAN" "DRY"
   else
     _log "[DRY] NOT CLEAN: edge cases and/or errors detected. Batch LIVE mode is NOT allowed."
     _write_state "NOT_CLEAN" "DRY"
   fi
+}
+
+
+_log_reserved_fs_summary() {
+  # End-of-run summary for cumulative break-sharing copy reservations per target filesystem.
+  # Helps estimate whether planned batch work will overcommit storage.
+  _HAS_RESERVED="NO"
+
+  for _FS_DEV in "${!_FS_RESERVED_KB[@]}"; do
+    _HAS_RESERVED="YES"
+    break
+  done
+
+  if [ "${_HAS_RESERVED}" != "YES" ]; then
+    return
+  fi
+
+  _log "------------------------------------------------------------------"
+  _log "[INFO] Cumulative reservation summary for pending break-sharing copies"
+
+  for _FS_DEV in $(printf '%s\n' "${!_FS_RESERVED_KB[@]}" | sort); do
+    _RES_KB="${_FS_RESERVED_KB[${_FS_DEV}]}"
+    _FS_FREE_KB=$(df -Pk "${_FS_DEV}" 2>/dev/null | awk 'NR==2 {print $4}')
+    _FS_MOUNT=$(df -Pk "${_FS_DEV}" 2>/dev/null | awk 'NR==2 {print $6}')
+
+    if [ -z "${_FS_FREE_KB}" ]; then
+      _log "[INFO] ${_FS_DEV}: reserved=${_RES_KB}K, current free=?, projected free=? (unable to read df)"
+      continue
+    fi
+
+    _FS_PROJ_KB=$(( _FS_FREE_KB - _RES_KB ))
+    if [ "${_FS_PROJ_KB}" -lt 0 ]; then
+      _FS_PROJ_KB=0
+    fi
+
+    if [ -n "${_FS_MOUNT}" ]; then
+      _log "[INFO] ${_FS_DEV} (${_FS_MOUNT}): current free=${_FS_FREE_KB}K, reserved=${_RES_KB}K, projected free=${_FS_PROJ_KB}K"
+    else
+      _log "[INFO] ${_FS_DEV}: current free=${_FS_FREE_KB}K, reserved=${_RES_KB}K, projected free=${_FS_PROJ_KB}K"
+    fi
+  done
 }
 
 _get_site_path() {
@@ -182,10 +228,12 @@ _check_space_for_transfer() {
   #   2: target base directory (where new dir will live, e.g. /data/disk/oX/static/files/SITE)
   #   3: description (e.g. "move files", "copy private")
   #   4: site name
+  #   5: force detailed check (YES/NO, optional)
   _SRC_DIR="$1"
   _TARGET_BASE="$2"
   _DESC="$3"
   _SITE="$4"
+  _FORCE_DETAILED_CHECK="$5"
 
   if [ ! -d "${_SRC_DIR}" ]; then
     _log "[WARN] Source directory missing for ${_DESC} of site ${_SITE}: ${_SRC_DIR}"
@@ -204,37 +252,55 @@ _check_space_for_transfer() {
   _SRC_DEV=$(df -P "${_SRC_DIR}" 2>/dev/null | awk 'NR==2 {print $1}')
   _TGT_DEV=$(df -P "${_TARGET_CHECK}" 2>/dev/null | awk 'NR==2 {print $1}')
 
-  # If we got both devs and they match, it's a move on the same FS.
+  # If we got both devs and they match, a move on the same FS usually does not need
+  # extra free space. However, for copy operations used to break shared symlinks we
+  # must still verify there is enough space even on the same filesystem.
   if [ -n "${_SRC_DEV}" ] && [ -n "${_TGT_DEV}" ] && [ "${_SRC_DEV}" = "${_TGT_DEV}" ]; then
-    _log "[INFO] Space check skipped for ${_DESC} of site ${_SITE}: source and target on same filesystem (${_SRC_DEV})."
-    return 0
+    if [ "${_FORCE_DETAILED_CHECK}" = "YES" ]; then
+      _log "[INFO] Same filesystem detected for ${_DESC} of site ${_SITE} (${_SRC_DEV}) but detailed space check is required for copy operation."
+    else
+      _log "[INFO] Space check skipped for ${_DESC} of site ${_SITE}: source and target on same filesystem (${_SRC_DEV})."
+      return 0
+    fi
   fi
 
   # Build FS pair key if possible
   _KEY="${_SRC_DEV}|${_TGT_DEV}"
 
-  # If we already know this pair is SPACIOUS, skip per-site checks
-  if [ -n "${_SRC_DEV}" ] && [ -n "${_TGT_DEV}" ] && [ -n "${_FS_PAIR_STATUS[${_KEY}]+x}" ]; then
-    if [ "${_FS_PAIR_STATUS[${_KEY}]}" = "SPACIOUS" ]; then
-      _log "[INFO] Space check skipped for ${_DESC} of site ${_SITE}: filesystem pair ${_KEY} already marked SPACIOUS."
-      return 0
+  # For anomaly handling (copy ... break sharing), always run a real per-site du/df check.
+  # We may still log global pair info for visibility, but we must not skip the detailed check.
+  if [ "${_FORCE_DETAILED_CHECK}" = "YES" ]; then
+    if [ -n "${_SRC_DEV}" ] && [ -n "${_TGT_DEV}" ]; then
+      _SRC_USED_KB=$(df -Pk "${_SRC_DIR}" 2>/dev/null | awk 'NR==2 {print $3}')
+      _AVAIL_TGT_KB=$(df -Pk "${_TARGET_CHECK}" 2>/dev/null | awk 'NR==2 {print $4}')
+      if [ -n "${_SRC_USED_KB}" ] && [ -n "${_AVAIL_TGT_KB}" ]; then
+        _log "[INFO] Global filesystem snapshot for ${_DESC} of site ${_SITE}: pair ${_KEY}, src used=${_SRC_USED_KB}K, tgt avail=${_AVAIL_TGT_KB}K (informational only; per-site du/df check will still run)"
+      fi
     fi
-    # If marked TIGHT, we fall through to detailed per-site check below
-  fi
+  else
+    # If we already know this pair is SPACIOUS, skip per-site checks (normal move logic only)
+    if [ -n "${_SRC_DEV}" ] && [ -n "${_TGT_DEV}" ] && [ -n "${_FS_PAIR_STATUS[${_KEY}]+x}" ]; then
+      if [ "${_FS_PAIR_STATUS[${_KEY}]}" = "SPACIOUS" ]; then
+        _log "[INFO] Space check skipped for ${_DESC} of site ${_SITE}: filesystem pair ${_KEY} already marked SPACIOUS."
+        return 0
+      fi
+      # If marked TIGHT, we fall through to detailed per-site check below
+    fi
 
-  # If this FS pair hasn't been classified yet and we have dev IDs, try a global check.
-  if [ -n "${_SRC_DEV}" ] && [ -n "${_TGT_DEV}" ] && [ -z "${_FS_PAIR_STATUS[${_KEY}]+x}" ]; then
-    _SRC_USED_KB=$(df -Pk "${_SRC_DIR}" 2>/dev/null | awk 'NR==2 {print $3}')
-    _AVAIL_TGT_KB=$(df -Pk "${_TARGET_CHECK}" 2>/dev/null | awk 'NR==2 {print $4}')
+    # If this FS pair hasn't been classified yet and we have dev IDs, try a global check.
+    if [ -n "${_SRC_DEV}" ] && [ -n "${_TGT_DEV}" ] && [ -z "${_FS_PAIR_STATUS[${_KEY}]+x}" ]; then
+      _SRC_USED_KB=$(df -Pk "${_SRC_DIR}" 2>/dev/null | awk 'NR==2 {print $3}')
+      _AVAIL_TGT_KB=$(df -Pk "${_TARGET_CHECK}" 2>/dev/null | awk 'NR==2 {print $4}')
 
-    if [ -n "${_SRC_USED_KB}" ] && [ -n "${_AVAIL_TGT_KB}" ] && [ "${_AVAIL_TGT_KB}" -ge "${_SRC_USED_KB}" ]; then
-      _FS_PAIR_STATUS[${_KEY}]="SPACIOUS"
-      _log "[INFO] Filesystem pair ${_KEY} marked SPACIOUS (src used=${_SRC_USED_KB}K, tgt avail=${_AVAIL_TGT_KB}K) – skipping per-site size checks."
-      return 0
-    else
-      _FS_PAIR_STATUS[${_KEY}]="TIGHT"
-      _log "[INFO] Filesystem pair ${_KEY} marked TIGHT or unknown (src used=${_SRC_USED_KB:-?}K, tgt avail=${_AVAIL_TGT_KB:-?}K) – will run per-site space checks."
-      # Fall through to per-site du logic
+      if [ -n "${_SRC_USED_KB}" ] && [ -n "${_AVAIL_TGT_KB}" ] && [ "${_AVAIL_TGT_KB}" -ge "${_SRC_USED_KB}" ]; then
+        _FS_PAIR_STATUS[${_KEY}]="SPACIOUS"
+        _log "[INFO] Filesystem pair ${_KEY} marked SPACIOUS (src used=${_SRC_USED_KB}K, tgt avail=${_AVAIL_TGT_KB}K) – skipping per-site size checks."
+        return 0
+      else
+        _FS_PAIR_STATUS[${_KEY}]="TIGHT"
+        _log "[INFO] Filesystem pair ${_KEY} marked TIGHT or unknown (src used=${_SRC_USED_KB:-?}K, tgt avail=${_AVAIL_TGT_KB:-?}K) – will run per-site space checks."
+        # Fall through to per-site du logic
+      fi
     fi
   fi
 
@@ -257,15 +323,60 @@ _check_space_for_transfer() {
     return 1
   fi
 
-  if [ "${_AVAIL_KB}" -lt "${_SIZE_KB}" ]; then
-    _log "[WARN] Not enough space on ${_TARGET_CHECK} for ${_DESC} of site ${_SITE}: need ${_SIZE_KB}K, have ${_AVAIL_KB}K"
+  _RESERVED_KB=0
+  _IS_BREAK_SHARING="NO"
+  _USE_CUMULATIVE_RESERVATION="NO"
+  if printf '%s' "${_DESC}" | grep -q "break sharing"; then
+    _IS_BREAK_SHARING="YES"
+    # Cumulative reservation is for planning only (DRY mode).
+    # In LIVE/BATCH, df reflects actual space after each completed copy,
+    # so keeping reservations would double-count and cause false warnings.
+    if [ "${_MODE}" = "DRY" ]; then
+      _USE_CUMULATIVE_RESERVATION="YES"
+    fi
+  fi
+  if [ "${_USE_CUMULATIVE_RESERVATION}" = "YES" ]; then
+    if [ -n "${_TGT_DEV}" ] && [ -n "${_FS_RESERVED_KB[${_TGT_DEV}]+x}" ]; then
+      _RESERVED_KB="${_FS_RESERVED_KB[${_TGT_DEV}]}"
+    fi
+  fi
+
+  _EFFECTIVE_AVAIL_KB="${_AVAIL_KB}"
+  if [ "${_RESERVED_KB}" -gt 0 ]; then
+    _EFFECTIVE_AVAIL_KB=$(( _AVAIL_KB - _RESERVED_KB ))
+    if [ "${_EFFECTIVE_AVAIL_KB}" -lt 0 ]; then
+      _EFFECTIVE_AVAIL_KB=0
+    fi
+  fi
+
+  if [ "${_EFFECTIVE_AVAIL_KB}" -lt "${_SIZE_KB}" ]; then
+    if [ "${_IS_BREAK_SHARING}" = "YES" ] && [ "${_USE_CUMULATIVE_RESERVATION}" = "YES" ]; then
+      _log "[WARN] Not enough space on ${_TARGET_CHECK} for ${_DESC} of site ${_SITE}: need ${_SIZE_KB}K, free now ${_AVAIL_KB}K, already reserved ${_RESERVED_KB}K, effective free ${_EFFECTIVE_AVAIL_KB}K"
+    elif [ "${_IS_BREAK_SHARING}" = "YES" ]; then
+      _log "[WARN] Not enough space on ${_TARGET_CHECK} for ${_DESC} of site ${_SITE}: need ${_SIZE_KB}K, free now ${_AVAIL_KB}K"
+    else
+      _log "[WARN] Not enough space on ${_TARGET_CHECK} for ${_DESC} of site ${_SITE}: need ${_SIZE_KB}K, have ${_EFFECTIVE_AVAIL_KB}K"
+    fi
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
     fi
     return 1
   fi
 
-  _log "[INFO] Space check OK for ${_DESC} of site ${_SITE}: need ${_SIZE_KB}K, available ${_AVAIL_KB}K on ${_TARGET_CHECK}"
+  if [ "${_IS_BREAK_SHARING}" = "YES" ]; then
+    _AFTER_COPY_KB=$(( _EFFECTIVE_AVAIL_KB - _SIZE_KB ))
+    if [ "${_USE_CUMULATIVE_RESERVATION}" = "YES" ]; then
+      _log "[INFO] Ready to copy for ${_DESC} of site ${_SITE}: source size=${_SIZE_KB}K, target free now=${_AVAIL_KB}K, reserved on fs=${_RESERVED_KB}K, effective free=${_EFFECTIVE_AVAIL_KB}K, projected free after copy=${_AFTER_COPY_KB}K on ${_TARGET_CHECK}"
+    else
+      _log "[INFO] Ready to copy for ${_DESC} of site ${_SITE}: source size=${_SIZE_KB}K, target free now=${_AVAIL_KB}K, projected free after copy=${_AFTER_COPY_KB}K on ${_TARGET_CHECK}"
+    fi
+    if [ "${_USE_CUMULATIVE_RESERVATION}" = "YES" ] && [ -n "${_TGT_DEV}" ]; then
+      _FS_RESERVED_KB[${_TGT_DEV}]=$(( _RESERVED_KB + _SIZE_KB ))
+      _log "[INFO] Reserved cumulative space for pending break-sharing copies on ${_TGT_DEV}: ${_FS_RESERVED_KB[${_TGT_DEV}]}K"
+    fi
+  else
+    _log "[INFO] Space check OK for ${_DESC} of site ${_SITE}: need ${_SIZE_KB}K, available ${_EFFECTIVE_AVAIL_KB}K on ${_TARGET_CHECK}"
+  fi
   return 0
 }
 
@@ -329,6 +440,9 @@ _check_symlink_sharing() {
     _INTENT="ACCIDENTAL"
     if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
       _INTENT="INTENTIONAL"
+      _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
+    else
+      _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
     fi
 
     _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → ${_TARGET_SITE_NAME} (${_INTENT}), target='${_LINK_TARGET}'"
@@ -346,9 +460,12 @@ _check_symlink_sharing() {
   _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
 
   if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+    _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
     _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with ${_TARGET_SITE_NAME} (control file present) – leaving as is"
     return
   fi
+
+  _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
 
   _NEW_TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
   _ORIGINAL_TOP="${_ACCOUNT_DIR}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
@@ -357,6 +474,15 @@ _check_symlink_sharing() {
   _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to ${_LINK_TARGET} (owned by ${_TARGET_SITE_NAME})"
   _log "[PLAN] Break sharing: copy from ${_ORIGINAL_TOP} to ${_NEW_TARGET} and update symlink at ${_PATH}"
 
+  if [ "${_MODE}" = "LIVE" ] && [ "${_LIVE_SITE_APPROVED}" != "YES" ]; then
+    if ! _ask_confirm_site "${_SITE_NAME}"; then
+      _log "[LIVE] Skipping shared symlink fix for site: ${_SITE_NAME}"
+      _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+      return
+    fi
+    _LIVE_SITE_APPROVED="YES"
+  fi
+
   if [ "${_MODE}" = "DRY" ]; then
     if [ ! -d "${_ORIGINAL_TOP}" ]; then
       _log "[WARN] Original ${_TYPE} directory not found at ${_ORIGINAL_TOP} – would fail breaking sharing"
@@ -364,7 +490,7 @@ _check_symlink_sharing() {
       return
     fi
     # Check space on target filesystem (if different FS)
-    if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}"; then
+    if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}" "YES"; then
       # _check_space_for_transfer already logged + flagged DRY errors if needed
       return
     fi
@@ -373,12 +499,14 @@ _check_symlink_sharing() {
 
   if [ ! -d "${_ORIGINAL_TOP}" ]; then
     _log "[WARN] Original ${_TYPE} directory not found at ${_ORIGINAL_TOP} – cannot break sharing for ${_SITE_NAME}"
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
 
   # LIVE / BATCH: space check
-  if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}"; then
+  if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}" "YES"; then
     _log "[WARN] Skipping breaking sharing for ${_TYPE} of site ${_SITE_NAME} due to insufficient space."
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
 
@@ -399,12 +527,18 @@ _check_symlink_sharing() {
   mkdir -p "${_NEW_TARGET}"
   if ! rsync -a "${_ORIGINAL_TOP}/" "${_NEW_TARGET}/"; then
     _log "[ERROR] rsync failed for site ${_SITE_NAME} (${_TYPE}: ${_ORIGINAL_TOP} -> ${_NEW_TARGET}) – leaving symlink unchanged."
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
 
   _log "[APPLY] Updating symlink: ${_PATH} -> ${_NEW_TARGET}"
   rm -f "${_PATH}"
-  ln -s "${_NEW_TARGET}" "${_PATH}"
+  if ! ln -s "${_NEW_TARGET}" "${_PATH}"; then
+    _log "[ERROR] Failed to create symlink for site ${_SITE_NAME} (${_TYPE}: ${_PATH} -> ${_NEW_TARGET})"
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+  _SITE_SHARED_SYMLINK_FIX_APPLIED="YES"
 }
 
 _process_site() {
@@ -444,6 +578,13 @@ _process_site() {
   _DO_FILES_CONVERT="NO"
   _DO_PRIVATE_CONVERT="NO"
 
+  # Per-site flags used for summary / LIVE confirmation re-use
+  _LIVE_SITE_APPROVED="NO"
+  _SITE_NEEDS_SHARED_SYMLINK_FIX="NO"
+  _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="NO"
+  _SITE_SHARED_SYMLINK_FIX_APPLIED="NO"
+  _SITE_SHARED_SYMLINK_FIX_SKIPPED="NO"
+
   # Decide what needs to be done for files/
   if [ -d "${_FILES_PATH}" ] && [ ! -L "${_FILES_PATH}" ]; then
     _DO_FILES_CONVERT="YES"
@@ -454,10 +595,9 @@ _process_site() {
     _DO_PRIVATE_CONVERT="YES"
   fi
 
-  # site_path/private may not exist in older sites, so that's fine.
-  if [ "${_DO_FILES_CONVERT}" != "YES" ] && [ "${_DO_PRIVATE_CONVERT}" != "YES" ]; then
-    _log "[INFO] Nothing to do for site ${_SITE_NAME} (files/private already symlinks or absent)"
-    return
+  _HAS_LOCAL_CONVERT="NO"
+  if [ "${_DO_FILES_CONVERT}" = "YES" ] || [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
+    _HAS_LOCAL_CONVERT="YES"
   fi
 
   _log "------------------------------------------------------------------"
@@ -465,10 +605,48 @@ _process_site() {
   _log "[INFO] Alias: ${_ALIAS_FILE}"
   _log "[INFO] site_path: ${_SITE_PATH}"
 
-  # REPORT mode: only look at existing symlink sharing and return.
-  if [ "${_MODE}" = "REPORT" ]; then
+  # Always inspect symlinks, even when files/private are already symlinks,
+  # because they may accidentally point to another site's target.
+  if [ -L "${_FILES_PATH}" ]; then
     _check_symlink_sharing "${_FILES_PATH}" "files" "${_SITE_NAME}" "${_ACCOUNT_DIR}"
+  fi
+  if [ -L "${_PRIVATE_PATH}" ]; then
     _check_symlink_sharing "${_PRIVATE_PATH}" "private" "${_SITE_NAME}" "${_ACCOUNT_DIR}"
+  fi
+
+  # Clearer one-line summary per site after symlink inspection.
+  _SHARED_FIX_SUMMARY="shared symlink fix needed"
+  if [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ] && [ "${_MODE}" != "DRY" ] && [ "${_MODE}" != "REPORT" ]; then
+    if [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" = "YES" ] && [ "${_SITE_SHARED_SYMLINK_FIX_SKIPPED}" = "YES" ]; then
+      _SHARED_FIX_SUMMARY="shared symlink fix partially applied"
+    elif [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" = "YES" ]; then
+      _SHARED_FIX_SUMMARY="shared symlink fix applied"
+    elif [ "${_SITE_SHARED_SYMLINK_FIX_SKIPPED}" = "YES" ]; then
+      _SHARED_FIX_SUMMARY="shared symlink fix pending (not applied)"
+    fi
+  fi
+
+  if [ "${_HAS_LOCAL_CONVERT}" = "YES" ] && [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ]; then
+    _log "[INFO] Summary for ${_SITE_NAME}: local conversion needed + ${_SHARED_FIX_SUMMARY}"
+  elif [ "${_HAS_LOCAL_CONVERT}" = "YES" ]; then
+    _log "[INFO] Summary for ${_SITE_NAME}: local conversion needed"
+  elif [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ]; then
+    _log "[INFO] Summary for ${_SITE_NAME}: ${_SHARED_FIX_SUMMARY}"
+  elif [ "${_SITE_HAS_INTENTIONAL_SHARED_SYMLINK}" = "YES" ]; then
+    _log "[INFO] Summary for ${_SITE_NAME}: intentional sharing detected (left as is)"
+  else
+    _log "[INFO] Summary for ${_SITE_NAME}: clean (no conversion needed, no accidental sharing)"
+  fi
+
+  # REPORT mode is read-only; symlink sharing checks above already produced output.
+  if [ "${_MODE}" = "REPORT" ]; then
+    return
+  fi
+
+  # If nothing needs conversion from local dir -> symlink, and symlink checks were done,
+  # then only now it's safe to say "nothing to do".
+  if [ "${_HAS_LOCAL_CONVERT}" != "YES" ]; then
+    _log "[INFO] No local files/private dirs to convert for site ${_SITE_NAME} (symlink sharing already checked above)"
     return
   fi
 
@@ -506,96 +684,92 @@ _process_site() {
   fi
 
   if [ "${_MODE}" = "DRY" ]; then
-    if [ "${_DO_FILES_CONVERT}" = "YES" ] || [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
-      _log "[DRY] DRY-RUN mode – conversion planned for ${_SITE_NAME}, no changes applied"
-    fi
+    _log "[DRY] DRY-RUN mode – conversion planned for ${_SITE_NAME}, no changes applied"
   else
     # LIVE and BATCH
-    if [ "${_DO_FILES_CONVERT}" = "YES" ] || [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
-      if [ "${_MODE}" = "LIVE" ]; then
+    if [ "${_MODE}" = "LIVE" ]; then
+      if [ "${_LIVE_SITE_APPROVED}" != "YES" ]; then
         if ! _ask_confirm_site "${_SITE_NAME}"; then
           _log "[LIVE] Skipping conversion for site: ${_SITE_NAME}"
+          return
+        fi
+        _LIVE_SITE_APPROVED="YES"
+      fi
+
+      if [ -e "${_TARGET_BASE}" ] && [ ! -d "${_TARGET_BASE}" ]; then
+        _make_unique_target "${_TARGET_BASE}"
+      fi
+      if [ ! -d "${_TARGET_BASE}" ]; then
+        _log "[APPLY] Creating directory: ${_TARGET_BASE}"
+        mkdir -p "${_TARGET_BASE}"
+      fi
+
+      if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
+        if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
+          _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}" ] && [ ! -d "${_TARGET_BASE}" ]; then
-            _make_unique_target "${_TARGET_BASE}"
+          if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
+            _make_unique_target "${_TARGET_BASE}/files"
           fi
-          if [ ! -d "${_TARGET_BASE}" ]; then
-            _log "[APPLY] Creating directory: ${_TARGET_BASE}"
-            mkdir -p "${_TARGET_BASE}"
-          fi
-
-          if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
-            if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
-              _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
-            else
-              if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-                _make_unique_target "${_TARGET_BASE}/files"
-              fi
-              _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-              mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
-              _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-              ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
-            fi
-          fi
-
-          if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
-            if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
-              _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
-            else
-              if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-                _make_unique_target "${_TARGET_BASE}/private"
-              fi
-              _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-              mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
-              _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-              ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
-            fi
-          fi
+          _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+          mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
+          _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+          ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
         fi
-      else
-        # BATCH (no per-site confirmation)
-        if [ -e "${_TARGET_BASE}" ] && [ ! -d "${_TARGET_BASE}" ]; then
-          _make_unique_target "${_TARGET_BASE}"
-        fi
-        if [ ! -d "${_TARGET_BASE}" ]; then
-          _log "[APPLY] Creating directory: ${_TARGET_BASE}"
-          mkdir -p "${_TARGET_BASE}"
-        fi
+      fi
 
-        if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
-          if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
-            _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
-          else
-            if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-              _make_unique_target "${_TARGET_BASE}/files"
-            fi
-            _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-            mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
-            _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-            ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
+      if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
+        if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
+          _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
+        else
+          if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
+            _make_unique_target "${_TARGET_BASE}/private"
           fi
+          _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+          mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
+          _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+          ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
         fi
+      fi
+    else
+      # BATCH (no per-site confirmation)
+      if [ -e "${_TARGET_BASE}" ] && [ ! -d "${_TARGET_BASE}" ]; then
+        _make_unique_target "${_TARGET_BASE}"
+      fi
+      if [ ! -d "${_TARGET_BASE}" ]; then
+        _log "[APPLY] Creating directory: ${_TARGET_BASE}"
+        mkdir -p "${_TARGET_BASE}"
+      fi
 
-        if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
-          if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
-            _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
-          else
-            if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-              _make_unique_target "${_TARGET_BASE}/private"
-            fi
-            _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-            mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
-            _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-            ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
+      if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
+        if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
+          _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
+        else
+          if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
+            _make_unique_target "${_TARGET_BASE}/files"
           fi
+          _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+          mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
+          _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+          ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
+        fi
+      fi
+
+      if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
+        if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
+          _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
+        else
+          if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
+            _make_unique_target "${_TARGET_BASE}/private"
+          fi
+          _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+          mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
+          _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+          ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
         fi
       fi
     fi
   fi
-
-  # Now handle shared symlink detection/fix for files/private
-  _check_symlink_sharing "${_FILES_PATH}" "files" "${_SITE_NAME}" "${_ACCOUNT_DIR}"
-  _check_symlink_sharing "${_PRIVATE_PATH}" "private" "${_SITE_NAME}" "${_ACCOUNT_DIR}"
 }
 
 _process_account() {
@@ -663,6 +837,8 @@ _main() {
     fi
     _process_account "${_ACCOUNT_DIR}"
   done
+
+  _log_reserved_fs_summary
 
   if [ "${_MODE}" = "DRY" ]; then
     _finalize_dry_run_state
