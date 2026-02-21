@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION="v71"
+_PT_VERSION="v72"
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -2343,7 +2343,7 @@ _boa_grade_mem_final() {
       else
         grade="low"
       fi
-    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+    elif awk -v l="${mem_latency_ns}" 'BEGIN{exit !(l>230)}' 2>/dev/null; then
       if [ "${grade}" != "low" ]; then
         grade="average"
       fi
@@ -3310,14 +3310,14 @@ _print_grading_summary() {
     echo ""
 
     if [ "${mem_grade}" = "low" ]; then
-      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>230)}' 2>/dev/null; then
         echo "   ⚠️ High/variable memory latency - may hurt cache-heavy BOA workloads"
       else
         echo "   ⚠️ Low memory bandwidth - may limit BOA caching under heavy load"
       fi
     elif [ "${mem_grade}" = "average" ]; then
-      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
-        echo "   ⚠️  Strong bandwidth but higher latency - likely host contention/NUMA"
+      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>230)}' 2>/dev/null; then
+        echo "   ☑️ Strong memory throughput with elevated latency (contention/NUMA variance)"
       else
         echo "   ☑️ Average memory performance for in-memory caching"
       fi
@@ -3515,7 +3515,7 @@ _print_grading_summary() {
         _issues=$((_issues + 1))
       fi
     elif [ "${mem_grade}" = "average" ]; then
-      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>200)}' 2>/dev/null; then
+      if [ -n "${mem_lat}" ] && awk -v l="${mem_lat}" 'BEGIN{exit !(l>230)}' 2>/dev/null; then
         echo "   ⚠️ Memory latency higher than expected - may reduce cache hit performance"
         _warnings=$((_warnings + 1))
       fi
