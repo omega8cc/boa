@@ -1,0 +1,439 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+#
+# Normalize /etc/fstab for "big" mounts:
+# - Prefer UUID=
+# - Add noatime,nodiratime
+# - Remove discard and x-systemd.* options
+# - Keep swap/EFI/cdrom entries untouched
+# - Optional: tune2fs -m 1 for ext2/3/4 block devices
+# - Bootstrap dependencies on Debian/Devuan if missing
+#
+# Default mode: DRY RUN (preview only)
+# To apply changes: fixmounts --apply
+#
+# Optional:
+#   --tune2fs        Run tune2fs -m 1 on supported ext* devices
+#   --verbose        Extra logs
+#   --no-install     Do not auto-install dependencies
+#
+
+set -u
+
+_DEBUG_MODE="NO"
+_APPLY="NO"
+_RUN_TUNE2FS="NO"
+_AUTO_INSTALL_DEPS="YES"
+
+_FSTAB="/etc/fstab"
+_BACKUP=""
+_TMP_OUT=""
+_TMP_NEW=""
+
+_is_big_mount_point() {
+  _MP="${1}"
+  case "${_MP}" in
+    /) return 0 ;;
+    /mnt|/mnt/*) return 0 ;;
+    /srv|/srv/*) return 0 ;;
+    /data|/data/*) return 0 ;;
+    /opt|/opt/*) return 0 ;;
+    /var|/var/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+_msg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "${@}"
+  fi
+}
+
+_die() {
+  echo "ERROR: ${*}" >&2
+  exit 1
+}
+
+_usage() {
+  cat <<'EOF'
+Usage:
+  fixmounts [--apply] [--tune2fs] [--verbose] [--no-install]
+
+Options:
+  --apply        Actually write /etc/fstab (default is dry-run)
+  --tune2fs      Run tune2fs -m 1 on adjusted ext2/3/4 block devices
+  --verbose      Enable debug logs
+  --no-install   Do not auto-install missing dependencies
+  -h|--help      Show help
+EOF
+}
+
+_cleanup() {
+  [ -n "${_TMP_OUT}" ] && [ -e "${_TMP_OUT}" ] && rm -f "${_TMP_OUT}"
+  [ -n "${_TMP_NEW}" ] && [ -e "${_TMP_NEW}" ] && rm -f "${_TMP_NEW}"
+}
+
+trap _cleanup EXIT
+
+_detect_pkg_mgr() {
+  if command -v apt-get >/dev/null 2>&1; then
+    echo "apt"
+    return 0
+  fi
+  echo "none"
+  return 1
+}
+
+_install_missing_dependencies() {
+  [ "${_AUTO_INSTALL_DEPS}" = "YES" ] || return 0
+
+  _PKG_MGR="$(_detect_pkg_mgr)"
+  [ "${_PKG_MGR}" = "apt" ] || {
+    _msg "No supported package manager detected for auto-install, skipping."
+    return 0
+  }
+
+  _NEED_PKGS=""
+
+  # Core utilities used by the script
+  command -v blkid >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} util-linux"
+  command -v findmnt >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} util-linux"
+  command -v mount >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} mount"
+  command -v readlink >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} coreutils"
+  command -v sed >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} sed"
+  command -v awk >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} gawk"
+
+  # Optional for tune2fs mode
+  if [ "${_RUN_TUNE2FS}" = "YES" ]; then
+    command -v tune2fs >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} e2fsprogs"
+  fi
+
+  # User-requested helpers
+  command -v growpart >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} cloud-guest-utils"
+  command -v sgdisk >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} gdisk"
+  command -v parted >/dev/null 2>&1 || _NEED_PKGS="${_NEED_PKGS} parted"
+
+  _UNIQ_PKGS=""
+  for _P in ${_NEED_PKGS}; do
+    case " ${_UNIQ_PKGS} " in
+      *" ${_P} "*) ;;
+      *) _UNIQ_PKGS="${_UNIQ_PKGS} ${_P}" ;;
+    esac
+  done
+
+  if [ -z "${_UNIQ_PKGS# }" ]; then
+    _msg "All dependencies already installed."
+    return 0
+  fi
+
+  echo "Installing missing dependencies:${_UNIQ_PKGS}"
+  export DEBIAN_FRONTEND=noninteractive
+
+  apt-get update || _die "apt-get update failed"
+  # shellcheck disable=SC2086
+  apt-get install -y ${_UNIQ_PKGS} || _die "apt-get install failed"
+}
+
+_resolve_device_from_spec() {
+  _SPEC="${1}"
+
+  # Already a direct /dev path (includes /dev/disk/by-id/*)
+  if [ -e "${_SPEC}" ]; then
+    readlink -f "${_SPEC}" 2>/dev/null && return 0
+  fi
+
+  case "${_SPEC}" in
+    UUID=*)
+      _UUID="${_SPEC#UUID=}"
+      blkid -U "${_UUID}" 2>/dev/null && return 0
+      ;;
+    LABEL=*)
+      _LABEL="${_SPEC#LABEL=}"
+      blkid -L "${_LABEL}" 2>/dev/null && return 0
+      ;;
+    PARTUUID=*)
+      _PUUID="${_SPEC#PARTUUID=}"
+      _DEV="$(blkid -t "PARTUUID=${_PUUID}" -o device 2>/dev/null | head -n 1)"
+      if [ -n "${_DEV}" ]; then
+        echo "${_DEV}"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
+# Return UUID=... for a device if possible, else print original spec.
+_to_uuid_spec() {
+  _ORIG_SPEC="${1}"
+  _DEV="$(_resolve_device_from_spec "${_ORIG_SPEC}")" || {
+    echo "${_ORIG_SPEC}"
+    return 0
+  }
+
+  _UUID="$(blkid -s UUID -o value "${_DEV}" 2>/dev/null | head -n 1)"
+  if [ -n "${_UUID}" ]; then
+    echo "UUID=${_UUID}"
+  else
+    echo "${_ORIG_SPEC}"
+  fi
+}
+
+# Normalize option list:
+# - remove discard
+# - remove nodiratime/noatime (we re-add in stable order)
+# - remove x-systemd.*
+# - remove duplicate commas/duplicates
+# - add noatime,nodiratime
+#
+# Keeps other options (errors=remount-ro, defaults, nofail, rw, etc.)
+_normalize_mount_opts() {
+  _IN_OPTS="${1}"
+
+  # Empty safety
+  if [ -z "${_IN_OPTS}" ]; then
+    _IN_OPTS="defaults"
+  fi
+
+  # Split on commas and rebuild
+  _OUT=""
+  IFS=',' read -r -a _ARR <<< "${_IN_OPTS}"
+
+  for _OPT in "${_ARR[@]}"; do
+    # trim spaces
+    _OPT="$(echo "${_OPT}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    [ -z "${_OPT}" ] && continue
+
+    case "${_OPT}" in
+      discard|nodiscard) continue ;;
+      noatime|nodiratime|atime|diratime|relatime|strictatime) continue ;;
+      x-systemd.*) continue ;;
+      comment=cloudconfig) continue ;;
+    esac
+
+    # Deduplicate while preserving order
+    case ",${_OUT}," in
+      *,"${_OPT}",*) ;;
+      *)
+        if [ -z "${_OUT}" ]; then
+          _OUT="${_OPT}"
+        else
+          _OUT="${_OUT},${_OPT}"
+        fi
+        ;;
+    esac
+  done
+
+  # If nothing left, use defaults
+  if [ -z "${_OUT}" ]; then
+    _OUT="defaults"
+  fi
+
+  # Enforce noatime,nodiratime (stable order at end)
+  case ",${_OUT}," in
+    *,noatime,*) ;;
+    *) _OUT="${_OUT},noatime" ;;
+  esac
+
+  case ",${_OUT}," in
+    *,nodiratime,*) ;;
+    *) _OUT="${_OUT},nodiratime" ;;
+  esac
+
+  echo "${_OUT}"
+}
+
+# Decide if entry should be rewritten.
+_should_rewrite_entry() {
+  _SPEC="${1}"
+  _MP="${2}"
+  _FSTYPE="${3}"
+
+  # Skip comments/empty handled elsewhere
+  # Skip swap and obvious non-target fs types
+  case "${_FSTYPE}" in
+    swap|vfat|udf|iso9660|tmpfs|devtmpfs|proc|sysfs|cgroup*|overlay|squashfs|nfs|nfs4|cifs|fuse*|zfs)
+      return 1
+      ;;
+  esac
+
+  # Only local Linux fs types we care about here
+  case "${_FSTYPE}" in
+    ext2|ext3|ext4|xfs) ;;
+    *) return 1 ;;
+  esac
+
+  # Mountpoint must be "big"
+  if ! _is_big_mount_point "${_MP}"; then
+    return 1
+  fi
+
+  return 0
+}
+
+# Track adjusted ext* devices for optional tune2fs
+_TUNE_DEVS=""
+
+_add_tune_device_if_supported() {
+  _SPEC="${1}"
+  _FSTYPE="${2}"
+
+  case "${_FSTYPE}" in
+    ext2|ext3|ext4) ;;
+    *) return 0 ;;
+  esac
+
+  _DEV="$(_resolve_device_from_spec "${_SPEC}")" || return 0
+
+  # Must be a real block device path for tune2fs
+  if [ ! -b "${_DEV}" ]; then
+    return 0
+  fi
+
+  case " ${_TUNE_DEVS} " in
+    *" ${_DEV} "*) ;;
+    *) _TUNE_DEVS="${_TUNE_DEVS} ${_DEV}" ;;
+  esac
+}
+
+_run_tune2fs_min_reserved() {
+  for _DEV in ${_TUNE_DEVS}; do
+    echo "tune2fs target: ${_DEV}"
+
+    # Read current reserved block percentage (best effort)
+    _CUR_PCT="$(tune2fs -l "${_DEV}" 2>/dev/null | awk -F: '/Reserved block count/ {print $2}' | head -n1 | tr -d '[:space:]')"
+    if [ "${_APPLY}" = "YES" ]; then
+      tune2fs -m 1 "${_DEV}" || echo "WARN: tune2fs failed on ${_DEV}" >&2
+    else
+      echo "DRY-RUN: tune2fs -m 1 ${_DEV}"
+    fi
+  done
+}
+
+# Parse args
+while [ "${#}" -gt 0 ]; do
+  case "${1}" in
+    --apply) _APPLY="YES" ;;
+    --tune2fs) _RUN_TUNE2FS="YES" ;;
+    --verbose) _DEBUG_MODE="YES" ;;
+    --no-install) _AUTO_INSTALL_DEPS="NO" ;;
+    -h|--help) _usage; exit 0 ;;
+    *) _die "Unknown option: ${1}" ;;
+  esac
+  shift
+done
+
+[ "$(id -u)" -eq 0 ] || _die "Please run as root."
+
+_install_missing_dependencies
+
+[ -r "${_FSTAB}" ] || _die "Cannot read ${_FSTAB}"
+
+_TMP_OUT="$(mktemp /tmp/fstab.adjust.XXXXXX)"
+_TMP_NEW="$(mktemp /tmp/fstab.preview.XXXXXX)"
+
+echo "Processing ${_FSTAB} ..."
+echo "Mode: $( [ "${_APPLY}" = "YES" ] && echo APPLY || echo DRY-RUN )"
+echo
+
+while IFS= read -r _LINE || [ -n "${_LINE}" ]; do
+  # Preserve comments and blank lines verbatim
+  case "${_LINE}" in
+    ""|\#*)
+      echo "${_LINE}" >> "${_TMP_OUT}"
+      continue
+      ;;
+  esac
+
+  # Parse first 6 fields only; fstab normally uses whitespace separators
+  # shellcheck disable=SC2086
+  set -- ${_LINE}
+
+  if [ "${#}" -lt 4 ]; then
+    # Unusual line -> preserve unchanged
+    echo "${_LINE}" >> "${_TMP_OUT}"
+    continue
+  fi
+
+  _SPEC="${1}"
+  _MP="${2}"
+  _FSTYPE="${3}"
+  _OPTS="${4}"
+  _DUMP="${5:-0}"
+  _PASS="${6:-0}"
+
+  if _should_rewrite_entry "${_SPEC}" "${_MP}" "${_FSTYPE}"; then
+    _NEW_SPEC="$(_to_uuid_spec "${_SPEC}")"
+    _NEW_OPTS="$(_normalize_mount_opts "${_OPTS}")"
+    _NEW_LINE="${_NEW_SPEC} ${_MP} ${_FSTYPE} ${_NEW_OPTS} ${_DUMP} ${_PASS}"
+
+    if [ "${_LINE}" != "${_NEW_LINE}" ]; then
+      echo "- ${_LINE}" >> "${_TMP_NEW}"
+      echo "+ ${_NEW_LINE}" >> "${_TMP_NEW}"
+      echo >> "${_TMP_NEW}"
+    fi
+
+    echo "${_NEW_LINE}" >> "${_TMP_OUT}"
+
+    if [ "${_RUN_TUNE2FS}" = "YES" ]; then
+      _add_tune_device_if_supported "${_NEW_SPEC}" "${_FSTYPE}"
+    fi
+  else
+    echo "${_LINE}" >> "${_TMP_OUT}"
+  fi
+done < "${_FSTAB}"
+
+if [ ! -s "${_TMP_NEW}" ]; then
+  echo "No changes needed."
+else
+  echo "Planned changes:"
+  cat "${_TMP_NEW}"
+fi
+
+echo
+echo "Validation check (syntax only):"
+if mount -fav -T "${_TMP_OUT}" >/dev/null 2>&1; then
+  echo "OK: mount -fav -T preview file passed"
+else
+  echo "WARN: mount -fav -T preview file reported an issue"
+  echo "Preview file kept at: ${_TMP_OUT}"
+  exit 1
+fi
+
+if [ "${_APPLY}" = "YES" ]; then
+  _BACKUP="/etc/fstab.bak.$(date +%Y%m%d-%H%M%S)"
+  cp -a "${_FSTAB}" "${_BACKUP}" || _die "Backup failed"
+  cp -f "${_TMP_OUT}" "${_FSTAB}" || _die "Write failed"
+
+  echo
+  echo "Updated ${_FSTAB}"
+  echo "Backup saved as ${_BACKUP}"
+
+  # Optional tune2fs
+  if [ "${_RUN_TUNE2FS}" = "YES" ] && [ -n "${_TUNE_DEVS}" ]; then
+    echo
+    echo "Applying tune2fs -m 1 on ext* devices used by adjusted mounts..."
+    _run_tune2fs_min_reserved
+  fi
+
+  echo
+  echo "Next steps (recommended):"
+  echo "  1) mount -fav"
+  echo "  2) mount -o remount /"
+  echo "  3) findmnt -n -o SOURCE,FSTYPE,OPTIONS /"
+  echo "  4) reboot during maintenance window (especially for /)"
+else
+  echo
+  echo "Dry-run only. To apply:"
+  echo "  $(basename "$0") --apply"
+  if [ "${_RUN_TUNE2FS}" = "YES" ]; then
+    echo "  (and it would also run tune2fs -m 1 on adjusted ext* devices)"
+  fi
+fi
+
+exit 0
