@@ -466,9 +466,34 @@ _delete_this_platform() {
   sleep 1
 }
 
+_xboa_runtime_oct() {
+  if [ "${_cmd}" = "import" ] && [ ! -z "${_dst}" ]; then
+    echo "${_dst}"
+  else
+    echo "${_oct}"
+  fi
+}
+
+_xboa_rewrite_target_account_refs() {
+  _X_SRC_OCT="$1"
+  _X_DST_OCT="$2"
+  _X_TGT_HOST="$3"
+  _X_DST_USR="$4"
+
+  if [ -z "${_X_SRC_OCT}" ] || [ -z "${_X_DST_OCT}" ] || [ -z "${_X_TGT_HOST}" ] || [ -z "${_X_DST_USR}" ]; then
+    return 0
+  fi
+  if [ "${_X_SRC_OCT}" = "${_X_DST_OCT}" ]; then
+    return 0
+  fi
+
+  echo "INFO: rename mode active on target ${_X_TGT_HOST}: rewriting refs ${_X_SRC_OCT} -> ${_X_DST_OCT} in selected text configs"
+  ssh root@${_X_TGT_HOST} "    _D='${_X_DST_USR}';     for _F in       \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       ; do       [ -f "\${_F}" ] || continue;       grep -q '/data/disk/${_X_SRC_OCT}\|/home/${_X_SRC_OCT}\.ftp' "\${_F}" 2>/dev/null || continue;       sed -i 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g; s#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' "\${_F}";     done"
+}
+
 _migrate_prepare() {
-  _THIS_HM_USER=${_oct}
-  _USR=/data/disk/${_oct}
+  _THIS_HM_USER=$(_xboa_runtime_oct)
+  _USR=/data/disk/${_THIS_HM_USER}
   _THIS_HM_SITE=`cat ${_USR}/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
@@ -646,19 +671,15 @@ _migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/imported.pid" ]; then
-    if [ ! -z "${_dst}" ]; then
-      if [ "${_oct}" = "${_dst}" ]; then
-        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-        mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-        _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
-        touch ${_USR}/log/imported.pid
-      fi
+    if [ ! -z "${_dst}" ] && [ "${_oct}" != "${_dst}" ]; then
+      echo "INFO: rename mode import for source ${_oct} into target account ${_dst}"
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5R -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-      _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
-      touch ${_USR}/log/imported.pid
     fi
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+    _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+    touch ${_USR}/log/imported.pid
 
     if [ "${_fix}" = "fix" ]; then
       if [ ! -e "${_USR}/log/post-merge-fix.pid" ]; then
@@ -863,7 +884,8 @@ _xboa_transfer_static_symlink_safe() {
 }
 
 _migrate_init() {
-  _USR=/data/disk/${_oct}
+  _RUNTIME_OCT=$(_xboa_runtime_oct)
+  _USR=/data/disk/${_RUNTIME_OCT}
   if [ "${_oct}" = "arch" ] \
     || [ "${_oct}" = "all" ] \
     || [ "${_oct}" = "lost+found" ] \
@@ -937,7 +959,8 @@ _migrate_init() {
     fi
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
   else
-    _USR=/data/disk/${_oct}
+    _RUNTIME_OCT=$(_xboa_runtime_oct)
+    _USR=/data/disk/${_RUNTIME_OCT}
     if [ -e "${_USR}/log/email.txt" ]; then
       _CHECK_EMAIL=`cat ${_USR}/log/email.txt`
       _CHECK_EMAIL=`echo -n ${_CHECK_EMAIL} | tr -d "\n"`
@@ -1062,6 +1085,10 @@ _migrate_init() {
             ${_ieni} \
             -e ssh ${_USR}/tools/le \
             root@${_tgt}:${_DST}/tools/ &> /dev/null
+
+          if [ ! -z "${_dst}" ] && [ "${_dst}" != "${_oct}" ]; then
+            _xboa_rewrite_target_account_refs "${_oct}" "${_dst}" "${_tgt}" "${_DST}"
+          fi
 
           echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
           touch ${_USR}/log/transferred.pid
@@ -1399,7 +1426,7 @@ case "$1" in
   *)        echo
             echo "Usage: xboa {pre-mig} {fqdn} (source+target vms)"
             echo "Usage: xboa {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
-            echo "Usage: xboa {import} {o1} {target-ip} (target vms)"
+            echo "Usage: xboa {import} {o1} {target-ip} {o2} (target vms, optional target account rename)"
             echo "Usage: xboa {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xboa {ssl-gen}"
