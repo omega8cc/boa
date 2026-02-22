@@ -22,7 +22,7 @@ fi
 ###-------------SYSTEM-----------------###
 
 _send_notice_migration_complete() {
-  _MAILX_TEST=`s-nail -V 2>&1`
+  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
@@ -31,7 +31,9 @@ This is a notification to inform you that the migration of your Ægir hosting sy
 
 YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
 
-Please update DNS for all your sites as soon as possible to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for a maximum of 10 days after migration.
+Important: Update DNS for All Your Sites if applicable (see below and contact your Ægir host for clarification if needed)
+
+Please update DNS for all your sites as soon as possible so traffic goes directly to the new IP address (or to the new pseudo-HA master/mirror pair, where applicable). After migration, the old server may be kept online as an HTTP proxy, depending on the host policy communicated separately (this may be unlimited or strictly limited to a specific number of days). In pseudo-HA master/mirror setups, keeping the existing IP as a proxy can be recommended (if the hosts allow it) to smooth the transition, unless you prefer to disable the proxy sooner for maximum speed and fewer network hops to the new location.
 
 ---
 
@@ -75,7 +77,7 @@ EOF
 }
 
 _send_notice_migration_start() {
-  _MAILX_TEST=`s-nail -V 2>&1`
+  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
@@ -88,8 +90,9 @@ You will receive another message once the migration is complete, along with a se
 
 Please do not run any tasks in your old Ægir Control Panel during this migration, as it may interfere with special proxy configurations set up to ensure service continuity.
 
-Important: Update DNS for All Your Sites
-Once migrated, update DNS for all your sites to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for up to 10 days after migration to assist in the transition.
+Important: Update DNS for All Your Sites if applicable (see below and contact your Ægir host for clarification if needed)
+
+Once migrated, update DNS for all your sites as soon as possible so traffic goes directly to the new IP address (or to the new pseudo-HA master/mirror pair, where applicable). After migration, the old server may be kept online as an HTTP proxy, depending on the host policy communicated separately (this may be unlimited or strictly limited to a specific number of days). In pseudo-HA master/mirror setups, keeping the existing IP as a proxy can be recommended (if the hosts allow it) to smooth the transition, unless you prefer to disable the proxy sooner for maximum speed and fewer network hops to the new location.
 
 ---
 
@@ -466,9 +469,34 @@ _delete_this_platform() {
   sleep 1
 }
 
+_xboa_runtime_oct() {
+  if [ "${_cmd}" = "import" ] && [ ! -z "${_dst}" ]; then
+    echo "${_dst}"
+  else
+    echo "${_oct}"
+  fi
+}
+
+_xboa_rewrite_target_account_refs() {
+  _X_SRC_OCT="$1"
+  _X_DST_OCT="$2"
+  _X_TGT_HOST="$3"
+  _X_DST_USR="$4"
+
+  if [ -z "${_X_SRC_OCT}" ] || [ -z "${_X_DST_OCT}" ] || [ -z "${_X_TGT_HOST}" ] || [ -z "${_X_DST_USR}" ]; then
+    return 0
+  fi
+  if [ "${_X_SRC_OCT}" = "${_X_DST_OCT}" ]; then
+    return 0
+  fi
+
+  echo "INFO: rename mode active on target ${_X_TGT_HOST}: rewriting refs ${_X_SRC_OCT} -> ${_X_DST_OCT} in selected text configs"
+  ssh root@${_X_TGT_HOST} "    _D='${_X_DST_USR}';     for _F in       \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       ; do       [ -f "\${_F}" ] || continue;       grep -q '/data/disk/${_X_SRC_OCT}\|/home/${_X_SRC_OCT}\.ftp' "\${_F}" 2>/dev/null || continue;       sed -i 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g; s#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' "\${_F}";     done"
+}
+
 _migrate_prepare() {
-  _THIS_HM_USER=${_oct}
-  _USR=/data/disk/${_oct}
+  _THIS_HM_USER=$(_xboa_runtime_oct)
+  _USR=/data/disk/${_THIS_HM_USER}
   _THIS_HM_SITE=`cat ${_USR}/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
@@ -646,19 +674,15 @@ _migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/imported.pid" ]; then
-    if [ ! -z "${_dst}" ]; then
-      if [ "${_oct}" = "${_dst}" ]; then
-        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-        mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-        _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
-        touch ${_USR}/log/imported.pid
-      fi
+    if [ ! -z "${_dst}" ] && [ "${_oct}" != "${_dst}" ]; then
+      echo "INFO: rename mode import for source ${_oct} into target account ${_dst}"
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5R -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-      _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
-      touch ${_USR}/log/imported.pid
     fi
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+    _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+    touch ${_USR}/log/imported.pid
 
     if [ "${_fix}" = "fix" ]; then
       if [ ! -e "${_USR}/log/post-merge-fix.pid" ]; then
@@ -824,8 +848,47 @@ _migrate_prepare() {
   _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
 }
 
+_xboa_transfer_static_symlink_safe() {
+  _X_SRC_USR="$1"
+  _X_TGT_HOST="$2"
+  _X_DST_USR="$3"
+  _X_IENI="$4"
+
+  _X_SRC_STATIC="${_X_SRC_USR}/static"
+  _X_SRC_STATIC_FILES="${_X_SRC_USR}/static/files"
+  _X_DST_STATIC="${_X_DST_USR}/static"
+  _X_DST_STATIC_FILES="${_X_DST_USR}/static/files"
+
+  if [ ! -d "${_X_SRC_STATIC}" ]; then
+    return 0
+  fi
+
+  echo "INFO: Static sync pass 1/2 (preserve symlinks, exclude static/files)"
+
+  mkdir -p "${_X_SRC_USR}/static"
+  rsync -aEAXqu ${_X_IENI} --exclude=files -e ssh "${_X_SRC_USR}/static/" "root@${_X_TGT_HOST}:${_X_DST_STATIC}/"
+
+  if [ -L "${_X_SRC_STATIC_FILES}" ]; then
+    _X_SRC_STATIC_FILES_REAL="$(readlink -f "${_X_SRC_STATIC_FILES}" 2>/dev/null)"
+    echo "INFO: Source static/files is symlink -> ${_X_SRC_STATIC_FILES_REAL}"
+  elif [ -d "${_X_SRC_STATIC_FILES}" ]; then
+    _X_SRC_STATIC_FILES_REAL="${_X_SRC_STATIC_FILES}"
+    echo "INFO: Source static/files is a real directory"
+  else
+    _X_SRC_STATIC_FILES_REAL=""
+    echo "INFO: Source static/files missing, nothing to materialize"
+  fi
+
+  if [ -n "${_X_SRC_STATIC_FILES_REAL}" ] && [ -d "${_X_SRC_STATIC_FILES_REAL}" ]; then
+    echo "INFO: Static sync pass 2/2 (materialize static/files as real directory on destination)"
+    ssh root@"${_X_TGT_HOST}" "if [ -L '${_X_DST_STATIC_FILES}' ]; then rm -f '${_X_DST_STATIC_FILES}'; elif [ -e '${_X_DST_STATIC_FILES}' ] && [ ! -d '${_X_DST_STATIC_FILES}' ]; then rm -f '${_X_DST_STATIC_FILES}'; fi; mkdir -p '${_X_DST_STATIC_FILES}'"
+    rsync -aEAXqu ${_X_IENI} -e ssh "${_X_SRC_STATIC_FILES_REAL}/" "root@${_X_TGT_HOST}:${_X_DST_STATIC_FILES}/"
+  fi
+}
+
 _migrate_init() {
-  _USR=/data/disk/${_oct}
+  _RUNTIME_OCT=$(_xboa_runtime_oct)
+  _USR=/data/disk/${_RUNTIME_OCT}
   if [ "${_oct}" = "arch" ] \
     || [ "${_oct}" = "all" ] \
     || [ "${_oct}" = "lost+found" ] \
@@ -899,7 +962,8 @@ _migrate_init() {
     fi
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
   else
-    _USR=/data/disk/${_oct}
+    _RUNTIME_OCT=$(_xboa_runtime_oct)
+    _USR=/data/disk/${_RUNTIME_OCT}
     if [ -e "${_USR}/log/email.txt" ]; then
       _CHECK_EMAIL=`cat ${_USR}/log/email.txt`
       _CHECK_EMAIL=`echo -n ${_CHECK_EMAIL} | tr -d "\n"`
@@ -961,10 +1025,7 @@ _migrate_init() {
         if [ -e "${_USR}" ]; then
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/distro/*         root@${_tgt}:${_DST}/distro/
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/src/*            root@${_tgt}:${_DST}/src/
-          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/*         root@${_tgt}:${_DST}/static/
-          if [ -e "${_USR}/static/files" ]; then
-            rsync -aEAXquL ${_ieni} -e ssh ${_USR}/static/files  root@${_tgt}:${_DST}/static/
-          fi
+          _xboa_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}"
           #
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/
@@ -1027,6 +1088,10 @@ _migrate_init() {
             ${_ieni} \
             -e ssh ${_USR}/tools/le \
             root@${_tgt}:${_DST}/tools/ &> /dev/null
+
+          if [ ! -z "${_dst}" ] && [ "${_dst}" != "${_oct}" ]; then
+            _xboa_rewrite_target_account_refs "${_oct}" "${_dst}" "${_tgt}" "${_DST}"
+          fi
 
           echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
           touch ${_USR}/log/transferred.pid
@@ -1364,7 +1429,7 @@ case "$1" in
   *)        echo
             echo "Usage: xboa {pre-mig} {fqdn} (source+target vms)"
             echo "Usage: xboa {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
-            echo "Usage: xboa {import} {o1} {target-ip} (target vms)"
+            echo "Usage: xboa {import} {o1} {target-ip} {o2} (target vms, optional target account rename)"
             echo "Usage: xboa {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xboa {ssl-gen}"

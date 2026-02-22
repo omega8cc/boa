@@ -1336,6 +1336,28 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/xboa" ] \
+    || [ ! -e "${_pthLog}/xboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/xboa)
+    if (( _CNT > 0 )); then
+      echo "The xboa is running!"
+    else
+      if [ -e "${_optBin}/xboa" ]; then
+        mv -f ${_optBin}/xboa ${_optBin}/xboa.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/xboa" -o ${_optBin}/xboa
+      if [ -e "${_optBin}/xboa" ]; then
+        chmod 700 ${_optBin}/xboa
+        chown root:root ${_optBin}/xboa
+        touch ${_pthLog}/xboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/xboa.old" ]; then
+          mv -f ${_optBin}/xboa.old ${_optBin}/xboa
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_optBin}/boa" ] \
     || [ ! -e "${_pthLog}/boa.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/boa)
