@@ -22,7 +22,7 @@ fi
 ###-------------SYSTEM-----------------###
 
 _send_notice_migration_complete() {
-  _MAILX_TEST=`s-nail -V 2>&1`
+  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
@@ -75,7 +75,7 @@ EOF
 }
 
 _send_notice_migration_start() {
-  _MAILX_TEST=`s-nail -V 2>&1`
+  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
