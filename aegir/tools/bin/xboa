@@ -824,6 +824,44 @@ _migrate_prepare() {
   _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
 }
 
+_xboa_transfer_static_symlink_safe() {
+  _X_SRC_USR="$1"
+  _X_TGT_HOST="$2"
+  _X_DST_USR="$3"
+  _X_IENI="$4"
+
+  _X_SRC_STATIC="${_X_SRC_USR}/static"
+  _X_SRC_STATIC_FILES="${_X_SRC_USR}/static/files"
+  _X_DST_STATIC="${_X_DST_USR}/static"
+  _X_DST_STATIC_FILES="${_X_DST_USR}/static/files"
+
+  if [ ! -d "${_X_SRC_STATIC}" ]; then
+    return 0
+  fi
+
+  echo "INFO: Static sync pass 1/2 (preserve symlinks, exclude static/files)"
+
+  mkdir -p "${_X_SRC_USR}/static"
+  rsync -aEAXqu ${_X_IENI} --exclude=files -e ssh "${_X_SRC_USR}/static/" "root@${_X_TGT_HOST}:${_X_DST_STATIC}/"
+
+  if [ -L "${_X_SRC_STATIC_FILES}" ]; then
+    _X_SRC_STATIC_FILES_REAL="$(readlink -f "${_X_SRC_STATIC_FILES}" 2>/dev/null)"
+    echo "INFO: Source static/files is symlink -> ${_X_SRC_STATIC_FILES_REAL}"
+  elif [ -d "${_X_SRC_STATIC_FILES}" ]; then
+    _X_SRC_STATIC_FILES_REAL="${_X_SRC_STATIC_FILES}"
+    echo "INFO: Source static/files is a real directory"
+  else
+    _X_SRC_STATIC_FILES_REAL=""
+    echo "INFO: Source static/files missing, nothing to materialize"
+  fi
+
+  if [ -n "${_X_SRC_STATIC_FILES_REAL}" ] && [ -d "${_X_SRC_STATIC_FILES_REAL}" ]; then
+    echo "INFO: Static sync pass 2/2 (materialize static/files as real directory on destination)"
+    ssh root@"${_X_TGT_HOST}" "if [ -L '${_X_DST_STATIC_FILES}' ]; then rm -f '${_X_DST_STATIC_FILES}'; elif [ -e '${_X_DST_STATIC_FILES}' ] && [ ! -d '${_X_DST_STATIC_FILES}' ]; then rm -f '${_X_DST_STATIC_FILES}'; fi; mkdir -p '${_X_DST_STATIC_FILES}'"
+    rsync -aEAXqu ${_X_IENI} -e ssh "${_X_SRC_STATIC_FILES_REAL}/" "root@${_X_TGT_HOST}:${_X_DST_STATIC_FILES}/"
+  fi
+}
+
 _migrate_init() {
   _USR=/data/disk/${_oct}
   if [ "${_oct}" = "arch" ] \
@@ -961,10 +999,7 @@ _migrate_init() {
         if [ -e "${_USR}" ]; then
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/distro/*         root@${_tgt}:${_DST}/distro/
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/src/*            root@${_tgt}:${_DST}/src/
-          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/*         root@${_tgt}:${_DST}/static/
-          if [ -e "${_USR}/static/files" ]; then
-            rsync -aEAXquL ${_ieni} -e ssh ${_USR}/static/files  root@${_tgt}:${_DST}/static/
-          fi
+          _xboa_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}"
           #
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/

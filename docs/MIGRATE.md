@@ -75,6 +75,28 @@ echo >> /data/conf/global/global-extra.inc
 grep site_readonly /data/conf/global/global-extra.inc
 ```
 
+## Important Note About `static/files` Symlinks During Migration
+
+Some BOA servers store account-level `static/files` in different ways:
+
+- as a real directory inside the account (for example `/data/disk/o1/static/files`)
+- as a symlink pointing to attached/extra storage outside the account path
+
+At the same time, many site-level paths such as `sites/*/files` and `sites/*/private` are symlinks that point into the account `static/files` tree.
+
+The `xboa transfer oX target-ip` workflow now handles this automatically as a special case:
+
+1. It preserves symlinks in the account tree (so site-level `files/private` symlinks remain symlinks).
+2. It excludes `static/files` from the main rsync pass.
+3. It syncs the resolved source content of `static/files` in a separate pass.
+4. It creates `static/files` on the target as a real local directory (not a symlink).
+
+This keeps the expected BOA/Aegir symlink layout for sites while normalizing account storage layout on the target server.
+
+### Why this matters
+
+Do not use `rsync -L` / `--copy-links` for the whole account during migration, because that would dereference all symlinks and can break the expected BOA/Aegir layout.
+
 ## On the Source Host
 
 ```sh
@@ -111,6 +133,16 @@ xboa import o1 target-ip
 service nginx reload
 xboa post-mig
 service cron start
+```
+
+### Optional verification (recommended for large/legacy accounts)
+
+Confirm that account-level `static/files` is now a real directory on the target, while site-level `files/private` remain symlinks:
+
+```sh
+test -d /data/disk/o1/static/files && ! test -L /data/disk/o1/static/files && echo OK_static_files_real_dir
+find /data/disk/o1/static/platforms -path '*/sites/*/files' -type l | head
+find /data/disk/o1/static/platforms -path '*/sites/*/private' -type l | head
 ```
 
 ## On the Source Host
