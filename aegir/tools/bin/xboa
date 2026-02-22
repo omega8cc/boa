@@ -31,7 +31,9 @@ This is a notification to inform you that the migration of your Ægir hosting sy
 
 YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
 
-Please update DNS for all your sites as soon as possible to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for a maximum of 10 days after migration.
+Important: Update DNS for All Your Sites if applicable (see below and contact your Ægir host for clarification if needed)
+
+Please update DNS for all your sites as soon as possible so traffic goes directly to the new IP address (or to the new pseudo-HA master/mirror pair, where applicable). After migration, the old server may be kept online as an HTTP proxy, depending on the host policy communicated separately (this may be unlimited or strictly limited to a specific number of days). In pseudo-HA master/mirror setups, keeping the existing IP as a proxy can be recommended (if the hosts allow it) to smooth the transition, unless you prefer to disable the proxy sooner for maximum speed and fewer network hops to the new location.
 
 ---
 
@@ -88,8 +90,9 @@ You will receive another message once the migration is complete, along with a se
 
 Please do not run any tasks in your old Ægir Control Panel during this migration, as it may interfere with special proxy configurations set up to ensure service continuity.
 
-Important: Update DNS for All Your Sites
-Once migrated, update DNS for all your sites to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for up to 10 days after migration to assist in the transition.
+Important: Update DNS for All Your Sites if applicable (see below and contact your Ægir host for clarification if needed)
+
+Once migrated, update DNS for all your sites as soon as possible so traffic goes directly to the new IP address (or to the new pseudo-HA master/mirror pair, where applicable). After migration, the old server may be kept online as an HTTP proxy, depending on the host policy communicated separately (this may be unlimited or strictly limited to a specific number of days). In pseudo-HA master/mirror setups, keeping the existing IP as a proxy can be recommended (if the hosts allow it) to smooth the transition, unless you prefer to disable the proxy sooner for maximum speed and fewer network hops to the new location.
 
 ---
 
