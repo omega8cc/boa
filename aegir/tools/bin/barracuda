@@ -363,7 +363,14 @@ _if_hosted_sys() {
 _fix_dns_settings() {
   [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
+  if ! grep -q "nameserver 127.0.0.1" /etc/resolv.conf; then
+    if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
+      _FORCE_RESOLV_UPDATE=YES
+    else
+      _FORCE_RESOLV_UPDATE=NO
+    fi
+  fi
+  if ! grep -q "BOA-DNS-Config" /etc/resolv.conf || [ "${_FORCE_RESOLV_UPDATE}" = "YES" ]; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
     if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
       echo "nameserver 127.0.0.1" >> ${_vBs}/resolv.conf.tmp
