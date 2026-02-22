@@ -75,28 +75,6 @@ echo >> /data/conf/global/global-extra.inc
 grep site_readonly /data/conf/global/global-extra.inc
 ```
 
-## Important Note About `static/files` Symlinks During Migration
-
-Some BOA servers store account-level `static/files` in different ways:
-
-- as a real directory inside the account (for example `/data/disk/o1/static/files`)
-- as a symlink pointing to attached/extra storage outside the account path
-
-At the same time, many site-level paths such as `sites/*/files` and `sites/*/private` are symlinks that point into the account `static/files` tree.
-
-The `xboa transfer oX target-ip` workflow now handles this automatically as a special case:
-
-1. It preserves symlinks in the account tree (so site-level `files/private` symlinks remain symlinks).
-2. It excludes `static/files` from the main rsync pass.
-3. It syncs the resolved source content of `static/files` in a separate pass.
-4. It creates `static/files` on the target as a real local directory (not a symlink).
-
-This keeps the expected BOA/Aegir symlink layout for sites while normalizing account storage layout on the target server.
-
-### Why this matters
-
-Do not use `rsync -L` / `--copy-links` for the whole account during migration, because that would dereference all symlinks and can break the expected BOA/Aegir layout.
-
 ## On the Source Host
 
 ```sh
@@ -135,16 +113,6 @@ xboa post-mig
 service cron start
 ```
 
-### Optional verification (recommended for large/legacy accounts)
-
-Confirm that account-level `static/files` is now a real directory on the target, while site-level `files/private` remain symlinks:
-
-```sh
-test -d /data/disk/o1/static/files && ! test -L /data/disk/o1/static/files && echo OK_static_files_real_dir
-find /data/disk/o1/static/platforms -path '*/sites/*/files' -type l | head
-find /data/disk/o1/static/platforms -path '*/sites/*/private' -type l | head
-```
-
 ## On the Source Host
 
 ```sh
@@ -152,3 +120,67 @@ xboa proxy o1 target-ip
 service nginx reload
 xboa post-mig
 ```
+
+## Optional Target Account Rename Mode (`o2`)
+
+The `xboa` tool supports an optional 4th argument which lets you migrate from one Octopus account name to a different account name on the target host.
+
+Example:
+
+```sh
+xboa create o1 target-ip o2
+xboa pretransfer o1 target-ip o2
+xboa transfer o1 target-ip o2
+xboa import o1 target-ip o2
+xboa proxy o1 target-ip o2
+```
+
+In this form:
+
+- `o1` = source account name on the source host
+- `o2` = target account name on the target host
+
+This is useful when the same username is not available (or not desired) on the target system.
+
+### Notes
+
+- `shared` transfer does not use `o2` because it is not account-specific.
+- When using rename mode, make sure you use the same `o2` value consistently for `create`, `pretransfer`, `transfer`, `import` and `proxy`.
+- The target account (`o2`) should not already exist before `xboa create ... o2`.
+
+## Important: `static/files` Symlink Handling During Transfer
+
+Some BOA systems store account-level `static/files` as a normal directory, while others may have it as a symlink to attached/extra storage.
+
+At the same time, many site-level paths such as `sites/*/files` and `sites/*/private` are symlinks that point into the account `static/files` tree.
+
+During `xboa transfer`, BOA now handles this safely as a special case:
+
+1. It preserves symlinks globally during account transfer (so site symlinks remain symlinks).
+2. It excludes `static/files` from the main account rsync pass.
+3. It resolves the source `static/files` path (directory or symlink target).
+4. It creates `static/files` on the target as a real local directory.
+5. It syncs the resolved `static/files` content separately.
+
+This keeps the expected BOA/Aegir site layout intact while normalizing the target account layout.
+
+### Why this matters
+
+Do **not** use `rsync -L` / `--copy-links` for the whole account migration, because that would dereference all symlinks and break the expected layout.
+
+## Optional Verification (Recommended for Large/Legacy Accounts)
+
+After `xboa transfer` (and before/after `xboa import`), you can verify the layout on the target host:
+
+```sh
+# account-level static/files should be a real directory
+if [ -d /data/disk/o1/static/files ] && [ ! -L /data/disk/o1/static/files ]; then
+  echo OK_static_files_real_dir
+fi
+
+# site-level files/private should remain symlinks
+find /data/disk/o1/static/platforms -path '*/sites/*/files' -type l | head
+find /data/disk/o1/static/platforms -path '*/sites/*/private' -type l | head
+```
+
+If you used rename mode (`o2`), replace `/data/disk/o1` with `/data/disk/o2` in the verification commands above.
