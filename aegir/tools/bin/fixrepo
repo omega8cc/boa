@@ -1,0 +1,194 @@
+#!/bin/bash
+
+#
+# Purpose:
+#   Fix group writable permissions on an entire codebase (app root) and its Git metadata,
+#   while preserving safe execute bits and ensuring setgid on directories for group inheritance.
+#
+# Usage:
+#   fixrepo /path/to/codebase
+#
+# Example:
+#   fixrepo /data/disk/o1/static/live/drupal_v11_2026
+#
+# Notes:
+#   - Designed for shared workflows (e.g. o1 + o1.ftp in the same group).
+#   - Applies to the whole codebase and explicitly to .git when present.
+#   - Sets git core.sharedRepository=group (best effort).
+#   - Uses g+rwX (capital X) so regular non-executable files do not become executable.
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+_DEBUG_MODE="${_DEBUG_MODE:-NO}"
+_STRICT_MODE="${_STRICT_MODE:-YES}"
+
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+_msg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    printf '%s\n' "$*"
+  fi
+}
+
+_die() {
+  printf 'ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
+_usage() {
+  cat <<'EOF'
+Usage:
+  fixrepo /absolute/or/relative/path/to/codebase
+
+Description:
+  Fixes group-writable permissions recursively on the codebase root, ensures setgid on
+  all directories, and (if present) explicitly fixes .git internals and sets:
+    git config core.sharedRepository group
+
+Environment (optional):
+  _DEBUG_MODE=YES   Enable verbose progress messages
+  _STRICT_MODE=NO   Continue on non-fatal chmod/find/git config errors (default: YES)
+EOF
+}
+
+_require_cmd() {
+  _CMD="${1}"
+  command -v "${_CMD}" >/dev/null 2>&1 || _die "Required command not found: ${_CMD}"
+}
+
+_run_cmd() {
+  # Wrapper to optionally continue on non-fatal errors.
+  # Usage: _run_cmd "description" command arg1 arg2 ...
+  _DESC="${1}"
+  shift
+
+  _msg "==> ${_DESC}"
+  "$@"
+  _RC=$?
+
+  if [ "${_RC}" -ne 0 ]; then
+    if [ "${_STRICT_MODE}" = "YES" ]; then
+      _die "${_DESC} failed (exit code: ${_RC})"
+    else
+      printf 'WARNING: %s failed (exit code: %s)\n' "${_DESC}" "${_RC}" >&2
+    fi
+  fi
+
+  return 0
+}
+
+_fix_permissions_tree() {
+  _TARGET_DIR="${1}"
+
+  [ -n "${_TARGET_DIR}" ] || return 1
+  [ -d "${_TARGET_DIR}" ] || return 1
+
+  _msg "Processing tree: ${_TARGET_DIR}"
+
+  # Add group read/write to all files and dirs; add execute only to dirs and already executable files.
+  _run_cmd "chmod -R g+rwX on ${_TARGET_DIR}" chmod -R g+rwX "${_TARGET_DIR}"
+
+  # Ensure all directories are group-traversable, writable, and setgid so new files inherit group.
+  _run_cmd "setgid on directories in ${_TARGET_DIR}" \
+    find "${_TARGET_DIR}" -type d -exec chmod g+rws {} +
+
+  return 0
+}
+
+_set_git_shared_mode() {
+  _REPO_ROOT="${1}"
+
+  [ -n "${_REPO_ROOT}" ] || return 1
+  [ -d "${_REPO_ROOT}" ] || return 1
+  [ -d "${_REPO_ROOT}/.git" ] || return 0
+
+  if command -v git >/dev/null 2>&1; then
+    _run_cmd "git core.sharedRepository=group in ${_REPO_ROOT}" \
+      git -C "${_REPO_ROOT}" config core.sharedRepository group
+  else
+    printf 'WARNING: git not found; skipped core.sharedRepository setting for %s\n' "${_REPO_ROOT}" >&2
+  fi
+
+  return 0
+}
+
+_show_summary() {
+  _REPO_ROOT="${1}"
+
+  printf '\nDone.\n'
+  printf 'Codebase fixed: %s\n' "${_REPO_ROOT}"
+
+  if [ -d "${_REPO_ROOT}/.git" ]; then
+    printf 'Git metadata fixed: %s/.git\n' "${_REPO_ROOT}"
+    if command -v git >/dev/null 2>&1; then
+      _GIT_SHARED="$(git -C "${_REPO_ROOT}" config --get core.sharedRepository 2>/dev/null)"
+      if [ -n "${_GIT_SHARED}" ]; then
+        printf 'git core.sharedRepository: %s\n' "${_GIT_SHARED}"
+      fi
+    fi
+  else
+    printf 'No .git directory detected (skipped Git-specific steps).\n'
+  fi
+
+  cat <<'EOF'
+
+Recommended for shared write operations (shell/session):
+  umask 002
+
+This helps new files remain group-writable together with setgid directories.
+EOF
+}
+
+_main() {
+  if [ "${#}" -ne 1 ]; then
+    _usage
+    exit 1
+  fi
+
+  _REPO_ROOT="${1}"
+
+  [ "${_REPO_ROOT}" = "-h" ] && { _usage; exit 0; }
+  [ "${_REPO_ROOT}" = "--help" ] && { _usage; exit 0; }
+
+  _require_cmd chmod
+  _require_cmd find
+
+  [ -e "${_REPO_ROOT}" ] || _die "Path does not exist: ${_REPO_ROOT}"
+  [ -d "${_REPO_ROOT}" ] || _die "Path is not a directory: ${_REPO_ROOT}"
+
+  # Resolve to absolute path if possible (best effort, no hard dependency on readlink -f).
+  if command -v readlink >/dev/null 2>&1; then
+    _RESOLVED="$(readlink -f "${_REPO_ROOT}" 2>/dev/null)"
+    if [ -n "${_RESOLVED}" ] && [ -d "${_RESOLVED}" ]; then
+      _REPO_ROOT="${_RESOLVED}"
+    fi
+  fi
+
+  _msg "Target codebase root: ${_REPO_ROOT}"
+  _msg "STRICT_MODE=${_STRICT_MODE}"
+  _msg "DEBUG_MODE=${_DEBUG_MODE}"
+
+  # Fix whole codebase tree first.
+  _fix_permissions_tree "${_REPO_ROOT}" || _die "Failed to fix codebase permissions"
+
+  # Explicitly fix .git tree too (clarity + robustness in shared workflows).
+  if [ -d "${_REPO_ROOT}/.git" ]; then
+    _set_git_shared_mode "${_REPO_ROOT}"
+    _fix_permissions_tree "${_REPO_ROOT}/.git" || _die "Failed to fix .git permissions"
+  fi
+
+  _show_summary "${_REPO_ROOT}"
+}
+
+_main "$@"
+
+exit 0
