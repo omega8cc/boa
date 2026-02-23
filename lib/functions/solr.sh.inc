@@ -417,13 +417,15 @@ _if_install_upgrade_solr() {
 
   if [ "${_OS_CODE}" != "excalibur" ]; then
     if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
-      || [ -e "/opt/solr4/solr.xml" ]; then
+      || [ -e "/opt/solr4/solr.xml" ] \
+      || [ "${_hostedSys}" = "YES" ]; then
       if [ -e "/usr/bin/java11" ]; then
         _if_solr_four
       fi
     fi
     if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
-      || [ -e "/var/solr7/logs/solr.log" ]; then
+      || [ -e "/var/solr7/logs/solr.log" ] \
+      || [ "${_hostedSys}" = "YES" ]; then
       if [ -e "/usr/bin/java11" ]; then
         _if_solr_seven
       fi
