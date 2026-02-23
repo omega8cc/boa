@@ -230,10 +230,31 @@ _spawn_detached() {
   if [[ "$-" == *i* ]]; then disown; fi
 }
 
-if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-  [ ! -e "/run/boa_java_auto_healing.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
-  [ ! -e "/run/boa_java_auto_healing.pid" ] && _solr_health_check_fix
-  [ ! -e "/run/boa_java_auto_healing.pid" ] && _jetty_listen_conflict_detection
+_is_protected_run() {
+  _protectedRun=FALSE
+  _optBin="/opt/local/bin"
+  _boaBins="autoinit automini barracuda boa octopus"
+  for _cbn in ${_boaBins}; do
+    if [ -e "${_optBin}/${_cbn}" ]; then
+      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      if (( _CNT > 0 )); then
+        echo "The ${_cbn} is running!"
+        _protectedRun=TRUE
+      fi
+    fi
+  done
+  [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+}
+_is_protected_run
+
+if [ "${_protectedRun}" = "FALSE" ]; then
+  if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+    [ ! -e "/run/boa_java_auto_healing.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
+    [ ! -e "/run/boa_java_auto_healing.pid" ] && _solr_health_check_fix
+    [ ! -e "/run/boa_java_auto_healing.pid" ] && _jetty_listen_conflict_detection
+  fi
 fi
 
 echo DONE!
