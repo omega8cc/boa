@@ -808,9 +808,31 @@ _start_up() {
   done
 }
 
-_NOW=$(date +%y%m%d-%H%M%S)
-_NOW=${_NOW//[^0-9-]/}
-[ -d "/var/backups/solr/log" ] || mkdir -p /var/backups/solr/log
-find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
-_start_up >/var/backups/solr/log/solr-${_NOW}.log 2>&1
+_is_protected_run() {
+  _protectedRun=FALSE
+  _optBin="/opt/local/bin"
+  _boaBins="autoinit automini barracuda boa octopus"
+  for _cbn in ${_boaBins}; do
+    if [ -e "${_optBin}/${_cbn}" ]; then
+      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      if (( _CNT > 0 )); then
+        echo "The ${_cbn} is running!"
+        _protectedRun=TRUE
+      fi
+    fi
+  done
+  [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+}
+_is_protected_run
+
+if [ "${_protectedRun}" = "FALSE" ]; then
+  _NOW=$(date +%y%m%d-%H%M%S)
+  _NOW=${_NOW//[^0-9-]/}
+  [ -d "/var/backups/solr/log" ] || mkdir -p /var/backups/solr/log
+  find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+  _start_up >/var/backups/solr/log/solr-${_NOW}.log 2>&1
+fi
+
 exit 0
