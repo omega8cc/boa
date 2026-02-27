@@ -835,6 +835,11 @@ _process_account() {
 
         _CAND_NAME=$(basename "${_CAND}")
 
+        # Skip known non-site entries
+        if [ "${_CAND_NAME}" = "dbackup" ] || [ "${_CAND_NAME}" = "foo.com" ]; then
+          continue
+        fi
+
         # Ignore hidden/metadata entries
         case "${_CAND_NAME}" in
           .*|lost+found)
