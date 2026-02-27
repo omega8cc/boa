@@ -797,6 +797,9 @@ _process_account() {
   _log "=================================================================="
   _log "[INFO] Processing account: ${_ACCOUNT_NAME} (${_ACCOUNT_DIR})"
 
+  # Track detected/valid sites for orphan static/files reporting
+  local -A _SITES_IN_ACCOUNT
+
   # Iterate Drush aliases, use base name as site name, match with vhost.
   for _ALIAS_FILE in "${_DRUSH_DIR}"/*.alias.drushrc.php; do
     if [ ! -f "${_ALIAS_FILE}" ]; then
@@ -814,8 +817,51 @@ _process_account() {
       continue
     fi
 
+    _SITES_IN_ACCOUNT["${_SITE_NAME}"]="YES"
+
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE_NAME}" "${_ALIAS_FILE}"
   done
+
+  # In REPORT mode, also list orphaned static/files entries (leftovers after site deletion).
+  # We DO NOT delete anything; this is for operator review only.
+  if [ "${_MODE}" = "REPORT" ]; then
+    _STATIC_FILES_DIR="${_ACCOUNT_DIR}/static/files"
+    if [ -d "${_STATIC_FILES_DIR}" ]; then
+      _FOUND_ORPHANS="NO"
+      for _CAND in "${_STATIC_FILES_DIR}"/*; do
+        if [ ! -e "${_CAND}" ]; then
+          continue
+        fi
+
+        _CAND_NAME=$(basename "${_CAND}")
+
+        # Ignore hidden/metadata entries
+        case "${_CAND_NAME}" in
+          .*|lost+found)
+            continue
+            ;;
+        esac
+
+        # Only consider entries that look like site storage (dir or symlink with files/private inside).
+        if [ -d "${_CAND}" ] || [ -L "${_CAND}" ]; then
+          if [ -d "${_CAND}/files" ] || [ -d "${_CAND}/private" ] || [ -L "${_CAND}" ]; then
+            if [ -z "${_SITES_IN_ACCOUNT["${_CAND_NAME}"]+x}" ]; then
+              _FOUND_ORPHANS="YES"
+              _ORPH_KB=$(du -sk "${_CAND}" 2>/dev/null | awk 'NR==1 {print $1}')
+              if [ -z "${_ORPH_KB}" ]; then
+                _ORPH_KB="?"
+              fi
+              _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found"
+            fi
+          fi
+        fi
+      done
+
+      if [ "${_FOUND_ORPHANS}" != "YES" ]; then
+        _log "[REPORT] No orphan static/files entries detected in account ${_ACCOUNT_NAME}"
+      fi
+    fi
+  fi
 }
 
 _main() {
