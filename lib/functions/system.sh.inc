@@ -1205,9 +1205,9 @@ _tune_memory_limits() {
     wait
     sed -i "s/.*_WAIT.*//g" /etc/default/solr9.in.sh &> /dev/null
     wait
-    echo "SOLR_START_WAIT=\"18\"" >> /etc/default/solr9.in.sh
-    echo "SOLR_STOP_WAIT=\"58\"" >> /etc/default/solr9.in.sh
-    echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_START_WAIT=\"10\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_STOP_WAIT=\"10\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_WAIT_FOR_ZK=\"10\"" >> /etc/default/solr9.in.sh
     sed -i "/^$/d" /etc/default/solr9.in.sh
   fi
 
@@ -1228,9 +1228,9 @@ _tune_memory_limits() {
     wait
     sed -i "s/.*_WAIT.*//g" /etc/default/solr7.in.sh &> /dev/null
     wait
-    echo "SOLR_START_WAIT=\"18\"" >> /etc/default/solr7.in.sh
-    echo "SOLR_STOP_WAIT=\"58\"" >> /etc/default/solr7.in.sh
-    echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_START_WAIT=\"10\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_STOP_WAIT=\"10\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_WAIT_FOR_ZK=\"10\"" >> /etc/default/solr7.in.sh
     sed -i "/^$/d" /etc/default/solr7.in.sh
   fi
 
@@ -9977,7 +9977,7 @@ _initd_update() {
             fi
           fi
           mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=1;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
           rm -f /etc/mysql/conf.d/mysqldump.cnf
         fi
