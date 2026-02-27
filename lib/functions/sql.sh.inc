@@ -1570,7 +1570,7 @@ _db_server_install() {
             fi
           fi
           mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=1;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
           rm -f /etc/mysql/conf.d/mysqldump.cnf
         fi
