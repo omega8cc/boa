@@ -1,0 +1,208 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+_logDir=/var/log/boa
+_actionTemporaryLog="${_logDir}/autosymlink.tmp.log"
+_actionPermanentLog="${_logDir}/autosymlink.update.log"
+_actionVerboseArchiveLog="${_logDir}/autosymlink.verbose.archive.log"
+_stateFile="${_logDir}/autosymlink.state"
+_autoBin=/opt/local/bin/autosymlink
+_pauseFile=/root/.pause_tasks_maint.cnf
+
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    chmod a+w /dev/null
+  else
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+# Run only on fully installed system
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
+
+_log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> ${_actionPermanentLog}
+}
+
+###
+### Atomic lock/unlock to prevent TOCTOU race
+###
+_manage_single_lock() {
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "${_L}" ] && . "${_L}" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    # use shared lock if available
+    _single_instance_lock
+  else
+    # -------- legacy pgrep guard ---------
+    # Exit if more than 2 instances of this script are running
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc ${_SCRIPT})
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+_manage_single_lock
+trap '_clean_lock' EXIT INT TERM
+
+_clean_lock() {
+  [ -e "${_pauseFile}" ] && rm -f "${_pauseFile}"
+  if command -v _single_instance_unlock >/dev/null 2>&1; then
+    _single_instance_unlock
+  fi
+  [ -n "${_lockDir:-}" ] && [ -d "${_lockDir}" ] && rm -rf "${_lockDir}"
+}
+
+_action_email_report() {
+  if [ -n "${_MY_EMAIL}" ] && [ "${_actionReport}" = "TRUE" ]; then
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    _log "INFO: Sending AutoSymlink Report Email (${1})"
+    s-nail -s "AutoSymlink Actions Report: ${1} on ${_hName} at $(date)" "${_MY_EMAIL}" < ${_actionPermanentLog}
+    s-nail -s "AutoSymlink Details Report: ${1} on ${_hName} at $(date)" "${_MY_EMAIL}" < ${_actionTemporaryLog}
+  fi
+}
+
+_is_protected_run() {
+  _protectedRun=FALSE
+  _optBin="/opt/local/bin"
+  _boaBins="autosymlink autoupboa barracuda boa octopus"
+
+  for _cbn in ${_boaBins}; do
+    if [ -e "${_optBin}/${_cbn}" ]; then
+      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      if (( _CNT > 0 )); then
+        _log "The ${_cbn} is running!"
+        _protectedRun=TRUE
+      fi
+    fi
+  done
+
+  [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+  [ -e "/run/max_load.pid" ] && _protectedRun=TRUE
+  [ -e "/run/critical_load.pid" ] && _protectedRun=TRUE
+
+  _IS_PROVISION_RUNNING=$(pgrep -fc provision)
+  if (( _IS_PROVISION_RUNNING > 0 )); then
+    _protectedRun=TRUE
+  fi
+  _IS_DUPLICITY_RUNNING=$(pgrep -fc duplicity)
+  if (( _IS_DUPLICITY_RUNNING > 0 )); then
+    _protectedRun=TRUE
+  fi
+}
+
+_read_state_var() {
+  _key="$1"
+  if [ -e "${_stateFile}" ]; then
+    grep "^${_key}=" "${_stateFile}" 2>/dev/null | head -n 1 | cut -d= -f2-
+  fi
+}
+
+_autosymlink_run() {
+  _actionReport=FALSE
+  _orphansFound=FALSE
+  _applyCount=0
+  _lastAction=NO
+
+  [ -d "${_logDir}" ] || mkdir -p "${_logDir}"
+  : > ${_actionTemporaryLog}
+
+  if [ ! -x "${_autoBin}" ]; then
+    _log "ERROR: Missing autosymlink: ${_autoBin}"
+    return 1
+  fi
+
+  # Pause tasks to avoid race, then re-check
+  touch "${_pauseFile}"
+  sleep 5
+  _is_protected_run
+  if [ "${_protectedRun}" = "TRUE" ]; then
+    _log "INFO: Protected run detected after pausing tasks; exiting."
+    return 0
+  fi
+
+  # Cron-safe: DRY -> if CLEAN -> BATCH in one run
+  _log "INFO: Running autosymlink --batch-if-clean"
+  ${_autoBin} --batch-if-clean > ${_actionTemporaryLog} 2>&1
+  _rcBatch="$?"
+
+  _lastStatus="$(_read_state_var "_LAST_STATUS")"
+  _lastAction="$(_read_state_var "_LAST_ACTION")"
+  _applyCount="$(_read_state_var "_LAST_APPLY_COUNT")"
+  [ -z "${_applyCount}" ] && _applyCount="0"
+
+  if [ "${_rcBatch}" -eq 0 ]; then
+    if [ "${_lastAction}" = "YES" ] && [ "${_applyCount}" -gt 0 ]; then
+      _actionReport=TRUE
+      _subject="APPLIED (${_applyCount} changes)"
+    else
+      # No action taken -> never email
+      _subject=""
+    fi
+  elif [ "${_rcBatch}" -eq 10 ]; then
+    _actionReport=TRUE
+    _subject="NOT CLEAN (manual review required)"
+  else
+    _actionReport=TRUE
+    _subject="FAILED (rc=${_rcBatch})"
+  fi
+
+  # Always run report; email if ORPHANS detected
+  _log "INFO: Running autosymlink --report"
+  ${_autoBin} --report >> ${_actionTemporaryLog} 2>&1
+  _rcReport="$?"
+
+  if grep -q "\[REPORT\] ORPHAN" ${_actionTemporaryLog} 2>/dev/null; then
+    _orphansFound="TRUE"
+    _actionReport=TRUE
+    if [ -z "${_subject}" ]; then
+      _subject="ORPHANS detected"
+    else
+      _subject="${_subject} + ORPHANS"
+    fi
+  fi
+
+  if [ "${_rcReport}" -ne 0 ]; then
+    _actionReport=TRUE
+    if [ -z "${_subject}" ]; then
+      _subject="FAILED report (rc=${_rcReport})"
+    else
+      _subject="${_subject} + report rc=${_rcReport}"
+    fi
+  fi
+
+  # Archive the full temporary log (verbose), so details are preserved even if email delivery fails.
+  {
+    echo "===== $(date '+%Y-%m-%d %H:%M:%S') autosymlink run (batch_rc=${_rcBatch}, report_rc=${_rcReport}) subject=${_subject} ====="
+    cat ${_actionTemporaryLog}
+    echo
+  } >> ${_actionVerboseArchiveLog}
+
+  if [ "${_actionReport}" = "TRUE" ] && [ -n "${_subject}" ]; then
+    _action_email_report "${_subject}"
+    echo >> ${_actionPermanentLog}
+  fi
+
+  return 0
+}
+
+_is_protected_run
+if [ "${_protectedRun}" = "TRUE" ]; then
+  exit 0
+else
+ _autosymlink_run
+ exit 0
+fi
