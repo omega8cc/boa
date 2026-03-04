@@ -14,7 +14,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _manage_single_lock() {
   _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
   for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
-    [ -r "$_L" ] && . "$_L" && break
+    [ -r "${_L}" ] && . "${_L}" && break
   done
   if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
     # use shared lock if available
