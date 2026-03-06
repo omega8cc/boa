@@ -2119,8 +2119,8 @@ _install_host() {
 
   echo "Installing csf/lfd..."
   cd /var/opt
-  wget ${_wgetGet} http://${_USE_MIR}/dev/src/csf-${_CSF_VRN}.tgz
-  tar -xzf csf-${_CSF_VRN}.tgz
+  wget ${_wgetGet} http://${_USE_MIR}/dev/src/csf-${_CSF_VRN}.tar.gz
+  tar -xzf csf-${_CSF_VRN}.tar.gz
   cd csf
   sh install.sh
   cd /etc/csf
