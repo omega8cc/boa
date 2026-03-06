@@ -1234,7 +1234,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/autosymlink" ] \
-    || [ ! -e "${_pthLog}/autosymlink.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/autosymlink.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autosymlink)
     if (( _CNT > 0 )); then
       echo "The autosymlink is running!"
@@ -1246,10 +1246,32 @@ _update_agents() {
       if [ -e "${_optBin}/autosymlink" ]; then
         chmod 700 ${_optBin}/autosymlink
         chown root:root ${_optBin}/autosymlink
-        touch ${_pthLog}/autosymlink.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autosymlink.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autosymlink.old" ]; then
           mv -f ${_optBin}/autosymlink.old ${_optBin}/autosymlink
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/updatesymlinks" ] \
+    || [ ! -e "${_pthLog}/updatesymlinks.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc updatesymlinks)
+    if (( _CNT > 0 )); then
+      echo "The updatesymlinks is running!"
+    else
+      if [ -e "${_optBin}/updatesymlinks" ]; then
+        mv -f ${_optBin}/updatesymlinks ${_optBin}/updatesymlinks.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/updatesymlinks" -o ${_optBin}/updatesymlinks
+      if [ -e "${_optBin}/updatesymlinks" ]; then
+        chmod 700 ${_optBin}/updatesymlinks
+        chown root:root ${_optBin}/updatesymlinks
+        touch ${_pthLog}/updatesymlinks.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/updatesymlinks.old" ]; then
+          mv -f ${_optBin}/updatesymlinks.old ${_optBin}/updatesymlinks
         fi
       fi
     fi
@@ -3899,17 +3921,10 @@ _fix_authorized_keys() {
   fi
 }
 
-_fix_tcp() {
-  _TCP_FIX=$(grep "tcp_challenge_ack_limit" /etc/sysctl.conf 2>&1)
-  if [ -z "${_TCP_FIX}" ]; then
-    echo "net.ipv4.tcp_challenge_ack_limit = 1073741823" >> /etc/sysctl.conf
-  fi
-}
-
 _fix_aio() {
   _AIO_FIX=$(grep "fs.aio-max-nr" /etc/sysctl.conf 2>&1)
   if [ -z "${_AIO_FIX}" ]; then
-    echo "fs.aio-max-nr = 2097152" >> /etc/sysctl.conf
+    echo "fs.aio-max-nr = 1048576" >> /etc/sysctl.conf
   fi
 }
 
@@ -4577,6 +4592,7 @@ _update_boa_tools() {
             octopus \
             perftest \
             randpass \
+            screenfetch \
             setprio \
             smtpgapps \
             sqlclean \
@@ -4590,9 +4606,9 @@ _update_boa_tools() {
             synproxy_snapshot \
             synproxy_status \
             thinkdifferent \
+            updatesymlinks \
             verifyvhostsdns \
             vhostcheck \
-            screenfetch \
             vmnetfix \
             weblogx \
             webserver \
@@ -4693,10 +4709,10 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/synproxy*
 
   # _SYS (700): system utilities
-  chmod 700 ${_optBin}/{dhcpfix,fixmounts,fixrepo,mergecsf,screenfetch,vmnetfix,fancynow,codebasecheck}
+  chmod 700 ${_optBin}/{aptfast,dhcpfix,fixmounts,fixrepo,mergecsf,screenfetch,vmnetfix,fancynow,codebasecheck}
 
   # _SYS (700): cleanup tools
-  chmod 700 ${_optBin}/{aptcleanup,aptfast,autosymlink,sqlclean,verifyvhostsdns,vhostcheck}
+  chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,updatesymlinks,verifyvhostsdns,vhostcheck}
 
   # _MISC (755): misc user-space utilities
   chmod 755 ${_optBin}/{backchain,mybackup,randpass,sqlmagic,thinkdifferent,websh}
@@ -5472,7 +5488,6 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_node_in_lshell_access
     # _fix_php_in_lshell_access
     _fix_authorized_keys
-    _fix_tcp
     _fix_aio
     _fix_console_print
     _fix_java_symlinks
