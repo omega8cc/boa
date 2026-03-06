@@ -3921,17 +3921,10 @@ _fix_authorized_keys() {
   fi
 }
 
-_fix_tcp() {
-  _TCP_FIX=$(grep "tcp_challenge_ack_limit" /etc/sysctl.conf 2>&1)
-  if [ -z "${_TCP_FIX}" ]; then
-    echo "net.ipv4.tcp_challenge_ack_limit = 1073741823" >> /etc/sysctl.conf
-  fi
-}
-
 _fix_aio() {
   _AIO_FIX=$(grep "fs.aio-max-nr" /etc/sysctl.conf 2>&1)
   if [ -z "${_AIO_FIX}" ]; then
-    echo "fs.aio-max-nr = 2097152" >> /etc/sysctl.conf
+    echo "fs.aio-max-nr = 1048576" >> /etc/sysctl.conf
   fi
 }
 
@@ -5495,7 +5488,6 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_node_in_lshell_access
     # _fix_php_in_lshell_access
     _fix_authorized_keys
-    _fix_tcp
     _fix_aio
     _fix_console_print
     _fix_java_symlinks
