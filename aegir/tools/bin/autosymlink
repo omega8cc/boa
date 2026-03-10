@@ -8,6 +8,7 @@
 #   LIVE    (live)    : apply changes, per-site confirmation
 #   BATCH   (batch)   : apply changes for all sites without confirmation,
 #                       allowed only after a CLEAN DRY run
+#   BATCH_IF_CLEAN    : run DRY and if CLEAN automatically run BATCH (cron-safe)
 #   REPORT  (report)  : read-only report of shared files/private symlinks
 #
 
@@ -31,6 +32,9 @@ case "$1" in
   batch|BATCH|--batch)
     _MODE="BATCH"
     ;;
+  --batch-if-clean|batch-if-clean|BATCH_IF_CLEAN|batch_if_clean)
+    _MODE="BATCH_IF_CLEAN"
+    ;;
   report|REPORT|--report)
     _MODE="REPORT"
     ;;
@@ -49,6 +53,10 @@ _STATE_FILE="${_LOG_DIR}/autosymlink.state"
 _DRY_HAS_ERRORS="NO"
 _DRY_HAS_EDGE_CASES="NO"
 
+# Count applied changes in LIVE/BATCH modes
+_APPLY_COUNT=0
+_LAST_ACTION=NO
+
 # Per-site LIVE confirmation flag (reset in _process_site)
 _LIVE_SITE_APPROVED="NO"
 
@@ -64,21 +72,41 @@ declare -A _FS_RESERVED_KB
 _log() {
   # Single place to log + print
   # Arguments: message...
-  _NOW=$(date "+%Y-%m-%d %H:%M:%S")
-  echo "${_NOW} $*" | tee -a "${_LOG_FILE}"
+  _NOW="$(date "+%Y-%m-%d %H:%M:%S")"
+  _LINE="${_NOW} $*"
+
+  # Track applied changes only for modes which can apply changes
+  if [ "${_MODE}" = "LIVE" ] || [ "${_MODE}" = "BATCH" ] || [ "${_MODE}" = "BATCH_IF_CLEAN" ]; then
+    case "${_LINE}" in
+      *"[APPLY]"*)
+        _APPLY_COUNT=$(( _APPLY_COUNT + 1 ))
+        ;;
+    esac
+  fi
+
+  echo "${_LINE}" | tee -a "${_LOG_FILE}"
 }
 
 _write_state() {
   # Write a small state file with mode + status
-  # Args: 1: status (CLEAN / NOT_CLEAN / BATCH / etc.)
-  #       2: mode   (DRY / LIVE / BATCH / REPORT)
+  # Args: 1: status (CLEAN / NOT_CLEAN / FAILED / etc.)
+  #       2: mode   (DRY / LIVE / BATCH / REPORT / BATCH_IF_CLEAN)
   _STATUS="$1"
   _MODE_SAVED="$2"
-  _TS=$(date "+%Y-%m-%d %H:%M:%S")
+  _TS="$(date "+%Y-%m-%d %H:%M:%S")"
+
+  if [ "${_APPLY_COUNT}" -gt 0 ]; then
+    _LAST_ACTION="YES"
+  else
+    _LAST_ACTION=NO
+  fi
+
   {
-    echo "LAST_MODE=${_MODE_SAVED}"
-    echo "LAST_STATUS=${_STATUS}"
-    echo "LAST_TS=${_TS}"
+    echo "_LAST_MODE=${_MODE_SAVED}"
+    echo "_LAST_STATUS=${_STATUS}"
+    echo "_LAST_ACTION=${_LAST_ACTION}"
+    echo "_LAST_APPLY_COUNT=${_APPLY_COUNT}"
+    echo "_LAST_TS=${_TS}"
   } > "${_STATE_FILE}"
 }
 
@@ -89,9 +117,9 @@ _require_clean_dry_run_or_exit() {
     exit 1
   fi
 
-  _LAST_MODE=$(grep '^LAST_MODE=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
-  _LAST_STATUS=$(grep '^LAST_STATUS=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
-  _LAST_TS=$(grep '^LAST_TS=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
+  _LAST_MODE=$(grep '^_LAST_MODE=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
+  _LAST_STATUS=$(grep '^_LAST_STATUS=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
+  _LAST_TS=$(grep '^_LAST_TS=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
 
   if [ -z "${_LAST_MODE}" ] || [ -z "${_LAST_STATUS}" ]; then
     _log "[ERROR] State file ${_STATE_FILE} is incomplete. Run DRY-RUN again before using batch mode."
@@ -99,7 +127,7 @@ _require_clean_dry_run_or_exit() {
   fi
 
   if [ "${_LAST_MODE}" != "DRY" ] || [ "${_LAST_STATUS}" != "CLEAN" ]; then
-    _log "[ERROR] Batch mode requires last run to be DRY and CLEAN, but got LAST_MODE='${_LAST_MODE}', LAST_STATUS='${_LAST_STATUS}' (at ${_LAST_TS})."
+    _log "[ERROR] Batch mode requires last run to be DRY and CLEAN, but got _LAST_MODE='${_LAST_MODE}', _LAST_STATUS='${_LAST_STATUS}' (at ${_LAST_TS})."
     _log "[ERROR] Please run this script in DRY-RUN mode again and ensure no edge cases/errors appear."
     exit 1
   fi
@@ -835,6 +863,11 @@ _process_account() {
 
         _CAND_NAME=$(basename "${_CAND}")
 
+        # Skip known non-site entries
+        if [ "${_CAND_NAME}" = "dbackup" ] || [ "${_CAND_NAME}" = "foo.com" ]; then
+          continue
+        fi
+
         # Ignore hidden/metadata entries
         case "${_CAND_NAME}" in
           .*|lost+found)
@@ -866,6 +899,51 @@ _process_account() {
 
 _main() {
   _log "=================================================================="
+  if [ "${_MODE}" = "BATCH_IF_CLEAN" ]; then
+    _log "[START] autosymlink running in BATCH_IF_CLEAN mode (DRY -> if CLEAN -> BATCH)"
+    # First pass: DRY run
+    _MODE="DRY"
+    _DRY_HAS_ERRORS="NO"
+    _DRY_HAS_EDGE_CASES="NO"
+    _APPLY_COUNT=0
+
+    for _ACCOUNT_DIR in /data/disk/*; do
+      if [ ! -d "${_ACCOUNT_DIR}" ] || [ ! -e "${_ACCOUNT_DIR}/tools/drush" ]; then
+        continue
+      fi
+      _process_account "${_ACCOUNT_DIR}"
+    done
+
+    _log_reserved_fs_summary
+    _finalize_dry_run_state
+
+    if [ "${_DRY_HAS_ERRORS}" != "NO" ] || [ "${_DRY_HAS_EDGE_CASES}" != "NO" ]; then
+      _write_state "NOT_CLEAN" "BATCH_IF_CLEAN"
+      _log "[WARN] DRY run is NOT CLEAN, skipping BATCH"
+      _log "[DONE] autosymlink finished"
+      exit 10
+    fi
+
+    # Second pass: BATCH
+    _MODE="BATCH"
+    _APPLY_COUNT=0
+    _log "=================================================================="
+    _log "[START] autosymlink running in BATCH mode (no per-site confirmation)"
+    _require_clean_dry_run_or_exit
+
+    for _ACCOUNT_DIR in /data/disk/*; do
+      if [ ! -d "${_ACCOUNT_DIR}" ] || [ ! -e "${_ACCOUNT_DIR}/tools/drush" ]; then
+        continue
+      fi
+      _process_account "${_ACCOUNT_DIR}"
+    done
+
+    _log_reserved_fs_summary
+    _write_state "DONE" "BATCH_IF_CLEAN"
+    _log "[DONE] autosymlink finished"
+    exit 0
+  fi
+
   if [ "${_MODE}" = "LIVE" ]; then
     _log "[START] autosymlink running in LIVE mode (per-site confirmation required)"
   elif [ "${_MODE}" = "BATCH" ]; then

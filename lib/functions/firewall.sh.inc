@@ -173,7 +173,7 @@ _csf_install() {
   elif [ "${_OS_CODE}" = "jessie" ]; then
     _CSF_VRN=12.04
   fi
-  _get_dev_src "csf-${_CSF_VRN}.tgz"
+  _get_dev_src "csf-${_CSF_VRN}.tar.gz"
   cd csf
   _mrun "sh install.sh"
   _NFTABLES_TEST=$(iptables -V)

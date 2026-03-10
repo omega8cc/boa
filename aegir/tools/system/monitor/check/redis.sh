@@ -53,7 +53,7 @@ _NOW=${_NOW//[^0-9-]/}
 _manage_single_lock() {
   _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
   for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
-    [ -r "$_L" ] && . "$_L" && break
+    [ -r "${_L}" ] && . "${_L}" && break
   done
   if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
     # use shared lock if available
