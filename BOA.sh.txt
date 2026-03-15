@@ -1233,6 +1233,28 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/renamemaster" ] \
+    || [ ! -e "${_pthLog}/renamemaster.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc renamemaster)
+    if (( _CNT > 0 )); then
+      echo "The renamemaster is running!"
+    else
+      if [ -e "${_optBin}/renamemaster" ]; then
+        mv -f ${_optBin}/renamemaster ${_optBin}/renamemaster.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/renamemaster" -o ${_optBin}/renamemaster
+      if [ -e "${_optBin}/renamemaster" ]; then
+        chmod 700 ${_optBin}/renamemaster
+        chown root:root ${_optBin}/renamemaster
+        touch ${_pthLog}/renamemaster.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/renamemaster.old" ]; then
+          mv -f ${_optBin}/renamemaster.old ${_optBin}/renamemaster
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_optBin}/autosymlink" ] \
     || [ ! -e "${_pthLog}/autosymlink.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autosymlink)
@@ -4592,6 +4614,7 @@ _update_boa_tools() {
             octopus \
             perftest \
             randpass \
+            renamemaster \
             screenfetch \
             setprio \
             smtpgapps \
@@ -4697,7 +4720,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver}
-  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,loadguard,lock.inc}
+  chmod 700 ${_optBin}/{loadguard,lock.inc,renamemaster,syncpass,weblogx,xboa,xcopy}
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
@@ -4709,7 +4732,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/synproxy*
 
   # _SYS (700): system utilities
-  chmod 700 ${_optBin}/{aptfast,dhcpfix,fixmounts,fixrepo,mergecsf,screenfetch,vmnetfix,fancynow,codebasecheck}
+  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,mergecsf,screenfetch,vmnetfix}
 
   # _SYS (700): cleanup tools
   chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,updatesymlinks,verifyvhostsdns,vhostcheck}

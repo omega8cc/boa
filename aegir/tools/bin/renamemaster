@@ -1,0 +1,358 @@
+#!/bin/bash
+
+###
+### renamemaster — in-place rename of the Aegir master hostname on BOA
+###
+### Usage: renamemaster [--dry-run] [--force-old OLDFQDN]
+###
+###   --dry-run      Print what would be changed; make no modifications
+###   --force-old FQDN   Override auto-detected old hostname with FQDN
+###
+### What it does:
+###   §1  Detect old hostname from /var/aegir/.drush/server_master.alias.drushrc.php
+###   §2  Detect new hostname from system FQDN (hostname -f)
+###   §3  Rewrite all Drush alias files in /var/aegir/.drush/
+###   §4  Rename + rewrite vhost files in nginx/vhost.d/
+###   §5  Dump Aegir DB → sed replace → re-import
+###   §6  Reload nginx
+###
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+###-------------CONSTANTS-----------------###
+
+_AEGIR_ROOT=/var/aegir
+_DRUSH_DIR=${_AEGIR_ROOT}/.drush
+_VHOSTD=${_AEGIR_ROOT}/config/server_master/nginx/vhost.d
+_BACKUP_DIR=${_AEGIR_ROOT}/backups/rename-hostname
+_DRY_RUN=NO
+_FORCE_OLD=""
+
+###-------------ARGUMENT PARSING----------###
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)
+      _DRY_RUN=YES
+      shift
+      ;;
+    --force-old)
+      _FORCE_OLD="$2"
+      shift 2
+      ;;
+    -h|--help)
+      sed -n '/^###/{ s/^### \?//; p }' "$0"
+      exit 0
+      ;;
+    *)
+      echo "ERROR: Unknown argument: $1"
+      echo "Usage: $0 [--dry-run] [--force-old OLDFQDN]"
+      exit 1
+      ;;
+  esac
+done
+
+###-------------HELPERS-------------------###
+
+_info() {
+  echo "INFO: $*"
+}
+
+_alrt() {
+  echo "ALRT: $*"
+}
+
+_die() {
+  echo "ERROR: $*"
+  exit 1
+}
+
+_maybe_run() {
+  # Execute command unless --dry-run; always echo it
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo "DRY:  $*"
+  else
+    eval "$@"
+  fi
+}
+
+###-------------CHECKS--------------------###
+
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    _die "This script must be run as root"
+  fi
+
+  _DF_TEST="$(df -P -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
+    NR==2 { gsub(/%/,"",$u); print $u }')"
+  if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+    _die "Disk usage is at ${_DF_TEST}% — aborting (must be below 90%)"
+  fi
+
+  if [ ! -d "${_DRUSH_DIR}" ]; then
+    _die "Drush config dir not found: ${_DRUSH_DIR}"
+  fi
+
+  if [ ! -f "${_DRUSH_DIR}/server_master.alias.drushrc.php" ]; then
+    _die "server_master.alias.drushrc.php not found in ${_DRUSH_DIR}"
+  fi
+
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+  if [ -z "${_SQL_PSWD}" ]; then
+    _die "/root/.my.pass.txt missing or empty — cannot connect to MySQL"
+  fi
+}
+
+###-------------§1 DETECT OLD HOSTNAME---###
+
+_detect_old_hostname() {
+  if [ -n "${_FORCE_OLD}" ]; then
+    _OLD_HOST="${_FORCE_OLD}"
+    _info "Old hostname forced via --force-old: ${_OLD_HOST}"
+    return
+  fi
+
+  # Extract remote_host from server_master alias — this is the authoritative
+  # hostname stored in the Aegir drush config
+  _OLD_HOST=$(grep "remote_host" \
+    "${_DRUSH_DIR}/server_master.alias.drushrc.php" \
+    | head -1 \
+    | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+
+  _OLD_HOST=${_OLD_HOST//[^a-zA-Z0-9.\-]/}
+
+  if [ -z "${_OLD_HOST}" ]; then
+    _die "Could not detect old hostname from server_master.alias.drushrc.php"
+  fi
+
+  _info "Detected old hostname: ${_OLD_HOST}"
+}
+
+###-------------§2 DETECT NEW HOSTNAME---###
+
+_detect_new_hostname() {
+  _NEW_HOST=$(hostname -f 2>/dev/null | tr -d '\n')
+
+  if [ -z "${_NEW_HOST}" ]; then
+    _die "Could not determine system FQDN via hostname -f"
+  fi
+
+  # Sanity: must contain at least one dot (real FQDN)
+  if [[ "${_NEW_HOST}" != *.* ]]; then
+    _die "System hostname '${_NEW_HOST}' does not look like a FQDN (no dot). " \
+       "Set it correctly in /etc/hostname and /etc/hosts first."
+  fi
+
+  _info "New hostname (system FQDN): ${_NEW_HOST}"
+
+  if [ "${_OLD_HOST}" = "${_NEW_HOST}" ]; then
+    _info "Old and new hostname are identical — nothing to do."
+    exit 0
+  fi
+}
+
+###-------------BACKUP--------------------###
+
+_backup_files() {
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _info "(dry-run) Would create backup in ${_BACKUP_DIR}"
+    return
+  fi
+
+  mkdir -p "${_BACKUP_DIR}"
+  _TS=$(date +%Y%m%d_%H%M%S)
+
+  cp -a "${_DRUSH_DIR}" "${_BACKUP_DIR}/drush_${_TS}"
+  _info "Drush dir backed up to ${_BACKUP_DIR}/drush_${_TS}"
+
+  if [ -d "${_VHOSTD}" ]; then
+    cp -a "${_VHOSTD}" "${_BACKUP_DIR}/vhost.d_${_TS}"
+    _info "vhost.d backed up to ${_BACKUP_DIR}/vhost.d_${_TS}"
+  fi
+
+  _info "Backup timestamp: ${_TS}"
+}
+
+###-------------§3 REWRITE DRUSH FILES---###
+
+_rewrite_drush_files() {
+  _info "§3 Rewriting Drush alias files in ${_DRUSH_DIR} ..."
+
+  for _F in $(find "${_DRUSH_DIR}" -maxdepth 1 -type f -name '*.drushrc.php' | sort); do
+    if grep -q "${_OLD_HOST}" "${_F}" 2>/dev/null; then
+      _info "  sed in-place: ${_F}"
+      _maybe_run sed -i "s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+    fi
+  done
+}
+
+###-------------§4 RENAME + REWRITE VHOSTS-###
+
+_rewrite_vhosts() {
+  if [ ! -d "${_VHOSTD}" ]; then
+    _alrt "vhost.d dir not found: ${_VHOSTD} — skipping vhost step"
+    return
+  fi
+
+  _info "§4 Rewriting vhost files in ${_VHOSTD} ..."
+
+  for _F in $(find "${_VHOSTD}" -maxdepth 1 -type f | sort); do
+    _BASENAME=$(basename "${_F}")
+
+    # Rewrite content regardless of filename
+    if grep -q "${_OLD_HOST}" "${_F}" 2>/dev/null; then
+      _info "  sed in-place content: ${_F}"
+      _maybe_run sed -i "s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+    fi
+
+    # Rename the file if old hostname appears in the filename
+    if [[ "${_BASENAME}" == *"${_OLD_HOST}"* ]]; then
+      _NEW_BASENAME="${_BASENAME//${_OLD_HOST}/${_NEW_HOST}}"
+      _NEW_F="${_VHOSTD}/${_NEW_BASENAME}"
+      _info "  rename: ${_BASENAME} -> ${_NEW_BASENAME}"
+      _maybe_run mv -f \'"${_F}"\' \'"${_NEW_F}"\'
+    fi
+  done
+}
+
+###-------------§5 DATABASE RENAME-------###
+
+_detect_aegir_db() {
+  # The Aegir hostmaster DB name lives in the hostmaster site's drushrc.php
+  # Path is derived from the site_path in hostmaster.alias.drushrc.php
+  _HM_SITE_PATH=$(grep "site_path'" \
+    "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g" \
+    | tr -d ' ')
+
+  if [ -z "${_HM_SITE_PATH}" ]; then
+    _die "Could not extract site_path from hostmaster.alias.drushrc.php"
+  fi
+
+  _HM_DRUSHRC="${_HM_SITE_PATH}/drushrc.php"
+
+  if [ ! -f "${_HM_DRUSHRC}" ]; then
+    _die "Hostmaster drushrc.php not found: ${_HM_DRUSHRC}"
+  fi
+
+  _AEGIR_DB=$(grep "options\['db_name'\]" "${_HM_DRUSHRC}" \
+    | head -1 \
+    | sed "s/.*=//; s/[' ,;]//g" \
+    | tr -d ' ')
+  _AEGIR_DB=${_AEGIR_DB//[^a-zA-Z0-9_]/}
+
+  if [ -z "${_AEGIR_DB}" ]; then
+    _die "Could not detect Aegir DB name from ${_HM_DRUSHRC}"
+  fi
+
+  _info "Detected Aegir database: ${_AEGIR_DB}"
+}
+
+_rename_in_database() {
+  _info "§5 Renaming hostname in Aegir database (${_AEGIR_DB}) ..."
+
+  _TS=$(date +%Y%m%d_%H%M%S)
+  _DUMP_ORIG="${_BACKUP_DIR}/aegirdb_${_TS}_orig.sql"
+  _DUMP_PATCHED="${_BACKUP_DIR}/aegirdb_${_TS}_patched.sql"
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _info "(dry-run) Would dump ${_AEGIR_DB} to ${_DUMP_ORIG}"
+    _info "(dry-run) Would sed s/${_OLD_HOST}/${_NEW_HOST}/g -> ${_DUMP_PATCHED}"
+    _info "(dry-run) Would re-import ${_DUMP_PATCHED} into ${_AEGIR_DB}"
+    return
+  fi
+
+  mkdir -p "${_BACKUP_DIR}"
+
+  _info "  Dumping ${_AEGIR_DB} ..."
+  mysqldump \
+    -u root \
+    --password="${_SQL_PSWD}" \
+    --single-transaction \
+    --quick \
+    --no-autocommit \
+    --skip-add-locks \
+    --no-tablespaces \
+    --hex-blob \
+    "${_AEGIR_DB}" \
+    > "${_DUMP_ORIG}"
+
+  if [ ! -s "${_DUMP_ORIG}" ]; then
+    _die "mysqldump produced an empty file: ${_DUMP_ORIG}"
+  fi
+
+  _info "  Dump size: $(du -sh "${_DUMP_ORIG}" | cut -f1)"
+
+  _info "  Applying sed replacement ..."
+  # Use | as sed delimiter to avoid colliding with dots in FQDNs
+  sed "s|${_OLD_HOST}|${_NEW_HOST}|g" "${_DUMP_ORIG}" > "${_DUMP_PATCHED}"
+
+  _CHANGED=$(diff "${_DUMP_ORIG}" "${_DUMP_PATCHED}" | grep -c "^[<>]" || true)
+  _info "  Lines changed in dump: ${_CHANGED}"
+
+  if [ "${_CHANGED}" -eq 0 ]; then
+    _info "  No occurrences of '${_OLD_HOST}' found in DB dump — skipping re-import"
+    return
+  fi
+
+  _info "  Re-importing patched dump into ${_AEGIR_DB} ..."
+  mysql \
+    -u root \
+    --password="${_SQL_PSWD}" \
+    "${_AEGIR_DB}" \
+    < "${_DUMP_PATCHED}"
+
+  _info "  DB rename complete. Originals kept in ${_BACKUP_DIR}"
+}
+
+###-------------§6 RELOAD NGINX----------###
+
+_reload_nginx() {
+  _info "§6 Reloading nginx ..."
+  _maybe_run nginx -t
+  _maybe_run /etc/init.d/nginx reload
+}
+
+###-------------SUMMARY------------------###
+
+_print_summary() {
+  echo ""
+  echo "======================================================"
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo "  DRY-RUN complete — no files were modified"
+  else
+    echo "  Rename complete"
+  fi
+  echo "  Old hostname : ${_OLD_HOST}"
+  echo "  New hostname : ${_NEW_HOST}"
+  echo "======================================================"
+  echo ""
+  if [ "${_DRY_RUN}" = "NO" ]; then
+    echo "Next steps:"
+    echo "  1. Verify nginx config:  nginx -t"
+    echo "  2. Check Aegir UI:     http://master.${_NEW_HOST}/"
+    echo "  3. Run hostmaster verify via drush if needed:"
+    echo "     su -s /bin/bash - aegir -c 'drush8 @hostmaster hosting-task @server_master verify --force'"
+    echo "     su -s /bin/bash - aegir -c 'drush8 @hostmaster hosting-dispatch'"
+    echo ""
+  fi
+}
+
+###-------------MAIN---------------------###
+
+_check_root
+_detect_old_hostname
+_detect_new_hostname
+_backup_files
+_rewrite_drush_files
+_rewrite_vhosts
+_detect_aegir_db
+_rename_in_database
+_reload_nginx
+_print_summary
+
+exit 0
