@@ -1,18 +1,23 @@
 #!/bin/bash
 
 ###
-### renamemaster — in-place rename of the Aegir master hostname on BOA
+### renameaegirhost — in-place rename of the Aegir hostname on BOA
 ###
-### Usage: renamemaster [--dry-run] [--force-old OLDFQDN]
+### Usage: renameaegirhost --aegir-root PATH [--dry-run] [--force-old OLDFQDN]
 ###
-###   --dry-run      Print what would be changed; make no modifications
+###   --aegir-root PATH  Aegir home directory (required); validated as a real
+###                      Aegir root before any changes are made.
+###      Examples:
+###      --aegir-root /var/aegir    (BOA master)
+###      --aegir-root /data/disk/o1 (BOA octopus account)
+###   --dry-run    Print what would be changed; make no modifications
 ###   --force-old FQDN   Override auto-detected old hostname with FQDN
 ###
 ### What it does:
-###   §1  Detect old hostname from /var/aegir/.drush/server_master.alias.drushrc.php
+###   §1  Detect old hostname from <aegir-root>/.drush/server_master.alias.drushrc.php
 ###   §2  Detect new hostname from system FQDN (hostname -f)
-###   §3  Rewrite all Drush alias files in /var/aegir/.drush/
-###   §4  Rename + rewrite vhost files in nginx/vhost.d/
+###   §3  Rewrite all Drush alias files in <aegir-root>/.drush/
+###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/
 ###   §5  Dump Aegir DB → sed replace → re-import
 ###   §6  Reload nginx
 ###
@@ -21,12 +26,9 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-###-------------CONSTANTS-----------------###
+###-------------DEFAULTS------------------###
 
-_AEGIR_ROOT=/var/aegir
-_DRUSH_DIR=${_AEGIR_ROOT}/.drush
-_VHOSTD=${_AEGIR_ROOT}/config/server_master/nginx/vhost.d
-_BACKUP_DIR=${_AEGIR_ROOT}/backups/rename-hostname
+_AEGIR_ROOT=""
 _DRY_RUN=NO
 _FORCE_OLD=""
 
@@ -34,6 +36,10 @@ _FORCE_OLD=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --aegir-root)
+      _AEGIR_ROOT="$2"
+      shift 2
+      ;;
     --dry-run)
       _DRY_RUN=YES
       shift
@@ -48,11 +54,23 @@ while [ $# -gt 0 ]; do
       ;;
     *)
       echo "ERROR: Unknown argument: $1"
-      echo "Usage: $0 [--dry-run] [--force-old OLDFQDN]"
+      echo "Usage: $0 --aegir-root PATH [--dry-run] [--force-old OLDFQDN]"
       exit 1
       ;;
   esac
 done
+
+if [ -z "${_AEGIR_ROOT}" ]; then
+  echo "ERROR: --aegir-root PATH is required"
+  echo "Usage: $0 --aegir-root PATH [--dry-run] [--force-old OLDFQDN]"
+  exit 1
+fi
+
+# Derive all paths and username from _AEGIR_ROOT now that args are fully parsed
+_DRUSH_DIR=${_AEGIR_ROOT}/.drush
+_VHOSTD=${_AEGIR_ROOT}/config/server_master/nginx/vhost.d
+_BACKUP_DIR=${_AEGIR_ROOT}/backups/rename-hostname
+_AEGIR_USER=$(basename "${_AEGIR_ROOT}")
 
 ###-------------HELPERS-------------------###
 
@@ -92,8 +110,24 @@ _check_root() {
     _die "Disk usage is at ${_DF_TEST}% — aborting (must be below 90%)"
   fi
 
-  if [ ! -d "${_DRUSH_DIR}" ]; then
-    _die "Drush config dir not found: ${_DRUSH_DIR}"
+  if [ ! -d "${_AEGIR_ROOT}" ]; then
+    _die "Aegir root not found: ${_AEGIR_ROOT}"
+  fi
+
+  # Validate the directory actually looks like an Aegir root before touching anything
+  _aegir_root_ok=YES
+  for _required_subdir in \
+    .drush \
+    config/server_master \
+    backups \
+  ; do
+    if [ ! -d "${_AEGIR_ROOT}/${_required_subdir}" ]; then
+      _alrt "Expected Aegir subdir missing: ${_AEGIR_ROOT}/${_required_subdir}"
+      _aegir_root_ok=NO
+    fi
+  done
+  if [ "${_aegir_root_ok}" = "NO" ]; then
+    _die "'${_AEGIR_ROOT}' does not look like a valid Aegir root (missing subdirs above)"
   fi
 
   if [ ! -f "${_DRUSH_DIR}/server_master.alias.drushrc.php" ]; then
@@ -104,6 +138,8 @@ _check_root() {
   if [ -z "${_SQL_PSWD}" ]; then
     _die "/root/.my.pass.txt missing or empty — cannot connect to MySQL"
   fi
+
+  _info "Aegir root: ${_AEGIR_ROOT}"
 }
 
 ###-------------§1 DETECT OLD HOSTNAME---###
@@ -314,7 +350,7 @@ _rename_in_database() {
 _reload_nginx() {
   _info "§6 Reloading nginx ..."
   _maybe_run nginx -t
-  _maybe_run /etc/init.d/nginx reload
+  _maybe_run sudo /etc/init.d/nginx reload
 }
 
 ###-------------SUMMARY------------------###
@@ -327,6 +363,7 @@ _print_summary() {
   else
     echo "  Rename complete"
   fi
+  echo "  Aegir root   : ${_AEGIR_ROOT}"
   echo "  Old hostname : ${_OLD_HOST}"
   echo "  New hostname : ${_NEW_HOST}"
   echo "======================================================"
@@ -336,8 +373,8 @@ _print_summary() {
     echo "  1. Verify nginx config:  nginx -t"
     echo "  2. Check Aegir UI:     http://master.${_NEW_HOST}/"
     echo "  3. Run hostmaster verify via drush if needed:"
-    echo "     su -s /bin/bash - aegir -c 'drush8 @hostmaster hosting-task @server_master verify --force'"
-    echo "     su -s /bin/bash - aegir -c 'drush8 @hostmaster hosting-dispatch'"
+    echo "     su -s /bin/bash - ${_AEGIR_USER} -c 'drush8 @hm hosting-task @server_master verify --force'"
+    echo "     su -s /bin/bash - ${_AEGIR_USER} -c 'drush8 @hm hosting-dispatch'"
     echo ""
   fi
 }

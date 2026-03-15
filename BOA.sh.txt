@@ -1233,23 +1233,23 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_optBin}/renamemaster" ] \
-    || [ ! -e "${_pthLog}/renamemaster.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc renamemaster)
+  if [ ! -e "${_optBin}/renameaegirhost" ] \
+    || [ ! -e "${_pthLog}/renameaegirhost.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc renameaegirhost)
     if (( _CNT > 0 )); then
-      echo "The renamemaster is running!"
+      echo "The renameaegirhost is running!"
     else
-      if [ -e "${_optBin}/renamemaster" ]; then
-        mv -f ${_optBin}/renamemaster ${_optBin}/renamemaster.old
+      if [ -e "${_optBin}/renameaegirhost" ]; then
+        mv -f ${_optBin}/renameaegirhost ${_optBin}/renameaegirhost.old
       fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/renamemaster" -o ${_optBin}/renamemaster
-      if [ -e "${_optBin}/renamemaster" ]; then
-        chmod 700 ${_optBin}/renamemaster
-        chown root:root ${_optBin}/renamemaster
-        touch ${_pthLog}/renamemaster.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      curl ${_crlGet} "${_urlHmr}/tools/bin/renameaegirhost" -o ${_optBin}/renameaegirhost
+      if [ -e "${_optBin}/renameaegirhost" ]; then
+        chmod 700 ${_optBin}/renameaegirhost
+        chown root:root ${_optBin}/renameaegirhost
+        touch ${_pthLog}/renameaegirhost.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
-        if [ -e "${_optBin}/renamemaster.old" ]; then
-          mv -f ${_optBin}/renamemaster.old ${_optBin}/renamemaster
+        if [ -e "${_optBin}/renameaegirhost.old" ]; then
+          mv -f ${_optBin}/renameaegirhost.old ${_optBin}/renameaegirhost
         fi
       fi
     fi
@@ -4614,7 +4614,7 @@ _update_boa_tools() {
             octopus \
             perftest \
             randpass \
-            renamemaster \
+            renameaegirhost \
             screenfetch \
             setprio \
             smtpgapps \
@@ -4720,7 +4720,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver}
-  chmod 700 ${_optBin}/{loadguard,lock.inc,renamemaster,syncpass,weblogx,xboa,xcopy}
+  chmod 700 ${_optBin}/{loadguard,lock.inc,renameaegirhost,syncpass,weblogx,xboa,xcopy}
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
