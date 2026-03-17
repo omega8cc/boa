@@ -7,7 +7,7 @@ export LC_ALL=C
 export LANG=C
 
 ###
-_PT_VERSION="v72"
+_PT_VERSION="v73"
 
 ### Avoid too many questions
 export DEBIAN_FRONTEND=noninteractive
@@ -56,7 +56,7 @@ _NET_IPERF_TIME=8 # seconds per iperf3 direction
 _NET_IPERF_TIMEOUT=15 # seconds hard timeout wrapper for iperf3
 _NET_IPERF_PARALLEL=1 # iperf3 parallel streams
 _NET_IPERF_MAX_SERVERS=3 # max iperf3 servers to test
-_NET_IPERF_ENABLED="${_NET_IPERF_ENABLED:-YES}" # YES to enable iperf3 test + CSF edits + iperf3 install
+_NET_IPERF_ENABLED="${_NET_IPERF_ENABLED:-NO}" # YES to enable iperf3 test + CSF edits + iperf3 install
 _NET_HTTP_OUTLIER_RATIO="${_NET_HTTP_OUTLIER_RATIO:-0.30}" # ignore HTTP results < (median*ratio) to drop very weak endpoints
 _NET_IPERF_OUTLIER_RATIO="${_NET_IPERF_OUTLIER_RATIO:-0.30}" # ignore iPerf3 results < (median*ratio) to drop very weak remotes
 _NET_APAC_LOCAL_ONLY="${_NET_APAC_LOCAL_ONLY:-YES}" # if YES, AU/NZ hosts test only AU/NZ endpoints
@@ -106,10 +106,13 @@ Available tests:
   mem       Memory benchmark (membench)
   aes       AES throughput (openssl enc)
   disk      Disk latency + fio I/O (ioping + fio)
-  net       Network tests (HTTP download + optional iperf3)
+  net       Network tests (HTTP download; add --iperf to also run iperf3 TCP test)
   php       PHP CLI micro-benchmark
   db        MySQL sysbench OLTP benchmark
   fs        Filesystems: fstype/options + /etc/fstab hints + space/inodes sanity
+
+Note: --iperf is a modifier for --net/--all, not a standalone test.
+      --all does not include iperf3; use --all --iperf to add it.
 TESTS
 }
 
@@ -131,14 +134,15 @@ Usage: perftest (--all | one/more test flags) [--compact|--fancy|--verbose] [oth
   --fancy             Print BOA-focused fancy summary with grading (default)
   --compact           Print BOA-focused compact summary with grading
   --verbose           Print full detailed output or just CSV summary with | grep CSV_
-  --all               Run all tests
+  --all               Run all tests (excludes iperf3; use --all --iperf to include it)
   --only TEST         Run only one test (see --list-tests)
   --sysinfo           Run system info test
   --cpu               Run CPU benchmark
   --mem               Run memory benchmark
   --aes               Run AES throughput benchmark
   --disk              Run disk benchmarks (ioping + fio)
-  --net               Run network benchmarks (HTTP + optional iperf3)
+  --net               Run network benchmarks (HTTP download only by default)
+  --iperf             Add iperf3 TCP throughput test to --net or --all (opt-in)
   --php               Run PHP CLI micro-benchmark
   --db                Run MySQL sysbench OLTP benchmark
   --fs                Run filesystem + fstab/inodes sanity checks
@@ -1483,7 +1487,9 @@ _run_ipv4_net_check() {
   fi
 
   # iPerf3 port throughput (best-effort; region-filtered; median of successes)
-  if command -v iperf3 >/dev/null 2>&1; then
+  # Guarded by _NET_IPERF_ENABLED — even if iperf3 is already installed,
+  # we do not run it unless explicitly opted in via --iperf.
+  if [ "${_NET_IPERF_ENABLED}" = "YES" ] && command -v iperf3 >/dev/null 2>&1; then
     local _cand entry _n _h _p res dl_mbps ul_mbps ok
     ok=0
     _cand=()
@@ -3907,6 +3913,7 @@ while [ "$#" -gt 0 ]; do
     --aes) _DO_AES=YES ;;
     --disk) _DO_DISK=YES ;;
     --net) _DO_NET=YES ;;
+    --iperf) _NET_IPERF_ENABLED=YES ;;
     --php) _DO_PHP=YES ;;
     --db) _DO_DB=YES ;;
     --fs) _DO_FS=YES ;;
@@ -3950,9 +3957,18 @@ echo "Disabling cron temporarily to avoid auto-healing intervention.."
 _cron_stop_quiet
 
 # Ensure outbound TCP allows iperf3 public ports (Leaseweb uses 5201-5210).
-if ! grep -q "5201:5210" /etc/csf/csf.conf; then
-  sed -i -E 's/^(TCP_OUT[[:space:]]*=[[:space:]]*"[^"]*)"/\1,5201:5210"/' /etc/csf/csf.conf
-  csf -r >/dev/null 2>&1
+# Only touch CSF when: iperf3 test is enabled, CSF is present and enabled,
+# and the ports are not already open. A csf -r inside a VM on routed-IP
+# setups can cause a brief ARP blackout that poisons the
+# upstream router's ARP cache for the VM's IP.
+if [ "${_NET_IPERF_ENABLED}" = "YES" ] \
+  && [ -f /etc/csf/csf.conf ] \
+  && csf -v &>/dev/null \
+  && ! grep -q "^TESTING\s*=\s*\"1\"" /etc/csf/csf.conf; then
+  if ! grep -q "5201:5210" /etc/csf/csf.conf; then
+    sed -i -E 's/^(TCP_OUT[[:space:]]*=[[:space:]]*"[^"]*)"/\1,5201:5210"/' /etc/csf/csf.conf
+    csf -r >/dev/null 2>&1
+  fi
 fi
 
 # Give BOA auto-healing a moment to calm down after cron changes,
@@ -3978,6 +3994,18 @@ if [ "${_DO_NET}" = "YES" ]; then
   _check_and_install_package "curl"
   if [ "${_NET_IPERF_ENABLED}" = "YES" ]; then
     _check_and_install_package "iperf3"
+    # Ensure iperf3 is not running as a local daemon/socket after install.
+    # A local iperf3 listener on 5201 would intercept outbound client
+    # connections to remote iperf3 servers, producing invalid results.
+    # Use service (sysvinit/Devuan) with systemctl as fallback (systemd).
+    if command -v service >/dev/null 2>&1 && [ -x "/etc/init.d/iperf3" ]; then
+      service iperf3 stop >/dev/null 2>&1 || true
+    elif command -v systemctl >/dev/null 2>&1; then
+      systemctl stop iperf3.service iperf3.socket >/dev/null 2>&1 || true
+      systemctl disable iperf3.service iperf3.socket >/dev/null 2>&1 || true
+    fi
+    # Kill any remaining iperf3 server process regardless of init system
+    pkill -x iperf3 >/dev/null 2>&1 || true
   fi
 fi
 
@@ -4439,7 +4467,9 @@ else
   echo "Network (IPv4 HTTP Range pulls):"
   echo "  - Public IPv4: ${_net_ipv4}"
   echo "  - HTTP download (median ${_net_http_ok}/${_net_http_total}): ${_net_download}"
-  echo "  - iPerf3 TCP median: DL ${_net_iperf_dl} | UL ${_net_iperf_ul}"
+  if [ "${_NET_IPERF_ENABLED}" = "YES" ]; then
+    echo "  - iPerf3 TCP median: DL ${_net_iperf_dl} | UL ${_net_iperf_ul}"
+  fi
   if [ "${#_net_dl_name[@]}" -gt 0 ]; then
     echo "  - Tests:"
     _i=0
