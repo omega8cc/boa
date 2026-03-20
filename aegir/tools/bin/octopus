@@ -390,7 +390,7 @@ _satellite_check_strict_php_cli() {
     _PHP_CLI=
   fi
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-    if [[ ! "${_PHP_CLI}" =~ php8[1-5] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]]; then
+    if [[ ! "${_PHP_CLI}" =~ php8[1-5] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]] && [[ ! "${_PHP_CLI}" =~ php56 ]]; then
       echo
       echo "NOTE: This Ægir version requires at least PHP 7.4 during upgrade."
       echo "NOTE: It will be reconfigured on the fly now, but you can change it"
@@ -398,11 +398,14 @@ _satellite_check_strict_php_cli() {
       echo
       _php_cli_drush_update
       _php_cli_local_ini_update
-      for _version in 84 85 83 82 81 74; do
+      for _version in 84 85 83 82 81 74 56; do
         if [ -x "/opt/php${_version}/bin/php" ]; then
           if [ "${_version}" = "74" ]; then
             _useCli="7.4"
             _useFpm="7.4"
+          elif [ "${_version}" = "56" ]; then
+            _useCli="5.6"
+            _useFpm="5.6"
           else
             _useCli="8.${_version:1}"
             _useFpm="8.${_version:1}"
@@ -498,7 +501,8 @@ _satellite_check_supported_php_cli() {
             || [ "${_T_CLI_VRN}" = "8.3" ] \
             || [ "${_T_CLI_VRN}" = "8.2" ] \
             || [ "${_T_CLI_VRN}" = "8.1" ] \
-            || [ "${_T_CLI_VRN}" = "7.4" ]; then
+            || [ "${_T_CLI_VRN}" = "7.4" ] \
+            || [ "${_T_CLI_VRN}" = "5.6" ]; then
             _PHP_CLI_LEGACY_FREE=YES
           else
             _PHP_CLI_LEGACY_FREE=NO
@@ -506,10 +510,12 @@ _satellite_check_supported_php_cli() {
         else
           _PHP_CLI_LEGACY_FREE=YES
         fi
-        for _version in 84 85 83 82 81 74; do
+        for _version in 84 85 83 82 81 74 56; do
           if [ -x "/opt/php${_version}/bin/php" ]; then
             if [ "${_version}" = "74" ]; then
               _useCli="7.4"
+            elif [ "${_version}" = "56" ]; then
+              _useCli="5.6"
             else
               _useCli="8.${_version:1}"
             fi
