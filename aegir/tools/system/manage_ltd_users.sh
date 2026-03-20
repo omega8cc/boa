@@ -1693,7 +1693,7 @@ _switch_php() {
 
       ### Update fpm_include_default.inc if needed
       _PHP_SV=${_T_FPM_VRN//[^0-9]/}
-      [ -z "${_PHP_SV}" ] && _PHP_SV=83
+      [ -z "${_PHP_SV}" ] && _PHP_SV=84
       _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
 
       if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
@@ -1729,7 +1729,7 @@ _switch_php() {
 
         _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
-        [ -z "${_PHP_SV}" ] && _PHP_SV=83
+        [ -z "${_PHP_SV}" ] && _PHP_SV=84
 
         # Update or create special system user if needed
         if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
@@ -2065,7 +2065,7 @@ _manage_user() {
         if [ -z ${_PHP_SV} ]; then
           _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
-            _PHP_SV=83
+            _PHP_SV=84
           fi
         fi
         if [ -f "${_dscUsr}/static/control/multi-fpm.info" ]; then
