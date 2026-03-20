@@ -1454,7 +1454,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/barracuda" ] \
-    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/barracuda)
     if (( _CNT > 0 )); then
       echo "The barracuda is running!"
@@ -1466,7 +1466,7 @@ _update_agents() {
       if [ -e "${_optBin}/barracuda" ]; then
         chmod 700 ${_optBin}/barracuda
         chown root:root ${_optBin}/barracuda
-        touch ${_pthLog}/barracuda.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/barracuda.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/barracuda.old" ]; then
           mv -f ${_optBin}/barracuda.old ${_optBin}/barracuda
