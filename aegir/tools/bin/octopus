@@ -398,12 +398,14 @@ _satellite_check_strict_php_cli() {
       echo
       _php_cli_drush_update
       _php_cli_local_ini_update
-      for _version in 81 82 83 84 85 74; do
+      for _version in 85 84 83 82 81 74; do
         if [ -x "/opt/php${_version}/bin/php" ]; then
           if [ "${_version}" = "74" ]; then
             _useCli="7.4"
+            _useFpm="7.4"
           else
             _useCli="8.${_version:1}"
+            _useFpm="8.${_version:1}"
           fi
           break
         fi
@@ -415,6 +417,15 @@ _satellite_check_strict_php_cli() {
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_useCli}/g" \
           /root/.${_octUsr}.octopus.cnf &> /dev/null
         echo "INFO: Your PHP-CLI has been switched to ${_useCli}"
+        echo
+      fi
+      if [ -n "${_useFpm}" ]; then
+        echo ${_useFpm} > ${_usEr}/log/cli.txt
+        echo ${_useFpm} > ${_usEr}/static/control/cli.info
+        chown -R ${_octUsr}.ftp:users ${_usEr}/static/control
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_useCli}/g" \
+          /root/.${_octUsr}.octopus.cnf &> /dev/null
+        echo "INFO: Your PHP-FPM has been switched to ${_useFpm}"
         echo
       fi
     fi
