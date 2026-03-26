@@ -159,7 +159,7 @@ supported versions: 8.1, 8.2, 8.3, 8.4, 8.5
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 8.2 > ~/static/control/fpm.info
+  echo 8.1 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
