@@ -2799,24 +2799,24 @@ _check_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_php_cli ${_PHP_CLI_VERSION}"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
-    _PHP_CLI_PATH="/opt/php83/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
     _PHP_CLI_PATH="/opt/php84/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
     _PHP_CLI_PATH="/opt/php85/bin/php"
+  elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
+    _PHP_CLI_PATH="/opt/php83/bin/php"
   else
     _PHP_CLI_PATH=""
   fi
   if [ -x "${_PHP_CLI_PATH}" ]; then
-    _USE_PHP_CLI_PATH=${_PHP_CLI_PATH}
+    _USE_PHP_CLI_PATH="${_PHP_CLI_PATH}"
   else
-    if  [ -x "/opt/php83/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php83/bin/php"
-    elif  [ -x "/opt/php84/bin/php" ]; then
+    if  [ -x "/opt/php84/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php84/bin/php"
     elif  [ -x "/opt/php85/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php85/bin/php"
+    elif  [ -x "/opt/php83/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php83/bin/php"
     fi
   fi
   if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -2826,7 +2826,7 @@ _check_php_cli() {
     ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
   else
     _msg "WAIT: I can not find PHP-CLI anywhere!"
-    _msg "NOTE: BOA requires PHP 8.1 or newer"
+    _msg "NOTE: BOA requires PHP 8.3 or newer"
   fi
 }
 

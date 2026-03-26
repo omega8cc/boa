@@ -85,7 +85,7 @@
 
 
 ###
-### Ægir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
+### Ægir version provided by BOA is now fully compatible with PHP 8.5 and 8.4,
 ### so both can be used as default versions in the Ægir PHP configuration files
 ### ~/static/control/cli.info and ~/static/control/fpm.info
 ###
@@ -108,6 +108,7 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 8.5
 ### 8.4
 ### 8.3
 ### 8.2
@@ -145,7 +146,7 @@
 ### other sites not listed in multi-fpm.info will continue to use PHP-FPM
 ### version defined in fpm.info instead, which can be modified independently.
 ###
-### foo.com 8.1
+### foo.com 8.5
 ### bar.com 7.4
 ### old.com 5.6
 ###
@@ -167,6 +168,7 @@
 ###
 ### Supported values which can be written in this file:
 ###
+### 8.5
 ### 8.4
 ### 8.3
 ### 8.2
@@ -179,7 +181,7 @@
 ### 7.0
 ### 5.6
 ###
-### There must be only one line and one value (like: 8.1) in this control file.
+### There must be only one line and one value (like: 8.4) in this control file.
 ### Otherwise it will be ignored.
 ###
 ### NOTE: if the file doesn't exist, the system will create it and set to the
