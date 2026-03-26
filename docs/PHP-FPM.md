@@ -30,7 +30,7 @@ You can enable multiple PHP versions for different sites using the `multi-fpm.in
 
 Example of `multi-fpm.info`:
 ```
-foo.com 8.4
+foo.com 8.5
 bar.com 7.4
 old.com 5.6
 ```
