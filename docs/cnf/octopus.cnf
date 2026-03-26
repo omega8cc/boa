@@ -59,7 +59,7 @@ _CLIENT_CORES="1" #------------- Currently not used
 ### /root/.${_USER}.octopus.cnf file without system admin (root) assistance.
 ###
 
-Ægir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
+Ægir version provided by BOA is now fully compatible with PHP 8.5 and 8.4,
 so both can be used as default versions in the Ægir PHP configuration files:
 ~/static/control/cli.info and ~/static/control/fpm.info
 
@@ -120,7 +120,7 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### other sites not listed in multi-fpm.info will continue to use PHP-FPM
 ### version defined in fpm.info instead, which can be modified independently.
 ###
-### foo.com 8.1
+### foo.com 8.5
 ### bar.com 7.4
 ### old.com 5.6
 ###
