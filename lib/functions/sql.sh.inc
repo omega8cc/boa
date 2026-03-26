@@ -1110,10 +1110,10 @@ _prep_for_install_db_sql() {
   elif [ "${_DB_SERIES}" = "8.0" ]; then
     _SQLADD="libperconaserverclient21 libperconaserverclient21-dev"
   else
-    _SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
+    _SQLADD="libperconaserverclient24 libperconaserverclient24-dev"
   fi
 
-  if [ "${_OS_CODE}" = "excalibur" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ] || [ "${_DB_SERIES}" = "8.4" ]; then
     _SQLADD="${_SQLADD} percona-telemetry-agent"
   fi
 
