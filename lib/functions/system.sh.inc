@@ -3097,6 +3097,20 @@ _run_aptitude_full_upgrade() {
     _msg "PROC: _run_aptitude_full_upgrade"
   fi
   _msg "INFO: Running aptitude full-upgrade..."
+  if [ -e "/usr/bin/mytop" ]; then
+    if dpkg-query -W -f='${Status}' mytop 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove mytop -y --purge --auto-remove -qq"
+    fi
+    rm -f /usr/bin/mytop
+  fi
+  for _PKG in libperconaserverclient22 libperconaserverclient22-dev; do
+    if _pkg_installed "${_PKG}"; then
+      _mrun "apt-get remove ${_PKG} -y --purge -qq"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "PCKG: ${_PKG} removed as requested."
+      fi
+    fi
+  done
   ###
   ### Make sure that percona-release package is locked in apt early.
   if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
