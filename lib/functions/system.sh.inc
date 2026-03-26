@@ -2997,16 +2997,45 @@ _mytop_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _mytop_install"
   fi
+
   if [ -e "/usr/bin/mytop" ]; then
     if dpkg-query -W -f='${Status}' mytop 2>/dev/null | grep -q "install ok installed"; then
       _mrun "apt-get remove mytop -y --purge --auto-remove -qq"
     fi
     rm -f /usr/bin/mytop
   fi
+
+  if [ "${_DB_SERVER}" = "Percona" ]; then
+    if [ "${_DB_SERIES}" = "5.7" ]; then
+      for _PKG in libperconaserverclient20 libperconaserverclient20-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+          _myTopReinstall=YES
+        fi
+      done
+    elif [ "${_DB_SERIES}" = "8.0" ]; then
+      for _PKG in libperconaserverclient21 libperconaserverclient21-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+          _myTopReinstall=YES
+        fi
+      done
+    else
+      for _PKG in libperconaserverclient24 libperconaserverclient24-dev percona-telemetry-agent; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+          _myTopReinstall=YES
+        fi
+      done
+    fi
+  fi
+  ldconfig 2> /dev/null
+
   _myTopRebuild=NO
   if [ "${_myTopReinstall}" = "YES" ]; then
     _myTopRebuild=YES
   fi
+
   if [ -e "/usr/bin/mysql" ]; then
     if [ ! -e "/usr/local/bin/mytop" ] || [ "${_myTopRebuild}" = "YES" ]; then
       _msg "INFO: Building MyTop from sources..."
