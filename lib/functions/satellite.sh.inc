@@ -397,7 +397,7 @@ _satellite_tune_fpm_config() {
 
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
-    _PHP_SV=83
+    _PHP_SV=84
   fi
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   _PHP_OLD_SV=
@@ -784,6 +784,8 @@ _satellite_cnf() {
           if [ -x "/opt/php74/bin/php" ]; then
             _PHP_FPM_VERSION=7.4
           fi
+        else
+          _PHP_FPM_VERSION=8.4
         fi
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
           ${_octCnf} &> /dev/null
@@ -895,6 +897,8 @@ _satellite_cnf() {
           if [ -x "/opt/php74/bin/php" ]; then
             _PHP_CLI_VERSION=7.4
           fi
+        else
+          _PHP_CLI_VERSION=8.4
         fi
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
           ${_octCnf} &> /dev/null
@@ -1018,9 +1022,9 @@ _satellite_cnf() {
     if [ "${_PHP_FPM_VERSION}" = "8.5" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
       if [ ! -x "/opt/php85/bin/php" ]; then
-        if [ -x "/opt/php83/bin/php" ]; then
-          _PHP_FPM_VERSION=8.3
-          _PHP_CLI_VERSION=8.3
+        if [ -x "/opt/php84/bin/php" ]; then
+          _PHP_FPM_VERSION=8.4
+          _PHP_CLI_VERSION=8.4
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -1040,9 +1044,9 @@ _satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "8.3" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
       if [ ! -x "/opt/php83/bin/php" ]; then
-        if [ -x "/opt/php82/bin/php" ]; then
-          _PHP_FPM_VERSION=8.2
-          _PHP_CLI_VERSION=8.2
+        if [ -x "/opt/php84/bin/php" ]; then
+          _PHP_FPM_VERSION=8.4
+          _PHP_CLI_VERSION=8.4
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -1073,9 +1077,9 @@ _satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "8.0" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
       if [ ! -x "/opt/php80/bin/php" ]; then
-        if [ -x "/opt/php81/bin/php" ]; then
-          _PHP_FPM_VERSION=8.1
-          _PHP_CLI_VERSION=8.1
+        if [ -x "/opt/php83/bin/php" ]; then
+          _PHP_FPM_VERSION=8.3
+          _PHP_CLI_VERSION=8.3
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -1084,9 +1088,9 @@ _satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "7.4" ] \
       || [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
       if [ ! -x "/opt/php74/bin/php" ]; then
-        if [ -x "/opt/php81/bin/php" ]; then
-          _PHP_FPM_VERSION=8.1
-          _PHP_CLI_VERSION=8.1
+        if [ -x "/opt/php83/bin/php" ]; then
+          _PHP_FPM_VERSION=8.3
+          _PHP_CLI_VERSION=8.3
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -1235,7 +1239,7 @@ _satellite_sub_satellite_force_advanced_nginx_config() {
   if [ -d "${_octInc}" ]; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "${_PHP_SV}" ]; then
-      _PHP_SV=83
+      _PHP_SV=84
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
       sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/Inc/vhost_include.tpl.php &> /dev/null

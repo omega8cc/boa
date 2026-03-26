@@ -83,24 +83,15 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 fi
-if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
-  && [ -x "/opt/php85/bin/php" ]; then
-  _T_CLI=/opt/php85/bin
-elif [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
   && [ -x "/opt/php84/bin/php" ]; then
   _T_CLI=/opt/php84/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+  && [ -x "/opt/php85/bin/php" ]; then
+  _T_CLI=/opt/php85/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
   _T_CLI=/opt/php83/bin
-elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
-  && [ -x "/opt/php82/bin/php" ]; then
-  _T_CLI=/opt/php82/bin
-elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
-  && [ -x "/opt/php81/bin/php" ]; then
-  _T_CLI=/opt/php81/bin
-elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
-  && [ -x "/opt/php74/bin/php" ]; then
-  _T_CLI=/opt/php74/bin
 fi
 _ROOT="${HOME}"
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
