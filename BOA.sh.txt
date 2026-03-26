@@ -5347,9 +5347,7 @@ if [ "$(id -u)" -eq 0 ]; then
   [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && _locales_check_fix_early
   _os_detection_minimal
   _find_fast_mirror_early
-  if command -v curl &> /dev/null; then
-    _verify_boa_keys
-  fi
+  _verify_boa_keys
 
   ### Prefer Devuan apt sources
   if [ -d "/var/aegir" ] && [ ! -e "/etc/apt/preferences.d/99-prefer-devuan" ]; then
