@@ -1070,6 +1070,15 @@ _prep_for_install_db_sql() {
     rm -f /usr/bin/mytop
   fi
 
+  for _PKG in libperconaserverclient22 libperconaserverclient22-dev; do
+    if _pkg_installed "${_PKG}"; then
+      _mrun "apt-get remove ${_PKG} -y --purge -qq"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "PCKG: ${_PKG} removed as requested."
+      fi
+    fi
+  done
+
   _check_mysql_version
 
   if [ "${_DB_SERIES}" = "${_DB_V}" ]; then
