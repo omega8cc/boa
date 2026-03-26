@@ -3106,6 +3106,7 @@ _run_aptitude_full_upgrade() {
   for _PKG in libperconaserverclient22 libperconaserverclient22-dev; do
     if _pkg_installed "${_PKG}"; then
       _mrun "apt-get remove ${_PKG} -y --purge -qq"
+      [ -e "/usr/local/bin/mytop" ] && rm -f /usr/local/bin/mytop
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "PCKG: ${_PKG} removed as requested."
       fi
