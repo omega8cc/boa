@@ -54,7 +54,7 @@ Refer to our [DNS wildcard configuration example](http://bit.ly/UM2nRb) for refe
 With `_EASY_SETUP=PUBLIC` option (default), Barracuda will install automatically the extra services listed below:
 
 - Your Ægir Octopus Instance control panel will be available at `https://your-octopus-aegir-url/`
-- Your Adminer Percona Manager will be available at `https://your-octopus-aegir-url/sqladmin/`
+- Your Adminer Percona Manager will be available at `https://servers'-ipv4/adminer`
 - Your Ægir Master Instance control panel will be available at `https://master.f-q-d-n`
 - Your CSF/LFD Firewall will support integrated Nginx Abuse Guard.
 
