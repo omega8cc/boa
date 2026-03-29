@@ -98,7 +98,7 @@ _if_reinstall_curl_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_reinstall_curl_src"
   fi
-  _CURL_VRN=8.18.0
+  _CURL_VRN=8.19.0
   if ! command -v lsb_release &> /dev/null; then
     _mrun "apt-get update -qq"
     _mrun "apt-get install lsb-release ${_aptYesUnth} -qq"
