@@ -356,6 +356,7 @@ _satellite_downgrade_protection() {
 _satellite_check_if_already_upgraded() {
   if [ "${_cmNd}" = "up-${_tRee}" ]; then
     _fMdy=
+    _ifSkip=
     _SERIES_TEST=
     _mCmd="${_oMcm}"
     if [ -e "${_usEr}/log/octopus_log.txt" ]; then
@@ -372,7 +373,7 @@ _satellite_check_if_already_upgraded() {
             echo
             echo "Usage: $(basename "$0") ${_oRcm} ${_sCnd} force"
             echo
-            return 1  # Exit the function but continue the script
+            _ifSkip=YES
           fi
         fi
       fi
@@ -388,6 +389,10 @@ _up_one() {
       || [ "${_cmNd}" = "up-lts" ]; then
 
       _satellite_check_if_already_upgraded
+
+      if [ "${_ifSkip}" = "YES" ]; then
+        return 1  # Exit the function but continue the script
+      fi
 
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${_bRnh}/g"      ${_vBs}/${_tocIncO}
       wait

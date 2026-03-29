@@ -786,8 +786,10 @@ _satellite_cnf() {
           fi
         fi
         if [ -n "${_PHP_FPM_VERSION}" ]; then
-          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
-            ${_octCnf} &> /dev/null
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "VARS: Set _PHP_FPM_VERSION to ${_PHP_FPM_VERSION}"
+          fi
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" ${_octCnf}
           echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
           echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
           chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
@@ -898,8 +900,10 @@ _satellite_cnf() {
           fi
         fi
         if [ -n "${_PHP_CLI_VERSION}" ]; then
-          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
-            ${_octCnf} &> /dev/null
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "VARS: Set _PHP_CLI_VERSION to ${_PHP_CLI_VERSION}"
+          fi
+          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" ${_octCnf}
           echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
           echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
           chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
