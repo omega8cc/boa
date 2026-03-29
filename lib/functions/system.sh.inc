@@ -8682,7 +8682,7 @@ _install_myquick_src() {
   fi
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Building MyQuick ${_MYQUICK_VRN_FIVE} from sources..."
+      _msg "INFO: Building MyQuick ${_MYQUICK_VRN_ONE} from sources..."
     fi
     _apt_clean_update
     for _PKG in cmake libssl-dev; do
@@ -8714,8 +8714,8 @@ _install_myquick_src() {
     ldconfig 2> /dev/null
     cd /var/opt
     rm -rf mydumper*
-    _get_dev_src "mydumper-${_MYQUICK_VRN_FIVE}.tar.gz"
-    cd /var/opt/mydumper-${_MYQUICK_VRN_FIVE}
+    _get_dev_src "mydumper-${_MYQUICK_VRN_ONE}.tar.gz"
+    cd /var/opt/mydumper-${_MYQUICK_VRN_ONE}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
       export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
@@ -8746,10 +8746,10 @@ _install_myquick_deb() {
     _msg "PROC: _install_myquick_deb"
   fi
   if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
-    if [ "${_USE_CODE}" = "trixie" ]; then
-      _USE_MYQUICK="${_MYQUICK_VRN_LATEST}"
+    if [ "${_USE_CODE}" = "buster" ]; then
+      _USE_MYQUICK="${_MYQUICK_VRN_ONE}"
     else
-      _USE_MYQUICK="${_MYQUICK_VRN_EIGHT}"
+      _USE_MYQUICK="${_MYQUICK_VRN_TWO}"
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Installing MyQuick ${_USE_MYQUICK} from ${_USE_CODE} packages"
@@ -8834,7 +8834,7 @@ _myquick_install_upgrade() {
       | sed "s/[\,']//g" 2>&1)
     if [ -x "${_isMyQuick}" ]; then
       if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
-        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_EIGHT}" ]; then
+        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_ONE}" ]; then
           _MYQUICK_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
@@ -8842,7 +8842,7 @@ _myquick_install_upgrade() {
           _install_myquick_deb
         fi
       else
-        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_FIVE}" ] || [ "${_MD_V}" != "${_DB_V}" ]; then
+        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_ONE}" ] || [ "${_MD_V}" != "${_DB_V}" ]; then
           _MYQUICK_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"

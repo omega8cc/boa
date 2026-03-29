@@ -384,7 +384,7 @@ _up_mode() {
 }
 
 _satellite_check_strict_php_cli() {
-  if [ -e "{_usEr}/tools/drush/drush.php" ]; then
+  if [ -e "${_usEr}/tools/drush/drush.php" ]; then
     _PHP_CLI=$(grep "/opt/php" ${_usEr}/tools/drush/drush.php 2>&1)
   else
     _PHP_CLI=
