@@ -1476,7 +1476,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/octopus" ] \
-    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/octopus)
     if (( _CNT > 0 )); then
       echo "The octopus is running!"
@@ -1488,7 +1488,7 @@ _update_agents() {
       if [ -e "${_optBin}/octopus" ]; then
         chmod 700 ${_optBin}/octopus
         chown root:root ${_optBin}/octopus
-        touch ${_pthLog}/octopus.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/octopus.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/octopus.old" ]; then
           mv -f ${_optBin}/octopus.old ${_optBin}/octopus

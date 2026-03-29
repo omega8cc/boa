@@ -784,15 +784,14 @@ _satellite_cnf() {
           if [ -x "/opt/php74/bin/php" ]; then
             _PHP_FPM_VERSION=7.4
           fi
-        else
-          _PHP_FPM_VERSION=8.4
         fi
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
-          ${_octCnf} &> /dev/null
-        wait
-        echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
-        echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
-        chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
+        if [ -n "${_PHP_FPM_VERSION}" ]; then
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
+            ${_octCnf} &> /dev/null
+          echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
+          echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
+          chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
+        fi
       fi
     fi
 
@@ -897,15 +896,14 @@ _satellite_cnf() {
           if [ -x "/opt/php74/bin/php" ]; then
             _PHP_CLI_VERSION=7.4
           fi
-        else
-          _PHP_CLI_VERSION=8.4
         fi
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
-          ${_octCnf} &> /dev/null
-        wait
-        echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
-        echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
-        chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
+        if [ -n "${_PHP_CLI_VERSION}" ]; then
+          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
+            ${_octCnf} &> /dev/null
+          echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
+          echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
+          chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
+        fi
       fi
     fi
 
