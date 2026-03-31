@@ -309,7 +309,7 @@ EOF
   # 1) File has a non-lo stanza with old name -> rename it.
   # 2) File exists but has only lo -> append the pinned stanza.
   # 3) File missing entirely -> write from scratch.
-  _CFG_IF="$(grep -m1 '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$')"
+  _CFG_IF="$(grep '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$' | head -n1)"
   if [ -n "${_CFG_IF}" ] && [ "${_CFG_IF}" != "${_PIN_NAME}" ]; then
     sed -i "s/${_CFG_IF}/${_PIN_NAME}/g" /etc/network/interfaces
     _msg "[init] pini ==> Updated /etc/network/interfaces: ${_CFG_IF} -> ${_PIN_NAME}" >> "${_logInt}"
