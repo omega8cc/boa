@@ -201,6 +201,10 @@ case "$1" in
   start|restart|force-reload)
     {
       echo "[$(date)] vmnetfix-failsafe: start"
+      if ip -4 route show default 2>/dev/null | grep -q '^default '; then
+        echo "[$(date)] vmnetfix-failsafe: default route exists; nothing to do"
+        exit 0
+      fi
 
       IFACE="$(ip -o link show up 2>/dev/null | awk -F': ' '$2!="lo" {print $2; exit}')"
       if [ -z "$IFACE" ]; then
@@ -225,22 +229,16 @@ iface $IFACE inet dhcp
 EOT
       fi
 
-      # Detect interface rename BEFORE checking for a default route.
-      # A stale default route may exist in the kernel even when the configured
-      # interface is wrong (e.g. after eudev replaces systemd-udev and predictable
-      # naming like ens6 reverts to eth0). We must fix the config first, then
-      # check/restore networking — not skip everything because a stale route exists.
+      # Detect interface rename: if the interface named in /etc/network/interfaces
+      # does not exist as a kernel interface but IFACE does, update the config.
+      # This handles vendors (e.g. IONOS) where systemd-udev provided predictable
+      # naming (ens6, enp3s0, etc.) that reverts to eth0 after systemd is purged.
       # Fully vendor-agnostic: we check physical existence, not naming conventions.
       CFG_IF="$(grep -m1 '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$')"
       if [ -n "$CFG_IF" ] && [ "$CFG_IF" != "$IFACE" ] && [ ! -e "/sys/class/net/$CFG_IF" ]; then
         echo "[$(date)] vmnetfix-failsafe: interface mismatch — config has $CFG_IF but kernel has $IFACE; updating /etc/network/interfaces"
         sed -i "s/$CFG_IF/$IFACE/g" /etc/network/interfaces
         echo "[$(date)] vmnetfix-failsafe: renamed $CFG_IF -> $IFACE in /etc/network/interfaces"
-      fi
-
-      if ip -4 route show default 2>/dev/null | grep -q '^default '; then
-        echo "[$(date)] vmnetfix-failsafe: default route exists; nothing to do"
-        exit 0
       fi
 
       if command -v ifup >/dev/null 2>&1; then
@@ -276,9 +274,9 @@ EOF
 ###
 ### Pin the current primary interface MAC -> eth0 via udev rule so that
 ### after eudev replaces systemd-udev (which provided predictable naming),
-### the interface keeps a known, stable name across reboots.
-### Also rewrites /etc/network/interfaces to use eth0 if needed.
-### Must be called while the interface is still live (before reboot).
+### the interface keeps a known stable name across reboots.
+### Also ensures /etc/network/interfaces references that stable name.
+### Must be called AFTER vmnetfix has written /etc/network/interfaces.
 ###
 _init_pin_iface_name() {
   _LIVE_IF="$(ip -o link show up 2>/dev/null | awk -F': ' '$2!="lo" {print $2; exit}')"
@@ -306,16 +304,40 @@ SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="${_LIVE_MAC}", NAME="${_PIN_NAM
 EOF
   _msg "[init] pini ==> Written ${_UDEV_RULE_FILE}" >> "${_logInt}"
 
-  # If /etc/network/interfaces references the old name, rewrite it now.
-  if [ -f "/etc/network/interfaces" ]; then
-    _CFG_IF="$(grep -m1 '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$')"
-    if [ -n "${_CFG_IF}" ] && [ "${_CFG_IF}" != "${_PIN_NAME}" ]; then
-      sed -i "s/${_CFG_IF}/${_PIN_NAME}/g" /etc/network/interfaces
-      _msg "[init] pini ==> Updated /etc/network/interfaces: ${_CFG_IF} -> ${_PIN_NAME}" >> "${_logInt}"
-    fi
+  # Ensure /etc/network/interfaces references the pinned name.
+  # Three cases:
+  # 1) File has a non-lo stanza with old name -> rename it.
+  # 2) File exists but has only lo -> append the pinned stanza.
+  # 3) File missing entirely -> write from scratch.
+  _CFG_IF="$(grep -m1 '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$')"
+  if [ -n "${_CFG_IF}" ] && [ "${_CFG_IF}" != "${_PIN_NAME}" ]; then
+    sed -i "s/${_CFG_IF}/${_PIN_NAME}/g" /etc/network/interfaces
+    _msg "[init] pini ==> Updated /etc/network/interfaces: ${_CFG_IF} -> ${_PIN_NAME}" >> "${_logInt}"
+  elif [ -z "${_CFG_IF}" ] && [ -f "/etc/network/interfaces" ]; then
+    cat >> /etc/network/interfaces <<EOF
+
+auto ${_PIN_NAME}
+allow-hotplug ${_PIN_NAME}
+iface ${_PIN_NAME} inet dhcp
+  dns-nameservers 1.1.1.1 8.8.8.8 9.9.9.9
+EOF
+    _msg "[init] pini ==> Appended ${_PIN_NAME} dhcp stanza to /etc/network/interfaces" >> "${_logInt}"
+  elif [ ! -f "/etc/network/interfaces" ]; then
+    cat > /etc/network/interfaces <<EOF
+auto lo
+iface lo inet loopback
+
+auto ${_PIN_NAME}
+allow-hotplug ${_PIN_NAME}
+iface ${_PIN_NAME} inet dhcp
+  dns-nameservers 1.1.1.1 8.8.8.8 9.9.9.9
+EOF
+    _msg "[init] pini ==> Wrote /etc/network/interfaces from scratch for ${_PIN_NAME}" >> "${_logInt}"
   fi
 }
 
+###
+### Variables
 ###
 _initFile="/root/.init-to-devuan-ctrl.cnf"
 _barCnf="/root/.barracuda.cnf"
@@ -444,23 +466,27 @@ _init_ninc() {
   # Usage: autoinit [minimal|full] [vanilla|classic|predictable]
   # Default: "vanilla". Persisted across reboots via cron argument.
 
-  # Enforce classic interface naming (eth0) only when the kernel already uses classic
-  # ethX naming. Do NOT auto-rename predictable names (ens*, enp*, eno*, etc.) based
-  # on NAT/private-IP detection alone — vendors like IONOS use private/NAT addressing
-  # with predictable interface names, and renaming them breaks networking after reboot
-  # because /etc/network/interfaces still references the original predictable name.
+  # Enforce classic interface naming (eth0) for network stability on NAT/cloud VMs
+  # This prevents ens3/eth0 confusion that can break networking after reboot
   if [ ! -e "/root/.ninc.selected.classic.cnf" ]; then
-    _CURRENT_IFACE="$(ip -o link show up 2>/dev/null | awk -F': ' '$2!="lo" {print $2; exit}')"
-    if echo "${_CURRENT_IFACE}" | grep -qE '^eth[0-9]+$'; then
-      _msg "[init] prep ==> Classic ethX interface (${_CURRENT_IFACE}) detected; enforcing classic eth0 naming..." >> "${_logInt}"
+    # Check if we're on a NAT/cloud setup (all IPs are private)
+    _HAS_PRIVATE_ONLY="YES"
+    for _TEST_IP in $(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.'); do
+      case "${_TEST_IP}" in
+        10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*) ;;
+        *) _HAS_PRIVATE_ONLY="NO"; break ;;
+      esac
+    done
+
+    # On NAT/cloud setups, enforce classic naming to prevent interface name changes
+    if [ "${_HAS_PRIVATE_ONLY}" = "YES" ]; then
+      _msg "[init] prep ==> NAT/cloud setup detected; enforcing classic eth0 naming..." >> "${_logInt}"
       touch /root/.ninc.selected.classic.cnf
       chattr +i /root/.ninc.selected.classic.cnf 2>/dev/null || true
       if [ -e "/root/.ignore.ifnames.cnf" ]; then
         chattr -i /root/.ignore.ifnames.cnf 2>/dev/null || true
         rm -f /root/.ignore.ifnames.cnf 2>/dev/null || true
       fi
-    else
-      _msg "[init] prep ==> Non-classic interface (${_CURRENT_IFACE:-unknown}) detected; leaving naming convention as-is..." >> "${_logInt}"
     fi
   fi
 
@@ -1268,11 +1294,7 @@ _init_offsystemd() {
 
   # Prepare classic networking before systemd purge (important on console-less VPSes).
   _msg "[init] offd ==> Preparing classic networking with vmnetfix before systemd purge..." >> "${_logInt}"
-  if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
-    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
-  else
-    "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
-  fi
+  "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
   wait
 
   _autoinit_devuan_protect_essential
@@ -1284,21 +1306,14 @@ _init_offsystemd() {
 
   # Ensure classic ifupdown networking and DNS after systemd purge.
   _msg "[init] offd ==> Ensuring classic networking with vmnetfix after systemd purge..." >> "${_logInt}"
-  if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
-    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
-  else
-    "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
-  fi
+  "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
   wait
+  _msg "[init] offd ==> Pinning interface name for post-systemd-purge boots..." >> "${_logInt}"
+  _init_pin_iface_name
 
   # Ensure SysV init will actually bring networking up on boot (Devuan goal).
   _init_sysv_net_repair
   _init_vmnetfix_failsafe_install
-
-  # Pin the current interface MAC -> eth0 via udev rule after systemd purge.
-  # Must run after vmnetfix so /etc/network/interfaces exists when we rewrite it.
-  _msg "[init] offd ==> Pinning interface name for post-systemd-purge boots..." >> "${_logInt}"
-  _init_pin_iface_name
 
   # Uninstall cloud-utils if not required
   [ -e "/root/.mode.selected.full.cnf" ] && _if_remove_cloud_utils
@@ -1415,11 +1430,7 @@ _init_cycle() {
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     _msg "[init] cycl ==> Update networking with vmnetfix early..." >> "${_logInt}"
-    if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
-      "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
-    else
-      "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
-    fi
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
     _msg "[init] cycl ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
@@ -1502,17 +1513,8 @@ _init_cycle() {
     _init_vmnetfix_failsafe_install
 
     _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
-    if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
-      "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
-    else
-      "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
-    fi
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
-
-    # Pin the current interface MAC -> eth0 via udev rule so that after eudev
-    # replaces systemd-udev predictable naming, the interface name is stable.
-    # Must run AFTER vmnetfix so /etc/network/interfaces already exists when
-    # we rewrite it. vmnetfix writes the file (if missing); we then fix the name.
     _msg "[init] cycl ==> Pinning interface name for post-eudev boots..." >> "${_logInt}"
     _init_pin_iface_name
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"

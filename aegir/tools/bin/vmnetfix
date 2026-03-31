@@ -708,22 +708,11 @@ _config_is_sane() {
   # 2a) cloud-init DHCP manages that IF, or
   # 2b) interfaces has matching static stanza (and for /32, has onlink helpers), or
   # 2c) NAT-only setup with working DHCP (default route exists).
-  # Also requires that the interface named in /etc/network/interfaces actually
-  # exists as a kernel interface — catches the eudev/systemd-udev rename case
-  # (e.g. ens6 -> eth0) before it causes a dead boot.
 
   _DEF_IF="$(_default_route_if)"; _GW="$(_default_gw_v4)"
   [ -n "${_DEF_IF}" ] || { _msg "No default IF -> not sane"; return 1; }
   [ -n "${_GW}" ]  || { _msg "No default GW -> not sane"; return 1; }
   _LIVE="$(_live_v4_cidr "${_DEF_IF}")"; [ -n "${_LIVE}" ] || { _msg "No live IPv4 -> not sane"; return 1; }
-
-  # Check that the interface named in /etc/network/interfaces exists in the kernel.
-  # If it does not, the config is stale (interface was renamed) and must be rewritten.
-  _CFG_IF="$(grep -m1 '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$')"
-  if [ -n "${_CFG_IF}" ] && [ ! -e "/sys/class/net/${_CFG_IF}" ]; then
-    _msg "Config names ${_CFG_IF} but /sys/class/net/${_CFG_IF} does not exist (interface renamed?) -> not sane"
-    return 1
-  fi
 
   # NAT-only scenario: if all IPs are private and DHCP is active with a default route, consider it sane
   if _is_nat_only_setup; then
