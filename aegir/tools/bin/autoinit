@@ -229,6 +229,18 @@ iface $IFACE inet dhcp
 EOT
       fi
 
+      # Detect interface rename: if the interface named in /etc/network/interfaces
+      # does not exist as a kernel interface but IFACE does, update the config.
+      # This handles vendors (e.g. IONOS) where systemd-udev provided predictable
+      # naming (ens6, enp3s0, etc.) that reverts to eth0 after systemd is purged.
+      # Fully vendor-agnostic: we check physical existence, not naming conventions.
+      CFG_IF="$(grep -m1 '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$')"
+      if [ -n "$CFG_IF" ] && [ "$CFG_IF" != "$IFACE" ] && [ ! -e "/sys/class/net/$CFG_IF" ]; then
+        echo "[$(date)] vmnetfix-failsafe: interface mismatch — config has $CFG_IF but kernel has $IFACE; updating /etc/network/interfaces"
+        sed -i "s/$CFG_IF/$IFACE/g" /etc/network/interfaces
+        echo "[$(date)] vmnetfix-failsafe: renamed $CFG_IF -> $IFACE in /etc/network/interfaces"
+      fi
+
       if command -v ifup >/dev/null 2>&1; then
         ifup -v "$IFACE" 2>&1 || true
       elif command -v dhclient >/dev/null 2>&1; then
