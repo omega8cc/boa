@@ -1217,7 +1217,11 @@ _init_offsystemd() {
 
   # Prepare classic networking before systemd purge (important on console-less VPSes).
   _msg "[init] offd ==> Preparing classic networking with vmnetfix before systemd purge..." >> "${_logInt}"
-  "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+  if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+  else
+    "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
+  fi
   wait
 
   _autoinit_devuan_protect_essential
@@ -1229,7 +1233,11 @@ _init_offsystemd() {
 
   # Ensure classic ifupdown networking and DNS after systemd purge.
   _msg "[init] offd ==> Ensuring classic networking with vmnetfix after systemd purge..." >> "${_logInt}"
-  "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+  if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+  else
+    "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
+  fi
   wait
 
   # Ensure SysV init will actually bring networking up on boot (Devuan goal).
@@ -1351,7 +1359,11 @@ _init_cycle() {
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     _msg "[init] cycl ==> Update networking with vmnetfix early..." >> "${_logInt}"
-    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+    if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
+      "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+    else
+      "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
+    fi
     wait
     _msg "[init] cycl ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
@@ -1434,7 +1446,11 @@ _init_cycle() {
     _init_vmnetfix_failsafe_install
 
     _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
-    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+    if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
+      "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+    else
+      "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
+    fi
     wait
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
