@@ -274,7 +274,48 @@ EOF
 
 
 ###
-### Variables
+### Pin the current primary interface MAC -> eth0 via udev rule so that
+### after eudev replaces systemd-udev (which provided predictable naming),
+### the interface keeps a known, stable name across reboots.
+### Also rewrites /etc/network/interfaces to use eth0 if needed.
+### Must be called while the interface is still live (before reboot).
+###
+_init_pin_iface_name() {
+  _LIVE_IF="$(ip -o link show up 2>/dev/null | awk -F': ' '$2!="lo" {print $2; exit}')"
+  if [ -z "${_LIVE_IF}" ]; then
+    _msg "[init] pini ==> No live interface found; skipping interface name pinning." >> "${_logInt}"
+    return 0
+  fi
+
+  _LIVE_MAC="$(ip link show dev "${_LIVE_IF}" 2>/dev/null | awk '/link\/ether/{print $2}')"
+  if [ -z "${_LIVE_MAC}" ]; then
+    _msg "[init] pini ==> No MAC found for ${_LIVE_IF}; skipping interface name pinning." >> "${_logInt}"
+    return 0
+  fi
+
+  _PIN_NAME="eth0"
+  _UDEV_RULE_FILE="/etc/udev/rules.d/70-persistent-net.rules"
+
+  _msg "[init] pini ==> Pinning ${_LIVE_IF} (MAC ${_LIVE_MAC}) -> ${_PIN_NAME} via udev rule..." >> "${_logInt}"
+  mkdir -p /etc/udev/rules.d
+  cat > "${_UDEV_RULE_FILE}" <<EOF
+# Pinned by autoinit: map MAC ${_LIVE_MAC} to ${_PIN_NAME}
+# This ensures a stable interface name after eudev replaces systemd-udev
+# (which provided predictable naming like ens6/enp3s0).
+SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="${_LIVE_MAC}", NAME="${_PIN_NAME}"
+EOF
+  _msg "[init] pini ==> Written ${_UDEV_RULE_FILE}" >> "${_logInt}"
+
+  # If /etc/network/interfaces references the old name, rewrite it now.
+  if [ -f "/etc/network/interfaces" ]; then
+    _CFG_IF="$(grep -m1 '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$')"
+    if [ -n "${_CFG_IF}" ] && [ "${_CFG_IF}" != "${_PIN_NAME}" ]; then
+      sed -i "s/${_CFG_IF}/${_PIN_NAME}/g" /etc/network/interfaces
+      _msg "[init] pini ==> Updated /etc/network/interfaces: ${_CFG_IF} -> ${_PIN_NAME}" >> "${_logInt}"
+    fi
+  fi
+}
+
 ###
 _initFile="/root/.init-to-devuan-ctrl.cnf"
 _barCnf="/root/.barracuda.cnf"
@@ -1454,6 +1495,12 @@ _init_cycle() {
 
     # Install minimal boot failsafe for console-less VPSes.
     _init_vmnetfix_failsafe_install
+
+    # Pin the current interface MAC -> eth0 via udev rule so that after eudev
+    # replaces systemd-udev predictable naming, the interface name is stable.
+    # Also rewrites /etc/network/interfaces to eth0 if it still names the old iface.
+    _msg "[init] cycl ==> Pinning interface name for post-eudev boots..." >> "${_logInt}"
+    _init_pin_iface_name
 
     _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
     if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
