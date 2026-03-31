@@ -201,10 +201,6 @@ case "$1" in
   start|restart|force-reload)
     {
       echo "[$(date)] vmnetfix-failsafe: start"
-      if ip -4 route show default 2>/dev/null | grep -q '^default '; then
-        echo "[$(date)] vmnetfix-failsafe: default route exists; nothing to do"
-        exit 0
-      fi
 
       IFACE="$(ip -o link show up 2>/dev/null | awk -F': ' '$2!="lo" {print $2; exit}')"
       if [ -z "$IFACE" ]; then
@@ -229,16 +225,22 @@ iface $IFACE inet dhcp
 EOT
       fi
 
-      # Detect interface rename: if the interface named in /etc/network/interfaces
-      # does not exist as a kernel interface but IFACE does, update the config.
-      # This handles vendors (e.g. IONOS) where systemd-udev provided predictable
-      # naming (ens6, enp3s0, etc.) that reverts to eth0 after systemd is purged.
+      # Detect interface rename BEFORE checking for a default route.
+      # A stale default route may exist in the kernel even when the configured
+      # interface is wrong (e.g. after eudev replaces systemd-udev and predictable
+      # naming like ens6 reverts to eth0). We must fix the config first, then
+      # check/restore networking — not skip everything because a stale route exists.
       # Fully vendor-agnostic: we check physical existence, not naming conventions.
       CFG_IF="$(grep -m1 '^auto ' /etc/network/interfaces 2>/dev/null | awk '{print $2}' | grep -v '^lo$')"
       if [ -n "$CFG_IF" ] && [ "$CFG_IF" != "$IFACE" ] && [ ! -e "/sys/class/net/$CFG_IF" ]; then
         echo "[$(date)] vmnetfix-failsafe: interface mismatch — config has $CFG_IF but kernel has $IFACE; updating /etc/network/interfaces"
         sed -i "s/$CFG_IF/$IFACE/g" /etc/network/interfaces
         echo "[$(date)] vmnetfix-failsafe: renamed $CFG_IF -> $IFACE in /etc/network/interfaces"
+      fi
+
+      if ip -4 route show default 2>/dev/null | grep -q '^default '; then
+        echo "[$(date)] vmnetfix-failsafe: default route exists; nothing to do"
+        exit 0
       fi
 
       if command -v ifup >/dev/null 2>&1; then
