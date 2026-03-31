@@ -591,6 +591,15 @@ _write_interfaces_all() {
           echo "iface ${_IF} inet dhcp"
           # DNS is enforced via /etc/resolv.conf by vmnetfix, but keeping this hint is harmless.
           [ -n "${_DNS}" ] && { printf '  dns-nameservers'; for _NS in ${_DNS}; do printf ' %s' "${_NS}"; done; echo; }
+          # For /32 with off-link GW, dhclient won't add the host route needed to
+          # reach the gateway. Add explicit onlink helpers so routing works after reboot.
+          _PFX="$(_cidr_prefix "${_PRIMARY}")"
+          if [ "${_PFX}" = "32" ] && [ -n "${_GW}" ]; then
+            echo "  post-up ip route add ${_GW} dev ${_IF} || true"
+            echo "  post-up ip route replace default via ${_GW} dev ${_IF} onlink || true"
+            echo "  pre-down ip route del default via ${_GW} dev ${_IF} || true"
+            echo "  pre-down ip route del ${_GW} dev ${_IF} || true"
+          fi
         else
           echo "iface ${_IF} inet static"
           echo "  address ${_PRIMARY}"
