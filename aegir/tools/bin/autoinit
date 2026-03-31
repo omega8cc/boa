@@ -1295,6 +1295,11 @@ _init_offsystemd() {
   _init_sysv_net_repair
   _init_vmnetfix_failsafe_install
 
+  # Pin the current interface MAC -> eth0 via udev rule after systemd purge.
+  # Must run after vmnetfix so /etc/network/interfaces exists when we rewrite it.
+  _msg "[init] offd ==> Pinning interface name for post-systemd-purge boots..." >> "${_logInt}"
+  _init_pin_iface_name
+
   # Uninstall cloud-utils if not required
   [ -e "/root/.mode.selected.full.cnf" ] && _if_remove_cloud_utils
 
@@ -1496,12 +1501,6 @@ _init_cycle() {
     # Install minimal boot failsafe for console-less VPSes.
     _init_vmnetfix_failsafe_install
 
-    # Pin the current interface MAC -> eth0 via udev rule so that after eudev
-    # replaces systemd-udev predictable naming, the interface name is stable.
-    # Also rewrites /etc/network/interfaces to eth0 if it still names the old iface.
-    _msg "[init] cycl ==> Pinning interface name for post-eudev boots..." >> "${_logInt}"
-    _init_pin_iface_name
-
     _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
     if [ -e "/root/.use-vmnetfix-full.cnf" ]; then
       "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
@@ -1509,6 +1508,13 @@ _init_cycle() {
       "${_VMNETFIX_BIN}" --mode auto --disable-cloud-init >> "${_logSlt}"
     fi
     wait
+
+    # Pin the current interface MAC -> eth0 via udev rule so that after eudev
+    # replaces systemd-udev predictable naming, the interface name is stable.
+    # Must run AFTER vmnetfix so /etc/network/interfaces already exists when
+    # we rewrite it. vmnetfix writes the file (if missing); we then fix the name.
+    _msg "[init] cycl ==> Pinning interface name for post-eudev boots..." >> "${_logInt}"
+    _init_pin_iface_name
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
