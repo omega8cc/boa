@@ -49,11 +49,11 @@ noglob_clear() {
 
 # Generate json.sh path matching string
 json_path() {
-	if [ ! "${1}" = "-p" ]; then
-		printf '"%s"' "${1}"
-	else
-		printf '%s' "${2}"
-	fi
+  if [ ! "${1}" = "-p" ]; then
+    printf '"%s"' "${1}"
+  else
+    printf '%s' "${2}"
+  fi
 }
 
 # Get string value from json dictionary
@@ -250,6 +250,43 @@ ip_to_ptr() {
   else
     printf "%s.in-addr.arpa" "$(printf "%s" "${ip}" | awk -F. '{print $4"."$3"." $2"."$1}')"
   fi
+}
+
+# IPv6 conversion helpers
+ipv6_expand() {
+  # expand double colons until 8 segments exist
+  # replace remaining double colon with single colon
+  # pad all segments to 4 characters with leading zeros
+  _sed \
+    -e ':addsegs; /^([^:]*:){0,7}[^:]*$/{ s/::/:0000::/g; t addsegs; }' \
+    -e 's/::/:/' \
+    -e ':padsegs; s/(:|^)([^:]{0,3})(:|$)/\10\2\3/g; t padsegs;'
+}
+
+ipv6_shorten() {
+  # remove leading zeros from all segments
+  # find the longest matching run of zeros and replace with double colons (this could be prettier..)
+  _sed \
+    -e ':unpadsegs;/(^|:)0/{s/(^|:)0([^:])/\1\2/g;t unpadsegs;}' \
+    -e '/(^|:)(0(:|$)){8}/{ s/(^|:)(0(:|$)){8}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){7}/{ s/(^|:)(0(:|$)){7}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){6}/{ s/(^|:)(0(:|$)){6}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){5}/{ s/(^|:)(0(:|$)){5}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){4}/{ s/(^|:)(0(:|$)){4}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){3}/{ s/(^|:)(0(:|$)){3}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){2}/{ s/(^|:)(0(:|$)){2}/::/; t end; }' \
+    -e ':end'
+}
+
+ipv6_normalize() {
+  for domain in $(cat); do
+    if [[ "${domain}" =~ : ]]; then
+      ipv6_expand <<< "${domain}" | ipv6_shorten
+    else
+      printf "%s" "${domain}"
+    fi
+    printf " "
+  done | sed -e 's/ $//'
 }
 
 # Create (identifiable) temporary files
@@ -1141,11 +1178,15 @@ sign_csr() {
     # Request new order and store authorization URIs
     local challenge_identifiers=""
     for altname in ${altnames}; do
-    if [[ "${altname}" =~ ^ip: ]]; then
-      challenge_identifiers+="$(printf '{"type": "ip", "value": "%s"}, ' "${altname:3}")"
-    else
-       challenge_identifiers+="$(printf '{"type": "dns", "value": "%s"}, ' "${altname}")"
-    fi
+      if [[ "${altname}" =~ ^ip: ]]; then
+        ip="${altname:3}"
+        if [[ "${ip}" =~ : ]]; then
+          ip="$(ipv6_normalize <<< "${ip}")"
+        fi
+        challenge_identifiers+="$(printf '{"type": "ip", "value": "%s"}, ' "${ip}")"
+      else
+        challenge_identifiers+="$(printf '{"type": "dns", "value": "%s"}, ' "${altname}")"
+      fi
     done
     challenge_identifiers="[${challenge_identifiers%, }]"
 
@@ -1892,8 +1933,8 @@ command_sign_domains() {
       ); do
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2- | tr -d "'")"
-	# All settings that are allowed here should also be stored and
-	# restored in store_configvars() and reset_configvars()
+        # All settings that are allowed here should also be stored and
+        # restored in store_configvars() and reset_configvars()
         case "${config_var}" in
           KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT|KEEP_GOING)
             echo "   + ${config_var} = ${config_value}"
@@ -1931,8 +1972,8 @@ command_sign_domains() {
     if [[ -e "${cert}" && "${force_renew}" = "no" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ip://g' | _sed 's/ $//' | _sed 's/^ //')"
+      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | awk '{print tolower($0)}' | ipv6_normalize)"
+      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ip://g' | _sed 's/ $//' | _sed 's/^ //' | ipv6_normalize)"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
@@ -1952,7 +1993,7 @@ command_sign_domains() {
       valid="$("${OPENSSL}" x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
       printf " + Valid till %s " "${valid}"
-      if ("${OPENSSL}" x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}" 2>&1 | grep -q "will not expire"); then
+      if ("${OPENSSL}" x509 -checkend $((RENEW_DAYS * 86400)) -in "${cert}" 2>&1 | grep -q "will not expire"); then
         printf "(Longer than %d days). " "${RENEW_DAYS}"
         if [[ "${force_renew}" = "yes" ]]; then
           echo "Ignoring because renew was forced!"
