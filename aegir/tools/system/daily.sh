@@ -2339,11 +2339,13 @@ _le_ssl_check_update() {
 }
 
 _if_gen_goaccess() {
-  _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  _PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  _PrTestPhantom=$(grep "PHANTOM" /root/.${_HM_U}.octopus.cnf 2>&1)
+  _PrTestUltra=$(grep "ULTRA" /root/.${_HM_U}.octopus.cnf 2>&1)
+  _PrTestMonster=$(grep "MONSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
-  _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
-  _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
-  if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+  if [[ "${_PrTestPower}" =~ "POWER" ]] \
+    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
