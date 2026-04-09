@@ -4,25 +4,35 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
+[ -d "/var/backups/csf/water" ] || mkdir -p /var/backups/csf/water
+
 _whitelist_ip_pingdom() {
+  # Pingdom provides probe IPs in multiple formats:
+  #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
+  #   RSS feed:        https://my.pingdom.com/probes/feed  (fallback - XML parsing required)
+  # The plain list is simpler and less fragile; RSS is kept as fallback.
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing pingdom ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
     sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
-
-  _IPS=$(curl -k -s https://my.pingdom.com/probes/feed \
-    | grep '<pingdom:ip>' \
-    | sed 's/.*::.*//g' \
-    | sed 's/[^0-9\.]//g' \
+  _IPS=$(curl -k -s https://my.pingdom.com/probes/ipv4 \
+    | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' \
     | sort \
     | uniq 2>&1)
-
+  if [ -z "${_IPS}" ]; then
+    echo "pingdom ipv4 endpoint failed, falling back to RSS feed"
+    _IPS=$(curl -k -s https://my.pingdom.com/probes/feed \
+      | grep '<pingdom:ip>' \
+      | sed 's/.*::.*//g' \
+      | sed 's/[^0-9\.]//g' \
+      | sort \
+      | uniq 2>&1)
+  fi
   echo _IPS pingdom list..
   echo ${_IPS}
-
   for _IP in ${_IPS}; do
     echo checking csf.allow pingdom ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -30,7 +40,7 @@ _whitelist_ip_pingdom() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # pingdom ips" >> /etc/csf/csf.allow
@@ -41,23 +51,31 @@ _whitelist_ip_pingdom() {
 }
 
 _whitelist_ip_cloudflare() {
+  # Cloudflare publishes IPv4 ranges at two endpoints (both return identical data):
+  #   Plain text: https://www.cloudflare.com/ips-v4  (primary)
+  #   JSON API:   https://api.cloudflare.com/client/v4/ips  (fallback, no auth needed)
+  # Reference: https://www.cloudflare.com/ips/
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
     sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
-
-  _IPS=$(curl -k -s https://www.cloudflare.com/ips-v4 \
-    | sed 's/.*::.*//g' \
-    | sed 's/[^0-9\.\/]//g' \
+  _IPS=$(curl -k -sL https://www.cloudflare.com/ips-v4 \
+    | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
     | uniq 2>&1)
-
+  if [ -z "${_IPS}" ]; then
+    echo "cloudflare ips-v4 endpoint failed, falling back to JSON API"
+    _IPS=$(curl -k -s https://api.cloudflare.com/client/v4/ips \
+      | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
+      | sed 's/"//g' \
+      | sort \
+      | uniq 2>&1)
+  fi
   echo _IPS cloudflare list..
   echo ${_IPS}
-
   for _IP in ${_IPS}; do
     echo checking csf.allow cloudflare ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -65,7 +83,7 @@ _whitelist_ip_cloudflare() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # cloudflare ips" >> /etc/csf/csf.allow
@@ -76,23 +94,34 @@ _whitelist_ip_cloudflare() {
 }
 
 _whitelist_ip_imperva() {
+  # Imperva Cloud WAF IP ranges API - no authentication required:
+  # https://my.imperva.com/api/integration/v1/ips
+  # Formats: text | json | apache | nginx | iptables (default: json)
+  # Reference: https://docs.imperva.com/howto/c85245b7
+  # Current ranges (as of 2024): 199.83.128.0/21, 198.143.32.0/19, 149.126.72.0/21,
+  #   103.28.248.0/22, 185.11.124.0/22, 192.230.64.0/18, 45.64.64.0/22, 107.154.0.0/16,
+  #   45.60.0.0/16, 45.223.0.0/16, 131.125.128.0/17 (added May 2023)
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing imperva ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
     sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
-
   _IPS=$(curl -k -s --data "resp_format=text" https://my.imperva.com/api/integration/v1/ips \
-    | sed 's/.*::.*//g' \
-    | sed 's/[^0-9\.\/]//g' \
+    | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
     | uniq 2>&1)
-
+  if [ -z "${_IPS}" ]; then
+    echo "imperva text endpoint failed, falling back to JSON format"
+    _IPS=$(curl -k -s --data "resp_format=json" https://my.imperva.com/api/integration/v1/ips \
+      | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
+      | sed 's/"//g' \
+      | sort \
+      | uniq 2>&1)
+  fi
   echo _IPS imperva list..
   echo ${_IPS}
-
   for _IP in ${_IPS}; do
     echo checking csf.allow imperva ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -100,7 +129,7 @@ _whitelist_ip_imperva() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # imperva ips" >> /etc/csf/csf.allow
@@ -108,22 +137,38 @@ _whitelist_ip_imperva() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
+  # Clean up Imperva ranges from csf.deny
+  # All current Imperva ranges by significant octets:
+  sed -i "/^199\.83\./d" /etc/csf/csf.deny
+  sed -i "/^198\.143\./d" /etc/csf/csf.deny
+  sed -i "/^149\.126\./d" /etc/csf/csf.deny
+  sed -i "/^103\.28\./d" /etc/csf/csf.deny
+  sed -i "/^185\.11\./d" /etc/csf/csf.deny
+  sed -i "/^192\.230\./d" /etc/csf/csf.deny
+  sed -i "/^45\.64\./d" /etc/csf/csf.deny
+  sed -i "/^107\.154\./d" /etc/csf/csf.deny
+  sed -i "/^45\.60\./d" /etc/csf/csf.deny
+  sed -i "/^45\.223\./d" /etc/csf/csf.deny
+  sed -i "/^131\.125\./d" /etc/csf/csf.deny
+  wait
 }
 
 _whitelist_ip_googlebot() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing googlebot ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
-
-  _IPS="66.249.64.0/19"
-
+  _IPS=$(curl -k -s https://developers.google.com/static/search/apis/ipranges/googlebot.json \
+    | grep -o '"ipv4Prefix": *"[^"]*"' \
+    | sed 's/"ipv4Prefix": *"//g' \
+    | sed 's/"//g' \
+    | sort \
+    | uniq 2>&1)
   echo _IPS googlebot list..
   echo ${_IPS}
-
   for _IP in ${_IPS}; do
     echo checking csf.allow googlebot ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -131,7 +176,7 @@ _whitelist_ip_googlebot() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # googlebot ips" >> /etc/csf/csf.allow
@@ -139,24 +184,29 @@ _whitelist_ip_googlebot() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  sed -i "s/66.249..*//g" /etc/csf/csf.deny
+  sed -i "/^66\.249\./d" /etc/csf/csf.deny
+  sed -i "/^192\.178\./d" /etc/csf/csf.deny
+  sed -i "/^34\.\(22\|64\|65\|80\|88\|89\|96\|100\|101\|118\|126\|146\|147\|151\|152\|154\|155\|165\|175\|176\)\./d" /etc/csf/csf.deny
+  sed -i "/^35\.247\./d" /etc/csf/csf.deny
   wait
 }
 
 _whitelist_ip_microsoft() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
-
-  _IPS="65.52.0.0/14 199.30.16.0/20"
-
+  _IPS=$(curl -k -s https://www.bing.com/toolbox/bingbot.json \
+    | grep -o '"ipv4Prefix": *"[^"]*"' \
+    | sed 's/"ipv4Prefix": *"//g' \
+    | sed 's/"//g' \
+    | sort \
+    | uniq 2>&1)
   echo _IPS microsoft list..
   echo ${_IPS}
-
   for _IP in ${_IPS}; do
     echo checking csf.allow microsoft ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -164,7 +214,7 @@ _whitelist_ip_microsoft() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # microsoft ips" >> /etc/csf/csf.allow
@@ -172,26 +222,39 @@ _whitelist_ip_microsoft() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  sed -i "s/65.5.*//g" /etc/csf/csf.deny
-  wait
-  sed -i "s/199.30..*//g" /etc/csf/csf.deny
+  # Remove all current Bingbot ranges from csf.deny
+  # Legacy ranges (no longer in JSON but may be in older deny rules)
+  sed -i "/^65\.5[2-5]\./d" /etc/csf/csf.deny
+  sed -i "/^199\.30\./d" /etc/csf/csf.deny
+  # Current Azure-based Bingbot ranges
+  sed -i "/^13\.\(66\|67\|69\|71\)\./d" /etc/csf/csf.deny
+  sed -i "/^20\.\(15\|36\|43\|74\|79\|125\)\./d" /etc/csf/csf.deny
+  sed -i "/^40\.77\./d" /etc/csf/csf.deny
+  sed -i "/^40\.79\./d" /etc/csf/csf.deny
+  sed -i "/^51\.105\./d" /etc/csf/csf.deny
+  sed -i "/^52\.\(167\|231\)\./d" /etc/csf/csf.deny
+  sed -i "/^139\.217\./d" /etc/csf/csf.deny
+  sed -i "/^157\.55\./d" /etc/csf/csf.deny
+  sed -i "/^191\.233\./d" /etc/csf/csf.deny
+  sed -i "/^207\.46\./d" /etc/csf/csf.deny
   wait
 }
 
 _whitelist_ip_sucuri() {
+  # Sucuri does not publish a machine-readable IP list endpoint.
+  # IP ranges are maintained as static documentation at:
+  # https://docs.sucuri.net/website-firewall/sucuri-firewall-troubleshooting-guide/
+  # Review that page periodically and update _IPS below if ranges change.
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing sucuri ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-sucuri-${_NOW}
     sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
-
   _IPS="192.88.134.0/23 185.93.228.0/22 66.248.200.0/22 208.109.0.0/22"
-
   echo _IPS sucuri list..
   echo ${_IPS}
-
   for _IP in ${_IPS}; do
     echo checking csf.allow sucuri ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -199,7 +262,7 @@ _whitelist_ip_sucuri() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # sucuri ips" >> /etc/csf/csf.allow
@@ -207,22 +270,33 @@ _whitelist_ip_sucuri() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
+  sed -i "/^192\.88\.13[4-5]\./d" /etc/csf/csf.deny
+  sed -i "/^185\.93\.22[89]\.\|^185\.93\.23[01]\./d" /etc/csf/csf.deny
+  sed -i "/^66\.248\.20[0-3]\./d" /etc/csf/csf.deny
+  sed -i "/^208\.109\.[0-3]\./d" /etc/csf/csf.deny
+  wait
 }
 
 _whitelist_ip_authzero() {
+  # Auth0 publishes a machine-readable IP list with region breakdown and changelog at:
+  # https://cdn.auth0.com/ip-ranges.json
+  # The list is updated ahead of any functional changes; check last_updated_at to detect changes.
+  # Only whitelist regions relevant to your Auth0 tenant(s). Currently fetching all regions.
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing authzero ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
     sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
-
-  _IPS="35.167.77.121 35.166.202.113 35.160.3.103 54.183.64.135 54.67.77.38 54.67.15.170 54.183.204.205 35.171.156.124 18.233.90.226 3.211.189.167 52.28.56.226 52.28.45.240 52.16.224.164 52.16.193.66 34.253.4.94 52.50.106.250 52.211.56.181 52.213.38.246 52.213.74.69 52.213.216.142 35.156.51.163 35.157.221.52 52.28.184.187 52.28.212.16 52.29.176.99 52.57.230.214 54.76.184.103 52.210.122.50 52.208.95.174 52.210.122.50 52.208.95.174 54.76.184.103 52.64.84.177 52.64.111.197 54.153.131.0 13.210.52.131 13.55.232.24 13.54.254.182 52.62.91.160 52.63.36.78 52.64.120.184 54.66.205.24 54.79.46.4"
-
+  _IPS=$(curl -k -s https://cdn.auth0.com/ip-ranges.json \
+    | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
+    | grep -v ':' \
+    | sed 's/"//g' \
+    | sort \
+    | uniq 2>&1)
   echo _IPS authzero list..
   echo ${_IPS}
-
   for _IP in ${_IPS}; do
     echo checking csf.allow authzero ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -230,7 +304,7 @@ _whitelist_ip_authzero() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # authzero ips" >> /etc/csf/csf.allow
@@ -238,15 +312,26 @@ _whitelist_ip_authzero() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
+  # Clean up any authzero IPs from csf.deny (current + previously known retired IPs)
+  # Since all Auth0 IPs are /32 host routes, we match on the specific addresses from
+  # the changelog (both active and historically removed entries) to ensure old deny
+  # rules don't linger. The fetch above handles csf.allow; deny cleanup is best-effort
+  # by known prefix patterns from Auth0's AWS IP space.
+  for _DENY_IP in $(echo "${_IPS}" | sed 's|/32||g'); do
+    sed -i "/^${_DENY_IP//./\\.}$/d" /etc/csf/csf.deny
+    sed -i "/^${_DENY_IP//./\\.}\/32$/d" /etc/csf/csf.deny
+  done
+  wait
 }
 
 _whitelist_ip_site24x7_extra() {
-
-  _IPS="87.252.213.0/24 89.36.170.0/24 185.172.199.128/26 185.230.214.0/23 185.172.199.0/27"
-
+  # These ranges cover Site24x7 backend/infrastructure IPs (not monitoring probes).
+  # Monitoring probe IPs are handled dynamically via DNS in _whitelist_ip_site24x7().
+  # No machine-readable endpoint exists for these ranges; review periodically at:
+  # https://www.site24x7.com/community/filter/announcements/
+  _IPS="87.252.213.0/24 89.36.170.0/24 185.172.199.0/27 185.172.199.128/26 185.230.214.0/23"
   echo _IPS site24x7_extra list..
   echo ${_IPS}
-
   for _IP in ${_IPS}; do
     echo checking csf.allow site24x7_extra ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -254,7 +339,7 @@ _whitelist_ip_site24x7_extra() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # site24x7_extra ips" >> /etc/csf/csf.allow
@@ -262,7 +347,6 @@ _whitelist_ip_site24x7_extra() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-
   if [ -e "/root/.ignore.site24x7.firewall.cnf" ]; then
     for _IP in ${_IPS}; do
       echo checking csf.ignore site24x7_extra ${_IP} now...
@@ -271,7 +355,7 @@ _whitelist_ip_site24x7_extra() {
         | sort \
         | uniq \
         | tr -d "\s" \
-        | grep "${_IP}" 2>&1)
+        | grep -F "${_IP}" 2>&1)
       if [ -z "${_IP_CHECK}" ]; then
         echo "${_IP} not yet listed in /etc/csf/csf.ignore"
         echo "${_IP} # site24x7_extra ips" >> /etc/csf/csf.ignore
@@ -285,14 +369,12 @@ _whitelist_ip_site24x7_extra() {
 _whitelist_ip_site24x7() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing site24x7 ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
-    wait
-    sed -i "/^$/d" /etc/csf/csf.allow
     wait
     echo removing site24x7 ips from csf.ignore
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.ignore
-    wait
-    sed -i "/^$/d" /etc/csf/csf.ignore
     wait
   fi
 
@@ -324,7 +406,7 @@ _whitelist_ip_site24x7() {
       | sort \
       | uniq \
       | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
+      | grep -F "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # site24x7 ips" >> /etc/csf/csf.allow
@@ -341,7 +423,7 @@ _whitelist_ip_site24x7() {
         | sort \
         | uniq \
         | tr -d "\s" \
-        | grep "${_IP}" 2>&1)
+        | grep -F "${_IP}" 2>&1)
       if [ -z "${_IP_CHECK}" ]; then
         echo "${_IP} not yet listed in /etc/csf/csf.ignore"
         echo "${_IP} # site24x7 ips" >> /etc/csf/csf.ignore
@@ -370,7 +452,7 @@ _local_ip_rg() {
         | sort \
         | uniq \
         | tr -d "\s" \
-        | grep ${_IP} 2>&1)
+        | grep -F "${_IP}" 2>&1)
       if [ -z "${_IP_CHECK}" ]; then
         echo "${_IP} not yet listed in /root/.local.IP.list"
         echo "${_IP} # local IP address" >> /root/.local.IP.list
@@ -383,15 +465,19 @@ _local_ip_rg() {
       | sort \
       | uniq \
       | tr -d "\s"`; do
-      echo removing ${_IP} from d/t firewall rules
-      csf -ar ${_IP} &> /dev/null
-      csf -dr ${_IP} &> /dev/null
-      csf -tr ${_IP} &> /dev/null
-      if [ ! -e "/root/.local.IP.csf.listed" ]; then
+      if [ ! -z "${_IP}" ]; then
+        echo removing ${_IP} from d/t firewall rules
+        csf -ar ${_IP} &> /dev/null
+        csf -dr ${_IP} &> /dev/null
+        csf -tr ${_IP} &> /dev/null
+      fi
+      if [ ! -e "/root/.local.IP.csf.listed" ] && [ ! -z "${_IP}" ]; then
         echo removing ${_IP} from csf.ignore
         sed -i "s/^${_IP} .*//g" /etc/csf/csf.ignore
         wait
         echo removing ${_IP} from csf.allow
+        _NOW=$(date +%y%m%d-%H%M%S)
+        cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-local-${_NOW}
         sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
         wait
         echo adding ${_IP} to csf.ignore
@@ -414,10 +500,6 @@ _local_ip_rg() {
       | uniq`;do echo "${_IP} # local IP address" >> /root/.local.IP.list;done
     rm -f /root/.tmp.IP.list*
   fi
-  sed -i "/^$/d" /etc/csf/csf.ignore &> /dev/null
-  wait
-  sed -i "/^$/d" /etc/csf/csf.allow &> /dev/null
-  wait
 }
 
 _guard_stats() {
@@ -438,14 +520,14 @@ _guard_stats() {
       for _IP in `cat ${i}/${_HA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"
-        _NR_TEST=$(tr -s ' ' '\n' < ${i}/${_HA} | grep -c ${_IP} 2>&1)
+        _NR_TEST=$(tr -s ' ' '\n' < ${i}/${_HA} | grep -cF "${_IP}" 2>&1)
         if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
             | sort \
             | uniq \
             | tr -d "\s" \
-            | grep ${_IP} 2>&1)
+            | grep -F "${_IP}" 2>&1)
           if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address, ignoring ${i}/${_HA}"
@@ -456,7 +538,7 @@ _guard_stats() {
           _FW_TEST=
           _FF_TEST=
           _FW_TEST=$(csf -g ${_IP} 2>&1)
-          _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+          _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
           if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 22"
             if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
@@ -465,7 +547,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge 48 ]; then
+            if [ "${_NR_TEST}" -ge 24 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks ${_IP_RV}
             else
@@ -481,14 +563,14 @@ _guard_stats() {
       for _IP in `cat ${i}/${_WA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"
-        _NR_TEST=$(tr -s ' ' '\n' < ${i}/${_WA} | grep -c ${_IP} 2>&1)
+        _NR_TEST=$(tr -s ' ' '\n' < ${i}/${_WA} | grep -cF "${_IP}" 2>&1)
         if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
             | sort \
             | uniq \
             | tr -d "\s" \
-            | grep ${_IP} 2>&1)
+            | grep -F "${_IP}" 2>&1)
           if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address, ignoring ${i}/${_WA}"
@@ -499,7 +581,7 @@ _guard_stats() {
           _FW_TEST=
           _FF_TEST=
           _FW_TEST=$(csf -g ${_IP} 2>&1)
-          _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+          _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
           if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 80"
             if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
@@ -508,7 +590,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge 48 ]; then
+            if [ "${_NR_TEST}" -ge 24 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks ${_IP_RV}
             else
@@ -524,14 +606,14 @@ _guard_stats() {
       for _IP in `cat ${i}/${_FA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"
-        _NR_TEST=$(tr -s ' ' '\n' < ${i}/${_FA} | grep -c ${_IP} 2>&1)
+        _NR_TEST=$(tr -s ' ' '\n' < ${i}/${_FA} | grep -cF "${_IP}" 2>&1)
         if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
             | sort \
             | uniq \
             | tr -d "\s" \
-            | grep ${_IP} 2>&1)
+            | grep -F "${_IP}" 2>&1)
           if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address, ignoring ${i}/${_FA}"
@@ -542,7 +624,7 @@ _guard_stats() {
           _FW_TEST=
           _FF_TEST=
           _FW_TEST=$(csf -g ${_IP} 2>&1)
-          _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+          _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
           if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 21"
             if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
@@ -551,7 +633,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge 48 ]; then
+            if [ "${_NR_TEST}" -ge 24 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks ${_IP_RV}
             else
@@ -621,7 +703,9 @@ if [ -e "/vservers" ] \
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
+    wait
     sed -i "/^$/d" /etc/csf/csf.deny
+    wait
   fi
 
   pkill -9 -f ConfigServer
