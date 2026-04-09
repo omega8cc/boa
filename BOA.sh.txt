@@ -2454,14 +2454,14 @@ _update_agents() {
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${_pthLog}/guest-water.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/guest-water.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/guest-water.sh" \
       -o /var/xdrago/guest-water.sh
     if [ -e "/var/xdrago/guest-water.sh" ]; then
       chmod 700 /var/xdrago/guest-water.sh
       chown root:root /var/xdrago/guest-water.sh
-      touch ${_pthLog}/guest-water.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/guest-water.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
     fi
