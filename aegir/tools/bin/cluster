@@ -720,7 +720,7 @@ _if_firewall_update() {
     curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
     curl ${_crlGet} "${_urlHmr}/tools/host/host-water.sh"  -o host-water.sh
     curl ${_crlGet} "${_urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
-    curl ${_crlGet} "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf
+    curl ${_crlGet} "http://${_USE_MIR}/cluster/csf.conf"  -o csf.conf
     cp -af ${_WFC}/sysctl.conf   /etc/sysctl.conf
     cp -af ${_WFC}/host-water.sh /opt/water.sh
     cp -af ${_WFC}/host-fire.sh  /opt/fire.sh
