@@ -496,6 +496,32 @@ _fix_user_register_protection_with_vSet() {
   _fix_site_readonlymode
 }
 
+_fix_llms_txt() {
+  find ${_Dir}/files/llms.txt -mtime +6 -exec rm -f {} \; &> /dev/null
+  if [ ! -e "${_Dir}/files/llms.txt" ] \
+    && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
+    curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+      -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
+      -o ${_Dir}/files/llms.txt
+    if [ -e "${_Dir}/files/llms.txt" ]; then
+      echo >> ${_Dir}/files/llms.txt
+    fi
+  fi
+  _VAR_IF_PRESENT=
+  if [ -f "${_Dir}/files/llms.txt" ]; then
+    _VAR_IF_PRESENT=$(grep "##" ${_Dir}/files/llms.txt 2>&1)
+  fi
+  if [[ ! "${_VAR_IF_PRESENT}" =~ "##" ]]; then
+    rm -f ${_Dir}/files/llms.txt
+  else
+    chown ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
+    chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+    if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
+      rm -f ${_Plr}/llms.txt
+    fi
+  fi
+}
+
 _fix_robots_txt() {
   find ${_Dir}/files/robots.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${_Dir}/files/robots.txt" ] \
@@ -2453,6 +2479,7 @@ _daily_process() {
                   _fix_modules
                 #fi
                 _fix_robots_txt
+                _fix_llms_txt
               fi
               _le_ssl_check_update
               if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${_usEr}/static/control/goaccess/${_Dom}.info" ]; then
