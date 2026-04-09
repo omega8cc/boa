@@ -3159,7 +3159,7 @@ _daily_action() {
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         _le_hm_ssl_check_update ${_HM_U}
-        if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${_usEr}/static/control/goaccess/ALL.info" ]; then
+        if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "/root/.goaccess.all.cnf" ]; then
           _if_gen_goaccess "ALL"
         fi
         echo "Done for ${_usEr}"
