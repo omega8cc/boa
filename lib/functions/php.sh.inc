@@ -142,6 +142,22 @@ _fix_php_ini_mcrypt() {
 }
 
 #
+# Fix php.ini files to add imagick.so
+_fix_php_ini_imagick() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _fix_php_ini_imagick $1"
+  fi
+  if [ -e "${_THIS_FILE}" ]; then
+    _MCRYPT_INI_TEST=$(grep "^extension=imagick.so" ${_THIS_FILE} 2>&1)
+    if [[ "${_MCRYPT_INI_TEST}" =~ "extension=imagick.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=imagick.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to remove mcrypt.so
 _remove_php_ini_mcrypt() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -542,6 +558,7 @@ _apply_php_ini_fixes() {
   _fix_php_ini_ioncube "${e}"
   _remove_php_ini_suhosin "${e}"
   _fix_php_ini_yaml "${e}"
+  _fix_php_ini_imagick "${e}"
 }
 
 #
