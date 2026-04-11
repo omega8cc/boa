@@ -8746,11 +8746,6 @@ _install_myquick_deb() {
     _msg "PROC: _install_myquick_deb"
   fi
   if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
-    if [ "${_USE_CODE}" = "buster" ]; then
-      _USE_MYQUICK="${_MYQUICK_VRN_ONE}"
-    else
-      _USE_MYQUICK="${_MYQUICK_VRN_TWO}"
-    fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Installing MyQuick ${_USE_MYQUICK} from ${_USE_CODE} packages"
     fi
@@ -8787,6 +8782,11 @@ _myquick_install_upgrade() {
     _USE_CODE=buster
   else
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
+  fi
+  if [ "${_USE_CODE}" = "buster" ]; then
+    _USE_MYQUICK="${_MYQUICK_VRN_ONE}"
+  else
+    _USE_MYQUICK="${_MYQUICK_VRN_TWO}"
   fi
   if [ -e "/root/.install.myquick.src.info" ]; then
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
@@ -8834,18 +8834,18 @@ _myquick_install_upgrade() {
       | sed "s/[\,']//g" 2>&1)
     if [ -x "${_isMyQuick}" ]; then
       if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
-        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_ONE}" ]; then
+        if [ "${_MYQUICK_ITD}" != "${_USE_MYQUICK}" ]; then
           _MYQUICK_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+            _msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, deb upgrade required"
           fi
           _install_myquick_deb
         fi
       else
-        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_ONE}" ] || [ "${_MD_V}" != "${_DB_V}" ]; then
+        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_ONE}" ]; then
           _MYQUICK_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+            _msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, src upgrade required"
           fi
           _install_myquick_src
         fi
