@@ -234,7 +234,7 @@ _fix_php_ini_newrelic_all() {
     if [ -z "${_NEWRELIC_KEY}" ]; then
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
     fi
-    _PHP_V="84 83 82 81 80 74 73 72"
+    _PHP_V="85 84 83 82 81 80 74 73 72"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       _fix_php_ini_newrelic ${e}
@@ -2082,7 +2082,7 @@ _newrelic_update() {
       # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      NR_PHPLIST="/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
+      NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2094,6 +2094,11 @@ _newrelic_update() {
         _SYSTEM_ARCH="x32"
       fi
       _pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "${_PHP_EXT_DIR_85}" ] && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ] \
+        && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so" ]; then
+        ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so \
+          ${_PHP_EXT_DIR_85}/newrelic.so
+      fi
       if [ -e "${_PHP_EXT_DIR_84}" ] && [ ! -e "${_PHP_EXT_DIR_84}/newrelic.so" ] \
         && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP84_API}.so" ]; then
         ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP84_API}.so \
@@ -2188,6 +2193,14 @@ _if_install_php_newrelic() {
     _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
     _PHP_EXT_DIR_73="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
     _PHP_EXT_DIR_72="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
+    if [ -e "${_PHP_EXT_DIR_85}" ] \
+      && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ]; then
+      _MULTI_NR=YES
+    fi
+    if [ -e "${_PHP_EXT_DIR_84}" ] \
+      && [ ! -e "${_PHP_EXT_DIR_84}/newrelic.so" ]; then
+      _MULTI_NR=YES
+    fi
     if [ -e "${_PHP_EXT_DIR_83}" ] \
       && [ ! -e "${_PHP_EXT_DIR_83}/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -2267,7 +2280,7 @@ _if_install_php_newrelic() {
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       if [ "${_MULTI_NR}" = "YES" ]; then
         _msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
+        NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2279,6 +2292,11 @@ _if_install_php_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         _pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "${_PHP_EXT_DIR_85}" ] && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ] \
+          && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so" ]; then
+          ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so \
+            ${_PHP_EXT_DIR_85}/newrelic.so
+        fi
         if [ -e "${_PHP_EXT_DIR_84}" ] && [ ! -e "${_PHP_EXT_DIR_84}/newrelic.so" ] \
           && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP84_API}.so" ]; then
           ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP84_API}.so \
