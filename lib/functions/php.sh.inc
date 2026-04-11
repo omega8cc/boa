@@ -1022,7 +1022,7 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 85 ]; then
+  if [ "$1" != 86 ]; then
     _msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
     if [ "${_OS_CODE}" = "excalibur" ] \
       || [ "${_OS_CODE}" = "daedalus" ] \
@@ -1471,7 +1471,7 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 85 ]; then
+  if [ "$1" != 86 ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
       || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
