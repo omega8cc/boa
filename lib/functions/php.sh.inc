@@ -1303,15 +1303,7 @@ _php_extensions_update() {
         touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
       fi
     fi
-  elif [ "$1" = "72" ] \
-    || [ "$1" = "73" ] \
-    || [ "$1" = "74" ] \
-    || [ "$1" = "80" ] \
-    || [ "$1" = "81" ] \
-    || [ "$1" = "82" ] \
-    || [ "$1" = "83" ] \
-    || [ "$1" = "84" ] \
-    || [ "$1" = "85" ]; then
+  elif [ "$1" -gt 71 ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
       || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1704,11 +1696,7 @@ _install_php_multi() {
   ### patch -p1 < ${_bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
-  if [ "$1" = "56" ] \
-    || [ "$1" = "70" ] \
-    || [ "$1" = "71" ] \
-    || [ "$1" = "72" ] \
-    || [ "$1" = "73" ]; then
+  if [ "$1" -lt 74 ]; then
     _PHP_EXTRA="${_PHP_EXTRA}"
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
@@ -1731,11 +1719,7 @@ _install_php_multi() {
     _SSL_PATH="/usr/local/ssl"
     _SSL_LIB_PATH="${_SSL_PATH}/lib"
   fi
-  if [ "$1" = "56" ] \
-    || [ "$1" = "70" ] \
-    || [ "$1" = "71" ] \
-    || [ "$1" = "72" ] \
-    || [ "$1" = "73" ]; then
+  if [ "$1" -lt 74 ]; then
     if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
       || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
       || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
@@ -1826,7 +1810,7 @@ _install_php_multi() {
   fi
   if [ "${_OS_CODE}" != "jessie" ] \
     && [ "${_OS_CODE}" != "excalibur" ] \
-    && [ "$1" != 85 ] \
+    && [ "$1" -lt 85 ] \
     && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} \
@@ -1834,7 +1818,7 @@ _install_php_multi() {
                 --with-imap-ssl \
                 --with-kerberos"
   fi
-  if [ "$1" != 85 ]; then
+  if [ "$1" -lt 85 ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-pear --enable-opcache"
   fi
   if [ ! -z "${_PHP_EXTRA}" ]; then
