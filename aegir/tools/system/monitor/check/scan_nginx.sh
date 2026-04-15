@@ -101,7 +101,7 @@ _NGINX_DDOS_IP_MIN_REQS=3
 _NGINX_DOS_IGNORE="doccomment"
 
 # Default DoS keywords (empty by default; 'foobar' will be used if not overridden)
-_NGINX_DOS_STOP="foobar"
+_NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 
 # ==============================
 # Load Configuration File
