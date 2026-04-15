@@ -204,7 +204,7 @@ _DEFAULT_NGINX_DOS_DIV_INC_NR=40
 _DEFAULT_NGINX_DOS_INC_MIN=3
 _DEFAULT_NGINX_DOS_LOG=SILENT
 _DEFAULT_NGINX_DOS_IGNORE="doccomment"
-_DEFAULT_NGINX_DOS_STOP="foobar"
+_DEFAULT_NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 
 # Function to update or add variables in the configuration file
 _update_conf_variable() {
