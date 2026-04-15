@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# ==============================
-# Script to Monitor and Block Suspicious NGINX Activity
-# ==============================
+# ==============================================================================
+# Script to Monitor and Block Suspicious NGINX Activity (DoS and DDoS)
+# ==============================================================================
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -81,6 +81,22 @@ _NGINX_DOS_INC_MIN=3
 # Default logging mode, can be SILENT (none), NORMAL or VERBOSE
 _NGINX_DOS_LOG=VERBOSE
 
+# ---- DDoS / Shared-UA flood detection ----
+# Minimum number of distinct IPs sharing the same User-Agent string within the
+# current scan window that must be observed before the UA is considered an
+# attack fingerprint. Tune upward on high-traffic servers.
+_NGINX_DDOS_UA_IP_THRESHOLD=20
+
+# Minimum per-UA request count (across all IPs) in the scan window required to
+# declare a DDoS. This catches fast floods even when IPs are few but requests
+# are extreme.
+_NGINX_DDOS_UA_REQ_THRESHOLD=200
+
+# When a DDoS UA is confirmed, only block IPs that contributed at least this
+# many requests with that UA. Keeps incidental single-request hits (e.g. from
+# a shared Cloudflare egress) out of the block list.
+_NGINX_DDOS_IP_MIN_REQS=3
+
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
 
@@ -143,10 +159,23 @@ declare -A _COUNTERS
 declare -A _LI_CNT
 declare -A _PX_CNT
 
+# DDoS / Shared-UA detection arrays
+# _UA_IP_COUNT[ua]    = number of distinct real IPs seen with this UA
+# _UA_REQ_COUNT[ua]   = total requests seen with this UA
+# _UA_IP_SET[ua:ip]   = sentinel: marks that IP 'ip' was seen with UA 'ua'
+# _UA_IP_LIST[ua]     = space-separated list of real IPs using this UA
+# _UA_IP_REQS[ua:ip]  = request count per (UA, IP) pair
+declare -A _UA_IP_COUNT
+declare -A _UA_REQ_COUNT
+declare -A _UA_IP_SET
+declare -A _UA_IP_LIST
+declare -A _UA_IP_REQS
+
 # Debugging: Confirm associative arrays are declared
 if [[ -e "/root/.debug.monitor.cnf" ]]; then
   declare -p _BANNED_IPS _ALLOWED_IPS _LOGGED_IN_IPS _COUNTERS _LI_CNT _PX_CNT
-  echo "DEBUG: Associative arrays _BANNED_IPS, _ALLOWED_IPS, _LOGGED_IN_IPS, _COUNTERS, _LI_CNT, and _PX_CNT have been declared."
+  declare -p _UA_IP_COUNT _UA_REQ_COUNT _UA_IP_SET _UA_IP_LIST _UA_IP_REQS
+  echo "DEBUG: Associative arrays declared (DoS + DDoS sets)."
 fi
 
 # ==============================
@@ -440,7 +469,114 @@ _handle_blocking() {
 }
 
 # ==============================
-# Load Banned and Allowed IPs Lists
+# DDoS / Shared-UA Detection
+# ==============================
+
+# _track_ua_ip IP UA
+# Called for every non-ignored request line during the main scan loop.
+# Builds per-UA statistics: distinct IP count, total request count, and
+# per-(UA,IP) request count. All work is done in-memory using associative
+# arrays; no subshells or external processes are spawned.
+_track_ua_ip() {
+  local _IP="$1"
+  local _UA="$2"
+
+  # Skip private/localhost IPs (they cannot be blocked anyway)
+  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    return
+  fi
+  # Skip already-banned IPs to avoid inflating counts needlessly
+  if [[ -n "${_BANNED_IPS["${_IP}"]}" ]]; then
+    return
+  fi
+  # Skip whitelisted IPs
+  if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+    return
+  fi
+
+  local _UA_IP_KEY="${_UA}:${_IP}"
+
+  # Increment total-request counter for this UA
+  if [[ -v _UA_REQ_COUNT["${_UA}"] ]]; then
+    (( _UA_REQ_COUNT["${_UA}"]++ ))
+  else
+    _UA_REQ_COUNT["${_UA}"]=1
+  fi
+
+  # Increment per-(UA,IP) request counter
+  if [[ -v _UA_IP_REQS["${_UA_IP_KEY}"] ]]; then
+    (( _UA_IP_REQS["${_UA_IP_KEY}"]++ ))
+  else
+    _UA_IP_REQS["${_UA_IP_KEY}"]=1
+  fi
+
+  # Track distinct IPs per UA (use sentinel key to avoid duplicates)
+  if [[ -z "${_UA_IP_SET["${_UA_IP_KEY}"]}" ]]; then
+    _UA_IP_SET["${_UA_IP_KEY}"]=1
+    if [[ -v _UA_IP_COUNT["${_UA}"] ]]; then
+      (( _UA_IP_COUNT["${_UA}"]++ ))
+    else
+      _UA_IP_COUNT["${_UA}"]=1
+    fi
+    # Append IP to the list for this UA (space-separated; used during blocking phase)
+    _UA_IP_LIST["${_UA}"]="${_UA_IP_LIST["${_UA}"]:-}${_UA_IP_LIST["${_UA}"]:+ }${_IP}"
+  fi
+}
+
+# _handle_ddos_blocking
+# Iterates over all tracked User-Agents. When a UA meets both the distinct-IP
+# threshold and the total-request threshold it is declared a DDoS fingerprint
+# and every contributing IP (that sent at least _NGINX_DDOS_IP_MIN_REQS
+# requests with that UA) is individually blocked via _block_ip.
+_handle_ddos_blocking() {
+  local _UA _IP _ip_count _req_count _ip_reqs _UA_IP_KEY
+
+  for _UA in "${!_UA_REQ_COUNT[@]}"; do
+    _ip_count="${_UA_IP_COUNT["${_UA}"]:-0}"
+    _req_count="${_UA_REQ_COUNT["${_UA}"]:-0}"
+
+    # Evaluate thresholds
+    if (( _ip_count < _NGINX_DDOS_UA_IP_THRESHOLD && _req_count < _NGINX_DDOS_UA_REQ_THRESHOLD )); then
+      continue
+    fi
+
+    _verbose_log "DDoS UA detected [${_ip_count} IPs / ${_req_count} reqs]: ${_UA}" "_handle_ddos_blocking"
+    echo "=== DDoS UA DETECTED [${_ip_count} distinct IPs | ${_req_count} total reqs] ==="
+    echo "=== UA fingerprint: ${_UA:0:120} ==="
+
+    # Walk the IP list for this UA and block qualifying IPs
+    for _IP in ${_UA_IP_LIST["${_UA}"]}; do
+      _UA_IP_KEY="${_UA}:${_IP}"
+      _ip_reqs="${_UA_IP_REQS["${_UA_IP_KEY}"]:-0}"
+
+      if (( _ip_reqs < _NGINX_DDOS_IP_MIN_REQS )); then
+        continue
+      fi
+
+      # Skip already-banned, whitelisted, and logged-in IPs
+      if [[ -n "${_BANNED_IPS["${_IP}"]}" ]]; then
+        echo "===[${_ip_reqs}req] DDoS IP ${_IP} already banned -- skipping ==="
+        continue
+      fi
+      if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+        echo "===[${_ip_reqs}req] DDoS IP ${_IP} is whitelisted -- skipping ==="
+        continue
+      fi
+      if _is_logged_in "${_IP}"; then
+        echo "===[${_ip_reqs}req] DDoS IP ${_IP} is logged-in session -- skipping ==="
+        continue
+      fi
+      if [[ "${_IP}" == "${_MYIP}" ]]; then
+        echo "===[${_ip_reqs}req] DDoS IP ${_IP} is local server IP -- skipping ==="
+        continue
+      fi
+
+      _sumar="${_ip_reqs}"
+      echo "=== DDoS block_ip ${_IP} [${_ip_reqs} reqs with attack UA] ==="
+      _block_ip "${_IP}"
+    done
+  done
+}
 # ==============================
 
 # Load banned IPs from web.log into associative array (cache already blocked IPs)
@@ -595,6 +731,19 @@ while IFS= read -r _line <&3; do
       _process_ip "${_proxy_ip}" "_PX_CNT" "${_line}"
     fi
   done
+
+  # ---- DDoS / Shared-UA tracking ----
+  # Extract the User-Agent field (last quoted string in the log line).
+  # The log format ends with: ... "UA" upstream_time "cache_status" proto=...
+  # We match the final double-quoted token that precedes the numeric upstream time.
+  if [[ -n "${_REAL_IP}" && "${_line}" =~ \"([^\"]+)\"\ [0-9]+\.[0-9]+ ]]; then
+    _DDOS_UA="${BASH_REMATCH[1]}"
+    # Only track if UA is non-trivial (longer than 10 chars) and the line is
+    # not a redirect (301) so we stay consistent with _process_ip filtering.
+    if [[ ${#_DDOS_UA} -gt 10 && ! "${_line}" =~ \"\ 301 ]]; then
+      _track_ua_ip "${_REAL_IP}" "${_DDOS_UA}"
+    fi
+  fi
 done
 
 # Close the file descriptor for the log input
@@ -611,6 +760,10 @@ fi
 
 _handle_blocking _LI_CNT "li_cnt"
 _handle_blocking _PX_CNT "px_cnt"
+
+# DDoS / Shared-UA flood blocking (runs after per-IP counters so _BANNED_IPS
+# is already populated and we avoid double-blocking IPs caught by the DoS pass)
+_handle_ddos_blocking
 
 echo "CONTROL complete for ${_MYIP}"
 exit 0
