@@ -1046,7 +1046,7 @@ _NGINX_DOS_IGNORE="doccomment"
 ### detected in the access.log -- can use regex
 ### like _NGINX_DOS_STOP="foo|bar|etc"
 ###
-_NGINX_DOS_STOP="foobar"
+_NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 
 ###
 ### Nginx Headers More support is available
