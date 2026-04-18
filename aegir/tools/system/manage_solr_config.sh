@@ -797,8 +797,6 @@ _build_active_core_set() {
   declare -gA _ACTIVE_CORES=()
   for _usEr in $(find /data/disk/ -maxdepth 1 -mindepth 1 | sort); do
     [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] || continue
-    [ -e "${_usEr}/log/proxied.pid" ] && continue
-    [ -e "${_usEr}/log/CANCELLED" ]   && continue
     local _HM_U_TMP
     _HM_U_TMP=$(echo "${_usEr}" | cut -d'/' -f4 | awk '{ print $1}')
     for _Site in $(find "${_usEr}/config/server_master/nginx/vhost.d" \
