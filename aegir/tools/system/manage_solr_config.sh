@@ -810,6 +810,7 @@ _build_active_core_set() {
     [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] || continue
     local _HM_U_TMP
     _HM_U_TMP=$(echo "${_usEr}" | cut -d'/' -f4 | awk '{ print $1}')
+
     for _Site in $(find "${_usEr}/config/server_master/nginx/vhost.d" \
         -maxdepth 1 -mindepth 1 -type f | sort); do
       local _DomTmp _STATUS_T _PlxTmp
@@ -989,6 +990,20 @@ _cleanup_orphan_cores() {
   # Guard: never run during a BOA install or upgrade
   [ "${_protectedRun}" = "TRUE" ] && return
 
+  # Throttle: run at most once every 6 hours.
+  # The sentinel file is touched on each successful run; we skip if it is
+  # younger than 6 hours (360 minutes — find -mmin returns a result = fresh).
+  local _sentinel="/var/backups/solr/.orphan_cleanup_last_run.pid"
+  mkdir -p /var/backups/solr
+  if [ -e "${_sentinel}" ]; then
+    local _sentinel_fresh
+    _sentinel_fresh=$(find "${_sentinel}" -mmin "-360" 2>/dev/null)
+    if [ -n "${_sentinel_fresh}" ]; then
+      echo "Orphan cleanup skipped -- last run less than 6 hours ago (${_sentinel})"
+      return
+    fi
+  fi
+
   echo "=== Orphan core cleanup start ==="
 
   _build_active_core_set
@@ -1006,13 +1021,105 @@ _cleanup_orphan_cores() {
       "/opt/solr9/bin/solr" "solr9" "9099" "/var/solr9/data" "/var/backups/solr9"
   fi
 
+  touch "${_sentinel}"
   echo "=== Orphan core cleanup end ==="
 }
+
+_check_solr_core_health() {
+  # Queries the Solr admin STATUS API for every registered core and logs
+  # anomalies that could indicate memory pressure or a problematic core:
+  #
+  #   - Cores reporting initFailures (failed to load)
+  #   - High segment count (>50) -- many small unmerged segments hold open
+  #     file handles and contribute to Metaspace pressure via per-segment
+  #     FieldCache entries
+  #   - High deleted doc ratio (>20% of maxDoc) -- unmerged deletes inflate
+  #     heap and prevent segment GC
+  #   - Large index size (>500MB) -- informational
+  #
+  # Read-only diagnostic -- no changes are made.
+  # ${1} = port   e.g. 9077 or 9099
+  # ${2} = label  e.g. solr7 or solr9
+  local _port="${1}" _label="${2}"
+  local _api="http://127.0.0.1:${_port}/solr/admin/cores?action=STATUS&wt=json"
+
+  if ! command -v python3 &>/dev/null; then
+    echo "HEALTH-SKIP: python3 not available, skipping ${_label} core health check"
+    return
+  fi
+
+  local _json
+  _json=$(curl -s --max-time 15 "${_api}" 2>/dev/null)
+  if [ -z "${_json}" ]; then
+    echo "HEALTH-ERROR: no response from ${_label} on port ${_port}"
+    return
+  fi
+
+  local _tmpjson
+  _tmpjson=$(mktemp /tmp/solr_health_XXXXXX.json)
+  echo "${_json}" > "${_tmpjson}"
+
+  echo "=== Core health check ${_label} port=${_port} ==="
+
+  python3 - "${_tmpjson}" <<'PYEOF'
+import json, sys
+
+try:
+    with open(sys.argv[1]) as f:
+        data = json.load(f)
+except Exception as e:
+    print(f"HEALTH-ERROR: JSON parse failed: {e}")
+    sys.exit(0)
+
+init_failures = data.get("initFailures", {})
+if init_failures:
+    for core, err in init_failures.items():
+        print(f"HEALTH-INIT-FAIL: {core} -- {err}")
+
+cores = data.get("status", {})
+if not cores:
+    print("HEALTH-INFO: no cores registered")
+    sys.exit(0)
+
+print(f"HEALTH-INFO: {len(cores)} cores registered")
+
+for name, info in sorted(cores.items()):
+    index    = info.get("index", {})
+    num_docs = index.get("numDocs", 0)
+    max_doc  = index.get("maxDoc", 0)
+    deleted  = max_doc - num_docs
+    segments = index.get("segmentCount", 0)
+    size_mb  = index.get("sizeInBytes", 0) / 1048576
+
+    issues = []
+
+    if segments > 50:
+        issues.append(f"high segment count={segments}")
+
+    if max_doc > 0:
+        del_pct = (deleted / max_doc) * 100
+        if del_pct > 20:
+            issues.append(f"deleted={deleted}/{max_doc} ({del_pct:.0f}%)")
+
+    if size_mb > 500:
+        issues.append(f"large index={size_mb:.0f}MB")
+
+    if issues:
+        print(f"HEALTH-WARN: {name}  docs={num_docs}  segs={segments}  "
+              f"size={size_mb:.1f}MB  issues: {', '.join(issues)}")
+PYEOF
+
+  rm -f "${_tmpjson}"
+  echo "=== Core health check end ==="
+}
+
 
 _start_up() {
   _fix_solr9_cnf
   _fix_solr7_cnf
   _cleanup_orphan_cores
+  [ -x "/etc/init.d/solr7" ] && _check_solr_core_health "9077" "solr7"
+  [ -x "/etc/init.d/solr9" ] && _check_solr_core_health "9099" "solr9"
 
   _solr_cnf_dirs=(
     "search_api_solr/solr7_drupal7"
