@@ -5,8 +5,6 @@ logic in `manage_solr_config.sh`.  All commands assume Solr 7 on port 9077
 at `/var/solr7/data/`; substitute `solr9`, `9099`, `/var/solr9/data/` where
 noted.
 
----
-
 ## GC Health
 
 ### Tail the GC log live
@@ -33,8 +31,6 @@ On vm387 (April 2026): after archiving ~260 orphan cores, Old gen dropped
 ~480MB within the same hour (`1,642,215K → ~1,150,000K`) and CMS stopped
 its continuous 2-second spin cycle, returning to normal young-gen-only
 collections.
-
----
 
 ## Core Inventory
 
@@ -103,8 +99,6 @@ for d in /var/solr7/data/oct.*/; do
 done | sort -n
 ```
 
----
-
 ## Backup Archive Inspection
 
 ### List archived cores with age and size
@@ -135,8 +129,6 @@ du -sh /var/backups/solr7/
 du -sh /var/backups/solr9/
 ```
 
----
-
 ## Core Recovery
 
 **Important:** use `CREATE`, not `RELOAD`.  `RELOAD` only works for cores
@@ -163,8 +155,6 @@ A successful response looks like:
 
 `status:400 "No such core"` means you used RELOAD instead of CREATE.
 
----
-
 ## Live Core API Checks
 
 ### List all registered cores and their status
@@ -187,8 +177,6 @@ curl "http://127.0.0.1:9077/solr/admin/cores?action=RELOAD&core=oct.o1.example.c
 ```bash
 curl "http://127.0.0.1:9077/solr/admin/cores?action=UNLOAD&core=oct.o1.example.com&deleteIndex=false&deleteDataDir=false&deleteInstanceDir=false"
 ```
-
----
 
 ## Cleanup Script Logs
 
@@ -216,8 +204,6 @@ Log line prefixes produced by `manage_solr_config.sh`:
 | `ORPHAN-CANDIDATE` | Passed all gates — being archived |
 | `ORPHAN-ARCHIVED` | Successfully moved to backup dir |
 | `ORPHAN-ERROR` | `mv` failed — core left in place |
-
----
 
 ## Staleness Thresholds (manage_solr_config.sh)
 
