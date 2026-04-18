@@ -766,9 +766,199 @@ _sync_solr_config() {
   fi
 }
 
+###
+### Orphan core cleanup
+###
+### A core is an orphan candidate when its name follows the oct.<user>.<domain>
+### (or legacy solr.* / <user>.<domain>) pattern and no matching nginx vhost
+### exists for that user/domain pair.
+###
+### Orphan candidates are NOT immediately deleted. Two additional gates apply:
+###
+###   1. STALENESS — the core's data/ subdirectory must not have been modified
+###      within the last _ORPHAN_STALE_DAYS days. Solr updates data/ on every
+###      index commit, so a recent mtime means the core is still being written
+###      to even if the canonical vhost is gone (cloned site, renamed domain,
+###      migration in progress, etc.).
+###
+###   2. ARCHIVE, NOT DELETE — qualifying cores are unregistered from Solr via
+###      its API and then moved to /var/backups/solrN/<timestamp>-<core>/ so
+###      they can be manually restored at any time. Nothing is rm -rf'd.
+###
+###   3. PROTECTION sentinel — conf/.protected.conf always blocks any action.
+###
+_ORPHAN_STALE_DAYS=14
+
+_build_active_core_set() {
+  # Populate the global associative array _ACTIVE_CORES with every core ID
+  # that _check_sites_list would legitimately create/keep.
+  # All three historical name formats are registered so transitional cores
+  # (rename, clone in progress) are never flagged.
+  declare -gA _ACTIVE_CORES=()
+  for _usEr in $(find /data/disk/ -maxdepth 1 -mindepth 1 | sort); do
+    [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] || continue
+    local _HM_U_TMP
+    _HM_U_TMP=$(echo "${_usEr}" | cut -d'/' -f4 | awk '{ print $1}')
+    for _Site in $(find "${_usEr}/config/server_master/nginx/vhost.d" \
+        -maxdepth 1 -mindepth 1 -type f | sort); do
+      local _DomTmp _STATUS_T _PlxTmp
+      _DomTmp=$(echo "${_Site}" | cut -d'/' -f9 | awk '{ print $1}')
+      [ -z "${_DomTmp}" ] && continue
+      # Skip disabled (parked) sites — their cores are still legitimately kept
+      # alive because re-enabling the site should bring search back instantly
+      _STATUS_T=$(grep "Do not reveal Aegir front-end URL here" "${_Site}" 2>&1)
+      [[ "${_STATUS_T}" =~ "Do not reveal Aegir front-end URL here" ]] && continue
+      # Skip hostmaster vhosts (they never get a Solr core)
+      _PlxTmp=$(grep "root " "${_Site}" | cut -d: -f2 | awk '{ print $2}' | sed "s/[\;]//g" 2>&1)
+      [[ "${_PlxTmp}" =~ "aegir/distro" ]] && continue
+      # Register all three name formats
+      _ACTIVE_CORES["oct.${_HM_U_TMP}.${_DomTmp}"]=1
+      _ACTIVE_CORES["solr.${_HM_U_TMP}.${_DomTmp}"]=1
+      _ACTIVE_CORES["${_HM_U_TMP}.${_DomTmp}"]=1
+    done
+  done
+}
+
+_core_is_stale() {
+  # Returns 0 (true) when the core's data/ dir has not been modified within
+  # the last _ORPHAN_STALE_DAYS days, i.e. it is safe to archive.
+  # Returns 1 (false / still active) otherwise.
+  local _corePath="${1}"
+  local _dataSubdir="${_corePath}/data"
+
+  if [ ! -d "${_dataSubdir}" ]; then
+    # No data dir at all — core was never indexed; treat as stale immediately
+    echo "ORPHAN-STALE: ${_corePath} has no data/ subdir — treating as stale"
+    return 0
+  fi
+
+  # find exits with at least one result when mtime is within threshold → still fresh
+  local _fresh
+  _fresh=$(find "${_dataSubdir}" -maxdepth 0 -mtime "-${_ORPHAN_STALE_DAYS}" 2>/dev/null)
+  if [ -n "${_fresh}" ]; then
+    return 1  # modified recently — not stale
+  fi
+  return 0    # older than threshold — stale
+}
+
+_archive_orphan_core() {
+  # Unregisters the core from the running Solr instance via its DELETE API,
+  # then moves the core directory to the appropriate backup location.
+  # The Solr binary delete is best-effort; the move happens regardless.
+  #
+  # ${1} = solr binary      e.g. /opt/solr7/bin/solr
+  # ${2} = solr unix user   e.g. solr7
+  # ${3} = solr port        e.g. 9077
+  # ${4} = backup base dir  e.g. /var/backups/solr7
+  # ${5} = core path        e.g. /var/solr7/data/oct.octXXX.example.com
+  # ${6} = timestamp        e.g. 20260418-214500
+  local _bin="${1}" _usr="${2}" _port="${3}" _bkpBase="${4}" _corePath="${5}" _ts="${6}"
+  local _coreName
+  _coreName=$(basename "${_corePath}")
+
+  # 1. Tell Solr to unload the core (keeps the index files on disk — which is
+  #    what we want since we're moving them, not deleting)
+  local _unload_url="http://127.0.0.1:${_port}/solr/admin/cores?action=UNLOAD&core=${_coreName}&deleteIndex=false&deleteDataDir=false&deleteInstanceDir=false"
+  curl -s --max-time 15 "${_unload_url}" > /dev/null 2>&1 || true
+  wait
+
+  # 2. Move the core directory to the backup location
+  local _bkpDest="${_bkpBase}/${_ts}-${_coreName}"
+  mkdir -p "${_bkpBase}"
+  if mv "${_corePath}" "${_bkpDest}"; then
+    echo "ORPHAN-ARCHIVED: ${_coreName} → ${_bkpDest}"
+  else
+    echo "ORPHAN-ERROR: could not move ${_corePath} to ${_bkpDest} — skipping"
+  fi
+}
+
+_purge_orphan_cores() {
+  # ${1} = solr binary      e.g. /opt/solr7/bin/solr
+  # ${2} = solr unix user   e.g. solr7
+  # ${3} = solr port        e.g. 9077
+  # ${4} = data dir         e.g. /var/solr7/data
+  # ${5} = backup base dir  e.g. /var/backups/solr7
+  local _bin="${1}" _usr="${2}" _port="${3}" _datadir="${4}" _bkpBase="${5}"
+
+  [ -x "${_bin}" ]     || return
+  [ -d "${_datadir}" ] || return
+
+  local _archived=0 _protected=0 _fresh=0 _ts
+  _ts=$(date +%Y%m%d-%H%M%S)
+
+  for _corePath in $(find "${_datadir}" -maxdepth 1 -mindepth 1 -type d | sort); do
+    local _coreName
+    _coreName=$(basename "${_corePath}")
+
+    # Only process cores that follow our naming convention
+    # Pattern: oct.<anything>  OR  solr.<anything>  OR  <word>.<word>.<word>+
+    # The last catches legacy <user>.<domain> two-component names too
+    if [[ ! "${_coreName}" =~ ^(oct|solr)\. ]]; then
+      # Check for legacy bare <user>.<domain> pattern (exactly two dot-separated parts)
+      # We skip anything that doesn't look like one of our managed core names
+      local _dot_count
+      _dot_count=$(echo "${_coreName}" | tr -cd '.' | wc -c)
+      [ "${_dot_count}" -lt 1 ] && continue
+    fi
+
+    # Is this core still matched by a live vhost?
+    if [ -n "${_ACTIVE_CORES[${_coreName}]+x}" ]; then
+      continue  # actively used — leave it alone
+    fi
+
+    # Protection sentinel always wins
+    if [ -e "${_corePath}/conf/.protected.conf" ]; then
+      echo "ORPHAN-SKIP: ${_coreName} — .protected.conf present"
+      (( _protected++ ))
+      continue
+    fi
+
+    # Staleness gate — the critical addition
+    if ! _core_is_stale "${_corePath}"; then
+      local _mtime_age
+      _mtime_age=$(( ( $(date +%s) - $(stat -c %Y "${_corePath}/data" 2>/dev/null || echo 0) ) / 86400 ))
+      echo "ORPHAN-FRESH: ${_coreName} — no vhost but data/ touched ${_mtime_age}d ago (threshold ${_ORPHAN_STALE_DAYS}d) — keeping"
+      (( _fresh++ ))
+      continue
+    fi
+
+    # All gates passed — archive this core
+    _archive_orphan_core \
+      "${_bin}" "${_usr}" "${_port}" "${_bkpBase}" "${_corePath}" "${_ts}"
+    (( _archived++ ))
+  done
+
+  echo "Orphan cleanup port=${_port}: archived=${_archived} protected=${_protected} fresh(kept)=${_fresh}"
+}
+
+_cleanup_orphan_cores() {
+  # Guard: never run during a BOA install or upgrade
+  [ "${_protectedRun}" = "TRUE" ] && return
+
+  echo "=== Orphan core cleanup start ==="
+
+  _build_active_core_set
+  echo "Active core IDs found across all vhosts: ${#_ACTIVE_CORES[@]}"
+
+  if [ -x "/etc/init.d/solr7" ] && [ -d "/var/solr7/data" ]; then
+    mkdir -p /var/backups/solr7
+    _purge_orphan_cores \
+      "/opt/solr7/bin/solr" "solr7" "9077" "/var/solr7/data" "/var/backups/solr7"
+  fi
+
+  if [ -x "/etc/init.d/solr9" ] && [ -d "/var/solr9/data" ]; then
+    mkdir -p /var/backups/solr9
+    _purge_orphan_cores \
+      "/opt/solr9/bin/solr" "solr9" "9099" "/var/solr9/data" "/var/backups/solr9"
+  fi
+
+  echo "=== Orphan core cleanup end ==="
+}
+
 _start_up() {
   _fix_solr9_cnf
   _fix_solr7_cnf
+  _cleanup_orphan_cores
 
   _solr_cnf_dirs=(
     "search_api_solr/solr7_drupal7"
