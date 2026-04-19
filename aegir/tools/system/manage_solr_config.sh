@@ -795,16 +795,21 @@ _ORPHAN_STALE_DAYS=14       # tier 1: no vhost / no alias
 _ORPHAN_VHOST_STALE_DAYS=60 # tier 2: vhost+alias present but index inactive
 
 _build_active_core_set() {
-  # Populates two global associative arrays:
+  # Populates three global associative arrays:
   #
-  #   _CORES_WITH_VHOST  — core has a matching enabled nginx vhost
-  #   _CORES_WITH_ALIAS  — core also has a matching Aegir drush alias
+  #   _CORES_WITH_VHOST       — core has a matching enabled nginx vhost
+  #   _CORES_WITH_ALIAS       — core also has a matching Aegir drush alias
+  #   _CORES_WITH_SOLR_MODULE — site has solr_integration_module explicitly
+  #                             set in boa_site_control.ini — these are
+  #                             actively managed and must never be archived
+  #                             based on index age alone, even if stale
   #
   # All three historical name formats (oct.*, solr.*, <user>.<domain>) are
   # registered for each site so transitional/renamed cores are never wrongly
   # retired.
   declare -gA _CORES_WITH_VHOST=()
   declare -gA _CORES_WITH_ALIAS=()
+  declare -gA _CORES_WITH_SOLR_MODULE=()
 
   for _usEr in $(find /data/disk/ -maxdepth 1 -mindepth 1 | sort); do
     [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] || continue
@@ -830,13 +835,32 @@ _build_active_core_set() {
       _CORES_WITH_VHOST["solr.${_HM_U_TMP}.${_DomTmp}"]=1
       _CORES_WITH_VHOST["${_HM_U_TMP}.${_DomTmp}"]=1
 
-      # Check for Aegir drush alias — its presence means the site is properly
-      # provisioned, not just an nginx config leftover
+      # Check for Aegir drush alias
       local _aliasFile="${_usEr}/.drush/${_DomTmp}.alias.drushrc.php"
       if [ -f "${_aliasFile}" ]; then
         _CORES_WITH_ALIAS["oct.${_HM_U_TMP}.${_DomTmp}"]=1
         _CORES_WITH_ALIAS["solr.${_HM_U_TMP}.${_DomTmp}"]=1
         _CORES_WITH_ALIAS["${_HM_U_TMP}.${_DomTmp}"]=1
+
+        # Check for explicit solr_integration_module in boa_site_control.ini.
+        # A site with this set is actively managed by _check_sites_list and
+        # must not be archived based on index age — _add_solr will recreate
+        # the core empty if we archive it, losing the index permanently.
+        local _sitePath
+        _sitePath=$(grep "site_path'" "${_aliasFile}" \
+          | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
+        if [ -n "${_sitePath}" ]; then
+          local _ctrlFile="${_sitePath}/modules/boa_site_control.ini"
+          if [ -f "${_ctrlFile}" ]; then
+            local _solrMod
+            _solrMod=$(grep "^solr_integration_module" "${_ctrlFile}" 2>/dev/null)
+            if [ -n "${_solrMod}" ]; then
+              _CORES_WITH_SOLR_MODULE["oct.${_HM_U_TMP}.${_DomTmp}"]=1
+              _CORES_WITH_SOLR_MODULE["solr.${_HM_U_TMP}.${_DomTmp}"]=1
+              _CORES_WITH_SOLR_MODULE["${_HM_U_TMP}.${_DomTmp}"]=1
+            fi
+          fi
+        fi
       fi
     done
   done
@@ -961,6 +985,14 @@ _purge_orphan_cores() {
     [ -n "${_CORES_WITH_ALIAS[${_coreName}]+x}" ] && _hasAlias=1
 
     if [ "${_hasVhost}" -eq 1 ] && [ "${_hasAlias}" -eq 1 ]; then
+      # Extra gate: if site has solr_integration_module explicitly configured,
+      # _check_sites_list actively manages this core and will recreate it
+      # empty if we archive it.  Protect it unconditionally.
+      if [ -n "${_CORES_WITH_SOLR_MODULE[${_coreName}]+x}" ]; then
+        echo "ORPHAN-SKIP: ${_coreName} — solr_integration_module set, actively managed"
+        (( _protected++ ))
+        continue
+      fi
       # Tier 2: properly provisioned site — use the long threshold
       _threshold="${_ORPHAN_VHOST_STALE_DAYS}"
       _tier="tier2(vhost+alias)"
@@ -1007,7 +1039,7 @@ _cleanup_orphan_cores() {
   echo "=== Orphan core cleanup start ==="
 
   _build_active_core_set
-  echo "Active cores with vhost: ${#_CORES_WITH_VHOST[@]}  with alias: ${#_CORES_WITH_ALIAS[@]}"
+  echo "Active cores with vhost: ${#_CORES_WITH_VHOST[@]}  with alias: ${#_CORES_WITH_ALIAS[@]}  with solr module: ${#_CORES_WITH_SOLR_MODULE[@]}"
 
   if [ -x "/etc/init.d/solr7" ] && [ -d "/var/solr7/data" ]; then
     mkdir -p /var/backups/solr7
@@ -1117,9 +1149,6 @@ PYEOF
 _start_up() {
   _fix_solr9_cnf
   _fix_solr7_cnf
-  _cleanup_orphan_cores
-  [ -x "/etc/init.d/solr7" ] && _check_solr_core_health "9077" "solr7"
-  [ -x "/etc/init.d/solr9" ] && _check_solr_core_health "9099" "solr9"
 
   _solr_cnf_dirs=(
     "search_api_solr/solr7_drupal7"
@@ -1157,6 +1186,15 @@ _start_up() {
       fi
     fi
   done
+
+  # Orphan cleanup runs AFTER _check_sites_list so that any core legitimately
+  # recreated by _add_solr in this same run is already on disk and registered
+  # before we evaluate what qualifies as an orphan. Running before
+  # _check_sites_list caused a race where a managed core with a stale index
+  # was archived and then immediately recreated empty by _add_solr.
+  _cleanup_orphan_cores
+  [ -x "/etc/init.d/solr7" ] && _check_solr_core_health "9077" "solr7"
+  [ -x "/etc/init.d/solr9" ] && _check_solr_core_health "9099" "solr9"
 }
 
 _is_protected_run() {
