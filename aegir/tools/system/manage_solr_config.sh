@@ -1146,6 +1146,193 @@ PYEOF
 }
 
 
+_optimize_solr_cores() {
+  # Runs expungeDeletes on every registered core where the deleted doc ratio
+  # exceeds _OPTIMIZE_DEL_PCT_THRESHOLD, and a full optimize (maxSegments=1)
+  # on cores where the ratio exceeds _OPTIMIZE_FULL_THRESHOLD.
+  #
+  # Design decisions:
+  #
+  #   expungeDeletes vs full optimize:
+  #     expungeDeletes merges only segments whose deleted doc fraction exceeds
+  #     the merge policy threshold. It is cheap, non-blocking for queries, and
+  #     safe to run frequently. Full optimize (maxSegments=1) merges everything
+  #     into a single segment — expensive on large indexes but reclaims the
+  #     most space and gives the best query performance. We use a higher
+  #     threshold to trigger the full optimize and only do it when genuinely
+  #     needed.
+  #
+  #   waitFlush=false:
+  #     Both calls return immediately while the merge continues in the
+  #     background. This keeps the script runtime bounded regardless of index
+  #     size. The next health check run will reflect the improved state.
+  #
+  #   Protected cores (conf/.protected.conf):
+  #     These have custom solrconfig.xml and may have their own merge policy
+  #     already tuned (e.g. TieredMergePolicy with deletesPctAllowed=20).
+  #     We still run expungeDeletes on them if the ratio is very high, but
+  #     skip the full optimize to avoid interfering with their tuning.
+  #
+  #   Throttle:
+  #     Sentinel file at /var/backups/solr/.optimize_last_run.pid limits
+  #     execution to once every _OPTIMIZE_INTERVAL_HOURS hours (default 12).
+  #     This keeps the function rate-limited even though _start_up runs
+  #     every 4 minutes.
+  #
+  # ${1} = port   e.g. 9077 or 9099
+  # ${2} = label  e.g. solr7 or solr9
+  # ${3} = data dir  e.g. /var/solr7/data
+  local _port="${1}" _label="${2}" _datadir="${3}"
+
+  [ -d "${_datadir}" ] || return
+
+  if ! command -v python3 &>/dev/null; then
+    echo "OPTIMIZE-SKIP: python3 not available"
+    return
+  fi
+
+  local _api="http://127.0.0.1:${_port}/solr/admin/cores?action=STATUS&wt=json"
+  local _json
+  _json=$(curl -s --max-time 15 "${_api}" 2>/dev/null)
+  if [ -z "${_json}" ]; then
+    echo "OPTIMIZE-ERROR: no response from ${_label} on port ${_port}"
+    return
+  fi
+
+  local _tmpjson
+  _tmpjson=$(mktemp /tmp/solr_optimize_XXXXXX.json)
+  echo "${_json}" > "${_tmpjson}"
+
+  echo "=== Index optimize check ${_label} port=${_port} ==="
+
+  # Extract core names and their deleted doc ratios from the STATUS response,
+  # then decide per-core action. Output format: <action> <corename>
+  # where action is: skip | expunge | optimize
+  local _decisions
+  _decisions=$(python3 - "${_tmpjson}" \
+    "${_OPTIMIZE_DEL_PCT_THRESHOLD}" "${_OPTIMIZE_FULL_THRESHOLD}" <<'PYEOF'
+import json, sys
+
+try:
+    with open(sys.argv[1]) as f:
+        data = json.load(f)
+except Exception as e:
+    print(f"# parse error: {e}", file=sys.stderr)
+    sys.exit(0)
+
+expunge_threshold = float(sys.argv[2])
+full_threshold    = float(sys.argv[3])
+
+cores = data.get("status", {})
+for name, info in sorted(cores.items()):
+    index    = info.get("index", {})
+    num_docs = index.get("numDocs", 0)
+    max_doc  = index.get("maxDoc", 0)
+    deleted  = max_doc - num_docs
+    del_pct  = (deleted / max_doc * 100) if max_doc > 0 else 0
+    size_mb  = index.get("sizeInBytes", 0) / 1048576
+
+    if del_pct >= full_threshold:
+        print(f"optimize {name} {del_pct:.1f} {size_mb:.0f}")
+    elif del_pct >= expunge_threshold:
+        print(f"expunge {name} {del_pct:.1f} {size_mb:.0f}")
+    else:
+        print(f"skip {name} {del_pct:.1f} {size_mb:.0f}")
+PYEOF
+)
+
+  rm -f "${_tmpjson}"
+
+  local _action _coreName _delPct _sizeMb _isProtected
+  while read -r _action _coreName _delPct _sizeMb; do
+    [ -z "${_coreName}" ] && continue
+
+    # Check protection sentinel
+    _isProtected=0
+    [ -e "${_datadir}/${_coreName}/conf/.protected.conf" ] && _isProtected=1
+
+    case "${_action}" in
+      skip)
+        echo "OPTIMIZE-OK: ${_coreName} deleted=${_delPct}% — no action needed"
+        ;;
+      expunge)
+        echo "OPTIMIZE-EXPUNGE: ${_coreName} deleted=${_delPct}% size=${_sizeMb}MB — running expungeDeletes"
+        curl -s --max-time 30 \
+          "http://127.0.0.1:${_port}/solr/${_coreName}/update?expungeDeletes=true&waitFlush=false" \
+          > /dev/null 2>&1 || true
+        ;;
+      optimize)
+        if [ "${_isProtected}" -eq 1 ]; then
+          # Protected core: TieredMergePolicy may already handle this.
+          # Run expungeDeletes only — do not force a full merge that could
+          # interfere with a custom merge policy tuned for this workload.
+          echo "OPTIMIZE-EXPUNGE: ${_coreName} deleted=${_delPct}% size=${_sizeMb}MB (protected) — expungeDeletes only"
+          curl -s --max-time 30 \
+            "http://127.0.0.1:${_port}/solr/${_coreName}/update?expungeDeletes=true&waitFlush=false" \
+            > /dev/null 2>&1 || true
+        else
+          echo "OPTIMIZE-FULL: ${_coreName} deleted=${_delPct}% size=${_sizeMb}MB — running full optimize (background)"
+          curl -s --max-time 30 \
+            "http://127.0.0.1:${_port}/solr/${_coreName}/update?optimize=true&maxSegments=1&waitFlush=false" \
+            > /dev/null 2>&1 || true
+        fi
+        ;;
+    esac
+  done <<< "${_decisions}"
+
+  echo "=== Index optimize check end ==="
+}
+
+_run_optimize_if_due() {
+  # Throttle wrapper for _optimize_solr_cores.
+  # Runs at most once every _OPTIMIZE_INTERVAL_HOURS hours using a sentinel
+  # file, then calls per-instance optimize checks.
+  [ "${_protectedRun}" = "TRUE" ] && return
+
+  local _sentinel="/var/backups/solr/.optimize_last_run.pid"
+  mkdir -p /var/backups/solr
+
+  if [ -e "${_sentinel}" ]; then
+    local _sentinelFresh
+    _sentinelFresh=$(find "${_sentinel}" \
+      -mmin "-$(( _OPTIMIZE_INTERVAL_HOURS * 60 ))" 2>/dev/null)
+    if [ -n "${_sentinelFresh}" ]; then
+      echo "Index optimize skipped — last run less than ${_OPTIMIZE_INTERVAL_HOURS}h ago"
+      return
+    fi
+  fi
+
+  echo "=== Index optimize start (interval=${_OPTIMIZE_INTERVAL_HOURS}h expunge>=${_OPTIMIZE_DEL_PCT_THRESHOLD}% full>=${_OPTIMIZE_FULL_THRESHOLD}%) ==="
+
+  if [ -x "/etc/init.d/solr7" ] && [ -d "/var/solr7/data" ]; then
+    _optimize_solr_cores "9077" "solr7" "/var/solr7/data"
+  fi
+
+  if [ -x "/etc/init.d/solr9" ] && [ -d "/var/solr9/data" ]; then
+    _optimize_solr_cores "9099" "solr9" "/var/solr9/data"
+  fi
+
+  touch "${_sentinel}"
+  echo "=== Index optimize end ==="
+}
+
+# Thresholds and interval — tune here without touching function logic.
+#
+# _OPTIMIZE_DEL_PCT_THRESHOLD: deleted doc % at which expungeDeletes fires.
+#   Lucene's default merge policy tolerates ~10% before merging naturally.
+#   20% is a safe threshold that catches accumulation without over-merging.
+#
+# _OPTIMIZE_FULL_THRESHOLD: deleted doc % at which a full optimize fires.
+#   Only triggered on genuinely problematic indexes. 30% chosen because at
+#   this level merge policy is clearly not keeping up with write rate.
+#
+# _OPTIMIZE_INTERVAL_HOURS: minimum hours between optimize runs.
+#   12h means at most 2 runs per day regardless of how often the script
+#   is invoked. Set to 6 for more aggressive maintenance.
+_OPTIMIZE_DEL_PCT_THRESHOLD=20
+_OPTIMIZE_FULL_THRESHOLD=30
+_OPTIMIZE_INTERVAL_HOURS=12
+
 _start_up() {
   _fix_solr9_cnf
   _fix_solr7_cnf
@@ -1195,6 +1382,7 @@ _start_up() {
   _cleanup_orphan_cores
   [ -x "/etc/init.d/solr7" ] && _check_solr_core_health "9077" "solr7"
   [ -x "/etc/init.d/solr9" ] && _check_solr_core_health "9099" "solr9"
+  _run_optimize_if_due
 }
 
 _is_protected_run() {
