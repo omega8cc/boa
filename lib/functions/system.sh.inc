@@ -8015,7 +8015,7 @@ _other_sys_java_install() {
       fi
     fi
   elif [ "${_javaVer}" = "17" ]; then
-    _JAVA_NEW=17.0.18
+    _JAVA_NEW=17.0.19
     _JAVA_ITD=$(java17 --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
