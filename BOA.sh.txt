@@ -2858,7 +2858,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -d "/data/u" ] \
-    && [ ! -e "${_pthLog}/hosting_le_vt.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/hosting_le_vt_dns-persist-01.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
     _lePath="${_leBasePath}/drush/${_provLeInc}"
     _leVhPath="${_leBasePath}/hosting_le_vhost/drush/${_hoLeInc}"
@@ -2954,7 +2954,7 @@ _update_agents() {
         fi
       fi
     done
-    touch ${_pthLog}/hosting_le_vt.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/hosting_le_vt_dns-persist-01.ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   if ! grep -q "defunct" /opt/local/bin/websh; then
