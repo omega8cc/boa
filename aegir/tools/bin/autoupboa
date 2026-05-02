@@ -686,19 +686,19 @@ fi
 
 _if_new_kernel_reboot() {
   _isReboot=NO
-  if [ -e "/run/reboot-required.pkgs" ]; then
-    _is_protected_run
-    if [ "${_protectedRun}" = "FALSE" ]; then
+  _is_protected_run
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    if [ -e "/run/reboot-required.pkgs" ]; then
       if grep -q linux "/run/reboot-required.pkgs"; then
         _isReboot=REQ
       fi
-      if [ "$(boa info | grep -c Next)" -ge 1 ]; then
-        _isReboot=REQ
-      fi
-      if [ "${_isReboot}" = "REQ" ]; then
-        nohup /opt/local/bin/boa reboot > /dev/null 2>&1 &
-        exit 1
-      fi
+    fi
+    if [ "$(boa info | grep -c Next)" -ge 1 ]; then
+      _isReboot=REQ
+    fi
+    if [ "${_isReboot}" = "REQ" ]; then
+      nohup /opt/local/bin/boa reboot > /dev/null 2>&1 &
+      exit 1
     fi
   fi
 }
