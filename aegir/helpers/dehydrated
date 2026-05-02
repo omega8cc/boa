@@ -281,7 +281,7 @@ ipv6_shorten() {
 ipv6_normalize() {
   for domain in $(cat); do
     if [[ "${domain}" =~ : ]]; then
-      ipv6_expand <<< "${domain}" | ipv6_shorten
+      printf "%s" "${domain}" | ipv6_expand | ipv6_shorten
     else
       printf "%s" "${domain}"
     fi
@@ -366,7 +366,7 @@ hookscript_bricker_hook() {
 
 # verify configuration values
 verify_config() {
-  [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" || "${CHALLENGETYPE}" == "tls-alpn-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
+  [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" || "${CHALLENGETYPE}" == "dns-persist-01" || "${CHALLENGETYPE}" == "tls-alpn-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
   if [[ "${COMMAND:-}" =~ sign_domains|sign_csr ]]; then
     if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
       _exiterr "Challenge type dns-01 needs a hook script for deployment... cannot continue."
@@ -788,7 +788,7 @@ init_system() {
           echo "ZeroSSL requires contact email to be set or EAB_KID/EAB_HMAC_KEY to be manually configured"
           FAILED=true
         else
-          zeroapi="$(curl -s "https://api.zerossl.com/acme/eab-credentials-email" -d "email=${CONTACT_EMAIL}" | jsonsh)"
+          zeroapi="$(curl ${ip_version:-} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" ${CURL_OPTS} -s "https://api.zerossl.com/acme/eab-credentials-email" -d "email=${CONTACT_EMAIL}" | jsonsh)"
           EAB_KID="$(printf "%s" "${zeroapi}" | get_json_string_value eab_kid)"
           EAB_HMAC_KEY="$(printf "%s" "${zeroapi}" | get_json_string_value eab_hmac_key)"
           if [[ -z "${EAB_KID:-}" ]] ||  [[ -z "${EAB_HMAC_KEY:-}" ]]; then
@@ -976,14 +976,14 @@ http_request() {
   set +e
   # shellcheck disable=SC2086
   if [[ "${1}" = "head" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" -H 'Cache-Control: no-cache' "${2}" -I)"
+    statuscode="$(curl ${ip_version:-} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" -H 'Cache-Control: no-cache' "${2}" -I)"
     curlret="${?}"
     touch "${tempheaders}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" -H 'Cache-Control: no-cache' "${2}")"
+    statuscode="$(curl ${ip_version:-} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" ${CURL_OPTS} -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" -H 'Cache-Control: no-cache' "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -H 'Cache-Control: no-cache' -H 'Content-Type: application/jose+json' -d "${3}")"
+    statuscode="$(curl ${ip_version:-} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -H 'Cache-Control: no-cache' -H 'Content-Type: application/jose+json' -d "${3}")"
     curlret="${?}"
   else
     set -e
@@ -1248,7 +1248,7 @@ sign_csr() {
 
     if [ -z "${challengeindex}" ]; then
       allowed_validations="$(echo "${response}" | grep -E '^\["challenges",[0-9]+,"type"\]' | sed -e 's/\[[^\]*\][[:space:]]*//g' -e 's/^"//' -e 's/"$//' | tr '\n' ' ')"
-      _exiterr "Validating this certificate is not possible using ${CHALLENGETYPE}. Possible validation methods are: ${allowed_validations}"
+      _exiterr "Validating this certificate is not possible using ${CHALLENGETYPE}. Possible validation methods are: ${allowed_validations}. Please check with your CA for more information about supported validation methods."
     fi
     challenge="$(echo "${response}" | get_json_dict_value -p '"challenges",'"${challengeindex}")"
 
@@ -1283,6 +1283,10 @@ sign_csr() {
         # Generate DNS entry content for dns-01 validation
         keyauth_hook="$(printf '%s' "${keyauth}" | "${OPENSSL}" dgst -sha256 -binary | urlbase64)"
         ;;
+      "dns-persist-01")
+        # Pre-existing persistent DNS record is expected; no deploy/cleanup by dehydrated.
+        keyauth_hook=""
+        ;;
       "tls-alpn-01")
         keyauth_hook="$(printf '%s' "${keyauth}" | "${OPENSSL}" dgst -sha256 -c -hex | awk '{print $NF}')"
         generate_alpn_certificate "${identifier}" "${identifier_type}" "${keyauth_hook}"
@@ -1303,18 +1307,20 @@ sign_csr() {
 
   # Deploy challenge tokens
   if [[ ${num_pending_challenges} -ne 0 ]]; then
-    echo " + Deploying challenge tokens..."
-    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
-      # shellcheck disable=SC2068
-      "${HOOK}" "deploy_challenge" ${deploy_args[@]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
-    elif [[ -n "${HOOK}" ]]; then
-      # Run hook script to deploy the challenge token
-      local idx=0
-      while [ ${idx} -lt ${num_pending_challenges} ]; do
-        # shellcheck disable=SC2086
-        "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
-        idx=$((idx+1))
-      done
+    if [[ "${CHALLENGETYPE}" != "dns-persist-01" ]]; then
+      echo " + Deploying challenge tokens..."
+      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
+        # shellcheck disable=SC2068
+        "${HOOK}" "deploy_challenge" ${deploy_args[@]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
+      elif [[ -n "${HOOK}" ]]; then
+        # Run hook script to deploy the challenge token
+        local idx=0
+        while [ ${idx} -lt ${num_pending_challenges} ]; do
+          # shellcheck disable=SC2086
+          "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
+          idx=$((idx+1))
+        done
+      fi
     fi
   fi
 
@@ -1361,24 +1367,26 @@ sign_csr() {
   done
 
   if [[ ${num_pending_challenges} -ne 0 ]]; then
-    echo " + Cleaning challenge tokens..."
+    if [[ "${CHALLENGETYPE}" != "dns-persist-01" ]]; then
+      echo " + Cleaning challenge tokens..."
 
-    # Clean challenge tokens using chained hook
-    # shellcheck disable=SC2068
-    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[@]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
+      # Clean challenge tokens using chained hook
+      # shellcheck disable=SC2068
+      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[@]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
 
-    # Clean remaining challenge tokens if validation has failed
-    local idx=0
-    while [ ${idx} -lt ${num_pending_challenges} ]; do
-      # Delete challenge file
-      [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
-      # Delete alpn verification certificates
-      [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
-      # Clean challenge token using non-chained hook
-      # shellcheck disable=SC2086
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[${idx}]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
-      idx=$((idx+1))
-    done
+      # Clean remaining challenge tokens if validation has failed
+      local idx=0
+      while [ ${idx} -lt ${num_pending_challenges} ]; do
+        # Delete challenge file
+        [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
+        # Delete alpn verification certificates
+        [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
+        # Clean challenge token using non-chained hook
+        # shellcheck disable=SC2086
+        [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[${idx}]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
+        idx=$((idx+1))
+      done
+    fi
 
     if [[ "${reqstatus}" != "valid" ]]; then
       echo " + Challenge validation has failed :("
@@ -1837,6 +1845,12 @@ parse_domains_txt() {
     (grep -vE '^(#|$)' || true)
 }
 
+# normalize SAN lists
+# normalize IPv6 adresses, and sort alphabetically
+normalize_san_list() {
+  cat | awk '{print tolower($0)}' | _sed 's/ $//' | _sed 's/^ //' | ipv6_normalize | tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//'
+}
+
 # Usage: --cron (-c)
 # Description: Sign/renew non-existent/changed/expiring certificates.
 command_sign_domains() {
@@ -1972,8 +1986,8 @@ command_sign_domains() {
     if [[ -e "${cert}" && "${force_renew}" = "no" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | awk '{print tolower($0)}' | ipv6_normalize)"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ip://g' | _sed 's/ $//' | _sed 's/^ //' | ipv6_normalize)"
+      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address)*):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' ' ' | normalize_san_list )"
+      givennames="$(echo "${domain}" "${morenames}" | _sed 's/ip://g' | normalize_san_list )"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
@@ -2500,8 +2514,8 @@ main() {
         PARAM_ALPNCERTDIR="${1}"
         ;;
 
-      # PARAM_Usage: --challenge (-t) http-01|dns-01|tls-alpn-01
-      # PARAM_Description: Which challenge should be used? Currently http-01, dns-01, and tls-alpn-01 are supported
+      # PARAM_Usage: --challenge (-t) http-01|dns-01|dns-persist-01|tls-alpn-01
+      # PARAM_Description: Which challenge should be used? Currently http-01, dns-01, dns-persist-01 and tls-alpn-01 are supported
       --challenge|-t)
         shift 1
         check_parameters "${1:-}"
