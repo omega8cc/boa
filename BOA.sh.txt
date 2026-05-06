@@ -4212,6 +4212,7 @@ _fix_pure_ftpd() {
 _fix_hosting_le() {
   if [ -d "/var/xdrago/conf" ]; then
     if [ ! -e "${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ] \
+      || [ ! -e "${_pthLog}/dehydrated-up01.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ -e "/var/xdrago/${_provLeInc}" ] \
       || [ -e "/var/xdrago/${_hoLeInc}" ] \
       || [ -e "/var/xdrago/${_dehydName}" ] \
@@ -4219,7 +4220,6 @@ _fix_hosting_le() {
       || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ -e "/root/${_hoLeInc}" ] \
       || [ -e "${_legacyLeSh}" ] \
-      || [ ! -e "${_pthLog}/_fix_hosting_le.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ ! -e "${_dehydSrcPath}" ] \
       || [ ! -e "${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /var/xdrago/conf
@@ -4234,7 +4234,10 @@ _fix_hosting_le() {
       curl ${_crlGet} "${_urlHmr}/patches/${_hoLeInc}" -o ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
       cp -af ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_hoLeIncFull}
       curl ${_crlGet} "${_urlHmr}/patches/${_provLeInc}" -o ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
-      cp -af ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_provLeIncFull}
+      if [ -e "${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+        cp -af ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_provLeIncFull}
+        [ -e "${_provLeIncFull}" ] && touch ${_pthLog}/dehydrated-up01.ctrl.${_tRee}.${_xSrl}.pid
+      fi
     fi
   fi
 }
