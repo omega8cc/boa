@@ -280,9 +280,8 @@ _compress_backup() {
     echo "INFO: Permissions fixed"
   else
     gzip ${_SAVELOCATION}/*.sql
-    chmod 600 ${_BACKUPDIR}/*/*
-    chmod 700 ${_BACKUPDIR}/*
-    chmod 700 ${_BACKUPDIR}
+    chmod 600 ${_SAVELOCATION}/*.sql.gz
+    chmod 700 ${_SAVELOCATION}
     chmod 700 /data/disk/arch
     echo "INFO: Permissions fixed"
   fi
@@ -474,7 +473,7 @@ fi
 if [ "${_THIS_MODE}" = "basic" ]; then
   _DB_BACKUPS_TTL="3"
 fi
-find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
+find ${_BACKUPDIR}/* -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
 if [ "${_THIS_MODE}" = "full" ]; then
