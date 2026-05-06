@@ -473,7 +473,7 @@ fi
 if [ "${_THIS_MODE}" = "basic" ]; then
   _DB_BACKUPS_TTL="3"
 fi
-find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
+find ${_BACKUPDIR}/* -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
 if [ "${_THIS_MODE}" = "full" ]; then
