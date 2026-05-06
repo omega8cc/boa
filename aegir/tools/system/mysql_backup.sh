@@ -280,9 +280,8 @@ _compress_backup() {
     echo "INFO: Permissions fixed"
   else
     gzip ${_SAVELOCATION}/*.sql
-    chmod 600 ${_BACKUPDIR}/*/*
-    chmod 700 ${_BACKUPDIR}/*
-    chmod 700 ${_BACKUPDIR}
+    chmod 600 ${_SAVELOCATION}/*.sql.gz
+    chmod 700 ${_SAVELOCATION}
     chmod 700 /data/disk/arch
     echo "INFO: Permissions fixed"
   fi
