@@ -249,7 +249,9 @@ _backup_this_database_with_mydumper() {
     --build-empty-files \
     --threads=4 \
     --long-query-guard=900 \
-    --verbose=1
+    --clear \
+    --verbose=1 \
+    --sync-thread-lock-mode=AUTO
 }
 
 _backup_this_database_with_mysqldump() {
