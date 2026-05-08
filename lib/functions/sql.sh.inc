@@ -591,6 +591,7 @@ _sql_conf_update() {
         sed -i -E \
           -e "s/^#?\s*log_error/log_error/" \
           -e "s/^#?\s*syseventlog/syseventlog/" \
+          -e "s/^#?\s*mysqlx/mysqlx/" \
           /etc/mysql/my.cnf &> /dev/null
       fi
       if [ "${_DB_V}" = "8.4" ]; then
@@ -1429,6 +1430,7 @@ _db_server_install() {
       sed -i -E \
         -e "s/^#?\s*log_error/log_error/" \
         -e "s/^#?\s*syseventlog/syseventlog/" \
+        -e "s/^#?\s*mysqlx/mysqlx/" \
         /etc/mysql/my.cnf &> /dev/null
     fi
     cp -af ${_locCnf}/var/mysql /etc/init.d/mysql
