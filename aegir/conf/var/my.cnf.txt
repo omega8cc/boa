@@ -69,7 +69,6 @@ skip-log-bin
 # --- Logging in Percona 5.7 -----------------------------------------------
 # log_syslog             = ON
 # log_syslog_facility    = daemon
-# log_syslog_tag         = percona
 # log_syslog_include_pid = ON
 
 # --- Logging in Percona 8.x -----------------------------------------------
@@ -77,7 +76,6 @@ skip-log-bin
 # log_error_verbosity     = 2
 # log_error_services      = log_filter_internal; log_sink_internal; log_sink_syseventlog
 # syseventlog.facility    = daemon
-# syseventlog.tag         = percona
 # syseventlog.include_pid = ON
 
 # * InnoDB
