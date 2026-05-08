@@ -577,6 +577,23 @@ _sql_conf_update() {
       _DO_NOTHING=YES
     else
       # Determine the Percona version (assuming _DB_V is set to the version number, e.g., "5.7" or "8.0" or "8.4")
+      if [ "${_DB_V}" = "5.7" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DBST: Enable Logging for Percona ${_DB_V}"
+        fi
+        sed -i -E \
+          -e "s/^#?\s*log_syslog/log_syslog/" \
+          /etc/mysql/my.cnf &> /dev/null
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DBST: Enable Logging for Percona ${_DB_V}"
+        fi
+        sed -i -E \
+          -e "s/^#?\s*log_error/log_error/" \
+          -e "s/^#?\s*syseventlog/syseventlog/" \
+          -e "s/^#?\s*mysqlx/mysqlx/" \
+          /etc/mysql/my.cnf &> /dev/null
+      fi
       if [ "${_DB_V}" = "8.4" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DBST: Enable legacy mysql_native_password for Percona ${_DB_V}"
@@ -1401,6 +1418,19 @@ _db_server_install() {
       sed -i -E \
         -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
         -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
+        /etc/mysql/my.cnf &> /dev/null
+    fi
+    if [ "${_DB_SERIES}" = "5.7" ]; then
+      # Enable Logging for Percona 5.7
+      sed -i -E \
+        -e "s/^#?\s*log_syslog/log_syslog/" \
+        /etc/mysql/my.cnf &> /dev/null
+    else
+      # Enable Logging for Percona 8.x
+      sed -i -E \
+        -e "s/^#?\s*log_error/log_error/" \
+        -e "s/^#?\s*syseventlog/syseventlog/" \
+        -e "s/^#?\s*mysqlx/mysqlx/" \
         /etc/mysql/my.cnf &> /dev/null
     fi
     cp -af ${_locCnf}/var/mysql /etc/init.d/mysql
