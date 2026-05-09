@@ -269,6 +269,27 @@ _backup_this_database_with_mysqldump() {
     > ${_SAVELOCATION}/${_DB}.sql
 }
 
+_backup_mysql_schema() {
+  _check_running
+  # The mysql system schema uses MyISAM on Percona 5.7 and a mix on 8.x,
+  # so mydumper is never appropriate here. mysqldump handles mixed-engine
+  # system schemas correctly. --routines and --events are required to
+  # capture stored procedures and scheduled events which mydumper would miss.
+  # --single-transaction is a no-op for MyISAM tables but harmless and
+  # ensures InnoDB system tables (8.x) are captured consistently.
+  mysqldump \
+    --single-transaction \
+    --quick \
+    --no-autocommit \
+    --skip-add-locks \
+    --no-tablespaces \
+    --hex-blob \
+    --routines \
+    --events \
+    mysql \
+    > ${_SAVELOCATION}/mysql.sql
+}
+
 _compress_backup() {
   if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
@@ -279,6 +300,11 @@ _compress_backup() {
         rm -f -r ${DbName}
       fi
     done
+    # mysql schema is always backed up with mysqldump regardless of _MYQUICK_USE,
+    # so compress it separately alongside the mydumper zst archives
+    if [ -e "${_SAVELOCATION}/mysql.sql" ]; then
+      gzip ${_SAVELOCATION}/mysql.sql
+    fi
     chmod 600 ${_SAVELOCATION}/*
     chmod 700 ${_SAVELOCATION}
     chmod 700 /data/disk/arch
@@ -425,7 +451,9 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
-    if [ "${_MYQUICK_USE}" = "YES" ]; then
+    if [ "${_DB}" = "mysql" ]; then
+      _backup_mysql_schema &> /dev/null
+    elif [ "${_MYQUICK_USE}" = "YES" ]; then
       _backup_this_database_with_mydumper &> /dev/null
     else
       _backup_this_database_with_mysqldump &> /dev/null
