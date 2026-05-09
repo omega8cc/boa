@@ -2097,14 +2097,19 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f89.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
-    if [ -e "/var/xdrago/mysql_backup.sh" ]; then
-      chmod 700 /var/xdrago/mysql_backup.sh
-      chown root:root /var/xdrago/mysql_backup.sh
-      touch ${_pthLog}/mysql_backup.sh.ctrl.f89.${_xSrl}.pid
+    _CNT=$(pgrep -fc mysql_backup.sh)
+    if (( _CNT > 0 )); then
+      echo "The mysql_backup.sh is running!"
     else
-      mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
+      mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
+      curl ${_crlGet} "${_urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
+      if [ -e "/var/xdrago/mysql_backup.sh" ]; then
+        chmod 700 /var/xdrago/mysql_backup.sh
+        chown root:root /var/xdrago/mysql_backup.sh
+        touch ${_pthLog}/mysql_backup.sh.ctrl.f89.${_xSrl}.pid
+      else
+        mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
+      fi
     fi
   fi
 
@@ -2139,14 +2144,19 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/mysql_cluster_backup.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
-    if [ -e "/var/xdrago/mysql_cluster_backup.sh" ]; then
-      chmod 700 /var/xdrago/mysql_cluster_backup.sh
-      chown root:root /var/xdrago/mysql_cluster_backup.sh
-      touch ${_pthLog}/mysql_cluster_backup.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+    _CNT=$(pgrep -fc mysql_cluster_backup.sh)
+    if (( _CNT > 0 )); then
+      echo "The mysql_cluster_backup.sh is running!"
     else
-      mv -f /var/xdrago/mysql_cluster_backup.sh.old /var/xdrago/mysql_cluster_backup.sh
+      mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
+      curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
+      if [ -e "/var/xdrago/mysql_cluster_backup.sh" ]; then
+        chmod 700 /var/xdrago/mysql_cluster_backup.sh
+        chown root:root /var/xdrago/mysql_cluster_backup.sh
+        touch ${_pthLog}/mysql_cluster_backup.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+      else
+        mv -f /var/xdrago/mysql_cluster_backup.sh.old /var/xdrago/mysql_cluster_backup.sh
+      fi
     fi
   fi
 
