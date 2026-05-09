@@ -2096,7 +2096,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f89.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f88.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc mysql_backup.sh)
     if (( _CNT > 0 )); then
       echo "The mysql_backup.sh is running!"
@@ -2106,7 +2106,7 @@ _update_agents() {
       if [ -e "/var/xdrago/mysql_backup.sh" ]; then
         chmod 700 /var/xdrago/mysql_backup.sh
         chown root:root /var/xdrago/mysql_backup.sh
-        touch ${_pthLog}/mysql_backup.sh.ctrl.f89.${_xSrl}.pid
+        touch ${_pthLog}/mysql_backup.sh.ctrl.f88.${_xSrl}.pid
       else
         mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
       fi
