@@ -292,8 +292,7 @@ EOFMYSQL
           --threads=4 \
           --long-query-guard=900 \
           --clear \
-          --verbose=1 \
-          --sync-thread-lock-mode=AUTO
+          --verbose=1
         echo "INFO: site ${_Dom} db export on ${_oct} complete"
       elif [ "${_cmd}" = "fooproxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then

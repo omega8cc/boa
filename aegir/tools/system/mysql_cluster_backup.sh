@@ -228,20 +228,23 @@ _backup_this_database_with_mydumper() {
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
     mkdir -p ${_SAVELOCATION}/${_DB}
   fi
+  _MYDUMPER_LOCK_MODE="AUTO"
+  if [[ "${_DB_V}" == "5.7" ]]; then
+    _MYDUMPER_LOCK_MODE="FTWRL"
+  fi
   mydumper \
     --database=${_DB} \
-    --host=${_SQL_HOST} \
+    --host=localhost \
     --user=root \
     --password=${_SQL_PSWD} \
-    --port=${_SQL_PORT} \
+    --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     --rows=50000 \
     --build-empty-files \
     --threads=4 \
     --long-query-guard=900 \
-    --clear \
-    --verbose=1 \
-    --sync-thread-lock-mode=AUTO
+    --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
+    --verbose=1
 }
 
 _backup_this_database_with_mysqldump() {
