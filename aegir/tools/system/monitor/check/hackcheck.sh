@@ -104,8 +104,22 @@ _line_is_recent() {
 # Helpers
 # -----------------------------------------------------------------------------
 
+_LOCAL_IPS=()
+
+_load_local_ips() {
+  local _ip
+  while IFS= read -r _ip; do
+    [[ -n "${_ip}" ]] && _LOCAL_IPS+=("${_ip}")
+  done < <(ip -4 addr show | grep -oE 'inet ([0-9]{1,3}\.){3}[0-9]{1,3}' | awk '{print $2}')
+}
+
 _is_ipv4() {
-  [[ "${1}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+  [[ "${1}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  local _local
+  for _local in "${_LOCAL_IPS[@]}"; do
+    [[ "${1}" == "${_local}" ]] && return 1
+  done
+  return 0
 }
 
 _already_logged() {
@@ -147,6 +161,7 @@ _recycle_log() {
 
 _makeactions() {
   mkdir -p "${_LOG_DIR}"
+  _load_local_ips
   _recycle_log
   _set_timestamps
 
