@@ -176,6 +176,16 @@ _makeactions() {
     elif [[ "${_line}" =~ "Received disconnect" && ! "${_line}" =~ "disconnected by user" ]]; then
       _line_is_recent "${_line}" || continue
       _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+
+    elif [[ "${_line}" =~ "banner exchange" && "${_line}" =~ "invalid format" ]]; then
+      # SSH protocol scanners that fail to complete the banner handshake
+      _line_is_recent "${_line}" || continue
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+
+    elif [[ "${_line}" =~ "Connection closed by" && "${_line}" =~ \[preauth\] && ! "${_line}" =~ "authenticating user" && ! "${_line}" =~ "invalid user" && ! "${_line}" =~ "disconnected by user" ]]; then
+      # Port scanners that connect and immediately close with no auth attempt
+      _line_is_recent "${_line}" || continue
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
     fi
 
     _is_ipv4 "${_ip}" || continue
