@@ -40,8 +40,8 @@ _server_ip=$(cat "${_server_ip_file}" 2>/dev/null)
 
 # Function to get currently logged in SSH IPs
 _get_ssh_ips() {
-  # Use `who --ips` to get logged-in user IPs, filter out local sessions, and return unique, sorted IPs
-  who --ips | awk '{print $NF}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort | uniq
+  # Use `netstat -tn` to get logged-in user IPs, filter out local sessions, and return unique, sorted IPs
+  netstat -tn | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' | sort | uniq
 }
 
 # Store SSH IPs and compute hash
