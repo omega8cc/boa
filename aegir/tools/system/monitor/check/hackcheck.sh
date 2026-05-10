@@ -177,6 +177,18 @@ _makeactions() {
       _line_is_recent "${_line}" || continue
       _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
 
+    elif [[ "${_line}" =~ "Timeout before authentication" ]]; then
+      # Client connected but never completed auth within LoginGraceTime —
+      # slow scanners or deliberate connection exhaustion.
+      # Line format: "...from ATTACKER_IP to LOCAL_IP..." — take first IP match.
+      _line_is_recent "${_line}" || continue
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | head -1)
+
+    elif [[ "${_line}" =~ "Connection reset by" && "${_line}" =~ \[preauth\] ]]; then
+      # TCP RST during key exchange — masscan-style scanners probing for sshd
+      _line_is_recent "${_line}" || continue
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+
     elif [[ "${_line}" =~ "banner exchange" && "${_line}" =~ "invalid format" ]]; then
       # SSH protocol scanners that fail to complete the banner handshake
       _line_is_recent "${_line}" || continue
