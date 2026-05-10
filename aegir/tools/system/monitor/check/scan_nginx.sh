@@ -619,12 +619,16 @@ fi
 # Load Logged-In IPs
 # ==============================
 
-if command -v who &> /dev/null; then
+_get_ssh_ips() {
+  netstat -tn | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' | sort | uniq
+}
+
+if command -v netstat &>/dev/null; then
   while IFS= read -r _logged_ip; do
     if _validate_ip "${_logged_ip}"; then
       _LOGGED_IN_IPS["${_logged_ip}"]=1
     fi
-  done < <(who --ips | awk '{print $5}' | tr -dc '0-9.\n')
+  done < <(_get_ssh_ips)
 fi
 
 # ==============================
