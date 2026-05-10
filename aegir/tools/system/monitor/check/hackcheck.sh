@@ -167,6 +167,12 @@ _makeactions() {
       _line_is_recent "${_line}" || continue
       _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
 
+    elif [[ "${_line}" =~ "Invalid user" ]]; then
+      # Catches empty-username probes: "Invalid user  from 1.2.3.4 port N"
+      # These never produce a "Failed password" line so fall through without this branch.
+      _line_is_recent "${_line}" || continue
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+
     elif [[ "${_line}" =~ "Received disconnect" && ! "${_line}" =~ "disconnected by user" ]]; then
       _line_is_recent "${_line}" || continue
       _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
