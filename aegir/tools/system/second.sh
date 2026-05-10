@@ -5,6 +5,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
+_monPath="/var/xdrago/monitor/check"
+
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
 
@@ -356,14 +358,14 @@ _load_control() {
 }
 
 # Main execution
-for _iteration in {1..3}; do
+for _iteration in {1..5}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   _load_control
-  _spawn_detached 'perl /var/xdrago/monitor/check/hackcheck.pl'
-  _spawn_detached 'perl /var/xdrago/monitor/check/hackftp.pl'
-  _spawn_detached 'perl /var/xdrago/monitor/check/escapecheck.pl'
-  sleep 15
+  nohup ${_monPath}/hackcheck.sh > /dev/null 2>&1 &
+  nohup ${_monPath}/hackftp.sh > /dev/null 2>&1 &
+  nohup ${_monPath}/escapecheck.sh > /dev/null 2>&1 &
+  sleep 10
 done
 
 echo "Done!"
