@@ -107,10 +107,17 @@ _csf_ban() {
 
 _recycle_log() {
   [[ -f "${_FTP_LOG}" ]] || return 0
-  local _age_sec
-  _age_sec=$(( $(date +%s) - $(stat --format=%Y "${_FTP_LOG}") ))
-  if (( _age_sec >= _BAN_SECONDS )); then
-    rm -f "${_FTP_LOG}"
+  local _first_line _mark _mark_epoch _age_sec
+  IFS= read -r _first_line < "${_FTP_LOG}"
+  _mark="${_first_line##* }"
+  if [[ "${_mark}" =~ ^([0-9]{2})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2})$ ]]; then
+    _mark_epoch=$(date -d "20${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]} ${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}" +%s 2>/dev/null)
+    if [[ -n "${_mark_epoch}" ]]; then
+      _age_sec=$(( $(date +%s) - _mark_epoch ))
+      if (( _age_sec >= _BAN_SECONDS )); then
+        rm -f "${_FTP_LOG}"
+      fi
+    fi
   fi
 }
 
