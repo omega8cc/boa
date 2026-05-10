@@ -358,14 +358,14 @@ _load_control() {
 }
 
 # Main execution
-for _iteration in {1..5}; do
+for _iteration in {1..10}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   _load_control
   nohup ${_monPath}/hackcheck.sh > /dev/null 2>&1 &
   nohup ${_monPath}/hackftp.sh > /dev/null 2>&1 &
   nohup ${_monPath}/escapecheck.sh > /dev/null 2>&1 &
-  sleep 10
+  sleep 5
 done
 
 echo "Done!"
