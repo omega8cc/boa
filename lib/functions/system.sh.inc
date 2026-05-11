@@ -9833,6 +9833,18 @@ _initd_update() {
     wait
     sed -i "s/^KbdInteractiveAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
     wait
+    sed -i "s/^MaxAuthTries.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^LoginGraceTime.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^MaxStartups.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^X11Forwarding.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^AllowTcpForwarding.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^AllowAgentForwarding.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
     sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
     wait
     echo >> /etc/ssh/sshd_config
@@ -9850,6 +9862,12 @@ _initd_update() {
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
     echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config
     echo "KbdInteractiveAuthentication no" >> /etc/ssh/sshd_config
+    echo "MaxAuthTries 3" >> /etc/ssh/sshd_config
+    echo "LoginGraceTime 30" >> /etc/ssh/sshd_config
+    echo "MaxStartups 5:50:10" >> /etc/ssh/sshd_config
+    echo "X11Forwarding no" >> /etc/ssh/sshd_config
+    echo "AllowTcpForwarding no" >> /etc/ssh/sshd_config
+    echo "AllowAgentForwarding no" >> /etc/ssh/sshd_config
     echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
