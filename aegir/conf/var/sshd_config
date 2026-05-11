@@ -98,3 +98,9 @@ PrintMotd yes
 ClientAliveInterval 300
 ClientAliveCountMax 10000
 TCPKeepAlive yes
+MaxAuthTries 3
+LoginGraceTime 30
+MaxStartups 5:50:10
+X11Forwarding no
+AllowTcpForwarding no
+AllowAgentForwarding no
