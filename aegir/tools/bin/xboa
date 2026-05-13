@@ -373,19 +373,16 @@ EOFMYSQL
           echo "INFO: account ${_oct} http-off pid created"
         fi
         ###
-        ### Belt-and-braces: raise anon microcache TTL on the source site
-        ### INI so any request that somehow bypasses the 503 short-circuit
-        ### still benefits from aggressive Nginx caching. Source is being
-        ### decommissioned so we never restore the original value.
+        ### Purge the fastcgi speed cache so already-cached 200 responses
+        ### do not mask the 503. Without this, anon-cached homepages and
+        ### other hot URLs would keep being served fresh for up to the
+        ### configured 200 TTL (default 10s, longer if the site bumped
+        ### speed_booster_anon_cache_ttl). Box-wide purge is acceptable:
+        ### microcache repopulates within seconds on live sites.
         ###
-        if [ -e "${_Dir}/modules/boa_site_control.ini" ]; then
-          if grep -q "^speed_booster_anon_cache_ttl" "${_Dir}/modules/boa_site_control.ini"; then
-            sed -i "s|^speed_booster_anon_cache_ttl.*|speed_booster_anon_cache_ttl = 3600|" \
-              "${_Dir}/modules/boa_site_control.ini"
-          else
-            echo "speed_booster_anon_cache_ttl = 3600" >> "${_Dir}/modules/boa_site_control.ini"
-          fi
-          echo "INFO: site ${_Dom} speed_booster_anon_cache_ttl bumped on ${_oct}"
+        if [ -d "/var/lib/nginx/speed" ]; then
+          find /var/lib/nginx/speed -type f -delete &> /dev/null
+          echo "INFO: account ${_oct} fastcgi speed cache purged"
         fi
         if [ -x "/usr/local/bin/mydumper" ]; then
           _MYQUICK_ITD=$(mydumper -V 2>&1 \
@@ -1123,9 +1120,14 @@ _migrate_init() {
           ###
           ### All sites on this account are now served by the proxy vhost
           ### template, so the PHP-level 503 short-circuit is no longer
-          ### needed. Remove the per-account pid file.
+          ### needed. Remove the per-account pid file and purge any
+          ### lingering cached 503 responses from the speed cache so
+          ### post-migration traffic to the proxy vhost is unaffected.
           ###
           rm -f ${_USR}/static/control/http-off.pid
+          if [ -d "/var/lib/nginx/speed" ]; then
+            find /var/lib/nginx/speed -type f -delete &> /dev/null
+          fi
           _send_notice_migration_complete
           echo COMPLETE > ${_USR}/log/proxied.pid
         fi
