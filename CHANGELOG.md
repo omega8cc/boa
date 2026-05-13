@@ -20,10 +20,11 @@ otherwise date-stamped entries for non-versioned work.
 
 ### Changed
 - `xboa` export step now creates the per-account `http-off.pid` (default
-  3600s TTL) and bumps `speed_booster_anon_cache_ttl=3600` in each site's
-  `boa_site_control.ini` as a defensive belt-and-braces measure.
-- `xboa` proxy step removes `http-off.pid` after Nginx reload, before
-  writing `proxied.pid`.
+  3600s TTL) and purges `/var/lib/nginx/speed` so already-cached 200
+  responses on hot URLs (homepages especially) cannot mask the 503.
+- `xboa` proxy step removes `http-off.pid` after Nginx reload and purges
+  the speed cache again before writing `proxied.pid`, so cached 503s do
+  not linger after the proxy vhost takes over.
 
 ### Fixed
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
