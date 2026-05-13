@@ -1,0 +1,161 @@
+# deps/manifest.yml — boa-private
+#
+# All upstream dependencies and controlled forks used by BOA.
+# Claude Code must not modify fork or upstream source directly from this repo.
+# Changes to forked projects go through the fork's own repo and PR process.
+# Changes to how BOA fetches/pins a dependency must be flagged for Tier 3 testing.
+#
+# fetched_as values:
+#   package    — installed via apt from Devuan/Debian repos
+#   tarball    — downloaded from mirror_url at install/upgrade time and built
+#   git-clone  — cloned from fork at defined pin at install/upgrade time
+#   composer   — managed via Composer (Drupal 10+ platforms only)
+
+dependencies:
+
+  # --- Aegir stack ---
+
+  - name: aegir-hostmaster
+    role: >
+      Hostmaster is a Drupal install profile that initializes the Aegir Hosting
+      System UI based on Drupal 7 via local Drush Make — provides the hosting UI,
+      backend task and sites cron queue.
+    upstream: https://github.com/omega8cc/hostmaster
+    pin: "5.x-dev"  # confirm exact branch/tag from BOA source
+    fetched_as: tarball
+    mirror_url: http://files.aegir.cc/dev/dev/hostmaster.tar.gz
+    notes: >
+      Aegir Hostmaster is a Drupal 7 application/site installation profile.
+      Do not confuse with provision (Aegir drush backend). Changes to hostmaster
+      require PHP/Drupal expertise, not just bash. Any BOA logic that drives
+      hostmaster behaviour (drush commands, site aliases) must be traced through
+      both BOA bash and Drupal hook layers.
+
+  - name: aegir-provision
+    role: >
+      Provision is a suite of Drush commands that provide the configuration
+      functionality of the Aegir Hosting System Drush backend for Aegir —
+      handles server-side operations (site creation, platform deployment,
+      database provisioning). Runs as the aegir system user.
+    upstream: https://github.com/omega8cc/provision
+    pin: "5.x-dev"  # confirm exact branch/tag from BOA source
+    fetched_as: tarball
+    mirror_url: http://files.aegir.cc/dev/dev/provision.tar.gz
+    notes: >
+      Provision is a Drush extension, not a standalone application. It runs in the
+      context of Drush and the aegir system user. Changes must be tested against
+      the exact Drush version BOA pins — provision is tightly coupled to Drush version.
+
+  - name: aegir-hosting
+    role: >
+      Hosting is a suite of Drupal modules that provide the UI functionality
+      of the Aegir Hosting System, defined and installed via Hostmaster profile,
+      along with several other Drupal contrib modules.
+    upstream: https://github.com/omega8cc/hosting
+    pin: "5.x-dev"  # confirm exact branch/tag from BOA source
+    fetched_as: tarball
+    mirror_url: http://files.aegir.cc/dev/dev/hosting.tar.gz
+    notes: >
+      Suite of several Aegir frontend (UI) modules.
+      There may be additional contrib modules not listed here.
+
+  # --- Drush ---
+
+  - name: drush
+    role: >
+      Drupal command-line shell and scripting interface. BOA pins a specific version
+      because provision compatibility is tightly version-dependent.
+    upstream: https://github.com/omega8cc/drush
+    pin: "8-boa-micro"  # confirm exact pin from BOA source
+    fetched_as: tarball  # confirm — BOA may fetch phar or clone
+    mirror_url: http://files.aegir.cc/dev/dev/drush-8.5.0.5.tar.gz
+    notes: >
+      Drush version is pinned tightly. Do not suggest upgrading without checking
+      provision compatibility. Drush 8.x is required for Drupal 7/Aegir; Drush 10+
+      is for Drupal 10+ platforms only and is managed separately per platform via Composer.
+
+  # --- Web server ---
+
+  - name: nginx
+    role: >
+      Web server for all BOA-managed sites. BOA manages Nginx config generation
+      and reloads — it does not manage the Nginx binary itself.
+    upstream: https://nginx.org
+    fork: # no fork — built from Nginx sources
+    pin: "1.29.8"
+    fetched_as: tarball
+    mirror_url: http://files.aegir.cc/dev/src/nginx-1.29.8.tar.gz
+    notes: >
+      BOA generates Nginx vhost configs and manages reloads. The Nginx binary and
+      modules are built from sources. Never restart Nginx during live traffic;
+      always use reload.
+
+  # --- Database ---
+
+  - name: percona-server
+    role: >
+      MySQL-compatible database server. BOA manages installation, my.cnf tuning,
+      and upgrades. Currently 8.4 on new installs; 5.7 on legacy servers.
+    upstream: https://www.percona.com/mysql/software/percona-server
+    fork:  # no fork — installed from Percona apt repo
+    pin: "8.4"  # new installs; 5.7 still present on legacy
+    fetched_as: package
+    mirror_url:
+    notes: >
+      Soname changed between Percona 5.7 and 8.4: libperconaserverclient22 →
+      libperconaserverclient24. Any script that links against or checks for this
+      library must handle both. mydumper is in use for dump/restore and is
+      compatible across both versions.
+
+  # --- PHP ---
+
+  - name: php-fpm
+    role: >
+      PHP FastCGI Process Manager. BOA manages multiple PHP versions simultaneously
+      for compatibility across Drupal 7 and Drupal 10+ platforms.
+    upstream: https://www.php.net
+    fork:  # no fork — installed from PHP sources
+    pin: "multiple: 8.0-8.5, 7.0-7.4, 5.6" # confirm exact versions managed by BOA
+    fetched_as: tarball
+    mirror_url: http://files.aegir.cc/dev/src/php-8.5.6.tar.bz2
+    notes: >
+      BOA manages php-fpm pools per Aegir instance. Confirm which PHP versions BOA
+      currently provisions and which Drupal version each targets. Never kill php-fpm
+      without checking for active requests.
+
+  # --- Backup and dump tools ---
+
+  - name: mydumper
+    role: >
+      Multi-threaded MySQL dump utility used by BOA for database backups and
+      migration dump/restore operations.
+    upstream: https://github.com/mydumper/mydumper
+    fork:  # no fork — installed from packages or sources
+    pin: "0.21.3-2"  # confirm exact version from BOA source
+    fetched_as: tarball  # confirm
+    mirror_url: http://files.aegir.cc/dev/mydumper_0.21.3-2.bookworm_amd64.deb.gz
+    notes: >
+      Confirmed compatible with Percona 5.7 and 8.4 for dump/restore. No functional
+      breakage observed across versions in testing.
+
+  # --- Firewall ---
+
+  - name: csf
+    role: >
+      ConfigServer Security & Firewall. Manages iptables rules on all BOA hosts.
+      baremetalcsf is BOA's idempotent CSF installer.
+    upstream: https://github.com/omega8cc/csf-firewall
+    fork:  # no fork — fetched from ConfigServer directly
+    pin: "15.00"
+    fetched_as: tarball
+    mirror_url: http://files.aegir.cc/dev/src/csf-15.00.tar.gz
+    notes: >
+      CSF is installed and configured by baremetalcsf. Configuration is idempotent.
+      Both Proxmox firewall daemons (pve-firewall, pvefw-logger) are disabled on
+      bare metal hosts — CSF handles all firewalling.
+
+  # --- Note ---
+  # This manifest is a starting point based on known BOA architecture.
+  # Confirm all fork URLs, pins, and fetch methods by reading barracuda.sh and
+  # octopus.sh in boa-private before treating any entry here as authoritative.
+  # Add entries for any dependency not listed here as it is discovered.
