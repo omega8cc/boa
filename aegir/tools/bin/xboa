@@ -346,13 +346,6 @@ EOFMYSQL
               --overwrite-tables \
               --verbose=1
             echo "INFO: site ${_Dom} db import on ${_oct} complete"
-            ###
-            ### Activate readonly on source via global.inc and not via drush
-            ###
-            ### _run_drush8_nosilent_cmd "variable-set --always-set site_readonly 0"
-            ### _run_drush8_nosilent_cmd "dis readonlymode -y"
-            ### echo "INFO: site ${_Dom} readonlymode on ${_oct} disabled"
-            ###
           else
             echo "ALRT: site ${_Dom} db failure due to missing ${_USR}/src/${_DBN}"
           fi
@@ -366,13 +359,34 @@ EOFMYSQL
           echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
         fi
       elif [ "${_cmd}" = "export" ]; then
-        _run_drush8_nosilent_cmd "en readonlymode -y"
         ###
-        ### Activate readonly on source via global.inc and not via drush
+        ### HTTP-off via global.inc: per-account pid file blocks all sites
+        ### on this Octopus with a 503 response. File contents (integer
+        ### seconds) override the default Nginx microcache TTL of 300s.
+        ### Replaces readonlymode which is unavailable via system drush 8
+        ### on Drupal 8+ and bypassed by commerce/API code paths.
         ###
-        ### _run_drush8_nosilent_cmd "variable-set --always-set site_readonly 1"
+        mkdir -p ${_USR}/static/control
+        if [ ! -e "${_USR}/static/control/http-off.pid" ]; then
+          echo 3600 > ${_USR}/static/control/http-off.pid
+          chown ${_oct}:users ${_USR}/static/control/http-off.pid &> /dev/null
+          echo "INFO: account ${_oct} http-off pid created"
+        fi
         ###
-        echo "INFO: site ${_Dom} readonlymode module on ${_oct} enabled"
+        ### Belt-and-braces: raise anon microcache TTL on the source site
+        ### INI so any request that somehow bypasses the 503 short-circuit
+        ### still benefits from aggressive Nginx caching. Source is being
+        ### decommissioned so we never restore the original value.
+        ###
+        if [ -e "${_Dir}/modules/boa_site_control.ini" ]; then
+          if grep -q "^speed_booster_anon_cache_ttl" "${_Dir}/modules/boa_site_control.ini"; then
+            sed -i "s|^speed_booster_anon_cache_ttl.*|speed_booster_anon_cache_ttl = 3600|" \
+              "${_Dir}/modules/boa_site_control.ini"
+          else
+            echo "speed_booster_anon_cache_ttl = 3600" >> "${_Dir}/modules/boa_site_control.ini"
+          fi
+          echo "INFO: site ${_Dom} speed_booster_anon_cache_ttl bumped on ${_oct}"
+        fi
         if [ -x "/usr/local/bin/mydumper" ]; then
           _MYQUICK_ITD=$(mydumper -V 2>&1 \
             | tr -d "\n" \
@@ -1106,6 +1120,12 @@ _migrate_init() {
           ### _migrate_prepare >/var/log/boa/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
         if [ "${_cmd}" = "proxy" ]; then
           service nginx reload
+          ###
+          ### All sites on this account are now served by the proxy vhost
+          ### template, so the PHP-level 503 short-circuit is no longer
+          ### needed. Remove the per-account pid file.
+          ###
+          rm -f ${_USR}/static/control/http-off.pid
           _send_notice_migration_complete
           echo COMPLETE > ${_USR}/log/proxied.pid
         fi
