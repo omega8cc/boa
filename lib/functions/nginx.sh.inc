@@ -636,6 +636,10 @@ _nginx_mime_check_fix() {
       cp -af ${_locCnf}/tpl/under_construction.jpg \
         /var/www/nginx-default/under_construction.jpg
     fi
+    if [ -e "${_locCnf}/tpl/maintenance.html" ]; then
+      cp -af ${_locCnf}/tpl/maintenance.html \
+        /var/www/nginx-default/maintenance.html
+    fi
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
