@@ -74,6 +74,48 @@ if (function_exists('drush_get_command')) {
 
 
 /**
+ * HTTP-off migration short-circuit
+ *
+ * Presence of /data/disk/<oct>/static/control/http-off.pid blocks all
+ * sites on the Octopus account with a 503. xboa touches this during
+ * export and removes it once the proxy vhost is in place. Replaces
+ * readonlymode use which is unreliable on busy commerce sites and
+ * unavailable via system drush 8 on Drupal 8+.
+ *
+ * File contents (integer seconds) override the default TTL of 300s
+ * for both Nginx microcache (X-Accel-Expires) and downstream caches.
+ */
+if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
+  if (preg_match('#^(/data/disk/[^/]+)/#', $_SERVER['DOCUMENT_ROOT'], $_http_off_m)) {
+    $_http_off_pid = $_http_off_m[1] . '/static/control/http-off.pid';
+    if (file_exists($_http_off_pid)) {
+      $_http_off_ttl = (int) @file_get_contents($_http_off_pid);
+      if ($_http_off_ttl < 30 || $_http_off_ttl > 86400) {
+        $_http_off_ttl = 300;
+      }
+      header('HTTP/1.1 503 Service Unavailable');
+      header('Status: 503 Service Unavailable');
+      header('Retry-After: ' . $_http_off_ttl);
+      header('X-Accel-Expires: ' . $_http_off_ttl);
+      header('Cache-Control: public, max-age=' . $_http_off_ttl);
+      header('Content-Type: text/html; charset=utf-8');
+      header('Connection: close');
+      $_http_off_tpl = '/var/www/nginx-default/maintenance.html';
+      if (is_readable($_http_off_tpl)) {
+        readfile($_http_off_tpl);
+      }
+      else {
+        echo '<!doctype html><title>Maintenance in progress</title>'
+          . '<h1>Site maintenance in progress</h1>'
+          . '<p>We will be back shortly.</p>';
+      }
+      exit;
+    }
+  }
+}
+
+
+/**
  * Force backward compatible SERVER_SOFTWARE
  */
 if (!$is_backend) {
