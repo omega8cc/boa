@@ -169,10 +169,23 @@ _makeactions() {
   _mark=$(date +%y%m%d-%H%M%S)
 
   declare -A _hits=()
+  # IPs with a successful login in this log window — never banned regardless
+  # of other matching patterns. A legitimate user whose client drops a
+  # connection mid-handshake would otherwise be caught by the
+  # "Connection closed by [preauth]" branch.
+  declare -A _accepted=()
 
   while IFS= read -r _line; do
     # Sanitise — strip chars outside the safe set (mirrors Perl regex)
     _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-]/}"
+
+    # Collect accepted logins in the same pass — single read of auth.log
+    if [[ "${_line}" =~ "Accepted " ]]; then
+      local _acc_ip
+      _acc_ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      _is_ipv4 "${_acc_ip}" && _accepted["${_acc_ip}"]=1
+      continue
+    fi
 
     local _ip=""
 
@@ -216,6 +229,8 @@ _makeactions() {
     fi
 
     _is_ipv4 "${_ip}" || continue
+    # Skip IPs with a successful login in this log window
+    [[ -n "${_accepted[${_ip}]+x}" ]] && continue
     (( _hits["${_ip}"]++ )) || true
 
   done < <(tail --lines=9999 /var/log/auth.log 2>/dev/null)
