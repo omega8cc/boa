@@ -1046,6 +1046,7 @@ _tune_memory_limits() {
   if [ "${_USE_FPM}" -lt 1024 ]; then
     _USE_FPM=1024
   fi
+  _USE_APC=$(( _USE_FPM / 2 ))
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _CPU_NR is ${_CPU_NR}"
     _msg "TUNE: _L_NGX_WRKS is ${_L_NGX_WRKS}"
@@ -1054,6 +1055,7 @@ _tune_memory_limits() {
     _msg "TUNE: _USE_PHP is ${_USE_PHP}"
     _msg "TUNE: _USE_OPC is ${_USE_OPC}"
     _msg "TUNE: _USE_CLI is ${_USE_CLI}"
+    _msg "TUNE: _USE_APC is ${_USE_APC}"
     _msg "TUNE: _QCE_SQL is ${_QCE_SQL}"
     _msg "TUNE: _RND_SQL is ${_RND_SQL}"
     _msg "TUNE: _JBF_SQL is ${_JBF_SQL}"
@@ -1077,10 +1079,11 @@ _tune_memory_limits() {
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
-      sed -i "s/395/${_USE_FPM}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
-      wait
-      sed -i "s/181/${_USE_OPC}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
-      sed -i "s/395/${_USE_CLI}/g" /opt/php${e}/lib/php.ini     &> /dev/null
+      sed -i "s/395/${_USE_FPM}/g"   /opt/php${e}/etc/php${e}.ini &> /dev/null
+      sed -i "s/256M/${_USE_APC}M/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
+      sed -i "s/181/${_USE_OPC}/g"   /opt/php${e}/etc/php${e}.ini &> /dev/null
+      sed -i "s/395/${_USE_CLI}/g"   /opt/php${e}/lib/php.ini &> /dev/null
+      sed -i "s/256M/${_USE_APC}M/g" /opt/php${e}/lib/php.ini &> /dev/null
     fi
   done
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
