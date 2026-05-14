@@ -71,6 +71,31 @@ _valkey_no_rdb() {
 }
 _valkey_no_rdb
 
+#
+# Purge not used Avahi
+_purge_avahi() {
+  local _avahi_bin
+  _avahi_bin="$(command -v avahi-daemon 2>/dev/null)"
+
+  if [ -z "${_avahi_bin}" ] && ! dpkg -l avahi-daemon 2>/dev/null | grep -q "^ii"; then
+    return 0
+  fi
+
+  service avahi-daemon stop 2>/dev/null
+  update-rc.d avahi-daemon disable 2>/dev/null
+  apt-get purge -y avahi-daemon avahi-utils libnss-mdns 2>/dev/null
+  apt-get autoremove -y 2>/dev/null
+
+  if dpkg -l avahi-daemon 2>/dev/null | grep -q "^ii"; then
+    echo "AVAHI purge failed, please check manually"
+  fi
+}
+
+if [ ! -e "/root/.avahi_purged.lock" ]; then
+  _purge_avahi
+  touch /root/.avahi_purged.lock
+fi
+
 # Function to enable fstrim instead of discard
 _if_enable_fstrim() {
   if [ -x "/usr/sbin/fstrim" ] && [ -d "/etc/cron.daily" ] && [ ! -e "/etc/cron.daily/fstrim" ]; then
