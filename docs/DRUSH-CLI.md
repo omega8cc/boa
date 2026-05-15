@@ -4,6 +4,30 @@ BOA (Barracuda Octopus Ægir) provides robust tools for managing PHP-CLI and Dru
 
 ---
 
+## Required: Use the `oN.ftp` Limited Shell for All CLI Operations
+
+**Everything described in this document — `vdrush`, PHP-CLI version switching, Composer, and
+all other drush operations — works exclusively under the `oN.ftp` limited shell account.**
+
+BOA provisions two separate user accounts per Octopus instance:
+
+- `oN` — the main Unix user, accessible via SSH with a regular bash shell
+- `oN.ftp` — the FTP/limited shell user, accessible via SSH with BOA's special shell wrapper
+
+The PHP-CLI version management and `vdrush` described in this document depend on BOA's
+**special shell wrapper**, which is only active in the `oN.ftp` limited shell environment.
+This wrapper automatically synchronises the correct PHP CLI version to match the PHP-FPM
+version used by each site, and makes `vdrush` available.
+
+**When logged in as `oN` under bash, the shell wrapper is not active.** PHP-CLI version
+switching will not work, `vdrush` will not behave correctly, and you may inadvertently run
+drush or Composer against the wrong PHP version. Errors caused by this mismatch are
+difficult to diagnose and are easily mistaken for server or Drupal problems.
+
+**Always connect as `oN.ftp` when running any drush or Composer command.** The `oN` bash
+account should not be used for these operations.
+
+
 ## PHP-CLI Version Management in BOA
 
 BOA provides two mechanisms for managing the PHP-CLI version used in command-line operations (such as Drush and Composer):
@@ -14,6 +38,9 @@ BOA provides two mechanisms for managing the PHP-CLI version used in command-lin
 ### How Instant PHP-CLI Switching Works
 
 In addition to the `cli.info` file, BOA supports **instant PHP-CLI switching** through **specific configuration files** located in `~/static/control/`. The filenames of these configuration files dictate the PHP version to use, and their content is irrelevant. This enables you to switch the PHP-CLI version for Drush, Composer, and other CLI operations, including Ægir tasks, instantly.
+
+> **Reminder:** Instant PHP-CLI switching only works under the `oN.ftp` limited shell.
+> See the prerequisite section above.
 
 #### Example Instant Switch Files:
 
@@ -41,10 +68,19 @@ If none of these instant switch files are present, the system will default to th
 
 ### Important Notes:
 
-- The instant switch files' **content is irrelevant**—what matters is the **filename**. These files can be empty or contain any content.
-- The system will automatically select the **highest PHP version** based on the filenames of the switch files. No need to remove lower-version files.
-- The `cli.info` file serves as the **default** PHP-CLI version when no instant switch files are present, and it **must contain a valid PHP version** in its content (e.g., `8.1`).
-- This smart feature, similarly to the classic `~/static/control/cli.info` depends on the BOA special shell wrapper, which is temporarily deactivated during both barracuda and octopus upgrades to not interfere with complex procedures which depend on system dash shell. For this reason any Drush or Composer command you will execute in the limited shell account while you or your host is running barracuda or octopus upgrade will revert to the version defined in the system-wide `/root/.barracuda.cnf` file.
+- The instant switch files' **content is irrelevant** — what matters is the **filename**.
+  These files can be empty or contain any content.
+- The system will automatically select the **highest PHP version** based on the filenames of
+  the switch files. No need to remove lower-version files.
+- The `cli.info` file serves as the **default** PHP-CLI version when no instant switch files
+  are present, and it **must contain a valid PHP version** in its content (e.g., `8.1`).
+- This smart feature, similarly to the classic `~/static/control/cli.info`, depends on the
+  BOA special shell wrapper, which is only active under the `oN.ftp` limited shell account,
+  and is additionally temporarily deactivated during both barracuda and octopus upgrades to
+  not interfere with complex procedures which depend on system dash shell. For this reason
+  any Drush or Composer command you execute in the limited shell account while barracuda or
+  octopus upgrade is running will revert to the version defined in the system-wide
+  `/root/.barracuda.cnf` file.
 
 ### Example of `cli.info`:
 ```
@@ -80,12 +116,18 @@ This change allows you to easily unlock the local Drush using a new task availab
 
 #### Steps to Use Site-Local Drush:
 
+> **Important:** All steps below must be performed as `oN.ftp` under the BOA limited shell,
+> not as `oN` under bash. Connecting as `oN` will result in the wrong PHP environment and
+> `vdrush` will not work correctly. If `vdrush` has not worked for you in the past, this is
+> the most likely reason.
+
 1. Run the 'Unlock Local Drush' task on the site's Platform in Ægir.
-2. Find the correct Drush `@site-alias` with the `drush11 aliases` command.
-3. Switch to the Platform app root where `vendor` exists using `cd`.
-4. Run `vdrush --version` or install it with `composer require drush/drush`.
-5. Use `vdrush @site-alias updbst`, `vdrush @site-alias updb`, etc.
-6. Run the 'Platform Verify' task to restore compatibility with Drush 8.
+2. Connect to your server as `oN.ftp` (not `oN`) using SSH.
+3. Find the correct Drush `@site-alias` with the `drush11 aliases` command.
+4. Switch to the Platform app root where `vendor` exists using `cd`.
+5. Run `vdrush --version` or install it with `composer require drush/drush`.
+6. Use `vdrush @site-alias updbst`, `vdrush @site-alias updb`, etc.
+7. Run the 'Platform Verify' task to restore compatibility with Drush 8.
 
 ---
 
