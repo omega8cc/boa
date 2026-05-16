@@ -1,6 +1,6 @@
 # DEBUG: Plugin Discovery Failures, Cache Poisoning, and Intermittent Downtime
 
-**Applies to:** BOA 5.x, Drupal 8/9/10, PHP-FPM + APCu + Redis, Aegir-managed sites
+**Applies to:** BOA 5.x, Drupal 8/9/10, PHP-FPM + APCu + Valkey/Redis, Aegir-managed sites
 
 
 ## Background
@@ -14,17 +14,20 @@ $settings['cache']['bins']['config']     = 'cache.backend.chainedfast';
 ```
 
 `chainedfast` is a multi-tier backend: it reads from and writes to **APCu first**, then
-**Redis**, then falls back to the **database**. This is not a default added lightly. Keeping
-these expensive, frequently-read caches in fast memory tiers keeps sites responsive and takes
-significant read pressure off the disk and database layer — regardless of storage speed, but
-critically important on any deployment where disk I/O is a bottleneck.
+**Valkey/Redis**, then falls back to the **database**. This is not a default added lightly.
+Keeping these expensive, frequently-read caches in fast memory tiers keeps sites responsive
+and takes significant read pressure off the disk and database layer.
 
 **Do not override these defaults without understanding the trade-offs described below.**
 
-The key architectural point is that APCu is process-local: each PHP-FPM worker and any CLI
-process maintains its own separate APCu memory segment. **Redis, by contrast, is shared
-across all processes** — both PHP-FPM workers and CLI drush processes read from and write to
-the same Redis instance. This distinction is central to the failure mode described in Issue 1.
+The key architectural points are:
+
+- **APCu** is process-local: each PHP-FPM worker and any CLI process maintains its own
+  separate APCu memory segment
+- **Valkey/Redis** is shared across all processes: both PHP-FPM workers and CLI drush
+  processes read from and write to the same instance
+- **Both tiers require sufficient memory allocation** for the number of sites hosted —
+  starvation at either tier causes cache misses that cascade through the stack
 
 APCu is also enabled for CLI processes:
 
@@ -33,11 +36,40 @@ apc.enable_cli=1
 ```
 
 
-## Issue 1: Recurring plugin discovery errors and intermittent downtime
+## Diagnostic sequence — start here
+
+When plugin discovery errors appear, **always check Valkey memory and hit rate first**
+before investigating other causes. This is the fastest path to diagnosis and the most
+common root cause on servers hosting a large number of sites.
+
+```bash
+# Check memory ceiling and current usage
+valkey-cli -a 'PASSWORD' config get maxmemory
+valkey-cli -a 'PASSWORD' info memory | grep -E 'used_memory_human|maxmemory_human|mem_fragmentation_ratio'
+
+# Check hit rate and eviction count
+valkey-cli -a 'PASSWORD' info stats | grep -E 'keyspace_hits|keyspace_misses|evicted_keys'
+```
+
+**Interpreting results:**
+
+- If `used_memory_human` equals or approaches `maxmemory_human`: Valkey is at its ceiling
+- If `evicted_keys` is non-zero and climbing: Valkey is actively evicting cache entries
+- If `keyspace_misses` significantly exceeds `keyspace_hits`: cache hit rate is poor
+
+A healthy Valkey instance for a BOA server should have a hit rate above 85-90%. A miss
+rate above 50% on a server with many sites almost always indicates `maxmemory` is too low.
+**See Issue 1 below.**
+
+If Valkey metrics look healthy, proceed to Issue 2 (Redis/Valkey cache poisoning via CLI
+drush) and Issue 3 (disk I/O latency).
+
+
+## Issue 1: Valkey/Redis memory starvation (confirmed primary cause)
 
 ### Symptoms
 
-- Sites experience intermittent downtime in bursts lasting 2–4 minutes
+- Sites experience intermittent downtime in bursts, self-resolving after a few minutes
 - Errors in watchdog resembling:
 
 ```
@@ -52,84 +84,155 @@ Drupal\Core\Render\Component\Exception\ComponentNotFoundException: Unable to fin
 "theme_name:component-name" in the component repository.
 ```
 
-- Errors appear in bursts at regular intervals, then self-resolve
-- A full cache clear (e.g. via Aegir's drush-based cache clear) reliably ends the burst
+- Errors consistently involve the **same plugin** across incidents rather than varying
+  plugins — this distinguishes starvation from cache poisoning (Issue 2)
+- A full cache clear resolves the burst temporarily, but errors recur
+- `evicted_keys` counter in Valkey is non-zero and climbing
+- Valkey `keyspace_misses` significantly exceeds `keyspace_hits`
 
-### Working hypothesis: Redis cache poisoning via CLI drush
+### Root cause
 
-The regular interval pattern and the self-resolution following a full cache clear point to a
-**cache poisoning event in Redis** triggered by a drush CLI process.
+Valkey is hard-capped at its `maxmemory` ceiling. When that ceiling is too low for the
+number of sites hosted, Valkey is permanently full and continuously evicts cache keys using
+the `allkeys-lru` policy to make room for new entries. The `discovery` cache bin — which
+holds plugin registration data for all modules on a site — is among the entries that get
+evicted. When a PHP-FPM worker needs the discovery cache for a site and finds it evicted,
+Drupal must rebuild it from the database. Under concurrent traffic, multiple workers
+attempting to rebuild simultaneously can produce incomplete entries and plugin-not-found
+fatal errors.
 
-When any drush process performs a cache rebuild it executes as a PHP CLI process with its own
-local APCu segment. Crucially however, **Redis is shared**: any cache entry drush writes to
-Redis is immediately visible to all PHP-FPM workers. If drush writes an incomplete or
-partially-rebuilt `discovery` cache entry into Redis during a rebuild operation, FPM workers
-will read that poisoned entry and fail to find registered plugins — producing the observed
-errors across all concurrent requests until the entry expires or is explicitly flushed.
+A full cache clear resolves the burst because it forces a clean rebuild under quieter
+conditions and temporarily repopulates Valkey — until eviction pressure returns.
 
-This is the inverse of the naive APCu split-pool theory (where CLI and FPM are isolated from
-each other). With `chainedfast` and Redis in the stack, CLI and FPM *do* share state — and
-that shared state can be corrupted by a CLI process mid-rebuild.
+### BOA default formula and why it may be insufficient
 
-The observation that a full cache clear resolves the burst is consistent with this: flushing
-Redis removes the poisoned entry, FPM workers fall through to the database, rebuild correctly
-within FPM context, and repopulate Redis with a valid entry. Notably, Aegir's own periodic
-drush cache clear is a **full flush** rather than a partial rebuild — which is why it
-*resolves* rather than *causes* these errors.
+BOA sets Valkey's `maxmemory` using the formula:
 
-### Unknown factors requiring investigation
+```bash
+_MAX_MEM_VALKEY=$(( _RAM / 6 ))
+```
 
-**This hypothesis is not yet confirmed.** The following must be established before drawing
-firm conclusions:
+On a 24GB server this produces a 4GB ceiling. For a server hosting a small number of sites
+this is adequate, but for servers hosting 100+ Drupal 8/9/10 sites the working set of
+bootstrap, discovery, config, render cache, and dynamic page cache across all sites quickly
+exceeds this allocation.
+
+BOA 5.x updates this formula to `_RAM / 3`, doubling the default Valkey allocation. On
+servers upgraded to this version the ceiling will be recalculated automatically. On older
+installations or servers where the ceiling has been manually set, review and increase as
+described below.
+
+### Fix
+
+Increase `maxmemory` to approximately 1/3 of available RAM, ensuring sufficient headroom
+remains for MySQL buffer pool, PHP-FPM workers, and the OS:
+
+```bash
+# Apply immediately (replace PASSWORD and adjust size as appropriate)
+valkey-cli -a 'PASSWORD' config set maxmemory 8gb
+valkey-cli -a 'PASSWORD' config rewrite
+```
+
+Then monitor evictions and hit rate:
+
+```bash
+watch -n 10 'valkey-cli -a PASSWORD info stats | grep -E "keyspace_hits|keyspace_misses|evicted_keys"'
+```
+
+Evictions should drop to zero within minutes. Hit rate will remain low while the cache
+warms from a cold start — allow 15-30 minutes for the working set to repopulate before
+evaluating steady-state hit rate. On a server with many sites full warm-up may take longer.
+
+**Note:** The `config rewrite` command persists the change to `valkey.conf`. Verify that
+BOA's nightly maintenance does not override this value on your installation.
+
+### RAM sizing guidance
+
+Valkey starvation on a heavily loaded server is often a symptom of the server being
+under-allocated for its workload overall. As a rough guide for BOA servers running Drupal
+8/9/10:
+
+| Sites hosted | Recommended minimum RAM |
+|-------------|------------------------|
+| Up to 50    | 16 GB                  |
+| 50–150      | 32 GB                  |
+| 150–300     | 48 GB                  |
+| 300+        | 64 GB or more          |
+
+These figures assume a typical mix of traffic and module complexity. Servers with
+unusually large MySQL datasets, high traffic, or many active FPM workers may require more.
+
+Increasing Valkey `maxmemory` within existing RAM is the fastest mitigation, but if the
+server is genuinely under-allocated for its site count, a RAM increase is the only complete
+solution.
+
+
+## Issue 2: Valkey/Redis cache poisoning via CLI drush
+
+This is a secondary hypothesis — **investigate only after confirming Valkey memory and hit
+rate are healthy** (see diagnostic sequence above and Issue 1).
+
+### Symptoms
+
+- Sites experience intermittent downtime in bursts lasting 2–4 minutes at regular intervals
+- **Different plugins fail across incidents** — not always the same plugin — suggesting a
+  cache consistency problem rather than a missing entry
+- A full cache clear reliably and immediately ends the burst
+- Valkey `evicted_keys` is zero or very low and hit rate is above 85%
+
+### Working hypothesis
+
+When any drush process performs a cache rebuild it executes as a PHP CLI process. Valkey is
+shared between CLI and FPM processes. If drush writes an incomplete or partially-rebuilt
+`discovery` cache entry into Valkey during a rebuild operation, FPM workers will read that
+poisoned entry and fail to find registered plugins — producing errors until the entry
+expires or is flushed.
+
+This is distinct from the APCu split-pool scenario: with `chainedfast` and Valkey in the
+stack, CLI and FPM do share state, and that shared state can be corrupted mid-rebuild.
+
+Aegir's own periodic drush cache clear is a **full flush** rather than a partial rebuild —
+which is why it *resolves* rather than *causes* these errors.
+
+### Investigation
+
+The following must be established before drawing firm conclusions:
 
 **1. What triggers the cache rebuild?**
 
-The regular interval pattern suggests a scheduled process, but the specific trigger is
-unknown. Candidates include:
+Candidates include:
 
 - Aegir's built-in cron scheduling running drush cron against managed sites
-- A custom crontab on the server calling drush cron or drush cache-rebuild directly
-- A Drupal cron trigger configured within the site itself (e.g. via Ultimate Cron or similar)
-- An external uptime monitoring or scraping service hitting the site on a regular schedule
-  and inadvertently triggering a Drupal cron run via `cron.php`
+- A custom crontab calling drush cron or drush cache-rebuild directly
+- A Drupal cron trigger configured within the site itself
+- An external monitoring service triggering cron via `cron.php` on a regular schedule
 - Another scheduled process with coincidentally regular timing
 
-**2. Does drush execution actually correlate with burst onset?**
+**2. Does drush execution correlate with burst onset?**
 
-Server-side cron logs and Aegir task logs should be checked to confirm whether drush runs
-at the observed intervals and whether the timing matches the start of each error burst.
+Check server-side cron logs and Aegir task logs to confirm whether drush runs at the
+observed intervals and whether timing matches the start of each error burst.
 
-**3. Is Redis receiving a poisoned entry at burst onset?**
+**3. Is Valkey receiving a poisoned entry at burst onset?**
 
-Redis keyspace inspection or slow-log analysis around the start of a burst would confirm or
-refute the poisoning hypothesis directly.
-
-Until these are established, the recommendations below represent the most likely corrective
-actions based on available evidence.
+Valkey keyspace inspection or slow-log analysis around the start of a burst would confirm
+or refute the hypothesis directly.
 
 ### Recommended actions
 
 **Disable Drupal core's Automated Cron on all Aegir-managed sites.** Automated Cron fires
-on page load based on a simple time interval, with no awareness of what else is running on
-the server. With many sites active simultaneously this produces uncontrolled concurrent cron
-bursts. Aegir's wget-based cron scheduling is the only recommended cron method on BOA: it
-staggers runs across sites deliberately to prevent simultaneous load spikes. Automated Cron
-undermines this protection and should be disabled in Drupal's configuration on every managed
-site.
+on page load with no awareness of server load. Aegir's wget-based cron scheduling staggers
+runs across sites to prevent simultaneous bursts and is the only recommended cron method
+on BOA.
 
 **If drush-based cron is confirmed as the trigger:** switch all affected sites to Aegir's
-wget-based cron. With web-based cron, execution happens inside a normal PHP-FPM request.
-Cache writes to Redis happen from within FPM context, with a fully rebuilt cache, eliminating
-the conditions that produce a poisoned entry. Drush-based cron is not recommended on
-BOA/Aegir systems. If sites are configured to use it — whether via Aegir's built-in cron
-scheduling or a custom crontab — this should be changed.
+wget-based cron. With web-based cron, cache writes to Valkey happen from within FPM context
+with a fully rebuilt cache, eliminating the conditions that produce a poisoned entry.
 
 **If wget cron appears to not complete (e.g. Scheduler module not publishing nodes on
-schedule):** do not switch to drush cron as a workaround. The likely cause is that the cron
-run is exceeding BOA's default PHP execution time limit of 3 minutes (180 seconds), causing
-the request to be killed before cron finishes. Switching to drush cron bypasses this limit
-but introduces the Redis poisoning risk described above. The correct fix is to increase the
-execution time limit via the FPM pool configuration files:
+schedule):** do not switch to drush cron as a workaround. The likely cause is the cron run
+exceeding BOA's default PHP execution time limit of 3 minutes (180 seconds). The correct
+fix is to increase the limit via the FPM pool configuration files:
 
 ```
 /opt/etc/fpm/fpm-pool-common.conf
@@ -139,69 +242,9 @@ execution time limit via the FPM pool configuration files:
 
 The relevant settings are `max_execution_time`, `max_input_time`, and
 `default_socket_timeout`. See the last entry in
-https://github.com/omega8cc/boa/blob/5.x-dev/docs/FAQ.md for details. Note that these files
-are overwritten on every barracuda upgrade and must be reapplied after upgrades. Also
-investigate why cron takes longer than 3 minutes — a cron run of this duration suggests
-something in the queue is slow or blocking and is worth resolving independently.
-
-**If a different trigger is identified:** the nature of that trigger will determine the
-appropriate fix. Please report findings so this document can be updated accordingly.
-
-### Incorrect workaround (and why it makes things worse on loaded servers)
-
-A tempting workaround is to force the `discovery` bin to the database backend in
-`local.settings.php`:
-
-```php
-// Do not apply this on BOA without understanding the consequences
-$settings['cache']['bins']['discovery'] = 'cache.backend.database';
-```
-
-This does suppress the symptoms by removing `discovery` from the chainedfast stack entirely,
-so there is no Redis entry to poison. However, it places every plugin discovery rebuild
-directly onto the database and disk, bypassing both APCu and Redis. On a busy server this is
-always a performance regression, and on any deployment with slow or HDD-based storage it can
-be severely damaging. The BOA default exists precisely to keep this expensive cache in fast
-memory. **If applied as a temporary workaround, revert it once the root cause is identified
-and resolved.**
-
-
-## Issue 2: Correct drush usage on BOA
-
-Two drush-related configuration mistakes produce errors that are difficult to diagnose and
-are often misattributed to server or cache problems.
-
-### Always use `oN.ftp` under the limited shell, not `oN` under bash
-
-BOA provisions two user accounts per Aegir instance: the main Unix user (`oN`) and the FTP
-user (`oN.ftp`). **Always use `oN.ftp` under the limited shell for drush operations.**
-
-Note that **PHP-CLI and PHP-FPM are two independent systems** in BOA. PHP-FPM version is
-controlled via `~/static/control/fpm.info` or `~/static/control/multi-fpm.info` (see
-[PHP-FPM.md](PHP-FPM.md)). PHP-CLI version — what drush and Composer use — is controlled
-separately via `~/static/control/cli.info` or the instant switch files (e.g. `php83.info`).
-These do not automatically sync with each other. You are responsible for configuring the
-PHP-CLI version to match your sites' PHP-FPM version using those control files.
-
-What the `oN.ftp` limited shell provides is BOA's **special shell wrapper**, which correctly
-reads the PHP-CLI control files and applies them, and makes `vdrush` available. When running
-as `oN` in a regular bash session the shell wrapper is not active — the control files are
-ignored entirely, drush runs against whatever PHP version happens to be the system default,
-and `vdrush` will not work correctly. Errors caused by this mismatch are difficult to
-diagnose and are easily misattributed to server or Drupal problems.
-
-See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
-
-### Use site-local drush for Drupal 8 and newer
-
-System drush 8 (the BOA-bundled drush available in PATH) is intended for **Drupal 7 only**.
-For any site running Drupal 8 or later, always use the site-local drush installed via
-Composer in the site's codebase.
-
-Running system drush 8 against a Drupal 8/9/10 site produces API mismatch errors and
-incorrect behaviour that is entirely unrelated to server configuration.
-
-See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
+https://github.com/omega8cc/boa/blob/5.x-dev/docs/FAQ.md for details. These files are
+overwritten on every barracuda upgrade and must be reapplied after upgrades. Also
+investigate why cron exceeds 3 minutes — this is worth resolving independently.
 
 
 ## Issue 3: Intermittent class-not-found / file-unreadable errors
@@ -234,14 +277,69 @@ operations, and Composer runs are common triggers.
 ### Mitigation
 
 There is no configuration change that eliminates disk I/O saturation on under-resourced
-hardware. Reducing unnecessary drush-based operations — particularly any drush-based cron
-(see Issue 1) — reduces the frequency and severity of high-I/O bursts that contribute to
-these errors.
+hardware. Reducing unnecessary drush-based operations — particularly drush-based cron
+(see Issue 2) — reduces the frequency and severity of high-I/O bursts.
 
-Keeping the BOA chainedfast defaults intact is also directly relevant: these defaults keep
-the most frequently read caches in APCu and Redis, out of the disk I/O path entirely.
+Keeping the BOA chainedfast defaults intact is directly relevant: these defaults keep the
+most frequently read caches in APCu and Valkey, out of the disk I/O path entirely.
 Reverting them increases database and disk pressure and worsens the conditions under which
 these errors occur.
+
+
+## Incorrect workaround: forcing discovery to the database backend
+
+A tempting workaround when discovery errors appear is to force the `discovery` bin to the
+database backend in `local.settings.php`:
+
+```php
+// Do not apply this on BOA without understanding the consequences
+$settings['cache']['bins']['discovery'] = 'cache.backend.database';
+```
+
+This suppresses the symptoms by removing `discovery` from the chainedfast stack entirely.
+However, it places every plugin discovery rebuild directly onto the database and disk,
+bypassing both APCu and Valkey. On a busy server this is always a performance regression.
+The BOA default exists precisely to keep this expensive cache in fast memory.
+
+**This workaround treats the symptom rather than the cause. Identify and fix the root cause
+— most likely Valkey memory starvation (Issue 1) — and revert this override.**
+
+
+## Issue 4: Correct drush usage on BOA
+
+Two drush-related configuration mistakes produce errors that are difficult to diagnose and
+are often misattributed to server or cache problems.
+
+### Always use `oN.ftp` under the limited shell, not `oN` under bash
+
+BOA provisions two user accounts per Aegir instance: the main Unix user (`oN`) and the FTP
+user (`oN.ftp`). **Always use `oN.ftp` under the limited shell for drush operations.**
+
+Note that **PHP-CLI and PHP-FPM are two independent systems** in BOA. PHP-FPM version is
+controlled via `~/static/control/fpm.info` or `~/static/control/multi-fpm.info` (see
+[PHP-FPM.md](PHP-FPM.md)). PHP-CLI version — what drush and Composer use — is controlled
+separately via `~/static/control/cli.info` or the instant switch files (e.g. `php83.info`).
+These do not automatically sync with each other. You are responsible for configuring the
+PHP-CLI version to match your sites' PHP-FPM version using those control files.
+
+What the `oN.ftp` limited shell provides is BOA's **special shell wrapper**, which correctly
+reads the PHP-CLI control files and applies them, and makes `vdrush` available. When running
+as `oN` in a regular bash session the shell wrapper is not active — the control files are
+ignored entirely, drush runs against whatever PHP version happens to be the system default,
+and `vdrush` will not work correctly.
+
+See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
+
+### Use site-local drush for Drupal 8 and newer
+
+System drush 8 (the BOA-bundled drush available in PATH) is intended for **Drupal 7 only**.
+For any site running Drupal 8 or later, always use the site-local drush installed via
+Composer in the site's codebase.
+
+Running system drush 8 against a Drupal 8/9/10 site produces API mismatch errors and
+incorrect behaviour that is entirely unrelated to server configuration.
+
+See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
 
 
 ## APCu memory sizing
@@ -252,42 +350,36 @@ BOA defaults APCu shared memory to 256M:
 apc.shm_size=256M
 ```
 
-For servers hosting a large number of Drupal 8/9/10 sites this can be insufficient. Sustained
-APCu utilisation above 75% increases eviction pressure: FPM workers more frequently miss in
-APCu and fall through to Redis or the database, increasing both Redis load and disk I/O. On
-high-utilisation servers the `apc.shm_size` value should be reviewed and increased.
+APCu is the first tier of the chainedfast stack, local to each PHP-FPM worker process.
+For servers hosting a large number of Drupal 8/9/10 sites, 256M can be insufficient.
+Sustained APCu utilisation above 75% increases per-worker miss rates, causing more
+frequent fallthrough to Valkey and the database.
 
-A future BOA improvement under consideration is making `apc.shm_size` dependent on available
-server RAM rather than a fixed value, which would address this more systematically across
-the platform.
+On high-utilisation servers the `apc.shm_size` value should be reviewed and increased —
+512M is a reasonable starting point. Note that APCu memory is allocated per-server, not
+per-worker, so increasing it has a fixed cost regardless of worker count.
 
-
-## Open questions (to be resolved per incident)
-
-When investigating a recurrence of Issue 1, the following should be established before
-applying fixes:
-
-- [ ] What process triggers the regular cache rebuild — Aegir cron, custom crontab, external
-      service, or other?
-- [ ] Do server cron logs and Aegir task logs show drush execution correlating with burst onset?
-- [ ] Does Redis keyspace inspection show a `discovery` entry written by a CLI process at
-      burst onset?
-- [ ] Is the interval truly regular (pointing to a scheduler) or only approximately so
-      (pointing to traffic-triggered cron)?
+Increasing Valkey `maxmemory` (Issue 1) should be the first priority, as Valkey starvation
+has a much larger impact on overall cache performance than APCu sizing. APCu increases
+complement but do not substitute for adequate Valkey allocation.
 
 
 ## Checklist
 
-For any BOA server experiencing the symptoms described in this document:
+For any BOA server experiencing the symptoms described in this document, follow this order:
 
+- [ ] Check Valkey hit rate and eviction count (see diagnostic sequence above)
+- [ ] If evicted_keys is non-zero or hit rate is below 85%: increase Valkey maxmemory
+      to approximately _RAM / 3 and monitor for improvement — see Issue 1
+- [ ] If RAM is insufficient for the site count: escalate a RAM increase request —
+      see RAM sizing guidance in Issue 1
 - [ ] Disable Drupal core's Automated Cron on all Aegir-managed sites
-- [ ] Identify what triggers the regular cache rebuild (see Open questions above)
-- [ ] If drush-based cron is confirmed: switch all affected sites to Aegir's wget-based cron
-- [ ] If wget cron is not completing: increase PHP execution time limits via fpm-pool-common
-      files rather than switching to drush cron — see FAQ.md
-- [ ] If `local.settings.php` discovery cache override was applied as a workaround: revert
-      it once the root cause is resolved
+- [ ] If drush-based cron is confirmed as a trigger: switch to Aegir's wget-based cron
+- [ ] If wget cron is not completing: increase PHP execution time limits via
+      fpm-pool-common files rather than switching to drush cron — see FAQ.md
+- [ ] If `local.settings.php` discovery cache override was applied as a workaround:
+      revert it once the root cause is resolved
 - [ ] Confirm drush operations are run as `oN.ftp` under the limited shell, not as `oN`
-      under bash; confirm PHP-CLI version control files are set to match sites' PHP-FPM version
-- [ ] Confirm site-local drush (Composer) is used for all Drupal 8+ sites, not system drush 8
-- [ ] Review APCu utilisation; consider increasing `apc.shm_size` if consistently above 75%
+      under bash; confirm PHP-CLI version control files match sites' PHP-FPM version
+- [ ] Confirm site-local drush (Composer) is used for all Drupal 8+ sites
+- [ ] Review APCu utilisation; consider increasing `apc.shm_size` if above 75%
