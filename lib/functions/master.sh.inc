@@ -592,14 +592,14 @@ _master_download_for_local_build() {
       _get_dev_stc "timeagojs.tar.gz"
       _get_dev_stc "vuejs.tar.gz"
       ### BOA Drupal Contrib
-      _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
+      _get_dev_stc "environment_indicator-7.x-2.9.tar.gz"
       _get_dev_stc "features_extra-7.x-1.2.tar.gz"
       _get_dev_stc "features-7.x-2.15.tar.gz"
       _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
       _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
       _get_dev_stc "strongarm-7.x-2.0.tar.gz"
+      _get_dev_stc "tag1_d7es-7.x-1.4.tar.gz"
       _get_dev_stc "userprotect-7.x-1.3.tar.gz"
-      _get_dev_stc "environment_indicator-7.x-2.9.tar.gz"
     fi
     find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
