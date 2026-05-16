@@ -2049,7 +2049,6 @@ _satellite_download_o_contrib_seven() {
   _get_dev_contrib "cdn-7.x-2.10.tar.gz"
   _get_dev_contrib "config_perms-7.x-2.2.tar.gz"
   _get_dev_contrib "css_emimage-7.x-1.3.tar.gz"
-  _get_dev_contrib "d7security_client-7.x-1.3.tar.gz"
   _get_dev_contrib "display_cache-7.x-1.3.tar.gz"
   _get_dev_contrib "entity_print-7.x-1.5.tar.gz"
   _get_dev_contrib "entitycache-7.x-1.7.tar.gz"
@@ -2070,6 +2069,7 @@ _satellite_download_o_contrib_seven() {
   _get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   _get_dev_contrib "site_verify-7.x-1.2.tar.gz"
   _get_dev_contrib "speedy-7.x-1.34.tar.gz"
+  _get_dev_contrib "tag1_d7es-7.x-1.4.tar.gz"
   _get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   _get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   _get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
@@ -2229,7 +2229,7 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
-    if [ ! -d "${_CORE}/o_contrib_seven/d7security_client" ] \
+    if [ ! -d "${_CORE}/o_contrib_seven/tag1_d7es" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
       cd ${_CORE}/o_contrib_seven
@@ -2964,7 +2964,7 @@ _satellite_download_for_local_build() {
       _get_dev_stc "timeagojs.tar.gz"
       _get_dev_stc "vuejs.tar.gz"
       ### BOA Drupal Contrib
-      _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
+      _get_dev_stc "tag1_d7es-7.x-1.4.tar.gz"
       _get_dev_stc "features_extra-7.x-1.2.tar.gz"
       _get_dev_stc "features-7.x-2.15.tar.gz"
       _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
