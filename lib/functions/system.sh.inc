@@ -1126,7 +1126,7 @@ _tune_memory_limits() {
     fi
   fi
 
-  _MAX_MEM_VALKEY=$(( _RAM / 6 ))
+  _MAX_MEM_VALKEY=$(( _RAM / 3 ))
   _MAX_VALKEY="${_MAX_MEM_VALKEY}MB"
 
   if [ -e "/etc/valkey/valkey.conf" ]; then
