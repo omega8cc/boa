@@ -109,12 +109,40 @@ actions based on available evidence.
 
 ### Recommended actions
 
-**If drush-based cron is confirmed as the trigger:** switch all affected sites to web-based
-cron. With web-based cron, execution happens inside a normal PHP-FPM request. Cache writes
-to Redis happen from within FPM context, with a fully rebuilt cache, eliminating the
-conditions that produce a poisoned entry. Drush-based cron is not recommended on BOA/Aegir
-systems. If sites are configured to use it — whether via Aegir's built-in cron scheduling
-or a custom crontab — this should be changed.
+**Disable Drupal core's Automated Cron on all Aegir-managed sites.** Automated Cron fires
+on page load based on a simple time interval, with no awareness of what else is running on
+the server. With many sites active simultaneously this produces uncontrolled concurrent cron
+bursts. Aegir's wget-based cron scheduling is the only recommended cron method on BOA: it
+staggers runs across sites deliberately to prevent simultaneous load spikes. Automated Cron
+undermines this protection and should be disabled in Drupal's configuration on every managed
+site.
+
+**If drush-based cron is confirmed as the trigger:** switch all affected sites to Aegir's
+wget-based cron. With web-based cron, execution happens inside a normal PHP-FPM request.
+Cache writes to Redis happen from within FPM context, with a fully rebuilt cache, eliminating
+the conditions that produce a poisoned entry. Drush-based cron is not recommended on
+BOA/Aegir systems. If sites are configured to use it — whether via Aegir's built-in cron
+scheduling or a custom crontab — this should be changed.
+
+**If wget cron appears to not complete (e.g. Scheduler module not publishing nodes on
+schedule):** do not switch to drush cron as a workaround. The likely cause is that the cron
+run is exceeding BOA's default PHP execution time limit of 3 minutes (180 seconds), causing
+the request to be killed before cron finishes. Switching to drush cron bypasses this limit
+but introduces the Redis poisoning risk described above. The correct fix is to increase the
+execution time limit via the FPM pool configuration files:
+
+```
+/opt/etc/fpm/fpm-pool-common.conf
+/opt/etc/fpm/fpm-pool-common-legacy.conf
+/opt/etc/fpm/fpm-pool-common-modern.conf
+```
+
+The relevant settings are `max_execution_time`, `max_input_time`, and
+`default_socket_timeout`. See the last entry in
+https://github.com/omega8cc/boa/blob/5.x-dev/docs/FAQ.md for details. Note that these files
+are overwritten on every barracuda upgrade and must be reapplied after upgrades. Also
+investigate why cron takes longer than 3 minutes — a cron run of this duration suggests
+something in the queue is slow or blocking and is worth resolving independently.
 
 **If a different trigger is identified:** the nature of that trigger will determine the
 appropriate fix. Please report findings so this document can be updated accordingly.
@@ -148,12 +176,21 @@ are often misattributed to server or cache problems.
 BOA provisions two user accounts per Aegir instance: the main Unix user (`oN`) and the FTP
 user (`oN.ftp`). **Always use `oN.ftp` under the limited shell for drush operations.**
 
-The `oN.ftp` limited shell environment is specifically configured to auto-sync the correct
-PHP CLI version to match the PHP-FPM version used by each site. When running as `oN` in a
-regular bash session there is no such guarantee — drush may execute against a different PHP
-version than PHP-FPM, producing unpredictable errors including cache inconsistencies,
-serialisation mismatches, and extension availability differences that are easily
-misattributed to server or Drupal problems.
+Note that **PHP-CLI and PHP-FPM are two independent systems** in BOA. PHP-FPM version is
+controlled via `~/static/control/fpm.info` or `~/static/control/multi-fpm.info` (see
+[PHP-FPM.md](PHP-FPM.md)). PHP-CLI version — what drush and Composer use — is controlled
+separately via `~/static/control/cli.info` or the instant switch files (e.g. `php83.info`).
+These do not automatically sync with each other. You are responsible for configuring the
+PHP-CLI version to match your sites' PHP-FPM version using those control files.
+
+What the `oN.ftp` limited shell provides is BOA's **special shell wrapper**, which correctly
+reads the PHP-CLI control files and applies them, and makes `vdrush` available. When running
+as `oN` in a regular bash session the shell wrapper is not active — the control files are
+ignored entirely, drush runs against whatever PHP version happens to be the system default,
+and `vdrush` will not work correctly. Errors caused by this mismatch are difficult to
+diagnose and are easily misattributed to server or Drupal problems.
+
+See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
 
 ### Use site-local drush for Drupal 8 and newer
 
@@ -243,11 +280,14 @@ applying fixes:
 
 For any BOA server experiencing the symptoms described in this document:
 
+- [ ] Disable Drupal core's Automated Cron on all Aegir-managed sites
 - [ ] Identify what triggers the regular cache rebuild (see Open questions above)
-- [ ] If drush-based cron is confirmed: switch all affected sites to web-based cron
+- [ ] If drush-based cron is confirmed: switch all affected sites to Aegir's wget-based cron
+- [ ] If wget cron is not completing: increase PHP execution time limits via fpm-pool-common
+      files rather than switching to drush cron — see FAQ.md
 - [ ] If `local.settings.php` discovery cache override was applied as a workaround: revert
       it once the root cause is resolved
 - [ ] Confirm drush operations are run as `oN.ftp` under the limited shell, not as `oN`
-      under bash
+      under bash; confirm PHP-CLI version control files are set to match sites' PHP-FPM version
 - [ ] Confirm site-local drush (Composer) is used for all Drupal 8+ sites, not system drush 8
 - [ ] Review APCu utilisation; consider increasing `apc.shm_size` if consistently above 75%
