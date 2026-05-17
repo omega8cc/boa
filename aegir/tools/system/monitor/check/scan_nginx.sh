@@ -97,6 +97,13 @@ _NGINX_DDOS_UA_REQ_THRESHOLD=200
 # a shared Cloudflare egress) out of the block list.
 _NGINX_DDOS_IP_MIN_REQS=3
 
+# Minimum raw requests before _handle_blocking can individually block an IP.
+# Scoring multipliers can push a 1-request IP well over DOS_LIMIT; this guard
+# ensures only genuinely high-volume IPs enter web.log individually.
+# The distributed one-request-per-IP botnet is still caught in aggregate by
+# _handle_path_flood_blocking.  Set to 1 to disable.
+_NGINX_MIN_BLOCK_REQS=3
+
 # ---- Path-flood / search-amplification detection ----
 # Distributed botnets send one request per IP so per-IP rate limits never
 # fire. This module tracks total 200-response traffic to expensive path
@@ -122,8 +129,11 @@ _NGINX_PATH_FLOOD_REQ_THRESHOLD=15
 _NGINX_PATH_FLOOD_SLOW_SECS=3
 
 # Per-(path-prefix, IP) minimum request count before that IP is added to the
-# block list during a path-flood event. Set to 1 to block every participant.
-_NGINX_PATH_FLOOD_IP_MIN_REQS=1
+# block list during a path-flood event.  Applies to all response types (200
+# and 444).  Set high enough to avoid blocking single-request botnet IPs that
+# Nginx already 444s for free; only persistent IPs (making many requests within
+# one scan window) warrant a csf -td entry.  Set to 1 to block every participant.
+_NGINX_PATH_FLOOD_IP_MIN_REQS=10
 
 # Extra counter weight added for each confirmed 444 on a watched attack path
 # (in addition to the standard _INC_NR increment applied for all 4xx/5xx).
@@ -138,7 +148,11 @@ _NGINX_PATH_FLOOD_IP_MIN_REQS=1
 # NOTE: the distributed one-request-per-IP botnet still won't be caught
 # individually by this — they're caught in aggregate by _handle_path_flood_blocking.
 # This setting helps "smarter" bots that make a few repeated requests.
-_NGINX_DOS_444_WEIGHT=$(( _NGINX_DOS_LIMIT / 3 ))
+#
+# Do not calculate the default here: /root/.barracuda.cnf may override
+# _NGINX_DOS_LIMIT later.  The default is calculated after config loading and
+# limit validation, unless _NGINX_DOS_444_WEIGHT is explicitly set in config.
+
 
 # Pipe-separated list of patterns for flood detection.
 #
@@ -208,10 +222,19 @@ _INC_S_NR=$(_inc_round_division "${_NGINX_DOS_LIMIT}" "${_NGINX_DOS_DIV_INC_S_NR
 _INC_NR=$(( _INC_NR < _NGINX_DOS_INC_MIN ? _NGINX_DOS_INC_MIN : _INC_NR ))
 _INC_S_NR=$(( _INC_S_NR < _NGINX_DOS_INC_MIN ? _NGINX_DOS_INC_MIN : _INC_S_NR ))
 
+# Calculate default watched-444 weight after config override and limit validation.
+# This preserves an explicit _NGINX_DOS_444_WEIGHT=0 or custom numeric value
+# from /root/.barracuda.cnf, but prevents stale defaults based on the built-in
+# _NGINX_DOS_LIMIT=399 when config later changes the limit to e.g. 99.
+if ! [[ "${_NGINX_DOS_444_WEIGHT:-}" =~ ^[0-9]+$ ]]; then
+  _NGINX_DOS_444_WEIGHT=$(( _NGINX_DOS_LIMIT / 3 ))
+fi
+
 echo "CONFIG: _NGINX_DOS_LIMIT is ${_NGINX_DOS_LIMIT}"
 echo "CONFIG: _NGINX_DOS_LINES is ${_NGINX_DOS_LINES}"
 echo "CONFIG: _INC_NR is ${_INC_NR}"
 echo "CONFIG: _INC_S_NR is ${_INC_S_NR}"
+echo "CONFIG: _NGINX_DOS_444_WEIGHT is ${_NGINX_DOS_444_WEIGHT}"
 
 # ==============================
 # Declare Associative Arrays
@@ -223,6 +246,8 @@ declare -A _LOGGED_IN_IPS
 declare -A _COUNTERS
 declare -A _LI_CNT
 declare -A _PX_CNT
+declare -A _LI_REQ_CNT   # raw request counts for _LI_CNT IPs (unweighted, +1/req)
+declare -A _PX_REQ_CNT   # raw request counts for _PX_CNT IPs (unweighted, +1/req)
 
 # DDoS / Shared-UA detection arrays
 # _UA_IP_COUNT[ua]    = number of distinct real IPs seen with this UA
@@ -250,6 +275,11 @@ declare -A _PATH_REQ_COUNT
 declare -A _PATH_IP_COUNT
 declare -A _PATH_IP_SET
 declare -A _PATH_IP_LIST
+# Per-(path,IP) count of 200 responses only — used to gate individual IP blocking.
+# IPs that only received 444 responses are already handled by Nginx at zero
+# backend cost; writing them to web.log for csf -td is redundant and causes
+# web.log to accumulate thousands of entries during distributed botnet attacks.
+declare -A _PATH_IP_200_REQS
 declare -A _PATH_IP_REQS
 declare -A _PATH_SLOW_COUNT
 
@@ -349,16 +379,18 @@ _is_logged_in() {
 }
 
 # Function to log and block an IP
+# Optional second argument: "silent" suppresses terminal echo (used for bulk path-flood blocking)
 _block_ip() {
   local _IP="$1"
+  local _SILENT="${2:-}"
   # Append to web.log if not already present (use in-memory cache to avoid grep each time)
   if [[ -z "${_BANNED_IPS["${_IP}"]}" ]]; then
     _verbose_log "${_IP} # [x${_sumar}] ${_TIMES}" "_block_ip"
     echo "${_IP} # [x${_sumar}] ${_TIMES}" >> /var/xdrago/monitor/log/web.log
     echo "${_IP} # [x${_sumar}] ${_TIMES}" >> /var/xdrago/monitor/log/scan_nginx.archive.log
-    echo "===[${_sumar}] ${_IP} ADDED TO BLOCK LIST monitor/log/web.log ==="
+    [[ "${_SILENT}" != "silent" ]] && echo "===[${_sumar}] ${_IP} ADDED TO BLOCK LIST monitor/log/web.log ==="
   else
-    echo "===[${_sumar}] ${_IP} ALREADY LISTED IN monitor/log/web.log ==="
+    [[ "${_SILENT}" != "silent" ]] && echo "===[${_sumar}] ${_IP} ALREADY LISTED IN monitor/log/web.log ==="
   fi
   # Mark IP as banned in this run to prevent duplicate processing
   _BANNED_IPS["${_IP}"]=1
@@ -408,17 +440,6 @@ _if_increment_counters() {
   if [[ "${_line}" =~ (POST|GET)\ /user/login ]]; then
     (( _COUNTERS["${_IP}"] += _INC_S_NR ))
     _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
-  fi
-  if [[ "${_line}" =~ (POST|GET)\ /search/ ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_S_NR ))
-    _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/search flood protection"
-    # Extra weight for the expensive Solr/search-index path specifically.
-    # A single IP making repeated apachesolr_search requests should reach
-    # the block threshold faster than a generic /search/ hit.
-    if [[ "${_line}" =~ apachesolr_search ]]; then
-      (( _COUNTERS["${_IP}"] += _INC_S_NR ))
-      _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "apachesolr_search extra weight"
-    fi
   fi
 }
 
@@ -498,11 +519,19 @@ _process_ip() {
       return
     fi
 
-    # Initialize or increment the counter safely for this IP
-    if [[ -v _COUNTERS["${_IP}"] ]]; then
-      (( _COUNTERS["${_IP}"]++ ))
-    else
-      _COUNTERS["${_IP}"]=1
+    # Initialize or increment the counter safely for this IP.
+    # Avoid [[ -v assoc[key] ]] for compatibility with older Bash 4.x.
+    (( _COUNTERS["${_IP}"] += 1 ))
+
+    # Track raw request count (+1 per qualifying request, unweighted).
+    # Uses plain (( arr[key]++ )) — bash treats an unset element as 0 before
+    # the increment, so no [[ -v ]] check is needed.  The [[ -v arr[key] ]]
+    # form is unreliable for associative arrays in bash 4.x, causing the
+    # counter to reset to 1 on every call instead of accumulating.
+    if [[ "${_COUNT_REF}" == "_LI_CNT" ]]; then
+      (( _LI_REQ_CNT["${_IP}"]++ ))
+    elif [[ "${_COUNT_REF}" == "_PX_CNT" ]]; then
+      (( _PX_REQ_CNT["${_IP}"]++ ))
     fi
   fi
 
@@ -543,6 +572,7 @@ _process_ip() {
 _handle_blocking() {
   local -n _COUNTERS=$1
   local _TYPE=$2
+  local _IP _COUNT _CRITNUMBER _MININUMBER _raw_reqs
 
   # Debug: confirm that _COUNTERS is referencing the intended array
   if [[ -n "${1}" && -e "/root/.debug.monitor.cnf" ]]; then
@@ -556,6 +586,18 @@ _handle_blocking() {
     local _MININUMBER=$(( (_CRITNUMBER + 1) / 2 ))  # handle integer division rounding
 
     if (( _COUNT > _MININUMBER )); then
+      # Raw-reqs gate: silently skip before any output.
+      # DOS_STOP and scoring multipliers can push low-volume IPs over _MININUMBER
+      # without them making enough requests to warrant individual blocking.
+      # Path-flood aggregate handles them; no output needed here.
+      local _raw_reqs=0
+      if [[ "$1" == "_LI_CNT" ]]; then
+        _raw_reqs="${_LI_REQ_CNT["${_IP}"]:-0}"
+      elif [[ "$1" == "_PX_CNT" ]]; then
+        _raw_reqs="${_PX_REQ_CNT["${_IP}"]:-0}"
+      fi
+      (( _raw_reqs < _NGINX_MIN_BLOCK_REQS )) && continue
+
       if _is_logged_in "${_IP}"; then
         _CRITNUMBER=9999
       fi
@@ -577,7 +619,7 @@ _handle_blocking() {
 
       if (( _COUNT > _CRITNUMBER )); then
         _sumar="${_COUNT}"
-        echo "=== block_ip ${_IP} ${_COUNT}/${_CRITNUMBER} ==="
+        echo "=== block_ip ${_IP} ${_COUNT}/${_CRITNUMBER} [${_raw_reqs} raw reqs] ==="
         _block_ip "${_IP}"
       fi
     fi
@@ -612,36 +654,25 @@ _track_ua_ip() {
 
   local _UA_IP_KEY="${_UA}:${_IP}"
 
-  # Increment total-request counter for this UA
-  if [[ -v _UA_REQ_COUNT["${_UA}"] ]]; then
-    (( _UA_REQ_COUNT["${_UA}"]++ ))
-  else
-    _UA_REQ_COUNT["${_UA}"]=1
-  fi
+  # Increment total-request counter for this UA.
+  # Avoid [[ -v assoc[key] ]] for compatibility with older Bash 4.x.
+  (( _UA_REQ_COUNT["${_UA}"] += 1 ))
 
-  # Increment per-(UA,IP) request counter
-  if [[ -v _UA_IP_REQS["${_UA_IP_KEY}"] ]]; then
-    (( _UA_IP_REQS["${_UA_IP_KEY}"]++ ))
-  else
-    _UA_IP_REQS["${_UA_IP_KEY}"]=1
-  fi
+  # Increment per-(UA,IP) request counter.
+  (( _UA_IP_REQS["${_UA_IP_KEY}"] += 1 ))
 
   # Track distinct IPs per UA (use sentinel key to avoid duplicates)
   if [[ -z "${_UA_IP_SET["${_UA_IP_KEY}"]}" ]]; then
     _UA_IP_SET["${_UA_IP_KEY}"]=1
-    if [[ -v _UA_IP_COUNT["${_UA}"] ]]; then
-      (( _UA_IP_COUNT["${_UA}"]++ ))
-    else
-      _UA_IP_COUNT["${_UA}"]=1
-    fi
+    (( _UA_IP_COUNT["${_UA}"] += 1 ))
     # Append IP to the list for this UA (space-separated; used during blocking phase)
     _UA_IP_LIST["${_UA}"]="${_UA_IP_LIST["${_UA}"]:-}${_UA_IP_LIST["${_UA}"]:+ }${_IP}"
   fi
 }
 
 # _handle_ddos_blocking
-# Iterates over all tracked User-Agents. When a UA meets both the distinct-IP
-# threshold and the total-request threshold it is declared a DDoS fingerprint
+# Iterates over all tracked User-Agents. When a UA meets either the distinct-IP
+# threshold or the total-request threshold it is declared a DDoS fingerprint
 # and every contributing IP (that sent at least _NGINX_DDOS_IP_MIN_REQS
 # requests with that UA) is individually blocked via _block_ip.
 _handle_ddos_blocking() {
@@ -651,7 +682,9 @@ _handle_ddos_blocking() {
     _ip_count="${_UA_IP_COUNT["${_UA}"]:-0}"
     _req_count="${_UA_REQ_COUNT["${_UA}"]:-0}"
 
-    # Evaluate thresholds
+    # Skip only if neither threshold is met.  Using OR for detection is
+    # deliberate: many-IP low-rate floods and fewer-IP high-rate floods should
+    # both be detected.
     if (( _ip_count < _NGINX_DDOS_UA_IP_THRESHOLD && _req_count < _NGINX_DDOS_UA_REQ_THRESHOLD )); then
       continue
     fi
@@ -660,8 +693,12 @@ _handle_ddos_blocking() {
     echo "=== DDoS UA DETECTED [${_ip_count} distinct IPs | ${_req_count} total reqs] ==="
     echo "=== UA fingerprint: ${_UA:0:120} ==="
 
-    # Walk the IP list for this UA and block qualifying IPs
+    # Walk the IP list for this UA and block qualifying IPs.
+    # Global IFS is newline+tab, so force space splitting for this list.
+    local _SAVE_IFS="${IFS}"
+    IFS=' '
     for _IP in ${_UA_IP_LIST["${_UA}"]}; do
+      IFS="${_SAVE_IFS}"
       _UA_IP_KEY="${_UA}:${_IP}"
       _ip_reqs="${_UA_IP_REQS["${_UA_IP_KEY}"]:-0}"
 
@@ -688,9 +725,9 @@ _handle_ddos_blocking() {
       fi
 
       _sumar="${_ip_reqs}"
-      echo "=== DDoS block_ip ${_IP} [${_ip_reqs} reqs with attack UA] ==="
-      _block_ip "${_IP}"
+      _block_ip "${_IP}" "silent"
     done
+    IFS="${_SAVE_IFS}"
   done
 }
 
@@ -737,40 +774,31 @@ _track_path_flood() {
 
   local _PATH_IP_KEY="${_PATH_KEY}:${_IP}"
 
-  # Increment total request counter for this path prefix
-  if [[ -v _PATH_REQ_COUNT["${_PATH_KEY}"] ]]; then
-    (( _PATH_REQ_COUNT["${_PATH_KEY}"]++ ))
-  else
-    _PATH_REQ_COUNT["${_PATH_KEY}"]=1
-  fi
+  # Increment total request counter for this path prefix.
+  # Avoid [[ -v assoc[key] ]] for compatibility with older Bash 4.x.
+  (( _PATH_REQ_COUNT["${_PATH_KEY}"] += 1 ))
 
   # Track slow responses (upstream_time as whole-second integer comparison;
   # avoids bc/awk dependency by stripping the fractional part via parameter
   # expansion before the arithmetic test).
   local _UP_INT="${_UP_TIME%%.*}"
   if [[ "${_UP_INT}" =~ ^[0-9]+$ ]] && (( _UP_INT >= _NGINX_PATH_FLOOD_SLOW_SECS )); then
-    if [[ -v _PATH_SLOW_COUNT["${_PATH_KEY}"] ]]; then
-      (( _PATH_SLOW_COUNT["${_PATH_KEY}"]++ ))
-    else
-      _PATH_SLOW_COUNT["${_PATH_KEY}"]=1
-    fi
+    (( _PATH_SLOW_COUNT["${_PATH_KEY}"] += 1 ))
   fi
 
-  # Increment per-(path,IP) request counter
-  if [[ -v _PATH_IP_REQS["${_PATH_IP_KEY}"] ]]; then
-    (( _PATH_IP_REQS["${_PATH_IP_KEY}"]++ ))
-  else
-    _PATH_IP_REQS["${_PATH_IP_KEY}"]=1
+  # Increment per-(path,IP) request counter.
+  (( _PATH_IP_REQS["${_PATH_IP_KEY}"] += 1 ))
+
+  # Count 200 responses per IP separately — only 200s warrant csf -td since
+  # 444 responses are already free-blocked by Nginx's own map rules.
+  if [[ "${_STATUS}" == "200" ]]; then
+    (( _PATH_IP_200_REQS["${_PATH_IP_KEY}"] += 1 ))
   fi
 
   # Track distinct IPs per path prefix (sentinel pattern identical to _track_ua_ip)
   if [[ -z "${_PATH_IP_SET["${_PATH_IP_KEY}"]}" ]]; then
     _PATH_IP_SET["${_PATH_IP_KEY}"]=1
-    if [[ -v _PATH_IP_COUNT["${_PATH_KEY}"] ]]; then
-      (( _PATH_IP_COUNT["${_PATH_KEY}"]++ ))
-    else
-      _PATH_IP_COUNT["${_PATH_KEY}"]=1
-    fi
+    (( _PATH_IP_COUNT["${_PATH_KEY}"] += 1 ))
     # Append IP to the space-separated list for this path prefix
     _PATH_IP_LIST["${_PATH_KEY}"]="${_PATH_IP_LIST["${_PATH_KEY}"]:-}${_PATH_IP_LIST["${_PATH_KEY}"]:+ }${_IP}"
   fi
@@ -807,8 +835,12 @@ _handle_path_flood_blocking() {
     echo "=== PATH FLOOD DETECTED [${_ip_count} distinct IPs | ${_req_count} total reqs | ${_slow_count} slow 200s] ==="
     echo "=== Path prefix: ${_PREFIX} ==="
 
-    # Walk the IP list for this path prefix and block qualifying IPs
+    # Walk the IP list for this path prefix and block qualifying IPs.
+    # Global IFS is newline+tab, so force space splitting for this list.
+    local _SAVE_IFS="${IFS}"
+    IFS=' '
     for _IP in ${_PATH_IP_LIST["${_PREFIX}"]}; do
+      IFS="${_SAVE_IFS}"
       _PATH_IP_KEY="${_PREFIX}:${_IP}"
       _ip_reqs="${_PATH_IP_REQS["${_PATH_IP_KEY}"]:-0}"
 
@@ -835,9 +867,9 @@ _handle_path_flood_blocking() {
       fi
 
       _sumar="${_ip_reqs}"
-      echo "=== Path-flood block_ip ${_IP} [${_ip_reqs} req(s) to ${_PREFIX}] ==="
-      _block_ip "${_IP}"
+      _block_ip "${_IP}" "silent"
     done
+    IFS="${_SAVE_IFS}"
   done
 }
 
