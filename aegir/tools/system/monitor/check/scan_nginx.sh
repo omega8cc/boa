@@ -106,7 +106,12 @@ _NGINX_DDOS_IP_MIN_REQS=3
 
 # Minimum distinct IPs hitting the same path prefix (200 responses only)
 # within the scan window before a path flood is declared.
-_NGINX_PATH_FLOOD_IP_THRESHOLD=10
+# Set to 5 rather than a higher value: the Chrome/131 subgroup of this botnet
+# sends exactly 3-5 requests per scan window, staying under a threshold of 10
+# but triggering reliably at 5. Lower values increase sensitivity but also the
+# risk of false positives on genuinely popular search pages — tune upward if
+# `_handle_path_flood_blocking` fires on legitimate traffic peaks.
+_NGINX_PATH_FLOOD_IP_THRESHOLD=5
 
 # Minimum total 200-response requests to the same path prefix in the window.
 _NGINX_PATH_FLOOD_REQ_THRESHOLD=15
