@@ -106,7 +106,12 @@ _NGINX_DDOS_IP_MIN_REQS=3
 
 # Minimum distinct IPs hitting the same path prefix (200 responses only)
 # within the scan window before a path flood is declared.
-_NGINX_PATH_FLOOD_IP_THRESHOLD=10
+# Set to 5 rather than a higher value: the Chrome/131 subgroup of this botnet
+# sends exactly 3-5 requests per scan window, staying under a threshold of 10
+# but triggering reliably at 5. Lower values increase sensitivity but also the
+# risk of false positives on genuinely popular search pages — tune upward if
+# `_handle_path_flood_blocking` fires on legitimate traffic peaks.
+_NGINX_PATH_FLOOD_IP_THRESHOLD=5
 
 # Minimum total 200-response requests to the same path prefix in the window.
 _NGINX_PATH_FLOOD_REQ_THRESHOLD=15
@@ -119,6 +124,21 @@ _NGINX_PATH_FLOOD_SLOW_SECS=3
 # Per-(path-prefix, IP) minimum request count before that IP is added to the
 # block list during a path-flood event. Set to 1 to block every participant.
 _NGINX_PATH_FLOOD_IP_MIN_REQS=1
+
+# Extra counter weight added for each confirmed 444 on a watched attack path
+# (in addition to the standard _INC_NR increment applied for all 4xx/5xx).
+# Combined with _INC_NR, an IP accumulates roughly:
+#   (_INC_NR + _NGINX_DOS_444_WEIGHT) × N per scan window.
+# Setting this to _NGINX_DOS_LIMIT/3 means an IP is blocked after ~3
+# confirmed hits rather than waiting for the full limit to accumulate naturally.
+#
+# Tradeoff: lower = faster blocking, higher false-positive risk.
+# Set to 0 to disable (rely on standard accumulation and path-flood detection).
+#
+# NOTE: the distributed one-request-per-IP botnet still won't be caught
+# individually by this — they're caught in aggregate by _handle_path_flood_blocking.
+# This setting helps "smarter" bots that make a few repeated requests.
+_NGINX_DOS_444_WEIGHT=$(( _NGINX_DOS_LIMIT / 3 ))
 
 # Pipe-separated list of patterns for flood detection.
 #
@@ -362,6 +382,24 @@ _if_increment_counters() {
     local _code="${BASH_REMATCH[1]}"
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "${_code} flood protection"
+  fi
+  # Extra weight for a confirmed 444 on a watched attack path.
+  # Unlike the removed immediate-push approach, this accumulates over multiple
+  # hits rather than triggering on the very first request — faster than natural
+  # accumulation, but no single hit saturates the counter.  An IP receiving
+  # _NGINX_DOS_LIMIT/3 extra per hit is blocked after roughly 3 such requests.
+  # The distributed one-request-per-IP botnet is still handled by the aggregate
+  # path-flood detection in _handle_path_flood_blocking.
+  if [[ ${_NGINX_DOS_444_WEIGHT:-0} -gt 0 && "${_line}" =~ \"\ 444 \
+      && ${#_WATCH_PATTERNS[@]} -gt 0 ]]; then
+    local _444_PAT
+    for _444_PAT in "${_WATCH_PATTERNS[@]}"; do
+      if [[ -n "${_444_PAT}" && "${_line}" =~ ${_444_PAT} ]]; then
+        (( _COUNTERS["${_IP}"] += _NGINX_DOS_444_WEIGHT ))
+        _verbose_log "Counter+=${_NGINX_DOS_444_WEIGHT} for IP ${_IP}: ${_COUNTERS["${_IP}"]} (444 on watched path '${_444_PAT}')" "444 extra weight"
+        break
+      fi
+    done
   fi
   if [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
@@ -665,12 +703,14 @@ _handle_ddos_blocking() {
 # Called for every non-ignored request line whose URI matches one of the
 # watched path prefixes defined in _NGINX_PATH_FLOOD_WATCH.
 #
-# Only 200-response lines are counted -- these are requests that actually
-# reached the backend (Solr, PHP-FPM, etc.) and consumed real resources.
-# 444 responses are already free at the Nginx level and need no further action.
-#
-# An upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS is also recorded separately
-# so the flood report can show how much backend load was generated.
+# Tracks two response classes:
+#   200 — request reached the backend (Solr/PHP-FPM) and consumed real resources.
+#         Slow responses (upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS) are
+#         counted separately so the flood report shows backend load generated.
+#   444 — Nginx blocked the request before it touched the backend.
+#         Passing them here populates aggregate path/IP counts so
+#         _handle_path_flood_blocking can emit a flood report and block any
+#         distributed IPs the per-IP counter threshold alone would miss.
 #
 # All work is done in-memory using associative arrays; no subshells spawned.
 _track_path_flood() {
@@ -679,8 +719,8 @@ _track_path_flood() {
   local _STATUS="$3"
   local _UP_TIME="$4"
 
-  # Only track successful responses that consumed backend resources
-  [[ "${_STATUS}" != "200" ]] && return
+  # Accept confirmed-attack (444) and resource-consuming (200) responses only
+  [[ "${_STATUS}" != "200" && "${_STATUS}" != "444" ]] && return
 
   # Skip private/localhost IPs (they cannot be blocked anyway)
   if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
@@ -994,17 +1034,22 @@ while IFS= read -r _line <&3; do
   fi
 
   # ---- Path-flood / search-amplification tracking ----
-  # Extract the HTTP status code for this line and, if the line returned a
-  # real 200 response on a watched path, feed it to _track_path_flood.
-  # Only 200s matter here: 444s are already free (Nginx closed the connection
-  # before touching the backend) and do not represent resource consumption.
+  # Extract the HTTP status code for this line and feed matching requests to
+  # _track_path_flood for aggregate flood detection and reporting.
+  #
+  # 200s: consumed real backend resources -- tracked for resource-exhaustion
+  #       flood detection via _PATH_SLOW_COUNT and IP/req thresholds.
+  # 444s: Nginx blocked the request before it touched the backend.
+  #       Passing them here populates aggregate path/IP counts so the flood
+  #       report is accurate and _handle_path_flood_blocking catches distributed
+  #       IPs that the per-IP counter threshold alone would miss.
   if [[ -n "${_REAL_IP}" && ${#_WATCH_PATTERNS[@]} -gt 0 ]]; then
     _LINE_STATUS=""
     _STATUS_RE='"\ ([0-9]{3}) '
     if [[ "${_line}" =~ ${_STATUS_RE} ]]; then
       _LINE_STATUS="${BASH_REMATCH[1]}"
     fi
-    if [[ "${_LINE_STATUS}" == "200" ]]; then
+    if [[ "${_LINE_STATUS}" == "200" || "${_LINE_STATUS}" == "444" ]]; then
       for _WPFX in "${_WATCH_PATTERNS[@]}"; do
         if [[ -n "${_WPFX}" && "${_line}" =~ ${_WPFX} ]]; then
           _track_path_flood "${_REAL_IP}" "${_WPFX}" "${_LINE_STATUS}" "${_UP_TIME}"
