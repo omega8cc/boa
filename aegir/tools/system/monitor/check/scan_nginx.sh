@@ -363,6 +363,30 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "${_code} flood protection"
   fi
+  # Confirmed attack: 444 on a watched attack-pattern path.
+  #
+  # A 444 on a watched pattern means Nginx already validated this request as
+  # malicious using our own rules ($block_search_no_referrer, $has_excessive_facets,
+  # $block_search_root_referer, etc.).  No soft per-IP rate threshold applies --
+  # one confirmed hit is sufficient to warrant a permanent block.
+  #
+  # Pushing the counter to _NGINX_DOS_LIMIT+1 guarantees _handle_blocking adds
+  # this IP to web.log/CSF without waiting for additional requests.  This is
+  # the primary mechanism for blocking the distributed one-request-per-IP botnet
+  # where per-IP counters never naturally accumulate to _NGINX_DOS_LIMIT.
+  #
+  # Policy-block 444s (AI crawlers, Amazonbot, etc.) do NOT match any watch
+  # pattern so they are never pushed here, preserving their non-attack status.
+  if [[ "${_line}" =~ \"\ 444 && ${#_WATCH_PATTERNS[@]} -gt 0 ]]; then
+    local _444_PAT
+    for _444_PAT in "${_WATCH_PATTERNS[@]}"; do
+      if [[ -n "${_444_PAT}" && "${_line}" =~ ${_444_PAT} ]]; then
+        _COUNTERS["${_IP}"]=$(( _NGINX_DOS_LIMIT + 1 ))
+        _verbose_log "Counter=${_NGINX_DOS_LIMIT}+1 for IP ${_IP}: confirmed 444 on pattern '${_444_PAT}'" "444 attack confirmed"
+        break
+      fi
+    done
+  fi
   if [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
@@ -665,12 +689,15 @@ _handle_ddos_blocking() {
 # Called for every non-ignored request line whose URI matches one of the
 # watched path prefixes defined in _NGINX_PATH_FLOOD_WATCH.
 #
-# Only 200-response lines are counted -- these are requests that actually
-# reached the backend (Solr, PHP-FPM, etc.) and consumed real resources.
-# 444 responses are already free at the Nginx level and need no further action.
-#
-# An upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS is also recorded separately
-# so the flood report can show how much backend load was generated.
+# Tracks two response classes:
+#   200 — request reached the backend (Solr/PHP-FPM) and consumed real resources.
+#         Slow responses (upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS) are
+#         counted separately so the flood report shows backend load generated.
+#   444 — Nginx blocked the request using our own map rules before it touched
+#         the backend.  Per-IP blocking for these is handled immediately in
+#         _if_increment_counters (counter pushed to _NGINX_DOS_LIMIT+1); passing
+#         them here populates aggregate path/IP counts so _handle_path_flood_blocking
+#         can emit a flood report and catch any IPs the counter path missed.
 #
 # All work is done in-memory using associative arrays; no subshells spawned.
 _track_path_flood() {
@@ -679,8 +706,8 @@ _track_path_flood() {
   local _STATUS="$3"
   local _UP_TIME="$4"
 
-  # Only track successful responses that consumed backend resources
-  [[ "${_STATUS}" != "200" ]] && return
+  # Accept confirmed-attack (444) and resource-consuming (200) responses only
+  [[ "${_STATUS}" != "200" && "${_STATUS}" != "444" ]] && return
 
   # Skip private/localhost IPs (they cannot be blocked anyway)
   if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
@@ -994,17 +1021,23 @@ while IFS= read -r _line <&3; do
   fi
 
   # ---- Path-flood / search-amplification tracking ----
-  # Extract the HTTP status code for this line and, if the line returned a
-  # real 200 response on a watched path, feed it to _track_path_flood.
-  # Only 200s matter here: 444s are already free (Nginx closed the connection
-  # before touching the backend) and do not represent resource consumption.
+  # Extract the HTTP status code for this line and feed matching requests to
+  # _track_path_flood for aggregate flood detection and reporting.
+  #
+  # 200s: consumed real backend resources -- tracked for resource-exhaustion
+  #       flood detection via _PATH_SLOW_COUNT and IP/req thresholds.
+  # 444s: Nginx already confirmed these as malicious via our own map rules.
+  #       Per-IP blocking is handled above in _if_increment_counters (counter
+  #       pushed to _NGINX_DOS_LIMIT+1).  Passing them to _track_path_flood
+  #       here generates the flood detection report and populates path/IP
+  #       aggregates so _handle_path_flood_blocking can also act on them.
   if [[ -n "${_REAL_IP}" && ${#_WATCH_PATTERNS[@]} -gt 0 ]]; then
     _LINE_STATUS=""
     _STATUS_RE='"\ ([0-9]{3}) '
     if [[ "${_line}" =~ ${_STATUS_RE} ]]; then
       _LINE_STATUS="${BASH_REMATCH[1]}"
     fi
-    if [[ "${_LINE_STATUS}" == "200" ]]; then
+    if [[ "${_LINE_STATUS}" == "200" || "${_LINE_STATUS}" == "444" ]]; then
       for _WPFX in "${_WATCH_PATTERNS[@]}"; do
         if [[ -n "${_WPFX}" && "${_line}" =~ ${_WPFX} ]]; then
           _track_path_flood "${_REAL_IP}" "${_WPFX}" "${_LINE_STATUS}" "${_UP_TIME}"
