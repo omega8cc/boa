@@ -4,6 +4,47 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
+# ----------------------------
+# Stuck-process watchdog
+# ----------------------------
+# guest-fire.sh runs 5 iterations × 10 s = ~50 s under normal load.
+# During a web.log flood (thousands of IPs) it can take several minutes,
+# blocking all subsequent cron invocations via _manage_single_lock.
+# This watchdog kills any instance running beyond _FIRE_TIMEOUT seconds
+# so the next cron slot always gets a clean start.
+_FIRE_PID_FILE="/run/fire.pid"
+_FIRE_TIMEOUT=55   # seconds — just under the 1-minute cron interval
+
+_kill_stuck_fire() {
+  if [[ -e "${_FIRE_PID_FILE}" ]]; then
+    local _OLD_PID _START_TIME _ELAPSED
+    _OLD_PID=$(cat "${_FIRE_PID_FILE}" 2>/dev/null)
+    if [[ -n "${_OLD_PID}" ]] && kill -0 "${_OLD_PID}" 2>/dev/null; then
+      # Process is alive — check elapsed time via pid file mtime
+      _START_TIME=$(stat -c %Y "${_FIRE_PID_FILE}" 2>/dev/null || echo 0)
+      _ELAPSED=$(( $(date +%s) - _START_TIME ))
+      if (( _ELAPSED > _FIRE_TIMEOUT )); then
+        echo "$(date) [fire-watchdog] PID ${_OLD_PID} stuck ${_ELAPSED}s > ${_FIRE_TIMEOUT}s — killing" \
+          >> /var/log/boa/fire_stuck.log
+        kill -9 "${_OLD_PID}" 2>/dev/null || true
+        rm -f "${_FIRE_PID_FILE}"
+      else
+        # Running but within timeout — a normal overlap; let _manage_single_lock handle it
+        : # fall through; _manage_single_lock will exit if count > 2
+      fi
+    else
+      # Stale PID file (process already gone)
+      rm -f "${_FIRE_PID_FILE}"
+    fi
+  fi
+  # Record our own PID; mtime becomes the start-time reference for the next invocation
+  echo "$$" > "${_FIRE_PID_FILE}"
+}
+
+_kill_stuck_fire
+# Remove PID file on exit (normal or signal)
+trap 'rm -f "${_FIRE_PID_FILE}"' EXIT
+
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
