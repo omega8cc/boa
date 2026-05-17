@@ -3125,6 +3125,71 @@ _run_apt_get_dist_upgrade() {
 }
 
 #
+# Fix grub in needed.
+_fix_grub_pc_install_devices() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _fix_grub_pc_install_devices"
+  fi
+
+  local _GRUB_PKG _CURRENT_DEV _BOOT_SOURCE _DISK_DEV
+  _GRUB_PKG="grub-pc"
+
+  if ! dpkg -l "${_GRUB_PKG}" 2>/dev/null | grep -qE '^(ii|iF|iU)'; then
+    _msg "INFO: ${_GRUB_PKG} not installed, skipping grub fix"
+    return 0
+  fi
+
+  _CURRENT_DEV=$(echo "get grub-pc/install_devices" \
+    | debconf-communicate 2>/dev/null \
+    | awk '{print $2}')
+
+  if [ -z "${_CURRENT_DEV}" ]; then
+    _msg "WARN: grub-pc/install_devices is empty, remediating"
+  elif [ "${_CURRENT_DEV}" = "/multiselect" ]; then
+    _msg "WARN: grub-pc/install_devices='/multiselect' debconf artifact, remediating"
+  elif [ ! -b "${_CURRENT_DEV}" ]; then
+    _msg "WARN: grub-pc/install_devices='${_CURRENT_DEV}' not a block device, remediating"
+  else
+    _msg "INFO: grub-pc/install_devices='${_CURRENT_DEV}' looks valid, skipping"
+    return 0
+  fi
+
+  _BOOT_SOURCE=$(findmnt -n -o SOURCE /boot 2>/dev/null)
+  if [ -z "${_BOOT_SOURCE}" ]; then
+    _BOOT_SOURCE=$(findmnt -n -o SOURCE / 2>/dev/null)
+  fi
+  if [ -z "${_BOOT_SOURCE}" ]; then
+    _msg "ALRT! grub-pc fix failed: cannot determine boot source device"
+    return 1
+  fi
+
+  if echo "${_BOOT_SOURCE}" | grep -qE '(nvme|mmcblk)'; then
+    _DISK_DEV=$(echo "${_BOOT_SOURCE}" | sed 's/p[0-9]\+$//')
+  else
+    _DISK_DEV=$(echo "${_BOOT_SOURCE}" | sed 's/[0-9]\+$//')
+  fi
+
+  if [ ! -b "${_DISK_DEV}" ]; then
+    _msg "ALRT! grub-pc fix failed: '${_DISK_DEV}' not a block device (source: '${_BOOT_SOURCE}')"
+    return 1
+  fi
+
+  _msg "INFO: fixing grub-pc install_devices to ${_DISK_DEV}"
+
+  echo "grub-pc grub-pc/install_devices                string ${_DISK_DEV}" \
+    | debconf-set-selections
+  echo "grub-pc grub-pc/install_devices_disks_changed  string ${_DISK_DEV}" \
+    | debconf-set-selections
+
+  if ! _mrun "dpkg --configure ${_GRUB_PKG}" &> /dev/null; then
+    _msg "ALRT! grub-pc fix failed: dpkg --configure ${_GRUB_PKG} on ${_DISK_DEV}"
+    return 1
+  fi
+
+  _msg "INFO: ${_GRUB_PKG} reconfigured successfully on ${_DISK_DEV}"
+}
+
+#
 # Run aptitude full-upgrade.
 _run_aptitude_full_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3179,6 +3244,7 @@ _run_aptitude_full_upgrade() {
     _mrun "${_UPGRADE_HELD} ssh openssh-client openssh-server openssh-sftp-server"
   fi
   _mrun "apt-get --fix-broken install -y"
+  _fix_grub_pc_install_devices
   _mrun "dpkg --configure --force-all -a"
   _mrun "aptitude full-upgrade -f -y -q \
     --allow-untrusted \
