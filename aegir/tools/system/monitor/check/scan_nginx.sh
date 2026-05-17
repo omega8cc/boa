@@ -97,6 +97,51 @@ _NGINX_DDOS_UA_REQ_THRESHOLD=200
 # a shared Cloudflare egress) out of the block list.
 _NGINX_DDOS_IP_MIN_REQS=3
 
+# ---- Path-flood / search-amplification detection ----
+# Distributed botnets send one request per IP so per-IP rate limits never
+# fire. This module tracks total 200-response traffic to expensive path
+# prefixes across *all* IPs and blocks every participant once the path is
+# declared under flood. Designed specifically for Solr/Elasticsearch search
+# amplification attacks that bypass Nginx 444 rules by adding a Referer.
+
+# Minimum distinct IPs hitting the same path prefix (200 responses only)
+# within the scan window before a path flood is declared.
+_NGINX_PATH_FLOOD_IP_THRESHOLD=10
+
+# Minimum total 200-response requests to the same path prefix in the window.
+_NGINX_PATH_FLOOD_REQ_THRESHOLD=15
+
+# Upstream response time (whole seconds) above which a request is considered
+# "slow" -- i.e., it consumed real backend (Solr/PHP-FPM) cycles. Slow 200s
+# get an extra per-IP counter increment on top of normal scoring.
+_NGINX_PATH_FLOOD_SLOW_SECS=3
+
+# Per-(path-prefix, IP) minimum request count before that IP is added to the
+# block list during a path-flood event. Set to 1 to block every participant.
+_NGINX_PATH_FLOOD_IP_MIN_REQS=1
+
+# Pipe-separated list of patterns for flood detection.
+#
+# Each pattern is matched against the FULL log line (URI path + query string +
+# all other fields), so both path-based and query-string-based signals work.
+#
+# Path patterns  — match the URI segment produced by older search modules:
+#   apachesolr_search  Drupal 6/7 Apache Solr module (/search/apachesolr_search/TERM)
+#   /search/node       Drupal core node search path
+#   /search/user       Drupal core user search path
+#
+# Query-string patterns  — match the parameter names produced by modern modules.
+# These cover any URI (/search, /en/search, /views/...) because the search type
+# is identified solely by the query string when using Search API / Solr backend:
+#   search_api_views_fulltext  Search API Views exposed filter (most common)
+#   search_api_fulltext        Search API programmatic fulltext parameter
+#   im_taxonomy_vid            Faceted search taxonomy-vocabulary facet param
+#                              (present in both apachesolr_search and Search API
+#                               facets module; appears in every facet-bearing URL)
+#
+# Add further site-specific expensive endpoint substrings as needed.
+_NGINX_PATH_FLOOD_WATCH="apachesolr_search|search_api_views_fulltext|search_api_fulltext|im_taxonomy_vid|/search/node|/search/user"
+
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
 
@@ -171,11 +216,29 @@ declare -A _UA_IP_SET
 declare -A _UA_IP_LIST
 declare -A _UA_IP_REQS
 
+# Path-flood / search-amplification detection arrays
+# Tracks 200-response traffic to expensive path prefixes across all IPs.
+# Catches distributed botnets where no single IP exceeds per-IP rate limits.
+#
+# _PATH_REQ_COUNT[prefix]    = total 200-response requests to this path prefix
+# _PATH_IP_COUNT[prefix]     = distinct real IPs hitting this path prefix (200 only)
+# _PATH_IP_SET[prefix:ip]    = sentinel: IP seen on this path prefix with 200
+# _PATH_IP_LIST[prefix]      = space-separated list of contributing IPs
+# _PATH_IP_REQS[prefix:ip]   = per-(prefix, IP) request count
+# _PATH_SLOW_COUNT[prefix]   = requests with upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS
+declare -A _PATH_REQ_COUNT
+declare -A _PATH_IP_COUNT
+declare -A _PATH_IP_SET
+declare -A _PATH_IP_LIST
+declare -A _PATH_IP_REQS
+declare -A _PATH_SLOW_COUNT
+
 # Debugging: Confirm associative arrays are declared
 if [[ -e "/root/.debug.monitor.cnf" ]]; then
   declare -p _BANNED_IPS _ALLOWED_IPS _LOGGED_IN_IPS _COUNTERS _LI_CNT _PX_CNT
   declare -p _UA_IP_COUNT _UA_REQ_COUNT _UA_IP_SET _UA_IP_LIST _UA_IP_REQS
-  echo "DEBUG: Associative arrays declared (DoS + DDoS sets)."
+  declare -p _PATH_REQ_COUNT _PATH_IP_COUNT _PATH_IP_SET _PATH_IP_LIST _PATH_IP_REQS _PATH_SLOW_COUNT
+  echo "DEBUG: Associative arrays declared (DoS + DDoS + path-flood sets)."
 fi
 
 # ==============================
@@ -308,6 +371,17 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_S_NR ))
     _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
   fi
+  if [[ "${_line}" =~ (POST|GET)\ /search/ ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_S_NR ))
+    _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/search flood protection"
+    # Extra weight for the expensive Solr/search-index path specifically.
+    # A single IP making repeated apachesolr_search requests should reach
+    # the block threshold faster than a generic /search/ hit.
+    if [[ "${_line}" =~ apachesolr_search ]]; then
+      (( _COUNTERS["${_IP}"] += _INC_S_NR ))
+      _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "apachesolr_search extra weight"
+    fi
+  fi
 }
 
 # Function to process each IP
@@ -403,8 +477,12 @@ _process_ip() {
         _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/ and /node/add POST flood protection"
       fi
       if [[ "${_line}" =~ GET\ /([a-z]{2}/)?node/add ]]; then
-        (( _COUNTERS["${_IP}"] += 3 ))
-        _verbose_log "Counter++ 3 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/node/add GET flood protection"
+        (( _COUNTERS["${_IP}"] += 5 ))
+        _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/node/add GET flood protection"
+      fi
+      if [[ "${_line}" =~ GET\ /([a-z]{2}/)?search ]]; then
+        (( _COUNTERS["${_IP}"] += 5 ))
+        _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/search GET flood protection"
       fi
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
@@ -577,6 +655,154 @@ _handle_ddos_blocking() {
     done
   done
 }
+
+# ==============================
+# Path-Flood / Search-Amplification Detection
+# ==============================
+
+# _track_path_flood IP PATH_KEY STATUS UPSTREAM_TIME
+#
+# Called for every non-ignored request line whose URI matches one of the
+# watched path prefixes defined in _NGINX_PATH_FLOOD_WATCH.
+#
+# Only 200-response lines are counted -- these are requests that actually
+# reached the backend (Solr, PHP-FPM, etc.) and consumed real resources.
+# 444 responses are already free at the Nginx level and need no further action.
+#
+# An upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS is also recorded separately
+# so the flood report can show how much backend load was generated.
+#
+# All work is done in-memory using associative arrays; no subshells spawned.
+_track_path_flood() {
+  local _IP="$1"
+  local _PATH_KEY="$2"
+  local _STATUS="$3"
+  local _UP_TIME="$4"
+
+  # Only track successful responses that consumed backend resources
+  [[ "${_STATUS}" != "200" ]] && return
+
+  # Skip private/localhost IPs (they cannot be blocked anyway)
+  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    return
+  fi
+  # Skip already-banned IPs to avoid inflating counts needlessly
+  if [[ -n "${_BANNED_IPS["${_IP}"]}" ]]; then
+    return
+  fi
+  # Skip whitelisted IPs
+  if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+    return
+  fi
+
+  local _PATH_IP_KEY="${_PATH_KEY}:${_IP}"
+
+  # Increment total request counter for this path prefix
+  if [[ -v _PATH_REQ_COUNT["${_PATH_KEY}"] ]]; then
+    (( _PATH_REQ_COUNT["${_PATH_KEY}"]++ ))
+  else
+    _PATH_REQ_COUNT["${_PATH_KEY}"]=1
+  fi
+
+  # Track slow responses (upstream_time as whole-second integer comparison;
+  # avoids bc/awk dependency by stripping the fractional part via parameter
+  # expansion before the arithmetic test).
+  local _UP_INT="${_UP_TIME%%.*}"
+  if [[ "${_UP_INT}" =~ ^[0-9]+$ ]] && (( _UP_INT >= _NGINX_PATH_FLOOD_SLOW_SECS )); then
+    if [[ -v _PATH_SLOW_COUNT["${_PATH_KEY}"] ]]; then
+      (( _PATH_SLOW_COUNT["${_PATH_KEY}"]++ ))
+    else
+      _PATH_SLOW_COUNT["${_PATH_KEY}"]=1
+    fi
+  fi
+
+  # Increment per-(path,IP) request counter
+  if [[ -v _PATH_IP_REQS["${_PATH_IP_KEY}"] ]]; then
+    (( _PATH_IP_REQS["${_PATH_IP_KEY}"]++ ))
+  else
+    _PATH_IP_REQS["${_PATH_IP_KEY}"]=1
+  fi
+
+  # Track distinct IPs per path prefix (sentinel pattern identical to _track_ua_ip)
+  if [[ -z "${_PATH_IP_SET["${_PATH_IP_KEY}"]}" ]]; then
+    _PATH_IP_SET["${_PATH_IP_KEY}"]=1
+    if [[ -v _PATH_IP_COUNT["${_PATH_KEY}"] ]]; then
+      (( _PATH_IP_COUNT["${_PATH_KEY}"]++ ))
+    else
+      _PATH_IP_COUNT["${_PATH_KEY}"]=1
+    fi
+    # Append IP to the space-separated list for this path prefix
+    _PATH_IP_LIST["${_PATH_KEY}"]="${_PATH_IP_LIST["${_PATH_KEY}"]:-}${_PATH_IP_LIST["${_PATH_KEY}"]:+ }${_IP}"
+  fi
+}
+
+# _handle_path_flood_blocking
+#
+# Iterates over all tracked path prefixes. When a prefix meets either the
+# distinct-IP threshold OR the total-request threshold, it is declared a
+# search-amplification flood and every contributing IP (that sent at least
+# _NGINX_PATH_FLOOD_IP_MIN_REQS requests with that path) is blocked.
+#
+# Using OR (not AND) here is deliberate: a single path receiving 15+ real
+# backend hits from 10+ IPs within one scan window is already anomalous
+# regardless of which threshold is crossed first. Tune thresholds higher on
+# genuinely high-traffic search pages.
+#
+# Runs after _handle_ddos_blocking so _BANNED_IPS is already fully populated
+# and double-blocking IPs already caught by earlier passes is avoided.
+_handle_path_flood_blocking() {
+  local _PREFIX _IP _ip_count _req_count _slow_count _ip_reqs _PATH_IP_KEY
+
+  for _PREFIX in "${!_PATH_REQ_COUNT[@]}"; do
+    _ip_count="${_PATH_IP_COUNT["${_PREFIX}"]:-0}"
+    _req_count="${_PATH_REQ_COUNT["${_PREFIX}"]:-0}"
+    _slow_count="${_PATH_SLOW_COUNT["${_PREFIX}"]:-0}"
+
+    # Skip if neither threshold is met
+    if (( _ip_count < _NGINX_PATH_FLOOD_IP_THRESHOLD && _req_count < _NGINX_PATH_FLOOD_REQ_THRESHOLD )); then
+      continue
+    fi
+
+    _verbose_log "Path flood [${_ip_count} IPs / ${_req_count} reqs / ${_slow_count} slow]: ${_PREFIX}" "_handle_path_flood_blocking"
+    echo "=== PATH FLOOD DETECTED [${_ip_count} distinct IPs | ${_req_count} total reqs | ${_slow_count} slow 200s] ==="
+    echo "=== Path prefix: ${_PREFIX} ==="
+
+    # Walk the IP list for this path prefix and block qualifying IPs
+    for _IP in ${_PATH_IP_LIST["${_PREFIX}"]}; do
+      _PATH_IP_KEY="${_PREFIX}:${_IP}"
+      _ip_reqs="${_PATH_IP_REQS["${_PATH_IP_KEY}"]:-0}"
+
+      if (( _ip_reqs < _NGINX_PATH_FLOOD_IP_MIN_REQS )); then
+        continue
+      fi
+
+      # Skip already-banned, whitelisted, and logged-in IPs
+      if [[ -n "${_BANNED_IPS["${_IP}"]}" ]]; then
+        echo "===[${_ip_reqs}req] Path-flood IP ${_IP} already banned -- skipping ==="
+        continue
+      fi
+      if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+        echo "===[${_ip_reqs}req] Path-flood IP ${_IP} is whitelisted -- skipping ==="
+        continue
+      fi
+      if _is_logged_in "${_IP}"; then
+        echo "===[${_ip_reqs}req] Path-flood IP ${_IP} is logged-in session -- skipping ==="
+        continue
+      fi
+      if [[ "${_IP}" == "${_MYIP}" ]]; then
+        echo "===[${_ip_reqs}req] Path-flood IP ${_IP} is local server IP -- skipping ==="
+        continue
+      fi
+
+      _sumar="${_ip_reqs}"
+      echo "=== Path-flood block_ip ${_IP} [${_ip_reqs} req(s) to ${_PREFIX}] ==="
+      _block_ip "${_IP}"
+    done
+  done
+}
+
+# ==============================
+# Load Banned / Allowed IPs
 # ==============================
 
 # Load banned IPs from web.log into associative array (cache already blocked IPs)
@@ -629,6 +855,20 @@ if command -v netstat &>/dev/null; then
       _LOGGED_IN_IPS["${_logged_ip}"]=1
     fi
   done < <(_get_ssh_ips)
+fi
+
+# ==============================
+# Pre-process Path-Flood Watch Patterns
+# ==============================
+
+# Split _NGINX_PATH_FLOOD_WATCH on '|' once before the main loop to avoid
+# repeated string manipulation inside the hot path. The resulting array is
+# used during per-line path matching below.
+_WATCH_PATTERNS=()
+if [[ -n "${_NGINX_PATH_FLOOD_WATCH:-}" ]]; then
+  _SAVE_IFS="${IFS}"
+  IFS='|' read -ra _WATCH_PATTERNS <<< "${_NGINX_PATH_FLOOD_WATCH}"
+  IFS="${_SAVE_IFS}"
 fi
 
 # ==============================
@@ -736,18 +976,46 @@ while IFS= read -r _line <&3; do
     fi
   done
 
-  # ---- DDoS / Shared-UA tracking ----
-  # Extract the User-Agent field (last quoted string in the log line).
-  # The log format ends with: ... "UA" upstream_time "cache_status" proto=...
-  # We match the final double-quoted token that precedes the numeric upstream time.
-  if [[ -n "${_REAL_IP}" && "${_line}" =~ \"([^\"]+)\"\ [0-9]+\.[0-9]+ ]]; then
+  # ---- DDoS / Shared-UA tracking + upstream time extraction ----
+  # The log format ends: ..."UA" upstream_time "cache_status" proto=...
+  # We capture both the final quoted UA token and the decimal upstream time
+  # that follows it. Both values are reused by the path-flood tracker below,
+  # so extracting them once here avoids a second regex match per line.
+  _DDOS_UA=""
+  _UP_TIME="0"
+  if [[ -n "${_REAL_IP}" && "${_line}" =~ \"([^\"]+)\"\ ([0-9]+\.[0-9]+) ]]; then
     _DDOS_UA="${BASH_REMATCH[1]}"
+    _UP_TIME="${BASH_REMATCH[2]}"
     # Only track if UA is non-trivial (longer than 10 chars) and the line is
     # not a redirect (301) so we stay consistent with _process_ip filtering.
     if [[ ${#_DDOS_UA} -gt 10 && ! "${_line}" =~ \"\ 301 ]]; then
       _track_ua_ip "${_REAL_IP}" "${_DDOS_UA}"
     fi
   fi
+
+  # ---- Path-flood / search-amplification tracking ----
+  # Extract the HTTP status code for this line and, if the line returned a
+  # real 200 response on a watched path, feed it to _track_path_flood.
+  # Only 200s matter here: 444s are already free (Nginx closed the connection
+  # before touching the backend) and do not represent resource consumption.
+  if [[ -n "${_REAL_IP}" && ${#_WATCH_PATTERNS[@]} -gt 0 ]]; then
+    _LINE_STATUS=""
+    _STATUS_RE='"\ ([0-9]{3}) '
+    if [[ "${_line}" =~ ${_STATUS_RE} ]]; then
+      _LINE_STATUS="${BASH_REMATCH[1]}"
+    fi
+    if [[ "${_LINE_STATUS}" == "200" ]]; then
+      for _WPFX in "${_WATCH_PATTERNS[@]}"; do
+        if [[ -n "${_WPFX}" && "${_line}" =~ ${_WPFX} ]]; then
+          _track_path_flood "${_REAL_IP}" "${_WPFX}" "${_LINE_STATUS}" "${_UP_TIME}"
+          # Stop after the first matching prefix to avoid double-counting a
+          # single request against multiple overlapping patterns.
+          break
+        fi
+      done
+    fi
+  fi
+
 done
 
 # Close the file descriptor for the log input
@@ -768,6 +1036,11 @@ _handle_blocking _PX_CNT "px_cnt"
 # DDoS / Shared-UA flood blocking (runs after per-IP counters so _BANNED_IPS
 # is already populated and we avoid double-blocking IPs caught by the DoS pass)
 _handle_ddos_blocking
+
+# Path-flood / search-amplification blocking (runs last so _BANNED_IPS reflects
+# everything caught by the DoS and DDoS passes above; distributed bots that
+# slipped through per-IP rate checks are caught here by the aggregate path count)
+_handle_path_flood_blocking
 
 echo "CONTROL complete for ${_MYIP}"
 exit 0
