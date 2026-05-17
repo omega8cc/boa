@@ -125,6 +125,21 @@ _NGINX_PATH_FLOOD_SLOW_SECS=3
 # block list during a path-flood event. Set to 1 to block every participant.
 _NGINX_PATH_FLOOD_IP_MIN_REQS=1
 
+# Extra counter weight added for each confirmed 444 on a watched attack path
+# (in addition to the standard _INC_NR increment applied for all 4xx/5xx).
+# Combined with _INC_NR, an IP accumulates roughly:
+#   (_INC_NR + _NGINX_DOS_444_WEIGHT) × N per scan window.
+# Setting this to _NGINX_DOS_LIMIT/3 means an IP is blocked after ~3
+# confirmed hits rather than waiting for the full limit to accumulate naturally.
+#
+# Tradeoff: lower = faster blocking, higher false-positive risk.
+# Set to 0 to disable (rely on standard accumulation and path-flood detection).
+#
+# NOTE: the distributed one-request-per-IP botnet still won't be caught
+# individually by this — they're caught in aggregate by _handle_path_flood_blocking.
+# This setting helps "smarter" bots that make a few repeated requests.
+_NGINX_DOS_444_WEIGHT=$(( _NGINX_DOS_LIMIT / 3 ))
+
 # Pipe-separated list of patterns for flood detection.
 #
 # Each pattern is matched against the FULL log line (URI path + query string +
@@ -368,26 +383,20 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "${_code} flood protection"
   fi
-  # Confirmed attack: 444 on a watched attack-pattern path.
-  #
-  # A 444 on a watched pattern means Nginx already validated this request as
-  # malicious using our own rules ($block_search_no_referrer, $has_excessive_facets,
-  # $block_search_root_referer, etc.).  No soft per-IP rate threshold applies --
-  # one confirmed hit is sufficient to warrant a permanent block.
-  #
-  # Pushing the counter to _NGINX_DOS_LIMIT+1 guarantees _handle_blocking adds
-  # this IP to web.log/CSF without waiting for additional requests.  This is
-  # the primary mechanism for blocking the distributed one-request-per-IP botnet
-  # where per-IP counters never naturally accumulate to _NGINX_DOS_LIMIT.
-  #
-  # Policy-block 444s (AI crawlers, Amazonbot, etc.) do NOT match any watch
-  # pattern so they are never pushed here, preserving their non-attack status.
-  if [[ "${_line}" =~ \"\ 444 && ${#_WATCH_PATTERNS[@]} -gt 0 ]]; then
+  # Extra weight for a confirmed 444 on a watched attack path.
+  # Unlike the removed immediate-push approach, this accumulates over multiple
+  # hits rather than triggering on the very first request — faster than natural
+  # accumulation, but no single hit saturates the counter.  An IP receiving
+  # _NGINX_DOS_LIMIT/3 extra per hit is blocked after roughly 3 such requests.
+  # The distributed one-request-per-IP botnet is still handled by the aggregate
+  # path-flood detection in _handle_path_flood_blocking.
+  if [[ ${_NGINX_DOS_444_WEIGHT:-0} -gt 0 && "${_line}" =~ \"\ 444 \
+      && ${#_WATCH_PATTERNS[@]} -gt 0 ]]; then
     local _444_PAT
     for _444_PAT in "${_WATCH_PATTERNS[@]}"; do
       if [[ -n "${_444_PAT}" && "${_line}" =~ ${_444_PAT} ]]; then
-        _COUNTERS["${_IP}"]=$(( _NGINX_DOS_LIMIT + 1 ))
-        _verbose_log "Counter=${_NGINX_DOS_LIMIT}+1 for IP ${_IP}: confirmed 444 on pattern '${_444_PAT}'" "444 attack confirmed"
+        (( _COUNTERS["${_IP}"] += _NGINX_DOS_444_WEIGHT ))
+        _verbose_log "Counter+=${_NGINX_DOS_444_WEIGHT} for IP ${_IP}: ${_COUNTERS["${_IP}"]} (444 on watched path '${_444_PAT}')" "444 extra weight"
         break
       fi
     done
@@ -698,11 +707,10 @@ _handle_ddos_blocking() {
 #   200 — request reached the backend (Solr/PHP-FPM) and consumed real resources.
 #         Slow responses (upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS) are
 #         counted separately so the flood report shows backend load generated.
-#   444 — Nginx blocked the request using our own map rules before it touched
-#         the backend.  Per-IP blocking for these is handled immediately in
-#         _if_increment_counters (counter pushed to _NGINX_DOS_LIMIT+1); passing
-#         them here populates aggregate path/IP counts so _handle_path_flood_blocking
-#         can emit a flood report and catch any IPs the counter path missed.
+#   444 — Nginx blocked the request before it touched the backend.
+#         Passing them here populates aggregate path/IP counts so
+#         _handle_path_flood_blocking can emit a flood report and block any
+#         distributed IPs the per-IP counter threshold alone would miss.
 #
 # All work is done in-memory using associative arrays; no subshells spawned.
 _track_path_flood() {
@@ -1031,11 +1039,10 @@ while IFS= read -r _line <&3; do
   #
   # 200s: consumed real backend resources -- tracked for resource-exhaustion
   #       flood detection via _PATH_SLOW_COUNT and IP/req thresholds.
-  # 444s: Nginx already confirmed these as malicious via our own map rules.
-  #       Per-IP blocking is handled above in _if_increment_counters (counter
-  #       pushed to _NGINX_DOS_LIMIT+1).  Passing them to _track_path_flood
-  #       here generates the flood detection report and populates path/IP
-  #       aggregates so _handle_path_flood_blocking can also act on them.
+  # 444s: Nginx blocked the request before it touched the backend.
+  #       Passing them here populates aggregate path/IP counts so the flood
+  #       report is accurate and _handle_path_flood_blocking catches distributed
+  #       IPs that the per-IP counter threshold alone would miss.
   if [[ -n "${_REAL_IP}" && ${#_WATCH_PATTERNS[@]} -gt 0 ]]; then
     _LINE_STATUS=""
     _STATUS_RE='"\ ([0-9]{3}) '
