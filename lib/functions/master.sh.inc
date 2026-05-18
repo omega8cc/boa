@@ -1,5 +1,5 @@
 
-export _tRee=dev
+export _tRee=lts
 export _rLsn="BOA-5.9.3"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
@@ -810,7 +810,7 @@ _aegir_master_upgrade() {
       _php_cli_drush_update "${_df}"
     done
 
-    export _xSrl=593devT01
+    export _xSrl=593ltsT01
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
@@ -1178,7 +1178,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    export _xSrl=593devT01
+    export _xSrl=593ltsT01
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${_vBs}/${_filIncB}
