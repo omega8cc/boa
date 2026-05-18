@@ -66,6 +66,7 @@ _swap_purge_if_bloated() {
   echo "SWP swap usage: ${_swap_pct}% (${_swap_used} kB used of ${_swap_total} kB, threshold: ${_SWAP_THRESHOLD}%)"
   if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
     echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
+    sync && echo 3 | tee /proc/sys/vm/drop_caches
     local _mem_free
     _mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
     if [[ "${_mem_free}" -lt "${_swap_used}" ]]; then
@@ -84,6 +85,7 @@ _swap_purge_if_bloated() {
       echo "SWP swapon failed after swapoff — swap may be offline"
       return 1
     fi
+    sync && echo 3 | tee /proc/sys/vm/drop_caches
   else
     echo "SWP swap usage healthy, no action taken"
   fi
