@@ -56,7 +56,7 @@ _kill_stuck_fire_external
 #
 # Purge memory swap if bloated
 _swap_purge_if_bloated() {
-  local _SWAP_THRESHOLD="${1:-60}"
+  local _SWAP_THRESHOLD="${1:-50}"
   local _swap_total _swap_used _swap_pct
   _swap_total=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
   _swap_used=$(awk '/SwapFree/ {gsub(/SwapFree:[ \t]+/,""); print $1}' /proc/meminfo)
