@@ -34,6 +34,14 @@ readonly _CSF="/usr/sbin/csf"
 # BOA default: 900 (guest-fire.sh handles re-enforcement at 900s).
 readonly _BAN_SECONDS=900
 
+# Byte-offset tracking — avoids re-reading the entire auth.log on every run.
+# On first run (or after log rotation) the last _AUTH_LOG_BASELINE lines are
+# used as a baseline; subsequent runs read only bytes appended since the
+# previous execution.
+readonly _AUTH_LOG="/var/log/auth.log"
+readonly _AUTH_LOG_OFFSET_FILE="/var/log/scan_hackcheck_lastpos"
+readonly _AUTH_LOG_BASELINE=9999
+
 
 # -----------------------------------------------------------------------------
 # Lock
@@ -175,7 +183,32 @@ _makeactions() {
   # "Connection closed by [preauth]" branch.
   declare -A _accepted=()
 
-  while IFS= read -r _line; do
+  # -------------------------------------------------------------------------
+  # Byte-offset tracking — read only new lines since the last run.
+  # Mirrors the approach used in scan_nginx.sh.
+  # -------------------------------------------------------------------------
+  local _last_offset=0
+  if [[ -f "${_AUTH_LOG_OFFSET_FILE}" ]]; then
+    _last_offset=$(< "${_AUTH_LOG_OFFSET_FILE}")
+  fi
+  local _current_size=0
+  if [[ -f "${_AUTH_LOG}" ]]; then
+    _current_size=$(stat -c %s "${_AUTH_LOG}")
+  fi
+  # Reset on log rotation or truncation
+  if (( _current_size < _last_offset )); then
+    _last_offset=0
+  fi
+
+  if (( _last_offset == 0 )); then
+    # First run or reset: process the last _AUTH_LOG_BASELINE lines as a baseline
+    exec 3< <(tail -n "${_AUTH_LOG_BASELINE}" "${_AUTH_LOG}" 2>/dev/null)
+  else
+    # Process only new log entries since the last recorded byte offset
+    exec 3< <(tail -c +$(( _last_offset + 1 )) "${_AUTH_LOG}" 2>/dev/null)
+  fi
+
+  while IFS= read -r _line <&3; do
     # Sanitise — strip chars outside the safe set (mirrors Perl regex)
     _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-]/}"
 
@@ -233,7 +266,13 @@ _makeactions() {
     [[ -n "${_accepted[${_ip}]+x}" ]] && continue
     (( _hits["${_ip}"]++ )) || true
 
-  done < <(tail --lines=9999 /var/log/auth.log 2>/dev/null)
+  done
+  exec 3<&-
+
+  # Persist the new end-of-file offset for the next run
+  if [[ -f "${_AUTH_LOG}" ]]; then
+    stat -c %s "${_AUTH_LOG}" > "${_AUTH_LOG_OFFSET_FILE}"
+  fi
 
   local _sumar=0
   for _ip in "${!_hits[@]}"; do
