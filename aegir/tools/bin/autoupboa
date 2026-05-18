@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=591ltsT01
+export _xSrl=593ltsT01
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -21,12 +21,10 @@ _check_root() {
 }
 _check_root
 
-
-_FIRE_WATCHDOG_TIMEOUT=180  # seconds — matches guest-fire.sh's own threshold
-_FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
-_FIRE_SCRIPT="guest-fire.sh"
-
 _kill_stuck_fire_external() {
+  _FIRE_WATCHDOG_TIMEOUT=180  # seconds — matches guest-fire.sh's own threshold
+  _FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
+  _FIRE_SCRIPT="guest-fire.sh"
   local _BOOT_TIME _PID _START_TICKS _ELAPSED _NOW _CLK_TCK
   _NOW=$(date +%s)
   _BOOT_TIME=$(awk '{print int($1)}' /proc/uptime 2>/dev/null)
@@ -50,8 +48,54 @@ _kill_stuck_fire_external() {
     fi
   done < <(pgrep -f "${_FIRE_SCRIPT}" 2>/dev/null)
 }
-
 _kill_stuck_fire_external
+
+#
+# Purge memory swap if bloated
+_swap_purge_if_bloated() {
+  local _SWAP_THRESHOLD="${1:-50}"
+  local _swap_total _swap_used _swap_pct
+
+  _swap_total=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
+  _swap_used=$(awk '/SwapFree/ {gsub(/SwapFree:[ \t]+/,""); print $1}' /proc/meminfo)
+
+  if [[ -z "${_swap_total}" || "${_swap_total}" -eq 0 ]]; then
+    echo "SWP no swap configured or swap total is zero, skipping"
+    return 0
+  fi
+
+  _swap_used=$(awk '/SwapTotal/{t=$2} /SwapFree/{f=$2} END{print t-f}' /proc/meminfo)
+  _swap_pct=$(( _swap_used * 100 / _swap_total ))
+
+  echo "SWP swap usage: ${_swap_pct}% (${_swap_used} kB used of ${_swap_total} kB, threshold: ${_SWAP_THRESHOLD}%)"
+
+  if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
+    echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
+    sync && echo 3 | tee /proc/sys/vm/drop_caches
+    local _mem_free
+    _mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+    if [[ "${_mem_free}" -lt "${_swap_used}" ]]; then
+      echo "SWP insufficient free RAM (${_mem_free} kB) to absorb swap (${_swap_used} kB), aborting purge"
+      return 1
+    fi
+    if swapoff -a; then
+      echo "SWP swapoff complete"
+    else
+      echo "SWP swapoff failed"
+      return 1
+    fi
+    if swapon -a; then
+      echo "SWP swapon complete, swap purged successfully"
+    else
+      echo "SWP swapon failed after swapoff — swap may be offline"
+      return 1
+    fi
+    sync && echo 3 | tee /proc/sys/vm/drop_caches
+  else
+    echo "SWP swap usage healthy, no action taken"
+  fi
+}
+_swap_purge_if_bloated
 
 #
 # Protect from any autoupboa updates when _SKYNET_MODE=OFF
@@ -1021,8 +1065,8 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _AUTO_PHP="php-min"
     _AUTO_VER="${_tRee}"
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=7
-    _AUTO_UP_DAY=7
+    _AUTO_UP_MONTH=5
+    _AUTO_UP_DAY=19
     _AUTO_UP_HOUR=3
     _AUTO_UP_MINUTE=10
     _AUTO_OCT_UP_HOUR=4
@@ -1093,14 +1137,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_f012.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_593v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_f012.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_593v01.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_f012.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_593v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
       if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -1108,7 +1152,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_f012.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_593v01.${_tRee}.${_xSrl}.pid"
     fi
   fi
 

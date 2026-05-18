@@ -31,6 +31,14 @@ readonly _CSF="/usr/sbin/csf"
 
 readonly _BAN_SECONDS=3600
 
+# Byte-offset tracking — avoids re-reading the entire /var/log/messages on
+# every run. On first run (or after log rotation) the last _FTP_LOG_BASELINE
+# lines are used as a baseline; subsequent runs read only bytes appended since
+# the previous execution.
+readonly _MESSAGES_LOG="/var/log/messages"
+readonly _MESSAGES_LOG_OFFSET_FILE="/var/log/scan_hackftp_lastpos"
+readonly _FTP_LOG_BASELINE=999
+
 # -----------------------------------------------------------------------------
 # Lock
 # -----------------------------------------------------------------------------
@@ -143,7 +151,32 @@ _makeactions() {
 
   declare -A _hits=()
 
-  while IFS= read -r _line; do
+  # -------------------------------------------------------------------------
+  # Byte-offset tracking — read only new lines since the last run.
+  # Mirrors the approach used in scan_nginx.sh.
+  # -------------------------------------------------------------------------
+  local _last_offset=0
+  if [[ -f "${_MESSAGES_LOG_OFFSET_FILE}" ]]; then
+    _last_offset=$(< "${_MESSAGES_LOG_OFFSET_FILE}")
+  fi
+  local _current_size=0
+  if [[ -f "${_MESSAGES_LOG}" ]]; then
+    _current_size=$(stat -c %s "${_MESSAGES_LOG}")
+  fi
+  # Reset on log rotation or truncation
+  if (( _current_size < _last_offset )); then
+    _last_offset=0
+  fi
+
+  if (( _last_offset == 0 )); then
+    # First run or reset: process the last _FTP_LOG_BASELINE lines as a baseline
+    exec 3< <(tail -n "${_FTP_LOG_BASELINE}" "${_MESSAGES_LOG}" 2>/dev/null)
+  else
+    # Process only new log entries since the last recorded byte offset
+    exec 3< <(tail -c +$(( _last_offset + 1 )) "${_MESSAGES_LOG}" 2>/dev/null)
+  fi
+
+  while IFS= read -r _line <&3; do
     _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-]/}"
 
     if [[ "${_line}" =~ "Authentication failed for user" ]] || \
@@ -173,7 +206,13 @@ _makeactions() {
       (( _hits["${_ip}"]++ )) || true
     fi
 
-  done < <(tail --lines=999 /var/log/messages 2>/dev/null)
+  done
+  exec 3<&-
+
+  # Persist the new end-of-file offset for the next run
+  if [[ -f "${_MESSAGES_LOG}" ]]; then
+    stat -c %s "${_MESSAGES_LOG}" > "${_MESSAGES_LOG_OFFSET_FILE}"
+  fi
 
   local _sumar=0
   for _ip in "${!_hits[@]}"; do

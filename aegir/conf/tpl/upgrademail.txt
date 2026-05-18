@@ -1,40 +1,48 @@
 Hello,
 
-We are pleased to inform you that your Ægir instance has been successfully upgraded to our new HTTP/3 Edition [boa.version]
+We are pleased to inform you that your Ægir instance has been successfully
+upgraded to [boa.version]
 
-@=> The future of 100% Open Source Drupal hosting is brighter than ever!
+@=> URGENT: Highly critical Drupal security release on May 20, 2026
 
-With BOA-5.9.1 PRO/LTS, we proudly deliver full HTTP/3 and KTLS support — a fundamental change in the way modern browsers communicate with modern HTTPS web servers — along with the latest OpenSSL 3.5 LTS, which made it possible, and many critical security and bug fixes related to system components.
+A highly critical vulnerability affecting all Drupal versions from 8 to 11
+will be patched on May 20, 2026. Exploits may appear within hours.
 
-@=> Key Improvements Explained
+  Details: https://www.drupal.org/psa-2026-05-18
 
-HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and responsive (and stay that way during spikes), this is genuinely good news. Why is this a big deal? What should visitors notice?
+Customers on any active plan at https://omega8.cc/managed will have their
+sites updated within hours of the release — nothing to do on your end.
 
-  Read the full story: https://github.com/omega8cc/boa/tree/5.x-lts/HTTP3.md
+All others should be ready to update their Drupal codebases through Aegir
+on May 20. Incidents like this are exactly why https://omega8.cc/managed
+exists. This one won't be the last.
 
-@=> Usage disk/sql limits x2 + Aero and Archive plans added to hosted BOA
+@=> Better protection, better performance, better tools
 
-It's worth mentioning that our hosted BOA plans have received a huge upgrade: several new locations have been added around the world, our vendors are now local (instead of the previous US-only hyperscalers), and an entirely new Archive Tier has been added for those looking to host collections of low-traffic sites at low cost.
+With BOA-5.9.3-PRO we have focused on making your hosted environment faster
+to respond under attack, more resilient to common web threats, and easier to
+manage. This release contains months of hardening work across the entire stack,
+from the web server layer all the way down to the database backup tools.
 
-  Take a look if you are interested: https://omega8.cc/hosted
+@=> Your sites are better protected
 
-@=> Going Local with Infrastructure
+We have significantly improved how the system detects and blocks malicious
+traffic — including automated bots, brute-force attempts, and search
+amplification attacks — before they ever reach your Drupal sites. These
+improvements happen transparently in the background with no action required
+on your part.
 
-We’ve expanded our network considerably to meet the growing expectations of the Data Sovereignty movement. This isn’t just about adding more cities to our hosting map — it’s also about going local with infrastructure wherever we can. We no longer rely solely on big-name vendors and hyperscalers. Instead, we’re gradually migrating to local providers and data centers in every country where we offer hosted BOA for Drupal.
+@=> PHP 8.5 fully supported
 
-For example, in Canada you can now choose not only Toronto, but also Montreal, Calgary, and Vancouver. In Australia, it’s no longer just Sydney — we also offer Adelaide, Brisbane, and Perth. We’ve also added an excellent facility in New Zealand. Of course, we continue to support our original Singapore location and still offer EU, UK, and US options.
+PHP 8.5 is now fully supported across all system components. Your sites can
+be migrated to PHP 8.5 at your convenience using the standard PHP version
+control files in your account.
 
-@=> 4 NEW, 12 UPDATED, 32 TOTAL Drupal distros/platforms available
+@=> Faster, more reliable cache layer
 
-While most of you typically build your own codebases/platforms with Composer these days, we still deliver a list of 32 platforms ready to use in your Ægir.
-
-Since these platforms are updated only with BOA releases, they are not really intended for production use per se, because you typically need a faster lifecycle to keep your sites secure.
-
-However, they provide a wide range of testing playgrounds, because you can install only those you wish to test or use, and reinstall if needed, with the help of our BOA-only feature that allows you to upgrade your Ægir on demand with two simple control files, as described in the built-in docs you can always find in ~/static/control/README.txt.
-
-The complete list of 32 can be found at:
-
-  https://github.com/omega8cc/boa/blob/5.x-lts/docs/PLATFORMS.md
+The in-memory cache layer (Valkey) has been tuned for better performance:
+it now uses more RAM by default, which means less frequent cache evictions
+and more consistently fast page loads on busy sites.
 
 @=> You can access your upgraded Ægir instance at the following URL:
 
