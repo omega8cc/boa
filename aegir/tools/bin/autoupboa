@@ -55,15 +55,20 @@ _kill_stuck_fire_external
 _swap_purge_if_bloated() {
   local _SWAP_THRESHOLD="${1:-50}"
   local _swap_total _swap_used _swap_pct
+
   _swap_total=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
   _swap_used=$(awk '/SwapFree/ {gsub(/SwapFree:[ \t]+/,""); print $1}' /proc/meminfo)
+
   if [[ -z "${_swap_total}" || "${_swap_total}" -eq 0 ]]; then
     echo "SWP no swap configured or swap total is zero, skipping"
     return 0
   fi
+
   _swap_used=$(awk '/SwapTotal/{t=$2} /SwapFree/{f=$2} END{print t-f}' /proc/meminfo)
   _swap_pct=$(( _swap_used * 100 / _swap_total ))
+
   echo "SWP swap usage: ${_swap_pct}% (${_swap_used} kB used of ${_swap_total} kB, threshold: ${_SWAP_THRESHOLD}%)"
+
   if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
     echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
     sync && echo 3 | tee /proc/sys/vm/drop_caches
