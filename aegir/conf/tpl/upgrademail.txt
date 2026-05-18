@@ -1,48 +1,32 @@
 Hello,
 
-We are pleased to inform you that your Ægir instance has been successfully
-upgraded to [boa.version]
+We are pleased to inform you that your Ægir instance has been successfully upgraded to [boa.version]
 
 @=> URGENT: Highly critical Drupal security release on May 20, 2026
 
-A highly critical vulnerability affecting all Drupal versions from 8 to 11
-will be patched on May 20, 2026. Exploits may appear within hours.
+A highly critical vulnerability affecting all Drupal versions from 8 to 11 will be patched on May 20, 2026. Exploits may appear within hours.
 
   Details: https://www.drupal.org/psa-2026-05-18
 
-Customers on any active plan at https://omega8.cc/managed will have their
-sites updated within hours of the release — nothing to do on your end.
+Customers on any active plan at https://omega8.cc/managed will have their sites updated within hours of the release — nothing to do on your end.
 
-All others should be ready to update their Drupal codebases through Aegir
-on May 20. Incidents like this are exactly why https://omega8.cc/managed
-exists. This one won't be the last.
+All others should be ready to update their Drupal codebases through Aegir on May 20. Incidents like this are exactly why https://omega8.cc/managed exists. This one won't be the last.
 
 @=> Better protection, better performance, better tools
 
-With BOA-5.9.3-PRO we have focused on making your hosted environment faster
-to respond under attack, more resilient to common web threats, and easier to
-manage. This release contains months of hardening work across the entire stack,
-from the web server layer all the way down to the database backup tools.
+With [boa.version] we have focused on making your hosted environment faster to respond under attack, more resilient to common web threats, and easier to manage. This release contains months of hardening work across the entire stack, from the web server layer all the way down to the database backup tools.
 
 @=> Your sites are better protected
 
-We have significantly improved how the system detects and blocks malicious
-traffic — including automated bots, brute-force attempts, and search
-amplification attacks — before they ever reach your Drupal sites. These
-improvements happen transparently in the background with no action required
-on your part.
+We have significantly improved how the system detects and blocks malicious traffic — including automated bots, brute-force attempts, and search amplification attacks — before they ever reach your Drupal sites. These improvements happen transparently in the background with no action required on your part.
 
 @=> PHP 8.5 fully supported
 
-PHP 8.5 is now fully supported across all system components. Your sites can
-be migrated to PHP 8.5 at your convenience using the standard PHP version
-control files in your account.
+PHP 8.5 is now fully supported across all system components. Your sites can be migrated to PHP 8.5 at your convenience using the standard PHP version control files in your account.
 
 @=> Faster, more reliable cache layer
 
-The in-memory cache layer (Valkey) has been tuned for better performance:
-it now uses more RAM by default, which means less frequent cache evictions
-and more consistently fast page loads on busy sites.
+The in-memory cache layer (Valkey) has been tuned for better performance: it now uses more RAM by default, which means less frequent cache evictions and more consistently fast page loads on busy sites.
 
 @=> You can access your upgraded Ægir instance at the following URL:
 

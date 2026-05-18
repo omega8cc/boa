@@ -113,7 +113,7 @@ mitigations in BOA history:
 | `search_api_fulltext` guard | Direct hits without valid session blocked at Nginx level |
 | `variables_hash_max_size` | Increased to prevent hash-bucket overflow |
 | `fastcgi_cache_use_stale` | Removed `http_503` to prevent stale-cache serving on downtime |
-| `llms_txt` module routing | Correct routing for /.well-known/llms.txt |
+| `llms_txt` module routing | Correct routing for /llms.txt and files/llms.txt |
 | Crawler list updated | Added Turnitin, IbouBot; Claude moved to `is_ai_crawler` |
 
 
@@ -243,7 +243,7 @@ during Debian-to-Devuan migration, the network interface name can shift
 | `fixmounts` | New: diagnose and repair `/etc/fstab` and TRIM eligibility |
 | `xboa` | `http-off` PHP short-circuit for migrations; speed cache purge on toggle; `_xboa_transfer_static_symlink_safe` |
 | `updatesymlinks` | New: batch symlink update for automation pipelines |
-| `autosymlink.sh` | Track detected/valid sites for orphan static/files reporting |
+| `autosymlink` | Track detected/valid sites for orphan static/files reporting |
 
 
 ## System & Reliability
