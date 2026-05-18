@@ -243,7 +243,7 @@ during Debian-to-Devuan migration, the network interface name can shift
 | `fixmounts` | New: diagnose and repair `/etc/fstab` and TRIM eligibility |
 | `xboa` | `http-off` PHP short-circuit for migrations; speed cache purge on toggle; `_xboa_transfer_static_symlink_safe` |
 | `updatesymlinks` | New: batch symlink update for automation pipelines |
-| `autosymlink.sh` | Track detected/valid sites for orphan static/files reporting |
+| `autosymlink` | Track detected/valid sites for orphan static/files reporting |
 
 
 ## System & Reliability
