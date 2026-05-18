@@ -1,3 +1,299 @@
+###
+### Stable BOA-5.9.3 PRO/LTS - SECURITY EDITION
+### Date: Mon 18 May 2026 22:28:46 CEST in Warsaw
+### Enjoy Active Threat Response & Deep Hardening
+### 296 commits since BOA-5.9.1
+###
+
+@=> !!! URGENT SECURITY ALERT: Drupal Highly Critical Release on May 20, 2026
+
+  A highly critical Drupal core security release (20/25) is scheduled for
+  May 20, 2026 between 17:00-21:00 UTC. All Drupal versions 8 through 11
+  are affected. Exploits may appear within hours of the announcement.
+
+  Full details: https://www.drupal.org/psa-2026-05-18
+
+  BOA cannot apply these patches automatically. Unlike the Drupalgeddon era,
+  Drupal 8+ codebases are Composer-managed -- patching core outside Composer
+  breaks codebase integrity and cannot be safely automated across all projects.
+
+  Customers on any active plan at https://omega8.cc/managed will receive
+  priority updates within hours of the release. All others must be ready to
+  run urgent Composer updates and redeploy platforms through Aegir on May 20.
+
+  This is exactly what https://omega8.cc/managed exists for.
+
+@=> !!! ACTION REQUIRED: Upgrade and Reboot to Activate Latest Kernel
+
+  This release includes a new kernel. A reboot is required to activate it.
+  Please run the full upgrade sequence and reboot at your earliest convenience:
+
+    screen
+    wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+    barracuda up-lts
+    octopus up-lts all force
+    reboot
+
+  Do not skip the reboot. Running the new kernel closes kernel-level
+  vulnerabilities and is especially important given the active threat
+  environment described above.
+
+@=> Active Threat Response & Deep Hardening Edition
+
+  BOA-5.9.3 PRO/LTS is a security-intensive release built on the HTTP/3 and KTLS
+  foundation delivered in BOA-5.9.1. It brings over three months of continuous
+  development across both BOA and Provision: a substantially rewritten IDS layer
+  with path-flood and botnet detection, deep Nginx DDoS hardening in both
+  Barracuda and Provision Nginx templates, full PHP 8.5 toolchain coverage, and
+  several important operational fixes including a critical PHP CLI version
+  selection bug and a Percona 8.4.8 upgrade blocker.
+
+  As always, this entry highlights only the most significant changes.
+  For the full picture please refer to the commit history on GitHub.
+
+@=> New Features
+
+    * scan_nginx.sh: Add path-flood / search-amplification detection
+      A new detection layer identifies IPs hammering a single URI pattern or
+      abusing site search to amplify backend load, and blocks them via CSF
+      before they cause measurable latency impact.
+
+    * scan_nginx.sh: Implement byte-offset tracking
+      The IDS log scanner now tracks its read position via a byte-offset file,
+      avoiding re-reading the entire Nginx access log on every invocation.
+      This makes scans faster and eliminates false positives during log rotation.
+
+    * scan_nginx.sh: Add _kill_stuck_fire and _kill_stuck_fire_external
+      self-healing procedures
+      Long-running or hung scan_nginx worker processes are now detected and
+      killed automatically, preventing the scanner from wedging under sustained
+      attack load.
+
+    * Nginx (Provision): Add is_catalina_stale_chrome botnet detection
+      A dedicated map detects the Catalina botnet stale Chrome user-agent
+      pattern used in large-scale Drupal search-amplification attacks and feeds
+      matched IPs into the deny pipeline without PHP involvement.
+
+    * Nginx (Provision): Add block_search_root_referer logic
+      Requests that abuse Drupal's login redirect mechanism to amplify full-text
+      search load are now detected and dropped at the Nginx level before they
+      reach PHP-FPM.
+
+    * Nginx (Provision): Detect TLS ClientHello on plain HTTP port
+      Nginx now 444-drops TLS ClientHello frames accidentally or maliciously
+      sent to a plain HTTP port, instead of returning an error that feeds
+      scanner automation.
+
+    * Nginx (Provision): Add limit_req_zone
+      A new request-rate zone is applied globally in Provision Nginx templates,
+      giving operators a lever for fine-grained rate control on high-traffic
+      sites without per-vhost changes.
+
+    * Nginx (Provision): Add separately handled is_ai_crawler map
+      AI crawler traffic (GPTBot, ClaudeBot, PerplexityBot, etc.) is now
+      classified in its own map, allowing independent rate limits and allow/deny
+      rules distinct from traditional search-engine crawlers.
+
+    * Add and document _optimize_solr_cores
+      A new barracuda sub-command optimises all active Solr cores: runs a full
+      optimize request, waits for completion, and logs results. Useful before
+      major site migrations or after large content imports.
+
+    * Add Solr orphan cores health-check running every 6 hours
+      Orphaned Solr cores (cores without a matching Aegir site) are detected and
+      cleaned up automatically on a 6-hour schedule, preventing Solr heap
+      exhaustion on busy multi-tenant systems.
+
+    * Add _if_new_kernel_reboot procedure
+      After a kernel upgrade, Barracuda now detects the mismatch between the
+      running kernel and the installed kernel and schedules a controlled reboot
+      at the next safe maintenance window.
+
+    * Add renamemaster tool
+      Extends renameaegirhost to support renaming the Aegir Master instance
+      hostname, covering Nginx vhosts, Drush aliases, and the hostmaster
+      database in a single automated step.
+
+    * Add fixmounts tool
+      A new barracuda helper diagnoses and optionally repairs malformed fstab
+      entries and SSD TRIM eligibility, producing a human-readable report with
+      suggested corrections.
+
+    * xboa: Replace readonlymode with http-off PHP short-circuit for migrations
+      The xboa migration flow now uses an http-off toggle that short-circuits
+      PHP processing entirely during the data-transfer window, reducing the
+      risk of partial writes and stale cache entries on the destination instance.
+      Speed cache is also purged at all http-off toggle points.
+
+    * Add _xboa_transfer_static_symlink_safe
+      A new xboa helper safely transfers ~/static symlinks between instances
+      during account migrations, preserving the symlink structure without
+      creating dangling links on the target.
+
+    * Sendmail: STRICT NO-SPAM -- only root can access sendmail by default
+      Direct sendmail access from Octopus user accounts is now blocked by
+      default. An escape valve (/root/.allow.sendmail.cnf) lets operators
+      re-enable it selectively for trusted instances.
+
+@=> Improvements
+
+    * Nginx (Provision): Improve SQL injection timing/blind attacks check
+      The is_denied map now matches time-based blind injection signatures
+      (SLEEP, WAITFOR, BENCHMARK) in addition to error-based and union-select.
+
+    * Nginx (Provision): Extend is_denied and ua_denied logic
+      Additional UA and URI patterns covering exploit framework fingerprints and
+      common vulnerability scanner agents have been added to the deny maps.
+      Syntax and variable handling in both maps have been corrected.
+
+    * Nginx (Provision): Update and separate crawler detection lists
+      The crawler list has been updated and split: legacy search-engine bots
+      remain in is_crawler; AI training crawlers go to is_ai_crawler. Added:
+      Turnitin, IbouBot. Claude moved from is_crawler to is_ai_crawler.
+
+    * Nginx (Provision): Use 444 silent drop instead of 403 for blocked IPs
+      Both Barracuda and Provision Nginx templates now use HTTP 444 for denied
+      IPs and blocked user agents, stopping any response to scanners.
+
+    * Nginx (Provision): Protect search_api_fulltext from direct hits
+      Direct requests to search_api_fulltext paths without a valid Drupal
+      session context are now blocked at the Nginx level.
+
+    * Nginx (Provision): Remove http_503 from fastcgi_cache_use_stale
+      Caching 503 responses via stale cache could serve stale content when a
+      backend was genuinely down. This directive has been removed.
+
+    * Nginx (Provision): Use larger variables_hash_max_size
+      Increased to accommodate the growing number of Nginx map variables used
+      by the DDoS and UA-deny logic without hash-bucket overflow errors.
+
+    * Nginx (Provision): Add support for llms_txt module
+      Requests to /.well-known/llms.txt and /llms.txt are now routed correctly
+      to the Drupal llms_txt module without triggering Nginx's static-file path.
+
+    * Nginx: Extend DoS guard with DDoS flood early detection
+      The Nginx-level DoS guard now detects sustained connection floods earlier
+      using _DEFAULT_NGINX_DOS_STOP, triggering a CSF block before connection
+      queues fill. Path-flood threshold tuned to _NGINX_PATH_FLOOD_IP_THRESHOLD.
+
+    * hackcheck.sh: Convert 3 legacy Perl scripts to Bash; catch more variants
+      The SSH brute-force scanner has been rewritten in pure Bash and improved
+      to catch additional Invalid user message variants and ssh-connection-abuse
+      patterns. Fixed compatibility with new who --ips output format.
+
+    * hackcheck.sh: Skip IPs with a successful login in the current log window
+      An IP that completed a valid admin login is now excluded from block
+      candidates even if it triggered a rate threshold in the same window.
+
+    * CSF: Disable DNS reverse-lookup checks
+      DNS lookups inside CSF's connection-tracking path have been disabled as
+      they add measurable latency to the block decision during large-scale
+      attacks. The firewall recidivist threshold has been lowered to 24.
+
+    * Valkey: Give Valkey 2x more RAM allocation by default
+      The Valkey maxmemory setting is now computed as 2x the previous default,
+      reducing eviction pressure on high-traffic sites.
+
+    * Valkey: Disable RDB snapshots by default; use allkeys-lru policy
+      RDB SAVE operations block the Valkey process and cause latency spikes.
+      BOA now disables them by default and switches to maxmemory-policy
+      allkeys-lru, suitable for a pure cache workload.
+
+    * Percona/MySQL: Add secure_file_priv = NULL
+    * Percona/MySQL: Enable Custom Logging for Percona
+    * Percona/MySQL: Disable not used mysqlx plugin on Percona 8.x
+    * mydumper: Add --sync-thread-lock-mode=AUTO to minimize FTWRL window
+    * MySQL: Add separate _backup_mysql_schema procedure
+
+    * PHP 8.5: Complete toolchain coverage -- Imagick 3.8.1 and New Relic APM
+      now both support PHP 8.5. The _fix_php_ini_imagick helper extended to 8.5.
+      php-min now covers only 8.3, 8.4, and 8.5; older versions removed.
+
+    * Let's Encrypt: Sync RENEW_DAYS=69 (up from 8)
+    * Let's Encrypt: Add DNS-PERSIST-01 challenge type support
+
+    * autoinit: Robust network interface handling for eudev/IONOS hosts
+      Detects interface renames (ens6 -> eth0), pins primary NIC via udev MAC
+      rule, writes onlink helpers for /32 subnet gateway configurations, and
+      verifies interface name consistency before any network operations.
+
+    * Solr: Add race condition protection for installs and restarts
+    * Solr: Restore faster Solr restart logic in barracuda upgrades
+
+    * Performance: Make opcache (APC) = 1/2 of PHP-FPM pool dynamically
+    * Performance: Add _swap_purge_if_bloated (_SWAP_THRESHOLD=50)
+
+    * Make renameaegirhost universal (Master + Satellite in one tool)
+    * Add _purge_avahi cleanup during barracuda upgrades
+    * Modernize /etc/sysctl.conf template with BBR and updated inotify limits
+    * Improve _fix_grub_pc_install_devices for NVMe and multi-disk systems
+
+    * Drupal 7: Add tag1_d7es-7.x-1.4 to o_contrib_seven and Hostmaster;
+      remove d7security_client module
+
+    * Improve host-water.sh and guest-water.sh
+    * Improve sshd_config default template
+    * Add _load_local_ips for CSF allow-list operations
+    * Add Live Disk Resize How-To documentation
+    * Improve docs on Drush and PHP-CLI under lshell
+    * Add docs on Plugin Discovery Failures, Cache Poisoning, Intermittent Downtime
+    * Add docs on Solr Orphan Core Diagnostics and Maintenance
+    * Update debug docs for Valkey/Drush
+    * Add and document _DEFAULT_NGINX_DOS_STOP variable
+
+@=> Changes and Upgrades
+
+    * cURL 8.20.0
+    * Drush 8.5.0.5 classic
+    * Imagick 3.8.1
+    * Java 11.0.31
+    * Java 17.0.19
+    * Java 21.0.11
+    * MyDumper 0.21.3-2 / 0.19.3-3
+    * New Relic 12.7.0.36
+    * Nginx 1.31.0
+    * OpenSSH 10.3p1
+    * OpenSSL 3.5.6 LTS
+    * PHP 8.2.31
+    * PHP 8.3.31
+    * PHP 8.4.21
+    * PHP 8.5.6
+    * Unbound 1.25.0
+    * Valkey 9.0.4
+
+@=> Important Fixes
+
+    * BARRACUDA: Fix typo in _satellite_check_strict_php_cli()
+      A missing $ caused the function to compare against the literal string
+      instead of the variable holding the detected PHP version. On systems with
+      both PHP 8.3 and 8.4 installed, PHP 8.4 was always selected regardless
+      of the operator's explicit preference. The fix restores correct version
+      selection across all PHP CLI paths used by Drush and Composer.
+
+    * Percona: Remove libperconaserverclient22 blocking Percona 8.4.8-8 upgrade
+      Percona 8.4.8-8 introduced a soname bump (libperconaserverclient22 ->
+      libperconaserverclient24). The legacy -dev package and shared library
+      conflict with the new version, blocking APT. Barracuda now removes the
+      blocking package in _run_aptitude_full_upgrade and syncs
+      libperconaserverclient24 before the Percona upgrade proceeds.
+
+    * autoinit: Fix interface rename detection causing network loss on Devuan
+      The init sequence checked for a default route before detecting that the
+      NIC had been renamed, yielding a false "network is up" verdict and
+      skipping the vmnetfix step. Detection order is now correct.
+
+    * autoinit: Fix too many chattr locks on /etc/resolv.conf
+      Concurrent barracuda processes occasionally left /etc/resolv.conf
+      immutable (chattr +i) while another process needed to write it, causing
+      DNS failures mid-upgrade. Lock/unlock is now guarded by a PID check.
+
+    * scan_nginx.sh: Fix for _recycle_log logic and log-rotation race
+    * scan_nginx.sh: Skip internal Aegir file server requests from rate counts
+
+    * MySQL: Do not update mysql_backup while it is running
+    * Fix for symlinked _BACKUPDIR cleanup (no longer follows symlinks)
+    * _check_boa_php_compatibility: Run only on fully installed BOA
+
 
 ###
 ### Stable BOA-5.9.1-pro/lts - HTTP/3 Edition
