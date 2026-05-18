@@ -21,6 +21,38 @@ _check_root() {
 }
 _check_root
 
+
+_FIRE_WATCHDOG_TIMEOUT=55   # seconds — matches guest-fire.sh's own threshold
+_FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
+_FIRE_SCRIPT="guest-fire.sh"
+
+_kill_stuck_fire_external() {
+  local _BOOT_TIME _PID _START_TICKS _ELAPSED _NOW _CLK_TCK
+  _NOW=$(date +%s)
+  _BOOT_TIME=$(awk '{print int($1)}' /proc/uptime 2>/dev/null)
+  _CLK_TCK=$(getconf CLK_TCK 2>/dev/null || echo 100)
+
+  while IFS= read -r _PID; do
+    [[ -z "${_PID}" ]] && continue
+    # /proc/PID/stat field 22 = process start time in clock ticks since boot
+    _START_TICKS=$(awk '{print $22}' "/proc/${_PID}/stat" 2>/dev/null)
+    [[ -z "${_START_TICKS}" ]] && continue
+    # Convert: start_seconds_since_boot = start_ticks / CLK_TCK
+    # Elapsed = now - (boot_epoch + start_seconds_since_boot)
+    _BOOT_EPOCH=$(( _NOW - _BOOT_TIME ))
+    _START_EPOCH=$(( _BOOT_EPOCH + _START_TICKS / _CLK_TCK ))
+    _ELAPSED=$(( _NOW - _START_EPOCH ))
+    if (( _ELAPSED > _FIRE_WATCHDOG_TIMEOUT )); then
+      echo "$(date) [fire-watchdog-ext] PID ${_PID} (${_FIRE_SCRIPT}) stuck ${_ELAPSED}s > ${_FIRE_WATCHDOG_TIMEOUT}s — killing" \
+        >> "${_FIRE_WATCHDOG_LOG}"
+      kill -9 "${_PID}" 2>/dev/null || true
+      rm -f "/run/fire.pid"
+    fi
+  done < <(pgrep -f "${_FIRE_SCRIPT}" 2>/dev/null)
+}
+
+_kill_stuck_fire_external
+
 #
 # Protect from any autoupboa updates when _SKYNET_MODE=OFF
 if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
