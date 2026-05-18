@@ -21,12 +21,10 @@ _check_root() {
 }
 _check_root
 
-
-_FIRE_WATCHDOG_TIMEOUT=180  # seconds — matches guest-fire.sh's own threshold
-_FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
-_FIRE_SCRIPT="guest-fire.sh"
-
 _kill_stuck_fire_external() {
+  _FIRE_WATCHDOG_TIMEOUT=180  # seconds — matches guest-fire.sh's own threshold
+  _FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
+  _FIRE_SCRIPT="guest-fire.sh"
   local _BOOT_TIME _PID _START_TICKS _ELAPSED _NOW _CLK_TCK
   _NOW=$(date +%s)
   _BOOT_TIME=$(awk '{print int($1)}' /proc/uptime 2>/dev/null)
@@ -50,7 +48,6 @@ _kill_stuck_fire_external() {
     fi
   done < <(pgrep -f "${_FIRE_SCRIPT}" 2>/dev/null)
 }
-
 _kill_stuck_fire_external
 
 #
