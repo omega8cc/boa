@@ -168,7 +168,7 @@
       by the DDoS and UA-deny logic without hash-bucket overflow errors.
 
     * Nginx (Provision): Add support for llms_txt module
-      Requests to /.well-known/llms.txt and /llms.txt are now routed correctly
+      Requests to /llms.txt and files/llms.txt are now routed correctly
       to the Drupal llms_txt module without triggering Nginx's static-file path.
 
     * Nginx: Extend DoS guard with DDoS flood early detection
