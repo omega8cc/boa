@@ -242,7 +242,7 @@ fix is to increase the limit via the FPM pool configuration files:
 
 The relevant settings are `max_execution_time`, `max_input_time`, and
 `default_socket_timeout`. See the last entry in
-https://github.com/omega8cc/boa/blob/5.x-dev/docs/FAQ.md for details. These files are
+https://github.com/omega8cc/boa/blob/5.x-lts/docs/FAQ.md for details. These files are
 overwritten on every barracuda upgrade and must be reapplied after upgrades. Also
 investigate why cron exceeds 3 minutes — this is worth resolving independently.
 
@@ -328,7 +328,7 @@ as `oN` in a regular bash session the shell wrapper is not active — the contro
 ignored entirely, drush runs against whatever PHP version happens to be the system default,
 and `vdrush` will not work correctly.
 
-See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
+See: https://github.com/omega8cc/boa/blob/5.x-lts/docs/DRUSH-CLI.md
 
 ### Use site-local drush for Drupal 8 and newer
 
@@ -339,7 +339,7 @@ Composer in the site's codebase.
 Running system drush 8 against a Drupal 8/9/10 site produces API mismatch errors and
 incorrect behaviour that is entirely unrelated to server configuration.
 
-See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
+See: https://github.com/omega8cc/boa/blob/5.x-lts/docs/DRUSH-CLI.md
 
 
 ## APCu memory sizing

@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=591ltsT01
+export _xSrl=593ltsT01
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -1065,8 +1065,8 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _AUTO_PHP="php-min"
     _AUTO_VER="${_tRee}"
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=7
-    _AUTO_UP_DAY=7
+    _AUTO_UP_MONTH=5
+    _AUTO_UP_DAY=19
     _AUTO_UP_HOUR=3
     _AUTO_UP_MINUTE=10
     _AUTO_OCT_UP_HOUR=4
@@ -1137,14 +1137,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_f012.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_593v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_f012.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_593v01.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_f012.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_593v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
       if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -1152,7 +1152,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_f012.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_593v01.${_tRee}.${_xSrl}.pid"
     fi
   fi
 
