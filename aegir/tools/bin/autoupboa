@@ -54,6 +54,46 @@ _kill_stuck_fire_external() {
 _kill_stuck_fire_external
 
 #
+# Purge memory swap if bloated
+_swap_purge_if_bloated() {
+  local _SWAP_THRESHOLD="${1:-60}"
+  local _swap_total _swap_used _swap_pct
+  _swap_total=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
+  _swap_used=$(awk '/SwapFree/ {gsub(/SwapFree:[ \t]+/,""); print $1}' /proc/meminfo)
+  if [[ -z "${_swap_total}" || "${_swap_total}" -eq 0 ]]; then
+    echo "SWP no swap configured or swap total is zero, skipping"
+    return 0
+  fi
+  _swap_used=$(awk '/SwapTotal/{t=$2} /SwapFree/{f=$2} END{print t-f}' /proc/meminfo)
+  _swap_pct=$(( _swap_used * 100 / _swap_total ))
+  echo "SWP swap usage: ${_swap_pct}% (${_swap_used} kB used of ${_swap_total} kB, threshold: ${_SWAP_THRESHOLD}%)"
+  if [[ "${_swap_pct}" -ge "${_SWAP_THRESHOLD}" ]]; then
+    echo "SWP swap at ${_swap_pct}% >= threshold ${_SWAP_THRESHOLD}%, purging"
+    local _mem_free
+    _mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+    if [[ "${_mem_free}" -lt "${_swap_used}" ]]; then
+      echo "SWP insufficient free RAM (${_mem_free} kB) to absorb swap (${_swap_used} kB), aborting purge"
+      return 1
+    fi
+    if swapoff -a; then
+      echo "SWP swapoff complete"
+    else
+      echo "SWP swapoff failed"
+      return 1
+    fi
+    if swapon -a; then
+      echo "SWP swapon complete, swap purged successfully"
+    else
+      echo "SWP swapon failed after swapoff — swap may be offline"
+      return 1
+    fi
+  else
+    echo "SWP swap usage healthy, no action taken"
+  fi
+}
+_swap_purge_if_bloated
+
+#
 # Protect from any autoupboa updates when _SKYNET_MODE=OFF
 if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
   exit 0
