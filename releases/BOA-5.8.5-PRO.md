@@ -95,7 +95,7 @@
    otherwise defined/run actions globally by taking precedence over any other
    settings in .barracuda.cnf and site/platform-level INI files.
 
-For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-dev/CHANGELOG.txt).
+For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt).
 
 Thank You!
 

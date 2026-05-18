@@ -98,7 +98,7 @@
 
   [**Take a look if you are interested**](https://omega8.cc/hosted)
 
-For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-dev/CHANGELOG.txt).
+For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt).
 
 Thank you!
 

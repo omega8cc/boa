@@ -322,7 +322,7 @@ barracuda up-lts log
 octopus up-lts all force log
 ```
 
-Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/UPGRADE.md
+Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-pro/docs/UPGRADE.md
 
 There are no Drupal platform updates in this release beyond the o_contrib_seven
 change noted above. Nginx reload during the CSF rule refresh causes ~2–5 seconds
@@ -333,5 +333,5 @@ of connection drops for in-flight requests.
 
 - Commit history (BOA): https://github.com/omega8cc/boa/commits/5.x-dev/
 - Commit history (Provision): https://github.com/omega8cc/provision/commits/5.x-dev/
-- Full changelog: https://github.com/omega8cc/boa/blob/5.x-dev/CHANGELOG.txt
-- License: https://github.com/omega8cc/boa/blob/5.x-dev/DUALLICENSE.md
+- Full changelog: https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt
+- License: https://github.com/omega8cc/boa/blob/5.x-pro/DUALLICENSE.md
