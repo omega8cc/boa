@@ -113,7 +113,7 @@ mitigations in BOA history:
 | `search_api_fulltext` guard | Direct hits without valid session blocked at Nginx level |
 | `variables_hash_max_size` | Increased to prevent hash-bucket overflow |
 | `fastcgi_cache_use_stale` | Removed `http_503` to prevent stale-cache serving on downtime |
-| `llms_txt` module routing | Correct routing for /.well-known/llms.txt |
+| `llms_txt` module routing | Correct routing for /llms.txt and files/llms.txt |
 | Crawler list updated | Added Turnitin, IbouBot; Claude moved to `is_ai_crawler` |
 
 
