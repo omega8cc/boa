@@ -13,7 +13,9 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # This watchdog kills any instance running beyond _FIRE_TIMEOUT seconds
 # so the next cron slot always gets a clean start.
 _FIRE_PID_FILE="/run/fire.pid"
-_FIRE_TIMEOUT=55   # seconds — just under the 1-minute cron interval
+_FIRE_TIMEOUT=180  # seconds — 3x the normal 5-iteration runtime (5x10s=50s);
+                   # leaves room for slow CSF iptables rebuilds on short IP lists
+                   # while still catching true flood-induced hangs (many minutes)
 
 _kill_stuck_fire() {
   if [[ -e "${_FIRE_PID_FILE}" ]]; then
