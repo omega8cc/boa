@@ -1,6 +1,6 @@
 # Welcome to the Fast Lane of HTTPS: HTTP/3 and KTLS
 
-## New BOA-5.9.1 PRO/LTS Release
+## New BOA-5.9.1 PRO/LTS Release Notes
 
   Yes, we said that BOA-LTS would enter complete code freeze for 2026, but
   we think that the major new features and many security updates introduced in
@@ -98,7 +98,7 @@
 
   [**Take a look if you are interested**](https://omega8.cc/hosted)
 
-For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-dev/CHANGELOG.txt).
+For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt).
 
 Thank you!
 

@@ -26,7 +26,7 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 Over time, **PRO** will be ahead of **LTS** as its name suggests.
 
-The `BOA-5.9.1` release is the last parallel release including all features developed for **PRO**, so both **PRO** and **LTS** users will enjoy the same improvements, bug fixes, and new features.
+The `BOA-5.9.3` release is the last parallel release including all features developed for **PRO**, so both **PRO** and **LTS** users will enjoy the same improvements, bug fixes, and new features.
 
 In the future, new features will be regularly added to **PRO**, while **LTS** will receive only security updates and critical fixes for BOA itself. There may be exceptions, and some new features may find their way to **LTS**, but only as exceptions.
 
