@@ -22,7 +22,7 @@ _check_root() {
 _check_root
 
 
-_FIRE_WATCHDOG_TIMEOUT=55   # seconds — matches guest-fire.sh's own threshold
+_FIRE_WATCHDOG_TIMEOUT=180  # seconds — matches guest-fire.sh's own threshold
 _FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
 _FIRE_SCRIPT="guest-fire.sh"
 
