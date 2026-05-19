@@ -2277,7 +2277,7 @@ else
   touch /run/manage_ltd_users.pid
   _count_cpu
   _find_fast_mirror_early
-  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
   if [ ! -e "${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fix_node_in_lshell_access
     touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid

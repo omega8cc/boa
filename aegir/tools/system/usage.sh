@@ -798,18 +798,18 @@ _usage_action() {
         if [ ! -e "${_usEr}/log/skip-force-cleanup.txt" ]; then
           cd ${_usEr}
           echo "Remove various tmp/dot files breaking du command"
-          find . -name "exclude.tag" -type f | xargs rm -rf &> /dev/null
-          find . -name ".DS_Store" -type f | xargs rm -rf &> /dev/null
-          find . -name "*~" -type f | xargs rm -rf &> /dev/null
-          find . -name "*#" -type f | xargs rm -rf &> /dev/null
-          find . -name ".#*" -type f | xargs rm -rf &> /dev/null
-          find . -name "*--" -type f | xargs rm -rf &> /dev/null
-          find . -name "._*" -type f | xargs rm -rf &> /dev/null
-          find . -name "*~" -type l | xargs rm -rf &> /dev/null
-          find . -name "*#" -type l | xargs rm -rf &> /dev/null
-          find . -name ".#*" -type l | xargs rm -rf &> /dev/null
-          find . -name "*--" -type l | xargs rm -rf &> /dev/null
-          find . -name "._*" -type l | xargs rm -rf &> /dev/null
+          find . -name "exclude.tag" -type f | xargs rm -f &> /dev/null
+          find . -name ".DS_Store" -type f | xargs rm -f &> /dev/null
+          find . -name "*~" -type f | xargs rm -f &> /dev/null
+          find . -name "*#" -type f | xargs rm -f &> /dev/null
+          find . -name ".#*" -type f | xargs rm -f &> /dev/null
+          find . -name "*--" -type f | xargs rm -f &> /dev/null
+          find . -name "._*" -type f | xargs rm -f &> /dev/null
+          find . -name "*~" -type l | xargs rm -f &> /dev/null
+          find . -name "*#" -type l | xargs rm -f &> /dev/null
+          find . -name ".#*" -type l | xargs rm -f &> /dev/null
+          find . -name "*--" -type l | xargs rm -f &> /dev/null
+          find . -name "._*" -type l | xargs rm -f &> /dev/null
         fi
         echo "Counting User ${_usEr}"
         if [ "${_THIS_MODE}" = "verbose" ]; then
