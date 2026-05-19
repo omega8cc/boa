@@ -102,5 +102,5 @@ MaxAuthTries 3
 LoginGraceTime 30
 MaxStartups 5:50:10
 X11Forwarding no
-AllowTcpForwarding no
+AllowTcpForwarding local
 AllowAgentForwarding no
