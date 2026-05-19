@@ -9935,7 +9935,7 @@ _initd_update() {
     echo "LoginGraceTime 30" >> /etc/ssh/sshd_config
     echo "MaxStartups 5:50:10" >> /etc/ssh/sshd_config
     echo "X11Forwarding no" >> /etc/ssh/sshd_config
-    echo "AllowTcpForwarding no" >> /etc/ssh/sshd_config
+    echo "AllowTcpForwarding local" >> /etc/ssh/sshd_config
     echo "AllowAgentForwarding no" >> /etc/ssh/sshd_config
     echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
