@@ -21,6 +21,27 @@ _check_root() {
 }
 _check_root
 
+#
+# Fix for Sequel (Pro/Ace/Ace fork) support
+_fix_allow_tcp_forwarding() {
+  if grep -q "^AllowTcpForwarding no" /etc/ssh/sshd_config; then
+    echo "AllowTcpForwarding no detected, fixing to local"
+    sed -i "s/^AllowTcpForwarding no/AllowTcpForwarding local/g" /etc/ssh/sshd_config
+    wait
+    if grep -q "^AllowTcpForwarding local" /etc/ssh/sshd_config; then
+      echo "AllowTcpForwarding set to local, reloading sshd"
+      service ssh reload &> /dev/null
+    else
+      echo "AllowTcpForwarding fix failed, please check /etc/ssh/sshd_config"
+    fi
+  else
+    echo "AllowTcpForwarding fix not needed"
+  fi
+}
+_fix_allow_tcp_forwarding
+
+#
+# Purge memory swap if bloated
 _kill_stuck_fire_external() {
   _FIRE_WATCHDOG_TIMEOUT=180  # seconds — matches guest-fire.sh's own threshold
   _FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
