@@ -2678,13 +2678,13 @@ _purge_cruft_machine() {
   _PURGE_CTRL="14"
 
   find ${_usEr}/log/ctrl/*cert-x1-rebuilt.info \
-    -mtime +${_PURGE_CTRL} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_CTRL} -type f -exec rm -f {} \; &> /dev/null
 
   find ${_usEr}/log/ctrl/plr* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
 
   find ${_usEr}/log/ctrl/*rom-fix.info \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
 
   find ${_usEr}/backups/* -mtime +${_PURGE_BACKUPS} -exec \
     rm -rf {} \; &> /dev/null
@@ -2701,56 +2701,56 @@ _purge_cruft_machine() {
     rm -rf {} \; &> /dev/null
 
   find ${_usEr}/distro/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/distro/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
 
   find ${_usEr}/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
 
   find ${_usEr}/static/*/*/*/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
 
   find ${_usEr}/distro/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/distro/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/static/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
 
   find /home/${_HM_U}.ftp/.tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
@@ -3514,8 +3514,8 @@ if [ ! -e "/var/backups/fix-sites-all-permsissions-${_xSrl}.txt" ]; then
   echo "Permissions in sites/all tree just fixed"
 fi
 find /var/backups/old-sql* -mtime +1 -exec rm -rf {} \; &> /dev/null
-find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
-find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
+find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
 if [ "${_hostedSys}" = "YES" ]; then
@@ -3533,7 +3533,7 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ###
 ### Delete duplicity ghost pid file if older than 2 days
 ###
-find /run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
+find /run/*_backup.pid -mtime +1 -exec rm -f {} \; &> /dev/null
 rm -f /run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
