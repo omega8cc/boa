@@ -58,21 +58,21 @@ _apt_clean_update() {
 }
 
 _FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")
-find /run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
-find /run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
-find /run/boa_cron_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
-find /run/boa*_auto_healing.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/fmp_wait.pid              -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -f {} \; 2>/dev/null
+find /run/restarting_fmp_wait.pid   -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -f {} \; 2>/dev/null
+find /run/boa_cron_wait.pid         -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -f {} \; 2>/dev/null
+find /run/boa*_auto_healing.pid     -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -f {} \; 2>/dev/null
 
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
-find /run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
-find /run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
-find /run/manage*users.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
-find /run/speed_cleanup.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
+find /run/mysql_restart_running.pid  -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
+find /run/boa_wait.pid               -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
+find /run/manage*users.pid           -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
+find /run/speed_cleanup.pid          -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
 
 _THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
-find /run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
-find /run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
-find /run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
+find /run/boa_run.pid                -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
+find /run/*_backup.pid               -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
+find /run/daily-fix.pid              -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 

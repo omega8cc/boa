@@ -482,7 +482,7 @@ _if_running_as_root_barracuda() {
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
     mkdir -p ${_pthLog}
-    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     # Check if dmidecode is available
     if ! command -v dmidecode &> /dev/null; then
       _apt_clean_update
@@ -6117,7 +6117,7 @@ _finale() {
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
     ${_mtrNgx}/vhost.d/sqlbuddy.* &> /dev/null
   wait
-  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
   chmod 700 /root
   if [ ! -e "/etc/init.d/buagent" ] \
     && [ -e "${_vBs}/buagent-pre-${_xSrl}-${_X_VERSION}-${_NOW}" ]; then
