@@ -2407,7 +2407,7 @@ _satellite_add_user_dirs() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Adding user..."
     fi
-    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     adduser --system --home ${_ROOT} --ingroup ${_USRG} ${_USER} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
   fi
@@ -3235,8 +3235,8 @@ _satellite_run_child_c() {
     find . -name .svn -exec rm -rf {} \; &> /dev/null
     find . -name .bzr -exec rm -rf {} \; &> /dev/null
     find . -name .git -exec rm -rf {} \; &> /dev/null
-    find . -name .DS_Store -exec rm -rf {} \; &> /dev/null
-    find . -name "._*" -type f | xargs rm -rf &> /dev/null
+    find . -name .DS_Store -type f | xargs rm -f &> /dev/null
+    find . -name "._*" -type f | xargs rm -f &> /dev/null
     touch ${_CORE}/dot-files-ctrl-${_xSrl}-${_X_VERSION}
   fi
 }
@@ -3306,7 +3306,7 @@ _satellite_if_add_ftps_lshell_access() {
       _msg "${_STATUS} A: Adding ftps/lshell user"
     fi
     # add user
-    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
     adduser ${_USERFTP} ${_WEBG} &> /dev/null
     # Make sure new file which contains password is private
