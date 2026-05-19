@@ -1408,7 +1408,7 @@ if [ "${_protectedRun}" = "FALSE" ]; then
   _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
   [ -d "/var/backups/solr/log" ] || mkdir -p /var/backups/solr/log
-  find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
   _start_up >/var/backups/solr/log/solr-${_NOW}.log 2>&1
 fi
 
