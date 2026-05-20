@@ -1,0 +1,1284 @@
+#!/bin/bash
+
+###
+### xmass — Full BOA system migration via MySQL GTID replication + rsync
+###
+### For single-account migrations (and cross-Percona-version migrations) use xoct.
+### xmass requires identical Percona MySQL versions on both servers and always
+### migrates ALL Octopus instances and all Solr cores in a single operation.
+###
+### Usage:
+###   xmass pre-mig <source-fqdn>                   (run on BOTH source and target)
+###   xmass init    <target-ip> [--permanent-proxy]  (run on SOURCE)
+###   xmass sync    <target-ip>                      (run on SOURCE, repeat as needed)
+###   xmass status  <target-ip>                      (run on SOURCE)
+###   xmass cutover <target-ip> [--permanent-proxy]  (run on SOURCE)
+###   xmass post-mig                                 (run on TARGET after DNS update)
+###
+### Procedure overview:
+###   1. pre-mig      Stop BOA background jobs; exchange SSH keys.
+###   2. init         Install xtrabackup, enable GTID, take initial snapshot,
+###                   restore on target, start replication slave.
+###   3. sync         Rsync platforms, files, configs, Solr to target (repeatable).
+###   4. status       Show replication lag and last sync time.
+###   5. cutover      Block web, stop Solr, final sync, wait for lag=0,
+###                   promote target, run renameaegirhost on target,
+###                   convert source to proxy.
+###   6. post-mig     Ensure Solr/nginx/cron are healthy on target.
+###
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+export _tRee=dev
+export _xSrl=593devT01
+
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
+###-------------CONSTANTS------------------###
+
+_XMASS_STATE_FILE="/data/conf/xmass_state.cnf"
+_REPL_USER="xmass_repl"
+_XTRA_STAGE_SRC="/var/backups/xmass_stage"
+_XTRA_STAGE_TGT="/var/backups/xmass_restore"
+_SOLR_DENY_FILE="/root/.deny.java.cnf"
+_XMASS_SOLR_HOLD_FILE="/root/.xmass_solr_hold.pid"
+_PERM_PROXY_FLAG="/data/conf/xmass_permanent_proxy.pid"
+_ieni="--ignore-errors"
+
+###-------------HELPERS--------------------###
+
+_info() {
+  echo "INFO: $*"
+}
+
+_alrt() {
+  echo "ALRT: $*"
+}
+
+_die() {
+  echo "ERROR: $*"
+  exit 1
+}
+
+###-------------STATE FILE----------------###
+
+_xmass_load_state() {
+  if [ -e "${_XMASS_STATE_FILE}" ]; then
+    # shellcheck disable=SC1090
+    source "${_XMASS_STATE_FILE}"
+  fi
+}
+
+_xmass_save_state() {
+  mkdir -p "$(dirname "${_XMASS_STATE_FILE}")"
+  cat > "${_XMASS_STATE_FILE}" <<STATEEOF
+_XMASS_TARGET_IP=${_XMASS_TARGET_IP}
+_XMASS_SRC_IP=${_XMASS_SRC_IP}
+_XMASS_REPL_PSWD=${_XMASS_REPL_PSWD}
+_XMASS_PERCONA_V=${_XMASS_PERCONA_V}
+_XMASS_INIT_TIME=${_XMASS_INIT_TIME}
+_XMASS_LAST_SYNC=${_XMASS_LAST_SYNC}
+_XMASS_PHASE=${_XMASS_PHASE}
+_XMASS_PERMANENT_PROXY=${_XMASS_PERMANENT_PROXY}
+STATEEOF
+  chmod 600 "${_XMASS_STATE_FILE}"
+}
+
+###-------------CHECK ROOT----------------###
+
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    _die "This script must be run as root"
+  fi
+  ionice -c2 -n7 -p $$ &>/dev/null
+  chmod a+w /dev/null
+  if [ ! -e "/dev/fd" ] && [ -e "/proc/self/fd" ]; then
+    rm -rf /dev/fd
+    ln -sfn /proc/self/fd /dev/fd
+  fi
+  # shellcheck disable=SC1091
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+  [ -z "${_SQL_PSWD}" ] && _die "/root/.my.pass.txt missing or empty"
+  _DF_TEST="$(df -P -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
+    NR==2 { gsub(/%/,"",$u); print $u }')"
+  if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+    _die "Disk usage at ${_DF_TEST}% — must be below 90% to proceed"
+  fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
+  _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
+}
+
+###-------------PERCONA VERSION-----------###
+
+_xmass_detect_percona_version() {
+  local _raw
+  _raw=$(mysql -V 2>&1 | tr -d '\n')
+  if [[ "${_raw}" =~ "Ver 8.4." ]]; then
+    _XMASS_PERCONA_V="8.4"
+  elif [[ "${_raw}" =~ "Ver 8.0." ]]; then
+    _XMASS_PERCONA_V="8.0"
+  elif [[ "${_raw}" =~ "Distrib 5.7." ]]; then
+    _XMASS_PERCONA_V="5.7"
+  else
+    _die "Cannot detect Percona version from: ${_raw}"
+  fi
+  _info "Percona MySQL version detected: ${_XMASS_PERCONA_V}"
+}
+
+_xmass_xtrabackup_pkg() {
+  # Returns the apt package name for the correct xtrabackup version
+  case "${_XMASS_PERCONA_V}" in
+    5.7) echo "percona-xtrabackup-24" ;;
+    8.0) echo "percona-xtrabackup-80" ;;
+    8.4) echo "percona-xtrabackup-84" ;;
+    *)   _die "No xtrabackup package known for Percona ${_XMASS_PERCONA_V}" ;;
+  esac
+}
+
+###-------------XTRABACKUP INSTALL-------###
+
+_xmass_install_xtrabackup_local() {
+  local _pkg
+  _pkg=$(_xmass_xtrabackup_pkg)
+  if dpkg -l "${_pkg}" 2>/dev/null | grep -q "^ii"; then
+    _info "xtrabackup (${_pkg}) already installed on source: OK"
+    return
+  fi
+  _info "Installing ${_pkg} on source ..."
+  apt-get -q -y install "${_pkg}" \
+    || _die "Failed to install ${_pkg} on source"
+  _info "Installed ${_pkg} on source: OK"
+}
+
+_xmass_install_xtrabackup_target() {
+  local _pkg
+  _pkg=$(_xmass_xtrabackup_pkg)
+  local _already
+  _already=$(ssh root@"${_tgt}" \
+    "dpkg -l ${_pkg} 2>/dev/null | grep -c '^ii' || true" 2>/dev/null)
+  if [ "${_already}" = "1" ]; then
+    _info "xtrabackup (${_pkg}) already installed on target ${_tgt}: OK"
+    return
+  fi
+  _info "Installing ${_pkg} on target ${_tgt} ..."
+  ssh root@"${_tgt}" "apt-get -q -y install ${_pkg}" \
+    || _die "Failed to install ${_pkg} on target ${_tgt}"
+  _info "Installed ${_pkg} on target ${_tgt}: OK"
+}
+
+###-------------GTID SETUP---------------###
+
+_ip_to_server_id() {
+  # Convert an IPv4 address to a unique server_id using the last two octets.
+  # Gives values 0-65535 which is well within MySQL's 1–2^32-1 range.
+  echo "$1" | awk -F. '{ printf "%d\n", ($3 * 256) + $4 }'
+}
+
+_xmass_mysql_conf_dir() {
+  # Detect the appropriate MySQL include config directory on this system
+  if [ -d "/etc/mysql/percona-server.conf.d" ]; then
+    echo "/etc/mysql/percona-server.conf.d"
+  elif [ -d "/etc/mysql/conf.d" ]; then
+    echo "/etc/mysql/conf.d"
+  elif [ -d "/etc/mysql/mysql.conf.d" ]; then
+    echo "/etc/mysql/mysql.conf.d"
+  else
+    echo "/etc/mysql"
+  fi
+}
+
+_xmass_write_gtid_conf_local() {
+  local _sid="$1"
+  local _conf_dir
+  _conf_dir=$(_xmass_mysql_conf_dir)
+  local _cnf="${_conf_dir}/xmass_gtid.cnf"
+  # Only add log_bin directive if binlog is not already active
+  local _logbin
+  _logbin=$(mysql -u root --password="${_SQL_PSWD}" \
+    -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
+  _info "Writing GTID config to ${_cnf} (server_id=${_sid}) ..."
+  {
+    echo "[mysqld]"
+    echo "server_id                = ${_sid}"
+    echo "gtid_mode                = ON"
+    echo "enforce_gtid_consistency = ON"
+    echo "log_slave_updates        = ON"
+    echo "binlog_format            = ROW"
+    echo "expire_logs_days         = 7"
+    [ "${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
+  } > "${_cnf}"
+  chmod 644 "${_cnf}"
+}
+
+_xmass_check_gtid_enabled_local() {
+  mysql -u root --password="${_SQL_PSWD}" \
+    --connect-timeout=5 -sNe \
+    "SHOW VARIABLES LIKE 'gtid_mode'" 2>/dev/null | awk '{print $2}'
+}
+
+_xmass_configure_gtid_local() {
+  local _mode
+  _mode=$(_xmass_check_gtid_enabled_local)
+  if [ "${_mode}" = "ON" ]; then
+    _info "GTID already ON on source: OK"
+    return
+  fi
+  _info "GTID not enabled on source (mode=${_mode}) — configuring now ..."
+  local _src_id
+  _src_id=$(_ip_to_server_id \
+    "${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}")
+  _xmass_write_gtid_conf_local "${_src_id}"
+  _info "Restarting MySQL on source via move_sql.sh ..."
+  /var/xdrago/move_sql.sh restart \
+    || _die "MySQL restart failed on source (move_sql.sh)"
+  _mode=$(_xmass_check_gtid_enabled_local)
+  [ "${_mode}" = "ON" ] \
+    || _die "GTID still not ON after restart on source (mode=${_mode})"
+  _info "GTID enabled on source: OK"
+}
+
+_xmass_configure_gtid_target() {
+  local _tgt_pswd
+  _tgt_pswd=$(ssh root@"${_tgt}" \
+    "cat /root/.my.pass.txt 2>/dev/null | tr -d '\n'" 2>/dev/null)
+  local _mode
+  _mode=$(ssh root@"${_tgt}" \
+    "mysql -u root --password='${_tgt_pswd}' --connect-timeout=5 -sNe \
+    \"SHOW VARIABLES LIKE 'gtid_mode'\" 2>/dev/null | awk '{print \$2}'" \
+    2>/dev/null)
+  if [ "${_mode}" = "ON" ]; then
+    _info "GTID already ON on target ${_tgt}: OK"
+    return
+  fi
+  _info "GTID not enabled on target ${_tgt} (mode=${_mode}) — configuring ..."
+  local _tgt_id
+  _tgt_id=$(_ip_to_server_id "${_tgt}")
+  # Write the GTID config remotely, detecting the conf dir on the target
+  ssh root@"${_tgt}" "bash -s" <<REMOTEBASH
+_conf_dir=""
+if [ -d "/etc/mysql/percona-server.conf.d" ]; then
+  _conf_dir="/etc/mysql/percona-server.conf.d"
+elif [ -d "/etc/mysql/conf.d" ]; then
+  _conf_dir="/etc/mysql/conf.d"
+elif [ -d "/etc/mysql/mysql.conf.d" ]; then
+  _conf_dir="/etc/mysql/mysql.conf.d"
+else
+  _conf_dir="/etc/mysql"
+fi
+_cnf="\${_conf_dir}/xmass_gtid.cnf"
+_logbin=\$(mysql -u root --password='${_tgt_pswd}' \
+  -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print \$2}')
+{
+  echo "[mysqld]"
+  echo "server_id                = ${_tgt_id}"
+  echo "gtid_mode                = ON"
+  echo "enforce_gtid_consistency = ON"
+  echo "log_slave_updates        = ON"
+  echo "binlog_format            = ROW"
+  echo "expire_logs_days         = 7"
+  [ "\${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
+} > "\${_cnf}"
+chmod 644 "\${_cnf}"
+REMOTEBASH
+  _info "Restarting MySQL on target ${_tgt} via move_sql.sh ..."
+  ssh root@"${_tgt}" "/var/xdrago/move_sql.sh restart" \
+    || _die "MySQL restart failed on target ${_tgt}"
+  _info "GTID configured on target ${_tgt}: OK"
+}
+
+###-------------REPLICATION USER---------###
+
+_xmass_create_repl_user() {
+  _info "Creating replication user '${_REPL_USER}'@'${_tgt}' on source ..."
+  mysql -u root --password="${_SQL_PSWD}" <<SQLEOF
+DROP USER IF EXISTS '${_REPL_USER}'@'${_tgt}';
+CREATE USER '${_REPL_USER}'@'${_tgt}' IDENTIFIED BY '${_XMASS_REPL_PSWD}';
+GRANT REPLICATION SLAVE ON *.* TO '${_REPL_USER}'@'${_tgt}';
+FLUSH PRIVILEGES;
+SQLEOF
+  _info "Replication user '${_REPL_USER}'@'${_tgt}' created: OK"
+}
+
+_xmass_drop_repl_user() {
+  _info "Dropping replication user '${_REPL_USER}'@'${_tgt}' on source ..."
+  mysql -u root --password="${_SQL_PSWD}" \
+    -e "DROP USER IF EXISTS '${_REPL_USER}'@'${_tgt}'; FLUSH PRIVILEGES;" \
+    2>/dev/null \
+    || _alrt "Could not drop replication user (may already be gone)"
+}
+
+###-------------XTRABACKUP TRANSFER------###
+
+_xmass_decide_transfer_method() {
+  # Stage locally if we have 1.5× the MySQL data size free on /; stream otherwise.
+  local _mysql_kb _free_kb _needed_kb
+  _mysql_kb=$(du -s /var/lib/mysql 2>/dev/null | awk '{print $1}')
+  _free_kb=$(df -P / 2>/dev/null | awk 'NR==2{print $4}')
+  _needed_kb=$(( _mysql_kb * 3 / 2 ))
+  if [ "${_free_kb}" -gt "${_needed_kb}" ]; then
+    _XTRA_METHOD="stage"
+  else
+    _XTRA_METHOD="stream"
+  fi
+  _info "xtrabackup method: ${_XTRA_METHOD}" \
+    "(mysql=${_mysql_kb}K free=${_free_kb}K needed=${_needed_kb}K)"
+}
+
+_xmass_take_backup() {
+  # Ensure stage dir on target exists regardless of method
+  ssh root@"${_tgt}" "rm -rf ${_XTRA_STAGE_TGT}; mkdir -p ${_XTRA_STAGE_TGT}"
+
+  if [ "${_XTRA_METHOD}" = "stage" ]; then
+    _info "xtrabackup: backing up to ${_XTRA_STAGE_SRC} (stage method) ..."
+    rm -rf "${_XTRA_STAGE_SRC}"
+    mkdir -p "${_XTRA_STAGE_SRC}"
+    xtrabackup \
+      --backup \
+      --user=root \
+      --password="${_SQL_PSWD}" \
+      --target-dir="${_XTRA_STAGE_SRC}" \
+      || _die "xtrabackup --backup failed on source"
+
+    _info "xtrabackup: preparing backup on source ..."
+    xtrabackup \
+      --prepare \
+      --target-dir="${_XTRA_STAGE_SRC}" \
+      || _die "xtrabackup --prepare failed on source"
+
+    _info "xtrabackup: rsyncing prepared backup to target ${_tgt} ..."
+    rsync -aEAXq ${_ieni} -e ssh \
+      "${_XTRA_STAGE_SRC}/" \
+      "root@${_tgt}:${_XTRA_STAGE_TGT}/" \
+      || _die "rsync of xtrabackup backup to target failed"
+
+  else
+    _info "xtrabackup: streaming backup directly to target ${_tgt} ..."
+    xtrabackup \
+      --backup \
+      --user=root \
+      --password="${_SQL_PSWD}" \
+      --stream=xbstream \
+      | ssh root@"${_tgt}" "xbstream -x -C ${_XTRA_STAGE_TGT}" \
+      || _die "xtrabackup stream to target failed"
+
+    _info "xtrabackup: preparing backup on target ${_tgt} ..."
+    ssh root@"${_tgt}" \
+      "xtrabackup --prepare --target-dir=${_XTRA_STAGE_TGT}" \
+      || _die "xtrabackup --prepare on target failed"
+  fi
+
+  _info "xtrabackup snapshot complete"
+}
+
+_xmass_restore_backup() {
+  _info "Stopping MySQL on target ${_tgt} via move_sql.sh ..."
+  ssh root@"${_tgt}" "/var/xdrago/move_sql.sh stop" \
+    || _die "MySQL stop on target failed"
+
+  _info "Replacing MySQL data dir on target ..."
+  ssh root@"${_tgt}" "
+    _ts=\$(date +%Y%m%d%H%M%S)
+    mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_\${_ts} &>/dev/null || true
+    mkdir -p /var/lib/mysql
+  "
+
+  _info "Running xtrabackup --copy-back on target ${_tgt} ..."
+  ssh root@"${_tgt}" \
+    "xtrabackup --copy-back \
+      --target-dir=${_XTRA_STAGE_TGT} \
+      --datadir=/var/lib/mysql" \
+    || _die "xtrabackup --copy-back on target failed"
+
+  _info "Fixing MySQL data dir ownership on target ..."
+  ssh root@"${_tgt}" "chown -R mysql:mysql /var/lib/mysql"
+
+  # Transfer credentials immediately so target MySQL client tools work
+  _info "Transferring MySQL credentials to target ..."
+  scp /root/.my.pass.txt "root@${_tgt}:/root/.my.pass.txt" \
+    || _die "Failed to scp .my.pass.txt to target"
+  scp /root/.my.cnf "root@${_tgt}:/root/.my.cnf" 2>/dev/null || true
+  ssh root@"${_tgt}" \
+    "chmod 600 /root/.my.pass.txt; chmod 600 /root/.my.cnf 2>/dev/null; true"
+
+  _info "Starting MySQL on target ${_tgt} via move_sql.sh ..."
+  ssh root@"${_tgt}" "/var/xdrago/move_sql.sh start" \
+    || _die "MySQL start on target failed"
+}
+
+###-------------SLAVE SETUP--------------###
+
+_xmass_setup_slave() {
+  _info "Reading GTID set from xtrabackup_binlog_info on target ${_tgt} ..."
+  local _binlog_info _gtid_set
+  _binlog_info=$(ssh root@"${_tgt}" \
+    "cat ${_XTRA_STAGE_TGT}/xtrabackup_binlog_info 2>/dev/null || echo ''" )
+  _gtid_set=$(echo "${_binlog_info}" | awk '{print $3}')
+
+  if [ -z "${_gtid_set}" ]; then
+    _die "Empty GTID set in xtrabackup_binlog_info — " \
+         "was GTID enabled on source before taking backup?"
+  fi
+  _info "GTID set from backup: ${_gtid_set}"
+
+  local _tgt_pswd
+  _tgt_pswd=$(ssh root@"${_tgt}" \
+    "cat /root/.my.pass.txt 2>/dev/null | tr -d '\n'" 2>/dev/null)
+
+  _info "Configuring replication slave on target ${_tgt} ..."
+  ssh root@"${_tgt}" "mysql -u root --password='${_tgt_pswd}'" <<SLAVEEOF
+RESET MASTER;
+SET GLOBAL gtid_purged='${_gtid_set}';
+CHANGE MASTER TO
+  MASTER_HOST='${_XMASS_SRC_IP}',
+  MASTER_USER='${_REPL_USER}',
+  MASTER_PASSWORD='${_XMASS_REPL_PSWD}',
+  MASTER_AUTO_POSITION=1;
+START SLAVE;
+SLAVEEOF
+  [ $? -eq 0 ] || _die "Slave configuration failed on target ${_tgt}"
+
+  sleep 5
+  _info "Verifying slave is running on target ..."
+  local _slave_status
+  _slave_status=$(ssh root@"${_tgt}" \
+    "mysql -u root --password='${_tgt_pswd}' -sNe \
+    \"SHOW SLAVE STATUS\G\" 2>/dev/null \
+    | grep -E 'Slave_IO_Running|Slave_SQL_Running'" 2>/dev/null)
+  _info "Slave status: ${_slave_status}"
+  if ! echo "${_slave_status}" | grep -q "Yes"; then
+    _die "Slave not running on target — check SHOW SLAVE STATUS\\G on ${_tgt}"
+  fi
+  _info "Slave running on target ${_tgt}: OK"
+}
+
+###-------------SOLR MANAGEMENT----------###
+
+_xmass_prevent_solr_target() {
+  _info "Holding Solr on target ${_tgt} until cutover sync completes ..."
+  ssh root@"${_tgt}" "
+    touch ${_XMASS_SOLR_HOLD_FILE}
+    for _svc in solr9 solr7 solr4 jetty9; do
+      if [ -x \"/etc/init.d/\${_svc}\" ]; then
+        service \${_svc} stop &>/dev/null || true
+      fi
+    done
+  "
+  _info "Solr held on target ${_tgt}: OK"
+}
+
+_xmass_stop_solr_source() {
+  _info "Stopping Solr on source and disabling it permanently ..."
+  for _svc in solr9 solr7 solr4 jetty9; do
+    if [ -x "/etc/init.d/${_svc}" ]; then
+      service "${_svc}" stop &>/dev/null || true
+      _info "  Stopped ${_svc} on source"
+    fi
+  done
+  # Touch the BOA deny file so BOA never restarts Solr on source again
+  touch "${_SOLR_DENY_FILE}"
+  _info "Solr disabled on source (${_SOLR_DENY_FILE} created): OK"
+}
+
+_xmass_start_solr_target() {
+  # Remove Solr transaction logs on target before first start.
+  # Source Solr was stopped cleanly before final rsync, so tlogs should be
+  # nearly empty, but removing them prevents any risk of double-indexing on
+  # first startup. BOA performs no special Solr recovery beyond core health
+  # checks and optimisation, so this is the correct pre-start procedure here.
+  _info "Clearing Solr transaction logs on target ${_tgt} ..."
+  ssh root@"${_tgt}" "
+    for _tlog in \$(find /opt/solr4 /var/solr7/data /var/solr9/data \
+      -name tlog -type d 2>/dev/null); do
+      rm -rf \"\${_tlog}\"
+      echo \"INFO: Removed tlog at \${_tlog}\"
+    done
+  "
+  _info "Starting Solr on target ${_tgt} ..."
+  ssh root@"${_tgt}" "
+    rm -f ${_XMASS_SOLR_HOLD_FILE}
+    for _svc in solr9 solr7; do
+      if [ -x \"/etc/init.d/\${_svc}\" ] \
+        && [ -e \"/etc/default/\${_svc}.in.sh\" ]; then
+        pkill -9 -f \${_svc} &>/dev/null || true
+        service \${_svc} start &>/dev/null || true
+        echo \"INFO: Started \${_svc} on target\"
+      fi
+    done
+    if [ -e \"/etc/default/jetty9\" ] && [ -e \"/etc/init.d/jetty9\" ]; then
+      pkill -9 -f jetty9 &>/dev/null || true
+      service jetty9 start &>/dev/null || true
+      echo \"INFO: Started jetty9 on target\"
+    fi
+  "
+  _info "Waiting 30s for Solr to initialise on target ..."
+  sleep 30
+  _xmass_solr_check_target
+  _info "Solr started on target ${_tgt}: OK"
+}
+
+_xmass_solr_check_target() {
+  # Informational HTTP reachability check against common BOA Solr ports.
+  # A non-200/302 response is a warning, not a fatal error — Solr may still
+  # be replaying its write-ahead log or warming up caches.
+  _info "Checking Solr HTTP response on target ${_tgt} ..."
+  local _port _http _ok=NO
+  for _port in 8983 8984 8080; do
+    _http=$(curl -s -o /dev/null -w "%{http_code}" \
+      --max-time 15 \
+      "http://${_tgt}:${_port}/solr/" 2>/dev/null)
+    if [ "${_http}" = "200" ] || [ "${_http}" = "302" ]; then
+      _info "  Solr responding on port ${_port}: HTTP ${_http} OK"
+      _ok=YES
+    else
+      _info "  Solr port ${_port}: HTTP ${_http} (not yet ready or not active)"
+    fi
+  done
+  if [ "${_ok}" = "NO" ]; then
+    _alrt "No Solr port responded on target — check manually after cutover:" \
+          " curl http://${_tgt}:8983/solr/"
+  fi
+}
+
+###-------------ACCOUNT ENUMERATION------###
+
+_xmass_enumerate_accounts() {
+  _ELIGIBLE_ACCOUNTS=""
+  local _oct _udir
+  for _udir in $(find /data/disk -maxdepth 1 -mindepth 1 -type d | sort); do
+    _oct=$(basename "${_udir}")
+    case "${_oct}" in
+      arch|all|lost+found|lostfound|backups|codebases-cleanup|legacy|xusage)
+        continue ;;
+    esac
+    if [ -e "${_udir}/log/cores.txt" ] \
+      && [ -e "${_udir}/log/option.txt" ] \
+      && [ -e "${_udir}/log/email.txt" ] \
+      && [ -e "${_udir}/tools/le/dehydrated" ] \
+      && [ ! -e "${_udir}/log/CANCELLED" ]; then
+      _ELIGIBLE_ACCOUNTS="${_ELIGIBLE_ACCOUNTS} ${_oct}"
+    fi
+  done
+  _ELIGIBLE_ACCOUNTS="${_ELIGIBLE_ACCOUNTS## }"
+  _info "Eligible Octopus accounts: ${_ELIGIBLE_ACCOUNTS:-none found}"
+  [ -z "${_ELIGIBLE_ACCOUNTS}" ] && _die "No eligible Octopus accounts found on source"
+}
+
+###-------------SYNC FUNCTIONS-----------###
+
+_xmass_sync_static_symlink_safe() {
+  # Mirrors xboa's _xboa_transfer_static_symlink_safe:
+  # Preserves site-level symlinks inside static/ while materialising
+  # static/files as a real directory on the target.
+  local _src_usr="$1"
+  local _dst_usr="$2"
+  local _src_static="${_src_usr}/static"
+  local _src_sf="${_src_usr}/static/files"
+  local _dst_static="${_dst_usr}/static"
+  local _dst_sf="${_dst_usr}/static/files"
+
+  [ -d "${_src_static}" ] || return 0
+
+  # Pass 1: sync static/ tree preserving symlinks, skip files/
+  rsync -aEAXqu ${_ieni} --exclude=files \
+    -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/" &>/dev/null || true
+
+  # Resolve source static/files (may be a symlink to attached storage)
+  local _src_real
+  if [ -L "${_src_sf}" ]; then
+    _src_real="$(readlink -f "${_src_sf}" 2>/dev/null)"
+  elif [ -d "${_src_sf}" ]; then
+    _src_real="${_src_sf}"
+  else
+    return 0
+  fi
+
+  if [ -n "${_src_real}" ] && [ -d "${_src_real}" ]; then
+    # Pass 2: materialise static/files as a real directory on target
+    ssh root@"${_tgt}" "
+      if [ -L '${_dst_sf}' ]; then
+        rm -f '${_dst_sf}'
+      elif [ -e '${_dst_sf}' ] && [ ! -d '${_dst_sf}' ]; then
+        rm -f '${_dst_sf}'
+      fi
+      mkdir -p '${_dst_sf}'
+    "
+    rsync -aEAXqu ${_ieni} \
+      -e ssh "${_src_real}/" "root@${_tgt}:${_dst_sf}/" &>/dev/null || true
+  fi
+}
+
+_xmass_sync_account() {
+  local _oct="$1"
+  local _udir="/data/disk/${_oct}"
+  local _dst="/data/disk/${_oct}"
+  _info "  Syncing account ${_oct} ..."
+
+  # Platform codebases (large; delta-synced efficiently by rsync)
+  rsync -aEAXqu ${_ieni} -e ssh \
+    "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/" &>/dev/null || true
+
+  # User uploaded files (symlink-safe two-pass)
+  _xmass_sync_static_symlink_safe "${_udir}" "${_dst}"
+
+  # Log and control files (includes domain.txt, email.txt, etc.)
+  rsync -aEAXqu ${_ieni} -e ssh \
+    "${_udir}/log/" "root@${_tgt}:${_dst}/log/" &>/dev/null || true
+
+  # Drush aliases (site aliases regenerated by renameaegirhost later;
+  # synced here so nginx vhosts can reference them before that runs)
+  rsync -aEAXqu ${_ieni} \
+    --exclude=server_ --exclude=hostmaster \
+    -e ssh "${_udir}/.drush/" \
+    "root@${_tgt}:${_dst}/.drush/" &>/dev/null || true
+
+  # Nginx vhost configs
+  rsync -aEAXqu ${_ieni} \
+    --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc \
+    -e ssh "${_udir}/config/server_master/nginx/vhost.d/" \
+    "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/" &>/dev/null || true
+
+  for _subdir in pre.d post.d subdir.d platform.d; do
+    rsync -aEAXqu ${_ieni} \
+      -e ssh "${_udir}/config/server_master/nginx/${_subdir}/" \
+      "root@${_tgt}:${_dst}/config/server_master/nginx/${_subdir}/" \
+      &>/dev/null || true
+  done
+
+  # SSL certificates and LE config
+  rsync -aEAXqu ${_ieni} \
+    -e ssh "${_udir}/config/ssl.d/" \
+    "root@${_tgt}:${_dst}/config/ssl.d/" &>/dev/null || true
+  rsync -aEAXqu ${_ieni} \
+    -e ssh "${_udir}/config/server_master/ssl.d/" \
+    "root@${_tgt}:${_dst}/config/server_master/ssl.d/" &>/dev/null || true
+  rsync -aEAXqu ${_ieni} \
+    -e ssh "${_udir}/tools/le" \
+    "root@${_tgt}:${_dst}/tools/" &>/dev/null || true
+
+  # FTP account SSH keys
+  if [ -d "/home/${_oct}.ftp/.ssh" ]; then
+    rsync -aEAXqu ${_ieni} \
+      -e ssh "/home/${_oct}.ftp/.ssh" \
+      "root@${_tgt}:/home/${_oct}.ftp/" &>/dev/null || true
+  fi
+}
+
+_xmass_sync_shared() {
+  _info "Syncing shared data (/data/all, arch, legacy, bind, static) ..."
+  local _item
+  for _item in /data/all /data/disk/all /data/disk/arch /data/disk/legacy; do
+    [ -d "${_item}" ] || continue
+    [ -L "${_item}" ] && continue
+    rsync -aEAXqu ${_ieni} -e ssh \
+      "${_item}" "root@${_tgt}:$(dirname "${_item}")/" \
+      &>/dev/null || _alrt "rsync ${_item} failed"
+  done
+  [ -d "/var/www/static" ] && \
+    rsync -aEAXqu ${_ieni} -e ssh \
+      /var/www/static "root@${_tgt}:/var/www/" &>/dev/null || true
+  [ -d "/etc/bind" ] && \
+    rsync -aEAXq ${_ieni} -e ssh \
+      /etc/bind "root@${_tgt}:/etc/" &>/dev/null || true
+  [ -d "/var/log/boa/usage" ] && \
+    rsync -aEAXq ${_ieni} -e ssh \
+      /var/log/boa/usage "root@${_tgt}:/var/log/boa/" &>/dev/null || true
+  _info "Shared data sync complete"
+}
+
+_xmass_sync_solr() {
+  # Solr data is server-wide; safe to rsync while Solr is stopped on source.
+  # During periodic sync Solr is still running on source, so rsync is
+  # best-effort and may catch slightly inconsistent index state — that is
+  # acceptable since a clean final sync runs after Solr is stopped at cutover.
+  _info "Syncing Solr data ..."
+  local _dir
+  for _dir in /opt/solr4 /var/solr7/data /var/solr9/data; do
+    [ -e "${_dir}" ] || continue
+    rsync -aEAXq ${_ieni} -e ssh \
+      "${_dir}" "root@${_tgt}:$(dirname "${_dir}")/" \
+      &>/dev/null || _alrt "rsync ${_dir} failed"
+    _info "  Synced ${_dir}"
+  done
+  _info "Solr data sync complete"
+}
+
+###-------------REPLICATION LAG----------###
+
+_xmass_get_repl_lag() {
+  local _tgt_pswd
+  _tgt_pswd=$(ssh root@"${_tgt}" \
+    "cat /root/.my.pass.txt 2>/dev/null | tr -d '\n'" 2>/dev/null)
+  ssh root@"${_tgt}" \
+    "mysql -u root --password='${_tgt_pswd}' -sNe \
+    \"SHOW SLAVE STATUS\G\" 2>/dev/null \
+    | grep 'Seconds_Behind_Master' | awk '{print \$2}'" 2>/dev/null
+}
+
+_xmass_wait_for_sync() {
+  # Wait until replica lag reaches 0, with triple-check confirmation.
+  # $1 = max wait seconds (default 1800)
+  local _max="${1:-1800}"
+  local _elapsed=0
+  local _lag _pass
+  _info "Waiting for replica lag to reach 0 (max ${_max}s) ..."
+  while true; do
+    _lag=$(_xmass_get_repl_lag)
+    if [ -z "${_lag}" ] || [ "${_lag}" = "NULL" ]; then
+      _die "Cannot read replication lag — slave may have stopped on ${_tgt}"
+    fi
+    _info "  Replica lag: ${_lag}s (waited: ${_elapsed}s / ${_max}s)"
+    [ "${_lag}" -eq 0 ] && break
+    if [ "${_elapsed}" -ge "${_max}" ]; then
+      _die "Replica did not catch up within ${_max}s (last lag: ${_lag}s)"
+    fi
+    sleep 15
+    _elapsed=$(( _elapsed + 15 ))
+  done
+
+  _info "Replica at lag=0; triple-checking (3 × 10s) ..."
+  for _pass in 1 2 3; do
+    sleep 10
+    _lag=$(_xmass_get_repl_lag)
+    if [ "${_lag}" != "0" ]; then
+      _die "Replica lag not zero on confirmation check ${_pass}/3 (lag=${_lag}s)"
+    fi
+    _info "  Confirmation check ${_pass}/3: lag=${_lag}s OK"
+  done
+  _info "Replica fully in sync: OK"
+}
+
+###-------------WEB BLOCK / UNBLOCK------###
+
+_xmass_block_web_all() {
+  _info "Blocking web (http-off.pid) on all source accounts ..."
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    mkdir -p "/data/disk/${_oct}/static/control"
+    echo 7200 > "/data/disk/${_oct}/static/control/http-off.pid"
+    chown "${_oct}:users" "/data/disk/${_oct}/static/control/http-off.pid" \
+      &>/dev/null || true
+  done
+  # Purge the Nginx speed cache so cached 200s don't mask the 503
+  if [ -d "/var/lib/nginx/speed" ]; then
+    find /var/lib/nginx/speed -type f -delete &>/dev/null
+  fi
+  service nginx reload &>/dev/null
+  _info "Web blocked on all source accounts: OK"
+}
+
+_xmass_remove_http_off_all() {
+  _info "Removing http-off.pid from all source accounts ..."
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    rm -f "/data/disk/${_oct}/static/control/http-off.pid"
+  done
+  if [ -d "/var/lib/nginx/speed" ]; then
+    find /var/lib/nginx/speed -type f -delete &>/dev/null
+  fi
+}
+
+###-------------BOA PROCESS CHECK--------###
+
+_xmass_check_no_boa_running() {
+  _info "Verifying BOA background jobs are stopped ..."
+  local _fail=NO _p
+  for _p in runner.sh daily.sh graceful.sh manage_ltd_users.sh; do
+    if [ -e "/var/xdrago/${_p}" ]; then
+      _alrt "BOA script still active: /var/xdrago/${_p} — run xmass pre-mig first"
+      _fail=YES
+    fi
+  done
+  if pgrep -x cron &>/dev/null; then
+    _alrt "System cron is still running — stop it before cutover"
+    _fail=YES
+  fi
+  [ "${_fail}" = "YES" ] \
+    && _die "BOA/cron processes active — stop them before running cutover"
+  _info "No conflicting BOA/cron processes: OK"
+}
+
+###-------------PROXY CONVERSION---------###
+
+_xmass_convert_source_to_proxy() {
+  # Delegate per-account proxy vhost conversion to xoct, which also sends
+  # the per-account migration-complete notification email.
+  # Both xoct and xmass are always installed; calling xoct avoids duplicating
+  # its vhost template logic and notification code.
+  #
+  # If _XMASS_PERMANENT_PROXY=YES the _PERM_PROXY_FLAG control file is created
+  # so xoct can adjust notification language accordingly (requires xoct support).
+  #
+  # exported.pid is touched per account to satisfy xoct's proxy gate check
+  # (_migrate_sites verifies it before converting vhosts); xmass never runs
+  # the export step that would normally create it.
+  _info "Converting all source accounts to proxy vhosts via xoct ..."
+  [ "${_XMASS_PERMANENT_PROXY}" = "YES" ] && touch "${_PERM_PROXY_FLAG}"
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    touch "/data/disk/${_oct}/log/exported.pid"
+    _info "  xoct proxy ${_oct} ${_tgt} ..."
+    xoct proxy "${_oct}" "${_tgt}" \
+      || _alrt "xoct proxy returned non-zero for account ${_oct}"
+  done
+  rm -f "${_PERM_PROXY_FLAG}"
+  _info "Source proxy conversion via xoct complete: OK"
+}
+
+###-------------RENAMEAEGIRHOST ON TARGET---###
+
+_xmass_renameaegirhost_all() {
+  _info "Running renameaegirhost on target ${_tgt} for all Aegir roots ..."
+
+  # Aegir master first
+  if ssh root@"${_tgt}" \
+    "[ -d '/var/aegir' ] && \
+     [ -f '/var/aegir/.drush/server_master.alias.drushrc.php' ]" 2>/dev/null; then
+    _info "  Renaming /var/aegir on target ..."
+    ssh root@"${_tgt}" "renameaegirhost --aegir-root /var/aegir" \
+      || _alrt "renameaegirhost /var/aegir returned non-zero on target"
+  else
+    _alrt "Skipping renameaegirhost for /var/aegir — not found on target"
+  fi
+
+  # All Octopus accounts
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    if ssh root@"${_tgt}" \
+      "[ -f '/data/disk/${_oct}/.drush/server_master.alias.drushrc.php' ]" \
+      2>/dev/null; then
+      _info "  Renaming /data/disk/${_oct} on target ..."
+      ssh root@"${_tgt}" "renameaegirhost --aegir-root /data/disk/${_oct}" \
+        || _alrt "renameaegirhost /data/disk/${_oct} returned non-zero on target"
+    else
+      _alrt "Skipping renameaegirhost for ${_oct} — alias not found on target"
+    fi
+  done
+
+  _info "renameaegirhost complete for all Aegir roots on target: OK"
+}
+
+###=============SUBCOMMANDS===============###
+
+_xmass_pre_mig() {
+  # Stop BOA background jobs and exchange SSH keys between source and target.
+  # Run on BOTH hosts: first on source (to publish its pub key),
+  # then on target (to fetch and install that key).
+  if [ -e "/vservers" ]; then
+    _die "Cannot run pre-mig on a parent/host system"
+  fi
+  _info "Running pre-mig on ${_hName} ..."
+  for _script in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
+    if [ -e "/var/xdrago/${_script}" ]; then
+      mv -f "/var/xdrago/${_script}" "/var/xdrago/.${_script}.off"
+      pkill -9 -f "${_script}" &>/dev/null || true
+      _info "  Stopped and disabled ${_script}"
+    fi
+  done
+  if [ "${_hName}" = "${_hst}" ]; then
+    _info "Source mode: publishing SSH pub key for target to fetch ..."
+    if [ ! -e "/root/.ssh/id_ed25519.pub" ]; then
+      ssh-keygen -t ed25519 -N '' -f /root/.ssh/id_ed25519
+    fi
+    mkdir -p /var/www/nginx-default
+    cp -af /root/.ssh/id_ed25519.pub \
+      /var/www/nginx-default/auth_undefined_keys.txt
+    _info "Source key published at http://undefined.${_hName}/auth_undefined_keys.txt"
+  else
+    _info "Target mode: fetching and installing source SSH key ..."
+    mkdir -p /root/.ssh
+    chmod 700 /root/.ssh
+    rm -f /root/.ssh/auth_undefined_keys.txt
+    curl -s -A iCab \
+      "http://undefined.${_hst}/auth_undefined_keys.txt" \
+      -o /root/.ssh/auth_undefined_keys.txt \
+      || _die "Failed to fetch source key from http://undefined.${_hst}/"
+    if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
+      echo >> /root/.ssh/authorized_keys
+      cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
+      chmod 600 /root/.ssh/authorized_keys
+      _info "Source SSH key installed in authorized_keys: OK"
+    else
+      _die "Source key file empty or not fetched"
+    fi
+  fi
+  _info "pre-mig complete on ${_hName}"
+}
+
+_xmass_cmd_init() {
+  _xmass_load_state
+  if [ "${_XMASS_PHASE}" = "syncing" ] \
+    || [ "${_XMASS_PHASE}" = "cutover" ] \
+    || [ "${_XMASS_PHASE}" = "complete" ]; then
+    _die "xmass already in phase '${_XMASS_PHASE}' — cannot re-init." \
+         " Remove ${_XMASS_STATE_FILE} to start over."
+  fi
+
+  _XMASS_TARGET_IP="${_tgt}"
+  _XMASS_SRC_IP="${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
+  _info "Source IP : ${_XMASS_SRC_IP}"
+  _info "Target IP : ${_XMASS_TARGET_IP}"
+
+  # Verify SSH connectivity to target
+  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
+    | grep -q "SSH_OK" \
+    || _die "Cannot SSH to target ${_tgt} — run xmass pre-mig on both hosts first"
+
+  _xmass_detect_percona_version
+
+  # Verify target runs the same Percona version
+  local _tgt_raw
+  _tgt_raw=$(ssh root@"${_tgt}" "mysql -V 2>&1 | tr -d '\n'" 2>/dev/null)
+  if ! echo "${_tgt_raw}" | grep -q "${_XMASS_PERCONA_V}"; then
+    _die "Target Percona version does not match source (${_XMASS_PERCONA_V})." \
+         " xmass requires identical versions on both servers. Use xoct instead."
+  fi
+  _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
+
+  _xmass_install_xtrabackup_local
+  _xmass_install_xtrabackup_target
+  _xmass_configure_gtid_local
+  _xmass_configure_gtid_target
+
+  # Generate a random replication password and save state
+  _XMASS_REPL_PSWD=$(head -c 48 /dev/urandom \
+    | base64 | tr -dc 'a-zA-Z0-9' | head -c 32)
+  _XMASS_INIT_TIME=$(date +%Y%m%d-%H%M%S)
+  _XMASS_LAST_SYNC=""
+  _XMASS_PHASE="init"
+  _XMASS_PERMANENT_PROXY="${_permanent_proxy:-NO}"
+  _xmass_save_state
+
+  _xmass_create_repl_user
+  _xmass_prevent_solr_target
+  _xmass_decide_transfer_method
+  _xmass_take_backup
+  _xmass_restore_backup
+  _xmass_setup_slave
+
+  _XMASS_PHASE="syncing"
+  _xmass_save_state
+
+  _info ""
+  _info "======================================================"
+  _info "  xmass init COMPLETE"
+  _info "  Replication from ${_XMASS_SRC_IP} to ${_tgt} is running."
+  _info "  Run 'xmass sync ${_tgt}' to sync files (repeat as often as needed)."
+  _info "  Run 'xmass status ${_tgt}' to check replication lag."
+  _info "  When ready: 'xmass cutover ${_tgt} [--permanent-proxy]'"
+  _info "======================================================"
+}
+
+_xmass_cmd_sync() {
+  _xmass_load_state
+  [ "${_XMASS_PHASE}" = "syncing" ] \
+    || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — run 'xmass init' first"
+  _info "xmass sync: syncing files to ${_tgt} ..."
+  _xmass_enumerate_accounts
+  _xmass_sync_shared
+  _xmass_sync_solr
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _xmass_sync_account "${_oct}"
+  done
+  _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
+  _xmass_save_state
+  _info "xmass sync complete at ${_XMASS_LAST_SYNC}"
+}
+
+_xmass_cmd_status() {
+  _xmass_load_state
+  local _lag="N/A"
+  if [ "${_XMASS_PHASE}" = "syncing" ] && [ -n "${_XMASS_TARGET_IP}" ]; then
+    _tgt="${_XMASS_TARGET_IP}"
+    _lag=$(_xmass_get_repl_lag 2>/dev/null || echo "unreachable")
+  fi
+  echo ""
+  echo "======================================================"
+  echo "  xmass status"
+  echo "======================================================"
+  echo "  Phase            : ${_XMASS_PHASE:-uninitialized}"
+  echo "  Source IP        : ${_XMASS_SRC_IP:-unknown}"
+  echo "  Target IP        : ${_XMASS_TARGET_IP:-unknown}"
+  echo "  Percona version  : ${_XMASS_PERCONA_V:-unknown}"
+  echo "  Init time        : ${_XMASS_INIT_TIME:-n/a}"
+  echo "  Last file sync   : ${_XMASS_LAST_SYNC:-never}"
+  echo "  Replication lag  : ${_lag}s"
+  echo "  Permanent proxy  : ${_XMASS_PERMANENT_PROXY:-NO}"
+  echo "======================================================"
+  echo ""
+}
+
+_xmass_cmd_cutover() {
+  _xmass_load_state
+  [ "${_XMASS_PHASE}" = "syncing" ] \
+    || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — cannot cut over"
+
+  # --permanent-proxy on cutover command overrides whatever was set at init
+  [ -n "${_permanent_proxy}" ] && _XMASS_PERMANENT_PROXY="${_permanent_proxy}"
+
+  _tgt="${_XMASS_TARGET_IP}"
+  [ -z "${_tgt}" ] && _die "No target IP in state file — was xmass init run?"
+
+  _info "======================================================"
+  _info "  xmass cutover starting"
+  _info "  Target           : ${_tgt}"
+  _info "  Permanent proxy  : ${_XMASS_PERMANENT_PROXY}"
+  _info "======================================================"
+
+  # Pre-flight checks
+  _xmass_check_no_boa_running
+  _xmass_enumerate_accounts
+
+  # Step 0: Re-hold Solr on target in case it was manually started since init.
+  # Also stops any running instance so the final Solr rsync gets a clean state.
+  _xmass_prevent_solr_target
+
+  # Step 1: Block all web traffic on source (serves 503 via http-off.pid)
+  _xmass_block_web_all
+
+  # Step 2: Stop Solr on source and disable it permanently with deny file.
+  # Must happen BEFORE final sync so the Solr data rsync sees a clean,
+  # fully-flushed index with no in-progress writes.
+  _xmass_stop_solr_source
+
+  # Step 3: Final file sync — Solr is now stopped on both ends so rsync
+  # produces a consistent, replay-safe copy of all index data
+  _info "Running final pre-cutover file sync ..."
+  _xmass_sync_shared
+  _xmass_sync_solr
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _xmass_sync_account "${_oct}"
+  done
+
+  # Step 4: Wait for replica to fully catch up
+  _XMASS_PHASE="cutover"
+  _xmass_save_state
+  _xmass_wait_for_sync 1800
+
+  # Step 5: Lock source MySQL — no more writes possible
+  _info "Flushing and locking source MySQL (FLUSH TABLES WITH READ LOCK) ..."
+  mysql -u root --password="${_SQL_PSWD}" \
+    -e "FLUSH TABLES WITH READ LOCK;" \
+    || _die "FLUSH TABLES WITH READ LOCK failed on source"
+
+  # Step 6: Final rsync of static/files only, to catch last writes before lock
+  _info "Final static/files rsync pass (post table-lock) ..."
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _xmass_sync_static_symlink_safe \
+      "/data/disk/${_oct}" "/data/disk/${_oct}"
+  done
+
+  # Step 7: Triple-check lag is still zero after the lock
+  local _lag _pass
+  for _pass in 1 2 3; do
+    sleep 10
+    _lag=$(_xmass_get_repl_lag)
+    if [ "${_lag}" != "0" ]; then
+      # Unlock before aborting so source MySQL is not stuck
+      mysql -u root --password="${_SQL_PSWD}" \
+        -e "UNLOCK TABLES;" &>/dev/null || true
+      _die "Replica lag not zero after FLUSH LOCK on check ${_pass}/3" \
+           " (lag=${_lag}s) — cutover aborted, source MySQL unlocked"
+    fi
+    _info "Post-lock confirmation check ${_pass}/3: lag=${_lag}s OK"
+  done
+
+  # Step 8: Promote target — stop slave, decouple completely
+  local _tgt_pswd
+  _tgt_pswd=$(ssh root@"${_tgt}" \
+    "cat /root/.my.pass.txt 2>/dev/null | tr -d '\n'" 2>/dev/null)
+  _info "Stopping and decoupling slave on target ${_tgt} ..."
+  ssh root@"${_tgt}" \
+    "mysql -u root --password='${_tgt_pswd}' \
+     -e 'STOP SLAVE; RESET SLAVE ALL;'" \
+    || _die "Failed to stop/decouple slave on target ${_tgt}"
+  _info "Target MySQL is now standalone: OK"
+
+  # Step 9: Unlock source MySQL
+  mysql -u root --password="${_SQL_PSWD}" \
+    -e "UNLOCK TABLES;" &>/dev/null || true
+  _info "Source MySQL tables unlocked"
+
+  # Step 10: Re-transfer MySQL credentials (belt and braces after promotion)
+  scp /root/.my.pass.txt "root@${_tgt}:/root/.my.pass.txt" \
+    || _alrt "Failed to re-transfer .my.pass.txt to target"
+  scp /root/.my.cnf "root@${_tgt}:/root/.my.cnf" 2>/dev/null || true
+  ssh root@"${_tgt}" \
+    "chmod 600 /root/.my.pass.txt; chmod 600 /root/.my.cnf 2>/dev/null; true"
+
+  # Step 11: Drop the replication user from source (no longer needed)
+  _xmass_drop_repl_user
+
+  # Step 12: Start nginx on target so it can serve proxied traffic immediately
+  _info "Starting nginx on target ${_tgt} ..."
+  ssh root@"${_tgt}" \
+    "service nginx start &>/dev/null || service nginx reload &>/dev/null"
+
+  # Step 13: Run renameaegirhost on target for all Aegir roots.
+  # This rewrites drush aliases, vhosts, and the Aegir DB to the new hostname,
+  # then runs the Aegir task queue 5 times to regenerate everything on disk.
+  _xmass_renameaegirhost_all
+
+  # Step 14: Start Solr on target now that Solr data sync is complete
+  _xmass_start_solr_target
+
+  # Step 15: Start cron and restore BOA runners on target
+  _info "Starting cron and restoring BOA runners on target ${_tgt} ..."
+  ssh root@"${_tgt}" "
+    service cron start &>/dev/null
+    for _s in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
+      if [ ! -e \"/var/xdrago/\${_s}\" ] \
+        && [ -e \"/var/xdrago/.\${_s}.off\" ]; then
+        mv -f \"/var/xdrago/.\${_s}.off\" \"/var/xdrago/\${_s}\"
+      fi
+    done
+  "
+
+  # Step 16: Convert source vhosts to proxy via xoct (handles vhost templates,
+  # nginx reload, and per-account migration-complete notification emails).
+  # http-off.pid removal per account is also handled by xoct proxy.
+  _xmass_convert_source_to_proxy
+
+  # Step 17: Remove http-off.pid on source (belt-and-braces; xoct proxy
+  # already removes it per account, but clean up any missed by xoct).
+  _xmass_remove_http_off_all
+
+  # Step 18: Mark all eligible source accounts as proxied
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    echo "COMPLETE" > "/data/disk/${_oct}/log/proxied.pid"
+  done
+
+  _XMASS_PHASE="complete"
+  _xmass_save_state
+
+  _info ""
+  _info "======================================================"
+  _info "  xmass cutover COMPLETE"
+  _info "  Source ${_hName} is now proxying all sites to ${_tgt}"
+  if [ "${_XMASS_PERMANENT_PROXY}" = "YES" ]; then
+    _info "  Proxy mode: PERMANENT — update DNS at your own pace"
+  else
+    _info "  Proxy mode: TEMPORARY — update DNS and decommission source asap"
+  fi
+  _info "  Next: run 'xmass post-mig' on the TARGET after DNS is updated"
+  _info "======================================================"
+}
+
+_xmass_post_mig() {
+  # Run on TARGET after DNS is updated and traffic flows directly.
+  # Ensures Solr, nginx, and BOA runners are in clean state.
+  if [ -e "/vservers" ]; then
+    _die "Cannot run post-mig on a parent/host system"
+  fi
+  _info "Running post-mig on ${_hName} ..."
+  # Remove Solr hold flag if still present
+  rm -f "${_XMASS_SOLR_HOLD_FILE}"
+  # (Re)start Solr services cleanly
+  for _svc in solr9 solr7; do
+    if [ -x "/etc/init.d/${_svc}" ] && [ -e "/etc/default/${_svc}.in.sh" ]; then
+      pkill -9 -f "${_svc}" &>/dev/null || true
+      service "${_svc}" start &>/dev/null
+      _info "  ${_svc} restarted"
+    fi
+  done
+  pkill -9 -f jetty9 &>/dev/null || true
+  rm -rf /tmp/drush* /tmp/pear /tmp/jetty*
+  rm -f /var/log/jetty9/* &>/dev/null || true
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
+    service jetty9 start &>/dev/null
+    _info "  jetty9 restarted"
+  fi
+  service nginx reload &>/dev/null
+  rm -f /run/boa_wait.pid
+  for _script in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
+    if [ ! -e "/var/xdrago/${_script}" ] \
+      && [ -e "/var/xdrago/.${_script}.off" ]; then
+      mv -f "/var/xdrago/.${_script}.off" "/var/xdrago/${_script}"
+      _info "  Restored ${_script}"
+    fi
+  done
+  _info "post-mig complete on ${_hName}"
+}
+
+###=============ARGUMENT PARSING==========###
+
+_cmd="$1"
+shift 2>/dev/null || true
+
+case "${_cmd}" in
+  pre-mig)
+    _hst="$1"
+    [ -z "${_hst}" ] && _die "Usage: xmass pre-mig <source-fqdn>"
+    _check_root
+    _xmass_pre_mig
+  ;;
+  init)
+    _tgt="$1"
+    shift 2>/dev/null || true
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --permanent-proxy) _permanent_proxy=YES; shift ;;
+        *) _die "Unknown argument: $1" ;;
+      esac
+    done
+    [ -z "${_tgt}" ] && _die "Usage: xmass init <target-ip> [--permanent-proxy]"
+    _check_root
+    _xmass_cmd_init
+  ;;
+  sync)
+    _tgt="$1"
+    [ -z "${_tgt}" ] && _die "Usage: xmass sync <target-ip>"
+    _check_root
+    _xmass_cmd_sync
+  ;;
+  status)
+    _tgt="${1:-}"
+    _check_root
+    _xmass_cmd_status
+  ;;
+  cutover)
+    _tgt="$1"
+    shift 2>/dev/null || true
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --permanent-proxy) _permanent_proxy=YES; shift ;;
+        *) _die "Unknown argument: $1" ;;
+      esac
+    done
+    [ -z "${_tgt}" ] && _die "Usage: xmass cutover <target-ip> [--permanent-proxy]"
+    _check_root
+    _xmass_cmd_cutover
+  ;;
+  post-mig)
+    _check_root
+    _xmass_post_mig
+  ;;
+  *)
+    echo ""
+    echo "Usage: xmass pre-mig <source-fqdn>                   (run on BOTH source and target)"
+    echo "Usage: xmass init    <target-ip> [--permanent-proxy]  (run on source)"
+    echo "Usage: xmass sync    <target-ip>                       (run on source, repeat)"
+    echo "Usage: xmass status  [target-ip]                       (run on source)"
+    echo "Usage: xmass cutover <target-ip> [--permanent-proxy]   (run on source)"
+    echo "Usage: xmass post-mig                                  (run on target after DNS)"
+    echo ""
+    echo "Notes:"
+    echo "  - Requires identical Percona MySQL versions on both servers."
+    echo "  - Migrates ALL Octopus accounts and Solr cores in one operation."
+    echo "  - For single-account or cross-version migrations use xoct instead."
+    echo "  - State is kept in ${_XMASS_STATE_FILE}"
+    echo ""
+    exit 1
+  ;;
+esac
+
+exit 0
