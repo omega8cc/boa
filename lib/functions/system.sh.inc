@@ -957,14 +957,13 @@ _tune_memory_limits() {
   elif [ "${_USE}" -ge 2048 ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       # High-RAM tier: servers with ~40GB+ usable RAM (bare metal, dedicated).
-      # _USE_PHP=4096 yields _USE_FPM=2048 and _USE_APC=1024M, giving APCu
-      # enough headroom for complex D10 codebases with many modules and sites.
+      # _USE_PHP=4096 yields _USE_FPM=2048 and _USE_APC=2048M.
       # Previously the 2048 cap caused APCu saturation (>90%) on large servers
       # even after the manual 256M→512M bump, because the formula did not scale
       # beyond the 2048 tier regardless of available RAM.
       #
       # Very high-RAM tier: servers with ~85GB+ usable RAM.
-      # _USE_PHP=8192 yields _USE_FPM=4096 and _USE_APC=2048M for large
+      # _USE_PHP=8192 yields _USE_FPM=4096 and _USE_APC=4096M for large
       # multi-tenant bare metal nodes with many concurrent PHP workers.
       if [ "${_USE}" -ge 16384 ]; then
         _USE_PHP=8192
@@ -1072,7 +1071,12 @@ _tune_memory_limits() {
   if [ "${_USE_FPM}" -lt 1024 ]; then
     _USE_FPM=1024
   fi
-  _USE_APC=$(( _USE_FPM / 2 ))
+  _USE_APC=${_USE_FPM}
+  # APCu is a single shared memory segment for the entire FPM pool, not
+  # per-worker. Setting it equal to _USE_FPM ensures the shared pool is
+  # sized to hold cached data for all workers simultaneously. The previous
+  # formula (_USE_FPM / 2) incorrectly treated APCu as a per-worker budget,
+  # which caused saturation (>90%) on large servers with complex codebases.
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _CPU_NR is ${_CPU_NR}"
     _msg "TUNE: _L_NGX_WRKS is ${_L_NGX_WRKS}"
