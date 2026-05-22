@@ -956,12 +956,38 @@ _tune_memory_limits() {
     fi
   elif [ "${_USE}" -ge 2048 ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=2048
-      _USE_OPC=2048
-      _USE_CLI=4096
-      _QCE_SQL=64M
-      _RND_SQL=8M
-      _JBF_SQL=4M
+      # High-RAM tier: servers with ~40GB+ usable RAM (bare metal, dedicated).
+      # _USE_PHP=4096 yields _USE_FPM=2048 and _USE_APC=1024M, giving APCu
+      # enough headroom for complex D10 codebases with many modules and sites.
+      # Previously the 2048 cap caused APCu saturation (>90%) on large servers
+      # even after the manual 256M→512M bump, because the formula did not scale
+      # beyond the 2048 tier regardless of available RAM.
+      #
+      # Very high-RAM tier: servers with ~85GB+ usable RAM.
+      # _USE_PHP=8192 yields _USE_FPM=4096 and _USE_APC=2048M for large
+      # multi-tenant bare metal nodes with many concurrent PHP workers.
+      if [ "${_USE}" -ge 16384 ]; then
+        _USE_PHP=8192
+        _USE_OPC=8192
+        _USE_CLI=16384
+        _QCE_SQL=256M
+        _RND_SQL=32M
+        _JBF_SQL=16M
+      elif [ "${_USE}" -ge 8192 ]; then
+        _USE_PHP=4096
+        _USE_OPC=4096
+        _USE_CLI=8192
+        _QCE_SQL=128M
+        _RND_SQL=16M
+        _JBF_SQL=8M
+      else
+        _USE_PHP=2048
+        _USE_OPC=2048
+        _USE_CLI=4096
+        _QCE_SQL=64M
+        _RND_SQL=8M
+        _JBF_SQL=4M
+      fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=${_CPU_MX}
       else

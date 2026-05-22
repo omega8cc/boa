@@ -316,12 +316,92 @@ _fpm_logs_empty() {
   fi
 }
 
+_fpm_apcu_reload_sentinel() {
+  # Allows site owners on qualifying plans to request a graceful PHP-FPM
+  # reload (which clears APCu) by creating an empty sentinel file:
+  #
+  #   touch ~/static/control/run-php-fpm-reload.pid
+  #
+  # The system detects the file within seconds, performs a graceful reload
+  # of all PHP-FPM versions, and removes the file automatically.
+  #
+  # Plan gate: mirrors _if_valkey_restart in valkey.sh — only available on
+  # POWER, PHANTOM, CLUSTER, ULTRA, MONSTER plans or when the explicit allow
+  # file /root/.allow.php.fpm.reload.cnf is present.
+  #
+  # Why this is needed:
+  #   APCu caches field definitions, plugin registries, and other Drupal
+  #   internals at the PHP-FPM worker process level. Unlike Valkey, APCu
+  #   cannot be flushed remotely — it lives inside the FPM worker processes.
+  #   After a config change, platform update, or Solr core rename, stale APCu
+  #   entries can cause FieldException and PluginNotFoundException errors in
+  #   Drupal logs. A graceful FPM reload recycles all workers and clears APCu
+  #   without dropping active connections.
+  #
+  # Cooldown: respects _FPM_COOLDOWN_SECS (default 30s) to prevent reload
+  # storms if the sentinel is created repeatedly.
+
+  # Plan-level gate — same logic as _if_valkey_restart in valkey.sh
+  local _PrTestPower _PrTestPhantom _PrTestCluster _PrTestUltra _PrTestMonster
+  _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>/dev/null)
+  _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>/dev/null)
+  _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>/dev/null)
+  _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>/dev/null)
+  _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>/dev/null)
+
+  if [[ "${_PrTestPower}"   =~ "POWER"   ]] \
+    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+    || [[ "${_PrTestUltra}"   =~ "ULTRA"   ]] \
+    || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
+    || [ -e "/root/.allow.php.fpm.reload.cnf" ]; then
+    : # plan allows self-service FPM reload — proceed
+  else
+    return 0  # plan does not allow self-service FPM reload
+  fi
+
+  local _FpmTest
+  _FpmTest=$(ls /data/disk/*/static/control/run-php-fpm-reload.pid 2>/dev/null | wc -l)
+  [ "${_FpmTest}" -lt 1 ] && return 0
+
+  # Cooldown check — reuse php84-fpm cooldown as shared gate since a reload
+  # affects all FPM versions simultaneously
+  local _cd="/run/php84-fpm.cooldown"
+  local _now
+  _now=$(date +%s)
+  if [ -s "${_cd}" ]; then
+    local _ts _delta
+    _ts=$(tr -d '\n' < "${_cd}" 2>/dev/null)
+    if [ -n "${_ts}" ]; then
+      _delta=$(( _now - _ts ))
+      if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then
+        echo "$(date) INFO: run-php-fpm-reload.pid found but in cooldown (${_delta}s < ${_FPM_COOLDOWN_SECS}s); skipping" >> ${_pthOml}
+        rm -f /data/disk/*/static/control/run-php-fpm-reload.pid
+        return 0
+      fi
+    fi
+  fi
+
+  echo "$(date) PHP-FPM reload requested via sentinel — reloading to clear APCu" >> ${_pthOml}
+  rm -f /data/disk/*/static/control/run-php-fpm-reload.pid
+  _fpm_reload "SENTINEL"
+
+  # Update cooldown timestamp for all FPM versions
+  local _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    [ -e "/etc/init.d/php${e}-fpm" ] && date +%s > "/run/php${e}-fpm.cooldown"
+  done
+  echo "$(date) PHP-FPM reload complete (APCu cleared)" >> ${_pthOml}
+}
+
+
 if [ ! -e "/var/tmp/fpm" ]; then
   mkdir -p /var/tmp/fpm
   chmod 777 /var/tmp/fpm
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _fpm_apcu_reload_sentinel
   _fpm_logs_empty
   _fpm_duplicate_instances_detection
   _fpm_listen_conflict_detection
