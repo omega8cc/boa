@@ -20,6 +20,9 @@
 ###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/
 ###   §5  Dump Aegir DB → sed replace → re-import
 ###   §6  Reload nginx
+###   §7  Flush Drush cache and run Aegir task queue (5 passes) to regenerate
+###       all aliases, vhosts, and db-host entries from the updated database.
+###       Assumes BOA cron is not running (caller must ensure this).
 ###
 
 export HOME=/root
@@ -139,7 +142,8 @@ _check_root() {
     _die "/root/.my.pass.txt missing or empty — cannot connect to MySQL"
   fi
 
-  _info "Aegir root: ${_AEGIR_ROOT}"
+  _info "Aegir root : ${_AEGIR_ROOT}"
+  _info "Aegir user : ${_AEGIR_USER}"
 }
 
 ###-------------§1 DETECT OLD HOSTNAME---###
@@ -350,7 +354,51 @@ _rename_in_database() {
 _reload_nginx() {
   _info "§6 Reloading nginx ..."
   _maybe_run nginx -t
-  _maybe_run sudo /etc/init.d/nginx reload
+  _maybe_run service nginx reload
+}
+
+###-------------§7 AEGIR TASK QUEUE------###
+
+_run_as_aegir() {
+  # Run a drush command as the Aegir user derived from the aegir root path.
+  # Uses login shell (-) so .bash_profile is sourced and drush PATH is set.
+  su -s /bin/bash - "${_AEGIR_USER}" -c "$1"
+}
+
+_run_aegir_tasks() {
+  _info "§7 Flushing Drush cache and running Aegir task queue (5 passes) ..."
+  _info "    Each pass: cc drush + server verify tasks + dispatch + hosting-tasks"
+  _info "    This regenerates aliases, db-host entries, and nginx vhosts on disk."
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _info "(dry-run) Would run 5 passes of drush cc + hosting task queue"
+    return
+  fi
+
+  local _pass
+  for _pass in 1 2 3 4 5; do
+    _info "  Pass ${_pass}/5 ..."
+
+    _run_as_aegir "drush8 cc drush > /dev/null 2>&1"
+
+    _run_as_aegir "drush8 @hostmaster \
+      hosting-task @server_master verify --force"
+
+    _run_as_aegir "drush8 @hostmaster \
+      hosting-task @server_localhost verify --force"
+
+    _run_as_aegir "drush8 @hostmaster hosting-dispatch"
+
+    sleep 10
+
+    _run_as_aegir "drush8 @hostmaster hosting-tasks --force"
+
+    sleep 10
+
+    _info "  Pass ${_pass}/5 complete"
+  done
+
+  _info "§7 Aegir task queue complete"
 }
 
 ###-------------SUMMARY------------------###
@@ -368,15 +416,6 @@ _print_summary() {
   echo "  New hostname : ${_NEW_HOST}"
   echo "======================================================"
   echo ""
-  if [ "${_DRY_RUN}" = "NO" ]; then
-    echo "Next steps:"
-    echo "  1. Verify nginx config:  nginx -t"
-    echo "  2. Check Aegir UI:     http://master.${_NEW_HOST}/"
-    echo "  3. Run hostmaster verify via drush if needed:"
-    echo "     su -s /bin/bash - ${_AEGIR_USER} -c 'drush8 @hm hosting-task @server_master verify --force'"
-    echo "     su -s /bin/bash - ${_AEGIR_USER} -c 'drush8 @hm hosting-dispatch'"
-    echo ""
-  fi
 }
 
 ###-------------MAIN---------------------###
@@ -390,6 +429,7 @@ _rewrite_vhosts
 _detect_aegir_db
 _rename_in_database
 _reload_nginx
+_run_aegir_tasks
 _print_summary
 
 exit 0
