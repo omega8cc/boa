@@ -962,7 +962,18 @@ _tune_memory_limits() {
       # Previously the 2048 cap caused APCu saturation (>90%) on large servers
       # even after the manual 256M→512M bump, because the formula did not scale
       # beyond the 2048 tier regardless of available RAM.
-      if [ "${_USE}" -ge 8192 ]; then
+      #
+      # Very high-RAM tier: servers with ~85GB+ usable RAM.
+      # _USE_PHP=8192 yields _USE_FPM=4096 and _USE_APC=2048M for large
+      # multi-tenant bare metal nodes with many concurrent PHP workers.
+      if [ "${_USE}" -ge 16384 ]; then
+        _USE_PHP=8192
+        _USE_OPC=8192
+        _USE_CLI=16384
+        _QCE_SQL=256M
+        _RND_SQL=32M
+        _JBF_SQL=16M
+      elif [ "${_USE}" -ge 8192 ]; then
         _USE_PHP=4096
         _USE_OPC=4096
         _USE_CLI=8192
