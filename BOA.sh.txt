@@ -1234,7 +1234,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/renameaegirhost" ] \
-    || [ ! -e "${_pthLog}/renameaegirhost.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/renameaegirhost.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc renameaegirhost)
     if (( _CNT > 0 )); then
       echo "The renameaegirhost is running!"
@@ -1246,7 +1246,7 @@ _update_agents() {
       if [ -e "${_optBin}/renameaegirhost" ]; then
         chmod 700 ${_optBin}/renameaegirhost
         chown root:root ${_optBin}/renameaegirhost
-        touch ${_pthLog}/renameaegirhost.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/renameaegirhost.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/renameaegirhost.old" ]; then
           mv -f ${_optBin}/renameaegirhost.old ${_optBin}/renameaegirhost
@@ -1409,23 +1409,49 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_optBin}/xboa" ] \
-    || [ ! -e "${_pthLog}/xboa.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/xboa)
+  if [ ! -e "${_optBin}/xoct" ] \
+    || [ ! -e "${_pthLog}/xoct.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/xoct)
     if (( _CNT > 0 )); then
-      echo "The xboa is running!"
+      echo "The xoct is running!"
     else
-      if [ -e "${_optBin}/xboa" ]; then
-        mv -f ${_optBin}/xboa ${_optBin}/xboa.old
+      if [ -e "${_optBin}/xoct" ]; then
+        mv -f ${_optBin}/xoct ${_optBin}/xoct.old
       fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/xboa" -o ${_optBin}/xboa
-      if [ -e "${_optBin}/xboa" ]; then
-        chmod 700 ${_optBin}/xboa
-        chown root:root ${_optBin}/xboa
-        touch ${_pthLog}/xboa.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
+      curl ${_crlGet} "${_urlHmr}/tools/bin/xoct" -o ${_optBin}/xoct
+      if [ -e "${_optBin}/xoct" ]; then
+        chmod 700 ${_optBin}/xoct
+        chown root:root ${_optBin}/xoct
+        touch ${_pthLog}/xoct.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
-        if [ -e "${_optBin}/xboa.old" ]; then
-          mv -f ${_optBin}/xboa.old ${_optBin}/xboa
+        if [ -e "${_optBin}/xoct.old" ]; then
+          mv -f ${_optBin}/xoct.old ${_optBin}/xoct
+        fi
+      fi
+    fi
+    if [ -e "${_optBin}/xboa" ] && [ ! -L "${_optBin}/xboa" ] && [ -e "${_optBin}/xoct" ]; then
+      rm -f ${_optBin}/xboa
+      ln -sfn ${_optBin}/xoct ${_optBin}/xboa
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/xmass" ] \
+    || [ ! -e "${_pthLog}/xmass.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/xmass)
+    if (( _CNT > 0 )); then
+      echo "The xmass is running!"
+    else
+      if [ -e "${_optBin}/xmass" ]; then
+        mv -f ${_optBin}/xmass ${_optBin}/xmass.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/xmass" -o ${_optBin}/xmass
+      if [ -e "${_optBin}/xmass" ]; then
+        chmod 700 ${_optBin}/xmass
+        chown root:root ${_optBin}/xmass
+        touch ${_pthLog}/xmass.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/xmass.old" ]; then
+          mv -f ${_optBin}/xmass.old ${_optBin}/xmass
         fi
       fi
     fi
@@ -1912,13 +1938,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/php.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/php.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/php.sh /var/xdrago/monitor/check/php.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
     if [ -e "/var/xdrago/monitor/check/php.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/php.sh
       chown root:root /var/xdrago/monitor/check/php.sh
-      touch ${_pthLog}/php.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/php.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/php.sh.old /var/xdrago/monitor/check/php.sh
     fi
@@ -4653,8 +4679,9 @@ _update_boa_tools() {
             weblogx \
             webserver \
             websh \
-            xboa \
-            xcopy"
+            xcopy \
+            xmass \
+            xoct"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
       _CNT=$(pgrep -fc /local/bin/${_cbn})
@@ -4737,7 +4764,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver}
-  chmod 700 ${_optBin}/{loadguard,lock.inc,renameaegirhost,syncpass,weblogx,xboa,xcopy}
+  chmod 700 ${_optBin}/{loadguard,lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
