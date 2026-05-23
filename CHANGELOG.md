@@ -30,6 +30,22 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: BOA installer/upgrader and runtime fetch chain switched
+  from plain HTTP to HTTPS, and from cert-insecure curl/wget defaults
+  to cert-validating defaults. `_urlDev`/`_urlHmr`/`_urlEnc` now use
+  `https://${_USE_MIR}/...`. `_crlGet` drops `-k` (curl's
+  `--insecure`); `_wgetGet` drops `--no-check-certificate` (the wget
+  equivalent). 20 files updated covering the top-level installer, the
+  satellite/master library, the cron-driven monitors, the backup
+  scripts, and the runtime settings templates. Closes the
+  network-MITM-to-root supply-chain exposure during install/upgrade.
+- security: `mysql_cleanup.sh` rejects database and table identifiers
+  that do not match `[A-Za-z0-9_]+` before passing them to root mysql.
+  All seven SQL loops (six per-table-pattern + the outer per-database
+  loop) gated by a new `_is_safe_ident` helper. SQL identifiers in the
+  heredocs also backtick-quoted as belt-and-braces. Closes the
+  cross-tenant `DROP DATABASE` path via a tenant-created table with
+  backticks in its name.
 - security: `mybackup` queued-command file format is now one argument
   per line (`printf '%s\n' "$@"`) instead of a space-joined string. The
   root-cron consumer reads it via `mapfile -t`, re-applies

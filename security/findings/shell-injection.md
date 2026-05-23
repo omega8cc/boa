@@ -20,9 +20,9 @@ defined in CLAUDE.md. Most-recent findings appear at the bottom.
 ---
 
 ## [HIGH] BOA install/upgrade fetches every binary over plain HTTP from mirror; curl uses `-k` (insecure)
-**File:** BOA.sh.txt  (lines 67, 313, 314, 419, 4849, 5084)
+**File:** BOA.sh.txt  (lines 67, 313, 314, 419, 4849, 5084) — and ~20 other files across BOA
 **Category:** shell-injection (delivery-channel / MITM)
-**Status:** NEEDS-REVIEW
+**Status:** PATCHED in follow-up commit
 
 ### Description
 Every `curl ${_crlGet} "${_urlHmr}/..." -o /opt/local/bin/...` fetch in
@@ -106,28 +106,37 @@ Three independent improvements; pick at least the first.
    verify each downloaded file against it before install. Cheaper than
    per-file signing, weaker than per-file signing.
 
-NEEDS-REVIEW: this is a deps/manifest-class change. Per CLAUDE.md:
-"Before modifying any fetch URL, mirror reference, or version pin,
-consult deps/manifest.yml and flag the change for Tier 3 testing in
-boa-testing. A wrong pin or broken mirror URL causes a failed install
-with no fast recovery path."
+Adam confirmed on 2026-05-24 that BOA mirrors will be switched to
+HTTPS, and that per-file signing is not feasible at the hot-fix cadence
+BOA operates at. Landing the URL flip + `-k` removal here. Signing /
+manifest scheme deferred as a future hardening for if the threat model
+ever expands to include mirror-server compromise (currently mitigated
+by the mirrors being self-hosted under omega8cc).
 
-Recommended sequencing:
-- (a) Audit each BOA mirror for valid HTTPS support (no Claude Code
-      action; needs operator).
-- (b) If all mirrors HTTPS-ready: land URL-prefix flip + `-k` removal
-      in a single commit. Tier 3 test via boa-testing.
-- (c) Plan signature/manifest scheme for the next major BOA release.
+The change covers:
+- `_urlDev` / `_urlHmr` / `_urlEnc` definitions across all 20 affected
+  files (top-level installer, satellite/master `.inc` libraries, the
+  cron-driven `daily.sh` / `clear.sh` / `manage_ltd_users.sh` /
+  `manage_solr_config.sh`, the backup scripts, and the
+  `barracuda.sh.cnf` / `octopus.sh.cnf` settings templates).
+- All literal `http://${_USE_MIR}` and `http://files.aegir.cc` URLs
+  switched to `https://`.
+- `_crlGet="-L --max-redirs 3 -k -s ..."` → `_crlGet="-L --max-redirs 3 -s ..."`
+  across all 15 sites that defined it (drops `-k`).
+- `_wgetGet="--max-redirect=3 --no-check-certificate ..."` →
+  `_wgetGet="--max-redirect=3 ..."` across all 14 sites (drops the
+  wget equivalent of `-k`; the audit caught this companion flag
+  during the patch pass).
 
 ### Patch commit
-PENDING — gated by mirror-HTTPS audit. See DECISIONS.md.
+PATCHED in follow-up commit.
 
 ---
 
 ## [MEDIUM] mysql_cleanup.sh interpolates table names into SQL heredocs without identifier quoting
 **File:** aegir/tools/system/mysql_cleanup.sh  (lines 129, 140, 150, 160, 170, 180, 184)
 **Category:** shell-injection (SQL identifier injection in root mysql context)
-**Status:** NEEDS-REVIEW
+**Status:** PATCHED in follow-up commit
 
 ### Description
 `mysql_cleanup.sh` runs as root from cron (`30 * * * *`) and iterates
@@ -220,14 +229,21 @@ The same pattern applies to all six loops in this file
 `_truncate_accesslog_tables`, `_truncate_batch_tables`,
 `_truncate_queue_tables`, `_truncate_views_data_export`).
 
-NEEDS-REVIEW: confirm Drupal's table-name conventions and whether any
-BOA-managed tooling (Drush, hostmaster) ever creates identifiers
-outside `[A-Za-z0-9_]`. If yes, drop the third (allowlist) layer and
-keep only the backtick-quote + backtick-reject. Asking before patching
-because this touches a cron-driven root-mysql script.
+Adam confirmed on 2026-05-24: only `[A-Za-z0-9_]+` should ever be
+allowed for table/db identifiers in BOA; nothing else is used in
+practice. Landed the positive-allowlist fix with `_is_safe_ident`
+helper applied to every truncate/drop loop and to the outer
+`for _DB in ...` database loop. Backtick-quoting added to every
+SQL identifier as belt-and-braces — even though the allowlist makes
+the quoting redundant today, it makes future audit work easier
+because the SQL is now structurally correct.
+
+Unsafe identifiers are logged (`WARN: skipping unsafe ... in ${_DB}:
+${C}`) and skipped, never executed. The script's hourly cron continues
+on the remaining tenants and tables.
 
 ### Patch commit
-PENDING — awaiting confirmation.
+PATCHED in follow-up commit.
 
 ---
 

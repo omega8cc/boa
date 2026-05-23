@@ -94,7 +94,7 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  export _urlDev="http://${_USE_MIR}/dev"
+  export _urlDev="https://${_USE_MIR}/dev"
 }
 
 # Function to download GeoLite2 databases

@@ -177,8 +177,8 @@ export _octSetTpl="${_ROOT}/.drush/sys/provision/Provision/Config/Drupal"
 ### Helper variables
 ###
 export _bldPth="/opt/tmp/boa"
-export _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-export _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+export _crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+export _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 export _filIncO="octopus.sh.cnf"
 export _gCb="git clone --branch"
 export _gitHub="https://github.com/omega8cc"

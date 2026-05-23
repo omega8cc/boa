@@ -112,7 +112,7 @@ _get_core_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"; then
+      if curl ${_crlGet} "https://${_USE_MIR}/core/$1" -o "$1"; then
         _success=1
         break
       else
@@ -127,7 +127,7 @@ _get_core_ext() {
     if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: Failed to download http://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
+      _msg "OOPS: Failed to download https://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
     fi
   fi
