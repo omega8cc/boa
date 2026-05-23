@@ -20,6 +20,36 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
+# Same defence pattern as the fix-drupal-* helpers. Without this, a symlink
+# planted at ${drupal_root}/vendor/drush could let the caller chmod 0775 or
+# chmod 0400 arbitrary system paths via the NOPASSWD sudo entry point.
+_validate_path_prefix() {
+  local _resolved
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
+    printf "Error: path does not resolve: %s\n" "$1" >&2
+    exit 1
+  }
+  case "${_resolved}/" in
+    /var/aegir/*|/data/disk/*|/home/*)
+      ;;
+    *)
+      printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+_chmod_safe() {
+  local _mode=$1
+  shift
+  local _p
+  for _p in "$@"; do
+    [ -L "${_p}" ] && continue
+    [ -e "${_p}" ] || continue
+    chmod "${_mode}" "${_p}"
+  done
+}
+
 drupal_root=${1%/}
 lock_mode=${2:-lock}
 
@@ -48,32 +78,34 @@ if [ -z "${drupal_root}" ] \
     exit 1
 fi
 
+_validate_path_prefix "${drupal_root}"
+
 cd ${drupal_root}
 
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
     if [ "$mode" = "unlock" ]; then
       printf "Unlocking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
-      chmod 0775 ${drupal_root}/vendor/drush
-      chmod 0775 ${drupal_root}/vendor/symfony/console/Input
-      chmod 0775 ${drupal_root}/vendor/symfony/console/Style
+      _chmod_safe 0775 "${drupal_root}/vendor/drush"
+      _chmod_safe 0775 "${drupal_root}/vendor/symfony/console/Input"
+      _chmod_safe 0775 "${drupal_root}/vendor/symfony/console/Style"
     else
       printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
-      chmod 0400 ${drupal_root}/vendor/drush
-      chmod 0400 ${drupal_root}/vendor/symfony/console/Input
-      chmod 0400 ${drupal_root}/vendor/symfony/console/Style
+      _chmod_safe 0400 "${drupal_root}/vendor/drush"
+      _chmod_safe 0400 "${drupal_root}/vendor/symfony/console/Input"
+      _chmod_safe 0400 "${drupal_root}/vendor/symfony/console/Style"
     fi
   elif [ -e "${drupal_root}/../vendor" ]; then
     if [ "$mode" = "unlock" ]; then
       printf "Unlocking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
-      chmod 0775 ${drupal_root}/../vendor/drush
-      chmod 0775 ${drupal_root}/../vendor/symfony/console/Input
-      chmod 0775 ${drupal_root}/../vendor/symfony/console/Style
+      _chmod_safe 0775 "${drupal_root}/../vendor/drush"
+      _chmod_safe 0775 "${drupal_root}/../vendor/symfony/console/Input"
+      _chmod_safe 0775 "${drupal_root}/../vendor/symfony/console/Style"
     else
       printf "Locking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
-      chmod 0400 ${drupal_root}/../vendor/drush
-      chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
-      chmod 0400 ${drupal_root}/../vendor/symfony/console/Style
+      _chmod_safe 0400 "${drupal_root}/../vendor/drush"
+      _chmod_safe 0400 "${drupal_root}/../vendor/symfony/console/Input"
+      _chmod_safe 0400 "${drupal_root}/../vendor/symfony/console/Style"
     fi
   fi
   if [ "$mode" = "unlock" ]; then

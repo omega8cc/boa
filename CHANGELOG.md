@@ -30,6 +30,13 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: NOPASSWD-sudo helpers harden against caller-planted symlinks.
+  `aegir/tools/bin/fix-drupal-{platform,site}-{ownership,permissions}.sh`
+  and `aegir/tools/bin/lock-local-drush-permissions.sh` now validate
+  `--root`/`--site-path` resolves under `/var/aegir/`, `/data/disk/`, or
+  `/home/`; `chown -L -R` replaced with `chown -h -R`; every direct
+  `chmod` routed through a wrapper that skips symlinks. Closes the
+  tar-archive-with-symlink → aegir → root escalation path.
 
 ### Removed
 - `xboa`: drush8 `en readonlymode -y` call in the per-site export step and
