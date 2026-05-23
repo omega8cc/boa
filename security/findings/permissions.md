@@ -270,7 +270,7 @@ PATCHED — see commit message below.
 ## [LOW] `chmod -R 777 /opt/tmp` recursive on BOA scratch root
 **File:** lib/functions/helper.sh.inc  (line 538)
 **Category:** permissions
-**Status:** NEEDS-REVIEW
+**Status:** PATCHED in follow-up commit
 
 ### Description
 ```bash
@@ -301,12 +301,14 @@ Replace the first line with `chmod 1777 /opt/tmp` (top-level only, with
 sticky bit). Keep the two `find` calls for `/opt/tmp/boa`. Optional: add
 `-h` to the chmod (no-op for non-symlink; defense-in-depth).
 
-NEEDS-REVIEW: `chmod -R 777` predates the 1777-with-find pattern and may
-reflect an explicit choice. Asking before patching since `helper.sh.inc`
-is sourced by every BOA install/upgrade run and `_check_root` chain.
+Adam confirmed 2026-05-23 that 1777 is the right shape (matches the
+sticky-scratch model already used for /var/tmp/fpm and /opt/user/*).
 
 ### Patch commit
-PENDING — awaiting confirmation.
+PATCHED in follow-up commit. `chmod -R 777` replaced with `chmod 1777`
+(top-level only). The follow-up `find /opt/tmp/boa -exec chmod` calls
+explicitly handle the boa subtree; other subtrees keep their existing
+modes rather than being blanket-rewritten on every install/upgrade.
 
 ---
 

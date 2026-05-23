@@ -535,7 +535,12 @@ _mode_detection() {
   _SRCDIR="/opt/tmp/files"
   rm -rf /var/opt/*
   mkdir -p ${_SRCDIR}
-  chmod -R 777 /opt/tmp &> /dev/null
+  # 1777 (sticky) on the scratch root, not -R 777. Sticky bit prevents
+  # cross-uid deletion of files inside /opt/tmp/, matching the model BOA
+  # already uses for /var/tmp/fpm and /opt/user/{gems,npm}. The follow-up
+  # find calls below explicitly set the boa subtree to 0755/0644; any other
+  # subtree keeps its existing mode rather than being blanket-777'd.
+  chmod 1777 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
   if [ "${_STATUS}" != "UPGRADE" ]; then

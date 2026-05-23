@@ -45,6 +45,12 @@ otherwise date-stamped entries for non-versioned work.
   Cross-tenant pool-name enumeration and arbitrary-file creation in
   the log directory are now blocked; PHP-FPM workers still append to
   pool logs via the master's inherited fd.
+- security: `/opt/tmp` (BOA scratch root) created with mode 1777
+  (sticky) instead of `chmod -R 777`. Matches the sticky-scratch model
+  already used for `/var/tmp/fpm` and `/opt/user/{gems,npm}`. The
+  explicit `find /opt/tmp/boa -exec chmod` calls still set the boa
+  subtree to 0755/0644; other subtrees keep their existing modes
+  rather than being blanket-rewritten on every install/upgrade.
 - security: `/data/conf/arch/log` set to mode 0755 instead of 0777
   in both `system.sh.inc` and `satellite.sh.inc`. The directory is
   vestigial (no writer in the current codebase); tightening prevents
