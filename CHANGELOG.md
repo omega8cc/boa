@@ -30,6 +30,10 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: `lock.inc` opens and closes its lock file descriptor via
+  bash's `exec {var}>...` auto-assignment form instead of `eval "exec
+  ${var}>..."`. Same behaviour for the current caller set, removes the
+  eval seam if a future caller ever passes a non-static fd or path.
 - security: `daily.sh` no longer follows attacker-controlled symlinks
   during the per-site chown sweep. `chown -L -R` (which explicitly
   dereferenced links during recursion) replaced with `chown -h -R`
