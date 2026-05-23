@@ -30,6 +30,17 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: `scan_nginx.sh` strips non-printable characters from the
+  DDoS-UA fingerprint before echo and verbose-log emission. Prevents an
+  attacker-controlled User-Agent from injecting terminal escape sequences
+  into cron stdout / `tail -f` views; no behavioural change for legitimate
+  UAs.
+- security: `scan_nginx.sh` per-line IP candidate filter now calls
+  `_validate_ip` (which adds the per-octet 0..255 range check) instead of
+  the loose regex `^([0-9]{1,3}\.){3}[0-9]{1,3}$`. Off-spec strings such
+  as `999.999.999.999` no longer enter the UA-tracking and path-flood
+  associative arrays. csf already rejected them downstream — this just
+  filters earlier.
 - security: NOPASSWD-sudo helpers harden against caller-planted symlinks.
   `aegir/tools/bin/fix-drupal-{platform,site}-{ownership,permissions}.sh`
   and `aegir/tools/bin/lock-local-drush-permissions.sh` now validate
