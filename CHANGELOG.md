@@ -30,6 +30,18 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: `mybackup` queued-command file format is now one argument
+  per line (`printf '%s\n' "$@"`) instead of a space-joined string. The
+  root-cron consumer reads it via `mapfile -t`, re-applies
+  `_validate_restore_command` against the parsed args, and executes
+  via `su -s /bin/bash - <user> -c 'exec mybackup "$@"' -- "${args[@]}"`
+  so each arg arrives positionally with no shell-metacharacter
+  interpretation. The validator now forbids whitespace and the shell
+  metacharacter set in `_restore_path`. A defence-in-depth re-validation
+  also runs on the system-user execution path before `_restore`'s
+  duplicity-eval. Closes the lshell-to-system-user escape via direct
+  queue-file tampering by `.ftp` operators (the queue file lives under
+  the `.ftp`-owned `static/control/.run/` tree).
 - security: `lock.inc` opens and closes its lock file descriptor via
   bash's `exec {var}>...` auto-assignment form instead of `eval "exec
   ${var}>..."`. Same behaviour for the current caller set, removes the

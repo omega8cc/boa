@@ -26,7 +26,7 @@ is intentional and not flagged. Every grep-hit had it commented out.
 ## [HIGH] mybackup queued-command file is `.ftp`-writable and shell-interpolated by the root cron
 **File:** aegir/tools/bin/mybackup  (lines 393–407 root cron; 439–457 .ftp queue side)
 **Category:** variable-handling (also chains into shell-injection and privilege-escalation)
-**Status:** OPEN — NEEDS-REVIEW before patching
+**Status:** PATCHED in follow-up commit
 
 ### Description
 `mybackup` exposes a CLI to `<user>.ftp` lshell-restricted accounts that
@@ -129,15 +129,36 @@ Two-layer defence that does not require redesigning the queue file format:
    queued argument as a separate `$1`/`$2`/`$3`/`$4` to the inner shell;
    no shell metacharacters in any argument are interpreted as syntax.
 
-NEEDS-REVIEW: this is the right shape but requires confirmation that
-`_validate_restore_command`'s rules are sufficient for the queued form
-(re-read after `read -ra` may differ subtly from the original CLI args,
-e.g. if a user's path contains whitespace). Asking before patching
-because mybackup is operator-facing — a misvalidation would block a
-legitimate restore.
+Adam confirmed on 2026-05-23: go max-robust with mapfile (one arg per
+line) and explicitly forbid whitespace in `_restore_path`. The landed
+patch implements that:
+
+- **Producer (`.ftp` side, line 501):** `echo "$@" > ...` replaced with
+  `printf '%s\n' "$@" > ...`. Each validated argument lands on its own
+  line — no whitespace ambiguity round-tripping through the queue file.
+- **Validator (line 365-385):** `_restore_path` rejected if it contains
+  any whitespace, or any of `; & | \` $ < > ( ) { } " ' \\`. BOA's
+  tenant directory layout has no whitespace in real paths, so this
+  blocks injection without blocking legitimate restores.
+- **Consumer (root cron, lines 401-425):** `cat "${_user_cmd_file}"`
+  replaced with `mapfile -t _queued_args < "${_user_cmd_file}"`. The
+  validator is re-applied after read; failures log to
+  `/var/log/mybackup_invalid_queued.log` and remove the queue file.
+  Exec is now `su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"'
+  -- "${_queued_args[@]}"` — each arg arrives at the inner mybackup as
+  a separate positional, with no shell metacharacter in any field
+  interpreted as syntax.
+- **System-user execution path (line 522-526):** also re-validates
+  before `_restore` runs. Defence in depth — `_restore` then evals
+  `_restore_command` (line 255) with operands that are guaranteed free
+  of shell metacharacters.
+
+Old space-joined queue files left over from before this change parse
+as a single `args[0]` that fails the `"${_action}" != "restore"` check
+and are removed.
 
 ### Patch commit
-PENDING — awaiting confirmation on validator scope.
+PATCHED in follow-up commit.
 
 ---
 
