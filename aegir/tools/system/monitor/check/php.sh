@@ -397,7 +397,10 @@ _fpm_apcu_reload_sentinel() {
 
 if [ ! -e "/var/tmp/fpm" ]; then
   mkdir -p /var/tmp/fpm
-  chmod 777 /var/tmp/fpm
+  # 1777 (sticky) instead of 777: every PHP-FPM pool (each a per-tenant uid)
+  # still creates its own opcache.lockfile, but cross-tenant deletion of those
+  # lockfiles is prevented. Mirrors /tmp's standard scratch-dir model.
+  chmod 1777 /var/tmp/fpm
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then

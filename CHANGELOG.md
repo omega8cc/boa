@@ -30,6 +30,25 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: `daily.sh` no longer follows attacker-controlled symlinks
+  during the per-site chown sweep. `chown -L -R` (which explicitly
+  dereferenced links during recursion) replaced with `chown -h -R`
+  at lines 1725/1738/1745, and a `_validate_safe_dir` helper now
+  realpath-canonicalises the alias-derived `_Dir`/`_Plr` paths and
+  skips the loop iteration unless they resolve under `/data/disk/`,
+  `/var/aegir/`, or `/home/`.
+- security: `/var/tmp/fpm` (PHP-FPM opcache lockfile path) created
+  with mode 1777 (sticky) instead of 0777. Prevents cross-tenant
+  deletion of opcache lockfiles between PHP-FPM pools running as
+  different per-tenant uids.
+- security: `/var/log/php*` set to mode 0755 root:adm instead of 0777.
+  Cross-tenant pool-name enumeration and arbitrary-file creation in
+  the log directory are now blocked; PHP-FPM workers still append to
+  pool logs via the master's inherited fd.
+- security: `/data/conf/arch/log` set to mode 0755 instead of 0777
+  in both `system.sh.inc` and `satellite.sh.inc`. The directory is
+  vestigial (no writer in the current codebase); tightening prevents
+  any future feature from inheriting a wide-open creator surface.
 - security: `scan_nginx.sh` strips non-printable characters from the
   DDoS-UA fingerprint before echo and verbose-log emission. Prevents an
   attacker-controlled User-Agent from injecting terminal escape sequences

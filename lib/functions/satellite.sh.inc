@@ -5140,7 +5140,10 @@ _satellite_batch_cleanup() {
   mv -f ${_ROOT}/backups/safe_cache_form_clear-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/ &> /dev/null
   mkdir -p /data/conf/arch/log
-  chmod 0777 /data/conf/arch/log
+  # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
+  # not /data/conf/arch/log — the log subdirectory is vestigial and has no
+  # current writer. Matches the parallel fix in system.sh.inc.
+  chmod 0755 /data/conf/arch/log
   mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
