@@ -30,6 +30,27 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: `mysql_backup.sh` and `mysql_cluster_backup.sh` apply the
+  same `_is_safe_ident` allowlist on database and table identifiers
+  that `mysql_cleanup.sh` got in the previous audit pass. Closes the
+  cross-tenant `DROP DATABASE` path via tenant-named tables containing
+  backticks. All SQL identifiers in TRUNCATE/DROP/OPTIMIZE/ALTER
+  heredocs also backtick-quoted as belt-and-braces.
+- security: `/var/log/boa/aegir_install.log` set to mode 0600 in
+  `master.sh.inc:1219` immediately after the existing `chown
+  aegir:aegir`. The install log captures the Aegir one-time-login URL
+  briefly during install; world-readable mode 0644 (the previous
+  default) let any local user race to redeem the OTLU.
+- security: removed 4 dead `_SQL_PSWD=$(cat /root/.my.pass.txt)` reads
+  in `BOA.sh.txt`, `aegir/tools/system/move_sql.sh`,
+  `aegir/tools/system/mysql_repair.sh`, and
+  `aegir/tools/system/checksql.pl`. Each loaded the cleartext MySQL
+  root password into the script's process memory without ever
+  referencing the variable afterwards (mysql/mysqlcheck calls in
+  those scripts use /root/.my.cnf credentials implicitly).
+- security: `aegir/tools/system/monitor/check/mysql.sh:172` no longer
+  reads the MySQL root password into a shell variable to test its
+  non-emptiness — uses `[ -s /root/.my.pass.txt ]` directly.
 - security: BOA installer/upgrader and runtime fetch chain switched
   from plain HTTP to HTTPS, and from cert-insecure curl/wget defaults
   to cert-validating defaults. `_urlDev`/`_urlHmr`/`_urlEnc` now use

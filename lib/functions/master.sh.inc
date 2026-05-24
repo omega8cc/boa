@@ -1217,6 +1217,10 @@ EOFMYSQL
 
     touch /var/log/boa/aegir_install.log
     chown aegir:aegir /var/log/boa/aegir_install.log
+    # 0600 (not the default 0644): the install log captures the Aegir
+    # one-time-login URL — readable by any local user during the URL's
+    # TTL would let a tenant race the admin to redeem it as Hostmaster.
+    chmod 0600 /var/log/boa/aegir_install.log
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
