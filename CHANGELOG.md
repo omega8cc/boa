@@ -30,6 +30,15 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: category-8 (misc) sweep complete. No new patches landed —
+  the prior seven category passes caught every actionable item. Two
+  LOW items documented for follow-up: Node.js `curl|bash` install
+  path in `xtra.sh.inc` (runs only on single-tenant hosts per BOA's
+  no-Node-on-multi-tenant policy) and the `/tmp/virtwhat.$$.strace`
+  predictable filename (install-time only, no untrusted users
+  present). See `security/findings/misc.md` for cross-references to
+  the categories that handled MD5/SHA1, FTP-as-FTPS-only, SUID
+  intent, umask defaults, and password-generation RNG.
 - security: PHP ini hardening across all 24 templates (12 versions ×
   `{.ini, -cli.ini}`): `expose_php Off` (drops `X-Powered-By` version
   leak), `session.use_strict_mode 1` (blocks session-fixation), and
