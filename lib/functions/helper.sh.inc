@@ -1025,6 +1025,105 @@ _check_boa_version() {
   fi
 }
 
+# Enable hidepid=2 on /proc, with the adm group as the visibility-exempt
+# gid. Closes the cross-tenant /proc/<pid>/cmdline disclosure class that
+# the security audit found in many sites (mysql -p<pwd>, mydumper
+# --password=, duplicity s3://KEY:SECRET@..., etc.):
+#
+#   hidepid=2 makes non-root users see only their own processes in /proc.
+#   gid=<adm> exempts members of the adm group from that restriction.
+#
+# aegir is added to adm here so hostmaster operations can still pgrep
+# system services (mysql, nginx, php-fpm) it cares about. Per-Octopus
+# system users (o1, o2, …) and lshell-restricted .ftp accounts are
+# deliberately NOT in adm — they retain only own-process visibility,
+# which is the cross-tenant boundary the audit is enforcing.
+#
+# Idempotent: the existing /proc fstab line is rewritten (if any) and
+# the running /proc mount is remounted with the new options. Re-running
+# the function keeps the same state.
+_check_proc_hidepid() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_proc_hidepid"
+  fi
+  if [ -n "$(getent passwd aegir 2>/dev/null)" ] \
+    && ! id -nG aegir 2>/dev/null | tr ' ' '\n' | grep -qx adm; then
+    usermod -aG adm aegir &> /dev/null
+  fi
+  if [ ! -d "/proc/1" ]; then
+    return 0
+  fi
+  local _admGid
+  _admGid=$(getent group adm | cut -d: -f3 2>/dev/null)
+  if [ -z "${_admGid}" ]; then
+    return 0
+  fi
+  if ! grep -qE '^proc[[:space:]]+/proc[[:space:]].*hidepid' /etc/fstab 2>/dev/null; then
+    sed -i '/^proc[[:space:]]\+\/proc[[:space:]]/d' /etc/fstab
+    echo "proc            /proc           proc    defaults,hidepid=2,gid=${_admGid}  0  0" >> /etc/fstab
+  fi
+  mount -o remount,hidepid=2,gid=${_admGid} /proc &> /dev/null
+}
+
+# Generate /root/.my.proxysql_adm.cnf (mode 0600) from the proxysql
+# admin password file. Callers then connect via:
+#   mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf
+# which keeps the password out of /proc/<mysql-pid>/cmdline. This
+# replaces the older pattern `mysql -uadmin -p${_PROXYSQL_PASSWORD}
+# -h127.0.0.1 -P6032 --protocol=tcp` that exposed the cleartext
+# password to any local user reading /proc during the mysql process's
+# lifetime. Returns 0 on success, 1 if the source password file is
+# missing or empty.
+_write_proxysql_adm_cnf() {
+  local _src="/root/.my.proxysql_adm_pwd.txt"
+  local _dst="/root/.my.proxysql_adm.cnf"
+  local _pwd
+  if [ ! -s "${_src}" ]; then
+    return 1
+  fi
+  _pwd=$(tr -d '\n' < "${_src}")
+  # Create with 0600 root:root before any content is written.
+  install -m 0600 -o root -g root /dev/null "${_dst}"
+  cat > "${_dst}" <<PROXYSQL_CNF
+[client]
+user=admin
+password="${_pwd}"
+host=127.0.0.1
+port=6032
+protocol=tcp
+PROXYSQL_CNF
+  return 0
+}
+
+# Generate /root/.my.cluster_root.cnf (mode 0600) from the cluster
+# root password file plus a caller-provided host/port. Callers connect
+# via mysql --defaults-extra-file=/root/.my.cluster_root.cnf, keeping
+# the cluster root password out of /proc/<mysql-pid>/cmdline.
+#
+# Usage: _write_cluster_root_cnf <host> <port>
+# Returns 0 on success, 1 if the source password file is missing.
+_write_cluster_root_cnf() {
+  local _host="${1:-127.0.0.1}"
+  local _port="${2:-3306}"
+  local _src="/root/.my.cluster_root_pwd.txt"
+  local _dst="/root/.my.cluster_root.cnf"
+  local _pwd
+  if [ ! -s "${_src}" ]; then
+    return 1
+  fi
+  _pwd=$(tr -d '\n' < "${_src}")
+  install -m 0600 -o root -g root /dev/null "${_dst}"
+  cat > "${_dst}" <<CLUSTER_CNF
+[client]
+user=root
+password="${_pwd}"
+host=${_host}
+port=${_port}
+protocol=tcp
+CLUSTER_CNF
+  return 0
+}
+
 _check_prepare_dirs_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_prepare_dirs_permissions"

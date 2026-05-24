@@ -107,7 +107,10 @@ else
 fi
 touch /run/boa_sql_backup.pid
 
-_SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+# (Previously: _SQL_PSWD=$(cat /root/.my.pass.txt ...). Removed in the
+#  security-audit credential-exposure pass — mydumper now reads creds
+#  from /root/.my.cnf via --defaults-file, keeping the password out of
+#  /proc/PID/cmdline.)
 
 _free_memory() {
   echo "Freeing memory..."
@@ -285,10 +288,9 @@ _backup_this_database_with_mydumper() {
     _MYDUMPER_LOCK_MODE="FTWRL"
   fi
   mydumper \
+    --defaults-file=/root/.my.cnf \
     --database=${_DB} \
     --host=localhost \
-    --user=root \
-    --password=${_SQL_PSWD} \
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     --rows=50000 \

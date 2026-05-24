@@ -31,7 +31,7 @@ the recurring exposure class throughout this category.
 ## [MEDIUM] `mysql -p${_PROXYSQL_PASSWORD}` exposes ProxySQL admin password via /proc/PID/cmdline
 **File:** lib/functions/master.sh.inc  (lines 260, 289, 331, 395, 499, 1124, 1158); lib/functions/satellite.sh.inc  (lines 2571, 2619, 2696, 2807); lib/functions/system.sh.inc  (lines 6725, 6726)
 **Category:** credential-exposure
-**Status:** NEEDS-REVIEW
+**Status:** PATCHED in follow-up commit
 
 ### Description
 The ProxySQL admin password is loaded from `/root/.my.proxysql_adm_pwd.txt`
@@ -109,7 +109,7 @@ PENDING — awaiting confirmation.
 ## [MEDIUM] `mkpasswd "${pwd}"` and `usermod -p $ph` expose ltd-user / FTP-user credentials via /proc/PID/cmdline
 **File:** aegir/tools/system/manage_ltd_users.sh  (lines 717–719); lib/functions/satellite.sh.inc  (lines 3354–3357, 3631–3633)
 **Category:** credential-exposure
-**Status:** NEEDS-REVIEW
+**Status:** PATCHED in follow-up commit
 
 ### Description
 Both ltd-user (`manage_ltd_users.sh`) and FTP-user (`satellite.sh.inc`)
@@ -173,7 +173,7 @@ PENDING — awaiting confirmation.
 ## [MEDIUM] `mydumper --password=...` and the cluster `_C_SQL="mysql --password=..."` template
 **File:** aegir/tools/system/mysql_backup.sh  (line 249); aegir/tools/system/mysql_cluster_backup.sh  (lines 52, 132+ — many uses of `${_C_SQL}`)
 **Category:** credential-exposure
-**Status:** NEEDS-REVIEW
+**Status:** PATCHED in follow-up commit
 
 ### Description
 `mysql_backup.sh:249` invokes `mydumper --password=${_SQL_PSWD}` on the
@@ -303,7 +303,7 @@ PATCHED — see commit message below.
 ## [LOW] duplicity `_BACKUP_TARGET` URL embeds cloud-storage KEY:SECRET in /proc/PID/cmdline
 **File:** aegir/tools/backup/run/duplicity_backup.sh  (lines 925, 935, 940, 945)
 **Category:** credential-exposure
-**Status:** NEEDS-REVIEW
+**Status:** PATCHED in follow-up commit (5 of 6 providers); ibm residual
 
 ### Description
 For S3-compatible providers, BOA constructs the `_BACKUP_TARGET` URL
@@ -357,7 +357,7 @@ PENDING — deferred to boa-modernisation.
 ## [LOW] No `hidepid=2` on `/proc` mount — Linux defaults expose all PID cmdlines cross-user
 **File:** (no fstab template touches /proc in the repo; mentioned for completeness)
 **Category:** credential-exposure
-**Status:** INFO — system-wide mitigation candidate
+**Status:** PATCHED in follow-up commit
 
 ### Description
 On a multi-tenant BOA host, the `/proc/PID/cmdline` exposure of `-p<pwd>`

@@ -6722,8 +6722,9 @@ _if_proxysql_update() {
             _msg "INFO: Restarting ProxySQL server..."
           fi
           _mrun "service proxysql restart"
-          mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
-          mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
+          _write_proxysql_adm_cnf &> /dev/null
+          mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf -e "SELECT * FROM scheduler\G"
+          mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf -e "SELECT * FROM mysql_servers;"
         else
           _msg "OOPS: ProxySQL Galera Checker will not work!"
         fi

@@ -30,6 +30,44 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: BOA PI mode — full /proc/PID/cmdline credential-disclosure
+  closure. Five linked changes:
+    1. `helper.sh.inc` adds `_check_proc_hidepid` — installs a
+       `hidepid=2,gid=adm` entry in /etc/fstab, remounts /proc with
+       those options, and adds `aegir` to the `adm` group so
+       hostmaster operations retain process visibility. Per-Octopus
+       system users and lshell-restricted `.ftp` accounts get only
+       own-process visibility, closing the entire class of
+       cross-tenant /proc/cmdline disclosures with one mount option.
+       Wired into `BARRACUDA.sh.txt` right after
+       `_check_prepare_dirs_permissions`.
+    2. `helper.sh.inc` adds `_write_proxysql_adm_cnf` /
+       `_write_cluster_root_cnf` helpers that emit 0600-root cnfs
+       suitable for `mysql --defaults-extra-file=`. Replaces 13 sites
+       of `mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032
+       --protocol=tcp` in master/satellite/system .inc with
+       `mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf`.
+    3. `manage_ltd_users.sh` and `satellite.sh.inc` switch from
+       `mkpasswd "${pwd}"` / `usermod -p $ph` (both visible in
+       /proc) to `printf '%s' "${pwd}" | mkpasswd -m sha-512 -s -S
+       "${salt}"` and `printf '%s:%s\n' user hash | chpasswd -e` —
+       password and hash never reach cmdline.
+    4. `mysql_backup.sh` switches `mydumper --password=${_SQL_PSWD}`
+       to `mydumper --defaults-file=/root/.my.cnf`. The dead
+       `_SQL_PSWD=$(cat /root/.my.pass.txt)` read removed.
+       `mysql_cluster_backup.sh` regenerates
+       `/root/.my.cluster_root.cnf` (0600 root:root) each run from
+       the cluster root password file and resolved host/port, and
+       replaces the `_C_SQL="mysql --user=root --password=..."`
+       template with `mysql --defaults-extra-file=...`. mydumper /
+       mysqldump / mysqlcheck calls switched the same way.
+    5. `duplicity_backup.sh` switches 4 of 6 cloud-storage providers
+       (cloudflare/R2, do_spaces, linode, wasabi) from
+       `s3://KEY:SECRET@endpoint/bucket` URL embedding to
+       `boto3+s3://endpoint/bucket` + `AWS_ACCESS_KEY_ID` /
+       `AWS_SECRET_ACCESS_KEY` env exports. b2 URL drops the
+       application_key portion (read from env). ibmcos backend has
+       no env-var alternative — tracked as residual LOW.
 - security: `mysql_backup.sh` and `mysql_cluster_backup.sh` apply the
   same `_is_safe_ident` allowlist on database and table identifiers
   that `mysql_cleanup.sh` got in the previous audit pass. Closes the

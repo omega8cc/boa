@@ -714,9 +714,13 @@ _ok_create_user() {
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
-      ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" \
-        $(openssl rand -base64 16 | tr -d '+=' | head -c 16) 2>&1)
-      usermod -p $ph ${_usrLtd}
+      # Compute the sha-512 hash via stdin and set it via chpasswd -e via
+      # stdin too — neither the plaintext password nor the resulting hash
+      # ever appears on the cmdline (where /proc/<pid>/cmdline would expose
+      # it to local users during the brief usermod -p / mkpasswd window).
+      _salt=$(openssl rand -base64 16 | tr -d '+=' | head -c 16)
+      ph=$(printf '%s' "${_ESC_LUPASS}" | mkpasswd -m sha-512 -s -S "${_salt}" 2>&1)
+      printf '%s:%s\n' "${_usrLtd}" "${ph}" | chpasswd -e &> /dev/null
       passwd -w 7 -x 90 ${_usrLtd}
       usermod -aG lshellg ${_usrLtd}
       usermod -aG ltd-shell ${_usrLtd}
