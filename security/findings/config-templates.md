@@ -7,3 +7,383 @@ in CLAUDE.md. Most-recent findings appear at the bottom.
 
 ---
 
+## Audit scope coverage
+
+- `aegir/conf/nginx/` Nginx top-level templates (the per-vhost templates live
+  in the Aegir Provision codebase which is out of scope per CLAUDE.md).
+- `aegir/conf/php/*.ini` (24 files: 12 versions × `{.ini, -cli.ini}`) plus the
+  `fpm-pool-common*.conf` admin-value overrides.
+- `aegir/conf/var/my.cnf.txt` (Percona) and `galera.cnf` (cluster).
+- `aegir/conf/var/csf.conf` (CSF firewall).
+- `aegir/conf/var/sshd_config` and `ssh_config`.
+- `aegir/conf/var/sftp_config` (mysecureshell).
+- `aegir/conf/var/sysctl.conf` (kernel parameters).
+- `aegir/conf/etc/etc-ImageMagick-6-policy.xml`.
+- `aegir/tools/system/conf/lshell.conf` — already deeply audited in
+  category 1; re-checked the `path` per-user restriction logic and
+  `path_noexec` autodetect note from cat-1 is still open.
+
+---
+
+## [MEDIUM] PHP `expose_php = On` leaks version in `X-Powered-By` header (all 24 ini templates)
+**File:** aegir/conf/php/php{56,70,71,72,73,74,80,81,82,83,84,85}{,-cli}.ini
+**Category:** config-templates
+**Status:** PATCHED in this commit
+
+### Description
+Every BOA PHP ini template ships with `expose_php = On`, which makes PHP-FPM
+emit `X-Powered-By: PHP/<version>` on every response. Attackers fingerprint
+the exact PHP minor version this way and target known CVEs against
+unpatched servers. Disclosure has no functional value to the application.
+
+### Evidence
+```
+# representative line, identical across all 24 files (different line number per version)
+expose_php = On
+```
+
+### Fix
+`expose_php = Off` in every template. The change applies on PHP-FPM
+restart; opcache flush on reload may be needed for already-running pools
+to pick up the new ini, but BOA already handles that elsewhere
+(`monitor/check/php.sh:_fpm_apcu_reload_sentinel`).
+
+### Patch commit
+PATCHED — see commit message below.
+
+---
+
+## [MEDIUM] PHP `session.use_strict_mode = 0` permits session fixation (all 24 ini templates)
+**File:** aegir/conf/php/php{56,...,85}{,-cli}.ini
+**Category:** config-templates
+**Status:** PATCHED in this commit
+
+### Description
+With strict mode disabled, PHP accepts any session ID a client presents,
+even ones the server never issued — the classic session-fixation precondition.
+An attacker who can plant their chosen session ID in the victim's browser
+(via a cookie-injection HTML, a same-site script, or any other means) can
+then hijack the resulting authenticated session.
+
+`session.use_strict_mode = 1` makes PHP reject unknown session IDs and
+generate a fresh one. The PHP documentation has flagged this as the
+recommended security default since PHP 5.5.2.
+
+### Evidence
+```
+session.use_strict_mode = 0
+```
+
+### Fix
+Change to `session.use_strict_mode = 1` across every template. The
+change takes effect on PHP-FPM restart. Drupal, WordPress, and the
+common contrib modules all handle strict-mode correctly; the change
+should be transparent.
+
+### Patch commit
+PATCHED — see commit message below.
+
+---
+
+## [MEDIUM] PHP `session.cookie_samesite =` is empty (22 ini templates, PHP 7.3+)
+**File:** aegir/conf/php/php{73,74,80,81,82,83,84,85}{,-cli}.ini (where present; PHP <7.3 does not support the directive)
+**Category:** config-templates
+**Status:** PATCHED in this commit
+
+### Description
+With `session.cookie_samesite` empty, the browser falls back to its own
+default. Chrome currently treats cookies without SameSite as
+`Lax`-but-not-quite (a Chrome-specific behaviour the spec doesn't require);
+older browsers default to no SameSite at all, leaving the session cookie
+open to CSRF cross-origin sends.
+
+The standard hardened default is `Lax` (covers most legitimate cross-site
+flows; blocks the dangerous ones), or `Strict` (tightest; can break OAuth
+return flows). Setting it explicitly removes the browser-default ambiguity.
+
+### Evidence
+```
+session.cookie_samesite =
+```
+
+### Fix
+`session.cookie_samesite = Lax` across the affected templates.
+
+### Patch commit
+PATCHED — see commit message below.
+
+---
+
+## [LOW] Nginx `nginx.conf` lacks `server_tokens off`
+**File:** aegir/conf/nginx/nginx.conf
+**Category:** config-templates
+**Status:** PATCHED in this commit
+
+### Description
+`nginx.conf` doesn't set `server_tokens off` at the http{} level. Without
+it, Nginx emits the version in the `Server:` response header and in error
+pages: `Server: nginx/1.x.y`. Same fingerprinting class as
+`expose_php = On` for PHP. No functional value to the application.
+
+### Evidence
+```nginx
+# aegir/conf/nginx/nginx.conf — no `server_tokens` line in http{}
+http {
+  default_type application/octet-stream;
+  gzip on;
+  ...
+}
+```
+
+### Fix
+Add `server_tokens off;` to the http{} block.
+
+### Patch commit
+PATCHED — see commit message below.
+
+---
+
+## [LOW] SSH `ClientAliveCountMax = 10000` effectively disables idle-disconnect
+**File:** aegir/conf/var/sshd_config  (line 99)
+**Category:** config-templates
+**Status:** PATCHED in this commit
+
+### Description
+```
+ClientAliveInterval 300
+ClientAliveCountMax 10000
+```
+sshd considers the client dead after `Interval × CountMax` seconds of
+no response. 300 × 10000 = 3 000 000 seconds (~833 hours, ~34 days).
+Stale tmux/screen-attached sessions and abandoned logins linger
+indefinitely. The standard hardened pattern is `Interval 300,
+CountMax 3` (15 min total = three keepalive misses, then disconnect).
+
+### Evidence
+See file lines 98-99.
+
+### Fix
+Change `ClientAliveCountMax 10000` → `ClientAliveCountMax 3` for a
+~15 min idle-disconnect window. This still tolerates brief network
+hiccups (each interval is a missed keepalive; three are needed before
+sshd gives up) but cleans up genuinely-abandoned sessions.
+
+### Patch commit
+PATCHED — see commit message below.
+
+---
+
+## [LOW] MySQL `local_infile` not explicitly disabled (Percona 5.7 defaults ON)
+**File:** aegir/conf/var/my.cnf.txt
+**Category:** config-templates
+**Status:** PATCHED in this commit
+
+### Description
+`LOAD DATA LOCAL INFILE` lets a *client* tell the *server* to read a
+file from the client's filesystem. On Percona 8.x the server-side
+default is `local_infile = OFF` and clients can't request it. On Percona
+5.7 the default is `ON`, which means a compromised application database
+account can use `LOAD DATA LOCAL INFILE '/proc/self/environ'` to read
+files the mysql server can access.
+
+`secure_file_priv = NULL` (line 25) already disables the server-side
+file load/dump (good), but `local_infile` is a separate setting for the
+client-side load.
+
+### Evidence
+my.cnf.txt does not contain `local_infile` anywhere; relies on the
+server-version default which differs between Percona 5.7 and 8.x.
+
+### Fix
+Add `local_infile = OFF` to the `[mysqld]` section. Explicit on every
+version; no-op on 8.x where it's already the default.
+
+### Patch commit
+PATCHED — see commit message below.
+
+---
+
+## [LOW] sysctl missing recent kernel-hardening knobs (unprivileged eBPF, userfaultfd, BPF JIT)
+**File:** aegir/conf/var/sysctl.conf
+**Category:** config-templates
+**Status:** PATCHED in this commit
+
+### Description
+The sysctl template is already well-hardened (ASLR, log_martians, SYN
+cookies, dmesg_restrict, kptr_restrict, ptrace_scope, protected_*),
+but is missing three knobs that landed in upstream as the standard
+hardened defaults over the past 5 years:
+
+- `kernel.unprivileged_bpf_disabled = 1` — prevents unprivileged users
+  from loading eBPF programs. Closes the eBPF-CVE class entirely for
+  non-root users (CVE-2021-3490, CVE-2021-31440, CVE-2022-23222, …).
+- `net.core.bpf_jit_harden = 2` — adds JIT spray hardening
+  (constant blinding) for the eBPF JIT. Protects against BPF-JIT
+  spraying CVEs even when eBPF loading is needed.
+- `vm.unprivileged_userfaultfd = 0` — disables userfaultfd for
+  unprivileged users. Closes a recurring kernel-bug class
+  (CVE-2022-3437, etc.) where userfaultfd is used to race the kernel
+  for arbitrary memory writes.
+
+### Evidence
+None of `unprivileged_bpf_disabled`, `bpf_jit_harden`, or
+`unprivileged_userfaultfd` appears in sysctl.conf.
+
+### Fix
+Append the three settings to the existing "Kernel Security Hardening"
+section in sysctl.conf. Take effect on the next `sysctl -p
+/etc/sysctl.conf` run that BOA does after installing the template.
+
+### Patch commit
+PATCHED — see commit message below.
+
+---
+
+## [LOW] ImageMagick policy allows HTTP/HTTPS/URL delegates
+**File:** aegir/conf/etc/etc-ImageMagick-6-policy.xml  (lines 87–89)
+**Category:** config-templates
+**Status:** NEEDS-REVIEW
+
+### Description
+```xml
+<policy domain="delegate" rights="read|write" pattern="URL" />
+<policy domain="delegate" rights="read|write" pattern="HTTPS" />
+<policy domain="delegate" rights="read|write" pattern="HTTP" />
+```
+
+ImageMagick's URL/HTTP/HTTPS delegates let a crafted image trigger an
+outbound HTTP request — SSRF class. A Drupal site that accepts
+image uploads (most do) can be tricked into fetching arbitrary URLs
+via a malicious file with a `<svg>` referencing `<image href=...>` or
+similar. Combined with internal-network metadata endpoints
+(`http://169.254.169.254/` etc.), this is a real risk.
+
+Counter-argument: some Drupal contrib modules genuinely use IM's URL
+delegate (e.g. fetching remote images for thumbnail). Tightening
+breaks those workflows.
+
+### Fix
+Two options:
+1. Tighten by default to `<policy domain="delegate" rights="none"
+   pattern="URL,HTTP,HTTPS" />` and let operators opt-in for sites
+   that need URL fetching.
+2. Leave as-is and document the SSRF exposure as accepted risk.
+
+NEEDS-REVIEW: this is an operator-policy choice. Asking before
+patching because the change can break legitimate Drupal contrib
+workflows.
+
+### Patch commit
+PENDING — awaiting operator decision.
+
+---
+
+## [LOW] ImageMagick policy: PS/PDF/EPS/XPS coders not disabled
+**File:** aegir/conf/etc/etc-ImageMagick-6-policy.xml  (lines 92–100)
+**Category:** config-templates
+**Status:** NEEDS-REVIEW
+
+### Description
+The template has commented-out coder restrictions for the historical
+ImageMagick-via-Ghostscript CVE class (ImageMagick → MVG → Ghostscript
+→ RCE; ImageMagick-Tragick, etc.):
+
+```xml
+<!--
+  <policy domain="coder" rights="none" pattern="PS" />
+  <policy domain="coder" rights="none" pattern="PS2" />
+  <policy domain="coder" rights="none" pattern="PS3" />
+  <policy domain="coder" rights="none" pattern="EPS" />
+  <policy domain="coder" rights="none" pattern="PDF" />
+  <policy domain="coder" rights="none" pattern="XPS" />
+-->
+```
+
+The defense is one block-comment-removal away. Trade-off: sites that
+process PDFs via ImageMagick (e.g. PDF thumbnail generation) need
+these coders enabled.
+
+### Fix
+Same trade-off as the URL-delegate finding above. NEEDS-REVIEW.
+
+### Patch commit
+PENDING.
+
+---
+
+## [LOW] MySQL `bind-address` not set — mysqld listens on all interfaces
+**File:** aegir/conf/var/my.cnf.txt
+**Category:** config-templates
+**Status:** NEEDS-REVIEW
+
+### Description
+my.cnf.txt does not set `bind-address`. mysqld defaults to listening on
+all interfaces (`0.0.0.0:3306`). The BOA CSF firewall doesn't open
+3306 in `TCP_IN` (verified at `aegir/conf/var/csf.conf:139`), so
+external clients cannot connect; but defense-in-depth says bind to
+loopback when external access isn't intended.
+
+The cluster setup *does* need 3306 reachable on the inter-node link.
+A blanket `bind-address = 127.0.0.1` would break clusters.
+
+### Fix
+Option A: leave as-is (CSF blocks external).
+Option B: Add `bind-address = 127.0.0.1` in non-cluster installs, omit
+in cluster installs. Requires the install logic to template-substitute
+based on the `_CLUSTER` config flag.
+
+NEEDS-REVIEW: bigger change, affects cluster vs standalone install
+paths.
+
+### Patch commit
+PENDING.
+
+---
+
+## [LOW] SSH `PasswordAuthentication yes` — keys-only would be tighter
+**File:** aegir/conf/var/sshd_config  (line 94)
+**Category:** config-templates
+**Status:** INFO — operator-policy choice
+
+### Description
+Password SSH login is enabled. With `MaxAuthTries 3` and the
+`hackcheck.sh` cron-driven CSF temp-deny on failed attempts, brute-force
+is well-mitigated. But keys-only auth is structurally stronger.
+
+BOA-managed lshell users (the `.ftp` per-tenant operators) typically
+authenticate by password — switching to keys-only would force every
+operator to deploy their key first. Operator-policy choice.
+
+### Fix
+None recommended in this audit. If keys-only is later desired:
+1. Add a `Match Group lshellg` block that allows
+   `PasswordAuthentication yes` for the lshell-restricted operators.
+2. Set the top-level `PasswordAuthentication no` for everyone else
+   (root via key only — already in place via `PermitRootLogin
+   prohibit-password`).
+
+### Patch commit
+N/A — INFO only.
+
+---
+
+## [INFO] lshell `path_noexec` autodetect from category 1 is still NEEDS-REVIEW
+**File:** aegir/tools/system/conf/lshell.conf  (line 27)
+**Category:** carry-over from cat 1 (privilege-escalation)
+**Status:** NEEDS-REVIEW (unchanged from cat 1)
+
+### Description
+Cat 1 flagged: lshell.conf has `path_noexec` commented out; lshell
+relies on autodetect to find `sudo_noexec.so`. If autodetect fails
+on a new Devuan / Debian version, the protection silently lapses.
+
+The cat-1 deferral was "verify the correct on-disk path on Devuan
+Daedalus (`dpkg -L sudo | grep noexec`)". Not actioned in this
+config-templates pass either — same deferral.
+
+### Fix
+See category 1 finding.
+
+### Patch commit
+PENDING — operator to run `dpkg -L sudo | grep noexec` on the target
+OS, then we set `path_noexec` to that path in lshell.conf.

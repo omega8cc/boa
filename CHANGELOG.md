@@ -30,6 +30,25 @@ otherwise date-stamped entries for non-versioned work.
 - Migration data-consistency on Drupal 8+ sites and on busy commerce/API
   sites where `readonlymode` is unavailable via system drush 8 or bypassed
   by application code paths.
+- security: PHP ini hardening across all 24 templates (12 versions ×
+  `{.ini, -cli.ini}`): `expose_php Off` (drops `X-Powered-By` version
+  leak), `session.use_strict_mode 1` (blocks session-fixation), and
+  `session.cookie_samesite Lax` (CSRF mitigation; only for PHP 7.3+
+  where the directive exists).
+- security: Nginx `http{}` block grows `server_tokens off` — drops
+  the `Server: nginx/X.Y.Z` version leak in response headers and
+  default error pages.
+- security: MySQL/Percona `[mysqld]` gets explicit `local_infile = OFF`
+  in the BOA template. No-op on Percona 8.x (already the default);
+  closes the client-side LOAD DATA LOCAL INFILE file-read class on
+  Percona 5.7 (where the default is ON).
+- security: sshd `ClientAliveCountMax` lowered from 10000 (~34 days
+  idle-tolerance) to 3 (15 min idle-disconnect window).
+- security: sysctl template grows three recent kernel-hardening
+  knobs: `kernel.unprivileged_bpf_disabled = 1` (blocks eBPF-CVE
+  class for non-root users), `net.core.bpf_jit_harden = 2`
+  (JIT-spray hardening), `vm.unprivileged_userfaultfd = 0`
+  (closes userfaultfd-as-race-amplifier class).
 - security: BOA PI mode — full /proc/PID/cmdline credential-disclosure
   closure. Five linked changes:
     1. `helper.sh.inc` adds `_check_proc_hidepid` — installs a

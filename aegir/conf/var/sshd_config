@@ -96,7 +96,10 @@ UseDNS no
 UsePAM no
 PrintMotd yes
 ClientAliveInterval 300
-ClientAliveCountMax 10000
+# 3 missed keepalives x 300s = ~15min idle-disconnect. The previous
+# value (10000) was effectively infinite (~34 days) and let stale
+# tmux/screen sessions and abandoned logins linger indefinitely.
+ClientAliveCountMax 3
 TCPKeepAlive yes
 MaxAuthTries 3
 LoginGraceTime 30
