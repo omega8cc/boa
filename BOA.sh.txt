@@ -941,7 +941,9 @@ _update_agents() {
     _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
     _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     _InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+    # (Removed dead `_SQL_PSWD=$(cat /root/.my.pass.txt)` read — never
+    #  referenced. The mysql calls below this block use /root/.my.cnf
+    #  implicitly via `mysql -u root` with no -p.)
     if [ "${_InTest}" -lt 9 ] \
       && [[ ! "${_PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
