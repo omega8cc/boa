@@ -169,9 +169,11 @@ _sql_busy_detection() {
     fi
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+    # File-existence check instead of cat'ing the cleartext root password
+    # into a shell variable just to test its non-emptiness. The mysql call
+    # below uses /root/.my.cnf credentials implicitly via `mysql -u root`.
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
-    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -s /root/.my.pass.txt ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
       if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then

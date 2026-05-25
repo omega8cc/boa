@@ -2568,8 +2568,8 @@ _provision_backend_dbpass_generate() {
     if [ "${_STATUS}" = "INIT" ]; then
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
-        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+        _write_proxysql_adm_cnf &> /dev/null
+        mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2616,8 +2616,8 @@ EOFMYSQL
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL15 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-          _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
-          mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+          _write_proxysql_adm_cnf &> /dev/null
+          mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2693,8 +2693,8 @@ _provision_backend_dbpass_sync() {
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _write_proxysql_adm_cnf &> /dev/null
+      mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2804,8 +2804,8 @@ _hostmaster_frontend_dbpass_sync() {
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _write_proxysql_adm_cnf &> /dev/null
+      mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');

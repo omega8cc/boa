@@ -33,10 +33,6 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
 
-if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>/dev/null | tr -d '\n')
-fi
-
 if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
   _SQL_PORT="6033"
   _SQL_HOST="127.0.0.1"
@@ -49,7 +45,27 @@ else
   [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
 fi
 
-_C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
+# Generate /root/.my.cluster_root.cnf (mode 0600) from the cluster root
+# password file plus the resolved host/port above. Used via
+# `_C_SQL` -> mysql --defaults-extra-file=... so the password never
+# appears in /proc/<mysql-pid>/cmdline. The cluster-backup cron runs
+# this every day, so the cnf is regenerated each run to track changes
+# in _SQL_HOST/_SQL_PORT.
+if [ -s "/root/.my.cluster_root_pwd.txt" ]; then
+  _CLUSTER_ROOT_PWD=$(tr -d '\n' < /root/.my.cluster_root_pwd.txt)
+  install -m 0600 -o root -g root /dev/null /root/.my.cluster_root.cnf
+  cat > /root/.my.cluster_root.cnf <<CLUSTER_CNF
+[client]
+user=root
+password="${_CLUSTER_ROOT_PWD}"
+host=${_SQL_HOST}
+port=${_SQL_PORT}
+protocol=tcp
+CLUSTER_CNF
+  unset _CLUSTER_ROOT_PWD
+fi
+
+_C_SQL="mysql --defaults-extra-file=/root/.my.cluster_root.cnf"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 _n=$((RANDOM%600+8))
@@ -200,7 +216,7 @@ EOFMYSQL
 
 _repair_this_database() {
   _check_running
-  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp -u root --auto-repair --silent ${_DB}
+  mysqlcheck --defaults-extra-file=/root/.my.cluster_root.cnf --auto-repair --silent ${_DB}
 }
 
 _optimize_this_database() {
@@ -233,10 +249,9 @@ _backup_this_database_with_mydumper() {
     _MYDUMPER_LOCK_MODE="FTWRL"
   fi
   mydumper \
+    --defaults-file=/root/.my.cluster_root.cnf \
     --database=${_DB} \
     --host=localhost \
-    --user=root \
-    --password=${_SQL_PSWD} \
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     --rows=50000 \
@@ -250,11 +265,7 @@ _backup_this_database_with_mydumper() {
 _backup_this_database_with_mysqldump() {
   _check_running
   mysqldump \
-    --user=root \
-    --password=${_SQL_PSWD} \
-    --host=${_SQL_HOST} \
-    --port=${_SQL_PORT} \
-    --protocol=tcp \
+    --defaults-extra-file=/root/.my.cluster_root.cnf \
     --single-transaction \
     --quick \
     --no-autocommit \
