@@ -689,9 +689,16 @@ _handle_ddos_blocking() {
       continue
     fi
 
-    _verbose_log "DDoS UA detected [${_ip_count} IPs / ${_req_count} reqs]: ${_UA}" "_handle_ddos_blocking"
+    # Strip non-printable characters from the UA before any echo / verbose-log
+    # call. The UA comes from an attacker-controlled HTTP header and may carry
+    # terminal escape sequences; rendering them in cron output or in a tail -f
+    # view of the verbose log would confuse an operator. No RCE path (printf
+    # in _verbose_log already protects against format-string injection), this
+    # is cosmetic hardening.
+    local _UA_SAFE="${_UA//[^[:print:][:space:]]/?}"
+    _verbose_log "DDoS UA detected [${_ip_count} IPs / ${_req_count} reqs]: ${_UA_SAFE}" "_handle_ddos_blocking"
     echo "=== DDoS UA DETECTED [${_ip_count} distinct IPs | ${_req_count} total reqs] ==="
-    echo "=== UA fingerprint: ${_UA:0:120} ==="
+    echo "=== UA fingerprint: ${_UA_SAFE:0:120} ==="
 
     # Walk the IP list for this UA and block qualifying IPs.
     # Global IFS is newline+tab, so force space splitting for this list.
