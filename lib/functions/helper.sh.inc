@@ -1060,6 +1060,36 @@ _check_proc_hidepid() {
   mount -o remount,hidepid=2,gid=${_admGid} /proc &> /dev/null
 }
 
+# Generate /root/.my.proxysql_adm.cnf (mode 0600) from the proxysql
+# admin password file. Callers then connect via:
+#   mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf
+# which keeps the password out of /proc/<mysql-pid>/cmdline. This
+# replaces the older pattern `mysql -uadmin -p${_PROXYSQL_PASSWORD}
+# -h127.0.0.1 -P6032 --protocol=tcp` that exposed the cleartext
+# password to any local user reading /proc during the mysql process's
+# lifetime. Returns 0 on success, 1 if the source password file is
+# missing or empty.
+_write_proxysql_adm_cnf() {
+  local _src="/root/.my.proxysql_adm_pwd.txt"
+  local _dst="/root/.my.proxysql_adm.cnf"
+  local _pwd
+  if [ ! -s "${_src}" ]; then
+    return 1
+  fi
+  _pwd=$(tr -d '\n' < "${_src}")
+  # Create with 0600 root:root before any content is written.
+  install -m 0600 -o root -g root /dev/null "${_dst}"
+  cat > "${_dst}" <<PROXYSQL_CNF
+[client]
+user=admin
+password="${_pwd}"
+host=127.0.0.1
+port=6032
+protocol=tcp
+PROXYSQL_CNF
+  return 0
+}
+
 # Generate /root/.my.cluster_root.cnf (mode 0600) from the cluster
 # root password file plus a caller-provided host/port. Callers connect
 # via mysql --defaults-extra-file=/root/.my.cluster_root.cnf, keeping
