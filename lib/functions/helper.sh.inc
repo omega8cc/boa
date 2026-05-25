@@ -535,7 +535,12 @@ _mode_detection() {
   _SRCDIR="/opt/tmp/files"
   rm -rf /var/opt/*
   mkdir -p ${_SRCDIR}
-  chmod -R 777 /opt/tmp &> /dev/null
+  # 1777 (sticky) on the scratch root, not -R 777. Sticky bit prevents
+  # cross-uid deletion of files inside /opt/tmp/, matching the model BOA
+  # already uses for /var/tmp/fpm and /opt/user/{gems,npm}. The follow-up
+  # find calls below explicitly set the boa subtree to 0755/0644; any other
+  # subtree keeps its existing mode rather than being blanket-777'd.
+  chmod 1777 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
   if [ "${_STATUS}" != "UPGRADE" ]; then
@@ -1131,7 +1136,15 @@ _check_prepare_dirs_permissions() {
   fi
   rm -rf /var/opt/*
   mkdir -p /var/log/php
-  chmod 777 /var/log/php* &> /dev/null
+  # 0755 root:adm (not 0777): PHP-FPM master runs as root and creates per-pool
+  # log files at pool start, before privilege drop; workers inherit the open
+  # fd and can append even as a non-root uid. Mode 0777 with no sticky bit
+  # previously allowed any local user to enumerate pool/tenant names via
+  # directory listing, create shadow files, and delete logs cross-tenant.
+  # The glob /var/log/php* matches /var/log/php and any sibling like
+  # /var/log/php85 — apply the tighter mode to all of them.
+  chown root:adm /var/log/php* &> /dev/null
+  chmod 0755 /var/log/php* &> /dev/null
   mkdir -p ${_vBs}/dragon/{x,z,t}
   if [ -e "/etc/init.d/buagent" ]; then
     mv -f /etc/init.d/buagent \
