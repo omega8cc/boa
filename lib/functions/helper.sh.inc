@@ -1020,6 +1020,35 @@ _check_boa_version() {
   fi
 }
 
+# Generate /root/.my.cluster_root.cnf (mode 0600) from the cluster
+# root password file plus a caller-provided host/port. Callers connect
+# via mysql --defaults-extra-file=/root/.my.cluster_root.cnf, keeping
+# the cluster root password out of /proc/<mysql-pid>/cmdline.
+#
+# Usage: _write_cluster_root_cnf <host> <port>
+# Returns 0 on success, 1 if the source password file is missing.
+_write_cluster_root_cnf() {
+  local _host="${1:-127.0.0.1}"
+  local _port="${2:-3306}"
+  local _src="/root/.my.cluster_root_pwd.txt"
+  local _dst="/root/.my.cluster_root.cnf"
+  local _pwd
+  if [ ! -s "${_src}" ]; then
+    return 1
+  fi
+  _pwd=$(tr -d '\n' < "${_src}")
+  install -m 0600 -o root -g root /dev/null "${_dst}"
+  cat > "${_dst}" <<CLUSTER_CNF
+[client]
+user=root
+password="${_pwd}"
+host=${_host}
+port=${_port}
+protocol=tcp
+CLUSTER_CNF
+  return 0
+}
+
 _check_prepare_dirs_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_prepare_dirs_permissions"
