@@ -907,22 +907,35 @@ _set_backup_target() {
     b2)
       _load_credentials "b2" "${_user}"
       _construct_bucket_name "b2" "${_user}"
-      export _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}:${B2_APPLICATION_KEY}@${_BUCKET_NAME}"
+      # b2 duplicity backend reads B2_APPLICATION_KEY from env when the
+      # URL omits the `:password` portion. The credentials file already
+      # exports B2_APPLICATION_KEY, so dropping it from the URL keeps it
+      # out of /proc/<duplicity-pid>/cmdline. B2_ACCOUNT_ID has to remain
+      # in the URL (b2 backend's URL parser requires it).
+      export _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}@${_BUCKET_NAME}"
       ;;
     cloudflare)
       _load_credentials "cloudflare" "${_user}"
       _construct_bucket_name "cloudflare" "${_user}"
-
-      # Custom endpoint for Cloudflare R2
+      # boto3+s3 backend reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+      # from env (owner-only-readable /proc/PID/environ) instead of from
+      # the URL (world-readable /proc/PID/cmdline). Re-export the
+      # R2_-prefixed creds the credentials file loaded earlier as the
+      # AWS_-prefixed vars boto3 expects.
+      export AWS_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID}"
+      export AWS_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY}"
       local _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-
-      # Configure the S3 backup target
-      export _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
+      export _BACKUP_TARGET="boto3+s3://${_r2_endpoint}/${_BUCKET_NAME}"
       ;;
     do_spaces)
       _load_credentials "do_spaces" "${_user}"
       _construct_bucket_name "do_spaces" "${_user}"
-      export _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
+      # Same boto3+s3 pattern as cloudflare/wasabi/linode above:
+      # credentials in env, region as the s3-endpoint hostname.
+      export AWS_ACCESS_KEY_ID="${DO_SPACES_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${DO_SPACES_SECRET}"
+      local _do_endpoint="https://${DO_SPACES_REGION}.digitaloceanspaces.com"
+      export _BACKUP_TARGET="boto3+s3://${_do_endpoint}/${_BUCKET_NAME}"
       ;;
     gcs)
       _load_credentials "gcs" "${_user}"
@@ -932,17 +945,28 @@ _set_backup_target() {
     ibm)
       _load_credentials "ibm" "${_user}"
       _construct_bucket_name "ibm" "${_user}"
+      # IBM COS duplicity backend has no documented env-var alternative
+      # to the in-URL credential form — both api_key_id and service_instance_id
+      # remain in /proc/<duplicity-pid>/cmdline. Tracked as residual LOW
+      # in security/findings/credential-exposure.md until duplicity gains
+      # an ibmcos env-var contract or the backend is replaced.
       export _BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${_BUCKET_NAME}"
       ;;
     linode)
       _load_credentials "linode" "${_user}"
       _construct_bucket_name "linode" "${_user}"
-      export _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
+      export AWS_ACCESS_KEY_ID="${LINODE_ACCESS_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${LINODE_SECRET_KEY}"
+      local _linode_endpoint="https://${LINODE_REGION}.linodeobjects.com"
+      export _BACKUP_TARGET="boto3+s3://${_linode_endpoint}/${_BUCKET_NAME}"
       ;;
     wasabi)
       _load_credentials "wasabi" "${_user}"
       _construct_bucket_name "wasabi" "${_user}"
-      export _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
+      export AWS_ACCESS_KEY_ID="${WASABI_ACCESS_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${WASABI_SECRET_KEY}"
+      local _wasabi_endpoint="https://s3.${WASABI_REGION}.wasabisys.com"
+      export _BACKUP_TARGET="boto3+s3://${_wasabi_endpoint}/${_BUCKET_NAME}"
       ;;
     *)
       echo "Error: Unknown service ${_service}"
