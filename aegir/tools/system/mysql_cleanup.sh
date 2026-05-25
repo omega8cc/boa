@@ -104,6 +104,18 @@ _remove_locks() {
   rm -f /run/mysql_backup_running.pid
 }
 
+# Reject any DB or table identifier that contains characters outside the
+# BOA-managed safe set [A-Za-z0-9_]. Drupal core, hostmaster, and every
+# BOA tool create identifiers only within this range; anything else
+# arrives via a tenant deliberately creating a maliciously-named table
+# (mysql allows almost-anything inside backticks). The cron runs as root
+# with /root/.my.cnf credentials, so without this guard a tenant-named
+# table like `cache_x\`; DROP DATABASE other; -- ` would let the TRUNCATE
+# heredoc execute a cross-tenant DROP in root context.
+_is_safe_ident() {
+  [[ "${1}" =~ ^[A-Za-z0-9_]+$ ]]
+}
+
 _check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
@@ -119,6 +131,10 @@ _truncate_cache_tables() {
   _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
+    if ! _is_safe_ident "${C}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${C}"
+      continue
+    fi
     _IF_SKIP_C=
     for X in ${_SQL_CACHE_EXC}; do
       if [ "${C}" = "${X}" ]; then
@@ -127,7 +143,7 @@ _truncate_cache_tables() {
     done
     if [ -z "${_IF_SKIP_C}" ]; then
       mysql ${_DB}<<EOFMYSQL
-TRUNCATE ${C};
+TRUNCATE \`${C}\`;
 EOFMYSQL
     fi
   done
@@ -137,8 +153,12 @@ _truncate_watchdog_tables() {
   _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^watchdog$ 2>&1)
   for W in ${_TABLES}; do
+    if ! _is_safe_ident "${W}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${W}"
+      continue
+    fi
 mysql ${_DB}<<EOFMYSQL
-TRUNCATE ${W};
+TRUNCATE \`${W}\`;
 EOFMYSQL
   done
 }
@@ -147,8 +167,12 @@ _truncate_accesslog_tables() {
   _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
+    if ! _is_safe_ident "${A}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${A}"
+      continue
+    fi
 mysql ${_DB}<<EOFMYSQL
-TRUNCATE ${A};
+TRUNCATE \`${A}\`;
 EOFMYSQL
   done
 }
@@ -157,8 +181,12 @@ _truncate_batch_tables() {
   _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^batch$ 2>&1)
   for B in ${_TABLES}; do
+    if ! _is_safe_ident "${B}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${B}"
+      continue
+    fi
 mysql ${_DB}<<EOFMYSQL
-TRUNCATE ${B};
+TRUNCATE \`${B}\`;
 EOFMYSQL
   done
 }
@@ -167,8 +195,12 @@ _truncate_queue_tables() {
   _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
+    if ! _is_safe_ident "${Q}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${Q}"
+      continue
+    fi
 mysql ${_DB}<<EOFMYSQL
-TRUNCATE ${Q};
+TRUNCATE \`${Q}\`;
 EOFMYSQL
   done
 }
@@ -177,12 +209,16 @@ _truncate_views_data_export() {
   _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
   for V in ${_TABLES}; do
+    if ! _is_safe_ident "${V}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${V}"
+      continue
+    fi
 mysql ${_DB}<<EOFMYSQL
-DROP TABLE ${V};
+DROP TABLE \`${V}\`;
 EOFMYSQL
   done
 mysql ${_DB}<<EOFMYSQL
-TRUNCATE views_data_export_object_cache;
+TRUNCATE \`views_data_export_object_cache\`;
 EOFMYSQL
 }
 
@@ -190,6 +226,10 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
+    if ! _is_safe_ident "${_DB}"; then
+      echo "WARN: skipping unsafe database identifier: ${_DB}"
+      continue
+    fi
     _check_running
     _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
