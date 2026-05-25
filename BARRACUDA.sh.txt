@@ -332,6 +332,7 @@ if [ "${_CHECKS_REMOTE_REPOS}" = "YES" ]; then
 fi
 _check_ip_hostname
 _check_prepare_dirs_permissions
+_check_proc_hidepid
 
 
 ###
