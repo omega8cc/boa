@@ -3288,7 +3288,7 @@ _find_fast_mirror_early
 if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
   echo "INFO: Checking BARRACUDA version"
   rm -f /opt/tmp/barracuda-release.txt*
-  curl -L -k -s \
+  curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 15 -A iCab \

@@ -207,7 +207,7 @@ _if_reinstall_curl_src() {
 _check_dns_curl() {
   _find_fast_mirror_early
   _if_reinstall_curl_src
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
@@ -263,7 +263,7 @@ if [ -d "/data/u" ]; then
       _checkVn="whereis barracuda_log.txt"
     fi
   fi
-  _crlHead="-I -k -s --retry 3 --retry-delay 3"
+  _crlHead="-I -s --retry 3 --retry-delay 3"
   _urlBpth="https://${_USE_MIR}/versions/${_tRee}/boa/aegir/tools/bin"
   curl ${_crlHead} -A "${_chckHst} ${_chckIps} ${_checkVn} ${_chckSts}" "${_urlBpth}/thinkdifferent" &> /dev/null
   wait

@@ -40,7 +40,7 @@
 ###  BOA to remove systemd and quickly
 ###  upgrade to latest Devuan OS version.
 ###
-###   $ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+###   $ wget -qO- https://files.aegir.cc/BOA.sh.txt | bash
 ###   $ autoinit
 ###
 ###  Once started, the autoinit will launch

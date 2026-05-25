@@ -4833,7 +4833,7 @@ _if_update_boa_key_tools_only() {
   _check_dns_settings
   _if_reinstall_curl
 
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
@@ -5068,7 +5068,7 @@ _boa_setup() {
 
   _if_reinstall_curl
 
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \

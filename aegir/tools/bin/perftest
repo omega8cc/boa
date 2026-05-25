@@ -207,7 +207,7 @@ _find_fast_mirror_early() {
     fi
   fi
   if [ -n "${_USE_MIR}" ]; then
-    _urlDld="http://${_USE_MIR}/dev/solr-4.2.1.tgz"
+    _urlDld="https://${_USE_MIR}/dev/solr-4.2.1.tgz"
   fi
 }
 
