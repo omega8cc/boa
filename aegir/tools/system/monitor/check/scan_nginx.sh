@@ -993,10 +993,15 @@ while IFS= read -r _line <&3; do
     _ip_array[i]="${_ip_array[i]% }"
   done
 
-  # Collect only valid IPv4 addresses from the IP list
+  # Collect only valid IPv4 addresses from the IP list.
+  # _validate_ip applies both the regex and the per-octet 0..255 range check,
+  # so off-spec values like 999.999.999.999 are filtered out here at the
+  # collection step rather than relying on csf to reject them downstream.
+  # This also keeps the _track_ua_ip / _track_path_flood handlers (which do
+  # not call _validate_ip themselves) from accumulating junk keys.
   _IP_LIST=()
   for _ip_candidate in "${_ip_array[@]}"; do
-    if [[ "${_ip_candidate}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    if _validate_ip "${_ip_candidate}"; then
       _IP_LIST+=("${_ip_candidate}")
     fi
   done
