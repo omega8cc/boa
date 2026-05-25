@@ -3350,11 +3350,12 @@ _satellite_if_add_ftps_lshell_access() {
       _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
     fi
     echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
-    # get the password hash
-    ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
-      | tr -d '+=' | head -c 16))
-    # Set the password
-    usermod -p $ph ${_USERFTP} &> /dev/null
+    # get the password hash via stdin so the plaintext never reaches
+    # /proc/<pid>/cmdline; set the hash via chpasswd -e via stdin so the
+    # hash never reaches /proc either.
+    _salt=$(openssl rand -base64 16 | tr -d '+=' | head -c 16)
+    ph=$(printf '%s' "${_ESC_LUPASS}" | mkpasswd -m sha-512 -s -S "${_salt}")
+    printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
     passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
   fi
   usermod -aG lshellg ${_USERFTP}
@@ -3628,9 +3629,11 @@ _satellite_if_read_create_pass_txt() {
         _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
       echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
-      ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
-        | tr -d '+=' | head -c 16))
-      usermod -p $ph ${_USERFTP} &> /dev/null
+      # See sibling site above — stdin-based mkpasswd + chpasswd -e keep
+      # the plaintext password and the resulting hash out of /proc/PID/cmdline.
+      _salt=$(openssl rand -base64 16 | tr -d '+=' | head -c 16)
+      ph=$(printf '%s' "${_ESC_LUPASS}" | mkpasswd -m sha-512 -s -S "${_salt}")
+      printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
       _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
       _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
     fi
