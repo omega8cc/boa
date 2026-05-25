@@ -1020,6 +1020,46 @@ _check_boa_version() {
   fi
 }
 
+# Enable hidepid=2 on /proc, with the adm group as the visibility-exempt
+# gid. Closes the cross-tenant /proc/<pid>/cmdline disclosure class that
+# the security audit found in many sites (mysql -p<pwd>, mydumper
+# --password=, duplicity s3://KEY:SECRET@..., etc.):
+#
+#   hidepid=2 makes non-root users see only their own processes in /proc.
+#   gid=<adm> exempts members of the adm group from that restriction.
+#
+# aegir is added to adm here so hostmaster operations can still pgrep
+# system services (mysql, nginx, php-fpm) it cares about. Per-Octopus
+# system users (o1, o2, …) and lshell-restricted .ftp accounts are
+# deliberately NOT in adm — they retain only own-process visibility,
+# which is the cross-tenant boundary the audit is enforcing.
+#
+# Idempotent: the existing /proc fstab line is rewritten (if any) and
+# the running /proc mount is remounted with the new options. Re-running
+# the function keeps the same state.
+_check_proc_hidepid() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_proc_hidepid"
+  fi
+  if [ -n "$(getent passwd aegir 2>/dev/null)" ] \
+    && ! id -nG aegir 2>/dev/null | tr ' ' '\n' | grep -qx adm; then
+    usermod -aG adm aegir &> /dev/null
+  fi
+  if [ ! -d "/proc/1" ]; then
+    return 0
+  fi
+  local _admGid
+  _admGid=$(getent group adm | cut -d: -f3 2>/dev/null)
+  if [ -z "${_admGid}" ]; then
+    return 0
+  fi
+  if ! grep -qE '^proc[[:space:]]+/proc[[:space:]].*hidepid' /etc/fstab 2>/dev/null; then
+    sed -i '/^proc[[:space:]]\+\/proc[[:space:]]/d' /etc/fstab
+    echo "proc            /proc           proc    defaults,hidepid=2,gid=${_admGid}  0  0" >> /etc/fstab
+  fi
+  mount -o remount,hidepid=2,gid=${_admGid} /proc &> /dev/null
+}
+
 # Generate /root/.my.cluster_root.cnf (mode 0600) from the cluster
 # root password file plus a caller-provided host/port. Callers connect
 # via mysql --defaults-extra-file=/root/.my.cluster_root.cnf, keeping
