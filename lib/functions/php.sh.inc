@@ -1696,7 +1696,10 @@ _install_php_multi() {
   ### patch -p1 < ${_bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
-  if [ "$1" -lt 74 ]; then
+  # intl requires ICU; PHP 7.4-8.0 fails to build intl against ICU 76+ and is
+  # intentionally excluded -- those versions are EOL and not worth maintaining
+  # ICU compat patches for. PHP < 7.4 never had intl support in BOA at all.
+  if [ "$1" -lt 81 ]; then
     _PHP_EXTRA="${_PHP_EXTRA}"
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
@@ -2558,8 +2561,8 @@ _check_php_rebuild() {
     _PHP_FORCE_REINSTALL=YES
   fi
 
-  if [ "$1" -gt 73 ]; then
-    # Run the ICU version check for PHP newer than 7.3
+  if [ "$1" -gt 80 ]; then
+    # Run the ICU version check for PHP newer than 8.0
     if ! _check_php_icu_version "$1"; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
