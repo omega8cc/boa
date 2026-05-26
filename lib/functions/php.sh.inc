@@ -2185,6 +2185,23 @@ _if_install_php_newrelic() {
     _MULTI_NR=NO
     _NEWRELIC_KEYS_SIG="548C16BF"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
+    _NR_INST_V=""
+    _NRS_BIN="$(which newrelic-daemon 2>/dev/null)"
+    if [ ! -z "${_NRS_BIN}" ]; then
+      _NR_INST_V=$(newrelic-daemon --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f5 \
+        | awk '{ print $1}' \
+        | cut -d"-" -f1 \
+        | awk '{ print $1}' 2>&1)
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      if [ ! -z "${_NR_INST_V}" ]; then
+        _msg "INFO: New Relic installed: ${_NR_INST_V} target: ${_NEW_RELIC_VRN}"
+      else
+        _msg "INFO: New Relic not installed, target: ${_NEW_RELIC_VRN}"
+      fi
+    fi
     _PHP_EXT_DIR_85="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
     _PHP_EXT_DIR_84="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     _PHP_EXT_DIR_83="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
@@ -2234,10 +2251,14 @@ _if_install_php_newrelic() {
       || [ ! -e "${_pthLog}/newrelic-${_xSrl}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
-      || [ ! -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ] \
-      || [ ! -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ] \
+      || [ ! -e "/etc/apt/keyrings/newrelic.gpg" ] \
       || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ]; then
-      _msg "INFO: Installing New Relic Apps Monitor..."
+      if [ -z "${_NR_INST_V}" ] \
+        || [ "${_NR_INST_V}" != "${_NEW_RELIC_VRN}" ]; then
+        _msg "INFO: Installing New Relic Apps Monitor ${_NEW_RELIC_VRN}..."
+      elif [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: New Relic ${_NR_INST_V} current, checking extensions and config..."
+      fi
       cd /var/opt
       if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ] \
         || [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ] \
