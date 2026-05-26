@@ -212,7 +212,7 @@ _check_dns_curl() {
     --retry 3 \
     --retry-delay 10 \
     -I "https://${_USE_MIR}" 2> /dev/null)
-  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+  if [[ ! "${_CURL_TEST}" =~ "HTTP/2 200" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
       _if_reinstall_curl_src
