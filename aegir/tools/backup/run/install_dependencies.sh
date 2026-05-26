@@ -8,8 +8,8 @@ _PTN_VRN=3.13.9
 _DCY_VRN=3.0.6
 _DCY_CMD="/usr/local/bin/duplicity"
 
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
@@ -97,8 +97,8 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.boa.io"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  _urlDev="https://${_USE_MIR}/dev"
+  _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 # Function to install other dependencies

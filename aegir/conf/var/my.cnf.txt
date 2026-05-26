@@ -23,6 +23,7 @@ transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
 secure_file_priv        = NULL
+local_infile            = OFF
 #performance_schema      = OFF
 #performance_schema_instrument = 'wait/%=ON'
 #performance_schema_consumer_events_waits_current=OFF

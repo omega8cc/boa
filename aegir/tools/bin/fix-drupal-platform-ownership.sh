@@ -22,6 +22,32 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
+# Reject any caller-supplied path that resolves outside the BOA-managed roots.
+# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users;
+# a crafted symlink under ${drupal_root}/... would otherwise let chown -R
+# rewrite ownership on arbitrary system paths. Defence is two-layered:
+#  1. _validate_path_prefix on the caller-supplied root.
+#  2. chown -h on every recursive/non-recursive call below, so symlinks
+#     planted under the validated tree (e.g. via uploaded tar archives) have
+#     their own metadata adjusted but their targets are never dereferenced.
+#     This is compatible with legacy BOA platforms that legitimately use a
+#     root-managed symlink for shared core/ — those are skipped, not broken.
+_validate_path_prefix() {
+  local _resolved
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
+    printf "Error: path does not resolve: %s\n" "$1" >&2
+    exit 1
+  }
+  case "${_resolved}/" in
+    /var/aegir/*|/data/disk/*|/home/*)
+      ;;
+    *)
+      printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+      exit 1
+      ;;
+  esac
+}
+
 drupal_root=${1%/}
 script_user=${2:-aegir}
 web_group="${3:-www-data}"
@@ -60,6 +86,8 @@ if [ -z "${script_user}" ] \
     exit 1
 fi
 
+_validate_path_prefix "${drupal_root}"
+
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
@@ -76,7 +104,7 @@ fi
 cd ${drupal_root}
 
 printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "users"\n"
-chown ${script_user}:users ${drupal_root}
+chown -h ${script_user}:users ${drupal_root}
 
 ### Make sure that expected sites/all sub-directories exist
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
@@ -90,19 +118,23 @@ if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
   rm -f ${drupal_root}/sites/development.services.yml
 fi
 
+### -h on every chown: never dereference symlinks (legacy BOA-managed
+### shared-core symlinks under /var/aegir/distro/ stay untouched; attacker
+### symlinks planted under /data/disk/<o>/ or /home/<u>/ via uploaded tar
+### archives cannot redirect chown onto system paths).
 if [ -e "${drupal_root}/vendor" ]; then
-  chown -R ${script_user}:users ${drupal_root}/vendor
+  chown -h -R ${script_user}:users ${drupal_root}/vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
-  chown -R ${script_user}:users ${drupal_root}/../vendor
+  chown -h -R ${script_user}:users ${drupal_root}/../vendor
 fi
 
-chown -R ${script_user}:users \
+chown -h -R ${script_user}:users \
   ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 
-chown -R ${script_user}:users \
+chown -h -R ${script_user}:users \
   ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core}
 
-chown ${script_user}:users \
+chown -h ${script_user}:users \
   ${drupal_root}/sites/all/drush/drushrc.php \
   ${drupal_root}/sites \
   ${drupal_root}/sites/* \
@@ -110,7 +142,7 @@ chown ${script_user}:users \
   ${drupal_root}/sites/all
 
 ### known exceptions
-chown -R ${script_user}:www-data \
+chown -h -R ${script_user}:www-data \
   ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
 
 echo "Done setting proper ownership of platform files and directories."

@@ -10,8 +10,8 @@ export _TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M%S)
 export _NOW=${_NOW//[^0-9-]/}
 
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
@@ -1347,7 +1347,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2026-05.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "files.boa.io"  > ${_ffList}
@@ -1370,8 +1370,8 @@ _find_fast_mirror_early() {
   else
     export _USE_MIR="files.boa.io"
   fi
-  export _urlDev="http://${_USE_MIR}/dev"
-  export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  export _urlDev="https://${_USE_MIR}/dev"
+  export _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 _if_reinstall_curl() {
@@ -1408,7 +1408,7 @@ _if_reinstall_curl() {
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget ${_wgetGet} http://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      wget ${_wgetGet} https://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
       tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -1453,11 +1453,11 @@ _check_dns_curl() {
   _check_dns_settings
   _find_fast_mirror_early
   _if_reinstall_curl
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}" 2> /dev/null)
+    -I "https://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
@@ -1960,7 +1960,7 @@ _set_tree_vars() {
   export _rLsn="BOA-5.9.3"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
-  export _rgUrl="http://files.boa.io/versions/${_tRee}/boa"
+  export _rgUrl="https://files.boa.io/versions/${_tRee}/boa"
 
 }
 

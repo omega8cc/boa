@@ -689,9 +689,16 @@ _handle_ddos_blocking() {
       continue
     fi
 
-    _verbose_log "DDoS UA detected [${_ip_count} IPs / ${_req_count} reqs]: ${_UA}" "_handle_ddos_blocking"
+    # Strip non-printable characters from the UA before any echo / verbose-log
+    # call. The UA comes from an attacker-controlled HTTP header and may carry
+    # terminal escape sequences; rendering them in cron output or in a tail -f
+    # view of the verbose log would confuse an operator. No RCE path (printf
+    # in _verbose_log already protects against format-string injection), this
+    # is cosmetic hardening.
+    local _UA_SAFE="${_UA//[^[:print:][:space:]]/?}"
+    _verbose_log "DDoS UA detected [${_ip_count} IPs / ${_req_count} reqs]: ${_UA_SAFE}" "_handle_ddos_blocking"
     echo "=== DDoS UA DETECTED [${_ip_count} distinct IPs | ${_req_count} total reqs] ==="
-    echo "=== UA fingerprint: ${_UA:0:120} ==="
+    echo "=== UA fingerprint: ${_UA_SAFE:0:120} ==="
 
     # Walk the IP list for this UA and block qualifying IPs.
     # Global IFS is newline+tab, so force space splitting for this list.
@@ -986,10 +993,15 @@ while IFS= read -r _line <&3; do
     _ip_array[i]="${_ip_array[i]% }"
   done
 
-  # Collect only valid IPv4 addresses from the IP list
+  # Collect only valid IPv4 addresses from the IP list.
+  # _validate_ip applies both the regex and the per-octet 0..255 range check,
+  # so off-spec values like 999.999.999.999 are filtered out here at the
+  # collection step rather than relying on csf to reject them downstream.
+  # This also keeps the _track_ua_ip / _track_path_flood handlers (which do
+  # not call _validate_ip themselves) from accumulating junk keys.
   _IP_LIST=()
   for _ip_candidate in "${_ip_array[@]}"; do
-    if [[ "${_ip_candidate}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    if _validate_ip "${_ip_candidate}"; then
       _IP_LIST+=("${_ip_candidate}")
     fi
   done

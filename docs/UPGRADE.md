@@ -10,7 +10,7 @@ If you haven't run a full barracuda+octopus upgrade to the latest BOA edition ye
 
 ```sh
 screen
-wget -qO- http://files.boa.io/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 barracuda up-lts
 octopus up-lts all force
 ```
@@ -19,7 +19,7 @@ For silent, logged mode with an email message sent once the upgrade is complete,
 
 ```sh
 screen
-wget -qO- http://files.boa.io/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 barracuda up-lts log
 octopus up-lts all force log
 ```
@@ -50,7 +50,7 @@ octopus help
 Download and run (as root) BOA Meta Installers first:
 
 ```sh
-wget -qO- http://files.boa.io/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 ```
 
 To upgrade the system and Ægir Master Instance to the latest version, use:

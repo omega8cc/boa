@@ -34,7 +34,7 @@
 ### How To: run it with bash, not with sh  ###
 ###----------------------------------------###
 ###
-###  $ wget -qO- http://files.boa.io/BOA.sh.txt | bash
+###  $ wget -qO- https://files.boa.io/BOA.sh.txt | bash
 ###
 
 ###----------------------------------------###
@@ -45,9 +45,9 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=593devT02
+export _xSrl=593devT01
 export _rLsn="BOA-5.9.3"
-export _bTs=593v02
+export _bTs=593v01
 
 ###
 ### Avoid too many questions
@@ -64,8 +64,8 @@ _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _optBin="/opt/local/bin"
@@ -287,7 +287,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2026-05.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "files.boa.io"  > ${_ffList}
@@ -310,8 +310,8 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.boa.io"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  _urlDev="https://${_USE_MIR}/dev"
+  _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 _extract_archive() {
@@ -416,7 +416,7 @@ _verify_boa_keys() {
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _if_hosted_sys
     _allw=NO
-    _urlEnc="http://${_USE_MIR}/enc/2024"
+    _urlEnc="https://${_USE_MIR}/enc/2024"
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
@@ -941,7 +941,9 @@ _update_agents() {
     _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
     _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     _InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+    # (Removed dead `_SQL_PSWD=$(cat /root/.my.pass.txt)` read — never
+    #  referenced. The mysql calls below this block use /root/.my.cnf
+    #  implicitly via `mysql -u root` with no -p.)
     if [ "${_InTest}" -lt 9 ] \
       && [[ ! "${_PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
@@ -4506,7 +4508,7 @@ _if_reinstall_curl() {
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget ${_wgetGet} http://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      wget ${_wgetGet} https://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
       tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -4833,11 +4835,11 @@ _if_update_boa_key_tools_only() {
   _check_dns_settings
   _if_reinstall_curl
 
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}" 2> /dev/null)
+    -I "https://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
@@ -4846,7 +4848,7 @@ _if_update_boa_key_tools_only() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+    _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
   _LSB_TEST="$(which lsb_release)"
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -5068,11 +5070,11 @@ _boa_setup() {
 
   _if_reinstall_curl
 
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}" 2> /dev/null)
+    -I "https://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
@@ -5081,7 +5083,7 @@ _boa_setup() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+    _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
 
   _if_clean_boa_env

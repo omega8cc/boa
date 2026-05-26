@@ -6110,7 +6110,11 @@ _finale() {
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   mkdir -p /data/conf/arch/log
-  chmod 0777 /data/conf/arch/log
+  # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
+  # not /data/conf/arch/log — the log subdirectory is vestigial and has no
+  # current writer. World-writable is wrong on principle, and a future
+  # feature that started writing here would inherit the wide-open surface.
+  chmod 0755 /data/conf/arch/log
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/    &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
@@ -6718,8 +6722,9 @@ _if_proxysql_update() {
             _msg "INFO: Restarting ProxySQL server..."
           fi
           _mrun "service proxysql restart"
-          mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
-          mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
+          _write_proxysql_adm_cnf &> /dev/null
+          mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf -e "SELECT * FROM scheduler\G"
+          mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf -e "SELECT * FROM mysql_servers;"
         else
           _msg "OOPS: ProxySQL Galera Checker will not work!"
         fi
