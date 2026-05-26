@@ -21,7 +21,7 @@ Please follow the required steps closely!
 First, update your BOA Meta Installers with:
 
 ```sh
-wget -qO- https://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 ```
 
 Start with a quick barracuda system upgrade for a smooth experience later.
@@ -78,7 +78,7 @@ Please follow the required steps closely!
 First, update your BOA Meta Installers with:
 
 ```sh
-wget -qO- https://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 ```
 
 The procedure discussed above automates major OS upgrades by running them in the multi-step cycle, but you can still run the major OS upgrade with classic `barracuda up-lts system` command if you prefer, after adding the respective variable to `/root/.barracuda.cnf`.

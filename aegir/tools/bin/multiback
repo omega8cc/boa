@@ -27,7 +27,7 @@ _verify_boa_keys() {
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
-    _urlEnc="https://files.aegir.cc/enc/2024"
+    _urlEnc="https://files.boa.io/enc/2024"
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
