@@ -135,7 +135,7 @@ else
   exit 1
 fi
 
-sed -i "s/files.aegir.cc/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+sed -i "s/files.boa.io/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "INFO: Installing the frontend"

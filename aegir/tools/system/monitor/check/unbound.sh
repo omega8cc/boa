@@ -147,7 +147,7 @@ _unbound_config_fix() {
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]]; then
-      _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 8 2>&1)
+      _THIS_DNS_TEST=$(host files.boa.io 127.0.0.1 -w 8 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
         if [ "${_in_unbound_cooldown}" = "true" ]; then
           echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}

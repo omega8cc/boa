@@ -3971,7 +3971,7 @@ _satellite_make() {
     _writeTo="${_vBs}/${_filIncO}"
   fi
 
-  export _xSrl=593devT01
+  export _xSrl=593devT02
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
@@ -5427,7 +5427,7 @@ _satellite_child_b_drush_xts_install() {
     _get_dev_ext "security_review.tar.gz"
     cd ${_ROOT}/.drush
   fi
-  sed -i "s/files.aegir.cc/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+  sed -i "s/files.boa.io/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   wait
 }
 

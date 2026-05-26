@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=593devT01
+export _xSrl=593devT02
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -135,12 +135,12 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    _ffList="/var/backups/boa-mirrors-2026-05.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
-      echo "eu.files.aegir.cc"  > ${_ffList}
-      echo "us.files.aegir.cc" >> ${_ffList}
-      echo "ao.files.aegir.cc" >> ${_ffList}
+      echo "files.boa.io"  > ${_ffList}
+      echo "files.o8.io" >> ${_ffList}
+      echo "files.host8.biz" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -148,15 +148,15 @@ _find_fast_mirror_early() {
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.boa.io"
       else
-        _USE_MIR="files.aegir.cc"
+        _USE_MIR="files.boa.io"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      _USE_MIR="files.boa.io"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="files.boa.io"
   fi
   _urlDev="https://${_USE_MIR}/dev"
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"

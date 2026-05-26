@@ -1049,10 +1049,13 @@ while IFS= read -r _line <&3; do
     done
   fi
 
-  # Skip internal Aegir file server requests — *.files.aegir.cc hostnames appear
+  # Skip internal Aegir file server requests — *.files.boa.io hostnames appear
   # in the log's vhost field and must not feed counters, UA tracking, or path-flood
   # detection.  The same pattern is also guarded inside _process_ip, but that gate
   # does not cover _track_ua_ip / _track_path_flood called later in this loop.
+  [[ "${_line}" =~ files\.boa\.io ]] && continue
+  [[ "${_line}" =~ files\.o8\.io ]] && continue
+  [[ "${_line}" =~ files\.host8\.biz ]] && continue
   [[ "${_line}" =~ files\.aegir\.cc ]] && continue
 
   # Process the real visitor IP (if determined)
