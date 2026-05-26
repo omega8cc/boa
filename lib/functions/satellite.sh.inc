@@ -5421,7 +5421,7 @@ _satellite_child_b_drush_xts_install() {
     _get_dev_ext "security_review.tar.gz"
     cd ${_ROOT}/.drush
   fi
-  sed -i "s/files.aegir.cc/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+  sed -i "s/files.boa.io/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   wait
 }
 

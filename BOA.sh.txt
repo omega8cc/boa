@@ -34,7 +34,7 @@
 ### How To: run it with bash, not with sh  ###
 ###----------------------------------------###
 ###
-###  $ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+###  $ wget -qO- http://files.boa.io/BOA.sh.txt | bash
 ###
 
 ###----------------------------------------###
@@ -233,8 +233,8 @@ _check_dns_settings() {
     echo "127.0.0.1 localhost" >> /etc/hosts
     _EHU=YES
   fi
-  if grep -q "files.aegir.cc" /etc/hosts; then
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+  if grep -q "files.boa.io" /etc/hosts; then
+    sed -i "s/.*files.boa.io.*//g" /etc/hosts
     _EHU=YES
   fi
   if grep -q "github" /etc/hosts; then
@@ -262,14 +262,14 @@ _check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.boa.io 1.1.1.1 -w 10 2>&1)
     if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
-    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.boa.io not found" ]] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _fix_dns_settings
   fi
@@ -287,12 +287,12 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    _ffList="/var/backups/boa-mirrors-2026-05.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
-      echo "eu.files.aegir.cc"  > ${_ffList}
-      echo "us.files.aegir.cc" >> ${_ffList}
-      echo "ao.files.aegir.cc" >> ${_ffList}
+      echo "files.boa.io"  > ${_ffList}
+      echo "files.o8.io" >> ${_ffList}
+      echo "files.host8.biz" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -300,15 +300,15 @@ _find_fast_mirror_early() {
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.boa.io"
       else
-        _USE_MIR="files.aegir.cc"
+        _USE_MIR="files.boa.io"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      _USE_MIR="files.boa.io"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="files.boa.io"
   fi
   _urlDev="http://${_USE_MIR}/dev"
   _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
@@ -4506,7 +4506,7 @@ _if_reinstall_curl() {
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      wget ${_wgetGet} http://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
       tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then

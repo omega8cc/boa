@@ -215,7 +215,7 @@ _hostmaster_go_up() {
   fi
   rm -rf ${_ROOT}/.drush/*/.git
   rm -rf ${_ROOT}/.drush/*/*/.git
-  sed -i "s/files.aegir.cc/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+  sed -i "s/files.boa.io/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   cd ${_PREV_HM_ROOT}
 }
 #
