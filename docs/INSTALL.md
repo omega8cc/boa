@@ -54,7 +54,7 @@
 3. Download and run BOA Meta Installers.
 
    ```sh
-   wget -qO- http://files.boa.io/BOA.sh.txt | bash
+   wget -qO- https://files.boa.io/BOA.sh.txt | bash
    ```
 
 4. Prepare your system by removing `systemd` and upgrading to Devuan 5 Daedalus from any compatible Debian version -- Buster, Bullseye, or Bookworm.
@@ -225,7 +225,7 @@ boa in-octopus my@email o2 lts silent
 2. Download and run BOA Meta Installers.
 
    ```sh
-   wget -qO- http://files.boa.io/BOA.sh.txt | bash
+   wget -qO- https://files.boa.io/BOA.sh.txt | bash
    ```
 
 3. Install Barracuda and Octopus.

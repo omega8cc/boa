@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=593devT02
+export _xSrl=593devT03
 
 _DB_SERIES=5.7
 _CSF_VRN=15.00
@@ -55,8 +55,8 @@ _TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-5.9.3-${_tRee}"
 #
 _barCnf="/root/.barracuda.cnf"
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
 _pthLog="/var/log/boa"
@@ -701,8 +701,8 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.boa.io"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  _urlDev="https://${_USE_MIR}/dev"
+  _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 _find_fast_mirror_early
 
@@ -720,7 +720,7 @@ _if_firewall_update() {
     curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
     curl ${_crlGet} "${_urlHmr}/tools/host/host-water.sh"  -o host-water.sh
     curl ${_crlGet} "${_urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
-    curl ${_crlGet} "http://${_USE_MIR}/cluster/csf.conf"  -o csf.conf
+    curl ${_crlGet} "https://${_USE_MIR}/cluster/csf.conf"  -o csf.conf
     cp -af ${_WFC}/sysctl.conf   /etc/sysctl.conf
     cp -af ${_WFC}/host-water.sh /opt/water.sh
     cp -af ${_WFC}/host-fire.sh  /opt/fire.sh
@@ -1124,7 +1124,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
     if [ -e "/vservers/${_idn}/data/all" ] \
       && [ -e "/vservers/${_idn}/var/lib/proxysql" ]; then
       echo "Installing galera_check for ProxySQL..."
-      curl -s -A iCab "http://${_USE_MIR}/cluster/galera_check.pl" \
+      curl -s -A iCab "https://${_USE_MIR}/cluster/galera_check.pl" \
         -o /vservers/${_idn}/var/lib/proxysql/galera_check.pl
       vserver ${_idn} exec chmod 755 /var/lib/proxysql/galera_check.pl
       vserver ${_idn} exec chown proxysql:proxysql /var/lib/proxysql/galera_check.pl
@@ -1211,7 +1211,7 @@ _install_vps() {
   if [ "${_ver}" != "galera" ]; then
     echo "Installing BOA ${_ver} in vps ${_idn}..."
     rm -f BOA.sh.txt*
-    wget ${_wgetGet} http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt
+    wget ${_wgetGet} https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${_idn}/root/
     vserver ${_idn} exec bash /root/BOA.sh.txt
     vserver ${_idn} exec /opt/local/bin/boa in-${_ver} public ${_hst} ${_eml} o8 mini
@@ -2119,13 +2119,13 @@ _install_host() {
 
   echo "Installing csf/lfd..."
   cd /var/opt
-  wget ${_wgetGet} http://${_USE_MIR}/dev/src/csf-${_CSF_VRN}.tar.gz
+  wget ${_wgetGet} https://${_USE_MIR}/dev/src/csf-${_CSF_VRN}.tar.gz
   tar -xzf csf-${_CSF_VRN}.tar.gz
   cd csf
   sh install.sh
   cd /etc/csf
   mv -f csf.conf csf.conf-pre
-  wget ${_wgetGet} http://${_USE_MIR}/cluster/csf.conf
+  wget ${_wgetGet} https://${_USE_MIR}/cluster/csf.conf
   chmod 600 /etc/csf/csf.conf
   sed -i "s/^Port.*/Port 24/g" /etc/ssh/sshd_config
   echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -2333,7 +2333,7 @@ _upgrade_host() {
     apt-get autoremove -y
     cd /var/opt
     rm -rf util-vserver*
-    wget ${_wgetGet} http://${_USE_MIR}/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
+    wget ${_wgetGet} https://${_USE_MIR}/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
     tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
     cd util-vserver-${_UTIL_VRN}
     bash ./configure --prefix=/usr
@@ -2350,7 +2350,7 @@ _upgrade_host() {
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
-  wget ${_wgetGet} http://${_USE_MIR}/versions/${_tRee}/boa/aegir/conf/sysctl.conf
+  wget ${_wgetGet} https://${_USE_MIR}/versions/${_tRee}/boa/aegir/conf/sysctl.conf
   cp -af sysctl.conf /etc/sysctl.conf
   echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   rm -f sysctl.conf*
@@ -2383,7 +2383,7 @@ _upgrade_host() {
   echo "Installing vnstat..."
   cd /var/opt
   rm -rf vnstat*
-  wget ${_wgetGet} http://${_USE_MIR}/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
+  wget ${_wgetGet} https://${_USE_MIR}/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
   tar -xzf vnstat-${_VNSTAT_VRN}.tar.gz
   cd vnstat-${_VNSTAT_VRN}
   bash ./configure --prefix=/usr
@@ -2410,7 +2410,7 @@ _upgrade_host() {
     echo "Installing vserver-autostart..."
     rm -f /usr/local/sbin/vserver-autostart
     cd /usr/local/sbin/
-    wget ${_wgetGet} http://${_USE_MIR}/cluster/vserver-autostart
+    wget ${_wgetGet} https://${_USE_MIR}/cluster/vserver-autostart
     if [ -e "/usr/local/sbin/vserver-autostart" ]; then
       cd;chmod u+x /usr/local/sbin/vserver-autostart
     else
@@ -2433,10 +2433,10 @@ _upgrade_host() {
   echo "Updating packages on this system..."
   _apt_clean_update
   apt-get install aptitude ${_APT_XTR} \
-    && aptitude full-upgrade -f -y -q \
+    && aptitude -f -y -q \
       -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confnew \
+      -o Dpkg::Options::=--force-confnew full-upgrade \
     && apt-get dist-upgrade ${_APT_XTR} \
     && apt-get dist-upgrade ${_APT_XTR}
 

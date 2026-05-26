@@ -14,7 +14,7 @@ _get_core_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"; then
+      if curl ${_crlGet} "https://${_USE_MIR}/core/$1" -o "$1"; then
         _success=1
         break
       else
@@ -29,7 +29,7 @@ _get_core_ext() {
     if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: Failed to download http://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
+      _msg "OOPS: Failed to download https://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
     fi
   fi
@@ -2568,8 +2568,8 @@ _provision_backend_dbpass_generate() {
     if [ "${_STATUS}" = "INIT" ]; then
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
-        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+        _write_proxysql_adm_cnf &> /dev/null
+        mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2616,8 +2616,8 @@ EOFMYSQL
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL15 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-          _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
-          mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+          _write_proxysql_adm_cnf &> /dev/null
+          mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2693,8 +2693,8 @@ _provision_backend_dbpass_sync() {
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _write_proxysql_adm_cnf &> /dev/null
+      mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2804,8 +2804,8 @@ _hostmaster_frontend_dbpass_sync() {
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _write_proxysql_adm_cnf &> /dev/null
+      mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
@@ -3350,11 +3350,12 @@ _satellite_if_add_ftps_lshell_access() {
       _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
     fi
     echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
-    # get the password hash
-    ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
-      | tr -d '+=' | head -c 16))
-    # Set the password
-    usermod -p $ph ${_USERFTP} &> /dev/null
+    # get the password hash via stdin so the plaintext never reaches
+    # /proc/<pid>/cmdline; set the hash via chpasswd -e via stdin so the
+    # hash never reaches /proc either.
+    _salt=$(openssl rand -base64 16 | tr -d '+=' | head -c 16)
+    ph=$(printf '%s' "${_ESC_LUPASS}" | mkpasswd -m sha-512 -s -S "${_salt}")
+    printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
     passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
   fi
   usermod -aG lshellg ${_USERFTP}
@@ -3628,9 +3629,11 @@ _satellite_if_read_create_pass_txt() {
         _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
       echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
-      ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
-        | tr -d '+=' | head -c 16))
-      usermod -p $ph ${_USERFTP} &> /dev/null
+      # See sibling site above — stdin-based mkpasswd + chpasswd -e keep
+      # the plaintext password and the resulting hash out of /proc/PID/cmdline.
+      _salt=$(openssl rand -base64 16 | tr -d '+=' | head -c 16)
+      ph=$(printf '%s' "${_ESC_LUPASS}" | mkpasswd -m sha-512 -s -S "${_salt}")
+      printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
       _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
       _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
     fi
@@ -3968,7 +3971,7 @@ _satellite_make() {
     _writeTo="${_vBs}/${_filIncO}"
   fi
 
-  export _xSrl=593devT02
+  export _xSrl=593devT03
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
@@ -5140,7 +5143,10 @@ _satellite_batch_cleanup() {
   mv -f ${_ROOT}/backups/safe_cache_form_clear-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/ &> /dev/null
   mkdir -p /data/conf/arch/log
-  chmod 0777 /data/conf/arch/log
+  # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
+  # not /data/conf/arch/log — the log subdirectory is vestigial and has no
+  # current writer. Matches the parallel fix in system.sh.inc.
+  chmod 0755 /data/conf/arch/log
   mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null

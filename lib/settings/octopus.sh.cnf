@@ -695,7 +695,7 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
 export _tRee=dev
-export _xSrl=593devT02
+export _xSrl=593devT03
 
 
 ###
@@ -769,8 +769,8 @@ _find_fast_mirror_cnf() {
   else
     export _USE_MIR="files.boa.io"
   fi
-  export _urlDev="http://${_USE_MIR}/dev"
-  export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  export _urlDev="https://${_USE_MIR}/dev"
+  export _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 
@@ -783,7 +783,7 @@ _verify_boa_keys() {
   fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
-    _urlEnc="http://${_USE_MIR}/enc/2024"
+    _urlEnc="https://${_USE_MIR}/enc/2024"
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _encName=$(echo ${_hName} \
       | openssl md5 \

@@ -7,7 +7,7 @@ export _tRee=dev
 
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -126,8 +126,8 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.boa.io"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  _urlDev="https://${_USE_MIR}/dev"
+  _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 _if_reinstall_curl_src() {
@@ -164,7 +164,7 @@ _if_reinstall_curl_src() {
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget ${_wgetGet} http://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      wget ${_wgetGet} https://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
       tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -207,12 +207,12 @@ _if_reinstall_curl_src() {
 _check_dns_curl() {
   _find_fast_mirror_early
   _if_reinstall_curl_src
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}" 2> /dev/null)
-  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    -I "https://${_USE_MIR}" 2> /dev/null)
+  if [[ ! "${_CURL_TEST}" =~ "HTTP/2 200" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
       _if_reinstall_curl_src
@@ -225,7 +225,7 @@ _check_dns_curl() {
 if [ ! -e "/run/boa_run.pid" ]; then
   _check_dns_curl
   rm -f /tmp/*error*
-  wget -qO- http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt | bash
+  wget -qO- https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt | bash
   wait
   bash /opt/local/bin/autoupboa
   wait
@@ -263,8 +263,8 @@ if [ -d "/data/u" ]; then
       _checkVn="whereis barracuda_log.txt"
     fi
   fi
-  _crlHead="-I -k -s --retry 3 --retry-delay 3"
-  _urlBpth="http://${_USE_MIR}/versions/${_tRee}/boa/aegir/tools/bin"
+  _crlHead="-I -s --retry 3 --retry-delay 3"
+  _urlBpth="https://${_USE_MIR}/versions/${_tRee}/boa/aegir/tools/bin"
   curl ${_crlHead} -A "${_chckHst} ${_chckIps} ${_checkVn} ${_chckSts}" "${_urlBpth}/thinkdifferent" &> /dev/null
   wait
 fi

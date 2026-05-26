@@ -28,7 +28,7 @@ at your earliest convenience — do not skip the reboot:
 
 ```sh
 screen
-wget -qO- http://files.boa.io/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 barracuda up-lts
 octopus up-lts all force
 reboot
@@ -307,7 +307,7 @@ Run inside a `screen` session as root:
 
 ```sh
 screen
-wget -qO- http://files.boa.io/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 barracuda up-lts
 octopus up-lts all force
 ```
@@ -317,7 +317,7 @@ emailed on completion — useful for cron):
 
 ```sh
 screen
-wget -qO- http://files.boa.io/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 barracuda up-lts log
 octopus up-lts all force log
 ```

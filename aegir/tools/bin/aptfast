@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# apt-fast v1.4 by Matt Parnell http://www.mattparnell.com, GNU GPLv3
-# Use this just like aptitude for faster package downloading.
+# apt-fast v1.5 by Matt Parnell http://www.mattparnell.com, GNU GPLv3
+# BOA-compatible patched variant:
+# - keeps aptitude as the final package manager
+# - uses apt-get only for --print-uris
+# - translates aptitude-only --allow-untrusted to apt-get --allow-unauthenticated
+# - translates aptitude full-upgrade/safe-upgrade for apt-get URI preview only
+# - quotes variables and preserves original arguments safely
 
 ###################################################################
 # CONFIGURATION OPTIONS                                           #
@@ -10,64 +15,127 @@
 # Maximum number of connections
 _MAXNUM=5
 
-# Note that the download manager you choose has other options - feel free
-# to setup your own _DOWNLOADER line or customize one of the ones below...
-# they're simply there for example purposes, and to provide sane defaults
-
-# Download manager selection (choose one by uncommenting one #_DOWNLOADER line)
+# Download manager selection
 
 # aria2c:
 #_DOWNLOADER='aria2c -c -j ${_MAXNUM} --input-file=/opt/tmp/apt-fast.list --connect-timeout=600 --timeout=600 -m0'
 
-# aria2c with a proxy (set username, proxy, ip and password!)
-#_DOWNLOADER='aria2c -s 20 -j ${_MAXNUM} --http-proxy=http://username:password@proxy_ip:proxy_port -i apt-fast.list'
+# aria2c with a proxy:
+#_DOWNLOADER='aria2c -s 20 -j ${_MAXNUM} --http-proxy=http://username:password@proxy_ip:proxy_port -i /opt/tmp/apt-fast.list'
 
 # axel:
-_DOWNLOADER='cat /opt/tmp/apt-fast.list | xargs -r -l1 axel -n ${_MAXNUM} -a' # axel
+_DOWNLOADER='cat /opt/tmp/apt-fast.list | xargs -r -l1 axel -n ${_MAXNUM} -a'
 
 ###################################################################
 # DO NOT EDIT BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING! #
 ###################################################################
 
+_LCK_FILE="/var/lock/apt-fast.lck"
+_URI_LIST="/opt/tmp/apt-fast.list"
+_APT_CACHE_DIR="/var/cache/apt/archives"
+
 _unlock()
 {
-	rm -f $LCK_FILE
+  rm -f "${_LCK_FILE}"
 }
 
-# Check for proper priveliges
-[ "`whoami`" = root ] || exec sudo "$0" "$@"
+_die()
+{
+  echo "aptfast: ${1}" >&2
+  _unlock
+  exit 1
+}
 
-# Define our lock location
-LCK_FILE=/var/lock/apt-fast.lck
-
-trap " [ -f ${LCK_FILE} ] && _unlock" 0 1 2 3 13 15
-
-# Make sure one of the download managers is enabled
-[ -z "$_DOWNLOADER" ] && echo "You must configure apt-fast to use axel or aria2c" && _unlock && exit 1;
-
-# If the user entered arguments contain upgrade, install, or dist-upgrade
-if echo "$@" | grep -q "upgrade\|install\|dist-upgrade"; then
-  echo "Working...";
-
-  # Go into the directory aptitude normally puts downloaded packages
-  cd /var/cache/apt/archives/;
-
-  # Have aptitude print the information, including the URI's to the packages
-  # Strip out the URI's, and download the packages with Axel for speediness
-  # I found this regex elsewhere, showing how to manually strip package URI's you may need...thanks to whoever wrote it
-  apt-get -y --print-uris $@ | egrep -o -e "(ht|f)tp://[^\']+" > /opt/tmp/apt-fast.list
-  if [ -s "/opt/tmp/apt-fast.list" ] ; then
-	eval ${_DOWNLOADER}
-  fi
-  # Install our downloaded packages
-  aptitude $@;
-
-  echo -e "\nDone!\nVerify that all packages were installed successfully.\nIf errors are found, run aptitude clean as root\nand try again using aptitude directly.\n";
-
-else
-   aptitude $@;
+# Check for proper privileges.
+if [ "$(whoami)" != "root" ]; then
+  exec sudo "$0" "$@"
 fi
 
-# Remove our lock
+trap 'if [ -f "${_LCK_FILE}" ]; then _unlock; fi' 0 1 2 3 13 15
 
-_unlock
+# Basic lock protection.
+if [ -f "${_LCK_FILE}" ]; then
+  echo "aptfast: lock file exists: ${_LCK_FILE}" >&2
+  echo "aptfast: another aptfast process may already be running." >&2
+  exit 1
+fi
+
+touch "${_LCK_FILE}" || _die "cannot create lock file: ${_LCK_FILE}"
+
+# Make sure one of the download managers is enabled.
+if [ -z "${_DOWNLOADER}" ]; then
+  _die "you must configure apt-fast to use axel or aria2c"
+fi
+
+mkdir -p "/opt/tmp" || _die "cannot create /opt/tmp"
+
+_ORIG_ARGS=( "$@" )
+_APTGET_ARGS=()
+
+# Prepare arguments for apt-get --print-uris.
+#
+# The final install/upgrade is still performed by aptitude with the original
+# arguments, but apt-get is used to print package URIs for parallel download.
+#
+# aptitude option:
+#   --allow-untrusted
+#
+# apt-get equivalent:
+#   --allow-unauthenticated
+#
+# aptitude action:
+#   full-upgrade
+#
+# apt-get equivalent for URI preview:
+#   dist-upgrade
+#
+# aptitude action:
+#   safe-upgrade
+#
+# apt-get equivalent for URI preview:
+#   upgrade
+#
+for _ARG in "${_ORIG_ARGS[@]}"; do
+  case "${_ARG}" in
+    --allow-untrusted)
+      _APTGET_ARGS+=( "--allow-unauthenticated" )
+      ;;
+    full-upgrade)
+      _APTGET_ARGS+=( "dist-upgrade" )
+      ;;
+    safe-upgrade)
+      _APTGET_ARGS+=( "upgrade" )
+      ;;
+    *)
+      _APTGET_ARGS+=( "${_ARG}" )
+      ;;
+  esac
+done
+
+# If the user entered arguments contain upgrade, full-upgrade, safe-upgrade,
+# install, or dist-upgrade, pre-download packages using apt-get --print-uris.
+if printf '%s\n' "${_ORIG_ARGS[@]}" | grep -Eq '^(upgrade|full-upgrade|safe-upgrade|install|dist-upgrade)$'; then
+  echo "Working..."
+
+  cd "${_APT_CACHE_DIR}" || _die "cannot enter ${_APT_CACHE_DIR}"
+
+  : > "${_URI_LIST}" || _die "cannot write ${_URI_LIST}"
+
+  apt-get -y --print-uris "${_APTGET_ARGS[@]}" \
+    | grep -Eo "(https?|ftp)://[^']+" > "${_URI_LIST}"
+
+  if [ -s "${_URI_LIST}" ]; then
+    eval "${_DOWNLOADER}"
+  fi
+
+  aptitude "${_ORIG_ARGS[@]}"
+
+  _APT_STATUS="${?}"
+
+  echo -e "\nDone!\nVerify that all packages were installed successfully.\nIf errors are found, run aptitude clean as root\nand try again using aptitude directly.\n"
+
+  exit "${_APT_STATUS}"
+else
+  aptitude "${_ORIG_ARGS[@]}"
+  exit "${?}"
+fi
