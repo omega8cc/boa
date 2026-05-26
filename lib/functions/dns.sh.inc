@@ -383,6 +383,7 @@ _dns_unbound_install_upgrade() {
     || [ -e "/usr/etc/unbound/unbound.pid" ] \
     || [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] \
     || [ -e "/etc/resolvconf/run/interface/lo.unbound" ] \
+    || [ -e "/lib/resolvconf" ] \
     || [ ! -e "/run/unbound" ] \
     || [ ! -x "/usr/libexec/unbound-helper" ] \
     || [ ! -x "/etc/init.d/unbound" ]; then
@@ -425,6 +426,7 @@ _dns_unbound_install_upgrade() {
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
+    rm -rf /lib/resolvconf
     if dpkg-query -W -f='${Status}' resolvconf 2>/dev/null | grep -q "install ok installed"; then
       _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
     fi
