@@ -3276,11 +3276,11 @@ _run_aptitude_full_upgrade() {
   _mrun "apt-get --fix-broken install -y"
   _fix_grub_pc_install_devices
   _mrun "dpkg --configure --force-all -a"
-  _mrun "aptitude full-upgrade -f -y -q \
+  _mrun "aptitude -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-${_DPKG_CNF}"
+    -o Dpkg::Options::=--force-${_DPKG_CNF} full-upgrade"
 }
 
 #
@@ -7921,18 +7921,18 @@ _sys_packages_update() {
   else
     _DPKG_CNF="confnew"
   fi
-  _mrun "aptitude full-upgrade -f -y -q \
+  _mrun "aptitude -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-${_DPKG_CNF}"
+    -o Dpkg::Options::=--force-${_DPKG_CNF} full-upgrade"
   if [ "${_STATUS}" = "INIT" ]; then
     _apt_clean_update
-    _mrun "aptitude full-upgrade -f -y -q \
+    _mrun "aptitude -f -y -q \
       --allow-untrusted \
       -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-${_DPKG_CNF}"
+      -o Dpkg::Options::=--force-${_DPKG_CNF} full-upgrade"
     _mrun "apt-get autoclean -y"
   else
     echo "gnupg-curl install" | dpkg --set-selections &> /dev/null

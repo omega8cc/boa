@@ -2433,10 +2433,10 @@ _upgrade_host() {
   echo "Updating packages on this system..."
   _apt_clean_update
   apt-get install aptitude ${_APT_XTR} \
-    && aptitude full-upgrade -f -y -q \
+    && aptitude -f -y -q \
       -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confnew \
+      -o Dpkg::Options::=--force-confnew full-upgrade \
     && apt-get dist-upgrade ${_APT_XTR} \
     && apt-get dist-upgrade ${_APT_XTR}
 
