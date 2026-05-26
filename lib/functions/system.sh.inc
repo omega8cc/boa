@@ -9469,6 +9469,13 @@ _newrelic_check_fix() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' 2>&1)
   fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    if [ ! -z "${_NOW_NR_V}" ]; then
+      _msg "INFO: New Relic installed: ${_NOW_NR_V} target: ${_NEW_RELIC_VRN}"
+    else
+      _msg "INFO: New Relic not installed, target: ${_NEW_RELIC_VRN}"
+    fi
+  fi
   if [ ! -z "${_NOW_NR_V}" ]; then
     if [ "${_NOW_NR_V}" != "${_NEW_RELIC_VRN}" ]; then
       _NR_FORCE_REINSTALL=YES
