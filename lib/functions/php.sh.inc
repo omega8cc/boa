@@ -2234,8 +2234,7 @@ _if_install_php_newrelic() {
       || [ ! -e "${_pthLog}/newrelic-${_xSrl}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
-      || [ ! -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ] \
-      || [ ! -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ] \
+      || [ ! -e "/etc/apt/keyrings/newrelic.gpg" ] \
       || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       _msg "INFO: Installing New Relic Apps Monitor..."
       cd /var/opt

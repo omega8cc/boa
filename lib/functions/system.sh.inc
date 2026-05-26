@@ -9459,6 +9459,7 @@ _newrelic_check_fix() {
     _msg "PROC: _newrelic_check_fix"
   fi
   _NR_FORCE_REINSTALL=NO
+  _NOW_NR_V=""
   _NRS_TEST="$(which newrelic-daemon)"
   if [ ! -z "${_NRS_TEST}" ]; then
     _NOW_NR_V=$(newrelic-daemon --version 2>&1 \
