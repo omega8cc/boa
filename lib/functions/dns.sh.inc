@@ -57,14 +57,14 @@ _check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.boa.io 1.1.1.1 -w 10 2>&1)
     if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
-    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.boa.io not found" ]] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _fix_dns_settings
   fi

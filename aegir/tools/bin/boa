@@ -769,14 +769,14 @@ _check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.boa.io 1.1.1.1 -w 10 2>&1)
     if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
-    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.boa.io not found" ]] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _fix_dns_settings
   fi
@@ -1580,7 +1580,7 @@ _init_setup() {
   export _rLsn="BOA-5.9.3"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
-  export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"
+  export _rgUrl="http://files.boa.io/versions/${_tRee}/boa"
 
   if [ "${_cmNd}" = "in-dev" ] \
     || [ "${_cmNd}" = "in-pro" ] \
@@ -1796,12 +1796,12 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    _ffList="/var/backups/boa-mirrors-2026-05.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
-      echo "eu.files.aegir.cc"  > ${_ffList}
-      echo "us.files.aegir.cc" >> ${_ffList}
-      echo "ao.files.aegir.cc" >> ${_ffList}
+      echo "files.boa.io"  > ${_ffList}
+      echo "files.o8.io" >> ${_ffList}
+      echo "files.host8.biz" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -1809,15 +1809,15 @@ _find_fast_mirror_early() {
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         export _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="files.aegir.cc"
+        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="files.boa.io"
       else
-        export _USE_MIR="files.aegir.cc"
+        export _USE_MIR="files.boa.io"
       fi
     else
-      export _USE_MIR="files.aegir.cc"
+      export _USE_MIR="files.boa.io"
     fi
   else
-    export _USE_MIR="files.aegir.cc"
+    export _USE_MIR="files.boa.io"
   fi
   export _urlDev="http://${_USE_MIR}/dev"
   export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
@@ -1929,9 +1929,9 @@ _csf_check_fix() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
-    csf -a 172.235.166.69  eu.files.aegir.cc &> /dev/null
-    csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
-    csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
+    csf -a 172.235.166.69  files.boa.io &> /dev/null
+    csf -a 172.233.219.37  files.o8.io &> /dev/null
+    csf -a 172.105.168.103 files.host8.biz &> /dev/null
     service lfd stop &> /dev/null
     pkill -9 -f ConfigServer
     killall sleep &> /dev/null
@@ -2036,8 +2036,8 @@ _check_root() {
       echo "127.0.0.1 localhost" >> /etc/hosts
       _EHU=YES
     fi
-    if grep -q "files.aegir.cc" /etc/hosts; then
-      sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+    if grep -q "files.boa.io" /etc/hosts; then
+      sed -i "s/.*files.boa.io.*//g" /etc/hosts
       _EHU=YES
     fi
     if grep -q "github" /etc/hosts; then
