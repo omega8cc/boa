@@ -2550,7 +2550,7 @@ _check_php_rebuild() {
     fi
   fi
 
-  # Run the SSL version check
+  # Run the SSL version check for all PHP versions
   if ! _check_php_ssl_version "$1"; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: PHP ${_PHP_ITD} uses incorrect OpenSSL, forcing rebuild"
@@ -2558,12 +2558,14 @@ _check_php_rebuild() {
     _PHP_FORCE_REINSTALL=YES
   fi
 
-  # Run the ICU version check
-  if ! _check_php_icu_version "$1"; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
+  if [ "$1" -gt 73 ]; then
+    # Run the ICU version check for PHP newer than 7.3
+    if ! _check_php_icu_version "$1"; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
+      fi
+      _PHP_FORCE_REINSTALL=YES
     fi
-    _PHP_FORCE_REINSTALL=YES
   fi
 
   # Check for presence of PHP drivers
