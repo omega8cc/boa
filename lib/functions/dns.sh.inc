@@ -479,6 +479,7 @@ _dns_unbound_install_upgrade() {
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    [ -f "/etc/resolv.conf" ] && chattr -i /etc/resolv.conf
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
@@ -492,6 +493,7 @@ _dns_unbound_install_upgrade() {
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    [ -f "/etc/resolv.conf" ] && chattr -i /etc/resolv.conf
     resolvconf -u &> /dev/null
   fi
   if [ -e "/etc/resolvconf/run/resolv.conf" ] \

@@ -136,6 +136,7 @@ _unbound_config_fix() {
       mkdir -p /etc/resolvconf/run/interface
       echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+      [ -f "/etc/resolv.conf" ] && chattr -i /etc/resolv.conf
       resolvconf -u &> /dev/null
       _unbound_restart_with_cooldown
       echo "$(date) INFO: Unbound restarted after resolvconf interface update" >> ${_pthOml}
@@ -262,6 +263,7 @@ _unbound_health_check_fix() {
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    [ -f "/etc/resolv.conf" ] && chattr -i /etc/resolv.conf
     resolvconf -u &> /dev/null
     _unbound_restart_with_cooldown
     _thisErrLog="$(date) Unbound Server was down, restarted"
