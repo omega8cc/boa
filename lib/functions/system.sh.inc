@@ -3392,6 +3392,77 @@ _check_apt_updates() {
 }
 
 #
+# Install newer ICU from sources.
+_install_icu_newer() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_icu_newer"
+  fi
+  ###--------------------###
+  if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
+    rm -rf /var/backups/.old_icu
+    mv -f /usr/lib/x86_64-linux-gnu/.old_icu /var/backups/.old_icu
+  fi
+  if [ -e "/usr/lib/x86_64-linux-gnu/.legacy_icu" ]; then
+    rm -rf /var/backups/.legacy_icu
+    mv -f /usr/lib/x86_64-linux-gnu/.legacy_icu /var/backups/.legacy_icu
+  fi
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  if [ -e "${_pthLog}" ]; then
+    _pthIcuLog="${_pthLog}/icu-update-${_ICU_NEWER_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="${_pthLog}/icu-update-${_ICU_NEWER_VRN}.log"
+  else
+    _pthIcuLog="/root/.icu-update-${_ICU_NEWER_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="/root/.icu-update-${_ICU_NEWER_VRN}.log"
+  fi
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    && [ -e "${_pthIcuLcy}" ] \
+    && [ ! -e "${_pthIcuLog}" ]; then
+    touch ${_pthIcuLog}
+  fi
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    && [ -e "${_pthIcuLcy}" ] \
+    && [ ! -e "${_pthIcuLog}" ]; then
+    touch ${_pthIcuLog}
+  fi
+  if [ -e "${_pthIcuLog}" ]; then
+    chattr -i ${_pthIcuLog}
+  fi
+  if [ -e "${_pthIcuLcy}" ]; then
+    chattr -i ${_pthIcuLcy}
+  fi
+  if [ ! -e "/usr/local/lib/icu/current" ] \
+    || [ ! -e "${_pthIcuLog}" ]; then
+    _msg "INFO: Installing ICU libs version ${_ICU_NEWER_VRN}..."
+    _msg "WAIT: This may take a while, please wait..."
+    if [ ! -e "/var/opt/icu-release-${_ICU_NEWER_VRN}/icu4c/source" ]; then
+      cd /var/opt
+      rm -rf icu*
+      _get_dev_src "icu-release-${_ICU_NEWER_VRN}.tar.gz"
+    fi
+    cd /var/opt/icu-release-${_ICU_NEWER_VRN}/icu4c/source
+    _mrun "bash ./configure --prefix=/usr/local"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ -e "/usr/local/lib/icu" ]; then
+      touch ${_pthIcuLog}
+    fi
+    _X86_64_TEST=$(uname -m)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          rm -rf /var/backups/pre_icu
+          mv -f /usr/lib/x86_64-linux-gnu/icu /var/backups/pre_icu
+        fi
+        if [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        fi
+      fi
+    fi
+  fi
+}
+
+#
 # Install modern ICU from sources.
 _install_icu_modern() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3575,12 +3646,19 @@ _php_install_deps() {
       fi
     done
   fi
-  if [ "${_OS_CODE}" = "jessie" ]; then
-    _install_icu_jessie
-  else
-    _install_icu_modern
-    # _mrun "${_INSTAPP} libicu-dev icu-devtools"
-  fi
+
+  # Set ICU version install based on the OS version
+  case "${_OS_CODE}" in
+    excalibur|daedalus|trixie|bookworm)
+      _install_icu_newer
+      ;;
+    chimaera|beowulf|bullseye|buster|stretch)
+      _install_icu_modern
+      ;;
+    *)
+      _install_icu_jessie
+      ;;
+  esac
 }
 
 #

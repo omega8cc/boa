@@ -2465,6 +2465,64 @@ _check_php_ssl_version() {
 }
 
 #
+# Check if the PHP has correct ICU headers version.
+_check_php_icu_version() {
+  # Debug mode: log the start of the function
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_icu_version $1"
+  fi
+
+  _ICU_LEGACY=${_ICU_LEGACY_VRN/[_-]/.}
+  _ICU_MODERN=${_ICU_MODERN_VRN/[_-]/.}
+  _ICU_NEWER=${_ICU_NEWER_VRN/[_-]/.}
+
+  # Set ICU version based on the OS version
+  case "${_OS_CODE}" in
+    excalibur|daedalus|trixie|bookworm)
+      _ICE_USE_VRN="${_ICU_NEWER}"  # 76.1
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+         _msg "INFO: Using Newer ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
+      fi
+      ;;
+    chimaera|beowulf|bullseye|buster|stretch)
+      _ICE_USE_VRN="${_ICU_MODERN}"  # 73.1
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Using Modern ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
+      fi
+      ;;
+    *)
+      _ICE_USE_VRN="${_ICU_LEGACY}"  # 52.2
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Using Legacy ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
+      fi
+      ;;
+  esac
+
+  # Check the installed PHP ICU version
+  _PHP_ICU_TEST=$(/opt/php$1/bin/php -i | grep "ICU version" 2>&1)
+  _PHP_ICU_LOOK_FOR="${_ICE_USE_VRN}"
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Expected PHP ICU Header Version: ${_PHP_ICU_LOOK_FOR}"
+    _msg "INFO: Detected PHP ICU Header Version: ${_PHP_ICU_TEST}"
+  fi
+
+  # Return true if mismatch is found, otherwise false
+  if [[ ! "${_PHP_ICU_TEST}" =~ "${_PHP_ICU_LOOK_FOR}" ]]; then
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP ICU version mismatch detected, rebuild required"
+    fi
+    return 1  # ICU version mismatch, rebuild needed
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP ICU version is correct, no rebuild needed"
+  fi
+  return 0  # ICU version matches, no rebuild needed
+}
+
+#
 # Check if the PHP rebuild is required.
 _check_php_rebuild() {
   # Debug mode: log the function call
@@ -2496,6 +2554,14 @@ _check_php_rebuild() {
   if ! _check_php_ssl_version "$1"; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: PHP ${_PHP_ITD} uses incorrect OpenSSL, forcing rebuild"
+    fi
+    _PHP_FORCE_REINSTALL=YES
+  fi
+
+  # Run the ICU version check
+  if ! _check_php_icu_version "$1"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
     fi
     _PHP_FORCE_REINSTALL=YES
   fi
