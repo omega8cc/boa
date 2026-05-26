@@ -386,8 +386,7 @@ _fix_dns_settings() {
     chmod 0644 /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
-  if [ -x "/usr/sbin/unbound-control" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+  if [ -x "/usr/sbin/unbound-control" ]; then
     unbound-control reload &> /dev/null
   fi
 }

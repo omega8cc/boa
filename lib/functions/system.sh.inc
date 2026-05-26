@@ -5362,7 +5362,6 @@ _switch_to_dash() {
                   /etc/init.d \
                   /etc/network/if-down.d \
                   /etc/network/if-up.d \
-                  /etc/resolvconf/update.d \
                   /etc/webmin \
                   /lib/apparmor \
                   /opt/php56/bin \
@@ -5447,7 +5446,6 @@ _switch_to_bash() {
                   /etc/init.d \
                   /etc/network/if-down.d \
                   /etc/network/if-up.d \
-                  /etc/resolvconf/update.d \
                   /etc/webmin \
                   /lib/apparmor \
                   /opt/php56/bin \
