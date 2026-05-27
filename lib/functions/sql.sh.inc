@@ -584,6 +584,15 @@ _sql_conf_update() {
         sed -i -E \
           -e "s/^#?\s*log_syslog/log_syslog/" \
           /etc/mysql/my.cnf &> /dev/null
+      elif [ "${_DB_V}" = "8.0" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DBST: Enable Logging for Percona ${_DB_V}"
+        fi
+        sed -i -E \
+          -e "s/^#?\s*log_error\s/log_error /" \
+          -e "s/^#?\s*log_error_verbosity\s/log_error_verbosity /" \
+          -e "s/^#?\s*mysqlx/mysqlx/" \
+          /etc/mysql/my.cnf &> /dev/null
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DBST: Enable Logging for Percona ${_DB_V}"
@@ -1425,8 +1434,15 @@ _db_server_install() {
       sed -i -E \
         -e "s/^#?\s*log_syslog/log_syslog/" \
         /etc/mysql/my.cnf &> /dev/null
+    elif [ "${_DB_SERIES}" = "8.0" ]; then
+      # Enable Logging for Percona 8.0
+      sed -i -E \
+        -e "s/^#?\s*log_error\s/log_error /" \
+        -e "s/^#?\s*log_error_verbosity\s/log_error_verbosity /" \
+        -e "s/^#?\s*mysqlx/mysqlx/" \
+        /etc/mysql/my.cnf &> /dev/null
     else
-      # Enable Logging for Percona 8.x
+      # Enable Logging for Percona 8.4
       sed -i -E \
         -e "s/^#?\s*log_error/log_error/" \
         -e "s/^#?\s*syseventlog/syseventlog/" \
