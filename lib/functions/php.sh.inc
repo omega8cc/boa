@@ -2010,65 +2010,73 @@ _newrelic_key_check() {
   fi
   _NR_KEY_UPDATED=NO
   local _key_path="/etc/apt/keyrings/newrelic.gpg"
-  local _key_url_upstream="https://download.newrelic.com/infrastructure_agent/gpg/newrelic-infra.gpg"
+  local _key_url_upstream="https://download.newrelic.com/NEWRELIC_APT_2DAD550E.public"
   local _key_url_mirror="${_urlDev}/newrelic-key-${_NEWRELIC_KEY_FILE}.gpg"
-  local _tmp_upstream _tmp_upstream_raw _tmp_mirror _tmp_mirror_raw
-  local _fp_installed _fp_upstream _fp_mirror
-  _tmp_upstream_raw=$(mktemp /tmp/newrelic-key-XXXXXX.asc)
-  _tmp_upstream=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
-  _tmp_mirror_raw=$(mktemp /tmp/newrelic-key-XXXXXX.asc)
-  _tmp_mirror=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
+  local _tmp_key_raw _tmp_key
+  local _fp_installed _fp_available
+  _tmp_key_raw=$(mktemp /tmp/newrelic-key-XXXXXX.raw)
+  _tmp_key=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
 
-  curl ${_crlGet} "${_key_url_mirror}" -o "${_tmp_mirror_raw}"
-  if [ ! -s "${_tmp_mirror_raw}" ]; then
+  curl ${_crlGet} "${_key_url_upstream}" -o "${_tmp_key_raw}"
+  if [ ! -s "${_tmp_key_raw}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Cannot fetch New Relic key from mirror: ${_key_url_mirror}"
+      _msg "INFO: New Relic upstream unreachable, trying mirror: ${_key_url_mirror}"
     fi
-    rm -f "${_tmp_upstream_raw}" "${_tmp_upstream}" \
-      "${_tmp_mirror_raw}" "${_tmp_mirror}"
+    curl ${_crlGet} "${_key_url_mirror}" -o "${_tmp_key_raw}"
+  fi
+
+  if [ ! -s "${_tmp_key_raw}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Cannot fetch New Relic APT key from upstream or mirror"
+    fi
+    rm -f "${_tmp_key_raw}" "${_tmp_key}"
     return 1
   fi
-  ${_GPG} --dearmor -o "${_tmp_mirror}" < "${_tmp_mirror_raw}" 2>/dev/null
 
-  _fp_mirror=$(${_GPG} --with-colons --import-options show-only \
-    --import "${_tmp_mirror}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
+  if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_tmp_key_raw}" 2>/dev/null; then
+    ${_GPG} --yes --dearmor -o "${_tmp_key}" < "${_tmp_key_raw}" 2>/dev/null
+  else
+    cp -f "${_tmp_key_raw}" "${_tmp_key}"
+  fi
+
+  if [ ! -s "${_tmp_key}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Failed to process New Relic APT key"
+    fi
+    rm -f "${_tmp_key_raw}" "${_tmp_key}"
+    return 1
+  fi
+
+  _fp_available=$(${_GPG} --with-colons --import-options show-only \
+    --import "${_tmp_key}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
+
+  if ! printf "%s\n" "${_fp_available}" | grep -q "32FA4C172DAD550E"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Downloaded key does not contain required APT key 32FA4C172DAD550E"
+    fi
+    rm -f "${_tmp_key_raw}" "${_tmp_key}"
+    return 1
+  fi
 
   if [ -e "${_key_path}" ]; then
     _fp_installed=$(${_GPG} --with-colons --import-options show-only \
       --import "${_key_path}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
   fi
 
-  curl ${_crlGet} "${_key_url_upstream}" -o "${_tmp_upstream_raw}"
-  if [ -s "${_tmp_upstream_raw}" ]; then
-    ${_GPG} --dearmor -o "${_tmp_upstream}" < "${_tmp_upstream_raw}" 2>/dev/null
-    _fp_upstream=$(${_GPG} --with-colons --import-options show-only \
-      --import "${_tmp_upstream}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
-    if [ "${_DEBUG_MODE}" = "YES" ] \
-      && [ "${_fp_mirror}" != "${_fp_upstream}" ]; then
-      _msg "INFO: New Relic mirror key differs from upstream — update mirror"
-    fi
-  else
+  if ! printf "%s\n" "${_fp_installed}" | grep -q "32FA4C172DAD550E"; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: New Relic upstream unreachable, trusting mirror copy"
+      _msg "INFO: New Relic APT key missing or outdated — reinstalling"
     fi
-    _fp_upstream="${_fp_mirror}"
-  fi
-
-  if [ "${_fp_installed}" != "${_fp_upstream}" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: New Relic key mismatch or missing — reinstalling from mirror"
-    fi
-    mv -f "${_tmp_mirror}" "${_key_path}"
+    mv -f "${_tmp_key}" "${_key_path}"
     chmod 0644 "${_key_path}"
     _NR_KEY_UPDATED=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: New Relic key is current"
+      _msg "INFO: New Relic APT key is current"
     fi
   fi
 
-  rm -f "${_tmp_upstream_raw}" "${_tmp_upstream}" \
-    "${_tmp_mirror_raw}" "${_tmp_mirror}"
+  rm -f "${_tmp_key_raw}" "${_tmp_key}"
 }
 
 #
@@ -2091,7 +2099,7 @@ _newrelic_update() {
       _GPG=gpg
     fi
     _NEWRELIC_KEYS_SIG="548C16BF"
-    _NEWRELIC_KEY_FILE="newrelic-infra"
+    _NEWRELIC_KEY_FILE="apt-2DAD550E"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
     if [ -e "/etc/newrelic/newrelic.cfg" ] \
       || [ -e "/etc/apt/sources.list.d/newrelic.list" ]; then
@@ -2247,7 +2255,7 @@ _if_install_php_newrelic() {
     _MULTI_NR=NO
     _NR_KEY_UPDATED=NO
     _NEWRELIC_KEYS_SIG="548C16BF"
-    _NEWRELIC_KEY_FILE="newrelic-infra"
+    _NEWRELIC_KEY_FILE="apt-2DAD550E"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
     _NR_INST_V=""
     _NRS_BIN="$(which newrelic-daemon 2>/dev/null)"
