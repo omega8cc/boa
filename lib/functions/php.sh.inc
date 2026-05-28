@@ -2010,28 +2010,48 @@ _newrelic_key_check() {
   fi
   _NR_KEY_UPDATED=NO
   local _key_path="/etc/apt/keyrings/newrelic.gpg"
-  local _key_url_upstream="https://download.newrelic.com/infrastructure_agent/gpg/newrelic-infra.gpg"
+  local _key_url_upstream="https://download.newrelic.com/NEWRELIC_APT_2DAD550E.public"
   local _key_url_mirror="${_urlDev}/newrelic-key-${_NEWRELIC_KEY_FILE}.gpg"
-  local _tmp_upstream _tmp_upstream_raw _tmp_mirror _tmp_mirror_raw
+  local _tmp_upstream_raw _tmp_mirror_raw _tmp_mirror _tmp_upstream
   local _fp_installed _fp_upstream _fp_mirror
   _tmp_upstream_raw=$(mktemp /tmp/newrelic-key-XXXXXX.asc)
-  _tmp_upstream=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
   _tmp_mirror_raw=$(mktemp /tmp/newrelic-key-XXXXXX.asc)
   _tmp_mirror=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
+  _tmp_upstream=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
 
   curl ${_crlGet} "${_key_url_mirror}" -o "${_tmp_mirror_raw}"
   if [ ! -s "${_tmp_mirror_raw}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Cannot fetch New Relic key from mirror: ${_key_url_mirror}"
     fi
-    rm -f "${_tmp_upstream_raw}" "${_tmp_upstream}" \
-      "${_tmp_mirror_raw}" "${_tmp_mirror}"
+    rm -f "${_tmp_upstream_raw}" "${_tmp_mirror_raw}" \
+      "${_tmp_mirror}" "${_tmp_upstream}"
     return 1
   fi
-  ${_GPG} --yes --dearmor -o "${_tmp_mirror}" < "${_tmp_mirror_raw}" 2>/dev/null
+  if grep -q "BEGIN PGP" "${_tmp_mirror_raw}" 2>/dev/null; then
+    ${_GPG} --yes --dearmor -o "${_tmp_mirror}" < "${_tmp_mirror_raw}" 2>/dev/null
+  else
+    cp -f "${_tmp_mirror_raw}" "${_tmp_mirror}"
+  fi
+  if [ ! -s "${_tmp_mirror}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Failed to process New Relic key from mirror: ${_key_url_mirror}"
+    fi
+    rm -f "${_tmp_upstream_raw}" "${_tmp_mirror_raw}" \
+      "${_tmp_mirror}" "${_tmp_upstream}"
+    return 1
+  fi
 
   _fp_mirror=$(${_GPG} --with-colons --import-options show-only \
     --import "${_tmp_mirror}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
+  if [ -z "${_fp_mirror}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Cannot read fingerprint from mirror key — aborting"
+    fi
+    rm -f "${_tmp_upstream_raw}" "${_tmp_mirror_raw}" \
+      "${_tmp_mirror}" "${_tmp_upstream}"
+    return 1
+  fi
 
   if [ -e "${_key_path}" ]; then
     _fp_installed=$(${_GPG} --with-colons --import-options show-only \
@@ -2040,12 +2060,23 @@ _newrelic_key_check() {
 
   curl ${_crlGet} "${_key_url_upstream}" -o "${_tmp_upstream_raw}"
   if [ -s "${_tmp_upstream_raw}" ]; then
-    ${_GPG} --yes --dearmor -o "${_tmp_upstream}" < "${_tmp_upstream_raw}" 2>/dev/null
-    _fp_upstream=$(${_GPG} --with-colons --import-options show-only \
-      --import "${_tmp_upstream}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
-    if [ "${_DEBUG_MODE}" = "YES" ] \
-      && [ "${_fp_mirror}" != "${_fp_upstream}" ]; then
-      _msg "INFO: New Relic mirror key differs from upstream — update mirror"
+    if grep -q "BEGIN PGP" "${_tmp_upstream_raw}" 2>/dev/null; then
+      ${_GPG} --yes --dearmor -o "${_tmp_upstream}" < "${_tmp_upstream_raw}" 2>/dev/null
+    else
+      cp -f "${_tmp_upstream_raw}" "${_tmp_upstream}"
+    fi
+    if [ -s "${_tmp_upstream}" ]; then
+      _fp_upstream=$(${_GPG} --with-colons --import-options show-only \
+        --import "${_tmp_upstream}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
+      if [ "${_DEBUG_MODE}" = "YES" ] \
+        && [ "${_fp_mirror}" != "${_fp_upstream}" ]; then
+        _msg "INFO: New Relic mirror key differs from upstream — update mirror"
+      fi
+    else
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: New Relic upstream unreachable, trusting mirror copy"
+      fi
+      _fp_upstream="${_fp_mirror}"
     fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2067,8 +2098,8 @@ _newrelic_key_check() {
     fi
   fi
 
-  rm -f "${_tmp_upstream_raw}" "${_tmp_upstream}" \
-    "${_tmp_mirror_raw}" "${_tmp_mirror}"
+  rm -f "${_tmp_upstream_raw}" "${_tmp_mirror_raw}" \
+    "${_tmp_mirror}" "${_tmp_upstream}"
 }
 
 #
@@ -2091,7 +2122,7 @@ _newrelic_update() {
       _GPG=gpg
     fi
     _NEWRELIC_KEYS_SIG="548C16BF"
-    _NEWRELIC_KEY_FILE="newrelic-infra"
+    _NEWRELIC_KEY_FILE="newrelic-apt-2DAD550E"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
     if [ -e "/etc/newrelic/newrelic.cfg" ] \
       || [ -e "/etc/apt/sources.list.d/newrelic.list" ]; then
@@ -2247,7 +2278,7 @@ _if_install_php_newrelic() {
     _MULTI_NR=NO
     _NR_KEY_UPDATED=NO
     _NEWRELIC_KEYS_SIG="548C16BF"
-    _NEWRELIC_KEY_FILE="newrelic-infra"
+    _NEWRELIC_KEY_FILE="newrelic-apt-2DAD550E"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
     _NR_INST_V=""
     _NRS_BIN="$(which newrelic-daemon 2>/dev/null)"
