@@ -2003,6 +2003,57 @@ _php_multi_update() {
 }
 
 #
+# Update New Relic key if outdated.
+_newrelic_key_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _newrelic_key_check"
+  fi
+  local _key_path="/etc/apt/keyrings/newrelic.gpg"
+  local _key_url_upstream="https://download.newrelic.com/infrastructure_agent/gpg/newrelic-infra.gpg"
+  local _key_url_mirror="${_urlDev}/newrelic-key-${_NEWRELIC_KEY_FILE}.gpg"
+  local _tmp_upstream _tmp_mirror _fp_installed _fp_upstream
+  _tmp_upstream=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
+  _tmp_mirror=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
+
+  if ! curl -fsSL "${_key_url_upstream}" | ${_GPG} --dearmor -o "${_tmp_upstream}" 2>/dev/null; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Cannot fetch New Relic key from upstream: ${_key_url_upstream}"
+    fi
+    rm -f "${_tmp_upstream}" "${_tmp_mirror}"
+    return 1
+  fi
+
+  _fp_upstream=$(${_GPG} --with-colons --import-options show-only \
+    --import "${_tmp_upstream}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
+
+  if [ -e "${_key_path}" ]; then
+    _fp_installed=$(${_GPG} --with-colons --import-options show-only \
+      --import "${_key_path}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
+  fi
+
+  if [ "${_fp_installed}" != "${_fp_upstream}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: New Relic key mismatch or missing — reinstalling from mirror"
+    fi
+    if ! curl -fsSL "${_key_url_mirror}" | ${_GPG} --dearmor -o "${_tmp_mirror}" 2>/dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Cannot fetch New Relic key from mirror: ${_key_url_mirror}"
+      fi
+      rm -f "${_tmp_upstream}" "${_tmp_mirror}"
+      return 1
+    fi
+    mv -f "${_tmp_mirror}" "${_key_path}"
+    chmod 0644 "${_key_path}"
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: New Relic key is current"
+    fi
+  fi
+
+  rm -f "${_tmp_upstream}" "${_tmp_mirror}"
+}
+
+#
 # Update New Relic.
 _newrelic_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2022,33 +2073,23 @@ _newrelic_update() {
       _GPG=gpg
     fi
     _NEWRELIC_KEYS_SIG="548C16BF"
+    _NEWRELIC_KEY_FILE="newrelic-infra"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
     if [ -e "/etc/newrelic/newrelic.cfg" ] \
       || [ -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       _msg "INFO: Uninstalling previous version of New Relic Apps Monitor..."
       cd /var/opt
-      if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ] \
-        || [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ] \
-        || [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ] \
-        || [ -e /root/.force.newrelic.update.cnf ]; then
-        if [ ! -e "/etc/apt/keyrings" ]; then
-          mkdir -m 0755 -p /etc/apt/keyrings
-        fi
-        if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
-          rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
-        fi
-        if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
-          rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
-        fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Retrieving ${_NEWRELIC_KEYS_SIG} key..."
-        fi
-        apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
-        if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ]; then
-          curl -fsSL ${_urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
-        fi
-        chmod 644 /etc/apt/keyrings/newrelic.gpg
+      if [ ! -e "/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /etc/apt/keyrings
       fi
+      if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
+        rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
+      fi
+      if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
+        rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
+      fi
+      apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
+      _newrelic_key_check
       _apt_clean_update
       _mrun "${_RMAPP} newrelic-php5 \
         newrelic-php5-common \
@@ -2187,6 +2228,7 @@ _if_install_php_newrelic() {
     fi
     _MULTI_NR=NO
     _NEWRELIC_KEYS_SIG="548C16BF"
+    _NEWRELIC_KEY_FILE="newrelic-infra"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
     _NR_INST_V=""
     _NRS_BIN="$(which newrelic-daemon 2>/dev/null)"
@@ -2263,28 +2305,17 @@ _if_install_php_newrelic() {
         _msg "INFO: New Relic ${_NR_INST_V} current, checking extensions and config..."
       fi
       cd /var/opt
-      if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ] \
-        || [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ] \
-        || [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ] \
-        || [ -e /root/.force.newrelic.update.cnf ]; then
-        if [ ! -e "/etc/apt/keyrings" ]; then
-          mkdir -m 0755 -p /etc/apt/keyrings
-        fi
-        if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
-          rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
-        fi
-        if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
-          rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
-        fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Retrieving ${_NEWRELIC_KEYS_SIG} key..."
-        fi
-        apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
-        if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ]; then
-          curl -fsSL ${_urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
-        fi
-        chmod 644 /etc/apt/keyrings/newrelic.gpg
+      if [ ! -e "/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /etc/apt/keyrings
       fi
+      if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
+        rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
+      fi
+      if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
+        rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
+      fi
+      apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
+      _newrelic_key_check
       echo "## New Relic APT Repository" > ${_nrList}
       if [ -e "/etc/apt/keyrings/newrelic.gpg" ]; then
         echo "deb [signed-by=/etc/apt/keyrings/newrelic.gpg] http://apt.newrelic.com/debian/ newrelic non-free" >> ${_nrList}
