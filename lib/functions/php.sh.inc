@@ -2028,7 +2028,7 @@ _newrelic_key_check() {
       "${_tmp_mirror_raw}" "${_tmp_mirror}"
     return 1
   fi
-  ${_GPG} --dearmor -o "${_tmp_mirror}" < "${_tmp_mirror_raw}" 2>/dev/null
+  ${_GPG} --yes --dearmor -o "${_tmp_mirror}" < "${_tmp_mirror_raw}" 2>/dev/null
 
   _fp_mirror=$(${_GPG} --with-colons --import-options show-only \
     --import "${_tmp_mirror}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
@@ -2040,7 +2040,7 @@ _newrelic_key_check() {
 
   curl ${_crlGet} "${_key_url_upstream}" -o "${_tmp_upstream_raw}"
   if [ -s "${_tmp_upstream_raw}" ]; then
-    ${_GPG} --dearmor -o "${_tmp_upstream}" < "${_tmp_upstream_raw}" 2>/dev/null
+    ${_GPG} --yes --dearmor -o "${_tmp_upstream}" < "${_tmp_upstream_raw}" 2>/dev/null
     _fp_upstream=$(${_GPG} --with-colons --import-options show-only \
       --import "${_tmp_upstream}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
     if [ "${_DEBUG_MODE}" = "YES" ] \
