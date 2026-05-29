@@ -39,23 +39,18 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       header("X-Valkey-Version-Is: Modern");
       header("X-Valkey-Dir-Is: " . $redis_dirname);
     }
-    if ($all_ini['redis_flush_forced_mode']) {
-      if ($drupal_core >= 8) {
-        $settings['redis_perm_ttl']                 = 86400; // 24 hours max
-        $settings['redis_flush_mode']               = 1; // Valkey default is 0
-        $settings['redis_flush_mode_cache_page']    = 2; // Valkey default is 1
-        $settings['redis_flush_mode_cache_block']   = 2; // Valkey default is 1
-        $settings['redis_flush_mode_cache_menu']    = 2; // Valkey default is 0
-        $settings['redis_flush_mode_cache_metatag'] = 2; // Valkey default is 0
-      }
-      else {
-        $conf['redis_perm_ttl']                 = 86400; // 24 hours max
-        $conf['redis_flush_mode']               = 1; // Valkey default is 0
-        $conf['redis_flush_mode_cache_page']    = 2; // Valkey default is 1
-        $conf['redis_flush_mode_cache_block']   = 2; // Valkey default is 1
-        $conf['redis_flush_mode_cache_menu']    = 2; // Valkey default is 0
-        $conf['redis_flush_mode_cache_metatag'] = 2; // Valkey default is 0
-      }
+    // redis_flush_forced_mode applies to Drupal 6/7 only. The bare
+    // redis_perm_ttl / redis_flush_mode* keys are read solely by the legacy
+    // D7 Redis integration; the Drupal 8+ module ignores them (it invalidates
+    // via cache tags and uses redis_ttl_offset / redis_perm_ttl_<bin>), so we
+    // no longer emit dead $settings for core >= 8.
+    if ($all_ini['redis_flush_forced_mode'] && $drupal_core < 8) {
+      $conf['redis_perm_ttl']                 = 86400; // 24 hours max
+      $conf['redis_flush_mode']               = 1; // Valkey default is 0
+      $conf['redis_flush_mode_cache_page']    = 2; // Valkey default is 1
+      $conf['redis_flush_mode_cache_block']   = 2; // Valkey default is 1
+      $conf['redis_flush_mode_cache_menu']    = 2; // Valkey default is 0
+      $conf['redis_flush_mode_cache_metatag'] = 2; // Valkey default is 0
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
         header("X-Valkey-Flush-Forced-Mode: Forced");
@@ -252,7 +247,7 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       }
       if ($redis_comprs) {
         $settings['redis_compress_length']       = 100;
-        $settings['redis_compress_level']        = 5;
+        $settings['redis_compress_level']        = 1; // module default; raising it is discouraged (higher CPU, minimal storage gain)
       }
       $settings['cache']['bins']['state']        = 'cache.backend.redis';
       $settings['state_cache']                   = TRUE;
