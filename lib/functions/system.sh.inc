@@ -6468,7 +6468,7 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev; do
+    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils lspci; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -6501,7 +6501,7 @@ _run_aptitude_deps_install() {
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     ###
-    for _PKG in toilet figlet screenfetch pciutils; do
+    for _PKG in toilet figlet screenfetch; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
