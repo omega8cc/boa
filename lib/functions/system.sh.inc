@@ -1117,6 +1117,7 @@ _tune_memory_limits() {
     fi
   done
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
+    _sql_conf_update
     _tune_sql_memory_limits
     _sql_conf_update
     if [[ "${_PrTestPower}" =~ "POWER" ]] \
