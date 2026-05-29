@@ -6511,7 +6511,7 @@ _run_aptitude_deps_install() {
     done
     ###
   else
-    for _PKG in toilet figlet; do
+    for _PKG in toilet figlet screenfetch; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
