@@ -7,7 +7,10 @@ if ($drupal_core >= 6) {
 }
 
 if (isset($_SERVER['SERVER_NAME'])) {
-  if ($all_ini['valkey_cache_disable'] || $all_ini['redis_cache_disable']) {
+  /* Honour redis_cache_disable only. The legacy valkey_cache_disable key was
+   * undocumented, never shipped in $boa_ini defaults (so it raised an
+   * undefined-key warning) and merely duplicated this redis-namespace flag. */
+  if (isset($all_ini['redis_cache_disable']) && $all_ini['redis_cache_disable']) {
     $use_valkey = FALSE;
   }
 }
@@ -28,19 +31,33 @@ $valkey_port        = 6379;
 $valkey_pass_file   = '/data/conf/valkey/pass.inc';
 
 /* ---------------- Timeouts & backoff (ini-tunable, was hardcoded) ------ */
-$connect_timeout_s  = (isset($all_ini['valkey_connect_timeout']) && $all_ini['valkey_connect_timeout'] !== '') ? (float) $all_ini['valkey_connect_timeout'] : 0.7;
-$read_timeout_s     = (isset($all_ini['valkey_read_timeout'])    && $all_ini['valkey_read_timeout']    !== '') ? (float) $all_ini['valkey_read_timeout']    : 0.7;
-$backoff_ttl_s      = (isset($all_ini['valkey_backoff_ttl'])     && $all_ini['valkey_backoff_ttl']     !== '') ? (int)   $all_ini['valkey_backoff_ttl']     : 15;
-$probe_retry        = isset($all_ini['valkey_probe_retry'])            ? (bool) $all_ini['valkey_probe_retry']            : TRUE;
-$flush_apcu_recov   = isset($all_ini['valkey_flush_apcu_on_recovery']) ? (bool) $all_ini['valkey_flush_apcu_on_recovery'] : TRUE;
-$cache_dbg_hdr      = isset($all_ini['cache_debug_header'])            ? (bool) $all_ini['cache_debug_header']            : FALSE;
+/* INI variables use the stable "redis_" namespace even on Valkey servers. */
+$connect_timeout_s  = (isset($all_ini['redis_connect_timeout']) && $all_ini['redis_connect_timeout'] !== '') ? (float) $all_ini['redis_connect_timeout'] : 0.7;
+$read_timeout_s     = (isset($all_ini['redis_read_timeout'])    && $all_ini['redis_read_timeout']    !== '') ? (float) $all_ini['redis_read_timeout']    : 0.7;
+$backoff_ttl_s      = (isset($all_ini['redis_backoff_ttl'])     && $all_ini['redis_backoff_ttl']     !== '') ? (int)   $all_ini['redis_backoff_ttl']     : 15;
+$probe_retry        = isset($all_ini['redis_probe_retry'])            ? (bool) $all_ini['redis_probe_retry']            : TRUE;
+$flush_apcu_recov   = isset($all_ini['redis_flush_apcu_on_recovery']) ? (bool) $all_ini['redis_flush_apcu_on_recovery'] : TRUE;
+$cache_dbg_hdr      = isset($all_ini['redis_debug_header'])           ? (bool) $all_ini['redis_debug_header']           : FALSE;
 $flag_dir_run       = '/var/tmp/fpm';
 $flag_file_fallback = '/data/conf/arch/valkey.disabled.flag'; // fallback
 
-/* ---------------- Optional debug log ---------------------------------- */
-// Set to an absolute path to enable lightweight probe logging.
-// Example: '/var/tmp/fpm/valkey-fallback.log'
-$redis_debug_log    = '';
+/* ---------------- Optional probe debug log (namespace: valkey) --------- */
+/* $redis_debug_log is a real, non-empty default path. Because everything in
+ * global/ is overwritten on every BOA upgrade, the path is baked in here
+ * rather than hand-edited per server. Whether anything is actually WRITTEN to
+ * it is a separate, two-stage activation gate so there is NO extra disk I/O
+ * for anyone unless explicitly armed:
+ *   1. INI 'redis_debug' must be TRUE (set in the platform/site control ini).
+ *      This is the ONLY thing evaluated by default; when FALSE the && below
+ *      short-circuits and we do zero extra filesystem work here.
+ *   2. Only then is the control flag file checked; logging activates only
+ *      while that flag exists. Toggle live, with no ini edit or redeploy:
+ *        touch /data/conf/valkey.debug.flag   (start logging)
+ *        rm    /data/conf/valkey.debug.flag   (stop logging)
+ * _valkey_dbg_write() is a no-op whenever $redis_debug_on is FALSE. */
+$redis_debug_log = '/var/tmp/fpm/valkey-fallback.log';
+$redis_debug     = isset($all_ini['redis_debug']) ? (bool) $all_ini['redis_debug'] : FALSE;
+$redis_debug_on  = ($redis_debug && is_file('/data/conf/valkey.debug.flag'));
 
 /* ---------------- Helpers (filesystem only) ---------------------------- */
 function _valkey_backoff_flag_path($flag_dir_run, $fallback) {
@@ -74,8 +91,8 @@ function _valkey_backoff_clear($flag_path) {
   }
 }
 
-function _valkey_dbg_write($log_path, $line) {
-  if (!empty($log_path)) {
+function _valkey_dbg_write($enabled, $log_path, $line) {
+  if ($enabled && !empty($log_path)) {
     $msg = date('c').' '.$line."\n";
     @file_put_contents($log_path, $msg, FILE_APPEND);
   }
@@ -190,17 +207,17 @@ if ($use_valkey) {
       // "config changes not applied" persisting after a transient blip.
       if ($flag_existed && $flush_apcu_recov && function_exists('apcu_clear_cache')) {
         @apcu_clear_cache();
-        _valkey_dbg_write($redis_debug_log, 'VALKEY RECOVERY action=apcu_clear flag='.$flag_path);
+        _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY RECOVERY action=apcu_clear flag='.$flag_path);
       }
-      _valkey_dbg_write($redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
+      _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
     } else {
       _valkey_backoff_touch($flag_path);
-      _valkey_dbg_write($redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
+      _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
     }
   } else {
     $valkey_up = FALSE;
     $last_reason = 'backoff-active';
-    _valkey_dbg_write($redis_debug_log, 'VALKEY SKIP reason=backoff-active flag='.$flag_path);
+    _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY SKIP reason=backoff-active flag='.$flag_path);
   }
 }
 
@@ -216,8 +233,9 @@ if (!empty($is_dev)) {
 }
 
 /* Always-on, non-sensitive cache state header for production debugging.
- * Gated by the cache_debug_header ini flag (default TRUE during testing;
- * set FALSE in boa_site_control.ini once the investigation is closed).
+ * Gated by the redis_debug_header ini flag (default FALSE; enable per-site
+ * or per-platform while investigating, disable again afterwards).
+ * Neutral X-Cache-* prefix so it reads identically on Redis or Valkey.
  * Reveals only a coarse state word - never the password or topology. */
 if ($cache_dbg_hdr && empty($is_backend) && !headers_sent()) {
   $vk_state = 'disabled';
@@ -232,8 +250,8 @@ if ($cache_dbg_hdr && empty($is_backend) && !headers_sent()) {
       $vk_state = 'down';
     }
   }
-  header('X-VK-State: ' . $vk_state);
-  header('X-VK-Reason: ' . (string) $last_reason);
+  header('X-Cache-State: ' . $vk_state);
+  header('X-Cache-Reason: ' . (string) $last_reason);
 }
 
 if (!empty($is_install)) {

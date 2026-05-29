@@ -1328,6 +1328,48 @@ _fix_modules() {
     else
       echo ";set_composer_manager_vendor_dir = FALSE" >> ${_PLR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "redis_connect_timeout" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_connect_timeout" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_connect_timeout = 0.7" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_read_timeout" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_read_timeout" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_read_timeout = 0.7" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_backoff_ttl" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_backoff_ttl" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_backoff_ttl = 15" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_probe_retry" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_probe_retry" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_probe_retry = TRUE" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_flush_apcu_on_recovery" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_apcu_on_recovery" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_flush_apcu_on_recovery = TRUE" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_debug_header" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_debug_header" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_debug_header = FALSE" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep -E "^;?redis_debug[ =]" ${_PLR_CTRL_F} 2>&1)
+    if [[ -n "${_VAR_IF_PRESENT}" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_debug = FALSE" >> ${_PLR_CTRL_F}
+    fi
   fi
   if [ -e "${_DIR_CTRL_F}" ]; then
      _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_DIR_CTRL_F} 2>&1)
@@ -1413,6 +1455,48 @@ _fix_modules() {
       _DO_NOTHING=YES
     else
       echo ";set_composer_manager_vendor_dir = FALSE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_connect_timeout" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_connect_timeout" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_connect_timeout = 0.7" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_read_timeout" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_read_timeout" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_read_timeout = 0.7" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_backoff_ttl" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_backoff_ttl" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_backoff_ttl = 15" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_probe_retry" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_probe_retry" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_probe_retry = TRUE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_flush_apcu_on_recovery" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_apcu_on_recovery" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_flush_apcu_on_recovery = TRUE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_debug_header" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_debug_header" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_debug_header = FALSE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep -E "^;?redis_debug[ =]" ${_DIR_CTRL_F} 2>&1)
+    if [[ -n "${_VAR_IF_PRESENT}" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_debug = FALSE" >> ${_DIR_CTRL_F}
     fi
   fi
 

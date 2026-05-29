@@ -193,9 +193,9 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       header('X-Is-Anon:' . $is_anon);
     }
     // Always-on (ini-gated) anon classification for production debugging.
-    // Pairs with X-VK-State / X-VK-Backend. Non-sensitive.
-    if (isset($all_ini['cache_debug_header']) && $all_ini['cache_debug_header'] && !headers_sent()) {
-      header('X-VK-Anon: ' . $is_anon);
+    // Pairs with X-Cache-State / X-Cache-Backend. Non-sensitive.
+    if (isset($all_ini['redis_debug_header']) && $all_ini['redis_debug_header'] && !headers_sent()) {
+      header('X-Cache-Anon: ' . $is_anon);
     }
 
     // Redirect not logged in visitors to homepage to protect admin URLs from bots
