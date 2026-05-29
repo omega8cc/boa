@@ -241,7 +241,7 @@ during Debian-to-Devuan migration, the network interface name can shift
 | `renamemaster` | New: rename Aegir Master hostname end-to-end |
 | `renameaegirhost` | Now universal — handles both Master and Satellite |
 | `fixmounts` | New: diagnose and repair `/etc/fstab` and TRIM eligibility |
-| `xboa` | `http-off` PHP short-circuit for migrations; speed cache purge on toggle; `_xboa_transfer_static_symlink_safe` |
+| `xoct` | `http-off` PHP short-circuit for migrations; speed cache purge on toggle; `_xoct_transfer_static_symlink_safe` |
 | `updatesymlinks` | New: batch symlink update for automation pipelines |
 | `autosymlink` | Track detected/valid sites for orphan static/files reporting |
 

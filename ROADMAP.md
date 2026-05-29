@@ -14,7 +14,7 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 ## IN PROGRESS (PRO only)
 
-- **Import from Classic Ægir**: Extend xboa to import from remote classic Ægir servers using Nginx or Apache (PRO)
+- **Import from Classic Ægir**: Extend xoct to import from remote classic Ægir servers using Nginx or Apache (PRO)
 - **Backdrop CMS Support**: Implement Backdrop CMS as a supported platform (PRO)
 - **Grav CMS Support**: Introduce support for Grav CMS (command line only) (PRO)
 - **Optional AppArmor Support**: Enhanced security and accounts privilege separation (PRO)

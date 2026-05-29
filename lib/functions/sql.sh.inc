@@ -1333,7 +1333,11 @@ _forced_mysql_root_password_update() {
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
-    echo "[xboa]" >> /root/.my.cnf
+    echo "[xoct]" >> /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
+      echo " " >> /root/.my.cnf
+    echo "[xmass]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
@@ -1840,7 +1844,11 @@ _sql_root_credentials_update() {
         echo "user=root" >> /root/.my.cnf
         echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
-        echo "[xboa]" >> /root/.my.cnf
+        echo "[xoct]" >> /root/.my.cnf
+        echo "user=root" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
+          echo " " >> /root/.my.cnf
+        echo "[xmass]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf

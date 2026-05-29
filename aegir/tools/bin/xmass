@@ -574,7 +574,7 @@ _xmass_enumerate_accounts() {
 ###-------------SYNC FUNCTIONS-----------###
 
 _xmass_sync_static_symlink_safe() {
-  # Mirrors xboa's _xboa_transfer_static_symlink_safe:
+  # Mirrors xoct's _xoct_transfer_static_symlink_safe:
   # Preserves site-level symlinks inside static/ while materialising
   # static/files as a real directory on the target.
   local _src_usr="$1"

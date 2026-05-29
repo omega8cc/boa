@@ -5001,10 +5001,10 @@ _satellite_letsencrypt_vhost_setup() {
           fi
           echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            bash /opt/local/bin/xboa ssl-gen
+            bash /opt/local/bin/xoct ssl-gen
             wait
           else
-            _mrun "bash /opt/local/bin/xboa ssl-gen"
+            _mrun "bash /opt/local/bin/xoct ssl-gen"
             wait
           fi
           if [ -e "${_Ssl}" ]; then
@@ -5018,10 +5018,10 @@ _satellite_letsencrypt_vhost_setup() {
         _satellite_letsencrypt_crt_key_copy
         echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          bash /opt/local/bin/xboa ssl-gen
+          bash /opt/local/bin/xoct ssl-gen
           wait
         else
-          _mrun "bash /opt/local/bin/xboa ssl-gen"
+          _mrun "bash /opt/local/bin/xoct ssl-gen"
           wait
         fi
         if [ -e "${_Ssl}" ]; then
