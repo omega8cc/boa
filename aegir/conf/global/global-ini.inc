@@ -75,5 +75,13 @@ $boa_ini = array(
   'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'disable_drupal_page_cache' => FALSE,            // FALSE for backward compatibility and max performance
   'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
+  // --- Valkey/Redis probe tuning + cache observability (added 2026-05) -----
+  // See global-if-valkey.inc / global-if-redis.inc and global-valkey.inc.
+  'valkey_connect_timeout' => '0.7',               // probe TCP connect timeout (s); was hardcoded 0.2
+  'valkey_read_timeout' => '0.7',                  // probe read timeout (s); was hardcoded 0.2
+  'valkey_backoff_ttl' => '15',                    // backoff window (s) after a failed probe; was hardcoded 60
+  'valkey_probe_retry' => TRUE,                    // retry the probe once before tripping the backoff flag
+  'valkey_flush_apcu_on_recovery' => TRUE,         // clear local APCu when Valkey transitions down->up (flushes stale ChainedFast front layer)
+  'cache_debug_header' => TRUE,                    // emit always-on, non-sensitive X-VK-* cache state headers; set FALSE after the testing phase
 );
 
