@@ -191,7 +191,7 @@ _fix_php_ini_apcu() {
       echo "apc.shm_segments=1" >> ${_THIS_FILE}
       echo "apc.shm_size=256M"  >> ${_THIS_FILE}
       echo "apc.slam_defense=0" >> ${_THIS_FILE}
-      echo "apc.ttl=0"          >> ${_THIS_FILE}
+      echo "apc.ttl=3600"       >> ${_THIS_FILE}
       echo ";"                  >> ${_THIS_FILE}
     fi
   fi
