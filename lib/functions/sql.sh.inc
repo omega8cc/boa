@@ -295,7 +295,6 @@ _if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/mariadb*
     rm -f /etc/apt/sources.list.d/ourdelta*
     rm -f /etc/apt/sources.list.d/percona*
-    rm -f /etc/apt/sources.list.d/xtrabackup*
     rm -f /etc/apt/sources.list.d/mysql*
     _percList="/etc/apt/sources.list.d/percona-release.list"
     if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
@@ -364,7 +363,6 @@ _if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/mariadb*
     rm -f /etc/apt/sources.list.d/ourdelta*
     rm -f /etc/apt/sources.list.d/percona*
-    rm -f /etc/apt/sources.list.d/xtrabackup*
     rm -f /etc/apt/sources.list.d/mysql*
     _percList="/etc/apt/sources.list.d/mysql-release.list"
     if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
@@ -576,31 +574,38 @@ _sql_conf_update() {
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      # Determine the Percona version (assuming _DB_V is set to the version number, e.g., "5.7" or "8.0" or "8.4")
+      # ---------------------------------------------------------------------
+      # Reset first: comment out EVERY version-specific logging directive so
+      # the file never carries directives from the previously installed
+      # Percona version. This is what breaks 5.7 -> 8.0: log_syslog stays
+      # enabled and 8.x aborts on the unknown variable.
+      # Idempotent: a leading '#' is collapsed, never doubled.
+      # ---------------------------------------------------------------------
+      sed -i -E \
+        -e "s/^#?\s*(log_syslog)/#\1/" \
+        -e "s/^#?\s*(log_error)/#\1/" \
+        -e "s/^#?\s*(syseventlog)/#\1/" \
+        -e "s/^#?\s*(mysqlx)/#\1/" \
+        /etc/mysql/my.cnf &> /dev/null
+
       if [ "${_DB_V}" = "5.7" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DBST: Enable Logging for Percona ${_DB_V}"
-        fi
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DBST: Enable Logging for Percona ${_DB_V}"
         sed -i -E \
-          -e "s/^#?\s*log_syslog/log_syslog/" \
+          -e "s/^#?\s*(log_syslog)/\1/" \
           /etc/mysql/my.cnf &> /dev/null
       elif [ "${_DB_V}" = "8.0" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DBST: Enable Logging for Percona ${_DB_V}"
-        fi
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DBST: Enable Logging for Percona ${_DB_V}"
         sed -i -E \
-          -e "s/^#?\s*log_error\s/log_error /" \
-          -e "s/^#?\s*log_error_verbosity\s/log_error_verbosity /" \
-          -e "s/^#?\s*mysqlx/mysqlx/" \
+          -e "s/^#?\s*(log_error\s)/\1/" \
+          -e "s/^#?\s*(log_error_verbosity)/\1/" \
+          -e "s/^#?\s*(mysqlx)/\1/" \
           /etc/mysql/my.cnf &> /dev/null
       else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DBST: Enable Logging for Percona ${_DB_V}"
-        fi
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DBST: Enable Logging for Percona ${_DB_V}"
         sed -i -E \
-          -e "s/^#?\s*log_error/log_error/" \
-          -e "s/^#?\s*syseventlog/syseventlog/" \
-          -e "s/^#?\s*mysqlx/mysqlx/" \
+          -e "s/^#?\s*(log_error)/\1/" \
+          -e "s/^#?\s*(syseventlog)/\1/" \
+          -e "s/^#?\s*(mysqlx)/\1/" \
           /etc/mysql/my.cnf &> /dev/null
       fi
       if [ "${_DB_V}" = "8.4" ]; then
@@ -1429,24 +1434,38 @@ _db_server_install() {
         -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
         /etc/mysql/my.cnf &> /dev/null
     fi
+    # ---------------------------------------------------------------------
+    # Reset first: comment out EVERY version-specific logging directive so
+    # the file never carries directives from the previously installed
+    # Percona version. This is what breaks 5.7 -> 8.0: log_syslog stays
+    # enabled and 8.x aborts on the unknown variable.
+    # Idempotent: a leading '#' is collapsed, never doubled.
+    # ---------------------------------------------------------------------
+    sed -i -E \
+      -e "s/^#?\s*(log_syslog)/#\1/" \
+      -e "s/^#?\s*(log_error)/#\1/" \
+      -e "s/^#?\s*(syseventlog)/#\1/" \
+      -e "s/^#?\s*(mysqlx)/#\1/" \
+      /etc/mysql/my.cnf &> /dev/null
+
     if [ "${_DB_SERIES}" = "5.7" ]; then
-      # Enable Logging for Percona 5.7
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DBST: Enable Logging for Percona ${_DB_SERIES}"
       sed -i -E \
-        -e "s/^#?\s*log_syslog/log_syslog/" \
+        -e "s/^#?\s*(log_syslog)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
     elif [ "${_DB_SERIES}" = "8.0" ]; then
-      # Enable Logging for Percona 8.0
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DBST: Enable Logging for Percona ${_DB_SERIES}"
       sed -i -E \
-        -e "s/^#?\s*log_error\s/log_error /" \
-        -e "s/^#?\s*log_error_verbosity\s/log_error_verbosity /" \
-        -e "s/^#?\s*mysqlx/mysqlx/" \
+        -e "s/^#?\s*(log_error\s)/\1/" \
+        -e "s/^#?\s*(log_error_verbosity)/\1/" \
+        -e "s/^#?\s*(mysqlx)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
     else
-      # Enable Logging for Percona 8.4
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DBST: Enable Logging for Percona ${_DB_SERIES}"
       sed -i -E \
-        -e "s/^#?\s*log_error/log_error/" \
-        -e "s/^#?\s*syseventlog/syseventlog/" \
-        -e "s/^#?\s*mysqlx/mysqlx/" \
+        -e "s/^#?\s*(log_error)/\1/" \
+        -e "s/^#?\s*(syseventlog)/\1/" \
+        -e "s/^#?\s*(mysqlx)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
     fi
     cp -af ${_locCnf}/var/mysql /etc/init.d/mysql

@@ -6335,21 +6335,6 @@ _finale() {
   _msg "BYE!"
 }
 
-_run_xtrabackup_cleanup() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _run_xtrabackup_cleanup"
-  fi
-  # Check for installed Percona XtraBackup packages and remove them
-  for _PKG in percona-xtrabackup-24 percona-xtrabackup-80 percona-xtrabackup-84; do
-    if _pkg_installed "${_PKG}"; then
-      _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "PCKG: ${_PKG} removed as requested."
-      fi
-    fi
-  done
-}
-
 _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
@@ -6378,8 +6363,6 @@ _run_aptitude_deps_install() {
   if [ "${_UPGRADE_MODE}" = "FULL" ]; then
     _msg "WAIT: This may take a while, please wait..."
     _apt_clean_update
-    _run_xtrabackup_cleanup
-
     _mrun "apt-get autoremove -y"
 
     for _PKG in packagekit polkitd software-properties-common python3-software-properties; do

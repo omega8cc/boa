@@ -1722,7 +1722,6 @@ _install_db_cluster() {
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/mariadb*
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/ourdelta*
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/percona*
-    rm -f /vservers/${_idn}/etc/apt/sources.list.d/xtrabackup*
     _PERCONA_KEYS_SIG="8507EFA5"
     if [ ! -e "/vservers/${_idn}/etc/apt/keyrings/percona.gpg" ]; then
       if [ ! -e "/vservers/${_idn}/etc/apt/keyrings" ]; then
@@ -1750,7 +1749,6 @@ _install_db_cluster() {
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${_idn}/etc/apt/preferences.d/00percona.pref
   	vserver ${_idn} exec ${_APT_UPDATE} -qq
   	vserver ${_idn} exec ${_INSTAPP} percona-xtradb-cluster-57
-  	##vserver ${_idn} exec ${_INSTAPP} percona-xtrabackup-24
     echo "[client]" > /vservers/${_idn}/root/.my.cnf
     echo "user=root" >> /vservers/${_idn}/root/.my.cnf
     echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${_idn}/root/.my.cnf
