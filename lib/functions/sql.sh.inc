@@ -295,7 +295,6 @@ _if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/mariadb*
     rm -f /etc/apt/sources.list.d/ourdelta*
     rm -f /etc/apt/sources.list.d/percona*
-    rm -f /etc/apt/sources.list.d/xtrabackup*
     rm -f /etc/apt/sources.list.d/mysql*
     _percList="/etc/apt/sources.list.d/percona-release.list"
     if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
@@ -364,7 +363,6 @@ _if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/mariadb*
     rm -f /etc/apt/sources.list.d/ourdelta*
     rm -f /etc/apt/sources.list.d/percona*
-    rm -f /etc/apt/sources.list.d/xtrabackup*
     rm -f /etc/apt/sources.list.d/mysql*
     _percList="/etc/apt/sources.list.d/mysql-release.list"
     if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
