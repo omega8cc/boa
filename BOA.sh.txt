@@ -2526,7 +2526,7 @@ _update_agents() {
     fi
   fi
 
-  if ! grep -q "whoami" /var/xdrago/conf/lshell.conf; then
+  if ! grep -q "unzstd" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
