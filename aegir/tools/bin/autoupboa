@@ -149,8 +149,8 @@ _find_correct_ip() {
 _valkey_no_rdb() {
   if [ -e "/etc/valkey/valkey.conf" ]; then
     _NEEDS_VALKEY_RESTART=
-    if ! grep -qE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/valkey/valkey.conf; then
-      sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
+    if ! grep -qE '^maxmemory-policy[[:space:]]*volatile-lfu' /etc/valkey/valkey.conf; then
+      sed -i "s/^maxmemory-policy .*/maxmemory-policy volatile-lfu/g" /etc/valkey/valkey.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
     if ! grep -qE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then

@@ -1162,8 +1162,8 @@ _tune_memory_limits() {
   if [ -e "/etc/valkey/valkey.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
     _NEEDS_VALKEY_RESTART=
-    if ! grep -qE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/valkey/valkey.conf; then
-      sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
+    if ! grep -qE '^maxmemory-policy[[:space:]]*volatile-lfu' /etc/valkey/valkey.conf; then
+      sed -i "s/^maxmemory-policy .*/maxmemory-policy volatile-lfu/g" /etc/valkey/valkey.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
     if ! grep -qE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
@@ -1182,8 +1182,8 @@ _tune_memory_limits() {
   if [ -e "/etc/redis/redis.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
     _NEEDS_VALKEY_RESTART=
-    if ! grep -qE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/redis/redis.conf; then
-      sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/redis/redis.conf &> /dev/null
+    if ! grep -qE '^maxmemory-policy[[:space:]]*volatile-lfu' /etc/redis/redis.conf; then
+      sed -i "s/^maxmemory-policy .*/maxmemory-policy volatile-lfu/g" /etc/redis/redis.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
     if ! grep -qE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
