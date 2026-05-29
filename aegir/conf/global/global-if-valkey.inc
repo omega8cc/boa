@@ -199,15 +199,37 @@ if ($use_valkey) {
     }
 
     if ($valkey_up) {
-      _valkey_backoff_clear($flag_path);
-      // Recovery: we were flagged down and are now up again. Flush the
-      // local APCu so any stale ChainedFast front-layer entries written
-      // (or missed) during the degraded window are discarded and rebuilt
-      // from the consistent Valkey backend. This is the key fix for
-      // "config changes not applied" persisting after a transient blip.
-      if ($flag_existed && $flush_apcu_recov && function_exists('apcu_clear_cache')) {
-        @apcu_clear_cache();
-        _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY RECOVERY action=apcu_clear flag='.$flag_path);
+      // Recovery: we were flagged down and are now up again. Flush the local
+      // APCu so any stale ChainedFast front-layer entries written (or missed)
+      // during the degraded window are discarded and rebuilt from the
+      // consistent Valkey backend. This is the key fix for "config changes
+      // not applied" persisting after a transient blip.
+      //
+      // Elect a SINGLE flusher per recovery: claim the backoff flag with an
+      // atomic rename() so exactly one worker runs the pool-wide, lock-taking
+      // apcu_clear_cache(); every other worker simply ensures the flag is
+      // gone. Without this, many workers can pass the $flag_existed gate at
+      // the same recovery instant and each fire a full-segment clear, all
+      // contending for the APCu write lock just as the pool is recovering.
+      // rename() is atomic on POSIX (only one caller can move the flag) and is
+      // not in BOA's disable_functions list. A '.flushing' temp left behind by
+      // a crashed winner is harmless: backoff logic only looks at $flag_path,
+      // and the next rename() simply overwrites it.
+      $flush_claimed = FALSE;
+      if ($flag_existed && $flush_apcu_recov) {
+        $claim_path = $flag_path . '.flushing';
+        $flush_claimed = @rename($flag_path, $claim_path);
+      }
+      if ($flush_claimed) {
+        if (function_exists('apcu_clear_cache')) {
+          @apcu_clear_cache();
+          _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY RECOVERY action=apcu_clear winner=1 flag='.$flag_path);
+        }
+        @unlink($claim_path);
+      } else {
+        // Lost the election, flushing disabled, or no flag was set: just make
+        // sure the backoff flag is cleared.
+        _valkey_backoff_clear($flag_path);
       }
       _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
     } else {
