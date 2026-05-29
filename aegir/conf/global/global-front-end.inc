@@ -147,7 +147,13 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $is_logged_in = FALSE;
       foreach ($_COOKIE as $key => $value) {
-        if (strpos($key, $cookie_prefix) == 0) {
+        // Must use strict === 0 here. strpos() returns FALSE when the prefix
+        // is absent, and in PHP (FALSE == 0) is TRUE, so the previous loose
+        // "== 0" flagged almost every anonymous visitor that carried ANY
+        // non-session cookie (analytics, cookie-agreed, NoCacheID, ...) as
+        // logged-in. Strict === 0 is TRUE only for a real session cookie
+        // whose name starts at position 0 with the prefix.
+        if (strpos($key, $cookie_prefix) === 0) {
           $is_logged_in = TRUE;
           break;
         }
@@ -185,6 +191,11 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     }
     if ($is_dev) {
       header('X-Is-Anon:' . $is_anon);
+    }
+    // Always-on (ini-gated) anon classification for production debugging.
+    // Pairs with X-VK-State / X-VK-Backend. Non-sensitive.
+    if (isset($all_ini['cache_debug_header']) && $all_ini['cache_debug_header'] && !headers_sent()) {
+      header('X-VK-Anon: ' . $is_anon);
     }
 
     // Redirect not logged in visitors to homepage to protect admin URLs from bots

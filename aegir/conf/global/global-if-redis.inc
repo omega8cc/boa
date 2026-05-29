@@ -27,10 +27,13 @@ $valkey_host        = '127.0.0.1';
 $valkey_port        = 6379;
 $valkey_pass_file   = '/data/conf/valkey/pass.inc';
 
-/* ---------------- Timeouts & backoff ---------------------------------- */
-$connect_timeout_s  = 0.2;   // short and non-blocking feel
-$read_timeout_s     = 0.2;   // keep calls snappy
-$backoff_ttl_s      = 60;    // do not retry within this window after a failure
+/* ---------------- Timeouts & backoff (ini-tunable, was hardcoded) ------ */
+$connect_timeout_s  = (isset($all_ini['valkey_connect_timeout']) && $all_ini['valkey_connect_timeout'] !== '') ? (float) $all_ini['valkey_connect_timeout'] : 0.7;
+$read_timeout_s     = (isset($all_ini['valkey_read_timeout'])    && $all_ini['valkey_read_timeout']    !== '') ? (float) $all_ini['valkey_read_timeout']    : 0.7;
+$backoff_ttl_s      = (isset($all_ini['valkey_backoff_ttl'])     && $all_ini['valkey_backoff_ttl']     !== '') ? (int)   $all_ini['valkey_backoff_ttl']     : 15;
+$probe_retry        = isset($all_ini['valkey_probe_retry'])            ? (bool) $all_ini['valkey_probe_retry']            : TRUE;
+$flush_apcu_recov   = isset($all_ini['valkey_flush_apcu_on_recovery']) ? (bool) $all_ini['valkey_flush_apcu_on_recovery'] : TRUE;
+$cache_dbg_hdr      = isset($all_ini['cache_debug_header'])            ? (bool) $all_ini['cache_debug_header']            : FALSE;
 $flag_dir_run       = '/var/tmp/fpm';
 $flag_file_fallback = '/data/conf/arch/valkey.disabled.flag'; // fallback
 
@@ -78,100 +81,125 @@ function _valkey_dbg_write($log_path, $line) {
   }
 }
 
+/* One full connect+auth+ping attempt. Returns TRUE on healthy PONG.
+ * $reason is set by-ref to 'ok' or a short failure code. Keeps each
+ * attempt self-contained so the caller can retry cheaply before
+ * tripping the shared backoff flag. */
+function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_s, $read_timeout_s, &$reason) {
+  $reason = 'init';
+  if (!class_exists('Redis')) {
+    $reason = 'no-phpredis';
+    return FALSE;
+  }
+  $r = new Redis();
+  $connected = FALSE;
+  // Try socket first.
+  if (!empty($socket_path) && @is_readable($socket_path)) {
+    try {
+      $connected = $r->connect($socket_path);
+    } catch (Exception $e) {
+      $connected = FALSE;
+      $reason = 'connect-socket-exception';
+    }
+  }
+  // Fallback to TCP.
+  if (!$connected) {
+    try {
+      $connected = $r->connect($host, $port, $connect_timeout_s);
+    } catch (Exception $e) {
+      $connected = FALSE;
+      $reason = 'connect-tcp-exception';
+    }
+  }
+  if (!$connected) {
+    if ($reason === 'init') {
+      $reason = 'connect-failed';
+    }
+    return FALSE;
+  }
+  if (defined('Redis::OPT_READ_TIMEOUT')) {
+    $r->setOption(Redis::OPT_READ_TIMEOUT, $read_timeout_s);
+  }
+  // Authenticate if a password is configured.
+  if ($pass !== '') {
+    try {
+      if (!$r->auth($pass)) {
+        try { $r->close(); } catch (Exception $e) {}
+        $reason = 'auth-failed';
+        return FALSE;
+      }
+    } catch (Exception $e) {
+      try { $r->close(); } catch (Exception $e2) {}
+      $reason = 'auth-exception';
+      return FALSE;
+    }
+  }
+  // Verify ping.
+  $ok = FALSE;
+  try {
+    $pong = $r->ping();
+    if ((is_string($pong) && stripos($pong, 'PONG') !== FALSE) || $pong === TRUE) {
+      $ok = TRUE;
+    } else {
+      $reason = 'ping-not-ok';
+    }
+  } catch (Exception $e) {
+    $reason = 'ping-exception';
+  }
+  try { $r->close(); } catch (Exception $e) {}
+  if ($ok) {
+    $reason = 'ok';
+  }
+  return $ok;
+}
+
 /* ------------------- Probe Valkey once with guard --------------------- */
 $flag_path = _valkey_backoff_flag_path($flag_dir_run, $flag_file_fallback);
+$flag_existed = is_file($flag_path);
 $skip_probe = _valkey_backoff_is_active($flag_path, $backoff_ttl_s);
+$last_reason = 'init';
 
 if ($use_valkey) {
   if (!$skip_probe) {
-    if (class_exists('Redis')) {
-      $r = new Redis();
-      $connected = FALSE;
-      $last_reason = 'init';
+    // Resolve password (file overrides hardcoded fallback).
+    $auth_pass = 'isfoobared';
+    if (is_file($valkey_pass_file)) {
+      $auth_pass = trim((string) @file_get_contents($valkey_pass_file));
+    }
 
-      // Try socket first.
-      if (!empty($valkey_socket_path) && @is_readable($valkey_socket_path)) {
-        try {
-          $connected = $r->connect($valkey_socket_path);
-        } catch (Exception $e) {
-          $connected = FALSE;
-          $last_reason = 'connect-socket-exception';
-        }
+    // One probe, plus a single cheap retry before tripping the shared
+    // backoff. A single 0.x s blip (GC pause, socket backlog) should not
+    // drop the whole worker pool into DB-cache mode for the backoff window.
+    $attempts = $probe_retry ? 2 : 1;
+    for ($i = 0; $i < $attempts; $i++) {
+      $valkey_up = _valkey_probe_once($valkey_socket_path, $valkey_host, $valkey_port, $auth_pass, $connect_timeout_s, $read_timeout_s, $last_reason);
+      if ($valkey_up) {
+        break;
       }
-
-      // Fallback to TCP.
-      if (!$connected) {
-        try {
-          $connected = $r->connect($valkey_host, $valkey_port, $connect_timeout_s);
-        } catch (Exception $e) {
-          $connected = FALSE;
-          $last_reason = 'connect-tcp-exception';
-        }
+      if ($last_reason === 'no-phpredis') {
+        break; // retrying cannot help
       }
+    }
 
-      if ($connected) {
-        if (defined('Redis::OPT_READ_TIMEOUT')) {
-          $r->setOption(Redis::OPT_READ_TIMEOUT, $read_timeout_s);
-        }
-
-        // Authenticate if password file exists.
-        $auth_pass = 'isfoobared';
-        if (is_file($valkey_pass_file)) {
-          $auth_pass = trim((string) @file_get_contents($valkey_pass_file));
-        }
-        if ($auth_pass !== '') {
-          try {
-            if (!$r->auth($auth_pass)) {
-              $connected = FALSE;
-              $last_reason = 'auth-failed';
-            }
-          } catch (Exception $e) {
-            $connected = FALSE;
-            $last_reason = 'auth-exception';
-          }
-        }
-
-        // Verify ping.
-        if ($connected) {
-          try {
-            $pong = $r->ping();
-            if ((is_string($pong) && stripos($pong, 'PONG') !== FALSE) || $pong === TRUE) {
-              $valkey_up = TRUE;
-            } else {
-              $valkey_up = FALSE;
-              $last_reason = 'ping-not-ok';
-            }
-          } catch (Exception $e) {
-            $valkey_up = FALSE;
-            $last_reason = 'ping-exception';
-          }
-        }
-
-        if ($valkey_up) {
-          _valkey_backoff_clear($flag_path);
-          _valkey_dbg_write($redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
-        } else {
-          _valkey_backoff_touch($flag_path);
-          _valkey_dbg_write($redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
-        }
-
-        try {
-          $r->close();
-        } catch (Exception $e) {
-          // ignore
-        }
-      } else {
-        _valkey_backoff_touch($flag_path);
-        _valkey_dbg_write($redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
+    if ($valkey_up) {
+      _valkey_backoff_clear($flag_path);
+      // Recovery: we were flagged down and are now up again. Flush the
+      // local APCu so any stale ChainedFast front-layer entries written
+      // (or missed) during the degraded window are discarded and rebuilt
+      // from the consistent Valkey backend. This is the key fix for
+      // "config changes not applied" persisting after a transient blip.
+      if ($flag_existed && $flush_apcu_recov && function_exists('apcu_clear_cache')) {
+        @apcu_clear_cache();
+        _valkey_dbg_write($redis_debug_log, 'VALKEY RECOVERY action=apcu_clear flag='.$flag_path);
       }
+      _valkey_dbg_write($redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
     } else {
-      // phpredis extension not available.
-      $valkey_up = FALSE;
       _valkey_backoff_touch($flag_path);
-      _valkey_dbg_write($redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason=no-phpredis');
+      _valkey_dbg_write($redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
     }
   } else {
     $valkey_up = FALSE;
+    $last_reason = 'backoff-active';
     _valkey_dbg_write($redis_debug_log, 'VALKEY SKIP reason=backoff-active flag='.$flag_path);
   }
 }
@@ -185,6 +213,27 @@ if (!empty($is_dev)) {
       header('X-Allow-Valkey: NO');
     }
   }
+}
+
+/* Always-on, non-sensitive cache state header for production debugging.
+ * Gated by the cache_debug_header ini flag (default TRUE during testing;
+ * set FALSE in boa_site_control.ini once the investigation is closed).
+ * Reveals only a coarse state word - never the password or topology. */
+if ($cache_dbg_hdr && empty($is_backend) && !headers_sent()) {
+  $vk_state = 'disabled';
+  if ($use_valkey) {
+    if ($valkey_up) {
+      $vk_state = 'up';
+    } elseif ($skip_probe) {
+      $vk_state = 'backoff';
+    } elseif ($last_reason === 'no-phpredis') {
+      $vk_state = 'nophpredis';
+    } else {
+      $vk_state = 'down';
+    }
+  }
+  header('X-VK-State: ' . $vk_state);
+  header('X-VK-Reason: ' . (string) $last_reason);
 }
 
 if (!empty($is_install)) {

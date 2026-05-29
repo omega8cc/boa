@@ -381,3 +381,29 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
     }
   }
 }
+
+/**
+ * Always-on, non-sensitive backend observability (ini: cache_debug_header).
+ *
+ * Reports which backend actually served the structured-cache bins on THIS
+ * request, so a transient drop to 'db' (Valkey probe miss / backoff) is
+ * visible in production without a .dev. hostname. Pairs with X-VK-State
+ * from global-if-valkey.inc. Set cache_debug_header = FALSE after testing.
+ *
+ * $cache_valkey is only TRUE when the Valkey backend block above ran
+ * ($valkey_up && $use_valkey && !$custom_cache); otherwise Drupal used its
+ * default (database) cache and we report 'db'.
+ */
+if (isset($all_ini['cache_debug_header']) && $all_ini['cache_debug_header'] &&
+    empty($is_backend) && !headers_sent()) {
+  $vk_backend = 'db';
+  if (!empty($cache_valkey)) {
+    if ($drupal_core >= 8 && !is_readable('/data/conf/clstr.cnf')) {
+      $vk_backend = 'chainedfast'; // APCu front + Valkey back for bootstrap/discovery/config
+    }
+    else {
+      $vk_backend = 'redis';
+    }
+  }
+  header('X-VK-Backend: ' . $vk_backend);
+}
