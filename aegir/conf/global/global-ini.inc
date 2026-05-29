@@ -77,11 +77,14 @@ $boa_ini = array(
   'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
   // --- Valkey/Redis probe tuning + cache observability (added 2026-05) -----
   // See global-if-valkey.inc / global-if-redis.inc and global-valkey.inc.
-  'valkey_connect_timeout' => '0.7',               // probe TCP connect timeout (s); was hardcoded 0.2
-  'valkey_read_timeout' => '0.7',                  // probe read timeout (s); was hardcoded 0.2
-  'valkey_backoff_ttl' => '15',                    // backoff window (s) after a failed probe; was hardcoded 60
-  'valkey_probe_retry' => TRUE,                    // retry the probe once before tripping the backoff flag
-  'valkey_flush_apcu_on_recovery' => TRUE,         // clear local APCu when Valkey transitions down->up (flushes stale ChainedFast front layer)
-  'cache_debug_header' => TRUE,                    // emit always-on, non-sensitive X-VK-* cache state headers; set FALSE after the testing phase
+  // NOTE: BOA keeps a single, stable "redis_" namespace for ALL cache control
+  // INI variables, even when the server runs Valkey (a drop-in Redis fork).
+  'redis_connect_timeout' => '0.7',                // probe TCP connect timeout (s); was hardcoded 0.2
+  'redis_read_timeout' => '0.7',                   // probe read timeout (s); was hardcoded 0.2
+  'redis_backoff_ttl' => '15',                     // backoff window (s) after a failed probe; was hardcoded 60
+  'redis_probe_retry' => TRUE,                     // retry the probe once before tripping the backoff flag
+  'redis_flush_apcu_on_recovery' => TRUE,          // clear local APCu when the cache backend transitions down->up
+  'redis_debug_header' => FALSE,                   // emit always-on, non-sensitive X-Cache-* state headers (enable per-site to investigate)
+  'redis_debug' => FALSE,                          // arm the probe fallback log; only then is the *.debug.flag file checked (disk I/O)
 );
 
