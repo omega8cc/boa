@@ -116,20 +116,25 @@ _fix_valkey_mode() {
   if [ "${_CUSTOM_CONFIG_VALKEY}" = "NO" ] || [ -z "${_CUSTOM_CONFIG_VALKEY}" ]; then
     _VALKEY_LISTEN_MODE=SOCKET
     if [ "${_VALKEY_LISTEN_MODE}" = "SOCKET" ]; then
-      if [ -e "/data/conf/global/global-redis.inc" ]; then
-        sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global/global-redis.inc &> /dev/null
+      if [ -e "/data/conf/global/global-valkey.inc" ]; then
+        # Socket mode. D6/D7 (redis_edge) has a dedicated redis_client_socket
+        # variable -- when set, host/port are ignored -- so rename the host var
+        # to it. D8+ (redis.connection) has NO 'socket' key and connects via
+        # $client->connect($host, $port), so it needs host=<path> with port=0.
+        # The shared value/port rewrites below satisfy both.
+        sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global/global-valkey.inc &> /dev/null
         wait
-        sed -i "s/'host'/'socket'/g" /data/conf/global/global-redis.inc &> /dev/null
+        sed -i "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" /data/conf/global/global-valkey.inc &> /dev/null
         wait
-        sed -i "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" /data/conf/global/global-redis.inc &> /dev/null
+        sed -i "s/  = '6379';/= 0;/g" /data/conf/global/global-valkey.inc &> /dev/null
         wait
       fi
       if [ -e "/data/conf/global.inc" ]; then
         sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global.inc &> /dev/null
         wait
-        sed -i "s/'host'/'socket'/g" /data/conf/global.inc &> /dev/null
-        wait
         sed -i "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" /data/conf/global.inc &> /dev/null
+        wait
+        sed -i "s/  = '6379';/= 0;/g" /data/conf/global.inc &> /dev/null
         wait
       fi
       sed -i "s/^port 0/port 6379/g" /etc/valkey/valkey.conf &> /dev/null
@@ -158,8 +163,8 @@ _fix_valkey_mode() {
           if [ "${_VALKEY_HOST}" = "LOCAL" ]; then
             sed -i "s/^bind 127.0.0.1/bind ${_VALKEY_LISTEN_MODE}/g" /etc/valkey/valkey.conf &> /dev/null
             wait
-            if [ -e "/data/conf/global/global-redis.inc" ]; then
-              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-redis.inc &> /dev/null
+            if [ -e "/data/conf/global/global-valkey.inc" ]; then
+              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
               wait
             fi
             if [ -e "/data/conf/global.inc" ]; then
@@ -167,8 +172,8 @@ _fix_valkey_mode() {
               wait
             fi
           else
-            if [ -e "/data/conf/global/global-redis.inc" ]; then
-              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-redis.inc &> /dev/null
+            if [ -e "/data/conf/global/global-valkey.inc" ]; then
+              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
               wait
             fi
             if [ -e "/data/conf/global.inc" ]; then
@@ -186,8 +191,8 @@ _fix_valkey_mode() {
             _msg "INFO: Local Valkey instance has been disabled"
           fi
         else
-          if [ -e "/data/conf/global/global-redis.inc" ]; then
-            sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-redis.inc &> /dev/null
+          if [ -e "/data/conf/global/global-valkey.inc" ]; then
+            sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
             wait
           fi
           if [ -e "/data/conf/global.inc" ]; then
