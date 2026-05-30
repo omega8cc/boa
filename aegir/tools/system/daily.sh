@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=593devT01
+export _xSrl=593devT03
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -31,8 +31,8 @@ _check_root
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 _WEBG=www-data
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _cGet="config-get user.settings"
@@ -41,6 +41,25 @@ _vGet="variable-get"
 _vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###
+
+# Validate that a caller-controlled path (parsed from a Drush alias file)
+# resolves under one of BOA's writable roots. Used by the per-site loop to
+# gate chown/chmod operations on _Dir (site_path) and _Plr (platform root):
+# the alias file is written by aegir-context Hostmaster tasks and a compromised
+# HM_U user could otherwise rewrite the alias to point at /etc and have the
+# daily runner chown system paths. Returns 0 on safe path, 1 otherwise.
+_validate_safe_dir() {
+  local _resolved
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
+  case "${_resolved}/" in
+    /data/disk/*|/var/aegir/*|/home/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
 
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
@@ -116,12 +135,12 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    _ffList="/var/backups/boa-mirrors-2026-05.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
-      echo "eu.files.aegir.cc"  > ${_ffList}
-      echo "us.files.aegir.cc" >> ${_ffList}
-      echo "ao.files.aegir.cc" >> ${_ffList}
+      echo "files.boa.io"  > ${_ffList}
+      echo "files.o8.io" >> ${_ffList}
+      echo "files.host8.biz" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -129,18 +148,18 @@ _find_fast_mirror_early() {
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.boa.io"
       else
-        _USE_MIR="files.aegir.cc"
+        _USE_MIR="files.boa.io"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      _USE_MIR="files.boa.io"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="files.boa.io"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  _urlDev="https://${_USE_MIR}/dev"
+  _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 _enable_chattr() {
@@ -1309,6 +1328,48 @@ _fix_modules() {
     else
       echo ";set_composer_manager_vendor_dir = FALSE" >> ${_PLR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "redis_connect_timeout" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_connect_timeout" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_connect_timeout = 0.7" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_read_timeout" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_read_timeout" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_read_timeout = 0.7" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_backoff_ttl" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_backoff_ttl" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_backoff_ttl = 15" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_probe_retry" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_probe_retry" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_probe_retry = TRUE" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_flush_apcu_on_recovery" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_apcu_on_recovery" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_flush_apcu_on_recovery = TRUE" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_debug_header" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_debug_header" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_debug_header = FALSE" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep -E "^;?redis_debug[ =]" ${_PLR_CTRL_F} 2>&1)
+    if [[ -n "${_VAR_IF_PRESENT}" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_debug = FALSE" >> ${_PLR_CTRL_F}
+    fi
   fi
   if [ -e "${_DIR_CTRL_F}" ]; then
      _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_DIR_CTRL_F} 2>&1)
@@ -1394,6 +1455,48 @@ _fix_modules() {
       _DO_NOTHING=YES
     else
       echo ";set_composer_manager_vendor_dir = FALSE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_connect_timeout" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_connect_timeout" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_connect_timeout = 0.7" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_read_timeout" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_read_timeout" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_read_timeout = 0.7" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_backoff_ttl" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_backoff_ttl" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_backoff_ttl = 15" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_probe_retry" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_probe_retry" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_probe_retry = TRUE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_flush_apcu_on_recovery" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_apcu_on_recovery" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_flush_apcu_on_recovery = TRUE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_debug_header" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_debug_header" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_debug_header = FALSE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep -E "^;?redis_debug[ =]" ${_DIR_CTRL_F} 2>&1)
+    if [[ -n "${_VAR_IF_PRESENT}" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_debug = FALSE" >> ${_DIR_CTRL_F}
     fi
   fi
 
@@ -1722,7 +1825,14 @@ _fix_permissions() {
     find ${_Dir}/{modules,themes,libraries} -type f -exec \
       chmod 0664 {} \; &> /dev/null
     ### files - site level
-    chown -L -R ${_HM_U}:www-data ${_Dir}/files &> /dev/null
+    ### -h replaces the prior -L: prevents recursive chown from dereferencing
+    ### attacker-planted symlinks under _Dir/files (the realistic threat is
+    ### a tar archive uploaded by a tenant containing an inner symlink, since
+    ### Adam confirmed in category 1 that PHP cannot create symlinks directly
+    ### but tar extraction can carry them in). Combined with the
+    ### _validate_safe_dir gate above this closes the path-prefix and
+    ### per-child symlink attack surfaces.
+    chown -h -R ${_HM_U}:www-data ${_Dir}/files &> /dev/null
     find ${_Dir}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
     find ${_Dir}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
     chmod 02775 ${_Dir}/files &> /dev/null
@@ -1735,14 +1845,14 @@ _fix_permissions() {
     chown ${_HM_U}:www-data ${_Dir}/files/{civicrm/upload,civicrm/persist} &> /dev/null
     chown ${_HM_U}:www-data ${_Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
     ### private - site level
-    chown -L -R ${_HM_U}:www-data ${_Dir}/private &> /dev/null
+    chown -h -R ${_HM_U}:www-data ${_Dir}/private &> /dev/null
     find ${_Dir}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
     find ${_Dir}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
     chown ${_HM_U}:www-data ${_Dir}/private &> /dev/null
     chown ${_HM_U}:www-data ${_Dir}/private/{files,temp} &> /dev/null
     chown ${_HM_U}:www-data ${_Dir}/private/files/backup_migrate &> /dev/null
     chown ${_HM_U}:www-data ${_Dir}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
-    chown -L -R ${_HM_U}:www-data ${_Dir}/private/config &> /dev/null
+    chown -h -R ${_HM_U}:www-data ${_Dir}/private/config &> /dev/null
     _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" \
       ${_Dir}/drushrc.php 2>&1)
     if [[ "${_DB_HOST_PRESENT}" =~ "db_host" ]]; then
@@ -2415,6 +2525,17 @@ _daily_process() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
+      # Skip the iteration if the alias-derived paths do not resolve under
+      # an allowed BOA root. Guards against a compromised aegir-context user
+      # rewriting the alias to redirect chown/chmod onto system paths.
+      if [ -n "${_Dir}" ] && ! _validate_safe_dir "${_Dir}"; then
+        echo "SKIP: _Dir resolves outside allowed roots: ${_Dir}"
+        continue
+      fi
+      if [ -n "${_Plr}" ] && ! _validate_safe_dir "${_Plr}"; then
+        echo "SKIP: _Plr resolves outside allowed roots: ${_Plr}"
+        continue
+      fi
       if [ -e "${_Plr}" ]; then
         _PlrID=$(echo ${_Plr} \
           | openssl md5 \
@@ -3288,7 +3409,7 @@ _find_fast_mirror_early
 if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
   echo "INFO: Checking BARRACUDA version"
   rm -f /opt/tmp/barracuda-release.txt*
-  curl -L -k -s \
+  curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 15 -A iCab \

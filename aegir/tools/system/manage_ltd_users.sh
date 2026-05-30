@@ -4,15 +4,15 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=593devT01
+export _xSrl=593devT03
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
 _usrGroup=users
 _WEBG=www-data
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _pthLog="/var/log/boa"
@@ -90,12 +90,12 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    _ffList="/var/backups/boa-mirrors-2026-05.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
-      echo "eu.files.aegir.cc"  > ${_ffList}
-      echo "us.files.aegir.cc" >> ${_ffList}
-      echo "ao.files.aegir.cc" >> ${_ffList}
+      echo "files.boa.io"  > ${_ffList}
+      echo "files.o8.io" >> ${_ffList}
+      echo "files.host8.biz" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -103,18 +103,18 @@ _find_fast_mirror_early() {
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.boa.io"
       else
-        _USE_MIR="files.aegir.cc"
+        _USE_MIR="files.boa.io"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      _USE_MIR="files.boa.io"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="files.boa.io"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  _urlDev="https://${_USE_MIR}/dev"
+  _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 ###----------------------------###
@@ -714,9 +714,13 @@ _ok_create_user() {
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
-      ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" \
-        $(openssl rand -base64 16 | tr -d '+=' | head -c 16) 2>&1)
-      usermod -p $ph ${_usrLtd}
+      # Compute the sha-512 hash via stdin and set it via chpasswd -e via
+      # stdin too — neither the plaintext password nor the resulting hash
+      # ever appears on the cmdline (where /proc/<pid>/cmdline would expose
+      # it to local users during the brief usermod -p / mkpasswd window).
+      _salt=$(openssl rand -base64 16 | tr -d '+=' | head -c 16)
+      ph=$(printf '%s' "${_ESC_LUPASS}" | mkpasswd -m sha-512 -s -S "${_salt}" 2>&1)
+      printf '%s:%s\n' "${_usrLtd}" "${ph}" | chpasswd -e &> /dev/null
       passwd -w 7 -x 90 ${_usrLtd}
       usermod -aG lshellg ${_usrLtd}
       usermod -aG ltd-shell ${_usrLtd}

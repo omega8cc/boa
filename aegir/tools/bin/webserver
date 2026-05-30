@@ -105,7 +105,7 @@ _nginx_health_check_fix() {
 _web_up() {
   if [ ! -e "/var/tmp/fpm" ]; then
     mkdir -p /var/tmp/fpm
-    chmod 777 /var/tmp/fpm
+    chmod 1777 /var/tmp/fpm
   fi
   _valkey_health_check_fix
   _fpm_health_check_fix

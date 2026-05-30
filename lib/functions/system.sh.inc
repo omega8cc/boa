@@ -1117,6 +1117,7 @@ _tune_memory_limits() {
     fi
   done
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
+    _sql_conf_update
     _tune_sql_memory_limits
     _sql_conf_update
     if [[ "${_PrTestPower}" =~ "POWER" ]] \
@@ -1162,8 +1163,8 @@ _tune_memory_limits() {
   if [ -e "/etc/valkey/valkey.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
     _NEEDS_VALKEY_RESTART=
-    if ! grep -qE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/valkey/valkey.conf; then
-      sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/valkey/valkey.conf &> /dev/null
+    if ! grep -qE '^maxmemory-policy[[:space:]]*volatile-lfu' /etc/valkey/valkey.conf; then
+      sed -i "s/^maxmemory-policy .*/maxmemory-policy volatile-lfu/g" /etc/valkey/valkey.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
     if ! grep -qE '^[[:space:]]*save\b' /etc/valkey/valkey.conf; then
@@ -1182,8 +1183,8 @@ _tune_memory_limits() {
   if [ -e "/etc/redis/redis.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
     _NEEDS_VALKEY_RESTART=
-    if ! grep -qE '^maxmemory-policy[[:space:]]*allkeys-lru' /etc/redis/redis.conf; then
-      sed -i "s/^maxmemory-policy .*/maxmemory-policy allkeys-lru/g" /etc/redis/redis.conf &> /dev/null
+    if ! grep -qE '^maxmemory-policy[[:space:]]*volatile-lfu' /etc/redis/redis.conf; then
+      sed -i "s/^maxmemory-policy .*/maxmemory-policy volatile-lfu/g" /etc/redis/redis.conf &> /dev/null
       _NEEDS_VALKEY_RESTART=YES
     fi
     if ! grep -qE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
@@ -3276,11 +3277,11 @@ _run_aptitude_full_upgrade() {
   _mrun "apt-get --fix-broken install -y"
   _fix_grub_pc_install_devices
   _mrun "dpkg --configure --force-all -a"
-  _mrun "aptitude full-upgrade -f -y -q \
+  _mrun "aptitude -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-${_DPKG_CNF}"
+    -o Dpkg::Options::=--force-${_DPKG_CNF} full-upgrade"
 }
 
 #
@@ -3389,6 +3390,77 @@ _check_apt_updates() {
       *)  ;;
     esac
   done
+}
+
+#
+# Install newer ICU from sources.
+_install_icu_newer() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_icu_newer"
+  fi
+  ###--------------------###
+  if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
+    rm -rf /var/backups/.old_icu
+    mv -f /usr/lib/x86_64-linux-gnu/.old_icu /var/backups/.old_icu
+  fi
+  if [ -e "/usr/lib/x86_64-linux-gnu/.legacy_icu" ]; then
+    rm -rf /var/backups/.legacy_icu
+    mv -f /usr/lib/x86_64-linux-gnu/.legacy_icu /var/backups/.legacy_icu
+  fi
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  if [ -e "${_pthLog}" ]; then
+    _pthIcuLog="${_pthLog}/icu-update-${_ICU_NEWER_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="${_pthLog}/icu-update-${_ICU_NEWER_VRN}.log"
+  else
+    _pthIcuLog="/root/.icu-update-${_ICU_NEWER_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="/root/.icu-update-${_ICU_NEWER_VRN}.log"
+  fi
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    && [ -e "${_pthIcuLcy}" ] \
+    && [ ! -e "${_pthIcuLog}" ]; then
+    touch ${_pthIcuLog}
+  fi
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    && [ -e "${_pthIcuLcy}" ] \
+    && [ ! -e "${_pthIcuLog}" ]; then
+    touch ${_pthIcuLog}
+  fi
+  if [ -e "${_pthIcuLog}" ]; then
+    chattr -i ${_pthIcuLog}
+  fi
+  if [ -e "${_pthIcuLcy}" ]; then
+    chattr -i ${_pthIcuLcy}
+  fi
+  if [ ! -e "/usr/local/lib/icu/current" ] \
+    || [ ! -e "${_pthIcuLog}" ]; then
+    _msg "INFO: Installing ICU libs version ${_ICU_NEWER_VRN}..."
+    _msg "WAIT: This may take a while, please wait..."
+    if [ ! -e "/var/opt/icu-release-${_ICU_NEWER_VRN}/icu4c/source" ]; then
+      cd /var/opt
+      rm -rf icu*
+      _get_dev_src "icu-release-${_ICU_NEWER_VRN}.tar.gz"
+    fi
+    cd /var/opt/icu-release-${_ICU_NEWER_VRN}/icu4c/source
+    _mrun "bash ./configure --prefix=/usr/local"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ -e "/usr/local/lib/icu" ]; then
+      touch ${_pthIcuLog}
+    fi
+    _X86_64_TEST=$(uname -m)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          rm -rf /var/backups/pre_icu
+          mv -f /usr/lib/x86_64-linux-gnu/icu /var/backups/pre_icu
+        fi
+        if [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        fi
+      fi
+    fi
+  fi
 }
 
 #
@@ -3575,12 +3647,19 @@ _php_install_deps() {
       fi
     done
   fi
-  if [ "${_OS_CODE}" = "jessie" ]; then
-    _install_icu_jessie
-  else
-    _install_icu_modern
-    # _mrun "${_INSTAPP} libicu-dev icu-devtools"
-  fi
+
+  # Set ICU version install based on the OS version
+  case "${_OS_CODE}" in
+    excalibur|daedalus|trixie|bookworm)
+      _install_icu_newer
+      ;;
+    chimaera|beowulf|bullseye|buster|stretch)
+      _install_icu_modern
+      ;;
+    *)
+      _install_icu_jessie
+      ;;
+  esac
 }
 
 #
@@ -5362,7 +5441,6 @@ _switch_to_dash() {
                   /etc/init.d \
                   /etc/network/if-down.d \
                   /etc/network/if-up.d \
-                  /etc/resolvconf/update.d \
                   /etc/webmin \
                   /lib/apparmor \
                   /opt/php56/bin \
@@ -5447,7 +5525,6 @@ _switch_to_bash() {
                   /etc/init.d \
                   /etc/network/if-down.d \
                   /etc/network/if-up.d \
-                  /etc/resolvconf/update.d \
                   /etc/webmin \
                   /lib/apparmor \
                   /opt/php56/bin \
@@ -6110,7 +6187,11 @@ _finale() {
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   mkdir -p /data/conf/arch/log
-  chmod 0777 /data/conf/arch/log
+  # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
+  # not /data/conf/arch/log — the log subdirectory is vestigial and has no
+  # current writer. World-writable is wrong on principle, and a future
+  # feature that started writing here would inherit the wide-open surface.
+  chmod 0755 /data/conf/arch/log
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/    &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
@@ -6255,21 +6336,6 @@ _finale() {
   _msg "BYE!"
 }
 
-_run_xtrabackup_cleanup() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _run_xtrabackup_cleanup"
-  fi
-  # Check for installed Percona XtraBackup packages and remove them
-  for _PKG in percona-xtrabackup-24 percona-xtrabackup-80 percona-xtrabackup-84; do
-    if _pkg_installed "${_PKG}"; then
-      _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "PCKG: ${_PKG} removed as requested."
-      fi
-    fi
-  done
-}
-
 _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
@@ -6298,8 +6364,6 @@ _run_aptitude_deps_install() {
   if [ "${_UPGRADE_MODE}" = "FULL" ]; then
     _msg "WAIT: This may take a while, please wait..."
     _apt_clean_update
-    _run_xtrabackup_cleanup
-
     _mrun "apt-get autoremove -y"
 
     for _PKG in packagekit polkitd software-properties-common python3-software-properties; do
@@ -6405,7 +6469,7 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev; do
+    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils lspci; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -6438,7 +6502,7 @@ _run_aptitude_deps_install() {
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     ###
-    for _PKG in toilet figlet screenfetch pciutils; do
+    for _PKG in toilet figlet screenfetch; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6718,8 +6782,9 @@ _if_proxysql_update() {
             _msg "INFO: Restarting ProxySQL server..."
           fi
           _mrun "service proxysql restart"
-          mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
-          mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
+          _write_proxysql_adm_cnf &> /dev/null
+          mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf -e "SELECT * FROM scheduler\G"
+          mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf -e "SELECT * FROM mysql_servers;"
         else
           _msg "OOPS: ProxySQL Galera Checker will not work!"
         fi
@@ -7916,18 +7981,18 @@ _sys_packages_update() {
   else
     _DPKG_CNF="confnew"
   fi
-  _mrun "aptitude full-upgrade -f -y -q \
+  _mrun "aptitude -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-${_DPKG_CNF}"
+    -o Dpkg::Options::=--force-${_DPKG_CNF} full-upgrade"
   if [ "${_STATUS}" = "INIT" ]; then
     _apt_clean_update
-    _mrun "aptitude full-upgrade -f -y -q \
+    _mrun "aptitude -f -y -q \
       --allow-untrusted \
       -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-${_DPKG_CNF}"
+      -o Dpkg::Options::=--force-${_DPKG_CNF} full-upgrade"
     _mrun "apt-get autoclean -y"
   else
     echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
@@ -9454,6 +9519,7 @@ _newrelic_check_fix() {
     _msg "PROC: _newrelic_check_fix"
   fi
   _NR_FORCE_REINSTALL=NO
+  _NOW_NR_V=""
   _NRS_TEST="$(which newrelic-daemon)"
   if [ ! -z "${_NRS_TEST}" ]; then
     _NOW_NR_V=$(newrelic-daemon --version 2>&1 \
@@ -9462,6 +9528,13 @@ _newrelic_check_fix() {
       | awk '{ print $1}' \
       | cut -d"-" -f1 \
       | awk '{ print $1}' 2>&1)
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    if [ ! -z "${_NOW_NR_V}" ]; then
+      _msg "INFO: New Relic installed: ${_NOW_NR_V} target: ${_NEW_RELIC_VRN}"
+    else
+      _msg "INFO: New Relic not installed, target: ${_NEW_RELIC_VRN}"
+    fi
   fi
   if [ ! -z "${_NOW_NR_V}" ]; then
     if [ "${_NOW_NR_V}" != "${_NEW_RELIC_VRN}" ]; then
