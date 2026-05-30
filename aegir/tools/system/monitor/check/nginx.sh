@@ -225,7 +225,7 @@ _nginx_if_up_check_fix() {
         echo ${_thisErrLog} >> ${_pthOml}
         _incident_email_report "Nginx Server was down, restarted"
         echo >> ${_pthOml}
-        ecit 0
+        exit 0
       fi
     fi
   fi

@@ -21,7 +21,7 @@ Please follow the required steps closely!
 First, update your BOA Meta Installers with:
 
 ```sh
-wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 ```
 
 Start with a quick barracuda system upgrade for a smooth experience later.
@@ -78,7 +78,7 @@ Please follow the required steps closely!
 First, update your BOA Meta Installers with:
 
 ```sh
-wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 ```
 
 The procedure discussed above automates major OS upgrades by running them in the multi-step cycle, but you can still run the major OS upgrade with classic `barracuda up-lts system` command if you prefer, after adding the respective variable to `/root/.barracuda.cnf`.
@@ -123,3 +123,14 @@ To disable unused PHP versions again, run this command:
 ```sh
 barracuda php-idle disable
 ```
+
+### NOTE on expected brief PHP downtime during Daedalus to Excalibur upgrade
+
+Both the automated and classic Daedalus to Excalibur major OS upgrade procedures involve a brief period where PHP may be unavailable per each active PHP version.
+
+This is expected and self-correcting behaviour caused by a system library soname bump between the two OS versions -- for example `libavif.so.15` in Daedalus becoming `libavif.so.16` in Excalibur. Since PHP is built from sources and links against these libraries at compile time, the running PHP binary becomes temporarily invalid after the dist-upgrade replaces the shared library.
+
+BOA automatically detects and fixes this by rebuilding all active PHP versions from sources immediately after the dist-upgrade completes, before the first post-upgrade reboot. No operator action is required.
+
+The expected downtime is approximately 3-5 minutes per active PHP version during this rebuild phase.
+

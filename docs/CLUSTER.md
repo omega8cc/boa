@@ -40,7 +40,7 @@ For more information on Percona XtraDB Cluster integration please read:
 ```sh
 $ apt-get update -qq && apt-get install wget -y -qq
 $ cd; rm -f cluster.sh
-$ cd; wget -q -U iCab http://files.aegir.cc/cluster/cluster.sh
+$ cd; wget -q -U iCab https://files.boa.io/cluster/cluster.sh
 $ mv -f cluster.sh /usr/local/bin/cluster
 $ chmod 700 /usr/local/bin/cluster
 ```
@@ -94,7 +94,7 @@ $ cluster in-oct em@il o2 mini head
 1. Update the manager script:
    ```sh
    $ cd; rm -f cluster.sh
-   $ cd; wget -q -U iCab http://files.aegir.cc/cluster/cluster.sh
+   $ cd; wget -q -U iCab https://files.boa.io/cluster/cluster.sh
    $ mv -f cluster.sh /usr/local/bin/cluster
    $ chmod 700 /usr/local/bin/cluster
    ```

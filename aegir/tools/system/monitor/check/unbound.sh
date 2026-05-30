@@ -126,28 +126,11 @@ _unbound_check_cooldown_status() {
 
 _unbound_config_fix() {
   _unbound_check_cooldown_status
-  # Check if resolvconf interface is ready for Unbound
-  if [ -x "/usr/sbin/unbound" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    # === cooldown-wrapped restart ===
-    if [ "${_in_unbound_cooldown}" = "true" ]; then
-      echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}
-    else
-      mkdir -p /etc/resolvconf/run/interface
-      echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-      resolvconf -u &> /dev/null
-      _unbound_restart_with_cooldown
-      echo "$(date) INFO: Unbound restarted after resolvconf interface update" >> ${_pthOml}
-      echo >> ${_pthOml}
-      exit 0
-    fi
-  fi
   # Confirm that DNS requests are working
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]]; then
-      _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 8 2>&1)
+      _THIS_DNS_TEST=$(host files.boa.io 127.0.0.1 -w 8 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
         if [ "${_in_unbound_cooldown}" = "true" ]; then
           echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}
@@ -168,7 +151,6 @@ _unbound_config_fix() {
         echo "nameserver 8.8.8.8" >> /etc/resolv.conf
         echo "nameserver 9.9.9.9" >> /etc/resolv.conf
         chmod 0644 /etc/resolv.conf
-        [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
         if [ "${_in_unbound_cooldown}" = "true" ]; then
           echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}
         else
@@ -259,10 +241,6 @@ _unbound_health_check_fix() {
     fi
     [ -d /run/unbound ] || mkdir -p /run/unbound
     [ -d /run/unbound ] && chown -R unbound:unbound /run/unbound
-    mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-    resolvconf -u &> /dev/null
     _unbound_restart_with_cooldown
     _thisErrLog="$(date) Unbound Server was down, restarted"
     echo ${_thisErrLog} >> ${_pthOml}
