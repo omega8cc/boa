@@ -33,10 +33,6 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
 
-if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>/dev/null | tr -d '\n')
-fi
-
 if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
   _SQL_PORT="6033"
   _SQL_HOST="127.0.0.1"
@@ -49,7 +45,27 @@ else
   [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
 fi
 
-_C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
+# Generate /root/.my.cluster_root.cnf (mode 0600) from the cluster root
+# password file plus the resolved host/port above. Used via
+# `_C_SQL` -> mysql --defaults-extra-file=... so the password never
+# appears in /proc/<mysql-pid>/cmdline. The cluster-backup cron runs
+# this every day, so the cnf is regenerated each run to track changes
+# in _SQL_HOST/_SQL_PORT.
+if [ -s "/root/.my.cluster_root_pwd.txt" ]; then
+  _CLUSTER_ROOT_PWD=$(tr -d '\n' < /root/.my.cluster_root_pwd.txt)
+  install -m 0600 -o root -g root /dev/null /root/.my.cluster_root.cnf
+  cat > /root/.my.cluster_root.cnf <<CLUSTER_CNF
+[client]
+user=root
+password="${_CLUSTER_ROOT_PWD}"
+host=${_SQL_HOST}
+port=${_SQL_PORT}
+protocol=tcp
+CLUSTER_CNF
+  unset _CLUSTER_ROOT_PWD
+fi
+
+_C_SQL="mysql --defaults-extra-file=/root/.my.cluster_root.cnf"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 _n=$((RANDOM%600+8))
@@ -127,10 +143,22 @@ _check_running() {
   done
 }
 
+# Mirrors the mysql_cleanup.sh / mysql_backup.sh allowlist landed in
+# category 5 of the security audit. Reject any DB or table identifier
+# that contains characters outside [A-Za-z0-9_] before interpolating
+# into SQL — same cross-tenant DROP DATABASE risk as the sibling scripts.
+_is_safe_ident() {
+  [[ "${1}" =~ ^[A-Za-z0-9_]+$ ]]
+}
+
 _truncate_cache_tables() {
   _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
+    if ! _is_safe_ident "${C}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${C}"
+      continue
+    fi
     _IF_SKIP_C=
     for X in ${_SQL_CACHE_EXC}; do
       if [ "${C}" = "${X}" ]; then
@@ -139,7 +167,7 @@ _truncate_cache_tables() {
     done
     if [ -z "${_IF_SKIP_C}" ]; then
       ${_C_SQL} ${_DB}<<EOFMYSQL
-TRUNCATE ${C};
+TRUNCATE \`${C}\`;
 EOFMYSQL
     fi
   done
@@ -149,8 +177,12 @@ _truncate_watchdog_tables() {
   _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for W in ${_TABLES}; do
+    if ! _is_safe_ident "${W}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${W}"
+      continue
+    fi
 ${_C_SQL} ${_DB}<<EOFMYSQL
-TRUNCATE ${W};
+TRUNCATE \`${W}\`;
 EOFMYSQL
   done
 }
@@ -159,8 +191,12 @@ _truncate_accesslog_tables() {
   _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
+    if ! _is_safe_ident "${A}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${A}"
+      continue
+    fi
 ${_C_SQL} ${_DB}<<EOFMYSQL
-TRUNCATE ${A};
+TRUNCATE \`${A}\`;
 EOFMYSQL
   done
 }
@@ -169,8 +205,12 @@ _truncate_batch_tables() {
   _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^batch$ 2>&1)
   for B in ${_TABLES}; do
+    if ! _is_safe_ident "${B}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${B}"
+      continue
+    fi
 ${_C_SQL} ${_DB}<<EOFMYSQL
-TRUNCATE ${B};
+TRUNCATE \`${B}\`;
 EOFMYSQL
   done
 }
@@ -179,8 +219,12 @@ _truncate_queue_tables() {
   _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
+    if ! _is_safe_ident "${Q}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${Q}"
+      continue
+    fi
 ${_C_SQL} ${_DB}<<EOFMYSQL
-TRUNCATE ${Q};
+TRUNCATE \`${Q}\`;
 EOFMYSQL
   done
 }
@@ -189,26 +233,34 @@ _truncate_views_data_export() {
   _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
   for V in ${_TABLES}; do
+    if ! _is_safe_ident "${V}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${V}"
+      continue
+    fi
 ${_C_SQL} ${_DB}<<EOFMYSQL
-DROP TABLE ${V};
+DROP TABLE \`${V}\`;
 EOFMYSQL
   done
 ${_C_SQL} ${_DB}<<EOFMYSQL
-TRUNCATE views_data_export_object_cache;
+TRUNCATE \`views_data_export_object_cache\`;
 EOFMYSQL
 }
 
 _repair_this_database() {
   _check_running
-  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp -u root --auto-repair --silent ${_DB}
+  mysqlcheck --defaults-extra-file=/root/.my.cluster_root.cnf --auto-repair --silent ${_DB}
 }
 
 _optimize_this_database() {
   _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
+    if ! _is_safe_ident "${T}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${T}"
+      continue
+    fi
 ${_C_SQL} ${_DB}<<EOFMYSQL
-OPTIMIZE TABLE ${T};
+OPTIMIZE TABLE \`${T}\`;
 EOFMYSQL
   done
 }
@@ -217,8 +269,12 @@ _convert_to_innodb() {
   _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
+    if ! _is_safe_ident "${T}"; then
+      echo "WARN: skipping unsafe table identifier in ${_DB}: ${T}"
+      continue
+    fi
 ${_C_SQL} ${_DB}<<EOFMYSQL
-ALTER TABLE ${T} ENGINE=INNODB;
+ALTER TABLE \`${T}\` ENGINE=INNODB;
 EOFMYSQL
   done
 }
@@ -233,10 +289,9 @@ _backup_this_database_with_mydumper() {
     _MYDUMPER_LOCK_MODE="FTWRL"
   fi
   mydumper \
+    --defaults-file=/root/.my.cluster_root.cnf \
     --database=${_DB} \
     --host=localhost \
-    --user=root \
-    --password=${_SQL_PSWD} \
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     --rows=50000 \
@@ -250,11 +305,7 @@ _backup_this_database_with_mydumper() {
 _backup_this_database_with_mysqldump() {
   _check_running
   mysqldump \
-    --user=root \
-    --password=${_SQL_PSWD} \
-    --host=${_SQL_HOST} \
-    --port=${_SQL_PORT} \
-    --protocol=tcp \
+    --defaults-extra-file=/root/.my.cluster_root.cnf \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -360,6 +411,10 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
+    if ! _is_safe_ident "${_DB}"; then
+      echo "WARN: skipping unsafe database identifier: ${_DB}"
+      continue
+    fi
     _check_running
     _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then

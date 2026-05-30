@@ -18,11 +18,19 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       if ($drupal_core == 10 || $drupal_core == 11) {
         $redis_new_dirname = 'redis_ten_eleven';
         $redis_legacy_dirname = 'redis_nine_ten';
-        if (is_readable('modules/o_contrib_ten/' . $redis_new_dirname . '/redis.services.yml')) {
-          $redis_dirname = $redis_new_dirname;
-        }
-        elseif (is_readable('modules/o_contrib_ten/' . $redis_legacy_dirname . '/redis.services.yml')) {
-          $redis_dirname = $redis_legacy_dirname;
+        // The redis integration ships under o_contrib_eleven on D11 platforms
+        // and o_contrib_ten on D10. Probe both bases so $redis_dirname resolves
+        // to the real subdir; otherwise it falls back to redis_compr and the
+        // detection block below cannot find the services.yml (cache -> db).
+        foreach (array('o_contrib_eleven', 'o_contrib_ten') as $redis_octo_base) {
+          if (is_readable('modules/' . $redis_octo_base . '/' . $redis_new_dirname . '/redis.services.yml')) {
+            $redis_dirname = $redis_new_dirname;
+            break;
+          }
+          elseif (is_readable('modules/' . $redis_octo_base . '/' . $redis_legacy_dirname . '/redis.services.yml')) {
+            $redis_dirname = $redis_legacy_dirname;
+            break;
+          }
         }
       }
       elseif ($drupal_core == 9) {
@@ -39,23 +47,18 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       header("X-Redis-Version-Is: Modern");
       header("X-Redis-Dir-Is: " . $redis_dirname);
     }
-    if ($all_ini['redis_flush_forced_mode']) {
-      if ($drupal_core >= 8) {
-        $settings['redis_perm_ttl']                 = 86400; // 24 hours max
-        $settings['redis_flush_mode']               = 1; // Redis default is 0
-        $settings['redis_flush_mode_cache_page']    = 2; // Redis default is 1
-        $settings['redis_flush_mode_cache_block']   = 2; // Redis default is 1
-        $settings['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
-        $settings['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
-      }
-      else {
-        $conf['redis_perm_ttl']                 = 86400; // 24 hours max
-        $conf['redis_flush_mode']               = 1; // Redis default is 0
-        $conf['redis_flush_mode_cache_page']    = 2; // Redis default is 1
-        $conf['redis_flush_mode_cache_block']   = 2; // Redis default is 1
-        $conf['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
-        $conf['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
-      }
+    // redis_flush_forced_mode applies to Drupal 6/7 only. The bare
+    // redis_perm_ttl / redis_flush_mode* keys are read solely by the legacy
+    // D7 Redis integration; the Drupal 8+ module ignores them (it invalidates
+    // via cache tags and uses redis_ttl_offset / redis_perm_ttl_<bin>), so we
+    // no longer emit dead $settings for core >= 8.
+    if ($all_ini['redis_flush_forced_mode'] && $drupal_core < 8) {
+      $conf['redis_perm_ttl']                 = 86400; // 24 hours max
+      $conf['redis_flush_mode']               = 1; // Redis default is 0
+      $conf['redis_flush_mode_cache_page']    = 2; // Redis default is 1
+      $conf['redis_flush_mode_cache_block']   = 2; // Redis default is 1
+      $conf['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
+      $conf['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
         header("X-Redis-Flush-Forced-Mode: Forced");
@@ -252,7 +255,7 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       }
       if ($redis_comprs) {
         $settings['redis_compress_length']       = 100;
-        $settings['redis_compress_level']        = 5;
+        $settings['redis_compress_level']        = 1; // module default; raising it is discouraged (higher CPU, minimal storage gain)
       }
       $settings['cache']['bins']['state']        = 'cache.backend.redis';
       $settings['state_cache']                   = TRUE;
@@ -380,4 +383,30 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       }
     }
   }
+}
+
+/**
+ * Always-on, non-sensitive backend observability (ini: redis_debug_header).
+ *
+ * Reports which backend actually served the structured-cache bins on THIS
+ * request, so a transient drop to 'db' (Redis probe miss / backoff) is
+ * visible in production without a .dev. hostname. Pairs with X-Cache-State
+ * from global-if-redis.inc. Gated by redis_debug_header ini (default FALSE; enable per-site to investigate).
+ *
+ * $cache_valkey is only TRUE when the Redis backend block above ran
+ * ($valkey_up && $use_valkey && !$custom_cache); otherwise Drupal used its
+ * default (database) cache and we report 'db'.
+ */
+if (isset($all_ini['redis_debug_header']) && $all_ini['redis_debug_header'] &&
+    empty($is_backend) && !headers_sent()) {
+  $vk_backend = 'db';
+  if (!empty($cache_valkey)) {
+    if ($drupal_core >= 8 && !is_readable('/data/conf/clstr.cnf')) {
+      $vk_backend = 'chainedfast'; // APCu front + Redis back for bootstrap/discovery/config
+    }
+    else {
+      $vk_backend = 'redis';
+    }
+  }
+  header('X-Cache-Backend: ' . $vk_backend);
 }

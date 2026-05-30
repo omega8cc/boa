@@ -319,10 +319,17 @@ _if_solr_four() {
         touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
       fi
       sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-      ln -sfn /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
-      chmod 755 /etc/init.d/jetty9
-      _mrun "update-rc.d jetty9 defaults"
-      _mrun "service jetty9 start"
+      if [ ! -e "/etc/init.d/jetty9" ] || [ -L "/etc/init.d/jetty9" ]; then
+        if [ -e "${_locCnf}/solr4/jetty9" ]; then
+          rm -f /etc/init.d/jetty9
+          cp -af ${_locCnf}/solr4/jetty9 /etc/init.d/jetty9
+        else
+          ln -sfn /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
+        fi
+        chmod 755 /etc/init.d/jetty9 &> /dev/null
+        _mrun "update-rc.d jetty9 defaults"
+        _mrun "service jetty9 start"
+      fi
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} installed"
     else
@@ -354,6 +361,16 @@ _if_solr_four() {
         -Djava.awt.headless=true \
         -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
         # Options" | fmt -su -w 2500 >> /etc/default/jetty9
+    fi
+    if [ ! -e "/etc/init.d/jetty9" ] || [ -L "/etc/init.d/jetty9" ]; then
+      if [ -e "${_locCnf}/solr4/jetty9" ]; then
+        rm -f /etc/init.d/jetty9
+        cp -af ${_locCnf}/solr4/jetty9 /etc/init.d/jetty9
+      else
+        ln -sfn /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
+      fi
+      chmod 755 /etc/init.d/jetty9 &> /dev/null
+      _mrun "update-rc.d jetty9 defaults"
     fi
     if [ ! -e "${_PORT_CTRL}" ] \
       || [ ! -e "/opt/jetty9/lib/ext/slf4j-api-${_SLF4J_VRN}.jar" ] \

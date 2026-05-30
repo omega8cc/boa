@@ -22,18 +22,12 @@ and takes significant read pressure off the disk and database layer.
 
 The key architectural points are:
 
-- **APCu** is process-local: each PHP-FPM worker and any CLI process maintains its own
-  separate APCu memory segment
+- **APCu** is process-local: each PHP-FPM worker maintains its own separate APCu memory segment
 - **Valkey/Redis** is shared across all processes: both PHP-FPM workers and CLI drush
   processes read from and write to the same instance
 - **Both tiers require sufficient memory allocation** for the number of sites hosted —
   starvation at either tier causes cache misses that cascade through the stack
-
-APCu is also enabled for CLI processes:
-
-```ini
-apc.enable_cli=1
-```
+- **APCu is disabled for CLI processes**
 
 
 ## Diagnostic sequence — start here
