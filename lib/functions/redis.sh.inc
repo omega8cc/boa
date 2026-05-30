@@ -86,19 +86,24 @@ _fix_redis_mode() {
     _REDIS_LISTEN_MODE=SOCKET
     if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ]; then
       if [ -e "/data/conf/global/global-redis.inc" ]; then
+        # Socket mode. D6/D7 (redis_edge) has a dedicated redis_client_socket
+        # variable -- when set, host/port are ignored -- so rename the host var
+        # to it. D8+ (redis.connection) has NO 'socket' key and connects via
+        # $client->connect($host, $port), so it needs host=<path> with port=0.
+        # The shared value/port rewrites below satisfy both.
         sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global/global-redis.inc &> /dev/null
         wait
-        sed -i "s/'host'/'socket'/g" /data/conf/global/global-redis.inc &> /dev/null
-        wait
         sed -i "s/  = '127.0.0.1';/= '\/var\/run\/redis\/redis.sock';/g" /data/conf/global/global-redis.inc &> /dev/null
+        wait
+        sed -i "s/  = '6379';/= 0;/g" /data/conf/global/global-redis.inc &> /dev/null
         wait
       fi
       if [ -e "/data/conf/global.inc" ]; then
         sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global.inc &> /dev/null
         wait
-        sed -i "s/'host'/'socket'/g" /data/conf/global.inc &> /dev/null
-        wait
         sed -i "s/  = '127.0.0.1';/= '\/var\/run\/redis\/redis.sock';/g" /data/conf/global.inc &> /dev/null
+        wait
+        sed -i "s/  = '6379';/= 0;/g" /data/conf/global.inc &> /dev/null
         wait
       fi
       sed -i "s/^port 0/port 6379/g" /etc/redis/redis.conf &> /dev/null
