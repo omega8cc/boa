@@ -151,7 +151,7 @@ as explained in this document further below.
 
   Here are the steps to start using Let's Encrypt certificates on sites
   previously running SSL on dedicated IP as well as shared (default) IP via
-  legacy `xboa ssl-gen` command:
+  legacy `xoct ssl-gen` command:
 
   1. Disable all HTTPS redirects, if configured within these sites.
 

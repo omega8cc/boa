@@ -23,6 +23,7 @@ transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
 secure_file_priv        = NULL
+local_infile            = OFF
 #performance_schema      = OFF
 #performance_schema_instrument = 'wait/%=ON'
 #performance_schema_consumer_events_waits_current=OFF
@@ -68,17 +69,21 @@ skip-log-bin
 #slow_query_log_file     = /var/log/mysql/sql-slow-query.log
 #log_queries_not_using_indexes
 
-# --- Logging in Percona 5.7 -----------------------------------------------
+# --- Logging in Percona 5.7 only ------------------------------------------
 # log_syslog             = ON
 # log_syslog_facility    = daemon
 # log_syslog_include_pid = ON
 
-# --- Logging in Percona 8.x -----------------------------------------------
-# log_error               = /var/log/mysql/error.log
-# log_error_verbosity     = 2
-# log_error_services      = log_filter_internal; log_sink_internal; log_sink_syseventlog
-# syseventlog.facility    = daemon
-# syseventlog.include_pid = ON
+# --- Logging in Percona 8.x safe default ----------------------------------
+# log_error              = /var/log/mysql/error.log
+# log_error_verbosity    = 2
+
+# --- Logging in Percona 8.4+ optional syslog/eventlog sink -----------------
+# Enable only when the syseventlog error-log component is available/installed.
+# Do not use spaces in log_error_services; they may become part of the value.
+# log_error_services     = log_filter_internal;log_sink_internal;log_sink_syseventlog
+# syseventlog.facility   = daemon
+# syseventlog.include_pid= ON
 
 # * InnoDB
 #

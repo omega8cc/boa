@@ -22,6 +22,32 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
+# Reject any caller-supplied path that resolves outside the BOA-managed roots.
+# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users;
+# a crafted symlink under ${site_path}/... (e.g. uploaded inside a tar archive)
+# would otherwise let chown -R rewrite ownership on arbitrary system paths.
+# Defence is two-layered:
+#  1. _validate_path_prefix on the caller-supplied root.
+#  2. chown -h on every recursive/non-recursive call below (replaces the prior
+#     chown -L -R which explicitly dereferenced symlinks during traversal).
+#     This is compatible with any root-managed symlinks within the tree —
+#     their own metadata is adjusted but their targets are never followed.
+_validate_path_prefix() {
+  local _resolved
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
+    printf "Error: path does not resolve: %s\n" "$1" >&2
+    exit 1
+  }
+  case "${_resolved}/" in
+    /var/aegir/*|/data/disk/*|/home/*)
+      ;;
+    *)
+      printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+      exit 1
+      ;;
+  esac
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 web_group="${3:-www-data}"
@@ -57,6 +83,8 @@ if [ -z "${script_user}" ] \
   exit 1
 fi
 
+_validate_path_prefix "${site_path}"
+
 if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
   rm -f ${site_path}/libraries/ownership-fixed.pid
 fi
@@ -79,13 +107,13 @@ if [ ! -e "${site_path}/libraries" ]; then
   mkdir ${site_path}/libraries
 fi
 ### directory and settings files - site level
-chown ${script_user}:users ${site_path} &> /dev/null
-chown ${script_user}:www-data \
+chown -h ${script_user}:users ${site_path} &> /dev/null
+chown -h ${script_user}:www-data \
   ${site_path}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
 ### modules,themes,libraries - site level
-chown -R ${script_user}:users \
+chown -h -R ${script_user}:users \
   ${site_path}/{modules,themes,libraries}/* &> /dev/null
-chown ${script_user}:users \
+chown -h ${script_user}:users \
   ${site_path}/drushrc.php \
   ${site_path}/modules/*.yml \
   ${site_path}/{modules,themes,libraries} &> /dev/null
@@ -95,22 +123,25 @@ if [ ! -e "${site_path}/files/ownership-fixed-${_TODAY}.pid" ]; then
   rm -f ${site_path}/files/ownership-fixed*.pid
   touch ${site_path}/files/ownership-fixed-${_TODAY}.pid
   ### files - site level
-  chown -L -R ${script_user}:www-data ${site_path}/files &> /dev/null
-  chown ${script_user}:www-data ${site_path}/files &> /dev/null
-  chown ${script_user}:www-data ${site_path}/files/{tmp,images,pictures,css,js} &> /dev/null
-  chown ${script_user}:www-data ${site_path}/files/{advagg_css,advagg_js,ctools} &> /dev/null
-  chown ${script_user}:www-data ${site_path}/files/{ctools/css,imagecache,locations} &> /dev/null
-  chown ${script_user}:www-data ${site_path}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
-  chown ${script_user}:www-data ${site_path}/files/{civicrm,civicrm/templates_c} &> /dev/null
-  chown ${script_user}:www-data ${site_path}/files/{civicrm/upload,civicrm/persist} &> /dev/null
-  chown ${script_user}:www-data ${site_path}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
+  ### -h on recursive chown: never dereference symlinks; combined with default
+  ### -P traversal this prevents a tar-uploaded symlink from rerouting chown
+  ### to a system path.
+  chown -h -R ${script_user}:www-data ${site_path}/files &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/files &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/files/{tmp,images,pictures,css,js} &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/files/{advagg_css,advagg_js,ctools} &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/files/{ctools/css,imagecache,locations} &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/files/{civicrm,civicrm/templates_c} &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/files/{civicrm/upload,civicrm/persist} &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
   ### private - site level
-  chown -L -R ${script_user}:www-data ${site_path}/private &> /dev/null
-  chown ${script_user}:www-data ${site_path}/private &> /dev/null
-  chown ${script_user}:www-data ${site_path}/private/{files,temp} &> /dev/null
-  chown ${script_user}:www-data ${site_path}/private/files/backup_migrate &> /dev/null
-  chown ${script_user}:www-data ${site_path}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
-  chown -L -R ${script_user}:www-data ${site_path}/private/config &> /dev/null
+  chown -h -R ${script_user}:www-data ${site_path}/private &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/private &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/private/{files,temp} &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/private/files/backup_migrate &> /dev/null
+  chown -h ${script_user}:www-data ${site_path}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
+  chown -h -R ${script_user}:www-data ${site_path}/private/config &> /dev/null
 fi
 
 echo "Done setting proper ownership of site files and directories."

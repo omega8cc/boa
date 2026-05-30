@@ -135,7 +135,7 @@ if ($drupal_id && $is_dev && !$is_backend) {
  * HTTP-off migration short-circuit
  *
  * Presence of /data/disk/<oct>/static/control/http-off.pid blocks all
- * sites on the Octopus account with a 503. xboa touches this during
+ * sites on the Octopus account with a 503. xoct touches this during
  * export and removes it once the proxy vhost is in place. Replaces
  * readonlymode use which is unreliable on busy commerce sites and
  * unavailable via system drush 8 on Drupal 8+.
