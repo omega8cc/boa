@@ -99,14 +99,14 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 #
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _gCb="git clone --branch"
 _gitHub="https://github.com/omega8cc"
 _gitLab="https://gitlab.com/omega8cc"
 #
-export _urlDev="http://${_USE_MIR}/dev"
-export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+export _urlDev="https://${_USE_MIR}/dev"
+export _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 ###--------------------###
 
@@ -135,7 +135,7 @@ else
   exit 1
 fi
 
-sed -i "s/files.aegir.cc/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+sed -i "s/files.boa.io/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "INFO: Installing the frontend"

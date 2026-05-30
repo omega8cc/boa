@@ -39,8 +39,8 @@
 ### Helper variables
 ###
 _bldPth="/opt/tmp/boa"
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _filIncO="octopus.sh.cnf"
 _gCb="git clone --branch"
 _gitHub="https://github.com/omega8cc"
@@ -100,8 +100,8 @@ fi
 ###
 ### More helper variables
 ###
-export _urlDev="http://${_USE_MIR}/dev"
-export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+export _urlDev="https://${_USE_MIR}/dev"
+export _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###

@@ -362,9 +362,29 @@ _validate_restore_command() {
       ;;
   esac
 
-  # Validate restore path (optional, no leading slash)
+  # Validate restore path (optional, no leading slash, no whitespace).
+  # Whitespace forbid is part of the queue-file hardening: the queue stores
+  # one arg per line, so a path containing whitespace would round-trip into
+  # multiple args on the consumer side. Disallow it at the producer to keep
+  # producer and consumer in agreement on argument count. BOA's tenant
+  # directory layout never includes whitespace in real paths, so this does
+  # not block legitimate restores.
   if [[ -n "${_restore_path}" && "${_restore_path}" =~ ^/ ]]; then
     echo "Error: Restore path '${_restore_path}' must not have a leading slash."
+    return 1
+  fi
+  if [[ -n "${_restore_path}" && "${_restore_path}" =~ [[:space:]] ]]; then
+    echo "Error: Restore path '${_restore_path}' must not contain whitespace."
+    return 1
+  fi
+
+  # Reject obvious metacharacters too. These should already be impossible
+  # via lshell on the producer side, but the consumer re-runs this validator
+  # against queue content that the operator can technically write directly
+  # (the queue file lives under .ftp-owned static/control/), so defence in
+  # depth here closes the loop.
+  if [[ -n "${_restore_path}" && "${_restore_path}" =~ [\;\&\|\`\$\<\>\(\)\{\}\"\'\\] ]]; then
+    echo "Error: Restore path '${_restore_path}' contains forbidden characters."
     return 1
   fi
 
@@ -396,7 +416,26 @@ _main_script() {
       export _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
       if [[ -f "${_user_cmd_file}" ]]; then
-        export _command=$(cat "${_user_cmd_file}")
+        # Read the queue file as one arg per line. The producer side
+        # (printf '%s\n' "$@") writes the validated args this way; old
+        # space-joined queue files left over from before this change parse
+        # as a single args[0] that will fail the "restore"-only check below
+        # and be rejected.
+        local _queued_args=()
+        mapfile -t _queued_args < "${_user_cmd_file}"
+
+        # Re-validate before exec. The queue file lives under
+        # /data/disk/<user>/static/control/.run/ which is .ftp-writable
+        # (manage_ltd_users.sh chowns static/control to <user>.ftp); we
+        # cannot trust that the file was actually written via the validated
+        # CLI path on the .ftp side.
+        if ! _validate_restore_command "${_queued_args[@]}"; then
+          echo "[$(date)] Invalid queued command for ${_user}: $(printf '%q ' "${_queued_args[@]}")" \
+            >> /var/log/mybackup_invalid_queued.log
+          rm -f "${_user_cmd_file}"
+          continue
+        fi
+
         echo "Executing backup restore for user ${_user}."
         chmod 755 /data/disk/${_user}/remote_backups/paths
         local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
@@ -404,11 +443,15 @@ _main_script() {
         chmod 644 ${_user_credentials_dir}/*.txt
         chattr -i /data/disk/${_user}/remote_backups/.secret.txt
         chmod 644 /data/disk/${_user}/remote_backups/.secret.txt
-        su -s /bin/bash - ${_user} -c "mybackup ${_command}"
+        # Pass the validated args positionally via -- so each arg arrives at
+        # the inner mybackup as a separate $1/$2/$3/$4. No shell-interpolation
+        # of attacker-controlled bytes; metacharacters in any arg are inert.
+        su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- "${_queued_args[@]}"
         wait
         # Clean up the command file
-        echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
-        echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_commands_history.log
+        local _command_log="$(printf '%q ' "${_queued_args[@]}")"
+        echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /var/log/mybackup_commands_history.log
+        echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /data/disk/${_user}/log/mybackup_commands_history.log
         rm -f "${_user_cmd_file}"
         chmod 700 ${_user_credentials_dir}
         chmod 600 ${_user_credentials_dir}/*.txt
@@ -449,8 +492,13 @@ if [[ $(whoami) == *.ftp ]]; then
     exit 1
   fi
 
-  # If invoked as USER.ftp, queue the command
-  echo "$@" > "${_user_run_dir}/${_CMD_FILE}"
+  # If invoked as USER.ftp, queue the command. One argument per line so the
+  # root-side consumer can read it via mapfile and pass the args positionally
+  # to su -c. The previous `echo "$@" > ...` form stored a space-joined string
+  # which the consumer then re-interpolated into "su -c 'mybackup ${_command}'"
+  # — letting a .ftp user who wrote the queue file directly inject shell
+  # metacharacters and escape lshell into the per-tenant system user.
+  printf '%s\n' "$@" > "${_user_run_dir}/${_CMD_FILE}"
   echo "Command queued for user ${_user}..."
   echo "It will be executed by the system shortly..."
   echo "Bye!"
@@ -461,6 +509,18 @@ export _ACTION=$1
 export _SERVICE=$2
 export _RESTORE_PATH="${3:-}"
 export _RESTORE_TIME="${4:-}"
+
+# Defence-in-depth: re-validate even on the system-user execution path.
+# The root cron consumer already validates the queued args before su, but
+# this branch also runs when the per-tenant system user invokes mybackup
+# directly (which they can). Validating here means _restore() can rely on
+# its inputs being free of shell metacharacters before they reach the
+# duplicity eval at line 255.
+if ! _validate_restore_command "${_ACTION}" "${_SERVICE}" "${_RESTORE_PATH}" "${_RESTORE_TIME}"; then
+  echo "Error: Invalid command."
+  exit 1
+fi
+
 export _PIDFILE="/data/disk/${_user}/log/mybackup_${_SERVICE}_${_user}.pid"
 export _LOGPTH="/data/disk/${_user}/log"
 export _LOGFILE="${_LOGPTH}/mybackup_${_SERVICE}_${_user}.log"
