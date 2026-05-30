@@ -179,19 +179,19 @@ _fix_php_ini_apcu() {
     _msg "PROC: _fix_php_ini_apcu $1"
   fi
   if [ -e "${_THIS_FILE}" ]; then
-    _APCU_INI_TEST=$(grep "^apc.shm_size" ${_THIS_FILE} 2>&1)
-    if [[ "${_APCU_INI_TEST}" =~ "apc.shm_size" ]]; then
+    _APCU_INI_TEST=$(grep "^apc.serializer" ${_THIS_FILE} 2>&1)
+    if [[ "${_APCU_INI_TEST}" =~ "apc.serializer" ]]; then
       _DO_NOTHING=YES
     else
       echo " "                  >> ${_THIS_FILE}
       echo "; APCu"             >> ${_THIS_FILE}
       echo "extension=apcu.so"  >> ${_THIS_FILE}
-      echo "apc.enable_cli=1"   >> ${_THIS_FILE}
+      echo "apc.serializer=igbinary" >> ${_THIS_FILE}
       echo "apc.gc_ttl=300"     >> ${_THIS_FILE}
       echo "apc.shm_segments=1" >> ${_THIS_FILE}
       echo "apc.shm_size=256M"  >> ${_THIS_FILE}
       echo "apc.slam_defense=0" >> ${_THIS_FILE}
-      echo "apc.ttl=0"          >> ${_THIS_FILE}
+      echo "apc.ttl=3600"       >> ${_THIS_FILE}
       echo ";"                  >> ${_THIS_FILE}
     fi
   fi
@@ -521,13 +521,12 @@ _fix_php_ini_mongo_all() {
 }
 
 #
-# Apply PHP INI fixes.
-_apply_php_ini_fixes() {
+# Apply PHP CLI INI fixes.
+_apply_php_cli_ini_fixes() {
   local e="${1}"
 
-  if [ "${e}" -gt 56 ]; then
-    _fix_php_ini_apcu "${e}"
-  fi
+  _fix_php_ini_igbinary "${e}"
+  _fix_php_ini_redis "${e}"
 
   if [ "${e}" -gt 71 ]; then
     _fix_php_ini_mcrypt "${e}"
@@ -553,13 +552,54 @@ _apply_php_ini_fixes() {
 #       ;;
 #   esac
 
-  _fix_php_ini_igbinary "${e}"
-  _fix_php_ini_redis "${e}"
   _fix_php_ini_ioncube "${e}"
   _remove_php_ini_suhosin "${e}"
   _fix_php_ini_yaml "${e}"
   _fix_php_ini_imagick "${e}"
 }
+
+#
+# Apply PHP FPM INI fixes.
+_apply_php_fpm_ini_fixes() {
+  local e="${1}"
+
+  if [ "${e}" -gt 56 ]; then
+    _fix_php_ini_apcu "${e}"
+  fi
+
+  _fix_php_ini_igbinary "${e}"
+  _fix_php_ini_redis "${e}"
+
+  if [ "${e}" -gt 71 ]; then
+    _fix_php_ini_mcrypt "${e}"
+  fi
+
+  if [ "${e}" = 56 ]; then
+    _fix_php_ini_mailparse "${e}"
+    _fix_php_ini_twig "${e}"
+  fi
+
+  case "${e}" in
+    80|81|82|83|84|85)
+      _remove_php_ini_jsmin "${e}"
+      ;;
+    *)
+      _add_php_ini_jsmin "${e}"
+      ;;
+  esac
+
+#   case "${e}" in
+#     84|85)
+#       _remove_php_ini_mcrypt "${e}"
+#       ;;
+#   esac
+
+  _fix_php_ini_ioncube "${e}"
+  _remove_php_ini_suhosin "${e}"
+  _fix_php_ini_yaml "${e}"
+  _fix_php_ini_imagick "${e}"
+}
+
 
 #
 # Update PHP Config.
@@ -607,10 +647,10 @@ _php_conf_update() {
     cp -af ${_locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
 
     _THIS_FILE="/opt/php${e}/etc/php${e}.ini"
-    _apply_php_ini_fixes "${e}"
+    _apply_php_fpm_ini_fixes "${e}"
 
     _THIS_FILE="/opt/php${e}/lib/php.ini"
-    _apply_php_ini_fixes "${e}"
+    _apply_php_cli_ini_fixes "${e}"
 
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
@@ -1696,7 +1736,10 @@ _install_php_multi() {
   ### patch -p1 < ${_bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
-  if [ "$1" -lt 74 ]; then
+  # intl requires ICU; PHP 7.4-8.0 fails to build intl against ICU 76+ and is
+  # intentionally excluded -- those versions are EOL and not worth maintaining
+  # ICU compat patches for. PHP < 7.4 never had intl support in BOA at all.
+  if [ "$1" -lt 81 ]; then
     _PHP_EXTRA="${_PHP_EXTRA}"
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
@@ -2000,6 +2043,83 @@ _php_multi_update() {
 }
 
 #
+# Update New Relic key if outdated.
+_newrelic_key_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _newrelic_key_check"
+  fi
+  _NR_KEY_UPDATED=NO
+  local _key_path="/etc/apt/keyrings/newrelic.gpg"
+  local _key_url_upstream="https://download.newrelic.com/NEWRELIC_APT_2DAD550E.public"
+  local _key_url_mirror="${_urlDev}/newrelic-key-${_NEWRELIC_KEY_FILE}.gpg"
+  local _tmp_key_raw _tmp_key
+  local _fp_installed _fp_available
+  _tmp_key_raw=$(mktemp /tmp/newrelic-key-XXXXXX.raw)
+  _tmp_key=$(mktemp /tmp/newrelic-key-XXXXXX.gpg)
+
+  curl ${_crlGet} "${_key_url_upstream}" -o "${_tmp_key_raw}"
+  if [ ! -s "${_tmp_key_raw}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: New Relic upstream unreachable, trying mirror: ${_key_url_mirror}"
+    fi
+    curl ${_crlGet} "${_key_url_mirror}" -o "${_tmp_key_raw}"
+  fi
+
+  if [ ! -s "${_tmp_key_raw}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Cannot fetch New Relic APT key from upstream or mirror"
+    fi
+    rm -f "${_tmp_key_raw}" "${_tmp_key}"
+    return 1
+  fi
+
+  if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_tmp_key_raw}" 2>/dev/null; then
+    ${_GPG} --yes --dearmor -o "${_tmp_key}" < "${_tmp_key_raw}" 2>/dev/null
+  else
+    cp -f "${_tmp_key_raw}" "${_tmp_key}"
+  fi
+
+  if [ ! -s "${_tmp_key}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Failed to process New Relic APT key"
+    fi
+    rm -f "${_tmp_key_raw}" "${_tmp_key}"
+    return 1
+  fi
+
+  _fp_available=$(${_GPG} --with-colons --import-options show-only \
+    --import "${_tmp_key}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
+
+  if ! printf "%s\n" "${_fp_available}" | grep -q "32FA4C172DAD550E"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Downloaded key does not contain required APT key 32FA4C172DAD550E"
+    fi
+    rm -f "${_tmp_key_raw}" "${_tmp_key}"
+    return 1
+  fi
+
+  if [ -e "${_key_path}" ]; then
+    _fp_installed=$(${_GPG} --with-colons --import-options show-only \
+      --import "${_key_path}" 2>/dev/null | awk -F: '/^fpr/{print $10}' | sort)
+  fi
+
+  if ! printf "%s\n" "${_fp_installed}" | grep -q "32FA4C172DAD550E"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: New Relic APT key missing or outdated — reinstalling"
+    fi
+    mv -f "${_tmp_key}" "${_key_path}"
+    chmod 0644 "${_key_path}"
+    _NR_KEY_UPDATED=YES
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: New Relic APT key is current"
+    fi
+  fi
+
+  rm -f "${_tmp_key_raw}" "${_tmp_key}"
+}
+
+#
 # Update New Relic.
 _newrelic_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2019,33 +2139,23 @@ _newrelic_update() {
       _GPG=gpg
     fi
     _NEWRELIC_KEYS_SIG="548C16BF"
+    _NEWRELIC_KEY_FILE="apt-2DAD550E"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
     if [ -e "/etc/newrelic/newrelic.cfg" ] \
       || [ -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       _msg "INFO: Uninstalling previous version of New Relic Apps Monitor..."
       cd /var/opt
-      if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ] \
-        || [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ] \
-        || [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ] \
-        || [ -e /root/.force.newrelic.update.cnf ]; then
-        if [ ! -e "/etc/apt/keyrings" ]; then
-          mkdir -m 0755 -p /etc/apt/keyrings
-        fi
-        if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
-          rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
-        fi
-        if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
-          rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
-        fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Retrieving ${_NEWRELIC_KEYS_SIG} key..."
-        fi
-        apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
-        if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ]; then
-          curl -fsSL ${_urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
-        fi
-        chmod 644 /etc/apt/keyrings/newrelic.gpg
+      if [ ! -e "/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /etc/apt/keyrings
       fi
+      if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
+        rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
+      fi
+      if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
+        rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
+      fi
+      apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
+      _newrelic_key_check
       _apt_clean_update
       _mrun "${_RMAPP} newrelic-php5 \
         newrelic-php5-common \
@@ -2183,8 +2293,38 @@ _if_install_php_newrelic() {
       _GPG=gpg
     fi
     _MULTI_NR=NO
+    _NR_KEY_UPDATED=NO
     _NEWRELIC_KEYS_SIG="548C16BF"
+    _NEWRELIC_KEY_FILE="apt-2DAD550E"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
+    _NR_INST_V=""
+    _NRS_BIN="$(which newrelic-daemon 2>/dev/null)"
+    if [ ! -z "${_NRS_BIN}" ]; then
+      _NR_INST_V=$(newrelic-daemon --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f5 \
+        | awk '{ print $1}' \
+        | cut -d"-" -f1 \
+        | awk '{ print $1}' 2>&1)
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      if [ ! -z "${_NR_INST_V}" ]; then
+        _msg "INFO: New Relic installed: ${_NR_INST_V} target: ${_NEW_RELIC_VRN}"
+      else
+        _msg "INFO: New Relic not installed, target: ${_NEW_RELIC_VRN}"
+      fi
+    fi
+    if [ ! -e "/etc/apt/keyrings" ]; then
+      mkdir -m 0755 -p /etc/apt/keyrings
+    fi
+    if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
+      rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
+    fi
+    if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
+      rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
+    fi
+    apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
+    _newrelic_key_check
     _PHP_EXT_DIR_85="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
     _PHP_EXT_DIR_84="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     _PHP_EXT_DIR_83="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
@@ -2231,36 +2371,20 @@ _if_install_php_newrelic() {
       _MULTI_NR=YES
     fi
     if [ "${_MULTI_NR}" = "YES" ] \
+      || [ "${_NR_KEY_UPDATED}" = "YES" ] \
       || [ ! -e "${_pthLog}/newrelic-${_xSrl}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
-      || [ ! -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ] \
-      || [ ! -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ] \
+      || [ ! -e "/etc/apt/keyrings/newrelic.gpg" ] \
       || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ]; then
-      _msg "INFO: Installing New Relic Apps Monitor..."
-      cd /var/opt
-      if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ] \
-        || [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ] \
-        || [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ] \
-        || [ -e /root/.force.newrelic.update.cnf ]; then
-        if [ ! -e "/etc/apt/keyrings" ]; then
-          mkdir -m 0755 -p /etc/apt/keyrings
-        fi
-        if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
-          rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
-        fi
-        if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
-          rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
-        fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Retrieving ${_NEWRELIC_KEYS_SIG} key..."
-        fi
-        apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
-        if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ]; then
-          curl -fsSL ${_urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
-        fi
-        chmod 644 /etc/apt/keyrings/newrelic.gpg
+      if [ -z "${_NR_INST_V}" ] \
+        || [ "${_NR_INST_V}" != "${_NEW_RELIC_VRN}" ] \
+        || [ "${_NR_KEY_UPDATED}" = "YES" ]; then
+        _msg "INFO: Installing New Relic Apps Monitor ${_NEW_RELIC_VRN}..."
+      elif [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: New Relic ${_NR_INST_V} current, checking extensions and config..."
       fi
+      cd /var/opt
       echo "## New Relic APT Repository" > ${_nrList}
       if [ -e "/etc/apt/keyrings/newrelic.gpg" ]; then
         echo "deb [signed-by=/etc/apt/keyrings/newrelic.gpg] http://apt.newrelic.com/debian/ newrelic non-free" >> ${_nrList}
@@ -2279,7 +2403,8 @@ _if_install_php_newrelic() {
       # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      if [ "${_MULTI_NR}" = "YES" ]; then
+      if [ "${_MULTI_NR}" = "YES" ] \
+        || [ "${_NR_KEY_UPDATED}" = "YES" ]; then
         _msg "INFO: Installing latest version of New Relic Apps Monitor..."
         NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
         NR_SILENT="silent"
@@ -2444,6 +2569,64 @@ _check_php_ssl_version() {
 }
 
 #
+# Check if the PHP has correct ICU headers version.
+_check_php_icu_version() {
+  # Debug mode: log the start of the function
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_icu_version $1"
+  fi
+
+  _ICU_LEGACY=${_ICU_LEGACY_VRN/[_-]/.}
+  _ICU_MODERN=${_ICU_MODERN_VRN/[_-]/.}
+  _ICU_NEWER=${_ICU_NEWER_VRN/[_-]/.}
+
+  # Set ICU version based on the OS version
+  case "${_OS_CODE}" in
+    excalibur|daedalus|trixie|bookworm)
+      _ICE_USE_VRN="${_ICU_NEWER}"  # 76.1
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+         _msg "INFO: Using Newer ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
+      fi
+      ;;
+    chimaera|beowulf|bullseye|buster|stretch)
+      _ICE_USE_VRN="${_ICU_MODERN}"  # 73.1
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Using Modern ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
+      fi
+      ;;
+    *)
+      _ICE_USE_VRN="${_ICU_LEGACY}"  # 52.2
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Using Legacy ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
+      fi
+      ;;
+  esac
+
+  # Check the installed PHP ICU version
+  _PHP_ICU_TEST=$(/opt/php$1/bin/php -i | grep "ICU version" 2>&1)
+  _PHP_ICU_LOOK_FOR="${_ICE_USE_VRN}"
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Expected PHP ICU Header Version: ${_PHP_ICU_LOOK_FOR}"
+    _msg "INFO: Detected PHP ICU Header Version: ${_PHP_ICU_TEST}"
+  fi
+
+  # Return true if mismatch is found, otherwise false
+  if [[ ! "${_PHP_ICU_TEST}" =~ "${_PHP_ICU_LOOK_FOR}" ]]; then
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP ICU version mismatch detected, rebuild required"
+    fi
+    return 1  # ICU version mismatch, rebuild needed
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP ICU version is correct, no rebuild needed"
+  fi
+  return 0  # ICU version matches, no rebuild needed
+}
+
+#
 # Check if the PHP rebuild is required.
 _check_php_rebuild() {
   # Debug mode: log the function call
@@ -2471,12 +2654,22 @@ _check_php_rebuild() {
     fi
   fi
 
-  # Run the SSL version check
+  # Run the SSL version check for all PHP versions
   if ! _check_php_ssl_version "$1"; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: PHP ${_PHP_ITD} uses incorrect OpenSSL, forcing rebuild"
     fi
     _PHP_FORCE_REINSTALL=YES
+  fi
+
+  if [ "$1" -gt 80 ]; then
+    # Run the ICU version check for PHP newer than 8.0
+    if ! _check_php_icu_version "$1"; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
+      fi
+      _PHP_FORCE_REINSTALL=YES
+    fi
   fi
 
   # Check for presence of PHP drivers

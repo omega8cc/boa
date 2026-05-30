@@ -176,7 +176,7 @@ _main() {
     none)            _msg "No active dhcp client detected; proceeding to finalize resolv.conf" ;;
   esac
 
-  # Keep resolvconf installed if you want; it won’t get DNS from DHCP anymore.
+  # Remove/ignore resolvconf; it won’t get DNS from DHCP anymore.
   _finalize_resolv
 
   _msg "Verification:"

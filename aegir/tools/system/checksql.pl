@@ -23,8 +23,10 @@ $timedate=`date +%y%m%d-%H%M`;
 chomp($timedate);
 $logfile="/var/log/boa/mysqlcheck.log";
 sleep(90);
-$mysqlrootpass=`cat /root/.my.pass.txt`;
-chomp($mysqlrootpass);
+# (Removed dead `$mysqlrootpass = `cat /root/.my.pass.txt`` read — the value
+#  was never referenced. mysqlcheck reads credentials from /root/.my.cnf
+#  implicitly. The dead read pulled the cleartext root password into the
+#  Perl interpreter's process memory for nothing.)
 system("/usr/bin/mysqlcheck -u root -Aa > $logfile");
 &makeactions;
 system("touch /var/log/boa/last-run-acrashsql");

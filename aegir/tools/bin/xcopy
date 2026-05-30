@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=593ltsT01
+export _xSrl=593ltsT03
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
@@ -650,7 +650,7 @@ _migrate_prepare() {
   _enable_chattr ${_THIS_HM_USER}.ftp
 }
 
-_xboa_transfer_static_symlink_safe() {
+_xcopy_transfer_static_symlink_safe() {
   _X_SRC_USR="$1"
   _X_TGT_HOST="$2"
   _X_DST_USR="$3"
@@ -701,7 +701,7 @@ _migrate_init() {
   fi
   if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${_oct}" != "shared" ]; then
     echo
-    echo "ERROR: This version of xboa migration tool supports only BOA-3.2.2 or newer"
+    echo "ERROR: This version of xcopy migration tool supports only BOA-3.2.2 or newer"
     echo "ERROR: Please upgrade ${_oct} instance to current BOA head before trying again"
     echo "Bye."
     echo
@@ -825,7 +825,7 @@ _migrate_init() {
         if [ -e "${_USR}" ]; then
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/distro/*         root@${_tgt}:${_DST}/distro/
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/src/*            root@${_tgt}:${_DST}/src/
-          _xboa_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}"
+          _xcopy_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}"
           #
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/
@@ -1222,12 +1222,12 @@ case "$1" in
             _ssl_gen
   ;;
   *)        echo
-            echo "Usage: xboa {pre-mig} {fqdn} (source+target vms)"
-            echo "Usage: xboa {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
-            echo "Usage: xboa {import} {o1} {target-ip} (target vms)"
-            echo "Usage: xboa {post-mig} {fqdn} (source+target vms)"
+            echo "Usage: xcopy {pre-mig} {fqdn} (source+target vms)"
+            echo "Usage: xcopy {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
+            echo "Usage: xcopy {import} {o1} {target-ip} (target vms)"
+            echo "Usage: xcopy {post-mig} {fqdn} (source+target vms)"
             echo
-            echo "Usage: xboa {ssl-gen}"
+            echo "Usage: xcopy {ssl-gen}"
             echo
             exit 1
   ;;
