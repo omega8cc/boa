@@ -34,7 +34,7 @@
 ### How To: run it with bash, not with sh  ###
 ###----------------------------------------###
 ###
-###  $ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+###  $ wget -qO- https://files.boa.io/BOA.sh.txt | bash
 ###
 
 ###----------------------------------------###
@@ -64,8 +64,8 @@ _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _optBin="/opt/local/bin"
@@ -219,8 +219,7 @@ _fix_dns_settings() {
     chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
-  if [ -x "/usr/sbin/unbound-control" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+  if [ -x "/usr/sbin/unbound-control" ]; then
     unbound-control reload &> /dev/null
   fi
 }
@@ -233,8 +232,8 @@ _check_dns_settings() {
     echo "127.0.0.1 localhost" >> /etc/hosts
     _EHU=YES
   fi
-  if grep -q "files.aegir.cc" /etc/hosts; then
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+  if grep -q "files.boa.io" /etc/hosts; then
+    sed -i "s/.*files.boa.io.*//g" /etc/hosts
     _EHU=YES
   fi
   if grep -q "github" /etc/hosts; then
@@ -262,14 +261,14 @@ _check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.boa.io 1.1.1.1 -w 10 2>&1)
     if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
-    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.boa.io not found" ]] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _fix_dns_settings
   fi
@@ -287,12 +286,12 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    _ffList="/var/backups/boa-mirrors-2026-05.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
-      echo "eu.files.aegir.cc"  > ${_ffList}
-      echo "us.files.aegir.cc" >> ${_ffList}
-      echo "ao.files.aegir.cc" >> ${_ffList}
+      echo "files.boa.io"  > ${_ffList}
+      echo "files.o8.io" >> ${_ffList}
+      echo "files.host8.biz" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -300,18 +299,18 @@ _find_fast_mirror_early() {
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.boa.io"
       else
-        _USE_MIR="files.aegir.cc"
+        _USE_MIR="files.boa.io"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      _USE_MIR="files.boa.io"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="files.boa.io"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  _urlDev="https://${_USE_MIR}/dev"
+  _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 _extract_archive() {
@@ -416,7 +415,7 @@ _verify_boa_keys() {
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _if_hosted_sys
     _allw=NO
-    _urlEnc="http://${_USE_MIR}/enc/2024"
+    _urlEnc="https://${_USE_MIR}/enc/2024"
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
@@ -941,7 +940,9 @@ _update_agents() {
     _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
     _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     _InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+    # (Removed dead `_SQL_PSWD=$(cat /root/.my.pass.txt)` read — never
+    #  referenced. The mysql calls below this block use /root/.my.cnf
+    #  implicitly via `mysql -u root` with no -p.)
     if [ "${_InTest}" -lt 9 ] \
       && [[ ! "${_PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
@@ -1060,7 +1061,7 @@ _update_agents() {
       touch ${_pthLog}/.force.f89.${_tRee}.${_xSrl}.ctrl
     fi
 
-    [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/checksql.sh" ] && rm -f ${_pthLog}/checksql.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${_pthLog}/graceful.sh.ctrl.*.pid
@@ -1095,7 +1096,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/hackcheck.sh" ] && rm -f ${_pthLog}/hackcheck.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/hackftp.sh" ] && rm -f ${_pthLog}/hackftp.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${_pthLog}/segfault_alert.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f ${_pthLog}/sqlcheck.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/sqlcheck.sh" ] && rm -f ${_pthLog}/sqlcheck.sh.ctrl.*.pid
 
     [ -e "/var/xdrago/proc_num_ctrl.cgi" ] && rm -f /var/xdrago/proc_num_ctrl.cgi
     [ -e "/var/xdrago/checksql.cgi" ] && rm -f /var/xdrago/checksql.cgi
@@ -1436,7 +1437,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/xmass" ] \
-    || [ ! -e "${_pthLog}/xmass.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/xmass.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/xmass)
     if (( _CNT > 0 )); then
       echo "The xmass is running!"
@@ -1448,7 +1449,7 @@ _update_agents() {
       if [ -e "${_optBin}/xmass" ]; then
         chmod 700 ${_optBin}/xmass
         chown root:root ${_optBin}/xmass
-        touch ${_pthLog}/xmass.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/xmass.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/xmass.old" ]; then
           mv -f ${_optBin}/xmass.old ${_optBin}/xmass
@@ -1458,7 +1459,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/boa" ] \
-    || [ ! -e "${_pthLog}/boa.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/boa.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/boa)
     if (( _CNT > 0 )); then
       echo "The boa is running!"
@@ -1470,7 +1471,7 @@ _update_agents() {
       if [ -e "${_optBin}/boa" ]; then
         chmod 700 ${_optBin}/boa
         chown root:root ${_optBin}/boa
-        touch ${_pthLog}/boa.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/boa.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/boa.old" ]; then
           mv -f ${_optBin}/boa.old ${_optBin}/boa
@@ -1480,7 +1481,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/barracuda" ] \
-    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/barracuda)
     if (( _CNT > 0 )); then
       echo "The barracuda is running!"
@@ -1492,7 +1493,7 @@ _update_agents() {
       if [ -e "${_optBin}/barracuda" ]; then
         chmod 700 ${_optBin}/barracuda
         chown root:root ${_optBin}/barracuda
-        touch ${_pthLog}/barracuda.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/barracuda.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/barracuda.old" ]; then
           mv -f ${_optBin}/barracuda.old ${_optBin}/barracuda
@@ -1502,7 +1503,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/octopus" ] \
-    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/octopus)
     if (( _CNT > 0 )); then
       echo "The octopus is running!"
@@ -1514,10 +1515,32 @@ _update_agents() {
       if [ -e "${_optBin}/octopus" ]; then
         chmod 700 ${_optBin}/octopus
         chown root:root ${_optBin}/octopus
-        touch ${_pthLog}/octopus.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/octopus.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/octopus.old" ]; then
           mv -f ${_optBin}/octopus.old ${_optBin}/octopus
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/dhcpfix" ] \
+    || [ ! -e "${_pthLog}/dhcpfix.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/dhcpfix)
+    if (( _CNT > 0 )); then
+      echo "The dhcpfix is running!"
+    else
+      if [ -e "${_optBin}/dhcpfix" ]; then
+        mv -f ${_optBin}/dhcpfix ${_optBin}/dhcpfix.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/dhcpfix" -o ${_optBin}/dhcpfix
+      if [ -e "${_optBin}/dhcpfix" ]; then
+        chmod 700 ${_optBin}/dhcpfix
+        chown root:root ${_optBin}/dhcpfix
+        touch ${_pthLog}/dhcpfix.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/dhcpfix.old" ]; then
+          mv -f ${_optBin}/dhcpfix.old ${_optBin}/dhcpfix
         fi
       fi
     fi
@@ -1549,7 +1572,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/aptfast" ] \
-    || [ ! -e "${_pthLog}/aptfast.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/aptfast.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/aptfast)
     if (( _CNT > 0 )); then
       echo "The aptfast is running!"
@@ -1561,7 +1584,7 @@ _update_agents() {
       if [ -e "${_optBin}/aptfast" ]; then
         chmod 700 ${_optBin}/aptfast
         chown root:root ${_optBin}/aptfast
-        touch ${_pthLog}/aptfast.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/aptfast.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/aptfast.old" ]; then
           mv -f ${_optBin}/aptfast.old ${_optBin}/aptfast
@@ -1826,19 +1849,19 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f75.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f74.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/scan_nginx.sh /var/xdrago/monitor/check/scan_nginx.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" -o /var/xdrago/monitor/check/scan_nginx.sh
     if [ -e "/var/xdrago/monitor/check/scan_nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/scan_nginx.sh
       chown root:root /var/xdrago/monitor/check/scan_nginx.sh
-      touch ${_pthLog}/scan_nginx.sh.ctrl.f75.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/scan_nginx.sh.ctrl.f74.${_tRee}.${_xSrl}.pid
       if [ ! -e "/var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid" ]; then
         if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f75.${_tRee}.${_xSrl}.log
+          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f74.${_tRee}.${_xSrl}.log
         fi
         if [ -e "/var/xdrago/monitor/log/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.f75.${_tRee}.${_xSrl}.log
+          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.f74.${_tRee}.${_xSrl}.log
         fi
         rm -f /var/xdrago/monitor/log/.scan_nginx_arch*.pid
         touch /var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid
@@ -1848,10 +1871,10 @@ _update_agents() {
       fi
       if [ ! -e "/var/xdrago/monitor/log/.hackcheck.arch.${_xSrl}.pid" ]; then
         if [ -e "/var/xdrago/monitor/hackcheck.archive.log" ]; then
-          mv -f /var/xdrago/monitor/hackcheck.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f75.${_tRee}.${_xSrl}.log
+          mv -f /var/xdrago/monitor/hackcheck.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f74.${_tRee}.${_xSrl}.log
         fi
         if [ -e "/var/xdrago/monitor/log/hackcheck.archive.log" ]; then
-          mv -f /var/xdrago/monitor/log/hackcheck.archive.log /var/xdrago/monitor/log/hackcheck.archive.f75.${_tRee}.${_xSrl}.log
+          mv -f /var/xdrago/monitor/log/hackcheck.archive.log /var/xdrago/monitor/log/hackcheck.archive.f74.${_tRee}.${_xSrl}.log
         fi
         rm -f /var/xdrago/monitor/log/.hackcheck.arch*.pid
         touch /var/xdrago/monitor/log/.hackcheck.arch.${_xSrl}.pid
@@ -1994,13 +2017,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
     if [ -e "/var/xdrago/monitor/check/unbound.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/unbound.sh
       chown root:root /var/xdrago/monitor/check/unbound.sh
-      touch ${_pthLog}/unbound.sh.ctrl.f86.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/unbound.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/unbound.sh.old /var/xdrago/monitor/check/unbound.sh
     fi
@@ -2064,15 +2087,15 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/sqlcheck.pl.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/sqlcheck.pl /var/xdrago/monitor/check/sqlcheck.pl.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/sqlcheck.pl" -o /var/xdrago/monitor/check/sqlcheck.pl
-    if [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ]; then
-      chmod 700 /var/xdrago/monitor/check/sqlcheck.pl
-      chown root:root /var/xdrago/monitor/check/sqlcheck.pl
-      touch ${_pthLog}/sqlcheck.pl.ctrl.f94.${_tRee}.${_xSrl}.pid
+    && [ ! -e "${_pthLog}/sqlcheck.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/sqlcheck.sh /var/xdrago/monitor/check/sqlcheck.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" -o /var/xdrago/monitor/check/sqlcheck.sh
+    if [ -e "/var/xdrago/monitor/check/sqlcheck.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/sqlcheck.sh
+      chown root:root /var/xdrago/monitor/check/sqlcheck.sh
+      touch ${_pthLog}/sqlcheck.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
     else
-      mv -f /var/xdrago/monitor/check/sqlcheck.pl.old /var/xdrago/monitor/check/sqlcheck.pl
+      mv -f /var/xdrago/monitor/check/sqlcheck.sh.old /var/xdrago/monitor/check/sqlcheck.sh
     fi
   fi
 
@@ -2286,15 +2309,15 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/checksql.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/checksql.pl /var/xdrago/checksql.pl.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/checksql.pl" -o /var/xdrago/checksql.pl
-    if [ -e "/var/xdrago/checksql.pl" ]; then
-      chmod 700 /var/xdrago/checksql.pl
-      chown root:root /var/xdrago/checksql.pl
-      touch ${_pthLog}/checksql.pl.ctrl.f95.${_tRee}.${_xSrl}.pid
+    && [ ! -e "${_pthLog}/checksql.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/checksql.sh /var/xdrago/checksql.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/checksql.sh" -o /var/xdrago/checksql.sh
+    if [ -e "/var/xdrago/checksql.sh" ]; then
+      chmod 700 /var/xdrago/checksql.sh
+      chown root:root /var/xdrago/checksql.sh
+      touch ${_pthLog}/checksql.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
     else
-      mv -f /var/xdrago/checksql.pl.old /var/xdrago/checksql.pl
+      mv -f /var/xdrago/checksql.sh.old /var/xdrago/checksql.sh
     fi
   fi
 
@@ -2314,7 +2337,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/autoupboa.ctrl.f68.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/autoupboa.ctrl.f67.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autoupboa)
     if (( _CNT > 0 )); then
       echo "The autoupboa is running!"
@@ -2326,7 +2349,7 @@ _update_agents() {
       if [ -e "${_optBin}/autoupboa" ]; then
         chmod 700 ${_optBin}/autoupboa
         chown root:root ${_optBin}/autoupboa
-        touch ${_pthLog}/autoupboa.ctrl.f68.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autoupboa.ctrl.f67.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autoupboa.old" ]; then
           mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
@@ -2360,13 +2383,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/daily.sh.ctrl.f72.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/daily.sh.ctrl.f71.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${_pthLog}/daily.sh.ctrl.f72.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/daily.sh.ctrl.f71.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -2503,7 +2526,7 @@ _update_agents() {
     fi
   fi
 
-  if ! grep -q "whoami" /var/xdrago/conf/lshell.conf; then
+  if ! grep -q "unzstd" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
@@ -4096,7 +4119,7 @@ _fix_java_symlinks() {
 }
 
 _fix_composer_version() {
-  _COMPOSER_VRN=2.8.2
+  _COMPOSER_VRN=2.10.0
   if [ -x "/usr/local/bin/composer" ]; then
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \
@@ -4506,7 +4529,7 @@ _if_reinstall_curl() {
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      wget ${_wgetGet} https://files.boa.io/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
       tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -4833,12 +4856,12 @@ _if_update_boa_key_tools_only() {
   _check_dns_settings
   _if_reinstall_curl
 
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}" 2> /dev/null)
-  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    -I "https://${_USE_MIR}" 2> /dev/null)
+  if [[ ! "${_CURL_TEST}" =~ "HTTP/2 200" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
       _if_reinstall_curl
@@ -4846,7 +4869,7 @@ _if_update_boa_key_tools_only() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+    _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
   _LSB_TEST="$(which lsb_release)"
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -5068,12 +5091,12 @@ _boa_setup() {
 
   _if_reinstall_curl
 
-  _CURL_TEST=$(curl -L -k -s \
+  _CURL_TEST=$(curl -L -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}" 2> /dev/null)
-  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    -I "https://${_USE_MIR}" 2> /dev/null)
+  if [[ ! "${_CURL_TEST}" =~ "HTTP/2 200" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
       _if_reinstall_curl
@@ -5081,7 +5104,7 @@ _boa_setup() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+    _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
 
   _if_clean_boa_env

@@ -19,6 +19,42 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
+# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users.
+# A symlink planted at a known child path (e.g. ${drupal_root}/web -> /etc) would
+# cause direct chmod calls to alter system file permissions. Defence:
+#  1. _validate_path_prefix on the caller-supplied root.
+#  2. _chmod_safe wraps each direct chmod with a symlink precheck; symlinks
+#     are skipped (so root-managed legacy symlinks remain untouched, and
+#     attacker-planted symlinks cannot be used to chmod arbitrary files).
+#     find -type d / -type f predicates already exclude symlinks, so the
+#     find-exec chmod blocks below need no change.
+_validate_path_prefix() {
+  local _resolved
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
+    printf "Error: path does not resolve: %s\n" "$1" >&2
+    exit 1
+  }
+  case "${_resolved}/" in
+    /var/aegir/*|/data/disk/*|/home/*)
+      ;;
+    *)
+      printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+_chmod_safe() {
+  local _mode=$1
+  shift
+  local _p
+  for _p in "$@"; do
+    [ -L "${_p}" ] && continue
+    [ -e "${_p}" ] || continue
+    chmod "${_mode}" "${_p}"
+  done
+}
+
 drupal_root=${1%/}
 
 # Parse Command Line Arguments
@@ -42,6 +78,8 @@ if [ -z "${drupal_root}" ] \
     printf "Error: Please provide a valid Drupal root directory.\n"
     exit 1
 fi
+
+_validate_path_prefix "${drupal_root}"
 
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
@@ -102,19 +140,19 @@ elif [ -e "${drupal_root}/../vendor/drush/drush/drush" ]; then
 fi
 
 if [ -e "${drupal_root}/vendor/drush/drush/drush.php" ]; then
-  chmod 0775 ${drupal_root}/vendor/drush/drush/drush.php
+  _chmod_safe 0775 "${drupal_root}/vendor/drush/drush/drush.php"
 elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
-  chmod 0775 ${drupal_root}/../vendor/drush/drush/drush.php
+  _chmod_safe 0775 "${drupal_root}/../vendor/drush/drush/drush.php"
 fi
 
-[ -d "${drupal_root}" ] && chmod 02775 ${drupal_root}
+[ -d "${drupal_root}" ] && _chmod_safe 02775 "${drupal_root}"
 
 if [ -d "${drupal_root}/web" ]; then
-  chmod 02775 ${drupal_root}/web
+  _chmod_safe 02775 "${drupal_root}/web"
 elif [ -d "${drupal_root}/docroot" ]; then
-  chmod 02775 ${drupal_root}/docroot
+  _chmod_safe 02775 "${drupal_root}/docroot"
 elif [ -d "${drupal_root}/html" ]; then
-  chmod 02775 ${drupal_root}/html
+  _chmod_safe 02775 "${drupal_root}/html"
 fi
 
 printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
@@ -123,32 +161,37 @@ find ${drupal_root}/sites/all/{modules,themes,libraries} -type d -exec chmod 027
 printf "Setting permissions of all codebase files inside "${drupal_root}/sites/all"...\n"
 find ${drupal_root}/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \;
 
-chmod 0644 ${drupal_root}/*.php
-chmod 0664 ${drupal_root}/autoload.php
-chmod 0751 ${drupal_root}/sites
-chmod 0755 ${drupal_root}/sites/*
-chmod 0644 ${drupal_root}/sites/*.php
-chmod 0644 ${drupal_root}/sites/*.txt
-chmod 0644 ${drupal_root}/sites/*.yml
-chmod 0755 ${drupal_root}/sites/all/drush
+_chmod_safe 0644 ${drupal_root}/*.php
+_chmod_safe 0664 "${drupal_root}/autoload.php"
+_chmod_safe 0751 "${drupal_root}/sites"
+_chmod_safe 0755 ${drupal_root}/sites/*
+_chmod_safe 0644 ${drupal_root}/sites/*.php
+_chmod_safe 0644 ${drupal_root}/sites/*.txt
+_chmod_safe 0644 ${drupal_root}/sites/*.yml
+_chmod_safe 0755 "${drupal_root}/sites/all/drush"
 
 ### Lock Local Drush and Symfony Console Input/Style
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
     printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
-    chmod 0400 ${drupal_root}/vendor/drush
-    chmod 0400 ${drupal_root}/vendor/symfony/console/Input
-    chmod 0400 ${drupal_root}/vendor/symfony/console/Style
+    _chmod_safe 0400 "${drupal_root}/vendor/drush"
+    _chmod_safe 0400 "${drupal_root}/vendor/symfony/console/Input"
+    _chmod_safe 0400 "${drupal_root}/vendor/symfony/console/Style"
   elif [ -e "${drupal_root}/../vendor" ]; then
     printf "Locking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
-    chmod 0400 ${drupal_root}/../vendor/drush
-    chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
-    chmod 0400 ${drupal_root}/../vendor/symfony/console/Style
+    _chmod_safe 0400 "${drupal_root}/../vendor/drush"
+    _chmod_safe 0400 "${drupal_root}/../vendor/symfony/console/Input"
+    _chmod_safe 0400 "${drupal_root}/../vendor/symfony/console/Style"
   fi
 fi
 
 ### Known exceptions
-chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
-chmod 0644 ${drupal_root}/.htaccess
+### GNU chmod dereferences symlinks on cmdline args but ignores them during
+### -R traversal. Precheck the cmdline path to avoid a symlink redirect; the
+### recursive descent below is then safe.
+if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
+  chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
+fi
+_chmod_safe 0644 "${drupal_root}/.htaccess"
 
 echo "Done setting proper permissions on platform files and directories."

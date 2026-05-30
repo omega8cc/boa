@@ -169,9 +169,11 @@ _sql_busy_detection() {
     fi
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+    # File-existence check instead of cat'ing the cleartext root password
+    # into a shell variable just to test its non-emptiness. The mysql call
+    # below uses /root/.my.cnf credentials implicitly via `mysql -u root`.
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
-    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -s /root/.my.pass.txt ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
       if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
@@ -335,20 +337,6 @@ _mysql_health_check_fix() {
   fi
 }
 
-# Fire-and-forget launcher, cron-safe and interactive-safe
-_spawn_detached() {
-  _cmd="$1"
-  if command -v nohup >/dev/null 2>&1; then
-    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
-  elif command -v setsid >/dev/null 2>&1; then
-    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
-  else
-    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
-  fi
-  # If interactive shell, drop it from the job table to mimic cron behavior
-  if [[ "$-" == *i* ]]; then disown; fi
-}
-
 ### Main start here
 
 if [ -x "/etc/init.d/mysql" ] \
@@ -370,7 +358,7 @@ if [ -x "/etc/init.d/mysql" ] \
     sleep 5
     _if_mydumper_is_locked
   fi
-  _spawn_detached 'perl /var/xdrago/monitor/check/sqlcheck.pl'
+  nohup /var/xdrago/monitor/check/sqlcheck.sh > /dev/null 2>&1 &
 fi
 
 if [ -e "/run/boa_sql_backup.pid" ] \

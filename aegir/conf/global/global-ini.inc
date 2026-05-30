@@ -75,5 +75,16 @@ $boa_ini = array(
   'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'disable_drupal_page_cache' => FALSE,            // FALSE for backward compatibility and max performance
   'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
+  // --- Valkey/Redis probe tuning + cache observability (added 2026-05) -----
+  // See global-if-valkey.inc / global-if-redis.inc and global-valkey.inc.
+  // NOTE: BOA keeps a single, stable "redis_" namespace for ALL cache control
+  // INI variables, even when the server runs Valkey (a drop-in Redis fork).
+  'redis_connect_timeout' => '0.7',                // probe TCP connect timeout (s); was hardcoded 0.2
+  'redis_read_timeout' => '0.7',                   // probe read timeout (s); was hardcoded 0.2
+  'redis_backoff_ttl' => '15',                     // backoff window (s) after a failed probe; was hardcoded 60
+  'redis_probe_retry' => TRUE,                     // retry the probe once before tripping the backoff flag
+  'redis_flush_apcu_on_recovery' => TRUE,          // clear local APCu when the cache backend transitions down->up
+  'redis_debug_header' => FALSE,                   // emit always-on, non-sensitive X-Cache-* state headers (enable per-site to investigate)
+  'redis_debug' => FALSE,                          // arm the probe fallback log; only then is the *.debug.flag file checked (disk I/O)
 );
 

@@ -23,7 +23,11 @@ _single_instance_unlock() {
   _FD="$1"; _PATH="$2"
   if command -v flock >/dev/null 2>&1; then
     flock -u "${_FD}" 2>/dev/null || true
-    eval "exec ${_FD}>&-"
+    # Close the lock fd. Use the modern brace-expansion close form
+    # (bash >= 4.1) — equivalent to `eval "exec ${_FD}>&-"` but without
+    # the eval. Safer to future variants where _FD could be derived from
+    # a less-controlled source.
+    exec {_FD}>&-
     rm -f "${_PATH}" 2>/dev/null || true
   else
     rm -rf "${_PATH}" 2>/dev/null || true
@@ -47,7 +51,13 @@ _single_instance_lock() {
   fi
 
   if command -v flock >/dev/null 2>&1; then
-    eval "exec ${_LOCK_FD}>\"${_LOCK_PATH}\""
+    # Open _LOCK_PATH on a fresh fd. The brace-expansion form lets bash
+    # auto-assign the next available descriptor into _LOCK_FD (overriding
+    # the default of 9 set above), avoiding the eval that the original
+    # code needed to use a variable as an fd number. All current callers
+    # invoke _single_instance_lock with no args, so they accept whichever
+    # fd bash picks.
+    exec {_LOCK_FD}>"${_LOCK_PATH}"
     if ! flock -n "${_LOCK_FD}"; then
       echo "${_SELF_NAME}: another instance is running; exiting."
       exit 0
