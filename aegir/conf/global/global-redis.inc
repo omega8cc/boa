@@ -18,11 +18,19 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       if ($drupal_core == 10 || $drupal_core == 11) {
         $redis_new_dirname = 'redis_ten_eleven';
         $redis_legacy_dirname = 'redis_nine_ten';
-        if (is_readable('modules/o_contrib_ten/' . $redis_new_dirname . '/redis.services.yml')) {
-          $redis_dirname = $redis_new_dirname;
-        }
-        elseif (is_readable('modules/o_contrib_ten/' . $redis_legacy_dirname . '/redis.services.yml')) {
-          $redis_dirname = $redis_legacy_dirname;
+        // The redis integration ships under o_contrib_eleven on D11 platforms
+        // and o_contrib_ten on D10. Probe both bases so $redis_dirname resolves
+        // to the real subdir; otherwise it falls back to redis_compr and the
+        // detection block below cannot find the services.yml (cache -> db).
+        foreach (array('o_contrib_eleven', 'o_contrib_ten') as $redis_octo_base) {
+          if (is_readable('modules/' . $redis_octo_base . '/' . $redis_new_dirname . '/redis.services.yml')) {
+            $redis_dirname = $redis_new_dirname;
+            break;
+          }
+          elseif (is_readable('modules/' . $redis_octo_base . '/' . $redis_legacy_dirname . '/redis.services.yml')) {
+            $redis_dirname = $redis_legacy_dirname;
+            break;
+          }
         }
       }
       elseif ($drupal_core == 9) {
