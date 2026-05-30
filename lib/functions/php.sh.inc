@@ -179,14 +179,14 @@ _fix_php_ini_apcu() {
     _msg "PROC: _fix_php_ini_apcu $1"
   fi
   if [ -e "${_THIS_FILE}" ]; then
-    _APCU_INI_TEST=$(grep "^apc.shm_size" ${_THIS_FILE} 2>&1)
-    if [[ "${_APCU_INI_TEST}" =~ "apc.shm_size" ]]; then
+    _APCU_INI_TEST=$(grep "^apc.serializer" ${_THIS_FILE} 2>&1)
+    if [[ "${_APCU_INI_TEST}" =~ "apc.serializer" ]]; then
       _DO_NOTHING=YES
     else
       echo " "                  >> ${_THIS_FILE}
       echo "; APCu"             >> ${_THIS_FILE}
       echo "extension=apcu.so"  >> ${_THIS_FILE}
-      echo "apc.enable_cli=1"   >> ${_THIS_FILE}
+      echo "apc.serializer=igbinary" >> ${_THIS_FILE}
       echo "apc.gc_ttl=300"     >> ${_THIS_FILE}
       echo "apc.shm_segments=1" >> ${_THIS_FILE}
       echo "apc.shm_size=256M"  >> ${_THIS_FILE}
