@@ -1117,6 +1117,7 @@ _tune_memory_limits() {
     fi
   done
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
+    _sql_conf_update
     _tune_sql_memory_limits
     _sql_conf_update
     if [[ "${_PrTestPower}" =~ "POWER" ]] \
@@ -6511,7 +6512,7 @@ _run_aptitude_deps_install() {
     done
     ###
   else
-    for _PKG in toilet figlet screenfetch; do
+    for _PKG in toilet figlet; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
