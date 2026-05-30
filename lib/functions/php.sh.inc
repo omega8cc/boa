@@ -521,13 +521,12 @@ _fix_php_ini_mongo_all() {
 }
 
 #
-# Apply PHP INI fixes.
-_apply_php_ini_fixes() {
+# Apply PHP CLI INI fixes.
+_apply_php_cli_ini_fixes() {
   local e="${1}"
 
-  if [ "${e}" -gt 56 ]; then
-    _fix_php_ini_apcu "${e}"
-  fi
+  _fix_php_ini_igbinary "${e}"
+  _fix_php_ini_redis "${e}"
 
   if [ "${e}" -gt 71 ]; then
     _fix_php_ini_mcrypt "${e}"
@@ -553,13 +552,54 @@ _apply_php_ini_fixes() {
 #       ;;
 #   esac
 
-  _fix_php_ini_igbinary "${e}"
-  _fix_php_ini_redis "${e}"
   _fix_php_ini_ioncube "${e}"
   _remove_php_ini_suhosin "${e}"
   _fix_php_ini_yaml "${e}"
   _fix_php_ini_imagick "${e}"
 }
+
+#
+# Apply PHP FPM INI fixes.
+_apply_php_fpm_ini_fixes() {
+  local e="${1}"
+
+  if [ "${e}" -gt 56 ]; then
+    _fix_php_ini_apcu "${e}"
+  fi
+
+  _fix_php_ini_igbinary "${e}"
+  _fix_php_ini_redis "${e}"
+
+  if [ "${e}" -gt 71 ]; then
+    _fix_php_ini_mcrypt "${e}"
+  fi
+
+  if [ "${e}" = 56 ]; then
+    _fix_php_ini_mailparse "${e}"
+    _fix_php_ini_twig "${e}"
+  fi
+
+  case "${e}" in
+    80|81|82|83|84|85)
+      _remove_php_ini_jsmin "${e}"
+      ;;
+    *)
+      _add_php_ini_jsmin "${e}"
+      ;;
+  esac
+
+#   case "${e}" in
+#     84|85)
+#       _remove_php_ini_mcrypt "${e}"
+#       ;;
+#   esac
+
+  _fix_php_ini_ioncube "${e}"
+  _remove_php_ini_suhosin "${e}"
+  _fix_php_ini_yaml "${e}"
+  _fix_php_ini_imagick "${e}"
+}
+
 
 #
 # Update PHP Config.
@@ -607,10 +647,10 @@ _php_conf_update() {
     cp -af ${_locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
 
     _THIS_FILE="/opt/php${e}/etc/php${e}.ini"
-    _apply_php_ini_fixes "${e}"
+    _apply_php_fpm_ini_fixes "${e}"
 
     _THIS_FILE="/opt/php${e}/lib/php.ini"
-    _apply_php_ini_fixes "${e}"
+    _apply_php_cli_ini_fixes "${e}"
 
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
