@@ -30,8 +30,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=dev
-export _xSrl=593devT01
+export _tRee=pro
+export _xSrl=593proT03
 
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
@@ -384,11 +384,11 @@ _xmass_restore_backup() {
     || _die "MySQL stop on target failed"
 
   _info "Replacing MySQL data dir on target ..."
-  ssh root@"${_tgt}" "
-    _ts=\$(date +%Y%m%d%H%M%S)
-    mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_\${_ts} &>/dev/null || true
-    mkdir -p /var/lib/mysql
-  "
+  ssh root@"${_tgt}" bash <<'REMOTE'
+_ts=$(date +%Y%m%d%H%M%S)
+mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_${_ts} &>/dev/null || true
+mkdir -p /var/lib/mysql
+REMOTE
 
   _info "Running xtrabackup --copy-back on target ${_tgt} ..."
   ssh root@"${_tgt}" \
@@ -463,14 +463,14 @@ SLAVEEOF
 
 _xmass_prevent_solr_target() {
   _info "Holding Solr on target ${_tgt} until cutover sync completes ..."
-  ssh root@"${_tgt}" "
-    touch ${_XMASS_SOLR_HOLD_FILE}
-    for _svc in solr9 solr7 solr4 jetty9; do
-      if [ -x \"/etc/init.d/\${_svc}\" ]; then
-        service \${_svc} stop &>/dev/null || true
-      fi
-    done
-  "
+  ssh root@"${_tgt}" bash <<'REMOTE'
+touch /root/.xmass_solr_hold.pid
+for _svc in solr9 solr7 solr4 jetty9; do
+  if [ -x "/etc/init.d/${_svc}" ]; then
+    service ${_svc} stop &>/dev/null || true
+  fi
+done
+REMOTE
   _info "Solr held on target ${_tgt}: OK"
 }
 
@@ -494,30 +494,30 @@ _xmass_start_solr_target() {
   # first startup. BOA performs no special Solr recovery beyond core health
   # checks and optimisation, so this is the correct pre-start procedure here.
   _info "Clearing Solr transaction logs on target ${_tgt} ..."
-  ssh root@"${_tgt}" "
-    for _tlog in \$(find /opt/solr4 /var/solr7/data /var/solr9/data \
-      -name tlog -type d 2>/dev/null); do
-      rm -rf \"\${_tlog}\"
-      echo \"INFO: Removed tlog at \${_tlog}\"
-    done
-  "
+  ssh root@"${_tgt}" bash <<'REMOTE'
+for _tlog in $(find /opt/solr4 /var/solr7/data /var/solr9/data \
+  -name tlog -type d 2>/dev/null); do
+  rm -rf "${_tlog}"
+  echo "INFO: Removed tlog at ${_tlog}"
+done
+REMOTE
   _info "Starting Solr on target ${_tgt} ..."
-  ssh root@"${_tgt}" "
-    rm -f ${_XMASS_SOLR_HOLD_FILE}
-    for _svc in solr9 solr7; do
-      if [ -x \"/etc/init.d/\${_svc}\" ] \
-        && [ -e \"/etc/default/\${_svc}.in.sh\" ]; then
-        pkill -9 -f \${_svc} &>/dev/null || true
-        service \${_svc} start &>/dev/null || true
-        echo \"INFO: Started \${_svc} on target\"
-      fi
-    done
-    if [ -e \"/etc/default/jetty9\" ] && [ -e \"/etc/init.d/jetty9\" ]; then
-      pkill -9 -f jetty9 &>/dev/null || true
-      service jetty9 start &>/dev/null || true
-      echo \"INFO: Started jetty9 on target\"
-    fi
-  "
+  ssh root@"${_tgt}" bash <<'REMOTE'
+rm -f /root/.xmass_solr_hold.pid
+for _svc in solr9 solr7; do
+  if [ -x "/etc/init.d/${_svc}" ] \
+    && [ -e "/etc/default/${_svc}.in.sh" ]; then
+    pkill -9 -f ${_svc} &>/dev/null || true
+    service ${_svc} start &>/dev/null || true
+    echo "INFO: Started ${_svc} on target"
+  fi
+done
+if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
+  pkill -9 -f jetty9 &>/dev/null || true
+  service jetty9 start &>/dev/null || true
+  echo "INFO: Started jetty9 on target"
+fi
+REMOTE
   _info "Waiting 30s for Solr to initialise on target ..."
   sleep 30
   _xmass_solr_check_target
@@ -574,7 +574,7 @@ _xmass_enumerate_accounts() {
 ###-------------SYNC FUNCTIONS-----------###
 
 _xmass_sync_static_symlink_safe() {
-  # Mirrors xboa's _xboa_transfer_static_symlink_safe:
+  # Mirrors xoct's _xoct_transfer_static_symlink_safe:
   # Preserves site-level symlinks inside static/ while materialising
   # static/files as a real directory on the target.
   local _src_usr="$1"
@@ -1133,15 +1133,15 @@ _xmass_cmd_cutover() {
 
   # Step 15: Start cron and restore BOA runners on target
   _info "Starting cron and restoring BOA runners on target ${_tgt} ..."
-  ssh root@"${_tgt}" "
-    service cron start &>/dev/null
-    for _s in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
-      if [ ! -e \"/var/xdrago/\${_s}\" ] \
-        && [ -e \"/var/xdrago/.\${_s}.off\" ]; then
-        mv -f \"/var/xdrago/.\${_s}.off\" \"/var/xdrago/\${_s}\"
-      fi
-    done
-  "
+  ssh root@"${_tgt}" bash <<'REMOTE'
+service cron start &>/dev/null
+for _s in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
+  if [ ! -e "/var/xdrago/${_s}" ] \
+    && [ -e "/var/xdrago/.${_s}.off" ]; then
+    mv -f "/var/xdrago/.${_s}.off" "/var/xdrago/${_s}"
+  fi
+done
+REMOTE
 
   # Step 16: Convert source vhosts to proxy via xoct (handles vhost templates,
   # nginx reload, and per-account migration-complete notification emails).

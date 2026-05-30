@@ -31,8 +31,7 @@ _fix_dns_settings() {
     chmod 0644 /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
-  if [ -x "/usr/sbin/unbound-control" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+  if [ -x "/usr/sbin/unbound-control" ]; then
     unbound-control reload &> /dev/null
   fi
 }
@@ -57,14 +56,14 @@ _check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.boa.io 1.1.1.1 -w 10 2>&1)
     if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
-    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.boa.io not found" ]] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _fix_dns_settings
   fi
@@ -383,10 +382,11 @@ _dns_unbound_install_upgrade() {
     || [ "${_isUnbndFix}" = "YES" ] \
     || [ -e "/usr/etc/unbound/unbound.pid" ] \
     || [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] \
+    || [ -e "/etc/resolvconf/run/interface/lo.unbound" ] \
+    || [ -e "/lib/resolvconf" ] \
     || [ ! -e "/run/unbound" ] \
     || [ ! -x "/usr/libexec/unbound-helper" ] \
-    || [ ! -x "/etc/init.d/unbound" ] \
-    || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    || [ ! -x "/etc/init.d/unbound" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Installing DNS cache Unbound server from packages..."
     fi
@@ -426,6 +426,7 @@ _dns_unbound_install_upgrade() {
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
+    rm -rf /lib/resolvconf
     if dpkg-query -W -f='${Status}' resolvconf 2>/dev/null | grep -q "install ok installed"; then
       _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
     fi
@@ -441,11 +442,14 @@ _dns_unbound_install_upgrade() {
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
     fi
-    for _PKG in libevent-dev resolvconf unbound unbound-anchor unbound-host dns-root-data; do
+    for _PKG in libevent-dev unbound unbound-anchor unbound-host dns-root-data; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+    grep -q '^RESOLVCONF=' /etc/default/unbound \
+      && sed -i 's/^RESOLVCONF=.*/RESOLVCONF=false/' /etc/default/unbound \
+      || echo 'RESOLVCONF=false' >> /etc/default/unbound
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
     fi
@@ -472,54 +476,11 @@ _dns_unbound_install_upgrade() {
     [ ! -e "/usr/libexec/unbound-helper" ] && cp -a ${_locCnf}/dns/unbound-helper /usr/libexec/
     [ -e "/usr/libexec/unbound-helper" ] && chmod 755 /usr/libexec/unbound-helper
     cat ${_locCnf}/dns/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
-    if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-      && [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-      cat ${_vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
-    fi
-    sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
-    mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-    resolvconf -u &> /dev/null
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
   fi
   _check_dns_settings
-  if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-    && [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-    cat ${_vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
-    sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
-    mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-    resolvconf -u &> /dev/null
-  fi
-  if [ -e "/etc/resolvconf/run/resolv.conf" ] \
-    || [ -e "/run/resolvconf/resolv.conf" ]; then
-    _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
-    _RESOLV_ELN=$(grep "nameserver 1.1.1.1" /etc/resolv.conf 2>&1)
-    _RESOLV_EGT=$(grep "nameserver 8.8.8.8" /etc/resolv.conf 2>&1)
-    _RESOLV_NIN=$(grep "nameserver 9.9.9.9" /etc/resolv.conf 2>&1)
-    if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]] \
-      && [[ "${_RESOLV_ELN}" =~ "nameserver 1.1.1.1" ]] \
-      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]] \
-      && [[ "${_RESOLV_NIN}" =~ "nameserver 9.9.9.9" ]]; then
-      _DO_NOTHING=YES
-    else
-      chattr -i /etc/resolv.conf
-      rm -f /etc/resolv.conf
-      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
-      echo "nameserver 127.0.0.1" >> /etc/resolv.conf
-      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-      echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-      echo "nameserver 9.9.9.9" >> /etc/resolv.conf
-      chmod 0644 /etc/resolv.conf
-      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-      [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
-      _mrun "pkill -u unbound -x unbound"
-      _mrun "service unbound restart"
-    fi
-  fi
   if [ ! -f "/etc/resolv.conf" ]; then
     chattr -i /etc/resolv.conf
     rm -f /etc/resolv.conf
@@ -529,7 +490,6 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     chmod 0644 /etc/resolv.conf
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
@@ -585,7 +545,6 @@ _dns_unbound_install_upgrade() {
       _mrun "killall -9 pdnsd"
       mv -f ${_isPdnsd} /var/backups
     fi
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
   fi
@@ -597,14 +556,6 @@ _dns_unbound_install_upgrade() {
     chmod 755 /etc/init.d/unbound
     _mrun "update-rc.d unbound defaults"
     _mrun "service unbound reload"
-  fi
-  if [ -x "${_isUnbnd}" ] \
-    && [ "${_isUnbndFix}" = "NO" ] \
-    && [ -e "/etc/resolvconf/interface-order" ]; then
-    sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-    _mrun "pkill -u unbound -x unbound"
-    _mrun "service unbound restart"
   fi
 }
 

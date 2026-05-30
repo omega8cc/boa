@@ -147,7 +147,7 @@ Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5
 - Live Disk Resize How-To: [docs/DISK_RESIZE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/DISK_RESIZE.md)
 - Migration for Single Octopus Instance: [docs/MIGRATE-XOCT.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MIGRATE-XOCT.md)
 - Migration for All Octopus Instances: [docs/MIGRATE-XMASS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MIGRATE-XMASS.md)
-- Migration (Legacy xboa Helper): [docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MIGRATE.md)
+- Migration (Legacy Docs): [docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MIGRATE.md)
 - Migration (Single Site): [docs/REMOTE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/REMOTE.md)
 - New Relic How-To: [docs/NEWRELIC.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/NEWRELIC.md)
 - Nginx Custom Rewrites: [docs/REWRITES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/REWRITES.md)

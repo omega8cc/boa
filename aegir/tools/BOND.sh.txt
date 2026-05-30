@@ -140,7 +140,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
-export _xSrl=593proT01
+export _xSrl=593proT03
 
 _AEGIR_VERSION="${_tRee}"
 _BRANCH_BOA="5.x-${_tRee}"
@@ -183,8 +183,8 @@ _PHP85_VRN=8.5.6
 ### Helper variables
 ###
 _bldPth="/opt/tmp/boa"
-_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _gCb="git clone --branch"
@@ -394,12 +394,12 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    _ffList="/var/backups/boa-mirrors-2026-05.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
-      echo "eu.files.aegir.cc"  > ${_ffList}
-      echo "us.files.aegir.cc" >> ${_ffList}
-      echo "ao.files.aegir.cc" >> ${_ffList}
+      echo "files.boa.io"  > ${_ffList}
+      echo "files.o8.io" >> ${_ffList}
+      echo "files.host8.biz" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -407,18 +407,18 @@ _find_fast_mirror_early() {
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.boa.io"
       else
-        _USE_MIR="files.aegir.cc"
+        _USE_MIR="files.boa.io"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      _USE_MIR="files.boa.io"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="files.boa.io"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  _urlDev="https://${_USE_MIR}/dev"
+  _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 #
 # Find correct IP.
@@ -544,19 +544,19 @@ _fix_php_ini_mcrypt() {
 # Fix php.ini files to add apcu.so
 _fix_php_ini_apcu() {
   if [ -e "${_THIS_FILE}" ]; then
-    _APCU_INI_TEST=$(grep "^apc.shm_size" ${_THIS_FILE} 2>&1)
-    if [[ "${_APCU_INI_TEST}" =~ "apc.shm_size" ]]; then
+    _APCU_INI_TEST=$(grep "^apc.serializer" ${_THIS_FILE} 2>&1)
+    if [[ "${_APCU_INI_TEST}" =~ "apc.serializer" ]]; then
       _DO_NOTHING=YES
     else
       echo " "                  >> ${_THIS_FILE}
       echo "; APCu"             >> ${_THIS_FILE}
       echo "extension=apcu.so"  >> ${_THIS_FILE}
-      echo "apc.enable_cli=1"   >> ${_THIS_FILE}
+      echo "apc.serializer=igbinary" >> ${_THIS_FILE}
       echo "apc.gc_ttl=300"     >> ${_THIS_FILE}
       echo "apc.shm_segments=1" >> ${_THIS_FILE}
       echo "apc.shm_size=256M"  >> ${_THIS_FILE}
       echo "apc.slam_defense=0" >> ${_THIS_FILE}
-      echo "apc.ttl=0"          >> ${_THIS_FILE}
+      echo "apc.ttl=3600"       >> ${_THIS_FILE}
       echo ";"                  >> ${_THIS_FILE}
     fi
   fi

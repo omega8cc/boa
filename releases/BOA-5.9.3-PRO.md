@@ -28,7 +28,7 @@ at your earliest convenience — do not skip the reboot:
 
 ```sh
 screen
-wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 barracuda up-lts
 octopus up-lts all force
 reboot
@@ -241,7 +241,7 @@ during Debian-to-Devuan migration, the network interface name can shift
 | `renamemaster` | New: rename Aegir Master hostname end-to-end |
 | `renameaegirhost` | Now universal — handles both Master and Satellite |
 | `fixmounts` | New: diagnose and repair `/etc/fstab` and TRIM eligibility |
-| `xboa` | `http-off` PHP short-circuit for migrations; speed cache purge on toggle; `_xboa_transfer_static_symlink_safe` |
+| `xoct` | `http-off` PHP short-circuit for migrations; speed cache purge on toggle; `_xoct_transfer_static_symlink_safe` |
 | `updatesymlinks` | New: batch symlink update for automation pipelines |
 | `autosymlink` | Track detected/valid sites for orphan static/files reporting |
 
@@ -307,7 +307,7 @@ Run inside a `screen` session as root:
 
 ```sh
 screen
-wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 barracuda up-lts
 octopus up-lts all force
 ```
@@ -317,7 +317,7 @@ emailed on completion — useful for cron):
 
 ```sh
 screen
-wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- https://files.boa.io/BOA.sh.txt | bash
 barracuda up-lts log
 octopus up-lts all force log
 ```

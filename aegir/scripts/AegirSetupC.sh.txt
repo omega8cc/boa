@@ -39,8 +39,8 @@
 ### Helper variables
 ###
 export _bldPth="/opt/tmp/boa"
-export _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
-export _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
+export _crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+export _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 export _filIncO="octopus.sh.cnf"
 export _gCb="git clone --branch"
 export _gitHub="https://github.com/omega8cc"
@@ -100,8 +100,8 @@ fi
 ###
 ### More helper variables
 ###
-export _urlDev="http://${_USE_MIR}/dev"
-export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+export _urlDev="https://${_USE_MIR}/dev"
+export _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###
@@ -359,7 +359,7 @@ _get_core_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"; then
+      if curl ${_crlGet} "https://${_USE_MIR}/core/$1" -o "$1"; then
         _success=1
         break
       else
@@ -374,7 +374,7 @@ _get_core_ext() {
     if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: Failed to download http://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
+      _msg "OOPS: Failed to download https://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
     fi
   fi
@@ -389,7 +389,7 @@ _get_distro_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "http://${_USE_MIR}/distro/$1" -o "$1"; then
+      if curl ${_crlGet} "https://${_USE_MIR}/distro/$1" -o "$1"; then
         _success=1
         break
       else
@@ -404,7 +404,7 @@ _get_distro_ext() {
     if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: Failed to download http://${_USE_MIR}/distro/$1 after ${_max_attempts} attempts"
+      _msg "OOPS: Failed to download https://${_USE_MIR}/distro/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
     fi
   fi
