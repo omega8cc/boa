@@ -140,6 +140,11 @@ _csf_ban() {
   # (guest-fire.sh itself will handle enforcement)
   [[ -e "${_MAINTENANCE_FLAG}" ]] && return 0
   [[ -x "${_CSF}" && -e "/etc/csf/csf.deny" ]] || return 0
+  # Never ban an IP that is explicitly allowed or ignored in CSF — these are
+  # trusted addresses (admin IPs, monitoring services, etc.) and must not be
+  # blocked even if a pattern match fires (e.g. Timeout after a valid session).
+  grep -qF "${_ip}" /etc/csf/csf.allow  2>/dev/null && return 0
+  grep -qF "${_ip}" /etc/csf/csf.ignore 2>/dev/null && return 0
   "${_CSF}" -td "${_ip}" "${_BAN_SECONDS}" -p 22 &>/dev/null
 }
 
@@ -177,11 +182,18 @@ _makeactions() {
   _mark=$(date +%y%m%d-%H%M%S)
 
   declare -A _hits=()
-  # IPs with a successful login in this log window — never banned regardless
-  # of other matching patterns. A legitimate user whose client drops a
-  # connection mid-handshake would otherwise be caught by the
-  # "Connection closed by [preauth]" branch.
+  # IPs with a successful login in the recent auth.log window — never banned
+  # regardless of other matching patterns.
+  # IMPORTANT: collected from the last _AUTH_LOG_BASELINE lines (not the offset
+  # window) so that accepted logins from previous cron runs still protect an IP.
+  # Without this, a Timeout/disconnect event minutes after a valid login would
+  # not see the earlier Accepted line and would wrongly ban the trusted IP.
   declare -A _accepted=()
+  while IFS= read -r _acc_line; do
+    local _acc_ip
+    _acc_ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_acc_line}" | tail -1)
+    _is_ipv4 "${_acc_ip}" && _accepted["${_acc_ip}"]=1
+  done < <(grep -F "Accepted " "${_AUTH_LOG}" 2>/dev/null | tail -n "${_AUTH_LOG_BASELINE}")
 
   # -------------------------------------------------------------------------
   # Byte-offset tracking — read only new lines since the last run.
@@ -211,14 +223,6 @@ _makeactions() {
   while IFS= read -r _line <&3; do
     # Sanitise — strip chars outside the safe set (mirrors Perl regex)
     _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-]/}"
-
-    # Collect accepted logins in the same pass — single read of auth.log
-    if [[ "${_line}" =~ "Accepted " ]]; then
-      local _acc_ip
-      _acc_ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
-      _is_ipv4 "${_acc_ip}" && _accepted["${_acc_ip}"]=1
-      continue
-    fi
 
     local _ip=""
 
