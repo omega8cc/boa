@@ -425,11 +425,12 @@ _sql_strict_upgrade_path() {
     _DB_SERIES=8.0
     export _DB_SERIES=8.0
     sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g" ${_barCnf}
-    _SQL_UPGRADE=YES
+    export _SQL_UPGRADE=YES
   fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
-    _SQL_UPGRADE=YES
+    export _SQL_UPGRADE=YES
+    export _myCnfUpdate=YES
   fi
   if [ "${_SQL_UPGRADE}" = "YES" ]; then
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
