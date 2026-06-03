@@ -1039,7 +1039,7 @@ _init_prepare() {
 ### Ensure Devuan base-files
 ###
 _ensure_devuan_bf() {
-  # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan/daedalus
+  # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan
   _msg "_ensure_devuan_bf ==> Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
   _BF_CANDIDATE=$(apt-cache policy base-files 2>/dev/null | awk '/Candidate: /{print $2; exit}')
   _APTOPTS="-o Dpkg::Options::=--force-confnew \
