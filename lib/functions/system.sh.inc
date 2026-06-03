@@ -261,6 +261,7 @@ _define_loc_osr() {
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Trixie to Devuan Excalibur"
     [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
+    [ -e "/root/.top-daedalus.cnf" ] && mv /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
   fi
 
   ###
@@ -288,6 +289,7 @@ _define_loc_osr() {
     _TGT_OSN=Devuan
     _MSG_LOC="Devuan Daedalus to Devuan Excalibur"
     [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
+    [ -e "/root/.top-daedalus.cnf" ] && mv /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
   fi
 
   ###
@@ -6833,7 +6835,7 @@ _ensure_devuan_base_files() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _ensure_devuan_base_files"
   fi
-  # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan/daedalus
+  # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan
   _msg "Ensuring Devuan base-files is applied (force-confnew)"
   _BF_CANDIDATE=$(apt-cache policy base-files 2>/dev/null | awk '/Candidate: /{print $2; exit}')
   _APTOPTS="-o Dpkg::Options::=--force-confnew \
