@@ -10088,7 +10088,6 @@ _initd_update() {
         fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mysql_upgrade" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
           _mrun "mysql_upgrade -u root --force"
           _mrun "mysql_upgrade -u root --force"
         fi
@@ -10154,7 +10153,6 @@ _initd_update() {
         && [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         if [ "${_myCnfUpdate}" = "NO" ]; then
           _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
           _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)

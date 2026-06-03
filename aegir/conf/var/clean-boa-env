@@ -163,10 +163,9 @@ case "$1" in
       csf -df &> /dev/null
       csf -tf &> /dev/null
       echo "Firewall has been purged"
-      if [ -e "/root/.my.pass.txt" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+      if [ -e "/root/.my.cnf" ]; then
         _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
-        if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
+        if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
           echo "Preparing MySQLD for quick shutdown..."
           _DB_V=$(mysql -V 2>&1 \
             | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \

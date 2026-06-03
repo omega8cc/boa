@@ -436,7 +436,6 @@ _innodb_log_file_size_update() {
   else
     _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _mrun "bash /var/xdrago/move_sql.sh stop"
   wait
@@ -1139,7 +1138,6 @@ _install_with_aptitude_sql() {
       _msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     fi
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _mrun "mysqlcheck -u root -A --auto-repair --silent"
     _check_mysql_version
     if [ "${_DB_V}" = "5.7" ]; then
@@ -1159,7 +1157,6 @@ _forced_mysql_root_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _forced_mysql_root_password_update"
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   mv -f /root/.my.cnf-pre-* ${_vBs}/ &> /dev/null
   mv -f /root/.my.pass.txt-pre-* ${_vBs}/ &> /dev/null
   touch /root/.my.pass.txt
@@ -1311,7 +1308,6 @@ _forced_mysql_root_password_update() {
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
     echo "${_ESC_PASS}" > /root/.my.pass.txt
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'::1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
@@ -1469,7 +1465,6 @@ _db_server_install() {
           fi
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
             _mrun "mysql_upgrade -u root --force"
           fi
         fi
@@ -1501,7 +1496,6 @@ _db_server_install() {
         fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mysql_upgrade" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
           _mrun "mysql_upgrade -u root --force"
           _mrun "mysql_upgrade -u root --force"
         fi
@@ -1557,7 +1551,6 @@ _db_server_install() {
         && [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         if [ "${_myCnfUpdate}" = "NO" ]; then
           _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
           _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
@@ -1736,7 +1729,6 @@ _sql_root_credentials_update() {
     fi
     if [ -e "/root/.my.pass.txt" ]; then
       _check_mysql_version
-      myUsrTbl="mysql.user"
       if [ -z "${_ESC_PASS}" ]; then
         _PXSWD=$(cat /root/.my.pass.txt 2>&1)
       else

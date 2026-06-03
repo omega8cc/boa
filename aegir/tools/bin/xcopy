@@ -1120,7 +1120,6 @@ _check_root() {
     if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
       _SQL_CONNECT=localhost
     fi
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   else
     echo "ERROR: This script should be run as a root user"
     exit 1
