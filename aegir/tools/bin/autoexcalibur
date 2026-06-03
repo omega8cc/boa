@@ -178,8 +178,16 @@ _check_mysql_compatibility() {
     _DB_V=8.4
   elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
     _DB_V=8.0
+    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAds}"
+    _msg "Devuan Excalibur supports only Percona 8.4" >> "${_logAds}"
+    _msg "Run 'barracuda up-lts system percona-8.4' first" >> "${_logAds}"
+    exit 1
   elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
     _DB_V=5.7
+    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAds}"
+    _msg "Devuan Excalibur supports only Percona 8.4" >> "${_logAds}"
+    _msg "Run 'barracuda up-lts system percona-8.4' TWICE first" >> "${_logAds}"
+    exit 1
   else
     _DB_V=UNSUPPORTED
   fi

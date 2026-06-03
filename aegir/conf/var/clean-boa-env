@@ -87,6 +87,7 @@ case "$1" in
       fi
     done
     if [ -e "/root/.run-to-excalibur.cnf" ]; then
+      [ -e "/root/.top-daedalus.cnf" ] && mv -f /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
       if [ -x "/opt/local/bin/autoexcalibur" ]; then
         nohup /opt/local/bin/autoexcalibur > /dev/null 2>&1 &
       fi

@@ -261,7 +261,7 @@ _define_loc_osr() {
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Trixie to Devuan Excalibur"
     [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
-    [ -e "/root/.top-daedalus.cnf" ] && mv /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
+    [ -e "/root/.top-daedalus.cnf" ] && mv -f /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
   fi
 
   ###
@@ -289,7 +289,7 @@ _define_loc_osr() {
     _TGT_OSN=Devuan
     _MSG_LOC="Devuan Daedalus to Devuan Excalibur"
     [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
-    [ -e "/root/.top-daedalus.cnf" ] && mv /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
+    [ -e "/root/.top-daedalus.cnf" ] && mv -f /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
   fi
 
   ###
