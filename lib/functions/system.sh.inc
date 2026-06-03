@@ -7081,7 +7081,7 @@ _if_major_os_upgrade() {
   _RUNNING_MAJOR_OS_UPGRADE=NO
   _define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
-    if [ ! -e "/usr/local/lib/icu/73.1" ] \
+    if [ ! -e "/usr/local/lib/icu/76.1" ] \
       && [ "${_LOC_OS_CODE}" != "jessie" ]; then
       echo
       _msg "OOPS: Please run normal 'barracuda up-${_tRee}' upgrade"
