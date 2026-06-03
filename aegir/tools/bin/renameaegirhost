@@ -137,11 +137,6 @@ _check_root() {
     _die "server_master.alias.drushrc.php not found in ${_DRUSH_DIR}"
   fi
 
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-  if [ -z "${_SQL_PSWD}" ]; then
-    _die "/root/.my.pass.txt missing or empty — cannot connect to MySQL"
-  fi
-
   _info "Aegir root : ${_AEGIR_ROOT}"
   _info "Aegir user : ${_AEGIR_USER}"
 }
@@ -310,8 +305,7 @@ _rename_in_database() {
 
   _info "  Dumping ${_AEGIR_DB} ..."
   mysqldump \
-    -u root \
-    --password="${_SQL_PSWD}" \
+    --defaults-file=/root/.my.cnf \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -341,8 +335,7 @@ _rename_in_database() {
 
   _info "  Re-importing patched dump into ${_AEGIR_DB} ..."
   mysql \
-    -u root \
-    --password="${_SQL_PSWD}" \
+    --defaults-file=/root/.my.cnf \
     "${_AEGIR_DB}" \
     < "${_DUMP_PATCHED}"
 
