@@ -87,17 +87,10 @@ _os_detection_minimal() {
 }
 
 _check_mysql_version() {
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  fi
+  _DB_V=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
 }
 
 _apt_clean_update() {

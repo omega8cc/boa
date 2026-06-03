@@ -1,19 +1,10 @@
 
 _check_mysql_version() {
   _DB_V=
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
-    _DB_V=8.3
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  fi
+  _DB_V=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
   fi
@@ -393,25 +384,12 @@ _sql_strict_upgrade_path() {
     _msg "PROC: _sql_strict_upgrade_path"
   fi
   _SQL_UPGRADE=NO
-  _DB_SERVER_TEST=$(mysql -V 2>&1)
   _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f6 \
-      | awk '{ print $1}' \
-      | cut -d"-" -f1 \
-      | awk '{ print $1}' \
-      | sed "s/[\,']//g" 2>&1)
-    if [ "${_NOW_DB_V}" = "Linux" ]; then
-      _NOW_DB_V=$(mysql -V 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f4 \
-        | awk '{ print $1}' \
-        | cut -d"-" -f1 \
-        | awk '{ print $1}' \
-        | sed "s/[\,']//g" 2>&1)
-    fi
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
   fi
   if [ ! -z "${_NOW_DB_V}" ]; then
     if [[ ! "${_NOW_DB_V}" =~ (^)"${_DB_SERIES}" ]]; then
@@ -1044,21 +1022,9 @@ _prep_for_install_db_sql() {
   _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f6 \
-      | awk '{ print $1}' \
-      | cut -d"-" -f1 \
-      | awk '{ print $1}' \
-      | sed "s/[\,']//g" 2>&1)
-    if [ "${_NOW_DB_V}" = "Linux" ]; then
-      _NOW_DB_V=$(mysql -V 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f4 \
-        | awk '{ print $1}' \
-        | cut -d"-" -f1 \
-        | awk '{ print $1}' \
-        | sed "s/[\,']//g" 2>&1)
-    fi
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
   fi
   if [ -e "/usr/bin/php" ]; then
     _PHP_MYSQLND_TEST=$(/usr/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
@@ -1528,19 +1494,16 @@ _db_server_install() {
       fi
       _CUSTOM_CONFIG_SQL=NO
       sleep 8
-      _DB_SERVER_TEST=$(mysql -V 2>&1)
-      if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        _check_mysql_version
-        if [ "${_DB_V}" = "5.7" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
-          fi
-          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-          if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-            _mrun "mysql_upgrade -u root --force"
-            _mrun "mysql_upgrade -u root --force"
-          fi
+      _check_mysql_version
+      if [ "${_DB_V}" = "5.7" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
+        fi
+        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+        if [ -x "/usr/bin/mysql_upgrade" ]; then
+          _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+          _mrun "mysql_upgrade -u root --force"
+          _mrun "mysql_upgrade -u root --force"
         fi
       fi
       _tune_memory_limits

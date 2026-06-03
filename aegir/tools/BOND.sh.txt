@@ -991,17 +991,10 @@ _tune_php() {
 # Update innodb_log_file_size.
 _innodb_log_file_size_update() {
   _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  fi
+  _DB_V=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ "${_DB_V}" = "5.7" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')

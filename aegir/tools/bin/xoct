@@ -309,21 +309,9 @@ EOFMYSQL
                 | cut -d" " -f2 \
                 | awk '{ print $1}' 2>&1)
               _DB_V=$(mysql -V 2>&1 \
-                | tr -d "\n" \
-                | cut -d" " -f6 \
-                | awk '{ print $1}' \
-                | cut -d"-" -f1 \
-                | awk '{ print $1}' \
-                | sed "s/[\,']//g" 2>&1)
-              if [ "${_DB_V}" = "Linux" ]; then
-                _DB_V=$(mysql -V 2>&1 \
-                  | tr -d "\n" \
-                  | cut -d" " -f4 \
-                  | awk '{ print $1}' \
-                  | cut -d"-" -f1 \
-                  | awk '{ print $1}' \
-                  | sed "s/[\,']//g" 2>&1)
-              fi
+                | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+                | head -1 \
+                | cut -d"." -f1,2)
               _MD_V=$(mydumper --version 2>&1 \
                 | tr -d "\n" \
                 | cut -d" " -f6 \
@@ -392,21 +380,9 @@ EOFMYSQL
             | cut -d" " -f2 \
             | awk '{ print $1}' 2>&1)
           _DB_V=$(mysql -V 2>&1 \
-            | tr -d "\n" \
-            | cut -d" " -f6 \
-            | awk '{ print $1}' \
-            | cut -d"-" -f1 \
-            | awk '{ print $1}' \
-            | sed "s/[\,']//g" 2>&1)
-          if [ "${_DB_V}" = "Linux" ]; then
-            _DB_V=$(mysql -V 2>&1 \
-              | tr -d "\n" \
-              | cut -d" " -f4 \
-              | awk '{ print $1}' \
-              | cut -d"-" -f1 \
-              | awk '{ print $1}' \
-              | sed "s/[\,']//g" 2>&1)
-          fi
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+            | head -1 \
+            | cut -d"." -f1,2)
           _MD_V=$(mydumper --version 2>&1 \
             | tr -d "\n" \
             | cut -d" " -f6 \

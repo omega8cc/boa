@@ -172,23 +172,17 @@ _check_manufacturer_compatibility() {
 _check_manufacturer_compatibility
 
 _check_mysql_compatibility() {
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  else
-    _DB_V=UNSUPPORTED
-  fi
-  if [ "${_DB_V}" = "UNSUPPORTED" ]; then
-    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAbf}"
-    exit 1
-  fi
+  _DB_V=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  case "${_DB_V}" in
+    5.7|8.0|8.4) ;;
+    *)
+      _msg "Not supported DB server detected ${_DB_V}" >> "${_logAbf}"
+      exit 1
+    ;;
+  esac
 }
 _check_mysql_compatibility
 

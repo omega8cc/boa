@@ -120,17 +120,19 @@ _check_root() {
 
 _xmass_detect_percona_version() {
   local _raw
-  _raw=$(mysql -V 2>&1 | tr -d '\n')
-  if [[ "${_raw}" =~ "Ver 8.4." ]]; then
-    _XMASS_PERCONA_V="8.4"
-  elif [[ "${_raw}" =~ "Ver 8.0." ]]; then
-    _XMASS_PERCONA_V="8.0"
-  elif [[ "${_raw}" =~ "Distrib 5.7." ]]; then
-    _XMASS_PERCONA_V="5.7"
-  else
-    _die "Cannot detect Percona version from: ${_raw}"
-  fi
-  _info "Percona MySQL version detected: ${_XMASS_PERCONA_V}"
+  _raw=$(mysql -V 2>&1)
+  _XMASS_PERCONA_V=$(echo "${_raw}" \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  case "${_XMASS_PERCONA_V}" in
+    5.7|8.0|8.4)
+      _info "Percona MySQL version detected: ${_XMASS_PERCONA_V}"
+    ;;
+    *)
+      _die "Cannot detect Percona version from: ${_raw}"
+    ;;
+  esac
 }
 
 _xmass_xtrabackup_pkg() {
@@ -934,10 +936,13 @@ _xmass_cmd_init() {
   _xmass_detect_percona_version
 
   # Verify target runs the same Percona version
-  local _tgt_raw
-  _tgt_raw=$(ssh root@"${_tgt}" "mysql -V 2>&1 | tr -d '\n'" 2>/dev/null)
-  if ! echo "${_tgt_raw}" | grep -q "${_XMASS_PERCONA_V}"; then
-    _die "Target Percona version does not match source (${_XMASS_PERCONA_V})." \
+  local _tgt_v
+  _tgt_v=$(ssh root@"${_tgt}" "mysql -V 2>&1" 2>/dev/null \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  if [ "${_tgt_v}" != "${_XMASS_PERCONA_V}" ]; then
+    _die "Target Percona version (${_tgt_v}) does not match source (${_XMASS_PERCONA_V})." \
          " xmass requires identical versions on both servers. Use xoct instead."
   fi
   _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"

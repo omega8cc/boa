@@ -170,31 +170,29 @@ _check_manufacturer_compatibility() {
 _check_manufacturer_compatibility
 
 _check_mysql_compatibility() {
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAds}"
-    _msg "Devuan Excalibur supports only Percona 8.4" >> "${_logAds}"
-    _msg "Run 'barracuda up-lts system percona-8.4' first" >> "${_logAds}"
-    exit 1
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAds}"
-    _msg "Devuan Excalibur supports only Percona 8.4" >> "${_logAds}"
-    _msg "Run 'barracuda up-lts system percona-8.4' TWICE first" >> "${_logAds}"
-    exit 1
-  else
-    _DB_V=UNSUPPORTED
-  fi
-  if [ "${_DB_V}" = "UNSUPPORTED" ]; then
-    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAds}"
-    exit 1
-  fi
+  _DB_V=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  case "${_DB_V}" in
+    8.4) ;;
+    8.0)
+      _msg "Not supported DB server detected ${_DB_V}" >> "${_logExc}"
+      _msg "Devuan Excalibur supports only Percona 8.4" >> "${_logExc}"
+      _msg "Run 'barracuda up-lts system percona-8.4' first" >> "${_logExc}"
+      exit 1
+    ;;
+    5.7)
+      _msg "Not supported DB server detected ${_DB_V}" >> "${_logExc}"
+      _msg "Devuan Excalibur supports only Percona 8.4" >> "${_logExc}"
+      _msg "Run 'barracuda up-lts system percona-8.4' TWICE first" >> "${_logExc}"
+      exit 1
+    ;;
+    *)
+      _msg "Not supported DB server detected ${_DB_V}" >> "${_logExc}"
+      exit 1
+    ;;
+  esac
 }
 _check_mysql_compatibility
 
