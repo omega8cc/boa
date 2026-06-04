@@ -128,7 +128,10 @@ _get_mysql_uptime() {
 
 # Function to get MySQL version
 _get_mysql_version() {
-  mysql -V | awk '{print $5}' | tr -d ','
+  mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2
 }
 
 # Function to get number of databases
