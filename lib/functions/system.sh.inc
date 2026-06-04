@@ -261,7 +261,7 @@ _define_loc_osr() {
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Trixie to Devuan Excalibur"
     [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
-    [ -e "/root/.top-daedalus.cnf" ] && mv /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
+    [ -e "/root/.top-daedalus.cnf" ] && mv -f /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
   fi
 
   ###
@@ -289,7 +289,7 @@ _define_loc_osr() {
     _TGT_OSN=Devuan
     _MSG_LOC="Devuan Daedalus to Devuan Excalibur"
     [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
-    [ -e "/root/.top-daedalus.cnf" ] && mv /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
+    [ -e "/root/.top-daedalus.cnf" ] && mv -f /root/.top-daedalus.cnf /root/.old-top-daedalus.cnf
   fi
 
   ###
@@ -8976,21 +8976,9 @@ _myquick_install_upgrade() {
       | cut -d" " -f2 \
       | awk '{ print $1}' 2>&1)
     _DB_V=$(mysql -V 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f6 \
-      | awk '{ print $1}' \
-      | cut -d"-" -f1 \
-      | awk '{ print $1}' \
-      | sed "s/[\,']//g" 2>&1)
-    if [ "${_DB_V}" = "Linux" ]; then
-      _DB_V=$(mysql -V 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f4 \
-        | awk '{ print $1}' \
-        | cut -d"-" -f1 \
-        | awk '{ print $1}' \
-        | sed "s/[\,']//g" 2>&1)
-    fi
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
     _MD_V=$(mydumper --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f6 \
@@ -10093,19 +10081,15 @@ _initd_update() {
         fi
       done
       _mrun "service nginx restart"
-      _DB_SERVER_TEST=$(mysql -V 2>&1)
-      if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        _check_mysql_version
-        if [ "${_DB_V}" = "5.7" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
-          fi
-          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-          if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-            _mrun "mysql_upgrade -u root --force"
-            _mrun "mysql_upgrade -u root --force"
-          fi
+      _check_mysql_version
+      if [ "${_DB_V}" = "5.7" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
+        fi
+        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+        if [ -x "/usr/bin/mysql_upgrade" ]; then
+          _mrun "mysql_upgrade -u root --force"
+          _mrun "mysql_upgrade -u root --force"
         fi
       fi
       _myCnf="/etc/mysql/my.cnf"
@@ -10169,7 +10153,6 @@ _initd_update() {
         && [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         if [ "${_myCnfUpdate}" = "NO" ]; then
           _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
           _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
