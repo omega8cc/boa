@@ -1,25 +1,28 @@
 
 _check_mysql_version() {
   _DB_V=
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
-    _DB_V=8.3
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  fi
+  _DB_V=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DBST: via _check_mysql_version ${_DB_V}"
   fi
+}
+
+_check_sql_running() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_sql_running"
+  fi
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _msg "WAIT: Waiting for MySQLD availability..."
+    sleep 5
+  done
 }
 
 _install_local_ordered() {
@@ -393,25 +396,12 @@ _sql_strict_upgrade_path() {
     _msg "PROC: _sql_strict_upgrade_path"
   fi
   _SQL_UPGRADE=NO
-  _DB_SERVER_TEST=$(mysql -V 2>&1)
   _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f6 \
-      | awk '{ print $1}' \
-      | cut -d"-" -f1 \
-      | awk '{ print $1}' \
-      | sed "s/[\,']//g" 2>&1)
-    if [ "${_NOW_DB_V}" = "Linux" ]; then
-      _NOW_DB_V=$(mysql -V 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f4 \
-        | awk '{ print $1}' \
-        | cut -d"-" -f1 \
-        | awk '{ print $1}' \
-        | sed "s/[\,']//g" 2>&1)
-    fi
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
   fi
   if [ ! -z "${_NOW_DB_V}" ]; then
     if [[ ! "${_NOW_DB_V}" =~ (^)"${_DB_SERIES}" ]]; then
@@ -435,11 +425,12 @@ _sql_strict_upgrade_path() {
     _DB_SERIES=8.0
     export _DB_SERIES=8.0
     sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g" ${_barCnf}
-    _SQL_UPGRADE=YES
+    export _SQL_UPGRADE=YES
   fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
-    _SQL_UPGRADE=YES
+    export _SQL_UPGRADE=YES
+    export _myCnfUpdate=YES
   fi
   if [ "${_SQL_UPGRADE}" = "YES" ]; then
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
@@ -453,12 +444,13 @@ _innodb_log_file_size_update() {
     _msg "PROC: _innodb_log_file_size_update"
   fi
   _check_mysql_version
+  _sql_conf_update
+  _check_sql_running
   if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
     _msg "INFO: InnoDB redo log capacity will be set to ${_INNODB_REDO_LOG_CAPACITY_MB}..."
   else
     _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _mrun "bash /var/xdrago/move_sql.sh stop"
   wait
@@ -1044,21 +1036,9 @@ _prep_for_install_db_sql() {
   _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f6 \
-      | awk '{ print $1}' \
-      | cut -d"-" -f1 \
-      | awk '{ print $1}' \
-      | sed "s/[\,']//g" 2>&1)
-    if [ "${_NOW_DB_V}" = "Linux" ]; then
-      _NOW_DB_V=$(mysql -V 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f4 \
-        | awk '{ print $1}' \
-        | cut -d"-" -f1 \
-        | awk '{ print $1}' \
-        | sed "s/[\,']//g" 2>&1)
-    fi
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
   fi
   if [ -e "/usr/bin/php" ]; then
     _PHP_MYSQLND_TEST=$(/usr/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
@@ -1172,10 +1152,11 @@ _install_with_aptitude_sql() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     fi
-    rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _mrun "mysqlcheck -u root -A --auto-repair --silent"
     _check_mysql_version
+    _sql_conf_update
+    _check_sql_running
+    rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+    _mrun "mysqlcheck -u root -A --auto-repair --silent"
     if [ "${_DB_V}" = "5.7" ]; then
       _mrun "mysql_upgrade -u root --force"
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
@@ -1193,7 +1174,6 @@ _forced_mysql_root_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _forced_mysql_root_password_update"
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   mv -f /root/.my.cnf-pre-* ${_vBs}/ &> /dev/null
   mv -f /root/.my.pass.txt-pre-* ${_vBs}/ &> /dev/null
   touch /root/.my.pass.txt
@@ -1246,6 +1226,8 @@ _forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   _check_mysql_version
+  _sql_conf_update
+  _check_sql_running
   if [ ! -z "${_DB_V}" ] && [ ! -z "${_ESC_PASS}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
@@ -1345,7 +1327,6 @@ _forced_mysql_root_password_update() {
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
     echo "${_ESC_PASS}" > /root/.my.pass.txt
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'::1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
@@ -1503,7 +1484,6 @@ _db_server_install() {
           fi
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
             _mrun "mysql_upgrade -u root --force"
           fi
         fi
@@ -1528,19 +1508,17 @@ _db_server_install() {
       fi
       _CUSTOM_CONFIG_SQL=NO
       sleep 8
-      _DB_SERVER_TEST=$(mysql -V 2>&1)
-      if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        _check_mysql_version
-        if [ "${_DB_V}" = "5.7" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
-          fi
-          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-          if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-            _mrun "mysql_upgrade -u root --force"
-            _mrun "mysql_upgrade -u root --force"
-          fi
+      _check_mysql_version
+      _sql_conf_update
+      _check_sql_running
+      if [ "${_DB_V}" = "5.7" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
+        fi
+        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+        if [ -x "/usr/bin/mysql_upgrade" ]; then
+          _mrun "mysql_upgrade -u root --force"
+          _mrun "mysql_upgrade -u root --force"
         fi
       fi
       _tune_memory_limits
@@ -1594,7 +1572,6 @@ _db_server_install() {
         && [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         if [ "${_myCnfUpdate}" = "NO" ]; then
           _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
           _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
@@ -1610,6 +1587,8 @@ _db_server_install() {
           _myRstrd=YES
         fi
         _check_mysql_version
+        _sql_conf_update
+        _check_sql_running
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
@@ -1619,7 +1598,6 @@ _db_server_install() {
             fi
             if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
               mysqlcheck -u root -A --auto-repair --silent
-              _check_mysql_version
               mysql_upgrade -u root --force
               mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
               mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
@@ -1773,7 +1751,8 @@ _sql_root_credentials_update() {
     fi
     if [ -e "/root/.my.pass.txt" ]; then
       _check_mysql_version
-      myUsrTbl="mysql.user"
+      _sql_conf_update
+      _check_sql_running
       if [ -z "${_ESC_PASS}" ]; then
         _PXSWD=$(cat /root/.my.pass.txt 2>&1)
       else

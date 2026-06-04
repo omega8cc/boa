@@ -677,8 +677,8 @@ _THIS_DB_HOST=localhost
 ### db server node settings.
 ###
 ### However, BOA will always check and use
-### the password it will find in the special
-### file /root/.my.pass.txt during Master
+### the password it will find in the standard
+### file /root/.my.cnf during Master
 ### and Satellite instances upgrade.
 ###
 ### If you will change the mysql root password
@@ -1219,8 +1219,8 @@ _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
-export _tRee=lts
-export _xSrl=593ltsT03
+export _tRee=dev
+export _xSrl=593devT05
 
 
 ###

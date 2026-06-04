@@ -44,10 +44,10 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=593ltsT01
+export _tRee=dev
+export _xSrl=593devT05
 export _rLsn="BOA-5.9.3"
-export _bTs=593v01
+export _bTs=593v05
 
 ###
 ### Avoid too many questions
@@ -1458,8 +1458,30 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/autoexcalibur" ] \
+    || [ ! -e "${_pthLog}/autoexcalibur.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/autoexcalibur)
+    if (( _CNT > 0 )); then
+      echo "The autoexcalibur is running!"
+    else
+      if [ -e "${_optBin}/autoexcalibur" ]; then
+        mv -f ${_optBin}/autoexcalibur ${_optBin}/autoexcalibur.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/autoexcalibur" -o ${_optBin}/autoexcalibur
+      if [ -e "${_optBin}/autoexcalibur" ]; then
+        chmod 700 ${_optBin}/autoexcalibur
+        chown root:root ${_optBin}/autoexcalibur
+        touch ${_pthLog}/autoexcalibur.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/autoexcalibur.old" ]; then
+          mv -f ${_optBin}/autoexcalibur.old ${_optBin}/autoexcalibur
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_optBin}/boa" ] \
-    || [ ! -e "${_pthLog}/boa.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/boa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/boa)
     if (( _CNT > 0 )); then
       echo "The boa is running!"
@@ -1471,7 +1493,7 @@ _update_agents() {
       if [ -e "${_optBin}/boa" ]; then
         chmod 700 ${_optBin}/boa
         chown root:root ${_optBin}/boa
-        touch ${_pthLog}/boa.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/boa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/boa.old" ]; then
           mv -f ${_optBin}/boa.old ${_optBin}/boa
@@ -1503,7 +1525,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/octopus" ] \
-    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/octopus)
     if (( _CNT > 0 )); then
       echo "The octopus is running!"
@@ -1515,7 +1537,7 @@ _update_agents() {
       if [ -e "${_optBin}/octopus" ]; then
         chmod 700 ${_optBin}/octopus
         chown root:root ${_optBin}/octopus
-        touch ${_pthLog}/octopus.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/octopus.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/octopus.old" ]; then
           mv -f ${_optBin}/octopus.old ${_optBin}/octopus
@@ -2131,13 +2153,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/clean-boa-env.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/clean-boa-env.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
     curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
-      touch ${_pthLog}/clean-boa-env.ctrl.f97.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/clean-boa-env.ctrl.f96.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clean-boa-env.old /etc/init.d/clean-boa-env
     fi
@@ -2145,7 +2167,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f88.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f99.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc mysql_backup.sh)
     if (( _CNT > 0 )); then
       echo "The mysql_backup.sh is running!"
@@ -2155,7 +2177,7 @@ _update_agents() {
       if [ -e "/var/xdrago/mysql_backup.sh" ]; then
         chmod 700 /var/xdrago/mysql_backup.sh
         chown root:root /var/xdrago/mysql_backup.sh
-        touch ${_pthLog}/mysql_backup.sh.ctrl.f88.${_xSrl}.pid
+        touch ${_pthLog}/mysql_backup.sh.ctrl.f99.${_xSrl}.pid
       else
         mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
       fi
@@ -2239,13 +2261,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/second.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/second.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
     if [ -e "/var/xdrago/second.sh" ]; then
       chmod 700 /var/xdrago/second.sh
       chown root:root /var/xdrago/second.sh
-      touch ${_pthLog}/second.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/second.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/second.sh.old /var/xdrago/second.sh
     fi
@@ -3107,7 +3129,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_reassert.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/synproxy_reassert.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc synproxy_rollback)
     if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
@@ -3119,7 +3141,7 @@ _update_agents() {
       if [ -e "${_optBin}/synproxy_reassert" ]; then
         chmod 700 ${_optBin}/synproxy_reassert
         chown root:root ${_optBin}/synproxy_reassert
-        touch ${_pthLog}/synproxy_reassert.ctrl.f88.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/synproxy_reassert.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/synproxy_reassert.old" ]; then
           mv -f ${_optBin}/synproxy_reassert.old ${_optBin}/synproxy_reassert
@@ -4119,7 +4141,7 @@ _fix_java_symlinks() {
 }
 
 _fix_composer_version() {
-  _COMPOSER_VRN=2.10.0
+  _COMPOSER_VRN=2.10.1
   if [ -x "/usr/local/bin/composer" ]; then
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \
