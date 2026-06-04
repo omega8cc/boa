@@ -10,7 +10,7 @@ But if you prefer to have all major OS upgrade multi-steps and versions automate
 
 You can easily upgrade your system from any supported Debian version, starting with Debian Jessie, to Devuan Daedalus or Devuan Excalibur, which are both systemd-free equivalents of Debian Bookworm and Debian Trixie. You can upgrade from Devuan Beowulf or Chimaera to the recommended Devuan Daedalus using the same procedure.
 
-**NOTE:** While by default BOA installs Percona 5.7 in Devuan Daedalus, it will install Percona 8.4 in Devuan Excalibur.
+**NOTE:** While by default BOA installs Percona 5.7 in Devuan Daedalus, it will expect Percona 8.4 on Devuan Excalibur and will refuse to upgrade your system from Daedalus to Excalibur until you first upgrade Percona to 8.4
 
 **NOTE:** You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 only on Devuan Daedalus.
 
