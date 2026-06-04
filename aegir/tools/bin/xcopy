@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=593devT03
+export _xSrl=593devT05
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
@@ -195,21 +195,9 @@ EOFMYSQL
                 | cut -d" " -f2 \
                 | awk '{ print $1}' 2>&1)
               _DB_V=$(mysql -V 2>&1 \
-                | tr -d "\n" \
-                | cut -d" " -f6 \
-                | awk '{ print $1}' \
-                | cut -d"-" -f1 \
-                | awk '{ print $1}' \
-                | sed "s/[\,']//g" 2>&1)
-              if [ "${_DB_V}" = "Linux" ]; then
-                _DB_V=$(mysql -V 2>&1 \
-                  | tr -d "\n" \
-                  | cut -d" " -f4 \
-                  | awk '{ print $1}' \
-                  | cut -d"-" -f1 \
-                  | awk '{ print $1}' \
-                  | sed "s/[\,']//g" 2>&1)
-              fi
+                | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+                | head -1 \
+                | cut -d"." -f1,2)
               _MD_V=$(mydumper --version 2>&1 \
                 | tr -d "\n" \
                 | cut -d" " -f6 \
@@ -224,8 +212,7 @@ EOFMYSQL
             myloader \
               --database=${_DBN} \
               --host=localhost \
-              --user=root \
-              --password=${_SQL_PSWD} \
+              --defaults-file=/root/.my.cnf \
               --port=3306 \
               --directory=${_USR}/src/${_DBN}/ \
               --threads=4 \
@@ -253,21 +240,9 @@ EOFMYSQL
             | cut -d" " -f2 \
             | awk '{ print $1}' 2>&1)
           _DB_V=$(mysql -V 2>&1 \
-            | tr -d "\n" \
-            | cut -d" " -f6 \
-            | awk '{ print $1}' \
-            | cut -d"-" -f1 \
-            | awk '{ print $1}' \
-            | sed "s/[\,']//g" 2>&1)
-          if [ "${_DB_V}" = "Linux" ]; then
-            _DB_V=$(mysql -V 2>&1 \
-              | tr -d "\n" \
-              | cut -d" " -f4 \
-              | awk '{ print $1}' \
-              | cut -d"-" -f1 \
-              | awk '{ print $1}' \
-              | sed "s/[\,']//g" 2>&1)
-          fi
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+            | head -1 \
+            | cut -d"." -f1,2)
           _MD_V=$(mydumper --version 2>&1 \
             | tr -d "\n" \
             | cut -d" " -f6 \
@@ -283,8 +258,7 @@ EOFMYSQL
         mydumper \
           --database=${_DBN} \
           --host=localhost \
-          --user=root \
-          --password=${_SQL_PSWD} \
+          --defaults-file=/root/.my.cnf \
           --port=3306 \
           --outputdir=${_USR}/src/${_DBN}/ \
           --rows=50000 \
@@ -1146,7 +1120,6 @@ _check_root() {
     if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
       _SQL_CONNECT=localhost
     fi
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   else
     echo "ERROR: This script should be run as a root user"
     exit 1
