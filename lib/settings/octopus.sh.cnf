@@ -354,8 +354,8 @@ _THIS_DB_HOST=localhost
 ### db server node settings.
 ###
 ### However, BOA will always check and use
-### the password it will find in the special
-### file /root/.my.pass.txt during Master
+### the password it will find in the standard
+### file /root/.my.cnf during Master
 ### and Satellite instances upgrade.
 ###
 ### If you will change the mysql root password
@@ -695,7 +695,7 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
 export _tRee=pro
-export _xSrl=593proT03
+export _xSrl=593proT05
 
 
 ###

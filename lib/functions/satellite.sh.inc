@@ -2435,7 +2435,6 @@ _provision_backend_dbpass_generate() {
     _msg "PROC: _provision_backend_dbpass_generate"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2663,7 +2662,6 @@ _provision_backend_dbpass_sync() {
     _msg "PROC: _provision_backend_dbpass_sync"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   _find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -2772,7 +2770,6 @@ _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2847,7 +2844,6 @@ _satellite_run_pre_install() {
     _msg "PROC: _satellite_run_pre_install"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   _find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -3971,7 +3967,7 @@ _satellite_make() {
     _writeTo="${_vBs}/${_filIncO}"
   fi
 
-  export _xSrl=593proT03
+  export _xSrl=593proT05
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}

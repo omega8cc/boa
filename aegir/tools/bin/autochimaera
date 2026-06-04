@@ -79,7 +79,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
-export _xSrl=593proT01
+export _xSrl=593proT05
 
 _barCnf="/root/.barracuda.cnf"
 _logAch="/root/.autochimaera.log"
@@ -170,23 +170,17 @@ _check_manufacturer_compatibility() {
 _check_manufacturer_compatibility
 
 _check_mysql_compatibility() {
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  else
-    _DB_V=UNSUPPORTED
-  fi
-  if [ "${_DB_V}" = "UNSUPPORTED" ]; then
-    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAch}"
-    exit 1
-  fi
+  _DB_V=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  case "${_DB_V}" in
+    5.7|8.0|8.4) ;;
+    *)
+      _msg "Not supported DB server detected ${_DB_V}" >> "${_logAch}"
+      exit 1
+    ;;
+  esac
 }
 _check_mysql_compatibility
 
@@ -225,10 +219,9 @@ _faster_reboot() {
   csf -df &> /dev/null
   csf -tf &> /dev/null
   _msg "Firewall has been purged" >> "${_logAch}"
-  if [ -e "/root/.my.pass.txt" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+  if [ -e "/root/.my.cnf" ]; then
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
-    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAch}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null

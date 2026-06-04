@@ -1208,21 +1208,8 @@ _barracuda_log_update() {
     _LOG_GIT_MIRROR="-${_FORCE_GIT_MIRROR}"
   fi
   _LOG_DB_V=$(mysql -V 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f6 \
-    | awk '{ print $1}' \
-    | cut -d"-" -f1 \
-    | awk '{ print $1}' \
-    | sed "s/[\,']//g" 2>&1)
-  if [ "${_LOG_DB_V}" = "Linux" ]; then
-    _LOG_DB_V=$(mysql -V 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | awk '{ print $1}' \
-      | cut -d"-" -f1 \
-      | awk '{ print $1}' \
-      | sed "s/[\,']//g" 2>&1)
-  fi
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1)
   _BARRACUDA_VERSION_INFO="$(date) / \
     ${_OS_DIST}.${_OS_CODE} / \
     ${_VIRT_IS} / \
