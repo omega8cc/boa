@@ -30,8 +30,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=pro
-export _xSrl=593proT03
+export _tRee=dev
+export _xSrl=593devT05
 
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
@@ -103,8 +103,7 @@ _check_root() {
   fi
   # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-  [ -z "${_SQL_PSWD}" ] && _die "/root/.my.pass.txt missing or empty"
+  [ -e "/root/.my.cnf" ] || _die "/root/.my.cnf missing — MySQL credentials required"
   _DF_TEST="$(df -P -l / 2>/dev/null | awk '
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
     NR==2 { gsub(/%/,"",$u); print $u }')"
@@ -120,17 +119,19 @@ _check_root() {
 
 _xmass_detect_percona_version() {
   local _raw
-  _raw=$(mysql -V 2>&1 | tr -d '\n')
-  if [[ "${_raw}" =~ "Ver 8.4." ]]; then
-    _XMASS_PERCONA_V="8.4"
-  elif [[ "${_raw}" =~ "Ver 8.0." ]]; then
-    _XMASS_PERCONA_V="8.0"
-  elif [[ "${_raw}" =~ "Distrib 5.7." ]]; then
-    _XMASS_PERCONA_V="5.7"
-  else
-    _die "Cannot detect Percona version from: ${_raw}"
-  fi
-  _info "Percona MySQL version detected: ${_XMASS_PERCONA_V}"
+  _raw=$(mysql -V 2>&1)
+  _XMASS_PERCONA_V=$(echo "${_raw}" \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  case "${_XMASS_PERCONA_V}" in
+    5.7|8.0|8.4)
+      _info "Percona MySQL version detected: ${_XMASS_PERCONA_V}"
+    ;;
+    *)
+      _die "Cannot detect Percona version from: ${_raw}"
+    ;;
+  esac
 }
 
 _xmass_xtrabackup_pkg() {
@@ -202,7 +203,7 @@ _xmass_write_gtid_conf_local() {
   local _cnf="${_conf_dir}/xmass_gtid.cnf"
   # Only add log_bin directive if binlog is not already active
   local _logbin
-  _logbin=$(mysql -u root --password="${_SQL_PSWD}" \
+  _logbin=$(mysql --defaults-file=/root/.my.cnf \
     -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
   _info "Writing GTID config to ${_cnf} (server_id=${_sid}) ..."
   {
@@ -219,7 +220,7 @@ _xmass_write_gtid_conf_local() {
 }
 
 _xmass_check_gtid_enabled_local() {
-  mysql -u root --password="${_SQL_PSWD}" \
+  mysql --defaults-file=/root/.my.cnf \
     --connect-timeout=5 -sNe \
     "SHOW VARIABLES LIKE 'gtid_mode'" 2>/dev/null | awk '{print $2}'
 }
@@ -246,12 +247,9 @@ _xmass_configure_gtid_local() {
 }
 
 _xmass_configure_gtid_target() {
-  local _tgt_pswd
-  _tgt_pswd=$(ssh root@"${_tgt}" \
-    "cat /root/.my.pass.txt 2>/dev/null | tr -d '\n'" 2>/dev/null)
   local _mode
   _mode=$(ssh root@"${_tgt}" \
-    "mysql -u root --password='${_tgt_pswd}' --connect-timeout=5 -sNe \
+    "mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe \
     \"SHOW VARIABLES LIKE 'gtid_mode'\" 2>/dev/null | awk '{print \$2}'" \
     2>/dev/null)
   if [ "${_mode}" = "ON" ]; then
@@ -274,7 +272,7 @@ else
   _conf_dir="/etc/mysql"
 fi
 _cnf="\${_conf_dir}/xmass_gtid.cnf"
-_logbin=\$(mysql -u root --password='${_tgt_pswd}' \
+_logbin=\$(mysql --defaults-file=/root/.my.cnf \
   -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print \$2}')
 {
   echo "[mysqld]"
@@ -298,7 +296,7 @@ REMOTEBASH
 
 _xmass_create_repl_user() {
   _info "Creating replication user '${_REPL_USER}'@'${_tgt}' on source ..."
-  mysql -u root --password="${_SQL_PSWD}" <<SQLEOF
+  mysql --defaults-file=/root/.my.cnf <<SQLEOF
 DROP USER IF EXISTS '${_REPL_USER}'@'${_tgt}';
 CREATE USER '${_REPL_USER}'@'${_tgt}' IDENTIFIED BY '${_XMASS_REPL_PSWD}';
 GRANT REPLICATION SLAVE ON *.* TO '${_REPL_USER}'@'${_tgt}';
@@ -309,7 +307,7 @@ SQLEOF
 
 _xmass_drop_repl_user() {
   _info "Dropping replication user '${_REPL_USER}'@'${_tgt}' on source ..."
-  mysql -u root --password="${_SQL_PSWD}" \
+  mysql --defaults-file=/root/.my.cnf \
     -e "DROP USER IF EXISTS '${_REPL_USER}'@'${_tgt}'; FLUSH PRIVILEGES;" \
     2>/dev/null \
     || _alrt "Could not drop replication user (may already be gone)"
@@ -342,8 +340,7 @@ _xmass_take_backup() {
     mkdir -p "${_XTRA_STAGE_SRC}"
     xtrabackup \
       --backup \
-      --user=root \
-      --password="${_SQL_PSWD}" \
+      --defaults-file=/root/.my.cnf \
       --target-dir="${_XTRA_STAGE_SRC}" \
       || _die "xtrabackup --backup failed on source"
 
@@ -363,8 +360,7 @@ _xmass_take_backup() {
     _info "xtrabackup: streaming backup directly to target ${_tgt} ..."
     xtrabackup \
       --backup \
-      --user=root \
-      --password="${_SQL_PSWD}" \
+      --defaults-file=/root/.my.cnf \
       --stream=xbstream \
       | ssh root@"${_tgt}" "xbstream -x -C ${_XTRA_STAGE_TGT}" \
       || _die "xtrabackup stream to target failed"
@@ -402,11 +398,12 @@ REMOTE
 
   # Transfer credentials immediately so target MySQL client tools work
   _info "Transferring MySQL credentials to target ..."
+  scp /root/.my.cnf "root@${_tgt}:/root/.my.cnf" \
+    || _die "Failed to scp .my.cnf to target"
   scp /root/.my.pass.txt "root@${_tgt}:/root/.my.pass.txt" \
     || _die "Failed to scp .my.pass.txt to target"
-  scp /root/.my.cnf "root@${_tgt}:/root/.my.cnf" 2>/dev/null || true
   ssh root@"${_tgt}" \
-    "chmod 600 /root/.my.pass.txt; chmod 600 /root/.my.cnf 2>/dev/null; true"
+    "chmod 600 /root/.my.cnf; chmod 600 /root/.my.pass.txt 2>/dev/null; true"
 
   _info "Starting MySQL on target ${_tgt} via move_sql.sh ..."
   ssh root@"${_tgt}" "/var/xdrago/move_sql.sh start" \
@@ -428,12 +425,8 @@ _xmass_setup_slave() {
   fi
   _info "GTID set from backup: ${_gtid_set}"
 
-  local _tgt_pswd
-  _tgt_pswd=$(ssh root@"${_tgt}" \
-    "cat /root/.my.pass.txt 2>/dev/null | tr -d '\n'" 2>/dev/null)
-
   _info "Configuring replication slave on target ${_tgt} ..."
-  ssh root@"${_tgt}" "mysql -u root --password='${_tgt_pswd}'" <<SLAVEEOF
+  ssh root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf" <<SLAVEEOF
 RESET MASTER;
 SET GLOBAL gtid_purged='${_gtid_set}';
 CHANGE MASTER TO
@@ -449,7 +442,7 @@ SLAVEEOF
   _info "Verifying slave is running on target ..."
   local _slave_status
   _slave_status=$(ssh root@"${_tgt}" \
-    "mysql -u root --password='${_tgt_pswd}' -sNe \
+    "mysql --defaults-file=/root/.my.cnf -sNe \
     \"SHOW SLAVE STATUS\G\" 2>/dev/null \
     | grep -E 'Slave_IO_Running|Slave_SQL_Running'" 2>/dev/null)
   _info "Slave status: ${_slave_status}"
@@ -713,11 +706,8 @@ _xmass_sync_solr() {
 ###-------------REPLICATION LAG----------###
 
 _xmass_get_repl_lag() {
-  local _tgt_pswd
-  _tgt_pswd=$(ssh root@"${_tgt}" \
-    "cat /root/.my.pass.txt 2>/dev/null | tr -d '\n'" 2>/dev/null)
   ssh root@"${_tgt}" \
-    "mysql -u root --password='${_tgt_pswd}' -sNe \
+    "mysql --defaults-file=/root/.my.cnf -sNe \
     \"SHOW SLAVE STATUS\G\" 2>/dev/null \
     | grep 'Seconds_Behind_Master' | awk '{print \$2}'" 2>/dev/null
 }
@@ -934,10 +924,13 @@ _xmass_cmd_init() {
   _xmass_detect_percona_version
 
   # Verify target runs the same Percona version
-  local _tgt_raw
-  _tgt_raw=$(ssh root@"${_tgt}" "mysql -V 2>&1 | tr -d '\n'" 2>/dev/null)
-  if ! echo "${_tgt_raw}" | grep -q "${_XMASS_PERCONA_V}"; then
-    _die "Target Percona version does not match source (${_XMASS_PERCONA_V})." \
+  local _tgt_v
+  _tgt_v=$(ssh root@"${_tgt}" "mysql -V 2>&1" 2>/dev/null \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  if [ "${_tgt_v}" != "${_XMASS_PERCONA_V}" ]; then
+    _die "Target Percona version (${_tgt_v}) does not match source (${_XMASS_PERCONA_V})." \
          " xmass requires identical versions on both servers. Use xoct instead."
   fi
   _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
@@ -1066,7 +1059,7 @@ _xmass_cmd_cutover() {
 
   # Step 5: Lock source MySQL — no more writes possible
   _info "Flushing and locking source MySQL (FLUSH TABLES WITH READ LOCK) ..."
-  mysql -u root --password="${_SQL_PSWD}" \
+  mysql --defaults-file=/root/.my.cnf \
     -e "FLUSH TABLES WITH READ LOCK;" \
     || _die "FLUSH TABLES WITH READ LOCK failed on source"
 
@@ -1084,7 +1077,7 @@ _xmass_cmd_cutover() {
     _lag=$(_xmass_get_repl_lag)
     if [ "${_lag}" != "0" ]; then
       # Unlock before aborting so source MySQL is not stuck
-      mysql -u root --password="${_SQL_PSWD}" \
+      mysql --defaults-file=/root/.my.cnf \
         -e "UNLOCK TABLES;" &>/dev/null || true
       _die "Replica lag not zero after FLUSH LOCK on check ${_pass}/3" \
            " (lag=${_lag}s) — cutover aborted, source MySQL unlocked"
@@ -1093,27 +1086,25 @@ _xmass_cmd_cutover() {
   done
 
   # Step 8: Promote target — stop slave, decouple completely
-  local _tgt_pswd
-  _tgt_pswd=$(ssh root@"${_tgt}" \
-    "cat /root/.my.pass.txt 2>/dev/null | tr -d '\n'" 2>/dev/null)
   _info "Stopping and decoupling slave on target ${_tgt} ..."
   ssh root@"${_tgt}" \
-    "mysql -u root --password='${_tgt_pswd}' \
+    "mysql --defaults-file=/root/.my.cnf \
      -e 'STOP SLAVE; RESET SLAVE ALL;'" \
     || _die "Failed to stop/decouple slave on target ${_tgt}"
   _info "Target MySQL is now standalone: OK"
 
   # Step 9: Unlock source MySQL
-  mysql -u root --password="${_SQL_PSWD}" \
+  mysql --defaults-file=/root/.my.cnf \
     -e "UNLOCK TABLES;" &>/dev/null || true
   _info "Source MySQL tables unlocked"
 
   # Step 10: Re-transfer MySQL credentials (belt and braces after promotion)
+  scp /root/.my.cnf "root@${_tgt}:/root/.my.cnf" \
+    || _alrt "Failed to re-transfer .my.cnf to target"
   scp /root/.my.pass.txt "root@${_tgt}:/root/.my.pass.txt" \
     || _alrt "Failed to re-transfer .my.pass.txt to target"
-  scp /root/.my.cnf "root@${_tgt}:/root/.my.cnf" 2>/dev/null || true
   ssh root@"${_tgt}" \
-    "chmod 600 /root/.my.pass.txt; chmod 600 /root/.my.cnf 2>/dev/null; true"
+    "chmod 600 /root/.my.cnf; chmod 600 /root/.my.pass.txt 2>/dev/null; true"
 
   # Step 11: Drop the replication user from source (no longer needed)
   _xmass_drop_repl_user

@@ -92,8 +92,6 @@ else
   _SQL_CACHE_EXC="${_SQL_CACHE_EXC_DEF}"
 fi
 
-_SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-
 _create_locks() {
   echo "INFO: Creating locks for $1"
   touch /run/mysql_backup_running.pid
