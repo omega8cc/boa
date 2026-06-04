@@ -444,6 +444,7 @@ _innodb_log_file_size_update() {
     _msg "PROC: _innodb_log_file_size_update"
   fi
   _check_mysql_version
+  _sql_conf_update
   _check_sql_running
   if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
     _msg "INFO: InnoDB redo log capacity will be set to ${_INNODB_REDO_LOG_CAPACITY_MB}..."
@@ -1152,6 +1153,7 @@ _install_with_aptitude_sql() {
       _msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     fi
     _check_mysql_version
+    _sql_conf_update
     _check_sql_running
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     _mrun "mysqlcheck -u root -A --auto-repair --silent"
@@ -1224,6 +1226,7 @@ _forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   _check_mysql_version
+  _sql_conf_update
   _check_sql_running
   if [ ! -z "${_DB_V}" ] && [ ! -z "${_ESC_PASS}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1506,6 +1509,7 @@ _db_server_install() {
       _CUSTOM_CONFIG_SQL=NO
       sleep 8
       _check_mysql_version
+      _sql_conf_update
       _check_sql_running
       if [ "${_DB_V}" = "5.7" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1583,6 +1587,7 @@ _db_server_install() {
           _myRstrd=YES
         fi
         _check_mysql_version
+        _sql_conf_update
         _check_sql_running
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
@@ -1746,6 +1751,7 @@ _sql_root_credentials_update() {
     fi
     if [ -e "/root/.my.pass.txt" ]; then
       _check_mysql_version
+      _sql_conf_update
       _check_sql_running
       if [ -z "${_ESC_PASS}" ]; then
         _PXSWD=$(cat /root/.my.pass.txt 2>&1)
