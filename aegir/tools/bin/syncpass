@@ -102,7 +102,6 @@ _check_generate() {
 }
 
 _do_syncpass() {
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ ! -z "${_uname}" ]; then
     _find_correct_ip
     _prH="/var/aegir/.drush"

@@ -651,21 +651,20 @@ _oops_mysql_exit() {
 
 _mysql_downgrade_protection() {
   _DB_V=""
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  else
-    _oops_mysql_exit "MISSING MySQL: ${_DBS_TEST}"
+  if [ -z "$(which mysql)" ]; then
+    _oops_mysql_exit "MISSING MySQL"
   fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  else
-    _oops_mysql_exit "MYSTERIOUS MySQL: ${_DB_SERVER_TEST}"
-  fi
+  _DB_SERVER_TEST=$(mysql -V 2>&1)
+  _DB_V=$(echo "${_DB_SERVER_TEST}" \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  case "${_DB_V}" in
+    5.7|8.0|8.4) ;;
+    *)
+      _oops_mysql_exit "MYSTERIOUS MySQL: ${_DB_SERVER_TEST}"
+    ;;
+  esac
 }
 
 _up_action() {
