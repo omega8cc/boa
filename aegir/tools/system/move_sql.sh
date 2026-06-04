@@ -127,17 +127,10 @@ _stop_sql() {
 
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    _DBS_TEST="$(which mysql)"
-    if [ ! -z "${_DBS_TEST}" ]; then
-      _DB_SERVER_TEST=$(mysql -V 2>&1)
-    fi
-    if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-      _DB_V=8.4
-    elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-      _DB_V=8.0
-    elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-      _DB_V=5.7
-    fi
+    _DB_V=$(mysql -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
     if [ ! -z "${_DB_V}" ]; then
       echo "Preparing MySQLD for quick shutdown..."
       # (Removed dead `_SQL_PSWD=$(cat /root/.my.pass.txt)` read — never

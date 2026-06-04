@@ -365,17 +365,10 @@ _compress_backup() {
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
 _check_mysql_version() {
-  _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  fi
+  _DB_V=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
   if [ ! -z "${_DB_V}" ]; then
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
@@ -402,21 +395,9 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
   _DB_V=$(mysql -V 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f6 \
-    | awk '{ print $1}' \
-    | cut -d"-" -f1 \
-    | awk '{ print $1}' \
-    | sed "s/[\,']//g" 2>&1)
-  if [ "${_DB_V}" = "Linux" ]; then
-    _DB_V=$(mysql -V 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | awk '{ print $1}' \
-      | cut -d"-" -f1 \
-      | awk '{ print $1}' \
-      | sed "s/[\,']//g" 2>&1)
-  fi
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
   _MD_V=$(mydumper --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f6 \
