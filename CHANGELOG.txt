@@ -1,4 +1,256 @@
 ###
+### Stable BOA-5.9.5 PRO/LTS - SECURITY AUDIT EDITION
+### Date: Fri 05 Jun 2026 23:33:00 CEST in Warsaw
+### Enjoy Hardened Foundations & Excalibur Readiness
+### 169 commits since BOA-5.9.3
+###
+
+@=> !!! ACTION REQUIRED (self-hosted systems): Linux Kernel Security Update
+
+  This release ships with a new Linux kernel that addresses a kernel-level
+  security vulnerability. A reboot is required to activate the new kernel.
+
+  There is NO critical Drupal core release in this cycle.
+
+  For all self-hosted BOA systems with root access, we strongly recommend
+  enabling unattended weekly automation so that future kernel and system
+  security updates are applied -- and activated -- without manual action.
+
+  Add the following to /root/.barracuda.cnf:
+
+    _SKYNET_MODE=ON          # enable weekly self-upgrade automation
+    _AUTO_UP_WEEKLY=7        # day of week (1-7) for weekly system upgrade
+    _AUTO_UP_MONTH=2         # month (1-12) for one-time full upgrade date
+    _AUTO_UP_DAY=29          # day (1-31) for one-time full upgrade date
+    _AUTO_VER=lts            # BOA version to track (lts by default)
+
+  All three _AUTO_UP_* variables must be defined to enable auto-upgrade.
+  Weekly runs perform only "barracuda up-lts system"; the month/day date
+  triggers a full Barracuda + Octopus upgrade. See the full reference at:
+    https://github.com/omega8cc/boa/blob/5.x-lts/docs/SELFUPGRADE.md
+
+  Then enable automatic reboot when a new kernel is installed:
+
+    touch /root/.allow.auto.reboot.cnf
+
+  Together these ensure your servers stay patched and reboot into the latest
+  kernel automatically. Customers on a hosted and remotely managed plans have
+  this handled for them by our team.
+
+@=> Security Audit & Hardened Foundations Edition
+
+  BOA-5.9.5 PRO/LTS is the result of a full security audit across the entire BOA
+  and Ægir/Provision codebase, alongside the Devuan Daedalus to Excalibur OS
+  upgrade path, a substantial cache-layer (Valkey/APCu) overhaul, and complete
+  PHP 8.5 compatibility in the BOA Drush fork. 169 commits across six
+  repositories went into this release.
+
+  As always, this entry highlights only the most significant changes.
+  For the full picture please refer to the commit history on GitHub.
+
+@=> Security Audit -- Hardening Across All Repositories
+
+    * Credential exposure: hide plaintext SQL passwords from /proc
+      All MySQL/Percona invocations now use --defaults-extra-file or
+      --defaults-file=/root/.my.cnf instead of passing the password on the
+      command line, where it was briefly visible in the process list to any
+      local user. Legacy _SQL_PSWD reads have been removed throughout, and
+      the xmass migration tool no longer exposes the SQL root password.
+
+    * Privilege escalation: block tar-symlink to root via sudo helpers
+      A path existed where NOPASSWD-sudo tar helpers could be coaxed into
+      following a symlink to write into root-owned locations. This has been
+      closed.
+
+    * Shell injection: HTTPS mirrors, certificate validation, identifier
+      allowlists
+      Component downloads now default to HTTPS with certificate validation
+      (closing an HTTP-mirror MITM vector), and the mysql_cleanup path uses
+      a strict SQL-identifier allowlist. New helpers _is_safe_ident,
+      _validate_safe_dir, _validate_path_prefix, and _chmod_safe enforce safe
+      values before they reach the shell.
+
+    * Variable handling: close mybackup queue-file injection
+      The mybackup queue-file path (.ftp -> sysuser) could be manipulated to
+      inject unintended values; this is now validated. lock.inc has been
+      rewritten to use brace-expansion auto-fd allocation instead of eval.
+
+    * Process visibility: _check_proc_hidepid
+      /proc is now mounted with hidepid so that one Octopus user cannot inspect
+      the process list, environment, or command lines of another user or of
+      root-owned processes.
+
+    * Log parsing: tighten UA and IP validation in scan_nginx.sh
+      The IDS log scanner now strips non-printable characters from user-agent
+      strings and collects only valid IPv4 addresses from its IP lists,
+      preventing malformed log lines from being used to inject CSF entries.
+
+    * Permissions: stricter defaults
+      The /opt/tmp scratch root now uses sticky 1777 rather than a recursive
+      777, the daily.sh chown -L symlink-following path has been closed, and
+      default file/directory permissions have been tightened across the board.
+
+    * Config-template hardening (PHP / Nginx / MySQL / SSH / sysctl)
+      PHP: session.use_strict_mode = 1, expose_php = Off, local_infile = OFF.
+      sysctl.conf hardening extended. The insecure wget shell alias removed.
+
+    * Provision, hosting_civicrm, hosting_git, hosting_tasks_extra:
+      Fixes from the aegir-shell-injection-audit applied to all Ægir backend
+      and frontend modules, closing the same class of HTTP basic-auth password
+      and special-character shell-injection issues in drush_shell_exec() paths.
+
+    * Drush (8-boa-micro): block evil *.drush.inc auto-loading
+      A path-based extension filter (new includes/boa_extension_filter.inc)
+      now blocks Drush from auto-loading *.drush.inc command files located
+      under tenant-writable paths (/static/, /distro/, /platforms/),
+      preventing a code-execution vector via uploaded files.
+
+      IMPORTANT -- CiviCRM exception (action required for CiviCRM sites):
+      CiviCRM legitimately ships its own Drush command files
+      (civicrm.drush.inc, cv.drush.inc, civicrm_drush.drush.inc) inside the
+      site tree, which the new filter would otherwise block. Because these
+      are needed for Aegir BACKEND TASKS (verify, migrate, clone, etc.) to
+      complete on a CiviCRM site, they are allowlisted -- but only as an
+      explicit, per-Octopus-user opt-in. To enable the exception for an
+      Octopus user, create the control file:
+
+        /data/conf/<octopus-user>_civicrm.txt
+
+      (The user is derived from the backend task's $HOME under /data/disk/.)
+      When this file exists, the three CiviCRM command-file basenames above
+      are loaded during backend tasks; otherwise they remain blocked.
+
+      NOTE: This affects ONLY the Drush command-file loading performed during
+      Aegir backend tasks. It does NOT change how CiviCRM sites run under
+      PHP-FPM -- normal web requests do not go through Drush and are entirely
+      unaffected. A CiviCRM site will keep serving traffic normally with or
+      without the control file; the file is only required for its Aegir
+      backend tasks to load CiviCRM's own Drush commands.
+
+@=> New Features
+
+    * Add xmass full-server migration tool; rename xboa to xoct
+      A new xmass tool performs full-server migrations (all instances and
+      sites) in one operation. The former xboa per-account tool has been
+      renamed to xoct for clarity (Octopus-scoped), and xboa has been removed.
+
+    * _fpm_apcu_reload_sentinel
+      A new sentinel mechanism coordinates APCu reloads with PHP-FPM so that
+      opcode and user caches are flushed cleanly on backend recovery without a
+      thundering-herd of simultaneous flushers (a single APCu flusher is now
+      elected on recovery).
+
+    * Add High-RAM and Very high-RAM tiers in _tune_memory_limits
+      Memory tuning now scales correctly on large servers, with two new tiers
+      above the previous ceiling for high-memory bare-metal hosts.
+
+    * _check_sql_running
+      A new guard verifies the database server is actually running before
+      attempting configuration updates during upgrades.
+
+    * jetty9 init template
+      A dedicated jetty9 sysvinit template replaces the previous generic
+      handling for the Solr/Jetty service.
+
+@=> Improvements
+
+    * Cache layer (Valkey / Redis / APCu) overhaul:
+      - Valkey 9.1.0
+      - Restore socket mode for the Valkey/Redis listen-mode rewriter
+      - Resolve the redis module directory under o_contrib_eleven on Drupal 11
+      - Unify cache ini settings under the redis_ namespace; gate debug logging
+      - Use volatile-lfu eviction policy; correct a databases off-by-one
+      - Harden the Valkey probe, correct anonymous-user detection, add
+        observability
+      - Scope Drupal 7-only redis settings; lower compression level
+      - Use apc.serializer=igbinary; change apc.ttl from 0 to 3600
+      - Sync _USE_APC=${_USE_FPM}
+
+    * Devuan Daedalus -> Excalibur OS upgrade path:
+      - Refuse upgrade to Excalibur if an older Percona version is in use
+      - Rename /root/.top-daedalus.cnf to the Excalibur namespace on upgrade
+      - Use _logExc for the Excalibur log namespace
+      - Upgrade to ICU 76.1 by default on supported OS (ICU 76 supports
+        PHP 8.1+ only; the version check runs for PHP newer than 7.3)
+      - Remove the no-longer-needed resolvconf and clean up /lib/resolvconf
+      - Documented NOTE on the expected brief PHP downtime during the upgrade
+
+    * Percona / MySQL:
+      - Reset logging directives before enabling them on a Percona upgrade
+      - Fix logging for Percona 8.0
+      - Modernize MySQL version checks
+      - Set _myCnfUpdate=YES when _SQL_UPGRADE=YES
+      - Run _sql_conf_update before _tune_sql_memory_limits as well
+      - Remove the legacy _run_xtrabackup_cleanup
+      - Provision: Percona 8.4 compatibility for revoke(), generate_dump(),
+        and PDO connect; guard PDO::MYSQL_ATTR_GET_SERVER_PUBLIC_KEY with a
+        defined() check; skip REVOKE/DROP silently when the user does not exist
+
+    * Provision: cap bootstrap at CONFIGURATION for Drupal 8+ in deploy,
+      import, install, and verify tasks (the F2 cap was reverted where D8-D11
+      post-processing genuinely needs FULL bootstrap)
+
+    * Provision: require a facet param in $block_search_root_referer to avoid
+      a false positive on legitimate homepage search (follow-up to the
+      search-amplification protection added in 5.9.3)
+
+    * Drush (8-boa-micro) PHP 8.5 compatibility:
+      - Make implicitly-nullable params explicitly nullable
+      - Drop type hints instead of using ?nullable syntax (PHP 5.6-8.5 range)
+      - Use the canonical (int) cast instead of (integer)
+      - PHP 8.x backstop: mask E_DEPRECATED at startup to prevent fatal aborts
+      - drush_shutdown now reports only fatal-class errors as the
+        abnormal-termination cause
+
+    * IDS: never ban IPs with a recent successful login or a CSF allow/ignore
+      entry (extends the login-aware logic from 5.9.3 to cover CSF allow lists)
+
+    * Convert sqlcheck and checksql to Bash (continuing the Perl-to-Bash IDS
+      migration)
+
+    * New Relic APT key rotation handled automatically (NEWRELIC_APT_2DAD550E
+      public key, refreshed newrelic.gpg, dialog-free --dearmor import,
+      re-install triggered when the key changes)
+
+    * hosting_tasks_extra: hide legacy tasks; sync with BOA
+    * Use _enable_master_cron by default
+    * Improve apt-fast to v1.5; modernize _CURL_TEST
+    * Always install pciutils (lspci) for hardware reporting
+    * Improve upgrademail.txt template; correct files/llms.txt path
+
+@=> Changes and Upgrades
+
+    * Composer 2.10.1
+    * Drush 8.5.2 classic
+    * ICU 76.1
+    * ionCube 15.5.0 (up to PHP 8.5)
+    * Nginx 1.31.1
+    * PHP 8.4.22
+    * PHP 8.5.7
+    * Pure-FTPd 1.0.54
+    * screenfetch 3.9.9
+    * Unbound 1.25.1
+    * Valkey 9.1.0
+    * zlib 1.3.2
+
+@=> Important Fixes
+
+    * Fix SSH TCP forwarding regression breaking Sequel remote SQL access
+      A prior SSH hardening change set AllowTcpForwarding to no, which broke
+      remote SQL tunneling (e.g. Sequel Ace/Pro). Local TCP forwarding has been
+      restored so tunneled database access works again.
+
+    * Fix New Relic reinstall bug and key check
+      A bug caused New Relic to be reinstalled unnecessarily on every run; the
+      _newrelic_key_check now correctly detects an unchanged key and only
+      re-installs when the APT signing key actually rotates.
+
+    * Fix exit typo in the nginx.sh monitor check
+    * Correct stale PID-file cleanup logic and drop the -rf flag on rm
+    * Fix syntax in the xmass migration tool
+
+
+###
 ### Stable BOA-5.9.3 PRO/LTS - SECURITY EDITION
 ### Date: Mon 18 May 2026 22:28:46 CEST in Warsaw
 ### Enjoy Active Threat Response & Deep Hardening
