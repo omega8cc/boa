@@ -1255,12 +1255,12 @@ case "${_cmd}" in
   ;;
   *)
     echo ""
-    echo "Usage: xmass pre-mig <source-fqdn>                   (run on BOTH source and target)"
+    echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
     echo "Usage: xmass init    <target-ip> [--permanent-proxy]  (run on source)"
-    echo "Usage: xmass sync    <target-ip>                       (run on source, repeat)"
-    echo "Usage: xmass status  [target-ip]                       (run on source)"
-    echo "Usage: xmass cutover <target-ip> [--permanent-proxy]   (run on source)"
-    echo "Usage: xmass post-mig                                  (run on target after DNS)"
+    echo "Usage: xmass sync    <target-ip>                      (run on source, repeat)"
+    echo "Usage: xmass status  [target-ip]                      (run on source)"
+    echo "Usage: xmass cutover <target-ip> [--permanent-proxy]  (run on source)"
+    echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo ""
     echo "Notes:"
     echo "  - Requires identical Percona MySQL versions on both servers."
