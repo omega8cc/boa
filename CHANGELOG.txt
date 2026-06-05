@@ -227,6 +227,7 @@
     * Nginx 1.31.1
     * PHP 8.4.22
     * PHP 8.5.7
+    * PHP APCu 5.1.28
     * Pure-FTPd 1.0.54
     * screenfetch 3.9.9
     * Unbound 1.25.1
