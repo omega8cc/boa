@@ -139,12 +139,12 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=pro
-export _xSrl=593proT05
+export _tRee=dev
+export _xSrl=595devT01
 
 _AEGIR_VERSION="${_tRee}"
 _BRANCH_BOA="5.x-${_tRee}"
-_X_VERSION="BOA-5.9.3-${_tRee}"
+_X_VERSION="BOA-5.9.5-${_tRee}"
 _MYSQLTUNER_VRN=1.9.4
 
 _NOW=$(date +%y%m%d-%H%M%S)
