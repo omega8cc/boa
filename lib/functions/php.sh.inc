@@ -1028,32 +1028,19 @@ _install_php_extensions() {
         done
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
-      ###
-      ### Per-version PHP toolchain prefix (compact form, e.g. /opt/php85).
-      ###
-      _PHP_PFX="/opt/php${_T_PHP_VRN}"
-      if [ -x "${_PHP_PFX}/bin/phpize" ]; then
-        ###
-        ### Fresh tree from our mirror on every call so cross-version
-        ### build artefacts cannot leak between PHP builds.
-        ###
-        cd /var/opt
-        rm -rf php-geos*
-        _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.gz"
-        cd /var/opt/php-geos
-        ###
-        ### Standard PECL-style per-version build. phpize sets the include
-        ### paths and extension_dir for this exact PHP, so no path rewriting
-        ### is needed; the binding links against the system GEOS C API.
-        ###
-        _mrun "${_PHP_PFX}/bin/phpize"
-        _mrun "bash ./configure --with-php-config=${_PHP_PFX}/bin/php-config"
-        _mrun "make -j $(nproc) --quiet"
-        _mrun "make --quiet install"
-        ldconfig 2> /dev/null
-        touch "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log"
+      cd /var/opt
+      rm -rf php-geos*
+      _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.gz"
+      cd /var/opt/php-geos
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig 2> /dev/null
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ]; then
+        _msg "WARN: Installing Geos for PHP ${_T_PHP_VRN} failed!"
       else
-        _msg "WARN: ${_PHP_PFX}/bin/phpize not found; skipping php-geos for PHP ${_T_PHP_VRN}"
+        touch ${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log
       fi
     fi
   fi
@@ -1477,32 +1464,19 @@ _php_extensions_update() {
         done
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
-      ###
-      ### Per-version PHP toolchain prefix (compact form, e.g. /opt/php85).
-      ###
-      _PHP_PFX="/opt/php${_T_PHP_VRN}"
-      if [ -x "${_PHP_PFX}/bin/phpize" ]; then
-        ###
-        ### Fresh tree from our mirror on every call so cross-version
-        ### build artefacts cannot leak between PHP builds.
-        ###
-        cd /var/opt
-        rm -rf php-geos*
-        _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.gz"
-        cd /var/opt/php-geos
-        ###
-        ### Standard PECL-style per-version build. phpize sets the include
-        ### paths and extension_dir for this exact PHP, so no path rewriting
-        ### is needed; the binding links against the system GEOS C API.
-        ###
-        _mrun "${_PHP_PFX}/bin/phpize"
-        _mrun "bash ./configure --with-php-config=${_PHP_PFX}/bin/php-config"
-        _mrun "make -j $(nproc) --quiet"
-        _mrun "make --quiet install"
-        ldconfig 2> /dev/null
-        touch "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log"
+      cd /var/opt
+      rm -rf php-geos*
+      _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.gz"
+      cd /var/opt/php-geos
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig 2> /dev/null
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ]; then
+        _msg "WARN: Installing Geos for PHP ${_T_PHP_VRN} failed!"
       else
-        _msg "WARN: ${_PHP_PFX}/bin/phpize not found; skipping php-geos for PHP ${_T_PHP_VRN}"
+        touch ${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log
       fi
     fi
   fi
