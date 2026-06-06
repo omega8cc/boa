@@ -2349,7 +2349,6 @@ _barracuda_cnf() {
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${_barCnf}
     echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${_barCnf}
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${_barCnf}
-    echo "_PHP_GEOS=${_PHP_GEOS}"                             >> ${_barCnf}
     echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${_barCnf}
     echo "_PHP_MONGODB=${_PHP_MONGODB}"                       >> ${_barCnf}
     echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\""       >> ${_barCnf}
@@ -2723,11 +2722,6 @@ _barracuda_cnf() {
     _PHP_IONCUBE_TEST=$(grep _PHP_IONCUBE ${_barCnf} 2>&1)
     if [[ ! "${_PHP_IONCUBE_TEST}" =~ "_PHP_IONCUBE" ]]; then
       echo "_PHP_IONCUBE=${_PHP_IONCUBE}" >> ${_barCnf}
-    fi
-
-    _PHP_GEOS_TEST=$(grep _PHP_GEOS ${_barCnf} 2>&1)
-    if [[ ! "${_PHP_GEOS_TEST}" =~ "_PHP_GEOS" ]]; then
-      echo "_PHP_GEOS=${_PHP_GEOS}" >> ${_barCnf}
     fi
 
     _PHP_MONGODB_TEST=$(grep _PHP_MONGODB ${_barCnf} 2>&1)
