@@ -75,7 +75,6 @@ _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
 _PHP_FPM_VERSION=8.4 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
-_PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
 _PHP_MULTI_INSTALL="8.3 7.4" #-- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6

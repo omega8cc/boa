@@ -453,16 +453,14 @@ _fix_php_ini_geos_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_geos_all"
   fi
-  if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _PHP_G="56 70 71 72 73 74 80 81 82 83 84 85"
-    for e in ${_PHP_G}; do
-      [ -e ${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${e}.log ] || continue
-      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-      _fix_php_ini_geos ${e}
-      _THIS_FILE=/opt/php${e}/lib/php.ini
-      _fix_php_ini_geos ${e}
-    done
-  fi
+  _PHP_G="70 71 72 73 74 80 81 82 83 84 85"
+  for e in ${_PHP_G}; do
+    [ -e ${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${e}.log ] || continue
+    _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+    _fix_php_ini_geos ${e}
+    _THIS_FILE=/opt/php${e}/lib/php.ini
+    _fix_php_ini_geos ${e}
+  done
 }
 
 #
@@ -1012,7 +1010,7 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
+  if [ "$1" != 56 ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
       || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
@@ -1448,7 +1446,7 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
+  if [ "$1" != 56 ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
       || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
