@@ -156,6 +156,7 @@
 
     * Cache layer (Valkey / Redis / APCu) overhaul:
       - Valkey 9.1.0
+      - PHP APCu 5.1.28
       - Restore socket mode for the Valkey/Redis listen-mode rewriter
       - Resolve the redis module directory under o_contrib_eleven on Drupal 11
       - Unify cache ini settings under the redis_ namespace; gate debug logging
