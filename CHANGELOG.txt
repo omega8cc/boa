@@ -221,7 +221,6 @@
 
 @=> Changes and Upgrades
 
-    * Composer 2.10.1
     * Drush 8.5.2 classic
     * ICU 76.1
     * ionCube 15.5.0 (up to PHP 8.5)
