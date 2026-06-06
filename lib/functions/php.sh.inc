@@ -454,8 +454,9 @@ _fix_php_ini_geos_all() {
     _msg "PROC: _fix_php_ini_geos_all"
   fi
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _PHP_V="56"
+    _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
     for e in ${_PHP_V}; do
+      [ -e ${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${e}.log ] || continue
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       _fix_php_ini_geos ${e}
       _THIS_FILE=/opt/php${e}/lib/php.ini
@@ -1012,34 +1013,48 @@ _install_php_extensions() {
   fi
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    if [ "$1" = "56" ]; then
-      _msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
+    _GEOS_BLD_LOG="${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log"
+    if [ ! -e "${_GEOS_BLD_LOG}" ]; then
+      _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
+      ###
+      ### libgeos-dev is the only system dependency; install once per series.
+      ###
       if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
         _apt_clean_update
-        for _PKG in libgeos-dev libgeos-c1; do
+        for _PKG in libgeos-dev; do
           if ! _pkg_installed "${_PKG}"; then
             _mrun "${_INSTAPP} ${_PKG}"
           fi
         done
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
-      cd /var/opt
-      rm -rf geos*
-      _get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
-      cd geos-${_GEOS_VRN}
-      _PHP_V="56"
-      for e in ${_PHP_V}; do
-        if [ "$1" = "${e}" ]; then
-          find . -type f -print0 \
-            | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g' &> /dev/null
-          wait
-        fi
-      done
-      _mrun "bash ./configure --enable-php"
-      _mrun "make -j $(nproc) --quiet"
-      _mrun "make --quiet install"
-      ldconfig 2> /dev/null
-      touch ${_pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
+      ###
+      ### Per-version PHP toolchain prefix (compact form, e.g. /opt/php85).
+      ###
+      _PHP_PFX="/opt/php${_T_PHP_VRN}"
+      if [ -x "${_PHP_PFX}/bin/phpize" ]; then
+        ###
+        ### Fresh tree from our mirror on every call so cross-version
+        ### build artefacts cannot leak between PHP builds.
+        ###
+        cd /var/opt
+        rm -rf php-geos*
+        _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.bz2"
+        cd php-geos-${_PHP_GEOS_VRN}
+        ###
+        ### Standard PECL-style per-version build. phpize sets the include
+        ### paths and extension_dir for this exact PHP, so no path rewriting
+        ### is needed; the binding links against the system GEOS C API.
+        ###
+        _mrun "${_PHP_PFX}/bin/phpize"
+        _mrun "bash ./configure --with-php-config=${_PHP_PFX}/bin/php-config"
+        _mrun "make -j $(nproc) --quiet"
+        _mrun "make --quiet install"
+        ldconfig 2> /dev/null
+        touch "${_GEOS_BLD_LOG}"
+      else
+        _msg "WARN: ${_PHP_PFX}/bin/phpize not found; skipping php-geos for PHP ${_T_PHP_VRN}"
+      fi
     fi
   fi
   ###--------------------###
@@ -1446,36 +1461,49 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" = "56" ] \
-    && [ ! -e "${_pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
-    if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-      _msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
+  if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
+    _GEOS_BLD_LOG="${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log"
+    if [ ! -e "${_GEOS_BLD_LOG}" ]; then
+      _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
+      ###
+      ### libgeos-dev is the only system dependency; install once per series.
+      ###
       if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
         _apt_clean_update
-        for _PKG in libgeos-dev libgeos-c1; do
+        for _PKG in libgeos-dev; do
           if ! _pkg_installed "${_PKG}"; then
             _mrun "${_INSTAPP} ${_PKG}"
           fi
         done
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
-      cd /var/opt
-      rm -rf geos*
-      _get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
-      cd geos-${_GEOS_VRN}
-      _PHP_V="56"
-      for e in ${_PHP_V}; do
-        if [ "$1" = "${e}" ]; then
-          find . -type f -print0 \
-            | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g' &> /dev/null
-          wait
-        fi
-      done
-      _mrun "bash ./configure --enable-php"
-      _mrun "make -j $(nproc) --quiet"
-      _mrun "make --quiet install"
-      ldconfig 2> /dev/null
-      touch ${_pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
+      ###
+      ### Per-version PHP toolchain prefix (compact form, e.g. /opt/php85).
+      ###
+      _PHP_PFX="/opt/php${_T_PHP_VRN}"
+      if [ -x "${_PHP_PFX}/bin/phpize" ]; then
+        ###
+        ### Fresh tree from our mirror on every call so cross-version
+        ### build artefacts cannot leak between PHP builds.
+        ###
+        cd /var/opt
+        rm -rf php-geos*
+        _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.bz2"
+        cd php-geos-${_PHP_GEOS_VRN}
+        ###
+        ### Standard PECL-style per-version build. phpize sets the include
+        ### paths and extension_dir for this exact PHP, so no path rewriting
+        ### is needed; the binding links against the system GEOS C API.
+        ###
+        _mrun "${_PHP_PFX}/bin/phpize"
+        _mrun "bash ./configure --with-php-config=${_PHP_PFX}/bin/php-config"
+        _mrun "make -j $(nproc) --quiet"
+        _mrun "make --quiet install"
+        ldconfig 2> /dev/null
+        touch "${_GEOS_BLD_LOG}"
+      else
+        _msg "WARN: ${_PHP_PFX}/bin/phpize not found; skipping php-geos for PHP ${_T_PHP_VRN}"
+      fi
     fi
   fi
   ###--------------------###
