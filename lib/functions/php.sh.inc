@@ -453,15 +453,13 @@ _fix_php_ini_geos_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_geos_all"
   fi
-  if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _PHP_V="56"
-    for e in ${_PHP_V}; do
-      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-      _fix_php_ini_geos ${e}
-      _THIS_FILE=/opt/php${e}/lib/php.ini
-      _fix_php_ini_geos ${e}
-    done
-  fi
+  _PHP_G="70 71 72 73 74 80 81 82 83 84 85"
+  for e in ${_PHP_G}; do
+    _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+    _fix_php_ini_geos ${e}
+    _THIS_FILE=/opt/php${e}/lib/php.ini
+    _fix_php_ini_geos ${e}
+  done
 }
 
 #
@@ -1011,12 +1009,16 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    if [ "$1" = "56" ]; then
-      _msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
+  if [ "$1" != 56 ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
+      || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
+      _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
+      ###
+      ### libgeos-dev is the only system dependency; install once per series.
+      ###
       if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
         _apt_clean_update
-        for _PKG in libgeos-dev libgeos-c1; do
+        for _PKG in libgeos-dev; do
           if ! _pkg_installed "${_PKG}"; then
             _mrun "${_INSTAPP} ${_PKG}"
           fi
@@ -1024,22 +1026,19 @@ _install_php_extensions() {
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
       cd /var/opt
-      rm -rf geos*
-      _get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
-      cd geos-${_GEOS_VRN}
-      _PHP_V="56"
-      for e in ${_PHP_V}; do
-        if [ "$1" = "${e}" ]; then
-          find . -type f -print0 \
-            | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g' &> /dev/null
-          wait
-        fi
-      done
-      _mrun "bash ./configure --enable-php"
+      rm -rf php-geos*
+      _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.gz"
+      cd /var/opt/php-geos
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
-      touch ${_pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ]; then
+        _msg "WARN: Installing Geos for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -1446,13 +1445,16 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" = "56" ] \
-    && [ ! -e "${_pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
-    if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-      _msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
+  if [ "$1" != 56 ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
+      || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
+      _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
+      ###
+      ### libgeos-dev is the only system dependency; install once per series.
+      ###
       if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
         _apt_clean_update
-        for _PKG in libgeos-dev libgeos-c1; do
+        for _PKG in libgeos-dev; do
           if ! _pkg_installed "${_PKG}"; then
             _mrun "${_INSTAPP} ${_PKG}"
           fi
@@ -1460,22 +1462,19 @@ _php_extensions_update() {
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
       cd /var/opt
-      rm -rf geos*
-      _get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
-      cd geos-${_GEOS_VRN}
-      _PHP_V="56"
-      for e in ${_PHP_V}; do
-        if [ "$1" = "${e}" ]; then
-          find . -type f -print0 \
-            | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g' &> /dev/null
-          wait
-        fi
-      done
-      _mrun "bash ./configure --enable-php"
+      rm -rf php-geos*
+      _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.gz"
+      cd /var/opt/php-geos
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       ldconfig 2> /dev/null
-      touch ${_pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ]; then
+        _msg "WARN: Installing Geos for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
