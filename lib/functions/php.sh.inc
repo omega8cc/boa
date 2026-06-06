@@ -1013,8 +1013,8 @@ _install_php_extensions() {
   fi
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _GEOS_BLD_LOG="${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log"
-    if [ ! -e "${_GEOS_BLD_LOG}" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
+      || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       ###
       ### libgeos-dev is the only system dependency; install once per series.
@@ -1039,8 +1039,8 @@ _install_php_extensions() {
         ###
         cd /var/opt
         rm -rf php-geos*
-        _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.bz2"
-        cd php-geos-${_PHP_GEOS_VRN}
+        _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.gz"
+        cd /var/opt/php-geos
         ###
         ### Standard PECL-style per-version build. phpize sets the include
         ### paths and extension_dir for this exact PHP, so no path rewriting
@@ -1051,7 +1051,7 @@ _install_php_extensions() {
         _mrun "make -j $(nproc) --quiet"
         _mrun "make --quiet install"
         ldconfig 2> /dev/null
-        touch "${_GEOS_BLD_LOG}"
+        touch "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log"
       else
         _msg "WARN: ${_PHP_PFX}/bin/phpize not found; skipping php-geos for PHP ${_T_PHP_VRN}"
       fi
@@ -1462,8 +1462,8 @@ _php_extensions_update() {
   fi
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _GEOS_BLD_LOG="${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log"
-    if [ ! -e "${_GEOS_BLD_LOG}" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
+      || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       ###
       ### libgeos-dev is the only system dependency; install once per series.
@@ -1488,8 +1488,8 @@ _php_extensions_update() {
         ###
         cd /var/opt
         rm -rf php-geos*
-        _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.bz2"
-        cd php-geos-${_PHP_GEOS_VRN}
+        _get_dev_src "php-geos-${_PHP_GEOS_VRN}.tar.gz"
+        cd /var/opt/php-geos
         ###
         ### Standard PECL-style per-version build. phpize sets the include
         ### paths and extension_dir for this exact PHP, so no path rewriting
@@ -1500,7 +1500,7 @@ _php_extensions_update() {
         _mrun "make -j $(nproc) --quiet"
         _mrun "make --quiet install"
         ldconfig 2> /dev/null
-        touch "${_GEOS_BLD_LOG}"
+        touch "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log"
       else
         _msg "WARN: ${_PHP_PFX}/bin/phpize not found; skipping php-geos for PHP ${_T_PHP_VRN}"
       fi
