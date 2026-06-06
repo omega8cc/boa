@@ -455,7 +455,6 @@ _fix_php_ini_geos_all() {
   fi
   _PHP_G="70 71 72 73 74 80 81 82 83 84 85"
   for e in ${_PHP_G}; do
-    [ -e ${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${e}.log ] || continue
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     _fix_php_ini_geos ${e}
     _THIS_FILE=/opt/php${e}/lib/php.ini
