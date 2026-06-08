@@ -799,6 +799,53 @@ _fix_on_upgrade() {
 }
 
 #
+# Map usable RAM to the PHP and SQL-buffer memory budget.
+# Pure function of ${_USE} (usable RAM in MB, already reduced by _RESERVED_RAM
+# and quartered in _tune_memory_limits), platform-independent: the same RAM
+# yields the same budget on every host family, and each tier roughly doubles.
+# The 16384 tier corresponds to roughly 85 GB of installed RAM. Sets the PHP
+# limits (_USE_PHP/_USE_OPC/_USE_CLI) and the matching Percona buffer sizes
+# (_QCE_SQL/_RND_SQL/_JBF_SQL); platform-specific caps are applied by the caller.
+_php_budget_for_ram() {
+  if [ "${_USE}" -ge 16384 ]; then
+    _USE_PHP=8192
+    _USE_OPC=8192
+    _USE_CLI=16384
+    _QCE_SQL=256M
+    _RND_SQL=32M
+    _JBF_SQL=16M
+  elif [ "${_USE}" -ge 8192 ]; then
+    _USE_PHP=4096
+    _USE_OPC=4096
+    _USE_CLI=8192
+    _QCE_SQL=128M
+    _RND_SQL=16M
+    _JBF_SQL=8M
+  elif [ "${_USE}" -ge 2048 ]; then
+    _USE_PHP=2048
+    _USE_OPC=2048
+    _USE_CLI=4096
+    _QCE_SQL=64M
+    _RND_SQL=8M
+    _JBF_SQL=4M
+  elif [ "${_USE}" -ge 512 ]; then
+    _USE_PHP=1024
+    _USE_OPC=1024
+    _USE_CLI=2048
+    _QCE_SQL=64M
+    _RND_SQL=8M
+    _JBF_SQL=4M
+  else
+    _USE_PHP="${_USE}"
+    _USE_OPC="${_USE}"
+    _USE_CLI="${_USE}"
+    _QCE_SQL=32M
+    _RND_SQL=1M
+    _JBF_SQL=1M
+  fi
+}
+
+#
 # Tune memory limits for PHP, Nginx and Percona.
 _tune_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -944,73 +991,29 @@ _tune_memory_limits() {
     _msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
     _msg "TUNE: _SRT_SQL is ${_SRT_SQL}"
   fi
-  if [ "${_USE}" -ge 512 ] && [ "${_USE}" -lt 2048 ]; then
-    _USE_PHP=1024
-    _USE_OPC=1024
-    _USE_CLI=2048
-    _QCE_SQL=64M
-    _RND_SQL=8M
-    _JBF_SQL=4M
-    if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGX_WRKS=${_CPU_MX}
-    else
-      _L_NGX_WRKS=${_NGINX_WORKERS}
-    fi
-  elif [ "${_USE}" -ge 2048 ]; then
-    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      # High-RAM tier: servers with ~40GB+ usable RAM (bare metal, dedicated).
-      # _USE_PHP=4096 yields _USE_FPM=2048 and _USE_APC=2048M.
-      # Previously the 2048 cap caused APCu saturation (>90%) on large servers
-      # even after the manual 256M→512M bump, because the formula did not scale
-      # beyond the 2048 tier regardless of available RAM.
-      #
-      # Very high-RAM tier: servers with ~85GB+ usable RAM.
-      # _USE_PHP=8192 yields _USE_FPM=4096 and _USE_APC=4096M for large
-      # multi-tenant bare metal nodes with many concurrent PHP workers.
-      if [ "${_USE}" -ge 16384 ]; then
-        _USE_PHP=8192
-        _USE_OPC=8192
-        _USE_CLI=16384
-        _QCE_SQL=256M
-        _RND_SQL=32M
-        _JBF_SQL=16M
-      elif [ "${_USE}" -ge 8192 ]; then
-        _USE_PHP=4096
-        _USE_OPC=4096
-        _USE_CLI=8192
-        _QCE_SQL=128M
-        _RND_SQL=16M
-        _JBF_SQL=8M
-      else
-        _USE_PHP=2048
-        _USE_OPC=2048
-        _USE_CLI=4096
-        _QCE_SQL=64M
-        _RND_SQL=8M
-        _JBF_SQL=4M
-      fi
-      if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGX_WRKS=${_CPU_MX}
-      else
-        _L_NGX_WRKS=${_NGINX_WORKERS}
-      fi
-    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
+  _php_budget_for_ram
+  #
+  # Platform adjustments. _VMFAMILY governs nginx worker count, the legacy
+  # OpenVZ memory cap, the cluster max-connections floor, and the TG/bare-metal
+  # PCRE JIT stack widening -- it must NOT change the PHP memory budget, which
+  # scales purely with usable RAM in _php_budget_for_ram above. Decoupling the
+  # two is what lets high-RAM VS/TG nodes scale past _USE_PHP=2048; XEN, AWS and
+  # VZ outputs are unchanged from the pre-refactor formula.
+  if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
+    _L_NGX_WRKS=${_CPU_MX}
+  else
+    _L_NGX_WRKS=${_NGINX_WORKERS}
+  fi
+  if [ "${_USE}" -ge 2048 ]; then
+    if [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=2048
-        _USE_OPC=2048
-        _USE_CLI=4096
-        _QCE_SQL=64M
-        _RND_SQL=8M
-        _JBF_SQL=4M
-        if [ "${_MXC_SQL}" -lt 10 ]; then
-          _MXC_SQL=10
-        fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_TG}
-        else
-          _L_NGX_WRKS=${_NGINX_WORKERS}
+        fi
+        if [ "${_MXC_SQL}" -lt 10 ]; then
+          _MXC_SQL=10
         fi
         sed -i "s/64000/128000/g"  /opt/php85/etc/php85.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php84/etc/php84.ini &> /dev/null
@@ -1025,42 +1028,21 @@ _tune_memory_limits() {
         sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
       else
-        _USE_PHP=2048
-        _USE_OPC=2048
-        _USE_CLI=2048
-        _QCE_SQL=64M
-        _RND_SQL=2M
-        _JBF_SQL=2M
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_VS}
-        else
-          _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
       fi
-    else
+    elif [ "${_VMFAMILY}" != "XEN" ] && [ "${_VMFAMILY}" != "AWS" ]; then
+      # Legacy OpenVZ (and any unknown virtualisation): keep the PHP budget
+      # pinned low regardless of installed RAM. OpenVZ OOM killing is aggressive
+      # and this path is untested here, so the low ceiling is deliberate, not
+      # just preserved legacy behaviour. Do not raise it without OpenVZ testing.
       _USE_PHP=512
       _USE_OPC=512
       _USE_CLI=512
       _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
-      if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGX_WRKS=${_CPU_MX}
-      else
-        _L_NGX_WRKS=${_NGINX_WORKERS}
-      fi
-    fi
-  else
-    _USE_PHP="${_USE}"
-    _USE_OPC="${_USE}"
-    _USE_CLI="${_USE}"
-    _QCE_SQL=32M
-    _RND_SQL=1M
-    _JBF_SQL=1M
-    if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGX_WRKS=${_CPU_MX}
-    else
-      _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
   fi
   if [ "${_VMFAMILY}" = "VZ" ]; then
