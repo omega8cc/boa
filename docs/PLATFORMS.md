@@ -37,7 +37,6 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [OpenCulturas 2.5.4](https://drupal.org/project/openculturas) (10.5.8)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
 - [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
-- [Varbase 9.1.13](https://drupal.org/project/varbase) (10.6.1)
 
 ## Drupal 9
 
@@ -93,7 +92,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `DX6` — Drupal 10.6 prod/stage/dev
 - `FOS` — farmOS
 - `LGV` — LocalGov
-- `VB9` — Varbase 9
 
 ### Drupal 10.5
 

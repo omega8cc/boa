@@ -242,7 +242,6 @@
 # DX6 — Drupal 10.6 prod/stage/dev
 # FOS — farmOS
 # LGV — LocalGov
-# VB9 — Varbase 9
 
 ### Drupal 10.5
 #
