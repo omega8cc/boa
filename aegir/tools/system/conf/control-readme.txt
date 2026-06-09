@@ -226,6 +226,9 @@
 # DE3 — Drupal 11.3 prod/stage/dev
 # CK3 — Commerce v.3
 # CMS — Drupal CMS
+# FOS — farmOS
+# LGV — LocalGov
+# OCS — OpenCulturas
 # THR — Thunder
 # VBX — Varbase 10
 
@@ -240,13 +243,10 @@
 ### Drupal 10.6
 #
 # DX6 — Drupal 10.6 prod/stage/dev
-# FOS — farmOS
-# LGV — LocalGov
 
 ### Drupal 10.5
 #
 # DX5 — Drupal 10.5 prod/stage/dev
-# OCS — OpenCulturas
 
 ### Drupal 10.4
 #
