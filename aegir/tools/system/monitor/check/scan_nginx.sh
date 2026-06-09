@@ -367,6 +367,38 @@ _is_allowed_local() {
   return 1
 }
 
+# Return 0 if IPv4 $1 is whitelisted in csf.allow (exact host or CIDR).
+#
+# guest-water.sh maintains /etc/csf/csf.allow daily with every provider
+# range the firewall trusts: Cloudflare, Googlebot, Bingbot, Pingdom,
+# Imperva, Sucuri, Auth0, Site24x7, and local addresses. The monitor must
+# honour that single source of truth rather than maintain its own list.
+#
+# The loader (below) parses csf.allow once at startup into:
+#   _CSF_ALLOW_IPS          -- exact host  -> 1  (O(1) lookup)
+#   _CSF_ALLOW_CIDR_OCTET1  -- first octet -> 1  (cheap prescreen)
+#   _CIDR_NET / _CIDR_MASK / _CIDR_O1            (parallel indexed arrays)
+#
+# At call time: pure integer arithmetic, no subshells, no external processes.
+# Non-whitelisted-octet IPs cost one associative-array lookup and return 1
+# immediately; only IPs whose first octet matches a loaded CIDR run the loop.
+#
+# Honours the allow regardless of the iptables port scope of the csf.allow
+# entry: an s= record expresses "trusted source" and must gate the monitor's
+# block decision on every port, including 443.
+_is_whitelisted_ip() {
+  local _ip="$1" _a _b _c _d _ipi _k
+  [[ -n "${_CSF_ALLOW_IPS["${_ip}"]:-}" ]] && return 0
+  IFS=. read -r _a _b _c _d <<< "${_ip}"
+  [[ -z "${_CSF_ALLOW_CIDR_OCTET1["${_a}"]:-}" ]] && return 1
+  _ipi=$(( (_a<<24)+(_b<<16)+(_c<<8)+_d ))
+  for _k in "${!_CIDR_NET[@]}"; do
+    [[ "${_CIDR_O1[_k]}" == "${_a}" ]] || continue
+    (( (_ipi & _CIDR_MASK[_k]) == _CIDR_NET[_k] )) && return 0
+  done
+  return 1
+}
+
 # Function to check if an IP is logged in using associative array
 _is_logged_in() {
   local _IP="$1"
@@ -383,6 +415,16 @@ _is_logged_in() {
 _block_ip() {
   local _IP="$1"
   local _SILENT="${2:-}"
+  # Keystone safety net: never block any IP the firewall already whitelists
+  # (exact host or CIDR). guest-water.sh maintains the allow list daily;
+  # blocking one of its entries would drop an entire CDN PoP, monitoring
+  # network, or search-engine crawler and surface as origin 502/520 errors.
+  # This guard covers every call path to _block_ip, including bulk passes
+  # from _handle_ddos_blocking and _handle_path_flood_blocking.
+  if _is_whitelisted_ip "${_IP}"; then
+    _verbose_log "Whitelisted IP ${_IP} -- refusing to block" "_block_ip"
+    return
+  fi
   # Append to web.log if not already present (use in-memory cache to avoid grep each time)
   if [[ -z "${_BANNED_IPS["${_IP}"]}" ]]; then
     _verbose_log "${_IP} # [x${_sumar}] ${_TIMES}" "_block_ip"
@@ -514,8 +556,8 @@ _process_ip() {
       return
     fi
 
-    # Skip processing if IP is whitelisted in CSF allow list (cached in memory)
-    if [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+    # Skip processing if IP is whitelisted in CSF allow list (exact host or CIDR)
+    if _is_whitelisted_ip "${_IP}"; then
       return
     fi
 
@@ -648,7 +690,7 @@ _track_ua_ip() {
     return
   fi
   # Skip whitelisted IPs
-  if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+  if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || _is_whitelisted_ip "${_IP}"; then
     return
   fi
 
@@ -718,7 +760,7 @@ _handle_ddos_blocking() {
         echo "===[${_ip_reqs}req] DDoS IP ${_IP} already banned -- skipping ==="
         continue
       fi
-      if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+      if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || _is_whitelisted_ip "${_IP}"; then
         echo "===[${_ip_reqs}req] DDoS IP ${_IP} is whitelisted -- skipping ==="
         continue
       fi
@@ -775,7 +817,7 @@ _track_path_flood() {
     return
   fi
   # Skip whitelisted IPs
-  if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+  if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || _is_whitelisted_ip "${_IP}"; then
     return
   fi
 
@@ -860,7 +902,7 @@ _handle_path_flood_blocking() {
         echo "===[${_ip_reqs}req] Path-flood IP ${_IP} already banned -- skipping ==="
         continue
       fi
-      if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
+      if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || _is_whitelisted_ip "${_IP}"; then
         echo "===[${_ip_reqs}req] Path-flood IP ${_IP} is whitelisted -- skipping ==="
         continue
       fi
@@ -908,14 +950,51 @@ if [[ -e "${_LOCAL_IP_LIST}" ]]; then
   done < "${_LOCAL_IP_LIST}"
 fi
 
-# Load allowed IPs from CSF allow list (for port 80) into memory to avoid repeated grep operations
-declare -A _CSF_ALLOW_IPS
+# Load the CSF allow list into memory — the single source of truth for all
+# provider ranges, maintained daily by guest-water.sh (Cloudflare, Googlebot,
+# Bingbot, Pingdom, Imperva, Sucuri, Auth0, Site24x7, local addresses, ...).
+#
+# The previous loader only matched exact hosts (s=A.B.C.D), so every provider
+# whitelisted as a CIDR (Cloudflare, Googlebot, Bingbot, Imperva, Sucuri, ...)
+# was silently ignored: the regex captured the network address from s=A.B.C.D/N
+# and filed it as a host key that no real edge IP ever matched. Only Pingdom
+# (whitelisted as individual hosts) was actually protected.
+#
+# This loader separates exact hosts (O(1) assoc lookup) from CIDRs (precomputed
+# integer network+mask, bucketed by first octet so _is_whitelisted_ip can do a
+# fork-free containment test with a single array lookup as the common-case
+# early exit). Destination-only rules (DNS/DHCP use d=<ip>, not s=) are
+# excluded naturally since they contain no s= field.
+declare -A _CSF_ALLOW_IPS            # exact host -> 1
+declare -A _CSF_ALLOW_CIDR_OCTET1    # first octet -> 1  (cheap prescreen)
+_CIDR_NET=()                         # masked network as 32-bit int  (indexed)
+_CIDR_MASK=()                        # 32-bit subnet mask             (indexed)
+_CIDR_O1=()                          # first octet, parallel to above (indexed)
 _CSF_ALLOW_FILE="/etc/csf/csf.allow"
 if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
-  while IFS= read -r _line; do
-    if [[ "${_line}" =~ ^tcp\|in\|d=80\|s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\b ]]; then
-      _ip="${BASH_REMATCH[1]}"
-      _CSF_ALLOW_IPS["${_ip}"]=1
+  while IFS= read -r _aline; do
+    # Skip full-line comments
+    [[ "${_aline}" =~ ^[[:space:]]*# ]] && continue
+    # Match any s=A.B.C.D or s=A.B.C.D/N (port/direction-agnostic)
+    [[ "${_aline}" =~ s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(/([0-9]+))? ]] || continue
+    _addr="${BASH_REMATCH[1]}"
+    _bits="${BASH_REMATCH[3]}"
+    IFS=. read -r _a _b _c _d <<< "${_addr}"
+    # Skip malformed octets
+    (( _a<=255 && _b<=255 && _c<=255 && _d<=255 )) || continue
+    if [[ -z "${_bits}" || "${_bits}" == "32" ]]; then
+      # Bare host or explicit /32 — exact lookup is sufficient
+      _CSF_ALLOW_IPS["${_addr}"]=1
+    else
+      # CIDR — precompute masked network int and mask once at load time so
+      # _is_whitelisted_ip never needs subshells or external tools at runtime
+      (( _bits < 1 || _bits > 31 )) && continue
+      _ni=$(( (_a<<24)+(_b<<16)+(_c<<8)+_d ))
+      _mk=$(( (0xFFFFFFFF << (32 - _bits)) & 0xFFFFFFFF ))
+      _CIDR_NET+=( $(( _ni & _mk )) )
+      _CIDR_MASK+=( "${_mk}" )
+      _CIDR_O1+=( "${_a}" )
+      _CSF_ALLOW_CIDR_OCTET1["${_a}"]=1
     fi
   done < "${_CSF_ALLOW_FILE}"
 fi
