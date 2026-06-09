@@ -17,7 +17,6 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 11.2.10](https://drupal.org/project/drupal/releases/11.2.10)
 - [Drupal 11.3.3](https://drupal.org/project/drupal/releases/11.3.3)
 - [Drupal CMS 2.0.0](https://new.drupal.org/drupal-cms) (11.3.3)
-- [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.3.3)
 - [Thunder 8.3.1](https://drupal.org/project/thunder) (11.3.3)
 - [Varbase 10.1.0](https://drupal.org/project/varbase) (11.3.1)
 
@@ -78,7 +77,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `DE3` — Drupal 11.3 prod/stage/dev
 - `CK3` — Commerce v.3
 - `CMS` — Drupal CMS
-- `SCR` — Sector
 - `THR` — Thunder
 - `VBX` — Varbase 10
 

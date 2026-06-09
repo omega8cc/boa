@@ -226,7 +226,6 @@
 # DE3 — Drupal 11.3 prod/stage/dev
 # CK3 — Commerce v.3
 # CMS — Drupal CMS
-# SCR — Sector
 # THR — Thunder
 # VBX — Varbase 10
 
