@@ -99,7 +99,7 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 #
-_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _gCb="git clone --branch"
 _gitHub="https://github.com/omega8cc"

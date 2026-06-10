@@ -55,7 +55,7 @@ _TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-5.9.5-${_tRee}"
 #
 _barCnf="/root/.barracuda.cnf"
-_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
