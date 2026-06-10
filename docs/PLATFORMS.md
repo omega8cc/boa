@@ -12,14 +12,16 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 11
 
-- [Commerce 3.2.0](https://github.com/centarro/commerce-kickstart-project) (11.3.3)
-- [Drupal 11.1.9](https://drupal.org/project/drupal/releases/11.1.9)
-- [Drupal 11.2.10](https://drupal.org/project/drupal/releases/11.2.10)
-- [Drupal 11.3.3](https://drupal.org/project/drupal/releases/11.3.3)
-- [Drupal CMS 2.0.0](https://new.drupal.org/drupal-cms) (11.3.3)
-- [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.3.3)
-- [Thunder 8.3.1](https://drupal.org/project/thunder) (11.3.3)
-- [Varbase 10.1.0](https://drupal.org/project/varbase) (11.3.1)
+- [Commerce 3.3.6](https://github.com/centarro/commerce-kickstart-project) (11.3.11)
+- [Drupal 11.1.10](https://drupal.org/project/drupal/releases/11.1.10)
+- [Drupal 11.2.13](https://drupal.org/project/drupal/releases/11.2.13)
+- [Drupal 11.3.11](https://drupal.org/project/drupal/releases/11.3.11)
+- [Drupal CMS 2.1.3](https://new.drupal.org/drupal-cms) (11.3.11)
+- [farmOS 4.0.2](https://drupal.org/project/farm) (11.3.11)
+- [LocalGov 4.0.3](https://drupal.org/project/localgov) (11.3.11)
+- [OpenCulturas 3.0.1](https://drupal.org/project/openculturas) (11.3.11)
+- [Thunder 8.3.1](https://drupal.org/project/thunder) (11.3.11)
+- [Varbase 10.1.0](https://drupal.org/project/varbase) (11.3.11)
 
 ## Drupal 10
 
@@ -28,17 +30,13 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.1.8](https://drupal.org/project/drupal/releases/10.1.8)
 - [Drupal 10.2.12](https://drupal.org/project/drupal/releases/10.2.12)
 - [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
-- [Drupal 10.4.9](https://drupal.org/project/drupal/releases/10.4.9)
-- [Drupal 10.5.8](https://drupal.org/project/drupal/releases/10.5.8)
-- [Drupal 10.6.3](https://drupal.org/project/drupal/releases/10.6.3)
+- [Drupal 10.4.10](https://drupal.org/project/drupal/releases/10.4.10)
+- [Drupal 10.5.10](https://drupal.org/project/drupal/releases/10.5.10)
+- [Drupal 10.6.10](https://drupal.org/project/drupal/releases/10.6.10)
 - [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [farmOS 3.5.1](https://drupal.org/project/farm) (10.6.2)
-- [LocalGov 3.4.0](https://drupal.org/project/localgov) (10.6.3)
-- [OpenCulturas 2.5.4](https://drupal.org/project/openculturas) (10.5.8)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
 - [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
-- [Varbase 9.1.13](https://drupal.org/project/varbase) (10.6.1)
 
 ## Drupal 9
 
@@ -78,7 +76,9 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `DE3` — Drupal 11.3 prod/stage/dev
 - `CK3` — Commerce v.3
 - `CMS` — Drupal CMS
-- `SCR` — Sector
+- `FOS` — farmOS
+- `LGV` — LocalGov
+- `OCS` — OpenCulturas
 - `THR` — Thunder
 - `VBX` — Varbase 10
 
@@ -93,14 +93,10 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 10.6
 
 - `DX6` — Drupal 10.6 prod/stage/dev
-- `FOS` — farmOS
-- `LGV` — LocalGov
-- `VB9` — Varbase 9
 
 ### Drupal 10.5
 
 - `DX5` — Drupal 10.5 prod/stage/dev
-- `OCS` — OpenCulturas
 
 ### Drupal 10.4
 
