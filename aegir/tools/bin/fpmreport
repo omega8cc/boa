@@ -1,0 +1,442 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+#
+# fpmreport — report on the adaptive PHP-FPM tuning data (READ-ONLY).
+#
+# Aggregates the JSONL written by the fpm_tune monitor (every ~5 min under
+# /var/log/boa/fpm-tune) into per-version / per-pool analysis and findings:
+# pool starvation, opcache/APCu growth or oversize, file-cap proximity,
+# memory_limit-approach flags, idle versions with reclaim estimates. It writes
+# NO configuration and restarts NOTHING — findings are informational until the
+# adaptive apply pass lands.
+#
+# Nothing here is node-specific: hosts, PHP versions, users and pools are all
+# discovered from the records, so any version mix works, and JSONL pooled from
+# several hosts (records carry "host") reports per host. Cumulative counters
+# are aggregated as per-master_start series deltas (restart-safe), and the
+# monitor's own status/probe requests are subtracted before classifying a pool
+# as idle. POSIX awk + sort only.
+#
+# Usage:
+#   fpmreport                          # this node, all retained data
+#   fpmreport --days 7                 # window relative to the newest record
+#   fpmreport --data DIR|FILE... [--days N] [--json]   # incl. off-node corpora
+#   fpmreport --json                   # machine-readable findings (one per line)
+# Thresholds (env): _FPMT_IDLE_TOL_PCT=3 _FPMT_MEMLIMIT_PCT=80
+#                   _FPMT_FILECAP_PCT=90 _FPMT_SHRINK_PCT=40
+
+_DATA_DEFAULT="/var/log/boa/fpm-tune"
+_DAYS=0
+_JSON=0
+_FILES=()
+
+usage() {
+  printf '%s\n' "Usage: fpmreport [--data DIR|FILE...] [--days N] [--json]"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --data)
+      shift
+      while [[ $# -gt 0 && "$1" != --* ]]; do
+        if [[ -d "$1" ]]; then
+          for _f in "$1"/*.jsonl; do [[ -e "${_f}" ]] && _FILES+=("${_f}"); done
+        elif [[ -f "$1" ]]; then
+          _FILES+=("$1")
+        else
+          printf 'No such data path: %s\n' "$1" >&2; exit 2
+        fi
+        shift
+      done
+      ;;
+    --days)  shift; _DAYS="${1//[^0-9]/}"; shift ;;
+    --json)  _JSON=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'Unknown argument: %s\n' "$1" >&2; usage; exit 2 ;;
+  esac
+done
+
+if [[ ${#_FILES[@]} -eq 0 ]]; then
+  if [[ -d "${_DATA_DEFAULT}" ]]; then
+    for _f in "${_DATA_DEFAULT}"/*.jsonl; do [[ -e "${_f}" ]] && _FILES+=("${_f}"); done
+  fi
+fi
+if [[ ${#_FILES[@]} -eq 0 ]]; then
+  printf 'No JSONL data found (default %s; use --data).\n' "${_DATA_DEFAULT}" >&2
+  exit 1
+fi
+
+# Window cutoff relative to the newest record in the data (data-driven clock).
+_MAXTS=$(cat "${_FILES[@]}" 2>/dev/null | awk '
+  /^\{/ { p = index($0, "\"ts\":"); if (p) { v = substr($0, p + 5) + 0; if (v > m) m = v } }
+  END { print m + 0 }')
+_CUTOFF=0
+if [[ "${_DAYS}" -gt 0 && "${_MAXTS}" -gt 0 ]]; then
+  _CUTOFF=$(( _MAXTS - _DAYS * 86400 ))
+fi
+
+# ---------------------------------------------------------------- pass A ----
+# JSON record -> single pipe-separated line, unified sort layout:
+#   P|host|ver|pool|ts|mstart|acc|act|maxact|mcr|lq|mlq|slow|peak
+#   V|host|ver|-|ts|mstart|ppool|pok|php|mlb|ofn|oie|ores|oen|oused|ofree|ohit|
+#     ooom|ohash|oscr|okeys|omaxk|oconf|omaxf|afn|aen|aseg|aavail|aent|aexp|
+#     aconf|uss|kids
+# Missing numeric fields read as -1 (absent), so older sampler records stay
+# distinguishable from real zeros. Records without "scope" are v1.0 pool rows.
+_PASS_A='
+function gi(k,   p, s, n, c, out) {
+  p = index($0, "\"" k "\":")
+  if (p == 0) return -1
+  s = p + length(k) + 3
+  out = ""
+  for (n = s; n <= length($0); n++) {
+    c = substr($0, n, 1)
+    if (c < "0" || c > "9") break
+    out = out c
+  }
+  if (out == "") return -1
+  return out + 0
+}
+function gs(k,   p, s, v, e) {
+  p = index($0, "\"" k "\":\"")
+  if (p == 0) return ""
+  s = p + length(k) + 4
+  v = substr($0, s)
+  e = index(v, "\"")
+  if (e == 0) return ""
+  return substr(v, 1, e - 1)
+}
+/^\{/ {
+  ts = gi("ts")
+  if (cutoff > 0 && ts < cutoff) next
+  sc = gs("scope"); if (sc == "") sc = "pool"
+  host = gs("host"); if (host == "") host = "unknown"
+  if (sc == "pool") {
+    printf "P|%s|%d|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d\n", \
+      host, gi("version"), gs("pool"), ts, gi("master_start"), \
+      gi("accepted_conn"), gi("active"), gi("max_active"), \
+      gi("max_children_reached"), gi("listen_queue"), gi("max_listen_queue"), \
+      gi("slow_requests"), gi("peak_req_mem")
+  } else if (sc == "version") {
+    printf "V|%s|%d|-|%d|%d|%s|%d|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d\n", \
+      host, gi("version"), ts, gi("master_start"), gs("probe_pool"), \
+      gi("probe_ok"), gs("php"), gi("memory_limit_bytes"), \
+      gi("opcache_fn"), gi("opcache_ini_enable"), gi("opcache_restricted"), \
+      gi("opcache_enabled"), gi("opcache_used_bytes"), gi("opcache_free_bytes"), \
+      gi("opcache_hit_x100"), gi("opcache_oom_restarts"), gi("opcache_hash_restarts"), \
+      gi("opcache_cached_scripts"), gi("opcache_cached_keys"), gi("opcache_max_keys"), \
+      gi("opcache_conf_bytes"), gi("opcache_max_files"), \
+      gi("apcu_fn"), gi("apcu_enabled"), gi("apcu_seg_bytes"), gi("apcu_avail_bytes"), \
+      gi("apcu_entries"), gi("apcu_expunges"), gi("apcu_conf_bytes"), \
+      gi("avg_child_uss_kb"), gi("n_children")
+  }
+}'
+
+# ---------------------------------------------------------------- pass B ----
+_PASS_B='
+function mx(a, b) { return (a > b) ? a : b }
+function mb(x) { return sprintf("%.0f", x / 1048576) }
+# p95 over a space-separated numeric list (insertion sort; lists are small)
+function p95(list,   n, a, i, j, t, k) {
+  n = split(list, a, " ")
+  if (n == 0) return 0
+  for (i = 2; i <= n; i++) {
+    t = a[i]; j = i - 1
+    while (j > 0 && a[j] + 0 > t + 0) { a[j + 1] = a[j]; j-- }
+    a[j + 1] = t
+  }
+  k = int(0.95 * n); if (0.95 * n > k) k++
+  if (k < 1) k = 1
+  return a[k] + 0
+}
+function reg_host(h) {
+  if (!(h in hseen)) { hseen[h] = 1; hlist[++nh] = h }
+}
+function reg_ver(h, v,   vk) {
+  vk = h "|" v
+  if (!(vk in vseen)) { vseen[vk] = 1; vkeys[++nvk] = vk; VH[vk] = h; VV[vk] = v }
+  return vk
+}
+BEGIN {
+  FS = "|"
+  if (idle_tol_pct + 0 <= 0) idle_tol_pct = 3
+  if (memlimit_pct + 0 <= 0) memlimit_pct = 80
+  if (filecap_pct + 0 <= 0) filecap_pct = 90
+  if (shrink_pct + 0 <= 0) shrink_pct = 40
+}
+$1 == "P" {
+  h = $2; v = $3; p = $4; ts = $5; ms = $6
+  acc = $7; act = $8; mact = $9; mcr = $10; lq = $11; mlq = $12; slow = $13; peak = $14
+  reg_host(h); vk = reg_ver(h, v)
+  pk = h "|" v "|" p
+  if (!(pk in pseen)) {
+    pseen[pk] = 1; pkeys[++npk] = pk
+    PH[pk] = h; PV[pk] = v; PP[pk] = p; pms[pk] = "(none)"
+  }
+  pcount[pk]++
+  tk = h "|" ts
+  if (!(tk in tseen)) { tseen[tk] = 1; hsn[h]++ }
+  if (!(h in hmin) || ts < hmin[h]) hmin[h] = ts
+  if (ts > hmax[h]) hmax[h] = ts
+  # series rollover on master restart: bank the closed series deltas
+  if (pms[pk] != ms) {
+    if (pms[pk] != "(none)") {
+      accD[pk] += pacc[pk] - acc0[pk]
+      mcrD[pk] += pmcr[pk] - mcr0[pk]
+      slowD[pk] += pslow[pk] - slow0[pk]
+      prestarts[pk]++
+    }
+    acc0[pk] = (acc < 0 ? 0 : acc); mcr0[pk] = (mcr < 0 ? 0 : mcr)
+    slow0[pk] = (slow < 0 ? 0 : slow); pms[pk] = ms
+  }
+  pacc[pk] = (acc < 0 ? 0 : acc); pmcr[pk] = (mcr < 0 ? 0 : mcr)
+  pslow[pk] = (slow < 0 ? 0 : slow)
+  if (mact > mactW[pk]) mactW[pk] = mact
+  if (peak > peakW[pk]) peakW[pk] = peak
+  if (lq > lqW[pk]) lqW[pk] = lq
+  if (mlq > mlqW[pk]) mlqW[pk] = mlq
+  day = int(ts / 86400); dk = pk "|" day
+  if (!(dk in dseen)) { dseen[dk] = 1; dlist[pk] = dlist[pk] " " day }
+  if (act > dpk[dk]) dpk[dk] = act
+  next
+}
+$1 == "V" {
+  h = $2; v = $3; ts = $5; ms = $6; ppool = $7; pok = $8; php = $9; mlb = $10
+  ofn = $11; oie = $12; ores = $13; oen = $14; oused = $15; ohit = $17
+  ooom = $18; ohash = $19; oscr = $20; okeys = $21; omaxk = $22; oconf = $23
+  afn = $25; aen = $26; aseg = $27; aavail = $28; aent = $29; aexp = $30; aconf = $31
+  uss = $32; kids = $33
+  reg_host(h); vk = reg_ver(h, v)
+  vcount[vk]++
+  if (pok == 1) {
+    pokany[vk] = 1
+    if (php != "") vphp[vk] = php
+    if (mlb > 0) vmlb[vk] = mlb
+    if (ppool != "" && ppool != "-") phits[h "|" ppool]++
+    if (ores == 1) oresA[vk] = 1
+    if (ofn == 0) ofnmiss[vk] = 1
+    if (afn == 0) afnmiss[vk] = 1
+  }
+  if (pok == 1 && oen == 1) {
+    oval[vk] = 1
+    if (oused > ousedM[vk]) ousedM[vk] = oused
+    if (oconf > 0) oconfL[vk] = oconf
+    if (oscr > oscrM[vk]) oscrM[vk] = oscr
+    if (okeys > okeysM[vk]) okeysM[vk] = okeys
+    if (omaxk > 0) omaxkL[vk] = omaxk
+    if (ohit >= 0) ohitL[vk] = ohit
+    if (ooom >= 0) {
+      if (oomMS[vk] != ms) {
+        if (oomMS[vk] != "") oomD[vk] += oomL[vk] - oom0[vk]
+        oom0[vk] = ooom; oomMS[vk] = ms
+      }
+      oomL[vk] = ooom
+    }
+    if (ohash >= 0) {
+      if (hashMS[vk] != ms) {
+        if (hashMS[vk] != "") hashD[vk] += hashL[vk] - hash0[vk]
+        hash0[vk] = ohash; hashMS[vk] = ms
+      }
+      hashL[vk] = ohash
+    }
+  }
+  if (pok == 1 && aen == 1) {
+    aval[vk] = 1
+    if (aseg > 0 && aavail >= 0 && (aseg - aavail) > ausedM[vk]) ausedM[vk] = aseg - aavail
+    if (aconf > 0) aconfL[vk] = aconf
+    if (aent > aentM[vk]) aentM[vk] = aent
+    if (aexp >= 0) {
+      if (aexpMS[vk] != ms) {
+        if (aexpMS[vk] != "") aexpD[vk] += aexpL[vk] - aexp0[vk]
+        aexp0[vk] = aexp; aexpMS[vk] = ms
+      }
+      aexpL[vk] = aexp
+    }
+  }
+  if (kids > 0 && uss > 0) { ulist[vk] = ulist[vk] " " uss }
+  if (kids > kidsM[vk]) kidsM[vk] = kids
+  next
+}
+END {
+  # close open series
+  for (i = 1; i <= npk; i++) {
+    pk = pkeys[i]
+    accD[pk] += pacc[pk] - acc0[pk]
+    mcrD[pk] += pmcr[pk] - mcr0[pk]
+    slowD[pk] += pslow[pk] - slow0[pk]
+  }
+  for (i = 1; i <= nvk; i++) {
+    vk = vkeys[i]
+    if (oomMS[vk] != "") oomD[vk] += oomL[vk] - oom0[vk]
+    if (hashMS[vk] != "") hashD[vk] += hashL[vk] - hash0[vk]
+    if (aexpMS[vk] != "") aexpD[vk] += aexpL[vk] - aexp0[vk]
+  }
+  # per-pool classification + per-version rollups from pools
+  for (i = 1; i <= npk; i++) {
+    pk = pkeys[i]; h = PH[pk]; v = PV[pk]; p = PP[pk]
+    S = pcount[pk]
+    real = accD[pk] - (S - 1) - phits[h "|" p]
+    if (real < 0) real = 0
+    preal[pk] = real
+    tol = int(S * idle_tol_pct / 100); if (tol < 3) tol = 3
+    if (real <= tol) pclass[pk] = "idle"
+    else if (real < S) pclass[pk] = "low"
+    else pclass[pk] = "active"
+    # collect daily-peak list -> p95
+    nd = split(dlist[pk], dd, " ")
+    vals = ""
+    for (j = 1; j <= nd; j++) if (dd[j] != "") vals = vals " " dpk[pk "|" dd[j]]
+    pp95[pk] = p95(vals)
+    vk = h "|" v
+    if (pclass[pk] != "idle") vhot[vk] = 1
+    vcls[vk "|" pclass[pk]]++
+    if (peakW[pk] > vpeak[vk]) { vpeak[vk] = peakW[pk]; vpeakpool[vk] = p }
+  }
+  # ---------------- output ----------------
+  for (hi = 1; hi <= nh; hi++) {
+    h = hlist[hi]
+    hours = (hmax[h] - hmin[h]) / 3600.0
+    if (json) {
+      printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"report_meta\",\"host\":\"%s\",\"samples\":%d,\"window_h\":%.1f,\"ts_min\":%d,\"ts_max\":%d}\n", \
+        h, hsn[h], hours, hmin[h], hmax[h]
+    } else {
+      printf "==== host: %s  samples=%d  window=%.1fh (ts %d..%d) ====\n", \
+        h, hsn[h], hours, hmin[h], hmax[h]
+      printf "%-4s %-10s %-7s %-12s %9s  %-22s %8s %7s %-16s %9s %12s\n", \
+        "ver", "php", "class", "pools a/l/i", "mem_lim", "opcache used/conf MB", "scripts", "hit%", "APCu used/conf", "entries", "USSp95kBxKid"
+    }
+    for (i = 1; i <= nvk; i++) {
+      vk = vkeys[i]
+      if (VH[vk] != h) continue
+      v = VV[vk]
+      cls = (vhot[vk]) ? "HOT" : "idle"
+      a = vcls[vk "|active"] + 0; l = vcls[vk "|low"] + 0; idl = vcls[vk "|idle"] + 0
+      up95 = p95(ulist[vk])
+      if (json) {
+        printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"version_summary\",\"host\":\"%s\",\"version\":%d,\"php\":\"%s\",\"class\":\"%s\",\"pools_active\":%d,\"pools_low\":%d,\"pools_idle\":%d,\"memory_limit_bytes\":%d,\"peak_req_mem\":%d,\"opcache_probe\":%d,\"opcache_used_max\":%d,\"opcache_conf\":%d,\"opcache_scripts_max\":%d,\"opcache_keys_max\":%d,\"opcache_max_keys\":%d,\"opcache_hit_x100\":%d,\"opcache_oom_delta\":%d,\"opcache_hash_delta\":%d,\"opcache_restricted\":%d,\"apcu_probe\":%d,\"apcu_used_max\":%d,\"apcu_conf\":%d,\"apcu_entries_max\":%d,\"apcu_evict_delta\":%d,\"uss_p95_kb\":%d,\"kids_max\":%d}\n", \
+          h, v, vphp[vk], cls, a, l, idl, vmlb[vk] + 0, vpeak[vk] + 0, \
+          oval[vk] + 0, ousedM[vk] + 0, oconfL[vk] + 0, oscrM[vk] + 0, \
+          okeysM[vk] + 0, omaxkL[vk] + 0, ohitL[vk] + 0, oomD[vk] + 0, \
+          hashD[vk] + 0, oresA[vk] + 0, aval[vk] + 0, ausedM[vk] + 0, \
+          aconfL[vk] + 0, aentM[vk] + 0, aexpD[vk] + 0, up95, kidsM[vk] + 0
+      } else {
+        octxt = (oval[vk]) ? sprintf("%s/%s (%d%%)", mb(ousedM[vk]), mb(oconfL[vk]), \
+          (oconfL[vk] > 0 ? int(ousedM[vk] * 100 / oconfL[vk]) : 0)) : \
+          ((oresA[vk]) ? "RESTRICTED" : "-")
+        atxt = (aval[vk]) ? sprintf("%s/%s MB", mb(ausedM[vk]), mb(aconfL[vk])) : "-"
+        printf "%-4d %-10s %-7s %3d/%d/%-6d %8sM  %-22s %8d %7.2f %-16s %9d %9dx%d\n", \
+          v, (vphp[vk] == "" ? "-" : vphp[vk]), cls, a, l, idl, \
+          (vmlb[vk] > 0 ? mb(vmlb[vk]) : 0), octxt, oscrM[vk] + 0, \
+          ohitL[vk] / 100.0, atxt, aentM[vk] + 0, up95, kidsM[vk] + 0
+      }
+    }
+    # findings per host
+    if (!json) printf "%s\n", "-- findings --"
+    nfind = 0
+    for (i = 1; i <= npk; i++) {
+      pk = pkeys[i]
+      if (PH[pk] != h) continue
+      if (json && (pclass[pk] != "idle" || mcrD[pk] > 0)) {
+        printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"pool_summary\",\"host\":\"%s\",\"pool\":\"%s\",\"version\":%d,\"class\":\"%s\",\"samples\":%d,\"real_requests\":%d,\"max_active_w\":%d,\"active_p95\":%d,\"mcr_delta\":%d,\"slow_delta\":%d,\"peak_req_mem\":%d,\"master_restarts\":%d}\n", \
+          h, PP[pk], PV[pk], pclass[pk], pcount[pk], preal[pk], mactW[pk] + 0, \
+          pp95[pk], mcrD[pk] + 0, slowD[pk] + 0, peakW[pk] + 0, prestarts[pk] + 0
+      }
+      if (mcrD[pk] > 0) {
+        nfind++
+        if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"finding\",\"kind\":\"starving_pool\",\"host\":\"%s\",\"pool\":\"%s\",\"mcr_delta\":%d,\"per_day\":%.1f,\"cap_inferred\":%d,\"active_p95\":%d}\n", \
+          h, PP[pk], mcrD[pk], (hours > 0 ? mcrD[pk] * 24.0 / hours : 0), mactW[pk], pp95[pk]
+        else printf "STARVING pool %-10s max_children hit %d times (%.1f/day); cap inferred ~%d; daily-peak active p95 %d\n", \
+          PP[pk], mcrD[pk], (hours > 0 ? mcrD[pk] * 24.0 / hours : 0), mactW[pk], pp95[pk]
+      }
+      if (mlqW[pk] > 0 && !json) {
+        nfind++
+        printf "QUEUE    pool %-10s listen queue peaked at %d\n", PP[pk], mlqW[pk]
+      }
+      if (slowD[pk] > 0 && !json) {
+        nfind++
+        printf "SLOW     pool %-10s +%d slow requests in window\n", PP[pk], slowD[pk]
+      }
+    }
+    for (i = 1; i <= nvk; i++) {
+      vk = vkeys[i]
+      if (VH[vk] != h) continue
+      v = VV[vk]
+      if (oomD[vk] + hashD[vk] > 0) {
+        nfind++
+        if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"finding\",\"kind\":\"opcache_growth\",\"host\":\"%s\",\"version\":%d,\"oom_delta\":%d,\"hash_delta\":%d}\n", h, v, oomD[vk] + 0, hashD[vk] + 0
+        else printf "GROW     v%-3d opcache restarts in window (oom %d, hash %d) -> raise opcache\n", v, oomD[vk] + 0, hashD[vk] + 0
+      }
+      if (aexpD[vk] > 0) {
+        nfind++
+        if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"finding\",\"kind\":\"apcu_evictions\",\"host\":\"%s\",\"version\":%d,\"evict_delta\":%d}\n", h, v, aexpD[vk] + 0
+        else printf "GROW     v%-3d APCu evictions in window (+%d) -> raise apc.shm_size\n", v, aexpD[vk] + 0
+      }
+      if (oval[vk] && omaxkL[vk] > 0 && okeysM[vk] >= omaxkL[vk] * filecap_pct / 100) {
+        nfind++
+        if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"finding\",\"kind\":\"opcache_filecap\",\"host\":\"%s\",\"version\":%d,\"keys_max\":%d,\"max_keys\":%d}\n", h, v, okeysM[vk], omaxkL[vk]
+        else printf "FILECAP  v%-3d cached keys %d at %d%% of max %d -> raise opcache.max_accelerated_files\n", \
+          v, okeysM[vk], int(okeysM[vk] * 100 / omaxkL[vk]), omaxkL[vk]
+      }
+      if (vmlb[vk] > 0 && vpeak[vk] >= vmlb[vk] * memlimit_pct / 100) {
+        nfind++
+        if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"finding\",\"kind\":\"memlimit_approach\",\"host\":\"%s\",\"version\":%d,\"pool\":\"%s\",\"peak_req_mem\":%d,\"memory_limit\":%d}\n", h, v, vpeakpool[vk], vpeak[vk], vmlb[vk]
+        else printf "MEMLIMIT v%-3d peak request %s MB is >=%d%% of memory_limit %s MB (pool %s) -> investigate, do not auto-raise\n", \
+          v, mb(vpeak[vk]), memlimit_pct, mb(vmlb[vk]), vpeakpool[vk]
+      }
+      if (vhot[vk] && oval[vk] && oomD[vk] + hashD[vk] == 0 && oconfL[vk] > 0 \
+        && ousedM[vk] < oconfL[vk] * shrink_pct / 100) {
+        nfind++
+        if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"finding\",\"kind\":\"opcache_oversized\",\"host\":\"%s\",\"version\":%d,\"used_max\":%d,\"conf\":%d}\n", h, v, ousedM[vk] + 0, oconfL[vk]
+        else printf "SIZE     v%-3d opcache peak %s of %s MB (%d%%), zero restarts -> shrink candidate (informational)\n", \
+          v, mb(ousedM[vk]), mb(oconfL[vk]), int(ousedM[vk] * 100 / oconfL[vk])
+      }
+      if (vhot[vk] && aval[vk] && aexpD[vk] == 0 && aconfL[vk] > 0 \
+        && ausedM[vk] < aconfL[vk] * shrink_pct / 100) {
+        nfind++
+        if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"finding\",\"kind\":\"apcu_oversized\",\"host\":\"%s\",\"version\":%d,\"used_max\":%d,\"conf\":%d}\n", h, v, ausedM[vk] + 0, aconfL[vk]
+        else printf "SIZE     v%-3d APCu peak %s of %s MB (%d%%), zero evictions -> shrink candidate (informational)\n", \
+          v, mb(ausedM[vk]), mb(aconfL[vk]), int(ausedM[vk] * 100 / aconfL[vk])
+      }
+      if (oresA[vk] && !oval[vk]) {
+        nfind++
+        if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"finding\",\"kind\":\"opcache_restricted\",\"host\":\"%s\",\"version\":%d}\n", h, v
+        else printf "PROBE    v%-3d opcache status blocked (restrict_api) in all samples -> check probe path/socket\n", v
+      }
+    }
+    # idle versions: informational reclaim estimate
+    ridle = 0; ropc = 0; rapc = 0
+    for (i = 1; i <= nvk; i++) {
+      vk = vkeys[i]
+      if (VH[vk] != h || vhot[vk]) continue
+      ridle++
+      of = ousedM[vk] + 0; if (of < 201326592) of = 201326592   # 192M floor
+      af = ausedM[vk] + 0; if (af < 67108864) af = 67108864     # 64M floor
+      if (oval[vk] && oconfL[vk] > of) ropc += oconfL[vk] - of
+      if (aval[vk] && aconfL[vk] > af) rapc += aconfL[vk] - af
+      if (json) printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"idle_version\",\"host\":\"%s\",\"version\":%d,\"opcache_conf\":%d,\"opcache_used_max\":%d,\"apcu_conf\":%d,\"apcu_used_max\":%d}\n", \
+        h, VV[vk], oconfL[vk] + 0, ousedM[vk] + 0, aconfL[vk] + 0, ausedM[vk] + 0
+    }
+    if (!json) {
+      if (nfind == 0) printf "%s\n", "(none)"
+      if (ridle > 0) printf "IDLE     %d version(s) with zero real traffic; informational reclaim if trimmed to floors: opcache ~%s MB + APCu ~%s MB shm\n", \
+        ridle, mb(ropc), mb(rapc)
+      printf "\n"
+    }
+  }
+}'
+
+export _FPMT_IDLE_TOL_PCT _FPMT_MEMLIMIT_PCT _FPMT_FILECAP_PCT _FPMT_SHRINK_PCT
+cat "${_FILES[@]}" 2>/dev/null \
+  | awk -v cutoff="${_CUTOFF}" "${_PASS_A}" \
+  | sort -t '|' -k2,2 -k1,1 -k3,3n -k4,4 -k5,5n \
+  | awk -v json="${_JSON}" \
+      -v idle_tol_pct="${_FPMT_IDLE_TOL_PCT:-3}" \
+      -v memlimit_pct="${_FPMT_MEMLIMIT_PCT:-80}" \
+      -v filecap_pct="${_FPMT_FILECAP_PCT:-90}" \
+      -v shrink_pct="${_FPMT_SHRINK_PCT:-40}" \
+      "${_PASS_B}"
+exit 0
