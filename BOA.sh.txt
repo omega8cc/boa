@@ -64,7 +64,7 @@ _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
-_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
@@ -1992,6 +1992,20 @@ _update_agents() {
       touch ${_pthLog}/php.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/php.sh.old /var/xdrago/monitor/check/php.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    && [ ! -e "${_pthLog}/fpm_tune.sh.ctrl.f01.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/fpm_tune.sh /var/xdrago/monitor/check/fpm_tune.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" -o /var/xdrago/monitor/check/fpm_tune.sh
+    if [ -e "/var/xdrago/monitor/check/fpm_tune.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/fpm_tune.sh
+      chown root:root /var/xdrago/monitor/check/fpm_tune.sh
+      touch ${_pthLog}/fpm_tune.sh.ctrl.f01.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/monitor/check/fpm_tune.sh.old /var/xdrago/monitor/check/fpm_tune.sh
     fi
   fi
 
