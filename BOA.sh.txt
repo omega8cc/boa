@@ -1593,6 +1593,31 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/fpmreport" ] \
+    || [ ! -L "${_usrBin}/fpmreport" ] \
+    || [ ! -e "${_pthLog}/fpmreport.sh.ctrl.f01.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/fpmreport)
+    if (( _CNT > 0 )); then
+      echo "The fpmreport is running!"
+    else
+      if [ -e "${_optBin}/fpmreport" ]; then
+        mv -f ${_optBin}/fpmreport ${_optBin}/fpmreport.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/fpmreport" -o ${_optBin}/fpmreport
+      if [ -e "${_optBin}/fpmreport" ]; then
+        chmod 700 ${_optBin}/fpmreport
+        chown root:root ${_optBin}/fpmreport
+        ln -sf ${_optBin}/fpmreport ${_usrBin}/fpmreport
+        rm -f ${_pthLog}/fpmreport.sh.ctrl.*
+        touch ${_pthLog}/fpmreport.sh.ctrl.f01.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/fpmreport.old" ]; then
+          mv -f ${_optBin}/fpmreport.old ${_optBin}/fpmreport
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_optBin}/aptfast" ] \
     || [ ! -e "${_pthLog}/aptfast.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/aptfast)
