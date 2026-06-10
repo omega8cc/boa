@@ -26,7 +26,7 @@ _verify_boa_keys() {
   fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
-    _crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+    _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
     _urlEnc="https://files.boa.io/enc/2024"
     _encName=$(echo ${_hName} \
       | openssl md5 \
