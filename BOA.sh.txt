@@ -64,7 +64,7 @@ _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
-_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
@@ -1593,6 +1593,31 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/fpmreport" ] \
+    || [ ! -L "${_usrBin}/fpmreport" ] \
+    || [ ! -e "${_pthLog}/fpmreport.sh.ctrl.f01.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/fpmreport)
+    if (( _CNT > 0 )); then
+      echo "The fpmreport is running!"
+    else
+      if [ -e "${_optBin}/fpmreport" ]; then
+        mv -f ${_optBin}/fpmreport ${_optBin}/fpmreport.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/fpmreport" -o ${_optBin}/fpmreport
+      if [ -e "${_optBin}/fpmreport" ]; then
+        chmod 700 ${_optBin}/fpmreport
+        chown root:root ${_optBin}/fpmreport
+        ln -sf ${_optBin}/fpmreport ${_usrBin}/fpmreport
+        rm -f ${_pthLog}/fpmreport.sh.ctrl.*
+        touch ${_pthLog}/fpmreport.sh.ctrl.f01.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/fpmreport.old" ]; then
+          mv -f ${_optBin}/fpmreport.old ${_optBin}/fpmreport
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_optBin}/aptfast" ] \
     || [ ! -e "${_pthLog}/aptfast.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/aptfast)
@@ -1992,6 +2017,20 @@ _update_agents() {
       touch ${_pthLog}/php.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/php.sh.old /var/xdrago/monitor/check/php.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    && [ ! -e "${_pthLog}/fpm_tune.sh.ctrl.f01.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/fpm_tune.sh /var/xdrago/monitor/check/fpm_tune.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" -o /var/xdrago/monitor/check/fpm_tune.sh
+    if [ -e "/var/xdrago/monitor/check/fpm_tune.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/fpm_tune.sh
+      chown root:root /var/xdrago/monitor/check/fpm_tune.sh
+      touch ${_pthLog}/fpm_tune.sh.ctrl.f01.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/monitor/check/fpm_tune.sh.old /var/xdrago/monitor/check/fpm_tune.sh
     fi
   fi
 
@@ -4689,6 +4728,7 @@ _update_boa_tools() {
             ffmirror \
             fixmounts \
             fixrepo \
+            fpmreport \
             killer \
             loadguard \
             lock.inc \
@@ -4797,6 +4837,10 @@ _update_boa_tools() {
     fi
   fi
 
+  if [ ! -e "${_usrBin}/fpmreport" ] && [ -e "${_optBin}/fpmreport" ]; then
+    ln -sfn ${_optBin}/fpmreport ${_usrBin}/fpmreport
+  fi
+
   echo "=== BOA executables permissions setup ==="
   echo "Last updated: $(date)"
   echo "Groups are organized by function."
@@ -4812,7 +4856,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{loadguard,lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
+  chmod 700 ${_optBin}/{fpmreport,memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps}
