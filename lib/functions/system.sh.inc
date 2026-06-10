@@ -6447,7 +6447,7 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils lspci; do
+    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils lspci libfcgi-bin; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
