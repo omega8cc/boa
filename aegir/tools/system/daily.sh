@@ -31,7 +31,7 @@ _check_root
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 _WEBG=www-data
-_crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
