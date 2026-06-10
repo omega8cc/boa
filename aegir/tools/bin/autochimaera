@@ -324,7 +324,7 @@ _if_clean_boa_env() {
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       mv -f /etc/init.d/clean-boa-env /var/backups/clean-boa-env-bak
     fi
-    _crlGet="-L --max-redirs 3 -s --retry 9 --retry-delay 9 -A iCab"
+    _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
     _urlHmr="https://files.boa.io/versions/${_tRee}/boa/aegir"
     curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
