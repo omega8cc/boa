@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# BOA adaptive PHP-FPM tuning — sampler v1.2 (Phases 2+3, READ-ONLY).
+# BOA adaptive PHP-FPM tuning — sampler v1.3 (Phases 2+3, READ-ONLY tuning;
+# self-installs its libfcgi-bin dependency, guarded and rate-limited).
 #
 # Appends one JSONL record per live FPM pool ("scope":"pool") and one per live
 # PHP version ("scope":"version") to /var/log/boa/fpm-tune/<date>.jsonl. It
@@ -119,11 +120,42 @@ if [ "${_FORCE}" != "YES" ] && [ -e "${_STAMP}" ] \
 fi
 touch "${_STAMP}"
 
-# cgi-fcgi is required. Do NOT install from a monitor (relaunched every minute);
-# log once and exit. The package (libfcgi-bin) is ensured at deploy time.
+# cgi-fcgi (libfcgi-bin) is required. The base package set ensures it on system
+# upgrades, but nodes that receive this monitor first must self-heal: install it
+# here, guarded -- never while barracuda or another apt/dpkg run is active, and
+# retry at most every ~6h so a broken repo cannot turn this monitor into an apt
+# hammer (or a log spammer; failures log one line per attempt cycle, success one).
+_DEP_STAMP="${_pthDat}/.dep_attempt"
 if ! command -v cgi-fcgi >/dev/null 2>&1; then
-  echo "$(date) cgi-fcgi missing; install libfcgi-bin to enable FPM sampling" >> "${_pthLog}"
-  exit 0
+  # Another package operation in flight: try again on a later tick, silently.
+  if [ -e "/run/boa_run.pid" ]; then
+    exit 0
+  fi
+  if pgrep -x apt-get >/dev/null 2>&1 || pgrep -x apt >/dev/null 2>&1 \
+    || pgrep -x dpkg >/dev/null 2>&1 || pgrep -x aptitude >/dev/null 2>&1; then
+    exit 0
+  fi
+  # Rate-limit attempts to one per ~6h.
+  if [ -e "${_DEP_STAMP}" ] \
+    && [ -z "$(find "${_DEP_STAMP}" -mmin +360 2>/dev/null)" ]; then
+    exit 0
+  fi
+  touch "${_DEP_STAMP}"
+  # Keep only the last attempt output for debugging.
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    libfcgi-bin > "${_pthLog}.apt" 2>&1
+  if ! command -v cgi-fcgi >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt-get update >> "${_pthLog}.apt" 2>&1
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      libfcgi-bin >> "${_pthLog}.apt" 2>&1
+  fi
+  if command -v cgi-fcgi >/dev/null 2>&1; then
+    echo "$(date) installed libfcgi-bin (cgi-fcgi); FPM sampling enabled" >> "${_pthLog}"
+    rm -f "${_DEP_STAMP}"
+  else
+    echo "$(date) libfcgi-bin install failed; next attempt in ~6h (see fpm_tune.log.apt)" >> "${_pthLog}"
+    exit 0
+  fi
 fi
 
 # No FPM pools (e.g. a proxy node) -> nothing to do.
