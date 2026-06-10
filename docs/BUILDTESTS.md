@@ -17,7 +17,6 @@
   https://www.drupal.org/project/farm
   https://www.drupal.org/project/localgov
   https://www.drupal.org/project/openculturas
-  https://www.drupal.org/project/sector
   https://www.drupal.org/project/thunder
   https://www.drupal.org/project/varbase
 ```
@@ -79,17 +78,6 @@ localgov   # composer create-project drupal/localgov_project:^4.0 localgov-4.0.3
 ```
 
 ```sh
-sector     # composer create-project drupal/sector_project_template sector-10.3.1-11.3.11 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/june-8/sector-10.3.1-11.3.11
-           # composer config --no-plugins allow-plugins.drupal/core-project-message true
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
-           # composer update --no-scripts
-           # composer require js-cookie/js-cookie
-           # composer install --no-dev
-           # (11.3.11)
-```
-
-```sh
 thunder    # composer create-project thunder/thunder-project thunder-8.3.6-11.3.11 --no-dev --no-interaction --no-install --no-scripts
            # cd /data/disk/o3x/static/june-8/thunder-8.3.6-11.3.11
            # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
@@ -108,17 +96,6 @@ varbase    # composer create-project Vardot/varbase-project:~10 varbase-10.1.0-1
            # cd ~/static/june-8/varbase-10.1.0-11.3.11/docroot
            # find -name recipes | awk '{print $1"/default/content"}' | xargs -I {} mkdir -p {}
            # (11.3.11)
-```
-
-```sh
-varbase    # composer create-project Vardot/varbase-project:~9 varbase-9.1.13-10.6.10 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/june-8/varbase-9.1.13-10.6.10
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
-           # composer update --no-scripts
-           # composer install --no-dev
-           # cd ~/static/june-8/varbase-9.1.13-10.6.10/docroot
-           # find -name recipes | awk '{print $1"/default/content"}' | xargs -I {} mkdir -p {}
-           # (10.6.10)
 ```
 
 ```sh
@@ -203,10 +180,8 @@ nc097:/data/disk/o3x/static/june-8# du -sh -- */
 232M	farm-4.0.2-11.3.11/
 403M	localgov-4.0.3-11.3.11/
 524M	openculturas-3.0.1-11.3.11/
-299M	sector-10.3.1-11.3.11/
 273M	thunder-8.3.6-11.3.11/
 572M	varbase-10.1.0-11.3.11/
-448M	varbase-9.1.13-10.6.10/
 nc097:/data/disk/o3x/static/june-8#
 ```
 
