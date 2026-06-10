@@ -1997,6 +1997,20 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    && [ ! -e "${_pthLog}/fpm_tune.sh.ctrl.f01.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/fpm_tune.sh /var/xdrago/monitor/check/fpm_tune.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" -o /var/xdrago/monitor/check/fpm_tune.sh
+    if [ -e "/var/xdrago/monitor/check/fpm_tune.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/fpm_tune.sh
+      chown root:root /var/xdrago/monitor/check/fpm_tune.sh
+      touch ${_pthLog}/fpm_tune.sh.ctrl.f01.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/monitor/check/fpm_tune.sh.old /var/xdrago/monitor/check/fpm_tune.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/valkey.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
