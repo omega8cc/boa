@@ -6323,6 +6323,13 @@ _run_aptitude_deps_install() {
     _UPGRADE_MODE=FULL
   fi
   _if_to_do_fix
+  # Required by the fpm_tune monitor (cgi-fcgi). Ensured outside the FULL-mode
+  # gate below because monitors deploy/update via _update_agents at any time,
+  # while FAST upgrades skip the big package section -- every barracuda run
+  # must guarantee this dependency.
+  if ! _pkg_installed "libfcgi-bin"; then
+    _mrun "${_INSTAPP} libfcgi-bin"
+  fi
   if [ "${_UPGRADE_MODE}" = "FULL" ]; then
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _mrun "${_INITINS} devuan-keyring"
@@ -6447,7 +6454,7 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils lspci libfcgi-bin; do
+    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils lspci; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
