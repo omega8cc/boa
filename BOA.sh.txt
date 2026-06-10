@@ -4703,6 +4703,7 @@ _update_boa_tools() {
             ffmirror \
             fixmounts \
             fixrepo \
+            fpmreport \
             killer \
             loadguard \
             lock.inc \
@@ -4811,6 +4812,10 @@ _update_boa_tools() {
     fi
   fi
 
+  if [ ! -e "${_usrBin}/fpmreport" ] && [ -e "${_optBin}/fpmreport" ]; then
+    ln -sfn ${_optBin}/fpmreport ${_usrBin}/fpmreport
+  fi
+
   echo "=== BOA executables permissions setup ==="
   echo "Last updated: $(date)"
   echo "Groups are organized by function."
@@ -4826,7 +4831,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{loadguard,lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
+  chmod 700 ${_optBin}/{fpmreport,memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps}
