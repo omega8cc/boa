@@ -539,7 +539,7 @@ _if_disable_not_used_services() {
     pkill -9 -f java
   fi
 
-  if [ -e "/root/.deny.jetty9.cnf" ]; then
+  if [ -e "/etc/boa/.deny.jetty9.cnf" ]; then
     if [ -e "/etc/init.d/jetty9" ]; then
       _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
@@ -549,7 +549,7 @@ _if_disable_not_used_services() {
     fi
   fi
 
-  if [ -e "/root/.deny.solr7.cnf" ]; then
+  if [ -e "/etc/boa/.deny.solr7.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
@@ -559,7 +559,7 @@ _if_disable_not_used_services() {
     fi
   fi
 
-  if [ -e "/root/.deny.solr9.cnf" ]; then
+  if [ -e "/etc/boa/.deny.solr9.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null

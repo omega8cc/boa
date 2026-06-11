@@ -422,28 +422,28 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _check_running
     _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
-      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ] && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           _truncate_queue_tables &> /dev/null
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ] && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
           _truncate_batch_tables &> /dev/null
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ] && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ] && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
           _truncate_accesslog_tables &> /dev/null
