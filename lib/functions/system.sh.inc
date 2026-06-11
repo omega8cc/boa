@@ -9272,7 +9272,7 @@ _fix_node_in_lshell_access() {
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
       || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-      || [ -e "/root/.allow.node.lshell.cnf" ]; then
+      || [ -e "/etc/boa/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
       _ALLOW_NODE=NO
@@ -9297,7 +9297,7 @@ _fix_php_in_lshell_access() {
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
       || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-      || [ -e "/root/.allow.php.lshell.cnf" ]; then
+      || [ -e "/etc/boa/.allow.php.lshell.cnf" ]; then
       _ALLOW_PHP=YES
     else
       _ALLOW_PHP=NO
@@ -9645,7 +9645,7 @@ _java_check_fix() {
     fi
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
-    elif [ -e "/root/.look.like.jenkins.cnf" ]; then
+    elif [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     else
       _LOOK_LIKE_JENKINS=FALSE

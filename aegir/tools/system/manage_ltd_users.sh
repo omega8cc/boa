@@ -378,7 +378,7 @@ _enable_chattr() {
       fi
       if [ "${_UQ}" = "${_USER}.ftp" ] \
         && [ ! -e "/opt/user/npm/${_UQ}/.npm-packages/bin" ] \
-        && [ -e "/root/.allow.node.lshell.cnf" ]; then
+        && [ -e "/etc/boa/.allow.node.lshell.cnf" ]; then
         _UPDATE_GEMS=YES
       fi
     else
@@ -414,7 +414,7 @@ _enable_chattr() {
       ### Check if NPM support is allowed and if needs an update
       ### NOTE: It will be restricted to the main SSH account only
       ###
-      if [ -e "/root/.allow.node.lshell.cnf" ] \
+      if [ -e "/etc/boa/.allow.node.lshell.cnf" ] \
         && [ "${_UQ}" = "${_USER}.ftp" ] \
         && [ -x "/usr/bin/node" ] \
         && [ -e "/home/${_UQ}/static/control" ]; then
@@ -2182,7 +2182,7 @@ _fix_node_in_lshell_access() {
       || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
       || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
-      || [ -e "/root/.allow.node.lshell.cnf" ]; then
+      || [ -e "/etc/boa/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
       _ALLOW_NODE=NO
@@ -2206,7 +2206,7 @@ _fix_php_in_lshell_access() {
       || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
       || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
-      || [ -e "/root/.allow.php.lshell.cnf" ]; then
+      || [ -e "/etc/boa/.allow.php.lshell.cnf" ]; then
       _ALLOW_PHP=YES
     else
       _ALLOW_PHP=NO

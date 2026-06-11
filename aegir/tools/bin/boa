@@ -788,7 +788,7 @@ _if_extended_report() {
     || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
-    || [ -e "/root/.send-extended-report.cnf" ]; then
+    || [ -e "/etc/boa/.send-extended-report.cnf" ]; then
     _EXTENDED=YES
   fi
   if [ "${_EXTENDED}" = "YES" ]; then
