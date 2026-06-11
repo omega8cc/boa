@@ -168,7 +168,7 @@ _sql_busy_detection() {
       fi
     fi
   fi
-  if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
+  if [ -e "/etc/boa/.instant.busy.mysql.action.cnf" ]; then
     # File-existence check instead of cat'ing the cleartext root password
     # into a shell variable just to test its non-emptiness. The mysql call
     # below uses /root/.my.cnf credentials implicitly via `mysql -u root`.
@@ -201,7 +201,7 @@ _mysql_proc_kill() {
 
 _mysql_proc_control() {
   # Control file to enable _SQLMONITOR
-  if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
+  if [ -e "/etc/boa/.mysqladmin.monitor.cnf" ]; then
     _SQLMONITOR=YES
   fi
 
@@ -252,8 +252,8 @@ _mysql_proc_control() {
       echo "Process ID: ${_each}, User: ${_xuser}, Time: ${_xtime} seconds"
 
       # Check if the user is listed on the problematic users list
-      if [[ -e "/root/.sql.problematic.users.cnf" ]]; then
-        for _XQ in $(cat /root/.sql.problematic.users.cnf | cut -d '#' -f1 | sort | uniq); do
+      if [[ -e "/etc/boa/.sql.problematic.users.cnf" ]]; then
+        for _XQ in $(cat /etc/boa/.sql.problematic.users.cnf | cut -d '#' -f1 | sort | uniq); do
           if [[ "${_xuser}" == "${_XQ}" ]]; then
             echo "Problematic user detected: ${_xuser}, applying lower limit"
             _limit=${_SQL_LOW_MAX_TTL}

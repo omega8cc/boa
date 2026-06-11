@@ -483,7 +483,7 @@ _bring_all_ram_cpu_online
 _if_disable_not_used_services() {
   _clearSwap=No
 
-  if [ "${_tRee}" = "dev" ] && [ -e "/root/.ice.vm.cnf" ]; then
+  if [ "${_tRee}" = "dev" ] && [ -e "/etc/boa/.ice.vm.cnf" ]; then
     echo > /var/xdrago/move_sql.sh
     echo > /var/xdrago/proc_num_ctrl.pl
     echo > /var/xdrago/runner.sh
@@ -653,7 +653,7 @@ _send_boa_system_report() {
     fi
     if [ ! -z "${_RCPT_EMAIL}" ] \
       && [ ! -z "${_BCC_EMAIL}" ] \
-      && [ -e "/root/.run.example.report.cnf" ]; then
+      && [ -e "/etc/boa/.run.example.report.cnf" ]; then
       _repSub="BOA Status on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       boa info report both > ${_repBodFile}
@@ -1097,7 +1097,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     [ -e "/root/.my.optimize.cnf" ] && rm -f /root/.my.optimize.cnf
     [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
-    [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
+    [ -e "/etc/boa/.run.example.report.cnf" ] && rm -f /etc/boa/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ -e "/run/boa_run.pid" ]; then
       touch /etc/boa/.pause_tasks_maint.cnf

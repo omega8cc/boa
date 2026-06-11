@@ -2365,7 +2365,7 @@ else
     fi
   fi
   rm -f ${_TMP}/*.txt
-  if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ]; then
+  if [ ! -e "/etc/boa/.home.no.wildcard.chmod.cnf" ]; then
     chmod 700 /home/* &> /dev/null
   fi
   chmod 0600 /var/log/lsh/*
