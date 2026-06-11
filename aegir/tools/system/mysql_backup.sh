@@ -495,7 +495,8 @@ done
 
 if [ "${_THIS_MODE}" = "full" ]; then
   echo "INFO: Running all dbs usage report on $(date)"
-  du -s /var/lib/mysql/* > /root/.du.local.sql
+  mkdir -p /var/log/boa 2>/dev/null
+  du -s /var/lib/mysql/* > /var/log/boa/.du.local.sql
   echo "INFO: Completing all dbs usage report on $(date)"
 fi
 

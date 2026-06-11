@@ -1397,7 +1397,7 @@ _update_agents() {
     && _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f96
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f99 --guard mysql_backup.sh
+    && _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f98 --guard mysql_backup.sh
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
@@ -1448,7 +1448,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f80
+    && _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f79
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \

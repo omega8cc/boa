@@ -350,10 +350,8 @@ _usage_count() {
           [ "${_THIS_MODE}" = "verbose" ] && echo "  ${_THIS_U},${_Dom},_DirSize:${_DirSize}" >> "${_uLogFil}"
         fi
         if [ ! -z "${_Dat}" ]; then
-          if [ -e "/root/.du.sql" ]; then
-            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.sql 2>&1)
-          elif [ -e "/root/.du.local.sql" ]; then
-            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.local.sql 2>&1)
+          if [ -e "/var/log/boa/.du.local.sql" ]; then
+            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /var/log/boa/.du.local.sql 2>&1)
           elif [ -e "/var/lib/mysql/${_Dat}" ]; then
             _DatSize=$(du -s /var/lib/mysql/${_Dat} 2>/dev/null)
           fi
