@@ -181,6 +181,11 @@ if [ ! -e "${_pthEtc}/.migrated.lshell-virt.txt" ]; then
   done
   touch "${_pthEtc}/.migrated.lshell-virt.txt"
 fi
+if [ ! -e "${_pthEtc}/.migrated.newrelic.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  [ -e "/root/.enable.newrelic.sysmond.cnf" ] && cp -a /root/.enable.newrelic.sysmond.cnf "${_pthEtc}/" 2>/dev/null
+  touch "${_pthEtc}/.migrated.newrelic.txt"
+fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
 [ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
@@ -1577,7 +1582,7 @@ _update_agents() {
   fi
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/proc_num_ctrl.pl "${_urlHmr}/tools/system/proc_num_ctrl.pl" f83
+    && _fetch_versioned /var/xdrago/proc_num_ctrl.pl "${_urlHmr}/tools/system/proc_num_ctrl.pl" f82
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
