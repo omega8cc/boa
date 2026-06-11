@@ -174,9 +174,7 @@ if [ ! -e "${_pthEtc}/.migrated.lshell-virt.txt" ]; then
   mkdir -p "${_pthEtc}"
   for _etcMrk in \
     .look.like.jenkins.cnf \
-    .send-extended-report.cnf \
-    .allow.php.lshell.cnf \
-    .allow.node.lshell.cnf ; do
+    .send-extended-report.cnf ; do
     [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
   done
   touch "${_pthEtc}/.migrated.lshell-virt.txt"
@@ -1549,14 +1547,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f63.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f62.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f63.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f62.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
       mkdir -p /var/backups/ltd/{conf,log,old}
@@ -2697,7 +2695,7 @@ _fix_node_in_lshell_access() {
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
       || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-      || [ -e "/etc/boa/.allow.node.lshell.cnf" ]; then
+      || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
       _ALLOW_NODE=NO
@@ -2721,7 +2719,7 @@ _fix_php_in_lshell_access() {
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
       || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-      || [ -e "/etc/boa/.allow.php.lshell.cnf" ]; then
+      || [ -e "/root/.allow.php.lshell.cnf" ]; then
       _ALLOW_PHP=YES
     else
       _ALLOW_PHP=NO
