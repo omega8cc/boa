@@ -1,4 +1,23 @@
 
+# C-003 Phase 1: timestamped backup of a key config to the dragon config store
+# BEFORE any in-place rewrite. Only ever copies -- never alters the original.
+# No-op on missing/empty. Lands in ${_vBs}/dragon/config (3-month retention; the
+# daily.sh dragon sweep spares config/). Proven: boa-modernisation
+# design/per-script/backup-to-dragon.{sh,test.sh}. The standalone auto* bin
+# tools inline the same logic (no shared include) -- dedup candidate.
+_backup_to_dragon() {
+  local _src="$1"
+  [ -s "${_src}" ] || return 0
+  local _dst="${_vBs:-/var/backups}/dragon/config"
+  [ -d "${_dst}" ] || mkdir -p "${_dst}" 2>/dev/null
+  local _bn _tag
+  _bn="${_src##*/}"
+  _tag="${_NOW:-$(date +%y%m%d-%H%M%S 2>/dev/null)}"
+  [ -n "${_xSrl:-}" ] && _tag="${_xSrl}-${_X_VERSION:-}-${_tag}"
+  cp -a "${_src}" "${_dst}/${_bn}-pre-${_tag}" 2>/dev/null
+  return 0
+}
+
 _check_mysql_version() {
   _DB_V=
   _DB_V=$(mysql -V 2>&1 \
@@ -1174,8 +1193,9 @@ _forced_mysql_root_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _forced_mysql_root_password_update"
   fi
-  mv -f /root/.my.cnf-pre-* ${_vBs}/ &> /dev/null
-  mv -f /root/.my.pass.txt-pre-* ${_vBs}/ &> /dev/null
+  mkdir -p ${_vBs}/dragon/config &> /dev/null
+  mv -f /root/.my.cnf-pre-* ${_vBs}/dragon/config/ &> /dev/null
+  mv -f /root/.my.pass.txt-pre-* ${_vBs}/dragon/config/ &> /dev/null
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
   _ESC_PASS=""
@@ -1240,8 +1260,8 @@ _forced_mysql_root_password_update() {
         fi
       fi
     fi
-    cp -af /root/.my.cnf /root/.my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}
-    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}
+    _backup_to_dragon /root/.my.cnf
+    _backup_to_dragon /root/.my.pass.txt
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_V}" = "5.7" ]; then

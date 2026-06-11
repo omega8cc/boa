@@ -1249,9 +1249,9 @@ _update_agents() {
 
   _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f98 --guard /local/bin/xmass --ctrl-name xmass.sh
 
-  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f99 --guard /local/bin/autobeowulf --ctrl-name autobeowulf.sh
+  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f98 --guard /local/bin/autobeowulf --ctrl-name autobeowulf.sh
 
-  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f99 --guard /local/bin/autoexcalibur --ctrl-name autoexcalibur.sh
+  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f98 --guard /local/bin/autoexcalibur --ctrl-name autoexcalibur.sh
 
   _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f99 --guard /local/bin/boa --ctrl-name boa.sh
 
@@ -1442,7 +1442,7 @@ _update_agents() {
     && _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts # norm: drop drush gate, monitor/check only (Adam)
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f71
+    && _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f70
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
