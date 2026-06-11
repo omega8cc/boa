@@ -128,6 +128,11 @@ if [ ! -e "${_pthEtc}/.migrated.behavior-toggles.txt" ]; then
   done
   touch "${_pthEtc}/.migrated.behavior-toggles.txt"
 fi
+if [ ! -e "${_pthEtc}/.migrated.pause-tasks.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  [ -e "/root/.pause_tasks_maint.cnf" ] && cp -a /root/.pause_tasks_maint.cnf "${_pthEtc}/" 2>/dev/null
+  touch "${_pthEtc}/.migrated.pause-tasks.txt"
+fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
 [ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
@@ -1272,7 +1277,7 @@ _update_agents() {
 
   _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f93 --guard autosymlink --ctrl-name autosymlink.sh
 
-  _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f99 --guard updatesymlinks --ctrl-name updatesymlinks.sh
+  _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f98 --guard updatesymlinks --ctrl-name updatesymlinks.sh
 
   _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup --ctrl-name aptcleanup.sh
 
@@ -1448,7 +1453,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f91 --guard mysql_cluster_backup.sh
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f84
+    && _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f83
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f90
@@ -1466,7 +1471,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f95
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f93
+    && _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f99
@@ -1475,7 +1480,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f84
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f63 --guard autoupboa # norm: drush->hm.alias (Adam)
+    && _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f62 --guard autoupboa # norm: drush->hm.alias (Adam)
 
   [ -e "/var/xdrago/monitor/check" ] \
     && _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts # norm: drop drush gate, monitor/check only (Adam)
@@ -1491,14 +1496,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f66.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f65.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f66.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f65.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
       mkdir -p /var/backups/ltd/{conf,log,old}

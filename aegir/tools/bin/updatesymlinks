@@ -10,7 +10,7 @@ _actionPermanentLog="${_logDir}/autosymlink.update.log"
 _actionVerboseArchiveLog="${_logDir}/autosymlink.verbose.archive.log"
 _stateFile="${_logDir}/autosymlink.state"
 _autoBin=/opt/local/bin/autosymlink
-_pauseFile=/root/.pause_tasks_maint.cnf
+_pauseFile=/etc/boa/.pause_tasks_maint.cnf
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
