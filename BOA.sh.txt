@@ -1253,9 +1253,9 @@ _update_agents() {
 
   _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f98 --guard /local/bin/autoexcalibur --ctrl-name autoexcalibur.sh
 
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f99 --guard /local/bin/boa --ctrl-name boa.sh
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f98 --guard /local/bin/boa --ctrl-name boa.sh
 
-  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f92 --guard /local/bin/barracuda --ctrl-name barracuda.sh
+  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f91 --guard /local/bin/barracuda --ctrl-name barracuda.sh
 
   _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f99 --guard /local/bin/octopus --ctrl-name octopus.sh
 
