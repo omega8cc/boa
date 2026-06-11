@@ -185,9 +185,10 @@ _purge_avahi() {
   fi
 }
 
-if [ ! -e "/root/.avahi_purged.lock" ]; then
+[ -e "/root/.avahi_purged.lock" ] && [ ! -e "/var/log/boa/.avahi_purged.lock" ] && { mkdir -p /var/log/boa 2>/dev/null; cp -a /root/.avahi_purged.lock /var/log/boa/ 2>/dev/null; }
+if [ ! -e "/var/log/boa/.avahi_purged.lock" ]; then
   _purge_avahi
-  touch /root/.avahi_purged.lock
+  touch /var/log/boa/.avahi_purged.lock
 fi
 
 # Function to disable dns checks in csf
