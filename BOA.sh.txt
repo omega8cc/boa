@@ -72,6 +72,7 @@ _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
 _xpthLog="/var/xdrago/log"
 _pthLog="/var/log/boa"
+_pthEtc="/etc/boa"
 _tBn="tools/bin"
 _vBs="/var/backups"
 _boaToolsPid="${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid"
@@ -88,6 +89,22 @@ if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
   cp -a ${_xpthLog}/core  ${_pthLog}/
   cp -a ${_xpthLog}/le    ${_pthLog}/
   touch "${_pthLog}/.migrated.txt"
+fi
+#
+# C-003: one-time copy of operator markers /root -> /etc/boa (originals left for
+# later cleanup). Guard-once per group so an operator's later removal of an
+# /etc/boa marker is not undone by a re-copy from the stale /root original.
+if [ ! -e "${_pthEtc}/.migrated.svc-control.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .allow.nginx.restart.cnf \
+    .allow.php.fpm.reload.cnf \
+    .allow.redis.restart.cnf \
+    .allow.valkey.restart.cnf \
+    .allow.aegir.queue.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.svc-control.txt"
 fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
@@ -1324,23 +1341,23 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f81
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f92
+    && _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f91
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh \
       "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f98
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f84
+    && _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f83
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f02
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f87
+    && _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f86
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/monitor/check/redis.sh "${_urlHmr}/tools/system/monitor/check/redis.sh" f90
+    && _fetch_versioned /var/xdrago/monitor/check/redis.sh "${_urlHmr}/tools/system/monitor/check/redis.sh" f89
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f83
@@ -1409,7 +1426,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f91 --guard mysql_cluster_backup.sh
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f85
+    && _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f84
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f90
