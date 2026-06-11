@@ -43,7 +43,7 @@ _disable_master_cron() {
 }
 
 [ -e "/root/.proxy.cnf" ] && exit 0
-[ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
+[ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ] && exit 0
 
 _sanitize_number() {

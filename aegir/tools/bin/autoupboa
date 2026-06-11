@@ -1100,9 +1100,9 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ -e "/run/boa_run.pid" ]; then
-      touch /root/.pause_tasks_maint.cnf
+      touch /etc/boa/.pause_tasks_maint.cnf
     else
-      [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
+      [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && rm -f /etc/boa/.pause_tasks_maint.cnf
     fi
     if [ -e "/root/.restrict_this_vm.cnf" ]; then
       killall -9 rsync

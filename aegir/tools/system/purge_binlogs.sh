@@ -19,7 +19,7 @@ _check_root() {
 _check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
-[ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
+[ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 
 if [ -z "${_DB_BINARY_LOG}" ] || [ "${_DB_BINARY_LOG}" != "YES" ]; then
   exit 0
