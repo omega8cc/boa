@@ -438,7 +438,7 @@ _block_ip() {
   _BANNED_IPS["${_IP}"]=1
 
   # Block the IP using csf instantly (temporary block for 15 minutes)
-  if [[ -x "/usr/sbin/csf" ]] && [[ -e "/root/.instant.csf.block.cnf" ]]; then
+  if [[ -x "/usr/sbin/csf" ]] && [[ -e "/etc/boa/.instant.csf.block.cnf" ]]; then
     /usr/sbin/csf -td "${_IP}" 900 -p 80
     /usr/sbin/csf -td "${_IP}" 900 -p 443
     [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
