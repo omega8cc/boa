@@ -128,6 +128,20 @@ if [ ! -e "${_pthEtc}/.migrated.behavior-toggles.txt" ]; then
   done
   touch "${_pthEtc}/.migrated.behavior-toggles.txt"
 fi
+if [ ! -e "${_pthEtc}/.migrated.backup-lists.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .backboa.exclude \
+    .backboa.include \
+    .backboa.custom.exclude \
+    .backboa.custom.include \
+    .duobackboa.exclude \
+    .duobackboa.include \
+    .full.csf.cleanup.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.backup-lists.txt"
+fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
 [ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
@@ -1307,10 +1321,10 @@ _update_agents() {
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast --ctrl-name aptfast.sh
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name backboa.sh # norm: drush->hm.alias (Adam)
+    && _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f98 --guard duplicity --guard-label "duplicity backup" --ctrl-name backboa.sh # norm: drush->hm.alias (Adam)
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name duobackboa.sh # norm: drush->hm.alias (Adam)
+    && _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f98 --guard duplicity --guard-label "duplicity backup" --ctrl-name duobackboa.sh # norm: drush->hm.alias (Adam)
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
@@ -1339,10 +1353,10 @@ _update_agents() {
     && _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f48 # norm: drush->hm.alias (Adam)
 
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44 # norm: drush->hm.alias (Adam)
+    && _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f43 # norm: drush->hm.alias (Adam)
 
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f48 # norm: drush->hm.alias (Adam)
+    && _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f47 # norm: drush->hm.alias (Adam)
 
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f48 # norm: drush->hm.alias (Adam)
@@ -1549,7 +1563,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f90
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f89
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f88
 
   if ! grep -q "unzstd" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*

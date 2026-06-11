@@ -402,13 +402,13 @@ else
 fi
 
 _USER_INCLUDE=""
-if [ -f "/root/.backboa.include" ]; then
-  _USER_INCLUDE="--include-filelist /root/.backboa.include"
+if [ -f "/etc/boa/.backboa.include" ]; then
+  _USER_INCLUDE="--include-filelist /etc/boa/.backboa.include"
 fi
 
 _USER_EXCLUDE=""
-if [ -f "/root/.backboa.exclude" ]; then
-  _USER_EXCLUDE="--exclude-filelist /root/.backboa.exclude"
+if [ -f "/etc/boa/.backboa.exclude" ]; then
+  _USER_EXCLUDE="--exclude-filelist /etc/boa/.backboa.exclude"
 fi
 
 export AWS_ACCESS_KEY_ID="${_AWS_KEY}"

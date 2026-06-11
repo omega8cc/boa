@@ -157,20 +157,20 @@ _create_user_paths_config() {
     ### Migrate legacy exclude/include files if present and merge unique entries
 
     # _include_list
-    if [ -f "/root/.backboa.include" ]; then
+    if [ -f "/etc/boa/.backboa.include" ]; then
       if [ ! -f "${_include_list}" ]; then
-        cp "/root/.backboa.include" "${_include_list}"
+        cp "/etc/boa/.backboa.include" "${_include_list}"
       else
-        _append_unique_entries "/root/.backboa.include" "${_include_list}"
+        _append_unique_entries "/etc/boa/.backboa.include" "${_include_list}"
       fi
     fi
 
     # _exclude_list
-    if [ -f "/root/.backboa.exclude" ]; then
+    if [ -f "/etc/boa/.backboa.exclude" ]; then
       if [ ! -f "${_exclude_list}" ]; then
-        cp "/root/.backboa.exclude" "${_exclude_list}"
+        cp "/etc/boa/.backboa.exclude" "${_exclude_list}"
       else
-        _append_unique_entries "/root/.backboa.exclude" "${_exclude_list}"
+        _append_unique_entries "/etc/boa/.backboa.exclude" "${_exclude_list}"
       fi
     else
       cat << EOF > "${_exclude_list}"

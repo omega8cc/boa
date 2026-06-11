@@ -402,13 +402,13 @@ else
 fi
 
 _USER_INCLUDE=""
-if [ -f "/root/.duobackboa.include" ]; then
-  _USER_INCLUDE="--include-filelist /root/.duobackboa.include"
+if [ -f "/etc/boa/.duobackboa.include" ]; then
+  _USER_INCLUDE="--include-filelist /etc/boa/.duobackboa.include"
 fi
 
 _USER_EXCLUDE=""
-if [ -f "/root/.duobackboa.exclude" ]; then
-  _USER_EXCLUDE="--exclude-filelist /root/.duobackboa.exclude"
+if [ -f "/etc/boa/.duobackboa.exclude" ]; then
+  _USER_EXCLUDE="--exclude-filelist /etc/boa/.duobackboa.exclude"
 fi
 
 export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
