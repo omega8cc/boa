@@ -1249,6 +1249,8 @@ _update_agents() {
 
   _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f98 --guard /local/bin/xmass --ctrl-name xmass.sh
 
+  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f99 --guard /local/bin/autobeowulf --ctrl-name autobeowulf.sh
+
   _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f99 --guard /local/bin/autoexcalibur --ctrl-name autoexcalibur.sh
 
   _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f99 --guard /local/bin/boa --ctrl-name boa.sh
