@@ -73,20 +73,20 @@ _create_global_paths_config() {
     ### Migrate legacy exclude/include files if present and merge unique entries
 
     # _include_list
-    if [ -f "/etc/boa/.backboa.include" ]; then
+    if [ -f "/root/.backboa.include" ]; then
       if [ ! -f "${_include_list}" ]; then
-        cp "/etc/boa/.backboa.include" "${_include_list}"
+        cp "/root/.backboa.include" "${_include_list}"
       else
-        _append_unique_entries "/etc/boa/.backboa.include" "${_include_list}"
+        _append_unique_entries "/root/.backboa.include" "${_include_list}"
       fi
     fi
 
     # _exclude_list
-    if [ -f "/etc/boa/.backboa.exclude" ]; then
+    if [ -f "/root/.backboa.exclude" ]; then
       if [ ! -f "${_exclude_list}" ]; then
-        cp "/etc/boa/.backboa.exclude" "${_exclude_list}"
+        cp "/root/.backboa.exclude" "${_exclude_list}"
       else
-        _append_unique_entries "/etc/boa/.backboa.exclude" "${_exclude_list}"
+        _append_unique_entries "/root/.backboa.exclude" "${_exclude_list}"
       fi
     else
       cat << EOF > "${_exclude_list}"
@@ -99,20 +99,20 @@ EOF
     fi
 
     # _custom_include_list
-    if [ -f "/etc/boa/.backboa.custom.include" ]; then
+    if [ -f "/root/.backboa.custom.include" ]; then
       if [ ! -f "${_custom_include_list}" ]; then
-        cp "/etc/boa/.backboa.custom.include" "${_custom_include_list}"
+        cp "/root/.backboa.custom.include" "${_custom_include_list}"
       else
-        _append_unique_entries "/etc/boa/.backboa.custom.include" "${_custom_include_list}"
+        _append_unique_entries "/root/.backboa.custom.include" "${_custom_include_list}"
       fi
     fi
 
     # _custom_exclude_list
-    if [ -f "/etc/boa/.backboa.custom.exclude" ]; then
+    if [ -f "/root/.backboa.custom.exclude" ]; then
       if [ ! -f "${_custom_exclude_list}" ]; then
-        cp "/etc/boa/.backboa.custom.exclude" "${_custom_exclude_list}"
+        cp "/root/.backboa.custom.exclude" "${_custom_exclude_list}"
       else
-        _append_unique_entries "/etc/boa/.backboa.custom.exclude" "${_custom_exclude_list}"
+        _append_unique_entries "/root/.backboa.custom.exclude" "${_custom_exclude_list}"
       fi
     fi
 

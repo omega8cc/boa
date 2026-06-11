@@ -733,7 +733,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     cp -af ${_preCnf} ${_useCnf}
   fi
 
-  if [ -e "/etc/boa/.full.csf.cleanup.cnf" ]; then
+  if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
     wait
     sed -i "/^$/d" /etc/csf/csf.deny
