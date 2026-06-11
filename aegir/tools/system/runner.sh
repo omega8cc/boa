@@ -187,7 +187,7 @@ if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
   exit 0
 else
   _enable_master_cron
-  if [ -e "/root/.look.like.jenkins.cnf" ]; then
+  if [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
     _ALLOW_AEGIR_QUEUE=FALSE
     _if_allow_aegir_queue
     if [ "${_ALLOW_AEGIR_QUEUE}" = "TRUE" ]; then
