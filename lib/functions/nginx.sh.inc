@@ -565,34 +565,34 @@ _master_fix_multi_ip_cron_access() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _master_fix_multi_ip_cron_access"
   fi
-  [ -e "/root/.local.IP.list.allow" ] && rm -f /root/.local.IP.list.allow
+  [ -e "/etc/boa/.local.IP.list.allow" ] && rm -f /etc/boa/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \
     | sort \
     | uniq \
     | tr -d "\s"`;do echo "  allow        ${_IP};" >> \
-      /root/.local.IP.list.allow;done
-  echo "  allow 127.0.0.1;" >> /root/.local.IP.list.allow
-  echo "  deny all;" >> /root/.local.IP.list.allow
+      /etc/boa/.local.IP.list.allow;done
+  echo "  allow 127.0.0.1;" >> /etc/boa/.local.IP.list.allow
+  echo "  deny all;" >> /etc/boa/.local.IP.list.allow
 
   sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
     ${_mtrTpl}/Inc/vhost_include.tpl.php
   wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
+  sed -i '/deny all;/ {r /etc/boa/.local.IP.list.allow
 d;};' ${_mtrTpl}/Inc/vhost_include.tpl.php
   wait
 
   sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
     ${_mtrTpl}/subdir.tpl.php
   wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
+  sed -i '/deny all;/ {r /etc/boa/.local.IP.list.allow
 d;};' ${_mtrTpl}/subdir.tpl.php
   wait
 
   sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
     ${_mtrInc}/nginx_vhost_common.conf
   wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
+  sed -i '/deny all;/ {r /etc/boa/.local.IP.list.allow
 d;};' ${_mtrInc}/nginx_vhost_common.conf
   wait
 }

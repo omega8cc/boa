@@ -9567,7 +9567,7 @@ _newrelic_check_fix() {
     sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" \
       ${_NEWRELIC_SYS_CFG} &> /dev/null
     wait
-    if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
+    if [ -e "/etc/boa/.enable.newrelic.sysmond.cnf" ]; then
       _mrun "service newrelic-sysmond restart"
     else
       _mrun "service newrelic-sysmond stop"
