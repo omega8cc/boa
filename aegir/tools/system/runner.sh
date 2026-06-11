@@ -132,7 +132,7 @@ _if_allow_aegir_queue() {
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/root/.allow.aegir.queue.cnf" ]; then
+    || [ -e "/etc/boa/.allow.aegir.queue.cnf" ]; then
     if [ "${_ReTest}" -ge 1 ]; then
       _ALLOW_AEGIR_QUEUE=TRUE
     fi
