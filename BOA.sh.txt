@@ -117,6 +117,17 @@ if [ ! -e "${_pthEtc}/.migrated.deny-disable.txt" ]; then
   done
   touch "${_pthEtc}/.migrated.deny-disable.txt"
 fi
+if [ ! -e "${_pthEtc}/.migrated.behavior-toggles.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .allow.sendmail.cnf \
+    .allow.du.cnf \
+    .allow-codebasecheck.cnf \
+    .dont.touch.permissions.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.behavior-toggles.txt"
+fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
 [ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
@@ -1464,13 +1475,13 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f84
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f64 --guard autoupboa # norm: drush->hm.alias (Adam)
+    && _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f63 --guard autoupboa # norm: drush->hm.alias (Adam)
 
   [ -e "/var/xdrago/monitor/check" ] \
     && _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts # norm: drop drush gate, monitor/check only (Adam)
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f70
+    && _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f69
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
@@ -1480,14 +1491,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f67.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f66.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f67.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f66.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
       mkdir -p /var/backups/ltd/{conf,log,old}

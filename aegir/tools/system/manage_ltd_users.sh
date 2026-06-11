@@ -2300,7 +2300,7 @@ else
     sed -i "s/, 'mc':'mc -u'//g" ${_THIS_LTD_CONF}
     wait
   fi
-  if [ ! -e "/root/.allow.du.cnf" ]; then
+  if [ ! -e "/etc/boa/.allow.du.cnf" ]; then
     sed -i "s/'du', //g" ${_THIS_LTD_CONF}
     wait
     sed -i "s/, 'du':'du -s -h'//g" ${_THIS_LTD_CONF}

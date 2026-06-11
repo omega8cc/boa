@@ -736,7 +736,7 @@ _generic_vm_postinstall() {
   fi
 }
 
-# Restrict sendmail access unless /root/.allow.sendmail.cnf exists
+# Restrict sendmail access unless /etc/boa/.allow.sendmail.cnf exists
 _restrict_sendmail() {
   _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
   if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
@@ -744,13 +744,13 @@ _restrict_sendmail() {
     chown root /usr/sbin/sendmail &> /dev/null
     chgrp allow-snail /usr/sbin/sendmail &> /dev/null
   fi
-  if [ ! -e "/root/.allow.sendmail.cnf" ]; then
+  if [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
     chmod 750 /usr/sbin/sendmail &> /dev/null
   fi
 }
 
 _if_restrict_sendmail() {
-  if [ -e "/root/.allow.sendmail.cnf" ]; then
+  if [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
     if [ ! -e "${_ALLOW_SENDMAIL_PID}" ]; then
       chmod 755 /usr/sbin/sendmail &> /dev/null
       touch "${_ALLOW_SENDMAIL_PID}"

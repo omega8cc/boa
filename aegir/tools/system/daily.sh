@@ -2541,7 +2541,7 @@ _daily_process() {
           | openssl md5 \
           | awk '{ print $2}' \
           | tr -d "\n" 2>&1)
-        if [ -e "/root/.allow-codebasecheck.cnf" ]; then
+        if [ -e "/etc/boa/.allow-codebasecheck.cnf" ]; then
           _codeBaseCheckDir="${_usEr}/log/ctrl"
           _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
           _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
@@ -2657,7 +2657,7 @@ _daily_process() {
             _DONT_TOUCH_PERMISSIONS=NO
           fi
         fi
-        if [ -e "/root/.dont.touch.permissions.cnf" ]; then
+        if [ -e "/etc/boa/.dont.touch.permissions.cnf" ]; then
           _DONT_TOUCH_PERMISSIONS=YES
         fi
         if [ "${_DONT_TOUCH_PERMISSIONS}" = "NO" ] \
