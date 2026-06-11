@@ -82,7 +82,7 @@ _read_account_data() {
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
     _check_account_exceptions
   fi
-  if [ -e "/root/.debug.email.txt" ]; then
+  if [ -e "/etc/boa/.debug.email.txt" ]; then
     _CLIENT_EMAIL="omega8cc@gmail.com"
   fi
   if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then

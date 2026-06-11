@@ -144,6 +144,18 @@ if [ ! -e "${_pthEtc}/.migrated.csf-firewall.txt" ]; then
   done
   touch "${_pthEtc}/.migrated.csf-firewall.txt"
 fi
+if [ ! -e "${_pthEtc}/.migrated.debug-goaccess.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .debug.monitor.cnf \
+    .debug.monitor.log.cnf \
+    .debug.email.txt \
+    .goaccess.all.cnf \
+    .goaccess.use.github.txt ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.debug-goaccess.txt"
+fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
 [ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
@@ -1370,7 +1382,7 @@ _update_agents() {
     && _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48 # norm: drush->hm.alias (Adam)
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f72
+    && _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f71
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f90
@@ -1497,13 +1509,13 @@ _update_agents() {
     && _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts # norm: drop drush gate, monitor/check only (Adam)
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f69
+    && _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f68
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f79
+    && _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f78
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
@@ -1562,7 +1574,7 @@ _update_agents() {
   fi
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f90
+    && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f89
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
     && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f88
