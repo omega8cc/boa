@@ -1321,7 +1321,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f90
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f82
+    && _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f81
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f92
@@ -1436,7 +1436,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f84
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f66 --guard autoupboa # norm: drush->hm.alias (Adam)
+    && _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f65 --guard autoupboa # norm: drush->hm.alias (Adam)
 
   [ -e "/var/xdrago/monitor/check" ] \
     && _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts # norm: drop drush gate, monitor/check only (Adam)
