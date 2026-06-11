@@ -31,7 +31,8 @@ _licence_to_kill() {
   _aptTms=$(ps -eo uid,pid,etimes,cmd | grep -v "grep" | grep "${_killCmnd}" | egrep ' ([0-9]+-)?([0-9]{1}:?){3}' | awk '{print $3}')
   _aptPid=$(ps -eo uid,pid,etimes,cmd | grep -v "grep" | grep "${_killCmnd}" | egrep ' ([0-9]+-)?([0-9]{1}:?){3}' | awk '{print $2}')
   if [ ! -z "${_aptTms}" ] && [ "${_aptTms}" -gt "${_maxEtime}" ]; then
-    echo "REASON _aptTms for ${_killCmnd} was ${_aptTms} on $(date)" >> /root/.proc.forced.kill.exceptions.log
+    mkdir -p /var/log/boa 2>/dev/null
+    echo "REASON _aptTms for ${_killCmnd} was ${_aptTms} on $(date)" >> /var/log/boa/.proc.forced.kill.exceptions.log
     kill -9 ${_aptPid}
   fi
 }

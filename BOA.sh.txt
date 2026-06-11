@@ -1247,13 +1247,13 @@ _update_agents() {
 
   _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f99 --guard /local/bin/xoct --ctrl-name xoct.sh
 
-  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f98 --guard /local/bin/xmass --ctrl-name xmass.sh
+  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f97 --guard /local/bin/xmass --ctrl-name xmass.sh
 
   _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f98 --guard /local/bin/autobeowulf --ctrl-name autobeowulf.sh
 
   _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f98 --guard /local/bin/autoexcalibur --ctrl-name autoexcalibur.sh
 
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f98 --guard /local/bin/boa --ctrl-name boa.sh
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f97 --guard /local/bin/boa --ctrl-name boa.sh
 
   _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f91 --guard /local/bin/barracuda --ctrl-name barracuda.sh
 

@@ -2839,7 +2839,7 @@ _octopus_cleanup() {
       echo
       echo "Accounts marked for cleanup or active"
       echo
-      rm -f /root/.cleanup.detect.txt
+      rm -f /var/log/boa/.cleanup.detect.txt
       for _Usr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
       do
         if [ -d "${_Usr}/config/server_master/nginx/vhost.d" ] \
@@ -2848,7 +2848,7 @@ _octopus_cleanup() {
           _sIze=$(du -s -h ${_Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>/dev/null)
           echo "CANCELLED ${_Usr} ${_sIze}"
           _iUsr=$(echo ${_Usr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-          echo "CANCELLED ${_iUsr}" >> /root/.cleanup.detect.txt
+          echo "CANCELLED ${_iUsr}" >> /var/log/boa/.cleanup.detect.txt
         else
           if [ -d "${_Usr}/config/server_master/nginx/vhost.d" ] \
             && [ -e "${_Usr}/log/cores.txt" ]; then
@@ -2858,9 +2858,9 @@ _octopus_cleanup() {
       done
     elif [ "${_aCtn}" = "purge" ] \
       && [ "${_usEr}" = "batch" ] \
-      && [ -e "/root/.cleanup.detect.txt" ]; then
+      && [ -e "/var/log/boa/.cleanup.detect.txt" ]; then
         IFS=$'\12'
-        for p in $(cat /root/.cleanup.detect.txt 2>&1);do
+        for p in $(cat /var/log/boa/.cleanup.detect.txt 2>&1);do
           _usr_purge=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
           boa cleanup purge ${_usr_purge}
           wait
@@ -2868,7 +2868,7 @@ _octopus_cleanup() {
     elif [ "${_aCtn}" = "purge" ] \
       && [ ! -z "${_usEr}" ] \
       && [ "${_usEr}" != "batch" ] \
-      && [ -e "/root/.cleanup.detect.txt" ]; then
+      && [ -e "/var/log/boa/.cleanup.detect.txt" ]; then
       _zombie_dir="/var/backups/zombie/purged/${_usEr}/home/"
       _nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
       _nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
