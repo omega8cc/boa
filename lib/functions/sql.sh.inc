@@ -492,7 +492,7 @@ _innodb_log_file_size_update() {
           -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
           -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
           /etc/mysql/my.cnf &> /dev/null
-        echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
+        echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
       fi
     fi
     if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
@@ -508,7 +508,7 @@ _innodb_log_file_size_update() {
           -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
           -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
           /etc/mysql/my.cnf &> /dev/null
-        echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
+        echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
       fi
     fi
     _mrun "bash /var/xdrago/move_sql.sh start"
@@ -537,7 +537,7 @@ _innodb_log_file_size_update() {
             -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
             -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
             /etc/mysql/my.cnf &> /dev/null
-          echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
+          echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
         fi
       fi
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
@@ -553,7 +553,7 @@ _innodb_log_file_size_update() {
             -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
             -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
             /etc/mysql/my.cnf &> /dev/null
-          echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
+          echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
         fi
       fi
       _mrun "bash /var/xdrago/move_sql.sh start"
@@ -725,7 +725,7 @@ _sql_conf_update() {
                 -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
                 -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
                 /etc/mysql/my.cnf &> /dev/null
-              echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
+              echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
             else
               _innodb_log_file_size_update
             fi
@@ -752,7 +752,7 @@ _sql_conf_update() {
                 -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
                 -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
                 /etc/mysql/my.cnf &> /dev/null
-              echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
+              echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
             else
               _innodb_log_file_size_update
             fi
