@@ -175,7 +175,6 @@ if [ ! -e "${_pthEtc}/.migrated.lshell-virt.txt" ]; then
   for _etcMrk in \
     .look.like.jenkins.cnf \
     .send-extended-report.cnf \
-    .allow.any.virt.cnf \
     .allow.php.lshell.cnf \
     .allow.node.lshell.cnf ; do
     [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
@@ -725,7 +724,7 @@ _not_supported_virt() {
   echo
   echo "If you wish to try BOA on this system anyway,"
   echo "please create an empty control file:"
-  echo "  /etc/boa/.allow.any.virt.cnf"
+  echo "  /root/.allow.any.virt.cnf"
   echo
   echo "Please be aware that it may not work at all,"
   echo "or you can experience errors breaking BOA."
@@ -930,7 +929,7 @@ _check_virt() {
       echo "ERROR: virt-what says: ${_VIRT_TEST}"
       echo "ERROR: virt-what detection fails for unknown reason"
     fi
-    if [ ! -e "/etc/boa/.allow.any.virt.cnf" ]; then
+    if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
         _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
         _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
@@ -1346,7 +1345,7 @@ _update_agents() {
 
   _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f98 --guard /local/bin/autoexcalibur --ctrl-name autoexcalibur.sh
 
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f96 --guard /local/bin/boa --ctrl-name boa.sh
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f95 --guard /local/bin/boa --ctrl-name boa.sh
 
   _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f90 --guard /local/bin/barracuda --ctrl-name barracuda.sh
 

@@ -65,7 +65,7 @@ _not_supported_virt() {
   echo
   echo "If you wish to try BOA on this system anyway,"
   echo "please create an empty control file:"
-  echo "  /etc/boa/.allow.any.virt.cnf"
+  echo "  /root/.allow.any.virt.cnf"
   echo
   echo "Please be aware that it may not work at all,"
   echo "or you can experience errors breaking BOA."
@@ -763,7 +763,7 @@ _virt_detection() {
       _msg "ERROR: virt-what detection fails for unknown reason, exit"
       _clean_pid_exit _virt_detection
     fi
-    if [ ! -e "/etc/boa/.allow.any.virt.cnf" ]; then
+    if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
         _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
         _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
