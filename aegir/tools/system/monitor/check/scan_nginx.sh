@@ -33,7 +33,7 @@ _manage_single_lock
 # ==============================
 
 # Enable verbose mode if debug configuration exists
-if [[ -e "/root/.debug.monitor.cnf" ]]; then
+if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
   set -x
 fi
 
@@ -284,7 +284,7 @@ declare -A _PATH_IP_REQS
 declare -A _PATH_SLOW_COUNT
 
 # Debugging: Confirm associative arrays are declared
-if [[ -e "/root/.debug.monitor.cnf" ]]; then
+if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
   declare -p _BANNED_IPS _ALLOWED_IPS _LOGGED_IN_IPS _COUNTERS _LI_CNT _PX_CNT
   declare -p _UA_IP_COUNT _UA_REQ_COUNT _UA_IP_SET _UA_IP_LIST _UA_IP_REQS
   declare -p _PATH_REQ_COUNT _PATH_IP_COUNT _PATH_IP_SET _PATH_IP_LIST _PATH_IP_REQS _PATH_SLOW_COUNT
@@ -308,7 +308,7 @@ _verbose_log() {
   local _other_log="/var/log/scan_nginx_other_debug.log"
 
   # Check if logging is enabled
-  if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then
+  if [[ -e "/etc/boa/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then
     if [[ "${_reason}" =~ Counter && "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
       _log_file="${_flood_log}"
     elif [[ "${_reason}" =~ "Admin URI To Ignore" && "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
@@ -617,7 +617,7 @@ _handle_blocking() {
   local _IP _COUNT _CRITNUMBER _MININUMBER _raw_reqs
 
   # Debug: confirm that _COUNTERS is referencing the intended array
-  if [[ -n "${1}" && -e "/root/.debug.monitor.cnf" ]]; then
+  if [[ -n "${1}" && -e "/etc/boa/.debug.monitor.cnf" ]]; then
     declare -p _COUNTERS
     echo "DEBUG: _COUNTERS in _handle_blocking is referencing '${1}'"
   fi
@@ -1086,7 +1086,7 @@ while IFS= read -r _line <&3; do
   done
 
   # Debug: Print extracted IPs if debug mode is enabled
-  if [[ -e "/root/.debug.monitor.cnf" ]]; then
+  if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
     echo "DEBUG: Extracted IPs: ${_IP_LIST[*]}"
   fi
 
@@ -1119,10 +1119,10 @@ while IFS= read -r _line <&3; do
   _PROXIES_ARRAY=( "${_PROXIES_TO_CHECK[@]}" )
 
   # Debug: Echo the determined real visitor IP and proxy IPs if debug mode is enabled
-  if [[ -n "${_REAL_IP}" && -e "/root/.debug.monitor.cnf" ]]; then
+  if [[ -n "${_REAL_IP}" && -e "/etc/boa/.debug.monitor.cnf" ]]; then
     echo "=== checking ${_REAL_IP} / _LI_CNT ==="
   fi
-  if [[ -e "/root/.debug.monitor.cnf" ]]; then
+  if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
     for _proxy_ip in "${_PROXIES_ARRAY[@]}"; do
       [[ -n "${_proxy_ip}" ]] && echo "=== checking ${_proxy_ip} / _PX_CNT ==="
     done
