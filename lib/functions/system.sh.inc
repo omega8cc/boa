@@ -9722,7 +9722,7 @@ _sshd_armour() {
     _msg "PROC: _sshd_armour"
   fi
   ###
-  ### See: https://stribika.github.io/2015/01/04/secure-secure-shell.html
+  ### See: https://blog.stribik.technology/2015/01/04/secure-secure-shell.html
   ### Also: https://github.com/stribika/stribika.github.io/wiki/Secure-Secure-Shell
   ###
   if [ -e "/etc/ssh/sshd_config" ]; then
