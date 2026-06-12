@@ -9663,7 +9663,7 @@ _java_check_fix() {
         ln -sfn /etc/alternatives/java /usr/bin/java
         touch /var/log/boa/.fixed-java17-symlinks.log
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Fixed Java 17 symlinks for ${_OS_CODE}"
+          _msg "INFO: Fixed Java 17 symlinks for ${_OS_CODE}"
         fi
       fi
       if [ -x "/usr/lib/jvm/java-21-openjdk/bin/java" ] \
@@ -9676,7 +9676,7 @@ _java_check_fix() {
         ln -sfn /etc/alternatives/java /usr/bin/java
         touch /var/log/boa/.fixed-java21-symlinks.log
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Fixed Java 21 symlinks for ${_OS_CODE}"
+          _msg "INFO: Fixed Java 21 symlinks for ${_OS_CODE}"
         fi
       fi
     else
@@ -9689,7 +9689,7 @@ _java_check_fix() {
           ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
           ln -sfn /etc/alternatives/java /usr/bin/java
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "Fixed Java 11 symlinks for ${_OS_CODE}"
+            _msg "INFO: Fixed Java 11 symlinks for ${_OS_CODE}"
           fi
         fi
       fi
@@ -9712,7 +9712,7 @@ _java_check_fix() {
       ln -sfn /etc/alternatives/java /usr/bin/java
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "Fixed Java 11 symlinks for ${_OS_CODE}"
+      _msg "INFO: Fixed Java 11 symlinks for ${_OS_CODE}"
     fi
   fi
 }
