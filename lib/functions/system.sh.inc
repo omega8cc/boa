@@ -1939,14 +1939,14 @@ _php_if_versions_cleanup_cnf() {
         _STRICT_LIMIT_PHP=YES
       fi
 
-      ### Include PHP 8.3, 8.4 and 8.5 if conditions are met
+      ### Include PHP 8.4 if conditions are met
       _if_hosted_sys
       if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
         if [ -e "/root/.include-php-latest.cnf" ] \
           || [ "${_hostedSys}" = "YES" ]; then
           if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
             && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
-            _local_PHP_MULTI_INSTALL="8.3 8.4 8.5 ${_local_PHP_MULTI_INSTALL}"
+            _local_PHP_MULTI_INSTALL="8.4 ${_local_PHP_MULTI_INSTALL}"
           fi
         fi
       fi
