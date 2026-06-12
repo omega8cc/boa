@@ -1461,6 +1461,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f68
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f77
+    _fetch_versioned /var/xdrago/proc_num_ctrl.pl "${_urlHmr}/tools/system/proc_num_ctrl.pl" f82
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -1496,9 +1497,6 @@ _update_agents() {
       mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
     fi
   fi
-
-  [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /var/xdrago/proc_num_ctrl.pl "${_urlHmr}/tools/system/proc_num_ctrl.pl" f82
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
