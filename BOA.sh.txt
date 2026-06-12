@@ -1363,11 +1363,9 @@ _update_agents() {
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast --ctrl-name aptfast.sh
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name backboa.sh # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name backboa.sh
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name duobackboa.sh # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name duobackboa.sh
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
@@ -1380,35 +1378,25 @@ _update_agents() {
   fi
 
   [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name dcysetup.sh # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name dcysetup.sh
   [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f37 --guard duplicity --guard-label "duplicity backup" --ctrl-name multiback.sh # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f37 --guard duplicity --guard-label "duplicity backup" --ctrl-name multiback.sh
   [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity --guard-label "duplicity backup" --ctrl-name mybackup.sh # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity --guard-label "duplicity backup" --ctrl-name mybackup.sh
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f48 # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f48
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f48 # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f48
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44 # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f48 # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f48
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f48 # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f48
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f48 # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f48
   [ -d "/root/.remote_backups/run" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48 # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f71
 
@@ -1531,11 +1519,9 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f84
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f61 --guard autoupboa # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f61 --guard autoupboa
   [ -e "/var/xdrago/monitor/check" ] \
-    && _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts # norm: drop drush gate, monitor/check only (Adam)
-
+    && _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f68
 
@@ -2131,26 +2117,19 @@ _update_agents() {
     && _fetch_versioned /etc/cron.hourly/systemtime "${_urlHmr}/helpers/systemtime" f95 --mode 755
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/tools/bin/synproxy_rollback" f94 --guard synproxy_rollback # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/tools/bin/synproxy_rollback" f94 --guard synproxy_rollback
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/tools/bin/synproxy_reassert" f99 --guard synproxy_rollback # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/tools/bin/synproxy_reassert" f99 --guard synproxy_rollback
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/tools/bin/synproxy_hook_fix" f99 --guard synproxy_rollback # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/tools/bin/synproxy_hook_fix" f99 --guard synproxy_rollback
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/tools/bin/synproxy_snapshot" f99 --guard synproxy_rollback # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/tools/bin/synproxy_snapshot" f99 --guard synproxy_rollback
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/tools/bin/synproxy_status" f99 --guard synproxy_rollback # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/tools/bin/synproxy_status" f99 --guard synproxy_rollback
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/tools/bin/synproxy_monitor" f98 --guard synproxy_rollback # norm: drush->hm.alias (Adam)
-
+    && _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/tools/bin/synproxy_monitor" f98 --guard synproxy_rollback
   _Dir="/data/all/000/modules"
   _REDIS_E_VERSION=8.x-1.11.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
