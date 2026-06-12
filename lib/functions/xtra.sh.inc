@@ -400,7 +400,7 @@ _if_install_node() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_node"
   fi
-  if [ -e "/etc/boa/.allow.node.lshell.cnf" ]; then
+  if [ -e "/root/.allow.node.lshell.cnf" ]; then
     if [[ "${_XTRAS_LIST}" =~ "NPM" ]]; then
       _NODE_INSTALL=NO
       _isNode="$(which node)"

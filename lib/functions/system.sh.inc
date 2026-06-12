@@ -9272,7 +9272,7 @@ _fix_node_in_lshell_access() {
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
       || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-      || [ -e "/etc/boa/.allow.node.lshell.cnf" ]; then
+      || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
       _ALLOW_NODE=NO
@@ -9297,7 +9297,7 @@ _fix_php_in_lshell_access() {
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
       || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-      || [ -e "/etc/boa/.allow.php.lshell.cnf" ]; then
+      || [ -e "/root/.allow.php.lshell.cnf" ]; then
       _ALLOW_PHP=YES
     else
       _ALLOW_PHP=NO
