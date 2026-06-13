@@ -115,19 +115,21 @@ _if_solr_nine() {
     if [ ! -e "${_SOLR_CTRL}" ]; then
       _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
-      _get_dev_arch "solr-${_SOLR_9_VRN}.tgz"
-      _dld_exit=$?
-      if [ ${_dld_exit} -ne 0 ] || [ ! -s "solr-${_SOLR_9_VRN}.tgz" ]; then
-        _msg "NOTE: Failed to download solr-${_SOLR_9_VRN}.tgz (exit ${_dld_exit}) -- skipping upgrade"
-        rm -f "solr-${_SOLR_9_VRN}.tgz"
-      else
-        rm -rf solr-${_SOLR_9_VRN}
-        tar xzf solr-${_SOLR_9_VRN}.tgz solr-${_SOLR_9_VRN}/bin/install_solr_service.sh --strip-components=2
-        bash ./install_solr_service.sh solr-${_SOLR_9_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
+      rm -rf "/var/opt/solr*"
+      _get_dev_arch "solr-${_SOLR_9_VRN}.tgz" "keep"
+      if [ -e "/var/opt/solr-${_SOLR_9_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_9_VRN}/bin/install_solr_service.sh" ]; then
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        usermod -aG users ${_N_SOLR} &> /dev/null
+        cd /var/opt/solr-${_SOLR_9_VRN}/bin/
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099
+        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt
         echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
+        cd /var/opt
         _if_fix_solr9_permissions
         _if_fix_solr9_mod
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
+      else
+        _msg "NOTE: Failed to download solr-${_SOLR_9_VRN}.tgz -- skipping install"
       fi
     fi
   fi
@@ -203,18 +205,20 @@ _if_solr_seven() {
     if [ ! -e "${_SOLR_CTRL}" ]; then
       _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
-      _get_dev_arch "solr-${_SOLR_7_VRN}.tgz"
-      _dld_exit=$?
-      if [ ${_dld_exit} -ne 0 ] || [ ! -s "solr-${_SOLR_7_VRN}.tgz" ]; then
-        _msg "NOTE: Failed to download solr-${_SOLR_7_VRN}.tgz (exit ${_dld_exit}) -- skipping upgrade"
-        rm -f "solr-${_SOLR_7_VRN}.tgz"
-      else
-        rm -rf solr-${_SOLR_7_VRN}
-        tar xzf solr-${_SOLR_7_VRN}.tgz solr-${_SOLR_7_VRN}/bin/install_solr_service.sh --strip-components=2
-        bash ./install_solr_service.sh solr-${_SOLR_7_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
+      rm -rf "/var/opt/solr*"
+      _get_dev_arch "solr-${_SOLR_7_VRN}.tgz" "keep"
+      if [ -e "/var/opt/solr-${_SOLR_7_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh" ]; then
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        usermod -aG users ${_N_SOLR} &> /dev/null
+        cd /var/opt/solr-${_SOLR_7_VRN}/bin/
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077
+        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
+        cd /var/opt
         _if_fix_solr7_permissions
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
+      else
+        _msg "NOTE: Failed to download solr-${_SOLR_7_VRN}.tgz -- skipping install"
       fi
     fi
   fi
