@@ -1109,8 +1109,8 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       chmod 700 /usr/bin/rsync
       chmod 700 /usr/bin/mysqldump
     else
-      chmod 750 /usr/bin/rsync
-      chmod 750 /usr/bin/mysqldump
+      chmod 755 /usr/bin/rsync
+      chmod 755 /usr/bin/mysqldump
     fi
   fi
 
