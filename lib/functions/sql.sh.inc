@@ -463,7 +463,7 @@ _innodb_log_file_size_update() {
     _msg "PROC: _innodb_log_file_size_update"
   fi
   _check_mysql_version
-  _sql_conf_update
+  _sql_directives_sync
   _check_sql_running
   if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
     _msg "INFO: InnoDB redo log capacity will be set to ${_INNODB_REDO_LOG_CAPACITY_MB}..."
@@ -572,6 +572,10 @@ _innodb_log_file_size_update() {
 #
 # Update SQL Config.
 _sql_conf_update() {
+  # Mode "directives" (called via _sql_directives_sync) normalizes only the
+  # my.cnf version-compatibility directives and skips innodb sizing plus the
+  # mysqld restart it triggers. Default (no arg) runs the full config.
+  local _CONF_MODE="${1}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_conf_update"
   fi
@@ -706,7 +710,8 @@ _sql_conf_update() {
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
     fi
-    if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
+    if [ "${_CONF_MODE}" != "directives" ] \
+      && { [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; }; then
       if [ -e "/root/.dev.server.cnf" ]; then
         echo "DEBUG6: _DB_SERIES is ${_DB_SERIES}"
         echo "DEBUG6: _DB_V is ${_DB_V}"
@@ -733,7 +738,8 @@ _sql_conf_update() {
         fi
       fi
     fi
-    if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+    if [ "${_CONF_MODE}" != "directives" ] \
+      && { [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; }; then
       if [ -e "/root/.dev.server.cnf" ]; then
         echo "DEBUG7: _DB_SERIES is ${_DB_SERIES}"
         echo "DEBUG7: _DB_V is ${_DB_V}"
@@ -761,6 +767,18 @@ _sql_conf_update() {
       fi
     fi
   fi
+}
+
+#
+# Refresh only the my.cnf version-compatibility directives (logging, binlog,
+# performance_schema, removed options) for the selected Percona version,
+# without innodb sizing or restarting mysqld. Called before each mysqld
+# (re)start in the staged 5.7->8.0->8.x upgrade so the file never carries a
+# directive the target version rejects (e.g. log_syslog) -- the failure mode
+# the frequent-update band-aid was meant to cover, done deterministically.
+#
+_sql_directives_sync() {
+  _sql_conf_update directives
 }
 
 #
@@ -1172,7 +1190,7 @@ _install_with_aptitude_sql() {
       _msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     fi
     _check_mysql_version
-    _sql_conf_update
+    _sql_directives_sync
     _check_sql_running
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     _mrun "mysqlcheck -u root -A --auto-repair --silent"
@@ -1246,7 +1264,7 @@ _forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   _check_mysql_version
-  _sql_conf_update
+  _sql_directives_sync
   _check_sql_running
   if [ ! -z "${_DB_V}" ] && [ ! -z "${_ESC_PASS}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1529,7 +1547,7 @@ _db_server_install() {
       _CUSTOM_CONFIG_SQL=NO
       sleep 8
       _check_mysql_version
-      _sql_conf_update
+      _sql_directives_sync
       _check_sql_running
       if [ "${_DB_V}" = "5.7" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1607,7 +1625,7 @@ _db_server_install() {
           _myRstrd=YES
         fi
         _check_mysql_version
-        _sql_conf_update
+        _sql_directives_sync
         _check_sql_running
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
@@ -1771,7 +1789,7 @@ _sql_root_credentials_update() {
     fi
     if [ -e "/root/.my.pass.txt" ]; then
       _check_mysql_version
-      _sql_conf_update
+      _sql_directives_sync
       _check_sql_running
       if [ -z "${_ESC_PASS}" ]; then
         _PXSWD=$(cat /root/.my.pass.txt 2>&1)
