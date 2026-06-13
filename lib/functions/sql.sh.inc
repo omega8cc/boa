@@ -727,7 +727,11 @@ _sql_conf_update() {
                 /etc/mysql/my.cnf &> /dev/null
               echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
             else
-              _innodb_log_file_size_update
+              if [ "${_INNODB_LOG_FILE_SIZE_BUSY}" != "YES" ]; then
+                _INNODB_LOG_FILE_SIZE_BUSY=YES
+                _innodb_log_file_size_update
+                _INNODB_LOG_FILE_SIZE_BUSY=NO
+              fi
             fi
           fi
         fi
@@ -754,7 +758,11 @@ _sql_conf_update() {
                 /etc/mysql/my.cnf &> /dev/null
               echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
             else
-              _innodb_log_file_size_update
+              if [ "${_INNODB_LOG_FILE_SIZE_BUSY}" != "YES" ]; then
+                _INNODB_LOG_FILE_SIZE_BUSY=YES
+                _innodb_log_file_size_update
+                _INNODB_LOG_FILE_SIZE_BUSY=NO
+              fi
             fi
           fi
         fi
