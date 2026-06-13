@@ -36,6 +36,19 @@ _check_sql_running() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_sql_running"
   fi
+  # Ensure MySQLD is up before proceeding. It used to be (re)started as a side
+  # effect of _sql_conf_update's innodb update; now that directive sync is
+  # decoupled from sizing, start it explicitly here when it is down -- e.g.
+  # right after the Percona package install on a 5.7->8.0 upgrade, where
+  # nothing else brings it back up. Directives are already normalized for the
+  # target version by this point, so it starts cleanly.
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  if [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; then
+    _msg "INFO: MySQLD not running -- starting it..."
+    _mrun "bash /var/xdrago/move_sql.sh start"
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
