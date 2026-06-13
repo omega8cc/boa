@@ -50,7 +50,7 @@ _write_solr_config() {
     && [ -e "${_Dir}" ]; then
     if [ "${3}" = "solr9" ]; then
       _PRT="9099"
-      _VRS="9.8.1"
+      _VRS="9.10.1"
     elif [ "${3}" = "solr7" ]; then
       _PRT="9077"
       _VRS="7.7.3"

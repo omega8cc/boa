@@ -61,7 +61,7 @@ With `_EASY_SETUP=PUBLIC` option (default), Barracuda will install automatically
 - Your (optional) Collectd Graph Panel will be available at `https://cgp.master.f-q-d-n`
 - Your (optional) MultiCore Apache Solr 4.9.1 with Jetty 9 will listen on `127.0.0.1:8099`
 - Your (optional) MultiCore Apache Solr 7.7.3 will listen on `127.0.0.1:9077`
-- Your (optional) MultiCore Apache Solr 9.8.1 will listen on `127.0.0.1:9099`
+- Your (optional) MultiCore Apache Solr 9.10.1 will listen on `127.0.0.1:9099`
 - Your (optional) Webmin Control Panel will be available at `https://f-q-d-n:10000` (deprecated)
 
 ### Barracuda EASY_SETUP=LOCAL
