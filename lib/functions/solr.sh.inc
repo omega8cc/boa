@@ -56,10 +56,11 @@ _if_solr_nine() {
       rm -rf "/var/opt/solr-${_SOLR_9_VRN}"
       _get_dev_arch "solr-${_SOLR_9_VRN}.tgz"
       if [ -e "/var/opt/solr-${_SOLR_9_VRN}/bin/install_solr_service.sh" ]; then
-        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR}
         usermod -aG users ${_N_SOLR}
-        bash /var/opt/solr-${_SOLR_9_VRN}/bin/install_solr_service.sh -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
-        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
+        cd /var/opt/solr-${_SOLR_9_VRN}/bin/
+        bash ./install_solr_service.sh -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099
+        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt
         echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr9_permissions
@@ -162,14 +163,14 @@ _if_solr_seven() {
       rm -rf "/var/opt/solr-${_SOLR_7_VRN}"
       _get_dev_arch "solr-${_SOLR_7_VRN}.tgz"
       if [ -e "/var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh" ]; then
-        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR}
         usermod -aG users ${_N_SOLR}
-        bash /var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077 &> /dev/null
-        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
+        cd /var/opt/solr-${_SOLR_7_VRN}/bin/
+        bash ./install_solr_service.sh -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077
+        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr7_permissions
-        _if_fix_solr7_mod
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
       else
         _msg "NOTE: Failed to download solr-${_SOLR_7_VRN}.tgz -- skipping install"
