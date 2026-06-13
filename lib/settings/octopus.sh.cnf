@@ -838,7 +838,7 @@ _extract_archive_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "PROC: _extract_archive_pre in octopus"
   fi
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -866,7 +866,7 @@ _get_dev_src_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "PROC: _get_dev_src_pre in octopus"
   fi
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
     if [ -e "$1" ]; then
       _extract_archive_pre "$1"
@@ -880,7 +880,7 @@ _get_dev_src_pre() {
 #
 # Extract archive.
 _extract_archive() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -896,7 +896,7 @@ _extract_archive() {
       *.7z)        7z x $1       ;;
       *)           echo "'$1' cannot be extracted via >extract<" ;;
     esac
-    rm -f $1
+    [ "${2}" = "keep" ] || rm -f ${1}
   fi
 }
 
@@ -904,7 +904,7 @@ _extract_archive() {
 #
 # Download and extract from dev/version mirror.
 _get_dev_ext() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -923,7 +923,7 @@ _get_dev_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      _extract_archive "${1}" "${2}"
     else
       echo "OOPS: Failed to download ${_urlDev}/${_tRee}/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
