@@ -59,8 +59,7 @@ _if_solr_nine() {
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_9_VRN}/bin/
-        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099
-        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
         echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr9_permissions
@@ -121,8 +120,7 @@ _if_solr_nine() {
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_9_VRN}/bin/
-        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099
-        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
         echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr9_permissions
@@ -168,8 +166,7 @@ _if_solr_seven() {
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_7_VRN}/bin/
-        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077
-        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077 &> /dev/null
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr7_permissions
@@ -211,8 +208,7 @@ _if_solr_seven() {
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_7_VRN}/bin/
-        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077
-        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077 &> /dev/null
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr7_permissions
@@ -306,7 +302,6 @@ _if_solr_four() {
           /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
         touch /opt/solr4/search_api_solr-7.x-1.17.log
       fi
-      cp -af ${_bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
       cd /var/opt
       _get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
       _slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
