@@ -166,7 +166,7 @@ _if_solr_seven() {
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_7_VRN}/bin/
-        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077 &> /dev/null
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr7_permissions
@@ -181,9 +181,9 @@ _if_solr_seven() {
 
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
     _SOLR7_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    _SOLR7_STOP_TEST=$(grep "SOLR_STOP_PORT=17077" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    _SOLR7_STOP_TEST=$(grep "SOLR_STOP_PORT=19077" /etc/default/${_N_SOLR}.in.sh 2>&1)
     if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" ]] \
-      && [[ "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=17077" ]]; then
+      && [[ "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=19077" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/^SOLR_STOP_.*//g" /etc/default/${_N_SOLR}.in.sh
@@ -195,7 +195,7 @@ _if_solr_seven() {
       sed -i "/^$/d" /etc/default/${_N_SOLR}.in.sh
       wait
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
-      echo "SOLR_STOP_PORT=17077" >> /etc/default/${_N_SOLR}.in.sh
+      echo "SOLR_STOP_PORT=19077" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_KEY=mycustomkey7" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/${_N_SOLR}.in.sh
     fi
@@ -208,7 +208,7 @@ _if_solr_seven() {
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_7_VRN}/bin/
-        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077 &> /dev/null
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr7_permissions

@@ -1230,13 +1230,13 @@ _tune_memory_limits() {
   fi
 
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=17077" /etc/default/solr7.in.sh 2>&1)
-    if [[ ! "${_SOLR7_STOP_TEST}" =~ "17077" ]]; then
+    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=19077" /etc/default/solr7.in.sh 2>&1)
+    if [[ ! "${_SOLR7_STOP_TEST}" =~ "19077" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       wait
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
