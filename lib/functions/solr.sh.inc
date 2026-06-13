@@ -162,22 +162,20 @@ _if_solr_seven() {
       true
       _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
+      rm -rf "/var/opt/solr-${_SOLR_7_VRN}"
       _get_dev_arch "solr-${_SOLR_7_VRN}.tgz"
-      _dld_exit=$?
-      if [ ${_dld_exit} -ne 0 ] || [ ! -s "solr-${_SOLR_7_VRN}.tgz" ]; then
-        _msg "NOTE: Failed to download solr-${_SOLR_7_VRN}.tgz (exit ${_dld_exit}) -- skipping install"
-        rm -f "solr-${_SOLR_7_VRN}.tgz"
-      else
-        rm -rf solr-${_SOLR_7_VRN}
+      if [ -e "/var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh" ]; then
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR}
-        tar xzf solr-${_SOLR_7_VRN}.tgz solr-${_SOLR_7_VRN}/bin/install_solr_service.sh --strip-components=2
-        bash ./install_solr_service.sh solr-${_SOLR_7_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
+        bash /var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 7077 &> /dev/null
         cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr7_permissions
+        _if_fix_solr7_mod
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
+      else
+        _msg "NOTE: Failed to download solr-${_SOLR_7_VRN}.tgz -- skipping install"
       fi
     else
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} not installed"
