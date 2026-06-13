@@ -50,6 +50,7 @@ _if_solr_nine() {
     _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
     _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
     if _prompt_yes_no "${_tPrmt}?" ; then
+      true
       _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
       _get_dev_arch "solr-${_SOLR_9_VRN}.tgz"
@@ -158,6 +159,7 @@ _if_solr_seven() {
     _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
     _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
     if _prompt_yes_no "${_tPrmt}?" ; then
+      true
       _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
       _get_dev_arch "solr-${_SOLR_7_VRN}.tgz"
