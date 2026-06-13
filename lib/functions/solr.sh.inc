@@ -54,7 +54,7 @@ _if_solr_nine() {
       _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
       rm -rf "/var/opt/solr*"
-      _get_dev_arch "solr-${_SOLR_9_VRN}.tgz"
+      _get_dev_arch "solr-${_SOLR_9_VRN}.tgz" "keep"
       if [ -e "/var/opt/solr-${_SOLR_9_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_9_VRN}/bin/install_solr_service.sh" ]; then
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
@@ -161,7 +161,7 @@ _if_solr_seven() {
       _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
       rm -rf "/var/opt/solr*"
-      _get_dev_arch "solr-${_SOLR_7_VRN}.tgz"
+      _get_dev_arch "solr-${_SOLR_7_VRN}.tgz" "keep"
       if [ -e "/var/opt/solr-${_SOLR_7_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh" ]; then
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
@@ -257,7 +257,7 @@ _if_solr_four() {
       _get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
       mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
       echo ${_JETTY_9_VRN} > ${_JETTY_CTRL}
-      _get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
+      _get_dev_arch "solr-${_SOLR_4_VRN}.tgz" "keep"
       cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
         /opt/jetty9/webapps/solr.war
       mv -f /var/opt/solr-${_SOLR_4_VRN}/example/multicore \
@@ -416,7 +416,7 @@ _if_solr_four() {
         touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
       fi
       sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-      _get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
+      _get_dev_arch "solr-${_SOLR_4_VRN}.tgz" "keep"
       cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
         /opt/jetty9/webapps/solr.war
       rm -rf /opt/jetty9/solr
