@@ -557,7 +557,7 @@ fi
 ###
 ### Optional add-on services
 ###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+if [ "${_STATUS}" = "UPGRADE" ]; then
   if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
     _if_install_ftpd
     _if_install_vnstat
