@@ -46,7 +46,7 @@ _check_sql_running() {
   if [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; then
     _msg "INFO: MySQLD not running -- starting it..."
-    _mrun "bash /var/xdrago/move_sql.sh start"
+    _mrun "service mysql start"
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
