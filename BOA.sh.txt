@@ -2721,16 +2721,16 @@ _fix_start_stop_ports_solr() {
     fi
   fi
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=17077" /etc/default/solr7.in.sh 2>&1)
+    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=19077" /etc/default/solr7.in.sh 2>&1)
     _SOLR7_WAIT_TEST=$(grep "SOLR_START_WAIT=" /etc/default/solr7.in.sh 2>&1)
     if [ ! -e "/var/log/boa/solr7.in.004.fixed.pid" ] \
-      || [[ ! "${_SOLR7_STOP_TEST}" =~ "17077" ]] \
+      || [[ ! "${_SOLR7_STOP_TEST}" =~ "19077" ]] \
       || [[ ! "${_SOLR7_WAIT_TEST}" =~ "10" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       sed -i "s/.*mycustomkey7.*//g" /etc/default/solr7.in.sh
       sed -i "s/.*_WAIT.*//g" /etc/default/solr7.in.sh
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
       echo "SOLR_START_WAIT=\"10\"" >> /etc/default/solr7.in.sh
       echo "SOLR_STOP_WAIT=\"10\"" >> /etc/default/solr7.in.sh
       echo "SOLR_WAIT_FOR_ZK=\"10\"" >> /etc/default/solr7.in.sh
