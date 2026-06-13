@@ -27,7 +27,11 @@ _get_core_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "${1}" "${2}"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download https://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
