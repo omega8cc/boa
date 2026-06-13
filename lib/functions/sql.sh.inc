@@ -1204,6 +1204,15 @@ _install_with_aptitude_sql() {
     fi
     _check_mysql_version
     _sql_directives_sync
+    # The directives just written include startup-only options (e.g.
+    # mysql_native_password on 8.4). Apply them to the freshly-installed,
+    # already-running server by restarting it, so the plugin is loaded before
+    # mysqlcheck / mysql_upgrade and the root credentials update connect as
+    # root. If mysqld is down (5.7->8.0 after install), _check_sql_running
+    # starts it with the new my.cnf, which loads them the same way.
+    if [ -n "$(pgrep -f /usr/sbin/mysqld)" ]; then
+      _mrun "service mysql restart"
+    fi
     _check_sql_running
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     _mrun "mysqlcheck -u root -A --auto-repair --silent"
