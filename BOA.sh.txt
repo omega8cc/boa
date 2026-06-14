@@ -1032,7 +1032,7 @@ _fix_sync_system_ssl_certs() {
 # call site. Usage:
 #   [ <prereq> ] && _fetch_versioned <dest> <url> <serial> \
 #     [--mode 700] [--owner root:root] [--symlink P] [--guard PAT] \
-#     [--guard-label S] [--ctrl-name N]
+#     [--ctrl-name N]
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
@@ -1043,7 +1043,6 @@ _fetch_versioned() {
       --owner)       _own="$2";  shift 2 ;;
       --symlink)     _lnk="$2";  shift 2 ;;
       --guard)       _grd="$2";  shift 2 ;;
-      --guard-label) _lbl="$2";  shift 2 ;;
       --ctrl-name)   _cnm="$2";  shift 2 ;;
       *) echo "_fetch_versioned: unknown option '$1'" >&2; return 2 ;;
     esac
@@ -1364,9 +1363,9 @@ _update_agents() {
   fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name dcysetup.sh
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f36 --guard duplicity --guard-label "duplicity backup" --ctrl-name multiback.sh
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity --guard-label "duplicity backup" --ctrl-name mybackup.sh
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity --ctrl-name dcysetup.sh
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f35 --guard duplicity --ctrl-name multiback.sh
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity --ctrl-name mybackup.sh
   fi
   if [ -d "/root/.remote_backups/run" ]; then
     _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f48
@@ -1378,8 +1377,8 @@ _update_agents() {
     _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48
   fi
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name backboa.sh
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name duobackboa.sh
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity --ctrl-name backboa.sh
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity --ctrl-name duobackboa.sh
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f71
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f80
