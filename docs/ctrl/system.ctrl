@@ -1,7 +1,9 @@
 You can modify some system defaults on the fly by using control files,
 which will affect either some system-wide services, maintenance agents
 behaviours and/or all hosted Ægir instances, so these controls belong
-to the system root, and are located, if needed, in the root home directory.
+to the system root, and are located, if needed, in the root home directory
+(/root/) -- except config-style controls now being migrated to /etc/boa/, whose
+entries below show that path; secrets and install-critical markers stay in /root/.
 
 These system-level control files use .cnf file extension, so for extra
 clarity we will list here also some other .cnf files which either have
@@ -47,7 +49,7 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
- @=> /root/.mysqladmin.monitor.cnf
+ @=> /etc/boa/.mysqladmin.monitor.cnf
 
   This file, if exists, allows to log the output of `mysqladmin proc` command
   in the /var/log/boa/mysqladmin.monitor.log file, every 15 seconds.
@@ -73,7 +75,7 @@ by the BOA install and upgrade tools exclusively.
   instances on the same BOA system being re-verified daily. Note that it works
   only if _PERMISSIONS_FIX=YES is set in /root/.barracuda.cnf (default)
 
- @=> /root/.enable.newrelic.sysmond.cnf
+ @=> /etc/boa/.enable.newrelic.sysmond.cnf
 
   This file, if exists, allows to run newrelic-sysmond service, otherwise
   disabled for security reasons, because it exposes too much system level
@@ -202,7 +204,7 @@ by the BOA install and upgrade tools exclusively.
   This feature is useful when you have many VM/BOA instances running
   on the same machine.
 
- @=> /root/.home.no.wildcard.chmod.cnf
+ @=> /etc/boa/.home.no.wildcard.chmod.cnf
 
   This file, if exists, allows to avoid setting restrictive (but recommended)
   permissions on all directories in the /home/* directory tree, where normally

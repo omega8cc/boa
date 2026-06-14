@@ -327,7 +327,7 @@ _fpm_apcu_reload_sentinel() {
   #
   # Plan gate: mirrors _if_valkey_restart in valkey.sh — only available on
   # POWER, PHANTOM, CLUSTER, ULTRA, MONSTER plans or when the explicit allow
-  # file /root/.allow.php.fpm.reload.cnf is present.
+  # file /etc/boa/.allow.php.fpm.reload.cnf is present.
   #
   # Why this is needed:
   #   APCu caches field definitions, plugin registries, and other Drupal
@@ -354,7 +354,7 @@ _fpm_apcu_reload_sentinel() {
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [[ "${_PrTestUltra}"   =~ "ULTRA"   ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/root/.allow.php.fpm.reload.cnf" ]; then
+    || [ -e "/etc/boa/.allow.php.fpm.reload.cnf" ]; then
     : # plan allows self-service FPM reload — proceed
   else
     return 0  # plan does not allow self-service FPM reload

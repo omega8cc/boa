@@ -353,7 +353,7 @@ _save_verify_this_platform() {
 #
 # Download and extract from core archive.
 _get_core_ext() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -372,7 +372,11 @@ _get_core_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download https://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -383,7 +387,7 @@ _get_core_ext() {
 #
 # Download and extract from distro archive.
 _get_distro_ext() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -402,7 +406,11 @@ _get_distro_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download https://${_USE_MIR}/distro/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -882,7 +890,7 @@ declare -A _distros_versions=(
   ["CMS"]="2.1.3"
   ["CK1"]="2.77"
   ["CK2"]="2.40"
-  ["CK3"]="3.2.0"
+  ["CK3"]="3.3.6"
   ["DXP"]="10.3.0"
   ["EZC"]="2.2.15"
   ["FOS"]="4.0.2"

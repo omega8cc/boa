@@ -43,7 +43,7 @@ _disable_master_cron() {
 }
 
 [ -e "/root/.proxy.cnf" ] && exit 0
-[ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
+[ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ] && exit 0
 
 _sanitize_number() {
@@ -132,7 +132,7 @@ _if_allow_aegir_queue() {
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/root/.allow.aegir.queue.cnf" ]; then
+    || [ -e "/etc/boa/.allow.aegir.queue.cnf" ]; then
     if [ "${_ReTest}" -ge 1 ]; then
       _ALLOW_AEGIR_QUEUE=TRUE
     fi
@@ -187,7 +187,7 @@ if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
   exit 0
 else
   _enable_master_cron
-  if [ -e "/root/.look.like.jenkins.cnf" ]; then
+  if [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
     _ALLOW_AEGIR_QUEUE=FALSE
     _if_allow_aegir_queue
     if [ "${_ALLOW_AEGIR_QUEUE}" = "TRUE" ]; then

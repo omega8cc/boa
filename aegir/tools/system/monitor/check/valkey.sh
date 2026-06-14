@@ -252,8 +252,8 @@ _if_valkey_restart() {
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/root/.allow.valkey.restart.cnf" ] \
-    || [ -e "/root/.allow.redis.restart.cnf" ]; then
+    || [ -e "/etc/boa/.allow.valkey.restart.cnf" ] \
+    || [ -e "/etc/boa/.allow.redis.restart.cnf" ]; then
     if [ "${_VkTest}" -ge 1 ] || [ "${_ReTest}" -ge 1 ]; then
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then

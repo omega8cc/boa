@@ -1,4 +1,23 @@
 
+# C-003 Phase 1: timestamped backup of a key config to the dragon config store
+# BEFORE any in-place rewrite. Only ever copies -- never alters the original.
+# No-op on missing/empty. Lands in ${_vBs}/dragon/config (3-month retention; the
+# daily.sh dragon sweep spares config/). Proven: boa-modernisation
+# design/per-script/backup-to-dragon.{sh,test.sh}. The standalone auto* bin
+# tools inline the same logic (no shared include) -- dedup candidate.
+_backup_to_dragon() {
+  local _src="$1"
+  [ -s "${_src}" ] || return 0
+  local _dst="${_vBs:-/var/backups}/dragon/config"
+  [ -d "${_dst}" ] || mkdir -p "${_dst}" 2>/dev/null
+  local _bn _tag
+  _bn="${_src##*/}"
+  _tag="${_NOW:-$(date +%y%m%d-%H%M%S 2>/dev/null)}"
+  [ -n "${_xSrl:-}" ] && _tag="${_xSrl}-${_X_VERSION:-}-${_tag}"
+  cp -a "${_src}" "${_dst}/${_bn}-pre-${_tag}" 2>/dev/null
+  return 0
+}
+
 _check_mysql_version() {
   _DB_V=
   _DB_V=$(mysql -V 2>&1 \
@@ -16,6 +35,19 @@ _check_mysql_version() {
 _check_sql_running() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_sql_running"
+  fi
+  # Ensure MySQLD is up before proceeding. It used to be (re)started as a side
+  # effect of _sql_conf_update's innodb update; now that directive sync is
+  # decoupled from sizing, start it explicitly here when it is down -- e.g.
+  # right after the Percona package install on a 5.7->8.0 upgrade, where
+  # nothing else brings it back up. Directives are already normalized for the
+  # target version by this point, so it starts cleanly.
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  if [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; then
+    _msg "INFO: MySQLD not running -- starting it..."
+    _mrun "service mysql start"
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
@@ -444,7 +476,7 @@ _innodb_log_file_size_update() {
     _msg "PROC: _innodb_log_file_size_update"
   fi
   _check_mysql_version
-  _sql_conf_update
+  _sql_directives_sync
   _check_sql_running
   if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
     _msg "INFO: InnoDB redo log capacity will be set to ${_INNODB_REDO_LOG_CAPACITY_MB}..."
@@ -473,7 +505,7 @@ _innodb_log_file_size_update() {
           -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
           -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
           /etc/mysql/my.cnf &> /dev/null
-        echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
+        echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
       fi
     fi
     if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
@@ -489,7 +521,7 @@ _innodb_log_file_size_update() {
           -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
           -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
           /etc/mysql/my.cnf &> /dev/null
-        echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
+        echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
       fi
     fi
     _mrun "bash /var/xdrago/move_sql.sh start"
@@ -518,7 +550,7 @@ _innodb_log_file_size_update() {
             -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
             -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
             /etc/mysql/my.cnf &> /dev/null
-          echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
+          echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
         fi
       fi
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
@@ -534,7 +566,7 @@ _innodb_log_file_size_update() {
             -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
             -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
             /etc/mysql/my.cnf &> /dev/null
-          echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
+          echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
         fi
       fi
       _mrun "bash /var/xdrago/move_sql.sh start"
@@ -553,6 +585,10 @@ _innodb_log_file_size_update() {
 #
 # Update SQL Config.
 _sql_conf_update() {
+  # Mode "directives" (called via _sql_directives_sync) normalizes only the
+  # my.cnf version-compatibility directives and skips innodb sizing plus the
+  # mysqld restart it triggers. Default (no arg) runs the full config.
+  local _CONF_MODE="${1}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_conf_update"
   fi
@@ -687,7 +723,8 @@ _sql_conf_update() {
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
     fi
-    if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
+    if [ "${_CONF_MODE}" != "directives" ] \
+      && { [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; }; then
       if [ -e "/root/.dev.server.cnf" ]; then
         echo "DEBUG6: _DB_SERIES is ${_DB_SERIES}"
         echo "DEBUG6: _DB_V is ${_DB_V}"
@@ -706,7 +743,7 @@ _sql_conf_update() {
                 -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
                 -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
                 /etc/mysql/my.cnf &> /dev/null
-              echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
+              echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
             else
               _innodb_log_file_size_update
             fi
@@ -714,7 +751,8 @@ _sql_conf_update() {
         fi
       fi
     fi
-    if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+    if [ "${_CONF_MODE}" != "directives" ] \
+      && { [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; }; then
       if [ -e "/root/.dev.server.cnf" ]; then
         echo "DEBUG7: _DB_SERIES is ${_DB_SERIES}"
         echo "DEBUG7: _DB_V is ${_DB_V}"
@@ -733,7 +771,7 @@ _sql_conf_update() {
                 -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
                 -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
                 /etc/mysql/my.cnf &> /dev/null
-              echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
+              echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
             else
               _innodb_log_file_size_update
             fi
@@ -742,6 +780,18 @@ _sql_conf_update() {
       fi
     fi
   fi
+}
+
+#
+# Refresh only the my.cnf version-compatibility directives (logging, binlog,
+# performance_schema, removed options) for the selected Percona version,
+# without innodb sizing or restarting mysqld. Called before each mysqld
+# (re)start in the staged 5.7->8.0->8.x upgrade so the file never carries a
+# directive the target version rejects (e.g. log_syslog) -- the failure mode
+# the frequent-update band-aid was meant to cover, done deterministically.
+#
+_sql_directives_sync() {
+  _sql_conf_update directives
 }
 
 #
@@ -1153,7 +1203,18 @@ _install_with_aptitude_sql() {
       _msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     fi
     _check_mysql_version
-    _sql_conf_update
+    _sql_directives_sync
+    # mysql_native_password=ON (and other startup-only options) just written
+    # for 8.4 take effect only on a mysqld (re)start. Restart unconditionally
+    # so the plugin loads before mysqlcheck/mysql_upgrade and the root
+    # credentials update connect as root -- a pgrep guard here raced the
+    # package's async start and never fired. _check_sql_running first brings up
+    # a down 5.7->8.0 server; the restart then re-reads my.cnf on the running
+    # 8.4 server. Mirrors the unconditional restart the fresh-install path does
+    # after the same sed. (8.4-only: mysql_native_password is removed in 9.0 --
+    # a 9.x bump must switch to caching_sha2_password.)
+    _check_sql_running
+    _mrun "service mysql restart"
     _check_sql_running
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     _mrun "mysqlcheck -u root -A --auto-repair --silent"
@@ -1174,8 +1235,9 @@ _forced_mysql_root_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _forced_mysql_root_password_update"
   fi
-  mv -f /root/.my.cnf-pre-* ${_vBs}/ &> /dev/null
-  mv -f /root/.my.pass.txt-pre-* ${_vBs}/ &> /dev/null
+  mkdir -p ${_vBs}/dragon/config &> /dev/null
+  mv -f /root/.my.cnf-pre-* ${_vBs}/dragon/config/ &> /dev/null
+  mv -f /root/.my.pass.txt-pre-* ${_vBs}/dragon/config/ &> /dev/null
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
   _ESC_PASS=""
@@ -1226,7 +1288,7 @@ _forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   _check_mysql_version
-  _sql_conf_update
+  _sql_directives_sync
   _check_sql_running
   if [ ! -z "${_DB_V}" ] && [ ! -z "${_ESC_PASS}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1240,8 +1302,8 @@ _forced_mysql_root_password_update() {
         fi
       fi
     fi
-    cp -af /root/.my.cnf /root/.my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}
-    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}
+    _backup_to_dragon /root/.my.cnf
+    _backup_to_dragon /root/.my.pass.txt
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_V}" = "5.7" ]; then
@@ -1509,7 +1571,7 @@ _db_server_install() {
       _CUSTOM_CONFIG_SQL=NO
       sleep 8
       _check_mysql_version
-      _sql_conf_update
+      _sql_directives_sync
       _check_sql_running
       if [ "${_DB_V}" = "5.7" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1587,7 +1649,7 @@ _db_server_install() {
           _myRstrd=YES
         fi
         _check_mysql_version
-        _sql_conf_update
+        _sql_directives_sync
         _check_sql_running
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
@@ -1751,7 +1813,7 @@ _sql_root_credentials_update() {
     fi
     if [ -e "/root/.my.pass.txt" ]; then
       _check_mysql_version
-      _sql_conf_update
+      _sql_directives_sync
       _check_sql_running
       if [ -z "${_ESC_PASS}" ]; then
         _PXSWD=$(cat /root/.my.pass.txt 2>&1)
