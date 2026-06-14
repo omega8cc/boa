@@ -810,7 +810,7 @@ _aegir_master_upgrade() {
       _php_cli_drush_update "${_df}"
     done
 
-    export _xSrl=595proT02
+    export _xSrl=595proT03
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
@@ -1177,7 +1177,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    export _xSrl=595proT02
+    export _xSrl=595proT03
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${_vBs}/${_filIncB}
