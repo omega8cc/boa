@@ -1031,8 +1031,8 @@ _fix_sync_system_ssl_certs() {
 # are direction-free, preserves perms per caller. Per-block prereqs stay at the
 # call site. Usage:
 #   [ <prereq> ] && _fetch_versioned <dest> <url> <serial> \
-#     [--mode 700] [--owner root:root] [--symlink P] [--guard PAT] \
-#     [--ctrl-name N]
+#     [--mode 700] [--owner root:root] [--symlink P] [--guard PAT]
+#
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
@@ -1043,7 +1043,6 @@ _fetch_versioned() {
       --owner)       _own="$2";  shift 2 ;;
       --symlink)     _lnk="$2";  shift 2 ;;
       --guard)       _grd="$2";  shift 2 ;;
-      --ctrl-name)   _cnm="$2";  shift 2 ;;
       *) echo "_fetch_versioned: unknown option '$1'" >&2; return 2 ;;
     esac
   done
@@ -1298,7 +1297,7 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/tools/bin/lock.inc" f98 --ctrl-name lock.inc.sh
+  _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/tools/bin/lock.inc" f98
 
   if [ ! -e "${_optBin}/vmnetfix" ] \
     || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
@@ -1329,27 +1328,27 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/tools/bin/screenfetch" f99 --guard screenfetch --ctrl-name screenfetch.sh
-  _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f99 --guard fixrepo --ctrl-name fixrepo.sh
-  _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f98 --guard renameaegirhost --ctrl-name renameaegirhost.sh
-  _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f93 --guard autosymlink --ctrl-name autosymlink.sh
-  _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f98 --guard updatesymlinks --ctrl-name updatesymlinks.sh
-  _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup --ctrl-name aptcleanup.sh
-  _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/tools/bin/loadguard" f99 --guard xloadguard --ctrl-name loadguard.sh
-  _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror --ctrl-name ffmirror.sh
-  _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/tools/bin/ffdevuan" f95 --guard xffdevuan --ctrl-name ffdevuan.sh
-  _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver --ctrl-name webserver.sh
-  _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f99 --guard /local/bin/xoct --ctrl-name xoct.sh
-  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f97 --guard /local/bin/xmass --ctrl-name xmass.sh
-  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f98 --guard /local/bin/autobeowulf --ctrl-name autobeowulf.sh
-  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f98 --guard /local/bin/autoexcalibur --ctrl-name autoexcalibur.sh
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f95 --guard /local/bin/boa --ctrl-name boa.sh
-  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f90 --guard /local/bin/barracuda --ctrl-name barracuda.sh
-  _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f98 --guard /local/bin/octopus --ctrl-name octopus.sh
-  _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f99 --guard /local/bin/dhcpfix --ctrl-name dhcpfix.sh
-  _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest --ctrl-name perftest.sh
-  _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f02 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport --ctrl-name fpmreport.sh
-  _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast --ctrl-name aptfast.sh
+  _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/tools/bin/screenfetch" f99 --guard screenfetch
+  _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f99 --guard fixrepo
+  _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f98 --guard renameaegirhost
+  _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f93 --guard autosymlink
+  _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f98 --guard updatesymlinks
+  _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup
+  _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/tools/bin/loadguard" f99 --guard xloadguard
+  _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror
+  _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/tools/bin/ffdevuan" f95 --guard xffdevuan
+  _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver
+  _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f99 --guard /local/bin/xoct
+  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f97 --guard /local/bin/xmass
+  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f98 --guard /local/bin/autobeowulf
+  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f98 --guard /local/bin/autoexcalibur
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f95 --guard /local/bin/boa
+  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f90 --guard /local/bin/barracuda
+  _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f98 --guard /local/bin/octopus
+  _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f99 --guard /local/bin/dhcpfix
+  _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
+  _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f02 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
+  _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
@@ -1363,9 +1362,9 @@ _update_agents() {
   fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity --ctrl-name dcysetup.sh
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f35 --guard duplicity --ctrl-name multiback.sh
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity --ctrl-name mybackup.sh
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f35 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity
   fi
   if [ -d "/root/.remote_backups/run" ]; then
     _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f48
@@ -1377,8 +1376,8 @@ _update_agents() {
     _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48
   fi
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity --ctrl-name backboa.sh
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity --ctrl-name duobackboa.sh
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f71
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f80
