@@ -364,7 +364,7 @@ _satellite_check_if_already_upgraded() {
         if [ "${_oMcm}" != "force" ]; then
           _mCmd=
           _fMdy=force
-          if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
+          if [ ! -e "/etc/boa/.silent-octopus-upgrade.cnf" ]; then
             echo
             echo "This Ægir Instance ${_octUsr} is already up to date!"
             echo "If you wish to run/force the upgrade again,"

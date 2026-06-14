@@ -31,7 +31,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=595ltsT01
+export _xSrl=595ltsT02
 
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
@@ -46,7 +46,7 @@ _REPL_USER="xmass_repl"
 _XTRA_STAGE_SRC="/var/backups/xmass_stage"
 _XTRA_STAGE_TGT="/var/backups/xmass_restore"
 _SOLR_DENY_FILE="/root/.deny.java.cnf"
-_XMASS_SOLR_HOLD_FILE="/root/.xmass_solr_hold.pid"
+_XMASS_SOLR_HOLD_FILE="/var/log/boa/.xmass_solr_hold.pid"
 _PERM_PROXY_FLAG="/data/conf/xmass_permanent_proxy.pid"
 _ieni="--ignore-errors"
 
@@ -457,7 +457,8 @@ SLAVEEOF
 _xmass_prevent_solr_target() {
   _info "Holding Solr on target ${_tgt} until cutover sync completes ..."
   ssh root@"${_tgt}" bash <<'REMOTE'
-touch /root/.xmass_solr_hold.pid
+mkdir -p /var/log/boa 2>/dev/null
+touch /var/log/boa/.xmass_solr_hold.pid
 for _svc in solr9 solr7 solr4 jetty9; do
   if [ -x "/etc/init.d/${_svc}" ]; then
     service ${_svc} stop &>/dev/null || true
@@ -496,7 +497,7 @@ done
 REMOTE
   _info "Starting Solr on target ${_tgt} ..."
   ssh root@"${_tgt}" bash <<'REMOTE'
-rm -f /root/.xmass_solr_hold.pid
+rm -f /var/log/boa/.xmass_solr_hold.pid
 for _svc in solr9 solr7; do
   if [ -x "/etc/init.d/${_svc}" ] \
     && [ -e "/etc/default/${_svc}.in.sh" ]; then

@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.2
+export _DRUSH_VERSION=8.5.3
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.1
 export _REDIS_N_VERSION=com-19-04-2021
@@ -203,7 +203,8 @@ fi
 ###
 _clean_pid_exit() {
   if [ -n "${1}" ]; then
-    echo "REASON ${1} on $(date)" >> /root/.octopus.sh.exit.exceptions.log
+    mkdir -p /var/log/boa 2>/dev/null
+    echo "REASON ${1} on $(date)" >> /var/log/boa/.octopus.sh.exit.exceptions.log
     [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
