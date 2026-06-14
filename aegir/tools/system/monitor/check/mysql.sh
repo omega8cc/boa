@@ -168,7 +168,7 @@ _sql_busy_detection() {
       fi
     fi
   fi
-  if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
+  if [ -e "/etc/boa/.instant.busy.mysql.action.cnf" ]; then
     # File-existence check instead of cat'ing the cleartext root password
     # into a shell variable just to test its non-emptiness. The mysql call
     # below uses /root/.my.cnf credentials implicitly via `mysql -u root`.
@@ -201,16 +201,19 @@ _mysql_proc_kill() {
 
 _mysql_proc_control() {
   # Control file to enable _SQLMONITOR
-  if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
+  if [ -e "/etc/boa/.mysqladmin.monitor.cnf" ]; then
     _SQLMONITOR=YES
   fi
 
   # Log the MySQL process list if _SQLMONITOR is enabled
+  for _f in .debug_slow_query.pid .nodebug_slow_query.pid; do
+    [ -e "/root/${_f}" ] && [ ! -e "/var/log/boa/${_f}" ] && cp -a "/root/${_f}" /var/log/boa/ 2>/dev/null
+  done
   if [[ "${_SQLMONITOR}" == "YES" ]]; then
     [ -e "/var/xdrago/log/mysqladmin.monitor.log" ] && mv -f /var/xdrago/log/mysqladmin.monitor.log /var/log/boa/
-    [ -e "/root/.nodebug_slow_query.pid" ] && rm -f /root/.nodebug_slow_query.pid
-    if [ ! -e "/root/.debug_slow_query.pid" ]; then
-      touch /root/.debug_slow_query.pid
+    [ -e "/var/log/boa/.nodebug_slow_query.pid" ] && rm -f /var/log/boa/.nodebug_slow_query.pid
+    if [ ! -e "/var/log/boa/.debug_slow_query.pid" ]; then
+      touch /var/log/boa/.debug_slow_query.pid
       mysql -u root -e "SET GLOBAL slow_query_log = 'ON';" &> /dev/null
       mysql -u root -e "SET GLOBAL long_query_time = 5;" &> /dev/null
       mysql -u root -e "SET GLOBAL slow_query_log_file = '/var/log/mysql/sql-slow-query.log';" &> /dev/null
@@ -218,10 +221,10 @@ _mysql_proc_control() {
     echo "$(date 2>&1)" >> /var/log/boa/mysqladmin.monitor.log
     echo "$(mysqladmin -u root proc -v 2>&1)" >> /var/log/boa/mysqladmin.monitor.log
   else
-    [ -e "/root/.debug_slow_query.pid" ] && rm -f /root/.debug_slow_query.pid
-    if [ ! -e "/root/.nodebug_slow_query.pid" ]; then
+    [ -e "/var/log/boa/.debug_slow_query.pid" ] && rm -f /var/log/boa/.debug_slow_query.pid
+    if [ ! -e "/var/log/boa/.nodebug_slow_query.pid" ]; then
       mysql -u root -e "SET GLOBAL slow_query_log = 'OFF';" &> /dev/null
-      touch /root/.nodebug_slow_query.pid
+      touch /var/log/boa/.nodebug_slow_query.pid
       [ -e "/var/log/boa/mysqladmin.monitor.log" ] && rm -f /var/log/boa/mysqladmin.monitor.log
       [ -e "/var/log/mysql/sql-slow-query.log" ] && rm -f /var/log/mysql/sql-slow-query.log
     fi
@@ -249,8 +252,8 @@ _mysql_proc_control() {
       echo "Process ID: ${_each}, User: ${_xuser}, Time: ${_xtime} seconds"
 
       # Check if the user is listed on the problematic users list
-      if [[ -e "/root/.sql.problematic.users.cnf" ]]; then
-        for _XQ in $(cat /root/.sql.problematic.users.cnf | cut -d '#' -f1 | sort | uniq); do
+      if [[ -e "/etc/boa/.sql.problematic.users.cnf" ]]; then
+        for _XQ in $(cat /etc/boa/.sql.problematic.users.cnf | cut -d '#' -f1 | sort | uniq); do
           if [[ "${_xuser}" == "${_XQ}" ]]; then
             echo "Problematic user detected: ${_xuser}, applying lower limit"
             _limit=${_SQL_LOW_MAX_TTL}

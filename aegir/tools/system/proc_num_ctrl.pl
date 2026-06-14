@@ -133,8 +133,8 @@ if (!any_file_exists($run_to_files)) {
 
 if (!any_file_exists($run_to_files)) {
   system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
-  system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
-  system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
+  system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/etc/boa/.enable.newrelic.sysmond.cnf");
+  system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/etc/boa/.enable.newrelic.sysmond.cnf");
 }
 
 if (!any_file_exists($run_to_files)) {
