@@ -1365,7 +1365,7 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name dcysetup.sh
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f37 --guard duplicity --guard-label "duplicity backup" --ctrl-name multiback.sh
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f36 --guard duplicity --guard-label "duplicity backup" --ctrl-name multiback.sh
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity --guard-label "duplicity backup" --ctrl-name mybackup.sh
   fi
   if [ -d "/root/.remote_backups/run" ]; then
