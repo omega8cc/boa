@@ -1230,13 +1230,13 @@ _tune_memory_limits() {
   fi
 
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=17077" /etc/default/solr7.in.sh 2>&1)
-    if [[ ! "${_SOLR7_STOP_TEST}" =~ "17077" ]]; then
+    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=19077" /etc/default/solr7.in.sh 2>&1)
+    if [[ ! "${_SOLR7_STOP_TEST}" =~ "19077" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       wait
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
@@ -1939,14 +1939,14 @@ _php_if_versions_cleanup_cnf() {
         _STRICT_LIMIT_PHP=YES
       fi
 
-      ### Include PHP 8.3, 8.4 and 8.5 if conditions are met
+      ### Include PHP 8.4 if conditions are met
       _if_hosted_sys
       if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
         if [ -e "/root/.include-php-latest.cnf" ] \
           || [ "${_hostedSys}" = "YES" ]; then
           if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
             && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
-            _local_PHP_MULTI_INSTALL="8.3 8.4 8.5 ${_local_PHP_MULTI_INSTALL}"
+            _local_PHP_MULTI_INSTALL="8.4 ${_local_PHP_MULTI_INSTALL}"
           fi
         fi
       fi
@@ -9567,7 +9567,7 @@ _newrelic_check_fix() {
     sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" \
       ${_NEWRELIC_SYS_CFG} &> /dev/null
     wait
-    if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
+    if [ -e "/etc/boa/.enable.newrelic.sysmond.cnf" ]; then
       _mrun "service newrelic-sysmond restart"
     else
       _mrun "service newrelic-sysmond stop"
@@ -9645,7 +9645,7 @@ _java_check_fix() {
     fi
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
-    elif [ -e "/root/.look.like.jenkins.cnf" ]; then
+    elif [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     else
       _LOOK_LIKE_JENKINS=FALSE
@@ -9663,7 +9663,7 @@ _java_check_fix() {
         ln -sfn /etc/alternatives/java /usr/bin/java
         touch /var/log/boa/.fixed-java17-symlinks.log
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Fixed Java 17 symlinks for ${_OS_CODE}"
+          _msg "INFO: Fixed Java 17 symlinks for ${_OS_CODE}"
         fi
       fi
       if [ -x "/usr/lib/jvm/java-21-openjdk/bin/java" ] \
@@ -9676,7 +9676,7 @@ _java_check_fix() {
         ln -sfn /etc/alternatives/java /usr/bin/java
         touch /var/log/boa/.fixed-java21-symlinks.log
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Fixed Java 21 symlinks for ${_OS_CODE}"
+          _msg "INFO: Fixed Java 21 symlinks for ${_OS_CODE}"
         fi
       fi
     else
@@ -9689,7 +9689,7 @@ _java_check_fix() {
           ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
           ln -sfn /etc/alternatives/java /usr/bin/java
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "Fixed Java 11 symlinks for ${_OS_CODE}"
+            _msg "INFO: Fixed Java 11 symlinks for ${_OS_CODE}"
           fi
         fi
       fi
@@ -9712,7 +9712,7 @@ _java_check_fix() {
       ln -sfn /etc/alternatives/java /usr/bin/java
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "Fixed Java 11 symlinks for ${_OS_CODE}"
+      _msg "INFO: Fixed Java 11 symlinks for ${_OS_CODE}"
     fi
   fi
 }
@@ -9722,7 +9722,7 @@ _sshd_armour() {
     _msg "PROC: _sshd_armour"
   fi
   ###
-  ### See: https://stribika.github.io/2015/01/04/secure-secure-shell.html
+  ### See: https://blog.stribik.technology/2015/01/04/secure-secure-shell.html
   ### Also: https://github.com/stribika/stribika.github.io/wiki/Secure-Secure-Shell
   ###
   if [ -e "/etc/ssh/sshd_config" ]; then

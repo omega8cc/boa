@@ -16,7 +16,7 @@ _check_root() {
 }
 _check_root
 
-if [ -e "/root/.disable_mysql_cleanup.cnf" ]; then
+if [ -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
   exit 0
 fi
 
