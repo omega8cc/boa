@@ -106,7 +106,7 @@ _php_cli_local_ini_update() {
 #
 # Download and extract from core archive.
 _get_core_ext() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -125,7 +125,11 @@ _get_core_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download https://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -806,7 +810,7 @@ _aegir_master_upgrade() {
       _php_cli_drush_update "${_df}"
     done
 
-    export _xSrl=595devT01
+    export _xSrl=595devT02
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
@@ -1173,7 +1177,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    export _xSrl=595devT01
+    export _xSrl=595devT02
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${_vBs}/${_filIncB}

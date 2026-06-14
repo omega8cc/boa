@@ -53,18 +53,21 @@ _if_solr_nine() {
       true
       _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
-      curl ${_crlGet} "${_urlDev}/solr-${_SOLR_9_VRN}.tgz" -o "solr-${_SOLR_9_VRN}.tgz"
-      rm -rf solr-${_SOLR_9_VRN}
-      adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
-      usermod -aG users ${_N_SOLR}
-      tar xzf solr-${_SOLR_9_VRN}.tgz solr-${_SOLR_9_VRN}/bin/install_solr_service.sh --strip-components=2
-      bash ./install_solr_service.sh solr-${_SOLR_9_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
-      cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
-      echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
-      cd /var/opt
-      _if_fix_solr9_permissions
-      _if_fix_solr9_mod
-      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
+      rm -rf "/var/opt/solr*"
+      _get_dev_arch "solr-${_SOLR_9_VRN}.tgz" "keep"
+      if [ -e "/var/opt/solr-${_SOLR_9_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_9_VRN}/bin/install_solr_service.sh" ]; then
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        usermod -aG users ${_N_SOLR} &> /dev/null
+        cd /var/opt/solr-${_SOLR_9_VRN}/bin/
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
+        echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
+        cd /var/opt
+        _if_fix_solr9_permissions
+        _if_fix_solr9_mod
+        _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
+      else
+        _msg "NOTE: Failed to download solr-${_SOLR_9_VRN}.tgz -- skipping install"
+      fi
     else
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} not installed"
     fi
@@ -111,14 +114,21 @@ _if_solr_nine() {
     if [ ! -e "${_SOLR_CTRL}" ]; then
       _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
-      curl ${_crlGet} "${_urlDev}/solr-${_SOLR_9_VRN}.tgz" -o "solr-${_SOLR_9_VRN}.tgz"
-      rm -rf solr-${_SOLR_9_VRN}
-      tar xzf solr-${_SOLR_9_VRN}.tgz solr-${_SOLR_9_VRN}/bin/install_solr_service.sh --strip-components=2
-      bash ./install_solr_service.sh solr-${_SOLR_9_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
-      echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
-      _if_fix_solr9_permissions
-      _if_fix_solr9_mod
-      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
+      rm -rf "/var/opt/solr*"
+      _get_dev_arch "solr-${_SOLR_9_VRN}.tgz" "keep"
+      if [ -e "/var/opt/solr-${_SOLR_9_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_9_VRN}/bin/install_solr_service.sh" ]; then
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        usermod -aG users ${_N_SOLR} &> /dev/null
+        cd /var/opt/solr-${_SOLR_9_VRN}/bin/
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
+        echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
+        cd /var/opt
+        _if_fix_solr9_permissions
+        _if_fix_solr9_mod
+        _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
+      else
+        _msg "NOTE: Failed to download solr-${_SOLR_9_VRN}.tgz -- skipping install"
+      fi
     fi
   fi
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
@@ -150,17 +160,20 @@ _if_solr_seven() {
       true
       _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
-      curl ${_crlGet} "${_urlDev}/solr-${_SOLR_7_VRN}.tgz" -o "solr-${_SOLR_7_VRN}.tgz"
-      rm -rf solr-${_SOLR_7_VRN}
-      adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
-      usermod -aG users ${_N_SOLR}
-      tar xzf solr-${_SOLR_7_VRN}.tgz solr-${_SOLR_7_VRN}/bin/install_solr_service.sh --strip-components=2
-      bash ./install_solr_service.sh solr-${_SOLR_7_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
-      cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
-      echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
-      cd /var/opt
-      _if_fix_solr7_permissions
-      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
+      rm -rf "/var/opt/solr*"
+      _get_dev_arch "solr-${_SOLR_7_VRN}.tgz" "keep"
+      if [ -e "/var/opt/solr-${_SOLR_7_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh" ]; then
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        usermod -aG users ${_N_SOLR} &> /dev/null
+        cd /var/opt/solr-${_SOLR_7_VRN}/bin/
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
+        echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
+        cd /var/opt
+        _if_fix_solr7_permissions
+        _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
+      else
+        _msg "NOTE: Failed to download solr-${_SOLR_7_VRN}.tgz -- skipping install"
+      fi
     else
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} not installed"
     fi
@@ -168,9 +181,9 @@ _if_solr_seven() {
 
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
     _SOLR7_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    _SOLR7_STOP_TEST=$(grep "SOLR_STOP_PORT=17077" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    _SOLR7_STOP_TEST=$(grep "SOLR_STOP_PORT=19077" /etc/default/${_N_SOLR}.in.sh 2>&1)
     if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" ]] \
-      && [[ "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=17077" ]]; then
+      && [[ "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=19077" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/^SOLR_STOP_.*//g" /etc/default/${_N_SOLR}.in.sh
@@ -182,20 +195,27 @@ _if_solr_seven() {
       sed -i "/^$/d" /etc/default/${_N_SOLR}.in.sh
       wait
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
-      echo "SOLR_STOP_PORT=17077" >> /etc/default/${_N_SOLR}.in.sh
+      echo "SOLR_STOP_PORT=19077" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_KEY=mycustomkey7" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/${_N_SOLR}.in.sh
     fi
     if [ ! -e "${_SOLR_CTRL}" ]; then
       _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
-      curl ${_crlGet} "${_urlDev}/solr-${_SOLR_7_VRN}.tgz" -o "solr-${_SOLR_7_VRN}.tgz"
-      rm -rf solr-${_SOLR_7_VRN}
-      tar xzf solr-${_SOLR_7_VRN}.tgz solr-${_SOLR_7_VRN}/bin/install_solr_service.sh --strip-components=2
-      bash ./install_solr_service.sh solr-${_SOLR_7_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
-      echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
-      _if_fix_solr7_permissions
-      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
+      rm -rf "/var/opt/solr*"
+      _get_dev_arch "solr-${_SOLR_7_VRN}.tgz" "keep"
+      if [ -e "/var/opt/solr-${_SOLR_7_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh" ]; then
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        usermod -aG users ${_N_SOLR} &> /dev/null
+        cd /var/opt/solr-${_SOLR_7_VRN}/bin/
+        bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
+        echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
+        cd /var/opt
+        _if_fix_solr7_permissions
+        _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
+      else
+        _msg "NOTE: Failed to download solr-${_SOLR_7_VRN}.tgz -- skipping install"
+      fi
     fi
   fi
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
@@ -237,7 +257,7 @@ _if_solr_four() {
       _get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
       mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
       echo ${_JETTY_9_VRN} > ${_JETTY_CTRL}
-      _get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
+      _get_dev_arch "solr-${_SOLR_4_VRN}.tgz" "keep"
       cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
         /opt/jetty9/webapps/solr.war
       mv -f /var/opt/solr-${_SOLR_4_VRN}/example/multicore \
@@ -282,7 +302,6 @@ _if_solr_four() {
           /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
         touch /opt/solr4/search_api_solr-7.x-1.17.log
       fi
-      cp -af ${_bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
       cd /var/opt
       _get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
       _slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
@@ -396,7 +415,7 @@ _if_solr_four() {
         touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
       fi
       sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-      _get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
+      _get_dev_arch "solr-${_SOLR_4_VRN}.tgz" "keep"
       cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
         /opt/jetty9/webapps/solr.war
       rm -rf /opt/jetty9/solr

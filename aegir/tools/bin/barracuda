@@ -43,7 +43,8 @@ fi
 
 _clean_pid_exit() {
   if [ -n "${1}" ]; then
-    echo "REASON ${1} on $(date)" >> /root/.barracuda.exit.exceptions.log
+    mkdir -p /var/log/boa 2>/dev/null
+    echo "REASON ${1} on $(date)" >> /var/log/boa/.barracuda.exit.exceptions.log
     [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
@@ -466,7 +467,7 @@ _if_extended_report() {
     || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
-    || [ -e "/root/.send-extended-report.cnf" ]; then
+    || [ -e "/etc/boa/.send-extended-report.cnf" ]; then
     _EXTENDED=YES
   fi
   if [ "${_EXTENDED}" = "YES" ]; then

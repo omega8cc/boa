@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-[ -e "/root/.look.like.jenkins.cnf" ] && exit 0
+[ -e "/etc/boa/.look.like.jenkins.cnf" ] && exit 0
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
@@ -82,7 +82,7 @@ _read_account_data() {
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
     _check_account_exceptions
   fi
-  if [ -e "/root/.debug.email.txt" ]; then
+  if [ -e "/etc/boa/.debug.email.txt" ]; then
     _CLIENT_EMAIL="omega8cc@gmail.com"
   fi
   if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then
@@ -350,10 +350,8 @@ _usage_count() {
           [ "${_THIS_MODE}" = "verbose" ] && echo "  ${_THIS_U},${_Dom},_DirSize:${_DirSize}" >> "${_uLogFil}"
         fi
         if [ ! -z "${_Dat}" ]; then
-          if [ -e "/root/.du.sql" ]; then
-            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.sql 2>&1)
-          elif [ -e "/root/.du.local.sql" ]; then
-            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.local.sql 2>&1)
+          if [ -e "/var/log/boa/.du.local.sql" ]; then
+            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /var/log/boa/.du.local.sql 2>&1)
           elif [ -e "/var/lib/mysql/${_Dat}" ]; then
             _DatSize=$(du -s /var/lib/mysql/${_Dat} 2>/dev/null)
           fi

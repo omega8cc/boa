@@ -47,7 +47,7 @@ _DB_SRC=repo.percona.com
 ###
 _DRUSH_ELEVEN_VRN=11.6.0.9
 _DRUSH_TEN_VRN=10.6.2.9
-_DRUSH_EIGHT_VRN=8.5.2
+_DRUSH_EIGHT_VRN=8.5.3
 _DRUSH_EIGHT_TEST_VRN=8.5.0-force
 ###
 ###
@@ -134,7 +134,7 @@ _SOLR_1_VRN=1.4.1
 _SOLR_3_VRN=3.6.2
 _SOLR_4_VRN=4.9.1
 _SOLR_7_VRN=7.7.3
-_SOLR_9_VRN=9.8.1
+_SOLR_9_VRN=9.10.1
 _TWIGC_VRN=1.24.0
 _UNBOUND_VRN=1.25.1
 _UPROGRESS_EIGHT_VRN=2.0.2
@@ -215,7 +215,8 @@ fi
 ###
 _clean_pid_exit() {
   if [ -n "${1}" ]; then
-    echo "REASON ${1} on $(date)" >> /root/.barracuda.sh.exit.exceptions.log
+    mkdir -p /var/log/boa 2>/dev/null
+    echo "REASON ${1} on $(date)" >> /var/log/boa/.barracuda.sh.exit.exceptions.log
     [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
@@ -556,7 +557,7 @@ fi
 ###
 ### Optional add-on services
 ###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+if [ "${_STATUS}" = "UPGRADE" ]; then
   if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
     _if_install_ftpd
     _if_install_vnstat

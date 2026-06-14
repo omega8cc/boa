@@ -141,30 +141,30 @@ _sanitize_string() {
 #
 # Extract archive.
 _extract_archive() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf $1    ;;
-      *.tar.gz)    tar xzf $1    ;;
-      *.tar.xz)    tar xvf $1    ;;
-      *.bz2)       bunzip2 $1    ;;
-      *.rar)       unrar x $1    ;;
-      *.gz)        gunzip -q $1  ;;
-      *.tar)       tar xf $1     ;;
-      *.tbz2)      tar xjf $1    ;;
-      *.tgz)       tar xzf $1    ;;
-      *.zip)       unzip -qq $1  ;;
-      *.Z)         uncompress $1 ;;
-      *.7z)        7z x $1       ;;
-      *)           echo "'$1' cannot be extracted via >extract<" ;;
+      *.tar.bz2)   tar xjf ${1}    ;;
+      *.tar.gz)    tar xzf ${1}    ;;
+      *.tar.xz)    tar xvf ${1}    ;;
+      *.bz2)       bunzip2 ${1}    ;;
+      *.rar)       unrar x ${1}    ;;
+      *.gz)        gunzip -q ${1}  ;;
+      *.tar)       tar xf ${1}     ;;
+      *.tbz2)      tar xjf ${1}    ;;
+      *.tgz)       tar xzf ${1}    ;;
+      *.zip)       unzip -qq ${1}  ;;
+      *.Z)         uncompress ${1} ;;
+      *.7z)        7z x ${1}       ;;
+      *)           echo "'${1}' cannot be extracted via >extract<" ;;
     esac
-    rm -f $1
+    [ -z "${2}" ] && rm -f "${1}"
   fi
 }
 
 #
 # Download and extract archive from dev mirror.
 _get_dev_arch() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -183,7 +183,11 @@ _get_dev_arch() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -194,7 +198,7 @@ _get_dev_arch() {
 #
 # Download and extract from dev/version mirror.
 _get_dev_ext() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -213,7 +217,11 @@ _get_dev_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -224,7 +232,7 @@ _get_dev_ext() {
 #
 # Download and extract from dev/static.
 _get_dev_stc() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -243,7 +251,11 @@ _get_dev_stc() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/static/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -254,7 +266,7 @@ _get_dev_stc() {
 #
 # Download and extract from dev/contrib mirror.
 _get_dev_contrib() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -273,7 +285,11 @@ _get_dev_contrib() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -284,7 +300,7 @@ _get_dev_contrib() {
 #
 # Download and extract archive from dev/src mirror.
 _get_dev_src() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -303,7 +319,11 @@ _get_dev_src() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -314,7 +334,7 @@ _get_dev_src() {
 #
 # Download with wget and extract archive from dev/src mirror.
 _get_dev_src_wget() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -333,7 +353,11 @@ _get_dev_src_wget() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
