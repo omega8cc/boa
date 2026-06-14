@@ -11,7 +11,7 @@ _whitelist_ip_pingdom() {
   #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
   #   RSS feed:        https://my.pingdom.com/probes/feed  (fallback - XML parsing required)
   # The plain list is simpler and less fragile; RSS is kept as fallback.
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing pingdom ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
@@ -55,7 +55,7 @@ _whitelist_ip_cloudflare() {
   #   Plain text: https://www.cloudflare.com/ips-v4  (primary)
   #   JSON API:   https://api.cloudflare.com/client/v4/ips  (fallback, no auth needed)
   # Reference: https://www.cloudflare.com/ips/
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
@@ -101,7 +101,7 @@ _whitelist_ip_imperva() {
   # Current ranges (as of 2024): 199.83.128.0/21, 198.143.32.0/19, 149.126.72.0/21,
   #   103.28.248.0/22, 185.11.124.0/22, 192.230.64.0/18, 45.64.64.0/22, 107.154.0.0/16,
   #   45.60.0.0/16, 45.223.0.0/16, 131.125.128.0/17 (added May 2023)
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing imperva ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
@@ -154,7 +154,7 @@ _whitelist_ip_imperva() {
 }
 
 _whitelist_ip_googlebot() {
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing googlebot ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
@@ -192,7 +192,7 @@ _whitelist_ip_googlebot() {
 }
 
 _whitelist_ip_microsoft() {
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
@@ -245,7 +245,7 @@ _whitelist_ip_sucuri() {
   # IP ranges are maintained as static documentation at:
   # https://docs.sucuri.net/website-firewall/sucuri-firewall-troubleshooting-guide/
   # Review that page periodically and update _IPS below if ranges change.
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing sucuri ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-sucuri-${_NOW}
@@ -282,7 +282,7 @@ _whitelist_ip_authzero() {
   # https://cdn.auth0.com/ip-ranges.json
   # The list is updated ahead of any functional changes; check last_updated_at to detect changes.
   # Only whitelist regions relevant to your Auth0 tenant(s). Currently fetching all regions.
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing authzero ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
@@ -347,7 +347,7 @@ _whitelist_ip_site24x7_extra() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  if [ -e "/root/.ignore.site24x7.firewall.cnf" ]; then
+  if [ -e "/etc/boa/.ignore.site24x7.firewall.cnf" ]; then
     for _IP in ${_IPS}; do
       echo checking csf.ignore site24x7_extra ${_IP} now...
       _IP_CHECK=$(cat /etc/csf/csf.ignore \
@@ -367,7 +367,7 @@ _whitelist_ip_site24x7_extra() {
 }
 
 _whitelist_ip_site24x7() {
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing site24x7 ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
@@ -415,7 +415,7 @@ _whitelist_ip_site24x7() {
     fi
   done
 
-  if [ -e "/root/.ignore.site24x7.firewall.cnf" ]; then
+  if [ -e "/etc/boa/.ignore.site24x7.firewall.cnf" ]; then
     for _IP in ${_IPS}; do
       echo checking csf.ignore site24x7 ${_IP} now...
       _IP_CHECK=$(cat /etc/csf/csf.ignore \
@@ -733,7 +733,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     cp -af ${_preCnf} ${_useCnf}
   fi
 
-  if [ -e "/root/.full.csf.cleanup.cnf" ]; then
+  if [ -e "/etc/boa/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
     wait
     sed -i "/^$/d" /etc/csf/csf.deny

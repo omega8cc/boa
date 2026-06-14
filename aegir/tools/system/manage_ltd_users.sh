@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
-export _xSrl=595proT01
+export _xSrl=595proT02
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -18,7 +18,7 @@ _aptYesUnth="-y ${_aptAllow}"
 _pthLog="/var/log/boa"
 
 [ -e "/root/.proxy.cnf" ] && exit 0
-[ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
+[ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
@@ -2300,7 +2300,7 @@ else
     sed -i "s/, 'mc':'mc -u'//g" ${_THIS_LTD_CONF}
     wait
   fi
-  if [ ! -e "/root/.allow.du.cnf" ]; then
+  if [ ! -e "/etc/boa/.allow.du.cnf" ]; then
     sed -i "s/'du', //g" ${_THIS_LTD_CONF}
     wait
     sed -i "s/, 'du':'du -s -h'//g" ${_THIS_LTD_CONF}
@@ -2365,7 +2365,7 @@ else
     fi
   fi
   rm -f ${_TMP}/*.txt
-  if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ]; then
+  if [ ! -e "/etc/boa/.home.no.wildcard.chmod.cnf" ]; then
     chmod 700 /home/* &> /dev/null
   fi
   chmod 0600 /var/log/lsh/*

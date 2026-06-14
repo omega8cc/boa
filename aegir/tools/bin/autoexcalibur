@@ -79,7 +79,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
-export _xSrl=595proT01
+export _xSrl=595proT02
 
 _barCnf="/root/.barracuda.cnf"
 _logExc="/root/.autoexcalibur.log"
@@ -532,6 +532,7 @@ if [ -e "/root/.run-to-excalibur.cnf" ] \
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-excalibur-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-excalibur-two.cnf
+  [ -s "/root/.barracuda.cnf" ] && { mkdir -p /var/backups/dragon/config; cp -a /root/.barracuda.cnf "/var/backups/dragon/config/.barracuda.cnf-pre-${_xSrl}-$(date +%y%m%d-%H%M%S)"; }
   sed -i "s/^_AUTO_EXCALIBUR.*//g" /root/.barracuda.cnf
   _msg "The final post-reboot barracuda up-${_tRee} system completed" >> "${_logExc}"
   _msg "That's all folks!" >> "${_logExc}"

@@ -243,7 +243,7 @@ _if_nginx_restart() {
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/root/.allow.nginx.restart.cnf" ]; then
+    || [ -e "/etc/boa/.allow.nginx.restart.cnf" ]; then
     if [ "${ReTest}" -ge 1 ]; then
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
       _thisErrLog="$(date) Nginx Server Restart Requested"
