@@ -692,8 +692,8 @@ _BOA_REPO_GIT_URL="${_gitHub}"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
-export _tRee=lts
-export _xSrl=595ltsT01
+export _tRee=dev
+export _xSrl=595devT02
 
 
 ###
@@ -838,23 +838,23 @@ _extract_archive_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "PROC: _extract_archive_pre in octopus"
   fi
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf $1    ;;
-      *.tar.gz)    tar xzf $1    ;;
-      *.tar.xz)    tar xvf $1    ;;
-      *.bz2)       bunzip2 $1    ;;
-      *.rar)       unrar x $1    ;;
-      *.gz)        gunzip -q $1  ;;
-      *.tar)       tar xf $1     ;;
-      *.tbz2)      tar xjf $1    ;;
-      *.tgz)       tar xzf $1    ;;
-      *.zip)       unzip -qq $1  ;;
-      *.Z)         uncompress $1 ;;
-      *.7z)        7z x $1       ;;
-      *)           echo "'$1' cannot be extracted via >extract<" ;;
+      *.tar.bz2)   tar xjf ${1}    ;;
+      *.tar.gz)    tar xzf ${1}    ;;
+      *.tar.xz)    tar xvf ${1}    ;;
+      *.bz2)       bunzip2 ${1}    ;;
+      *.rar)       unrar x ${1}    ;;
+      *.gz)        gunzip -q ${1}  ;;
+      *.tar)       tar xf ${1}     ;;
+      *.tbz2)      tar xjf ${1}    ;;
+      *.tgz)       tar xzf ${1}    ;;
+      *.zip)       unzip -qq ${1}  ;;
+      *.Z)         uncompress ${1} ;;
+      *.7z)        7z x ${1}       ;;
+      *)           echo "'${1}' cannot be extracted via >extract<" ;;
     esac
-    rm -f $1
+    [ -z "${2}" ] && rm -f "${1}"
   fi
 }
 
@@ -866,7 +866,7 @@ _get_dev_src_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "PROC: _get_dev_src_pre in octopus"
   fi
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
     if [ -e "$1" ]; then
       _extract_archive_pre "$1"
@@ -880,23 +880,23 @@ _get_dev_src_pre() {
 #
 # Extract archive.
 _extract_archive() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf $1    ;;
-      *.tar.gz)    tar xzf $1    ;;
-      *.tar.xz)    tar xvf $1    ;;
-      *.bz2)       bunzip2 $1    ;;
-      *.rar)       unrar x $1    ;;
-      *.gz)        gunzip -q $1  ;;
-      *.tar)       tar xf $1     ;;
-      *.tbz2)      tar xjf $1    ;;
-      *.tgz)       tar xzf $1    ;;
-      *.zip)       unzip -qq $1  ;;
-      *.Z)         uncompress $1 ;;
-      *.7z)        7z x $1       ;;
-      *)           echo "'$1' cannot be extracted via >extract<" ;;
+      *.tar.bz2)   tar xjf ${1}    ;;
+      *.tar.gz)    tar xzf ${1}    ;;
+      *.tar.xz)    tar xvf ${1}    ;;
+      *.bz2)       bunzip2 ${1}    ;;
+      *.rar)       unrar x ${1}    ;;
+      *.gz)        gunzip -q ${1}  ;;
+      *.tar)       tar xf ${1}     ;;
+      *.tbz2)      tar xjf ${1}    ;;
+      *.tgz)       tar xzf ${1}    ;;
+      *.zip)       unzip -qq ${1}  ;;
+      *.Z)         uncompress ${1} ;;
+      *.7z)        7z x ${1}       ;;
+      *)           echo "'${1}' cannot be extracted via >extract<" ;;
     esac
-    rm -f $1
+    [ -z "${2}" ] && rm -f "${1}"
   fi
 }
 
@@ -904,7 +904,7 @@ _extract_archive() {
 #
 # Download and extract from dev/version mirror.
 _get_dev_ext() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -923,7 +923,11 @@ _get_dev_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       echo "OOPS: Failed to download ${_urlDev}/${_tRee}/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script

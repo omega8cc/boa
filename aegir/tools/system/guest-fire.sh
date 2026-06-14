@@ -106,7 +106,7 @@ _verbose_log() {
   _csf_allow_log="/var/log/csf_allow_debug.log"
 
   # Check if logging is enabled
-  if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then
+  if [[ -e "/etc/boa/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then
     if [[ "${_reason}" =~ ^(DRY|NORMAL|DEBUG)$ && "${_NGINX_DOS_LOG}" = VERBOSE ]]; then
       _log_file="${_csf_dry_log}"
     elif [[ "${_reason}" =~ ^(FAIL|INVALID|ERROR)$ ]]; then

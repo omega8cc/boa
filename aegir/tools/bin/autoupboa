@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=595ltsT01
+export _tRee=dev
+export _xSrl=595devT02
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
@@ -185,9 +185,10 @@ _purge_avahi() {
   fi
 }
 
-if [ ! -e "/root/.avahi_purged.lock" ]; then
+[ -e "/root/.avahi_purged.lock" ] && [ ! -e "/var/log/boa/.avahi_purged.lock" ] && { mkdir -p /var/log/boa 2>/dev/null; cp -a /root/.avahi_purged.lock /var/log/boa/ 2>/dev/null; }
+if [ ! -e "/var/log/boa/.avahi_purged.lock" ]; then
   _purge_avahi
-  touch /root/.avahi_purged.lock
+  touch /var/log/boa/.avahi_purged.lock
 fi
 
 # Function to disable dns checks in csf
@@ -482,7 +483,7 @@ _bring_all_ram_cpu_online
 _if_disable_not_used_services() {
   _clearSwap=No
 
-  if [ "${_tRee}" = "dev" ] && [ -e "/root/.ice.vm.cnf" ]; then
+  if [ "${_tRee}" = "dev" ] && [ -e "/etc/boa/.ice.vm.cnf" ]; then
     echo > /var/xdrago/move_sql.sh
     echo > /var/xdrago/proc_num_ctrl.pl
     echo > /var/xdrago/runner.sh
@@ -538,7 +539,7 @@ _if_disable_not_used_services() {
     pkill -9 -f java
   fi
 
-  if [ -e "/root/.deny.jetty9.cnf" ]; then
+  if [ -e "/etc/boa/.deny.jetty9.cnf" ]; then
     if [ -e "/etc/init.d/jetty9" ]; then
       _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
@@ -548,7 +549,7 @@ _if_disable_not_used_services() {
     fi
   fi
 
-  if [ -e "/root/.deny.solr7.cnf" ]; then
+  if [ -e "/etc/boa/.deny.solr7.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
@@ -558,7 +559,7 @@ _if_disable_not_used_services() {
     fi
   fi
 
-  if [ -e "/root/.deny.solr9.cnf" ]; then
+  if [ -e "/etc/boa/.deny.solr9.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
@@ -652,7 +653,7 @@ _send_boa_system_report() {
     fi
     if [ ! -z "${_RCPT_EMAIL}" ] \
       && [ ! -z "${_BCC_EMAIL}" ] \
-      && [ -e "/root/.run.example.report.cnf" ]; then
+      && [ -e "/etc/boa/.run.example.report.cnf" ]; then
       _repSub="BOA Status on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       boa info report both > ${_repBodFile}
@@ -735,7 +736,7 @@ _generic_vm_postinstall() {
   fi
 }
 
-# Restrict sendmail access unless /root/.allow.sendmail.cnf exists
+# Restrict sendmail access unless /etc/boa/.allow.sendmail.cnf exists
 _restrict_sendmail() {
   _SNAIL_EXISTS=$(getent group allow-snail 2>&1)
   if [[ ! "${_SNAIL_EXISTS}" =~ "allow-snail" ]]; then
@@ -743,13 +744,13 @@ _restrict_sendmail() {
     chown root /usr/sbin/sendmail &> /dev/null
     chgrp allow-snail /usr/sbin/sendmail &> /dev/null
   fi
-  if [ ! -e "/root/.allow.sendmail.cnf" ]; then
+  if [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
     chmod 750 /usr/sbin/sendmail &> /dev/null
   fi
 }
 
 _if_restrict_sendmail() {
-  if [ -e "/root/.allow.sendmail.cnf" ]; then
+  if [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
     if [ ! -e "${_ALLOW_SENDMAIL_PID}" ]; then
       chmod 755 /usr/sbin/sendmail &> /dev/null
       touch "${_ALLOW_SENDMAIL_PID}"
@@ -1096,20 +1097,20 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     [ -e "/root/.my.optimize.cnf" ] && rm -f /root/.my.optimize.cnf
     [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
-    [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
+    [ -e "/etc/boa/.run.example.report.cnf" ] && rm -f /etc/boa/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ -e "/run/boa_run.pid" ]; then
-      touch /root/.pause_tasks_maint.cnf
+      touch /etc/boa/.pause_tasks_maint.cnf
     else
-      [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
+      [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && rm -f /etc/boa/.pause_tasks_maint.cnf
     fi
     if [ -e "/root/.restrict_this_vm.cnf" ]; then
       killall -9 rsync
       chmod 700 /usr/bin/rsync
       chmod 700 /usr/bin/mysqldump
     else
-      chmod 750 /usr/bin/rsync
-      chmod 750 /usr/bin/mysqldump
+      chmod 755 /usr/bin/rsync
+      chmod 755 /usr/bin/mysqldump
     fi
   fi
 

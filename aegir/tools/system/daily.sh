@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=595ltsT01
+export _tRee=dev
+export _xSrl=595devT02
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -776,7 +776,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.9.5-lts. As a bonus, you will be able to speed up your sites
+by BOA-5.9.5-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -842,7 +842,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.9.5-lts. As a bonus, you will be able to speed up your sites
+by BOA-5.9.5-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -2541,7 +2541,7 @@ _daily_process() {
           | openssl md5 \
           | awk '{ print $2}' \
           | tr -d "\n" 2>&1)
-        if [ -e "/root/.allow-codebasecheck.cnf" ]; then
+        if [ -e "/etc/boa/.allow-codebasecheck.cnf" ]; then
           _codeBaseCheckDir="${_usEr}/log/ctrl"
           _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
           _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
@@ -2657,7 +2657,7 @@ _daily_process() {
             _DONT_TOUCH_PERMISSIONS=NO
           fi
         fi
-        if [ -e "/root/.dont.touch.permissions.cnf" ]; then
+        if [ -e "/etc/boa/.dont.touch.permissions.cnf" ]; then
           _DONT_TOUCH_PERMISSIONS=YES
         fi
         if [ "${_DONT_TOUCH_PERMISSIONS}" = "NO" ] \
@@ -3280,7 +3280,7 @@ _daily_action() {
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         _le_hm_ssl_check_update ${_HM_U}
-        if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "/root/.goaccess.all.cnf" ]; then
+        if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "/etc/boa/.goaccess.all.cnf" ]; then
           _if_gen_goaccess "ALL"
         fi
         echo "Done for ${_usEr}"
@@ -3638,7 +3638,8 @@ find /var/backups/old-sql* -mtime +1 -exec rm -rf {} \; &> /dev/null
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
 find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
-find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
+find /var/backups/dragon/* -maxdepth 0 ! -name config -mtime +7 -exec rm -rf {} \; &> /dev/null
+find /var/backups/dragon/config -type f -mtime +90 -exec rm -f {} \; &> /dev/null
 if [ "${_hostedSys}" = "YES" ]; then
   if [ -d "/var/backups/codebases-cleanup" ]; then
     find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null

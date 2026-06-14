@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=595ltsT01
+export _tRee=dev
+export _xSrl=595devT02
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
@@ -50,7 +50,7 @@ _write_solr_config() {
     && [ -e "${_Dir}" ]; then
     if [ "${3}" = "solr9" ]; then
       _PRT="9099"
-      _VRS="9.8.1"
+      _VRS="9.10.1"
     elif [ "${3}" = "solr7" ]; then
       _PRT="9077"
       _VRS="7.7.3"

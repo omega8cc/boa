@@ -44,8 +44,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=595ltsT01
+export _tRee=dev
+export _xSrl=595devT02
 export _rLsn="BOA-5.9.5"
 export _bTs=595v01
 
@@ -72,6 +72,7 @@ _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
 _xpthLog="/var/xdrago/log"
 _pthLog="/var/log/boa"
+_pthEtc="/etc/boa"
 _tBn="tools/bin"
 _vBs="/var/backups"
 _boaToolsPid="${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid"
@@ -88,6 +89,100 @@ if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
   cp -a ${_xpthLog}/core  ${_pthLog}/
   cp -a ${_xpthLog}/le    ${_pthLog}/
   touch "${_pthLog}/.migrated.txt"
+fi
+#
+# C-003: one-time copy of operator markers /root -> /etc/boa (originals left for
+# later cleanup). Guard-once per group so an operator's later removal of an
+# /etc/boa marker is not undone by a re-copy from the stale /root original.
+if [ ! -e "${_pthEtc}/.migrated.svc-control.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .allow.nginx.restart.cnf \
+    .allow.php.fpm.reload.cnf \
+    .allow.redis.restart.cnf \
+    .allow.valkey.restart.cnf \
+    .allow.aegir.queue.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.svc-control.txt"
+fi
+if [ ! -e "${_pthEtc}/.migrated.deny-disable.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .deny.jetty9.cnf \
+    .deny.solr7.cnf \
+    .deny.solr9.cnf \
+    .disable_mysql_cleanup.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.deny-disable.txt"
+fi
+if [ ! -e "${_pthEtc}/.migrated.behavior-toggles.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .allow.sendmail.cnf \
+    .allow.du.cnf \
+    .allow-codebasecheck.cnf \
+    .dont.touch.permissions.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.behavior-toggles.txt"
+fi
+if [ ! -e "${_pthEtc}/.migrated.pause-tasks.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  [ -e "/root/.pause_tasks_maint.cnf" ] && cp -a /root/.pause_tasks_maint.cnf "${_pthEtc}/" 2>/dev/null
+  touch "${_pthEtc}/.migrated.pause-tasks.txt"
+fi
+if [ ! -e "${_pthEtc}/.migrated.csf-firewall.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .full.csf.cleanup.cnf \
+    .ignore.site24x7.firewall.cnf \
+    .whitelist.dont.cleanup.cnf \
+    .instant.csf.block.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.csf-firewall.txt"
+fi
+if [ ! -e "${_pthEtc}/.migrated.debug-goaccess.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .debug.monitor.cnf \
+    .debug.monitor.log.cnf \
+    .debug.email.txt \
+    .goaccess.all.cnf \
+    .goaccess.use.github.txt ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.debug-goaccess.txt"
+fi
+if [ ! -e "${_pthEtc}/.migrated.misc-toggles.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .instant.busy.mysql.action.cnf \
+    .mysqladmin.monitor.cnf \
+    .sql.problematic.users.cnf \
+    .ice.vm.cnf \
+    .home.no.wildcard.chmod.cnf \
+    .run.example.report.cnf \
+    .silent-octopus-upgrade.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.misc-toggles.txt"
+fi
+if [ ! -e "${_pthEtc}/.migrated.lshell-virt.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  for _etcMrk in \
+    .look.like.jenkins.cnf \
+    .send-extended-report.cnf ; do
+    [ -e "/root/${_etcMrk}" ] && cp -a "/root/${_etcMrk}" "${_pthEtc}/" 2>/dev/null
+  done
+  touch "${_pthEtc}/.migrated.lshell-virt.txt"
+fi
+if [ ! -e "${_pthEtc}/.migrated.newrelic.txt" ]; then
+  mkdir -p "${_pthEtc}"
+  [ -e "/root/.enable.newrelic.sysmond.cnf" ] && cp -a /root/.enable.newrelic.sysmond.cnf "${_pthEtc}/" 2>/dev/null
+  touch "${_pthEtc}/.migrated.newrelic.txt"
 fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
@@ -313,31 +408,33 @@ _find_fast_mirror_early() {
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
+#
+# Extract archive.
 _extract_archive() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     case $1 in
-      *.tar.bz2)   tar xjf $1    ;;
-      *.tar.gz)    tar xzf $1    ;;
-      *.tar.xz)    tar xvf $1    ;;
-      *.bz2)       bunzip2 $1    ;;
-      *.rar)       unrar x $1    ;;
-      *.gz)        gunzip -q $1  ;;
-      *.tar)       tar xf $1     ;;
-      *.tbz2)      tar xjf $1    ;;
-      *.tgz)       tar xzf $1    ;;
-      *.zip)       unzip -qq $1  ;;
-      *.Z)         uncompress $1 ;;
-      *.7z)        7z x $1       ;;
-      *)           echo "'$1' cannot be extracted via >extract<" ;;
+      *.tar.bz2)   tar xjf ${1}    ;;
+      *.tar.gz)    tar xzf ${1}    ;;
+      *.tar.xz)    tar xvf ${1}    ;;
+      *.bz2)       bunzip2 ${1}    ;;
+      *.rar)       unrar x ${1}    ;;
+      *.gz)        gunzip -q ${1}  ;;
+      *.tar)       tar xf ${1}     ;;
+      *.tbz2)      tar xjf ${1}    ;;
+      *.tgz)       tar xzf ${1}    ;;
+      *.zip)       unzip -qq ${1}  ;;
+      *.Z)         uncompress ${1} ;;
+      *.7z)        7z x ${1}       ;;
+      *)           echo "'${1}' cannot be extracted via >extract<" ;;
     esac
-    rm -f $1
+    [ -z "${2}" ] && rm -f "${1}"
   fi
 }
 
 #
 # Download and extract from dev/contrib mirror.
 _get_dev_contrib() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -356,7 +453,11 @@ _get_dev_contrib() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       echo "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -367,7 +468,7 @@ _get_dev_contrib() {
 #
 # Download and extract archive from dev/src mirror.
 _get_dev_src() {
-  if [ ! -z "$1" ]; then
+  if [ ! -z "${1}" ]; then
     _max_attempts=10
     _attempt_num=1
     _success=0
@@ -386,7 +487,11 @@ _get_dev_src() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
-      _extract_archive "$1"
+      if [ ! -z "${2}" ]; then
+        _extract_archive "${1}" "${2}"
+      else
+        _extract_archive "${1}"
+      fi
     else
       echo "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
@@ -920,6 +1025,64 @@ _fix_sync_system_ssl_certs() {
   fi
 }
 
+# Fetch + serial-gate one updater script/tool (replaces the hand-rolled blocks
+# in _update_agents). Stamp: <ctrl-name>.ctrl.<serial>.${_tRee}.${_xSrl}.pid.
+# Self-heals (re-fetches if dest/symlink missing), cleans old stamps so serials
+# are direction-free, preserves perms per caller. Per-block prereqs stay at the
+# call site. Usage:
+#   [ <prereq> ] && _fetch_versioned <dest> <url> <serial> \
+#     [--mode 700] [--owner root:root] [--symlink P] [--guard PAT] \
+#     [--guard-label S] [--ctrl-name N]
+_fetch_versioned() {
+  local _dst="$1" _url="$2" _srl="$3"
+  shift 3
+  local _mode="700" _own="root:root" _lnk="" _grd="" _lbl="" _cnm="" _cnt
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --mode)        _mode="$2"; shift 2 ;;
+      --owner)       _own="$2";  shift 2 ;;
+      --symlink)     _lnk="$2";  shift 2 ;;
+      --guard)       _grd="$2";  shift 2 ;;
+      --guard-label) _lbl="$2";  shift 2 ;;
+      --ctrl-name)   _cnm="$2";  shift 2 ;;
+      *) echo "_fetch_versioned: unknown option '$1'" >&2; return 2 ;;
+    esac
+  done
+  [[ -n "${_cnm}" ]] || _cnm="${_dst##*/}"
+  [[ -n "${_lbl}" ]] || _lbl="${_grd##*/}"   # default notice subject = basename of guard
+  # shellcheck disable=SC2154  # _pthLog/_tRee/_xSrl are globals provided by BOA.sh.txt
+  local _ctl="${_pthLog}/${_cnm}.ctrl.${_srl}.${_tRee}.${_xSrl}.pid"
+
+  # Up to date? stamp present AND dest non-empty AND (symlink intact if required).
+  if [[ -e "${_ctl}" ]] && [[ -s "${_dst}" ]] \
+    && { [[ -z "${_lnk}" ]] || [[ -L "${_lnk}" ]]; }; then
+    return 0
+  fi
+
+  # Never clobber a running tool.
+  if [[ -n "${_grd}" ]]; then
+    _cnt="$(pgrep -fc "${_grd}" 2>/dev/null)"
+    _cnt="${_cnt:-0}"
+    if (( _cnt > 0 )); then
+      echo "The ${_lbl} is running!"
+      return 0
+    fi
+  fi
+
+  [[ -e "${_dst}" ]] && mv -f "${_dst}" "${_dst}.old"
+  # shellcheck disable=SC2086,SC2154  # intentional _crlGet flag-string split; _crlGet is a BOA.sh.txt global
+  curl ${_crlGet} "${_url}" -o "${_dst}"
+  if [[ -s "${_dst}" ]]; then
+    chmod "${_mode}" "${_dst}"
+    chown "${_own}" "${_dst}"
+    [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
+    rm -f "${_pthLog}/${_cnm}.ctrl."*
+    touch "${_ctl}"
+  else
+    [[ -e "${_dst}.old" ]] && mv -f "${_dst}.old" "${_dst}"
+  fi
+}
+
 _update_agents() {
 
   _if_hosted_sys
@@ -1136,30 +1299,7 @@ _update_agents() {
     fi
   fi
 
-  if ! grep -q "OFF" ${_optBin}/lock.inc; then
-    rm -f ${_pthLog}/lock.inc.sh.ctrl.*
-  fi
-  if [ ! -e "${_optBin}/lock.inc" ] \
-    || [ ! -e "${_pthLog}/lock.inc.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc foobar)
-    if (( _CNT > 0 )); then
-      echo "The foobar is running!"
-    else
-      if [ -e "${_optBin}/lock.inc" ]; then
-        mv -f ${_optBin}/lock.inc ${_optBin}/lock.inc.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/lock.inc" -o ${_optBin}/lock.inc
-      if [ -e "${_optBin}/lock.inc" ]; then
-        chmod 700 ${_optBin}/lock.inc
-        chown root:root ${_optBin}/lock.inc
-        touch ${_pthLog}/lock.inc.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/lock.inc.old" ]; then
-          mv -f ${_optBin}/lock.inc.old ${_optBin}/lock.inc
-        fi
-      fi
-    fi
-  fi
+  _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/tools/bin/lock.inc" f98 --ctrl-name lock.inc.sh
 
   if [ ! -e "${_optBin}/vmnetfix" ] \
     || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
@@ -1190,501 +1330,27 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_optBin}/screenfetch" ] \
-    || [ ! -e "${_pthLog}/screenfetch.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc screenfetch)
-    if (( _CNT > 0 )); then
-      echo "The screenfetch is running!"
-    else
-      if [ -e "${_optBin}/screenfetch" ]; then
-        mv -f ${_optBin}/screenfetch ${_optBin}/screenfetch.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/screenfetch" -o ${_optBin}/screenfetch
-      if [ -e "${_optBin}/screenfetch" ]; then
-        chmod 700 ${_optBin}/screenfetch
-        chown root:root ${_optBin}/screenfetch
-        touch ${_pthLog}/screenfetch.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/screenfetch.old" ]; then
-          mv -f ${_optBin}/screenfetch.old ${_optBin}/screenfetch
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/fixrepo" ] \
-    || [ ! -e "${_pthLog}/fixrepo.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc fixrepo)
-    if (( _CNT > 0 )); then
-      echo "The fixrepo is running!"
-    else
-      if [ -e "${_optBin}/fixrepo" ]; then
-        mv -f ${_optBin}/fixrepo ${_optBin}/fixrepo.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/fixrepo" -o ${_optBin}/fixrepo
-      if [ -e "${_optBin}/fixrepo" ]; then
-        chmod 700 ${_optBin}/fixrepo
-        chown root:root ${_optBin}/fixrepo
-        touch ${_pthLog}/fixrepo.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/fixrepo.old" ]; then
-          mv -f ${_optBin}/fixrepo.old ${_optBin}/fixrepo
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/renameaegirhost" ] \
-    || [ ! -e "${_pthLog}/renameaegirhost.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc renameaegirhost)
-    if (( _CNT > 0 )); then
-      echo "The renameaegirhost is running!"
-    else
-      if [ -e "${_optBin}/renameaegirhost" ]; then
-        mv -f ${_optBin}/renameaegirhost ${_optBin}/renameaegirhost.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/renameaegirhost" -o ${_optBin}/renameaegirhost
-      if [ -e "${_optBin}/renameaegirhost" ]; then
-        chmod 700 ${_optBin}/renameaegirhost
-        chown root:root ${_optBin}/renameaegirhost
-        touch ${_pthLog}/renameaegirhost.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/renameaegirhost.old" ]; then
-          mv -f ${_optBin}/renameaegirhost.old ${_optBin}/renameaegirhost
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/autosymlink" ] \
-    || [ ! -e "${_pthLog}/autosymlink.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc autosymlink)
-    if (( _CNT > 0 )); then
-      echo "The autosymlink is running!"
-    else
-      if [ -e "${_optBin}/autosymlink" ]; then
-        mv -f ${_optBin}/autosymlink ${_optBin}/autosymlink.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/autosymlink" -o ${_optBin}/autosymlink
-      if [ -e "${_optBin}/autosymlink" ]; then
-        chmod 700 ${_optBin}/autosymlink
-        chown root:root ${_optBin}/autosymlink
-        touch ${_pthLog}/autosymlink.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/autosymlink.old" ]; then
-          mv -f ${_optBin}/autosymlink.old ${_optBin}/autosymlink
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/updatesymlinks" ] \
-    || [ ! -e "${_pthLog}/updatesymlinks.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc updatesymlinks)
-    if (( _CNT > 0 )); then
-      echo "The updatesymlinks is running!"
-    else
-      if [ -e "${_optBin}/updatesymlinks" ]; then
-        mv -f ${_optBin}/updatesymlinks ${_optBin}/updatesymlinks.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/updatesymlinks" -o ${_optBin}/updatesymlinks
-      if [ -e "${_optBin}/updatesymlinks" ]; then
-        chmod 700 ${_optBin}/updatesymlinks
-        chown root:root ${_optBin}/updatesymlinks
-        touch ${_pthLog}/updatesymlinks.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/updatesymlinks.old" ]; then
-          mv -f ${_optBin}/updatesymlinks.old ${_optBin}/updatesymlinks
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/aptcleanup" ] \
-    || [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc aptcleanup)
-    if (( _CNT > 0 )); then
-      echo "The aptcleanup is running!"
-    else
-      if [ -e "${_optBin}/aptcleanup" ]; then
-        mv -f ${_optBin}/aptcleanup ${_optBin}/aptcleanup.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/aptcleanup" -o ${_optBin}/aptcleanup
-      if [ -e "${_optBin}/aptcleanup" ]; then
-        chmod 700 ${_optBin}/aptcleanup
-        chown root:root ${_optBin}/aptcleanup
-        touch ${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/aptcleanup.old" ]; then
-          mv -f ${_optBin}/aptcleanup.old ${_optBin}/aptcleanup
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/loadguard" ] \
-    || [ ! -e "${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc xloadguard)
-    if (( _CNT > 0 )); then
-      echo "The xloadguard is running!"
-    else
-      if [ -e "${_optBin}/loadguard" ]; then
-        mv -f ${_optBin}/loadguard ${_optBin}/loadguard.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/loadguard" -o ${_optBin}/loadguard
-      if [ -e "${_optBin}/loadguard" ]; then
-        chmod 700 ${_optBin}/loadguard
-        chown root:root ${_optBin}/loadguard
-        touch ${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/loadguard.old" ]; then
-          mv -f ${_optBin}/loadguard.old ${_optBin}/loadguard
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/ffmirror" ] \
-    || [ ! -e "${_pthLog}/ffmirror.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc xffmirror)
-    if (( _CNT > 0 )); then
-      echo "The xffmirror is running!"
-    else
-      if [ -e "${_optBin}/ffmirror" ]; then
-        mv -f ${_optBin}/ffmirror ${_optBin}/ffmirror.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/ffmirror" -o ${_optBin}/ffmirror
-      if [ -e "${_optBin}/ffmirror" ]; then
-        chmod 700 ${_optBin}/ffmirror
-        chown root:root ${_optBin}/ffmirror
-        touch ${_pthLog}/ffmirror.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/ffmirror.old" ]; then
-          mv -f ${_optBin}/ffmirror.old ${_optBin}/ffmirror
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/ffdevuan" ] \
-    || [ ! -e "${_pthLog}/ffdevuan.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc xffdevuan)
-    if (( _CNT > 0 )); then
-      echo "The xffdevuan is running!"
-    else
-      if [ -e "${_optBin}/ffdevuan" ]; then
-        mv -f ${_optBin}/ffdevuan ${_optBin}/ffdevuan.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/ffdevuan" -o ${_optBin}/ffdevuan
-      if [ -e "${_optBin}/ffdevuan" ]; then
-        chmod 700 ${_optBin}/ffdevuan
-        chown root:root ${_optBin}/ffdevuan
-        touch ${_pthLog}/ffdevuan.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/ffdevuan.old" ]; then
-          mv -f ${_optBin}/ffdevuan.old ${_optBin}/ffdevuan
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/webserver" ] \
-    || [ ! -e "${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc xwebserver)
-    if (( _CNT > 0 )); then
-      echo "The xwebserver is running!"
-    else
-      if [ -e "${_optBin}/webserver" ]; then
-        mv -f ${_optBin}/webserver ${_optBin}/webserver.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/webserver" -o ${_optBin}/webserver
-      if [ -e "${_optBin}/webserver" ]; then
-        chmod 700 ${_optBin}/webserver
-        chown root:root ${_optBin}/webserver
-        touch ${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/webserver.old" ]; then
-          mv -f ${_optBin}/webserver.old ${_optBin}/webserver
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/xoct" ] \
-    || [ ! -e "${_pthLog}/xoct.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/xoct)
-    if (( _CNT > 0 )); then
-      echo "The xoct is running!"
-    else
-      if [ -e "${_optBin}/xoct" ]; then
-        mv -f ${_optBin}/xoct ${_optBin}/xoct.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/xoct" -o ${_optBin}/xoct
-      if [ -e "${_optBin}/xoct" ]; then
-        chmod 700 ${_optBin}/xoct
-        chown root:root ${_optBin}/xoct
-        touch ${_pthLog}/xoct.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/xoct.old" ]; then
-          mv -f ${_optBin}/xoct.old ${_optBin}/xoct
-        fi
-      fi
-    fi
-    if [ -e "${_optBin}/xboa" ] && [ ! -L "${_optBin}/xboa" ] && [ -e "${_optBin}/xoct" ]; then
-      rm -f ${_optBin}/xboa
-      ln -sfn ${_optBin}/xoct ${_optBin}/xboa
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/xmass" ] \
-    || [ ! -e "${_pthLog}/xmass.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/xmass)
-    if (( _CNT > 0 )); then
-      echo "The xmass is running!"
-    else
-      if [ -e "${_optBin}/xmass" ]; then
-        mv -f ${_optBin}/xmass ${_optBin}/xmass.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/xmass" -o ${_optBin}/xmass
-      if [ -e "${_optBin}/xmass" ]; then
-        chmod 700 ${_optBin}/xmass
-        chown root:root ${_optBin}/xmass
-        touch ${_pthLog}/xmass.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/xmass.old" ]; then
-          mv -f ${_optBin}/xmass.old ${_optBin}/xmass
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/autoexcalibur" ] \
-    || [ ! -e "${_pthLog}/autoexcalibur.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/autoexcalibur)
-    if (( _CNT > 0 )); then
-      echo "The autoexcalibur is running!"
-    else
-      if [ -e "${_optBin}/autoexcalibur" ]; then
-        mv -f ${_optBin}/autoexcalibur ${_optBin}/autoexcalibur.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/autoexcalibur" -o ${_optBin}/autoexcalibur
-      if [ -e "${_optBin}/autoexcalibur" ]; then
-        chmod 700 ${_optBin}/autoexcalibur
-        chown root:root ${_optBin}/autoexcalibur
-        touch ${_pthLog}/autoexcalibur.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/autoexcalibur.old" ]; then
-          mv -f ${_optBin}/autoexcalibur.old ${_optBin}/autoexcalibur
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/boa" ] \
-    || [ ! -e "${_pthLog}/boa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/boa)
-    if (( _CNT > 0 )); then
-      echo "The boa is running!"
-    else
-      if [ -e "${_optBin}/boa" ]; then
-        mv -f ${_optBin}/boa ${_optBin}/boa.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/boa" -o ${_optBin}/boa
-      if [ -e "${_optBin}/boa" ]; then
-        chmod 700 ${_optBin}/boa
-        chown root:root ${_optBin}/boa
-        touch ${_pthLog}/boa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/boa.old" ]; then
-          mv -f ${_optBin}/boa.old ${_optBin}/boa
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/barracuda" ] \
-    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/barracuda)
-    if (( _CNT > 0 )); then
-      echo "The barracuda is running!"
-    else
-      if [ -e "${_optBin}/barracuda" ]; then
-        mv -f ${_optBin}/barracuda ${_optBin}/barracuda.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/barracuda" -o ${_optBin}/barracuda
-      if [ -e "${_optBin}/barracuda" ]; then
-        chmod 700 ${_optBin}/barracuda
-        chown root:root ${_optBin}/barracuda
-        touch ${_pthLog}/barracuda.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/barracuda.old" ]; then
-          mv -f ${_optBin}/barracuda.old ${_optBin}/barracuda
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/octopus" ] \
-    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/octopus)
-    if (( _CNT > 0 )); then
-      echo "The octopus is running!"
-    else
-      if [ -e "${_optBin}/octopus" ]; then
-        mv -f ${_optBin}/octopus ${_optBin}/octopus.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/octopus" -o ${_optBin}/octopus
-      if [ -e "${_optBin}/octopus" ]; then
-        chmod 700 ${_optBin}/octopus
-        chown root:root ${_optBin}/octopus
-        touch ${_pthLog}/octopus.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/octopus.old" ]; then
-          mv -f ${_optBin}/octopus.old ${_optBin}/octopus
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/dhcpfix" ] \
-    || [ ! -e "${_pthLog}/dhcpfix.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/dhcpfix)
-    if (( _CNT > 0 )); then
-      echo "The dhcpfix is running!"
-    else
-      if [ -e "${_optBin}/dhcpfix" ]; then
-        mv -f ${_optBin}/dhcpfix ${_optBin}/dhcpfix.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/dhcpfix" -o ${_optBin}/dhcpfix
-      if [ -e "${_optBin}/dhcpfix" ]; then
-        chmod 700 ${_optBin}/dhcpfix
-        chown root:root ${_optBin}/dhcpfix
-        touch ${_pthLog}/dhcpfix.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/dhcpfix.old" ]; then
-          mv -f ${_optBin}/dhcpfix.old ${_optBin}/dhcpfix
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/perftest" ] \
-    || [ ! -L "${_usrBin}/perftest" ] \
-    || [ ! -e "${_pthLog}/perftest.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/perftest)
-    if (( _CNT > 0 )); then
-      echo "The perftest is running!"
-    else
-      if [ -e "${_optBin}/perftest" ]; then
-        mv -f ${_optBin}/perftest ${_optBin}/perftest.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/perftest" -o ${_optBin}/perftest
-      if [ -e "${_optBin}/perftest" ]; then
-        chmod 700 ${_optBin}/perftest
-        chown root:root ${_optBin}/perftest
-        ln -sf ${_optBin}/perftest ${_usrBin}/perftest
-        rm -f ${_pthLog}/perftest.sh.ctrl.*
-        touch ${_pthLog}/perftest.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/perftest.old" ]; then
-          mv -f ${_optBin}/perftest.old ${_optBin}/perftest
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/fpmreport" ] \
-    || [ ! -L "${_usrBin}/fpmreport" ] \
-    || [ ! -e "${_pthLog}/fpmreport.sh.ctrl.f02.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/fpmreport)
-    if (( _CNT > 0 )); then
-      echo "The fpmreport is running!"
-    else
-      if [ -e "${_optBin}/fpmreport" ]; then
-        mv -f ${_optBin}/fpmreport ${_optBin}/fpmreport.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/fpmreport" -o ${_optBin}/fpmreport
-      if [ -e "${_optBin}/fpmreport" ]; then
-        chmod 700 ${_optBin}/fpmreport
-        chown root:root ${_optBin}/fpmreport
-        ln -sf ${_optBin}/fpmreport ${_usrBin}/fpmreport
-        rm -f ${_pthLog}/fpmreport.sh.ctrl.*
-        touch ${_pthLog}/fpmreport.sh.ctrl.f02.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/fpmreport.old" ]; then
-          mv -f ${_optBin}/fpmreport.old ${_optBin}/fpmreport
-        fi
-      fi
-    fi
-  fi
-
-  if [ ! -e "${_optBin}/aptfast" ] \
-    || [ ! -e "${_pthLog}/aptfast.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc /local/bin/aptfast)
-    if (( _CNT > 0 )); then
-      echo "The aptfast is running!"
-    else
-      if [ -e "${_optBin}/aptfast" ]; then
-        mv -f ${_optBin}/aptfast ${_optBin}/aptfast.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/aptfast" -o ${_optBin}/aptfast
-      if [ -e "${_optBin}/aptfast" ]; then
-        chmod 700 ${_optBin}/aptfast
-        chown root:root ${_optBin}/aptfast
-        touch ${_pthLog}/aptfast.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/aptfast.old" ]; then
-          mv -f ${_optBin}/aptfast.old ${_optBin}/aptfast
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc duplicity)
-    if (( _CNT > 0 )); then
-      echo "The duplicity backup is running!"
-    else
-      if [ -e "${_optBin}/backboa" ]; then
-        mv -f ${_optBin}/backboa ${_optBin}/backboa.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/backboa" -o ${_optBin}/backboa
-      if [ -e "${_optBin}/backboa" ]; then
-        chmod 700 ${_optBin}/backboa
-        chown root:root ${_optBin}/backboa
-        touch ${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/backboa.old" ]; then
-          mv -f ${_optBin}/backboa.old ${_optBin}/backboa
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc duplicity)
-    if (( _CNT > 0 )); then
-      echo "The duplicity backup is running!"
-    else
-      if [ -e "${_optBin}/duobackboa" ]; then
-        mv -f ${_optBin}/duobackboa ${_optBin}/duobackboa.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/duobackboa" -o ${_optBin}/duobackboa
-      if [ -e "${_optBin}/duobackboa" ]; then
-        chmod 700 ${_optBin}/duobackboa
-        chown root:root ${_optBin}/duobackboa
-        touch ${_pthLog}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/duobackboa.old" ]; then
-          mv -f ${_optBin}/duobackboa.old ${_optBin}/duobackboa
-        fi
-      fi
-    fi
-  fi
+  _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/tools/bin/screenfetch" f99 --guard screenfetch --ctrl-name screenfetch.sh
+  _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f99 --guard fixrepo --ctrl-name fixrepo.sh
+  _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f98 --guard renameaegirhost --ctrl-name renameaegirhost.sh
+  _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f93 --guard autosymlink --ctrl-name autosymlink.sh
+  _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f98 --guard updatesymlinks --ctrl-name updatesymlinks.sh
+  _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup --ctrl-name aptcleanup.sh
+  _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/tools/bin/loadguard" f99 --guard xloadguard --ctrl-name loadguard.sh
+  _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror --ctrl-name ffmirror.sh
+  _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/tools/bin/ffdevuan" f95 --guard xffdevuan --ctrl-name ffdevuan.sh
+  _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver --ctrl-name webserver.sh
+  _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f99 --guard /local/bin/xoct --ctrl-name xoct.sh
+  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f97 --guard /local/bin/xmass --ctrl-name xmass.sh
+  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f98 --guard /local/bin/autobeowulf --ctrl-name autobeowulf.sh
+  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f98 --guard /local/bin/autoexcalibur --ctrl-name autoexcalibur.sh
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f95 --guard /local/bin/boa --ctrl-name boa.sh
+  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f90 --guard /local/bin/barracuda --ctrl-name barracuda.sh
+  _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f98 --guard /local/bin/octopus --ctrl-name octopus.sh
+  _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f99 --guard /local/bin/dhcpfix --ctrl-name dhcpfix.sh
+  _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest --ctrl-name perftest.sh
+  _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f02 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport --ctrl-name fpmreport.sh
+  _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast --ctrl-name aptfast.sh
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
@@ -1697,467 +1363,66 @@ _update_agents() {
     fi
   fi
 
-  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/dcysetup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc duplicity)
-    if (( _CNT > 0 )); then
-      echo "The duplicity backup is running!"
-    else
-      if [ -e "${_optBin}/dcysetup" ]; then
-        mv -f ${_optBin}/dcysetup ${_optBin}/dcysetup.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/dcysetup" -o ${_optBin}/dcysetup
-      if [ -e "${_optBin}/dcysetup" ]; then
-        chmod 700 ${_optBin}/dcysetup
-        chown root:root ${_optBin}/dcysetup
-        touch ${_pthCtrl}/dcysetup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/dcysetup.old" ]; then
-          mv -f ${_optBin}/dcysetup.old ${_optBin}/dcysetup
-        fi
-      fi
-    fi
+  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name dcysetup.sh
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f37 --guard duplicity --guard-label "duplicity backup" --ctrl-name multiback.sh
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity --guard-label "duplicity backup" --ctrl-name mybackup.sh
   fi
-
-  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f37.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc duplicity)
-    if (( _CNT > 0 )); then
-      echo "The duplicity backup is running!"
-    else
-      if [ -e "${_optBin}/multiback" ]; then
-        mv -f ${_optBin}/multiback ${_optBin}/multiback.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/multiback" -o ${_optBin}/multiback
-      if [ -e "${_optBin}/multiback" ]; then
-        chmod 700 ${_optBin}/multiback
-        chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f37.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/multiback.old" ]; then
-          mv -f ${_optBin}/multiback.old ${_optBin}/multiback
-        fi
-      fi
-    fi
+  if [ -d "/root/.remote_backups/run" ]; then
+    _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f48
+    _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f48
+    _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
+    _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f48
+    _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f48
+    _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f48
+    _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48
   fi
-
-  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/mybackup.sh.ctrl.f37.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc duplicity)
-    if (( _CNT > 0 )); then
-      echo "The duplicity backup is running!"
-    else
-      if [ -e "${_optBin}/mybackup" ]; then
-        mv -f ${_optBin}/mybackup ${_optBin}/mybackup.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/mybackup" -o ${_optBin}/mybackup
-      if [ -e "${_optBin}/mybackup" ]; then
-        chmod 755 ${_optBin}/mybackup
-        chown root:root ${_optBin}/mybackup
-        touch ${_pthCtrl}/mybackup.sh.ctrl.f37.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/mybackup.old" ]; then
-          mv -f ${_optBin}/mybackup.old ${_optBin}/mybackup
-        fi
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f48.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
-      mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/backup/run/install_dependencies.sh" -o /root/.remote_backups/run/install_dependencies.sh
-    if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
-      chmod 700 /root/.remote_backups/run/install_dependencies.sh
-      chown root:root /root/.remote_backups/run/install_dependencies.sh
-      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f48.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/root/.remote_backups/run/install_dependencies.sh.old" ]; then
-        mv -f /root/.remote_backups/run/install_dependencies.sh.old /root/.remote_backups/run/install_dependencies.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_credentials_templates.sh.ctrl.f48.${_tRee}.${_xSrl}.pid" ]; then
-    rm -f /.backboa*
-    if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
-      mv -f /root/.remote_backups/run/create_credentials_templates.sh /root/.remote_backups/run/create_credentials_templates.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" -o /root/.remote_backups/run/create_credentials_templates.sh
-    if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
-      chmod 700 /root/.remote_backups/run/create_credentials_templates.sh
-      chown root:root /root/.remote_backups/run/create_credentials_templates.sh
-      touch ${_pthCtrl}/create_credentials_templates.sh.ctrl.f48.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/root/.remote_backups/run/create_credentials_templates.sh.old" ]; then
-        mv -f /root/.remote_backups/run/create_credentials_templates.sh.old /root/.remote_backups/run/create_credentials_templates.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f44.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
-      mv -f /root/.remote_backups/run/create_global_paths_config.sh /root/.remote_backups/run/create_global_paths_config.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" -o /root/.remote_backups/run/create_global_paths_config.sh
-    if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
-      chmod 700 /root/.remote_backups/run/create_global_paths_config.sh
-      chown root:root /root/.remote_backups/run/create_global_paths_config.sh
-      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f44.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/root/.remote_backups/run/create_global_paths_config.sh.old" ]; then
-        mv -f /root/.remote_backups/run/create_global_paths_config.sh.old /root/.remote_backups/run/create_global_paths_config.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_user_paths_config.sh.ctrl.f48.${_tRee}.${_xSrl}.pid" ]; then
-    rm -f /.backboa*
-    if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
-      mv -f /root/.remote_backups/run/create_user_paths_config.sh /root/.remote_backups/run/create_user_paths_config.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" -o /root/.remote_backups/run/create_user_paths_config.sh
-    if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
-      chmod 700 /root/.remote_backups/run/create_user_paths_config.sh
-      chown root:root /root/.remote_backups/run/create_user_paths_config.sh
-      touch ${_pthCtrl}/create_user_paths_config.sh.ctrl.f48.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/root/.remote_backups/run/create_user_paths_config.sh.old" ]; then
-        mv -f /root/.remote_backups/run/create_user_paths_config.sh.old /root/.remote_backups/run/create_user_paths_config.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f48.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
-      mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_cron_entries.sh" -o /root/.remote_backups/run/create_cron_entries.sh
-    if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
-      chmod 700 /root/.remote_backups/run/create_cron_entries.sh
-      chown root:root /root/.remote_backups/run/create_cron_entries.sh
-      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f48.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/root/.remote_backups/run/create_cron_entries.sh.old" ]; then
-        mv -f /root/.remote_backups/run/create_cron_entries.sh.old /root/.remote_backups/run/create_cron_entries.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_readme.sh.ctrl.f48.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
-      mv -f /root/.remote_backups/run/create_readme.sh /root/.remote_backups/run/create_readme.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_readme.sh" -o /root/.remote_backups/run/create_readme.sh
-    if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
-      chmod 700 /root/.remote_backups/run/create_readme.sh
-      chown root:root /root/.remote_backups/run/create_readme.sh
-      touch ${_pthCtrl}/create_readme.sh.ctrl.f48.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/root/.remote_backups/run/create_readme.sh.old" ]; then
-        mv -f /root/.remote_backups/run/create_readme.sh.old /root/.remote_backups/run/create_readme.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_config_readme.sh.ctrl.f48.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
-      mv -f /root/.remote_backups/run/create_config_readme.sh /root/.remote_backups/run/create_config_readme.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_config_readme.sh" -o /root/.remote_backups/run/create_config_readme.sh
-    if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
-      chmod 700 /root/.remote_backups/run/create_config_readme.sh
-      chown root:root /root/.remote_backups/run/create_config_readme.sh
-      touch ${_pthCtrl}/create_config_readme.sh.ctrl.f48.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/root/.remote_backups/run/create_config_readme.sh.old" ]; then
-        mv -f /root/.remote_backups/run/create_config_readme.sh.old /root/.remote_backups/run/create_config_readme.sh
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f73.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/scan_nginx.sh /var/xdrago/monitor/check/scan_nginx.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" -o /var/xdrago/monitor/check/scan_nginx.sh
-    if [ -e "/var/xdrago/monitor/check/scan_nginx.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/scan_nginx.sh
-      chown root:root /var/xdrago/monitor/check/scan_nginx.sh
-      touch ${_pthLog}/scan_nginx.sh.ctrl.f73.${_tRee}.${_xSrl}.pid
-      if [ ! -e "/var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid" ]; then
-        if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f73.${_tRee}.${_xSrl}.log
-        fi
-        if [ -e "/var/xdrago/monitor/log/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.f73.${_tRee}.${_xSrl}.log
-        fi
-        rm -f /var/xdrago/monitor/log/.scan_nginx_arch*.pid
-        touch /var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid
-        csf -df
-        wait
-        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
-      fi
-      if [ ! -e "/var/xdrago/monitor/log/.hackcheck.arch.${_xSrl}.pid" ]; then
-        if [ -e "/var/xdrago/monitor/hackcheck.archive.log" ]; then
-          mv -f /var/xdrago/monitor/hackcheck.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f73.${_tRee}.${_xSrl}.log
-        fi
-        if [ -e "/var/xdrago/monitor/log/hackcheck.archive.log" ]; then
-          mv -f /var/xdrago/monitor/log/hackcheck.archive.log /var/xdrago/monitor/log/hackcheck.archive.f73.${_tRee}.${_xSrl}.log
-        fi
-        rm -f /var/xdrago/monitor/log/.hackcheck.arch*.pid
-        touch /var/xdrago/monitor/log/.hackcheck.arch.${_xSrl}.pid
-        csf -df
-        wait
-        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
-      fi
-    else
-      mv -f /var/xdrago/monitor/check/scan_nginx.sh.old /var/xdrago/monitor/check/scan_nginx.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/java.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/java.sh /var/xdrago/monitor/check/java.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
-    if [ -e "/var/xdrago/monitor/check/java.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/java.sh
-      chown root:root /var/xdrago/monitor/check/java.sh
-      touch ${_pthLog}/java.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/java.sh.old /var/xdrago/monitor/check/java.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql.sh.ctrl.f82.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
-    if [ -e "/var/xdrago/monitor/check/mysql.sh" ]; then
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        if [ -e "/root/.high_load.cnf" ] \
-          && [ ! -e "/root/.big_db.cnf" ] \
-          && [ ! -e "/root/.tg.cnf" ]; then
-          sed -i "s/3600/300/g" /var/xdrago/monitor/check/mysql.sh
-        elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          sed -i "s/3600/1800/g" /var/xdrago/monitor/check/mysql.sh
-        fi
-      fi
-      chmod 700 /var/xdrago/monitor/check/mysql.sh
-      chown root:root /var/xdrago/monitor/check/mysql.sh
-      touch ${_pthLog}/mysql.sh.ctrl.f82.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/mysql.sh.old /var/xdrago/monitor/check/mysql.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/nginx.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/nginx.sh /var/xdrago/monitor/check/nginx.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
-    if [ -e "/var/xdrago/monitor/check/nginx.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/nginx.sh
-      chown root:root /var/xdrago/monitor/check/nginx.sh
-      touch ${_pthLog}/nginx.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/nginx.sh.old /var/xdrago/monitor/check/nginx.sh
-    fi
-  fi
-
-  if [ ! -e "/var/xdrago/monitor/check/nginx_guard.sh" ]; then
-    rm -f ${_pthLog}/nginx_guard.sh.ctrl.*
-  fi
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/nginx_guard.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/nginx_guard.sh /var/xdrago/monitor/check/nginx_guard.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" -o /var/xdrago/monitor/check/nginx_guard.sh
-    if [ -e "/var/xdrago/monitor/check/nginx_guard.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/nginx_guard.sh
-      chown root:root /var/xdrago/monitor/check/nginx_guard.sh
-      touch ${_pthLog}/nginx_guard.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/nginx_guard.sh.old /var/xdrago/monitor/check/nginx_guard.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/php.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/php.sh /var/xdrago/monitor/check/php.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
-    if [ -e "/var/xdrago/monitor/check/php.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/php.sh
-      chown root:root /var/xdrago/monitor/check/php.sh
-      touch ${_pthLog}/php.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/php.sh.old /var/xdrago/monitor/check/php.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/fpm_tune.sh.ctrl.f02.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/fpm_tune.sh /var/xdrago/monitor/check/fpm_tune.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" -o /var/xdrago/monitor/check/fpm_tune.sh
-    if [ -e "/var/xdrago/monitor/check/fpm_tune.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/fpm_tune.sh
-      chown root:root /var/xdrago/monitor/check/fpm_tune.sh
-      touch ${_pthLog}/fpm_tune.sh.ctrl.f02.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/fpm_tune.sh.old /var/xdrago/monitor/check/fpm_tune.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
-    if [ -e "/var/xdrago/monitor/check/valkey.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/valkey.sh
-      chown root:root /var/xdrago/monitor/check/valkey.sh
-      touch ${_pthLog}/valkey.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/valkey.sh.old /var/xdrago/monitor/check/valkey.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/redis.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
-    if [ -e "/var/xdrago/monitor/check/redis.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/redis.sh
-      chown root:root /var/xdrago/monitor/check/redis.sh
-      touch ${_pthLog}/redis.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/redis.sh.old /var/xdrago/monitor/check/redis.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/system.sh.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/system.sh /var/xdrago/monitor/check/system.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/system.sh" -o /var/xdrago/monitor/check/system.sh
-    if [ -e "/var/xdrago/monitor/check/system.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/system.sh
-      chown root:root /var/xdrago/monitor/check/system.sh
-      touch ${_pthLog}/system.sh.ctrl.f83.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/system.sh.old /var/xdrago/monitor/check/system.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
-    if [ -e "/var/xdrago/monitor/check/unbound.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/unbound.sh
-      chown root:root /var/xdrago/monitor/check/unbound.sh
-      touch ${_pthLog}/unbound.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/unbound.sh.old /var/xdrago/monitor/check/unbound.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/escapecheck.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/escapecheck.sh /var/xdrago/monitor/check/escapecheck.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" -o /var/xdrago/monitor/check/escapecheck.sh
-    if [ -e "/var/xdrago/monitor/check/escapecheck.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/escapecheck.sh
-      chown root:root /var/xdrago/monitor/check/escapecheck.sh
-      touch ${_pthLog}/escapecheck.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/escapecheck.sh.old /var/xdrago/monitor/check/escapecheck.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/hackcheck.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/hackcheck.sh /var/xdrago/monitor/check/hackcheck.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" -o /var/xdrago/monitor/check/hackcheck.sh
-    if [ -e "/var/xdrago/monitor/check/hackcheck.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/hackcheck.sh
-      chown root:root /var/xdrago/monitor/check/hackcheck.sh
-      touch ${_pthLog}/hackcheck.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/hackcheck.sh.old /var/xdrago/monitor/check/hackcheck.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/hackftp.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/hackftp.sh /var/xdrago/monitor/check/hackftp.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/hackftp.sh" -o /var/xdrago/monitor/check/hackftp.sh
-    if [ -e "/var/xdrago/monitor/check/hackftp.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/hackftp.sh
-      chown root:root /var/xdrago/monitor/check/hackftp.sh
-      touch ${_pthLog}/hackftp.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/hackftp.sh.old /var/xdrago/monitor/check/hackftp.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/segfault_alert.pl.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/segfault_alert.pl /var/xdrago/monitor/check/segfault_alert.pl.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
-    if [ -e "/var/xdrago/monitor/check/segfault_alert.pl" ]; then
-      chmod 700 /var/xdrago/monitor/check/segfault_alert.pl
-      chown root:root /var/xdrago/monitor/check/segfault_alert.pl
-      touch ${_pthLog}/segfault_alert.pl.ctrl.f94.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/segfault_alert.pl.old /var/xdrago/monitor/check/segfault_alert.pl
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/sqlcheck.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/sqlcheck.sh /var/xdrago/monitor/check/sqlcheck.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" -o /var/xdrago/monitor/check/sqlcheck.sh
-    if [ -e "/var/xdrago/monitor/check/sqlcheck.sh" ]; then
-      chmod 700 /var/xdrago/monitor/check/sqlcheck.sh
-      chown root:root /var/xdrago/monitor/check/sqlcheck.sh
-      touch ${_pthLog}/sqlcheck.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/sqlcheck.sh.old /var/xdrago/monitor/check/sqlcheck.sh
-    fi
+  if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name backboa.sh
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity --guard-label "duplicity backup" --ctrl-name duobackboa.sh
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f71
+    _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f90
+    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f80
+    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f91
+    _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f83
+    _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f02
+    _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f86
+    _fetch_versioned /var/xdrago/monitor/check/redis.sh "${_urlHmr}/tools/system/monitor/check/redis.sh" f89
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f83
+    _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f84
+    _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f99
+    _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f92
+    _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f97
+    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f94
+    _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f99
+    _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f96
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f97 --guard mysql_backup.sh
+    _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
+    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f91
+    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f91 --guard mysql_cluster_backup.sh
+    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f82
+    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f90
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f99
+    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f93
+    _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f90
+    _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f95
+    _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92
+    _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f99
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f84
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f60 --guard autoupboa
+    _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
+    _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f68
+    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
+    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f77
+    _fetch_versioned /var/xdrago/proc_num_ctrl.pl "${_urlHmr}/tools/system/proc_num_ctrl.pl" f82
+    _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
+    _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/tools/bin/synproxy_rollback" f94 --guard synproxy_rollback
+    _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/tools/bin/synproxy_reassert" f99 --guard synproxy_rollback
+    _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/tools/bin/synproxy_hook_fix" f99 --guard synproxy_rollback
+    _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/tools/bin/synproxy_snapshot" f99 --guard synproxy_rollback
+    _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/tools/bin/synproxy_status" f99 --guard synproxy_rollback
+    _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/tools/bin/synproxy_monitor" f98 --guard synproxy_rollback
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -2192,308 +1457,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/clean-boa-env.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
-    curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
-    if [ -e "/etc/init.d/clean-boa-env" ]; then
-      chmod 700 /etc/init.d/clean-boa-env
-      chown root:root /etc/init.d/clean-boa-env
-      touch ${_pthLog}/clean-boa-env.ctrl.f96.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/clean-boa-env.old /etc/init.d/clean-boa-env
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f99.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc mysql_backup.sh)
-    if (( _CNT > 0 )); then
-      echo "The mysql_backup.sh is running!"
-    else
-      mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
-      curl ${_crlGet} "${_urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
-      if [ -e "/var/xdrago/mysql_backup.sh" ]; then
-        chmod 700 /var/xdrago/mysql_backup.sh
-        chown root:root /var/xdrago/mysql_backup.sh
-        touch ${_pthLog}/mysql_backup.sh.ctrl.f99.${_xSrl}.pid
-      else
-        mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/unbound-helper.ctrl.f95.${_xSrl}.pid" ]; then
-    mv -f /usr/libexec/unbound-helper /usr/libexec/unbound-helper.old
-    curl ${_crlGet} "${_urlHmr}/conf/dns/unbound-helper" -o /usr/libexec/unbound-helper
-    if [ -e "/usr/libexec/unbound-helper" ]; then
-      chmod 755 /usr/libexec/unbound-helper
-      chown root:root /usr/libexec/unbound-helper
-      touch ${_pthLog}/unbound-helper.ctrl.f95.${_xSrl}.pid
-    else
-      mv -f /usr/libexec/unbound-helper.old /usr/libexec/unbound-helper
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_cleanup.sh.ctrl.f92.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/mysql_cleanup.sh /var/xdrago/mysql_cleanup.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
-    if [ -e "/var/xdrago/mysql_cleanup.sh" ]; then
-      chmod 700 /var/xdrago/mysql_cleanup.sh
-      chown root:root /var/xdrago/mysql_cleanup.sh
-      touch ${_pthLog}/mysql_cleanup.sh.ctrl.f92.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/mysql_cleanup.sh.old /var/xdrago/mysql_cleanup.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_cluster_backup.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc mysql_cluster_backup.sh)
-    if (( _CNT > 0 )); then
-      echo "The mysql_cluster_backup.sh is running!"
-    else
-      mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
-      curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
-      if [ -e "/var/xdrago/mysql_cluster_backup.sh" ]; then
-        chmod 700 /var/xdrago/mysql_cluster_backup.sh
-        chown root:root /var/xdrago/mysql_cluster_backup.sh
-        touch ${_pthLog}/mysql_cluster_backup.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
-      else
-        mv -f /var/xdrago/mysql_cluster_backup.sh.old /var/xdrago/mysql_cluster_backup.sh
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/runner.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
-    if [ -e "/var/xdrago/runner.sh" ]; then
-      chmod 700 /var/xdrago/runner.sh
-      chown root:root /var/xdrago/runner.sh
-      touch ${_pthLog}/runner.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/minute.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
-    if [ -e "/var/xdrago/minute.sh" ]; then
-      chmod 700 /var/xdrago/minute.sh
-      chown root:root /var/xdrago/minute.sh
-      touch ${_pthLog}/minute.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/second.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
-    if [ -e "/var/xdrago/second.sh" ]; then
-      chmod 700 /var/xdrago/second.sh
-      chown root:root /var/xdrago/second.sh
-      touch ${_pthLog}/second.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/second.sh.old /var/xdrago/second.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/ip_access.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/ip_access.sh /var/xdrago/ip_access.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/ip_access.sh" -o /var/xdrago/ip_access.sh
-    if [ -e "/var/xdrago/ip_access.sh" ]; then
-      chmod 700 /var/xdrago/ip_access.sh
-      chown root:root /var/xdrago/ip_access.sh
-      touch ${_pthLog}/ip_access.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/ip_access.sh.old /var/xdrago/ip_access.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/move_sql.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/move_sql.sh /var/xdrago/move_sql.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/move_sql.sh" -o /var/xdrago/move_sql.sh
-    if [ -e "/var/xdrago/move_sql.sh" ]; then
-      chmod 700 /var/xdrago/move_sql.sh
-      chown root:root /var/xdrago/move_sql.sh
-      touch ${_pthLog}/move_sql.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/move_sql.sh.old /var/xdrago/move_sql.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_repair.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/mysql_repair.sh /var/xdrago/mysql_repair.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_repair.sh" -o /var/xdrago/mysql_repair.sh
-    if [ -e "/var/xdrago/mysql_repair.sh" ]; then
-      chmod 700 /var/xdrago/mysql_repair.sh
-      chown root:root /var/xdrago/mysql_repair.sh
-      touch ${_pthLog}/mysql_repair.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/mysql_repair.sh.old /var/xdrago/mysql_repair.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/purge_binlogs.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/purge_binlogs.sh /var/xdrago/purge_binlogs.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/purge_binlogs.sh" -o /var/xdrago/purge_binlogs.sh
-    if [ -e "/var/xdrago/purge_binlogs.sh" ]; then
-      chmod 700 /var/xdrago/purge_binlogs.sh
-      chown root:root /var/xdrago/purge_binlogs.sh
-      touch ${_pthLog}/purge_binlogs.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/purge_binlogs.sh.old /var/xdrago/purge_binlogs.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/checksql.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/checksql.sh /var/xdrago/checksql.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/checksql.sh" -o /var/xdrago/checksql.sh
-    if [ -e "/var/xdrago/checksql.sh" ]; then
-      chmod 700 /var/xdrago/checksql.sh
-      chown root:root /var/xdrago/checksql.sh
-      touch ${_pthLog}/checksql.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/checksql.sh.old /var/xdrago/checksql.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/clear.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
-    if [ -e "/var/xdrago/clear.sh" ]; then
-      chmod 700 /var/xdrago/clear.sh
-      chown root:root /var/xdrago/clear.sh
-      touch ${_pthLog}/clear.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/autoupboa.ctrl.f66.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc autoupboa)
-    if (( _CNT > 0 )); then
-      echo "The autoupboa is running!"
-    else
-      if [ -e "${_optBin}/autoupboa" ]; then
-        mv -f ${_optBin}/autoupboa ${_optBin}/autoupboa.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/autoupboa" -o ${_optBin}/autoupboa
-      if [ -e "${_optBin}/autoupboa" ]; then
-        chmod 700 ${_optBin}/autoupboa
-        chown root:root ${_optBin}/autoupboa
-        touch ${_pthLog}/autoupboa.ctrl.f66.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/autoupboa.old" ]; then
-          mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/fixmounts.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc fixmounts)
-    if (( _CNT > 0 )); then
-      echo "The fixmounts is running!"
-    else
-      if [ -e "${_optBin}/fixmounts" ]; then
-        mv -f ${_optBin}/fixmounts ${_optBin}/fixmounts.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/fixmounts" -o ${_optBin}/fixmounts
-      if [ -e "${_optBin}/fixmounts" ]; then
-        chmod 700 ${_optBin}/fixmounts
-        chown root:root ${_optBin}/fixmounts
-        touch ${_pthLog}/fixmounts.ctrl.f98.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/fixmounts.old" ]; then
-          mv -f ${_optBin}/fixmounts.old ${_optBin}/fixmounts
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/daily.sh.ctrl.f71.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
-    if [ -e "/var/xdrago/daily.sh" ]; then
-      chmod 700 /var/xdrago/daily.sh
-      chown root:root /var/xdrago/daily.sh
-      touch ${_pthLog}/daily.sh.ctrl.f71.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/graceful.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
-    if [ -e "/var/xdrago/graceful.sh" ]; then
-      chmod 700 /var/xdrago/graceful.sh
-      chown root:root /var/xdrago/graceful.sh
-      touch ${_pthLog}/graceful.sh.ctrl.f86.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/usage.sh.ctrl.f80.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
-    if [ -e "/var/xdrago/usage.sh" ]; then
-      chmod 700 /var/xdrago/usage.sh
-      chown root:root /var/xdrago/usage.sh
-      touch ${_pthLog}/usage.sh.ctrl.f80.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/usage.sh.old /var/xdrago/usage.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f67.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f62.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f67.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f62.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
       mkdir -p /var/backups/ltd/{conf,log,old}
@@ -2520,21 +1491,6 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
-      -o /var/xdrago/proc_num_ctrl.pl
-    if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-      chmod 700 /var/xdrago/proc_num_ctrl.pl
-      chown root:root /var/xdrago/proc_num_ctrl.pl
-      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f83.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/proc_num_ctrl.pl.old /var/xdrago/proc_num_ctrl.pl
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-commo*.conf
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
@@ -2552,40 +1508,11 @@ _update_agents() {
     touch ${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ -x "/usr/sbin/csf" ] \
-    && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${_pthLog}/guest-fire.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/guest-fire.sh" \
-      -o /var/xdrago/guest-fire.sh
-    if [ -e "/var/xdrago/guest-fire.sh" ]; then
-      chmod 700 /var/xdrago/guest-fire.sh
-      chown root:root /var/xdrago/guest-fire.sh
-      touch ${_pthLog}/guest-fire.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/guest-fire.sh.old /var/xdrago/guest-fire.sh
-    fi
-  fi
+  [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
+    && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f89
 
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ -x "/usr/sbin/csf" ] \
-    && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${_pthLog}/guest-water.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/guest-water.sh" \
-      -o /var/xdrago/guest-water.sh
-    if [ -e "/var/xdrago/guest-water.sh" ]; then
-      chmod 700 /var/xdrago/guest-water.sh
-      chown root:root /var/xdrago/guest-water.sh
-      touch ${_pthLog}/guest-water.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
-    fi
-  fi
+  [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f88
 
   if ! grep -q "unzstd" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
@@ -3107,179 +2034,8 @@ _update_agents() {
     fi
   fi
 
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -x "/etc/cron.hourly/systemtime" ] \
-    && [ ! -e "${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    curl ${_crlGet} "${_urlHmr}/helpers/systemtime" -o /etc/cron.hourly/systemtime
-    if [ -e "/etc/cron.hourly/systemtime" ]; then
-      chmod 755 /etc/cron.hourly/systemtime
-      chown root:root /etc/cron.hourly/systemtime
-      service cron restart
-      touch ${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc synproxy_rollback)
-    if (( _CNT > 0 )); then
-      echo "The synproxy_rollback is running!"
-    else
-      if [ -e "${_optBin}/synproxy" ]; then
-        mv -f ${_optBin}/synproxy ${_optBin}/synproxy.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy" -o ${_optBin}/synproxy
-      if [ -e "${_optBin}/synproxy" ]; then
-        chmod 700 ${_optBin}/synproxy
-        chown root:root ${_optBin}/synproxy
-        touch ${_pthLog}/synproxy.ctrl.f93.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/synproxy.old" ]; then
-          mv -f ${_optBin}/synproxy.old ${_optBin}/synproxy
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_rollback.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc synproxy_rollback)
-    if (( _CNT > 0 )); then
-      echo "The synproxy_rollback is running!"
-    else
-      if [ -e "${_optBin}/synproxy_rollback" ]; then
-        mv -f ${_optBin}/synproxy_rollback ${_optBin}/synproxy_rollback.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_rollback" -o ${_optBin}/synproxy_rollback
-      if [ -e "${_optBin}/synproxy_rollback" ]; then
-        chmod 700 ${_optBin}/synproxy_rollback
-        chown root:root ${_optBin}/synproxy_rollback
-        touch ${_pthLog}/synproxy_rollback.ctrl.f94.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/synproxy_rollback.old" ]; then
-          mv -f ${_optBin}/synproxy_rollback.old ${_optBin}/synproxy_rollback
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_reassert.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc synproxy_rollback)
-    if (( _CNT > 0 )); then
-      echo "The synproxy_rollback is running!"
-    else
-      if [ -e "${_optBin}/synproxy_reassert" ]; then
-        mv -f ${_optBin}/synproxy_reassert ${_optBin}/synproxy_reassert.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_reassert" -o ${_optBin}/synproxy_reassert
-      if [ -e "${_optBin}/synproxy_reassert" ]; then
-        chmod 700 ${_optBin}/synproxy_reassert
-        chown root:root ${_optBin}/synproxy_reassert
-        touch ${_pthLog}/synproxy_reassert.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/synproxy_reassert.old" ]; then
-          mv -f ${_optBin}/synproxy_reassert.old ${_optBin}/synproxy_reassert
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_hook_fix.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc synproxy_rollback)
-    if (( _CNT > 0 )); then
-      echo "The synproxy_rollback is running!"
-    else
-      if [ -e "${_optBin}/synproxy_hook_fix" ]; then
-        mv -f ${_optBin}/synproxy_hook_fix ${_optBin}/synproxy_hook_fix.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_hook_fix" -o ${_optBin}/synproxy_hook_fix
-      if [ -e "${_optBin}/synproxy_hook_fix" ]; then
-        chmod 700 ${_optBin}/synproxy_hook_fix
-        chown root:root ${_optBin}/synproxy_hook_fix
-        touch ${_pthLog}/synproxy_hook_fix.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/synproxy_hook_fix.old" ]; then
-          mv -f ${_optBin}/synproxy_hook_fix.old ${_optBin}/synproxy_hook_fix
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_snapshot.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc synproxy_rollback)
-    if (( _CNT > 0 )); then
-      echo "The synproxy_rollback is running!"
-    else
-      if [ -e "${_optBin}/synproxy_snapshot" ]; then
-        mv -f ${_optBin}/synproxy_snapshot ${_optBin}/synproxy_snapshot.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_snapshot" -o ${_optBin}/synproxy_snapshot
-      if [ -e "${_optBin}/synproxy_snapshot" ]; then
-        chmod 700 ${_optBin}/synproxy_snapshot
-        chown root:root ${_optBin}/synproxy_snapshot
-        touch ${_pthLog}/synproxy_snapshot.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/synproxy_snapshot.old" ]; then
-          mv -f ${_optBin}/synproxy_snapshot.old ${_optBin}/synproxy_snapshot
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_status.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc synproxy_rollback)
-    if (( _CNT > 0 )); then
-      echo "The synproxy_rollback is running!"
-    else
-      if [ -e "${_optBin}/synproxy_status" ]; then
-        mv -f ${_optBin}/synproxy_status ${_optBin}/synproxy_status.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_status" -o ${_optBin}/synproxy_status
-      if [ -e "${_optBin}/synproxy_status" ]; then
-        chmod 700 ${_optBin}/synproxy_status
-        chown root:root ${_optBin}/synproxy_status
-        touch ${_pthLog}/synproxy_status.ctrl.f99.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/synproxy_status.old" ]; then
-          mv -f ${_optBin}/synproxy_status.old ${_optBin}/synproxy_status
-        fi
-      fi
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_monitor.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc synproxy_rollback)
-    if (( _CNT > 0 )); then
-      echo "The synproxy_rollback is running!"
-    else
-      if [ -e "${_optBin}/synproxy_monitor" ]; then
-        mv -f ${_optBin}/synproxy_monitor ${_optBin}/synproxy_monitor.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_monitor" -o ${_optBin}/synproxy_monitor
-      if [ -e "${_optBin}/synproxy_monitor" ]; then
-        chmod 700 ${_optBin}/synproxy_monitor
-        chown root:root ${_optBin}/synproxy_monitor
-        touch ${_pthLog}/synproxy_monitor.ctrl.f98.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/synproxy_monitor.old" ]; then
-          mv -f ${_optBin}/synproxy_monitor.old ${_optBin}/synproxy_monitor
-        fi
-      fi
-    fi
-  fi
+  [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ ! -x "/etc/cron.hourly/systemtime" ] \
+    && _fetch_versioned /etc/cron.hourly/systemtime "${_urlHmr}/helpers/systemtime" f95 --mode 755
 
   _Dir="/data/all/000/modules"
   _REDIS_E_VERSION=8.x-1.11.2
@@ -3965,16 +2721,16 @@ _fix_start_stop_ports_solr() {
     fi
   fi
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=17077" /etc/default/solr7.in.sh 2>&1)
+    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=19077" /etc/default/solr7.in.sh 2>&1)
     _SOLR7_WAIT_TEST=$(grep "SOLR_START_WAIT=" /etc/default/solr7.in.sh 2>&1)
     if [ ! -e "/var/log/boa/solr7.in.004.fixed.pid" ] \
-      || [[ ! "${_SOLR7_STOP_TEST}" =~ "17077" ]] \
+      || [[ ! "${_SOLR7_STOP_TEST}" =~ "19077" ]] \
       || [[ ! "${_SOLR7_WAIT_TEST}" =~ "10" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       sed -i "s/.*mycustomkey7.*//g" /etc/default/solr7.in.sh
       sed -i "s/.*_WAIT.*//g" /etc/default/solr7.in.sh
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
       echo "SOLR_START_WAIT=\"10\"" >> /etc/default/solr7.in.sh
       echo "SOLR_STOP_WAIT=\"10\"" >> /etc/default/solr7.in.sh
       echo "SOLR_WAIT_FOR_ZK=\"10\"" >> /etc/default/solr7.in.sh
@@ -4125,7 +2881,7 @@ _fix_java_symlinks() {
     fi
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
-    elif [ -e "/root/.look.like.jenkins.cnf" ]; then
+    elif [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     else
       _LOOK_LIKE_JENKINS=FALSE
