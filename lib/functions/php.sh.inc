@@ -1735,12 +1735,17 @@ _install_php_multi() {
   ### patch -p1 < ${_bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
-  # intl requires ICU; PHP 7.4-8.0 fails to build intl against ICU 76+ and is
-  # intentionally excluded -- those versions are EOL and not worth maintaining
-  # ICU compat patches for. PHP < 7.4 never had intl support in BOA at all.
-  if [ "$1" -lt 81 ]; then
-    _PHP_EXTRA="${_PHP_EXTRA}"
-  else
+  # intl requires ICU. PHP 7.4/8.0 cannot build intl against ICU 76+ but build
+  # cleanly against ICU <= 73. 8.1+ always gets intl. Below 8.1, enable intl
+  # only when ICU is explicitly pinned (via _ICU_FORCE_VRN) to a 7.4-safe
+  # version (major <= 73). So the unset/default behaviour is unchanged on every
+  # OS (no intl below 8.1, including the 73-default OSes, which are not silently
+  # flipped); the feature is strictly opt-in.
+  _resolve_icu_target
+  _ICU_MAJOR="${_ICU_TARGET_VRN%%[._-]*}"
+  if [ "$1" -ge 81 ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
+  elif [ -n "${_ICU_FORCE_VRN}" ] && [ "${_ICU_MAJOR}" -le 73 ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ] \
@@ -2575,31 +2580,15 @@ _check_php_icu_version() {
     _msg "PROC: _check_php_icu_version $1"
   fi
 
-  _ICU_LEGACY=${_ICU_LEGACY_VRN/[_-]/.}
-  _ICU_MODERN=${_ICU_MODERN_VRN/[_-]/.}
-  _ICU_NEWER=${_ICU_NEWER_VRN/[_-]/.}
-
-  # Set ICU version based on the OS version
-  case "${_OS_CODE}" in
-    excalibur|daedalus|trixie|bookworm)
-      _ICE_USE_VRN="${_ICU_NEWER}"  # 76.1
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-         _msg "INFO: Using Newer ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
-      fi
-      ;;
-    chimaera|beowulf|bullseye|buster|stretch)
-      _ICE_USE_VRN="${_ICU_MODERN}"  # 73.1
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Using Modern ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
-      fi
-      ;;
-    *)
-      _ICE_USE_VRN="${_ICU_LEGACY}"  # 52.2
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Using Legacy ICU ${_ICE_USE_VRN} for PHP in ${_OS_CODE} by default"
-      fi
-      ;;
-  esac
+  # Expected ICU comes from the single resolver (honours _ICU_FORCE_VRN), so this
+  # check can never disagree with what the installer built or the intl gate
+  # enabled -- that disagreement is what caused the endless rebuild loop.
+  # Convert the dashed target (e.g. 73-1) to the dotted form php -i reports (73.1).
+  _resolve_icu_target
+  _ICE_USE_VRN="${_ICU_TARGET_VRN/[_-]/.}"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Expecting PHP ICU ${_ICE_USE_VRN} (target ${_ICU_TARGET_VRN}) in ${_OS_CODE}"
+  fi
 
   # Check the installed PHP ICU version
   _PHP_ICU_TEST=$(/opt/php$1/bin/php -i | grep "ICU version" 2>&1)
@@ -2661,8 +2650,11 @@ _check_php_rebuild() {
     _PHP_FORCE_REINSTALL=YES
   fi
 
-  if [ "$1" -gt 80 ]; then
-    # Run the ICU version check for PHP newer than 8.0
+  if [ "$1" -gt 80 ] \
+    || { [ -n "${_ICU_FORCE_VRN}" ] && [ "$1" -ge 74 ]; }; then
+    # ICU check for 8.1+ always; for pinned 7.4/8.0 too (they carry intl when
+    # ICU is pinned), so they stay self-correcting and the install-vs-expected
+    # rebuild loop cannot form.
     if ! _check_php_icu_version "$1"; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
