@@ -37,8 +37,6 @@ This works because ICU shared libraries are version-suffixed
 (`libicuuc.so.73`, `libicuuc.so.76`, …) and coexist: installing ICU 76 does not remove
 the ICU 73 runtime libraries that PHP 7.4's `intl` links against.
 
----
-
 ## Manual procedure (no auto-updates)
 
 Use this on any box where BOA auto-updates are **not** enabled. Substitute your tier
@@ -63,8 +61,6 @@ readlink /usr/local/lib/icu/current            # -> /usr/local/lib/icu/76.1 (aft
 ldd /opt/php74/bin/php | grep -i icu           # -> libicu*.so.73 all resolve (no "not found")
 /opt/php83/bin/php -i | grep -i 'ICU version'  # -> ICU version => 76.1
 ```
-
----
 
 ## Automatic handling (auto-updates enabled)
 
@@ -95,8 +91,6 @@ Notes:
 - Deploying this behaviour to existing boxes requires the `autoupboa` fetch serial and
   the hardcoded `ctrl_595vNN` crontab-update marker to be bumped together, so boxes
   regenerate `/etc/crontab` once and pick up the new weekly line.
-
----
 
 ## Caveats
 
