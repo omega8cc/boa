@@ -3372,9 +3372,43 @@ _check_apt_updates() {
 
 #
 # Install newer ICU from sources.
-_install_icu_newer() {
+#
+# Resolve the ICU version to build/expect. _ICU_FORCE_VRN (from .barracuda.cnf)
+# overrides the per-OS default. Result is left in _ICU_TARGET_VRN (dashed form).
+# The case below must stay byte-identical to the installer dispatcher and to
+# _check_php_icu_version so "installed", "expected" and "what intl builds
+# against" can never disagree.
+_resolve_icu_target() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _install_icu_newer"
+    _msg "PROC: _resolve_icu_target"
+  fi
+  if [ -n "${_ICU_FORCE_VRN}" ]; then
+    _ICU_TARGET_VRN="${_ICU_FORCE_VRN}"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: ICU pinned to ${_ICU_TARGET_VRN} via .barracuda.cnf"
+    fi
+    return 0
+  fi
+  case "${_OS_CODE}" in
+    excalibur|daedalus|trixie|bookworm)
+      _ICU_TARGET_VRN="${_ICU_NEWER_VRN}"
+      ;;
+    chimaera|beowulf|bullseye|buster|stretch)
+      _ICU_TARGET_VRN="${_ICU_MODERN_VRN}"
+      ;;
+    *)
+      _ICU_TARGET_VRN="${_ICU_LEGACY_VRN}"
+      ;;
+  esac
+}
+
+#
+# Install ICU (modern/newer tiers) from sources. Version comes from
+# _resolve_icu_target via _ICU_TARGET_VRN, so _ICU_FORCE_VRN can pin it. Jessie
+# keeps its own installer (different tarball/source layout).
+_install_icu() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_icu"
   fi
   ###--------------------###
   if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
@@ -3386,12 +3420,13 @@ _install_icu_newer() {
     mv -f /usr/lib/x86_64-linux-gnu/.legacy_icu /var/backups/.legacy_icu
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _resolve_icu_target
   if [ -e "${_pthLog}" ]; then
-    _pthIcuLog="${_pthLog}/icu-update-${_ICU_NEWER_VRN}-for-${_OS_CODE}.log"
-    _pthIcuLcy="${_pthLog}/icu-update-${_ICU_NEWER_VRN}.log"
+    _pthIcuLog="${_pthLog}/icu-update-${_ICU_TARGET_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="${_pthLog}/icu-update-${_ICU_TARGET_VRN}.log"
   else
-    _pthIcuLog="/root/.icu-update-${_ICU_NEWER_VRN}-for-${_OS_CODE}.log"
-    _pthIcuLcy="/root/.icu-update-${_ICU_NEWER_VRN}.log"
+    _pthIcuLog="/root/.icu-update-${_ICU_TARGET_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="/root/.icu-update-${_ICU_TARGET_VRN}.log"
   fi
   if [ "${_OS_CODE}" = "excalibur" ] \
     && [ -e "${_pthIcuLcy}" ] \
@@ -3411,14 +3446,14 @@ _install_icu_newer() {
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${_pthIcuLog}" ]; then
-    _msg "INFO: Installing ICU libs version ${_ICU_NEWER_VRN}..."
+    _msg "INFO: Installing ICU libs version ${_ICU_TARGET_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
-    if [ ! -e "/var/opt/icu-release-${_ICU_NEWER_VRN}/icu4c/source" ]; then
+    if [ ! -e "/var/opt/icu-release-${_ICU_TARGET_VRN}/icu4c/source" ]; then
       cd /var/opt
       rm -rf icu*
-      _get_dev_src "icu-release-${_ICU_NEWER_VRN}.tar.gz"
+      _get_dev_src "icu-release-${_ICU_TARGET_VRN}.tar.gz"
     fi
-    cd /var/opt/icu-release-${_ICU_NEWER_VRN}/icu4c/source
+    cd /var/opt/icu-release-${_ICU_TARGET_VRN}/icu4c/source
     _mrun "bash ./configure --prefix=/usr/local"
     _mrun "make -j $(nproc) --quiet"
     _mrun "make --quiet install"
@@ -3426,66 +3461,12 @@ _install_icu_newer() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      if [ -e "/usr/local/lib/icu" ]; then
-        if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
-          rm -rf /var/backups/pre_icu
-          mv -f /usr/lib/x86_64-linux-gnu/icu /var/backups/pre_icu
-        fi
-        if [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
-          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
-        fi
-      fi
-    fi
-  fi
-}
-
-#
-# Install modern ICU from sources.
-_install_icu_modern() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _install_icu_modern"
-  fi
-  ###--------------------###
-  if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
-    rm -rf /var/backups/.old_icu
-    mv -f /usr/lib/x86_64-linux-gnu/.old_icu /var/backups/.old_icu
-  fi
-  if [ -e "/usr/lib/x86_64-linux-gnu/.legacy_icu" ]; then
-    rm -rf /var/backups/.legacy_icu
-    mv -f /usr/lib/x86_64-linux-gnu/.legacy_icu /var/backups/.legacy_icu
-  fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  if [ -e "${_pthLog}" ]; then
-    _pthIcuLog="${_pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
-    _pthIcuLcy="${_pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
-  else
-    _pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
-    _pthIcuLcy="/root/.icu-update-${_ICU_MODERN_VRN}.log"
-  fi
-  if [ -e "${_pthIcuLog}" ]; then
-    chattr -i ${_pthIcuLog}
-  fi
-  if [ -e "${_pthIcuLcy}" ]; then
-    chattr -i ${_pthIcuLcy}
-  fi
-  if [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ ! -e "${_pthIcuLog}" ]; then
-    _msg "INFO: Installing ICU libs version ${_ICU_MODERN_VRN}..."
-    _msg "WAIT: This may take a while, please wait..."
-    if [ ! -e "/var/opt/icu-release-${_ICU_MODERN_VRN}/icu4c/source" ]; then
-      cd /var/opt
-      rm -rf icu*
-      _get_dev_src "icu-release-${_ICU_MODERN_VRN}.tar.gz"
-    fi
-    cd /var/opt/icu-release-${_ICU_MODERN_VRN}/icu4c/source
-    _mrun "bash ./configure --prefix=/usr/local"
-    _mrun "make -j $(nproc) --quiet"
-    _mrun "make --quiet install"
-    ldconfig 2> /dev/null
-    if [ -e "/usr/local/lib/icu" ]; then
-      touch ${_pthIcuLog}
+    # Point the 'current' symlink (existence-checked to gate installs/rebuilds)
+    # at the version we just built, so installed == resolved target even when
+    # pinned to a different version than the OS default.
+    _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
+    if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+      ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
     fi
     _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -3616,13 +3597,13 @@ _php_install_deps() {
     done
   fi
 
-  # Set ICU version install based on the OS version
+  # Set ICU version install based on the OS version. Modern/newer tiers share
+  # one installer driven by _resolve_icu_target (honours _ICU_FORCE_VRN); jessie
+  # keeps its own path. The version distinction within the merged tiers is made
+  # by the resolver, not here.
   case "${_OS_CODE}" in
-    excalibur|daedalus|trixie|bookworm)
-      _install_icu_newer
-      ;;
-    chimaera|beowulf|bullseye|buster|stretch)
-      _install_icu_modern
+    excalibur|daedalus|trixie|bookworm|chimaera|beowulf|bullseye|buster|stretch)
+      _install_icu
       ;;
     *)
       _install_icu_jessie
@@ -7056,7 +7037,17 @@ _if_major_os_upgrade() {
   _RUNNING_MAJOR_OS_UPGRADE=NO
   _define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
-    if [ ! -e "/usr/local/lib/icu/76.1" ] \
+    # ICU precheck: a box pinned via _ICU_FORCE_VRN builds its pinned dotted
+    # dir (e.g. 73.1), not 76.1, so derive the expected dir from the resolver
+    # when pinned; the unset path keeps the historical 76.1 literal so the
+    # default major-OS-upgrade behaviour is unchanged.
+    if [ -n "${_ICU_FORCE_VRN}" ]; then
+      _resolve_icu_target
+      _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
+    else
+      _ICU_DOT="76.1"
+    fi
+    if [ ! -e "/usr/local/lib/icu/${_ICU_DOT}" ] \
       && [ "${_LOC_OS_CODE}" != "jessie" ]; then
       echo
       _msg "OOPS: Please run normal 'barracuda up-${_tRee}' upgrade"
