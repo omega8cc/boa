@@ -3444,8 +3444,18 @@ _install_icu() {
   if [ -e "${_pthIcuLcy}" ]; then
     chattr -i ${_pthIcuLcy}
   fi
+  # Dotted dir form, resolved once so the install guard can also detect a stale
+  # 'current' symlink. When pinned (_ICU_FORCE_VRN set), a target tree built by an
+  # earlier run (e.g. 73.1) plus an existing 'current' -> a different version both
+  # satisfy the existence checks and would skip the (re)install, leaving the active
+  # ICU headers/libs/.pc and 'current' on the wrong version. The added clause forces
+  # a re-install whenever the pinned target is not the active ('current') one.
+  _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
   if [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ ! -e "${_pthIcuLog}" ]; then
+    || [ ! -e "${_pthIcuLog}" ] \
+    || { [ -n "${_ICU_FORCE_VRN}" ] \
+      && [ "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" \
+        != "/usr/local/lib/icu/${_ICU_DOT}" ]; }; then
     _msg "INFO: Installing ICU libs version ${_ICU_TARGET_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu-release-${_ICU_TARGET_VRN}/icu4c/source" ]; then
@@ -3463,8 +3473,7 @@ _install_icu() {
     fi
     # Point the 'current' symlink (existence-checked to gate installs/rebuilds)
     # at the version we just built, so installed == resolved target even when
-    # pinned to a different version than the OS default.
-    _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
+    # pinned to a different version than the OS default. _ICU_DOT resolved above.
     if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
       ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
     fi
