@@ -7037,7 +7037,17 @@ _if_major_os_upgrade() {
   _RUNNING_MAJOR_OS_UPGRADE=NO
   _define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
-    if [ ! -e "/usr/local/lib/icu/76.1" ] \
+    # ICU precheck: a box pinned via _ICU_FORCE_VRN builds its pinned dotted
+    # dir (e.g. 73.1), not 76.1, so derive the expected dir from the resolver
+    # when pinned; the unset path keeps the historical 76.1 literal so the
+    # default major-OS-upgrade behaviour is unchanged.
+    if [ -n "${_ICU_FORCE_VRN}" ]; then
+      _resolve_icu_target
+      _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
+    else
+      _ICU_DOT="76.1"
+    fi
+    if [ ! -e "/usr/local/lib/icu/${_ICU_DOT}" ] \
       && [ "${_LOC_OS_CODE}" != "jessie" ]; then
       echo
       _msg "OOPS: Please run normal 'barracuda up-${_tRee}' upgrade"
