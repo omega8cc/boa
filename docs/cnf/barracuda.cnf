@@ -50,6 +50,16 @@ _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
 _LOCAL_DEVUAN_MIRROR= #--------- Allows to force non-default Devuan mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 ###
+### ICU version pin (advanced; single-tenant dedicated boxes only). When set,
+### BOA builds/links ICU at this version on ALL PHP versions and rebuilds PHP
+### 7.4/8.0 with the intl extension against it -- a holding pattern to keep a
+### legacy Drupal 7 site (Transliterator/locale_*) running after a system ICU
+### bump, without forcing a client codebase upgrade. Dashed form, e.g. 73-1.
+### Unset = per-OS default, no behaviour change. Global per box, has a shelf
+### life, and is NOT auto-carried on migration -- see DECISIONS.md.
+###
+#_ICU_FORCE_VRN="73-1"
+###
 _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
