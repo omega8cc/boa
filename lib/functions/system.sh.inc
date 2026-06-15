@@ -3464,16 +3464,6 @@ _install_icu_modern() {
     _pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="/root/.icu-update-${_ICU_MODERN_VRN}.log"
   fi
-  if [ "${_OS_CODE}" = "excalibur" ] \
-    && [ -e "${_pthIcuLcy}" ] \
-    && [ ! -e "${_pthIcuLog}" ]; then
-    touch ${_pthIcuLog}
-  fi
-  if [ "${_OS_CODE}" = "daedalus" ] \
-    && [ -e "${_pthIcuLcy}" ] \
-    && [ ! -e "${_pthIcuLog}" ]; then
-    touch ${_pthIcuLog}
-  fi
   if [ -e "${_pthIcuLog}" ]; then
     chattr -i ${_pthIcuLog}
   fi
