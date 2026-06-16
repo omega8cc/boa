@@ -49,12 +49,15 @@ _run_weekly_system_upgrade() {
     echo "INFO: PHP 7.4 present without intl -- bootstrapping via temporary ICU 73 pin"
     touch "${_bootMark}"
     /opt/local/bin/barracuda php-idle disable
+    wait
     sed -i '/^#\?_ICU_FORCE_VRN=/d' "${_barCnf}"
     echo '_ICU_FORCE_VRN="73-1"' >> "${_barCnf}"
     /opt/local/bin/barracuda "$@"   ### pin pass: 7.4 rebuilt with intl on ICU 73
+    wait
     sed -i '/^_ICU_FORCE_VRN=/d' "${_barCnf}"
     rm -f "${_bootMark}"
     /opt/local/bin/barracuda "$@"   ### unpin pass: 8.x return to OS-default ICU
+    wait
     if _php74_intl_missing; then
       echo "INFO: PHP 7.4 intl bootstrap did not yield intl -- retry on next weekly run"
     else
@@ -62,6 +65,7 @@ _run_weekly_system_upgrade() {
     fi
   else
     /opt/local/bin/barracuda "$@"   ### normal weekly system upgrade
+    wait
   fi
 }
 if [ "$1" = "weekly-system" ]; then
