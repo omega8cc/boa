@@ -1407,6 +1407,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f99
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f92
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f99
+    # Activate Cloudflare realip immediately by writing the set_real_ip_from
+    # ranges include now, so a fresh/updated box does not wait for the daily
+    # cron; the tool no-ops when nginx is absent and is idempotent otherwise.
+    [ -e "/var/xdrago/cloudflare_realip.sh" ] && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
     _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f99
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f99
     _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f90
