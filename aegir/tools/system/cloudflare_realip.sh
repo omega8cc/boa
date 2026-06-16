@@ -33,11 +33,11 @@ _cf_v6_url="https://www.cloudflare.com/ips-v6"
 _cf_json_url="https://api.cloudflare.com/client/v4/ips"
 
 # Validators (the safety net — only value-valid CIDRs are ever written). Shape
-# alone is not enough: an out-of-range octet or prefix (e.g. 999.1.1.1/33 carried
-# by a garbage/MITM response — note curl -k below) would pass a loose check, reach
-# a set_real_ip_from line, and fail nginx configtest for the WHOLE box. Validate
-# each octet 0-255, the IPv4 prefix 0-32 and the IPv6 prefix 0-128, and reject a
-# degenerate v6 body (a bare ':' / '::' with no hex group).
+# alone is not enough: an out-of-range octet or prefix (e.g. 999.1.1.1/33) from a
+# Cloudflare format change or a corrupted/truncated response would pass a loose
+# check, reach a set_real_ip_from line, and fail nginx configtest for the WHOLE
+# box. Validate each octet 0-255, the IPv4 prefix 0-32 and the IPv6 prefix 0-128,
+# and reject a degenerate v6 body (a bare ':' / '::' with no hex group).
 _ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
 _is_ipv4_cidr() { [[ "$1" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}/(3[0-2]|[12]?[0-9])$ ]]; }
 _is_ipv6_cidr() {
@@ -64,13 +64,13 @@ mkdir -p "${_out_dir}"
 
 _fetch_cf_ranges() {
   local _v4 _v6 _json
-  _v4=$(curl -k -sL --max-time 20 "${_cf_v4_url}" 2>/dev/null \
+  _v4=$(curl -sL --max-time 20 "${_cf_v4_url}" 2>/dev/null \
     | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' | sort -u)
-  _v6=$(curl -k -sL --max-time 20 "${_cf_v6_url}" 2>/dev/null \
+  _v6=$(curl -sL --max-time 20 "${_cf_v6_url}" 2>/dev/null \
     | grep -oiE '[0-9a-f:]*:[0-9a-f:]*/[0-9]{1,3}' | sort -u)
   if [[ -z "${_v4}" ]]; then
     echo "cloudflare ips-v4 endpoint failed; falling back to JSON API" >&2
-    _json=$(curl -k -s --max-time 20 "${_cf_json_url}" 2>/dev/null)
+    _json=$(curl -s --max-time 20 "${_cf_json_url}" 2>/dev/null)
     _v4=$(echo "${_json}" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' | sort -u)
     [[ -z "${_v6}" ]] && _v6=$(echo "${_json}" \
       | grep -oiE '[0-9a-f:]*:[0-9a-f:]*/[0-9]{1,3}' | sort -u)
