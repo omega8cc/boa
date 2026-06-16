@@ -3444,18 +3444,21 @@ _install_icu() {
   if [ -e "${_pthIcuLcy}" ]; then
     chattr -i ${_pthIcuLcy}
   fi
-  # Dotted dir form, resolved once so the install guard can also detect a stale
-  # 'current' symlink. When pinned (_ICU_FORCE_VRN set), a target tree built by an
-  # earlier run (e.g. 73.1) plus an existing 'current' -> a different version both
-  # satisfy the existence checks and would skip the (re)install, leaving the active
-  # ICU headers/libs/.pc and 'current' on the wrong version. The added clause forces
-  # a re-install whenever the pinned target is not the active ('current') one.
+  # _ICU_DOT is the dotted dir form of the resolved target. The guard (re)builds
+  # ICU when 'current' is missing, the per-version marker is missing, or 'current'
+  # does not resolve to the target. The last check makes the box self-correct in
+  # BOTH directions: applying a pin (76 -> 73) and retiring it (73 -> OS default
+  # 76). Old per-version markers are never removed, so without this check an
+  # unpinned box whose 'current' still points at the dropped pin would loop on
+  # expected-vs-installed. Intentionally NOT gated on _ICU_FORCE_VRN: within
+  # _install_icu the target is always the modern/newer tier a correctly built box
+  # already resolves to, so a never-pinned box never sees a spurious rebuild
+  # (a relative 'current' symlink canonicalises via readlink -f to the same path).
   _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${_pthIcuLog}" ] \
-    || { [ -n "${_ICU_FORCE_VRN}" ] \
-      && [ "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" \
-        != "/usr/local/lib/icu/${_ICU_DOT}" ]; }; then
+    || [ "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" \
+      != "/usr/local/lib/icu/${_ICU_DOT}" ]; then
     _msg "INFO: Installing ICU libs version ${_ICU_TARGET_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu-release-${_ICU_TARGET_VRN}/icu4c/source" ]; then
