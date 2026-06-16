@@ -32,9 +32,20 @@ _cf_v4_url="https://www.cloudflare.com/ips-v4"
 _cf_v6_url="https://www.cloudflare.com/ips-v6"
 _cf_json_url="https://api.cloudflare.com/client/v4/ips"
 
-# Validators (the safety net — only validated CIDRs are ever written).
-_is_ipv4_cidr() { [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$ ]]; }
-_is_ipv6_cidr() { [[ "$1" =~ ^[0-9a-fA-F:]*:[0-9a-fA-F:]*/[0-9]{1,3}$ ]]; }
+# Validators (the safety net — only value-valid CIDRs are ever written). Shape
+# alone is not enough: an out-of-range octet or prefix (e.g. 999.1.1.1/33 carried
+# by a garbage/MITM response — note curl -k below) would pass a loose check, reach
+# a set_real_ip_from line, and fail nginx configtest for the WHOLE box. Validate
+# each octet 0-255, the IPv4 prefix 0-32 and the IPv6 prefix 0-128, and reject a
+# degenerate v6 body (a bare ':' / '::' with no hex group).
+_ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+_is_ipv4_cidr() { [[ "$1" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}/(3[0-2]|[12]?[0-9])$ ]]; }
+_is_ipv6_cidr() {
+  local _addr="${1%/*}" _mask="${1#*/}"
+  [[ "$1" == */* ]] || return 1
+  [[ "${_mask}" =~ ^(12[0-8]|1[01][0-9]|[1-9]?[0-9])$ ]] || return 1
+  [[ "${_addr}" =~ ^[0-9a-fA-F:]+$ && "${_addr}" == *:* && "${_addr}" =~ [0-9a-fA-F] ]]
+}
 
 # Global nginx config tool: only meaningful where nginx is installed.
 if ! command -v nginx >/dev/null 2>&1; then

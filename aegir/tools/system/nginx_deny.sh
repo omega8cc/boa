@@ -36,8 +36,12 @@ _backup_file="${_out_dir}/.nginx_banned_ips.last_good.conf"
 _lock_file="/run/boa_nginx_config.lock"
 
 # Accept a bare IPv4 or an IPv4 CIDR (geo handles both); reject anything else
-# (IPv6, hostnames, junk) — scan_nginx/csf web bans here are IPv4.
-_is_ipv4_or_cidr() { [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$ ]]; }
+# (IPv6, hostnames, junk) — scan_nginx/csf web bans here are IPv4. Validate each
+# octet 0-255 and the prefix 0-32: a loose [0-9]{1,3}/[0-9]{1,2} would let a
+# malformed token (e.g. 999.1.1.1 or /99) reach the geo map and fail nginx
+# configtest for the whole box.
+_ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+_is_ipv4_or_cidr() { [[ "$1" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}(/(3[0-2]|[12]?[0-9]))?$ ]]; }
 
 if ! command -v nginx >/dev/null 2>&1; then
   echo "nginx not installed; nothing to do."
