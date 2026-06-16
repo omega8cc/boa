@@ -1520,7 +1520,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f89
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f88
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f87
 
   if ! grep -q "unzstd" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
