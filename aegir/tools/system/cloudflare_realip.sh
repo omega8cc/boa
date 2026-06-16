@@ -25,6 +25,10 @@ _backup_file="${_out_dir}/.nginx_cloudflare_real_ip.last_good.conf"
 # configtest+reload; wait up to 30s, then skip this run and retry next tick.
 _lock_file="/run/boa_nginx_config.lock"
 _min_ranges=8
+# BOA-canonical fetch options (same _crlGet used across BOA): verified TLS, follow
+# up to 3 redirects, --fail so an HTTP error yields no body (an error page is never
+# parsed as ranges), retry transient failures, iCab UA.
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 
 # Cloudflare publishes its ranges at these no-auth endpoints (same source the
 # csf.allow whitelist in *-water.sh uses); the JSON API carries both families.
@@ -64,13 +68,13 @@ mkdir -p "${_out_dir}"
 
 _fetch_cf_ranges() {
   local _v4 _v6 _json
-  _v4=$(curl -sL --max-time 20 "${_cf_v4_url}" 2>/dev/null \
+  _v4=$(curl ${_crlGet} "${_cf_v4_url}" 2>/dev/null \
     | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' | sort -u)
-  _v6=$(curl -sL --max-time 20 "${_cf_v6_url}" 2>/dev/null \
+  _v6=$(curl ${_crlGet} "${_cf_v6_url}" 2>/dev/null \
     | grep -oiE '[0-9a-f:]*:[0-9a-f:]*/[0-9]{1,3}' | sort -u)
   if [[ -z "${_v4}" ]]; then
     echo "cloudflare ips-v4 endpoint failed; falling back to JSON API" >&2
-    _json=$(curl -s --max-time 20 "${_cf_json_url}" 2>/dev/null)
+    _json=$(curl ${_crlGet} "${_cf_json_url}" 2>/dev/null)
     _v4=$(echo "${_json}" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' | sort -u)
     [[ -z "${_v6}" ]] && _v6=$(echo "${_json}" \
       | grep -oiE '[0-9a-f:]*:[0-9a-f:]*/[0-9]{1,3}' | sort -u)

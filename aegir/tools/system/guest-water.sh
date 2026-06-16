@@ -6,6 +6,11 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 [ -d "/var/backups/csf/water" ] || mkdir -p /var/backups/csf/water
 
+# BOA-canonical fetch options (the shared _crlGet): verified TLS, follow up to 3
+# redirects, --fail so an HTTP error yields no body (an error page is never parsed
+# as ranges), retry transient failures, iCab UA.
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
+
 # Strict IPv4 / IPv4-CIDR validation. These lists feed the csf ALLOW whitelist,
 # so only value-valid addresses (each octet 0-255, prefix 0-32) may be written:
 # a merely digit-shaped token from a provider format change or a poisoned/garbage
@@ -37,13 +42,13 @@ _whitelist_ip_pingdom() {
     sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -s https://my.pingdom.com/probes/ipv4 \
+  _IPS=$(curl ${_crlGet} https://my.pingdom.com/probes/ipv4 \
     | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' \
     | sort \
     | uniq 2>&1)
   if [ -z "${_IPS}" ]; then
     echo "pingdom ipv4 endpoint failed, falling back to RSS feed"
-    _IPS=$(curl -s https://my.pingdom.com/probes/feed \
+    _IPS=$(curl ${_crlGet} https://my.pingdom.com/probes/feed \
       | grep '<pingdom:ip>' \
       | sed 's/.*::.*//g' \
       | sed 's/[^0-9\.]//g' \
@@ -82,13 +87,13 @@ _whitelist_ip_cloudflare() {
     sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -sL https://www.cloudflare.com/ips-v4 \
+  _IPS=$(curl ${_crlGet} https://www.cloudflare.com/ips-v4 \
     | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
     | uniq 2>&1)
   if [ -z "${_IPS}" ]; then
     echo "cloudflare ips-v4 endpoint failed, falling back to JSON API"
-    _IPS=$(curl -s https://api.cloudflare.com/client/v4/ips \
+    _IPS=$(curl ${_crlGet} https://api.cloudflare.com/client/v4/ips \
       | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
       | sed 's/"//g' \
       | sort \
@@ -129,13 +134,13 @@ _whitelist_ip_imperva() {
     sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -s --data "resp_format=text" https://my.imperva.com/api/integration/v1/ips \
+  _IPS=$(curl ${_crlGet} --data "resp_format=text" https://my.imperva.com/api/integration/v1/ips \
     | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
     | uniq 2>&1)
   if [ -z "${_IPS}" ]; then
     echo "imperva text endpoint failed, falling back to JSON format"
-    _IPS=$(curl -s --data "resp_format=json" https://my.imperva.com/api/integration/v1/ips \
+    _IPS=$(curl ${_crlGet} --data "resp_format=json" https://my.imperva.com/api/integration/v1/ips \
       | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
       | sed 's/"//g' \
       | sort \
@@ -183,7 +188,7 @@ _whitelist_ip_googlebot() {
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -s https://developers.google.com/static/search/apis/ipranges/googlebot.json \
+  _IPS=$(curl ${_crlGet} https://developers.google.com/static/search/apis/ipranges/googlebot.json \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
     | sed 's/"ipv4Prefix": *"//g' \
     | sed 's/"//g' \
@@ -222,7 +227,7 @@ _whitelist_ip_microsoft() {
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -s https://www.bing.com/toolbox/bingbot.json \
+  _IPS=$(curl ${_crlGet} https://www.bing.com/toolbox/bingbot.json \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
     | sed 's/"ipv4Prefix": *"//g' \
     | sed 's/"//g' \
@@ -313,7 +318,7 @@ _whitelist_ip_authzero() {
     sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -s https://cdn.auth0.com/ip-ranges.json \
+  _IPS=$(curl ${_crlGet} https://cdn.auth0.com/ip-ranges.json \
     | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
     | grep -v ':' \
     | sed 's/"//g' \
