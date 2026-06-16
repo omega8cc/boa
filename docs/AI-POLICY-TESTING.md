@@ -117,6 +117,11 @@ Tokens per class (any one matches the class):
       `allow <server IP>;` (= `cat /root/.found_correct_ipv4.cnf`),
       **`allow <your SSH IP>;`** (your live session), `allow 198.51.100.7;`, then `deny all;`
 - [ ] From a non-allowed IP → **403**; from your SSH/server/allowed IP → **200**.
+- [ ] **Bad IP is skipped, not fatal:**
+      `printf '<SITE> 198.51.100.7 192.168.1.300\n' > /data/disk/<OCT>/static/control/ip/access.txt`
+      → rerun → the tool logs `Invalid IP: 192.168.1.300 … Skipping`, the fragment contains
+      `198.51.100.7` (+ anti-lockout) but **not** `192.168.1.300`, and `configtest` passes —
+      one typo'd octet can no longer block reloads box-wide.
 - [ ] **Prune:** empty the file → rerun → fragment removed → site open again.
 - [ ] **Instance marker:** plant `access.txt` under `/data/disk/all/static/control/ip/` →
       rerun → **no** fragment generated there.
@@ -141,14 +146,15 @@ Tokens per class (any one matches the class):
       `bash /var/xdrago/ip_access.sh & bash /var/xdrago/ai_policy.sh &` — one runs, the other
       prints "Could not acquire the shared nginx-config lock; skipping this run." (or waits
       up to 30s); no `configtest` collision. `/run/boa_nginx_config.lock` exists.
-- [ ] **Rollback** (do a valid run first so a last-good backup exists):
-  1. Valid run: `printf '<SITE> 198.51.100.7\n' > /data/disk/<OCT>/static/control/ip/access.txt`
-     → `bash /var/xdrago/ip_access.sh` → succeeds.
-  2. Break it: `printf '<SITE> 999.999.999.999\n' > /data/disk/<OCT>/static/control/ip/access.txt`
-     → `bash /var/xdrago/ip_access.sh`. The IP passes the format check but nginx rejects the
-     octet, so `configtest` fails → the tool reports the failure, reverts the fragment to the
-     last-good copy, and reloads. The site stays up on the previous (valid) restriction.
-  3. Repair: restore the valid line → rerun → back to normal.
+- [ ] **Rollback / safety.** Input is validated (Phase 4: a bad IP or site name is skipped,
+      never emitted), so a generator won't produce invalid nginx — the revert path is a
+      backstop for an *unrelated* config break. To exercise it, inject a `configtest` failure
+      from outside the tool:
+  1. `echo 'zzz;' >> /data/conf/nginx_banned_ips.conf` (an invalid `geo` entry).
+  2. Run any generator, e.g. `bash /var/xdrago/ip_access.sh` → it reports "configtest
+     failed … " and does **not** reload onto the broken config; nginx keeps serving the
+     last-good config.
+  3. Recover: `sed -i '/^zzz;$/d' /data/conf/nginx_banned_ips.conf && service nginx configtest && service nginx reload`.
 - [ ] **Idempotence:** run any tool twice with no control change → the second run is a silent
       no-op (change-gate); no reload.
 

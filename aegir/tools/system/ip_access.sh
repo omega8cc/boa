@@ -20,7 +20,13 @@
 _aegir_health_check="/var/aegir/.drush/hm.alias.drushrc.php"
 _drush_health_check="/var/aegir/drush/drush"
 _server_ip_file="/root/.found_correct_ipv4.cnf"
-_ipv4_regex="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+# Validate each octet 0-255, so a typo'd address (e.g. 192.168.1.300) is SKIPPED
+# rather than emitted into an `allow` line. An out-of-range octet passes a loose
+# [0-9]{1,3} check but nginx rejects it at configtest — and because configtest
+# validates the whole config, one bad fragment would block reloads box-wide until
+# the control file is corrected.
+_ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+_ipv4_regex="^(${_ipv4_octet}\.){3}${_ipv4_octet}\$"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 
 if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; then
@@ -50,7 +56,7 @@ _get_ssh_ips() {
   # configtest; IPv6 SSH peers are simply not auto-allowed (IPv4 anti-lockout).
   netstat -tn 2>/dev/null \
     | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' \
-    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+    | grep -E "${_ipv4_regex}" \
     | sort -u
 }
 _ssh_ips=$(_get_ssh_ips)
@@ -138,6 +144,13 @@ _process_context() {
       rm -f "${_nginx_path}"/*.conf
       tar -xzf "${_last_good_backup}" -C "${_nginx_path}" 2>/dev/null
       service nginx reload
+    else
+      # No last-good yet (a first run failed configtest). nginx never reloaded the
+      # bad config (configtest gates the reload), so just drop the fragments this
+      # run wrote — otherwise a bad one lingers and keeps EVERY tool's configtest
+      # failing box-wide until someone finds and fixes it.
+      echo "No last-good backup for ${_input_file}; removing just-written fragments."
+      rm -f "${_nginx_path}"/*.conf
     fi
     return 1
   fi
