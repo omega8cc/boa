@@ -167,6 +167,9 @@ curl -sS -o /dev/null -w '%{http_code}\n' -A 'Google-Extended'   https://site/  
 service nginx configtest
 ```
 
+For a full end-to-end runbook (deploy, realip, per-site policy, bans, rollback, the
+shared lock) on a disposable VM, see [AI-POLICY-TESTING.md](AI-POLICY-TESTING.md).
+
 ## Caveats
 
 - **UA tokens age.** Vendors add and rename agents; the maps are a point-in-time list

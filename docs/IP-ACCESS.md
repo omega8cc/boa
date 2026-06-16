@@ -100,6 +100,9 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://intranet.example.com/
 service nginx configtest
 ```
 
+For a full end-to-end runbook on a disposable VM, see
+[AI-POLICY-TESTING.md](AI-POLICY-TESTING.md) (Phase 4 covers IP access).
+
 ## Caveats
 
 - **IPv4 only, by design.** BOA has no IPv6 support yet, and csf neither blocks nor
