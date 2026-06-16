@@ -1,107 +1,82 @@
 #!/bin/bash
 
-# ai_policy.sh — per-site AI bot policy.  Turns the global AI defaults on/off
-# per site by generating nginx server-scope fragments from a user-space control
-# file, exactly like ip_access.sh does for IP allow/deny.
+# ai_policy.sh — per-site AI bot policy, GLOBAL across all Octopus instances.
 #
-# Global defaults (set in the Provision nginx templates):
-#   AI training crawlers       -> blocked
-#   AI search/user/utility     -> allowed + rate-limited
+# Abstraction of the per-Octopus nginx_ip_access_<oct>.sh pattern: a single
+# script that loops over every Octopus instance under /data/disk/<oct> which has
+# an ACTIVATED control file at /data/disk/<oct>/static/control/ai/policy.txt, and
+# for each generates per-site nginx fragments into that instance's own
+# /data/disk/<oct>/config/includes/ai_policy/<site>.conf — exactly the path the
+# per-satellite vhost pulls via `include $server->include_path/ai_policy/<uri>*`.
 #
-# Per-site opt-ins (control-file flags), each toggling one of those:
-#   train-allow    -> allow AI training for this site   (set $ai_train_allow 1)
-#   search-block   -> block AI search crawlers          (if $is_ai_search  444)
-#   user-block     -> block AI user-triggered fetchers  (if $is_ai_user    444)
-#   utility-block  -> block AI utility bots             (if $is_ai_utility 444)
-#
-# A site with no record gets no fragment (the empty-glob include is a no-op) and
-# keeps the global defaults.  Fragments are included at server scope before
-# nginx_vhost_common.conf, so the per-site $ai_train_allow set / if-return guards
-# evaluate ahead of the global guards.  A site gets the include LINE on its next
-# vhost re-verify (a Provision change); this tool then writes/refreshes the
-# fragment and reloads nginx for fast control-file turnaround.
+# Control records: `<site>  [train-allow] [search-block] [user-block] [utility-block]`
+# turning the global AI default (training blocked; search/user/utility allowed +
+# rate-limited) on/off for that site:
+#   train-allow    -> set $ai_train_allow 1;            (allow AI training)
+#   search-block   -> if ($is_ai_search)  { return 444; }
+#   user-block     -> if ($is_ai_user)    { return 444; }
+#   utility-block  -> if ($is_ai_utility) { return 444; }
+# A site with no record keeps the global defaults.  No SSH/server-IP anti-lockout
+# logic — that is an ip_access (IP allow/deny) concern, irrelevant to AI classes.
 
-_aegir_health_check="/var/aegir/.drush/hm.alias.drushrc.php"
-_drush_health_check="/var/aegir/drush/drush"
-_ctrl_dir="/var/aegir/control/ai"
-_input_file="${_ctrl_dir}/policy.txt"
-_nginx_ai_path="/var/aegir/config/includes/ai_policy"
-_backup_dir="/var/aegir/undo"
-_current_backup_file="${_backup_dir}/.nginx_ai_policy.current.bak.tar.gz"
-_last_good_backup_file="${_backup_dir}/.nginx_ai_policy.last_good.bak.tar.gz"
-_timestamp_file="${_nginx_ai_path}/.policy_last_mod_time"
-_version_file="${_nginx_ai_path}/.emit_version"
 _lock_file="/run/ai_policy.lock"
-
-# Bump when the emitted directive shape changes, to force a regeneration
+# Bump when the emitted directive shape changes, to force regeneration
 # independent of the control-file mtime.
 _emit_version="1"
-
-# Validate site names the same way ip_access.sh does.
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 
-if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; then
-  echo "Server is not ready yet. Exiting."
-  exit 1
-fi
-
-# Re-entrancy guard: skip this tick if a previous run is still active.
+# Re-entrancy guard for the whole global run.
 exec 9>"${_lock_file}" 2>/dev/null
 if ! flock -n 9; then
   echo "Another ai_policy run is active. Skipping."
   exit 0
 fi
 
-mkdir -p "${_backup_dir}" "${_ctrl_dir}" "${_nginx_ai_path}"
-
-# Seed a documented, empty control file if absent.
-if [[ ! -f "${_input_file}" ]]; then
-  {
-    echo "# Per-site AI bot policy.  One record per line:"
-    echo "#   <site>  [train-allow] [search-block] [user-block] [utility-block]"
-    echo "#"
-    echo "# Default (no record): AI training blocked; AI search/user/utility"
-    echo "# allowed + rate-limited.  Flags above flip one default for that site."
-  } > "${_input_file}"
-fi
-
-# Change-gate: regenerate only when the control file changed or the emit
-# version moved.  Mirrors ip_access.sh; never keyed on anything but this file.
-_current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null)
-if [[ $? -ne 0 ]]; then
-  echo "Failed to stat ${_input_file}. Exiting."
-  exit 1
-fi
-_last_mod_time=0
-[[ -f "${_timestamp_file}" ]] && _last_mod_time=$(cat "${_timestamp_file}" 2>/dev/null || echo 0)
-_last_version=""
-[[ -f "${_version_file}" ]] && _last_version=$(cat "${_version_file}" 2>/dev/null || echo "")
-if [[ "${_current_mod_time}" -le "${_last_mod_time}" && "${_last_version}" == "${_emit_version}" ]]; then
-  echo "No changes in ${_input_file} (emit version unchanged). Exiting."
+if ! command -v nginx >/dev/null 2>&1; then
+  echo "nginx not installed; nothing to do."
   exit 0
 fi
 
-# Backup current fragments before regenerating.
-if [[ -d "${_nginx_ai_path}" ]]; then
-  tar -czf "${_current_backup_file}" -C "${_nginx_ai_path}" . 2>/dev/null
-fi
+_process_instance() {
+  local _root="$1"
+  local _input_file="${_root}/static/control/ai/policy.txt"
+  local _ai_path="${_root}/config/includes/ai_policy"
+  local _backup_dir="${_root}/undo"
+  local _current_backup="${_backup_dir}/.nginx_ai_policy.current.bak.tar.gz"
+  local _last_good_backup="${_backup_dir}/.nginx_ai_policy.last_good.bak.tar.gz"
+  local _timestamp_file="${_ai_path}/.policy_last_mod_time"
+  local _version_file="${_ai_path}/.emit_version"
 
-_configured_sites=()
+  # Only instances with an activated control file and a real includes dir.
+  [[ -f "${_input_file}" ]] || return 0
+  [[ -d "${_root}/config/includes" ]] || return 0
 
-_generate_fragments() {
-  local _line _site_name _flag _body _frag _tmp
+  mkdir -p "${_ai_path}" "${_backup_dir}"
+
+  # Change-gate: control-file mtime + emit version.
+  local _current_mod_time _last_mod_time=0 _last_version=""
+  _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
+  [[ -f "${_timestamp_file}" ]] && _last_mod_time=$(cat "${_timestamp_file}" 2>/dev/null || echo 0)
+  [[ -f "${_version_file}" ]] && _last_version=$(cat "${_version_file}" 2>/dev/null || echo "")
+  if [[ "${_current_mod_time}" -le "${_last_mod_time}" && "${_last_version}" == "${_emit_version}" ]]; then
+    return 0
+  fi
+
+  # Back up the instance's current fragments before regenerating.
+  [[ -d "${_ai_path}" ]] && tar -czf "${_current_backup}" -C "${_ai_path}" . 2>/dev/null
+
+  # Generate fragments; track configured sites for pruning.
+  local -a _configured=()
+  local _line _flag _site _body _frag _tmp
   while IFS= read -r _line; do
-    # Strip trailing comments and skip blank lines.
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
-
     read -ra _fields <<< "${_line}"
-    _site_name=$(echo "${_fields[0]}" | tr '[:upper:]' '[:lower:]')
-    if [[ ! ${_site_name} =~ ${_site_name_regex} ]]; then
-      echo "Invalid site name: ${_site_name}. Skipping."
+    _site=$(echo "${_fields[0]}" | tr '[:upper:]' '[:lower:]')
+    if [[ ! ${_site} =~ ${_site_name_regex} ]]; then
+      echo "Invalid site name: ${_site} (${_root}). Skipping."
       continue
     fi
-
     _body=""
     for _flag in "${_fields[@]:1}"; do
       case "${_flag}" in
@@ -109,77 +84,76 @@ _generate_fragments() {
         search-block)  _body+="if (\$is_ai_search)  { return 444; }"$'\n' ;;
         user-block)    _body+="if (\$is_ai_user)    { return 444; }"$'\n' ;;
         utility-block) _body+="if (\$is_ai_utility) { return 444; }"$'\n' ;;
-        *) echo "Unknown policy flag '${_flag}' for ${_site_name}. Skipping flag." ;;
+        *) echo "Unknown policy flag '${_flag}' for ${_site} (${_root}). Skipping flag." ;;
       esac
     done
-
     if [[ -z "${_body}" ]]; then
-      echo "No valid policy flags for ${_site_name}; no fragment written."
+      echo "No valid policy flags for ${_site} (${_root}); no fragment written."
       continue
     fi
-
-    _frag="${_nginx_ai_path}/${_site_name}.conf"
-    # Leading-dot tmp so the per-site include glob (<site>*) never matches it;
-    # same-dir so the install mv is atomic.
-    _tmp="${_nginx_ai_path}/.${_site_name}.tmp.$$"
+    _frag="${_ai_path}/${_site}.conf"
+    _tmp="${_ai_path}/.${_site}.tmp.$$"
     {
       echo "# Generated by /var/xdrago/ai_policy.sh — DO NOT EDIT BY HAND."
-      echo "# Per-site AI policy for ${_site_name}."
+      echo "# Per-site AI policy for ${_site}."
       printf '%s' "${_body}"
     } > "${_tmp}"
     mv -f "${_tmp}" "${_frag}"
-    _configured_sites+=("${_site_name}")
+    _configured+=("${_site}")
   done < "${_input_file}"
-}
 
-# Remove fragments for sites no longer present in the control file (opt-out).
-_prune_fragments() {
-  local _f _base _s _keep
-  for _f in "${_nginx_ai_path}"/*.conf; do
+  # Prune fragments for sites no longer present in the control file.
+  local _f _base _keep _s
+  for _f in "${_ai_path}"/*.conf; do
     [[ -e "${_f}" ]] || continue
     _base=$(basename "${_f}" .conf)
     _keep=""
-    for _s in "${_configured_sites[@]}"; do
+    for _s in "${_configured[@]}"; do
       [[ "${_s}" == "${_base}" ]] && _keep="yes" && break
     done
     if [[ -z "${_keep}" ]]; then
       rm -f "${_f}"
-      echo "Pruned stale AI policy fragment: ${_base}.conf"
+      echo "Pruned stale AI policy fragment: ${_base}.conf (${_root})"
     fi
   done
-}
 
-_revert() {
-  if [[ -f "${_last_good_backup_file}" ]]; then
-    echo "Reverting to the last known good AI policy."
-    rm -f "${_nginx_ai_path}"/*.conf
-    tar -xzf "${_last_good_backup_file}" -C "${_nginx_ai_path}" 2>/dev/null
-    service nginx reload
-  else
-    echo "No last-good backup to revert to. Manual intervention required."
+  # Validate the whole host nginx config; revert THIS instance on failure.
+  local _ct
+  _ct=$(service nginx configtest 2>&1)
+  if [[ $? -ne 0 ]]; then
+    echo "Nginx configtest failed after AI policy update (${_root}): ${_ct}"
+    if [[ -f "${_last_good_backup}" ]]; then
+      echo "Reverting ${_root} AI policy to last known good."
+      rm -f "${_ai_path}"/*.conf
+      tar -xzf "${_last_good_backup}" -C "${_ai_path}" 2>/dev/null
+      service nginx reload
+    fi
+    return 1
   fi
+
+  if ! service nginx reload; then
+    echo "Nginx reload failed after AI policy update (${_root}); reverting."
+    if [[ -f "${_last_good_backup}" ]]; then
+      rm -f "${_ai_path}"/*.conf
+      tar -xzf "${_last_good_backup}" -C "${_ai_path}" 2>/dev/null
+      service nginx reload
+    fi
+    return 1
+  fi
+
+  # Success: refresh this instance's last-good backup + change-gate markers.
+  tar -czf "${_last_good_backup}" -C "${_ai_path}" . 2>/dev/null
+  echo "${_current_mod_time}" > "${_timestamp_file}"
+  echo "${_emit_version}" > "${_version_file}"
+  echo "AI policy updated (${_root}): ${_configured[*]:-none}; Nginx reloaded."
+  return 0
 }
 
-_generate_fragments
-_prune_fragments
+# Loop over every Octopus instance (skip the 'arch' mounted-backup pseudo-user).
+for _root in /data/disk/*; do
+  [[ -d "${_root}" ]] || continue
+  [[ "$(basename "${_root}")" == "arch" ]] && continue
+  _process_instance "${_root}"
+done
 
-# Validate the whole nginx config; revert on failure.
-_configtest=$(service nginx configtest 2>&1)
-if [[ $? -ne 0 ]]; then
-  echo "Nginx configtest failed after AI policy update: ${_configtest}"
-  _revert
-  exit 1
-fi
-
-if ! service nginx reload; then
-  echo "Nginx reload failed after AI policy update."
-  _revert
-  exit 1
-fi
-
-# Success: refresh the last-good backup and the change-gate markers.
-tar -czf "${_last_good_backup_file}" -C "${_nginx_ai_path}" . 2>/dev/null
-echo "${_current_mod_time}" > "${_timestamp_file}"
-echo "${_emit_version}" > "${_version_file}"
-echo "AI policy updated for ${#_configured_sites[@]} site(s); Nginx reloaded."
 exit 0
