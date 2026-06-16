@@ -19,7 +19,10 @@
 # A site with no record keeps the global defaults.  No SSH/server-IP anti-lockout
 # logic — that is an ip_access (IP allow/deny) concern, irrelevant to AI classes.
 
-_lock_file="/run/ai_policy.lock"
+# Shared advisory lock so all BOA nginx-config writers (ip_access /
+# cloudflare_realip / nginx_deny / ai_policy) never overlap their
+# configtest+reload; wait up to 30s, then skip this run and retry next tick.
+_lock_file="/run/boa_nginx_config.lock"
 # Bump when the emitted directive shape changes, to force regeneration
 # independent of the control-file mtime.
 _emit_version="1"
@@ -27,8 +30,8 @@ _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 
 # Re-entrancy guard for the whole global run.
 exec 9>"${_lock_file}" 2>/dev/null
-if ! flock -n 9; then
-  echo "Another ai_policy run is active. Skipping."
+if ! flock -w 30 9; then
+  echo "Could not acquire the shared nginx-config lock; skipping this run."
   exit 0
 fi
 

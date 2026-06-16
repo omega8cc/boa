@@ -30,7 +30,10 @@ _out_file="${_out_dir}/nginx_banned_ips.conf"
 # so the install mv is atomic.
 _tmp_file="${_out_dir}/.nginx_banned_ips.tmp.$$"
 _backup_file="${_out_dir}/.nginx_banned_ips.last_good.conf"
-_lock_file="/run/nginx_deny.lock"
+# Shared advisory lock so all BOA nginx-config writers (ip_access /
+# cloudflare_realip / nginx_deny / ai_policy) never overlap their
+# configtest+reload; wait up to 30s, then skip this run and retry next tick.
+_lock_file="/run/boa_nginx_config.lock"
 
 # Accept a bare IPv4 or an IPv4 CIDR (geo handles both); reject anything else
 # (IPv6, hostnames, junk) — scan_nginx/csf web bans here are IPv4.
@@ -42,8 +45,8 @@ if ! command -v nginx >/dev/null 2>&1; then
 fi
 
 exec 9>"${_lock_file}" 2>/dev/null
-if ! flock -n 9; then
-  echo "Another nginx_deny run is active. Skipping."
+if ! flock -w 30 9; then
+  echo "Could not acquire the shared nginx-config lock; skipping this run."
   exit 0
 fi
 

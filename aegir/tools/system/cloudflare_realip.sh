@@ -20,7 +20,10 @@ _out_file="${_out_dir}/nginx_cloudflare_real_ip.conf"
 # (nginx glob skips dotfiles); tmp stays in-dir so the install mv is atomic.
 _tmp_file="${_out_dir}/.nginx_cloudflare_real_ip.tmp.$$"
 _backup_file="${_out_dir}/.nginx_cloudflare_real_ip.last_good.conf"
-_lock_file="/run/cloudflare_realip.lock"
+# Shared advisory lock so all BOA nginx-config writers (ip_access /
+# cloudflare_realip / nginx_deny / ai_policy) never overlap their
+# configtest+reload; wait up to 30s, then skip this run and retry next tick.
+_lock_file="/run/boa_nginx_config.lock"
 _min_ranges=8
 
 # Cloudflare publishes its ranges at these no-auth endpoints (same source the
@@ -41,8 +44,8 @@ fi
 
 # Re-entrancy guard: skip this tick if a previous run is still active.
 exec 9>"${_lock_file}" 2>/dev/null
-if ! flock -n 9; then
-  echo "Another cloudflare_realip run is active. Skipping."
+if ! flock -w 30 9; then
+  echo "Could not acquire the shared nginx-config lock; skipping this run."
   exit 0
 fi
 

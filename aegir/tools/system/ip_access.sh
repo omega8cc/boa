@@ -22,6 +22,15 @@ if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; t
   exit 1
 fi
 
+# Shared advisory lock so all BOA nginx-config writers (ip_access /
+# cloudflare_realip / nginx_deny / ai_policy) never overlap their
+# configtest+reload; wait up to 30s, then skip this run and retry next tick.
+exec 9>"/run/boa_nginx_config.lock" 2>/dev/null
+if ! flock -w 30 9; then
+  echo "Could not acquire the shared nginx-config lock; skipping this run."
+  exit 0
+fi
+
 # Ensure the ctrl, output and backup directories exist
 mkdir -p "${_backup_dir}"
 mkdir -p "${_ctrl_dir}"
