@@ -102,8 +102,11 @@ service nginx configtest
 
 ## Caveats
 
-- **IPv4 only.** The validator accepts IPv4 addresses; IPv6 client restriction is not
-  handled here.
+- **IPv4 only, by design.** BOA has no IPv6 support yet, and csf neither blocks nor
+  allows IPv6, so this feature is IPv4-only to match: the validator accepts only IPv4
+  addresses, and an IPv6 SSH peer is not auto-added to the anti-lockout list. This is a
+  deliberate policy alignment, not a gap — do not add IPv6 handling here until BOA
+  supports IPv6 end to end (csf included).
 - **No CIDR.** Records are individual addresses, not ranges.
 - **realip dependency** — as above, IP allow-lists on CF-proxied sites are only
   meaningful once realip is active; otherwise the rule sees the edge.
