@@ -31,8 +31,9 @@ over two kinds of context:
 - the **master** (sqladmin proxy) — `/var/aegir/control/ip/access.txt` →
   `/var/aegir/config/includes/ip_access/`;
 - every **Octopus instance** — `/data/disk/<oct>/static/control/ip/access.txt` →
-  `/data/disk/<oct>/config/includes/ip_access/` (skipping the `arch` backup
-  pseudo-user).
+  `/data/disk/<oct>/config/includes/ip_access/`. Real instances only, identified by the
+  BOA-canonical `tools/drush` marker, so the non-instance pseudo-dirs (`arch`, `all`,
+  `legacy`, …) are skipped.
 
 This replaces the older per-Octopus `nginx_ip_access_<oct>.sh` copies with one script.
 
@@ -42,7 +43,9 @@ Every generated fragment always allows, regardless of the listed IPs:
 
 - `127.0.0.1` — loopback;
 - the server's own IP, from `/root/.found_correct_ipv4.cnf`;
-- **every currently logged-in SSH client IP**, from `who --ips`.
+- **every established inbound SSH client IP**, read from `netstat -tn` (peers on an
+  `ESTABLISHED` `:22` connection). BOA uses `netstat` here, not `who --ips`, because
+  `who --ips` is unavailable on Excalibur and newer. IPv4 only.
 
 So an admin working over SSH is added to every site's allow-list automatically and
 cannot be shut out mid-change. The SSH set is part of the change-gate (below), so a new
@@ -73,7 +76,7 @@ staging.example.com    198.51.100.42
   the last-good backup and reload. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ai_policy` /
   `nginx_deny` / `cloudflare_realip`.
-- **Schedule / serial** — `*/2` cron; `_fetch_versioned` serial **f91** in `BOA.sh.txt`
+- **Schedule / serial** — `*/2` cron; `_fetch_versioned` serial **f90** in `BOA.sh.txt`
   (decrement on any change).
 
 ## Interaction with realip

@@ -152,10 +152,11 @@ _process_instance() {
   return 0
 }
 
-# Loop over every Octopus instance (skip the 'arch' mounted-backup pseudo-user).
+# Loop over every Octopus instance. Real instances carry tools/drush; the
+# BOA-canonical instance test (see autosymlink) transparently skips every
+# non-instance pseudo-dir (arch, all, legacy, global, static, custom, …).
 for _root in /data/disk/*; do
-  [[ -d "${_root}" ]] || continue
-  [[ "$(basename "${_root}")" == "arch" ]] && continue
+  [[ -d "${_root}" && -e "${_root}/tools/drush" ]] || continue
   _process_instance "${_root}"
 done
 

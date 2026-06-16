@@ -43,9 +43,14 @@ _server_ip=""
 [[ -f "${_server_ip_file}" ]] && _server_ip=$(cat "${_server_ip_file}" 2>/dev/null)
 
 _get_ssh_ips() {
-  who --ips 2>/dev/null \
-    | awk '{print $NF}' \
-    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
+  # `who --ips` is unavailable on Excalibur and newer, so read currently
+  # established inbound SSH peers from netstat instead — the BOA-canonical
+  # source for logged-in IPs.  The IPv4 filter keeps a parsed-garbage token
+  # (e.g. an IPv6 peer) from ever reaching an `allow` line and breaking
+  # configtest; IPv6 SSH peers are simply not auto-allowed (IPv4 anti-lockout).
+  netstat -tn 2>/dev/null \
+    | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
     | sort -u
 }
 _ssh_ips=$(_get_ssh_ips)
@@ -159,10 +164,11 @@ mkdir -p /var/aegir/control/ip
 [[ ! -f /var/aegir/control/ip/access.txt ]] && echo "sqladmin.com 192.168.1.1" > /var/aegir/control/ip/access.txt
 _process_context /var/aegir/control/ip/access.txt /var/aegir/config/includes/ip_access /var/aegir/undo
 
-# Octopus instances (skip the 'arch' mounted-backup pseudo-user).
+# Octopus instances. Real instances carry tools/drush; the BOA-canonical instance
+# test (see autosymlink) transparently skips every non-instance pseudo-dir
+# (arch, all, legacy, global, static, custom, …), not just 'arch' by name.
 for _root in /data/disk/*; do
-  [[ -d "${_root}" ]] || continue
-  [[ "$(basename "${_root}")" == "arch" ]] && continue
+  [[ -d "${_root}" && -e "${_root}/tools/drush" ]] || continue
   _process_context "${_root}/static/control/ip/access.txt" "${_root}/config/includes/ip_access" "${_root}/undo"
 done
 

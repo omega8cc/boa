@@ -127,8 +127,9 @@ shop.example.com    search-block user-block
 ```
 
 `/var/xdrago/ai_policy.sh` is a **single global generator** that loops every Octopus
-instance under `/data/disk/<oct>` (skipping the `arch` backup pseudo-user). For each
-instance with an activated `policy.txt` it writes one
+instance under `/data/disk/<oct>` — real instances only, identified by the BOA-canonical
+`tools/drush` marker, so the non-instance pseudo-dirs (`arch`, `all`, `legacy`, …) are
+skipped. For each instance with an activated `policy.txt` it writes one
 `config/includes/ai_policy/<site>.conf` per record — the exact path the satellite vhost
 pulls via `include $server->include_path/ai_policy/{uri}*`. `$ai_train_allow` is
 defaulted to `0` in the vhost template before that include, so a site with no record
@@ -139,7 +140,7 @@ keeps the global defaults. Removing a record prunes its fragment on the next run
 | Tool | Schedule | Writes | Serial |
 |------|----------|--------|--------|
 | `/var/xdrago/ai_policy.sh` | `*/2` | per-instance `config/includes/ai_policy/<site>.conf` | f99 |
-| `/var/xdrago/ip_access.sh` | `*/2` | per-instance `config/includes/ip_access/<site>.conf` (see [IP-ACCESS.md](IP-ACCESS.md)) | f91 |
+| `/var/xdrago/ip_access.sh` | `*/2` | per-instance `config/includes/ip_access/<site>.conf` (see [IP-ACCESS.md](IP-ACCESS.md)) | f90 |
 | `/var/xdrago/nginx_deny.sh` | `*/2` | `/data/conf/nginx_banned_ips.conf` | f99 |
 | `/var/xdrago/cloudflare_realip.sh` | daily + install | `/data/conf/nginx_cloudflare_real_ip.conf` | f99 |
 
