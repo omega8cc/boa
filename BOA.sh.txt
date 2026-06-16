@@ -1239,6 +1239,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/mysql_cleanup.sh" ] && rm -f ${_pthLog}/mysql_cleanup.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/mysql_cluster_backup.sh" ] && rm -f ${_pthLog}/mysql_cluster_backup.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/mysql_repair.sh" ] && rm -f ${_pthLog}/mysql_repair.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/nginx_deny.sh" ] && rm -f ${_pthLog}/nginx_deny.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${_pthLog}/proc_num_ctrl.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/purge_binlogs.sh" ] && rm -f ${_pthLog}/purge_binlogs.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${_pthLog}/runner.sh.ctrl.*.pid
@@ -1407,6 +1408,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f93
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f99
     _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f99
+    _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f99
     _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f90
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f95
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92

@@ -7,6 +7,7 @@
 01 5 * * *  bash /var/xdrago/guest-water.sh   >/dev/null 2>&1
 */2 * * * * bash /var/xdrago/ip_access.sh     >/dev/null 2>&1
 */2 * * * * bash /var/xdrago/ai_policy.sh     >/dev/null 2>&1
+*/2 * * * * bash /var/xdrago/nginx_deny.sh    >/dev/null 2>&1
 45 4 * * *  bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
 */5 * * * * bash /var/xdrago/clear.sh         >/dev/null 2>&1
 * * * * *   /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /var/xdrago/runner.sh                >/dev/null 2>&1
