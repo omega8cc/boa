@@ -21,6 +21,58 @@ _check_root() {
 }
 _check_root
 
+# Weekly system-upgrade wrapper, invoked by the weekly auto-update cron as
+#   autoupboa weekly-system up-<tier> system [php-*] noscreen
+# (written by _crontab_update). Runs ONLY where auto-updates are enabled; boxes
+# without auto-updates use the manual procedure (see docs/ICU-PIN.md). If PHP 7.4 is
+# present but its intl is missing (e.g. an ICU 76 bump rebuilt 7.4 without intl),
+# bootstrap it: pin ICU to a 7.4-safe version so 7.4 rebuilds WITH intl on ICU 73,
+# then unpin so 8.x return to the OS-default ICU while 7.4 keeps its ICU-73 intl.
+# Orchestrated HERE (never inside barracuda, which would self-call and loop);
+# barracuda is only ever a leaf call. Self-limiting: once 7.4 carries intl the plain
+# upgrade path runs.
+_php74_intl_missing() {
+  [ -x "/opt/php74/bin/php" ] || return 1
+  /opt/php74/bin/php -m 2>/dev/null | grep -qiE '^intl$' && return 1
+  return 0
+}
+_run_weekly_system_upgrade() {
+  shift  ### drop the weekly-system keyword; "$@" is now the barracuda upgrade args
+  local _bootMark="/var/log/boa/.php74_intl_bootstrap.active"
+  ### resume safety: a leftover marker means a prior run pinned but did not unpin
+  ### (the pin is ours, not an operator's), so clear it before deciding this run
+  if [ -e "${_bootMark}" ]; then
+    sed -i '/^_ICU_FORCE_VRN=/d' "${_barCnf}"
+    rm -f "${_bootMark}"
+  fi
+  if _php74_intl_missing; then
+    echo "INFO: PHP 7.4 present without intl -- bootstrapping via temporary ICU 73 pin"
+    touch "${_bootMark}"
+    /opt/local/bin/barracuda php-idle disable
+    wait
+    sed -i '/^#\?_ICU_FORCE_VRN=/d' "${_barCnf}"
+    echo '_ICU_FORCE_VRN="73-1"' >> "${_barCnf}"
+    /opt/local/bin/barracuda "$@"   ### pin pass: 7.4 rebuilt with intl on ICU 73
+    wait
+    sed -i '/^_ICU_FORCE_VRN=/d' "${_barCnf}"
+    rm -f "${_bootMark}"
+    /opt/local/bin/barracuda "$@"   ### unpin pass: 8.x return to OS-default ICU
+    wait
+    if _php74_intl_missing; then
+      echo "INFO: PHP 7.4 intl bootstrap did not yield intl -- retry on next weekly run"
+    else
+      echo "INFO: PHP 7.4 intl bootstrap completed"
+    fi
+  else
+    /opt/local/bin/barracuda "$@"   ### normal weekly system upgrade
+    wait
+  fi
+}
+if [ "$1" = "weekly-system" ]; then
+  _run_weekly_system_upgrade "$@"
+  exit 0
+fi
+
 #
 # Fix for Sequel (Pro/Ace/Ace fork) support
 _fix_allow_tcp_forwarding() {
@@ -872,6 +924,8 @@ _crontab_update() {
     wait
     sed -i "s/.*arracuda.*//gi" /etc/crontab &> /dev/null
     wait
+    sed -i "s/.*autoupboa weekly.*//gi" /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*ctopus.*//gi" /etc/crontab &> /dev/null
     wait
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
@@ -906,7 +960,7 @@ _crontab_update() {
 
     if [ ! -z "${_BCDA_SYST}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-      echo "${_AUTO_UP_MINUTE} ${_AUTO_UP_HOUR}    * * ${_AUTO_UP_WEEKLY}   root    bash /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "${_AUTO_UP_MINUTE} ${_AUTO_UP_HOUR}    * * ${_AUTO_UP_WEEKLY}   root    bash /opt/local/bin/autoupboa weekly-system ${_BCDA_SYST}" >> /etc/crontab
     fi
 
     if [ ! -z "${_BCDA_FULL}" ]; then
@@ -928,6 +982,8 @@ _crontab_cleanup() {
     sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
     wait
     sed -i "s/.*arracuda.*//gi" /etc/crontab &> /dev/null
+    wait
+    sed -i "s/.*autoupboa weekly.*//gi" /etc/crontab &> /dev/null
     wait
     sed -i "s/.*ctopus.*//gi" /etc/crontab &> /dev/null
     wait
@@ -1159,14 +1215,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_595v03.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_595v04.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_595v03.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_595v04.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_595v03.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_595v04.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
       if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -1174,7 +1230,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_595v03.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_595v04.${_tRee}.${_xSrl}.pid"
     fi
   fi
 
