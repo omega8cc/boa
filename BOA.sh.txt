@@ -1224,6 +1224,7 @@ _update_agents() {
 
     [ ! -e "/var/xdrago/checksql.sh" ] && rm -f ${_pthLog}/checksql.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/cloudflare_realip.sh" ] && rm -f ${_pthLog}/cloudflare_realip.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${_pthLog}/graceful.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${_pthLog}/guest-fire.sh.ctrl.*.pid
@@ -1403,6 +1404,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f90
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f99
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f93
+    _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f99
     _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f90
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f95
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92
