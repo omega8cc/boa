@@ -21,9 +21,10 @@
 # error) and a 403 (ip_access deny) are reported as inconclusive, not as policy
 # results.
 #
-# HTTPS is NOT assumed: probes try https first and fall back to http when https is
-# not cleanly served (e.g. a test VM with no real SSL behind a self-signed proxy
-# that 5xx's). Force a scheme with --http / --https.
+# Scheme: defaults to HTTP and switches to HTTPS only when the site ENFORCES it (an
+# http request redirects to https). This tests the real https path where https is
+# enabled+enforced, and avoids a no-real-SSL self-signed proxy that 5xx's on https.
+# Force a scheme with --http / --https.
 #
 # Usage:
 #   edgetest [--site <vhost>] [--oct <octopus>] [--test-ip <ip>] [--full | --remote] [--http | --https]
@@ -55,7 +56,7 @@ _head() { echo; echo "${_CB}== $* ==${_C0}"; }
 
 # --- args -------------------------------------------------------------------
 _SITE=""; _OCT=""; _TEST_IP="203.0.113.7"; _FREE_IP="198.51.100.250"; _FULL=0; _REMOTE=0
-_SCHEME=https; _PORT=443; _FORCE_SCHEME=""; _SCHEME_NOTE=""
+_SCHEME=http; _PORT=80; _FORCE_SCHEME=""; _SCHEME_NOTE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --site)    _SITE="${2:-}"; shift 2 ;;
@@ -145,31 +146,35 @@ _denied()       { [[ "$1" == "403" ]]; }           # ip_access (or other) deny �
 # Probe scheme: prefer https, fall back to http when https is not cleanly served
 # (TLS failure, unreachable, or a 5xx — e.g. a self-signed proxy with no real SSL).
 # A 403/444/2xx/3xx all mean "https responds" -> keep https. --http/--https force it.
-# A scheme is "clean" only if TWO consecutive probes are both cleanly served. The
-# no-real-SSL self-signed-proxy pattern returns 200 on the FIRST request then 5xx on
-# the rest, so a single probe would wrongly trust https. Sets _SCHEME/_PORT as a side
-# effect (so _http uses them); returns 0 only when both probes are clean.
-_scheme_clean() {  # <scheme> <port>
-  local _s="$1" _p="$2" _i _o
-  _SCHEME="${_s}"; _PORT="${_p}"
-  for _i in 1 2; do
-    _o=$(_http "Mozilla/5.0"); set -- $_o
-    { _unreachable "$1" "$2" || _server_error "$1"; } && return 1
-  done
-  return 0
+# Redirect target of a browser HTTP request to the site (empty if not a redirect).
+# A site that ENFORCES https answers http with a 301/302 to https://; one that serves
+# http directly (or has only a no-real-SSL self-signed proxy) does not.
+_redirect_location() {
+  local _url="http://${_SITE}/"
+  if [[ "${_REMOTE}" -eq 1 ]]; then
+    curl -sk --http1.1 -o /dev/null -w '%{redirect_url}' --max-time 10 -A "Mozilla/5.0" "${_url}" 2>/dev/null
+  else
+    curl -sk --http1.1 -o /dev/null -w '%{redirect_url}' --max-time 10 --resolve "${_SITE}:80:127.0.0.1" -A "Mozilla/5.0" "${_url}" 2>/dev/null
+  fi
 }
+# Default to HTTP; switch to HTTPS only when the site ENFORCES it (http redirects to
+# https). This tests the real https path where https is enabled+enforced, and avoids a
+# no-real-SSL self-signed proxy that serves a few requests then 5xx's the rest (which a
+# fixed-count probe cannot reliably catch). --http / --https force it.
 _detect_scheme() {
   [[ -z "${_SITE}" ]] && return
   if [[ -n "${_FORCE_SCHEME}" ]]; then
     _SCHEME="${_FORCE_SCHEME}"; [[ "${_SCHEME}" == "http" ]] && _PORT=80 || _PORT=443
     return
   fi
-  _scheme_clean https 443 && return                      # _SCHEME/_PORT left at https/443
-  if _scheme_clean http 80; then                         # _SCHEME/_PORT left at http/80
-    _SCHEME_NOTE="HTTPS not cleanly served (no real SSL / proxy 5xx) — probing over HTTP; verify over HTTPS once real SSL is in place"
-    return
+  _SCHEME=http; _PORT=80
+  local _loc; _loc=$(_redirect_location)
+  if [[ "${_loc}" == https://* ]]; then
+    _SCHEME=https; _PORT=443
+    _SCHEME_NOTE="site enforces https (http->https redirect) — probing over https"
+  else
+    _SCHEME_NOTE="site serves http directly (no enforced-https redirect) — probing over http; --https to force"
   fi
-  _SCHEME=https; _PORT=443   # neither clean; let the matrix baseline report it
 }
 
 _check_blocked() { # <label> <ua> <path> — expect a 444 block
@@ -455,7 +460,7 @@ _phase_idempotence() {
 _MODE=read-only; [[ "${_FULL}" -eq 1 ]] && _MODE=full; [[ "${_REMOTE}" -eq 1 ]] && _MODE=remote
 _detect_scheme
 echo "${_CB}BOA edge-policy test${_C0}  site=${_SITE:-<none>}  oct=${_OCT:-<none>}  mode=${_MODE}  scheme=${_SCHEME}"
-[[ -n "${_SCHEME_NOTE}" ]] && _warn "${_SCHEME_NOTE}"
+[[ -n "${_SCHEME_NOTE}" ]] && _note "${_SCHEME_NOTE}"
 
 if [[ "${_REMOTE}" -eq 1 ]]; then
   _head "remote mode — probing the live site over the network from this box's IP"
