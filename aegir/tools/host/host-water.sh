@@ -119,6 +119,50 @@ _whitelist_ip_cloudflare() {
   done
 }
 
+_whitelist_ip_migration_proxy() {
+  # During an xmass/xoct migration the OLD host becomes a reverse proxy that
+  # forwards all migrated traffic to this host, so the proxy is the only TCP
+  # peer csf/lfd ever sees for those sites -- and lfd cannot be made realip-
+  # aware. Hard-whitelist the proxy link on ports 80+443 and csf.ignore it so a
+  # flood relayed through the proxy can never get the proxy itself banned (which
+  # would blackhole every migrated site at once); the realip layer still recovers
+  # and bans the real client at nginx. Source IPs come from the control file the
+  # migration tooling writes; an absent file means no migration is in progress,
+  # and the tagged entries are stripped (teardown).
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing migration proxy ips from csf.allow and csf.ignore
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-migproxy-${_NOW}
+    sed -i "s/.*migration proxy.*//g" /etc/csf/csf.allow
+    sed -i "s/.*migration proxy.*//g" /etc/csf/csf.ignore
+    wait
+  fi
+  if [ ! -e "/root/.migration.proxy.ips.cnf" ]; then
+    echo "no migration proxy control file; nothing to whitelist"
+    return 0
+  fi
+  _IPS=$(cat /root/.migration.proxy.ips.cnf \
+    | sed 's/#.*//' \
+    | tr -s ' \t' '\n' \
+    | sort \
+    | uniq 2>&1)
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
+  echo _IPS migration proxy list..
+  echo ${_IPS}
+  for _IP in ${_IPS}; do
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # migration proxy" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # migration proxy" >> /etc/csf/csf.allow
+      fi
+    done
+    if ! grep -qF "${_IP} # migration proxy" /etc/csf/csf.ignore 2>/dev/null; then
+      echo "${_IP} not yet listed in /etc/csf/csf.ignore"
+      echo "${_IP} # migration proxy" >> /etc/csf/csf.ignore
+    fi
+  done
+}
+
 _whitelist_ip_imperva() {
   # Imperva Cloud WAF IP ranges API - no authentication required:
   # https://my.imperva.com/api/integration/v1/ips
@@ -724,6 +768,7 @@ if [ -e "/vservers" ] \
   _whitelist_ip_dns
   _whitelist_ip_pingdom
   _whitelist_ip_cloudflare
+  _whitelist_ip_migration_proxy
   _whitelist_ip_googlebot
   _whitelist_ip_microsoft
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_imperva
@@ -787,6 +832,7 @@ if [ -e "/vservers" ] \
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.allow
+  sed -i "/^$/d" /etc/csf/csf.ignore
   if [ -e "/var/log/daemon.log" ]; then
     _DHCP_LOG="/var/log/daemon.log"
   else
