@@ -145,19 +145,27 @@ _denied()       { [[ "$1" == "403" ]]; }           # ip_access (or other) deny �
 # Probe scheme: prefer https, fall back to http when https is not cleanly served
 # (TLS failure, unreachable, or a 5xx — e.g. a self-signed proxy with no real SSL).
 # A 403/444/2xx/3xx all mean "https responds" -> keep https. --http/--https force it.
+# A scheme is "clean" only if TWO consecutive probes are both cleanly served. The
+# no-real-SSL self-signed-proxy pattern returns 200 on the FIRST request then 5xx on
+# the rest, so a single probe would wrongly trust https. Sets _SCHEME/_PORT as a side
+# effect (so _http uses them); returns 0 only when both probes are clean.
+_scheme_clean() {  # <scheme> <port>
+  local _s="$1" _p="$2" _i _o
+  _SCHEME="${_s}"; _PORT="${_p}"
+  for _i in 1 2; do
+    _o=$(_http "Mozilla/5.0"); set -- $_o
+    { _unreachable "$1" "$2" || _server_error "$1"; } && return 1
+  done
+  return 0
+}
 _detect_scheme() {
   [[ -z "${_SITE}" ]] && return
   if [[ -n "${_FORCE_SCHEME}" ]]; then
     _SCHEME="${_FORCE_SCHEME}"; [[ "${_SCHEME}" == "http" ]] && _PORT=80 || _PORT=443
     return
   fi
-  local _o
-  _SCHEME=https; _PORT=443
-  _o=$(_http "Mozilla/5.0"); set -- $_o
-  if ! _unreachable "$1" "$2" && ! _server_error "$1"; then return; fi
-  _SCHEME=http; _PORT=80
-  _o=$(_http "Mozilla/5.0"); set -- $_o
-  if ! _unreachable "$1" "$2" && ! _server_error "$1"; then
+  _scheme_clean https 443 && return                      # _SCHEME/_PORT left at https/443
+  if _scheme_clean http 80; then                         # _SCHEME/_PORT left at http/80
     _SCHEME_NOTE="HTTPS not cleanly served (no real SSL / proxy 5xx) — probing over HTTP; verify over HTTPS once real SSL is in place"
     return
   fi
@@ -386,17 +394,18 @@ _phase_persite_ai() {
   mkdir -p "$(dirname "${_ctrl}")"
   echo "${_SITE} train-allow # edge-policy-test" >> "${_ctrl}"
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
+  # nginx's reload is graceful/async — a probe fired immediately races the old
+  # workers, so settle first. The >1s wait ALSO advances the control mtime past the
+  # generate second, so ai_policy's second-granularity change-gate fires on the
+  # restore below (regenerating --site's fragment to its real, test-line-removed
+  # state — a direct rm is unsafe here: --site may carry a legitimate record).
+  sleep 2
   _o=$(_http "GPTBot/1.1"); set -- $_o
   if ! _blocked "$1" "$2"; then _pass "train-allow opt-in took effect: GPTBot now allowed (HTTP $1) for ${_SITE}"
   else _fail "train-allow opt-in did NOT take effect: GPTBot still blocked"; fi
-  # Restore: let the control-file mtime advance past the create-run's second so
-  # ai_policy's second-granularity change-gate regenerates --site's fragment to its
-  # real (test-line-removed) state. A same-second re-run would be skipped, leaving a
-  # train-allow fragment on the REAL site. A direct rm is unsafe here (unlike the
-  # ip_access throwaway domain): --site may carry a legitimate non-training record.
-  sleep 1
   sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
+  sleep 2   # settle the prune reload before re-checking
   _o=$(_http "GPTBot/1.1"); set -- $_o
   _blocked "$1" "$2" && _pass "removing the record restored the default block (GPTBot 444 again)" \
     || _warn "after removing the record GPTBot is still allowed (HTTP $1) — check pruning"
