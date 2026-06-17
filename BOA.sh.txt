@@ -1076,6 +1076,10 @@ _fetch_versioned() {
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."*
     touch "${_ctl}"
+    # Drop the rollback backup now the new copy is good (it is only needed to
+    # restore a FAILED fetch, handled in the else branch); avoids leaving a
+    # stale <dest>.old behind on every successful update.
+    rm -f "${_dst}.old"
   else
     [[ -e "${_dst}.old" ]] && mv -f "${_dst}.old" "${_dst}"
   fi
@@ -1286,6 +1290,13 @@ _update_agents() {
     [ -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f /var/xdrago/monitor/check/hackftp.pl
     [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f /var/xdrago/monitor/check/sqlcheck.pl
 
+    # One-time sweep of stale *.old fetch-rollback backups left behind by the
+    # fetch helpers on successful updates (now dropped at the source). Script
+    # backups only; conf/*.old keep-references are deliberately not touched.
+    rm -f /var/xdrago/*.sh.old /var/xdrago/*.pl.old
+    rm -f /var/xdrago/monitor/check/*.sh.old /var/xdrago/monitor/check/*.pl.old
+    [ -e "${_optBin}/vmnetfix.old" ] && rm -f ${_optBin}/vmnetfix.old
+
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f ${_pthLog}/*.ctrl.*.pid
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f /var/xdrago/monitor/check/*
 
@@ -1343,6 +1354,7 @@ _update_agents() {
         chmod 700 ${_optBin}/vmnetfix
         chown root:root ${_optBin}/vmnetfix
         touch ${_pthLog}/vmnetfix.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+        rm -f ${_optBin}/vmnetfix.old
       else
         if [ -e "${_optBin}/vmnetfix.old" ]; then
           mv -f ${_optBin}/vmnetfix.old ${_optBin}/vmnetfix
@@ -1505,6 +1517,7 @@ _update_agents() {
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
       touch ${_pthLog}/manage_ltd_users.sh.ctrl.f62.${_tRee}.${_xSrl}.pid
+      rm -f /var/xdrago/manage_ltd_users.sh.old
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
       mkdir -p /var/backups/ltd/{conf,log,old}
@@ -1523,6 +1536,7 @@ _update_agents() {
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
       touch ${_pthLog}/manage_solr_config.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
+      rm -f /var/xdrago/manage_solr_config.sh.old
       rm -f /run/manage_solr_config.pid
     else
       mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
@@ -2058,6 +2072,7 @@ _update_agents() {
       chown root:root /opt/local/bin/websh
       [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
       touch ${_pthLog}/websh.ctrl.f72.${_tRee}.${_xSrl}.pid
+      rm -f /var/xdrago/websh.sh.old
     else
       mv -f /var/xdrago/websh.sh.old /opt/local/bin/websh
     fi
