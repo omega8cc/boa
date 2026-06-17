@@ -6,6 +6,29 @@ mirror. Intended for a throwaway VM where you can ban yourself and break things 
 Mechanics are documented in [AI-POLICY.md](AI-POLICY.md) and [IP-ACCESS.md](IP-ACCESS.md);
 this is the runbook to confirm they behave on a real box.
 
+## Automated quick-check (start here)
+
+Most of this runbook is automated by **`edgetest`**, a command BOA installs in your PATH
+(`/opt/local/bin/edgetest`). Run it first — it prints a plain `PASS`/`FAIL`/`WARN` line per
+check and a summary, so you can see at a glance whether the critical pieces work, then dip
+into the manual phases below only where you want to go deeper or where a check needs a
+second host. `edgetest --help` lists the options.
+
+```bash
+# read-only checks (safe anywhere): presence, realip config, the AI UA matrix,
+# rate-limiting, ban wiring, fragments, regression spot-checks
+edgetest --site <SITE> --oct <OCT>
+
+# add the state-changing proofs (realip+ban bite, per-site AI toggle, ip_access
+# validation, idempotence) — each cleans up after itself; run on a DISPOSABLE VM
+edgetest --site <SITE> --oct <OCT> --full
+```
+
+It exits `0` when every critical check passes, non-zero otherwise. What it does **not**
+automate (do these manually from the phases below): the realip rewrite seen from a real
+external client, IP-access 403 from a genuinely non-allowed host, and the `configtest`
+rollback backstop. The manual phases remain the source of truth for those.
+
 ## Conventions
 
 Run each generator **manually** after editing a control file — it executes immediately and
@@ -24,8 +47,11 @@ the VM from.
 
 Two things to keep straight so you don't read a false negative:
 
-- **Rate-limit throttling returns `503`** (the `limit_req` default); the hard guards
-  (training/forged/secret-path/banned) return **`444`**. Don't confuse them.
+- **Rate-limit throttling returns `444`, not `503`** — the templates set
+  `limit_req_status 444`, so a throttled request closes the connection just like the hard
+  guards (training/forged/secret-path/banned). Tell them apart by behaviour, not status: a
+  guard blocks *every* request of a class, whereas the rate limit lets a few through (`200`)
+  and `444`s only the excess in a burst.
 - **realip only rewrites `$remote_addr` when the request's peer is inside a
   `set_real_ip_from` range.** A direct hit from your laptop is not a CF edge, so the CF
   tests below first add `<CLIENTIP>` to the trusted set.
@@ -74,10 +100,11 @@ curl -s -o /dev/null -w '%{http_code}\n' -A '<UA>' https://<SITE>/
 - [ ] `Mozilla/5.0 (...)` (normal browser) → **200**
 - [ ] Secret-path probe → **444**: `curl -s -o /dev/null -w '%{http_code}\n' https://<SITE>/.env`
       (also `/.git/config`, `/config.json`)
-- [ ] **Rate-limit** (throttle = **503**, not 444):
-      `for i in $(seq 20); do curl -s -o /dev/null -w '%{http_code} ' -A 'OAI-SearchBot/1.0' https://<SITE>/; done; echo`
-      → first few `200`, then `503` (search zone = 1 r/s). Repeat with `Mozilla/...` → all
-      `200` (browsers are never charged to an AI zone).
+- [ ] **Rate-limit** (throttle = **444**, which curl shows as `000` because 444 closes the
+      connection — `limit_req_status` is 444, not 503):
+      `for i in $(seq 20); do curl -sk --http1.1 -o /dev/null -w '%{http_code} ' -A 'OAI-SearchBot/1.0' --resolve <SITE>:443:127.0.0.1 https://<SITE>/; done; echo`
+      → first few `200`, then `000` (the 444 throttle; search zone = 1 r/s). Repeat with
+      `Mozilla/...` → all `200` (browsers are never charged to an AI zone).
 
 Tokens per class (any one matches the class):
 

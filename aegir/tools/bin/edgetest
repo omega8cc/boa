@@ -1,0 +1,366 @@
+#!/bin/bash
+
+# edgetest — automated checks for the BOA edge-policy stack: AI bot
+# classification, Cloudflare realip, the csf->nginx web-ban mirror, and the
+# per-site AI / IP access controls. Companion to docs/AI-POLICY-TESTING.md — it
+# automates the parts that can run from the box itself and prints a plain
+# pass/fail report so a first-time admin can see at a glance what works.
+#
+# Safe by default: only READ-ONLY checks run (HTTP probes against a local vhost
+# and config inspection). --full additionally runs the state-changing proofs
+# (realip rewrite + csf ban -> block, per-site AI toggle, ip_access validation,
+# generator idempotence); every one cleans up after itself, including on Ctrl-C.
+# Run --full on a DISPOSABLE test VM, not production — it briefly bans a test IP
+# and toggles a control file.
+#
+# Usage:
+#   edgetest [--site <vhost>] [--oct <octopus>] [--test-ip <ip>] [--full]
+#
+# Examples:
+#   edgetest --site example.com              # read-only checks
+#   edgetest --site example.com --oct o1 --full
+
+set -u
+
+_usage() {
+  grep '^# ' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# --- output -----------------------------------------------------------------
+if [[ -t 1 ]]; then
+  _CG=$'\033[32m'; _CR=$'\033[31m'; _CY=$'\033[33m'; _CB=$'\033[1m'; _C0=$'\033[0m'
+else
+  _CG=; _CR=; _CY=; _CB=; _C0=
+fi
+_PASS=0; _FAIL=0; _WARN=0; _SKIP=0
+_pass() { echo "  ${_CG}PASS${_C0}  $*"; _PASS=$((_PASS + 1)); }
+_fail() { echo "  ${_CR}FAIL${_C0}  $*"; _FAIL=$((_FAIL + 1)); }
+_warn() { echo "  ${_CY}WARN${_C0}  $*"; _WARN=$((_WARN + 1)); }
+_skip() { echo "  ${_CY}SKIP${_C0}  $*"; _SKIP=$((_SKIP + 1)); }
+_note() { echo "        $*"; }
+_head() { echo; echo "${_CB}== $* ==${_C0}"; }
+
+# --- args -------------------------------------------------------------------
+_SITE=""; _OCT=""; _TEST_IP="203.0.113.7"; _FREE_IP="198.51.100.250"; _FULL=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --site)    _SITE="${2:-}"; shift 2 ;;
+    --oct)     _OCT="${2:-}"; shift 2 ;;
+    --test-ip) _TEST_IP="${2:-}"; shift 2 ;;
+    --full)    _FULL=1; shift ;;
+    -h|--help) _usage; exit 0 ;;
+    *) echo "unknown option: $1"; echo; _usage; exit 1 ;;
+  esac
+done
+
+# --- environment sanity -----------------------------------------------------
+if [[ ! -d /var/xdrago ]] || ! command -v nginx >/dev/null 2>&1; then
+  echo "This does not look like a BOA box (need /var/xdrago and nginx). Aborting."
+  exit 1
+fi
+if [[ "${_FULL}" -eq 1 && "$(id -u)" -ne 0 ]]; then
+  echo "--full runs state-changing tests and must be run as root."
+  exit 1
+fi
+
+# --- cleanup of --full test artifacts (idempotent; runs on any exit) --------
+_emergency_cleanup() {
+  # Read-only runs create no artifacts — never touch csf or the control files
+  # (even a no-match `sed -i` rewrites the file and would bump its change-gate).
+  [[ "${_FULL}" -eq 1 ]] || return 0
+  rm -f /data/conf/nginx_cloudflare_real_ip.conf-edgetest 2>/dev/null
+  if command -v csf >/dev/null 2>&1; then csf -tr "${_TEST_IP}" >/dev/null 2>&1; fi
+  if [[ -n "${_OCT}" ]]; then
+    sed -i '/# edge-policy-test$/d' "/data/disk/${_OCT}/static/control/ai/policy.txt" 2>/dev/null
+    sed -i '/# edge-policy-test$/d' "/data/disk/${_OCT}/static/control/ip/access.txt" 2>/dev/null
+  fi
+  if [[ "${_FULL}" -eq 1 ]]; then
+    bash /var/xdrago/ai_policy.sh  >/dev/null 2>&1
+    bash /var/xdrago/ip_access.sh  >/dev/null 2>&1
+    bash /var/xdrago/nginx_deny.sh >/dev/null 2>&1
+    service nginx reload >/dev/null 2>&1
+  fi
+}
+trap _emergency_cleanup EXIT
+
+# --- HTTP helpers (hit the LOCAL nginx as <site>) ---------------------------
+# Echo "<http_code> <curl_exit>". An nginx `return 444` closes the connection
+# with no reply -> curl reports code 000 + exit 52/56; a down site reports
+# exit 7/28/35. _blocked / _unreachable interpret that.
+_http() {
+  local _code _ex
+  _code=$(curl -sk --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 \
+    --resolve "${_SITE}:443:127.0.0.1" -A "$1" "https://${_SITE}${2:-/}" 2>/dev/null)
+  _ex=$?
+  echo "${_code} ${_ex}"
+}
+_http_cfip() {
+  local _code _ex
+  _code=$(curl -sk --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 \
+    --resolve "${_SITE}:443:127.0.0.1" -H "CF-Connecting-IP: $1" -A "${2:-Mozilla/5.0}" \
+    "https://${_SITE}/" 2>/dev/null)
+  _ex=$?
+  echo "${_code} ${_ex}"
+}
+# 444 closes the connection with no reply. Over HTTP/1.1 (forced above) curl reports
+# code 000 + exit 52/56; 16/92 are kept as a guard in case h2 slips through.
+_blocked()     { [[ "$1" == "444" ]] || { [[ "$1" == "000" ]] && [[ "$2" == "52" || "$2" == "56" || "$2" == "16" || "$2" == "92" ]]; }; }
+_unreachable() { [[ "$1" == "000" ]] && [[ "$2" == "7" || "$2" == "28" || "$2" == "6" || "$2" == "35" ]]; }
+
+_check_blocked() { # <label> <ua> <path>
+  local _o; _o=$(_http "$2" "$3"); set -- "$1" $_o
+  if _blocked "$2" "$3"; then _pass "$1 -> blocked (444), as designed"
+  elif _unreachable "$2" "$3"; then _fail "$1 -> site unreachable (code $2 exit $3)"
+  else _fail "$1 -> got HTTP $2 (expected a 444 block)"; fi
+}
+_check_allowed() { # <label> <ua>
+  local _o; _o=$(_http "$2" "/"); set -- "$1" $_o
+  if _unreachable "$2" "$3"; then _fail "$1 -> site unreachable (code $2 exit $3)"
+  elif _blocked "$2" "$3"; then _fail "$1 -> blocked (444) but should be ALLOWED"
+  else _pass "$1 -> allowed (HTTP $2), as designed"; fi
+}
+
+# --- read-only phases -------------------------------------------------------
+_phase_presence() {
+  _head "presence (tools, cron, nginx)"
+  local _t
+  for _t in ip_access ai_policy nginx_deny cloudflare_realip; do
+    [[ -e "/var/xdrago/${_t}.sh" ]] && _pass "tool present: ${_t}.sh" \
+      || _fail "tool MISSING: /var/xdrago/${_t}.sh (run a BOA up?)"
+  done
+  local _cron; _cron=$(crontab -l 2>/dev/null)
+  for _t in ip_access ai_policy nginx_deny cloudflare_realip; do
+    echo "${_cron}" | grep -q "${_t}.sh" && _pass "cron scheduled: ${_t}.sh" \
+      || _warn "no cron entry for ${_t}.sh"
+  done
+  service nginx configtest >/dev/null 2>&1 && _pass "nginx configtest OK" \
+    || _fail "nginx configtest FAILED (config currently broken)"
+  pgrep -x nginx >/dev/null 2>&1 && _pass "nginx is running" || _fail "nginx is not running"
+}
+
+_phase_realip_config() {
+  _head "realip configuration"
+  local _rf="/data/conf/nginx_cloudflare_real_ip.conf"
+  if [[ -s "${_rf}" ]] && grep -q '^set_real_ip_from ' "${_rf}"; then
+    _pass "CF ranges include present ($(grep -c '^set_real_ip_from ' "${_rf}") ranges)"
+  else
+    _warn "CF ranges include missing/empty (${_rf}) — run /var/xdrago/cloudflare_realip.sh"
+  fi
+  local _conf; _conf=$(nginx -T 2>/dev/null)
+  echo "${_conf}" | grep -qE 'real_ip_header[[:space:]]+CF-Connecting-IP' \
+    && _pass "real_ip_header CF-Connecting-IP active in running config" \
+    || _fail "real_ip_header not found in running config"
+  echo "${_conf}" | grep -q 'set_real_ip_from' \
+    && _pass "set_real_ip_from loaded into running config" \
+    || _warn "no set_real_ip_from in running config (realip inactive until ranges load)"
+}
+
+_phase_ai_matrix() {
+  _head "AI bot policy — default classes (UA-based)"
+  [[ -z "${_SITE}" ]] && { _skip "need --site <vhost> for the AI matrix"; return; }
+  local _o; _o=$(_http "Mozilla/5.0 (X11; Linux x86_64)"); set -- $_o
+  if _unreachable "$1" "$2"; then
+    _fail "baseline browser request to ${_SITE} failed (code $1 exit $2) — check --site / vhost / nginx"
+    _note "skipping the rest of the AI matrix (need a reachable baseline)"
+    return
+  fi
+  _pass "baseline browser request reachable (HTTP $1)"
+  _check_blocked "training  GPTBot"        "GPTBot/1.1"       "/"
+  _check_blocked "forged    Google-Extended" "Google-Extended" "/"
+  _check_blocked "secret    /.env"          "Mozilla/5.0"      "/.env"
+  _check_blocked "secret    /.git/config"   "Mozilla/5.0"      "/.git/config"
+  _check_allowed "search    OAI-SearchBot"  "OAI-SearchBot/1.0"
+  _check_allowed "user      ChatGPT-User"   "ChatGPT-User/1.0"
+  _check_allowed "utility   OAI-AdsBot"     "OAI-AdsBot/1.0"
+  _check_allowed "browser   Mozilla"        "Mozilla/5.0 (X11; Linux x86_64)"
+}
+
+_phase_ratelimit() {
+  _head "AI rate limiting (throttle returns 444, like the guards — a burst shows some pass, some blocked)"
+  [[ -z "${_SITE}" ]] && { _skip "need --site"; return; }
+  local _o; _o=$(_http "Mozilla/5.0"); set -- $_o
+  _unreachable "$1" "$2" && { _skip "site unreachable"; return; }
+  # search is allowed-but-rate-limited: a fast burst should let a few through (not
+  # 444) and throttle the rest with 444. limit_req_status is 444, not 503.
+  local _i _ok=0 _throttled=0
+  for _i in $(seq 1 25); do
+    _o=$(_http "OAI-SearchBot/1.0"); set -- $_o
+    if _blocked "$1" "$2"; then _throttled=$((_throttled + 1))
+    elif ! _unreachable "$1" "$2"; then _ok=$((_ok + 1)); fi
+  done
+  if [[ "${_throttled}" -gt 0 && "${_ok}" -gt 0 ]]; then
+    _pass "search class rate-limited under a burst (${_ok} passed, ${_throttled} throttled with 444)"
+  elif [[ "${_throttled}" -eq 0 ]]; then
+    _warn "no throttling in a 25-request burst — rate-limit may be loose (search zone is 1r/s)"
+  else
+    _fail "search fully blocked (${_throttled}/25, 0 passed) — search should be allowed + rate-limited, not blocked"
+  fi
+  # a browser must never be charged to an AI zone -> never throttled (444)
+  local _bthrottled=0
+  for _i in $(seq 1 25); do _o=$(_http "Mozilla/5.0"); set -- $_o; _blocked "$1" "$2" && _bthrottled=$((_bthrottled + 1)); done
+  if [[ "${_bthrottled}" -eq 0 ]]; then _pass "browser traffic not charged to an AI zone (0/25 throttled)"
+  else _fail "browser got ${_bthrottled} throttled (444) responses — a browser must never hit an AI rate zone"; fi
+}
+
+_phase_fragments() {
+  _head "per-site control fragments"
+  [[ -z "${_OCT}" ]] && { _skip "need --oct <instance> to inspect fragments"; return; }
+  [[ -e "/data/disk/${_OCT}/tools/drush" ]] && _pass "${_OCT} is a real Octopus instance (tools/drush present)" \
+    || _warn "${_OCT}/tools/drush not found — is ${_OCT} a real instance?"
+  local _d
+  for _d in ai_policy ip_access; do
+    local _p="/data/disk/${_OCT}/config/includes/${_d}"
+    if [[ -d "${_p}" ]]; then
+      _pass "${_d} fragments dir present ($(find "${_p}" -maxdepth 1 -name '*.conf' 2>/dev/null | wc -l | tr -d ' ') site fragment(s))"
+    else
+      _note "no ${_d} fragments dir for ${_OCT} yet (none configured — fine)"
+    fi
+  done
+}
+
+_phase_ban_config() {
+  _head "csf -> nginx ban wiring"
+  local _bf="/data/conf/nginx_banned_ips.conf"
+  [[ -e "${_bf}" ]] && _pass "ban set file present ($(grep -c ' 1;$' "${_bf}" 2>/dev/null) banned IP(s))" \
+    || _note "ban set file ${_bf} not present yet (no web bans active — fine)"
+  nginx -T 2>/dev/null | grep -q 'geo $remote_addr $is_banned' \
+    && _pass "geo \$is_banned map loaded in running config (R4 enforcement wired)" \
+    || _fail "geo \$is_banned map NOT in running config — R4 ban enforcement not wired"
+}
+
+_phase_regression() {
+  _head "regression spot-checks"
+  if command -v netstat >/dev/null 2>&1; then
+    local _ssh; _ssh=$(netstat -tn 2>/dev/null | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { print $5 }' | head -1)
+    [[ -n "${_ssh}" ]] && _pass "netstat sees an established SSH peer (ip_access anti-lockout source works)" \
+      || _note "no established SSH peer via netstat (fine if you are on console)"
+  else
+    _warn "netstat not found — ip_access SSH anti-lockout source unavailable on this box"
+  fi
+  if [[ -e /etc/csf/csf.allow ]]; then
+    grep -qE ':[0-9a-fA-F]*:' /etc/csf/csf.allow 2>/dev/null \
+      && _warn "IPv6-looking entries in csf.allow (BOA is IPv4-only by policy)" \
+      || _pass "no IPv6 entries in csf.allow (matches IPv4-only policy)"
+  fi
+}
+
+# --- --full (state-changing) phases -----------------------------------------
+_phase_realip_ban_proof() {
+  _head "realip + ban enforcement proof (mutating)"
+  [[ -z "${_SITE}" ]] && { _skip "need --site"; return; }
+  command -v csf >/dev/null 2>&1 || { _skip "csf not found"; return; }
+  local _o; _o=$(_http_cfip "${_FREE_IP}"); set -- $_o
+  _unreachable "$1" "$2" && { _fail "site unreachable; cannot run the proof"; return; }
+  # 1. trust localhost so a CF-Connecting-IP header rewrites $remote_addr
+  local _trust="/data/conf/nginx_cloudflare_real_ip.conf-edgetest"
+  echo "set_real_ip_from 127.0.0.1;" > "${_trust}"
+  if ! service nginx configtest >/dev/null 2>&1; then _fail "configtest failed adding localhost trust"; rm -f "${_trust}"; return; fi
+  service nginx reload >/dev/null 2>&1
+  # 2. web-ban the sentinel IP via csf, mirror into nginx
+  csf -td "${_TEST_IP}" 300 -p 80 >/dev/null 2>&1
+  bash /var/xdrago/nginx_deny.sh >/dev/null 2>&1
+  grep -q "^${_TEST_IP} 1;" /data/conf/nginx_banned_ips.conf 2>/dev/null \
+    && _pass "nginx_deny mirrored the csf web ban (${_TEST_IP}) into the geo set" \
+    || _fail "nginx_deny did NOT mirror the csf web ban (${_TEST_IP}) — check the csf.tempban port filter"
+  # 3. request AS the banned IP (via the realip header) -> must be blocked
+  _o=$(_http_cfip "${_TEST_IP}"); set -- $_o
+  _blocked "$1" "$2" \
+    && _pass "CF-Connecting-IP=${_TEST_IP} (banned) -> blocked: realip rewrite AND geo ban both bite" \
+    || _fail "banned IP via realip header -> HTTP $1 (expected block) — realip or ban not biting"
+  # 4. a non-banned IP must NOT be blocked
+  _o=$(_http_cfip "${_FREE_IP}"); set -- $_o
+  if _blocked "$1" "$2"; then _fail "non-banned IP via realip header -> blocked — ban is too broad"
+  else _pass "CF-Connecting-IP=${_FREE_IP} (not banned) -> allowed (HTTP $1) — ban is selective"; fi
+  # 5. cleanup
+  rm -f "${_trust}"
+  csf -tr "${_TEST_IP}" >/dev/null 2>&1
+  bash /var/xdrago/nginx_deny.sh >/dev/null 2>&1
+  service nginx reload >/dev/null 2>&1
+}
+
+_phase_persite_ai() {
+  _head "per-site AI policy toggle (mutating)"
+  [[ -z "${_SITE}" || -z "${_OCT}" ]] && { _skip "need --site and --oct"; return; }
+  [[ -e "/data/disk/${_OCT}/tools/drush" ]] || { _skip "${_OCT} is not a real instance"; return; }
+  local _ctrl="/data/disk/${_OCT}/static/control/ai/policy.txt"
+  local _o; _o=$(_http "GPTBot/1.1"); set -- $_o
+  if ! _blocked "$1" "$2"; then _skip "GPTBot is already allowed for ${_SITE} (HTTP $1) — cannot test the toggle"; return; fi
+  mkdir -p "$(dirname "${_ctrl}")"
+  echo "${_SITE} train-allow # edge-policy-test" >> "${_ctrl}"
+  bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
+  _o=$(_http "GPTBot/1.1"); set -- $_o
+  if ! _blocked "$1" "$2"; then _pass "train-allow opt-in took effect: GPTBot now allowed (HTTP $1) for ${_SITE}"
+  else _fail "train-allow opt-in did NOT take effect: GPTBot still blocked"; fi
+  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
+  bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
+  _o=$(_http "GPTBot/1.1"); set -- $_o
+  _blocked "$1" "$2" && _pass "removing the record restored the default block (GPTBot 444 again)" \
+    || _warn "after removing the record GPTBot is still allowed (HTTP $1) — check pruning"
+}
+
+_phase_ipaccess_validation() {
+  _head "ip_access input validation + anti-lockout (mutating)"
+  [[ -z "${_OCT}" ]] && { _skip "need --oct"; return; }
+  [[ -e "/data/disk/${_OCT}/tools/drush" ]] || { _skip "${_OCT} is not a real instance"; return; }
+  local _ctrl="/data/disk/${_OCT}/static/control/ip/access.txt"
+  local _frag="/data/disk/${_OCT}/config/includes/ip_access/edgetest.example.com.conf"
+  mkdir -p "$(dirname "${_ctrl}")"
+  echo "edgetest.example.com 198.51.100.7 192.168.1.300 # edge-policy-test" >> "${_ctrl}"
+  bash /var/xdrago/ip_access.sh >/dev/null 2>&1
+  if [[ -f "${_frag}" ]]; then
+    grep -q '^allow 198.51.100.7;' "${_frag}" && ! grep -q '192.168.1.300' "${_frag}" \
+      && _pass "kept the valid IP and SKIPPED the out-of-range octet (192.168.1.300)" \
+      || _fail "fragment wrong: valid IP missing or bad octet present"
+    grep -q '^allow 127.0.0.1;' "${_frag}" && grep -q '^deny all;' "${_frag}" \
+      && _pass "anti-lockout present (127.0.0.1 + deny all)" \
+      || _fail "anti-lockout missing (127.0.0.1 / deny all)"
+  else
+    _fail "ip_access did not generate a fragment for the test record"
+  fi
+  service nginx configtest >/dev/null 2>&1 \
+    && _pass "nginx configtest still OK — one bad octet did not break the config box-wide" \
+    || _fail "nginx configtest FAILED after the test record — validation gap"
+  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
+  bash /var/xdrago/ip_access.sh >/dev/null 2>&1
+  [[ -f "${_frag}" ]] && _warn "test fragment not pruned (${_frag})" || _pass "test record pruned cleanly"
+}
+
+_phase_idempotence() {
+  _head "generator idempotence (mutating: runs a generator twice)"
+  bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
+  local _out; _out=$(bash /var/xdrago/ai_policy.sh 2>&1)
+  echo "${_out}" | grep -qiE 'updated|reloaded|pruned' \
+    && _warn "ai_policy reported changes on a second consecutive run — change-gate may not hold" \
+    || _pass "ai_policy second run was a no-op (change-gate holds)"
+}
+
+# --- run --------------------------------------------------------------------
+echo "${_CB}BOA edge-policy test${_C0}  site=${_SITE:-<none>}  oct=${_OCT:-<none>}  mode=$([[ ${_FULL} -eq 1 ]] && echo full || echo read-only)"
+
+_phase_presence
+_phase_realip_config
+_phase_ai_matrix
+_phase_ratelimit
+_phase_fragments
+_phase_ban_config
+_phase_regression
+if [[ "${_FULL}" -eq 1 ]]; then
+  _phase_realip_ban_proof
+  _phase_persite_ai
+  _phase_ipaccess_validation
+  _phase_idempotence
+else
+  _head "state-changing proofs"
+  _skip "realip+ban, per-site toggle, ip_access validation, idempotence — re-run as root with --full (on a test VM)"
+fi
+
+# --- summary ----------------------------------------------------------------
+echo
+echo "${_CB}== summary ==${_C0}"
+echo "  ${_CG}${_PASS} passed${_C0}   ${_CR}${_FAIL} failed${_C0}   ${_WARN} warnings   ${_SKIP} skipped"
+if [[ "${_FAIL}" -eq 0 ]]; then
+  echo "  ${_CG}All critical checks passed.${_C0}"
+  exit 0
+fi
+echo "  ${_CR}${_FAIL} check(s) failed — review the FAIL lines above.${_C0}"
+exit 1
