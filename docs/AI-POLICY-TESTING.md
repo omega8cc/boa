@@ -14,19 +14,31 @@ check and a summary, so you can see at a glance whether the critical pieces work
 into the manual phases below only where you want to go deeper or where a check needs a
 second host. `edgetest --help` lists the options.
 
+**Run it on the box that HOSTS the site.** In its default (local) mode `edgetest` probes the
+**local** nginx (`--resolve …:127.0.0.1`) and inspects local config, so the site must live on
+the box you run it from; run elsewhere it warns and skips the local checks. To test a site on
+**another** box — or to check ip_access from a given vantage — use `--remote`, which hits the
+live site over the network from this box's IP.
+
 ```bash
-# read-only checks (safe anywhere): presence, realip config, the AI UA matrix,
-# rate-limiting, ban wiring, fragments, regression spot-checks
+# local: read-only checks (run ON the host serving <SITE>): presence, realip config,
+# AI UA matrix, rate-limiting, ban wiring, fragments, regression spot-checks
 edgetest --site <SITE> --oct <OCT>
 
-# add the state-changing proofs (realip+ban bite, per-site AI toggle, ip_access
-# validation, idempotence) — each cleans up after itself; run on a DISPOSABLE VM
+# local + state-changing proofs (realip+ban bite, per-site AI toggle, ip_access
+# validation, idempotence) — each self-cleans; run on a DISPOSABLE VM, as root
 edgetest --site <SITE> --oct <OCT> --full
+
+# remote: probe the LIVE site from this box's IP (real DNS) — AI policy + whether
+# this box is ip_access-allowed. Run from a whitelisted box (expect allowed) and a
+# non-whitelisted one (expect a 403 ip_access deny) to verify per-site IP access.
+edgetest --site <SITE> --remote
 ```
 
-It exits `0` when every critical check passes, non-zero otherwise. What it does **not**
-automate (do these manually from the phases below): the realip rewrite seen from a real
-external client, IP-access 403 from a genuinely non-allowed host, and the `configtest`
+It exits `0` when every critical check passes, non-zero otherwise. It treats a **5xx**
+(backend/upstream error — e.g. a proxied 502) and a **403** (ip_access deny) as *inconclusive*
+(`WARN`), not as a policy result. What it does **not** automate (do these manually from the
+phases below): the realip rewrite seen from a real external client, and the `configtest`
 rollback backstop. The manual phases remain the source of truth for those.
 
 ## Conventions
