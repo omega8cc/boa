@@ -21,8 +21,12 @@
 # error) and a 403 (ip_access deny) are reported as inconclusive, not as policy
 # results.
 #
+# HTTPS is NOT assumed: probes try https first and fall back to http when https is
+# not cleanly served (e.g. a test VM with no real SSL behind a self-signed proxy
+# that 5xx's). Force a scheme with --http / --https.
+#
 # Usage:
-#   edgetest [--site <vhost>] [--oct <octopus>] [--test-ip <ip>] [--full | --remote]
+#   edgetest [--site <vhost>] [--oct <octopus>] [--test-ip <ip>] [--full | --remote] [--http | --https]
 #
 # Examples:
 #   edgetest --site example.com --oct o1            # read-only, local box
@@ -51,6 +55,7 @@ _head() { echo; echo "${_CB}== $* ==${_C0}"; }
 
 # --- args -------------------------------------------------------------------
 _SITE=""; _OCT=""; _TEST_IP="203.0.113.7"; _FREE_IP="198.51.100.250"; _FULL=0; _REMOTE=0
+_SCHEME=https; _PORT=443; _FORCE_SCHEME=""; _SCHEME_NOTE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --site)    _SITE="${2:-}"; shift 2 ;;
@@ -58,6 +63,8 @@ while [[ $# -gt 0 ]]; do
     --test-ip) _TEST_IP="${2:-}"; shift 2 ;;
     --full)    _FULL=1; shift ;;
     --remote)  _REMOTE=1; shift ;;
+    --http)    _FORCE_SCHEME=http; shift ;;
+    --https)   _FORCE_SCHEME=https; shift ;;
     -h|--help) _usage; exit 0 ;;
     *) echo "unknown option: $1"; echo; _usage; exit 1 ;;
   esac
@@ -111,13 +118,13 @@ trap _emergency_cleanup EXIT
 # nginx `return 444` closes the connection with no reply -> curl reports code 000
 # + exit 52/56 (16/92 over h2). The classifiers below interpret all that.
 _http() {
-  local _code _ex
+  local _code _ex _url="${_SCHEME}://${_SITE}${2:-/}"
   if [[ "${_REMOTE}" -eq 1 ]]; then
     _code=$(curl -sk --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 \
-      -A "$1" "https://${_SITE}${2:-/}" 2>/dev/null)
+      -A "$1" "${_url}" 2>/dev/null)
   else
     _code=$(curl -sk --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 \
-      --resolve "${_SITE}:443:127.0.0.1" -A "$1" "https://${_SITE}${2:-/}" 2>/dev/null)
+      --resolve "${_SITE}:${_PORT}:127.0.0.1" -A "$1" "${_url}" 2>/dev/null)
   fi
   _ex=$?
   echo "${_code} ${_ex}"
@@ -125,8 +132,8 @@ _http() {
 _http_cfip() {  # local-only (used by the realip+ban proof)
   local _code _ex
   _code=$(curl -sk --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 \
-    --resolve "${_SITE}:443:127.0.0.1" -H "CF-Connecting-IP: $1" -A "${2:-Mozilla/5.0}" \
-    "https://${_SITE}/" 2>/dev/null)
+    --resolve "${_SITE}:${_PORT}:127.0.0.1" -H "CF-Connecting-IP: $1" -A "${2:-Mozilla/5.0}" \
+    "${_SCHEME}://${_SITE}/" 2>/dev/null)
   _ex=$?
   echo "${_code} ${_ex}"
 }
@@ -134,6 +141,28 @@ _blocked()      { [[ "$1" == "444" ]] || { [[ "$1" == "000" ]] && [[ "$2" == "52
 _unreachable()  { [[ "$1" == "000" ]] && [[ "$2" == "7" || "$2" == "28" || "$2" == "6" || "$2" == "35" ]]; }
 _server_error() { [[ "$1" =~ ^5[0-9][0-9]$ ]]; }   # 5xx: backend/upstream error (incl. a proxied 502)
 _denied()       { [[ "$1" == "403" ]]; }           # ip_access (or other) deny — not the AI policy
+
+# Probe scheme: prefer https, fall back to http when https is not cleanly served
+# (TLS failure, unreachable, or a 5xx — e.g. a self-signed proxy with no real SSL).
+# A 403/444/2xx/3xx all mean "https responds" -> keep https. --http/--https force it.
+_detect_scheme() {
+  [[ -z "${_SITE}" ]] && return
+  if [[ -n "${_FORCE_SCHEME}" ]]; then
+    _SCHEME="${_FORCE_SCHEME}"; [[ "${_SCHEME}" == "http" ]] && _PORT=80 || _PORT=443
+    return
+  fi
+  local _o
+  _SCHEME=https; _PORT=443
+  _o=$(_http "Mozilla/5.0"); set -- $_o
+  if ! _unreachable "$1" "$2" && ! _server_error "$1"; then return; fi
+  _SCHEME=http; _PORT=80
+  _o=$(_http "Mozilla/5.0"); set -- $_o
+  if ! _unreachable "$1" "$2" && ! _server_error "$1"; then
+    _SCHEME_NOTE="HTTPS not cleanly served (no real SSL / proxy 5xx) — probing over HTTP; verify over HTTPS once real SSL is in place"
+    return
+  fi
+  _SCHEME=https; _PORT=443   # neither clean; let the matrix baseline report it
+}
 
 _check_blocked() { # <label> <ua> <path> — expect a 444 block
   local _o; _o=$(_http "$2" "$3"); set -- "$1" $_o
@@ -415,7 +444,9 @@ _phase_idempotence() {
 
 # --- run --------------------------------------------------------------------
 _MODE=read-only; [[ "${_FULL}" -eq 1 ]] && _MODE=full; [[ "${_REMOTE}" -eq 1 ]] && _MODE=remote
-echo "${_CB}BOA edge-policy test${_C0}  site=${_SITE:-<none>}  oct=${_OCT:-<none>}  mode=${_MODE}"
+_detect_scheme
+echo "${_CB}BOA edge-policy test${_C0}  site=${_SITE:-<none>}  oct=${_OCT:-<none>}  mode=${_MODE}  scheme=${_SCHEME}"
+[[ -n "${_SCHEME_NOTE}" ]] && _warn "${_SCHEME_NOTE}"
 
 if [[ "${_REMOTE}" -eq 1 ]]; then
   _head "remote mode — probing the live site over the network from this box's IP"

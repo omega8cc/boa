@@ -37,7 +37,9 @@ edgetest --site <SITE> --remote
 
 It exits `0` when every critical check passes, non-zero otherwise. It treats a **5xx**
 (backend/upstream error — e.g. a proxied 502) and a **403** (ip_access deny) as *inconclusive*
-(`WARN`), not as a policy result. What it does **not** automate (do these manually from the
+(`WARN`), not as a policy result. **HTTPS is not assumed** — it probes https and falls back to
+http if https isn't cleanly served (a test VM with no real SSL behind a self-signed proxy);
+force a scheme with `--http` / `--https`. What it does **not** automate (do these manually from the
 phases below): the realip rewrite seen from a real external client, and the `configtest`
 rollback backstop. The manual phases remain the source of truth for those.
 
