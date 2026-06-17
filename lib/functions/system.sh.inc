@@ -3128,9 +3128,13 @@ _run_apt_get_dist_upgrade() {
     fi
   done
   nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
-  if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-    _spawn_detached 'perl /var/xdrago/proc_num_ctrl.pl'
-  fi
+  # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl.
+  for _pncw in sendmail_guard convert_guard hostname_sync syslog_legacy \
+               bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
+               collectd xinetd lsyncd; do
+    [ -e "/var/xdrago/monitor/check/${_pncw}.sh" ] \
+      && _spawn_detached "bash /var/xdrago/monitor/check/${_pncw}.sh"
+  done
 }
 
 #
@@ -7661,9 +7665,13 @@ _if_major_os_upgrade() {
       fi
     done
     nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
-    if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-      _spawn_detached 'perl /var/xdrago/proc_num_ctrl.pl'
-    fi
+    # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl.
+    for _pncw in sendmail_guard convert_guard hostname_sync syslog_legacy \
+                 bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
+                 collectd xinetd lsyncd; do
+      [ -e "/var/xdrago/monitor/check/${_pncw}.sh" ] \
+        && _spawn_detached "bash /var/xdrago/monitor/check/${_pncw}.sh"
+    done
     ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OS_CODE}_to_${_NEW_OS_CODE}_major_os_upgrade.info
     ### Force NR upgrade

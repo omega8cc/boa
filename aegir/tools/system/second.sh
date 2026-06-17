@@ -217,9 +217,14 @@ _spawn_detached() {
 _proc_control() {
   echo "Running process control..."
   renice "${_B_NICE}" -p $$ &> /dev/null
-  if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-    _spawn_detached 'perl /var/xdrago/proc_num_ctrl.pl'
-  fi
+  # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl. Each is
+  # a single-shot, self-guarded monitor in monitor/check/; absent ones (e.g. not
+  # yet fetched, or deliberately removed) are simply skipped.
+  for _w in sendmail_guard convert_guard hostname_sync syslog_legacy \
+            bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
+            collectd xinetd lsyncd; do
+    [ -e "${_monPath}/${_w}.sh" ] && _spawn_detached "bash ${_monPath}/${_w}.sh"
+  done
   touch /var/log/boa/proc_num_ctrl.done.pid
   echo "Process control done."
 }

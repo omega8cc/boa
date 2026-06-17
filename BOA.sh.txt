@@ -1262,9 +1262,29 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${_pthLog}/segfault_alert.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/sqlcheck.sh" ] && rm -f ${_pthLog}/sqlcheck.sh.ctrl.*.pid
 
+    [ ! -e "/var/xdrago/monitor/check/bind9.sh" ] && rm -f ${_pthLog}/bind9.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/proxysql.sh" ] && rm -f ${_pthLog}/proxysql.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/droplet.sh" ] && rm -f ${_pthLog}/droplet.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/newrelic_daemon.sh" ] && rm -f ${_pthLog}/newrelic_daemon.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/newrelic_sysmond.sh" ] && rm -f ${_pthLog}/newrelic_sysmond.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/collectd.sh" ] && rm -f ${_pthLog}/collectd.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/xinetd.sh" ] && rm -f ${_pthLog}/xinetd.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/lsyncd.sh" ] && rm -f ${_pthLog}/lsyncd.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/syslog_legacy.sh" ] && rm -f ${_pthLog}/syslog_legacy.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/sendmail_guard.sh" ] && rm -f ${_pthLog}/sendmail_guard.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/convert_guard.sh" ] && rm -f ${_pthLog}/convert_guard.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/hostname_sync.sh" ] && rm -f ${_pthLog}/hostname_sync.sh.ctrl.*.pid
+
     [ -e "/var/xdrago/proc_num_ctrl.cgi" ] && rm -f /var/xdrago/proc_num_ctrl.cgi
     [ -e "/var/xdrago/checksql.cgi" ] && rm -f /var/xdrago/checksql.cgi
     [ -e "/var/xdrago/mysql_hourly.sh" ] && rm -f /var/xdrago/mysql_hourly.sh
+
+    [ -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f /var/xdrago/proc_num_ctrl.pl
+    [ -e "/var/xdrago/checksql.pl" ] && rm -f /var/xdrago/checksql.pl
+    [ -e "/var/xdrago/monitor/check/escapecheck.pl" ] && rm -f /var/xdrago/monitor/check/escapecheck.pl
+    [ -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f /var/xdrago/monitor/check/hackcheck.pl
+    [ -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f /var/xdrago/monitor/check/hackftp.pl
+    [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f /var/xdrago/monitor/check/sqlcheck.pl
 
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f ${_pthLog}/*.ctrl.*.pid
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f /var/xdrago/monitor/check/*
@@ -1398,6 +1418,18 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f94
     _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f99
+    _fetch_versioned /var/xdrago/monitor/check/bind9.sh "${_urlHmr}/tools/system/monitor/check/bind9.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/proxysql.sh "${_urlHmr}/tools/system/monitor/check/proxysql.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/droplet.sh "${_urlHmr}/tools/system/monitor/check/droplet.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/newrelic_daemon.sh "${_urlHmr}/tools/system/monitor/check/newrelic_daemon.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/newrelic_sysmond.sh "${_urlHmr}/tools/system/monitor/check/newrelic_sysmond.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/collectd.sh "${_urlHmr}/tools/system/monitor/check/collectd.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/xinetd.sh "${_urlHmr}/tools/system/monitor/check/xinetd.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/lsyncd.sh "${_urlHmr}/tools/system/monitor/check/lsyncd.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/syslog_legacy.sh "${_urlHmr}/tools/system/monitor/check/syslog_legacy.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/sendmail_guard.sh "${_urlHmr}/tools/system/monitor/check/sendmail_guard.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f01
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f96
     _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f97 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
@@ -1405,7 +1437,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f91 --guard mysql_cluster_backup.sh
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f82
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f90
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f99
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f98
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f89
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f99
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
@@ -1424,7 +1456,6 @@ _update_agents() {
     _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f68
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f77
-    _fetch_versioned /var/xdrago/proc_num_ctrl.pl "${_urlHmr}/tools/system/proc_num_ctrl.pl" f82
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
     _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/tools/bin/synproxy_rollback" f94 --guard synproxy_rollback
     _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/tools/bin/synproxy_reassert" f99 --guard synproxy_rollback
