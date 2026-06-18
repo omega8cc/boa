@@ -294,7 +294,7 @@ _phase_ratelimit() {
   elif [[ "${_throttled}" -gt 0 && "${_ok}" -gt 0 ]]; then
     _pass "search class rate-limited under a burst (${_ok} passed, ${_throttled} throttled with 444)"
   elif [[ "${_throttled}" -eq 0 ]]; then
-    _warn "no throttling in a 25-request burst — rate-limit may be loose (search zone is 1r/s)"
+    _warn "no throttling in a 25-request burst — rate-limit may be loose, OR this vantage's latency spread the burst under the 1r/s search zone (try from a closer/faster box)"
   else
     _fail "search fully blocked (${_throttled}/25 throttled, 0 passed) — search should be allowed + rate-limited, not blocked"
   fi
@@ -370,6 +370,10 @@ _phase_realip_ban_proof() {
   grep -q "^${_TEST_IP} 1;" /data/conf/nginx_banned_ips.conf 2>/dev/null \
     && _pass "nginx_deny mirrored the csf web ban (${_TEST_IP}) into the geo set" \
     || _fail "nginx_deny did NOT mirror the csf web ban (${_TEST_IP}) — check the csf.tempban port filter"
+  # nginx's reload is graceful/async — let the localhost realip-trust AND the new ban
+  # geo settle before probing, else the request races old workers that have neither
+  # (so $remote_addr is not rewritten and nothing is banned -> a false 200).
+  sleep 2
   # 3. request AS the banned IP (via the realip header) -> must be blocked
   _o=$(_http_cfip "${_TEST_IP}"); set -- $_o
   if   _blocked "$1" "$2";   then _pass "CF-Connecting-IP=${_TEST_IP} (banned) -> blocked: realip rewrite AND geo ban both bite"

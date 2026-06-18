@@ -1384,7 +1384,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
   _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f02 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
-  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f96 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
+  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f95 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
