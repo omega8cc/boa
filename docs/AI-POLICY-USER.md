@@ -10,7 +10,8 @@ most sites, and you can change them for any individual site.
 |------------|---------|---------|
 | **Training** crawlers (GPTBot, ClaudeBot, CCBot, Bytespider, Amazonbot, …) | **Blocked** | Bots that harvest your content to train AI models are turned away. |
 | **Search / index** bots (OAI-SearchBot, PerplexityBot, …) | **Allowed** | Bots that index your site so it can appear in AI search answers are let in (gently rate-limited). |
-| **Assistant** fetchers (ChatGPT-User, Claude-User, …) | **Allowed** | When a person asks an AI assistant about a page on your site, that fetch is allowed. |
+| **Assistant** fetchers (ChatGPT-User, Claude-User, …) | **Allowed** | When a person asks an AI assistant to read a page on your site, that fetch is allowed (gently rate-limited). |
+| **Evasive** assistant (Perplexity-User) | **Blocked** | A user-fetch agent that ignores no-crawl rules and disguises itself when blocked is turned away by default; you can allow it per site. |
 | **Utility** bots (read-aloud, ads, notebook tools) | **Allowed** | Allowed, rate-limited. |
 
 Aggressive scrapers, download tools and obvious credential probes are always blocked and
@@ -31,6 +32,7 @@ tell you which one. Add one line per site: the site name, then the changes you w
 | Flag | What it does |
 |------|--------------|
 | `train-allow` | **Allow** AI training crawlers for this site (overrides the default block) |
+| `evasive-allow` | **Allow** the evasive assistant fetcher (Perplexity) for this site (overrides the default block) |
 | `search-block` | **Block** AI search/index bots for this site |
 | `user-block` | **Block** AI assistant fetchers for this site |
 | `utility-block` | **Block** AI utility bots for this site |
@@ -48,6 +50,9 @@ shop.example.com    search-block user-block utility-block
 
 # A blog that wants AI search but not the assistant "user" fetchers:
 blog.example.com    user-block
+
+# A research site that wants even the evasive Perplexity assistant allowed:
+research.example.com    evasive-allow
 ```
 
 Lines starting with `#`, and anything after a `#`, are ignored.

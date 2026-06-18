@@ -265,10 +265,12 @@ _phase_ai_matrix() {
   _pass "baseline browser request reachable (HTTP $1)"
   _check_blocked "training  GPTBot"          "GPTBot/1.1"       "/"
   _check_blocked "forged    Google-Extended" "Google-Extended" "/"
+  _check_blocked "evasive   Perplexity-User" "Perplexity-User/1.0" "/"
   _check_blocked "secret    /.env"           "Mozilla/5.0"      "/.env"
   _check_blocked "secret    /.git/config"    "Mozilla/5.0"      "/.git/config"
   _check_allowed "search    OAI-SearchBot"   "OAI-SearchBot/1.0"
   _check_allowed "user      ChatGPT-User"    "ChatGPT-User/1.0"
+  _check_allowed "user      Google-Agent"    "Google-Agent/1.0"
   _check_allowed "utility   OAI-AdsBot"      "OAI-AdsBot/1.0"
   _check_allowed "browser   Mozilla"         "Mozilla/5.0 (X11; Linux x86_64)"
 }
@@ -420,6 +422,29 @@ _phase_persite_ai() {
     || _warn "after removing the record GPTBot is still allowed (HTTP $1) — check pruning"
 }
 
+_phase_persite_evasive() {
+  _head "per-site evasive AI opt-in (mutating)"
+  [[ -z "${_SITE}" || -z "${_OCT}" ]] && { _skip "need --site and --oct"; return; }
+  [[ -e "/data/disk/${_OCT}/tools/drush" ]] || { _skip "${_OCT} is not a real instance"; return; }
+  local _ctrl="/data/disk/${_OCT}/static/control/ai/policy.txt"
+  local _o; _o=$(_http "Perplexity-User/1.0"); set -- $_o
+  if _server_error "$1" || _unreachable "$1" "$2"; then _skip "site not cleanly served (code $1) — cannot test the toggle"; return; fi
+  if ! _blocked "$1" "$2"; then _skip "Perplexity-User is already allowed for ${_SITE} (HTTP $1) — cannot test the toggle"; return; fi
+  mkdir -p "$(dirname "${_ctrl}")"
+  echo "${_SITE} evasive-allow # edge-policy-test" >> "${_ctrl}"
+  bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
+  sleep 2   # settle the graceful reload (see the per-site AI toggle note above)
+  _o=$(_http "Perplexity-User/1.0"); set -- $_o
+  if ! _blocked "$1" "$2"; then _pass "evasive-allow opt-in took effect: Perplexity-User now allowed (HTTP $1) for ${_SITE}"
+  else _fail "evasive-allow opt-in did NOT take effect: Perplexity-User still blocked"; fi
+  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
+  bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
+  sleep 2   # settle the prune reload before re-checking
+  _o=$(_http "Perplexity-User/1.0"); set -- $_o
+  _blocked "$1" "$2" && _pass "removing the record restored the default block (Perplexity-User 444 again)" \
+    || _warn "after removing the record Perplexity-User is still allowed (HTTP $1) — check pruning"
+}
+
 _phase_ipaccess_validation() {
   _head "ip_access input validation + anti-lockout (mutating)"
   [[ -z "${_OCT}" ]] && { _skip "need --oct"; return; }
@@ -482,6 +507,7 @@ else
   if [[ "${_FULL}" -eq 1 ]]; then
     _phase_realip_ban_proof
     _phase_persite_ai
+    _phase_persite_evasive
     _phase_ipaccess_validation
     _phase_idempotence
   else
