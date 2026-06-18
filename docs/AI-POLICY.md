@@ -19,7 +19,7 @@ and `ChatGPT-User` land in different classes, and "ChatGPT" alone matches nothin
 | Scrapers / bad bots | `$is_crawler` (pre-existing) | mass scrapers, download tools | **Hard block (444), always** |
 | AI **training** | `$is_ai_training` | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili | **Blocked (444)**; per-site opt-in to **allow** |
 | AI **search/index** | `$is_ai_search` | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
-| AI **user** (honest assistant fetch a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher | **Allowed + per-vendor aggregate rate-limit (2r/s)**; per-site opt-in to **block** |
+| AI **user** (honest assistant fetch a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent | **Allowed + per-vendor aggregate rate-limit (2r/s)**; per-site opt-in to **block** |
 | AI **user — evasive** (user-triggered but ignores robots.txt and evades blocks) | `$is_ai_evasive` | Perplexity-User | **Blocked (444)**; per-site opt-in to **allow** |
 | AI **utility** | `$is_ai_utility` | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
 | **Forged** opt-out tokens | `$is_ai_forged` | Google-Extended, Applebot-Extended | **Hard block (444), always** |
@@ -204,6 +204,11 @@ shared lock) on a disposable VM, see [AI-POLICY-TESTING.md](AI-POLICY-TESTING.md
   (current as of this cycle). Re-check vendor crawler docs periodically and add tokens to
   the relevant `$is_ai_*` map in `server.tpl.php`. A missing token just means that agent
   falls through to ordinary handling — fail-open, not fail-closed.
+- **`Google-Agent` is new (2026).** Google's user-triggered agentic fetcher (Project
+  Mariner / Gemini) ignores `robots.txt` like `ChatGPT-User` and is classed as an honest
+  user fetcher. It is matched as `Google-?Agent` to catch both documented spellings
+  (`Google-Agent` and `GoogleAgent-…`). The token is still settling — re-confirm against
+  Google's user-triggered-fetchers list and tighten the match if a collision ever appears.
 - **Fan-out, not single fetch.** A "user" fetch is not necessarily one request: some
   assistant agents (notably `ChatGPT-User`, and `Meta-ExternalFetcher`) expand a single
   prompt into many requests spread across the vendor's published IP ranges. That is why
