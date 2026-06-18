@@ -25,8 +25,9 @@ live site over the network from this box's IP.
 # AI UA matrix, rate-limiting, ban wiring, fragments, regression spot-checks
 edgetest --site <SITE> --oct <OCT>
 
-# local + state-changing proofs (realip+ban bite, per-site AI toggle, ip_access
-# validation, idempotence) — each self-cleans; run on a DISPOSABLE VM, as root
+# local + state-changing proofs (realip+ban bite, per-site AI toggles incl. the
+# evasive-allow opt-in, ip_access validation, idempotence) — each self-cleans;
+# run on a DISPOSABLE VM, as root
 edgetest --site <SITE> --oct <OCT> --full
 
 # remote: probe the LIVE site from this box's IP (real DNS) — AI policy + whether
@@ -106,11 +107,16 @@ UA-keyed, so a direct hit is fine (no CF needed). Run each:
 curl -s -o /dev/null -w '%{http_code}\n' -A '<UA>' https://<SITE>/
 ```
 
+"Allowed" below means **any non-444 response** — a real Drupal site may answer a given
+UA/path with `200` or a `301` redirect; only a `444` (curl shows it as `000`) is a block.
+
 - [ ] `GPTBot/1.1` (training) → **444**
-- [ ] `OAI-SearchBot/1.0` (search) → **200**
-- [ ] `ChatGPT-User/1.0` (user) → **200**
-- [ ] `OAI-AdsBot/1.0` (utility) → **200**
+- [ ] `Perplexity-User/1.0` (evasive) → **444** (blocked by default — see Phase 3 to opt in)
 - [ ] `Google-Extended` (forged opt-out token as a UA) → **444**
+- [ ] `OAI-SearchBot/1.0` (search) → **allowed** (200 or 301)
+- [ ] `ChatGPT-User/1.0` (user) → **allowed** (200 or 301)
+- [ ] `Google-Agent/1.0` (user) → **allowed** (200 or 301)
+- [ ] `OAI-AdsBot/1.0` (utility) → **allowed** (200 or 301)
 - [ ] `Mozilla/5.0 (...)` (normal browser) → **200**
 - [ ] Secret-path probe → **444**: `curl -s -o /dev/null -w '%{http_code}\n' https://<SITE>/.env`
       (also `/.git/config`, `/config.json`)
@@ -126,7 +132,8 @@ Tokens per class (any one matches the class):
 |-------|--------|
 | training | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili |
 | search | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot |
-| user | ChatGPT-User, Claude-User, Perplexity-User, MistralAI-User, Meta-ExternalFetcher |
+| user | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent |
+| user (evasive) | Perplexity-User — **blocked by default**; per-site `evasive-allow` to permit it |
 | utility | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM |
 | forged | Google-Extended, Applebot-Extended |
 
@@ -137,7 +144,10 @@ Tokens per class (any one matches the class):
       → `bash /var/xdrago/ai_policy.sh` (echoes "AI policy updated … <SITE>")
       → `cat /data/disk/<OCT>/config/includes/ai_policy/<SITE>.conf` contains
       `set $ai_train_allow 1;`
-- [ ] `curl -A 'GPTBot/1.1' https://<SITE>/` → now **200**; a *different* site still **444**.
+- [ ] `curl -A 'GPTBot/1.1' https://<SITE>/` → now **allowed**; a *different* site still **444**.
+- [ ] Opt-in evasive: change the line to `<SITE> evasive-allow` → rerun tool →
+      `<SITE>.conf` contains `set $ai_evasive_allow 1;` → `curl -A 'Perplexity-User/1.0'` →
+      now **allowed** (was 444); remove the line → rerun → back to **444**.
 - [ ] Opt-out search: change the line to `<SITE> search-block` → rerun tool →
       `curl -A 'OAI-SearchBot/1.0'` → **444**.
 - [ ] **Prune:** empty the file (or delete the line) → rerun tool (echoes "Pruned…") →
