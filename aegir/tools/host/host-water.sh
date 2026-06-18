@@ -6,6 +6,30 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 [ -d "/var/backups/csf/water" ] || mkdir -p /var/backups/csf/water
 
+# BOA-canonical fetch options (the shared _crlGet): verified TLS, follow up to 3
+# redirects, --fail so an HTTP error yields no body (an error page is never parsed
+# as ranges), retry transient failures, iCab UA.
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
+
+# Strict IPv4 / IPv4-CIDR validation. These lists feed the csf ALLOW whitelist,
+# so only value-valid addresses (each octet 0-255, prefix 0-32) may be written:
+# a merely digit-shaped token from a provider format change or a poisoned/garbage
+# response (e.g. 999.1.1.1/99) must never reach the firewall. _emit_valid_ips
+# filters a candidate list on stdin and logs what it drops (same intent as the
+# octet check already guarding the DHCP path below).
+_ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+_is_ipv4_or_cidr() { [[ "$1" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}(/(3[0-2]|[12]?[0-9]))?$ ]]; }
+_emit_valid_ips() {
+  local _x
+  for _x in $(cat); do
+    if _is_ipv4_or_cidr "${_x}"; then
+      echo "${_x}"
+    else
+      echo "water: skipping invalid range: ${_x}" >&2
+    fi
+  done
+}
+
 _whitelist_ip_pingdom() {
   # Pingdom provides probe IPs in multiple formats:
   #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
@@ -18,19 +42,20 @@ _whitelist_ip_pingdom() {
     sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -k -s https://my.pingdom.com/probes/ipv4 \
+  _IPS=$(curl ${_crlGet} https://my.pingdom.com/probes/ipv4 \
     | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' \
     | sort \
     | uniq 2>&1)
   if [ -z "${_IPS}" ]; then
     echo "pingdom ipv4 endpoint failed, falling back to RSS feed"
-    _IPS=$(curl -k -s https://my.pingdom.com/probes/feed \
+    _IPS=$(curl ${_crlGet} https://my.pingdom.com/probes/feed \
       | grep '<pingdom:ip>' \
       | sed 's/.*::.*//g' \
       | sed 's/[^0-9\.]//g' \
       | sort \
       | uniq 2>&1)
   fi
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS pingdom list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
@@ -62,18 +87,19 @@ _whitelist_ip_cloudflare() {
     sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -k -sL https://www.cloudflare.com/ips-v4 \
+  _IPS=$(curl ${_crlGet} https://www.cloudflare.com/ips-v4 \
     | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
     | uniq 2>&1)
   if [ -z "${_IPS}" ]; then
     echo "cloudflare ips-v4 endpoint failed, falling back to JSON API"
-    _IPS=$(curl -k -s https://api.cloudflare.com/client/v4/ips \
+    _IPS=$(curl ${_crlGet} https://api.cloudflare.com/client/v4/ips \
       | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
       | sed 's/"//g' \
       | sort \
       | uniq 2>&1)
   fi
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS cloudflare list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
@@ -93,6 +119,50 @@ _whitelist_ip_cloudflare() {
   done
 }
 
+_whitelist_ip_migration_proxy() {
+  # During an xmass/xoct migration the OLD host becomes a reverse proxy that
+  # forwards all migrated traffic to this host, so the proxy is the only TCP
+  # peer csf/lfd ever sees for those sites -- and lfd cannot be made realip-
+  # aware. Hard-whitelist the proxy link on ports 80+443 and csf.ignore it so a
+  # flood relayed through the proxy can never get the proxy itself banned (which
+  # would blackhole every migrated site at once); the realip layer still recovers
+  # and bans the real client at nginx. Source IPs come from the control file the
+  # migration tooling writes; an absent file means no migration is in progress,
+  # and the tagged entries are stripped (teardown).
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing migration proxy ips from csf.allow and csf.ignore
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-migproxy-${_NOW}
+    sed -i "s/.*migration proxy.*//g" /etc/csf/csf.allow
+    sed -i "s/.*migration proxy.*//g" /etc/csf/csf.ignore
+    wait
+  fi
+  if [ ! -e "/root/.migration.proxy.ips.cnf" ]; then
+    echo "no migration proxy control file; nothing to whitelist"
+    return 0
+  fi
+  _IPS=$(cat /root/.migration.proxy.ips.cnf \
+    | sed 's/#.*//' \
+    | tr -s ' \t' '\n' \
+    | sort \
+    | uniq 2>&1)
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
+  echo _IPS migration proxy list..
+  echo ${_IPS}
+  for _IP in ${_IPS}; do
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # migration proxy" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # migration proxy" >> /etc/csf/csf.allow
+      fi
+    done
+    if ! grep -qF "${_IP} # migration proxy" /etc/csf/csf.ignore 2>/dev/null; then
+      echo "${_IP} not yet listed in /etc/csf/csf.ignore"
+      echo "${_IP} # migration proxy" >> /etc/csf/csf.ignore
+    fi
+  done
+}
+
 _whitelist_ip_imperva() {
   # Imperva Cloud WAF IP ranges API - no authentication required:
   # https://my.imperva.com/api/integration/v1/ips
@@ -108,18 +178,19 @@ _whitelist_ip_imperva() {
     sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -k -s --data "resp_format=text" https://my.imperva.com/api/integration/v1/ips \
+  _IPS=$(curl ${_crlGet} --data "resp_format=text" https://my.imperva.com/api/integration/v1/ips \
     | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
     | uniq 2>&1)
   if [ -z "${_IPS}" ]; then
     echo "imperva text endpoint failed, falling back to JSON format"
-    _IPS=$(curl -k -s --data "resp_format=json" https://my.imperva.com/api/integration/v1/ips \
+    _IPS=$(curl ${_crlGet} --data "resp_format=json" https://my.imperva.com/api/integration/v1/ips \
       | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
       | sed 's/"//g' \
       | sort \
       | uniq 2>&1)
   fi
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS imperva list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
@@ -161,12 +232,13 @@ _whitelist_ip_googlebot() {
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -k -s https://developers.google.com/static/search/apis/ipranges/googlebot.json \
+  _IPS=$(curl ${_crlGet} https://developers.google.com/static/search/apis/ipranges/googlebot.json \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
     | sed 's/"ipv4Prefix": *"//g' \
     | sed 's/"//g' \
     | sort \
     | uniq 2>&1)
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS googlebot list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
@@ -199,12 +271,13 @@ _whitelist_ip_microsoft() {
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -k -s https://www.bing.com/toolbox/bingbot.json \
+  _IPS=$(curl ${_crlGet} https://www.bing.com/toolbox/bingbot.json \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
     | sed 's/"ipv4Prefix": *"//g' \
     | sed 's/"//g' \
     | sort \
     | uniq 2>&1)
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS microsoft list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
@@ -289,12 +362,13 @@ _whitelist_ip_authzero() {
     sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl -k -s https://cdn.auth0.com/ip-ranges.json \
+  _IPS=$(curl ${_crlGet} https://cdn.auth0.com/ip-ranges.json \
     | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
     | grep -v ':' \
     | sed 's/"//g' \
     | sort \
     | uniq 2>&1)
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS authzero list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
@@ -396,6 +470,7 @@ _whitelist_ip_site24x7() {
       | uniq 2>&1)
   fi
 
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS site24x7 list..
   echo ${_IPS}
 
@@ -693,6 +768,7 @@ if [ -e "/vservers" ] \
   _whitelist_ip_dns
   _whitelist_ip_pingdom
   _whitelist_ip_cloudflare
+  _whitelist_ip_migration_proxy
   _whitelist_ip_googlebot
   _whitelist_ip_microsoft
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_imperva
@@ -756,6 +832,7 @@ if [ -e "/vservers" ] \
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.allow
+  sed -i "/^$/d" /etc/csf/csf.ignore
   if [ -e "/var/log/daemon.log" ]; then
     _DHCP_LOG="/var/log/daemon.log"
   else
