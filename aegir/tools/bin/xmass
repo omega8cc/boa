@@ -823,6 +823,57 @@ _xmass_convert_source_to_proxy() {
   _info "Source proxy conversion via xoct complete: OK"
 }
 
+###-------------MIGRATION PROXY TRUST------###
+
+_xmass_setup_migration_proxy_trust() {
+  # Wire the migration-proxy trust on the TARGET (new host) BEFORE the source
+  # starts proxying, so the new host recovers the real client (nginx realip) and
+  # never bans the proxy (csf) from the very first relayed request.  Without this
+  # the new host keys every $remote_addr-based control (scan_nginx, geo ban,
+  # ip_access, AI guards) and csf/lfd on the proxy IP -- unable to act on real
+  # clients, and one ban on the proxy would blackhole every migrated site.  See
+  # migration_proxy_trust.sh.  (No source-side trust is needed: the proxy only
+  # makes OUTBOUND connections to the target, so the target never trips the
+  # source's inbound csf/lfd, and a source-side whitelist would just orphan when
+  # the source is later repurposed.)
+  local _tool="/var/xdrago/migration_proxy_trust.sh"
+  local _realip="/var/xdrago/migration_proxy_realip.sh"
+  local _src_ips _perm=""
+
+  # Forward the source's routable IPv4 address(es) as the trusted proxy peer(s):
+  # the new host sees the proxy's egress IP as the TCP peer.  Drop IPv6 (the csf
+  # whitelist is IPv4 and proxy_pass targets an IPv4 _target_ip) and loopback;
+  # KEEP private IPs (the source->target hop may run over a private network).
+  _src_ips="$(hostname -I 2>/dev/null | tr ' ' '\n' \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+    | grep -vE '^127\.' | tr '\n' ' ')"
+  _src_ips="${_src_ips%"${_src_ips##*[![:space:]]}"}"
+  [ -n "${_src_ips}" ] || _src_ips="${_XMASS_SRC_IP}"
+  [ "${_XMASS_PERMANENT_PROXY}" = "YES" ] && _perm="--permanent"
+
+  # The proxy resolves the real client for CF-fronted sites via its OWN http-level
+  # Cloudflare realip (server.tpl.php), which the proxy vhost inherits.  Refresh
+  # that trust now so the proxy forwards the visitor -- not the CF edge IP -- in
+  # the CF-Connecting-IP header it hands the new host.
+  [ -x "/var/xdrago/cloudflare_realip.sh" ] \
+    && /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
+
+  # Make the target self-sufficient: ship both tools (its BOA may predate them),
+  # then wire the trust there.  trust.sh invokes migration_proxy_realip.sh.
+  if [ -x "${_tool}" ] && [ -x "${_realip}" ]; then
+    scp -q "${_tool}" "${_realip}" root@"${_tgt}":/var/xdrago/ 2>/dev/null \
+      && ssh root@"${_tgt}" "chmod 0755 '${_tool}' '${_realip}'" 2>/dev/null
+  fi
+
+  if ssh root@"${_tgt}" "[ -x '${_tool}' ]" 2>/dev/null; then
+    _info "Trusting migration proxy ${_src_ips// /, } on target ${_tgt} (realip + csf) ..."
+    ssh root@"${_tgt}" "${_tool} trust ${_src_ips} ${_perm}" \
+      || _alrt "migration_proxy_trust setup returned non-zero on target ${_tgt}"
+  else
+    _alrt "Skipping target trust: ${_tool} missing on target ${_tgt} -- realip/csf NOT wired; real-client bans and per-site ip_access will not work through the proxy"
+  fi
+}
+
 ###-------------RENAMEAEGIRHOST ON TARGET---###
 
 _xmass_renameaegirhost_all() {
@@ -1135,6 +1186,11 @@ for _s in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
 done
 REMOTE
 
+  # Step 15.9: Wire migration-proxy realip+csf trust BEFORE the source starts
+  # proxying, so the new host recovers the real client and never bans the proxy
+  # from the first relayed request.
+  _xmass_setup_migration_proxy_trust
+
   # Step 16: Convert source vhosts to proxy via xoct (handles vhost templates,
   # nginx reload, and per-account migration-complete notification emails).
   # http-off.pid removal per account is also handled by xoct proxy.
@@ -1198,6 +1254,14 @@ _xmass_post_mig() {
       _info "  Restored ${_script}"
     fi
   done
+  # Traffic now flows directly to this host, so drop the migration-proxy realip+
+  # csf trust (a deliberate no-op if it was set up --permanent). This lets the
+  # source proxy be decommissioned without leaving a stale trusted/whitelisted IP
+  # that could later be reassigned to someone else.
+  if [ -x "/var/xdrago/migration_proxy_trust.sh" ]; then
+    /var/xdrago/migration_proxy_trust.sh teardown \
+      || _alrt "migration_proxy_trust teardown returned non-zero"
+  fi
   _info "post-mig complete on ${_hName}"
 }
 
