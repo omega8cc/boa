@@ -9,10 +9,11 @@
 # /data/disk/<oct>/config/includes/ai_policy/<site>.conf — exactly the path the
 # per-satellite vhost pulls via `include $server->include_path/ai_policy/<uri>*`.
 #
-# Control records: `<site>  [train-allow] [search-block] [user-block] [utility-block]`
-# turning the global AI default (training blocked; search/user/utility allowed +
-# rate-limited) on/off for that site:
+# Control records: `<site>  [train-allow] [evasive-allow] [search-block] [user-block] [utility-block]`
+# turning the global AI default (training + evasive blocked; search/user/utility
+# allowed + rate-limited) on/off for that site:
 #   train-allow    -> set $ai_train_allow 1;            (allow AI training)
+#   evasive-allow  -> set $ai_evasive_allow 1;          (allow evasive user-fetch, e.g. Perplexity)
 #   search-block   -> if ($is_ai_search)  { return 444; }
 #   user-block     -> if ($is_ai_user)    { return 444; }
 #   utility-block  -> if ($is_ai_utility) { return 444; }
@@ -25,7 +26,7 @@
 _lock_file="/run/boa_nginx_config.lock"
 # Bump when the emitted directive shape changes, to force regeneration
 # independent of the control-file mtime.
-_emit_version="1"
+_emit_version="2"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 
 # Re-entrancy guard for the whole global run.
@@ -84,6 +85,7 @@ _process_instance() {
     for _flag in "${_fields[@]:1}"; do
       case "${_flag}" in
         train-allow)   _body+="set \$ai_train_allow 1;"$'\n' ;;
+        evasive-allow) _body+="set \$ai_evasive_allow 1;"$'\n' ;;
         search-block)  _body+="if (\$is_ai_search)  { return 444; }"$'\n' ;;
         user-block)    _body+="if (\$is_ai_user)    { return 444; }"$'\n' ;;
         utility-block) _body+="if (\$is_ai_utility) { return 444; }"$'\n' ;;
