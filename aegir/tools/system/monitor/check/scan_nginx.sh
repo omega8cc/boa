@@ -1090,33 +1090,26 @@ while IFS= read -r _line <&3; do
     echo "DEBUG: Extracted IPs: ${_IP_LIST[*]}"
   fi
 
-  # Assign visitor IP and up to three proxy IPs (from X-Forwarded-For or similar header)
-  _VISITOR="${_IP_LIST[0]:-}"
-  _PROXY1="${_IP_LIST[1]:-}"
-  _PROXY2="${_IP_LIST[2]:-}"
-  _PROXY3="${_IP_LIST[3]:-}"
-
-  # Resolve the real IP by traversing proxies (inlined to avoid per-line subshell overhead)
-  _REAL_IP="${_VISITOR}"
-  _PROXIES_TO_CHECK=()
-  for _proxy in "${_PROXY1}" "${_PROXY2}" "${_PROXY3}"; do
-    if [[ "${_REAL_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
-      if [[ -n "${_proxy}" ]]; then
-        _PROXIES_TO_CHECK+=("${_REAL_IP}")
-        _REAL_IP="${_proxy}"
-      else
-        break
-      fi
-    else
-      break
-    fi
-  done
-  # If the final resolved IP is still private, treat it as a proxy as well and clear real IP
-  if [[ "${_REAL_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
-    _PROXIES_TO_CHECK+=("${_REAL_IP}")
+  # Resolve the real client as the LAST token of the logged chain. nginx logs
+  # $proxy_add_x_forwarded_for (the X-Forwarded-For values with $remote_addr
+  # appended last), and nginx realip rewrites $remote_addr to the CF-Connecting-IP
+  # value on Cloudflare vhosts (CF-controlled, NOT client-spoofable) or leaves it
+  # as the direct peer otherwise. So the last token is the trustworthy client,
+  # whereas the earlier X-Forwarded-For entries are client-supplied and spoofable
+  # (a client can prepend a forged public IP) and must never be scored or banned.
+  # Act only on a valid, public IPv4: this script bans via csf (IPv4), so an IPv6
+  # last token is left unhandled rather than mis-attributed to an earlier,
+  # spoofable chain entry.
+  _last_raw="${_ip_array[$(( ${#_ip_array[@]} - 1 ))]:-}"
+  if _validate_ip "${_last_raw}" \
+    && [[ ! "${_last_raw}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    _REAL_IP="${_last_raw}"
+  else
     _REAL_IP=""
   fi
-  _PROXIES_ARRAY=( "${_PROXIES_TO_CHECK[@]}" )
+  # The X-Forwarded-For chain entries ahead of $remote_addr are spoofable
+  # upstream values; never treat them as ban candidates.
+  _PROXIES_ARRAY=()
 
   # Debug: Echo the determined real visitor IP and proxy IPs if debug mode is enabled
   if [[ -n "${_REAL_IP}" && -e "/etc/boa/.debug.monitor.cnf" ]]; then

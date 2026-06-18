@@ -1,20 +1,32 @@
 #!/bin/bash
 
-# Define the file paths
+# ip_access.sh — per-site nginx IP allow/deny, GLOBAL across the Aegir master and
+# every Octopus instance.  Abstraction of the per-Octopus
+# nginx_ip_access_<oct>.sh scripts into one generator.
+#
+# For each context it reads a control file of `<site>  <ip…>` records and writes
+# a per-site nginx include `<site>.conf` (a block of `allow <ip>;` lines + a
+# final `deny all;`) into that context's config/includes/ip_access/, which the
+# per-vhost template pulls via `include $server->include_path/ip_access/<uri>*`.
+# 127.0.0.1, the server's own IP and every currently logged-in SSH IP are always
+# allowed (anti-lockout), so an admin / the server can never be shut out.
+#
+# Control files:
+#   master  : /var/aegir/control/ip/access.txt          (the sqladmin proxy)
+#   octopus : /data/disk/<oct>/static/control/ip/access.txt
+# A site removed from the control file has its fragment pruned (restriction
+# lifted).  Record format: `example.com 192.168.1.1 203.0.113.2`.
+
 _aegir_health_check="/var/aegir/.drush/hm.alias.drushrc.php"
 _drush_health_check="/var/aegir/drush/drush"
-_ctrl_dir="/var/aegir/control/ip"
-_input_file="${_ctrl_dir}/access.txt"
-_nginx_access_path="/var/aegir/config/includes/ip_access"
-_backup_dir="/var/aegir/undo"
-_current_backup_file="${_backup_dir}/.nginx_access_conf.current.bak.tar.gz"
-_last_good_backup_file="${_backup_dir}/.nginx_access_conf.last_good.bak.tar.gz"
-_timestamp_file="${_nginx_access_path}/.access_last_mod_time"
-_ssh_ips_hash_file="${_nginx_access_path}/.ssh_ips_hash"
 _server_ip_file="/root/.found_correct_ipv4.cnf"
-
-# Regular expression for validating IPv4 addresses and site names
-_ipv4_regex="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+# Validate each octet 0-255, so a typo'd address (e.g. 192.168.1.300) is SKIPPED
+# rather than emitted into an `allow` line. An out-of-range octet passes a loose
+# [0-9]{1,3} check but nginx rejects it at configtest — and because configtest
+# validates the whole config, one bad fragment would block reloads box-wide until
+# the control file is corrected.
+_ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+_ipv4_regex="^(${_ipv4_octet}\.){3}${_ipv4_octet}\$"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 
 if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; then
@@ -22,163 +34,155 @@ if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; t
   exit 1
 fi
 
-# Ensure the ctrl, output and backup directories exist
-mkdir -p "${_backup_dir}"
-mkdir -p "${_ctrl_dir}"
-mkdir -p "${_nginx_access_path}"
-
-# Create a dummy input file if does not exist
-[[ ! -f "${_input_file}" ]] && echo "sqladmin.com 192.168.1.1" > ${_input_file}
-
-if [[ ! -f "${_server_ip_file}" ]]; then
-  echo "Server IP file ${_server_ip_file} not found. Exiting."
-  exit 1
-fi
-
-# Get the server's own IP address from the configuration file
-_server_ip=$(cat "${_server_ip_file}" 2>/dev/null)
-
-# Function to get currently logged in SSH IPs
-_get_ssh_ips() {
-  # Use `netstat -tn` to get logged-in user IPs, filter out local sessions, and return unique, sorted IPs
-  netstat -tn | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' | sort | uniq
-}
-
-# Store SSH IPs and compute hash
-_ssh_ips=$(_get_ssh_ips)
-_ssh_ips_hash=$(echo "${_ssh_ips}" | md5sum | awk '{print $1}')
-
-# Check if the timestamp file exists before trying to read it
-if [[ -f "${_timestamp_file}" ]]; then
-  _last_mod_time=$(cat "${_timestamp_file}" 2>/dev/null || echo 0)
-else
-  _last_mod_time=0
-fi
-
-# Get the current modification time of the input file
-_current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null)
-if [[ $? -ne 0 ]]; then
-  echo "Failed to get modification time for ${_input_file}. Exiting."
-  exit 1
-fi
-
-# Check if the SSH IP hash file exists
-if [[ -f "${_ssh_ips_hash_file}" ]]; then
-  _previous_ssh_ips_hash=$(cat "${_ssh_ips_hash_file}" 2>/dev/null || echo "")
-else
-  _previous_ssh_ips_hash=""
-fi
-
-# Check if we need to update the whitelists based on file or SSH IP changes
-if [[ "${_current_mod_time}" -le "${_last_mod_time}" && "${_ssh_ips_hash}" == "${_previous_ssh_ips_hash}" ]]; then
-  echo "No changes detected in ${_input_file} or SSH IPs. Exiting."
+# Shared advisory lock so all BOA nginx-config writers (ip_access /
+# cloudflare_realip / nginx_deny / ai_policy) never overlap their
+# configtest+reload; wait up to 30s, then skip this run and retry next tick.
+exec 9>"/run/boa_nginx_config.lock" 2>/dev/null
+if ! flock -w 30 9; then
+  echo "Could not acquire the shared nginx-config lock; skipping this run."
   exit 0
 fi
 
-# Backup the current configuration files before making changes, if they exist
-if [[ -d "${_nginx_access_path}" ]]; then
-  tar -czf "${_current_backup_file}" -C "${_nginx_access_path}" .
-else
-  echo "No existing configuration directory to backup."
-fi
+# Server's own IP (optional) + currently logged-in SSH IPs (host-wide) feed every
+# context's anti-lockout allow list.
+_server_ip=""
+[[ -f "${_server_ip_file}" ]] && _server_ip=$(cat "${_server_ip_file}" 2>/dev/null)
 
-# Function to generate the IP whitelist include files per vhost
-_generate_whitelists() {
+_get_ssh_ips() {
+  # `who --ips` is unavailable on Excalibur and newer, so read currently
+  # established inbound SSH peers from netstat instead — the BOA-canonical
+  # source for logged-in IPs.  The IPv4 filter keeps a parsed-garbage token
+  # (e.g. an IPv6 peer) from ever reaching an `allow` line and breaking
+  # configtest; IPv6 SSH peers are simply not auto-allowed (IPv4 anti-lockout).
+  netstat -tn 2>/dev/null \
+    | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' \
+    | grep -E "${_ipv4_regex}" \
+    | sort -u
+}
+_ssh_ips=$(_get_ssh_ips)
+_ssh_ips_hash=$(echo "${_ssh_ips}" | md5sum | awk '{print $1}')
+
+_process_context() {
+  local _input_file="$1" _nginx_path="$2" _backup_dir="$3"
+  [[ -f "${_input_file}" ]] || return 0
+
+  local _current_backup="${_backup_dir}/.nginx_access_conf.current.bak.tar.gz"
+  local _last_good_backup="${_backup_dir}/.nginx_access_conf.last_good.bak.tar.gz"
+  local _timestamp_file="${_nginx_path}/.access_last_mod_time"
+  local _ssh_hash_file="${_nginx_path}/.ssh_ips_hash"
+
+  mkdir -p "${_nginx_path}" "${_backup_dir}"
+
+  # Change-gate: regenerate when the control file changed OR the host SSH-IP set
+  # changed (so a newly logged-in admin is added to every allow list).
+  local _current_mod_time _last_mod_time=0 _previous_ssh_hash=""
+  _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
+  [[ -f "${_timestamp_file}" ]] && _last_mod_time=$(cat "${_timestamp_file}" 2>/dev/null || echo 0)
+  [[ -f "${_ssh_hash_file}" ]] && _previous_ssh_hash=$(cat "${_ssh_hash_file}" 2>/dev/null || echo "")
+  if [[ "${_current_mod_time}" -le "${_last_mod_time}" && "${_ssh_ips_hash}" == "${_previous_ssh_hash}" ]]; then
+    return 0
+  fi
+
+  [[ -d "${_nginx_path}" ]] && tar -czf "${_current_backup}" -C "${_nginx_path}" . 2>/dev/null
+
+  # Generate per-site allow/deny fragments; track configured sites for pruning.
+  local -a _configured=()
+  local _line _site _ip _ip_sorted _frag _tmp
+  local -a _ip_list
   while IFS= read -r _line; do
-    # Skip empty lines
-    [[ -z "${_line}" ]] && continue
-
-    # Split the line into an array
+    _line="${_line%%#*}"
+    [[ -z "${_line// /}" ]] && continue
     read -ra _fields <<< "${_line}"
-
-    # The first field is the site name
-    _site_name="${_fields[0]}"
-
-    # Convert the site name to lowercase
-    _site_name=$(echo "${_site_name}" | tr '[:upper:]' '[:lower:]')
-
-    # Validate the site name
-    if [[ ! ${_site_name} =~ ${_site_name_regex} ]]; then
-      echo "Invalid site name detected: ${_site_name}. Skipping."
+    _site=$(echo "${_fields[0]}" | tr '[:upper:]' '[:lower:]')
+    if [[ ! ${_site} =~ ${_site_name_regex} ]]; then
+      echo "Invalid site name: ${_site} (${_input_file}). Skipping."
       continue
     fi
-
-    # Prepare the whitelist include file path
-    whitelist_file="${_nginx_access_path}/${_site_name}.conf"
-
-    # Collect IP addresses for this site
-    _ip_addresses="${_fields[@]:1}"
-    _ip_list=()
-
-    # Always include loopback, server's own IP, and SSH logged-in IPs
-    _ip_list+=("127.0.0.1")
+    _ip_list=("127.0.0.1")
     [[ -n "${_server_ip}" ]] && _ip_list+=("${_server_ip}")
-
-    # Add SSH IPs to the allowed list
-    for _ssh_ip in ${_ssh_ips}; do
-      _ip_list+=("${_ssh_ip}")
-    done
-
-    for _ip in ${_ip_addresses}; do
-      # Validate the IP address
+    for _ip in ${_ssh_ips}; do _ip_list+=("${_ip}"); done
+    for _ip in "${_fields[@]:1}"; do
       if [[ ${_ip} =~ ${_ipv4_regex} ]]; then
         _ip_list+=("${_ip}")
       else
-        echo "Invalid IP address format detected: ${_ip}. Skipping."
+        echo "Invalid IP: ${_ip} for ${_site} (${_input_file}). Skipping."
       fi
     done
-
-    # Remove duplicates and sort the IP list
-    _ip_list_sorted=$(printf "%s\n" "${_ip_list[@]}" | sort | uniq)
-
-    # Write the IP whitelist configuration to the file
+    _ip_sorted=$(printf "%s\n" "${_ip_list[@]}" | sort -u)
+    _frag="${_nginx_path}/${_site}.conf"
+    _tmp="${_nginx_path}/.${_site}.tmp.$$"
     {
-      for _ip in ${_ip_list_sorted}; do
-        echo "allow ${_ip};"
-      done
+      for _ip in ${_ip_sorted}; do echo "allow ${_ip};"; done
       echo "deny all;"
-    } > "$whitelist_file"
-
+    } > "${_tmp}"
+    mv -f "${_tmp}" "${_frag}"
+    _configured+=("${_site}")
   done < "${_input_file}"
+
+  # Prune fragments for sites no longer in the control file (restriction lifted).
+  local _f _base _keep _s
+  for _f in "${_nginx_path}"/*.conf; do
+    [[ -e "${_f}" ]] || continue
+    _base=$(basename "${_f}" .conf)
+    _keep=""
+    for _s in "${_configured[@]}"; do
+      [[ "${_s}" == "${_base}" ]] && _keep="yes" && break
+    done
+    if [[ -z "${_keep}" ]]; then
+      rm -f "${_f}"
+      echo "Pruned stale ip_access fragment: ${_base}.conf (${_input_file})"
+    fi
+  done
+
+  # Validate the whole host nginx config; revert THIS context on failure.
+  local _ct
+  _ct=$(service nginx configtest 2>&1)
+  if [[ $? -ne 0 ]]; then
+    echo "Nginx configtest failed after ip_access update (${_input_file}): ${_ct}"
+    if [[ -f "${_last_good_backup}" ]]; then
+      echo "Reverting ${_input_file} ip_access to last known good."
+      rm -f "${_nginx_path}"/*.conf
+      tar -xzf "${_last_good_backup}" -C "${_nginx_path}" 2>/dev/null
+      service nginx reload
+    else
+      # No last-good yet (a first run failed configtest). nginx never reloaded the
+      # bad config (configtest gates the reload), so just drop the fragments this
+      # run wrote — otherwise a bad one lingers and keeps EVERY tool's configtest
+      # failing box-wide until someone finds and fixes it.
+      echo "No last-good backup for ${_input_file}; removing just-written fragments."
+      rm -f "${_nginx_path}"/*.conf
+    fi
+    return 1
+  fi
+
+  if ! service nginx reload; then
+    echo "Nginx reload failed after ip_access update (${_input_file}); reverting."
+    if [[ -f "${_last_good_backup}" ]]; then
+      rm -f "${_nginx_path}"/*.conf
+      tar -xzf "${_last_good_backup}" -C "${_nginx_path}" 2>/dev/null
+      service nginx reload
+    fi
+    return 1
+  fi
+
+  tar -czf "${_last_good_backup}" -C "${_nginx_path}" . 2>/dev/null
+  echo "${_current_mod_time}" > "${_timestamp_file}"
+  echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
+  echo "ip_access updated (${_input_file}): ${_configured[*]:-none}; Nginx reloaded."
+  return 0
 }
 
-# Generate the IP whitelist files
-_generate_whitelists
+# Master (sqladmin) context — seed the control file if absent.
+mkdir -p /var/aegir/control/ip
+[[ ! -f /var/aegir/control/ip/access.txt ]] && echo "sqladmin.com 192.168.1.1" > /var/aegir/control/ip/access.txt
+_process_context /var/aegir/control/ip/access.txt /var/aegir/config/includes/ip_access /var/aegir/undo
 
-# Test the new Nginx configuration
-nginx_configtest=$(service nginx configtest 2>&1)
-if [[ $? -ne 0 ]]; then
-  echo "Nginx configuration test failed: $nginx_configtest"
-  echo "Reverting to the last known good configuration."
-  if [[ -f "${_last_good_backup_file}" ]]; then
-    tar -xzf "${_last_good_backup_file}" -C "${_nginx_access_path}"
-    service nginx reload
-  else
-    echo "No backup found to revert to. Manual intervention required."
-  fi
-  exit 1
-fi
+# Octopus instances. Real instances carry tools/drush; the BOA-canonical instance
+# test (see autosymlink) transparently skips every non-instance pseudo-dir
+# (arch, all, legacy, global, static, custom, …), not just 'arch' by name.
+for _root in /data/disk/*; do
+  [[ -d "${_root}" && -e "${_root}/tools/drush" ]] || continue
+  _process_context "${_root}/static/control/ip/access.txt" "${_root}/config/includes/ip_access" "${_root}/undo"
+done
 
-# Reload Nginx if the configuration test passed
-service nginx reload
-if [[ $? -ne 0 ]]; then
-  echo "Nginx reload failed. Reverting to the last known good configuration."
-  if [[ -f "${_last_good_backup_file}" ]]; then
-    tar -xzf "${_last_good_backup_file}" -C "${_nginx_access_path}"
-    service nginx reload
-  else
-    echo "No backup found to revert to. Manual intervention required."
-  fi
-  exit 1
-fi
-
-# If everything is successful, update the last known good backup
-tar -czf "${_last_good_backup_file}" -C "${_nginx_access_path}" .
-
-# Update the timestamp file and SSH IPs hash
-echo "${_current_mod_time}" > "${_timestamp_file}"
-echo "${_ssh_ips_hash}" > "${_ssh_ips_hash_file}"
-
-# Output the result
-echo "Nginx IP whitelist configuration updated and Nginx reloaded successfully."
-
+exit 0

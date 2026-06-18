@@ -121,7 +121,7 @@ if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.31.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.31.2';
   }
 }
 
