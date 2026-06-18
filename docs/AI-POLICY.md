@@ -18,19 +18,32 @@ and `ChatGPT-User` land in different classes, and "ChatGPT" alone matches nothin
 |-------|----------------|----------------|----------------|
 | Scrapers / bad bots | `$is_crawler` (pre-existing) | mass scrapers, download tools | **Hard block (444), always** |
 | AI **training** | `$is_ai_training` | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili | **Blocked (444)**; per-site opt-in to **allow** |
-| AI **search/index** | `$is_ai_search` | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot | **Allowed + rate-limited (1r/s)**; per-site opt-in to **block** |
-| AI **user** (assistant fetches a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, Perplexity-User, MistralAI-User, Meta-ExternalFetcher | **Allowed + rate-limited (2r/s)**; per-site opt-in to **block** |
-| AI **utility** | `$is_ai_utility` | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM | **Allowed + rate-limited (1r/s)**; per-site opt-in to **block** |
+| AI **search/index** | `$is_ai_search` | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
+| AI **user** (honest assistant fetch a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher | **Allowed + per-vendor aggregate rate-limit (2r/s)**; per-site opt-in to **block** |
+| AI **user — evasive** (user-triggered but ignores robots.txt and evades blocks) | `$is_ai_evasive` | Perplexity-User | **Blocked (444)**; per-site opt-in to **allow** |
+| AI **utility** | `$is_ai_utility` | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
 | **Forged** opt-out tokens | `$is_ai_forged` | Google-Extended, Applebot-Extended | **Hard block (444), always** |
 | Secret-path probes | `$is_secret_path` | `.env` `.git` `.aws` `.ssh`, `*.json` creds, `settings.py`, … | **Hard block (444), always** |
 
 The stance: block the worst offenders unconditionally, separate every real AI agent into
-a class, and make each class flippable per site. Training is opt-**in** (off by default);
-search/user/utility are opt-**out** (on by default).
+a class, and make each class flippable per site. Training and the **evasive** user-fetch
+class are opt-**in** (off by default); search / user / utility are opt-**out** (on by
+default).
 
 `Google-Extended` and `Applebot-Extended` are **robots.txt directives, not real
 crawlers** — they never appear as a live user-agent. A request carrying one as its UA is
 therefore forged and is dropped unconditionally.
+
+The **evasive** user-fetch class (`$is_ai_evasive`) is for agents that are nominally
+user-triggered but ignore `robots.txt` and, when blocked, drop their declared UA and
+rotate IPs/ASNs to slip past a UA rule — `Perplexity-User` is the current member
+(Cloudflare de-listed it as a verified bot for exactly this). It is blocked by default,
+but because the block is **by UA it is only best-effort**: once the agent abandons its UA
+it looks like an ordinary browser and the maps (fail-open) let it through. The real
+backstop for the rotating/undeclared traffic is the IDS/csf layer, not this policy — so
+do not read a block here as a hard guarantee against Perplexity. The honest user-fetchers
+(`$is_ai_user`) identify truthfully and stay allowed; the split keeps the gentle default
+for them while denying the one agent that abuses it.
 
 ## Where it lives
 
@@ -60,15 +73,26 @@ if ($is_ai_forged)   { return 444; }   # forged opt-out tokens
 set $ai_train_block $is_ai_training;    # training composite:
 if ($ai_train_allow) { set $ai_train_block ''; }   #   per-site opt-in clears it
 if ($ai_train_block) { return 444; }    #   otherwise training is blocked
+
+set $ai_evasive_block $is_ai_evasive;   # evasive user-fetch (Perplexity), same shape:
+if ($ai_evasive_allow) { set $ai_evasive_block ''; }  #  per-site opt-in clears it
+if ($ai_evasive_block) { return 444; }  #   otherwise evasive is blocked
 ```
 
 Search / user / utility have **no global guard** — they are allowed by default, so a
 per-site block is carried directly by the fragment as `if ($is_ai_search) { return 444; }`
-(and likewise for user/utility). The rate limit for those three classes is applied in
-`location /` via `limit_req zone=ai_search|ai_user|ai_utility`.
+(and likewise for user/utility). Training and evasive are the opposite: blocked by a
+global composite guard, cleared per site by `$ai_train_allow` / `$ai_evasive_allow`. The
+rate limit for the three allowed classes is applied in `location /` via
+`limit_req zone=ai_search|ai_user|ai_utility`.
 
-The rate-limit zones key on **empty-key maps** (`$ai_*_limit_key`) so only the matching
-AI class is counted — ordinary browser traffic is never charged against an AI zone.
+The rate-limit zones key on the **per-vendor** maps (`$ai_*_limit_key`): non-AI traffic
+emits an empty key (not counted), and each in-class UA emits a constant unique to its
+vendor. The zone therefore caps each vendor's **aggregate** rate across every source IP
+and vhost — the right primitive for an assistant whose single prompt fans out over many
+IPs, which a per-IP limit never catches — and gives each vendor its own bucket so one
+cannot starve another. Each `$ai_*_limit_key` roster must track the matching `$is_ai_*`
+class map; they are kept adjacent in `server.tpl.php` for that reason.
 
 ## Real client IP (realip)
 
@@ -116,6 +140,7 @@ Record format — `<site>` followed by zero or more flags:
 | Flag | Effect |
 |------|--------|
 | `train-allow` | `set $ai_train_allow 1;` — allow AI training for this site |
+| `evasive-allow` | `set $ai_evasive_allow 1;` — allow the evasive user-fetch class (Perplexity) for this site |
 | `search-block` | `if ($is_ai_search)  { return 444; }` — block AI search/index |
 | `user-block` | `if ($is_ai_user)    { return 444; }` — block AI user fetchers |
 | `utility-block` | `if ($is_ai_utility) { return 444; }` — block AI utility bots |
@@ -131,15 +156,16 @@ instance under `/data/disk/<oct>` — real instances only, identified by the BOA
 `tools/drush` marker, so the non-instance pseudo-dirs (`arch`, `all`, `legacy`, …) are
 skipped. For each instance with an activated `policy.txt` it writes one
 `config/includes/ai_policy/<site>.conf` per record — the exact path the satellite vhost
-pulls via `include $server->include_path/ai_policy/{uri}*`. `$ai_train_allow` is
-defaulted to `0` in the vhost template before that include, so a site with no record
-keeps the global defaults. Removing a record prunes its fragment on the next run.
+pulls via `include $server->include_path/ai_policy/{uri}*`. `$ai_train_allow` and
+`$ai_evasive_allow` are both defaulted to `0` in the vhost template before that include,
+so a site with no record keeps the global defaults. Removing a record prunes its fragment
+on the next run.
 
 ## Generators, lock and serials
 
 | Tool | Schedule | Writes | Serial |
 |------|----------|--------|--------|
-| `/var/xdrago/ai_policy.sh` | `*/2` | per-instance `config/includes/ai_policy/<site>.conf` | f99 |
+| `/var/xdrago/ai_policy.sh` | `*/2` | per-instance `config/includes/ai_policy/<site>.conf` | f97 |
 | `/var/xdrago/ip_access.sh` | `*/2` | per-instance `config/includes/ip_access/<site>.conf` (see [IP-ACCESS.md](IP-ACCESS.md)) | f89 |
 | `/var/xdrago/nginx_deny.sh` | `*/2` | `/data/conf/nginx_banned_ips.conf` | f99 |
 | `/var/xdrago/cloudflare_realip.sh` | daily + install | `/data/conf/nginx_cloudflare_real_ip.conf` | f99 |
@@ -160,9 +186,11 @@ test -s /data/conf/nginx_cloudflare_real_ip.conf && head -1 /data/conf/nginx_clo
 cat /data/disk/o1/config/includes/ai_policy/news.example.com.conf
 
 # class behaviour (run against a real vhost; -A sets the UA)
-curl -sS -o /dev/null -w '%{http_code}\n' -A 'GPTBot/1.1'        https://site/    # 444 (training blocked)
-curl -sS -o /dev/null -w '%{http_code}\n' -A 'OAI-SearchBot/1.0' https://site/    # 200 (search allowed)
-curl -sS -o /dev/null -w '%{http_code}\n' -A 'Google-Extended'   https://site/    # 444 (forged)
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'GPTBot/1.1'         https://site/    # 444 (training blocked)
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'OAI-SearchBot/1.0'  https://site/    # 200 (search allowed)
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'ChatGPT-User/1.0'   https://site/    # 200 (honest user fetch, per-vendor capped)
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'Perplexity-User/1.0' https://site/   # 444 (evasive, blocked by default)
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'Google-Extended'    https://site/    # 444 (forged)
 
 service nginx configtest
 ```
@@ -176,6 +204,27 @@ shared lock) on a disposable VM, see [AI-POLICY-TESTING.md](AI-POLICY-TESTING.md
   (current as of this cycle). Re-check vendor crawler docs periodically and add tokens to
   the relevant `$is_ai_*` map in `server.tpl.php`. A missing token just means that agent
   falls through to ordinary handling — fail-open, not fail-closed.
+- **Fan-out, not single fetch.** A "user" fetch is not necessarily one request: some
+  assistant agents (notably `ChatGPT-User`, and `Meta-ExternalFetcher`) expand a single
+  prompt into many requests spread across the vendor's published IP ranges. That is why
+  the user/search/utility limits are keyed **per vendor (aggregate)**, not per IP — a
+  per-IP cap never bites a distributed fan-out because each IP stays under the limit. If a
+  class feels too tight or too loose, tune `rate=`/`burst=` in `server.tpl.php`; do not
+  revert the key to `$binary_remote_addr`.
+- **UA is forgeable; verify by IP for the agents that matter.** Classification here is by
+  UA string alone, which a client can spoof. The vendors whose traffic matters publish
+  signed IP-range feeds — OpenAI `https://openai.com/chatgpt-user.json` (and `gptbot.json`
+  / `searchbot.json`), Anthropic `https://claude.com/crawling/bots.json`, Mistral
+  `https://mistral.ai/mistralai-user-ips.json`. Gating the UA match on membership of the
+  current feed (mirroring `cloudflare_realip.sh`) is the robust form and a sound phase-2;
+  it is intentionally **not** in this cut.
+- **Evasive agents defeat UA blocking.** `Perplexity-User` (the `$is_ai_evasive` class) is
+  documented to drop its declared UA and impersonate Chrome-on-macOS, rotating IPs/ASNs,
+  when blocked. Because the maps are fail-open, a block here — global or per-site — does
+  **not** reliably stop it; once it abandons its UA it is ordinary browser traffic. That
+  case belongs to the IDS/csf layer, not this policy. Note too that IP verification
+  confirms genuine OpenAI/Anthropic traffic but will **not** make Perplexity blockable by
+  IP, since it rotates outside its own published range.
 - **Amazonbot** is classified as `training`. It is a bulk crawler that feeds Amazon's
   models; if a site wants Amazon indexing, move it to `utility` or allow it per site.
 - **Secret-path breadth.** `config.json` / `key.json` are in the probe list because
