@@ -1162,7 +1162,7 @@ _commerce_7_2_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_DL_MODE}" = "GIT" ] \
+            if [ "${_DL_MODE}" = "BATCH" ] \
               && [ "${_T_BUILD}" = "SRC" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 _prepare_drupal7_core
@@ -1232,7 +1232,7 @@ _ubercart6_install() {
         true
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
-          if [ "${_DL_MODE}" = "GIT" ] \
+          if [ "${_DL_MODE}" = "BATCH" ] \
             && [ "${_T_BUILD}" = "SRC" ]; then
             cd ${_CORE}
             if [ ! -e "${_D6_CORE_DIR}" ]; then
@@ -1332,7 +1332,7 @@ _ubercart7_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_DL_MODE}" = "GIT" ] \
+            if [ "${_DL_MODE}" = "BATCH" ] \
               && [ "${_T_BUILD}" = "SRC" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 _prepare_drupal7_core
