@@ -12,16 +12,16 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 11
 
-- [Commerce 3.3.6](https://github.com/centarro/commerce-kickstart-project) (11.3.11)
+- [Commerce 3.3.6](https://drupal.org/project/commerce) (11.3.12)
 - [Drupal 11.1.10](https://drupal.org/project/drupal/releases/11.1.10)
-- [Drupal 11.2.13](https://drupal.org/project/drupal/releases/11.2.13)
-- [Drupal 11.3.11](https://drupal.org/project/drupal/releases/11.3.11)
-- [Drupal CMS 2.1.3](https://new.drupal.org/drupal-cms) (11.3.11)
-- [farmOS 4.0.2](https://drupal.org/project/farm) (11.3.11)
-- [LocalGov 4.0.3](https://drupal.org/project/localgov) (11.3.11)
-- [OpenCulturas 3.0.1](https://drupal.org/project/openculturas) (11.3.11)
-- [Thunder 8.3.1](https://drupal.org/project/thunder) (11.3.11)
-- [Varbase 10.1.0](https://drupal.org/project/varbase) (11.3.11)
+- [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
+- [Drupal 11.3.12](https://drupal.org/project/drupal/releases/11.3.12)
+- [Drupal CMS 2.1.3](https://drupal.org/project/cms) (11.3.12)
+- [farmOS 4.0.3](https://drupal.org/project/farm) (11.3.12)
+- [LocalGov 4.0.3](https://drupal.org/project/localgov) (11.3.12)
+- [OpenCulturas 3.0.2](https://drupal.org/project/openculturas) (11.3.12)
+- [Thunder 8.3.6](https://drupal.org/project/thunder) (11.3.12)
+- [Varbase 10.1.0](https://drupal.org/project/varbase) (11.3.12)
 
 ## Drupal 10
 
@@ -31,8 +31,8 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.2.12](https://drupal.org/project/drupal/releases/10.2.12)
 - [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
 - [Drupal 10.4.10](https://drupal.org/project/drupal/releases/10.4.10)
-- [Drupal 10.5.10](https://drupal.org/project/drupal/releases/10.5.10)
-- [Drupal 10.6.10](https://drupal.org/project/drupal/releases/10.6.10)
+- [Drupal 10.5.12](https://drupal.org/project/drupal/releases/10.5.12)
+- [Drupal 10.6.11](https://drupal.org/project/drupal/releases/10.6.11)
 - [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
