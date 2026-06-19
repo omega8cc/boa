@@ -1956,7 +1956,7 @@ _set_tree_vars() {
   fi
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.9.5"
+  export _rLsn="BOA-5.10.1"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="https://files.boa.io/versions/${_tRee}/boa"
