@@ -1,4 +1,263 @@
 ###
+### Stable BOA-5.10.1 PRO/LTS - AI POLICY EDITION
+### Date: Fri 19 Jun 2026 19:31:47 CEST in Warsaw
+### Enjoy AI bots on a leash and bans that bite behind Cloudflare
+### 249 commits since BOA-5.9.5
+###
+
+@=> !!! ACTION REQUIRED (CiviCRM sites): enable the CiviCRM command-file control
+
+  The *.drush.inc command-file filter introduced in BOA-5.9.5 -- which was
+  inert in that release -- now actively denies Drush command files located
+  under tenant-writable paths. CiviCRM legitimately ships its own command
+  files (civicrm.drush.inc, cv.drush.inc, civicrm_drush.drush.inc) inside the
+  site tree, so Ægir BACKEND TASKS (verify, migrate, clone) on a CiviCRM site
+  now require those files to be explicitly allowlisted. This is an opt-in, per
+  Octopus user, off by default.
+
+  To enable it for an Octopus user (requires root), create the control file:
+
+    /data/conf/<octopus-user>_civicrm.txt
+
+  (The Octopus user is derived from the backend task's $HOME under /data/disk/.)
+  When the file exists, the three CiviCRM command-file basenames are loaded
+  during backend tasks; otherwise they stay blocked.
+
+  This affects ONLY Drush command-file loading during Ægir backend tasks. It
+  does NOT change how CiviCRM sites run under PHP-FPM -- normal web requests
+  never go through Drush and are entirely unaffected. A CiviCRM site keeps
+  serving traffic normally with or without the control file. Customers on a
+  managed plan at https://omega8.cc/managed have this handled by our team.
+
+@=> AI Policy Edition
+
+  BOA-5.10.1 PRO/LTS is an edge-hardening features release. Its centrepiece is
+  a new per-class, per-site AI bot policy -- training, search, user, utility,
+  and a new "evasive" class -- backed by Cloudflare-aware real-client-IP
+  enforcement so that rate limits, bans, REMOTE_ADDR, and logs all reflect the
+  true visitor behind the CDN, web-abuse bans that bite at nginx (not only at
+  the firewall), and a guided edgetest harness for checking the whole stack on
+  a real box. It also refreshes the slate of tested/supported Drupal
+  distributions and lands the HTTP/3 trusted-host fix, clone/rename
+  certificate-grab closure, and Percona 8.4 upgrade reliability work.
+  249 commits across five repositories went into this release.
+
+  As always, this entry highlights only the most significant changes. For the
+  full picture please refer to the commit history on GitHub.
+
+@=> Security
+
+    * Per-class AI bot policy replaces the single broad $is_ai_crawler deny
+      with mutually-exclusive, full-token-matched maps. Training scrapers
+      (GPTBot, ClaudeBot, CCBot, Bytespider, Amazonbot, Meta-ExternalAgent,
+      AI2Bot, Diffbot, cohere-ai, omgili, Claude-Web, anthropic-ai) are blocked
+      by default (444); search, user, and utility classes are allowed and
+      rate-limited per vendor.
+
+    * New "evasive" class blocked by default, with a per-site evasive-allow
+      opt-in. Perplexity-User is classified here because it drops its UA and
+      rotates IPs/ASNs when blocked, which let a distributed fan-out reach the
+      origin under the old allow-by-default handling. Google-Agent (Gemini /
+      Project Mariner user-triggered browsing) is classified as an honest user
+      and allowed.
+
+    * Forged robots.txt-only opt-out tokens (Google-Extended, Applebot-Extended)
+      appearing in a request UA are treated as proof of forgery and universally
+      denied (444). Per-vendor AI rate-limit keys were re-keyed from the client
+      IP to the user-agent, so a vendor's many published IPs are capped in
+      aggregate rather than per-IP.
+
+    * Universal, anchored deny for secret/config path families (.env, .git,
+      .aws, .ssh, secrets.json, key.json, config.json, settings.py,
+      application.yml, and similar), matched on the normalized URI so
+      percent-encoded and substring evasion cannot bypass it -- blocking even a
+      plain browser UA.
+
+    * Cloudflare-aware real client IP: real_ip_header CF-Connecting-IP with a
+      BOA-managed, auto-refreshed list of Cloudflare edge ranges, so rate-limit
+      keys, REMOTE_ADDR, bans, and logs reflect the real visitor and not the
+      CDN edge. PHP REMOTE_ADDR is pinned to the original TCP peer so Drupal's
+      reverse-proxy handling cannot be fed a spoofed client address.
+
+    * The nginx IDS (scan_nginx) now scores and bans the real client IP rather
+      than the spoofable left-most X-Forwarded-For value, closing a
+      ban-evasion / innocent-IP-framing vector behind Cloudflare.
+
+    * New ban-writer mirrors BOA's CSF web-abuse bans into an nginx geo set
+      (first-guard 444), so a banned real-client IP is dropped at nginx even
+      through Cloudflare, where an origin firewall ban would otherwise only ever
+      see the CDN edge.
+
+    * Migration-proxy real-IP / IDS / CSF hybrid: during an xmass/xoct
+      migration the old host becomes a reverse proxy, so the proxy is trusted at
+      the nginx realip layer and hard-whitelisted at the CSF/lfd layer from a
+      control file; validators reject 0.0.0.0/0 and any /0 so a stray line can
+      never trust the whole internet.
+
+    * Hardened external fetches: dropped insecure curl -k (TLS is now verified)
+      and standardised ad-hoc fetches on the canonical _crlGet with --fail, so
+      an HTTP error yields an empty body instead of an error page parsed as
+      hostile CIDRs. Strict IPv4/IPv6 octet and prefix validation was added to
+      the ip_access, nginx-deny, Cloudflare-realip, and csf.allow generators;
+      a malformed-but-shape-valid token is skipped fail-closed and can no longer
+      break configtest fleet-wide.
+
+    * Drush (8-boa-micro): the *.drush.inc command-file filter (the drupal.org
+      #762138 arbitrary-code-execution guard) is fixed from a silent no-op so
+      the guard now engages on tenant-writable command files where it
+      previously did not; command-file paths are resolved with realpath()
+      before matching, and discovery is filtered by path rather than by class
+      name. This changes Drush command discovery -- see the ACTION REQUIRED
+      block above for the CiviCRM allowlist.
+
+    * Clone/rename certificate-grab closed: a renamed site (Migrate with a
+      changed machine-name) or a clone no longer inherits the source
+      machine-name's TLS certificate; the new front-end node resets Encryption
+      to disabled and detaches the old ssl_key before save.
+
+@=> New Features
+
+    * edgetest -- a guided, one-command pass/fail checker for the whole edge
+      stack (AI bot policy, Cloudflare realip, CSF->nginx web bans, per-site
+      AI/IP controls). Read-only by default; --full runs state-changing proofs
+      reverted by an idempotent trap, and --remote does cross-box ip_access
+      checks. It asserts the evasive Perplexity block and the Google-Agent
+      allow.
+
+    * Per-site AI policy subsystem (ai_policy.sh): reads each site's
+      static/control/ai/policy.txt and writes per-site nginx fragments for
+      train-allow, search/user/utility blocks, and the evasive-allow opt-in
+      across every Octopus instance, with per-class rate-limit zones.
+
+    * ip_access promoted to a single global generator across all Octopus
+      instances: per-site allow/deny fragments with anti-lockout,
+      prune-on-removal, and per-instance configtest/reload/rollback.
+
+    * cloudflare_realip and the nginx ban-writer registered as monitored tools
+      with change-gating, atomic writes, and configtest/reload/rollback; a
+      shared nginx-config reload lock serialises ip_access, cloudflare_realip,
+      nginx-deny, and ai_policy to close configtest/reload races.
+
+    * fpm_tune -- a read-only adaptive PHP-FPM sampler (pm.status, opcache/APCu
+      fill, worker memory) that changes no tuning, with a companion fpmreport
+      tool that aggregates per-version/per-pool starvation and cache-growth
+      analysis.
+
+    * PHP GEOS extension now installed by default for PHP 7.x and 8.x.
+
+@=> Improvements
+
+    * HTTP/3 trusted-host fix: an explicit HTTP_HOST is now set on the standard
+      vhost path and the SQL-admin handlers, because nginx leaves the Host
+      header empty under HTTP/3 (the authority arrives in :authority). This had
+      handed Drupal an empty HTTP_HOST, breaking trusted-host checks,
+      absolute-URL generation, and redirects.
+
+    * GoAccess-compatible logging: the host log field is now the realip-resolved
+      real client, with the full X-Forwarded-For chain preserved as a trailing
+      xff= field, so weblogx and the IDS report the real visitor.
+
+    * Fixed high-RAM PHP/APCu scaling on VS/TG nodes via one platform-
+      independent RAM->budget ladder, so a large box scales memory_limit/APCu
+      like the bare-metal path instead of being pinned at a low ceiling.
+
+    * Split the legacy proc_num_ctrl.pl Perl monitor into 12 single-task bash
+      monitors, continuing the Perl-to-Bash migration, and retired the already-
+      converted Perl monitors.
+
+    * Cloudflare realip is now activated at install time, not only via daily
+      cron, so it is live as soon as nginx reloads after a BOA up.
+      request_slowlog_timeout lowered from 90s to 10s for more useful slow-
+      request debugging.
+
+    * Pruned overlapping AI substrings out of $is_crawler so AI traffic is
+      governed solely by the per-class maps and stays togglable per-site.
+
+@=> Changes and Upgrades
+
+    * AI training default policy is now BLOCK by default with a per-site opt-in
+      to allow; search/user/utility allowed by default. (This inverts the
+      original allow-by-default behaviour -- see the per-site control file.)
+
+    * Clone/rename Encryption auto-disable is now intentional and documented:
+      the back end drops ssl_enabled/ssl_key before the final verify on both
+      clone and rename; the hostmaster site is skipped, and a same-name migrate
+      is unaffected. Re-enable Encryption deliberately if the new domain should
+      serve TLS; stale per-site Let's Encrypt control files are cleaned up so a
+      later re-enable starts clean.
+
+    * Percona 8.4 in-place upgrade reliability: mysqld is restarted
+      unconditionally after writing startup-only directives so
+      mysql_native_password=ON loads and root can connect; directive sync is
+      decoupled from innodb sizing to kill an unbounded recursion on fresh /
+      SAME=NO installs; a down mysqld is started rather than waited on forever.
+
+    * ICU is now configurable via _ICU_FORCE_VRN in /root/.barracuda.cnf, with
+      apply/precheck/retire handling and an autoupboa weekly auto-heal for
+      PHP 7.4 intl after a system ICU bump. Off by default; see docs/ICU-PIN.md.
+
+    * Operator control markers relocated from /root to /etc/boa via a guard-once
+      auto-migrator, with runtime state/exit logs under /var/log/boa.
+      Security-gate files (.allow.any.virt.cnf and the lshell overrides) stay in
+      /root deliberately.
+
+    * resolvconf removed (no longer needed); AUTO defaults set to 6/6.
+
+    * Component bumps: Nginx 1.31.2, OpenSSL 3.5.7 LTS, PHP APCu 5.1.28,
+      Apache Solr 9.10.1, PHP GEOS 1.0.0 (now default on 7.x/8.x), Commerce
+      Kickstart 3.3.6. Composer rolled back to 2.8.2 (from 2.10.1). Drush
+      bundled 8.5.3; the Drush 10.6.2 and 11.6.0 pins de-suffixed to sync with
+      real versions and avoid a forced upgrade.
+
+    * Supported/tested Drupal distros refreshed: dropped legacy Varbase 9 and
+      the unstable Sector distro. Current set includes Drupal CMS 2.1.3
+      (D11.3.12), OpenCulturas 3.0.2, Commerce Kickstart 3.3.6, LocalGov 4.0.3,
+      Thunder 8.3.6, Varbase 10.1.0, and vanilla cores 10.2.12, 10.3.14,
+      10.4.10, 10.5.12, 10.6.11, 11.1.10, 11.2.14, 11.3.12.
+
+@=> Important Fixes
+
+    * multiback backups: the earlier "hide credentials" change broke duplicity
+      (the B2 backend has no key env var, and the boto3/S3 endpoint form
+      mis-parsed for some providers, risking writes to the wrong bucket). The
+      in-URL credential form was restored and the updater serial bumped so
+      nodes re-fetch.
+
+    * Restored 755 on /usr/bin/mysqldump and /usr/bin/rsync, which had been left
+      750 root:root so the unprivileged aegir user could not run them and
+      Octopus/Ægir backups failed with "mysqldump: Permission denied".
+
+    * Restored the $is_ai_crawler map as a do-not-remove backward-compat shim:
+      a barracuda upgrade re-renders the master http config before instance
+      vhosts, so a not-yet-re-rendered vhost referencing the removed variable
+      caused an nginx -t failure that took every instance down until re-rendered.
+
+    * ip_access out-of-range octet typos no longer reach an allow line and block
+      nginx reloads box-wide; a failed first run with no last-good backup now
+      removes its own fragments.
+
+    * Multiple BOA.sh.txt fNN serial corrections after the down-counting rule
+      was violated, so deployed boxes actually re-fetch the corrected scripts.
+
+    * edgetest false-FAIL fixes: settle the async nginx reload before
+      toggle/ban probes, default to HTTP and switch to HTTPS only on an enforced
+      redirect, and classify 5xx/403 as inconclusive.
+
+@=> New Documentation
+
+    * AI bot control, per site:
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md
+    * AI bot policy, per-server overview:
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md
+    * AI bot policy and edge testing (edgetest):
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md
+    * IP access control, per site:
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md
+    * IP access control, per-server overview:
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md
+
+
+###
 ### Stable BOA-5.9.5 PRO/LTS - SECURITY AUDIT EDITION
 ### Date: Fri 05 Jun 2026 23:33:00 CEST in Warsaw
 ### Enjoy Hardened Foundations & Excalibur Readiness
