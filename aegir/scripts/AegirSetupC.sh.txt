@@ -893,9 +893,9 @@ declare -A _distros_versions=(
   ["CK3"]="3.3.6"
   ["DXP"]="10.3.0"
   ["EZC"]="2.2.15"
-  ["FOS"]="4.0.2"
+  ["FOS"]="4.0.3"
   ["LGV"]="4.0.3"
-  ["OCS"]="3.0.1"
+  ["OCS"]="3.0.2"
   ["OFD"]="12.2.4"
   ["OLS"]="2.0.0"
   ["OPG"]="3.1.0"
@@ -1162,7 +1162,7 @@ _commerce_7_2_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_DL_MODE}" = "GIT" ] \
+            if [ "${_DL_MODE}" = "BATCH" ] \
               && [ "${_T_BUILD}" = "SRC" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 _prepare_drupal7_core
@@ -1232,7 +1232,7 @@ _ubercart6_install() {
         true
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
-          if [ "${_DL_MODE}" = "GIT" ] \
+          if [ "${_DL_MODE}" = "BATCH" ] \
             && [ "${_T_BUILD}" = "SRC" ]; then
             cd ${_CORE}
             if [ ! -e "${_D6_CORE_DIR}" ]; then
@@ -1332,7 +1332,7 @@ _ubercart7_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_DL_MODE}" = "GIT" ] \
+            if [ "${_DL_MODE}" = "BATCH" ] \
               && [ "${_T_BUILD}" = "SRC" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 _prepare_drupal7_core
