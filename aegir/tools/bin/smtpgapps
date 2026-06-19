@@ -7,8 +7,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=595ltsT03
+export _tRee=dev
+export _xSrl=5101devT01
 
 ###
 ### Avoid too many questions
