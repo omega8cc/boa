@@ -1042,9 +1042,9 @@ _NGINX_DOS_LOG=SILENT
 _NGINX_DOS_IGNORE="doccomment"
 
 ###
-### Increases the counter +5 when the keyword is
-### detected in the access.log -- can use regex
-### like _NGINX_DOS_STOP="foo|bar|etc"
+### Adds the full _NGINX_DOS_LIMIT to the IP counter (an immediate
+### ban) when a request line matches this regex in the access.log --
+### the default catches blind-timing and encoded SQL-injection probes
 ###
 _NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 
