@@ -191,10 +191,16 @@ _NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 # ...) send bursty signed retries; an occasional backend 4xx/5xx or the
 # self-inflicted 444 must never let scan_nginx ban the provider's rotating IP
 # pool. Backend HMAC + a per-endpoint nginx limit_req are the right controls for
-# these, not the cross-path IDS. Add your own webhook/API routes (e.g. a SaaS
-# /graphql or /oauth2) here per box. Add paths WITHOUT a trailing slash
-# (/shopify/webhook, not /shopify/webhook/). Empty disables. Override in /root/.barracuda.cnf.
-_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook"
+# these, not the cross-path IDS. The default also exempts the common
+# token/HMAC-authenticated API roots (/graphql, /public-api, /oauth2): a
+# non-Drupal SaaS on this box drives heavy bursts to these from a single client
+# or a rotating pool, and the cross-path IDS must never IP-ban an
+# app-authenticated API client. Shipping them in the default (not only the
+# per-box override) keeps the exemption working even if /root/.barracuda.cnf is
+# regenerated. Add your own site-specific routes here per box. Add paths WITHOUT
+# a trailing slash (/shopify/webhook, not /shopify/webhook/). Empty disables.
+# Override (replaces this list) in /root/.barracuda.cnf.
+_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2"
 
 # ==============================
 # Load Configuration File
@@ -537,7 +543,11 @@ _if_increment_counters() {
 # is scored, not exempted). Called at loop scope so it skips ALL three scorers.
 _is_ignored_request() {
   [[ -n "${_NGINX_DOS_IGNORE_PATHS}" ]] || return 1
-  local _line="$1" _after _req _uri _p
+  # Force a whitespace IFS locally. This script runs under a global IFS=$'\n\t'
+  # (top of file), which has NO space -- so the space-separated
+  # _NGINX_DOS_IGNORE_PATHS loop below would not split, collapse to a single
+  # token, match nothing, and silently exempt nothing (every request scored).
+  local _line="$1" _after _req _uri _p IFS=$' \t\n'
   _after="${_line#*\"*\"}"        # drop the leading "IP-chain" quoted field
   _req="${_after#*\"}"            # advance to the opening quote of $request
   _req="${_req%%\"*}"            # _req = METHOD URI PROTO
