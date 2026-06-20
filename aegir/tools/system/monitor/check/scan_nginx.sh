@@ -294,14 +294,14 @@ declare -A _UA_IP_LIST
 declare -A _UA_IP_REQS
 
 # Path-flood / search-amplification detection arrays
-# Tracks 200-response traffic to expensive path prefixes across all IPs.
+# Tracks 200 and 444 response traffic to expensive path prefixes across all IPs.
 # Catches distributed botnets where no single IP exceeds per-IP rate limits.
 #
-# _PATH_REQ_COUNT[prefix]    = total 200-response requests to this path prefix
-# _PATH_IP_COUNT[prefix]     = distinct real IPs hitting this path prefix (200 only)
-# _PATH_IP_SET[prefix:ip]    = sentinel: IP seen on this path prefix with 200
+# _PATH_REQ_COUNT[prefix]    = total 200 and 444 responses to this path prefix
+# _PATH_IP_COUNT[prefix]     = distinct real IPs hitting this path prefix (200 and 444)
+# _PATH_IP_SET[prefix:ip]    = sentinel: IP seen on this path prefix with 200 or 444
 # _PATH_IP_LIST[prefix]      = space-separated list of contributing IPs
-# _PATH_IP_REQS[prefix:ip]   = per-(prefix, IP) request count
+# _PATH_IP_REQS[prefix:ip]   = per-(prefix, IP) request count (200 and 444)
 # _PATH_SLOW_COUNT[prefix]   = requests with upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS
 declare -A _PATH_REQ_COUNT
 declare -A _PATH_IP_COUNT
@@ -319,7 +319,7 @@ declare -A _PATH_SLOW_COUNT
 if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
   declare -p _BANNED_IPS _ALLOWED_IPS _LOGGED_IN_IPS _COUNTERS _LI_CNT _PX_CNT
   declare -p _UA_IP_COUNT _UA_REQ_COUNT _UA_IP_SET _UA_IP_LIST _UA_IP_REQS
-  declare -p _PATH_REQ_COUNT _PATH_IP_COUNT _PATH_IP_SET _PATH_IP_LIST _PATH_IP_REQS _PATH_SLOW_COUNT
+  declare -p _PATH_REQ_COUNT _PATH_IP_COUNT _PATH_IP_SET _PATH_IP_LIST _PATH_IP_REQS _PATH_IP_200_REQS _PATH_SLOW_COUNT
   echo "DEBUG: Associative arrays declared (DoS + DDoS + path-flood sets)."
 fi
 
@@ -979,7 +979,12 @@ _handle_path_flood_blocking() {
     for _IP in ${_PATH_IP_LIST["${_PREFIX}"]}; do
       IFS="${_SAVE_IFS}"
       _PATH_IP_KEY="${_PREFIX}:${_IP}"
-      _ip_reqs="${_PATH_IP_REQS["${_PATH_IP_KEY}"]:-0}"
+      # Gate on backend-reaching 200s only (_PATH_IP_200_REQS): an IP that
+      # received only 444s is already free-blocked by Nginx's map at zero
+      # backend cost, so csf -td'ing it is redundant and would only bloat
+      # web.log during distributed floods. The flood is still detected and
+      # reported in aggregate above (200 and 444 both count toward that).
+      _ip_reqs="${_PATH_IP_200_REQS["${_PATH_IP_KEY}"]:-0}"
 
       if (( _ip_reqs < _NGINX_PATH_FLOOD_IP_MIN_REQS )); then
         continue
