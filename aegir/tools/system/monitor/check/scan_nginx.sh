@@ -230,11 +230,23 @@ if ! [[ "${_NGINX_DOS_444_WEIGHT:-}" =~ ^[0-9]+$ ]]; then
   _NGINX_DOS_444_WEIGHT=$(( _NGINX_DOS_LIMIT / 3 ))
 fi
 
+# Weight added for a *.php request-path that 404s on a Drupal docroot. Drupal
+# (and Backdrop) routes everything through index.php; the vhost catch-all
+# returns 404 for any non-entry *.php, so a *.php 404 is never a real page,
+# only a webshell / arbitrary-PHP probe (shell.php, c99.php, wp-load.php).
+# LIMIT/3 bans an IP after ~3 probe hits, while a single stale .php link from a
+# real visitor (one hit) stays below _MININUMBER and never bans. Preserves an
+# explicit override (including 0 to disable) from /root/.barracuda.cnf.
+if ! [[ "${_NGINX_PHP_PROBE_WEIGHT:-}" =~ ^[0-9]+$ ]]; then
+  _NGINX_PHP_PROBE_WEIGHT=$(( _NGINX_DOS_LIMIT / 3 ))
+fi
+
 echo "CONFIG: _NGINX_DOS_LIMIT is ${_NGINX_DOS_LIMIT}"
 echo "CONFIG: _NGINX_DOS_LINES is ${_NGINX_DOS_LINES}"
 echo "CONFIG: _INC_NR is ${_INC_NR}"
 echo "CONFIG: _INC_S_NR is ${_INC_S_NR}"
 echo "CONFIG: _NGINX_DOS_444_WEIGHT is ${_NGINX_DOS_444_WEIGHT}"
+echo "CONFIG: _NGINX_PHP_PROBE_WEIGHT is ${_NGINX_PHP_PROBE_WEIGHT}"
 
 # ==============================
 # Declare Associative Arrays
@@ -478,6 +490,22 @@ _if_increment_counters() {
   if [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
+  fi
+  # Webshell / arbitrary-PHP probe: a *.php request PATH that 404s on a Drupal
+  # docroot is never a real page (Drupal/Backdrop route via index.php; the vhost
+  # catch-all returns 404 for any non-entry *.php). Weight heavily (~LIMIT/3) so a
+  # scanner bans in ~3 hits, but a single stale .php link from a real visitor (one
+  # hit) scores below _MININUMBER and never bans. The .php must be in the request
+  # path (char class stops at ? and whitespace) so query-string/referer/UA .php do
+  # not match. Genuine entry points are excluded: index/update/install/cron/
+  # xmlrpc/authorize/restore/rebuild plus boost_stats/rtoc/js (the last three can
+  # legitimately 404 for bots via the is_bot guard in their vhost location).
+  if [[ ${_NGINX_PHP_PROBE_WEIGHT:-0} -gt 0 \
+      && "${_line}" =~ \"\ 404\  \
+      && "${_line}" =~ (GET|HEAD|POST)\ /[^\"?[:space:]]*\.php([?/\ ]|\") \
+      && ! "${_line}" =~ /(index|update|install|cron|xmlrpc|authorize|restore|rebuild|boost_stats|rtoc|js)\.php ]]; then
+    (( _COUNTERS["${_IP}"] += _NGINX_PHP_PROBE_WEIGHT ))
+    _verbose_log "Counter+=${_NGINX_PHP_PROBE_WEIGHT} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "php-probe flood protection"
   fi
   if [[ "${_line}" =~ (POST|GET)\ /user/login ]]; then
     (( _COUNTERS["${_IP}"] += _INC_S_NR ))
