@@ -543,7 +543,11 @@ _if_increment_counters() {
 # is scored, not exempted). Called at loop scope so it skips ALL three scorers.
 _is_ignored_request() {
   [[ -n "${_NGINX_DOS_IGNORE_PATHS}" ]] || return 1
-  local _line="$1" _after _req _uri _p
+  # Force a whitespace IFS locally. This script runs under a global IFS=$'\n\t'
+  # (top of file), which has NO space -- so the space-separated
+  # _NGINX_DOS_IGNORE_PATHS loop below would not split, collapse to a single
+  # token, match nothing, and silently exempt nothing (every request scored).
+  local _line="$1" _after _req _uri _p IFS=$' \t\n'
   _after="${_line#*\"*\"}"        # drop the leading "IP-chain" quoted field
   _req="${_after#*\"}"            # advance to the opening quote of $request
   _req="${_req%%\"*}"            # _req = METHOD URI PROTO
