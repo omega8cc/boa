@@ -182,6 +182,20 @@ _NGINX_DOS_IGNORE="doccomment"
 # Default DoS keywords (empty by default; 'foobar' will be used if not overridden)
 _NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 
+# Endpoints exempt from ALL IDS scoring (per-IP, UA-aggregate, path-flood).
+# Space-separated leading-slash paths. Each matches that exact path and any
+# sub-path under it, compared against the REAL request URI only -- parsed from
+# the $request log field, query stripped, traversal (..) rejected -- so a token
+# placed in a User-Agent, Referer, or query string can NEVER launder an
+# exemption. Legit machine webhooks (Shopify-Captain-Hook, QuickBooks, Stripe,
+# ...) send bursty signed retries; an occasional backend 4xx/5xx or the
+# self-inflicted 444 must never let scan_nginx ban the provider's rotating IP
+# pool. Backend HMAC + a per-endpoint nginx limit_req are the right controls for
+# these, not the cross-path IDS. Add your own webhook/API routes (e.g. a SaaS
+# /graphql or /oauth2) here per box. Add paths WITHOUT a trailing slash
+# (/shopify/webhook, not /shopify/webhook/). Empty disables. Override in /root/.barracuda.cnf.
+_NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook"
+
 # ==============================
 # Load Configuration File
 # ==============================
@@ -511,6 +525,42 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_S_NR ))
     _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
   fi
+}
+
+# Return 0 if a log line targets a configured _NGINX_DOS_IGNORE_PATHS endpoint.
+# The match is against the REAL request URI parsed out of the line's $request
+# field only -- NOT a substring search over the whole line -- so a webhook/API
+# token smuggled into a User-Agent, Referer, or query string cannot launder an
+# exemption (that was the fatal flaw of a naive whole-line match). The query
+# string is stripped and any URI containing ".." is refused, so a sub-path
+# prefix can't smuggle a traversal target (e.g. /shopify/webhook/../wp-login.php
+# is scored, not exempted). Called at loop scope so it skips ALL three scorers.
+_is_ignored_request() {
+  [[ -n "${_NGINX_DOS_IGNORE_PATHS}" ]] || return 1
+  local _line="$1" _after _req _uri _p
+  _after="${_line#*\"*\"}"        # drop the leading "IP-chain" quoted field
+  _req="${_after#*\"}"            # advance to the opening quote of $request
+  _req="${_req%%\"*}"            # _req = METHOD URI PROTO
+  # Require a full "METHOD /path HTTP/x" shape -- not just "METHOD /...". This is
+  # defence-in-depth for the positional parse: it self-validates that field 2 is
+  # a genuine request line rather than relying solely on the (true) invariant
+  # that nginx escapes literal quotes in the $host/header fields ahead of it, so
+  # a forged "POST /shopify/webhook ..." in any earlier field can't impersonate
+  # the request token.
+  case "${_req}" in [A-Z]*" /"*" HTTP/"[0-9]*) : ;; *) return 1 ;; esac
+  _uri="${_req#* }"              # strip METHOD
+  _uri="${_uri%% *}"            # strip PROTO
+  _uri="${_uri%%\?*}"          # strip query string
+  # Absolute path, no literal traversal, and no percent-encoding: $request is the
+  # RAW (un-normalized) request line, so an encoded traversal like
+  # /shopify/webhook/%2e%2e/wp-login.php would prefix-match an exempt path yet
+  # nginx serves it as /wp-login.php. Exempt endpoints never need %-encoding, so
+  # refuse any so a clean glob match is the only way in.
+  [[ "${_uri}" == /* && "${_uri}" != *".."* && "${_uri}" != *%* ]] || return 1
+  for _p in ${_NGINX_DOS_IGNORE_PATHS}; do
+    [[ "${_uri}" == "${_p}" || "${_uri}" == "${_p}"/* ]] && return 0
+  done
+  return 1
 }
 
 # Function to process each IP
@@ -1157,6 +1207,14 @@ while IFS= read -r _line <&3; do
   [[ "${_line}" =~ files\.o8\.io ]] && continue
   [[ "${_line}" =~ files\.host8\.biz ]] && continue
   [[ "${_line}" =~ files\.aegir\.cc ]] && continue
+
+  # Skip configured webhook / API endpoints (_NGINX_DOS_IGNORE_PATHS). Parsed
+  # from the real $request URI, not the whole line, so it cannot be laundered via
+  # a spoofed UA/Referer/query. At loop scope so it exempts ALL three scorers
+  # (per-IP _process_ip, UA-aggregate _track_ua_ip, path-flood _track_path_flood)
+  # -- a per-IP-only skip would miss the UA-aggregate ban on a provider's
+  # rotating IP pool.
+  _is_ignored_request "${_line}" && continue
 
   # Process the real visitor IP (if determined)
   if [[ -n "${_REAL_IP}" ]]; then
