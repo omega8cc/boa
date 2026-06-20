@@ -106,12 +106,12 @@ _NGINX_MIN_BLOCK_REQS=3
 
 # ---- Path-flood / search-amplification detection ----
 # Distributed botnets send one request per IP so per-IP rate limits never
-# fire. This module tracks total 200-response traffic to expensive path
+# fire. This module tracks total 200 and 444 response traffic to expensive path
 # prefixes across *all* IPs and blocks every participant once the path is
 # declared under flood. Designed specifically for Solr/Elasticsearch search
 # amplification attacks that bypass Nginx 444 rules by adding a Referer.
 
-# Minimum distinct IPs hitting the same path prefix (200 responses only)
+# Minimum distinct IPs hitting the same path prefix (200 and 444 responses)
 # within the scan window before a path flood is declared.
 # Set to 5 rather than a higher value: the Chrome/131 subgroup of this botnet
 # sends exactly 3-5 requests per scan window, staying under a threshold of 10
@@ -120,7 +120,7 @@ _NGINX_MIN_BLOCK_REQS=3
 # `_handle_path_flood_blocking` fires on legitimate traffic peaks.
 _NGINX_PATH_FLOOD_IP_THRESHOLD=5
 
-# Minimum total 200-response requests to the same path prefix in the window.
+# Minimum total 200 and 444 responses to the same path prefix in the window.
 _NGINX_PATH_FLOOD_REQ_THRESHOLD=15
 
 # Upstream response time (whole seconds) above which a request is considered
@@ -128,11 +128,14 @@ _NGINX_PATH_FLOOD_REQ_THRESHOLD=15
 # get an extra per-IP counter increment on top of normal scoring.
 _NGINX_PATH_FLOOD_SLOW_SECS=3
 
-# Per-(path-prefix, IP) minimum request count before that IP is added to the
-# block list during a path-flood event.  Applies to all response types (200
-# and 444).  Set high enough to avoid blocking single-request botnet IPs that
-# Nginx already 444s for free; only persistent IPs (making many requests within
-# one scan window) warrant a csf -td entry.  Set to 1 to block every participant.
+# Per-(path-prefix, IP) minimum 200-response count before that IP is added to
+# the block list during a path-flood event.  Applies to 200-responses only --
+# backend-reaching requests counted via _PATH_IP_200_REQS; a prefix's 444-only
+# IPs are not counted toward this gate, since Nginx's map already free-blocks
+# them at zero backend cost.  Set high enough to avoid blocking IPs that sent
+# only a few backend-reaching requests; only persistent IPs (making many 200s
+# within one scan window) warrant a csf -td entry.  Set to 1 to block every
+# 200-sending participant.
 _NGINX_PATH_FLOOD_IP_MIN_REQS=10
 
 # Extra counter weight added for each confirmed 444 on a watched attack path
@@ -294,14 +297,14 @@ declare -A _UA_IP_LIST
 declare -A _UA_IP_REQS
 
 # Path-flood / search-amplification detection arrays
-# Tracks 200-response traffic to expensive path prefixes across all IPs.
+# Tracks 200 and 444 response traffic to expensive path prefixes across all IPs.
 # Catches distributed botnets where no single IP exceeds per-IP rate limits.
 #
-# _PATH_REQ_COUNT[prefix]    = total 200-response requests to this path prefix
-# _PATH_IP_COUNT[prefix]     = distinct real IPs hitting this path prefix (200 only)
-# _PATH_IP_SET[prefix:ip]    = sentinel: IP seen on this path prefix with 200
+# _PATH_REQ_COUNT[prefix]    = total 200 and 444 responses to this path prefix
+# _PATH_IP_COUNT[prefix]     = distinct real IPs hitting this path prefix (200 and 444)
+# _PATH_IP_SET[prefix:ip]    = sentinel: IP seen on this path prefix with 200 or 444
 # _PATH_IP_LIST[prefix]      = space-separated list of contributing IPs
-# _PATH_IP_REQS[prefix:ip]   = per-(prefix, IP) request count
+# _PATH_IP_REQS[prefix:ip]   = per-(prefix, IP) request count (200 and 444)
 # _PATH_SLOW_COUNT[prefix]   = requests with upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS
 declare -A _PATH_REQ_COUNT
 declare -A _PATH_IP_COUNT
@@ -319,7 +322,7 @@ declare -A _PATH_SLOW_COUNT
 if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
   declare -p _BANNED_IPS _ALLOWED_IPS _LOGGED_IN_IPS _COUNTERS _LI_CNT _PX_CNT
   declare -p _UA_IP_COUNT _UA_REQ_COUNT _UA_IP_SET _UA_IP_LIST _UA_IP_REQS
-  declare -p _PATH_REQ_COUNT _PATH_IP_COUNT _PATH_IP_SET _PATH_IP_LIST _PATH_IP_REQS _PATH_SLOW_COUNT
+  declare -p _PATH_REQ_COUNT _PATH_IP_COUNT _PATH_IP_SET _PATH_IP_LIST _PATH_IP_REQS _PATH_IP_200_REQS _PATH_SLOW_COUNT
   echo "DEBUG: Associative arrays declared (DoS + DDoS + path-flood sets)."
 fi
 
@@ -979,7 +982,12 @@ _handle_path_flood_blocking() {
     for _IP in ${_PATH_IP_LIST["${_PREFIX}"]}; do
       IFS="${_SAVE_IFS}"
       _PATH_IP_KEY="${_PREFIX}:${_IP}"
-      _ip_reqs="${_PATH_IP_REQS["${_PATH_IP_KEY}"]:-0}"
+      # Gate on backend-reaching 200s only (_PATH_IP_200_REQS): an IP that
+      # received only 444s is already free-blocked by Nginx's map at zero
+      # backend cost, so csf -td'ing it is redundant and would only bloat
+      # web.log during distributed floods. The flood is still detected and
+      # reported in aggregate above (200 and 444 both count toward that).
+      _ip_reqs="${_PATH_IP_200_REQS["${_PATH_IP_KEY}"]:-0}"
 
       if (( _ip_reqs < _NGINX_PATH_FLOOD_IP_MIN_REQS )); then
         continue
