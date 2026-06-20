@@ -111,7 +111,7 @@ _NGINX_MIN_BLOCK_REQS=3
 # declared under flood. Designed specifically for Solr/Elasticsearch search
 # amplification attacks that bypass Nginx 444 rules by adding a Referer.
 
-# Minimum distinct IPs hitting the same path prefix (200 responses only)
+# Minimum distinct IPs hitting the same path prefix (200 and 444 responses)
 # within the scan window before a path flood is declared.
 # Set to 5 rather than a higher value: the Chrome/131 subgroup of this botnet
 # sends exactly 3-5 requests per scan window, staying under a threshold of 10
@@ -120,7 +120,7 @@ _NGINX_MIN_BLOCK_REQS=3
 # `_handle_path_flood_blocking` fires on legitimate traffic peaks.
 _NGINX_PATH_FLOOD_IP_THRESHOLD=5
 
-# Minimum total 200-response requests to the same path prefix in the window.
+# Minimum total 200 and 444 responses to the same path prefix in the window.
 _NGINX_PATH_FLOOD_REQ_THRESHOLD=15
 
 # Upstream response time (whole seconds) above which a request is considered
@@ -128,11 +128,14 @@ _NGINX_PATH_FLOOD_REQ_THRESHOLD=15
 # get an extra per-IP counter increment on top of normal scoring.
 _NGINX_PATH_FLOOD_SLOW_SECS=3
 
-# Per-(path-prefix, IP) minimum request count before that IP is added to the
-# block list during a path-flood event.  Applies to all response types (200
-# and 444).  Set high enough to avoid blocking single-request botnet IPs that
-# Nginx already 444s for free; only persistent IPs (making many requests within
-# one scan window) warrant a csf -td entry.  Set to 1 to block every participant.
+# Per-(path-prefix, IP) minimum 200-response count before that IP is added to
+# the block list during a path-flood event.  Applies to 200-responses only --
+# backend-reaching requests counted via _PATH_IP_200_REQS; a prefix's 444-only
+# IPs are not counted toward this gate, since Nginx's map already free-blocks
+# them at zero backend cost.  Set high enough to avoid blocking IPs that sent
+# only a few backend-reaching requests; only persistent IPs (making many 200s
+# within one scan window) warrant a csf -td entry.  Set to 1 to block every
+# 200-sending participant.
 _NGINX_PATH_FLOOD_IP_MIN_REQS=10
 
 # Extra counter weight added for each confirmed 444 on a watched attack path
