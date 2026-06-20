@@ -106,7 +106,7 @@ _NGINX_MIN_BLOCK_REQS=3
 
 # ---- Path-flood / search-amplification detection ----
 # Distributed botnets send one request per IP so per-IP rate limits never
-# fire. This module tracks total 200-response traffic to expensive path
+# fire. This module tracks total 200 and 444 response traffic to expensive path
 # prefixes across *all* IPs and blocks every participant once the path is
 # declared under flood. Designed specifically for Solr/Elasticsearch search
 # amplification attacks that bypass Nginx 444 rules by adding a Referer.
