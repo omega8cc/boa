@@ -354,22 +354,60 @@ _load_control() {
     fi
   fi
 
-  # Decide whether to run _proc_control
-  if [ "${_skip_proc_control}" = false ]; then
-    _proc_control
+  # _proc_control is invoked by the main loop on the heavy fan-out cadence,
+  # gated by _skip_proc_control (set true above when load limits were exceeded).
+}
+
+###
+### Classify the box so the heavy fan-out can be throttled on the small/idle/CI
+### hosts where it dominates idle load, while normal production hosts keep the
+### historical every-pass cadence. Same signals other BOA cron paths honor.
+###
+_monitor_box_class() {
+  local _ram_mb
+  _ram_mb="$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')"
+  _ram_mb="${_ram_mb//[^0-9]/}"
+  if [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
+    _BOX_CLASS=CI
+  elif [ -e "/root/.fast.cron.cnf" ] || [ -e "/root/.force.queue.runner.cnf" ]; then
+    _BOX_CLASS=NORMAL
+  elif [ -e "/root/.slow.cron.cnf" ] \
+    || { [ -n "${_ram_mb}" ] && [ "${_ram_mb}" -le 4096 ]; }; then
+    _BOX_CLASS=SLOW
   else
-    echo "Limits exceeded; skipping process control."
+    _BOX_CLASS=NORMAL
   fi
 }
+
+# Decide the heavy fan-out cadence. The 10x/5s loop is kept so load sampling and
+# auto-pause stay responsive (cheap), but the expensive part — the watchdog
+# fan-out (_proc_control) and the hack/escape scanners — runs only every Nth
+# pass: every pass on NORMAL (unchanged), every 4th on SLOW, once/minute on CI.
+# Overridable from .barracuda.cnf via _MONITOR_HEAVY_EVERY.
+_monitor_box_class
+case "${_BOX_CLASS}" in
+  CI)   _HEAVY_EVERY=10 ;;
+  SLOW) _HEAVY_EVERY=4  ;;
+  *)    _HEAVY_EVERY=1  ;;
+esac
+[[ "${_MONITOR_HEAVY_EVERY}" =~ ^[0-9]+$ ]] && _HEAVY_EVERY="${_MONITOR_HEAVY_EVERY}"
+(( _HEAVY_EVERY < 1 )) && _HEAVY_EVERY=1
 
 # Main execution
 for _iteration in {1..10}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   _load_control
-  nohup ${_monPath}/hackcheck.sh > /dev/null 2>&1 &
-  nohup ${_monPath}/hackftp.sh > /dev/null 2>&1 &
-  nohup ${_monPath}/escapecheck.sh > /dev/null 2>&1 &
+  if (( (_iteration - 1) % _HEAVY_EVERY == 0 )); then
+    if [ "${_skip_proc_control}" = false ]; then
+      _proc_control
+    else
+      echo "Limits exceeded; skipping process control."
+    fi
+    nohup ${_monPath}/hackcheck.sh > /dev/null 2>&1 &
+    nohup ${_monPath}/hackftp.sh > /dev/null 2>&1 &
+    nohup ${_monPath}/escapecheck.sh > /dev/null 2>&1 &
+  fi
   sleep 5
 done
 

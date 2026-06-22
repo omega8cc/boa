@@ -1383,6 +1383,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f99 --guard /local/bin/dhcpfix
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
   _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f01 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
+  _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/tools/bin/loadreport" f01 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
   _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f94 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
 
@@ -1448,8 +1449,8 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f91
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f91 --guard mysql_cluster_backup.sh
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f82
-    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f90
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f98
+    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f89
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f97
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f89
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
@@ -3542,6 +3543,7 @@ _update_boa_tools() {
             fpmreport \
             killer \
             loadguard \
+            loadreport \
             lock.inc \
             memorytuner \
             mergecsf \
@@ -3652,6 +3654,10 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/fpmreport ${_usrBin}/fpmreport
   fi
 
+  if [ ! -e "${_usrBin}/loadreport" ] && [ -e "${_optBin}/loadreport" ]; then
+    ln -sfn ${_optBin}/loadreport ${_usrBin}/loadreport
+  fi
+
   echo "=== BOA executables permissions setup ==="
   echo "Last updated: $(date)"
   echo "Groups are organized by function."
@@ -3667,7 +3673,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{loadguard,lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{fpmreport,memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
+  chmod 700 ${_optBin}/{fpmreport,loadreport,memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps}

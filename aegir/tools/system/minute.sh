@@ -107,6 +107,29 @@ _launch_auto_healing() {
   nohup /var/xdrago/monitor/check/java.sh > /dev/null 2>&1 &
 }
 
+###
+### Classify the box so the per-minute monitor fan-out can be throttled on the
+### small/idle/CI hosts where it is the dominant idle-load source, while normal
+### production hosts keep the historical cadence unchanged. Reuses the same
+### signals other BOA cron paths already honor (.look.like.jenkins.cnf,
+### .slow.cron.cnf, .fast.cron.cnf) plus a direct RAM check as a fallback.
+###
+_monitor_box_class() {
+  local _ram_mb
+  _ram_mb="$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')"
+  _ram_mb="${_ram_mb//[^0-9]/}"
+  if [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
+    _BOX_CLASS=CI
+  elif [ -e "/root/.fast.cron.cnf" ] || [ -e "/root/.force.queue.runner.cnf" ]; then
+    _BOX_CLASS=NORMAL
+  elif [ -e "/root/.slow.cron.cnf" ] \
+    || { [ -n "${_ram_mb}" ] && [ "${_ram_mb}" -le 4096 ]; }; then
+    _BOX_CLASS=SLOW
+  else
+    _BOX_CLASS=NORMAL
+  fi
+}
+
 [ ! -d "/var/log/boa" ] && mkdir -p /var/log/boa
 [ -e "/var/log/sec-count.kill.log" ] && mv -f /var/log/sec-count.kill.log /var/log/boa/
 [ -e "/var/log/csf-count.kill.log" ] && mv -f /var/log/csf-count.kill.log /var/log/boa/
@@ -116,12 +139,27 @@ _launch_auto_healing() {
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
 [ -x "/usr/sbin/csf" ] && [ ! -e "/run/water.pid" ] && _csf_flood_guard
 
+# Decide the fan-out cadence for this box. NORMAL keeps the historical 9 passes
+# every 5s; SLOW/CI run far fewer, wider-spaced passes (auto-healing watchdogs do
+# not need 5s granularity on a tiny or CI host). Both knobs are overridable from
+# .barracuda.cnf via _MONITOR_FANOUT_ITER / _MONITOR_FANOUT_SLEEP.
+_monitor_box_class
+case "${_BOX_CLASS}" in
+  CI)   _ITER=1; _SLEEP=5  ;;
+  SLOW) _ITER=3; _SLEEP=18 ;;
+  *)    _ITER=9; _SLEEP=5  ;;
+esac
+[[ "${_MONITOR_FANOUT_ITER}"  =~ ^[0-9]+$ ]] && _ITER="${_MONITOR_FANOUT_ITER}"
+[[ "${_MONITOR_FANOUT_SLEEP}" =~ ^[0-9]+$ ]] && _SLEEP="${_MONITOR_FANOUT_SLEEP}"
+(( _ITER  < 1 )) && _ITER=1
+(( _SLEEP < 1 )) && _SLEEP=1
+
 # Main execution
-for _iteration in {1..9}; do
+for (( _iteration = 1; _iteration <= _ITER; _iteration++ )); do
   echo "----------------------------"
-  echo "Iteration ${_iteration}:"
+  echo "Iteration ${_iteration} of ${_ITER} (class ${_BOX_CLASS}):"
   _launch_auto_healing
-  sleep 5
+  sleep "${_SLEEP}"
 done
 
 echo DONE!
