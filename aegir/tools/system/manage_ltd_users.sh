@@ -1159,6 +1159,50 @@ _php_fpm_apply_dynamic_children() {
 }
 
 #
+# Per-pool PHP-FPM memory_limit (MB) for SHARED plans (POWER and below): a
+# strictly restricted per-plan band, capped at a RAM-scaled box ceiling so a
+# shared pool never exceeds box capacity on small VMs. Dedicated plans (PHANTOM
+# and above) and unset return empty -> they inherit the generous box-wide
+# value baked into the common include. A positive _PHP_FPM_MEMORY_LIMIT_FORCE
+# (>= 64) pins the value for any plan.
+_php_fpm_memory_limit() {
+  local _forced _band _ram_total _cap
+  _forced="${_PHP_FPM_MEMORY_LIMIT_FORCE//[^0-9]/}"
+  if [ -n "${_forced}" ] && [ "${_forced}" -ge 64 ]; then
+    echo "${_forced}"
+    return 0
+  fi
+  case "${_CLIENT_OPTION}" in
+    POWER|BUS)
+      _band=768
+      ;;
+    EDGE|AGAIN|SSD|CLASSIC)
+      _band=512
+      ;;
+    MINI|MICRO|QUIET|HEADSPACE)
+      _band=256
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+  _ram_total=$(free -mt 2>/dev/null | grep Mem: | awk '{ print $2 }')
+  _ram_total="${_ram_total//[^0-9]/}"
+  [ -z "${_ram_total}" ] && _ram_total=0
+  if [ "${_ram_total}" -ge 1 ] && [ "${_ram_total}" -lt 2048 ]; then
+    _cap=256
+  elif [ "${_ram_total}" -ge 2048 ] && [ "${_ram_total}" -lt 4096 ]; then
+    _cap=512
+  else
+    _cap=1024
+  fi
+  if [ "${_band}" -gt "${_cap}" ]; then
+    _band="${_cap}"
+  fi
+  echo "${_band}"
+}
+
+#
 # Tune FPM workers.
 _satellite_tune_fpm_workers() {
   _satellite_default_fpm_workers
@@ -1223,11 +1267,13 @@ _satellite_tune_fpm_workers() {
   fi
 
   _php_fpm_apply_dynamic_children
+  _FPM_MEM_LIMIT="$(_php_fpm_memory_limit)"
 
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "DEBUG: _LIM_FPM is ${_LIM_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
     echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
     echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
+    echo "DEBUG: _FPM_MEM_LIMIT is ${_FPM_MEM_LIMIT}" >>/var/backups/ltd/log/users-${_NOW}.log
   fi
 }
 
@@ -1904,6 +1950,11 @@ _switch_php() {
 
             if [ -n "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 2 ]; then
               sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              wait
+            fi
+
+            if [ -n "${_FPM_MEM_LIMIT}" ] && [ "${_FPM_MEM_LIMIT}" -ge 64 ]; then
+              echo "php_admin_value[memory_limit] = ${_FPM_MEM_LIMIT}M" >> /opt/php${m}/etc/pool.d/${_POOL}.conf
               wait
             fi
 

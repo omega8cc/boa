@@ -661,6 +661,21 @@ _PHP_FPM_RAM_PCT=AUTO
 _PHP_FPM_CPU_FACTOR=AUTO
 
 ###
+### PHP-FPM per-pool memory_limit policy. Dedicated
+### plans (PHANTOM and above) inherit the generous
+### system-wide value. Shared plans (POWER and below)
+### get a strictly restricted per-plan band (POWER/BUS
+### 768, EDGE/AGAIN/SSD/CLASSIC 512, MINI/MICRO/QUIET/
+### HEADSPACE 256 MB), capped at a RAM-scaled box
+### ceiling on small VMs.
+###
+### AUTO keeps that policy. Set a positive number
+### (MB, minimum 64) to enforce an exact per-pool
+### memory_limit for this Instance on every run.
+###
+_PHP_FPM_MEMORY_LIMIT_FORCE=AUTO
+
+###
 ### You can define custom list of functions
 ### to disable besides those already denied
 ### in the system level 'disable_functions'.

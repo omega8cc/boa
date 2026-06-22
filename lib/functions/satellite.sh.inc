@@ -387,6 +387,50 @@ _php_fpm_apply_dynamic_children() {
 }
 
 #
+# Per-pool PHP-FPM memory_limit (MB) for SHARED plans (POWER and below): a
+# strictly restricted per-plan band, capped at a RAM-scaled box ceiling so a
+# shared pool never exceeds box capacity on small VMs. Dedicated plans (PHANTOM
+# and above) and unset return empty -> they inherit the generous box-wide
+# value baked into the common include. A positive _PHP_FPM_MEMORY_LIMIT_FORCE
+# (>= 64) pins the value for any plan.
+_php_fpm_memory_limit() {
+  local _forced _band _ram_total _cap
+  _forced="${_PHP_FPM_MEMORY_LIMIT_FORCE//[^0-9]/}"
+  if [ -n "${_forced}" ] && [ "${_forced}" -ge 64 ]; then
+    echo "${_forced}"
+    return 0
+  fi
+  case "${_CLIENT_OPTION}" in
+    POWER|BUS)
+      _band=768
+      ;;
+    EDGE|AGAIN|SSD|CLASSIC)
+      _band=512
+      ;;
+    MINI|MICRO|QUIET|HEADSPACE)
+      _band=256
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+  _ram_total=$(free -mt 2>/dev/null | grep Mem: | awk '{ print $2 }')
+  _ram_total="${_ram_total//[^0-9]/}"
+  [ -z "${_ram_total}" ] && _ram_total=0
+  if [ "${_ram_total}" -ge 1 ] && [ "${_ram_total}" -lt 2048 ]; then
+    _cap=256
+  elif [ "${_ram_total}" -ge 2048 ] && [ "${_ram_total}" -lt 4096 ]; then
+    _cap=512
+  else
+    _cap=1024
+  fi
+  if [ "${_band}" -gt "${_cap}" ]; then
+    _band="${_cap}"
+  fi
+  echo "${_band}"
+}
+
+#
 # Tune FPM configuration.
 _satellite_tune_fpm_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -462,10 +506,12 @@ _satellite_tune_fpm_config() {
   fi
 
   _php_fpm_apply_dynamic_children
+  _FPM_MEM_LIMIT="$(_php_fpm_memory_limit)"
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
     _msg "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
+    _msg "DEBUG: _FPM_MEM_LIMIT is ${_FPM_MEM_LIMIT}"
   fi
 
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
@@ -537,6 +583,10 @@ _satellite_tune_fpm_config() {
       wait
     else
       sed -i "s/pm.max_children =.*/pm.max_children = 8/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      wait
+    fi
+    if [ -n "${_FPM_MEM_LIMIT}" ] && [ "${_FPM_MEM_LIMIT}" -ge 64 ]; then
+      echo "php_admin_value[memory_limit] = ${_FPM_MEM_LIMIT}M" >> /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
       wait
     fi
     mkdir -p /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
@@ -704,6 +754,7 @@ _satellite_cnf() {
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"                 >> ${_octCnf}
     echo "_PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT}"                 >> ${_octCnf}
     echo "_PHP_FPM_MAX_CHILDREN_FORCE=${_PHP_FPM_MAX_CHILDREN_FORCE:-AUTO}" >> ${_octCnf}
+    echo "_PHP_FPM_MEMORY_LIMIT_FORCE=${_PHP_FPM_MEMORY_LIMIT_FORCE:-AUTO}" >> ${_octCnf}
     echo "_PHP_FPM_RAM_PCT=${_PHP_FPM_RAM_PCT:-AUTO}"           >> ${_octCnf}
     echo "_PHP_FPM_CPU_FACTOR=${_PHP_FPM_CPU_FACTOR:-AUTO}"     >> ${_octCnf}
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                   >> ${_octCnf}
@@ -733,6 +784,12 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_MAX_CHILDREN_FORCE=${_PHP_FPM_MAX_CHILDREN_FORCE:-AUTO}" >> ${_octCnf}
+    fi
+    _PHP_FPM_MEMORY_LIMIT_FORCE_TEST=$(grep _PHP_FPM_MEMORY_LIMIT_FORCE ${_octCnf} 2>&1)
+    if [[ "${_PHP_FPM_MEMORY_LIMIT_FORCE_TEST}" =~ "_PHP_FPM_MEMORY_LIMIT_FORCE" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_MEMORY_LIMIT_FORCE=${_PHP_FPM_MEMORY_LIMIT_FORCE:-AUTO}" >> ${_octCnf}
     fi
     _PHP_FPM_RAM_PCT_TEST=$(grep _PHP_FPM_RAM_PCT ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_RAM_PCT_TEST}" =~ "_PHP_FPM_RAM_PCT" ]]; then
