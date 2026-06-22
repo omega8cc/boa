@@ -320,6 +320,73 @@ _satellite_create_web_user() {
 }
 
 #
+# Compute a fully dynamic pm.max_children for dedicated pools (PHANTOM and
+# above). Sized from total RAM (primary axis) and capped by CPU (sanity bound),
+# using the measured per-child footprint. Independent of the per-plan tier. The
+# knobs default to a reasonable calc and are tunable via control variables.
+_php_fpm_dynamic_children() {
+  local _ram_mb _ram_pct _uss_mb _cpu_factor _ram_max _cpu_max _dyn
+  _count_cpu
+  _ram_mb=$(free -mt 2>/dev/null | grep Mem: | awk '{ print $2 }')
+  _ram_mb="${_ram_mb//[^0-9]/}"
+  [ -z "${_ram_mb}" ] && _ram_mb=0
+  # Percent of total RAM budgeted for FPM workers (AUTO/invalid -> 50).
+  _ram_pct="${_PHP_FPM_RAM_PCT//[^0-9]/}"
+  if [ -z "${_ram_pct}" ] || [ "${_ram_pct}" -lt 1 ]; then
+    _ram_pct=50
+  fi
+  # Measured per-child private footprint (USS) in MB.
+  _uss_mb="${_PHP_FPM_USS_MB//[^0-9]/}"
+  if [ -z "${_uss_mb}" ] || [ "${_uss_mb}" -lt 1 ]; then
+    _uss_mb=64
+  fi
+  # CPU sanity multiplier; workers are I/O-bound so > cores is expected (AUTO/invalid -> 8).
+  _cpu_factor="${_PHP_FPM_CPU_FACTOR//[^0-9]/}"
+  if [ -z "${_cpu_factor}" ] || [ "${_cpu_factor}" -lt 1 ]; then
+    _cpu_factor=8
+  fi
+  _cpu_max=$(( _CPU_NR * _cpu_factor ))
+  if [ "${_ram_mb}" -lt 1 ]; then
+    # RAM unreadable: fall back to the CPU sanity bound, never to the low floor.
+    _dyn="${_cpu_max}"
+  else
+    _ram_max=$(( _ram_mb * _ram_pct / 100 / _uss_mb ))
+    if [ "${_ram_max}" -lt "${_cpu_max}" ]; then
+      _dyn="${_ram_max}"
+    else
+      _dyn="${_cpu_max}"
+    fi
+  fi
+  [ "${_dyn}" -lt 8 ] && _dyn=8
+  echo "${_dyn}"
+}
+
+#
+# Apply the dedicated/forced pm.max_children policy. A positive
+# _PHP_FPM_MAX_CHILDREN_FORCE pins the value for any plan and is never clobbered.
+# Otherwise dedicated plans (PHANTOM and above) under AUTO workers are sized
+# fully dynamically; shared plans keep their computed per-plan tier value.
+_php_fpm_apply_dynamic_children() {
+  local _forced
+  _forced="${_PHP_FPM_MAX_CHILDREN_FORCE//[^0-9]/}"
+  if [ -n "${_forced}" ] && [ "${_forced}" -ge 2 ]; then
+    # Clamp the pin to the universal floor so both pool writers honour it equally.
+    [ "${_forced}" -lt 8 ] && _forced=8
+    _CHILD_MAX_FPM="${_forced}"
+    return 0
+  fi
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ]; then
+    return 0
+  fi
+  case "${_CLIENT_OPTION}" in
+    PHANTOM|ULTRA|MONSTER|CLUSTER)
+      _CHILD_MAX_FPM="$(_php_fpm_dynamic_children)"
+      ;;
+  esac
+  return 0
+}
+
+#
 # Tune FPM configuration.
 _satellite_tune_fpm_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -393,6 +460,8 @@ _satellite_tune_fpm_config() {
   if [ "${_CLIENT_OPTION}" != "QUIET" ]; then
     _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
   fi
+
+  _php_fpm_apply_dynamic_children
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
@@ -634,6 +703,9 @@ _satellite_cnf() {
     echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}"                 >> ${_octCnf}
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"                 >> ${_octCnf}
     echo "_PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT}"                 >> ${_octCnf}
+    echo "_PHP_FPM_MAX_CHILDREN_FORCE=${_PHP_FPM_MAX_CHILDREN_FORCE:-AUTO}" >> ${_octCnf}
+    echo "_PHP_FPM_RAM_PCT=${_PHP_FPM_RAM_PCT:-AUTO}"           >> ${_octCnf}
+    echo "_PHP_FPM_CPU_FACTOR=${_PHP_FPM_CPU_FACTOR:-AUTO}"     >> ${_octCnf}
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                   >> ${_octCnf}
     echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"               >> ${_octCnf}
     echo "_SQL_CONVERT=${_SQL_CONVERT}"                         >> ${_octCnf}
@@ -655,6 +727,24 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${_octCnf}
+    fi
+    _PHP_FPM_MAX_CHILDREN_FORCE_TEST=$(grep _PHP_FPM_MAX_CHILDREN_FORCE ${_octCnf} 2>&1)
+    if [[ "${_PHP_FPM_MAX_CHILDREN_FORCE_TEST}" =~ "_PHP_FPM_MAX_CHILDREN_FORCE" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_MAX_CHILDREN_FORCE=${_PHP_FPM_MAX_CHILDREN_FORCE:-AUTO}" >> ${_octCnf}
+    fi
+    _PHP_FPM_RAM_PCT_TEST=$(grep _PHP_FPM_RAM_PCT ${_octCnf} 2>&1)
+    if [[ "${_PHP_FPM_RAM_PCT_TEST}" =~ "_PHP_FPM_RAM_PCT" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_RAM_PCT=${_PHP_FPM_RAM_PCT:-AUTO}" >> ${_octCnf}
+    fi
+    _PHP_FPM_CPU_FACTOR_TEST=$(grep _PHP_FPM_CPU_FACTOR ${_octCnf} 2>&1)
+    if [[ "${_PHP_FPM_CPU_FACTOR_TEST}" =~ "_PHP_FPM_CPU_FACTOR" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_CPU_FACTOR=${_PHP_FPM_CPU_FACTOR:-AUTO}" >> ${_octCnf}
     fi
     _PHP_FPM_TIMEOUT_TEST=$(grep _PHP_FPM_TIMEOUT ${_octCnf} 2>&1)
     if [[ "${_PHP_FPM_TIMEOUT_TEST}" =~ "_PHP_FPM_TIMEOUT" ]]; then

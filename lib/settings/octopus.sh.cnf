@@ -634,6 +634,33 @@ _PHP_FPM_WORKERS=AUTO
 _PHP_FPM_TIMEOUT=AUTO
 
 ###
+### Dedicated plans (PHANTOM and above) ignore the
+### fixed per-plan workers limit and size PHP-FPM
+### pm.max_children fully dynamically from available
+### RAM (primary) and CPU (sanity cap). Shared plans
+### (POWER and below) keep their fixed per-plan limit.
+###
+### AUTO keeps the fully dynamic calculation. Set a
+### positive number (minimum 8) to enforce an exact
+### pm.max_children on every run; this pin is never
+### clobbered. Values below 8 are raised to 8.
+###
+_PHP_FPM_MAX_CHILDREN_FORCE=AUTO
+
+###
+### Percent of total RAM budgeted for PHP-FPM workers
+### on dedicated plans. AUTO defaults to 50.
+###
+_PHP_FPM_RAM_PCT=AUTO
+
+###
+### CPU sanity multiplier for dedicated plans: dynamic
+### pm.max_children is capped at CPU cores times this
+### factor. AUTO defaults to 8.
+###
+_PHP_FPM_CPU_FACTOR=AUTO
+
+###
 ### You can define custom list of functions
 ### to disable besides those already denied
 ### in the system level 'disable_functions'.
