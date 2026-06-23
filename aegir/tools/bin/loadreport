@@ -222,6 +222,28 @@ _sample_pass() {
 ### Live profiling run: sample for the whole window, then aggregate.
 ###
 declare -A _CONCPEAK
+# Throttle / box-class state for the report. DRIFT-PROOF: it runs the DEPLOYED
+# minute.sh's own _monitor_box_class (extracted with sed) so it always reflects
+# what the box actually does, rather than re-implementing the precedence here.
+_MON_CLASS=""; _MON_RAM=""; _MON_SIG=""
+_compute_throttle_state() {
+  local _src="/var/xdrago/minute.sh" _fn _e
+  _MON_RAM="$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')"; _MON_RAM="${_MON_RAM//[^0-9]/}"
+  _MON_SIG=""
+  for _e in /etc/boa/.look.like.jenkins.cnf:jenkins /root/.slow.cron.cnf:slow.cron \
+            /root/.fast.cron.cnf:fast.cron /root/.force.queue.runner.cnf:force.queue.runner; do
+    [ -e "${_e%%:*}" ] && _MON_SIG+="${_MON_SIG:+, }${_e##*:}"
+  done
+  [ -n "${_MON_SIG}" ] || _MON_SIG="none"
+  _MON_CLASS=""
+  if [ -r "${_src}" ]; then
+    _fn="$(sed -n '/^_monitor_box_class()/,/^}/p' "${_src}" 2>/dev/null)"
+    # shellcheck disable=SC2294,SC2153  # intentional: define+run the box's own classifier (sets _BOX_CLASS via eval)
+    [ -n "${_fn}" ] && _MON_CLASS="$( eval "${_fn}"; _monitor_box_class 2>/dev/null; printf '%s' "${_BOX_CLASS}" )"
+  fi
+  case "${_MON_CLASS}" in CI|SLOW|NORMAL) : ;; *) _MON_CLASS="" ;; esac
+}
+
 _run_live() {
   local _passes _i _f1 _f2 _ld1 _ld2 _fk1 _fk2 _cx1 _cx2 _rest
 
@@ -233,6 +255,7 @@ _run_live() {
   _START_TICKS="$(awk -v u="${_up}" -v hz="${_HZ}" 'BEGIN{printf "%d", u*hz}')"
   [[ "${_START_TICKS}" =~ ^[0-9]+$ ]] || _START_TICKS=0
   _read_stat_counters; _fk1=$_FORKS; _cx1=$_CTXT
+  _compute_throttle_state
   _TS_START="$(date +%s 2>/dev/null)"
 
   # Number of passes; guarantee at least 2 so a delta exists.
@@ -300,6 +323,13 @@ _print_report() {
   printf '\n%s\n' "loadreport — BOA recurring-script resource profile"
   printf '  host %s   span %ss   interval %ss   cores %s   HZ %s\n' \
     "${_HOST}" "${_SPAN}" "${_INTERVAL}" "${_NCPU}" "${_HZ}"
+  if [ -n "${_MON_CLASS}" ]; then
+    printf '  monitor throttle: %s   (RAM %s MB; cnf: %s)\n' \
+      "${_MON_CLASS}" "${_MON_RAM:-?}" "${_MON_SIG}"
+  else
+    printf '  monitor throttle: n/a — pre-throttle minute.sh   (RAM %s MB; cnf: %s)\n' \
+      "${_MON_RAM:-?}" "${_MON_SIG}"
+  fi
   printf '  load1 %s -> %s\n' "${_LOAD1_START}" "${_LOAD1_END}"
   printf '  forks during span: %s (%s/min)   ctxt switches: %s (%s/s)\n' \
     "${_FORK_DELTA}" \
@@ -340,6 +370,7 @@ _emit_json() {
   _out='{'
   _out+="\"ts\":${_TS_END:-0},\"host\":\"$(_json_escape "${_HOST}")\","
   _out+="\"span\":${_SPAN},\"interval\":\"${_INTERVAL}\",\"hz\":${_HZ},\"ncpu\":${_NCPU},"
+  _out+="\"monitor_class\":\"$(_json_escape "${_MON_CLASS}")\","
   _out+="\"load1_start\":\"${_LOAD1_START}\",\"load1_end\":\"${_LOAD1_END}\","
   _out+="\"forks\":${_FORK_DELTA},\"ctxt\":${_CTXT_DELTA},\"procs\":${#_FIRST[@]},"
   _out+='"by_command":['
