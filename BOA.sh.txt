@@ -1290,6 +1290,10 @@ _update_agents() {
     [ -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f /var/xdrago/monitor/check/hackftp.pl
     [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f /var/xdrago/monitor/check/sqlcheck.pl
 
+    [ -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f /var/xdrago/monitor/check/scan_nginx.pl
+    [ -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f /var/xdrago/monitor/check/locked_nginx.pl
+    [ -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f /var/xdrago/monitor/check/locked_java.pl
+
     # One-time sweep of stale *.old fetch-rollback backups left behind by the
     # fetch helpers on successful updates (now dropped at the source). Script
     # backups only; conf/*.old keep-references are deliberately not touched.
