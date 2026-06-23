@@ -24,7 +24,7 @@ You can set `_AUTO_UP_MONTH` and `_AUTO_UP_DAY` to any date in the past or futur
 
 Remember that day/month upgrades will include a complete upgrade to the latest BOA head for Barracuda and all Octopus instances, while weekly upgrades are designed to run only the `barracuda up-lts system` upgrade.
 
-You can further modify the auto-upgrade by specifying either `head` or `dev` with the `_AUTO_VER` variable. Additionally, you can include all supported PHP versions with the `_AUTO_PHP` variable set to "php-min"; otherwise, it will be ignored.
+You can further modify the auto-upgrade by specifying the upgrade tier — `dev`, `pro`, or `lts` — with the `_AUTO_VER` variable. Additionally, you can include all supported PHP versions with the `_AUTO_PHP` variable set to "php-min"; otherwise, it will be ignored.
 
 Note that weekly system upgrades will start shortly after midnight on the specified weekday, while the day/month upgrades for both Barracuda and all Octopus instances will start at approximately 3 AM for the system and Ægir Master instance, and at approximately 4 AM for all Octopus-based Ægir instances.
 
