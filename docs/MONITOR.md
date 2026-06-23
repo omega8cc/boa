@@ -428,7 +428,7 @@ A process born *and reaped entirely between two ticks* never appears in a sample
 
 ## Serials and deployment
 
-`second.sh`, `minute.sh` and `loadreport` are serial-gated in `BOA.sh.txt`, so a box re-fetches the new copy when the serial changes (serials count **down**: a bump is a decrement). Any change to one of these scripts must decrement its `fNN` in `BOA.sh.txt` in the same commit. Current serials: `minute.sh` `f89`, `second.sh` `f97`, `loadreport` `f01`. `loadreport` is fetched to `/opt/local/bin/loadreport`, symlinked to `/usr/local/bin/loadreport`, and `chmod 700`.
+`second.sh`, `minute.sh` and `loadreport` are serial-gated in `BOA.sh.txt`, so each box automatically re-fetches the current copy whenever one of these scripts changes — you do not pull updates by hand. `loadreport` is fetched to `/opt/local/bin/loadreport`, symlinked to `/usr/local/bin/loadreport`, and `chmod 700`.
 
 ## Verify
 
