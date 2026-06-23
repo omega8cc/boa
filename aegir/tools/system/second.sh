@@ -26,12 +26,14 @@ _CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
 _CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
 _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
 _CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
+_LOAD_IOWAIT_MIN="$(_sanitize_number "${_LOAD_IOWAIT_MIN}")"
 
 # ===== Config (ratios per CPU) =====
-: "${_CPU_CRIT_RATIO:=6.1}"    # CRIT: pause web + kill long procs + block spiders
-: "${_CPU_MAX_RATIO:=4.1}"     # MAX:  pause web + block spiders
+: "${_CPU_CRIT_RATIO:=8.1}"    # CRIT: pause web + kill long procs + block spiders
+: "${_CPU_MAX_RATIO:=6.1}"     # MAX:  pause web + block spiders
 : "${_CPU_TASK_RATIO:=3.1}"    # TASK: skip backend tasks (but web OK)
 : "${_CPU_SPIDER_RATIO:=2.1}"  # SPIDER: allow web; block spiders only
+: "${_LOAD_IOWAIT_MIN:=10}"    # min system iowait% to treat high load as disk-bound (gates the backup pause-skip)
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -250,6 +252,32 @@ _backup_in_progress() {
   pgrep -x duplicity >/dev/null 2>&1
 }
 
+# Measured system iowait% over a short sample. Used to CONFIRM a backup's high
+# load is genuinely disk-bound before we decline to act. Fails CLOSED: any read
+# error or degenerate delta yields 0%, which is below the threshold, so the
+# drastic tiers still fire — we never skip a pause on a failed measurement.
+_IOWAIT_PCT=0
+_get_iowait_pct() {
+  local _u1 _n1 _s1 _i1 _w1 _q1 _sq1 _st1 _u2 _n2 _s2 _i2 _w2 _q2 _sq2 _st2 _tot
+  _IOWAIT_PCT=0
+  head -n1 /proc/stat >/dev/null 2>&1 || return
+  read -r _ _u1 _n1 _s1 _i1 _w1 _q1 _sq1 _st1 _rest 2>/dev/null < /proc/stat
+  sleep 0.2
+  read -r _ _u2 _n2 _s2 _i2 _w2 _q2 _sq2 _st2 _rest 2>/dev/null < /proc/stat
+  _tot=$(( (_u2-_u1)+(_n2-_n1)+(_s2-_s1)+(_i2-_i1)+(_w2-_w1)+(_q2-_q1)+(_sq2-_sq1)+(_st2-_st1) ))
+  [ "${_tot}" -le 0 ] && return
+  _IOWAIT_PCT="$(awk -v w="$(( _w2 - _w1 ))" -v t="${_tot}" 'BEGIN{printf "%.1f",(w/t)*100}')"
+}
+
+# True only when load is I/O-wait-dominated (iowait% >= _LOAD_IOWAIT_MIN). Paired
+# with _backup_in_progress so the drastic tiers are skipped ONLY when a backup is
+# running AND the load really is disk-bound; a CPU-bound runaway coincident with
+# the backup window has low iowait, so pause/kill still fire. Fails closed.
+_load_is_iowait_bound() {
+  _get_iowait_pct
+  awk -v i="${_IOWAIT_PCT}" -v th="${_LOAD_IOWAIT_MIN}" 'BEGIN{exit (i>=th)?0:1}'
+}
+
 # Function to control system load actions
 _load_control() {
   _get_load
@@ -293,8 +321,8 @@ _load_control() {
         _load_period="5-minute"
       fi
       if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
-        if _backup_in_progress; then
-          echo "$(date) Critical load ${_current_load}% (${_load_period}) during a running backup - NOT terminating/pausing (expected, self-limiting backup I/O)" >> ${_pthOml}
+        if _backup_in_progress && _load_is_iowait_bound; then
+          echo "$(date) Critical load ${_current_load}% (${_load_period}) during a running backup, I/O-wait-bound (iowait ${_IOWAIT_PCT}% >= ${_LOAD_IOWAIT_MIN}%) - NOT terminating/pausing (expected, self-limiting backup I/O)" >> ${_pthOml}
         else
           _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
           _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
@@ -321,8 +349,8 @@ _load_control() {
         _load_period="5-minute"
       fi
       if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
-        if _backup_in_progress; then
-          echo "$(date) Max load ${_current_load}% (${_load_period}) during a running backup - NOT pausing web (expected, self-limiting backup I/O)" >> ${_pthOml}
+        if _backup_in_progress && _load_is_iowait_bound; then
+          echo "$(date) Max load ${_current_load}% (${_load_period}) during a running backup, I/O-wait-bound (iowait ${_IOWAIT_PCT}% >= ${_LOAD_IOWAIT_MIN}%) - NOT pausing web (expected, self-limiting backup I/O)" >> ${_pthOml}
         else
           _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
         fi
