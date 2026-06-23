@@ -9075,6 +9075,9 @@ _xdrago_install_upgrade() {
     fi
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
+    ### Weekly rotation for BOA monitor incident logs so emailed reports stay
+    ### recent and the files stay bounded (the monitors mail only the last 200).
+    cp -af ${_bldPth}/aegir/conf/var/logrotate.d.boa.conf /etc/logrotate.d/boa &> /dev/null
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _ROTATE_TEST=$(grep "rotate 9999" /etc/logrotate.d/nginx 2>&1)
@@ -9106,6 +9109,8 @@ _xdrago_install_upgrade() {
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
+    ### Weekly rotation for BOA monitor incident logs (see the upgrade path above).
+    cp -af ${_bldPth}/aegir/conf/var/logrotate.d.boa.conf /etc/logrotate.d/boa &> /dev/null
     if [ -z "${_THISHTIP}" ]; then
       _LOC_DOM="${_THISHOST}"
       _find_correct_ip
