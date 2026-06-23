@@ -236,6 +236,20 @@ _get_load() {
   _F_LOAD=$(awk -v _load_value="${_five}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
 }
 
+# True while a scheduled/manual backup is running. A backup's high load is
+# expected, largely I/O-wait (D-state from dump/duplicity disk churn) and
+# self-limiting, so the load tiers must NOT pause web or kill tasks while one is
+# active: pausing nginx/php-fpm does nothing for a disk-bound backup, it only
+# cuts service for no benefit. Matched tightly (BOA backup orchestrator scripts
+# by path + the dump engines by exact name) so a genuine non-backup overload is
+# never mistaken for a backup.
+_backup_in_progress() {
+  [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
+  pgrep -f '/backboa|/duobackboa|/multiback|/mysql_backup\.sh|/mysql_cluster_backup\.sh' >/dev/null 2>&1 && return 0
+  pgrep -x mydumper >/dev/null 2>&1 && return 0
+  pgrep -x duplicity >/dev/null 2>&1
+}
+
 # Function to control system load actions
 _load_control() {
   _get_load
@@ -260,7 +274,9 @@ _load_control() {
   # Check for critical load to terminate processes and hold services
   if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
     sleep 9
-    # Sustained critical load → verify twice with brief cooldown then react
+    _get_load   # re-read AFTER the cooldown — react only if the load is STILL high
+    # (the old code re-checked the stale entry value, so a transient spike — e.g. a
+    # backup I/O burst — that subsided within the 9s window still paused web)
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
       touch /run/critical_load.pid
       [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
@@ -277,14 +293,18 @@ _load_control() {
         _load_period="5-minute"
       fi
       if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
-        _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
-        _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+        if _backup_in_progress; then
+          echo "$(date) Critical load ${_current_load}% (${_load_period}) during a running backup - NOT terminating/pausing (expected, self-limiting backup I/O)" >> ${_pthOml}
+        else
+          _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
+          _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+        fi
       fi
     fi
   # Check for max load to hold services
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
     sleep 9
-    # Sustained max load → verify twice with brief cooldown then react
+    _get_load   # re-read AFTER the cooldown — react only if the load is STILL high
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/max_load.pid
       [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
@@ -301,13 +321,17 @@ _load_control() {
         _load_period="5-minute"
       fi
       if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
-        _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+        if _backup_in_progress; then
+          echo "$(date) Max load ${_current_load}% (${_load_period}) during a running backup - NOT pausing web (expected, self-limiting backup I/O)" >> ${_pthOml}
+        else
+          _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+        fi
       fi
     fi
   # Check for spider protection threshold
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
     sleep 9
-    # Sustained too high for spiders load → verify twice with brief cooldown then react
+    _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
       [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
@@ -324,7 +348,7 @@ _load_control() {
     fi
   elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
     sleep 9
-    # Sustained too high for spiders load → verify twice with brief cooldown then react
+    _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
     if awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
       [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
