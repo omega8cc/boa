@@ -361,7 +361,12 @@ _load_control() {
 ###
 ### Classify the box so the heavy fan-out can be throttled on the small/idle/CI
 ### hosts where it dominates idle load, while normal production hosts keep the
-### historical every-pass cadence. Same signals other BOA cron paths honor.
+### historical every-pass cadence. Precedence matches runner.sh: a small box
+### (.slow.cron.cnf, auto-created + immutable on <=4GB, or a RAM<=4096 fallback)
+### is SLOW UNLESS .force.queue.runner.cnf opts it back to full cadence.
+### .fast.cron.cnf is deliberately NOT honored here — runner.sh ignores it while
+### .slow.cron.cnf is set, so letting it force NORMAL would un-throttle exactly
+### the tiny boxes this targets (e.g. a 4GB box carrying both markers).
 ###
 _monitor_box_class() {
   local _ram_mb
@@ -369,10 +374,9 @@ _monitor_box_class() {
   _ram_mb="${_ram_mb//[^0-9]/}"
   if [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
     _BOX_CLASS=CI
-  elif [ -e "/root/.fast.cron.cnf" ] || [ -e "/root/.force.queue.runner.cnf" ]; then
-    _BOX_CLASS=NORMAL
-  elif [ -e "/root/.slow.cron.cnf" ] \
-    || { [ -n "${_ram_mb}" ] && [ "${_ram_mb}" -le 4096 ]; }; then
+  elif { [ -e "/root/.slow.cron.cnf" ] \
+       || { [ -n "${_ram_mb}" ] && [ "${_ram_mb}" -le 4096 ]; }; } \
+    && [ ! -e "/root/.force.queue.runner.cnf" ]; then
     _BOX_CLASS=SLOW
   else
     _BOX_CLASS=NORMAL
