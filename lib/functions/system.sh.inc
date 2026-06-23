@@ -1048,12 +1048,30 @@ _tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
-  if [ "${_USE_PHP}" -lt 1024 ]; then
-    _USE_PHP=1024
+  # RAM-scaled PHP memory floors. Tiny VMs were previously pinned to a 1 GB
+  # per-pool memory_limit (and matching APCu), which triggers OOM under even
+  # light concurrency; scale the floor down on small boxes while boxes with
+  # 4 GB or more keep the historical 1024 floor unchanged. A failed RAM read
+  # keeps the safe 1024.
+  _RAM_TOTAL=$(free -mt 2>/dev/null | grep Mem: | awk '{ print $2 }')
+  _RAM_TOTAL="${_RAM_TOTAL//[^0-9]/}"
+  [ -z "${_RAM_TOTAL}" ] && _RAM_TOTAL=0
+  if [ "${_RAM_TOTAL}" -ge 1 ] && [ "${_RAM_TOTAL}" -lt 2048 ]; then
+    _USE_PHP_MIN=512
+    _USE_FPM_MIN=256
+  elif [ "${_RAM_TOTAL}" -ge 2048 ] && [ "${_RAM_TOTAL}" -lt 4096 ]; then
+    _USE_PHP_MIN=1024
+    _USE_FPM_MIN=512
+  else
+    _USE_PHP_MIN=1024
+    _USE_FPM_MIN=1024
+  fi
+  if [ "${_USE_PHP}" -lt "${_USE_PHP_MIN}" ]; then
+    _USE_PHP=${_USE_PHP_MIN}
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
-  if [ "${_USE_FPM}" -lt 1024 ]; then
-    _USE_FPM=1024
+  if [ "${_USE_FPM}" -lt "${_USE_FPM_MIN}" ]; then
+    _USE_FPM=${_USE_FPM_MIN}
   fi
   _USE_APC=${_USE_FPM}
   # APCu is a single shared memory segment for the entire FPM pool, not
@@ -9057,6 +9075,9 @@ _xdrago_install_upgrade() {
     fi
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
+    ### Weekly rotation for BOA monitor incident logs so emailed reports stay
+    ### recent and the files stay bounded (the monitors mail only the last 200).
+    cp -af ${_bldPth}/aegir/conf/var/logrotate.d.boa.conf /etc/logrotate.d/boa &> /dev/null
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _ROTATE_TEST=$(grep "rotate 9999" /etc/logrotate.d/nginx 2>&1)
@@ -9088,6 +9109,8 @@ _xdrago_install_upgrade() {
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
+    ### Weekly rotation for BOA monitor incident logs (see the upgrade path above).
+    cp -af ${_bldPth}/aegir/conf/var/logrotate.d.boa.conf /etc/logrotate.d/boa &> /dev/null
     if [ -z "${_THISHTIP}" ]; then
       _LOC_DOM="${_THISHOST}"
       _find_correct_ip
