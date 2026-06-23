@@ -170,6 +170,34 @@ function cfg_pool(ver, pool,   cf, line, val, inc) {
     close(inc)
   }
 }
+# Read the configured plan (_CLIENT_OPTION) and engines/cores for the Octopus
+# instance behind a pool, from its live control files — the same inputs the
+# sizing logic keys on. The instance name is the pool minus any .NN version
+# (e.g. o8.84 -> o8). cores.txt (if present) wins over the .octopus.cnf value,
+# matching the sizing path. Returns via globals CFG_PLAN and CFG_CORES.
+function cfg_plan(pool,   user, cf, line, val, cores_f) {
+  CFG_PLAN = "-"; CFG_CORES = ""
+  user = pool
+  sub(/\.[0-9]+$/, "", user)
+  cf = "/root/." user ".octopus.cnf"
+  while ((getline line < cf) > 0) {
+    if (line ~ /^[ \t]*_CLIENT_OPTION[ \t]*=/) {
+      val = line; sub(/^[^=]*=[ \t]*/, "", val); gsub(/"/, "", val); sub(/[ \t].*$/, "", val)
+      if (val != "") CFG_PLAN = val
+    } else if (line ~ /^[ \t]*_CLIENT_CORES[ \t]*=/) {
+      val = line; sub(/^[^=]*=[ \t]*/, "", val); gsub(/[^0-9]/, "", val)
+      if (val != "") CFG_CORES = val
+    }
+  }
+  close(cf)
+  cores_f = "/data/disk/" user "/log/cores.txt"
+  while ((getline line < cores_f) > 0) {
+    gsub(/[^0-9]/, "", line)
+    if (line != "") CFG_CORES = line
+  }
+  close(cores_f)
+  if (CFG_CORES == "") CFG_CORES = "1"
+}
 # p95 over a space-separated numeric list (insertion sort; lists are small)
 function p95(list,   n, a, i, j, t, k) {
   n = split(list, a, " ")
@@ -367,19 +395,19 @@ END {
     # per-pool configured limits (current) vs observed, non-idle pools
     if (!json) {
       printf "%s\n", "-- pools (configured / observed) --"
-      printf "%-20s %-4s %-7s %9s %8s %7s %5s %8s\n", \
-        "pool", "ver", "class", "cfg_kids", "cfg_mem", "peak", "p95", "mcr/day"
+      printf "%-20s %-4s %-10s %-4s %-7s %9s %8s %7s %5s %8s\n", \
+        "pool", "ver", "plan", "eng", "class", "cfg_kids", "cfg_mem", "peak", "p95", "mcr/day"
     }
     for (i = 1; i <= npk; i++) {
       pk = pkeys[i]
       if (PH[pk] != h) continue
       if (json) continue
       if (pclass[pk] == "idle" && mcrD[pk] == 0) continue
-      cfg_pool(PV[pk], PP[pk])
-      printf "%-20s %-4d %-7s %9s %8s %7d %5d %8.1f\n", \
-        PP[pk], PV[pk], pclass[pk], (CFG_MC > 0 ? CFG_MC "" : "-"), \
-        (CFG_ML > 0 ? CFG_ML "M" : "-"), mactW[pk] + 0, pp95[pk], \
-        (hours > 0 ? mcrD[pk] * 24.0 / hours : 0)
+      cfg_pool(PV[pk], PP[pk]); cfg_plan(PP[pk])
+      printf "%-20s %-4d %-10s %-4s %-7s %9s %8s %7d %5d %8.1f\n", \
+        PP[pk], PV[pk], CFG_PLAN, CFG_CORES, pclass[pk], \
+        (CFG_MC > 0 ? CFG_MC "" : "-"), (CFG_ML > 0 ? CFG_ML "M" : "-"), \
+        mactW[pk] + 0, pp95[pk], (hours > 0 ? mcrD[pk] * 24.0 / hours : 0)
     }
     # findings per host
     if (!json) printf "%s\n", "-- findings --"
@@ -388,10 +416,10 @@ END {
       pk = pkeys[i]
       if (PH[pk] != h) continue
       if (json && (pclass[pk] != "idle" || mcrD[pk] > 0)) {
-        cfg_pool(PV[pk], PP[pk])
-        printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"pool_summary\",\"host\":\"%s\",\"pool\":\"%s\",\"version\":%d,\"class\":\"%s\",\"samples\":%d,\"real_requests\":%d,\"max_active_w\":%d,\"active_p95\":%d,\"mcr_delta\":%d,\"slow_delta\":%d,\"peak_req_mem\":%d,\"master_restarts\":%d,\"cfg_max_children\":%d,\"cfg_memory_limit_mb\":%d}\n", \
+        cfg_pool(PV[pk], PP[pk]); cfg_plan(PP[pk])
+        printf "{\"json\":\"fpm-tune-report/1\",\"type\":\"pool_summary\",\"host\":\"%s\",\"pool\":\"%s\",\"version\":%d,\"class\":\"%s\",\"samples\":%d,\"real_requests\":%d,\"max_active_w\":%d,\"active_p95\":%d,\"mcr_delta\":%d,\"slow_delta\":%d,\"peak_req_mem\":%d,\"master_restarts\":%d,\"cfg_max_children\":%d,\"cfg_memory_limit_mb\":%d,\"plan\":\"%s\",\"engines\":%d}\n", \
           h, PP[pk], PV[pk], pclass[pk], pcount[pk], preal[pk], mactW[pk] + 0, \
-          pp95[pk], mcrD[pk] + 0, slowD[pk] + 0, peakW[pk] + 0, prestarts[pk] + 0, CFG_MC + 0, CFG_ML + 0
+          pp95[pk], mcrD[pk] + 0, slowD[pk] + 0, peakW[pk] + 0, prestarts[pk] + 0, CFG_MC + 0, CFG_ML + 0, CFG_PLAN, CFG_CORES + 0
       }
       if (mcrD[pk] > 0) {
         nfind++
