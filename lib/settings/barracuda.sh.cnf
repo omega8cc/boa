@@ -1025,7 +1025,8 @@ _NGINX_DOS_LIMIT=399
 ### When changed to 1 will increase the counter:
 ###
 ###  +5 for POST request to /user and /node/add
-###  +3 for GET request to /node/add
+###  +5 for GET request to /node/add
+###  +5 for GET request to /search
 ###
 _NGINX_DOS_MODE=2
 
