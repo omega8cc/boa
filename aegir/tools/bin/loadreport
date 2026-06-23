@@ -96,6 +96,9 @@ _PAGE="$(getconf PAGESIZE 2>/dev/null)"; [[ "${_PAGE}" =~ ^[0-9]+$ ]] || _PAGE=4
 _NCPU="$(nproc 2>/dev/null)"; [[ "${_NCPU}" =~ ^[0-9]+$ ]] || _NCPU=1
 _HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"; [ -n "${_HOST}" ] || _HOST="$(hostname 2>/dev/null)"
 _SELF=$$
+# procfs root — overridable (_LOADPROF_PROC) only so the sampler can be tested
+# against a synthetic fixture off-box; defaults to the real /proc everywhere.
+_PROC="${_LOADPROF_PROC:-/proc}"
 
 # Known BOA cron launchers — process-tree roll-up stops here, and these label
 # the "by launcher" view. Anything tracing to none of them is "(non-cron)".
@@ -112,7 +115,7 @@ _key_for() {
     bash|sh|dash|*\<defunct\>*)
       local _args=()
       while IFS= read -r -d '' _a; do _args+=("${_a}"); done \
-        < "/proc/${_pid}/cmdline" 2>/dev/null
+        2>/dev/null < "${_PROC}/${_pid}/cmdline"
       for _a in "${_args[@]}"; do
         case "${_a}" in
           *.sh|*.pl|*.php) _bn="${_a##*/}"; printf '%s' "${_bn}"; return ;;
@@ -131,8 +134,8 @@ _key_for() {
 _root_of() {
   local _pid="$1" _depth=0 _line _after _comm _ppid _key _f
   while (( _depth < 12 )); do
-    [ -r "/proc/${_pid}/stat" ] || break
-    read -r _line < "/proc/${_pid}/stat" 2>/dev/null || break
+    [ -r "${_PROC}/${_pid}/stat" ] || break
+    read -r _line 2>/dev/null < "${_PROC}/${_pid}/stat" || break
     [ -n "${_line}" ] || break
     _comm="${_line#*\(}"; _comm="${_comm%\)*}"
     _after="${_line##*\) }"
@@ -160,12 +163,12 @@ _root_of() {
 ###
 declare -A _FIRST _LAST _ROOT _KEY_OF_UID _PEAK
 _sample_pass() {
-  local _d _pid _line _comm _after _ppid _utime _stime _rss _start _uid _key _cpu _rssb
+  local _d _pid _line _comm _after _ppid _utime _stime _rss _start _uid _key _cpu _rssb _arg0
   local _cur_seen=" "
-  for _d in /proc/[0-9]*; do
-    _pid="${_d#/proc/}"
+  for _d in "${_PROC}"/[0-9]*; do
+    _pid="${_d##*/}"
     [ "${_pid}" = "${_SELF}" ] && continue
-    read -r _line < "${_d}/stat" 2>/dev/null || continue
+    read -r _line 2>/dev/null < "${_d}/stat" || continue
     [ -n "${_line}" ] || continue
     _comm="${_line#*\(}"; _comm="${_comm%\)*}"
     _after="${_line##*\) }"
@@ -177,8 +180,12 @@ _sample_pass() {
     _start="${_f[19]}"; _rss="${_f[21]}"
     [[ "${_utime}" =~ ^[0-9]+$ ]] || continue
     [[ "${_start}" =~ ^[0-9]+$ ]] || continue
-    # Skip kernel threads / zombies (empty cmdline).
-    [ -s "${_d}/cmdline" ] || continue
+    # Skip kernel threads / zombies. NB: /proc/<pid>/cmdline always stat()s as
+    # size 0, so `[ -s ]` is useless here — it would skip EVERY process. Read the
+    # first NUL-delimited token instead; kernel threads have an empty cmdline.
+    _arg0=""
+    IFS= read -r -d '' _arg0 2>/dev/null < "${_d}/cmdline"
+    [ -n "${_arg0}" ] || continue
     _cpu=$(( _utime + _stime ))
     _rssb=$(( _rss * _PAGE ))
     _uid="${_pid}.${_start}"
@@ -218,11 +225,11 @@ declare -A _CONCPEAK
 _run_live() {
   local _passes _i _f1 _f2 _ld1 _ld2 _fk1 _fk2 _cx1 _cx2 _rest
 
-  read -r _ld1 _rest < /proc/loadavg
+  read -r _ld1 _rest < "${_PROC}/loadavg"
   # Boot-relative window start, in clock ticks, so _sample_pass can tell which
   # processes were born during the window (charge full CPU) vs pre-existing.
   local _up
-  read -r _up _rest < /proc/uptime
+  read -r _up _rest < "${_PROC}/uptime"
   _START_TICKS="$(awk -v u="${_up}" -v hz="${_HZ}" 'BEGIN{printf "%d", u*hz}')"
   [[ "${_START_TICKS}" =~ ^[0-9]+$ ]] || _START_TICKS=0
   _read_stat_counters; _fk1=$_FORKS; _cx1=$_CTXT
@@ -237,7 +244,7 @@ _run_live() {
   done
   _sample_pass   # final pass to close out still-live pids
 
-  read -r _ld2 _rest < /proc/loadavg
+  read -r _ld2 _rest < "${_PROC}/loadavg"
   _read_stat_counters; _fk2=$_FORKS; _cx2=$_CTXT
   _TS_END="$(date +%s 2>/dev/null)"
   _LOAD1_START="${_ld1}"; _LOAD1_END="${_ld2}"
@@ -256,7 +263,7 @@ _read_stat_counters() {
       processes) _FORKS="${_b}" ;;
       ctxt)      _CTXT="${_b}" ;;
     esac
-  done < /proc/stat
+  done < "${_PROC}/stat"
 }
 
 ###
