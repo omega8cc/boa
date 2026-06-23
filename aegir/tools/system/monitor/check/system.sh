@@ -96,7 +96,7 @@ _incident_email_report() {
   esac
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
+  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < <(tail -n 200 "${_pthOml}")
 }
 
 _wkhtmltopdf_php_cli_oom_kill() {
