@@ -1,0 +1,469 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+#
+# loadreport — profile BOA's recurring monitor/maintenance scripts (READ-ONLY).
+#
+# BOA fires second.sh + minute.sh from cron every minute; each self-loops with
+# `sleep 5` and fans out ~20 short-lived monitor scripts roughly every 5 s, and
+# every spawned child re-sources /root/.barracuda.cnf and runs pgrep scans. On a
+# small/idle box that churn alone can pin the load average at 3-4 with zero site
+# traffic. This tool measures WHO is responsible.
+#
+# It samples /proc directly (no sysstat/acct/pidstat dependency) over a window
+# and attributes CPU + RSS per script. Targets are short-lived, so it tracks
+# every process by a (pid,starttime) identity: a process born DURING the window
+# is charged its full CPU from birth (cumulative utime+stime), and one that
+# pre-dates the window is charged only its in-window delta. A process must be
+# caught in at least one sample to be named; anything born and reaped entirely
+# between two ticks is missed by name but still shows up in the systemic fork /
+# context-switch counts from /proc/stat, which bound that sub-tick churn. Helper
+# forks (pgrep/awk/bc/sleep) are rolled up to the launcher that spawned them via
+# the /proc parent chain.
+#
+# It writes NO configuration and changes NOTHING. Pure bash + /proc; sort/awk
+# only at print time. Linux only.
+#
+# Usage:
+#   loadreport                       # live profile, human report (default 60s)
+#   loadreport --window 120 --interval 0.5
+#   loadreport --top 40 | --all
+#   loadreport --json                # machine-readable, one JSON object
+#   loadreport --log                 # live profile, append JSONL to the data dir
+#   loadreport --data DIR|FILE... [--days N]   # summarise logged history
+#
+# Tunables (env or flag): _LOADPROF_WINDOW(60) _LOADPROF_INTERVAL(1)
+#                         _LOADPROF_TOP(25)   _LOADPROF_DATA(/var/log/boa/load-profile)
+
+_DATA_DEFAULT="${_LOADPROF_DATA:-/var/log/boa/load-profile}"
+_WINDOW="${_LOADPROF_WINDOW:-60}"
+_INTERVAL="${_LOADPROF_INTERVAL:-1}"
+_TOP="${_LOADPROF_TOP:-25}"
+_MODE="live"          # live | log | data
+_JSON=0
+_FILES=()
+_DAYS=0
+
+usage() {
+  printf '%s\n' \
+    "Usage: loadreport [--window N] [--interval S] [--top N|--all] [--json]" \
+    "       loadreport --log                      # append a JSONL record" \
+    "       loadreport --data DIR|FILE... [--days N]"
+}
+
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --window)   _WINDOW="$2";   shift 2 ;;
+    --interval) _INTERVAL="$2"; shift 2 ;;
+    --top)      _TOP="$2";      shift 2 ;;
+    --all)      _TOP=0;         shift ;;
+    --json)     _JSON=1;        shift ;;
+    --log)      _MODE="log";    shift ;;
+    --days)     _DAYS="$2";     shift 2 ;;
+    --data)
+      _MODE="data"
+      shift
+      while [[ "$#" -gt 0 && "$1" != --* ]]; do
+        if [[ -d "$1" ]]; then
+          for _f in "$1"/*.jsonl; do [[ -e "${_f}" ]] && _FILES+=("${_f}"); done
+        elif [[ -f "$1" ]]; then
+          _FILES+=("$1")
+        else
+          printf 'No such data path: %s\n' "$1" >&2; exit 2
+        fi
+        shift
+      done
+      ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+# Validate numeric inputs (defensive; never trust env/flags blindly). Window and
+# interval must be strictly positive — a zero interval would divide-by-zero in
+# the pass-count and silently yield a useless single-sample run.
+{ [[ "${_WINDOW}"   =~ ^[0-9]+$ ]] && [ "${_WINDOW}" -ge 1 ]; }      || _WINDOW=60
+{ [[ "${_INTERVAL}" =~ ^[0-9]+([.][0-9]+)?$ ]] \
+    && awk "BEGIN{exit !(${_INTERVAL}>0)}"; }                        || _INTERVAL=1
+[[ "${_TOP}"      =~ ^[0-9]+$ ]]            || _TOP=25
+[[ "${_DAYS}"     =~ ^[0-9]+$ ]]            || _DAYS=0
+
+_HZ="$(getconf CLK_TCK 2>/dev/null)";  [[ "${_HZ}"   =~ ^[0-9]+$ ]] || _HZ=100
+_PAGE="$(getconf PAGESIZE 2>/dev/null)"; [[ "${_PAGE}" =~ ^[0-9]+$ ]] || _PAGE=4096
+_NCPU="$(nproc 2>/dev/null)"; [[ "${_NCPU}" =~ ^[0-9]+$ ]] || _NCPU=1
+_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"; [ -n "${_HOST}" ] || _HOST="$(hostname 2>/dev/null)"
+_SELF=$$
+# procfs root — overridable (_LOADPROF_PROC) only so the sampler can be tested
+# against a synthetic fixture off-box; defaults to the real /proc everywhere.
+_PROC="${_LOADPROF_PROC:-/proc}"
+
+# Known BOA cron launchers — process-tree roll-up stops here, and these label
+# the "by launcher" view. Anything tracing to none of them is "(non-cron)".
+_LAUNCHERS=" second.sh minute.sh runner.sh guest-fire.sh guest-water.sh daily.sh clear.sh ip_access.sh ai_policy.sh nginx_deny.sh migration_proxy_realip.sh cloudflare_realip.sh manage_ltd_users.sh manage_solr_config.sh purge_binlogs.sh mysql_cleanup.sh graceful.sh "
+
+###
+### Resolve a process key from its comm + pid. Bash/sh wrappers resolve to the
+### script basename they run; everything else keys by comm. NUL-safe cmdline
+### read, no fork.
+###
+_key_for() {
+  local _comm="$1" _pid="$2" _a _bn
+  case "${_comm}" in
+    bash|sh|dash|*\<defunct\>*)
+      local _args=()
+      while IFS= read -r -d '' _a; do _args+=("${_a}"); done \
+        2>/dev/null < "${_PROC}/${_pid}/cmdline"
+      for _a in "${_args[@]}"; do
+        case "${_a}" in
+          *.sh|*.pl|*.php) _bn="${_a##*/}"; printf '%s' "${_bn}"; return ;;
+        esac
+      done
+      printf '%s' "${_comm}"
+      ;;
+    *) printf '%s' "${_comm}" ;;
+  esac
+}
+
+###
+### Walk the parent chain to the owning launcher (depth-bounded). Returns a
+### launcher basename, or "(non-cron)" when the chain leaves the BOA cron tree.
+###
+_root_of() {
+  local _pid="$1" _depth=0 _line _after _comm _ppid _key _f
+  while (( _depth < 12 )); do
+    [ -r "${_PROC}/${_pid}/stat" ] || break
+    read -r _line 2>/dev/null < "${_PROC}/${_pid}/stat" || break
+    [ -n "${_line}" ] || break
+    _comm="${_line#*\(}"; _comm="${_comm%\)*}"
+    _after="${_line##*\) }"
+    # shellcheck disable=SC2206
+    _f=(${_after})
+    _ppid="${_f[1]}"
+    _key="$(_key_for "${_comm}" "${_pid}")"
+    case "${_LAUNCHERS}" in
+      *" ${_key} "*) printf '%s' "${_key}"; return ;;
+    esac
+    case "${_comm}" in
+      cron|crond|CRON) printf '%s' "(non-cron)"; return ;;
+    esac
+    [ -z "${_ppid}" ] && break
+    (( _ppid <= 1 )) && break
+    _pid="${_ppid}"
+    (( _depth++ ))
+  done
+  printf '%s' "(non-cron)"
+}
+
+###
+### One sampling pass over /proc. Updates the tracking tables. Fork-free except
+### nothing here forks; the only per-tick fork is the sleep between passes.
+###
+declare -A _FIRST _LAST _ROOT _KEY_OF_UID _PEAK
+_sample_pass() {
+  local _d _pid _line _comm _after _ppid _utime _stime _rss _start _uid _key _cpu _rssb _arg0
+  local _cur_seen=" "
+  for _d in "${_PROC}"/[0-9]*; do
+    _pid="${_d##*/}"
+    [ "${_pid}" = "${_SELF}" ] && continue
+    read -r _line 2>/dev/null < "${_d}/stat" || continue
+    [ -n "${_line}" ] || continue
+    _comm="${_line#*\(}"; _comm="${_comm%\)*}"
+    _after="${_line##*\) }"
+    # shellcheck disable=SC2206
+    local _f=(${_after})
+    _ppid="${_f[1]}"
+    [ "${_ppid}" = "${_SELF}" ] && continue        # skip our own sleep child
+    _utime="${_f[11]}"; _stime="${_f[12]}"
+    _start="${_f[19]}"; _rss="${_f[21]}"
+    [[ "${_utime}" =~ ^[0-9]+$ ]] || continue
+    [[ "${_start}" =~ ^[0-9]+$ ]] || continue
+    # Skip kernel threads / zombies. NB: /proc/<pid>/cmdline always stat()s as
+    # size 0, so `[ -s ]` is useless here — it would skip EVERY process. Read the
+    # first NUL-delimited token instead; kernel threads have an empty cmdline.
+    _arg0=""
+    IFS= read -r -d '' _arg0 2>/dev/null < "${_d}/cmdline"
+    [ -n "${_arg0}" ] || continue
+    _cpu=$(( _utime + _stime ))
+    _rssb=$(( _rss * _PAGE ))
+    _uid="${_pid}.${_start}"
+    if [ -z "${_FIRST[$_uid]+x}" ]; then
+      # Born during the window → charge full CPU from birth (baseline 0);
+      # pre-existing → charge only the in-window delta (baseline = now).
+      if [ -n "${_START_TICKS}" ] && (( _start >= _START_TICKS )); then
+        _FIRST[$_uid]=0
+      else
+        _FIRST[$_uid]=$_cpu
+      fi
+      _KEY_OF_UID[$_uid]="$(_key_for "${_comm}" "${_pid}")"
+      _ROOT[$_uid]="$(_root_of "${_pid}")"
+    fi
+    _LAST[$_uid]=$_cpu
+    [ -z "${_PEAK[$_uid]+x}" ] && _PEAK[$_uid]=0
+    (( _rssb > _PEAK[$_uid] )) && _PEAK[$_uid]=$_rssb
+    _cur_seen+="${_uid} "
+  done
+  # Per-key concurrent RSS this pass (sum of live RSS grouped by key).
+  local _u _k
+  unset _CONC_THIS; declare -gA _CONC_THIS
+  for _u in ${_cur_seen}; do
+    _k="${_KEY_OF_UID[$_u]}"
+    _CONC_THIS[$_k]=$(( ${_CONC_THIS[$_k]:-0} + ${_PEAK[$_u]} ))
+  done
+  for _k in "${!_CONC_THIS[@]}"; do
+    [ -z "${_CONCPEAK[$_k]+x}" ] && _CONCPEAK[$_k]=0
+    (( _CONC_THIS[$_k] > _CONCPEAK[$_k] )) && _CONCPEAK[$_k]=${_CONC_THIS[$_k]}
+  done
+}
+
+###
+### Live profiling run: sample for the whole window, then aggregate.
+###
+declare -A _CONCPEAK
+# Throttle / box-class state for the report. DRIFT-PROOF: it runs the DEPLOYED
+# minute.sh's own _monitor_box_class (extracted with sed) so it always reflects
+# what the box actually does, rather than re-implementing the precedence here.
+_MON_CLASS=""; _MON_RAM=""; _MON_SIG=""
+_compute_throttle_state() {
+  local _src="/var/xdrago/minute.sh" _fn _e
+  _MON_RAM="$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')"; _MON_RAM="${_MON_RAM//[^0-9]/}"
+  _MON_SIG=""
+  for _e in /etc/boa/.look.like.jenkins.cnf:jenkins /root/.slow.cron.cnf:slow.cron \
+            /root/.fast.cron.cnf:fast.cron /root/.force.queue.runner.cnf:force.queue.runner; do
+    [ -e "${_e%%:*}" ] && _MON_SIG+="${_MON_SIG:+, }${_e##*:}"
+  done
+  [ -n "${_MON_SIG}" ] || _MON_SIG="none"
+  _MON_CLASS=""
+  if [ -r "${_src}" ]; then
+    _fn="$(sed -n '/^_monitor_box_class()/,/^}/p' "${_src}" 2>/dev/null)"
+    # shellcheck disable=SC2294,SC2153  # intentional: define+run the box's own classifier (sets _BOX_CLASS via eval)
+    [ -n "${_fn}" ] && _MON_CLASS="$( eval "${_fn}"; _monitor_box_class 2>/dev/null; printf '%s' "${_BOX_CLASS}" )"
+  fi
+  case "${_MON_CLASS}" in CI|SLOW|NORMAL) : ;; *) _MON_CLASS="" ;; esac
+}
+
+_run_live() {
+  local _passes _i _f1 _f2 _ld1 _ld2 _fk1 _fk2 _cx1 _cx2 _rest
+
+  read -r _ld1 _rest < "${_PROC}/loadavg"
+  # Boot-relative window start, in clock ticks, so _sample_pass can tell which
+  # processes were born during the window (charge full CPU) vs pre-existing.
+  local _up
+  read -r _up _rest < "${_PROC}/uptime"
+  _START_TICKS="$(awk -v u="${_up}" -v hz="${_HZ}" 'BEGIN{printf "%d", u*hz}')"
+  [[ "${_START_TICKS}" =~ ^[0-9]+$ ]] || _START_TICKS=0
+  _read_stat_counters; _fk1=$_FORKS; _cx1=$_CTXT
+  _compute_throttle_state
+  _TS_START="$(date +%s 2>/dev/null)"
+
+  # Number of passes; guarantee at least 2 so a delta exists.
+  _passes="$(awk -v w="${_WINDOW}" -v i="${_INTERVAL}" \
+    'BEGIN{ p=w/i; if (p<2) p=2; printf "%d", p }')"
+  for (( _i = 0; _i < _passes; _i++ )); do
+    _sample_pass
+    sleep "${_INTERVAL}" 2>/dev/null || sleep 1
+  done
+  _sample_pass   # final pass to close out still-live pids
+
+  read -r _ld2 _rest < "${_PROC}/loadavg"
+  _read_stat_counters; _fk2=$_FORKS; _cx2=$_CTXT
+  _TS_END="$(date +%s 2>/dev/null)"
+  _LOAD1_START="${_ld1}"; _LOAD1_END="${_ld2}"
+  _FORK_DELTA=$(( _fk2 - _fk1 ))
+  _CTXT_DELTA=$(( _cx2 - _cx1 ))
+  _SPAN=$(( _TS_END - _TS_START )); (( _SPAN < 1 )) && _SPAN=${_WINDOW}
+
+  _aggregate
+}
+
+_read_stat_counters() {
+  local _l _a _b
+  _FORKS=0; _CTXT=0
+  while read -r _a _b _l; do
+    case "${_a}" in
+      processes) _FORKS="${_b}" ;;
+      ctxt)      _CTXT="${_b}" ;;
+    esac
+  done < "${_PROC}/stat"
+}
+
+###
+### Fold the per-uid tracking tables into per-command and per-launcher buckets.
+###
+declare -A _CMD_CPU _CMD_N _CMD_PEAK _ROOT_CPU _ROOT_N
+_aggregate() {
+  local _uid _key _root _cpu _peak
+  for _uid in "${!_FIRST[@]}"; do
+    _cpu=$(( ${_LAST[$_uid]} - ${_FIRST[$_uid]} ))
+    (( _cpu < 0 )) && _cpu=0
+    _key="${_KEY_OF_UID[$_uid]}"
+    _root="${_ROOT[$_uid]}"
+    _peak="${_PEAK[$_uid]}"
+    _CMD_CPU[$_key]=$(( ${_CMD_CPU[$_key]:-0} + _cpu ))
+    _CMD_N[$_key]=$(( ${_CMD_N[$_key]:-0} + 1 ))
+    [ -z "${_CMD_PEAK[$_key]+x}" ] && _CMD_PEAK[$_key]=0
+    (( _peak > _CMD_PEAK[$_key] )) && _CMD_PEAK[$_key]=$_peak
+    _ROOT_CPU[$_root]=$(( ${_ROOT_CPU[$_root]:-0} + _cpu ))
+    _ROOT_N[$_root]=$(( ${_ROOT_N[$_root]:-0} + 1 ))
+  done
+}
+
+# Convert jiffies → CPU-seconds and percent of one core over the span.
+_fmt_cpu() { awk -v j="$1" -v hz="${_HZ}" -v w="${_SPAN}" \
+  'BEGIN{ s=j/hz; printf "%8.2f %7.1f", s, (w>0?s/w*100:0) }'; }
+_fmt_mb()  { awk -v b="$1" 'BEGIN{ printf "%7.1f", b/1048576 }'; }
+
+###
+### Human report.
+###
+_print_report() {
+  local _k _line _n _shown
+  printf '\n%s\n' "loadreport — BOA recurring-script resource profile"
+  printf '  host %s   span %ss   interval %ss   cores %s   HZ %s\n' \
+    "${_HOST}" "${_SPAN}" "${_INTERVAL}" "${_NCPU}" "${_HZ}"
+  if [ -n "${_MON_CLASS}" ]; then
+    printf '  monitor throttle: %s   (RAM %s MB; cnf: %s)\n' \
+      "${_MON_CLASS}" "${_MON_RAM:-?}" "${_MON_SIG}"
+  else
+    printf '  monitor throttle: n/a — pre-throttle minute.sh   (RAM %s MB; cnf: %s)\n' \
+      "${_MON_RAM:-?}" "${_MON_SIG}"
+  fi
+  printf '  load1 %s -> %s\n' "${_LOAD1_START}" "${_LOAD1_END}"
+  printf '  forks during span: %s (%s/min)   ctxt switches: %s (%s/s)\n' \
+    "${_FORK_DELTA}" \
+    "$(awk -v f="${_FORK_DELTA}" -v w="${_SPAN}" 'BEGIN{printf "%.0f", (w>0?f/w*60:0)}')" \
+    "${_CTXT_DELTA}" \
+    "$(awk -v c="${_CTXT_DELTA}" -v w="${_SPAN}" 'BEGIN{printf "%.0f", (w>0?c/w:0)}')"
+  printf '  distinct processes sampled: %s\n' "${#_FIRST[@]}"
+
+  printf '\n  %-26s %9s %8s %7s %9s %9s\n' \
+    "BY COMMAND" "CPU_s" "%1core" "spawns" "peakRSS" "concRSS"
+  _shown=0
+  while IFS=$'\t' read -r _cpu _k; do
+    [ -n "${_k}" ] || continue
+    printf '  %-26s %s %6s %s %s\n' \
+      "${_k}" \
+      "$(_fmt_cpu "${_cpu}")" \
+      "${_CMD_N[$_k]}" \
+      "$(_fmt_mb "${_CMD_PEAK[$_k]}")" \
+      "$(_fmt_mb "${_CONCPEAK[$_k]:-0}")"
+    _shown=$(( _shown + 1 ))
+    [ "${_TOP}" -gt 0 ] && [ "${_shown}" -ge "${_TOP}" ] && break
+  done < <(for _k in "${!_CMD_CPU[@]}"; do printf '%s\t%s\n' "${_CMD_CPU[$_k]}" "${_k}"; done | sort -rn)
+
+  printf '\n  %-26s %9s %8s %7s\n' "BY LAUNCHER (subtree)" "CPU_s" "%1core" "procs"
+  while IFS=$'\t' read -r _cpu _k; do
+    [ -n "${_k}" ] || continue
+    printf '  %-26s %s %6s\n' "${_k}" "$(_fmt_cpu "${_cpu}")" "${_ROOT_N[$_k]}"
+  done < <(for _k in "${!_ROOT_CPU[@]}"; do printf '%s\t%s\n' "${_ROOT_CPU[$_k]}" "${_k}"; done | sort -rn)
+  printf '\n'
+}
+
+###
+### JSON object (one line). Used by --json and --log.
+###
+_json_escape() { local s="$1"; s="${s//\\/\\\\}"; s="${s//\"/\\\"}"; printf '%s' "${s}"; }
+_emit_json() {
+  local _k _first=1 _out
+  _out='{'
+  _out+="\"ts\":${_TS_END:-0},\"host\":\"$(_json_escape "${_HOST}")\","
+  _out+="\"span\":${_SPAN},\"interval\":\"${_INTERVAL}\",\"hz\":${_HZ},\"ncpu\":${_NCPU},"
+  _out+="\"monitor_class\":\"$(_json_escape "${_MON_CLASS}")\","
+  _out+="\"load1_start\":\"${_LOAD1_START}\",\"load1_end\":\"${_LOAD1_END}\","
+  _out+="\"forks\":${_FORK_DELTA},\"ctxt\":${_CTXT_DELTA},\"procs\":${#_FIRST[@]},"
+  _out+='"by_command":['
+  _first=1
+  while IFS=$'\t' read -r _cpu _k; do
+    [ -n "${_k}" ] || continue
+    [ "${_first}" -eq 0 ] && _out+=','
+    _out+="{\"key\":\"$(_json_escape "${_k}")\",\"cpu_s\":$(awk -v j="${_cpu}" -v hz="${_HZ}" 'BEGIN{printf "%.2f", j/hz}'),\"spawns\":${_CMD_N[$_k]},\"peak_rss_mb\":$(awk -v b="${_CMD_PEAK[$_k]}" 'BEGIN{printf "%.1f", b/1048576}'),\"conc_rss_mb\":$(awk -v b="${_CONCPEAK[$_k]:-0}" 'BEGIN{printf "%.1f", b/1048576}')}"
+    _first=0
+  done < <(for _k in "${!_CMD_CPU[@]}"; do printf '%s\t%s\n' "${_CMD_CPU[$_k]}" "${_k}"; done | sort -rn)
+  _out+='],"by_launcher":['
+  _first=1
+  while IFS=$'\t' read -r _cpu _k; do
+    [ -n "${_k}" ] || continue
+    [ "${_first}" -eq 0 ] && _out+=','
+    _out+="{\"key\":\"$(_json_escape "${_k}")\",\"cpu_s\":$(awk -v j="${_cpu}" -v hz="${_HZ}" 'BEGIN{printf "%.2f", j/hz}'),\"procs\":${_ROOT_N[$_k]}}"
+    _first=0
+  done < <(for _k in "${!_ROOT_CPU[@]}"; do printf '%s\t%s\n' "${_ROOT_CPU[$_k]}" "${_k}"; done | sort -rn)
+  _out+=']}'
+  printf '%s\n' "${_out}"
+}
+
+###
+### --data: summarise logged JSONL history (best-effort field extraction).
+###
+_run_data() {
+  [ "${#_FILES[@]}" -gt 0 ] || { printf 'No data files found.\n' >&2; exit 2; }
+  local _recs
+  # Each JSONL line is one profile run. Pull every by_command object out with a
+  # bounded regex walk (we own the format, so this stays simple and robust),
+  # average cpu_s per command across the retained records, track max concRSS.
+  # The shell prints the header; awk emits only tab rows so a plain `sort -rn`
+  # orders the body without buffering races.
+  _recs="$(awk -v days="${_DAYS}" '
+    { l[NR]=$0; n=NR; if (match($0,/"ts":[0-9]+/)) { t=substr($0,RSTART+5,RLENGTH-5)+0; if (t>mx) mx=t } }
+    END { c=(days>0?mx-days*86400:0); u=0;
+      for (i=1;i<=n;i++){ if (match(l[i],/"ts":[0-9]+/)) { tt=substr(l[i],RSTART+5,RLENGTH-5)+0; if (tt<c) continue } u++ }
+      print u }' "${_FILES[@]}" 2>/dev/null)"
+  printf '\nloadreport history — %s record(s)%s\n' "${_recs:-0}" \
+    "$( [ "${_DAYS}" -gt 0 ] && printf ' within %s day(s)' "${_DAYS}" )"
+  printf '  %-26s %9s %8s %10s\n' "COMMAND" "avgCPU_s" "samples" "maxConcMB"
+  awk -v days="${_DAYS}" '
+    { l[NR]=$0; n=NR; if (match($0,/"ts":[0-9]+/)) { t=substr($0,RSTART+5,RLENGTH-5)+0; if (t>mx) mx=t } }
+    END {
+      c=(days>0?mx-days*86400:0);
+      for (i=1;i<=n;i++) {
+        s=l[i];
+        if (match(s,/"ts":[0-9]+/)) { tt=substr(s,RSTART+5,RLENGTH-5)+0; if (tt<c) continue }
+        bc=s;
+        if (match(bc,/"by_command":\[/)) bc=substr(bc,RSTART+RLENGTH);
+        if (match(bc,/\]/)) bc=substr(bc,1,RSTART-1);
+        while (match(bc,/\{[^}]*\}/)) {
+          obj=substr(bc,RSTART,RLENGTH); bc=substr(bc,RSTART+RLENGTH);
+          k=""; v=0; r=0;
+          if (match(obj,/"key":"[^"]*"/)) k=substr(obj,RSTART+7,RLENGTH-8);
+          if (match(obj,/"cpu_s":[0-9.]+/)) v=substr(obj,RSTART+8,RLENGTH-8)+0;
+          if (match(obj,/"conc_rss_mb":[0-9.]+/)) r=substr(obj,RSTART+14,RLENGTH-14)+0;
+          if (k!="") { sum[k]+=v; cnt[k]++; if (r>peak[k]) peak[k]=r; }
+        }
+      }
+      for (k in sum) printf "%.6f\t%s\t%d\t%.1f\n", sum[k]/cnt[k], k, cnt[k], peak[k];
+    }' "${_FILES[@]}" 2>/dev/null | sort -rn \
+    | awk -F'\t' '{ printf "  %-26s %9.2f %8d %10s\n", $2, $1, $3, $4 }'
+  printf '\n'
+}
+
+###--------------- main ---------------###
+
+case "${_MODE}" in
+  data)
+    _run_data
+    ;;
+  log)
+    # Periodic logger (cron). Skip proxy nodes; keep the data set bounded.
+    [ -e "/root/.proxy.cnf" ] && exit 0
+    _run_live
+    mkdir -p "${_DATA_DEFAULT}" 2>/dev/null
+    _LOGF="${_DATA_DEFAULT}/$(date +%Y-%m-%d 2>/dev/null).jsonl"
+    _emit_json >> "${_LOGF}" 2>/dev/null
+    # Prune logs older than the retention window (default 14 days).
+    _keep="${_LOADPROF_KEEP_DAYS:-14}"
+    [[ "${_keep}" =~ ^[0-9]+$ ]] || _keep=14
+    find "${_DATA_DEFAULT}" -maxdepth 1 -name '*.jsonl' -mtime "+${_keep}" \
+      -delete 2>/dev/null
+    ;;
+  live)
+    _run_live
+    if [ "${_JSON}" -eq 1 ]; then
+      _emit_json
+    else
+      _print_report
+    fi
+    ;;
+esac
+
+exit 0
