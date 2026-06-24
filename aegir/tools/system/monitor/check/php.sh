@@ -171,10 +171,51 @@ _fpm_listen_conflict_detection() {
 }
 
 _fpm_proc_max_detection() {
-  _count=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "process.max")
-  if [ "${_count}" -gt 0 ]; then
-    _thisErrLog="$(date) NOTE: process.max reached (${_count} hits). Consider raising pm.max_children"
-    echo ${_thisErrLog} >> ${_pthOml}
+  # Per-pool saturation is what FPM actually logs when a pool cannot spawn a
+  # worker:
+  #   WARNING: [pool NAME] server reached max_children setting (N), consider raising it
+  # The GLOBAL "process.max" ceiling BOA sets to 0 (disabled) is never logged,
+  # so the old grep for it never matched. Match the per-pool string instead.
+  #
+  # Because that warning line persists in the log until rotation, a flat
+  # "tail | grep -c" would re-emit the NOTE on every run (this script runs each
+  # minute) for as long as the line stays in the tail window. Track a per-file
+  # byte offset so only NEW hits since the last run are reported — same approach
+  # scan_nginx.sh uses for its Tier-B FPM-saturation trigger.
+  local _posfile="/var/log/boa/fpm_maxchildren.pos"
+  local _tmp _f _sz _off _new _hits _hitf
+  declare -A _POS
+  if [ -f "${_posfile}" ]; then
+    while IFS='|' read -r _f _off; do
+      [ -n "${_f}" ] && [[ "${_off}" =~ ^[0-9]+$ ]] && _POS["${_f}"]="${_off}"
+    done < "${_posfile}"
+  fi
+  _tmp="${_posfile}.$$"
+  : > "${_tmp}" 2>/dev/null || return 0
+  _hits=0
+  _hitf=""
+  for _f in /var/log/php/php*-fpm-error.log; do
+    [ -f "${_f}" ] || continue
+    _sz=$(stat -c %s "${_f}" 2>/dev/null)
+    [[ "${_sz}" =~ ^[0-9]+$ ]] || _sz=0
+    _off="${_POS["${_f}"]:-0}"
+    # Log rotated/truncated since last run: re-baseline from the start.
+    (( _sz < _off )) && _off=0
+    if (( _sz > _off )); then
+      _new=$(tail -c +"$(( _off + 1 ))" "${_f}" 2>/dev/null \
+        | grep -c -- "reached max_children setting")
+      [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
+      if (( _new > 0 )); then
+        _hits=$(( _hits + _new ))
+        _hitf="${_hitf} ${_f##*/}(${_new})"
+      fi
+    fi
+    printf '%s|%s\n' "${_f}" "${_sz}" >> "${_tmp}"
+  done
+  mv -f "${_tmp}" "${_posfile}" 2>/dev/null
+  if (( _hits > 0 )); then
+    _thisErrLog="$(date) NOTE: PHP-FPM reached max_children setting (${_hits} new hit(s) in${_hitf}). Consider raising pm.max_children for the affected pool(s)"
+    echo "${_thisErrLog}" >> "${_pthOml}"
     # No restart; capacity signal only.
   fi
 }
