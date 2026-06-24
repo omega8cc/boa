@@ -986,13 +986,13 @@ _USE_MYSQLTUNER=NO
 ### never starts them anyway, if the average load
 ### in the last minute is higher than 3.1
 ###
-_CPU_CRIT_RATIO=6.1
+_CPU_CRIT_RATIO=8.1
 
 ###
 ### Set max 1 min load per CPU core before disabling
 ### Nginx temporarily, until the load stabilizes.
 ###
-_CPU_MAX_RATIO=4.1
+_CPU_MAX_RATIO=6.1
 
 ###
 ### Define max 1 min load per CPU core before
@@ -1025,7 +1025,8 @@ _NGINX_DOS_LIMIT=399
 ### When changed to 1 will increase the counter:
 ###
 ###  +5 for POST request to /user and /node/add
-###  +3 for GET request to /node/add
+###  +5 for GET request to /node/add
+###  +5 for GET request to /search
 ###
 _NGINX_DOS_MODE=2
 

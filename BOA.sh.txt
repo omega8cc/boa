@@ -1373,7 +1373,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f93 --guard autosymlink
   _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f98 --guard updatesymlinks
   _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup
-  _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/tools/bin/loadguard" f99 --guard xloadguard
+  _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/tools/bin/loadguard" f98 --guard xloadguard
   _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror
   _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/tools/bin/ffdevuan" f95 --guard xffdevuan
   _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver
@@ -1390,6 +1390,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/tools/bin/loadreport" f98 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
   _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f94 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
+  _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f99 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
@@ -1419,7 +1420,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity
-    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f63
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f62
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f79
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f90
@@ -1452,9 +1453,9 @@ _update_agents() {
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f91
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f91 --guard mysql_cluster_backup.sh
-    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f82
+    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f81
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f88
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f95
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f92
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f89
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
@@ -1468,7 +1469,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f99
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f84
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f56 --guard autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f55 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f67
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
