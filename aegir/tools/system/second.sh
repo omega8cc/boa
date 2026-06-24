@@ -24,14 +24,23 @@ _pthOml="/var/log/boa/high.load.incident.log"
 # Load _RATIO defaults + sanitize
 _CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
 _CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
-_CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
 _CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
+_LOAD_IOWAIT_MIN="$(_sanitize_number "${_LOAD_IOWAIT_MIN}")"
+_RESUME_FRACTION="$(_sanitize_number "${_RESUME_FRACTION}")"
 
 # ===== Config (ratios per CPU) =====
-: "${_CPU_CRIT_RATIO:=6.1}"    # CRIT: pause web + kill long procs + block spiders
-: "${_CPU_MAX_RATIO:=4.1}"     # MAX:  pause web + block spiders
-: "${_CPU_TASK_RATIO:=3.1}"    # TASK: skip backend tasks (but web OK)
+: "${_CPU_CRIT_RATIO:=8.1}"    # CRIT: pause web + kill long procs + block spiders
+: "${_CPU_MAX_RATIO:=6.1}"     # MAX:  pause web + block spiders
 : "${_CPU_SPIDER_RATIO:=2.1}"  # SPIDER: allow web; block spiders only
+: "${_LOAD_IOWAIT_MIN:=10}"    # min system iowait% to treat high load as disk-bound (gates the backup pause-skip)
+: "${_RESUME_FRACTION:=0.8}"   # resume web only after load falls below MAX * this (hysteresis vs flap)
+# Clamp to the open interval (0,1). A 0 (or a typo that sanitizes to a bare '.') would make the
+# resume threshold 0 — load is always >= 0, so the latch would never clear and web would stay
+# stuck paused; a value >= 1 would disable the hysteresis. Reset anything outside (0,1) to default.
+awk "BEGIN{exit !(${_RESUME_FRACTION}>0 && ${_RESUME_FRACTION}<1)}" 2>/dev/null || _RESUME_FRACTION=0.8
+# NB: no TASK tier here. Backend-task load-shedding at _CPU_TASK_RATIO is enforced
+# by the queue scripts themselves (runner.sh/daily.sh/usage.sh/manage_solr_config.sh/
+# purge_binlogs.sh), not by _load_control.
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -236,6 +245,62 @@ _get_load() {
   _F_LOAD=$(awk -v _load_value="${_five}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
 }
 
+# True while a scheduled/manual backup is running. A backup's high load is
+# expected, largely I/O-wait (D-state from dump/duplicity disk churn) and
+# self-limiting, so the load tiers must NOT pause web or kill tasks while one is
+# active: pausing nginx/php-fpm does nothing for a disk-bound backup, it only
+# cuts service for no benefit. Matched tightly (BOA backup orchestrator scripts
+# by path + the dump engines by exact name) so a genuine non-backup overload is
+# never mistaken for a backup.
+_backup_in_progress() {
+  [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
+  pgrep -f '/backboa|/duobackboa|/multiback|/mysql_backup\.sh|/mysql_cluster_backup\.sh' >/dev/null 2>&1 && return 0
+  pgrep -x mydumper >/dev/null 2>&1 && return 0
+  pgrep -x duplicity >/dev/null 2>&1
+}
+
+# Measured system iowait% over a short sample. Used to CONFIRM a backup's high
+# load is genuinely disk-bound before we decline to act. Fails CLOSED: any read
+# error or degenerate delta yields 0%, which is below the threshold, so the
+# drastic tiers still fire — we never skip a pause on a failed measurement.
+_IOWAIT_PCT=0
+_get_iowait_pct() {
+  local _u1 _n1 _s1 _i1 _w1 _q1 _sq1 _st1 _u2 _n2 _s2 _i2 _w2 _q2 _sq2 _st2 _tot
+  _IOWAIT_PCT=0
+  head -n1 /proc/stat >/dev/null 2>&1 || return
+  read -r _ _u1 _n1 _s1 _i1 _w1 _q1 _sq1 _st1 _rest 2>/dev/null < /proc/stat
+  sleep 0.2
+  read -r _ _u2 _n2 _s2 _i2 _w2 _q2 _sq2 _st2 _rest 2>/dev/null < /proc/stat
+  _tot=$(( (_u2-_u1)+(_n2-_n1)+(_s2-_s1)+(_i2-_i1)+(_w2-_w1)+(_q2-_q1)+(_sq2-_sq1)+(_st2-_st1) ))
+  [ "${_tot}" -le 0 ] && return
+  _IOWAIT_PCT="$(awk -v w="$(( _w2 - _w1 ))" -v t="${_tot}" 'BEGIN{printf "%.1f",(w/t)*100}')"
+}
+
+# True only when load is I/O-wait-dominated (iowait% >= _LOAD_IOWAIT_MIN). Paired
+# with _backup_in_progress so the drastic tiers are skipped ONLY when a backup is
+# running AND the load really is disk-bound; a CPU-bound runaway coincident with
+# the backup window has low iowait, so pause/kill still fire. Fails closed.
+_load_is_iowait_bound() {
+  _get_iowait_pct
+  awk -v i="${_IOWAIT_PCT}" -v th="${_LOAD_IOWAIT_MIN}" 'BEGIN{exit (i>=th)?0:1}'
+}
+
+# Resume hysteresis: the watchdogs in monitor/check/{nginx,php,mysql,...}.sh restart
+# web only when BOTH /run/max_load.pid and /run/critical_load.pid are absent. Hold
+# that latch until load falls below _CPU_RESUME_THRESHOLD (= MAX * _RESUME_FRACTION)
+# on BOTH 1m and 5m; without this the latch cleared the instant load dipped under
+# MAX, so a box hovering at the threshold flapped pause/resume. Fails toward RESUME:
+# a missing/unusable threshold clears the latch rather than leaving web stuck paused.
+_clear_pause_latch() {
+  if [ -n "${_CPU_RESUME_THRESHOLD}" ] \
+     && awk "BEGIN {exit !(${_O_LOAD} >= ${_CPU_RESUME_THRESHOLD} || ${_F_LOAD} >= ${_CPU_RESUME_THRESHOLD})}" 2>/dev/null; then
+    return 0
+  fi
+  [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
+  [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+  return 0
+}
+
 # Function to control system load actions
 _load_control() {
   _get_load
@@ -248,6 +313,7 @@ _load_control() {
   _CPU_SPIDER_THRESHOLD=$(echo "${_CPU_SPIDER_RATIO} * 100" | bc -l)
   _CPU_MAX_THRESHOLD=$(echo "${_CPU_MAX_RATIO} * 100" | bc -l)
   _CPU_CRIT_THRESHOLD=$(echo "${_CPU_CRIT_RATIO} * 100" | bc -l)
+  _CPU_RESUME_THRESHOLD=$(echo "${_CPU_MAX_THRESHOLD} * ${_RESUME_FRACTION}" | bc -l)
 
   echo "Current Load Averages:"
   echo " - 1-minute Load (per CPU): ${_O_LOAD}%"
@@ -256,11 +322,14 @@ _load_control() {
   echo " - Critical Load Threshold: ${_CPU_CRIT_THRESHOLD}%"
   echo " - Max Load Threshold: ${_CPU_MAX_THRESHOLD}%"
   echo " - Spider Protection Threshold: ${_CPU_SPIDER_THRESHOLD}%"
+  echo " - Web Resume Threshold:        ${_CPU_RESUME_THRESHOLD}%"
 
   # Check for critical load to terminate processes and hold services
   if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
     sleep 9
-    # Sustained critical load → verify twice with brief cooldown then react
+    _get_load   # re-read AFTER the cooldown — react only if the load is STILL high
+    # (the old code re-checked the stale entry value, so a transient spike — e.g. a
+    # backup I/O burst — that subsided within the 9s window still paused web)
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
       touch /run/critical_load.pid
       [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
@@ -277,14 +346,18 @@ _load_control() {
         _load_period="5-minute"
       fi
       if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
-        _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
-        _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+        if _backup_in_progress && _load_is_iowait_bound; then
+          echo "$(date) Critical load ${_current_load}% (${_load_period}) during a running backup, I/O-wait-bound (iowait ${_IOWAIT_PCT}% >= ${_LOAD_IOWAIT_MIN}%) - NOT terminating/pausing (expected, self-limiting backup I/O)" >> ${_pthOml}
+        else
+          _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
+          _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+        fi
       fi
     fi
   # Check for max load to hold services
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
     sleep 9
-    # Sustained max load → verify twice with brief cooldown then react
+    _get_load   # re-read AFTER the cooldown — react only if the load is STILL high
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/max_load.pid
       [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
@@ -301,17 +374,20 @@ _load_control() {
         _load_period="5-minute"
       fi
       if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
-        _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+        if _backup_in_progress && _load_is_iowait_bound; then
+          echo "$(date) Max load ${_current_load}% (${_load_period}) during a running backup, I/O-wait-bound (iowait ${_IOWAIT_PCT}% >= ${_LOAD_IOWAIT_MIN}%) - NOT pausing web (expected, self-limiting backup I/O)" >> ${_pthOml}
+        else
+          _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+        fi
       fi
     fi
   # Check for spider protection threshold
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
     sleep 9
-    # Sustained too high for spiders load → verify twice with brief cooldown then react
+    _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
-      [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
-      [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+      _clear_pause_latch   # hysteresis: keep web paused until load < resume threshold
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
       echo "Load exceeds spider protection threshold but below max threshold."
       _limits_exceeded=true
@@ -324,11 +400,10 @@ _load_control() {
     fi
   elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
     sleep 9
-    # Sustained too high for spiders load → verify twice with brief cooldown then react
+    _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
     if awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
-      [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
-      [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+      _clear_pause_latch   # hysteresis: keep web paused until load < resume threshold
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
       echo "Load exceeds spider protection threshold but below max threshold."
       _limits_exceeded=true
@@ -341,8 +416,7 @@ _load_control() {
     fi
   else
     touch /run/normal_load.pid
-    [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
-    [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+    _clear_pause_latch   # hysteresis: keep web paused until load < resume threshold
     [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
     # If load is below spider protection threshold, disable spider protection if it's enabled
     if [ -e "/data/conf/nginx_high_load.conf" ] && \
