@@ -63,6 +63,12 @@ as explained in this document further below.
   Let's Encrypt SSL for Ægir control panel is auto-managed in BOA outside of
   the control panel, and you should never enable it within control panel.
 
+  The control panel (and Adminer) are served over HTTPS by this auto-managed,
+  LE-enabled local nginx proxy. It talks HTTP/1.1 to the origin, so legitimate
+  Hostmaster/Adminer access is never mistaken for the HTTP/1.0 registration-spam
+  pattern the abuse guard bans — see [MIGRATE-XOCT.md](MIGRATE-XOCT.md) and
+  [ABUSE-GUARD.md](ABUSE-GUARD.md).
+
 ## How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
 
   When you modify aliases or redirections, Ægir will re-create the SSL

@@ -273,6 +273,52 @@ _NGINX_FPM_ERR_GLOB="/var/log/php/php*-fpm-error.log"
 # The literal the FPM master logs when a pool hits its pm.max_children ceiling.
 _NGINX_FPM_SAT_PATTERN="reached max_children setting"
 
+# ---- HTTP/1.0 registration-spam botnet detection (ON by default, opt-out) ----
+# A credential/registration-spam botnet POSTs to Drupal auth paths (/user/register,
+# /user/password) over HTTP/1.0 while forging a modern-browser User-Agent. HTTP/1.0
+# is the clean transport-layer tell: no browser built in ~15 years speaks HTTP/1.0
+# to a public HTTPS host. The bot paces one slow request per IP from a small CIDR
+# block, so neither the per-IP weighted scorer (its raw-reqs floor plus the per-run
+# counter reset) nor the search-oriented path-flood watch list ever catches it. A
+# per-site Nginx guard returns 444 for this traffic; this detector turns the same
+# signal into a CSF ban of the source so the firewall drops it before Nginx.
+#
+# DEFAULT ON, opt out per box. $server_protocol is the protocol on the connection
+# to THIS Nginx, not the realip-recovered client's. BOA's own proxy layer
+# (proxy.conf / ssl_proxy.conf / pln_proxy.conf / https_proxy_le.conf and the
+# wildcard-SSL nginx_wild_ssl.conf) sets `proxy_http_version 1.1`, so a
+# correctly-updated BOA front proxy / PX0 tier no longer downgrades to HTTP/1.0 at
+# origin and real visitors stay HTTP/1.1 / HTTP/2 there. The residual
+# false-positive sources are a NON-BOA front proxy or CDN that talks HTTP/1.0 to
+# origin, or a box not yet updated to the HTTP/1.1 proxy confs; opt out THERE by
+# setting _NGINX_HTTP10_AUTH_DETECT=NO in /root/.barracuda.cnf (confirm via the
+# access log that real clients show HTTP/1.1 / HTTP/2 and only the bot HTTP/1.0).
+_NGINX_HTTP10_AUTH_DETECT=YES
+
+# Bash ERE matched against the parsed request URI (query stripped). The optional
+# two-letter language prefix mirrors the site's i18n paths. No legitimate HTTP/1.0
+# client ever requests these. Must be a valid ERE if overridden.
+_NGINX_HTTP10_AUTH_PATHS="^/([a-z]{2}/)?user/(register|password)(/|$)"
+
+# Sliding-window length in seconds across runs. The bot is slow (~1 req/IP every
+# few minutes), so a single ~5s scan window never accumulates enough; the window
+# persists hits across runs, exactly like the i18n detector's window.state.
+_NGINX_HTTP10_AUTH_WINDOW=600
+
+# Ban an individual IP once it reaches this many HTTP/1.0 auth-path hits within
+# the window. A lone stray HTTP/1.0 hit (one) stays below it -- the same
+# single-hit safety margin the php-probe weight keeps.
+_NGINX_HTTP10_AUTH_IP_THRESHOLD=3
+
+# Ban every observed contributing IP of a /24 once that /24's combined HTTP/1.0
+# auth-path hits reach this many within the window. The botnet spreads a slow
+# trickle across a small CIDR block (a /29 was observed), so the per-IP threshold
+# alone reacts too slowly per address; the aggregate trips the whole block
+# cleanly. Only IPs actually seen sending HTTP/1.0 to an auth path are banned --
+# never an unseen address in the /24. Set very high to rely on the per-IP path
+# only.
+_NGINX_HTTP10_AUTH_CIDR_THRESHOLD=6
+
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
 
@@ -358,12 +404,28 @@ if ! [[ "${_NGINX_PHP_PROBE_WEIGHT:-}" =~ ^[0-9]+$ ]]; then
   _NGINX_PHP_PROBE_WEIGHT=$(( _NGINX_DOS_LIMIT / 3 ))
 fi
 
+# Validate the opt-in HTTP/1.0 auth-spam detector numerics; fall back to defaults
+# on any non-positive-integer override so userland config cannot break arithmetic.
+[[ "${_NGINX_HTTP10_AUTH_WINDOW}" =~ ^[1-9][0-9]*$ ]] || _NGINX_HTTP10_AUTH_WINDOW=600
+[[ "${_NGINX_HTTP10_AUTH_IP_THRESHOLD}" =~ ^[1-9][0-9]*$ ]] || _NGINX_HTTP10_AUTH_IP_THRESHOLD=3
+[[ "${_NGINX_HTTP10_AUTH_CIDR_THRESHOLD}" =~ ^[1-9][0-9]*$ ]] || _NGINX_HTTP10_AUTH_CIDR_THRESHOLD=6
+# Validate the auth-path ERE: a malformed override makes every [[ =~ ]] test
+# error (rc>1), which silently counts nothing (fail-closed). Revert to the
+# default so a typo does not quietly disable the detector, mirroring the numeric
+# fallbacks above. rc 0/1 = valid (match/no-match); rc>1 = bad regex.
+[[ "/probe" =~ ${_NGINX_HTTP10_AUTH_PATHS} ]] 2>/dev/null
+if (( $? > 1 )); then
+  echo "Warning: Invalid _NGINX_HTTP10_AUTH_PATHS regex -- reverting to default."
+  _NGINX_HTTP10_AUTH_PATHS="^/([a-z]{2}/)?user/(register|password)(/|$)"
+fi
+
 echo "CONFIG: _NGINX_DOS_LIMIT is ${_NGINX_DOS_LIMIT}"
 echo "CONFIG: _NGINX_DOS_LINES is ${_NGINX_DOS_LINES}"
 echo "CONFIG: _INC_NR is ${_INC_NR}"
 echo "CONFIG: _INC_S_NR is ${_INC_S_NR}"
 echo "CONFIG: _NGINX_DOS_444_WEIGHT is ${_NGINX_DOS_444_WEIGHT}"
 echo "CONFIG: _NGINX_PHP_PROBE_WEIGHT is ${_NGINX_PHP_PROBE_WEIGHT}"
+echo "CONFIG: _NGINX_HTTP10_AUTH_DETECT is ${_NGINX_HTTP10_AUTH_DETECT}"
 
 # ==============================
 # Declare Associative Arrays
@@ -418,11 +480,16 @@ declare -A _I18N_SLOW     # localized requests with request_time >= SLOW_SECS
 declare -A _I18N_ERR      # localized 5xx responses
 declare -A _I18N_C444     # localized 444 responses (Tier-A guardrail shedding)
 
+# HTTP/1.0 auth-spam: per-run tally of HTTP/1.0 hits to auth paths, keyed by the
+# real client IP. Merged into a cross-run sliding window after the loop.
+declare -A _H10_AUTH
+
 # Debugging: Confirm associative arrays are declared
 if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
   declare -p _BANNED_IPS _ALLOWED_IPS _LOGGED_IN_IPS _COUNTERS _LI_CNT _PX_CNT
   declare -p _UA_IP_COUNT _UA_REQ_COUNT _UA_IP_SET _UA_IP_LIST _UA_IP_REQS
   declare -p _PATH_REQ_COUNT _PATH_IP_COUNT _PATH_IP_SET _PATH_IP_LIST _PATH_IP_REQS _PATH_IP_200_REQS _PATH_SLOW_COUNT
+  declare -p _H10_AUTH
   echo "DEBUG: Associative arrays declared (DoS + DDoS + path-flood sets)."
 fi
 
@@ -1239,6 +1306,13 @@ _I18N_LINE_RE='^"[^"]*" ([^ ]+) \[[^]]*\] "[A-Z]+ ([^ ]+) [^"]*" ([0-9]{3}) '
 _I18N_DIR="/var/xdrago/monitor/log/i18n_flood"
 _I18N_LOG="/var/xdrago/monitor/log/i18n_flood.log"
 
+# Gate the HTTP/1.0 auth-spam tracker on a single flag so the hot loop pays
+# nothing when the (on-by-default) detector is opted out. State persists the
+# cross-run sliding window, like the i18n window.state above.
+_H10_ON=0
+[[ "${_NGINX_HTTP10_AUTH_DETECT}" == "YES" ]] && _H10_ON=1
+_H10_STATE="/var/xdrago/monitor/log/http10_auth.window"
+
 # Per-line tally for the windowed detector.  $1 vhost, $2 status, $3 request_time.
 _track_i18n_flood() {
   local _h="$1" _st="$2" _ut="$3" _uti
@@ -1399,6 +1473,99 @@ _check_fpm_saturation() {
     printf '%s FPM-SATURATION new max_children hits:%s -> %s\n' "$(date)" "${_hitf}" "${_snap}" >> "${_I18N_LOG}"
     echo "=== FPM-SATURATION: ${_hits} new max_children hit(s):${_hitf} (snapshot ${_snap}) ==="
   fi
+}
+
+# ==============================
+# HTTP/1.0 Registration-Spam Detection (opt-in)
+# ==============================
+
+# _track_http10_auth IP LINE
+# Per-line tally for the opt-in HTTP/1.0 auth-spam detector. Counts a hit only
+# when the request line is HTTP/1.0 AND its URI matches an auth path. The
+# protocol and URI are taken from the request line ($request log field) via the
+# same positional, traversal-rejecting parse as _is_ignored_request -- a token
+# smuggled into a User-Agent, Referer, or query string can never fake either
+# signal. Whitelisted / locally-allowed / already-banned / private IPs are
+# skipped here so they never accumulate window state.
+_track_http10_auth() {
+  local _IP="$1" _line="$2" _after _req _uri IFS=$' \t\n'
+  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    return
+  fi
+  [[ -n "${_BANNED_IPS["${_IP}"]}" ]] && return
+  [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] && return
+  _is_whitelisted_ip "${_IP}" && return
+  # Isolate field 2's quoted "METHOD URI PROTO" request line.
+  _after="${_line#*\"*\"}"        # drop the leading "remote_addr" quoted field
+  _req="${_after#*\"}"            # advance to the opening quote of $request
+  _req="${_req%%\"*}"            # _req = METHOD URI PROTO
+  # Require a full "METHOD /path HTTP/1.0" shape. The trailing literal both
+  # validates the request-line shape and selects HTTP/1.0 in one step (HTTP/1.1
+  # and HTTP/2.0 never match), and the "METHOD /" head guards the positional
+  # parse against a forged request token in an earlier field.
+  case "${_req}" in [A-Z]*" /"*" HTTP/1.0") : ;; *) return ;; esac
+  _uri="${_req#* }"              # strip METHOD
+  _uri="${_uri%% *}"            # strip PROTO
+  _uri="${_uri%%\?*}"          # strip query string
+  [[ "${_uri}" == /* && "${_uri}" != *".."* ]] || return
+  [[ "${_uri}" =~ ${_NGINX_HTTP10_AUTH_PATHS} ]] || return
+  (( _H10_AUTH["${_IP}"] += 1 ))
+}
+
+# _handle_http10_auth_flood
+# Merge this run's per-IP HTTP/1.0 auth-path tallies into a cross-run sliding
+# window (same persistence shape as _handle_i18n_flood), prune expired buckets,
+# then ban each observed IP whose own windowed count crosses the per-IP threshold
+# OR whose /24 aggregate crosses the CIDR threshold. The CIDR path escalates a
+# slow distributed block cleanly; only IPs actually seen are banned. Runs after
+# the DoS/DDoS/path-flood passes so _BANNED_IPS is fully populated, and _block_ip
+# re-checks the csf.allow whitelist on every call as the keystone safety net.
+_handle_http10_auth_flood() {
+  (( _H10_ON )) || return 0
+  local _state="${_H10_STATE}" _tmp _now _cut _ip _e _c _net
+  _now="$(date +%s)"
+  [[ "${_now}" =~ ^[0-9]+$ ]] || return 0
+  _cut=$(( _now - _NGINX_HTTP10_AUTH_WINDOW ))
+  declare -A _W_IP _W_NET
+  _tmp="${_state}.$$"
+  : > "${_tmp}" 2>/dev/null || return 0
+  # Carry forward unexpired per-IP buckets from prior runs.
+  if [[ -f "${_state}" ]]; then
+    while IFS='|' read -r _ip _e _c; do
+      [[ -n "${_ip}" && "${_e}" =~ ^[0-9]+$ ]] || continue
+      (( _e > _cut )) || continue
+      printf '%s|%s|%s\n' "${_ip}" "${_e}" "${_c:-0}" >> "${_tmp}"
+      _W_IP["${_ip}"]=$(( ${_W_IP["${_ip}"]:-0} + ${_c:-0} ))
+    done < "${_state}"
+  fi
+  # Add this run's per-IP tallies.
+  for _ip in "${!_H10_AUTH[@]}"; do
+    _c=${_H10_AUTH["${_ip}"]:-0}
+    (( _c > 0 )) || continue
+    printf '%s|%s|%s\n' "${_ip}" "${_now}" "${_c}" >> "${_tmp}"
+    _W_IP["${_ip}"]=$(( ${_W_IP["${_ip}"]:-0} + _c ))
+  done
+  mv -f "${_tmp}" "${_state}" 2>/dev/null
+  # Aggregate the windowed per-IP counts per /24.
+  for _ip in "${!_W_IP[@]}"; do
+    _net="${_ip%.*}"
+    _W_NET["${_net}"]=$(( ${_W_NET["${_net}"]:-0} + ${_W_IP["${_ip}"]} ))
+  done
+  # Ban qualifying IPs (per-IP OR /24 aggregate threshold).
+  for _ip in "${!_W_IP[@]}"; do
+    _net="${_ip%.*}"
+    if (( ${_W_IP["${_ip}"]:-0} >= _NGINX_HTTP10_AUTH_IP_THRESHOLD \
+       || ${_W_NET["${_net}"]:-0} >= _NGINX_HTTP10_AUTH_CIDR_THRESHOLD )); then
+      [[ -n "${_BANNED_IPS["${_ip}"]}" ]] && continue
+      [[ -n "${_ALLOWED_IPS["${_ip}"]}" ]] && continue
+      _is_logged_in "${_ip}" && continue
+      [[ "${_ip}" == "${_MYIP}" ]] && continue
+      _sumar="${_W_IP["${_ip}"]}"
+      echo "=== HTTP/1.0 AUTH-SPAM ban ${_ip} [ip=${_W_IP["${_ip}"]}/${_NGINX_HTTP10_AUTH_IP_THRESHOLD} ${_net}.0/24=${_W_NET["${_net}"]}/${_NGINX_HTTP10_AUTH_CIDR_THRESHOLD} win=${_NGINX_HTTP10_AUTH_WINDOW}s] ==="
+      _verbose_log "HTTP/1.0 auth-spam ban ${_ip} [ip=${_W_IP["${_ip}"]} net=${_net}.0/24=${_W_NET["${_net}"]}]" "_handle_http10_auth_flood"
+      _block_ip "${_ip}" "silent"
+    fi
+  done
 }
 
 # ==============================
@@ -1583,6 +1750,14 @@ while IFS= read -r _line <&3; do
     fi
   fi
 
+  # ---- HTTP/1.0 registration-spam botnet tracking (on by default, opt-out) ----
+  # Counts HTTP/1.0 requests to auth paths per real client IP for the cross-run
+  # windowed ban below. files.*, the webhook ignore-list and Site24x7 are already
+  # skipped at loop scope above, so they never reach here.
+  if (( _H10_ON )) && [[ -n "${_REAL_IP}" ]]; then
+    _track_http10_auth "${_REAL_IP}" "${_line}"
+  fi
+
 done
 
 # Close the file descriptor for the log input
@@ -1608,6 +1783,11 @@ _handle_ddos_blocking
 # everything caught by the DoS and DDoS passes above; distributed bots that
 # slipped through per-IP rate checks are caught here by the aggregate path count)
 _handle_path_flood_blocking
+
+# HTTP/1.0 registration-spam blocking (on by default, opt-out). Cross-run
+# windowed; runs after the passes above so _BANNED_IPS is fully populated and
+# double-blocking avoided.
+_handle_http10_auth_flood
 
 # Tier B: evaluate the cross-run distributed-i18n-flood window and tail the
 # PHP-FPM error logs for new pool-saturation events.  These detect, alert and
