@@ -241,16 +241,31 @@ threshold is crossed:
 
 | Threshold | Default | Meaning |
 |---|---|---|
-| `_NGINX_DDOS_UA_IP_THRESHOLD` | 20 | distinct IPs sharing the UA |
-| `_NGINX_DDOS_UA_REQ_THRESHOLD` | 200 | total requests under the UA |
+| `_NGINX_DDOS_UA_IP_THRESHOLD` | 100 | distinct IPs sharing the UA |
+| `_NGINX_DDOS_UA_REQ_THRESHOLD` | 1000 | total requests under the UA |
 
 When a UA is flagged, every contributing IP that made at least `_NGINX_DDOS_IP_MIN_REQS`
-(default 3) requests with it is blocked. The per-IP minimum keeps incidental single hits
-from a shared egress (one Cloudflare PoP) out of the block list. UAs of 10 characters or
-fewer are ignored to avoid matching empty or trivial agents. This is the detector that,
-before the path-exemption existed, banned an entire webhook provider's rotating pool on
-its shared `Shopify-Captain-Hook` / `GuzzleHttp` UA — which is why the exemption gate runs
-at loop scope and covers this detector too.
+(default 20) requests with it is blocked. The per-IP minimum keeps incidental hits
+from a shared egress (one Cloudflare PoP, a CGNAT or Apple-Private-Relay address) out of
+the block list. UAs of 10 characters or fewer are ignored to avoid matching empty or
+trivial agents. This is the detector that, before the path-exemption existed, banned an
+entire webhook provider's rotating pool on its shared `Shopify-Captain-Hook` / `GuzzleHttp`
+UA — which is why the exemption gate runs at loop scope and covers this detector too.
+
+**Window and tuning (revised after the am095 incident).** Every threshold here is measured
+against a short window: `nginx_guard.sh` runs `scan_nginx.sh` about every 5 s and
+byte-offset tracking means each run scores only the lines appended since the previous run.
+The original defaults (20 IPs / 200 reqs / 3-request block) sat far below real traffic for
+that window — on a high-traffic public site the single most common mobile-browser UA string
+is shared by far more than 20 distinct IPs (and 200 requests) every 5 s, so the detector
+flagged a legitimate popular browser and banned every visitor making ≥ 3 requests under it.
+Search sessions were hit hardest because one search fires several requests under one UA
+(results page + per-keystroke autocomplete + AJAX views + result clicks). A genuine
+distributed botnet *randomises* its UA per IP, so a single UA shared by many IPs is the
+signature of a real browser, not a bot. The defaults are now 100 IPs / 1000 reqs /
+20-request block; genuinely abusive single IPs are still caught by Detector 1 (per-IP
+weighted score) and Detector 3 (path-flood). See **Recovering from false positives** below
+to release IPs that an over-tight box already banned.
 
 ### Detector 3 — path-flood aggregate
 
@@ -261,9 +276,9 @@ every qualifying participant once a prefix is declared under flood:
 
 | Threshold | Default | Meaning |
 |---|---|---|
-| `_NGINX_PATH_FLOOD_IP_THRESHOLD` | 5 | distinct IPs on the prefix (200 + 444) |
-| `_NGINX_PATH_FLOOD_REQ_THRESHOLD` | 15 | total 200 + 444 responses to the prefix |
-| `_NGINX_PATH_FLOOD_IP_MIN_REQS` | 10 | per-(prefix, IP) **200**-response count before that IP is listed |
+| `_NGINX_PATH_FLOOD_IP_THRESHOLD` | 30 | distinct IPs on the prefix (200 + 444) |
+| `_NGINX_PATH_FLOOD_REQ_THRESHOLD` | 100 | total 200 + 444 responses to the prefix |
+| `_NGINX_PATH_FLOOD_IP_MIN_REQS` | 20 | per-(prefix, IP) **200**-response count before that IP is listed |
 | `_NGINX_PATH_FLOOD_SLOW_SECS` | 3 | upstream seconds above which a 200 is "slow" |
 
 The flood **declaration** counts both `200` and `444` (so distributed bots the real-time
@@ -824,18 +839,18 @@ empty value disables injection-keyword scoring entirely.
 
 | Variable | Default | What it controls |
 |---|---|---|
-| `_NGINX_DDOS_UA_IP_THRESHOLD` | `20` | Distinct IPs sharing one UA before that UA is treated as an attack fingerprint. Raise on high-traffic boxes. |
-| `_NGINX_DDOS_UA_REQ_THRESHOLD` | `200` | Total per-UA requests (across all IPs) that flags a UA even when its IP count is low but volume is extreme. |
-| `_NGINX_DDOS_IP_MIN_REQS` | `3` | When a UA is flagged, only block contributing IPs that made at least this many requests with it. |
+| `_NGINX_DDOS_UA_IP_THRESHOLD` | `100` | Distinct IPs sharing one UA before that UA is treated as an attack fingerprint. A common mobile-browser UA on a busy site is shared by many IPs, so this must stay well above real peak. |
+| `_NGINX_DDOS_UA_REQ_THRESHOLD` | `1000` | Total per-UA requests (across all IPs, ~5 s window) that flags a UA even when its IP count is low but volume is extreme. |
+| `_NGINX_DDOS_IP_MIN_REQS` | `20` | When a UA is flagged, only block contributing IPs that made at least this many requests with it. A legitimate search session reaches several requests under one UA, so a low value here is what false-positives real visitors. |
 
 ### Path-flood — search-amplification aggregate
 
 | Variable | Default | What it controls |
 |---|---|---|
-| `_NGINX_PATH_FLOOD_IP_THRESHOLD` | `5` | Distinct IPs on a watched prefix before a flood is declared (200 + 444). |
-| `_NGINX_PATH_FLOOD_REQ_THRESHOLD` | `15` | Total requests (200 + 444) to the prefix before a flood is declared. |
+| `_NGINX_PATH_FLOOD_IP_THRESHOLD` | `30` | Distinct IPs on a watched prefix before a flood is **declared** (200 + 444). Declaration alone never bans. |
+| `_NGINX_PATH_FLOOD_REQ_THRESHOLD` | `100` | Total requests (200 + 444, ~5 s window) to the prefix before a flood is declared. |
 | `_NGINX_PATH_FLOOD_SLOW_SECS` | `3` | Upstream seconds above which a 200 counts as "slow" and earns an extra per-IP increment. |
-| `_NGINX_PATH_FLOOD_IP_MIN_REQS` | `10` | Per-(prefix, IP) **200**-response count before that IP is listed during a flood. Set to `1` to list every 200-sending participant. |
+| `_NGINX_PATH_FLOOD_IP_MIN_REQS` | `20` | Per-(prefix, IP) **200**-response count before that IP is listed during a flood — the real per-IP protector for shared-egress visitors. Kept modest (a single heavy search scraper is caught here, since a 200 scores only +1 in the per-IP scorer under the default mode 2). Set to `1` to list every 200-sending participant. |
 | `_NGINX_PATH_FLOOD_WATCH` | see below | Pipe-separated patterns matched against the full log line (path **and** query string) that mark a prefix as expensive/watched. |
 
 ```
@@ -930,6 +945,31 @@ bash /var/xdrago/nginx_deny.sh
 Truncating `archive.log` by hand only resets repeat-offender history — it does **not** lift
 any existing ban (those live in CSF and the geo). For a clean slate, remove the CSF entries
 first, then optionally truncate the logs.
+
+### Recovering from false positives — `clearwebbans`
+
+`clearwebbans` does the whole "clean slate" sequence above in one idempotent, web-scoped
+step. Use it after loosening the limits (or any time the web IDS has false-positived real
+visitors) to release **everyone** the WEB detectors caught, in the correct order, without
+touching SSH/FTP bans:
+
+1. removes the permanent `csf.deny` "Brute force Web Server" escalations (`csf -dr`);
+2. removes the temporary web bans on ports 80/443 (`csf -tr`);
+3. clears `web.log` and both `scan_nginx.archive*.log` (so `guest-fire` won't re-apply and
+   `guest-water` won't re-escalate them);
+4. resets `/var/log/scan_nginx_lastpos` to the **current** end of `access.log` so the next
+   scan only sees new traffic instead of reprocessing the lines that caused the bans;
+5. regenerates the nginx geo-ban set via `nginx_deny.sh` so `$is_banned` clears at once.
+
+```bash
+clearwebbans --dry-run   # report counts + a sample, change nothing
+clearwebbans             # forced: do the full web-ban cleanup
+```
+
+Run it once the updated `scan_nginx.sh` limits are already deployed (serial `f62`+), so the
+released IPs are not immediately re-banned under the old thresholds. SSH and FTP bans are
+deliberately left in place — those are real brute-force. On a heavily-polluted box the temp
+loop can take a while (one `csf -tr` per IP), same as `guest-fire`.
 
 ### Whitelisting
 
