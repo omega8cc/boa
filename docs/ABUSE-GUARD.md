@@ -319,8 +319,8 @@ Detector 1.
     before FPM saturation, where the lagging backend-stress signal alone trips only at the
     ceiling;
   - **volume + stress** — windowed localized volume (≥ `_NGINX_I18N_FLOOD_MIN_REQS`) with an
-    elevated slow/`5xx`/`444` share (≥ `_NGINX_I18N_FLOOD_STRESS_PCT` %), for a vhost not
-    opted into Tier A. A cache-warm recon burst (high volume, ~0 % stress) stays below the
+    elevated slow/`5xx`/`444` share (≥ `_NGINX_I18N_FLOOD_STRESS_PCT` %), for a vhost opted
+    out of Tier A. A cache-warm recon burst (high volume, ~0 % stress) stays below the
     stress gate and never trips — the gate is what separates a flood from a popularity spike.
 
   On a trip it appends to `/var/xdrago/monitor/log/i18n_flood.log` and writes a forensic
@@ -794,7 +794,7 @@ returns `444` instantly, before php-fpm. The key is non-empty only when three ma
 ```nginx
 # server.tpl.php (http{})
 limit_conn_zone $boa_i18n_anon_key zone=boa_i18n_anon:10m;
-map $host        $boa_i18n_guard { default 0; include /data/conf/boa_i18n_guard.map*; }
+map $host        $boa_i18n_guard { default 1; include /data/conf/boa_i18n_guard.map*; }  # on by default; map file lists hosts to set 0 (opt-out)
 map $request_uri $boa_i18n_path  { default 0; ~*^/[a-z][a-z](-[a-z]+)?/ 1; ~*[?&]q=/?[a-z][a-z](-[a-z]+)?/ 1; }
 map $cache_uid   $boa_is_anon    { default 0; "" 1; }
 map "$boa_i18n_guard$boa_i18n_path$boa_is_anon" $boa_i18n_anon_key { default ""; "111" $host; }
@@ -806,11 +806,16 @@ limit_conn boa_i18n_anon <nginx_i18n_anon_conn|24>;
 limit_conn_status 444;
 ```
 
-- **Opt-in, default-off.** `$boa_i18n_guard` is `0` for every vhost until a host is listed
-  in the wildcard-included `/data/conf/boa_i18n_guard.map` (absent file = guardrail off
-  fleet-wide, zero behaviour change). This is the same two-stage idiom as `$is_banned` —
-  global maps always defined (so no vhost references an undefined variable and breaks
-  `nginx -t`), per-site activation by an included data file. See Part 5 for the opt-in step.
+- **On by default, per-host opt-out.** `$boa_i18n_guard` is `1` for every vhost; the
+  wildcard-included `/data/conf/boa_i18n_guard.map` lists hosts to set to `0` to opt them
+  out (an absent/empty file leaves every host guarded). Defaulting on is safe because a
+  leading two-letter path prefix is Drupal's URL language-negotiation convention, never a
+  content subdirectory — the same assumption the `/[a-z][a-z]/search` and
+  `/[a-z][a-z]/civicrm` locations already rely on fleet-wide. The opt-out exists for the
+  rare exception: a non-Drupal app, or a single-language site that uses a two-letter path
+  for a region with URL language-negotiation off. The map is the same two-stage idiom as
+  `$is_banned` (global map always defined so `nginx -t` never sees an undefined variable;
+  per-host state from an included data file). See Part 5 for opting a host out.
 - **Keyed on `$request_uri`, not `$uri`.** BOA rewrites clean URLs to `/index.php` before
   the map evaluates, so `$uri` would already read `/index.php`; `$request_uri` keeps the
   original `/de/product?page=1`. The second `?q=` pattern closes the D7
@@ -1008,8 +1013,8 @@ the script's built-in default unless added to `/root/.barracuda.cnf`; none is se
 
 The **inline** guardrail's cap is a separate, provision-side option `nginx_i18n_anon_conn`
 (default `24`), rendered into the vhost `limit_conn` directive — not a `scan_nginx` knob. The
-per-site **opt-in** is the `/data/conf/boa_i18n_guard.map` data file (Part 5), not a
-`.barracuda.cnf` variable.
+guardrail is **on by default**; the per-host **opt-out** is the
+`/data/conf/boa_i18n_guard.map` data file (Part 5), not a `.barracuda.cnf` variable.
 
 ## Part 5 — operations and tuning
 
@@ -1130,26 +1135,27 @@ _NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook \
 /my/custom/webhook"
 ```
 
-### Opting a site into the i18n guardrail
+### Opting a host out of the i18n guardrail
 
-The Tier-A localized-concurrency cap is **off** until the vhost is listed in the
-wildcard-included guard map. To protect a multilingual site whose anonymous localized pages
-are expensive (on-the-fly translation):
+The Tier-A localized-concurrency cap is **on for every vhost by default** — no per-site
+step is needed to protect a multilingual site. You only act to **exclude** a host, for the
+rare case where a two-letter path prefix is not a Drupal language (a non-Drupal app behind
+nginx, or a single-language site that uses e.g. `/us/` as a region path with URL
+language-negotiation off):
 
 ```bash
-# one line per hostname; quoted host, value 1
-printf '"%s" 1;\n' apmg-international.com www.apmg-international.com \
-  >> /data/conf/boa_i18n_guard.map
+# one line per hostname to EXCLUDE; quoted host, value 0
+printf '"%s" 0;\n' static-app.example.com >> /data/conf/boa_i18n_guard.map
 nginx -t && service nginx reload      # Devuan: service, not systemctl
 ```
 
-An absent/empty map leaves the guardrail off across the whole fleet (the default). To tune
-the cap set `nginx_i18n_anon_conn` (default `24`) and re-render the vhost. The Tier-B
-detector logs every trip and snapshot under `/var/xdrago/monitor/log/i18n_flood*` (see
-**Reading live state**), so a real burst leaves a forensic trail of the top talkers, UAs and
-language-prefixes. Removing a host's line and reloading lifts the cap. Unlike a CSF ban this
-is not per-IP and never appears in `csf -t`/`csf -g` — it is a concurrency ceiling on a
-request class, not a block on a source.
+An absent/empty map leaves every host guarded (the default). To tune the cap set
+`nginx_i18n_anon_conn` (default `24`) and re-render the vhost; to widen it fleet-wide raise
+that option, to effectively disable Tier A on a host opt it out as above. The Tier-B detector
+logs every trip and snapshot under `/var/xdrago/monitor/log/i18n_flood*` (see **Reading live
+state**), so a real burst leaves a forensic trail of the top talkers, UAs and
+language-prefixes. Unlike a CSF ban this is not per-IP and never appears in `csf -t`/`csf -g`
+— it is a concurrency ceiling on a request class, not a block on a source.
 
 ### Enabling debug output
 
