@@ -177,8 +177,8 @@ else
 fi
 
 if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
-  || [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
-  || [ "${_DAILY_RUNNING}" = "TRUE" ] \
+  || [ "${_SQLBACKUP_RUNNING}" = "YES" ] \
+  || [ "${_DAILY_RUNNING}" = "YES" ] \
   || [ -e "/run/mysql_restart_running.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then

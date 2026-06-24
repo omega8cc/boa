@@ -82,20 +82,38 @@ _NGINX_DOS_INC_MIN=3
 _NGINX_DOS_LOG=VERBOSE
 
 # ---- DDoS / Shared-UA flood detection ----
+# These thresholds are evaluated against a SHORT window: nginx_guard.sh runs
+# this script roughly every 5s and byte-offset tracking means each run scores
+# only the log lines appended since the previous run. The original defaults
+# (20 IPs / 200 reqs / 3-req block) were far too low for that window: on a
+# high-traffic site the single most common mobile-browser UA string is shared
+# by well over 20 distinct IPs (and 200 reqs) within 5s, so the detector flagged
+# a legitimate popular browser as an "attack fingerprint" and banned every
+# visitor that made >=3 requests under it (am095 / kwestiasmaku.com, a busy D7
+# recipe site: dozens of real residential IPs banned at [x3]-[x6] mid-search).
+# Note a genuine distributed botnet RANDOMISES its UA per IP, so one UA shared
+# by many IPs is the signature of a real browser, not a bot. The values below
+# are sized so only an implausibly homogeneous burst trips the detector;
+# genuinely abusive single IPs are still caught by the per-IP weighted scorer
+# (_handle_blocking, > _NGINX_DOS_LIMIT) and by the path-flood detector. Tune
+# per box in /root/.barracuda.cnf.
+#
 # Minimum number of distinct IPs sharing the same User-Agent string within the
-# current scan window that must be observed before the UA is considered an
-# attack fingerprint. Tune upward on high-traffic servers.
-_NGINX_DDOS_UA_IP_THRESHOLD=20
+# current scan window before the UA is considered an attack fingerprint.
+_NGINX_DDOS_UA_IP_THRESHOLD=100
 
 # Minimum per-UA request count (across all IPs) in the scan window required to
-# declare a DDoS. This catches fast floods even when IPs are few but requests
-# are extreme.
-_NGINX_DDOS_UA_REQ_THRESHOLD=200
+# declare a DDoS. Catches fast floods even when IPs are few but requests are
+# extreme. ~1000 reqs in a ~5s window is ~200 req/s of one exact UA string.
+_NGINX_DDOS_UA_REQ_THRESHOLD=1000
 
 # When a DDoS UA is confirmed, only block IPs that contributed at least this
-# many requests with that UA. Keeps incidental single-request hits (e.g. from
-# a shared Cloudflare egress) out of the block list.
-_NGINX_DDOS_IP_MIN_REQS=3
+# many requests with that UA. A legitimate search session (results page +
+# per-keystroke autocomplete + AJAX views + result clicks) easily reaches a
+# handful of requests under one UA in a few seconds, so a low value here is
+# exactly what banned the real visitors above; 20 sits clear of any single human
+# session while still catching one IP hammering a shared UA.
+_NGINX_DDOS_IP_MIN_REQS=20
 
 # Minimum raw requests before _handle_blocking can individually block an IP.
 # Scoring multipliers can push a 1-request IP well over DOS_LIMIT; this guard
@@ -111,17 +129,21 @@ _NGINX_MIN_BLOCK_REQS=3
 # declared under flood. Designed specifically for Solr/Elasticsearch search
 # amplification attacks that bypass Nginx 444 rules by adding a Referer.
 
-# Minimum distinct IPs hitting the same path prefix (200 and 444 responses)
-# within the scan window before a path flood is declared.
-# Set to 5 rather than a higher value: the Chrome/131 subgroup of this botnet
-# sends exactly 3-5 requests per scan window, staying under a threshold of 10
-# but triggering reliably at 5. Lower values increase sensitivity but also the
-# risk of false positives on genuinely popular search pages — tune upward if
-# `_handle_path_flood_blocking` fires on legitimate traffic peaks.
-_NGINX_PATH_FLOOD_IP_THRESHOLD=5
+# Minimum distinct IPs hitting the same watched path prefix (200 and 444
+# responses) within the scan window before a path flood is DECLARED. The prior
+# default of 5 declared a flood on any busy public search page within the ~5s
+# window. Declaration alone never bans — the per-IP gate
+# (_NGINX_PATH_FLOOD_IP_MIN_REQS) decides who is blocked — but a low value here
+# wastes work and widens the blast radius on a legitimate traffic peak, so it is
+# raised to 30. Tune upward further if a flood is still declared on legit peaks.
+_NGINX_PATH_FLOOD_IP_THRESHOLD=30
 
-# Minimum total 200 and 444 responses to the same path prefix in the window.
-_NGINX_PATH_FLOOD_REQ_THRESHOLD=15
+# Minimum total 200 and 444 responses to the same watched path prefix in the
+# window before a flood is declared. ~100 search responses in a ~5s window is
+# ~20 req/s of search traffic site-wide -- above legitimate interactive use on a
+# busy site, well below a real Solr / Search-API amplification flood (was 15,
+# i.e. ~3 req/s, which any popular search page exceeds at peak).
+_NGINX_PATH_FLOOD_REQ_THRESHOLD=100
 
 # Upstream response time (whole seconds) above which a request is considered
 # "slow" -- i.e., it consumed real backend (Solr/PHP-FPM) cycles. Slow 200s
@@ -132,11 +154,15 @@ _NGINX_PATH_FLOOD_SLOW_SECS=3
 # the block list during a path-flood event.  Applies to 200-responses only --
 # backend-reaching requests counted via _PATH_IP_200_REQS; a prefix's 444-only
 # IPs are not counted toward this gate, since Nginx's map already free-blocks
-# them at zero backend cost.  Set high enough to avoid blocking IPs that sent
-# only a few backend-reaching requests; only persistent IPs (making many 200s
-# within one scan window) warrant a csf -td entry.  Set to 1 to block every
-# 200-sending participant.
-_NGINX_PATH_FLOOD_IP_MIN_REQS=10
+# them at zero backend cost.  This is the real per-IP protector for legitimate
+# visitors: a human searcher will not produce 20 backend-200 search hits in a
+# ~5s window, but a shared CGNAT / Apple-Private-Relay egress aggregating many
+# real users can exceed the old value of 10.  Kept deliberately MODEST (20, not
+# higher): under the default _NGINX_DOS_MODE=2 a backend 200 scores only +1 in
+# the per-IP weighted scorer, so a single moderately heavy search scraper is
+# caught primarily HERE -- raising this much further would let it through.  Set
+# to 1 to block every 200-sending participant.
+_NGINX_PATH_FLOOD_IP_MIN_REQS=20
 
 # Extra counter weight added for each confirmed 444 on a watched attack path
 # (in addition to the standard _INC_NR increment applied for all 4xx/5xx).
