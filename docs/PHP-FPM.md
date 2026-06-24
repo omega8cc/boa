@@ -126,6 +126,15 @@ because they are all waiting on the same saturated pool. Dedicated plans size
 the pool from box capacity to absorb bursts; shared plans are capped on purpose,
 so a busy shared tenant is expected to queue at its ceiling.
 
+Raising `pm.max_children` is **not** the cure when the cause is *abusive* — the
+attack consumes any ceiling, and a higher one only raises the OOM point. When a
+distributed flood of expensive anonymous requests saturates the pool (e.g. a
+scraper crawling localized on-the-fly-translation pages, which hold a worker for
+tens of seconds each), BOA bounds that request class at the nginx edge so it can
+never consume more than a small fixed slice of the shared pool, and trips an
+alarm the instant a pool hits its ceiling. See the i18n concurrency guardrail and
+the FPM-saturation trigger in [ABUSE-GUARD.md](ABUSE-GUARD.md).
+
 ### Inspecting the allocation
 
 `fpmreport` shows, per pool, the `plan`, `eng` (engines), the configured
