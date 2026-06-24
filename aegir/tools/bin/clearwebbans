@@ -1,0 +1,185 @@
+#!/bin/bash
+
+# clearwebbans — forcibly clear ALL Nginx/web IDS ban state on this box.
+#
+# Releases every IP the WEB intrusion-detection stack (scan_nginx.sh) has
+# blocked, and wipes the state that would re-apply or escalate those bans:
+#   - scan_nginx ban log         /var/xdrago/monitor/log/web.log
+#                                (guest-fire re-applies csf -td from this)
+#   - scan_nginx archive logs    /var/xdrago/monitor/log/scan_nginx.archive*.log
+#                                (guest-water escalates >=12 occurrences to a
+#                                 PERMANENT "Brute force Web Server" csf -d)
+#   - scan_nginx byte offset     /var/log/scan_nginx_lastpos (reset to log EOF so
+#                                the next scan does not reprocess old lines)
+#   - csf TEMP web bans          csf.tempban rows on port 80 / 443  -> csf -tr
+#   - csf PERMANENT web bans     csf.deny "Brute force Web Server"  -> csf -dr
+#   - nginx realip geo-ban set   regenerated via /var/xdrago/nginx_deny.sh
+#
+# SSH and FTP bans are deliberately NOT touched -- those are real brute-force.
+#
+# Use after loosening the scan_nginx IDS limits, or any time the web IDS has
+# false-positived legitimate visitors, to release everyone it caught. The action
+# is idempotent and safe to re-run. Best run once the updated scan_nginx.sh
+# limits are already deployed, so nothing legitimate is immediately re-banned.
+#
+# Usage:
+#   clearwebbans            # clear everything (forced)
+#   clearwebbans --dry-run  # report what WOULD be cleared, change nothing
+#   clearwebbans -h | --help
+
+export HOME='/root'
+export PATH='/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin'
+set -u
+
+_WEB_LOG="/var/xdrago/monitor/log/web.log"
+_WA="/var/xdrago/monitor/log/scan_nginx.archive.log"
+_WX="/var/xdrago/monitor/log/scan_nginx.archive.x3.log"
+_OFFSET="/var/log/scan_nginx_lastpos"
+_ACCESS="/var/log/nginx/access.log"
+_TEMPBAN="/var/lib/csf/csf.tempban"
+_CSF_DENY="/etc/csf/csf.deny"
+_WEB_TAG="Brute force Web Server"
+_NGINX_DENY="/var/xdrago/nginx_deny.sh"
+_LOCK="/run/clearwebbans.lock"
+
+_DRY=0
+
+# --- output -----------------------------------------------------------------
+if [[ -t 1 ]]; then
+  _CG=$'\033[32m'; _CR=$'\033[31m'; _CY=$'\033[33m'; _C0=$'\033[0m'
+else
+  _CG=; _CR=; _CY=; _C0=
+fi
+_msg()  { echo "$*"; }
+_info() { echo "${_CG}$*${_C0}"; }
+_alrt() { echo "${_CY}$*${_C0}"; }
+_die()  { echo "${_CR}ERROR: $*${_C0}" >&2; exit 1; }
+_usage() { grep '^# ' "$0" | sed 's/^# \{0,1\}//'; }
+
+# --- args -------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run|-n) _DRY=1; shift ;;
+    -h|--help)    _usage; exit 0 ;;
+    *) echo "unknown option: $1"; echo; _usage; exit 1 ;;
+  esac
+done
+
+[[ "$(id -u)" -eq 0 ]] || _die "must run as root"
+
+# Re-entrancy guard: a concurrent run would fight over csf. Skip on a dry run
+# (read-only) so reporting never blocks an in-progress cleanup.
+if [[ "${_DRY}" -eq 0 ]]; then
+  exec 9>"${_LOCK}" 2>/dev/null
+  if ! flock -n 9; then
+    _die "another clearwebbans is already running"
+  fi
+fi
+
+# Strict 0-255 IPv4 host check (rejects CIDRs, IPv6, junk before reaching csf).
+_is_ipv4() {
+  local _ip="$1"
+  [[ "${_ip}" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] || return 1
+  (( BASH_REMATCH[1] <= 255 && BASH_REMATCH[2] <= 255 \
+    && BASH_REMATCH[3] <= 255 && BASH_REMATCH[4] <= 255 ))
+}
+
+# Emit validated IPv4 hosts from web.log / archive logs (format: "IP # ...").
+_ips_from_banlog() {
+  local _f="$1" _ip
+  [[ -s "${_f}" ]] || return 0
+  while IFS= read -r _ip; do
+    _ip="${_ip%%[![:digit:].]*}"   # keep the leading IP token only
+    _is_ipv4 "${_ip}" && echo "${_ip}"
+  done < <(cut -d '#' -f1 "${_f}")
+}
+
+# Validated IPv4 hosts with a WEB temp ban (csf.tempban port field == 80/443).
+_ips_temp_web() {
+  [[ -s "${_TEMPBAN}" ]] || return 0
+  local _ip
+  while IFS= read -r _ip; do
+    _is_ipv4 "${_ip}" && echo "${_ip}"
+  done < <(awk -F'|' '$3 == 80 || $3 == 443 { print $2 }' "${_TEMPBAN}")
+}
+
+# Validated IPv4 hosts permanently denied with the WEB tag.
+_ips_perm_web() {
+  [[ -s "${_CSF_DENY}" ]] || return 0
+  local _line _ip
+  while IFS= read -r _line; do
+    _ip="${_line%%[[:space:]]*}"
+    _is_ipv4 "${_ip}" && echo "${_ip}"
+  done < <(grep -F "${_WEB_TAG}" "${_CSF_DENY}")
+}
+
+# Distinct IP sets (dedup; an IP can sit in several sources).
+_HAS_CSF=0
+[[ -x /usr/sbin/csf ]] && _HAS_CSF=1
+
+mapfile -t _LOG_IPS  < <( { _ips_from_banlog "${_WEB_LOG}"; _ips_from_banlog "${_WA}"; _ips_from_banlog "${_WX}"; } | sort -u )
+mapfile -t _TEMP_IPS < <( _ips_temp_web | sort -u )
+mapfile -t _PERM_IPS < <( _ips_perm_web | sort -u )
+
+_msg "clearwebbans — web IDS ban-state cleanup"
+_msg "  ban-log IPs (web.log + archives) : ${#_LOG_IPS[@]}"
+_msg "  csf TEMP web bans (80/443)       : ${#_TEMP_IPS[@]}"
+_msg "  csf PERMANENT web bans ('${_WEB_TAG}') : ${#_PERM_IPS[@]}"
+[[ "${_HAS_CSF}" -eq 0 ]] && _alrt "  (csf not found at /usr/sbin/csf — firewall bans left untouched)"
+
+if [[ "${_DRY}" -eq 1 ]]; then
+  _msg
+  _alrt "DRY RUN — nothing changed. Sample (up to 10 of each):"
+  # Expand the slice only when the array is non-empty: "${arr[@]}" / "${arr[*]}"
+  # of an empty array errors under set -u on older bash; the count test never does.
+  (( ${#_LOG_IPS[@]}  )) && _msg "  ban-log : ${_LOG_IPS[*]:0:10}"  || _msg "  ban-log : (none)"
+  (( ${#_TEMP_IPS[@]} )) && _msg "  temp    : ${_TEMP_IPS[*]:0:10}" || _msg "  temp    : (none)"
+  (( ${#_PERM_IPS[@]} )) && _msg "  perm    : ${_PERM_IPS[*]:0:10}" || _msg "  perm    : (none)"
+  exit 0
+fi
+
+# --- act --------------------------------------------------------------------
+# Remove csf bans first (per-IP; idempotent — removing an absent entry is a
+# no-op). On a heavily-polluted box the temp loop can take a while.
+_rm_perm=0
+_rm_temp=0
+if [[ "${_HAS_CSF}" -eq 1 ]]; then
+  # Count-guard each loop: iterating "${arr[@]}" of an empty array errors under
+  # set -u on older bash. csf -tr/-dr on an absent entry is itself a harmless no-op.
+  if (( ${#_PERM_IPS[@]} )); then
+    for _ip in "${_PERM_IPS[@]}"; do
+      csf -dr "${_ip}" >/dev/null 2>&1 && _rm_perm=$(( _rm_perm + 1 ))
+    done
+  fi
+  if (( ${#_TEMP_IPS[@]} )); then
+    for _ip in "${_TEMP_IPS[@]}"; do
+      csf -tr "${_ip}" >/dev/null 2>&1 && _rm_temp=$(( _rm_temp + 1 ))
+    done
+  fi
+fi
+
+# Wipe scan_nginx ban + archive logs (existence-guarded consumers handle absence).
+rm -f "${_WEB_LOG}" "${_WA}" "${_WX}"
+
+# Reset the scan_nginx byte offset to the CURRENT end of the access log, so the
+# next scan only sees new traffic instead of reprocessing (and possibly
+# re-flagging) the lines that produced the false positives.
+if [[ -f "${_ACCESS}" ]]; then
+  stat -c %s "${_ACCESS}" > "${_OFFSET}" 2>/dev/null || rm -f "${_OFFSET}"
+else
+  rm -f "${_OFFSET}"
+fi
+
+# Re-assert synproxy rules if active (mirrors scan_nginx / guest-water).
+[[ -e "/etc/csf/csfpost.d/synproxy.sh" ]] && synproxy_reassert -p "443 80" --no-quic -q >/dev/null 2>&1
+
+# Regenerate the nginx realip geo-ban set from the now-cleaned csf state so
+# $is_banned (return 444) clears immediately on Cloudflare-fronted vhosts.
+# nginx_deny.sh self-handles its own lock, configtest and reload.
+if [[ -x "${_NGINX_DENY}" ]]; then
+  "${_NGINX_DENY}" >/dev/null 2>&1
+  _msg "  regenerated nginx geo-ban set via nginx_deny.sh"
+fi
+
+_info "Done. Removed ${_rm_perm} permanent + ${_rm_temp} temp csf web bans; cleared web.log + archives; reset scan offset."
+exit 0
