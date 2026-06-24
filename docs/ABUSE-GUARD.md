@@ -293,6 +293,51 @@ and risks false-positiving CGNAT / shared-egress clients. A `200` slower than
 was built for search-amplification attacks that bypass simple `444` rules by adding a
 Referer.
 
+### Detector 4 — HTTP/1.0 registration-spam (auth paths)
+
+A credential / registration-spam botnet POSTs scam payloads to the Drupal auth paths
+(`/user/register`, `/user/password`) over **HTTP/1.0** while forging a modern-browser
+User-Agent. HTTP/1.0 is the clean transport-layer tell: no browser built in ~15 years speaks
+HTTP/1.0 to a public HTTPS host, so HTTP/1.0 to an auth path is never a real visitor. The bot
+paces **one slow request per IP** from a small CIDR block (a `/29` was the reference case),
+which defeats Detectors 1–3 at once — the per-IP scorer never reaches its raw-request floor
+inside a window, the shared-UA aggregate needs ~100 IPs, and the path-flood watch list is
+Solr/search-only. An inline per-site `444` guard can drop this traffic at nginx; this
+detector turns the same HTTP/1.0-to-auth-path signal into a **CSF ban** so the firewall drops
+the source before nginx.
+
+`_track_http10_auth` tallies, per real client IP, requests whose **request line** is HTTP/1.0
+and whose URI matches `_NGINX_HTTP10_AUTH_PATHS`. Both the protocol and the URI are read from
+the `"$request"` log field via the same positional, traversal-rejecting parse as the
+exemption gate, so a token smuggled into a User-Agent, Referer or query string can never fake
+either signal. After the loop the per-IP tallies merge into a sliding window that **spans
+runs** (a small state file at `/var/xdrago/monitor/log/http10_auth.window`, pruned each tick,
+exactly like the i18n window) — necessary because the bot is far too slow to accumulate
+inside one ~5 s scan window. `_handle_http10_auth_flood` then bans a **seen** IP once either:
+
+| Threshold | Default | Meaning |
+|---|---|---|
+| `_NGINX_HTTP10_AUTH_IP_THRESHOLD` | 3 | windowed HTTP/1.0 auth-path hits from that IP |
+| `_NGINX_HTTP10_AUTH_CIDR_THRESHOLD` | 6 | windowed hits aggregated over the IP's `/24` |
+
+The `/24` aggregate escalates the slow distributed block cleanly — the group crosses the
+threshold long before any single trickling address would — while only IPs **actually
+observed** sending HTTP/1.0 to an auth path are banned, never an unseen address in the `/24`.
+A lone stray HTTP/1.0 hit stays below both thresholds and never bans. The ban reuses
+`_block_ip` (so the csf.allow whitelist, logged-in, local-IP and already-banned guards all
+apply) and feeds the same `guest-fire` → `guest-water` pipeline as every other detector.
+
+The detector is **on by default**, opt-out per box (`_NGINX_HTTP10_AUTH_DETECT=NO`); the
+per-line tally is skipped entirely when off. One caveat drives that opt-out: `$server_protocol`
+is the protocol on the connection to **this** nginx, not the realip-recovered client's, so a
+reverse proxy that forwards to origin over HTTP/1.0 would make all proxied traffic look like
+HTTP/1.0 here. BOA's own proxy layer (the migration / PX0 `*_proxy.conf` and the wildcard-SSL
+`nginx_wild_ssl.conf`) sets `proxy_http_version 1.1`, so a correctly-updated BOA front proxy
+no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin. **Opt out** only on a
+box still fronted by a non-BOA proxy or CDN that talks HTTP/1.0 to origin, or not yet updated
+to the HTTP/1.1 proxy confs (see **Part 5**). A malformed `_NGINX_HTTP10_AUTH_PATHS` override
+fails closed — the detector counts nothing rather than mis-banning.
+
 ### Distributed-i18n-flood detection and the FPM saturation trigger
 
 Detectors 1–3 score and ban individual IPs. A distributed flood of **localized**
@@ -1016,6 +1061,19 @@ The **inline** guardrail's cap is a separate, provision-side option `nginx_i18n_
 guardrail is **on by default**; the per-host **opt-out** is the
 `/data/conf/boa_i18n_guard.map` data file (Part 5), not a `.barracuda.cnf` variable.
 
+### HTTP/1.0 registration-spam (auth paths)
+
+Govern Detector 4 (Part 1). All take the built-in default unless added to
+`/root/.barracuda.cnf`; none is seeded by `autoupboa`.
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `_NGINX_HTTP10_AUTH_DETECT` | `YES` | Master switch. `NO` skips the per-line tally entirely (zero hot-loop cost) — opt out on a box fronted by a non-BOA / HTTP/1.0-downgrading proxy. |
+| `_NGINX_HTTP10_AUTH_PATHS` | `^/([a-z]{2}/)?user/(register\|password)(/\|$)` | ERE matched against the parsed request URI (optional language prefix). A malformed override fails closed and reverts to this default. |
+| `_NGINX_HTTP10_AUTH_WINDOW` | `600` | Sliding-window length in seconds; spans runs (the bot is too slow for one ~5 s window). |
+| `_NGINX_HTTP10_AUTH_IP_THRESHOLD` | `3` | Windowed HTTP/1.0 auth-path hits from one IP before it is banned. |
+| `_NGINX_HTTP10_AUTH_CIDR_THRESHOLD` | `6` | Windowed hits aggregated over an IP's `/24` before every **observed** contributor is banned (CIDR escalation for the slow distributed block). |
+
 ## Part 5 — operations and tuning
 
 ### Reading live state
@@ -1156,6 +1214,28 @@ logs every trip and snapshot under `/var/xdrago/monitor/log/i18n_flood*` (see **
 state**), so a real burst leaves a forensic trail of the top talkers, UAs and
 language-prefixes. Unlike a CSF ban this is not per-IP and never appears in `csf -t`/`csf -g`
 — it is a concurrency ceiling on a request class, not a block on a source.
+
+### Opting a box out of the HTTP/1.0 registration-spam ban
+
+Detector 4 is **on by default** and needs no activation. Opt a box **out** only when its
+affected vhost is fronted by a proxy that talks **HTTP/1.0 to origin** — a non-BOA proxy or
+CDN, or a BOA front proxy / PX0 host not yet updated to the `proxy_http_version 1.1` confs —
+because there every proxied request (real logins included) logs as HTTP/1.0 at origin and
+would be banned:
+
+```bash
+# in /root/.barracuda.cnf
+_NGINX_HTTP10_AUTH_DETECT=NO
+```
+
+Confirm before deciding: `grep 'user/register' /var/log/nginx/access.log` (or `user/password`)
+should show real visitors with `HTTP/1.1` / `HTTP/2.0` in the request line (and
+`proto="HTTP/1.1"` / `"HTTP/2.0"`) and only the bot as `HTTP/1.0`. If real clients **also**
+show `HTTP/1.0`, the box is behind a downgrading proxy — fix that proxy to
+`proxy_http_version 1.1` (BOA's own proxies already do) rather than leaving the detector off.
+The windowed state lives at `/var/xdrago/monitor/log/http10_auth.window`; bans land in
+`web.log` and the csf pipeline like any other detector, so `clearwebbans` (above) recovers a
+false positive.
 
 ### Enabling debug output
 
