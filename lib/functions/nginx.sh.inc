@@ -705,6 +705,13 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    _HTTPVER_TEST=$(grep proxy_http_version ${_WILD_SSL_VHOST} 2>&1)
+    if [[ ! "${_HTTPVER_TEST}" =~ "proxy_http_version" ]]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs http/1.1 upstream update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
       _validate_public_ip &> /dev/null
       _validate_xtras_ip &> /dev/null
