@@ -293,6 +293,54 @@ and risks false-positiving CGNAT / shared-egress clients. A `200` slower than
 was built for search-amplification attacks that bypass simple `444` rules by adding a
 Referer.
 
+### Distributed-i18n-flood detection and the FPM saturation trigger
+
+Detectors 1–3 score and ban individual IPs. A distributed flood of **localized**
+(translation) pages defeats all three at once: the source spreads over thousands of IPs at
+one or two requests each (so the per-IP and shared-UA scorers never trip), and the watched
+path list is Solr/search-only (so the path-flood aggregate never sees `/de/…`,
+`/zh-hans/…` and the rest). Each uncached localized page runs a synchronous on-the-fly
+translation that holds a PHP-FPM worker for tens of seconds, so enough concurrent ones
+saturate the shared per-account pool and collapse every site on it.
+
+The real-time **capping** is an inline nginx guardrail (the Tier-A `limit_conn
+boa_i18n_anon`, see Part 3). `scan_nginx` adds the **detection** half — it alerts and
+snapshots, and **does not ban per IP** (futile against a distributed source); the guardrail
+does the actual capping, and any genuinely concentrated offender is still caught by
+Detector 1.
+
+- **Distributed-i18n-flood detector.** Per line, localized requests (a leading two-letter
+  language prefix on the path, or the D7 `?q=<lang>/` form) are tallied **per vhost** — a
+  non-IP key. After the loop the tallies merge into a sliding window that **spans runs** (a
+  small state file, pruned each tick), and a vhost trips on either:
+  - **guardrail-shedding** — a burst of the `444`s the Tier-A `limit_conn` emits the instant
+    anonymous-localized concurrency exceeds its cap (≥ `_NGINX_I18N_FLOOD_C444_THRESHOLD` in
+    the window). This is the earliest and most symmetric signal: it lights up ~60–90 s
+    before FPM saturation, where the lagging backend-stress signal alone trips only at the
+    ceiling;
+  - **volume + stress** — windowed localized volume (≥ `_NGINX_I18N_FLOOD_MIN_REQS`) with an
+    elevated slow/`5xx`/`444` share (≥ `_NGINX_I18N_FLOOD_STRESS_PCT` %), for a vhost not
+    opted into Tier A. A cache-warm recon burst (high volume, ~0 % stress) stays below the
+    stress gate and never trips — the gate is what separates a flood from a popularity spike.
+
+  On a trip it appends to `/var/xdrago/monitor/log/i18n_flood.log` and writes a forensic
+  snapshot (top client IPs / UAs / language-prefixes for that vhost) under
+  `/var/xdrago/monitor/log/i18n_flood/`, with a per-vhost cool-down so a multi-minute burst
+  yields a handful of records, not one per tick. The same loop-scope skips (`files.*`,
+  `_NGINX_DOS_IGNORE_PATHS`, Site24x7) run first, so monitors and webhooks are never classed,
+  and it keys on the realip'd client and vhost, never the CF/PX0 edge.
+
+- **FPM saturation trigger.** Byte-offset-tails the per-version PHP-FPM error logs
+  (`/var/log/php/php*-fpm-error.log`) for **new** `reached max_children setting` lines — the
+  authoritative "a pool just ran out of workers" signal, captured the instant it happens. (
+  `php.sh` greps the **global** `process.max` ceiling, which BOA sets to `0` = disabled, so
+  it never sees this per-pool event, and the periodic `fpmreport` sampler misses the live
+  peak too.) On a new hit it alerts and snapshots the box-wide top talkers.
+
+Both run after the existing blocking passes and are gated on `_NGINX_I18N_FLOOD_DETECT` /
+`_NGINX_FPM_SAT_DETECT` (default `YES`); the per-line tally is skipped entirely when the
+detector is off, so the hot loop pays nothing.
+
 ### Whitelisting (scorer side)
 
 Three layers protect known-good addresses from every detector:
@@ -729,6 +777,58 @@ never run. The family landed in BOA-5.9.3.
 > block now needs `fulltext + root Referer + at least one facet param`. The plain homepage
 > submission has no facet and is no longer a false positive.
 
+### Distributed-i18n-flood inline guardrail (Tier A)
+
+The search-amplification family protects `/search`; the same economics apply to any
+expensive **localized** page when a site runs on-the-fly translation. Translation holds a
+PHP-FPM worker for tens of seconds and FPM pools are shared per account, so a distributed
+scraper of localized pages can starve every site on the pool. A rate limit is the wrong
+tool (the source is thousands of IPs at one or two requests each); the right tool bounds the
+**concurrency** of the expensive class.
+
+`limit_conn boa_i18n_anon` caps the **in-flight** count of *anonymous localized* requests
+**per vhost**, keyed on a constant (`$host`) rather than the client IP — so it bounds the
+aggregate blast radius of a distributed flood instead of chasing rotating addresses. Excess
+returns `444` instantly, before php-fpm. The key is non-empty only when three maps agree:
+
+```nginx
+# server.tpl.php (http{})
+limit_conn_zone $boa_i18n_anon_key zone=boa_i18n_anon:10m;
+map $host        $boa_i18n_guard { default 0; include /data/conf/boa_i18n_guard.map*; }
+map $request_uri $boa_i18n_path  { default 0; ~*^/[a-z][a-z](-[a-z]+)?/ 1; ~*[?&]q=/?[a-z][a-z](-[a-z]+)?/ 1; }
+map $cache_uid   $boa_is_anon    { default 0; "" 1; }
+map "$boa_i18n_guard$boa_i18n_path$boa_is_anon" $boa_i18n_anon_key { default ""; "111" $host; }
+```
+
+```nginx
+# Inc/vhost_include.tpl.php — location = /index.php (the single dynamic chokepoint)
+limit_conn boa_i18n_anon <nginx_i18n_anon_conn|24>;
+limit_conn_status 444;
+```
+
+- **Opt-in, default-off.** `$boa_i18n_guard` is `0` for every vhost until a host is listed
+  in the wildcard-included `/data/conf/boa_i18n_guard.map` (absent file = guardrail off
+  fleet-wide, zero behaviour change). This is the same two-stage idiom as `$is_banned` —
+  global maps always defined (so no vhost references an undefined variable and breaks
+  `nginx -t`), per-site activation by an included data file. See Part 5 for the opt-in step.
+- **Keyed on `$request_uri`, not `$uri`.** BOA rewrites clean URLs to `/index.php` before
+  the map evaluates, so `$uri` would already read `/index.php`; `$request_uri` keeps the
+  original `/de/product?page=1`. The second `?q=` pattern closes the D7
+  `/index.php?q=<lang>/` form, and matches neither ordinary `q=node/`, `q=user/` nor
+  `q=desktop`.
+- **Anonymous only.** `$boa_is_anon` reuses the authoritative `$cache_uid` session map, so a
+  logged-in editor (a `SESS`/`SSESS` cookie) is never capped.
+- **Applied at `location = /index.php`** — the one location every dynamic request funnels
+  through — so static files under `/xx/` (served by their own locations) are correctly
+  excluded. `limit_conn_status 444` also aligns the co-located per-IP `limreq` cap to the
+  444 convention.
+
+Sizing: the default cap is **24** in-flight (~⅛ of a 192-worker pool), tunable via the
+provision-side option `nginx_i18n_anon_conn`. Measured legitimate human localized
+concurrency is well under 20 while a saturating flood needs hundreds, so 24 cleanly
+separates the two while bounding the expensive class to a small slice of the pool. The
+Tier-B detector (Part 1) watches the `444`s this guardrail sheds as its earliest signal.
+
 ### Edge-policy guards (defined here, documented elsewhere)
 
 Three further request-path defences are defined in the same template pair but belong to BOA's
@@ -767,7 +867,8 @@ bad request method      → 444
 $is_denied              → 444
 $ua_denied              → 444
 $tls_on_plain           → 444
-… then per-location: /search, /xx/search, /user/login families
+… then per-location: /search, /xx/search, /user/login families,
+  and at location = /index.php: limit_conn boa_i18n_anon → 444 (Tier-A i18n guardrail)
 ```
 
 > **Under the hood.** Two related nginx tunables were adjusted alongside these maps. In the
@@ -886,6 +987,30 @@ match is against the **real `$request` URI** only (query stripped, `..`/`%`-esca
 the override **replaces** the default list (an empty value disables the feature). See the
 exemption-gate detail in Part 1.
 
+### Distributed-i18n-flood and FPM saturation
+
+These govern the localized-flood detector and the FPM saturation trigger (Part 1). All take
+the script's built-in default unless added to `/root/.barracuda.cnf`; none is seeded by
+`autoupboa`.
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `_NGINX_I18N_FLOOD_DETECT` | `YES` | Master switch for the per-vhost localized-flood detector. `NO` skips the per-line tally entirely (zero hot-loop cost). |
+| `_NGINX_I18N_FLOOD_WINDOW` | `120` | Sliding-window length in seconds; spans runs (each tick adds one bucket, expired buckets pruned). |
+| `_NGINX_I18N_FLOOD_MIN_REQS` | `400` | Windowed localized requests to one vhost before the volume+stress path can trip. Above a busy multilingual site's organic localized traffic. |
+| `_NGINX_I18N_FLOOD_STRESS_PCT` | `15` | Minimum share (%) of windowed localized requests that are slow / `5xx` / `444` for the volume+stress trip. Benign localized peaks run near 0 %. |
+| `_NGINX_I18N_FLOOD_SLOW_SECS` | `3` | Whole seconds above which a localized request counts as "slow" for the stress gate. |
+| `_NGINX_I18N_FLOOD_C444_THRESHOLD` | `40` | Windowed count of localized `444`s to one vhost (the Tier-A guardrail shedding) that trips on its own — the early, symmetric signal. Set well above incidental localized `444`s. |
+| `_NGINX_I18N_FLOOD_COOLDOWN` | `300` | Per-vhost seconds between alerts/snapshots, so a long burst yields a handful of records. |
+| `_NGINX_FPM_SAT_DETECT` | `YES` | Master switch for the FPM `max_children` tail. |
+| `_NGINX_FPM_ERR_GLOB` | `/var/log/php/php*-fpm-error.log` | Glob of the per-version PHP-FPM error logs to tail. |
+| `_NGINX_FPM_SAT_PATTERN` | `reached max_children setting` | The literal the FPM master logs on a per-pool ceiling hit. |
+
+The **inline** guardrail's cap is a separate, provision-side option `nginx_i18n_anon_conn`
+(default `24`), rendered into the vhost `limit_conn` directive — not a `scan_nginx` knob. The
+per-site **opt-in** is the `/data/conf/boa_i18n_guard.map` data file (Part 5), not a
+`.barracuda.cnf` variable.
+
 ## Part 5 — operations and tuning
 
 ### Reading live state
@@ -900,6 +1025,8 @@ Everything the Abuse Guard does is reflected in plain-text files, safe to `cat`/
 | Live geo (derived mirror of CSF) | `/data/conf/nginx_banned_ips.conf` | regenerated each pass by `nginx_deny.sh`; **do not hand-edit** |
 | Active temp bans | `csf -t` (reads `/var/lib/csf/csf.tempban`) | WEB bans are on ports 80/443 |
 | Persistent denies | `csf -g <ip>` / `/etc/csf/csf.deny` | water's escalations tagged `Brute force Web Server` |
+| i18n-flood + FPM alerts | `/var/xdrago/monitor/log/i18n_flood.log` | Tier-B detector trips and FPM `max_children` hits |
+| i18n-flood snapshots | `/var/xdrago/monitor/log/i18n_flood/` | per-trip top talkers/UAs/lang-prefixes; the window state and FPM byte-offsets live here too |
 
 ```bash
 # Who is currently temp-banned, and on which ports
@@ -1002,6 +1129,27 @@ _NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook \
 /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2 \
 /my/custom/webhook"
 ```
+
+### Opting a site into the i18n guardrail
+
+The Tier-A localized-concurrency cap is **off** until the vhost is listed in the
+wildcard-included guard map. To protect a multilingual site whose anonymous localized pages
+are expensive (on-the-fly translation):
+
+```bash
+# one line per hostname; quoted host, value 1
+printf '"%s" 1;\n' apmg-international.com www.apmg-international.com \
+  >> /data/conf/boa_i18n_guard.map
+nginx -t && service nginx reload      # Devuan: service, not systemctl
+```
+
+An absent/empty map leaves the guardrail off across the whole fleet (the default). To tune
+the cap set `nginx_i18n_anon_conn` (default `24`) and re-render the vhost. The Tier-B
+detector logs every trip and snapshot under `/var/xdrago/monitor/log/i18n_flood*` (see
+**Reading live state**), so a real burst leaves a forensic trail of the top talkers, UAs and
+language-prefixes. Removing a host's line and reloading lifts the cap. Unlike a CSF ban this
+is not per-IP and never appears in `csf -t`/`csf -g` — it is a concurrency ceiling on a
+request class, not a block on a source.
 
 ### Enabling debug output
 
