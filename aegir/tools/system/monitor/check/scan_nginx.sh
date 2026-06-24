@@ -205,6 +205,74 @@ _NGINX_PATH_FLOOD_IP_MIN_REQS=20
 # Add further site-specific expensive endpoint substrings as needed.
 _NGINX_PATH_FLOOD_WATCH="apachesolr_search|search_api_views_fulltext|search_api_fulltext|im_taxonomy_vid|/search/node|/search/user"
 
+# ---- Distributed localized (i18n) translation-flood detection (Tier B) ----
+# A distributed scraper crawling localized pages drives each uncached page
+# through an expensive synchronous translation backend, holding a PHP-FPM worker
+# for tens of seconds.  The source spreads across thousands of IPs at one or two
+# requests each, so neither the per-IP scorer nor the Solr-oriented path-flood
+# watch list above catches it.  This detector aggregates LOCALIZED requests per
+# vhost over a sliding window that spans runs (each run adds one bucket) and
+# trips on the COMBINATION of volume + backend stress, or -- the earlier,
+# symmetric signal -- a burst of the 444s the inline Tier-A guardrail (Provision
+# boa_i18n_anon limit_conn) emits the instant anonymous localized concurrency
+# exceeds its per-vhost cap.  It does NOT ban per IP (futile against a
+# distributed source): it alerts, snapshots the top talkers/UAs/path-classes for
+# forensics, and persists across repeat bursts.  Site24x7, files.* and the
+# webhook ignore-list are already skipped at loop scope before this runs.
+
+# Master switch (YES/NO).
+_NGINX_I18N_FLOOD_DETECT=YES
+
+# Sliding-window length in seconds across runs.
+_NGINX_I18N_FLOOD_WINDOW=120
+
+# Minimum localized requests to ONE vhost within the window before the
+# volume+stress path can trip.  Sized above a busy multilingual site's organic
+# localized traffic; the reference incident exceeded this within ~60-90s while a
+# cache-warm recon phase (high volume, ~0% stress) stays below the stress gate
+# and never trips.
+_NGINX_I18N_FLOOD_MIN_REQS=400
+
+# Backend-stress gate (percent): share of windowed localized requests that are
+# slow (>= _NGINX_I18N_FLOOD_SLOW_SECS), 5xx, or 444 (Tier-A shedding) before the
+# volume+stress path trips.  Benign localized peaks run near 0% here.
+_NGINX_I18N_FLOOD_STRESS_PCT=15
+
+# Slow threshold (whole seconds) for the stress gate.
+_NGINX_I18N_FLOOD_SLOW_SECS=3
+
+# Early-trip: windowed count of localized 444s to ONE vhost (the Tier-A guardrail
+# actively shedding the flood) that trips on its own, independent of volume.
+# This is the fastest, most symmetric signal -- it lights up ~60-90s before FPM
+# saturation, where the lagging stress signal alone can trip only at the ceiling.
+# Set well above the handful of incidental localized 444s (banned IP, forged-AI,
+# secret-path) seen in normal traffic.
+_NGINX_I18N_FLOOD_C444_THRESHOLD=40
+
+# Per-vhost alert cool-down (seconds): suppress repeat alerts/snapshots for the
+# same vhost while a flood is ongoing, so a multi-minute burst yields a handful
+# of records, not one every scan cycle.
+_NGINX_I18N_FLOOD_COOLDOWN=300
+
+# ---- PHP-FPM saturation early trigger (Tier B) ----
+# The authoritative, near-real-time "we are saturating" signal the periodic
+# fpmreport sampler misses: PHP-FPM writes
+#   WARNING: [pool NAME] server reached max_children setting (N), consider raising it
+# to its per-version error log the instant a pool cannot spawn a worker.  BOA's
+# php.sh greps only the GLOBAL "process.max" ceiling (set to 0 = disabled), so it
+# never sees this per-pool event; this trigger reads it directly.  Byte-offset
+# tracking per log file means only NEW ceiling hits since the last run are acted
+# on.  On a hit it snapshots the access-log tail and alerts; mitigation stays
+# with Tier A (already capping) and, for any concentrated offender, the per-IP
+# scorer above.
+_NGINX_FPM_SAT_DETECT=YES
+
+# Glob of PHP-FPM per-version error logs.
+_NGINX_FPM_ERR_GLOB="/var/log/php/php*-fpm-error.log"
+
+# The literal the FPM master logs when a pool hits its pm.max_children ceiling.
+_NGINX_FPM_SAT_PATTERN="reached max_children setting"
+
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
 
@@ -343,6 +411,12 @@ declare -A _PATH_IP_LIST
 declare -A _PATH_IP_200_REQS
 declare -A _PATH_IP_REQS
 declare -A _PATH_SLOW_COUNT
+
+# Tier-B distributed-i18n-flood per-run tallies (vhost -> count this run).
+declare -A _I18N_REQ      # localized requests seen
+declare -A _I18N_SLOW     # localized requests with request_time >= SLOW_SECS
+declare -A _I18N_ERR      # localized 5xx responses
+declare -A _I18N_C444     # localized 444 responses (Tier-A guardrail shedding)
 
 # Debugging: Confirm associative arrays are declared
 if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
@@ -1152,6 +1226,182 @@ if [[ -n "${_NGINX_PATH_FLOOD_WATCH:-}" ]]; then
 fi
 
 # ==============================
+# Tier-B: distributed i18n-flood detector + FPM saturation trigger
+# ==============================
+
+# Gate the per-line tracking on a single flag and pre-build the line regex once,
+# so the hot loop pays nothing when the detector is disabled.  The regex pulls
+# the vhost, request path and status from one match (field 1 is the realip
+# $remote_addr, field 2 the vhost, then [time] "METHOD path ..." status).
+_I18N_ON=0
+[[ "${_NGINX_I18N_FLOOD_DETECT}" == "YES" ]] && _I18N_ON=1
+_I18N_LINE_RE='^"[^"]*" ([^ ]+) \[[^]]*\] "[A-Z]+ ([^ ]+) [^"]*" ([0-9]{3}) '
+_I18N_DIR="/var/xdrago/monitor/log/i18n_flood"
+_I18N_LOG="/var/xdrago/monitor/log/i18n_flood.log"
+
+# Per-line tally for the windowed detector.  $1 vhost, $2 status, $3 request_time.
+_track_i18n_flood() {
+  local _h="$1" _st="$2" _ut="$3" _uti
+  [[ -n "${_h}" ]] || return 0
+  _I18N_REQ["${_h}"]=$(( ${_I18N_REQ["${_h}"]:-0} + 1 ))
+  _uti="${_ut%%.*}"
+  [[ "${_uti}" =~ ^[0-9]+$ ]] || _uti=0
+  if (( _uti >= _NGINX_I18N_FLOOD_SLOW_SECS )); then
+    _I18N_SLOW["${_h}"]=$(( ${_I18N_SLOW["${_h}"]:-0} + 1 ))
+  fi
+  case "${_st}" in
+    500|502|503|504) _I18N_ERR["${_h}"]=$(( ${_I18N_ERR["${_h}"]:-0} + 1 )) ;;
+    444)             _I18N_C444["${_h}"]=$(( ${_I18N_C444["${_h}"]:-0} + 1 )) ;;
+  esac
+}
+
+# Per-vhost alert cool-down via a marker file's mtime.  Return 0 (alert) when no
+# alert fired for this vhost within _NGINX_I18N_FLOOD_COOLDOWN seconds, else 1.
+_i18n_cooldown_ok() {
+  local _h="$1" _now="$2" _cd _m
+  _cd="${_I18N_DIR}/.cd-${_h//[^a-zA-Z0-9._-]/_}"
+  if [[ -f "${_cd}" ]]; then
+    _m="$(stat -c %Y "${_cd}" 2>/dev/null)"
+    if [[ "${_m}" =~ ^[0-9]+$ ]] && (( _now - _m < _NGINX_I18N_FLOOD_COOLDOWN )); then
+      return 1
+    fi
+  fi
+  : > "${_cd}" 2>/dev/null
+  return 0
+}
+
+# Forensic snapshot of the heaviest talkers/UAs/path-classes for a vhost (or "*"
+# for box-wide) from the recent access log.  Echoes the snapshot file path.
+# Runs only on a trip, so a perl pass over the tail is acceptable here.
+_i18n_snapshot() {
+  local _h="$1" _why="$2" _f
+  [[ -d "${_I18N_DIR}" ]] || mkdir -p "${_I18N_DIR}" 2>/dev/null
+  _f="${_I18N_DIR}/$(date +%y%m%d-%H%M%S)-${_h//[^a-zA-Z0-9._-]/_}.txt"
+  {
+    echo "# i18n-flood snapshot  vhost=${_h}  reason=${_why}  at=$(date)"
+    tail -n "${_NGINX_DOS_LINES}" "${_log_file}" 2>/dev/null \
+      | perl -ne '
+          BEGIN { $h = shift @ARGV; }
+          if (/^"([^"]*)" (\S+) \[[^\]]*\] "(\S+) (\S+)[^"]*" (\d{3}) .* "([^"]*)" ([\d.]+) /) {
+            my ($ip,$vh,$path,$st,$ua,$rt) = ($1,$2,$4,$5,$6,$7);
+            next if $h ne "*" && $vh ne $h;
+            $n++; $rts += $rt; $rtmax = $rt if $rt > $rtmax;
+            $ipc{$ip}++; $uac{$ua}++; $stc{$st}++; $vhc{$vh}++;
+            $langc{lc($1)}++ if $path =~ m{^/([A-Za-z][A-Za-z](?:-[A-Za-z]+)?)/};
+          }
+          END {
+            printf "total=%d mean_rt=%.2f max_rt=%.2f\n", $n, ($n ? $rts/$n : 0), $rtmax;
+            sub top { my ($t,$r,$k)=@_; print "# top $t:\n";
+              my @s = sort { $r->{$b} <=> $r->{$a} } keys %$r;
+              for (my $i=0; $i<@s && $i<$k; $i++){ printf "  %6d  %s\n", $r->{$s[$i]}, $s[$i] } }
+            top("vhosts",\%vhc,10); top("client IPs",\%ipc,15);
+            top("User-Agents",\%uac,10); top("status",\%stc,10);
+            top("lang-prefixes",\%langc,15);
+          }
+        ' "${_h}"
+  } >> "${_f}" 2>/dev/null
+  echo "${_f}"
+}
+
+# Merge this run's per-vhost localized tallies into the cross-run sliding window,
+# prune expired buckets, and trip on the guardrail-shedding or volume+stress
+# condition.  Mitigation is detection + forensics + alert (Tier A does the
+# real-time capping); no per-IP bans are issued here.
+_handle_i18n_flood() {
+  [[ "${_NGINX_I18N_FLOOD_DETECT}" == "YES" ]] || return 0
+  local _state="${_I18N_DIR}/window.state" _tmp _now _cut
+  local _h _e _r _s _er _c4 _vol _bad _badp _trip _snap
+  _now="$(date +%s)"
+  [[ "${_now}" =~ ^[0-9]+$ ]] || return 0
+  _cut=$(( _now - _NGINX_I18N_FLOOD_WINDOW ))
+  [[ -d "${_I18N_DIR}" ]] || mkdir -p "${_I18N_DIR}" 2>/dev/null
+  declare -A _W_REQ _W_SLOW _W_ERR _W_C444
+  _tmp="${_state}.$$"
+  : > "${_tmp}" 2>/dev/null || return 0
+  # Carry forward unexpired buckets.
+  if [[ -f "${_state}" ]]; then
+    while IFS='|' read -r _h _e _r _s _er _c4; do
+      [[ -n "${_h}" && "${_e}" =~ ^[0-9]+$ ]] || continue
+      (( _e > _cut )) || continue
+      printf '%s|%s|%s|%s|%s|%s\n' "${_h}" "${_e}" "${_r:-0}" "${_s:-0}" "${_er:-0}" "${_c4:-0}" >> "${_tmp}"
+      _W_REQ["${_h}"]=$(( ${_W_REQ["${_h}"]:-0} + ${_r:-0} ))
+      _W_SLOW["${_h}"]=$(( ${_W_SLOW["${_h}"]:-0} + ${_s:-0} ))
+      _W_ERR["${_h}"]=$(( ${_W_ERR["${_h}"]:-0} + ${_er:-0} ))
+      _W_C444["${_h}"]=$(( ${_W_C444["${_h}"]:-0} + ${_c4:-0} ))
+    done < "${_state}"
+  fi
+  # Add this run's buckets.
+  for _h in "${!_I18N_REQ[@]}"; do
+    _r=${_I18N_REQ["${_h}"]:-0}; _s=${_I18N_SLOW["${_h}"]:-0}
+    _er=${_I18N_ERR["${_h}"]:-0}; _c4=${_I18N_C444["${_h}"]:-0}
+    printf '%s|%s|%s|%s|%s|%s\n' "${_h}" "${_now}" "${_r}" "${_s}" "${_er}" "${_c4}" >> "${_tmp}"
+    _W_REQ["${_h}"]=$(( ${_W_REQ["${_h}"]:-0} + _r ))
+    _W_SLOW["${_h}"]=$(( ${_W_SLOW["${_h}"]:-0} + _s ))
+    _W_ERR["${_h}"]=$(( ${_W_ERR["${_h}"]:-0} + _er ))
+    _W_C444["${_h}"]=$(( ${_W_C444["${_h}"]:-0} + _c4 ))
+  done
+  mv -f "${_tmp}" "${_state}" 2>/dev/null
+  # Evaluate trips per vhost.
+  for _h in "${!_W_REQ[@]}"; do
+    _vol=${_W_REQ["${_h}"]:-0}
+    _bad=$(( ${_W_SLOW["${_h}"]:-0} + ${_W_ERR["${_h}"]:-0} + ${_W_C444["${_h}"]:-0} ))
+    _badp=0
+    (( _vol > 0 )) && _badp=$(( 100 * _bad / _vol ))
+    _trip=""
+    if (( ${_W_C444["${_h}"]:-0} >= _NGINX_I18N_FLOOD_C444_THRESHOLD )); then
+      _trip="guardrail-shedding (${_W_C444["${_h}"]} x 444 / ${_NGINX_I18N_FLOOD_WINDOW}s)"
+    elif (( _vol >= _NGINX_I18N_FLOOD_MIN_REQS && _badp >= _NGINX_I18N_FLOOD_STRESS_PCT )); then
+      _trip="volume+stress (${_vol} localized, ${_badp}% slow/5xx/444 / ${_NGINX_I18N_FLOOD_WINDOW}s)"
+    fi
+    [[ -n "${_trip}" ]] || continue
+    _i18n_cooldown_ok "${_h}" "${_now}" || continue
+    _snap="$(_i18n_snapshot "${_h}" "${_trip}")"
+    printf '%s I18N-FLOOD vhost=%s %s -> %s\n' "$(date)" "${_h}" "${_trip}" "${_snap}" >> "${_I18N_LOG}"
+    echo "=== I18N-FLOOD ${_h}: ${_trip} (snapshot ${_snap}) ==="
+  done
+}
+
+# Tail the PHP-FPM per-version error logs for NEW "reached max_children setting"
+# lines (byte-offset tracked) -- the authoritative pool-saturation signal.  On a
+# hit, alert and snapshot the box-wide top talkers for forensics.
+_check_fpm_saturation() {
+  [[ "${_NGINX_FPM_SAT_DETECT}" == "YES" ]] || return 0
+  local _posfile="${_I18N_DIR}/fpm_maxchildren.pos" _tmp _f _sz _off _new _hits _hitf _snap
+  [[ -d "${_I18N_DIR}" ]] || mkdir -p "${_I18N_DIR}" 2>/dev/null
+  declare -A _POS
+  if [[ -f "${_posfile}" ]]; then
+    while IFS='|' read -r _f _off; do
+      [[ -n "${_f}" && "${_off}" =~ ^[0-9]+$ ]] && _POS["${_f}"]="${_off}"
+    done < "${_posfile}"
+  fi
+  _tmp="${_posfile}.$$"
+  : > "${_tmp}" 2>/dev/null || return 0
+  _hits=0; _hitf=""
+  for _f in ${_NGINX_FPM_ERR_GLOB}; do
+    [[ -f "${_f}" ]] || continue
+    _sz="$(stat -c %s "${_f}" 2>/dev/null)"
+    [[ "${_sz}" =~ ^[0-9]+$ ]] || _sz=0
+    _off="${_POS["${_f}"]:-0}"
+    (( _sz < _off )) && _off=0
+    if (( _sz > _off )); then
+      _new="$(tail -c +$(( _off + 1 )) "${_f}" 2>/dev/null | grep -c -- "${_NGINX_FPM_SAT_PATTERN}")"
+      [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
+      if (( _new > 0 )); then
+        _hits=$(( _hits + _new ))
+        _hitf="${_hitf} ${_f##*/}(${_new})"
+      fi
+    fi
+    printf '%s|%s\n' "${_f}" "${_sz}" >> "${_tmp}"
+  done
+  mv -f "${_tmp}" "${_posfile}" 2>/dev/null
+  if (( _hits > 0 )); then
+    _snap="$(_i18n_snapshot "*" "fpm-max-children${_hitf}")"
+    printf '%s FPM-SATURATION new max_children hits:%s -> %s\n' "$(date)" "${_hitf}" "${_snap}" >> "${_I18N_LOG}"
+    echo "=== FPM-SATURATION: ${_hits} new max_children hit(s):${_hitf} (snapshot ${_snap}) ==="
+  fi
+}
+
+# ==============================
 # Processing the Access Log
 # ==============================
 
@@ -1316,6 +1566,23 @@ while IFS= read -r _line <&3; do
     fi
   fi
 
+  # ---- Distributed localized (i18n) translation-flood tracking (Tier B) ----
+  # Aggregate localized requests per vhost (a non-IP key) for the cross-run
+  # windowed detector evaluated after the loop.  files.*, the webhook
+  # ignore-list and Site24x7 are already skipped at loop scope above, so they
+  # never reach here.  Matches a leading two-letter language prefix on the
+  # request path (optionally with a script/region suffix, e.g. /pt-br/,
+  # /zh-hans/) and the D7 ?q=<lang>/ form, mirroring the Tier-A guardrail class.
+  if (( _I18N_ON )) && [[ "${_line}" =~ ${_I18N_LINE_RE} ]]; then
+    _LH="${BASH_REMATCH[1]}"
+    _LP="${BASH_REMATCH[2]}"
+    _LS="${BASH_REMATCH[3]}"
+    if [[ "${_LP}" =~ ^/[A-Za-z][A-Za-z](-[A-Za-z]+)?/ \
+       || "${_LP}" =~ [?\&]q=/?[A-Za-z][A-Za-z](-[A-Za-z]+)?/ ]]; then
+      _track_i18n_flood "${_LH}" "${_LS}" "${_UP_TIME}"
+    fi
+  fi
+
 done
 
 # Close the file descriptor for the log input
@@ -1341,6 +1608,12 @@ _handle_ddos_blocking
 # everything caught by the DoS and DDoS passes above; distributed bots that
 # slipped through per-IP rate checks are caught here by the aggregate path count)
 _handle_path_flood_blocking
+
+# Tier B: evaluate the cross-run distributed-i18n-flood window and tail the
+# PHP-FPM error logs for new pool-saturation events.  These detect, alert and
+# snapshot only -- the inline Tier-A guardrail does the real-time capping.
+_handle_i18n_flood
+_check_fpm_saturation
 
 echo "CONTROL complete for ${_MYIP}"
 exit 0
