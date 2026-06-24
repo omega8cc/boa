@@ -263,3 +263,12 @@ Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
 - **xmass calls xoct:** when `xmass cutover` converts source accounts to proxy
   vhosts, it calls `xoct proxy` internally. No manual invocation is needed in
   that flow.
+- **Proxy protocol (HTTP/1.1 to origin):** the proxy vhosts `xoct proxy`
+  generates talk **HTTP/1.1** to the origin (`proxy_http_version 1.1`), not
+  nginx's default HTTP/1.0, so the origin sees the real request protocol and
+  modern semantics (chunked streaming) apply. This is **not migration-only**:
+  the same proxy templates back the local LE-enabled proxy that fronts the Ægir
+  Hostmaster control panel and Adminer over HTTPS. It also keeps the origin's
+  HTTP/1.0 registration-spam guard from false-flagging legitimate proxied access
+  — which would otherwise all arrive as HTTP/1.0 at the origin — see
+  [ABUSE-GUARD.md](ABUSE-GUARD.md).
