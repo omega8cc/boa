@@ -273,7 +273,7 @@ _NGINX_FPM_ERR_GLOB="/var/log/php/php*-fpm-error.log"
 # The literal the FPM master logs when a pool hits its pm.max_children ceiling.
 _NGINX_FPM_SAT_PATTERN="reached max_children setting"
 
-# ---- HTTP/1.0 registration-spam botnet detection (OPT-IN, default OFF) ----
+# ---- HTTP/1.0 registration-spam botnet detection (ON by default, opt-out) ----
 # A credential/registration-spam botnet POSTs to Drupal auth paths (/user/register,
 # /user/password) over HTTP/1.0 while forging a modern-browser User-Agent. HTTP/1.0
 # is the clean transport-layer tell: no browser built in ~15 years speaks HTTP/1.0
@@ -283,17 +283,17 @@ _NGINX_FPM_SAT_PATTERN="reached max_children setting"
 # per-site Nginx guard returns 444 for this traffic; this detector turns the same
 # signal into a CSF ban of the source so the firewall drops it before Nginx.
 #
-# DEFAULT OFF -- enable per box only. $server_protocol is the protocol on the
-# connection to THIS Nginx, NOT necessarily the real client's: a reverse proxy in
-# front of origin that does not set `proxy_http_version 1.1` (the Nginx default is
-# 1.0) makes ALL proxied traffic look like HTTP/1.0 here, so on any box whose
-# affected vhost is served via a front proxy (a retained PX0 web-proxy tier, or an
-# in-flight xmass/xoct migration where the old host fronts the new origin) this
-# signal would false-ban real visitors. Enable ONLY on a box you have confirmed
-# serves the affected vhost direct-to-origin -- i.e. the access log shows real
-# clients as HTTP/1.1 / HTTP/2 and only the bot as HTTP/1.0. Set YES in
-# /root/.barracuda.cnf to enable.
-_NGINX_HTTP10_AUTH_DETECT=NO
+# DEFAULT ON, opt out per box. $server_protocol is the protocol on the connection
+# to THIS Nginx, not the realip-recovered client's. BOA's own proxy layer
+# (proxy.conf / ssl_proxy.conf / pln_proxy.conf / https_proxy_le.conf and the
+# wildcard-SSL nginx_wild_ssl.conf) sets `proxy_http_version 1.1`, so a
+# correctly-updated BOA front proxy / PX0 tier no longer downgrades to HTTP/1.0 at
+# origin and real visitors stay HTTP/1.1 / HTTP/2 there. The residual
+# false-positive sources are a NON-BOA front proxy or CDN that talks HTTP/1.0 to
+# origin, or a box not yet updated to the HTTP/1.1 proxy confs; opt out THERE by
+# setting _NGINX_HTTP10_AUTH_DETECT=NO in /root/.barracuda.cnf (confirm via the
+# access log that real clients show HTTP/1.1 / HTTP/2 and only the bot HTTP/1.0).
+_NGINX_HTTP10_AUTH_DETECT=YES
 
 # Bash ERE matched against the parsed request URI (query stripped). The optional
 # two-letter language prefix mirrors the site's i18n paths. No legitimate HTTP/1.0
@@ -1307,7 +1307,7 @@ _I18N_DIR="/var/xdrago/monitor/log/i18n_flood"
 _I18N_LOG="/var/xdrago/monitor/log/i18n_flood.log"
 
 # Gate the HTTP/1.0 auth-spam tracker on a single flag so the hot loop pays
-# nothing when the (default-off) detector is disabled. State persists the
+# nothing when the (on-by-default) detector is opted out. State persists the
 # cross-run sliding window, like the i18n window.state above.
 _H10_ON=0
 [[ "${_NGINX_HTTP10_AUTH_DETECT}" == "YES" ]] && _H10_ON=1
@@ -1750,7 +1750,7 @@ while IFS= read -r _line <&3; do
     fi
   fi
 
-  # ---- HTTP/1.0 registration-spam botnet tracking (opt-in, default off) ----
+  # ---- HTTP/1.0 registration-spam botnet tracking (on by default, opt-out) ----
   # Counts HTTP/1.0 requests to auth paths per real client IP for the cross-run
   # windowed ban below. files.*, the webhook ignore-list and Site24x7 are already
   # skipped at loop scope above, so they never reach here.
@@ -1784,8 +1784,9 @@ _handle_ddos_blocking
 # slipped through per-IP rate checks are caught here by the aggregate path count)
 _handle_path_flood_blocking
 
-# HTTP/1.0 registration-spam blocking (opt-in). Cross-run windowed; runs after
-# the passes above so _BANNED_IPS is fully populated and double-blocking avoided.
+# HTTP/1.0 registration-spam blocking (on by default, opt-out). Cross-run
+# windowed; runs after the passes above so _BANNED_IPS is fully populated and
+# double-blocking avoided.
 _handle_http10_auth_flood
 
 # Tier B: evaluate the cross-run distributed-i18n-flood window and tail the
