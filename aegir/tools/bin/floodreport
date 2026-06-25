@@ -1,0 +1,274 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+#
+# floodreport — summarise the nginx Abuse Guard i18n-flood activity (READ-ONLY).
+#
+# Reads the Tier-B detector's own output — the alert log
+# /var/xdrago/monitor/log/i18n_flood.log (the chronological event record) and
+# the per-trip forensic snapshots in /var/xdrago/monitor/log/i18n_flood/ — and
+# reports WHAT happened, WHEN and HOW over a window:
+#   * per-vhost event counts: guardrail-shedding / volume+stress / FPM-saturation
+#   * a timeline of the notable events (floods and saturation), sheds summarised
+#   * a merged attack profile from the snapshots: top User-Agents, language
+#     prefixes, client networks, the status mix, and the peak request_time
+#   * a verdict per vhost: cap holding, or FPM saturation, or mass-503
+#     (the BOA load-protection path) — the failure modes the guardrail prevents.
+#
+# It writes nothing and changes nothing. Like fpmreport it can analyse off-node
+# corpora with --data, so a copy of the logs can be summarised from anywhere.
+#
+# Usage:
+#   floodreport                      # this node, all retained i18n-flood data
+#   floodreport --days 7             # window: last 7 days (relative to newest event)
+#   floodreport --hours 6            # window: last 6 hours
+#   floodreport --data DIR           # read i18n_flood.log + *.txt snapshots from DIR
+#   floodreport --json               # one machine-readable finding per line
+#
+# POSIX awk + sort only; no per-record subshells.
+#
+
+_LOG_DEFAULT="/var/xdrago/monitor/log/i18n_flood.log"
+_SNAP_DEFAULT="/var/xdrago/monitor/log/i18n_flood"
+_DATA=""
+_DAYS=0
+_HOURS=0
+_JSON=0
+
+usage() {
+  printf '%s\n' "Usage: floodreport [--data DIR] [--days N | --hours N] [--json]"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --data)  shift; _DATA="$1"; shift ;;
+    --days)  shift; _DAYS="${1//[^0-9]/}"; shift ;;
+    --hours) shift; _HOURS="${1//[^0-9]/}"; shift ;;
+    --json)  _JSON=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'Unknown argument: %s\n' "$1" >&2; usage; exit 2 ;;
+  esac
+done
+
+# Resolve the data sources: on-node defaults, or a --data corpus dir.
+_LOG="${_LOG_DEFAULT}"
+_SNAPDIR="${_SNAP_DEFAULT}"
+if [[ -n "${_DATA}" ]]; then
+  if [[ ! -d "${_DATA}" ]]; then
+    printf 'No such --data dir: %s\n' "${_DATA}" >&2; exit 2
+  fi
+  _SNAPDIR="${_DATA}"
+  [[ -d "${_DATA}/i18n_flood" ]] && _SNAPDIR="${_DATA}/i18n_flood"
+  _LOG=""
+  for _c in "${_DATA}/i18n_flood.log" "${_DATA}/i18n_flood.log.txt"; do
+    [[ -f "${_c}" ]] && { _LOG="${_c}"; break; }
+  done
+fi
+
+# Collect snapshot files named YYMMDD-HHMMSS-*.txt.
+_SNAPS=()
+if [[ -d "${_SNAPDIR}" ]]; then
+  for _f in "${_SNAPDIR}"/[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-*.txt; do
+    [[ -e "${_f}" ]] && _SNAPS+=("${_f}")
+  done
+fi
+
+if { [[ -z "${_LOG}" || ! -f "${_LOG}" ]]; } && [[ ${#_SNAPS[@]} -eq 0 ]]; then
+  printf 'No i18n-flood data found (log: %s; snapshots: %s).\n' "${_LOG:-none}" "${_SNAPDIR}" >&2
+  exit 1
+fi
+
+_HOST="$(hostname 2>/dev/null || cat /etc/hostname 2>/dev/null)"
+[[ -n "${_DATA}" ]] && _HOST="corpus ${_DATA##*/}"
+
+# YYMMDD-HHMMSS -> epoch (UTC; the offset cancels for relative windows).
+_EPOCH_AWK='
+function dfc(y,m,d,  era,yoe,doy,doe){ y-=(m<=2); era=int((y>=0?y:y-399)/400); yoe=y-era*400;
+  doy=int((153*((m>2)?(m-3):(m+9))+2)/5)+d-1; doe=yoe*365+int(yoe/4)-int(yoe/100)+doy;
+  return era*146097+doe-719468; }
+function ts2epoch(t,  Y,M,D,h,mi,s){ Y=2000+substr(t,1,2)+0; M=substr(t,3,2)+0; D=substr(t,5,2)+0;
+  h=substr(t,8,2)+0; mi=substr(t,10,2)+0; s=substr(t,12,2)+0; return dfc(Y,M,D)*86400+h*3600+mi*60+s; }
+'
+
+# Window cutoff: newest event epoch minus the requested span (0 = all data).
+_WINSEC=0
+(( _DAYS > 0 ))  && _WINSEC=$(( _DAYS * 86400 ))
+(( _HOURS > 0 )) && _WINSEC=$(( _HOURS * 3600 ))
+_CUTOFF=$(
+  { [[ -n "${_LOG}" && -f "${_LOG}" ]] && grep -oE '[0-9]{6}-[0-9]{6}' "${_LOG}"
+    for _f in "${_SNAPS[@]}"; do printf '%s\n' "${_f##*/}" | grep -oE '^[0-9]{6}-[0-9]{6}'; done
+  } | awk -v winsec="${_WINSEC}" "${_EPOCH_AWK}"'
+    { e=ts2epoch($0); if(e>mx)mx=e; if(mn==0||e<mn)mn=e }
+    END{ if(NR==0){ print 0; exit } if(winsec>0) print mx-winsec; else print mn-1 }
+  '
+)
+[[ -z "${_CUTOFF}" ]] && _CUTOFF=0
+
+# Single awk over the log (first) then the snapshots; FILENAME selects the mode.
+# -v (not positional) so CUTOFF is available in BEGIN.
+awk -v CUTOFF="${_CUTOFF}" -v LOGFILE="${_LOG}" -v HOST="${_HOST}" -v JSON="${_JSON}" "${_EPOCH_AWK}"'
+function bn(p,  n,a){ n=split(p,a,"/"); return a[n]; }
+function hm(e,  d,s){ s=e%86400; if(s<0)s+=86400; d=int((e-s)/86400);
+  return sprintf("%02d:%02d", int(s/3600), int((s%3600)/60)); }
+function dmy(e,  z,era,doe,yoe,y,doy,mp,d,m){ z=int(e/86400)+719468;
+  era=int((z>=0?z:z-146096)/146097); doe=z-era*146097; yoe=int((doe-int(doe/1460)+int(doe/36524)-int(doe/146096))/365);
+  y=yoe+era*400; doy=doe-(365*yoe+int(yoe/4)-int(yoe/100)); mp=int((5*doy+2)/153); d=doy-int((153*mp+2)/5)+1;
+  m=mp+(mp<10?3:-9); y+=(m<=2); return sprintf("%02d/%02d", d, m); }
+function key_after_count(line,  s){ s=line; sub(/^[ \t]+[0-9]+[ \t]+/,"",s); return s; }
+BEGIN{ cutoff=CUTOFF+0; }
+FNR==1{
+  fn=bn(FILENAME); is_log=(FILENAME==LOGFILE);
+  sec=""; snap_in=0; snap_vh="";
+  if(!is_log){
+    if(match(fn,/^[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]/)){
+      sts=ts2epoch(substr(fn,1,13)); snap_in=(sts>=cutoff); nsnap_seen+=snap_in;
+    }
+  }
+}
+
+# ---------- alert-log events ----------
+is_log{
+  # Only real event lines: must carry an I18N-FLOOD or FPM-SATURATION marker AND
+  # the YYMMDD-HHMMSS timestamp (from the snapshot path).  This ignores prose,
+  # blank lines and any stray text that merely contains a timestamp substring.
+  if($0 !~ /I18N-FLOOD/ && $0 !~ /FPM-SATURATION/) next;
+  if(!match($0,/[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]/)) next;
+  ets=ts2epoch(substr($0,RSTART,13));
+  if(ets<cutoff) next;
+  if(ets>maxts)maxts=ets; if(mints==0||ets<mints)mints=ets;
+  nevents++;
+
+  # FPM saturation is pool/box-wide, not per-vhost (the line carries no vhost=).
+  if($0 ~ /FPM-SATURATION/){
+    fpm_total++;
+    if(fpm_first==0||ets<fpm_first)fpm_first=ets; if(ets>fpm_last)fpm_last=ets;
+    if(match($0,/php[0-9]+/)) fpmpool[substr($0,RSTART,RLENGTH)]=1;
+    next;
+  }
+  vh="?"; if(match($0,/vhost=[^ ]+/)) vh=substr($0,RSTART+6,RLENGTH-6);
+  if($0 ~ /guardrail-shedding/){
+    seenvh[vh]=1; cshed[vh]++;
+    if(match($0,/\([0-9]+ x 444/)){ v=substr($0,RSTART+1)+0; if(v>peakshed[vh])peakshed[vh]=v; }
+    if(shedfirst[vh]==0||ets<shedfirst[vh])shedfirst[vh]=ets; if(ets>shedlast[vh])shedlast[vh]=ets;
+    next;
+  }
+  if($0 ~ /volume\+stress/){
+    seenvh[vh]=1; cvs[vh]++;
+    loc=0; pct=0;
+    if(match($0,/\([0-9]+ localized/)) loc=substr($0,RSTART+1)+0;
+    if(match($0,/, [0-9]+%/)) pct=substr($0,RSTART+2)+0;
+    if(loc>peakloc[vh])peakloc[vh]=loc;
+    note[nn++]=sprintf("%s %s  %-26s volume+stress   %d localized, %d%% slow/5xx/444", dmy(ets), hm(ets), vh, loc, pct);
+    next;
+  }
+  next;
+}
+
+# ---------- snapshot forensics ----------
+!is_log && snap_in{
+  if($0 ~ /^# i18n-flood snapshot/){
+    if(match($0,/vhost=[^ ]+/)) snap_vh=substr($0,RSTART+6,RLENGTH-6);
+    next;
+  }
+  if($0 ~ /^total=/){
+    mr=$0; if(match(mr,/max_rt=[0-9.]+/)){ v=substr(mr,RSTART+7)+0; if(v>peakrt)peakrt=v; if(v>vhrt[snap_vh])vhrt[snap_vh]=v; }
+    next;
+  }
+  if($0 ~ /^# top User-Agents:/){ sec="ua"; next; }
+  if($0 ~ /^# top lang-prefixes:/){ sec="lang"; next; }
+  if($0 ~ /^# top status:/){ sec="status"; next; }
+  if($0 ~ /^# top client IPs:/){ sec="ip"; next; }
+  if($0 ~ /^# top/){ sec="other"; next; }
+  if($0 ~ /^[ \t]+[0-9]+[ \t]/){
+    c=$1+0; k=key_after_count($0);
+    if(sec=="ua")     ua[k]+=c;
+    else if(sec=="lang")   lang[k]+=c;
+    else if(sec=="status"){ status[k]+=c; if(k=="503" && c>vh503[snap_vh]) vh503[snap_vh]=c; }
+    else if(sec=="ip"){ ipc[k]+=c; n1=split(k,o,"."); if(n1==4){ net=o[1]"."o[2]; netc[net]+=c; } }
+    next;
+  }
+  next;
+}
+
+END{
+  if(nevents==0 && nsnap_seen==0){ if(!JSON) print "No i18n-flood events in the selected window."; exit 0; }
+
+  if(JSON){
+    for(v in seenvh){
+      printf "{\"vhost\":\"%s\",\"shed\":%d,\"volume_stress\":%d,\"peak_shed_444_120s\":%d,\"peak_localized\":%d,\"peak_max_rt\":%.2f,\"mass_503\":%d}\n",
+        v, cshed[v]+0, cvs[v]+0, peakshed[v]+0, peakloc[v]+0, vhrt[v]+0, (vh503[v]>0?1:0);
+    }
+    if(fpm_total>0){ pools=""; for(p in fpmpool) pools=pools (pools==""?"":",") p;
+      printf "{\"scope\":\"pool\",\"fpm_saturation_events\":%d,\"pools\":\"%s\"}\n", fpm_total, pools; }
+    exit 0;
+  }
+
+  printf "==== floodreport  host: %s  events: %d  window: %s %s .. %s %s ====\n",
+    HOST, nevents, dmy(mints), hm(mints), dmy(maxts), hm(maxts);
+
+  print "";
+  print "-- events by vhost --";
+  printf "%-30s %5s %6s  %12s %10s\n", "vhost", "shed", "vol+st", "peak444/120s", "peak_rt";
+  for(v in seenvh){
+    printf "%-30s %5d %6d  %12d %9.1fs\n", v, cshed[v]+0, cvs[v]+0, peakshed[v]+0, vhrt[v]+0;
+  }
+  if(fpm_total>0) printf "(pool-wide FPM max_children saturation: %dx in window)\n", fpm_total;
+
+  print "";
+  print "-- timeline (floods + saturation; pure sheds summarised below) --";
+  for(i=0;i<nn;i++) print "  " note[i];
+  if(fpm_total>0){
+    pools=""; for(p in fpmpool) pools=pools (pools==""?"":",") p;
+    printf "  %s %s..%s  %-26s FPM-SATURATION  %dx max_children (pool %s)\n",
+      dmy(fpm_first), hm(fpm_first), hm(fpm_last), "(pool-wide)", fpm_total, pools;
+  }
+  for(v in seenvh){
+    if(cshed[v]>0)
+      printf "  %s..%s  %-26s %dx guardrail-shedding (peak %dx444/120s)\n",
+        dmy(shedfirst[v]), dmy(shedlast[v]), v, cshed[v], peakshed[v];
+  }
+
+  if(nsnap_seen>0){
+    print "";
+    printf "-- attack profile (merged from %d snapshot(s) in window) --\n", nsnap_seen;
+    print "  top user-agents:";
+    for(k in ua) printf "%8d  %s\n", ua[k], k | "sort -rn | head -8";
+    close("sort -rn | head -8");
+    print "  top language-prefixes:";
+    for(k in lang) printf "%8d  %s\n", lang[k], k | "sort -rn | head -12";
+    close("sort -rn | head -12");
+    print "  top client /16 networks:";
+    for(k in netc) printf "%8d  %s\n", netc[k], k | "sort -rn | head -8";
+    close("sort -rn | head -8");
+    s2=""; for(k in status) s2=s2 sprintf(" %s:%d", k, status[k]);
+    printf "  status mix:          %s\n", s2;
+    printf "  peak request_time:   %.1fs\n", peakrt;
+  }
+
+  print "";
+  print "-- findings --";
+  if(fpm_total>0){
+    pools=""; for(p in fpmpool) pools=pools (pools==""?"":",") p;
+    printf "SATURATION  pool %-21s FPM max_children hit %dx in window (the pool-collapse vector)\n", pools, fpm_total;
+  }
+  for(v in seenvh){
+    if(vh503[v]>0)
+      printf "LOAD-PAUSE  %-26s mass-503 seen (%dx503 in a snapshot) — box hit load-protection\n", v, vh503[v];
+    if(cshed[v]>0)
+      printf "SHED        %-26s %d guardrail-shed flood(s) at the edge (peak %dx444/120s); cap active\n",
+        v, cshed[v], peakshed[v]+0;
+    if(cvs[v]>0)
+      printf "DETECT      %-26s %d volume+stress flood(s) flagged (peak %d localized/120s)\n",
+        v, cvs[v], peakloc[v]+0;
+  }
+  if((ua["Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot"]+0)>0)
+    print  "NOTE        the per-vhost cap is UA-agnostic by design — verified bots (ChatGPT-User,";
+  if((ua["Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot"]+0)>0)
+    print  "            Googlebot, Site24x7) hitting localized paths count toward it and shed above the cap.";
+}
+' ${_LOG:+"${_LOG}"} "${_SNAPS[@]}"
+
+exit 0
