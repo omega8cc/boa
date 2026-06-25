@@ -129,6 +129,8 @@ In BOA, Ægir no longer removes the local copy of Drush from platforms during th
 
 This change allows you to easily unlock the local Drush using a new task available on the platform node in the Ægir control panel named 'Unlock Local Drush'. This task is now a required step before you use local `vdrush` or run any updates with `composer` on the command line.
 
+When you are done, re-lock the platform with the new 'Lock Local Drush' task — a lighter, targeted alternative to a full `Platform Verify` for restoring Drush 8 compatibility. Both tasks are idempotent: re-running 'Lock Local Drush' on an already-locked platform, or 'Unlock Local Drush' on an already-unlocked one, is a harmless no-op.
+
 #### Steps to Use Site-Local Drush:
 
 > **Important:** All steps below must be performed as `oN.ftp` under the BOA limited shell,
@@ -142,7 +144,7 @@ This change allows you to easily unlock the local Drush using a new task availab
 4. Switch to the Platform app root where `vendor` exists using `cd`.
 5. Run `vdrush --version` or install it with `composer require drush/drush`.
 6. Use `vdrush @site-alias updbst`, `vdrush @site-alias updb`, etc.
-7. Run the 'Platform Verify' task to restore compatibility with Drush 8.
+7. Re-lock the platform with the 'Lock Local Drush' task (or a full 'Platform Verify') to restore compatibility with Drush 8.
 
 ---
 
