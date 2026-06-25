@@ -290,12 +290,14 @@ _find_correct_ip() {
 _fix_dns_settings() {
   [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
+  _noUp="/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate"
   if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
     if ! grep -q "nameserver 127.0.0.1" /etc/resolv.conf; then
       _FORCE_RESOLV_UPDATE=YES
     else
       _FORCE_RESOLV_UPDATE=NO
     fi
+    [ ! -e "${_noUp}" ] && _FORCE_RESOLV_UPDATE=YES
   fi
   if ! grep -q "BOA-DNS-Config" /etc/resolv.conf || [ "${_FORCE_RESOLV_UPDATE}" = "YES" ]; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
@@ -313,6 +315,13 @@ _fix_dns_settings() {
     chmod 0644 /etc/resolv.conf
     chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
+    mdkir -p /etc/dhcp/dhclient-enter-hooks.d
+    if [ -d "/etc/dhcp/dhclient-enter-hooks.d/" ]; then
+      cat > ${_noUp} <<'EOF'
+make_resolv_conf() { :; }
+EOF
+      chmod +x ${_noUp}
+    fi
   fi
   if [ -x "/usr/sbin/unbound-control" ]; then
     unbound-control reload &> /dev/null
@@ -345,6 +354,11 @@ _check_dns_settings() {
   fi
   if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
     if ! grep -q "nameserver 127.0.0.1" /etc/resolv.conf; then
+      _fix_dns_settings
+      return 1  # Exit the function but continue the script
+    fi
+    _noUp="/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate"
+    if [ ! -e "${_noUp}" ] ; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -1390,7 +1404,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f95 --guard /local/bin/boa
   _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f90 --guard /local/bin/barracuda
   _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f98 --guard /local/bin/octopus
-  _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f99 --guard /local/bin/dhcpfix
+  _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f98 --guard /local/bin/dhcpfix
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
   _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
   _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/tools/bin/loadreport" f98 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
