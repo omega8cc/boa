@@ -364,8 +364,8 @@ _if_hosted_sys() {
 _fix_dns_settings() {
   [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -q "nameserver 127.0.0.1" /etc/resolv.conf; then
-    if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
+  if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
+    if ! grep -q "nameserver 127.0.0.1" /etc/resolv.conf; then
       _FORCE_RESOLV_UPDATE=YES
     else
       _FORCE_RESOLV_UPDATE=NO
@@ -396,6 +396,12 @@ _check_dns_settings() {
   if [ -L "/etc/resolv.conf" ]; then
     _fix_dns_settings
     return 1  # Exit the function but continue the script
+  fi
+  if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
+    if ! grep -q "nameserver 127.0.0.1" /etc/resolv.conf; then
+      _fix_dns_settings
+      return 1  # Exit the function but continue the script
+    fi
   fi
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     if [ -e "/root/.use.local.nameservers.cnf" ]; then
