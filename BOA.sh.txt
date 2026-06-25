@@ -1406,6 +1406,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f98 --guard /local/bin/octopus
   _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f98 --guard /local/bin/dhcpfix
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
+  _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/tools/bin/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
   _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
   _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/tools/bin/loadreport" f98 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
@@ -3565,6 +3566,7 @@ _update_boa_tools() {
             ffmirror \
             fixmounts \
             fixrepo \
+            floodreport \
             fpmreport \
             killer \
             loadguard \
@@ -3683,6 +3685,10 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/loadreport ${_usrBin}/loadreport
   fi
 
+  if [ ! -e "${_usrBin}/floodreport" ] && [ -e "${_optBin}/floodreport" ]; then
+    ln -sfn ${_optBin}/floodreport ${_usrBin}/floodreport
+  fi
+
   echo "=== BOA executables permissions setup ==="
   echo "Last updated: $(date)"
   echo "Groups are organized by function."
@@ -3698,7 +3704,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{loadguard,lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{fpmreport,loadreport,memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
+  chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps}

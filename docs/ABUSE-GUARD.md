@@ -1108,6 +1108,18 @@ cut -d'#' -f1 /var/xdrago/monitor/log/scan_nginx.archive.log | sort | uniq -c | 
 grep -c . /data/conf/nginx_banned_ips.conf
 ```
 
+For the i18n-flood activity specifically, `floodreport` summarises the detector's own log
+and snapshots into a windowed report — what happened, when and how (per-vhost event counts,
+a timeline, a merged attack profile of top UAs / language-prefixes / client networks / status
+mix, and a verdict). It is read-only and on-demand, modelled on `fpmreport`:
+
+```bash
+floodreport                # all retained i18n-flood data
+floodreport --hours 6      # last 6 hours (relative to the newest event)
+floodreport --json         # machine-readable, one finding per line
+floodreport --data DIR     # summarise a copy of the logs off-node
+```
+
 ### Purging or cycling a ban
 
 Because the geo is a mirror of CSF and is fully regenerated each pass, **you never edit the
