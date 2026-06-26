@@ -267,9 +267,7 @@
 
     * Cross-platform clone/migrate now correctly unlocks and re-verifies the old
       platform's site-local Drush around the D10+ DB update (the old-platform
-      alias was not being passed through to those operations). The nodnsupdate
-      guard hook is now installed reliably on boxes that did not already have the
-      dhclient hooks directory.
+      alias was not being passed through to those operations).
 
 @=> New Documentation
 

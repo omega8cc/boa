@@ -303,8 +303,6 @@ LocalGov 4.0.3, Thunder 8.3.6, Varbase 10.1.0, and vanilla Drupal cores 10.2.12,
   longer misclasses a tiny box carrying both `.slow`/`.fast.cron.cnf`, and the
   SQL-backup/daily re-entrancy check compares its flags correctly so the task
   queue is deferred again during backups.
-- **`nodnsupdate` guard hook** is now installed reliably on boxes that did not
-  already have the dhclient hooks directory.
 
 ## New Documentation
 
