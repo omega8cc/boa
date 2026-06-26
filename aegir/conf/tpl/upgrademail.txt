@@ -2,24 +2,17 @@ Hello,
 
 We are pleased to inform you that your Ægir instance has been successfully upgraded to [boa.version]
 
-@=> Stronger protection at the edge
+@=> A sharper, smarter shield around your sites
 
-This release adds a new, fine-grained policy for AI bots and crawlers: aggressive training scrapers are turned away by default, while ordinary search and assistant traffic is allowed and rate-limited fairly. BOA now also recognises the real visitor behind Cloudflare, so abuse protection, rate limits, and logs reflect the actual client rather than the network in front of it -- and repeat offenders are blocked right at the web server. Your sites continue to serve normal visitors exactly as before, with no action required on your part.
+Your sites just gained a noticeably stronger guard at the edge. BOA now spots and turns away a whole spectrum of automated abuse before it ever touches your Drupal -- botnets that hammer your login and password-reset forms, web-shell scanners hunting for a way in, and distributed scrapers that try to exhaust a server by forcing multilingual sites to translate page after page on the fly. Each of these now meets a purpose-built detector that recognises the pattern and shuts it down at the front door. And here is the part you will feel day to day: the detection was retuned so that real, lively traffic -- a burst of on-site searches, a page that suddenly gets popular -- is read as the genuine activity it is, never mistaken for an attack. The outcome is the best of both worlds: far tougher on real abuse, far gentler on your actual visitors, and a faster, steadier site for everyone browsing it.
 
-@=> Control AI bots and visitor access per site
+@=> A smoother, more confident maintenance workflow on Drupal 10 and 11
 
-You can adjust the AI bot policy for any individual site -- for example allow AI training crawlers, or block AI search and assistant fetchers -- and you can restrict a site to specific visitor IP addresses (handy for an intranet, staging, or an admin-only area). Both are simple per-site control files, picked up automatically within about two minutes. Step-by-step guides:
+If you manage your sites from the Ægir control panel, the everyday work just got genuinely more pleasant. "Lock Local Drush" is now a fast, dependable one-click task -- the targeted way to restore your platform's Drush environment after you have been working with site-local Drush or Composer, so you no longer have to reach for a full Platform Verify just to get things back in order. Run it whenever you like: it is completely safe to repeat and simply settles your platform into the state you want. "Rebuild registry" and "Flush all caches" now do precisely the right thing on modern Drupal -- rebuilding the service container and clearing caches so your changes take effect at once and your site feels crisp the moment an update lands. And when you clone or migrate a site, it comes up clean, fully refreshed, and immediately aware of any available updates, with none of the old manual fiddling. Less guesswork, fewer surprises, and more of your time spent on the work you actually enjoy.
 
-  AI bots, per site:   https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md
-  IP access, per site: https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md
+@=> Quietly faster and more resilient underneath
 
-@=> Important if you use CiviCRM
-
-For security reasons, BOA no longer automatically trusts the command files that CiviCRM ships inside each site. Your CiviCRM sites continue to run completely normally under PHP -- visitors and administrators will see no difference at all. However, the behind-the-scenes Ægir maintenance tasks for a CiviCRM site (such as verify and migrate) now require a one-time control file to be enabled first. Enabling it requires root access and is not turned on by default. If you run your own BOA server with root access, create the file /data/conf/<octopus-user>_civicrm.txt for each affected account. If your server is managed by us, simply reply and let us know you use CiviCRM, and we will enable it for your account.
-
-@=> If you clone or rename a site
-
-To prevent a renamed or cloned site from inheriting the original site's TLS certificate, BOA now automatically disables Encryption on the new site. If the new address should serve HTTPS, simply re-enable Encryption for it in your Ægir control panel and a fresh certificate will be issued. Managed customers: just let us know and we will take care of it.
+Below the surface, the platform now keeps a smarter eye on its own health and shares its resources more fairly between sites, so a busy neighbour is far less likely to slow you down and your sites ride out traffic spikes and routine backups without a stumble. You will not touch a single setting -- you will simply feel a steadier, more responsive platform under everything you do.
 
 @=> You can access your upgraded Ægir instance at the following URL:
 
