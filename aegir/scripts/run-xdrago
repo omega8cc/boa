@@ -27,6 +27,20 @@ _check_root() {
 }
 _check_root
 
+# Serialise per instance. Overlapping cron runner.sh passes, the fast-schedule
+# loop, and the accelerated install/upgrade loop can all invoke run-xdrago for
+# the same instance at once; each would fire hosting-dispatch and waste a parallel
+# "drush cc drush" storm. The front-end dispatcher is the authoritative guard
+# against duplicate launches; this is best-effort de-duplication. Take a
+# non-blocking per-user lock on fd 9 (released automatically on exit, no stale
+# lockfile); a concurrent run exits cleanly. If the lockfile cannot be created
+# (e.g. /run not writable) fall through and run unlocked rather than stall.
+_runLock="/run/run-xdrago-${_H_USER}.lock"
+if command -v flock >/dev/null 2>&1 && ( : >> "${_runLock}" ) 2>/dev/null; then
+  exec 9>"${_runLock}"
+  flock -n 9 || exit 0
+fi
+
 _run_cleanup() {
   _buildTest="1"
   _tpDir="/data/disk/${_H_USER}/.tmp"
