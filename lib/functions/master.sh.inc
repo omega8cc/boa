@@ -357,6 +357,19 @@ EOFMYSQL
 }
 
 #
+# Ensure Aegir's task queue dispatcher is enabled. BOA always drives the queue
+# through hosting-dispatch, so a disabled dispatcher is drift -- it is left
+# behind when hosting-setup's self-test exits non-zero during a (re)install.
+# Detect and re-enable it, reporting only when a correction was needed.
+_ensure_hosting_dispatch_enabled() {
+  local _disp_fix
+  _disp_fix=$(su -s /bin/bash - aegir -c "drush8 @hostmaster ev 'if (!variable_get(\"hosting_dispatch_enabled\", FALSE)) { variable_set(\"hosting_dispatch_enabled\", TRUE); echo \"REENABLED\"; }'" 2>/dev/null)
+  if [[ "${_disp_fix}" =~ REENABLED ]]; then
+    _msg "INFO: hosting_dispatch_enabled was off; task queue dispatcher re-enabled"
+  fi
+}
+
+#
 # Sync provision backend db_passwd.
 _provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -440,6 +453,7 @@ EOFMYSQL
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Running hosting-dispatch/hosting-tasks..."
   fi
+  _ensure_hosting_dispatch_enabled
   su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
   wait
   sleep 5
@@ -1268,6 +1282,7 @@ EOFMYSQL
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Running hosting-dispatch/hosting-tasks..."
     fi
+    _ensure_hosting_dispatch_enabled
     su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
     wait
     sleep 5
