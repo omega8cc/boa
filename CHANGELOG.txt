@@ -1,4 +1,290 @@
 ###
+### Stable BOA-5.10.3 PRO/LTS - WATCHTOWER EDITION
+### Date: Fri 26 Jun 2026 01:29:00 CEST in Warsaw
+### Enjoy a self-healing monitor stack and a sharper-eyed, calmer web IDS
+### 65 commits since BOA-5.10.1
+###
+
+@=> Watchtower Edition
+
+  BOA-5.10.3 PRO/LTS is a hardening-and-fixes release built around the Nginx
+  Abuse Guard and the self-healing monitor stack. It advances the web IDS with
+  several new detectors -- an HTTP/1.0 registration-spam auto-ban, a webshell
+  *.php fast-ban, a multi-tier distributed translation-flood defence, and
+  webhook/API exemptions -- while retuning the over-aggressive 5.10.1 defaults
+  that were false-banning real visitors on busy sites, and ships a one-shot
+  clearwebbans release valve. Alongside it land new read-only operator tools
+  (loadreport, floodreport), an idle monitor fan-out throttle, load-auto-pause
+  refinements, and PHP-FPM capacity allocation that stops upgrade-time
+  throttling.
+
+  The standout workflow win is the Local Drush lock/unlock subsystem: the
+  "Lock Local Drush" task is now a reliable, visible, idempotent platform
+  operation -- the lighter alternative to a full Platform Verify for restoring
+  Drush 8 compatibility -- while "Rebuild registry" and "Flush all caches" now
+  work correctly on Drupal 10/11. A batch of Drupal 8+ deploy, clone/migrate
+  and update-status reliability fixes rounds out the release, with two new
+  operator references, MONITOR.md and ABUSE-GUARD.md. 65 commits across four
+  repositories went into this release.
+
+  As always, this entry highlights only the most significant changes. For the
+  full picture please refer to the commit history on GitHub.
+
+@=> Security
+
+    * New HTTP/1.0 registration-spam auto-ban, on by default. scan_nginx now
+      catches a credential/registration-spam botnet that POSTs to Drupal
+      /user/register and /user/password over HTTP/1.0 while forging a
+      modern-browser User-Agent and pacing ~1 slow request per IP across a
+      small CIDR -- traffic the per-IP, 444-weight and shared-UA scorers all
+      miss. A cross-run sliding window accumulates HTTP/1.0 auth-path hits per
+      real client IP and bans once an IP's own count reaches 3 or its /24
+      aggregate reaches 6. Only IPs actually seen sending HTTP/1.0 to an auth
+      path are banned; the whitelist / logged-in / local-IP / already-banned
+      guards all still apply, and the request-line parse is laundering-proof.
+
+    * New multi-tier defence against a distributed translation (i18n) flood. A
+      scraper crawling localized pages drives each uncached page through
+      Drupal's synchronous on-the-fly translation, holding a PHP-FPM worker for
+      tens of seconds; spread over thousands of IPs at one or two requests
+      each, per-IP limits never trip and a shared FPM pool saturates. Tier A is
+      a per-vhost limit_conn at the location = /index.php chokepoint, keyed on a
+      constant per vhost (not the client IP), that caps in-flight anonymous
+      localized requests (default 24) and sheds excess instantly with 444
+      before php-fpm. English, static and authenticated traffic is never
+      counted.
+
+    * Webshell *.php probe fast-ban by content. On a Drupal/Backdrop docroot a
+      non-entry *.php that 404s is never a real page, so scan_nginx now weights
+      such a 404 heavily and bans a shell scanner after ~3 hits instead of
+      ~140. The match is path-anchored (status 404 AND a *.php in the request
+      path only), so one stale .php link from a real visitor stays below the
+      ban floor; the genuine entry points (index/update/install/cron/...) are
+      excluded.
+
+    * Static- and content-path chain-flood guards plus a Referer-less /print*
+      block. A distributed botnet floods D7-era sites with malformed
+      concatenated asset URLs (broken relative-URL resolution) and Drupal
+      print/email-this-page paths; new $is_static_chain (444), $is_content_chain
+      (404) and $is_print_path-with-no-Referer (444) maps drop this traffic
+      before a full themed bootstrap, independent of module state or core
+      version, with no false positives on legitimate assets or content.
+
+    * BOA's own proxy layer now speaks HTTP/1.1 to origin. All five BOA
+      proxy/migration confs (proxy.conf, ssl_proxy.conf, pln_proxy.conf,
+      https_proxy_le.conf, nginx_wild_ssl.conf) previously had no
+      proxy_http_version, so Nginx defaulted to HTTP/1.0 to the backend and
+      every proxied request logged as HTTP/1.0 at origin. Each now sets
+      proxy_http_version 1.1 and clears the upstream Connection header, so a
+      correctly-updated BOA front proxy / PX0 tier no longer downgrades real
+      visitors -- which is what makes the new HTTP/1.0 auth-spam detector safe
+      to ship on. Already-deployed proxies migrate via idempotent regeneration
+      markers.
+
+    * New webhook/API IDS exemption list. Token/HMAC-authenticated endpoints
+      can bypass all three aggregate scorers; the default ships the common
+      provider webhook roots plus /graphql, /public-api and /oauth2. The match
+      is laundering-proof -- the real request URI is parsed from the request
+      field with the query stripped and "../" and percent-encoding refused, so
+      a token smuggled into a User-Agent, Referer or query string can never
+      launder an exemption.
+
+    * Persistent DHCP DNS-resolver hardening: a new nodnsupdate dhclient
+      enter-hook stops the ISC DHCP client overwriting BOA's /etc/resolv.conf on
+      lease renewal, pinning the box to its intended resolvers (local unbound
+      plus public fallbacks). The runtime path now also writes resolv.conf
+      immutable as defence-in-depth.
+
+@=> New Features
+
+    * Local Drush lock/unlock is now a reliable, first-class workflow. The
+      "Lock Local Drush" platform task is wired up and visible in the control
+      panel, rebuilt as a thin wrapper that delegates to the same canonical lock
+      routine Platform Verify uses, so it stays correct as that battle-tested
+      path evolves. It is the lighter, targeted alternative to a full Platform
+      Verify for re-locking a platform and restoring Drush 8 compatibility after
+      site-local vdrush/composer work. Lock and Unlock are now idempotent --
+      re-running on a platform already in the requested state is a clean no-op --
+      with lock state derived from on-disk reality (patch sentinels plus the
+      actual permission bits) rather than marker/PID files in the platform root.
+
+    * loadreport -- a new read-only, dependency-free /proc CPU+RSS profiler
+      that attributes recurring load to each BOA script (by command and by
+      cron-launcher subtree) and prints the box's live monitor-throttle class.
+      Runs on demand, as --json, or as an idle-priority cron writing pruned
+      JSONL.
+
+    * floodreport -- a new read-only summariser for the distributed
+      translation-flood detector's output: per-vhost flood events, the pool-wide
+      FPM saturation count, an event timeline and a merged attack profile (top
+      User-Agents, language prefixes, client networks, status mix). On demand,
+      with --days/--hours windows and --json; writes nothing.
+
+    * clearwebbans -- a new root-only, idempotent, web-scoped release valve
+      that clears everyone the web IDS (scan_nginx) caught: the permanent
+      "Brute force Web Server" csf denies and the temporary web bans on 80/443,
+      the scan archive logs that re-apply them, and the nginx realip geo-ban
+      set, so a false-positive ban can be undone at once. SSH and FTP bans are
+      deliberately left intact; supports --dry-run.
+
+    * Tier-B translation-flood detector and a PHP-FPM saturation early-warning
+      trigger in scan_nginx: the detector aggregates localized requests per
+      vhost over a cross-run window and, on a flood, alerts and writes a
+      forensic snapshot without banning per IP (futile against a distributed
+      source); the trigger tails the per-version FPM error logs for the
+      authoritative per-pool "reached max_children" saturation signal.
+
+    * fpmreport now shows a per-pool "configured / observed" table -- the
+      configured pm.max_children and memory_limit read live from each pool's
+      own FPM conf (following the include for inherited values), plus the pool's
+      plan and engine/core count -- next to the observed peak, so the dynamic
+      capacity allocation is verifiable at a glance.
+
+@=> Improvements
+
+    * Web IDS aggregate detector defaults retuned upward to stop false
+      positives on busy sites. Each scan scores only the ~5s of log lines since
+      the previous run, so the old shared-UA DDoS defaults (20 IPs / 200 reqs /
+      3-req block) and path-flood defaults (5 / 15 / 10) sat below real peak: a
+      single popular mobile-browser UA shared by many visitors was mistaken for
+      a botnet fingerprint and every visitor making 3+ requests under it was
+      banned (search sessions hit hardest). New defaults are DDoS 100 / 1000 /
+      20 and path-flood 30 / 100 / 20; genuinely abusive single IPs are still
+      caught by the per-IP weighted scorer, and every knob stays per-box
+      overridable.
+
+    * The path-flood firewall ban now gates on backend-reaching 200s only: an
+      IP that received only 444s is already free-blocked by Nginx's realtime
+      map, so csf-banning it was redundant and risked banning shared-egress
+      (CGNAT / Private Relay) clients. Aggregate flood detection still counts
+      200+444.
+
+    * Idle monitor fan-out is throttled on small, slow and CI hosts, where the
+      per-minute second.sh/minute.sh self-loops fanning out ~20 short-lived
+      monitor scripts every 5s were the dominant idle-load source (holding load
+      3-4 on a 2-CPU/4GB box with no traffic). A box classifier (CI/SLOW/NORMAL)
+      reuses the queue runner's own signals; NORMAL production hosts are
+      behaviourally unchanged.
+
+    * Web-pause resume now has hysteresis to stop pause/resume flapping: after
+      an auto-pause, web stays paused until load falls below a lower bar
+      (default 0.8 x the MAX threshold) on both the 1- and 5-minute averages,
+      rather than resuming the instant load dips under the MAX line; it fails
+      toward resume so web is never left stuck paused.
+
+    * Incident-alert emails are now focused on the current incident -- only the
+      last 200 lines of the incident log are mailed (one log had grown to ~1.9MB
+      of months-old history) -- across all ten copies of the email routine.
+
+    * PHP-FPM capacity allocation. Dedicated pools (PHANTOM and above) now size
+      pm.max_children dynamically from box capacity (RAM as the primary axis,
+      capped by CPU cores) instead of a flat per-plan tier that throttled busy
+      tenants and 502'd siblings after a routine upgrade; shared pools (POWER
+      and below) keep their restricted tier. memory_limit follows the same
+      shared/dedicated split, and the box-wide memory floor is RAM-scaled so
+      tiny VMs are no longer pinned to a 1 GB per-pool limit that caused OOM.
+
+    * After a clone, migrate, platform-migration, rename or restore, Drupal 8+
+      sites now have their service container and caches rebuilt -- the D8+
+      analog of the registry rebuild older sites already received, run through
+      the site-local Drush on D10/11 where Aegir's own Drush 8 cannot. The
+      "Rebuild registry" and "Flush all caches" front-end tasks now work on
+      Drupal 8+ as well; both stay visible. On a degraded D10/11 platform with
+      no executable site-local Drush, a clone/migrate/restore now skips the DB
+      update with a clear manual-recovery pointer instead of failing noisily.
+
+@=> Changes and Upgrades
+
+    * The i18n translation-flood guardrail ships on by default for every
+      Drupal/Backdrop vhost. The control file /data/conf/boa_i18n_guard.map is
+      now an opt-out list (add a "host" 0; line to exclude a host); an
+      absent/empty file leaves every host guarded. A leading two-letter path
+      prefix is Drupal's URL language-negotiation convention -- the same
+      assumption the existing /[a-z][a-z]/search and /civicrm locations already
+      rely on -- so it is safe to default on; opt out only a non-Drupal app or a
+      single-language site that uses a two-letter path for a region.
+
+    * The two drastic high-load ceilings are raised fleet-wide for more
+      headroom before web is paused or processes are killed: MAX ratio
+      4.1 -> 6.1 (pause web) and CRIT ratio 6.1 -> 8.1 (kill long procs + pause
+      web), per CPU core. IMPORTANT: the one-time autoupboa re-seed rewrites
+      _CPU_MAX_RATIO / _CPU_CRIT_RATIO / _CPU_TASK_RATIO / _CPU_SPIDER_RATIO in
+      /root/.barracuda.cnf UNCONDITIONALLY, so if you deliberately pinned custom
+      CPU ratios, RE-APPLY them after this update -- pinned values are not
+      preserved. Operators who did not pin custom ratios need do nothing.
+
+    * High-load auto-pause no longer self-inflicts an outage during backups:
+      while a BOA backup runs, the drastic tiers are skipped only when the load
+      is genuinely disk-bound, confirmed by a measured iowait sample. A
+      CPU-bound runaway that merely coincides with a backup window still gets
+      paused/killed; it fails closed if /proc/stat cannot be read.
+
+    * A weekly logrotate is shipped for the BOA monitor incident logs
+      (/var/log/boa/*.incident.log), which were previously unbounded.
+
+    * cURL updated 8.20.0 -> 8.21.0 (the only component-version bump this
+      cycle; all other bundled components are unchanged since 5.10.1).
+
+    * Continued Perl-to-Bash cleanup: the very old scan_nginx.pl, locked_nginx.pl
+      and locked_java.pl Perl monitors are removed on update. Several stale
+      path-flood and _NGINX_DOS_* doc-comments were corrected with no behaviour
+      change.
+
+@=> Important Fixes
+
+    * Recurring false bans of webhook/API providers are fixed: the path-ignore
+      exemption list was not being applied at runtime (a shell word-splitting
+      issue under scan_nginx's global IFS), so configured exempt paths were still
+      scored and their IPs banned. The exemption now applies correctly, and the
+      new HTTP/1.0 detector carries the same hardening.
+
+    * Dedicated tenants throttled and siblings returning 502 after a routine
+      upgrade: a standard reset forced tenant-pool pm.max_children back to the
+      flat per-plan tier regardless of box capacity. Dedicated pools are now
+      sized to the actual box. A separate fix ends tiny VMs being pinned to a
+      1 GB per-pool memory_limit that caused OOM under light concurrency.
+
+    * An FPM-saturation check in php.sh matched the wrong log signal -- the
+      global "process.max" ceiling BOA disables -- so it never fired; it now
+      matches the per-pool "reached max_children setting" string with byte-offset
+      tracking so only new hits are reported.
+
+    * The high-load auto-pause now re-reads the current load after its cooldown
+      rather than re-checking the value captured at entry, so a transient spike
+      that clears within the window no longer pauses web. loadreport's /proc
+      sampler now captures process data correctly on a real box.
+      Monitor-throttle precedence is corrected so a tiny box carrying both
+      .slow.cron.cnf and .fast.cron.cnf is throttled, matching the queue runner,
+      and the SQL-backup / daily re-entrancy check now compares its YES/NO flags
+      correctly, so plain SQL backups and daily.sh again defer the task queue.
+
+    * Drupal 8+ sites no longer get permanently stuck on "No available releases
+      found" after a clone, migrate or restore: the DB import carried over the
+      Update module's non-expirable {key_value} update_fetch_task tracker rows
+      without the matching queue, blocking any new release-history fetch with no
+      UI recovery. The post-deploy hook now clears that collection on every D8+
+      deploy. Drupal 7 was never affected.
+
+    * Cross-platform clone/migrate now correctly unlocks and re-verifies the old
+      platform's site-local Drush around the D10+ DB update (the old-platform
+      alias was not being passed through to those operations).
+
+@=> New Documentation
+
+    * docs/MONITOR.md (new) -- operator reference for the self-healing monitor
+      stack: cron fan-out and the CI/SLOW/NORMAL throttle, per-service
+      watchdogs, load auto-pause, process guards, and loadreport.
+    * docs/ABUSE-GUARD.md (new) -- operator reference for the Nginx Abuse Guard:
+      scan_nginx scoring, the realtime request guards, the csf ban pipeline, the
+      Tier-A/Tier-B i18n flood protection, the HTTP/1.0 registration-spam
+      detector, and the configuration knobs.
+    * docs/PHP-FPM.md expanded with the plan-based worker + memory_limit model;
+      docs/SELFUPGRADE.md corrected so _AUTO_VER lists the real tier tokens
+      (dev/pro/lts); docs/MIGRATE-XOCT.md and docs/SSL.md note that the
+      xoct-generated proxy vhosts talk HTTP/1.1 to origin.
+
+
+###
 ### Stable BOA-5.10.1 PRO/LTS - AI POLICY EDITION
 ### Date: Fri 19 Jun 2026 19:31:47 CEST in Warsaw
 ### Enjoy AI bots on a leash and bans that bite behind Cloudflare
