@@ -44,10 +44,10 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=pro
-export _xSrl=5101proT01
-export _rLsn="BOA-5.10.1"
-export _bTs=5101v01
+export _tRee=dev
+export _xSrl=5103devT01
+export _rLsn="BOA-5.10.3"
+export _bTs=5103v01
 
 ###
 ### Avoid too many questions
@@ -315,7 +315,7 @@ _fix_dns_settings() {
     chmod 0644 /etc/resolv.conf
     chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
-    mdkir -p /etc/dhcp/dhclient-enter-hooks.d
+    mkdir -p /etc/dhcp/dhclient-enter-hooks.d
     if [ -d "/etc/dhcp/dhclient-enter-hooks.d/" ]; then
       cat > ${_noUp} <<'EOF'
 make_resolv_conf() { :; }
