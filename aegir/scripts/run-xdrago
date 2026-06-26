@@ -38,6 +38,14 @@ _run_cleanup() {
   if [ -e "${_tpDir}" ]; then
     _buildTest=$(ls ${_tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
     _buildTest=${_buildTest//[^0-9]/}
+    # A _tmp_ dir with no live Drush behind it is an orphan left by a crashed
+    # build/verify, not an active build. Do not let it wedge the queue: this is
+    # re-evaluated every run and deletes nothing (cleanup stays with the
+    # clear-drush-cache.info path above).
+    if [ "${_buildTest:-0}" -ge 1 ] \
+      && ! pgrep -u "${_H_USER}" -f "drush.php" > /dev/null 2>&1; then
+      _buildTest="0"
+    fi
   fi
   if [ -e "${_clCtr}" ]; then
     if [ -e "${_exCtr}" ]; then
@@ -116,6 +124,14 @@ _if_octopus_upgrade() {
 }
 
 _run_action() {
+  # In accelerated mode (an Octopus install/upgrade is genuinely in progress) the
+  # backend config and Drush aliases must reload promptly so queued tasks run in
+  # the correct Aegir context; run the queue even with a build in progress. The
+  # marker is honoured only while fresh, so a crashed run cannot force this on.
+  if [ -e "/run/octopus_install_run.pid" ] \
+    && [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then
+    _buildTest="0"
+  fi
   if [ "${_buildTest}" = "0" ] \
     || [ -z "${_buildTest}" ] \
     || [ ! -e "${_ceDir}" ]; then
