@@ -2807,6 +2807,29 @@ EOFMYSQL
 }
 
 #
+# Re-assert hosting_dispatch_enabled before kicking the queue (satellite copy,
+# kept separate from the master.sh.inc copy by design). An Octopus instance runs
+# hosting-setup as its own user, and a non-zero dispatch self-test there leaves
+# the dispatcher disabled, silently stopping the task queue. Detect and re-enable,
+# reporting only when a correction was needed.
+#   su   -> caller is root (pre-install): su to the instance user.
+#   bare -> caller already runs as the instance user (SetupB child).
+_ensure_hosting_dispatch_enabled() {
+  local _disp_mode="${1:-bare}"
+  local _disp_ev
+  local _disp_fix
+  _disp_ev='if (!variable_get("hosting_dispatch_enabled", FALSE)) { variable_set("hosting_dispatch_enabled", TRUE); echo "REENABLED"; }'
+  if [[ "${_disp_mode}" = "su" ]]; then
+    _disp_fix=$(su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster ev '${_disp_ev}'" 2>/dev/null)
+  else
+    _disp_fix=$(${_DRUSHCMD} @hostmaster ev "${_disp_ev}" 2>/dev/null)
+  fi
+  if [[ "${_disp_fix}" =~ REENABLED ]]; then
+    _msg "INFO: hosting_dispatch_enabled was off for ${_USER}; task queue dispatcher re-enabled"
+  fi
+}
+
+#
 # Sync provision backend db_passwd.
 _provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2898,6 +2921,7 @@ EOFMYSQL
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Running hosting-dispatch/hosting-tasks..."
   fi
+  _ensure_hosting_dispatch_enabled su
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-dispatch" &> /dev/null
   wait
   sleep 5
@@ -5691,6 +5715,7 @@ _satellite_child_b_aegir_build() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Running hosting-dispatch/hosting-tasks..."
     fi
+    _ensure_hosting_dispatch_enabled bare
     ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
     wait
     sleep 5
@@ -5826,6 +5851,7 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')" &> /dev/null
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
+      _ensure_hosting_dispatch_enabled bare
       ${_DRUSHCMD} @hostmaster hosting-dispatch
       wait
       sleep 5
@@ -5929,6 +5955,7 @@ _satellite_child_b_aegir_build() {
         rm -rf ${_ROOT}/.tmp/cache
         ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
           verify --force &> /dev/null
+        _ensure_hosting_dispatch_enabled bare
         ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
         wait
         sleep 5
