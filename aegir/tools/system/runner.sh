@@ -44,7 +44,22 @@ _disable_master_cron() {
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
-[ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ] && exit 0
+# An Octopus install/upgrade must reload backend config/aliases promptly, so let
+# the queue run even under a web-load pause while a run is genuinely in progress.
+# Honour the marker only when fresh or backed by a live octopus process; clear a
+# stale one so a crashed run can never permanently bypass the web-load pause.
+_accel_now=NO
+if [ -e "/run/octopus_install_run.pid" ]; then
+  if pgrep -f "/opt/local/bin/octopus" > /dev/null 2>&1 \
+    || [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then
+    _accel_now=YES
+  else
+    rm -f /run/octopus_install_run.pid
+  fi
+fi
+if [ "${_accel_now}" != "YES" ]; then
+  [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ] && exit 0
+fi
 
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
@@ -86,6 +101,9 @@ _load_control() {
 }
 
 _if_accelerated_queue() {
+  # Keys YES on marker existence only; a stale (>15min, no live octopus) marker is
+  # already pruned by the top-of-script gate, which runs before this in the same
+  # process. Do not reorder those without moving the staleness prune here too.
   if [ -e "/run/octopus_install_run.pid" ]; then
     _ACCELERATED=YES
   elif [ -e "/run/boa_run.pid" ]; then
@@ -102,18 +120,25 @@ _runner_action() {
     | sort); do
     _count_cpu
     _load_control
-    if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
+    _if_accelerated_queue
+    if [ "${_ACCELERATED}" = "NONE" ]; then
+      echo "Another BOA task is running, we have to wait..."
+    elif [ "${_ACCELERATED}" = "YES" ]; then
+      # Octopus install/upgrade: force the queue regardless of load so the freshly
+      # upgraded backend config/aliases reload before other tasks need them. The
+      # marker is bounded and stale copies are cleared above, so this is a short,
+      # controlled window rather than a standing load-protection bypass.
+      echo "Accelerated queue (Octopus install/upgrade): running ${_Runner} regardless of load (${_O_LOAD}%)"
+      bash "${_Runner}"
+      _n=$((RANDOM % 9 + 2))
+      echo "Waiting ${_n} sec"
+      sleep "${_n}"
+    elif (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
       echo "Load is ${_O_LOAD}% (below max load ${_O_LOAD_MAX}%). Running ${_Runner}"
-      _if_accelerated_queue
-      if [ "${_ACCELERATED}" = "YES" ] || [ "${_ACCELERATED}" = "NORMAL" ]; then
-        echo "Running ${_Runner}"
-        bash "${_Runner}"
-        _n=$((RANDOM % 9 + 2))
-        echo "Waiting ${_n} sec"
-        sleep "${_n}"
-      else
-        echo "Another BOA task is running, we have to wait..."
-      fi
+      bash "${_Runner}"
+      _n=$((RANDOM % 9 + 2))
+      echo "Waiting ${_n} sec"
+      sleep "${_n}"
     else
       echo "Load is ${_O_LOAD}% while max load is ${_O_LOAD_MAX}%. Waiting..."
     fi
