@@ -118,6 +118,7 @@
   /bin/stty mrix,
   /bin/tar mrix,
   /bin/touch mrix,
+  /opt/local/bin/autosymlink mrix,
   /opt/local/bin/websh mrix,
   /data/disk/*/**/vendor/drush/drush/drush.php mrix,
   /etc/init.d/nginx mrix,
