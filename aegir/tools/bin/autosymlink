@@ -25,20 +25,60 @@ _check_root() {
 _check_root
 
 _MODE="DRY"
-case "$1" in
-  live|LIVE|--live)
-    _MODE="LIVE"
-    ;;
-  batch|BATCH|--batch)
+_NARROW="NO"
+_ONE_SITE=""
+_ONE_ACCOUNT=""
+_APPLY_FLAG="NO"
+
+# Back-compat positional modes (DRY default / live / batch / batch-if-clean /
+# report) plus flags for the narrow single-site mode used by the Provision clone
+# hook: --site <url> [--account <oNNN>] [--apply]. Narrow mode never touches the
+# global CLEAN-DRY state file or sweeps all accounts.
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    live|LIVE|--live)
+      _MODE="LIVE"
+      ;;
+    batch|BATCH|--batch)
+      _MODE="BATCH"
+      ;;
+    --batch-if-clean|batch-if-clean|BATCH_IF_CLEAN|batch_if_clean)
+      _MODE="BATCH_IF_CLEAN"
+      ;;
+    report|REPORT|--report)
+      _MODE="REPORT"
+      ;;
+    dry|DRY|--dry)
+      _MODE="DRY"
+      ;;
+    --site)
+      _NARROW="YES"
+      shift
+      _ONE_SITE="$1"
+      ;;
+    --account)
+      shift
+      _ONE_ACCOUNT="$1"
+      ;;
+    --apply)
+      _APPLY_FLAG="YES"
+      ;;
+    *)
+      : # ignore unknown args
+      ;;
+  esac
+  [ "$#" -gt 0 ] && shift
+done
+
+# In narrow mode the action is selected by --apply (BATCH semantics: apply
+# without per-site prompt) or defaults to a read-only DRY for that one site.
+if [ "${_NARROW}" = "YES" ]; then
+  if [ "${_APPLY_FLAG}" = "YES" ]; then
     _MODE="BATCH"
-    ;;
-  --batch-if-clean|batch-if-clean|BATCH_IF_CLEAN|batch_if_clean)
-    _MODE="BATCH_IF_CLEAN"
-    ;;
-  report|REPORT|--report)
-    _MODE="REPORT"
-    ;;
-esac
+  else
+    _MODE="DRY"
+  fi
+fi
 
 _LOG_DIR="/var/log/boa"
 _LOG_FILE="${_LOG_DIR}/autosymlink.log"
@@ -569,6 +609,69 @@ _check_symlink_sharing() {
   _SITE_SHARED_SYMLINK_FIX_APPLIED="YES"
 }
 
+_self_heal_symlink() {
+  # Recover a site left without an in-site files/private link by an interrupted
+  # prior conversion: if the in-site path is gone but the store dir still holds
+  # the data, recreate the symlink. This closes the only non-atomic window in
+  # _convert_dir_to_symlink (between a successful move and the `ln -s`).
+  # Args: 1 in-site path, 2 store target dir.
+  _SITE_LINK="$1"
+  _STORE_DIR="$2"
+
+  if [ "${_MODE}" = "REPORT" ] || [ "${_MODE}" = "DRY" ]; then
+    return 0
+  fi
+  if [ -e "${_SITE_LINK}" ] || [ -L "${_SITE_LINK}" ]; then
+    return 0
+  fi
+  if [ -d "${_STORE_DIR}" ] && [ -n "$(ls -A "${_STORE_DIR}" 2>/dev/null)" ]; then
+    _log "[APPLY] Self-heal: in-site path missing, recreating symlink ${_SITE_LINK} -> ${_STORE_DIR}"
+    ln -s "${_STORE_DIR}" "${_SITE_LINK}"
+  fi
+}
+
+_convert_dir_to_symlink() {
+  # Crash-safe conversion of a real in-site directory into a symlink pointing at
+  # the per-site store. Replaces the former non-atomic `mv; ln -s` pair.
+  #
+  # Safety invariants:
+  #   - rc-checked move: `mv` removes the source only after a successful copy
+  #     (same-fs = atomic rename, cross-fs = copy-then-unlink), so the source dir
+  #     survives any move failure; on failure we leave the real dir in place and
+  #     never create a symlink.
+  #   - the only non-atomic window is between a successful move and `ln -s`; it is
+  #     recovered by _self_heal_symlink() on the next run. Concurrent converters
+  #     are corruption-safe: the losing `mv` fails (source already gone) and
+  #     self-heal/idempotency repoint to the winner's store dir.
+  # Args: 1 in-site real dir, 2 store target dir, 3 type label, 4 site name.
+  # Returns 0 on success, 1 on hard error (real dir left intact).
+  _SRC="$1"
+  _DST="$2"
+  _TYPE="$3"
+  _SITE="$4"
+
+  if [ ! -d "${_SRC}" ] || [ -L "${_SRC}" ]; then
+    return 0
+  fi
+
+  if [ -e "${_DST}" ] || [ -L "${_DST}" ]; then
+    _make_unique_target "${_DST}"
+  fi
+
+  _log "[APPLY] Moving: ${_SRC} -> ${_DST}"
+  if ! mv "${_SRC}" "${_DST}"; then
+    _log "[ERROR] Move failed for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; leaving real dir in place (no symlink created)"
+    return 1
+  fi
+
+  _log "[APPLY] Creating symlink: ${_SRC} -> ${_DST}"
+  if ! ln -s "${_DST}" "${_SRC}"; then
+    _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; data is safe in ${_DST}, self-heal will retry the link"
+    return 1
+  fi
+  return 0
+}
+
 _process_site() {
   # Handle single site for given account.
   # Args:
@@ -605,6 +708,11 @@ _process_site() {
   _TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
   _DO_FILES_CONVERT="NO"
   _DO_PRIVATE_CONVERT="NO"
+
+  # Recover any site left without an in-site files/private link by an interrupted
+  # prior conversion (store dir present, in-site link missing). No-op in DRY/REPORT.
+  _self_heal_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files"
+  _self_heal_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
 
   # Per-site flags used for summary / LIVE confirmation re-use
   _LIVE_SITE_APPROVED="NO"
@@ -736,13 +844,7 @@ _process_site() {
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-            _make_unique_target "${_TARGET_BASE}/files"
-          fi
-          _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-          mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
-          _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-          ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
+          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
         fi
       fi
 
@@ -750,13 +852,7 @@ _process_site() {
         if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-            _make_unique_target "${_TARGET_BASE}/private"
-          fi
-          _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-          mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
-          _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-          ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
+          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
         fi
       fi
     else
@@ -773,13 +869,7 @@ _process_site() {
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-            _make_unique_target "${_TARGET_BASE}/files"
-          fi
-          _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-          mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
-          _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-          ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
+          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
         fi
       fi
 
@@ -787,13 +877,7 @@ _process_site() {
         if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-            _make_unique_target "${_TARGET_BASE}/private"
-          fi
-          _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-          mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
-          _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-          ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
+          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
         fi
       fi
     fi
@@ -897,7 +981,94 @@ _process_account() {
   fi
 }
 
+_run_one_site() {
+  # Narrow single-site driver for the Provision clone hook. Resolves the owning
+  # account (explicit --account preferred; otherwise by locating the valid
+  # vhost+alias pair), validates tokens fail-closed, and converts exactly that
+  # one site via _process_site. It never reads or writes the global CLEAN-DRY
+  # state file and never sweeps other accounts. Always returns 0 (done or
+  # safe-skip); the caller treats any internal warning as non-fatal.
+  _SITE="${_ONE_SITE}"
+  _ACCOUNT_DIR=""
+  _ACCOUNT_NAME=""
+
+  # Fail-closed token validation (reject empty / traversal / path separators).
+  case "${_SITE}" in
+    ""|*..*|*/*)
+      _log "[ERROR] Narrow mode: invalid or missing --site token"
+      return 0
+      ;;
+  esac
+  if ! printf '%s' "${_SITE}" | grep -qE '^[a-z0-9][a-z0-9._-]*$'; then
+    _log "[ERROR] Narrow mode: invalid --site token '${_SITE}'"
+    return 0
+  fi
+
+  if [ -n "${_ONE_ACCOUNT}" ]; then
+    case "${_ONE_ACCOUNT}" in
+      *..*|*/*)
+        _log "[ERROR] Narrow mode: invalid --account token '${_ONE_ACCOUNT}'"
+        return 0
+        ;;
+    esac
+    if ! printf '%s' "${_ONE_ACCOUNT}" | grep -qE '^[A-Za-z0-9._-]+$'; then
+      _log "[ERROR] Narrow mode: invalid --account token '${_ONE_ACCOUNT}'"
+      return 0
+    fi
+    _ACCOUNT_DIR="/data/disk/${_ONE_ACCOUNT}"
+    _ACCOUNT_NAME="${_ONE_ACCOUNT}"
+  else
+    # Derive the account by locating the valid vhost+alias pair for this site.
+    for _CAND in /data/disk/*; do
+      [ -d "${_CAND}" ] || continue
+      [ -f "${_CAND}/.drush/${_SITE}.alias.drushrc.php" ] || continue
+      [ -f "${_CAND}/config/server_master/nginx/vhost.d/${_SITE}" ] || continue
+      _ACCOUNT_DIR="${_CAND}"
+      _ACCOUNT_NAME="$(basename "${_CAND}")"
+      break
+    done
+  fi
+
+  if [ -z "${_ACCOUNT_DIR}" ] || [ ! -d "${_ACCOUNT_DIR}" ]; then
+    _log "[INFO] Narrow mode: no owning account found for site ${_SITE}; nothing to do"
+    return 0
+  fi
+
+  _ALIAS_FILE="${_ACCOUNT_DIR}/.drush/${_SITE}.alias.drushrc.php"
+  _VHOST_FILE="${_ACCOUNT_DIR}/config/server_master/nginx/vhost.d/${_SITE}"
+  if [ ! -f "${_ALIAS_FILE}" ] || [ ! -f "${_VHOST_FILE}" ]; then
+    _log "[INFO] Narrow mode: site ${_SITE} has no valid vhost+alias pair under ${_ACCOUNT_NAME}; nothing to do"
+    return 0
+  fi
+
+  # Start from a clean per-run state; never consult or write the global gate.
+  _APPLY_COUNT=0
+  _DRY_HAS_ERRORS="NO"
+  _DRY_HAS_EDGE_CASES="NO"
+  _FS_PAIR_STATUS=()
+  _FS_RESERVED_KB=()
+
+  _log "=================================================================="
+  _log "[INFO] Narrow single-site run: site=${_SITE} account=${_ACCOUNT_NAME} apply=${_APPLY_FLAG}"
+
+  _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+
+  return 0
+}
+
 _main() {
+  # Narrow single-site mode (Provision clone hook): convert just one site and
+  # exit, without sweeping all accounts and without touching the global state
+  # file. The clone hook calls this binary DIRECTLY (never updatesymlinks, which
+  # pgrep-greps 'provision' and would bail under a running clone).
+  if [ "${_NARROW}" = "YES" ]; then
+    _log "=================================================================="
+    _log "[START] autosymlink narrow single-site mode (site=${_ONE_SITE}, apply=${_APPLY_FLAG})"
+    _run_one_site
+    _log "[DONE] autosymlink finished (narrow mode)"
+    return 0
+  fi
+
   _log "=================================================================="
   if [ "${_MODE}" = "BATCH_IF_CLEAN" ]; then
     _log "[START] autosymlink running in BATCH_IF_CLEAN mode (DRY -> if CLEAN -> BATCH)"
