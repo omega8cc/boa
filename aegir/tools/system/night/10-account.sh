@@ -1,27 +1,29 @@
 #!/bin/bash
 
 ###
-### 10-account.sh -- the per-Octopus-account maintenance worker. Carved out of
-### daily.sh's _daily_action loop body (Phase 2 of the owl.sh/night split): the
-### whole per-account sequence -- drush prep, octopus.cnf email sync, the
-### hostmaster vSet block, the per-site loop (_daily_process), platform GC,
-### hostmaster LE, goaccess, and the final chattr relock. Sourced by daily.sh
-### today and called once per account from the load-gated loop; becomes a
-### standalone / parallel worker (invoked with the account path) in a later
-### phase, once the run-freeze contract carries _NOW and the other per-run state
-### across a process boundary.
+### 10-account.sh -- the per-Octopus-account maintenance worker. The whole
+### per-account sequence (_account_process): drush prep, octopus.cnf email sync,
+### the hostmaster vSet block, the per-site loop (_daily_process), platform GC,
+### hostmaster LE, goaccess, and the final chattr relock. Run once per account by
+### the owl.sh/daily.sh orchestrator as `10-account.sh <account-path>` (the unit of
+### per-account parallelism); also sourceable for testing (defines functions only).
 ###
-### Reads the per-run ambient state (_NOW, _DOW, _xSrl, _O_CONTRIB*, _MODULES_*,
-### _hostedSys, _ENABLE_GOACCESS, ...) and the loop var _usEr set by the caller.
-### Depends on night.inc.sh (drush8 wrappers, chattr) plus the per-site
-### procedures in 20-sites.sh and a few helpers still resident in daily.sh
-### (_apt_clean_update via _le_ssl_check_update, _le_hm_ssl_check_update,
-### _check_old_empty_platforms, _purge_cruft_machine) -- all resolved via the
-### shared process while sourced; made self-contained when standalone execution
-### is introduced.
+### Reads the per-run context from the run-freeze (/run/night/run.env via
+### night_load_run_env): _NOW (keystone), _DOW, _O_CONTRIB*, _MODULES_*, _hostedSys,
+### _APT_UPDATE and the cnf flags. Re-derives _hName and the per-account/per-site
+### state from the <account> arg. Depends on night.inc.sh (drush8 wrappers, chattr,
+### load, run-freeze, _apt_clean_update, _if_gen_goaccess) and 20-sites.sh
+### (_daily_process + the per-site family), both sourced below.
 ###
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+export _tRee=dev
+export _xSrl=5103devT01
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
+# shellcheck disable=SC1091
+[ -r "/var/xdrago/night/20-sites.sh" ] && . /var/xdrago/night/20-sites.sh
 
 _account_process() {
   _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -30,8 +32,6 @@ _account_process() {
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1)
-  echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
-  echo "User ${_usEr}"
   mkdir -p ${_usEr}/log/ctrl
   su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
   wait
@@ -409,13 +409,6 @@ _purge_cruft_machine() {
   find ${_usEr}/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
     rm -rf {} \; &> /dev/null
 
-  find /var/aegir/backups/* -mtime +${_PURGE_BACKUPS} -exec \
-    rm -rf {} \; &> /dev/null
-  find /var/aegir/clients/*/backups/* -mtime +${_PURGE_BACKUPS} -exec \
-    rm -rf {} \; &> /dev/null
-  find /var/aegir/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
-    rm -rf {} \; &> /dev/null
-
   find ${_usEr}/distro/*/*/sites/*/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
   find ${_usEr}/distro/*/*/sites/*/private/files/backup_migrate/*/* \
@@ -557,3 +550,23 @@ _purge_cruft_machine() {
     fi
   done
 }
+
+###--------------------###
+### When executed directly (not sourced), process exactly one account. The
+### orchestrator (owl.sh/daily.sh) already applied the load gate and the
+### vhost.d/proxied/CANCELLED eligibility checks before invoking us.
+if [ "${0##*/}" = "10-account.sh" ]; then
+  if ! command -v _run_drush8_hmr_cmd > /dev/null 2>&1 \
+    || ! command -v _daily_process > /dev/null 2>&1; then
+    echo "FATAL ERROR: night libraries (night.inc.sh/20-sites.sh) not loaded; aborting"
+    exit 1
+  fi
+  night_load_run_env
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _usEr="$1"
+  if [ -z "${_usEr}" ] || [ ! -d "${_usEr}" ]; then
+    echo "FATAL ERROR: 10-account.sh requires a valid account path argument"
+    exit 1
+  fi
+  _account_process
+fi

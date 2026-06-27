@@ -30,23 +30,14 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
-_WEBG=www-data
-_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
-_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
-_aptAllow="--allow-unauthenticated"
-_aptYesUnth="-y ${_aptAllow}"
-_cGet="config-get user.settings"
-_cSet="config-set user.settings"
-_vGet="variable-get"
-_vSet="variable-set --always-set"
-
 ###-------------SYSTEM-----------------###
 
 ###
-### Load the shared helper library (pure helpers, load + chattr helpers, drush8
-### wrappers) split out under /var/xdrago/night/ so the same copy is reused by
-### the night worker scripts. The fetcher in BOA.sh.txt installs it alongside
-### this script; abort cleanly if it is missing rather than run half-defined.
+### Load the shared helper library: BOA Tier-0 constants (_vSet etc.), pure
+### helpers, load + chattr helpers, drush8 wrappers and the run-freeze, split out
+### under /var/xdrago/night/ so the same copy is reused by the night worker
+### scripts. The fetcher in BOA.sh.txt installs it alongside this script; abort
+### cleanly if it is missing rather than run half-defined.
 ###
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
@@ -56,33 +47,11 @@ if ! command -v _run_drush8_hmr_cmd > /dev/null 2>&1; then
 fi
 
 ###
-### Load the per-site maintenance procedures (the _daily_process loop and its
-### helper family) carved out under /var/xdrago/night/. Sourced here so the
-### per-account loop below can still drive _daily_process inline; it becomes a
-### standalone worker in a later phase. Same fail-closed guard as above.
-###
-# shellcheck disable=SC1091
-[ -r "/var/xdrago/night/20-sites.sh" ] && . /var/xdrago/night/20-sites.sh
-if ! command -v _daily_process > /dev/null 2>&1; then
-  echo "FATAL ERROR: /var/xdrago/night/20-sites.sh not loaded; aborting"
-  exit 1
-fi
-
-###
-### Load the per-account maintenance worker (the _daily_action loop body carved
-### into _account_process). Sourced here so the loop below calls it per account.
-###
-# shellcheck disable=SC1091
-[ -r "/var/xdrago/night/10-account.sh" ] && . /var/xdrago/night/10-account.sh
-if ! command -v _account_process > /dev/null 2>&1; then
-  echo "FATAL ERROR: /var/xdrago/night/10-account.sh not loaded; aborting"
-  exit 1
-fi
-
-###
 ### Load the global-post procedures (shared cleanup, forward-secrecy + nginx
 ### reload, perms sweep, pruning) carved into 90-global-post.sh. Sourced here and
-### called in place by the main body after _daily_action.
+### called in place by the main body after _daily_action. The per-site (20-sites.sh)
+### and per-account (10-account.sh) workers are NOT sourced here -- the orchestrator
+### invokes 10-account.sh as a subprocess per account (it sources its own deps).
 ###
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/90-global-post.sh" ] && . /var/xdrago/night/90-global-post.sh
@@ -203,25 +172,62 @@ _daily_action() {
   if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
     _prepare_weblogx
   fi
+  ###
+  ### Freeze the per-run state for the per-account workers, then process each
+  ### Octopus account by invoking the 10-account.sh worker as a subprocess. The
+  ### load gate + eligibility checks stay here in the orchestrator. _NIGHT_PARALLEL
+  ### (default NO) fans accounts out concurrently up to _NIGHT_MAX_PARALLEL slots;
+  ### the default serial path is behaviour-equivalent to the former inline call.
+  ###
+  night_emit_run_env
+  : "${_NIGHT_PARALLEL:=NO}"
+  : "${_NIGHT_MAX_PARALLEL:=${_CPU_NR}}"
+  _NIGHT_MAX_PARALLEL="$(_sanitize_number "${_NIGHT_MAX_PARALLEL}")"
+  [ -z "${_NIGHT_MAX_PARALLEL}" ] && _NIGHT_MAX_PARALLEL=1
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
     _load_control
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
-      if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
-        _account_process
-      else
+      if [ "${_NIGHT_PARALLEL}" = "YES" ]; then
+        ###
+        ### Parallel: wait for a free slot AND load headroom, then fan out. This
+        ### waits (rather than skips an overloaded account) so parallelism does
+        ### not raise the silent-skip rate; each worker logs to its own file.
+        ###
+        while :; do
+          _count_cpu
+          _load_control
+          if [ "$(jobs -rp | wc -l)" -lt "${_NIGHT_MAX_PARALLEL}" ] \
+            && (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
+            break
+          fi
+          sleep 5
+        done
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
-        echo "...we have to wait..."
+        echo "Fan-out account ${_usEr}"
+        bash /var/xdrago/night/10-account.sh "${_usEr}" \
+          >> "/var/log/boa/daily/acct-$(basename ${_usEr})-${_NOW}.log" 2>&1 &
+      else
+        if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
+          echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
+          echo "User ${_usEr}"
+          bash /var/xdrago/night/10-account.sh "${_usEr}"
+        else
+          echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
+          echo "...we have to wait..."
+        fi
       fi
       echo
       echo
     fi
   done
+  [ "${_NIGHT_PARALLEL}" = "YES" ] && wait
   _shared_codebases_cleanup
   _ghost_codebases_cleanup
   _check_old_empty_hostmaster_platforms
+  _purge_shared_aegir_backups
   if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
     _cleanup_weblogx
   fi

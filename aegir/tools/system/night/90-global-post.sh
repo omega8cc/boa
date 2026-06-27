@@ -318,3 +318,30 @@ _global_cleanup() {
   ###
   find /run/*_backup.pid -mtime +1 -exec rm -f {} \; &> /dev/null
 }
+
+# Prune the SHARED master /var/aegir backup trees once per run. Hoisted out of the
+# per-account _purge_cruft_machine (it touched these shared paths inside per-account
+# work) so parallel account workers never race on them; run once by the orchestrator
+# after the account loop. Mirrors _purge_cruft_machine's _PURGE_TMP/_PURGE_BACKUPS
+# derivation (reads _DEL_OLD_TMP/_DEL_OLD_BACKUPS from .barracuda.cnf + _hostedSys).
+_purge_shared_aegir_backups() {
+  if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt 0 ]; then
+    _PURGE_TMP="${_DEL_OLD_TMP}"
+  else
+    _PURGE_TMP="0"
+  fi
+  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt 0 ]; then
+    _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
+  else
+    _PURGE_BACKUPS="14"
+    if [ "${_hostedSys}" = "YES" ]; then
+      _PURGE_BACKUPS="7"
+    fi
+  fi
+  find /var/aegir/backups/* -mtime +${_PURGE_BACKUPS} -exec \
+    rm -rf {} \; &> /dev/null
+  find /var/aegir/clients/*/backups/* -mtime +${_PURGE_BACKUPS} -exec \
+    rm -rf {} \; &> /dev/null
+  find /var/aegir/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
+    rm -rf {} \; &> /dev/null
+}

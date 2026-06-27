@@ -15,6 +15,21 @@
 ### at call time, exactly as before -- the caller must set them before calling.
 ###
 
+###-------------CONSTANTS-----------------###
+
+# BOA Tier-0 constants shared by the orchestrator and the night workers. The
+# worker subprocesses get these by sourcing this library; the drush config/
+# variable verbs (_vSet etc.) are used throughout the per-account/per-site work.
+_WEBG=www-data
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
+_aptAllow="--allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
+_cGet="config-get user.settings"
+_cSet="config-set user.settings"
+_vGet="variable-get"
+_vSet="variable-set --always-set"
+
 ###-------------HELPERS-----------------###
 
 # Validate that a caller-controlled path (parsed from a Drush alias file)
@@ -227,4 +242,50 @@ _if_gen_goaccess() {
       fi
     fi
   fi
+}
+
+###-------------RUN-FREEZE-----------------###
+
+# Freeze the per-run state a per-account worker needs into /run/night/run.env so a
+# `10-account.sh <account>` subprocess sees the SAME run context the orchestrator
+# computed. Called once by the orchestrator (owl.sh/daily.sh) after global-pre,
+# before the account loop. _NOW is the keystone -- it names every *-${_NOW}.info
+# idempotency guard, so a worker must INHERIT it here and never re-derive it.
+night_emit_run_env() {
+  mkdir -p /run/night
+  {
+    echo "export _NOW=\"${_NOW}\""
+    echo "export _DOW=\"${_DOW}\""
+    echo "export _xSrl=\"${_xSrl}\""
+    echo "export _FORCE_SITES_VERIFY=\"${_FORCE_SITES_VERIFY}\""
+    echo "export _CTRL_TPL_FORCE_UPDATE=\"${_CTRL_TPL_FORCE_UPDATE}\""
+    echo "export _O_CONTRIB=\"${_O_CONTRIB}\""
+    echo "export _O_CONTRIB_SEVEN=\"${_O_CONTRIB_SEVEN}\""
+    echo "export _O_CONTRIB_EIGHT=\"${_O_CONTRIB_EIGHT}\""
+    echo "export _O_CONTRIB_NINE=\"${_O_CONTRIB_NINE}\""
+    echo "export _O_CONTRIB_TEN=\"${_O_CONTRIB_TEN}\""
+    echo "export _O_CONTRIB_ELEVEN=\"${_O_CONTRIB_ELEVEN}\""
+    echo "export _MODULES_FORCE=\"${_MODULES_FORCE}\""
+    echo "export _MODULES_ON_SEVEN=\"${_MODULES_ON_SEVEN}\""
+    echo "export _MODULES_ON_SIX=\"${_MODULES_ON_SIX}\""
+    echo "export _MODULES_OFF_SEVEN=\"${_MODULES_OFF_SEVEN}\""
+    echo "export _MODULES_OFF_SIX=\"${_MODULES_OFF_SIX}\""
+    echo "export _hostedSys=\"${_hostedSys}\""
+    echo "export _APT_UPDATE=\"${_APT_UPDATE}\""
+    echo "export _PERMISSIONS_FIX=\"${_PERMISSIONS_FIX}\""
+    echo "export _MODULES_FIX=\"${_MODULES_FIX}\""
+    echo "export _CLEAR_BOOST=\"${_CLEAR_BOOST}\""
+    echo "export _ENABLE_GOACCESS=\"${_ENABLE_GOACCESS}\""
+  } > /run/night/run.env
+  chmod 0600 /run/night/run.env &> /dev/null
+}
+
+# Load the run context in a worker: source .barracuda.cnf first (cnf flags and
+# any var not in the freeze), then the run-freeze (authoritative for the frozen
+# per-run set). No-op-safe if either is absent.
+night_load_run_env() {
+  # shellcheck disable=SC1091
+  [ -e "/root/.barracuda.cnf" ] && . /root/.barracuda.cnf
+  # shellcheck disable=SC1091
+  [ -r "/run/night/run.env" ] && . /run/night/run.env
 }
