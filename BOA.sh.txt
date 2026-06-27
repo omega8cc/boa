@@ -1266,6 +1266,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/mysql_repair.sh" ] && rm -f ${_pthLog}/mysql_repair.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/nginx_deny.sh" ] && rm -f ${_pthLog}/nginx_deny.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/night/night.inc.sh" ] && rm -f ${_pthLog}/night.inc.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/night/20-sites.sh" ] && rm -f ${_pthLog}/20-sites.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${_pthLog}/proc_num_ctrl.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/purge_binlogs.sh" ] && rm -f ${_pthLog}/purge_binlogs.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${_pthLog}/runner.sh.ctrl.*.pid
@@ -1496,7 +1497,8 @@ _update_agents() {
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f54 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f99
-    _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f64
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f99
+    _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f63
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f77
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
