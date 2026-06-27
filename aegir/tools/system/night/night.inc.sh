@@ -3,14 +3,14 @@
 ###
 ### night.inc.sh -- shared helper library for the nightly maintenance family.
 ###
-### Sourced by daily.sh (the parent orchestrator, later renamed owl.sh) and,
-### in subsequent phases, by the per-account/per-site worker scripts split out
+### Sourced by owl.sh (the parent orchestrator) and by the per-account/per-site
+### worker scripts split out
 ### under /var/xdrago/night/. Defines pure helpers, load helpers, the chattr
 ### lock helpers and the drush8 wrappers so a single copy is shared instead of
 ### duplicated in every split script. Functions only -- no top-level side
 ### effects; callers own their own prologue (PATH/HOME) and _check_root.
 ###
-### Bodies are moved verbatim from daily.sh to keep behaviour identical; the
+### Bodies are moved verbatim from owl.sh to keep behaviour identical; the
 ### drush wrappers and chattr helpers read _HM_U/_Dom from the caller's scope
 ### at call time, exactly as before -- the caller must set them before calling.
 ###
@@ -206,7 +206,7 @@ _run_drush8_nosilent_cmd() {
   wait
 }
 
-### Shared helpers promoted from daily.sh / 20-sites.sh (used by both
+### Shared helpers promoted from owl.sh / 20-sites.sh (used by both
 ### the orchestrator and the per-account / per-site workers).
 
 _apt_clean_update() {
@@ -248,7 +248,7 @@ _if_gen_goaccess() {
 
 # Freeze the per-run state a per-account worker needs into /run/night/run.env so a
 # `10-account.sh <account>` subprocess sees the SAME run context the orchestrator
-# computed. Called once by the orchestrator (owl.sh/daily.sh) after global-pre,
+# computed. Called once by the orchestrator (owl.sh) after global-pre,
 # before the account loop. _NOW is the keystone -- it names every *-${_NOW}.info
 # idempotency guard, so a worker must INHERIT it here and never re-derive it.
 night_emit_run_env() {

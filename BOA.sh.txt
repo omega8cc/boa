@@ -1252,7 +1252,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/checksql.sh" ] && rm -f ${_pthLog}/checksql.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/cloudflare_realip.sh" ] && rm -f ${_pthLog}/cloudflare_realip.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${_pthLog}/daily.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/owl.sh" ] && rm -f ${_pthLog}/owl.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${_pthLog}/graceful.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${_pthLog}/guest-fire.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/guest-water.sh" ] && rm -f ${_pthLog}/guest-water.sh.ctrl.*.pid
@@ -1499,11 +1499,23 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f84
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f54 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f97
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f97
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f97
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f98
-    _fetch_versioned /var/xdrago/daily.sh "${_urlHmr}/tools/system/daily.sh" f59
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f96
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f96
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f96
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f97
+    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f99
+    ###
+    ### One-time migration: daily.sh was renamed to owl.sh. Retire the old copy
+    ### and its ctrl stamps; carry an xoct/xcopy-disabled state (.daily.sh.off)
+    ### across to owl so a box that had the nightly run disabled stays disabled.
+    ###
+    if [ -e "/var/xdrago/.daily.sh.off" ]; then
+      [ -e "/var/xdrago/owl.sh" ] && [ ! -e "/var/xdrago/.owl.sh.off" ] \
+        && mv -f /var/xdrago/owl.sh /var/xdrago/.owl.sh.off
+      rm -f /var/xdrago/.daily.sh.off
+    fi
+    rm -f /var/xdrago/daily.sh
+    rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f77
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
@@ -3624,9 +3636,9 @@ _update_boa_tools() {
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
       else
-        _CNT=$(pgrep -fc /var/xdrago/daily.sh)
+        _CNT=$(pgrep -fc /var/xdrago/owl.sh)
         if [ "${_cbn}" = "weblogx" ] && (( _CNT > 0 )); then
-          echo "The ${_cbn} and daily.sh is running!"
+          echo "The ${_cbn} and owl.sh is running!"
         else
           rm -f ${_optBin}/${_cbn}.new
           if [ "${_cbn}" = "mysqltuner5" ] || [ "${_cbn}" = "mysqltuner8" ]; then

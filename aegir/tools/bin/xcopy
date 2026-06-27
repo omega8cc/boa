@@ -864,8 +864,8 @@ _post_mig() {
     if [ ! -e "/var/xdrago/runner.sh" ] && [ -e "/var/xdrago/.runner.sh.off" ]; then
       mv -f /var/xdrago/.runner.sh.off /var/xdrago/runner.sh
     fi
-    if [ ! -e "/var/xdrago/daily.sh" ] && [ -e "/var/xdrago/.daily.sh.off" ]; then
-      mv -f /var/xdrago/.daily.sh.off /var/xdrago/daily.sh
+    if [ ! -e "/var/xdrago/owl.sh" ] && [ -e "/var/xdrago/.owl.sh.off" ]; then
+      mv -f /var/xdrago/.owl.sh.off /var/xdrago/owl.sh
     fi
     if [ ! -e "/var/xdrago/usage.sh" ] && [ -e "/var/xdrago/.usage.sh.off" ]; then
       mv -f /var/xdrago/.usage.sh.off /var/xdrago/usage.sh
@@ -891,9 +891,9 @@ _pre_mig() {
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
       pkill -9 -f runner.sh
     fi
-    if [ -e "/var/xdrago/daily.sh" ]; then
-      mv -f /var/xdrago/daily.sh /var/xdrago/.daily.sh.off
-      pkill -9 -f daily.sh
+    if [ -e "/var/xdrago/owl.sh" ]; then
+      mv -f /var/xdrago/owl.sh /var/xdrago/.owl.sh.off
+      pkill -9 -f owl.sh
     fi
     if [ -e "/var/xdrago/usage.sh" ]; then
       mv -f /var/xdrago/usage.sh /var/xdrago/.usage.sh.off

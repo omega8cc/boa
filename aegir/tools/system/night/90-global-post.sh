@@ -3,16 +3,16 @@
 ###
 ### 90-global-post.sh -- global, once-per-run maintenance that must happen after
 ### the per-account work (in the fan-out model, after all accounts join). Carved
-### out of daily.sh (Phase 3 of the owl.sh/night split): shared-codebase + ghost
+### out of owl.sh (Phase 3 of the owl.sh/night split): shared-codebase + ghost
 ### cleanup, empty-hostmaster-platform removal, weblog teardown, incident
 ### detection, the Nginx forward-secrecy / DH-param refresh (+ single reload), and
-### the /data tree permission sweep + backup pruning. Sourced by daily.sh today
+### the /data tree permission sweep + backup pruning. Sourced by owl.sh today
 ### and called in place; becomes the post-join step run once by owl.sh later.
 ###
 ### Touches shared/global resources (the master /var/aegir tree, /data/all,
 ### /etc/ssl/private, a single `service nginx reload`), so it must NEVER run inside
 ### the per-account fan-out. The /run/daily-fix.pid lock stays owned by the
-### orchestrator (daily.sh/owl.sh), not released here.
+### orchestrator (owl.sh), not released here.
 ###
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
@@ -134,7 +134,7 @@ _incident_email_report() {
   fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
-    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_thisLog}")
+    s-nail -s "Incident Report during owl.sh: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_thisLog}")
   fi
 }
 

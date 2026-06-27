@@ -5,7 +5,7 @@
 ### per-account sequence (_account_process): drush prep, octopus.cnf email sync,
 ### the hostmaster vSet block, the per-site loop (_daily_process), platform GC,
 ### hostmaster LE, goaccess, and the final chattr relock. Run once per account by
-### the owl.sh/daily.sh orchestrator as `10-account.sh <account-path>` (the unit of
+### the owl.sh orchestrator as `10-account.sh <account-path>` (the unit of
 ### per-account parallelism); also sourceable for testing (defines functions only).
 ###
 ### Reads the per-run context from the run-freeze (/run/night/run.env via
@@ -173,7 +173,7 @@ _account_process() {
   _enable_chattr ${_HM_U}.ftp
 }
 
-### Per-account helpers relocated from daily.sh (hostmaster LE cert +
+### Per-account helpers relocated from owl.sh (hostmaster LE cert +
 ### empty-platform GC + cruft purge). Called by _account_process above.
 
 _if_le_hm_ssl_old() {
@@ -553,7 +553,7 @@ _purge_cruft_machine() {
 
 ###--------------------###
 ### When executed directly (not sourced), process exactly one account. The
-### orchestrator (owl.sh/daily.sh) already applied the load gate and the
+### orchestrator (owl.sh) already applied the load gate and the
 ### vhost.d/proxied/CANCELLED eligibility checks before invoking us.
 if [ "${0##*/}" = "10-account.sh" ]; then
   if ! command -v _run_drush8_hmr_cmd > /dev/null 2>&1 \

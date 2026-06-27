@@ -102,7 +102,7 @@ _PROC="${_LOADPROF_PROC:-/proc}"
 
 # Known BOA cron launchers — process-tree roll-up stops here, and these label
 # the "by launcher" view. Anything tracing to none of them is "(non-cron)".
-_LAUNCHERS=" second.sh minute.sh runner.sh guest-fire.sh guest-water.sh daily.sh clear.sh ip_access.sh ai_policy.sh nginx_deny.sh migration_proxy_realip.sh cloudflare_realip.sh manage_ltd_users.sh manage_solr_config.sh purge_binlogs.sh mysql_cleanup.sh graceful.sh "
+_LAUNCHERS=" second.sh minute.sh runner.sh guest-fire.sh guest-water.sh owl.sh clear.sh ip_access.sh ai_policy.sh nginx_deny.sh migration_proxy_realip.sh cloudflare_realip.sh manage_ltd_users.sh manage_solr_config.sh purge_binlogs.sh mysql_cleanup.sh graceful.sh "
 
 ###
 ### Resolve a process key from its comm + pid. Bash/sh wrappers resolve to the

@@ -1007,6 +1007,20 @@ _CPU_TASK_RATIO=3.1
 _CPU_SPIDER_RATIO=2.1
 
 ###
+### Nightly maintenance (owl.sh) per-account parallelism. The default NO
+### processes Octopus accounts one at a time (serial), exactly as before. Set
+### to YES to process accounts in parallel, up to _NIGHT_MAX_PARALLEL at once,
+### each launch still gated by the per-core load ceiling (_CPU_TASK_RATIO).
+###
+_NIGHT_PARALLEL=NO
+
+###
+### Max Octopus accounts owl.sh processes in parallel when _NIGHT_PARALLEL=YES.
+### Leave empty to default to the CPU core count.
+###
+_NIGHT_MAX_PARALLEL=
+
+###
 ### Default number of access.log lines to check.
 ###
 _NGINX_DOS_LINES=1999

@@ -21,5 +21,5 @@
 15 2 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_cluster_backup.sh  >/dev/null 2>&1
 01 3 * * *  /usr/bin/nice -n0 /usr/bin/ionice -c2 -n7 bash /var/xdrago/graceful.sh              >/dev/null 2>&1
 15 3 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/backboa backup        >/dev/null 2>&1
-15 4 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /var/xdrago/daily.sh                 >/dev/null 2>&1
+15 4 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /var/xdrago/owl.sh                 >/dev/null 2>&1
 15 5 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/duobackboa backup     >/dev/null 2>&1

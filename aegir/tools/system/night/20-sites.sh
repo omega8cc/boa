@@ -2,19 +2,14 @@
 
 ###
 ### 20-sites.sh -- per-site (per-vhost) maintenance procedures for one Octopus
-### account, plus the per-site loop driver _daily_process. Carved out of daily.sh
-### (Phase 1 of the owl.sh/night split). Today it is SOURCED by daily.sh and the
-### per-site loop is still driven inline by _daily_action; it becomes a standalone
-### per-account worker (invoked with the account path) in a later phase, once the
-### run-freeze contract that carries _NOW and the other per-run state across a
-### process boundary is in place.
+### account, plus the per-site loop driver _daily_process. Part of the owl.sh/night
+### split; SOURCED by the per-account worker 10-account.sh, which drives the
+### _daily_process loop for its account.
 ###
-### Reads the per-run / per-account / per-site ambient variables set by the caller
-### (_NOW, _DOW, _xSrl, _O_CONTRIB*, _MODULES_*, the _usEr/_HM_U/_Dom/_Dir/_Plr
-### loop vars, etc.) and the shared helpers in night.inc.sh (drush8 wrappers,
-### chattr, load + pure helpers). NB: _le_ssl_check_update calls _apt_clean_update,
-### which is still provided by daily.sh in this phase; it moves to night.inc.sh
-### when this script runs standalone.
+### Reads the per-run / per-account / per-site context (_NOW, _DOW, _O_CONTRIB*,
+### _MODULES_*, the _usEr/_HM_U/_Dom/_Dir/_Plr loop vars, etc.) and the shared
+### helpers in night.inc.sh (drush8 wrappers, chattr, load, pure helpers,
+### _apt_clean_update, _if_gen_goaccess).
 ###
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
