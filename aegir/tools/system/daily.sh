@@ -3216,22 +3216,6 @@ _daily_action() {
           _run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           _run_drush8_hmr_cmd "cache-clear all"
           _run_drush8_hmr_cmd "cache-clear all"
-          if [ -e "${_usEr}/log/imported.pid" ] \
-            || [ -e "${_usEr}/log/exported.pid" ]; then
-            if [ ! -e "${_usEr}/log/hosting_context.pid" ]; then
-              _HM_NID=$(_run_drush8_hmr_cmd "sqlq \
-                \"SELECT MIN(site.nid) AS lowest_nid FROM hosting_site site JOIN \
-                hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN \
-                hosting_package pkg ON pkg.nid=pkgi.package_id \
-                WHERE pkg.short_name='hostmaster'\" 2>&1")
-              _HM_NID=${_HM_NID//[^0-9]/}
-              if [ ! -z "${_HM_NID}" ]; then
-                _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context \
-                  SET name='hostmaster' WHERE nid=${_HM_NID}\""
-                echo ${_HM_NID} > ${_usEr}/log/hosting_context.pid
-              fi
-            fi
-          fi
         fi
         _daily_process
         _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
