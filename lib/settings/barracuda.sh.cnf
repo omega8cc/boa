@@ -1021,6 +1021,23 @@ _NIGHT_PARALLEL=NO
 _NIGHT_MAX_PARALLEL=
 
 ###
+### Nightly global files-symlink auto-fix (updatesymlinks --auto-fix). The
+### default NO leaves symlink maintenance manual. Set to YES to enable a nightly
+### run (~05:30) that converts any not-yet-symlinked site files/private dirs into
+### the per-account static store and self-heals partly-symlinked sites. The run
+### is skipped while backups, provision tasks, or high load are active.
+###
+_AUTOSYMLINK_NIGHTLY=NO
+
+###
+### Daily ghost/orphaned files-directory email report (updatesymlinks
+### --orphan-report) at ~06:00. The default NO disables it. Set to YES to email
+### _MY_EMAIL a report ONLY when orphaned static/files entries (storage with no
+### matching active site) are detected. Read-only: never converts or deletes.
+###
+_ORPHAN_FILES_REPORT=NO
+
+###
 ### Default number of access.log lines to check.
 ###
 _NGINX_DOS_LINES=1999

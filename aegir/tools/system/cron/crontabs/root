@@ -23,3 +23,5 @@
 15 3 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/backboa backup        >/dev/null 2>&1
 15 4 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /var/xdrago/owl.sh                 >/dev/null 2>&1
 15 5 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/duobackboa backup     >/dev/null 2>&1
+30 5 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/updatesymlinks --auto-fix      >/dev/null 2>&1
+00 6 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/updatesymlinks --orphan-report >/dev/null 2>&1
