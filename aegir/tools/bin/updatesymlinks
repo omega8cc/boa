@@ -27,6 +27,27 @@ _check_root
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
+# Sub-mode selection (cron entry points). Bare invocation keeps the legacy
+# full apply+report behaviour for manual use (ungated).
+#   --auto-fix       : nightly global symlinks auto-fix (apply + report),
+#                      gated by _AUTOSYMLINK_NIGHTLY=YES. Pauses tasks.
+#   --orphan-report  : daily read-only orphan/ghost files-dir report,
+#                      gated by _ORPHAN_FILES_REPORT=YES. Never pauses tasks.
+_subMode="legacy"
+case "$1" in
+  --auto-fix|auto-fix)            _subMode="auto-fix" ;;
+  --orphan-report|orphan-report)  _subMode="orphan-report" ;;
+esac
+
+# Opt-in gates default OFF on already-installed boxes whose /root/.barracuda.cnf
+# predates these vars (the template only seeds them for fresh installs).
+: "${_AUTOSYMLINK_NIGHTLY:=NO}"
+: "${_ORPHAN_FILES_REPORT:=NO}"
+
+# Tracks whether THIS process created the maintenance pause file, so the EXIT
+# trap never removes a pause window opened by a concurrent apply pass.
+_pauseOwned="NO"
+
 _log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> ${_actionPermanentLog}
 }
@@ -57,7 +78,10 @@ _manage_single_lock
 trap '_clean_lock' EXIT INT TERM
 
 _clean_lock() {
-  [ -e "${_pauseFile}" ] && rm -f "${_pauseFile}"
+  # Only remove the pause file if this process created it (apply path). The
+  # read-only orphan-report path never touches it and must not tear down a
+  # pause window opened by a concurrent apply run.
+  [ "${_pauseOwned}" = "YES" ] && [ -e "${_pauseFile}" ] && rm -f "${_pauseFile}"
   if command -v _single_instance_unlock >/dev/null 2>&1; then
     _single_instance_unlock
   fi
@@ -126,6 +150,7 @@ _autosymlink_run() {
   fi
 
   # Pause tasks to avoid race, then re-check
+  _pauseOwned="YES"
   touch "${_pauseFile}"
   sleep 5
   _is_protected_run
@@ -199,10 +224,86 @@ _autosymlink_run() {
   return 0
 }
 
-_is_protected_run
-if [ "${_protectedRun}" = "TRUE" ]; then
-  exit 0
-else
- _autosymlink_run
- exit 0
-fi
+_orphan_report_run() {
+  # Daily read-only orphan/ghost files-dir report. Runs autosymlink --report
+  # only (no apply, no task-pause), and emails _MY_EMAIL ONLY when orphans are
+  # detected (or a hard report failure). Never converts and never deletes.
+  _actionReport=FALSE
+  _orphansFound=FALSE
+  _subject=""
+
+  [ -d "${_logDir}" ] || mkdir -p "${_logDir}"
+  : > ${_actionTemporaryLog}
+
+  if [ ! -x "${_autoBin}" ]; then
+    _log "ERROR: Missing autosymlink: ${_autoBin}"
+    return 1
+  fi
+
+  # Read-only: deliberately do NOT touch the task-pause file, so a concurrent
+  # apply pass (if any) keeps its own pause window.
+  _log "INFO: Running autosymlink --report (orphan check)"
+  ${_autoBin} --report > ${_actionTemporaryLog} 2>&1
+  _rcReport="$?"
+
+  if grep -q "\[REPORT\] ORPHAN" ${_actionTemporaryLog} 2>/dev/null; then
+    _orphansFound="TRUE"
+    _actionReport=TRUE
+    _subject="ORPHANS detected"
+  fi
+
+  if [ "${_rcReport}" -ne 0 ]; then
+    _actionReport=TRUE
+    if [ -z "${_subject}" ]; then
+      _subject="FAILED report (rc=${_rcReport})"
+    else
+      _subject="${_subject} + report rc=${_rcReport}"
+    fi
+  fi
+
+  # Archive the verbose output so details survive even if email delivery fails.
+  {
+    echo "===== $(date '+%Y-%m-%d %H:%M:%S') autosymlink orphan-report run (report_rc=${_rcReport}) subject=${_subject} ====="
+    cat ${_actionTemporaryLog}
+    echo
+  } >> ${_actionVerboseArchiveLog}
+
+  if [ "${_actionReport}" = "TRUE" ] && [ -n "${_subject}" ]; then
+    _action_email_report "${_subject}"
+    echo >> ${_actionPermanentLog}
+  fi
+
+  return 0
+}
+
+case "${_subMode}" in
+  orphan-report)
+    # Daily ~06:00 ghost/orphan report, opt-in.
+    if [ "${_ORPHAN_FILES_REPORT}" != "YES" ]; then
+      exit 0
+    fi
+    _orphan_report_run
+    exit 0
+    ;;
+  auto-fix)
+    # Nightly global symlinks auto-fix, opt-in.
+    if [ "${_AUTOSYMLINK_NIGHTLY}" != "YES" ]; then
+      exit 0
+    fi
+    _is_protected_run
+    if [ "${_protectedRun}" = "TRUE" ]; then
+      exit 0
+    fi
+    _autosymlink_run
+    exit 0
+    ;;
+  *)
+    # Legacy bare invocation: full apply + report for manual use (ungated).
+    _is_protected_run
+    if [ "${_protectedRun}" = "TRUE" ]; then
+      exit 0
+    fi
+    _autosymlink_run
+    exit 0
+    ;;
+esac
