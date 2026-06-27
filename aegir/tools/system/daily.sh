@@ -475,20 +475,6 @@ _sync_user_register_protection_ini_vars() {
   fi
 }
 
-_fix_site_readonlymode() {
-  if [ -e "${_usEr}/log/imported.pid" ] \
-    || [ -e "${_usEr}/log/exported.pid" ]; then
-    if [ -e "${_Dir}/modules/readonlymode_fix.info" ]; then
-      touch ${_usEr}/log/ctrl/site.${_Dom}.rom-fix.info
-      rm -f ${_Dir}/modules/readonlymode_fix.info
-    fi
-    if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.rom-fix.info" ]; then
-      _run_drush8_cmd "${_vSet} site_readonly 0"
-      touch ${_usEr}/log/ctrl/site.${_Dom}.rom-fix.info
-    fi
-  fi
-}
-
 _fix_user_register_protection_with_vSet() {
   _sync_user_register_protection_ini_vars
   if [ "${_IGNORE_USER_REGISTER_PROTECTION}" = "NO" ] \
@@ -512,7 +498,6 @@ _fix_user_register_protection_with_vSet() {
       echo "_Prm user_email_verification for ${_Dom} set to 1"
     fi
   fi
-  _fix_site_readonlymode
 }
 
 _fix_llms_txt() {
