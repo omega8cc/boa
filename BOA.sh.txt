@@ -1210,6 +1210,7 @@ _update_agents() {
     [ -e "/root/.my.batch_innodb.cnf" ] && rm -f /root/.my.batch_innodb.cnf
     [ -e "/root/.batch_innodb.cnf" ] && rm -f /root/.batch_innodb.cnf
     [ -e "/root/.force.drupalgeddon.cnf" ] && rm -f /root/.force.drupalgeddon.cnf
+    rm -f /data/disk/*/static/control/drupalgeddon.info
     [ -e "/root/.skip_cleanup.cnf" ] && rm -f /root/.skip_cleanup.cnf
     [ -e "/root/.giant_traffic.cnf" ] && rm -f /root/.giant_traffic.cnf
     [ -e "/root/.default.cnf" ] && rm -f /root/.default.cnf
