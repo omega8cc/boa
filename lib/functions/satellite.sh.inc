@@ -3038,7 +3038,7 @@ _satellite_run_pre_install() {
     fi
     _provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       echo "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
       chmod 0440 /etc/sudoers.d/${_SCRIPT}
@@ -3048,7 +3048,7 @@ _satellite_run_pre_install() {
     if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then
       echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
-    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _VAR_IF_PRESENT=$(grep "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
       if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then

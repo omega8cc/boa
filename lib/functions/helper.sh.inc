@@ -1197,7 +1197,7 @@ _aegir_bin_extra_check_fix() {
     _msg "PROC: _aegir_bin_extra_check_fix"
   fi
   SDIR="${_bldPth}/aegir/tools/bin"
-  _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+  _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
     || [ ! -e "/var/log/boa/fix-drupal-site-permissions-${_xSrl}-${_X_VERSION}.log" ]; then
     if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then

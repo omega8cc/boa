@@ -1396,7 +1396,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/tools/bin/screenfetch" f99 --guard screenfetch
   _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f99 --guard fixrepo
   _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f98 --guard renameaegirhost
-  _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f92 --guard autosymlink
+  _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f91 --guard autosymlink
   _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f97 --guard updatesymlinks
   _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup
   _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/tools/bin/loadguard" f98 --guard xloadguard
@@ -3546,23 +3546,26 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx30.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx31.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fxPp="fix-drupal-platform-permissions.sh"
     _fxSp="fix-drupal-site-permissions.sh"
     _fxPo="fix-drupal-platform-ownership.sh"
     _fxSo="fix-drupal-site-ownership.sh"
     _fxLo="lock-local-drush-permissions.sh"
+    _fxSl="fix-drupal-site-symlinks.sh"
     curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxPp}" -o ${_usrBin}/${_fxPp}
     curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxSp}" -o ${_usrBin}/${_fxSp}
     curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxPo}" -o ${_usrBin}/${_fxPo}
     curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxSo}" -o ${_usrBin}/${_fxSo}
     curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxLo}" -o ${_usrBin}/${_fxLo}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxSl}" -o ${_usrBin}/${_fxSl}
     chmod 700 ${_usrBin}/${_fxPp}
     chmod 700 ${_usrBin}/${_fxSp}
     chmod 700 ${_usrBin}/${_fxPo}
     chmod 700 ${_usrBin}/${_fxSo}
     chmod 700 ${_usrBin}/${_fxLo}
-    touch ${_pthLog}/updateFx30.ctrl.${_tRee}.${_xSrl}.pid
+    chmod 700 ${_usrBin}/${_fxSl}
+    touch ${_pthLog}/updateFx31.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
   _boaBins="aptcleanup \

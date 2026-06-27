@@ -144,6 +144,7 @@
   /usr/local/bin/fix-drupal-platform-permissions.sh mrix,
   /usr/local/bin/fix-drupal-site-ownership.sh mrix,
   /usr/local/bin/fix-drupal-site-permissions.sh mrix,
+  /usr/local/bin/fix-drupal-site-symlinks.sh mrix,
   /usr/local/bin/git mrix,
   /usr/local/bin/lock-local-drush-permissions.sh mrix,
   /usr/local/bin/mydumper mrix,

@@ -1051,7 +1051,29 @@ _run_one_site() {
   _log "=================================================================="
   _log "[INFO] Narrow single-site run: site=${_SITE} account=${_ACCOUNT_NAME} apply=${_APPLY_FLAG}"
 
-  _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+  if [ "${_APPLY_FLAG}" = "YES" ]; then
+    # Mirror the global "clean dry-run before any live change" rule, scoped to
+    # this one site and WITHOUT touching the shared CLEAN-DRY state file: run a
+    # per-site DRY pass first and apply only if that single-site dry-run is clean.
+    _MODE="DRY"
+    _DRY_HAS_ERRORS="NO"
+    _DRY_HAS_EDGE_CASES="NO"
+    _APPLY_COUNT=0
+    _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+    if [ "${_DRY_HAS_ERRORS}" != "NO" ] || [ "${_DRY_HAS_EDGE_CASES}" != "NO" ]; then
+      _log "[WARN] Narrow dry-run for ${_SITE} is NOT CLEAN; skipping apply (manual review needed)."
+      return 0
+    fi
+    _log "[INFO] Narrow dry-run for ${_SITE} is CLEAN; applying."
+    _MODE="BATCH"
+    _APPLY_COUNT=0
+    _FS_PAIR_STATUS=()
+    _FS_RESERVED_KB=()
+    _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+  else
+    _MODE="DRY"
+    _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+  fi
 
   return 0
 }

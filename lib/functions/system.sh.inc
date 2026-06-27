@@ -7844,7 +7844,7 @@ _if_major_os_upgrade() {
     fi
     ###
     ### Make sure that Ægir special system-wide scripts are added to sudo.
-    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
       if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
@@ -7864,7 +7864,7 @@ _if_major_os_upgrade() {
           if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
             echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
           fi
-          _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+          _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
           for _SCRIPT in ${_SCRIPTS[@]}; do
             _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
             if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
