@@ -190,3 +190,41 @@ _run_drush8_nosilent_cmd() {
   fi
   wait
 }
+
+### Shared helpers promoted from daily.sh / 20-sites.sh (used by both
+### the orchestrator and the per-account / per-site workers).
+
+_apt_clean_update() {
+  ${_APT_UPDATE} -qq 2>/dev/null
+  _CALLER_SCRIPT="$(basename "${BASH_SOURCE[-1]}")"
+  _CALLER_SCRIPT="${_CALLER_SCRIPT//[^a-zA-Z0-9._-]/_}"
+  date +%s > "/run/_latest_apt_clean_update.${_CALLER_SCRIPT}.pid"
+}
+
+_if_gen_goaccess() {
+  _PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  _PrTestPhantom=$(grep "PHANTOM" /root/.${_HM_U}.octopus.cnf 2>&1)
+  _PrTestUltra=$(grep "ULTRA" /root/.${_HM_U}.octopus.cnf 2>&1)
+  _PrTestMonster=$(grep "MONSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  _PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  if [[ "${_PrTestPower}" =~ "POWER" ]] \
+    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+    || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
+    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
+    _isWblgx="$(which weblogx)"
+    if [ -x "${_isWblgx}" ]; then
+      ${_isWblgx} --site="${1}" --env="${_HM_U}"
+      wait
+      if [ ! -e "/data/disk/${_HM_U}/static/goaccess" ]; then
+        mkdir -p /data/disk/${_HM_U}/static/goaccess
+      fi
+      if [ -e "/var/www/adminer/access/${_HM_U}/${1}/index.html" ]; then
+        cp -af /var/www/adminer/access/${_HM_U}/${1} /data/disk/${_HM_U}/static/goaccess/
+      else
+        rm -rf /var/www/adminer/access/${_HM_U}/${1}
+        rm -rf /data/disk/${_HM_U}/static/goaccess/${1}
+      fi
+    fi
+  fi
+}
