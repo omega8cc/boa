@@ -5260,6 +5260,7 @@ _satellite_batch_cleanup() {
       _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}"
       _mrun "chown -R root:root ${_D}"
       _mrun "chown -R root:users ${_D}/*/*/sites"
+      _mrun "chown -R root:users ${_D}/*/*/{web,docroot,html}/sites"
       echo fixed > ${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root ${_D} &> /dev/null
@@ -5283,6 +5284,7 @@ _satellite_batch_cleanup() {
       _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}"
       _mrun "chown -R root:root /data/disk/all"
       _mrun "chown -R root:users /data/disk/all/*/*/sites"
+      _mrun "chown -R root:users /data/disk/all/*/*/{web,docroot,html}/sites"
       echo fixed > /data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root /data/disk/all &> /dev/null
