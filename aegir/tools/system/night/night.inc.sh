@@ -90,6 +90,22 @@ _detect_real_docroot() {
   return 1
 }
 
+# Return 0 only when control flag <name> is set to YES (case-insensitive) in the
+# control file <file>, else 1. Greps rather than sources, so it is independent
+# of load order and never clobbers caller scope; a missing file or unset/non-YES
+# value reads as disabled. Gates the ghost/empty cleanup moves so they stay OFF
+# until opted in per-system (/root/.barracuda.cnf) or per-account
+# (/root/.<user>.octopus.cnf).
+_cnf_flag_yes() {
+  local _file="$1"
+  local _name="$2"
+  local _val
+  [ -r "${_file}" ] || return 1
+  _val=$(grep -E "^[[:space:]]*${_name}=" "${_file}" 2>/dev/null \
+    | tail -n1 | cut -d= -f2- | tr -d "\"' " | tr '[:lower:]' '[:upper:]')
+  [ "${_val}" = "YES" ]
+}
+
 ###-------------LOAD-----------------###
 
 _count_cpu() {

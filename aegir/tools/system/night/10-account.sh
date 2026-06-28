@@ -358,9 +358,14 @@ _check_old_empty_platforms() {
           # corrected) alias root nor under web/docroot/html. Do NOT key on
           # sites/all (D8+ dropped it); the old ${_T_PFM_ROOT}/vendor guard was
           # dead for D8+ since the corrected root is already the web/ docroot.
-          mkdir -p ${_usEr}/undo
-          ### mv -f ${_usEr}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-          echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_usEr}/undo/"
+          if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
+            || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
+            mkdir -p ${_usEr}/undo
+            mv -f ${_usEr}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
+            echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_usEr}/undo/"
+          else
+            echo "GHOST platform ${_T_PFM_ROOT} detected (dry-run; set _GHOST_PLATFORMS_CLEANUP=YES in /root/.${_HM_U}.octopus.cnf or /root/.barracuda.cnf to move)"
+          fi
         fi
         if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
           echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"

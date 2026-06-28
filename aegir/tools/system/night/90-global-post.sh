@@ -54,9 +54,13 @@ _check_old_empty_hostmaster_platforms() {
           # Version-agnostic emptiness: no index.php at the (already docroot-
           # corrected) alias root nor under web/docroot/html. Do NOT key on
           # sites/all, which D8+ dropped.
-          mkdir -p /var/aegir/undo
-          ### mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php /var/aegir/undo/ &> /dev/null
-          echo "GHOST platform ${_T_PFM_ROOT} detected and moved to /var/aegir/undo/"
+          if _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
+            mkdir -p /var/aegir/undo
+            mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php /var/aegir/undo/ &> /dev/null
+            echo "GHOST platform ${_T_PFM_ROOT} detected and moved to /var/aegir/undo/"
+          else
+            echo "GHOST platform ${_T_PFM_ROOT} detected (dry-run; set _GHOST_PLATFORMS_CLEANUP=YES in /root/.barracuda.cnf to move)"
+          fi
         fi
         if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
           echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
@@ -92,9 +96,13 @@ _shared_codebases_cleanup() {
           -type l -lname ${_Codebase} | sort 2>&1)
         if [[ "${_CodebaseTest}" =~ "No such file or directory" ]] \
           || [ -z "${_CodebaseTest}" ]; then
-          mkdir -p ${_CLD}${i}
-          echo "Moving no longer used ${_CodebaseDir} to ${_CLD}${i}"
-          ### mv -f ${_CodebaseDir} ${_CLD}${i}
+          if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
+            mkdir -p ${_CLD}${i}
+            echo "Moving no longer used ${_CodebaseDir} to ${_CLD}${i}"
+            mv -f ${_CodebaseDir} ${_CLD}${i}
+          else
+            echo "Unused ${_CodebaseDir} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
+          fi
         fi
       done
     fi
@@ -116,9 +124,13 @@ _ghost_codebases_cleanup() {
       else
         _CLEAN_THIS="${_ParentDir}"
         _TSTAMP=$(date +%y%m%d-%H%M%S)
-        mkdir -p ${_CLD}${i}${_TSTAMP}
-        echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
-        ### mv -f ${_CLEAN_THIS} ${_CLD}${i}${_TSTAMP}/
+        if _cnf_flag_yes /root/.barracuda.cnf _GHOST_CODEBASES_CLEANUP; then
+          mkdir -p ${_CLD}${i}${_TSTAMP}
+          echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
+          mv -f ${_CLEAN_THIS} ${_CLD}${i}${_TSTAMP}/
+        else
+          echo "Ghost ${_CLEAN_THIS} detected (dry-run; set _GHOST_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
+        fi
       fi
     done
   done
