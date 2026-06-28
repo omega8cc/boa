@@ -624,7 +624,20 @@ _check_symlink_sharing() {
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
+  _match_symlink_owner "${_PATH}" "${_NEW_TARGET}"
   _SITE_SHARED_SYMLINK_FIX_APPLIED="YES"
+}
+
+_match_symlink_owner() {
+  # Set an in-site files/private symlink's OWN owner:group to match its store
+  # target, so the link does not linger root-owned when no later perms-fix
+  # re-chowns it. On install a subsequent fix-drupal-site-ownership run fixes it;
+  # on clone the unshare's rm+ln -s is the LAST step, so without this the clone's
+  # link stays root:root until the next verify. Best-effort (chown -h
+  # --reference is GNU coreutils; a failure is harmless).
+  # Args: 1 in-site symlink path, 2 store target dir (reference for owner:group).
+  [ -L "$1" ] && chown -h --reference="$2" "$1" 2>/dev/null
+  return 0
 }
 
 _self_heal_symlink() {
@@ -645,6 +658,7 @@ _self_heal_symlink() {
   if [ -d "${_STORE_DIR}" ] && [ -n "$(ls -A "${_STORE_DIR}" 2>/dev/null)" ]; then
     _log "[APPLY] Self-heal: in-site path missing, recreating symlink ${_SITE_LINK} -> ${_STORE_DIR}"
     ln -s "${_STORE_DIR}" "${_SITE_LINK}"
+    _match_symlink_owner "${_SITE_LINK}" "${_STORE_DIR}"
   fi
 }
 
@@ -687,6 +701,7 @@ _convert_dir_to_symlink() {
     _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; data is safe in ${_DST}, self-heal will retry the link"
     return 1
   fi
+  _match_symlink_owner "${_SRC}" "${_DST}"
   return 0
 }
 
