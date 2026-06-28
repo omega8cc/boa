@@ -536,16 +536,15 @@ _purge_cruft_machine() {
         [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
-      for _Codebase in `find ${i}/* \
-        -maxdepth 1 \
-        -mindepth 1 \
-        -type d \
-        | grep "/sites$" 2>&1`; do
-        _CodebaseName=$(echo ${_Codebase} \
-          | cut -d'/' -f7 \
-          | awk '{ print $1}' 2> /dev/null)
-        ln -sfn ${_Codebase} /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
-        echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase} for ${_HM_U}.ftp"
+      for _PlatformDir in `find ${i}/* \
+        -maxdepth 0 \
+        -type d 2>/dev/null`; do
+        _CodebaseName=$(basename "${_PlatformDir}" 2>/dev/null)
+        [ "${_CodebaseName}" = "keys" ] && continue
+        _Codebase=$(_detect_real_docroot "${_PlatformDir}")
+        [ -n "${_Codebase}" ] && [ -d "${_Codebase}/sites" ] || continue
+        ln -sfn ${_Codebase}/sites /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
+        echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase}/sites for ${_HM_U}.ftp"
       done
     fi
   done

@@ -64,6 +64,32 @@ _check_file_with_wildcard_path() {
   fi
 }
 
+# Echo a platform's real Drupal docroot on stdout, or nothing if none found.
+# The docroot is the platform root for Drupal 7-era codebases, but a subdir for
+# Composer D8+ codebases whose web root differs from the app root: docroot/,
+# html/, web/, in that order. Keyed on index.php, the front controller present
+# in every Drupal docroot (D6..D11) regardless of build recipe. -f follows the
+# symlink and is false for a dangling link, so a decoy like web -> /etc cannot
+# register as a docroot. Returns 0 with the path, 1 if no docroot is found.
+# Embedded here (not sourced from the install-time helper.sh.inc) so the
+# deployed owl/night family carries its own structure-detection logic.
+_detect_real_docroot() {
+  local _plat="${1%/}"
+  local _sub
+  [ -n "${_plat}" ] && [ -d "${_plat}" ] || return 1
+  if [ -f "${_plat}/index.php" ]; then
+    printf '%s\n' "${_plat}"
+    return 0
+  fi
+  for _sub in docroot html web; do
+    if [ -f "${_plat}/${_sub}/index.php" ]; then
+      printf '%s\n' "${_plat}/${_sub}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 ###-------------LOAD-----------------###
 
 _count_cpu() {
