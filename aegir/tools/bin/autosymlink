@@ -1070,6 +1070,20 @@ _run_one_site() {
   _log "[INFO] Narrow single-site run: site=${_SITE} account=${_ACCOUNT_NAME} apply=${_APPLY_FLAG}"
 
   if [ "${_APPLY_FLAG}" = "YES" ]; then
+    # Defer if a maintenance pause (e.g. the nightly batch via updatesymlinks)
+    # is in progress, so a clone-time conversion never interleaves with the
+    # global sweep on the same store (break-sharing rsync is not concurrency
+    # safe). The nightly batch in turn bails while a provision/clone process is
+    # running, so the two do not overlap.
+    if [ -e "/etc/boa/.pause_tasks_maint.cnf" ]; then
+      _log "[WARN] Narrow apply for ${_SITE} deferred: maintenance pause in progress"
+      if [ "${_FORCE_UNSHARE}" = "YES" ]; then
+        _log "[ALERT] Clone unshare for ${_SITE} not completed (deferred); files may still be shared with the source - manual review required"
+        return 3
+      fi
+      return 0
+    fi
+
     # Mirror the global "clean dry-run before any live change" rule, scoped to
     # this one site and WITHOUT touching the shared CLEAN-DRY state file: run a
     # per-site DRY pass first and apply only if that single-site dry-run is clean.
@@ -1080,6 +1094,10 @@ _run_one_site() {
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
     if [ "${_DRY_HAS_ERRORS}" != "NO" ] || [ "${_DRY_HAS_EDGE_CASES}" != "NO" ]; then
       _log "[WARN] Narrow dry-run for ${_SITE} is NOT CLEAN; skipping apply (manual review needed)."
+      if [ "${_FORCE_UNSHARE}" = "YES" ]; then
+        _log "[ALERT] Clone unshare for ${_SITE} not completed (dry-run not clean); files may still be shared with the source - manual review required"
+        return 3
+      fi
       return 0
     fi
     _log "[INFO] Narrow dry-run for ${_SITE} is CLEAN; applying."
@@ -1088,6 +1106,17 @@ _run_one_site() {
     _FS_PAIR_STATUS=()
     _FS_RESERVED_KB=()
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+
+    # A clone explicitly requested --force-unshare but the inherited share could
+    # not be broken (missing source / no space / rsync fail): the in-site link
+    # may still point at another site's store. Surface it loudly and signal the
+    # caller (non-zero, still non-fatal to the clone).
+    if [ "${_FORCE_UNSHARE}" = "YES" ] \
+      && [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ] \
+      && [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" != "YES" ]; then
+      _log "[ALERT] Clone unshare for ${_SITE} not completed; files may still be shared with the source - manual review required"
+      return 3
+    fi
   else
     _MODE="DRY"
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
@@ -1105,8 +1134,9 @@ _main() {
     _log "=================================================================="
     _log "[START] autosymlink narrow single-site mode (site=${_ONE_SITE}, apply=${_APPLY_FLAG})"
     _run_one_site
+    _NARROW_RC=$?
     _log "[DONE] autosymlink finished (narrow mode)"
-    return 0
+    return ${_NARROW_RC}
   fi
 
   _log "=================================================================="
@@ -1182,6 +1212,8 @@ _main() {
   _log "[DONE] autosymlink finished"
 }
 
+# Propagate the exit code. Non-narrow modes return 0 here (BATCH_IF_CLEAN exits
+# internally); narrow apply returns 3 only as a non-fatal advisory when a clone
+# --force-unshare could not break an inherited cross-account share.
 _main "$@"
-
-exit 0
+exit $?
