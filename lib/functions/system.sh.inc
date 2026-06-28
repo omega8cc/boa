@@ -2385,6 +2385,11 @@ _barracuda_cnf() {
     echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
+    echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_barCnf}
+
+    echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
 
@@ -2788,6 +2793,21 @@ _barracuda_cnf() {
         echo "_DL_MODE=BATCH" >> ${_barCnf}
         export _DL_MODE=BATCH
       fi
+    fi
+
+    _SHARED_CODEBASES_CLEANUP_TEST=$(grep _SHARED_CODEBASES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_SHARED_CODEBASES_CLEANUP_TEST}" =~ "_SHARED_CODEBASES_CLEANUP" ]]; then
+      echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_CODEBASES_CLEANUP_TEST=$(grep _GHOST_CODEBASES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_CODEBASES_CLEANUP_TEST}" =~ "_GHOST_CODEBASES_CLEANUP" ]]; then
+      echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_PLATFORMS_CLEANUP_TEST=$(grep _GHOST_PLATFORMS_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_PLATFORMS_CLEANUP_TEST}" =~ "_GHOST_PLATFORMS_CLEANUP" ]]; then
+      echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_barCnf}
     fi
 
     sleep 1

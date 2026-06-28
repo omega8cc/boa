@@ -1038,6 +1038,31 @@ _AUTOSYMLINK_NIGHTLY=NO
 _ORPHAN_FILES_REPORT=NO
 
 ###
+### Nightly cleanup of unused SHARED codebases (legacy D6/D7 core/contrib under
+### /data/all). The default NO only detects and logs them (dry-run). Set to YES
+### to move a shared codebase no longer referenced by any platform aside into a
+### codebases-cleanup backup dir during nightly maintenance.
+###
+_SHARED_CODEBASES_CLEANUP=NO
+
+###
+### Nightly cleanup of GHOST codebases (orphaned trees under distro/ with no
+### detectable Drupal docroot at root or web/docroot/html). The default NO only
+### detects and logs them (dry-run). Set to YES to move a ghost codebase aside
+### into a ghost-codebases-cleanup backup dir during nightly maintenance.
+###
+_GHOST_CODEBASES_CLEANUP=NO
+
+###
+### Nightly cleanup of GHOST/empty platform registrations (Drush alias files
+### whose platform root has no detectable Drupal docroot). The default NO only
+### detects and logs them (dry-run). Set to YES to move the stale alias aside
+### into the undo/ dir during nightly maintenance. Can also be enabled per
+### Octopus account in /root/.<user>.octopus.cnf.
+###
+_GHOST_PLATFORMS_CLEANUP=NO
+
+###
 ### Default number of access.log lines to check.
 ###
 _NGINX_DOS_LINES=1999

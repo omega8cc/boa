@@ -480,6 +480,22 @@ _DEL_OLD_EMPTY_PLATFORMS="0"
 
 
 ###----------------------------------------###
+### GHOST PLATFORMS CLEANUP                ###
+###----------------------------------------###
+###
+### Nightly cleanup of ghost/empty platform
+### registrations (Drush alias files whose
+### platform root has no detectable Drupal
+### docroot). The default NO only detects and
+### logs them (dry-run). Change to YES to move
+### the stale alias aside into the undo/ dir
+### during nightly maintenance. A system-wide
+### default may also be set in barracuda.cnf.
+###
+_GHOST_PLATFORMS_CLEANUP=NO
+
+
+###----------------------------------------###
 ### DELETE OLD BACKUPS                     ###
 ###----------------------------------------###
 ###

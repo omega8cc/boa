@@ -746,6 +746,7 @@ _satellite_cnf() {
     echo "_HOT_SAUCE=${_HOT_SAUCE}"                             >> ${_octCnf}
     echo "_USE_CURRENT=${_USE_CURRENT}"                         >> ${_octCnf}
     echo "_DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS}" >> ${_octCnf}
+    echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_octCnf}
     echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}"                 >> ${_octCnf}
     echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}"                         >> ${_octCnf}
     echo "_LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP}"               >> ${_octCnf}
@@ -1099,6 +1100,13 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS}" >> ${_octCnf}
+    fi
+
+    _GHOST_PLATFORMS_CLEANUP_TEST=$(grep _GHOST_PLATFORMS_CLEANUP ${_octCnf} 2>&1)
+    if [[ "${_GHOST_PLATFORMS_CLEANUP_TEST}" =~ "_GHOST_PLATFORMS_CLEANUP" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_octCnf}
     fi
 
     _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${_octCnf} 2>&1)
