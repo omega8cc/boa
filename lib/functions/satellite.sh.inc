@@ -2337,7 +2337,7 @@ _satellite_check_fix_o_contrib() {
     _debug_proc
   fi
   if [ -e "${_CORE}/o_contrib_eleven" ]; then
-    if [ ! -d "${_CORE}/o_contrib_eleven/redis_ten_eleven" ] \
+    if [ ! -e "${_CORE}/o_contrib_eleven/redis_ten_eleven" ] \
       || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eleven forced upgrade..."
@@ -2348,7 +2348,7 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_ten" ]; then
-    if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
+    if [ ! -e "${_CORE}/o_contrib_ten/redis_ten_eleven" ] \
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_ten forced upgrade..."
@@ -2359,7 +2359,8 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_nine" ]; then
-    if [ ! -d "${_CORE}/o_contrib_nine/redis_nine_ten" ] \
+    if [ ! -e "${_CORE}/o_contrib_nine/redis_nine_ten" ] \
+      || [ ! -e "${_CORE}/o_contrib_nine/redis_compr" ] \
       || [ -e "${_CORE}/o_contrib_nine/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_nine forced upgrade..."
@@ -2370,7 +2371,8 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_eight" ]; then
-    if [ ! -d "${_CORE}/o_contrib_eight/redis_compr" ] \
+    if [ ! -e "${_CORE}/o_contrib_eight/redis_compr" ] \
+      || [ ! -e "${_CORE}/o_contrib_eight/redis_eight" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eight forced upgrade..."
       cd ${_CORE}/o_contrib_eight
@@ -2381,6 +2383,7 @@ _satellite_check_fix_o_contrib() {
   fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
     if [ ! -d "${_CORE}/o_contrib_seven/tag1_d7es" ] \
+      || [ ! -e "${_CORE}/o_contrib_seven/redis_edge" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
       cd ${_CORE}/o_contrib_seven
@@ -2391,6 +2394,7 @@ _satellite_check_fix_o_contrib() {
   fi
   if [ -e "${_CORE}/o_contrib" ]; then
     if [ ! -d "${_CORE}/o_contrib/robotstxt" ] \
+      || [ ! -e "${_CORE}/o_contrib/redis_edge" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib forced upgrade..."
       cd ${_CORE}/o_contrib
