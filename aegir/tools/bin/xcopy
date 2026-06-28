@@ -306,15 +306,6 @@ EOFMYSQL
   done
 }
 
-_delete_this_platform() {
-  _run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
-  echo "Old empty platform_${_T_PFM_NAME} will be deleted"
-  _run_drush8_hmr_cmd "hosting-dispatch"
-  sleep 5
-  _run_drush8_hmr_cmd "hosting-tasks --force"
-  sleep 1
-}
-
 _migrate_prepare() {
   _THIS_HM_USER=${_oct}
   _USR=/data/disk/${_oct}
@@ -501,41 +492,6 @@ _migrate_prepare() {
     if [ "${_fix}" = "fix" ]; then
       _DOMAIN=`cat ${_USR}/log/domain.txt`
       _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
-
-      ### Ghost/empty platform cleanup for migrated/merged instances
-      if [ -e "${_USR}/log/imported.pid" ] || [ -e "${_USR}/log/exported.pid" ]; then
-        if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ]; then
-          for _Platform in `find ${_USR}/.drush/platform_* -maxdepth 1 -type f | sort`; do
-            _T_PFM_NAME=$(echo "${_Platform}" \
-              | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
-              | awk '{ print $1}' 2>&1)
-            _T_PFM_ROOT=$(cat ${_Platform} \
-              | grep "root'" \
-              | cut -d: -f2 \
-              | awk '{ print $3}' \
-              | sed "s/[\,']//g" 2>&1)
-            _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
-              ${_USR}/.drush/*.drushrc.php \
-              | grep site_path 2>&1)
-            if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
-              && [ "${_T_PFM_NAME}" != "hostmaster" ]; then
-              _delete_this_platform
-              mkdir -p ${_USR}/undo
-              mv -f ${_USR}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
-                ${_USR}/undo/ &> /dev/null
-              echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_USR}/undo/"
-            fi
-            if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
-              echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
-            fi
-            if [ -z "${_T_PFM_SITE}" ] \
-              && [ "${_T_PFM_NAME}" != "hostmaster" ] \
-              && [ -e "${_T_PFM_ROOT}/sites/all" ]; then
-              _delete_this_platform
-            fi
-          done
-        fi
-      fi
 
       _vSet="variable-set --always-set"
       _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0" &> /dev/null
