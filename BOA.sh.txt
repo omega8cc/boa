@@ -3571,11 +3571,15 @@ _update_boa_tools() {
   # explicit chmod groups below; _fetch_versioned's transient mode is overridden
   # there, exactly as the old loop's chmod 755 was.
   #
-  # The first group is ALSO fetched by _update_agents (the full-upgrade path);
-  # _update_boa_tools is the cron "key tools" path. They SHARE one
-  # <name>.ctrl.<serial> stamp, so each serial here MUST stay in sync with the same
-  # tool in _update_agents -- otherwise each run wipes the other stamp and the tool
-  # re-fetches every cycle. Bump both together.
+  # The first group is ALSO fetched by _update_agents. That duplication is
+  # INTENTIONAL and must stay: _update_boa_tools runs ALWAYS -- including before
+  # BOA is installed, and when _SKYNET_MODE=OFF makes the run update key tools and
+  # exit 0 BEFORE _update_agents is ever reached -- so it must independently fetch
+  # the core tools; _update_agents runs only when Skynet is active. The two share
+  # one <name>.ctrl.<serial> stamp, so each serial here MUST stay in sync with the
+  # same tool in _update_agents -- a divergent serial makes each run wipe the
+  # other's stamp and refetch every cycle. Bump both together; do NOT try to merge
+  # the two functions.
   if [ -e "${_pthLog}" ]; then
     # --- shared with _update_agents (serials MUST match that function) ---
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
