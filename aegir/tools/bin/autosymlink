@@ -29,6 +29,7 @@ _NARROW="NO"
 _ONE_SITE=""
 _ONE_ACCOUNT=""
 _APPLY_FLAG="NO"
+_FORCE_UNSHARE="NO"
 
 # Back-compat positional modes (DRY default / live / batch / batch-if-clean /
 # report) plus flags for the narrow single-site mode used by the Provision clone
@@ -62,6 +63,11 @@ while [ "$#" -gt 0 ]; do
       ;;
     --apply)
       _APPLY_FLAG="YES"
+      ;;
+    --force-unshare)
+      # Clone path: break an inherited cross-account share even if a share
+      # control file exists (the clone never opted into sharing).
+      _FORCE_UNSHARE="YES"
       ;;
     *)
       : # ignore unknown args
@@ -527,7 +533,14 @@ _check_symlink_sharing() {
   _SHARE_THIS="${_CONTROL_DIR}/share.files.${_SITE_NAME}.info"
   _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
 
-  if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+  if [ "${_FORCE_UNSHARE}" = "YES" ]; then
+    # Clone path: a freshly cloned site never opted into sharing, so break an
+    # inherited cross-account symlink even when a share control file exists for
+    # the source/target site (it belongs to the source, not this new clone).
+    if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+      _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} points to ${_TARGET_SITE_NAME} with a share control file present, but --force-unshare is set – breaking sharing for this site"
+    fi
+  elif [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
     _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
     _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with ${_TARGET_SITE_NAME} (control file present) – leaving as is"
     return
@@ -536,7 +549,12 @@ _check_symlink_sharing() {
   _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
 
   _NEW_TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
-  _ORIGINAL_TOP="${_ACCOUNT_DIR}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
+  # Derive the copy source from the link's OWN /static/files prefix, not the
+  # current account, so an inherited cross-account symlink (e.g. a clone of a
+  # shared site into a different account) copies from the real source store.
+  # Same-account shares are unaffected (the prefix equals ${_ACCOUNT_DIR}).
+  _LINK_PREFIX="${_LINK_TARGET%%/static/files/*}"
+  _ORIGINAL_TOP="${_LINK_PREFIX}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
   _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
 
   _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to ${_LINK_TARGET} (owned by ${_TARGET_SITE_NAME})"

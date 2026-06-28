@@ -13,8 +13,11 @@ global batch/live modes (which operate on every account on the box).
   --site:    Site URL (e.g. example.com). Required.
   --account: Owning Octopus account dir name (e.g. o1). Optional; autosymlink
              resolves it from the vhost+alias pair when omitted.
+  --force-unshare: Break an inherited cross-account files symlink even if a
+             share control file exists. Used by the clone task so a freshly
+             cloned site gets its own separate copy (it never opted into sharing).
 
-Usage: (sudo) ${0##*/} --site=URL [--account=oNNN]
+Usage: (sudo) ${0##*/} --site=URL [--account=oNNN] [--force-unshare]
 HELP
 exit 0
 }
@@ -31,12 +34,14 @@ _AUTOSYMLINK="/opt/local/bin/autosymlink"
 
 _site=""
 _account=""
+_force_unshare="NO"
 
 # Parse named arguments only; reject anything else fail-closed.
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --site=*)    _site="${1#*=}" ;;
     --account=*) _account="${1#*=}" ;;
+    --force-unshare) _force_unshare="YES" ;;
     --help)      print_help ;;
     *)
       printf "Error: Invalid argument, run --help for valid arguments.\n"
@@ -81,8 +86,14 @@ fi
 # Narrow single-site apply only. autosymlink itself re-validates the tokens,
 # resolves/verifies the owning account by the vhost+alias pair, runs a per-site
 # clean dry-run before any change, and never touches the global state file.
+# Build the fixed argument list (the parser already consumed our own args).
+set -- --site "${_site}"
 if [ -n "${_account}" ]; then
-  exec "${_AUTOSYMLINK}" --site "${_site}" --account "${_account}" --apply
-else
-  exec "${_AUTOSYMLINK}" --site "${_site}" --apply
+  set -- "$@" --account "${_account}"
 fi
+if [ "${_force_unshare}" = "YES" ]; then
+  set -- "$@" --force-unshare
+fi
+set -- "$@" --apply
+
+exec "${_AUTOSYMLINK}" "$@"
