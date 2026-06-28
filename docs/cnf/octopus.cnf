@@ -21,6 +21,7 @@ _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _HOT_SAUCE=NO #----------------- Forces new platforms tree on install when YES
 _USE_CURRENT=YES #-------------- Forces new platforms tree on upgrade when NO
 _DEL_OLD_EMPTY_PLATFORMS="0" #-- Delete empty platforms if verified > X-days-ago
+_GHOST_PLATFORMS_CLEANUP=NO #--- Move ghost/empty platform aliases aside when YES
 _DEL_OLD_BACKUPS=0 #------------ Delete Ægir/b-migrate backups if > X-days-ago
 _DEL_OLD_TMP=0 #---------------- Delete sites temp files if > X-days-ago
 _LOCAL_NETWORK_IP= #------------ Web server IP if in localhost mode - auto-conf
