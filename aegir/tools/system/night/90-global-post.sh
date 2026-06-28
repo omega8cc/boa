@@ -50,8 +50,10 @@ _check_old_empty_hostmaster_platforms() {
         _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
           /var/aegir/.drush/*.drushrc.php \
           | grep site_path 2>&1)
-        if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
-          || [ ! -e "${_T_PFM_ROOT}/index.php" ]; then
+        if [ -z "$(_detect_real_docroot "${_T_PFM_ROOT}")" ]; then
+          # Version-agnostic emptiness: no index.php at the (already docroot-
+          # corrected) alias root nor under web/docroot/html. Do NOT key on
+          # sites/all, which D8+ dropped.
           mkdir -p /var/aegir/undo
           ### mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php /var/aegir/undo/ &> /dev/null
           echo "GHOST platform ${_T_PFM_ROOT} detected and moved to /var/aegir/undo/"
@@ -81,6 +83,11 @@ _shared_codebases_cleanup() {
         _CodebaseDir=$(echo ${_Codebase} \
           | sed 's/\/profiles//g' \
           | awk '{print $1}' 2> /dev/null)
+        # Defensive: a tree with a detectable docroot is a real codebase of any
+        # version -- never reap it. This loop targets the legacy D6/D7 shared
+        # /data/all store (anchored on a root-level profiles/); D8+ codebases are
+        # self-contained under distro/ and are not managed here.
+        [ -n "$(_detect_real_docroot "${_CodebaseDir}")" ] && continue
         _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
           -type l -lname ${_Codebase} | sort 2>&1)
         if [[ "${_CodebaseTest}" =~ "No such file or directory" ]] \
@@ -101,9 +108,10 @@ _ghost_codebases_cleanup() {
       -type d -name vendor | sort 2>&1)
     for _vendor in ${_CodebaseTest}; do
       _ParentDir=`echo ${_vendor} | sed "s/\/vendor//g"`
-      if [ -d "${_ParentDir}/docroot/sites/all" ] \
-        || [ -d "${_ParentDir}/html/sites/all" ] \
-        || [ -d "${_ParentDir}/web/sites/all" ]; then
+      if [ -n "$(_detect_real_docroot "${_ParentDir}")" ]; then
+        # A detectable docroot (index.php at root or under web/docroot/html)
+        # means a real codebase of ANY Drupal version -- never a ghost. Do NOT
+        # key on sites/all, which D8+ dropped (web/sites/default, no sites/all).
         _CLEAN_THIS=SKIP
       else
         _CLEAN_THIS="${_ParentDir}"

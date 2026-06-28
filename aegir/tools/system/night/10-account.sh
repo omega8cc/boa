@@ -353,13 +353,14 @@ _check_old_empty_platforms() {
         _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
           ${_usEr}/.drush/*.drushrc.php \
           | grep site_path 2>&1)
-        if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
-          || [ ! -e "${_T_PFM_ROOT}/index.php" ]; then
-          if [ ! -e "${_T_PFM_ROOT}/vendor" ]; then
-            mkdir -p ${_usEr}/undo
-            ### mv -f ${_usEr}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-            echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_usEr}/undo/"
-          fi
+        if [ -z "$(_detect_real_docroot "${_T_PFM_ROOT}")" ]; then
+          # Version-agnostic emptiness: no index.php at the (already docroot-
+          # corrected) alias root nor under web/docroot/html. Do NOT key on
+          # sites/all (D8+ dropped it); the old ${_T_PFM_ROOT}/vendor guard was
+          # dead for D8+ since the corrected root is already the web/ docroot.
+          mkdir -p ${_usEr}/undo
+          ### mv -f ${_usEr}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
+          echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_usEr}/undo/"
         fi
         if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
           echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
