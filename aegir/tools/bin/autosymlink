@@ -1054,8 +1054,17 @@ _run_one_site() {
 
   _ALIAS_FILE="${_ACCOUNT_DIR}/.drush/${_SITE}.alias.drushrc.php"
   _VHOST_FILE="${_ACCOUNT_DIR}/config/server_master/nginx/vhost.d/${_SITE}"
-  if [ ! -f "${_ALIAS_FILE}" ] || [ ! -f "${_VHOST_FILE}" ]; then
-    _log "[INFO] Narrow mode: site ${_SITE} has no valid vhost+alias pair under ${_ACCOUNT_NAME}; nothing to do"
+  # The Drush alias is the authoritative "site exists" marker (written by
+  # provision-save). The nginx vhost is written LATER by provision-verify, so a
+  # caller passing an explicit --account (a Provision install hook running before
+  # the site's first verify) is trusted on the alias alone; the auto-resolve path
+  # below already matched the vhost+alias pair when it picked the account.
+  if [ ! -f "${_ALIAS_FILE}" ]; then
+    _log "[INFO] Narrow mode: site ${_SITE} has no Drush alias under ${_ACCOUNT_NAME}; nothing to do"
+    return 0
+  fi
+  if [ -z "${_ONE_ACCOUNT}" ] && [ ! -f "${_VHOST_FILE}" ]; then
+    _log "[INFO] Narrow mode: site ${_SITE} has no vhost under ${_ACCOUNT_NAME}; nothing to do"
     return 0
   fi
 
