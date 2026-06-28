@@ -3564,105 +3564,94 @@ _update_boa_tools() {
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f99
   fi
   mkdir -p ${_optBin}
-  _boaBins="aptcleanup \
-            aptfast \
-            autobeowulf \
-            autochimaera \
-            autodaedalus \
-            autoexcalibur \
-            autoinit \
-            automini \
-            autosymlink \
-            autoupboa \
-            backboa \
-            backchain \
-            barracuda \
-            boa \
-            codebasecheck \
-            copydbackup \
-            dcysetup \
-            dhcpfix \
-            duobackboa \
-            fancynow \
-            ffdevuan \
-            ffmirror \
-            fixmounts \
-            fixrepo \
-            floodreport \
-            fpmreport \
-            killer \
-            loadguard \
-            loadreport \
-            lock.inc \
-            memorytuner \
-            mergecsf \
-            multiback \
-            mybackup \
-            mycnfup \
-            mysqltuner5 \
-            mysqltuner8 \
-            octopus \
-            perftest \
-            randpass \
-            renameaegirhost \
-            screenfetch \
-            setprio \
-            smtpgapps \
-            sqlclean \
-            sqlmagic \
-            syncpass \
-            synproxy \
-            synproxy_hook_fix \
-            synproxy_monitor \
-            synproxy_reassert \
-            synproxy_rollback \
-            synproxy_snapshot \
-            synproxy_status \
-            thinkdifferent \
-            updatesymlinks \
-            verifyvhostsdns \
-            vhostcheck \
-            vmnetfix \
-            weblogx \
-            webserver \
-            websh \
-            xcopy \
-            xmass \
-            xoct"
-  for _cbn in ${_boaBins}; do
-    if [ -e "${_optBin}/${_cbn}" ]; then
-      _CNT=$(pgrep -fc /local/bin/${_cbn})
-      if (( _CNT > 0 )); then
-        echo "The ${_cbn} is running!"
-      else
-        _CNT=$(pgrep -fc /var/xdrago/owl.sh)
-        if [ "${_cbn}" = "weblogx" ] && (( _CNT > 0 )); then
-          echo "The ${_cbn} and owl.sh is running!"
-        else
-          rm -f ${_optBin}/${_cbn}.new
-          if [ "${_cbn}" = "mysqltuner5" ] || [ "${_cbn}" = "mysqltuner8" ]; then
-            curl ${_crlGet} "${_urlHmr}/helpers/${_cbn}" -o ${_optBin}/${_cbn}.new
-          else
-            curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}.new
-          fi
-          mv -f ${_optBin}/${_cbn} ${_optBin}/${_cbn}.prev
-          mv -f ${_optBin}/${_cbn}.new ${_optBin}/${_cbn}
-          if [ -e "${_optBin}/${_cbn}" ]; then
-            chmod 755 ${_optBin}/${_cbn}
-            rm -f ${_optBin}/${_cbn}.prev
-          else
-            mv -f ${_optBin}/${_cbn}.prev ${_optBin}/${_cbn}
-          fi
-        fi
-      fi
+  # Per-file, serial-gated, retry-on-failure fetch of every /opt/local/bin tool
+  # (same mechanism as _update_agents). Replaces the old bulk curl loop, which used
+  # [ -e ] not [ -s ] (an empty --fail curl could overwrite a good tool AND delete
+  # its .prev backup) and had no retry. Final permissions are still set by the
+  # explicit chmod groups below; _fetch_versioned's transient mode is overridden
+  # there, exactly as the old loop's chmod 755 was.
+  #
+  # The first group is ALSO fetched by _update_agents (the full-upgrade path);
+  # _update_boa_tools is the cron "key tools" path. They SHARE one
+  # <name>.ctrl.<serial> stamp, so each serial here MUST stay in sync with the same
+  # tool in _update_agents -- otherwise each run wipes the other stamp and the tool
+  # re-fetches every cycle. Bump both together.
+  if [ -e "${_pthLog}" ]; then
+    # --- shared with _update_agents (serials MUST match that function) ---
+    _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
+    _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f97 --guard /local/bin/aptfast
+    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f98 --guard /local/bin/autobeowulf
+    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f98 --guard /local/bin/autoexcalibur
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f89 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f99 --guard /local/bin/backboa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f90 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f95 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f99 --guard /local/bin/dcysetup
+    _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f99 --guard /local/bin/duobackboa
+    _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f95 --guard /local/bin/ffdevuan
+    _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f99 --guard /local/bin/ffmirror
+    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f99 --guard /local/bin/fixrepo
+    _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --guard /local/bin/floodreport
+    _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --guard /local/bin/fpmreport
+    _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/${_tBn}/loadguard" f98 --guard /local/bin/loadguard
+    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f98 --guard /local/bin/loadreport
+    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f98 --guard /local/bin/lock.inc
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard /local/bin/multiback
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --guard /local/bin/mybackup
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f98 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f97 --guard /local/bin/perftest
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f98 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
+    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f97 --guard /local/bin/updatesymlinks
+    _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f99 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f97 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f98 --guard /local/bin/xoct
+    # --- unique to _update_boa_tools ---
+    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f99 --guard /local/bin/autochimaera
+    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f99 --guard /local/bin/autodaedalus
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f99 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f99 --guard /local/bin/automini
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f99 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --guard /local/bin/backchain
+    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f99 --guard /local/bin/codebasecheck
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
+    _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f99 --guard /local/bin/fixmounts
+    _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
+    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f99 --guard /local/bin/memorytuner
+    _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
+    _fetch_versioned ${_optBin}/mycnfup "${_urlHmr}/${_tBn}/mycnfup" f99 --guard /local/bin/mycnfup
+    _fetch_versioned ${_optBin}/mysqltuner5 "${_urlHmr}/helpers/mysqltuner5" f99 --guard /local/bin/mysqltuner5
+    _fetch_versioned ${_optBin}/mysqltuner8 "${_urlHmr}/helpers/mysqltuner8" f99 --guard /local/bin/mysqltuner8
+    _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --guard /local/bin/randpass
+    _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f99 --guard /local/bin/setprio
+    _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
+    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f99 --guard /local/bin/sqlclean
+    _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f99 --guard /local/bin/sqlmagic
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f99 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f99 --guard /local/bin/synproxy
+    _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
+    _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f99 --guard /local/bin/synproxy_monitor
+    _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/${_tBn}/synproxy_reassert" f99 --guard /local/bin/synproxy_reassert
+    _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/${_tBn}/synproxy_rollback" f99 --guard /local/bin/synproxy_rollback
+    _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
+    _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
+    _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --guard /local/bin/thinkdifferent
+    _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f99 --guard /local/bin/verifyvhostsdns
+    _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f99 --guard /local/bin/vhostcheck
+    _fetch_versioned ${_optBin}/vmnetfix "${_urlHmr}/${_tBn}/vmnetfix" f99 --guard /local/bin/vmnetfix
+    # weblogx: skip while owl.sh runs (preserves the old loop guard)
+    _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
+    _wlOwlCnt=${_wlOwlCnt:-0}
+    if (( _wlOwlCnt == 0 )); then
+      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f99 --guard /local/bin/weblogx
     else
-      if [ "${_cbn}" = "mysqltuner5" ] || [ "${_cbn}" = "mysqltuner8" ]; then
-        curl ${_crlGet} "${_urlHmr}/helpers/${_cbn}" -o ${_optBin}/${_cbn}
-      else
-        curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}
-      fi
+      echo "The weblogx and owl.sh is running!"
     fi
-  done
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f99 --guard /local/bin/websh
+  fi
 
   if [ -e "${_optBin}/fixmounts" ] && [ ! -e "${_usrBin}/fixmounts" ]; then
     rm -f ${_usrBin}/{aptcleanup*,autoinit*,automini*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*,ffmirror*,fixmounts*}
