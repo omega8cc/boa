@@ -115,6 +115,35 @@ _NGINX_DDOS_UA_REQ_THRESHOLD=1000
 # session while still catching one IP hammering a shared UA.
 _NGINX_DDOS_IP_MIN_REQS=20
 
+# ---- Distributed UA-burst scanner-fleet detection (on by default, opt-out) ----
+# The per-IP scorer and the DDoS-UA scorer above both EXCLUDE 301 redirects and
+# both need a high per-IP / per-UA volume, so a distributed auth-probe flood --
+# dozens of cloud IPs sharing ONE forged UA, a few requests each, ~half of them
+# 301 redirects to non-Drupal CMS paths -- slips through every existing gate.
+# (This is the shape that saturated a small VM on 2026-06-29: ~70 IPs, one UA,
+# median 3-4 reqs/IP, ~94% of them 3xx/4xx, none near the per-IP threshold.)
+#
+# This detector groups by UA, counts ALL statuses INCLUDING 301, and trips only
+# when a UA is shared by many IPs AND its traffic is overwhelmingly 3xx/4xx to
+# nonexistent paths.  That bad-status ratio is the key false-positive guard: a
+# real popular-browser UA shared by many legitimate IPs is ~all 200/304, so it
+# never trips, which is why the IP threshold can sit far below the DDoS-UA one
+# without re-introducing the am095/kwestiasmaku over-ban.  Set DETECT=NO in
+# /root/.barracuda.cnf to disable.  Tune tighter, never looser, on real reports.
+_NGINX_UA_BURST_DETECT="YES"
+# Minimum distinct IPs sharing one exact UA in the scan window.
+_NGINX_UA_BURST_IP_MIN=12
+# Minimum total requests for that UA (across all its IPs) in the window.
+_NGINX_UA_BURST_REQ_MIN=60
+# Minimum percentage of that UA's requests that are "bad" (3xx redirect or 4xx)
+# before the fleet is declared hostile.  A legitimate browser fleet is mostly
+# 200/304 and stays far below this; only a scanner fleet exceeds it.
+_NGINX_UA_BURST_BAD_PCT=80
+# When the fleet trips, block only IPs that themselves sent at least this many
+# bad (3xx/4xx) probes under that UA.  A legitimate visitor sharing the UA sent
+# 200s (zero bad) and is therefore never blocked.
+_NGINX_UA_BURST_IP_MIN_BAD=3
+
 # Minimum raw requests before _handle_blocking can individually block an IP.
 # Scoring multipliers can push a 1-request IP well over DOS_LIMIT; this guard
 # ensures only genuinely high-volume IPs enter web.log individually.
@@ -419,6 +448,14 @@ if (( $? > 1 )); then
   _NGINX_HTTP10_AUTH_PATHS="^/([a-z]{2}/)?user/(register|password)(/|$)"
 fi
 
+# Validate the UA-burst detector numerics; fall back to defaults on any
+# non-positive-integer override so userland config cannot break arithmetic
+# (the bad-ratio division in particular requires REQ_MIN >= 1).
+[[ "${_NGINX_UA_BURST_IP_MIN}" =~ ^[1-9][0-9]*$ ]]      || _NGINX_UA_BURST_IP_MIN=12
+[[ "${_NGINX_UA_BURST_REQ_MIN}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_UA_BURST_REQ_MIN=60
+[[ "${_NGINX_UA_BURST_BAD_PCT}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_UA_BURST_BAD_PCT=80
+[[ "${_NGINX_UA_BURST_IP_MIN_BAD}" =~ ^[1-9][0-9]*$ ]]  || _NGINX_UA_BURST_IP_MIN_BAD=3
+
 echo "CONFIG: _NGINX_DOS_LIMIT is ${_NGINX_DOS_LIMIT}"
 echo "CONFIG: _NGINX_DOS_LINES is ${_NGINX_DOS_LINES}"
 echo "CONFIG: _INC_NR is ${_INC_NR}"
@@ -451,6 +488,15 @@ declare -A _UA_REQ_COUNT
 declare -A _UA_IP_SET
 declare -A _UA_IP_LIST
 declare -A _UA_IP_REQS
+
+# UA-burst scanner-fleet detector (separate from the arrays above so feeding it
+# 301 lines never perturbs the existing 301-excluding DDoS-UA scorer).
+declare -A _UAB_REQ
+declare -A _UAB_BAD
+declare -A _UAB_IP_SET
+declare -A _UAB_IP_COUNT
+declare -A _UAB_IP_LIST
+declare -A _UAB_IP_BAD
 
 # Path-flood / search-amplification detection arrays
 # Tracks 200 and 444 response traffic to expensive path prefixes across all IPs.
@@ -1038,6 +1084,113 @@ _handle_ddos_blocking() {
   done
 }
 
+# _track_ua_burst IP UA STATUS
+# Per-UA tally for the distributed scanner-fleet detector.  Unlike _track_ua_ip
+# this is fed EVERY line including 301 redirects, because a distributed
+# auth-probe fleet's redirect-heavy traffic is exactly what the 301-excluding
+# scorers miss.  Maintains its own arrays so it never perturbs the existing
+# DDoS-UA detector.  All in-memory; no subshells.
+_track_ua_burst() {
+  local _IP="$1"
+  local _UA="$2"
+  local _ST="$3"
+
+  # Skip private/localhost, already-banned and whitelisted IPs (same as
+  # _track_ua_ip -- they cannot or must not be blocked, so do not inflate counts)
+  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    return
+  fi
+  if [[ -n "${_BANNED_IPS["${_IP}"]}" ]]; then
+    return
+  fi
+  if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || _is_whitelisted_ip "${_IP}"; then
+    return
+  fi
+
+  local _K="${_UA}:${_IP}"
+  (( _UAB_REQ["${_UA}"] += 1 ))
+  if [[ -z "${_UAB_IP_SET["${_K}"]}" ]]; then
+    _UAB_IP_SET["${_K}"]=1
+    (( _UAB_IP_COUNT["${_UA}"] += 1 ))
+    _UAB_IP_LIST["${_UA}"]="${_UAB_IP_LIST["${_UA}"]:-}${_UAB_IP_LIST["${_UA}"]:+ }${_IP}"
+  fi
+
+  # "bad" = a response a real browsing session does not accumulate: 3xx
+  # redirects (301/302/307/308) and client-error 4xx (400/403/404/410).
+  # Excluded: 444 (already blocked, would double-count), 401 (auth challenge),
+  # 2xx/3xx-304 (success/cache), 5xx (server fault, not the client's doing).
+  case "${_ST}" in
+    301|302|307|308|400|403|404|410)
+      (( _UAB_BAD["${_UA}"] += 1 ))
+      (( _UAB_IP_BAD["${_K}"] += 1 ))
+      ;;
+  esac
+}
+
+# _handle_ua_burst_blocking
+# Declares a UA a distributed scanner fleet when it is shared by enough distinct
+# IPs, carries enough total volume, AND is overwhelmingly bad-status traffic
+# (the ratio gate that keeps a legitimate shared-UA browser fleet, which is
+# ~all 200/304, from ever tripping).  Then blocks only the IPs that themselves
+# sent enough bad probes under that UA, so a real visitor sharing the UA (0 bad)
+# is never caught.  Mirrors _handle_ddos_blocking's whitelist/logged-in/self
+# guards and IFS handling.
+_handle_ua_burst_blocking() {
+  (( _UAB_ON )) || return 0
+  local _UA _IP _ip_count _req_count _bad_count _pct _K _ip_bad _UA_SAFE _SAVE_IFS
+
+  for _UA in "${!_UAB_REQ[@]}"; do
+    _ip_count="${_UAB_IP_COUNT["${_UA}"]:-0}"
+    _req_count="${_UAB_REQ["${_UA}"]:-0}"
+    _bad_count="${_UAB_BAD["${_UA}"]:-0}"
+
+    # Need a distributed fleet AND enough total volume to call it an attack.
+    (( _ip_count < _NGINX_UA_BURST_IP_MIN )) && continue
+    (( _req_count < _NGINX_UA_BURST_REQ_MIN )) && continue
+    (( _req_count <= 0 )) && continue
+
+    # Bad-status ratio gate -- the false-positive keystone.
+    _pct=$(( (_bad_count * 100) / _req_count ))
+    (( _pct < _NGINX_UA_BURST_BAD_PCT )) && continue
+
+    _UA_SAFE="${_UA//[^[:print:][:space:]]/?}"
+    _verbose_log "UA-burst fleet [${_ip_count} IPs/${_req_count} reqs/${_pct}% bad]: ${_UA_SAFE}" "_handle_ua_burst_blocking"
+    echo "=== UA-BURST SCANNER FLEET [${_ip_count} distinct IPs | ${_req_count} reqs | ${_pct}% bad-status] ==="
+    echo "=== UA fingerprint: ${_UA_SAFE:0:120} ==="
+
+    # Global IFS is newline+tab; force space splitting for this list.
+    _SAVE_IFS="${IFS}"
+    IFS=' '
+    for _IP in ${_UAB_IP_LIST["${_UA}"]}; do
+      IFS="${_SAVE_IFS}"
+      _K="${_UA}:${_IP}"
+      _ip_bad="${_UAB_IP_BAD["${_K}"]:-0}"
+
+      # Block only IPs that themselves sent enough bad probes under this UA.
+      (( _ip_bad < _NGINX_UA_BURST_IP_MIN_BAD )) && continue
+
+      if [[ -n "${_BANNED_IPS["${_IP}"]}" ]]; then
+        continue
+      fi
+      if [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] || _is_whitelisted_ip "${_IP}"; then
+        echo "===[${_ip_bad}bad] UA-burst IP ${_IP} is whitelisted -- skipping ==="
+        continue
+      fi
+      if _is_logged_in "${_IP}"; then
+        echo "===[${_ip_bad}bad] UA-burst IP ${_IP} is logged-in session -- skipping ==="
+        continue
+      fi
+      if [[ "${_IP}" == "${_MYIP}" ]]; then
+        continue
+      fi
+
+      _sumar="${_ip_bad}"
+      _block_ip "${_IP}" "silent"
+    done
+    IFS="${_SAVE_IFS}"
+  done
+}
+
 # ==============================
 # Path-Flood / Search-Amplification Detection
 # ==============================
@@ -1312,6 +1465,11 @@ _I18N_LOG="/var/xdrago/monitor/log/i18n_flood.log"
 _H10_ON=0
 [[ "${_NGINX_HTTP10_AUTH_DETECT}" == "YES" ]] && _H10_ON=1
 _H10_STATE="/var/xdrago/monitor/log/http10_auth.window"
+
+# Gate the UA-burst scanner-fleet tracker on a single flag so the hot loop pays
+# nothing when the (on-by-default) detector is opted out.
+_UAB_ON=0
+[[ "${_NGINX_UA_BURST_DETECT}" == "YES" ]] && _UAB_ON=1
 
 # Per-line tally for the windowed detector.  $1 vhost, $2 status, $3 request_time.
 _track_i18n_flood() {
@@ -1703,6 +1861,18 @@ while IFS= read -r _line <&3; do
     if [[ ${#_DDOS_UA} -gt 10 && ! "${_line}" =~ \"\ 301 ]]; then
       _track_ua_ip "${_REAL_IP}" "${_DDOS_UA}"
     fi
+    # UA-burst scanner-fleet tracker.  Unlike the line above this INCLUDES 301
+    # redirects, since the distributed probe fleet's redirect-heavy traffic is
+    # the very signal the 301-excluding scorers miss.  Gated on _UAB_ON so the
+    # hot loop pays nothing when the detector is opted out.
+    if (( _UAB_ON )) && [[ ${#_DDOS_UA} -gt 10 ]]; then
+      _UAB_ST=""
+      _UAB_ST_RE='"\ ([0-9]{3}) '
+      if [[ "${_line}" =~ ${_UAB_ST_RE} ]]; then
+        _UAB_ST="${BASH_REMATCH[1]}"
+        _track_ua_burst "${_REAL_IP}" "${_DDOS_UA}" "${_UAB_ST}"
+      fi
+    fi
   fi
 
   # ---- Path-flood / search-amplification tracking ----
@@ -1778,6 +1948,12 @@ _handle_blocking _PX_CNT "px_cnt"
 # DDoS / Shared-UA flood blocking (runs after per-IP counters so _BANNED_IPS
 # is already populated and we avoid double-blocking IPs caught by the DoS pass)
 _handle_ddos_blocking
+
+# Distributed UA-burst scanner-fleet blocking (on by default, opt-out).  Runs
+# after the per-IP and DDoS-UA passes so _BANNED_IPS is populated and we avoid
+# re-processing IPs already caught; this pass adds the redirect-heavy
+# distributed fleets the 301-excluding scorers above cannot see.
+_handle_ua_burst_blocking
 
 # Path-flood / search-amplification blocking (runs last so _BANNED_IPS reflects
 # everything caught by the DoS and DDoS passes above; distributed bots that

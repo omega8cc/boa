@@ -746,6 +746,11 @@ _satellite_cnf() {
     echo "_HOT_SAUCE=${_HOT_SAUCE}"                             >> ${_octCnf}
     echo "_USE_CURRENT=${_USE_CURRENT}"                         >> ${_octCnf}
     echo "_DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS}" >> ${_octCnf}
+    echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_octCnf}
+    echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}"       >> ${_octCnf}
+    echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}"         >> ${_octCnf}
+    echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_octCnf}
+    echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"     >> ${_octCnf}
     echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}"                 >> ${_octCnf}
     echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}"                         >> ${_octCnf}
     echo "_LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP}"               >> ${_octCnf}
@@ -1099,6 +1104,41 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS}" >> ${_octCnf}
+    fi
+
+    _GHOST_PLATFORMS_CLEANUP_TEST=$(grep _GHOST_PLATFORMS_CLEANUP ${_octCnf} 2>&1)
+    if [[ "${_GHOST_PLATFORMS_CLEANUP_TEST}" =~ "_GHOST_PLATFORMS_CLEANUP" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_octCnf}
+    fi
+
+    _GHOST_VHOSTS_CLEANUP_TEST=$(grep _GHOST_VHOSTS_CLEANUP ${_octCnf} 2>&1)
+    if [[ "${_GHOST_VHOSTS_CLEANUP_TEST}" =~ "_GHOST_VHOSTS_CLEANUP" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}" >> ${_octCnf}
+    fi
+
+    _GHOST_SITES_CLEANUP_TEST=$(grep _GHOST_SITES_CLEANUP ${_octCnf} 2>&1)
+    if [[ "${_GHOST_SITES_CLEANUP_TEST}" =~ "_GHOST_SITES_CLEANUP" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}" >> ${_octCnf}
+    fi
+
+    _GHOST_SITE_FILES_CLEANUP_TEST=$(grep _GHOST_SITE_FILES_CLEANUP ${_octCnf} 2>&1)
+    if [[ "${_GHOST_SITE_FILES_CLEANUP_TEST}" =~ "_GHOST_SITE_FILES_CLEANUP" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_octCnf}
+    fi
+
+    _GHOST_ALIASES_CLEANUP_TEST=$(grep _GHOST_ALIASES_CLEANUP ${_octCnf} 2>&1)
+    if [[ "${_GHOST_ALIASES_CLEANUP_TEST}" =~ "_GHOST_ALIASES_CLEANUP" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_octCnf}
     fi
 
     _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${_octCnf} 2>&1)
@@ -2337,7 +2377,7 @@ _satellite_check_fix_o_contrib() {
     _debug_proc
   fi
   if [ -e "${_CORE}/o_contrib_eleven" ]; then
-    if [ ! -d "${_CORE}/o_contrib_eleven/redis_ten_eleven" ] \
+    if [ ! -e "${_CORE}/o_contrib_eleven/redis_ten_eleven" ] \
       || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eleven forced upgrade..."
@@ -2348,7 +2388,7 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_ten" ]; then
-    if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
+    if [ ! -e "${_CORE}/o_contrib_ten/redis_ten_eleven" ] \
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_ten forced upgrade..."
@@ -2359,7 +2399,8 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_nine" ]; then
-    if [ ! -d "${_CORE}/o_contrib_nine/redis_nine_ten" ] \
+    if [ ! -e "${_CORE}/o_contrib_nine/redis_nine_ten" ] \
+      || [ ! -e "${_CORE}/o_contrib_nine/redis_compr" ] \
       || [ -e "${_CORE}/o_contrib_nine/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_nine forced upgrade..."
@@ -2370,7 +2411,8 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_eight" ]; then
-    if [ ! -d "${_CORE}/o_contrib_eight/redis_compr" ] \
+    if [ ! -e "${_CORE}/o_contrib_eight/redis_compr" ] \
+      || [ ! -e "${_CORE}/o_contrib_eight/redis_eight" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eight forced upgrade..."
       cd ${_CORE}/o_contrib_eight
@@ -2381,6 +2423,7 @@ _satellite_check_fix_o_contrib() {
   fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
     if [ ! -d "${_CORE}/o_contrib_seven/tag1_d7es" ] \
+      || [ ! -e "${_CORE}/o_contrib_seven/redis_edge" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
       cd ${_CORE}/o_contrib_seven
@@ -2391,6 +2434,7 @@ _satellite_check_fix_o_contrib() {
   fi
   if [ -e "${_CORE}/o_contrib" ]; then
     if [ ! -d "${_CORE}/o_contrib/robotstxt" ] \
+      || [ ! -e "${_CORE}/o_contrib/redis_edge" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib forced upgrade..."
       cd ${_CORE}/o_contrib
@@ -3038,7 +3082,7 @@ _satellite_run_pre_install() {
     fi
     _provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       echo "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
       chmod 0440 /etc/sudoers.d/${_SCRIPT}
@@ -3048,7 +3092,7 @@ _satellite_run_pre_install() {
     if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then
       echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
-    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _VAR_IF_PRESENT=$(grep "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
       if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then
@@ -3887,16 +3931,15 @@ _satellite_if_add_update_user_platforms_symlinks() {
         [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
-      for _Codebase in `find ${i}/* \
-        -maxdepth 1 \
-        -mindepth 1 \
-        -type d \
-        | grep "/sites$" 2>&1`; do
-        _CodebaseName=$(echo ${_Codebase} \
-          | cut -d'/' -f7 \
-          | awk '{ print $1}' 2> /dev/null)
-        ln -sfn ${_Codebase} /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
-        [ "${_DEBUG_MODE}" = "YES" ] && echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase} for ${_HM_U}.ftp"
+      for _PlatformDir in `find ${i}/* \
+        -maxdepth 0 \
+        -type d 2>/dev/null`; do
+        _CodebaseName=$(basename "${_PlatformDir}" 2>/dev/null)
+        [ "${_CodebaseName}" = "keys" ] && continue
+        _Codebase=$(_detect_real_docroot "${_PlatformDir}")
+        [ -n "${_Codebase}" ] && [ -d "${_Codebase}/sites" ] || continue
+        ln -sfn ${_Codebase}/sites /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
+        [ "${_DEBUG_MODE}" = "YES" ] && echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase}/sites for ${_HM_U}.ftp"
       done
     fi
   done
@@ -5257,6 +5300,7 @@ _satellite_batch_cleanup() {
       _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}"
       _mrun "chown -R root:root ${_D}"
       _mrun "chown -R root:users ${_D}/*/*/sites"
+      _mrun "chown -R root:users ${_D}/*/*/{web,docroot,html}/sites"
       echo fixed > ${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root ${_D} &> /dev/null
@@ -5280,6 +5324,7 @@ _satellite_batch_cleanup() {
       _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}"
       _mrun "chown -R root:root /data/disk/all"
       _mrun "chown -R root:users /data/disk/all/*/*/sites"
+      _mrun "chown -R root:users /data/disk/all/*/*/{web,docroot,html}/sites"
       echo fixed > /data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root /data/disk/all &> /dev/null
@@ -5734,28 +5779,6 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
 
-    ### Pre-Fix for migrated/merged instances
-    if [ -e "${_ROOT}/log/imported.pid" ] || [ -e "${_ROOT}/log/exported.pid" ]; then
-      if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-        sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_ROOT}/.drush/hostmaster.alias.drushrc.php
-        wait
-        sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_ROOT}/.drush/hostmaster.alias.drushrc.php
-        wait
-        sed -i "s/distro\/01.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
-        wait
-        sed -i "s/distro\/02.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
-        wait
-        sed -i "s/distro\/03.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
-        wait
-        sed -i "s/distro\/04.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
-        wait
-        sed -i "s/distro\/05.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
-        wait
-      fi
-    fi
-
-    ${_DRUSHCMD} cc drush &> /dev/null
-    rm -rf ${_ROOT}/.tmp/cache
     if [ -d "${_HM_ROOT}/modules/o_contrib" ] \
       && [ ! -L "${_HM_ROOT}/modules/o_contrib" ]; then
       rm -f ${_HM_ROOT}/modules/o_contrib/{cache_backport,redis_edge,redis}
@@ -5906,110 +5929,6 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
       WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
 
-    ### Fix for migrated/merged instances
-    if [ -e "${_ROOT}/log/imported.pid" ] \
-      || [ -e "${_ROOT}/log/exported.pid" ]; then
-      if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ]; then
-        _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
-        _USE_AEGIR_HOST="${_hName}"
-        ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) \
-          VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_package (vid, nid, \
-          package_type, short_name, old_short_name, description) VALUES ('6', \
-          '6', 'platform', 'drupal', '', '')" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO node_revisions (nid, vid, \
-          uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', \
-          '1', 'drupal', '', '', '', '1412168340', '0')" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO node (nid, vid, type, \
-          language, title, uid, status, created, changed, comment, promote, \
-          moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', \
-          'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', \
-          '0', '0')" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_package \
-          WHERE nid=2 AND short_name='drupal'" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_package \
-          WHERE nid=4 AND short_name='drupal'" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM node \
-          WHERE nid=8 AND type='site'" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM node_revisions \
-          WHERE nid=8" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET type='server' WHERE nid=2" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET type='server' WHERE nid=4" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET title='${_USE_AEGIR_HOST}' WHERE nid=2" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET title='localhost' WHERE nid=4" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-          SET title='${_USE_AEGIR_HOST}' WHERE nid=2" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-          SET title='localhost' WHERE nid=4" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-          SET db_server=4 WHERE db_server=2" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET web_server=2 WHERE web_server=0" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
-          SET rid=7 WHERE rid=5" &> /dev/null
-        ${_DRUSHCMD} cc drush &> /dev/null
-        rm -rf ${_ROOT}/.tmp/cache
-        ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
-          verify --force &> /dev/null
-        _ensure_hosting_dispatch_enabled bare
-        ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
-        wait
-        sleep 5
-        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
-        wait
-        sleep 5
-        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
-        wait
-        sleep 5
-        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
-        wait
-        _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
-      fi
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client=1 WHERE profile=7" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client=1 WHERE profile=9" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client=1 WHERE client=0" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET web_server=2 WHERE web_server=0" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-        SET uid=1 WHERE uid=0" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-        SET uid=1 WHERE uid=0" &> /dev/null
-      _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT MIN(site.nid) AS lowest_nid \
-        FROM hosting_site site JOIN hosting_package_instance pkgi \
-        ON pkgi.rid=site.nid JOIN hosting_package pkg \
-        ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
-      _HM_NID=${_HM_NID//[^0-9]/}
-      if [ ! -z "${_HM_NID}" ]; then
-        _msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
-        if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(${_DRUSHCMD} @hostmaster sqlq "SELECT platform FROM hosting_site WHERE nid=${_HM_NID}" 2>&1)
-          _HM_PLF=${_HM_PLF//[^0-9]/}
-          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid=${_HM_PLF}" &> /dev/null
-        fi
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid=${_HM_NID}"         &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid=${_HM_NID}"                   &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid=${_HM_NID}"          &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid=${_HM_NID}" &> /dev/null
-      else
-        _msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID} empty!"
-      fi
-      if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ] \
-        && [ ! -e "${_ROOT}/log/hmpathfix.pid" ]; then
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET publish_path='${_ROOT}/aegir/distro/001' \
-          WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
-        touch ${_ROOT}/log/hmpathfix.pid
-      fi
-    fi
-    ### Fix for old migrated/merged instances
-
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6030,56 +5949,6 @@ _satellite_child_b_aegir_build() {
     ln -sfn ${_HM_ROOT} /data/u/${_DOMAIN}
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
 
-    ### Fix for migrated/merged instances
-    if [ -e "${_ROOT}/log/imported.pid" ] \
-      || [ -e "${_ROOT}/log/exported.pid" ]; then
-      if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ]; then
-        _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 start"
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
-          SET rid=7 WHERE rid=5" &> /dev/null
-        echo FIXED > ${_ROOT}/log/post-merge-fix.pid
-        _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 complete"
-      fi
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client=1 WHERE profile=7" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client=1 WHERE profile=9" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client=1 WHERE client=0" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET web_server=2 WHERE web_server=0" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-        SET uid=1 WHERE uid=0" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-        SET uid=1 WHERE uid=0" &> /dev/null
-      _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT MIN(site.nid) AS lowest_nid \
-        FROM hosting_site site JOIN hosting_package_instance pkgi \
-        ON pkgi.rid=site.nid JOIN hosting_package pkg \
-        ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
-      _HM_NID=${_HM_NID//[^0-9]/}
-      if [ ! -z "${_HM_NID}" ]; then
-        _msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context ${_HM_NID}"
-        if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(${_DRUSHCMD} @hostmaster sqlq "SELECT platform FROM hosting_site WHERE nid=${_HM_NID}" 2>&1)
-          _HM_PLF=${_HM_PLF//[^0-9]/}
-          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid=${_HM_PLF}" &> /dev/null
-        fi
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid=${_HM_NID}"         &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid=${_HM_NID}"                   &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid=${_HM_NID}"          &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid=${_HM_NID}" &> /dev/null
-      else
-        _msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context ${_HM_NID} empty!"
-      fi
-      if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ] \
-        && [ ! -e "${_ROOT}/log/hmpathfix.pid" ]; then
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET publish_path='${_ROOT}/aegir/distro/001' \
-          WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
-        touch ${_ROOT}/log/hmpathfix.pid
-      fi
-    fi
-    ### Fix for migrated/merged instances
     _msg "${_STATUS} B: Hostmaster STATUS: Upgrade completed"
   fi
 }
