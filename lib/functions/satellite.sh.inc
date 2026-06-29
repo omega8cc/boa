@@ -747,10 +747,10 @@ _satellite_cnf() {
     echo "_USE_CURRENT=${_USE_CURRENT}"                         >> ${_octCnf}
     echo "_DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS}" >> ${_octCnf}
     echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_octCnf}
-    echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}" >> ${_octCnf}
-    echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}" >> ${_octCnf}
+    echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}"       >> ${_octCnf}
+    echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}"         >> ${_octCnf}
     echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_octCnf}
-    echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_octCnf}
+    echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"     >> ${_octCnf}
     echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}"                 >> ${_octCnf}
     echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}"                         >> ${_octCnf}
     echo "_LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP}"               >> ${_octCnf}

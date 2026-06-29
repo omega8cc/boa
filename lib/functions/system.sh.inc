@@ -2384,14 +2384,14 @@ _barracuda_cnf() {
     echo "_MODULES_SKIP=\"${_MODULES_SKIP}\""                 >> ${_barCnf}
     echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
 
-    echo "###"                                                >> ${_barCnf}
+    echo "###"                                                    >> ${_barCnf}
     echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
-    echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}" >> ${_barCnf}
-    echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_barCnf}
-    echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}" >> ${_barCnf}
-    echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}"   >> ${_barCnf}
+    echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}"   >> ${_barCnf}
+    echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}"         >> ${_barCnf}
+    echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}"           >> ${_barCnf}
     echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_barCnf}
-    echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"       >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
