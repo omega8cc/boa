@@ -1503,7 +1503,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f94
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f90
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f92
-    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f98
+    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f97
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
