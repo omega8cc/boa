@@ -2000,6 +2000,7 @@ _manage_site_drush_alias_mirror() {
   fi
 
   _isAliasUpdate=NO
+  _GHOST_REAPED=NO
   for _Alias in `find ${_pthParen_tUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     ### echo Last_AliasName is ${_AliasName}
@@ -2034,11 +2035,16 @@ _manage_site_drush_alias_mirror() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        if [ -e "${_SiteDir}/drushrc.php" ] \
-          && [ -e "${_SiteDir}/files" ] \
-          && [ -e "${_SiteDir}/private" ]; then
-          ### echo _SiteDir is ${_SiteDir}
-          ### echo
+        # Fail closed: a degraded/mid-rewrite alias parses to an empty or
+        # non-/data/disk site_path -> KEEP, never reap on a bad parse.
+        if [ -z "${_SiteDir}" ] \
+          || [ "${_SiteDir}" = "${_SiteDir#/data/disk/}" ]; then
+          _IS_SITE=YES
+        elif [ -e "${_SiteDir}/drushrc.php" ] \
+          || [ -L "${_SiteDir}/drushrc.php" ]; then
+          # drushrc.php present = a registered, live site. Mirror its alias to
+          # the limited-shell user. Do NOT also require files/private: those are
+          # native-symlinked store targets that can be transiently absent.
           _pthAliasMain="${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php"
           _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
           if [ ! -e "${_pthAliasCopy}" ]; then
@@ -2054,16 +2060,37 @@ _manage_site_drush_alias_mirror() {
             fi
           fi
         else
-          ### rm -f ${_pthAliasCopy}
-          echo "ZOMBIE ${_SiteDir} detected"
-          echo "Moving GHOST ${_SiteName}.alias.drushrc.php to ${_pthParen_tUsr}/undo/"
-          ### mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
-          echo
+          # drushrc.php absent = ghost candidate. This runs every 3 minutes, so a
+          # mid-install/clone site (alias written before its dir is populated)
+          # MUST NOT be reaped: skip while an Aegir task is in flight, and while
+          # the alias is recently written (< 60 min). Then gate on the opt-in
+          # _GHOST_ALIASES_CLEANUP flag (no night.inc.sh here, so check inline).
+          _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
+          if pgrep -f provision > /dev/null 2>&1; then
+            : # Aegir task in flight -- the site may be mid-build
+          elif [ -n "$(find ${_Alias} -mmin -60 2>/dev/null)" ]; then
+            : # alias freshly written (< 60 min) -- likely mid-install/clone
+          else
+            _GA_OCT="/root/.$(basename ${_pthParen_tUsr} 2>/dev/null).octopus.cnf"
+            _GA_ON=NO
+            grep -qiE "^[[:space:]]*_GHOST_ALIASES_CLEANUP=[\"' ]*YES" "${_GA_OCT}" 2>/dev/null && _GA_ON=YES
+            grep -qiE "^[[:space:]]*_GHOST_ALIASES_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _GA_ON=YES
+            echo "ZOMBIE ${_SiteDir} detected for ${_SiteName}"
+            if [ "${_GA_ON}" = "YES" ]; then
+              mkdir -p ${_pthParen_tUsr}/undo
+              _GHOST_REAPED=YES
+              ### rm -f ${_pthAliasCopy}
+              ### mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
+              echo "GHOST ${_SiteName}.alias would be moved to ${_pthParen_tUsr}/undo/ (mv staged, not yet enabled)"
+            else
+              echo "GHOST ${_SiteName}.alias detected (dry-run; set _GHOST_ALIASES_CLEANUP=YES to move)"
+            fi
+          fi
         fi
       fi
     fi
   done
-  if [ -x "/usr/bin/drush10" ]; then
+  if [ -x "/usr/bin/drush10" ] && [ "${_GHOST_REAPED}" != "YES" ]; then
     if [ "${_isAliasUpdate}" = "YES" ] \
       || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
       chage -M 99999 ${_USER}.ftp &> /dev/null
