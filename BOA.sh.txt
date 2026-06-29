@@ -1505,17 +1505,27 @@ _update_agents() {
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f93
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f99
     ###
-    ### One-time migration: daily.sh was renamed to owl.sh. Retire the old copy
-    ### and its ctrl stamps; carry an xoct/xcopy-disabled state (.daily.sh.off)
-    ### across to owl so a box that had the nightly run disabled stays disabled.
+    ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
+    ### state (.daily.sh.off) across to owl so a box that had the nightly run
+    ### disabled stays disabled.
     ###
     if [ -e "/var/xdrago/.daily.sh.off" ]; then
       [ -e "/var/xdrago/owl.sh" ] && [ ! -e "/var/xdrago/.owl.sh.off" ] \
         && mv -f /var/xdrago/owl.sh /var/xdrago/.owl.sh.off
       rm -f /var/xdrago/.daily.sh.off
     fi
-    rm -f /var/xdrago/daily.sh
-    rm -f ${_pthLog}/daily.sh.ctrl.*.pid
+    ###
+    ### Retire the legacy daily.sh and its ctrl stamps only once a full system
+    ### upgrade has re-rendered the active root crontab to invoke owl.sh. Until
+    ### then the deployed /var/spool/cron/crontabs/root still calls daily.sh, so
+    ### removing it on this self-update path would silently stop the nightly
+    ### maintenance run until the next barracuda upgrade. Gating on the live
+    ### crontab keeps this self-correcting and idempotent.
+    ###
+    if ! grep -q "/var/xdrago/daily\.sh" /var/spool/cron/crontabs/root 2>/dev/null; then
+      rm -f /var/xdrago/daily.sh
+      rm -f ${_pthLog}/daily.sh.ctrl.*.pid
+    fi
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f77
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
