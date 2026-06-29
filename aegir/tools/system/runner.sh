@@ -176,7 +176,7 @@ elif (( $(pgrep -fc mydumper) > 0 )); then
 fi
 
 _DAILY_RUNNING=NO
-if (( $(pgrep -fc daily.sh) > 0 )); then
+if (( $(pgrep -fc owl.sh) > 0 )); then
   _DAILY_RUNNING=YES
 fi
 

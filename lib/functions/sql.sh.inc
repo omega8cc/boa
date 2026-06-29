@@ -2,7 +2,7 @@
 # C-003 Phase 1: timestamped backup of a key config to the dragon config store
 # BEFORE any in-place rewrite. Only ever copies -- never alters the original.
 # No-op on missing/empty. Lands in ${_vBs}/dragon/config (3-month retention; the
-# daily.sh dragon sweep spares config/). Proven: boa-modernisation
+# owl.sh dragon sweep spares config/). Proven: boa-modernisation
 # design/per-script/backup-to-dragon.{sh,test.sh}. The standalone auto* bin
 # tools inline the same logic (no shared include) -- dedup candidate.
 _backup_to_dragon() {
