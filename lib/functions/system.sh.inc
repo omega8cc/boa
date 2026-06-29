@@ -5500,6 +5500,16 @@ _switch_to_dash() {
               sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
+            _SHELL_TEST=
+            _SHELL_TEST=$(grep -I -o "SHELL=/bin/sh" $f 2>&1)
+            if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
+              && [ "$f" != "/etc/init.d/clean-boa-env" ] \
+              && [ "$f" != "/bin/websh" ] \
+              && [ "$f" != "/usr/bin/websh" ] \
+              && [ "$f" != "/opt/local/bin/websh" ]; then
+              sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              wait
+            fi
           fi
         done
       fi
@@ -5582,6 +5592,16 @@ _switch_to_bash() {
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              wait
+            fi
+            _SHELL_TEST=
+            _SHELL_TEST=$(grep -I -o "SHELL=/bin/sh" $f 2>&1)
+            if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
+              && [ "$f" != "/etc/init.d/clean-boa-env" ] \
+              && [ "$f" != "/bin/websh" ] \
+              && [ "$f" != "/usr/bin/websh" ] \
+              && [ "$f" != "/opt/local/bin/websh" ]; then
+              sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
           fi
