@@ -117,6 +117,31 @@ _provision_running() {
   pgrep -f provision > /dev/null 2>&1
 }
 
+# Consecutive-ghost tracking so nothing is reaped on a single night's snapshot.
+# A per-item counter file (caller picks the path, e.g. under <account>/log/ctrl)
+# records how many consecutive runs the item has looked like a ghost. Returns 0
+# only once that reaches _need (default 2), giving a transient state -- a
+# verify/clone in flight, a momentarily-unmounted store, a symlink mid-repoint --
+# at least one grace run to recover. The caller MUST call _ghost_seen_reset on
+# any run where the item is found valid, so a recovered item never carries a
+# stale count into a later reap.
+_ghost_seen_enough() {
+  local _marker="$1"
+  local _need="${2:-2}"
+  local _n=0
+  [ -f "${_marker}" ] && _n=$(cat "${_marker}" 2>/dev/null)
+  _n="${_n//[^0-9]/}"
+  [ -n "${_n}" ] || _n=0
+  _n=$(( _n + 1 ))
+  mkdir -p "$(dirname "${_marker}")" 2>/dev/null
+  echo "${_n}" > "${_marker}" 2>/dev/null
+  [ "${_n}" -ge "${_need}" ]
+}
+
+_ghost_seen_reset() {
+  rm -f "$1" 2>/dev/null
+}
+
 ###-------------LOAD-----------------###
 
 _count_cpu() {
