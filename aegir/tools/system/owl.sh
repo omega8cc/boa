@@ -206,14 +206,15 @@ _daily_action() {
           sleep 5
         done
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
-        echo "Fan-out account ${_usEr}"
+        echo "Fan-out account ${_usEr} -- log: $(_acct_night_log "${_usEr}")"
         bash /var/xdrago/night/10-account.sh "${_usEr}" \
-          >> "/var/log/boa/daily/acct-$(basename ${_usEr})-${_NOW}.log" 2>&1 &
+          >> "$(_acct_night_log "${_usEr}")" 2>&1 &
       else
         if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
           echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
-          echo "User ${_usEr}"
-          bash /var/xdrago/night/10-account.sh "${_usEr}"
+          echo "User ${_usEr} -- log: $(_acct_night_log "${_usEr}")"
+          bash /var/xdrago/night/10-account.sh "${_usEr}" \
+            >> "$(_acct_night_log "${_usEr}")" 2>&1
         else
           echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
           echo "...we have to wait..."
@@ -439,6 +440,7 @@ else
 fi
 
 _global_cleanup
+_archive_old_daily_logs
 rm -f /run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
