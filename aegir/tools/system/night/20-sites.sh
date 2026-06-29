@@ -1127,8 +1127,8 @@ _cleanup_ghost_platforms() {
   if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
     || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
     mkdir -p ${_usEr}/undo
-    ### mv -f ${_Plr} ${_usEr}/undo/ &> /dev/null
-    echo "GHOST platform ${_Plr} detected (would move; mv staged, not yet enabled)"
+    mv -f ${_Plr} ${_usEr}/undo/ &> /dev/null
+    echo "GHOST platform ${_Plr} detected and moved to ${_usEr}/undo/"
   else
     echo "GHOST platform ${_Plr} detected (dry-run; set _GHOST_PLATFORMS_CLEANUP=YES to move)"
   fi
@@ -1544,9 +1544,9 @@ _cleanup_ghost_vhosts() {
         && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_VHOSTS_CLEANUP \
           || _cnf_flag_yes /root/.barracuda.cnf _GHOST_VHOSTS_CLEANUP; }; then
         mkdir -p ${_usEr}/undo
-        ### mv -f ${_usEr}/.drush/${_Dom}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-        ### mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} ${_usEr}/undo/ &> /dev/null
-        echo "GHOST vhost for ${_Dom} detected (would move; mv staged, not yet enabled)"
+        mv -f ${_usEr}/.drush/${_Dom}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
+        mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} ${_usEr}/undo/ &> /dev/null
+        echo "GHOST vhost for ${_Dom} detected and moved to ${_usEr}/undo/"
       else
         echo "GHOST vhost for ${_Dom} detected (dry-run; set _GHOST_VHOSTS_CLEANUP=YES to move)"
       fi
@@ -1613,8 +1613,8 @@ _cleanup_ghost_vhosts() {
             && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_VHOSTS_CLEANUP \
               || _cnf_flag_yes /root/.barracuda.cnf _GHOST_VHOSTS_CLEANUP; }; then
             mkdir -p ${_usEr}/undo
-            ### mv -f ${_Site} ${_usEr}/undo/ &> /dev/null
-            echo "GHOST vhost for ${_Dom} with no drushrc detected (would move; mv staged, not yet enabled)"
+            mv -f ${_Site} ${_usEr}/undo/ &> /dev/null
+            echo "GHOST vhost for ${_Dom} with no drushrc detected and moved to ${_usEr}/undo/"
           else
             echo "GHOST vhost for ${_Dom} with no drushrc detected (dry-run/grace; set _GHOST_VHOSTS_CLEANUP=YES to move)"
           fi
@@ -1652,9 +1652,9 @@ _cleanup_ghost_drushrc() {
           && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; }; then
           mkdir -p ${_usEr}/undo
-          ### mv -f ${_Plm} ${_usEr}/undo/ &> /dev/null
-          ### mv -f ${_thisAlias} ${_usEr}/undo/ &> /dev/null
-          echo "GHOST broken platform ${_Plm} + alias detected (would move; mv staged, not yet enabled)"
+          mv -f ${_Plm} ${_usEr}/undo/ &> /dev/null
+          mv -f ${_thisAlias} ${_usEr}/undo/ &> /dev/null
+          echo "GHOST broken platform ${_Plm} + alias detected and moved to ${_usEr}/undo/"
         else
           echo "GHOST broken platform ${_Plm} detected (dry-run/grace; set _GHOST_PLATFORMS_CLEANUP=YES to move)"
         fi
@@ -1663,8 +1663,8 @@ _cleanup_ghost_drushrc() {
           && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; }; then
           mkdir -p ${_usEr}/undo
-          ### mv -f ${_thisAlias} ${_usEr}/undo/ &> /dev/null
-          echo "GHOST nodir platform alias ${_thisAlias} detected (would move; mv staged, not yet enabled)"
+          mv -f ${_thisAlias} ${_usEr}/undo/ &> /dev/null
+          echo "GHOST nodir platform alias ${_thisAlias} detected and moved to ${_usEr}/undo/"
         else
           echo "GHOST nodir platform alias ${_thisAlias} detected (dry-run/grace; set _GHOST_PLATFORMS_CLEANUP=YES to move)"
         fi
@@ -1680,8 +1680,8 @@ _cleanup_ghost_drushrc() {
           && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITES_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITES_CLEANUP; }; then
           mkdir -p ${_usEr}/undo
-          ### mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-          echo "GHOST .restore alias ${_T_SITE_NAME} detected (would move; mv staged, not yet enabled)"
+          mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
+          echo "GHOST .restore alias ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
         else
           echo "GHOST .restore alias ${_T_SITE_NAME} detected (dry-run/grace; set _GHOST_SITES_CLEANUP=YES to move)"
         fi
@@ -1718,17 +1718,17 @@ _cleanup_ghost_drushrc() {
           elif _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITES_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITES_CLEANUP; then
             mkdir -p ${_usEr}/undo
-            ### mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-            echo "GHOST drushrc for ${_T_SITE_NAME} detected (would move; mv staged, not yet enabled)"
+            mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
+            echo "GHOST drushrc for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
             if [[ ! "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
-              ### mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} ${_usEr}/undo/ghost-vhost-${_T_SITE_NAME} &> /dev/null
-              echo "GHOST vhost for ${_T_SITE_NAME} detected (would move; mv staged, not yet enabled)"
+              mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} ${_usEr}/undo/ghost-vhost-${_T_SITE_NAME} &> /dev/null
+              echo "GHOST vhost for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
             fi
             if [ -d "${_T_SITE_FDIR}" ] \
               && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITE_FILES_CLEANUP \
                 || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITE_FILES_CLEANUP; }; then
-              ### mv -f ${_T_SITE_FDIR} ${_usEr}/undo/ghost-site-${_T_SITE_NAME} &> /dev/null
-              echo "GHOST site dir ${_T_SITE_FDIR} for ${_T_SITE_NAME} detected (would move; mv staged, not yet enabled)"
+              mv -f ${_T_SITE_FDIR} ${_usEr}/undo/ghost-site-${_T_SITE_NAME} &> /dev/null
+              echo "GHOST site dir ${_T_SITE_FDIR} for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
             fi
           else
             echo "GHOST drushrc for ${_T_SITE_NAME} detected (dry-run; set _GHOST_SITES_CLEANUP=YES to move)"

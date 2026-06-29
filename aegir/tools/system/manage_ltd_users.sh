@@ -2079,9 +2079,9 @@ _manage_site_drush_alias_mirror() {
             if [ "${_GA_ON}" = "YES" ]; then
               mkdir -p ${_pthParen_tUsr}/undo
               _GHOST_REAPED=YES
-              ### rm -f ${_pthAliasCopy}
-              ### mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
-              echo "GHOST ${_SiteName}.alias would be moved to ${_pthParen_tUsr}/undo/ (mv staged, not yet enabled)"
+              rm -f ${_pthAliasCopy}
+              mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
+              echo "GHOST ${_SiteName}.alias.drushrc.php moved to ${_pthParen_tUsr}/undo/"
             else
               echo "GHOST ${_SiteName}.alias detected (dry-run; set _GHOST_ALIASES_CLEANUP=YES to move)"
             fi

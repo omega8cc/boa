@@ -74,7 +74,7 @@ then could mis-read a live site as a ghost. Each cleanup checks for a running
 on the next nightly pass once the box is quiet. This interlock is always on and
 sits above the per-cleanup flags.
 
-## Per-site, vhost, and alias cleanup (staged)
+## Per-site, vhost, and alias cleanup
 
 Finer-grained flags gate cleanup of orphaned per-site artifacts:
 
@@ -86,13 +86,15 @@ Finer-grained flags gate cleanup of orphaned per-site artifacts:
 | `_GHOST_ALIASES_CLEANUP` | a stale per-site alias copy in the limited-shell (FTPS) user tree |
 
 All four are per-account (settable in an account's `octopus.cnf`, with a
-system-wide default in `barracuda.cnf`) and default `NO`. They are seeded so they
-are visible and reservable, but the underlying moves are **still disabled in
-code** pending fleet testing: these reapers act on live serving artifacts, so
-they additionally require a site to be seen as a ghost across consecutive nights,
-a resolved (not transiently absent) files/private path, and a sane parsed site
-path before anything is moved. Until that is enabled, setting these flags to
-`YES` has no effect beyond dry-run logging.
+system-wide default in `barracuda.cnf`) and default `NO` (dry-run). Setting one
+to `YES` performs the move. Because these reapers act on live serving artifacts,
+extra safeguards always apply before anything is moved: the Provision interlock
+above; the item must be seen as a ghost across consecutive nightly runs (a single
+snapshot never acts); files/private are checked symlink-aware, so a transiently
+absent native-symlink store target never counts as gone; and a degraded/unparseable
+site path keeps the site rather than reaping it. These checks are newer than the
+codebase ones — exercise them in dry-run, then on a disposable VM, before
+enabling on production.
 
 ## Recovering a moved item
 
