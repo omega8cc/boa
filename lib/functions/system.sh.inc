@@ -5439,8 +5439,10 @@ _switch_to_dash() {
                   /etc/alternatives \
                   /etc/cron.d \
                   /etc/cron.daily \
+                  /etc/cron.hourly \
                   /etc/cron.monthly \
                   /etc/cron.weekly \
+                  /etc/cron.yearly \
                   /etc/init.d \
                   /etc/network/if-down.d \
                   /etc/network/if-up.d \
@@ -5533,8 +5535,10 @@ _switch_to_bash() {
                   /etc/alternatives \
                   /etc/cron.d \
                   /etc/cron.daily \
+                  /etc/cron.hourly \
                   /etc/cron.monthly \
                   /etc/cron.weekly \
+                  /etc/cron.yearly \
                   /etc/init.d \
                   /etc/network/if-down.d \
                   /etc/network/if-up.d \
