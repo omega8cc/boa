@@ -170,6 +170,7 @@ _account_process() {
     _if_gen_goaccess "ALL"
   fi
   echo "Done for ${_usEr}"
+  _le_account_report
   _enable_chattr ${_HM_U}.ftp
 }
 
@@ -317,6 +318,117 @@ _le_hm_ssl_check_update() {
   fi
 }
 
+# Client LE notices are ON unless explicitly disabled. The per-account override
+# in /root/.<user>.octopus.cnf (already sourced into scope by _account_process)
+# wins over the global default frozen from /root/.barracuda.cnf; only the
+# literal NO disables. tr is used instead of ${x^^} so it stays portable.
+_le_client_notify_on() {
+  local _v
+  _v=$(echo "${_LE_CLIENT_NOTIFY}" | tr -d "\"' " | tr '[:lower:]' '[:upper:]')
+  [ "${_v}" = "NO" ] && return 1
+  return 0
+}
+
+# Build and send the Let's Encrypt renewal incident report for THIS account
+# from its own night log. The operator (server admin _ADMIN_EMAIL, the
+# _MY_EMAIL from /root/.barracuda.cnf) gets the full per-account detail every
+# night; the affected client (_CLIENT_EMAIL from this account's .octopus.cnf,
+# kept in sync with log/email.txt) gets an actionable notice, throttled to once
+# per 7 days per failing site so a dead clone does not mail them nightly.
+# Reading ONLY this account's log and using ONLY this account's own resolved
+# _CLIENT_EMAIL is what guarantees the client notice can never reach the wrong
+# account. Operator mail also carries any non-LE backend incident lines so the
+# move to per-account logs does not lose the old _thisLog catch-all.
+_le_account_report() {
+  local _acctLog _fails _nonle _throttle _now _markerDir _marker _fresh
+  local _site _cdom _calt _ctype _cdetail _reason _opBody _clBody _clList
+  _acctLog="$(_acct_night_log "${_usEr}")"
+  [ -r "${_acctLog}" ] || return 0
+  _fails="$(_le_extract_failures "${_acctLog}")"
+  ###
+  ### Operator catch-all for non-validation backend + account/order-level ACME
+  ### errors. The rich _le_extract_failures path covers per-domain validation
+  ### failures; this restores the old _thisLog _incident_detection coverage of
+  ### the ACME urn:* tokens (badNonce/serverInternal/rateLimited surfacing
+  ### outside a per-domain detail block) now that per-account output left
+  ### _thisLog. The `grep -v '^\["'` drops the per-domain jsonsh dump lines so a
+  ### normal validation failure is not also echoed here (already in the report).
+  ###
+  _nonle="$(grep -E -a \
+    'Remote PerformValidation RPC failed|ModuleNotFoundError|Traceback|Drush command terminated abnormally|ArgumentCountError|THIS SITE IS BROKEN|urn:ietf:params:acme:error:|urn:acme:error:serverInternal' \
+    "${_acctLog}" 2>/dev/null | grep -v -E '^\["' | sort -u | head -n 40)"
+  [ -z "${_fails}" ] && [ -z "${_nonle}" ] && return 0
+  _throttle=7
+  _now=$(date +%s)
+  _markerDir="${_usEr}/log/ctrl"
+  mkdir -p "${_markerDir}"
+
+  ###
+  ### Operator report -- full per-account detail, every night, unless incident
+  ### reporting is silenced (_INCIDENT_REPORT OFF/NO, matching the old gate).
+  ###
+  if [ -n "${_ADMIN_EMAIL}" ] \
+    && [ "${_INCIDENT_REPORT}" != "OFF" ] \
+    && [ "${_INCIDENT_REPORT}" != "NO" ]; then
+    _opBody="LE (HTTPS certificate) renewal report for account ${_HM_U} on ${_hName}"$'\n'
+    if [ -n "${_fails}" ]; then
+      _opBody="${_opBody}"$'\n'"Sites failing Let's Encrypt renewal:"$'\n'
+      while IFS=$'\x1f' read -r _site _cdom _calt _ctype _cdetail; do
+        [ -z "${_cdom}" ] && continue
+        _reason="$(_le_reason "${_ctype}" "${_cdetail}")"
+        _opBody="${_opBody}"$'\n'"  Site: ${_site}"$'\n'"    Certificate names: ${_calt:-${_cdom}}"$'\n'"    Cause: ${_reason}"$'\n'"    LE detail [${_ctype}]: ${_cdetail}"$'\n'
+      done <<EOF
+${_fails}
+EOF
+    fi
+    if [ -n "${_nonle}" ]; then
+      _opBody="${_opBody}"$'\n'"Other backend incidents detected in this account's run:"$'\n'"${_nonle}"$'\n'
+    fi
+    _opBody="${_opBody}"$'\n'"Full account log: ${_acctLog}"$'\n'
+    echo "Sending LE/incident operator report for ${_HM_U} to ${_ADMIN_EMAIL} on $(date)"
+    echo "${_opBody}" \
+      | s-nail -s "LE renewal/incident report: ${_HM_U} on ${_hName}" "${_ADMIN_EMAIL}"
+  fi
+
+  ###
+  ### Client report -- only on LE failures, opt-out aware, throttled per site.
+  ### Skip entirely when disabled or when there is no real external client
+  ### address (empty or the local "root" alias used on operator master accounts).
+  ###
+  [ -z "${_fails}" ] && return 0
+  _le_client_notify_on || return 0
+  if [ -z "${_CLIENT_EMAIL}" ] || [ "${_CLIENT_EMAIL}" = "root" ]; then
+    return 0
+  fi
+  _clList=""
+  while IFS=$'\x1f' read -r _site _cdom _calt _ctype _cdetail; do
+    [ -z "${_cdom}" ] && continue
+    _marker="${_markerDir}/le-notify.$(echo "${_cdom}" | tr -c 'a-zA-Z0-9._-' '_').info"
+    _fresh=YES
+    if [ -f "${_marker}" ]; then
+      if [ "$(( (_now - $(stat -c %Y "${_marker}" 2>/dev/null || echo 0)) / 86400 ))" -lt "${_throttle}" ]; then
+        _fresh=NO
+      fi
+    fi
+    [ "${_fresh}" = "NO" ] && continue
+    _reason="$(_le_reason "${_ctype}" "${_cdetail}")"
+    _clList="${_clList}"$'\n'"  - ${_cdom} -- ${_reason}"$'\n'"      Details: ${_cdetail}"$'\n'
+    touch "${_marker}"
+  done <<EOF
+${_fails}
+EOF
+  [ -z "${_clList}" ] && return 0
+  _clBody="Hello,"$'\n'
+  _clBody="${_clBody}"$'\n'"Automatic HTTPS (Let's Encrypt SSL) certificate renewal failed for the"$'\n'"following site(s) in your hosting account on ${_hName}:"$'\n'"${_clList}"
+  _clBody="${_clBody}"$'\n'"While a certificate cannot be renewed, this check runs and fails again every"$'\n'"night, so please take one of these actions:"$'\n'
+  _clBody="${_clBody}"$'\n'"  - If the site is still in use: update its domain DNS (A/AAAA records) to"$'\n'"    point to this server, and the certificate will renew automatically."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If the site or alias is no longer used: please disable Encryption (SSL)"$'\n'"    for it, or remove the obsolete domain alias, to stop these daily"$'\n'"    failures and notices."$'\n'
+  _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
+  echo "Sending LE client notice for ${_HM_U} to ${_CLIENT_EMAIL} on $(date)"
+  echo "${_clBody}" \
+    | s-nail -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+}
+
 _delete_this_platform() {
   _run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
@@ -401,6 +513,9 @@ _purge_cruft_machine() {
   _PURGE_CTRL="14"
 
   find ${_usEr}/log/ctrl/*cert-x1-rebuilt.info \
+    -mtime +${_PURGE_CTRL} -type f -exec rm -f {} \; &> /dev/null
+
+  find ${_usEr}/log/ctrl/le-notify.*.info \
     -mtime +${_PURGE_CTRL} -type f -exec rm -f {} \; &> /dev/null
 
   find ${_usEr}/log/ctrl/plr* \
@@ -494,10 +609,10 @@ _purge_cruft_machine() {
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        _NOW=$(date +%y%m%d-%H%M%S)
-        [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
-        echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
-        mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
+        _tStamp=$(date +%y%m%d-%H%M%S)
+        [ -d "/var/backups/ghost/${_HM_U}/${_tStamp}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_tStamp}
+        echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_tStamp}"
+        mv -f ${i} /var/backups/ghost/${_HM_U}/${_tStamp}/
       fi
     fi
   done
@@ -510,10 +625,10 @@ _purge_cruft_machine() {
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
       if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ]; then
         echo "_RevisionTest is ${_RevisionTest}"
-        _NOW=$(date +%y%m%d-%H%M%S)
-        mkdir -p ${_usEr}/undo/dist/${_NOW}
-        mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
-        echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
+        _tStamp=$(date +%y%m%d-%H%M%S)
+        mkdir -p ${_usEr}/undo/dist/${_tStamp}
+        mv -f ${i} ${_usEr}/undo/dist/${_tStamp}/ &> /dev/null
+        echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_tStamp}/"
       fi
     fi
   done
@@ -539,9 +654,9 @@ _purge_cruft_machine() {
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        _NOW=$(date +%y%m%d-%H%M%S)
-        [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
-        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
+        _tStamp=$(date +%y%m%d-%H%M%S)
+        [ -d "/var/backups/ghost/${_HM_U}/${_tStamp}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_tStamp}
+        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_tStamp}/platforms_data
       fi
       for _PlatformDir in `find ${i}/* \
         -maxdepth 0 \

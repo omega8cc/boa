@@ -322,6 +322,84 @@ _if_gen_goaccess() {
   fi
 }
 
+###-------------NIGHT LOG + LE INCIDENT-----------------###
+
+# Per-account night log path. The orchestrator (owl.sh) redirects each
+# `10-account.sh <account>` run here -- serial AND parallel -- so every
+# account's output lands in its own file; the worker reads the same path back
+# to build its Let's Encrypt renewal incident report. Both sides derive it
+# identically from _NOW (the frozen run keystone) + the account basename, so
+# they always agree on the file name.
+_acct_night_log() {
+  echo "/var/log/boa/daily/acct-$(basename "$1")-${_NOW}.log"
+}
+
+# Extract failed Let's Encrypt renewals from a single account's night log.
+# dehydrated prints a stable block on failure: a "Processing <domain> [with
+# alternative names: ...]" header, then for the failing challenge an ACME
+# result whose tab-separated lines include ["error","type"] and
+# ["error","detail"]. We emit one record per failure with five fields joined by
+# the US control byte (0x1f), NOT a tab: <site-context><US><cert-domain><US>
+# <alt-names><US><short-type><US><detail>. The separator must be non-whitespace
+# because the alt-names field is EMPTY for single-domain certs, and `read` with
+# a whitespace IFS (tab) silently collapses an empty middle field, shifting every
+# later field left. 0x1f cannot occur in a domain or ACME detail string.
+# Keyed on the ["error","detail"] line (exactly one per failed cert), paired
+# with the most recent type + Processing/Running context seen above it.
+# Successful or "Skipping renew!" blocks carry no error detail line and are
+# never emitted. Operates on ONE account's log, so every record provably
+# belongs to that account -- this is what guarantees a client notice can never
+# be cross-attributed to the wrong account.
+_le_extract_failures() {
+  [ -r "$1" ] || return 0
+  awk '
+    /^Running LE cert check directly for / {
+      currun=$0; sub(/^Running LE cert check directly for /,"",currun)
+    }
+    /^Processing / {
+      p=$0; sub(/^Processing /,"",p)
+      i=index(p," with alternative names: ")
+      if (i>0) { curdom=substr(p,1,i-1); curalt=substr(p,i+length(" with alternative names: ")) }
+      else     { curdom=p; curalt="" }
+    }
+    /^\["error","type"\]/ {
+      t=$0; sub(/^\["error","type"\][ \t]+/,"",t); gsub(/"/,"",t); curtype=t
+    }
+    /^\["error","detail"\]/ {
+      d=$0; sub(/^\["error","detail"\][ \t]+/,"",d); sub(/^"/,"",d); sub(/"$/,"",d)
+      gsub(/\\"/,"\"",d)
+      st=curtype; sub(/^.*:/,"",st)
+      printf "%s\037%s\037%s\037%s\037%s\n", currun, curdom, curalt, st, d
+      curtype=""
+    }
+  ' "$1"
+}
+
+# Map an ACME error type + detail to a short, non-technical cause phrase, used
+# in both the operator and the client mail. The detail string is the most
+# reliable signal (the type is sometimes a generic "unauthorized" for several
+# distinct causes), so match on it first, then fall back to the type.
+_le_reason() {
+  local _t="$1"
+  local _d="$2"
+  case "${_d}" in
+    *"key authorization file"*)
+      echo "another server is currently answering for this name (an old host, a parked page or a CDN), so verification fails" ;;
+    *NXDOMAIN*|*"no valid A records"*|*"DNS problem"*)
+      echo "the domain or one of its aliases has no working DNS record pointing to this server" ;;
+    *"Timeout during connect"*|*"Connection refused"*|*"Fetching"*)
+      echo "the name points to a server that cannot be reached from the Internet (DNS elsewhere or a firewall)" ;;
+    *"Invalid response"*)
+      echo "the name resolves to a different server (the verification request was answered elsewhere)" ;;
+    *)
+      case "${_t}" in
+        dns)         echo "the domain or one of its aliases has no working DNS record pointing to this server" ;;
+        rateLimited) echo "Let's Encrypt temporarily rate-limited new certificates; it will retry automatically" ;;
+        *)           echo "the certificate could not be validated by Let's Encrypt" ;;
+      esac ;;
+  esac
+}
+
 ###-------------RUN-FREEZE-----------------###
 
 # Freeze the per-run state a per-account worker needs into /run/night/run.env so a
@@ -354,6 +432,9 @@ night_emit_run_env() {
     echo "export _MODULES_FIX=\"${_MODULES_FIX}\""
     echo "export _CLEAR_BOOST=\"${_CLEAR_BOOST}\""
     echo "export _ENABLE_GOACCESS=\"${_ENABLE_GOACCESS}\""
+    echo "export _ADMIN_EMAIL=\"${_MY_EMAIL}\""
+    echo "export _INCIDENT_REPORT=\"${_INCIDENT_REPORT}\""
+    echo "export _LE_CLIENT_NOTIFY=\"${_LE_CLIENT_NOTIFY}\""
   } > /run/night/run.env
   chmod 0600 /run/night/run.env &> /dev/null
 }
