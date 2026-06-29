@@ -157,7 +157,21 @@ _incident_email_report() {
   fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
-    s-nail -s "Incident Report during owl.sh: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_thisLog}")
+    ###
+    ### Send the matching error lines WITH context, not a blind tail: this is
+    ### the global (orchestrator) log, and per-account work now lives in its own
+    ### acct-*.log, so a tail here would only show late global-post output, never
+    ### the incident itself. -F treats the token as a fixed string.
+    ###
+    {
+      echo "Incident '${1}' detected during owl.sh on ${_hName} at $(date)"
+      echo
+      echo "Matching log lines (with context) from ${_thisLog}:"
+      echo
+      grep -F -n -a -A3 -B3 -- "${1}" "${_thisLog}" 2>/dev/null | head -n 120
+      echo
+      echo "Full log: ${_thisLog}"
+    } | s-nail -s "Incident Report during owl.sh: ${1} on ${_hName} at $(date)" ${_MY_EMAIL}
   fi
 }
 
@@ -367,4 +381,23 @@ _purge_shared_aegir_backups() {
     rm -rf {} \; &> /dev/null
   find /var/aegir/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
     rm -rf {} \; &> /dev/null
+}
+
+# Archive past-month night logs into MM-YYYY subdirectories so /var/log/boa/daily
+# does not grow unbounded -- WITHOUT deleting anything, since the logs may be
+# needed later for incident analysis. Idempotent: only top-level *.log files
+# whose month (by mtime) differs from the current month are moved, so the current
+# run's daily-*.log and acct-*.log stay in place and already-archived files inside
+# the MM-YYYY subdirs are never re-scanned (-maxdepth 1). Safe to run every night.
+_archive_old_daily_logs() {
+  _logDir="/var/log/boa/daily"
+  [ -d "${_logDir}" ] || return 0
+  _curMY=$(date +%m-%Y)
+  for _f in `find "${_logDir}" -maxdepth 1 -type f -name '*.log' 2>/dev/null`; do
+    _logMY=$(date -r "${_f}" +%m-%Y 2>/dev/null)
+    [ -z "${_logMY}" ] && continue
+    [ "${_logMY}" = "${_curMY}" ] && continue
+    mkdir -p "${_logDir}/${_logMY}"
+    mv -f "${_f}" "${_logDir}/${_logMY}/" 2>/dev/null
+  done
 }

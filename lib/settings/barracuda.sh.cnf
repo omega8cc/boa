@@ -1265,6 +1265,19 @@ _SPEED_VALID_MAX=3600
 _INCIDENT_REPORT=MINI
 
 ###
+### Per-client Let's Encrypt renewal failure notices. When a site's HTTPS
+### certificate renewal fails -- almost always because the domain or one of its
+### aliases no longer points to this server, or its DNS is missing -- owl.sh
+### emails the affected account's client (_CLIENT_EMAIL) an actionable notice,
+### throttled to once per 7 days per site, so they can fix DNS or disable
+### Encryption on dead clones that fail the check every night for no reason. The
+### server admin (_MY_EMAIL) always gets the full per-account report regardless.
+### Default YES (enabled). Set to NO here to disable client notices fleet-wide,
+### or per-account in /root/.<user>.octopus.cnf.
+###
+_LE_CLIENT_NOTIFY=YES
+
+###
 ### Max TTL for mysql process per user (seconds)
 ###
 ### It will be automatically lowered to 300 if
