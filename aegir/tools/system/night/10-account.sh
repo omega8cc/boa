@@ -329,8 +329,8 @@ _check_old_empty_platforms() {
       || [ -e "${_usEr}/static/control/platforms.info" ]; then
       _DO_NOTHING=YES
     else
-      if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
-        && [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
+      if [ -n "${_DEL_OLD_EMPTY_PLATFORMS}" ] \
+        && [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
         _DO_NOTHING=YES
       else
         _DEL_OLD_EMPTY_PLATFORMS="60"
