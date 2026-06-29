@@ -2384,6 +2384,15 @@ _barracuda_cnf() {
     echo "_MODULES_SKIP=\"${_MODULES_SKIP}\""                 >> ${_barCnf}
     echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
 
+    echo "###"                                                    >> ${_barCnf}
+    echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}"   >> ${_barCnf}
+    echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}"   >> ${_barCnf}
+    echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}"         >> ${_barCnf}
+    echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}"           >> ${_barCnf}
+    echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"       >> ${_barCnf}
+
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
@@ -2788,6 +2797,41 @@ _barracuda_cnf() {
         echo "_DL_MODE=BATCH" >> ${_barCnf}
         export _DL_MODE=BATCH
       fi
+    fi
+
+    _SHARED_CODEBASES_CLEANUP_TEST=$(grep _SHARED_CODEBASES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_SHARED_CODEBASES_CLEANUP_TEST}" =~ "_SHARED_CODEBASES_CLEANUP" ]]; then
+      echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_CODEBASES_CLEANUP_TEST=$(grep _GHOST_CODEBASES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_CODEBASES_CLEANUP_TEST}" =~ "_GHOST_CODEBASES_CLEANUP" ]]; then
+      echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_PLATFORMS_CLEANUP_TEST=$(grep _GHOST_PLATFORMS_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_PLATFORMS_CLEANUP_TEST}" =~ "_GHOST_PLATFORMS_CLEANUP" ]]; then
+      echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_VHOSTS_CLEANUP_TEST=$(grep _GHOST_VHOSTS_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_VHOSTS_CLEANUP_TEST}" =~ "_GHOST_VHOSTS_CLEANUP" ]]; then
+      echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_SITES_CLEANUP_TEST=$(grep _GHOST_SITES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_SITES_CLEANUP_TEST}" =~ "_GHOST_SITES_CLEANUP" ]]; then
+      echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_SITE_FILES_CLEANUP_TEST=$(grep _GHOST_SITE_FILES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_SITE_FILES_CLEANUP_TEST}" =~ "_GHOST_SITE_FILES_CLEANUP" ]]; then
+      echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_ALIASES_CLEANUP_TEST=$(grep _GHOST_ALIASES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_ALIASES_CLEANUP_TEST}" =~ "_GHOST_ALIASES_CLEANUP" ]]; then
+      echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_barCnf}
     fi
 
     sleep 1
@@ -5404,6 +5448,73 @@ _symlink_to_bash() {
 }
 
 #
+# Get all bin paths to modify.
+_get_bin_paths() {
+  _X_BIN_PATHS="/bin \
+                /etc \
+                /etc/alternatives \
+                /etc/ca-certificates/update.d \
+                /etc/console-setup \
+                /etc/cron.d \
+                /etc/cron.daily \
+                /etc/cron.hourly \
+                /etc/cron.monthly \
+                /etc/cron.weekly \
+                /etc/cron.yearly \
+                /etc/csf \
+                /etc/dhcp/dhclient-exit-hooks.d \
+                /etc/grub.d \
+                /etc/init.d \
+                /etc/kernel/postinst.d \
+                /etc/kernel/postrm.d \
+                /etc/mc \
+                /etc/network/if-down.d \
+                /etc/network/if-pre-up.d \
+                /etc/network/if-up.d \
+                /etc/NetworkManager/dispatcher.d \
+                /etc/pm/sleep.d \
+                /etc/postfix \
+                /etc/ppp/ip-down.d \
+                /etc/ppp/ip-up.d \
+                /etc/profile.d \
+                /etc/qemu \
+                /etc/runit/runsvdir/default/acpid/log \
+                /etc/runit/runsvdir/default/ssh \
+                /etc/runit/runsvdir/default/ssh/log \
+                /etc/security \
+                /etc/sv/acpid/log \
+                /etc/sv/ssh \
+                /etc/sv/ssh/log \
+                /etc/update-motd.d \
+                /etc/webmin \
+                /etc/X11 \
+                /lib/apparmor \
+                /lib/init \
+                /opt/php56/bin \
+                /opt/php70/bin \
+                /opt/php71/bin \
+                /opt/php72/bin \
+                /opt/php73/bin \
+                /opt/php74/bin \
+                /opt/php80/bin \
+                /opt/php81/bin \
+                /opt/php82/bin \
+                /opt/php83/bin \
+                /opt/php84/bin \
+                /opt/php85/bin \
+                /sbin \
+                /usr/bin \
+                /usr/lib/ConsoleKit/run-session.d \
+                /usr/lib/git-core \
+                /usr/lib/postfix \
+                /usr/lib/sysstat \
+                /usr/local/bin \
+                /usr/local/libexec/git-core \
+                /usr/local/sbin \
+                /usr/sbin"
+}
+
+#
 # Switch to dash.
 _switch_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5413,41 +5524,12 @@ _switch_to_dash() {
     cp -a /usr/bin/dash /bin/
   fi
   if [ -x "/bin/dash" ]; then
-    sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g" /etc/crontab &> /dev/null
-    _X_BIN_PATHS="/bin \
-                  /etc/alternatives \
-                  /etc/cron.d \
-                  /etc/cron.daily \
-                  /etc/cron.monthly \
-                  /etc/cron.weekly \
-                  /etc/init.d \
-                  /etc/network/if-down.d \
-                  /etc/network/if-up.d \
-                  /etc/webmin \
-                  /lib/apparmor \
-                  /opt/php56/bin \
-                  /opt/php70/bin \
-                  /opt/php71/bin \
-                  /opt/php72/bin \
-                  /opt/php73/bin \
-                  /opt/php74/bin \
-                  /opt/php80/bin \
-                  /opt/php81/bin \
-                  /opt/php82/bin \
-                  /opt/php83/bin \
-                  /opt/php84/bin \
-                  /opt/php85/bin \
-                  /sbin \
-                  /usr/bin \
-                  /usr/lib/ConsoleKit/run-session.d \
-                  /usr/lib/git-core \
-                  /usr/lib/postfix \
-                  /usr/lib/sysstat \
-                  /usr/local/bin \
-                  /usr/local/libexec/git-core \
-                  /usr/local/sbin \
-                  /usr/sbin"
+    _get_bin_paths
+    sed -i "s/:\/bin\/sh/:\/bin\/dash/g" /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/crontab &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/init.d/ssh &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/csf/uninstall.sh &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
@@ -5480,6 +5562,16 @@ _switch_to_dash() {
               sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
+            _SHELL_TEST=
+            _SHELL_TEST=$(grep -I -o "SHELL=/bin/sh" $f 2>&1)
+            if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
+              && [ "$f" != "/etc/init.d/clean-boa-env" ] \
+              && [ "$f" != "/bin/websh" ] \
+              && [ "$f" != "/usr/bin/websh" ] \
+              && [ "$f" != "/opt/local/bin/websh" ]; then
+              sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              wait
+            fi
           fi
         done
       fi
@@ -5497,41 +5589,12 @@ _switch_to_bash() {
     cp -a /usr/bin/bash /bin/
   fi
   if [ -x "/bin/bash" ]; then
-    sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g" /etc/crontab &> /dev/null
-    _X_BIN_PATHS="/bin \
-                  /etc/alternatives \
-                  /etc/cron.d \
-                  /etc/cron.daily \
-                  /etc/cron.monthly \
-                  /etc/cron.weekly \
-                  /etc/init.d \
-                  /etc/network/if-down.d \
-                  /etc/network/if-up.d \
-                  /etc/webmin \
-                  /lib/apparmor \
-                  /opt/php56/bin \
-                  /opt/php70/bin \
-                  /opt/php71/bin \
-                  /opt/php72/bin \
-                  /opt/php73/bin \
-                  /opt/php74/bin \
-                  /opt/php80/bin \
-                  /opt/php81/bin \
-                  /opt/php82/bin \
-                  /opt/php83/bin \
-                  /opt/php84/bin \
-                  /opt/php85/bin \
-                  /sbin \
-                  /usr/bin \
-                  /usr/lib/ConsoleKit/run-session.d \
-                  /usr/lib/git-core \
-                  /usr/lib/postfix \
-                  /usr/lib/sysstat \
-                  /usr/local/bin \
-                  /usr/local/libexec/git-core \
-                  /usr/local/sbin \
-                  /usr/sbin"
+    _get_bin_paths
+    sed -i "s/:\/bin\/sh/:\/bin\/bash/g" /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/crontab &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/init.d/ssh &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/csf/uninstall.sh &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
@@ -5562,6 +5625,16 @@ _switch_to_bash() {
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              wait
+            fi
+            _SHELL_TEST=
+            _SHELL_TEST=$(grep -I -o "SHELL=/bin/sh" $f 2>&1)
+            if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
+              && [ "$f" != "/etc/init.d/clean-boa-env" ] \
+              && [ "$f" != "/bin/websh" ] \
+              && [ "$f" != "/usr/bin/websh" ] \
+              && [ "$f" != "/opt/local/bin/websh" ]; then
+              sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
           fi
@@ -7844,7 +7917,7 @@ _if_major_os_upgrade() {
     fi
     ###
     ### Make sure that Ægir special system-wide scripts are added to sudo.
-    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
       if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
@@ -7864,7 +7937,7 @@ _if_major_os_upgrade() {
           if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
             echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
           fi
-          _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+          _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
           for _SCRIPT in ${_SCRIPTS[@]}; do
             _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
             if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then

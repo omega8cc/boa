@@ -90,6 +90,20 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
       sleep 5
     done
   fi
+
+else
+
+  # Under a load-pause the watchdog stops nginx to shed load, but the flood that
+  # tripped the pause is often still arriving, and suppressing the IDS here too
+  # left its offenders unbanned -- so on resume the same flood re-saturated the
+  # box.  Run ONE bounded scan_nginx pass so the worst aggressors are CSF-banned
+  # before nginx restarts.  Single pass, no 10x fan-out and no sleep loop:
+  # _block_ip bans via csf/iptables and appends to web.log without reloading
+  # nginx, so it cannot lift the pause or add the normal path's load.  minute.sh
+  # re-invokes this guard each minute, giving one more ban pass per paused minute.
+  if [ -f "${_monPath}/scan_nginx.sh" ]; then
+    nohup ${_monPath}/scan_nginx.sh > /dev/null 2>&1 &
+  fi
 fi
 
 echo "Done!"
