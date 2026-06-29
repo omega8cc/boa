@@ -5454,10 +5454,6 @@ _get_bin_paths() {
                 /etc/ppp/ip-up.d \
                 /etc/profile.d \
                 /etc/qemu \
-                /etc/rc2.d \
-                /etc/rc3.d \
-                /etc/rc4.d \
-                /etc/rc5.d \
                 /etc/runit/runsvdir/default/acpid/log \
                 /etc/runit/runsvdir/default/ssh \
                 /etc/runit/runsvdir/default/ssh/log \
@@ -5469,6 +5465,7 @@ _get_bin_paths() {
                 /etc/webmin \
                 /etc/X11 \
                 /lib/apparmor \
+                /lib/init \
                 /opt/php56/bin \
                 /opt/php70/bin \
                 /opt/php71/bin \
@@ -5504,8 +5501,11 @@ _switch_to_dash() {
   fi
   if [ -x "/bin/dash" ]; then
     _get_bin_paths
-    sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g" /etc/crontab &> /dev/null
+    sed -i "s/:\/bin\/sh/:\/bin\/dash/g" /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/crontab &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/init.d/ssh &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/csf/uninstall.sh &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
@@ -5566,8 +5566,11 @@ _switch_to_bash() {
   fi
   if [ -x "/bin/bash" ]; then
     _get_bin_paths
-    sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g" /etc/crontab &> /dev/null
+    sed -i "s/:\/bin\/sh/:\/bin\/bash/g" /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/crontab &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/init.d/ssh &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/csf/uninstall.sh &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
