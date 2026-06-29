@@ -375,6 +375,10 @@ _migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
+      # Full hostmaster DB dump. renameaegirhost rewrites the source host/IP
+      # across the entire DB on import and its task queue regenerates db-host
+      # and alias entries, so a per-table allowlist (which silently dropped any
+      # unlisted or newly added schema table) is no longer needed.
       mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
         --single-transaction \
         --quick \
@@ -382,85 +386,6 @@ _migrate_prepare() {
         --skip-add-locks \
         --no-tablespaces \
         --hex-blob ${_HDB} \
-        comment \
-        date_format_locale \
-        date_format_type \
-        date_formats \
-        fe_block_boxes \
-        features_signature \
-        field_config \
-        field_config_instance \
-        field_data_body \
-        field_data_comment_body \
-        field_data_field_composer_git_docroot \
-        field_data_field_composer_git_path \
-        field_data_field_composer_git_project_url \
-        field_data_field_composer_git_version \
-        field_data_field_composer_project_docroot \
-        field_data_field_composer_project_package \
-        field_data_field_composer_project_path \
-        field_data_field_composer_project_version \
-        field_data_field_deployment_strategy \
-        field_data_field_git_docroot \
-        field_data_field_git_reference \
-        field_data_field_git_repository_path \
-        field_data_field_git_repository_url \
-        field_revision_body \
-        field_revision_comment_body \
-        field_revision_field_composer_git_docroot \
-        field_revision_field_composer_git_path \
-        field_revision_field_composer_git_project_url \
-        field_revision_field_composer_git_version \
-        field_revision_field_composer_project_docroot \
-        field_revision_field_composer_project_package \
-        field_revision_field_composer_project_path \
-        field_revision_field_composer_project_version \
-        field_revision_field_deployment_strategy \
-        field_revision_field_git_docroot \
-        field_revision_field_git_reference \
-        field_revision_field_git_repository_path \
-        field_revision_field_git_repository_url \
-        filter \
-        filter_format \
-        history \
-        hosting_backup_gc_sites \
-        hosting_client \
-        hosting_client_user \
-        hosting_context \
-        hosting_cron \
-        hosting_git \
-        hosting_git_pull \
-        hosting_http_basic_auth \
-        hosting_package \
-        hosting_package_instance \
-        hosting_package_languages \
-        hosting_platform \
-        hosting_platform_client_access \
-        hosting_service \
-        hosting_site \
-        hosting_site_alias \
-        hosting_site_backups \
-        hosting_ssl_cert \
-        hosting_ssl_cert_ips \
-        hosting_ssl_server \
-        hosting_ssl_site \
-        hosting_task \
-        hosting_task_arguments \
-        hosting_task_log \
-        menu_custom \
-        menu_links \
-        menu_router \
-        node \
-        node_access \
-        node_comment_statistics \
-        node_revision \
-        node_type \
-        role \
-        role_permission \
-        url_alias \
-        userprotect \
-        users \
-        users_roles \
         > ${_USR}/src/prev_hostmaster.sql
     if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${_oct} db export complete"
