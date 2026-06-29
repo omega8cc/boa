@@ -5424,6 +5424,76 @@ _symlink_to_bash() {
 }
 
 #
+# Get all bin paths to modify.
+_get_bin_paths() {
+  _X_BIN_PATHS="/bin \
+                /etc \
+                /etc/alternatives \
+                /etc/ca-certificates/update.d \
+                /etc/console-setup \
+                /etc/cron.d \
+                /etc/cron.daily \
+                /etc/cron.hourly \
+                /etc/cron.monthly \
+                /etc/cron.weekly \
+                /etc/cron.yearly \
+                /etc/csf \
+                /etc/dhcp/dhclient-exit-hooks.d \
+                /etc/grub.d \
+                /etc/init.d \
+                /etc/kernel/postinst.d \
+                /etc/kernel/postrm.d \
+                /etc/mc \
+                /etc/network/if-down.d \
+                /etc/network/if-pre-up.d \
+                /etc/network/if-up.d \
+                /etc/NetworkManager/dispatcher.d \
+                /etc/pm/sleep.d \
+                /etc/postfix \
+                /etc/ppp/ip-down.d \
+                /etc/ppp/ip-up.d \
+                /etc/profile.d \
+                /etc/qemu \
+                /etc/rc2.d \
+                /etc/rc3.d \
+                /etc/rc4.d \
+                /etc/rc5.d \
+                /etc/runit/runsvdir/default/acpid/log \
+                /etc/runit/runsvdir/default/ssh \
+                /etc/runit/runsvdir/default/ssh/log \
+                /etc/security \
+                /etc/sv/acpid/log \
+                /etc/sv/ssh \
+                /etc/sv/ssh/log \
+                /etc/update-motd.d \
+                /etc/webmin \
+                /etc/X11 \
+                /lib/apparmor \
+                /opt/php56/bin \
+                /opt/php70/bin \
+                /opt/php71/bin \
+                /opt/php72/bin \
+                /opt/php73/bin \
+                /opt/php74/bin \
+                /opt/php80/bin \
+                /opt/php81/bin \
+                /opt/php82/bin \
+                /opt/php83/bin \
+                /opt/php84/bin \
+                /opt/php85/bin \
+                /sbin \
+                /usr/bin \
+                /usr/lib/ConsoleKit/run-session.d \
+                /usr/lib/git-core \
+                /usr/lib/postfix \
+                /usr/lib/sysstat \
+                /usr/local/bin \
+                /usr/local/libexec/git-core \
+                /usr/local/sbin \
+                /usr/sbin"
+}
+
+#
 # Switch to dash.
 _switch_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5433,43 +5503,9 @@ _switch_to_dash() {
     cp -a /usr/bin/dash /bin/
   fi
   if [ -x "/bin/dash" ]; then
+    _get_bin_paths
     sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
     sed -i "s/\/bin\/sh/\/bin\/dash/g" /etc/crontab &> /dev/null
-    _X_BIN_PATHS="/bin \
-                  /etc/alternatives \
-                  /etc/cron.d \
-                  /etc/cron.daily \
-                  /etc/cron.hourly \
-                  /etc/cron.monthly \
-                  /etc/cron.weekly \
-                  /etc/cron.yearly \
-                  /etc/init.d \
-                  /etc/network/if-down.d \
-                  /etc/network/if-up.d \
-                  /etc/webmin \
-                  /lib/apparmor \
-                  /opt/php56/bin \
-                  /opt/php70/bin \
-                  /opt/php71/bin \
-                  /opt/php72/bin \
-                  /opt/php73/bin \
-                  /opt/php74/bin \
-                  /opt/php80/bin \
-                  /opt/php81/bin \
-                  /opt/php82/bin \
-                  /opt/php83/bin \
-                  /opt/php84/bin \
-                  /opt/php85/bin \
-                  /sbin \
-                  /usr/bin \
-                  /usr/lib/ConsoleKit/run-session.d \
-                  /usr/lib/git-core \
-                  /usr/lib/postfix \
-                  /usr/lib/sysstat \
-                  /usr/local/bin \
-                  /usr/local/libexec/git-core \
-                  /usr/local/sbin \
-                  /usr/sbin"
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
@@ -5529,43 +5565,9 @@ _switch_to_bash() {
     cp -a /usr/bin/bash /bin/
   fi
   if [ -x "/bin/bash" ]; then
+    _get_bin_paths
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
     sed -i "s/\/bin\/sh/\/bin\/bash/g" /etc/crontab &> /dev/null
-    _X_BIN_PATHS="/bin \
-                  /etc/alternatives \
-                  /etc/cron.d \
-                  /etc/cron.daily \
-                  /etc/cron.hourly \
-                  /etc/cron.monthly \
-                  /etc/cron.weekly \
-                  /etc/cron.yearly \
-                  /etc/init.d \
-                  /etc/network/if-down.d \
-                  /etc/network/if-up.d \
-                  /etc/webmin \
-                  /lib/apparmor \
-                  /opt/php56/bin \
-                  /opt/php70/bin \
-                  /opt/php71/bin \
-                  /opt/php72/bin \
-                  /opt/php73/bin \
-                  /opt/php74/bin \
-                  /opt/php80/bin \
-                  /opt/php81/bin \
-                  /opt/php82/bin \
-                  /opt/php83/bin \
-                  /opt/php84/bin \
-                  /opt/php85/bin \
-                  /sbin \
-                  /usr/bin \
-                  /usr/lib/ConsoleKit/run-session.d \
-                  /usr/lib/git-core \
-                  /usr/lib/postfix \
-                  /usr/lib/sysstat \
-                  /usr/local/bin \
-                  /usr/local/libexec/git-core \
-                  /usr/local/sbin \
-                  /usr/sbin"
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
