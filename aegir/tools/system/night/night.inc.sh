@@ -106,6 +106,17 @@ _cnf_flag_yes() {
   [ "${_val}" = "YES" ]
 }
 
+# Master cleanup interlock. While any Aegir/Provision task is running
+# (provision-verify/install/clone/migrate/backup/restore), the site and platform
+# trees are in flux -- files/private momentarily absent or symlinks mid-repoint,
+# aliases mid-rewrite, vhosts staged under a leading dot -- and that transient
+# state would be mis-read as a ghost and reaped. Return 0 when a provision
+# process is detected, so every cleanup mover can skip while one is in flight.
+# Same signal BOA already uses in monitor/check/mysql.sh.
+_provision_running() {
+  pgrep -f provision > /dev/null 2>&1
+}
+
 ###-------------LOAD-----------------###
 
 _count_cpu() {

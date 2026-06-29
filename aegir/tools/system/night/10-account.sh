@@ -323,6 +323,7 @@ _delete_this_platform() {
 }
 
 _check_old_empty_platforms() {
+  _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
       || [ -e "${_usEr}/static/control/platforms.info" ]; then

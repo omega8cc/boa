@@ -23,6 +23,7 @@ _delete_this_empty_hostmaster_platform() {
 }
 
 _check_old_empty_hostmaster_platforms() {
+  _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
 	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
 	_DO_NOTHING=YES
@@ -75,6 +76,7 @@ _check_old_empty_hostmaster_platforms() {
 }
 
 _shared_codebases_cleanup() {
+  _provision_running && { echo "INFO: provision task active -- skipping shared-codebases cleanup"; return; }
   if [ -L "/data/all" ]; then
     _CLD="/data/disk/codebases-cleanup"
   else
@@ -110,6 +112,7 @@ _shared_codebases_cleanup() {
 }
 
 _ghost_codebases_cleanup() {
+  _provision_running && { echo "INFO: provision task active -- skipping ghost-codebases cleanup"; return; }
   _CLD="/var/backups/ghost-codebases-cleanup"
   for i in `dir -d /data/disk/*/distro/*/*/`; do
     _CodebaseTest=$(find ${i} -maxdepth 1 -mindepth 1 \
