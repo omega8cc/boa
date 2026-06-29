@@ -24,8 +24,8 @@ _delete_this_empty_hostmaster_platform() {
 
 _check_old_empty_hostmaster_platforms() {
   _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
-  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
-	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
+  if [ -n "${_DEL_OLD_EMPTY_PLATFORMS}" ] \
+	&& [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
 	_DO_NOTHING=YES
   else
     if [ "${_hostedSys}" = "YES" ]; then
