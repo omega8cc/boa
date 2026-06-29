@@ -155,8 +155,8 @@ xoct post-mig
 service cron start
 ```
 
-`import` re-imports the Aegir hostmaster database, applies structural Aegir
-fixes (platform paths, hosting_context entries, orphan cleanup), then calls
+`import` re-imports the Aegir hostmaster database, removes any ghost/empty
+platform registrations left over from earlier migrations, then calls
 `renameaegirhost --aegir-root /data/disk/o1` which:
 
 - Rewrites all drush alias files (old source hostname → target FQDN).

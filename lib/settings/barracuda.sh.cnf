@@ -1007,6 +1007,93 @@ _CPU_TASK_RATIO=3.1
 _CPU_SPIDER_RATIO=2.1
 
 ###
+### Nightly maintenance (owl.sh) per-account parallelism. The default NO
+### processes Octopus accounts one at a time (serial), exactly as before. Set
+### to YES to process accounts in parallel, up to _NIGHT_MAX_PARALLEL at once,
+### each launch still gated by the per-core load ceiling (_CPU_TASK_RATIO).
+###
+_NIGHT_PARALLEL=NO
+
+###
+### Max Octopus accounts owl.sh processes in parallel when _NIGHT_PARALLEL=YES.
+### Leave empty to default to the CPU core count.
+###
+_NIGHT_MAX_PARALLEL=
+
+###
+### Nightly global files-symlink auto-fix (updatesymlinks --auto-fix). The
+### default NO leaves symlink maintenance manual. Set to YES to enable a nightly
+### run (~05:30) that converts any not-yet-symlinked site files/private dirs into
+### the per-account static store and self-heals partly-symlinked sites. The run
+### is skipped while backups, provision tasks, or high load are active.
+###
+_AUTOSYMLINK_NIGHTLY=NO
+
+###
+### Daily ghost/orphaned files-directory email report (updatesymlinks
+### --orphan-report) at ~06:00. The default NO disables it. Set to YES to email
+### _MY_EMAIL a report ONLY when orphaned static/files entries (storage with no
+### matching active site) are detected. Read-only: never converts or deletes.
+###
+_ORPHAN_FILES_REPORT=NO
+
+###
+### Nightly cleanup of unused SHARED codebases (legacy D6/D7 core/contrib under
+### /data/all). The default NO only detects and logs them (dry-run). Set to YES
+### to move a shared codebase no longer referenced by any platform aside into a
+### codebases-cleanup backup dir during nightly maintenance.
+###
+_SHARED_CODEBASES_CLEANUP=NO
+
+###
+### Nightly cleanup of GHOST codebases (orphaned trees under distro/ with no
+### detectable Drupal docroot at root or web/docroot/html). The default NO only
+### detects and logs them (dry-run). Set to YES to move a ghost codebase aside
+### into a ghost-codebases-cleanup backup dir during nightly maintenance.
+###
+_GHOST_CODEBASES_CLEANUP=NO
+
+###
+### Nightly cleanup of GHOST/empty platform registrations (Drush alias files
+### whose platform root has no detectable Drupal docroot). The default NO only
+### detects and logs them (dry-run). Set to YES to move the stale alias aside
+### into the undo/ dir during nightly maintenance. Can also be enabled per
+### Octopus account in /root/.<user>.octopus.cnf.
+###
+_GHOST_PLATFORMS_CLEANUP=NO
+
+###
+### Nightly cleanup of GHOST nginx vhosts (a vhost.d server block with no
+### matching site Drush alias). The default NO only detects and logs them
+### (dry-run). Set to YES to move the orphaned vhost aside into the undo/ dir.
+### Can also be enabled per Octopus account in /root/.<user>.octopus.cnf.
+###
+_GHOST_VHOSTS_CLEANUP=NO
+
+###
+### Nightly cleanup of GHOST site registrations (a site Drush alias whose site
+### directory is gone -- no settings/files/private). The default NO only detects
+### and logs them (dry-run). Set to YES to move the stale alias and its vhost
+### aside into the undo/ dir. Per Octopus account override in octopus.cnf.
+###
+_GHOST_SITES_CLEANUP=NO
+
+###
+### Also move a ghost site's leftover files directory (site data, not just the
+### registration) when _GHOST_SITES_CLEANUP acts. Kept separate and default NO
+### because it touches data. Per Octopus account override in octopus.cnf.
+###
+_GHOST_SITE_FILES_CLEANUP=NO
+
+###
+### Nightly cleanup of stale per-site Drush alias copies in the limited-shell
+### (FTPS) user tree. The default NO only detects and logs them (dry-run). Set
+### to YES to move a stale alias copy aside. Per Octopus account override in
+### octopus.cnf.
+###
+_GHOST_ALIASES_CLEANUP=NO
+
+###
 ### Default number of access.log lines to check.
 ###
 _NGINX_DOS_LINES=1999
