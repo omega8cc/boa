@@ -66,6 +66,10 @@ _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 _SHARED_CODEBASES_CLEANUP=NO #-- Move unused shared codebases aside when YES
 _GHOST_CODEBASES_CLEANUP=NO #--- Move ghost/orphaned codebases aside when YES
 _GHOST_PLATFORMS_CLEANUP=NO #--- Move ghost/empty platform aliases aside when YES
+_GHOST_VHOSTS_CLEANUP=NO #------ Move orphaned nginx vhosts aside when YES
+_GHOST_SITES_CLEANUP=NO #------- Move ghost site alias+vhost aside when YES
+_GHOST_SITE_FILES_CLEANUP=NO #-- Also move a ghost site's files dir when YES
+_GHOST_ALIASES_CLEANUP=NO #----- Move stale ltd-user alias copies aside when YES
 ###
 _NGINX_DOS_DIV_INC_NR="40" #---- Default divisor for increments
 _NGINX_DOS_IGNORE="foo|bar" #--- Keywords to ignore the requests if found

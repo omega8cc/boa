@@ -2388,6 +2388,10 @@ _barracuda_cnf() {
     echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_barCnf}
+    echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
@@ -2808,6 +2812,26 @@ _barracuda_cnf() {
     _GHOST_PLATFORMS_CLEANUP_TEST=$(grep _GHOST_PLATFORMS_CLEANUP ${_barCnf} 2>&1)
     if [[ ! "${_GHOST_PLATFORMS_CLEANUP_TEST}" =~ "_GHOST_PLATFORMS_CLEANUP" ]]; then
       echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_VHOSTS_CLEANUP_TEST=$(grep _GHOST_VHOSTS_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_VHOSTS_CLEANUP_TEST}" =~ "_GHOST_VHOSTS_CLEANUP" ]]; then
+      echo "_GHOST_VHOSTS_CLEANUP=${_GHOST_VHOSTS_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_SITES_CLEANUP_TEST=$(grep _GHOST_SITES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_SITES_CLEANUP_TEST}" =~ "_GHOST_SITES_CLEANUP" ]]; then
+      echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_SITE_FILES_CLEANUP_TEST=$(grep _GHOST_SITE_FILES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_SITE_FILES_CLEANUP_TEST}" =~ "_GHOST_SITE_FILES_CLEANUP" ]]; then
+      echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _GHOST_ALIASES_CLEANUP_TEST=$(grep _GHOST_ALIASES_CLEANUP ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_ALIASES_CLEANUP_TEST}" =~ "_GHOST_ALIASES_CLEANUP" ]]; then
+      echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_barCnf}
     fi
 
     sleep 1

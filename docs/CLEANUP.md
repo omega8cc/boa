@@ -64,6 +64,36 @@ Ghost /data/disk/o8/distro/002/foo detected (dry-run; set _GHOST_CODEBASES_CLEAN
 so you can see exactly what each check would act on before enabling it. Reviewing
 a dry-run run (and the paths it lists) before turning a flag on is recommended.
 
+## While a Provision task is running
+
+No cleanup of any kind runs while an Aegir/Provision task (install, clone,
+migrate, verify, backup, restore) is in progress on the box. During those tasks
+the site and platform trees are transiently inconsistent, so a snapshot taken
+then could mis-read a live site as a ghost. Each cleanup checks for a running
+`provision` process first and skips (logging a notice) if one is found, then runs
+on the next nightly pass once the box is quiet. This interlock is always on and
+sits above the per-cleanup flags.
+
+## Per-site, vhost, and alias cleanup (staged)
+
+Finer-grained flags gate cleanup of orphaned per-site artifacts:
+
+| Flag | Gates |
+|------|-------|
+| `_GHOST_VHOSTS_CLEANUP` | an nginx vhost with no matching site alias |
+| `_GHOST_SITES_CLEANUP` | a site registration (alias + vhost) whose site directory is gone |
+| `_GHOST_SITE_FILES_CLEANUP` | additionally, that ghost site's leftover files directory (data) |
+| `_GHOST_ALIASES_CLEANUP` | a stale per-site alias copy in the limited-shell (FTPS) user tree |
+
+All four are per-account (settable in an account's `octopus.cnf`, with a
+system-wide default in `barracuda.cnf`) and default `NO`. They are seeded so they
+are visible and reservable, but the underlying moves are **still disabled in
+code** pending fleet testing: these reapers act on live serving artifacts, so
+they additionally require a site to be seen as a ghost across consecutive nights,
+a resolved (not transiently absent) files/private path, and a sane parsed site
+path before anything is moved. Until that is enabled, setting these flags to
+`YES` has no effect beyond dry-run logging.
+
 ## Recovering a moved item
 
 Nothing is deleted, so recovery is just moving the item back from its backup or

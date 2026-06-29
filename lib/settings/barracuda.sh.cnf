@@ -1063,6 +1063,37 @@ _GHOST_CODEBASES_CLEANUP=NO
 _GHOST_PLATFORMS_CLEANUP=NO
 
 ###
+### Nightly cleanup of GHOST nginx vhosts (a vhost.d server block with no
+### matching site Drush alias). The default NO only detects and logs them
+### (dry-run). Set to YES to move the orphaned vhost aside into the undo/ dir.
+### Can also be enabled per Octopus account in /root/.<user>.octopus.cnf.
+###
+_GHOST_VHOSTS_CLEANUP=NO
+
+###
+### Nightly cleanup of GHOST site registrations (a site Drush alias whose site
+### directory is gone -- no settings/files/private). The default NO only detects
+### and logs them (dry-run). Set to YES to move the stale alias and its vhost
+### aside into the undo/ dir. Per Octopus account override in octopus.cnf.
+###
+_GHOST_SITES_CLEANUP=NO
+
+###
+### Also move a ghost site's leftover files directory (site data, not just the
+### registration) when _GHOST_SITES_CLEANUP acts. Kept separate and default NO
+### because it touches data. Per Octopus account override in octopus.cnf.
+###
+_GHOST_SITE_FILES_CLEANUP=NO
+
+###
+### Nightly cleanup of stale per-site Drush alias copies in the limited-shell
+### (FTPS) user tree. The default NO only detects and logs them (dry-run). Set
+### to YES to move a stale alias copy aside. Per Octopus account override in
+### octopus.cnf.
+###
+_GHOST_ALIASES_CLEANUP=NO
+
+###
 ### Default number of access.log lines to check.
 ###
 _NGINX_DOS_LINES=1999
