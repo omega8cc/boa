@@ -8845,15 +8845,27 @@ _smtp_check() {
 EOF
     fi
     ###
-    ### Required if outgoing smtp port is closed and smtp relay is in use
+    ### Required if outgoing smtp port is closed and smtp relay is in use.
+    ### Gate: if local sendmail is enabled for hosted sites
+    ### (/etc/boa/.allow.sendmail.cnf present), stay in no-relay/direct mode --
+    ### routing through the relay would re-stamp the sites' own mail to the
+    ### relay's single sending domain. Self-correcting both ways: enabling the
+    ### allow file reverts an already-active relayhost back to direct.
     ###
-    if [ ! -z "${_SMTP_RELAY_HOST}" ]; then
+    if [ ! -z "${_SMTP_RELAY_HOST}" ] \
+      && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
       sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
       wait
       sed -i "s/relayhost =/relayhost = ${_SMTP_RELAY_HOST}/g" \
         /etc/postfix/main.cf &> /dev/null
       wait
       postfix reload &> /dev/null
+    elif [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
+      if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
+        sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
+        wait
+        postfix reload &> /dev/null
+      fi
     fi
   fi
 }
