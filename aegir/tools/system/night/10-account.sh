@@ -341,7 +341,7 @@ _le_client_notify_on() {
 # move to per-account logs does not lose the old _thisLog catch-all.
 _le_account_report() {
   local _acctLog _fails _nonle _throttle _now _markerDir _marker _fresh
-  local _site _cdom _calt _ctype _cdetail _reason _opBody _clBody _clList
+  local _site _cdom _calt _ctype _cdetail _reason _opBody _clBody _clList _reply
   _acctLog="$(_acct_night_log "${_usEr}")"
   [ -r "${_acctLog}" ] || return 0
   _fails="$(_le_extract_failures "${_acctLog}")"
@@ -424,9 +424,21 @@ EOF
   _clBody="${_clBody}"$'\n'"  - If the site is still in use: update its domain DNS (A/AAAA records) to"$'\n'"    point to this server, and the certificate will renew automatically."$'\n'
   _clBody="${_clBody}"$'\n'"  - If the site or alias is no longer used: please disable Encryption (SSL)"$'\n'"    for it, or remove the obsolete domain alias, to stop these daily"$'\n'"    failures and notices."$'\n'
   _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
+  # Reply-To the account owner (else the server admin) so a client's reply
+  # reaches a human, not the undeliverable root@<host> envelope sender. Only set
+  # when it resolves to a real address (non-empty, not "root", has an @).
+  _reply="${_MY_OCTO_EMAIL}"
+  if [ -z "${_reply}" ] || [ "${_reply}" = "root" ]; then
+    _reply="${_ADMIN_EMAIL}"
+  fi
   echo "Sending LE client notice for ${_HM_U} to ${_CLIENT_EMAIL} on $(date)"
-  echo "${_clBody}" \
-    | s-nail -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+  if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] && [[ "${_reply}" =~ @ ]]; then
+    echo "${_clBody}" \
+      | s-nail -S replyto="${_reply}" -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+  else
+    echo "${_clBody}" \
+      | s-nail -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+  fi
 }
 
 _delete_this_platform() {
