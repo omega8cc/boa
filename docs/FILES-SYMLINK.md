@@ -279,8 +279,12 @@ du -sh /data/disk/<account>/static/files/.archived/*                 # oldest-fi
 rm -rf /data/disk/<account>/static/files/.archived/<UTC-stamp>
 ```
 
-Automatic pruning on site delete is a planned follow-up; until then the archive
-is retained and surfaced by the alert above.
+Deletion of archived stores is **left to the operator, by design** — the tools
+archive and alert but never auto-delete. An age-based sweep (as BOA uses for
+`/data/disk/<account>/backups`, whose timestamps are always fresh, deleting
+anything older than N days) is deliberately **not** applied here: an archived
+orphan may hold data that is already very old yet still wanted, so purging it by
+age cannot be guaranteed safe. Review the alert and prune by hand.
 
 ## Safety properties
 
@@ -439,12 +443,15 @@ re-tries on failure; it does not give up after one attempt).
 
 ## Caveats
 
-- **Archived stores are retained, not reclaimed.** A stale store archived on
-  name reuse is moved to `static/files/.archived/` and kept (never auto-deleted),
-  so the pile grows with repeated reuse of big-site names. The report alerts above
-  a size threshold (`/data/conf/native_files_archive_alert_kb.cnf`, default
-  1 GiB); prune it by hand (see *Orphan / ghost detection and stale-store
-  archiving*). Automatic pruning on site delete is a planned follow-up.
+- **Archived stores are retained; deletion is the operator's call.** A stale
+  store archived on name reuse is moved to `static/files/.archived/` and kept —
+  the tools **never auto-delete** it, because there is no safe way to guarantee an
+  auto-purge would not remove data being kept for a reason. Unlike routine backups
+  (fresh-timestamped and safe to rotate by age), an archived orphan may already be
+  very old yet still wanted, so no age-based auto-clean is applied. The report
+  alerts once the pile passes a size threshold
+  (`/data/conf/native_files_archive_alert_kb.cnf`, default 1 GiB); review it and
+  prune by hand (see *Orphan / ghost detection and stale-store archiving*).
 - **Legacy real directories are not auto-converted** during normal install/verify
   (to avoid moving data at an unexpected time). Convert them with the opt-in
   nightly auto-fix (`_AUTOSYMLINK_NIGHTLY=YES`) or a manual `autosymlink batch`
