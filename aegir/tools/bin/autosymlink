@@ -296,6 +296,52 @@ _make_unique_target() {
   mv "${_TARGET}" "${_NEW_TARGET}"
 }
 
+_archive_existing_store_target() {
+  # Move a pre-existing per-site store target ASIDE into a timestamped archive
+  # that is a SIBLING of static/files (static/files-archived/<stamp>/<site>/), so
+  # it is never re-scanned as a site. Used when a fresh install/clone reuses a
+  # site name whose store dir was left behind by a prior lifecycle (site delete
+  # does not remove it): a non-destructive self-heal instead of the former
+  # in-place rename, and no longer a blocking "not clean" edge case that skipped
+  # the narrow apply. Degrades to an in-place rename if the archive move fails, so
+  # it never blocks the conversion.
+  # Args: 1 store target to move aside (.../static/files/<site>/<type>)
+  #       2 account dir (/data/disk/oX)
+  #       3 site name
+  #       4 type label (files|private)
+  _ARCH_SRC="$1"
+  _ARCH_ACCOUNT_DIR="$2"
+  _ARCH_SITE="$3"
+  _ARCH_TYPE="$4"
+
+  if [ ! -e "${_ARCH_SRC}" ] && [ ! -L "${_ARCH_SRC}" ]; then
+    return 0
+  fi
+
+  # Run-scoped stamp so a site's files + private land under one archive dir; fall
+  # back to a fresh stamp if _process_site did not set it.
+  _ARCH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+  _ARCH_BASE="${_ARCH_ACCOUNT_DIR}/static/files-archived/${_ARCH_STAMP}/${_ARCH_SITE}"
+
+  if ! mkdir -p "${_ARCH_BASE}"; then
+    _log "[WARN] Could not create archive dir ${_ARCH_BASE}; renaming ${_ARCH_SRC} aside in place instead"
+    _make_unique_target "${_ARCH_SRC}"
+    return 0
+  fi
+
+  _ARCH_DST="${_ARCH_BASE}/${_ARCH_TYPE}"
+  if [ -e "${_ARCH_DST}" ] || [ -L "${_ARCH_DST}" ]; then
+    _make_unique_target "${_ARCH_DST}"
+  fi
+
+  _log "[APPLY] Archiving stale store target: ${_ARCH_SRC} -> ${_ARCH_DST}"
+  if ! mv "${_ARCH_SRC}" "${_ARCH_DST}"; then
+    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site ${_ARCH_SITE}; renaming ${_ARCH_SRC} aside in place instead"
+    _make_unique_target "${_ARCH_SRC}"
+  fi
+  return 0
+}
+
 _check_space_for_transfer() {
   # Args:
   #   1: source directory
@@ -687,7 +733,9 @@ _convert_dir_to_symlink() {
   fi
 
   if [ -e "${_DST}" ] || [ -L "${_DST}" ]; then
-    _make_unique_target "${_DST}"
+    # Archive a stale store target aside (non-destructive) rather than renaming it
+    # in place, so a reused site name never collides with a prior lifecycle's store.
+    _archive_existing_store_target "${_DST}" "${_ACCOUNT_DIR}" "${_SITE}" "${_TYPE}"
   fi
 
   _log "[APPLY] Moving: ${_SRC} -> ${_DST}"
@@ -739,6 +787,9 @@ _process_site() {
   _PRIVATE_PATH="${_SITE_PATH}/private"
 
   _TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
+  # One archive timestamp per site run, so a stale store's files + private land
+  # together under static/files-archived/<stamp>/<site>/.
+  _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   _DO_FILES_CONVERT="NO"
   _DO_PRIVATE_CONVERT="NO"
 
@@ -823,10 +874,11 @@ _process_site() {
 
   if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
     if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-      _log "[PLAN] Existing target will be renamed before move: ${_TARGET_BASE}/files -> ${_TARGET_BASE}/files-<hashstring>"
-      if [ "${_MODE}" = "DRY" ]; then
-        _DRY_HAS_EDGE_CASES="YES"
-      fi
+      # Stale store target from a prior lifecycle of a reused site name: archived
+      # aside automatically (see _archive_existing_store_target). A defined,
+      # non-destructive remedy -- NOT a blocking edge case, so the narrow
+      # install/clone apply proceeds instead of skipping with a warning.
+      _log "[PLAN] Existing (stale) store target will be archived before move: ${_TARGET_BASE}/files -> ${_ACCOUNT_DIR}/static/files-archived/<stamp>/${_SITE_NAME}/files"
     fi
     _log "[PLAN] Move directory: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
     _log "[PLAN] Symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
@@ -839,10 +891,11 @@ _process_site() {
 
   if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
     if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-      _log "[PLAN] Existing target will be renamed before move: ${_TARGET_BASE}/private -> ${_TARGET_BASE}/private-<hashstring>"
-      if [ "${_MODE}" = "DRY" ]; then
-        _DRY_HAS_EDGE_CASES="YES"
-      fi
+      # Stale store target from a prior lifecycle of a reused site name: archived
+      # aside automatically (see _archive_existing_store_target). A defined,
+      # non-destructive remedy -- NOT a blocking edge case, so the narrow
+      # install/clone apply proceeds instead of skipping with a warning.
+      _log "[PLAN] Existing (stale) store target will be archived before move: ${_TARGET_BASE}/private -> ${_ACCOUNT_DIR}/static/files-archived/<stamp>/${_SITE_NAME}/private"
     fi
     _log "[PLAN] Move directory: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
     _log "[PLAN] Symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
