@@ -682,7 +682,12 @@ _check_symlink_sharing() {
   fi
 
   if [ -e "${_NEW_TARGET}" ] || [ -L "${_NEW_TARGET}" ]; then
-    _make_unique_target "${_NEW_TARGET}"
+    # A pre-existing store at this (renamed/migrated) target name is a stale ghost
+    # from a prior lifecycle: archive it aside (tracked, into static/files/.archived)
+    # rather than renaming it in place, so break-sharing collisions are handled the
+    # same way as the local-convert path (_convert_dir_to_symlink) and land in the
+    # reported/prunable archive instead of cluttering the live store.
+    _archive_existing_store_target "${_NEW_TARGET}" "${_ACCOUNT_DIR}" "${_SITE_NAME}" "${_TYPE}"
   fi
 
   _log "[APPLY] Copying ${_ORIGINAL_TOP} -> ${_NEW_TARGET}"
