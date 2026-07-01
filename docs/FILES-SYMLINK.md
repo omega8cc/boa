@@ -31,6 +31,7 @@ This is the server-admin reference. For the per-site user how-to see
 |-------|-----------|---------|
 | **New site** install | After the install creates the real `files`/`private` dirs, they are **moved into the static store and symlinked** (delegated to the root tool). | **on** (kill-switchable) |
 | **Clone** a site | The new site gets its **own separate copy** of the files in its own store — never a link into the source site's data — when disk space allows; otherwise a warning is logged and the clone still succeeds. | **on** (kill-switchable) |
+| **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
 | **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **off** (opt-in) |
 | **Daily orphan report** | Email a report of ghost/orphaned store entries (data with no matching active site). | **off** (opt-in) |
 | **Manual run** | Convert/report on demand with the tools below. | — |
@@ -144,6 +145,21 @@ Both toggles are off by default; native creation and clone handling do not need
 them. Already-installed boxes whose `/root/.barracuda.cnf` predates these lines
 default to off automatically.
 
+### Archived-store accumulation alert
+
+Stale stores archived on name reuse (see *Orphan / ghost detection and
+stale-store archiving*) accumulate under `static/files/.archived/`. The daily
+report emails a `[REPORT] ORPHAN` alert once an account's archived pile reaches a
+size threshold — **1 GiB** by default. Override it (in **KB**) box-wide:
+
+```bash
+# Alert when an account's static/files/.archived total reaches 5 GiB:
+echo 5242880 > /data/conf/native_files_archive_alert_kb.cnf
+```
+
+Remove the file to restore the 1 GiB default. This controls only the *alert*; it
+never moves or deletes anything.
+
 ### Disabling native symlinking (kill-switch)
 
 Native symlinking of new sites is on by default. To turn it off without a code
@@ -192,6 +208,10 @@ Such a clone is left usable; resolve it later with a manual
 `fix-drupal-site-symlinks.sh --site=<clone> --force-unshare` run once space is
 available.
 
+If the clone reuses a name whose store was left behind by an earlier site of the
+same name, that stale store is archived aside first (see *Orphan / ghost detection
+and stale-store archiving*), so the clone never collides with it.
+
 ## Disk space and filesystems
 
 Both local and attached/extra filesystems are supported. Before moving or copying
@@ -201,13 +221,66 @@ fail when space is insufficient. A same-filesystem conversion is a rename (no
 extra space needed); a cross-filesystem one copies, then repoints, then removes
 the source.
 
-## Orphan / ghost detection
+Stale-store **archiving** on name reuse is deliberately placed *under*
+`static/files` (`static/files/.archived/`) so it always shares the store's
+filesystem and stays a free rename — a `static/files-*` sibling could land on a
+small root filesystem and turn the move into a space-consuming copy. Each
+archiving still records a `du`/`df` snapshot; a same-FS rename needs no free
+space, and a secondary check falls back to an in-place rename only if the archive
+would (unexpectedly) cross to a different, too-full device.
+
+## Orphan / ghost detection and stale-store archiving
 
 When a site is deleted, BOA removes the in-site symlink but can leave the data
-behind in `static/files/<url>/` — a **ghost**. `autosymlink report` (and the daily
-`updatesymlinks --orphan-report`) list any store entry with no matching active
-site (no vhost + Drush alias pair). Detection is **report-only by design** — it
-never deletes anything. Review the report and remove confirmed ghosts by hand.
+behind in `static/files/<url>/` — a **ghost**. Ghosts are handled two ways:
+
+- **Left for review (deleted, not recreated).** `autosymlink report` (and the
+  daily `updatesymlinks --orphan-report`) list any store entry with no matching
+  active site (no vhost + Drush alias pair). This is **report-only by design** —
+  it never deletes anything. Review the report and remove confirmed ghosts by
+  hand.
+- **Archived on reuse (name used again).** If a fresh install or clone reuses a
+  name whose ghost store is still present, that stale store would otherwise block
+  the new site's conversion. Instead it is **moved aside automatically** into a
+  hidden, timestamped archive under the store, and the new site then converts
+  cleanly:
+
+  ```
+  /data/disk/<account>/static/files/.archived/<UTC-stamp>/<url>/{files,private}
+  ```
+
+  The move is **non-destructive** (nothing is deleted), and because `.archived`
+  lives *under* `static/files` it is always on the **same filesystem** as the
+  store — a free rename, even when `static/files` is a symlink to attached
+  storage. The leading-dot `.archived` is skipped by the orphan/site scan, so it
+  is never mistaken for a site, yet the tools still track it. Every archiving is
+  logged with a `du`/`df` **disk-space snapshot** for the ghost — always, even
+  when space is ample:
+
+  ```
+  [REPORT] ORPHAN archive incident: <url>/files stale store size=<N>K -> static/files/.archived/<stamp>/ (target FS avail=<M>K)
+  ```
+
+**Archived stores accumulate — prune them.** Archiving never reclaims space (a
+big site whose name is reused many times leaves many copies). The report
+therefore sums the `static/files/.archived/` pile per account and emits an
+**emailed** `[REPORT] ORPHAN` alert once the total crosses a threshold (below it,
+a plain informational `[REPORT]` line that is not emailed):
+
+```
+[REPORT] ORPHAN archived-store pile in account <acct>: …/.archived total=<N>K >= threshold <T>K - prune old entries to reclaim space
+```
+
+The threshold defaults to **1 GiB** and is tunable (see *Configuration →
+Archived-store accumulation alert*). Prune the reviewed archive by hand:
+
+```bash
+du -sh /data/disk/<account>/static/files/.archived/*                 # oldest-first by stamp
+rm -rf /data/disk/<account>/static/files/.archived/<UTC-stamp>
+```
+
+Automatic pruning on site delete is a planned follow-up; until then the archive
+is retained and surfaced by the alert above.
 
 ## Safety properties
 
@@ -242,8 +315,11 @@ ls -ld /data/disk/o1/static/files/example.com/files
 # Dry-run report for one site (no changes):
 autosymlink --site example.com
 
-# Box-wide read-only report incl. orphans:
+# Box-wide read-only report incl. orphans and the archived-store pile:
 autosymlink report | grep -E '\[REPORT\]'
+
+# Stale stores archived on name reuse live here (hidden; prune when large):
+du -sh /data/disk/o1/static/files/.archived/* 2>/dev/null
 
 # Logs:
 tail -n 50 /var/log/boa/autosymlink.log
@@ -279,6 +355,22 @@ shows the `[native-symlink] …` line for install and clone.
    missing source) and the clone may still share the source store — re-run
    `sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=<clone> --force-unshare`
    once space is available.
+
+### Reused site name (stale-store archiving)
+
+1. Install a site, delete it but leave its `static/files/<site>/` behind (a
+   ghost), then create a site with the **same name**.
+2. The new site's task log shows the archive incident and a clean conversion:
+   ```bash
+   ls -ld /data/disk/<acct>/static/files/.archived/*/<site>   # the old store, moved aside
+   readlink /data/disk/<acct>/.../sites/<site>/files          # -> static/files/<site>/files (fresh)
+   ```
+3. Confirm the accumulation alert fires (lower the threshold to force it):
+   ```bash
+   echo 1 > /data/conf/native_files_archive_alert_kb.cnf         # 1 KB = always alert (test only)
+   updatesymlinks --orphan-report | grep 'archived-store pile'
+   rm -f /data/conf/native_files_archive_alert_kb.cnf
+   ```
 
 ### Nightly auto-fix
 
@@ -347,6 +439,12 @@ re-tries on failure; it does not give up after one attempt).
 
 ## Caveats
 
+- **Archived stores are retained, not reclaimed.** A stale store archived on
+  name reuse is moved to `static/files/.archived/` and kept (never auto-deleted),
+  so the pile grows with repeated reuse of big-site names. The report alerts above
+  a size threshold (`/data/conf/native_files_archive_alert_kb.cnf`, default
+  1 GiB); prune it by hand (see *Orphan / ghost detection and stale-store
+  archiving*). Automatic pruning on site delete is a planned follow-up.
 - **Legacy real directories are not auto-converted** during normal install/verify
   (to avoid moving data at an unexpected time). Convert them with the opt-in
   nightly auto-fix (`_AUTOSYMLINK_NIGHTLY=YES`) or a manual `autosymlink batch`

@@ -28,6 +28,13 @@ When you clone one of your sites, the clone gets its **own separate copy** of th
 files — it never shares the original's uploads. Changing files on one site does
 not affect the other.
 
+## Reusing a site name
+
+If you delete a site and later create a new one with the **same name**, the new
+site starts clean with its own fresh files. Any leftover files from the previous
+site of that name are set aside automatically — never mixed into the new site —
+so there is nothing you need to clean up first.
+
 ## Sharing files between two of your own sites (optional)
 
 Occasionally you may *want* a second site to use another site's files — for
