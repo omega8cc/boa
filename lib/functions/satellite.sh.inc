@@ -736,6 +736,7 @@ _satellite_cnf() {
     echo "_PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""               >> ${_octCnf}
     echo "_AUTOPILOT=${_AUTOPILOT}"                             >> ${_octCnf}
     echo "_HM_ONLY=${_HM_ONLY}"                                 >> ${_octCnf}
+    echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}"                   >> ${_octCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
     echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
@@ -837,6 +838,12 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${_octCnf}
+    fi
+    _PLATFORMS_ONLY_TEST=$(grep _PLATFORMS_ONLY ${_octCnf} 2>&1)
+    if [[ "${_PLATFORMS_ONLY_TEST}" =~ "_PLATFORMS_ONLY" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}" >> ${_octCnf}
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then

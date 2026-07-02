@@ -121,6 +121,26 @@ Drush is the primary tool for managing Drupal sites within BOA, allowing you to 
 8. Drush 12 or newer is available only as **site-local**, invoked via `vdrush`.
 9. It is important to review specific **caveats** for managing Drush versions further below.
 
+### Contributed-Module Drush Commands
+
+For security, BOA restricts loading of contributed-module Drush extension files
+(`*.drush.inc`) when Drush runs under the **Ægir backend**, so that site code cannot
+execute as the privileged Ægir user. The full rationale and the host-side controls
+are described in [SECURITY.md](SECURITY.md).
+
+**This restriction does not affect your own CLI sessions.** When you run Drush as the
+`oN.ftp` limited-shell account — which, as stressed above, is the account you should
+always use — your site's contributed-module Drush commands (for example `civicrm`,
+`elysia-cron`, or any other module-provided command) are discovered and run normally.
+
+If core commands such as `drush @alias cc all` work but a contributed command like
+`drush @alias elysia-cron run somecron` is *not recognized*, the usual cause is
+running Drush as the `oN` bash user instead of `oN.ftp`: the `oN` account is an Ægir
+backend identity, so the filter applies there. Reconnect as `oN.ftp` and the
+contributed commands will load. If you instead need a contributed command to run from
+an **Ægir backend task** (such as backend-mode cron), ask your host to enable it for
+your instance — see [SECURITY.md](SECURITY.md).
+
 ---
 
 ### Site-Local Drush is Preserved and Fully Supported
