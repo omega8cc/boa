@@ -25,6 +25,138 @@ export _xSrl=5103devT01
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/20-sites.sh" ] && . /var/xdrago/night/20-sites.sh
 
+_relocate_one_backup_dir() {
+  # Relocate a single per-account backup directory onto the static/files
+  # filesystem and replace it with a symlink, so large (dereferenced) backups
+  # never fill the root partition. Data-safe and never destructive: an EXISTING
+  # real dir is moved INCREMENTALLY (rsync --remove-source-files: peak extra space
+  # on the tight root FS is ~one file, not a full 2x copy, and each file is removed
+  # only after it is copied); on ANY failure the real dir is left in place and no
+  # symlink is created, so a backup is never lost. Idempotent.
+  # $1 current path (e.g. /data/disk/oX/backups); $2 target under static/files.
+  local _src="$1" _dst="$2"
+
+  # Already a symlink to the intended target -> just make sure the store exists.
+  if [ -L "${_src}" ]; then
+    if [ "$(readlink "${_src}" 2>/dev/null)" = "${_dst}" ]; then
+      [ -d "${_dst}" ] || mkdir -p "${_dst}" 2>/dev/null
+    else
+      echo "backups-on-static: ${_src} is a symlink to an unexpected target; leaving for review"
+    fi
+    return 0
+  fi
+
+  # Only relocate an EXISTING real directory (so its exact ownership is preserved);
+  # if the path does not exist yet, do nothing (Aegir creates it on first use and a
+  # later run relocates it).
+  [ -d "${_src}" ] || return 0
+
+  local _ug
+  _ug=$(stat -c '%U:%G' "${_src}" 2>/dev/null)
+  [ -n "${_ug}" ] || return 0
+
+  mkdir -p "${_dst}" 2>/dev/null || return 0
+  chown "${_ug}" "${_dst}" 2>/dev/null
+
+  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
+    # Re-check the task interlock right before the destructive move: skip (leave the
+    # real dir untouched) if a provision task started since the entry check, so a
+    # backup being written is never moved mid-write.
+    _provision_running && { echo "backups-on-static: provision task active -- left ${_src} as real dir"; return 0; }
+    # One-time migration de-links any pre-existing backups<->backup-exports hardlink
+    # pairs (the two dirs are moved in separate rsync runs, no -H), so old tarballs
+    # briefly cost double space -- on the static FS (the target), not the tight root,
+    # and it ages out via the -mtime purge. New backups after relocation hardlink
+    # fine (both dirs are then co-located on the static FS).
+    rsync -a --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
+      || { echo "backups-on-static: move failed ${_src} -> ${_dst}; left as real dir"; return 0; }
+    find "${_src}" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
+  fi
+
+  # Refuse to replace the dir with a symlink unless it emptied cleanly.
+  [ -z "$(ls -A "${_src}" 2>/dev/null)" ] \
+    || { echo "backups-on-static: ${_src} not empty after move; left as real dir for review"; return 0; }
+
+  rmdir "${_src}" 2>/dev/null || return 0
+  ln -s "${_dst}" "${_src}" 2>/dev/null \
+    || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_dst}, relink manually"; return 0; }
+  chown -h "${_ug}" "${_src}" 2>/dev/null
+  echo "backups-on-static: relocated ${_src} -> ${_dst} (static filesystem)"
+}
+
+_relocate_backups_to_static_fs() {
+  # Move this account's backups + backup-exports onto the static/files filesystem
+  # (static/files/.backups + static/files/.backup-exports) via symlinks, so large
+  # dereferenced backups cannot fill the root partition, while keeping BOTH on ONE
+  # filesystem so the Aegir backup-download hardlinks keep working (hardlinks can
+  # not cross filesystems). The leading-dot names are skipped by the site/orphan
+  # scan (like static/files/.archived). Gated on static/files being a SEPARATE
+  # filesystem (no benefit otherwise), kill-switchable, idempotent, non-fatal.
+  local _acct="${_usEr}"
+  local _static="${_acct}/static/files"
+
+  # Kill-switch: box-wide or per-account.
+  [ -f "/data/conf/disable_backups_on_static_fs.cnf" ] && return 0
+  [ -f "${_acct}/static/control/no_backups_on_static_fs.info" ] && return 0
+
+  # static/files must exist and resolve to a DIFFERENT device than the account root
+  # (else the relocation gives no protection). static/files is a separate disk only
+  # for large accounts moved to attached storage -- which is exactly the case this
+  # protects; on a default single-filesystem box this is a deliberate no-op.
+  [ -e "${_static}" ] || return 0
+  local _acctDev _statDev
+  _acctDev=$(stat -c '%d' "${_acct}" 2>/dev/null)
+  _statDev=$(stat -L -c '%d' "${_static}" 2>/dev/null)
+  [ -n "${_acctDev}" ] && [ -n "${_statDev}" ] || return 0
+  [ "${_acctDev}" != "${_statDev}" ] || return 0
+
+  # Fast idempotent path: if neither dir is a real dir pending a one-time migration
+  # (already a symlink, or absent), just normalise the symlink targets and return --
+  # no queue pause needed for a no-op (the common case after the first relocation).
+  local _need=NO
+  { [ -d "${_acct}/backups" ]        && [ ! -L "${_acct}/backups" ]; }        && _need=YES
+  { [ -d "${_acct}/backup-exports" ] && [ ! -L "${_acct}/backup-exports" ]; } && _need=YES
+  if [ "${_need}" = "NO" ]; then
+    _relocate_one_backup_dir "${_acct}/backups"        "${_static}/.backups"
+    _relocate_one_backup_dir "${_acct}/backup-exports" "${_static}/.backup-exports"
+    return 0
+  fi
+
+  # A real one-time migration is pending. Serialise the parallel per-account fan-out
+  # with a real flock (the kernel releases it if this process dies -- no stale-lock
+  # guessing), then PAUSE the Aegir task queue with the dedicated, self-healing stop
+  # file so no NEW task starts mid-move. runner.sh honours /run/boa_queue_stop.pid
+  # (parent exit + per-child skip); clear.sh purges a leaked one after 3h and /run
+  # clears on reboot, so it can never freeze the queue. The _provision_running
+  # interlock still drains any already-running task first.
+  local _lockfd
+  exec {_lockfd}>/run/.boa_backups_relocate.flock 2>/dev/null || return 0
+  if ! flock -n "${_lockfd}"; then
+    exec {_lockfd}>&-
+    return 0
+  fi
+
+  local _stop="/run/boa_queue_stop.pid" _madeStop=NO
+  [ -e "${_stop}" ] || { echo "$$" > "${_stop}" 2>/dev/null && _madeStop=YES; }
+
+  # Drain any in-flight task (bounded ~60s); with the queue paused none starts anew.
+  local _t=0
+  while _provision_running && [ "${_t}" -lt 30 ]; do sleep 2; _t=$((_t + 1)); done
+
+  if _provision_running; then
+    echo "backups-on-static: provision task still active after wait -- deferring relocation for ${_acct}"
+  else
+    _relocate_one_backup_dir "${_acct}/backups"        "${_static}/.backups"
+    _relocate_one_backup_dir "${_acct}/backup-exports" "${_static}/.backup-exports"
+  fi
+
+  # Release the queue (only if WE set it and still own it -- verify the recorded PID
+  # so we never delete another op's pause) and the flock.
+  [ "${_madeStop}" = "YES" ] && [ "$(cat "${_stop}" 2>/dev/null)" = "$$" ] && rm -f "${_stop}"
+  flock -u "${_lockfd}"
+  exec {_lockfd}>&-
+}
+
 _account_process() {
   _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
   _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
@@ -129,6 +261,7 @@ _account_process() {
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_tasks_frequency 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_tasks_items 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
+    _relocate_backups_to_static_fs
     _run_drush8_hmr_cmd "${_vSet} aegir_backup_export_path ${_usEr}/backup-exports"
     _run_drush8_hmr_cmd "fr hosting_custom_settings -y"
     _run_drush8_hmr_cmd "cache-clear all"
@@ -341,7 +474,7 @@ _le_client_notify_on() {
 # move to per-account logs does not lose the old _thisLog catch-all.
 _le_account_report() {
   local _acctLog _fails _nonle _throttle _now _markerDir _marker _fresh
-  local _site _cdom _calt _ctype _cdetail _reason _opBody _clBody _clList
+  local _site _cdom _calt _ctype _cdetail _reason _opBody _clBody _clList _reply
   _acctLog="$(_acct_night_log "${_usEr}")"
   [ -r "${_acctLog}" ] || return 0
   _fails="$(_le_extract_failures "${_acctLog}")"
@@ -424,9 +557,21 @@ EOF
   _clBody="${_clBody}"$'\n'"  - If the site is still in use: update its domain DNS (A/AAAA records) to"$'\n'"    point to this server, and the certificate will renew automatically."$'\n'
   _clBody="${_clBody}"$'\n'"  - If the site or alias is no longer used: please disable Encryption (SSL)"$'\n'"    for it, or remove the obsolete domain alias, to stop these daily"$'\n'"    failures and notices."$'\n'
   _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
+  # Reply-To the account owner (else the server admin) so a client's reply
+  # reaches a human, not the undeliverable root@<host> envelope sender. Only set
+  # when it resolves to a real address (non-empty, not "root", has an @).
+  _reply="${_MY_OCTO_EMAIL}"
+  if [ -z "${_reply}" ] || [ "${_reply}" = "root" ]; then
+    _reply="${_ADMIN_EMAIL}"
+  fi
   echo "Sending LE client notice for ${_HM_U} to ${_CLIENT_EMAIL} on $(date)"
-  echo "${_clBody}" \
-    | s-nail -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+  if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] && [[ "${_reply}" =~ @ ]]; then
+    echo "${_clBody}" \
+      | s-nail -S replyto="${_reply}" -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+  else
+    echo "${_clBody}" \
+      | s-nail -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+  fi
 }
 
 _delete_this_platform() {

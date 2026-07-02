@@ -63,6 +63,12 @@ _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
+_AUTOSYMLINK_NIGHTLY=NO #------- Nightly files-symlink auto-fix run when YES
+_ORPHAN_FILES_REPORT=NO #------- Daily orphaned files-dir email report when YES
+_NIGHT_PARALLEL=NO #------------ Process Octopus accounts in parallel at night
+_NIGHT_MAX_PARALLEL= #---------- Max parallel accounts (empty = CPU cores)
+_CLEAR_BOOST=YES #-------------- Clear all boost caches daily when YES (default)
+_LE_CLIENT_NOTIFY=YES #--------- Notify clients of their LE renewal failures
 _SHARED_CODEBASES_CLEANUP=NO #-- Move unused shared codebases aside when YES
 _GHOST_CODEBASES_CLEANUP=NO #--- Move ghost/orphaned codebases aside when YES
 _GHOST_PLATFORMS_CLEANUP=NO #--- Move ghost/empty platform aliases aside when YES
@@ -241,9 +247,14 @@ _SKYNET_MODE=ON
 ### reinstall, even if there are no updates
 ### available, when set to YES.
 ###
+### Note: _SSL_FORCE_REINSTALL=YES will also
+### force _NGX_FORCE_REINSTALL and
+### _PHP_FORCE_REINSTALL automatically.
+###
 _NGX_FORCE_REINSTALL=NO
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
+_SSL_FORCE_REINSTALL=NO
 _GIT_FORCE_REINSTALL=NO
 
 ###

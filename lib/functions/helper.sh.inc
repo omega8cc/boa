@@ -133,6 +133,38 @@ _mrun() {
 }
 
 #
+# Timestamped snapshot of a key config file into the dragon config store
+# BEFORE any in-place rewrite. Only ever copies -- never alters the original.
+# No-op on missing/empty source. Every file snapshotted during a single
+# Barracuda/Octopus run shares one human-readable subdir, so a rollback set
+# stays grouped: ${_vBs}/dragon/config/YYYY-MM-DD_HH-MM-SS/<file>. The store is
+# a low-volume, high-value permanent archive -- excluded from all retention
+# (see tools/system/night/90-global-post.sh). Any legacy flat *-pre-* files
+# left loose at the top level are swept once into config/archive/. Kept in the
+# shared helper because Octopus does not source sql. The standalone auto* bin
+# tools inline the same subdir scheme (no shared include).
+_backup_to_dragon() {
+  local _src="${1}"
+  [ -s "${_src}" ] || return 0
+  local _cfg="${_vBs:-/var/backups}/dragon/config"
+  local _bn="${_src##*/}"
+  # First call this run: pick one subdir, sweep legacy loose files aside, lock down.
+  if [ -z "${_DRAGON_RUN_DIR:-}" ]; then
+    local _stamp
+    _stamp=$(date +%Y-%m-%d_%H-%M-%S 2>/dev/null)
+    [ -n "${_stamp}" ] || _stamp="snapshot-${_xSrl:-0}"
+    _DRAGON_RUN_DIR="${_cfg}/${_stamp}"
+    mkdir -p "${_cfg}/archive" "${_DRAGON_RUN_DIR}" 2>/dev/null
+    find "${_cfg}" -maxdepth 1 -type f -exec mv -f {} "${_cfg}/archive/" \; 2>/dev/null
+    chmod 0700 "${_cfg}" "${_cfg}/archive" "${_DRAGON_RUN_DIR}" 2>/dev/null
+  fi
+  # Preserve the earliest (pristine) copy; never overwrite it later in the run.
+  [ -e "${_DRAGON_RUN_DIR}/${_bn}" ] \
+    || cp -a "${_src}" "${_DRAGON_RUN_DIR}/${_bn}" 2>/dev/null
+  return 0
+}
+
+#
 # Remove dangerous stuff from the string.
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'

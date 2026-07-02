@@ -160,11 +160,18 @@ _prepare_weblogx() {
   echo "[+] DECOMPRESSING GZ FILES"
   find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
   echo "[+] RENAMING RAW FILES"
+  # Rename ONLY the access logs. The .global.pid sentinel must never enter the
+  # rename set: it has no gate here (unlike the weblogx binary, which guards the
+  # block with [ ! -e .global.pid ]), so renaming it appended a .txt every run
+  # that the sentinel survived, growing .global.pid.txt.txt... until the name
+  # exceeded 255 bytes ("File name too long"). Sweep any such accumulated
+  # variants too, then re-set the clean sentinel.
   for _log in `find ${_ARCHLOGS}/unzip \
-    -maxdepth 1 -mindepth 1 -type f | sort`; do
+    -maxdepth 1 -mindepth 1 -type f -name 'access*' | sort`; do
     mv -f ${_log} ${_log}.txt;
   done
   rm -f ${_ARCHLOGS}/unzip/*.txt.txt*
+  rm -f ${_ARCHLOGS}/unzip/.global.pid.txt*
   touch ${_ARCHLOGS}/unzip/.global.pid
 }
 
