@@ -1361,7 +1361,7 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/tools/bin/lock.inc" f98
+  _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/tools/bin/lock.inc" f97
 
   if [ ! -e "${_optBin}/vmnetfix" ] \
     || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
@@ -3610,7 +3610,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/${_tBn}/loadguard" f98 --guard /local/bin/loadguard
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f98 --guard /local/bin/loadreport
-    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f98 --guard /local/bin/lock.inc
+    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f97 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard /local/bin/multiback
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --guard /local/bin/mybackup
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f98 --guard /local/bin/octopus
