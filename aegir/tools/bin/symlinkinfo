@@ -1,0 +1,221 @@
+#!/bin/bash
+#
+# symlinkinfo — query the native files-symlink + archive history for one or more sites,
+# from the autosymlink logs and the current filesystem. Read-only: changes nothing.
+#
+# For each <sitename> it answers:
+#   * was its files/private store symlinked into static/files, and WHEN (each event);
+#   * is a store present RIGHT NOW, and is the in-site path a live symlink;
+#   * was the store ARCHIVED (reuse-collision or deleted-site orphan), WHEN, and to
+#     which static/files/.archived/<stamp>/<site>/ path;
+#   * where the archived copies live on disk right now (if not yet purged), with size.
+#
+# Sources: /var/log/boa/autosymlink.log* and autosymlink.verbose.archive.log* (incl.
+# rotated .gz), plus /data/disk/*/static/files[/.archived].
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+_logDir="/var/log/boa"
+_diskRoot="/data/disk"
+_doLogs="YES"
+_doFs="YES"
+
+_usage() {
+  cat <<EOF
+Usage: symlinkinfo [options] <sitename> [<sitename> ...]
+
+Query the native files-symlink + archive history for one or more sites, from the
+autosymlink logs and the current filesystem. Read-only.
+
+Options:
+  --log-dir DIR    autosymlink log dir  (default: ${_logDir})
+  --disk-root DIR  Aegir account root   (default: ${_diskRoot})
+  --logs-only      parse logs only, do not scan the filesystem
+  --fs-only        scan the filesystem only, do not parse logs
+  -h, --help       show this help
+
+Examples:
+  symlinkinfo bar.tkm.cc
+  symlinkinfo foo.tkm.cc clone.foo.tkm.cc
+EOF
+}
+
+_sites=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --log-dir)   _logDir="$2"; shift 2 ;;
+    --disk-root) _diskRoot="$2"; shift 2 ;;
+    --logs-only) _doFs="NO"; shift ;;
+    --fs-only)   _doLogs="NO"; shift ;;
+    -h|--help)   _usage; exit 0 ;;
+    --*)         echo "symlinkinfo: unknown option '$1'" >&2; _usage; exit 1 ;;
+    *)           _sites+=("$1"); shift ;;
+  esac
+done
+
+if [ "${#_sites[@]}" -eq 0 ]; then
+  _usage
+  exit 1
+fi
+
+# Read one log source, decompressing .gz transparently.
+_read_source() {
+  case "$1" in
+    *.gz) zcat -- "$1" 2>/dev/null ;;
+    *)    cat  -- "$1" 2>/dev/null ;;
+  esac
+}
+
+# Concatenate every log source (main log + updatesymlinks verbose archive, incl.
+# rotated copies). Order is irrelevant; callers sort by the leading timestamp.
+_all_log_lines() {
+  local _f
+  for _f in "${_logDir}"/autosymlink.log \
+            "${_logDir}"/autosymlink.log.* \
+            "${_logDir}"/autosymlink.verbose.archive.log \
+            "${_logDir}"/autosymlink.verbose.archive.log.*; do
+    [ -e "${_f}" ] && _read_source "${_f}"
+  done
+}
+
+_query_one() {
+  local _site="$1"
+  local _reSite _tok _lines _sym _arc _inc _rep _cnt _last
+  local _l _ts _rest _from _to _type _kind
+  local _acct _st _sz _foundStore _foundArc _ar _stamp _live _insiteFiles=""
+
+  # Validate: real site names are lowercase-ish tokens; reject anything odd fail-closed.
+  case "${_site}" in
+    ""|*/*|*..*)
+      echo "symlinkinfo: invalid site name '${_site}' — skipped" >&2
+      return 0
+      ;;
+  esac
+  if ! printf '%s' "${_site}" | grep -qE '^[A-Za-z0-9][A-Za-z0-9._-]*$'; then
+    echo "symlinkinfo: invalid site name '${_site}' — skipped" >&2
+    return 0
+  fi
+
+  # Escape '.' for the ERE (the only regex metachar a valid site name can contain).
+  _reSite=$(printf '%s' "${_site}" | sed 's/\./\\./g')
+  # Match the site as a whole path/word token: bounded by start/slash/space on the left
+  # and slash/space/colon/end on the right, so foo.tkm.cc never matches clone.foo.tkm.cc.
+  _tok="(^|[/[:space:]])${_reSite}([/[:space:]:]|\$)"
+
+  echo "================================================================"
+  echo "  ${_site}"
+  echo "================================================================"
+
+  if [ "${_doLogs}" = "YES" ]; then
+    _lines=$(_all_log_lines | grep -E "${_tok}" 2>/dev/null | sort -u)
+
+    if [ -z "${_lines}" ]; then
+      echo "  logs      : no symlink/archive history found in ${_logDir}"
+    else
+      # Symlink conversions (in-site files/private -> static/files store).
+      _sym=$(printf '%s\n' "${_lines}" | grep -F '[APPLY] Creating symlink:')
+      # Remember the most recent in-site 'files' symlink path (authoritative platform
+      # path from the log) so the filesystem section can verify it is live right now.
+      _insiteFiles=$(printf '%s\n' "${_sym}" | grep -F '/files -> ' | tail -n1 \
+        | sed -n 's/.*Creating symlink: \(.*\/files\) -> .*/\1/p')
+      if [ -n "${_sym}" ]; then
+        echo "  Symlinked (files/private -> static/files store):"
+        printf '%s\n' "${_sym}" | while IFS= read -r _l; do
+          _ts="${_l:0:19}"
+          _rest="${_l#*Creating symlink: }"
+          _from="${_rest%% -> *}"
+          _to="${_rest##* -> }"
+          case "${_from}" in
+            */files)   _type="files" ;;
+            */private) _type="private" ;;
+            *)         _type="?" ;;
+          esac
+          printf "    %s  %-7s -> %s\n" "${_ts}" "${_type}" "${_to}"
+        done
+      fi
+
+      # Archive events (reuse-collision self-heal, or deleted-site orphan).
+      _arc=$(printf '%s\n' "${_lines}" | grep -F '[APPLY] Archiving')
+      if [ -n "${_arc}" ]; then
+        echo "  Archived (store moved aside into .archived, never deleted):"
+        printf '%s\n' "${_arc}" | while IFS= read -r _l; do
+          _ts="${_l:0:19}"
+          case "${_l}" in
+            *"orphan store"*)        _kind="orphan" ;;
+            *"stale store target"*)  _kind="reuse" ;;
+            *)                       _kind="?" ;;
+          esac
+          _to="${_l##* -> }"
+          printf "    %s  %-6s -> %s\n" "${_ts}" "${_kind}" "${_to}"
+        done
+      fi
+
+      # Archive incidents carry the size + destination stamp.
+      _inc=$(printf '%s\n' "${_lines}" | grep -F 'ORPHAN archive incident:')
+      if [ -n "${_inc}" ]; then
+        echo "  Archive incidents (with size):"
+        printf '%s\n' "${_inc}" | while IFS= read -r _l; do
+          printf "    %s  %s\n" "${_l:0:19}" "${_l#*ORPHAN archive incident: }"
+        done
+      fi
+
+      # Report-only orphan detections (store present, no active site, left in place).
+      _rep=$(printf '%s\n' "${_lines}" | grep -F 'ORPHAN static/files entry')
+      if [ -n "${_rep}" ]; then
+        _cnt=$(printf '%s\n' "${_rep}" | grep -c .)
+        _last=$(printf '%s\n' "${_rep}" | tail -n1)
+        echo "  Reported as orphan (present, no active site) ${_cnt}x; last ${_last:0:19}"
+      fi
+
+      if [ -z "${_sym}${_arc}${_inc}${_rep}" ]; then
+        echo "  logs      : matched lines, but no symlink/archive/orphan events"
+      fi
+    fi
+  fi
+
+  if [ "${_doFs}" = "YES" ]; then
+    # Current store(s) + whether the in-site path is a live symlink.
+    _foundStore="NO"
+    for _acct in "${_diskRoot}"/*; do
+      _st="${_acct}/static/files/${_site}"
+      if [ -e "${_st}" ] || [ -L "${_st}" ]; then
+        _foundStore="YES"
+        _sz=$(du -sh "${_st}" 2>/dev/null | awk '{print $1}')
+        # Is the site symlinked live NOW? Verify the in-site 'files' path recorded in the
+        # log is currently a symlink pointing at this store (authoritative, no guessing).
+        if [ -n "${_insiteFiles}" ] && [ -L "${_insiteFiles}" ] \
+          && [ "$(readlink "${_insiteFiles}" 2>/dev/null)" = "${_st}/files" ]; then
+          _live="live symlink ${_insiteFiles} -> ${_st}/files"
+        elif [ -n "${_insiteFiles}" ]; then
+          _live="in-site path ${_insiteFiles} is NOT a live symlink to this store"
+        else
+          _live="in-site symlink not resolved (no conversion in the logs, or --fs-only)"
+        fi
+        printf "  Store NOW : %s  (%s)\n" "${_st}" "${_sz:-?}"
+        printf "              %s\n" "${_live}"
+      fi
+    done
+    [ "${_foundStore}" = "NO" ] && echo "  Store NOW : none under ${_diskRoot}/*/static/files/${_site}"
+
+    # Current archived copies on disk (unpurged), with stamp + size.
+    _foundArc="NO"
+    for _acct in "${_diskRoot}"/*; do
+      [ -d "${_acct}/static/files/.archived" ] || continue
+      for _ar in "${_acct}/static/files/.archived/"*/"${_site}"; do
+        [ -e "${_ar}" ] || continue
+        _foundArc="YES"
+        _stamp=$(basename "$(dirname "${_ar}")")
+        _sz=$(du -sh "${_ar}" 2>/dev/null | awk '{print $1}')
+        printf "  Archive NOW: %s  (stamp %s, %s)\n" "${_ar}" "${_stamp}" "${_sz:-?}"
+      done
+    done
+    [ "${_foundArc}" = "NO" ] && echo "  Archive NOW: none on disk (never archived, or already purged)"
+  fi
+  echo
+}
+
+for _s in "${_sites[@]}"; do
+  _query_one "${_s}"
+done
