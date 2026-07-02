@@ -95,17 +95,14 @@ _relocate_backups_to_static_fs() {
   local _acct="${_usEr}"
   local _static="${_acct}/static/files"
 
-  # Never move backup data while an Aegir/Provision task (backup/restore/download/
-  # clone/migrate) might be writing it -- match the nightly file-mover interlock
-  # used by every sibling mover (_provision_running = pgrep -f provision).
-  _provision_running && { echo "INFO: provision task active -- skipping backups relocation"; return 0; }
-
   # Kill-switch: box-wide or per-account.
   [ -f "/data/conf/disable_backups_on_static_fs.cnf" ] && return 0
   [ -f "${_acct}/static/control/no_backups_on_static_fs.info" ] && return 0
 
   # static/files must exist and resolve to a DIFFERENT device than the account root
-  # (else the relocation gives no protection).
+  # (else the relocation gives no protection). static/files is a separate disk only
+  # for large accounts moved to attached storage -- which is exactly the case this
+  # protects; on a default single-filesystem box this is a deliberate no-op.
   [ -e "${_static}" ] || return 0
   local _acctDev _statDev
   _acctDev=$(stat -c '%d' "${_acct}" 2>/dev/null)
@@ -113,8 +110,51 @@ _relocate_backups_to_static_fs() {
   [ -n "${_acctDev}" ] && [ -n "${_statDev}" ] || return 0
   [ "${_acctDev}" != "${_statDev}" ] || return 0
 
-  _relocate_one_backup_dir "${_acct}/backups"        "${_static}/.backups"
-  _relocate_one_backup_dir "${_acct}/backup-exports" "${_static}/.backup-exports"
+  # Fast idempotent path: if neither dir is a real dir pending a one-time migration
+  # (already a symlink, or absent), just normalise the symlink targets and return --
+  # no queue pause needed for a no-op (the common case after the first relocation).
+  local _need=NO
+  { [ -d "${_acct}/backups" ]        && [ ! -L "${_acct}/backups" ]; }        && _need=YES
+  { [ -d "${_acct}/backup-exports" ] && [ ! -L "${_acct}/backup-exports" ]; } && _need=YES
+  if [ "${_need}" = "NO" ]; then
+    _relocate_one_backup_dir "${_acct}/backups"        "${_static}/.backups"
+    _relocate_one_backup_dir "${_acct}/backup-exports" "${_static}/.backup-exports"
+    return 0
+  fi
+
+  # A real one-time migration is pending. Serialise the parallel per-account fan-out
+  # with a real flock (the kernel releases it if this process dies -- no stale-lock
+  # guessing), then PAUSE the Aegir task queue with the dedicated, self-healing stop
+  # file so no NEW task starts mid-move. runner.sh honours /run/boa_queue_stop.pid
+  # (parent exit + per-child skip); clear.sh purges a leaked one after 3h and /run
+  # clears on reboot, so it can never freeze the queue. The _provision_running
+  # interlock still drains any already-running task first.
+  local _lockfd
+  exec {_lockfd}>/run/.boa_backups_relocate.flock 2>/dev/null || return 0
+  if ! flock -n "${_lockfd}"; then
+    exec {_lockfd}>&-
+    return 0
+  fi
+
+  local _stop="/run/boa_queue_stop.pid" _madeStop=NO
+  [ -e "${_stop}" ] || { echo "$$" > "${_stop}" 2>/dev/null && _madeStop=YES; }
+
+  # Drain any in-flight task (bounded ~60s); with the queue paused none starts anew.
+  local _t=0
+  while _provision_running && [ "${_t}" -lt 30 ]; do sleep 2; _t=$((_t + 1)); done
+
+  if _provision_running; then
+    echo "backups-on-static: provision task still active after wait -- deferring relocation for ${_acct}"
+  else
+    _relocate_one_backup_dir "${_acct}/backups"        "${_static}/.backups"
+    _relocate_one_backup_dir "${_acct}/backup-exports" "${_static}/.backup-exports"
+  fi
+
+  # Release the queue (only if WE set it and still own it -- verify the recorded PID
+  # so we never delete another op's pause) and the flock.
+  [ "${_madeStop}" = "YES" ] && [ "$(cat "${_stop}" 2>/dev/null)" = "$$" ] && rm -f "${_stop}"
+  flock -u "${_lockfd}"
+  exec {_lockfd}>&-
 }
 
 _account_process() {
