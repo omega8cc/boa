@@ -85,6 +85,7 @@ _query_one() {
   local _reSite _tok _lines _sym _arc _inc _rep _cnt _last
   local _l _ts _rest _from _to _type _kind
   local _acct _st _sz _foundStore _foundArc _ar _stamp _live _insiteFiles=""
+  local _state _stateAcct _aliasP _vhostP _vhostKind _alias _vhost
 
   # Validate: real site names are lowercase-ish tokens; reject anything odd fail-closed.
   case "${_site}" in
@@ -176,6 +177,45 @@ _query_one() {
   fi
 
   if [ "${_doFs}" = "YES" ]; then
+    # Current lifecycle state, from the drush alias + nginx vhost.d entry:
+    #   active   = alias + vhost (real docroot)
+    #   disabled = alias + vhost, but BOA rewrote the vhost to a placeholder
+    #              (root /var/www/nginx-default + "Do not reveal Aegir front-end URL");
+    #              the site keeps its files LIVE and its store is never an orphan candidate
+    #   deleted  = neither alias nor vhost -> the store is an orphan (auto-archived on sweep)
+    #   partial  = only one survives (botched/manual state) -> never archived while either exists
+    _state="deleted"; _stateAcct=""; _aliasP="no"; _vhostP="no"; _vhostKind=""
+    for _acct in "${_diskRoot}"/*; do
+      _alias="${_acct}/.drush/${_site}.alias.drushrc.php"
+      _vhost="${_acct}/config/server_master/nginx/vhost.d/${_site}"
+      if [ -e "${_alias}" ] || [ -e "${_vhost}" ]; then
+        _stateAcct=$(basename "${_acct}")
+        [ -e "${_alias}" ] && _aliasP="yes"
+        if [ -e "${_vhost}" ]; then
+          _vhostP="yes"
+          if grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' "${_vhost}" 2>/dev/null; then
+            _vhostKind="disabled placeholder"
+          else
+            _vhostKind="real docroot"
+          fi
+        fi
+        break
+      fi
+    done
+    if [ "${_aliasP}" = "yes" ] && [ "${_vhostP}" = "yes" ]; then
+      [ "${_vhostKind}" = "disabled placeholder" ] && _state="disabled" || _state="active"
+    elif [ "${_aliasP}" = "no" ] && [ "${_vhostP}" = "no" ]; then
+      _state="deleted"
+    else
+      _state="partial"
+    fi
+    case "${_state}" in
+      active)   printf "  State NOW : active    (alias yes, vhost yes: real docroot)%s\n" "${_stateAcct:+  [account ${_stateAcct}]}" ;;
+      disabled) printf "  State NOW : DISABLED  (alias yes, vhost yes: placeholder) -- files kept live, never archived%s\n" "${_stateAcct:+  [account ${_stateAcct}]}" ;;
+      deleted)  printf "  State NOW : deleted   (no alias, no vhost) -- store is an orphan (auto-archived on the next sweep)\n" ;;
+      partial)  printf "  State NOW : PARTIAL   (alias=%s, vhost=%s%s) -- NOT archived while either survives%s\n" "${_aliasP}" "${_vhostP}" "${_vhostKind:+: ${_vhostKind}}" "${_stateAcct:+  [account ${_stateAcct}]}" ;;
+    esac
+
     # Current store(s) + whether the in-site path is a live symlink.
     _foundStore="NO"
     for _acct in "${_diskRoot}"/*; do
