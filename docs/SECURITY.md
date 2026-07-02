@@ -25,6 +25,73 @@ BOA offers a highly secure hosting environment for Ægir and Drupal sites, featu
 11. **Restricted Admin Access**: Admin account access (uid=1) is unavailable in Ægir to prevent potential misuse. Non-admin main account access provides sufficient privileges for safe management in a multi-Ægir environment.
 12. **Restricted System Binaries Access**: BOA modifies access permissions to system binaries and commands that could potentially be used as attack vectors by web shells and other intrusion methods, significantly limiting damage potential even for sites running older Drupal versions.
 
+# Drush Extension (`*.drush.inc`) Loading Restrictions
+
+Drush automatically discovers and loads any `*.drush.inc` extension file present in
+a site's modules or themes. On a shared Ægir server this is a privilege-escalation
+risk: a client who can modify their site's codebase could drop a malicious
+`*.drush.inc` that Drush would then load and execute **as the Ægir backend user**
+during a routine task (verify, migrate, cron, and so on) — i.e. with authority over
+every site on that Octopus instance. This is the long-standing upstream issue
+[#762138](https://www.drupal.org/project/provision/issues/762138).
+
+BOA closes this at the Drush layer. When Drush runs **as an Ægir backend identity**
+— the master `aegir` user, or an Octopus instance user `oN` — it refuses to load
+`*.drush.inc` files located under tenant-writable paths
+(`/data/disk/<oN>/{static,distro,platforms}/…` and the non-BOA parts of
+`~/.drush/`). BOA's own Drush extensions (under `~/.drush/{sys,usr,xts}/` and the
+`aegir/distro/` tree) and everything on the Ægir Master are unaffected, so ordinary
+hosting tasks and all core Drush commands keep working.
+
+**The restriction does not apply to limited-shell sessions.** When a user runs
+Drush themselves as the `oN.ftp` limited-shell account — the account they are meant
+to use for all CLI work (see [DRUSH-CLI.md](DRUSH-CLI.md)) — the filter is skipped
+entirely and their site's contributed-module Drush commands load normally. Running
+as `oN.ftp` is not an escalation (the user already owns that account), so there is
+nothing to guard against there. BOA makes this distinction from the effective
+system user of the Drush process, which a client cannot forge.
+
+## Allowing specific extensions for the Ægir backend
+
+A few contributed modules legitimately provide Drush commands that the Ægir backend
+itself may need to run. These are enabled per Octopus instance with an empty control
+file under `/data/conf/`, following the same convention as BOA's other opt-in
+restrictions (such as the Node/NPM `lshell` control file above):
+
+| Control file | Effect |
+|---|---|
+| `/data/conf/<oN>_civicrm.txt` | Allow the backend to load CiviCRM's Drush commands (`civicrm.drush.inc`, `cv.drush.inc`, `civicrm_drush.drush.inc`) for that instance's CiviCRM sites. |
+| `/data/conf/<oN>_elysia_cron.txt` | Allow the backend to load `elysia_cron.drush.inc` for that instance, so backend-mode cron (`hosting_cron_use_backend`) keeps Elysia Cron's fine-grained schedule instead of falling back to core cron. |
+
+Replace `<oN>` with the Octopus instance user (for example `o1`). The file's content
+is irrelevant — only its presence matters. Create it as `root`:
+
+```bash
+touch /data/conf/o1_elysia_cron.txt
+```
+
+Backend-run Drush cron is a legacy path: BOA does not use Drush-based cron on
+Drupal 8+ (it is incompatible), so the `elysia_cron` opt-in matters only for older
+sites that both use Elysia Cron and have `hosting_cron_use_backend` enabled. It is
+never enabled automatically — you decide, per instance, whether to grant it.
+
+## Lifting the restriction entirely (single-tenant servers only)
+
+If you are the **only** tenant on the server and accept the risk, you can turn the
+filter off completely — for every identity, including the Ægir backend — with one
+global control file:
+
+```bash
+touch /data/conf/drush_extension_filter_disabled.txt
+```
+
+This restores stock Drush `*.drush.inc` loading everywhere and **re-opens
+[#762138](https://www.drupal.org/project/provision/issues/762138)** on that server.
+Never use it on a server that hosts sites for more than one party. On multi-tenant
+servers the per-instance opt-ins above are the correct tool — and because
+limited-shell (`oN.ftp`) sessions are never filtered, ordinary client CLI use needs
+no opt-in at all. Remove the file to re-enable the protection.
+
 # Customizing PHP Function Restrictions
 
 ## Option in `/root/.barracuda.cnf`

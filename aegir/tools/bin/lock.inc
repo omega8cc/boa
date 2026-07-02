@@ -14,23 +14,36 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 ### Idempotent include guard
 ###
 [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && return 0
-_SINGLE_INSTANCE_LIB_VER="1.0"
+_SINGLE_INSTANCE_LIB_VER="1.1"
 
 ###
 ### Atomic unlock to prevent TOCTOU race
 ###
 _single_instance_unlock() {
-  _FD="$1"; _PATH="$2"
+  # Args optional: fall back to the descriptor/path recorded by _single_instance_lock,
+  # so a no-arg call (e.g. from a caller's own EXIT trap that overrode our trap) still
+  # releases the right lock instead of leaving _FD empty — an empty _FD tripped
+  # "_FD: ambiguous redirect" on the exec {_FD}>&- close below.
+  _FD="${1:-${_LOCK_FD:-}}"
+  _PATH="${2:-${_LOCK_PATH:-}}"
   if command -v flock >/dev/null 2>&1; then
-    flock -u "${_FD}" 2>/dev/null || true
-    # Close the lock fd. Use the modern brace-expansion close form
-    # (bash >= 4.1) — equivalent to `eval "exec ${_FD}>&-"` but without
-    # the eval. Safer to future variants where _FD could be derived from
-    # a less-controlled source.
-    exec {_FD}>&-
-    rm -f "${_PATH}" 2>/dev/null || true
+    case "${_FD}" in
+      ''|*[!0-9]*)
+        # No usable numeric descriptor recorded — nothing to unlock/close.
+        :
+        ;;
+      *)
+        flock -u "${_FD}" 2>/dev/null || true
+        # Close the lock fd via the brace-expansion close form (bash >= 4.1),
+        # equivalent to `eval "exec ${_FD}>&-"` without the eval. Guarded above so a
+        # bare number is guaranteed here; an empty/non-numeric value would otherwise
+        # print "ambiguous redirect".
+        exec {_FD}>&-
+        ;;
+    esac
+    [ -n "${_PATH}" ] && rm -f "${_PATH}" 2>/dev/null || true
   else
-    rm -rf "${_PATH}" 2>/dev/null || true
+    [ -n "${_PATH}" ] && rm -rf "${_PATH}" 2>/dev/null || true
   fi
 }
 

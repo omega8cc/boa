@@ -375,6 +375,10 @@ _migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
+      # Full hostmaster DB dump. renameaegirhost rewrites the source host/IP
+      # across the entire DB on import and its task queue regenerates db-host
+      # and alias entries, so a per-table allowlist (which silently dropped any
+      # unlisted or newly added schema table) is no longer needed.
       mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
         --single-transaction \
         --quick \
@@ -382,85 +386,6 @@ _migrate_prepare() {
         --skip-add-locks \
         --no-tablespaces \
         --hex-blob ${_HDB} \
-        comment \
-        date_format_locale \
-        date_format_type \
-        date_formats \
-        fe_block_boxes \
-        features_signature \
-        field_config \
-        field_config_instance \
-        field_data_body \
-        field_data_comment_body \
-        field_data_field_composer_git_docroot \
-        field_data_field_composer_git_path \
-        field_data_field_composer_git_project_url \
-        field_data_field_composer_git_version \
-        field_data_field_composer_project_docroot \
-        field_data_field_composer_project_package \
-        field_data_field_composer_project_path \
-        field_data_field_composer_project_version \
-        field_data_field_deployment_strategy \
-        field_data_field_git_docroot \
-        field_data_field_git_reference \
-        field_data_field_git_repository_path \
-        field_data_field_git_repository_url \
-        field_revision_body \
-        field_revision_comment_body \
-        field_revision_field_composer_git_docroot \
-        field_revision_field_composer_git_path \
-        field_revision_field_composer_git_project_url \
-        field_revision_field_composer_git_version \
-        field_revision_field_composer_project_docroot \
-        field_revision_field_composer_project_package \
-        field_revision_field_composer_project_path \
-        field_revision_field_composer_project_version \
-        field_revision_field_deployment_strategy \
-        field_revision_field_git_docroot \
-        field_revision_field_git_reference \
-        field_revision_field_git_repository_path \
-        field_revision_field_git_repository_url \
-        filter \
-        filter_format \
-        history \
-        hosting_backup_gc_sites \
-        hosting_client \
-        hosting_client_user \
-        hosting_context \
-        hosting_cron \
-        hosting_git \
-        hosting_git_pull \
-        hosting_http_basic_auth \
-        hosting_package \
-        hosting_package_instance \
-        hosting_package_languages \
-        hosting_platform \
-        hosting_platform_client_access \
-        hosting_service \
-        hosting_site \
-        hosting_site_alias \
-        hosting_site_backups \
-        hosting_ssl_cert \
-        hosting_ssl_cert_ips \
-        hosting_ssl_server \
-        hosting_ssl_site \
-        hosting_task \
-        hosting_task_arguments \
-        hosting_task_log \
-        menu_custom \
-        menu_links \
-        menu_router \
-        node \
-        node_access \
-        node_comment_statistics \
-        node_revision \
-        node_type \
-        role \
-        role_permission \
-        url_alias \
-        userprotect \
-        users \
-        users_roles \
         > ${_USR}/src/prev_hostmaster.sql
     if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${_oct} db export complete"
@@ -490,102 +415,11 @@ _migrate_prepare() {
     fi
 
     if [ "${_fix}" = "fix" ]; then
-      if [ ! -e "${_USR}/log/post-merge-fix.pid" ]; then
-        echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
-        _DOMAIN=`cat ${_USR}/log/domain.txt`
-        _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
-        _USE_AEGIR_HOST=`uname -n`
+      _DOMAIN=`cat ${_USR}/log/domain.txt`
+      _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
 
-        ### Pre-Fix for migrated/merged instances
-        if [ -e "${_USR}/log/imported.pid" ] || [ -e "${_USR}/log/exported.pid" ]; then
-          if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ]; then
-            sed -i "s/platform_0.*'/platform_002'/g"           ${_USR}/.drush/hostmaster.alias.drushrc.php
-            wait
-            sed -i "s/distro\/0.*\/sites/distro\/002\/sites/g" ${_USR}/.drush/hostmaster.alias.drushrc.php
-            wait
-            sed -i "s/distro\/01.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
-            wait
-            sed -i "s/distro\/02.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
-            wait
-            sed -i "s/distro\/03.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
-            wait
-            sed -i "s/distro\/04.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
-            wait
-            sed -i "s/distro\/05.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
-            wait
-            sed -i "s/platform_0.*'/platform_002'/g"           ${_USR}/.drush/hm.alias.drushrc.php
-            wait
-            sed -i "s/distro\/0.*\/sites/distro\/002\/sites/g" ${_USR}/.drush/hm.alias.drushrc.php
-            wait
-            sed -i "s/distro\/01.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
-            wait
-            sed -i "s/distro\/02.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
-            wait
-            sed -i "s/distro\/03.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
-            wait
-            sed -i "s/distro\/04.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
-            wait
-            sed -i "s/distro\/05.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
-          fi
-        fi
-
-        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\""
-        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\""
-        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO node_revision (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\""
-        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\""
-        _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid=2 AND short_name='drupal'\""
-        _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid=4 AND short_name='drupal'\""
-        _run_drush8_hmr_cmd "sqlq \"DELETE FROM node WHERE nid=8 AND type='site'\""
-        _run_drush8_hmr_cmd "sqlq \"DELETE FROM node_revision WHERE nid=8\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid=2\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid=4\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_USE_AEGIR_HOST}' WHERE nid=2\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='localhost' WHERE nid=4\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_USE_AEGIR_HOST}' WHERE nid=2\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='localhost' WHERE nid=4\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET db_server=4 WHERE db_server=2\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server=2 WHERE web_server=0\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE users_roles SET rid=7 WHERE rid=5\""
-        su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush"
-        wait
-        rm -rf ${_USR}/.tmp/cache
-        _run_drush8_hmr_cmd "hosting-task @server_localhost verify --force"
-        _run_drush8_hmr_cmd "hosting-dispatch"
-        sleep 5
-        _run_drush8_hmr_cmd "hosting-tasks --force"
-        echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
-      fi
       _vSet="variable-set --always-set"
-      _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0"
-      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client=1 WHERE profile=7\""
-      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client=1 WHERE profile=9\""
-      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client=1 WHERE client=0\""
-      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server=2 WHERE web_server=0\""
-      _run_drush8_hmr_cmd "sqlq \"UPDATE node SET uid=1 WHERE uid=0\""
-      _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET uid=1 WHERE uid=0\""
-      _HM_NID=$(_run_drush8_hmr_cmd "sqlq \"SELECT MIN(site.nid) AS lowest_nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster';\"" 2>&1)
-      _HM_NID=${_HM_NID//[^0-9]/}
-      if [ ! -z "${_HM_NID}" ]; then
-        echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
-        if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(_run_drush8_hmr_cmd "sqlq \"SELECT platform FROM hosting_site WHERE nid=${_HM_NID}\"" 2>&1)
-          _HM_PLF=${_HM_PLF//[^0-9]/}
-          _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_context WHERE name='platform_002' AND nid != ${_HM_PLF}\""
-          _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='platform_002' WHERE nid=${_HM_PLF}\""
-        fi
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid=${_HM_NID}\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid=${_HM_NID}\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_DOMAIN}' WHERE nid=${_HM_NID}\""
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid=${_HM_NID}\""
-        echo FIXED > ${_USR}/log/post-merge-fix.pid
-      else
-        echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context _HM_NID empty!"
-      fi
-      if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ] \
-        && [ ! -e "${_USR}/log/hmpathfix.pid" ]; then
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/002' WHERE publish_path LIKE '%/aegir/distro/%'\""
-        touch ${_USR}/log/hmpathfix.pid
-      fi
+      _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0" &> /dev/null
     fi
 
   fi
@@ -911,8 +745,8 @@ _post_mig() {
     if [ ! -e "/var/xdrago/runner.sh" ] && [ -e "/var/xdrago/.runner.sh.off" ]; then
       mv -f /var/xdrago/.runner.sh.off /var/xdrago/runner.sh
     fi
-    if [ ! -e "/var/xdrago/daily.sh" ] && [ -e "/var/xdrago/.daily.sh.off" ]; then
-      mv -f /var/xdrago/.daily.sh.off /var/xdrago/daily.sh
+    if [ ! -e "/var/xdrago/owl.sh" ] && [ -e "/var/xdrago/.owl.sh.off" ]; then
+      mv -f /var/xdrago/.owl.sh.off /var/xdrago/owl.sh
     fi
     if [ ! -e "/var/xdrago/usage.sh" ] && [ -e "/var/xdrago/.usage.sh.off" ]; then
       mv -f /var/xdrago/.usage.sh.off /var/xdrago/usage.sh
@@ -938,9 +772,9 @@ _pre_mig() {
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
       pkill -9 -f runner.sh
     fi
-    if [ -e "/var/xdrago/daily.sh" ]; then
-      mv -f /var/xdrago/daily.sh /var/xdrago/.daily.sh.off
-      pkill -9 -f daily.sh
+    if [ -e "/var/xdrago/owl.sh" ]; then
+      mv -f /var/xdrago/owl.sh /var/xdrago/.owl.sh.off
+      pkill -9 -f owl.sh
     fi
     if [ -e "/var/xdrago/usage.sh" ]; then
       mv -f /var/xdrago/usage.sh /var/xdrago/.usage.sh.off
