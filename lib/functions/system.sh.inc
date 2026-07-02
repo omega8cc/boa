@@ -2387,6 +2387,10 @@ _barracuda_cnf() {
     echo "###"                                                    >> ${_barCnf}
     echo "_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}"           >> ${_barCnf}
     echo "_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}"           >> ${_barCnf}
+    echo "_NIGHT_PARALLEL=${_NIGHT_PARALLEL}"                     >> ${_barCnf}
+    echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}"             >> ${_barCnf}
+    echo "_CLEAR_BOOST=${_CLEAR_BOOST}"                           >> ${_barCnf}
+    echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}"                 >> ${_barCnf}
     echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}"   >> ${_barCnf}
     echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}"   >> ${_barCnf}
@@ -2809,6 +2813,26 @@ _barracuda_cnf() {
     _ORPHAN_FILES_REPORT_TEST=$(grep _ORPHAN_FILES_REPORT ${_barCnf} 2>&1)
     if [[ ! "${_ORPHAN_FILES_REPORT_TEST}" =~ "_ORPHAN_FILES_REPORT" ]]; then
       echo "_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}" >> ${_barCnf}
+    fi
+
+    _NIGHT_PARALLEL_TEST=$(grep _NIGHT_PARALLEL ${_barCnf} 2>&1)
+    if [[ ! "${_NIGHT_PARALLEL_TEST}" =~ "_NIGHT_PARALLEL" ]]; then
+      echo "_NIGHT_PARALLEL=${_NIGHT_PARALLEL}" >> ${_barCnf}
+    fi
+
+    _NIGHT_MAX_PARALLEL_TEST=$(grep _NIGHT_MAX_PARALLEL ${_barCnf} 2>&1)
+    if [[ ! "${_NIGHT_MAX_PARALLEL_TEST}" =~ "_NIGHT_MAX_PARALLEL" ]]; then
+      echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}" >> ${_barCnf}
+    fi
+
+    _CLEAR_BOOST_TEST=$(grep _CLEAR_BOOST ${_barCnf} 2>&1)
+    if [[ ! "${_CLEAR_BOOST_TEST}" =~ "_CLEAR_BOOST" ]]; then
+      echo "_CLEAR_BOOST=${_CLEAR_BOOST}" >> ${_barCnf}
+    fi
+
+    _LE_CLIENT_NOTIFY_TEST=$(grep _LE_CLIENT_NOTIFY ${_barCnf} 2>&1)
+    if [[ ! "${_LE_CLIENT_NOTIFY_TEST}" =~ "_LE_CLIENT_NOTIFY" ]]; then
+      echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}" >> ${_barCnf}
     fi
 
     _SHARED_CODEBASES_CLEANUP_TEST=$(grep _SHARED_CODEBASES_CLEANUP ${_barCnf} 2>&1)

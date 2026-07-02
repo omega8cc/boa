@@ -12,11 +12,13 @@ _MY_OCTO_EMAIL="my@email" #----- Ægir Octopus Instance owner email
 _PLATFORMS_LIST=ALL #----------- Platforms to install - see docs/PLATFORMS.md
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _HM_ONLY=NO #------------------- Allows to upgrade Ægir Hostmaster only
+_PLATFORMS_ONLY=NO #------------ Install only new Ægir platforms when YES
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _DL_MODE=BATCH #---------------- Allows to switch to GIT src or OLD static
 _MY_OWNIP= #-------------------- Allows to specify web server IP if not default
 _FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
 _THIS_DB_HOST=localhost #------- DB host depends on Barracuda setting (FQDN)
+_THIS_DB_PORT=3306 #------------ Managed automatically (6033 with ProxySQL)
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _HOT_SAUCE=NO #----------------- Forces new platforms tree on install when YES
 _USE_CURRENT=YES #-------------- Forces new platforms tree on upgrade when NO
@@ -33,6 +35,10 @@ _PHP_FPM_VERSION=8.4 #---------- PHP-FPM for Satellite Instance
 _PHP_CLI_VERSION=8.4 #---------- PHP-CLI for Satellite Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_FPM_TIMEOUT=AUTO #--------- Allows to override default 180 when 60-180
+_PHP_FPM_MAX_CHILDREN_FORCE=AUTO #-- Force exact pm.max_children (min 8) or AUTO
+_PHP_FPM_MEMORY_LIMIT_FORCE=AUTO #-- Force per-pool memory_limit MB (min 64) or AUTO
+_PHP_FPM_RAM_PCT=AUTO #------------- Percent of RAM for dedicated FPM (AUTO = 50)
+_PHP_FPM_CPU_FACTOR=AUTO #---------- CPU cores multiplier cap, dedicated (AUTO = 8)
 _PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
 _STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (or YES), or myisam
