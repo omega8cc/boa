@@ -44,6 +44,11 @@ _disable_master_cron() {
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
+# Dedicated, self-healing task-queue stop file: a maintenance op (e.g. the nightly
+# backups-to-static-fs relocation) sets /run/boa_queue_stop.pid to hold the queue
+# while it moves data. It lives in /run (cleared on reboot) and clear.sh purges a
+# leaked one after 3h, so it can never freeze the queue for good.
+[ -e "/run/boa_queue_stop.pid" ] && exit 0
 # An Octopus install/upgrade must reload backend config/aliases promptly, so let
 # the queue run even under a web-load pause while a run is genuinely in progress.
 # Honour the marker only when fresh or backed by a live octopus process; clear a
@@ -118,6 +123,9 @@ _runner_action() {
     | grep run- \
     | uniq \
     | sort); do
+    # Honour the dedicated queue-stop file per child too, so a pause set AFTER this
+    # runner parent started still holds every per-account child dispatch.
+    [ -e "/run/boa_queue_stop.pid" ] && { echo "Task queue paused: /run/boa_queue_stop.pid present -- skipping ${_Runner}"; continue; }
     _count_cpu
     _load_control
     _if_accelerated_queue
@@ -176,7 +184,7 @@ elif (( $(pgrep -fc mydumper) > 0 )); then
 fi
 
 _DAILY_RUNNING=NO
-if (( $(pgrep -fc daily.sh) > 0 )); then
+if (( $(pgrep -fc owl.sh) > 0 )); then
   _DAILY_RUNNING=YES
 fi
 

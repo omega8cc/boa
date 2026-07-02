@@ -70,6 +70,13 @@ find /run/manage*users.pid           -type f -not -newermt "${_ONE_HOUR}" -exec 
 find /run/speed_cleanup.pid          -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
 
 _THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
+# The queue-stop file holds the Aegir task queue during a maintenance move; purge
+# it only when its owner PID is gone (a crashed/leaked hold) so a legitimately long
+# move is never unpaused mid-flight. /run is also cleared on reboot.
+if [ -e "/run/boa_queue_stop.pid" ]; then
+  _qs_pid=$(tr -dc '0-9' < /run/boa_queue_stop.pid 2>/dev/null)
+  { [ -z "${_qs_pid}" ] || ! kill -0 "${_qs_pid}" 2>/dev/null; } && rm -f /run/boa_queue_stop.pid
+fi
 find /run/boa_run.pid                -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/*_backup.pid               -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/daily-fix.pid              -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null

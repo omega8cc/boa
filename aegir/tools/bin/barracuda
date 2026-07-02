@@ -1155,7 +1155,7 @@ _up_start() {
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
-    #pkill -9 -f daily.sh
+    #pkill -9 -f owl.sh
     #rm -f /run/*daily*.pid
     mkdir -p ${_LOG_DIR}
     cd ${_vBs}
@@ -1321,8 +1321,8 @@ _up_finish() {
     _DB_SERVER=Percona
   fi
   if [ "$(boa info | grep -c ${_DB_SERVER})" -ge 3 ] || [ -e "/usr/sbin/csf" ]; then
-    # Execute the daily.sh and exit
-    nohup /var/xdrago/daily.sh > /dev/null 2>&1 &
+    # Execute the owl.sh and exit
+    nohup /var/xdrago/owl.sh > /dev/null 2>&1 &
     sleep 1
   fi
   echo
