@@ -480,6 +480,80 @@ _DEL_OLD_EMPTY_PLATFORMS="0"
 
 
 ###----------------------------------------###
+### GHOST PLATFORMS CLEANUP                ###
+###----------------------------------------###
+###
+### Nightly cleanup of ghost/empty platform
+### registrations (Drush alias files whose
+### platform root has no detectable Drupal
+### docroot). The default NO only detects and
+### logs them (dry-run). Change to YES to move
+### the stale alias aside into the undo/ dir
+### during nightly maintenance. A system-wide
+### default may also be set in barracuda.cnf.
+###
+_GHOST_PLATFORMS_CLEANUP=NO
+
+
+###----------------------------------------###
+### GHOST VHOSTS CLEANUP                    ###
+###----------------------------------------###
+###
+### Nightly cleanup of ghost nginx vhosts (a
+### vhost.d server block with no matching site
+### Drush alias). The default NO only detects
+### and logs them (dry-run). Change to YES to
+### move the orphaned vhost aside into undo/.
+### A system-wide default may also be set in
+### barracuda.cnf.
+###
+_GHOST_VHOSTS_CLEANUP=NO
+
+
+###----------------------------------------###
+### GHOST SITES CLEANUP                     ###
+###----------------------------------------###
+###
+### Nightly cleanup of ghost site registrations
+### (a site Drush alias whose site directory is
+### gone). The default NO only detects and logs
+### them (dry-run). Change to YES to move the
+### stale alias and its vhost aside into undo/.
+### A system-wide default may also be set in
+### barracuda.cnf.
+###
+_GHOST_SITES_CLEANUP=NO
+
+
+###----------------------------------------###
+### GHOST SITE FILES CLEANUP                ###
+###----------------------------------------###
+###
+### Also move a ghost site's leftover files
+### directory (site data, not just the
+### registration) when GHOST SITES cleanup acts.
+### Kept separate and default NO because it
+### touches data. System-wide default may also
+### be set in barracuda.cnf.
+###
+_GHOST_SITE_FILES_CLEANUP=NO
+
+
+###----------------------------------------###
+### GHOST ALIASES CLEANUP                   ###
+###----------------------------------------###
+###
+### Nightly cleanup of stale per-site Drush
+### alias copies in the limited-shell (FTPS)
+### user tree. The default NO only detects and
+### logs them (dry-run). Change to YES to move
+### a stale alias copy aside. System-wide
+### default may also be set in barracuda.cnf.
+###
+_GHOST_ALIASES_CLEANUP=NO
+
+
+###----------------------------------------###
 ### DELETE OLD BACKUPS                     ###
 ###----------------------------------------###
 ###

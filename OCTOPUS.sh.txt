@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.3
+export _DRUSH_VERSION=8.5.4
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.1
 export _REDIS_N_VERSION=com-19-04-2021
@@ -322,6 +322,12 @@ _satellite_if_localhost_mode_magic
 _satellite_check_sanitize_domain_name
 _satellite_detect_vm_family
 _check_git_repos
+
+
+###
+### Snapshot this instance control file before any on-the-fly changes
+###
+_backup_to_dragon "${_octCnf}"
 
 
 ###

@@ -781,7 +781,7 @@ _xmass_remove_http_off_all() {
 _xmass_check_no_boa_running() {
   _info "Verifying BOA background jobs are stopped ..."
   local _fail=NO _p
-  for _p in runner.sh daily.sh graceful.sh manage_ltd_users.sh; do
+  for _p in runner.sh owl.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_p}" ]; then
       _alrt "BOA script still active: /var/xdrago/${_p} — run xmass pre-mig first"
       _fail=YES
@@ -917,7 +917,7 @@ _xmass_pre_mig() {
     _die "Cannot run pre-mig on a parent/host system"
   fi
   _info "Running pre-mig on ${_hName} ..."
-  for _script in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
+  for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_script}" ]; then
       mv -f "/var/xdrago/${_script}" "/var/xdrago/.${_script}.off"
       pkill -9 -f "${_script}" &>/dev/null || true
@@ -1178,7 +1178,7 @@ _xmass_cmd_cutover() {
   _info "Starting cron and restoring BOA runners on target ${_tgt} ..."
   ssh root@"${_tgt}" bash <<'REMOTE'
 service cron start &>/dev/null
-for _s in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
+for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   if [ ! -e "/var/xdrago/${_s}" ] \
     && [ -e "/var/xdrago/.${_s}.off" ]; then
     mv -f "/var/xdrago/.${_s}.off" "/var/xdrago/${_s}"
@@ -1247,7 +1247,7 @@ _xmass_post_mig() {
   fi
   service nginx reload &>/dev/null
   rm -f /run/boa_wait.pid
-  for _script in runner.sh daily.sh usage.sh graceful.sh manage_ltd_users.sh; do
+  for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ ! -e "/var/xdrago/${_script}" ] \
       && [ -e "/var/xdrago/.${_script}.off" ]; then
       mv -f "/var/xdrago/.${_script}.off" "/var/xdrago/${_script}"

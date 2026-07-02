@@ -25,20 +25,66 @@ _check_root() {
 _check_root
 
 _MODE="DRY"
-case "$1" in
-  live|LIVE|--live)
-    _MODE="LIVE"
-    ;;
-  batch|BATCH|--batch)
+_NARROW="NO"
+_ONE_SITE=""
+_ONE_ACCOUNT=""
+_APPLY_FLAG="NO"
+_FORCE_UNSHARE="NO"
+
+# Back-compat positional modes (DRY default / live / batch / batch-if-clean /
+# report) plus flags for the narrow single-site mode used by the Provision clone
+# hook: --site <url> [--account <oNNN>] [--apply]. Narrow mode never touches the
+# global CLEAN-DRY state file or sweeps all accounts.
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    live|LIVE|--live)
+      _MODE="LIVE"
+      ;;
+    batch|BATCH|--batch)
+      _MODE="BATCH"
+      ;;
+    --batch-if-clean|batch-if-clean|BATCH_IF_CLEAN|batch_if_clean)
+      _MODE="BATCH_IF_CLEAN"
+      ;;
+    report|REPORT|--report)
+      _MODE="REPORT"
+      ;;
+    dry|DRY|--dry)
+      _MODE="DRY"
+      ;;
+    --site)
+      _NARROW="YES"
+      shift
+      _ONE_SITE="$1"
+      ;;
+    --account)
+      shift
+      _ONE_ACCOUNT="$1"
+      ;;
+    --apply)
+      _APPLY_FLAG="YES"
+      ;;
+    --force-unshare)
+      # Clone path: break an inherited cross-account share even if a share
+      # control file exists (the clone never opted into sharing).
+      _FORCE_UNSHARE="YES"
+      ;;
+    *)
+      : # ignore unknown args
+      ;;
+  esac
+  [ "$#" -gt 0 ] && shift
+done
+
+# In narrow mode the action is selected by --apply (BATCH semantics: apply
+# without per-site prompt) or defaults to a read-only DRY for that one site.
+if [ "${_NARROW}" = "YES" ]; then
+  if [ "${_APPLY_FLAG}" = "YES" ]; then
     _MODE="BATCH"
-    ;;
-  --batch-if-clean|batch-if-clean|BATCH_IF_CLEAN|batch_if_clean)
-    _MODE="BATCH_IF_CLEAN"
-    ;;
-  report|REPORT|--report)
-    _MODE="REPORT"
-    ;;
-esac
+  else
+    _MODE="DRY"
+  fi
+fi
 
 _LOG_DIR="/var/log/boa"
 _LOG_FILE="${_LOG_DIR}/autosymlink.log"
@@ -248,6 +294,137 @@ _make_unique_target() {
 
   _log "[APPLY] Target exists, renaming: ${_TARGET} -> ${_NEW_TARGET}"
   mv "${_TARGET}" "${_NEW_TARGET}"
+}
+
+_archive_existing_store_target() {
+  # Move a pre-existing per-site store target ASIDE into a timestamped archive
+  # UNDER the store itself: static/files/.archived/<stamp>/<site>/<type>. The
+  # leading-dot .archived is skipped by the orphan/site scan (it ignores .*), so
+  # it is never mistaken for a live/orphan site, while a script that knows the
+  # path still tracks it. Keeping it under static/files (NOT a static/files-*
+  # sibling) guarantees the archive lands on the SAME filesystem as the store:
+  # static/files may be a symlink to a large dedicated disk, whereas a sibling
+  # would fall on the possibly-tiny root filesystem, turning a free rename into a
+  # cross-FS copy that can fill the disk. Used when a fresh install/clone reuses a
+  # site name whose store dir was left behind by a prior lifecycle (site delete
+  # does not remove it): a non-destructive self-heal. ALWAYS archives (never
+  # skips) and ALWAYS reports the incident with a disk-space snapshot for the
+  # ghost, even when space is ample. Degrades to an in-place rename if the archive
+  # would be a cross-FS move that does not fit, or if the move fails, so it never
+  # blocks the conversion.
+  # Args: 1 store target to move aside (.../static/files/<site>/<type>)
+  #       2 account dir (/data/disk/oX)
+  #       3 site name
+  #       4 type label (files|private)
+  _ARCH_SRC="$1"
+  _ARCH_ACCOUNT_DIR="$2"
+  _ARCH_SITE="$3"
+  _ARCH_TYPE="$4"
+
+  if [ ! -e "${_ARCH_SRC}" ] && [ ! -L "${_ARCH_SRC}" ]; then
+    return 0
+  fi
+
+  # Run-scoped stamp so a site's files + private land under one archive dir; fall
+  # back to a fresh stamp if _process_site did not set it.
+  _ARCH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+  _ARCH_BASE="${_ARCH_ACCOUNT_DIR}/static/files/.archived/${_ARCH_STAMP}/${_ARCH_SITE}"
+
+  # Disk-space snapshot for the archived ghost only, ALWAYS reported (even with
+  # ample space): the ghost's own size and the free space where the archive lands.
+  _ARCH_SRC_KB=$(du -sk "${_ARCH_SRC}" 2>/dev/null | awk 'NR==1 {print $1}')
+  _ARCH_SRC_KB="${_ARCH_SRC_KB:-?}"
+  _ARCH_AVAIL_KB=$(df -Pk "${_ARCH_ACCOUNT_DIR}/static/files" 2>/dev/null | awk 'NR==2 {print $4}')
+  _ARCH_AVAIL_KB="${_ARCH_AVAIL_KB:-?}"
+  _log "[REPORT] ORPHAN archive incident: ${_ARCH_SITE}/${_ARCH_TYPE} stale store size=${_ARCH_SRC_KB}K -> static/files/.archived/${_ARCH_STAMP}/ (target FS avail=${_ARCH_AVAIL_KB}K)"
+
+  if ! mkdir -p "${_ARCH_BASE}"; then
+    _log "[WARN] Could not create archive dir ${_ARCH_BASE}; renaming ${_ARCH_SRC} aside in place instead"
+    _make_unique_target "${_ARCH_SRC}"
+    return 0
+  fi
+
+  _ARCH_DST="${_ARCH_BASE}/${_ARCH_TYPE}"
+  if [ -e "${_ARCH_DST}" ] || [ -L "${_ARCH_DST}" ]; then
+    _make_unique_target "${_ARCH_DST}"
+  fi
+
+  # Secondary space check: .archived under static/files is normally the SAME
+  # device as the ghost (free rename). If it is somehow a different device and the
+  # ghost would not fit in the archive target's free space, do NOT risk a cross-FS
+  # copy that could fill the disk -- keep it in place (a same-device rename aside).
+  _ARCH_SRC_DEV=$(df -P "${_ARCH_SRC}" 2>/dev/null | awk 'NR==2 {print $1}')
+  _ARCH_DST_DEV=$(df -P "${_ARCH_BASE}" 2>/dev/null | awk 'NR==2 {print $1}')
+  if [ -n "${_ARCH_SRC_DEV}" ] && [ -n "${_ARCH_DST_DEV}" ] \
+    && [ "${_ARCH_SRC_DEV}" != "${_ARCH_DST_DEV}" ] \
+    && [ "${_ARCH_SRC_KB}" != "?" ] && [ "${_ARCH_AVAIL_KB}" != "?" ] \
+    && [ "${_ARCH_SRC_KB}" -gt "${_ARCH_AVAIL_KB}" ]; then
+    _log "[WARN] Archive target is a different filesystem (${_ARCH_DST_DEV}) with insufficient space (need ${_ARCH_SRC_KB}K, avail ${_ARCH_AVAIL_KB}K) for ${_ARCH_SITE}/${_ARCH_TYPE}; renaming ${_ARCH_SRC} aside in place instead"
+    _make_unique_target "${_ARCH_SRC}"
+    return 0
+  fi
+
+  _log "[APPLY] Archiving stale store target: ${_ARCH_SRC} -> ${_ARCH_DST}"
+  if ! mv "${_ARCH_SRC}" "${_ARCH_DST}"; then
+    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site ${_ARCH_SITE}; renaming ${_ARCH_SRC} aside in place instead"
+    _make_unique_target "${_ARCH_SRC}"
+  fi
+  return 0
+}
+
+_archive_orphan_store() {
+  # Archive a whole DELETED-site leftover store (static/files/<site>/) ASIDE into
+  # static/files/.archived/<stamp>/<site>/ -- the same hidden, same-filesystem archive
+  # the reuse self-heal uses, with the same layout (…/<site>/files, …/<site>/private).
+  # NEVER deletes: pruning the .archived pile stays operator-only. Same-device free
+  # rename; if the archive would be a cross-FS move that does not fit, leave the orphan
+  # in place and report, so it can never fill a tiny root fs. The CALLER only invokes
+  # this for a store whose name has NEITHER a drush alias NOR a vhost (a genuinely
+  # deleted site) -- a merely-disabled site keeps its alias and is left untouched.
+  # Args: 1 store dir (…/static/files/<site>), 2 account dir, 3 site name, 4 size KB
+  _ORPH_SRC="$1"
+  _ORPH_ACCT="$2"
+  _ORPH_SITE="$3"
+  _ORPH_KB="$4"
+
+  { [ -e "${_ORPH_SRC}" ] || [ -L "${_ORPH_SRC}" ]; } || return 0
+
+  # Run/account-scoped stamp so all orphans of one sweep land under one archive dir.
+  _ORPH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+  _ORPH_BASE="${_ORPH_ACCT}/static/files/.archived/${_ORPH_STAMP}"
+  _ORPH_DST="${_ORPH_BASE}/${_ORPH_SITE}"
+
+  _ORPH_AVAIL_KB=$(df -Pk "${_ORPH_ACCT}/static/files" 2>/dev/null | awk 'NR==2 {print $4}')
+  _ORPH_AVAIL_KB="${_ORPH_AVAIL_KB:-?}"
+  _log "[REPORT] ORPHAN archive incident: ${_ORPH_SITE} deleted-site leftover size=${_ORPH_KB}K -> static/files/.archived/${_ORPH_STAMP}/ (target FS avail=${_ORPH_AVAIL_KB}K)"
+
+  if ! mkdir -p "${_ORPH_BASE}"; then
+    _log "[WARN] Could not create archive dir ${_ORPH_BASE}; leaving orphan store ${_ORPH_SRC} in place"
+    return 0
+  fi
+  if [ -e "${_ORPH_DST}" ] || [ -L "${_ORPH_DST}" ]; then
+    _make_unique_target "${_ORPH_DST}"
+  fi
+
+  # Same-device guard: .archived under static/files is normally the SAME device as the
+  # store (free rename). If it is somehow a different device and the orphan would not
+  # fit, do NOT risk a cross-FS copy that could fill the disk -- leave it in place.
+  _ORPH_SRC_DEV=$(df -P "${_ORPH_SRC}" 2>/dev/null | awk 'NR==2 {print $1}')
+  _ORPH_DST_DEV=$(df -P "${_ORPH_BASE}" 2>/dev/null | awk 'NR==2 {print $1}')
+  if [ -n "${_ORPH_SRC_DEV}" ] && [ -n "${_ORPH_DST_DEV}" ] \
+    && [ "${_ORPH_SRC_DEV}" != "${_ORPH_DST_DEV}" ] \
+    && [ "${_ORPH_KB}" != "?" ] && [ "${_ORPH_AVAIL_KB}" != "?" ] \
+    && [ "${_ORPH_KB}" -gt "${_ORPH_AVAIL_KB}" ]; then
+    _log "[WARN] Archive target is a different filesystem (${_ORPH_DST_DEV}) with insufficient space (need ${_ORPH_KB}K, avail ${_ORPH_AVAIL_KB}K) for orphan ${_ORPH_SITE}; leaving in place"
+    return 0
+  fi
+
+  _log "[APPLY] Archiving orphan store (deleted-site leftover): ${_ORPH_SRC} -> ${_ORPH_DST}"
+  if ! mv "${_ORPH_SRC}" "${_ORPH_DST}"; then
+    _log "[WARN] Archive move failed for orphan store ${_ORPH_SITE}; leaving ${_ORPH_SRC} in place"
+    return 0
+  fi
+  return 0
 }
 
 _check_space_for_transfer() {
@@ -487,7 +664,14 @@ _check_symlink_sharing() {
   _SHARE_THIS="${_CONTROL_DIR}/share.files.${_SITE_NAME}.info"
   _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
 
-  if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+  if [ "${_FORCE_UNSHARE}" = "YES" ]; then
+    # Clone path: a freshly cloned site never opted into sharing, so break an
+    # inherited cross-account symlink even when a share control file exists for
+    # the source/target site (it belongs to the source, not this new clone).
+    if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+      _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} points to ${_TARGET_SITE_NAME} with a share control file present, but --force-unshare is set – breaking sharing for this site"
+    fi
+  elif [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
     _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
     _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with ${_TARGET_SITE_NAME} (control file present) – leaving as is"
     return
@@ -496,7 +680,12 @@ _check_symlink_sharing() {
   _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
 
   _NEW_TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
-  _ORIGINAL_TOP="${_ACCOUNT_DIR}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
+  # Derive the copy source from the link's OWN /static/files prefix, not the
+  # current account, so an inherited cross-account symlink (e.g. a clone of a
+  # shared site into a different account) copies from the real source store.
+  # Same-account shares are unaffected (the prefix equals ${_ACCOUNT_DIR}).
+  _LINK_PREFIX="${_LINK_TARGET%%/static/files/*}"
+  _ORIGINAL_TOP="${_LINK_PREFIX}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
   _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
 
   _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to ${_LINK_TARGET} (owned by ${_TARGET_SITE_NAME})"
@@ -548,7 +737,12 @@ _check_symlink_sharing() {
   fi
 
   if [ -e "${_NEW_TARGET}" ] || [ -L "${_NEW_TARGET}" ]; then
-    _make_unique_target "${_NEW_TARGET}"
+    # A pre-existing store at this (renamed/migrated) target name is a stale ghost
+    # from a prior lifecycle: archive it aside (tracked, into static/files/.archived)
+    # rather than renaming it in place, so break-sharing collisions are handled the
+    # same way as the local-convert path (_convert_dir_to_symlink) and land in the
+    # reported/prunable archive instead of cluttering the live store.
+    _archive_existing_store_target "${_NEW_TARGET}" "${_ACCOUNT_DIR}" "${_SITE_NAME}" "${_TYPE}"
   fi
 
   _log "[APPLY] Copying ${_ORIGINAL_TOP} -> ${_NEW_TARGET}"
@@ -566,7 +760,87 @@ _check_symlink_sharing() {
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
+  _match_symlink_owner "${_PATH}" "${_NEW_TARGET}"
   _SITE_SHARED_SYMLINK_FIX_APPLIED="YES"
+}
+
+_match_symlink_owner() {
+  # Set an in-site files/private symlink's OWN owner:group to match its store
+  # target, so the link does not linger root-owned when no later perms-fix
+  # re-chowns it. On install a subsequent fix-drupal-site-ownership run fixes it;
+  # on clone the unshare's rm+ln -s is the LAST step, so without this the clone's
+  # link stays root:root until the next verify. Best-effort (chown -h
+  # --reference is GNU coreutils; a failure is harmless).
+  # Args: 1 in-site symlink path, 2 store target dir (reference for owner:group).
+  [ -L "$1" ] && chown -h --reference="$2" "$1" 2>/dev/null
+  return 0
+}
+
+_self_heal_symlink() {
+  # Recover a site left without an in-site files/private link by an interrupted
+  # prior conversion: if the in-site path is gone but the store dir still holds
+  # the data, recreate the symlink. This closes the only non-atomic window in
+  # _convert_dir_to_symlink (between a successful move and the `ln -s`).
+  # Args: 1 in-site path, 2 store target dir.
+  _SITE_LINK="$1"
+  _STORE_DIR="$2"
+
+  if [ "${_MODE}" = "REPORT" ] || [ "${_MODE}" = "DRY" ]; then
+    return 0
+  fi
+  if [ -e "${_SITE_LINK}" ] || [ -L "${_SITE_LINK}" ]; then
+    return 0
+  fi
+  if [ -d "${_STORE_DIR}" ] && [ -n "$(ls -A "${_STORE_DIR}" 2>/dev/null)" ]; then
+    _log "[APPLY] Self-heal: in-site path missing, recreating symlink ${_SITE_LINK} -> ${_STORE_DIR}"
+    ln -s "${_STORE_DIR}" "${_SITE_LINK}"
+    _match_symlink_owner "${_SITE_LINK}" "${_STORE_DIR}"
+  fi
+}
+
+_convert_dir_to_symlink() {
+  # Crash-safe conversion of a real in-site directory into a symlink pointing at
+  # the per-site store. Replaces the former non-atomic `mv; ln -s` pair.
+  #
+  # Safety invariants:
+  #   - rc-checked move: `mv` removes the source only after a successful copy
+  #     (same-fs = atomic rename, cross-fs = copy-then-unlink), so the source dir
+  #     survives any move failure; on failure we leave the real dir in place and
+  #     never create a symlink.
+  #   - the only non-atomic window is between a successful move and `ln -s`; it is
+  #     recovered by _self_heal_symlink() on the next run. Concurrent converters
+  #     are corruption-safe: the losing `mv` fails (source already gone) and
+  #     self-heal/idempotency repoint to the winner's store dir.
+  # Args: 1 in-site real dir, 2 store target dir, 3 type label, 4 site name.
+  # Returns 0 on success, 1 on hard error (real dir left intact).
+  _SRC="$1"
+  _DST="$2"
+  _TYPE="$3"
+  _SITE="$4"
+
+  if [ ! -d "${_SRC}" ] || [ -L "${_SRC}" ]; then
+    return 0
+  fi
+
+  if [ -e "${_DST}" ] || [ -L "${_DST}" ]; then
+    # Archive a stale store target aside (non-destructive) rather than renaming it
+    # in place, so a reused site name never collides with a prior lifecycle's store.
+    _archive_existing_store_target "${_DST}" "${_ACCOUNT_DIR}" "${_SITE}" "${_TYPE}"
+  fi
+
+  _log "[APPLY] Moving: ${_SRC} -> ${_DST}"
+  if ! mv "${_SRC}" "${_DST}"; then
+    _log "[ERROR] Move failed for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; leaving real dir in place (no symlink created)"
+    return 1
+  fi
+
+  _log "[APPLY] Creating symlink: ${_SRC} -> ${_DST}"
+  if ! ln -s "${_DST}" "${_SRC}"; then
+    _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; data is safe in ${_DST}, self-heal will retry the link"
+    return 1
+  fi
+  _match_symlink_owner "${_SRC}" "${_DST}"
+  return 0
 }
 
 _process_site() {
@@ -603,8 +877,16 @@ _process_site() {
   _PRIVATE_PATH="${_SITE_PATH}/private"
 
   _TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
+  # One archive timestamp per site run, so a stale store's files + private land
+  # together under static/files/.archived/<stamp>/<site>/.
+  _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   _DO_FILES_CONVERT="NO"
   _DO_PRIVATE_CONVERT="NO"
+
+  # Recover any site left without an in-site files/private link by an interrupted
+  # prior conversion (store dir present, in-site link missing). No-op in DRY/REPORT.
+  _self_heal_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files"
+  _self_heal_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
 
   # Per-site flags used for summary / LIVE confirmation re-use
   _LIVE_SITE_APPROVED="NO"
@@ -682,10 +964,11 @@ _process_site() {
 
   if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
     if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-      _log "[PLAN] Existing target will be renamed before move: ${_TARGET_BASE}/files -> ${_TARGET_BASE}/files-<hashstring>"
-      if [ "${_MODE}" = "DRY" ]; then
-        _DRY_HAS_EDGE_CASES="YES"
-      fi
+      # Stale store target from a prior lifecycle of a reused site name: archived
+      # aside automatically (see _archive_existing_store_target). A defined,
+      # non-destructive remedy -- NOT a blocking edge case, so the narrow
+      # install/clone apply proceeds instead of skipping with a warning.
+      _log "[PLAN] Existing (stale) store target will be archived before move: ${_TARGET_BASE}/files -> ${_ACCOUNT_DIR}/static/files/.archived/<stamp>/${_SITE_NAME}/files"
     fi
     _log "[PLAN] Move directory: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
     _log "[PLAN] Symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
@@ -698,10 +981,11 @@ _process_site() {
 
   if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
     if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-      _log "[PLAN] Existing target will be renamed before move: ${_TARGET_BASE}/private -> ${_TARGET_BASE}/private-<hashstring>"
-      if [ "${_MODE}" = "DRY" ]; then
-        _DRY_HAS_EDGE_CASES="YES"
-      fi
+      # Stale store target from a prior lifecycle of a reused site name: archived
+      # aside automatically (see _archive_existing_store_target). A defined,
+      # non-destructive remedy -- NOT a blocking edge case, so the narrow
+      # install/clone apply proceeds instead of skipping with a warning.
+      _log "[PLAN] Existing (stale) store target will be archived before move: ${_TARGET_BASE}/private -> ${_ACCOUNT_DIR}/static/files/.archived/<stamp>/${_SITE_NAME}/private"
     fi
     _log "[PLAN] Move directory: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
     _log "[PLAN] Symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
@@ -736,13 +1020,7 @@ _process_site() {
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-            _make_unique_target "${_TARGET_BASE}/files"
-          fi
-          _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-          mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
-          _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-          ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
+          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
         fi
       fi
 
@@ -750,13 +1028,7 @@ _process_site() {
         if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-            _make_unique_target "${_TARGET_BASE}/private"
-          fi
-          _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-          mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
-          _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-          ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
+          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
         fi
       fi
     else
@@ -773,13 +1045,7 @@ _process_site() {
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving files for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-            _make_unique_target "${_TARGET_BASE}/files"
-          fi
-          _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-          mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
-          _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
-          ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
+          _convert_dir_to_symlink "${_FILES_PATH}" "${_TARGET_BASE}/files" "files" "${_SITE_NAME}"
         fi
       fi
 
@@ -787,13 +1053,7 @@ _process_site() {
         if ! _check_space_for_transfer "${_PRIVATE_PATH}" "${_TARGET_BASE}" "move private" "${_SITE_NAME}"; then
           _log "[WARN] Skipping moving private for site ${_SITE_NAME} due to insufficient space."
         else
-          if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-            _make_unique_target "${_TARGET_BASE}/private"
-          fi
-          _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-          mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
-          _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
-          ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
+          _convert_dir_to_symlink "${_PRIVATE_PATH}" "${_TARGET_BASE}/private" "private" "${_SITE_NAME}"
         fi
       fi
     fi
@@ -850,11 +1110,27 @@ _process_account() {
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE_NAME}" "${_ALIAS_FILE}"
   done
 
-  # In REPORT mode, also list orphaned static/files entries (leftovers after site deletion).
-  # We DO NOT delete anything; this is for operator review only.
-  if [ "${_MODE}" = "REPORT" ]; then
+  # Orphaned static/files stores are leftovers from a site DELETE (deleting a site does
+  # not remove its per-site store). Runs in the account-sweep only (never the narrow
+  # single-site Provision hook).
+  #   REPORT       : list them for the operator email (read-only).
+  #   LIVE / BATCH : ARCHIVE each deleted-site leftover ASIDE into
+  #                  static/files/.archived/<stamp>/<site>/ (NEVER delete -- pruning the
+  #                  pile stays operator-only), unless the kill-switch cnf is present.
+  # SAFETY: only a name with NEITHER a drush alias NOR a vhost is archived. A merely
+  # DISABLED site keeps its alias (it has no active vhost+alias pair, so it is still an
+  # "orphan" to the scan below) -- it is reported but LEFT IN PLACE so its data survives
+  # a later re-enable. The nightly sweep runs with the Aegir task queue paused + drained,
+  # so no install/clone is mid-flight to make a live site transiently look deleted.
+  if [ "${_MODE}" = "REPORT" ] || [ "${_MODE}" = "LIVE" ] || [ "${_MODE}" = "BATCH" ]; then
     _STATIC_FILES_DIR="${_ACCOUNT_DIR}/static/files"
     if [ -d "${_STATIC_FILES_DIR}" ]; then
+      # Archive in the apply modes only, and only if the operator has not disabled it.
+      _ORPHAN_ARCHIVE="NO"
+      case "${_MODE}" in LIVE|BATCH) _ORPHAN_ARCHIVE="YES" ;; esac
+      [ -f /data/conf/disable_orphan_store_archiving.cnf ] && _ORPHAN_ARCHIVE="NO"
+      # One archive stamp for all of this account's orphans in this sweep.
+      _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)-$$"
       _FOUND_ORPHANS="NO"
       for _CAND in "${_STATIC_FILES_DIR}"/*; do
         if [ ! -e "${_CAND}" ]; then
@@ -868,7 +1144,7 @@ _process_account() {
           continue
         fi
 
-        # Ignore hidden/metadata entries
+        # Ignore hidden/metadata entries (this skips .archived itself).
         case "${_CAND_NAME}" in
           .*|lost+found)
             continue
@@ -884,7 +1160,17 @@ _process_account() {
               if [ -z "${_ORPH_KB}" ]; then
                 _ORPH_KB="?"
               fi
-              _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found"
+              # Deleted (safe to archive) vs disabled/partial (keep): require BOTH the
+              # drush alias AND the vhost to be absent before moving anything.
+              _CAND_ALIAS="${_DRUSH_DIR}/${_CAND_NAME}.alias.drushrc.php"
+              _CAND_VHOST="${_VHOST_DIR}/${_CAND_NAME}"
+              if [ -e "${_CAND_ALIAS}" ] || [ -e "${_CAND_VHOST}" ]; then
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – a surviving alias/vhost remains (disabled or partial state); left in place, NOT archived"
+              elif [ "${_ORPHAN_ARCHIVE}" = "YES" ]; then
+                _archive_orphan_store "${_CAND}" "${_ACCOUNT_DIR}" "${_CAND_NAME}" "${_ORPH_KB}"
+              else
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found"
+              fi
             fi
           fi
         fi
@@ -893,11 +1179,184 @@ _process_account() {
       if [ "${_FOUND_ORPHANS}" != "YES" ]; then
         _log "[REPORT] No orphan static/files entries detected in account ${_ACCOUNT_NAME}"
       fi
+
+      # Track the archived-ghost pile under static/files/.archived (a hidden
+      # subdir the orphan scan above skips, on the SAME filesystem as the store).
+      # It accumulates over reused-name conversions, so report its total size and,
+      # above a threshold, flag it ORPHAN-class so the daily email surfaces it for
+      # pruning. Read-only; moves nothing. Threshold is cnf-tunable in KB via
+      # /data/conf/native_files_archive_alert_kb.cnf (default 1 GiB).
+      # The .archived pile-size accounting stays a REPORT-mode diagnostic (read-only).
+      if [ "${_MODE}" = "REPORT" ]; then
+        _ARCH_ROOT="${_STATIC_FILES_DIR}/.archived"
+        if [ -d "${_ARCH_ROOT}" ]; then
+          _ARCH_TOTAL_KB=$(du -sk "${_ARCH_ROOT}" 2>/dev/null | awk 'NR==1 {print $1}')
+          _ARCH_TOTAL_KB="${_ARCH_TOTAL_KB:-0}"
+          _ARCH_ALERT_KB=1048576
+          if [ -f /data/conf/native_files_archive_alert_kb.cnf ]; then
+            _ARCH_ALERT_CNF=$(head -n1 /data/conf/native_files_archive_alert_kb.cnf 2>/dev/null | tr -dc '0-9')
+            [ -n "${_ARCH_ALERT_CNF}" ] && _ARCH_ALERT_KB="${_ARCH_ALERT_CNF}"
+          fi
+          if [ "${_ARCH_TOTAL_KB}" -ge "${_ARCH_ALERT_KB}" ]; then
+            _log "[REPORT] ORPHAN archived-store pile in account ${_ACCOUNT_NAME}: ${_ARCH_ROOT} total=${_ARCH_TOTAL_KB}K >= threshold ${_ARCH_ALERT_KB}K - prune old entries to reclaim space"
+          else
+            _log "[REPORT] Archived-store pile in account ${_ACCOUNT_NAME}: ${_ARCH_ROOT} total=${_ARCH_TOTAL_KB}K (below threshold ${_ARCH_ALERT_KB}K)"
+          fi
+        fi
+      fi
     fi
   fi
 }
 
+_run_one_site() {
+  # Narrow single-site driver for the Provision clone hook. Resolves the owning
+  # account (explicit --account preferred; otherwise by locating the valid
+  # vhost+alias pair), validates tokens fail-closed, and converts exactly that
+  # one site via _process_site. It never reads or writes the global CLEAN-DRY
+  # state file and never sweeps other accounts. Always returns 0 (done or
+  # safe-skip); the caller treats any internal warning as non-fatal.
+  _SITE="${_ONE_SITE}"
+  _ACCOUNT_DIR=""
+  _ACCOUNT_NAME=""
+
+  # Fail-closed token validation (reject empty / traversal / path separators).
+  case "${_SITE}" in
+    ""|*..*|*/*)
+      _log "[ERROR] Narrow mode: invalid or missing --site token"
+      return 0
+      ;;
+  esac
+  if ! printf '%s' "${_SITE}" | grep -qE '^[a-z0-9][a-z0-9._-]*$'; then
+    _log "[ERROR] Narrow mode: invalid --site token '${_SITE}'"
+    return 0
+  fi
+
+  if [ -n "${_ONE_ACCOUNT}" ]; then
+    case "${_ONE_ACCOUNT}" in
+      *..*|*/*)
+        _log "[ERROR] Narrow mode: invalid --account token '${_ONE_ACCOUNT}'"
+        return 0
+        ;;
+    esac
+    if ! printf '%s' "${_ONE_ACCOUNT}" | grep -qE '^[A-Za-z0-9._-]+$'; then
+      _log "[ERROR] Narrow mode: invalid --account token '${_ONE_ACCOUNT}'"
+      return 0
+    fi
+    _ACCOUNT_DIR="/data/disk/${_ONE_ACCOUNT}"
+    _ACCOUNT_NAME="${_ONE_ACCOUNT}"
+  else
+    # Derive the account by locating the valid vhost+alias pair for this site.
+    for _CAND in /data/disk/*; do
+      [ -d "${_CAND}" ] || continue
+      [ -f "${_CAND}/.drush/${_SITE}.alias.drushrc.php" ] || continue
+      [ -f "${_CAND}/config/server_master/nginx/vhost.d/${_SITE}" ] || continue
+      _ACCOUNT_DIR="${_CAND}"
+      _ACCOUNT_NAME="$(basename "${_CAND}")"
+      break
+    done
+  fi
+
+  if [ -z "${_ACCOUNT_DIR}" ] || [ ! -d "${_ACCOUNT_DIR}" ]; then
+    _log "[INFO] Narrow mode: no owning account found for site ${_SITE}; nothing to do"
+    return 0
+  fi
+
+  _ALIAS_FILE="${_ACCOUNT_DIR}/.drush/${_SITE}.alias.drushrc.php"
+  _VHOST_FILE="${_ACCOUNT_DIR}/config/server_master/nginx/vhost.d/${_SITE}"
+  # The Drush alias is the authoritative "site exists" marker (written by
+  # provision-save). The nginx vhost is written LATER by provision-verify, so a
+  # caller passing an explicit --account (a Provision install hook running before
+  # the site's first verify) is trusted on the alias alone; the auto-resolve path
+  # below already matched the vhost+alias pair when it picked the account.
+  if [ ! -f "${_ALIAS_FILE}" ]; then
+    _log "[INFO] Narrow mode: site ${_SITE} has no Drush alias under ${_ACCOUNT_NAME}; nothing to do"
+    return 0
+  fi
+  if [ -z "${_ONE_ACCOUNT}" ] && [ ! -f "${_VHOST_FILE}" ]; then
+    _log "[INFO] Narrow mode: site ${_SITE} has no vhost under ${_ACCOUNT_NAME}; nothing to do"
+    return 0
+  fi
+
+  # Start from a clean per-run state; never consult or write the global gate.
+  _APPLY_COUNT=0
+  _DRY_HAS_ERRORS="NO"
+  _DRY_HAS_EDGE_CASES="NO"
+  _FS_PAIR_STATUS=()
+  _FS_RESERVED_KB=()
+
+  _log "=================================================================="
+  _log "[INFO] Narrow single-site run: site=${_SITE} account=${_ACCOUNT_NAME} apply=${_APPLY_FLAG}"
+
+  if [ "${_APPLY_FLAG}" = "YES" ]; then
+    # Defer if a maintenance pause (e.g. the nightly batch via updatesymlinks)
+    # is in progress, so a clone-time conversion never interleaves with the
+    # global sweep on the same store (break-sharing rsync is not concurrency
+    # safe). The nightly batch in turn bails while a provision/clone process is
+    # running, so the two do not overlap.
+    if [ -e "/etc/boa/.pause_tasks_maint.cnf" ]; then
+      _log "[WARN] Narrow apply for ${_SITE} deferred: maintenance pause in progress"
+      if [ "${_FORCE_UNSHARE}" = "YES" ]; then
+        _log "[ALERT] Clone unshare for ${_SITE} not completed (deferred); files may still be shared with the source - manual review required"
+        return 3
+      fi
+      return 0
+    fi
+
+    # Mirror the global "clean dry-run before any live change" rule, scoped to
+    # this one site and WITHOUT touching the shared CLEAN-DRY state file: run a
+    # per-site DRY pass first and apply only if that single-site dry-run is clean.
+    _MODE="DRY"
+    _DRY_HAS_ERRORS="NO"
+    _DRY_HAS_EDGE_CASES="NO"
+    _APPLY_COUNT=0
+    _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+    if [ "${_DRY_HAS_ERRORS}" != "NO" ] || [ "${_DRY_HAS_EDGE_CASES}" != "NO" ]; then
+      _log "[WARN] Narrow dry-run for ${_SITE} is NOT CLEAN; skipping apply (manual review needed)."
+      if [ "${_FORCE_UNSHARE}" = "YES" ]; then
+        _log "[ALERT] Clone unshare for ${_SITE} not completed (dry-run not clean); files may still be shared with the source - manual review required"
+        return 3
+      fi
+      return 0
+    fi
+    _log "[INFO] Narrow dry-run for ${_SITE} is CLEAN; applying."
+    _MODE="BATCH"
+    _APPLY_COUNT=0
+    _FS_PAIR_STATUS=()
+    _FS_RESERVED_KB=()
+    _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+
+    # A clone explicitly requested --force-unshare but the inherited share could
+    # not be broken (missing source / no space / rsync fail): the in-site link
+    # may still point at another site's store. Surface it loudly and signal the
+    # caller (non-zero, still non-fatal to the clone).
+    if [ "${_FORCE_UNSHARE}" = "YES" ] \
+      && [ "${_SITE_NEEDS_SHARED_SYMLINK_FIX}" = "YES" ] \
+      && [ "${_SITE_SHARED_SYMLINK_FIX_APPLIED}" != "YES" ]; then
+      _log "[ALERT] Clone unshare for ${_SITE} not completed; files may still be shared with the source - manual review required"
+      return 3
+    fi
+  else
+    _MODE="DRY"
+    _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
+  fi
+
+  return 0
+}
+
 _main() {
+  # Narrow single-site mode (Provision clone hook): convert just one site and
+  # exit, without sweeping all accounts and without touching the global state
+  # file. The clone hook calls this binary DIRECTLY (never updatesymlinks, which
+  # pgrep-greps 'provision' and would bail under a running clone).
+  if [ "${_NARROW}" = "YES" ]; then
+    _log "=================================================================="
+    _log "[START] autosymlink narrow single-site mode (site=${_ONE_SITE}, apply=${_APPLY_FLAG})"
+    _run_one_site
+    _NARROW_RC=$?
+    _log "[DONE] autosymlink finished (narrow mode)"
+    return ${_NARROW_RC}
+  fi
+
   _log "=================================================================="
   if [ "${_MODE}" = "BATCH_IF_CLEAN" ]; then
     _log "[START] autosymlink running in BATCH_IF_CLEAN mode (DRY -> if CLEAN -> BATCH)"
@@ -971,6 +1430,8 @@ _main() {
   _log "[DONE] autosymlink finished"
 }
 
+# Propagate the exit code. Non-narrow modes return 0 here (BATCH_IF_CLEAN exits
+# internally); narrow apply returns 3 only as a non-fatal advisory when a clone
+# --force-unshare could not break an inherited cross-account share.
 _main "$@"
-
-exit 0
+exit $?
