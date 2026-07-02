@@ -31,8 +31,11 @@ This is the server-admin reference. For the per-site user how-to see
 |-------|-----------|---------|
 | **New site** install | After the install creates the real `files`/`private` dirs, they are **moved into the static store and symlinked** (delegated to the root tool). | **on** (kill-switchable) |
 | **Clone** a site | The new site gets its **own separate copy** of the files in its own store — never a link into the source site's data — when disk space allows; otherwise a warning is logged and the clone still succeeds. | **on** (kill-switchable) |
-| **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **off** (opt-in) |
-| **Daily orphan report** | Email a report of ghost/orphaned store entries (data with no matching active site). | **off** (opt-in) |
+| **Migrate / rename** a site | Same as clone: after the target verify the migrated/renamed site is re-homed into its **own** store and re-symlinked; the old-name store becomes an orphan (archived on the next nightly sweep). | **on** (kill-switchable) |
+| **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
+| **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **on** on omega8.cc-hosted (`.aegir.cc`); **opt-in** otherwise |
+| **Orphaned store** (site deleted, name not reused) | The nightly auto-fix **archives** the leftover store aside into `static/files/.archived/…` (never deletes; a *disabled* site is left in place); the opt-in report additionally emails any found. | archive with auto-fix; report opt-in |
+| **Backups relocation** (nightly) | On an account whose `static/files` is a **separate filesystem**, move `backups`/`backup-exports` onto it (via symlinks) so large backups can't fill the root partition. | **on** where applicable (kill-switchable) |
 | **Manual run** | Convert/report on demand with the tools below. | — |
 
 Native creation applies to Octopus-hosted accounts (`/data/disk/<account>`).
@@ -48,7 +51,7 @@ Provision install/clone task cannot create or move data inside it. The
 move-and-symlink therefore always runs **as root**, via a hardened NOPASSWD sudo
 wrapper:
 
-- Provision (install and clone hooks) calls
+- Provision (install, clone and migrate/rename hooks) calls
   `sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=<url> …`.
 - The wrapper validates its arguments and invokes **only** the narrow single-site
   `autosymlink` apply — it cannot reach the global batch/live modes.
@@ -58,13 +61,14 @@ wrapper:
 
 On a fresh install the wrapper is called from `post_provision_install`, before the
 site's first verify writes the nginx vhost, so Provision passes `--account`
-explicitly (the narrow mode then trusts the Drush alias alone). On a clone it is
-called after the post-deploy verify, so the account auto-resolves from the
-vhost+alias pair.
+explicitly (the narrow mode then trusts the Drush alias alone). On a clone or a
+migrate/rename it is called after the target verify, so the account auto-resolves
+from the vhost+alias pair.
 
 ## The tools
 
-All three live in `/opt/local/bin` and run as root.
+These run as root. `autosymlink`, `updatesymlinks`, and `symlinkinfo` live in
+`/opt/local/bin`; the privileged Provision entry point below is in `/usr/local/bin`.
 
 ### `autosymlink` — the worker
 
@@ -104,19 +108,42 @@ left `root`-owned).
 
 ### `updatesymlinks` — the scheduler / orchestrator
 
-Wraps `autosymlink` with task-pausing, lock and load guards, and email. Driven by
-two opt-in `.barracuda.cnf` variables (see Configuration):
+Wraps `autosymlink` with Aegir-queue pausing (the self-healing
+`/run/boa_queue_stop.pid`), lock and load guards, and email. Driven by two opt-in
+`.barracuda.cnf` variables (see Configuration):
 
 ```bash
 updatesymlinks --auto-fix       # nightly: batch-if-clean apply + email on changes
 updatesymlinks --orphan-report  # daily: read-only orphan report, email only if any found
 updatesymlinks                  # legacy: full apply + report, for manual use
+updatesymlinks --auto-fix --debug   # explain on stdout WHY a run skips/does nothing
 ```
 
-When auto-updates are enabled these run from cron (`~05:30` auto-fix, `06:00`
-orphan report). The cron lines are always present; each sub-mode self-exits
-unless its variable is set, so enabling or disabling is purely a `.barracuda.cnf`
-change with no cron edit.
+When either opt-in is enabled a **single** cron line runs `updatesymlinks --auto-fix`
+hourly at `:47` through the night (`22:00`–`05:59`), clear of the 6-hourly duplicity
+backups (`:00`) and the nightly backup/owl/upgrade cluster. It self-skips any hour a
+heavy task is running (backup, upgrade, provision, high load) and retries the next
+hour; the first un-blocked hour does the work, records a per-night stamp
+(`/var/log/boa/autosymlink.nightok.stamp`), and every later hour that night is a cheap
+no-op. The one line serves both opt-ins: with `_AUTOSYMLINK_NIGHTLY=YES` it runs the
+full pause + two-step apply (which folds the orphan report in); with only
+`_ORPHAN_FILES_REPORT=YES` it runs the read-only orphan report alone (no pause). The
+cron line is always present; it self-exits unless at least one variable is set, so
+enabling or disabling is purely a `.barracuda.cnf` change with no cron edit.
+(`--orphan-report` remains a manual read-only sub-mode.)
+
+Because every early exit is otherwise silent, add **`--debug`** (or `-d`, any
+position) to have it print on stdout *why* a run does nothing — e.g. the opt-ins
+are off, the night is already stamped done, a heavy task is running (and which), or
+that it ran and simply found nothing to convert. It changes no behaviour; without
+the flag the run is silent as before.
+
+```bash
+updatesymlinks --auto-fix --debug
+#   updatesymlinks[debug]: not acting — both opt-ins are off (…); enable one in /root/.barracuda.cnf
+#   updatesymlinks[debug]: not acting — already completed for this night (stamp …); remove it to force a re-run
+#   updatesymlinks[debug]: not acting — a heavy task is running, retry next hour: duplicity(1)
+```
 
 ### `fix-drupal-site-symlinks.sh` — the privileged entry point
 
@@ -130,19 +157,102 @@ modes:
 sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=example.com [--account=o1] [--force-unshare]
 ```
 
+### `symlinkinfo` — query a site's history (read-only)
+
+Answers, for one or more sites, *was it symlinked and when, is its store archived
+(and where), and is it active/disabled/deleted right now* — from the autosymlink
+logs plus the live filesystem. It changes nothing.
+
+```bash
+symlinkinfo bar.tkm.cc                    # one site
+symlinkinfo foo.tkm.cc clone.foo.tkm.cc   # several
+symlinkinfo --logs-only <site>            # skip the filesystem scan
+symlinkinfo --fs-only <site>              # skip the log parse
+```
+
+For each site it reports:
+
+- **Symlinked** — each `files`/`private` conversion, with timestamp and store target.
+- **State NOW** — `active` (alias + real-docroot vhost), **`disabled`** (alias +
+  placeholder vhost — files kept live, never archived), `deleted` (neither alias nor
+  vhost — an orphan), or `partial` (only one survives).
+- **Store NOW** — the current store, and whether the in-site path is a live symlink.
+- **Archived** — each archive event (reuse vs deleted-site orphan), when, and to
+  which `.archived/<stamp>/…` path — plus the archived copies present **on disk right
+  now** (with size), so you can find or prune them if not yet purged.
+
+It reads `/var/log/boa/autosymlink.log*` and `autosymlink.verbose.archive.log*`
+(including rotated `.gz`) plus `/data/disk/*/static/files[/.archived]`. The site is
+matched as a whole path token, so `foo.tkm.cc` never pulls in `clone.foo.tkm.cc`.
+
 ## Configuration
 
 ### `.barracuda.cnf` variables
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `_AUTOSYMLINK_NIGHTLY` | `NO` | `YES` enables the nightly global auto-fix (`~05:30`). |
-| `_ORPHAN_FILES_REPORT` | `NO` | `YES` enables the daily orphan email report (`06:00`). |
+| `_AUTOSYMLINK_NIGHTLY` | `NO` (`YES` on `.aegir.cc`) | `YES` enables the nightly global auto-fix (pause + two-step, retried hourly at night until it lands, once per night; folds in the orphan report). **Defaulted to `YES` in the cnf on omega8.cc-hosted (`.aegir.cc`) systems, still editable** — see *Default by system class* below. |
+| `_ORPHAN_FILES_REPORT` | `NO` (`YES` on `.aegir.cc`) | `YES` enables the nightly read-only orphan email report (served by the same hourly-night schedule). **Defaulted to `YES` in the cnf on omega8.cc-hosted (`.aegir.cc`) systems, still editable** — see *Default by system class* below. |
+| `_AUTOSYMLINK_PAUSE_GRACE` | `240` | Seconds the queue stays paused (grace) before draining and applying — the 3–5 min window that lets an in-flight task finish. |
 | `_MY_EMAIL` | (your address) | Recipient for the orphan report and auto-fix notices. |
 
-Both toggles are off by default; native creation and clone handling do not need
-them. Already-installed boxes whose `/root/.barracuda.cnf` predates these lines
-default to off automatically.
+Native creation and clone handling never need these toggles; they only govern the
+nightly automation. Already-installed boxes whose `/root/.barracuda.cnf` predates
+these lines resolve exactly as below.
+
+### Default by system class
+
+The two nightly toggles (`_AUTOSYMLINK_NIGHTLY`, `_ORPHAN_FILES_REPORT`) are resolved
+by **system type**, so the nightly automation is deliberately on for one class of BOA
+host and off for the others:
+
+- **omega8.cc-hosted** — the system hostname ends in `.aegir.cc`. Both toggles are
+  **seeded to `YES` in `/root/.barracuda.cnf`** by default: Barracuda writes them as
+  ordinary cnf lines when they are not already present, so the hosted fleet runs the
+  nightly auto-fix and orphan report out of the box. They stay **fully
+  operator-toggleable** — set either to `NO` in the cnf and it stays off; the `YES`
+  default is applied only when the line is absent, never forced on each run.
+  Already-installed boxes that do not yet carry these lines pick up the default on
+  their next Barracuda run.
+- **Self-hosted** — neither an `.aegir.cc` hostname nor a `/root/.host8.cnf` marker.
+  **Off by default, opt-in.** Enable them in `/root/.barracuda.cnf` if and when you want
+  the nightly automation.
+- **Remotely managed by omega8.cc** — carries `/root/.host8.cnf` but the hostname is
+  **not** `.aegir.cc`. **Not auto-enabled.** These are turned on **individually**,
+  coordinated per box against its available disk/IO resources — never blanket-enabled the
+  way the hosted fleet is.
+
+The switch keys on the hostname **only** (`.aegir.cc`), never on `/root/.host8.cnf` — by
+design, so remotely-managed boxes that carry `.host8.cnf` are **not** swept into the
+automatic default and stay individually coordinated.
+
+### Archived-store accumulation alert
+
+Stale stores archived on name reuse (see *Orphan / ghost detection and
+stale-store archiving*) accumulate under `static/files/.archived/`. The daily
+report emails a `[REPORT] ORPHAN` alert once an account's archived pile reaches a
+size threshold — **1 GiB** by default. Override it (in **KB**) box-wide:
+
+```bash
+# Alert when an account's static/files/.archived total reaches 5 GiB:
+echo 5242880 > /data/conf/native_files_archive_alert_kb.cnf
+```
+
+Remove the file to restore the 1 GiB default. This controls only the *alert*; it
+never moves or deletes anything.
+
+### Disabling deleted-site auto-archiving
+
+The nightly auto-fix archives deleted-site orphan stores into `.archived/` (see
+*Orphan / ghost detection and stale-store archiving*). To turn that off and go back
+to **report-only** for orphans — archiving of a *reused* name on install/clone is
+unaffected — create:
+
+```bash
+touch /data/conf/disable_orphan_store_archiving.cnf
+```
+
+Remove the file to re-enable. Either way it never deletes anything.
 
 ### Disabling native symlinking (kill-switch)
 
@@ -159,6 +269,21 @@ touch /data/disk/<account>/static/control/no_native_files_symlink.info
 
 When present, new sites get plain real `files`/`private` directories as before,
 and the clone task leaves the cloned files as-is. Remove the file to re-enable.
+
+### Relocating backups off the root partition
+
+On an account whose `static/files` is a separate filesystem, the nightly
+maintenance moves that account's `backups`/`backup-exports` onto it (as symlinks)
+so large backups can't fill the root partition — see *Backups on the static
+filesystem*. On by default where applicable; disable without a code change:
+
+```bash
+# Box-wide (all accounts on this host):
+touch /data/conf/disable_backups_on_static_fs.cnf
+
+# Per-account (one Octopus account only):
+touch /data/disk/<account>/static/control/no_backups_on_static_fs.info
+```
 
 ### File sharing between sites (opt-in)
 
@@ -192,6 +317,19 @@ Such a clone is left usable; resolve it later with a manual
 `fix-drupal-site-symlinks.sh --site=<clone> --force-unshare` run once space is
 available.
 
+If the clone reuses a name whose store was left behind by an earlier site of the
+same name, that stale store is archived aside first (see *Orphan / ghost detection
+and stale-store archiving*), so the clone never collides with it.
+
+**Migrate / rename** behaves the same. A migrate (used for renaming, e.g. deploy
+dev/staging to live) deploys from a backup and then, right after the target
+verify, runs the narrow `autosymlink --force-unshare` for the migrated/renamed
+site — re-homing its `files`/`private` into its **own** store and repointing the
+symlinks, and archiving any pre-existing store at the target name aside first.
+The old-name store is left as an orphan — reported, and archived into `.archived/`
+on the next nightly sweep. Without this a renamed site would keep plain dirs on the
+platform partition or a link into the old store.
+
 ## Disk space and filesystems
 
 Both local and attached/extra filesystems are supported. Before moving or copying
@@ -201,13 +339,125 @@ fail when space is insufficient. A same-filesystem conversion is a rename (no
 extra space needed); a cross-filesystem one copies, then repoints, then removes
 the source.
 
-## Orphan / ghost detection
+Stale-store **archiving** on name reuse is deliberately placed *under*
+`static/files` (`static/files/.archived/`) so it always shares the store's
+filesystem and stays a free rename — a `static/files-*` sibling could land on a
+small root filesystem and turn the move into a space-consuming copy. Each
+archiving still records a `du`/`df` snapshot; a same-FS rename needs no free
+space, and a secondary check falls back to an in-place rename only if the archive
+would (unexpectedly) cross to a different, too-full device.
 
-When a site is deleted, BOA removes the in-site symlink but can leave the data
-behind in `static/files/<url>/` — a **ghost**. `autosymlink report` (and the daily
-`updatesymlinks --orphan-report`) list any store entry with no matching active
-site (no vhost + Drush alias pair). Detection is **report-only by design** — it
-never deletes anything. Review the report and remove confirmed ghosts by hand.
+## Backups on the static filesystem
+
+A backup of a native-symlinked site can be **large**: the backup tar follows the
+`files`/`private` symlinks (dereferences the store), so the tarball holds the full
+file data. Those backups land in `/data/disk/<account>/backups` on the **root
+partition** — a disk-full risk for a big account whose files live on attached
+storage.
+
+When an account's `static/files` is a **separate filesystem** (the large-account
+case — files moved to attached/extra storage), the nightly maintenance relocates
+that account's `backups` and `backup-exports` onto it and replaces them with
+symlinks:
+
+```
+/data/disk/<account>/backups         -> /data/disk/<account>/static/files/.backups
+/data/disk/<account>/backup-exports  -> /data/disk/<account>/static/files/.backup-exports
+```
+
+The Aegir paths are unchanged (the symlinks are transparent), so `backup_path` and
+`aegir_backup_export_path` keep working. Both targets live **under** `static/files`
+so they share one filesystem — the backup-download **hardlinks** between `backups`
+and `backup-exports` keep working (hardlinks cannot cross filesystems) — and the
+leading-dot names are skipped by the site/orphan scan, like `.archived`.
+
+- **Gated on a separate filesystem.** On a default single-filesystem box
+  `static/files` is on the root device, so there is nowhere better to put backups
+  and the relocation is a **deliberate no-op**. It only acts once a large account's
+  `static/files` is on attached storage.
+- **Safe one-time migration.** Existing backups are moved **incrementally**
+  (`rsync --remove-source-files`: ~one file of extra space at a time, per-file
+  safe); on any failure the real directory is left in place and no symlink is made.
+  It never deletes a backup.
+- **Task-queue interlock.** While migrating, the run holds the Aegir task queue
+  with a dedicated `/run/boa_queue_stop.pid` (honoured by `runner.sh` — the parent
+  exits and each per-account child dispatch skips) so no backup task writes into a
+  directory being moved. It self-heals: `clear.sh` removes it once its owner PID is
+  gone and `/run` clears on reboot, so it can never freeze the queue. The migration
+  is serialised across accounts with a `flock`.
+- **Kill-switch** — see *Configuration → Relocating backups off the root
+  partition*.
+
+## Orphan / ghost detection and stale-store archiving
+
+When a site is deleted, BOA removes the in-site symlink but leaves the data behind
+in `static/files/<url>/` — a **ghost**. Ghosts are archived aside automatically, in
+two situations:
+
+- **Deleted site, name not reused — archived by the nightly sweep.** The nightly
+  auto-fix (`updatesymlinks --auto-fix` with `_AUTOSYMLINK_NIGHTLY=YES`) moves each
+  deleted-site leftover store aside into the hidden, timestamped archive (below) and
+  logs an incident. It **never deletes**. Only a store whose name has **neither a
+  Drush alias nor a vhost** is archived — i.e. a genuinely deleted site. A merely
+  **disabled** site keeps both its alias and its (placeholder) vhost, so it is
+  treated as active and **left in place** — its files stay live for a later
+  re-enable. A partial/broken state (only one of alias/vhost present) is reported
+  but also left in place. The sweep runs with the Aegir task queue paused + drained,
+  so no in-flight install/clone can make a live site momentarily look deleted.
+
+  ```
+  [REPORT] ORPHAN archive incident: <url> deleted-site leftover size=<N>K -> static/files/.archived/<stamp>/ (target FS avail=<M>K)
+  ```
+
+  The read-only report (`updatesymlinks --orphan-report`, or `autosymlink report`)
+  still **lists** orphans without moving anything — useful when the auto-fix is off,
+  or to preview. To turn the deleted-site auto-archiving off (revert to report-only),
+  create `/data/conf/disable_orphan_store_archiving.cnf`.
+
+- **Reused name — archived on create.** If a fresh install, clone, or migrate/rename
+  reuses a name whose ghost store is still present, that stale store would otherwise
+  block the new site's conversion. It is **moved aside automatically** and the new
+  site converts cleanly. The same archiving covers the **break-sharing** path (a
+  clone/migrate whose deployed link still points at another site's store): the
+  pre-existing target store is archived aside before the copy.
+
+Every archive lands under the store, on the same filesystem:
+
+```
+/data/disk/<account>/static/files/.archived/<UTC-stamp>/<url>/{files,private}
+```
+
+The move is **non-destructive** (nothing is deleted), and because `.archived` lives
+*under* `static/files` it is always on the **same filesystem** as the store — a free
+rename, even when `static/files` is a symlink to attached storage. The leading-dot
+`.archived` is skipped by the orphan/site scan, so it is never mistaken for a site,
+yet the tools still track it. Every archiving is logged with a `du`/`df` disk-space
+snapshot, always — even when space is ample.
+
+**Archived stores accumulate — prune them.** Archiving never reclaims space (a
+big site whose name is reused many times leaves many copies). The report
+therefore sums the `static/files/.archived/` pile per account and emits an
+**emailed** `[REPORT] ORPHAN` alert once the total crosses a threshold (below it,
+a plain informational `[REPORT]` line that is not emailed):
+
+```
+[REPORT] ORPHAN archived-store pile in account <acct>: …/.archived total=<N>K >= threshold <T>K - prune old entries to reclaim space
+```
+
+The threshold defaults to **1 GiB** and is tunable (see *Configuration →
+Archived-store accumulation alert*). Prune the reviewed archive by hand:
+
+```bash
+du -sh /data/disk/<account>/static/files/.archived/*                 # oldest-first by stamp
+rm -rf /data/disk/<account>/static/files/.archived/<UTC-stamp>
+```
+
+Deletion of archived stores is **left to the operator, by design** — the tools
+archive and alert but never auto-delete. An age-based sweep (as BOA uses for
+`/data/disk/<account>/backups`, whose timestamps are always fresh, deleting
+anything older than N days) is deliberately **not** applied here: an archived
+orphan may hold data that is already very old yet still wanted, so purging it by
+age cannot be guaranteed safe. Review the alert and prune by hand.
 
 ## Safety properties
 
@@ -225,7 +475,14 @@ never deletes anything. Review the report and remove confirmed ghosts by hand.
   aborted task.
 - **No concurrent corruption.** The narrow apply defers while the nightly batch's
   maintenance pause is active, and the nightly batch skips while a provision/clone
-  task is running.
+  task is running. The backups relocation additionally holds the task queue with a
+  self-healing `/run/boa_queue_stop.pid` and serialises with a `flock`, so no
+  backup is moved mid-write.
+- **Orphan archiving is deletion-safe.** A deleted-site store is *moved* (never
+  deleted) into `.archived/`, and only when the name has **neither** a Drush alias
+  **nor** a vhost. A disabled or active site keeps both, so it is never touched; and
+  the nightly sweep runs with the task queue paused + drained, so a live site cannot
+  momentarily look deleted. Pruning `.archived/` remains the operator's call.
 
 ## Verify
 
@@ -242,8 +499,14 @@ ls -ld /data/disk/o1/static/files/example.com/files
 # Dry-run report for one site (no changes):
 autosymlink --site example.com
 
-# Box-wide read-only report incl. orphans:
+# Box-wide read-only report incl. orphans and the archived-store pile:
 autosymlink report | grep -E '\[REPORT\]'
+
+# One site's full history + current state (symlinked when, archived where, active/disabled/deleted):
+symlinkinfo example.com
+
+# Stale/orphan stores archived here (hidden; prune when large):
+du -sh /data/disk/o1/static/files/.archived/* 2>/dev/null
 
 # Logs:
 tail -n 50 /var/log/boa/autosymlink.log
@@ -254,7 +517,7 @@ tail -n 50 /var/log/boa/autosymlink.log
 `autosymlink` writes to `/var/log/boa/autosymlink.log`; `updatesymlinks` archives
 verbose output to `/var/log/boa/autosymlink.verbose.archive.log` and emails a
 summary. The Provision task log (in the Aegir front end, or the backend output)
-shows the `[native-symlink] …` line for install and clone.
+shows the `[native-symlink] …` line for install, clone and migrate/rename.
 
 ### New-site install
 
@@ -280,23 +543,68 @@ shows the `[native-symlink] …` line for install and clone.
    `sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=<clone> --force-unshare`
    once space is available.
 
+### Reused site name (stale-store archiving)
+
+1. Install a site, delete it but leave its `static/files/<site>/` behind (a
+   ghost), then create a site with the **same name**.
+2. The new site's task log shows the archive incident and a clean conversion:
+   ```bash
+   ls -ld /data/disk/<acct>/static/files/.archived/*/<site>   # the old store, moved aside
+   readlink /data/disk/<acct>/.../sites/<site>/files          # -> static/files/<site>/files (fresh)
+   ```
+3. Confirm the accumulation alert fires (lower the threshold to force it):
+   ```bash
+   echo 1 > /data/conf/native_files_archive_alert_kb.cnf         # 1 KB = always alert (test only)
+   updatesymlinks --orphan-report | grep 'archived-store pile'
+   rm -f /data/conf/native_files_archive_alert_kb.cnf
+   ```
+
+### Migrate / rename
+
+1. Migrate or rename a symlinked site. The migrated/renamed site's links must
+   point at **its own** store, not the source/old-name store:
+   ```bash
+   readlink /data/disk/<acct>/.../sites/<new>/files   # -> static/files/<new>/files
+   ```
+2. The old-name store `static/files/<old>/` is left as an orphan — reported, and
+   archived into `.archived/` on the next nightly sweep.
+
+### Backups on the static filesystem
+
+Only fires where the account's `static/files` is a separate filesystem. After a
+nightly run (or `bash /var/xdrago/night/10-account.sh /data/disk/<acct>`):
+```bash
+readlink /data/disk/<acct>/backups          # -> .../static/files/.backups
+readlink /data/disk/<acct>/backup-exports   # -> .../static/files/.backup-exports
+# both resolve onto the static FS; a front-end backup download (hardlink) still works
+```
+While it migrates, `/run/boa_queue_stop.pid` is present and `runner.sh` skips the
+queue; it is removed at the end (or self-healed by `clear.sh` if the run crashed).
+
 ### Nightly auto-fix
 
 ```bash
-echo '_AUTOSYMLINK_NIGHTLY=YES' >> /root/.barracuda.cnf   # then wait for ~05:30, or:
+echo '_AUTOSYMLINK_NIGHTLY=YES' >> /root/.barracuda.cnf   # then wait for the nightly :47 window, or:
 updatesymlinks --auto-fix                                  # run it now
-autosymlink report                                         # confirm sites are symlinked
+symlinkinfo <site>                                         # confirm the site is symlinked (State NOW)
 ```
 
-### Daily orphan report
+### Orphan store: report and auto-archive
 
 To force a positive case: delete a site but leave its `static/files/<site>/`
 behind, then:
 
 ```bash
+# Read-only report (lists it, moves nothing):
 echo '_ORPHAN_FILES_REPORT=YES' >> /root/.barracuda.cnf
 updatesymlinks --orphan-report      # emails _MY_EMAIL only if an orphan is found
 autosymlink report | grep ORPHAN
+
+# Auto-archive it (nightly apply): the store is moved into .archived/ and vanishes
+# from static/files. A *disabled* site (alias+vhost present) is left in place.
+echo '_AUTOSYMLINK_NIGHTLY=YES' >> /root/.barracuda.cnf
+updatesymlinks --auto-fix
+symlinkinfo <site>                  # shows the archive event + current .archived path
 ```
 
 ### Share opt-out and kill-switch
@@ -347,6 +655,15 @@ re-tries on failure; it does not give up after one attempt).
 
 ## Caveats
 
+- **Archived stores are retained; deletion is the operator's call.** A stale
+  store archived on name reuse is moved to `static/files/.archived/` and kept —
+  the tools **never auto-delete** it, because there is no safe way to guarantee an
+  auto-purge would not remove data being kept for a reason. Unlike routine backups
+  (fresh-timestamped and safe to rotate by age), an archived orphan may already be
+  very old yet still wanted, so no age-based auto-clean is applied. The report
+  alerts once the pile passes a size threshold
+  (`/data/conf/native_files_archive_alert_kb.cnf`, default 1 GiB); review it and
+  prune by hand (see *Orphan / ghost detection and stale-store archiving*).
 - **Legacy real directories are not auto-converted** during normal install/verify
   (to avoid moving data at an unexpected time). Convert them with the opt-in
   nightly auto-fix (`_AUTOSYMLINK_NIGHTLY=YES`) or a manual `autosymlink batch`
@@ -362,3 +679,10 @@ re-tries on failure; it does not give up after one attempt).
 - **Sharing control files are honoured everywhere except cloning.** If you rely on
   an intentional share, keep its `share.files.<site>.info` control file in place;
   do not expect a clone to inherit it.
+- **Backups relocation needs a separate `static/files` filesystem.** It is a
+  deliberate no-op on a default single-filesystem box (nowhere better to put
+  backups) and only helps once a large account's `static/files` is on attached
+  storage. The one-time migration de-links any pre-existing `backups`↔`backup-exports`
+  hardlink pairs (the two dirs are moved separately), a bounded transient
+  double-space cost on the static FS that ages out via the backup purge; backups
+  taken after relocation hardlink normally.
