@@ -47,8 +47,8 @@ _DB_SRC=repo.percona.com
 ###
 _DRUSH_ELEVEN_VRN=11.6.0
 _DRUSH_TEN_VRN=10.6.2
-_DRUSH_EIGHT_VRN=8.5.3
-_DRUSH_EIGHT_TEST_VRN=8.5.3
+_DRUSH_EIGHT_VRN=8.5.4
+_DRUSH_EIGHT_TEST_VRN=8.5.4
 ###
 ###
 _GIT_VRN=2.51.0
@@ -292,6 +292,15 @@ echo " "
 _msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
 echo " "
 sleep 3
+
+
+###
+### Snapshot control files before any on-the-fly changes
+###
+_backup_to_dragon "${_barCnf}"
+for _octCnfFile in /root/.*.octopus.cnf; do
+  [ -s "${_octCnfFile}" ] && _backup_to_dragon "${_octCnfFile}"
+done
 
 
 ###

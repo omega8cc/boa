@@ -22,11 +22,38 @@ as before — the symlink is followed automatically. Keeping the real data in th
 store means your uploads **survive platform rebuilds and code redeploys**, and
 your backups stay fast and consistent.
 
+## Automatic nightly upkeep
+
+Besides linking new sites as they are created, BOA can run a nightly job that
+converts any **older** site whose files were not symlinked yet and reports stray
+leftover data — keeping everything tidy without you asking.
+
+This nightly upkeep is **on by default only on omega8.cc-hosted systems** (servers
+managed for you by omega8.cc). On a **self-hosted** BOA server, or one **remotely
+managed by omega8.cc**, it is **off unless your server administrator enables it** —
+they turn it on per server, according to that server's available resources. Either
+way, the transparent per-site symlinking described above already works everywhere;
+only the automatic conversion of older sites depends on this setting.
+
 ## Cloning a site
 
 When you clone one of your sites, the clone gets its **own separate copy** of the
 files — it never shares the original's uploads. Changing files on one site does
 not affect the other.
+
+## Migrating or renaming a site
+
+Migrating a site to another platform, or renaming it (for example promoting a
+staging site to your live domain), works the same way: the moved or renamed site
+keeps its own files, symlinked into its own store — you don't lose your uploads
+and don't need to do anything.
+
+## Reusing a site name
+
+If you delete a site and later create a new one with the **same name**, the new
+site starts clean with its own fresh files. Any leftover files from the previous
+site of that name are set aside automatically — never mixed into the new site —
+so there is nothing you need to clean up first.
 
 ## Sharing files between two of your own sites (optional)
 

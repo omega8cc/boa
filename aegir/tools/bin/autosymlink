@@ -296,6 +296,137 @@ _make_unique_target() {
   mv "${_TARGET}" "${_NEW_TARGET}"
 }
 
+_archive_existing_store_target() {
+  # Move a pre-existing per-site store target ASIDE into a timestamped archive
+  # UNDER the store itself: static/files/.archived/<stamp>/<site>/<type>. The
+  # leading-dot .archived is skipped by the orphan/site scan (it ignores .*), so
+  # it is never mistaken for a live/orphan site, while a script that knows the
+  # path still tracks it. Keeping it under static/files (NOT a static/files-*
+  # sibling) guarantees the archive lands on the SAME filesystem as the store:
+  # static/files may be a symlink to a large dedicated disk, whereas a sibling
+  # would fall on the possibly-tiny root filesystem, turning a free rename into a
+  # cross-FS copy that can fill the disk. Used when a fresh install/clone reuses a
+  # site name whose store dir was left behind by a prior lifecycle (site delete
+  # does not remove it): a non-destructive self-heal. ALWAYS archives (never
+  # skips) and ALWAYS reports the incident with a disk-space snapshot for the
+  # ghost, even when space is ample. Degrades to an in-place rename if the archive
+  # would be a cross-FS move that does not fit, or if the move fails, so it never
+  # blocks the conversion.
+  # Args: 1 store target to move aside (.../static/files/<site>/<type>)
+  #       2 account dir (/data/disk/oX)
+  #       3 site name
+  #       4 type label (files|private)
+  _ARCH_SRC="$1"
+  _ARCH_ACCOUNT_DIR="$2"
+  _ARCH_SITE="$3"
+  _ARCH_TYPE="$4"
+
+  if [ ! -e "${_ARCH_SRC}" ] && [ ! -L "${_ARCH_SRC}" ]; then
+    return 0
+  fi
+
+  # Run-scoped stamp so a site's files + private land under one archive dir; fall
+  # back to a fresh stamp if _process_site did not set it.
+  _ARCH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+  _ARCH_BASE="${_ARCH_ACCOUNT_DIR}/static/files/.archived/${_ARCH_STAMP}/${_ARCH_SITE}"
+
+  # Disk-space snapshot for the archived ghost only, ALWAYS reported (even with
+  # ample space): the ghost's own size and the free space where the archive lands.
+  _ARCH_SRC_KB=$(du -sk "${_ARCH_SRC}" 2>/dev/null | awk 'NR==1 {print $1}')
+  _ARCH_SRC_KB="${_ARCH_SRC_KB:-?}"
+  _ARCH_AVAIL_KB=$(df -Pk "${_ARCH_ACCOUNT_DIR}/static/files" 2>/dev/null | awk 'NR==2 {print $4}')
+  _ARCH_AVAIL_KB="${_ARCH_AVAIL_KB:-?}"
+  _log "[REPORT] ORPHAN archive incident: ${_ARCH_SITE}/${_ARCH_TYPE} stale store size=${_ARCH_SRC_KB}K -> static/files/.archived/${_ARCH_STAMP}/ (target FS avail=${_ARCH_AVAIL_KB}K)"
+
+  if ! mkdir -p "${_ARCH_BASE}"; then
+    _log "[WARN] Could not create archive dir ${_ARCH_BASE}; renaming ${_ARCH_SRC} aside in place instead"
+    _make_unique_target "${_ARCH_SRC}"
+    return 0
+  fi
+
+  _ARCH_DST="${_ARCH_BASE}/${_ARCH_TYPE}"
+  if [ -e "${_ARCH_DST}" ] || [ -L "${_ARCH_DST}" ]; then
+    _make_unique_target "${_ARCH_DST}"
+  fi
+
+  # Secondary space check: .archived under static/files is normally the SAME
+  # device as the ghost (free rename). If it is somehow a different device and the
+  # ghost would not fit in the archive target's free space, do NOT risk a cross-FS
+  # copy that could fill the disk -- keep it in place (a same-device rename aside).
+  _ARCH_SRC_DEV=$(df -P "${_ARCH_SRC}" 2>/dev/null | awk 'NR==2 {print $1}')
+  _ARCH_DST_DEV=$(df -P "${_ARCH_BASE}" 2>/dev/null | awk 'NR==2 {print $1}')
+  if [ -n "${_ARCH_SRC_DEV}" ] && [ -n "${_ARCH_DST_DEV}" ] \
+    && [ "${_ARCH_SRC_DEV}" != "${_ARCH_DST_DEV}" ] \
+    && [ "${_ARCH_SRC_KB}" != "?" ] && [ "${_ARCH_AVAIL_KB}" != "?" ] \
+    && [ "${_ARCH_SRC_KB}" -gt "${_ARCH_AVAIL_KB}" ]; then
+    _log "[WARN] Archive target is a different filesystem (${_ARCH_DST_DEV}) with insufficient space (need ${_ARCH_SRC_KB}K, avail ${_ARCH_AVAIL_KB}K) for ${_ARCH_SITE}/${_ARCH_TYPE}; renaming ${_ARCH_SRC} aside in place instead"
+    _make_unique_target "${_ARCH_SRC}"
+    return 0
+  fi
+
+  _log "[APPLY] Archiving stale store target: ${_ARCH_SRC} -> ${_ARCH_DST}"
+  if ! mv "${_ARCH_SRC}" "${_ARCH_DST}"; then
+    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site ${_ARCH_SITE}; renaming ${_ARCH_SRC} aside in place instead"
+    _make_unique_target "${_ARCH_SRC}"
+  fi
+  return 0
+}
+
+_archive_orphan_store() {
+  # Archive a whole DELETED-site leftover store (static/files/<site>/) ASIDE into
+  # static/files/.archived/<stamp>/<site>/ -- the same hidden, same-filesystem archive
+  # the reuse self-heal uses, with the same layout (…/<site>/files, …/<site>/private).
+  # NEVER deletes: pruning the .archived pile stays operator-only. Same-device free
+  # rename; if the archive would be a cross-FS move that does not fit, leave the orphan
+  # in place and report, so it can never fill a tiny root fs. The CALLER only invokes
+  # this for a store whose name has NEITHER a drush alias NOR a vhost (a genuinely
+  # deleted site) -- a merely-disabled site keeps its alias and is left untouched.
+  # Args: 1 store dir (…/static/files/<site>), 2 account dir, 3 site name, 4 size KB
+  _ORPH_SRC="$1"
+  _ORPH_ACCT="$2"
+  _ORPH_SITE="$3"
+  _ORPH_KB="$4"
+
+  { [ -e "${_ORPH_SRC}" ] || [ -L "${_ORPH_SRC}" ]; } || return 0
+
+  # Run/account-scoped stamp so all orphans of one sweep land under one archive dir.
+  _ORPH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+  _ORPH_BASE="${_ORPH_ACCT}/static/files/.archived/${_ORPH_STAMP}"
+  _ORPH_DST="${_ORPH_BASE}/${_ORPH_SITE}"
+
+  _ORPH_AVAIL_KB=$(df -Pk "${_ORPH_ACCT}/static/files" 2>/dev/null | awk 'NR==2 {print $4}')
+  _ORPH_AVAIL_KB="${_ORPH_AVAIL_KB:-?}"
+  _log "[REPORT] ORPHAN archive incident: ${_ORPH_SITE} deleted-site leftover size=${_ORPH_KB}K -> static/files/.archived/${_ORPH_STAMP}/ (target FS avail=${_ORPH_AVAIL_KB}K)"
+
+  if ! mkdir -p "${_ORPH_BASE}"; then
+    _log "[WARN] Could not create archive dir ${_ORPH_BASE}; leaving orphan store ${_ORPH_SRC} in place"
+    return 0
+  fi
+  if [ -e "${_ORPH_DST}" ] || [ -L "${_ORPH_DST}" ]; then
+    _make_unique_target "${_ORPH_DST}"
+  fi
+
+  # Same-device guard: .archived under static/files is normally the SAME device as the
+  # store (free rename). If it is somehow a different device and the orphan would not
+  # fit, do NOT risk a cross-FS copy that could fill the disk -- leave it in place.
+  _ORPH_SRC_DEV=$(df -P "${_ORPH_SRC}" 2>/dev/null | awk 'NR==2 {print $1}')
+  _ORPH_DST_DEV=$(df -P "${_ORPH_BASE}" 2>/dev/null | awk 'NR==2 {print $1}')
+  if [ -n "${_ORPH_SRC_DEV}" ] && [ -n "${_ORPH_DST_DEV}" ] \
+    && [ "${_ORPH_SRC_DEV}" != "${_ORPH_DST_DEV}" ] \
+    && [ "${_ORPH_KB}" != "?" ] && [ "${_ORPH_AVAIL_KB}" != "?" ] \
+    && [ "${_ORPH_KB}" -gt "${_ORPH_AVAIL_KB}" ]; then
+    _log "[WARN] Archive target is a different filesystem (${_ORPH_DST_DEV}) with insufficient space (need ${_ORPH_KB}K, avail ${_ORPH_AVAIL_KB}K) for orphan ${_ORPH_SITE}; leaving in place"
+    return 0
+  fi
+
+  _log "[APPLY] Archiving orphan store (deleted-site leftover): ${_ORPH_SRC} -> ${_ORPH_DST}"
+  if ! mv "${_ORPH_SRC}" "${_ORPH_DST}"; then
+    _log "[WARN] Archive move failed for orphan store ${_ORPH_SITE}; leaving ${_ORPH_SRC} in place"
+    return 0
+  fi
+  return 0
+}
+
 _check_space_for_transfer() {
   # Args:
   #   1: source directory
@@ -606,7 +737,12 @@ _check_symlink_sharing() {
   fi
 
   if [ -e "${_NEW_TARGET}" ] || [ -L "${_NEW_TARGET}" ]; then
-    _make_unique_target "${_NEW_TARGET}"
+    # A pre-existing store at this (renamed/migrated) target name is a stale ghost
+    # from a prior lifecycle: archive it aside (tracked, into static/files/.archived)
+    # rather than renaming it in place, so break-sharing collisions are handled the
+    # same way as the local-convert path (_convert_dir_to_symlink) and land in the
+    # reported/prunable archive instead of cluttering the live store.
+    _archive_existing_store_target "${_NEW_TARGET}" "${_ACCOUNT_DIR}" "${_SITE_NAME}" "${_TYPE}"
   fi
 
   _log "[APPLY] Copying ${_ORIGINAL_TOP} -> ${_NEW_TARGET}"
@@ -687,7 +823,9 @@ _convert_dir_to_symlink() {
   fi
 
   if [ -e "${_DST}" ] || [ -L "${_DST}" ]; then
-    _make_unique_target "${_DST}"
+    # Archive a stale store target aside (non-destructive) rather than renaming it
+    # in place, so a reused site name never collides with a prior lifecycle's store.
+    _archive_existing_store_target "${_DST}" "${_ACCOUNT_DIR}" "${_SITE}" "${_TYPE}"
   fi
 
   _log "[APPLY] Moving: ${_SRC} -> ${_DST}"
@@ -739,6 +877,9 @@ _process_site() {
   _PRIVATE_PATH="${_SITE_PATH}/private"
 
   _TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
+  # One archive timestamp per site run, so a stale store's files + private land
+  # together under static/files/.archived/<stamp>/<site>/.
+  _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   _DO_FILES_CONVERT="NO"
   _DO_PRIVATE_CONVERT="NO"
 
@@ -823,10 +964,11 @@ _process_site() {
 
   if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
     if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
-      _log "[PLAN] Existing target will be renamed before move: ${_TARGET_BASE}/files -> ${_TARGET_BASE}/files-<hashstring>"
-      if [ "${_MODE}" = "DRY" ]; then
-        _DRY_HAS_EDGE_CASES="YES"
-      fi
+      # Stale store target from a prior lifecycle of a reused site name: archived
+      # aside automatically (see _archive_existing_store_target). A defined,
+      # non-destructive remedy -- NOT a blocking edge case, so the narrow
+      # install/clone apply proceeds instead of skipping with a warning.
+      _log "[PLAN] Existing (stale) store target will be archived before move: ${_TARGET_BASE}/files -> ${_ACCOUNT_DIR}/static/files/.archived/<stamp>/${_SITE_NAME}/files"
     fi
     _log "[PLAN] Move directory: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
     _log "[PLAN] Symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
@@ -839,10 +981,11 @@ _process_site() {
 
   if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
     if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
-      _log "[PLAN] Existing target will be renamed before move: ${_TARGET_BASE}/private -> ${_TARGET_BASE}/private-<hashstring>"
-      if [ "${_MODE}" = "DRY" ]; then
-        _DRY_HAS_EDGE_CASES="YES"
-      fi
+      # Stale store target from a prior lifecycle of a reused site name: archived
+      # aside automatically (see _archive_existing_store_target). A defined,
+      # non-destructive remedy -- NOT a blocking edge case, so the narrow
+      # install/clone apply proceeds instead of skipping with a warning.
+      _log "[PLAN] Existing (stale) store target will be archived before move: ${_TARGET_BASE}/private -> ${_ACCOUNT_DIR}/static/files/.archived/<stamp>/${_SITE_NAME}/private"
     fi
     _log "[PLAN] Move directory: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
     _log "[PLAN] Symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
@@ -967,11 +1110,27 @@ _process_account() {
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE_NAME}" "${_ALIAS_FILE}"
   done
 
-  # In REPORT mode, also list orphaned static/files entries (leftovers after site deletion).
-  # We DO NOT delete anything; this is for operator review only.
-  if [ "${_MODE}" = "REPORT" ]; then
+  # Orphaned static/files stores are leftovers from a site DELETE (deleting a site does
+  # not remove its per-site store). Runs in the account-sweep only (never the narrow
+  # single-site Provision hook).
+  #   REPORT       : list them for the operator email (read-only).
+  #   LIVE / BATCH : ARCHIVE each deleted-site leftover ASIDE into
+  #                  static/files/.archived/<stamp>/<site>/ (NEVER delete -- pruning the
+  #                  pile stays operator-only), unless the kill-switch cnf is present.
+  # SAFETY: only a name with NEITHER a drush alias NOR a vhost is archived. A merely
+  # DISABLED site keeps its alias (it has no active vhost+alias pair, so it is still an
+  # "orphan" to the scan below) -- it is reported but LEFT IN PLACE so its data survives
+  # a later re-enable. The nightly sweep runs with the Aegir task queue paused + drained,
+  # so no install/clone is mid-flight to make a live site transiently look deleted.
+  if [ "${_MODE}" = "REPORT" ] || [ "${_MODE}" = "LIVE" ] || [ "${_MODE}" = "BATCH" ]; then
     _STATIC_FILES_DIR="${_ACCOUNT_DIR}/static/files"
     if [ -d "${_STATIC_FILES_DIR}" ]; then
+      # Archive in the apply modes only, and only if the operator has not disabled it.
+      _ORPHAN_ARCHIVE="NO"
+      case "${_MODE}" in LIVE|BATCH) _ORPHAN_ARCHIVE="YES" ;; esac
+      [ -f /data/conf/disable_orphan_store_archiving.cnf ] && _ORPHAN_ARCHIVE="NO"
+      # One archive stamp for all of this account's orphans in this sweep.
+      _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)-$$"
       _FOUND_ORPHANS="NO"
       for _CAND in "${_STATIC_FILES_DIR}"/*; do
         if [ ! -e "${_CAND}" ]; then
@@ -985,7 +1144,7 @@ _process_account() {
           continue
         fi
 
-        # Ignore hidden/metadata entries
+        # Ignore hidden/metadata entries (this skips .archived itself).
         case "${_CAND_NAME}" in
           .*|lost+found)
             continue
@@ -1001,7 +1160,17 @@ _process_account() {
               if [ -z "${_ORPH_KB}" ]; then
                 _ORPH_KB="?"
               fi
-              _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found"
+              # Deleted (safe to archive) vs disabled/partial (keep): require BOTH the
+              # drush alias AND the vhost to be absent before moving anything.
+              _CAND_ALIAS="${_DRUSH_DIR}/${_CAND_NAME}.alias.drushrc.php"
+              _CAND_VHOST="${_VHOST_DIR}/${_CAND_NAME}"
+              if [ -e "${_CAND_ALIAS}" ] || [ -e "${_CAND_VHOST}" ]; then
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – a surviving alias/vhost remains (disabled or partial state); left in place, NOT archived"
+              elif [ "${_ORPHAN_ARCHIVE}" = "YES" ]; then
+                _archive_orphan_store "${_CAND}" "${_ACCOUNT_DIR}" "${_CAND_NAME}" "${_ORPH_KB}"
+              else
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found"
+              fi
             fi
           fi
         fi
@@ -1009,6 +1178,31 @@ _process_account() {
 
       if [ "${_FOUND_ORPHANS}" != "YES" ]; then
         _log "[REPORT] No orphan static/files entries detected in account ${_ACCOUNT_NAME}"
+      fi
+
+      # Track the archived-ghost pile under static/files/.archived (a hidden
+      # subdir the orphan scan above skips, on the SAME filesystem as the store).
+      # It accumulates over reused-name conversions, so report its total size and,
+      # above a threshold, flag it ORPHAN-class so the daily email surfaces it for
+      # pruning. Read-only; moves nothing. Threshold is cnf-tunable in KB via
+      # /data/conf/native_files_archive_alert_kb.cnf (default 1 GiB).
+      # The .archived pile-size accounting stays a REPORT-mode diagnostic (read-only).
+      if [ "${_MODE}" = "REPORT" ]; then
+        _ARCH_ROOT="${_STATIC_FILES_DIR}/.archived"
+        if [ -d "${_ARCH_ROOT}" ]; then
+          _ARCH_TOTAL_KB=$(du -sk "${_ARCH_ROOT}" 2>/dev/null | awk 'NR==1 {print $1}')
+          _ARCH_TOTAL_KB="${_ARCH_TOTAL_KB:-0}"
+          _ARCH_ALERT_KB=1048576
+          if [ -f /data/conf/native_files_archive_alert_kb.cnf ]; then
+            _ARCH_ALERT_CNF=$(head -n1 /data/conf/native_files_archive_alert_kb.cnf 2>/dev/null | tr -dc '0-9')
+            [ -n "${_ARCH_ALERT_CNF}" ] && _ARCH_ALERT_KB="${_ARCH_ALERT_CNF}"
+          fi
+          if [ "${_ARCH_TOTAL_KB}" -ge "${_ARCH_ALERT_KB}" ]; then
+            _log "[REPORT] ORPHAN archived-store pile in account ${_ACCOUNT_NAME}: ${_ARCH_ROOT} total=${_ARCH_TOTAL_KB}K >= threshold ${_ARCH_ALERT_KB}K - prune old entries to reclaim space"
+          else
+            _log "[REPORT] Archived-store pile in account ${_ACCOUNT_NAME}: ${_ARCH_ROOT} total=${_ARCH_TOTAL_KB}K (below threshold ${_ARCH_ALERT_KB}K)"
+          fi
+        fi
       fi
     fi
   fi

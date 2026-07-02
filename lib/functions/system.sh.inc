@@ -2216,6 +2216,16 @@ _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf"
   fi
+  # The omega8.cc-hosted fleet (hostname ends in .aegir.cc) defaults both nightly
+  # symlink toggles to YES, but ONLY when they are not already present in the cnf,
+  # so they are written as ordinary .barracuda.cnf lines and stay operator-toggleable
+  # (turn off/on in the cnf anytime) -- never forced on each run. Keyed on the
+  # hostname only, never _if_hosted_sys / .host8.cnf, so remotely-managed boxes that
+  # carry .host8.cnf are not opted in (same split as _MTD_VR below).
+  if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
+    grep -q "^_AUTOSYMLINK_NIGHTLY=" ${_barCnf} 2>/dev/null || _AUTOSYMLINK_NIGHTLY=YES
+    grep -q "^_ORPHAN_FILES_REPORT=" ${_barCnf} 2>/dev/null || _ORPHAN_FILES_REPORT=YES
+  fi
   _VMFAMILY=XEN
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -2385,6 +2395,12 @@ _barracuda_cnf() {
     echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
 
     echo "###"                                                    >> ${_barCnf}
+    echo "_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}"           >> ${_barCnf}
+    echo "_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}"           >> ${_barCnf}
+    echo "_NIGHT_PARALLEL=${_NIGHT_PARALLEL}"                     >> ${_barCnf}
+    echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}"             >> ${_barCnf}
+    echo "_CLEAR_BOOST=${_CLEAR_BOOST}"                           >> ${_barCnf}
+    echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}"                 >> ${_barCnf}
     echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}"   >> ${_barCnf}
     echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}"   >> ${_barCnf}
@@ -2797,6 +2813,36 @@ _barracuda_cnf() {
         echo "_DL_MODE=BATCH" >> ${_barCnf}
         export _DL_MODE=BATCH
       fi
+    fi
+
+    _AUTOSYMLINK_NIGHTLY_TEST=$(grep _AUTOSYMLINK_NIGHTLY ${_barCnf} 2>&1)
+    if [[ ! "${_AUTOSYMLINK_NIGHTLY_TEST}" =~ "_AUTOSYMLINK_NIGHTLY" ]]; then
+      echo "_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}" >> ${_barCnf}
+    fi
+
+    _ORPHAN_FILES_REPORT_TEST=$(grep _ORPHAN_FILES_REPORT ${_barCnf} 2>&1)
+    if [[ ! "${_ORPHAN_FILES_REPORT_TEST}" =~ "_ORPHAN_FILES_REPORT" ]]; then
+      echo "_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}" >> ${_barCnf}
+    fi
+
+    _NIGHT_PARALLEL_TEST=$(grep _NIGHT_PARALLEL ${_barCnf} 2>&1)
+    if [[ ! "${_NIGHT_PARALLEL_TEST}" =~ "_NIGHT_PARALLEL" ]]; then
+      echo "_NIGHT_PARALLEL=${_NIGHT_PARALLEL}" >> ${_barCnf}
+    fi
+
+    _NIGHT_MAX_PARALLEL_TEST=$(grep _NIGHT_MAX_PARALLEL ${_barCnf} 2>&1)
+    if [[ ! "${_NIGHT_MAX_PARALLEL_TEST}" =~ "_NIGHT_MAX_PARALLEL" ]]; then
+      echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}" >> ${_barCnf}
+    fi
+
+    _CLEAR_BOOST_TEST=$(grep _CLEAR_BOOST ${_barCnf} 2>&1)
+    if [[ ! "${_CLEAR_BOOST_TEST}" =~ "_CLEAR_BOOST" ]]; then
+      echo "_CLEAR_BOOST=${_CLEAR_BOOST}" >> ${_barCnf}
+    fi
+
+    _LE_CLIENT_NOTIFY_TEST=$(grep _LE_CLIENT_NOTIFY ${_barCnf} 2>&1)
+    if [[ ! "${_LE_CLIENT_NOTIFY_TEST}" =~ "_LE_CLIENT_NOTIFY" ]]; then
+      echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}" >> ${_barCnf}
     fi
 
     _SHARED_CODEBASES_CLEANUP_TEST=$(grep _SHARED_CODEBASES_CLEANUP ${_barCnf} 2>&1)
@@ -8845,15 +8891,27 @@ _smtp_check() {
 EOF
     fi
     ###
-    ### Required if outgoing smtp port is closed and smtp relay is in use
+    ### Required if outgoing smtp port is closed and smtp relay is in use.
+    ### Gate: if local sendmail is enabled for hosted sites
+    ### (/etc/boa/.allow.sendmail.cnf present), stay in no-relay/direct mode --
+    ### routing through the relay would re-stamp the sites' own mail to the
+    ### relay's single sending domain. Self-correcting both ways: enabling the
+    ### allow file reverts an already-active relayhost back to direct.
     ###
-    if [ ! -z "${_SMTP_RELAY_HOST}" ]; then
+    if [ ! -z "${_SMTP_RELAY_HOST}" ] \
+      && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
       sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
       wait
       sed -i "s/relayhost =/relayhost = ${_SMTP_RELAY_HOST}/g" \
         /etc/postfix/main.cf &> /dev/null
       wait
       postfix reload &> /dev/null
+    elif [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
+      if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
+        sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
+        wait
+        postfix reload &> /dev/null
+      fi
     fi
   fi
 }
