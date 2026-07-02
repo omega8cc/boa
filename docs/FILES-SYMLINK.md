@@ -107,8 +107,9 @@ left `root`-owned).
 
 ### `updatesymlinks` — the scheduler / orchestrator
 
-Wraps `autosymlink` with task-pausing, lock and load guards, and email. Driven by
-two opt-in `.barracuda.cnf` variables (see Configuration):
+Wraps `autosymlink` with Aegir-queue pausing (the self-healing
+`/run/boa_queue_stop.pid`), lock and load guards, and email. Driven by two opt-in
+`.barracuda.cnf` variables (see Configuration):
 
 ```bash
 updatesymlinks --auto-fix       # nightly: batch-if-clean apply + email on changes
@@ -116,10 +117,18 @@ updatesymlinks --orphan-report  # daily: read-only orphan report, email only if 
 updatesymlinks                  # legacy: full apply + report, for manual use
 ```
 
-When auto-updates are enabled these run from cron (`~05:30` auto-fix, `06:00`
-orphan report). The cron lines are always present; each sub-mode self-exits
-unless its variable is set, so enabling or disabling is purely a `.barracuda.cnf`
-change with no cron edit.
+When either opt-in is enabled a **single** cron line runs `updatesymlinks --auto-fix`
+hourly at `:47` through the night (`22:00`–`05:59`), clear of the 6-hourly duplicity
+backups (`:00`) and the nightly backup/owl/upgrade cluster. It self-skips any hour a
+heavy task is running (backup, upgrade, provision, high load) and retries the next
+hour; the first un-blocked hour does the work, records a per-night stamp
+(`/var/log/boa/autosymlink.nightok.stamp`), and every later hour that night is a cheap
+no-op. The one line serves both opt-ins: with `_AUTOSYMLINK_NIGHTLY=YES` it runs the
+full pause + two-step apply (which folds the orphan report in); with only
+`_ORPHAN_FILES_REPORT=YES` it runs the read-only orphan report alone (no pause). The
+cron line is always present; it self-exits unless at least one variable is set, so
+enabling or disabling is purely a `.barracuda.cnf` change with no cron edit.
+(`--orphan-report` remains a manual read-only sub-mode.)
 
 ### `fix-drupal-site-symlinks.sh` — the privileged entry point
 
@@ -139,8 +148,9 @@ sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=example.com [--account=o1
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `_AUTOSYMLINK_NIGHTLY` | `NO` | `YES` enables the nightly global auto-fix (`~05:30`). |
-| `_ORPHAN_FILES_REPORT` | `NO` | `YES` enables the daily orphan email report (`06:00`). |
+| `_AUTOSYMLINK_NIGHTLY` | `NO` | `YES` enables the nightly global auto-fix (pause + two-step, retried hourly at night until it lands, once per night; folds in the orphan report). |
+| `_ORPHAN_FILES_REPORT` | `NO` | `YES` enables the nightly read-only orphan email report (served by the same hourly-night schedule). |
+| `_AUTOSYMLINK_PAUSE_GRACE` | `240` | Seconds the queue stays paused (grace) before draining and applying — the 3–5 min window that lets an in-flight task finish. |
 | `_MY_EMAIL` | (your address) | Recipient for the orphan report and auto-fix notices. |
 
 Both toggles are off by default; native creation and clone handling do not need

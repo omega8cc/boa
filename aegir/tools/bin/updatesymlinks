@@ -9,8 +9,13 @@ _actionTemporaryLog="${_logDir}/autosymlink.tmp.log"
 _actionPermanentLog="${_logDir}/autosymlink.update.log"
 _actionVerboseArchiveLog="${_logDir}/autosymlink.verbose.archive.log"
 _stateFile="${_logDir}/autosymlink.state"
+_nightStamp="${_logDir}/autosymlink.nightok.stamp"
 _autoBin=/opt/local/bin/autosymlink
-_pauseFile=/etc/boa/.pause_tasks_maint.cnf
+# Self-healing task-queue stop file (records our PID): runner.sh honours it (parent exit
+# + per-child skip), clear.sh purges a leaked one by PID-liveness, and /run clears on
+# reboot — so it can never freeze the queue. Replaces the old .pause_tasks_maint.cnf
+# pause, which was NOT self-healing (a leaked one also made clear.sh exit early).
+_queueStop=/run/boa_queue_stop.pid
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -44,9 +49,14 @@ esac
 : "${_AUTOSYMLINK_NIGHTLY:=NO}"
 : "${_ORPHAN_FILES_REPORT:=NO}"
 
-# Tracks whether THIS process created the maintenance pause file, so the EXIT
-# trap never removes a pause window opened by a concurrent apply pass.
-_pauseOwned="NO"
+# Fixed grace (seconds) held after pausing the queue, before draining any in-flight
+# task, so a runner.sh that was already mid-dispatch when we paused cannot slip a
+# provision task into our window. Overridable from /root/.barracuda.cnf (3–5 min band).
+: "${_AUTOSYMLINK_PAUSE_GRACE:=240}"
+
+# Tracks whether THIS process created the queue-stop file, so the EXIT trap never tears
+# down a pause window opened by a concurrent maintenance op.
+_stopOwned="NO"
 
 _log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> ${_actionPermanentLog}
@@ -78,12 +88,17 @@ _manage_single_lock
 trap '_clean_lock' EXIT INT TERM
 
 _clean_lock() {
-  # Only remove the pause file if this process created it (apply path). The
-  # read-only orphan-report path never touches it and must not tear down a
-  # pause window opened by a concurrent apply run.
-  [ "${_pauseOwned}" = "YES" ] && [ -e "${_pauseFile}" ] && rm -f "${_pauseFile}"
+  # Release the task-queue stop file only if THIS process created it and still owns it
+  # (verify the recorded PID), so a concurrent maintenance op's pause is never torn
+  # down. It is self-healing anyway (clear.sh purges a dead owner).
+  if [ "${_stopOwned}" = "YES" ] && [ -e "${_queueStop}" ] \
+    && [ "$(tr -dc '0-9' < "${_queueStop}" 2>/dev/null)" = "$$" ]; then
+    rm -f "${_queueStop}"
+  fi
   if command -v _single_instance_unlock >/dev/null 2>&1; then
-    _single_instance_unlock
+    # Pass the fd/path recorded by _single_instance_lock explicitly; an argless call
+    # left _FD empty and tripped "_FD: ambiguous redirect" on the exec {_FD}>&- close.
+    _single_instance_unlock "${_LOCK_FD:-}" "${_LOCK_PATH:-}"
   fi
   [ -n "${_lockDir:-}" ] && [ -d "${_lockDir}" ] && rm -rf "${_lockDir}"
 }
@@ -135,6 +150,40 @@ _read_state_var() {
   fi
 }
 
+_provision_running() {
+  pgrep -f provision >/dev/null 2>&1
+}
+
+# Stable per-night id so the hourly retry stamps success once and no-ops for the rest of
+# the night. The attempt window sits in [22:00,06:00); shifting back 12h collapses the
+# whole window (evening + the early hours past midnight) onto one noon-anchored date.
+_night_id() {
+  date --date '12 hours ago' '+%Y-%m-%d' 2>/dev/null
+}
+
+# Pause the Aegir task queue and drain any in-flight provision task before touching
+# symlinks. Sets the self-healing stop file (records our PID), holds a fixed grace so a
+# runner already mid-dispatch cannot fire a task after we paused, then bounded-drains
+# pgrep provision. Returns 0 when quiescent (safe to convert), 1 if a task is still
+# active after the grace+drain (caller must NOT apply; the hourly retry tries again).
+_pause_and_drain() {
+  if [ ! -e "${_queueStop}" ]; then
+    echo "$$" > "${_queueStop}" 2>/dev/null && _stopOwned="YES"
+  fi
+  _log "INFO: Aegir queue paused (${_queueStop}); grace ${_AUTOSYMLINK_PAUSE_GRACE}s, then drain"
+  sleep "${_AUTOSYMLINK_PAUSE_GRACE}"
+  _drain=0
+  while _provision_running && [ "${_drain}" -lt 12 ]; do
+    sleep 5
+    _drain=$(( _drain + 1 ))
+  done
+  if _provision_running; then
+    _log "INFO: provision task still active after grace+drain; not applying this run"
+    return 1
+  fi
+  return 0
+}
+
 _autosymlink_run() {
   _actionReport=FALSE
   _orphansFound=FALSE
@@ -149,14 +198,17 @@ _autosymlink_run() {
     return 1
   fi
 
-  # Pause tasks to avoid race, then re-check
-  _pauseOwned="YES"
-  touch "${_pauseFile}"
-  sleep 5
+  # Pause the Aegir queue with the self-healing stop file, hold a fixed grace so a
+  # runner already mid-dispatch cannot slip a task in, drain any in-flight task, then
+  # re-check protection before converting anything. A still-active task means "blocked":
+  # bail with rc 2 so the caller does NOT stamp the night and the hourly retry tries again.
+  if ! _pause_and_drain; then
+    return 2
+  fi
   _is_protected_run
   if [ "${_protectedRun}" = "TRUE" ]; then
-    _log "INFO: Protected run detected after pausing tasks; exiting."
-    return 0
+    _log "INFO: Protected run detected after pausing tasks; not applying this run."
+    return 2
   fi
 
   # Cron-safe: DRY -> if CLEAN -> BATCH in one run
@@ -286,15 +338,38 @@ case "${_subMode}" in
     exit 0
     ;;
   auto-fix)
-    # Nightly global symlinks auto-fix, opt-in.
-    if [ "${_AUTOSYMLINK_NIGHTLY}" != "YES" ]; then
+    # Nightly files-symlink maintenance, opt-in. Fired hourly through the night; the first
+    # un-blocked hour does the work, stamps the night, and every later hour that night is a
+    # cheap no-op. A blocked hour (heavy task running) just retries next. This one schedule
+    # serves BOTH independent opt-ins: _AUTOSYMLINK_NIGHTLY runs the full pause+two-step
+    # (which already folds in the orphan report); with only _ORPHAN_FILES_REPORT set it runs
+    # the read-only orphan report alone (no pause). So NIGHTLY=NO + ORPHAN=YES still reports.
+    if [ "${_AUTOSYMLINK_NIGHTLY}" != "YES" ] && [ "${_ORPHAN_FILES_REPORT}" != "YES" ]; then
+      exit 0
+    fi
+    _thisNight="$(_night_id)"
+    if [ -n "${_thisNight}" ] \
+      && [ "$(cat "${_nightStamp}" 2>/dev/null)" = "${_thisNight}" ]; then
+      # Already completed for this night.
       exit 0
     fi
     _is_protected_run
     if [ "${_protectedRun}" = "TRUE" ]; then
+      # A heavy task (backup/upgrade/provision/load) is running — retry next hour.
       exit 0
     fi
-    _autosymlink_run
+    if [ "${_AUTOSYMLINK_NIGHTLY}" = "YES" ]; then
+      _autosymlink_run    # pause + drain + two-step, with the orphan report folded in
+    else
+      _orphan_report_run  # _ORPHAN_FILES_REPORT=YES only: read-only orphan report, no pause
+    fi
+    _rcRun="$?"
+    # Stamp only when the work actually ran (rc 0); rc 2 = blocked, so leave the night
+    # un-stamped and let the next hourly window try again.
+    if [ "${_rcRun}" -eq 0 ] && [ -n "${_thisNight}" ]; then
+      echo "${_thisNight}" > "${_nightStamp}" 2>/dev/null
+      _log "INFO: Nightly files-symlink maintenance completed for night ${_thisNight}; no more attempts until next night."
+    fi
     exit 0
     ;;
   *)
