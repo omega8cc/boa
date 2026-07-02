@@ -65,16 +65,6 @@ fi
 : "${_AUTOSYMLINK_NIGHTLY:=NO}"
 : "${_ORPHAN_FILES_REPORT:=NO}"
 
-# The omega8.cc-hosted fleet (hostname ends in .aegir.cc) runs both nightly
-# features ON by default, overriding the cnf. Keyed on the hostname ONLY, never
-# _if_hosted_sys / .host8.cnf -- remotely-managed customer boxes may carry
-# .host8.cnf yet must stay opt-in (same split as system.sh.inc _MTD_VR).
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
-  _AUTOSYMLINK_NIGHTLY=YES
-  _ORPHAN_FILES_REPORT=YES
-fi
-
 # Fixed grace (seconds) held after pausing the queue, before draining any in-flight
 # task, so a runner.sh that was already mid-dispatch when we paused cannot slip a
 # provision task into our window. Overridable from /root/.barracuda.cnf (3–5 min band).

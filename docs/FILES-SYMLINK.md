@@ -191,8 +191,8 @@ matched as a whole path token, so `foo.tkm.cc` never pulls in `clone.foo.tkm.cc`
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `_AUTOSYMLINK_NIGHTLY` | `NO` | `YES` enables the nightly global auto-fix (pause + two-step, retried hourly at night until it lands, once per night; folds in the orphan report). **Forced to `YES` automatically on omega8.cc-hosted (`.aegir.cc`) systems** — see *Default by system class* below. |
-| `_ORPHAN_FILES_REPORT` | `NO` | `YES` enables the nightly read-only orphan email report (served by the same hourly-night schedule). **Forced to `YES` automatically on omega8.cc-hosted (`.aegir.cc`) systems** — see *Default by system class* below. |
+| `_AUTOSYMLINK_NIGHTLY` | `NO` (`YES` on `.aegir.cc`) | `YES` enables the nightly global auto-fix (pause + two-step, retried hourly at night until it lands, once per night; folds in the orphan report). **Defaulted to `YES` in the cnf on omega8.cc-hosted (`.aegir.cc`) systems, still editable** — see *Default by system class* below. |
+| `_ORPHAN_FILES_REPORT` | `NO` (`YES` on `.aegir.cc`) | `YES` enables the nightly read-only orphan email report (served by the same hourly-night schedule). **Defaulted to `YES` in the cnf on omega8.cc-hosted (`.aegir.cc`) systems, still editable** — see *Default by system class* below. |
 | `_AUTOSYMLINK_PAUSE_GRACE` | `240` | Seconds the queue stays paused (grace) before draining and applying — the 3–5 min window that lets an in-flight task finish. |
 | `_MY_EMAIL` | (your address) | Recipient for the orphan report and auto-fix notices. |
 
@@ -207,10 +207,13 @@ by **system type**, so the nightly automation is deliberately on for one class o
 host and off for the others:
 
 - **omega8.cc-hosted** — the system hostname ends in `.aegir.cc`. Both toggles are
-  **forced on automatically at run time**, overriding whatever `/root/.barracuda.cnf`
-  says. Nothing to set: the hosted fleet always runs the nightly auto-fix and orphan
-  report. Because the override is evaluated on every run, it also enables already-installed
-  hosted boxes without editing their cnf.
+  **seeded to `YES` in `/root/.barracuda.cnf`** by default: Barracuda writes them as
+  ordinary cnf lines when they are not already present, so the hosted fleet runs the
+  nightly auto-fix and orphan report out of the box. They stay **fully
+  operator-toggleable** — set either to `NO` in the cnf and it stays off; the `YES`
+  default is applied only when the line is absent, never forced on each run.
+  Already-installed boxes that do not yet carry these lines pick up the default on
+  their next Barracuda run.
 - **Self-hosted** — neither an `.aegir.cc` hostname nor a `/root/.host8.cnf` marker.
   **Off by default, opt-in.** Enable them in `/root/.barracuda.cnf` if and when you want
   the nightly automation.

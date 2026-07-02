@@ -2216,6 +2216,16 @@ _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf"
   fi
+  # The omega8.cc-hosted fleet (hostname ends in .aegir.cc) defaults both nightly
+  # symlink toggles to YES, but ONLY when they are not already present in the cnf,
+  # so they are written as ordinary .barracuda.cnf lines and stay operator-toggleable
+  # (turn off/on in the cnf anytime) -- never forced on each run. Keyed on the
+  # hostname only, never _if_hosted_sys / .host8.cnf, so remotely-managed boxes that
+  # carry .host8.cnf are not opted in (same split as _MTD_VR below).
+  if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
+    grep -q "^_AUTOSYMLINK_NIGHTLY=" ${_barCnf} 2>/dev/null || _AUTOSYMLINK_NIGHTLY=YES
+    grep -q "^_ORPHAN_FILES_REPORT=" ${_barCnf} 2>/dev/null || _ORPHAN_FILES_REPORT=YES
+  fi
   _VMFAMILY=XEN
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
