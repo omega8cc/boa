@@ -133,9 +133,68 @@ _mrun() {
 }
 
 #
+# Timestamped snapshot of a key config file into the dragon config store
+# BEFORE any in-place rewrite. Only ever copies -- never alters the original.
+# No-op on missing/empty source. Every file snapshotted during a single
+# Barracuda/Octopus run shares one human-readable subdir, so a rollback set
+# stays grouped: ${_vBs}/dragon/config/YYYY-MM-DD_HH-MM-SS/<file>. The store is
+# a low-volume, high-value permanent archive -- excluded from all retention
+# (see tools/system/night/90-global-post.sh). Any legacy flat *-pre-* files
+# left loose at the top level are swept once into config/archive/. Kept in the
+# shared helper because Octopus does not source sql. The standalone auto* bin
+# tools inline the same subdir scheme (no shared include).
+_backup_to_dragon() {
+  local _src="${1}"
+  [ -s "${_src}" ] || return 0
+  local _cfg="${_vBs:-/var/backups}/dragon/config"
+  local _bn="${_src##*/}"
+  # First call this run: pick one subdir, sweep legacy loose files aside, lock down.
+  if [ -z "${_DRAGON_RUN_DIR:-}" ]; then
+    local _stamp
+    _stamp=$(date +%Y-%m-%d_%H-%M-%S 2>/dev/null)
+    [ -n "${_stamp}" ] || _stamp="snapshot-${_xSrl:-0}"
+    _DRAGON_RUN_DIR="${_cfg}/${_stamp}"
+    mkdir -p "${_cfg}/archive" "${_DRAGON_RUN_DIR}" 2>/dev/null
+    find "${_cfg}" -maxdepth 1 -type f -exec mv -f {} "${_cfg}/archive/" \; 2>/dev/null
+    chmod 0700 "${_cfg}" "${_cfg}/archive" "${_DRAGON_RUN_DIR}" 2>/dev/null
+  fi
+  # Preserve the earliest (pristine) copy; never overwrite it later in the run.
+  [ -e "${_DRAGON_RUN_DIR}/${_bn}" ] \
+    || cp -a "${_src}" "${_DRAGON_RUN_DIR}/${_bn}" 2>/dev/null
+  return 0
+}
+
+#
 # Remove dangerous stuff from the string.
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
+}
+
+#
+# Echo a platform's real Drupal docroot on stdout, or nothing if none found.
+# The docroot is the platform root for Drupal 7-era codebases, but a subdir for
+# Composer D8+ codebases whose web root differs from the app root: docroot/,
+# html/, web/, in that order. Keyed on index.php, the front controller present
+# in every Drupal docroot (D6..D11) regardless of build recipe. -f follows the
+# symlink and is false for a dangling link, so a decoy like web -> /etc cannot
+# register as a docroot. Returns 0 with the path, 1 if no docroot is found.
+# Provision's provision_auto_fix_platform_root() is the reference only; this is
+# the self-contained on-disk equivalent for the install/upgrade includes.
+_detect_real_docroot() {
+  local _plat="${1%/}"
+  local _sub
+  [ -n "${_plat}" ] && [ -d "${_plat}" ] || return 1
+  if [ -f "${_plat}/index.php" ]; then
+    printf '%s\n' "${_plat}"
+    return 0
+  fi
+  for _sub in docroot html web; do
+    if [ -f "${_plat}/${_sub}/index.php" ]; then
+      printf '%s\n' "${_plat}/${_sub}"
+      return 0
+    fi
+  done
+  return 1
 }
 
 #
@@ -1197,7 +1256,7 @@ _aegir_bin_extra_check_fix() {
     _msg "PROC: _aegir_bin_extra_check_fix"
   fi
   SDIR="${_bldPth}/aegir/tools/bin"
-  _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+  _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
     || [ ! -e "/var/log/boa/fix-drupal-site-permissions-${_xSrl}-${_X_VERSION}.log" ]; then
     if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then

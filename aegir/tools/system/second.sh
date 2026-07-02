@@ -39,7 +39,7 @@ _RESUME_FRACTION="$(_sanitize_number "${_RESUME_FRACTION}")"
 # stuck paused; a value >= 1 would disable the hysteresis. Reset anything outside (0,1) to default.
 awk "BEGIN{exit !(${_RESUME_FRACTION}>0 && ${_RESUME_FRACTION}<1)}" 2>/dev/null || _RESUME_FRACTION=0.8
 # NB: no TASK tier here. Backend-task load-shedding at _CPU_TASK_RATIO is enforced
-# by the queue scripts themselves (runner.sh/daily.sh/usage.sh/manage_solr_config.sh/
+# by the queue scripts themselves (runner.sh/owl.sh/usage.sh/manage_solr_config.sh/
 # purge_binlogs.sh), not by _load_control.
 
 # Sanitize to allow only digits and minus sign
