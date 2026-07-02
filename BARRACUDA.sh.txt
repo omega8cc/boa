@@ -295,6 +295,15 @@ sleep 3
 
 
 ###
+### Snapshot control files before any on-the-fly changes
+###
+_backup_to_dragon "${_barCnf}"
+for _octCnfFile in /root/.*.octopus.cnf; do
+  [ -s "${_octCnfFile}" ] && _backup_to_dragon "${_octCnfFile}"
+done
+
+
+###
 ### Early procedures
 ###
 _normalize_ip_name_variables

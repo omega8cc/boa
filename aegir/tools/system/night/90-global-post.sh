@@ -337,7 +337,7 @@ _global_cleanup() {
   find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
   find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
   find /var/backups/dragon/* -maxdepth 0 ! -name config -mtime +7 -exec rm -rf {} \; &> /dev/null
-  find /var/backups/dragon/config -type f -mtime +90 -exec rm -f {} \; &> /dev/null
+  # dragon/config is a low-volume, high-value config archive -- never auto-purged.
   if [ "${_hostedSys}" = "YES" ]; then
     if [ -d "/var/backups/codebases-cleanup" ]; then
       find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null

@@ -325,6 +325,12 @@ _check_git_repos
 
 
 ###
+### Snapshot this instance control file before any on-the-fly changes
+###
+_backup_to_dragon "${_octCnf}"
+
+
+###
 ### Main procedures
 ###
 _satellite_cnf

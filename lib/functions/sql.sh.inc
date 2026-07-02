@@ -1,22 +1,6 @@
 
-# C-003 Phase 1: timestamped backup of a key config to the dragon config store
-# BEFORE any in-place rewrite. Only ever copies -- never alters the original.
-# No-op on missing/empty. Lands in ${_vBs}/dragon/config (3-month retention; the
-# owl.sh dragon sweep spares config/). Proven: boa-modernisation
-# design/per-script/backup-to-dragon.{sh,test.sh}. The standalone auto* bin
-# tools inline the same logic (no shared include) -- dedup candidate.
-_backup_to_dragon() {
-  local _src="$1"
-  [ -s "${_src}" ] || return 0
-  local _dst="${_vBs:-/var/backups}/dragon/config"
-  [ -d "${_dst}" ] || mkdir -p "${_dst}" 2>/dev/null
-  local _bn _tag
-  _bn="${_src##*/}"
-  _tag="${_NOW:-$(date +%y%m%d-%H%M%S 2>/dev/null)}"
-  [ -n "${_xSrl:-}" ] && _tag="${_xSrl}-${_X_VERSION:-}-${_tag}"
-  cp -a "${_src}" "${_dst}/${_bn}-pre-${_tag}" 2>/dev/null
-  return 0
-}
+# _backup_to_dragon() moved to the shared helper.sh.inc (Octopus sources helper
+# but not sql). Callsites below still use it unchanged.
 
 _check_mysql_version() {
   _DB_V=
@@ -1235,9 +1219,9 @@ _forced_mysql_root_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _forced_mysql_root_password_update"
   fi
-  mkdir -p ${_vBs}/dragon/config &> /dev/null
-  mv -f /root/.my.cnf-pre-* ${_vBs}/dragon/config/ &> /dev/null
-  mv -f /root/.my.pass.txt-pre-* ${_vBs}/dragon/config/ &> /dev/null
+  mkdir -p ${_vBs}/dragon/config/archive &> /dev/null
+  mv -f /root/.my.cnf-pre-* ${_vBs}/dragon/config/archive/ &> /dev/null
+  mv -f /root/.my.pass.txt-pre-* ${_vBs}/dragon/config/archive/ &> /dev/null
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
   _ESC_PASS=""
