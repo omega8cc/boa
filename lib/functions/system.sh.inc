@@ -2385,6 +2385,7 @@ _barracuda_cnf() {
     echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
 
     echo "###"                                                    >> ${_barCnf}
+    echo "_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}"           >> ${_barCnf}
     echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}"   >> ${_barCnf}
     echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}"   >> ${_barCnf}
@@ -2797,6 +2798,11 @@ _barracuda_cnf() {
         echo "_DL_MODE=BATCH" >> ${_barCnf}
         export _DL_MODE=BATCH
       fi
+    fi
+
+    _AUTOSYMLINK_NIGHTLY_TEST=$(grep _AUTOSYMLINK_NIGHTLY ${_barCnf} 2>&1)
+    if [[ ! "${_AUTOSYMLINK_NIGHTLY_TEST}" =~ "_AUTOSYMLINK_NIGHTLY" ]]; then
+      echo "_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}" >> ${_barCnf}
     fi
 
     _SHARED_CODEBASES_CLEANUP_TEST=$(grep _SHARED_CODEBASES_CLEANUP ${_barCnf} 2>&1)

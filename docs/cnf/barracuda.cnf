@@ -63,6 +63,7 @@ _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
+_AUTOSYMLINK_NIGHTLY=NO #------- Nightly files-symlink auto-fix run when YES
 _SHARED_CODEBASES_CLEANUP=NO #-- Move unused shared codebases aside when YES
 _GHOST_CODEBASES_CLEANUP=NO #--- Move ghost/orphaned codebases aside when YES
 _GHOST_PLATFORMS_CLEANUP=NO #--- Move ghost/empty platform aliases aside when YES
