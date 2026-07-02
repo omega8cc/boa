@@ -25,6 +25,98 @@ export _xSrl=5103devT01
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/20-sites.sh" ] && . /var/xdrago/night/20-sites.sh
 
+_relocate_one_backup_dir() {
+  # Relocate a single per-account backup directory onto the static/files
+  # filesystem and replace it with a symlink, so large (dereferenced) backups
+  # never fill the root partition. Data-safe and never destructive: an EXISTING
+  # real dir is moved INCREMENTALLY (rsync --remove-source-files: peak extra space
+  # on the tight root FS is ~one file, not a full 2x copy, and each file is removed
+  # only after it is copied); on ANY failure the real dir is left in place and no
+  # symlink is created, so a backup is never lost. Idempotent.
+  # $1 current path (e.g. /data/disk/oX/backups); $2 target under static/files.
+  local _src="$1" _dst="$2"
+
+  # Already a symlink to the intended target -> just make sure the store exists.
+  if [ -L "${_src}" ]; then
+    if [ "$(readlink "${_src}" 2>/dev/null)" = "${_dst}" ]; then
+      [ -d "${_dst}" ] || mkdir -p "${_dst}" 2>/dev/null
+    else
+      echo "backups-on-static: ${_src} is a symlink to an unexpected target; leaving for review"
+    fi
+    return 0
+  fi
+
+  # Only relocate an EXISTING real directory (so its exact ownership is preserved);
+  # if the path does not exist yet, do nothing (Aegir creates it on first use and a
+  # later run relocates it).
+  [ -d "${_src}" ] || return 0
+
+  local _ug
+  _ug=$(stat -c '%U:%G' "${_src}" 2>/dev/null)
+  [ -n "${_ug}" ] || return 0
+
+  mkdir -p "${_dst}" 2>/dev/null || return 0
+  chown "${_ug}" "${_dst}" 2>/dev/null
+
+  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
+    # Re-check the task interlock right before the destructive move: skip (leave the
+    # real dir untouched) if a provision task started since the entry check, so a
+    # backup being written is never moved mid-write.
+    _provision_running && { echo "backups-on-static: provision task active -- left ${_src} as real dir"; return 0; }
+    # One-time migration de-links any pre-existing backups<->backup-exports hardlink
+    # pairs (the two dirs are moved in separate rsync runs, no -H), so old tarballs
+    # briefly cost double space -- on the static FS (the target), not the tight root,
+    # and it ages out via the -mtime purge. New backups after relocation hardlink
+    # fine (both dirs are then co-located on the static FS).
+    rsync -a --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
+      || { echo "backups-on-static: move failed ${_src} -> ${_dst}; left as real dir"; return 0; }
+    find "${_src}" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
+  fi
+
+  # Refuse to replace the dir with a symlink unless it emptied cleanly.
+  [ -z "$(ls -A "${_src}" 2>/dev/null)" ] \
+    || { echo "backups-on-static: ${_src} not empty after move; left as real dir for review"; return 0; }
+
+  rmdir "${_src}" 2>/dev/null || return 0
+  ln -s "${_dst}" "${_src}" 2>/dev/null \
+    || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_dst}, relink manually"; return 0; }
+  chown -h "${_ug}" "${_src}" 2>/dev/null
+  echo "backups-on-static: relocated ${_src} -> ${_dst} (static filesystem)"
+}
+
+_relocate_backups_to_static_fs() {
+  # Move this account's backups + backup-exports onto the static/files filesystem
+  # (static/files/.backups + static/files/.backup-exports) via symlinks, so large
+  # dereferenced backups cannot fill the root partition, while keeping BOTH on ONE
+  # filesystem so the Aegir backup-download hardlinks keep working (hardlinks can
+  # not cross filesystems). The leading-dot names are skipped by the site/orphan
+  # scan (like static/files/.archived). Gated on static/files being a SEPARATE
+  # filesystem (no benefit otherwise), kill-switchable, idempotent, non-fatal.
+  local _acct="${_usEr}"
+  local _static="${_acct}/static/files"
+
+  # Never move backup data while an Aegir/Provision task (backup/restore/download/
+  # clone/migrate) might be writing it -- match the nightly file-mover interlock
+  # used by every sibling mover (_provision_running = pgrep -f provision).
+  _provision_running && { echo "INFO: provision task active -- skipping backups relocation"; return 0; }
+
+  # Kill-switch: box-wide or per-account.
+  [ -f "/data/conf/disable_backups_on_static_fs.cnf" ] && return 0
+  [ -f "${_acct}/static/control/no_backups_on_static_fs.info" ] && return 0
+
+  # static/files must exist and resolve to a DIFFERENT device than the account root
+  # (else the relocation gives no protection).
+  [ -e "${_static}" ] || return 0
+  local _acctDev _statDev
+  _acctDev=$(stat -c '%d' "${_acct}" 2>/dev/null)
+  _statDev=$(stat -L -c '%d' "${_static}" 2>/dev/null)
+  [ -n "${_acctDev}" ] && [ -n "${_statDev}" ] || return 0
+  [ "${_acctDev}" != "${_statDev}" ] || return 0
+
+  _relocate_one_backup_dir "${_acct}/backups"        "${_static}/.backups"
+  _relocate_one_backup_dir "${_acct}/backup-exports" "${_static}/.backup-exports"
+}
+
 _account_process() {
   _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
   _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
@@ -129,6 +221,7 @@ _account_process() {
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_tasks_frequency 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_tasks_items 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
+    _relocate_backups_to_static_fs
     _run_drush8_hmr_cmd "${_vSet} aegir_backup_export_path ${_usEr}/backup-exports"
     _run_drush8_hmr_cmd "fr hosting_custom_settings -y"
     _run_drush8_hmr_cmd "cache-clear all"
