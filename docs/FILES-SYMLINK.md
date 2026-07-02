@@ -31,9 +31,11 @@ This is the server-admin reference. For the per-site user how-to see
 |-------|-----------|---------|
 | **New site** install | After the install creates the real `files`/`private` dirs, they are **moved into the static store and symlinked** (delegated to the root tool). | **on** (kill-switchable) |
 | **Clone** a site | The new site gets its **own separate copy** of the files in its own store — never a link into the source site's data — when disk space allows; otherwise a warning is logged and the clone still succeeds. | **on** (kill-switchable) |
+| **Migrate / rename** a site | Same as clone: after the target verify the migrated/renamed site is re-homed into its **own** store and re-symlinked; the old-name store becomes a normal reported orphan. | **on** (kill-switchable) |
 | **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
 | **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **off** (opt-in) |
 | **Daily orphan report** | Email a report of ghost/orphaned store entries (data with no matching active site). | **off** (opt-in) |
+| **Backups relocation** (nightly) | On an account whose `static/files` is a **separate filesystem**, move `backups`/`backup-exports` onto it (via symlinks) so large backups can't fill the root partition. | **on** where applicable (kill-switchable) |
 | **Manual run** | Convert/report on demand with the tools below. | — |
 
 Native creation applies to Octopus-hosted accounts (`/data/disk/<account>`).
@@ -49,7 +51,7 @@ Provision install/clone task cannot create or move data inside it. The
 move-and-symlink therefore always runs **as root**, via a hardened NOPASSWD sudo
 wrapper:
 
-- Provision (install and clone hooks) calls
+- Provision (install, clone and migrate/rename hooks) calls
   `sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=<url> …`.
 - The wrapper validates its arguments and invokes **only** the narrow single-site
   `autosymlink` apply — it cannot reach the global batch/live modes.
@@ -59,9 +61,9 @@ wrapper:
 
 On a fresh install the wrapper is called from `post_provision_install`, before the
 site's first verify writes the nginx vhost, so Provision passes `--account`
-explicitly (the narrow mode then trusts the Drush alias alone). On a clone it is
-called after the post-deploy verify, so the account auto-resolves from the
-vhost+alias pair.
+explicitly (the narrow mode then trusts the Drush alias alone). On a clone or a
+migrate/rename it is called after the target verify, so the account auto-resolves
+from the vhost+alias pair.
 
 ## The tools
 
@@ -176,6 +178,21 @@ touch /data/disk/<account>/static/control/no_native_files_symlink.info
 When present, new sites get plain real `files`/`private` directories as before,
 and the clone task leaves the cloned files as-is. Remove the file to re-enable.
 
+### Relocating backups off the root partition
+
+On an account whose `static/files` is a separate filesystem, the nightly
+maintenance moves that account's `backups`/`backup-exports` onto it (as symlinks)
+so large backups can't fill the root partition — see *Backups on the static
+filesystem*. On by default where applicable; disable without a code change:
+
+```bash
+# Box-wide (all accounts on this host):
+touch /data/conf/disable_backups_on_static_fs.cnf
+
+# Per-account (one Octopus account only):
+touch /data/disk/<account>/static/control/no_backups_on_static_fs.info
+```
+
 ### File sharing between sites (opt-in)
 
 Two sites can deliberately **share** one files store (e.g. a staging copy that
@@ -212,6 +229,15 @@ If the clone reuses a name whose store was left behind by an earlier site of the
 same name, that stale store is archived aside first (see *Orphan / ghost detection
 and stale-store archiving*), so the clone never collides with it.
 
+**Migrate / rename** behaves the same. A migrate (used for renaming, e.g. deploy
+dev/staging to live) deploys from a backup and then, right after the target
+verify, runs the narrow `autosymlink --force-unshare` for the migrated/renamed
+site — re-homing its `files`/`private` into its **own** store and repointing the
+symlinks, and archiving any pre-existing store at the target name aside first.
+The old-name store is left as a normal reported orphan (operator prunes). Without
+this a renamed site would keep plain dirs on the platform partition or a link into
+the old store.
+
 ## Disk space and filesystems
 
 Both local and attached/extra filesystems are supported. Before moving or copying
@@ -229,6 +255,47 @@ archiving still records a `du`/`df` snapshot; a same-FS rename needs no free
 space, and a secondary check falls back to an in-place rename only if the archive
 would (unexpectedly) cross to a different, too-full device.
 
+## Backups on the static filesystem
+
+A backup of a native-symlinked site can be **large**: the backup tar follows the
+`files`/`private` symlinks (dereferences the store), so the tarball holds the full
+file data. Those backups land in `/data/disk/<account>/backups` on the **root
+partition** — a disk-full risk for a big account whose files live on attached
+storage.
+
+When an account's `static/files` is a **separate filesystem** (the large-account
+case — files moved to attached/extra storage), the nightly maintenance relocates
+that account's `backups` and `backup-exports` onto it and replaces them with
+symlinks:
+
+```
+/data/disk/<account>/backups         -> /data/disk/<account>/static/files/.backups
+/data/disk/<account>/backup-exports  -> /data/disk/<account>/static/files/.backup-exports
+```
+
+The Aegir paths are unchanged (the symlinks are transparent), so `backup_path` and
+`aegir_backup_export_path` keep working. Both targets live **under** `static/files`
+so they share one filesystem — the backup-download **hardlinks** between `backups`
+and `backup-exports` keep working (hardlinks cannot cross filesystems) — and the
+leading-dot names are skipped by the site/orphan scan, like `.archived`.
+
+- **Gated on a separate filesystem.** On a default single-filesystem box
+  `static/files` is on the root device, so there is nowhere better to put backups
+  and the relocation is a **deliberate no-op**. It only acts once a large account's
+  `static/files` is on attached storage.
+- **Safe one-time migration.** Existing backups are moved **incrementally**
+  (`rsync --remove-source-files`: ~one file of extra space at a time, per-file
+  safe); on any failure the real directory is left in place and no symlink is made.
+  It never deletes a backup.
+- **Task-queue interlock.** While migrating, the run holds the Aegir task queue
+  with a dedicated `/run/boa_queue_stop.pid` (honoured by `runner.sh` — the parent
+  exits and each per-account child dispatch skips) so no backup task writes into a
+  directory being moved. It self-heals: `clear.sh` removes it once its owner PID is
+  gone and `/run` clears on reboot, so it can never freeze the queue. The migration
+  is serialised across accounts with a `flock`.
+- **Kill-switch** — see *Configuration → Relocating backups off the root
+  partition*.
+
 ## Orphan / ghost detection and stale-store archiving
 
 When a site is deleted, BOA removes the in-site symlink but can leave the data
@@ -239,11 +306,11 @@ behind in `static/files/<url>/` — a **ghost**. Ghosts are handled two ways:
   active site (no vhost + Drush alias pair). This is **report-only by design** —
   it never deletes anything. Review the report and remove confirmed ghosts by
   hand.
-- **Archived on reuse (name used again).** If a fresh install or clone reuses a
-  name whose ghost store is still present, that stale store would otherwise block
-  the new site's conversion. Instead it is **moved aside automatically** into a
-  hidden, timestamped archive under the store, and the new site then converts
-  cleanly:
+- **Archived on reuse (name used again).** If a fresh install, clone, or
+  migrate/rename reuses a name whose ghost store is still present, that stale store
+  would otherwise block the new site's conversion. Instead it is **moved aside
+  automatically** into a hidden, timestamped archive under the store, and the new
+  site then converts cleanly:
 
   ```
   /data/disk/<account>/static/files/.archived/<UTC-stamp>/<url>/{files,private}
@@ -260,6 +327,11 @@ behind in `static/files/<url>/` — a **ghost**. Ghosts are handled two ways:
   ```
   [REPORT] ORPHAN archive incident: <url>/files stale store size=<N>K -> static/files/.archived/<stamp>/ (target FS avail=<M>K)
   ```
+
+  The same archiving covers the **break-sharing** path (a clone/migrate whose
+  deployed link still points at another site's store): the pre-existing target
+  store is archived aside before the copy, rather than left cluttering the live
+  store.
 
 **Archived stores accumulate — prune them.** Archiving never reclaims space (a
 big site whose name is reused many times leaves many copies). The report
@@ -302,7 +374,9 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   aborted task.
 - **No concurrent corruption.** The narrow apply defers while the nightly batch's
   maintenance pause is active, and the nightly batch skips while a provision/clone
-  task is running.
+  task is running. The backups relocation additionally holds the task queue with a
+  self-healing `/run/boa_queue_stop.pid` and serialises with a `flock`, so no
+  backup is moved mid-write.
 
 ## Verify
 
@@ -334,7 +408,7 @@ tail -n 50 /var/log/boa/autosymlink.log
 `autosymlink` writes to `/var/log/boa/autosymlink.log`; `updatesymlinks` archives
 verbose output to `/var/log/boa/autosymlink.verbose.archive.log` and emails a
 summary. The Provision task log (in the Aegir front end, or the backend output)
-shows the `[native-symlink] …` line for install and clone.
+shows the `[native-symlink] …` line for install, clone and migrate/rename.
 
 ### New-site install
 
@@ -375,6 +449,27 @@ shows the `[native-symlink] …` line for install and clone.
    updatesymlinks --orphan-report | grep 'archived-store pile'
    rm -f /data/conf/native_files_archive_alert_kb.cnf
    ```
+
+### Migrate / rename
+
+1. Migrate or rename a symlinked site. The migrated/renamed site's links must
+   point at **its own** store, not the source/old-name store:
+   ```bash
+   readlink /data/disk/<acct>/.../sites/<new>/files   # -> static/files/<new>/files
+   ```
+2. The old-name store `static/files/<old>/` is left as a reported orphan.
+
+### Backups on the static filesystem
+
+Only fires where the account's `static/files` is a separate filesystem. After a
+nightly run (or `bash /var/xdrago/night/10-account.sh /data/disk/<acct>`):
+```bash
+readlink /data/disk/<acct>/backups          # -> .../static/files/.backups
+readlink /data/disk/<acct>/backup-exports   # -> .../static/files/.backup-exports
+# both resolve onto the static FS; a front-end backup download (hardlink) still works
+```
+While it migrates, `/run/boa_queue_stop.pid` is present and `runner.sh` skips the
+queue; it is removed at the end (or self-healed by `clear.sh` if the run crashed).
 
 ### Nightly auto-fix
 
@@ -467,3 +562,10 @@ re-tries on failure; it does not give up after one attempt).
 - **Sharing control files are honoured everywhere except cloning.** If you rely on
   an intentional share, keep its `share.files.<site>.info` control file in place;
   do not expect a clone to inherit it.
+- **Backups relocation needs a separate `static/files` filesystem.** It is a
+  deliberate no-op on a default single-filesystem box (nowhere better to put
+  backups) and only helps once a large account's `static/files` is on attached
+  storage. The one-time migration de-links any pre-existing `backups`↔`backup-exports`
+  hardlink pairs (the two dirs are moved separately), a bounded transient
+  double-space cost on the static FS that ages out via the backup purge; backups
+  taken after relocation hardlink normally.

@@ -28,6 +28,13 @@ When you clone one of your sites, the clone gets its **own separate copy** of th
 files — it never shares the original's uploads. Changing files on one site does
 not affect the other.
 
+## Migrating or renaming a site
+
+Migrating a site to another platform, or renaming it (for example promoting a
+staging site to your live domain), works the same way: the moved or renamed site
+keeps its own files, symlinked into its own store — you don't lose your uploads
+and don't need to do anything.
+
 ## Reusing a site name
 
 If you delete a site and later create a new one with the **same name**, the new
