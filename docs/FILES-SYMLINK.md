@@ -33,7 +33,7 @@ This is the server-admin reference. For the per-site user how-to see
 | **Clone** a site | The new site gets its **own separate copy** of the files in its own store — never a link into the source site's data — when disk space allows; otherwise a warning is logged and the clone still succeeds. | **on** (kill-switchable) |
 | **Migrate / rename** a site | Same as clone: after the target verify the migrated/renamed site is re-homed into its **own** store and re-symlinked; the old-name store becomes an orphan (archived on the next nightly sweep). | **on** (kill-switchable) |
 | **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
-| **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **off** (opt-in) |
+| **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **on** on omega8.cc-hosted (`.aegir.cc`); **opt-in** otherwise |
 | **Orphaned store** (site deleted, name not reused) | The nightly auto-fix **archives** the leftover store aside into `static/files/.archived/…` (never deletes; a *disabled* site is left in place); the opt-in report additionally emails any found. | archive with auto-fix; report opt-in |
 | **Backups relocation** (nightly) | On an account whose `static/files` is a **separate filesystem**, move `backups`/`backup-exports` onto it (via symlinks) so large backups can't fill the root partition. | **on** where applicable (kill-switchable) |
 | **Manual run** | Convert/report on demand with the tools below. | — |
@@ -191,14 +191,37 @@ matched as a whole path token, so `foo.tkm.cc` never pulls in `clone.foo.tkm.cc`
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `_AUTOSYMLINK_NIGHTLY` | `NO` | `YES` enables the nightly global auto-fix (pause + two-step, retried hourly at night until it lands, once per night; folds in the orphan report). |
-| `_ORPHAN_FILES_REPORT` | `NO` | `YES` enables the nightly read-only orphan email report (served by the same hourly-night schedule). |
+| `_AUTOSYMLINK_NIGHTLY` | `NO` | `YES` enables the nightly global auto-fix (pause + two-step, retried hourly at night until it lands, once per night; folds in the orphan report). **Forced to `YES` automatically on omega8.cc-hosted (`.aegir.cc`) systems** — see *Default by system class* below. |
+| `_ORPHAN_FILES_REPORT` | `NO` | `YES` enables the nightly read-only orphan email report (served by the same hourly-night schedule). **Forced to `YES` automatically on omega8.cc-hosted (`.aegir.cc`) systems** — see *Default by system class* below. |
 | `_AUTOSYMLINK_PAUSE_GRACE` | `240` | Seconds the queue stays paused (grace) before draining and applying — the 3–5 min window that lets an in-flight task finish. |
 | `_MY_EMAIL` | (your address) | Recipient for the orphan report and auto-fix notices. |
 
-Both toggles are off by default; native creation and clone handling do not need
-them. Already-installed boxes whose `/root/.barracuda.cnf` predates these lines
-default to off automatically.
+Native creation and clone handling never need these toggles; they only govern the
+nightly automation. Already-installed boxes whose `/root/.barracuda.cnf` predates
+these lines resolve exactly as below.
+
+### Default by system class
+
+The two nightly toggles (`_AUTOSYMLINK_NIGHTLY`, `_ORPHAN_FILES_REPORT`) are resolved
+by **system type**, so the nightly automation is deliberately on for one class of BOA
+host and off for the others:
+
+- **omega8.cc-hosted** — the system hostname ends in `.aegir.cc`. Both toggles are
+  **forced on automatically at run time**, overriding whatever `/root/.barracuda.cnf`
+  says. Nothing to set: the hosted fleet always runs the nightly auto-fix and orphan
+  report. Because the override is evaluated on every run, it also enables already-installed
+  hosted boxes without editing their cnf.
+- **Self-hosted** — neither an `.aegir.cc` hostname nor a `/root/.host8.cnf` marker.
+  **Off by default, opt-in.** Enable them in `/root/.barracuda.cnf` if and when you want
+  the nightly automation.
+- **Remotely managed by omega8.cc** — carries `/root/.host8.cnf` but the hostname is
+  **not** `.aegir.cc`. **Not auto-enabled.** These are turned on **individually**,
+  coordinated per box against its available disk/IO resources — never blanket-enabled the
+  way the hosted fleet is.
+
+The switch keys on the hostname **only** (`.aegir.cc`), never on `/root/.host8.cnf` — by
+design, so remotely-managed boxes that carry `.host8.cnf` are **not** swept into the
+automatic default and stay individually coordinated.
 
 ### Archived-store accumulation alert
 
