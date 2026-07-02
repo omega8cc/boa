@@ -17,6 +17,31 @@ _autoBin=/opt/local/bin/autosymlink
 # pause, which was NOT self-healing (a leaked one also made clear.sh exit early).
 _queueStop=/run/boa_queue_stop.pid
 
+# --- diagnostic helpers (used by every guard below) ---------------------------
+# _dbg : progress/heartbeat, printed to stdout only under --debug.
+# _why : the reason THIS run is skipping / exiting without doing anything,
+#        printed to stdout only under --debug. No behaviour change when off.
+_dbg() { [ "${_DEBUG:-NO}" = "YES" ] && echo "updatesymlinks[debug]: $*"; return 0; }
+_why() { [ "${_DEBUG:-NO}" = "YES" ] && echo "updatesymlinks[debug]: not acting — $*"; return 0; }
+
+# --- arguments: sub-mode + --debug (position-independent) ---------------------
+# Bare invocation keeps the legacy full apply+report behaviour for manual use.
+#   --auto-fix       : nightly global symlinks auto-fix (apply + report),
+#                      gated by _AUTOSYMLINK_NIGHTLY=YES. Pauses tasks.
+#   --orphan-report  : daily read-only orphan/ghost files-dir report,
+#                      gated by _ORPHAN_FILES_REPORT=YES. Never pauses tasks.
+#   --debug | -d     : explain on stdout WHY a run skips/exits without acting,
+#                      and what it does when it proceeds. No behaviour change.
+_subMode="legacy"
+_DEBUG=NO
+for _arg in "$@"; do
+  case "${_arg}" in
+    --auto-fix|auto-fix)           _subMode="auto-fix" ;;
+    --orphan-report|orphan-report) _subMode="orphan-report" ;;
+    --debug|-d|debug)              _DEBUG=YES ;;
+  esac
+done
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -30,19 +55,10 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
-
-# Sub-mode selection (cron entry points). Bare invocation keeps the legacy
-# full apply+report behaviour for manual use (ungated).
-#   --auto-fix       : nightly global symlinks auto-fix (apply + report),
-#                      gated by _AUTOSYMLINK_NIGHTLY=YES. Pauses tasks.
-#   --orphan-report  : daily read-only orphan/ghost files-dir report,
-#                      gated by _ORPHAN_FILES_REPORT=YES. Never pauses tasks.
-_subMode="legacy"
-case "$1" in
-  --auto-fix|auto-fix)            _subMode="auto-fix" ;;
-  --orphan-report|orphan-report)  _subMode="orphan-report" ;;
-esac
+if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
+  _why "system not fully installed yet (missing /var/log/boa/reset_no_new_password.pid)"
+  exit 0
+fi
 
 # Opt-in gates default OFF on already-installed boxes whose /root/.barracuda.cnf
 # predates these vars (the template only seeds them for fresh installs).
@@ -80,6 +96,7 @@ _manage_single_lock() {
     _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      _why "too many ${_SCRIPT} instances already running (count=${_CNT})"
       exit 0
     fi
   fi
@@ -114,6 +131,7 @@ _action_email_report() {
 
 _is_protected_run() {
   _protectedRun=FALSE
+  _protectedReason=""
   _optBin="/opt/local/bin"
   _boaBins="autosymlink autoupboa barracuda boa octopus"
 
@@ -123,24 +141,29 @@ _is_protected_run() {
       if (( _CNT > 0 )); then
         _log "The ${_cbn} is running!"
         _protectedRun=TRUE
+        _protectedReason="${_protectedReason} ${_cbn}(${_CNT})"
       fi
     fi
   done
 
-  [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
-  [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
-  [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
-  [ -e "/run/max_load.pid" ] && _protectedRun=TRUE
-  [ -e "/run/critical_load.pid" ] && _protectedRun=TRUE
+  [ -e "/run/octopus_install_run.pid" ] && { _protectedRun=TRUE; _protectedReason="${_protectedReason} octopus_install_run.pid"; }
+  [ -e "/run/boa_run.pid" ]             && { _protectedRun=TRUE; _protectedReason="${_protectedReason} boa_run.pid"; }
+  [ -e "/run/boa_wait.pid" ]            && { _protectedRun=TRUE; _protectedReason="${_protectedReason} boa_wait.pid"; }
+  [ -e "/run/max_load.pid" ]            && { _protectedRun=TRUE; _protectedReason="${_protectedReason} max_load.pid"; }
+  [ -e "/run/critical_load.pid" ]       && { _protectedRun=TRUE; _protectedReason="${_protectedReason} critical_load.pid"; }
 
   _IS_PROVISION_RUNNING=$(pgrep -fc provision)
   if (( _IS_PROVISION_RUNNING > 0 )); then
     _protectedRun=TRUE
+    _protectedReason="${_protectedReason} provision(${_IS_PROVISION_RUNNING})"
   fi
   _IS_DUPLICITY_RUNNING=$(pgrep -fc duplicity)
   if (( _IS_DUPLICITY_RUNNING > 0 )); then
     _protectedRun=TRUE
+    _protectedReason="${_protectedReason} duplicity(${_IS_DUPLICITY_RUNNING})"
   fi
+
+  _protectedReason="${_protectedReason# }"   # trim leading space
 }
 
 _read_state_var() {
@@ -170,6 +193,7 @@ _pause_and_drain() {
   if [ ! -e "${_queueStop}" ]; then
     echo "$$" > "${_queueStop}" 2>/dev/null && _stopOwned="YES"
   fi
+  _dbg "queue paused (${_queueStop}); holding grace ${_AUTOSYMLINK_PAUSE_GRACE}s then draining provision (set _AUTOSYMLINK_PAUSE_GRACE=0 to skip the wait)"
   _log "INFO: Aegir queue paused (${_queueStop}); grace ${_AUTOSYMLINK_PAUSE_GRACE}s, then drain"
   sleep "${_AUTOSYMLINK_PAUSE_GRACE}"
   _drain=0
@@ -178,9 +202,11 @@ _pause_and_drain() {
     _drain=$(( _drain + 1 ))
   done
   if _provision_running; then
+    _dbg "blocked: a provision task is still active after the grace+drain window"
     _log "INFO: provision task still active after grace+drain; not applying this run"
     return 1
   fi
+  _dbg "queue quiescent after drain — safe to convert"
   return 0
 }
 
@@ -194,6 +220,7 @@ _autosymlink_run() {
   : > ${_actionTemporaryLog}
 
   if [ ! -x "${_autoBin}" ]; then
+    _why "autosymlink binary missing or not executable: ${_autoBin}"
     _log "ERROR: Missing autosymlink: ${_autoBin}"
     return 1
   fi
@@ -207,11 +234,13 @@ _autosymlink_run() {
   fi
   _is_protected_run
   if [ "${_protectedRun}" = "TRUE" ]; then
+    _why "a heavy task started during the pause window: ${_protectedReason}"
     _log "INFO: Protected run detected after pausing tasks; not applying this run."
     return 2
   fi
 
   # Cron-safe: DRY -> if CLEAN -> BATCH in one run
+  _dbg "running autosymlink --batch-if-clean (dry-run, then apply if clean)"
   _log "INFO: Running autosymlink --batch-if-clean"
   ${_autoBin} --batch-if-clean > ${_actionTemporaryLog} 2>&1
   _rcBatch="$?"
@@ -236,8 +265,10 @@ _autosymlink_run() {
     _actionReport=TRUE
     _subject="FAILED (rc=${_rcBatch})"
   fi
+  _dbg "batch outcome: ${_subject:-nothing to convert (already fully symlinked)} [rc=${_rcBatch}, status=${_lastStatus:-?}, applied=${_applyCount}]"
 
   # Always run report; email if ORPHANS detected
+  _dbg "running autosymlink --report (read-only orphan/ghost check)"
   _log "INFO: Running autosymlink --report"
   ${_autoBin} --report >> ${_actionTemporaryLog} 2>&1
   _rcReport="$?"
@@ -330,11 +361,14 @@ _orphan_report_run() {
 
 case "${_subMode}" in
   orphan-report)
-    # Daily ~06:00 ghost/orphan report, opt-in.
+    # Daily ghost/orphan report, opt-in.
+    _dbg "sub-mode: orphan-report (read-only)"
     if [ "${_ORPHAN_FILES_REPORT}" != "YES" ]; then
+      _why "orphan-report opt-in is off (_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}); set it to YES in /root/.barracuda.cnf"
       exit 0
     fi
     _orphan_report_run
+    _dbg "orphan-report finished (rc=$?)"
     exit 0
     ;;
   auto-fix)
@@ -344,23 +378,27 @@ case "${_subMode}" in
     # serves BOTH independent opt-ins: _AUTOSYMLINK_NIGHTLY runs the full pause+two-step
     # (which already folds in the orphan report); with only _ORPHAN_FILES_REPORT set it runs
     # the read-only orphan report alone (no pause). So NIGHTLY=NO + ORPHAN=YES still reports.
+    _dbg "sub-mode: auto-fix (_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}, _ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT})"
     if [ "${_AUTOSYMLINK_NIGHTLY}" != "YES" ] && [ "${_ORPHAN_FILES_REPORT}" != "YES" ]; then
+      _why "both opt-ins are off (_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}, _ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}); enable one in /root/.barracuda.cnf"
       exit 0
     fi
     _thisNight="$(_night_id)"
     if [ -n "${_thisNight}" ] \
       && [ "$(cat "${_nightStamp}" 2>/dev/null)" = "${_thisNight}" ]; then
-      # Already completed for this night.
+      _why "already completed for this night (stamp ${_nightStamp}=${_thisNight}); remove that file to force a re-run before the window rolls over"
       exit 0
     fi
     _is_protected_run
     if [ "${_protectedRun}" = "TRUE" ]; then
-      # A heavy task (backup/upgrade/provision/load) is running — retry next hour.
+      _why "a heavy task is running, retry next hour: ${_protectedReason}"
       exit 0
     fi
     if [ "${_AUTOSYMLINK_NIGHTLY}" = "YES" ]; then
+      _dbg "proceeding: _AUTOSYMLINK_NIGHTLY=YES -> pause + two-step apply (folds in orphan report)"
       _autosymlink_run    # pause + drain + two-step, with the orphan report folded in
     else
+      _dbg "proceeding: nightly off, _ORPHAN_FILES_REPORT=YES -> read-only orphan report (no pause)"
       _orphan_report_run  # _ORPHAN_FILES_REPORT=YES only: read-only orphan report, no pause
     fi
     _rcRun="$?"
@@ -368,17 +406,23 @@ case "${_subMode}" in
     # un-stamped and let the next hourly window try again.
     if [ "${_rcRun}" -eq 0 ] && [ -n "${_thisNight}" ]; then
       echo "${_thisNight}" > "${_nightStamp}" 2>/dev/null
+      _dbg "night ${_thisNight} stamped as done (rc=0); further hours tonight will no-op"
       _log "INFO: Nightly files-symlink maintenance completed for night ${_thisNight}; no more attempts until next night."
+    elif [ "${_rcRun}" -eq 2 ]; then
+      _why "run was blocked mid-flight (rc=2); night left un-stamped so the next hourly window retries"
     fi
     exit 0
     ;;
   *)
     # Legacy bare invocation: full apply + report for manual use (ungated).
+    _dbg "sub-mode: legacy bare invocation (ungated manual run)"
     _is_protected_run
     if [ "${_protectedRun}" = "TRUE" ]; then
+      _why "a heavy task is running: ${_protectedReason}"
       exit 0
     fi
     _autosymlink_run
+    _dbg "legacy run finished (rc=$?)"
     exit 0
     ;;
 esac
