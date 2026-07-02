@@ -2386,6 +2386,7 @@ _barracuda_cnf() {
 
     echo "###"                                                    >> ${_barCnf}
     echo "_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}"           >> ${_barCnf}
+    echo "_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}"           >> ${_barCnf}
     echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}"   >> ${_barCnf}
     echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}"   >> ${_barCnf}
@@ -2803,6 +2804,11 @@ _barracuda_cnf() {
     _AUTOSYMLINK_NIGHTLY_TEST=$(grep _AUTOSYMLINK_NIGHTLY ${_barCnf} 2>&1)
     if [[ ! "${_AUTOSYMLINK_NIGHTLY_TEST}" =~ "_AUTOSYMLINK_NIGHTLY" ]]; then
       echo "_AUTOSYMLINK_NIGHTLY=${_AUTOSYMLINK_NIGHTLY}" >> ${_barCnf}
+    fi
+
+    _ORPHAN_FILES_REPORT_TEST=$(grep _ORPHAN_FILES_REPORT ${_barCnf} 2>&1)
+    if [[ ! "${_ORPHAN_FILES_REPORT_TEST}" =~ "_ORPHAN_FILES_REPORT" ]]; then
+      echo "_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}" >> ${_barCnf}
     fi
 
     _SHARED_CODEBASES_CLEANUP_TEST=$(grep _SHARED_CODEBASES_CLEANUP ${_barCnf} 2>&1)
