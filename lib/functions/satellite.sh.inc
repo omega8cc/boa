@@ -3582,7 +3582,15 @@ _satellite_if_add_ftps_lshell_access() {
   fi
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
-  _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
+  # Attached files mount = the single real mountpoint under /mnt (naming-agnostic;
+  # replaces the former grep "." dot-name heuristic). Empty when none is mounted.
+  _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); for _m in /mnt/*; do
+    [ -d "${_m}" ] || continue
+    if mountpoint -q "${_m}" 2>/dev/null \
+      || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
+      printf '%s' "${_m}"; break
+    fi
+  done) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
