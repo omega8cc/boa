@@ -3582,15 +3582,16 @@ _satellite_if_add_ftps_lshell_access() {
   fi
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
-  # Attached files mount = the single real mountpoint under /mnt (naming-agnostic;
-  # replaces the former grep "." dot-name heuristic). Empty when none is mounted.
-  _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); for _m in /mnt/*; do
+  # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
+  # Fail-closed: empty when NONE or when MORE THAN ONE is mounted -- multi-mount is
+  # unsupported fleet-wide and cannot be disambiguated, so refuse to guess.
+  _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); _n=0; _hit=; for _m in /mnt/*; do
     [ -d "${_m}" ] || continue
     if mountpoint -q "${_m}" 2>/dev/null \
       || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
-      printf '%s' "${_m}"; break
+      _hit="${_m}"; _n=$((_n + 1))
     fi
-  done) &&
+  done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf

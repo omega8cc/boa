@@ -1399,7 +1399,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f82 --guard autosymlink
   _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f93 --guard updatesymlinks
   _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/tools/bin/symlinkinfo" f98 --guard symlinkinfo
-  _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/tools/bin/migratefs" f99 --guard migratefs
+  _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/tools/bin/migratefs" f98 --guard migratefs
   _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup
   _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/tools/bin/loadguard" f98 --guard xloadguard
   _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror
@@ -1571,14 +1571,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f58.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f57.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f58.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f57.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_ltd_users.sh.old
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
@@ -3621,7 +3621,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f93 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f99 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f98 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f97 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f97 --guard /local/bin/xmass

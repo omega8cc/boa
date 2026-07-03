@@ -1,42 +1,51 @@
 #!/bin/bash
 
 #
-# migratefs — relocate per-account static/files onto an attached filesystem
+# migratefs — relocate account files stores + the shared archive onto attached storage
 #
-# Moves each Octopus account's /data/disk/<oN>/static/files store onto a
-# separate (attached) filesystem and replaces it with a symlink, so a large
-# files store lives on dedicated storage instead of the root partition. Once an
-# account's static/files is on the attached disk, the rest is automatic: the
-# nightly `autosymlink` converts that account's sites into the (now cross-FS)
-# store, and the nightly backups mover (_relocate_backups_to_static_fs) moves
-# its backups + backup-exports onto the same filesystem. So this tool only does
-# the one thing those two cannot: relocate the store BASE.
+# Moves each Octopus account's /data/disk/<oN>/static/files store (and, in a full
+# run, the shared /data/disk/arch archive) onto a separate ATTACHED filesystem and
+# replaces each with a symlink, so large data lives on dedicated storage instead of
+# the root partition. Once an account's static/files is on the attached disk the
+# rest is automatic: the nightly `autosymlink` converts that account's sites into
+# the (now cross-FS) store, and the nightly backups mover
+# (_relocate_backups_to_static_fs) moves its backups + backup-exports onto the same
+# filesystem. So this tool only does the one thing those cannot: relocate the BASE.
 #
-# It is the modern, safe replacement for the old ad-hoc migratefs.sh: instead of
+# It is the safe replacement for the old ad-hoc migratefs.sh: instead of
 # `service cron stop` + `kill -9` + `mv -f`, it reuses BOA's proven safe-mover
 # pattern — separate-device gate, self-healing task-queue pause, provision drain,
-# incremental rsync (--remove-source-files, ~1 file peak overhead), ownership
-# preservation, idempotency, and never-destructive failure handling (on any
-# error the real dir is left in place and no symlink is created, so data is never
-# lost).
+# TWO-PASS rsync (non-removing pre-seed then reconcile, so a web-served store stays
+# complete during the copy), ownership preservation, idempotency, and
+# never-destructive failure handling (on ANY error the real dir is left in place
+# and no symlink is created, so data is never lost).
+#
+# OPERATOR-ONLY, NEVER AUTOMATED. There is no guarantee the attached storage has
+# enough free space, so this is 100% an operator decision + action: run it by hand,
+# in a maintenance window, after checking the DRY plan. It is never scheduled.
+#
+# SINGLE /mnt MOUNT ONLY. This tool AND other BOA scripts (the lshell FTP-jail
+# wiring) assume exactly ONE attached mountpoint under /mnt. Multiple /mnt
+# mountpoints are NOT supported and cannot be disambiguated, so migratefs REFUSES
+# to run when it detects more than one. Unmount the extras first.
 #
 # Usage:
-#   migratefs [--target <mount>] [--account <oN>] [--apply] [--yes]
+#   migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
 #             [--grace <sec>] [--help]
 #
 #   default (no --apply) : DRY plan only — print what WOULD happen, change nothing
 #   --apply              : perform the relocation (pauses the queue, drains tasks)
-#   --target <mount>     : attached files mount to relocate onto (e.g. /mnt/extra).
+#   --target <mount>     : attached mount to relocate onto (e.g. /mnt/extra).
 #                          Auto-detected as the single real mountpoint under /mnt.
-#                          The store lands at <mount>/files/<oN>/static/files (the
-#                          canonical _MNT_STATIC_FILES layout the FTP-jail expects).
-#   --account <oN>       : limit to one account (default: all under /data/disk/*)
+#                          Account stores land at <mount>/files/<oN>/static/files
+#                          (the canonical _MNT_STATIC_FILES layout the FTP-jail
+#                          expects); the shared archive lands at
+#                          <mount>/files/system/arch.
+#   --account <oN>       : limit to one account, and SKIP arch (default: all
+#                          accounts under /data/disk/* PLUS the shared arch)
+#   --no-arch            : do not relocate /data/disk/arch
 #   --yes                : in --apply, skip the interactive confirmation
 #   --grace <sec>        : queue-pause grace before draining (default 15)
-#
-# NOTE: relocating the shared /data/disk/arch archive (SQL dumps, cluster
-# backups) is deliberately OUT of scope for this tool — it is system-wide, not
-# per-account, and referenced by several other tools; handle it separately.
 #
 
 export HOME=/root
@@ -54,31 +63,39 @@ _TARGET=""
 _ONE_ACCOUNT=""
 _APPLY="NO"
 _ASSUME_YES="NO"
+_DO_ARCH="YES"
 _GRACE=15
 _stopOwned="NO"
 
 _usage() {
   cat <<'EOF'
-migratefs — relocate per-account static/files onto an attached filesystem
+migratefs — relocate account files stores + shared archive onto attached storage
 
 Usage:
-  migratefs [--target <mount>] [--account <oN>] [--apply] [--yes]
+  migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
             [--grace <sec>] [--help]
 
   (no --apply)       DRY plan only: print what WOULD happen, change nothing
   --apply            perform the relocation (pauses the Aegir queue, drains tasks)
-  --target <mount>   attached files mount to relocate onto (e.g. /mnt/extra);
-                     auto-detected as the single real mountpoint under /mnt.
-                     Store lands at <mount>/files/<oN>/static/files
-  --account <oN>     limit to a single account (default: all under /data/disk/*)
+  --target <mount>   attached mount to relocate onto (e.g. /mnt/extra); auto-detected
+                     as the single real mountpoint under /mnt. Account stores land at
+                     <mount>/files/<oN>/static/files, the archive at
+                     <mount>/files/system/arch
+  --account <oN>     limit to one account and SKIP arch (default: all accounts + arch)
+  --no-arch          do not relocate /data/disk/arch
   --yes              in --apply, skip the interactive confirmation prompt
   --grace <sec>      queue-pause grace before draining tasks (default 15)
   --help             this help
 
+OPERATOR-ONLY, NEVER AUTOMATED. There is no guarantee the attached storage has
+enough space, so run this by hand in a maintenance window after checking the DRY
+plan. It assumes exactly ONE attached mountpoint under /mnt and REFUSES to run when
+more than one is present (multiple /mnt mounts are unsupported fleet-wide).
+
 After a successful relocation, run:
   autosymlink --batch-if-clean   (or wait for the nightly run)
-to convert that account's sites into the now-attached store. The nightly
-backups mover relocates backups + backup-exports onto the same filesystem.
+to convert each account's sites into the now-attached store. The nightly backups
+mover relocates backups + backup-exports onto the same filesystem.
 EOF
 }
 
@@ -99,6 +116,9 @@ while [ "$#" -gt 0 ]; do
     --account)
       shift
       _ONE_ACCOUNT="$1"
+      ;;
+    --no-arch|no-arch)
+      _DO_ARCH="NO"
       ;;
     --apply|apply)
       _APPLY="YES"
@@ -126,6 +146,9 @@ case "${_GRACE}" in
   ''|*[!0-9]*) _GRACE=15 ;;
 esac
 
+# A single-account run targets one account only, never the shared archive.
+[ -n "${_ONE_ACCOUNT}" ] && _DO_ARCH="NO"
+
 [ -d "${_LOG_DIR}" ] || mkdir -p "${_LOG_DIR}"
 
 _log() {
@@ -134,6 +157,12 @@ _log() {
 
 _provision_running() {
   pgrep -f provision >/dev/null 2>&1
+}
+
+# A backup writer touching the archive (duplicity/mydumper/cluster/sequential): the
+# archive relocation defers while one runs, so a backup file is never moved mid-write.
+_backup_running() {
+  pgrep -f 'duplicity|mydumper|sequential_backups|dbackup|mysql_cluster_backup' >/dev/null 2>&1
 }
 
 # Single-instance lock (shared lock.inc if present; sets _LOCK_FD/_LOCK_PATH and
@@ -201,18 +230,88 @@ _dev_of_nearest_existing() {
   stat -c '%d' "${_p}" 2>/dev/null
 }
 
+# Returns 0 iff the destination is on a DIFFERENT filesystem than the reference
+# source, i.e. a genuinely separate attached device is mounted at the target (safe
+# to relocate). Returns non-zero for same-FS OR an unmounted target (whose nearest
+# existing ancestor is on root == the source device), so every caller SKIPS before
+# any mkdir/rsync/ln and data can never land on the root partition.
+_target_is_separate_fs() {
+  local _refSrc="$1" _dst="$2" _sd _td
+  _sd=$(stat -c '%d' "${_refSrc}" 2>/dev/null)
+  _td=$(_dev_of_nearest_existing "${_dst}")
+  [ -n "${_sd}" ] && [ -n "${_td}" ] && [ "${_sd}" != "${_td}" ]
+}
+
+# Two-pass, non-destructive relocation of a real directory onto the attached FS,
+# replacing it with a symlink. Precondition: caller has confirmed the target is a
+# separate FS. src is a real dir; dst is created (ownership inherited from ownRef).
+# Always returns 0 (logs + leaves the real dir on any failure — data never lost).
+_relocate_dir() {
+  local _src="$1" _dst="$2" _ownRef="$3" _label="$4" _szKB _avKB _ug
+
+  _szKB=$(du -sk "${_src}" 2>/dev/null | awk '{print $1}')
+  _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
+  [ -z "${_avKB}" ] && _avKB=$(df -Pk "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $4}')
+  _log "PLAN: ${_label} move ${_src} (${_szKB:-?}K) -> ${_dst} (target avail ${_avKB:-?}K) and symlink"
+
+  [ "${_APPLY}" = "YES" ] || return 0
+
+  # Space guard for the cross-FS copy (a safety net — the operator owns the call).
+  if [ -n "${_szKB}" ] && [ -n "${_avKB}" ] && [ "${_avKB}" -lt "${_szKB}" ]; then
+    _log "ERROR: ${_label} not enough space on ${_TARGET} (need ${_szKB}K, avail ${_avKB}K); leaving real dir in place"
+    return 0
+  fi
+
+  # Re-check the interlock right before we start writing.
+  if _provision_running; then
+    _log "DEFER: ${_label} provision task active — left ${_src} as real dir"
+    return 0
+  fi
+
+  _ug=$(stat -c '%U:%G' "${_ownRef}" 2>/dev/null)
+  mkdir -p "${_dst}" 2>/dev/null || { _log "ERROR: ${_label} could not create ${_dst}; skipping"; return 0; }
+  [ -n "${_ug}" ] && chown "${_ug}" "${_dst}" 2>/dev/null
+
+  # TWO-PASS: pass 1 is a NON-removing copy so the (possibly web-served) source
+  # stays complete during the long cross-FS transfer; pass 2 reconciles + removes
+  # source (fast: mostly already copied), bounding any gap to the final rmdir+ln.
+  # Peak target usage is 1x (space check covers it); the source FS never grows. On
+  # any failure the real dir is left in place (data also safe in dst).
+  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
+    rsync -a "${_src}/" "${_dst}/" 2>/dev/null \
+      || { _log "ERROR: ${_label} rsync pre-seed failed ${_src} -> ${_dst}; left as real dir"; return 0; }
+    if _provision_running; then
+      _log "DEFER: ${_label} provision task active after pre-seed — left ${_src} as real dir (copy also in ${_dst})"
+      return 0
+    fi
+    rsync -a --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
+      || { _log "ERROR: ${_label} rsync reconcile failed ${_src} -> ${_dst}; left as real dir (data also in ${_dst})"; return 0; }
+    find "${_src}" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
+  fi
+
+  # Refuse to replace the dir with a symlink unless it emptied cleanly.
+  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
+    _log "ERROR: ${_label} ${_src} not empty after move; left as real dir for review"
+    return 0
+  fi
+
+  rmdir "${_src}" 2>/dev/null || { _log "ERROR: ${_label} could not rmdir ${_src}; data is safe in ${_dst}, link manually"; return 0; }
+  ln -s "${_dst}" "${_src}" 2>/dev/null || { _log "ERROR: ${_label} could not symlink ${_src}; data is safe in ${_dst}, link manually"; return 0; }
+  [ -n "${_ug}" ] && chown -h "${_ug}" "${_src}" 2>/dev/null
+  _log "APPLY: ${_label} relocated ${_src} -> ${_dst} (attached filesystem)"
+}
+
 # Relocate one account's static/files store onto the attached filesystem.
-# Mirrors the backups mover (_relocate_one_backup_dir): idempotent, ownership
-# preserving, separate-device gated, space-checked, and never destructive.
 _relocate_static_for_account() {
-  _acct="$1"
-  _acctDir="/data/disk/${_acct}"
-  _src="${_acctDir}/static/files"
+  local _acct="$1"
+  local _acctDir="/data/disk/${_acct}"
+  local _src="${_acctDir}/static/files"
   # BOA-canonical on-mount layout: the same _MNT_STATIC_FILES path the lshell
   # FTP-jail allow-list whitelists (satellite.sh.inc / manage_ltd_users.sh), so a
   # relocated store is navigable by the account's FTP user. Matches the layout the
   # original migratefs.sh used.
-  _dst="${_TARGET}/files/${_acct}/static/files"
+  local _dst="${_TARGET}/files/${_acct}/static/files"
+  local _cur _ug
 
   # Must look like an Octopus account store (static/ is the store parent).
   if [ ! -d "${_acctDir}/static" ]; then
@@ -220,26 +319,16 @@ _relocate_static_for_account() {
     return 0
   fi
 
-  # SEPARATE-DEVICE GATE — evaluated BEFORE any branch that could create/move, so
-  # an unmounted target (an empty /mnt/... dir on root, same device as the account
-  # root) can never cause data to be created or moved onto the root partition. The
-  # target device is read from the nearest EXISTING ancestor (the subtree may be
-  # absent). Placing this ahead of the already-symlink branch closes the case where
-  # a dangling relocation symlink (disk unmounted after a prior run) would otherwise
-  # let `mkdir -p _dst` re-materialise the store on root.
-  _srcDev=$(stat -c '%d' "${_acctDir}" 2>/dev/null)
-  _dstDev=$(_dev_of_nearest_existing "${_dst}")
-  if [ -z "${_srcDev}" ] || [ -z "${_dstDev}" ]; then
-    _log "WARN: ${_acct} cannot determine source/target device; skipping"
-    return 0
-  fi
-  if [ "${_srcDev}" = "${_dstDev}" ]; then
-    _log "SKIP: ${_acct} target ${_TARGET} is on the SAME filesystem as /data/disk (dev ${_srcDev}); is the attached disk mounted? nothing created or moved"
+  # SEPARATE-DEVICE GATE first — before any create/move branch — so an unmounted
+  # target (empty /mnt dir on root == same device) can never land data on root,
+  # including via the already-symlink branch re-creating a missing dst.
+  if ! _target_is_separate_fs "${_acctDir}" "${_dst}"; then
+    _log "SKIP: ${_acct} target ${_TARGET} is on the SAME filesystem as /data/disk (is the attached disk mounted?); nothing created or moved"
     return 0
   fi
 
-  # Already a symlink -> idempotent no-op (the device gate above guarantees the
-  # target is a real attached FS, so re-creating a missing _dst here is safe).
+  # Already a symlink -> idempotent no-op (device gate above guarantees the target
+  # is a real attached FS, so re-creating a missing dst here is safe).
   if [ -L "${_src}" ]; then
     _cur=$(readlink "${_src}" 2>/dev/null)
     if [ "${_cur}" = "${_dst}" ]; then
@@ -251,8 +340,8 @@ _relocate_static_for_account() {
     return 0
   fi
 
-  # Fresh account: no static/files yet -> just create the empty store on the
-  # attached disk and symlink. autosymlink will convert sites into it later.
+  # Fresh account: no static/files yet -> create the empty store + symlink;
+  # autosymlink will convert sites into it later.
   if [ ! -e "${_src}" ]; then
     _log "PLAN: ${_acct} create empty store ${_dst} and symlink ${_src} -> ${_dst}"
     if [ "${_APPLY}" = "YES" ]; then
@@ -272,91 +361,73 @@ _relocate_static_for_account() {
     return 0
   fi
 
-  _szKB=$(du -sk "${_src}" 2>/dev/null | awk '{print $1}')
-  _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
-  [ -z "${_avKB}" ] && _avKB=$(df -Pk "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $4}')
-  _log "PLAN: ${_acct} move ${_src} (${_szKB:-?}K) -> ${_dst} (target avail ${_avKB:-?}K) and symlink"
-
-  [ "${_APPLY}" = "YES" ] || return 0
-
-  # Space guard for the cross-FS copy.
-  if [ -n "${_szKB}" ] && [ -n "${_avKB}" ] && [ "${_avKB}" -lt "${_szKB}" ]; then
-    _log "ERROR: ${_acct} not enough space on ${_TARGET} (need ${_szKB}K, avail ${_avKB}K); leaving real dir in place"
-    return 0
-  fi
-
-  # Re-check the interlock right before we start writing: skip (leave the real
-  # dir) if a provision task started since the drain, so a store being written is
-  # never moved mid-write.
-  if _provision_running; then
-    _log "DEFER: ${_acct} provision task active — left static/files as real dir"
-    return 0
-  fi
-
-  _ug=$(stat -c '%U:%G' "${_src}" 2>/dev/null)
-  mkdir -p "${_dst}" 2>/dev/null || { _log "ERROR: ${_acct} could not create ${_dst}; skipping"; return 0; }
-  [ -n "${_ug}" ] && chown "${_ug}" "${_dst}" 2>/dev/null
-
-  # TWO-PASS move — static/files is WEB-SERVED (unlike backups). A single removing
-  # rsync would serve 404s for already-moved-and-removed user files during a long
-  # cross-FS copy. Pass 1 is a NON-removing copy: the live store stays complete on
-  # the source throughout the long transfer. Pass 2 reconciles + removes source
-  # (fast: mostly already copied), bounding the served-gap to the final rmdir+ln.
-  # Peak target usage is 1x the store (space check covers it); the source FS never
-  # grows. On any failure the real dir is left in place (data also safe in _dst).
-  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
-    rsync -a "${_src}/" "${_dst}/" 2>/dev/null \
-      || { _log "ERROR: ${_acct} rsync pre-seed failed ${_src} -> ${_dst}; left as real dir"; return 0; }
-    # Re-check the interlock right before the removing reconcile.
-    if _provision_running; then
-      _log "DEFER: ${_acct} provision task active after pre-seed — left static/files as real dir (copy also present in ${_dst})"
-      return 0
-    fi
-    rsync -a --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
-      || { _log "ERROR: ${_acct} rsync reconcile failed ${_src} -> ${_dst}; left as real dir (data also copied to ${_dst})"; return 0; }
-    find "${_src}" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
-  fi
-
-  # Refuse to replace the dir with a symlink unless it emptied cleanly.
-  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
-    _log "ERROR: ${_acct} ${_src} not empty after move; left as real dir for review"
-    return 0
-  fi
-
-  rmdir "${_src}" 2>/dev/null || { _log "ERROR: ${_acct} could not rmdir ${_src}; data is safe in ${_dst}, link manually"; return 0; }
-  ln -s "${_dst}" "${_src}" 2>/dev/null || { _log "ERROR: ${_acct} could not symlink ${_src}; data is safe in ${_dst}, link manually"; return 0; }
-  [ -n "${_ug}" ] && chown -h "${_ug}" "${_src}" 2>/dev/null
-  _log "APPLY: ${_acct} relocated static/files -> ${_dst} (attached filesystem)"
+  # Real dir -> two-pass relocation (ownership from the static/ parent).
+  _relocate_dir "${_src}" "${_dst}" "${_acctDir}/static" "account ${_acct}"
 }
 
-# Auto-detect the attached files mount when --target was not given, naming-
-# independently: the single /mnt/* entry that is a real mountpoint (a separate
-# filesystem). No reliance on a dot in the name. If none or several exist, require
-# an explicit --target.
-_autodetect_target() {
-  _found=""
-  _cnt=0
+# Relocate the shared /data/disk/arch archive onto the attached filesystem.
+# arch holds SQL dumps + cluster backups (not web-served), so it defers while a
+# backup writer runs rather than risk moving a backup file mid-write.
+_relocate_arch() {
+  local _src="/data/disk/arch"
+  local _dst="${_TARGET}/files/system/arch"
+  local _cur
+
+  if [ -L "${_src}" ]; then
+    _cur=$(readlink "${_src}" 2>/dev/null)
+    if [ "${_cur}" = "${_dst}" ]; then
+      _log "OK: arch already relocated -> ${_dst}"
+    else
+      _log "WARN: /data/disk/arch is a symlink to an unexpected target (${_cur}); leaving for review"
+    fi
+    return 0
+  fi
+
+  if [ ! -e "${_src}" ]; then
+    _log "SKIP: /data/disk/arch does not exist — nothing to relocate"
+    return 0
+  fi
+  if [ ! -d "${_src}" ]; then
+    _log "WARN: /data/disk/arch exists but is not a directory; leaving for review"
+    return 0
+  fi
+
+  if ! _target_is_separate_fs "${_src}" "${_dst}"; then
+    _log "SKIP: arch target ${_TARGET} is on the SAME filesystem as /data/disk (is the attached disk mounted?); nothing moved"
+    return 0
+  fi
+
+  # Cross-tool caveat: once /data/disk/arch is a symlink, host-migration tools that
+  # rsync it as a bare path (xoct/xcopy 'transfer shared', xmass) will copy/skip the
+  # LINK, not its contents, unless they resolve it first. Warn the operator here.
+  _log "NOTE: after arch is relocated, host-migration of THIS box (xoct/xcopy/xmass) must resolve the /data/disk/arch symlink; verify arch transfers its CONTENTS before migrating."
+
+  if [ "${_APPLY}" = "YES" ] && _backup_running; then
+    _log "DEFER: arch — a backup writer is active; retry when backups are idle"
+    return 0
+  fi
+
+  _relocate_dir "${_src}" "${_dst}" "${_src}" "arch"
+}
+
+# List the real mountpoint(s) under /mnt (naming-independent: mountpoint -q, with an
+# st_dev-differs fallback). One per line; empty when none.
+_list_mnt_mountpoints() {
+  local _mntDev _m
   _mntDev=$(stat -c '%d' /mnt 2>/dev/null)
   for _m in /mnt/*; do
     [ -d "${_m}" ] || continue
     if { command -v mountpoint >/dev/null 2>&1 && mountpoint -q "${_m}"; } \
       || { [ -n "${_mntDev}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_mntDev}" ]; }; then
-      _found="${_m}"
-      _cnt=$(( _cnt + 1 ))
+      printf '%s\n' "${_m}"
     fi
   done
-  if [ "${_cnt}" -eq 1 ]; then
-    _TARGET="${_found}"
-    _log "INFO: auto-detected attached mount: ${_TARGET}"
-  else
-    echo "ERROR: could not auto-detect a single attached mountpoint under /mnt (found ${_cnt}); pass --target <mount>"
-    exit 1
-  fi
 }
 
 # Build the account list: all /data/disk/* dirs that look like an Octopus account
 # store, excluding the shared archive/aggregate dirs and hidden entries.
 _account_list() {
+  local _d _b
   if [ -n "${_ONE_ACCOUNT}" ]; then
     # Validate an explicit --account (defence-in-depth: the value builds root-run
     # rsync/mkdir/ln/rmdir paths). Reject path separators, hidden and the shared
@@ -386,8 +457,28 @@ _account_list() {
 _manage_single_lock
 trap _cleanup EXIT INT TERM HUP
 
+# Enforce the SINGLE-/mnt-mount invariant fleet-wide. More than one attached
+# mountpoint under /mnt is unsupported and cannot be disambiguated (the lshell
+# FTP-jail wiring picks the single one), so REFUSE rather than guess -- even when
+# --target is given, because the rest of BOA would still disagree.
+_mnts=$(_list_mnt_mountpoints)
+_nmnt=$(printf '%s\n' "${_mnts}" | grep -c .)
+if [ "${_nmnt}" -gt 1 ]; then
+  echo "ERROR: multiple mountpoints detected under /mnt:"
+  printf '  %s\n' ${_mnts}
+  echo "BOA supports only a SINGLE attached /mnt mount and cannot choose the correct one."
+  echo "Unmount the extra mount(s) and retry. Refusing."
+  exit 1
+fi
+
 if [ -z "${_TARGET}" ]; then
-  _autodetect_target
+  if [ "${_nmnt}" -eq 1 ]; then
+    _TARGET="${_mnts}"
+    _log "INFO: auto-detected attached mount: ${_TARGET}"
+  else
+    echo "ERROR: no attached mountpoint found under /mnt; mount the disk or pass --target <mount>"
+    exit 1
+  fi
 fi
 
 # Normalise a trailing slash so path building is predictable.
@@ -402,16 +493,16 @@ if command -v mountpoint >/dev/null 2>&1 && ! mountpoint -q "${_TARGET}"; then
 fi
 
 _accounts=$(_account_list)
-if [ -z "${_accounts}" ]; then
-  _log "INFO: no matching accounts under /data/disk (account='${_ONE_ACCOUNT:-all}')"
+if [ -z "${_accounts}" ] && [ "${_DO_ARCH}" != "YES" ]; then
+  _log "INFO: nothing to do (no matching accounts under /data/disk, account='${_ONE_ACCOUNT:-all}', arch skipped)"
   exit 0
 fi
 
 _log "=================================================================="
 if [ "${_APPLY}" = "YES" ]; then
-  _log "[START] migratefs APPLY -> ${_TARGET} (accounts: $(printf '%s ' ${_accounts}))"
+  _log "[START] migratefs APPLY -> ${_TARGET} (arch=${_DO_ARCH}, accounts: $(printf '%s ' ${_accounts}))"
 else
-  _log "[START] migratefs DRY plan -> ${_TARGET} (accounts: $(printf '%s ' ${_accounts})) — no changes"
+  _log "[START] migratefs DRY plan -> ${_TARGET} (arch=${_DO_ARCH}, accounts: $(printf '%s ' ${_accounts})) — no changes"
 fi
 _log "=================================================================="
 
@@ -419,7 +510,7 @@ _log "=================================================================="
 if [ "${_APPLY}" = "YES" ]; then
   if [ "${_ASSUME_YES}" != "YES" ]; then
     echo
-    echo "About to relocate static/files for the above accounts onto ${_TARGET}."
+    echo "About to relocate onto ${_TARGET}: arch=${_DO_ARCH}, accounts: ${_accounts}"
     echo "This pauses the Aegir task queue, drains running tasks, then moves data."
     printf 'Type YES to proceed: '
     read -r _ans
@@ -432,6 +523,11 @@ if [ "${_APPLY}" = "YES" ]; then
     _log "[DONE] migratefs aborted: queue not quiescent"
     exit 0
   fi
+fi
+
+if [ "${_DO_ARCH}" = "YES" ]; then
+  _log "------------------------------------------------------------------"
+  _relocate_arch
 fi
 
 for _a in ${_accounts}; do
