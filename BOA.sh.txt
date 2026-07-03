@@ -1499,6 +1499,8 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f99
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f83
+    # autoupboa/fixmounts are also fetched by _update_boa_tools and share its
+    # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f54 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f91
@@ -1530,6 +1532,8 @@ _update_agents() {
     fi
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f86
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f77
+    # The synproxy family is also fetched by _update_boa_tools and shares its
+    # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
     _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/tools/bin/synproxy_rollback" f94 --guard synproxy_rollback
     _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/tools/bin/synproxy_reassert" f99 --guard synproxy_rollback
@@ -3599,6 +3603,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f97 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f97 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f82 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f54 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f99 --guard /local/bin/backboa
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f90 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f95 --guard /local/bin/boa
@@ -3607,6 +3612,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f99 --guard /local/bin/duobackboa
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f95 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f99 --guard /local/bin/ffmirror
+    _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f99 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --guard /local/bin/fpmreport
@@ -3622,6 +3628,13 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f93 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
     _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f98 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
+    _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
+    _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
+    _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/${_tBn}/synproxy_reassert" f99 --guard /local/bin/synproxy_reassert
+    _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/${_tBn}/synproxy_rollback" f94 --guard /local/bin/synproxy_rollback
+    _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
+    _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f94 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f94 --guard /local/bin/xmass
@@ -3631,12 +3644,10 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f98 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f99 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f99 --guard /local/bin/automini
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f99 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f99 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
-    _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f99 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f99 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
@@ -3649,13 +3660,6 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f99 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f99 --guard /local/bin/sqlmagic
     _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f99 --guard /local/bin/syncpass
-    _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f99 --guard /local/bin/synproxy
-    _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
-    _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f99 --guard /local/bin/synproxy_monitor
-    _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/${_tBn}/synproxy_reassert" f99 --guard /local/bin/synproxy_reassert
-    _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/${_tBn}/synproxy_rollback" f99 --guard /local/bin/synproxy_rollback
-    _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
-    _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f99 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f99 --guard /local/bin/vhostcheck
