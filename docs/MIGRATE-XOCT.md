@@ -231,6 +231,13 @@ symlinks and break the expected Aegir layout):
 Site-level symlinks (`sites/*/files`, `sites/*/private`) remain symlinks
 pointing into the account tree, exactly as BOA/Aegir expects.
 
+The shared archive `/data/disk/arch` is handled the same way during
+`xoct transfer shared` (and by `xcopy`/`xmass`): if it has been relocated onto
+attached storage with [`migratefs`](MIGRATEFS.md) it is a symlink, so the tool
+resolves it (`readlink -f`, arch only — no blanket `--copy-links`) and materializes
+its contents as a real `/data/disk/arch` on the target. This keeps the SQL dumps and
+cluster backups transferring correctly whether or not `arch` is relocated.
+
 ### Verification (Recommended for Large Accounts)
 
 **On target, after import:**

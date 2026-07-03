@@ -667,14 +667,32 @@ _xmass_sync_account() {
 
 _xmass_sync_shared() {
   _info "Syncing shared data (/data/all, arch, legacy, bind, static) ..."
-  local _item
-  for _item in /data/all /data/disk/all /data/disk/arch /data/disk/legacy; do
+  local _item _arch_real
+  for _item in /data/all /data/disk/all /data/disk/legacy; do
     [ -d "${_item}" ] || continue
     [ -L "${_item}" ] && continue
     rsync -aEAXqu ${_ieni} -e ssh \
       "${_item}" "root@${_tgt}:$(dirname "${_item}")/" \
       &>/dev/null || _alrt "rsync ${_item} failed"
   done
+  # arch handled separately: a relocated arch (/data/disk/arch -> attached mount,
+  # via migratefs) is a symlink the generic loop above would skip, so resolve it
+  # and transfer its CONTENTS into a real dir on the target (readlink -f, arch only).
+  if [ -e "/data/disk/arch" ] || [ -L "/data/disk/arch" ]; then
+    if [ -L "/data/disk/arch" ]; then
+      _arch_real="$(readlink -f /data/disk/arch 2>/dev/null)"
+    else
+      _arch_real="/data/disk/arch"
+    fi
+    if [ -n "${_arch_real}" ] && [ -d "${_arch_real}" ]; then
+      ssh root@"${_tgt}" "if [ -L /data/disk/arch ]; then rm -f /data/disk/arch; elif [ -e /data/disk/arch ] && [ ! -d /data/disk/arch ]; then rm -f /data/disk/arch; fi; mkdir -p /data/disk/arch" &>/dev/null
+      rsync -aEAXqu ${_ieni} -e ssh \
+        "${_arch_real}/" "root@${_tgt}:/data/disk/arch/" \
+        &>/dev/null || _alrt "rsync arch failed"
+    else
+      _alrt "/data/disk/arch does not resolve to a directory (${_arch_real:-unresolved}) — arch NOT transferred (is the attached disk mounted?)"
+    fi
+  fi
   [ -d "/var/www/static" ] && \
     rsync -aEAXqu ${_ieni} -e ssh \
       /var/www/static "root@${_tgt}:/var/www/" &>/dev/null || true

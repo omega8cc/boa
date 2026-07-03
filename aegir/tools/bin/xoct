@@ -720,6 +720,13 @@ _migrate_init() {
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
   elif [ "${_oct}" = "shared" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
+    # Refuse an empty target: an empty ssh host resolves to localhost, so the arch
+    # step's remote mkdir/rm would run against THIS (source) box and could delete the
+    # live arch symlink. Never proceed with the shared sync without a real target.
+    if [ -z "${_tgt}" ]; then
+      echo "ERROR: empty target host — refusing shared sync"
+      exit 1
+    fi
     if [ -d "/data/all" ] && [ ! -L "/data/all" ]; then
       rsync -aEAXqu ${_ieni} -e ssh /data/all  root@${_tgt}:/data/
       echo "INFO: ${_cmd} for ${_oct} /data/all complete"
@@ -728,9 +735,23 @@ _migrate_init() {
       rsync -aEAXqu ${_ieni} -e ssh /data/disk/all  root@${_tgt}:/data/
       echo "INFO: ${_cmd} for ${_oct} /data/disk/all complete"
     fi
-    if [ -e "/data/disk/arch" ]; then
-      rsync -aEAXqu ${_ieni} -e ssh /data/disk/arch  root@${_tgt}:/data/disk/
-      echo "INFO: ${_cmd} for ${_oct} /data/disk/arch complete"
+    if [ -e "/data/disk/arch" ] || [ -L "/data/disk/arch" ]; then
+      # A relocated arch (/data/disk/arch -> attached mount, via migratefs) must
+      # transfer its CONTENTS as a real dir, not the bare symlink (which would
+      # dangle on the target). Resolve then materialize -- the same idiom used for
+      # static/files above. readlink -f only (no blanket --copy-links), arch only.
+      if [ -L "/data/disk/arch" ]; then
+        _ARCH_REAL="$(readlink -f /data/disk/arch 2>/dev/null)"
+      else
+        _ARCH_REAL="/data/disk/arch"
+      fi
+      if [ -n "${_ARCH_REAL}" ] && [ -d "${_ARCH_REAL}" ]; then
+        ssh root@"${_tgt}" "if [ -L /data/disk/arch ]; then rm -f /data/disk/arch; elif [ -e /data/disk/arch ] && [ ! -d /data/disk/arch ]; then rm -f /data/disk/arch; fi; mkdir -p /data/disk/arch"
+        rsync -aEAXqu ${_ieni} -e ssh "${_ARCH_REAL}/" root@"${_tgt}":/data/disk/arch/
+        echo "INFO: ${_cmd} for ${_oct} /data/disk/arch complete"
+      else
+        echo "ALRT: /data/disk/arch does not resolve to a directory (${_ARCH_REAL:-unresolved}) — arch NOT transferred (is the attached disk mounted?)"
+      fi
     fi
     if [ -e "/opt/solr4" ]; then
       rsync -aEAXq ${_ieni} -e ssh /opt/solr4 root@${_tgt}:/opt/

@@ -121,10 +121,11 @@ unchanged.
   move of a busy account, put the site(s) into maintenance mode first.
 
 > **Relocated `arch` and host migration.** Once `/data/disk/arch` is a symlink to the
-> attached mount, tools that migrate the whole host by rsyncing `/data/disk/arch` as a
-> bare path — `xoct`/`xcopy` (`transfer shared`) and `xmass` — must resolve the symlink
-> and transfer its **contents**, or they will copy/skip the link itself and the target
-> host receives **no** SQL dumps or cluster backups. Verify arch transfers its contents
-> before migrating a host whose `arch` has been relocated. (Consumers that read a path
-> *under* `arch`, e.g. `copydbackup` and `mysql_cluster_backup`, resolve through the
-> symlink transparently and need nothing.)
+> attached mount, the host-migration tools `xoct`/`xcopy` (`transfer shared`) and
+> `xmass` **resolve the symlink and transfer its contents** as a real `/data/disk/arch`
+> on the target — the same way `xoct` materializes a symlinked `static/files`. Make sure
+> those tools are current (`xoct >= f95`, `xcopy`/`xmass >= f96`) before migrating a host
+> whose `arch` has been relocated; older versions would copy/skip the bare symlink and
+> transfer **no** SQL dumps or cluster backups. (Consumers that read a path *under*
+> `arch`, e.g. `copydbackup` and `mysql_cluster_backup`, resolve through the symlink
+> transparently and need nothing.)
