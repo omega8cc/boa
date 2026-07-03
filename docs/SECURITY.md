@@ -92,6 +92,12 @@ servers the per-instance opt-ins above are the correct tool — and because
 limited-shell (`oN.ftp`) sessions are never filtered, ordinary client CLI use needs
 no opt-in at all. Remove the file to re-enable the protection.
 
+## Verifying the filter
+
+To confirm on a real box that the protection holds for the Ægir backend while
+limited-shell (`oN.ftp`) CLI use is unaffected, follow the step-by-step runbook in
+[DRUSH-FILTER-TESTING.md](DRUSH-FILTER-TESTING.md).
+
 # Customizing PHP Function Restrictions
 
 ## Option in `/root/.barracuda.cnf`
