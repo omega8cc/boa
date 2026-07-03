@@ -803,7 +803,15 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${_rawDom}.private/"
   _NEW_STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}/"
   _PATH_DOM="$(readlink -n "${_Domain}")"
-  _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
+  # Attached files mount = the single real mountpoint under /mnt (naming-agnostic;
+  # replaces the former grep "." dot-name heuristic). Empty when none is mounted.
+  _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); for _m in /mnt/*; do
+    [ -d "${_m}" ] || continue
+    if mountpoint -q "${_m}" 2>/dev/null \
+      || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
+      printf '%s' "${_m}"; break
+    fi
+  done) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
 #   echo "_ALLD_DIR is == ${_ALLD_DIR} == at _manage_sec_access_paths"
 #   echo "_rawDom is == ${_rawDom} == at _manage_sec_access_paths"
@@ -2245,7 +2253,15 @@ _manage_user() {
         if [ -d "/home/${_USER}.ftp" ]; then
           _disable_chattr ${_USER}.ftp
           symlinks -dr /home/${_USER}.ftp &> /dev/null
-          _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
+          # Attached files mount = the single real mountpoint under /mnt (naming-
+          # agnostic; replaces the former grep "." heuristic). Empty when none mounted.
+          _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); for _m in /mnt/*; do
+            [ -d "${_m}" ] || continue
+            if mountpoint -q "${_m}" 2>/dev/null \
+              || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
+              printf '%s' "${_m}"; break
+            fi
+          done) &&
           _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
           [ -n "${_mntPoint}" ] && echo "_mntPoint is == ${_mntPoint} == at _manage_user"
           [ -n "${_mntPoint}" ] && echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_user"

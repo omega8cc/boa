@@ -448,10 +448,19 @@ _check_space_for_transfer() {
     return 1
   fi
 
+  # Resolve the target filesystem by walking up to the nearest EXISTING ancestor.
+  # A brand-new account may not have the static/files store base at all, in which
+  # case a single dirname still lands on a non-existent path and df returns nothing
+  # -- a false "Unable to determine available space" that fails the DRY run
+  # (NOT CLEAN) so batch never gets to auto-create the store. Walking up until a
+  # real directory is found yields the correct device (the same FS a later mkdir -p
+  # would land on), so a same-FS account is correctly seen as a free rename and the
+  # DRY run stays CLEAN. If static/files is a symlink onto attached storage the loop
+  # stops at it (-d follows the link), so the cross-FS space check still runs.
   _TARGET_CHECK="${_TARGET_BASE}"
-  if [ ! -d "${_TARGET_CHECK}" ]; then
+  while [ -n "${_TARGET_CHECK}" ] && [ "${_TARGET_CHECK}" != "/" ] && [ ! -d "${_TARGET_CHECK}" ]; do
     _TARGET_CHECK=$(dirname "${_TARGET_CHECK}")
-  fi
+  done
 
   # Detect source and target devices
   _SRC_DEV=$(df -P "${_SRC_DIR}" 2>/dev/null | awk 'NR==2 {print $1}')
