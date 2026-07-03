@@ -159,7 +159,8 @@ xmass sync target-ip --live     # perform the sync (after a CLEAN dry run)
 > **`xmass sync` and `xmass cutover` default to a read-only DRY run** and require an
 > explicit **`--live`** to make changes — accepted only after a `CLEAN` dry run for that
 > target. The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
-> pre-checks disk space for every account's files store, and records `CLEAN`/`NOT CLEAN`
+> pre-checks disk space for every account's files store **and the Solr indices** (which
+> can be large), and records `CLEAN`/`NOT CLEAN`
 > for the whole run — a single `DENY` (dangling source symlink, more than one `/mnt`
 > mount, or a store that fits nowhere) makes it `NOT CLEAN` and refuses `--live` until
 > resolved. Utility/DB commands (`init`, `status`, `pre-mig`, `post-mig`) are not gated,

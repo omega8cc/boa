@@ -45,7 +45,8 @@ For full-server migrations where Percona versions match, consider
 
 > **Every `xoct transfer …` runs a read-only DRY test by default.** It resolves the
 > target's storage, prints the plan for each store (`[DRY-PLAN] … would mirror / would
-> place real dir …`), pre-checks disk space, and records `CLEAN` or `NOT CLEAN` — making
+> place real dir …`), pre-checks disk space (including the Solr indices, which can be
+> large), and records `CLEAN` or `NOT CLEAN` — making
 > **no** changes on either host. To perform the transfer, append **`--live`**; it is
 > accepted only after a `CLEAN` dry run for the same account+target and refuses if the
 > dry run reported any `DENY` (dangling source symlink, multiple `/mnt` mounts, or a
