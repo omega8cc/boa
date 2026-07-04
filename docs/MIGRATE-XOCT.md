@@ -47,12 +47,15 @@ For full-server migrations where Percona versions match, consider
 > target's storage, prints the plan for each store (`[DRY-PLAN] … would mirror / would
 > place real dir …`), pre-checks disk space (including the Solr indices, which can be
 > large), and records `CLEAN` or `NOT CLEAN` — making
-> **no** changes on either host. To perform the transfer, append **`--live`**; it is
-> accepted only after a `CLEAN` dry run for the same account+target and refuses if the
-> dry run reported any `DENY` (dangling source symlink, multiple `/mnt` mounts, or a
-> store that fits nowhere). So each transfer below is a two-step: run it once to review,
-> then re-run with `--live`. Only `transfer`/`pretransfer` are gated — `ssl-gen`,
-> `export`, `import` and the other commands are unaffected.
+> **no** changes on either host. The outcome is persisted per account+target in a state
+> file (`/var/log/boa/xoct.migrate.<oct>_<tgt>.state`). To perform the transfer, append
+> **`--live`**; it is accepted only after a `CLEAN` dry run for the same account+target
+> and refuses if the dry run reported any `DENY` (dangling source symlink, multiple
+> `/mnt` mounts, or a store that fits nowhere). The `CLEAN` dry token is **single-use** —
+> running `--live` consumes it, so one dry run cannot arm two live runs; re-run the dry
+> pass before each additional `--live`. So each transfer below is a two-step: run it once
+> to review, then re-run with `--live`. Only `transfer`/`pretransfer` are gated —
+> `ssl-gen`, `export`, `import` and the other commands are unaffected.
 
 ### 1. Prepare Target Firewall
 
@@ -116,7 +119,8 @@ xoct pretransfer o1 target-ip
 ```
 
 `transfer shared` syncs `/data/all`, `/data/disk/all`, `/data/disk/arch`,
-Solr cores, `/var/www/static`, and `/etc/bind` to the target.
+Solr cores, `/var/www/static`, `/etc/bind`, and the usage logs under
+`/var/log/boa/usage` to the target.
 
 `create o1` provisions a fresh Octopus instance on the target using the source
 account's stored metadata (email, subscription, option, cores).
@@ -144,8 +148,8 @@ xoct transfer shared target-ip
 ```
 
 `export` puts a 503 on all sites in the account (`http-off.pid`), purges the
-nginx speed cache, dumps the Aegir hostmaster database and each site database
-via mydumper, and marks `exported.pid`.
+nginx speed cache, dumps each site database via mydumper and the Aegir
+hostmaster database via mysqldump, and marks `exported.pid`.
 
 `transfer o1` rsyncs platforms, files, drush aliases, nginx vhosts, SSL certs,
 and Let's Encrypt config to the target. The `static/files` transfer uses a
@@ -166,8 +170,8 @@ xoct post-mig
 service cron start
 ```
 
-`import` re-imports the Aegir hostmaster database, removes any ghost/empty
-platform registrations left over from earlier migrations, then calls
+`import` re-imports the Aegir hostmaster database, sets the site front page
+back to `hosting/sites`, then calls
 `renameaegirhost --aegir-root /data/disk/o1` which:
 
 - Rewrites all drush alias files (old source hostname → target FQDN).

@@ -132,8 +132,9 @@ What `init` does:
 
 1. Verifies SSH connectivity and Percona version match.
 2. Installs `percona-xtrabackup-*` on source and target if not present.
-3. Enables GTID mode on both servers (edits
-   `/etc/mysql/conf.d/xmass_gtid.cnf`, restarts MySQL via `move_sql.sh`).
+3. Enables GTID mode on both servers (writes `xmass_gtid.cnf` into the
+   detected MySQL include dir — see [GTID Configuration](#gtid-configuration)
+   for the path — then restarts MySQL via `move_sql.sh`).
 4. Creates the replication user `xmass_repl`@`target-ip` on source.
 5. Prevents Solr from auto-starting on target (holds it until cutover sync
    is complete).
@@ -283,8 +284,12 @@ the running Percona version and installed automatically if absent.
 
 ## GTID Configuration
 
-`xmass init` writes `/etc/mysql/conf.d/xmass_gtid.cnf` on both servers if
-GTID is not already enabled:
+`xmass init` writes `xmass_gtid.cnf` on both servers if GTID is not already
+enabled. The MySQL include directory is detected at runtime, preferring the
+first that exists: `/etc/mysql/percona-server.conf.d`, then
+`/etc/mysql/conf.d`, then `/etc/mysql/mysql.conf.d`, falling back to
+`/etc/mysql`. On a current Percona box this is normally
+`/etc/mysql/percona-server.conf.d/xmass_gtid.cnf`. Contents:
 
 ```ini
 [mysqld]
@@ -309,7 +314,7 @@ are left untouched.
 
 | Stage | Solr on source | Solr on target |
 |---|---|---|
-| After `init` | Running normally | Stopped; held by `/root/.xmass_solr_hold.pid` |
+| After `init` | Running normally | Stopped; held by `/var/log/boa/.xmass_solr_hold.pid` |
 | During `sync` | Running normally | Still held (best-effort Solr rsync only) |
 | Cutover step 0 | Running | Re-held and stopped (safety) |
 | Cutover step 2 | Stopped; `/root/.deny.java.cnf` created | Held |

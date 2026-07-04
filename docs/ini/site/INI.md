@@ -149,7 +149,7 @@
 ;redis_cache_disable = FALSE
 ;;
 ;;  Normally you should never disable Redis, unless for debugging rare issues.
-;;  If you are sure you need to disable Redis for all sites on this platform,
+;;  If you are sure you need to disable Redis for this site,
 ;;  uncomment the line above and set the value to TRUE.
 ```
 

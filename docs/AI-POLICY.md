@@ -170,12 +170,13 @@ on the next run.
 | `/var/xdrago/nginx_deny.sh` | `*/2` | `/data/conf/nginx_banned_ips.conf` |
 | `/var/xdrago/cloudflare_realip.sh` | daily + install | `/data/conf/nginx_cloudflare_real_ip.conf` |
 
-All four take a shared advisory lock `/run/boa_nginx_config.lock` (`flock -w 30`, then
-skip and retry next tick) so their `configtest`+`reload` cycles never collide on the
-same host nginx. Each one is a content change-gate → atomic write → `configtest` →
-`reload`, with rollback to the last-good copy if `configtest` fails. All four are
-serial-gated via `_fetch_versioned`; any change must decrement the tool's `fNN` in
-`BOA.sh.txt` in the same commit.
+All four — plus the migration-time realip tool `/var/xdrago/migration_proxy_realip.sh`
+(a fifth writer, not one of the standing generators above) — take a shared advisory lock
+`/run/boa_nginx_config.lock` (`flock -w 30`, then skip and retry next tick) so their
+`configtest`+`reload` cycles never collide on the same host nginx. Each one is a content
+change-gate → atomic write → `configtest` → `reload`, with rollback to the last-good copy
+if `configtest` fails. The four generators above are serial-gated via `_fetch_versioned`;
+any change must decrement the tool's `fNN` in `BOA.sh.txt` in the same commit.
 
 ## Verify
 

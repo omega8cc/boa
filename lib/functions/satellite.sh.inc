@@ -4124,6 +4124,28 @@ _satellite_prepare_setup_email_tpl() {
   fi
 }
 
+###---### Set the client control-panel login (reuse the SSH/FTP identity).
+#
+_satellite_set_client_login() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_set_client_login"
+    _debug_proc
+  fi
+  if [ "${_STATUS}" != "INIT" ]; then
+    return 0
+  fi
+  if [ -z "${_CLIENT_EMAIL}" ] || [ -z "${_PASWD}" ]; then
+    return 0
+  fi
+  # hosting_client gives the auto-created control-panel account an unusable
+  # random password, so first login is impossible without a one-time link.
+  # Reuse the shell identity instead: rename the account to ${_USER}.ftp and
+  # set its password to the shell password. Matched by _CLIENT_EMAIL; the
+  # uid>1 guard keeps the super-admin (uid 1) untouched. Runs as the octopus
+  # user via the same drush pattern used above; _PASWD exists by this point.
+  su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ev '\$u = user_load_by_mail(\"${_CLIENT_EMAIL}\"); if (\$u && \$u->uid > 1) { user_save(\$u, array(\"name\" => \"${_USER}.ftp\", \"pass\" => \"${_PASWD}\")); }'" &> /dev/null
+}
+
 ###---### Sending setup email.
 #
 _satellite_send_welcome_email() {
