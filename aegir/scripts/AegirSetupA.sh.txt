@@ -249,6 +249,7 @@ _satellite_if_add_ftps_lshell_access
 _satellite_if_add_update_user_symlinks
 _satellite_if_add_update_user_dot_dirs
 _satellite_if_read_create_pass_txt
+_satellite_set_client_login
 _satellite_if_add_update_user_platforms_symlinks
 _satellite_if_add_update_backend_user_dirs_files_clean
 [ ! -e "/root/.silent.update.cnf" ] && _satellite_prepare_setup_email_tpl

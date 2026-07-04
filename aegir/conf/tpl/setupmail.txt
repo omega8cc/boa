@@ -1,130 +1,70 @@
 Hello,
 
-Welcome to your new Ægir control panel, designed for easy Drupal multi-site deployment, development, and management.
+Welcome — you're now a hosted BOA customer. The hard part, running the server, is already done for you. Your job is the fun part: creating and looking after your Drupal sites, mostly by clicking around a web control panel rather than typing commands.
 
-Your Ægir control panel [version boa.version] is available at:
+Your Ægir control panel [version boa.version] is here:
 
 https://aegir.url.name
 
-This Email Covers:
-1. Logging into your Ægir control panel
-2. Deploying Ægir default websites
-3. Adding modules & themes
-4. Managing your databases
-5. Advanced user information
-6. Articles and video tutorials
+New here? Start with the first-login guide — it walks you through everything below, slowly and safely:
 
-Please read this email thoroughly. It contains important information required to properly leverage all your available Ægir features.
+https://boa.omega8.cc/using/welcome/your-account-and-first-login
 
 ----------------------------------------
-1. LOGGING INTO YOUR AEGIR CONTROL PANEL
+LOGGING IN
 ----------------------------------------
 
-To access your control panel, visit this URL: https://aegir.url.name
+Go to https://aegir.url.name and sign in with:
 
-If your account has been migrated, use the previous username and password you have already used before, or reset your password using your email address as your username at: https://aegir.url.name/user/password
+username: dragon.ftp
+password: FN8rXcQn
 
-Please double-check your spam folder to ensure all emails are delivered.
+Please note: your control panel account and your SSH/FTP/SFTP account are two fully separate accounts. They only start out with the same username and password for convenience — they are not linked. We recommend changing the password on each of them separately after your first login: the control panel password from within the panel, and the SSH/FTP/SFTP password over SSH with the "passwd" command.
 
-----------------------------------------
-2. DEPLOYING YOUR WEBSITES
-----------------------------------------
-
-Log into the control panel and start exploring how Ægir works. We are ready to assist and guide you step by step, so please don’t hesitate to ask questions!
-
-To create a new site:
-1. Click the Add Site tab.
-2. After adding a site, click the Home icon on the site's node in Ægir to access the admin area.
-
-If the Home icon no longer links to the one-time login page, run the "Reset password" task on the site's node, and once complete, click the Home icon again.
-
-For more details on site import and platform management, refer to:
-- Import Your Sites to Ægir: https://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
-- Add Custom Platform: https://omega8.cc/how-to-add-custom-platform-properly-140
-- Drupal Site Upgrade Workflow: https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-To make a site "live" using any domain name, point its A or CNAME DNS record to your Ægir instance public IP address:
-
-yourdomain.com.           IN  A      166.84.6.231
-subdomain.yourdomain.com. IN  CNAME  aegir.url.name.
-
-For test sites, use any subdomain in *.aegir.url.name, e.g., http://atrium.aegir.url.name.
-
-Need assistance with site import? Contact us: https://omega8.cc/contact
+Forgot your control panel password later? Reset it with your email address at https://aegir.url.name/user/password
 
 ----------------------------------------
-3. ADDING MODULES & THEMES
+UPLOADING FILES (MODULES, THEMES, PLATFORMS)
 ----------------------------------------
 
-To add modules/themes:
-1. Log into your FTPS/SSH/SFTP account:
+Upload over SSH/SFTP/FTPS with the same username and password:
 
 host: aegir.url.name
 user: dragon.ftp
 pass: FN8rXcQn
-port: 21 (FTPS)
 port: 22 (SSH/SFTP)
+port: 21 (FTPS, Explicit TLS)
 
-2. Type "help" when logged in via SSH to see all available shell commands.
-3. Change your password via SSH with the "passwd" command every 3 months.
-
-Note: Use Explicit TLS mode with port 21 for FTPS and port 22 for SFTP (unless your Ægir instance uses a non-standard SSH port).
-
-Refer to Compatible FTP-SSL/TLS Clients: https://omega8.cc/dev/ftp-tls.txt for more information.
+Type "help" once you're logged in over SSH to see the commands available to you.
 
 ----------------------------------------
-4. MANAGING YOUR DATABASES
+YOUR DATABASES
 ----------------------------------------
 
-Manage your databases via the Adminer Manager web interface, using credentials available in each site's drushrc.php file:
+Browse and manage them from the web, no setup required:
 
-Adminer Manager URL: https://aegir.url.name/sqladmin/
+https://aegir.url.name/sqladmin/
 
-Note: Keep the SSH session active with a continuous command (e.g., ping -i 30 google.com) to maintain database access.
-
-Use a desktop SQL manager that supports SSH tunneling, as remote access over MySQL port 3306 is not available for security reasons. For a video tutorial, visit: http://bit.ly/om8rsql
-
-You can also manage databases via command line with Drush commands or tools like mysql and mysqldump.
+Direct MySQL access over the network is closed for security — use the web tool above, or your own desktop client over an SSH tunnel.
 
 ----------------------------------------
-5. ADVANCED USER INFORMATION
+GOING LIVE
 ----------------------------------------
 
-How-To Information: Check the built-in docs in your account at ~/static/control/README.txt.
+To put a site live on your own domain, point its DNS at your server:
 
-Directory Information:
-- Your home directory contains subdirectories in ~/platforms for different platform releases.
-- Use symlinks in ~/clients/client-name/ to find all your sites directly.
+yourdomain.com.           IN  A      166.84.6.231
+subdomain.yourdomain.com. IN  CNAME  aegir.url.name.
 
-Custom Platform Information:
-- Upload custom Drupal platforms to ~/static/platforms in separate subdirectories.
-- Enable custom platforms via the "Add platform" option in your Ægir control panel.
-
-Note: Only Pressflow (LTS) core-based platforms are allowed for Drupal 6.x versions; standard Drupal core can be used for Drupal 7 and newer versions.
+For quick tests you don't need DNS at all — any subdomain of aegir.url.name works straight away, for example http://atrium.aegir.url.name.
 
 ----------------------------------------
-6. ARTICLES & VIDEO TUTORIALS
-----------------------------------------
 
-Video Tutorials: http://bit.ly/aegir8cc
+Everything else — creating sites, platforms, backups, HTTPS, and what to do when something looks wrong — is in the documentation:
 
-Site Import & Development:
-- Development Library: https://learn.omega8.cc/library/development
-- Good to Know: https://learn.omega8.cc/library/good-to-know
+https://boa.omega8.cc/using
 
-Performance Information:
-- Performance Library: https://learn.omega8.cc/library/performance
-- Tips & Tricks: https://learn.omega8.cc/library/tips-and-tricks
-
-Useful Hints: Problems & Solutions: https://learn.omega8.cc/library/problems-solutions
-
-Recommended Articles:
-- Biggest Misunderstanding Ever: https://learn.omega8.cc/the-biggest-misunderstanding-ever-122
-- Best Recipes for Disaster: https://learn.omega8.cc/the-best-recipes-for-disaster-139
-- Good Habits to Learn: https://learn.omega8.cc/are-there-any-specific-good-habits-to-learn-116
-
-For further assistance, contact us: https://omega8.cc/contact
+Take it slowly. You can't reach or break anything on the server that isn't yours, so explore freely — and don't hesitate to ask your host when you're stuck.
 
 Thank you,
 The Omega8.cc Team
-
