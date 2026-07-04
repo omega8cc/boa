@@ -143,25 +143,13 @@ your instance — see [SECURITY.md](SECURITY.md).
 
 ### Update Commands in the Limited Shell
 
-Code and database updates are meant to be driven through Ægir, so the `oN.ftp` limited
-shell **intercepts the bare update verbs** and does not run them directly. Running any of
-`drush up`, `drush upc`, `drush updatedb`, or `drush updb` (with no `@alias`) prints a
-short advisory and exits without doing anything.
+Code and database updates are usually driven through Ægir (a **Verify** or **Migrate**
+task), but you can also run them from the `oN.ftp` limited shell.
 
-If you really need to update from the command line, BOA provides renamed verbs that map to
-the corresponding standalone Drush 8 operations:
-
-| Command       | Runs                     |
-|---------------|--------------------------|
-| `drush dbup`  | `drush8 updatedb`        |
-| `drush mup`   | `drush8 pm-update`       |
-| `drush mupc`  | `drush8 pm-updatecode`   |
-| `drush mups`  | `drush8 pm-updatestatus` |
-
-The interception only matches the bare two-token verb. Alias-scoped forms such as
-`drush @site-alias updb` or `drush @site-alias updbst` are **not** intercepted, because the
-`@site-alias` sits between `drush` and the verb — these run normally (see the site-local
-`vdrush` steps below).
+On a **Drupal 8+** platform, use the site-local `vdrush` (see below) — the standalone
+Ægir Drush 8 cannot start up a Drupal 8/9/10/11 site to apply updates. The system `drush`
+(Drush 8) is for legacy Drupal 6/7 sites, where `drush @site-alias updb` (or `updatedb`)
+runs normally.
 
 ---
 
