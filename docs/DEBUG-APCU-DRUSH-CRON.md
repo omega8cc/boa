@@ -88,7 +88,8 @@ Drupal\Core\Render\Component\Exception\ComponentNotFoundException: Unable to fin
 
 Valkey is hard-capped at its `maxmemory` ceiling. When that ceiling is too low for the
 number of sites hosted, Valkey is permanently full and continuously evicts cache keys using
-the `allkeys-lru` policy to make room for new entries. The `discovery` cache bin — which
+the `volatile-lfu` policy (BOA forces this policy in `valkey.conf`/`redis.conf`) to make
+room for new entries. The `discovery` cache bin — which
 holds plugin registration data for all modules on a site — is among the entries that get
 evicted. When a PHP-FPM worker needs the discovery cache for a site and finds it evicted,
 Drupal must rebuild it from the database. Under concurrent traffic, multiple workers
@@ -103,18 +104,18 @@ conditions and temporarily repopulates Valkey — until eviction pressure return
 BOA sets Valkey's `maxmemory` using the formula:
 
 ```bash
-_MAX_MEM_VALKEY=$(( _RAM / 6 ))
+_MAX_MEM_VALKEY=$(( _RAM / 3 ))
 ```
 
-On a 24GB server this produces a 4GB ceiling. For a server hosting a small number of sites
-this is adequate, but for servers hosting 100+ Drupal 8/9/10 sites the working set of
-bootstrap, discovery, config, render cache, and dynamic page cache across all sites quickly
-exceeds this allocation.
+On a 24GB server this produces an 8GB ceiling. For a server hosting a small number of sites
+this is more than adequate, but for servers hosting 100+ Drupal 8/9/10 sites the working set
+of bootstrap, discovery, config, render cache, and dynamic page cache across all sites can
+still exceed this allocation.
 
-BOA 5.x updates this formula to `_RAM / 3`, doubling the default Valkey allocation. On
-servers upgraded to this version the ceiling will be recalculated automatically. On older
-installations or servers where the ceiling has been manually set, review and increase as
-described below.
+Older BOA installations used a smaller `_RAM / 6` allocation (a 4GB ceiling on the same
+24GB host). Servers upgraded to current BOA have the ceiling recalculated to `_RAM / 3`
+automatically. On installations that have not been upgraded, or where the ceiling has been
+manually set, review and increase as described below.
 
 ### Fix
 
@@ -234,8 +235,11 @@ fix is to increase the limit via the FPM pool configuration files:
 /opt/etc/fpm/fpm-pool-common-modern.conf
 ```
 
-The relevant settings are `max_execution_time`, `max_input_time`, and
-`default_socket_timeout`. See the last entry in
+The relevant settings are the `php_admin_value[...]` directives
+`php_admin_value[max_execution_time]`, `php_admin_value[max_input_time]`, and
+`php_admin_value[default_socket_timeout]` (each shipped at `180`) — edit these directives
+directly; the bare, un-prefixed key form is not honoured in these pool files. See the last
+entry in
 https://github.com/omega8cc/boa/blob/5.x-dev/docs/FAQ.md for details. These files are
 overwritten on every barracuda upgrade and must be reapplied after upgrades. Also
 investigate why cron exceeds 3 minutes — this is worth resolving independently.

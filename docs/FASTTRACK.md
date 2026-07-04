@@ -4,10 +4,11 @@ It is now possible to speed up the already blazing fast migrations and cloning w
 
 `~/static/control/FastTrack.info`
 
-This file, if it exists, will drastically reduce the number of tasks otherwise launched automatically in preparation for clone and migrate, namely:
+This file, if it exists, will drastically reduce the number of tasks otherwise launched automatically in preparation for clone and migrate, plus the extra re-verify launched after a platform import, namely:
 
 1. Both source and target platforms will no longer be verified.
 2. The site will no longer be verified before running clone or migrate.
+3. The imported site will no longer be re-verified automatically after a platform import completes.
 
 Please carefully consider the implications, though, because there are very good reasons for these extra tasks to be launched before running clone or migrate to make sure that any issues are detected and fixed for you early and not during migration or clone, which could otherwise break the site and leave it in a state not easy to fix, especially without root access to the system.
 

@@ -103,6 +103,7 @@ The system supports backups to the following storage services. Each service requ
 - **Amazon S3 Standard-IA**
 - **Amazon S3**
 - **Backblaze B2**
+- **Cloudflare R2 Object Storage**
 - **DigitalOcean Spaces**
 - **Google Cloud Storage**
 - **IBM Cloud Object Storage**
@@ -141,12 +142,13 @@ The system automatically includes the following directories:
 
 1. **Default Inclusion**:
    - Everything in `/data/disk/your_username/static/`.
-   - System-managed directories like `/home/your_username.ftp/platforms/`.
+   - Everything in `/data/disk/your_username/platforms/`.
    - Platforms without codebase access in `/data/disk/your_username/distro/`.
+   - Your whole FTP home directory `/home/your_username.ftp/`.
 
 2. **Default Exclusion**:
-   - Everything in `/data/disk/your_username/static/trash/`.
-   - Everything in `/data/disk/your_username/static/restores/`.
+   - Under `/data/disk/your_username/`: `.tmp/`, `clients/`, `u/`, `undo/`, and within `static/`: `restores/`, `tmp/`, `trash/`.
+   - Under `/home/your_username.ftp/`: `.tmp/`, `backups/`, `clients/`, `platforms/`, `static/`.
 
 3. **Customization**:
    - You can include or exclude additional directories using configuration files located in:

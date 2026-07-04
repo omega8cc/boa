@@ -1122,28 +1122,27 @@ _barracuda_install() {
     if [ -n "${_eXtr}" ] \
       && [ -e "${_vBs}/${_filIncB}" ] \
       && [ -e "${_vBs}/${_filIncO}" ]; then
-      if [ -n "${_eXtr}" ]; then
-        if [ "${_eXtr}" = "php-85" ] || [ "${_eXtr}" = "php-8.5" ]; then
-          _pI=8.5
-        elif [ "${_eXtr}" = "php-84" ] || [ "${_eXtr}" = "php-8.4" ]; then
-          _pI=8.4
-        elif [ "${_eXtr}" = "php-83" ] || [ "${_eXtr}" = "php-8.3" ]; then
-          _pI=8.3
-        fi
-        if [ -n "${_pI}" ]; then
-          sed -i "s/^_PHP_SI.*/_PHP_SINGLE_INSTALL=${_pI}/g" ${_vBs}/${_filIncB}
-          wait
-          sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=${_pI}/g"  ${_vBs}/${_filIncB}
-          wait
-          sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
-          wait
-          sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
-          wait
-          sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
-          wait
-          sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
-          wait
-        fi
+      _pI=
+      if [ "${_eXtr}" = "php-85" ] || [ "${_eXtr}" = "php-8.5" ]; then
+        _pI=8.5
+      elif [ "${_eXtr}" = "php-84" ] || [ "${_eXtr}" = "php-8.4" ]; then
+        _pI=8.4
+      elif [ "${_eXtr}" = "php-83" ] || [ "${_eXtr}" = "php-8.3" ]; then
+        _pI=8.3
+      fi
+      if [ -n "${_pI}" ]; then
+        sed -i "s/^_PHP_SI.*/_PHP_SINGLE_INSTALL=${_pI}/g" ${_vBs}/${_filIncB}
+        wait
+        sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=${_pI}/g"  ${_vBs}/${_filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
+        wait
       elif [ "${_eXtr}" = "php-all" ] \
         || [ "${_eXtr}" = "php-min" ] \
         || [ "${_eXtr}" = "php-max" ]; then
@@ -1182,6 +1181,11 @@ _barracuda_install() {
           sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"         ${_vBs}/${_filIncB}
         fi
         wait
+      elif [ "${_eXtr}" = "silent" ] \
+        || [ "${_eXtr}" = "minimal" ] \
+        || [ "${_eXtr}" = "system" ] \
+        || [ "${_eXtr}" = "octolog" ]; then
+        : ### output-mode keyword consumed in _init_setup, never a NewRelic key
       else
         sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${_eXtr}\"/g" ${_vBs}/${_filIncB}
         wait

@@ -43,6 +43,11 @@ as explained in this document further below.
     https://github.com/lukas2511/dehydrated
     https://github.com/omega8cc/hosting_le
 
+  NOTE: The ACME challenge location (`/.well-known/acme-challenge`) is emitted
+  with `auth_basic off;`, so it stays reachable even when the site is behind
+  site-wide HTTP Basic Auth. This means password-protected staging/demo sites
+  can still issue and renew Let's Encrypt certificates.
+
 ## How to add Letsencrypt.org SSL certificate to hosted site?
 
   In your Ægir control panel please go to the site's node Edit tab, then
@@ -74,7 +79,7 @@ as explained in this document further below.
   When you modify aliases or redirections, Ægir will re-create the SSL
   certificate on the fly, to match current settings and aliases to list.
 
-  BOA runs auto-renewal checks for you weekly, and forces renewal if there is
+  BOA runs auto-renewal checks for you daily, and forces renewal if there is
   less than 30 days to the certificate expiration date (Let's Encrypt certs
   are valid for up to 90 days before they have to be renewed).
 
@@ -82,8 +87,11 @@ as explained in this document further below.
 
 ## How to rename a site with SSL enabled?
 
-  If you need to rename a site, you must first disable SSL and alias redirection,
-  run the migrate task to rename the site, then re-enable SSL and alias redirection.
+  When you rename a site, the migrate task now auto-disables Encryption for you
+  as soon as the site's main machine-name changes, because the old SSL key and
+  certificate are bound to the previous name and are invalid for the new one.
+  You only need to re-enable Encryption (and, if used, alias redirection) on the
+  renamed site afterward, so the certificate is re-created for the new domain.
 
   Owing to this requirement, workflows that require renaming sites often, e.g. for
   dev/staging/production environments, are usually better served by moving aliases
@@ -111,8 +119,18 @@ as explained in this document further below.
   once you will switch their SSL settings to `Enabled` or `Required`.
 
     `.(dev|devel|temp|tmp|temporary|test|testing).`
+    `.nodns.`
 
   Examples: `foo.temp.bar.org`, `foo.test.bar.org`, `foo.dev.bar.org`
+
+  NOTE: The `.nodns.` keyword is always skipped and cannot be overridden.
+  The `.(dev|devel|temp|tmp|temporary|test|testing).` skip, however, can be
+  suppressed per site by creating an empty enable-DEV control file for it:
+
+    `[aegir_root]/static/control/ssl-yes-dev-<site-main-name>.info`
+
+  With that flag present, the matching dev/test/temp site is issued a real
+  Let's Encrypt certificate instead of a self-signed one.
 
   NOTE: This exception rule doesn't apply to aliases which are not used
   as a redirection target. Even aliases with listed special keywords in their
