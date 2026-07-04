@@ -163,18 +163,19 @@ on the next run.
 
 ## Generators, lock and serials
 
-| Tool | Schedule | Writes | Serial |
-|------|----------|--------|--------|
-| `/var/xdrago/ai_policy.sh` | `*/2` | per-instance `config/includes/ai_policy/<site>.conf` | f97 |
-| `/var/xdrago/ip_access.sh` | `*/2` | per-instance `config/includes/ip_access/<site>.conf` (see [IP-ACCESS.md](IP-ACCESS.md)) | f89 |
-| `/var/xdrago/nginx_deny.sh` | `*/2` | `/data/conf/nginx_banned_ips.conf` | f99 |
-| `/var/xdrago/cloudflare_realip.sh` | daily + install | `/data/conf/nginx_cloudflare_real_ip.conf` | f99 |
+| Tool | Schedule | Writes |
+|------|----------|--------|
+| `/var/xdrago/ai_policy.sh` | `*/2` | per-instance `config/includes/ai_policy/<site>.conf` |
+| `/var/xdrago/ip_access.sh` | `*/2` | per-instance `config/includes/ip_access/<site>.conf` (see [IP-ACCESS.md](IP-ACCESS.md)) |
+| `/var/xdrago/nginx_deny.sh` | `*/2` | `/data/conf/nginx_banned_ips.conf` |
+| `/var/xdrago/cloudflare_realip.sh` | daily + install | `/data/conf/nginx_cloudflare_real_ip.conf` |
 
 All four take a shared advisory lock `/run/boa_nginx_config.lock` (`flock -w 30`, then
 skip and retry next tick) so their `configtest`+`reload` cycles never collide on the
 same host nginx. Each one is a content change-gate → atomic write → `configtest` →
-`reload`, with rollback to the last-good copy if `configtest` fails. Any change to a
-serial-gated tool must decrement its `fNN` in `BOA.sh.txt` in the same commit.
+`reload`, with rollback to the last-good copy if `configtest` fails. All four are
+serial-gated via `_fetch_versioned`; any change must decrement the tool's `fNN` in
+`BOA.sh.txt` in the same commit.
 
 ## Verify
 
