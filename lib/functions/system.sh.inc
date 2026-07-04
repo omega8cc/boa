@@ -8867,6 +8867,12 @@ _smtp_check() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _smtp_check"
   fi
+  ###
+  ### Diagnostic only: when no relay host is configured, test whether outgoing
+  ### port 25 works and warn if it doesn't. _SMTP_RELAY_TEST=NO skips it. This
+  ### must NOT enclose the relayhost logic below -- it never runs when a relay
+  ### is set, which would leave _SMTP_RELAY_HOST unapplied.
+  ###
   if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Checking SMTP connections..."
@@ -8890,28 +8896,29 @@ _smtp_check() {
 
 EOF
     fi
-    ###
-    ### Required if outgoing smtp port is closed and smtp relay is in use.
-    ### Gate: if local sendmail is enabled for hosted sites
-    ### (/etc/boa/.allow.sendmail.cnf present), stay in no-relay/direct mode --
-    ### routing through the relay would re-stamp the sites' own mail to the
-    ### relay's single sending domain. Self-correcting both ways: enabling the
-    ### allow file reverts an already-active relayhost back to direct.
-    ###
-    if [ ! -z "${_SMTP_RELAY_HOST}" ] \
-      && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
-      sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
-      wait
-      sed -i "s/relayhost =/relayhost = ${_SMTP_RELAY_HOST}/g" \
-        /etc/postfix/main.cf &> /dev/null
+  fi
+  ###
+  ### Apply the configured SMTP relay to Postfix, independent of the port-25
+  ### diagnostic above and of _SMTP_RELAY_TEST. Gate: if local sendmail is
+  ### enabled for hosted sites (/etc/boa/.allow.sendmail.cnf present), stay in
+  ### no-relay/direct mode -- routing through the relay would re-stamp the
+  ### sites' own mail to the relay's single sending domain. Self-correcting
+  ### both ways: enabling the allow file reverts an already-active relayhost
+  ### back to direct.
+  ###
+  if [ ! -z "${_SMTP_RELAY_HOST}" ] \
+    && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
+    sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
+    wait
+    sed -i "s/relayhost =/relayhost = ${_SMTP_RELAY_HOST}/g" \
+      /etc/postfix/main.cf &> /dev/null
+    wait
+    postfix reload &> /dev/null
+  elif [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
+    if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
+      sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
       wait
       postfix reload &> /dev/null
-    elif [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
-      if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
-        sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
-        wait
-        postfix reload &> /dev/null
-      fi
     fi
   fi
 }
