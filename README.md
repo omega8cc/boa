@@ -147,6 +147,7 @@ Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5
 - Fast Migrate/Clone: [docs/FASTTRACK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FASTTRACK.md)
 - Files Directories Symlinking, per-server overview + testing: [docs/FILES-SYMLINK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FILES-SYMLINK.md)
 - Files Directories Symlinking, per-site how-to: [docs/FILES-SYMLINK-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FILES-SYMLINK-USER.md)
+- Relocating Files Stores to Attached Storage (`migratefs`): [docs/MIGRATEFS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATEFS.md)
 - Included Platforms: [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
 - IP Access Control, per-server overview: [docs/IP-ACCESS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/IP-ACCESS.md)
 - IP Access Control, per-site how-to: [docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/IP-ACCESS-USER.md)
