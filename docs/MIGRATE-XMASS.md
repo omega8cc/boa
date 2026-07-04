@@ -152,8 +152,19 @@ State file is written as `phase=syncing` on completion.
 Run on the **source**. Repeat as often as needed — rsync is incremental.
 
 ```sh
-xmass sync target-ip
+xmass sync target-ip            # DRY: read-only test/plan, no changes
+xmass sync target-ip --live     # perform the sync (after a CLEAN dry run)
 ```
+
+> **`xmass sync` and `xmass cutover` default to a read-only DRY run** and require an
+> explicit **`--live`** to make changes — accepted only after a `CLEAN` dry run for that
+> target. The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
+> pre-checks disk space for every account's files store **and the Solr indices** (which
+> can be large), and records `CLEAN`/`NOT CLEAN`
+> for the whole run — a single `DENY` (dangling source symlink, more than one `/mnt`
+> mount, or a store that fits nowhere) makes it `NOT CLEAN` and refuses `--live` until
+> resolved. Utility/DB commands (`init`, `status`, `pre-mig`, `post-mig`) are not gated,
+> and MySQL/xtrabackup steps are never gated.
 
 Syncs the following to the target on each run:
 
@@ -165,7 +176,7 @@ Syncs the following to the target on each run:
 | Usage logs | `/var/log/boa/usage` |
 | Solr indices (best-effort) | `/opt/solr4`, `/var/solr7/data`, `/var/solr9/data` |
 | Per-account platforms | `/data/disk/oN/distro/` |
-| Per-account site files | `/data/disk/oN/static/files` (symlink-safe two-pass) |
+| Per-account site files | `/data/disk/oN/static/files` (storage-aware: mirrored onto the target's `/mnt` mount, or de-referenced to root if it has none) |
 | Per-account drush aliases | `/data/disk/oN/.drush/` (site aliases only) |
 | Per-account nginx vhosts | `/data/disk/oN/config/server_master/nginx/vhost.d/` |
 | Per-account SSL/LE | `/data/disk/oN/config/ssl.d/`, `config/server_master/ssl.d/`, `tools/le` |
@@ -191,9 +202,13 @@ seconds. Aim for lag < 60 s before scheduling cutover.
 Run on the **source**. This is the only step with user-visible downtime.
 
 ```sh
-xmass cutover target-ip [--permanent-proxy]
+xmass cutover target-ip [--permanent-proxy]            # DRY: plan only, no lock/downtime
+xmass cutover target-ip --live [--permanent-proxy]     # perform the cutover
 ```
 
+Without `--live`, `cutover` does a plan-only pass over every account's files store and
+stops **before** any destructive step (no MySQL read-lock, no downtime). Run it once to
+confirm `CLEAN`, then re-run with `--live` to perform the real cutover.
 `--permanent-proxy` on cutover overrides whatever was set at `init`.
 
 **Pre-flight checks** (automatic):

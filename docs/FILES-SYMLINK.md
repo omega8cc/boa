@@ -20,10 +20,18 @@ This is the server-admin reference. For the per-site user how-to see
 [FILES-SYMLINK-USER.md](FILES-SYMLINK-USER.md).
 
 > The account-level `static/files` directory may itself be a real directory or a
-> symlink to attached storage; that lower layer is handled separately during
-> migration (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md) → *Static Files Symlink
-> Handling*). This document is about the **per-site** `sites/<url>/{files,private}`
-> links into that store.
+> symlink to attached storage; that lower layer is handled separately. To relocate
+> an account's `static/files` store (and the shared `arch`) onto an attached disk,
+> use [MIGRATEFS.md](MIGRATEFS.md) (`migratefs`); during a host move it is handled by
+> `xoct` (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md) → *Static Files Symlink Handling*).
+> This document is about the **per-site** `sites/<url>/{files,private}` links into
+> that store.
+>
+> **BOA supports exactly one attached mountpoint under `/mnt`.** The attached files
+> mount is located as *the single real mountpoint under `/mnt`* (by both `migratefs`
+> and the lshell FTP-jail path allow-list); multiple `/mnt` mountpoints are **not
+> supported** and are refused / fail closed. Any mount name works — there is no
+> dot-in-the-name convention.
 
 ## What happens, and when
 
