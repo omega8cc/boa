@@ -1,6 +1,8 @@
 # How To: Migrate Single Site Between Remote Ægir
 
-This is a detailed how-to for the `remote_import` Provision extension and `hosting_remote_import` module included by default in every Ægir Satellite Instance since BOA-2.0.3 Edition.
+**Deprecated (noted 2026-07-04)**: The end-to-end remote-import migration flow described below is no longer functional in current BOA. The Provision-side `remote_import` backend extension is no longer installed — current BOA only ever *removes* it (it is carried in the extension back-up/cleanup lists and moved aside on upgrade, never cloned or installed). Only the `hosting_remote_import` front-end module is still shipped, and it is dormant (not enabled by default). This page is retained for historical reference; the procedure below cannot complete without the backend extension.
+
+This is a detailed how-to for the `hosting_remote_import` module shipped (but not enabled by default) in every Ægir Satellite Instance. Historically it paired with the `remote_import` Provision extension, which is no longer installed by current BOA.
 
 We assume that your Octopus system user is the default `o1`.
 

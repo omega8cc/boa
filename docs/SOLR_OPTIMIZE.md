@@ -492,6 +492,8 @@ grep -E "Orphan cleanup port|Active cores|=== Orphan" \
 ### Health check
 After each cleanup run the script queries the Solr STATUS API and logs:
 - `HEALTH-INFO: N cores registered`
+- `HEALTH-SKIP` — `python3` not available, health check skipped
+- `HEALTH-ERROR` — no response from Solr on the port, or JSON parse failed
 - `HEALTH-INIT-FAIL` — core failed to load (classloader held, index broken)
 - `HEALTH-WARN ... high segment count=N` — merge policy not keeping up
 - `HEALTH-WARN ... deleted=N/M (X%)` — unmerged deletes above 20%

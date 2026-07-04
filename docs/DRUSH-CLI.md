@@ -141,6 +141,28 @@ contributed commands will load. If you instead need a contributed command to run
 an **Ægir backend task** (such as backend-mode cron), ask your host to enable it for
 your instance — see [SECURITY.md](SECURITY.md).
 
+### Update Commands in the Limited Shell
+
+Code and database updates are meant to be driven through Ægir, so the `oN.ftp` limited
+shell **intercepts the bare update verbs** and does not run them directly. Running any of
+`drush up`, `drush upc`, `drush updatedb`, or `drush updb` (with no `@alias`) prints a
+short advisory and exits without doing anything.
+
+If you really need to update from the command line, BOA provides renamed verbs that map to
+the corresponding standalone Drush 8 operations:
+
+| Command       | Runs                     |
+|---------------|--------------------------|
+| `drush dbup`  | `drush8 updatedb`        |
+| `drush mup`   | `drush8 pm-update`       |
+| `drush mupc`  | `drush8 pm-updatecode`   |
+| `drush mups`  | `drush8 pm-updatestatus` |
+
+The interception only matches the bare two-token verb. Alias-scoped forms such as
+`drush @site-alias updb` or `drush @site-alias updbst` are **not** intercepted, because the
+`@site-alias` sits between `drush` and the verb — these run normally (see the site-local
+`vdrush` steps below).
+
 ---
 
 ### Site-Local Drush is Preserved and Fully Supported

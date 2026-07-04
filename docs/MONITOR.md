@@ -31,7 +31,7 @@ The installed root crontab lives at `/var/spool/cron/crontabs/root`. Its master 
 | `mysql_backup.sh` / `mysql_cluster_backup.sh` | 01:15 / 02:15 daily | SQL dumps |
 | `graceful.sh` | 03:01 daily | Graceful service cycle |
 | `backboa backup` / `duobackboa backup` | 03:15 / 05:15 daily | Off-site backups |
-| `daily.sh` | 04:15 daily | Daily maintenance (control-file migration, cleanup, version bumps) |
+| `owl.sh` | 04:15 daily | Daily maintenance (control-file migration, cleanup, version bumps) |
 
 The per-minute monitors (`second.sh`, `minute.sh`, `guest-fire.sh`, `runner.sh`) are the live self-healing core. The 2-minute and longer jobs are slower-changing maintenance. The daily/backup block is out of scope here.
 
@@ -151,10 +151,10 @@ Four **per-CPU load ratios** define the escalation ladder. `_load_control` multi
 |---|---|---|---|---|
 | `_CPU_SPIDER_RATIO` | `2.1` | 210% | SPIDER | Block crawlers (web stays up) |
 | `_CPU_TASK_RATIO` | `3.1` | 310% | TASK | Skip backend tasks (web stays up) |
-| `_CPU_MAX_RATIO` | `4.1` | 410% | MAX | Pause nginx + PHP-FPM |
-| `_CPU_CRIT_RATIO` | `6.1` | 610% | CRIT | Kill long procs, then pause web |
+| `_CPU_MAX_RATIO` | `6.1` | 610% | MAX | Pause nginx + PHP-FPM |
+| `_CPU_CRIT_RATIO` | `8.1` | 810% | CRIT | Kill long procs, then pause web |
 
-The defaults are deliberately **well above 100%**. A BOA box is expected to run its cores hot under normal traffic; auto-pause is a last resort for genuinely pathological load, not a load balancer. On a 2-core box, SPIDER trips when the 1-minute load average reaches ~4.2, MAX at ~8.2, CRIT at ~12.2. All four are overridable in `/root/.barracuda.cnf` and are sanitised on load (anything but digits and a decimal point is stripped), so a malformed override falls back to the built-in default rather than breaking the arithmetic.
+The defaults are deliberately **well above 100%**. A BOA box is expected to run its cores hot under normal traffic; auto-pause is a last resort for genuinely pathological load, not a load balancer. On a 2-core box, SPIDER trips when the 1-minute load average reaches ~4.2, MAX at ~12.2, CRIT at ~16.2. All four are overridable in `/root/.barracuda.cnf` and are sanitised on load (anything but digits and a decimal point is stripped), so a malformed override falls back to the built-in default rather than breaking the arithmetic.
 
 The `TASK` ratio (`3.1`) is consumed by the task-queue runner (below), not by the web-pause ladder. The three tiers `_load_control` itself acts on are SPIDER, MAX and CRIT.
 
@@ -165,16 +165,16 @@ The `TASK` ratio (`3.1`) is consumed by the task-queue runner (below), not by th
 ```
 measure _O_LOAD (1m) and _F_LOAD (5m), per-CPU %
   │
-  ▼  CRIT — _O_LOAD or _F_LOAD > 610%?
+  ▼  CRIT — _O_LOAD or _F_LOAD > 810%?
   │    yes ─► sleep 9, re-check ─► still high:
   │            _terminate_processes  (killall -9 php drush.php wget curl)
   │            then _hold_services   (stop nginx + php-fpm)
   │            touch /run/critical_load.pid
-  ▼  MAX — _O_LOAD or _F_LOAD > 410%?
+  ▼  MAX — _O_LOAD or _F_LOAD > 610%?
   │    yes ─► sleep 9, re-check ─► still high:
   │            _hold_services        (stop nginx + php-fpm)
   │            touch /run/max_load.pid
-  ▼  SPIDER — load > 210% and ≤ 410%?
+  ▼  SPIDER — load > 210% and ≤ 610%?
   │    yes ─► sleep 9, re-check ─► still high:
   │            _nginx_high_load_on   (enable nginx_high_load.conf, block crawlers)
   │            touch /run/spider_load.pid
@@ -182,10 +182,23 @@ measure _O_LOAD (1m) and _F_LOAD (5m), per-CPU %
             if spider protection on and both loads ≤ 210%: _nginx_high_load_off
 ```
 
-- **SPIDER — block crawlers.** When per-CPU load sits above 210% but at or below 410% (checked on both the 1-minute and 5-minute figures), `_nginx_high_load_on` renames `/data/conf/nginx_high_load_off.conf` to `/data/conf/nginx_high_load.conf` and reloads nginx. That file is glob-included by `aegir/conf/nginx/nginx_compact_include.conf` (`include /data/conf/nginx_high_load.c*;`), so swapping the suffix toggles crawler blocking without rewriting any vhost. The web stack stays fully up for real users; only spiders are shed. This is the only tier that does **not** set `_skip_proc_control`, so the heavy fan-out still runs on its normal cadence.
-- **MAX — pause the web stack.** Above 410%, `_hold_services` stops the entire web tier: `service nginx stop`, then `force-quit` on every installed `php<NN>-fpm`, then a belt-and-braces `killall php-fpm` and `killall nginx`. The box stops serving so the run queue can drain. An `ALERT`-level incident is logged and (subject to policy) e-mailed.
-- **CRIT — terminate runaways, then pause.** Above 610%, `_terminate_processes` runs **first** (`killall -9 php drush.php wget curl`) — a stuck PHP request, a Drush job in a loop, a wget/curl pulling something huge — *before* `_hold_services` pauses the web tier. Killing the runaway first is what lets the box recover instead of immediately re-spiking after the pause.
+- **SPIDER — block crawlers.** When per-CPU load sits above 210% but at or below 610% (checked on both the 1-minute and 5-minute figures), `_nginx_high_load_on` renames `/data/conf/nginx_high_load_off.conf` to `/data/conf/nginx_high_load.conf` and reloads nginx. That file is glob-included by `aegir/conf/nginx/nginx_compact_include.conf` (`include /data/conf/nginx_high_load.c*;`), so swapping the suffix toggles crawler blocking without rewriting any vhost. The web stack stays fully up for real users; only spiders are shed. This is the only tier that does **not** set `_skip_proc_control`, so the heavy fan-out still runs on its normal cadence.
+- **MAX — pause the web stack.** Above 610%, `_hold_services` stops the entire web tier: `service nginx stop`, then `force-quit` on every installed `php<NN>-fpm`, then a belt-and-braces `killall php-fpm` and `killall nginx`. The box stops serving so the run queue can drain. An `ALERT`-level incident is logged and (subject to policy) e-mailed.
+- **CRIT — terminate runaways, then pause.** Above 810%, `_terminate_processes` runs **first** (`killall -9 php drush.php wget curl`) — a stuck PHP request, a Drush job in a loop, a wget/curl pulling something huge — *before* `_hold_services` pauses the web tier. Killing the runaway first is what lets the box recover instead of immediately re-spiking after the pause.
 - **NORMAL — recovery.** When load is at or below the spider threshold on **both** figures, the box is marked healthy and, if spider protection is on, `_nginx_high_load_off` reverts the file and reloads. Recovery is automatic — there is no manual un-pause. (`_hold_services` *stops* services rather than disabling them, so the next normal pass / service watchdog brings nginx and PHP-FPM back; the spider config is the only piece `_load_control` explicitly reverts.)
+
+### The backup pause-skip (MAX/CRIT only)
+
+Both drastic tiers carry a deliberate exemption: when the high load is caused by a running backup that is genuinely disk-bound, MAX and CRIT **skip** the pause/kill entirely and only log. Pausing nginx/PHP-FPM does nothing for a disk-bound dump — it cuts service for no benefit — so the tier stands down instead. Two conditions must both hold before the skip applies:
+
+- **A backup is in progress** — `_backup_in_progress` matches the BOA backup orchestrators by path (`backboa` / `duobackboa` / `multiback` / `mysql_backup.sh` / `mysql_cluster_backup.sh`) or the dump engines by exact name (`mydumper`, `duplicity`), or finds `/run/boa_sql_cluster_backup.pid`.
+- **The load really is I/O-wait-bound** — `_load_is_iowait_bound` samples system iowait% over a short `/proc/stat` delta and requires it at or above `_LOAD_IOWAIT_MIN` (default **10**%). This is what distinguishes a self-limiting backup from a CPU-bound runaway that merely coincides with the backup window: a CPU-bound spike has low iowait, so pause/kill still fire.
+
+The measurement **fails closed** — any read error or degenerate delta yields 0% iowait, which is below the threshold, so the drastic tiers still act. `_LOAD_IOWAIT_MIN` is overridable in `/root/.barracuda.cnf`.
+
+### Resume hysteresis — the pause latch
+
+The MAX/CRIT markers are **latched**: once `/run/max_load.pid` or `/run/critical_load.pid` is set, `_clear_pause_latch` removes them only after **both** the 1-minute and 5-minute per-CPU loads fall below `_CPU_RESUME_THRESHOLD` (= `_CPU_MAX_THRESHOLD` × `_RESUME_FRACTION`, default fraction **0.8** → 80% of the MAX threshold). The service watchdogs restart web only when both markers are absent, so this holds the web tier paused through the dip band just under MAX instead of un-pausing the instant load ticks below the threshold — without it a box hovering at the line flapped pause/resume every pass. `_RESUME_FRACTION` is overridable in `/root/.barracuda.cnf` and is clamped to the open interval (0,1): a value of 0 (or a typo sanitising to a bare `.`) would leave the latch never clearing, and a value ≥ 1 would disable the hysteresis, so anything outside (0,1) resets to the default. The latch **fails toward resume** — a missing or unusable threshold clears the markers rather than leaving web stuck paused.
 
 ### State files in /run
 
@@ -277,7 +290,7 @@ Shared design notes (verified against all three scripts):
 
 `runner.sh` is a **separate** per-minute cron job, not part of the `second.sh`/`minute.sh` fan-out. It drains the Aegir verify/migrate/backup task queue by executing the `/var/xdrago/run-*` runners. It is heavily gated so it never adds load on a box that should stay quiet:
 
-- **Hard stops first.** It exits immediately if `/root/.proxy.cnf`, `/etc/boa/.pause_tasks_maint.cnf`, or a `max_load`/`critical_load` pid is present; and again if too many `runner.sh` instances are already running, or a SQL backup, `daily.sh`, a MySQL restart/cluster-backup, or `boa_cron_wait.pid` is in flight.
+- **Hard stops first.** It exits immediately if `/root/.proxy.cnf`, `/etc/boa/.pause_tasks_maint.cnf`, or a `max_load`/`critical_load` pid is present; and again if too many `runner.sh` instances are already running, or a SQL backup, `owl.sh`, a MySQL restart/cluster-backup, or `boa_cron_wait.pid` is in flight.
 - **Load-gated per runner.** `_runner_action` runs a `/var/xdrago/run-*` runner only while the 1-minute per-CPU load is **below `_CPU_TASK_RATIO * 100`** (default 310%); above that it waits. This is the same task ratio used by the load-control logic — backend tasks are skipped under load while the web tier stays up.
 - **CI hosts (`/etc/boa/.look.like.jenkins.cnf`).** No automatic queue by default. It runs only if the box is a PRO plan (`POWER`/`PHANTOM`/`CLUSTER`/`ULTRA`/`MONSTER` in the octopus control file) **or** `/etc/boa/.allow.aegir.queue.cnf` is present, *and* at least one `run-aegir-queue.info` exists.
 - **Small boxes auto-throttle.** `runner.sh` itself writes `/root/.slow.cron.cnf` and pins it immutable with `chattr +i` when total RAM ≤ 4096 MB. With `.slow.cron.cnf` present (and no `.force.queue.runner.cnf`) it allows only one concurrent runner and runs a single throttled pass per minute with `sleep 15` pads.
@@ -296,11 +309,10 @@ Both loops classify the box once at startup with an identical `_monitor_box_clas
 | Order | Condition | Class |
 |---|---|---|
 | 1 | `/etc/boa/.look.like.jenkins.cnf` exists | **CI** |
-| 2 | `/root/.fast.cron.cnf` **or** `/root/.force.queue.runner.cnf` exists | **NORMAL** (explicit "full speed" override) |
-| 3 | `/root/.slow.cron.cnf` exists **or** total RAM ≤ 4096 MB (from `free -m`) | **SLOW** |
-| 4 | none of the above | **NORMAL** (default) |
+| 2 | (`/root/.slow.cron.cnf` exists **or** total RAM ≤ 4096 MB from `free -m`) **and** `/root/.force.queue.runner.cnf` is **absent** | **SLOW** |
+| 3 | none of the above | **NORMAL** (default) |
 
-The order matters: a CI box is CI even if it is also small; an explicit `.fast.cron.cnf` / `.force.queue.runner.cnf` wins over the RAM heuristic so an operator can force full cadence on a small box; otherwise the ≤ 4 GB RAM check classifies the box SLOW even if `runner.sh` has not yet written `.slow.cron.cnf`. Because `runner.sh` auto-creates that immutable marker on ≤ 4 GB boxes, most small hosts hit condition 3 by either branch.
+The order matters: a CI box is CI even if it is also small; otherwise the ≤ 4 GB RAM check classifies the box SLOW even if `runner.sh` has not yet written `.slow.cron.cnf`. The one escape hatch is `.force.queue.runner.cnf`: present, it suppresses the SLOW gate so a small box runs the full NORMAL cadence. `.fast.cron.cnf` is deliberately **not** honoured here — `runner.sh` ignores it while `.slow.cron.cnf` is set, so letting it force NORMAL would un-throttle exactly the tiny boxes this targets (e.g. a 4 GB box carrying both markers). Because `runner.sh` auto-creates the immutable `.slow.cron.cnf` marker on ≤ 4 GB boxes, most small hosts hit the SLOW condition by either branch.
 
 ### Per-class cadence
 
@@ -308,7 +320,7 @@ The two loops throttle different things. `minute.sh` reduces both the **number o
 
 | Box class | `minute.sh` fan-out | `second.sh` heavy fan-out | How detected |
 |---|---|---|---|
-| **NORMAL** | 9 passes, `sleep 5` (~72 spawns/min) | every pass (`_HEAVY_EVERY=1`, 10×/min) | default, or `.fast.cron.cnf` / `.force.queue.runner.cnf` |
+| **NORMAL** | 9 passes, `sleep 5` (~72 spawns/min) | every pass (`_HEAVY_EVERY=1`, 10×/min) | default, or `.force.queue.runner.cnf` overriding a small box |
 | **SLOW** | 3 passes, `sleep 18` (~24 spawns/min) | every 4th pass (`_HEAVY_EVERY=4`, ~3×/min) | `.slow.cron.cnf` or RAM ≤ 4096 MB |
 | **CI** | 1 pass (~8 spawns/min) | every 10th pass (`_HEAVY_EVERY=10`, 1×/min) | `.look.like.jenkins.cnf` |
 
@@ -346,7 +358,7 @@ It is **not** one of the `/var/xdrago/` monitors — it does not loop and enforc
 - **Identity by `(pid, starttime)`.** Because targets are short-lived and PIDs recycle, every process is keyed by its PID *and* its start tick, so two scripts that reuse a PID are never conflated.
 - **Birth-aware CPU charging.** The window start is recorded in boot-relative clock ticks from `/proc/uptime`. A process born during the window is charged its full cumulative CPU (`utime+stime`) from birth; a pre-existing process is charged only its in-window delta — which makes per-run totals meaningful for a script that spawns fresh every tick.
 - **bash/sh resolve to the script.** A process whose `comm` is `bash`/`sh`/`dash` is relabelled to the basename of the first `*.sh`/`*.pl`/`*.php` argument in its `cmdline`, so a hundred `bash` wrappers collapse into `minute.sh`, `scan_nginx.sh`, etc. instead of a useless `bash` bucket.
-- **Helper forks roll up to the launcher.** `pgrep`, `awk`, `bc`, `sleep` and friends are attributed to the BOA launcher that spawned them by walking the `/proc` parent chain (depth-bounded). The walk stops at a known launcher or at `cron`; anything past that is `(non-cron)`. The recognised launchers are `second.sh`, `minute.sh`, `runner.sh`, `guest-fire.sh`, `guest-water.sh`, `daily.sh`, `clear.sh`, `ip_access.sh`, `ai_policy.sh`, `nginx_deny.sh`, `migration_proxy_realip.sh`, `cloudflare_realip.sh`, `manage_ltd_users.sh`, `manage_solr_config.sh`, `purge_binlogs.sh`, `mysql_cleanup.sh`, `graceful.sh`.
+- **Helper forks roll up to the launcher.** `pgrep`, `awk`, `bc`, `sleep` and friends are attributed to the BOA launcher that spawned them by walking the `/proc` parent chain (depth-bounded). The walk stops at a known launcher or at `cron`; anything past that is `(non-cron)`. The recognised launchers are `second.sh`, `minute.sh`, `runner.sh`, `guest-fire.sh`, `guest-water.sh`, `owl.sh`, `clear.sh`, `ip_access.sh`, `ai_policy.sh`, `nginx_deny.sh`, `migration_proxy_realip.sh`, `cloudflare_realip.sh`, `manage_ltd_users.sh`, `manage_solr_config.sh`, `purge_binlogs.sh`, `mysql_cleanup.sh`, `graceful.sh`.
 - **Systemic fork/ctxt bounds.** The window's `processes` and `ctxt` deltas from `/proc/stat` bound the *total* fork and context-switch churn, including processes too short-lived to ever appear in a sample.
 - **Self-excluded.** It skips its own PID and its own `sleep` child, so the profiler never charges itself.
 

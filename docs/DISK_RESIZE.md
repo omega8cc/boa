@@ -2,6 +2,14 @@
 
 This covers the common “plan upgraded, disk grew, but system still sees old sizes / fstab out of sync” situations on Debian/Devuan-like systems (GPT, ext4 root, EFI partition).
 
+**Before you start: take a snapshot.** The steps below touch the partition table.
+If your provider offers one-click VM/disk snapshots, take one now — it is your
+undo button if a step goes wrong.
+
+**LVM is not covered here.** If `lsblk` shows your root on `/dev/mapper/…` or an
+`lvm`-type device, this box uses LVM, which resizes with a different set of
+commands. Do not follow this page — growing an LVM root the wrong way can lose data.
+
 ---
 
 ### Dependencies
@@ -113,7 +121,25 @@ Done.
   * `mount -o remount /` fails with “can’t find PARTUUID=…”
   * `/etc/fstab` references a stale `PARTUUID`/`UUID`
 
-**Steps**
+**Recommended: use the `fixmounts` tool**
+
+BOA ships a `barracuda` helper, `fixmounts`, that normalizes `/etc/fstab` for the
+“big” mounts (`/`, `/var`, `/opt`, `/srv`, `/mnt`, `/data`) on ext2/3/4/xfs: it
+rewrites specs to `UUID=`, adds `noatime,nodiratime`, and strips `discard` and
+`x-systemd.*` options while leaving swap/EFI and other entries untouched. It runs
+in **preview (dry-run) mode by default** and only writes `/etc/fstab` when you pass
+`--apply` — and on apply it first saves a timestamped backup (`/etc/fstab.bak.<date>`)
+and validates the new file syntax before installing it.
+
+```bash
+fixmounts            # preview the proposed changes (safe, writes nothing)
+fixmounts --apply    # back up, validate, then write /etc/fstab
+```
+
+This is the preferred path for a stale `PARTUUID`/`UUID` root line. Fall back to the
+manual steps below only if you need finer control than the tool provides.
+
+**Manual steps**
 
 1. Identify the *actual* root device:
 
