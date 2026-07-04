@@ -10,10 +10,17 @@
 ### Usage:
 ###   xmass pre-mig <source-fqdn>                   (run on BOTH source and target)
 ###   xmass init    <target-ip> [--permanent-proxy]  (run on SOURCE)
-###   xmass sync    <target-ip>                      (run on SOURCE, repeat as needed)
+###   xmass sync    <target-ip> [--live]             (run on SOURCE, repeat as needed)
 ###   xmass status  <target-ip>                      (run on SOURCE)
-###   xmass cutover <target-ip> [--permanent-proxy]  (run on SOURCE)
+###   xmass cutover <target-ip> [--permanent-proxy] [--live]  (run on SOURCE)
 ###   xmass post-mig                                 (run on TARGET after DNS update)
+###
+### DRY/live gate: `sync` and `cutover` default to a read-only DRY run that resolves
+### the target's attached mount, plans every storage decision (mirror onto the target
+### mount vs de-reference to root) for ALL accounts + shared, checks space, and records
+### CLEAN/NOT_CLEAN in a per-target state file. Re-run with --live to perform the
+### migration; --live is accepted only after a CLEAN dry run for the same target and
+### consumes that token (one dry can never arm two lives).
 ###
 ### Procedure overview:
 ###   1. pre-mig      Stop BOA background jobs; exchange SSH keys.
@@ -351,7 +358,7 @@ _xmass_take_backup() {
       || _die "xtrabackup --prepare failed on source"
 
     _info "xtrabackup: rsyncing prepared backup to target ${_tgt} ..."
-    rsync -aEAXq ${_ieni} -e ssh \
+    _xmass_rsync -aEAXq ${_ieni} -e ssh \
       "${_XTRA_STAGE_SRC}/" \
       "root@${_tgt}:${_XTRA_STAGE_TGT}/" \
       || _die "rsync of xtrabackup backup to target failed"
@@ -565,48 +572,277 @@ _xmass_enumerate_accounts() {
   [ -z "${_ELIGIBLE_ACCOUNTS}" ] && _die "No eligible Octopus accounts found on source"
 }
 
-###-------------SYNC FUNCTIONS-----------###
+# --- storage-aware store relocation (attached /mnt vs root, source vs target) ------
+#
+# A store directory (static/files, arch, or a legacy /mnt-anchored symlink) is
+# transferred to the target honouring BOTH sides' disk reality:
+#   source on a mount (symlink -> /mnt/...) + target HAS a mount -> MIRROR onto the
+#       target mount and re-point the link there (even if root has room)
+#   source on a mount + target has NO mount                      -> DE-REFERENCE to a
+#       real dir on the target root
+#   source a real dir on root                                    -> keep a real dir on
+#       root; use the target mount only as a fallback if root cannot fit it
+# DENY (non-zero) only when: a source symlink is dangling (attached disk not mounted),
+# the target has MULTIPLE /mnt mounts, or the store fits nowhere.
 
-_xmass_sync_static_symlink_safe() {
-  # Mirrors xoct's _xoct_transfer_static_symlink_safe:
-  # Preserves site-level symlinks inside static/ while materialising
-  # static/files as a real directory on the target.
-  local _src_usr="$1"
-  local _dst_usr="$2"
-  local _src_static="${_src_usr}/static"
-  local _src_sf="${_src_usr}/static/files"
-  local _dst_static="${_dst_usr}/static"
-  local _dst_sf="${_dst_usr}/static/files"
+# Print the target's single attached mountpoint under /mnt, "MULTI" if more than one,
+# or nothing if none. Same detection migratefs + the lshell FTP-jail use.
+# Prints "MULTI" (more than one), the single mountpoint path, or "NONE" (zero mounts).
+# Empty output therefore means ONLY that the ssh query itself failed -> caller aborts,
+# so a transient ssh hiccup never silently downgrades a mirror to a root de-reference.
+_xmass_detect_target_mnt() {
+  ssh root@"$1" 'p=$(stat -c "%d" /mnt 2>/dev/null); n=0; h=""; for m in /mnt/*; do [ -d "$m" ] || continue; if mountpoint -q "$m" 2>/dev/null || { [ -n "$p" ] && [ "$(stat -c "%d" "$m" 2>/dev/null)" != "$p" ]; }; then h="$m"; n=$((n+1)); fi; done; if [ "$n" -gt 1 ]; then echo MULTI; elif [ "$n" -eq 1 ]; then printf "%s" "$h"; else echo NONE; fi'
+}
 
-  [ -d "${_src_static}" ] || return 0
+# Resolve the target's attached mount into _TGT_MNT ("" = none), aborting the run on a
+# failed query, an empty target host, or more than one mount. $1 = target host.
+_xmass_resolve_target_mnt() {
+  local _raw
+  if [ -z "$1" ]; then
+    _die "empty target host — refusing"
+  fi
+  _raw="$(_xmass_detect_target_mnt "$1")"
+  case "${_raw}" in
+    MULTI)
+      _die "target $1 has multiple /mnt mounts; BOA supports a single attached mount — refusing"
+      ;;
+    NONE) _TGT_MNT="" ;;
+    "")
+      _die "could not query /mnt on target $1 (ssh failed?) — refusing"
+      ;;
+    *) _TGT_MNT="${_raw}" ;;
+  esac
+}
 
-  # Pass 1: sync static/ tree preserving symlinks, skip files/
-  rsync -aEAXqu ${_ieni} --exclude=files \
-    -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/" &>/dev/null || true
+# 0 if the target filesystem that would host <dest> (nearest existing ancestor) has
+# room for <needKB>. Unknown size or unknown avail -> assume ok (do not block).
+# --- DRY/live gate (autosymlink --batch model, keyed per target) --------------------
+# Default is a read-only DRY run that records CLEAN/NOT_CLEAN; --live proceeds only if
+# the last run for THIS target was a CLEAN DRY, then invalidates it so one dry
+# can never arm two lives. xmass migrates many accounts to ONE target, so the state is
+# keyed on the target host: a single DRY reports the plan for all accounts + shared.
+_xmass_state_file() {
+  local _key
+  _key="$(printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_')"
+  printf '/var/log/boa/xmass.migrate.%s.state' "${_key}"
+}
+_xmass_write_state() {   # 1 tgt 2 status 3 mode
+  local _sf; _sf="$(_xmass_state_file "$1")"
+  mkdir -p /var/log/boa 2>/dev/null
+  { echo "_LAST_MODE=$3"; echo "_LAST_STATUS=$2"; echo "_LAST_TS=$(date '+%Y-%m-%d %H:%M:%S')"; } > "${_sf}"
+}
+_xmass_require_clean_dry() {   # 1 tgt -- exit unless last run was a CLEAN DRY
+  local _sf _m _s; _sf="$(_xmass_state_file "$1")"
+  if [ ! -f "${_sf}" ]; then
+    _die "--live requires a prior CLEAN dry run for ${1}; run without --live first"
+  fi
+  _m=$(grep '^_LAST_MODE=' "${_sf}" | head -n1 | cut -d= -f2-)
+  _s=$(grep '^_LAST_STATUS=' "${_sf}" | head -n1 | cut -d= -f2-)
+  if [ "${_m}" != "DRY" ] || [ "${_s}" != "CLEAN" ]; then
+    _die "--live needs the last run for ${1} to be a CLEAN dry run (got mode=${_m:-none} status=${_s:-none}); re-run the dry run and clear any DENY first"
+  fi
+  _xmass_write_state "$1" "LIVE" "LIVE"   # consume the clean-dry token
+}
+_xmass_finalize_dry() {   # 1 tgt
+  if [ "${_XMASS_NOT_CLEAN}" = "NO" ]; then
+    _info "[DRY] CLEAN: no blocking issues. Re-run the same command with --live to perform the migration."
+    _xmass_write_state "$1" "CLEAN" "DRY"
+  else
+    _alrt "[DRY] NOT CLEAN: see DENY line(s) above. --live is refused until resolved."
+    _xmass_write_state "$1" "NOT_CLEAN" "DRY"
+  fi
+}
+# Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
+_xmass_rsync() {
+  if [ "${_MODE}" = "LIVE" ]; then
+    rsync "$@"
+  else
+    _info "[DRY-PLAN] would rsync: $*"
+  fi
+}
 
-  # Resolve source static/files (may be a symlink to attached storage)
-  local _src_real
-  if [ -L "${_src_sf}" ]; then
-    _src_real="$(readlink -f "${_src_sf}" 2>/dev/null)"
-  elif [ -d "${_src_sf}" ]; then
-    _src_real="${_src_sf}"
+# Solr indices can be large; fold them into the disk-space gate. Checks that <src>
+# fits at its target destination dir (which follows the target's /var/solrN symlink
+# onto a mount, or lands on root). Returns 0 if it fits (or src absent), 1 + DENY +
+# NOT_CLEAN otherwise. Placement is unchanged (data-only rsync) — this only gates.
+_xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label
+  local _sz
+  [ -e "$1" ] || return 0
+  _sz="$(du -sk "$1" 2>/dev/null | awk '{print $1}')"
+  _xmass_target_fits "${_tgt}" "$2" "${_sz}" && return 0
+  _alrt "DENY: $3: ${_sz:-?}K does not fit at target $2 — free space and retry"
+  _XMASS_NOT_CLEAN=YES
+  return 1
+}
+
+_xmass_target_fits() {
+  local _av _q
+  _q="$(_shq "$2")"
+  _av=$(ssh root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
+  if [ -z "$3" ] || [ -z "${_av}" ]; then return 0; fi
+  [ "${_av}" -ge "$3" ]
+}
+
+# Single-quote-escape a value for safe embedding in a remote 'single-quoted' ssh arg
+# (covers a legacy path that might contain a quote).
+_shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
+
+# De-reference: real dir at <dstRoot> on the target root; rsync the contents in.
+# Returns non-zero if the copy fails (caller denies).
+_xmass_put_on_root() {
+  local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _q
+  _q="$(_shq "${_dstRoot}")"
+  ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
+  if ! rsync -aEAXqu ${_ie} -e ssh "${_real}/" root@"${_th}":"${_dstRoot}/"; then
+    _alrt "DENY: rsync to ${_dstRoot} on target root failed"
+    return 3
+  fi
+}
+
+# Mirror: rsync contents to <mntDest> on the target mount, then make <dstRoot> a symlink
+# to it. The store ends up on the mount AND stays on the source, so a stale prior copy
+# at <dstRoot> (e.g. an earlier de-reference to root now being moved onto a freshly
+# attached disk) is safe to replace once the mount copy is confirmed. Returns non-zero
+# on any failure (caller denies); the remote replace is fenced to /data/disk.
+_xmass_put_on_mount() {
+  local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _qm _qd
+  _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
+  ssh root@"${_th}" "mkdir -p '${_qm}'"
+  if ! rsync -aEAXqu ${_ie} -e ssh "${_real}/" root@"${_th}":"${_mntDest}/"; then
+    _alrt "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
+    return 3
+  fi
+  if ! ssh root@"${_th}" "d='${_qd}'; case \"\$d\" in /data/disk/*) : ;; *) echo 'refuse: dstRoot outside /data/disk'; exit 9 ;; esac; if [ -L \"\$d\" ]; then rm -f \"\$d\"; elif [ -d \"\$d\" ]; then rm -rf \"\$d\"; elif [ -e \"\$d\" ]; then rm -f \"\$d\"; fi; mkdir -p \"\$(dirname \"\$d\")\"; ln -sfn '${_qm}' \"\$d\""; then
+    _alrt "DENY: ${_lbl}: could not place symlink ${_dstRoot} -> ${_mntDest} on target"
+    return 3
+  fi
+}
+
+# Storage-aware transfer of one store. Args:
+#   1 source path  2 dest path on target root  3 mount-relative dest ("" => derive)
+#   4 target host  5 target mount ("path"|""|"MULTI")  6 ieni  7 label
+_xmass_handle_store() {
+  local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
+  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason=""
+
+  if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
+    return 0
+  fi
+
+  # --- classify + resolve the source ---
+  if [ "${_tm}" = "MULTI" ]; then
+    _act=DENY; _reason="target has multiple /mnt mounts; cannot choose one"
+  elif [ -L "${_src}" ]; then
+    _link="$(readlink "${_src}" 2>/dev/null)"
+    _real="$(readlink -f "${_src}" 2>/dev/null)"
+    if [ -z "${_real}" ] || [ ! -d "${_real}" ]; then
+      _act=DENY; _reason="${_src} is a dangling symlink (attached disk not mounted?)"
+    else
+      case "${_link}" in /mnt/*) _onMnt=YES ;; esac
+    fi
+  elif [ -d "${_src}" ]; then
+    _real="${_src}"
   else
     return 0
   fi
 
-  if [ -n "${_src_real}" ] && [ -d "${_src_real}" ]; then
-    # Pass 2: materialise static/files as a real directory on target
-    ssh root@"${_tgt}" "
-      if [ -L '${_dst_sf}' ]; then
-        rm -f '${_dst_sf}'
-      elif [ -e '${_dst_sf}' ] && [ ! -d '${_dst_sf}' ]; then
-        rm -f '${_dst_sf}'
-      fi
-      mkdir -p '${_dst_sf}'
-    "
-    rsync -aEAXqu ${_ieni} \
-      -e ssh "${_src_real}/" "root@${_tgt}:${_dst_sf}/" &>/dev/null || true
+  # --- decide (mirror / root / deny), source-shape preferred, space-checked ---
+  if [ -z "${_act}" ]; then
+    _sz="$(du -sk "${_real}" 2>/dev/null | awk '{print $1}')"
+    if [ -z "${_mntRel}" ] && [ "${_onMnt}" = "YES" ]; then
+      _mntRel="${_real#/mnt/*/}"
+    fi
+    [ -n "${_tm}" ] && [ -n "${_mntRel}" ] && _mntDest="${_tm}/${_mntRel}"
+    if [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
+      if _xmass_target_fits "${_th}" "${_mntDest}" "${_sz}"; then _act=MIRROR
+      elif _xmass_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
+      else _act=DENY; _reason="does not fit on target mount (${_mntDest}) nor root (${_dstRoot})"; fi
+    else
+      if _xmass_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
+      elif [ -n "${_mntDest}" ]; then _act=MIRROR
+      else _act=DENY; _reason="does not fit on target root (${_dstRoot}) and no usable target mount"; fi
+    fi
   fi
+
+  # --- execute per mode: DRY reports the plan + flags NOT CLEAN on any deny; LIVE acts ---
+  case "${_act}" in
+    DENY)
+      _alrt "DENY: ${_lbl}: ${_reason} — free space / fix and retry"
+      _XMASS_NOT_CLEAN=YES
+      [ "${_MODE}" = "LIVE" ] && return 3
+      return 0
+      ;;
+    MIRROR)
+      if [ "${_MODE}" = "LIVE" ]; then
+        _xmass_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" || { _XMASS_NOT_CLEAN=YES; return $?; }
+        _info "${_lbl}: mirrored to target mount ${_mntDest}, symlinked ${_dstRoot}"
+      else
+        _info "[DRY-PLAN] ${_lbl}: would mirror onto target mount ${_mntDest} and symlink ${_dstRoot} (source ${_sz:-?}K)"
+      fi
+      ;;
+    ROOT)
+      if [ "${_MODE}" = "LIVE" ]; then
+        _xmass_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" || { _XMASS_NOT_CLEAN=YES; return $?; }
+        _info "${_lbl}: real dir on target root ${_dstRoot}"
+      else
+        _info "[DRY-PLAN] ${_lbl}: would place real dir on target root ${_dstRoot} (source ${_sz:-?}K)"
+      fi
+      ;;
+  esac
+  return 0
+}
+
+# Catch-all: any symlink (besides static/files, handled explicitly) whose OWN target
+# is /mnt/... gets the same storage-aware treatment, so non-standard legacy links are
+# never left dangling on the target. Sets _XMASS_STORE_RC on any DENY. NOTE: on a rename
+# the derived on-mount path keeps the SOURCE account name for a legacy link (it still
+# resolves; only the mount-relative path is cosmetically old-named).
+_xmass_catchall_mnt_symlinks() {
+  local _root="$1" _dstRoot="$2" _th="$3" _tm="$4" _ie="$5"
+  local _l _lt _rel _dl
+  while IFS= read -r _l; do
+    [ -n "${_l}" ] || continue
+    [ "${_l}" = "${_root}/static/files" ] && continue
+    _lt="$(readlink "${_l}" 2>/dev/null)"
+    case "${_lt}" in /mnt/*) : ;; *) continue ;; esac
+    _rel="${_l#"${_root}"/}"
+    _dl="${_dstRoot}/${_rel}"
+    _xmass_handle_store "${_l}" "${_dl}" "" "${_th}" "${_tm}" "${_ie}" "legacy symlink ${_rel}" || _XMASS_STORE_RC=$?
+  done <<EOF
+$(find "${_root}" -type l 2>/dev/null)
+EOF
+}
+
+###-------------SYNC FUNCTIONS-----------###
+
+_xmass_sync_static_symlink_safe() {
+  # Mirrors xoct's _xoct_transfer_static_symlink_safe:
+  # Preserves site-level symlinks inside static/ while relocating static/files
+  # to the target honouring the target's disk reality (mirror onto an attached
+  # mount, or de-reference to a real dir on root) via _xmass_handle_store.
+  local _src_usr="$1"
+  local _dst_usr="$2"
+  local _tgt_mnt="$3"
+  local _src_static="${_src_usr}/static"
+  local _dst_static="${_dst_usr}/static"
+  local _dst_sf="${_dst_usr}/static/files"
+  local _dst_acct
+  _dst_acct="$(basename "${_dst_usr}")"
+
+  [ -d "${_src_static}" ] || return 0
+
+  # Pass 1: sync static/ tree preserving symlinks, skip files/
+  _xmass_rsync -aEAXqu ${_ieni} --exclude=files \
+    -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/" &>/dev/null || true
+
+  # Pass 2: relocate static/files per target disk reality. Canonical mount layout
+  # uses the DEST account name, so a rename lands correctly.
+  _xmass_handle_store \
+    "${_src_usr}/static/files" \
+    "${_dst_sf}" \
+    "files/${_dst_acct}/static/files" \
+    "${_tgt}" "${_tgt_mnt}" "${_ieni}" \
+    "static/files (${_dst_acct})" || _XMASS_STORE_RC=$?
 }
 
 _xmass_sync_account() {
@@ -616,73 +852,81 @@ _xmass_sync_account() {
   _info "  Syncing account ${_oct} ..."
 
   # Platform codebases (large; delta-synced efficiently by rsync)
-  rsync -aEAXqu ${_ieni} -e ssh \
+  _xmass_rsync -aEAXqu ${_ieni} -e ssh \
     "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/" &>/dev/null || true
 
-  # User uploaded files (symlink-safe two-pass)
-  _xmass_sync_static_symlink_safe "${_udir}" "${_dst}"
+  # User uploaded files (symlink-safe, storage-aware relocation of static/files)
+  _xmass_sync_static_symlink_safe "${_udir}" "${_dst}" "${_TGT_MNT}"
 
   # Log and control files (includes domain.txt, email.txt, etc.)
-  rsync -aEAXqu ${_ieni} -e ssh \
+  _xmass_rsync -aEAXqu ${_ieni} -e ssh \
     "${_udir}/log/" "root@${_tgt}:${_dst}/log/" &>/dev/null || true
 
   # Drush aliases (site aliases regenerated by renameaegirhost later;
   # synced here so nginx vhosts can reference them before that runs)
-  rsync -aEAXqu ${_ieni} \
+  _xmass_rsync -aEAXqu ${_ieni} \
     --exclude=server_ --exclude=hostmaster \
     -e ssh "${_udir}/.drush/" \
     "root@${_tgt}:${_dst}/.drush/" &>/dev/null || true
 
   # Nginx vhost configs
-  rsync -aEAXqu ${_ieni} \
+  _xmass_rsync -aEAXqu ${_ieni} \
     --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc \
     -e ssh "${_udir}/config/server_master/nginx/vhost.d/" \
     "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/" &>/dev/null || true
 
   for _subdir in pre.d post.d subdir.d platform.d; do
-    rsync -aEAXqu ${_ieni} \
+    _xmass_rsync -aEAXqu ${_ieni} \
       -e ssh "${_udir}/config/server_master/nginx/${_subdir}/" \
       "root@${_tgt}:${_dst}/config/server_master/nginx/${_subdir}/" \
       &>/dev/null || true
   done
 
   # SSL certificates and LE config
-  rsync -aEAXqu ${_ieni} \
+  _xmass_rsync -aEAXqu ${_ieni} \
     -e ssh "${_udir}/config/ssl.d/" \
     "root@${_tgt}:${_dst}/config/ssl.d/" &>/dev/null || true
-  rsync -aEAXqu ${_ieni} \
+  _xmass_rsync -aEAXqu ${_ieni} \
     -e ssh "${_udir}/config/server_master/ssl.d/" \
     "root@${_tgt}:${_dst}/config/server_master/ssl.d/" &>/dev/null || true
-  rsync -aEAXqu ${_ieni} \
+  _xmass_rsync -aEAXqu ${_ieni} \
     -e ssh "${_udir}/tools/le" \
     "root@${_tgt}:${_dst}/tools/" &>/dev/null || true
 
   # FTP account SSH keys
   if [ -d "/home/${_oct}.ftp/.ssh" ]; then
-    rsync -aEAXqu ${_ieni} \
+    _xmass_rsync -aEAXqu ${_ieni} \
       -e ssh "/home/${_oct}.ftp/.ssh" \
       "root@${_tgt}:/home/${_oct}.ftp/" &>/dev/null || true
   fi
+
+  # Catch-all: fix any OTHER /mnt-anchored symlink in the account tree that the
+  # rsync -a passes above transferred as a bare (dangling-on-target) link.
+  _xmass_catchall_mnt_symlinks "${_udir}" "${_dst}" "${_tgt}" "${_TGT_MNT}" "${_ieni}"
 }
 
 _xmass_sync_shared() {
   _info "Syncing shared data (/data/all, arch, legacy, bind, static) ..."
   local _item
-  for _item in /data/all /data/disk/all /data/disk/arch /data/disk/legacy; do
+  for _item in /data/all /data/disk/all /data/disk/legacy; do
     [ -d "${_item}" ] || continue
     [ -L "${_item}" ] && continue
-    rsync -aEAXqu ${_ieni} -e ssh \
+    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
       "${_item}" "root@${_tgt}:$(dirname "${_item}")/" \
       &>/dev/null || _alrt "rsync ${_item} failed"
   done
+  # arch: storage-aware -- mirror onto the target mount, or de-reference to root,
+  # per the target's disk reality (canonical layout <mount>/files/system/arch).
+  _xmass_handle_store "/data/disk/arch" "/data/disk/arch" "files/system/arch" \
+    "${_tgt}" "${_TGT_MNT}" "${_ieni}" "arch" || _XMASS_STORE_RC=$?
   [ -d "/var/www/static" ] && \
-    rsync -aEAXqu ${_ieni} -e ssh \
+    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
       /var/www/static "root@${_tgt}:/var/www/" &>/dev/null || true
   [ -d "/etc/bind" ] && \
-    rsync -aEAXq ${_ieni} -e ssh \
+    _xmass_rsync -aEAXq ${_ieni} -e ssh \
       /etc/bind "root@${_tgt}:/etc/" &>/dev/null || true
   [ -d "/var/log/boa/usage" ] && \
-    rsync -aEAXq ${_ieni} -e ssh \
+    _xmass_rsync -aEAXq ${_ieni} -e ssh \
       /var/log/boa/usage "root@${_tgt}:/var/log/boa/" &>/dev/null || true
   _info "Shared data sync complete"
 }
@@ -696,7 +940,8 @@ _xmass_sync_solr() {
   local _dir
   for _dir in /opt/solr4 /var/solr7/data /var/solr9/data; do
     [ -e "${_dir}" ] || continue
-    rsync -aEAXq ${_ieni} -e ssh \
+    _xmass_solr_check "${_dir}" "$(dirname "${_dir}")" "solr ${_dir}" || continue
+    _xmass_rsync -aEAXq ${_ieni} -e ssh \
       "${_dir}" "root@${_tgt}:$(dirname "${_dir}")/" \
       &>/dev/null || _alrt "rsync ${_dir} failed"
     _info "  Synced ${_dir}"
@@ -1025,7 +1270,19 @@ _xmass_cmd_sync() {
   _xmass_load_state
   [ "${_XMASS_PHASE}" = "syncing" ] \
     || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — run 'xmass init' first"
-  _info "xmass sync: syncing files to ${_tgt} ..."
+
+  # Resolve the target's attached mount ONCE up-front (aborts on empty/unreachable/
+  # multi-mount) and reuse it for every account + shared store below.
+  _xmass_resolve_target_mnt "${_tgt}"
+  # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
+  [ "${_MODE}" = "LIVE" ] && _xmass_require_clean_dry "${_tgt}"
+  _XMASS_STORE_RC=0
+
+  if [ "${_MODE}" = "LIVE" ]; then
+    _info "xmass sync: syncing files to ${_tgt} ..."
+  else
+    _info "xmass sync: DRY run — planning file relocation to ${_tgt} (no changes made) ..."
+  fi
   _xmass_enumerate_accounts
   _xmass_sync_shared
   _xmass_sync_solr
@@ -1033,9 +1290,17 @@ _xmass_cmd_sync() {
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
   done
-  _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
-  _xmass_save_state
-  _info "xmass sync complete at ${_XMASS_LAST_SYNC}"
+
+  if [ "${_MODE}" = "LIVE" ]; then
+    if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
+      _die "a store/symlink could not be placed on the target (see DENY above); sync incomplete"
+    fi
+    _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
+    _xmass_save_state
+    _info "xmass sync complete at ${_XMASS_LAST_SYNC}"
+  else
+    _xmass_finalize_dry "${_tgt}"
+  fi
 }
 
 _xmass_cmd_status() {
@@ -1072,6 +1337,34 @@ _xmass_cmd_cutover() {
   _tgt="${_XMASS_TARGET_IP}"
   [ -z "${_tgt}" ] && _die "No target IP in state file — was xmass init run?"
 
+  # Resolve the target's attached mount ONCE up-front (aborts on empty/unreachable/
+  # multi-mount) and reuse it for every account + shared store below.
+  _xmass_resolve_target_mnt "${_tgt}"
+
+  # cutover is destructive and irreversible (locks MySQL, promotes the target,
+  # renames the Aegir host). The DRY run therefore does the storage-plan pass ONLY,
+  # for all accounts + shared, and STOPS before any destructive step — nothing on
+  # source or target is altered. --live requires that CLEAN dry, then proceeds.
+  if [ "${_MODE}" != "LIVE" ]; then
+    _info "======================================================"
+    _info "  xmass cutover — DRY run (planning only, no changes)"
+    _info "  Target           : ${_tgt}"
+    _info "======================================================"
+    _xmass_enumerate_accounts
+    _XMASS_STORE_RC=0
+    _xmass_sync_shared
+    local _oct
+    for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+      _xmass_sync_account "${_oct}"
+    done
+    _xmass_finalize_dry "${_tgt}"
+    return 0
+  fi
+
+  # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
+  _xmass_require_clean_dry "${_tgt}"
+  _XMASS_STORE_RC=0
+
   _info "======================================================"
   _info "  xmass cutover starting"
   _info "  Target           : ${_tgt}"
@@ -1104,6 +1397,12 @@ _xmass_cmd_cutover() {
     _xmass_sync_account "${_oct}"
   done
 
+  # A store/symlink that could not be placed on the target is a hard stop BEFORE any
+  # destructive step (MySQL lock, target promotion) — abort with source untouched.
+  if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
+    _die "a store/symlink could not be placed on the target (see DENY above); cutover aborted before locking MySQL"
+  fi
+
   # Step 4: Wait for replica to fully catch up
   _XMASS_PHASE="cutover"
   _xmass_save_state
@@ -1119,7 +1418,7 @@ _xmass_cmd_cutover() {
   _info "Final static/files rsync pass (post table-lock) ..."
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_static_symlink_safe \
-      "/data/disk/${_oct}" "/data/disk/${_oct}"
+      "/data/disk/${_oct}" "/data/disk/${_oct}" "${_TGT_MNT}"
   done
 
   # Step 7: Triple-check lag is still zero after the lock
@@ -1270,6 +1569,29 @@ _xmass_post_mig() {
 _cmd="$1"
 shift 2>/dev/null || true
 
+# The DRY/live gate applies ONLY to the mass-cutover transfer commands — `sync` and
+# `cutover`. Utility commands (pre-mig, post-mig, init, status) run unaffected (LIVE)
+# and their arguments are never touched. For sync/cutover the default is a read-only
+# DRY run and an explicit --live is required (accepted only after a CLEAN dry run for
+# the same target — the autosymlink --batch model). Only --prefixed mode flags are
+# recognised (and stripped), so no positional argument is ever mistaken for one.
+_MODE=LIVE
+_XMASS_NOT_CLEAN=NO
+case "${_cmd}" in
+  sync|cutover)
+    _MODE=DRY
+    _margs=()
+    for _a in "$@"; do
+      case "${_a}" in
+        --live)        _MODE=LIVE ;;
+        --dry|--test)  _MODE=DRY ;;
+        *) _margs+=("${_a}") ;;
+      esac
+    done
+    set -- "${_margs[@]}"
+    ;;
+esac
+
 case "${_cmd}" in
   pre-mig)
     _hst="$1"
@@ -1292,7 +1614,7 @@ case "${_cmd}" in
   ;;
   sync)
     _tgt="$1"
-    [ -z "${_tgt}" ] && _die "Usage: xmass sync <target-ip>"
+    [ -z "${_tgt}" ] && _die "Usage: xmass sync <target-ip> [--live]"
     _check_root
     _xmass_cmd_sync
   ;;
@@ -1310,7 +1632,7 @@ case "${_cmd}" in
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass cutover <target-ip> [--permanent-proxy]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass cutover <target-ip> [--permanent-proxy] [--live]"
     _check_root
     _xmass_cmd_cutover
   ;;
@@ -1322,9 +1644,9 @@ case "${_cmd}" in
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
     echo "Usage: xmass init    <target-ip> [--permanent-proxy]  (run on source)"
-    echo "Usage: xmass sync    <target-ip>                      (run on source, repeat)"
+    echo "Usage: xmass sync    <target-ip> [--live]             (run on source, repeat)"
     echo "Usage: xmass status  [target-ip]                      (run on source)"
-    echo "Usage: xmass cutover <target-ip> [--permanent-proxy]  (run on source)"
+    echo "Usage: xmass cutover <target-ip> [--permanent-proxy] [--live]  (run on source)"
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo ""
     echo "Notes:"

@@ -536,7 +536,7 @@ EOF
   _clList=""
   while IFS=$'\x1f' read -r _site _cdom _calt _ctype _cdetail; do
     [ -z "${_cdom}" ] && continue
-    _marker="${_markerDir}/le-notify.$(echo "${_cdom}" | tr -c 'a-zA-Z0-9._-' '_').info"
+    _marker="${_markerDir}/le-notify.$(printf '%s' "${_cdom}" | tr -c 'a-zA-Z0-9._-' '_').info"
     _fresh=YES
     if [ -f "${_marker}" ]; then
       if [ "$(( (_now - $(stat -c %Y "${_marker}" 2>/dev/null || echo 0)) / 86400 ))" -lt "${_throttle}" ]; then
