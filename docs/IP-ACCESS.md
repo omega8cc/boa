@@ -76,8 +76,8 @@ staging.example.com    198.51.100.42
   the last-good backup and reload. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ai_policy` /
   `nginx_deny` / `cloudflare_realip`.
-- **Schedule / serial** — `*/2` cron; `_fetch_versioned` serial **f89** in `BOA.sh.txt`
-  (decrement on any change).
+- **Schedule / serial** — `*/2` cron; serial-gated via `_fetch_versioned` in `BOA.sh.txt`
+  (decrement its `fNN` on any change).
 
 ## Interaction with realip
 
