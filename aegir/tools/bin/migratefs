@@ -397,10 +397,11 @@ _relocate_arch() {
     return 0
   fi
 
-  # Cross-tool note: once /data/disk/arch is a symlink, host-migration tools
-  # (xoct/xcopy 'transfer shared', xmass) resolve it and transfer its CONTENTS as a
-  # real dir on the target -- provided those tools are current (xoct >= f95,
-  # xcopy/xmass >= f96). Ensure they are up to date before migrating this box.
+  # Cross-tool note: once /data/disk/arch is a symlink, storage-aware versions of
+  # the host-migration tools (xoct/xcopy 'transfer shared', xmass) resolve it and
+  # transfer its CONTENTS per the target's disk reality (onto the target's /mnt
+  # mount when one exists, else as a real dir). Ensure they are up to date before
+  # migrating this box.
   _log "NOTE: arch will be a symlink; host-migration (xoct/xcopy/xmass, current versions) resolves it and transfers arch CONTENTS -- ensure those tools are up to date before migrating this box."
 
   if [ "${_APPLY}" = "YES" ] && _backup_running; then
