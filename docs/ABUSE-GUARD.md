@@ -1168,7 +1168,7 @@ clearwebbans --dry-run   # report counts + a sample, change nothing
 clearwebbans             # forced: do the full web-ban cleanup
 ```
 
-Run it once the updated `scan_nginx.sh` limits are already deployed (serial `f62`+), so the
+Run it once the updated `scan_nginx.sh` limits are already deployed, so the
 released IPs are not immediately re-banned under the old thresholds. SSH and FTP bans are
 deliberately left in place — those are real brute-force. On a heavily-polluted box the temp
 loop can take a while (one `csf -tr` per IP), same as `guest-fire`.

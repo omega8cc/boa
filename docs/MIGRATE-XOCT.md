@@ -43,6 +43,17 @@ For full-server migrations where Percona versions match, consider
 
 ## Step-by-Step Procedure
 
+> **Every `xoct transfer …` runs a read-only DRY test by default.** It resolves the
+> target's storage, prints the plan for each store (`[DRY-PLAN] … would mirror / would
+> place real dir …`), pre-checks disk space (including the Solr indices, which can be
+> large), and records `CLEAN` or `NOT CLEAN` — making
+> **no** changes on either host. To perform the transfer, append **`--live`**; it is
+> accepted only after a `CLEAN` dry run for the same account+target and refuses if the
+> dry run reported any `DENY` (dangling source symlink, multiple `/mnt` mounts, or a
+> store that fits nowhere). So each transfer below is a two-step: run it once to review,
+> then re-run with `--live`. Only `transfer`/`pretransfer` are gated — `ssl-gen`,
+> `export`, `import` and the other commands are unaffected.
+
 ### 1. Prepare Target Firewall
 
 On the **target host** — allow source IP through CSF so rsync and MySQL traffic
@@ -217,30 +228,48 @@ xoct proxy o1 target-ip o2
 
 ## Static Files Symlink Handling
 
-Some BOA systems store `static/files` as a plain directory; others have it as a
-symlink to attached or extra storage. During `xoct transfer`, the tool handles
-this safely without using `rsync --copy-links` (which would dereference all
-symlinks and break the expected Aegir layout):
+Some BOA systems store `static/files` as a plain directory on the root partition;
+others relocate it (with [`migratefs`](MIGRATEFS.md)) to a symlink onto attached/extra
+storage. During `xoct transfer`, the tool places the store on the target according to
+**the target's own disk reality** — never blindly onto the target root, which may be
+too small — and never uses a blanket `rsync --copy-links`:
 
 1. Syncs `static/` with all symlinks preserved, excluding `static/files`.
-2. Resolves the source `static/files` path (whether it is a real directory or a
-   symlink target).
-3. Creates `static/files` on the target as a real local directory.
-4. Syncs the resolved content into that directory separately.
+2. Resolves the source `static/files` to its real directory (a real dir, or a symlink
+   onto a mount — via `readlink -f`, scoped to this store only).
+3. Detects whether the **target** has a single attached mount under `/mnt`, then:
+   - **Target has a mount** → the contents are **mirrored** onto the target mount at
+     `<mount>/files/<account>/static/files`, and `static/files` on the target becomes a
+     **symlink** to it — even if the target root has room. This keeps a large store on
+     dedicated storage and off the root partition.
+   - **Target has no mount** → the store is **de-referenced** into a **real directory**
+     at `static/files` on the target root.
+   - A source that was a **real dir** on root stays a real dir on the target root (the
+     target mount is used only as a fallback if root cannot fit it).
 
-Site-level symlinks (`sites/*/files`, `sites/*/private`) remain symlinks
-pointing into the account tree, exactly as BOA/Aegir expects.
+Site-level symlinks (`sites/*/files`, `sites/*/private`) stay symlinks and resolve
+either way, because they point at the account-relative `static/files` path, not at any
+`/mnt` path. The shared archive `/data/disk/arch` (and any other legacy `/mnt`-anchored
+symlink) is handled by the same rule, so SQL dumps and cluster backups transfer
+correctly in every source/target storage combination.
+
+> **BOA supports a single attached mount under `/mnt`.** The migration tools refuse a
+> target (or source) that has more than one.
 
 ### Verification (Recommended for Large Accounts)
 
-**On target, after import:**
+**On target, after import** — `static/files` is a real directory when the target has no
+attached mount, or a symlink onto the target's mount when it has one; **both are
+correct**. What matters is that the contents are present (not a dangling link) and the
+site-level `files`/`private` stay symlinks:
 ```sh
-# static/files must be a real directory, not a symlink
-[ -d /data/disk/o1/static/files ] && \
-  [ ! -L /data/disk/o1/static/files ] && \
-  echo OK_static_files_real_dir
+# static/files: real dir OR symlink into the target's /mnt mount — both OK
+ls -ld /data/disk/o1/static/files
 
-# site-level files/private must remain symlinks
+# contents must be present (real files, never an empty/dangling target)
+ls -A /data/disk/o1/static/files/ | head
+
+# site-level files/private remain symlinks either way
 find /data/disk/o1/static/platforms -path '*/sites/*/files'   -type l | head
 find /data/disk/o1/static/platforms -path '*/sites/*/private' -type l | head
 ```
