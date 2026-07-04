@@ -287,13 +287,13 @@ _NGINX_I18N_FLOOD_COOLDOWN=300
 # The authoritative, near-real-time "we are saturating" signal the periodic
 # fpmreport sampler misses: PHP-FPM writes
 #   WARNING: [pool NAME] server reached max_children setting (N), consider raising it
-# to its per-version error log the instant a pool cannot spawn a worker.  BOA's
-# php.sh greps only the GLOBAL "process.max" ceiling (set to 0 = disabled), so it
-# never sees this per-pool event; this trigger reads it directly.  Byte-offset
-# tracking per log file means only NEW ceiling hits since the last run are acted
-# on.  On a hit it snapshots the access-log tail and alerts; mitigation stays
-# with Tier A (already capping) and, for any concentrated offender, the per-IP
-# scorer above.
+# to its per-version error log the instant a pool cannot spawn a worker.  Both
+# this trigger and BOA's php.sh (_fpm_proc_max_detection) byte-offset-tail these
+# logs, so only NEW ceiling hits since each one's last run are acted on; php.sh
+# stops at a plain capacity NOTE, while this trigger also alerts to
+# i18n_flood.log and writes a box-wide forensic snapshot of the access-log tail.
+# Mitigation stays with Tier A (already capping) and, for any concentrated
+# offender, the per-IP scorer above.
 _NGINX_FPM_SAT_DETECT=YES
 
 # Glob of PHP-FPM per-version error logs.
