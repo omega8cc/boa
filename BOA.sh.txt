@@ -1575,14 +1575,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f57.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f56.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f57.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f56.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_ltd_users.sh.old
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
@@ -2131,7 +2131,7 @@ _update_agents() {
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/websh.ctrl.f72.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /opt/local/bin/websh /var/xdrago/websh.sh.old
-    curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/websh" -o /opt/local/bin/websh
     if [ -e "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
       chmod 755 /opt/local/bin/websh

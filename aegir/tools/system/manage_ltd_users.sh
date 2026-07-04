@@ -2525,7 +2525,7 @@ else
           fi
         fi
       fi
-      curl -s -A iCab "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
+      curl -s -A iCab "${_urlHmr}/tools/bin/websh" -o /opt/local/bin/websh
       chmod 755 /opt/local/bin/websh
     fi
   fi

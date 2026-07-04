@@ -5940,7 +5940,7 @@ _strict_bin_permissions() {
     fi
   fi
 
-  cp -af ${_bldPth}/aegir/helpers/websh.sh.txt /opt/local/bin/websh
+  cp -af ${_bldPth}/aegir/tools/bin/websh /opt/local/bin/websh
   chmod 755 /opt/local/bin/websh
   chown root:root /opt/local/bin/websh
   chown root:root /etc/passwd*
