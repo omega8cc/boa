@@ -4172,13 +4172,6 @@ _sources_list_update() {
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   ###--------------------###
-  ### Self-heal: if a prior run left the host without a sources.list, put the
-  ### last known good copy back so we always regenerate from a valid base.
-  if [ ! -e "${_aptLiSys}" ] \
-    && _apt_sources_list_is_valid "${_vBs}/sources.list.last-known-good"; then
-    cp -af "${_vBs}/sources.list.last-known-good" "${_aptLiSys}" 2> /dev/null
-    _msg "NOTE: Restored missing ${_aptLiSys} from last known good copy"
-  fi
   ### Always (re)generate for a known OS -- do NOT gate on the file already
   ### existing. The old '[ -e "${_aptLiSys}" ]' gate turned a one-time loss
   ### into a permanent one: once the file was gone, this whole block was
@@ -4190,8 +4183,8 @@ _sources_list_update() {
     if [ ! -e "${_aptLiSys}" ]; then
       _msg "NOTE: ${_aptLiSys} is missing; generating a fresh one"
     fi
-    ### Keep a validated backup, but never remove the live file before the
-    ### rewrite below succeeds -- a failed rewrite must not lose sources.list.
+    ### Keep a validated forensic copy, but never remove the live file before
+    ### the rewrite below succeeds -- a failed rewrite must not lose sources.list.
     _apt_sources_list_backup
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _TEST_MIRROR="$(_find_fast_devuan_mirror)"
@@ -4333,9 +4326,10 @@ _sources_list_update() {
         echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       fi
     fi
-    ### Verify the freshly written file; restore the last known good copy if
-    ### the generation produced a missing or unusable sources.list.
-    _apt_sources_list_verify_or_restore
+    ### Verify the freshly written file; if generation produced a missing or
+    ### unusable sources.list, enforce the canonical official-mirror version
+    ### (never restore a backup, which may pin a mirror that is now dead).
+    _apt_sources_list_verify_or_canonical
     mkdir -p ${_pthLog}
     touch ${_pthLog}/apt-deb-src-updates-${_xSrl}.txt
     cd /var/opt
