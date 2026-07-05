@@ -83,7 +83,7 @@ _read_account_data() {
     _check_account_exceptions
   fi
   if [ -e "/etc/boa/.debug.email.txt" ]; then
-    _CLIENT_EMAIL="omega8cc@gmail.com"
+    _CLIENT_EMAIL="inbox@boa.io"
   fi
   if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then
     _CLIENT_CORES=$(cat /data/disk/${_THIS_U}/log/cores.txt 2>&1)
@@ -134,7 +134,7 @@ _send_notice_php() {
   if [ "${_hostedSys}" != "YES" ]; then
     return 1  # Exit the function but continue the script
   fi
-  _BCC_EMAIL="omega8cc@gmail.com"
+  _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
@@ -200,7 +200,7 @@ _send_notice_core() {
   if [ "${_hostedSys}" != "YES" ]; then
     return 1  # Exit the function but continue the script
   fi
-  _BCC_EMAIL="omega8cc@gmail.com"
+  _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
@@ -388,7 +388,7 @@ _send_notice_sql() {
     _SQL_LIM=${_SQL_MIN_LIMIT}
     _SQL_NOW=${_SumDatH}
   fi
-  _BCC_EMAIL="omega8cc@gmail.com"
+  _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
@@ -443,7 +443,7 @@ _send_notice_disk() {
   if [ "${_hostedSys}" != "YES" ]; then
     return 1  # Exit the function but continue the script
   fi
-  _BCC_EMAIL="omega8cc@gmail.com"
+  _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
@@ -483,7 +483,7 @@ _send_notice_gprd() {
   if [ "${_hostedSys}" != "YES" ]; then
     return 1  # Exit the function but continue the script
   fi
-  _BCC_EMAIL="omega8cc@gmail.com"
+  _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
@@ -945,18 +945,6 @@ EOF
                 _LOG_FILE="usage-latest-silent.log"
               fi
               echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/log/boa/usage/${_LOG_FILE}
-            fi
-            _TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
-            _PgTpl="${_TmDir}/page.tpl.php"
-            _EldirF="0001-Print-site_footer-if-defined.patch"
-            _TplPatch="/var/xdrago/conf/${_EldirF}"
-            if [ -e "${_PgTpl}" ] && [ -e "${_TplPatch}" ]; then
-              _IS_SF=$(grep "site_footer" ${_PgTpl} 2>&1)
-              if [[ ! "${_IS_SF}" =~ "site_footer" ]]; then
-                cd ${_TmDir}
-                patch -p1 < ${_TplPatch} &> /dev/null
-                cd
-              fi
             fi
             su -s /bin/bash - ${_THIS_U} \
               -c "drush8 @hostmaster cache-clear all" &> /dev/null

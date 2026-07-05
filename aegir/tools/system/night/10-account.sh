@@ -217,7 +217,7 @@ _account_process() {
     fi
 
     if [ "${_hostedSys}" = "YES" ]; then
-      _BCC_EMAIL="omega8cc@gmail.com"
+      _BCC_EMAIL="inbox@boa.io"
     else
       _BCC_EMAIL="${_MY_OCTO_EMAIL}"
     fi

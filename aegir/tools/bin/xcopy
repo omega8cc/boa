@@ -338,7 +338,7 @@ _migrate_prepare() {
   [ -z "${_CLIENT_OPTION}" ] && _CLIENT_OPTION=EDGE
   [ -z "${_CLIENT_SUBSCR}" ] && _CLIENT_SUBSCR=M
   [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
-  [ -z "${_CLIENT_EMAIL}" ]  && _CLIENT_EMAIL="omega8cc@gmail.com"
+  [ -z "${_CLIENT_EMAIL}" ]  && _CLIENT_EMAIL="inbox@boa.io"
 
   echo "_CLIENT_EMAIL is ${_CLIENT_EMAIL}"
   echo "_THIS_HM_USER is ${_THIS_HM_USER}"
@@ -829,7 +829,7 @@ _migrate_init() {
       _CHECK_EMAIL=`cat ${_USR}/log/email.txt`
       _CHECK_EMAIL=`echo -n ${_CHECK_EMAIL} | tr -d "\n"`
       _CHECK_EMAIL=${_CHECK_EMAIL//\\\@/\@}
-      if [ "${_CHECK_EMAIL}" = "omega8cc@gmail.com" ] \
+      if [ "${_CHECK_EMAIL}" = "inbox@boa.io" ] \
         || [[ "${_CHECK_EMAIL}" =~ "emaylx@" ]] \
         || [[ "${_CHECK_EMAIL}" =~ "mixomax@" ]] \
         || [[ "${_CHECK_EMAIL}" =~ "@omega8.cc" ]]; then

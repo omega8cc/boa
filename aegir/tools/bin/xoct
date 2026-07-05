@@ -499,7 +499,7 @@ _migrate_prepare() {
     if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
       _DO_NOTHING=YES
     else
-      _CLIENT_EMAIL="omega8cc@gmail.com"
+      _CLIENT_EMAIL="inbox@boa.io"
     fi
     _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   fi
@@ -508,7 +508,7 @@ _migrate_prepare() {
   [ -z "${_CLIENT_OPTION}" ] && _CLIENT_OPTION=EDGE
   [ -z "${_CLIENT_SUBSCR}" ] && _CLIENT_SUBSCR=M
   [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
-  [ -z "${_CLIENT_EMAIL}" ]  && _CLIENT_EMAIL="omega8cc@gmail.com"
+  [ -z "${_CLIENT_EMAIL}" ]  && _CLIENT_EMAIL="inbox@boa.io"
 
   echo "_CLIENT_EMAIL is ${_CLIENT_EMAIL}"
   echo "_THIS_HM_USER is ${_THIS_HM_USER}"
