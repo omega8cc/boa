@@ -4172,12 +4172,20 @@ _sources_list_update() {
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   ###--------------------###
+  ### Self-heal: if a prior run left the host without a sources.list, put the
+  ### last known good copy back so we always regenerate from a valid base.
+  if [ ! -e "${_aptLiSys}" ] \
+    && _apt_sources_list_is_valid "${_vBs}/sources.list.last-known-good"; then
+    cp -af "${_vBs}/sources.list.last-known-good" "${_aptLiSys}" 2> /dev/null
+    _msg "NOTE: Restored missing ${_aptLiSys} from last known good copy"
+  fi
   if [ -e "${_aptLiSys}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Updating packages sources list..."
     fi
-    mv -f ${_aptLiSys} \
-      ${_vBs}/sources.list-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    ### Keep a validated backup, but never remove the live file before the
+    ### rewrite below succeeds -- a failed rewrite must not lose sources.list.
+    _apt_sources_list_backup
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _TEST_MIRROR="$(_find_fast_devuan_mirror)"
       if [ -n "${_LOCAL_DEVUAN_MIRROR}" ] && [ -n "${_TEST_MIRROR}" ]; then
@@ -4271,6 +4279,9 @@ _sources_list_update() {
         _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
       cd /var/opt
+      ### Belt-and-suspenders with the mirror resolution above: never compose
+      ### an empty Debian mirror host into the deb lines below.
+      [ -n "${_MIRROR}" ] || _MIRROR=deb.debian.org
       if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
         _APT_REPSRC="${_OS_CODE}-backports"
@@ -4287,6 +4298,11 @@ _sources_list_update() {
         _SEC_MIRROR="security.debian.org/debian-security"
         _SEC_REPSRC="${_OS_CODE}-security"
       elif [ "${_OS_CODE}" = "bookworm" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_REPSRC="${_OS_CODE}-updates"
+        _SEC_MIRROR="security.debian.org/debian-security"
+        _SEC_REPSRC="${_OS_CODE}-security"
+      elif [ "${_OS_CODE}" = "trixie" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
         _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
@@ -4310,6 +4326,9 @@ _sources_list_update() {
         echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       fi
     fi
+    ### Verify the freshly written file; restore the last known good copy if
+    ### the generation produced a missing or unusable sources.list.
+    _apt_sources_list_verify_or_restore
     mkdir -p ${_pthLog}
     touch ${_pthLog}/apt-deb-src-updates-${_xSrl}.txt
     cd /var/opt
@@ -7498,6 +7517,11 @@ _if_major_os_upgrade() {
         _NEW_SEC_MIRROR="security.debian.org/debian-security"
         _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
       elif [ "${_NEW_OS_CODE}" = "bookworm" ]; then
+        _NEW_APT_MIRROR="deb.debian.org/debian"
+        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
+        _NEW_SEC_MIRROR="security.debian.org/debian-security"
+        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
+      elif [ "${_NEW_OS_CODE}" = "trixie" ]; then
         _NEW_APT_MIRROR="deb.debian.org/debian"
         _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
         _NEW_SEC_MIRROR="security.debian.org/debian-security"

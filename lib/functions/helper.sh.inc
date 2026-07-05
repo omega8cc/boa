@@ -945,6 +945,61 @@ _apt_clean_update_no_releaseinfo_change() {
   _mrun "apt-get update -qq"
 }
 
+#
+# Return 0 only if a sources.list file is present, non-empty and carries at
+# least one usable 'deb'/'deb-src' line (scheme://host suite ...). Guards
+# against an empty file or hostless 'deb http://  suite' lines that break apt.
+_apt_sources_list_is_valid() {
+  local _f="${1}"
+  [ -s "${_f}" ] || return 1
+  grep -Eq \
+    '^[[:space:]]*deb(-src)?[[:space:]]+(\[[^]]*\][[:space:]]+)?[a-z][a-z0-9+.-]*://[^[:space:]/][^[:space:]]*[[:space:]]+[^[:space:]]+' \
+    "${_f}" 2> /dev/null || return 1
+  return 0
+}
+
+#
+# Snapshot the current sources.list as last-known-good plus a timestamped
+# forensic copy, but ONLY when it validates. Never alters the original --
+# a plain copy, so the live file survives if the rewrite that follows fails.
+_apt_sources_list_backup() {
+  local _lkg="${_vBs}/sources.list.last-known-good"
+  if _apt_sources_list_is_valid "${_aptLiSys}"; then
+    cp -af "${_aptLiSys}" "${_lkg}" 2> /dev/null
+    cp -af "${_aptLiSys}" \
+      "${_vBs}/sources.list-pre-${_xSrl}-${_X_VERSION}-${_NOW}" 2> /dev/null
+  fi
+}
+
+#
+# Called AFTER a (re)generation: if the file is now missing or has no usable
+# deb line, restore the last-known-good copy, then fall back to the newest
+# valid timestamped backup. This is the safety net that keeps a host from
+# ending up with no working /etc/apt/sources.list when generation silently
+# fails for any reason (unknown codename, killed process, full disk, ...).
+_apt_sources_list_verify_or_restore() {
+  local _lkg="${_vBs}/sources.list.last-known-good"
+  local _bkp
+  if _apt_sources_list_is_valid "${_aptLiSys}"; then
+    return 0
+  fi
+  _msg "OOPS: Generated ${_aptLiSys} is missing or invalid; restoring backup"
+  if _apt_sources_list_is_valid "${_lkg}"; then
+    cp -af "${_lkg}" "${_aptLiSys}" 2> /dev/null
+    _msg "NOTE: Restored ${_aptLiSys} from last known good copy"
+    return 0
+  fi
+  for _bkp in $(ls -1t ${_vBs}/sources.list-pre-* 2> /dev/null); do
+    if _apt_sources_list_is_valid "${_bkp}"; then
+      cp -af "${_bkp}" "${_aptLiSys}" 2> /dev/null
+      _msg "NOTE: Restored ${_aptLiSys} from ${_bkp}"
+      return 0
+    fi
+  done
+  _msg "ERROR: No valid ${_aptLiSys} backup found to restore"
+  return 1
+}
+
 _turn_on_password_update() {
   if [ -e "/root/.mysql.no.new.password.cnf" ]; then
     chattr -i /root/.mysql.no.new.password.cnf
