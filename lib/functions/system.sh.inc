@@ -4179,9 +4179,16 @@ _sources_list_update() {
     cp -af "${_vBs}/sources.list.last-known-good" "${_aptLiSys}" 2> /dev/null
     _msg "NOTE: Restored missing ${_aptLiSys} from last known good copy"
   fi
-  if [ -e "${_aptLiSys}" ]; then
+  ### Always (re)generate for a known OS -- do NOT gate on the file already
+  ### existing. The old '[ -e "${_aptLiSys}" ]' gate turned a one-time loss
+  ### into a permanent one: once the file was gone, this whole block was
+  ### skipped forever, so apt stayed broken and the host could never upgrade.
+  if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Updating packages sources list..."
+    fi
+    if [ ! -e "${_aptLiSys}" ]; then
+      _msg "NOTE: ${_aptLiSys} is missing; generating a fresh one"
     fi
     ### Keep a validated backup, but never remove the live file before the
     ### rewrite below succeeds -- a failed rewrite must not lose sources.list.
