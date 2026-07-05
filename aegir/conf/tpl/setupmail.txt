@@ -21,7 +21,7 @@ password: FN8rXcQn
 
 Please note: your control panel account and your SSH/FTP/SFTP account are two fully separate accounts. They only start out with the same username and password for convenience — they are not linked. We recommend changing the password on each of them separately after your first login: the control panel password from within the panel, and the SSH/FTP/SFTP password over SSH with the "passwd" command.
 
-Forgot your control panel password later? Reset it with your email address at https://aegir.url.name/user/password
+Forgot your control panel password? Ask your host's support to reset it for you — the control panel can't send password-reset emails itself.
 
 ----------------------------------------
 UPLOADING FILES (MODULES, THEMES, PLATFORMS)
