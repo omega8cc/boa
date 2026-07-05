@@ -95,6 +95,34 @@ fi
 
 ### echo "_ARGS is ${_ARGS}"
 
+# Composer >= 2.8.3 (and any symfony/process caller) invokes git/hg/svn/tar/... as
+# argv-arrays, which symfony/process 5.x renders for /bin/sh (= websh) as
+#   exec 'git' 'remote' '-v'
+# or, on --enable-sigchild PHP builds, as
+#   { (exec 'git' ...) <&3 3<&- 3>/dev/null & } 3<&0;...
+# The single-quoted, exec-prefixed form matches none of websh's bare-token or path
+# checks below, so these legit subprocesses of an already-authorized parent were
+# refused (exit 1), surfacing in Composer as "git was not found ... in your PATH env".
+# Authorize by the NORMALISED leading verb (content check preserved), then exec the
+# ORIGINAL string verbatim so argument quoting and the sigchild fd-3 exit-code protocol
+# both survive. An lshell user cannot forge this shape: exec/sh are not in
+# allowed_shell_escape and the wrapper carries forbidden chars (; $! & { >&3).
+if [ "${1}" = "-c" ] \
+  && { [[ "${2}" == "exec "* ]] || [[ "${2}" == "{ (exec "* ]]; }; then
+  _SF_ORIG="${2}"
+  _SF_CMD="${2#\{ (}"
+  _SF_CMD="${_SF_CMD#exec }"
+  _SF_CMD="${_SF_CMD//\'/}"
+  _SF_LEAD="${_SF_CMD%% *}"
+  _SF_LEAD="${_SF_LEAD##*/}"
+  case "${_SF_LEAD}" in
+    git|git-upload-pack|git-receive-pack|git-upload-archive|hg|svn|svnadmin|fossil|bzr|cvs|p4|tar|unzip|7z|7za|7zz|gzip|gunzip|bzip2|xz|unxz|zstd|unzstd|php|composer|drush)
+      exec /bin/dash -c "${_SF_ORIG}"
+      exit 0
+      ;;
+  esac
+fi
+
 if [[ "${_ARGS}" =~ "--php=" ]]; then
   PHP_FWD=YES
 else
