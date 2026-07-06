@@ -736,7 +736,10 @@ _xoct_finalize_dry() {   # 1 oct 2 tgt
 # Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
 _xoct_rsync() {
   if [ "${_MODE}" = "LIVE" ]; then
-    rsync "$@"
+    # Trailing (after "$@") is deliberate: callers pass -a/-aEAX which implies
+    # -D; rsync honours the LAST matching option, so these must follow -a to
+    # actually drop device/fifo/socket nodes. Never transfer specials.
+    rsync "$@" --no-devices --no-specials
   else
     echo "[DRY-PLAN] would rsync: $*"
   fi
@@ -774,7 +777,7 @@ _xoct_put_on_root() {
   local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _q
   _q="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
-  if ! rsync -aEAXqu ${_ie} -e ssh "${_real}/" root@"${_th}":"${_dstRoot}/"; then
+  if ! rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh "${_real}/" root@"${_th}":"${_dstRoot}/"; then
     echo "DENY: rsync to ${_dstRoot} on target root failed"
     return 3
   fi
@@ -789,7 +792,7 @@ _xoct_put_on_mount() {
   local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _qm _qd
   _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "mkdir -p '${_qm}'"
-  if ! rsync -aEAXqu ${_ie} -e ssh "${_real}/" root@"${_th}":"${_mntDest}/"; then
+  if ! rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh "${_real}/" root@"${_th}":"${_mntDest}/"; then
     echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
     return 3
   fi

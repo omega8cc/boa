@@ -68,7 +68,7 @@ _relocate_one_backup_dir() {
     # briefly cost double space -- on the static FS (the target), not the tight root,
     # and it ages out via the -mtime purge. New backups after relocation hardlink
     # fine (both dirs are then co-located on the static FS).
-    rsync -a --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
+    rsync -a --no-devices --no-specials --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
       || { echo "backups-on-static: move failed ${_src} -> ${_dst}; left as real dir"; return 0; }
     find "${_src}" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
   fi

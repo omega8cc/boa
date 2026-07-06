@@ -278,13 +278,13 @@ _relocate_dir() {
   # Peak target usage is 1x (space check covers it); the source FS never grows. On
   # any failure the real dir is left in place (data also safe in dst).
   if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
-    rsync -a "${_src}/" "${_dst}/" 2>/dev/null \
+    rsync -a --no-devices --no-specials "${_src}/" "${_dst}/" 2>/dev/null \
       || { _log "ERROR: ${_label} rsync pre-seed failed ${_src} -> ${_dst}; left as real dir"; return 0; }
     if _provision_running; then
       _log "DEFER: ${_label} provision task active after pre-seed — left ${_src} as real dir (copy also in ${_dst})"
       return 0
     fi
-    rsync -a --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
+    rsync -a --no-devices --no-specials --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
       || { _log "ERROR: ${_label} rsync reconcile failed ${_src} -> ${_dst}; left as real dir (data also in ${_dst})"; return 0; }
     find "${_src}" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
   fi
