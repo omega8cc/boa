@@ -201,20 +201,24 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### or one per line:
 ###
 
+### Drupal 11.4
+#
+# DE4 — Drupal 11.4 prod/stage/dev
+# CK3 — Commerce v.3
+# CMS — Drupal CMS
+# LGV — LocalGov
+# THR — Thunder
+
 ### Drupal 11.3
 #
 # DE3 — Drupal 11.3 prod/stage/dev
-# CK3 — Commerce v.3
-# CMS — Drupal CMS
 # FOS — farmOS
-# LGV — LocalGov
 # OCS — OpenCulturas
-# THR — Thunder
-# VBX — Varbase 10
 
 ### Drupal 11.2
 #
 # DE2 — Drupal 11.2 prod/stage/dev
+# VBX — Varbase 10
 
 ### Drupal 11.1
 #

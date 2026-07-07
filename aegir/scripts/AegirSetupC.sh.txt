@@ -883,6 +883,7 @@ declare -A _distros_names=(
   ["DE1"]="Drupal"
   ["DE2"]="Drupal"
   ["DE3"]="Drupal"
+  ["DE4"]="Drupal"
 )
 
 # Define distros versions for configuration
@@ -890,17 +891,17 @@ declare -A _distros_versions=(
   ["CMS"]="2.1.3"
   ["CK1"]="2.77"
   ["CK2"]="2.40"
-  ["CK3"]="3.3.6"
+  ["CK3"]="5.1.0"
   ["DXP"]="10.3.0"
   ["EZC"]="2.2.15"
   ["FOS"]="4.0.3"
-  ["LGV"]="4.0.3"
+  ["LGV"]="4.0.2"
   ["OCS"]="3.0.2"
   ["OFD"]="12.2.4"
   ["OLS"]="2.0.0"
   ["OPG"]="3.1.0"
   ["SOC"]="12.4.5"
-  ["THR"]="8.3.6"
+  ["THR"]="8.4.0"
   ["UC6"]="2.15"
   ["UC7"]="3.13"
   ["VBX"]="10.1.0"
@@ -917,27 +918,28 @@ declare -A _distros_versions=(
   ["DE1"]="${_SMALLCORE11_1_V}"
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
+  ["DE4"]="${_SMALLCORE11_4_V}"
 )
 
 # Define distros Drupal cores versions for configuration
 declare -A _distros_drupal_cores=(
-  ["CMS"]="${_SMALLCORE11_3_V}"
+  ["CMS"]="${_SMALLCORE11_4_V}"
   ["CK1"]="${_SMALLCORE7_V}"
   ["CK2"]="${_SMALLCORE10_1_V}"
-  ["CK3"]="${_SMALLCORE11_3_V}"
+  ["CK3"]="${_SMALLCORE11_4_V}"
   ["DXP"]="10.3.6"
   ["EZC"]="10.3.6"
-  ["FOS"]="${_SMALLCORE11_3_V}"
-  ["LGV"]="${_SMALLCORE11_3_V}"
+  ["FOS"]="11.3.12"
+  ["LGV"]="${_SMALLCORE11_4_V}"
   ["OCS"]="${_SMALLCORE11_3_V}"
   ["OFD"]="10.2.10"
   ["OLS"]="${_SMALLCORE9_V}"
   ["OPG"]="${_SMALLCORE9_V}"
   ["SOC"]="10.2.10"
-  ["THR"]="${_SMALLCORE11_3_V}"
+  ["THR"]="${_SMALLCORE11_4_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
-  ["VBX"]="${_SMALLCORE11_3_V}"
+  ["VBX"]="${_SMALLCORE11_2_V}"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
@@ -951,6 +953,7 @@ declare -A _distros_drupal_cores=(
   ["DE1"]="${_SMALLCORE11_1_V}"
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
+  ["DE4"]="${_SMALLCORE11_4_V}"
 )
 
 # Define distros profiles names for configuration
@@ -985,6 +988,7 @@ declare -A _distros_profiles_names=(
   ["DE1"]="standard"
   ["DE2"]="standard"
   ["DE3"]="standard"
+  ["DE4"]="standard"
 )
 
 # Define distros profiles paths for configuration
@@ -1019,6 +1023,7 @@ declare -A _distros_profiles_paths=(
   ["DE1"]="/"
   ["DE2"]="/"
   ["DE3"]="/"
+  ["DE4"]="/"
 )
 
 # Define distros web dirs for configuration
@@ -1053,6 +1058,7 @@ declare -A _distros_web_dirs=(
   ["DE1"]="/web"
   ["DE2"]="/web"
   ["DE3"]="/web"
+  ["DE4"]="/web"
 )
 
 # Define distros names and their URLs for information
@@ -1087,6 +1093,7 @@ declare -A _distros_urls=(
   ["DE1"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_1_V}"
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
   ["DE3"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_3_V}"
+  ["DE4"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_4_V}"
 )
 
 # Define distros names and their compatible max PHP versions for information
@@ -1121,6 +1128,7 @@ declare -A _distros_php_versions=(
   ["DE1"]="8.4"
   ["DE2"]="8.4"
   ["DE3"]="8.4"
+  ["DE4"]="8.4"
 )
 
 
