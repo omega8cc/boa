@@ -11,8 +11,10 @@
 # for farmOS, the latest GitHub release) and each vanilla core from its minor's latest
 # patch; the set of core minors is auto-discovered (>= _CORE_FLOOR) so the newest is
 # always built. The distro + core versions Composer resolves are detected from the build
-# and used in the tarball names. Only the Composer specs and the core floor/exclude in
-# the configuration block below are settings to review.
+# and used in the tarball names. If a distribution fails to build on the newest core (e.g.
+# a stale core patch), it is retried on progressively older core minors and the newest that
+# works is kept. Only the Composer specs and the core floor/exclude in the configuration
+# block below are settings to review.
 #
 # Usage:
 #   staticbuild all                 build everything, package, publish
@@ -196,10 +198,21 @@ _create_project() {
 }
 
 _composer_prepare() {
-  # Two allow-plugins lines shared by every create-project distro.
+  # Trust all Composer plugins for these throwaway test builds. Distros pull varying
+  # plugin sets (composer/installers, cweagans/composer-patches, installers-extender,
+  # ...); enumerating them per-distro is fragile and composer 2.2+ blocks any unlisted
+  # plugin, failing the install.
   local _dir="$1"
-  _run_as_o8 "cd '${_dir}' && composer config --no-plugins allow-plugins.symfony/runtime true" || return 1
-  _run_as_o8 "cd '${_dir}' && composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true" || return 1
+  _run_as_o8 "cd '${_dir}' && composer config --no-plugins allow-plugins true" || return 1
+  # A single stale core patch shouldn't fail the whole build (upstream usually fixes it in
+  # a newer release) - make patch failures non-fatal. --json stores a real boolean; plain
+  # `config ... false` would store the string "false", which the plugin reads as truthy.
+  _run_as_o8 "cd '${_dir}' && composer config --no-plugins --json extra.composer-exit-on-patch-failure false" || return 1
+  # Some distros (e.g. commerce_kickstart) enable Composer's security-advisory blocking,
+  # which refuses every advisory-affected core/dependency and also defeats the older-core
+  # fallback (older cores carry advisories). These are throwaway test platforms, so turn it
+  # off - we build to test install/upgrade, not to deploy.
+  _run_as_o8 "cd '${_dir}' && composer config --no-plugins --json policy.advisories.block false" || return 1
 }
 
 _composer_build() {
@@ -207,6 +220,47 @@ _composer_build() {
   local _dir="$1"
   _run_as_o8 "cd '${_dir}' && composer update --no-install --no-scripts" || return 1
   _run_as_o8 "cd '${_dir}' && composer install --no-dev" || return 1
+}
+
+_commerce_build() {
+  # Commerce Kickstart's two-phase install: install, add the certified-projects layer,
+  # then re-resolve and install.
+  local _dir="$1"
+  _run_as_o8 "cd '${_dir}' && composer install --no-dev" || return 1
+  _run_as_o8 "cd '${_dir}' && composer require centarro/certified-projects" || return 1
+  _run_as_o8 "cd '${_dir}' && composer update --no-install --no-scripts" || return 1
+  _run_as_o8 "cd '${_dir}' && composer install --no-dev" || return 1
+}
+
+_pin_core() {
+  # Force the Drupal core minor. Pin BOTH drupal/core and drupal/core-recommended: a
+  # distro may require drupal/core directly (e.g. openculturas "^11.3.12"), and pinning
+  # only core-recommended would then CONFLICT with it instead of overriding it.
+  local _dir="$1" _minor="$2"
+  _run_as_o8 "cd '${_dir}' && composer require --no-update --no-scripts drupal/core-recommended:'${_minor}.*' drupal/core:'${_minor}.*'"
+}
+
+_with_core_fallback() {
+  # Build via callback $3; if the latest core fails (e.g. a distro's core patch is stale
+  # on the newest release), retry pinned to progressively older core minors until one
+  # builds, and keep it. $1 workdir, $2 label, $3 build function name.
+  local _dir="$1" _label="$2" _fn="$3" _m _failed _fmin
+  if "${_fn}" "${_dir}"; then return 0; fi
+  _alrt "${_label}: build on the latest core failed; retrying with older cores"
+  # Start below whatever core the failed attempt resolved (from its lock, if any).
+  _failed="$(_lock_version "${_dir}" "drupal/core")"
+  _fmin="${_failed%.*}"
+  for _m in $(_discover_core_minors | tr ' ' '\n' | sort -rV); do
+    [[ -n "${_fmin}" ]] && _minor_ge "${_m}" "${_fmin}" && continue
+    _msg "${_label}: retry on core ${_m}.*"
+    _run_as_o8 "cd '${_dir}' && rm -rf composer.lock vendor patches.lock.json" >/dev/null 2>&1
+    _pin_core "${_dir}" "${_m}" || continue
+    if "${_fn}" "${_dir}"; then
+      _info "${_label}: built on core ${_m}.*"
+      return 0
+    fi
+  done
+  return 1
 }
 
 _detect_core_version() {
@@ -226,6 +280,14 @@ _detect_core_version() {
 _record_fail() {
   _RESULTS+=("FAIL  $1")
   _alrt "$1: build failed"
+}
+
+_lock_version() {
+  # Echo an installed package's version from composer.lock (empty if absent). Used
+  # where the create-project root template versions independently of the distribution.
+  local _dir="$1" _pkg="$2"
+  _run_as_o8 "grep -A3 '\"name\": \"${_pkg}\"' '${_dir}/composer.lock' 2>/dev/null | grep -m1 '\"version\"'" 2>/dev/null \
+    | sed -E 's/.*: *"([^"]+)".*/\1/; s/^v//'
 }
 
 _finalize_distro() {
@@ -329,7 +391,7 @@ build_farm() {
     _record_fail "farm"
     return 1
   fi
-  if ! { _composer_prepare "${_wd}" && _composer_build "${_wd}"; }; then
+  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "farm" _composer_build; }; then
     _record_fail "farm"
     return 1
   fi
@@ -342,8 +404,8 @@ build_cms() {
   local _wd="${_DAY_DIR}/.build.cms" _dver
   _dver="$(_create_project "${_wd}" "${_CMS_SPEC}" "drupal/cms" "")" || { _record_fail "cms"; return 1; }
   if ! { _composer_prepare "${_wd}" \
-         && _composer_build "${_wd}" \
-         && _run_as_o8 "cd '${_wd}' && composer require drush/drush"; }; then
+         && _with_core_fallback "${_wd}" "cms" _composer_build \
+         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts"; }; then
     _record_fail "cms"
     return 1
   fi
@@ -356,7 +418,12 @@ build_culturas() {
   local _wd="${_DAY_DIR}/.build.culturas" _dver
   _dver="$(_create_project "${_wd}" "${_CULTURAS_SPEC}" "drupal/openculturas_project" "--remove-vcs")" \
     || { _record_fail "culturas"; return 1; }
-  if ! { _composer_prepare "${_wd}" && _composer_build "${_wd}"; }; then
+  # openculturas's core patch no longer applies on current core; build it unpatched by
+  # ignoring the patches its distribution package defines (composer-patches 2.x has no
+  # per-patch skip). Approved: unpatched test platform is fine here.
+  if ! { _composer_prepare "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer config --json extra.composer-patches.ignore-dependency-patches '[\"openculturas/openculturas-distribution\"]'" \
+         && _with_core_fallback "${_wd}" "culturas" _composer_build; }; then
     _record_fail "culturas"
     return 1
   fi
@@ -388,13 +455,8 @@ build_commerce() {
   # branch alias (e.g. 5.x-dev), not a release tag - reflected in the tarball name.
   _dver="$(_create_project "${_wd}" "${_COMMERCE_SPEC}" "centarro/commerce-kickstart-project" "-s dev")" \
     || { _record_fail "commerce"; return 1; }
-  # Commerce Kickstart: install, then add the certified-projects layer and
-  # re-resolve/install.
   if ! { _composer_prepare "${_wd}" \
-         && _run_as_o8 "cd '${_wd}' && composer install --no-dev" \
-         && _run_as_o8 "cd '${_wd}' && composer require centarro/certified-projects" \
-         && _run_as_o8 "cd '${_wd}' && composer update --no-install --no-scripts" \
-         && _run_as_o8 "cd '${_wd}' && composer install --no-dev"; }; then
+         && _with_core_fallback "${_wd}" "commerce" _commerce_build; }; then
     _record_fail "commerce"
     return 1
   fi
@@ -407,7 +469,7 @@ build_localgov() {
   local _wd="${_DAY_DIR}/.build.localgov" _dver
   _dver="$(_create_project "${_wd}" "${_LOCALGOV_SPEC}" "drupal/localgov_project" "")" \
     || { _record_fail "localgov"; return 1; }
-  if ! { _composer_prepare "${_wd}" && _composer_build "${_wd}"; }; then
+  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "localgov" _composer_build; }; then
     _record_fail "localgov"
     return 1
   fi
@@ -420,10 +482,15 @@ build_thunder() {
   local _wd="${_DAY_DIR}/.build.thunder" _dver
   _dver="$(_create_project "${_wd}" "${_THUNDER_SPEC}" "thunder/thunder-project" "")" \
     || { _record_fail "thunder"; return 1; }
-  if ! { _composer_prepare "${_wd}" && _composer_build "${_wd}"; }; then
+  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "thunder" _composer_build; }; then
     _record_fail "thunder"
     return 1
   fi
+  # thunder/thunder-project (the template) versions independently of the actual Thunder
+  # distribution, so name by thunder/thunder-distribution (what testers recognise, e.g. 8.4.0).
+  local _dist
+  _dist="$(_lock_version "${_wd}" "thunder/thunder-distribution")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "thunder" "${_wd}" "${_dver}" "thunder"
 }
 
@@ -433,7 +500,7 @@ build_varbase() {
   local _wd="${_DAY_DIR}/.build.varbase" _dver
   _dver="$(_create_project "${_wd}" "${_VARBASE_SPEC}" "vardot/varbase-project" "")" \
     || { _record_fail "varbase"; return 1; }
-  if ! { _composer_prepare "${_wd}" && _composer_build "${_wd}"; }; then
+  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "varbase" _composer_build; }; then
     _record_fail "varbase"
     return 1
   fi
@@ -609,7 +676,8 @@ _check_row() {
 
 do_check() {
   command -v curl >/dev/null 2>&1 || _die "curl not found (needed for version check)"
-  _info "Latest upstream versions a build would resolve:"
+  _info "Latest upstream release of each package (approximate; the build derives the"
+  _info "exact installed version, which may differ under a constraint or a distro alias):"
   _check_row "farm"     "$(_latest_github "${_FARM_REPO}")"
   _check_row "cms"      "$(_latest_packagist drupal/cms)"
   _check_row "culturas" "$(_latest_packagist drupal/openculturas_project)"
