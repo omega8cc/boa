@@ -51,14 +51,23 @@ _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php
 _FARM_REPO="farmOS/farmOS"
 _FARM_TAG=""
 
-# Distribution Composer specs (package + optional constraint). The resolved version is
-# detected from the build, never hardcoded.
+# Distribution Composer specs (the create-project template) + the distribution PROFILE
+# package. The tarball version is the profile package's version (the authoritative number
+# drupal.org shows), read from the lock - NOT the create-project template's version, which
+# is mostly irrelevant and sometimes a -dev alias.
 _CMS_SPEC="drupal/cms"
+_CMS_DISTPKG=""                                  # cms: template == distribution version
 _CULTURAS_SPEC="drupal/openculturas_project"
+_CULTURAS_DISTPKG="openculturas/openculturas-distribution"
+_CULTURAS_PROJECT="openculturas"                 # drupal.org project (for the release-number pin)
 _COMMERCE_SPEC="centarro/commerce-kickstart-project"
+_COMMERCE_DISTPKG="centarro/commerce_kickstart"  # not on drupal.org; profile version is authoritative
 _LOCALGOV_SPEC="drupal/localgov_project:^4"
+_LOCALGOV_DISTPKG="drupal/localgov"
 _THUNDER_SPEC="thunder/thunder-project"
+_THUNDER_DISTPKG="thunder/thunder-distribution"
 _VARBASE_SPEC="Vardot/varbase-project:~10"
+_VARBASE_DISTPKG="vardot/varbase"
 _CORE_SPEC="drupal/recommended-project"
 
 # Vanilla core minors to build. Empty (default) = auto-discover every released minor
@@ -346,6 +355,14 @@ _resolve_farm_tag() {
     | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
 }
 
+_drupal_release() {
+  # Echo a drupal.org project's latest STABLE release number (the authoritative version,
+  # not the Composer template alias). Skips dev/alpha/beta/rc. Empty if unavailable.
+  curl -fsSL -A "${_UA}" "https://updates.drupal.org/release-history/$1/current" 2>/dev/null \
+    | grep -oE '<version>[^<]+</version>' | sed -E 's/<[^>]+>//g' \
+    | grep -viE 'dev|alpha|beta|rc|unstable' | head -n 1
+}
+
 _minor_ge() {
   # 0 if $1 >= $2, comparing major.minor numerically.
   local _a1="${1%.*}" _a2="${1#*.}" _b1="${2%.*}" _b2="${2#*.}"
@@ -418,11 +435,14 @@ build_culturas() {
   local _wd="${_DAY_DIR}/.build.culturas" _dver
   _dver="$(_create_project "${_wd}" "${_CULTURAS_SPEC}" "drupal/openculturas_project" "--remove-vcs")" \
     || { _record_fail "culturas"; return 1; }
-  # openculturas's core patch no longer applies on current core; build it unpatched by
-  # ignoring the patches its distribution package defines (composer-patches 2.x has no
-  # per-patch skip). Approved: unpatched test platform is fine here.
+  # Pin the distribution to its exact drupal.org release (the template otherwise pulls a
+  # -dev branch), and build unpatched - its core patch is stale on current core and
+  # composer-patches 2.x has no per-patch skip. Approved: unpatched test platform is fine.
+  local _ocrel
+  _ocrel="$(_drupal_release "${_CULTURAS_PROJECT}")"
   if ! { _composer_prepare "${_wd}" \
-         && _run_as_o8 "cd '${_wd}' && composer config --json extra.composer-patches.ignore-dependency-patches '[\"openculturas/openculturas-distribution\"]'" \
+         && _run_as_o8 "cd '${_wd}' && composer config --json extra.composer-patches.ignore-dependency-patches '[\"${_CULTURAS_DISTPKG}\"]'" \
+         && { [[ -z "${_ocrel}" ]] || _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_CULTURAS_DISTPKG}:'${_ocrel}'"; } \
          && _with_core_fallback "${_wd}" "culturas" _composer_build; }; then
     _record_fail "culturas"
     return 1
@@ -444,6 +464,10 @@ build_culturas() {
     _alrt "culturas: expected wrapper ${_wrap##*/} not found; layout may have changed"
   fi
   _ensure_example_sites "${_wd}/web/sites" "${_wd}"
+  # Name by the openculturas distribution package (the pinned drupal.org release, e.g. 3.0.2).
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_CULTURAS_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "openculturas" "${_wd}" "${_dver}" "culturas"
 }
 
@@ -451,8 +475,8 @@ build_commerce() {
   _begin_build "commerce_kickstart-" "commerce" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "commerce"; return 1; }
   local _wd="${_DAY_DIR}/.build.commerce" _dver
-  # Commerce Kickstart is built from its dev branch (-s dev), so the detected version is a
-  # branch alias (e.g. 5.x-dev), not a release tag - reflected in the tarball name.
+  # Built via the -s dev project template, but named by the install profile package
+  # (centarro/commerce_kickstart, e.g. 5.1.0) - the template alias (5.x-dev) is irrelevant.
   _dver="$(_create_project "${_wd}" "${_COMMERCE_SPEC}" "centarro/commerce-kickstart-project" "-s dev")" \
     || { _record_fail "commerce"; return 1; }
   if ! { _composer_prepare "${_wd}" \
@@ -460,6 +484,9 @@ build_commerce() {
     _record_fail "commerce"
     return 1
   fi
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_COMMERCE_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "commerce_kickstart" "${_wd}" "${_dver}" "commerce"
 }
 
@@ -473,6 +500,10 @@ build_localgov() {
     _record_fail "localgov"
     return 1
   fi
+  # Name by the localgov distribution package (drupal.org's number), not the project template.
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_LOCALGOV_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "localgov" "${_wd}" "${_dver}" "localgov"
 }
 
@@ -486,10 +517,9 @@ build_thunder() {
     _record_fail "thunder"
     return 1
   fi
-  # thunder/thunder-project (the template) versions independently of the actual Thunder
-  # distribution, so name by thunder/thunder-distribution (what testers recognise, e.g. 8.4.0).
+  # Name by the Thunder distribution package (8.4.0), not the template (versions separately).
   local _dist
-  _dist="$(_lock_version "${_wd}" "thunder/thunder-distribution")"
+  _dist="$(_lock_version "${_wd}" "${_THUNDER_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "thunder" "${_wd}" "${_dver}" "thunder"
 }
@@ -507,6 +537,10 @@ build_varbase() {
   # varbase uses a docroot/ layout and expects a content dir under each recipes/.
   local _cmd="cd \"${_wd}/docroot\" && find . -type d -name recipes -exec mkdir -p {}/default/content \;"
   _run_as_o8 "${_cmd}" || _alrt "varbase: recipes content dir creation failed"
+  # Name by the varbase distribution package (drupal.org's number), not the project template.
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_VARBASE_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "varbase" "${_wd}" "${_dver}" "varbase"
 }
 
@@ -676,16 +710,15 @@ _check_row() {
 
 do_check() {
   command -v curl >/dev/null 2>&1 || _die "curl not found (needed for version check)"
-  _info "Latest upstream release of each package (approximate; the build derives the"
-  _info "exact installed version, which may differ under a constraint or a distro alias):"
+  _info "Latest release per distro from the authoritative source - drupal.org release feed"
+  _info "(GitHub for farmOS; commerce_kickstart has no drupal.org stable, so its profile pkg):"
   _check_row "farm"     "$(_latest_github "${_FARM_REPO}")"
-  _check_row "cms"      "$(_latest_packagist drupal/cms)"
-  _check_row "culturas" "$(_latest_packagist drupal/openculturas_project)"
-  _check_row "commerce" "$(_latest_packagist centarro/commerce-kickstart-project)"
-  _check_row "localgov" "$(_latest_packagist drupal/localgov_project)"
-  _check_row "thunder"  "$(_latest_packagist thunder/thunder-project)"
-  _check_row "varbase"  "$(_latest_packagist vardot/varbase-project)"
-  _check_row "core"     "$(_latest_packagist drupal/recommended-project)"
+  _check_row "cms"      "$(_drupal_release cms)"
+  _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
+  _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
+  _check_row "localgov" "$(_drupal_release localgov)"
+  _check_row "thunder"  "$(_drupal_release thunder)"
+  _check_row "varbase"  "$(_drupal_release varbase)"
   _msg ""
   local _minors="${_CORE_MINORS}"
   [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
