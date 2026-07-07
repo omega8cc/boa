@@ -1,10 +1,55 @@
 # How we build newer codebases for testing
 
-Manual reference procedure for building the newer Drupal core and distribution
-codebases we use for install / clone / migration testing, updated for current
-Composer. Run it on the mirror source VM.
+The newer Drupal core and distribution codebases we build for install / clone /
+migration testing and publish to the static mirror (`/var/www/static/{core,distro}`).
+Run on the mirror source VM.
 
-## Prepare environment
+## Automated: staticbuild
+
+`aegir/tools/bin/staticbuild` automates the whole procedure below. It derives every
+version from the actual build (nothing is hardcoded), auto-discovers the core minors,
+handles the per-distro quirks (see Notes), packages, and publishes. Run it as root:
+
+```sh
+  staticbuild check              # report the latest upstream versions a build would pull
+  staticbuild all                # build every distro + core, package, publish
+  staticbuild build [name ...]   # build all, or only named targets
+  staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
+  staticbuild distribute         # copy tarballs to /var/www/static/{distro,core}
+```
+
+Configuration (Composer specs + core floor/exclude) is the block at the top of the
+script. If a distro fails to build on the newest core, it is retried on progressively
+older core minors and the newest that works is kept. The manual steps below document
+what it does.
+
+## What it builds (example run; versions are derived per build)
+
+Distributions, published to `/var/www/static/distro`:
+
+```sh
+  312M  commerce_kickstart-5.x-dev-11.4.1
+  524M  drupal_cms_installer-2.1.3-11.4.1
+  226M  farm-4.0.3-11.3.12
+  404M  localgov-4.0.3-11.4.1
+  524M  openculturas-3.0.1-11.4.1
+  272M  thunder-8.4.0-11.4.1
+  559M  varbase-10.1.0-11.2.14
+```
+
+Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
+
+```sh
+  169M  drupal-10.2.12    188M  drupal-11.2.14
+  178M  drupal-10.3.14    194M  drupal-11.3.13
+  185M  drupal-10.4.10    202M  drupal-11.4.1
+  187M  drupal-10.5.12
+  188M  drupal-10.6.12    182M  drupal-11.1.10
+```
+
+## Manual procedure (reference)
+
+### Prepare environment
 
 ```sh
   su -s /bin/bash - o8
@@ -14,7 +59,7 @@ Composer. Run it on the mirror source VM.
   ln -sf /opt/php85/bin/php /usr/bin/php
 ```
 
-## Visit for latest versions check
+### Visit for latest versions check
 
 ```sh
   https://www.drupal.org/project/drupal/releases/
@@ -27,264 +72,152 @@ Composer. Run it on the mirror source VM.
   https://www.drupal.org/project/varbase
 ```
 
-## Build them one by one and document results
+### Build them one by one and document results
+
+Common shape for the create-project distros (farmOS is a release tarball instead).
+`allow-plugins true` matters: the distros pull composer/installers, composer-patches,
+etc., which current Composer blocks unless allowed.
 
 ```sh
-farmos     # farm-4.0.3-11.3.12
+farmos     # farm-4.0.3-11.3.12  (farmOS caps core at 11.3)
            # visit: https://github.com/farmOS/farmOS/releases
            # wget https://github.com/farmOS/farmOS/releases/download/4.0.3/farmOS-4.0.3.tar.gz
-           # tar -xzf farmOS-4.0.3.tar.gz
-           # mv farmOS farm-4.0.3-11.3.12
+           # tar -xzf farmOS-4.0.3.tar.gz && mv farmOS farm-4.0.3-11.3.12
            # cd ~/static/MONTH-DAY/farm-4.0.3-11.3.12
-           # composer config --no-plugins allow-plugins.symfony/runtime true
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
+           # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # (11.3.12)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.3.12 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.3-11.3.12
-           # composer config --no-plugins allow-plugins.symfony/runtime true
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
+cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.1 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.3-11.4.1
+           # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # composer require drush/drush
-           # (11.3.12)
+           # composer require drush/drush --no-scripts   # drupal_cms post-update-cmd exits non-zero
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.2-11.3.12 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.0.2-11.3.12/
-           # composer config --no-plugins allow-plugins.symfony/runtime true
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.1-11.4.1 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.0.1-11.4.1/
+           # composer config --no-plugins allow-plugins true
+           # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # build unpatched (stale core patch)
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # cd ~/static/MONTH-DAY/openculturas-3.0.2-11.3.12/web/profiles/contrib/openculturas-distribution
+           # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
-           # mv openculturas ~/static/MONTH-DAY/openculturas-3.0.2-11.3.12/web/profiles/contrib/
-           # mv * ~/static/MONTH-DAY/openculturas-3.0.2-11.3.12/web/profiles/contrib/
-           # cd ~/static/MONTH-DAY/openculturas-3.0.2-11.3.12/web/profiles/contrib/
-           # rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.3-11.3.12/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.2-11.3.12/web/sites/
-           # (11.3.12)
+           # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
+           # cp ~/static/MONTH-DAY/farm-4.0.3-11.3.12/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.1-11.4.1/web/sites/
 ```
 
 ```sh
-commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-3.3.6-11.3.12 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/commerce_kickstart-3.3.6-11.3.12
-           # composer config --no-plugins allow-plugins.symfony/runtime true
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
+commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.x-dev-11.4.1 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/commerce_kickstart-5.x-dev-11.4.1
+           # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false   # commerce_kickstart blocks advisory-affected deps
            # composer install --no-dev
            # composer require centarro/certified-projects
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # (11.3.12)
 ```
 
 ```sh
-localgov   # composer create-project drupal/localgov_project:^4.0 localgov-4.0.3-11.3.12 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/localgov-4.0.3-11.3.12
-           # composer config --no-plugins allow-plugins.symfony/runtime true
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
+localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.3-11.4.1 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/localgov-4.0.3-11.4.1
+           # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # (11.3.12)
 ```
 
 ```sh
-thunder    # composer create-project thunder/thunder-project thunder-8.3.6-11.3.12 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/thunder-8.3.6-11.3.12
-           # composer config --no-plugins allow-plugins.symfony/runtime true
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
+thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.1 --no-dev --no-interaction --no-install --no-scripts
+           # name by thunder/thunder-distribution (8.4.0); thunder/thunder-project versions separately (5.0.0)
+           # cd ~/static/MONTH-DAY/thunder-8.4.0-11.4.1
+           # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # (11.3.12)
 ```
 
 ```sh
-varbase    # composer create-project Vardot/varbase-project:~10 varbase-10.1.0-11.3.12 --no-dev --no-interaction --no-install --no-scripts
+varbase    # composer create-project Vardot/varbase-project:~10 varbase-10.1.0-11.2.14 --no-dev --no-interaction --no-install --no-scripts
            # ln -sf /opt/php84/bin/php /usr/bin/php
-           # cd ~/static/MONTH-DAY/varbase-10.1.0-11.3.12
-           # composer config --no-plugins allow-plugins.symfony/runtime true
-           # composer config --no-plugins allow-plugins.drupal/core-composer-scaffold true
+           # cd ~/static/MONTH-DAY/varbase-10.1.0-11.2.14
+           # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # cd ~/static/MONTH-DAY/varbase-10.1.0-11.3.12/docroot
-           # find -name recipes | awk '{print $1"/default/content"}' | xargs -I {} mkdir -p {}
-           # (11.3.12)
+           # cd docroot && find . -type d -name recipes -exec mkdir -p {}/default/content \;
 ```
+
+Vanilla cores, latest patch of each supported minor (full install, add drush, audit):
 
 ```sh
-vanilla    # composer create-project drupal/recommended-project:10.2.12 drupal-10.2.12 --no-dev --no-interaction
-           # cd ~/static/MONTH-DAY/drupal-10.2.12
-           # composer require drush/drush
-           # composer audit
-           # (10.2.12)
+vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
+           # composer create-project drupal/recommended-project:<minor>.* drupal-<version> --no-dev --no-interaction
+           # cd drupal-<version> && composer require drush/drush && composer audit
+           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.12 11.1.10 11.2.14 11.3.13 11.4.1
 ```
 
-```sh
-vanilla    # composer create-project drupal/recommended-project:10.3.14 drupal-10.3.14 --no-dev --no-interaction
-           # cd ~/static/MONTH-DAY/drupal-10.3.14
-           # composer require drush/drush
-           # composer audit
-           # (10.3.14)
-```
-
-```sh
-vanilla    # composer create-project drupal/recommended-project:10.4.10 drupal-10.4.10 --no-dev --no-interaction
-           # cd ~/static/MONTH-DAY/drupal-10.4.10
-           # composer require drush/drush
-           # composer audit
-           # (10.4.10)
-```
-
-```sh
-vanilla    # composer create-project drupal/recommended-project:10.5.12 drupal-10.5.12 --no-dev --no-interaction
-           # cd ~/static/MONTH-DAY/drupal-10.5.12
-           # composer require drush/drush
-           # composer audit
-           # (10.5.12)
-```
-
-```sh
-vanilla    # composer create-project drupal/recommended-project:10.6.11 drupal-10.6.11 --no-dev --no-interaction
-           # cd ~/static/MONTH-DAY/drupal-10.6.11
-           # composer require drush/drush
-           # composer audit
-           # (10.6.11)
-```
-
-```sh
-vanilla    # composer create-project drupal/recommended-project:11.1.10 drupal-11.1.10 --no-dev --no-interaction
-           # cd ~/static/MONTH-DAY/drupal-11.1.10
-           # composer require drush/drush
-           # composer audit
-           # (11.1.10)
-```
-
-```sh
-vanilla    # composer create-project drupal/recommended-project:11.2.14 drupal-11.2.14 --no-dev --no-interaction
-           # cd ~/static/MONTH-DAY/drupal-11.2.14
-           # composer require drush/drush
-           # composer audit
-           # (11.2.14)
-```
-
-```sh
-vanilla    # composer create-project drupal/recommended-project:11.3.12 drupal-11.3.12 --no-dev --no-interaction
-           # cd ~/static/MONTH-DAY/drupal-11.3.12
-           # composer require drush/drush
-           # composer audit
-           # (11.3.12)
-```
-
-## Check and compare versions built above as root
-
-```sh
-o8@host:~/static/MONTH-DAY$ du -sh -- */
-310M	commerce_kickstart-3.3.6-11.3.12/
-169M	drupal-10.2.12/
-178M	drupal-10.3.14/
-185M	drupal-10.4.10/
-187M	drupal-10.5.12/
-187M	drupal-10.6.11/
-182M	drupal-11.1.10/
-188M	drupal-11.2.14/
-194M	drupal-11.3.12/
-521M	drupal_cms_installer-2.1.3-11.3.12/
-232M	farm-4.0.3-11.3.12/
-402M	localgov-4.0.3-11.3.12/
-523M	openculturas-3.0.2-11.3.12/
-272M	thunder-8.3.6-11.3.12/
-570M	varbase-10.1.0-11.3.12/
-```
-
-## Clean up artefacts before packaging
+### Clean up artefacts before packaging
 
 ```sh
   cd ~/static/MONTH-DAY/
-  rm -f */*/modules/o_contrib*
-  rm -f -r */*/sites/all/drush
-  rm -f */*/sites/all/modules/*
-  rm -f */*/sites/sites.php
-  rm -f */*/local_drush_unlocked.pid
-  rm -f */*/sites/development.services.yml
-  rm -f */*/sites/all/libraries/*.pid
+  rm -f  */*/modules/o_contrib*
+  rm -rf */*/sites/all/drush
+  rm -f  */*/sites/all/modules/*
+  rm -f  */*/sites/sites.php
+  rm -f  */*/local_drush_unlocked.pid
+  rm -f  */*/sites/development.services.yml
+  rm -f  */*/sites/all/libraries/*.pid
 ```
 
-## Package the platforms
+### Package the platforms
 
 Gzip the raw-core platforms first, keeping their `core/profiles`:
 
 ```sh
   cd ~/static/MONTH-DAY/
-  tar -czf drupal-10.2.12.tar.gz drupal-10.2.12
-  tar -czf drupal-10.3.14.tar.gz drupal-10.3.14
-  tar -czf drupal-10.4.10.tar.gz drupal-10.4.10
-  tar -czf drupal-10.5.12.tar.gz drupal-10.5.12
-  tar -czf drupal-10.6.11.tar.gz drupal-10.6.11
-  tar -czf drupal-11.1.10.tar.gz drupal-11.1.10
-  tar -czf drupal-11.2.14.tar.gz drupal-11.2.14
-  tar -czf drupal-11.3.12.tar.gz drupal-11.3.12
+  for d in drupal-*/ ; do tar -czf "${d%/}.tar.gz" "${d%/}" ; done
 ```
 
 Then strip the stock core profiles from the distributions (they ship their own
-install profile):
+install profile), then gzip the remaining (distribution) platforms:
 
 ```sh
-  rm -f -r */*/core/profiles/*
+  rm -rf */*/core/profiles/*
+  for d in */ ; do case "${d%/}" in drupal-*) continue ;; esac ; tar -czf "${d%/}.tar.gz" "${d%/}" ; done
 ```
 
-Then gzip the remaining (distribution) platforms:
+### Publish the tarballs to the static mirror
 
 ```sh
-  tar -czf commerce_kickstart-3.3.6-11.3.12.tar.gz commerce_kickstart-3.3.6-11.3.12
-  tar -czf drupal_cms_installer-2.1.3-11.3.12.tar.gz drupal_cms_installer-2.1.3-11.3.12
-  tar -czf farm-4.0.3-11.3.12.tar.gz farm-4.0.3-11.3.12
-  tar -czf localgov-4.0.3-11.3.12.tar.gz localgov-4.0.3-11.3.12
-  tar -czf openculturas-3.0.2-11.3.12.tar.gz openculturas-3.0.2-11.3.12
-  tar -czf thunder-8.3.6-11.3.12.tar.gz thunder-8.3.6-11.3.12
-  tar -czf varbase-10.1.0-11.3.12.tar.gz varbase-10.1.0-11.3.12
+  cp -a ~/static/MONTH-DAY/drupal-*.tar.gz            /var/www/static/core/
+  cp -a ~/static/MONTH-DAY/*.tar.gz                   /var/www/static/distro/   # then remove the drupal-* copies from distro/
 ```
 
-## Publish the tarballs to the static mirror
-
-Copy all non-raw-core (distribution) tarballs:
-
-```sh
-  cd /var/www/static/distro
-  cp -a ~/static/MONTH-DAY/commerce_kickstart-3.3.6-11.3.12.tar.gz .
-  cp -a ~/static/MONTH-DAY/drupal_cms_installer-2.1.3-11.3.12.tar.gz .
-  cp -a ~/static/MONTH-DAY/farm-4.0.3-11.3.12.tar.gz .
-  cp -a ~/static/MONTH-DAY/localgov-4.0.3-11.3.12.tar.gz .
-  cp -a ~/static/MONTH-DAY/openculturas-3.0.2-11.3.12.tar.gz .
-  cp -a ~/static/MONTH-DAY/thunder-8.3.6-11.3.12.tar.gz .
-  cp -a ~/static/MONTH-DAY/varbase-10.1.0-11.3.12.tar.gz .
-```
-
-Copy all raw-core tarballs:
-
-```sh
-  cd /var/www/static/core
-  cp -a ~/static/MONTH-DAY/drupal-10.2.12.tar.gz .
-  cp -a ~/static/MONTH-DAY/drupal-10.3.14.tar.gz .
-  cp -a ~/static/MONTH-DAY/drupal-10.4.10.tar.gz .
-  cp -a ~/static/MONTH-DAY/drupal-10.5.12.tar.gz .
-  cp -a ~/static/MONTH-DAY/drupal-10.6.11.tar.gz .
-  cp -a ~/static/MONTH-DAY/drupal-11.1.10.tar.gz .
-  cp -a ~/static/MONTH-DAY/drupal-11.2.14.tar.gz .
-  cp -a ~/static/MONTH-DAY/drupal-11.3.12.tar.gz .
-```
+Raw cores (`drupal-*`) go to `core/`; everything else goes to `distro/`.
 
 ## Add them all as platforms in Ægir
 
-Use paths like `MONTH-DAY/drupal-11.3.12` and run tests for site install, clone and migration.
+Use paths like `MONTH-DAY/drupal-11.4.1` and run tests for site install, clone and migration.
 
 ## Notes on non-standard issues
 
-Some codebases need manual fixes after the build. For example `openculturas` has a
-wrong installation profile directory tree structure by default and does not ship the
-required `sites/example.sites.php` file, which must be copied there manually (see the
-`culturas` block above) before you can install sites.
+Some codebases need extra handling; staticbuild does all of this automatically.
+
+- **allow-plugins** — allow all Composer plugins (`composer config allow-plugins true`);
+  the distros pull composer/installers, cweagans/composer-patches, installers-extender,
+  etc., and current Composer blocks any unlisted plugin.
+- **openculturas** — its install profile has a wrong directory tree by default and ships
+  no `sites/example.sites.php` (copy one in). Its core patch no longer applies on current
+  core and composer-patches 2.x has no per-patch skip, so build it unpatched by ignoring
+  its distribution's patches (`extra.composer-patches.ignore-dependency-patches`).
+- **commerce** — commerce_kickstart enables Composer security-advisory blocking, which
+  refuses advisory-affected core/deps; disable it (`policy.advisories.block false`) for the
+  test build.
+- **thunder** — `thunder/thunder-project` (the template) versions independently (e.g. 5.0.0)
+  from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.0); name by the latter.
+- **cms** — drupal_cms's post-update-cmd cleanup script exits non-zero; run its drush
+  require with `--no-scripts`.
+- **stale core patches / older cores** — if a distro fails on the newest core, retry pinned
+  to progressively older core minors and keep the newest that works.
