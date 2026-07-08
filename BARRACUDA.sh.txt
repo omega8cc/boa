@@ -474,6 +474,22 @@ if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ];
   fi
 fi
 
+###
+### Remove the bogus `WarnWeakCrypto` client option shipped by earlier BOA
+### releases.  It is NOT a valid OpenSSH directive, so it aborts EVERY outbound
+### ssh with "Bad configuration option" -- breaking git-over-ssh, rsync-over-ssh
+### and any tooling that connects out from the box.  Strip it unconditionally
+### (idempotent no-op once clean) from the live config AND the vanilla backup, so
+### boxes that got it from any prior release self-heal on the next run, regardless
+### of the _SSH_FROM_SOURCES / _SSH_ARMOUR settings that gate _sshd_armour above.
+###
+if [ -e "/etc/ssh/ssh_config" ]; then
+  sed -i '/^[[:space:]]*WarnWeakCrypto\b/d' /etc/ssh/ssh_config
+fi
+if [ -e "/etc/ssh/.vanilla.ssh_config" ]; then
+  sed -i '/^[[:space:]]*WarnWeakCrypto\b/d' /etc/ssh/.vanilla.ssh_config
+fi
+
 
 ###
 ### Install Percona server
