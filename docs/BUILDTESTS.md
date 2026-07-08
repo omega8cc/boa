@@ -34,7 +34,6 @@ Distributions, published to `/var/www/static/distro`:
   404M  localgov-4.0.3-11.4.1
   524M  openculturas-3.0.1-11.4.1
   272M  thunder-8.4.0-11.4.1
-  559M  varbase-10.1.0-11.2.14
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
@@ -69,7 +68,6 @@ Raw cores, published to `/var/www/static/core`, latest patch of each supported m
   https://www.drupal.org/project/localgov
   https://www.drupal.org/project/openculturas
   https://www.drupal.org/project/thunder
-  https://www.drupal.org/project/varbase
 ```
 
 ### Build them one by one and document results
@@ -139,15 +137,11 @@ thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.
            # composer install --no-dev
 ```
 
-```sh
-varbase    # composer create-project Vardot/varbase-project:~10 varbase-10.1.0-11.2.14 --no-dev --no-interaction --no-install --no-scripts
-           # ln -sf /opt/php84/bin/php /usr/bin/php
-           # cd ~/static/MONTH-DAY/varbase-10.1.0-11.2.14
-           # composer config --no-plugins allow-plugins true
-           # composer update --no-install --no-scripts
-           # composer install --no-dev
-           # cd docroot && find . -type d -name recipes -exec mkdir -p {}/default/content \;
-```
+<!-- varbase DISABLED: the upstream Vardot/varbase-project template no longer builds an
+     installable site (a fresh ~10 resolve pins core 11.2.14, which the varbase profile
+     ~11.3.0 rejects; pinned to 11.3.x a drifted dep fatals during install; 11.0.0-alpha3
+     OOMs then hits a canvas final-class fatal). The last working varbase-10.1.0-11.3.12
+     build is kept on the mirror; do not rebuild until upstream is fixed. See staticbuild. -->
 
 Vanilla cores, latest patch of each supported minor (full install, add drush, audit):
 
