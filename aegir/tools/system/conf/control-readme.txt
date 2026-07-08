@@ -234,11 +234,11 @@
 # DE3 — Drupal 11.3 prod/stage/dev
 # FOS — farmOS
 # OCS — OpenCulturas
+# VBX — Varbase 10
 
 ### Drupal 11.2
 #
 # DE2 — Drupal 11.2 prod/stage/dev
-# VBX — Varbase 10
 
 ### Drupal 11.1
 #
