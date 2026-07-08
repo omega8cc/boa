@@ -165,7 +165,8 @@ instance under `/data/disk/<oct>` — real instances only, identified by the BOA
 `tools/drush` marker, so the non-instance pseudo-dirs (`arch`, `all`, `legacy`, …) are
 skipped. For each instance with an activated `policy.txt` it writes one
 `config/includes/ai_policy/<site>.conf` per record — the exact path the satellite vhost
-pulls via `include $server->include_path/ai_policy/{uri}*`. `$ai_train_allow` and
+pulls via `include $server->include_path/ai_policy/{uri}.conf*` (the `.conf*` anchor stops a
+prefix-named site pulling a longer site's fragment). `$ai_train_allow` and
 `$ai_evasive_allow` are both defaulted to `0` in the vhost template before that include,
 so a site with no record keeps the global defaults. Removing a record prunes its fragment
 on the next run.

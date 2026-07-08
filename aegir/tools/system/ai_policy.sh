@@ -7,7 +7,7 @@
 # an ACTIVATED control file at /data/disk/<oct>/static/control/ai/policy.txt, and
 # for each generates per-site nginx fragments into that instance's own
 # /data/disk/<oct>/config/includes/ai_policy/<site>.conf — exactly the path the
-# per-satellite vhost pulls via `include $server->include_path/ai_policy/<uri>*`.
+# per-satellite vhost pulls via `include $server->include_path/ai_policy/<uri>.conf*`.
 #
 # Control records: `<site>  [train-allow] [evasive-allow] [search-block] [user-block] [utility-block]`
 # turning the global AI default (training + evasive blocked; search/user/utility

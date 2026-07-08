@@ -63,15 +63,16 @@ hostmaster front-end has its own vhost, out of scope here.
 Every generated `geo` always allows, regardless of the listed addresses:
 
 - `127.0.0.1` and `::1` — loopback;
-- the server's own IP, from `/root/.found_correct_ipv4.cnf`;
-- **every established inbound SSH client IPv4**, read from `netstat -tn` (peers on an
-  `ESTABLISHED` `:22` connection) — the same source `ip_access` uses, because `who --ips`
-  is unavailable on Excalibur and newer.
+- the server's own IPv4, from `/root/.found_correct_ipv4.cnf` (BOA tracks no server IPv6);
+- **every established inbound SSH client IP (IPv4 or IPv6)**, read from `netstat -tn` (peers
+  on an `ESTABLISHED` `:22` connection — the peer address is taken by stripping the trailing
+  `:port`, so both families are harvested) — the same source `ip_access` uses, because
+  `who --ips` is unavailable on Excalibur and newer.
 
-So an admin working over SSH is added to every site's allow-list automatically and cannot
-be shut out of `/admin` mid-change. The SSH set is part of the change-gate, so a new admin
-session triggers a regenerate on the next pass. Auto anti-lockout is IPv4 only (an admin's
-IPv6 workstation is honoured when listed in the control file).
+So an admin working over SSH — over IPv4 or IPv6 — is added to every site's allow-list
+automatically and cannot be shut out of `/admin` mid-change. The SSH set is part of the
+change-gate, so a new admin session triggers a regenerate on the next pass. Only the
+server's own address is IPv4-only in the anti-lockout set (BOA tracks no server IPv6).
 
 ## Control file format
 

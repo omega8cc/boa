@@ -16,9 +16,11 @@ The installed root crontab lives at `/var/spool/cron/crontabs/root`. Its master 
 | `minute.sh` | every minute (self-loops) | Service auto-healing watchdog fan-out (nginx, php, mysql, …) |
 | `guest-fire.sh` | every minute | Apply temporary csf web bans (see [SECURITY.md](SECURITY.md)) |
 | `runner.sh` | every minute (`nice -n5 ionice -c2 -n7`) | Drain the Aegir hosting task queue (`/var/xdrago/run-*`) |
-| `ip_access.sh` | every 2 min | Maintain per-site IP access rules (see [IP-ACCESS.md](IP-ACCESS.md)) |
+| `ip_access.sh` | every 2 min | Maintain per-site IP access rules, IPv4/IPv6/CIDR (see [IP-ACCESS.md](IP-ACCESS.md)) |
+| `user_admin_access.sh` | every 2 min | Maintain per-site `/user`+`/admin` IP access rules, IPv4/IPv6/CIDR (see [USER-ADMIN-ACCESS.md](USER-ADMIN-ACCESS.md)) |
 | `ai_policy.sh` | every 2 min | Apply the AI-crawler policy (see [AI-POLICY.md](AI-POLICY.md)) |
-| `nginx_deny.sh` | every 2 min | Regenerate the nginx ban geo from csf state (see [SECURITY.md](SECURITY.md)) |
+| `nginx_deny.sh` | every 2 min | Regenerate the nginx IPv4 ban geo from csf state (see [SECURITY.md](SECURITY.md)) |
+| `nginx_deny6.sh` | every 2 min | Regenerate the nginx-native IPv6 ban geo (csf is IPv4-only; see [ABUSE-GUARD.md](ABUSE-GUARD.md)) |
 | `migration_proxy_realip.sh` | every 5 min | Refresh migration-proxy realip ranges |
 | `clear.sh` | every 5 min | Periodic cleanup |
 | `loadreport --log` | every 30 min (`nice -n10 ionice -c3`) | Profile which monitor scripts cost CPU/RSS (read-only) |
@@ -358,7 +360,7 @@ It is **not** one of the `/var/xdrago/` monitors — it does not loop and enforc
 - **Identity by `(pid, starttime)`.** Because targets are short-lived and PIDs recycle, every process is keyed by its PID *and* its start tick, so two scripts that reuse a PID are never conflated.
 - **Birth-aware CPU charging.** The window start is recorded in boot-relative clock ticks from `/proc/uptime`. A process born during the window is charged its full cumulative CPU (`utime+stime`) from birth; a pre-existing process is charged only its in-window delta — which makes per-run totals meaningful for a script that spawns fresh every tick.
 - **bash/sh resolve to the script.** A process whose `comm` is `bash`/`sh`/`dash` is relabelled to the basename of the first `*.sh`/`*.pl`/`*.php` argument in its `cmdline`, so a hundred `bash` wrappers collapse into `minute.sh`, `scan_nginx.sh`, etc. instead of a useless `bash` bucket.
-- **Helper forks roll up to the launcher.** `pgrep`, `awk`, `bc`, `sleep` and friends are attributed to the BOA launcher that spawned them by walking the `/proc` parent chain (depth-bounded). The walk stops at a known launcher or at `cron`; anything past that is `(non-cron)`. The recognised launchers are `second.sh`, `minute.sh`, `runner.sh`, `guest-fire.sh`, `guest-water.sh`, `owl.sh`, `clear.sh`, `ip_access.sh`, `ai_policy.sh`, `nginx_deny.sh`, `migration_proxy_realip.sh`, `cloudflare_realip.sh`, `manage_ltd_users.sh`, `manage_solr_config.sh`, `purge_binlogs.sh`, `mysql_cleanup.sh`, `graceful.sh`.
+- **Helper forks roll up to the launcher.** `pgrep`, `awk`, `bc`, `sleep` and friends are attributed to the BOA launcher that spawned them by walking the `/proc` parent chain (depth-bounded). The walk stops at a known launcher or at `cron`; anything past that is `(non-cron)`. The recognised launchers are `second.sh`, `minute.sh`, `runner.sh`, `guest-fire.sh`, `guest-water.sh`, `owl.sh`, `clear.sh`, `ip_access.sh`, `user_admin_access.sh`, `ai_policy.sh`, `nginx_deny.sh`, `nginx_deny6.sh`, `migration_proxy_realip.sh`, `cloudflare_realip.sh`, `manage_ltd_users.sh`, `manage_solr_config.sh`, `purge_binlogs.sh`, `mysql_cleanup.sh`, `graceful.sh`.
 - **Systemic fork/ctxt bounds.** The window's `processes` and `ctxt` deltas from `/proc/stat` bound the *total* fork and context-switch churn, including processes too short-lived to ever appear in a sample.
 - **Self-excluded.** It skips its own PID and its own `sleep` child, so the profiler never charges itself.
 
