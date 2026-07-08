@@ -67,7 +67,8 @@ manual cleanup.
 | Scorer launcher | `aegir/tools/system/monitor/check/nginx_guard.sh` | Run scan_nginx 10× per minute (5 s apart); one bounded pass under a load-pause |
 | Temp-ban applier | `aegir/tools/system/guest-fire.sh` | `web.log` → `csf -td 900` (80/443) |
 | Persistent escalator | `aegir/tools/system/guest-water.sh` | Archive repeat offenders → `csf.deny` |
-| Geo regenerator | `aegir/tools/system/nginx_deny.sh` | CSF state → `nginx_banned_ips.conf` → reload |
+| Geo regenerator (IPv4) | `aegir/tools/system/nginx_deny.sh` | CSF state → `nginx_banned_ips.conf` → reload |
+| Geo regenerator (IPv6) | `aegir/tools/system/nginx_deny6.sh` | nginx-native IPv6 store → `nginx_banned_ips.conf6` → reload |
 
 The nginx-template files live in the `provision` codebase under
 `http/Provision/Config/Nginx/`; the scripts live in `boa-private`. On a box, the scripts
@@ -126,9 +127,15 @@ CF-Connecting-IP on Cloudflare vhosts, or the direct peer otherwise). The earlie
 X-Forwarded-For entries are client-supplied and spoofable, so they are **never** scored
 or banned.
 
-- The real client must be a valid, public **IPv4** address. This script bans via CSF
-  (IPv4 here), so an IPv6 last token is left unhandled rather than mis-attributed.
-- Private ranges (`10.`, `127.`, `169.254.`, `192.168.`, `172.16–31.`) are skipped.
+- The real client may be a valid, public **IPv4 or IPv6** address. An IPv4 last token is
+  scored and banned via CSF as before. An IPv6 last token — which can only be a
+  realip-recovered client from a trusted proxy, since BOA disables IPv6 server-side and
+  pins realip to the Cloudflare ranges (no direct v6 peer, no spoofable chain entry can
+  appear here) — is scored by the **same** family-agnostic detectors and banned via the
+  nginx-native IPv6 path (below), because CSF is IPv4-only. Opt out per box with
+  `_NGINX_V6_BAN_DETECT=NO` to restore the earlier IPv4-only behaviour.
+- Private ranges are skipped for both families (`10.`/`127.`/`169.254.`/`192.168.`/
+  `172.16–31.` and `::1`/`::`/`fe80::/10`/`fc00::/7`).
 - The forwarded-for proxy array is deliberately left empty — upstream proxies are never
   ban candidates.
 
@@ -462,16 +469,21 @@ rather than exempting a path.
 
 ### Output
 
-When a detector decides to block, `_block_ip`:
+When a detector decides to block, `_block_ip` branches on the address family:
 
-1. appends `IP # [xSCORE] TIMESTAMP` to `/var/xdrago/monitor/log/web.log` and to
-   `/var/xdrago/monitor/log/scan_nginx.archive.log` (skipping IPs already in the in-run
-   cache);
-2. if `/etc/boa/.instant.csf.block.cnf` exists, also issues `csf -td 900` on ports 80 and
-   443 immediately, shaving one hop off the pipeline.
+- **IPv4:**
+  1. appends `IP # [xSCORE] TIMESTAMP` to `/var/xdrago/monitor/log/web.log` and to
+     `/var/xdrago/monitor/log/scan_nginx.archive.log` (skipping IPs already in the in-run
+     cache);
+  2. if `/etc/boa/.instant.csf.block.cnf` exists, also issues `csf -td 900` on ports 80 and
+     443 immediately, shaving one hop off the pipeline.
+- **IPv6:** CSF is IPv4-only and `web.log`'s loader strips non-`[0-9.]` (which would mangle a
+  v6), so the offender is appended to the nginx-native store
+  `/var/xdrago/monitor/log/web6.tempban` as `IP|EXPIRY-EPOCH` (plus the same archive line for
+  forensics). No CSF call. `nginx_deny6.sh` mirrors it into the geo set (Stage 3b).
 
-`web.log` feeds the temporary-ban applier; `scan_nginx.archive.log` feeds the persistent
-escalator.
+`web.log` feeds the IPv4 temporary-ban applier; `web6.tempban` feeds `nginx_deny6.sh`;
+`scan_nginx.archive.log` feeds the persistent escalator (IPv4 only).
 
 ## Part 2 — the ban pipeline
 
@@ -602,7 +614,22 @@ _ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
 
 A loose pattern would let a malformed token (`999.1.1.1`, `/99`, IPv6, junk) reach the geo
 map and fail the nginx configtest **for the whole box**. Only IPv4/CIDR tokens become
-`IP 1;` lines.
+`IP 1;` lines here — `nginx_deny.sh` stays IPv4-only, because its **source** is CSF (which
+is IPv4-only) and the IPv6 offenders travel a separate path.
+
+### Stage 3b — IPv6 geo regeneration (`nginx_deny6.sh`)
+
+CSF cannot hold an IPv6 ban, so an IPv6 offender never reaches `nginx_deny.sh`. Instead,
+`scan_nginx`'s `_block_ip` writes an IPv6 offender to an **nginx-native store**
+(`/var/xdrago/monitor/log/web6.tempban`, lines `<ip6>|<expiry-epoch>`), and `nginx_deny6.sh`
+(`*/2` cron, same shared lock) prunes the expired entries, collapses the refreshed
+duplicates to the max expiry, validates each as a strict IPv6 address, and emits the
+survivors as `<ip6> 1;` into `/data/conf/nginx_banned_ips.conf6`. That file is picked up by
+the **same** `geo $remote_addr $is_banned` set — its wildcard `nginx_banned_ips.c*` include
+already covers it — so an IPv6 attacker is dropped with the same `444`, at nginx, exactly
+like the IPv4 case. The store is self-expiring (default 900s, `_NGINX_V6_BAN_TTL`), the
+nginx equivalent of CSF's 15-minute web temp ban; a re-offence refreshes it. The whole IPv6
+arm is gated by `_NGINX_V6_BAN_DETECT` (default `YES`).
 
 The rebuild only disturbs nginx when something actually changed:
 

@@ -374,6 +374,27 @@ _NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 # Override (replaces this list) in /root/.barracuda.cnf.
 _NGINX_DOS_IGNORE_PATHS="/shopify/webhook /quickbooks/webhook /stripe/webhook /paypal/webhook /github/webhook /gitlab/webhook /graphql /public-api /oauth2"
 
+# ---- IPv6 adaptive web-ban (ON by default, opt-out) ----
+# BOA disables IPv6 server-side and pins realip to the trusted Cloudflare ranges,
+# so the ONLY way an IPv6 address can appear as the recovered client (the last
+# token of the logged chain) is via a trusted proxy -- it is CF-controlled and
+# not client-spoofable, exactly like the IPv4 realip case. csf is IPv4-only, so
+# this detector cannot ban an IPv6 offender through the firewall; instead it feeds
+# the same nginx `geo $remote_addr $is_banned` enforcement (which already accepts
+# IPv6) via an nginx-native store that /var/xdrago/nginx_deny6.sh mirrors into
+# /data/conf/nginx_banned_ips.conf6. All scoring/aggregation below is address-
+# family-agnostic (the counters are string-keyed), so an IPv6 client rides the
+# same per-IP scorer, UA-burst, and path-flood logic as IPv4; only the ingress
+# validation and the ban SINK differ. Set to NO in /root/.barracuda.cnf to
+# ignore IPv6 clients entirely (the pre-existing IPv4-only behaviour).
+_NGINX_V6_BAN_DETECT=YES
+# Seconds an IPv6 web ban lives before it self-expires (nginx_deny6.sh prunes the
+# store); a re-offence refreshes it. Mirrors the 900s csf web temp ban.
+_NGINX_V6_BAN_TTL=900
+# nginx-native IPv6 ban store (append-with-expiry): scan_nginx writes offenders,
+# nginx_deny6.sh prunes+mirrors them into the geo set. Not a csf file.
+_WEB6_STORE="/var/xdrago/monitor/log/web6.tempban"
+
 # ==============================
 # Load Configuration File
 # ==============================
@@ -463,6 +484,13 @@ echo "CONFIG: _INC_S_NR is ${_INC_S_NR}"
 echo "CONFIG: _NGINX_DOS_444_WEIGHT is ${_NGINX_DOS_444_WEIGHT}"
 echo "CONFIG: _NGINX_PHP_PROBE_WEIGHT is ${_NGINX_PHP_PROBE_WEIGHT}"
 echo "CONFIG: _NGINX_HTTP10_AUTH_DETECT is ${_NGINX_HTTP10_AUTH_DETECT}"
+
+# IPv6 adaptive-ban: derive the on/off flag and validate the TTL. A non-positive
+# override falls back to the default so userland config cannot break arithmetic.
+_V6_ON=0
+[[ "${_NGINX_V6_BAN_DETECT}" == "YES" ]] && _V6_ON=1
+[[ "${_NGINX_V6_BAN_TTL}" =~ ^[1-9][0-9]*$ ]] || _NGINX_V6_BAN_TTL=900
+echo "CONFIG: _NGINX_V6_BAN_DETECT is ${_NGINX_V6_BAN_DETECT}"
 
 # ==============================
 # Declare Associative Arrays
@@ -591,6 +619,32 @@ _validate_ip() {
   return 1
 }
 
+# Strict IPv6 (address-only) validator, built once. Same grammar as the
+# ip_access / user_admin_access generators' IPv6 matcher — a strict subset of what
+# nginx accepts, so a validated address never breaks the box-wide configtest when
+# nginx_deny6.sh emits it into the geo set. Only ever exercised for the recovered
+# (realip, trusted-proxy) client, never a spoofable chain entry.
+_V6RE_H="[0-9A-Fa-f]{1,4}"
+_V6RE_V4O="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+_V6RE_V4="(${_V6RE_V4O}\.){3}${_V6RE_V4O}"
+_V6_RE="^((${_V6RE_H}:){7}${_V6RE_H}|(${_V6RE_H}:){1,7}:|(${_V6RE_H}:){1,6}:${_V6RE_H}|(${_V6RE_H}:){1,5}(:${_V6RE_H}){1,2}|(${_V6RE_H}:){1,4}(:${_V6RE_H}){1,3}|(${_V6RE_H}:){1,3}(:${_V6RE_H}){1,4}|(${_V6RE_H}:){1,2}(:${_V6RE_H}){1,5}|${_V6RE_H}:((:${_V6RE_H}){1,6})|:((:${_V6RE_H}){1,7}|:)|::(ffff(:0{1,4})?:)?(${_V6RE_V4})|(${_V6RE_H}:){1,4}:(${_V6RE_V4}))$"
+
+# Return 0 if $1 is a syntactically valid IPv6 address (no CIDR — a client is a
+# single address). Cheap `:`-prescreen before the full ERE keeps the IPv4 hot
+# path (no colon) free.
+_validate_ip6() {
+  [[ "$1" == *:* ]] || return 1
+  [[ "$1" =~ ${_V6_RE} ]]
+}
+
+# Return 0 if $1 is an IPv6 address in a non-routable / non-CF-client range
+# (loopback ::1, unspecified ::, link-local fe80::/10, ULA fc00::/7). A
+# realip-recovered CF client is never one of these; this is defence-in-depth so
+# such a token can never be scored or written to the ban store.
+_is_private_ip6() {
+  [[ "$1" =~ ^(::1|::|[Ff][CcDd][0-9A-Fa-f][0-9A-Fa-f]:|[Ff][Ee][89AaBb][0-9A-Fa-f]:) ]]
+}
+
 # NOTE: Removed _resolve_real_ip_traversal function (its logic is inlined in the main loop for performance)
 
 # Function to check if an IP is banned using associative array
@@ -671,6 +725,24 @@ _block_ip() {
   # from _handle_ddos_blocking and _handle_path_flood_blocking.
   if _is_whitelisted_ip "${_IP}"; then
     _verbose_log "Whitelisted IP ${_IP} -- refusing to block" "_block_ip"
+    return
+  fi
+  # IPv6 sink: csf is IPv4-only and web.log's loader strips non-[0-9.] (mangling an
+  # IPv6), so an IPv6 offender goes to the nginx-native store instead. It is
+  # written as `<ip>|<expiry-epoch>`; nginx_deny6.sh prunes+mirrors it into
+  # /data/conf/nginx_banned_ips.conf6, which the existing `geo $remote_addr
+  # $is_banned` set already includes and 444s. A re-offence appends a fresh
+  # expiry (the mirror keeps the max), so a persistent attacker stays banned.
+  if [[ "${_IP}" == *:* ]]; then
+    if [[ -z "${_BANNED_IPS["${_IP}"]}" ]]; then
+      local _v6_exp=$(( $(date +%s) + _NGINX_V6_BAN_TTL ))
+      echo "${_IP}|${_v6_exp}" >> "${_WEB6_STORE}"
+      echo "${_IP} # [x${_sumar}] ${_TIMES}" >> /var/xdrago/monitor/log/scan_nginx.archive.log
+      [[ "${_SILENT}" != "silent" ]] && echo "===[${_sumar}] ${_IP} ADDED TO IPv6 nginx ban store (${_WEB6_STORE}) ==="
+    else
+      [[ "${_SILENT}" != "silent" ]] && echo "===[${_sumar}] ${_IP} ALREADY IN IPv6 nginx ban store ==="
+    fi
+    _BANNED_IPS["${_IP}"]=1
     return
   fi
   # Append to web.log if not already present (use in-memory cache to avoid grep each time)
@@ -807,15 +879,17 @@ _process_ip() {
   # Reference the appropriate counter array
   local -n _COUNTERS=${_COUNT_REF}
 
-  # Validate IP format
-  if ! _validate_ip "${_IP}"; then
+  # Validate IP format (IPv4, or IPv6 when the v6 adaptive-ban is enabled). A v6
+  # client only reaches here via the trusted realip last token (main-loop gate).
+  if ! _validate_ip "${_IP}" && ! { (( _V6_ON )) && _validate_ip6 "${_IP}"; }; then
     _verbose_log "Invalid IP format: ${_IP} -- Skipping" "_validate_ip"
     echo "Invalid IP format: ${_IP} -- Skipping."
     return
   fi
 
-  # Skip private network and localhost IPs immediately
-  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+  # Skip private network and localhost IPs immediately (both families).
+  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]] \
+      || _is_private_ip6 "${_IP}"; then
     _verbose_log "Private IP ${_IP} -- Skipping" "_process_ip"
     echo "Private IP ${_IP} -- Skipping."
     return
@@ -1354,6 +1428,20 @@ if [[ -e "${_WEB_LOG}" ]]; then
   done < "${_WEB_LOG}"
 fi
 
+# Load currently-active IPv6 web bans from the nginx-native store so an already
+# banned v6 client is not re-scored and re-appended each run (which would spam the
+# archive + bloat the store between mirror passes). Format `<ip6>|<expiry-epoch>`;
+# only still-valid (future-expiry) entries are treated as banned. Expired ones are
+# pruned by nginx_deny6.sh, not here (this loop only reads).
+if (( _V6_ON )) && [[ -e "${_WEB6_STORE}" ]]; then
+  _v6_now="$(date +%s)"
+  while IFS='|' read -r _v6_ip _v6_exp; do
+    [[ "${_v6_ip}" == *:* ]] || continue
+    [[ "${_v6_exp}" =~ ^[0-9]+$ ]] || continue
+    (( _v6_exp > _v6_now )) && _BANNED_IPS["${_v6_ip}"]=1
+  done < "${_WEB6_STORE}"
+fi
+
 # Load allowed local IPs into associative array (IPs that should not be blocked)
 _LOCAL_IP_LIST="/root/.local.IP.list"
 if [[ -e "${_LOCAL_IP_LIST}" ]]; then
@@ -1794,12 +1882,17 @@ while IFS= read -r _line <&3; do
   # as the direct peer otherwise. So the last token is the trustworthy client,
   # whereas the earlier X-Forwarded-For entries are client-supplied and spoofable
   # (a client can prepend a forged public IP) and must never be scored or banned.
-  # Act only on a valid, public IPv4: this script bans via csf (IPv4), so an IPv6
-  # last token is left unhandled rather than mis-attributed to an earlier,
-  # spoofable chain entry.
+  # Act only on a valid, public client. An IPv4 last token bans via csf (IPv4).
+  # An IPv6 last token can ONLY be a realip-recovered client from a trusted proxy
+  # (BOA disables IPv6 server-side and pins realip to the CF ranges, so no direct
+  # IPv6 peer and no spoofable chain entry can appear here) -- so it is scored the
+  # same way and banned via the nginx-native IPv6 store (see _block_ip). Gated on
+  # _V6_ON so opting out restores the pre-existing IPv4-only behaviour.
   _last_raw="${_ip_array[$(( ${#_ip_array[@]} - 1 ))]:-}"
   if _validate_ip "${_last_raw}" \
     && [[ ! "${_last_raw}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    _REAL_IP="${_last_raw}"
+  elif (( _V6_ON )) && _validate_ip6 "${_last_raw}" && ! _is_private_ip6 "${_last_raw}"; then
     _REAL_IP="${_last_raw}"
   else
     _REAL_IP=""
