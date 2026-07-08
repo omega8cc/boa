@@ -1275,6 +1275,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${_pthLog}/runner.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/second.sh" ] && rm -f ${_pthLog}/second.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/usage.sh" ] && rm -f ${_pthLog}/usage.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/user_admin_access.sh" ] && rm -f ${_pthLog}/user_admin_access.sh.ctrl.*.pid
 
     [ ! -e "/var/xdrago/monitor/check/java.sh" ] && rm -f ${_pthLog}/java.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${_pthLog}/mysql.sh.ctrl.*.pid
@@ -1417,7 +1418,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
   _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/tools/bin/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
   _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
-  _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/tools/bin/loadreport" f98 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
+  _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/tools/bin/loadreport" f97 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
   _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f94 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f99 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
@@ -1487,6 +1488,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f88
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f92
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f89
+    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f99
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
@@ -3617,7 +3619,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/${_tBn}/loadguard" f98 --guard /local/bin/loadguard
-    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f98 --guard /local/bin/loadreport
+    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f97 --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f97 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard /local/bin/multiback
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --guard /local/bin/mybackup
