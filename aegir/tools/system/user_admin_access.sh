@@ -33,8 +33,8 @@
 # map/geo vars across the whole http{} regardless of textual order, so the forward
 # reference is fine).
 #
-# 127.0.0.1, ::1, the server's own IPv4 and every live inbound SSH IPv4 peer are
-# always allowed (anti-lockout), so an admin working over SSH can never be shut
+# 127.0.0.1, ::1, the server's own IPv4 and every live inbound SSH peer (v4 or v6)
+# are always allowed (anti-lockout), so an admin working over SSH can never be shut
 # out of /admin.  A site removed from the control file has both fragments pruned
 # (restriction lifted).
 #
@@ -102,20 +102,22 @@ if ! flock -w 30 9; then
   exit 0
 fi
 
-# Server's own IPv4 (optional) + currently logged-in inbound SSH IPv4 peers feed
-# every context's anti-lockout allow list.
+# Server's own IPv4 (optional) + currently logged-in inbound SSH peers (v4 or v6)
+# feed every context's anti-lockout allow list.
 _server_ip=""
 [[ -f "${_server_ip_file}" ]] && _server_ip=$(cat "${_server_ip_file}" 2>/dev/null)
 
 _get_ssh_ips() {
   # Same source ip_access.sh uses: `who --ips` is unavailable on Excalibur and
-  # newer, so read established inbound SSH peers from netstat.  IPv4 only for the
-  # automatic anti-lockout — an admin's IPv6 workstation is still honoured when
-  # listed in the control file; the IPv4 filter keeps a parsed-garbage token from
-  # ever reaching a geo entry.
+  # newer, so read established inbound SSH peers from netstat.  netstat prints the
+  # foreign address as `<addr>:<port>`; the port is always the final `:field`, so
+  # strip it with a trailing-`:port` chop rather than splitting on the first colon
+  # — that yields the peer address for BOTH families (IPv4 `1.2.3.4:22` ->
+  # `1.2.3.4`, IPv6 `2001:db8::2:50913` -> `2001:db8::2`).  Each harvested token is
+  # validated by _valid_ip before it reaches a geo entry, so a parsed-garbage /
+  # scoped (fe80::1%eth0) token can never break configtest.
   netstat -tn 2>/dev/null \
-    | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' \
-    | grep -E "^${_ipv4}$" \
+    | awk '$6 == "ESTABLISHED" && $4 ~ /:22$/ { addr=$5; sub(/:[0-9]+$/, "", addr); print addr }' \
     | sort -u
 }
 _ssh_ips=$(_get_ssh_ips)
@@ -173,7 +175,11 @@ _process_instance() {
     # Anti-lockout, then the operator's validated entries.
     _ip_list=("127.0.0.1" "::1")
     [[ -n "${_server_ip}" ]] && _ip_list+=("${_server_ip}")
-    for _ip in ${_ssh_ips}; do _ip_list+=("${_ip}"); done
+    # SSH peers validated here (not at harvest) so a scoped/garbage token never
+    # reaches a geo entry and breaks the box-wide configtest.
+    for _ip in ${_ssh_ips}; do
+      _valid_ip "${_ip}" && _ip_list+=("${_ip}")
+    done
     for _ip in "${_fields[@]:1}"; do
       if _valid_ip "${_ip}"; then
         # Drop a redundant host prefix so a listed 1.2.3.4/32 (or v6 …/128) does

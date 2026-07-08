@@ -130,10 +130,11 @@ service nginx configtest
 ## Relationship to whole-site ip_access
 
 `ip_access` and `user_admin_access` are independent and compose: a site may use either,
-both, or neither. `ip_access` denies the **whole** site to anyone off its list (IPv4-only,
-aligned with csf); `user_admin_access` denies only **`/user` + `/admin`** (IPv4 + IPv6 +
-CIDR, nginx-only). Both key on `$remote_addr` and both auto-allow the loopback, server and
-live SSH admin so you cannot lock yourself out.
+both, or neither. `ip_access` denies the **whole** site to anyone off its list;
+`user_admin_access` denies only **`/user` + `/admin`**. Both are pure nginx `allow`/`deny`
+layers (no csf), both now take **IPv4 + IPv6 + CIDR**, both key on `$remote_addr`, and both
+auto-allow the loopback, server and live SSH admin so you cannot lock yourself out — the only
+difference is scope (whole-site vs the admin surface).
 
 ## Caveats
 
