@@ -84,6 +84,15 @@ _CORE_CP_FLAGS="--no-dev --no-interaction"
 
 _ALL_DISTROS="farm cms culturas commerce localgov thunder varbase"
 
+# Distros temporarily skipped by build/package/distribute (space-separated labels).
+# varbase: the upstream Vardot/varbase-project:~10 template has drifted so a fresh
+# resolve now pins drupal/core to 11.2.14, which varbase's own profile rejects at
+# install (core_version_requirement ~11.3.0); even pinned to 11.3.x a drifted varbase
+# dependency then fatals during its extra-component install. Keep the last working
+# varbase-10.1.0-11.3.12 build on the mirror and do NOT rebuild/overwrite it until the
+# upstream template is fixed. Clear this to re-enable.
+_INACTIVE_DISTROS="varbase"
+
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
 
@@ -172,6 +181,12 @@ _begin_build() {
   # (e.g. "localgov-" or "drupal-10.2."), $2 = result label. Skips if a matching
   # platform already exists; with -f, removes it first and rebuilds.
   local _gp="$1" _label="$2"
+  case " ${_INACTIVE_DISTROS} " in
+    *" ${_label} "*)
+      _msg "SKIP: ${_label} marked inactive (see _INACTIVE_DISTROS) - not building"
+      _RESULTS+=("SKIP  ${_label} (inactive)")
+      return 1 ;;
+  esac
   if _run_as_o8 "ls -d ${_DAY_DIR}/${_gp}*/ ${_DAY_DIR}/${_gp}*.tar.gz 2>/dev/null | grep -q ."; then
     if [[ "${_FORCE}" == "1" ]]; then
       _msg "REBUILD: removing existing ${_gp}*"
