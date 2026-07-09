@@ -6075,7 +6075,7 @@ _satellite_child_b_letsencrypt() {
         _msg "${_STATUS} B: Letsencrypt SSL mode: LIVE after auto-upgrade"
         echo ""
         _msg "${_STATUS} B: LE -- !!! ATTENTION"
-        _msg "${_STATUS} B: LE -- Never enable SSL for the Hostmaster site in Aegir"
+        _msg "${_STATUS} B: LE -- Never enable SSL for the Hostmaster site in Ægir"
         _msg "${_STATUS} B: LE -- The Hostmaster site SSL is auto-managed separately"
         _msg "${_STATUS} B: LE -- !!! ATTENTION"
         echo ""

@@ -246,7 +246,7 @@ shared lock) on a disposable VM, see [AI-POLICY-TESTING.md](AI-POLICY-TESTING.md
 - **Amazonbot** is classified as `training`. It is a bulk crawler that feeds Amazon's
   models; if a site wants Amazon indexing, move it to `utility` or allow it per site.
 - **Secret-path breadth.** `config.json` / `key.json` are in the probe list because
-  Drupal/Aegir never serve them at the web root. A hosted **decoupled** front-end that
+  Drupal/Ægir never serve them at the web root. A hosted **decoupled** front-end that
   legitimately serves such a file would 444 — remove that token from `$is_secret_path`
   if it ever bites.
 - **realip window.** Until `cloudflare_realip.sh` has run once, `$remote_addr` is the CF

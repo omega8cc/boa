@@ -1,6 +1,6 @@
 # DEBUG: Plugin Discovery Failures, Cache Poisoning, and Intermittent Downtime
 
-**Applies to:** BOA 5.x, Drupal 8/9/10, PHP-FPM + APCu + Valkey/Redis, Aegir-managed sites
+**Applies to:** BOA 5.x, Drupal 8/9/10, PHP-FPM + APCu + Valkey/Redis, Ægir-managed sites
 
 
 ## Background
@@ -186,7 +186,7 @@ expires or is flushed.
 This is distinct from the APCu split-pool scenario: with `chainedfast` and Valkey in the
 stack, CLI and FPM do share state, and that shared state can be corrupted mid-rebuild.
 
-Aegir's own periodic drush cache clear is a **full flush** rather than a partial rebuild —
+Ægir's own periodic drush cache clear is a **full flush** rather than a partial rebuild —
 which is why it *resolves* rather than *causes* these errors.
 
 ### Investigation
@@ -197,7 +197,7 @@ The following must be established before drawing firm conclusions:
 
 Candidates include:
 
-- Aegir's built-in cron scheduling running drush cron against managed sites
+- Ægir's built-in cron scheduling running drush cron against managed sites
 - A custom crontab calling drush cron or drush cache-rebuild directly
 - A Drupal cron trigger configured within the site itself
 - An external monitoring service triggering cron via `cron.php` on a regular schedule
@@ -205,7 +205,7 @@ Candidates include:
 
 **2. Does drush execution correlate with burst onset?**
 
-Check server-side cron logs and Aegir task logs to confirm whether drush runs at the
+Check server-side cron logs and Ægir task logs to confirm whether drush runs at the
 observed intervals and whether timing matches the start of each error burst.
 
 **3. Is Valkey receiving a poisoned entry at burst onset?**
@@ -215,12 +215,12 @@ or refute the hypothesis directly.
 
 ### Recommended actions
 
-**Disable Drupal core's Automated Cron on all Aegir-managed sites.** Automated Cron fires
-on page load with no awareness of server load. Aegir's wget-based cron scheduling staggers
+**Disable Drupal core's Automated Cron on all Ægir-managed sites.** Automated Cron fires
+on page load with no awareness of server load. Ægir's wget-based cron scheduling staggers
 runs across sites to prevent simultaneous bursts and is the only recommended cron method
 on BOA.
 
-**If drush-based cron is confirmed as the trigger:** switch all affected sites to Aegir's
+**If drush-based cron is confirmed as the trigger:** switch all affected sites to Ægir's
 wget-based cron. With web-based cron, cache writes to Valkey happen from within FPM context
 with a fully rebuilt cache, eliminating the conditions that produce a poisoned entry.
 
@@ -310,7 +310,7 @@ are often misattributed to server or cache problems.
 
 ### Always use `oN.ftp` under the limited shell, not `oN` under bash
 
-BOA provisions two user accounts per Aegir instance: the main Unix user (`oN`) and the FTP
+BOA provisions two user accounts per Ægir instance: the main Unix user (`oN`) and the FTP
 user (`oN.ftp`). **Always use `oN.ftp` under the limited shell for drush operations.**
 
 Note that **PHP-CLI and PHP-FPM are two independent systems** in BOA. PHP-FPM version is
@@ -371,8 +371,8 @@ For any BOA server experiencing the symptoms described in this document, follow 
       to approximately _RAM / 3 and monitor for improvement — see Issue 1
 - [ ] If RAM is insufficient for the site count: escalate a RAM increase request —
       see RAM sizing guidance in Issue 1
-- [ ] Disable Drupal core's Automated Cron on all Aegir-managed sites
-- [ ] If drush-based cron is confirmed as a trigger: switch to Aegir's wget-based cron
+- [ ] Disable Drupal core's Automated Cron on all Ægir-managed sites
+- [ ] If drush-based cron is confirmed as a trigger: switch to Ægir's wget-based cron
 - [ ] If wget cron is not completing: increase PHP execution time limits via
       fpm-pool-common files rather than switching to drush cron — see FAQ.md
 - [ ] If `local.settings.php` discovery cache override was applied as a workaround:

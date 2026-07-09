@@ -148,7 +148,7 @@ xoct transfer shared target-ip
 ```
 
 `export` puts a 503 on all sites in the account (`http-off.pid`), purges the
-nginx speed cache, dumps each site database via mydumper and the Aegir
+nginx speed cache, dumps each site database via mydumper and the Ægir
 hostmaster database via mysqldump, and marks `exported.pid`.
 
 `transfer o1` rsyncs platforms, files, drush aliases, nginx vhosts, SSL certs,
@@ -170,15 +170,15 @@ xoct post-mig
 service cron start
 ```
 
-`import` re-imports the Aegir hostmaster database, sets the site front page
+`import` re-imports the Ægir hostmaster database, sets the site front page
 back to `hosting/sites`, then calls
 `renameaegirhost --aegir-root /data/disk/o1` which:
 
 - Rewrites all drush alias files (old source hostname → target FQDN).
 - Rewrites and renames nginx vhost files.
-- Dumps the Aegir DB, replaces the source hostname throughout, and re-imports.
+- Dumps the Ægir DB, replaces the source hostname throughout, and re-imports.
 - Reloads nginx.
-- Runs the Aegir task queue **5 passes** (cc drush + server_master verify +
+- Runs the Ægir task queue **5 passes** (cc drush + server_master verify +
   server_localhost verify + hosting-dispatch + hosting-tasks) to regenerate
   all aliases, vhosts, and db-host entries from the updated database.
 

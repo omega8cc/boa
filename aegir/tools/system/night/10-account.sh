@@ -47,7 +47,7 @@ _relocate_one_backup_dir() {
   fi
 
   # Only relocate an EXISTING real directory (so its exact ownership is preserved);
-  # if the path does not exist yet, do nothing (Aegir creates it on first use and a
+  # if the path does not exist yet, do nothing (Ægir creates it on first use and a
   # later run relocates it).
   [ -d "${_src}" ] || return 0
 
@@ -88,7 +88,7 @@ _relocate_backups_to_static_fs() {
   # Move this account's backups + backup-exports onto the static/files filesystem
   # (static/files/.backups + static/files/.backup-exports) via symlinks, so large
   # dereferenced backups cannot fill the root partition, while keeping BOTH on ONE
-  # filesystem so the Aegir backup-download hardlinks keep working (hardlinks can
+  # filesystem so the Ægir backup-download hardlinks keep working (hardlinks can
   # not cross filesystems). The leading-dot names are skipped by the site/orphan
   # scan (like static/files/.archived). Gated on static/files being a SEPARATE
   # filesystem (no benefit otherwise), kill-switchable, idempotent, non-fatal.
@@ -124,7 +124,7 @@ _relocate_backups_to_static_fs() {
 
   # A real one-time migration is pending. Serialise the parallel per-account fan-out
   # with a real flock (the kernel releases it if this process dies -- no stale-lock
-  # guessing), then PAUSE the Aegir task queue with the dedicated, self-healing stop
+  # guessing), then PAUSE the Ægir task queue with the dedicated, self-healing stop
   # file so no NEW task starts mid-move. runner.sh honours /run/boa_queue_stop.pid
   # (parent exit + per-child skip); clear.sh purges a leaked one after 3h and /run
   # clears on reboot, so it can never freeze the queue. The _provision_running

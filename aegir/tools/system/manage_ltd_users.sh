@@ -2071,12 +2071,12 @@ _manage_site_drush_alias_mirror() {
         else
           # drushrc.php absent = ghost candidate. This runs every 3 minutes, so a
           # mid-install/clone site (alias written before its dir is populated)
-          # MUST NOT be reaped: skip while an Aegir task is in flight, and while
+          # MUST NOT be reaped: skip while an Ægir task is in flight, and while
           # the alias is recently written (< 60 min). Then gate on the opt-in
           # _GHOST_ALIASES_CLEANUP flag (no night.inc.sh here, so check inline).
           _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
           if pgrep -f provision > /dev/null 2>&1; then
-            : # Aegir task in flight -- the site may be mid-build
+            : # Ægir task in flight -- the site may be mid-build
           elif [ -n "$(find ${_Alias} -mmin -60 2>/dev/null)" ]; then
             : # alias freshly written (< 60 min) -- likely mid-install/clone
           else

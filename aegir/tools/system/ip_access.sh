@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ip_access.sh — per-site nginx IP allow/deny, GLOBAL across the Aegir master and
+# ip_access.sh — per-site nginx IP allow/deny, GLOBAL across the Ægir master and
 # every Octopus instance.  Abstraction of the per-Octopus
 # nginx_ip_access_<oct>.sh scripts into one generator.
 #

@@ -53,7 +53,7 @@ migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
 | Option | Meaning |
 |---|---|
 | *(no `--apply`)* | DRY plan only — print what would happen, change nothing |
-| `--apply` | perform the relocation (pauses the Aegir queue, drains tasks) |
+| `--apply` | perform the relocation (pauses the Ægir queue, drains tasks) |
 | `--target <mount>` | attached mount to relocate onto; auto-detected as the single real mountpoint under `/mnt` if omitted |
 | `--account <oN>` | limit to one account, and skip `arch` (default: all accounts **plus** `arch`) |
 | `--no-arch` | do not relocate `/data/disk/arch` |
@@ -117,7 +117,7 @@ unchanged.
 
 - Run `arch` relocation when backups are idle. `migratefs` defers `arch` if it detects
   an active backup writer, but the safest window is one with no scheduled backups.
-- `migratefs` pauses the **Aegir task queue**, not web traffic. For a fully quiescent
+- `migratefs` pauses the **Ægir task queue**, not web traffic. For a fully quiescent
   move of a busy account, put the site(s) into maintenance mode first.
 
 > **Relocated `arch` and host migration.** Once `/data/disk/arch` (or an account's

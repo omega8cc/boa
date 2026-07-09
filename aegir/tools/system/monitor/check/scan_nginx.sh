@@ -1911,7 +1911,7 @@ while IFS= read -r _line <&3; do
     done
   fi
 
-  # Skip internal Aegir file server requests — *.files.boa.io hostnames appear
+  # Skip internal Ægir file server requests — *.files.boa.io hostnames appear
   # in the log's vhost field and must not feed counters, UA tracking, or path-flood
   # detection.  The same pattern is also guarded inside _process_ip, but that gate
   # does not cover _track_ua_ip / _track_path_flood called later in this loop.
