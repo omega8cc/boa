@@ -28,7 +28,7 @@ Bottom line: BOA is **architected around technological freedom and independence*
 
 ## Support for legacy Drupal versions
 
-While Drupal 7 users were largely abandoned by core developers without an upgrade path to Drupal 8 and beyond, we still fully support Pressflow 6 and Drupal 7. We even maintain our own improved core forks, provide Drupal 7 LTS, and made Drupal 7 compatible with PHP 8.4 ages ago. Make your legacy Drupal sites **Fast and Secure** with our [**Basic Hosted Plans &raquo;**](https://omega8.cc/basic)
+While Drupal 7 users were largely abandoned by core developers without an upgrade path to Drupal 8 and beyond, we still fully support Pressflow 6 and Drupal 7. We even maintain our own improved core forks, provide Drupal 7 LTS, and made Drupal 7 compatible with the latest PHP 8.5. Make your legacy Drupal sites **Fast and Secure** with our [**Basic Hosted Plans &raquo;**](https://omega8.cc/basic)
 
 ## Support for Ægir 3 and Drupal 11+
 
