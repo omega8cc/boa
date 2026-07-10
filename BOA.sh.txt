@@ -1836,11 +1836,11 @@ _update_agents() {
   fi
 
   if [ -d "/data/u" ] \
-    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     _hQueueF="hosting_cron.module"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
-    [ -e "${_hQueueP}" ] && _isPatchedTpl=$(grep "url_own" "${_hQueueP}")
-    if [ ! -e "${_hQueueP}" ] || [[ ! "${_isPatchedTpl}" =~ "url_own" ]]; then
+    [ -e "${_hQueueP}" ] && _isPatchedTpl=$(grep "core/cron.php" "${_hQueueP}")
+    if [ ! -e "${_hQueueP}" ] || [[ ! "${_isPatchedTpl}" =~ "core/cron.php" ]]; then
       curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
     fi
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
@@ -1864,8 +1864,8 @@ _update_agents() {
           rm -f ${_hmDir}/cron/hosting_cron.module.rej
         fi
         if [ -e "${_hmQmd}" ] && [ -e "${_hQueueP}" ]; then
-          _isPatched=$(grep "url_own" "${_hmQmd}")
-          if [[ ! "${_isPatched}" =~ "url_own" ]]; then
+          _isPatched=$(grep "core/cron.php" "${_hmQmd}")
+          if [[ ! "${_isPatched}" =~ "core/cron.php" ]]; then
             cp -a ${_hQueueP} ${_hmDir}/cron/
             if [ -e "${_hmDir}/cron/${_hQueueF}" ]; then
               sed -i "s/127.0.0.1/${_LOC_IP}/g" "${_hmDir}/cron/${_hQueueF}"
@@ -1874,7 +1874,7 @@ _update_agents() {
         fi
       fi
     done
-    touch ${_pthLog}/hosting.cron.queue.ctrl.f96.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -d "/data/u" ] \
