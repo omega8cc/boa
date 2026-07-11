@@ -699,6 +699,14 @@ _up_start() {
     cd ${_vBs}
     rm -f ${_vBs}/OCTOPUS.sh*
     ## rm -f ${_vBs}/*.sh.cnf*
+    ### Debugging helper: the build tree in /opt/tmp/boa is fetched ONCE and
+    ### reused across runs by design (multi-step installs, bulk upgrades).
+    ### With this control file present every run purges it first, so a
+    ### freshly re-synced mirror is always fetched -- use on dev/test boxes.
+    if [ -e "/root/.debug-purge-build-tree.cnf" ]; then
+      rm -rf ${_bldPth}
+      rm -f /opt/tmp/boa.tar.gz
+    fi
   fi
   if [ "${_mOde}" = "log" ]; then
     _outP="${_mOde}"
