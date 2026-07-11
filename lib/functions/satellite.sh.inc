@@ -6266,6 +6266,12 @@ _satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y &> /dev/null
+    ### Backdrop platform awareness in the hostmaster frontend; gated dark
+    ### behind _BACKDROP_SUPPORT (D-012). Enabling the module also enables
+    ### its 'backdropcms' hosting feature via hosting_modules_enabled().
+    if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster en hosting_backdrop -y &> /dev/null
+    fi
     ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay_paths -y &> /dev/null
