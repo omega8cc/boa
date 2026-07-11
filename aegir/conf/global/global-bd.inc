@@ -22,6 +22,13 @@
  * them skip the probe for the TTL window and serve from the DB cache.
  */
 
+// Aegir owns cron: the hosting_cron queue fires core/cron.php?cron_key= on
+// the per-site interval. Disable Backdrop's visit-triggered cron (config
+// override, honored by the system.module threshold gate) so front-end
+// traffic can never run cron -- or mask a broken web cron. Parity with
+// $conf['cron_safe_threshold'] = 0 in the Drupal global include.
+$config['system.core']['cron_safe_threshold'] = 0;
+
 // The Backdrop redis module, relative to the platform docroot.
 $bd_redis_dir = 'modules/redis';
 $bd_redis_autoload = BACKDROP_ROOT . '/' . $bd_redis_dir . '/redis.autoload.inc';
