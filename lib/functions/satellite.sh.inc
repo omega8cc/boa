@@ -4319,6 +4319,7 @@ _satellite_make() {
   echo "export _DRUPAL11_4_P=\"${_DRUPAL11_4}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
 
+  echo "export _BACKDROP1_34_0_V=\"${_BACKDROP1_34_0_V}\""   >> ${_writeTo}
   echo "export _BACKDROP1_34_0=\"${_BACKDROP1_34_0}\""       >> ${_writeTo}
   echo "export _BACKDROP1_34_0_D=\"${_BACKDROP1_34_0}-dev\""   >> ${_writeTo}
   echo "export _BACKDROP1_34_0_P=\"${_BACKDROP1_34_0}-prod\""  >> ${_writeTo}
