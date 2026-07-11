@@ -4319,11 +4319,15 @@ _satellite_make() {
   echo "export _DRUPAL11_4_P=\"${_DRUPAL11_4}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
 
-  echo "export _BACKDROP1_34_0_V=\"${_BACKDROP1_34_0_V}\""   >> ${_writeTo}
-  echo "export _BACKDROP1_34_0=\"${_BACKDROP1_34_0}\""       >> ${_writeTo}
-  echo "export _BACKDROP1_34_0_D=\"${_BACKDROP1_34_0}-dev\""   >> ${_writeTo}
-  echo "export _BACKDROP1_34_0_P=\"${_BACKDROP1_34_0}-prod\""  >> ${_writeTo}
-  echo "export _BACKDROP1_34_0_S=\"${_BACKDROP1_34_0}-stage\"" >> ${_writeTo}
+  # Resolve the newest Backdrop version from the mirror stamp so platforms track
+  # the latest release without a hardcoded pin (fallback: _BACKDROP_V_FALLBACK).
+  _bdrVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/backdrop.txt" 2>/dev/null | tr -cd '0-9.')
+  [ -z "${_bdrVrn}" ] && _bdrVrn="${_BACKDROP_V_FALLBACK}"
+  echo "export _BACKDROP_V=\"${_bdrVrn}\""                   >> ${_writeTo}
+  echo "export _BACKDROP=\"backdrop-${_bdrVrn}\""            >> ${_writeTo}
+  echo "export _BACKDROP_D=\"backdrop-${_bdrVrn}-dev\""      >> ${_writeTo}
+  echo "export _BACKDROP_P=\"backdrop-${_bdrVrn}-prod\""     >> ${_writeTo}
+  echo "export _BACKDROP_S=\"backdrop-${_bdrVrn}-stage\""    >> ${_writeTo}
 
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}

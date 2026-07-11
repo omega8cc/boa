@@ -802,13 +802,16 @@ _create_drupal_basic_version() {
   fi
 }
 
-# Create Backdrop core-only basic platform (has core/, no web/).
+# Create Backdrop core-only basic platform (has core/, no web/). Fetches the
+# version-less backdrop.tar.gz (always the newest) which extracts to backdrop/,
+# then names the platform from the resolved version via _SHRD_PLNAME.
 _create_backdrop_basic_version() {
   if [ ! -d "${_OCTO_PLPATH}" ]; then
     cd "${_pthDst}"
-    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${_BACKDROP1_34_0}.tar.gz'"
-    _get_core_ext "${_BACKDROP1_34_0}.tar.gz"
-    mv -f "${_BACKDROP1_34_0}" "${_SHRD_PLNAME}"
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext 'backdrop.tar.gz'"
+    rm -rf "${_pthDst}/backdrop"
+    _get_core_ext "backdrop.tar.gz"
+    mv -f "${_pthDst}/backdrop" "${_SHRD_PLNAME}"
   fi
 }
 
@@ -933,7 +936,7 @@ declare -A _distros_versions=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
-  ["BDR"]="${_BACKDROP1_34_0_V}"
+  ["BDR"]="${_BACKDROP_V}"
 )
 
 # Define distros Drupal cores versions for configuration
@@ -969,7 +972,7 @@ declare -A _distros_drupal_cores=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
-  ["BDR"]="${_BACKDROP1_34_0_V}"
+  ["BDR"]="${_BACKDROP_V}"
 )
 
 # Define distros profiles names for configuration
@@ -1113,7 +1116,7 @@ declare -A _distros_urls=(
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
   ["DE3"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_3_V}"
   ["DE4"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_4_V}"
-  ["BDR"]="${_urlPrt}/backdrop/releases/${_BACKDROP1_34_0_V}"
+  ["BDR"]="${_urlPrt}/backdrop/releases/${_BACKDROP_V}"
 )
 
 # Define distros names and their compatible max PHP versions for information
@@ -1560,9 +1563,9 @@ _d_core_platform_install() {
     _CORE_STG="${_DRUPAL6_S}"
     _CORE_PRD="${_DRUPAL6_P}"
   elif [ "${1}" = "BDR" ]; then
-    _CORE_DEV="${_BACKDROP1_34_0_D}"
-    _CORE_STG="${_BACKDROP1_34_0_S}"
-    _CORE_PRD="${_BACKDROP1_34_0_P}"
+    _CORE_DEV="${_BACKDROP_D}"
+    _CORE_STG="${_BACKDROP_S}"
+    _CORE_PRD="${_BACKDROP_P}"
   fi
 
   # Declare 'params' as local to the function

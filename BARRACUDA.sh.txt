@@ -36,8 +36,6 @@ export SHELL=/bin/bash
 ### Software versions
 ###
 _ADMINER_VRN=4.8.1
-_BEE_TEST_VRN=1.2.0
-_BEE_VERSION=1.2.0
 _BZR_VRN=2.6.0
 _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3

@@ -4022,7 +4022,8 @@ _get_drush_eight() {
 
 #
 # Install or update the native Backdrop CLI (bee), mirroring _get_drush_eight.
-# Global /opt/tools/bee from a pinned mirror tarball; gated on _BACKDROP_SUPPORT.
+# Global /opt/tools/bee from the version-less mirror tarball (always the newest
+# bee); gated on _BACKDROP_SUPPORT. Re-fetched when the serial bumps.
 _get_bee() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_bee"
@@ -4031,10 +4032,10 @@ _get_bee() {
   mkdir -p /opt/tools/bee
   rm -rf /opt/tools/bee/*
   cd /opt/tools/bee/
-  _get_dev_ext "bee-${_BEE_VERSION}.tar.gz"
+  _get_dev_ext "bee.tar.gz"
   touch /opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: bee ${_BEE_VERSION} installation complete"
+    _msg "INFO: bee installation complete"
   fi
 }
 
@@ -4189,19 +4190,17 @@ _drush_system_install_update() {
     if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
       mkdir -p /opt/tools/bee
       chown -R root:root /opt/tools/bee
-      _BEE_ITD=$(/usr/bin/bee version 2>&1 \
-        | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
-        | head -n1)
-      if [ "${_BEE_ITD}" != "${_BEE_TEST_VRN}" ] \
-        || [ ! -e "/opt/tools/bee/bee.php" ] \
+      # Re-fetch the newest bee when it is missing or the serial has bumped
+      # (bee is version-less on the mirror, so there is no version to compare).
+      if [ ! -e "/opt/tools/bee/bee.php" ] \
         || [ ! -e "/opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: bee ${_BEE_VERSION} re-installation required"
+          _msg "INFO: bee (re)installation required"
         fi
         _get_bee
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: bee ${_BEE_VERSION} already installed"
+          _msg "INFO: bee already installed"
         fi
       fi
       if [ -e "/opt/tools/bee/bee.php" ] && [ -x "/opt/local/bin/bee" ]; then

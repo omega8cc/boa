@@ -155,13 +155,19 @@ export _DRUPAL11_4_P="${_DRUPAL11_4}-prod"
 export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
 
 ###
-### Backdrop CMS Core Variables (single active 1.x line; stable pin only)
+### Backdrop CMS core. Always the newest release: the mirror publishes a
+### version-less backdrop.tar.gz plus a backdrop.txt version stamp (via
+### staticbuild); _satellite_make resolves _BACKDROP_V from that stamp so
+### platforms are named backdrop-<ver>-{dev,stage,prod} against the current
+### version. The value below is only the fallback when the mirror is
+### unreachable at make time.
 ###
-export _BACKDROP1_34_0_V=1.34.0
-export _BACKDROP1_34_0="backdrop-${_BACKDROP1_34_0_V}"
-export _BACKDROP1_34_0_D="${_BACKDROP1_34_0}-dev"
-export _BACKDROP1_34_0_P="${_BACKDROP1_34_0}-prod"
-export _BACKDROP1_34_0_S="${_BACKDROP1_34_0}-stage"
+export _BACKDROP_V_FALLBACK=1.34.2
+export _BACKDROP_V="${_BACKDROP_V_FALLBACK}"
+export _BACKDROP="backdrop-${_BACKDROP_V}"
+export _BACKDROP_D="${_BACKDROP}-dev"
+export _BACKDROP_P="${_BACKDROP}-prod"
+export _BACKDROP_S="${_BACKDROP}-stage"
 
 export _SPINNER=NO
 export _T_BUILD=SRC

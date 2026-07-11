@@ -20,14 +20,20 @@
 #   staticbuild all                 build everything, package, publish
 #   staticbuild build [name ...]    build all (or only named) targets
 #   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
-#   staticbuild distribute          copy tarballs to /var/www/static/{distro,core}
+#   staticbuild distribute          copy tarballs to /var/www/static/{distro,core,dev/dev}
 #   staticbuild check               report the latest upstream versions a build would pull
 # Options:
 #   -d MM-DD   build-day directory (default: today, date +%m-%d)
 #   -u USER    Octopus build user (default: o8)
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
-# Build target names: farm cms culturas commerce localgov thunder varbase backdrop cores
+# Build target names: farm cms culturas commerce localgov thunder varbase
+#   backdrop (core, version-less backdrop.tar.gz) bee backdrop-drush-extension cores
+#
+# The Backdrop family (backdrop core, bee, backdrop-drush-extension) is always
+# fetched at its newest upstream version and published version-less, so BOA never
+# falls behind: run "staticbuild all" (or just the named targets) on the mirror
+# source VM, e.g. from cron alongside get-boa-dev.
 
 # ---------------------------------------------------------------------------
 # Configuration - review the specs/minors each cycle ("staticbuild check").
@@ -39,6 +45,7 @@ _DAY="$(date +%m-%d)"                           # -d overrides (MM-DD)
 _STATIC_ROOT="/data/disk"                       # o8 home base; static lives under here
 _DISTRO_OUT="/var/www/static/distro"            # non-core (distribution) tarballs
 _CORE_OUT="/var/www/static/core"                # raw core tarballs
+_DEVEXT_OUT="/var/www/static/dev/dev"           # dev extensions (bee, drush ext) BOA _get_dev_ext pulls
 
 _SYS_PHP="/usr/bin/php"                          # per-build switch target
 _PHP_85="/opt/php85/bin/php"
@@ -53,9 +60,23 @@ _FARM_TAG=""
 
 # Backdrop CMS core: the latest GitHub release is resolved automatically; set
 # _BACKDROP_TAG to pin one. Ships as a single backdrop.zip release asset (no
-# Composer), repackaged as backdrop-<ver>.tar.gz and classified as a core.
+# Composer), repackaged version-less as backdrop.tar.gz (extracts to backdrop/)
+# and classified as a core, so BOA always pulls the newest and derives the
+# version from the fetched code.
 _BACKDROP_REPO="backdrop/backdrop"
 _BACKDROP_TAG=""
+
+# bee (native Backdrop CLI) and the Backdrop Drush extension. Built from the
+# latest git tag of each backdrop-contrib repo (they publish plain tags, not
+# GitHub Releases) and packaged version-less as the exact tarballs BOA's
+# _get_dev_ext pulls: bee.tar.gz (bee.php at the root) and
+# backdrop-drush-extension.tar.gz (wraps a backdrop-drush-extension/ dir,
+# shipped PRISTINE - BOA applies its 5.6 de-hint + the __DIR__ include fix on
+# deploy). Set a _*_TAG to pin one.
+_BEE_REPO="backdrop-contrib/bee"
+_BEE_TAG=""
+_BDEXT_REPO="backdrop-contrib/backdrop-drush-extension"
+_BDEXT_TAG=""
 
 # Distribution Composer specs (the create-project template) + the distribution PROFILE
 # package. The tarball version is the profile package's version (the authoritative number
@@ -378,6 +399,19 @@ _resolve_backdrop_tag() {
     | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
 }
 
+_latest_git_tag() {
+  # Highest version-sorted git tag of a repo (works for backdrop-contrib repos
+  # that publish tags but not GitHub Releases). Drops peeled ^{} refs and keeps
+  # only real backdrop-contrib version tags -- 'N.N.N' (extension) or 'N.x-N.N.N'
+  # (bee) -- so pre-history junk like 'v0.0.1', which version-sorts above the
+  # real tags, is excluded.
+  local _repo="$1"
+  git ls-remote --tags "https://github.com/${_repo}.git" 2>/dev/null \
+    | sed -E 's#.*refs/tags/##; /\^\{\}$/d' \
+    | grep -E '^([0-9]+\.x-)?[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sort -V | tail -n 1
+}
+
 _drupal_release() {
   # Echo a drupal.org project's latest STABLE release number (the authoritative version,
   # not the Composer template alias). Skips dev/alpha/beta/rc. Empty if unavailable.
@@ -607,27 +641,69 @@ build_cores() {
 
 build_backdrop() {
   # Backdrop CMS core: a single GitHub release zip (no Composer, no profiles to
-  # strip). Packaged/published as a core (backdrop-<ver>.tar.gz), preserving the
-  # top-level core/ layouts/ modules/ themes/ sites/ and core/scripts/install.sh.
-  _begin_build "backdrop-" "backdrop" || return 0
+  # strip). Kept VERSION-LESS as backdrop/ -> backdrop.tar.gz, preserving the
+  # top-level core/ layouts/ modules/ themes/ sites/ and core/scripts/install.sh,
+  # so BOA always pulls the newest and derives the version from the fetched code.
+  # Always rebuilt (a fast zip download) - no _begin_build skip, and no glob
+  # collision with backdrop-drush-extension.
   if ! command -v unzip >/dev/null 2>&1; then
     _record_fail "backdrop (unzip not found)"
     return 1
   fi
-  local _tag _name _zip _url
+  local _tag _zip _url
   _tag="$(_resolve_backdrop_tag)"
   [[ -n "${_tag}" ]] || { _record_fail "backdrop (could not resolve release tag)"; return 1; }
-  _name="backdrop-${_tag}"
-  _zip=".backdrop-${_tag}.zip"
+  _zip=".backdrop.zip"
   _url="https://github.com/${_BACKDROP_REPO}/releases/download/${_tag}/backdrop.zip"
-  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}' backdrop '${_zip}' \
-    && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' && mv backdrop '${_name}' \
-    && rm -f '${_zip}'"; then
+  # The zip's top-level dir is backdrop/; keep that name (version-less). Also
+  # stamp the resolved version to backdrop.txt so BOA can name the platform
+  # (backdrop-<ver>-{dev,stage,prod}) while fetching the version-less tarball.
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf backdrop backdrop.tar.gz backdrop.txt '${_zip}' \
+    && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' \
+    && rm -f '${_zip}' && printf '%s\n' '${_tag}' > backdrop.txt"; then
     _record_fail "backdrop"
     return 1
   fi
-  _RESULTS+=("OK    ${_name}")
-  _info "backdrop: built ${_name}"
+  _RESULTS+=("OK    backdrop (${_tag})")
+  _info "backdrop: built backdrop/ (${_tag})"
+}
+
+build_bee() {
+  # Native Backdrop CLI. Packaged version-less as bee.tar.gz with bee.php at the
+  # root (what BOA's _get_bee extracts into /opt/tools/bee). Always rebuilt.
+  local _tag
+  _tag="${_BEE_TAG:-$(_latest_git_tag "${_BEE_REPO}")}"
+  [[ -n "${_tag}" ]] || { _record_fail "bee (could not resolve tag)"; return 1; }
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .build.bee bee.tar.gz \
+    && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_BEE_REPO}.git' .build.bee \
+    && rm -rf .build.bee/.git \
+    && tar -czf bee.tar.gz -C .build.bee . \
+    && rm -rf .build.bee"; then
+    _record_fail "bee"
+    return 1
+  fi
+  _RESULTS+=("OK    bee (${_tag})")
+  _info "bee: packaged bee.tar.gz (${_tag})"
+}
+
+build_bdext() {
+  # Backdrop Drush extension. Packaged version-less as
+  # backdrop-drush-extension.tar.gz wrapping a backdrop-drush-extension/ dir,
+  # PRISTINE - BOA applies the drush_chalk de-hint + the __DIR__ include fix on
+  # deploy. Always rebuilt.
+  local _tag _d="backdrop-drush-extension"
+  _tag="${_BDEXT_TAG:-$(_latest_git_tag "${_BDEXT_REPO}")}"
+  [[ -n "${_tag}" ]] || { _record_fail "${_d} (could not resolve tag)"; return 1; }
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_d}' '${_d}.tar.gz' \
+    && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_BDEXT_REPO}.git' '${_d}' \
+    && rm -rf '${_d}/.git' \
+    && tar -czf '${_d}.tar.gz' '${_d}' \
+    && rm -rf '${_d}'"; then
+    _record_fail "${_d}"
+    return 1
+  fi
+  _RESULTS+=("OK    ${_d} (${_tag})")
+  _info "${_d}: packaged ${_d}.tar.gz (${_tag})"
 }
 
 run_build() {
@@ -635,6 +711,8 @@ run_build() {
   case "${_name}" in
     farm)     build_farm ;;
     backdrop) build_backdrop ;;
+    bee)      build_bee ;;
+    backdrop-drush-extension) build_bdext ;;
     cms)      build_cms ;;
     culturas) build_culturas ;;
     commerce) build_commerce ;;
@@ -650,7 +728,7 @@ run_build() {
 do_build() {
   # $@ = target names, or empty for all distros + cores.
   local _targets="$*"
-  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop cores"
+  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop bee backdrop-drush-extension cores"
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   if [[ "${_SKIP_CLEARCACHE}" != "1" ]]; then
     _msg "composer clearcache (${_O8_USER})"
@@ -690,7 +768,7 @@ strip_core_profiles() {
   _list="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d */ 2>/dev/null")"
   for _name in ${_list}; do
     _name="${_name%/}"
-    case "${_name}" in drupal-*|backdrop-*) continue ;; esac
+    case "${_name}" in drupal-*|backdrop) continue ;; esac
     _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}'/*/core/profiles/* ; true"
   done
 }
@@ -702,8 +780,8 @@ package_batch() {
   for _name in ${_list}; do
     _name="${_name%/}"
     case "${_name}" in
-      drupal-*|backdrop-*) [[ "${_kind}" == "core" ]]   || continue ;;
-      *)                   [[ "${_kind}" == "distro" ]] || continue ;;
+      drupal-*|backdrop) [[ "${_kind}" == "core" ]]   || continue ;;
+      *)                 [[ "${_kind}" == "distro" ]] || continue ;;
     esac
     _msg "tar: ${_name}.tar.gz"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf '${_name}.tar.gz' '${_name}'" || _alrt "tar failed: ${_name}"
@@ -724,18 +802,28 @@ do_package() {
 }
 
 do_distribute() {
-  mkdir -p "${_DISTRO_OUT}" "${_CORE_OUT}" || _die "cannot create ${_DISTRO_OUT} / ${_CORE_OUT}"
+  mkdir -p "${_DISTRO_OUT}" "${_CORE_OUT}" "${_DEVEXT_OUT}" \
+    || _die "cannot create ${_DISTRO_OUT} / ${_CORE_OUT} / ${_DEVEXT_OUT}"
   local _t _base _n=0
   for _t in "${_DAY_DIR}"/*.tar.gz; do
     [[ -e "${_t}" ]] || continue
     _base="${_t##*/}"
+    # Dev extensions first: backdrop-drush-extension.tar.gz must NOT fall into the
+    # backdrop* core arm.
     case "${_base}" in
-      drupal-*.tar.gz|backdrop-*.tar.gz)
+      bee.tar.gz|backdrop-drush-extension.tar.gz)
+        cp -a "${_t}" "${_DEVEXT_OUT}/" && { _msg "devext <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
+      drupal-*.tar.gz|backdrop.tar.gz)
         cp -a "${_t}" "${_CORE_OUT}/"   && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
       *)
         cp -a "${_t}" "${_DISTRO_OUT}/" && { _msg "distro <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
     esac
   done
+  # Publish the Backdrop version stamp alongside backdrop.tar.gz so BOA can name
+  # the platform from the latest version without a hardcoded pin.
+  if [[ -e "${_DAY_DIR}/backdrop.txt" ]]; then
+    cp -a "${_DAY_DIR}/backdrop.txt" "${_CORE_OUT}/" && _msg "core   <- backdrop.txt" || _alrt "copy failed: backdrop.txt"
+  fi
   [[ "${_n}" -gt 0 ]] || _alrt "no tarballs found in ${_DAY_DIR} (run 'package' first)"
 }
 
@@ -766,6 +854,8 @@ do_check() {
   _info "(GitHub for farmOS; commerce_kickstart has no drupal.org stable, so its profile pkg):"
   _check_row "farm"     "$(_latest_github "${_FARM_REPO}")"
   _check_row "backdrop" "$(_latest_github "${_BACKDROP_REPO}")"
+  _check_row "bee"      "$(_latest_git_tag "${_BEE_REPO}")"
+  _check_row "bd-drush" "$(_latest_git_tag "${_BDEXT_REPO}")"
   _check_row "cms"      "$(_drupal_release cms)"
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
