@@ -4328,6 +4328,12 @@ _satellite_make() {
   echo "export _BACKDROP_D=\"backdrop-${_bdrVrn}-dev\""      >> ${_writeTo}
   echo "export _BACKDROP_P=\"backdrop-${_bdrVrn}-prod\""     >> ${_writeTo}
   echo "export _BACKDROP_S=\"backdrop-${_bdrVrn}-stage\""    >> ${_writeTo}
+  # The su'd child installers (AegirSetupC.sh.txt) source ONLY this env include,
+  # not the root .octopus.cnf where the operator sets _BACKDROP_SUPPORT, so the
+  # gate must be carried here too -- else the child BDR build arm
+  # ([ "${_BACKDROP_SUPPORT}" = "YES" ]) is permanently dead and Backdrop
+  # platforms never auto-build. Fail-closed: NO/empty keeps the gate shut.
+  echo "export _BACKDROP_SUPPORT=\"${_BACKDROP_SUPPORT}\""   >> ${_writeTo}
 
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
@@ -5740,6 +5746,22 @@ _satellite_child_b_drush_xts_install() {
       sed -i \
         "s#require_once 'includes/output.inc';#require_once __DIR__ . '/includes/output.inc';#" \
         ${_ROOT}/.drush/usr/backdrop/BackdropBoot.php &> /dev/null
+    fi
+    ### Stop the extension's command_alter from hijacking Aegir/Provision.
+    ### When BackdropBoot is the active bootstrap it replaces any command it
+    ### does not recognise with a "not supported by Backdrop" fallback -- which
+    ### swallows every provision-* / hosting-* command run against a Backdrop
+    ### platform, breaking the whole Provision backend. Provision drives
+    ### Backdrop here, so let its commands through untouched. Idempotent: the
+    ### guard is inserted once, before the first $backdrop_command assignment.
+    ### (VM-confirmed on ng019, 2026-07-11.)
+    if [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ] \
+      && ! grep -q "'provision') === 0" \
+        ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc; then
+      sed -i \
+        "/^  \$backdrop_command = NULL;/i\\
+  if (strpos(\$command['command'], 'provision') === 0 || strpos(\$command['command'], 'hosting') === 0) {\n    return;\n  }\n" \
+        ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc &> /dev/null
     fi
     cd ${_ROOT}/.drush
     wait

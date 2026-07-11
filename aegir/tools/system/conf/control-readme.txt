@@ -294,6 +294,10 @@
 # DL6 — Pressflow (LTS) prod/stage/dev
 # UC6 — Ubercart
 
+### Backdrop
+#
+# BDR — Backdrop CMS prod/stage/dev (requires _BACKDROP_SUPPORT=YES)
+
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
 ### system releases.

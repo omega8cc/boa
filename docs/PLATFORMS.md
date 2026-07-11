@@ -56,6 +56,15 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Pressflow 6.60.1](https://www.pressflow.org)
 - [Ubercart 2.15](https://drupal.org/project/ubercart) (6.60.1)
 
+## Backdrop CMS
+
+- [Backdrop CMS (latest stable release)](https://backdropcms.org)
+
+* Backdrop platforms track the newest release automatically (version-less `backdrop.tar.gz`), so there is no per-version pin to maintain.
+* Each Backdrop platform ships the Valkey/Redis object-cache module baked in — used per site when Valkey is available, otherwise the site falls back to Backdrop's database cache.
+* Backdrop sites are managed with both `bee` (the native Backdrop CLI) and Drush 8 (via the backdrop-drush-extension).
+* Ships opt-in / dark: requires `_BACKDROP_SUPPORT=YES` in the Octopus config (symbol `BDR` in the platform list).
+
 * All D7 platforms have been enhanced using [Drupal 7.105.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
 * All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)

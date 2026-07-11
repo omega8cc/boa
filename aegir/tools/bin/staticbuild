@@ -81,6 +81,13 @@ _BEE_REPO="backdrop-contrib/bee"
 _BEE_TAG=""
 _BDEXT_REPO="backdrop-contrib/backdrop-drush-extension"
 _BDEXT_TAG=""
+# Backdrop redis contrib module, baked into each platform's modules/ so every
+# Backdrop platform ships Valkey/Redis object-cache support (its Redis_Cache
+# implements BackdropCacheInterface -- the Drupal redis_edge is NOT compatible).
+# The settings side is /data/conf/global/global-bd.inc, which no-ops until it
+# finds modules/redis AND a live Valkey.
+_REDIS_REPO="backdrop-contrib/redis"
+_REDIS_TAG=""
 
 # Distribution Composer specs (the create-project template) + the distribution PROFILE
 # package. The tarball version is the profile package's version (the authoritative number
@@ -694,6 +701,23 @@ build_backdrop() {
     && rm -f '${_zip}' && printf '%s\n' '${_tag}' > backdrop.txt"; then
     _record_fail "backdrop"
     return 1
+  fi
+  # Bake in the Backdrop redis contrib module (into the version-less backdrop/
+  # so it rides backdrop.tar.gz onto every platform). Non-fatal: if the fetch
+  # fails the platform simply ships without Valkey support and global-bd.inc
+  # stays a no-op.
+  local _redis_tag
+  _redis_tag="${_REDIS_TAG:-$(_latest_git_tag "${_REDIS_REPO}")}"
+  if [[ -n "${_redis_tag}" ]]; then
+    if _run_as_o8 "cd '${_DAY_DIR}/backdrop/modules' && rm -rf redis \
+      && git clone -q --depth 1 --branch '${_redis_tag}' 'https://github.com/${_REDIS_REPO}.git' redis \
+      && rm -rf redis/.git"; then
+      _info "backdrop: baked modules/redis (${_redis_tag})"
+    else
+      _alrt "backdrop: redis module bake failed (${_redis_tag}); platform ships without Valkey support"
+    fi
+  else
+    _alrt "backdrop: could not resolve redis tag; platform ships without Valkey support"
   fi
   _RESULTS+=("OK    backdrop (${_tag})")
   _info "backdrop: built backdrop/ (${_tag})"
