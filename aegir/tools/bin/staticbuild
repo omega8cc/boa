@@ -3,9 +3,10 @@
 # staticbuild - build the newer Drupal core + distribution codebases used for
 # BOA testing, package them, and publish the tarballs to the static mirror.
 #
-# Runs on the mirror SOURCE VM only. Builds happen as the Octopus user (o8) under
-# /data/disk/o8/static/<MM-DD>/; packaging + publishing to /var/www/static/{distro,core}
-# and the per-build /usr/bin/php switch need root, so run this as root.
+# Runs on the mirror SOURCE VM only. Builds happen as this box's Octopus user
+# (auto-detected from /data/disk, or -u USER) under /data/disk/<user>/static/<MM-DD>/;
+# packaging + publishing to /var/www/static/{distro,core,dev/dev} and the per-build
+# /usr/bin/php switch need root, so run this as root.
 #
 # Versions are NOT hardcoded. Each distribution is built from its Composer spec (or,
 # for farmOS, the latest GitHub release) and each vanilla core from its minor's latest
@@ -17,6 +18,9 @@
 # block below are settings to review.
 #
 # Usage:
+#   staticbuild backdrop            build+package+publish ONLY the Backdrop family
+#                                   (backdrop core + bee + backdrop-drush-extension),
+#                                   all at latest - lightweight, no Composer
 #   staticbuild all                 build everything, package, publish
 #   staticbuild build [name ...]    build all (or only named) targets
 #   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
@@ -24,7 +28,7 @@
 #   staticbuild check               report the latest upstream versions a build would pull
 # Options:
 #   -d MM-DD   build-day directory (default: today, date +%m-%d)
-#   -u USER    Octopus build user (default: o8)
+#   -u USER    Octopus build user (default: auto-detected from /data/disk)
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
 # Build target names: farm cms culturas commerce localgov thunder varbase
@@ -39,7 +43,7 @@
 # Configuration - review the specs/minors each cycle ("staticbuild check").
 # ---------------------------------------------------------------------------
 
-_O8_USER="o8"                                   # -u overrides
+_O8_USER=""                                     # empty = auto-detect this box's Octopus user; -u overrides
 _DAY="$(date +%m-%d)"                           # -d overrides (MM-DD)
 
 _STATIC_ROOT="/data/disk"                       # o8 home base; static lives under here
@@ -168,6 +172,24 @@ _run_as_o8() {
   su -s /bin/bash - "${_O8_USER}" -c "export COMPOSER_NO_INTERACTION=1; $1"
 }
 
+_detect_octo_user() {
+  # First Octopus instance user on this box: a /data/disk/<name> dir whose <name>
+  # is an existing system user (Octopus instances are o1, o2, o5x, ...). Skips
+  # 'arch' and any non-user dir, so the tool runs on any box without -u (the
+  # build box is rarely 'o8'). -u still overrides.
+  local _d _u
+  for _d in /data/disk/o*; do
+    [[ -d "${_d}" ]] || continue
+    _u="${_d##*/}"
+    [[ "${_u}" == "arch" ]] && continue
+    if id -u "${_u}" >/dev/null 2>&1; then
+      printf '%s\n' "${_u}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 use_php() {
   # Point /usr/bin/php at the requested interpreter for the next build. Non-fatal:
   # a missing interpreter fails one target (the caller records it), not the batch.
@@ -195,10 +217,15 @@ _require_root() {
 }
 
 _require_o8() {
-  id -u "${_O8_USER}" >/dev/null 2>&1 || _die "build user '${_O8_USER}' does not exist"
-  _run_as_o8 "command -v composer >/dev/null 2>&1" || _die "composer not available for ${_O8_USER}"
-  command -v wget >/dev/null 2>&1 || _die "wget not found (needed for farmOS release download)"
+  [[ -n "${_O8_USER}" ]] || _die "no Octopus instance user found under /data/disk; pass -u USER"
+  id -u "${_O8_USER}" >/dev/null 2>&1 || _die "build user '${_O8_USER}' does not exist (pass -u USER)"
+  command -v wget >/dev/null 2>&1 || _die "wget not found (needed for release downloads)"
   command -v curl >/dev/null 2>&1 || _die "curl not found (needed to resolve latest versions)"
+}
+
+_require_composer() {
+  # Only the Composer distro/core builds need composer; the Backdrop family does not.
+  _run_as_o8 "command -v composer >/dev/null 2>&1" || _die "composer not available for ${_O8_USER}"
 }
 
 # ---------------------------------------------------------------------------
@@ -805,6 +832,34 @@ do_package() {
   package_batch distro
 }
 
+do_backdrop_family() {
+  # Lightweight: build + package + publish ONLY the Backdrop family (backdrop
+  # core + bee + backdrop-drush-extension), all at their newest upstream. No
+  # Composer, no distros/cores, no /usr/bin/php switch - just git/wget/unzip.
+  # Scoped to the family so it never touches unrelated day-dir content.
+  _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
+  local _t
+  for _t in backdrop bee backdrop-drush-extension; do
+    _msg ""
+    _msg "=== build: ${_t} ==="
+    run_build "${_t}"
+  done
+  # Package the core dir (bee + extension are already tarballs from their build).
+  if _run_as_o8 "test -d '${_DAY_DIR}/backdrop'"; then
+    _msg "tar: backdrop.tar.gz"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz backdrop" || _alrt "tar failed: backdrop"
+  fi
+  # Publish only the family artifacts.
+  mkdir -p "${_CORE_OUT}" "${_DEVEXT_OUT}" || _die "cannot create ${_CORE_OUT} / ${_DEVEXT_OUT}"
+  local _f
+  for _f in backdrop.tar.gz backdrop.txt; do
+    [[ -e "${_DAY_DIR}/${_f}" ]] && { cp -a "${_DAY_DIR}/${_f}" "${_CORE_OUT}/" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"; }
+  done
+  for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
+    [[ -e "${_DAY_DIR}/${_f}" ]] && { cp -a "${_DAY_DIR}/${_f}" "${_DEVEXT_OUT}/" && _msg "devext <- ${_f}" || _alrt "copy failed: ${_f}"; }
+  done
+}
+
 do_distribute() {
   mkdir -p "${_DISTRO_OUT}" "${_CORE_OUT}" "${_DEVEXT_OUT}" \
     || _die "cannot create ${_DISTRO_OUT} / ${_CORE_OUT} / ${_DEVEXT_OUT}"
@@ -918,6 +973,10 @@ main() {
     [[ "${_a}" == -* ]] && _die "options must precede the action (got '${_a}'); e.g. staticbuild -f ${_action} ..."
   done
 
+  # Auto-detect the box's Octopus user when -u was not given (build boxes are
+  # rarely 'o8'); -u still wins.
+  [[ -n "${_O8_USER}" ]] || _O8_USER="$(_detect_octo_user)"
+
   # Recompute derived paths after option parsing.
   _DAY_DIR="${_STATIC_ROOT}/${_O8_USER}/static/${_DAY}"
 
@@ -926,9 +985,20 @@ main() {
       do_check
       exit 0
       ;;
+    backdrop)
+      # Lightweight Backdrop-family build+package+publish (no Composer, no php
+      # switch). Needs root (mirror writes) + an Octopus user (_run_as_o8).
+      _require_root
+      _require_o8
+      trap '_cleanup' EXIT
+      _acquire_lock
+      do_backdrop_family
+      print_summary
+      ;;
     build|package|distribute|all)
       _require_root
       _require_o8
+      _require_composer
       trap '_cleanup' EXIT
       _acquire_lock
       # /usr/bin/php must be a symlink we can swap and restore. Refuse to clobber a
