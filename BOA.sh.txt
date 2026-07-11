@@ -1430,7 +1430,7 @@ _update_agents() {
   # staticbuild: mirror-source testing-codebase + Backdrop-family builder. Only
   # acts when run as root on the mirror VM; harmless (idle) elsewhere. Kept on
   # every box so the mirror source always carries the current builder.
-  _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f99 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+  _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f98 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)

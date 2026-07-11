@@ -93,7 +93,7 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # composer require drush/drush --no-scripts   # drupal_cms post-update-cmd exits non-zero
+           # composer require drush/drush --no-scripts --no-interaction   # post-update-cmd exits non-zero; cms dev-requires drush, non-interactive confirms the move to require
 ```
 
 ```sh
