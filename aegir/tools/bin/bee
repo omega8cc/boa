@@ -30,9 +30,13 @@ _pick_modern() {
 }
 
 # --- Identity gate (D-021) ---------------------------------------------------
-# The verb is the first non-option argv token, matching bee's own command
-# resolution (it treats every -*/--* token as an option and the first
-# remaining token as the command), so this cannot be evaded by option padding.
+# The verb is resolved exactly as bee itself resolves it (bee_parse_input in
+# includes/command.inc): every -*/--* token is an option, and the command is
+# the first remaining token that bee's `empty($_bee_command)` test does not
+# discard -- which in PHP means NOT the empty string and NOT "0" (bee keeps
+# overwriting the command past those, so `bee "" eval` / `bee 0 eval` really run
+# eval). We must skip the same tokens or a client smuggles a destructive verb
+# behind an empty/"0" pad. (VM-verified bypass, ng019 2026-07-11.)
 _ID="$(id -un 2>/dev/null)"
 _BACKEND=NO
 if [[ "${_ID}" = "root" ]] \
@@ -45,9 +49,14 @@ if [[ "${_BACKEND}" = "NO" ]]; then
   _VERB=""
   for _tok in "$@"; do
     case "${_tok}" in
-      -*) ;;
-      *) _VERB="${_tok}"; break ;;
+      -*) continue ;;
     esac
+    # bee's empty($_bee_command) discards "" and "0" too; keep scanning.
+    if [[ -z "${_tok}" ]] || [[ "${_tok}" = "0" ]]; then
+      continue
+    fi
+    _VERB="${_tok}"
+    break
   done
   case "${_VERB}" in
     eval|ev|php-eval|php-script|scr|sql|sqlc|sql-cli|db-cli|db-drop|sql-drop|db-query|dbq|install|si|site-install|db-import|dbim|sql-import)
