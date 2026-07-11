@@ -5741,6 +5741,22 @@ _satellite_child_b_drush_xts_install() {
         "s#require_once 'includes/output.inc';#require_once __DIR__ . '/includes/output.inc';#" \
         ${_ROOT}/.drush/usr/backdrop/BackdropBoot.php &> /dev/null
     fi
+    ### Stop the extension's command_alter from hijacking Aegir/Provision.
+    ### When BackdropBoot is the active bootstrap it replaces any command it
+    ### does not recognise with a "not supported by Backdrop" fallback -- which
+    ### swallows every provision-* / hosting-* command run against a Backdrop
+    ### platform, breaking the whole Provision backend. Provision drives
+    ### Backdrop here, so let its commands through untouched. Idempotent: the
+    ### guard is inserted once, before the first $backdrop_command assignment.
+    ### (VM-confirmed on ng019, 2026-07-11.)
+    if [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ] \
+      && ! grep -q "'provision') === 0" \
+        ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc; then
+      sed -i \
+        "/^  \$backdrop_command = NULL;/i\\
+  if (strpos(\$command['command'], 'provision') === 0 || strpos(\$command['command'], 'hosting') === 0) {\n    return;\n  }\n" \
+        ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc &> /dev/null
+    fi
     cd ${_ROOT}/.drush
     wait
   fi
