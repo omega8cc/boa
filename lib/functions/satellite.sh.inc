@@ -4328,6 +4328,12 @@ _satellite_make() {
   echo "export _BACKDROP_D=\"backdrop-${_bdrVrn}-dev\""      >> ${_writeTo}
   echo "export _BACKDROP_P=\"backdrop-${_bdrVrn}-prod\""     >> ${_writeTo}
   echo "export _BACKDROP_S=\"backdrop-${_bdrVrn}-stage\""    >> ${_writeTo}
+  # The su'd child installers (AegirSetupC.sh.txt) source ONLY this env include,
+  # not the root .octopus.cnf where the operator sets _BACKDROP_SUPPORT, so the
+  # gate must be carried here too -- else the child BDR build arm
+  # ([ "${_BACKDROP_SUPPORT}" = "YES" ]) is permanently dead and Backdrop
+  # platforms never auto-build. Fail-closed: NO/empty keeps the gate shut.
+  echo "export _BACKDROP_SUPPORT=\"${_BACKDROP_SUPPORT}\""   >> ${_writeTo}
 
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
