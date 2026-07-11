@@ -1160,6 +1160,11 @@ _up_start() {
     mkdir -p ${_LOG_DIR}
     cd ${_vBs}
     rm -f ${_vBs}/BARRACUDA.sh*
+    ### Never reuse a build tree left by a previous run: _download_boa_code
+    ### keeps an existing ${_bldPth} when its marker files are present, so a
+    ### leftover tree would silently run this upgrade with stale code.
+    rm -rf ${_bldPth}
+    rm -f /opt/tmp/boa.tar.gz
   fi
   if [ -e "/opt/local/bin/php" ] \
     || [ -e "/opt/local/bin/pear" ] \

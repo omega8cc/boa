@@ -699,6 +699,11 @@ _up_start() {
     cd ${_vBs}
     rm -f ${_vBs}/OCTOPUS.sh*
     ## rm -f ${_vBs}/*.sh.cnf*
+    ### Never reuse a build tree left by a previous run: _download_boa_code
+    ### keeps an existing ${_bldPth} when its marker files are present, so a
+    ### leftover tree would silently run this upgrade with stale code.
+    rm -rf ${_bldPth}
+    rm -f /opt/tmp/boa.tar.gz
   fi
   if [ "${_mOde}" = "log" ]; then
     _outP="${_mOde}"
