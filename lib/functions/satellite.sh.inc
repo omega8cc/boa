@@ -5725,6 +5725,17 @@ _satellite_child_b_drush_xts_install() {
         "s/function drush_chalk(string \$output, string \$color)/function drush_chalk(\$output, \$color)/" \
         ${_ROOT}/.drush/usr/backdrop/includes/output.inc &> /dev/null
     fi
+    ### Fix the relative require in BackdropBoot::get_version(): the bare
+    ### 'includes/output.inc' resolves against Drush core's include_path (whose
+    ### output.inc lacks drush_chalk), so the extension's own drush_chalk -- used
+    ### by backdrop-pm-enable/subtheme -- is never defined and those commands
+    ### fatal. Anchor it to the extension dir. Idempotent: only the bare form
+    ### matches. (VM-confirmed on ng019, 2026-07-11.)
+    if [ -e "${_ROOT}/.drush/usr/backdrop/BackdropBoot.php" ]; then
+      sed -i \
+        "s#require_once 'includes/output.inc';#require_once __DIR__ . '/includes/output.inc';#" \
+        ${_ROOT}/.drush/usr/backdrop/BackdropBoot.php &> /dev/null
+    fi
     cd ${_ROOT}/.drush
     wait
   fi
