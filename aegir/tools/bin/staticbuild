@@ -27,7 +27,7 @@
 #   -u USER    Octopus build user (default: o8)
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
-# Build target names: farm cms culturas commerce localgov thunder varbase cores
+# Build target names: farm cms culturas commerce localgov thunder varbase backdrop cores
 
 # ---------------------------------------------------------------------------
 # Configuration - review the specs/minors each cycle ("staticbuild check").
@@ -50,6 +50,12 @@ _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php
 # farmOS: the latest GitHub release is resolved automatically; set _FARM_TAG to pin one.
 _FARM_REPO="farmOS/farmOS"
 _FARM_TAG=""
+
+# Backdrop CMS core: the latest GitHub release is resolved automatically; set
+# _BACKDROP_TAG to pin one. Ships as a single backdrop.zip release asset (no
+# Composer), repackaged as backdrop-<ver>.tar.gz and classified as a core.
+_BACKDROP_REPO="backdrop/backdrop"
+_BACKDROP_TAG=""
 
 # Distribution Composer specs (the create-project template) + the distribution PROFILE
 # package. The tarball version is the profile package's version (the authoritative number
@@ -362,6 +368,16 @@ _resolve_farm_tag() {
     | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
 }
 
+_resolve_backdrop_tag() {
+  # Latest Backdrop CMS release tag, or the pinned _BACKDROP_TAG.
+  if [[ -n "${_BACKDROP_TAG}" ]]; then
+    printf '%s\n' "${_BACKDROP_TAG}"
+    return 0
+  fi
+  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_BACKDROP_REPO}/releases/latest" 2>/dev/null \
+    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+}
+
 _drupal_release() {
   # Echo a drupal.org project's latest STABLE release number (the authoritative version,
   # not the Composer template alias). Skips dev/alpha/beta/rc. Empty if unavailable.
@@ -589,10 +605,36 @@ build_cores() {
   done
 }
 
+build_backdrop() {
+  # Backdrop CMS core: a single GitHub release zip (no Composer, no profiles to
+  # strip). Packaged/published as a core (backdrop-<ver>.tar.gz), preserving the
+  # top-level core/ layouts/ modules/ themes/ sites/ and core/scripts/install.sh.
+  _begin_build "backdrop-" "backdrop" || return 0
+  if ! command -v unzip >/dev/null 2>&1; then
+    _record_fail "backdrop (unzip not found)"
+    return 1
+  fi
+  local _tag _name _zip _url
+  _tag="$(_resolve_backdrop_tag)"
+  [[ -n "${_tag}" ]] || { _record_fail "backdrop (could not resolve release tag)"; return 1; }
+  _name="backdrop-${_tag}"
+  _zip=".backdrop-${_tag}.zip"
+  _url="https://github.com/${_BACKDROP_REPO}/releases/download/${_tag}/backdrop.zip"
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}' backdrop '${_zip}' \
+    && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' && mv backdrop '${_name}' \
+    && rm -f '${_zip}'"; then
+    _record_fail "backdrop"
+    return 1
+  fi
+  _RESULTS+=("OK    ${_name}")
+  _info "backdrop: built ${_name}"
+}
+
 run_build() {
   local _name="$1"
   case "${_name}" in
     farm)     build_farm ;;
+    backdrop) build_backdrop ;;
     cms)      build_cms ;;
     culturas) build_culturas ;;
     commerce) build_commerce ;;
@@ -608,7 +650,7 @@ run_build() {
 do_build() {
   # $@ = target names, or empty for all distros + cores.
   local _targets="$*"
-  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} cores"
+  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop cores"
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   if [[ "${_SKIP_CLEARCACHE}" != "1" ]]; then
     _msg "composer clearcache (${_O8_USER})"
@@ -648,7 +690,7 @@ strip_core_profiles() {
   _list="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d */ 2>/dev/null")"
   for _name in ${_list}; do
     _name="${_name%/}"
-    case "${_name}" in drupal-*) continue ;; esac
+    case "${_name}" in drupal-*|backdrop-*) continue ;; esac
     _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}'/*/core/profiles/* ; true"
   done
 }
@@ -660,8 +702,8 @@ package_batch() {
   for _name in ${_list}; do
     _name="${_name%/}"
     case "${_name}" in
-      drupal-*) [[ "${_kind}" == "core" ]]   || continue ;;
-      *)        [[ "${_kind}" == "distro" ]] || continue ;;
+      drupal-*|backdrop-*) [[ "${_kind}" == "core" ]]   || continue ;;
+      *)                   [[ "${_kind}" == "distro" ]] || continue ;;
     esac
     _msg "tar: ${_name}.tar.gz"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf '${_name}.tar.gz' '${_name}'" || _alrt "tar failed: ${_name}"
@@ -688,7 +730,7 @@ do_distribute() {
     [[ -e "${_t}" ]] || continue
     _base="${_t##*/}"
     case "${_base}" in
-      drupal-*.tar.gz)
+      drupal-*.tar.gz|backdrop-*.tar.gz)
         cp -a "${_t}" "${_CORE_OUT}/"   && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
       *)
         cp -a "${_t}" "${_DISTRO_OUT}/" && { _msg "distro <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
@@ -723,6 +765,7 @@ do_check() {
   _info "Latest release per distro from the authoritative source - drupal.org release feed"
   _info "(GitHub for farmOS; commerce_kickstart has no drupal.org stable, so its profile pkg):"
   _check_row "farm"     "$(_latest_github "${_FARM_REPO}")"
+  _check_row "backdrop" "$(_latest_github "${_BACKDROP_REPO}")"
   _check_row "cms"      "$(_drupal_release cms)"
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"

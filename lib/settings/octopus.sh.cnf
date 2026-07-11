@@ -191,6 +191,18 @@ _PLATFORMS_ONLY=NO
 
 
 ###----------------------------------------###
+### BACKDROP CMS SUPPORT                   ###
+###----------------------------------------###
+###
+### To build Backdrop CMS platforms on this
+### Octopus instance, change this to YES.
+###
+### _BACKDROP_SUPPORT=YES
+###
+_BACKDROP_SUPPORT=NO
+
+
+###----------------------------------------###
 ### DRUSH DEBUG MODE                       ###
 ###----------------------------------------###
 ###

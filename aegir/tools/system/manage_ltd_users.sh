@@ -159,7 +159,7 @@ _enable_chattr() {
         rm -f ${_U_HD}/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
         rm -f ${_U_HD}/usr/{drush_make,registry_rebuild,clean_missing_modules}
         rm -f ${_U_HD}/usr/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
-        rm -f ${_U_HD}/usr/{mydropwizard,utf8mb4_convert}
+        rm -f ${_U_HD}/usr/{mydropwizard,utf8mb4_convert,backdrop}
         rm -f ${_U_HD}/.ctrl*
         rm -rf ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
@@ -200,6 +200,11 @@ _enable_chattr() {
         && [ -e "${_dscUsr}/.drush/usr/utf8mb4_convert" ]; then
         ln -sfn ${_dscUsr}/.drush/usr/utf8mb4_convert \
           ${_U_HD}/usr/utf8mb4_convert
+      fi
+      if [ ! -L "${_U_HD}/usr/backdrop" ] \
+        && [ -e "${_dscUsr}/.drush/usr/backdrop" ]; then
+        ln -sfn ${_dscUsr}/.drush/usr/backdrop \
+          ${_U_HD}/usr/backdrop
       fi
     fi
 
@@ -323,6 +328,7 @@ _enable_chattr() {
           /opt/tika9:       \
           /dev/urandom:     \
           /opt/tools/drush: \
+          /opt/tools/bee:   \
           /usr/bin:         \
           /usr/local/bin:   \
           ${_dscUsr}/.drush/usr: \
@@ -465,6 +471,9 @@ _enable_chattr() {
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr +i /home/$1/.drush/*.ini
     fi
+    if [ -d "/home/$1/.bee/" ]; then
+      chattr +i /home/$1/.bee/
+    fi
     if [ -d "/home/$1/.bazaar/" ]; then
       chattr +i /home/$1/.bazaar/
     fi
@@ -494,6 +503,9 @@ _disable_chattr() {
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr -i /home/$1/.drush/*.ini
+    fi
+    if [ -d "/home/$1/.bee/" ]; then
+      chattr -i /home/$1/.bee/
     fi
     if [ -d "/home/$1/.bazaar/" ]; then
       chattr -i /home/$1/.bazaar/
@@ -580,6 +592,12 @@ _fix_dot_dirs() {
       mkdir -p ${_usrDrush}
       chown ${_usrLtd}:${_usrGroup} ${_usrDrush}
       chmod 700 ${_usrDrush}
+    fi
+    _usrBee="/home/${_usrLtd}/.bee"
+    if [ ! -d "${_usrBee}" ]; then
+      mkdir -p ${_usrBee}
+      chown ${_usrLtd}:${_usrGroup} ${_usrBee}
+      chmod 700 ${_usrBee}
     fi
     _usrSsh="/home/${_usrLtd}/.ssh"
     if [ ! -d "${_usrSsh}" ]; then

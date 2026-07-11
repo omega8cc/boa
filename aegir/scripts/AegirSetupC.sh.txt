@@ -802,6 +802,16 @@ _create_drupal_basic_version() {
   fi
 }
 
+# Create Backdrop core-only basic platform (has core/, no web/).
+_create_backdrop_basic_version() {
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    cd "${_pthDst}"
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${_BACKDROP1_34_0}.tar.gz'"
+    _get_core_ext "${_BACKDROP1_34_0}.tar.gz"
+    mv -f "${_BACKDROP1_34_0}" "${_SHRD_PLNAME}"
+  fi
+}
+
 # Create Drupal core-only basic platform.
 _create_drupal_core_basic() {
   local version_code="$1"
@@ -845,6 +855,9 @@ _create_drupal_core_basic() {
     "DE3")
       _create_drupal_basic_version "11_3"
       ;;
+    "BDR")
+      _create_backdrop_basic_version
+      ;;
     *)
       echo "Unsupported version code: $version_code"
       ;;
@@ -884,6 +897,7 @@ declare -A _distros_names=(
   ["DE2"]="Drupal"
   ["DE3"]="Drupal"
   ["DE4"]="Drupal"
+  ["BDR"]="Backdrop"
 )
 
 # Define distros versions for configuration
@@ -919,6 +933,7 @@ declare -A _distros_versions=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
+  ["BDR"]="${_BACKDROP1_34_0_V}"
 )
 
 # Define distros Drupal cores versions for configuration
@@ -954,6 +969,7 @@ declare -A _distros_drupal_cores=(
   ["DE2"]="${_SMALLCORE11_2_V}"
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
+  ["BDR"]="${_BACKDROP1_34_0_V}"
 )
 
 # Define distros profiles names for configuration
@@ -989,6 +1005,7 @@ declare -A _distros_profiles_names=(
   ["DE2"]="standard"
   ["DE3"]="standard"
   ["DE4"]="standard"
+  ["BDR"]="standard"
 )
 
 # Define distros profiles paths for configuration
@@ -1024,6 +1041,7 @@ declare -A _distros_profiles_paths=(
   ["DE2"]="/"
   ["DE3"]="/"
   ["DE4"]="/"
+  ["BDR"]="/"
 )
 
 # Define distros web dirs for configuration
@@ -1059,6 +1077,7 @@ declare -A _distros_web_dirs=(
   ["DE2"]="/web"
   ["DE3"]="/web"
   ["DE4"]="/web"
+  ["BDR"]=""
 )
 
 # Define distros names and their URLs for information
@@ -1094,6 +1113,7 @@ declare -A _distros_urls=(
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
   ["DE3"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_3_V}"
   ["DE4"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_4_V}"
+  ["BDR"]="${_urlPrt}/backdrop/releases/${_BACKDROP1_34_0_V}"
 )
 
 # Define distros names and their compatible max PHP versions for information
@@ -1129,6 +1149,7 @@ declare -A _distros_php_versions=(
   ["DE2"]="8.4"
   ["DE3"]="8.4"
   ["DE4"]="8.4"
+  ["BDR"]="8.4"
 )
 
 
@@ -1538,6 +1559,10 @@ _d_core_platform_install() {
     _CORE_DEV="${_DRUPAL6_D}"
     _CORE_STG="${_DRUPAL6_S}"
     _CORE_PRD="${_DRUPAL6_P}"
+  elif [ "${1}" = "BDR" ]; then
+    _CORE_DEV="${_BACKDROP1_34_0_D}"
+    _CORE_STG="${_BACKDROP1_34_0_S}"
+    _CORE_PRD="${_BACKDROP1_34_0_P}"
   fi
 
   # Declare 'params' as local to the function
@@ -1631,6 +1656,10 @@ _d_dist_loop() {
     _d_xurl="${_distros_urls[${_dist}]}"
     if [[ "${_dist}" =~ DL || "${_dist}" =~ DX || "${_dist}" =~ DE ]]; then
       _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
+    elif [[ "${_dist}" =~ BD ]]; then
+      # Backdrop core-only platform; gated dark behind _BACKDROP_SUPPORT.
+      [ "${_BACKDROP_SUPPORT}" = "YES" ] \
+        && _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     elif [[ "${_dist}" =~ CK1 || "${_dist}" =~ UC ]]; then
       _d_dist_custom_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     else

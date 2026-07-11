@@ -154,6 +154,15 @@ export _DRUPAL11_4_D="${_DRUPAL11_4}-dev"
 export _DRUPAL11_4_P="${_DRUPAL11_4}-prod"
 export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
 
+###
+### Backdrop CMS Core Variables (single active 1.x line; stable pin only)
+###
+export _BACKDROP1_34_0_V=1.34.0
+export _BACKDROP1_34_0="backdrop-${_BACKDROP1_34_0_V}"
+export _BACKDROP1_34_0_D="${_BACKDROP1_34_0}-dev"
+export _BACKDROP1_34_0_P="${_BACKDROP1_34_0}-prod"
+export _BACKDROP1_34_0_S="${_BACKDROP1_34_0}-stage"
+
 export _SPINNER=NO
 export _T_BUILD=SRC
 export _USRG=users

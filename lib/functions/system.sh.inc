@@ -2383,6 +2383,7 @@ _barracuda_cnf() {
     echo "_CUSTOM_CONFIG_VALKEY=${_CUSTOM_CONFIG_VALKEY}"     >> ${_barCnf}
     echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}"       >> ${_barCnf}
     echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${_barCnf}
+    echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"             >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -2598,6 +2599,11 @@ _barracuda_cnf() {
     _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL ${_barCnf} 2>&1)
     if [[ ! "${_CUSTOM_CONFIG_LSHELL_TEST}" =~ "_CUSTOM_CONFIG_LSHELL" ]]; then
       echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}" >> ${_barCnf}
+    fi
+
+    _BACKDROP_SUPPORT_TEST=$(grep _BACKDROP_SUPPORT ${_barCnf} 2>&1)
+    if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT" ]]; then
+      echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
     fi
 
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
@@ -4015,6 +4021,24 @@ _get_drush_eight() {
 }
 
 #
+# Install or update the native Backdrop CLI (bee), mirroring _get_drush_eight.
+# Global /opt/tools/bee from a pinned mirror tarball; gated on _BACKDROP_SUPPORT.
+_get_bee() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _get_bee"
+  fi
+  [ "${_BACKDROP_SUPPORT}" = "YES" ] || return 0
+  mkdir -p /opt/tools/bee
+  rm -rf /opt/tools/bee/*
+  cd /opt/tools/bee/
+  _get_dev_ext "bee-${_BEE_VERSION}.tar.gz"
+  touch /opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: bee ${_BEE_VERSION} installation complete"
+  fi
+}
+
+#
 # Install or update CiviCRM CLI Tool phar.
 _get_civicrm_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4157,6 +4181,33 @@ _drush_system_install_update() {
     if [ ! -x "/usr/local/bin/cv.phar" ] \
       || [ ! -e "/opt/tools/drush/.ci.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       _get_civicrm_cli
+    fi
+    ###
+    ### Native Backdrop CLI (bee); gated dark. /usr/bin/bee points at the
+    ### PHP-selecting wrapper shipped as /opt/local/bin/bee (aegir/tools/bin/bee).
+    ###
+    if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
+      mkdir -p /opt/tools/bee
+      chown -R root:root /opt/tools/bee
+      _BEE_ITD=$(/usr/bin/bee version 2>&1 \
+        | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+        | head -n1)
+      if [ "${_BEE_ITD}" != "${_BEE_TEST_VRN}" ] \
+        || [ ! -e "/opt/tools/bee/bee.php" ] \
+        || [ ! -e "/opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: bee ${_BEE_VERSION} re-installation required"
+        fi
+        _get_bee
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: bee ${_BEE_VERSION} already installed"
+        fi
+      fi
+      if [ -e "/opt/tools/bee/bee.php" ] && [ -x "/opt/local/bin/bee" ]; then
+        rm -f /usr/bin/bee
+        ln -sfn /opt/local/bin/bee /usr/bin/bee
+      fi
     fi
     cd /opt/tmp
   fi

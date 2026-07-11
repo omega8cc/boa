@@ -737,6 +737,7 @@ _satellite_cnf() {
     echo "_AUTOPILOT=${_AUTOPILOT}"                             >> ${_octCnf}
     echo "_HM_ONLY=${_HM_ONLY}"                                 >> ${_octCnf}
     echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}"                   >> ${_octCnf}
+    echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"               >> ${_octCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
     echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
@@ -844,6 +845,12 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}" >> ${_octCnf}
+    fi
+    _BACKDROP_SUPPORT_TEST=$(grep _BACKDROP_SUPPORT ${_octCnf} 2>&1)
+    if [[ "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_octCnf}
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
@@ -4312,6 +4319,11 @@ _satellite_make() {
   echo "export _DRUPAL11_4_P=\"${_DRUPAL11_4}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
 
+  echo "export _BACKDROP1_34_0=\"${_BACKDROP1_34_0}\""       >> ${_writeTo}
+  echo "export _BACKDROP1_34_0_D=\"${_BACKDROP1_34_0}-dev\""   >> ${_writeTo}
+  echo "export _BACKDROP1_34_0_P=\"${_BACKDROP1_34_0}-prod\""  >> ${_writeTo}
+  echo "export _BACKDROP1_34_0_S=\"${_BACKDROP1_34_0}-stage\"" >> ${_writeTo}
+
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
   echo "export _HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${_writeTo}
@@ -5691,6 +5703,31 @@ _satellite_child_b_drush_xts_install() {
   fi
   sed -i "s/files.boa.io/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   wait
+  ###
+  ### Backdrop Drush extension: a global usr/ contrib command extension (inside
+  ### the backend commandfile-filter carve-out). Gated dark; the client symlink
+  ### machinery keys on this dir's existence.
+  ###
+  if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
+    cd ${_ROOT}/.drush/usr
+    rm -rf ${_ROOT}/.drush/usr/backdrop
+    rm -rf ${_ROOT}/.drush/usr/backdrop-drush-extension
+    _get_dev_ext "backdrop-drush-extension.tar.gz"
+    if [ -d "${_ROOT}/.drush/usr/backdrop-drush-extension" ]; then
+      mv -f ${_ROOT}/.drush/usr/backdrop-drush-extension \
+        ${_ROOT}/.drush/usr/backdrop
+    fi
+    ### De-hint the sole PHP 5.6 parse-fatal (scalar type hints on drush_chalk);
+    ### the extension is parsed on every backend drush call, so it must never
+    ### fatal on a legacy php56 box. Idempotent: only the still-hinted form matches.
+    if [ -e "${_ROOT}/.drush/usr/backdrop/includes/output.inc" ]; then
+      sed -i \
+        "s/function drush_chalk(string \$output, string \$color)/function drush_chalk(\$output, \$color)/" \
+        ${_ROOT}/.drush/usr/backdrop/includes/output.inc &> /dev/null
+    fi
+    cd ${_ROOT}/.drush
+    wait
+  fi
 }
 
 _satellite_child_b_drush_test() {
@@ -5709,6 +5746,19 @@ _satellite_child_b_drush_test() {
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
+  fi
+  ### Non-fatal Backdrop extension smoke check (gated); the extension is optional,
+  ### so a missing detection must not abort AegirSetupB.
+  if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
+    && [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ]; then
+    drush8 cc drush &> /dev/null
+    if ${_DRUSHCMD} help 2>/dev/null | grep -q "backdrop-site-install"; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "${_STATUS} B: Backdrop Drush extension test result OK"
+      fi
+    else
+      _msg "${_STATUS} B: NOTE: Backdrop Drush extension not detected by Drush"
+    fi
   fi
 }
 
