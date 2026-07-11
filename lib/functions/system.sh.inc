@@ -771,6 +771,9 @@ _global_inc_conf_update() {
   cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
   cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
   cp -af ${_locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
+  ### Backdrop-only shared settings (Valkey wiring, visit-cron off); the
+  ### Backdrop settings tpl includes it only when present, so it ships inert.
+  cp -af ${_locCnf}/global/global-bd.inc ${_GL_D}/global-bd.inc
 }
 
 #
