@@ -1,33 +1,62 @@
 #!/bin/bash
 
-# ip_access.sh — per-site nginx IP allow/deny, GLOBAL across the Aegir master and
+# ip_access.sh — per-site nginx IP allow/deny, GLOBAL across the Ægir master and
 # every Octopus instance.  Abstraction of the per-Octopus
 # nginx_ip_access_<oct>.sh scripts into one generator.
 #
 # For each context it reads a control file of `<site>  <ip…>` records and writes
 # a per-site nginx include `<site>.conf` (a block of `allow <ip>;` lines + a
 # final `deny all;`) into that context's config/includes/ip_access/, which the
-# per-vhost template pulls via `include $server->include_path/ip_access/<uri>*`.
-# 127.0.0.1, the server's own IP and every currently logged-in SSH IP are always
-# allowed (anti-lockout), so an admin / the server can never be shut out.
+# per-vhost template pulls via `include $server->include_path/ip_access/<uri>.conf*`.
+# Each allowed entry may be an IPv4 or IPv6 address, with an optional CIDR prefix
+# (this is a pure nginx allow/deny layer, no csf involvement, so both families and
+# subnets are supported).  127.0.0.1, ::1, the server's own IPv4 and every
+# currently logged-in inbound SSH peer (v4 or v6) are always allowed (anti-lockout),
+# so an admin / the server can never be shut out.
 #
 # Control files:
 #   master  : /var/aegir/control/ip/access.txt          (the sqladmin proxy)
 #   octopus : /data/disk/<oct>/static/control/ip/access.txt
 # A site removed from the control file has its fragment pruned (restriction
-# lifted).  Record format: `example.com 192.168.1.1 203.0.113.2`.
+# lifted).  Record format: `example.com 203.0.113.2 10.0.0.0/8 2001:db8::/32`.
 
 _aegir_health_check="/var/aegir/.drush/hm.alias.drushrc.php"
 _drush_health_check="/var/aegir/drush/drush"
 _server_ip_file="/root/.found_correct_ipv4.cnf"
-# Validate each octet 0-255, so a typo'd address (e.g. 192.168.1.300) is SKIPPED
-# rather than emitted into an `allow` line. An out-of-range octet passes a loose
-# [0-9]{1,3} check but nginx rejects it at configtest — and because configtest
-# validates the whole config, one bad fragment would block reloads box-wide until
-# the control file is corrected.
+
+# Accept an IPv4 or IPv6 address, each with an optional CIDR prefix length — the
+# nginx access module (`allow`/`deny`) takes all four forms. The validators are a
+# strict SUBSET of what nginx accepts (cross-checked against `nginx -t`), so a
+# typo'd address (e.g. 192.168.1.300, 2001:db8::/129) is SKIPPED rather than
+# emitted into an `allow` line: a loose check would pass an out-of-range value
+# that nginx rejects at configtest, and because configtest validates the WHOLE
+# config, one bad fragment would block reloads box-wide until the control file is
+# corrected. An out-of-range octet / prefix / bad hextet fails here and is skipped.
 _ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
-_ipv4_regex="^(${_ipv4_octet}\.){3}${_ipv4_octet}\$"
+_ipv4="(${_ipv4_octet}\.){3}${_ipv4_octet}"
+_ipv4_regex="^${_ipv4}(/(3[0-2]|[12][0-9]|[0-9]))?$"
+_hex="[0-9A-Fa-f]{1,4}"
+_ipv6_core="(\
+(${_hex}:){7}${_hex}|\
+(${_hex}:){1,7}:|\
+(${_hex}:){1,6}:${_hex}|\
+(${_hex}:){1,5}(:${_hex}){1,2}|\
+(${_hex}:){1,4}(:${_hex}){1,3}|\
+(${_hex}:){1,3}(:${_hex}){1,4}|\
+(${_hex}:){1,2}(:${_hex}){1,5}|\
+${_hex}:((:${_hex}){1,6})|\
+:((:${_hex}){1,7}|:)|\
+::(ffff(:0{1,4})?:)?(${_ipv4})|\
+(${_hex}:){1,4}:(${_ipv4}))"
+_ipv6_regex="^${_ipv6_core}(/(12[0-8]|1[01][0-9]|[0-9]?[0-9]))?$"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
+
+_valid_ip() {
+  local _ip="$1"
+  [[ "${_ip}" =~ ${_ipv4_regex} ]] && return 0
+  [[ "${_ip}" =~ ${_ipv6_regex} ]] && return 0
+  return 1
+}
 
 if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; then
   echo "Server is not ready yet. Exiting."
@@ -51,12 +80,15 @@ _server_ip=""
 _get_ssh_ips() {
   # `who --ips` is unavailable on Excalibur and newer, so read currently
   # established inbound SSH peers from netstat instead — the BOA-canonical
-  # source for logged-in IPs.  The IPv4 filter keeps a parsed-garbage token
-  # (e.g. an IPv6 peer) from ever reaching an `allow` line and breaking
-  # configtest; IPv6 SSH peers are simply not auto-allowed (IPv4 anti-lockout).
+  # source for logged-in IPs.  netstat prints the foreign address as
+  # `<addr>:<port>`; the port is always the final `:field`, so strip it with a
+  # trailing-`:port` chop rather than splitting on the first colon — that yields
+  # the peer address for BOTH families (IPv4 `1.2.3.4:22` -> `1.2.3.4`, IPv6
+  # `2001:db8::2:50913` -> `2001:db8::2`).  Each harvested token is validated by
+  # _valid_ip before it reaches an `allow` line, so a parsed-garbage / scoped
+  # (fe80::1%eth0) token can never break configtest.
   netstat -tn 2>/dev/null \
-    | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' \
-    | grep -E "${_ipv4_regex}" \
+    | awk '$6 == "ESTABLISHED" && $4 ~ /:22$/ { addr=$5; sub(/:[0-9]+$/, "", addr); print addr }' \
     | sort -u
 }
 _ssh_ips=$(_get_ssh_ips)
@@ -98,14 +130,18 @@ _process_context() {
       echo "Invalid site name: ${_site} (${_input_file}). Skipping."
       continue
     fi
-    _ip_list=("127.0.0.1")
+    _ip_list=("127.0.0.1" "::1")
     [[ -n "${_server_ip}" ]] && _ip_list+=("${_server_ip}")
-    for _ip in ${_ssh_ips}; do _ip_list+=("${_ip}"); done
+    # SSH peers are validated here (not at harvest) so a scoped/garbage token
+    # never reaches an `allow` line and breaks the box-wide configtest.
+    for _ip in ${_ssh_ips}; do
+      _valid_ip "${_ip}" && _ip_list+=("${_ip}")
+    done
     for _ip in "${_fields[@]:1}"; do
-      if [[ ${_ip} =~ ${_ipv4_regex} ]]; then
+      if _valid_ip "${_ip}"; then
         _ip_list+=("${_ip}")
       else
-        echo "Invalid IP: ${_ip} for ${_site} (${_input_file}). Skipping."
+        echo "Invalid IP/subnet: ${_ip} for ${_site} (${_input_file}). Skipping."
       fi
     done
     _ip_sorted=$(printf "%s\n" "${_ip_list[@]}" | sort -u)

@@ -20,12 +20,14 @@ to reach it.
 ```
 # static/control/ip/access.txt
 
-intranet.example.com   203.0.113.10 203.0.113.11
-staging.example.com    198.51.100.42
+intranet.example.com   203.0.113.10 203.0.113.0/24 2001:db8::/32
+staging.example.com    198.51.100.42 2001:db8:1::1
 ```
 
-Use the visitor's **real public IP** (what `https://ifconfig.co` or similar shows for
-them) — not a local/LAN address. `#` comments and blank lines are ignored.
+You can list **IPv4 or IPv6** addresses, and either single addresses or whole ranges in
+CIDR notation (`203.0.113.0/24`, `2001:db8::/32`, …). Use the visitor's **real public
+address** (what `https://ifconfig.co` or similar shows for them) — not a local/LAN address.
+`#` comments and blank lines are ignored.
 
 ## You cannot lock yourself (or the server) out
 
@@ -40,7 +42,8 @@ to everyone, delete its line — the restriction is removed on the next pass.
 
 ## Good to know
 
-- Addresses are individual IPv4 addresses, listed with spaces between them — not ranges.
+- Addresses are listed with spaces between them; each can be a single IPv4/IPv6 address or a
+  CIDR range.
 - The restriction covers the whole site.
 - If your sites sit behind Cloudflare, the list still works on the visitor's real IP (the
   platform recovers it), so enter the real client address as usual.

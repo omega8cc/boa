@@ -4,13 +4,13 @@ You can include your custom rewrites/locations configuration to modify or add so
 
 Note that some locations will require using parent literal location to stop searching for / using other regex based locations.
 
-Your custom include file should have filename: `nginx_vhost_include.conf` for standard overrides and/or `nginx_force_include.conf` for high level overrides. The difference between both options is only the point where the extra config file is included, thus `nginx_force_include.conf` can override more than `nginx_vhost_include.conf` file.
+Your custom include file should have filename: `nginx_vhost_include.conf` for standard overrides and/or `nginx_force_include.conf` for high level overrides. The include directive globs these names with a trailing wildcard (`nginx_vhost_include*` / `nginx_force_include*`), so a suffixed variant such as `nginx_force_include.conf.mysite` is picked up as well. The difference between both options is only the point where the extra config file is included, thus `nginx_force_include.conf` can override more than `nginx_vhost_include.conf` file.
 
 Nginx will look for both files in the include directory specified below:
 
 For Satellite Instances: `/data/disk/EDIT_USER/config/server_master/nginx/post.d/`
 
-For Master Instance: `/var/aegir/config/includes/`
+For Master Instance: `/var/aegir/config/server_master/nginx/post.d/`
 
 These files will be included if exist and will never be modified or touched by Ægir Provision backend system.
 

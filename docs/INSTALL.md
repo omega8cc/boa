@@ -13,7 +13,7 @@
 
    When invoked via `boa` command, it will run installation is several steps, automatically:
 
-   1. The `autoinit` phase to upgrade vendor provided OS to Devuan Daedalus
+   1. The `autoinit` phase to upgrade vendor provided OS to the matching Devuan release (Daedalus from Bookworm and older, Excalibur from Trixie)
    2. The `barracuda install` phase to install BOA system and Ægir Master
    3. The `barracuda upgrade` phase to complete system installation
    4. The `octopus install` phase to install your first Ægir Satellite
@@ -57,7 +57,7 @@
    wget -qO- https://files.boa.io/BOA.sh.txt | bash
    ```
 
-4. Prepare your system by removing `systemd` and upgrading to Devuan 5 Daedalus from any compatible Debian version -- Buster, Bullseye, or Bookworm.
+4. Prepare your system by removing `systemd` and upgrading to the matching Devuan release from any compatible Debian version -- Buster, Bullseye, Bookworm, or Trixie. Bookworm and older bases upgrade to Devuan Daedalus, while Trixie upgrades to Devuan Excalibur.
 
    ```sh
    autoinit

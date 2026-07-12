@@ -1,0 +1,1053 @@
+#!/bin/bash
+#
+# staticbuild - build the newer Drupal core + distribution codebases used for
+# BOA testing, package them, and publish the tarballs to the static mirror.
+#
+# Runs on the mirror SOURCE VM only. Builds happen as this box's Octopus user
+# (auto-detected from /data/disk, or -u USER) under /data/disk/<user>/static/<MM-DD>/;
+# packaging + publishing to /var/www/static/{distro,core,dev/dev} and the per-build
+# /usr/bin/php switch need root, so run this as root.
+#
+# Versions are NOT hardcoded. Each distribution is built from its Composer spec (or,
+# for farmOS, the latest GitHub release) and each vanilla core from its minor's latest
+# patch; the set of core minors is auto-discovered (>= _CORE_FLOOR) so the newest is
+# always built. The distro + core versions Composer resolves are detected from the build
+# and used in the tarball names. If a distribution fails to build on the newest core (e.g.
+# a stale core patch), it is retried on progressively older core minors and the newest that
+# works is kept. Only the Composer specs and the core floor/exclude in the configuration
+# block below are settings to review.
+#
+# Usage:
+#   staticbuild backdrop            build+package+publish ONLY the Backdrop family
+#                                   (backdrop core + bee + backdrop-drush-extension),
+#                                   all at latest - lightweight, no Composer
+#   staticbuild all                 build everything, package, publish
+#   staticbuild build [name ...]    build all (or only named) targets
+#   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
+#   staticbuild distribute          copy tarballs to /var/www/static/{distro,core,dev/dev}
+#   staticbuild check               report the latest upstream versions a build would pull
+# Options:
+#   -d MM-DD   build-day directory (default: today, date +%m-%d)
+#   -u USER    Octopus build user (default: auto-detected from /data/disk)
+#   -f         force rebuild: remove an existing built platform before building
+#   -C         skip "composer clearcache" at the start of a build
+# Build target names: farm cms culturas commerce localgov thunder varbase
+#   backdrop (core, version-less backdrop.tar.gz) bee backdrop-drush-extension cores
+#
+# The Backdrop family (backdrop core, bee, backdrop-drush-extension) is always
+# fetched at its newest upstream version and published version-less, so BOA never
+# falls behind: run "staticbuild all" (or just the named targets) on the mirror
+# source VM, e.g. from cron alongside get-boa-dev.
+
+# ---------------------------------------------------------------------------
+# Configuration - review the specs/minors each cycle ("staticbuild check").
+# ---------------------------------------------------------------------------
+
+_O8_USER=""                                     # empty = auto-detect this box's Octopus user; -u overrides
+_DAY="$(date +%m-%d)"                           # -d overrides (MM-DD)
+
+_STATIC_ROOT="/data/disk"                       # o8 home base; static lives under here
+_DISTRO_OUT="/var/www/static/distro"            # non-core (distribution) tarballs
+_CORE_OUT="/var/www/static/core"                # raw core tarballs
+_DEVEXT_OUT="/var/www/static/dev/dev"           # dev extensions (bee, drush ext) BOA _get_dev_ext pulls
+
+_SYS_PHP="/usr/bin/php"                          # per-build switch target
+_PHP_85="/opt/php85/bin/php"
+_PHP_84="/opt/php84/bin/php"
+_PHP_DISTRO="${_PHP_85}"                         # farm/cms/culturas/commerce/localgov/thunder
+_PHP_VARBASE="${_PHP_84}"                        # varbase pins php84
+_PHP_CORE="${_PHP_84}"                           # vanilla cores build under php84
+
+# farmOS: the latest GitHub release is resolved automatically; set _FARM_TAG to pin one.
+_FARM_REPO="farmOS/farmOS"
+_FARM_TAG=""
+
+# Backdrop CMS core: the latest GitHub release is resolved automatically; set
+# _BACKDROP_TAG to pin one. Ships as a single backdrop.zip release asset (no
+# Composer), repackaged version-less as backdrop.tar.gz (extracts to backdrop/)
+# and classified as a core, so BOA always pulls the newest and derives the
+# version from the fetched code.
+_BACKDROP_REPO="backdrop/backdrop"
+_BACKDROP_TAG=""
+
+# bee (native Backdrop CLI) and the Backdrop Drush extension. Built from the
+# latest git tag of each backdrop-contrib repo (they publish plain tags, not
+# GitHub Releases) and packaged version-less as the exact tarballs BOA's
+# _get_dev_ext pulls: bee.tar.gz (bee.php at the root) and
+# backdrop-drush-extension.tar.gz (wraps a backdrop-drush-extension/ dir,
+# shipped PRISTINE - BOA applies its 5.6 de-hint + the __DIR__ include fix on
+# deploy). Set a _*_TAG to pin one.
+_BEE_REPO="backdrop-contrib/bee"
+_BEE_TAG=""
+_BDEXT_REPO="backdrop-contrib/backdrop-drush-extension"
+_BDEXT_TAG=""
+# Backdrop redis contrib module, baked into each platform's modules/ so every
+# Backdrop platform ships Valkey/Redis object-cache support (its Redis_Cache
+# implements BackdropCacheInterface -- the Drupal redis_edge is NOT compatible).
+# The settings side is /data/conf/global/global-bd.inc, which no-ops until it
+# finds modules/redis AND a live Valkey.
+_REDIS_REPO="backdrop-contrib/redis"
+_REDIS_TAG=""
+
+# Distribution Composer specs (the create-project template) + the distribution PROFILE
+# package. The tarball version is the profile package's version (the authoritative number
+# drupal.org shows), read from the lock - NOT the create-project template's version, which
+# is mostly irrelevant and sometimes a -dev alias.
+_CMS_SPEC="drupal/cms"
+_CMS_DISTPKG=""                                  # cms: template == distribution version
+_CULTURAS_SPEC="drupal/openculturas_project"
+_CULTURAS_DISTPKG="openculturas/openculturas-distribution"
+_CULTURAS_PROJECT="openculturas"                 # drupal.org project (for the release-number pin)
+_COMMERCE_SPEC="centarro/commerce-kickstart-project"
+_COMMERCE_DISTPKG="centarro/commerce_kickstart"  # not on drupal.org; profile version is authoritative
+_LOCALGOV_SPEC="drupal/localgov_project:^4"
+_LOCALGOV_DISTPKG="drupal/localgov"
+_THUNDER_SPEC="thunder/thunder-project"
+_THUNDER_DISTPKG="thunder/thunder-distribution"
+_VARBASE_SPEC="Vardot/varbase-project:~10"
+_VARBASE_DISTPKG="vardot/varbase"
+_CORE_SPEC="drupal/recommended-project"
+
+# Vanilla core minors to build. Empty (default) = auto-discover every released minor
+# >= _CORE_FLOOR, minus _CORE_EXCLUDE, so the newest minor is always built without
+# editing this file. Set an explicit space-separated list to pin a fixed matrix.
+_CORE_MINORS=""
+_CORE_FLOOR="10.2"                               # oldest minor to build when auto-discovering
+_CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/EOL), space-separated
+
+# Shared Composer flags. Distros stage the codebase without installing; vanilla cores
+# install immediately (they carry no post-create fix-ups).
+_CP_FLAGS="--no-dev --no-interaction --no-install --no-scripts"
+_CORE_CP_FLAGS="--no-dev --no-interaction"
+
+# varbase is DISABLED (commented out here + in do_build + the check) because the upstream
+# Vardot/varbase-project template no longer yields an installable build: a fresh ~10 resolve
+# pins core 11.2.14, which the varbase profile ~11.3.0 rejects; pinned to 11.3.x a drifted
+# dependency fatals during its extra-component install; 11.0.0-alpha3 OOMs then hits a
+# canvas/canvas_override final-class fatal. The last working varbase-10.1.0-11.3.12 build is
+# kept on the mirror. Re-enable by restoring "varbase" below and uncommenting build_varbase in
+# do_build + its _check_row, once upstream stabilises.
+_ALL_DISTROS="farm cms culturas commerce localgov thunder"
+
+_LOCK="/run/staticbuild.lock"
+_UA="staticbuild version-check"
+
+# Runtime state.
+_DAY_DIR=""
+_PHP_ORIG=""
+_PHP_LINK_CREATED=0
+_FORCE=0
+_SKIP_CLEARCACHE=0
+_LOCK_HELD=0
+_RESULTS=()
+
+# ---------------------------------------------------------------------------
+# Output helpers.
+# ---------------------------------------------------------------------------
+
+_msg()  { printf '%s\n' "$*"; }
+_info() { printf '\033[0;32m%s\033[0m\n' "$*"; }
+_alrt() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
+_die()  { printf '\033[0;31mFATAL ERROR: %s\033[0m\n' "$*" >&2; _cleanup; exit 1; }
+
+_cleanup() {
+  # Restore the original /usr/bin/php symlink and release the lock. Safe to call
+  # more than once (trap on EXIT plus _die).
+  if [[ -n "${_PHP_ORIG}" ]]; then
+    ln -sf "${_PHP_ORIG}" "${_SYS_PHP}" 2>/dev/null
+    _PHP_ORIG=""
+  elif [[ "${_PHP_LINK_CREATED}" == "1" ]]; then
+    rm -f "${_SYS_PHP}" 2>/dev/null
+    _PHP_LINK_CREATED=0
+  fi
+  if [[ "${_LOCK_HELD}" == "1" ]]; then
+    rmdir "${_LOCK}" 2>/dev/null
+    _LOCK_HELD=0
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Privilege + environment helpers.
+# ---------------------------------------------------------------------------
+
+_run_as_o8() {
+  # Run a single shell command as the Octopus build user. Returns its exit code.
+  # COMPOSER_NO_INTERACTION: no composer call may ever stop to ask - e.g. requiring
+  # drush when the distro template already dev-requires it (drupal/cms 2.1.3+) prompts
+  # "Do you want to move this requirement?" and hangs the build; non-interactive
+  # composer skips the prompt and performs the move.
+  su -s /bin/bash - "${_O8_USER}" -c "export COMPOSER_NO_INTERACTION=1; $1"
+}
+
+_detect_octo_user() {
+  # First Octopus instance user on this box: a /data/disk/<name> dir whose <name>
+  # is an existing system user (Octopus instances are o1, o2, o5x, ...). Skips
+  # 'arch' and any non-user dir, so the tool runs on any box without -u (the
+  # build box is rarely 'o8'). -u still overrides.
+  local _d _u
+  for _d in /data/disk/o*; do
+    [[ -d "${_d}" ]] || continue
+    _u="${_d##*/}"
+    [[ "${_u}" == "arch" ]] && continue
+    if id -u "${_u}" >/dev/null 2>&1; then
+      printf '%s\n' "${_u}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+use_php() {
+  # Point /usr/bin/php at the requested interpreter for the next build. Non-fatal:
+  # a missing interpreter fails one target (the caller records it), not the batch.
+  local _bin="$1"
+  if [[ ! -x "${_bin}" ]]; then
+    _alrt "php interpreter not found: ${_bin}"
+    return 1
+  fi
+  if ! ln -sf "${_bin}" "${_SYS_PHP}"; then
+    _alrt "cannot set ${_SYS_PHP} -> ${_bin}"
+    return 1
+  fi
+  _msg "php: ${_SYS_PHP} -> ${_bin}"
+}
+
+_acquire_lock() {
+  if ! mkdir "${_LOCK}" 2>/dev/null; then
+    _die "another staticbuild run holds ${_LOCK} (remove it if stale)"
+  fi
+  _LOCK_HELD=1
+}
+
+_require_root() {
+  [[ "$(id -u)" == "0" ]] || _die "must run as root (needs ${_SYS_PHP} switch + ${_DISTRO_OUT%/*} writes)"
+}
+
+_require_o8() {
+  [[ -n "${_O8_USER}" ]] || _die "no Octopus instance user found under /data/disk; pass -u USER"
+  id -u "${_O8_USER}" >/dev/null 2>&1 || _die "build user '${_O8_USER}' does not exist (pass -u USER)"
+  command -v wget >/dev/null 2>&1 || _die "wget not found (needed for release downloads)"
+  command -v curl >/dev/null 2>&1 || _die "curl not found (needed to resolve latest versions)"
+}
+
+_require_composer() {
+  # Only the Composer distro/core builds need composer; the Backdrop family does not.
+  _run_as_o8 "command -v composer >/dev/null 2>&1" || _die "composer not available for ${_O8_USER}"
+}
+
+# ---------------------------------------------------------------------------
+# Build primitives.
+# ---------------------------------------------------------------------------
+
+_begin_build() {
+  # 0 = proceed, 1 = skip/handled. $1 = glob prefix of the final platform name
+  # (e.g. "localgov-" or "drupal-10.2."), $2 = result label. Skips if a matching
+  # platform already exists; with -f, removes it first and rebuilds.
+  local _gp="$1" _label="$2"
+  if _run_as_o8 "ls -d ${_DAY_DIR}/${_gp}*/ ${_DAY_DIR}/${_gp}*.tar.gz 2>/dev/null | grep -q ."; then
+    if [[ "${_FORCE}" == "1" ]]; then
+      _msg "REBUILD: removing existing ${_gp}*"
+      _run_as_o8 "rm -rf ${_DAY_DIR}/${_gp}*/ ${_DAY_DIR}/${_gp}*.tar.gz" \
+        || { _record_fail "${_label}"; return 1; }
+    else
+      _msg "SKIP: ${_gp}* already built (use -f to rebuild)"
+      _RESULTS+=("SKIP  ${_label}")
+      return 1
+    fi
+  fi
+  return 0
+}
+
+_create_project() {
+  # Create a distribution project into a hidden working dir and echo the version
+  # Composer resolved for it. $1 workdir (abs, hidden), $2 spec (pkg[:constraint]),
+  # $3 package name for the version parse, $4 extra create-project options (may be empty).
+  # Returns non-zero on create-project failure.
+  local _wd="$1" _spec="$2" _pkg="$3" _extra="$4" _out _rc _ver
+  _run_as_o8 "rm -rf '${_wd}'" >/dev/null 2>&1
+  _out="$(_run_as_o8 "cd '${_DAY_DIR}' && composer create-project ${_extra} ${_spec} '${_wd##*/}' ${_CP_FLAGS} 2>&1")"
+  _rc=$?
+  if [[ "${_rc}" != "0" ]]; then
+    printf '%s\n' "${_out}" | tail -n 20 >&2
+    return 1
+  fi
+  # "Installing <pkg> (<version> [<ref>])" - keep only the first whitespace-free token of
+  # the parenthetical (a dev-branch line is "<branch> <commit>"; drop the commit), strip v.
+  _ver="$(printf '%s\n' "${_out}" | grep -oiE "${_pkg} \([^)]+\)" | head -n 1 | sed -E 's/.*\(([^) ]+).*/\1/; s/^v//')"
+  printf '%s\n' "${_ver}"
+  return 0
+}
+
+_composer_prepare() {
+  # Trust all Composer plugins for these throwaway test builds. Distros pull varying
+  # plugin sets (composer/installers, cweagans/composer-patches, installers-extender,
+  # ...); enumerating them per-distro is fragile and composer 2.2+ blocks any unlisted
+  # plugin, failing the install.
+  local _dir="$1"
+  _run_as_o8 "cd '${_dir}' && composer config --no-plugins allow-plugins true" || return 1
+  # A single stale core patch shouldn't fail the whole build (upstream usually fixes it in
+  # a newer release) - make patch failures non-fatal. --json stores a real boolean; plain
+  # `config ... false` would store the string "false", which the plugin reads as truthy.
+  _run_as_o8 "cd '${_dir}' && composer config --no-plugins --json extra.composer-exit-on-patch-failure false" || return 1
+  # Some distros (e.g. commerce_kickstart) enable Composer's security-advisory blocking,
+  # which refuses every advisory-affected core/dependency and also defeats the older-core
+  # fallback (older cores carry advisories). These are throwaway test platforms, so turn it
+  # off - we build to test install/upgrade, not to deploy.
+  _run_as_o8 "cd '${_dir}' && composer config --no-plugins --json policy.advisories.block false" || return 1
+}
+
+_composer_build() {
+  # Resolve then install without dev dependencies.
+  local _dir="$1"
+  _run_as_o8 "cd '${_dir}' && composer update --no-install --no-scripts" || return 1
+  _run_as_o8 "cd '${_dir}' && composer install --no-dev" || return 1
+}
+
+_commerce_build() {
+  # Commerce Kickstart's two-phase install: install, add the certified-projects layer,
+  # then re-resolve and install.
+  local _dir="$1"
+  _run_as_o8 "cd '${_dir}' && composer install --no-dev" || return 1
+  _run_as_o8 "cd '${_dir}' && composer require centarro/certified-projects" || return 1
+  _run_as_o8 "cd '${_dir}' && composer update --no-install --no-scripts" || return 1
+  _run_as_o8 "cd '${_dir}' && composer install --no-dev" || return 1
+}
+
+_pin_core() {
+  # Force the Drupal core minor. Pin BOTH drupal/core and drupal/core-recommended: a
+  # distro may require drupal/core directly (e.g. openculturas "^11.3.12"), and pinning
+  # only core-recommended would then CONFLICT with it instead of overriding it.
+  local _dir="$1" _minor="$2"
+  _run_as_o8 "cd '${_dir}' && composer require --no-update --no-scripts drupal/core-recommended:'${_minor}.*' drupal/core:'${_minor}.*'"
+}
+
+_with_core_fallback() {
+  # Build via callback $3; if the latest core fails (e.g. a distro's core patch is stale
+  # on the newest release), retry pinned to progressively older core minors until one
+  # builds, and keep it. $1 workdir, $2 label, $3 build function name.
+  local _dir="$1" _label="$2" _fn="$3" _m _failed _fmin
+  if "${_fn}" "${_dir}"; then return 0; fi
+  _alrt "${_label}: build on the latest core failed; retrying with older cores"
+  # Start below whatever core the failed attempt resolved (from its lock, if any).
+  _failed="$(_lock_version "${_dir}" "drupal/core")"
+  _fmin="${_failed%.*}"
+  for _m in $(_discover_core_minors | tr ' ' '\n' | sort -rV); do
+    [[ -n "${_fmin}" ]] && _minor_ge "${_m}" "${_fmin}" && continue
+    _msg "${_label}: retry on core ${_m}.*"
+    _run_as_o8 "cd '${_dir}' && rm -rf composer.lock vendor patches.lock.json" >/dev/null 2>&1
+    _pin_core "${_dir}" "${_m}" || continue
+    if "${_fn}" "${_dir}"; then
+      _info "${_label}: built on core ${_m}.*"
+      return 0
+    fi
+  done
+  return 1
+}
+
+_detect_core_version() {
+  # Echo the resolved Drupal core version from a built platform, probing the three
+  # known docroot layouts. Empty output + non-zero on failure.
+  local _dir="$1" _rel
+  for _rel in web/core/lib/Drupal.php docroot/core/lib/Drupal.php core/lib/Drupal.php; do
+    if _run_as_o8 "test -f '${_dir}/${_rel}'" >/dev/null 2>&1; then
+      _run_as_o8 "awk -F\"'\" '/const VERSION =/{print \$2; exit}' '${_dir}/${_rel}'" 2>/dev/null \
+        | grep -m1 -oE '[0-9]+\.[0-9]+\.[0-9A-Za-z.-]+'
+      return 0
+    fi
+  done
+  return 1
+}
+
+_record_fail() {
+  _RESULTS+=("FAIL  $1")
+  _alrt "$1: build failed"
+}
+
+_lock_version() {
+  # Echo an installed package's version from composer.lock (empty if absent). Used
+  # where the create-project root template versions independently of the distribution.
+  local _dir="$1" _pkg="$2"
+  _run_as_o8 "grep -A3 '\"name\": \"${_pkg}\"' '${_dir}/composer.lock' 2>/dev/null | grep -m1 '\"version\"'" 2>/dev/null \
+    | sed -E 's/.*: *"([^"]+)".*/\1/; s/^v//'
+}
+
+_finalize_distro() {
+  # Rename the working dir to <nameprefix>-<distroVer>-<coreVer> using the detected
+  # versions, then record the result. $1 name prefix, $2 workdir, $3 distro version,
+  # $4 result label.
+  local _np="$1" _wd="$2" _dver="$3" _label="$4" _core _final
+  _core="$(_detect_core_version "${_wd}" 2>/dev/null)"
+  # Never allow whitespace into a platform name (a dev-branch alias could carry it).
+  _dver="${_dver//[[:space:]]/}"
+  _core="${_core//[[:space:]]/}"
+  if [[ -z "${_dver}" ]]; then _dver="unknown"; _alrt "${_label}: could not detect distro version"; fi
+  if [[ -z "${_core}" ]]; then _core="unknown"; _alrt "${_label}: could not detect core version"; fi
+  _final="${_np}-${_dver}-${_core}"
+  if _run_as_o8 "mv '${_wd}' '${_DAY_DIR}/${_final}'"; then
+    _RESULTS+=("OK    ${_final}")
+    _info "${_label}: built ${_final}"
+  else
+    _record_fail "${_label} (rename to ${_final} failed)"
+    return 1
+  fi
+}
+
+_ensure_example_sites() {
+  # openculturas ships without a stock example.sites.php; source it from the
+  # platform's own core scaffold asset (present regardless of build order), then
+  # fall back to any sibling platform already built in the day dir.
+  local _sitesdir="$1" _dir="$2" _src="" _rel
+  if _run_as_o8 "test -f '${_sitesdir}/example.sites.php'"; then
+    return 0
+  fi
+  for _rel in web/core/assets/scaffold/files/example.sites.php \
+              docroot/core/assets/scaffold/files/example.sites.php; do
+    if _run_as_o8 "test -f '${_dir}/${_rel}'"; then
+      _src="${_dir}/${_rel}"
+      break
+    fi
+  done
+  if [[ -z "${_src}" ]]; then
+    _src="$(_run_as_o8 "ls ${_DAY_DIR}/*/web/sites/example.sites.php ${_DAY_DIR}/*/docroot/sites/example.sites.php 2>/dev/null | head -1")"
+  fi
+  if [[ -n "${_src}" ]]; then
+    _run_as_o8 "cp -a '${_src}' '${_sitesdir}/'" || _alrt "culturas: could not copy example.sites.php"
+  else
+    _alrt "culturas: no example.sites.php source found; skipping"
+  fi
+}
+
+_resolve_farm_tag() {
+  # Latest farmOS release tag, or the pinned _FARM_TAG.
+  if [[ -n "${_FARM_TAG}" ]]; then
+    printf '%s\n' "${_FARM_TAG}"
+    return 0
+  fi
+  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_FARM_REPO}/releases/latest" 2>/dev/null \
+    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+}
+
+_resolve_backdrop_tag() {
+  # Latest Backdrop CMS release tag, or the pinned _BACKDROP_TAG.
+  if [[ -n "${_BACKDROP_TAG}" ]]; then
+    printf '%s\n' "${_BACKDROP_TAG}"
+    return 0
+  fi
+  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_BACKDROP_REPO}/releases/latest" 2>/dev/null \
+    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+}
+
+_latest_git_tag() {
+  # Highest version-sorted git tag of a repo (works for backdrop-contrib repos
+  # that publish tags but not GitHub Releases). Drops peeled ^{} refs and keeps
+  # only real backdrop-contrib version tags -- 'N.N.N' (extension) or 'N.x-N.N.N'
+  # (bee) -- so pre-history junk like 'v0.0.1', which version-sorts above the
+  # real tags, is excluded.
+  local _repo="$1"
+  git ls-remote --tags "https://github.com/${_repo}.git" 2>/dev/null \
+    | sed -E 's#.*refs/tags/##; /\^\{\}$/d' \
+    | grep -E '^([0-9]+\.x-)?[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sort -V | tail -n 1
+}
+
+_drupal_release() {
+  # Echo a drupal.org project's latest STABLE release number (the authoritative version,
+  # not the Composer template alias). Skips dev/alpha/beta/rc. Empty if unavailable.
+  curl -fsSL -A "${_UA}" "https://updates.drupal.org/release-history/$1/current" 2>/dev/null \
+    | grep -oE '<version>[^<]+</version>' | sed -E 's/<[^>]+>//g' \
+    | grep -viE 'dev|alpha|beta|rc|unstable' | head -n 1
+}
+
+_minor_ge() {
+  # 0 if $1 >= $2, comparing major.minor numerically.
+  local _a1="${1%.*}" _a2="${1#*.}" _b1="${2%.*}" _b2="${2#*.}"
+  if (( _a1 > _b1 )); then return 0; fi
+  if (( _a1 < _b1 )); then return 1; fi
+  (( _a2 >= _b2 ))
+}
+
+_discover_core_minors() {
+  # Echo the drupal core minors to build: every released major.minor >= _CORE_FLOOR,
+  # minus _CORE_EXCLUDE, ascending. Empty output if the metadata cannot be fetched.
+  local _raw _m _out=""
+  _raw="$(curl -fsSL -A "${_UA}" "https://repo.packagist.org/p2/drupal/core.json" 2>/dev/null \
+    | grep -oE '"version":"[0-9]+\.[0-9]+\.[0-9]+"' \
+    | sed -E 's/.*"([0-9]+)\.([0-9]+)\..*/\1.\2/' \
+    | sort -u -t. -k1,1n -k2,2n)"
+  while read -r _m; do
+    [[ -n "${_m}" ]] || continue
+    _minor_ge "${_m}" "${_CORE_FLOOR}" || continue
+    case " ${_CORE_EXCLUDE} " in *" ${_m} "*) continue ;; esac
+    _out+="${_m} "
+  done <<< "${_raw}"
+  printf '%s\n' "${_out% }"
+}
+
+# ---------------------------------------------------------------------------
+# Per-distribution builds. Each records its own OK/FAIL/SKIP result.
+# ---------------------------------------------------------------------------
+
+build_farm() {
+  _begin_build "farm-" "farm" || return 0
+  use_php "${_PHP_DISTRO}" || { _record_fail "farm"; return 1; }
+  local _tag
+  _tag="$(_resolve_farm_tag)"
+  [[ -n "${_tag}" ]] || { _record_fail "farm (could not resolve release tag)"; return 1; }
+  local _wd="${_DAY_DIR}/.build.farm"
+  local _tgz=".farmOS-${_tag}.tar.gz"
+  local _url="https://github.com/${_FARM_REPO}/releases/download/${_tag}/farmOS-${_tag}.tar.gz"
+  # Extract straight into the hidden working dir (--strip-components drops the release's
+  # top-level farmOS/), with a hidden download name, so an interrupted farm build never
+  # leaves a visible farmOS/ or farmOS-*.tar.gz that package/distribute would ship.
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' farmOS .farmOS-*.tar.gz && mkdir -p '${_wd}' && wget -q -O '${_tgz}' '${_url}' && tar -xzf '${_tgz}' --strip-components=1 -C '${_wd}' && rm -f '${_tgz}'"; then
+    _record_fail "farm"
+    return 1
+  fi
+  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "farm" _composer_build; }; then
+    _record_fail "farm"
+    return 1
+  fi
+  _finalize_distro "farm" "${_wd}" "${_tag}" "farm"
+}
+
+build_cms() {
+  _begin_build "drupal_cms_installer-" "cms" || return 0
+  use_php "${_PHP_DISTRO}" || { _record_fail "cms"; return 1; }
+  local _wd="${_DAY_DIR}/.build.cms" _dver
+  _dver="$(_create_project "${_wd}" "${_CMS_SPEC}" "drupal/cms" "")" || { _record_fail "cms"; return 1; }
+  if ! { _composer_prepare "${_wd}" \
+         && _with_core_fallback "${_wd}" "cms" _composer_build \
+         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts"; }; then
+    _record_fail "cms"
+    return 1
+  fi
+  _finalize_distro "drupal_cms_installer" "${_wd}" "${_dver}" "cms"
+}
+
+build_culturas() {
+  _begin_build "openculturas-" "culturas" || return 0
+  use_php "${_PHP_DISTRO}" || { _record_fail "culturas"; return 1; }
+  local _wd="${_DAY_DIR}/.build.culturas" _dver
+  _dver="$(_create_project "${_wd}" "${_CULTURAS_SPEC}" "drupal/openculturas_project" "--remove-vcs")" \
+    || { _record_fail "culturas"; return 1; }
+  # Pin the distribution to its exact drupal.org release (the template otherwise pulls a
+  # -dev branch), and build unpatched - its core patch is stale on current core and
+  # composer-patches 2.x has no per-patch skip. Approved: unpatched test platform is fine.
+  local _ocrel
+  _ocrel="$(_drupal_release "${_CULTURAS_PROJECT}")"
+  if ! { _composer_prepare "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer config --json extra.composer-patches.ignore-dependency-patches '[\"${_CULTURAS_DISTPKG}\"]'" \
+         && { [[ -z "${_ocrel}" ]] || _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_CULTURAS_DISTPKG}:'${_ocrel}'"; } \
+         && _with_core_fallback "${_wd}" "culturas" _composer_build; }; then
+    _record_fail "culturas"
+    return 1
+  fi
+  # Flatten the openculturas-distribution wrapper: its inner profile/ becomes the
+  # openculturas install profile, and its remaining contents move up into contrib/.
+  local _contrib="${_wd}/web/profiles/contrib"
+  local _wrap="${_contrib}/openculturas-distribution"
+  if _run_as_o8 "test -d '${_wrap}'"; then
+    # All required moves must succeed before the wrapper is removed; dotglob so
+    # hidden files move too, and rmdir (not rm -rf) so a layout drift can never
+    # delete unmoved contents.
+    if _run_as_o8 "cd '${_wrap}' && mv profile openculturas && mv openculturas '${_contrib}/' && shopt -s dotglob nullglob && for _f in *; do mv -- \"\${_f}\" '${_contrib}/' || exit 1; done"; then
+      _run_as_o8 "rmdir '${_wrap}'" || _alrt "culturas: wrapper not empty after flatten; left for inspection"
+    else
+      _alrt "culturas: flatten failed (layout may have changed); wrapper left intact"
+    fi
+  else
+    _alrt "culturas: expected wrapper ${_wrap##*/} not found; layout may have changed"
+  fi
+  _ensure_example_sites "${_wd}/web/sites" "${_wd}"
+  # Name by the openculturas distribution package (the pinned drupal.org release, e.g. 3.0.2).
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_CULTURAS_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
+  _finalize_distro "openculturas" "${_wd}" "${_dver}" "culturas"
+}
+
+build_commerce() {
+  _begin_build "commerce_kickstart-" "commerce" || return 0
+  use_php "${_PHP_DISTRO}" || { _record_fail "commerce"; return 1; }
+  local _wd="${_DAY_DIR}/.build.commerce" _dver
+  # Built via the -s dev project template, but named by the install profile package
+  # (centarro/commerce_kickstart, e.g. 5.1.0) - the template alias (5.x-dev) is irrelevant.
+  _dver="$(_create_project "${_wd}" "${_COMMERCE_SPEC}" "centarro/commerce-kickstart-project" "-s dev")" \
+    || { _record_fail "commerce"; return 1; }
+  if ! { _composer_prepare "${_wd}" \
+         && _with_core_fallback "${_wd}" "commerce" _commerce_build; }; then
+    _record_fail "commerce"
+    return 1
+  fi
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_COMMERCE_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
+  _finalize_distro "commerce_kickstart" "${_wd}" "${_dver}" "commerce"
+}
+
+build_localgov() {
+  _begin_build "localgov-" "localgov" || return 0
+  use_php "${_PHP_DISTRO}" || { _record_fail "localgov"; return 1; }
+  local _wd="${_DAY_DIR}/.build.localgov" _dver
+  _dver="$(_create_project "${_wd}" "${_LOCALGOV_SPEC}" "drupal/localgov_project" "")" \
+    || { _record_fail "localgov"; return 1; }
+  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "localgov" _composer_build; }; then
+    _record_fail "localgov"
+    return 1
+  fi
+  # Name by the localgov distribution package (drupal.org's number), not the project template.
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_LOCALGOV_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
+  _finalize_distro "localgov" "${_wd}" "${_dver}" "localgov"
+}
+
+build_thunder() {
+  _begin_build "thunder-" "thunder" || return 0
+  use_php "${_PHP_DISTRO}" || { _record_fail "thunder"; return 1; }
+  local _wd="${_DAY_DIR}/.build.thunder" _dver
+  _dver="$(_create_project "${_wd}" "${_THUNDER_SPEC}" "thunder/thunder-project" "")" \
+    || { _record_fail "thunder"; return 1; }
+  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "thunder" _composer_build; }; then
+    _record_fail "thunder"
+    return 1
+  fi
+  # Name by the Thunder distribution package (8.4.0), not the template (versions separately).
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_THUNDER_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
+  _finalize_distro "thunder" "${_wd}" "${_dver}" "thunder"
+}
+
+# DISABLED: unwired from _ALL_DISTROS + the do_build dispatch above -- the upstream varbase
+# template no longer produces an installable build (see the _ALL_DISTROS note). Kept for
+# reference / easy re-enable.
+build_varbase() {
+  _begin_build "varbase-" "varbase" || return 0
+  use_php "${_PHP_VARBASE}" || { _record_fail "varbase"; return 1; }
+  local _wd="${_DAY_DIR}/.build.varbase" _dver
+  _dver="$(_create_project "${_wd}" "${_VARBASE_SPEC}" "vardot/varbase-project" "")" \
+    || { _record_fail "varbase"; return 1; }
+  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "varbase" _composer_build; }; then
+    _record_fail "varbase"
+    return 1
+  fi
+  # varbase uses a docroot/ layout and expects a content dir under each recipes/.
+  local _cmd="cd \"${_wd}/docroot\" && find . -type d -name recipes -exec mkdir -p {}/default/content \;"
+  _run_as_o8 "${_cmd}" || _alrt "varbase: recipes content dir creation failed"
+  # Name by the varbase distribution package (drupal.org's number), not the project template.
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_VARBASE_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
+  _finalize_distro "varbase" "${_wd}" "${_dver}" "varbase"
+}
+
+build_cores() {
+  # Vanilla core platforms: one per minor, resolved to its latest patch, full install,
+  # add drush, run an audit for the record. Named from the detected core version.
+  local _minors="${_CORE_MINORS}"
+  [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
+  if [[ -z "${_minors}" ]]; then
+    _record_fail "cores (could not resolve core minors)"
+    return 1
+  fi
+  _msg "core minors: ${_minors}"
+  use_php "${_PHP_CORE}" || { _record_fail "cores (php ${_PHP_CORE} missing)"; return 1; }
+  local _m _wd="${_DAY_DIR}/.build.core" _core
+  for _m in ${_minors}; do
+    _begin_build "drupal-${_m}." "drupal-${_m}" || continue
+    if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' && composer create-project ${_CORE_SPEC}:'${_m}.*' '.build.core' ${_CORE_CP_FLAGS}"; then
+      _record_fail "drupal-${_m}"
+      continue
+    fi
+    _run_as_o8 "cd '${_wd}' && composer require drush/drush" || _alrt "drupal-${_m}: drush require failed"
+    _run_as_o8 "cd '${_wd}' && composer audit" || _alrt "drupal-${_m}: composer audit reported advisories"
+    _core="$(_detect_core_version "${_wd}" 2>/dev/null)"
+    if [[ -z "${_core}" ]]; then
+      _record_fail "drupal-${_m} (could not detect core version)"
+      _run_as_o8 "rm -rf '${_wd}'"
+      continue
+    fi
+    if _run_as_o8 "mv '${_wd}' '${_DAY_DIR}/drupal-${_core}'"; then
+      _RESULTS+=("OK    drupal-${_core}")
+      _info "drupal-${_m}: built drupal-${_core}"
+    else
+      _record_fail "drupal-${_m} (rename failed)"
+    fi
+  done
+}
+
+build_backdrop() {
+  # Backdrop CMS core: a single GitHub release zip (no Composer, no profiles to
+  # strip). Kept VERSION-LESS as backdrop/ -> backdrop.tar.gz, preserving the
+  # top-level core/ layouts/ modules/ themes/ sites/ and core/scripts/install.sh,
+  # so BOA always pulls the newest and derives the version from the fetched code.
+  # Always rebuilt (a fast zip download) - no _begin_build skip, and no glob
+  # collision with backdrop-drush-extension.
+  if ! command -v unzip >/dev/null 2>&1; then
+    _record_fail "backdrop (unzip not found)"
+    return 1
+  fi
+  local _tag _zip _url
+  _tag="$(_resolve_backdrop_tag)"
+  [[ -n "${_tag}" ]] || { _record_fail "backdrop (could not resolve release tag)"; return 1; }
+  _zip=".backdrop.zip"
+  _url="https://github.com/${_BACKDROP_REPO}/releases/download/${_tag}/backdrop.zip"
+  # The zip's top-level dir is backdrop/; keep that name (version-less). Also
+  # stamp the resolved version to backdrop.txt so BOA can name the platform
+  # (backdrop-<ver>-{dev,stage,prod}) while fetching the version-less tarball.
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf backdrop backdrop.tar.gz backdrop.txt '${_zip}' \
+    && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' \
+    && rm -f '${_zip}' && printf '%s\n' '${_tag}' > backdrop.txt"; then
+    _record_fail "backdrop"
+    return 1
+  fi
+  # Bake in the Backdrop redis contrib module (into the version-less backdrop/
+  # so it rides backdrop.tar.gz onto every platform). Non-fatal: if the fetch
+  # fails the platform simply ships without Valkey support and global-bd.inc
+  # stays a no-op.
+  local _redis_tag
+  _redis_tag="${_REDIS_TAG:-$(_latest_git_tag "${_REDIS_REPO}")}"
+  if [[ -n "${_redis_tag}" ]]; then
+    if _run_as_o8 "cd '${_DAY_DIR}/backdrop/modules' && rm -rf redis \
+      && git clone -q --depth 1 --branch '${_redis_tag}' 'https://github.com/${_REDIS_REPO}.git' redis \
+      && rm -rf redis/.git"; then
+      _info "backdrop: baked modules/redis (${_redis_tag})"
+    else
+      _alrt "backdrop: redis module bake failed (${_redis_tag}); platform ships without Valkey support"
+    fi
+  else
+    _alrt "backdrop: could not resolve redis tag; platform ships without Valkey support"
+  fi
+  _RESULTS+=("OK    backdrop (${_tag})")
+  _info "backdrop: built backdrop/ (${_tag})"
+}
+
+build_bee() {
+  # Native Backdrop CLI. Packaged version-less as bee.tar.gz with bee.php at the
+  # root (what BOA's _get_bee extracts into /opt/tools/bee). Always rebuilt.
+  local _tag
+  _tag="${_BEE_TAG:-$(_latest_git_tag "${_BEE_REPO}")}"
+  [[ -n "${_tag}" ]] || { _record_fail "bee (could not resolve tag)"; return 1; }
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .build.bee bee.tar.gz \
+    && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_BEE_REPO}.git' .build.bee \
+    && rm -rf .build.bee/.git \
+    && tar -czf bee.tar.gz -C .build.bee . \
+    && rm -rf .build.bee"; then
+    _record_fail "bee"
+    return 1
+  fi
+  _RESULTS+=("OK    bee (${_tag})")
+  _info "bee: packaged bee.tar.gz (${_tag})"
+}
+
+build_bdext() {
+  # Backdrop Drush extension. Packaged version-less as
+  # backdrop-drush-extension.tar.gz wrapping a backdrop-drush-extension/ dir,
+  # PRISTINE - BOA applies the drush_chalk de-hint + the __DIR__ include fix on
+  # deploy. Always rebuilt.
+  local _tag _d="backdrop-drush-extension"
+  _tag="${_BDEXT_TAG:-$(_latest_git_tag "${_BDEXT_REPO}")}"
+  [[ -n "${_tag}" ]] || { _record_fail "${_d} (could not resolve tag)"; return 1; }
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_d}' '${_d}.tar.gz' \
+    && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_BDEXT_REPO}.git' '${_d}' \
+    && rm -rf '${_d}/.git' \
+    && tar -czf '${_d}.tar.gz' '${_d}' \
+    && rm -rf '${_d}'"; then
+    _record_fail "${_d}"
+    return 1
+  fi
+  _RESULTS+=("OK    ${_d} (${_tag})")
+  _info "${_d}: packaged ${_d}.tar.gz (${_tag})"
+}
+
+run_build() {
+  local _name="$1"
+  case "${_name}" in
+    farm)     build_farm ;;
+    backdrop) build_backdrop ;;
+    bee)      build_bee ;;
+    backdrop-drush-extension) build_bdext ;;
+    cms)      build_cms ;;
+    culturas) build_culturas ;;
+    commerce) build_commerce ;;
+    localgov) build_localgov ;;
+    thunder)  build_thunder ;;
+    # varbase)  build_varbase ;;   # DISABLED: upstream template broken (see _ALL_DISTROS note)
+    cores)    build_cores ;;
+    *)        _alrt "unknown build target: ${_name}"; return 1 ;;
+  esac
+  return 0
+}
+
+do_build() {
+  # $@ = target names, or empty for all distros + cores.
+  local _targets="$*"
+  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop bee backdrop-drush-extension cores"
+  _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
+  if [[ "${_SKIP_CLEARCACHE}" != "1" ]]; then
+    _msg "composer clearcache (${_O8_USER})"
+    _run_as_o8 "composer clearcache" || _alrt "composer clearcache failed (continuing)"
+  fi
+  local _t
+  for _t in ${_targets}; do
+    _msg ""
+    _msg "=== build: ${_t} ==="
+    run_build "${_t}"
+  done
+}
+
+# ---------------------------------------------------------------------------
+# Packaging + publishing.
+# ---------------------------------------------------------------------------
+
+clean_platforms() {
+  # Strip artefacts that must not ship inside any platform tarball. -f/-rf keep
+  # non-matching globs harmless; trailing true keeps the compound green.
+  _run_as_o8 "cd '${_DAY_DIR}' && \
+    rm -f  */*/modules/o_contrib* ; \
+    rm -rf */*/sites/all/drush ; \
+    rm -f  */*/sites/all/modules/* ; \
+    rm -f  */*/sites/sites.php ; \
+    rm -f  */*/local_drush_unlocked.pid ; \
+    rm -f  */*/sites/development.services.yml ; \
+    rm -f  */*/sites/all/libraries/*.pid ; \
+    true"
+}
+
+strip_core_profiles() {
+  # Distros bring their own install profile; drop the stock core profiles to slim
+  # ONLY the distribution tarballs. Never touch the drupal-* core dirs, so
+  # re-running package stays idempotent (cores always keep their profiles).
+  local _name _list
+  _list="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d */ 2>/dev/null")"
+  for _name in ${_list}; do
+    _name="${_name%/}"
+    case "${_name}" in drupal-*|backdrop) continue ;; esac
+    _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}'/*/core/profiles/* ; true"
+  done
+}
+
+package_batch() {
+  # $1 = core | distro. Core = drupal-* dirs (with core/profiles); distro = the rest.
+  local _kind="$1" _name _list
+  _list="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d */ 2>/dev/null")"
+  for _name in ${_list}; do
+    _name="${_name%/}"
+    case "${_name}" in
+      drupal-*|backdrop) [[ "${_kind}" == "core" ]]   || continue ;;
+      *)                 [[ "${_kind}" == "distro" ]] || continue ;;
+    esac
+    _msg "tar: ${_name}.tar.gz"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf '${_name}.tar.gz' '${_name}'" || _alrt "tar failed: ${_name}"
+  done
+}
+
+do_package() {
+  [[ -n "${_DAY_DIR}" ]] || _die "no build-day directory set"
+  _run_as_o8 "test -d '${_DAY_DIR}'" || _die "build-day directory not found: ${_DAY_DIR}"
+  _msg "cleaning platform artefacts"
+  clean_platforms
+  _msg "packaging core platforms (with core/profiles)"
+  package_batch core
+  _msg "stripping stock core profiles from distributions"
+  strip_core_profiles
+  _msg "packaging distribution platforms (without core/profiles)"
+  package_batch distro
+}
+
+do_backdrop_family() {
+  # Lightweight: build + package + publish ONLY the Backdrop family (backdrop
+  # core + bee + backdrop-drush-extension), all at their newest upstream. No
+  # Composer, no distros/cores, no /usr/bin/php switch - just git/wget/unzip.
+  # Scoped to the family so it never touches unrelated day-dir content.
+  _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
+  local _t
+  for _t in backdrop bee backdrop-drush-extension; do
+    _msg ""
+    _msg "=== build: ${_t} ==="
+    run_build "${_t}"
+  done
+  # Package the core dir (bee + extension are already tarballs from their build).
+  if _run_as_o8 "test -d '${_DAY_DIR}/backdrop'"; then
+    _msg "tar: backdrop.tar.gz"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz backdrop" || _alrt "tar failed: backdrop"
+  fi
+  # Publish only the family artifacts.
+  mkdir -p "${_CORE_OUT}" "${_DEVEXT_OUT}" || _die "cannot create ${_CORE_OUT} / ${_DEVEXT_OUT}"
+  local _f
+  for _f in backdrop.tar.gz backdrop.txt; do
+    [[ -e "${_DAY_DIR}/${_f}" ]] && { cp -a "${_DAY_DIR}/${_f}" "${_CORE_OUT}/" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"; }
+  done
+  for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
+    [[ -e "${_DAY_DIR}/${_f}" ]] && { cp -a "${_DAY_DIR}/${_f}" "${_DEVEXT_OUT}/" && _msg "devext <- ${_f}" || _alrt "copy failed: ${_f}"; }
+  done
+}
+
+do_distribute() {
+  mkdir -p "${_DISTRO_OUT}" "${_CORE_OUT}" "${_DEVEXT_OUT}" \
+    || _die "cannot create ${_DISTRO_OUT} / ${_CORE_OUT} / ${_DEVEXT_OUT}"
+  local _t _base _n=0
+  for _t in "${_DAY_DIR}"/*.tar.gz; do
+    [[ -e "${_t}" ]] || continue
+    _base="${_t##*/}"
+    # Dev extensions first: backdrop-drush-extension.tar.gz must NOT fall into the
+    # backdrop* core arm.
+    case "${_base}" in
+      bee.tar.gz|backdrop-drush-extension.tar.gz)
+        cp -a "${_t}" "${_DEVEXT_OUT}/" && { _msg "devext <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
+      drupal-*.tar.gz|backdrop.tar.gz)
+        cp -a "${_t}" "${_CORE_OUT}/"   && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
+      *)
+        cp -a "${_t}" "${_DISTRO_OUT}/" && { _msg "distro <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
+    esac
+  done
+  # Publish the Backdrop version stamp alongside backdrop.tar.gz so BOA can name
+  # the platform from the latest version without a hardcoded pin.
+  if [[ -e "${_DAY_DIR}/backdrop.txt" ]]; then
+    cp -a "${_DAY_DIR}/backdrop.txt" "${_CORE_OUT}/" && _msg "core   <- backdrop.txt" || _alrt "copy failed: backdrop.txt"
+  fi
+  [[ "${_n}" -gt 0 ]] || _alrt "no tarballs found in ${_DAY_DIR} (run 'package' first)"
+}
+
+# ---------------------------------------------------------------------------
+# Version check (best-effort; read-only; no root needed).
+# ---------------------------------------------------------------------------
+
+_latest_packagist() {
+  # Latest stable version from Packagist p2 metadata (array is newest-first).
+  local _pkg="$1"
+  curl -fsSL -A "${_UA}" "https://repo.packagist.org/p2/${_pkg}.json" 2>/dev/null \
+    | grep -oE '"version":"[^"]+"' | head -1 | cut -d'"' -f4
+}
+
+_latest_github() {
+  local _repo="$1"
+  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_repo}/releases/latest" 2>/dev/null \
+    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/'
+}
+
+_check_row() {
+  printf '  %-10s %s\n' "$1" "${2:-n/a}"
+}
+
+do_check() {
+  command -v curl >/dev/null 2>&1 || _die "curl not found (needed for version check)"
+  _info "Latest release per distro from the authoritative source - drupal.org release feed"
+  _info "(GitHub for farmOS; commerce_kickstart has no drupal.org stable, so its profile pkg):"
+  _check_row "farm"     "$(_latest_github "${_FARM_REPO}")"
+  _check_row "backdrop" "$(_latest_github "${_BACKDROP_REPO}")"
+  _check_row "bee"      "$(_latest_git_tag "${_BEE_REPO}")"
+  _check_row "bd-drush" "$(_latest_git_tag "${_BDEXT_REPO}")"
+  _check_row "cms"      "$(_drupal_release cms)"
+  _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
+  _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
+  _check_row "localgov" "$(_drupal_release localgov)"
+  _check_row "thunder"  "$(_drupal_release thunder)"
+  # _check_row "varbase"  "$(_drupal_release varbase)"   # DISABLED (see _ALL_DISTROS note)
+  _msg ""
+  local _minors="${_CORE_MINORS}"
+  [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
+  _msg "Core minors to build (latest patch of each): ${_minors:-<discovery failed>}"
+  _msg "Full supported-core matrix: https://www.drupal.org/project/drupal/releases"
+}
+
+# ---------------------------------------------------------------------------
+# Summary + dispatch.
+# ---------------------------------------------------------------------------
+
+print_summary() {
+  [[ "${#_RESULTS[@]}" -gt 0 ]] || return 0
+  _msg ""
+  _info "=== build summary (${_DAY_DIR}) ==="
+  local _r
+  for _r in "${_RESULTS[@]}"; do
+    _msg "  ${_r}"
+  done
+}
+
+usage() {
+  # Print the leading comment block (from line 3) up to the first non-comment line.
+  awk 'NR<3{next} !/^#/{exit} {sub(/^# ?/,""); print}' "$0"
+}
+
+main() {
+  local _opt
+  while getopts ':d:u:fCh' _opt; do
+    case "${_opt}" in
+      d) _DAY="${OPTARG}" ;;
+      u) _O8_USER="${OPTARG}" ;;
+      f) _FORCE=1 ;;
+      C) _SKIP_CLEARCACHE=1 ;;
+      h) usage; exit 0 ;;
+      :) _die "option -${OPTARG} requires an argument" ;;
+      *) _die "unknown option -${OPTARG} (try -h)" ;;
+    esac
+  done
+  shift "$((OPTIND - 1))"
+
+  local _action="${1:-}"
+  [[ -n "${_action}" ]] || { usage; exit 1; }
+  shift || true
+
+  # getopts stops at the first non-option word, so options placed after the action
+  # are not parsed; reject them rather than misread one as a target name.
+  local _a
+  for _a in "$@"; do
+    [[ "${_a}" == -* ]] && _die "options must precede the action (got '${_a}'); e.g. staticbuild -f ${_action} ..."
+  done
+
+  # Auto-detect the box's Octopus user when -u was not given (build boxes are
+  # rarely 'o8'); -u still wins.
+  [[ -n "${_O8_USER}" ]] || _O8_USER="$(_detect_octo_user)"
+
+  # Recompute derived paths after option parsing.
+  _DAY_DIR="${_STATIC_ROOT}/${_O8_USER}/static/${_DAY}"
+
+  case "${_action}" in
+    check)
+      do_check
+      exit 0
+      ;;
+    backdrop)
+      # Lightweight Backdrop-family build+package+publish (no Composer, no php
+      # switch). Needs root (mirror writes) + an Octopus user (_run_as_o8).
+      _require_root
+      _require_o8
+      trap '_cleanup' EXIT
+      _acquire_lock
+      do_backdrop_family
+      print_summary
+      ;;
+    build|package|distribute|all)
+      _require_root
+      _require_o8
+      _require_composer
+      trap '_cleanup' EXIT
+      _acquire_lock
+      # /usr/bin/php must be a symlink we can swap and restore. Refuse to clobber a
+      # real binary; if it is absent, remember to remove the link we create.
+      if [[ -e "${_SYS_PHP}" && ! -L "${_SYS_PHP}" ]]; then
+        _die "${_SYS_PHP} exists but is not a symlink; refusing to clobber it"
+      fi
+      if [[ -L "${_SYS_PHP}" ]]; then
+        _PHP_ORIG="$(readlink "${_SYS_PHP}" 2>/dev/null)"
+        [[ -n "${_PHP_ORIG}" ]] || _die "cannot read current ${_SYS_PHP} symlink target"
+      else
+        _PHP_LINK_CREATED=1
+      fi
+      case "${_action}" in
+        build)      do_build "$@" ;;
+        package)    do_package ;;
+        distribute) do_distribute ;;
+        all)        do_build; do_package; do_distribute ;;
+      esac
+      print_summary
+      ;;
+    *)
+      _die "unknown action '${_action}' (try -h)"
+      ;;
+  esac
+}
+
+main "$@"

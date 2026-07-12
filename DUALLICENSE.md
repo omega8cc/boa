@@ -12,15 +12,15 @@
 
 You can install only **BOA LTS** and then upgrade to **PRO** with a license from [Omega8.cc](https://omega8.cc/licenses).
 
-## **LTS** branch will enter a full code-freeze on December 31, 2025
+## **LTS** branch: kept current alongside **PRO**
 
-Please note that **as of December 31, 2025, the LTS branch will enter a full code-freeze**. No further feature development or regular releases are planned for 2026. A possible re-evaluation may occur in 2027, but this should not be assumed.
+The code-freeze previously planned for December 31, 2025 **did not take effect**: the LTS branch is kept up to date alongside PRO, because frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
 
-After the freeze, **only critical functional fixes within BOA itself will be considered**. There will be **no updates** for underlying components such as PHP, Percona, Nginx, Valkey, OpenSSL, OpenSSH, or related system libraries, although your barracuda will still be able to upgrade your system with newer Devuan packages.
+A **feature-freeze may be announced in the future**, once the project enters a quieter, security-mainly update cycle — but no date is set, and it should not be assumed.
 
 Several of the upcoming and most impactful features are planned **exclusively for BOA PRO**, as outlined in the [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-lts/ROADMAP.md).
 
-For continued access to new features, ongoing improvements, and a future-proof stack, [BOA PRO](https://omega8.cc/licenses) is the recommended upgrade path.
+For a professionally supported stack — the PRO support levels, monitoring and managed updates behind your own servers — [BOA PRO](https://omega8.cc/licenses) is the recommended upgrade path.
 
 ## Practical Differences Between **LTS** and **PRO**
 

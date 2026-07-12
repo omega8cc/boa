@@ -18,17 +18,12 @@ The BOA Skynet auto-updates were initially limited to checking for new BOA relea
 
 Next, since people tend to forget about running meta-installers update before running barracuda or octopus upgrade, and it generated a ton of unneeded tickets, confusion and frustration, we have automated these updates, so all your meta-installers were updated daily.
 
-Then #drupageddon happened, and we realized that we could make all existing BOA systems secure, auto-magically, in the first 60 minutes after the #drupageddon alert was published. Only if we could have a running mechanism in place to apply very trivial but how important patch to all your D7 sites/codebases while you were on vacation, out of town, or just AFK anywhere.
-
-So we have added Drupal core monitoring and auto-patching to make sure you never run vulnerable codebase again. To make it effective, we have scheduled to run these checks hourly.
-
-Then we have added also hourly updates for a few key scripts responsible for your system security, self-monitoring and self-healing.
+We have also added hourly updates for a few key scripts responsible for your system security, self-monitoring and self-healing.
 
 Gradually it grew into its current incarnation, so at the moment BOA Skynet auto-updates do these things for you, while you sleep:
 
 * Daily version/release check and notification
 * Every 6 minutes update for all meta-installers and related tools
-* Hourly check for D7 core vulnerability and patching if detected
 * Hourly update for key BOA tools, monitors and self-healing agents
 * Hourly check if your DNS resolver works as expected and repair if not
 

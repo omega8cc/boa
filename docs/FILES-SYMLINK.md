@@ -116,7 +116,7 @@ left `root`-owned).
 
 ### `updatesymlinks` — the scheduler / orchestrator
 
-Wraps `autosymlink` with Aegir-queue pausing (the self-healing
+Wraps `autosymlink` with Ægir-queue pausing (the self-healing
 `/run/boa_queue_stop.pid`), lock and load guards, and email. Driven by two opt-in
 `.barracuda.cnf` variables (see Configuration):
 
@@ -373,7 +373,7 @@ symlinks:
 /data/disk/<account>/backup-exports  -> /data/disk/<account>/static/files/.backup-exports
 ```
 
-The Aegir paths are unchanged (the symlinks are transparent), so `backup_path` and
+The Ægir paths are unchanged (the symlinks are transparent), so `backup_path` and
 `aegir_backup_export_path` keep working. Both targets live **under** `static/files`
 so they share one filesystem — the backup-download **hardlinks** between `backups`
 and `backup-exports` keep working (hardlinks cannot cross filesystems) — and the
@@ -387,7 +387,7 @@ leading-dot names are skipped by the site/orphan scan, like `.archived`.
   (`rsync --remove-source-files`: ~one file of extra space at a time, per-file
   safe); on any failure the real directory is left in place and no symlink is made.
   It never deletes a backup.
-- **Task-queue interlock.** While migrating, the run holds the Aegir task queue
+- **Task-queue interlock.** While migrating, the run holds the Ægir task queue
   with a dedicated `/run/boa_queue_stop.pid` (honoured by `runner.sh` — the parent
   exits and each per-account child dispatch skips) so no backup task writes into a
   directory being moved. It self-heals: `clear.sh` removes it once its owner PID is
@@ -410,7 +410,7 @@ two situations:
   **disabled** site keeps both its alias and its (placeholder) vhost, so it is
   treated as active and **left in place** — its files stay live for a later
   re-enable. A partial/broken state (only one of alias/vhost present) is reported
-  but also left in place. The sweep runs with the Aegir task queue paused + drained,
+  but also left in place. The sweep runs with the Ægir task queue paused + drained,
   so no in-flight install/clone can make a live site momentarily look deleted.
 
   ```
@@ -524,7 +524,7 @@ tail -n 50 /var/log/boa/autosymlink.log
 
 `autosymlink` writes to `/var/log/boa/autosymlink.log`; `updatesymlinks` archives
 verbose output to `/var/log/boa/autosymlink.verbose.archive.log` and emails a
-summary. The Provision task log (in the Aegir front end, or the backend output)
+summary. The Provision task log (in the Ægir front end, or the backend output)
 shows the `[native-symlink] …` line for install, clone and migrate/rename.
 
 ### New-site install
