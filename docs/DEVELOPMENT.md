@@ -24,8 +24,15 @@ parameters:
   twig.config:
     debug: true
     auto_reload: true
-    cache: false
+    cache: true
 ```
+
+**Note:** Keep the Twig cache on (`cache: true`). `auto_reload: true` is enough for development and debugging; disabling the Twig cache only slows down every page for no benefit. See also: https://www.drupal.org/node/1903374
+
+**Important (applies to both `development.services.yml` sections above):**
+
+- Dev mode only takes effect on a **dev alias** request (a `*.dev.*` / `*.devel.*` domain whose host differs from the site's main name). Loading the site under its main name leaves the file inert — the Redis/Valkey and Twig overrides are skipped.
+- After **adding or removing** `development.services.yml`, you must **clear caches** once (via the Ægir interface or with Drush). Otherwise the `.dev.` URL returns an error 500 saying: *You have requested a non-existent service "cache.backend.null"*.
 
 ## Drupal 7
 

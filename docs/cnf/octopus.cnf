@@ -13,6 +13,7 @@ _PLATFORMS_LIST=ALL #----------- Platforms to install - see docs/PLATFORMS.md
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _HM_ONLY=NO #------------------- Allows to upgrade Ægir Hostmaster only
 _PLATFORMS_ONLY=NO #------------ Install only new Ægir platforms when YES
+_BACKDROP_SUPPORT=NO #---------- Build Backdrop CMS platforms when YES - see docs/PLATFORMS.md
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _DL_MODE=BATCH #---------------- Allows to switch to GIT src or OLD static
 _MY_OWNIP= #-------------------- Allows to specify web server IP if not default
@@ -201,15 +202,19 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### or one per line:
 ###
 
+### Drupal 11.4
+#
+# DE4 — Drupal 11.4 prod/stage/dev
+# CK3 — Commerce v.3
+# CMS — Drupal CMS
+# LGV — LocalGov
+# THR — Thunder
+
 ### Drupal 11.3
 #
 # DE3 — Drupal 11.3 prod/stage/dev
-# CK3 — Commerce v.3
-# CMS — Drupal CMS
 # FOS — farmOS
-# LGV — LocalGov
 # OCS — OpenCulturas
-# THR — Thunder
 # VBX — Varbase 10
 
 ### Drupal 11.2
@@ -269,6 +274,10 @@ so both can be used as default versions in the Ægir PHP configuration files:
 #
 # DL6 — Pressflow (LTS) prod/stage/dev
 # UC6 — Ubercart
+
+### Backdrop
+#
+# BDR — Backdrop CMS prod/stage/dev (requires _BACKDROP_SUPPORT=YES)
 
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA

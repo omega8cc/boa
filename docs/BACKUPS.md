@@ -8,7 +8,10 @@
 
 # Automated, encrypted backups to Amazon S3 bucket (legacy for LTS)
 
-  * This legacy feature is available on self-hosted **BOA LTS** only.
+  * This legacy feature is recommended for self-hosted **BOA LTS** only. The
+    `backboa` and `duobackboa` tools carry no license gate, so they are present
+    and runnable on every host regardless of tier — "LTS only" is a usage
+    recommendation, not an enforced restriction.
   * Note that provided `backboa` tool uses symmetric password-only encryption.
   * You can configure AWS Region you prefer to use and Backup Rotation policy.
 

@@ -66,7 +66,7 @@ The per-site fragments that flip a class are written into each Octopus instance'
 The vhost guard chain runs early in request processing, top to bottom:
 
 ```
-if ($is_banned)      { return 444; }   # csf web-bans, realip-keyed (see Bans)
+if ($is_banned)      { return 444; }   # csf (v4) + nginx-native (v6) web-bans, realip-keyed (see Bans)
 if ($is_secret_path) { return 444; }   # credential / dotfile probes
 if ($is_ai_forged)   { return 444; }   # forged opt-out tokens
 
@@ -115,7 +115,7 @@ $realip_remote_addr`) so it keeps treating the edge as the proxy.
 The empty-glob include (`*.c*`) means the config is valid before the ranges file exists,
 so there is no chicken-and-egg at first boot.
 
-## Bans (csf → nginx)
+## Bans (csf → nginx, IPv4 + IPv6)
 
 `/var/xdrago/nginx_deny.sh` mirrors csf's **web** bans into nginx (`*/2` cron):
 
@@ -126,6 +126,15 @@ are written to `/data/conf/nginx_banned_ips.conf` as a `geo $remote_addr $is_ban
 set, which the first guard turns into a 444. Because it is realip-keyed it blocks the
 real client even through Cloudflare, where an origin-level csf deny would be a no-op. SSH
 and FTP bans are deliberately excluded — those stay purely csf's job.
+
+**IPv6 (`/var/xdrago/nginx_deny6.sh`, `*/2` cron).** csf is IPv4-only, so an IPv6 web
+offender can't be banned through the firewall. `scan_nginx` writes it to an nginx-native
+store instead, and `nginx_deny6.sh` mirrors that store into
+`/data/conf/nginx_banned_ips.conf6` — the **same** `geo $remote_addr $is_banned` set (its
+wildcard `nginx_banned_ips.c*` include already covers it) — so an IPv6 attacker gets the
+same realip-keyed 444. IPv6 can only arrive via the trusted realip proxy (BOA disables IPv6
+server-side and pins realip to the CF ranges), so a banned v6 is always the real client.
+The v6 bans self-expire (default 900s) like the csf temp bans.
 
 ## Per-site control
 
@@ -156,7 +165,8 @@ instance under `/data/disk/<oct>` — real instances only, identified by the BOA
 `tools/drush` marker, so the non-instance pseudo-dirs (`arch`, `all`, `legacy`, …) are
 skipped. For each instance with an activated `policy.txt` it writes one
 `config/includes/ai_policy/<site>.conf` per record — the exact path the satellite vhost
-pulls via `include $server->include_path/ai_policy/{uri}*`. `$ai_train_allow` and
+pulls via `include $server->include_path/ai_policy/{uri}.conf*` (the `.conf*` anchor stops a
+prefix-named site pulling a longer site's fragment). `$ai_train_allow` and
 `$ai_evasive_allow` are both defaulted to `0` in the vhost template before that include,
 so a site with no record keeps the global defaults. Removing a record prunes its fragment
 on the next run.
@@ -167,15 +177,17 @@ on the next run.
 |------|----------|--------|
 | `/var/xdrago/ai_policy.sh` | `*/2` | per-instance `config/includes/ai_policy/<site>.conf` |
 | `/var/xdrago/ip_access.sh` | `*/2` | per-instance `config/includes/ip_access/<site>.conf` (see [IP-ACCESS.md](IP-ACCESS.md)) |
-| `/var/xdrago/nginx_deny.sh` | `*/2` | `/data/conf/nginx_banned_ips.conf` |
+| `/var/xdrago/nginx_deny.sh` | `*/2` | `/data/conf/nginx_banned_ips.conf` (IPv4 web bans, from csf) |
+| `/var/xdrago/nginx_deny6.sh` | `*/2` | `/data/conf/nginx_banned_ips.conf6` (IPv6 web bans, from scan_nginx's nginx-native store) |
 | `/var/xdrago/cloudflare_realip.sh` | daily + install | `/data/conf/nginx_cloudflare_real_ip.conf` |
 
-All four take a shared advisory lock `/run/boa_nginx_config.lock` (`flock -w 30`, then
-skip and retry next tick) so their `configtest`+`reload` cycles never collide on the
-same host nginx. Each one is a content change-gate → atomic write → `configtest` →
-`reload`, with rollback to the last-good copy if `configtest` fails. All four are
-serial-gated via `_fetch_versioned`; any change must decrement the tool's `fNN` in
-`BOA.sh.txt` in the same commit.
+All of these — plus the migration-time realip tool `/var/xdrago/migration_proxy_realip.sh`
+(another writer, not one of the standing generators above) — take a shared advisory lock
+`/run/boa_nginx_config.lock` (`flock -w 30`, then skip and retry next tick) so their
+`configtest`+`reload` cycles never collide on the same host nginx. Each one is a content
+change-gate → atomic write → `configtest` → `reload`, with rollback to the last-good copy
+if `configtest` fails. The four generators above are serial-gated via `_fetch_versioned`;
+any change must decrement the tool's `fNN` in `BOA.sh.txt` in the same commit.
 
 ## Verify
 
@@ -234,7 +246,7 @@ shared lock) on a disposable VM, see [AI-POLICY-TESTING.md](AI-POLICY-TESTING.md
 - **Amazonbot** is classified as `training`. It is a bulk crawler that feeds Amazon's
   models; if a site wants Amazon indexing, move it to `utility` or allow it per site.
 - **Secret-path breadth.** `config.json` / `key.json` are in the probe list because
-  Drupal/Aegir never serve them at the web root. A hosted **decoupled** front-end that
+  Drupal/Ægir never serve them at the web root. A hosted **decoupled** front-end that
   legitimately serves such a file would 444 — remove that token from `$is_secret_path`
   if it ever bites.
 - **realip window.** Until `cloudflare_realip.sh` has run once, `$remote_addr` is the CF

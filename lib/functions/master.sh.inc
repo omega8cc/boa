@@ -357,7 +357,7 @@ EOFMYSQL
 }
 
 #
-# Ensure Aegir's task queue dispatcher is enabled. BOA always drives the queue
+# Ensure Ægir's task queue dispatcher is enabled. BOA always drives the queue
 # through hosting-dispatch, so a disabled dispatcher is drift -- it is left
 # behind when hosting-setup's self-test exits non-zero during a (re)install.
 # Detect and re-enable it, reporting only when a correction was needed.
@@ -1230,7 +1230,7 @@ EOFMYSQL
 
     touch /var/log/boa/aegir_install.log
     chown aegir:aegir /var/log/boa/aegir_install.log
-    # 0600 (not the default 0644): the install log captures the Aegir
+    # 0600 (not the default 0644): the install log captures the Ægir
     # one-time-login URL — readable by any local user during the URL's
     # TTL would let a tenant race the admin to redeem it as Hostmaster.
     chmod 0600 /var/log/boa/aegir_install.log

@@ -95,6 +95,45 @@ fi
 
 ### echo "_ARGS is ${_ARGS}"
 
+# Composer >= 2.8.3 (and any symfony/process caller) invokes git/hg/svn/tar/... as
+# argv-arrays, which symfony/process 5.x renders for /bin/sh (= websh) as
+#   exec 'git' 'remote' '-v'
+# or, on --enable-sigchild PHP builds, as
+#   { (exec 'git' ...) <&3 3<&- 3>/dev/null & } 3<&0;...
+# The single-quoted, exec-prefixed form matches none of websh's bare-token or path
+# checks below, so these legit subprocesses of an already-authorized parent were
+# refused (exit 1), surfacing in Composer as "git was not found ... in your PATH env".
+# Read the normalised leading token, then exec the ORIGINAL string verbatim so its
+# quoting and the sigchild fd-3 exit-code protocol both survive. An lshell user cannot
+# forge this shape: exec/sh are not in allowed_shell_escape and the wrapper carries
+# forbidden chars (; $! & { >&3).
+#
+# Pass through ONLY: (a) an absolute argv[0] - the caller already resolved the binary,
+# incl. the /opt/phpNN/bin/php composer hands its own subprocesses, exactly as websh
+# forwards absolute-path commands below without re-selecting PHP; and (b) bare VCS/archive
+# helpers, which never need PHP-CLI selection. php/composer/drush by BARE name are NOT
+# passed through: a user's top-level `composer`/`drush` is a bare string dispatched with
+# PHP-version selection below, and composer's own php subprocess is an absolute-path
+# string caught by (a) - so the PHP-CLI selection is never bypassed here.
+if [ "${1}" = "-c" ] \
+  && { [[ "${2}" == "exec "* ]] || [[ "${2}" == "{ (exec "* ]]; }; then
+  _SF_ORIG="${2}"
+  _SF_CMD="${2#\{ (}"
+  _SF_CMD="${_SF_CMD#exec }"
+  _SF_CMD="${_SF_CMD//\'/}"
+  _SF_LEAD="${_SF_CMD%% *}"
+  if [[ "${_SF_LEAD}" == /* ]]; then
+    exec /bin/dash -c "${_SF_ORIG}"
+    exit 0
+  fi
+  case "${_SF_LEAD}" in
+    git|git-upload-pack|git-receive-pack|git-upload-archive|hg|svn|svnadmin|fossil|bzr|cvs|p4|tar|unzip|7z|7za|7zz|gzip|gunzip|bzip2|xz|unxz|zstd|unzstd)
+      exec /bin/dash -c "${_SF_ORIG}"
+      exit 0
+      ;;
+  esac
+fi
+
 if [[ "${_ARGS}" =~ "--php=" ]]; then
   PHP_FWD=YES
 else

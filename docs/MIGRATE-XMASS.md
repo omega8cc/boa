@@ -40,9 +40,9 @@ filesystem data is run on demand via `xmass sync`. At cutover:
 5. Source MySQL is briefly locked (`FLUSH TABLES WITH READ LOCK`) while the
    last file writes drain.
 6. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`).
-7. `renameaegirhost` runs on the target for every Aegir root (master +
+7. `renameaegirhost` runs on the target for every Ægir root (master +
    all Octopus accounts), replacing the source hostname with the target FQDN
-   and running a 5-pass Aegir task queue per root.
+   and running a 5-pass Ægir task queue per root.
 8. Target Solr starts (transaction logs pre-cleared for clean first start).
 9. Source vhosts are converted to proxy via `xoct proxy` per account.
 10. DNS is updated; traffic flows directly to target.
@@ -132,8 +132,9 @@ What `init` does:
 
 1. Verifies SSH connectivity and Percona version match.
 2. Installs `percona-xtrabackup-*` on source and target if not present.
-3. Enables GTID mode on both servers (edits
-   `/etc/mysql/conf.d/xmass_gtid.cnf`, restarts MySQL via `move_sql.sh`).
+3. Enables GTID mode on both servers (writes `xmass_gtid.cnf` into the
+   detected MySQL include dir — see [GTID Configuration](#gtid-configuration)
+   for the path — then restarts MySQL via `move_sql.sh`).
 4. Creates the replication user `xmass_repl`@`target-ip` on source.
 5. Prevents Solr from auto-starting on target (holds it until cutover sync
    is complete).
@@ -234,7 +235,7 @@ confirm `CLEAN`, then re-run with `--live` to perform the real cutover.
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source |
 | Step 12 | Start nginx on target (serves proxied traffic while rename runs) |
-| Step 13 | `renameaegirhost --aegir-root /var/aegir` on target (Aegir master) |
+| Step 13 | `renameaegirhost --aegir-root /var/aegir` on target (Ægir master) |
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN` on target (each Octopus account) |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
@@ -283,8 +284,12 @@ the running Percona version and installed automatically if absent.
 
 ## GTID Configuration
 
-`xmass init` writes `/etc/mysql/conf.d/xmass_gtid.cnf` on both servers if
-GTID is not already enabled:
+`xmass init` writes `xmass_gtid.cnf` on both servers if GTID is not already
+enabled. The MySQL include directory is detected at runtime, preferring the
+first that exists: `/etc/mysql/percona-server.conf.d`, then
+`/etc/mysql/conf.d`, then `/etc/mysql/mysql.conf.d`, falling back to
+`/etc/mysql`. On a current Percona box this is normally
+`/etc/mysql/percona-server.conf.d/xmass_gtid.cnf`. Contents:
 
 ```ini
 [mysqld]
@@ -309,7 +314,7 @@ are left untouched.
 
 | Stage | Solr on source | Solr on target |
 |---|---|---|
-| After `init` | Running normally | Stopped; held by `/root/.xmass_solr_hold.pid` |
+| After `init` | Running normally | Stopped; held by `/var/log/boa/.xmass_solr_hold.pid` |
 | During `sync` | Running normally | Still held (best-effort Solr rsync only) |
 | Cutover step 0 | Running | Re-held and stopped (safety) |
 | Cutover step 2 | Stopped; `/root/.deny.java.cnf` created | Held |

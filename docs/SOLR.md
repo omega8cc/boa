@@ -36,7 +36,7 @@ Once the Solr core is ready, a special file, `sites/foo.com/solr.php`, will prov
 Sites with enabled Solr cores can be safely migrated between platforms. The integration module can be moved within your codebase and even upgraded, provided it uses compatible `schema.xml` and `solrconfig.xml` files.
 
 Supported values for the `solr_integration_module` variable:
-- `search_api_solr9` (Activates Solr 9 core if installed)
+- `search_api_solr9` (Activates Solr 9 core if installed; requires a Drupal 10.2+ or Drupal 11 platform — on older platforms no Solr 9 core is created)
 - `search_api_solr7` (Activates Solr 7 core if installed)
 - `search_api_solr`  (Activates Solr 7 core if installed)
 - `apachesolr`       (Activates Solr 4 core if installed) (deprecated)

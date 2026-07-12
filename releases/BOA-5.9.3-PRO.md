@@ -18,7 +18,7 @@ and cannot be safely automated across all projects without operator review.
 priority updates within hours of the release.
 
 **Everyone else** must be ready to run urgent Composer updates and redeploy
-platforms through Aegir on May 20. If you would rather not face the next
+platforms through Ægir on May 20. If you would rather not face the next
 critical release alone, this is what https://omega8.cc/managed exists for.
 
 ## ⚡ ACTION REQUIRED: Upgrade and Reboot
@@ -96,7 +96,7 @@ also been extended to catch additional `Invalid user` message variants.
 - CSF DNS reverse-lookup checks disabled (reduced latency during large attacks)
 - CSF recidivist threshold lowered to 24 (faster repeat offender blocking)
 
-### Nginx DDoS Hardening (Provision — Aegir Nginx Templates)
+### Nginx DDoS Hardening (Provision — Ægir Nginx Templates)
 
 The Provision Nginx templates have gained the most extensive set of DDoS
 mitigations in BOA history:
@@ -194,7 +194,7 @@ Valkey has received significant configuration hardening in this release:
 ## Solr
 
 - **Orphan cores health-check every 6 hours** — cores without a matching
-  Aegir site are detected and cleaned up automatically, preventing Solr heap
+  Ægir site are detected and cleaned up automatically, preventing Solr heap
   exhaustion
 - **`_optimize_solr_cores`** — new documented sub-command runs a full Solr
   optimize on all active cores; useful before migrations or after large imports
@@ -238,7 +238,7 @@ during Debian-to-Devuan migration, the network interface name can shift
 
 | Tool | Change |
 |------|--------|
-| `renamemaster` | New: rename Aegir Master hostname end-to-end |
+| `renamemaster` | New: rename Ægir Master hostname end-to-end |
 | `renameaegirhost` | Now universal — handles both Master and Satellite |
 | `fixmounts` | New: diagnose and repair `/etc/fstab` and TRIM eligibility |
 | `xoct` | `http-off` PHP short-circuit for migrations; speed cache purge on toggle; `_xoct_transfer_static_symlink_safe` |
@@ -274,7 +274,7 @@ during Debian-to-Devuan migration, the network interface name can shift
 - Lock/unlock logic refactored to prevent stale locks after interrupted runs
 
 
-## Drupal / Aegir
+## Drupal / Ægir
 
 - `tag1_d7es-7.x-1.4` added to `o_contrib_seven` and Hostmaster;
   `d7security_client` removed (superseded by tag1_d7es)

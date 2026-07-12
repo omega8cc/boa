@@ -187,7 +187,7 @@
     * After a clone, migrate, platform-migration, rename or restore, Drupal 8+
       sites now have their service container and caches rebuilt -- the D8+
       analog of the registry rebuild older sites already received, run through
-      the site-local Drush on D10/11 where Aegir's own Drush 8 cannot. The
+      the site-local Drush on D10/11 where Ægir's own Drush 8 cannot. The
       "Rebuild registry" and "Flush all caches" front-end tasks now work on
       Drupal 8+ as well; both stay visible. On a degraded D10/11 platform with
       no executable site-local Drush, a clone/migrate/restore now skips the DB
@@ -654,7 +654,7 @@
       CiviCRM legitimately ships its own Drush command files
       (civicrm.drush.inc, cv.drush.inc, civicrm_drush.drush.inc) inside the
       site tree, which the new filter would otherwise block. Because these
-      are needed for Aegir BACKEND TASKS (verify, migrate, clone, etc.) to
+      are needed for Ægir BACKEND TASKS (verify, migrate, clone, etc.) to
       complete on a CiviCRM site, they are allowlisted -- but only as an
       explicit, per-Octopus-user opt-in. To enable the exception for an
       Octopus user, create the control file:
@@ -666,10 +666,10 @@
       are loaded during backend tasks; otherwise they remain blocked.
 
       NOTE: This affects ONLY the Drush command-file loading performed during
-      Aegir backend tasks. It does NOT change how CiviCRM sites run under
+      Ægir backend tasks. It does NOT change how CiviCRM sites run under
       PHP-FPM -- normal web requests do not go through Drush and are entirely
       unaffected. A CiviCRM site will keep serving traffic normally with or
-      without the control file; the file is only required for its Aegir
+      without the control file; the file is only required for its Ægir
       backend tasks to load CiviCRM's own Drush commands.
 
 @=> New Features
@@ -817,7 +817,7 @@
 
   Customers on any active plan at https://omega8.cc/managed will receive
   priority updates within hours of the release. All others must be ready to
-  run urgent Composer updates and redeploy platforms through Aegir on May 20.
+  run urgent Composer updates and redeploy platforms through Ægir on May 20.
 
   This is exactly what https://omega8.cc/managed exists for.
 
@@ -898,7 +898,7 @@
       major site migrations or after large content imports.
 
     * Add Solr orphan cores health-check running every 6 hours
-      Orphaned Solr cores (cores without a matching Aegir site) are detected and
+      Orphaned Solr cores (cores without a matching Ægir site) are detected and
       cleaned up automatically on a 6-hour schedule, preventing Solr heap
       exhaustion on busy multi-tenant systems.
 
@@ -908,7 +908,7 @@
       at the next safe maintenance window.
 
     * Add renamemaster tool
-      Extends renameaegirhost to support renaming the Aegir Master instance
+      Extends renameaegirhost to support renaming the Ægir Master instance
       hostname, covering Nginx vhosts, Drush aliases, and the hostmaster
       database in a single automated step.
 
@@ -1086,7 +1086,7 @@
       DNS failures mid-upgrade. Lock/unlock is now guarded by a PID check.
 
     * scan_nginx.sh: Fix for _recycle_log logic and log-rotation race
-    * scan_nginx.sh: Skip internal Aegir file server requests from rate counts
+    * scan_nginx.sh: Skip internal Ægir file server requests from rate counts
 
     * MySQL: Do not update mysql_backup while it is running
     * Fix for symlinked _BACKUPDIR cleanup (no longer follows symlinks)
