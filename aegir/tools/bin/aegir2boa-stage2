@@ -245,9 +245,12 @@ _vhostd()  { echo "${_AEGIR_ROOT}/config/server_master/nginx/vhost.d"; }
 _pred()    { echo "${_AEGIR_ROOT}/config/server_master/nginx/pre.d"; }
 _stub_of() { echo "$(_pred)/a2b_503_$1.conf"; }
 
-# parse a site's alias for site_path/root (xoct:221-222 pattern)
+# parse a site's alias for site_path/root (xoct:221-222 pattern; callers
+# pass the trailing quote - "root'" - so the pattern is NOT re-quoted here:
+# wrapping it as 'root'' can never match and every alias read comes back
+# empty, drill defect 2026-07-12)
 _alias_val() {
-  grep "'$2'" "${_AEGIR_ROOT}/.drush/$1.alias.drushrc.php" 2>/dev/null \
+  grep "$2" "${_AEGIR_ROOT}/.drush/$1.alias.drushrc.php" 2>/dev/null \
     | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
 }
 
@@ -2134,7 +2137,8 @@ case "${_ROUTE}" in ""|per-site|db-import) : ;; *) _die "--route must be per-sit
 # leave them). _STATE_DIR is set by the box-class requirement inside a verb.
 _cleanup() {
   [[ -n "${_STATE_DIR:-}" ]] && rm -f "${_STATE_DIR}/.myd."* "${_STATE_DIR}/.certs."* 2>/dev/null
-  [[ -n "${_LOCK:-}" && -d "${_LOCK}" ]] && rmdir "${_LOCK}" 2>/dev/null
+  # the lock dir holds a pid file - a bare rmdir leaves every lock stale
+  [[ -n "${_LOCK:-}" && -d "${_LOCK}" ]] && { rm -f "${_LOCK}/pid" 2>/dev/null; rmdir "${_LOCK}" 2>/dev/null; }
 }
 trap _cleanup EXIT
 trap 'exit 2' INT TERM
