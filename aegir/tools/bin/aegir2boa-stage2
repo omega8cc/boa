@@ -125,10 +125,13 @@ _sane_account() {
 # keyval state file helpers (stage-1 pattern); every consumer passes a
 # regex-safe key (fixed names or _key_sanitize output)
 _kv_set() {
-  local _f="$1" _k="$2" _v="$3"
+  local _f="$1" _k="$2" _v="$3" _esc
   touch "${_f}" && chmod 600 "${_f}"
   if grep -q "^${_k}=" "${_f}" 2>/dev/null; then
-    sed -i "s|^${_k}=.*|${_k}=${_v}|" "${_f}"
+    # escape the sed replacement metacharacters (& \ and the | delimiter)
+    # so a value like a space-joined PHP-pool list can never corrupt the file
+    _esc="$(printf '%s' "${_v}" | sed 's/[&\\|]/\\&/g')"
+    sed -i "s|^${_k}=.*|${_k}=${_esc}|" "${_f}"
   else
     echo "${_k}=${_v}" >> "${_f}"
   fi
@@ -178,6 +181,23 @@ _require_target_box() {
 _marker()     { echo "${_STATE_DIR}/markers/$1"; }
 _marker_set() { date '+%Y-%m-%d %H:%M:%S' > "$(_marker "$1")"; }
 _marker_has() { [[ -e "$(_marker "$1")" ]]; }
+
+# php-script staging: root writes these then runs them as the account user
+# via drush php-script. A fixed /tmp name on a multi-tenant BOA box is a
+# symlink-preplant vector (root cat> follows the link) AND a TOCTOU swap
+# window. Stage inside an ACCOUNT-OWNED 700 dir under the account tree
+# (only that oN + root can enter, so no cross-tenant preplant) with an
+# O_EXCL random mktemp name, chowned to oN so drush can read it and the
+# path stays traversable by oN (every ancestor is oN-owned).
+_php_dir() { echo "${_ACCT_ROOT}/static/.a2b-php"; }
+_php_tmp() {
+  local _d _f
+  _d="$(_php_dir)"
+  mkdir -p "${_d}" && chown "${_ACCOUNT}:users" "${_d}" && chmod 700 "${_d}"
+  _f="$(mktemp "${_d}/php.XXXXXX")" || _die "cannot create php staging file"
+  chown "${_ACCOUNT}:users" "${_f}" && chmod 600 "${_f}"
+  echo "${_f}"
+}
 
 ###-------------DRY/LIVE GATE----------###
 # xoct state-file model with D-009a consumed-on-entry semantics, keyed per
@@ -438,15 +458,19 @@ _mysqldump_flags() {
 }
 
 # -E/-A/-X (executability/ACLs/xattrs) need rsync >= 3.0; a Debian-6-era
-# source may ship 2.x - degrade to plain -aqu there (platform trees carry
-# no ACLs/xattrs a D6/D7 site depends on)
+# source may ship 2.x - degrade to plain -aq there (platform trees carry
+# no ACLs/xattrs a D6/D7 site depends on). NB no -u: the platform tree is
+# transferred with --delete into a migration-exclusive static/a2b/<plat>
+# namespace, so the SOURCE is fully authoritative - -u would skip
+# newer-on-target files (an aborted attempt's provision-rewritten
+# settings.php) and leave a source/target mix on retry.
 _rsync_flags() {
   local _v
   _v="$(rsync --version 2>/dev/null | head -1 | sed 's/^rsync *version *\([0-9]*\).*/\1/')"
   if [[ -n "${_v}" && "${_v}" -ge 3 ]]; then
-    echo "-aEAXqu"
+    echo "-aEAXq"
   else
-    echo "-aqu"
+    echo "-aq"
   fi
 }
 
@@ -761,6 +785,16 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
   # the password rides a manifest, a mysql defaults file and target SQL -
   # fail closed on characters outside Aegir's generated-password charset
   case "${_dbp}" in *[!A-Za-z0-9_.+-]*) _alrt "site ${_uri}: db_passwd has unsupported characters - SKIP"; return 1 ;; esac
+  # the platform DIR name is operator-controlled on an unknown source and
+  # flows raw into su -c (provision-save --root), PHP heredocs, rsync remote
+  # paths, and a glob-match "already-done" test - fail closed on anything
+  # outside a safe filesystem-name charset (the landed dir keeps this name,
+  # so the later path/glob matches stay consistent)
+  local _platname
+  _platname="$(basename "${_plr}")"
+  case "${_platname}" in
+    *[!A-Za-z0-9._-]*|"" | -* ) _alrt "site ${_uri}: unsafe platform dir name '${_platname}' - SKIP"; return 1 ;;
+  esac
   _dmaj="$(_d_major_of "${_plr}")"
   _has_443 "${_vh}" && _ssl=1
 
@@ -816,7 +850,7 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
     || { _alrt "site ${_uri}: empty dump - SKIP"; return 1; }
   chmod 600 "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
 
-  _manifest_write "${_uri}" "${_ctx}" "$(basename "${_plr}")" "${_plr}" "${_dir}" \
+  _manifest_write "${_uri}" "${_ctx}" "${_platname}" "${_plr}" "${_dir}" \
     "${_dbn}" "${_dbp}" "${_dmaj}" "${_ssl}" "${_base}"
   _marker_set "${_uri}.exported.pid"
   _info "site ${_uri}: exported (db ${_dbn})"
@@ -940,8 +974,13 @@ verb_transfer() {
       *" ${_plat} "*) : ;;
       *)
         _info "platform ${_plat}: rsync tree"
+        # --delete: each platform lands in its OWN static/a2b/<plat>
+        # namespace exclusive to this migration, so a retry after a
+        # reverted attempt lands a CLEAN tree - -u alone would skip
+        # target-era files (provision-written settings.php etc.) and leave
+        # a source/target mix (audit M1 residual)
         # shellcheck disable=SC2046
-        rsync $(_rsync_flags) --no-devices --no-specials -e ssh \
+        rsync $(_rsync_flags) --delete --no-devices --no-specials -e ssh \
           "${_plr}/" "root@${_TARGET}:${_dst}/static/a2b/${_plat}/" \
           || _die "platform ${_plat} rsync failed"
         _done_plat="${_done_plat}${_plat} "
@@ -1038,10 +1077,16 @@ _t_owl_drain() {
 # cron is not running (caller must ensure this)" - so the db-import window
 # holds THIS account's dispatcher aside (the schema-spike drill's proven
 # mechanism) and drains any in-flight pass before surgery.
+# The held-aside file MUST leave /var/xdrago entirely: runner.sh selects
+# dispatchers with `find /var/xdrago -maxdepth 1 -type f | grep run-`
+# (runner.sh:122-125), which still matches ANY off-name retaining the
+# `run-` substring (e.g. .run-oN.a2b-off). Park it under the account's
+# a2b state dir instead, where that find never looks.
+_t_held_run() { echo "${_STATE_DIR}/held-run-${_ACCOUNT}"; }
 _t_dispatch_off() {
   if [[ -e "/var/xdrago/run-${_ACCOUNT}" ]]; then
-    mv -f "/var/xdrago/run-${_ACCOUNT}" "/var/xdrago/.run-${_ACCOUNT}.a2b-off"
-    _info "dispatcher run-${_ACCOUNT} held aside (restored on success or by --revert-db-import)"
+    mv -f "/var/xdrago/run-${_ACCOUNT}" "$(_t_held_run)"
+    _info "dispatcher run-${_ACCOUNT} held aside at $(_t_held_run) (restored on success or by --revert-db-import)"
   fi
   local _waited=0
   while pgrep -f "[r]un-${_ACCOUNT}([^0-9a-z]|\$)" >/dev/null 2>&1 \
@@ -1052,8 +1097,8 @@ _t_dispatch_off() {
   done
 }
 _t_dispatch_on() {
-  if [[ -e "/var/xdrago/.run-${_ACCOUNT}.a2b-off" ]]; then
-    mv -f "/var/xdrago/.run-${_ACCOUNT}.a2b-off" "/var/xdrago/run-${_ACCOUNT}"
+  if [[ -e "$(_t_held_run)" ]]; then
+    mv -f "$(_t_held_run)" "/var/xdrago/run-${_ACCOUNT}"
     _info "dispatcher run-${_ACCOUNT} restored"
   fi
 }
@@ -1092,6 +1137,11 @@ _t_reset_site_dbs() {
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
 _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile
   local _dbn="$1" _dbp="$2" _dump="$3"
+  # defence-in-depth: the source gated _dbp, but it reaches a root SQL
+  # heredoc here via a 600 manifest - re-gate so a hand-edited manifest or
+  # a wider-than-assumed Aegir password charset can't inject
+  case "${_dbp}" in *[!A-Za-z0-9_.+-]*|"") _alrt "db ${_dbn}: password fails the charset gate on target - SKIP"; return 1 ;; esac
+  case "${_dbn}" in ""|*[!A-Za-z0-9_]*) _alrt "db name unsafe on target - SKIP"; return 1 ;; esac
   if [[ -d "/var/lib/mysql/${_dbn}" ]]; then
     _alrt "db ${_dbn} already exists on target - NOT overwriting (remove it to re-import)"
     return 1
@@ -1120,7 +1170,12 @@ _import_db_route() {
   _hdb="$(_t_hm_db)"
   [[ -n "${_hdb}" ]] || _die "cannot resolve target hostmaster db"
   [[ -s "${_src}/hostmaster.sql" ]] || _die "no transferred hostmaster.sql"
-  [[ -n "${_SRC_FQDN}" ]] || _SRC_FQDN="$(cat "${_src}/source-fqdn.txt" 2>/dev/null | tr -d '\n')"
+  if [[ -z "${_SRC_FQDN}" ]]; then
+    # the file value feeds renameaegirhost --force-old, which uses it as an
+    # internal sed pattern across the whole imported DB - gate it like the CLI arg
+    _SRC_FQDN="$(_sane_domain "$(cat "${_src}/source-fqdn.txt" 2>/dev/null | tr -d '\n')")" \
+      || _die "transferred source-fqdn.txt is not a valid domain - pass --source-fqdn"
+  fi
   [[ -n "${_SRC_FQDN}" ]] || _die "source fqdn unknown - pass --source-fqdn"
   _have drush8 || _die "drush8 missing on target - renameaegirhost's replay would silently no-op"
 
@@ -1273,11 +1328,12 @@ _import_db_route() {
 
   # 9. LE service-row re-attach (snapshot-diff driven, GUI-equivalent)
   if [[ ! -e "${_step}.9.done" ]]; then
-    local _svc _typ _php=/tmp/.a2b_svc_attach.php
+    local _svc _typ _php
     while IFS=$'\t' read -r _svc _typ; do
       [[ -n "${_svc}" && -n "${_typ}" ]] || continue
       _svc="$(_sane_ident "${_svc}")"; _typ="$(_sane_ident "${_typ}")"
       [[ -n "$(_tsql "SELECT type FROM hosting_service WHERE service='${_svc}' AND nid=(SELECT nid FROM hosting_context WHERE name='server_master')")" ]] && continue
+      _php="$(_php_tmp)"
       cat > "${_php}" <<PHPEOF
 <?php
 \$nid = db_query("SELECT nid FROM {hosting_context} WHERE name = 'server_master'")->fetchField();
@@ -1289,7 +1345,6 @@ if (!is_object(\$node->services['${_svc}'])) { print "A2BERR service ${_svc}/${_
 node_save(\$node);
 print "A2BOK ${_svc}/${_typ} attached\n";
 PHPEOF
-      chown "${_ACCOUNT}" "${_php}" 2>/dev/null
       _as_octo "drush8 @hostmaster php-script ${_php}" 2>&1 | tee -a "${_LOG}" | grep -q A2BOK \
         || _alrt "service ${_svc}/${_typ} re-attach did not confirm - verify in the frontend"
       rm -f "${_php}"
@@ -1300,7 +1355,8 @@ PHPEOF
 
   # 10. welcome node (optional)
   if [[ "${_WELCOME_NODE}" = "YES" && ! -e "${_step}.10.done" ]]; then
-    local _php=/tmp/.a2b_welcome.php
+    local _php
+    _php="$(_php_tmp)"
     cat > "${_php}" <<'PHPEOF'
 <?php
 $node = new stdClass();
@@ -1314,7 +1370,6 @@ node_save($node);
 variable_set('site_frontpage', 'node/' . $node->nid);
 print "A2BOK welcome node " . $node->nid . "\n";
 PHPEOF
-    chown "${_ACCOUNT}" "${_php}" 2>/dev/null
     _as_octo "drush8 @hostmaster php-script ${_php}" 2>&1 | tee -a "${_LOG}" | grep -q A2BOK \
       || _alrt "welcome node creation did not confirm"
     rm -f "${_php}"
@@ -1407,7 +1462,8 @@ _import_per_site() {
       *)
         if [[ -z "$(_tsql "SELECT nid FROM hosting_context WHERE name='${_ctxp}'")" ]]; then
           _as_octo "drush8 provision-save @${_ctxp} --context_type=platform --root='${_droot}' --server=@server_master --web_server=@server_master" >>"${_LOG}" 2>&1
-          local _phpn=/tmp/.a2b_platnode.php
+          local _phpn
+          _phpn="$(_php_tmp)"
           cat > "${_phpn}" <<PHPEOF
 <?php
 \$existing = db_query("SELECT nid FROM {hosting_context} WHERE name = '${_ctxp}'")->fetchField();
@@ -1423,7 +1479,6 @@ node_save(\$node);
 hosting_context_register(\$node->nid, '${_ctxp}');
 print "A2BOK platform node " . \$node->nid . "\n";
 PHPEOF
-          chown "${_ACCOUNT}" "${_phpn}" 2>/dev/null
           _as_octo "drush8 @hostmaster php-script ${_phpn}" 2>&1 | tee -a "${_LOG}" | grep -q A2BOK \
             || { _alrt "platform node for ${_plat} failed"; rm -f "${_phpn}"; _fails=$(( _fails + 1 )); continue; }
           rm -f "${_phpn}"
@@ -1459,7 +1514,10 @@ PHPEOF
     if [[ -n "${_want}" ]]; then
       local _ctl="${_ACCT_ROOT}/static/control/multi-fpm.info"
       mkdir -p "${_ACCT_ROOT}/static/control"
-      if ! grep -q "^${_uri} " "${_ctl}" 2>/dev/null; then
+      # exact field-1 match: a domain's dots are BRE wildcards under grep,
+      # so grep "^a.example.com " would false-match "aXexample.com" and
+      # silently skip the second site's pool line
+      if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' "${_ctl}" 2>/dev/null; then
         echo "${_uri} ${_want}" >> "${_ctl}"
         chown "${_ACCOUNT}:users" "${_ctl}" 2>/dev/null
         _info "site ${_uri}: multi-fpm.info -> ${_want}"
@@ -1858,7 +1916,15 @@ shift
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --target)   _TARGET="$(printf '%s' "$2" | tr -cd '0-9a-fA-F.:')"; shift ;;
+    --target)   _TARGET="$2"
+                # accept a dotted IPv4 or a hostname; reject anything else
+                # (a destructive tr would silently mangle a hostname to
+                # garbage, and an IPv6 literal breaks the un-bracketed
+                # proxy_pass emitters) - IPv6 targets are a documented v2 item
+                case "${_TARGET}" in
+                  *[!A-Za-z0-9.-]*|""|-*|.*) _die "--target must be an IPv4 address or hostname (got '${_TARGET}')" ;;
+                esac
+                shift ;;
     --account)  _ACCOUNT="$(_sane_account "$2")" || _die "bad --account"; shift ;;
     --site)     _SITE="$(_sane_domain "$2")" || _die "bad --site"; shift ;;
     --all)      _ALL=YES ;;
@@ -1890,6 +1956,36 @@ mkdir -p "$(dirname "${_LOG}")" 2>/dev/null
 touch "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir2boa-stage2.log
 [[ -n "${_SITE}" && "${_ALL}" = "YES" ]] && _die "--site and --all are mutually exclusive"
 case "${_ROUTE}" in ""|per-site|db-import) : ;; *) _die "--route must be per-site|db-import" ;; esac
+
+# leaked-tempfile + lock cleanup on any exit (creds mktemp files live 600
+# under the 700 state dir; a _die between create and rm would otherwise
+# leave them). _STATE_DIR is set by the box-class requirement inside a verb.
+_cleanup() {
+  [[ -n "${_STATE_DIR:-}" ]] && rm -f "${_STATE_DIR}/.myd."* "${_STATE_DIR}/.certs."* 2>/dev/null
+  [[ -n "${_LOCK:-}" && -d "${_LOCK}" ]] && rmdir "${_LOCK}" 2>/dev/null
+}
+trap _cleanup EXIT
+trap 'exit 2' INT TERM
+
+# coarse re-entrancy lock for ACTING verbs, keyed per op+account+site so
+# parallel migrations of DIFFERENT accounts on one box are allowed but two
+# concurrent --live of the same scope (double nginx swap / double DB
+# surgery) are refused. Read-only verbs take no lock.
+case "${_OP}" in
+  check|status|target-status) : ;;
+  *)
+    _LOCK="/var/run/aegir2boa-stage2.$(printf '%s' "${_OP}_${_ACCOUNT}_${_SITE}" | tr -c 'A-Za-z0-9_' '_').lock"
+    if ! mkdir "${_LOCK}" 2>/dev/null; then
+      if [[ -f "${_LOCK}/pid" ]] && ! kill -0 "$(cat "${_LOCK}/pid" 2>/dev/null)" 2>/dev/null; then
+        _alrt "taking over stale lock ${_LOCK}"
+      else
+        _LOCK=""   # not ours - don't let _cleanup remove a live lock
+        _die "another aegir2boa-stage2 ${_OP} is already running for this scope (lock held)"
+      fi
+    fi
+    echo "$$" > "${_LOCK}/pid" 2>/dev/null
+    ;;
+esac
 
 case "${_OP}" in
   check)         verb_check ;;
