@@ -1173,23 +1173,36 @@ _t_verify_inline() {   # 1 context-name 2 label
 # default PHP: fatal for D6 on 8.x, so D6 without the socket is a
 # per-site FAIL; D7 degrades with a warning.
 # Returns 1 only on the D6-without-socket per-site FAIL.
-_t_fpm_map_wait() {   # 1 uri 2 dmajor
-  local _uri="$1" _dmaj="$2" _want=""
+# Split map/wait: the db-import route maps while the account freeze
+# marker is up, but manage_ltd_users (the every-3-min agent that spawns
+# the per-version pools and applies multi-fpm.info) SKIPS any account
+# carrying log/proxied.pid - an in-window socket wait can never succeed
+# on a fresh account (drill 2026-07-12: 2x420s dead wait; every pool
+# appeared on the agent's first pass after the freeze lifted). Map early,
+# wait only after the freeze is off.
+_FPM_WANT=""
+_t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
+  local _uri="$1" _dmaj="$2"
+  _FPM_WANT=""
   case "${_dmaj}" in
-    6) _want="5.6" ;;
-    7) [[ -d /opt/php74 ]] && _want="7.4" ;;
+    6) _FPM_WANT="5.6" ;;
+    7) [[ -d /opt/php74 ]] && _FPM_WANT="7.4" ;;
   esac
-  [[ -n "${_want}" ]] || return 0
+  [[ -n "${_FPM_WANT}" ]] || return 0
   local _ctl="${_ACCT_ROOT}/static/control/multi-fpm.info"
   mkdir -p "${_ACCT_ROOT}/static/control"
   # exact field-1 match: a domain's dots are BRE wildcards under grep,
   # so grep "^a.example.com " would false-match "aXexample.com" and
   # silently skip the second site's pool line
   if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' "${_ctl}" 2>/dev/null; then
-    echo "${_uri} ${_want}" >> "${_ctl}"
+    echo "${_uri} ${_FPM_WANT}" >> "${_ctl}"
     chown "${_ACCOUNT}:users" "${_ctl}" 2>/dev/null
-    _info "site ${_uri}: multi-fpm.info -> ${_want}"
+    _info "site ${_uri}: multi-fpm.info -> ${_FPM_WANT}"
   fi
+  return 0
+}
+_t_fpm_wait() {   # 1 uri 2 dmajor 3 wanted-ver
+  local _uri="$1" _dmaj="$2" _want="$3"
   local _sock="/var/run/${_ACCOUNT}.${_want//./}.fpm.socket" _sw=0
   while [[ ! -S "${_sock}" && "${_sw}" -lt 420 ]]; do
     sleep 15; _sw=$(( _sw + 15 ))
@@ -1204,6 +1217,11 @@ _t_fpm_map_wait() {   # 1 uri 2 dmajor
     _info "site ${_uri}: PHP ${_want} pool socket up"
   fi
   return 0
+}
+_t_fpm_map_wait() {   # 1 uri 2 dmajor (per-site route: no freeze in play)
+  _t_fpm_map "$1" "$2"
+  [[ -n "${_FPM_WANT}" ]] || return 0
+  _t_fpm_wait "$1" "$2" "${_FPM_WANT}"
 }
 
 # drop ONLY the site DBs this tool loaded (dbloaded markers are the scope
@@ -1549,6 +1567,32 @@ PHPEOF
     _info "step 11a: identity UPDATEs done"
   fi
 
+  # 11a2. db-server identity restore: the imported server_localhost node
+  # carries the SOURCE box's DB credentials (vanilla stores the root DSN
+  # on the db server node) - its verify provision-saves that DSN into the
+  # account's alias and every DB op fails "Access denied" (drill defect
+  # 2026-07-12). Restore the TARGET account's own db-server credentials
+  # (BOA scheme: SQL user named <oN>) from the step-1 snapshot artifact,
+  # which holds the fresh pre-import hosting_db_server row.
+  if [[ ! -e "${_step}.11a2.done" ]]; then
+    local _dbs_nid _dbs_u _dbs_p _dbs_row
+    _dbs_nid="$(_int_only "$(_tsql "SELECT nid FROM hosting_context WHERE name='server_localhost'")")"
+    if [[ -n "${_dbs_nid}" ]]; then
+      _dbs_row="$(sed -n "s/^INSERT INTO \`hosting_db_server\` VALUES ([0-9]*,[0-9]*,'\([^']*\)','\([^']*\)').*/\1 \2/p" \
+        "${_ACCT_ROOT}/undo/a2b-pre-import.sql" | head -1)"
+      _dbs_u="$(_sane_ident "$(echo "${_dbs_row}" | cut -d' ' -f1)")"
+      _dbs_p="$(echo "${_dbs_row}" | cut -d' ' -f2)"
+      case "${_dbs_p}" in *[!A-Za-z0-9_.+-]*|"") _dbs_p="" ;; esac
+      [[ -n "${_dbs_u}" && -n "${_dbs_p}" ]] \
+        || _die "cannot recover the target db-server credentials from the pre-import snapshot - restore hosting_db_server manually before re-running"
+      _tsql "UPDATE hosting_db_server SET db_user='${_dbs_u}', db_passwd='${_dbs_p}' WHERE nid=${_dbs_nid}"
+      _info "step 11a2: db-server credentials restored to the target account user '${_dbs_u}'"
+      # the server verifies must re-run against the restored credentials
+      rm -f "${_step}.11b.done"
+    fi
+    touch "${_step}.11a2.done"
+  fi
+
   # 11b. server verifies (inline): regenerate server_master alias with the
   # corrected remote_host; the fork auto-queues platform verifies when a
   # server verify completes - those land QUEUED and are neutered at step 12
@@ -1559,7 +1603,7 @@ PHPEOF
       || _die "server_master verify failed - inspect before proxy (dispatcher stays held)"
     if [[ -n "$(_tsql "SELECT nid FROM hosting_context WHERE name='server_localhost'")" ]]; then
       _t_verify_inline "server_localhost" "server_localhost verify" \
-        || _alrt "server_localhost verify failed - check db service wiring"
+        || _die "server_localhost verify failed - the db service is dead (new DB creation would fail); dispatcher stays held"
     fi
     grep -q "remote_host.*'${_tgt_fqdn}'" "${_ACCT_ROOT}/.drush/server_master.alias.drushrc.php" 2>/dev/null \
       || _die "server_master alias remote_host did not regenerate to ${_tgt_fqdn} - LOCAL execution not restored"
@@ -1601,8 +1645,12 @@ PHPEOF
       _ctxe="$(_tsql "SELECT name FROM hosting_context WHERE name='${_urie}'")"
       [[ -n "${_ctxe}" ]] || { _alrt "site ${_urie}: no context in imported DB - SKIP"; _sfails=$(( _sfails + 1 )); continue; }
       _dmaje="$(_int_only "$(_manifest_val "${_mfe}" DMAJOR)")"
-      _t_fpm_map_wait "${_urie}" "${_dmaje}" \
-        || { _sfails=$(( _sfails + 1 )); continue; }
+      # map only - the freeze marker blocks the FPM agent, so the socket
+      # wait happens at step 12 AFTER the freeze is lifted
+      _t_fpm_map "${_urie}" "${_dmaje}"
+      if [[ -n "${_FPM_WANT}" ]]; then
+        echo "${_urie} ${_dmaje} ${_FPM_WANT}" >> "${_STATE_DIR}/state/fpm-pending.txt"
+      fi
       if ! _t_verify_inline "${_urie}" "site ${_urie} verify"; then
         _alrt "site ${_urie}: verify failed - left unproven, fix + re-run import"
         _sfails=$(( _sfails + 1 )); continue
@@ -1637,6 +1685,19 @@ PHPEOF
   _t_dispatch_on
   _t_freeze_off
   trap - EXIT
+  # deferred fpm-socket waits: only now (freeze off) can manage_ltd_users
+  # spawn the mapped per-version pools; re-probe each mapped site after
+  local _fpend="${_STATE_DIR}/state/fpm-pending.txt" _fu _fd _fw
+  if [[ -s "${_fpend}" ]]; then
+    _info "step 12: waiting for mapped PHP pool sockets (FPM agent runs every ~3 min)"
+    while read -r _fu _fd _fw; do
+      [[ -n "${_fu}" && -n "${_fw}" ]] || continue
+      _t_fpm_wait "${_fu}" "${_fd}" "${_fw}" \
+        || _alrt "site ${_fu}: MUST NOT be proxied until its PHP ${_fw} pool serves (probe will refuse it)"
+      _info "site ${_fu}: post-pool HTTP $(_http_code_at "${_fu}" 127.0.0.1)"
+    done < "${_fpend}"
+    rm -f "${_fpend}"
+  fi
   _marker_set "import.db-import.done"
   _msg "db-import route complete for ${_ACCOUNT} - sites verified + serving; next: proxy per site on the source"
 }
