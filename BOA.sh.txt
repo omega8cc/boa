@@ -1427,10 +1427,11 @@ _update_agents() {
   # but inert until the gated _get_bee installs /opt/tools/bee and the
   # /usr/bin/bee symlink; clients execute it, so it ships world-executable.
   _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f99 --mode 755 --guard /local/bin/bee
-  # staticbuild: mirror-source testing-codebase + Backdrop-family builder. Only
-  # acts when run as root on the mirror VM; harmless (idle) elsewhere. Kept on
-  # every box so the mirror source always carries the current builder.
-  _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f97 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+  # staticbuild: mirror-source testing-codebase + Backdrop-family builder. Needs
+  # root plus an existing build user (o8 unless -u says otherwise) or it refuses
+  # to act - it never guesses an account from /data/disk. Kept on every box so
+  # the mirror source always carries the current builder.
+  _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f96 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
