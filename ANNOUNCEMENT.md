@@ -10,7 +10,7 @@ Omega8.cc is now the lead developer team for Ægir 3 running on BOA (Barracuda-O
 - **Active maintenance and development**: Ægir 3 on BOA is alive and under active development. [See Adam’s comments here](https://www.drupal.org/project/hostmaster/issues/3517915).
 - **Migration made easier**: We are working to make it simple to migrate entire legacy Ægir instances (Apache or Nginx) into self-hosted BOA as Octopus Ægir.
 - **Standalone Ægir with BOA features**: We are doing our best to enable many BOA-derived features within Ægir standalone, so users can pick their flavour without adopting the full BOA stack.
-- **Modern compatibility**: The BOA-based fork already supports **Drupal 11** and **PHP 8.4**, using vanilla **Drush 13** for site installs and updates while still relying on forked and improved **Drush 8** for daily operations.
+- **Modern compatibility**: The BOA-based fork already supports **Drupal 11** and the latest **PHP 8.5**, using vanilla **Drush 13** for site installs and updates while still relying on forked and improved **Drush 8** for daily operations.
 
 ## Development & Community
 

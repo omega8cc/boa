@@ -39,7 +39,7 @@ _ADMINER_VRN=4.8.1
 _BZR_VRN=2.6.0
 _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3
-_COMPOSER_VRN=2.8.2
+_COMPOSER_VRN=2.10.2
 _CSF_VRN=15.00
 _CURL_VRN=8.21.0
 _DRUSH_EIGHT_TEST_VRN=8.5.4
@@ -74,7 +74,7 @@ _MYSQLTUNER_VRN=1.9.4
 _NEW_RELIC_VRN=12.8.0.37
 _NGINX_VRN=1.31.2
 _NODE_VRN=v22.21.0
-_OPENSSH_VRN=10.3p1
+_OPENSSH_VRN=10.4p1
 _OPENSSL_EOL_VRN=1.1.1w
 _OPENSSL_LEGACY_VRN=1.0.2u
 _OPENSSL_MODERN_VRN=3.5.7
@@ -472,6 +472,22 @@ if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ];
       _sshd_armour
     fi
   fi
+fi
+
+###
+### Remove the bogus `WarnWeakCrypto` client option shipped by earlier BOA
+### releases.  It is NOT a valid OpenSSH directive, so it aborts EVERY outbound
+### ssh with "Bad configuration option" -- breaking git-over-ssh, rsync-over-ssh
+### and any tooling that connects out from the box.  Strip it unconditionally
+### (idempotent no-op once clean) from the live config AND the vanilla backup, so
+### boxes that got it from any prior release self-heal on the next run, regardless
+### of the _SSH_FROM_SOURCES / _SSH_ARMOUR settings that gate _sshd_armour above.
+###
+if [ -e "/etc/ssh/ssh_config" ]; then
+  sed -i '/^[[:space:]]*WarnWeakCrypto\b/d' /etc/ssh/ssh_config
+fi
+if [ -e "/etc/ssh/.vanilla.ssh_config" ]; then
+  sed -i '/^[[:space:]]*WarnWeakCrypto\b/d' /etc/ssh/.vanilla.ssh_config
 fi
 
 

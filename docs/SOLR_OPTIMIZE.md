@@ -95,7 +95,7 @@ correctly — not a leak.
 ## 2. Orphan Core Accumulation
 
 ### What causes orphan cores
-When a Drupal site is deleted, renamed, or cloned in Aegir, the nginx vhost
+When a Drupal site is deleted, renamed, or cloned in Ægir, the nginx vhost
 and drush alias are removed or updated, but the corresponding Solr core
 directory in `/var/solr7/data/` or `/var/solr9/data/` is never automatically
 deleted. Over time these accumulate silently. A server with a long history
@@ -156,7 +156,7 @@ grep "Do not reveal Aegir front-end URL here" \
 ```
 Two matching lines = site is disabled/parked.
 
-### Check Aegir alias (provisioning record)
+### Check Ægir alias (provisioning record)
 ```bash
 ls /data/disk/<user>/.drush/<domain>.alias.drushrc.php
 ```
@@ -191,7 +191,7 @@ Before taking action, classify each orphan candidate:
 
 | Tier | Condition | Safe threshold |
 |------|-----------|----------------|
-| 1 | No vhost, OR vhost with no Aegir alias | 14 days |
+| 1 | No vhost, OR vhost with no Ægir alias | 14 days |
 | 2 | Vhost + alias present, no `solr_integration_module` | 60 days |
 | Protected | `conf/.protected.conf` present, OR `solr_integration_module` set | Never archive automatically |
 
@@ -486,7 +486,7 @@ grep -E "Orphan cleanup port|Active cores|=== Orphan" \
 
 | Variable | Default | Applies to |
 |----------|---------|------------|
-| `_ORPHAN_STALE_DAYS` | 14 | Tier 1: no vhost, or vhost with no Aegir alias |
+| `_ORPHAN_STALE_DAYS` | 14 | Tier 1: no vhost, or vhost with no Ægir alias |
 | `_ORPHAN_VHOST_STALE_DAYS` | 60 | Tier 2: vhost + alias present |
 
 ### Health check
