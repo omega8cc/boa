@@ -28,6 +28,7 @@
 #              [--site <dom>|--all] [--source-fqdn <fqdn>]
 #              [--welcome-node]                               [--live]
 #   import     --account <oN> --revert-db-import              [--live]
+#   import     --account <oN> --reset-sites                   [--live]
 #   target-status --account <oN>
 #
 # Safety model (DECISIONS D-009): every acting verb is a DRY RUN unless
@@ -71,6 +72,7 @@ _ACCEPT_SCRUB=NO
 _INSTALL_CRON=NO
 _WELCOME_NODE=NO
 _REVERT_DB_IMPORT=NO
+_RESET_SITES=NO
 _FROM_STATE=NO
 
 ###-------------HELPERS----------------###
@@ -159,7 +161,7 @@ _require_source_box() {
     || _die "verb '${_OP}' runs on the vanilla SOURCE box only (this box: $(_box_class))"
   _STATE_DIR="${_AEGIR_ROOT}/log/a2b"
   mkdir -p "${_STATE_DIR}/state" "${_STATE_DIR}/manifest" "${_STATE_DIR}/markers"
-  chmod 700 "${_STATE_DIR}"
+  chmod 700 "${_STATE_DIR}" "${_STATE_DIR}/state" "${_STATE_DIR}/manifest" "${_STATE_DIR}/markers"
 }
 
 _require_target_box() {
@@ -170,7 +172,7 @@ _require_target_box() {
   [[ -d "${_ACCT_ROOT}" ]] || _die "no such account root ${_ACCT_ROOT}"
   _STATE_DIR="${_ACCT_ROOT}/log/a2b"
   mkdir -p "${_STATE_DIR}/state" "${_STATE_DIR}/markers"
-  chmod 700 "${_STATE_DIR}"
+  chmod 700 "${_STATE_DIR}" "${_STATE_DIR}/state" "${_STATE_DIR}/markers"
 }
 
 _marker()     { echo "${_STATE_DIR}/markers/$1"; }
@@ -435,6 +437,19 @@ _mysqldump_flags() {
   echo "${_fl}"
 }
 
+# -E/-A/-X (executability/ACLs/xattrs) need rsync >= 3.0; a Debian-6-era
+# source may ship 2.x - degrade to plain -aqu there (platform trees carry
+# no ACLs/xattrs a D6/D7 site depends on)
+_rsync_flags() {
+  local _v
+  _v="$(rsync --version 2>/dev/null | head -1 | sed 's/^rsync *version *\([0-9]*\).*/\1/')"
+  if [[ -n "${_v}" && "${_v}" -ge 3 ]]; then
+    echo "-aEAXqu"
+  else
+    echo "-aqu"
+  fi
+}
+
 _site_db_size_mb() {   # 1 defaults-file 2 dbn
   local _b
   _b="$(mysql --defaults-extra-file="$1" -N -B -e \
@@ -477,8 +492,12 @@ verb_check() {
   _info "preflight stage-2 verdict: ${_v} (fail: $(_report_scalar A2B_STAGE2_FAIL_REASONS))"
   [[ "${_v}" = "FAIL" ]] && _die "preflight stage-2 verdict is FAIL - resolve its reasons first"
 
-  # nginx-mode hard gate (B6)
+  # nginx-mode hard gate (B6) + box config health: every pause/proxy swap
+  # runs nginx -t against the WHOLE config, so a pre-broken vhost anywhere
+  # blocks everything - surface it now, not mid-migration
   [[ -d "$(_vhostd)" ]] || _die "no nginx vhost.d - stage 1 (apache->nginx flip) has not run"
+  nginx -t >>"${_LOG}" 2>&1 \
+    || _die "the CURRENT nginx config already fails nginx -t - fix the box first (see ${_LOG})"
   case "$(_report_scalar A2B_HTTP_SERVICE_TYPE)" in
     nginx|nginx_ssl) : ;;
     *) _die "http_service_type=$(_report_scalar A2B_HTTP_SERVICE_TYPE) - source is not nginx-mode" ;;
@@ -526,9 +545,14 @@ verb_check() {
   [[ "${_single}" = "YES" ]] || { _eligible=NO; _why="${_why} multi-box"; }
   [[ "${_schema}" = "7304" ]] || { _eligible=NO; _why="${_why} hosting-schema-${_schema:-unknown}"; }
 
-  # full enabled-module enumeration (preflight covers hosting_% only)
-  _msg "enabled non-core modules on the source hostmaster (db-import scrub review):"
+  # full enabled-module enumeration (preflight covers hosting_% only).
+  # The review/ack list holds NON-CORE modules only (core lives under
+  # modules/ and always exists on a BOA hostmaster platform) - so the
+  # --accept-scrub-list acknowledgment covers exactly the rows the import
+  # scrub could actually remove, and a bespoke module gets a real review.
+  _msg "enabled NON-CORE modules on the source hostmaster (db-import scrub review):"
   _sql "SELECT name, filename FROM \\\`system\\\` WHERE status=1 AND type='module' ORDER BY name" \
+    | awk -F'\t' '$2 !~ /^modules\//' \
     | tee "${_STATE_DIR}/state/enabled-modules.txt" | sed 's/^/    /'
   chmod 600 "${_STATE_DIR}/state/enabled-modules.txt"
 
@@ -690,22 +714,28 @@ verb_create() {
   _gate_consume "${_ACCOUNT}"
 
   _msg "LIVE create: building ${_ACCOUNT} on ${_TARGET} (${_TREE})"
+  # hold the enforced post-install upgrade off for the window - in-octopus
+  # backgrounds an octopus up- that would churn the fresh account
+  # (schema-spike lesson; the guard file is box-wide, removed right after)
+  ssh "root@${_TARGET}" "touch /root/.dont.upgrade.octopus.on.install.cnf"
   ssh "root@${_TARGET}" "/opt/local/bin/boa in-octopus ${_EMAIL} ${_ACCOUNT} ${_TREE} ${_OPTION} ${_SUBSCR} ${_CORES} noscreen" \
     | tee -a "${_LOG}"
   ssh "root@${_TARGET}" "test -d /data/disk/${_ACCOUNT}" \
-    || _die "in-octopus finished but /data/disk/${_ACCOUNT} does not exist on ${_TARGET}"
+    || { ssh "root@${_TARGET}" "rm -f /root/.dont.upgrade.octopus.on.install.cnf"; \
+         _die "in-octopus finished but /data/disk/${_ACCOUNT} does not exist on ${_TARGET}"; }
   ssh "root@${_TARGET}" "/bin/rm -f /data/disk/${_ACCOUNT}/tools/le/.ctrl/ssl-demo-mode.pid" 2>/dev/null
 
-  # hard quiescence: the backgrounded octopus up- recreates /var/xdrago/run-oN
-  # and fires it repeatedly (schema-spike lesson) - wait it out
+  # hard quiescence on PROCESSES only: /var/xdrago/run-<oN> is a standing
+  # file (persistent dispatcher trigger), so its existence never means busy
   _msg "waiting for target post-install quiescence (up to ${_QUIESCE_TIMEOUT}s)"
   local _waited=0
   while ssh -o BatchMode=yes "root@${_TARGET}" \
-    "pgrep -f 'run-${_ACCOUNT}\$|[o]ctopus.*${_ACCOUNT}' >/dev/null 2>&1 || test -e /var/xdrago/run-${_ACCOUNT}" 2>/dev/null; do
+    "pgrep -f '[o]ctopus.*${_ACCOUNT}|[b]oa.*in-octopus.*${_ACCOUNT}' >/dev/null 2>&1" 2>/dev/null; do
     [[ "${_waited}" -ge "${_QUIESCE_TIMEOUT}" ]] && { _alrt "target still busy after ${_QUIESCE_TIMEOUT}s - verify manually before import"; break; }
     sleep 30; _waited=$(( _waited + 30 ))
   done
-  _info "target quiescent (waited ${_waited}s)"
+  ssh "root@${_TARGET}" "rm -f /root/.dont.upgrade.octopus.on.install.cnf"
+  _info "target quiescent (waited ${_waited}s), upgrade guard removed"
   _kv_set "${_STATE_DIR}/state/check.env" "ACCOUNT" "${_ACCOUNT}"
   _marker_set "create.pid"
   _msg "create complete: ${_ACCOUNT} on ${_TARGET}"
@@ -734,9 +764,13 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
   _dmaj="$(_d_major_of "${_plr}")"
   _has_443 "${_vh}" && _ssl=1
 
+  # a 443 vhost whose cert files are missing would fail EVERY nginx -t on
+  # this box (ours included) and cannot be shadowed on 443 - the site is
+  # skipped whole until the operator fixes its certs; never migrated
+  # half-paused (an 80-only stub would leave 443 serving writable traffic)
   if [[ "${_ssl}" = "1" ]] && ! _ssl_paths_ok "${_vh}"; then
-    _alrt "site ${_uri}: 443 vhost with missing cert files - stub/proxy will be 80-only"
-    _ssl=0
+    _alrt "site ${_uri}: 443 vhost references missing cert files - fix the certs first, SKIP"
+    return 1
   fi
 
   if [[ "${_LIVE}" != "YES" ]]; then
@@ -906,7 +940,8 @@ verb_transfer() {
       *" ${_plat} "*) : ;;
       *)
         _info "platform ${_plat}: rsync tree"
-        rsync -aEAXqu --no-devices --no-specials -e ssh \
+        # shellcheck disable=SC2046
+        rsync $(_rsync_flags) --no-devices --no-specials -e ssh \
           "${_plr}/" "root@${_TARGET}:${_dst}/static/a2b/${_plat}/" \
           || _die "platform ${_plat} rsync failed"
         _done_plat="${_done_plat}${_plat} "
@@ -997,6 +1032,32 @@ _t_owl_drain() {
   done
 }
 
+# The per-minute runner dispatches every /var/xdrago/run-* file and honors
+# ONLY /run/boa_queue_stop.pid (runner.sh:51,128) - NOT the proxied.pid
+# marker. renameaegirhost's atomic dump+sed+reimport documents "assumes BOA
+# cron is not running (caller must ensure this)" - so the db-import window
+# holds THIS account's dispatcher aside (the schema-spike drill's proven
+# mechanism) and drains any in-flight pass before surgery.
+_t_dispatch_off() {
+  if [[ -e "/var/xdrago/run-${_ACCOUNT}" ]]; then
+    mv -f "/var/xdrago/run-${_ACCOUNT}" "/var/xdrago/.run-${_ACCOUNT}.a2b-off"
+    _info "dispatcher run-${_ACCOUNT} held aside (restored on success or by --revert-db-import)"
+  fi
+  local _waited=0
+  while pgrep -f "[r]un-${_ACCOUNT}([^0-9a-z]|\$)" >/dev/null 2>&1 \
+    || pgrep -u "${_ACCOUNT}" -f "hosting-dispatch|hosting-tasks|provision-" >/dev/null 2>&1; do
+    [[ "${_waited}" -ge 900 ]] && _die "account ${_ACCOUNT} dispatch still draining after 900s - retry later"
+    _info "in-flight dispatch for ${_ACCOUNT} draining..."
+    sleep 10; _waited=$(( _waited + 10 ))
+  done
+}
+_t_dispatch_on() {
+  if [[ -e "/var/xdrago/.run-${_ACCOUNT}.a2b-off" ]]; then
+    mv -f "/var/xdrago/.run-${_ACCOUNT}.a2b-off" "/var/xdrago/run-${_ACCOUNT}"
+    _info "dispatcher run-${_ACCOUNT} restored"
+  fi
+}
+
 _t_hm_db() {
   local _hmdir
   _hmdir="$(grep "site_path'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
@@ -1008,6 +1069,24 @@ _t_hm_db() {
 _t_hm_platform_root() {
   grep "root'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
     | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
+}
+
+# drop ONLY the site DBs this tool loaded (dbloaded markers are the scope
+# fence - never touch a DB the tool did not create) + clear their markers
+# so a retry re-lands fresh data. M1 fix: without this, a revert-then-retry
+# would cut sites over to first-export (stale) data.
+_t_reset_site_dbs() {
+  local _mff _uri _dbn
+  for _mff in "${_ACCT_ROOT}/src/a2b/manifest/"*.info; do
+    [[ -e "${_mff}" ]] || continue
+    _uri="$(_manifest_val "${_mff}" URI)"
+    _marker_has "${_uri}.dbloaded.pid" || continue
+    _dbn="$(_sane_ident "$(_manifest_val "${_mff}" DBN)")"
+    [[ -n "${_dbn}" ]] || continue
+    mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_dbn}\`" \
+      && _info "site ${_uri}: db ${_dbn} dropped"
+    rm -f "$(_marker "${_uri}.dbloaded.pid")" "$(_marker "${_uri}.imported.pid")"
+  done
 }
 
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
@@ -1058,16 +1137,23 @@ _import_db_route() {
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _info "[DRY] db-import plan for ${_ACCOUNT} (hostmaster db ${_hdb}, source ${_SRC_FQDN}):"
+    _info "[DRY]  0 hold run-${_ACCOUNT} dispatcher + drain (runner ignores proxied.pid)"
     _info "[DRY]  1 snapshot db+enabled-set  2 sql-drop  3 sandbox-strip import"
     _info "[DRY]  4 queue hygiene+neuter     5 {system} scrub  5b publish_path remap"
     _info "[DRY]  6 enable-list from snapshot  7 updatedb  8 features revert"
+    _info "[DRY]  8b per-site cron intervals (vanilla rode no hosting_cron table)"
     _info "[DRY]  9 LE service-row re-attach  10 welcome-node: ${_WELCOME_NODE}"
-    _info "[DRY] 11 renameaegirhost --force-old ${_SRC_FQDN}  12 verification stop"
+    _info "[DRY] 10b per-site content-DB land  11 renameaegirhost --force-old ${_SRC_FQDN}"
+    _info "[DRY] 12 verification stop, then dispatcher restore"
     return 0
   fi
 
   _t_freeze_on
   trap '_t_freeze_off' EXIT
+  # 0. the account dispatcher MUST be off for the whole surgery window;
+  # a failure below leaves it off deliberately (a broken hostmaster must
+  # not dispatch) - success and --revert-db-import restore it
+  _t_dispatch_off
 
   # 1. snapshot (revert + reconcile artifacts)
   _step="${_STATE_DIR}/markers/dbimport"
@@ -1174,6 +1260,17 @@ _import_db_route() {
     _info "steps 7-8: updatedb + features revert done"
   fi
 
+  # 8b. per-site cron intervals: vanilla hosting_cron is schema-less, so
+  # the imported nodes carry NO cron_interval rows - the table created by
+  # step 6 is empty and every site would silently lose Drupal cron (the
+  # source dispatch never resumes). Default the whole enabled estate to
+  # hourly, vanilla's own cadence.
+  if [[ ! -e "${_step}.8b.done" ]]; then
+    _tsql "INSERT INTO hosting_cron (nid, cron_interval) SELECT s.nid, 3600 FROM hosting_site s WHERE s.status = 1 AND s.nid NOT IN (SELECT nid FROM hosting_cron)"
+    touch "${_step}.8b.done"
+    _info "step 8b: cron_interval=3600 seeded for enabled sites without a row"
+  fi
+
   # 9. LE service-row re-attach (snapshot-diff driven, GUI-equivalent)
   if [[ ! -e "${_step}.9.done" ]]; then
     local _svc _typ _php=/tmp/.a2b_svc_attach.php
@@ -1253,7 +1350,8 @@ PHPEOF
   local _boot
   _boot="$(_as_octo "drush8 @hostmaster status --fields=bootstrap 2>/dev/null" | grep -c Successful)"
   _info "step 12: hostmaster bootstrap: $([ "${_boot}" -ge 1 ] && echo OK || echo NOT-OK)"
-  [[ "${_boot}" -ge 1 ]] || _die "post-import hostmaster does not bootstrap - investigate before proxy"
+  [[ "${_boot}" -ge 1 ]] || _die "post-import hostmaster does not bootstrap - investigate before proxy (dispatcher stays held; restore via --revert-db-import or manually)"
+  _t_dispatch_on
   _t_freeze_off
   trap - EXIT
   _marker_set "import.db-import.done"
@@ -1347,7 +1445,12 @@ PHPEOF
     _t_wait_task "${_itnid}" "import ${_uri}" \
       || { _alrt "site ${_uri}: import task failed"; _fails=$(( _fails + 1 )); continue; }
 
-    # 4. per-site PHP pool mapping (D6 -> 5.6, D7 -> 7.4 when present)
+    # 4. per-site PHP pool mapping (D6 -> 5.6, D7 -> 7.4 when present).
+    # multi-fpm only takes effect when the FPM agent's NEXT pass spawns the
+    # per-version pool + socket and writes the vhost include - so a wanted
+    # version is WAITED for (socket presence), not assumed. Until the
+    # socket exists the site would serve under the account default PHP:
+    # fatal for D6 on 8.x, so D6 without the socket is a per-site FAIL.
     local _want=""
     case "${_dmaj}" in
       6) _want="5.6" ;;
@@ -1359,7 +1462,20 @@ PHPEOF
       if ! grep -q "^${_uri} " "${_ctl}" 2>/dev/null; then
         echo "${_uri} ${_want}" >> "${_ctl}"
         chown "${_ACCOUNT}:users" "${_ctl}" 2>/dev/null
-        _info "site ${_uri}: multi-fpm.info -> ${_want} (applied by the FPM agent on its next pass)"
+        _info "site ${_uri}: multi-fpm.info -> ${_want}"
+      fi
+      local _sock="/var/run/${_ACCOUNT}.${_want//./}.fpm.socket" _sw=0
+      while [[ ! -S "${_sock}" && "${_sw}" -lt 420 ]]; do
+        sleep 15; _sw=$(( _sw + 15 ))
+      done
+      if [[ ! -S "${_sock}" ]]; then
+        if [[ "${_dmaj}" = "6" ]]; then
+          _alrt "site ${_uri}: PHP ${_want} socket ${_sock} never appeared - D6 cannot serve on the account default; per-site FAIL"
+          _fails=$(( _fails + 1 )); continue
+        fi
+        _alrt "site ${_uri}: PHP ${_want} socket not up yet - serving under the account default until the FPM agent's next pass"
+      else
+        _info "site ${_uri}: PHP ${_want} pool socket up"
       fi
     fi
 
@@ -1389,25 +1505,42 @@ verb_import() {
   _require_target_box
   local _scope="${_SITE:-all}" _troute
   _troute="$(cat "${_ACCT_ROOT}/src/a2b/route.txt" 2>/dev/null | tr -d '\n')"
-  [[ -n "${_ROUTE}" ]] || _die "import needs --route per-site|db-import"
-  [[ -z "${_troute}" || "${_troute}" = "${_ROUTE}" ]] \
-    || _die "transferred route marker says '${_troute}' but --route says '${_ROUTE}' - refusing"
+  if [[ "${_REVERT_DB_IMPORT}" != "YES" && "${_RESET_SITES}" != "YES" ]]; then
+    [[ -n "${_ROUTE}" ]] || _die "import needs --route per-site|db-import"
+    [[ -z "${_troute}" || "${_troute}" = "${_ROUTE}" ]] \
+      || _die "transferred route marker says '${_troute}' but --route says '${_ROUTE}' - refusing"
+  fi
 
   if [[ "${_REVERT_DB_IMPORT}" = "YES" ]]; then
     [[ -s "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]] || _die "no pre-import snapshot to revert to"
     if [[ "${_LIVE}" != "YES" ]]; then
       _DRY_FAIL=0
-      _info "[DRY] would drop + restore hostmaster db from undo/a2b-pre-import.sql"
+      _info "[DRY] would drop + restore hostmaster db from undo/a2b-pre-import.sql,"
+      _info "[DRY] drop the a2b-loaded site DBs, clear target markers, restore the dispatcher"
       _dry_finish "revert-db"
     fi
     _gate_consume "revert-db"
-    _t_freeze_on; trap '_t_freeze_off' EXIT; _t_owl_drain
+    _t_freeze_on; trap '_t_freeze_off' EXIT; _t_owl_drain; _t_dispatch_off
     _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1
     mysql --defaults-file=/root/.my.cnf "$(_t_hm_db)" < "${_ACCT_ROOT}/undo/a2b-pre-import.sql" \
       || _die "restore failed - hostmaster db is EMPTY, re-import undo/a2b-pre-import.sql manually"
+    _t_reset_site_dbs
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
+    _t_dispatch_on
     _t_freeze_off; trap - EXIT
-    _msg "db-import reverted - target hostmaster restored to its pre-import state"
+    _msg "db-import reverted - hostmaster restored, a2b site DBs dropped; a retry needs fresh export+transfer (stale dumps must never cut over)"
+    exit 0
+  fi
+
+  if [[ "${_RESET_SITES}" = "YES" ]]; then
+    if [[ "${_LIVE}" != "YES" ]]; then
+      _DRY_FAIL=0
+      _info "[DRY] would drop every a2b-loaded site DB (dbloaded markers) + clear dbloaded/imported markers"
+      _dry_finish "reset-sites"
+    fi
+    _gate_consume "reset-sites"
+    _t_reset_site_dbs
+    _msg "site DBs reset - a retry needs fresh export+transfer on the source (revert there clears its markers)"
     exit 0
   fi
 
@@ -1645,8 +1778,13 @@ _revert_one() {   # 1 uri
     _alrt "site ${_uri}: revert failed nginx -t - INSPECT ${_vh} NOW"
     return 1
   fi
-  rm -f "$(_marker "${_uri}.paused.pid")" "$(_marker "${_uri}.proxied.pid")"
+  # the moment the site serves locally again, its dump is stale by
+  # definition: clear the export/transfer markers so a retry MUST re-dump
+  # (M1 - stale re-cutover), and remind about the target-side teardown
+  rm -f "$(_marker "${_uri}.paused.pid")" "$(_marker "${_uri}.proxied.pid")" \
+        "$(_marker "${_uri}.exported.pid")" "$(_marker "${_uri}.transferred.pid")"
   _alrt "site ${_uri}: reverted to LOCAL serving - any data written on the target since export is NOT in this copy"
+  _alrt "site ${_uri}: before any retry, reset the target (import --reset-sites / --revert-db-import) - its loaded DB is now stale"
   return 0
 }
 
@@ -1737,6 +1875,7 @@ while [[ $# -gt 0 ]]; do
     --install-cron)      _INSTALL_CRON=YES ;;
     --welcome-node)      _WELCOME_NODE=YES ;;
     --revert-db-import)  _REVERT_DB_IMPORT=YES ;;
+    --reset-sites)       _RESET_SITES=YES ;;
     --from-state)        _FROM_STATE=YES ;;
     --live)     _LIVE=YES ;;
     --aegir-root) _AEGIR_ROOT="$2"; shift ;;
