@@ -125,11 +125,31 @@ preflight() {
   [[ -z "${_FQDN}" ]] && _die "cannot determine FQDN; pass --fqdn <name>"
   case "${_FQDN}" in *.*) : ;; *) _die "FQDN '${_FQDN}' is not fully qualified (need host.domain.tld)" ;; esac
 
-  # FQDN must resolve to an IP (loopback is fine for a single box) - Aegir
-  # uses it for DB GRANTs and @hostmaster. Add a hosts entry if missing.
-  if ! getent hosts "${_FQDN}" >/dev/null 2>&1; then
-    _info "adding ${_FQDN} to /etc/hosts (127.0.1.1)"
-    printf '127.0.1.1\t%s %s\n' "${_FQDN}" "${_FQDN%%.*}" >> /etc/hosts
+  # provision_is_local_host() must classify ${_FQDN} as THIS box, or every
+  # provision task treats server_master as remote and rsyncs to itself over
+  # ssh (fails: the aegir user has no ssh trust to itself). A DNS-resolvable
+  # FQDN (cloud box) is NOT enough - force the 127.0.1.1 route, which also
+  # makes hostname -f return the FQDN. Aegir uses it for DB GRANTs too.
+  local _addr _short _tpl
+  _addr="$(getent hosts "${_FQDN}" 2>/dev/null | awk '{print $1; exit}')"
+  _short="$(uname -n 2>/dev/null)"
+  if [[ "${_addr}" != "127.0.0.1" && "${_addr}" != "127.0.1.1" \
+    && "${_short}" != "${_FQDN}" ]]; then
+    _info "mapping ${_FQDN} to 127.0.1.1 in /etc/hosts (provision local-host detection)"
+    sed -i '/^127\.0\.1\.1[[:space:]]/d' /etc/hosts
+    if [[ -n "${_short}" ]]; then
+      printf '127.0.1.1\t%s %s\n' "${_FQDN}" "${_short}" >> /etc/hosts
+    else
+      printf '127.0.1.1\t%s\n' "${_FQDN}" >> /etc/hosts
+    fi
+    # cloud-init regenerates /etc/hosts on every boot when manage_etc_hosts
+    # is on; the rendered file's own header names the template as the
+    # persistence path - append the mapping there so a reboot mid-testing
+    # cannot silently flip the box back to "remote"
+    _tpl=/etc/cloud/templates/hosts.debian.tmpl
+    if [[ -f "${_tpl}" ]] && ! grep -qsF "${_FQDN}" "${_tpl}"; then
+      printf '127.0.1.1\t%s %s\n' "${_FQDN}" "${_short}" >> "${_tpl}"
+    fi
   fi
 
   [[ -z "${_EMAIL}" ]] && _EMAIL="admin@${_FQDN}"
@@ -148,7 +168,9 @@ install_base() {
 
   apt-get update >>"${_LOG}" 2>&1 || _die "apt-get update failed"
 
-  local _pkgs="mariadb-server php php-cli php-gd php-mysql php-mbstring php-curl php-xml php-pear postfix sudo rsync git unzip curl ca-certificates"
+  # composer: hosting 3.x platform verify shells out to it (D8+ composer
+  # platform support); without it every platform verify logs an error
+  local _pkgs="mariadb-server php php-cli php-gd php-mysql php-mbstring php-curl php-xml php-pear postfix sudo rsync git unzip curl ca-certificates composer"
   if [[ "${_HTTP_TYPE}" = "nginx" ]]; then
     _pkgs="nginx php-fpm ${_pkgs}"
   else
@@ -175,17 +197,30 @@ check_php() {
     *)   _alrt "could not parse PHP version; proceeding" ;;
   esac
 
-  # CLI memory: site installs OOM at the default (complex profiles need ~192M).
+  # CLI memory: the hostmaster profile install OOMs at bullseye's default
+  # 192M (proven on 7.x-3.190: a further 128M single allocation inside the
+  # drush phar during provision-install). 512M gives it comfortable room.
   local _ini
   _ini="$(php -r 'echo php_ini_loaded_file();' 2>/dev/null)"
   # target the CLI ini specifically
   for _ini in $(find /etc/php -type f -name php.ini -path '*cli*' 2>/dev/null) "${_ini}"; do
     [[ -f "${_ini}" ]] || continue
     if grep -qE '^[[:space:]]*memory_limit' "${_ini}"; then
-      sed -i 's/^[[:space:]]*memory_limit[[:space:]]*=.*/memory_limit = 192M/' "${_ini}"
+      sed -i 's/^[[:space:]]*memory_limit[[:space:]]*=.*/memory_limit = 512M/' "${_ini}"
     fi
   done
-  _info "PHP CLI memory_limit set to 192M"
+  _info "PHP CLI memory_limit set to 512M"
+
+  # web SAPI (apache2/fpm) ships 128M on bullseye - too tight for the D7
+  # hostmaster frontend (views/ctools); raise it so testing doesn't WSOD.
+  # Picked up by the webserver reload/restart in wire_webserver.
+  while IFS= read -r _ini; do
+    [[ -f "${_ini}" ]] || continue
+    if grep -qE '^[[:space:]]*memory_limit' "${_ini}"; then
+      sed -i 's/^[[:space:]]*memory_limit[[:space:]]*=.*/memory_limit = 256M/' "${_ini}"
+    fi
+  done < <(find /etc/php -type f -name php.ini ! -path '*cli*' 2>/dev/null)
+  _info "PHP web memory_limit set to 256M"
 }
 
 ###-------------AEGIR USER-------------###
@@ -319,6 +354,14 @@ build_platform() {
     rm -rf "${_plat}"
   fi
 
+  # A core tree without the hostmaster profile is a failed/older build, not
+  # a reusable platform - rebuild it rather than short-circuit on index.php
+  # (the site-installed case already returned above).
+  if [[ -d "${_plat}" && ! -e "${_plat}/profiles/hostmaster/hostmaster.profile" ]]; then
+    _alrt "existing platform lacks the hostmaster profile - rebuilding ${_plat}"
+    rm -rf "${_plat}"
+  fi
+
   if [[ ! -e "${_plat}/index.php" ]]; then
     _msg "Building the hostmaster platform (Drupal 7 + hosting modules)"
     local _mk="${_AEGIR_ROOT}/.aegir-build/hostmaster"
@@ -331,12 +374,24 @@ build_platform() {
       [[ -f "${_f}" ]] && _fix_make_urls "${_f}"
     done
 
-    # build-hostmaster.make is self-contained: Drupal 7 core + includes
-    # drupal-org.make (eldir + hosting + golden modules + contrib).
-    _as_aegir "drush make -y --working-copy ${_mk}/build-hostmaster.make ${_plat}" 2>&1 | tee -a "${_LOG}"
+    # build-hostmaster.make is core + includes[]=drupal-org.make ONLY - it
+    # declares no projects[hostmaster] profile entry, so a plain run scatters
+    # the modules into sites/all and never places the profile itself. Aim
+    # contrib at the profile dir (canonical packaged-profile layout) and copy
+    # the clone in as the profile. Letting drush make re-fetch the profile is
+    # NOT an option: it would process the profile's pristine drupal-org.make,
+    # whose git projects default to the dead git.drupal.org.
+    _as_aegir "drush make -y --working-copy --contrib-destination=profiles/hostmaster ${_mk}/build-hostmaster.make ${_plat}" 2>&1 | tee -a "${_LOG}"
     [[ -e "${_plat}/index.php" ]] \
       || _die "platform build failed (no ${_plat}/index.php) - see ${_LOG}. Likely a drupal.org/git.drupalcode.org fetch problem for a post-D7-EOL project."
+    _as_aegir "mkdir -p ${_plat}/profiles/hostmaster && cp -a ${_mk}/. ${_plat}/profiles/hostmaster/" >>"${_LOG}" 2>&1 \
+      || _die "failed to copy the hostmaster profile into ${_plat}/profiles/hostmaster"
   fi
+
+  [[ -e "${_plat}/profiles/hostmaster/hostmaster.profile" ]] \
+    || _die "platform has no hostmaster profile (${_plat}/profiles/hostmaster) - see ${_LOG}"
+  [[ -d "${_plat}/profiles/hostmaster/modules/aegir/hosting" ]] \
+    || _die "hosting modules missing under profiles/hostmaster/modules/aegir - see ${_LOG}"
 }
 
 ###-------------HOSTMASTER INSTALL-----###
@@ -392,15 +447,51 @@ wire_webserver() {
 install_queue() {
   local _plat="${_AEGIR_ROOT}/hostmaster-${_BRANCH}"
   local _init="${_plat}/profiles/hostmaster/modules/aegir/hosting/queued/init.d.example"
-  if [[ -e "${_init}" ]]; then
-    _msg "Installing the hosting queue daemon"
+
+  _msg "Installing the hosting queue daemon"
+  # hosting_queued's enable-hook sets hosting_queue_tasks_enabled=FALSE:
+  # enabling the module hands the tasks queue to the daemon AND stops cron
+  # dispatch of tasks. Module and daemon supervision must therefore switch
+  # together - a dead daemon with the module enabled means no task runs at
+  # all. If the module cannot be enabled, stay on vanilla cron dispatch.
+  if ! _as_aegir "drush @hostmaster en -y hosting_queued" >>"${_LOG}" 2>&1; then
+    _alrt "could not enable hosting_queued; tasks stay on cron dispatch"
+    return 0
+  fi
+
+  if [[ -d /run/systemd/system ]]; then
+    # the LSB init.d example does not survive systemd's generator (unit goes
+    # active-exited and the forked daemon is reaped) - ship a native unit
+    cat > /etc/systemd/system/hosting-queued.service <<EOF
+[Unit]
+Description=Aegir hosting queue daemon
+After=network.target mariadb.service mysql.service
+
+[Service]
+Type=simple
+User=${_AEGIR_USER}
+Environment=HOME=${_AEGIR_ROOT}
+WorkingDirectory=${_AEGIR_ROOT}
+ExecStart=/usr/local/bin/drush @hostmaster hosting-queued
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload >>"${_LOG}" 2>&1
+    systemctl enable --now hosting-queued >>"${_LOG}" 2>&1 \
+      || _alrt "hosting-queued unit did not start (systemctl status hosting-queued)"
+  elif [[ -e "${_init}" ]]; then
+    # sysvinit (Devuan-family): the LSB script works as intended there
     cp -f "${_init}" /etc/init.d/hosting-queued
     chmod +x /etc/init.d/hosting-queued
     update-rc.d hosting-queued defaults >>"${_LOG}" 2>&1 || true
     service hosting-queued restart >>"${_LOG}" 2>&1 || service hosting-queued start >>"${_LOG}" 2>&1 || \
       _alrt "hosting-queued did not start (start it manually: service hosting-queued start)"
   else
-    _alrt "queue init script not found at ${_init}; frontend tasks will need a cron dispatch"
+    _alrt "queue init script not found at ${_init}; re-enable cron dispatch:"
+    _alrt "  drush @hostmaster dis -y hosting_queued"
   fi
 }
 
