@@ -102,6 +102,7 @@ Contrib [F]orce[E]nabled
 
 Core [F]orce[D]isabled:
 
+ automated_cron ------------- [D8-D11] ---------- [FD]
  cookie_cache_bypass -------- [D6] -------------- [FD]
  dblog ---------------------- [D6,D7] ----------- [FD]
  syslog --------------------- [D6,D7] ----------- [FD]

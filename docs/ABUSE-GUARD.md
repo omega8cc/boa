@@ -27,7 +27,7 @@ general security model in [SECURITY.md](SECURITY.md), and the tag/auto-update me
 nginx access.log
    │  (nginx_guard.sh tick — scan_nginx reads new lines since the last byte offset)
    ▼
-scan_nginx.sh ── scores each real client IP across 3 detectors ──┐
+scan_nginx.sh ── scores each real client IP across 5 detectors ──┐
    │  writes offenders                                            │
    ▼                                                              │
 web.log  +  scan_nginx.archive.log                                │
@@ -64,10 +64,11 @@ manual cleanup.
 |---|---|---|
 | Real-time guards | `server.tpl.php` (maps) + `Inc/vhost_include.tpl.php` (rules) | Classify and drop/downgrade each request |
 | Log scorer | `aegir/tools/system/monitor/check/scan_nginx.sh` | Score IPs from `access.log`, write `web.log` |
-| Scorer launcher | `aegir/tools/system/monitor/check/nginx_guard.sh` | Run scan_nginx 10× per minute (5 s apart) |
+| Scorer launcher | `aegir/tools/system/monitor/check/nginx_guard.sh` | Run scan_nginx 10× per minute (5 s apart); one bounded pass under a load-pause |
 | Temp-ban applier | `aegir/tools/system/guest-fire.sh` | `web.log` → `csf -td 900` (80/443) |
 | Persistent escalator | `aegir/tools/system/guest-water.sh` | Archive repeat offenders → `csf.deny` |
-| Geo regenerator | `aegir/tools/system/nginx_deny.sh` | CSF state → `nginx_banned_ips.conf` → reload |
+| Geo regenerator (IPv4) | `aegir/tools/system/nginx_deny.sh` | CSF state → `nginx_banned_ips.conf` → reload |
+| Geo regenerator (IPv6) | `aegir/tools/system/nginx_deny6.sh` | nginx-native IPv6 store → `nginx_banned_ips.conf6` → reload |
 
 The nginx-template files live in the `provision` codebase under
 `http/Provision/Config/Nginx/`; the scripts live in `boa-private`. On a box, the scripts
@@ -76,14 +77,15 @@ are deployed under `/var/xdrago/`.
 ## Part 1 — the scan_nginx scoring engine
 
 `scan_nginx.sh` is the detection half. On each tick it reads a window of recent
-`access.log` lines, scores every real client IP across three independent detectors, and
-writes offenders to `/var/xdrago/monitor/log/web.log` — the entry point of the ban
-pipeline. It never sits in the request path and cannot block a request in flight.
+`access.log` lines, scores every real client IP across five independent ban-issuing
+detectors (plus two Tier-B alert-only paths), and writes offenders to
+`/var/xdrago/monitor/log/web.log` — the entry point of the ban pipeline. It never sits in
+the request path and cannot block a request in flight.
 
 ### Run model
 
 ```
-nginx_guard.sh tick (10 passes/min, 5 s apart)
+nginx_guard.sh tick (normal: 10 passes/min, 5 s apart; under a load-pause: 1 bounded pass)
    ↓
 re-entrancy guard (shared lock.inc; legacy pgrep fallback exits if >2 instances)
    ↓
@@ -91,12 +93,22 @@ load config: built-in defaults, then source /root/.barracuda.cnf (replaces any v
    ↓
 read access.log from the last byte offset (incremental)
    ↓
-for each line:  resolve real IP → exemption gate → 3 detectors
+for each line:  resolve real IP → exemption gate → per-line tallies (all detectors)
    ↓
-_handle_blocking / _handle_ddos_blocking / _handle_path_flood_blocking
+after the loop:  _handle_blocking → _handle_ddos_blocking → _handle_ua_burst_blocking →
+   _handle_path_flood_blocking → _handle_http10_auth_flood → _handle_i18n_flood →
+   _check_fpm_saturation
    ↓
 write offenders to web.log + scan_nginx.archive.log
 ```
+
+- **Load-pause path.** `nginx_guard.sh` branches on the watchdog load pidfiles: on the
+  normal path (neither `/run/max_load.pid` nor `/run/critical_load.pid` present) it runs the
+  10-pass fan-out above; when either pidfile exists it runs **one** bounded `scan_nginx` pass
+  instead — no fan-out, no sleep loop — so the worst aggressors are still CSF-banned while
+  the watchdog has nginx stopped to shed load. `_block_ip` bans via csf/iptables and appends
+  to `web.log` without reloading nginx, so the pass can't lift the pause or add the normal
+  path's load; `minute.sh` re-invokes the guard each paused minute for one more ban pass.
 
 - **Window.** Each run reads new bytes since the last position recorded in
   `/var/log/scan_nginx_lastpos`. On a first run, or if the log was rotated/truncated
@@ -115,9 +127,15 @@ CF-Connecting-IP on Cloudflare vhosts, or the direct peer otherwise). The earlie
 X-Forwarded-For entries are client-supplied and spoofable, so they are **never** scored
 or banned.
 
-- The real client must be a valid, public **IPv4** address. This script bans via CSF
-  (IPv4 here), so an IPv6 last token is left unhandled rather than mis-attributed.
-- Private ranges (`10.`, `127.`, `169.254.`, `192.168.`, `172.16–31.`) are skipped.
+- The real client may be a valid, public **IPv4 or IPv6** address. An IPv4 last token is
+  scored and banned via CSF as before. An IPv6 last token — which can only be a
+  realip-recovered client from a trusted proxy, since BOA disables IPv6 server-side and
+  pins realip to the Cloudflare ranges (no direct v6 peer, no spoofable chain entry can
+  appear here) — is scored by the **same** family-agnostic detectors and banned via the
+  nginx-native IPv6 path (below), because CSF is IPv4-only. Opt out per box with
+  `_NGINX_V6_BAN_DETECT=NO` to restore the earlier IPv4-only behaviour.
+- Private ranges are skipped for both families (`10.`/`127.`/`169.254.`/`192.168.`/
+  `172.16–31.` and `::1`/`::`/`fe80::/10`/`fc00::/7`).
 - The forwarded-for proxy array is deliberately left empty — upstream proxies are never
   ban candidates.
 
@@ -134,7 +152,7 @@ or banned.
 Immediately after the IP is resolved, and **before any detector runs**, each line is
 tested against `_NGINX_DOS_IGNORE_PATHS`, a space-separated list of URI prefixes that must
 never be scored. Because the test runs at loop scope (a `continue`), an exempt line is
-skipped by **all three** detectors at once.
+skipped by **every** detector at once.
 
 This exists because machine/API endpoints authenticate per request at the application
 layer (HMAC, OAuth tokens), not by IP — so IP-counting them is always wrong. A webhook
@@ -338,6 +356,44 @@ box still fronted by a non-BOA proxy or CDN that talks HTTP/1.0 to origin, or no
 to the HTTP/1.1 proxy confs (see **Part 5**). A malformed `_NGINX_HTTP10_AUTH_PATHS` override
 fails closed — the detector counts nothing rather than mis-banning.
 
+### Detector 5 — distributed scanner-fleet (UA-burst)
+
+A distributed scanner fleet spreads a probe sweep across many IPs at a few requests each,
+sharing one exact User-Agent, and hits mostly nonexistent paths — so its traffic is
+overwhelmingly `3xx`/`4xx`. That defeats Detectors 1–4 at once: no single IP reaches the
+per-IP floor, the shared-UA DDoS aggregate needs ~100 IPs, the path-flood watch list is
+Solr/search-only, and the fleet is HTTP/1.1 to non-auth paths. `_track_ua_burst` builds, per
+exact UA, the distinct-IP set, the total request count, and a **bad-status** count — and it
+is fed **every** line **including `301` redirects** (the redirect-heavy probe traffic the
+`301`-excluding scorers miss). "Bad" is the status set a real browsing session does not
+accumulate:
+
+```
+301  302  307  308  400  403  404  410
+```
+
+`444` is excluded (already blocked, would double-count), as are `401` (auth challenge),
+`2xx`/`304` (success/cache) and `5xx` (server fault). After the loop,
+`_handle_ua_burst_blocking` declares a UA a hostile fleet only when **all three** hold:
+
+| Threshold | Default | Meaning |
+|---|---|---|
+| `_NGINX_UA_BURST_IP_MIN` | 12 | distinct IPs sharing the exact UA in the window |
+| `_NGINX_UA_BURST_REQ_MIN` | 60 | total requests under that UA (all its IPs) |
+| `_NGINX_UA_BURST_BAD_PCT` | 80 | minimum % of that UA's requests that are bad-status |
+
+The bad-status ratio is the false-positive keystone: a real popular-browser UA shared by
+many legitimate IPs is ~all `200`/`304`, so it never crosses the 80 % gate — which is why the
+IP threshold can sit far below Detector 2's without re-introducing the am095/kwestiasmaku
+over-ban. When a fleet is declared, only IPs that **themselves** sent at least
+`_NGINX_UA_BURST_IP_MIN_BAD` (default **3**) bad probes under that UA are blocked; a real
+visitor sharing the UA sent `200`s (zero bad) and is never caught. UAs of 10 characters or
+fewer are ignored. The ban reuses the same whitelist / logged-in / local-IP / already-banned
+guards and feeds the same `guest-fire` → `guest-water` pipeline as every other detector. The
+detector is **on by default**, opt-out per box (`_NGINX_UA_BURST_DETECT=NO`); the per-line
+tally is skipped entirely when off. Tune it **tighter, never looser**, and only on a
+confirmed real report.
+
 ### Distributed-i18n-flood detection and the FPM saturation trigger
 
 Detectors 1–3 score and ban individual IPs. A distributed flood of **localized**
@@ -413,16 +469,21 @@ rather than exempting a path.
 
 ### Output
 
-When a detector decides to block, `_block_ip`:
+When a detector decides to block, `_block_ip` branches on the address family:
 
-1. appends `IP # [xSCORE] TIMESTAMP` to `/var/xdrago/monitor/log/web.log` and to
-   `/var/xdrago/monitor/log/scan_nginx.archive.log` (skipping IPs already in the in-run
-   cache);
-2. if `/etc/boa/.instant.csf.block.cnf` exists, also issues `csf -td 900` on ports 80 and
-   443 immediately, shaving one hop off the pipeline.
+- **IPv4:**
+  1. appends `IP # [xSCORE] TIMESTAMP` to `/var/xdrago/monitor/log/web.log` and to
+     `/var/xdrago/monitor/log/scan_nginx.archive.log` (skipping IPs already in the in-run
+     cache);
+  2. if `/etc/boa/.instant.csf.block.cnf` exists, also issues `csf -td 900` on ports 80 and
+     443 immediately, shaving one hop off the pipeline.
+- **IPv6:** CSF is IPv4-only and `web.log`'s loader strips non-`[0-9.]` (which would mangle a
+  v6), so the offender is appended to the nginx-native store
+  `/var/xdrago/monitor/log/web6.tempban` as `IP|EXPIRY-EPOCH` (plus the same archive line for
+  forensics). No CSF call. `nginx_deny6.sh` mirrors it into the geo set (Stage 3b).
 
-`web.log` feeds the temporary-ban applier; `scan_nginx.archive.log` feeds the persistent
-escalator.
+`web.log` feeds the IPv4 temporary-ban applier; `web6.tempban` feeds `nginx_deny6.sh`;
+`scan_nginx.archive.log` feeds the persistent escalator (IPv4 only).
 
 ## Part 2 — the ban pipeline
 
@@ -553,7 +614,22 @@ _ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
 
 A loose pattern would let a malformed token (`999.1.1.1`, `/99`, IPv6, junk) reach the geo
 map and fail the nginx configtest **for the whole box**. Only IPv4/CIDR tokens become
-`IP 1;` lines.
+`IP 1;` lines here — `nginx_deny.sh` stays IPv4-only, because its **source** is CSF (which
+is IPv4-only) and the IPv6 offenders travel a separate path.
+
+### Stage 3b — IPv6 geo regeneration (`nginx_deny6.sh`)
+
+CSF cannot hold an IPv6 ban, so an IPv6 offender never reaches `nginx_deny.sh`. Instead,
+`scan_nginx`'s `_block_ip` writes an IPv6 offender to an **nginx-native store**
+(`/var/xdrago/monitor/log/web6.tempban`, lines `<ip6>|<expiry-epoch>`), and `nginx_deny6.sh`
+(`*/2` cron, same shared lock) prunes the expired entries, collapses the refreshed
+duplicates to the max expiry, validates each as a strict IPv6 address, and emits the
+survivors as `<ip6> 1;` into `/data/conf/nginx_banned_ips.conf6`. That file is picked up by
+the **same** `geo $remote_addr $is_banned` set — its wildcard `nginx_banned_ips.c*` include
+already covers it — so an IPv6 attacker is dropped with the same `444`, at nginx, exactly
+like the IPv4 case. The store is self-expiring (default 900s, `_NGINX_V6_BAN_TTL`), the
+nginx equivalent of CSF's 15-minute web temp ban; a re-offence refreshes it. The whole IPv6
+arm is gated by `_NGINX_V6_BAN_DETECT` (default `YES`).
 
 The rebuild only disturbs nginx when something actually changed:
 
@@ -891,6 +967,14 @@ edge-policy layer:
 - **Secret-path deny** — `map $uri $is_secret_path` 444's probes for `.env` / `.git` /
   `.aws` / `.ssh`, `secrets.json`, `config.json`, `application.yml`, `settings.py` and
   similar, on **any** UA.
+- **Foreign-CMS admin-probe deny** — `map $uri $is_cms_probe` 444's WordPress / Joomla /
+  phpMyAdmin admin-path tokens that cannot exist on a Drupal/Backdrop/Hostmaster docroot:
+  `wp-(admin|login|content|includes|json|…)`, `administrator`, `phpmyadmin` — matched as
+  **whole path segments** on **any** UA (`if ($is_cms_probe) return 444;`). It drops the
+  probe before the extensionless variant would route to `@drupal → /index.php → php-fpm`, and
+  feeds the `scan_nginx` 444-weight. `adminer` is intentionally **not** matched (BOA ships
+  Adminer); generic auth words (`login`, `admin`, `user`, …) are deliberately left to the
+  scan_nginx UA-burst aggregate, not blocked at this shared edge.
 - **Cloudflare realip ranges** — the trusted-range include refreshed by
   `cloudflare_realip.sh` (see "Keying on the real client"). Per-site IP access control is in
   [IP-ACCESS.md](IP-ACCESS.md).
@@ -909,6 +993,7 @@ SA-CORE-2018-002 RCE    → 444
 $is_banned              → 444   ← ban-pipeline closing guard
 =PHP… version probe     → 404
 $is_secret_path         → 444   edge-policy
+$is_cms_probe           → 444   edge-policy
 $is_ai_forged           → 444   edge-policy
 AI training / evasive   → 444   edge-policy
 $is_crawler             → 444
@@ -994,6 +1079,19 @@ empty value disables injection-keyword scoring entirely.
 | `_NGINX_DDOS_UA_REQ_THRESHOLD` | `1000` | Total per-UA requests (across all IPs, ~5 s window) that flags a UA even when its IP count is low but volume is extreme. |
 | `_NGINX_DDOS_IP_MIN_REQS` | `20` | When a UA is flagged, only block contributing IPs that made at least this many requests with it. A legitimate search session reaches several requests under one UA, so a low value here is what false-positives real visitors. |
 
+### UA-burst — distributed scanner-fleet aggregate
+
+Govern Detector 5 (Part 1). All take the built-in default unless added to
+`/root/.barracuda.cnf`; none is seeded by `autoupboa`. Tune **tighter, never looser**.
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `_NGINX_UA_BURST_DETECT` | `YES` | Master switch. `NO` skips the per-line tally entirely (zero hot-loop cost). |
+| `_NGINX_UA_BURST_IP_MIN` | `12` | Distinct IPs sharing one exact UA in the window before the fleet can be declared. Sits far below the DDoS-UA threshold because the bad-status ratio gate below carries the false-positive protection. |
+| `_NGINX_UA_BURST_REQ_MIN` | `60` | Total requests under that UA (all its IPs) required to call it an attack. |
+| `_NGINX_UA_BURST_BAD_PCT` | `80` | Minimum % of that UA's requests that are bad-status (`3xx` redirect / `4xx`) before the fleet is declared hostile — the false-positive keystone. A real browser fleet is ~all `200`/`304` and stays far below it. |
+| `_NGINX_UA_BURST_IP_MIN_BAD` | `3` | On a declared fleet, block only IPs that themselves sent at least this many bad probes under that UA. A real visitor sharing the UA sent `200`s (zero bad) and is never blocked. |
+
 ### Path-flood — search-amplification aggregate
 
 | Variable | Default | What it controls |
@@ -1018,7 +1116,7 @@ replaces the list.
 These two knobs exempt at **different scopes**:
 
 - `_NGINX_DOS_IGNORE_PATHS` is tested at loop scope **before any detector runs**, so it
-  exempts the line from **all three** detectors.
+  exempts the line from **every** detector.
 - `_NGINX_DOS_IGNORE` is tested **inside** `_process_ip` and only suppresses the **per-IP**
   counter for that line — the shared-UA and path-flood aggregates still see it.
 
@@ -1161,7 +1259,10 @@ touching SSH/FTP bans:
    `guest-water` won't re-escalate them);
 4. resets `/var/log/scan_nginx_lastpos` to the **current** end of `access.log` so the next
    scan only sees new traffic instead of reprocessing the lines that caused the bans;
-5. regenerates the nginx geo-ban set via `nginx_deny.sh` so `$is_banned` clears at once.
+5. re-asserts the synproxy rules (`synproxy_reassert -p "443 80" --no-quic`) when
+   `/etc/csf/csfpost.d/synproxy.sh` is present — the bulk `csf -dr`/`csf -tr` above can flush
+   the synproxy chain, so this restores it (mirrors `scan_nginx` / `guest-water`);
+6. regenerates the nginx geo-ban set via `nginx_deny.sh` so `$is_banned` clears at once.
 
 ```bash
 clearwebbans --dry-run   # report counts + a sample, change nothing

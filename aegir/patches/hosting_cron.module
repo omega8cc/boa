@@ -98,7 +98,19 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
       foreach ($result as $row) {
         $this_platform_root = $row->publish_path;
       }
-      if (is_readable($this_platform_root . '/core') ||
+      if (is_readable($this_platform_root . '/core/misc/backdrop.js')) {
+        // Backdrop also has /core, but serves cron only via core/cron.php
+        // with the key in the query string; the D8+ /cron/<key> route
+        // below does not exist on Backdrop.
+        $url_own = 'https://' . $this_name . '/core/cron.php';
+        $url = 'https://127.0.0.1/core/cron.php';
+        // Optionally add the cron_key query string key if the site has one.
+        if (!empty($site->cron_key)) {
+          $url_own .= '?cron_key=' . rawurlencode($site->cron_key);
+          $url .= '?cron_key=' . rawurlencode($site->cron_key);
+        }
+      }
+      elseif (is_readable($this_platform_root . '/core') ||
           is_readable($this_platform_root . '/docroot/core') ||
           is_readable($this_platform_root . '/html/core') ||
           is_readable($this_platform_root . '/web/core')) {

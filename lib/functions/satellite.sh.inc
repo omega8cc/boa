@@ -737,6 +737,7 @@ _satellite_cnf() {
     echo "_AUTOPILOT=${_AUTOPILOT}"                             >> ${_octCnf}
     echo "_HM_ONLY=${_HM_ONLY}"                                 >> ${_octCnf}
     echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}"                   >> ${_octCnf}
+    echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"               >> ${_octCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
     echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
@@ -844,6 +845,12 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}" >> ${_octCnf}
+    fi
+    _BACKDROP_SUPPORT_TEST=$(grep _BACKDROP_SUPPORT ${_octCnf} 2>&1)
+    if [[ "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_octCnf}
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
@@ -4124,6 +4131,28 @@ _satellite_prepare_setup_email_tpl() {
   fi
 }
 
+###---### Set the client control-panel login (reuse the SSH/FTP identity).
+#
+_satellite_set_client_login() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_set_client_login"
+    _debug_proc
+  fi
+  if [ "${_STATUS}" != "INIT" ]; then
+    return 0
+  fi
+  if [ -z "${_CLIENT_EMAIL}" ] || [ -z "${_PASWD}" ]; then
+    return 0
+  fi
+  # hosting_client gives the auto-created control-panel account an unusable
+  # random password, so first login is impossible without a one-time link.
+  # Reuse the shell identity instead: rename the account to ${_USER}.ftp and
+  # set its password to the shell password. Matched by _CLIENT_EMAIL; the
+  # uid>1 guard keeps the super-admin (uid 1) untouched. Runs as the octopus
+  # user via the same drush pattern used above; _PASWD exists by this point.
+  su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ev '\$u = user_load_by_mail(\"${_CLIENT_EMAIL}\"); if (\$u && \$u->uid > 1) { user_save(\$u, array(\"name\" => \"${_USER}.ftp\", \"pass\" => \"${_PASWD}\")); }'" &> /dev/null
+}
+
 ###---### Sending setup email.
 #
 _satellite_send_welcome_email() {
@@ -4285,6 +4314,27 @@ _satellite_make() {
   echo "export _DRUPAL11_3_P=\"${_DRUPAL11_3}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_3_S=\"${_DRUPAL11_3}-stage\""       >> ${_writeTo}
 
+  echo "export _DRUPAL11_4=\"${_DRUPAL11_4}\""               >> ${_writeTo}
+  echo "export _DRUPAL11_4_D=\"${_DRUPAL11_4}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL11_4_P=\"${_DRUPAL11_4}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
+
+  # Resolve the newest Backdrop version from the mirror stamp so platforms track
+  # the latest release without a hardcoded pin (fallback: _BACKDROP_V_FALLBACK).
+  _bdrVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/backdrop.txt" 2>/dev/null | tr -cd '0-9.')
+  [ -z "${_bdrVrn}" ] && _bdrVrn="${_BACKDROP_V_FALLBACK}"
+  echo "export _BACKDROP_V=\"${_bdrVrn}\""                   >> ${_writeTo}
+  echo "export _BACKDROP=\"backdrop-${_bdrVrn}\""            >> ${_writeTo}
+  echo "export _BACKDROP_D=\"backdrop-${_bdrVrn}-dev\""      >> ${_writeTo}
+  echo "export _BACKDROP_P=\"backdrop-${_bdrVrn}-prod\""     >> ${_writeTo}
+  echo "export _BACKDROP_S=\"backdrop-${_bdrVrn}-stage\""    >> ${_writeTo}
+  # The su'd child installers (AegirSetupC.sh.txt) source ONLY this env include,
+  # not the root .octopus.cnf where the operator sets _BACKDROP_SUPPORT, so the
+  # gate must be carried here too -- else the child BDR build arm
+  # ([ "${_BACKDROP_SUPPORT}" = "YES" ]) is permanently dead and Backdrop
+  # platforms never auto-build. Fail-closed: NO/empty keeps the gate shut.
+  echo "export _BACKDROP_SUPPORT=\"${_BACKDROP_SUPPORT}\""   >> ${_writeTo}
+
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
   echo "export _HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${_writeTo}
@@ -4320,6 +4370,7 @@ _satellite_make() {
   echo "export _SMALLCORE11_1_V=\"${_SMALLCORE11_1_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_2_V=\"${_SMALLCORE11_2_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_3_V=\"${_SMALLCORE11_3_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE11_4_V=\"${_SMALLCORE11_4_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
@@ -5663,6 +5714,58 @@ _satellite_child_b_drush_xts_install() {
   fi
   sed -i "s/files.boa.io/${_USE_MIR}/g" ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   wait
+  ###
+  ### Backdrop Drush extension: a global usr/ contrib command extension (inside
+  ### the backend commandfile-filter carve-out). Gated dark; the client symlink
+  ### machinery keys on this dir's existence.
+  ###
+  if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
+    cd ${_ROOT}/.drush/usr
+    rm -rf ${_ROOT}/.drush/usr/backdrop
+    rm -rf ${_ROOT}/.drush/usr/backdrop-drush-extension
+    _get_dev_ext "backdrop-drush-extension.tar.gz"
+    if [ -d "${_ROOT}/.drush/usr/backdrop-drush-extension" ]; then
+      mv -f ${_ROOT}/.drush/usr/backdrop-drush-extension \
+        ${_ROOT}/.drush/usr/backdrop
+    fi
+    ### De-hint the sole PHP 5.6 parse-fatal (scalar type hints on drush_chalk);
+    ### the extension is parsed on every backend drush call, so it must never
+    ### fatal on a legacy php56 box. Idempotent: only the still-hinted form matches.
+    if [ -e "${_ROOT}/.drush/usr/backdrop/includes/output.inc" ]; then
+      sed -i \
+        "s/function drush_chalk(string \$output, string \$color)/function drush_chalk(\$output, \$color)/" \
+        ${_ROOT}/.drush/usr/backdrop/includes/output.inc &> /dev/null
+    fi
+    ### Fix the relative require in BackdropBoot::get_version(): the bare
+    ### 'includes/output.inc' resolves against Drush core's include_path (whose
+    ### output.inc lacks drush_chalk), so the extension's own drush_chalk -- used
+    ### by backdrop-pm-enable/subtheme -- is never defined and those commands
+    ### fatal. Anchor it to the extension dir. Idempotent: only the bare form
+    ### matches. (VM-confirmed on ng019, 2026-07-11.)
+    if [ -e "${_ROOT}/.drush/usr/backdrop/BackdropBoot.php" ]; then
+      sed -i \
+        "s#require_once 'includes/output.inc';#require_once __DIR__ . '/includes/output.inc';#" \
+        ${_ROOT}/.drush/usr/backdrop/BackdropBoot.php &> /dev/null
+    fi
+    ### Stop the extension's command_alter from hijacking Aegir/Provision.
+    ### When BackdropBoot is the active bootstrap it replaces any command it
+    ### does not recognise with a "not supported by Backdrop" fallback -- which
+    ### swallows every provision-* / hosting-* command run against a Backdrop
+    ### platform, breaking the whole Provision backend. Provision drives
+    ### Backdrop here, so let its commands through untouched. Idempotent: the
+    ### guard is inserted once, before the first $backdrop_command assignment.
+    ### (VM-confirmed on ng019, 2026-07-11.)
+    if [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ] \
+      && ! grep -q "'provision') === 0" \
+        ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc; then
+      sed -i \
+        "/^  \$backdrop_command = NULL;/i\\
+  if (strpos(\$command['command'], 'provision') === 0 || strpos(\$command['command'], 'hosting') === 0) {\n    return;\n  }\n" \
+        ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc &> /dev/null
+    fi
+    cd ${_ROOT}/.drush
+    wait
+  fi
 }
 
 _satellite_child_b_drush_test() {
@@ -5681,6 +5784,19 @@ _satellite_child_b_drush_test() {
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
+  fi
+  ### Non-fatal Backdrop extension smoke check (gated); the extension is optional,
+  ### so a missing detection must not abort AegirSetupB.
+  if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
+    && [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ]; then
+    drush8 cc drush &> /dev/null
+    if ${_DRUSHCMD} help 2>/dev/null | grep -q "backdrop-site-install"; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "${_STATUS} B: Backdrop Drush extension test result OK"
+      fi
+    else
+      _msg "${_STATUS} B: NOTE: Backdrop Drush extension not detected by Drush"
+    fi
   fi
 }
 
@@ -6047,7 +6163,7 @@ _satellite_child_b_letsencrypt() {
         _msg "${_STATUS} B: Letsencrypt SSL mode: LIVE after auto-upgrade"
         echo ""
         _msg "${_STATUS} B: LE -- !!! ATTENTION"
-        _msg "${_STATUS} B: LE -- Never enable SSL for the Hostmaster site in Aegir"
+        _msg "${_STATUS} B: LE -- Never enable SSL for the Hostmaster site in Ægir"
         _msg "${_STATUS} B: LE -- The Hostmaster site SSL is auto-managed separately"
         _msg "${_STATUS} B: LE -- !!! ATTENTION"
         echo ""
@@ -6150,6 +6266,12 @@ _satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y &> /dev/null
+    ### Backdrop platform awareness in the hostmaster frontend; gated dark
+    ### behind _BACKDROP_SUPPORT (D-012). Enabling the module also enables
+    ### its 'backdropcms' hosting feature via hosting_modules_enabled().
+    if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster en hosting_backdrop -y &> /dev/null
+    fi
     ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay_paths -y &> /dev/null

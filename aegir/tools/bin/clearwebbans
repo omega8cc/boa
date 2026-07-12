@@ -13,7 +13,10 @@
 #                                the next scan does not reprocess old lines)
 #   - csf TEMP web bans          csf.tempban rows on port 80 / 443  -> csf -tr
 #   - csf PERMANENT web bans     csf.deny "Brute force Web Server"  -> csf -dr
-#   - nginx realip geo-ban set   regenerated via /var/xdrago/nginx_deny.sh
+#   - IPv6 web ban store         /var/xdrago/monitor/log/web6.tempban (nginx-native
+#                                bans; csf is IPv4-only) -> emptied
+#   - nginx realip geo-ban sets  regenerated via /var/xdrago/nginx_deny.sh (IPv4)
+#                                and /var/xdrago/nginx_deny6.sh (IPv6)
 #
 # SSH and FTP bans are deliberately NOT touched -- those are real brute-force.
 #
@@ -40,6 +43,8 @@ _TEMPBAN="/var/lib/csf/csf.tempban"
 _CSF_DENY="/etc/csf/csf.deny"
 _WEB_TAG="Brute force Web Server"
 _NGINX_DENY="/var/xdrago/nginx_deny.sh"
+_WEB6="/var/xdrago/monitor/log/web6.tempban"
+_NGINX_DENY6="/var/xdrago/nginx_deny6.sh"
 _LOCK="/run/clearwebbans.lock"
 
 _DRY=0
@@ -159,7 +164,9 @@ if [[ "${_HAS_CSF}" -eq 1 ]]; then
 fi
 
 # Wipe scan_nginx ban + archive logs (existence-guarded consumers handle absence).
-rm -f "${_WEB_LOG}" "${_WA}" "${_WX}"
+# The IPv6 store too — its bans live at nginx, not in csf, so they are released
+# here by emptying the store and letting nginx_deny6.sh clear the geo set below.
+rm -f "${_WEB_LOG}" "${_WA}" "${_WX}" "${_WEB6}"
 
 # Reset the scan_nginx byte offset to the CURRENT end of the access log, so the
 # next scan only sees new traffic instead of reprocessing (and possibly
@@ -181,5 +188,12 @@ if [[ -x "${_NGINX_DENY}" ]]; then
   _msg "  regenerated nginx geo-ban set via nginx_deny.sh"
 fi
 
-_info "Done. Removed ${_rm_perm} permanent + ${_rm_temp} temp csf web bans; cleared web.log + archives; reset scan offset."
+# Regenerate the IPv6 geo-ban set: with the store now emptied, nginx_deny6.sh
+# clears nginx_banned_ips.conf6 and reloads, releasing any IPv6 web bans.
+if [[ -x "${_NGINX_DENY6}" ]]; then
+  "${_NGINX_DENY6}" >/dev/null 2>&1
+  _msg "  regenerated nginx IPv6 geo-ban set via nginx_deny6.sh"
+fi
+
+_info "Done. Removed ${_rm_perm} permanent + ${_rm_temp} temp csf web bans; cleared web.log + archives + IPv6 store; reset scan offset."
 exit 0

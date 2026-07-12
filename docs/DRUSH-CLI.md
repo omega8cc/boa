@@ -141,6 +141,16 @@ contributed commands will load. If you instead need a contributed command to run
 an **Ægir backend task** (such as backend-mode cron), ask your host to enable it for
 your instance — see [SECURITY.md](SECURITY.md).
 
+### Update Commands in the Limited Shell
+
+Code and database updates are usually driven through Ægir (a **Verify** or **Migrate**
+task), but you can also run them from the `oN.ftp` limited shell.
+
+On a **Drupal 8+** platform, use the site-local `vdrush` (see below) — the standalone
+Ægir Drush 8 cannot start up a Drupal 8/9/10/11 site to apply updates. The system `drush`
+(Drush 8) is for legacy Drupal 6/7 sites, where `drush @site-alias updb` (or `updatedb`)
+runs normally.
+
 ---
 
 ### Site-Local Drush is Preserved and Fully Supported

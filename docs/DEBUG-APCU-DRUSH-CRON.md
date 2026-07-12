@@ -1,6 +1,6 @@
 # DEBUG: Plugin Discovery Failures, Cache Poisoning, and Intermittent Downtime
 
-**Applies to:** BOA 5.x, Drupal 8/9/10, PHP-FPM + APCu + Valkey/Redis, Aegir-managed sites
+**Applies to:** BOA 5.x, Drupal 8/9/10, PHP-FPM + APCu + Valkey/Redis, Ægir-managed sites
 
 
 ## Background
@@ -88,7 +88,8 @@ Drupal\Core\Render\Component\Exception\ComponentNotFoundException: Unable to fin
 
 Valkey is hard-capped at its `maxmemory` ceiling. When that ceiling is too low for the
 number of sites hosted, Valkey is permanently full and continuously evicts cache keys using
-the `allkeys-lru` policy to make room for new entries. The `discovery` cache bin — which
+the `volatile-lfu` policy (BOA forces this policy in `valkey.conf`/`redis.conf`) to make
+room for new entries. The `discovery` cache bin — which
 holds plugin registration data for all modules on a site — is among the entries that get
 evicted. When a PHP-FPM worker needs the discovery cache for a site and finds it evicted,
 Drupal must rebuild it from the database. Under concurrent traffic, multiple workers
@@ -103,18 +104,18 @@ conditions and temporarily repopulates Valkey — until eviction pressure return
 BOA sets Valkey's `maxmemory` using the formula:
 
 ```bash
-_MAX_MEM_VALKEY=$(( _RAM / 6 ))
+_MAX_MEM_VALKEY=$(( _RAM / 3 ))
 ```
 
-On a 24GB server this produces a 4GB ceiling. For a server hosting a small number of sites
-this is adequate, but for servers hosting 100+ Drupal 8/9/10 sites the working set of
-bootstrap, discovery, config, render cache, and dynamic page cache across all sites quickly
-exceeds this allocation.
+On a 24GB server this produces an 8GB ceiling. For a server hosting a small number of sites
+this is more than adequate, but for servers hosting 100+ Drupal 8/9/10 sites the working set
+of bootstrap, discovery, config, render cache, and dynamic page cache across all sites can
+still exceed this allocation.
 
-BOA 5.x updates this formula to `_RAM / 3`, doubling the default Valkey allocation. On
-servers upgraded to this version the ceiling will be recalculated automatically. On older
-installations or servers where the ceiling has been manually set, review and increase as
-described below.
+Older BOA installations used a smaller `_RAM / 6` allocation (a 4GB ceiling on the same
+24GB host). Servers upgraded to current BOA have the ceiling recalculated to `_RAM / 3`
+automatically. On installations that have not been upgraded, or where the ceiling has been
+manually set, review and increase as described below.
 
 ### Fix
 
@@ -185,7 +186,7 @@ expires or is flushed.
 This is distinct from the APCu split-pool scenario: with `chainedfast` and Valkey in the
 stack, CLI and FPM do share state, and that shared state can be corrupted mid-rebuild.
 
-Aegir's own periodic drush cache clear is a **full flush** rather than a partial rebuild —
+Ægir's own periodic drush cache clear is a **full flush** rather than a partial rebuild —
 which is why it *resolves* rather than *causes* these errors.
 
 ### Investigation
@@ -196,7 +197,7 @@ The following must be established before drawing firm conclusions:
 
 Candidates include:
 
-- Aegir's built-in cron scheduling running drush cron against managed sites
+- Ægir's built-in cron scheduling running drush cron against managed sites
 - A custom crontab calling drush cron or drush cache-rebuild directly
 - A Drupal cron trigger configured within the site itself
 - An external monitoring service triggering cron via `cron.php` on a regular schedule
@@ -204,7 +205,7 @@ Candidates include:
 
 **2. Does drush execution correlate with burst onset?**
 
-Check server-side cron logs and Aegir task logs to confirm whether drush runs at the
+Check server-side cron logs and Ægir task logs to confirm whether drush runs at the
 observed intervals and whether timing matches the start of each error burst.
 
 **3. Is Valkey receiving a poisoned entry at burst onset?**
@@ -214,12 +215,12 @@ or refute the hypothesis directly.
 
 ### Recommended actions
 
-**Disable Drupal core's Automated Cron on all Aegir-managed sites.** Automated Cron fires
-on page load with no awareness of server load. Aegir's wget-based cron scheduling staggers
+**Disable Drupal core's Automated Cron on all Ægir-managed sites.** Automated Cron fires
+on page load with no awareness of server load. Ægir's wget-based cron scheduling staggers
 runs across sites to prevent simultaneous bursts and is the only recommended cron method
 on BOA.
 
-**If drush-based cron is confirmed as the trigger:** switch all affected sites to Aegir's
+**If drush-based cron is confirmed as the trigger:** switch all affected sites to Ægir's
 wget-based cron. With web-based cron, cache writes to Valkey happen from within FPM context
 with a fully rebuilt cache, eliminating the conditions that produce a poisoned entry.
 
@@ -234,9 +235,12 @@ fix is to increase the limit via the FPM pool configuration files:
 /opt/etc/fpm/fpm-pool-common-modern.conf
 ```
 
-The relevant settings are `max_execution_time`, `max_input_time`, and
-`default_socket_timeout`. See the last entry in
-https://github.com/omega8cc/boa/blob/5.x-lts/docs/FAQ.md for details. These files are
+The relevant settings are the `php_admin_value[...]` directives
+`php_admin_value[max_execution_time]`, `php_admin_value[max_input_time]`, and
+`php_admin_value[default_socket_timeout]` (each shipped at `180`) — edit these directives
+directly; the bare, un-prefixed key form is not honoured in these pool files. See the last
+entry in
+https://github.com/omega8cc/boa/blob/5.x-dev/docs/FAQ.md for details. These files are
 overwritten on every barracuda upgrade and must be reapplied after upgrades. Also
 investigate why cron exceeds 3 minutes — this is worth resolving independently.
 
@@ -306,7 +310,7 @@ are often misattributed to server or cache problems.
 
 ### Always use `oN.ftp` under the limited shell, not `oN` under bash
 
-BOA provisions two user accounts per Aegir instance: the main Unix user (`oN`) and the FTP
+BOA provisions two user accounts per Ægir instance: the main Unix user (`oN`) and the FTP
 user (`oN.ftp`). **Always use `oN.ftp` under the limited shell for drush operations.**
 
 Note that **PHP-CLI and PHP-FPM are two independent systems** in BOA. PHP-FPM version is
@@ -322,7 +326,7 @@ as `oN` in a regular bash session the shell wrapper is not active — the contro
 ignored entirely, drush runs against whatever PHP version happens to be the system default,
 and `vdrush` will not work correctly.
 
-See: https://github.com/omega8cc/boa/blob/5.x-lts/docs/DRUSH-CLI.md
+See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
 
 ### Use site-local drush for Drupal 8 and newer
 
@@ -333,7 +337,7 @@ Composer in the site's codebase.
 Running system drush 8 against a Drupal 8/9/10 site produces API mismatch errors and
 incorrect behaviour that is entirely unrelated to server configuration.
 
-See: https://github.com/omega8cc/boa/blob/5.x-lts/docs/DRUSH-CLI.md
+See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
 
 
 ## APCu memory sizing
@@ -367,8 +371,8 @@ For any BOA server experiencing the symptoms described in this document, follow 
       to approximately _RAM / 3 and monitor for improvement — see Issue 1
 - [ ] If RAM is insufficient for the site count: escalate a RAM increase request —
       see RAM sizing guidance in Issue 1
-- [ ] Disable Drupal core's Automated Cron on all Aegir-managed sites
-- [ ] If drush-based cron is confirmed as a trigger: switch to Aegir's wget-based cron
+- [ ] Disable Drupal core's Automated Cron on all Ægir-managed sites
+- [ ] If drush-based cron is confirmed as a trigger: switch to Ægir's wget-based cron
 - [ ] If wget cron is not completing: increase PHP execution time limits via
       fpm-pool-common files rather than switching to drush cron — see FAQ.md
 - [ ] If `local.settings.php` discovery cache override was applied as a workaround:

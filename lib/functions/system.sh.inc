@@ -771,6 +771,9 @@ _global_inc_conf_update() {
   cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
   cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
   cp -af ${_locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
+  ### Backdrop-only shared settings (Valkey wiring, visit-cron off); the
+  ### Backdrop settings tpl includes it only when present, so it ships inert.
+  cp -af ${_locCnf}/global/global-bd.inc ${_GL_D}/global-bd.inc
 }
 
 #
@@ -2383,6 +2386,7 @@ _barracuda_cnf() {
     echo "_CUSTOM_CONFIG_VALKEY=${_CUSTOM_CONFIG_VALKEY}"     >> ${_barCnf}
     echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}"       >> ${_barCnf}
     echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${_barCnf}
+    echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"             >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -2598,6 +2602,11 @@ _barracuda_cnf() {
     _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL ${_barCnf} 2>&1)
     if [[ ! "${_CUSTOM_CONFIG_LSHELL_TEST}" =~ "_CUSTOM_CONFIG_LSHELL" ]]; then
       echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}" >> ${_barCnf}
+    fi
+
+    _BACKDROP_SUPPORT_TEST=$(grep _BACKDROP_SUPPORT ${_barCnf} 2>&1)
+    if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT" ]]; then
+      echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
     fi
 
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
@@ -4015,6 +4024,25 @@ _get_drush_eight() {
 }
 
 #
+# Install or update the native Backdrop CLI (bee), mirroring _get_drush_eight.
+# Global /opt/tools/bee from the version-less mirror tarball (always the newest
+# bee); gated on _BACKDROP_SUPPORT. Re-fetched when the serial bumps.
+_get_bee() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _get_bee"
+  fi
+  [ "${_BACKDROP_SUPPORT}" = "YES" ] || return 0
+  mkdir -p /opt/tools/bee
+  rm -rf /opt/tools/bee/*
+  cd /opt/tools/bee/
+  _get_dev_ext "bee.tar.gz"
+  touch /opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: bee installation complete"
+  fi
+}
+
+#
 # Install or update CiviCRM CLI Tool phar.
 _get_civicrm_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4158,6 +4186,31 @@ _drush_system_install_update() {
       || [ ! -e "/opt/tools/drush/.ci.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       _get_civicrm_cli
     fi
+    ###
+    ### Native Backdrop CLI (bee); gated dark. /usr/bin/bee points at the
+    ### PHP-selecting wrapper shipped as /opt/local/bin/bee (aegir/tools/bin/bee).
+    ###
+    if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
+      mkdir -p /opt/tools/bee
+      chown -R root:root /opt/tools/bee
+      # Re-fetch the newest bee when it is missing or the serial has bumped
+      # (bee is version-less on the mirror, so there is no version to compare).
+      if [ ! -e "/opt/tools/bee/bee.php" ] \
+        || [ ! -e "/opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: bee (re)installation required"
+        fi
+        _get_bee
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: bee already installed"
+        fi
+      fi
+      if [ -e "/opt/tools/bee/bee.php" ] && [ -x "/opt/local/bin/bee" ]; then
+        rm -f /usr/bin/bee
+        ln -sfn /opt/local/bin/bee /usr/bin/bee
+      fi
+    fi
     cd /opt/tmp
   fi
 }
@@ -4172,12 +4225,20 @@ _sources_list_update() {
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   ###--------------------###
-  if [ -e "${_aptLiSys}" ]; then
+  ### Always (re)generate for a known OS -- do NOT gate on the file already
+  ### existing. The old '[ -e "${_aptLiSys}" ]' gate turned a one-time loss
+  ### into a permanent one: once the file was gone, this whole block was
+  ### skipped forever, so apt stayed broken and the host could never upgrade.
+  if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Updating packages sources list..."
     fi
-    mv -f ${_aptLiSys} \
-      ${_vBs}/sources.list-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    if [ ! -e "${_aptLiSys}" ]; then
+      _msg "NOTE: ${_aptLiSys} is missing; generating a fresh one"
+    fi
+    ### Keep a validated forensic copy, but never remove the live file before
+    ### the rewrite below succeeds -- a failed rewrite must not lose sources.list.
+    _apt_sources_list_backup
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _TEST_MIRROR="$(_find_fast_devuan_mirror)"
       if [ -n "${_LOCAL_DEVUAN_MIRROR}" ] && [ -n "${_TEST_MIRROR}" ]; then
@@ -4271,6 +4332,9 @@ _sources_list_update() {
         _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
       cd /var/opt
+      ### Belt-and-suspenders with the mirror resolution above: never compose
+      ### an empty Debian mirror host into the deb lines below.
+      [ -n "${_MIRROR}" ] || _MIRROR=deb.debian.org
       if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
         _APT_REPSRC="${_OS_CODE}-backports"
@@ -4287,6 +4351,11 @@ _sources_list_update() {
         _SEC_MIRROR="security.debian.org/debian-security"
         _SEC_REPSRC="${_OS_CODE}-security"
       elif [ "${_OS_CODE}" = "bookworm" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_REPSRC="${_OS_CODE}-updates"
+        _SEC_MIRROR="security.debian.org/debian-security"
+        _SEC_REPSRC="${_OS_CODE}-security"
+      elif [ "${_OS_CODE}" = "trixie" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
         _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
@@ -4310,6 +4379,10 @@ _sources_list_update() {
         echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       fi
     fi
+    ### Verify the freshly written file; if generation produced a missing or
+    ### unusable sources.list, enforce the canonical official-mirror version
+    ### (never restore a backup, which may pin a mirror that is now dead).
+    _apt_sources_list_verify_or_canonical
     mkdir -p ${_pthLog}
     touch ${_pthLog}/apt-deb-src-updates-${_xSrl}.txt
     cd /var/opt
@@ -5940,7 +6013,7 @@ _strict_bin_permissions() {
     fi
   fi
 
-  cp -af ${_bldPth}/aegir/helpers/websh.sh.txt /opt/local/bin/websh
+  cp -af ${_bldPth}/aegir/tools/bin/websh /opt/local/bin/websh
   chmod 755 /opt/local/bin/websh
   chown root:root /opt/local/bin/websh
   chown root:root /etc/passwd*
@@ -7502,6 +7575,11 @@ _if_major_os_upgrade() {
         _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
         _NEW_SEC_MIRROR="security.debian.org/debian-security"
         _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
+      elif [ "${_NEW_OS_CODE}" = "trixie" ]; then
+        _NEW_APT_MIRROR="deb.debian.org/debian"
+        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
+        _NEW_SEC_MIRROR="security.debian.org/debian-security"
+        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
@@ -8867,6 +8945,12 @@ _smtp_check() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _smtp_check"
   fi
+  ###
+  ### Diagnostic only: when no relay host is configured, test whether outgoing
+  ### port 25 works and warn if it doesn't. _SMTP_RELAY_TEST=NO skips it. This
+  ### must NOT enclose the relayhost logic below -- it never runs when a relay
+  ### is set, which would leave _SMTP_RELAY_HOST unapplied.
+  ###
   if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Checking SMTP connections..."
@@ -8890,28 +8974,29 @@ _smtp_check() {
 
 EOF
     fi
-    ###
-    ### Required if outgoing smtp port is closed and smtp relay is in use.
-    ### Gate: if local sendmail is enabled for hosted sites
-    ### (/etc/boa/.allow.sendmail.cnf present), stay in no-relay/direct mode --
-    ### routing through the relay would re-stamp the sites' own mail to the
-    ### relay's single sending domain. Self-correcting both ways: enabling the
-    ### allow file reverts an already-active relayhost back to direct.
-    ###
-    if [ ! -z "${_SMTP_RELAY_HOST}" ] \
-      && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
-      sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
-      wait
-      sed -i "s/relayhost =/relayhost = ${_SMTP_RELAY_HOST}/g" \
-        /etc/postfix/main.cf &> /dev/null
+  fi
+  ###
+  ### Apply the configured SMTP relay to Postfix, independent of the port-25
+  ### diagnostic above and of _SMTP_RELAY_TEST. Gate: if local sendmail is
+  ### enabled for hosted sites (/etc/boa/.allow.sendmail.cnf present), stay in
+  ### no-relay/direct mode -- routing through the relay would re-stamp the
+  ### sites' own mail to the relay's single sending domain. Self-correcting
+  ### both ways: enabling the allow file reverts an already-active relayhost
+  ### back to direct.
+  ###
+  if [ ! -z "${_SMTP_RELAY_HOST}" ] \
+    && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
+    sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
+    wait
+    sed -i "s/relayhost =/relayhost = ${_SMTP_RELAY_HOST}/g" \
+      /etc/postfix/main.cf &> /dev/null
+    wait
+    postfix reload &> /dev/null
+  elif [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
+    if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
+      sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
       wait
       postfix reload &> /dev/null
-    elif [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
-      if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
-        sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
-        wait
-        postfix reload &> /dev/null
-      fi
     fi
   fi
 }
@@ -9883,9 +9968,6 @@ _sshd_armour() {
   if [ -e "/etc/ssh/sshd_config" ]; then
     if [ -e "/etc/ssh/ssh_config" ]; then
       grep -q '^[^#]*GSSAPIAuthentication' /etc/ssh/ssh_config && sed -i '/^[^#]*GSSAPIAuthentication/s/^/#/' /etc/ssh/ssh_config
-      if ! grep -q -E '^\s*WarnWeakCrypto no' /etc/ssh/ssh_config; then
-        echo "WarnWeakCrypto no" >> /etc/ssh/ssh_config
-      fi
       _mrun "service ssh restart"
     fi
     if [ "${_SSH_ARMOUR}" = "NO" ] \
