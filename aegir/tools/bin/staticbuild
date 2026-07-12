@@ -3,8 +3,8 @@
 # staticbuild - build the newer Drupal core + distribution codebases used for
 # BOA testing, package them, and publish the tarballs to the static mirror.
 #
-# Runs on the mirror SOURCE VM only. Builds happen as this box's Octopus user
-# (auto-detected from /data/disk, or -u USER) under /data/disk/<user>/static/<MM-DD>/;
+# Runs on the mirror SOURCE VM only. Builds happen as the Octopus build user
+# (o8 unless -u USER says otherwise) under /data/disk/<user>/static/<MM-DD>/;
 # packaging + publishing to /var/www/static/{distro,core,dev/dev} and the per-build
 # /usr/bin/php switch need root, so run this as root.
 #
@@ -28,7 +28,7 @@
 #   staticbuild check               report the latest upstream versions a build would pull
 # Options:
 #   -d MM-DD   build-day directory (default: today, date +%m-%d)
-#   -u USER    Octopus build user (default: auto-detected from /data/disk)
+#   -u USER    Octopus build user (default: o8)
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
 # Build target names: farm cms culturas commerce localgov thunder varbase
@@ -43,7 +43,7 @@
 # Configuration - review the specs/minors each cycle ("staticbuild check").
 # ---------------------------------------------------------------------------
 
-_O8_USER=""                                     # empty = auto-detect this box's Octopus user; -u overrides
+_O8_USER="o8"                                   # Octopus build user; -u overrides
 _DAY="$(date +%m-%d)"                           # -d overrides (MM-DD)
 
 _STATIC_ROOT="/data/disk"                       # o8 home base; static lives under here
@@ -179,24 +179,6 @@ _run_as_o8() {
   su -s /bin/bash - "${_O8_USER}" -c "export COMPOSER_NO_INTERACTION=1; $1"
 }
 
-_detect_octo_user() {
-  # First Octopus instance user on this box: a /data/disk/<name> dir whose <name>
-  # is an existing system user (Octopus instances are o1, o2, o5x, ...). Skips
-  # 'arch' and any non-user dir, so the tool runs on any box without -u (the
-  # build box is rarely 'o8'). -u still overrides.
-  local _d _u
-  for _d in /data/disk/o*; do
-    [[ -d "${_d}" ]] || continue
-    _u="${_d##*/}"
-    [[ "${_u}" == "arch" ]] && continue
-    if id -u "${_u}" >/dev/null 2>&1; then
-      printf '%s\n' "${_u}"
-      return 0
-    fi
-  done
-  return 1
-}
-
 use_php() {
   # Point /usr/bin/php at the requested interpreter for the next build. Non-fatal:
   # a missing interpreter fails one target (the caller records it), not the batch.
@@ -224,8 +206,12 @@ _require_root() {
 }
 
 _require_o8() {
-  [[ -n "${_O8_USER}" ]] || _die "no Octopus instance user found under /data/disk; pass -u USER"
+  # Never guess the account: the build user is o8 unless -u says otherwise, and
+  # it must be a real Octopus instance (system user + /data/disk home). Scanning
+  # /data/disk/o* here would run builds as an arbitrary customer account.
+  [[ -n "${_O8_USER}" ]] || _die "empty build user; pass -u USER"
   id -u "${_O8_USER}" >/dev/null 2>&1 || _die "build user '${_O8_USER}' does not exist (pass -u USER)"
+  [[ -d "${_STATIC_ROOT}/${_O8_USER}" ]] || _die "build user '${_O8_USER}' has no ${_STATIC_ROOT}/${_O8_USER} (pass -u USER)"
   command -v wget >/dev/null 2>&1 || _die "wget not found (needed for release downloads)"
   command -v curl >/dev/null 2>&1 || _die "curl not found (needed to resolve latest versions)"
 }
@@ -996,10 +982,6 @@ main() {
   for _a in "$@"; do
     [[ "${_a}" == -* ]] && _die "options must precede the action (got '${_a}'); e.g. staticbuild -f ${_action} ..."
   done
-
-  # Auto-detect the box's Octopus user when -u was not given (build boxes are
-  # rarely 'o8'); -u still wins.
-  [[ -n "${_O8_USER}" ]] || _O8_USER="$(_detect_octo_user)"
 
   # Recompute derived paths after option parsing.
   _DAY_DIR="${_STATIC_ROOT}/${_O8_USER}/static/${_DAY}"
