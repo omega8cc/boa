@@ -106,7 +106,7 @@ _cnf_flag_yes() {
   [ "${_val}" = "YES" ]
 }
 
-# Master cleanup interlock. While any Aegir/Provision task is running
+# Master cleanup interlock. While any Ægir/Provision task is running
 # (provision-verify/install/clone/migrate/backup/restore), the site and platform
 # trees are in flux -- files/private momentarily absent or symlinks mid-repoint,
 # aliases mid-rewrite, vhosts staged under a leading dot -- and that transient

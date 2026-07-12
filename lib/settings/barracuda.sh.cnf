@@ -875,6 +875,15 @@ _CUSTOM_CONFIG_REDIS=NO
 _CUSTOM_CONFIG_SQL=NO
 
 ###
+### To install the Backdrop CMS system tools
+### (bee, Drush extension, lshell exposure),
+### change this to YES.
+###
+### _BACKDROP_SUPPORT=YES
+###
+_BACKDROP_SUPPORT=NO
+
+###
 ### You can define custom list of functions
 ### to disable besides those already denied
 ### in the system level 'disable_functions'.

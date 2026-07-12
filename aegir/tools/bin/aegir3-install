@@ -1,0 +1,445 @@
+#!/bin/bash
+#
+# aegir3-install - unattended bare-bones VANILLA Aegir 3.x installer for Debian.
+#
+# Installs upstream (aegir-project) Aegir 3.x — Drupal 7 + Drush 8 — from
+# git.drupalcode.org, WITHOUT the dead debian.aegirproject.org apt repo and
+# WITHOUT the dead git.drupal.org make URLs. Distro apt is still used for the
+# LAMP stack (that repo works); only Aegir's own apt path is gone.
+#
+# NOT a BOA tool: this builds a VANILLA Aegir source box (the migration SOURCE
+# that aegir2boa adopts). It is intentionally NOT registered in BOA.sh.txt and
+# is never fetched by the BOA fleet (staticbuild model). Run it on a fresh,
+# dedicated Debian box.
+#
+# Target: Debian 11 "bullseye" (PHP 7.4, MariaDB 10.5). PHP 7.4 is the safe
+# floor — vanilla Aegir 3.x hosting modules are NOT the BOA fork and carry no
+# PHP 8 patches, so the installer refuses PHP 8 unless --allow-php8 is given.
+#
+# Fully unattended: FQDN auto-detected, MySQL root password auto-generated and
+# persisted (idempotent re-runs reuse it), admin e-mail defaulted. Prints the
+# one-time login URL at the end.
+#
+# Usage:
+#   aegir3-install [options]
+# Options:
+#   --fqdn <name>      Aegir control-panel FQDN (default: hostname -f)
+#   --email <addr>     admin e-mail (default: admin@<fqdn>)
+#   --db-pass <pass>   MySQL root password to set/use (default: generated)
+#   --nginx            install on Nginx + php-fpm instead of Apache
+#   --branch <b>       Aegir git branch/tag (default: 7.x-3.x)
+#   --allow-php8       proceed on PHP 8.x (UNVERIFIED for vanilla hosting)
+#   --force            rebuild the hostmaster platform even if present
+#   -h, --help         this help
+#
+# Exit: 0 installed (or already installed), non-zero on a fatal error.
+
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+###-------------CONFIG-----------------###
+
+_AEGIR_USER=aegir
+_AEGIR_ROOT=/var/aegir
+_WEB_GROUP=www-data
+_BRANCH=7.x-3.x
+_DRUSH_VRN=8.4.12
+_DRUSH_URL="https://github.com/drush-ops/drush/releases/download/${_DRUSH_VRN}/drush.phar"
+_GIT_BASE=https://git.drupalcode.org/project
+_HTTP_TYPE=apache
+_STATE_CNF=/root/.aegir_install.cnf
+_LOG=/var/log/aegir3-install.log
+_ALLOW_PHP8=NO
+_FORCE=NO
+
+_FQDN=""
+_EMAIL=""
+_DB_PASS=""
+
+###-------------HELPERS----------------###
+
+_msg()  { echo "AEGIR3 [$(date +%T 2>/dev/null)] ==> $*" | tee -a "${_LOG}"; }
+_info() { echo "AEGIR3 [$(date +%T 2>/dev/null)] ::  $*" | tee -a "${_LOG}"; }
+_alrt() { echo "AEGIR3 [$(date +%T 2>/dev/null)] !!  $*" | tee -a "${_LOG}" >&2; }
+_die()  { echo "AEGIR3 [$(date +%T 2>/dev/null)] FATAL: $*" | tee -a "${_LOG}" >&2; exit 1; }
+
+_have() { command -v "$1" >/dev/null 2>&1; }
+
+# Run a command as the aegir user in a login shell (drush needs $HOME).
+_as_aegir() { su -s /bin/bash - "${_AEGIR_USER}" -c "$1"; }
+
+_usage() {
+  sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'
+  exit 0
+}
+
+###-------------ARGS-------------------###
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --fqdn)       shift; _FQDN="$1" ;;
+    --email)      shift; _EMAIL="$1" ;;
+    --db-pass)    shift; _DB_PASS="$1" ;;
+    --branch)     shift; _BRANCH="$1" ;;
+    --nginx)      _HTTP_TYPE=nginx ;;
+    --allow-php8) _ALLOW_PHP8=YES ;;
+    --force)      _FORCE=YES ;;
+    -h|--help)    _usage ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+###-------------PREFLIGHT--------------###
+
+preflight() {
+  [[ "$(id -u 2>/dev/null)" = "0" ]] || _die "must run as root"
+  mkdir -p "$(dirname "${_LOG}")" 2>/dev/null
+  : > "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir3-install.log
+
+  # OS gate: Debian-family only; distinguish Devuan; warn off-target release
+  if [[ -e /etc/devuan_version ]]; then
+    _info "OS: Devuan $(head -n1 /etc/devuan_version 2>/dev/null)"
+  elif [[ -e /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    _info "OS: ${PRETTY_NAME:-unknown}"
+    case "${ID}" in
+      debian|devuan|ubuntu) : ;;
+      *) _alrt "untested OS '${ID}' - Debian 11 is the reference; continuing" ;;
+    esac
+    case "${VERSION_ID}" in
+      11) : ;;
+      "") : ;;
+      *) _alrt "Debian ${VERSION_ID}: reference is 11 (bullseye/PHP 7.4); PHP may differ" ;;
+    esac
+  else
+    _alrt "no /etc/os-release - cannot confirm Debian; continuing"
+  fi
+
+  _have apt-get || _die "apt-get not found - this installer targets Debian/Ubuntu"
+
+  # FQDN
+  [[ -z "${_FQDN}" ]] && _FQDN="$(hostname -f 2>/dev/null)"
+  [[ -z "${_FQDN}" ]] && _die "cannot determine FQDN; pass --fqdn <name>"
+  case "${_FQDN}" in *.*) : ;; *) _die "FQDN '${_FQDN}' is not fully qualified (need host.domain.tld)" ;; esac
+
+  # FQDN must resolve to an IP (loopback is fine for a single box) - Aegir
+  # uses it for DB GRANTs and @hostmaster. Add a hosts entry if missing.
+  if ! getent hosts "${_FQDN}" >/dev/null 2>&1; then
+    _info "adding ${_FQDN} to /etc/hosts (127.0.1.1)"
+    printf '127.0.1.1\t%s %s\n' "${_FQDN}" "${_FQDN%%.*}" >> /etc/hosts
+  fi
+
+  [[ -z "${_EMAIL}" ]] && _EMAIL="admin@${_FQDN}"
+
+  _info "FQDN=${_FQDN}  EMAIL=${_EMAIL}  WEB=${_HTTP_TYPE}  BRANCH=${_BRANCH}"
+}
+
+###-------------BASE PACKAGES----------###
+
+install_base() {
+  _msg "Installing LAMP stack + tools via distro apt"
+  # Preseed Postfix to a non-interactive "Local only" (Aegir needs to send the
+  # one-time-login mail; local delivery is enough for a test box).
+  echo "postfix postfix/main_mailer_type select Local only" | debconf-set-selections
+  echo "postfix postfix/mailname string ${_FQDN}" | debconf-set-selections
+
+  apt-get update >>"${_LOG}" 2>&1 || _die "apt-get update failed"
+
+  local _pkgs="mariadb-server php php-cli php-gd php-mysql php-mbstring php-curl php-xml php-pear postfix sudo rsync git unzip curl ca-certificates"
+  if [[ "${_HTTP_TYPE}" = "nginx" ]]; then
+    _pkgs="nginx php-fpm ${_pkgs}"
+  else
+    _pkgs="apache2 ${_pkgs}"
+  fi
+  # shellcheck disable=SC2086
+  apt-get install -y ${_pkgs} >>"${_LOG}" 2>&1 || _die "apt-get install failed (see ${_LOG})"
+}
+
+check_php() {
+  local _v
+  _v="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)"
+  _info "PHP CLI version: ${_v:-unknown}"
+  case "${_v}" in
+    7.*) : ;;
+    8.*)
+      if [[ "${_ALLOW_PHP8}" = "YES" ]]; then
+        _alrt "PHP ${_v}: vanilla Aegir 3.x hosting modules are UNVERIFIED on PHP 8 - proceeding per --allow-php8"
+      else
+        _die "PHP ${_v} detected. Vanilla Aegir 3.x targets PHP 7.4 (use Debian 11), or re-run with --allow-php8 to override."
+      fi
+      ;;
+    5.*) _alrt "PHP ${_v}: ancient but drush 8 supports it; proceeding" ;;
+    *)   _alrt "could not parse PHP version; proceeding" ;;
+  esac
+
+  # CLI memory: site installs OOM at the default (complex profiles need ~192M).
+  local _ini
+  _ini="$(php -r 'echo php_ini_loaded_file();' 2>/dev/null)"
+  # target the CLI ini specifically
+  for _ini in $(find /etc/php -type f -name php.ini -path '*cli*' 2>/dev/null) "${_ini}"; do
+    [[ -f "${_ini}" ]] || continue
+    if grep -qE '^[[:space:]]*memory_limit' "${_ini}"; then
+      sed -i 's/^[[:space:]]*memory_limit[[:space:]]*=.*/memory_limit = 192M/' "${_ini}"
+    fi
+  done
+  _info "PHP CLI memory_limit set to 192M"
+}
+
+###-------------AEGIR USER-------------###
+
+setup_user() {
+  if ! getent passwd "${_AEGIR_USER}" >/dev/null 2>&1; then
+    _msg "Creating aegir system user (home ${_AEGIR_ROOT})"
+    adduser --system --group --home "${_AEGIR_ROOT}" "${_AEGIR_USER}" >>"${_LOG}" 2>&1 \
+      || _die "adduser ${_AEGIR_USER} failed"
+  else
+    _info "aegir user already exists"
+  fi
+  # aegir must be in the web group to set hosted-file permissions
+  adduser "${_AEGIR_USER}" "${_WEB_GROUP}" >>"${_LOG}" 2>&1 || true
+
+  _msg "Configuring sudoers for passwordless webserver reload"
+  if [[ "${_HTTP_TYPE}" = "nginx" ]]; then
+    cat > /etc/sudoers.d/aegir <<EOF
+Defaults:${_AEGIR_USER}  !requiretty
+${_AEGIR_USER} ALL=NOPASSWD: /etc/init.d/nginx
+${_AEGIR_USER} ALL=NOPASSWD: /usr/sbin/nginx
+EOF
+  else
+    cat > /etc/sudoers.d/aegir <<EOF
+Defaults:${_AEGIR_USER}  !requiretty
+${_AEGIR_USER} ALL=NOPASSWD: /usr/sbin/apache2ctl
+EOF
+  fi
+  chmod 0440 /etc/sudoers.d/aegir
+}
+
+###-------------DATABASE---------------###
+
+setup_db() {
+  _msg "Configuring MariaDB root access for Aegir"
+  # Persist the password across idempotent re-runs.
+  if [[ -z "${_DB_PASS}" ]]; then
+    if [[ -e "${_STATE_CNF}" ]]; then
+      # shellcheck disable=SC1090
+      _DB_PASS="$(sed -n 's/^_DB_PASS=//p' "${_STATE_CNF}" | head -n1)"
+    fi
+    if [[ -z "${_DB_PASS}" ]]; then
+      _DB_PASS="$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    fi
+  fi
+  { echo "_DB_PASS=${_DB_PASS}"; echo "_FQDN=${_FQDN}"; } > "${_STATE_CNF}"
+  chmod 0600 "${_STATE_CNF}"
+
+  service mysql start >>"${_LOG}" 2>&1 || service mariadb start >>"${_LOG}" 2>&1 || true
+
+  # Fresh MariaDB root uses unix_socket auth; set a native password so Aegir
+  # (root over localhost) can connect. Socket login as root needs no password.
+  if mysql -u root -e 'SELECT 1' >/dev/null 2>&1; then
+    mysql -u root <<SQL >>"${_LOG}" 2>&1
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${_DB_PASS}';
+FLUSH PRIVILEGES;
+SQL
+    _info "root@localhost password set"
+  elif mysql -u root -p"${_DB_PASS}" -e 'SELECT 1' >/dev/null 2>&1; then
+    _info "root password already set and matches state file"
+  else
+    _die "cannot access MariaDB as root (neither socket nor stored password worked)"
+  fi
+}
+
+###-------------DRUSH 8----------------###
+
+install_drush() {
+  if _have drush && [[ "$(drush --version 2>/dev/null | grep -oE '[0-9]+' | head -n1)" = "8" ]]; then
+    _info "Drush 8 already present: $(drush --version 2>/dev/null | head -n1)"
+    return 0
+  fi
+  _msg "Installing Drush ${_DRUSH_VRN} (phar)"
+  curl -fL "${_DRUSH_URL}" -o /usr/local/bin/drush >>"${_LOG}" 2>&1 \
+    || _die "failed to download drush from ${_DRUSH_URL}"
+  chmod +x /usr/local/bin/drush
+  _as_aegir "drush --version" >>"${_LOG}" 2>&1 || _die "drush phar not runnable"
+}
+
+###-------------PROVISION--------------###
+
+install_provision() {
+  local _pdir="${_AEGIR_ROOT}/.drush/commands/provision"
+  _msg "Installing Provision backend (branch ${_BRANCH})"
+  _as_aegir "mkdir -p ${_AEGIR_ROOT}/.drush/commands"
+  if [[ -d "${_pdir}/.git" ]]; then
+    _as_aegir "cd ${_pdir} && git fetch --all -q && git checkout -q ${_BRANCH} && git pull -q --ff-only" >>"${_LOG}" 2>&1 \
+      || _alrt "provision update failed; using existing checkout"
+  else
+    _as_aegir "git clone -q --branch ${_BRANCH} ${_GIT_BASE}/provision.git ${_pdir}" >>"${_LOG}" 2>&1 \
+      || _die "failed to clone provision from ${_GIT_BASE}/provision.git"
+  fi
+  _as_aegir "drush cache-clear drush" >>"${_LOG}" 2>&1 || true
+  _as_aegir "drush help hostmaster-install >/dev/null 2>&1" \
+    || _die "provision did not register (hostmaster-install unavailable)"
+}
+
+###-------------PLATFORM BUILD---------###
+
+# Append explicit git.drupalcode.org URLs to any git-type project that lacks
+# one, so the build never falls back to the decommissioned git.drupal.org
+# default regardless of the drush-make git resolver.
+_fix_make_urls() {
+  local _f="$1" _tmp="${1}.fixed"
+  awk '
+    /^[[:space:]]*projects\[[^]]+\]\[download\]\[type\][[:space:]]*=[[:space:]]*git/ {
+      n=$0; sub(/^[[:space:]]*projects\[/,"",n); sub(/\].*/,"",n); git[n]=1
+    }
+    /^[[:space:]]*projects\[[^]]+\]\[download\]\[url\]/ {
+      n=$0; sub(/^[[:space:]]*projects\[/,"",n); sub(/\].*/,"",n); url[n]=1
+    }
+    { line[NR]=$0 }
+    END {
+      for (i=1;i<=NR;i++) print line[i]
+      for (n in git) if (!(n in url))
+        print "projects[" n "][download][url] = https://git.drupalcode.org/project/" n ".git"
+    }
+  ' "${_f}" > "${_tmp}" && mv -f "${_tmp}" "${_f}"
+}
+
+build_platform() {
+  local _plat="${_AEGIR_ROOT}/hostmaster-${_BRANCH}"
+  local _site_settings="${_plat}/sites/${_FQDN}/settings.php"
+
+  if [[ -e "${_site_settings}" && "${_FORCE}" != "YES" ]]; then
+    _info "hostmaster platform already built + site present; skipping build"
+    return 0
+  fi
+  if [[ -d "${_plat}" && "${_FORCE}" = "YES" ]]; then
+    _alrt "--force: removing existing platform ${_plat}"
+    rm -rf "${_plat}"
+  fi
+
+  if [[ ! -e "${_plat}/index.php" ]]; then
+    _msg "Building the hostmaster platform (Drupal 7 + hosting modules)"
+    local _mk="${_AEGIR_ROOT}/.aegir-build/hostmaster"
+    _as_aegir "rm -rf ${_mk}; git clone -q --branch ${_BRANCH} ${_GIT_BASE}/hostmaster.git ${_mk}" >>"${_LOG}" 2>&1 \
+      || _die "failed to clone hostmaster from ${_GIT_BASE}/hostmaster.git"
+
+    # neutralise the dead git.drupal.org default across every make file
+    local _f
+    for _f in "${_mk}"/*.make; do
+      [[ -f "${_f}" ]] && _fix_make_urls "${_f}"
+    done
+
+    # build-hostmaster.make is self-contained: Drupal 7 core + includes
+    # drupal-org.make (eldir + hosting + golden modules + contrib).
+    _as_aegir "drush make -y --working-copy ${_mk}/build-hostmaster.make ${_plat}" 2>&1 | tee -a "${_LOG}"
+    [[ -e "${_plat}/index.php" ]] \
+      || _die "platform build failed (no ${_plat}/index.php) - see ${_LOG}. Likely a drupal.org/git.drupalcode.org fetch problem for a post-D7-EOL project."
+  fi
+}
+
+###-------------HOSTMASTER INSTALL-----###
+
+run_install() {
+  local _plat="${_AEGIR_ROOT}/hostmaster-${_BRANCH}"
+  local _site_settings="${_plat}/sites/${_FQDN}/settings.php"
+
+  if [[ -e "${_site_settings}" && "${_FORCE}" != "YES" ]]; then
+    _info "hostmaster site already installed; skipping hostmaster-install"
+    return 0
+  fi
+
+  _msg "Running hostmaster-install (unattended) for ${_FQDN}"
+  # Platform dir exists + no --makefile => install.hostmaster.inc:56 skips its
+  # own (dead-URL) make and installs the site into the platform we built.
+  local _cmd
+  _cmd="drush hostmaster-install -y --strict=0 '${_FQDN}'"
+  _cmd="${_cmd} --version='${_BRANCH}'"
+  _cmd="${_cmd} --aegir_host='${_FQDN}'"
+  _cmd="${_cmd} --aegir_db_host=localhost --aegir_db_user=root --aegir_db_pass='${_DB_PASS}'"
+  _cmd="${_cmd} --client_email='${_EMAIL}'"
+  _cmd="${_cmd} --http_service_type='${_HTTP_TYPE}'"
+  _as_aegir "${_cmd}" 2>&1 | tee -a "${_LOG}"
+
+  [[ -e "${_site_settings}" ]] \
+    || _die "hostmaster-install did not create ${_site_settings} - see ${_LOG}"
+}
+
+###-------------WEBSERVER WIRING-------###
+
+wire_webserver() {
+  _msg "Wiring ${_HTTP_TYPE} to the Aegir-generated config"
+  if [[ "${_HTTP_TYPE}" = "nginx" ]]; then
+    [[ -e "${_AEGIR_ROOT}/config/nginx.conf" ]] || _alrt "nginx.conf not generated yet"
+    ln -sf "${_AEGIR_ROOT}/config/nginx.conf" /etc/nginx/conf.d/aegir.conf
+    nginx -t >>"${_LOG}" 2>&1 && { service nginx reload >>"${_LOG}" 2>&1 || service nginx restart >>"${_LOG}" 2>&1; }
+  else
+    a2enmod rewrite >>"${_LOG}" 2>&1 || true
+    [[ -e "${_AEGIR_ROOT}/config/apache.conf" ]] || _alrt "apache.conf not generated yet"
+    if [[ -d /etc/apache2/conf-available ]]; then
+      ln -sf "${_AEGIR_ROOT}/config/apache.conf" /etc/apache2/conf-available/aegir.conf
+      a2enconf aegir >>"${_LOG}" 2>&1 || true
+    else
+      ln -sf "${_AEGIR_ROOT}/config/apache.conf" /etc/apache2/conf.d/aegir.conf
+    fi
+    apache2ctl configtest >>"${_LOG}" 2>&1 && service apache2 reload >>"${_LOG}" 2>&1
+  fi
+}
+
+###-------------QUEUE DAEMON-----------###
+
+install_queue() {
+  local _plat="${_AEGIR_ROOT}/hostmaster-${_BRANCH}"
+  local _init="${_plat}/profiles/hostmaster/modules/aegir/hosting/queued/init.d.example"
+  if [[ -e "${_init}" ]]; then
+    _msg "Installing the hosting queue daemon"
+    cp -f "${_init}" /etc/init.d/hosting-queued
+    chmod +x /etc/init.d/hosting-queued
+    update-rc.d hosting-queued defaults >>"${_LOG}" 2>&1 || true
+    service hosting-queued restart >>"${_LOG}" 2>&1 || service hosting-queued start >>"${_LOG}" 2>&1 || \
+      _alrt "hosting-queued did not start (start it manually: service hosting-queued start)"
+  else
+    _alrt "queue init script not found at ${_init}; frontend tasks will need a cron dispatch"
+  fi
+}
+
+###-------------FINISH-----------------###
+
+finish() {
+  _msg "Fetching the one-time login link"
+  local _link
+  _link="$(_as_aegir "drush @hostmaster uli --browser=0" 2>/dev/null | grep -m1 'http')"
+  echo
+  _info "======================================================================"
+  _info " Vanilla Aegir 3.x install complete on ${_FQDN} (${_HTTP_TYPE})"
+  _info " Control panel : http://${_FQDN}/"
+  if [[ -n "${_link}" ]]; then
+    _info " One-time login: ${_link}"
+  else
+    _info " One-time login: run  su - aegir -c 'drush @hostmaster uli'"
+  fi
+  _info " MySQL root pw : stored in ${_STATE_CNF}"
+  _info " Full log      : ${_LOG}"
+  _info "======================================================================"
+}
+
+###-------------MAIN-------------------###
+
+main() {
+  preflight
+  install_base
+  check_php
+  setup_user
+  setup_db
+  install_drush
+  install_provision
+  build_platform
+  run_install
+  wire_webserver
+  install_queue
+  finish
+  exit 0
+}
+
+main "$@"
