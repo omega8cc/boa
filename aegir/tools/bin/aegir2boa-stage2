@@ -763,8 +763,14 @@ verb_create() {
   # file (persistent dispatcher trigger), so its existence never means busy
   _msg "waiting for target post-install quiescence (up to ${_QUIESCE_TIMEOUT}s)"
   local _waited=0
+  # NB in-[o]ctopus, not in-octopus: the bracket escape must ALSO break the
+  # second alternative's literal text, because "octopus" is a substring of
+  # "in-octopus" - with redirections present the remote bash -c wrapper
+  # does not exec-optimize, so its own cmdline (containing the pattern
+  # text) satisfied alternative 1 and the wait always read busy (drill
+  # defect 2026-07-12: create only returned via the 1800s timeout)
   while ssh -o BatchMode=yes "root@${_TARGET}" \
-    "pgrep -f '[o]ctopus.*${_ACCOUNT}|[b]oa.*in-octopus.*${_ACCOUNT}' >/dev/null 2>&1" 2>/dev/null; do
+    "pgrep -f '[o]ctopus.*${_ACCOUNT}|[b]oa.*in-[o]ctopus.*${_ACCOUNT}' >/dev/null 2>&1" 2>/dev/null; do
     [[ "${_waited}" -ge "${_QUIESCE_TIMEOUT}" ]] && { _alrt "target still busy after ${_QUIESCE_TIMEOUT}s - verify manually before import"; break; }
     sleep 30; _waited=$(( _waited + 30 ))
   done
