@@ -999,6 +999,13 @@ verb_transfer() {
         rsync $(_rsync_flags) --delete --no-devices --no-specials -e ssh \
           "${_plr}/" "root@${_TARGET}:${_dst}/static/a2b/${_plat}/" \
           || _die "platform ${_plat} rsync failed"
+        # the tree lands with the SOURCE box's numeric uids (vanilla aegir/
+        # www-data mean nothing on the target) - the account user could not
+        # even read its own drushrc.php and every import task died on it
+        # (drill defect 2026-07-12); land it account-owned, BOA's verify +
+        # agents apply the fork's perm scheme from there
+        ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:users ${_dst}/static/a2b/${_plat}" \
+          || _die "platform ${_plat} chown failed on target"
         _done_plat="${_done_plat}${_plat} "
         ;;
     esac
@@ -1675,7 +1682,11 @@ _import_per_site() {
       fi
     fi
 
-    # 2. platform context + node (once per platform)
+    # 2. platform context + node (once per platform). The verify runs
+    # UNCONDITIONALLY once per import run, even when the context already
+    # exists: a retry after a fixed transfer (ownership, tree content)
+    # would otherwise trust a verify that ran against the broken landing
+    # and site imports would fail on profile-package resolution.
     case "${_done_plat}" in
       *" ${_plat} "*) : ;;
       *)
@@ -1701,21 +1712,31 @@ PHPEOF
           _as_octo "drush8 @hostmaster php-script ${_phpn}" 2>&1 | tee -a "${_LOG}" | grep -q A2BOK \
             || { _alrt "platform node for ${_plat} failed"; rm -f "${_phpn}"; _fails=$(( _fails + 1 )); continue; }
           rm -f "${_phpn}"
-          _as_octo "drush8 @hostmaster hosting-task @${_ctxp} verify" >>"${_LOG}" 2>&1
-          sleep 5
-          _t_wait_task "$(_t_task_nid_for "${_ctxp}" verify)" "platform ${_plat} verify" \
-            || { _alrt "platform ${_plat} verify failed"; _fails=$(( _fails + 1 )); continue; }
         fi
+        _t_verify_inline "${_ctxp}" "platform ${_plat} verify" \
+          || { _alrt "platform ${_plat} verify failed"; _fails=$(( _fails + 1 )); continue; }
         _done_plat="${_done_plat}${_plat} "
         ;;
     esac
 
-    # 3. site context + hosting-import -> queued import task
+    # 3. site context + hosting-import -> import task. On a FRESH context
+    # hosting-import node_save()s a new site node with import=TRUE, which
+    # queues the import task. On an EXISTING node (retry after a failed
+    # round) it only updates the node with no_verify=TRUE and queues
+    # NOTHING - the tool then polled the OLD failed task nid and insta-
+    # failed (drill defect 2026-07-12). Detect that no new task was born
+    # and drive one inline (hosting-task <ctx> import runs synchronously).
+    local _itnid _prev_itnid
+    _prev_itnid="$(_int_only "$(_t_task_nid_for "${_uri}" import)")"
     _as_octo "drush8 provision-save @${_uri} --context_type=site --uri=${_uri} --platform=@${_ctxp} --db_server=@server_localhost" >>"${_LOG}" 2>&1
     _as_octo "drush8 @hostmaster hosting-import @${_uri}" >>"${_LOG}" 2>&1
     sleep 5
-    local _itnid
-    _itnid="$(_t_task_nid_for "${_uri}" import)"
+    _itnid="$(_int_only "$(_t_task_nid_for "${_uri}" import)")"
+    if [[ -z "${_itnid}" || "${_itnid}" = "${_prev_itnid}" ]]; then
+      _info "site ${_uri}: node already registered - driving the import task inline"
+      _as_octo "drush8 @hostmaster hosting-task @${_uri} import" >>"${_LOG}" 2>&1
+      _itnid="$(_int_only "$(_t_task_nid_for "${_uri}" import)")"
+    fi
     _t_wait_task "${_itnid}" "import ${_uri}" \
       || { _alrt "site ${_uri}: import task failed"; _fails=$(( _fails + 1 )); continue; }
 
