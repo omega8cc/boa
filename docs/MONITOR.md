@@ -1,6 +1,6 @@
 # BOA monitor stack (sysadmin)
 
-BOA has no external monitoring agent and no resident daemon. Every box watches and repairs **itself** from a single root crontab that fires a handful of short-lived bash scripts every minute. Those scripts sample load, restart dead services, kill runaway processes, scan auth logs for abuse, and drain the Aegir task queue — then exit. There is nothing long-running to crash; the watchdog *is* the cron tick. Think of it as the octopus feeling each of its own arms every few seconds and pulling back anything that has gone limp.
+BOA has no external monitoring agent and no resident daemon. Every box watches and repairs **itself** from a single root crontab that fires a handful of short-lived bash scripts every minute. Those scripts sample load, restart dead services, kill runaway processes, scan auth logs for abuse, and drain the Ægir task queue — then exit. There is nothing long-running to crash; the watchdog *is* the cron tick. Think of it as the octopus feeling each of its own arms every few seconds and pulling back anything that has gone limp.
 
 This document covers the **service / load / process** side of that machinery: what cron launches, the self-looping fan-out that gives it sub-minute reaction time, the per-service watchdogs, the load auto-pause ladder, the process guards and auth scanners, the box-class throttle that keeps the fan-out from pinning idle load on small hosts, and the `loadreport` profiler used to measure it.
 
@@ -15,10 +15,12 @@ The installed root crontab lives at `/var/spool/cron/crontabs/root`. Its master 
 | `second.sh` | every minute (self-loops ×10) | Load sampling + auto-pause + heavy watchdog/scanner fan-out |
 | `minute.sh` | every minute (self-loops) | Service auto-healing watchdog fan-out (nginx, php, mysql, …) |
 | `guest-fire.sh` | every minute | Apply temporary csf web bans (see [SECURITY.md](SECURITY.md)) |
-| `runner.sh` | every minute (`nice -n5 ionice -c2 -n7`) | Drain the Aegir hosting task queue (`/var/xdrago/run-*`) |
-| `ip_access.sh` | every 2 min | Maintain per-site IP access rules (see [IP-ACCESS.md](IP-ACCESS.md)) |
+| `runner.sh` | every minute (`nice -n5 ionice -c2 -n7`) | Drain the Ægir hosting task queue (`/var/xdrago/run-*`) |
+| `ip_access.sh` | every 2 min | Maintain per-site IP access rules, IPv4/IPv6/CIDR (see [IP-ACCESS.md](IP-ACCESS.md)) |
+| `user_admin_access.sh` | every 2 min | Maintain per-site `/user`+`/admin` IP access rules, IPv4/IPv6/CIDR (see [USER-ADMIN-ACCESS.md](USER-ADMIN-ACCESS.md)) |
 | `ai_policy.sh` | every 2 min | Apply the AI-crawler policy (see [AI-POLICY.md](AI-POLICY.md)) |
-| `nginx_deny.sh` | every 2 min | Regenerate the nginx ban geo from csf state (see [SECURITY.md](SECURITY.md)) |
+| `nginx_deny.sh` | every 2 min | Regenerate the nginx IPv4 ban geo from csf state (see [SECURITY.md](SECURITY.md)) |
+| `nginx_deny6.sh` | every 2 min | Regenerate the nginx-native IPv6 ban geo (csf is IPv4-only; see [ABUSE-GUARD.md](ABUSE-GUARD.md)) |
 | `migration_proxy_realip.sh` | every 5 min | Refresh migration-proxy realip ranges |
 | `clear.sh` | every 5 min | Periodic cleanup |
 | `loadreport --log` | every 30 min (`nice -n10 ionice -c3`) | Profile which monitor scripts cost CPU/RSS (read-only) |
@@ -43,7 +45,7 @@ The repo source under `aegir/tools/system/` is deployed verbatim to `/var/xdrago
 |---|---|
 | `aegir/tools/system/minute.sh` → `/var/xdrago/minute.sh` | Per-pass fan-out of the per-service watchdogs (`monitor/check/{system,unbound,valkey/redis,mysql,php,fpm_tune,nginx,nginx_guard,java}.sh`) |
 | `aegir/tools/system/second.sh` → `/var/xdrago/second.sh` | Load sampling / auto-pause, the `_proc_control` service guards, the `hackcheck`/`hackftp`/`escapecheck` scanners |
-| `aegir/tools/system/runner.sh` → `/var/xdrago/runner.sh` | Drains the `/var/xdrago/run-*` Aegir hosting tasks, gated by load and queue state |
+| `aegir/tools/system/runner.sh` → `/var/xdrago/runner.sh` | Drains the `/var/xdrago/run-*` Ægir hosting tasks, gated by load and queue state |
 | `aegir/tools/bin/loadreport` → `/opt/local/bin/loadreport` | Read-only `/proc` profiler; JSONL log every 30 min |
 
 Every per-service watchdog launched by `minute.sh` re-sources `/root/.barracuda.cnf` on entry (so every `_VAR` override below is read fresh each pass) and exits immediately unless `/var/log/boa/reset_no_new_password.pid` exists — i.e. the auto-healing watchdogs stay dormant until the box is a fully installed BOA system. (The `second.sh` process guards and the launchers themselves do not gate on that marker.)
@@ -286,9 +288,9 @@ Shared design notes (verified against all three scripts):
 - **`noclobber` lock.** Each takes a PID-checked `noclobber` lock (`/var/run/{hackcheck,hackftp,escapecheck}.lock`) so overlapping cron runs cannot stack.
 - **Allow-list / maintenance safety.** `hackcheck.sh` never bans an IP present in `/etc/csf/csf.allow` or `/etc/csf/csf.ignore`, never bans an IP that had an `Accepted` login in the window, and — like `hackftp.sh` — suppresses direct csf bans while the `/var/xdrago/guest-fire.sh` maintenance flag is present (enforcement is then handled by `guest-fire.sh`). Bans are recycled after their TTL (`_BAN_SECONDS`) so an expired IP can be re-armed.
 
-## The Aegir task-queue runner (`runner.sh`)
+## The Ægir task-queue runner (`runner.sh`)
 
-`runner.sh` is a **separate** per-minute cron job, not part of the `second.sh`/`minute.sh` fan-out. It drains the Aegir verify/migrate/backup task queue by executing the `/var/xdrago/run-*` runners. It is heavily gated so it never adds load on a box that should stay quiet:
+`runner.sh` is a **separate** per-minute cron job, not part of the `second.sh`/`minute.sh` fan-out. It drains the Ægir verify/migrate/backup task queue by executing the `/var/xdrago/run-*` runners. It is heavily gated so it never adds load on a box that should stay quiet:
 
 - **Hard stops first.** It exits immediately if `/root/.proxy.cnf`, `/etc/boa/.pause_tasks_maint.cnf`, or a `max_load`/`critical_load` pid is present; and again if too many `runner.sh` instances are already running, or a SQL backup, `owl.sh`, a MySQL restart/cluster-backup, or `boa_cron_wait.pid` is in flight.
 - **Load-gated per runner.** `_runner_action` runs a `/var/xdrago/run-*` runner only while the 1-minute per-CPU load is **below `_CPU_TASK_RATIO * 100`** (default 310%); above that it waits. This is the same task ratio used by the load-control logic — backend tasks are skipped under load while the web tier stays up.
@@ -296,7 +298,7 @@ Shared design notes (verified against all three scripts):
 - **Small boxes auto-throttle.** `runner.sh` itself writes `/root/.slow.cron.cnf` and pins it immutable with `chattr +i` when total RAM ≤ 4096 MB. With `.slow.cron.cnf` present (and no `.force.queue.runner.cnf`) it allows only one concurrent runner and runs a single throttled pass per minute with `sleep 15` pads.
 - **Fast / forced.** With `/root/.fast.cron.cnf` or `/root/.force.queue.runner.cnf` it runs the queue 10 times in the minute (`sleep 5` between), mirroring the `second.sh` cadence.
 
-> **Disabling the queue does not lower idle load.** Marking a box CI with `.look.like.jenkins.cnf` stops `runner.sh` draining the Aegir queue, but it does **not** by itself remove the idle CPU cost — that comes from the `second.sh`/`minute.sh` monitor fan-out, a *separate* set of cron jobs. (Marking CI does also push `second.sh`/`minute.sh` into the CI box-class, which is the lever that actually quiets the fan-out — see below.)
+> **Disabling the queue does not lower idle load.** Marking a box CI with `.look.like.jenkins.cnf` stops `runner.sh` draining the Ægir queue, but it does **not** by itself remove the idle CPU cost — that comes from the `second.sh`/`minute.sh` monitor fan-out, a *separate* set of cron jobs. (Marking CI does also push `second.sh`/`minute.sh` into the CI box-class, which is the lever that actually quiets the fan-out — see below.)
 
 ## Cron cadence and the idle-load throttle
 
@@ -358,7 +360,7 @@ It is **not** one of the `/var/xdrago/` monitors — it does not loop and enforc
 - **Identity by `(pid, starttime)`.** Because targets are short-lived and PIDs recycle, every process is keyed by its PID *and* its start tick, so two scripts that reuse a PID are never conflated.
 - **Birth-aware CPU charging.** The window start is recorded in boot-relative clock ticks from `/proc/uptime`. A process born during the window is charged its full cumulative CPU (`utime+stime`) from birth; a pre-existing process is charged only its in-window delta — which makes per-run totals meaningful for a script that spawns fresh every tick.
 - **bash/sh resolve to the script.** A process whose `comm` is `bash`/`sh`/`dash` is relabelled to the basename of the first `*.sh`/`*.pl`/`*.php` argument in its `cmdline`, so a hundred `bash` wrappers collapse into `minute.sh`, `scan_nginx.sh`, etc. instead of a useless `bash` bucket.
-- **Helper forks roll up to the launcher.** `pgrep`, `awk`, `bc`, `sleep` and friends are attributed to the BOA launcher that spawned them by walking the `/proc` parent chain (depth-bounded). The walk stops at a known launcher or at `cron`; anything past that is `(non-cron)`. The recognised launchers are `second.sh`, `minute.sh`, `runner.sh`, `guest-fire.sh`, `guest-water.sh`, `owl.sh`, `clear.sh`, `ip_access.sh`, `ai_policy.sh`, `nginx_deny.sh`, `migration_proxy_realip.sh`, `cloudflare_realip.sh`, `manage_ltd_users.sh`, `manage_solr_config.sh`, `purge_binlogs.sh`, `mysql_cleanup.sh`, `graceful.sh`.
+- **Helper forks roll up to the launcher.** `pgrep`, `awk`, `bc`, `sleep` and friends are attributed to the BOA launcher that spawned them by walking the `/proc` parent chain (depth-bounded). The walk stops at a known launcher or at `cron`; anything past that is `(non-cron)`. The recognised launchers are `second.sh`, `minute.sh`, `runner.sh`, `guest-fire.sh`, `guest-water.sh`, `owl.sh`, `clear.sh`, `ip_access.sh`, `user_admin_access.sh`, `ai_policy.sh`, `nginx_deny.sh`, `nginx_deny6.sh`, `migration_proxy_realip.sh`, `cloudflare_realip.sh`, `manage_ltd_users.sh`, `manage_solr_config.sh`, `purge_binlogs.sh`, `mysql_cleanup.sh`, `graceful.sh`.
 - **Systemic fork/ctxt bounds.** The window's `processes` and `ctxt` deltas from `/proc/stat` bound the *total* fork and context-switch churn, including processes too short-lived to ever appear in a sample.
 - **Self-excluded.** It skips its own PID and its own `sleep` child, so the profiler never charges itself.
 

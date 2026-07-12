@@ -6,7 +6,7 @@ cat <<-HELP
 This script converts a single Drupal site's files/private directories into
 symlinks pointing at the per-account static store, by invoking the BOA
 autosymlink tool in its narrow single-site mode. It is the NOPASSWD-sudo entry
-point used by Provision (clone task) so the unprivileged Aegir/Octopus user can
+point used by Provision (clone task) so the unprivileged Ægir/Octopus user can
 trigger the conversion for ONE site WITHOUT being able to reach autosymlink's
 global batch/live modes (which operate on every account on the box).
 

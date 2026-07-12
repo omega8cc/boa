@@ -771,11 +771,11 @@ _sync_solr_config() {
 ###
 ### Three-tier classification for every oct.* / solr.* core found on disk:
 ###
-###   TIER 1 — No vhost at all, OR vhost exists but no Aegir drush alias:
+###   TIER 1 — No vhost at all, OR vhost exists but no Ægir drush alias:
 ###            Core is unknown to the provisioning layer. Apply short
 ###            staleness threshold (_ORPHAN_STALE_DAYS, default 14d).
 ###
-###   TIER 2 — Vhost exists AND Aegir alias exists (site is known but may be
+###   TIER 2 — Vhost exists AND Ægir alias exists (site is known but may be
 ###            an abandoned clone, old staging env, renamed domain, etc.):
 ###            Apply long staleness threshold (_ORPHAN_VHOST_STALE_DAYS,
 ###            default 60d) on data/index/ mtime only — giving cloned/renamed
@@ -798,7 +798,7 @@ _build_active_core_set() {
   # Populates three global associative arrays:
   #
   #   _CORES_WITH_VHOST       — core has a matching enabled nginx vhost
-  #   _CORES_WITH_ALIAS       — core also has a matching Aegir drush alias
+  #   _CORES_WITH_ALIAS       — core also has a matching Ægir drush alias
   #   _CORES_WITH_SOLR_MODULE — site has solr_integration_module explicitly
   #                             set in boa_site_control.ini — these are
   #                             actively managed and must never be archived
@@ -835,7 +835,7 @@ _build_active_core_set() {
       _CORES_WITH_VHOST["solr.${_HM_U_TMP}.${_DomTmp}"]=1
       _CORES_WITH_VHOST["${_HM_U_TMP}.${_DomTmp}"]=1
 
-      # Check for Aegir drush alias
+      # Check for Ægir drush alias
       local _aliasFile="${_usEr}/.drush/${_DomTmp}.alias.drushrc.php"
       if [ -f "${_aliasFile}" ]; then
         _CORES_WITH_ALIAS["oct.${_HM_U_TMP}.${_DomTmp}"]=1
@@ -997,7 +997,7 @@ _purge_orphan_cores() {
       _threshold="${_ORPHAN_VHOST_STALE_DAYS}"
       _tier="tier2(vhost+alias)"
     else
-      # Tier 1: no vhost, or vhost with no Aegir alias (nginx leftover / dead clone)
+      # Tier 1: no vhost, or vhost with no Ægir alias (nginx leftover / dead clone)
       _threshold="${_ORPHAN_STALE_DAYS}"
       _tier="tier1(no-vhost-or-alias)"
     fi

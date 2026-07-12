@@ -24,7 +24,7 @@ indices) where per-account mydumper/myloader cycles would be impractical.
 
 ## Third Tool: renameaegirhost
 
-`renameaegirhost` handles in-place Aegir hostname rename on a single Octopus
+`renameaegirhost` handles in-place Ægir hostname rename on a single Octopus
 root. It is called automatically by xoct (during `import`) and by xmass (during
 `cutover`) — you rarely need to invoke it directly. See inline `--help` for
 details.
@@ -34,7 +34,7 @@ details.
 The former `xboa` per-account migration tool was renamed to `xoct`
 (Octopus-scoped) and `xboa` has been removed — BOA no longer ships or fetches an
 `xboa` binary. `xoct` is functionally equivalent plus two improvements: the
-Aegir DB hostname replacement and post-import task queue are now delegated to
+Ægir DB hostname replacement and post-import task queue are now delegated to
 `renameaegirhost` (more thorough, 5-pass queue), and the hardcoded
 internal-account email exclusion has been removed so `xoct` works correctly when
 invoked by `xmass`.

@@ -945,6 +945,100 @@ _apt_clean_update_no_releaseinfo_change() {
   _mrun "apt-get update -qq"
 }
 
+#
+# Return 0 only if a sources.list file is present, non-empty and carries at
+# least one usable 'deb'/'deb-src' line (scheme://host suite ...). Guards
+# against an empty file or hostless 'deb http://  suite' lines that break apt.
+_apt_sources_list_is_valid() {
+  local _f="${1}"
+  [ -s "${_f}" ] || return 1
+  grep -Eq \
+    '^[[:space:]]*deb(-src)?[[:space:]]+(\[[^]]*\][[:space:]]+)?[a-z][a-z0-9+.-]*://[^[:space:]/][^[:space:]]*[[:space:]]+[^[:space:]]+' \
+    "${_f}" 2> /dev/null || return 1
+  return 0
+}
+
+#
+# Snapshot the current sources.list to a timestamped forensic copy, but ONLY
+# when it validates. A plain copy (never a move), so the live file survives if
+# the rewrite that follows fails. These copies are for the operator/history;
+# they are deliberately NOT used to auto-restore (see the canonical fallback).
+_apt_sources_list_backup() {
+  if _apt_sources_list_is_valid "${_aptLiSys}"; then
+    cp -af "${_aptLiSys}" \
+      "${_vBs}/sources.list-pre-${_xSrl}-${_X_VERSION}-${_NOW}" 2> /dev/null
+  fi
+}
+
+#
+# Last resort when the preferred/fastest-mirror generation produced no usable
+# file: write a minimal sources.list at the OFFICIAL upstream mirror. That
+# mirror is a redirector that is effectively always reachable -- it is NOT
+# speed/quality-filtered like our own mirror check, but a working official
+# mirror beats restoring a stored copy that may pin a dead mirror. A later
+# successful run overwrites this with the preferred mirror.
+_apt_sources_list_write_canonical() {
+  local _c="${_OS_CODE}"
+  local _hdr _m _sm _sec _updates
+  if [ -z "${_c}" ]; then
+    _msg "ERROR: no OS codename; cannot build a canonical ${_aptLiSys}"
+    return 1
+  fi
+  ### Mirror the primary generator's host/suite mapping so the fallback is a
+  ### genuinely working file: archived releases live on the archive mirror and
+  ### have no live -updates suite.
+  _updates=YES
+  if [ "${_OS_DIST}" = "Devuan" ]; then
+    _hdr="## DEVUAN MAIN REPOSITORIES (canonical fallback)"
+    _m="http://deb.devuan.org/merged"
+    _sec="${_c}-security"
+    if [ "${_c}" = "beowulf" ]; then
+      _m="http://archive.devuan.org/merged"
+      _updates=NO
+    fi
+    _sm="${_m}"
+  elif [ "${_OS_DIST}" = "Debian" ]; then
+    _hdr="## DEBIAN MAIN REPOSITORIES (canonical fallback)"
+    if [ "${_c}" = "buster" ] || [ "${_c}" = "stretch" ] || [ "${_c}" = "jessie" ]; then
+      _m="http://archive.debian.org/debian"
+      _sm="http://archive.debian.org/debian-security"
+      _sec="${_c}/updates"
+      _updates=NO
+    else
+      _m="http://deb.debian.org/debian"
+      _sm="http://security.debian.org/debian-security"
+      _sec="${_c}-security"
+    fi
+  else
+    _msg "ERROR: cannot build a canonical ${_aptLiSys} for OS '${_OS_DIST}'"
+    return 1
+  fi
+  { echo "${_hdr}"
+    echo "deb ${_m} ${_c} main contrib non-free"
+    [ "${_updates}" = "YES" ] && echo "deb ${_m} ${_c}-updates main contrib non-free"
+    echo "deb ${_sm} ${_sec} main contrib non-free"
+  } > "${_aptLiSys}" 2> /dev/null
+  if _apt_sources_list_is_valid "${_aptLiSys}"; then
+    _msg "NOTE: Wrote canonical ${_aptLiSys} at official mirror"
+    return 0
+  fi
+  _msg "ERROR: Failed to write canonical ${_aptLiSys}"
+  return 1
+}
+
+#
+# Called AFTER a (re)generation: if the preferred-mirror file is missing or has
+# no usable deb line, enforce the canonical official-mirror version rather than
+# restoring a backup (a backup may pin a mirror that is no longer reliable). The
+# next successful preferred-mirror run overwrites it.
+_apt_sources_list_verify_or_canonical() {
+  if _apt_sources_list_is_valid "${_aptLiSys}"; then
+    return 0
+  fi
+  _msg "OOPS: Generated ${_aptLiSys} is missing or invalid; enforcing canonical mirror"
+  _apt_sources_list_write_canonical
+}
+
 _turn_on_password_update() {
   if [ -e "/root/.mysql.no.new.password.cnf" ]; then
     chattr -i /root/.mysql.no.new.password.cnf

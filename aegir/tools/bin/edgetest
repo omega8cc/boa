@@ -452,15 +452,18 @@ _phase_ipaccess_validation() {
   local _ctrl="/data/disk/${_OCT}/static/control/ip/access.txt"
   local _frag="/data/disk/${_OCT}/config/includes/ip_access/edgetest.example.com.conf"
   mkdir -p "$(dirname "${_ctrl}")"
-  echo "edgetest.example.com 198.51.100.7 192.168.1.300 # edge-policy-test" >> "${_ctrl}"
+  echo "edgetest.example.com 198.51.100.7 2001:db8::/32 192.168.1.300 2001:db8::/129 # edge-policy-test" >> "${_ctrl}"
   bash /var/xdrago/ip_access.sh >/dev/null 2>&1
   if [[ -f "${_frag}" ]]; then
     grep -q '^allow 198.51.100.7;' "${_frag}" && ! grep -q '192.168.1.300' "${_frag}" \
-      && _pass "kept the valid IP and SKIPPED the out-of-range octet (192.168.1.300)" \
-      || _fail "fragment wrong: valid IP missing or bad octet present"
-    grep -q '^allow 127.0.0.1;' "${_frag}" && grep -q '^deny all;' "${_frag}" \
-      && _pass "anti-lockout present (127.0.0.1 + deny all)" \
-      || _fail "anti-lockout missing (127.0.0.1 / deny all)"
+      && _pass "kept the valid IPv4 and SKIPPED the out-of-range octet (192.168.1.300)" \
+      || _fail "fragment wrong: valid IPv4 missing or bad octet present"
+    grep -q '^allow 2001:db8::/32;' "${_frag}" && ! grep -q '2001:db8::/129' "${_frag}" \
+      && _pass "kept the valid IPv6 subnet and SKIPPED the bad prefix (2001:db8::/129)" \
+      || _fail "IPv6 handling wrong: valid subnet missing or bad prefix present"
+    grep -q '^allow 127.0.0.1;' "${_frag}" && grep -q '^allow ::1;' "${_frag}" && grep -q '^deny all;' "${_frag}" \
+      && _pass "anti-lockout present (127.0.0.1 + ::1 + deny all)" \
+      || _fail "anti-lockout missing (127.0.0.1 / ::1 / deny all)"
   else
     _fail "ip_access did not generate a fragment for the test record"
   fi

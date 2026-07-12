@@ -40,9 +40,9 @@ filesystem data is run on demand via `xmass sync`. At cutover:
 5. Source MySQL is briefly locked (`FLUSH TABLES WITH READ LOCK`) while the
    last file writes drain.
 6. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`).
-7. `renameaegirhost` runs on the target for every Aegir root (master +
+7. `renameaegirhost` runs on the target for every Ægir root (master +
    all Octopus accounts), replacing the source hostname with the target FQDN
-   and running a 5-pass Aegir task queue per root.
+   and running a 5-pass Ægir task queue per root.
 8. Target Solr starts (transaction logs pre-cleared for clean first start).
 9. Source vhosts are converted to proxy via `xoct proxy` per account.
 10. DNS is updated; traffic flows directly to target.
@@ -235,7 +235,7 @@ confirm `CLEAN`, then re-run with `--live` to perform the real cutover.
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source |
 | Step 12 | Start nginx on target (serves proxied traffic while rename runs) |
-| Step 13 | `renameaegirhost --aegir-root /var/aegir` on target (Aegir master) |
+| Step 13 | `renameaegirhost --aegir-root /var/aegir` on target (Ægir master) |
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN` on target (each Octopus account) |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |

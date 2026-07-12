@@ -8,7 +8,7 @@ https://aegir.url.name
 
 New here? Start with the first-login guide — it walks you through everything below, slowly and safely:
 
-https://boa.omega8.cc/using/welcome/your-account-and-first-login
+https://docs.boa.io/using/welcome/your-account-and-first-login
 
 ----------------------------------------
 LOGGING IN
@@ -21,7 +21,7 @@ password: FN8rXcQn
 
 Please note: your control panel account and your SSH/FTP/SFTP account are two fully separate accounts. They only start out with the same username and password for convenience — they are not linked. We recommend changing the password on each of them separately after your first login: the control panel password from within the panel, and the SSH/FTP/SFTP password over SSH with the "passwd" command.
 
-Forgot your control panel password later? Reset it with your email address at https://aegir.url.name/user/password
+Forgot your control panel password? Ask your host's support to reset it for you — the control panel can't send password-reset emails itself.
 
 ----------------------------------------
 UPLOADING FILES (MODULES, THEMES, PLATFORMS)
@@ -62,9 +62,9 @@ For quick tests you don't need DNS at all — any subdomain of aegir.url.name wo
 
 Everything else — creating sites, platforms, backups, HTTPS, and what to do when something looks wrong — is in the documentation:
 
-https://boa.omega8.cc/using
+https://docs.boa.io/using
 
 Take it slowly. You can't reach or break anything on the server that isn't yours, so explore freely — and don't hesitate to ask your host when you're stuck.
 
 Thank you,
-The Omega8.cc Team
+The BOA Dev Team
