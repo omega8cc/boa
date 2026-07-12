@@ -1,5 +1,20 @@
 <?php
 
+  // Idempotency guard: re-running the installer must not create duplicate
+  // platform (and profile package) nodes. Derive the context name exactly the
+  // way hosting_platform_insert() does and no-op when it is already
+  // registered. PHP 5.6-safe.
+  if (function_exists('_hosting_platform_context_name')) {
+    $context = 'platform_' . _hosting_platform_context_name($_SERVER['argv'][3]);
+  }
+  else {
+    $context = 'platform_' . preg_replace('/[^\w.-]/', '', $_SERVER['argv'][3]);
+  }
+  if (function_exists('hosting_context_load') && hosting_context_load($context)) {
+    drush_log(dt('make_platform: context !c already registered, skipping.', array('!c' => $context)), 'ok');
+    return;
+  }
+
   // Create the platform node
   global $argv;
   var_dump($argv);
