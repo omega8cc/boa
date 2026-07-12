@@ -733,7 +733,9 @@ verb_create() {
   case "${_SUBSCR}" in M|Q|Y) : ;; *) _die "--subscr must be M|Q|Y" ;; esac
   [[ -n "${_CORES}" ]] || _die "bad --cores"
   _marker_has "pre-mig.pid" || _die "run pre-mig first"
-  _marker_has "create.pid" && { _msg "create already done (marker)"; exit 0; }
+  # account-scoped: one estate may drill/migrate into more than one target
+  # account (estate-level create.pid blocked the second account)
+  _marker_has "create.${_ACCOUNT}.pid" && { _msg "create ${_ACCOUNT} already done (marker)"; exit 0; }
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -777,7 +779,7 @@ verb_create() {
   ssh "root@${_TARGET}" "rm -f /root/.dont.upgrade.octopus.on.install.cnf"
   _info "target quiescent (waited ${_waited}s), upgrade guard removed"
   _kv_set "${_STATE_DIR}/state/check.env" "ACCOUNT" "${_ACCOUNT}"
-  _marker_set "create.pid"
+  _marker_set "create.${_ACCOUNT}.pid"
   _msg "create complete: ${_ACCOUNT} on ${_TARGET}"
 }
 
@@ -2087,7 +2089,7 @@ verb_status() {
   _require_source_box
   _info "route:   $(_kv_get "${_STATE_DIR}/state/check.env" ROUTE 2>/dev/null || echo unset)"
   _info "target:  $(_kv_get "${_STATE_DIR}/state/check.env" TARGET 2>/dev/null || echo unset)"
-  _info "pre-mig: $(_marker_has pre-mig.pid && echo yes || echo no)   create: $(_marker_has create.pid && echo yes || echo no)"
+  _info "pre-mig: $(_marker_has pre-mig.pid && echo yes || echo no)   create: $(ls "${_STATE_DIR}/markers/"create.*.pid 2>/dev/null | sed 's/.*create\.//; s/\.pid$//' | tr '\n' ' ' | sed 's/ $//' | grep . || echo no)"
   local _name _uri _p _e _t _x
   while read -r _name _uri; do
     [[ -n "${_uri}" ]] || continue
