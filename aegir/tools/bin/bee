@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# PHP-selecting launcher for the native Backdrop CLI (bee), enforcing the
+# identity-based destructive-verb policy (D-021). Standalone tool: _msg/_alrt
+# are permitted here (not a lib/functions or main installer script).
+#
+# 1. Full access ONLY for backend identities (root, aegir, o<N>). Every other
+#    identity (*.ftp clients, anyone else) is denied the destructive/RCE verb
+#    set -- every alias -- before exec. Restores go through the Ægir control
+#    panel, so db-import/sql-import are blocked too; db-export stays allowed.
+# 2. Picks a modern /opt/phpNN CLI (>= 7.4 floor) so bee never runs under
+#    php56 (bee's own floor is 7.1); per-site cli.info when resolvable, else the
+#    newest installed modern PHP.
+
+_BEE_FLOOR=74
+_BEE_REAL=/opt/tools/bee/bee.php
+
+_msg()  { printf '%s\n' "$*"; }
+_alrt() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
+
+_pick_modern() {
+  local _c
+  for _c in 85 84 83 82 81 80 74; do
+    if [[ -x "/opt/php${_c}/bin/php" ]]; then
+      printf '/opt/php%s/bin/php\n' "${_c}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# --- Identity gate (D-021) ---------------------------------------------------
+# The verb is resolved exactly as bee itself resolves it (bee_parse_input in
+# includes/command.inc): every -*/--* token is an option, and the command is
+# the first remaining token that bee's `empty($_bee_command)` test does not
+# discard -- which in PHP means NOT the empty string and NOT "0" (bee keeps
+# overwriting the command past those, so `bee "" eval` / `bee 0 eval` really run
+# eval). We must skip the same tokens or a client smuggles a destructive verb
+# behind an empty/"0" pad. (VM-verified bypass, ng019 2026-07-11.)
+_ID="$(id -un 2>/dev/null)"
+_BACKEND=NO
+if [[ "${_ID}" = "root" ]] \
+  || [[ "${_ID}" = "aegir" ]] \
+  || [[ "${_ID}" =~ ^o[0-9]+$ ]]; then
+  _BACKEND=YES
+fi
+
+if [[ "${_BACKEND}" = "NO" ]]; then
+  _VERB=""
+  for _tok in "$@"; do
+    case "${_tok}" in
+      -*) continue ;;
+    esac
+    # bee's empty($_bee_command) discards "" and "0" too; keep scanning.
+    if [[ -z "${_tok}" ]] || [[ "${_tok}" = "0" ]]; then
+      continue
+    fi
+    _VERB="${_tok}"
+    break
+  done
+  case "${_VERB}" in
+    eval|ev|php-eval|php-script|scr|sql|sqlc|sql-cli|db-cli|db-drop|sql-drop|db-query|dbq|install|si|site-install|db-import|dbim|sql-import)
+      _alrt "bee: the '${_VERB}' command is not permitted here."
+      _msg  "This operation is reserved for the hosting backend."
+      _msg  "Please use the Ægir control panel to perform it."
+      exit 1
+      ;;
+  esac
+fi
+
+# --- PHP selection (>= 7.4 clamp) --------------------------------------------
+_BEE_PHP=""
+_i="${PWD}"
+while [[ -n "${_i}" ]] && [[ "${_i}" != "/" ]]; do
+  if [[ -e "${_i}/static/control/cli.info" ]]; then
+    _v="$(tr -cd '0-9' < "${_i}/static/control/cli.info" 2>/dev/null)"
+    [[ -n "${_v}" ]] && _BEE_PHP="/opt/php${_v}/bin/php"
+    break
+  fi
+  _i="${_i%/*}"
+done
+
+if [[ -n "${_BEE_PHP}" ]] && [[ -x "${_BEE_PHP}" ]]; then
+  _n="$(printf '%s' "${_BEE_PHP}" | tr -cd '0-9')"
+  if [[ -z "${_n}" ]] || [[ "${_n}" -lt "${_BEE_FLOOR}" ]]; then
+    _BEE_PHP="$(_pick_modern)"
+  fi
+else
+  _BEE_PHP="$(_pick_modern)"
+fi
+
+if [[ -z "${_BEE_PHP}" ]] || [[ ! -x "${_BEE_PHP}" ]]; then
+  _alrt "bee: no PHP >= 7.4 CLI available"
+  exit 1
+fi
+
+exec "${_BEE_PHP}" "${_BEE_REAL}" "$@"

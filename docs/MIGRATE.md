@@ -24,28 +24,29 @@ indices) where per-account mydumper/myloader cycles would be impractical.
 
 ## Third Tool: renameaegirhost
 
-`renameaegirhost` handles in-place Aegir hostname rename on a single Octopus
+`renameaegirhost` handles in-place Ægir hostname rename on a single Octopus
 root. It is called automatically by xoct (during `import`) and by xmass (during
 `cutover`) — you rarely need to invoke it directly. See inline `--help` for
 details.
 
-## Deprecation of xboa
+## Former xboa tool (renamed to xoct)
 
-`xboa` has been renamed to `xoct`. The tool is functionally equivalent plus two
-improvements: the Aegir DB hostname replacement and post-import task queue are
-now delegated to `renameaegirhost` (more thorough, 5-pass queue), and the
-hardcoded internal-account email exclusion has been removed so `xoct` works
-correctly when invoked by `xmass`.
+The former `xboa` per-account migration tool was renamed to `xoct`
+(Octopus-scoped) and `xboa` has been removed — BOA no longer ships or fetches an
+`xboa` binary. `xoct` is functionally equivalent plus two improvements: the
+Ægir DB hostname replacement and post-import task queue are now delegated to
+`renameaegirhost` (more thorough, 5-pass queue), and the hardcoded
+internal-account email exclusion has been removed so `xoct` works correctly when
+invoked by `xmass`.
 
-**Recommended transition:** install a compatibility symlink so existing scripts
-and operator muscle-memory continue to work:
+If you still have scripts referencing `xboa`, update them to call `xoct`
+directly. The tool is installed at `/opt/local/bin/xoct`; if you need a
+compatibility alias, point it there (note the `/opt/local/bin` path — not
+`/usr/local/bin`):
 
 ```sh
-ln -sfn /usr/local/bin/xoct /usr/local/bin/xboa
+ln -sfn /opt/local/bin/xoct /opt/local/bin/xboa
 ```
-
-The xboa source file itself should be removed from the repository to avoid
-ambiguity. The symlink keeps binary compatibility at zero maintenance cost.
 
 ## Detailed Procedures
 

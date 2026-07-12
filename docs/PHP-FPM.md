@@ -7,13 +7,13 @@ The Ægir version provided by BOA is now fully compatible with PHP 8.5, so it ca
 
 BOA allows you to manage the PHP-FPM version across all sites hosted on an Octopus instance using the `fpm.info` file.
 
-- The `~/static/control/fpm.info` file, if it exists and contains a supported and installed PHP-FPM version, will be used by a system agent running every 1-2 minutes to switch the PHP-FPM version used for all web requests on this Octopus instance.
+- The `~/static/control/fpm.info` file, if it exists and contains a supported and installed PHP-FPM version, will be used by a system agent running every 3 minutes to switch the PHP-FPM version used for all web requests on this Octopus instance.
 
 #### **IMPORTANT**:
 - If used, this will switch PHP-FPM for **all** Drupal sites hosted on the instance, unless a `multi-fpm.info` control file also exists.
 
 ### Supported Values for Single PHP-FPM Mode:
-- 8.5, 8.4, 8.3
+- Any installed PHP version from 5.6 to 8.5 (`5.6`, `7.0`, `7.1`, `7.2`, `7.3`, `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`, `8.5`). If the requested version is not installed, the system falls back to the nearest available version.
 
 #### **NOTE**:
 - Only one line and one value (e.g., `8.3`) should be present in this file; otherwise, the system will ignore it.

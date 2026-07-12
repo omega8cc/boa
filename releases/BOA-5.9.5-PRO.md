@@ -77,7 +77,7 @@ exposes the SQL root password.
 
 In addition, `/proc` is now mounted with **hidepid**, so one Octopus user can
 no longer inspect the process list, environment, or command lines of another
-Aegir system user or of root-owned processes.
+Ægir system user or of root-owned processes.
 
 ### Shell injection
 
@@ -109,7 +109,7 @@ code-execution vector via uploaded files.
 **CiviCRM requires a control file — action needed for CiviCRM sites.** CiviCRM
 ships its own legitimate Drush command files (`civicrm.drush.inc`,
 `cv.drush.inc`, `civicrm_drush.drush.inc`) inside the site tree, which the new
-filter would otherwise block. These are needed for **Aegir backend tasks**
+filter would otherwise block. These are needed for **Ægir backend tasks**
 (verify, migrate, clone, and similar) to complete on a CiviCRM site, so they
 are allowlisted — but only as an explicit, per-Octopus-user opt-in. To enable
 the exception for an Octopus user, create the control file:
@@ -122,11 +122,11 @@ touch /data/conf/<octopus-user>_civicrm.txt
 `/data/disk/`.) When this file is present, the three CiviCRM command-file
 basenames are loaded during backend tasks; otherwise they stay blocked.
 
-> **This affects only Aegir backend tasks, not PHP-FPM.** Normal web requests
+> **This affects only Ægir backend tasks, not PHP-FPM.** Normal web requests
 > to a CiviCRM site never go through Drush, so they are entirely unaffected —
 > the site keeps serving traffic exactly as before, with or without the
 > control file. The control file is required **only** so that the site's
-> *Aegir backend tasks* can load CiviCRM's own Drush commands. If you host
+> *Ægir backend tasks* can load CiviCRM's own Drush commands. If you host
 > CiviCRM sites, add the control file for each affected Octopus user before
 > running their next verify or migrate task.
 

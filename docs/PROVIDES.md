@@ -1,6 +1,6 @@
 # Provides
 
-**Included/Enabled by Default** (See [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/NOTES.md) for details)
+**Included/Enabled by Default** (See [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for details)
 
 1. PHP-FPM versions 8.5/4/3/2/1/0, 7.4/3/2/1/0, and 5.6, configurable per site.
 2. Latest release of Percona 5.7, 8.0 or 8.4 database server with Adminer manager.
@@ -9,9 +9,9 @@
 5. Entry-level XSS protection built into Nginx.
 6. Firewall csf/lfd integrated with Nginx abuse guard.
 7. Autonomous Maintenance and Auto-Healing scripts located in `/var/xdrago`.
-8. Local monitoring for uptime and self-healing every 3 seconds.
+8. Local monitoring for uptime and self-healing on a continuous few-seconds cadence.
 9. Automated, rotated daily backups for all databases in `/data/disk/arch/sql`.
-10. Letsencrypt.org SSL support (See [docs/SSL.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SSL.md) for details).
+10. Letsencrypt.org SSL support (See [docs/SSL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SSL.md) for details).
 11. HTTP/2 or SPDY Nginx support.
 12. Perfect Forward Secrecy (PFS) support in Nginx.
 13. PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse, and ionCube.
@@ -24,8 +24,8 @@
 20. Fast DNS Cache Server (unbound).
 21. Image Optimize toolkit binaries.
 
-**Optional Add-ons** (See [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/NOTES.md) for details)
+**Optional Add-ons** (See [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for details)
 
-22. MultiCore Apache Solr 7 and Solr 4 (See [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SOLR.md) for details).
+22. MultiCore Apache Solr 9, Solr 7, and Solr 4 (See [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SOLR.md) for details). Solr 9 is the current/forward option; Solr 7 and Solr 4 are not supported on Devuan Excalibur.
 23. New Relic Apps Monitor with per Octopus license and per site reporting.
-24. Ruby Gems and NPM (See [docs/GEM.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/GEM.md) for details).
+24. Ruby Gems and NPM (See [docs/GEM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/GEM.md) for details).
