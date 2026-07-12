@@ -1,0 +1,1771 @@
+#!/bin/bash
+#
+# aegir2boa-stage2 - remote adoption of a vanilla Aegir-on-Nginx estate into
+# a BOA Octopus account, with the source demoted to an HTTP(S) proxy and a
+# per-site dotfile revert. Stage 2 of the aegir2boa migration; implements
+# BOTH D-010 routes (per-site adoption DEFAULT; whole-DB-import bridge for
+# eligible homogeneous current-3.x estates). Design: aegir2boa repo,
+# design/stage2-toolset.md (the spec).
+#
+# DUAL-RESIDENT: place this same script on the SOURCE (vanilla) box and the
+# TARGET (BOA) box. Source verbs refuse to run on a BOA box and vice versa.
+#
+# Source-resident verbs (vanilla box, root):
+#   check      --target <ip> [--route per-site|db-import] [--report <env>]
+#   pre-mig    --target <ip>                                  [--live]
+#   create     --target <ip> --account <oN> --email <e> --tree <dev|lts|pro>
+#              [--option EDGE] [--subscr M] [--cores 1]       [--live]
+#   export     --site <dom>|--all                             [--live]
+#   transfer   --target <ip> --account <oN> --site <dom>|--all [--live]
+#   proxy      --target <ip> --site <dom>|--all [--accept-http-diff] [--live]
+#   cert-sync  --target <ip> --account <oN> [--install-cron]  [--live]
+#   revert     --site <dom>|--all                             [--live]
+#   resume                                                    [--live]
+#   status
+#
+# Target-resident verbs (BOA box, root):
+#   import     --account <oN> --route per-site|db-import
+#              [--site <dom>|--all] [--source-fqdn <fqdn>]
+#              [--welcome-node]                               [--live]
+#   import     --account <oN> --revert-db-import              [--live]
+#   target-status --account <oN>
+#
+# Safety model (DECISIONS D-009): every acting verb is a DRY RUN unless
+# --live is given; --live requires a prior CLEAN dry run of the same verb
+# and scope on the same box, and CONSUMES that token on entry. The serving
+# path is never cut before its replacement is functionally proven (nginx -t
+# before every reload; target HTTP probe before every proxy swap). Frontend
+# tasks are polled by latest vid only.
+#
+# Old-stack floors: bash >= 3.2/4.1-era on the source; nothing here assumes
+# BOA on the source box. Target verbs assume a healthy BOA box.
+#
+# Exit: 0 ok (dry clean / live completed), non-zero on gate failure.
+
+export PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export DEBIAN_FRONTEND=noninteractive
+
+###-------------CONFIG-----------------###
+
+_AEGIR_USER=aegir
+_AEGIR_ROOT=/var/aegir
+_LOG=/var/log/aegir2boa-stage2.log
+_TASK_TIMEOUT=900
+_QUIESCE_TIMEOUT=1800
+_OP=""
+_LIVE=NO
+_TARGET=""
+_ACCOUNT=""
+_SITE=""
+_ALL=NO
+_ROUTE=""
+_REPORT=""
+_EMAIL=""
+_TREE=""
+_OPTION=EDGE
+_SUBSCR=M
+_CORES=1
+_SRC_FQDN=""
+_ACCEPT_HTTP_DIFF=NO
+_ACCEPT_SCRUB=NO
+_INSTALL_CRON=NO
+_WELCOME_NODE=NO
+_REVERT_DB_IMPORT=NO
+_FROM_STATE=NO
+
+###-------------HELPERS----------------###
+
+_msg()  { echo "A2B-S2 [$(date +%T 2>/dev/null)] ==> $*" | tee -a "${_LOG}"; }
+_info() { echo "A2B-S2 [$(date +%T 2>/dev/null)] ::  $*" | tee -a "${_LOG}"; }
+_alrt() { echo "A2B-S2 [$(date +%T 2>/dev/null)] !!  $*" | tee -a "${_LOG}" >&2; }
+_die()  { echo "A2B-S2 [$(date +%T 2>/dev/null)] FATAL: $*" | tee -a "${_LOG}" >&2; exit 1; }
+
+_have() { command -v "$1" >/dev/null 2>&1; }
+
+_usage() {
+  sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'
+  exit 0
+}
+
+# Run a command as the aegir user (source) in a login shell (drush needs $HOME).
+_as_aegir() { su -s /bin/bash - "${_AEGIR_USER}" -c "$1"; }
+# Run a command as the Octopus account user (target).
+_as_octo() { su -s /bin/bash - "${_ACCOUNT}" -c "$1"; }
+
+# data-derived key parts must not reach grep/sed as regex (stage-1 pattern)
+_key_sanitize() {
+  local _raw="$1" _ck
+  _ck="$(printf '%s' "${_raw}" | cksum | cut -d' ' -f1)"
+  printf '%s_%s' "$(printf '%s' "${_raw}" | tr -c 'A-Za-z0-9_' '_')" "${_ck}"
+}
+
+# fail-closed sanitizers (preflight lineage: userland text never reaches
+# argv/SQL/paths unvalidated)
+_sane_ident()  { printf '%s' "$1" | tr -cd 'A-Za-z0-9_'; }
+_int_only()    { printf '%s' "$1" | tr -cd '0-9'; }
+_sane_domain() {
+  local _d
+  _d="$(printf '%s' "$1" | tr -cd 'a-z0-9.-')"
+  case "${_d}" in
+    -*|.*|*/*|"") return 1 ;;
+  esac
+  printf '%s' "${_d}"
+}
+_sane_account() {
+  local _a
+  _a="$(printf '%s' "$1" | tr -cd 'a-z0-9')"
+  case "${_a}" in
+    [a-z]*) printf '%s' "${_a}" ;;
+    *) return 1 ;;
+  esac
+}
+
+# keyval state file helpers (stage-1 pattern); every consumer passes a
+# regex-safe key (fixed names or _key_sanitize output)
+_kv_set() {
+  local _f="$1" _k="$2" _v="$3"
+  touch "${_f}" && chmod 600 "${_f}"
+  if grep -q "^${_k}=" "${_f}" 2>/dev/null; then
+    sed -i "s|^${_k}=.*|${_k}=${_v}|" "${_f}"
+  else
+    echo "${_k}=${_v}" >> "${_f}"
+  fi
+}
+_kv_get() {
+  local _f="$1" _k="$2"
+  [[ -f "${_f}" ]] || return 1
+  grep "^${_k}=" "${_f}" 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+# HTTP status for a managed uri, asked of a specific host header + address
+_http_code_at() {
+  curl -s -o /dev/null -w '%{http_code}' -m 20 -H "Host: $1" "http://$2/" 2>/dev/null
+}
+
+###-------------BOX CLASS + STATE DIRS--###
+
+_box_class() {
+  if [[ -d /data/disk ]] || [[ -e /root/.barracuda.cnf ]] || [[ -x /opt/local/bin/boa ]]; then
+    echo boa
+  elif [[ -d "${_AEGIR_ROOT}/.drush" ]]; then
+    echo vanilla
+  else
+    echo unknown
+  fi
+}
+
+_require_source_box() {
+  [[ "$(_box_class)" = "vanilla" ]] \
+    || _die "verb '${_OP}' runs on the vanilla SOURCE box only (this box: $(_box_class))"
+  _STATE_DIR="${_AEGIR_ROOT}/log/a2b"
+  mkdir -p "${_STATE_DIR}/state" "${_STATE_DIR}/manifest" "${_STATE_DIR}/markers"
+  chmod 700 "${_STATE_DIR}"
+}
+
+_require_target_box() {
+  [[ "$(_box_class)" = "boa" ]] \
+    || _die "verb '${_OP}' runs on the BOA TARGET box only (this box: $(_box_class))"
+  [[ -n "${_ACCOUNT}" ]] || _die "--account <oN> required"
+  _ACCT_ROOT="/data/disk/${_ACCOUNT}"
+  [[ -d "${_ACCT_ROOT}" ]] || _die "no such account root ${_ACCT_ROOT}"
+  _STATE_DIR="${_ACCT_ROOT}/log/a2b"
+  mkdir -p "${_STATE_DIR}/state" "${_STATE_DIR}/markers"
+  chmod 700 "${_STATE_DIR}"
+}
+
+_marker()     { echo "${_STATE_DIR}/markers/$1"; }
+_marker_set() { date '+%Y-%m-%d %H:%M:%S' > "$(_marker "$1")"; }
+_marker_has() { [[ -e "$(_marker "$1")" ]]; }
+
+###-------------DRY/LIVE GATE----------###
+# xoct state-file model with D-009a consumed-on-entry semantics, keyed per
+# verb+scope on THIS box. A CLEAN dry run arms exactly one live run.
+
+_gate_file() { echo "${_STATE_DIR}/state/gate_${_OP}_$(_key_sanitize "$1")"; }
+
+_gate_mark_clean()     { _kv_set "$(_gate_file "$1")" "_LAST" "CLEAN"; }
+_gate_mark_not_clean() { _kv_set "$(_gate_file "$1")" "_LAST" "NOT_CLEAN"; }
+
+_gate_consume() {
+  local _f
+  _f="$(_gate_file "$1")"
+  [[ "$(_kv_get "${_f}" _LAST)" = "CLEAN" ]] \
+    || _die "--live requires a prior CLEAN dry run of '${_OP}' for scope '$1' on this box"
+  _kv_set "${_f}" "_LAST" "CONSUMED"
+}
+
+_dry_finish() {
+  if [[ "${_DRY_FAIL:-0}" -eq 0 ]]; then
+    _gate_mark_clean "$1"
+    _msg "DRY RUN CLEAN (${_OP} $1) - re-run with --live to act"
+    exit 0
+  else
+    _gate_mark_not_clean "$1"
+    _die "DRY RUN found blocking problems (${_OP} $1) - see above"
+  fi
+}
+
+###-------------SOURCE DISCOVERY-------###
+
+_sql() { _as_aegir "drush @hostmaster sqlq \"$1\" 2>/dev/null"; }
+
+# enabled sites as "context_name uri" pairs, hostmaster FIRST (stage-1)
+_sites_list() {
+  _sql "SELECT c.name, n.title FROM node n JOIN hosting_site s ON s.nid = n.nid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status = 1 ORDER BY (c.name = 'hostmaster') DESC, n.nid" \
+    | tr '\t' ' '
+}
+
+_hostmaster_uri() {
+  _sql "SELECT n.title FROM node n WHERE n.nid = (SELECT nid FROM hosting_context WHERE name = 'hostmaster')"
+}
+
+_vhostd()  { echo "${_AEGIR_ROOT}/config/server_master/nginx/vhost.d"; }
+_pred()    { echo "${_AEGIR_ROOT}/config/server_master/nginx/pre.d"; }
+_stub_of() { echo "$(_pred)/a2b_503_$1.conf"; }
+
+# parse a site's alias for site_path/root (xoct:221-222 pattern)
+_alias_val() {
+  grep "'$2'" "${_AEGIR_ROOT}/.drush/$1.alias.drushrc.php" 2>/dev/null \
+    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
+}
+
+# parse a drushrc option (xoct:224-233 pattern), sanitized by the caller
+_drushrc_val() {
+  grep "options\['$2'\] = " "$1/drushrc.php" 2>/dev/null \
+    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g" | head -1
+}
+
+# Drupal major of a platform tree
+_d_major_of() {
+  local _r="$1"
+  if [[ -e "${_r}/core/lib/Drupal.php" ]]; then
+    sed -n "s/.*const VERSION = '\([0-9]*\)\..*/\1/p" "${_r}/core/lib/Drupal.php" | head -1
+  elif [[ -e "${_r}/modules/system/system.info" ]]; then
+    sed -n 's/^core *= *\([0-9]*\)\.x.*/\1/p' "${_r}/modules/system/system.info" | head -1
+  elif [[ -e "${_r}/modules/system/system.module" ]]; then
+    echo 6
+  else
+    echo 0
+  fi
+}
+
+# vhost harvest helpers: server_names, listen lines, ssl cert lines.
+# All are emitted verbatim-per-line; 443 listens are normalized to carry
+# the ssl arg (vanilla may write bare 'listen *:443;' + legacy 'ssl on;').
+_harvest_names() {
+  grep -h 'server_name' "$1" 2>/dev/null | sed 's/server_name//g; s/;//g' \
+    | tr -s ' \t' ' ' | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+_harvest_listens() {
+  grep -hE '^[[:space:]]*listen[[:space:]]' "$1" 2>/dev/null \
+    | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | sort -u \
+    | sed '/:443/{ /[[:space:]]ssl/!s/;$/ ssl;/ }'
+}
+_harvest_ssl_lines() {
+  grep -hE '^[[:space:]]*ssl_certificate(_key)?[[:space:]]' "$1" 2>/dev/null \
+    | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | sort -u
+}
+_has_443() { _harvest_listens "$1" | grep -q ':443'; }
+
+# every cert/key file referenced by harvested ssl lines must exist
+_ssl_paths_ok() {
+  local _l _p _ok=0
+  while read -r _l; do
+    [[ -n "${_l}" ]] || continue
+    _p="$(echo "${_l}" | awk '{print $2}' | sed 's/;$//')"
+    [[ -f "${_p}" ]] || { _alrt "cert path missing: ${_p} (referenced by $1)"; _ok=1; }
+  done < <(_harvest_ssl_lines "$1")
+  return "${_ok}"
+}
+
+_nginx_test_and_reload() {
+  nginx -t >>"${_LOG}" 2>&1 || return 1
+  service nginx reload >>"${_LOG}" 2>&1 || nginx -s reload >>"${_LOG}" 2>&1
+}
+
+###-------------EMBEDDED TEMPLATES-----###
+# Derived from BOA aegir/tools/system/conf/{proxy,https_proxy_le}.conf
+# (boa-private@private-dev), adapted for a vanilla source: no http3/quic/
+# KTLS (distro nginx), cert lines point at the tool's per-domain proxy
+# cert store instead of the Octopus /data/disk layout. Proxy semantics
+# (headers incl. CF-Connecting-IP hand-off, timeouts, buffering) verbatim.
+
+_emit_proxy_http() {   # 1 server_names 2 target_ip
+  cat <<PROXYEOF
+###
+### Plain HTTP proxy (START) [aegir2boa-stage2]
+###
+server {
+  listen                       *:80;
+  server_name                  $1;
+  access_log                   off;
+  log_not_found                off;
+  location / {
+    proxy_pass                 http://$2;
+    proxy_http_version         1.1;
+    proxy_set_header           Connection        "";
+    proxy_redirect             off;
+    gzip_vary                  off;
+    proxy_buffering            off;
+    proxy_set_header           Host              \$host;
+    proxy_set_header           X-Real-IP         \$remote_addr;
+    proxy_set_header           X-Forwarded-By    \$server_addr:\$server_port;
+    proxy_set_header           X-Forwarded-For   \$proxy_add_x_forwarded_for;
+    proxy_set_header           X-Local-Proxy     \$scheme;
+    proxy_set_header           CF-Connecting-IP  \$remote_addr;
+    proxy_pass_header          Set-Cookie;
+    proxy_pass_header          Cookie;
+    proxy_pass_header          X-Accel-Expires;
+    proxy_pass_header          X-Accel-Redirect;
+    proxy_pass_header          X-This-Proto;
+    proxy_connect_timeout      180;
+    proxy_send_timeout         180;
+    proxy_read_timeout         180;
+  }
+}
+###
+### Plain HTTP proxy (END)
+###
+PROXYEOF
+}
+
+_emit_proxy_https() {   # 1 domain 2 server_names 3 target_ip 4 cert_store
+  cat <<PROXYEOF
+###
+### Secure HTTPS proxy for $1 (START) [aegir2boa-stage2]
+###
+server {
+  listen                       *:443 ssl;
+  http2                        on;
+  server_name                  $2;
+  ssl_certificate_key          $4/key.pem;
+  ssl_certificate              $4/cert.pem;
+  access_log                   off;
+  log_not_found                off;
+  location / {
+    proxy_pass                 https://$3;
+    proxy_http_version         1.1;
+    proxy_set_header           Connection        "";
+    proxy_redirect             off;
+    gzip_vary                  off;
+    proxy_buffering            off;
+    proxy_set_header           Host              \$host;
+    proxy_set_header           X-Real-IP         \$remote_addr;
+    proxy_set_header           X-Forwarded-By    \$server_addr:\$server_port;
+    proxy_set_header           X-Forwarded-For   \$proxy_add_x_forwarded_for;
+    proxy_set_header           X-Local-Proxy     \$scheme;
+    proxy_set_header           X-Forwarded-Proto \$scheme;
+    proxy_set_header           CF-Connecting-IP  \$remote_addr;
+    proxy_pass_header          Set-Cookie;
+    proxy_pass_header          Cookie;
+    proxy_pass_header          X-Accel-Expires;
+    proxy_pass_header          X-Accel-Redirect;
+    proxy_pass_header          X-This-Proto;
+    proxy_connect_timeout      180;
+    proxy_send_timeout         180;
+    proxy_read_timeout         180;
+  }
+}
+###
+### Secure HTTPS proxy (END)
+###
+PROXYEOF
+}
+
+_emit_stub_503() {   # 1 domain (listens/names/ssl read from the vhost file)
+  local _vh
+  _vh="$(_vhostd)/$1"
+  echo "### aegir2boa-stage2 pause stub for $1 - shadows the vhost.d block"
+  echo "### (pre.d is included before vhost.d; first-defined server wins)"
+  echo "server {"
+  _harvest_listens "${_vh}" | sed 's/^/  /'
+  echo "  server_name                  $(_harvest_names "${_vh}");"
+  if _has_443 "${_vh}"; then
+    _harvest_ssl_lines "${_vh}" | sed 's/^/  /'
+  fi
+  echo "  access_log                   off;"
+  echo "  add_header Retry-After 3600 always;"
+  echo "  return 503;"
+  echo "}"
+}
+
+###-------------MANIFESTS--------------###
+
+_manifest_of() { echo "${_STATE_DIR}/manifest/$1.info"; }
+
+_manifest_write() {   # 1 dom 2 ctx 3 platform 4 plat_root 5 site_path 6 dbn 7 dbp 8 dmajor 9 ssl 10 baseline
+  local _f
+  _f="$(_manifest_of "$1")"
+  {
+    echo "A2BM_URI='$1'"
+    echo "A2BM_CTX='$2'"
+    echo "A2BM_PLATFORM='$3'"
+    echo "A2BM_PLATFORM_ROOT='$4'"
+    echo "A2BM_SITE_PATH='$5'"
+    echo "A2BM_DBN='$6'"
+    echo "A2BM_DBP='$7'"
+    echo "A2BM_DMAJOR='$8'"
+    echo "A2BM_SSL='$9'"
+    echo "A2BM_BASELINE='${10}'"
+    echo "A2BM_SRC_FQDN='$(hostname -f 2>/dev/null)'"
+  } > "${_f}"
+  chmod 600 "${_f}"
+}
+
+# read one manifest value without sourcing (values are sanitized at write
+# time, but never execute a data file)
+_manifest_val() {
+  grep "^A2BM_$2='" "$1" 2>/dev/null | head -1 | sed "s/^A2BM_$2='//; s/'\$//"
+}
+
+###-------------MYSQL (SOURCE)---------###
+
+# temp defaults file so site credentials never appear in argv
+_mysql_defaults() {   # 1 user 2 pass -> prints path
+  local _f
+  _f="$(mktemp "${_STATE_DIR}/.myd.XXXXXX")"
+  chmod 600 "${_f}"
+  printf '[client]\nuser=%s\npassword=%s\nhost=localhost\n' "$1" "$2" > "${_f}"
+  echo "${_f}"
+}
+
+_mysqldump_flags() {
+  local _fl="--single-transaction --quick --no-autocommit --skip-add-locks --hex-blob"
+  mysqldump --help 2>/dev/null | grep -q 'no-tablespaces' && _fl="${_fl} --no-tablespaces"
+  echo "${_fl}"
+}
+
+_site_db_size_mb() {   # 1 defaults-file 2 dbn
+  local _b
+  _b="$(mysql --defaults-extra-file="$1" -N -B -e \
+    "SELECT COALESCE(ROUND(SUM(data_length+index_length)/1048576),0) FROM information_schema.tables WHERE table_schema='$2'" 2>/dev/null)"
+  _int_only "${_b:-0}"
+}
+
+###-------------VERB: check------------###
+
+_report_scalar() {   # 1 key -> value from the preflight env report
+  grep "^$1='" "${_REPORT}" 2>/dev/null | head -1 | sed "s/^$1='//; s/'\$//"
+}
+
+_report_tsv() {   # 1 table -> rows between the TSV markers
+  sed -n "/^#TSV:$1 /,/^#ENDTSV:$1\$/p" "${_REPORT}" 2>/dev/null | sed '1d;$d'
+}
+
+verb_check() {
+  _require_source_box
+  [[ -n "${_TARGET}" ]] || _die "check needs --target <ip>"
+
+  # locate + trust-check the preflight machine report
+  if [[ -z "${_REPORT}" ]]; then
+    _REPORT="$(ls -1t /tmp/aegir2boa-preflight.*.env 2>/dev/null | head -1)"
+  fi
+  [[ -n "${_REPORT}" && -f "${_REPORT}" ]] \
+    || _die "no preflight report found - run aegir2boa-preflight first (or pass --report <env>)"
+  local _owner _perm
+  _owner="$(stat -c %u "${_REPORT}" 2>/dev/null)"
+  _perm="$(stat -c %a "${_REPORT}" 2>/dev/null)"
+  [[ "${_owner}" = "0" ]] || _die "preflight report ${_REPORT} not owned by root - refusing"
+  case "${_perm}" in *[2367]) _die "preflight report ${_REPORT} is world-writable - refusing" ;; esac
+  _info "preflight report: ${_REPORT}"
+  [[ "$(_report_scalar A2B_HOST)" = "$(hostname -f 2>/dev/null)" ]] \
+    || _die "preflight report is for host '$(_report_scalar A2B_HOST)', this box is '$(hostname -f)' - re-run the preflight here"
+
+  # stage-2 verdict comes from the report scalars, never from its exit code
+  local _v
+  _v="$(_report_scalar A2B_STAGE2_VERDICT)"
+  _info "preflight stage-2 verdict: ${_v} (fail: $(_report_scalar A2B_STAGE2_FAIL_REASONS))"
+  [[ "${_v}" = "FAIL" ]] && _die "preflight stage-2 verdict is FAIL - resolve its reasons first"
+
+  # nginx-mode hard gate (B6)
+  [[ -d "$(_vhostd)" ]] || _die "no nginx vhost.d - stage 1 (apache->nginx flip) has not run"
+  case "$(_report_scalar A2B_HTTP_SERVICE_TYPE)" in
+    nginx|nginx_ssl) : ;;
+    *) _die "http_service_type=$(_report_scalar A2B_HTTP_SERVICE_TYPE) - source is not nginx-mode" ;;
+  esac
+
+  # ssh to target (operator-established key)
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" true >/dev/null 2>&1 \
+    || _die "cannot ssh root@${_TARGET} with BatchMode - establish the key first (ssh-copy-id)"
+  ssh -o BatchMode=yes "root@${_TARGET}" 'test -x /opt/local/bin/boa' >/dev/null 2>&1 \
+    || _die "target ${_TARGET} does not look like a BOA box (/opt/local/bin/boa missing)"
+  _info "target ${_TARGET}: ssh ok, BOA present"
+
+  # PHP pools available on the target (parity gate input, open-q #4)
+  local _pools
+  _pools="$(ssh -o BatchMode=yes "root@${_TARGET}" 'ls -d /opt/php[0-9]* 2>/dev/null | sed "s|/opt/php||"' | tr '\n' ' ')"
+  _info "target PHP pools: ${_pools:-none found}"
+  _kv_set "${_STATE_DIR}/state/check.env" "TARGET_PHP_POOLS" "${_pools}"
+
+  # per-platform D-version reduce (route input + per-site parity)
+  local _all_d7=YES _row _core
+  while read -r _row; do
+    [[ -n "${_row}" ]] || continue
+    _core="$(echo "${_row}" | awk -F'\t' '{print $3}')"
+    case "${_core}" in
+      7*) : ;;
+      *)  _all_d7=NO ;;
+    esac
+  done < <(_report_tsv platforms)
+
+  # single-box reduce
+  local _single=YES _reasons
+  _reasons="$(_report_scalar A2B_STAGE2_WARN_REASONS);$(_report_scalar A2B_STAGE2_FAIL_REASONS)"
+  [[ "$(_int_only "$(_report_scalar A2B_HTTP_SERVERS)")" = "1" ]] || _single=NO
+  case "${_reasons}" in
+    *cluster_pack_topology*|*multi_web_servers*|*remote_db_server*) _single=NO ;;
+  esac
+
+  # schema high-water
+  local _schema
+  _schema="$(_int_only "$(_report_scalar A2B_HOSTING_SCHEMA)")"
+
+  # db-import eligibility (D-010: discovery-routed, never operator-asserted)
+  local _eligible=YES _why=""
+  [[ "${_all_d7}" = "YES" ]] || { _eligible=NO; _why="${_why} non-D7-platform"; }
+  [[ "${_single}" = "YES" ]] || { _eligible=NO; _why="${_why} multi-box"; }
+  [[ "${_schema}" = "7304" ]] || { _eligible=NO; _why="${_why} hosting-schema-${_schema:-unknown}"; }
+
+  # full enabled-module enumeration (preflight covers hosting_% only)
+  _msg "enabled non-core modules on the source hostmaster (db-import scrub review):"
+  _sql "SELECT name, filename FROM \\\`system\\\` WHERE status=1 AND type='module' ORDER BY name" \
+    | tee "${_STATE_DIR}/state/enabled-modules.txt" | sed 's/^/    /'
+  chmod 600 "${_STATE_DIR}/state/enabled-modules.txt"
+
+  # route decision
+  local _route="${_ROUTE}"
+  if [[ -z "${_route}" ]]; then
+    if [[ "${_eligible}" = "YES" ]]; then
+      _route="db-import"
+    else
+      _route="per-site"
+    fi
+    _info "route auto-selected: ${_route}"
+  fi
+  if [[ "${_route}" = "db-import" && "${_eligible}" = "NO" ]]; then
+    _die "estate is NOT db-import eligible (${_why# }) - the per-site route applies (D-010)"
+  fi
+  if [[ "${_route}" = "db-import" && "${_ACCEPT_SCRUB}" != "YES" ]]; then
+    _alrt "db-import route: review the module list above; re-run check with --accept-scrub-list to acknowledge"
+  fi
+
+  # per-site PHP parity + per-site summary
+  local _name _uri _plr _dmaj _fails=0
+  while read -r _name _uri; do
+    [[ -n "${_uri}" && "${_name}" != "hostmaster" ]] || continue
+    _plr="$(_alias_val "${_uri}" "root'")"
+    _dmaj="$(_d_major_of "${_plr}")"
+    case "${_dmaj}" in
+      6) echo "${_pools}" | grep -q '56' \
+           || { _alrt "site ${_uri}: D6 needs PHP 5.6 pool on target - MISSING (per-site FAIL)"; _fails=$(( _fails + 1 )); } ;;
+      7) : ;;
+      0) _alrt "site ${_uri}: platform D-version undetected at ${_plr:-?}"; _fails=$(( _fails + 1 )) ;;
+    esac
+    _info "site ${_uri}: D${_dmaj} platform=$(basename "${_plr:-unknown}")"
+  done < <(_sites_list)
+  [[ "${_fails}" -gt 0 ]] && _alrt "${_fails} site(s) flagged - they will be SKIPPED (listed per-site FAILs), not blocking the run"
+
+  # record the plan
+  _kv_set "${_STATE_DIR}/state/check.env" "ROUTE" "${_route}"
+  _kv_set "${_STATE_DIR}/state/check.env" "TARGET" "${_TARGET}"
+  _kv_set "${_STATE_DIR}/state/check.env" "SCRUB_ACK" "${_ACCEPT_SCRUB}"
+  _msg "CHECK COMPLETE: route=${_route} target=${_TARGET} (recorded)"
+  _msg "next: pre-mig --target ${_TARGET}"
+}
+
+###-------------VERB: pre-mig / resume-###
+
+verb_premig() {
+  _require_source_box
+  [[ -n "${_TARGET}" ]] || _die "pre-mig needs --target <ip>"
+  _marker_has "pre-mig.pid" && _die "pre-mig already done (marker present) - use resume to undo"
+  local _scope="estate"
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    _info "[DRY] would save + comment the ${_AEGIR_USER} crontab dispatch line(s)"
+    crontab -l -u "${_AEGIR_USER}" 2>/dev/null | grep -q hosting-dispatch \
+      && _info "[DRY] dispatch cron present" \
+      || _info "[DRY] no dispatch cron line found"
+    if systemctl is-active hosting-queued >/dev/null 2>&1 \
+      || service hosting-queued status >/dev/null 2>&1; then
+      _info "[DRY] hosting-queued daemon ACTIVE - would stop + disable"
+    else
+      _info "[DRY] hosting-queued daemon not active"
+    fi
+    ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" true >/dev/null 2>&1 \
+      || { _alrt "cannot ssh root@${_TARGET}"; _DRY_FAIL=1; }
+    _dry_finish "${_scope}"
+  fi
+  _gate_consume "${_scope}"
+
+  _msg "LIVE pre-mig: pausing source automation"
+  # save + comment the dispatch crontab (restore artifact for resume)
+  crontab -l -u "${_AEGIR_USER}" 2>/dev/null > "${_STATE_DIR}/state/crontab.saved"
+  if grep -q hosting-dispatch "${_STATE_DIR}/state/crontab.saved" 2>/dev/null; then
+    sed 's/^\([^#].*hosting-dispatch.*\)$/#A2B-PAUSED# \1/' \
+      "${_STATE_DIR}/state/crontab.saved" | crontab -u "${_AEGIR_USER}" -
+    _info "dispatch cron line(s) commented"
+  fi
+  # hosting-queued daemon
+  local _qstate=inactive
+  if systemctl is-active hosting-queued >/dev/null 2>&1; then
+    _qstate=systemd
+    systemctl stop hosting-queued >>"${_LOG}" 2>&1
+    systemctl disable hosting-queued >>"${_LOG}" 2>&1
+  elif service hosting-queued status >/dev/null 2>&1; then
+    _qstate=initd
+    service hosting-queued stop >>"${_LOG}" 2>&1
+    update-rc.d hosting-queued disable >>"${_LOG}" 2>&1 || true
+  fi
+  _kv_set "${_STATE_DIR}/state/premig.env" "QUEUED_WAS" "${_qstate}"
+  [[ "${_qstate}" != "inactive" ]] && _info "hosting-queued stopped + disabled (was: ${_qstate})"
+
+  # drain in-flight backend work before declaring quiescence
+  local _waited=0
+  while pgrep -u "${_AEGIR_USER}" -f "hosting-dispatch|hosting-queued|provision-" >/dev/null 2>&1; do
+    [[ "${_waited}" -ge 600 ]] && { _alrt "backend still busy after 600s - proceeding, verify manually"; break; }
+    sleep 5; _waited=$(( _waited + 5 ))
+  done
+  _info "backend quiescent (waited ${_waited}s)"
+
+  _kv_set "${_STATE_DIR}/state/premig.env" "TARGET" "${_TARGET}"
+  _marker_set "pre-mig.pid"
+  _msg "pre-mig complete - source automation paused (resume restores it ONLY as part of full revert)"
+}
+
+verb_resume() {
+  _require_source_box
+  _marker_has "pre-mig.pid" || _die "nothing to resume (no pre-mig marker)"
+  # refuse while any site is still paused/proxied - a resumed queue would
+  # fight the stubs/proxy vhosts (hostmaster verify rewrites vhost.d)
+  local _m
+  for _m in "${_STATE_DIR}/markers/"*.paused.pid "${_STATE_DIR}/markers/"*.proxied.pid; do
+    [[ -e "${_m}" ]] && _die "site marker $(basename "${_m}") present - revert all sites before resume"
+  done
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    _info "[DRY] would restore the saved crontab + hosting-queued state ($(_kv_get "${_STATE_DIR}/state/premig.env" QUEUED_WAS))"
+    _dry_finish "estate"
+  fi
+  _gate_consume "estate"
+
+  _msg "LIVE resume: restoring source automation"
+  [[ -f "${_STATE_DIR}/state/crontab.saved" ]] \
+    && crontab -u "${_AEGIR_USER}" - < "${_STATE_DIR}/state/crontab.saved"
+  case "$(_kv_get "${_STATE_DIR}/state/premig.env" QUEUED_WAS)" in
+    systemd) systemctl enable hosting-queued >>"${_LOG}" 2>&1; systemctl start hosting-queued >>"${_LOG}" 2>&1 ;;
+    initd)   update-rc.d hosting-queued enable >>"${_LOG}" 2>&1 || true; service hosting-queued start >>"${_LOG}" 2>&1 ;;
+  esac
+  rm -f "$(_marker "pre-mig.pid")"
+  _msg "resume complete - source automation restored"
+}
+
+###-------------VERB: create-----------###
+
+verb_create() {
+  _require_source_box
+  [[ -n "${_TARGET}" && -n "${_ACCOUNT}" && -n "${_EMAIL}" && -n "${_TREE}" ]] \
+    || _die "create needs --target --account --email --tree"
+  case "${_TREE}" in dev|lts|pro) : ;; *) _die "--tree must be dev|lts|pro" ;; esac
+  # these ride a remote root command line - fail closed on odd characters
+  case "${_EMAIL}" in *[!A-Za-z0-9@._+-]*|"") _die "bad --email" ;; esac
+  case "${_OPTION}" in *[!A-Za-z0-9]*|"") _die "bad --option" ;; esac
+  case "${_SUBSCR}" in M|Q|Y) : ;; *) _die "--subscr must be M|Q|Y" ;; esac
+  [[ -n "${_CORES}" ]] || _die "bad --cores"
+  _marker_has "pre-mig.pid" || _die "run pre-mig first"
+  _marker_has "create.pid" && { _msg "create already done (marker)"; exit 0; }
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    if ssh -o BatchMode=yes "root@${_TARGET}" "test -d /data/disk/${_ACCOUNT}" 2>/dev/null; then
+      _alrt "account ${_ACCOUNT} already exists on ${_TARGET}"; _DRY_FAIL=1
+    else
+      _info "[DRY] would run: boa in-octopus ${_EMAIL} ${_ACCOUNT} ${_TREE} ${_OPTION} ${_SUBSCR} ${_CORES} noscreen on ${_TARGET}"
+      _info "[DRY] then wait for hard quiescence (in-octopus's backgrounded octopus-up recreates run-${_ACCOUNT} and fires repeatedly)"
+    fi
+    _dry_finish "${_ACCOUNT}"
+  fi
+  _gate_consume "${_ACCOUNT}"
+
+  _msg "LIVE create: building ${_ACCOUNT} on ${_TARGET} (${_TREE})"
+  ssh "root@${_TARGET}" "/opt/local/bin/boa in-octopus ${_EMAIL} ${_ACCOUNT} ${_TREE} ${_OPTION} ${_SUBSCR} ${_CORES} noscreen" \
+    | tee -a "${_LOG}"
+  ssh "root@${_TARGET}" "test -d /data/disk/${_ACCOUNT}" \
+    || _die "in-octopus finished but /data/disk/${_ACCOUNT} does not exist on ${_TARGET}"
+  ssh "root@${_TARGET}" "/bin/rm -f /data/disk/${_ACCOUNT}/tools/le/.ctrl/ssl-demo-mode.pid" 2>/dev/null
+
+  # hard quiescence: the backgrounded octopus up- recreates /var/xdrago/run-oN
+  # and fires it repeatedly (schema-spike lesson) - wait it out
+  _msg "waiting for target post-install quiescence (up to ${_QUIESCE_TIMEOUT}s)"
+  local _waited=0
+  while ssh -o BatchMode=yes "root@${_TARGET}" \
+    "pgrep -f 'run-${_ACCOUNT}\$|[o]ctopus.*${_ACCOUNT}' >/dev/null 2>&1 || test -e /var/xdrago/run-${_ACCOUNT}" 2>/dev/null; do
+    [[ "${_waited}" -ge "${_QUIESCE_TIMEOUT}" ]] && { _alrt "target still busy after ${_QUIESCE_TIMEOUT}s - verify manually before import"; break; }
+    sleep 30; _waited=$(( _waited + 30 ))
+  done
+  _info "target quiescent (waited ${_waited}s)"
+  _kv_set "${_STATE_DIR}/state/check.env" "ACCOUNT" "${_ACCOUNT}"
+  _marker_set "create.pid"
+  _msg "create complete: ${_ACCOUNT} on ${_TARGET}"
+}
+
+###-------------VERB: export-----------###
+
+_export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
+  local _ctx="$1" _uri="$2" _vh _dir _plr _dbn _dbp _dmaj _ssl=0 _base _myd _sz _free
+  _vh="$(_vhostd)/${_uri}"
+  _marker_has "${_uri}.exported.pid" && { _info "site ${_uri}: already exported"; return 0; }
+  [[ -e "${_vh}" ]] || { _alrt "site ${_uri}: no vhost file - SKIP"; return 1; }
+
+  _dir="$(_alias_val "${_uri}" "site_path'")"
+  _plr="$(_alias_val "${_uri}" "root'")"
+  [[ -d "${_dir}" && -d "${_plr}" ]] || { _alrt "site ${_uri}: alias paths unresolved - SKIP"; return 1; }
+  _dbn="$(_sane_ident "$(_drushrc_val "${_dir}" db_name)")"
+  _dbp="$(_drushrc_val "${_dir}" db_passwd)"
+  local _dbh
+  _dbh="$(_drushrc_val "${_dir}" db_host)"
+  case "${_dbh}" in localhost|127.0.0.1|"") : ;; *) _alrt "site ${_uri}: db_host=${_dbh} not local - SKIP (multi-host)"; return 1 ;; esac
+  [[ -n "${_dbn}" && -n "${_dbp}" ]] || { _alrt "site ${_uri}: db creds unresolved - SKIP"; return 1; }
+  # the password rides a manifest, a mysql defaults file and target SQL -
+  # fail closed on characters outside Aegir's generated-password charset
+  case "${_dbp}" in *[!A-Za-z0-9_.+-]*) _alrt "site ${_uri}: db_passwd has unsupported characters - SKIP"; return 1 ;; esac
+  _dmaj="$(_d_major_of "${_plr}")"
+  _has_443 "${_vh}" && _ssl=1
+
+  if [[ "${_ssl}" = "1" ]] && ! _ssl_paths_ok "${_vh}"; then
+    _alrt "site ${_uri}: 443 vhost with missing cert files - stub/proxy will be 80-only"
+    _ssl=0
+  fi
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _myd="$(_mysql_defaults "${_dbn}" "${_dbp}")"
+    _sz="$(_site_db_size_mb "${_myd}" "${_dbn}")"
+    rm -f "${_myd}"
+    _free="$(_int_only "$(df -Pm "${_AEGIR_ROOT}" 2>/dev/null | awk 'NR==2{print $4}')")"
+    [[ -n "${_sz}" ]] || { _alrt "site ${_uri}: cannot query db size with site creds - SKIP"; return 1; }
+    if [[ -n "${_free}" && "${_free}" -lt $(( _sz * 2 + 200 )) ]]; then
+      _alrt "site ${_uri}: db ~${_sz}MB but only ${_free}MB free under ${_AEGIR_ROOT} - SKIP"
+      return 1
+    fi
+    _info "[DRY] site ${_uri}: D${_dmaj} db=${_dbn} (~${_sz}MB) ssl=${_ssl} - would stub(503)+dump"
+    return 0
+  fi
+
+  # baseline BEFORE the stub
+  _base="$(_http_code_at "${_uri}" 127.0.0.1)"
+  # 1. pause: pre.d shadow stub (original vhost untouched)
+  _emit_stub_503 "${_uri}" > "$(_stub_of "${_uri}")"
+  if ! _nginx_test_and_reload; then
+    rm -f "$(_stub_of "${_uri}")"
+    _nginx_test_and_reload
+    _alrt "site ${_uri}: stub failed nginx -t - stub removed, box unchanged, SKIP"
+    return 1
+  fi
+  _marker_set "${_uri}.paused.pid"
+  _info "site ${_uri}: paused (503 stub, baseline HTTP ${_base})"
+
+  # 2. dump with the site's own credentials
+  mkdir -p "${_AEGIR_ROOT}/src/a2b"
+  chmod 700 "${_AEGIR_ROOT}/src" "${_AEGIR_ROOT}/src/a2b" 2>/dev/null
+  _myd="$(_mysql_defaults "${_dbn}" "${_dbp}")"
+  # shellcheck disable=SC2046
+  if ! mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) "${_dbn}" \
+      > "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" 2>>"${_LOG}"; then
+    rm -f "${_myd}" "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
+    _alrt "site ${_uri}: mysqldump FAILED - stub stays up (data-consistency over uptime); revert --site ${_uri} to unpause"
+    return 1
+  fi
+  rm -f "${_myd}"
+  [[ -s "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" ]] \
+    || { _alrt "site ${_uri}: empty dump - SKIP"; return 1; }
+  chmod 600 "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
+
+  _manifest_write "${_uri}" "${_ctx}" "$(basename "${_plr}")" "${_plr}" "${_dir}" \
+    "${_dbn}" "${_dbp}" "${_dmaj}" "${_ssl}" "${_base}"
+  _marker_set "${_uri}.exported.pid"
+  _info "site ${_uri}: exported (db ${_dbn})"
+  return 0
+}
+
+_export_hostmaster() {   # db-import route only
+  _marker_has "hostmaster.exported.pid" && { _info "hostmaster: already exported"; return 0; }
+  local _hmdir _hdb _hdp _myd
+  _hmdir="$(_alias_val hostmaster "site_path'")"
+  _hdb="$(_sane_ident "$(_drushrc_val "${_hmdir}" db_name)")"
+  _hdp="$(_drushrc_val "${_hmdir}" db_passwd)"
+  [[ -n "${_hdb}" && -n "${_hdp}" ]] || { _alrt "hostmaster db creds unresolved"; return 1; }
+  case "${_hdp}" in *[!A-Za-z0-9_.+-]*) _alrt "hostmaster db_passwd has unsupported characters"; return 1 ;; esac
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _info "[DRY] would dump hostmaster db ${_hdb} + set maintenance_mode 1"
+    return 0
+  fi
+  _myd="$(_mysql_defaults "${_hdb}" "${_hdp}")"
+  # shellcheck disable=SC2046
+  mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) "${_hdb}" \
+    > "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" 2>>"${_LOG}"
+  rm -f "${_myd}"
+  [[ -s "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" ]] \
+    || { _alrt "hostmaster dump FAILED/empty"; return 1; }
+  chmod 600 "${_AEGIR_ROOT}/src/a2b/hostmaster.sql"
+  # the frontend must not take writes that post-date its dump
+  _as_aegir "drush @hostmaster vset --always-set maintenance_mode 1" >>"${_LOG}" 2>&1
+  _marker_set "hostmaster.exported.pid"
+  _info "hostmaster: exported (db ${_hdb}), frontend in maintenance mode"
+  return 0
+}
+
+verb_export() {
+  _require_source_box
+  _marker_has "pre-mig.pid" || _die "run pre-mig first (the queue must be paused before any dump)"
+  [[ "${_ALL}" = "YES" || -n "${_SITE}" ]] || _die "export needs --site <dom> or --all"
+  local _scope="${_SITE:-all}" _route _fails=0 _name _uri
+  _route="$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)"
+  [[ -n "${_route}" ]] || _die "no recorded route - run check first"
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    while read -r _name _uri; do
+      [[ -n "${_uri}" && "${_name}" != "hostmaster" ]] || continue
+      [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" ]] || continue
+      _export_one "${_name}" "${_uri}" || _fails=$(( _fails + 1 ))
+    done < <(_sites_list)
+    [[ "${_route}" = "db-import" ]] && { _export_hostmaster || _fails=$(( _fails + 1 )); }
+    [[ "${_fails}" -gt 0 ]] && { _alrt "${_fails} site(s) flagged above"; _DRY_FAIL=1; }
+    _dry_finish "${_scope}"
+  fi
+  _gate_consume "${_scope}"
+
+  _msg "LIVE export (route=${_route})"
+  while read -r _name _uri; do
+    [[ -n "${_uri}" && "${_name}" != "hostmaster" ]] || continue
+    [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" ]] || continue
+    _export_one "${_name}" "${_uri}" || _fails=$(( _fails + 1 ))
+  done < <(_sites_list)
+  [[ "${_route}" = "db-import" ]] && { _export_hostmaster || _fails=$(( _fails + 1 )); }
+  if [[ "${_fails}" -gt 0 ]]; then
+    _alrt "export finished with ${_fails} per-site failure(s) - failed sites are NOT exported; others proceed"
+  else
+    _msg "export complete"
+  fi
+}
+
+###-------------VERB: transfer---------###
+
+verb_transfer() {
+  _require_source_box
+  [[ -n "${_TARGET}" && -n "${_ACCOUNT}" ]] || _die "transfer needs --target and --account"
+  [[ "${_ALL}" = "YES" || -n "${_SITE}" ]] || _die "transfer needs --site <dom> or --all"
+  local _scope="${_SITE:-all}" _dst="/data/disk/${_ACCOUNT}" _mf _uri _plat _plr _dbn _need=0 _free
+
+  # collect the manifest set in scope
+  local _mfl=""
+  for _mf in "${_STATE_DIR}/manifest/"*.info; do
+    [[ -e "${_mf}" ]] || continue
+    _uri="$(_manifest_val "${_mf}" URI)"
+    [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" ]] || continue
+    _marker_has "${_uri}.exported.pid" || continue
+    _mfl="${_mfl} ${_mf}"
+  done
+  [[ -n "${_mfl}" ]] || _die "nothing exported in scope '${_scope}' - run export first"
+
+  # disk-space gate on the target
+  for _mf in ${_mfl}; do
+    _plr="$(_manifest_val "${_mf}" PLATFORM_ROOT)"
+    _dbn="$(_manifest_val "${_mf}" DBN)"
+    _need=$(( _need + $(_int_only "$(du -smL "${_plr}" 2>/dev/null | cut -f1)") ))
+    _need=$(( _need + $(_int_only "$(du -sm "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" 2>/dev/null | cut -f1)") ))
+  done
+  _free="$(_int_only "$(ssh -o BatchMode=yes "root@${_TARGET}" "df -Pm /data/disk 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)")"
+  _info "transfer needs ~${_need}MB; target /data/disk has ${_free:-?}MB free"
+  [[ -n "${_free}" && "${_free}" -gt $(( _need + 500 )) ]] \
+    || _die "target free space insufficient (or unreadable) - refusing"
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    for _mf in ${_mfl}; do
+      _uri="$(_manifest_val "${_mf}" URI)"
+      _plat="$(_manifest_val "${_mf}" PLATFORM)"
+      _info "[DRY] would rsync platform ${_plat} + dump + manifest for ${_uri} -> ${_TARGET}:${_dst}"
+    done
+    _dry_finish "${_scope}"
+  fi
+  _gate_consume "${_scope}"
+
+  _msg "LIVE transfer -> root@${_TARGET}:${_dst}"
+  ssh "root@${_TARGET}" "mkdir -p ${_dst}/static/a2b ${_dst}/src/a2b/manifest ${_dst}/src/a2b/ssl-ref ${_dst}/src/a2b/nginx-ref"
+  local _done_plat=" "
+  for _mf in ${_mfl}; do
+    _uri="$(_manifest_val "${_mf}" URI)"
+    _plat="$(_manifest_val "${_mf}" PLATFORM)"
+    _plr="$(_manifest_val "${_mf}" PLATFORM_ROOT)"
+    _dbn="$(_manifest_val "${_mf}" DBN)"
+    # platform tree once per platform
+    case "${_done_plat}" in
+      *" ${_plat} "*) : ;;
+      *)
+        _info "platform ${_plat}: rsync tree"
+        rsync -aEAXqu --no-devices --no-specials -e ssh \
+          "${_plr}/" "root@${_TARGET}:${_dst}/static/a2b/${_plat}/" \
+          || _die "platform ${_plat} rsync failed"
+        _done_plat="${_done_plat}${_plat} "
+        ;;
+    esac
+    rsync -aq --no-devices --no-specials -e ssh \
+      "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" "root@${_TARGET}:${_dst}/src/a2b/" \
+      || _die "dump for ${_uri} rsync failed"
+    rsync -aq -e ssh "${_mf}" "root@${_TARGET}:${_dst}/src/a2b/manifest/" \
+      || _die "manifest for ${_uri} rsync failed"
+    ssh "root@${_TARGET}" "chmod 600 ${_dst}/src/a2b/${_dbn}.sql ${_dst}/src/a2b/manifest/$(basename "${_mf}")"
+    _marker_set "${_uri}.transferred.pid"
+    _info "site ${_uri}: transferred"
+  done
+  # route artifacts + reference trees
+  local _route
+  _route="$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)"
+  echo "${_route}" | ssh "root@${_TARGET}" "cat > ${_dst}/src/a2b/route.txt"
+  if [[ "${_route}" = "db-import" ]]; then
+    # the check-time acknowledged module list must ride along: import's
+    # {system} scrub refuses to remove anything the operator never saw
+    [[ "$(_kv_get "${_STATE_DIR}/state/check.env" SCRUB_ACK)" = "YES" ]] \
+      || _die "db-import route needs 'check --accept-scrub-list' before transfer"
+    [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
+      || _die "no enabled-modules list from check - re-run check"
+    rsync -aq -e ssh "${_STATE_DIR}/state/enabled-modules.txt" \
+      "root@${_TARGET}:${_dst}/src/a2b/scrub-ack.txt" \
+      || _die "scrub-ack transfer failed"
+  fi
+  if [[ "${_route}" = "db-import" && -e "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" ]]; then
+    rsync -aq -e ssh "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" "root@${_TARGET}:${_dst}/src/a2b/" \
+      || _die "hostmaster dump rsync failed"
+    ssh "root@${_TARGET}" "chmod 600 ${_dst}/src/a2b/hostmaster.sql"
+    hostname -f | ssh "root@${_TARGET}" "cat > ${_dst}/src/a2b/source-fqdn.txt"
+  fi
+  [[ -d "${_AEGIR_ROOT}/config/ssl.d" ]] \
+    && rsync -aq --no-devices --no-specials -e ssh "${_AEGIR_ROOT}/config/ssl.d/" \
+         "root@${_TARGET}:${_dst}/src/a2b/ssl-ref/" 2>>"${_LOG}"
+  rsync -aq --no-devices --no-specials -e ssh "$(_vhostd)/" \
+    "root@${_TARGET}:${_dst}/src/a2b/nginx-ref/" 2>>"${_LOG}"
+  _msg "transfer complete - next: run 'import --account ${_ACCOUNT} --route ${_route}' ON THE TARGET"
+}
+
+###-------------TARGET HELPERS---------###
+
+_tsql() { _as_octo "drush8 @hostmaster sqlq \"$1\" 2>/dev/null"; }
+
+_t_task_nid_for() {
+  local _nid
+  _nid="$(_tsql "SELECT nid FROM hosting_context WHERE name = '$1'")"
+  [[ -n "${_nid}" ]] || return 1
+  _tsql "SELECT MAX(nid) FROM hosting_task WHERE rid = ${_nid} AND task_type = '$2'"
+}
+
+# wait for a hosting task node; latest vid only (D-009c)
+_t_wait_task() {
+  local _tnid="$1" _label="$2" _waited=0 _st
+  [[ -n "${_tnid}" && "${_tnid}" != "NULL" ]] || { _alrt "no task to wait for (${_label})"; return 1; }
+  while [[ "${_waited}" -lt "${_TASK_TIMEOUT}" ]]; do
+    _st="$(_tsql "SELECT task_status FROM hosting_task WHERE nid = ${_tnid} ORDER BY vid DESC LIMIT 1")"
+    case "${_st}" in
+      1) return 0 ;;
+      3) _alrt "task ${_tnid} (${_label}) finished with WARNING"; return 0 ;;
+      2) _alrt "task ${_tnid} (${_label}) FAILED - see hostmaster task log node/${_tnid}"; return 1 ;;
+    esac
+    sleep 5
+    _waited=$(( _waited + 5 ))
+  done
+  _alrt "task ${_tnid} (${_label}) not finished after ${_TASK_TIMEOUT}s"
+  return 1
+}
+
+# account freeze marker + agent drain (schema-spike validated): owl.sh skips
+# an account carrying log/proxied.pid; destructive steps additionally wait
+# for any active owl pass to drain
+_t_freeze_on() {
+  [[ -e "${_ACCT_ROOT}/log/proxied.pid" ]] \
+    && _die "freeze marker already present on ${_ACCOUNT} - another operation in flight?"
+  echo "A2B-IMPORT-FREEZE" > "${_ACCT_ROOT}/log/proxied.pid"
+}
+_t_freeze_off() { rm -f "${_ACCT_ROOT}/log/proxied.pid"; }
+_t_owl_drain() {
+  local _waited=0
+  while pgrep -f "[o]wl\.sh" >/dev/null 2>&1; do
+    [[ "${_waited}" -ge 1800 ]] && _die "owl.sh pass still active after 1800s - retry later"
+    _info "owl.sh pass active - waiting before destructive steps"
+    sleep 30; _waited=$(( _waited + 30 ))
+  done
+}
+
+_t_hm_db() {
+  local _hmdir
+  _hmdir="$(grep "site_path'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
+    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")"
+  _sane_ident "$(grep "options\['db_name'\] = " "${_hmdir}/drushrc.php" 2>/dev/null \
+    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g")"
+}
+
+_t_hm_platform_root() {
+  grep "root'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
+    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
+}
+
+# create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
+_t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile
+  local _dbn="$1" _dbp="$2" _dump="$3"
+  if [[ -d "/var/lib/mysql/${_dbn}" ]]; then
+    _alrt "db ${_dbn} already exists on target - NOT overwriting (remove it to re-import)"
+    return 1
+  fi
+  mysql --silent -u root mysql <<EOFMYSQL
+CREATE DATABASE \`${_dbn}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${_dbn}'@'localhost';
+CREATE USER IF NOT EXISTS '${_dbn}'@'%';
+GRANT ALL ON \`${_dbn}\`.* TO '${_dbn}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON \`${_dbn}\`.* TO '${_dbn}'@'%' WITH GRANT OPTION;
+ALTER USER '${_dbn}'@'localhost' IDENTIFIED BY '${_dbp}';
+ALTER USER '${_dbn}'@'%' IDENTIFIED BY '${_dbp}';
+EOFMYSQL
+  mysqladmin -u root flush-privileges >/dev/null 2>&1
+  # MariaDB >=10.5.25 dumps open with a sandbox directive Percona rejects -
+  # stream-strip the first line only, artifact stays pristine
+  sed '1{/^\/\*M!999999/d}' "${_dump}" | mysql --silent -u root "${_dbn}" \
+    || return 1
+  return 0
+}
+
+###-------------VERB: import-----------###
+
+_import_db_route() {
+  local _src="${_ACCT_ROOT}/src/a2b" _hdb _step
+  _hdb="$(_t_hm_db)"
+  [[ -n "${_hdb}" ]] || _die "cannot resolve target hostmaster db"
+  [[ -s "${_src}/hostmaster.sql" ]] || _die "no transferred hostmaster.sql"
+  [[ -n "${_SRC_FQDN}" ]] || _SRC_FQDN="$(cat "${_src}/source-fqdn.txt" 2>/dev/null | tr -d '\n')"
+  [[ -n "${_SRC_FQDN}" ]] || _die "source fqdn unknown - pass --source-fqdn"
+  _have drush8 || _die "drush8 missing on target - renameaegirhost's replay would silently no-op"
+
+  # rename pre-checks (design 7a.11): hostmaster alias site_path must exist,
+  # and the backups partition must fit 2x the hostmaster db
+  local _hmsp _bfree _hsz
+  _hmsp="$(grep "site_path'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" \
+    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")"
+  [[ -d "${_hmsp}" ]] || _die "target hostmaster alias site_path ${_hmsp} missing - rename would die mid-way"
+  _hsz="$(_int_only "$(du -sm "${_src}/hostmaster.sql" | cut -f1)")"
+  _bfree="$(_int_only "$(df -Pm "${_ACCT_ROOT}/backups" 2>/dev/null | awk 'NR==2{print $4}')")"
+  [[ -n "${_bfree}" && "${_bfree}" -gt $(( _hsz * 4 + 200 )) ]] \
+    || _die "backups partition headroom insufficient for rename dumps (~$(( _hsz * 4 ))MB needed)"
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _info "[DRY] db-import plan for ${_ACCOUNT} (hostmaster db ${_hdb}, source ${_SRC_FQDN}):"
+    _info "[DRY]  1 snapshot db+enabled-set  2 sql-drop  3 sandbox-strip import"
+    _info "[DRY]  4 queue hygiene+neuter     5 {system} scrub  5b publish_path remap"
+    _info "[DRY]  6 enable-list from snapshot  7 updatedb  8 features revert"
+    _info "[DRY]  9 LE service-row re-attach  10 welcome-node: ${_WELCOME_NODE}"
+    _info "[DRY] 11 renameaegirhost --force-old ${_SRC_FQDN}  12 verification stop"
+    return 0
+  fi
+
+  _t_freeze_on
+  trap '_t_freeze_off' EXIT
+
+  # 1. snapshot (revert + reconcile artifacts)
+  _step="${_STATE_DIR}/markers/dbimport"
+  if [[ ! -e "${_step}.1.done" ]]; then
+    mkdir -p "${_ACCT_ROOT}/undo"
+    mysqldump --defaults-file=/root/.my.cnf --single-transaction --quick \
+      --no-autocommit --skip-add-locks --no-tablespaces --hex-blob "${_hdb}" \
+      > "${_ACCT_ROOT}/undo/a2b-pre-import.sql" || _die "pre-import snapshot failed"
+    chmod 600 "${_ACCT_ROOT}/undo/a2b-pre-import.sql"
+    _tsql "SELECT name FROM \\\`system\\\` WHERE status=1 AND type='module'" \
+      > "${_ACCT_ROOT}/undo/a2b-enabled-baseline.txt"
+    _tsql "SELECT service, type FROM hosting_service WHERE nid = (SELECT nid FROM hosting_context WHERE name='server_master')" \
+      > "${_ACCT_ROOT}/undo/a2b-server-services-baseline.txt"
+    [[ -s "${_ACCT_ROOT}/undo/a2b-enabled-baseline.txt" ]] || _die "enabled-set baseline empty"
+    touch "${_step}.1.done"
+    _info "step 1: snapshot + baselines recorded"
+  fi
+
+  _t_owl_drain
+
+  # 2. table drop (xoct's overlay import is BOA-to-BOA-only)
+  if [[ ! -e "${_step}.3.done" ]]; then
+    _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1 || _die "sql-drop failed"
+    _info "step 2: target hostmaster tables dropped"
+    # 3. import with sandbox strip
+    sed '1{/^\/\*M!999999/d}' "${_src}/hostmaster.sql" \
+      | mysql --defaults-file=/root/.my.cnf "${_hdb}" || _die "hostmaster import failed - restore from undo/a2b-pre-import.sql"
+    touch "${_step}.3.done"
+    _info "step 3: vanilla hostmaster db imported"
+  fi
+
+  # 4. queue hygiene + neutering, immediately
+  if [[ ! -e "${_step}.4.done" ]]; then
+    _tsql "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'"
+    _tsql "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'"
+    _tsql "UPDATE hosting_task SET task_status='2' WHERE task_status='0' AND executed='0'"
+    _as_octo "drush8 @hostmaster vset --always-set hosting_client_send_welcome 0" >>"${_LOG}" 2>&1
+    _as_octo "drush8 @hostmaster vset --always-set site_frontpage 'hosting/sites'" >>"${_LOG}" 2>&1
+    touch "${_step}.4.done"
+    _info "step 4: task queue neutered, welcome mail off"
+  fi
+
+  # 5. {system} scrub: enabled rows whose code is absent from the platform
+  if [[ ! -e "${_step}.5.done" ]]; then
+    local _hmplat _row _mname _mfile _scrubbed=0
+    _hmplat="$(_t_hm_platform_root)"
+    [[ -d "${_hmplat}" ]] || _die "target hostmaster platform root unresolved"
+    while read -r _row; do
+      _mname="$(_sane_ident "$(echo "${_row}" | cut -f1)")"
+      _mfile="$(echo "${_row}" | cut -f2)"
+      [[ -n "${_mname}" && -n "${_mfile}" ]] || continue
+      case "${_mfile}" in *..*) _alrt "scrub: suspicious filename for ${_mname} - skipping row"; continue ;; esac
+      if [[ ! -e "${_hmplat}/${_mfile}" ]]; then
+        # only modules the operator saw at check time may be scrubbed
+        [[ -s "${_src}/scrub-ack.txt" ]] \
+          || _die "no scrub-ack list transferred - re-run transfer after 'check --accept-scrub-list'"
+        if grep -q "^${_mname}[[:space:]]" "${_src}/scrub-ack.txt" 2>/dev/null; then
+          _tsql "DELETE FROM \\\`system\\\` WHERE name='${_mname}' AND type='module'"
+          _info "scrubbed {system} row: ${_mname} (${_mfile} absent from platform)"
+          _scrubbed=$(( _scrubbed + 1 ))
+        else
+          _die "module ${_mname} would be scrubbed but is not on the acknowledged list - review + re-run check/transfer"
+        fi
+      fi
+    done < <(_tsql "SELECT name, filename FROM \\\`system\\\` WHERE status=1 AND type='module'")
+    touch "${_step}.5.done"
+    _info "step 5: {system} scrub done (${_scrubbed} row(s))"
+  fi
+
+  # 5b. publish_path remap: imported platform nodes point at /var/aegir
+  # paths that do not exist here; remap them to the landed static/a2b trees
+  # BEFORE any verify can run against a nonexistent root
+  if [[ ! -e "${_step}.5b.done" ]]; then
+    _tsql "UPDATE hosting_platform SET publish_path = REPLACE(publish_path, '/var/aegir/platforms/', '${_ACCT_ROOT}/static/a2b/')"
+    touch "${_step}.5b.done"
+    _info "step 5b: platform publish_path remapped to ${_ACCT_ROOT}/static/a2b/"
+  fi
+
+  # 6. module reconciliation from the snapshot artifact
+  if [[ ! -e "${_step}.6.done" ]]; then
+    local _en_list=""
+    local _m
+    while read -r _m; do
+      _m="$(_sane_ident "${_m}")"
+      [[ -n "${_m}" ]] || continue
+      [[ "$(_tsql "SELECT status FROM \\\`system\\\` WHERE name='${_m}' AND type='module'")" = "1" ]] \
+        || _en_list="${_en_list} ${_m}"
+    done < "${_ACCT_ROOT}/undo/a2b-enabled-baseline.txt"
+    if [[ -n "${_en_list}" ]]; then
+      _as_octo "drush8 @hostmaster pm-enable -y${_en_list}" >>"${_LOG}" 2>&1 \
+        || _die "module reconciliation enable failed (list:${_en_list})"
+      _info "step 6: enabled${_en_list}"
+    else
+      _info "step 6: nothing to enable"
+    fi
+    touch "${_step}.6.done"
+  fi
+
+  # 7.+8. updatedb + features reconcile
+  if [[ ! -e "${_step}.8.done" ]]; then
+    _as_octo "drush8 @hostmaster updatedb -y" >>"${_LOG}" 2>&1
+    _as_octo "drush8 @hostmaster features-revert-all -y" >>"${_LOG}" 2>&1
+    touch "${_step}.8.done"
+    _info "steps 7-8: updatedb + features revert done"
+  fi
+
+  # 9. LE service-row re-attach (snapshot-diff driven, GUI-equivalent)
+  if [[ ! -e "${_step}.9.done" ]]; then
+    local _svc _typ _php=/tmp/.a2b_svc_attach.php
+    while IFS=$'\t' read -r _svc _typ; do
+      [[ -n "${_svc}" && -n "${_typ}" ]] || continue
+      _svc="$(_sane_ident "${_svc}")"; _typ="$(_sane_ident "${_typ}")"
+      [[ -n "$(_tsql "SELECT type FROM hosting_service WHERE service='${_svc}' AND nid=(SELECT nid FROM hosting_context WHERE name='server_master')")" ]] && continue
+      cat > "${_php}" <<PHPEOF
+<?php
+\$nid = db_query("SELECT nid FROM {hosting_context} WHERE name = 'server_master'")->fetchField();
+if (!\$nid) { print "A2BERR no server_master context\n"; return; }
+\$node = node_load(\$nid, NULL, TRUE);
+\$node->services['${_svc}'] = array('type' => '${_typ}', '${_typ}' => array());
+hosting_server_services_from_post(\$node);
+if (!is_object(\$node->services['${_svc}'])) { print "A2BERR service ${_svc}/${_typ} class unavailable\n"; return; }
+node_save(\$node);
+print "A2BOK ${_svc}/${_typ} attached\n";
+PHPEOF
+      chown "${_ACCOUNT}" "${_php}" 2>/dev/null
+      _as_octo "drush8 @hostmaster php-script ${_php}" 2>&1 | tee -a "${_LOG}" | grep -q A2BOK \
+        || _alrt "service ${_svc}/${_typ} re-attach did not confirm - verify in the frontend"
+      rm -f "${_php}"
+    done < "${_ACCT_ROOT}/undo/a2b-server-services-baseline.txt"
+    touch "${_step}.9.done"
+    _info "step 9: server service rows reconciled against the pre-import baseline"
+  fi
+
+  # 10. welcome node (optional)
+  if [[ "${_WELCOME_NODE}" = "YES" && ! -e "${_step}.10.done" ]]; then
+    local _php=/tmp/.a2b_welcome.php
+    cat > "${_php}" <<'PHPEOF'
+<?php
+$node = new stdClass();
+$node->type = 'page';
+$node->title = 'Welcome';
+$node->uid = 1;
+$node->status = 1;
+$node->language = LANGUAGE_NONE;
+$node->body[LANGUAGE_NONE][0]['value'] = 'Welcome to your migrated Aegir control panel.';
+node_save($node);
+variable_set('site_frontpage', 'node/' . $node->nid);
+print "A2BOK welcome node " . $node->nid . "\n";
+PHPEOF
+    chown "${_ACCOUNT}" "${_php}" 2>/dev/null
+    _as_octo "drush8 @hostmaster php-script ${_php}" 2>&1 | tee -a "${_LOG}" | grep -q A2BOK \
+      || _alrt "welcome node creation did not confirm"
+    rm -f "${_php}"
+    touch "${_step}.10.done"
+  fi
+
+  # per-site DB land (creds identical to the source, settings.php untouched)
+  local _mff _dbn _dbp _uri
+  for _mff in "${_src}/manifest/"*.info; do
+    [[ -e "${_mff}" ]] || continue
+    _uri="$(_manifest_val "${_mff}" URI)"
+    _marker_has "${_uri}.dbloaded.pid" && continue
+    _dbn="$(_sane_ident "$(_manifest_val "${_mff}" DBN)")"
+    _dbp="$(_manifest_val "${_mff}" DBP)"
+    if _t_site_db_create_load "${_dbn}" "${_dbp}" "${_src}/${_dbn}.sql"; then
+      _marker_set "${_uri}.dbloaded.pid"
+      _info "site ${_uri}: db ${_dbn} created + loaded"
+    else
+      _alrt "site ${_uri}: db land failed - fix and re-run import"
+    fi
+  done
+
+  # 11. renameaegirhost (UNDRILLED half - rehearsal checkpoint)
+  if [[ ! -e "${_step}.11.done" ]]; then
+    _t_owl_drain
+    renameaegirhost --aegir-root "${_ACCT_ROOT}" --force-old "${_SRC_FQDN}" \
+      | tee -a "${_LOG}" || _die "renameaegirhost failed - see backups/rename-hostname for the pristine dump"
+    touch "${_step}.11.done"
+    _info "step 11: rename + task-queue replay done"
+  fi
+
+  # 12. verification stop
+  local _boot
+  _boot="$(_as_octo "drush8 @hostmaster status --fields=bootstrap 2>/dev/null" | grep -c Successful)"
+  _info "step 12: hostmaster bootstrap: $([ "${_boot}" -ge 1 ] && echo OK || echo NOT-OK)"
+  [[ "${_boot}" -ge 1 ]] || _die "post-import hostmaster does not bootstrap - investigate before proxy"
+  _t_freeze_off
+  trap - EXIT
+  _marker_set "import.db-import.done"
+  _msg "db-import route complete for ${_ACCOUNT} - per-site verifies will run via the queue; then proxy per site on the source"
+}
+
+_import_per_site() {
+  local _src="${_ACCT_ROOT}/src/a2b" _mff _uri _plat _dmaj _dbn _dbp _ctxp _fails=0
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    for _mff in "${_src}/manifest/"*.info; do
+      [[ -e "${_mff}" ]] || continue
+      _uri="$(_manifest_val "${_mff}" URI)"
+      [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" || -z "${_SITE}" ]] || continue
+      _info "[DRY] would adopt ${_uri}: db land -> platform ctx/node -> hosting-import -> verify -> fpm map"
+    done
+    return 0
+  fi
+
+  # auto-import OFF for the window (double-registration hazard)
+  _as_octo "drush8 @hostmaster vset --always-set hosting_platform_automatic_site_import 0" >>"${_LOG}" 2>&1
+
+  local _done_plat=" "
+  for _mff in "${_src}/manifest/"*.info; do
+    [[ -e "${_mff}" ]] || continue
+    _uri="$(_manifest_val "${_mff}" URI)"
+    [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" || -z "${_SITE}" ]] || continue
+    _marker_has "${_uri}.imported.pid" && { _info "site ${_uri}: already imported"; continue; }
+    _uri="$(_sane_domain "${_uri}")" || { _alrt "bad uri in manifest $(basename "${_mff}") - SKIP"; _fails=$(( _fails + 1 )); continue; }
+    _plat="$(_manifest_val "${_mff}" PLATFORM)"
+    _dmaj="$(_int_only "$(_manifest_val "${_mff}" DMAJOR)")"
+    _dbn="$(_sane_ident "$(_manifest_val "${_mff}" DBN)")"
+    _dbp="$(_manifest_val "${_mff}" DBP)"
+    _ctxp="platform_a2b_$(_sane_ident "${_plat}")"
+    local _proot="${_ACCT_ROOT}/static/a2b/${_plat}"
+    [[ -d "${_proot}" ]] || { _alrt "site ${_uri}: platform tree ${_proot} missing - SKIP"; _fails=$(( _fails + 1 )); continue; }
+    # docroot detect (D8+ composer trees)
+    local _droot="${_proot}"
+    [[ ! -e "${_proot}/index.php" && -e "${_proot}/web/index.php" ]] && _droot="${_proot}/web"
+
+    # 1. db land
+    if ! _marker_has "${_uri}.dbloaded.pid"; then
+      if _t_site_db_create_load "${_dbn}" "${_dbp}" "${_src}/${_dbn}.sql"; then
+        _marker_set "${_uri}.dbloaded.pid"
+      else
+        _alrt "site ${_uri}: db land failed - SKIP"; _fails=$(( _fails + 1 )); continue
+      fi
+    fi
+
+    # 2. platform context + node (once per platform)
+    case "${_done_plat}" in
+      *" ${_plat} "*) : ;;
+      *)
+        if [[ -z "$(_tsql "SELECT nid FROM hosting_context WHERE name='${_ctxp}'")" ]]; then
+          _as_octo "drush8 provision-save @${_ctxp} --context_type=platform --root='${_droot}' --server=@server_master --web_server=@server_master" >>"${_LOG}" 2>&1
+          local _phpn=/tmp/.a2b_platnode.php
+          cat > "${_phpn}" <<PHPEOF
+<?php
+\$existing = db_query("SELECT nid FROM {hosting_context} WHERE name = '${_ctxp}'")->fetchField();
+if (\$existing) { print "A2BOK platform node exists\n"; return; }
+\$node = new stdClass();
+\$node->type = 'platform';
+\$node->title = 'a2b ${_plat}';
+\$node->uid = 1;
+\$node->status = 1;
+\$node->publish_path = '${_droot}';
+\$node->web_server = hosting_context_nid('server_master');
+node_save(\$node);
+hosting_context_register(\$node->nid, '${_ctxp}');
+print "A2BOK platform node " . \$node->nid . "\n";
+PHPEOF
+          chown "${_ACCOUNT}" "${_phpn}" 2>/dev/null
+          _as_octo "drush8 @hostmaster php-script ${_phpn}" 2>&1 | tee -a "${_LOG}" | grep -q A2BOK \
+            || { _alrt "platform node for ${_plat} failed"; rm -f "${_phpn}"; _fails=$(( _fails + 1 )); continue; }
+          rm -f "${_phpn}"
+          _as_octo "drush8 @hostmaster hosting-task @${_ctxp} verify" >>"${_LOG}" 2>&1
+          sleep 5
+          _t_wait_task "$(_t_task_nid_for "${_ctxp}" verify)" "platform ${_plat} verify" \
+            || { _alrt "platform ${_plat} verify failed"; _fails=$(( _fails + 1 )); continue; }
+        fi
+        _done_plat="${_done_plat}${_plat} "
+        ;;
+    esac
+
+    # 3. site context + hosting-import -> queued import task
+    _as_octo "drush8 provision-save @${_uri} --context_type=site --uri=${_uri} --platform=@${_ctxp} --db_server=@server_localhost" >>"${_LOG}" 2>&1
+    _as_octo "drush8 @hostmaster hosting-import @${_uri}" >>"${_LOG}" 2>&1
+    sleep 5
+    local _itnid
+    _itnid="$(_t_task_nid_for "${_uri}" import)"
+    _t_wait_task "${_itnid}" "import ${_uri}" \
+      || { _alrt "site ${_uri}: import task failed"; _fails=$(( _fails + 1 )); continue; }
+
+    # 4. per-site PHP pool mapping (D6 -> 5.6, D7 -> 7.4 when present)
+    local _want=""
+    case "${_dmaj}" in
+      6) _want="5.6" ;;
+      7) [[ -d /opt/php74 ]] && _want="7.4" ;;
+    esac
+    if [[ -n "${_want}" ]]; then
+      local _ctl="${_ACCT_ROOT}/static/control/multi-fpm.info"
+      mkdir -p "${_ACCT_ROOT}/static/control"
+      if ! grep -q "^${_uri} " "${_ctl}" 2>/dev/null; then
+        echo "${_uri} ${_want}" >> "${_ctl}"
+        chown "${_ACCOUNT}:users" "${_ctl}" 2>/dev/null
+        _info "site ${_uri}: multi-fpm.info -> ${_want} (applied by the FPM agent on its next pass)"
+      fi
+    fi
+
+    # 5. wait the chained verify, then 6. HTTP probe
+    sleep 5
+    _t_wait_task "$(_t_task_nid_for "${_uri}" verify)" "verify ${_uri}" \
+      || { _alrt "site ${_uri}: post-import verify failed"; _fails=$(( _fails + 1 )); continue; }
+    local _code _base
+    _code="$(_http_code_at "${_uri}" 127.0.0.1)"
+    _base="$(_manifest_val "${_mff}" BASELINE)"
+    _info "site ${_uri}: target serves HTTP ${_code} (source baseline was ${_base})"
+
+    # 7. cron on (ships dark by design; source dispatch is paused for good)
+    _tsql "UPDATE hosting_cron SET cron_interval = 3600 WHERE nid = (SELECT nid FROM hosting_context WHERE name = '${_uri}')" 2>/dev/null
+    _marker_set "${_uri}.imported.pid"
+    _msg "site ${_uri}: adopted"
+  done
+
+  # restore the auto-import default
+  _as_octo "drush8 @hostmaster vdel -y hosting_platform_automatic_site_import" >>"${_LOG}" 2>&1
+  [[ "${_fails}" -gt 0 ]] \
+    && _alrt "per-site import finished with ${_fails} failure(s) - failed sites left un-adopted" \
+    || _msg "per-site import complete"
+}
+
+verb_import() {
+  _require_target_box
+  local _scope="${_SITE:-all}" _troute
+  _troute="$(cat "${_ACCT_ROOT}/src/a2b/route.txt" 2>/dev/null | tr -d '\n')"
+  [[ -n "${_ROUTE}" ]] || _die "import needs --route per-site|db-import"
+  [[ -z "${_troute}" || "${_troute}" = "${_ROUTE}" ]] \
+    || _die "transferred route marker says '${_troute}' but --route says '${_ROUTE}' - refusing"
+
+  if [[ "${_REVERT_DB_IMPORT}" = "YES" ]]; then
+    [[ -s "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]] || _die "no pre-import snapshot to revert to"
+    if [[ "${_LIVE}" != "YES" ]]; then
+      _DRY_FAIL=0
+      _info "[DRY] would drop + restore hostmaster db from undo/a2b-pre-import.sql"
+      _dry_finish "revert-db"
+    fi
+    _gate_consume "revert-db"
+    _t_freeze_on; trap '_t_freeze_off' EXIT; _t_owl_drain
+    _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1
+    mysql --defaults-file=/root/.my.cnf "$(_t_hm_db)" < "${_ACCT_ROOT}/undo/a2b-pre-import.sql" \
+      || _die "restore failed - hostmaster db is EMPTY, re-import undo/a2b-pre-import.sql manually"
+    rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
+    _t_freeze_off; trap - EXIT
+    _msg "db-import reverted - target hostmaster restored to its pre-import state"
+    exit 0
+  fi
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    case "${_ROUTE}" in
+      db-import) _import_db_route ;;
+      per-site)  _import_per_site ;;
+      *) _die "unknown route ${_ROUTE}" ;;
+    esac
+    _dry_finish "${_scope}"
+  fi
+  _gate_consume "${_scope}"
+  case "${_ROUTE}" in
+    db-import) _import_db_route ;;
+    per-site)  _import_per_site ;;
+    *) _die "unknown route ${_ROUTE}" ;;
+  esac
+}
+
+###-------------VERB: proxy------------###
+
+_proxy_one() {   # 1 uri
+  local _uri="$1" _mf _vh _vhd _vhs _names _base _code _store
+  _mf="$(_manifest_of "$1")"
+  _vh="$(_vhostd)/${_uri}"
+  _vhd="$(_vhostd)/.${_uri}"
+  _vhs="$(_vhostd)/https.${_uri}"
+  _marker_has "${_uri}.proxied.pid" && { _info "site ${_uri}: already proxied"; return 0; }
+  _marker_has "${_uri}.exported.pid" || { _alrt "site ${_uri}: not exported - SKIP"; return 1; }
+  [[ -e "${_vh}" ]] || { _alrt "site ${_uri}: vhost missing - SKIP"; return 1; }
+
+  # D-009b: the replacement must be functionally proven FIRST - the target
+  # must answer for this site before its traffic is cut over
+  _base="$(_manifest_val "${_mf}" BASELINE)"
+  _code="$(_http_code_at "${_uri}" "${_TARGET}")"
+  if [[ "${_code}" != "${_base}" ]]; then
+    case "${_code}" in
+      2??|3??)
+        if [[ "${_ACCEPT_HTTP_DIFF}" = "YES" ]]; then
+          _alrt "site ${_uri}: target HTTP ${_code} != baseline ${_base} - accepted via --accept-http-diff"
+        else
+          _alrt "site ${_uri}: target HTTP ${_code} != baseline ${_base} - SKIP (re-run with --accept-http-diff to allow)"
+          return 1
+        fi ;;
+      *)
+        _alrt "site ${_uri}: target answers HTTP ${_code} - NOT proven, SKIP"
+        return 1 ;;
+    esac
+  fi
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _info "[DRY] site ${_uri}: target proven (HTTP ${_code}) - would swap vhost -> proxy"
+    return 0
+  fi
+
+  _names="$(_harvest_names "${_vh}")"
+  # keep the stub shadowing until the proxy passes nginx -t
+  mv -f "${_vh}" "${_vhd}"
+  _emit_proxy_http "${_names}" "${_TARGET}" > "${_vh}"
+  chmod 600 "${_vh}"
+  if [[ "$(_manifest_val "${_mf}" SSL)" = "1" ]]; then
+    _store="${_AEGIR_ROOT}/config/a2b-proxy-ssl/${_uri}"
+    if [[ ! -s "${_store}/cert.pem" ]]; then
+      mkdir -p "${_store}" && chmod 700 "${_AEGIR_ROOT}/config/a2b-proxy-ssl" "${_store}"
+      local _cl _kl
+      _cl="$(_harvest_ssl_lines "${_vhd}" | grep '^ssl_certificate ' | awk '{print $2}' | sed 's/;$//' | head -1)"
+      _kl="$(_harvest_ssl_lines "${_vhd}" | grep '^ssl_certificate_key' | awk '{print $2}' | sed 's/;$//' | head -1)"
+      [[ -f "${_cl}" && -f "${_kl}" ]] && { cp -a "${_cl}" "${_store}/cert.pem"; cp -a "${_kl}" "${_store}/key.pem"; }
+    fi
+    if [[ -s "${_store}/cert.pem" && -s "${_store}/key.pem" ]]; then
+      _emit_proxy_https "${_uri}" "${_names}" "${_TARGET}" "${_store}" > "${_vhs}"
+      chmod 600 "${_vhs}"
+    else
+      _alrt "site ${_uri}: could not seed proxy cert store - https proxy NOT written (80-only)"
+    fi
+  fi
+  if ! nginx -t >>"${_LOG}" 2>&1; then
+    rm -f "${_vhs}"
+    mv -f "${_vhd}" "${_vh}"
+    _nginx_test_and_reload
+    _alrt "site ${_uri}: proxy conf failed nginx -t - swap undone (stub still pausing the site)"
+    return 1
+  fi
+  rm -f "$(_stub_of "${_uri}")"
+  _nginx_test_and_reload || { _alrt "site ${_uri}: reload failed AFTER passing -t - inspect nginx now"; return 1; }
+  rm -f "$(_marker "${_uri}.paused.pid")"
+  _marker_set "${_uri}.proxied.pid"
+  _info "site ${_uri}: proxied -> ${_TARGET} (revert artifact: ${_vhd})"
+  return 0
+}
+
+verb_proxy() {
+  _require_source_box
+  [[ -n "${_TARGET}" ]] || _die "proxy needs --target <ip>"
+  [[ "${_ALL}" = "YES" || -n "${_SITE}" ]] || _die "proxy needs --site <dom> or --all"
+  local _scope="${_SITE:-all}" _fails=0 _mf _uri _route
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    for _mf in "${_STATE_DIR}/manifest/"*.info; do
+      [[ -e "${_mf}" ]] || continue
+      _uri="$(_manifest_val "${_mf}" URI)"
+      [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" ]] || continue
+      _proxy_one "${_uri}" || _fails=$(( _fails + 1 ))
+    done
+    [[ "${_fails}" -gt 0 ]] && _DRY_FAIL=1
+    _dry_finish "${_scope}"
+  fi
+  _gate_consume "${_scope}"
+
+  for _mf in "${_STATE_DIR}/manifest/"*.info; do
+    [[ -e "${_mf}" ]] || continue
+    _uri="$(_manifest_val "${_mf}" URI)"
+    [[ "${_ALL}" = "YES" || "${_uri}" = "${_SITE}" ]] || continue
+    _proxy_one "${_uri}" || _fails=$(( _fails + 1 ))
+  done
+
+  # hostmaster handling on --all: db-import -> proxy it (panel now lives on
+  # the target under the same domain); per-site -> permanent 503 stub
+  if [[ "${_ALL}" = "YES" ]]; then
+    _route="$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)"
+    local _hm
+    _hm="$(_hostmaster_uri)"
+    if [[ -n "${_hm}" && -e "$(_vhostd)/${_hm}" && ! -e "$(_marker "${_hm}.proxied.pid")" ]]; then
+      if [[ "${_route}" = "db-import" ]]; then
+        local _names
+        _names="$(_harvest_names "$(_vhostd)/${_hm}")"
+        mv -f "$(_vhostd)/${_hm}" "$(_vhostd)/.${_hm}"
+        _emit_proxy_http "${_names}" "${_TARGET}" > "$(_vhostd)/${_hm}"
+        chmod 600 "$(_vhostd)/${_hm}"
+      else
+        _emit_stub_503 "${_hm}" > "$(_stub_of "${_hm}")"
+      fi
+      if _nginx_test_and_reload; then
+        _marker_set "${_hm}.proxied.pid"
+        _info "hostmaster ${_hm}: $([ "${_route}" = "db-import" ] && echo proxied || echo 'stubbed 503 (per-site route: old panel retired)')"
+      else
+        rm -f "$(_stub_of "${_hm}")"
+        [[ -e "$(_vhostd)/.${_hm}" ]] && mv -f "$(_vhostd)/.${_hm}" "$(_vhostd)/${_hm}"
+        _nginx_test_and_reload
+        _alrt "hostmaster ${_hm}: handling failed nginx -t - left serving locally"
+      fi
+    fi
+  fi
+  [[ "${_fails}" -gt 0 ]] \
+    && _alrt "proxy finished with ${_fails} per-site failure(s)" \
+    || _msg "proxy complete - remember cert-sync --install-cron for the window"
+}
+
+###-------------VERB: cert-sync--------###
+
+verb_certsync() {
+  _require_source_box
+  if [[ "${_FROM_STATE}" = "YES" ]]; then
+    _TARGET="$(_kv_get "${_STATE_DIR}/state/check.env" TARGET)"
+    _ACCOUNT="$(_kv_get "${_STATE_DIR}/state/check.env" ACCOUNT)"
+    _LIVE=YES
+  fi
+  [[ -n "${_TARGET}" && -n "${_ACCOUNT}" ]] || _die "cert-sync needs --target and --account"
+  local _changed=0 _mf _uri _store _tmpd
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    _info "[DRY] would pull tools/le certs for proxied ssl domains from ${_TARGET}:${_ACCOUNT}"
+    [[ "${_INSTALL_CRON}" = "YES" ]] && _info "[DRY] would install /etc/cron.weekly/a2b-cert-sync"
+    _dry_finish "certs"
+  fi
+  [[ "${_FROM_STATE}" = "YES" ]] || _gate_consume "certs"
+
+  for _mf in "${_STATE_DIR}/manifest/"*.info; do
+    [[ -e "${_mf}" ]] || continue
+    _uri="$(_manifest_val "${_mf}" URI)"
+    _marker_has "${_uri}.proxied.pid" || continue
+    [[ "$(_manifest_val "${_mf}" SSL)" = "1" ]] || continue
+    _store="${_AEGIR_ROOT}/config/a2b-proxy-ssl/${_uri}"
+    [[ -d "${_store}" ]] || continue
+    _tmpd="$(mktemp -d "${_STATE_DIR}/.certs.XXXXXX")"
+    if scp -q -o BatchMode=yes \
+        "root@${_TARGET}:/data/disk/${_ACCOUNT}/tools/le/certs/${_uri}/fullchain.pem" \
+        "root@${_TARGET}:/data/disk/${_ACCOUNT}/tools/le/certs/${_uri}/privkey.pem" \
+        "${_tmpd}/" 2>/dev/null; then
+      if ! cmp -s "${_tmpd}/fullchain.pem" "${_store}/cert.pem" 2>/dev/null; then
+        cp -a "${_store}/cert.pem" "${_store}/cert.pem.prev" 2>/dev/null
+        cp -a "${_store}/key.pem" "${_store}/key.pem.prev" 2>/dev/null
+        mv -f "${_tmpd}/fullchain.pem" "${_store}/cert.pem"
+        mv -f "${_tmpd}/privkey.pem" "${_store}/key.pem"
+        chmod 600 "${_store}/cert.pem" "${_store}/key.pem"
+        _changed=$(( _changed + 1 ))
+        _info "site ${_uri}: proxy cert refreshed from target LE"
+      fi
+    fi
+    rm -rf "${_tmpd}"
+  done
+  if [[ "${_changed}" -gt 0 ]]; then
+    if _nginx_test_and_reload; then
+      _info "nginx reloaded with ${_changed} refreshed cert(s)"
+    else
+      local _s
+      for _s in "${_AEGIR_ROOT}/config/a2b-proxy-ssl/"*/*.prev; do
+        [[ -e "${_s}" ]] && mv -f "${_s}" "${_s%.prev}" 2>/dev/null
+      done
+      _alrt "nginx -t failed after cert refresh - previous certs restored, investigate"
+    fi
+  fi
+  if [[ "${_INSTALL_CRON}" = "YES" ]]; then
+    cat > /etc/cron.weekly/a2b-cert-sync <<CRONEOF
+#!/bin/sh
+$(readlink -f "$0" 2>/dev/null || echo "$0") cert-sync --from-state >> ${_LOG} 2>&1
+CRONEOF
+    chmod 755 /etc/cron.weekly/a2b-cert-sync
+    _info "weekly cert-sync cron installed (/etc/cron.weekly/a2b-cert-sync)"
+  fi
+  _msg "cert-sync complete (${_changed} refreshed)"
+}
+
+###-------------VERB: revert-----------###
+
+_revert_one() {   # 1 uri
+  local _uri="$1" _vh _vhd _vhs
+  _vh="$(_vhostd)/${_uri}"
+  _vhd="$(_vhostd)/.${_uri}"
+  _vhs="$(_vhostd)/https.${_uri}"
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _marker_has "${_uri}.proxied.pid" && _info "[DRY] ${_uri}: would restore .${_uri} over the proxy vhost"
+    _marker_has "${_uri}.paused.pid" && _info "[DRY] ${_uri}: would remove the 503 stub"
+    return 0
+  fi
+  if [[ -e "${_vhd}" ]]; then
+    mv -f "${_vhd}" "${_vh}"
+    rm -f "${_vhs}"
+  fi
+  rm -f "$(_stub_of "${_uri}")"
+  if ! _nginx_test_and_reload; then
+    _alrt "site ${_uri}: revert failed nginx -t - INSPECT ${_vh} NOW"
+    return 1
+  fi
+  rm -f "$(_marker "${_uri}.paused.pid")" "$(_marker "${_uri}.proxied.pid")"
+  _alrt "site ${_uri}: reverted to LOCAL serving - any data written on the target since export is NOT in this copy"
+  return 0
+}
+
+verb_revert() {
+  _require_source_box
+  [[ "${_ALL}" = "YES" || -n "${_SITE}" ]] || _die "revert needs --site <dom> or --all"
+  local _scope="${_SITE:-all}" _fails=0 _m _uri
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    if [[ "${_ALL}" = "YES" ]]; then
+      for _m in "${_STATE_DIR}/markers/"*.paused.pid "${_STATE_DIR}/markers/"*.proxied.pid; do
+        [[ -e "${_m}" ]] || continue
+        _uri="$(basename "${_m}" | sed 's/\.\(paused\|proxied\)\.pid$//')"
+        _revert_one "${_uri}"
+      done
+    else
+      _revert_one "${_SITE}"
+    fi
+    _dry_finish "${_scope}"
+  fi
+  _gate_consume "${_scope}"
+
+  if [[ "${_ALL}" = "YES" ]]; then
+    for _m in "${_STATE_DIR}/markers/"*.paused.pid "${_STATE_DIR}/markers/"*.proxied.pid; do
+      [[ -e "${_m}" ]] || continue
+      _uri="$(basename "${_m}" | sed 's/\.\(paused\|proxied\)\.pid$//')"
+      _revert_one "${_uri}" || _fails=$(( _fails + 1 ))
+    done
+    [[ "${_fails}" -eq 0 ]] && _msg "all sites reverted - run 'resume --live' to restore source automation"
+  else
+    _revert_one "${_SITE}" || _fails=$(( _fails + 1 ))
+  fi
+  [[ "${_fails}" -gt 0 ]] && _die "revert finished with ${_fails} failure(s)"
+}
+
+###-------------VERB: status-----------###
+
+verb_status() {
+  _require_source_box
+  _info "route:   $(_kv_get "${_STATE_DIR}/state/check.env" ROUTE 2>/dev/null || echo unset)"
+  _info "target:  $(_kv_get "${_STATE_DIR}/state/check.env" TARGET 2>/dev/null || echo unset)"
+  _info "pre-mig: $(_marker_has pre-mig.pid && echo yes || echo no)   create: $(_marker_has create.pid && echo yes || echo no)"
+  local _name _uri _p _e _t _x
+  while read -r _name _uri; do
+    [[ -n "${_uri}" ]] || continue
+    _p=$(_marker_has "${_uri}.paused.pid" && echo P || echo -)
+    _e=$(_marker_has "${_uri}.exported.pid" && echo E || echo -)
+    _t=$(_marker_has "${_uri}.transferred.pid" && echo T || echo -)
+    _x=$(_marker_has "${_uri}.proxied.pid" && echo X || echo -)
+    _info "site ${_uri}: [${_p}${_e}${_t}${_x}] HTTP $(_http_code_at "${_uri}" 127.0.0.1)  (P=paused E=exported T=transferred X=proxied)"
+  done < <(_sites_list)
+}
+
+verb_target_status() {
+  _require_target_box
+  _info "account: ${_ACCOUNT}  route: $(cat "${_ACCT_ROOT}/src/a2b/route.txt" 2>/dev/null || echo unset)"
+  _info "freeze marker: $([ -e "${_ACCT_ROOT}/log/proxied.pid" ] && echo PRESENT || echo no)"
+  local _m
+  for _m in "${_STATE_DIR}/markers/"*; do
+    [[ -e "${_m}" ]] || continue
+    _info "marker: $(basename "${_m}") ($(cat "${_m}" 2>/dev/null))"
+  done
+}
+
+###-------------MAIN-------------------###
+
+[[ $# -ge 1 ]] || _usage
+_OP="$1"
+shift
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target)   _TARGET="$(printf '%s' "$2" | tr -cd '0-9a-fA-F.:')"; shift ;;
+    --account)  _ACCOUNT="$(_sane_account "$2")" || _die "bad --account"; shift ;;
+    --site)     _SITE="$(_sane_domain "$2")" || _die "bad --site"; shift ;;
+    --all)      _ALL=YES ;;
+    --route)    _ROUTE="$2"; shift ;;
+    --report)   _REPORT="$2"; shift ;;
+    --email)    _EMAIL="$2"; shift ;;
+    --tree)     _TREE="$2"; shift ;;
+    --option)   _OPTION="$2"; shift ;;
+    --subscr)   _SUBSCR="$2"; shift ;;
+    --cores)    _CORES="$(_int_only "$2")"; shift ;;
+    --source-fqdn) _SRC_FQDN="$(_sane_domain "$2")" || _die "bad --source-fqdn"; shift ;;
+    --accept-http-diff)  _ACCEPT_HTTP_DIFF=YES ;;
+    --accept-scrub-list) _ACCEPT_SCRUB=YES ;;
+    --install-cron)      _INSTALL_CRON=YES ;;
+    --welcome-node)      _WELCOME_NODE=YES ;;
+    --revert-db-import)  _REVERT_DB_IMPORT=YES ;;
+    --from-state)        _FROM_STATE=YES ;;
+    --live)     _LIVE=YES ;;
+    --aegir-root) _AEGIR_ROOT="$2"; shift ;;
+    -h|--help)  _usage ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+[[ "$(id -u 2>/dev/null)" = "0" ]] || _die "must run as root"
+mkdir -p "$(dirname "${_LOG}")" 2>/dev/null
+touch "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir2boa-stage2.log
+[[ -n "${_SITE}" && "${_ALL}" = "YES" ]] && _die "--site and --all are mutually exclusive"
+case "${_ROUTE}" in ""|per-site|db-import) : ;; *) _die "--route must be per-site|db-import" ;; esac
+
+case "${_OP}" in
+  check)         verb_check ;;
+  pre-mig)       verb_premig ;;
+  create)        verb_create ;;
+  export)        verb_export ;;
+  transfer)      verb_transfer ;;
+  import)        verb_import ;;
+  proxy)         verb_proxy ;;
+  cert-sync)     verb_certsync ;;
+  revert)        verb_revert ;;
+  resume)        verb_resume ;;
+  status)        verb_status ;;
+  target-status) verb_target_status ;;
+  *) echo "unknown verb: ${_OP}" >&2; _usage ;;
+esac
+
+exit 0
