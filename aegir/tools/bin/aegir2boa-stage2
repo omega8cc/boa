@@ -706,6 +706,13 @@ verb_resume() {
     systemd) systemctl enable hosting-queued >>"${_LOG}" 2>&1; systemctl start hosting-queued >>"${_LOG}" 2>&1 ;;
     initd)   update-rc.d hosting-queued enable >>"${_LOG}" 2>&1 || true; service hosting-queued start >>"${_LOG}" 2>&1 ;;
   esac
+  # the db-import export put the source panel into maintenance mode (no
+  # writes may post-date the dump); a full revert brings it back
+  if _marker_has "hostmaster.exported.pid"; then
+    _as_aegir "drush @hostmaster vset --always-set maintenance_mode 0" >>"${_LOG}" 2>&1
+    rm -f "$(_marker "hostmaster.exported.pid")"
+    _info "source panel taken out of maintenance mode (hostmaster export marker cleared)"
+  fi
   rm -f "$(_marker "pre-mig.pid")"
   _msg "resume complete - source automation restored"
 }
@@ -1116,6 +1123,71 @@ _t_hm_platform_root() {
     | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
 }
 
+# the account panel domain: log/domain.txt is BOA's authoritative record
+# (read on every octopus up- AND by the nightly LE renewal), falling back to
+# the hostmaster alias uri (same fallback order 10-account.sh uses)
+_t_panel_domain() {
+  local _d
+  _d="$(tr -d '\n' < "${_ACCT_ROOT}/log/domain.txt" 2>/dev/null)"
+  if [[ -z "${_d}" ]]; then
+    _d="$(grep "uri'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
+      | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1)"
+  fi
+  _sane_domain "${_d}"
+}
+
+# queue a verify for a hosting context and run it INLINE: the fork's
+# `hosting-task <ctx> <type>` (context+type form) creates the task node,
+# flips it to PROCESSING and executes it synchronously in the same process
+# (task.hosting.inc) - deterministic, no dispatcher dependency, so the
+# whole import can run with the account dispatcher held aside. The latest
+# vid is still polled afterwards (D-009c) as the completion proof.
+_t_verify_inline() {   # 1 context-name 2 label
+  _as_octo "drush8 @hostmaster hosting-task @$1 verify" >>"${_LOG}" 2>&1
+  _t_wait_task "$(_t_task_nid_for "$1" verify)" "$2"
+}
+
+# per-site PHP pool mapping + socket wait (open-q #4 / adversary M3),
+# shared by both routes. multi-fpm only takes effect when the FPM agent's
+# NEXT pass spawns the per-version pool + socket and writes the vhost
+# include - so a wanted version is WAITED for (socket presence), not
+# assumed. Until the socket exists the site serves under the account
+# default PHP: fatal for D6 on 8.x, so D6 without the socket is a
+# per-site FAIL; D7 degrades with a warning.
+# Returns 1 only on the D6-without-socket per-site FAIL.
+_t_fpm_map_wait() {   # 1 uri 2 dmajor
+  local _uri="$1" _dmaj="$2" _want=""
+  case "${_dmaj}" in
+    6) _want="5.6" ;;
+    7) [[ -d /opt/php74 ]] && _want="7.4" ;;
+  esac
+  [[ -n "${_want}" ]] || return 0
+  local _ctl="${_ACCT_ROOT}/static/control/multi-fpm.info"
+  mkdir -p "${_ACCT_ROOT}/static/control"
+  # exact field-1 match: a domain's dots are BRE wildcards under grep,
+  # so grep "^a.example.com " would false-match "aXexample.com" and
+  # silently skip the second site's pool line
+  if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' "${_ctl}" 2>/dev/null; then
+    echo "${_uri} ${_want}" >> "${_ctl}"
+    chown "${_ACCOUNT}:users" "${_ctl}" 2>/dev/null
+    _info "site ${_uri}: multi-fpm.info -> ${_want}"
+  fi
+  local _sock="/var/run/${_ACCOUNT}.${_want//./}.fpm.socket" _sw=0
+  while [[ ! -S "${_sock}" && "${_sw}" -lt 420 ]]; do
+    sleep 15; _sw=$(( _sw + 15 ))
+  done
+  if [[ ! -S "${_sock}" ]]; then
+    if [[ "${_dmaj}" = "6" ]]; then
+      _alrt "site ${_uri}: PHP ${_want} socket ${_sock} never appeared - D6 cannot serve on the account default; per-site FAIL"
+      return 1
+    fi
+    _alrt "site ${_uri}: PHP ${_want} socket not up yet - serving under the account default until the FPM agent's next pass"
+  else
+    _info "site ${_uri}: PHP ${_want} pool socket up"
+  fi
+  return 0
+}
+
 # drop ONLY the site DBs this tool loaded (dbloaded markers are the scope
 # fence - never touch a DB the tool did not create) + clear their markers
 # so a retry re-lands fresh data. M1 fix: without this, a revert-then-retry
@@ -1171,35 +1243,46 @@ _import_db_route() {
   [[ -n "${_hdb}" ]] || _die "cannot resolve target hostmaster db"
   [[ -s "${_src}/hostmaster.sql" ]] || _die "no transferred hostmaster.sql"
   if [[ -z "${_SRC_FQDN}" ]]; then
-    # the file value feeds renameaegirhost --force-old, which uses it as an
-    # internal sed pattern across the whole imported DB - gate it like the CLI arg
+    # informational only since the rename became targeted UPDATEs (no
+    # blanket sed) - but still gated: it lands in logs/reports as-is
     _SRC_FQDN="$(_sane_domain "$(cat "${_src}/source-fqdn.txt" 2>/dev/null | tr -d '\n')")" \
-      || _die "transferred source-fqdn.txt is not a valid domain - pass --source-fqdn"
+      || _alrt "transferred source-fqdn.txt unreadable - residual-reference report will be skipped"
   fi
-  [[ -n "${_SRC_FQDN}" ]] || _die "source fqdn unknown - pass --source-fqdn"
-  _have drush8 || _die "drush8 missing on target - renameaegirhost's replay would silently no-op"
+  _have drush8 || _die "drush8 missing on target - verify tasks cannot run"
 
-  # rename pre-checks (design 7a.11): hostmaster alias site_path must exist,
-  # and the backups partition must fit 2x the hostmaster db
-  local _hmsp _bfree _hsz
+  # identity surgery pre-checks (design 7a.11, extraction-corrected):
+  # the target panel identity + platform root must be resolvable BEFORE the
+  # import replaces the DB, and the hostmaster alias site_path must exist
+  local _hmsp _bfree _hsz _tgt_fqdn _panel _hmplat_tgt
   _hmsp="$(grep "site_path'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" \
     | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")"
-  [[ -d "${_hmsp}" ]] || _die "target hostmaster alias site_path ${_hmsp} missing - rename would die mid-way"
+  [[ -d "${_hmsp}" ]] || _die "target hostmaster alias site_path ${_hmsp} missing - account panel unhealthy"
+  _tgt_fqdn="$(_sane_domain "$(hostname -f 2>/dev/null | tr -d '\n')")" \
+    || _die "cannot resolve this box's FQDN (hostname -f)"
+  _panel="$(_t_panel_domain)" \
+    || _die "cannot resolve the ${_ACCOUNT} panel domain (log/domain.txt + hostmaster alias both failed)"
+  _hmplat_tgt="$(_t_hm_platform_root)"
+  [[ -d "${_hmplat_tgt}" ]] || _die "target hostmaster platform root unresolved - cannot re-point the imported panel"
   _hsz="$(_int_only "$(du -sm "${_src}/hostmaster.sql" | cut -f1)")"
-  _bfree="$(_int_only "$(df -Pm "${_ACCT_ROOT}/backups" 2>/dev/null | awk 'NR==2{print $4}')")"
-  [[ -n "${_bfree}" && "${_bfree}" -gt $(( _hsz * 4 + 200 )) ]] \
-    || _die "backups partition headroom insufficient for rename dumps (~$(( _hsz * 4 ))MB needed)"
+  _bfree="$(_int_only "$(df -Pm "${_ACCT_ROOT}" 2>/dev/null | awk 'NR==2{print $4}')")"
+  [[ -n "${_bfree}" && "${_bfree}" -gt $(( _hsz * 2 + 200 )) ]] \
+    || _die "target headroom insufficient for the pre-import snapshot (~$(( _hsz * 2 ))MB needed)"
 
   if [[ "${_LIVE}" != "YES" ]]; then
-    _info "[DRY] db-import plan for ${_ACCOUNT} (hostmaster db ${_hdb}, source ${_SRC_FQDN}):"
+    _info "[DRY] db-import plan for ${_ACCOUNT} (hostmaster db ${_hdb}, source ${_SRC_FQDN:-unknown}):"
     _info "[DRY]  0 hold run-${_ACCOUNT} dispatcher + drain (runner ignores proxied.pid)"
     _info "[DRY]  1 snapshot db+enabled-set  2 sql-drop  3 sandbox-strip import"
     _info "[DRY]  4 queue hygiene+neuter     5 {system} scrub  5b publish_path remap"
     _info "[DRY]  6 enable-list from snapshot  7 updatedb  8 features revert"
     _info "[DRY]  8b per-site cron intervals (vanilla rode no hosting_cron table)"
     _info "[DRY]  9 LE service-row re-attach  10 welcome-node: ${_WELCOME_NODE}"
-    _info "[DRY] 10b per-site content-DB land  11 renameaegirhost --force-old ${_SRC_FQDN}"
-    _info "[DRY] 12 verification stop, then dispatcher restore"
+    _info "[DRY] 10b per-site content-DB land"
+    _info "[DRY] 11 identity surgery (NO renameaegirhost - targeted UPDATEs):"
+    _info "[DRY]    server node title -> ${_tgt_fqdn} (remote_host regenerates from it)"
+    _info "[DRY]    hostmaster site node title -> ${_panel} (panel adopts the account identity)"
+    _info "[DRY]    imported hostmaster platform publish_path -> ${_hmplat_tgt}"
+    _info "[DRY]    then INLINE verifies: server -> platforms -> hostmaster -> sites (+fpm map)"
+    _info "[DRY] 12 verification stop + stray-task neuter, then dispatcher restore"
     return 0
   fi
 
@@ -1392,25 +1475,152 @@ PHPEOF
     fi
   done
 
-  # 11. renameaegirhost (UNDRILLED half - rehearsal checkpoint)
-  if [[ ! -e "${_step}.11.done" ]]; then
-    _t_owl_drain
-    renameaegirhost --aegir-root "${_ACCT_ROOT}" --force-old "${_SRC_FQDN}" \
-      | tee -a "${_LOG}" || _die "renameaegirhost failed - see backups/rename-hostname for the pristine dump"
-    touch "${_step}.11.done"
-    _info "step 11: rename + task-queue replay done"
+  # 11. identity surgery + inline verify ladder. renameaegirhost is NOT
+  # used here (extraction-corrected design): its blanket dump+sed+reimport
+  # cannot distinguish panel-URI from server-identity when the source panel
+  # URI equals the source box FQDN (the common vanilla case), corrupts
+  # PHP-serialized variable values whose byte length changes, keys the
+  # server rename on the FQDN while the server node title is php_uname('n')
+  # (may be a short nodename the FQDN sed silently misses), and its §7
+  # replay drives the queue with `hosting-tasks --force` (D-009c forbids).
+  # Instead: targeted UPDATEs by nid, then deterministic inline verifies.
+  #
+  # 11pre. platform-verify auto-import OFF for the window (same
+  # double-registration hazard as the per-site route)
+  if [[ ! -e "${_step}.11pre.done" ]]; then
+    _as_octo "drush8 @hostmaster vset --always-set hosting_platform_automatic_site_import 0" >>"${_LOG}" 2>&1
+    touch "${_step}.11pre.done"
   fi
 
-  # 12. verification stop
-  local _boot
+  # 11a. identity UPDATEs:
+  # - server node title -> target FQDN: hosting_server context_options
+  #   regenerates remote_host FROM THE NODE TITLE on every server verify;
+  #   a stale source value turns every op into ssh/rsync to the OLD box.
+  # - hostmaster site node title -> this account's own panel domain
+  #   (log/domain.txt): the on-disk panel site dir, vhost, LE cert and
+  #   domain.txt already carry it, so the imported panel adopts the
+  #   existing consistent identity (keeping the SOURCE panel domain would
+  #   need a fresh sites/<old-domain>/ whose regenerated settings.php has
+  #   no db creds - panel down; recorded as v2 work, DECISIONS D-012).
+  # - imported hostmaster PLATFORM publish_path -> the account's real
+  #   distro platform: vanilla installs hostmaster at
+  #   <aegir-root>/hostmaster-<ver>, NOT under platforms/, so step 5b's
+  #   remap never touches it and verifies would chase a nonexistent root.
+  if [[ ! -e "${_step}.11a.done" ]]; then
+    local _hm_nid _srv_nid _old_srv _old_panel
+    _hm_nid="$(_int_only "$(_tsql "SELECT nid FROM hosting_context WHERE name='hostmaster'")")"
+    _srv_nid="$(_int_only "$(_tsql "SELECT nid FROM hosting_context WHERE name='server_master'")")"
+    [[ -n "${_hm_nid}" && -n "${_srv_nid}" ]] \
+      || _die "imported DB misses hostmaster/server_master contexts - not an Aegir hostmaster dump?"
+    _old_srv="$(_tsql "SELECT title FROM node WHERE nid=${_srv_nid}")"
+    _old_panel="$(_tsql "SELECT title FROM node WHERE nid=${_hm_nid}")"
+    _info "step 11a: server '${_old_srv}' -> '${_tgt_fqdn}', panel '${_old_panel}' -> '${_panel}'"
+    _tsql "UPDATE node SET title='${_tgt_fqdn}' WHERE nid=${_srv_nid}"
+    _tsql "UPDATE node_revision SET title='${_tgt_fqdn}' WHERE nid=${_srv_nid}"
+    _tsql "UPDATE node SET title='${_panel}' WHERE nid=${_hm_nid}"
+    _tsql "UPDATE node_revision SET title='${_panel}' WHERE nid=${_hm_nid}"
+    _tsql "UPDATE hosting_platform SET publish_path='${_hmplat_tgt}' WHERE nid=(SELECT platform FROM hosting_site WHERE nid=${_hm_nid} ORDER BY vid DESC LIMIT 1)"
+    _as_octo "drush8 @hostmaster vset --always-set install_url 'https://${_panel}'" >>"${_LOG}" 2>&1
+    # honest residual report: task history etc. may still name the source
+    if [[ -n "${_SRC_FQDN}" ]]; then
+      local _resid
+      _resid="$(_tsql "SELECT COUNT(*) FROM node WHERE title LIKE '%${_SRC_FQDN}%'")"
+      _info "step 11a: ${_resid:-?} node title(s) still reference ${_SRC_FQDN} (history rows keep it by design)"
+    fi
+    touch "${_step}.11a.done"
+    _info "step 11a: identity UPDATEs done"
+  fi
+
+  # 11b. server verifies (inline): regenerate server_master alias with the
+  # corrected remote_host; the fork auto-queues platform verifies when a
+  # server verify completes - those land QUEUED and are neutered at step 12
+  # (our own inline platform verifies below are the deterministic ones)
+  if [[ ! -e "${_step}.11b.done" ]]; then
+    _as_octo "drush8 cc drush" >>"${_LOG}" 2>&1
+    _t_verify_inline "server_master" "server_master verify" \
+      || _die "server_master verify failed - inspect before proxy (dispatcher stays held)"
+    if [[ -n "$(_tsql "SELECT nid FROM hosting_context WHERE name='server_localhost'")" ]]; then
+      _t_verify_inline "server_localhost" "server_localhost verify" \
+        || _alrt "server_localhost verify failed - check db service wiring"
+    fi
+    grep -q "remote_host.*'${_tgt_fqdn}'" "${_ACCT_ROOT}/.drush/server_master.alias.drushrc.php" 2>/dev/null \
+      || _die "server_master alias remote_host did not regenerate to ${_tgt_fqdn} - LOCAL execution not restored"
+    touch "${_step}.11b.done"
+    _info "step 11b: server verifies done, remote_host=${_tgt_fqdn} confirmed LOCAL"
+  fi
+
+  # 11c. adopted platform verifies (inline), hostmaster platform included:
+  # registers packages/profiles and proves every publish_path
+  if [[ ! -e "${_step}.11c.done" ]]; then
+    local _pctx
+    while read -r _pctx; do
+      _pctx="$(_sane_ident "${_pctx}")"
+      [[ -n "${_pctx}" ]] || continue
+      _t_verify_inline "${_pctx}" "platform ${_pctx} verify" \
+        || _alrt "platform ${_pctx} verify failed - its sites will fail their verifies below"
+    done < <(_tsql "SELECT c.name FROM hosting_context c JOIN node n ON n.nid=c.nid WHERE n.type='platform' AND n.status=1")
+    touch "${_step}.11c.done"
+    _info "step 11c: platform verifies done"
+  fi
+
+  # 11d. hostmaster site verify (inline): regenerates the @hostmaster alias
+  # and panel vhost from the adopted identity - everything it writes must
+  # match what is already on disk (dir, drushrc, LE cert)
+  if [[ ! -e "${_step}.11d.done" ]]; then
+    _t_verify_inline "hostmaster" "hostmaster site verify" \
+      || _die "hostmaster site verify failed - panel integrity not proven (dispatcher stays held)"
+    touch "${_step}.11d.done"
+    _info "step 11d: hostmaster site verify done"
+  fi
+
+  # 11e. per-site: fpm map + inline verify + HTTP probe vs source baseline
+  if [[ ! -e "${_step}.11e.done" ]]; then
+    local _sfails=0 _mfe _urie _dmaje _ctxe _codee _basee
+    for _mfe in "${_src}/manifest/"*.info; do
+      [[ -e "${_mfe}" ]] || continue
+      _urie="$(_sane_domain "$(_manifest_val "${_mfe}" URI)")" || continue
+      _marker_has "${_urie}.imported.pid" && { _info "site ${_urie}: already verified"; continue; }
+      _ctxe="$(_tsql "SELECT name FROM hosting_context WHERE name='${_urie}'")"
+      [[ -n "${_ctxe}" ]] || { _alrt "site ${_urie}: no context in imported DB - SKIP"; _sfails=$(( _sfails + 1 )); continue; }
+      _dmaje="$(_int_only "$(_manifest_val "${_mfe}" DMAJOR)")"
+      _t_fpm_map_wait "${_urie}" "${_dmaje}" \
+        || { _sfails=$(( _sfails + 1 )); continue; }
+      if ! _t_verify_inline "${_urie}" "site ${_urie} verify"; then
+        _alrt "site ${_urie}: verify failed - left unproven, fix + re-run import"
+        _sfails=$(( _sfails + 1 )); continue
+      fi
+      _codee="$(_http_code_at "${_urie}" 127.0.0.1)"
+      _basee="$(_manifest_val "${_mfe}" BASELINE)"
+      _info "site ${_urie}: target serves HTTP ${_codee} (source baseline was ${_basee})"
+      _marker_set "${_urie}.imported.pid"
+    done
+    [[ "${_sfails}" -gt 0 ]] \
+      && _alrt "step 11e: ${_sfails} site(s) failed verification - proxy will refuse them (probe gate)" \
+      || _info "step 11e: all site verifies + probes done"
+    touch "${_step}.11e.done"
+  fi
+
+  # 11f. window cleanup: restore the auto-import default
+  if [[ ! -e "${_step}.11f.done" ]]; then
+    _as_octo "drush8 @hostmaster vdel -y hosting_platform_automatic_site_import" >>"${_LOG}" 2>&1
+    touch "${_step}.11f.done"
+  fi
+
+  # 12. verification stop: bootstrap + panel probe, then neuter the
+  # cascade-queued duplicate verifies so the restored dispatcher starts
+  # from a clean queue
+  local _boot _pcode
   _boot="$(_as_octo "drush8 @hostmaster status --fields=bootstrap 2>/dev/null" | grep -c Successful)"
   _info "step 12: hostmaster bootstrap: $([ "${_boot}" -ge 1 ] && echo OK || echo NOT-OK)"
   [[ "${_boot}" -ge 1 ]] || _die "post-import hostmaster does not bootstrap - investigate before proxy (dispatcher stays held; restore via --revert-db-import or manually)"
+  _pcode="$(_http_code_at "${_panel}" 127.0.0.1)"
+  _info "step 12: panel ${_panel} answers HTTP ${_pcode}"
+  _tsql "UPDATE hosting_task SET task_status='2' WHERE task_status='0' AND executed='0'"
   _t_dispatch_on
   _t_freeze_off
   trap - EXIT
   _marker_set "import.db-import.done"
-  _msg "db-import route complete for ${_ACCOUNT} - per-site verifies will run via the queue; then proxy per site on the source"
+  _msg "db-import route complete for ${_ACCOUNT} - sites verified + serving; next: proxy per site on the source"
 }
 
 _import_per_site() {
@@ -1500,42 +1710,10 @@ PHPEOF
     _t_wait_task "${_itnid}" "import ${_uri}" \
       || { _alrt "site ${_uri}: import task failed"; _fails=$(( _fails + 1 )); continue; }
 
-    # 4. per-site PHP pool mapping (D6 -> 5.6, D7 -> 7.4 when present).
-    # multi-fpm only takes effect when the FPM agent's NEXT pass spawns the
-    # per-version pool + socket and writes the vhost include - so a wanted
-    # version is WAITED for (socket presence), not assumed. Until the
-    # socket exists the site would serve under the account default PHP:
-    # fatal for D6 on 8.x, so D6 without the socket is a per-site FAIL.
-    local _want=""
-    case "${_dmaj}" in
-      6) _want="5.6" ;;
-      7) [[ -d /opt/php74 ]] && _want="7.4" ;;
-    esac
-    if [[ -n "${_want}" ]]; then
-      local _ctl="${_ACCT_ROOT}/static/control/multi-fpm.info"
-      mkdir -p "${_ACCT_ROOT}/static/control"
-      # exact field-1 match: a domain's dots are BRE wildcards under grep,
-      # so grep "^a.example.com " would false-match "aXexample.com" and
-      # silently skip the second site's pool line
-      if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' "${_ctl}" 2>/dev/null; then
-        echo "${_uri} ${_want}" >> "${_ctl}"
-        chown "${_ACCOUNT}:users" "${_ctl}" 2>/dev/null
-        _info "site ${_uri}: multi-fpm.info -> ${_want}"
-      fi
-      local _sock="/var/run/${_ACCOUNT}.${_want//./}.fpm.socket" _sw=0
-      while [[ ! -S "${_sock}" && "${_sw}" -lt 420 ]]; do
-        sleep 15; _sw=$(( _sw + 15 ))
-      done
-      if [[ ! -S "${_sock}" ]]; then
-        if [[ "${_dmaj}" = "6" ]]; then
-          _alrt "site ${_uri}: PHP ${_want} socket ${_sock} never appeared - D6 cannot serve on the account default; per-site FAIL"
-          _fails=$(( _fails + 1 )); continue
-        fi
-        _alrt "site ${_uri}: PHP ${_want} socket not up yet - serving under the account default until the FPM agent's next pass"
-      else
-        _info "site ${_uri}: PHP ${_want} pool socket up"
-      fi
-    fi
+    # 4. per-site PHP pool mapping + socket wait (shared helper; D6
+    # without its socket is a per-site FAIL, D7 degrades with a warning)
+    _t_fpm_map_wait "${_uri}" "${_dmaj}" \
+      || { _fails=$(( _fails + 1 )); continue; }
 
     # 5. wait the chained verify, then 6. HTTP probe
     sleep 5
@@ -1717,30 +1895,24 @@ verb_proxy() {
     _proxy_one "${_uri}" || _fails=$(( _fails + 1 ))
   done
 
-  # hostmaster handling on --all: db-import -> proxy it (panel now lives on
-  # the target under the same domain); per-site -> permanent 503 stub
+  # hostmaster handling on --all: BOTH routes retire the old panel domain
+  # behind a permanent 503 stub (D-012: on the db-import route the imported
+  # panel ADOPTS the target account identity <oN>.<target-fqdn>, so the old
+  # panel domain has no vhost on the target - proxying it would hit BOA's
+  # default vhost with wrong content; the operator communicates the new URL)
   if [[ "${_ALL}" = "YES" ]]; then
     _route="$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)"
     local _hm
     _hm="$(_hostmaster_uri)"
     if [[ -n "${_hm}" && -e "$(_vhostd)/${_hm}" && ! -e "$(_marker "${_hm}.proxied.pid")" ]]; then
-      if [[ "${_route}" = "db-import" ]]; then
-        local _names
-        _names="$(_harvest_names "$(_vhostd)/${_hm}")"
-        mv -f "$(_vhostd)/${_hm}" "$(_vhostd)/.${_hm}"
-        _emit_proxy_http "${_names}" "${_TARGET}" > "$(_vhostd)/${_hm}"
-        chmod 600 "$(_vhostd)/${_hm}"
-      else
-        _emit_stub_503 "${_hm}" > "$(_stub_of "${_hm}")"
-      fi
+      _emit_stub_503 "${_hm}" > "$(_stub_of "${_hm}")"
       if _nginx_test_and_reload; then
         _marker_set "${_hm}.proxied.pid"
-        _info "hostmaster ${_hm}: $([ "${_route}" = "db-import" ] && echo proxied || echo 'stubbed 503 (per-site route: old panel retired)')"
+        _info "hostmaster ${_hm}: stubbed 503 (old panel retired; route=${_route})"
       else
         rm -f "$(_stub_of "${_hm}")"
-        [[ -e "$(_vhostd)/.${_hm}" ]] && mv -f "$(_vhostd)/.${_hm}" "$(_vhostd)/${_hm}"
         _nginx_test_and_reload
-        _alrt "hostmaster ${_hm}: handling failed nginx -t - left serving locally"
+        _alrt "hostmaster ${_hm}: stub failed nginx -t - left serving locally"
       fi
     fi
   fi
