@@ -322,7 +322,13 @@ _fix_boost_cache() {
 _fix_o_contrib_symlink() {
   if [ "${_O_CONTRIB_SEVEN}" != "NO" ]; then
     symlinks -d ${_Plr}/modules &> /dev/null
-    if [ -e "${_Plr}/web.config" ] \
+    if [ -e "${_Plr}/core/misc/backdrop.js" ]; then
+      # Backdrop platform: BOA ships no o_contrib bundle for Backdrop in Phase 1
+      # (Drupal 6/7/8 module sets are not Backdrop-compatible). Placed before the
+      # D8 arm, which its core/ (+ absent olivero/stable9/workspaces_ui) would
+      # otherwise match and wire o_contrib_eight into a Backdrop tree.
+      _DO_NOTHING=YES
+    elif [ -e "${_Plr}/web.config" ] \
       && [ -e "${_O_CONTRIB_SEVEN}" ] \
       && [ ! -e "${_Plr}/core" ]; then
       if [ ! -e "${_Plr}/modules/o_contrib_seven" ]; then

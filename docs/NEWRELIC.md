@@ -1,6 +1,6 @@
 # New Relic Monitoring Configuration
 
-This feature disables global New Relic monitoring by deactivating the server-level license key. This allows it to safely auto-enable or auto-disable every 5 minutes, but per Octopus instance—for all sites hosted on the given instance or per platform or per site via INI directives—when a valid license key is present in the special `~/static/control/newrelic.info` control file.
+This feature disables global New Relic monitoring by deactivating the server-level license key. This allows it to safely auto-enable or auto-disable every 3 minutes, but per Octopus instance—for all sites hosted on the given instance or per platform or per site via INI directives—when a valid license key is present in the special `~/static/control/newrelic.info` control file.
 
 ## INI (platform level) directive for New Relic
 

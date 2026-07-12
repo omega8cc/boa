@@ -108,7 +108,7 @@ It is recommended that you start `screen` before running commands using the "sil
 
 It is possible to set/force the upgrade mode on the fly using optional arguments: `{aegir|platforms|both}`
 
-Note that `none` is similar to `both`; however, `both` will force aegir plus platforms upgrade, while `none` will also honor settings from the octopus instance cnf file, where currently only `aegir` mode is defined with `_HM_ONLY=YES` option.
+Note that `both` (also accepted as `force`) will force an aegir plus platforms upgrade, `aegir` will upgrade only the Ægir Master/Satellite instance (setting `_HM_ONLY=YES`), and `platforms` will upgrade only the platforms (setting `_PLATFORMS_ONLY=YES`). When no mode argument is given, both flags are reset so a full aegir plus platforms upgrade is performed, the same as `both`.
 
 Examples:
 

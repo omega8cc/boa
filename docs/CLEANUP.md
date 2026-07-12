@@ -66,7 +66,7 @@ a dry-run run (and the paths it lists) before turning a flag on is recommended.
 
 ## While a Provision task is running
 
-No cleanup of any kind runs while an Aegir/Provision task (install, clone,
+No cleanup of any kind runs while an Ægir/Provision task (install, clone,
 migrate, verify, backup, restore) is in progress on the box. During those tasks
 the site and platform trees are transiently inconsistent, so a snapshot taken
 then could mis-read a live site as a ghost. Each cleanup checks for a running

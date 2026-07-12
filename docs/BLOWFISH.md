@@ -6,7 +6,7 @@ This is not bad, and for sure much better than MD5 by default used in BOA for al
 
 But since BOA forces all users to update their passwords every 90 days, once the user updates their password, it is automatically encrypted with SHA512, so it no longer uses the completely insecure MD5 hashing.
 
-Note that BOA switched to SHA512 instead of MD5 by default in HEAD after BOA-2.0.8 Edition, and will use SHA512 by default starting with BOA-2.0.9.
+Note that BOA switched to SHA512 instead of MD5 by default in HEAD after BOA-2.0.8 Edition, starting with BOA-2.0.9. SHA512 has been the default for all newly created and updated SSH/FTPS accounts (both main and extra - for Ægir Clients) ever since, and remains so in current releases; MD5 is no longer used for any new account.
 
 # WARNING!
 

@@ -221,15 +221,19 @@
 ### or one per line:
 ###
 
+### Drupal 11.4
+#
+# DE4 — Drupal 11.4 prod/stage/dev
+# CK3 — Commerce v.3
+# CMS — Drupal CMS
+# LGV — LocalGov
+# THR — Thunder
+
 ### Drupal 11.3
 #
 # DE3 — Drupal 11.3 prod/stage/dev
-# CK3 — Commerce v.3
-# CMS — Drupal CMS
 # FOS — farmOS
-# LGV — LocalGov
 # OCS — OpenCulturas
-# THR — Thunder
 # VBX — Varbase 10
 
 ### Drupal 11.2
@@ -289,6 +293,10 @@
 #
 # DL6 — Pressflow (LTS) prod/stage/dev
 # UC6 — Ubercart
+
+### Backdrop
+#
+# BDR — Backdrop CMS prod/stage/dev (requires _BACKDROP_SUPPORT=YES)
 
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA

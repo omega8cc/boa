@@ -6,8 +6,10 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 * * * * *   bash /var/xdrago/guest-fire.sh             >/dev/null 2>&1
 01 5 * * *  bash /var/xdrago/guest-water.sh            >/dev/null 2>&1
 */2 * * * * bash /var/xdrago/ip_access.sh              >/dev/null 2>&1
+*/2 * * * * bash /var/xdrago/user_admin_access.sh      >/dev/null 2>&1
 */2 * * * * bash /var/xdrago/ai_policy.sh              >/dev/null 2>&1
 */2 * * * * bash /var/xdrago/nginx_deny.sh             >/dev/null 2>&1
+*/2 * * * * bash /var/xdrago/nginx_deny6.sh            >/dev/null 2>&1
 45 4 * * *  bash /var/xdrago/cloudflare_realip.sh      >/dev/null 2>&1
 */5 * * * * bash /var/xdrago/migration_proxy_realip.sh >/dev/null 2>&1
 */5 * * * * bash /var/xdrago/clear.sh                  >/dev/null 2>&1
