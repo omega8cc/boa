@@ -1380,7 +1380,8 @@ _init_setup() {
       echo
     fi
     if [ "${_eXtr}" = "lts" ] \
-      || [ "${_eXtr}" = "dev" ]; then
+      || [ "${_eXtr}" = "dev" ] \
+      || [ "${_eXtr}" = "pro" ]; then
       _OCTO_EXTRA=OK
     else
       _eXtr=lite
