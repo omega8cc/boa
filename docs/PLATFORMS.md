@@ -63,7 +63,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 * Backdrop platforms track the newest release automatically (version-less `backdrop.tar.gz`), so there is no per-version pin to maintain.
 * Each Backdrop platform ships the Valkey/Redis object-cache module baked in — used per site when Valkey is available, otherwise the site falls back to Backdrop's database cache.
 * Backdrop sites are managed with both `bee` (the native Backdrop CLI) and Drush 8 (via the backdrop-drush-extension).
-* Ships opt-in / dark: requires `_BACKDROP_SUPPORT=YES` in the Octopus config (symbol `BDR` in the platform list).
+* Ships ON by default: Backdrop platforms build whenever the platform list includes the `BDR` symbol (or `ALL`); set `_BACKDROP_SUPPORT=NO` in the Octopus config to opt an instance out.
 
 * All D7 platforms have been enhanced using [Drupal 7.105.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 

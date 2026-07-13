@@ -48,12 +48,20 @@ _sanitize_number() {
 _clean_pid_exit() {
   if [ -n "${1}" ]; then
     echo "REASON ${1} on $(date)" >> /root/.octopus.exit.exceptions.log
-    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-  [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
-  service cron start &> /dev/null
+  # All cleanup below belongs to the process which created the lock pids in
+  # _up_start; exits on pre-flight paths must never unlock an install
+  # running elsewhere, nor purge its /opt/tmp build staging or backup-mode
+  # control file, nor restart cron it may depend on
+  if [ "${_PID_LOCK_OWNER}" = "YES" ]; then
+    if [ -n "${1}" ]; then
+      [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+    fi
+    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+    [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+    [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
+    service cron start &> /dev/null
+  fi
   exit 1
 }
 
@@ -694,6 +702,7 @@ _up_start() {
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
     touch /run/octopus_install_run.pid
+    _PID_LOCK_OWNER=YES
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
     mkdir -p ${_LOG_DIR}
     cd ${_vBs}
