@@ -14,7 +14,6 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 ## IN PROGRESS (PRO only)
 
-- **Import from Classic Ægir**: Extend xoct to import from remote classic Ægir servers using Nginx or Apache (PRO)
 - **Backdrop CMS Support**: Implement Backdrop CMS as a supported platform (PRO)
 - **Grav CMS Support**: Introduce support for Grav CMS (command line only) (PRO)
 - **Optional AppArmor Support**: Enhanced security and accounts privilege separation (PRO)
@@ -30,6 +29,7 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 ## MAJOR NEW FEATURES RELEASED IN BOA LTS/PRO
 
+- **Import from Classic Ægir**: Import from remote classic Ægir servers using Nginx or Apache, with per-site revert until final cutover (PRO/LTS)
 - **HTTP/3 on QUIC with KTLS Magic**: Strap in, your sites are getting an F1 engine (PRO/LTS)
 - **Drupal 11 with Ægir 3**: They Said It Couldn’t Be Done — We Did It Anyway (PRO/LTS)
 - **Debian Trixie and Devuan Excalibur**: Ensure compatibility for installation and automated upgrades (PRO/LTS)
