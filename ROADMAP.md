@@ -42,13 +42,5 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 ## OTHER NEW FEATURES RELEASED IN BOA LTS/PRO
 
-- **PHP 8.5 Support**: Enhancing performance and supporting twelve PHP versions (PRO/LTS)
-- **PHP 8.4 Support**: Enhancing performance and supporting eleven PHP versions (PRO/LTS)
-- **PHP 8.3 Support**: Required for Drupal 11, enhancing performance and supporting ten PHP versions (PRO/LTS)
-- **Add instant SQL fallback for Valkey/Redis**: zero downtime during upgrades/restarts/etc
-- **Symlink Site Files**: Automatically symlink all site files to expedite migration tasks and conserve disk space (PRO/LTS)
-- **Solr 9 Support**: Add latest Solr Server 9 as supported via BOA automation (PRO/LTS)
-- **Ruby Gems and Node/NPM Support 3x Faster**: From 15 to 5 minutes, with improved security (PRO/LTS)
-- **Ægir Task for SQL Backup**: Enable classic mysqldump backups for individual site downloads (PRO/LTS)
-- **Drush 12/13 in Ægir Tasks**: Dynamically Utilize Site-Local Drush for `updatedb` Operations on Drupal 10+ (PRO/LTS)
-- **Documentation Conversion to Markdown**: Update all BOA documentation from legacy TXT to Markdown.
+- **PHP 8.5 Support**: Enhancing performance and supporting twelve PHP versions- **PHP 8.4 Support**: Enhancing performance and supporting eleven PHP versions- **PHP 8.3 Support**: Required for Drupal 11, enhancing performance and supporting ten PHP versions- **Add instant SQL fallback for Valkey/Redis**: zero downtime during upgrades/restarts/etc
+- **Symlink Site Files**: Automatically symlink all site files to expedite migration tasks and conserve disk space- **Solr 9 Support**: Add latest Solr Server 9 as supported via BOA automation- **Ruby Gems and Node/NPM Support 3x Faster**: From 15 to 5 minutes, with improved security- **Ægir Task for SQL Backup**: Enable classic mysqldump backups for individual site downloads- **Drush 12/13 in Ægir Tasks**: Dynamically Utilize Site-Local Drush for `updatedb` Operations on Drupal 10+- **Documentation Conversion to Markdown**: Update all BOA documentation from legacy TXT to Markdown.
