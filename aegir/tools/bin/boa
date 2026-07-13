@@ -92,6 +92,12 @@ _apt_clean_update() {
 }
 
 _check_manufacturer_compatibility() {
+  # Local development installs run inside the developer's own VM/LXC; a bare
+  # LXC container has no DMI table (dmidecode returns nothing), which this
+  # production-environment gate would reject. It does not apply to local mode.
+  if [ "${_kiNd}" = "local" ]; then
+    return 0
+  fi
   # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update &> /dev/null
