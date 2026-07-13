@@ -1188,7 +1188,13 @@ _commerce_7_2_install() {
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
       || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
+      ### No octo-dir short-circuit here: a tree left by an interrupted run
+      ### (built but never registered) must still reach
+      ### _save_verify_this_platform. The build is guarded by the shared-tree
+      ### check below, _init_this_distro_root is re-run-safe (mkdir -p +
+      ### sentinel-gated ln -sfn), and registration is guarded by the platform
+      ### drushrc marker AND make_platform's own hosting-context check.
+      if true; then
         if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
@@ -1259,7 +1265,13 @@ _ubercart6_install() {
   _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
   if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
     || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
-    if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
+    ### No sentinel short-circuit here (it resolved modules/path_alias_cache
+    ### THROUGH the modules symlink into the shared core, so a built-but-never
+    ### -registered tree was skipped forever). The build is guarded by the
+    ### shared-tree check below, _init_this_distro_root is re-run-safe, and
+    ### registration is guarded by the platform drushrc marker AND
+    ### make_platform's own hosting-context check.
+    if true; then
       if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
         true
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
@@ -1358,7 +1370,13 @@ _ubercart7_install() {
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
       || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
+      ### No octo-dir short-circuit here: a tree left by an interrupted run
+      ### (built but never registered) must still reach
+      ### _save_verify_this_platform. The build is guarded by the shared-tree
+      ### check below, _init_this_distro_root is re-run-safe, and registration
+      ### is guarded by the platform drushrc marker AND make_platform's own
+      ### hosting-context check.
+      if true; then
         if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
@@ -1484,7 +1502,12 @@ _d_dist_platform_install() {
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
       || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
+      ### No octo-dir short-circuit here: a tree left by an interrupted run
+      ### (built but never registered) must still reach
+      ### _save_verify_this_platform. The fetch keeps its own dir guard below,
+      ### and registration is guarded by the platform drushrc marker AND
+      ### make_platform's own hosting-context check.
+      if true; then
         if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
