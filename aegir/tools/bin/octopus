@@ -1165,6 +1165,38 @@ _up_proceed() {
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="https://files.boa.io/versions/${_tRee}/boa"
 
+  # Fail-closed positional-arg validation, before anything is touched:
+  # {instance} must be 'all' or an existing Octopus instance — a typo'd name
+  # would otherwise plow the upgrade into a nonexistent /data/disk/ path;
+  # {mode} outside the accepted set would silently run the default full
+  # upgrade (the _up_mode else-branch). Wrong input aborts; it is never
+  # silently "fixed". The bundle and run-xdrago callers pass force+log
+  # (+noscreen), all within the accepted set.
+  if [ -z "${_sCnd}" ]; then
+    echo
+    echo "FATAL ERROR: missing {instance} argument"
+    echo "Usage: $(basename "$0") ${_cmNd} {all|o1} {aegir|platforms|both|force}"
+    echo
+    _clean_pid_exit
+  fi
+  if [ "${_sCnd}" != "all" ] && [ ! -d "/data/disk/${_sCnd}" ]; then
+    echo
+    echo "FATAL ERROR: {instance} must be 'all' or an existing instance, got: '${_sCnd}'"
+    echo "Usage: $(basename "$0") ${_cmNd} {all|o1} {aegir|platforms|both|force}"
+    echo
+    _clean_pid_exit
+  fi
+  case "${_mOde}" in
+    ""|log|aegir|platforms|both|force|noscreen) : ;;
+    *)
+      echo
+      echo "FATAL ERROR: {mode} must be 'aegir', 'platforms', 'both' or 'force', got: '${_mOde}'"
+      echo "Usage: $(basename "$0") ${_cmNd} ${_sCnd} {aegir|platforms|both|force}"
+      echo
+      _clean_pid_exit
+    ;;
+  esac
+
   _satellite_downgrade_protection
   _up_start
 
