@@ -218,7 +218,16 @@ Like above but in silent non-interactive mode:
 boa in-octopus my@email o2 lts silent
 ```
 
-# Installing BOA System on Localhost (needs testing)
+# Installing BOA System on Localhost (for local development)
+
+Local mode installs the same full BOA stack — Nginx, per-site PHP-FPM, Percona,
+Ægir/Hostmaster and one Octopus tenant — on the private hostname `aegir.local`, with no
+public IP or DNS. It is meant for local development and testing on your own machine.
+
+It must run inside a virtual machine or an LXC/container guest, not directly on bare metal,
+on Devuan — or on a compatible Debian release, which the installer first migrates to Devuan
+for you via `autoinit`. As with a public install, add your SSH key to `root` before you
+start. You do not need to specify a hostname, an Octopus username, or any public DNS.
 
 1. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md).
 
@@ -253,3 +262,14 @@ boa in-octopus my@email o2 lts silent
      ```sh
      boa in-lts local my@email php-8.5
      ```
+
+4. Know when it is ready and how to reach it.
+
+   The installation finishes the same way as a public install: the command
+   `boa info | grep -c Percona` reports **three (3)** lines. It is then safe to reboot
+   with `boa reboot`.
+
+   Your Ægir control panel is available at **https://aegir.local/user**, and your first
+   Octopus tenant at **https://o1.sub.aegir.local**. Because `aegir.local` is a private
+   hostname, HTTPS uses a self-signed certificate, so your browser shows a security warning —
+   this is expected for local development.
