@@ -479,57 +479,6 @@ EOF
 }
 
 
-_send_notice_gprd() {
-  if [ "${_hostedSys}" != "YES" ]; then
-    return 1  # Exit the function but continue the script
-  fi
-  _BCC_EMAIL="inbox@boa.io"
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "GDPR compliance for your Ægir account" ${_CLIENT_EMAIL}
-Hello,
-
-Yes, yet another GDPR email, but it's important that you read and understand
-how this new law affects your hosting with us.
-
-The General Data Protection Regulation (GDPR) is a new European privacy law
-that went into effect on May 25, 2018.
-
-The GDPR will replace the EU Data Protection Directive, also known as
-Directive 95/46/EC, and will apply a single data protection law
-throughout the EU.
-
-Data protection laws govern the way that businesses collect, use, and share
-personal data about individuals. Among other things, they require businesses
-to process an individual’s personal data fairly and lawfully, allow individuals
-to exercise legal rights in respect of their personal data (for example,
-to access, correct or delete their personal data), and ensure appropriate
-security protections are put in place to protect the personal data they process.
-
-We have taken steps to ensure that we will be compliant with the GDPR
-by May 25, 2018.
-
-Please read all details on our website at:
-
-https://omega8.cc/gdpr
-https://omega8.cc/gdpr-faq
-https://omega8.cc/gdpr-dpa
-https://omega8.cc/gdpr-portability
-
-Please contact us if you have any questions: https://omega8.cc/contact
-
-Thank you for your attention.
-
----
-Omega8.cc
-
-EOF
-  fi
-  echo "INFO: GDPR notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
-}
-
 _check_limits() {
   _SQL_MIN_LIMIT=0
   _SQL_MAX_LIMIT=0
@@ -704,16 +653,6 @@ _check_limits() {
   else
     echo Disk Usage for ${_THIS_U} below limits
     [ "${_THIS_MODE}" = "verbose" ] && echo "  Disk Usage for ${_THIS_U} below limits" >> "${_uLogFil}"
-  fi
-  if [ ! -e "${_usEr}/log/GDPRsent.log" ]; then
-    if [ ! -e "${_usEr}/log/CANCELLED" ] \
-      && [ ! -e "${_usEr}/log/proxied.pid" ]; then
-      if [ "${_THIS_MODE}" = "verbose" ]; then
-        _send_notice_gprd
-        touch ${_usEr}/log/GDPRsent.log
-        echo GDPR info for ${_THIS_U} sent
-      fi
-    fi
   fi
 }
 
