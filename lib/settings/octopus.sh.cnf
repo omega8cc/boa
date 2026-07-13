@@ -131,7 +131,7 @@ _PHP_CLI_VERSION=8.4
 
 ### Backdrop
 #
-# BDR — Backdrop CMS prod/stage/dev (requires _BACKDROP_SUPPORT=YES)
+# BDR — Backdrop CMS prod/stage/dev (built by default; skipped when _BACKDROP_SUPPORT=NO)
 
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
@@ -198,12 +198,13 @@ _PLATFORMS_ONLY=NO
 ### BACKDROP CMS SUPPORT                   ###
 ###----------------------------------------###
 ###
-### To build Backdrop CMS platforms on this
-### Octopus instance, change this to YES.
+### Backdrop CMS platforms are built by
+### default. To skip Backdrop on this
+### Octopus instance, change this to NO.
 ###
-### _BACKDROP_SUPPORT=YES
+### _BACKDROP_SUPPORT=NO
 ###
-_BACKDROP_SUPPORT=NO
+_BACKDROP_SUPPORT=YES
 
 
 ###----------------------------------------###
