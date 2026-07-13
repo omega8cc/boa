@@ -98,8 +98,8 @@ Backdrop sites answer to **both** CLIs:
 
 ## Site lifecycle
 
-Install, Verify, Clone, Backup, Restore, Import and Delete work from the
-Ægir frontend with the same semantics as Drupal sites. Notes:
+Install, Verify, Clone, Migrate, Backup, Restore, Import and Delete work
+from the Ægir frontend with the same semantics as Drupal sites. Notes:
 
 - **Install** runs through Backdrop's own installer (driven by `bee`),
   then Ægir verifies and serves the site as usual.
@@ -107,12 +107,29 @@ Install, Verify, Clone, Backup, Restore, Import and Delete work from the
   and its own files store; cloned and imported sites land with cron and
   Encryption (LE) disabled on purpose, so a copy never emails users or
   runs background processes that confuse the live site.
-- **Migrate is deliberately refused** whenever the source or the target
-  is a Backdrop platform. The stock Ægir migrate machinery is
-  Drupal-version based and was never safe cross-lineage; until a
-  Backdrop-native migrate ships, move Backdrop sites with Clone (and
-  Delete the original after cutover), and upgrade Drupal 7 sites with
-  the dedicated task below — never with Migrate.
+- **Migrate** moves a Backdrop site onto another Backdrop platform —
+  keeping its domain (the usual reason: relocating onto a freshly built
+  platform tracking a newer Backdrop release) or renaming it to a new
+  domain. The Migrate form lists only Backdrop platforms for a Backdrop
+  site (and only Drupal platforms for a Drupal site); the backend
+  refuses a cross-lineage pair outright. As with Drupal, the source is
+  backed up first, deployed onto the target into a fresh copy database,
+  verified, and only then is the old copy retired; a rename disables
+  Encryption for the new name (re-enable it deliberately afterwards).
+  A Drupal 7 site does **not** migrate to Backdrop — that is the
+  dedicated upgrade task below.
+- **Cutover (take over a domain)** makes a Backdrop site answer at a
+  domain currently held by another site — typically the original domain
+  of the site it was upgraded from. The holder is re-checked when the
+  task runs, backed up in full and then deleted; the Backdrop site is
+  then renamed to the freed domain through the same machinery as
+  Migrate. If nothing holds the domain (say, after an earlier attempt
+  stopped between the two steps), the task degrades to a plain rename —
+  that is also the re-run recovery path. Encryption ends up disabled
+  for the new name (certificates are name-bound); re-enable it
+  deliberately afterwards. Custom aliases of the retired site are not
+  carried over, and the domain is unserved while the rename completes —
+  minutes that scale with the site's size.
 
 ## Upgrading a Drupal 7 site to Backdrop
 
@@ -120,7 +137,8 @@ The **Upgrade to Backdrop** task on a Drupal 7 site node is a
 copy-based upgrade: it converts a COPY of the site at a NEW domain on a
 Backdrop platform. The original Drupal 7 site — its database, its files,
 its vhost — is never in the write path and keeps serving throughout.
-You test the copy, then cut over deliberately (DNS or a later rename).
+You test the copy, then cut over deliberately (the Cutover task, a DNS
+repoint, or a later rename).
 Every failure mode ends with "discard the copy"; the source is intact by
 construction.
 
@@ -200,10 +218,12 @@ install profile, so this only affects panel bookkeeping.
   settings move into Backdrop's config files.
 - Enable cron on the copy's node when you are satisfied.
 - Enable Encryption (LE) for the new domain deliberately.
-- Cut over manually: repoint DNS, or keep both running side by side as
-  long as you need. Same-URI cutover automation is intentionally out of
-  scope for now — coexistence plus an operator-controlled switch is the
-  supported shape.
+- Cut over when you are satisfied: run **Cutover (take over a domain)**
+  on the copy's node and give it the original domain — the old site is
+  backed up and retired, and the copy takes its place at the original
+  address (re-enable Encryption for it afterwards). Prefer a manual
+  switch instead? Repointing DNS, or keeping both sites side by side,
+  works for as long as you like.
 
 ## Upgrading a Drupal 6 (Pressflow) site — the two-step chain
 
@@ -289,8 +309,9 @@ copy — run Delete on the copy's node (or alias) and re-run the task.
 - **The Drupal 7 → Backdrop task still refuses Drupal 6 sources** — by
   design, matching Backdrop's own rule. The Drupal 6 step is its own
   task (above); run the chain in order.
-- **Backdrop → Backdrop Migrate** is not available yet (see above);
-  stock Migrate fails closed rather than risking the source.
+- **Cross-lineage Migrate is refused**: a Migrate task never moves a
+  Drupal site onto a Backdrop platform or the reverse (use the upgrade
+  tasks for that). Backdrop → Backdrop and Drupal → Drupal both work.
 - **Collation note for imported estates**: BOA-native Drupal 7 databases
   are already utf8mb4 and convert cleanly. A Drupal 7 dump imported from
   an old external server may still be utf8; on a Percona 8.4 box the
@@ -328,6 +349,23 @@ verify → Let's Encrypt issuance chain produced a live LE certificate on
 a cloned Backdrop copy at a real domain (the panel deliberately skips
 issuance for the hosting service's own reserved names, so test-estate
 domains show the skip by design — client domains issue).
+
+**Migrate** is drilled both ways (2026-07): a same-domain move of a
+Backdrop site onto another Backdrop platform (settings, database and
+content reconciled on the target, the source retired with no orphan)
+and a rename onto a new domain (the new domain serves the content, the
+old domain is removed); both guards — a cross-lineage pair and a no-op
+self-migrate — refuse in validation before anything is touched.
+
+**Cutover** is drilled end-to-end (2026-07) on a freshly minted
+D6 → D7 → Backdrop pair: the Backdrop copy took over its D7
+intermediate's domain in one task (the intermediate backed up and
+retired, the copy renamed, serving the content at the original domain,
+Encryption off with the re-enable reminder in the task log), the
+follow-up verify came back green, and the claim-mode re-run leg renamed
+the same site onto a free domain with no delete step. Refusals drilled:
+taking over the site's own domain, taking over the hosting front-end,
+and running cutover on a Drupal-lineage site (backend validation).
 
 Not yet drilled, stated honestly:
 
