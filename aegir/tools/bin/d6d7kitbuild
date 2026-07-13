@@ -51,7 +51,7 @@ _WORK_DIR="$(mktemp -d /tmp/d6d7kitbuild.XXXXXX)"
 
 _msg "Building ${_KIT_NAME}.tar.gz in ${_OUT_DIR}"
 mkdir -p "${_WORK_DIR}/${_KIT_NAME}"
-cd "${_WORK_DIR}/${_KIT_NAME}" || _die "cd ${_WORK_DIR}/${_KIT_NAME} failed"
+cd "${_WORK_DIR}/${_KIT_NAME}" || { rm -rf "${_WORK_DIR}"; _die "cd ${_WORK_DIR}/${_KIT_NAME} failed"; }
 
 echo "${_PINS}" | while read -r _PROJECT _VERSION; do
   [[ -z "${_PROJECT}" ]] && continue
@@ -88,7 +88,7 @@ _COUNT=$(find "${_WORK_DIR}/${_KIT_NAME}" -mindepth 1 -maxdepth 1 -type d | wc -
 cd "${_WORK_DIR}" || { rm -rf "${_WORK_DIR}"; _die "cd ${_WORK_DIR} failed"; }
 tar -czf "${_OUT_DIR}/${_KIT_NAME}.tar.gz" "${_KIT_NAME}" \
   || { rm -rf "${_WORK_DIR}"; _die "tar failed"; }
-cd "${_OUT_DIR}" || _die "cd ${_OUT_DIR} failed"
+cd "${_OUT_DIR}" || { rm -rf "${_WORK_DIR}"; _die "cd ${_OUT_DIR} failed"; }
 if command -v sha256sum > /dev/null 2>&1; then
   sha256sum "${_KIT_NAME}.tar.gz" > "${_KIT_NAME}.tar.gz.sha256"
 else
