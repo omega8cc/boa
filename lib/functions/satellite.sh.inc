@@ -60,21 +60,25 @@ _stage_d6d7_kit() {
   _msg "INFO: Staging the pinned D6->D7 contrib kit ${_D6D7_KIT_V}"
   rm -rf /opt/tmp/d6d7kit-stage
   mkdir -p /opt/tmp/d6d7kit-stage
-  cd /opt/tmp/d6d7kit-stage || return 1
-  _get_core_ext "${_kitTar}"
+  ### Subshell keeps the caller's working directory untouched.
+  ( cd /opt/tmp/d6d7kit-stage && _get_core_ext "${_kitTar}" )
   if [ -e "/opt/tmp/d6d7kit-stage/d6-d7-contrib-kit-${_D6D7_KIT_V}/cck/modules/content_migrate/content_migrate.module" ]; then
     rm -rf /data/all/000/d6d7kit
-    mv -f "/opt/tmp/d6d7kit-stage/d6-d7-contrib-kit-${_D6D7_KIT_V}" /data/all/000/d6d7kit
-    chown -R root:root /data/all/000/d6d7kit
-    find /data/all/000/d6d7kit -type d -exec chmod 0755 {} \; 2> /dev/null
-    find /data/all/000/d6d7kit -type f -exec chmod 0644 {} \; 2> /dev/null
-    rm -f /data/all/000/kit-v-*.txt
-    echo "${_D6D7_KIT_V}" > "${_kitStamp}"
-    _msg "INFO: D6->D7 contrib kit ${_D6D7_KIT_V} staged in /data/all/000/d6d7kit"
+    ### The stamp is written only after a fully successful move: a partial
+    ### cross-filesystem mv must not latch an incomplete kit forever.
+    if mv -f "/opt/tmp/d6d7kit-stage/d6-d7-contrib-kit-${_D6D7_KIT_V}" /data/all/000/d6d7kit; then
+      chown -R root:root /data/all/000/d6d7kit
+      find /data/all/000/d6d7kit -type d -exec chmod 0755 {} \; 2> /dev/null
+      find /data/all/000/d6d7kit -type f -exec chmod 0644 {} \; 2> /dev/null
+      rm -f /data/all/000/kit-v-*.txt
+      echo "${_D6D7_KIT_V}" > "${_kitStamp}"
+      _msg "INFO: D6->D7 contrib kit ${_D6D7_KIT_V} staged in /data/all/000/d6d7kit"
+    else
+      _msg "OOPS: D6->D7 contrib kit ${_D6D7_KIT_V} move into /data/all/000 failed; will retry on the next run"
+    fi
   else
     _msg "OOPS: D6->D7 contrib kit ${_D6D7_KIT_V} download or extract failed; D6 upgrade tasks fail closed until it is staged"
   fi
-  cd /opt/tmp
   rm -rf /opt/tmp/d6d7kit-stage
 }
 
