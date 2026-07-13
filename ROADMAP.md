@@ -4,7 +4,7 @@ Documenting ongoing, upcoming and completed tasks. Some tasks are relatively sim
 
 This document highlights the most complex or important tasks we are working on or planning to undertake. Routine tasks such as debugging, fixing issues, and implementing small improvements are usually documented in the commit history and changelog, which are updated with each new BOA release.
 
-Several of the upcoming and most impactful features are planned **exclusively for BOA PRO**, as outlined below.
+The upcoming and most impactful features, listed under IN PROGRESS below, are planned **exclusively for BOA PRO**.
 
 Please also note that the LTS branch is **kept up to date alongside PRO**: frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
 
