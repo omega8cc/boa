@@ -4,15 +4,18 @@ BOA runs **Backdrop CMS** as a first-class platform: auto-built platforms
 tracking the newest Backdrop release, the full Ægir site lifecycle
 (install, verify, clone, backup, restore, import, delete), both CLIs
 (`bee` and Drush 8), Valkey object caching with automatic database
-fallback, panel-driven cron — and a safe, copy-based **Drupal 7 →
-Backdrop upgrade task** whose source site is never in the write path.
+fallback, panel-driven cron — and safe, copy-based upgrade tasks: a
+**Drupal 7 → Backdrop upgrade** plus a **Drupal 6 → Drupal 7 step** as
+its on-ramp, neither of which ever puts the source site in the write
+path.
 
-Backdrop support ships **dark** and is enabled per Octopus instance.
-Nothing changes on instances that do not opt in.
+Backdrop support is **on by default**: the platforms, the panel module
+and the CLIs arrive with the normal upgrade pair. Opting out is one
+variable per layer.
 
-## Enabling Backdrop support
+## Enabling and disabling Backdrop support
 
-The gate is `_BACKDROP_SUPPORT`, mirrored (not shared) in two control
+The switch is `_BACKDROP_SUPPORT`, mirrored (not shared) in two control
 files because two different programs act on it:
 
 | File | Program | What it gates |
@@ -20,20 +23,22 @@ files because two different programs act on it:
 | `/root/.<user>.octopus.cnf` | Octopus | Backdrop platforms + the Ægir frontend module |
 | `/root/.barracuda.cnf` | Barracuda | System tools (the `bee` CLI install) |
 
-Set in the Octopus config:
-
-```
-_BACKDROP_SUPPORT=YES
-_PLATFORMS_LIST=ALL   # or include the BDR symbol explicitly
-```
-
-and mirror `_BACKDROP_SUPPORT=YES` in `/root/.barracuda.cnf`, then run
-the normal upgrade pair:
+It defaults to `YES` in both layers, and Backdrop platforms build
+whenever the platform list includes the `BDR` symbol (or is `ALL`, the
+shipped default) — so a stock instance gets Backdrop with the normal
+upgrade pair:
 
 ```
 barracuda up-{dev|lts|pro} system
 octopus up-{dev|lts|pro} <user>
 ```
+
+To opt an instance out, set `_BACKDROP_SUPPORT=NO` in its Octopus
+config (and mirror it in `/root/.barracuda.cnf` to skip the system
+tools as well); the persisted value always wins over the shipped
+default. Migration note for boxes upgraded while the gate still
+defaulted to `NO`: that value is persisted in their control files, so
+flip it to `YES` (or delete the line) to adopt the new default.
 
 After the run the instance has:
 
@@ -122,8 +127,11 @@ construction.
 ### Prerequisites
 
 - The source site runs **Drupal 7** with core fully updated (`system`
-  schema 7069 or newer — that is Backdrop's hard requirement; the task
-  checks and refuses stale cores before creating anything).
+  schema 7078 or newer: Backdrop's documented floor is 7069, but between
+  7069 and 7077 Backdrop's own system updates would be silently skipped
+  during the conversion, so the task enforces the honest floor; any
+  Drupal 7 core from 7.28 on clears it. The check runs before anything
+  is created).
 - A **verified Backdrop platform** on the same instance (the task form
   lists only those).
 - A **new, unused domain name** for the copy.
@@ -197,12 +205,90 @@ install profile, so this only affects panel bookkeeping.
   scope for now — coexistence plus an operator-controlled switch is the
   supported shape.
 
+## Upgrading a Drupal 6 (Pressflow) site — the two-step chain
+
+Backdrop upgrades from Drupal 7 only (its own rule, enforced in its
+code), so a Drupal 6 site takes two steps — and both are panel tasks:
+
+1. **Upgrade to Drupal 7 (Backdrop step 1)** on the Drupal 6 site node
+   converts a copy of the site — the core schema AND the CCK field
+   data — at a NEW domain on a Drupal 7 platform. The Drupal 6 original
+   is never in the write path and keeps serving throughout.
+2. **Upgrade to Backdrop** on that Drupal 7 copy is the standard task
+   above, unchanged.
+
+The intermediate Drupal 7 site is a real, inspectable site with its own
+control-panel node: compare it against the source at leisure before
+taking step 2, and keep it as a fallback landing for as long as you
+like.
+
+### Prerequisites (step 1)
+
+- A **PHP 7.4-pinned instance**: the Drupal 6 code, the pinned contrib
+  kit and the field-data migration all run under the instance CLI, and
+  7.4 is the supported interpreter for this legacy chain. Set `7.4` in
+  the instance's `static/control/cli.info` and `fpm.info` and run the
+  Octopus upgrade once. A 7.4 instance is a **dedicated legacy
+  instance** — Drupal 8+ platforms on the same instance would break
+  (modern Drupal 10/11 needs PHP 8.1+), so keep modern sites elsewhere.
+- **Drupal 6 and Drupal 7 platforms** on the instance: include the
+  `DL6` and `DL7` symbols in the platform list (see `PLATFORMS.md`).
+- The **pinned D6→D7 contrib kit**, staged automatically from the BOA
+  mirror into `/data/all/000/d6d7kit` during every Octopus upgrade run
+  while Backdrop support is enabled. If the kit is missing, the task
+  refuses to start and tells you to run the Octopus upgrade — it never
+  downloads anything at task time.
+- A **new, unused domain name** for the copy.
+
+### What step 1 does
+
+1. Validates everything fail-closed first: Drupal 6 source (a 6xxx
+   `system` schema), a Drupal 7 target platform, the PHP 7.4 instance,
+   the staged kit, a free domain. The validation log prints a
+   **kit-coverage report**: which of the site's modules the kit
+   replaces with their Drupal 7 ports, which the core upgrade handles
+   natively, and which have no mapping — those are parked disabled on
+   the copy with their data tables kept.
+2. Takes a fresh backup of the live source (recorded under the source
+   site's backups as "Pre-upgrade backup").
+3. Deploys that backup at the new domain into a fresh copy database.
+   The copied Drupal 6 modules are moved aside first (into
+   `sites/<domain>/modules-d6d7-quarantine` — kept, never deleted;
+   left in place they would fatal the conversion against the
+   platform's namesake modules), then Drupal 7's own staged upgrade
+   machinery converts the copy database.
+4. Gives the copy its own files/private store, stages from the kit
+   exactly the Drupal 7 module ports the source actually used, enables
+   them (plus core file and image), and runs their schema updates.
+5. Migrates the CCK field data with content_migrate — **a hard gate**:
+   if any field would be left without its module, the task aborts and
+   the copy is discarded. There is deliberately no way to skip a
+   field, because skipped CCK data strands silently — the later
+   Backdrop upgrade would complete green with the content simply
+   absent.
+6. Verifies the copy and creates its control-panel node, dark exactly
+   like step 2's product: enabled and serving, with cron and
+   Encryption off until you flip them deliberately.
+
+### Profiles (step 1)
+
+Nearly every Drupal 6 site uses the stock `default` profile; the
+Drupal 7 upgrade renames it to `standard`, and the task records the
+same automatically. A custom Drupal 6 profile must exist under the same
+name on the Drupal 7 platform (pass it explicitly), or the task refuses
+in validation.
+
+### If step 1 fails
+
+Same contract as the Backdrop upgrade: a validation failure creates
+nothing; a later failure leaves the source untouched and a disposable
+copy — run Delete on the copy's node (or alias) and re-run the task.
+
 ## Limitations and non-goals
 
-- **Drupal 6 sources are refused.** Upgrade Drupal 6 → Drupal 7 first
-  (BOA's normal D6→D7 path), fully update core, then run the Backdrop
-  upgrade. This two-step is the official Backdrop position, not a BOA
-  shortcut.
+- **The Drupal 7 → Backdrop task still refuses Drupal 6 sources** — by
+  design, matching Backdrop's own rule. The Drupal 6 step is its own
+  task (above); run the chain in order.
 - **Backdrop → Backdrop Migrate** is not available yet (see above);
   stock Migrate fails closed rather than risking the source.
 - **Collation note for imported estates**: BOA-native Drupal 7 databases
@@ -226,11 +312,20 @@ a fixture site matching exactly after conversion, the stale-schema
 refusal creating nothing, and the marker sweep healing platforms after
 a module disable/enable cycle.
 
-Not yet drilled, stated honestly:
+The Drupal 6 chain is proven the same way (2026-07): the full two-step
+run from the control panel — a Pressflow 6 fixture through step 1 to a
+serving Drupal 7 copy (content fingerprint identical, every CCK field
+migrated, quarantine and kit staging observed) and through the
+unchanged step 2 to a serving Backdrop site; the field-data migration
+exercised across multiple batch passes; the wrong-source refusal
+(a Drupal 7 site offered to step 1) creating nothing; and the kit
+fetched from the public mirror by the Octopus upgrade run.
 
-- A Backdrop **Restore** round-trip. It shares the deploy-from-backup
-  machinery the proven clone path exercises, but it has not been
-  separately drilled.
+A Backdrop **Restore** round-trip is drilled too (2026-07): backup and
+restore tasks on an upgraded copy, content and serving verified intact
+afterwards.
+
+Not yet drilled, stated honestly:
 
 - Enabling Encryption/LE on an upgraded copy afterwards (it is the
   standard per-site LE flow, but it has not been exercised specifically
