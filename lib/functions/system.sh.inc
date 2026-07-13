@@ -2238,7 +2238,8 @@ _barracuda_cnf() {
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
-        _msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
+        _msg "EXIT: The omega8.cc email domain in _MY_EMAIL is reserved for"
+        _msg "EXIT: systems hosted by Omega8.cc -- please use your own address"
         _msg "EXIT: Bye (1)"
         _clean_pid_exit _barracuda_cnf_a
       fi
@@ -3056,7 +3057,8 @@ _barracuda_cnf() {
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
-        _msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
+        _msg "EXIT: The omega8.cc email domain in _MY_EMAIL is reserved for"
+        _msg "EXIT: systems hosted by Omega8.cc -- please use your own address"
         _msg "EXIT: Bye (2)"
         _clean_pid_exit _barracuda_cnf_b
       fi
@@ -10111,6 +10113,26 @@ _sshd_armour() {
   fi
 }
 
+_fix_root_locked_shadow() {
+  # Keys-only cloud images (e.g. Hetzner Cloud Debian/Devuan) ship root's
+  # shadow password field as '!'. Our sshd runs with UsePAM no, and OpenSSH
+  # without PAM refuses '!'-locked accounts even for pubkey auth, so root
+  # would be locked out completely once our sshd takes over. Normalize the
+  # field to '*': password login stays impossible, SSH keys keep working.
+  if grep -q '^root:!' /etc/shadow 2>/dev/null; then
+    if grep -qE '^(ssh-rsa|ssh-ed25519|ecdsa-sha2)' \
+      /root/.ssh/authorized_keys 2>/dev/null; then
+      # Verify it took; a silent failure here would re-create the lockout
+      # once the UsePAM-no sshd restarts right after this.
+      if usermod -p '*' root && ! grep -q '^root:!' /etc/shadow 2>/dev/null; then
+        _msg "INFO: Normalized locked root password entry for keys-only SSH access"
+      else
+        _msg "OOPS: could not normalize the locked root password entry"
+      fi
+    fi
+  fi
+}
+
 _initd_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _initd_update"
@@ -10142,6 +10164,7 @@ _initd_update() {
       echo >> /etc/ssh/sshd_config
       echo "UsePAM no" >> /etc/ssh/sshd_config
     fi
+    _fix_root_locked_shadow
     _mrun "service ssh restart"
     _tune_memory_limits
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
@@ -10253,6 +10276,7 @@ _initd_update() {
     echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
+    _fix_root_locked_shadow
     _mrun "service ssh restart"
     _fix_on_upgrade
     _tune_memory_limits
