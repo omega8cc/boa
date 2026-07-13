@@ -9,12 +9,13 @@ fallback, panel-driven cron — and safe, copy-based upgrade tasks: a
 its on-ramp, neither of which ever puts the source site in the write
 path.
 
-Backdrop support ships **dark** and is enabled per Octopus instance.
-Nothing changes on instances that do not opt in.
+Backdrop support is **on by default**: the platforms, the panel module
+and the CLIs arrive with the normal upgrade pair. Opting out is one
+variable per layer.
 
-## Enabling Backdrop support
+## Enabling and disabling Backdrop support
 
-The gate is `_BACKDROP_SUPPORT`, mirrored (not shared) in two control
+The switch is `_BACKDROP_SUPPORT`, mirrored (not shared) in two control
 files because two different programs act on it:
 
 | File | Program | What it gates |
@@ -22,20 +23,22 @@ files because two different programs act on it:
 | `/root/.<user>.octopus.cnf` | Octopus | Backdrop platforms + the Ægir frontend module |
 | `/root/.barracuda.cnf` | Barracuda | System tools (the `bee` CLI install) |
 
-Set in the Octopus config:
-
-```
-_BACKDROP_SUPPORT=YES
-_PLATFORMS_LIST=ALL   # or include the BDR symbol explicitly
-```
-
-and mirror `_BACKDROP_SUPPORT=YES` in `/root/.barracuda.cnf`, then run
-the normal upgrade pair:
+It defaults to `YES` in both layers, and Backdrop platforms build
+whenever the platform list includes the `BDR` symbol (or is `ALL`, the
+shipped default) — so a stock instance gets Backdrop with the normal
+upgrade pair:
 
 ```
 barracuda up-{dev|lts|pro} system
 octopus up-{dev|lts|pro} <user>
 ```
+
+To opt an instance out, set `_BACKDROP_SUPPORT=NO` in its Octopus
+config (and mirror it in `/root/.barracuda.cnf` to skip the system
+tools as well); the persisted value always wins over the shipped
+default. Migration note for boxes upgraded while the gate still
+defaulted to `NO`: that value is persisted in their control files, so
+flip it to `YES` (or delete the line) to adopt the new default.
 
 After the run the instance has:
 
