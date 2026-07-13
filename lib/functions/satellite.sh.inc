@@ -40,6 +40,45 @@ _get_core_ext() {
 }
 
 #
+# Stage the pinned D6->D7 contrib kit from the mirror (Backdrop support).
+# The provision-backdrop-d6-upgrade task copies module directories from this
+# on-box cache and never downloads anything itself; without the staged kit
+# the task fails closed in validate. One pinned tarball on the /core/ shelf
+# (the pressflow-6.60.1 pattern), stamp-gated for idempotency, re-checked on
+# every up-* run. A kit version bump means editing _D6D7_KIT_V here.
+_stage_d6d7_kit() {
+  local _D6D7_KIT_V="1.0.0"
+  local _kitTar="d6-d7-contrib-kit-${_D6D7_KIT_V}.tar.gz"
+  local _kitStamp="/data/all/000/kit-v-${_D6D7_KIT_V}.txt"
+  local _kitProbe="/data/all/000/d6d7kit/cck/modules/content_migrate/content_migrate.module"
+  if [ "${_BACKDROP_SUPPORT}" != "YES" ] || [ ! -d "/data/all/000" ]; then
+    return 0
+  fi
+  if [ -e "${_kitStamp}" ] && [ -e "${_kitProbe}" ]; then
+    return 0
+  fi
+  _msg "INFO: Staging the pinned D6->D7 contrib kit ${_D6D7_KIT_V}"
+  rm -rf /opt/tmp/d6d7kit-stage
+  mkdir -p /opt/tmp/d6d7kit-stage
+  cd /opt/tmp/d6d7kit-stage || return 1
+  _get_core_ext "${_kitTar}"
+  if [ -e "/opt/tmp/d6d7kit-stage/d6-d7-contrib-kit-${_D6D7_KIT_V}/cck/modules/content_migrate/content_migrate.module" ]; then
+    rm -rf /data/all/000/d6d7kit
+    mv -f "/opt/tmp/d6d7kit-stage/d6-d7-contrib-kit-${_D6D7_KIT_V}" /data/all/000/d6d7kit
+    chown -R root:root /data/all/000/d6d7kit
+    find /data/all/000/d6d7kit -type d -exec chmod 0755 {} \; 2> /dev/null
+    find /data/all/000/d6d7kit -type f -exec chmod 0644 {} \; 2> /dev/null
+    rm -f /data/all/000/kit-v-*.txt
+    echo "${_D6D7_KIT_V}" > "${_kitStamp}"
+    _msg "INFO: D6->D7 contrib kit ${_D6D7_KIT_V} staged in /data/all/000/d6d7kit"
+  else
+    _msg "OOPS: D6->D7 contrib kit ${_D6D7_KIT_V} download or extract failed; D6 upgrade tasks fail closed until it is staged"
+  fi
+  cd /opt/tmp
+  rm -rf /opt/tmp/d6d7kit-stage
+}
+
+#
 # Check key things in every proc.
 _debug_proc() {
   if [ -e "/root/.dev.server.cnf" ]; then
@@ -4493,6 +4532,10 @@ _satellite_make() {
       echo "${_SMALLCORE7_V}" > /data/all/000/core-v-${_SMALLCORE7_V}.txt
     fi
   fi
+
+  ### Stage the pinned D6->D7 contrib kit for provision-backdrop-d6-upgrade,
+  ### behind _BACKDROP_SUPPORT (D-012). Stamp-gated no-op when current.
+  _stage_d6d7_kit
 
   if [ -e "${_ROOT}/log/email.txt" ]; then
     _PHP_FPM_MULTI=NO
