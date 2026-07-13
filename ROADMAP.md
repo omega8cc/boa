@@ -18,7 +18,6 @@ For continued access to new features, ongoing improvements, and a future-proof s
 - **Optional AppArmor Support**: Enhanced security and accounts privilege separation
 - **Tar Pipelines on Clone**: Use Tar Pipelines to create separate symlinked copies during site clone tasks
 - **Ægir Admin Interface**: Transition the Ægir admin interface to Backdrop CMS
-- **Documentation Consolidation**: Convert legacy and built-in docs into a unified Grav CMS site.
 
 ## RELEASED IN BOA PRO only
 
@@ -26,6 +25,7 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 ## MAJOR NEW FEATURES RELEASED IN BOA LTS/PRO
 
+- **Documentation Consolidation**: Convert legacy and built-in docs into a unified Grav CMS site
 - **Backdrop CMS Support**: First-class platform — site lifecycle, bee CLI, safe Drupal 7 upgrades
 - **Import from Classic Ægir**: Import from remote Ægir servers (Nginx or Apache) with per-site revert
 - **HTTP/3 on QUIC with KTLS Magic**: Strap in, your sites are getting an F1 engine
