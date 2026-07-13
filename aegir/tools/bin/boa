@@ -2990,6 +2990,56 @@ _octopus_cleanup() {
   fi
 }
 
+_octopus_suspend() {
+  _usEr=${_usEr//[^a-zA-Z0-9-.]/}
+  _usEr=$(echo -n ${_usEr} | tr A-Z a-z)
+  echo
+  if [[ -z "${_usEr}" ]] || [[ ! "${_usEr}" =~ ^[a-z0-9] ]] || [[ ! -d "/data/disk/${_usEr}" ]]; then
+    echo "OOPS.. ${_usEr} does not exist, nothing to suspend"
+    echo
+    exit 1
+  fi
+  # The flag lives outside the account tree on purpose: the account owner
+  # must not be able to remove it via shell or SFTP access. Consumed by the
+  # global.inc prepend (503 on every web request); never interacts with the
+  # log/CANCELLED cleanup/purge machinery.
+  mkdir -p /data/conf/suspended
+  chmod 0755 /data/conf/suspended
+  if [[ -e "/data/conf/suspended/${_usEr}.pid" ]]; then
+    echo "${_usEr} is already suspended"
+  else
+    date +%s > "/data/conf/suspended/${_usEr}.pid"
+    chmod 0644 "/data/conf/suspended/${_usEr}.pid"
+    # Purge the speed cache so cached 200s don't mask the 503 -- the same
+    # toggle-point purge xoct/xmass do for http-off.pid.
+    find /var/lib/nginx/speed -type f -delete &> /dev/null
+    echo "${_usEr} suspended, web requests will get 503 until unsuspend"
+  fi
+  echo
+  exit 0
+}
+
+_octopus_unsuspend() {
+  _usEr=${_usEr//[^a-zA-Z0-9-.]/}
+  _usEr=$(echo -n ${_usEr} | tr A-Z a-z)
+  echo
+  if [[ -z "${_usEr}" ]] || [[ ! "${_usEr}" =~ ^[a-z0-9] ]] || [[ ! -d "/data/disk/${_usEr}" ]]; then
+    echo "OOPS.. ${_usEr} does not exist, nothing to unsuspend"
+    echo
+    exit 1
+  fi
+  if [[ -e "/data/conf/suspended/${_usEr}.pid" ]]; then
+    rm -f "/data/conf/suspended/${_usEr}.pid"
+    # Purge cached 503s so the account comes back instantly.
+    find /var/lib/nginx/speed -type f -delete &> /dev/null
+    echo "${_usEr} unsuspended, web serving restored"
+  else
+    echo "${_usEr} is not suspended"
+  fi
+  echo
+  exit 0
+}
+
 _if_start_screen() {
   if [ -e "/root/.autoinit.log" ] && [ ! -e "/lib/systemd/systemd" ]; then
     if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
@@ -3025,6 +3075,8 @@ _if_display_help() {
     echo "Usage: $(basename "$0") info {more}"
     echo "Usage: $(basename "$0") info report {octopus|backups|both}"
     echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
+    echo "Usage: $(basename "$0") suspend {user}"
+    echo "Usage: $(basename "$0") unsuspend {user}"
     echo "Usage: $(basename "$0") reboot"
     echo
     cat <<EOF
@@ -3068,6 +3120,8 @@ _if_display_help() {
       version <------ display BOA and OS version
       info <--------- generate various system reports
       cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
+      suspend <------ turn off web serving on an Octopus instance (503)
+      unsuspend <---- restore web serving on a suspended Octopus instance
       reboot <------- run accelerated system reboot
 
     See docs/INSTALL.md for more details.
@@ -3107,6 +3161,14 @@ case "$1" in
               _usEr="$3"
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               _octopus_cleanup
+  ;;
+  suspend)    _cmNd="$1"
+              _usEr="$2"
+              _octopus_suspend
+  ;;
+  unsuspend)  _cmNd="$1"
+              _usEr="$2"
+              _octopus_unsuspend
   ;;
   in-lts)     export _tRee=lts
               _cmNd="$1"
