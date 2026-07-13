@@ -1381,7 +1381,77 @@ _init_finish() {
   exit 0
 }
 
+# Fail-closed positional-arg validation for every install form, run as the
+# FIRST step of _init_setup — before either systemd branch below can launch
+# the autoinit OS conversion. Positional args keep the install commands easy
+# to memorize, but a missing or misplaced {kind} silently shifts every slot:
+# the email lands in the fqdn slot and becomes the hostname, /etc/mailname
+# and the Aegir master identity, hours into the build. Reject clear garbage
+# while the box is still untouched; values are never rewritten here — wrong
+# input aborts, it is not "fixed". Plain echo on purpose: _msg in this
+# wrapper is a debug-only stub.
+_check_install_args() {
+  _eMalRgx="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+  if [ "${_cmNd}" = "in-dev" ] \
+    || [ "${_cmNd}" = "in-pro" ] \
+    || [ "${_cmNd}" = "in-lts" ]; then
+    if [[ "${_kiNd}" != "public" ]] && [[ "${_kiNd}" != "local" ]]; then
+      echo
+      echo "FATAL ERROR: {kind} must be 'public' or 'local', got: '${_kiNd}'"
+      echo "Usage: boa ${_cmNd} {kind} {fqdn} {email} {user} {extra}"
+      echo "Example: boa ${_cmNd} public server.example.com my@email.com o1"
+      echo
+      _clean_pid_exit
+    fi
+    if [[ "${_kiNd}" = "public" ]]; then
+      if [[ -z "${_fQdn}" ]] || [[ "${_fQdn}" == *"@"* ]]; then
+        echo
+        echo "FATAL ERROR: {fqdn} looks wrong: '${_fQdn}' — check the argument order"
+        echo "Usage: boa ${_cmNd} {kind} {fqdn} {email} {user} {extra}"
+        echo "Example: boa ${_cmNd} public server.example.com my@email.com o1"
+        echo
+        _clean_pid_exit
+      fi
+      if ! [[ "${_eMal}" =~ ${_eMalRgx} ]]; then
+        echo
+        echo "FATAL ERROR: {email} must be a valid email address, got: '${_eMal}'"
+        echo "Usage: boa ${_cmNd} {kind} {fqdn} {email} {user} {extra}"
+        echo
+        _clean_pid_exit
+      fi
+    fi
+    # The local form has no {fqdn}/{user} slots — its email arrives in the
+    # fqdn slot (the local reshuffle moves it into place later).
+    if [[ "${_kiNd}" = "local" ]]; then
+      if ! [[ "${_fQdn}" =~ ${_eMalRgx} ]]; then
+        echo
+        echo "FATAL ERROR: {email} must be a valid email address, got: '${_fQdn}'"
+        echo "Usage: boa ${_cmNd} local {email} {extra}"
+        echo "Example: boa ${_cmNd} local my@email.com"
+        echo
+        _clean_pid_exit
+      fi
+    fi
+  fi
+  if [ "${_cmNd}" = "in-octopus" ] \
+    || [ "${_cmNd}" = "in-oct" ]; then
+    # The instance-add forms take the email as their FIRST positional — a
+    # swapped slot rides into the instance cnf and aborts an hour later in
+    # the satellite email gate.
+    if ! [[ "${_eMal}" =~ ${_eMalRgx} ]]; then
+      echo
+      echo "FATAL ERROR: {email} must be a valid email address, got: '${_eMal}'"
+      echo "Usage: boa ${_cmNd} {email} {user} {lts|dev|pro}"
+      echo "Example: boa ${_cmNd} my@email.com o2 lts"
+      echo
+      _clean_pid_exit
+    fi
+  fi
+}
+
 _init_setup() {
+
+  _check_install_args
 
   if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
 

@@ -1001,8 +1001,13 @@ _up_action() {
     fi
 
     if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
+      # 'aegir' belongs in this outer gate too: without it the whole silent
+      # branch — including the aegir-only arm below — was unreachable and
+      # 'barracuda up-* aegir' fell through to the default full upgrade,
+      # even with the mode preserved by _set_tree_vars.
       if [ "${_outP}" = "log" ] \
         || [ "${_outP}" = "system" ] \
+        || [ "${_outP}" = "aegir" ] \
         || [ "${_outP}" = "disable" ] \
         || [ "${_outP}" = "enable" ]; then
 
@@ -1059,7 +1064,9 @@ _up_action() {
           wait
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"            ${_barCnf}
           wait
-          bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
+          # Log-only, like the system arm: the banner above just promised
+          # "no progress displayed in the console" — tee here contradicted it.
+          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
           wait
           _check_report
         elif [ "${_outP}" = "aegir" ]; then
@@ -1071,7 +1078,8 @@ _up_action() {
           wait
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"           ${_barCnf}
           wait
-          bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
+          # Log-only, like the system arm — same silent-mode promise.
+          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
           wait
           _check_report
         elif [ "${_outP}" = "enable" ] || [ "${_outP}" = "disable" ]; then
@@ -1941,10 +1949,15 @@ EOF
 
 _set_tree_vars() {
   if [ ! -z "${_outP}" ]; then
+    # 'aegir' belongs in this keyword list: it is a documented {mode},
+    # consumed later by the aegir-only upgrade branch. Without it the mode
+    # was cleared here and the token mis-parsed as a New Relic key, silently
+    # degrading 'barracuda up-* aegir' to the default full upgrade.
     if [ "${_outP}" = "log" ] \
       || [ "${_outP}" = "disable" ] \
       || [ "${_outP}" = "enable" ] \
       || [ "${_outP}" = "system" ] \
+      || [ "${_outP}" = "aegir" ] \
       || [ "${_outP}" = "distro" ]; then
       export _outP="${_argK}"
     else
@@ -1973,6 +1986,21 @@ _set_tree_vars() {
       echo
       echo "Sorry, you are trying not supported command.."
       echo "Display supported commands with: $(basename "$0") help"
+      echo
+      _clean_pid_exit
+    fi
+  fi
+
+  # Fail-closed check for the php-idle form: its only argument flips the
+  # persisted _PHP_IDLE control variable, and the writer first WIPES the
+  # existing line — a typo would silently erase the setting instead of
+  # changing it. Checked against the RAW second argument (_argK), because
+  # the polymorphic-slot handling above may have cleared _outP already.
+  if [ "${_cmNd}" = "php-idle" ]; then
+    if [ "${_argK}" != "enable" ] && [ "${_argK}" != "disable" ]; then
+      echo
+      echo "FATAL ERROR: php-idle expects 'enable' or 'disable', got: '${_argK}'"
+      echo "Usage: $(basename "$0") php-idle {enable|disable}"
       echo
       _clean_pid_exit
     fi
