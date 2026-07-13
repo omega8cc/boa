@@ -323,14 +323,15 @@ fetched from the public mirror by the Octopus upgrade run.
 
 A Backdrop **Restore** round-trip is drilled too (2026-07): backup and
 restore tasks on an upgraded copy, content and serving verified intact
-afterwards.
+afterwards. So is **enabling Encryption** on a copy: the enable → key →
+verify → Let's Encrypt issuance chain produced a live LE certificate on
+a cloned Backdrop copy at a real domain (the panel deliberately skips
+issuance for the hosting service's own reserved names, so test-estate
+domains show the skip by design — client domains issue).
 
 Not yet drilled, stated honestly:
 
-- Enabling Encryption/LE on an upgraded copy afterwards (it is the
-  standard per-site LE flow, but it has not been exercised specifically
-  on an upgraded copy).
-- Placing the copy database on a different database server than the
-  source (the task form offers it on multi-DB instances; single-server
-  placement is what has been drilled).
 - Conversions of imported legacy utf8 estates (see the collation note).
+
+Out of scope by decision: placing the copy database on a different
+database server than the source.

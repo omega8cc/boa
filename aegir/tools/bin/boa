@@ -983,7 +983,7 @@ _octopus_install() {
         wait
       fi
     else
-      sed -i "s~^_MY_OCTOPU=.*~_MY_OCTO_EMAIL=\"${_eMal}\"~" ${_vBs}/${_octName}
+      sed -i "s~^_MY_OCTO_EMAIL=.*~_MY_OCTO_EMAIL=\"${_eMal}\"~" ${_vBs}/${_octName}
       wait
     fi
     sed -i "s~^_CLIENT_EMAIL=.*~_CLIENT_EMAIL=\"${_eMal}\"~" ${_vBs}/${_octName}
