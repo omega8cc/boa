@@ -52,9 +52,13 @@ _clean_pid_exit() {
     echo "REASON ${1} on $(date)" >> /var/log/boa/.boa.exit.exceptions.log
     [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-  [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
+  # Lock pids belong to the process which created them in _init_start;
+  # exits on pre-flight paths must never unlock an install running elsewhere
+  if [ "${_PID_LOCK_OWNER}" = "YES" ]; then
+    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+    [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+    [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
+  fi
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/OCTOPUS.sh*
@@ -1327,6 +1331,7 @@ _init_start() {
   else
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
+    _PID_LOCK_OWNER=YES
     mkdir -p ${_LOG_IN_DIR}
     mkdir -p ${_LOG_UP_DIR}
     cd ${_vBs}
@@ -3265,7 +3270,7 @@ case "$1" in
               echo "Sorry, you are trying not supported command.."
               echo "Display supported commands with: $(basename "$0") help"
               echo
-              _clean_pid_exit
+              exit 1
   ;;
 esac
 
