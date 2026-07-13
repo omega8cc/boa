@@ -22,6 +22,27 @@
  * them skip the probe for the TTL window and serve from the DB cache.
  */
 
+// Billing suspend short-circuit -- same contract as the Drupal globals:
+// /data/conf/suspended/<oct>.pid (managed by `boa suspend|unsuspend`)
+// blocks every web request on the account with a 503. Guarded by SAPI
+// instead of $is_backend: this file has no drush detection in scope,
+// and every Backdrop backend context (bee, drush) runs under cli.
+if (php_sapi_name() !== 'cli' && isset($_SERVER['DOCUMENT_ROOT'])
+  && preg_match('#^/data/disk/([^/]+)/#', $_SERVER['DOCUMENT_ROOT'], $bd_suspended_m)
+  && file_exists('/data/conf/suspended/' . $bd_suspended_m[1] . '.pid')) {
+  header('HTTP/1.1 503 Service Unavailable');
+  header('Status: 503 Service Unavailable');
+  header('Retry-After: 3600');
+  header('X-Accel-Expires: 60');
+  header('Cache-Control: no-store, must-revalidate');
+  header('Content-Type: text/html; charset=utf-8');
+  header('Connection: close');
+  echo '<!doctype html><title>Site temporarily unavailable</title>'
+    . '<h1>Site temporarily unavailable</h1>'
+    . '<p>Please check back later or contact the site owner.</p>';
+  exit;
+}
+
 // Aegir owns cron: the hosting_cron queue fires core/cron.php?cron_key= on
 // the per-site interval. Disable Backdrop's visit-triggered cron (config
 // override, honored by the system.module threshold gate) so front-end
