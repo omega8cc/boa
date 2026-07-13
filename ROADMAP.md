@@ -6,7 +6,7 @@ This document highlights the most complex or important tasks we are working on o
 
 Several of the upcoming and most impactful features are planned **exclusively for BOA PRO**, as outlined below.
 
-Please also note that the code-freeze previously planned for December 31, 2025 **did not take effect**: the LTS branch is kept up to date alongside PRO, because frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
+Please also note that the LTS branch is **kept up to date alongside PRO**: frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
 
 A **feature-freeze may be announced in the future**, once the project enters a quieter, security-mainly update cycle — but no date is set, and it should not be assumed.
 
