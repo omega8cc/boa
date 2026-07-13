@@ -643,6 +643,27 @@ _check_root_keys_pwd() {
     fi
   fi
 
+  # Keys-only cloud images (e.g. Hetzner Cloud Debian/Devuan) ship root's
+  # shadow password field as '!'. The BOA-built sshd runs with UsePAM no,
+  # and OpenSSH without PAM refuses '!'-locked accounts even for pubkey
+  # auth, so root would be locked out once BOA's sshd takes over.
+  # Normalize the field to '*': password login stays impossible, SSH keys
+  # keep working, and the locked-password test above stays consistent.
+  if [[ "${_SSH_KEYS_OK}" == "YES" ]]; then
+    _S_TEST=$(grep '^root:!' /etc/shadow 2>&1)
+    if [[ "${_S_TEST}" =~ ^root:\! ]]; then
+      # Verify the normalization actually took; failing silently here would
+      # re-create the very lockout this guards against once our sshd starts.
+      if usermod -p '*' root && ! grep -q '^root:!' /etc/shadow 2>/dev/null; then
+        _ROOT_PWD_LOCKED="YES"
+        echo "INFO: Normalized locked root password entry for keys-only SSH access"
+      else
+        echo "OOPS: could not normalize the locked root password entry"
+        echo "OOPS: SSH key login may fail once BOA sshd starts (UsePAM no)"
+      fi
+    fi
+  fi
+
   if [[ "${_ROOT_PWD_LOCKED}" == "NO" ]] && [[ "${_SSH_KEYS_OK}" == "NO" ]]; then
     echo
     echo "ERROR: BOA requires working SSH keys for system root present"
@@ -1522,10 +1543,27 @@ _init_setup() {
       echo
     fi
     if [ "${_kiNd}" = "local" ]; then
+      # The local form has no {fqdn}/{user} slots, so mode keywords land in
+      # shifted positions (email-adjacent through extra); capture them before
+      # the slots are reused. Each slot quoted so a stray glob char cannot
+      # expand against the filesystem.
+      for _kW in "${_eMal}" "${_usEr}" "${_eXtr}"; do
+        case "${_kW}" in
+          silent|minimal|octolog|system)
+            if [ -z "${_outP}" ]; then
+              _outP="${_kW}"
+            fi
+          ;;
+        esac
+      done
       if [[ "${_eMal}" =~ "php" ]]; then
         _eXtr="${_eMal}"
       fi
       _eMal="${_fQdn}"
+      # Local mode identity is always aegir.local; without this the email
+      # left in the fqdn slot leaks into hostname, /etc/mailname and the
+      # Aegir master identity (remote_host), breaking the local install.
+      _fQdn="aegir.local"
       _usEr="o1"
     fi
     if [ "${_kiNd}" = "public" ]; then

@@ -18,7 +18,7 @@ For continued access to new features, ongoing improvements, and a future-proof s
 - **Optional AppArmor Support**: Enhanced security and accounts privilege separation
 - **Tar Pipelines on Clone**: Use Tar Pipelines to create separate symlinked copies during site clone tasks
 - **Ægir Admin Interface**: Transition the Ægir admin interface to Backdrop CMS
-- **BO4D**: Offer a *BOA For Docker* version tailored for local development
+- **BOA Local**: Offer a prebuilt *BOA Local* image (VM/LXC) tailored for local development
 - **DDEV Integration**: Add support for BOA-compatible configurations within DDEV
 - **Documentation Consolidation**: Convert legacy and built-in docs into a unified Grav CMS site.
 
