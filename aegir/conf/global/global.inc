@@ -74,6 +74,37 @@ if (function_exists('drush_get_command')) {
 
 
 /**
+ * Billing suspend short-circuit
+ *
+ * Presence of /data/conf/suspended/<oct>.pid blocks all sites on the
+ * Octopus account with a 503. Managed by `boa suspend <user>` and
+ * `boa unsuspend <user>`. The flag lives outside the account tree on
+ * purpose: the account owner must not be able to remove it via shell
+ * or SFTP access. Unlike the http-off gate below, the 503 must never
+ * stick in caches once the account is unsuspended, hence no-store for
+ * downstream and a short microcache TTL; boa also purges the speed
+ * cache on both toggle points.
+ */
+if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
+  if (preg_match('#^/data/disk/([^/]+)/#', $_SERVER['DOCUMENT_ROOT'], $_suspended_m)) {
+    if (file_exists('/data/conf/suspended/' . $_suspended_m[1] . '.pid')) {
+      header('HTTP/1.1 503 Service Unavailable');
+      header('Status: 503 Service Unavailable');
+      header('Retry-After: 3600');
+      header('X-Accel-Expires: 60');
+      header('Cache-Control: no-store, must-revalidate');
+      header('Content-Type: text/html; charset=utf-8');
+      header('Connection: close');
+      echo '<!doctype html><title>Site temporarily unavailable</title>'
+        . '<h1>Site temporarily unavailable</h1>'
+        . '<p>Please check back later or contact the site owner.</p>';
+      exit;
+    }
+  }
+}
+
+
+/**
  * HTTP-off migration short-circuit
  *
  * Presence of /data/disk/<oct>/static/control/http-off.pid blocks all
