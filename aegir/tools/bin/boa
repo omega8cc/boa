@@ -50,23 +50,29 @@ _clean_pid_exit() {
   if [ -n "${1}" ]; then
     mkdir -p /var/log/boa 2>/dev/null
     echo "REASON ${1} on $(date)" >> /var/log/boa/.boa.exit.exceptions.log
-    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
-  # Lock pids belong to the process which created them in _init_start;
-  # exits on pre-flight paths must never unlock an install running elsewhere
+  # All cleanup below belongs to the process which created the lock pids in
+  # _init_start; exits on pre-flight paths must never unlock an install
+  # running elsewhere, nor remove its staged installers, build staging or
+  # backup-mode control file, nor restart cron or kill tee loggers it may
+  # depend on. Skipping the staging cleanup on non-owner exits loses
+  # nothing: _init_start re-cleans ${_vBs} on every fresh start
   if [ "${_PID_LOCK_OWNER}" = "YES" ]; then
+    if [ -n "${1}" ]; then
+      [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+    fi
     [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
     [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
     [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
-  fi
-  [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
-  rm -f ${_vBs}/*.sh.cnf*
-  rm -f ${_vBs}/OCTOPUS.sh*
-  rm -f ${_vBs}/BARRACUDA.sh*
-  service cron start &> /dev/null
-  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
-  if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/barracuda-'
+    [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
+    rm -f ${_vBs}/*.sh.cnf*
+    rm -f ${_vBs}/OCTOPUS.sh*
+    rm -f ${_vBs}/BARRACUDA.sh*
+    service cron start &> /dev/null
+    _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+    if (( _CNT > 1 )); then
+      pkill -f 'tee -a /var/backups/barracuda-'
+    fi
   fi
   exit 1
 }
