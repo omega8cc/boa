@@ -118,6 +118,18 @@ from the Ægir frontend with the same semantics as Drupal sites. Notes:
   Encryption for the new name (re-enable it deliberately afterwards).
   A Drupal 7 site does **not** migrate to Backdrop — that is the
   dedicated upgrade task below.
+- **Cutover (take over a domain)** makes a Backdrop site answer at a
+  domain currently held by another site — typically the original domain
+  of the site it was upgraded from. The holder is re-checked when the
+  task runs, backed up in full and then deleted; the Backdrop site is
+  then renamed to the freed domain through the same machinery as
+  Migrate. If nothing holds the domain (say, after an earlier attempt
+  stopped between the two steps), the task degrades to a plain rename —
+  that is also the re-run recovery path. Encryption ends up disabled
+  for the new name (certificates are name-bound); re-enable it
+  deliberately afterwards. Custom aliases of the retired site are not
+  carried over, and the domain is unserved while the rename completes —
+  minutes that scale with the site's size.
 
 ## Upgrading a Drupal 7 site to Backdrop
 
@@ -125,7 +137,8 @@ The **Upgrade to Backdrop** task on a Drupal 7 site node is a
 copy-based upgrade: it converts a COPY of the site at a NEW domain on a
 Backdrop platform. The original Drupal 7 site — its database, its files,
 its vhost — is never in the write path and keeps serving throughout.
-You test the copy, then cut over deliberately (DNS or a later rename).
+You test the copy, then cut over deliberately (the Cutover task, a DNS
+repoint, or a later rename).
 Every failure mode ends with "discard the copy"; the source is intact by
 construction.
 
@@ -205,10 +218,12 @@ install profile, so this only affects panel bookkeeping.
   settings move into Backdrop's config files.
 - Enable cron on the copy's node when you are satisfied.
 - Enable Encryption (LE) for the new domain deliberately.
-- Cut over manually: repoint DNS, or keep both running side by side as
-  long as you need. Same-URI cutover automation is intentionally out of
-  scope for now — coexistence plus an operator-controlled switch is the
-  supported shape.
+- Cut over when you are satisfied: run **Cutover (take over a domain)**
+  on the copy's node and give it the original domain — the old site is
+  backed up and retired, and the copy takes its place at the original
+  address (re-enable Encryption for it afterwards). Prefer a manual
+  switch instead? Repointing DNS, or keeping both sites side by side,
+  works for as long as you like.
 
 ## Upgrading a Drupal 6 (Pressflow) site — the two-step chain
 
@@ -341,6 +356,16 @@ content reconciled on the target, the source retired with no orphan)
 and a rename onto a new domain (the new domain serves the content, the
 old domain is removed); both guards — a cross-lineage pair and a no-op
 self-migrate — refuse in validation before anything is touched.
+
+**Cutover** is drilled end-to-end (2026-07) on a freshly minted
+D6 → D7 → Backdrop pair: the Backdrop copy took over its D7
+intermediate's domain in one task (the intermediate backed up and
+retired, the copy renamed, serving the content at the original domain,
+Encryption off with the re-enable reminder in the task log), the
+follow-up verify came back green, and the claim-mode re-run leg renamed
+the same site onto a free domain with no delete step. Refusals drilled:
+taking over the site's own domain, taking over the hosting front-end,
+and running cutover on a Drupal-lineage site (backend validation).
 
 Not yet drilled, stated honestly:
 
