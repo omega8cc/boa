@@ -1,0 +1,101 @@
+#!/bin/bash
+
+### d6d7kitbuild — build the PINNED D6->D7 contrib kit tarball for the mirror.
+###
+### The provision-backdrop-d6-upgrade task (hop 1 of the D6 -> Backdrop chain)
+### stages this kit from the mirror onto every box with Backdrop support
+### enabled (_stage_d6d7_kit in lib/functions/satellite.sh.inc) and enables
+### only the modules a source site actually used. The kit is ONE pinned
+### artifact: build it here once, publish the tarball (and its .sha256) to
+### /var/www/static/core on the mirror-source host, done. It is deliberately
+### NOT part of staticbuild's always-latest matrix and NOT fetched to boxes
+### by BOA.sh.txt — the pin is the point (the tarball is the artifact of
+### record; note cck 7.x-2.x-dev is a moving target upstream, which is
+### exactly why the bundle freezes it).
+###
+### Usage: d6d7kitbuild [output-dir]   (default: current directory)
+###
+### A version bump means: bump _KIT_V here AND in _stage_d6d7_kit
+### (lib/functions/satellite.sh.inc), rebuild, republish.
+
+_KIT_V="1.0.0"
+
+### project version — the ratified pin set (boa-backdrop DECISIONS D-026).
+_PINS="cck 7.x-2.x-dev
+references 7.x-2.4
+date 7.x-2.14
+views 7.x-3.30
+token 7.x-1.9
+pathauto 7.x-1.3
+ctools 7.x-1.21
+webform 7.x-4.27
+libraries 7.x-2.5
+admin_menu 7.x-3.0-rc7"
+
+_msg() {
+  echo "$(date +%y%m%d-%H%M%S) $1"
+}
+
+_die() {
+  _msg "FATAL ERROR: $1"
+  exit 1
+}
+
+_OUT_DIR="${1:-$(pwd)}"
+[[ -d "${_OUT_DIR}" ]] || _die "output dir ${_OUT_DIR} does not exist"
+_OUT_DIR="$(cd "${_OUT_DIR}" && pwd)"
+
+_KIT_NAME="d6-d7-contrib-kit-${_KIT_V}"
+_WORK_DIR="$(mktemp -d /tmp/d6d7kitbuild.XXXXXX)"
+[[ -d "${_WORK_DIR}" ]] || _die "could not create a work dir"
+
+_msg "Building ${_KIT_NAME}.tar.gz in ${_OUT_DIR}"
+mkdir -p "${_WORK_DIR}/${_KIT_NAME}"
+cd "${_WORK_DIR}/${_KIT_NAME}" || _die "cd ${_WORK_DIR}/${_KIT_NAME} failed"
+
+echo "${_PINS}" | while read -r _PROJECT _VERSION; do
+  [[ -z "${_PROJECT}" ]] && continue
+  _TARBALL="${_PROJECT}-${_VERSION}.tar.gz"
+  _msg "Fetching ${_TARBALL}"
+  if ! curl -L -s --fail --retry 3 --retry-delay 5 \
+    "https://ftp.drupal.org/files/projects/${_TARBALL}" -o "${_TARBALL}"; then
+    _msg "FATAL ERROR: download failed for ${_TARBALL}"
+    touch "${_WORK_DIR}/.failed"
+    break
+  fi
+  if ! tar -xzf "${_TARBALL}"; then
+    _msg "FATAL ERROR: extract failed for ${_TARBALL}"
+    touch "${_WORK_DIR}/.failed"
+    break
+  fi
+  rm -f "${_TARBALL}"
+  if [[ ! -d "${_PROJECT}" ]]; then
+    _msg "FATAL ERROR: ${_TARBALL} did not extract to ${_PROJECT}/"
+    touch "${_WORK_DIR}/.failed"
+    break
+  fi
+done
+[[ -e "${_WORK_DIR}/.failed" ]] && { rm -rf "${_WORK_DIR}"; _die "kit build aborted"; }
+
+### The stage step and the provision validate both probe for content_migrate;
+### refuse to package a kit that would fail them.
+[[ -e "${_WORK_DIR}/${_KIT_NAME}/cck/modules/content_migrate/content_migrate.module" ]] \
+  || { rm -rf "${_WORK_DIR}"; _die "cck kit is missing modules/content_migrate"; }
+
+_COUNT=$(find "${_WORK_DIR}/${_KIT_NAME}" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+[[ "${_COUNT}" -eq 10 ]] || { rm -rf "${_WORK_DIR}"; _die "expected 10 project dirs, found ${_COUNT}"; }
+
+cd "${_WORK_DIR}" || { rm -rf "${_WORK_DIR}"; _die "cd ${_WORK_DIR} failed"; }
+tar -czf "${_OUT_DIR}/${_KIT_NAME}.tar.gz" "${_KIT_NAME}" \
+  || { rm -rf "${_WORK_DIR}"; _die "tar failed"; }
+cd "${_OUT_DIR}" || _die "cd ${_OUT_DIR} failed"
+if command -v sha256sum > /dev/null 2>&1; then
+  sha256sum "${_KIT_NAME}.tar.gz" > "${_KIT_NAME}.tar.gz.sha256"
+else
+  shasum -a 256 "${_KIT_NAME}.tar.gz" > "${_KIT_NAME}.tar.gz.sha256"
+fi
+rm -rf "${_WORK_DIR}"
+
+_msg "Built ${_OUT_DIR}/${_KIT_NAME}.tar.gz"
+_msg "Publish both files to /var/www/static/core on the mirror-source host:"
+_msg "  cp ${_KIT_NAME}.tar.gz ${_KIT_NAME}.tar.gz.sha256 /var/www/static/core/"
