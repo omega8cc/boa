@@ -18,8 +18,6 @@ For continued access to new features, ongoing improvements, and a future-proof s
 - **Optional AppArmor Support**: Enhanced security and accounts privilege separation
 - **Tar Pipelines on Clone**: Use Tar Pipelines to create separate symlinked copies during site clone tasks
 - **Ægir Admin Interface**: Transition the Ægir admin interface to Backdrop CMS
-- **BOA Local**: Offer a prebuilt *BOA Local* image (VM/LXC) tailored for local development
-- **DDEV Integration**: Add support for BOA-compatible configurations within DDEV
 - **Documentation Consolidation**: Convert legacy and built-in docs into a unified Grav CMS site.
 
 ## RELEASED IN BOA PRO only
@@ -42,6 +40,8 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 ## OTHER NEW FEATURES RELEASED IN BOA LTS/PRO
 
+- **BOA Local**: Install and run BOA locally without a public IP or DNS, for development and testing
+- **DDEV Integration**: Pull a BOA-hosted site's database and files into a local DDEV project with the `ddev-boa` add-on
 - **PHP 8.5 Support**: Enhancing performance and supporting twelve PHP versions
 - **PHP 8.4 Support**: Enhancing performance and supporting eleven PHP versions
 - **PHP 8.3 Support**: Required for Drupal 11, enhancing performance and supporting ten PHP versions
