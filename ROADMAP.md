@@ -12,19 +12,19 @@ A **feature-freeze may be announced in the future**, once the project enters a q
 
 For continued access to new features, ongoing improvements, and a future-proof stack, **BOA PRO is the recommended upgrade path**.
 
-## IN PROGRESS (PRO only)
+## IN PROGRESS
 
-- **Grav CMS Support**: Introduce support for Grav CMS (command line only) (PRO)
-- **Optional AppArmor Support**: Enhanced security and accounts privilege separation (PRO)
-- **Tar Pipelines on Clone**: Use Tar Pipelines to create separate symlinked copies during site clone tasks (PRO)
-- **Ægir Admin Interface**: Transition the Ægir admin interface to Backdrop CMS (PRO)
-- **BO4D**: Offer a *BOA For Docker* version tailored for local development (PRO)
-- **DDEV Integration**: Add support for BOA-compatible configurations within DDEV (PRO)
-- **Documentation Consolidation**: Convert legacy and built-in docs into a unified Grav CMS site. (PRO)
+- **Grav CMS Support**: Introduce support for Grav CMS (command line only)
+- **Optional AppArmor Support**: Enhanced security and accounts privilege separation
+- **Tar Pipelines on Clone**: Use Tar Pipelines to create separate symlinked copies during site clone tasks
+- **Ægir Admin Interface**: Transition the Ægir admin interface to Backdrop CMS
+- **BO4D**: Offer a *BOA For Docker* version tailored for local development
+- **DDEV Integration**: Add support for BOA-compatible configurations within DDEV
+- **Documentation Consolidation**: Convert legacy and built-in docs into a unified Grav CMS site.
 
 ## RELEASED IN BOA PRO only
 
-- **Amazon S3 Alternatives**: Integrate support for AWS S3 eight (8) alternatives in `multiback` and `mybackup` (PRO)
+- **Amazon S3 Alternatives**: Integrate support for AWS S3 eight (8) alternatives in `multiback` and `mybackup`
 
 ## MAJOR NEW FEATURES RELEASED IN BOA LTS/PRO
 
