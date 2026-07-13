@@ -1415,9 +1415,9 @@ _update_agents() {
   _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f93 --guard /local/bin/xmass
   _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f97 --guard /local/bin/autobeowulf
   _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f97 --guard /local/bin/autoexcalibur
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f87 --guard /local/bin/boa
-  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f88 --guard /local/bin/barracuda
-  _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f96 --guard /local/bin/octopus
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f86 --guard /local/bin/boa
+  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f87 --guard /local/bin/barracuda
+  _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f95 --guard /local/bin/octopus
   _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f98 --guard /local/bin/dhcpfix
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
   _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/tools/bin/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
