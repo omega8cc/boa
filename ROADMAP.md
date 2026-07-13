@@ -6,9 +6,9 @@ This document highlights the most complex or important tasks we are working on o
 
 Several of the upcoming and most impactful features are planned **exclusively for BOA PRO**, as outlined below.
 
-Please also note that **as of December 31, 2025, the LTS branch will enter a full code-freeze**. No further feature development or regular releases are planned for 2026. A possible re-evaluation may occur in 2027, but this should not be assumed.
+Please also note that the code-freeze previously planned for December 31, 2025 **did not take effect**: the LTS branch is kept up to date alongside PRO, because frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
 
-After the freeze, **only critical functional fixes within BOA itself will be considered**. There will be **no updates** for underlying components such as PHP, Percona, Nginx, Valkey, OpenSSL, OpenSSH, or related system libraries.
+A **feature-freeze may be announced in the future**, once the project enters a quieter, security-mainly update cycle — but no date is set, and it should not be assumed.
 
 For continued access to new features, ongoing improvements, and a future-proof stack, **BOA PRO is the recommended upgrade path**.
 
