@@ -98,8 +98,8 @@ Backdrop sites answer to **both** CLIs:
 
 ## Site lifecycle
 
-Install, Verify, Clone, Backup, Restore, Import and Delete work from the
-Ægir frontend with the same semantics as Drupal sites. Notes:
+Install, Verify, Clone, Migrate, Backup, Restore, Import and Delete work
+from the Ægir frontend with the same semantics as Drupal sites. Notes:
 
 - **Install** runs through Backdrop's own installer (driven by `bee`),
   then Ægir verifies and serves the site as usual.
@@ -107,12 +107,17 @@ Install, Verify, Clone, Backup, Restore, Import and Delete work from the
   and its own files store; cloned and imported sites land with cron and
   Encryption (LE) disabled on purpose, so a copy never emails users or
   runs background processes that confuse the live site.
-- **Migrate is deliberately refused** whenever the source or the target
-  is a Backdrop platform. The stock Ægir migrate machinery is
-  Drupal-version based and was never safe cross-lineage; until a
-  Backdrop-native migrate ships, move Backdrop sites with Clone (and
-  Delete the original after cutover), and upgrade Drupal 7 sites with
-  the dedicated task below — never with Migrate.
+- **Migrate** moves a Backdrop site onto another Backdrop platform —
+  keeping its domain (the usual reason: relocating onto a freshly built
+  platform tracking a newer Backdrop release) or renaming it to a new
+  domain. The Migrate form lists only Backdrop platforms for a Backdrop
+  site (and only Drupal platforms for a Drupal site); the backend
+  refuses a cross-lineage pair outright. As with Drupal, the source is
+  backed up first, deployed onto the target into a fresh copy database,
+  verified, and only then is the old copy retired; a rename disables
+  Encryption for the new name (re-enable it deliberately afterwards).
+  A Drupal 7 site does **not** migrate to Backdrop — that is the
+  dedicated upgrade task below.
 
 ## Upgrading a Drupal 7 site to Backdrop
 
@@ -289,8 +294,9 @@ copy — run Delete on the copy's node (or alias) and re-run the task.
 - **The Drupal 7 → Backdrop task still refuses Drupal 6 sources** — by
   design, matching Backdrop's own rule. The Drupal 6 step is its own
   task (above); run the chain in order.
-- **Backdrop → Backdrop Migrate** is not available yet (see above);
-  stock Migrate fails closed rather than risking the source.
+- **Cross-lineage Migrate is refused**: a Migrate task never moves a
+  Drupal site onto a Backdrop platform or the reverse (use the upgrade
+  tasks for that). Backdrop → Backdrop and Drupal → Drupal both work.
 - **Collation note for imported estates**: BOA-native Drupal 7 databases
   are already utf8mb4 and convert cleanly. A Drupal 7 dump imported from
   an old external server may still be utf8; on a Percona 8.4 box the
@@ -328,6 +334,13 @@ verify → Let's Encrypt issuance chain produced a live LE certificate on
 a cloned Backdrop copy at a real domain (the panel deliberately skips
 issuance for the hosting service's own reserved names, so test-estate
 domains show the skip by design — client domains issue).
+
+**Migrate** is drilled both ways (2026-07): a same-domain move of a
+Backdrop site onto another Backdrop platform (settings, database and
+content reconciled on the target, the source retired with no orphan)
+and a rename onto a new domain (the new domain serves the content, the
+old domain is removed); both guards — a cross-lineage pair and a no-op
+self-migrate — refuse in validation before anything is touched.
 
 Not yet drilled, stated honestly:
 
