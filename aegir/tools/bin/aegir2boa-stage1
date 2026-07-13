@@ -1,0 +1,782 @@
+#!/bin/bash
+#
+# aegir2boa-stage1 - in-place Apache -> Nginx flip for a vanilla Aegir 3.x box,
+# with a drilled revert. Stage 1 of the aegir2boa migration (see
+# design/stage1-apache-to-nginx.md - "the spec" - for the code-backed model).
+#
+# What it does (flip):
+#   1. read-only preflight + dry-run gates (packages, FPM target, sudoers,
+#      service types, per-site HTTP baseline)
+#   2. installs nginx + php-fpm WITHOUT starting them (Apache keeps :80)
+#   3. enables the hosting_nginx frontend feature, switches the server node's
+#      Web service type exactly as the GUI would (node_save -> queued verify
+#      -> alias rewrite + nginx config tree + platform cascade)
+#   4. verifies EVERY site explicitly (hostmaster first) - the verify cascade
+#      stops at platforms, so this loop is what populates nginx/vhost.d
+#   5. nginx -t gate, then the daemon handover: stop Apache, swap the OS
+#      include, start Nginx
+#   6. compares every site's HTTP response against the pre-flip baseline
+#
+# The Apache config tree is never deleted (provision behaviour) - that is the
+# revert guarantee. Revert flips the daemon handover back, restores the
+# frontend/backend service type to apache, and re-verifies everything.
+#
+# Safety model (xoct-style gate): every acting mode is a DRY RUN unless
+# --live is given, and --live refuses to run without a prior CLEAN dry run
+# of the same operation on the same box (state file).
+#
+# Usage:
+#   aegir2boa-stage1 [--flip]    [--live]   flip apache -> nginx (default op)
+#   aegir2boa-stage1 --revert    [--live]   flip nginx -> apache
+#   aegir2boa-stage1 --status               show both planes + daemon state
+#   aegir2boa-stage1 --help
+#
+# Scope v0.1: concrete http_service_type 'apache' only (apache_ssl -> nginx_ssl
+# is wired but EXPERIMENTAL; cluster/pack are refused - flip each member).
+# Old-stack tolerance: bash >= 4.1-era, PHP >= 5.3 for anything sent through
+# drush php-script; nothing here assumes BOA.
+#
+# Exit: 0 ok (dry run clean / live completed), non-zero on gate failure.
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export DEBIAN_FRONTEND=noninteractive
+
+###-------------CONFIG-----------------###
+
+_AEGIR_USER=aegir
+_AEGIR_ROOT=/var/aegir
+_STATE=/root/.aegir2boa-stage1.state
+_LOG=/var/log/aegir2boa-stage1.log
+_TASK_TIMEOUT=600
+_OP=flip
+_LIVE=NO
+_POLICY_SAVED=NO
+
+###-------------HELPERS----------------###
+
+_msg()  { echo "A2B-S1 [$(date +%T 2>/dev/null)] ==> $*" | tee -a "${_LOG}"; }
+_info() { echo "A2B-S1 [$(date +%T 2>/dev/null)] ::  $*" | tee -a "${_LOG}"; }
+_alrt() { echo "A2B-S1 [$(date +%T 2>/dev/null)] !!  $*" | tee -a "${_LOG}" >&2; }
+_die()  { echo "A2B-S1 [$(date +%T 2>/dev/null)] FATAL: $*" | tee -a "${_LOG}" >&2; exit 1; }
+
+_have() { command -v "$1" >/dev/null 2>&1; }
+
+# Run a command as the aegir user in a login shell (drush needs $HOME).
+_as_aegir() { su -s /bin/bash - "${_AEGIR_USER}" -c "$1"; }
+
+_usage() {
+  sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'
+  exit 0
+}
+
+# data-derived key parts (site uris) must not reach grep/sed as regex:
+# reduce to [A-Za-z0-9_] and disambiguate with a cksum of the original
+_key_sanitize() {
+  local _raw="$1" _ck
+  _ck="$(printf '%s' "${_raw}" | cksum | cut -d' ' -f1)"
+  printf '%s_%s' "$(printf '%s' "${_raw}" | tr -c 'A-Za-z0-9_' '_')" "${_ck}"
+}
+
+# keyval state file: one key=value per line; keys are regex-safe by
+# construction (fixed names or _key_sanitize output)
+_state_set() {
+  local _k="$1" _v="$2"
+  touch "${_STATE}" && chmod 600 "${_STATE}"
+  if grep -q "^${_k}=" "${_STATE}" 2>/dev/null; then
+    sed -i "s|^${_k}=.*|${_k}=${_v}|" "${_STATE}"
+  else
+    echo "${_k}=${_v}" >> "${_STATE}"
+  fi
+}
+_state_get() {
+  local _k="$1"
+  [[ -f "${_STATE}" ]] || return 1
+  grep "^${_k}=" "${_STATE}" 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+_sql() { _as_aegir "drush @hostmaster sqlq \"$1\" 2>/dev/null"; }
+
+###-------------DISCOVERY--------------###
+
+# server_master http_service_type as the BACKEND sees it (the drush alias is
+# the authoritative context store - reading the file reads the real state)
+_alias_type() {
+  local _f="${_AEGIR_ROOT}/.drush/server_master.alias.drushrc.php"
+  [[ -r "${_f}" ]] || { echo "unknown"; return 1; }
+  sed -n "s/.*'http_service_type' => '\([a-z_]*\)'.*/\1/p" "${_f}" | head -1
+}
+
+# ...and as the FRONTEND stores it ({hosting_service} row for server_master)
+_frontend_type() {
+  local _nid
+  _nid="$(_sql "SELECT nid FROM hosting_context WHERE name = 'server_master'")"
+  [[ -n "${_nid}" ]] || { echo "unknown"; return 1; }
+  _sql "SELECT type FROM hosting_service WHERE nid = ${_nid} AND service = 'http' ORDER BY vid DESC LIMIT 1"
+}
+
+_hostmaster_uri() {
+  _sql "SELECT n.title FROM node n WHERE n.nid = (SELECT nid FROM hosting_context WHERE name = 'hostmaster')"
+}
+
+# enabled sites as "context_name uri" pairs, hostmaster FIRST (control plane,
+# spec section 4). The context name drives hosting-task/@alias (for the
+# hostmaster site it is the literal 'hostmaster', NOT its domain); the uri
+# drives HTTP checks and vhost paths.
+_sites_list() {
+  _sql "SELECT c.name, n.title FROM node n JOIN hosting_site s ON s.nid = n.nid JOIN hosting_context c ON c.nid = n.nid WHERE n.type = 'site' AND s.status = 1 ORDER BY (c.name = 'hostmaster') DESC, n.nid" \
+    | tr '\t' ' '
+}
+
+# mirror provision's nginx_restart_cmd() probe (nginx.php:256-274) so the
+# sudoers line matches what the backend will actually run
+_probe_nginx_restart_cmd() {
+  local _t
+  for _t in /etc/init.d/nginx /usr/sbin/nginx /usr/local/sbin/nginx /usr/local/bin/nginx; do
+    if [[ -x "${_t}" ]]; then
+      if [[ "${_t}" = "/etc/init.d/nginx" ]]; then
+        echo "sudo ${_t} reload"
+      else
+        echo "sudo ${_t} -s reload"
+      fi
+      return 0
+    fi
+  done
+  echo "sudo /etc/init.d/nginx reload"
+}
+
+# mirror apache.php apache_restart_cmd() (probes apachectl then apache2ctl)
+_probe_apache_restart_cmd() {
+  local _t
+  for _t in /usr/sbin/apachectl /usr/sbin/apache2ctl /usr/local/sbin/apachectl; do
+    [[ -x "${_t}" ]] && { echo "sudo ${_t} graceful"; return 0; }
+  done
+  echo "sudo /usr/sbin/apache2ctl graceful"
+}
+
+# mirror getPhpFpmMode()/getPhp7FpmSocketPath(): php5 socket, else the
+# HIGHEST-sorted *fpm.sock under /var/run/php, else port 9000
+_probe_fpm_target() {
+  if [[ -S /var/run/php5-fpm.sock ]]; then
+    echo "socket:/var/run/php5-fpm.sock"
+    return 0
+  fi
+  local _s
+  _s="$(find /var/run/php -maxdepth 1 -name '*fpm.sock' 2>/dev/null | sort -r | head -1)"
+  if [[ -n "${_s}" && -S "${_s}" ]]; then
+    echo "socket:${_s}"
+    return 0
+  fi
+  echo "port:9000"
+}
+
+# HTTP status for a managed uri, asked of THIS box regardless of DNS
+_http_code() {
+  curl -s -o /dev/null -w '%{http_code}' -m 20 -H "Host: $1" http://127.0.0.1/ 2>/dev/null
+}
+
+# newest verify-task nid for a hosting_context name
+_task_nid_for() {
+  local _nid
+  _nid="$(_sql "SELECT nid FROM hosting_context WHERE name = '$1'")"
+  [[ -n "${_nid}" ]] || return 1
+  _sql "SELECT MAX(nid) FROM hosting_task WHERE rid = ${_nid} AND task_type = 'verify'"
+}
+
+# wait for a hosting task node to finish; accepts SUCCESS(1) and WARNING(3)
+_wait_task() {
+  local _tnid="$1" _label="$2" _waited=0 _st
+  [[ -n "${_tnid}" && "${_tnid}" != "NULL" ]] || { _alrt "no task to wait for (${_label})"; return 1; }
+  while [[ "${_waited}" -lt "${_TASK_TIMEOUT}" ]]; do
+    _st="$(_sql "SELECT task_status FROM hosting_task WHERE nid = ${_tnid} ORDER BY vid DESC LIMIT 1")"
+    case "${_st}" in
+      1) return 0 ;;
+      3) _alrt "task ${_tnid} (${_label}) finished with WARNING"; return 0 ;;
+      2) _alrt "task ${_tnid} (${_label}) FAILED - see hostmaster task log node/${_tnid}"; return 1 ;;
+    esac
+    sleep 5
+    _waited=$(( _waited + 5 ))
+  done
+  _alrt "task ${_tnid} (${_label}) still not finished after ${_TASK_TIMEOUT}s"
+  return 1
+}
+
+# queue a verify for a context and wait for it
+_verify_and_wait() {
+  local _name="$1" _tnid
+  _as_aegir "drush @hostmaster hosting-task @${_name} verify" >>"${_LOG}" 2>&1
+  sleep 2
+  _tnid="$(_task_nid_for "${_name}")"
+  _wait_task "${_tnid}" "verify ${_name}"
+}
+
+###-------------FRONTEND FLIP----------###
+
+# Switch the server node's http service exactly as the GUI radio does:
+# hosting_server_services_from_post() + node_save() (hosting_server.module).
+# node_save queues the server verify that rewrites the alias and the config
+# tree. PHP kept 5.3-safe (array(), no short syntax) - source-estate floor.
+_flip_frontend_node() {
+  local _type="$1" _restart="$2" _php=/tmp/.a2b_stage1_flip.php
+  cat > "${_php}" <<PHPEOF
+<?php
+\$nid = db_query("SELECT nid FROM {hosting_context} WHERE name = 'server_master'")->fetchField();
+if (!\$nid) { print "A2BERR no server_master context\n"; return; }
+\$node = node_load(\$nid, NULL, TRUE);
+if (!isset(\$node->services['http'])) { print "A2BERR node has no http service\n"; return; }
+\$cur = \$node->services['http']->type;
+if (\$cur === '${_type}') { print "A2BOK already ${_type}\n"; return; }
+\$node->services['http'] = array(
+  'type' => '${_type}',
+  '${_type}' => array('restart_cmd' => '${_restart}', 'port' => 80),
+);
+hosting_server_services_from_post(\$node);
+if (!is_object(\$node->services['http'])) {
+  print "A2BERR service class for ${_type} unavailable (frontend feature enabled?)\n";
+  return;
+}
+node_save(\$node);
+print "A2BOK type set, verify queued\n";
+PHPEOF
+  chown "${_AEGIR_USER}" "${_php}" 2>/dev/null
+  local _out
+  _out="$(_as_aegir "drush @hostmaster php-script ${_php}" 2>&1)"
+  rm -f "${_php}"
+  echo "${_out}" >> "${_LOG}"
+  case "${_out}" in
+    *A2BOK*already*) return 2 ;;
+    *A2BOK*)         return 0 ;;
+    *)               _alrt "frontend flip failed: ${_out}"; return 1 ;;
+  esac
+}
+
+###-------------PREFLIGHT--------------###
+
+preflight() {
+  [[ "$(id -u 2>/dev/null)" = "0" ]] || _die "must run as root"
+  mkdir -p "$(dirname "${_LOG}")" 2>/dev/null
+  touch "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir2boa-stage1.log
+  [[ -d "${_AEGIR_ROOT}/.drush" ]] || _die "no ${_AEGIR_ROOT}/.drush - not a vanilla Aegir box?"
+  getent passwd "${_AEGIR_USER}" >/dev/null 2>&1 || _die "no ${_AEGIR_USER} user"
+  _have curl || _die "curl required"
+
+  _ALIAS_TYPE="$(_alias_type)"
+  _FRONT_TYPE="$(_frontend_type)"
+  _HM_URI="$(_hostmaster_uri)"
+  [[ -n "${_HM_URI}" ]] || _die "cannot read hostmaster uri - frontend DB unreachable via drush"
+
+  _info "backend (alias) http_service_type: ${_ALIAS_TYPE}"
+  _info "frontend (node) http service type: ${_FRONT_TYPE}"
+  [[ "${_ALIAS_TYPE}" = "${_FRONT_TYPE}" ]] \
+    || _alrt "backend/frontend service types DISAGREE - pre-existing drift, the flip will re-align them"
+
+  case "${_ALIAS_TYPE}" in
+    cluster|pack) _die "http_service_type=${_ALIAS_TYPE}: meta-driver topology - flip each member web server instead (spec 2.4)" ;;
+  esac
+}
+
+###-------------FLIP: DRY RUN----------###
+
+dryrun_flip() {
+  _msg "DRY RUN: apache -> nginx flip readiness on $(hostname -f 2>/dev/null)"
+  local _fail=0
+
+  case "${_ALIAS_TYPE}" in
+    apache) : ;;
+    apache_ssl) _alrt "apache_ssl -> nginx_ssl path is EXPERIMENTAL" ;;
+    nginx|nginx_ssl) _die "already ${_ALIAS_TYPE} - nothing to flip (use --revert to go back to apache)" ;;
+    *) _die "unsupported current type '${_ALIAS_TYPE}'" ;;
+  esac
+
+  # packages present or installable
+  if _have nginx; then
+    _info "nginx already installed: $(nginx -v 2>&1)"
+  else
+    if apt-get -s install nginx >/dev/null 2>&1; then
+      _info "nginx installable via apt"
+    else
+      _alrt "nginx NOT installable via apt"; _fail=1
+    fi
+  fi
+  local _fpm_t
+  _fpm_t="$(_probe_fpm_target)"
+  if [[ "${_fpm_t}" = "port:9000" ]] && ! ss -ltn 2>/dev/null | grep -q ':9000 '; then
+    if apt-get -s install php-fpm >/dev/null 2>&1 || apt-get -s install php5-fpm >/dev/null 2>&1; then
+      _info "no FPM pool yet; php-fpm installable via apt (will install on --live)"
+    else
+      _alrt "no FPM pool and no installable php-fpm/php5-fpm package"; _fail=1
+    fi
+  else
+    _info "FPM target provision will pick: ${_fpm_t}"
+  fi
+
+  # sudoers line for the restart cmd nginx.php will resolve
+  local _rc
+  _rc="$(_probe_nginx_restart_cmd)"
+  _info "predicted nginx restart cmd: ${_rc}"
+  local _rbin
+  _rbin="$(echo "${_rc}" | awk '{print $2}')"
+  if grep -qs "${_rbin}" /etc/sudoers.d/aegir /etc/sudoers 2>/dev/null; then
+    _info "aegir sudoers already covers ${_rbin}"
+  else
+    _info "sudoers line will be added for ${_rbin} on --live"
+  fi
+
+  # sites + baseline
+  local _name _uri _c _n=0
+  while read -r _name _uri; do
+    [[ -n "${_uri}" ]] || continue
+    _c="$(_http_code "${_uri}")"
+    _state_set "baseline_$(_key_sanitize "${_uri}")" "${_c}"
+    _info "baseline ${_uri} -> HTTP ${_c}"
+    case "${_c}" in
+      000|5??) _alrt "site ${_uri} unhealthy BEFORE the flip (HTTP ${_c}) - fix or expect it to stay broken"; ;;
+    esac
+    _n=$(( _n + 1 ))
+  done < <(_sites_list)
+  [[ "${_n}" -gt 0 ]] || { _alrt "no enabled sites found - nothing to protect, but nothing to verify either"; _fail=1; }
+  _info "${_n} enabled site(s), hostmaster first: ${_HM_URI}"
+
+  # customisations that will be silently lost (spec section 4)
+  local _f
+  for _f in "${_AEGIR_ROOT}"/config/server_master/apache/pre.d/* \
+            "${_AEGIR_ROOT}"/config/server_master/apache/post.d/*; do
+    [[ -e "${_f}" ]] && _alrt "custom apache fragment will NOT carry over: ${_f}"
+  done
+  for _f in /etc/apache2/sites-enabled/*; do
+    [[ -e "${_f}" ]] || continue
+    case "${_f}" in
+      *000-default*) _info "apache default site present (goes dark with apache): ${_f}" ;;
+      *) _alrt "non-Aegir apache vhost goes DARK when apache stops: ${_f}" ;;
+    esac
+  done
+
+  # frontend queue must be able to run tasks
+  if systemctl is-active hosting-queued >/dev/null 2>&1; then
+    _info "hosting-queued daemon active (tasks run in seconds)"
+  elif crontab -l -u "${_AEGIR_USER}" 2>/dev/null | grep -q hosting-dispatch; then
+    _info "cron dispatch present (tasks run within a minute)"
+  else
+    _alrt "no hosting-queued daemon AND no dispatch cron - queued verifies will never run"; _fail=1
+  fi
+
+  if [[ "${_fail}" -eq 0 ]]; then
+    _state_set "dryrun_flip_ok" "$(date +%s)"
+    _state_set "dryrun_flip_type" "${_ALIAS_TYPE}"
+    _msg "DRY RUN CLEAN - run with --live to flip"
+  else
+    _state_set "dryrun_flip_ok" ""
+    _die "dry run found blocking problems (see above)"
+  fi
+}
+
+###-------------FLIP: LIVE-------------###
+
+# Functionally prove PHP executes through nginx+FPM BEFORE apache goes down:
+# nginx -t only parses syntax, and a wrong/mis-pooled fastcgi target would
+# otherwise surface as fleet-wide 502 AFTER the handover. Probes the exact
+# fastcgi_pass the generated vhosts use, via a scratch-port nginx instance
+# (no :80 contention with the still-running apache).
+_fcgi_probe() {
+  local _pass _php=/tmp/.a2b_fcgi_probe.php _conf=/tmp/.a2b_nginx_probe.conf
+  local _pidf=/tmp/.a2b_nginx_probe.pid _errf=/tmp/.a2b_nginx_probe.err _port _out
+
+  _pass="$(grep -rho 'fastcgi_pass [^;]*' \
+    "${_AEGIR_ROOT}/config/server_master/nginx" "${_AEGIR_ROOT}/config/includes" 2>/dev/null \
+    | awk '{print $2}' | sort -u | head -1)"
+  if [[ -z "${_pass}" ]]; then
+    local _t
+    _t="$(_probe_fpm_target)"
+    case "${_t}" in
+      socket:*) _pass="unix:${_t#socket:}" ;;
+      *)        _pass="127.0.0.1:9000" ;;
+    esac
+  fi
+  _info "fastcgi probe target: ${_pass}"
+
+  for _port in 8099 8199 8299; do
+    ss -ltn 2>/dev/null | grep -q ":${_port} " || break
+  done
+
+  printf '<?php echo "A2B-FCGI-OK";\n' > "${_php}" && chmod 644 "${_php}"
+  cat > "${_conf}" <<NGEOF
+user www-data;
+worker_processes 1;
+pid ${_pidf};
+error_log ${_errf};
+events { worker_connections 32; }
+http {
+  access_log off;
+  server {
+    listen 127.0.0.1:${_port};
+    location / {
+      fastcgi_pass ${_pass};
+      fastcgi_param SCRIPT_FILENAME ${_php};
+      fastcgi_param QUERY_STRING "";
+      fastcgi_param REQUEST_METHOD GET;
+      fastcgi_param SCRIPT_NAME /probe;
+      fastcgi_param SERVER_NAME probe;
+      fastcgi_param SERVER_PORT ${_port};
+      fastcgi_param SERVER_PROTOCOL HTTP/1.1;
+      fastcgi_param REMOTE_ADDR 127.0.0.1;
+      fastcgi_param GATEWAY_INTERFACE CGI/1.1;
+    }
+  }
+}
+NGEOF
+  if ! nginx -c "${_conf}" >>"${_LOG}" 2>&1; then
+    rm -f "${_php}" "${_conf}" "${_errf}"
+    _alrt "probe nginx instance failed to start (see ${_LOG})"
+    return 1
+  fi
+  _out="$(curl -s -m 15 "http://127.0.0.1:${_port}/" 2>/dev/null)"
+  nginx -c "${_conf}" -s quit >>"${_LOG}" 2>&1 || { [[ -f "${_pidf}" ]] && kill "$(cat "${_pidf}")" 2>/dev/null; }
+  tail -5 "${_errf}" >> "${_LOG}" 2>/dev/null
+  rm -f "${_php}" "${_conf}" "${_errf}"
+  if [[ "${_out}" = "A2B-FCGI-OK" ]]; then
+    _info "PHP executes through nginx+FPM (probe OK on :${_port})"
+    return 0
+  fi
+  _alrt "FCGI probe returned '${_out}' instead of A2B-FCGI-OK"
+  return 1
+}
+
+# the guard must not clobber an operator's own policy-rc.d
+_policy_guard_on() {
+  if [[ -e /usr/sbin/policy-rc.d ]]; then
+    mv -f /usr/sbin/policy-rc.d /usr/sbin/policy-rc.d.a2b-saved
+    _POLICY_SAVED=YES
+  fi
+  printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
+}
+_policy_guard_off() {
+  rm -f /usr/sbin/policy-rc.d
+  if [[ "${_POLICY_SAVED}" = "YES" ]]; then
+    mv -f /usr/sbin/policy-rc.d.a2b-saved /usr/sbin/policy-rc.d
+    _POLICY_SAVED=NO
+  fi
+}
+
+# concrete versioned FPM units only - 'php-fpm' is a unit-less metapackage
+_fpm_units() {
+  dpkg -l 2>/dev/null | awk '/^ii +php[0-9]+(\.[0-9]+)?-fpm/ {print $2}'
+}
+
+live_flip() {
+  [[ -n "$(_state_get dryrun_flip_ok)" ]] \
+    || _die "--live requires a prior CLEAN dry run on this box (run without --live first)"
+  [[ "$(_state_get dryrun_flip_type)" = "${_ALIAS_TYPE}" ]] \
+    || _die "service type changed since the dry run (was $(_state_get dryrun_flip_type), now ${_ALIAS_TYPE}) - re-run the dry run"
+  # consume the gate NOW: any partial failure below must force a fresh
+  # dry run against the then-changed box before the next --live
+  _state_set "dryrun_flip_ok" ""
+
+  local _target=nginx
+  [[ "${_ALIAS_TYPE}" = "apache_ssl" ]] && _target=nginx_ssl
+
+  _msg "LIVE FLIP: ${_ALIAS_TYPE} -> ${_target}"
+
+  # 1. packages, no daemon start (Apache keeps :80 until handover)
+  if ! _have nginx || [[ "$(_probe_fpm_target)" = "port:9000" ]]; then
+    _msg "installing nginx + php-fpm (policy-rc.d guard: no daemon autostart)"
+    _policy_guard_on
+    apt-get update >>"${_LOG}" 2>&1
+    apt-get install -y nginx >>"${_LOG}" 2>&1 || { _policy_guard_off; _die "nginx install failed"; }
+    apt-get install -y php-fpm >>"${_LOG}" 2>&1 || apt-get install -y php5-fpm >>"${_LOG}" 2>&1 \
+      || { _policy_guard_off; _die "php-fpm install failed"; }
+    _policy_guard_off
+  fi
+  service nginx stop >>"${_LOG}" 2>&1 || true
+
+  # FPM must RUN before provision's socket detection (server verify);
+  # start every versioned unit - provision picks the highest socket
+  local _u
+  while read -r _u; do
+    [[ -n "${_u}" ]] && service "${_u}" start >>"${_LOG}" 2>&1
+  done < <(_fpm_units)
+  local _fpm_t
+  _fpm_t="$(_probe_fpm_target)"
+  if [[ "${_fpm_t}" = "port:9000" ]] && ! ss -ltn 2>/dev/null | grep -q ':9000 '; then
+    _die "no FPM socket appeared and nothing listens on :9000 - cannot proceed"
+  fi
+  _info "FPM target: ${_fpm_t}"
+
+  # aegir must be in the web group (nginx runs as www-data too)
+  id -nG "${_AEGIR_USER}" | grep -qw www-data || {
+    adduser "${_AEGIR_USER}" www-data >>"${_LOG}" 2>&1
+    _info "added ${_AEGIR_USER} to www-data"
+  }
+
+  # sudoers for the nginx reload the backend will run
+  local _rc _rbin
+  _rc="$(_probe_nginx_restart_cmd)"
+  _rbin="$(echo "${_rc}" | awk '{print $2}')"
+  if ! grep -qs "${_rbin}" /etc/sudoers.d/aegir 2>/dev/null; then
+    echo "${_AEGIR_USER} ALL=NOPASSWD: ${_rbin}" >> /etc/sudoers.d/aegir
+    visudo -cf /etc/sudoers.d/aegir >>"${_LOG}" 2>&1 || _die "sudoers file invalid after edit - fix /etc/sudoers.d/aegir"
+    _info "sudoers line added for ${_rbin}"
+  fi
+
+  # 2. frontend feature so the nginx service class exists
+  _as_aegir "drush @hostmaster en -y hosting_nginx" >>"${_LOG}" 2>&1
+  _as_aegir "drush @hostmaster cc drush" >>"${_LOG}" 2>&1 || true
+
+  # 3.+4. node flip -> queued server verify -> platform cascade
+  _msg "switching frontend server node to ${_target} (GUI-equivalent node_save)"
+  _flip_frontend_node "${_target}" "${_rc}"
+  local _fr=$?
+  [[ "${_fr}" -eq 1 ]] && _die "frontend node flip failed"
+  if [[ "${_fr}" -eq 0 ]]; then
+    sleep 2
+    local _tnid
+    _tnid="$(_task_nid_for server_master)"
+    _wait_task "${_tnid}" "server_master verify (writes nginx config tree)" \
+      || _die "server verify failed - box unchanged (apache still serving); inspect task node/${_tnid}"
+  else
+    _info "frontend already ${_target}; ensuring backend agrees"
+    _as_aegir "drush provision-save @server_master --http_service_type=${_target}" >>"${_LOG}" 2>&1
+    _as_aegir "drush @server_master provision-verify" >>"${_LOG}" 2>&1 \
+      || _die "backend server verify failed - box unchanged (apache still serving)"
+  fi
+
+  # wait out the platform cascade before touching sites. hosting_task keeps
+  # REVISION rows (a finished task retains its old status=0 creation row) -
+  # only each task's latest vid reflects reality
+  _msg "waiting for platform verify cascade"
+  local _waited=0
+  while [[ "${_waited}" -lt "${_TASK_TIMEOUT}" ]]; do
+    local _open
+    _open="$(_sql "SELECT COUNT(*) FROM hosting_task t WHERE t.vid = (SELECT MAX(t2.vid) FROM hosting_task t2 WHERE t2.nid = t.nid) AND t.task_type = 'verify' AND t.task_status IN (-1,0) AND t.rid IN (SELECT nid FROM hosting_platform)")"
+    [[ "${_open}" = "0" ]] && break
+    sleep 5; _waited=$(( _waited + 5 ))
+  done
+  [[ "${_waited}" -lt "${_TASK_TIMEOUT}" ]] || _alrt "platform verifies still open after ${_TASK_TIMEOUT}s - continuing, sites may re-queue"
+
+  # 5. the non-optional loop: verify EVERY site, hostmaster first. The
+  # context name feeds @alias/hosting-task; the uri names the vhost file.
+  local _name _uri
+  while read -r _name _uri; do
+    [[ -n "${_name}" ]] || continue
+    _msg "site verify: ${_name} (${_uri})"
+    _verify_and_wait "${_name}" || _die "site verify failed for ${_name} - apache still serving, nothing handed over yet"
+    [[ -e "${_AEGIR_ROOT}/config/server_master/nginx/vhost.d/${_uri}" ]] \
+      || _die "verify ran but no nginx vhost for ${_uri} appeared - refusing handover"
+  done < <(_sites_list)
+
+  # 6. config gate BEFORE apache goes down
+  _msg "nginx -t gate"
+  [[ -e /etc/nginx/sites-enabled/default ]] && {
+    rm -f /etc/nginx/sites-enabled/default
+    _state_set "nginx_default_removed" "1"
+  }
+  ln -sf "${_AEGIR_ROOT}/config/nginx.conf" /etc/nginx/conf.d/aegir.conf
+  if ! nginx -t >>"${_LOG}" 2>&1; then
+    rm -f /etc/nginx/conf.d/aegir.conf
+    _die "nginx -t FAILED - include removed, apache untouched; see ${_LOG}"
+  fi
+
+  # 6b. functional gate: PHP must execute through nginx+FPM while apache
+  # still serves - a failure here costs nothing
+  _fcgi_probe || _die "nginx+FPM functional probe FAILED - apache untouched, nothing handed over"
+
+  # 7. daemon handover
+  _msg "daemon handover: apache down, nginx up"
+  service apache2 stop >>"${_LOG}" 2>&1 || _alrt "apache2 stop returned non-zero - continuing (nginx start will prove :80 free)"
+  a2disconf aegir >>"${_LOG}" 2>&1 && _state_set "apache_conf_disabled" "aegir"
+  systemctl disable apache2 >>"${_LOG}" 2>&1 || update-rc.d apache2 disable >>"${_LOG}" 2>&1 || true
+  service nginx start >>"${_LOG}" 2>&1 || _die "nginx failed to start - REVERT: a2enconf aegir; service apache2 start"
+  systemctl enable nginx >>"${_LOG}" 2>&1 || update-rc.d nginx enable >>"${_LOG}" 2>&1 || true
+  while read -r _u; do
+    [[ -n "${_u}" ]] && { systemctl enable "${_u}" >>"${_LOG}" 2>&1 || true; }
+  done < <(_fpm_units)
+
+  # 8. verification against the pre-flip baseline
+  _msg "verifying every site against its pre-flip baseline"
+  local _failn=0 _base _now
+  while read -r _name _uri; do
+    [[ -n "${_uri}" ]] || continue
+    _base="$(_state_get "baseline_$(_key_sanitize "${_uri}")")"
+    _now="$(_http_code "${_uri}")"
+    if [[ "${_now}" = "${_base}" ]]; then
+      _info "OK   ${_uri}: HTTP ${_now} (unchanged)"
+    else
+      _alrt "DIFF ${_uri}: HTTP ${_base} -> ${_now}"
+      _failn=$(( _failn + 1 ))
+    fi
+  done < <(_sites_list)
+
+  _state_set "flipped" "${_target}"
+  _state_set "flipped_at" "$(date +%s)"
+  if [[ "${_failn}" -eq 0 ]]; then
+    _msg "FLIP COMPLETE - all sites match their baseline on nginx"
+  else
+    _alrt "FLIP COMPLETE with ${_failn} site(s) DIFFERING from baseline - investigate now"
+    _alrt "instant daemon-level fallback: service nginx stop; a2enconf aegir; service apache2 start"
+    _alrt "full revert (config plane too): $0 --revert && $0 --revert --live"
+  fi
+}
+
+###-------------REVERT-----------------###
+
+dryrun_revert() {
+  _msg "DRY RUN: revert nginx -> apache readiness"
+  local _fail=0
+
+  case "${_ALIAS_TYPE}" in
+    nginx|nginx_ssl) : ;;
+    *) _die "current type is '${_ALIAS_TYPE}' - nothing to revert" ;;
+  esac
+
+  # the revert's real dependencies (spec section 5): apache tree + mod_php
+  [[ -e "${_AEGIR_ROOT}/config/server_master/apache.conf" ]] \
+    || { _alrt "apache.conf missing under ${_AEGIR_ROOT}/config/server_master - revert has no config to return to"; _fail=1; }
+  [[ -d "${_AEGIR_ROOT}/config/server_master/apache/vhost.d" ]] \
+    || { _alrt "apache vhost.d tree missing - revert has no site configs"; _fail=1; }
+  dpkg -l 2>/dev/null | grep -q '^ii  *apache2 ' \
+    || { _alrt "apache2 package gone"; _fail=1; }
+  dpkg -l 2>/dev/null | grep -qE '^ii  *libapache2-mod-php' \
+    || { _alrt "libapache2-mod-php gone - PHP would not execute under apache"; _fail=1; }
+  [[ -e /etc/apache2/conf-available/aegir.conf ]] \
+    || { _alrt "apache aegir include missing from conf-available"; _fail=1; }
+
+  # prove the WOULD-BE apache config parses (aegir include enabled) without
+  # touching conf-enabled: a temp wrapper conf, truly read-only
+  if [[ -e /etc/apache2/conf-available/aegir.conf && -e /etc/apache2/apache2.conf ]]; then
+    local _tc=/tmp/.a2b_revert_configtest.conf
+    printf 'Include /etc/apache2/apache2.conf\nInclude /etc/apache2/conf-available/aegir.conf\n' > "${_tc}"
+    # shellcheck disable=SC1091
+    if ( . /etc/apache2/envvars 2>/dev/null; apache2 -t -f "${_tc}" ) >>"${_LOG}" 2>&1; then
+      _info "apache config (with aegir include) parses"
+    else
+      _alrt "apache configtest with the aegir include FAILED - the tree is damaged; revert would go dark"; _fail=1
+    fi
+    rm -f "${_tc}"
+  fi
+
+  local _name _uri _c
+  while read -r _name _uri; do
+    [[ -n "${_uri}" ]] || continue
+    _c="$(_http_code "${_uri}")"
+    _state_set "baseline_$(_key_sanitize "${_uri}")" "${_c}"
+    _info "pre-revert ${_uri} -> HTTP ${_c}"
+  done < <(_sites_list)
+
+  if [[ "${_fail}" -eq 0 ]]; then
+    _state_set "dryrun_revert_ok" "$(date +%s)"
+    _msg "DRY RUN CLEAN - run with --revert --live to revert"
+  else
+    _state_set "dryrun_revert_ok" ""
+    _die "revert dry run found blocking problems"
+  fi
+}
+
+live_revert() {
+  [[ -n "$(_state_get dryrun_revert_ok)" ]] \
+    || _die "--revert --live requires a prior CLEAN revert dry run"
+  _state_set "dryrun_revert_ok" ""
+
+  local _target=apache
+  [[ "${_ALIAS_TYPE}" = "nginx_ssl" ]] && _target=apache_ssl
+  local _rc
+  _rc="$(_probe_apache_restart_cmd)"
+
+  _msg "LIVE REVERT: ${_ALIAS_TYPE} -> ${_target}"
+
+  # prove apache's config BEFORE taking nginx down: a2enconf + configtest
+  # bind no ports, so nginx keeps serving until apache is proven good
+  a2enconf aegir >>"${_LOG}" 2>&1
+  if ! apache2ctl configtest >>"${_LOG}" 2>&1; then
+    a2disconf aegir >>"${_LOG}" 2>&1
+    _die "apache configtest FAILED - apache tree damaged; NGINX STILL SERVING, nothing changed"
+  fi
+
+  _msg "daemon handover: nginx down, apache up"
+  service nginx stop >>"${_LOG}" 2>&1 || true
+  systemctl disable nginx >>"${_LOG}" 2>&1 || true
+  rm -f /etc/nginx/conf.d/aegir.conf
+  service apache2 start >>"${_LOG}" 2>&1 || _die "apache failed to start after passing configtest - NOTHING serving; emergency: ln -sf ${_AEGIR_ROOT}/config/nginx.conf /etc/nginx/conf.d/aegir.conf; service nginx start"
+  systemctl enable apache2 >>"${_LOG}" 2>&1 || true
+
+  # config plane: frontend node back to apache -> queued verify -> alias
+  _msg "switching frontend server node back to ${_target}"
+  _flip_frontend_node "${_target}" "${_rc}"
+  local _fr=$?
+  [[ "${_fr}" -eq 1 ]] && _die "frontend node flip back failed - daemons reverted but config plane still nginx"
+  if [[ "${_fr}" -eq 0 ]]; then
+    sleep 2
+    local _tnid
+    _tnid="$(_task_nid_for server_master)"
+    _wait_task "${_tnid}" "server_master verify (back to apache)" || _alrt "server verify errored - check task node/${_tnid}"
+  fi
+
+  local _name _uri
+  while read -r _name _uri; do
+    [[ -n "${_name}" ]] || continue
+    _msg "site verify: ${_name} (${_uri})"
+    _verify_and_wait "${_name}" || _alrt "site verify failed for ${_name} (apache is serving the old vhost regardless)"
+  done < <(_sites_list)
+
+  _msg "verifying every site against its pre-revert baseline"
+  local _failn=0 _base _now
+  while read -r _name _uri; do
+    [[ -n "${_uri}" ]] || continue
+    _base="$(_state_get "baseline_$(_key_sanitize "${_uri}")")"
+    _now="$(_http_code "${_uri}")"
+    if [[ "${_now}" = "${_base}" ]]; then
+      _info "OK   ${_uri}: HTTP ${_now} (unchanged)"
+    else
+      _alrt "DIFF ${_uri}: HTTP ${_base} -> ${_now}"
+      _failn=$(( _failn + 1 ))
+    fi
+  done < <(_sites_list)
+
+  _state_set "flipped" "${_target}"
+  if [[ "${_failn}" -eq 0 ]]; then
+    _msg "REVERT COMPLETE - all sites match baseline on apache"
+  else
+    _alrt "REVERT COMPLETE with ${_failn} site(s) differing - investigate"
+  fi
+}
+
+###-------------STATUS-----------------###
+
+show_status() {
+  _info "backend (alias):   $(_alias_type)"
+  _info "frontend (node):   $(_frontend_type)"
+  _info "apache2:           $(service apache2 status >/dev/null 2>&1 && echo running || echo stopped)"
+  _info "nginx:             $(service nginx status >/dev/null 2>&1 && echo running || echo stopped)"
+  _info "port 80 owner:     $(ss -ltnp 2>/dev/null | awk '/:80 /{print $NF; exit}')"
+  _info "state file:        ${_STATE} $( [[ -f ${_STATE} ]] && echo '(present)' || echo '(none)')"
+  local _name _uri
+  while read -r _name _uri; do
+    [[ -n "${_uri}" ]] || continue
+    _info "site ${_name} (${_uri}): HTTP $(_http_code "${_uri}")"
+  done < <(_sites_list)
+}
+
+###-------------MAIN-------------------###
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --flip)   _OP=flip ;;
+    --revert) _OP=revert ;;
+    --status) _OP=status ;;
+    --live)   _LIVE=YES ;;
+    -h|--help) _usage ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+preflight
+
+case "${_OP}" in
+  status) show_status ;;
+  flip)
+    if [[ "${_LIVE}" = "YES" ]]; then live_flip; else dryrun_flip; fi
+    ;;
+  revert)
+    if [[ "${_LIVE}" = "YES" ]]; then live_revert; else dryrun_revert; fi
+    ;;
+esac
+
+exit 0

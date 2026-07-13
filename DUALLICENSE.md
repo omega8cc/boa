@@ -14,7 +14,7 @@ You can install only **BOA LTS** and then upgrade to **PRO** with a license from
 
 ## **LTS** branch: kept current alongside **PRO**
 
-The code-freeze previously planned for December 31, 2025 **did not take effect**: the LTS branch is kept up to date alongside PRO, because frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
+The LTS branch is **kept up to date alongside PRO**: frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
 
 A **feature-freeze may be announced in the future**, once the project enters a quieter, security-mainly update cycle — but no date is set, and it should not be assumed.
 

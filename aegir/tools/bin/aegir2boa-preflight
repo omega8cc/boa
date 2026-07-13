@@ -1,0 +1,1463 @@
+#!/bin/bash
+# shellcheck disable=SC2012,SC2329
+# SC2012: ls used only on controlled Ægir-managed paths; SC2329: _cleanup runs via trap.
+
+###
+### aegir2boa-preflight — phase-0 discovery for candidate vanilla Ægir boxes.
+###
+### READ-ONLY by contract: writes ONLY under /tmp (report, machine output,
+### scratch dir, lock). No package installs, no service changes. SQL is plain
+### SELECT/SHOW only. ONE sanctioned exception: the optional `drush @hostmaster
+### status` health check performs a Drupal bootstrap that writes cache_* tables
+### and ~aegir/.drush/cache (self-healing on the target estate) — set
+### A2B_NO_DRUSH=1 to suppress it for a strictly read-only run. Safe on a
+### degraded box: every external probe is timeout-wrapped and failure-guarded;
+### a dead component downgrades a verdict, never aborts the run.
+###
+### Outputs (per design/discovery-preflight.md §7):
+###   /tmp/aegir2boa-preflight.<host>.<ts>.txt   human report, verdict-first
+###   /tmp/aegir2boa-preflight.<host>.<ts>.env   machine contract:
+###       shell-safe A2B_* scalars + #TSV:<name>...#ENDTSV:<name> tables
+###
+### Exit codes: 0 report emitted; 2 precondition failed (not root, lock,
+### bad usage); 3 hard floor bail (pre-3.x / not-Ægir / BOA box — report
+### and env are still emitted with FAIL verdicts).
+###
+### The Ægir root is /var/aegir on a standard install; --aegir-root exists
+### for fixtures and non-standard layouts (spec §9 OPEN: locate, not assume).
+###
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+_A2B_VERSION=0.1.1
+_A2B_SCHEMA_VERSION=1
+
+_AEGIR_ROOT=/var/aegir
+_TMOUT=15
+_SQL_TMOUT=20
+_DRUSH_TMOUT=60
+_DNS_CAP=200
+# highest hosting_update_N in the verified vanilla 7.x-3.x tree (schema-spike).
+# A live schema above this is "newer than validated" -> WARN, not FAIL.
+_HOSTING_SCHEMA_CEIL=7304
+
+###--- CLI ---------------------------------------------------------------###
+
+_usage() {
+  echo "Usage: aegir2boa-preflight [--aegir-root /var/aegir]"
+  echo "Read-only discovery/preflight for a candidate vanilla Ægir box."
+  echo "Writes only /tmp. Run as root. See design/discovery-preflight.md."
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --aegir-root)
+      shift
+      if [[ -z "$1" ]]; then
+        echo "ERROR: --aegir-root needs a path" >&2
+        exit 2
+      fi
+      _AEGIR_ROOT="$1"
+      ;;
+    --version) echo "aegir2boa-preflight ${_A2B_VERSION}"; exit 0 ;;
+    --help|-h) _usage; exit 0 ;;
+    *) echo "ERROR: unknown argument: $1" >&2; _usage; exit 2 ;;
+  esac
+  shift
+done
+
+case "${_AEGIR_ROOT}" in
+  /*) : ;;
+  *) echo "ERROR: --aegir-root must be absolute" >&2; exit 2 ;;
+esac
+
+###--- Output helpers (standalone tool: own helper set is correct here) ---###
+
+_msg()  { echo "A2B [$(date +%T 2>/dev/null)] ==> $*"; }
+_info() { echo "A2B [$(date +%T 2>/dev/null)] ::  $*"; }
+_alrt() { echo "A2B [$(date +%T 2>/dev/null)] !!  $*" >&2; }
+_die()  { echo "A2B [$(date +%T 2>/dev/null)] FATAL: $*" >&2; exit 2; }
+
+_have() { command -v "$1" >/dev/null 2>&1; }
+
+# timeout is not guaranteed on ancient userland; degrade to bare execution.
+_TIMEOUT_BIN=""
+_have timeout && _TIMEOUT_BIN="timeout"
+
+_run_to() {
+  # 1=seconds, rest=command. Never lets a hung probe stall the preflight.
+  local _t="$1"
+  shift
+  if [[ -n "${_TIMEOUT_BIN}" ]]; then
+    "${_TIMEOUT_BIN}" "${_t}" "$@" 2>/dev/null
+  else
+    "$@" 2>/dev/null
+  fi
+}
+
+###--- Sanitizers (userland values must not break the machine contract) ---###
+
+_scrub() {
+  # control chars killed, tab/CR/LF flattened to spaces
+  printf '%s' "$1" | tr -d '\000-\010\013\014\016-\037\177' | tr '\t\r\n' '   '
+}
+
+_shq() {
+  # single-quote-escape for the .env file (xoct convention)
+  printf '%s' "$1" | sed "s/'/'\\\\''/g"
+}
+
+_token() {
+  # reason tokens and other strict identifiers
+  printf '%s' "$1" | tr -cd 'a-z0-9_'
+}
+
+_sane_domain() {
+  # domains come from userland-writable alias files and end up in grep/dig
+  # argv — restrict charset and refuse option-looking values (fail-closed).
+  # '/' is allowed: hosting_subdirs sites carry a path in the uri.
+  local _d
+  _d="$(printf '%s' "$1" | tr -cd 'A-Za-z0-9._/-')"
+  case "${_d}" in
+    -*|.*|/*|'') return 1 ;;
+  esac
+  printf '%s' "${_d}"
+}
+
+_int_only() {
+  # attacker-derived values (DB variable blobs, drushrc) must be proven
+  # integer BEFORE any bash arithmetic / -lt / -gt context — bash recursively
+  # evaluates a variable's string in arithmetic, so an unvalidated operand is
+  # command injection as root. Non-integer -> empty.
+  case "$1" in
+    ''|*[!0-9]*) printf '' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+_sane_ident() {
+  # SQL identifier (db/schema/table names): Ægir names are always this charset.
+  # Backtick-quoted interpolation into a root mysql session demands it.
+  printf '%s' "$1" | tr -cd 'A-Za-z0-9_'
+}
+
+_sane_abspath() {
+  # alias-supplied paths feed du/find/grep argv; refuse relative/dash-leading
+  # (option injection) — require absolute. Empty on reject (fail-closed).
+  case "$1" in
+    /*) printf '%s' "$1" ;;
+    *) printf '' ;;
+  esac
+}
+
+###--- Fact accumulators --------------------------------------------------###
+
+_S1_FAIL=""
+_S1_WARN=""
+_S2_FAIL=""
+_S2_WARN=""
+
+_reason_add() {
+  # 1=varname 2=token — semicolon-joined, deduplicated
+  local _var="$1" _tok _cur
+  _tok="$(_token "$2")"
+  [[ -z "${_tok}" ]] && return 0
+  eval "_cur=\"\${${_var}}\""
+  case ";${_cur};" in
+    *";${_tok};"*) return 0 ;;
+  esac
+  if [[ -z "${_cur}" ]]; then
+    eval "${_var}=\"\${_tok}\""
+  else
+    eval "${_var}=\"\${_cur};\${_tok}\""
+  fi
+}
+
+_s1_fail() { _reason_add _S1_FAIL "$1"; _note "FAIL S1" "$2"; }
+_s1_warn() { _reason_add _S1_WARN "$1"; _note "WARN S1" "$2"; }
+_s2_fail() { _reason_add _S2_FAIL "$1"; _note "FAIL S2" "$2"; }
+_s2_warn() { _reason_add _S2_WARN "$1"; _note "WARN S2" "$2"; }
+
+_note() {
+  # notable line for the human report's blocking/notable section
+  [[ -n "$2" ]] && printf '  %-8s %s\n' "$1" "$(_scrub "$2")" >> "${_TMPD}/notes.txt"
+}
+
+_env_kv() {
+  # 1=KEY 2=value — scrubbed + single-quoted, safe to `source`
+  printf "%s='%s'\n" "$1" "$(_shq "$(_scrub "$2")")" >> "${_TMPD}/scalars.env"
+}
+
+_tsv_row() {
+  # 1=table name, rest=fields. Empty field -> '-', tabs/newlines flattened.
+  local _tbl="$1" _f _out=""
+  shift
+  for _f in "$@"; do
+    _f="$(_scrub "${_f}")"
+    [[ -z "${_f}" ]] && _f="-"
+    if [[ -z "${_out}" ]]; then
+      _out="${_f}"
+    else
+      _out="${_out}	${_f}"
+    fi
+  done
+  printf '%s\n' "${_out}" >> "${_TMPD}/${_tbl}.tsv"
+}
+
+###--- Lock / scratch / traps ---------------------------------------------###
+
+_LOCK="/tmp/aegir2boa-preflight.lock"
+_TMPD=""
+
+_cleanup() {
+  [[ -n "${_TMPD}" && -d "${_TMPD}" ]] && rm -rf "${_TMPD}"
+  [[ -d "${_LOCK}" && -e "${_LOCK}/pid.$$" ]] && rm -rf "${_LOCK}"
+}
+
+_acquire_lock() {
+  # mkdir is atomic; a dead owner's lock is taken over.
+  local _opid
+  if ! mkdir "${_LOCK}" 2>/dev/null; then
+    _opid="$(ls "${_LOCK}" 2>/dev/null | sed -n 's/^pid\.//p' | head -n1)"
+    if [[ -n "${_opid}" ]] && kill -0 "${_opid}" 2>/dev/null; then
+      _die "another preflight is running (pid ${_opid}); lock ${_LOCK}"
+    fi
+    rm -rf "${_LOCK}" 2>/dev/null
+    mkdir "${_LOCK}" 2>/dev/null || _die "cannot take lock ${_LOCK}"
+  fi
+  : > "${_LOCK}/pid.$$" 2>/dev/null
+  trap _cleanup EXIT
+  trap 'exit 2' INT TERM
+}
+
+_check_root() {
+  if [[ "$(id -u 2>/dev/null)" != "0" ]]; then
+    _die "must run as root (crontabs, sudoers, sockets, site dirs)"
+  fi
+}
+
+###--- Small parsers -------------------------------------------------------###
+
+_alias_get() {
+  # 1=alias file 2=key — value of  'key' => 'value'
+  sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" "$1" 2>/dev/null | head -n1
+}
+
+_alias_get_raw() {
+  # unquoted values (TRUE/FALSE/ints)
+  sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*\([A-Za-z0-9_.-]*\).*/\1/p" "$1" 2>/dev/null | head -n1
+}
+
+_php_unser() {
+  # minimal PHP-serialized scalar reader: i:N; s:N:"...."; b:0/1;
+  sed -n -e 's/^i:\(-\{0,1\}[0-9][0-9]*\);$/\1/p' \
+         -e 's/^s:[0-9][0-9]*:"\(.*\)";$/\1/p' \
+         -e 's/^b:\([01]\);$/\1/p' <<EOF | head -n1
+$1
+EOF
+}
+
+_status_label() {
+  case "$1" in
+    1) echo enabled ;;
+    0) echo queued ;;
+    -1) echo disabled ;;
+    -2) echo deleted ;;
+    *) echo "raw:$1" ;;
+  esac
+}
+
+_php_band_for_core() {
+  # informational per-platform PHP requirement band (open-questions #4)
+  case "$1" in
+    6*) echo "5.2-5.6" ;;
+    7*) echo "5.6-7.4" ;;
+    8*) echo "7.0-7.4" ;;
+    9*) echo "7.3-8.1" ;;
+    10*) echo "8.1-8.3" ;;
+    11*) echo "8.3+" ;;
+    *) echo "?" ;;
+  esac
+}
+
+###--- MySQL access (read-only) --------------------------------------------###
+
+_DB_OK=NO
+_DB_MODE=none
+_DB_HOST=""
+_DB_PORT=3306
+_DB_USER=""
+_DB_PASS=""
+_HM_DB=""
+
+_sql() {
+  # 1=SQL (SELECT/SHOW only by contract). Prints -N -B rows or fails.
+  [[ "${_DB_OK}" = "YES" ]] || return 1
+  if [[ "${_DB_MODE}" = "defaults" ]]; then
+    _run_to "${_SQL_TMOUT}" mysql -N -B -A -e "$1"
+  else
+    _run_to "${_SQL_TMOUT}" env MYSQL_PWD="${_DB_PASS}" \
+      mysql -N -B -A -h "${_DB_HOST}" -P "${_DB_PORT}" -u "${_DB_USER}" -e "$1"
+  fi
+}
+
+_db_try_dsn() {
+  # 1=alias file. master_db DSN: type://user:pass@host[:port]
+  # Parsed with shell/sed only — never php -r parse_url (spec §5 landmine).
+  local _dsn _rest _userinfo _hostpart _t
+  _DB_OK=NO; _DB_MODE=none
+  _dsn="$(_alias_get "$1" master_db)"
+  [[ -z "${_dsn}" ]] && return 1
+  _rest="${_dsn#*://}"
+  case "${_rest}" in
+    *@*) : ;;
+    *) return 1 ;;
+  esac
+  _hostpart="${_rest##*@}"
+  _userinfo="${_rest%@*}"
+  _DB_USER="${_userinfo%%:*}"
+  _DB_PASS="${_userinfo#*:}"
+  [[ "${_DB_PASS}" = "${_userinfo}" ]] && _DB_PASS=""
+  case "${_hostpart}" in
+    *:*) _DB_HOST="${_hostpart%%:*}"; _DB_PORT="${_hostpart##*:}" ;;
+    *)   _DB_HOST="${_hostpart}" ;;
+  esac
+  _DB_HOST="$(_scrub "${_DB_HOST}")"
+  _DB_USER="$(_scrub "${_DB_USER}")"
+  case "${_DB_PORT}" in
+    [0-9]*) : ;;
+    *) _DB_PORT=3306 ;;
+  esac
+  [[ -z "${_DB_HOST}" || -z "${_DB_USER}" ]] && return 1
+
+  _DB_OK=YES; _DB_MODE=dsn
+  _t="$(_sql 'SELECT 1' 2>/dev/null)"
+  if [[ "${_t}" = "1" ]]; then
+    return 0
+  fi
+  _DB_OK=NO; _DB_MODE=none
+  return 1
+}
+
+_db_connect() {
+  local _t _af _tried=" "
+  _have mysql || { _note "WARN" "mysql client not installed - all DB probes degraded"; return 1; }
+
+  # 1) /root/.my.cnf (or equivalent defaults) — try bare first
+  _DB_OK=YES; _DB_MODE=defaults
+  _t="$(_sql 'SELECT 1' 2>/dev/null)"
+  if [[ "${_t}" = "1" ]]; then
+    return 0
+  fi
+  _DB_OK=NO; _DB_MODE=none
+
+  # 2) master_db DSN from the server aliases. Vanilla keeps the DSN on the
+  #    DB SERVER context — server_localhost on a single-box estate — while
+  #    server_master carries none, so try master first (remote-db estates)
+  #    then localhost, then any other server_*.alias.
+  for _af in "${_AEGIR_ROOT}/.drush/server_master.alias.drushrc.php" \
+             "${_AEGIR_ROOT}/.drush/server_localhost.alias.drushrc.php" \
+             "${_AEGIR_ROOT}/.drush/server_"*.alias.drushrc.php; do
+    [[ -e "${_af}" ]] || continue
+    case "${_tried}" in *" ${_af} "*) continue ;; esac
+    _tried="${_tried}${_af} "
+    if _db_try_dsn "${_af}"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+_find_hm_db() {
+  # The hostmaster DB name for THIS root. Prefer the root's own hostmaster
+  # drushrc (authoritative — a box may host several instances, each with its
+  # own hosting_context table, so a blind information_schema scan can pick the
+  # wrong one). Fall back to information_schema only when the drushrc is
+  # unreadable. Restrict to the identifier charset before it is backtick-
+  # interpolated into a root mysql session (SQL-injection otherwise).
+  local _d _sp
+  _sp="$(_alias_get "${_AEGIR_ROOT}/.drush/hostmaster.alias.drushrc.php" site_path)"
+  if [[ -n "${_sp}" && -e "${_sp}/drushrc.php" ]]; then
+    _HM_DB="$(sed -n "s/.*\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" "${_sp}/drushrc.php" 2>/dev/null | head -n1)"
+    _HM_DB="$(_sane_ident "${_HM_DB}")"
+    [[ -n "${_HM_DB}" ]] && return 0
+  fi
+  _d="$(_sql "SELECT table_schema FROM information_schema.tables WHERE table_name='hosting_context' ORDER BY table_schema LIMIT 1")"
+  if [[ -n "${_d}" ]]; then
+    _HM_DB="$(_sane_ident "${_d}")"
+  fi
+  [[ -n "${_HM_DB}" ]]
+}
+
+###--- Probes ---------------------------------------------------------------###
+
+_OS_ID=unknown
+_OS_VRN=unknown
+_INIT_SYS=unknown
+_BOA_BOX=NO
+_AEGIR_USER=aegir
+_AEGIR_USER_OK=NO
+_AEGIR_UID=""
+_AEGIR_GID=""
+
+probe_os() {
+  local _home _pwline
+  if [[ -e /etc/os-release ]]; then
+    _OS_ID="$(sed -n 's/^ID=//p' /etc/os-release 2>/dev/null | head -n1 | tr -d '"')"
+    _OS_VRN="$(sed -n 's/^VERSION_ID=//p' /etc/os-release 2>/dev/null | head -n1 | tr -d '"')"
+  fi
+  # house rule: never assume Debian when it may be Devuan
+  if [[ -e /etc/devuan_version ]]; then
+    _OS_ID=devuan
+    _OS_VRN="$(head -n1 /etc/devuan_version 2>/dev/null)"
+  fi
+  if [[ -d /run/systemd/system ]]; then
+    _INIT_SYS=systemd
+  elif [[ -r /proc/1/comm ]]; then
+    _INIT_SYS="$(head -n1 /proc/1/comm 2>/dev/null)"
+  elif [[ -r /proc/1/exe ]]; then
+    # /proc/1/comm needs kernel >= 2.6.33; squeeze (2.6.32) has /proc/1/exe
+    _INIT_SYS="$(basename "$(readlink /proc/1/exe 2>/dev/null)" 2>/dev/null)"
+  fi
+  [[ -z "${_INIT_SYS}" ]] && _INIT_SYS=unknown
+
+  # aegir user: prefer the owner of the root; verify home matches
+  if [[ -d "${_AEGIR_ROOT}" ]]; then
+    _AEGIR_USER="$(_run_to "${_TMOUT}" stat -c %U "${_AEGIR_ROOT}" || true)"
+    [[ -z "${_AEGIR_USER}" || "${_AEGIR_USER}" = "UNKNOWN" ]] && _AEGIR_USER=aegir
+  fi
+  if _have getent; then
+    _pwline="$(getent passwd "${_AEGIR_USER}" 2>/dev/null)"
+  else
+    _pwline="$(grep "^${_AEGIR_USER}:" /etc/passwd 2>/dev/null | head -n1)"
+  fi
+  _home="$(printf '%s' "${_pwline}" | cut -d: -f6)"
+  # UID/GID feed the Stage-2 xoct oN-user remap (spec §3.1)
+  _AEGIR_UID="$(_int_only "$(printf '%s' "${_pwline}" | cut -d: -f3)")"
+  _AEGIR_GID="$(_int_only "$(printf '%s' "${_pwline}" | cut -d: -f4)")"
+  [[ -n "${_home}" && "${_home}" = "${_AEGIR_ROOT}" ]] && _AEGIR_USER_OK=YES
+
+  # a BOA box is a valid xoct SOURCE via the BOA path — but NOT for this tool
+  if [[ -d /data/disk || -e /root/.barracuda.cnf || -x /opt/local/bin/boa ]]; then
+    _BOA_BOX=YES
+  fi
+}
+
+_PROV_INFO=""
+_PROV_VRN=""
+_PROV_MAJOR=""
+_HM_PLATFORM=""
+_CORE_HOSTING=""
+_FLOOR=OK
+
+probe_version_floor() {
+  local _d
+  # backend marker: provision.info — locate, never assume the path (§9 OPEN)
+  if [[ -e "${_AEGIR_ROOT}/.drush/provision/provision.info" ]]; then
+    _PROV_INFO="${_AEGIR_ROOT}/.drush/provision/provision.info"
+  else
+    _PROV_INFO="$(find "${_AEGIR_ROOT}/.drush" /usr/share/drush -maxdepth 5 \
+      -name provision.info -print 2>/dev/null | head -n1)"
+  fi
+  if [[ -n "${_PROV_INFO}" ]]; then
+    _PROV_VRN="$(awk -F= '/^version/{gsub(/[" ]/,"",$2); print $2}' "${_PROV_INFO}" 2>/dev/null | head -n1)"
+    _PROV_MAJOR="$(printf '%s' "${_PROV_VRN}" | sed 's/^[^-]*-//' | cut -d. -f1 | tr -cd '0-9')"
+  fi
+
+  # frontend marker: hostmaster-<version> platform root
+  _HM_PLATFORM="$(ls -d "${_AEGIR_ROOT}"/hostmaster-* 2>/dev/null | head -n1)"
+
+  # module core marker
+  if [[ -n "${_HM_PLATFORM}" ]]; then
+    _d="$(find "${_HM_PLATFORM}/profiles/hostmaster" -maxdepth 4 -name hosting.info 2>/dev/null | head -n1)"
+    [[ -n "${_d}" ]] && \
+      _CORE_HOSTING="$(sed -n 's/^core[[:space:]]*=[[:space:]]*//p' "${_d}" 2>/dev/null | head -n1 | tr -d ' ')"
+  fi
+
+  if [[ "${_BOA_BOX}" = "YES" ]]; then
+    _FLOOR=BOA
+    return 0
+  fi
+  if [[ -z "${_PROV_INFO}" && -z "${_HM_PLATFORM}" ]] \
+    && ! ls "${_AEGIR_ROOT}"/.drush/*.alias.drushrc.php >/dev/null 2>&1; then
+    _FLOOR=NOT_AEGIR
+    return 0
+  fi
+  if [[ -n "${_PROV_MAJOR}" && "${_PROV_MAJOR}" -lt 3 ]] 2>/dev/null; then
+    _FLOOR=LT3
+  fi
+  case "${_HM_PLATFORM}" in
+    *hostmaster-6.x-*) _FLOOR=LT3 ;;
+  esac
+  [[ "${_CORE_HOSTING}" = "6.x" ]] && _FLOOR=LT3
+  return 0
+}
+
+_MYSQL_VRN=""
+_HOSTING_SCHEMA=""
+_QUEUE_MODEL=unknown
+_QUEUE_FRESH=unknown
+_HM_SITE_NID=""
+_HOSTING_DNS=NO
+
+probe_db_basics() {
+  local _row
+  if ! _db_connect; then
+    _s2_warn db_unreachable "MySQL unreachable/creds unresolved - DB probes degraded to filesystem tier"
+    return 1
+  fi
+  _MYSQL_VRN="$(_scrub "$(_sql 'SELECT @@version' | head -n1)")"
+  if ! _find_hm_db; then
+    _s2_warn hostmaster_db_not_found "connected to MySQL but no schema contains hosting_context"
+    return 1
+  fi
+  # per-schema sizes in MB — one query, mapped back to sites later
+  _sql "SELECT table_schema, ROUND(SUM(data_length+index_length)/1048576)
+        FROM information_schema.tables GROUP BY table_schema" \
+    > "${_TMPD}/dbsizes.raw" 2>/dev/null
+  return 0
+}
+
+probe_hosting_state() {
+  # stage-2 spike inputs (§6): schema vector, enabled modules, variables
+  local _row _name _st _sv _val _now _hb _lr
+  [[ -n "${_HM_DB}" ]] || return 0
+
+  # spike input §6.3: the full nid<->name context map, captured verbatim — the
+  # alias<->nid join key stage 2 is blocked on. Emitted as its own TSV.
+  _sql "SELECT nid, name FROM \`${_HM_DB}\`.hosting_context ORDER BY name" \
+    2>/dev/null | while IFS='	' read -r _row _name; do
+      [[ -z "${_row}" ]] && continue
+      _tsv_row hosting_context "${_row}" "${_name}"
+    done
+
+  _sql "SELECT name, status, schema_version FROM \`${_HM_DB}\`.system
+        WHERE type='module' AND name LIKE 'hosting%' ORDER BY name" \
+    > "${_TMPD}/hosting_modules.raw"
+  while IFS='	' read -r _name _st _sv; do
+    [[ -z "${_name}" ]] && continue
+    _tsv_row hosting_modules "${_name}" "${_st}" "${_sv}"
+    [[ "${_name}" = "hosting" ]] && _HOSTING_SCHEMA="$(_int_only "${_sv}")"
+    [[ "${_name}" = "hosting_dns" && "${_st}" = "1" ]] && _HOSTING_DNS=YES
+  done < "${_TMPD}/hosting_modules.raw"
+
+  if [[ "${_HOSTING_DNS}" = "YES" ]]; then
+    _s2_warn hosting_dns_enabled "hosting_dns is enabled - authoritative DNS state must be re-homed (open-questions #13)"
+  fi
+  if [[ -n "${_HOSTING_SCHEMA}" ]]; then
+    if [[ "${_HOSTING_SCHEMA}" -lt 7000 ]]; then
+      _FLOOR=LT3
+    elif [[ "${_HOSTING_SCHEMA}" -gt "${_HOSTING_SCHEMA_CEIL}" ]]; then
+      _s1_warn hosting_schema_newer "hosting schema ${_HOSTING_SCHEMA} > tested ceiling ${_HOSTING_SCHEMA_CEIL} - newer than validated"
+      _s2_warn hosting_schema_newer "hosting schema ${_HOSTING_SCHEMA} > tested ceiling ${_HOSTING_SCHEMA_CEIL} - newer than validated"
+    fi
+  fi
+
+  # queue model: daemon heartbeat vs cron dispatch last-run (spec §3.7).
+  # Every value below is an attacker-controlled variable-table blob -> _int_only
+  # BEFORE any arithmetic (root RCE otherwise).
+  _hb="$(_int_only "$(_php_unser "$(_sql "SELECT value FROM \`${_HM_DB}\`.variable WHERE name='hosting_queued_process_started'" | head -n1)")")"
+  _lr="$(_int_only "$(_php_unser "$(_sql "SELECT value FROM \`${_HM_DB}\`.variable WHERE name='hosting_queue_tasks_last_run'" | head -n1)")")"
+  _HM_SITE_NID="$(_int_only "$(_php_unser "$(_sql "SELECT value FROM \`${_HM_DB}\`.variable WHERE name='aegir_hostmaster_site_nid'" | head -n1)")")"
+
+  _now="$(date +%s 2>/dev/null)"
+  if [[ -n "${_hb}" && "${_hb}" != "0" ]]; then
+    _QUEUE_MODEL=hosting_queued
+    if [[ -n "${_now}" ]] && [[ $((_now - _hb)) -lt 3600 ]] 2>/dev/null; then
+      _QUEUE_FRESH=YES
+    else
+      _QUEUE_FRESH=NO
+    fi
+  elif [[ -n "${_lr}" ]]; then
+    _QUEUE_MODEL=cron_dispatch
+    if [[ -n "${_now}" ]] && [[ $((_now - _lr)) -lt 3600 ]] 2>/dev/null; then
+      _QUEUE_FRESH=YES
+    else
+      _QUEUE_FRESH=NO
+    fi
+  fi
+  if [[ "${_QUEUE_FRESH}" = "NO" ]]; then
+    _s1_warn dispatch_not_running "task dispatch looks stale (${_QUEUE_MODEL}) - frontend tasks will not process"
+    _s2_warn dispatch_not_running "task dispatch stale - non-blocking for stage 2 (state read directly)"
+  fi
+}
+
+_HTTP_TYPE_DB=""
+_HTTP_TYPE_FS=""
+_HTTP_SERVERS_N=0
+
+probe_service_type() {
+  local _rowfile _nid _ctx _title _svc _type _rcmd _n_http=0 _n_db=0 _remote_db=NO
+  # DB tier: type-of-record per server node (hosting_service keyed by vid)
+  if [[ -n "${_HM_DB}" ]]; then
+    _sql "SELECT n.nid, COALESCE(c.name,'?'), REPLACE(n.title,'\t',' '), sv.service, sv.type, COALESCE(sv.restart_cmd,'-')
+          FROM \`${_HM_DB}\`.hosting_service sv
+          JOIN \`${_HM_DB}\`.node n ON n.vid = sv.vid
+          LEFT JOIN \`${_HM_DB}\`.hosting_context c ON c.nid = n.nid
+          WHERE sv.service IN ('http','db') ORDER BY sv.service, n.nid" \
+      > "${_TMPD}/servers.raw"
+    while IFS='	' read -r _nid _ctx _title _svc _type _rcmd; do
+      [[ -z "${_nid}" ]] && continue
+      _tsv_row servers "${_ctx}" "${_title}" "${_svc}" "${_type}" "${_rcmd}"
+      if [[ "${_svc}" = "http" ]]; then
+        _n_http=$((_n_http + 1))
+        # type feeds case-matches + the report; restrict to the driver charset
+        [[ "${_ctx}" = "server_master" ]] && _HTTP_TYPE_DB="$(printf '%s' "${_type}" | tr -cd 'a-z_')"
+      fi
+      if [[ "${_svc}" = "db" && "${_ctx}" != "server_master" && "${_ctx}" != "server_localhost" ]]; then
+        _remote_db=YES
+      fi
+    done < "${_TMPD}/servers.raw"
+    _HTTP_SERVERS_N="${_n_http}"
+    [[ -z "${_HTTP_TYPE_DB}" && "${_n_http}" -ge 1 ]] \
+      && _HTTP_TYPE_DB="$(awk -F'	' '$3=="http"{print $4; exit}' "${_TMPD}/servers.tsv" 2>/dev/null | tr -cd 'a-z_')"
+  fi
+
+  # filesystem corroboration: whichever app tree is populated
+  if ls "${_AEGIR_ROOT}/config/server_master/nginx/vhost.d/"* >/dev/null 2>&1; then
+    _HTTP_TYPE_FS=nginx
+  fi
+  if ls "${_AEGIR_ROOT}/config/server_master/apache/vhost.d/"* >/dev/null 2>&1; then
+    if [[ -n "${_HTTP_TYPE_FS}" ]]; then
+      _HTTP_TYPE_FS=both
+    else
+      _HTTP_TYPE_FS=apache
+    fi
+  fi
+
+  case "${_HTTP_TYPE_DB}" in
+    cluster|pack)
+      _s1_fail cluster_pack_topology "http service type is '${_HTTP_TYPE_DB}' - per-member flip needed, single-box tool refuses (stage1 §2.4)"
+      ;;
+  esac
+  if [[ "${_HTTP_SERVERS_N}" -gt 1 ]]; then
+    _s1_warn multi_web_servers "${_HTTP_SERVERS_N} http server contexts - flip covers server_master only (open-questions #6)"
+    _s2_warn multi_web_servers "multi web-server estate - single-box premise does not hold"
+  fi
+  if [[ "${_remote_db}" = "YES" ]]; then
+    _s2_warn remote_db_server "a db service lives on a non-master server context - xoct assumes co-located DB"
+  fi
+  if [[ -n "${_HTTP_TYPE_DB}" && -n "${_HTTP_TYPE_FS}" && "${_HTTP_TYPE_FS}" != "both" ]]; then
+    case "${_HTTP_TYPE_DB}" in
+      apache*) [[ "${_HTTP_TYPE_FS}" = "nginx" ]] && _s1_warn service_type_drift "DB says ${_HTTP_TYPE_DB}, filesystem says ${_HTTP_TYPE_FS} - mid-conversion or hand-edited" ;;
+      nginx*)  [[ "${_HTTP_TYPE_FS}" = "apache" ]] && _s1_warn service_type_drift "DB says ${_HTTP_TYPE_DB}, filesystem says ${_HTTP_TYPE_FS} - mid-conversion or hand-edited" ;;
+    esac
+  fi
+  if [[ "${_HTTP_TYPE_DB}" = "nginx" || "${_HTTP_TYPE_DB}" = "nginx_ssl" ]] \
+    && [[ "${_HTTP_TYPE_FS}" = "nginx" ]]; then
+    _s1_fail already_nginx "already Ægir-on-Nginx and no populated apache tree - nothing to flip (informational)"
+  fi
+}
+
+_FPM_PRESENT=NO
+_FPM_INSTALLABLE=UNKNOWN
+_MODPHP=NO
+
+probe_php() {
+  local _p _real _v _mods _seen="" _cand
+  for _p in $(compgen -c php 2>/dev/null | grep -E '^php[0-9.]*$' | sort -u) ; do
+    _cand="$(command -v "${_p}" 2>/dev/null)"
+    [[ -z "${_cand}" ]] && continue
+    _real="$(readlink -f "${_cand}" 2>/dev/null || echo "${_cand}")"
+    case " ${_seen} " in *" ${_real} "*) continue ;; esac
+    _seen="${_seen} ${_real}"
+    _v="$(_run_to "${_TMOUT}" "${_real}" -v | head -n1 | awk '{print $2}')"
+    _mods="$(_run_to "${_TMOUT}" "${_real}" -m | grep -c -E '^(pdo_mysql|mysqli|gd|curl)$')"
+    _tsv_row php_bins "${_p}" "${_real}" "${_v:-?}" "key_mods:${_mods:-0}/4"
+  done
+  for _p in /opt/php*/bin/php /usr/local/php*/bin/php; do
+    [[ -x "${_p}" ]] || continue
+    _real="$(readlink -f "${_p}" 2>/dev/null || echo "${_p}")"
+    case " ${_seen} " in *" ${_real} "*) continue ;; esac
+    _seen="${_seen} ${_real}"
+    _v="$(_run_to "${_TMOUT}" "${_real}" -v | head -n1 | awk '{print $2}')"
+    _tsv_row php_bins "${_p}" "${_real}" "${_v:-?}" "-"
+  done
+
+  # SAPI pivot: mod_php vs FPM (stage-1 §3.2)
+  if _have dpkg && dpkg -l 'libapache2-mod-php*' 2>/dev/null | grep -q '^ii'; then
+    _MODPHP=YES
+  fi
+  # FPM present = a running socket OR an fpm binary anywhere PHP itself may live
+  # (distro dirs AND the /opt · /usr/local source-build layouts the census scans)
+  if [[ -S /var/run/php5-fpm.sock ]] || ls /var/run/php/*fpm.sock >/dev/null 2>&1 \
+    || compgen -c php-fpm >/dev/null 2>&1 || compgen -c php5-fpm >/dev/null 2>&1 \
+    || ls /usr/sbin/php*fpm* /opt/php*/sbin/php-fpm* /opt/php*/bin/php-fpm* \
+          /usr/local/php*/sbin/php-fpm* /usr/local/php*/bin/php-fpm* >/dev/null 2>&1; then
+    _FPM_PRESENT=YES
+  fi
+  if [[ "${_FPM_PRESENT}" = "NO" ]]; then
+    if _have apt-cache; then
+      if _run_to "${_TMOUT}" apt-cache pkgnames php | grep -E '^php[0-9.]*-fpm$' | head -n1 | grep -q fpm; then
+        _FPM_INSTALLABLE=YES
+        _s1_warn fpm_not_installed "no PHP-FPM present (mod_php=${_MODPHP}); a matching php-fpm package is installable"
+      else
+        _FPM_INSTALLABLE=NO
+        _s1_fail no_fpm_available "no PHP-FPM present and no php-fpm package candidate - cannot serve PHP under nginx"
+      fi
+    else
+      _s1_warn fpm_not_installed "no PHP-FPM present; installability unknown (no apt-cache)"
+    fi
+  fi
+}
+
+_APACHE_VRN=""
+_SUDO_NGINX=NO
+_N_CUSTOM_APACHE=0
+
+probe_apache() {
+  local _actl="" _f _tgt _dom _n=0
+  for _f in apache2ctl apachectl; do
+    _have "${_f}" && _actl="${_f}" && break
+  done
+  if [[ -n "${_actl}" ]]; then
+    _APACHE_VRN="$(_run_to "${_TMOUT}" "${_actl}" -v | sed -n 's/^Server version:[[:space:]]*//p' | head -n1)"
+    _run_to "${_TMOUT}" "${_actl}" -M > "${_TMPD}/apache_mods.txt"
+    grep -q 'php' "${_TMPD}/apache_mods.txt" 2>/dev/null && _MODPHP=YES
+    if ! _run_to "${_TMOUT}" "${_actl}" -t >/dev/null; then
+      # only meaningful when apache is the active service of record
+      case "${_HTTP_TYPE_DB}" in
+        apache*|'')
+          _s1_fail apache_configtest_failed "'${_actl} -t' failed - apache config broken/corrupt"
+          ;;
+      esac
+    fi
+  fi
+
+  # apache tree present + readable when apache is the type of record
+  case "${_HTTP_TYPE_DB}" in
+    apache*)
+      if [[ ! -d "${_AEGIR_ROOT}/config/server_master/apache" ]]; then
+        _s1_fail apache_tree_missing "type of record is apache but ${_AEGIR_ROOT}/config/server_master/apache is missing"
+      fi
+      ;;
+  esac
+
+  # custom injection points: pre.d / post.d fragments (do not survive the flip)
+  for _f in "${_AEGIR_ROOT}/config/server_master/apache/pre.d"/* \
+            "${_AEGIR_ROOT}/config/server_master/apache/post.d"/*; do
+    [[ -f "${_f}" ]] || continue
+    _tsv_row custom_apache "pre_post_d" "${_f}" "$(wc -l < "${_f}" 2>/dev/null | tr -d ' ') lines"
+    _n=$((_n + 1))
+  done
+
+  # vhost.d entries: no matching alias = hand-added; a populated extra_config
+  # block in a MANAGED vhost = operator injection that won't survive the flip
+  for _f in "${_AEGIR_ROOT}/config/server_master/apache/vhost.d"/*; do
+    [[ -f "${_f}" ]] || continue
+    _dom="$(basename "${_f}")"
+    if [[ ! -e "${_AEGIR_ROOT}/.drush/${_dom}.alias.drushrc.php" ]]; then
+      _tsv_row custom_apache "unmanaged_vhost" "${_f}" "no matching site alias"
+      _n=$((_n + 1))
+    elif grep -qs -E 'extra_config|Extra configuration' "${_f}" 2>/dev/null \
+      && grep -qs -E '^[[:space:]]*(RewriteRule|Header|Auth[A-Za-z]+|ProxyPass|Location|Directory)' "${_f}" 2>/dev/null; then
+      _tsv_row custom_apache "extra_config" "${_f}" "populated extra_config in managed vhost"
+      _n=$((_n + 1))
+    fi
+  done
+
+  # OS-level apache vhosts outside the Ægir include (go dark when apache stops)
+  for _f in /etc/apache2/sites-enabled/*; do
+    [[ -e "${_f}" ]] || continue
+    _tgt="$(readlink -f "${_f}" 2>/dev/null || echo "${_f}")"
+    case "${_tgt}" in
+      "${_AEGIR_ROOT}"/*) : ;;
+      *)
+        if ! grep -qs "${_AEGIR_ROOT}/config" "${_f}" 2>/dev/null; then
+          _tsv_row custom_apache "non_aegir_vhost" "${_f}" "-> ${_tgt}"
+          _n=$((_n + 1))
+        fi
+        ;;
+    esac
+  done
+  _N_CUSTOM_APACHE="${_n}"
+  if [[ "${_n}" -gt 0 ]]; then
+    _s1_warn custom_apache_config "${_n} custom apache fragment(s)/vhost(s) found - none survive the flip verbatim"
+  fi
+
+  # the nginx sudoers line must exist BEFORE the flip (stage1 §3.3 landmine)
+  if grep -Rqs 'nginx' /etc/sudoers /etc/sudoers.d 2>/dev/null; then
+    _SUDO_NGINX=YES
+  else
+    _s1_warn sudoers_nginx_missing "no nginx line in sudoers - first nginx verify reload will fail"
+  fi
+}
+
+_N_PLATFORMS=0
+
+probe_platforms() {
+  local _f _name _root _mk _core _build _contrib _ws _cl
+  for _f in "${_AEGIR_ROOT}"/.drush/platform_*.alias.drushrc.php; do
+    [[ -e "${_f}" ]] || continue
+    _name="$(basename "${_f}" .alias.drushrc.php)"
+    _root="$(_alias_get "${_f}" root)"
+    _mk="$(_alias_get "${_f}" makefile)"
+    _ws="$(_alias_get "${_f}" web_server)"
+    _core=""; _build=manual; _contrib=0
+    if [[ -n "${_root}" && -d "${_root}" ]]; then
+      if [[ -e "${_root}/composer.json" && -d "${_root}/vendor" ]]; then
+        _build="composer"
+      elif [[ -n "${_mk}" ]]; then
+        _build="make"
+      fi
+      # D6/D7 core constant, else D8+ Drupal.php, else composer.lock
+      if [[ -e "${_root}/includes/bootstrap.inc" ]]; then
+        _core="$(grep -m1 "define('VERSION'" "${_root}/includes/bootstrap.inc" 2>/dev/null \
+          | sed "s/.*'\([0-9][0-9.]*\)'.*/\1/")"
+        _contrib="$(find "${_root}/sites/all/modules" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+      elif [[ -e "${_root}/core/lib/Drupal.php" ]]; then
+        _core="$(grep -m1 'const VERSION' "${_root}/core/lib/Drupal.php" 2>/dev/null \
+          | sed "s/.*'\([0-9][0-9.]*\)'.*/\1/")"
+        _contrib="$(find "${_root}/modules/contrib" "${_root}/web/modules/contrib" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+      elif [[ -e "${_root}/composer.lock" ]]; then
+        _core="$(grep -A3 '"name": "drupal/core"' "${_root}/composer.lock" 2>/dev/null \
+          | sed -n 's/.*"version": "\([0-9][0-9.]*\)".*/\1/p' | head -n1)"
+        _build="composer"
+      fi
+    fi
+    _tsv_row platforms "${_name}" "${_root:-?}" "${_core:-?}" "${_build}" "${_contrib}" \
+      "${_ws:-?}" "$(_php_band_for_core "${_core}")"
+    _N_PLATFORMS=$((_N_PLATFORMS + 1))
+    case "${_core}" in
+      8*|9*|10*|11*) _D8PLUS_SEEN=YES ;;
+    esac
+  done
+  # DB side for drift check
+  if [[ -n "${_HM_DB}" ]]; then
+    _sql "SELECT COALESCE(c.name,CONCAT('nid:',p.nid)), p.publish_path, p.status
+          FROM \`${_HM_DB}\`.hosting_platform p
+          LEFT JOIN \`${_HM_DB}\`.hosting_context c ON c.nid=p.nid
+          WHERE p.status >= 0" > "${_TMPD}/platforms_db.raw"
+    while IFS='	' read -r _name _root _cl; do
+      [[ -z "${_name}" ]] && continue
+      if [[ ! -e "${_AEGIR_ROOT}/.drush/${_name}.alias.drushrc.php" ]]; then
+        _tsv_row context_drift "${_name}" "present(db)" "missing(alias)"
+      fi
+    done < "${_TMPD}/platforms_db.raw"
+  fi
+}
+
+_N_SITES=0
+_EST_DUMP_MB=0
+_D8PLUS_SEEN=NO
+
+probe_sites() {
+  local _f _dom _root _plat _sp _dbn _files_mb _db_mb _al _redir _st _ver _dbsrv _ssl _cl
+  local _client _profile _lang _svcname
+  # DB rows once, joined per-site by context name (= domain)
+  if [[ -n "${_HM_DB}" ]]; then
+    _sql "SELECT c.name, s.status, s.verified, COALESCE(s.db_name,'-'), COALESCE(cd.name,'-')
+          FROM \`${_HM_DB}\`.hosting_site s
+          JOIN \`${_HM_DB}\`.hosting_context c ON c.nid = s.nid
+          LEFT JOIN \`${_HM_DB}\`.hosting_context cd ON cd.nid = s.db_server
+          WHERE s.status > -2" > "${_TMPD}/sites_db.raw"
+  fi
+
+  for _f in "${_AEGIR_ROOT}"/.drush/*.alias.drushrc.php; do
+    [[ -e "${_f}" ]] || continue
+    case "$(basename "${_f}")" in
+      server_*|platform_*|hostmaster.alias*|hm.alias*) continue ;;
+    esac
+    grep -q "'uri'" "${_f}" 2>/dev/null || continue
+    _dom="$(_alias_get "${_f}" uri)"
+    if ! _dom="$(_sane_domain "${_dom}")"; then
+      _note "WARN" "alias $(basename "${_f}") has an unusable uri value - skipped (fail-closed)"
+      continue
+    fi
+    # paths flow to du/find/grep argv -> require absolute (option-injection guard)
+    _root="$(_sane_abspath "$(_alias_get "${_f}" root)")"
+    _plat="$(_alias_get "${_f}" platform)"
+    _sp="$(_sane_abspath "$(_alias_get "${_f}" site_path)")"
+    [[ -z "${_sp}" && -n "${_root}" ]] && _sp="${_root}/sites/${_dom}"
+    _al="$(_alias_get "${_f}" aliases)"
+    _redir="$(_alias_get_raw "${_f}" redirection)"
+    _client="$(_alias_get "${_f}" client_name)"
+    _profile="$(_alias_get "${_f}" profile)"
+    _lang="$(_alias_get "${_f}" language)"
+    _dbn=""
+    [[ -n "${_sp}" && -e "${_sp}/drushrc.php" ]] && \
+      _dbn="$(sed -n "s/.*\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" "${_sp}/drushrc.php" 2>/dev/null | head -n1)"
+    _files_mb=""
+    [[ -n "${_sp}" && -d "${_sp}/files" ]] && \
+      _files_mb="$(_run_to 60 du -sm "${_sp}/files" | awk '{print $1}')"
+
+    _st="-"; _ver="-"; _dbsrv="-"
+    if [[ -s "${_TMPD}/sites_db.raw" ]]; then
+      _cl="$(awk -F'	' -v d="${_dom}" '$1==d{print; exit}' "${_TMPD}/sites_db.raw" 2>/dev/null)"
+      if [[ -n "${_cl}" ]]; then
+        _st="$(_status_label "$(printf '%s' "${_cl}" | cut -f2)")"
+        _ver="$(printf '%s' "${_cl}" | cut -f3)"
+        [[ -z "${_dbn}" ]] && _dbn="$(printf '%s' "${_cl}" | cut -f4)"
+        _dbsrv="$(printf '%s' "${_cl}" | cut -f5)"
+      else
+        _tsv_row context_drift "${_dom}" "missing(db)" "present(alias)"
+      fi
+    fi
+    _db_mb="-"
+    [[ -n "${_dbn}" && -s "${_TMPD}/dbsizes.raw" ]] && \
+      _db_mb="$(awk -F'	' -v d="${_dbn}" '$1==d{print $2; exit}' "${_TMPD}/dbsizes.raw")"
+
+    _ssl=none
+    [[ -d "${_AEGIR_ROOT}/config/ssl.d/${_dom}" || -d "${_AEGIR_ROOT}/config/server_master/ssl.d/${_dom}" ]] && _ssl=managed
+
+    _tsv_row sites "${_dom}" "${_plat:-?}" "${_dbsrv}" "${_dbn:-?}" "${_files_mb:--}" \
+      "${_db_mb}" "${_ssl}" "${_redir:--}" "${_st}" "${_ver}" \
+      "${_client:--}" "${_profile:--}" "${_lang:--}"
+    _N_SITES=$((_N_SITES + 1))
+
+    printf '%s\n' "${_dom}" >> "${_TMPD}/domains.txt"
+    [[ -n "${_al}" ]] && printf '%s\n' "${_al}" | tr ', ' '\n' | grep -v '^$' \
+      | while IFS= read -r _cl; do
+          _cl="$(_sane_domain "${_cl}")" && printf '%s\n' "${_cl}" >> "${_TMPD}/domains.txt"
+        done
+    case "${_files_mb}" in [0-9]*) _EST_DUMP_MB=$((_EST_DUMP_MB + _files_mb)) ;; esac
+    case "${_db_mb}" in [0-9]*) _EST_DUMP_MB=$((_EST_DUMP_MB + _db_mb)) ;; esac
+
+    # per-site backing services (open-questions #10): settings.php bindings
+    if [[ -n "${_sp}" ]]; then
+      for _cl in "${_sp}/settings.php" "${_sp}/local.settings.php"; do
+        [[ -e "${_cl}" ]] || continue
+        grep -o -E 'memcache|redis|apachesolr|search_api_solr|solr' "${_cl}" 2>/dev/null \
+          | sort -u | while read -r _svcname; do
+              _tsv_row site_services "${_dom}" "${_svcname}" "${_cl}"
+            done
+      done
+    fi
+  done
+
+  # sites in DB with no alias on disk
+  if [[ -s "${_TMPD}/sites_db.raw" ]]; then
+    while IFS='	' read -r _dom _st _ver _dbn _dbsrv; do
+      [[ -z "${_dom}" ]] && continue
+      if [[ ! -e "${_AEGIR_ROOT}/.drush/${_dom}.alias.drushrc.php" ]]; then
+        _tsv_row context_drift "${_dom}" "present(db)" "missing(alias)"
+      fi
+    done < "${_TMPD}/sites_db.raw"
+  fi
+  if [[ -s "${_TMPD}/context_drift.tsv" ]]; then
+    _s2_warn context_drift "DB vs filesystem context drift detected - someone hand-edited state (see context_drift table)"
+  fi
+  if [[ -s "${_TMPD}/site_services.tsv" ]]; then
+    _s2_warn site_backing_services "site(s) bind local Solr/memcache/redis - migrate-or-reprovision decision needed per backend"
+  fi
+}
+
+_N_CUSTOM_HTACCESS=0
+
+probe_htaccess() {
+  # custom .htaccess = the single biggest apache->nginx hazard (stage1 §4).
+  # Spec §3.3/§7.2 want a hash-compare against stock. With no shipped stock
+  # reference on the box, we use the estate's MODAL sha as de-facto stock:
+  # every platform of a given core ships a byte-identical stock .htaccess, so
+  # the most frequent hash IS stock for the dominant core. A file whose sha
+  # differs is flagged custom (sha_differs_from_core=1). On a mixed-core estate
+  # the minority core's stock may over-flag -> WARN + list for human review:
+  # a safe direction (over-surface, never silently clean). The directive grep
+  # (things stock never carries uncommented) is an auxiliary confirmation.
+  local _root _f _sha _shatool="" _modal="" _diff _dcust
+  _have sha1sum && _shatool=sha1sum
+  [[ -z "${_shatool}" ]] && _have shasum && _shatool=shasum
+  [[ -s "${_TMPD}/platforms.tsv" ]] || return 0
+
+  # pass 1: enumerate all .htaccess + shas
+  : > "${_TMPD}/ht.all"
+  while IFS='	' read -r _ _root _ _ _ _ _; do
+    [[ -d "${_root}" ]] || continue
+    find "${_root}" -maxdepth 6 -name .htaccess -not -path '*/files/*' 2>/dev/null \
+      | head -n 400 > "${_TMPD}/ht.list"
+    while IFS= read -r _f; do
+      [[ -f "${_f}" ]] || continue
+      _sha="nohash"
+      [[ -n "${_shatool}" ]] && _sha="$(${_shatool} "${_f}" 2>/dev/null | awk '{print $1}')"
+      printf '%s\t%s\t%s\n' "${_root}" "${_sha}" "${_f}" >> "${_TMPD}/ht.all"
+    done < "${_TMPD}/ht.list"
+  done < "${_TMPD}/platforms.tsv"
+  [[ -s "${_TMPD}/ht.all" ]] || return 0
+
+  # modal sha = de-facto stock
+  _modal="$(awk -F'\t' '{c[$2]++} END{m=0; for(k in c) if(c[k]>m){m=c[k]; s=k} print s}' "${_TMPD}/ht.all")"
+
+  # pass 2: flag + emit
+  while IFS='	' read -r _root _sha _f; do
+    _diff=0
+    [[ "${_sha}" != "${_modal}" ]] && _diff=1
+    _dcust=0
+    # Auxiliary signal for a file that somehow equals the modal hash: match
+    # ONLY directives stock Drupal .htaccess never carries uncommented. NB
+    # Deny/Require/Order ARE in stock (<Files> guards) — excluded to stay
+    # false-positive-free; sha-vs-modal already catches every real difference.
+    # Boost cache rules embed HTTP_HOST inside DOCUMENT_ROOT paths (nginx
+    # template covers them), so only HTTP_HOST as the TESTED variable counts.
+    if grep -qs -E '^[[:space:]]*(Auth[A-Za-z]+|Redirect|RedirectMatch)[[:space:]]' "${_f}" \
+      || grep -qs -E '^[[:space:]]*RewriteCond[[:space:]]+%\{HTTP_HOST\}' "${_f}"; then
+      _dcust=1
+    fi
+    if [[ "${_diff}" = "1" || "${_dcust}" = "1" ]]; then
+      _tsv_row custom_htaccess "${_root}" "${_f}" "custom" "$(printf '%s' "${_sha}" | cut -c1-12)" "sha_differs=${_diff}" "directives=${_dcust}"
+      _N_CUSTOM_HTACCESS=$((_N_CUSTOM_HTACCESS + 1))
+    else
+      _tsv_row custom_htaccess "${_root}" "${_f}" "stock_like" "$(printf '%s' "${_sha}" | cut -c1-12)" "sha_differs=0" "directives=0"
+    fi
+  done < "${_TMPD}/ht.all"
+
+  if [[ "${_N_CUSTOM_HTACCESS}" -gt 0 ]]; then
+    _s1_warn custom_htaccess "${_N_CUSTOM_HTACCESS} .htaccess file(s) differ from stock - rules are silently dropped by nginx (list in report)"
+  fi
+}
+
+_EXT_LE=none
+
+probe_ssl() {
+  local _d _dom _key _crt _issuer _tree
+  for _tree in "${_AEGIR_ROOT}/config/ssl.d" "${_AEGIR_ROOT}/config/server_master/ssl.d"; do
+    [[ -d "${_tree}" ]] || continue
+    for _d in "${_tree}"/*/; do
+      [[ -d "${_d}" ]] || continue
+      _dom="$(basename "${_d}")"
+      _key=no; _crt=no; _issuer="-"
+      ls "${_d}"/*.key >/dev/null 2>&1 && _key=yes
+      if ls "${_d}"/*.crt >/dev/null 2>&1; then
+        _crt=yes
+        if _have openssl; then
+          _issuer="$(_run_to "${_TMOUT}" openssl x509 -in "$(ls "${_d}"/*.crt 2>/dev/null | head -n1)" -noout -issuer \
+            | sed 's/^issuer= *//; s/^issuer=//' | cut -c1-80)"
+        fi
+      fi
+      _tsv_row ssl "${_dom}" "${_tree}" "${_key}" "${_crt}" "${_issuer}"
+    done
+  done
+  # external LE clients Ægir does not know about (spec §3.10)
+  if [[ -d /etc/letsencrypt/live ]]; then
+    _EXT_LE=certbot
+  elif [[ -d /etc/dehydrated || -d /root/.acme.sh ]]; then
+    _EXT_LE=other
+  fi
+  if [[ "${_EXT_LE}" != "none" ]]; then
+    _s2_warn non_aegir_le_client "external LE client state found (${_EXT_LE}) - stage-2 proxy cert plan must account for it"
+  fi
+}
+
+_MAX_TTL=0
+
+probe_dns() {
+  local _dom _ttl _ips _n=0 _high=0
+  _have dig || { _note "WARN" "dig not installed - DNS TTL probe skipped"; return 0; }
+  [[ -s "${_TMPD}/domains.txt" ]] || return 0
+  sort -u "${_TMPD}/domains.txt" | head -n "${_DNS_CAP}" > "${_TMPD}/domains.uniq"
+  while IFS= read -r _dom; do
+    [[ -z "${_dom}" ]] && continue
+    _n=$((_n + 1))
+    _ttl="$(_run_to 6 dig +noall +answer +time=2 +tries=1 "${_dom}" A | awk 'NR==1{print $2}')"
+    _ips="$(_run_to 6 dig +noall +answer +time=2 +tries=1 "${_dom}" A | awk '$4=="A"{print $5}' | tr '\n' ' ')"
+    _tsv_row dns_ttl "${_dom}" "${_ttl:-?}" "${_ips:-?}"
+    case "${_ttl}" in
+      [0-9]*)
+        [[ "${_ttl}" -gt "${_MAX_TTL}" ]] && _MAX_TTL="${_ttl}"
+        [[ "${_ttl}" -ge 3600 ]] && _high=$((_high + 1))
+        ;;
+    esac
+  done < "${_TMPD}/domains.uniq"
+  if [[ "${_high}" -gt 0 ]]; then
+    _s2_warn dns_ttl_high "${_high} domain(s) with TTL >= 3600s - pre-lower before the proxy swap to shorten the window"
+  fi
+  [[ "$(sort -u "${_TMPD}/domains.txt" | wc -l | tr -d ' ')" -gt "${_DNS_CAP}" ]] \
+    && _note "NOTE" "DNS probe capped at ${_DNS_CAP} domains - remainder not probed"
+}
+
+probe_cron() {
+  local _line _n_foreign=0
+  crontab -l -u "${_AEGIR_USER}" 2>/dev/null | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' \
+    | while IFS= read -r _line; do
+        _tsv_row crontabs "${_AEGIR_USER}" "${_line}"
+      done
+  crontab -l -u root 2>/dev/null | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' \
+    | while IFS= read -r _line; do
+        _tsv_row crontabs "root" "${_line}"
+      done
+  ls /etc/cron.d 2>/dev/null | while IFS= read -r _line; do
+    _tsv_row crontabs "cron.d" "${_line}"
+  done
+  # anything not hosting/aegir-flavoured must be re-homed at decommission
+  if [[ -s "${_TMPD}/crontabs.tsv" ]]; then
+    _n_foreign="$(grep -c -v -E 'hosting|aegir|drush' "${_TMPD}/crontabs.tsv" 2>/dev/null)"
+    if [[ "${_n_foreign}" -gt 0 ]] 2>/dev/null; then
+      _s2_warn foreign_cron_jobs "${_n_foreign} cron entries look non-Ægir - re-home before decommission (see crontabs table)"
+    fi
+  fi
+}
+
+probe_tenants() {
+  local _lsout _prog _port _mta=NO _names=""
+  if _have ss; then
+    _lsout="$(_run_to "${_TMOUT}" ss -ltnpH 2>/dev/null || _run_to "${_TMOUT}" ss -ltnp | sed 1d)"
+    _names="$(printf '%s\n' "${_lsout}" | grep -o 'users:(("[^"]*"' | sed 's/users:(("//; s/"//')"
+  elif _have netstat; then
+    # netstat's PID/Program column is 'pid/name'
+    _lsout="$(_run_to "${_TMOUT}" netstat -ltnp | sed '1,2d')"
+    _names="$(printf '%s\n' "${_lsout}" | awk '{print $NF}' | grep '/' | cut -d/ -f2 | sed 's/:.*//')"
+  else
+    _note "WARN" "neither ss nor netstat - tenant census skipped"
+    return 0
+  fi
+  printf '%s\n' "${_names}" | grep -v '^$' \
+    | sort | uniq -c | while read -r _port _prog; do
+        case "${_prog}" in
+          nginx|apache2|httpd|mysqld|mariadbd|sshd) : ;;
+          '') : ;;
+          *)
+            _tsv_row tenants "${_prog}" "listeners:${_port}"
+            ;;
+        esac
+      done
+  if [[ -s "${_TMPD}/tenants.tsv" ]]; then
+    _s2_warn co_tenants "non-web/db/ssh listeners present - they block a clean proxy-only decommission (see tenants table)"
+    grep -qs -E '^(master|exim|sendmail|postfix)' "${_TMPD}/tenants.tsv" && _mta=YES
+  fi
+  [[ "${_mta}" = "YES" ]] && \
+    _s2_warn mta_present "an MTA is listening - email/MX cutover is unowned, plan it (open-questions #8)"
+}
+
+_DRUSH_BIN=""
+_DRUSH_VRN=""
+_DRUSH_PHP=""
+_DRUSH_PHP_BIN=""
+_FRONTEND_RC=""
+_FRONTEND_BOOT=NO
+_N_EXTRA_CMDFILES=0
+
+probe_frontend() {
+  local _b _v _e
+  # drush census: what root sees + what the aegir user resolves
+  for _b in drush8 drush; do
+    if _have "${_b}"; then
+      _v="$(_run_to "${_TMOUT}" "${_b}" --version | head -n1 | grep -o '[0-9][0-9.]*' | head -n1)"
+      _tsv_row drush_bins "${_b}" "$(command -v "${_b}")" "${_v:-?}"
+      [[ -z "${_DRUSH_BIN}" ]] && _DRUSH_BIN="${_b}" && _DRUSH_VRN="${_v}"
+    fi
+  done
+  _b="$(_run_to "${_TMOUT}" su -s /bin/bash - "${_AEGIR_USER}" -c 'command -v drush8 || command -v drush')"
+  if [[ -n "${_b}" ]]; then
+    _tsv_row drush_bins "aegir-user" "${_b}" "-"
+    [[ -z "${_DRUSH_BIN}" ]] && _DRUSH_BIN="${_b}"
+  fi
+
+  # contrib drush commandfiles break migrations (spec §3.6 / upgrade.md:135)
+  for _e in "${_AEGIR_ROOT}"/.drush/* /usr/share/drush/commands/*; do
+    [[ -e "${_e}" ]] || continue
+    case "$(basename "${_e}")" in
+      provision|*.alias.drushrc.php|drushrc.php|cache|drush.ini) continue ;;
+    esac
+    _tsv_row drush_bins "extra-cmdfile" "${_e}" "-"
+    _N_EXTRA_CMDFILES=$((_N_EXTRA_CMDFILES + 1))
+  done
+  [[ "${_N_EXTRA_CMDFILES}" -gt 0 ]] && \
+    _s1_warn contrib_drush_commandfiles "${_N_EXTRA_CMDFILES} extra drush commandfile path(s) - review before migrating"
+
+  # frontend health: convenience tier only, never load-bearing (spec §1).
+  # SANCTIONED READ-ONLY EXCEPTION: `drush @hostmaster status` performs a
+  # Drupal bootstrap that writes cache_* tables and ~aegir/.drush/cache — the
+  # ONLY writes this tool makes outside /tmp, self-healing on the target
+  # estate. Set A2B_NO_DRUSH=1 to skip it for a strictly read-only run (the
+  # frontend then reports as unavailable, which is non-blocking for stage 2).
+  if [[ "${A2B_NO_DRUSH}" = "1" ]]; then
+    _FRONTEND_RC=126
+    _note "NOTE" "drush health check skipped (A2B_NO_DRUSH=1) - strictly read-only run"
+  elif [[ -n "${_DRUSH_BIN}" ]]; then
+    _run_to "${_DRUSH_TMOUT}" su -s /bin/bash - "${_AEGIR_USER}" \
+      -c "${_DRUSH_BIN} @hostmaster status 2>/dev/null" > "${_TMPD}/hm_status.txt"
+    _FRONTEND_RC=$?
+    grep -qs -E 'Drupal bootstrap.*Success|Successful' "${_TMPD}/hm_status.txt" && _FRONTEND_BOOT=YES
+    # the PHP drush actually runs under = the real site-operation runtime (§3.2)
+    _DRUSH_PHP="$(sed -n 's/.*PHP version[[:space:]]*:[[:space:]]*//p' "${_TMPD}/hm_status.txt" 2>/dev/null | head -n1 | tr -d ' ')"
+    _DRUSH_PHP_BIN="$(sed -n 's/.*PHP \(executable\|binary\)[[:space:]]*:[[:space:]]*//p' "${_TMPD}/hm_status.txt" 2>/dev/null | head -n1 | tr -d ' ')"
+    # fallback: some drush builds print only a "PHP configuration" ini path
+    # (e.g. /opt/php84/lib/php.ini) — derive a major.minor from phpNN there
+    if [[ -z "${_DRUSH_PHP}" ]]; then
+      _DRUSH_PHP="$(grep -oE 'php[0-9]{2,3}' "${_TMPD}/hm_status.txt" 2>/dev/null | head -n1 \
+        | sed -E 's/^php([0-9])([0-9])$/\1.\2/; s/^php([0-9])([0-9])([0-9])$/\1.\2\3/')"
+    fi
+  else
+    _FRONTEND_RC=127
+  fi
+  if [[ "${_FRONTEND_BOOT}" != "YES" ]]; then
+    _s1_warn frontend_bootstrap_failed "drush @hostmaster status did not bootstrap (rc=${_FRONTEND_RC}) - GUI-driven flip unavailable"
+    _s2_warn frontend_bootstrap_failed "frontend down - stage 2 reads state directly, non-blocking but surfaced"
+  fi
+  # D8+/composer platforms on old drush (spec §2 drush band)
+  if [[ "${_D8PLUS_SEEN}" = "YES" ]]; then
+    case "${_DRUSH_VRN}" in
+      8*|9*|1[0-9]*) : ;;
+      *) _s2_warn d8_needs_drush8 "D8+ platform(s) present but no Drush 8 found (have: ${_DRUSH_VRN:-none})" ;;
+    esac
+  fi
+}
+
+_FREE_DUMP_MB=""
+
+probe_disk() {
+  local _t _free
+  for _t in "${_AEGIR_ROOT}" /var/lib/mysql /tmp /; do
+    _free="$(df -Pm "${_t}" 2>/dev/null | awk 'NR==2{print $4}')"
+    _tsv_row disk "${_t}" "${_free:-?}"
+    [[ "${_t}" = "${_AEGIR_ROOT}" ]] && _FREE_DUMP_MB="${_free}"
+  done
+  if [[ -n "${_FREE_DUMP_MB}" && "${_EST_DUMP_MB}" -gt 0 ]] 2>/dev/null; then
+    if [[ "${_FREE_DUMP_MB}" -lt "${_EST_DUMP_MB}" ]]; then
+      _s2_fail dump_headroom "free ${_FREE_DUMP_MB}MB on ${_AEGIR_ROOT} < estimated dump ${_EST_DUMP_MB}MB"
+    elif [[ "${_FREE_DUMP_MB}" -lt $((_EST_DUMP_MB * 3 / 2)) ]]; then
+      _s2_warn dump_headroom_tight "free ${_FREE_DUMP_MB}MB vs estimated dump ${_EST_DUMP_MB}MB - tight"
+    fi
+  fi
+}
+
+###--- Gating (spec §7.3 floors) --------------------------------------------###
+
+_S1_VERDICT=PASS
+_S2_VERDICT=PASS
+
+gate_stages() {
+  case "${_FLOOR}" in
+    BOA)
+      _s1_fail boa_box_not_vanilla "this is a BOA box - use the native BOA xoct path, not aegir2boa"
+      _s2_fail boa_box_not_vanilla "this is a BOA box - use the native BOA xoct path, not aegir2boa"
+      ;;
+    NOT_AEGIR)
+      _s1_fail not_aegir_box "no provision.info, no hostmaster platform, no aliases under ${_AEGIR_ROOT} - not an Ægir box"
+      _s2_fail not_aegir_box "no Ægir inventory obtainable from any tier"
+      ;;
+    LT3)
+      _s1_fail aegir_lt3 "Ægir < 3.x markers found (provision ${_PROV_VRN:-?}, platform $(basename "${_HM_PLATFORM:-?}"), core ${_CORE_HOSTING:-?})"
+      _s2_fail aegir_lt3 "Ægir < 3.x - refused before deeper probing"
+      ;;
+  esac
+
+  # stage-2 inventory floor: both tiers dead = no inventory
+  if [[ "${_FLOOR}" = "OK" && "${_N_SITES}" -eq 0 ]]; then
+    if [[ "${_DB_OK}" != "YES" ]]; then
+      _s2_fail no_inventory "zero site aliases on disk AND hostmaster DB unreadable - nothing to migrate from"
+    else
+      _note "NOTE" "zero sites found via aliases; DB rows (if any) are in the sites/context tables"
+    fi
+  fi
+
+  [[ -n "${_S1_FAIL}" ]] && _S1_VERDICT=FAIL
+  [[ -z "${_S1_FAIL}" && -n "${_S1_WARN}" ]] && _S1_VERDICT=WARN
+  [[ -n "${_S2_FAIL}" ]] && _S2_VERDICT=FAIL
+  [[ -z "${_S2_FAIL}" && -n "${_S2_WARN}" ]] && _S2_VERDICT=WARN
+}
+
+###--- Emission ---------------------------------------------------------------###
+
+_emit_tsv_section() {
+  # 1=name 2=header (tab-separated)
+  local _name="$1" _hdr="$2"
+  printf '#TSV:%s  %s\n' "${_name}" "${_hdr}" >> "${_OUT_ENV}"
+  [[ -s "${_TMPD}/${_name}.tsv" ]] && cat "${_TMPD}/${_name}.tsv" >> "${_OUT_ENV}"
+  printf '#ENDTSV:%s\n' "${_name}" >> "${_OUT_ENV}"
+}
+
+emit_machine() {
+  : > "${_OUT_ENV}"
+  {
+    echo "# aegir2boa-preflight machine contract - scalars are safe to source"
+    echo "# generated $(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null) on ${_HOST}"
+  } >> "${_OUT_ENV}"
+
+  _env_kv A2B_SCHEMA_VERSION "${_A2B_SCHEMA_VERSION}"
+  _env_kv A2B_TOOL_VERSION "${_A2B_VERSION}"
+  _env_kv A2B_TS "${_TS}"
+  _env_kv A2B_HOST "${_HOST}"
+  _env_kv A2B_AEGIR_ROOT "${_AEGIR_ROOT}"
+  _env_kv A2B_AEGIR_USER "${_AEGIR_USER}"
+  _env_kv A2B_AEGIR_USER_OK "${_AEGIR_USER_OK}"
+  _env_kv A2B_AEGIR_UID "${_AEGIR_UID}"
+  _env_kv A2B_AEGIR_GID "${_AEGIR_GID}"
+  _env_kv A2B_OS_ID "${_OS_ID}"
+  _env_kv A2B_OS_VERSION "${_OS_VRN}"
+  _env_kv A2B_INIT "${_INIT_SYS}"
+  _env_kv A2B_KERNEL "$(uname -r 2>/dev/null)"
+  _env_kv A2B_ARCH "$(uname -m 2>/dev/null)"
+  _env_kv A2B_BOA_BOX "${_BOA_BOX}"
+  _env_kv A2B_AEGIR_BACKEND_VERSION "${_PROV_VRN}"
+  _env_kv A2B_PROVISION_INFO "${_PROV_INFO}"
+  _env_kv A2B_HM_PLATFORM "${_HM_PLATFORM}"
+  _env_kv A2B_CORE_HOSTING "${_CORE_HOSTING}"
+  _env_kv A2B_HOSTING_SCHEMA "${_HOSTING_SCHEMA}"
+  _env_kv A2B_HM_DB "${_HM_DB}"
+  _env_kv A2B_HM_SITE_NID "${_HM_SITE_NID}"
+  _env_kv A2B_MYSQL_VERSION "${_MYSQL_VRN}"
+  _env_kv A2B_DB_ACCESS "${_DB_MODE}"
+  _env_kv A2B_HTTP_SERVICE_TYPE "${_HTTP_TYPE_DB}"
+  _env_kv A2B_HTTP_SERVICE_FS "${_HTTP_TYPE_FS}"
+  _env_kv A2B_HTTP_SERVERS "${_HTTP_SERVERS_N}"
+  _env_kv A2B_APACHE_VERSION "${_APACHE_VRN}"
+  _env_kv A2B_MODPHP "${_MODPHP}"
+  _env_kv A2B_FPM_PRESENT "${_FPM_PRESENT}"
+  _env_kv A2B_FPM_INSTALLABLE "${_FPM_INSTALLABLE}"
+  _env_kv A2B_SUDO_NGINX "${_SUDO_NGINX}"
+  _env_kv A2B_DRUSH_BIN "${_DRUSH_BIN}"
+  _env_kv A2B_DRUSH_VERSION "${_DRUSH_VRN}"
+  _env_kv A2B_DRUSH_PHP "${_DRUSH_PHP}"
+  _env_kv A2B_DRUSH_PHP_BIN "${_DRUSH_PHP_BIN}"
+  _env_kv A2B_FRONTEND_BOOT "${_FRONTEND_BOOT}"
+  _env_kv A2B_QUEUE_MODEL "${_QUEUE_MODEL}"
+  _env_kv A2B_QUEUE_FRESH "${_QUEUE_FRESH}"
+  _env_kv A2B_HOSTING_DNS "${_HOSTING_DNS}"
+  _env_kv A2B_EXT_LE_CLIENT "${_EXT_LE}"
+  _env_kv A2B_D8PLUS_SEEN "${_D8PLUS_SEEN}"
+  _env_kv A2B_N_PLATFORMS "${_N_PLATFORMS}"
+  _env_kv A2B_N_SITES "${_N_SITES}"
+  _env_kv A2B_N_CUSTOM_HTACCESS "${_N_CUSTOM_HTACCESS}"
+  _env_kv A2B_N_CUSTOM_APACHE "${_N_CUSTOM_APACHE}"
+  _env_kv A2B_MAX_DNS_TTL "${_MAX_TTL}"
+  _env_kv A2B_DISK_FREE_DUMP_TARGET_MB "${_FREE_DUMP_MB}"
+  _env_kv A2B_ESTIMATED_DUMP_MB "${_EST_DUMP_MB}"
+  _env_kv A2B_STAGE1_VERDICT "${_S1_VERDICT}"
+  _env_kv A2B_STAGE2_VERDICT "${_S2_VERDICT}"
+  _env_kv A2B_STAGE1_FAIL_REASONS "${_S1_FAIL}"
+  _env_kv A2B_STAGE1_WARN_REASONS "${_S1_WARN}"
+  _env_kv A2B_STAGE2_FAIL_REASONS "${_S2_FAIL}"
+  _env_kv A2B_STAGE2_WARN_REASONS "${_S2_WARN}"
+  cat "${_TMPD}/scalars.env" >> "${_OUT_ENV}"
+  echo "" >> "${_OUT_ENV}"
+
+  _emit_tsv_section servers "context	title	service	type	restart_cmd"
+  _emit_tsv_section platforms "name	root	core	build	contrib	web_server	php_band"
+  _emit_tsv_section sites "domain	platform	db_server	db_name	files_mb	db_mb	ssl	redirect	status	verified	client	profile	language"
+  _emit_tsv_section custom_htaccess "platform_root	path	flag	sha	sha_differs	directives"
+  _emit_tsv_section custom_apache "kind	path	detail"
+  _emit_tsv_section ssl "domain	tree	key	crt	issuer"
+  _emit_tsv_section dns_ttl "domain	ttl	a_records"
+  _emit_tsv_section hosting_modules "name	status	schema_version"
+  _emit_tsv_section hosting_context "nid	name"
+  _emit_tsv_section context_drift "context	db_says	fs_says"
+  _emit_tsv_section php_bins "name	path	version	notes"
+  _emit_tsv_section drush_bins "kind	path	version"
+  _emit_tsv_section crontabs "who	entry"
+  _emit_tsv_section tenants "program	detail"
+  _emit_tsv_section site_services "domain	service	file"
+  _emit_tsv_section disk "path	free_mb"
+}
+
+_emit_table() {
+  # 1=title 2=tsv name — pretty block for the human report
+  local _title="$1" _name="$2"
+  [[ -s "${_TMPD}/${_name}.tsv" ]] || return 0
+  {
+    echo ""
+    echo "-- ${_title} ($(wc -l < "${_TMPD}/${_name}.tsv" | tr -d ' ')) --"
+    column -t -s '	' "${_TMPD}/${_name}.tsv" 2>/dev/null || cat "${_TMPD}/${_name}.tsv"
+  } >> "${_OUT_TXT}"
+}
+
+emit_human() {
+  : > "${_OUT_TXT}"
+  {
+    echo "== aegir2boa preflight :: ${_HOST} :: ${_TS} =="
+    echo "STAGE 1 (in-place Apache->Nginx):  ${_S1_VERDICT}"
+    echo "STAGE 2 (remote xoct -> BOA):      ${_S2_VERDICT}"
+    echo ""
+    echo "-- blocking / notable --"
+    if [[ -s "${_TMPD}/notes.txt" ]]; then
+      cat "${_TMPD}/notes.txt"
+    else
+      echo "  (none)"
+    fi
+    echo ""
+    echo "-- environment --"
+    echo "  OS ${_OS_ID} ${_OS_VRN} (${_INIT_SYS}) | Ægir ${_PROV_VRN:-?} @ ${_AEGIR_ROOT} (user ${_AEGIR_USER})"
+    echo "  http: db=${_HTTP_TYPE_DB:-?} fs=${_HTTP_TYPE_FS:-?} servers=${_HTTP_SERVERS_N} | apache: ${_APACHE_VRN:-?}"
+    echo "  mysql: ${_MYSQL_VRN:-?} (access: ${_DB_MODE}) | hostmaster db: ${_HM_DB:-?} schema: ${_HOSTING_SCHEMA:-?}"
+    echo "  drush: ${_DRUSH_BIN:-?} ${_DRUSH_VRN:-} (runtime php ${_DRUSH_PHP:-?}) | frontend boot: ${_FRONTEND_BOOT} | queue: ${_QUEUE_MODEL} fresh=${_QUEUE_FRESH}"
+    echo "  php-fpm: present=${_FPM_PRESENT} installable=${_FPM_INSTALLABLE} mod_php=${_MODPHP} | sudo nginx line: ${_SUDO_NGINX}"
+    echo "  disk: free ${_FREE_DUMP_MB:-?}MB on ${_AEGIR_ROOT} vs est. dump ${_EST_DUMP_MB}MB | max DNS TTL: ${_MAX_TTL}"
+  } >> "${_OUT_TXT}"
+
+  _emit_table "servers" servers
+  _emit_table "platforms" platforms
+  _emit_table "sites" sites
+  _emit_table "custom .htaccess census" custom_htaccess
+  _emit_table "custom apache config" custom_apache
+  _emit_table "ssl" ssl
+  _emit_table "dns ttl" dns_ttl
+  _emit_table "stage-2 spike: hosting modules" hosting_modules
+  _emit_table "stage-2 spike: hosting_context (nid->name)" hosting_context
+  _emit_table "context drift (db vs disk)" context_drift
+  _emit_table "php binaries" php_bins
+  _emit_table "drush" drush_bins
+  _emit_table "crontabs" crontabs
+  _emit_table "non-Ægir tenants" tenants
+  _emit_table "site backing services" site_services
+  _emit_table "disk" disk
+
+  {
+    echo ""
+    echo "machine contract: ${_OUT_ENV}"
+  } >> "${_OUT_TXT}"
+}
+
+###--- Main --------------------------------------------------------------------###
+
+main() {
+  _check_root
+  _acquire_lock
+
+  _TMPD="$(mktemp -d /tmp/aegir2boa-preflight.XXXXXX)" || _die "mktemp failed"
+  _TS="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)"
+  _HOST="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo unknown)"
+  _OUT_TXT="/tmp/aegir2boa-preflight.${_HOST}.${_TS}.txt"
+  _OUT_ENV="/tmp/aegir2boa-preflight.${_HOST}.${_TS}.env"
+
+  _msg "aegir2boa-preflight ${_A2B_VERSION} - read-only discovery on ${_HOST}"
+  _info "root: ${_AEGIR_ROOT}"
+
+  probe_os
+  probe_version_floor
+
+  if [[ "${_FLOOR}" != "OK" ]]; then
+    if [[ "${_FLOOR}" = "BOA" && "${A2B_ALLOW_BOA}" = "1" ]]; then
+      # inspection/testing escape hatch: probe a BOA box's /var/aegir master
+      # anyway. Verdicts REMAIN FAIL (boa_box_not_vanilla) — only the bail is
+      # skipped; this never authorises a migration run.
+      _alrt "BOA box detected - continuing under A2B_ALLOW_BOA=1 (verdicts stay FAIL)"
+    else
+      # hard floor: name the box for what it is, emit, refuse deeper probing
+      _alrt "floor check failed (${_FLOOR}) - emitting minimal report and stopping"
+      gate_stages
+      emit_human
+      emit_machine
+      _msg "report:  ${_OUT_TXT}"
+      _msg "machine: ${_OUT_ENV}"
+      exit 3
+    fi
+  fi
+
+  probe_db_basics
+  probe_hosting_state
+  probe_service_type
+  probe_php
+  probe_apache
+  probe_platforms
+  probe_sites
+  probe_htaccess
+  probe_ssl
+  probe_dns
+  probe_cron
+  probe_tenants
+  probe_frontend
+  probe_disk
+
+  gate_stages
+  emit_human
+  emit_machine
+
+  _msg "STAGE 1: ${_S1_VERDICT}   STAGE 2: ${_S2_VERDICT}"
+  _msg "report:  ${_OUT_TXT}"
+  _msg "machine: ${_OUT_ENV}"
+  # a pre-3.x box detectable only by its DB schema (<7000) is caught after the
+  # early floor gate; honour the "3 = hard floor" contract with the same code.
+  [[ "${_FLOOR}" = "LT3" ]] && exit 3
+  exit 0
+}
+
+main "$@"
