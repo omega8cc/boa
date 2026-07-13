@@ -28,17 +28,17 @@ For continued access to new features, ongoing improvements, and a future-proof s
 
 ## MAJOR NEW FEATURES RELEASED IN BOA LTS/PRO
 
-- **Backdrop CMS Support**: Backdrop as a first-class platform — auto-built platforms, full site lifecycle, bee CLI, and safe copy-based Drupal 7 upgrades (PRO/LTS)
-- **Import from Classic Ægir**: Import from remote classic Ægir servers using Nginx or Apache, with per-site revert until final cutover (PRO/LTS)
-- **HTTP/3 on QUIC with KTLS Magic**: Strap in, your sites are getting an F1 engine (PRO/LTS)
-- **Drupal 11 with Ægir 3**: They Said It Couldn’t Be Done — We Did It Anyway (PRO/LTS)
-- **Debian Trixie and Devuan Excalibur**: Ensure compatibility for installation and automated upgrades (PRO/LTS)
-- **Debian Bookworm and Devuan Daedalus**: Ensure compatibility for installation and automated upgrades (PRO/LTS)
-- **Percona for MySQL 8.4**: Add support for Percona Server 8.4, the new Percona LTS (PRO/LTS)
-- **Original MySQL 8.4**: Add support for original MySQL Server 8.4 on Trixie/Excalibur (PRO/LTS)
-- **Percona for MySQL 8.0**: Add support for Percona Server 8.0, necessary for Drupal 11 (PRO/LTS)
-- **Super Fast System AutoInit**: Facilitate easy upgrades to the latest Devuan before BOA installation (PRO/LTS)
-- **Use OpenSSL 3 by default**: Maintain compatibility with OpenSSL 1.1.1 for legacy PHP versions (PRO/LTS)
+- **Backdrop CMS Support**: First-class platform — site lifecycle, bee CLI, safe Drupal 7 upgrades
+- **Import from Classic Ægir**: Import from remote Ægir servers (Nginx or Apache) with per-site revert
+- **HTTP/3 on QUIC with KTLS Magic**: Strap in, your sites are getting an F1 engine
+- **Drupal 11 with Ægir 3**: They Said It Couldn’t Be Done — We Did It Anyway
+- **Debian Trixie and Devuan Excalibur**: Ensure compatibility for installation and automated upgrades
+- **Debian Bookworm and Devuan Daedalus**: Ensure compatibility for installation and automated upgrades
+- **Percona for MySQL 8.4**: Add support for Percona Server 8.4, the new Percona LTS
+- **Original MySQL 8.4**: Add support for original MySQL Server 8.4 on Trixie/Excalibur
+- **Percona for MySQL 8.0**: Add support for Percona Server 8.0, necessary for Drupal 11
+- **Super Fast System AutoInit**: Facilitate easy upgrades to the latest Devuan before BOA installation
+- **Use OpenSSL 3 by default**: Maintain compatibility with OpenSSL 1.1.1 for legacy PHP versions
 
 ## OTHER NEW FEATURES RELEASED IN BOA LTS/PRO
 
