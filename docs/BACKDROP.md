@@ -321,11 +321,11 @@ exercised across multiple batch passes; the wrong-source refusal
 (a Drupal 7 site offered to step 1) creating nothing; and the kit
 fetched from the public mirror by the Octopus upgrade run.
 
-Not yet drilled, stated honestly:
+A Backdrop **Restore** round-trip is drilled too (2026-07): backup and
+restore tasks on an upgraded copy, content and serving verified intact
+afterwards.
 
-- A Backdrop **Restore** round-trip. It shares the deploy-from-backup
-  machinery the proven clone path exercises, but it has not been
-  separately drilled.
+Not yet drilled, stated honestly:
 
 - Enabling Encryption/LE on an upgraded copy afterwards (it is the
   standard per-site LE flow, but it has not been exercised specifically
