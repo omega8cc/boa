@@ -367,6 +367,18 @@ the same site onto a free domain with no delete step. Refusals drilled:
 taking over the site's own domain, taking over the hosting front-end,
 and running cutover on a Drupal-lineage site (backend validation).
 
+**The default-on posture** is drilled on a fresh install (2026-07): a
+stock one-command BOA install with zero Backdrop configuration landed
+`_BACKDROP_SUPPORT=YES` in both control files, staged bee and the
+D6 → D7 kit from the mirror, enabled the Backdrop frontend module with
+all its task permissions (including Cutover), and — once the operator
+listed BDR in the standard platforms control file — built and verified
+all three Backdrop platforms. The opt-out is drilled on the same box:
+with `_BACKDROP_SUPPORT=NO` an upgrade run stages nothing new (the
+removed kit stays absent) while everything already provisioned keeps
+serving — opting out disables provisioning surfaces, it never tears
+down existing sites or platforms.
+
 Not yet drilled, stated honestly:
 
 - Conversions of imported legacy utf8 estates (see the collation note).
