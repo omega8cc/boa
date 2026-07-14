@@ -39,9 +39,7 @@
 ### Helper variables
 ###
 export _bldPth="/opt/tmp/boa"
-_crlRmErr=""
-if curl --help all 2>/dev/null | grep -q remove-on-error; then _crlRmErr="--remove-on-error"; fi
-export _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 ${_crlRmErr} -A iCab"
+export _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 export _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 export _filIncO="octopus.sh.cnf"
 export _gCb="git clone --branch"

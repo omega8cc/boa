@@ -8,9 +8,7 @@ export _xSrl=5103devT01
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
-_crlRmErr=""
-if curl --help all 2>/dev/null | grep -q remove-on-error; then _crlRmErr="--remove-on-error"; fi
-_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 ${_crlRmErr} -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"

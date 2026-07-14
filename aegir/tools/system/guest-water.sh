@@ -9,9 +9,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # BOA-canonical fetch options (the shared _crlGet): verified TLS, follow up to 3
 # redirects, --fail so an HTTP error yields no body (an error page is never parsed
 # as ranges), retry transient failures, iCab UA.
-_crlRmErr=""
-if curl --help all 2>/dev/null | grep -q remove-on-error; then _crlRmErr="--remove-on-error"; fi
-_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 ${_crlRmErr} -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 
 # Strict IPv4 / IPv4-CIDR validation. These lists feed the csf ALLOW whitelist,
 # so only value-valid addresses (each octet 0-255, prefix 0-32) may be written:

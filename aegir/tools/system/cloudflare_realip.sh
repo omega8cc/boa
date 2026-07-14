@@ -28,9 +28,7 @@ _min_ranges=8
 # BOA-canonical fetch options (same _crlGet used across BOA): verified TLS, follow
 # up to 3 redirects, --fail so an HTTP error yields no body (an error page is never
 # parsed as ranges), retry transient failures, iCab UA.
-_crlRmErr=""
-if curl --help all 2>/dev/null | grep -q remove-on-error; then _crlRmErr="--remove-on-error"; fi
-_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 ${_crlRmErr} -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 
 # Cloudflare publishes its ranges at these no-auth endpoints (same source the
 # csf.allow whitelist in *-water.sh uses); the JSON API carries both families.

@@ -12,9 +12,7 @@ _verify_boa_keys() {
   fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
-    _crlRmErr=""
-    if curl --help all 2>/dev/null | grep -q remove-on-error; then _crlRmErr="--remove-on-error"; fi
-    _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 ${_crlRmErr} -A iCab"
+    _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
     _urlEnc="https://files.boa.io/enc/2024"
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _encName=$(echo ${_hName} \

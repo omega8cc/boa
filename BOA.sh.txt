@@ -64,9 +64,7 @@ _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
-_crlRmErr=""
-if curl --help all 2>/dev/null | grep -q remove-on-error; then _crlRmErr="--remove-on-error"; fi
-_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 ${_crlRmErr} -A iCab"
+_crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
@@ -1415,11 +1413,11 @@ _update_agents() {
   _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f90 --guard /local/bin/xoct
   _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/tools/bin/xcopy" f92 --guard /local/bin/xcopy
   _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f93 --guard /local/bin/xmass
-  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f96 --guard /local/bin/autobeowulf
-  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f96 --guard /local/bin/autoexcalibur
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f85 --guard /local/bin/boa
-  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f86 --guard /local/bin/barracuda
-  _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f94 --guard /local/bin/octopus
+  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f97 --guard /local/bin/autobeowulf
+  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f97 --guard /local/bin/autoexcalibur
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f86 --guard /local/bin/boa
+  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f87 --guard /local/bin/barracuda
+  _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f95 --guard /local/bin/octopus
   _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f98 --guard /local/bin/dhcpfix
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f97 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
   _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/tools/bin/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
@@ -1450,12 +1448,12 @@ _update_agents() {
   fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f98 --guard duplicity
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f34 --guard duplicity
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f99 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f35 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity
   fi
   if [ -d "/root/.remote_backups/run" ]; then
-    _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f47
+    _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f48
     _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f48
     _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
     _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f48
@@ -1464,8 +1462,8 @@ _update_agents() {
     _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48
   fi
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f98 --guard duplicity
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f98 --guard duplicity
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f56
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f79
@@ -1504,7 +1502,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f92
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f88
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f98
-    _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f97
+    _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
     # cron; the tool no-ops when nginx is absent and is idempotent otherwise.
@@ -1519,9 +1517,9 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f83
     # autoupboa/fixmounts are also fetched by _update_boa_tools and share its
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f53 --guard autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f54 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f90
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f91
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f93
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f84
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f91
@@ -1593,14 +1591,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f54.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f55.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f54.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f55.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_ltd_users.sh.old
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
@@ -1612,14 +1610,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${_pthLog}/manage_solr_config.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_solr_config.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_solr_config.sh.old
       rm -f /run/manage_solr_config.pid
     else
@@ -1650,7 +1648,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f89
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f85
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f86
 
   if ! grep -q "bee eval" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
@@ -3618,16 +3616,16 @@ _update_boa_tools() {
     # --- shared with _update_agents (serials MUST match that function) ---
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f97 --guard /local/bin/aptfast
-    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f96 --guard /local/bin/autobeowulf
-    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f96 --guard /local/bin/autoexcalibur
+    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f97 --guard /local/bin/autobeowulf
+    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f97 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f80 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f53 --guard /local/bin/autoupboa
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f98 --guard /local/bin/backboa
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f86 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f85 --guard /local/bin/boa
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard /local/bin/dcysetup
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f54 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f99 --guard /local/bin/backboa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f88 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f87 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f99 --guard /local/bin/dcysetup
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f98 --guard /local/bin/duobackboa
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f99 --guard /local/bin/duobackboa
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f95 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f99 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
@@ -3637,9 +3635,9 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/${_tBn}/loadguard" f98 --guard /local/bin/loadguard
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f96 --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f97 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f34 --guard /local/bin/multiback
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard /local/bin/multiback
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --guard /local/bin/mybackup
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f94 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f96 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f97 --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f98 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
@@ -3658,8 +3656,8 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f93 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f90 --guard /local/bin/xoct
     # --- unique to _update_boa_tools ---
-    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f97 --guard /local/bin/autochimaera
-    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f97 --guard /local/bin/autodaedalus
+    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f98 --guard /local/bin/autochimaera
+    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f98 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f99 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f99 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --guard /local/bin/backchain
@@ -3677,7 +3675,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f99 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f99 --guard /local/bin/sqlmagic
-    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f98 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f99 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f99 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f99 --guard /local/bin/vhostcheck
@@ -3686,7 +3684,7 @@ _update_boa_tools() {
     _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
     _wlOwlCnt=${_wlOwlCnt:-0}
     if (( _wlOwlCnt == 0 )); then
-      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f98 --guard /local/bin/weblogx
+      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f99 --guard /local/bin/weblogx
     else
       echo "The weblogx and owl.sh is running!"
     fi
