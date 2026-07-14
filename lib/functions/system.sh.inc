@@ -5019,6 +5019,13 @@ _ssl_install_src() {
       _SSL_DEB_PKG="boa-ssl-legacy"
     fi
     if _install_boa_deb "${_SSL_DEB_PKG}" "${_OPENSSL_BUILD_VRN}"; then
+      # On a fresh box the loader config has no /usr/local/ssl* entries yet
+      # and the deb payload carries no RPATH, so the version probe below
+      # would resolve the distro libssl (or nothing) and fail even though
+      # the installed tree is complete. Sync the loader paths first --
+      # existence-based and idempotent; the same call runs again right
+      # after _if_ssl_install_src returns.
+      _ssl_paths_sync
       _SSL_DEB_ITD=$(${_THIS_SSL_BINARY} version 2>&1 | awk '{print $2}')
       if [ -x "${_THIS_SSL_BINARY}" ] \
         && [ "${_SSL_DEB_ITD}" = "${_OPENSSL_BUILD_VRN}" ]; then
@@ -5026,6 +5033,9 @@ _ssl_install_src() {
         _msg "INFO: ${1} OpenSSL ${_OPENSSL_BUILD_VRN} installed from prebuilt package"
       else
         dpkg --purge "${_SSL_DEB_PKG}" &> /dev/null
+        # The sync above cached the now-purged libs; refresh so the source
+        # build window never serves cached paths to deleted files
+        ldconfig 2> /dev/null
         _msg "NOTE: Prebuilt ${_SSL_DEB_PKG} failed health check; building from sources"
       fi
     fi
