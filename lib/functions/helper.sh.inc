@@ -304,14 +304,32 @@ _install_boa_deb() {
   else
     dpkg -i "${_debFile}" &> /dev/null || _debOk=NO
   fi
-  if [ "${_debOk}" = "NO" ]; then
-    dpkg --purge "${_pkgName}" &> /dev/null
-    rm -f "${_debFile}" "${_debFile}.gz.sha256"
-    _msg "NOTE: dpkg -i ${_debFile} failed; falling back to sources"
-    return 1
-  fi
-  # Distro-lib Depends resolution; inter-boa ordering stays installer-enforced.
+  # apt-get -f install always runs next: on the success path it pulls the
+  # package's distro-lib Depends; on a dpkg -i FAILURE it completes a package
+  # left unpacked-but-unconfigured by a distro Depends that was not yet present
+  # (dpkg then exits non-zero), pulling the missing libs from the OS repos --
+  # the standard `dpkg -i` + `apt-get -f install` idiom, and the same deps the
+  # source path installs anyway. Fresh installs need this for the lowest PHP
+  # version built (boa-php83 in the default trio): its libc-client2007e Depends
+  # is absent until the first PHP source build would pull it in, so without this
+  # that one version always source-builds needlessly. Inter-boa ordering stays
+  # installer-enforced (boa-* Depends are deliberately omitted, so apt-get -f
+  # never drags a companion back to source). apt-get -f may instead REMOVE the
+  # package to reach a consistent state (a genuinely unsatisfiable Depends), so
+  # the failure path re-checks the dpkg status and only falls back to sources
+  # when the package is still not properly installed.
   _mrun "apt-get install -f ${_aptYesUnth}"
+  if [ "${_debOk}" = "NO" ]; then
+    if dpkg-query -W -f='${Status}' "${_pkgName}" 2>/dev/null \
+      | grep -q "install ok installed"; then
+      _debOk=YES
+    else
+      dpkg --purge "${_pkgName}" &> /dev/null
+      rm -f "${_debFile}" "${_debFile}.gz.sha256"
+      _msg "NOTE: dpkg -i ${_debFile} failed; falling back to sources"
+      return 1
+    fi
+  fi
   rm -f "${_debFile}" "${_debFile}.gz.sha256"
   ldconfig 2> /dev/null
   return 0
