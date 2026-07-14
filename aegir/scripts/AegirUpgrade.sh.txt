@@ -93,6 +93,23 @@ elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
   _T_CLI=/opt/php83/bin
 fi
+### _T_CLI must never be empty. If _PHP_CLI_VERSION arrived unresolved (a missing
+### or stale value in the sourced defaults can happen on a fast run), the branches
+### above leave _T_CLI empty and _DRUSHCMD becomes "/php ...". Fall back to the
+### live default CLI, then to any installed supported version.
+if [ -z "${_T_CLI}" ]; then
+  _T_CLI=$(readlink -f /usr/bin/php 2>/dev/null)
+  _T_CLI="${_T_CLI%/php}"
+  if [ -z "${_T_CLI}" ] || [ ! -x "${_T_CLI}/php" ]; then
+    _T_CLI=
+    for _fbV in 84 85 83; do
+      if [ -x "/opt/php${_fbV}/bin/php" ]; then
+        _T_CLI="/opt/php${_fbV}/bin"
+        break
+      fi
+    done
+  fi
+fi
 _ROOT="${HOME}"
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 #
