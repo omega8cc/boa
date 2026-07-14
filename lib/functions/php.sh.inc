@@ -1671,11 +1671,67 @@ _php_extensions_update() {
 
 #
 # Install modern PHP version
-_install_php_multi() {
+#
+# Install PHP /opt/phpNN from a prebuilt boa-phpNN package (_USE_PREBUILT_PKGS).
+# Sets _PHP_DEB_INSTALLED=YES only on verified success. Refuses non-default
+# build shapes -- the published packages are built with shipped defaults only,
+# and the package filename cannot encode a custom _PHP_EXTRA_CONF or a pinned
+# ICU linkage, so those boxes must keep the source path. Requires the companion
+# trees PHP links against (BOA OpenSSL, cURL, ICU for 8.1+) to be present
+# already: the normal install order provides them (packages or source) before
+# PHP, and BOA's self-heal checks (_check_php_ssl_version, _check_php_icu_version)
+# remain the runtime backstop.
+_install_php_deb() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _install_php_multi $1"
+    _msg "PROC: _install_php_deb $1"
   fi
-  _if_to_do_fix
+  _PHP_DEB_INSTALLED=NO
+  if [ -z "${_PHP_VERSION}" ] || [ -z "${1}" ]; then
+    return 1
+  fi
+  if [ -n "${_PHP_EXTRA_CONF}" ] || [ -n "${_ICU_FORCE_VRN}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Custom PHP build shape; skipping prebuilt boa-php${1}"
+    fi
+    return 1
+  fi
+  if [ ! -e "/usr/local/ssl3/lib64/libssl.so.3" ] \
+    || [ ! -x "/usr/local/ssl/bin/openssl" ] \
+    || [ ! -e "/usr/local/lib/libcurl.so.4" ]; then
+    _msg "NOTE: Companion libs missing; building PHP ${_PHP_VERSION} from sources"
+    return 1
+  fi
+  if [ "${1}" -ge 81 ] && [ ! -e "/usr/local/lib/icu/current" ]; then
+    _msg "NOTE: BOA ICU missing; building PHP ${_PHP_VERSION} from sources"
+    return 1
+  fi
+  if ! _install_boa_deb "boa-php${1}" "${_PHP_VERSION}"; then
+    return 1
+  fi
+  _PHP_DEB_ITD=$(/opt/php${1}/bin/php -v 2>/dev/null \
+    | grep ^PHP \
+    | head -1 \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ -x "/opt/php${1}/bin/php" ] \
+    && [ -x "/opt/php${1}/bin/phpize" ] \
+    && [ -x "/opt/php${1}/bin/php-config" ] \
+    && [ "${_PHP_DEB_ITD}" = "${_PHP_VERSION}" ]; then
+    _PHP_DEB_INSTALLED=YES
+    _msg "INFO: PHP ${_PHP_VERSION} installed from prebuilt package"
+    return 0
+  fi
+  dpkg --purge "boa-php${1}" &> /dev/null
+  _msg "NOTE: Prebuilt boa-php${1} failed health check; building from sources"
+  return 1
+}
+
+#
+# Build PHP /opt/phpNN from sources.
+_install_php_multi_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_php_multi_src $1"
+  fi
   _get_php_conf_extra
   _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   ###--------------------###
@@ -1940,6 +1996,23 @@ _install_php_multi() {
       sleep 180
       _msg "INFO: Moving on..."
     fi
+  fi
+}
+
+_install_php_multi() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_php_multi $1"
+  fi
+  _if_to_do_fix
+  # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the source
+  # build; the shared post-install below (CLI/phpize symlinks, extensions,
+  # FPM init script) runs unchanged for both paths.
+  _PHP_DEB_INSTALLED=NO
+  if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
+    _install_php_deb "$1"
+  fi
+  if [ "${_PHP_DEB_INSTALLED}" = "NO" ]; then
+    _install_php_multi_src "$1"
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
     rm -f /usr/bin/php

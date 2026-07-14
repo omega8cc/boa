@@ -1213,15 +1213,20 @@ _PHP_IONCUBE=NO
 _PHP_MONGODB=NO
 
 ###
-### When set to YES it will force OpenSSH
-### re-install from sources (Debian only)
+### When set to YES the heavy stack components
+### (OpenSSL, cURL, ICU, PHP) are installed from
+### prebuilt per-release packages published on
+### the BOA mirrors, with automatic fallback to
+### the source build for any component that has
+### no matching package. NO always builds from
+### sources.
 ###
-_SSH_FROM_SOURCES=YES
+_USE_PREBUILT_PKGS=NO
 
 ###
 ### When set to YES it will force OpenSSH
-### armoured configuration, if the option
-### _SSH_FROM_SOURCES is set to YES
+### armoured configuration for the BOA-built
+### OpenSSH.
 ###
 _SSH_ARMOUR=NO
 
