@@ -255,6 +255,69 @@ _get_dev_arch() {
 }
 
 #
+# Fetch a prebuilt boa-* .deb with its sha256 sidecar from the dev mirror and
+# install it with dpkg. Generalizes the mydumper prebuilt-deb precedent for the
+# heavy stack components behind _USE_PREBUILT_PKGS. The sidecar hashes the
+# COMPRESSED file, so verification happens before gunzip. Any failure cleans up
+# and returns 1 so the caller falls through to its untouched source-build
+# branch; a failed dpkg -i is purged first so no half-installed record lingers
+# under files the source build then overwrites. Callers own the inter-package
+# ordering and the component health check -- control files carry distro-lib
+# Depends only, because a companion installed via source fallback has the
+# correct tree but no dpkg record.
+_install_boa_deb() {
+  local _pkgName="${1}"
+  local _pkgVrn="${2}"
+  local _debFile="${_pkgName}_${_pkgVrn}.${_OS_CODE}_amd64.deb"
+  local _debSum=""
+  local _debOk=YES
+  if [ -z "${_pkgName}" ] || [ -z "${_pkgVrn}" ] || [ -z "${_OS_CODE}" ]; then
+    return 1
+  fi
+  mkdir -p /var/opt
+  cd /var/opt
+  rm -f "${_pkgName}"_*.deb "${_pkgName}"_*.deb.gz "${_pkgName}"_*.deb.gz.sha256
+  # Sidecar first: a cheap probe -- 404 means this (component, version,
+  # codename) is not published, which is the normal per-component opt-out.
+  if ! curl ${_crlGet} "${_urlDev}/${_debFile}.gz.sha256" -o "${_debFile}.gz.sha256"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: No prebuilt ${_debFile}.gz published for ${_OS_CODE}"
+    fi
+    rm -f "${_debFile}.gz.sha256"
+    return 1
+  fi
+  if ! curl ${_crlGet} "${_urlDev}/${_debFile}.gz" -o "${_debFile}.gz"; then
+    _msg "NOTE: Fetch of prebuilt ${_debFile}.gz failed; falling back to sources"
+    rm -f "${_debFile}.gz" "${_debFile}.gz.sha256"
+    return 1
+  fi
+  _debSum=$(awk '{print $1}' "${_debFile}.gz.sha256" 2>/dev/null)
+  if [ -z "${_debSum}" ] \
+    || ! echo "${_debSum}  ${_debFile}.gz" | sha256sum -c - &> /dev/null; then
+    _msg "NOTE: Checksum mismatch on ${_debFile}.gz; falling back to sources"
+    rm -f "${_debFile}.gz" "${_debFile}.gz.sha256"
+    return 1
+  fi
+  gunzip -q "${_debFile}.gz"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    dpkg -i "${_debFile}" || _debOk=NO
+  else
+    dpkg -i "${_debFile}" &> /dev/null || _debOk=NO
+  fi
+  if [ "${_debOk}" = "NO" ]; then
+    dpkg --purge "${_pkgName}" &> /dev/null
+    rm -f "${_debFile}" "${_debFile}.gz.sha256"
+    _msg "NOTE: dpkg -i ${_debFile} failed; falling back to sources"
+    return 1
+  fi
+  # Distro-lib Depends resolution; inter-boa ordering stays installer-enforced.
+  _mrun "apt-get install -f ${_aptYesUnth}"
+  rm -f "${_debFile}" "${_debFile}.gz.sha256"
+  ldconfig 2> /dev/null
+  return 0
+}
+
+#
 # Download and extract from dev/version mirror.
 _get_dev_ext() {
   if [ ! -z "${1}" ]; then
