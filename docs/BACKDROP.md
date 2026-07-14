@@ -314,11 +314,21 @@ copy — run Delete on the copy's node (or alias) and re-run the task.
   tasks for that). Backdrop → Backdrop and Drupal → Drupal both work.
 - **Collation note for imported estates**: BOA-native Drupal 7 databases
   are already utf8mb4 and convert cleanly. A Drupal 7 dump imported from
-  an old external server may still be utf8; on a Percona 8.4 box the
-  copy database defaults to utf8mb4, and a mixed pair can surface
-  illegal-collation errors on JOIN-heavy pages after conversion. If you
-  hit those, convert the source dump's tables to utf8mb4 first and
-  re-run the upgrade.
+  an old external server may still be 3-byte utf8 — and the Drupal 7
+  copy produced by the Drupal 6 step carries 3-byte tables too (that
+  was Drupal 6's era standard, whatever the server) — while on a
+  Percona 8.4 box new tables default to utf8mb4, so such sites end up
+  mixed and can surface illegal-collation errors on JOIN-heavy pages.
+  The dedicated **Convert database to utf8mb4** site task (Aegir
+  Extras / hosting_tasks_extra, works on any Drupal 7 site) fixes this:
+  probe first (an already-converted database completes as an honest
+  no-op), then backup, convert every utf8 table and text column in a
+  maintenance window, verify against information_schema, and back
+  online. Run it on a clone first, then on the real site; a converted
+  source then upgrades to Backdrop cleanly. Backdrop estates imported
+  from elsewhere with 3-byte tables have no converter (the extension is
+  Drupal-7-only by construction) — a documented gap, expected to stay
+  rare.
 
 ## Validation status
 
@@ -379,9 +389,22 @@ removed kit stays absent) while everything already provisioned keeps
 serving — opting out disables provisioning surfaces, it never tears
 down existing sites or platforms.
 
-Not yet drilled, stated honestly:
-
-- Conversions of imported legacy utf8 estates (see the collation note).
+**The utf8mb4 conversion task** is drilled end-to-end (2026-07) on a
+naturally mixed fixture (a Drupal 7 copy minted by the Drupal 6 step:
+53 tables and 170 text columns still 3-byte utf8 next to fresh utf8mb4
+tables): the probe reported the exact counts, the task took a fresh
+backup, converted in a maintenance window and verified the database
+fully utf8mb4 against information_schema (independently confirmed),
+with the site serving and JOIN-heavy listings clean afterwards — and a
+Backdrop upgrade of the converted site produced a serving copy with
+zero 3-byte tables, closing the illegal-mix scenario for good. The
+drill also hit a real transient ALTER deadlock against a live request:
+the task failed honestly (backup named in the log, site brought back
+online) and the re-run converted the remainder — which is why the task
+now retries transient failures internally. Also drilled: the honest
+no-op on a BOA-native site (green, no backup, no maintenance window)
+and the refusals on a Backdrop site and a Drupal 6 site (validation
+refuses before any side effect).
 
 Out of scope by decision: placing the copy database on a different
 database server than the source.
