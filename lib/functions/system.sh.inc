@@ -7008,20 +7008,25 @@ _if_proxysql_update() {
           rm -f ${_pNm}
         fi
         _tBn="tools/bin"
-        _tURL="${_urlHmr}/${_tBn}/proxysql_node_monitor"
-        _msg "PNM download URL is ${_tURL}"
-        curl -I ${_tURL}
-        curl ${_crlGet} "${_tURL}" -o ${_pNm}
-        if [ ! -e "${_pNm}" ]; then
-          curl ${_crlGet} "${_tURL}" -o ${_pNm}
+        # Prefer the copy already shipped in the extracted batch tree;
+        # the mirror fetch is the fallback when the tree is not available
+        if [ -e "${_bldPth}/aegir/${_tBn}/proxysql_node_monitor" ] \
+          && grep -q Vivaldi "${_bldPth}/aegir/${_tBn}/proxysql_node_monitor"; then
+          cp -af ${_bldPth}/aegir/${_tBn}/proxysql_node_monitor ${_pNm}
         else
-          _PAV_TEST=$(grep Vivaldi ${_pNm} 2>&1)
-          if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
-            rm -f ${_pNm}
+          _tURL="${_urlHmr}/${_tBn}/proxysql_node_monitor"
+          _msg "PNM download URL is ${_tURL}"
+          curl ${_crlGet} "${_tURL}" -o ${_pNm}
+          if [ ! -e "${_pNm}" ]; then
             curl ${_crlGet} "${_tURL}" -o ${_pNm}
+          else
+            _PAV_TEST=$(grep Vivaldi ${_pNm} 2>&1)
+            if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
+              rm -f ${_pNm}
+              curl ${_crlGet} "${_tURL}" -o ${_pNm}
+            fi
           fi
         fi
-        curl ${_crlGet} "${_tURL}" -o ${_pNm}
         ls -la ${_pNm}
         if [ -e "${_pNm}" ]; then
           chmod 755 ${_pNm}
@@ -7033,20 +7038,25 @@ _if_proxysql_update() {
           rm -f ${_pGc}
         fi
         _tBn="tools/bin"
-        _tURL="${_urlHmr}/${_tBn}/proxysql_galera_checker"
-        _msg "PGC download URL is ${_tURL}"
-        curl -I ${_tURL}
-        curl ${_crlGet} "${_tURL}" -o ${_pGc}
-        if [ ! -e "${_pGc}" ]; then
-          curl ${_crlGet} "${_tURL}" -o ${_pGc}
+        # Prefer the copy already shipped in the extracted batch tree;
+        # the mirror fetch is the fallback when the tree is not available
+        if [ -e "${_bldPth}/aegir/${_tBn}/proxysql_galera_checker" ] \
+          && grep -q Maestro "${_bldPth}/aegir/${_tBn}/proxysql_galera_checker"; then
+          cp -af ${_bldPth}/aegir/${_tBn}/proxysql_galera_checker ${_pGc}
         else
-          _PAV_TEST=$(grep Maestro ${_pGc} 2>&1)
-          if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
-            rm -f ${_pGc}
+          _tURL="${_urlHmr}/${_tBn}/proxysql_galera_checker"
+          _msg "PGC download URL is ${_tURL}"
+          curl ${_crlGet} "${_tURL}" -o ${_pGc}
+          if [ ! -e "${_pGc}" ]; then
             curl ${_crlGet} "${_tURL}" -o ${_pGc}
+          else
+            _PAV_TEST=$(grep Maestro ${_pGc} 2>&1)
+            if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
+              rm -f ${_pGc}
+              curl ${_crlGet} "${_tURL}" -o ${_pGc}
+            fi
           fi
         fi
-        curl ${_crlGet} "${_tURL}" -o ${_pGc}
         ls -la ${_pGc}
 
         if [ -e "${_pGc}" ]; then

@@ -6179,7 +6179,14 @@ _satellite_child_b_letsencrypt() {
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
   rm -f ${_ROOT}/backups/system/dehydrated*
-  curl ${_crlGet} "${_urlHmr}/helpers/dehydrated" -o ${_pthLe}
+  # Prefer the copy already shipped in the extracted batch tree;
+  # the mirror fetch is the fallback when the tree is not available
+  if [ -e "${_bldPth}/aegir/helpers/dehydrated" ] \
+    && grep -q "OSTYPE" "${_bldPth}/aegir/helpers/dehydrated"; then
+    cp -af ${_bldPth}/aegir/helpers/dehydrated ${_pthLe}
+  else
+    curl ${_crlGet} "${_urlHmr}/helpers/dehydrated" -o ${_pthLe}
+  fi
   if [ ! -e "${_leRoot}" ]; then
     _leSetup="YES"
   fi
