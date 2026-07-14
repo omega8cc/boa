@@ -170,6 +170,24 @@ elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
 fi
+### _T_CLI must never be empty. If _PHP_CLI_VERSION arrived unresolved (a missing
+### or stale value in the sourced defaults can happen on a fast install), the
+### branches above leave _T_CLI empty and _DRUSHCMD becomes "/php ...", failing
+### the install even though a working PHP is present. Fall back to the live
+### default CLI, then to any installed supported version.
+if [ -z "${_T_CLI}" ]; then
+  _T_CLI=$(readlink -f /usr/bin/php 2>/dev/null)
+  _T_CLI="${_T_CLI%/php}"
+  if [ -z "${_T_CLI}" ] || [ ! -x "${_T_CLI}/php" ]; then
+    _T_CLI=
+    for _fbV in 84 85 83 82 81 80 74; do
+      if [ -x "/opt/php${_fbV}/bin/php" ]; then
+        _T_CLI="/opt/php${_fbV}/bin"
+        break
+      fi
+    done
+  fi
+fi
 export _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
 export PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
