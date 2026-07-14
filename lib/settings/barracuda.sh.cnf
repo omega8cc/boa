@@ -1219,7 +1219,9 @@ _PHP_MONGODB=NO
 ### the BOA mirrors, with automatic fallback to
 ### the source build for any component that has
 ### no matching package. NO always builds from
-### sources.
+### sources. On Devuan Daedalus it defaults to
+### YES unless set explicitly in the cnf file,
+### which always wins, both ways.
 ###
 _USE_PREBUILT_PKGS=NO
 

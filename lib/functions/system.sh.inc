@@ -2229,6 +2229,25 @@ _barracuda_cnf() {
     grep -q "^_AUTOSYMLINK_NIGHTLY=" ${_barCnf} 2>/dev/null || _AUTOSYMLINK_NIGHTLY=YES
     grep -q "^_ORPHAN_FILES_REPORT=" ${_barCnf} 2>/dev/null || _ORPHAN_FILES_REPORT=YES
   fi
+  # Prebuilt heavy-stack packages default to YES on Devuan Daedalus, where the
+  # mirrors publish the complete boa-* set, but ONLY when the toggle is not
+  # already present in the cnf, so an explicit operator YES/NO always wins.
+  # Covers install (no cnf yet -- the generated cnf then records YES) and
+  # upgrade (resolved before the append-missing-vars pass below persists it).
+  # Probed locally: _os_detection runs later than this function, and on a
+  # minimal fresh box lsb-release may not be installed yet, hence the
+  # os-release fallback.
+  if ! grep -q "^_USE_PREBUILT_PKGS=" ${_barCnf} 2>/dev/null; then
+    local _osCodeNow
+    _osCodeNow=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+    if [ -z "${_osCodeNow}" ]; then
+      _osCodeNow=$(grep "^VERSION_CODENAME=" /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
+    fi
+    if [ "${_osCodeNow}" = "daedalus" ]; then
+      _USE_PREBUILT_PKGS=YES
+      _msg "INFO: Prebuilt stack packages enabled by default on Devuan Daedalus"
+    fi
+  fi
   _VMFAMILY=XEN
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -2379,7 +2398,13 @@ _barracuda_cnf() {
     echo "_SSH_PORT=${_SSH_PORT}"                             >> ${_barCnf}
     echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${_barCnf}
     echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"             >> ${_barCnf}
-    echo "_USE_PREBUILT_PKGS=${_USE_PREBUILT_PKGS}"           >> ${_barCnf}
+    # Written only when it resolved YES (the Daedalus default): freezing the
+    # NO baseline into a pre-Daedalus box's cnf would read as operator opt-out
+    # after a later major OS upgrade to Daedalus (same rule as the append pass
+    # for upgrades below).
+    if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
+      echo "_USE_PREBUILT_PKGS=${_USE_PREBUILT_PKGS}"         >> ${_barCnf}
+    fi
 
     echo "###"                                                >> ${_barCnf}
     echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}"           >> ${_barCnf}
@@ -2780,8 +2805,13 @@ _barracuda_cnf() {
       echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${_barCnf}
     fi
 
+    # Persisted only when it resolved YES (the Daedalus default at the top of
+    # this function): appending the NO default here would freeze it into the
+    # cnf of every pre-Daedalus box, where it would read as an operator
+    # opt-out after a later major OS upgrade to Daedalus.
     _USE_PREBUILT_PKGS_TEST=$(grep _USE_PREBUILT_PKGS ${_barCnf} 2>&1)
-    if [[ ! "${_USE_PREBUILT_PKGS_TEST}" =~ "_USE_PREBUILT_PKGS" ]]; then
+    if [[ ! "${_USE_PREBUILT_PKGS_TEST}" =~ "_USE_PREBUILT_PKGS" ]] \
+      && [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
       echo "_USE_PREBUILT_PKGS=${_USE_PREBUILT_PKGS}" >> ${_barCnf}
     fi
 
