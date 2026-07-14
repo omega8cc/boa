@@ -20,6 +20,50 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # Log directory for both modes.
 [ ! -d "/var/log/boa/core" ] && mkdir -p /var/log/boa/core
 
+# Deep contrib analysis state (set by --deep). _DEEP_REVIEW_COUNT accumulates findings that
+# make a core-compatible box REVIEW rather than a clean READY.
+_DEEP=0
+_DEEP_REVIEW_COUNT=0
+
+# MySQL 8.0 reserved words (the set BOA's own D7 core quotes; see drupal7x reservedKeyWords).
+# Used by the deep DB scan to spot a contrib TABLE named with a reserved word. Reserved-word
+# COLUMNS are intentionally NOT scanned: they are pervasive (key, order, group, ...) and always
+# quoted by the schema layer, so flagging them is noise, not signal.
+_RESERVED_WORDS="
+accessible add admin all alter analyze and as asc asensitive before
+between bigint binary blob both by call cascade case change char
+character check collate column condition constraint continue convert
+create cross cube cume_dist current_date current_time current_timestamp
+current_user cursor database databases day_hour day_microsecond
+day_minute day_second dec decimal declare default delayed delete
+dense_rank desc describe deterministic distinct distinctrow div double
+drop dual each else elseif empty enclosed escaped except exists exit
+explain false fetch first_value float float4 float8 for force foreign
+from fulltext function generated get grant group grouping groups having
+high_priority hour_microsecond hour_minute hour_second if ignore in
+index infile inner inout insensitive insert int int1 int2 int3 int4
+int8 integer intersect interval into io_after_gtids io_before_gtids is
+iterate join json_table key keys kill lag last_value lateral lead
+leading leave left like limit linear lines load localtime
+localtimestamp lock long longblob longtext loop low_priority
+master_bind master_ssl_verify_server_cert match maxvalue mediumblob
+mediumint mediumtext middleint minute_microsecond minute_second mod
+modifies natural no_write_to_binlog not nth_value ntile null numeric of
+on optimize optimizer_costs option optionally or order out outer
+outfile over partition percent_rank persist persist_only precision
+primary procedure purge range rank read read_write reads real recursive
+references regexp release rename repeat replace require resignal
+restrict return revoke right rlike row row_number rows schema schemas
+second_microsecond select sensitive separator set show signal smallint
+spatial specific sql sql_big_result sql_calc_found_rows
+sql_small_result sqlexception sqlstate sqlwarning ssl starting stored
+straight_join system table terminated then tinyblob tinyint tinytext to
+trailing trigger true undo union unique unlock unsigned update usage
+use using utc_date utc_time utc_timestamp values varbinary varchar
+varcharacter varying virtual when where while window with write xor
+year_month zerofill
+"
+
 # Function to get the core version of a codebase.
 # $1 = codebase path. Prints the version token (e.g. 7.105, 6.60, backdrop-1.35.x-dev) to stdout,
 # or an empty line if it cannot be determined. Diagnostics go to stderr.
@@ -234,6 +278,108 @@ run_path_mode() {
 }
 
 # ---------------------------------------------------------------------------
+# Deep contrib analysis: catch a compatible core that still breaks on 8.x via contrib
+# code or schema. High-precision, low-noise signals only (calibrated against real state).
+# ---------------------------------------------------------------------------
+
+# Static per-platform red-flags in contrib/custom module code. $1 = platform, $2 = log.
+# Flags NO_AUTO_CREATE_USER (a removed sql_mode -> error 1231 on 8.x, cannot be restored) and
+# TYPE=<engine> CREATE-TABLE syntax (removed). Increments _DEEP_REVIEW_COUNT.
+_deep_static_scan() {
+  local _plr="$1"
+  local _log="$2"
+  local _roots=()
+  local _hits
+  local _n
+  [ -d "${_plr}/sites/all/modules" ] && _roots+=("${_plr}/sites/all/modules")
+  if ls -d "${_plr}/sites/"*/modules 1> /dev/null 2>&1; then
+    _roots+=("${_plr}/sites/"*/modules)
+  fi
+  [ -d "${_plr}/modules/contrib" ] && _roots+=("${_plr}/modules/contrib")
+  [ -d "${_plr}/modules/custom" ] && _roots+=("${_plr}/modules/custom")
+  [ "${#_roots[@]}" -eq 0 ] && return 0
+
+  _hits=$(grep -rlI "NO_AUTO_CREATE_USER" "${_roots[@]}" \
+    --include=*.php --include=*.inc --include=*.module --include=*.install 2>/dev/null | sort -u)
+  if [ -n "${_hits}" ]; then
+    _n=$(echo "${_hits}" | wc -l | tr -d ' ')
+    _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + _n))
+    {
+      echo "  REVIEW  ${_plr}"
+      echo "    NO_AUTO_CREATE_USER in contrib/custom code (removed on MySQL 8.x, error 1231):"
+      echo "${_hits}" | sed 's/^/      /'
+    } | tee -a "${_log}"
+  fi
+
+  _hits=$(grep -rliE "type=(myisam|innodb|memory|heap)" "${_roots[@]}" \
+    --include=*.install --include=*.sql 2>/dev/null | sort -u)
+  if [ -n "${_hits}" ]; then
+    _n=$(echo "${_hits}" | wc -l | tr -d ' ')
+    _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + _n))
+    {
+      echo "  REVIEW  ${_plr}"
+      echo "    Removed CREATE TABLE 'TYPE=<engine>' syntax in .install/.sql:"
+      echo "${_hits}" | sed 's/^/      /'
+    } | tee -a "${_log}"
+  fi
+  return 0
+}
+
+# Box-wide live-schema signals via root /root/.my.cnf. $1 = log.
+# utf8mb3 tables (INFO only, does not flip the verdict) + reserved-word contrib TABLE names
+# excluding core 'system' (REVIEW). Skips cleanly if mysql/creds/connection are unavailable.
+_deep_db_scan() {
+  local _log="$1"
+  local _mycnf="/root/.my.cnf"
+  local _sys="'information_schema','mysql','performance_schema','sys'"
+  local _in _w _utf8mb3 _restabs _n
+
+  if ! command -v mysql >/dev/null 2>&1 || [ ! -r "${_mycnf}" ]; then
+    echo "  DB scan skipped: mysql client or ${_mycnf} unavailable" | tee -a "${_log}"
+    return 0
+  fi
+  if ! mysql --defaults-file="${_mycnf}" -N -e "SELECT 1;" >/dev/null 2>&1; then
+    echo "  DB scan skipped: cannot connect to the local SQL server" | tee -a "${_log}"
+    return 0
+  fi
+
+  _in=""
+  for _w in ${_RESERVED_WORDS}; do
+    _in="${_in}'${_w}',"
+  done
+  _in="${_in%,}"
+
+  _utf8mb3=$(mysql --defaults-file="${_mycnf}" -N -e \
+    "SELECT DISTINCT table_schema FROM information_schema.columns
+       WHERE table_schema NOT IN (${_sys})
+         AND character_set_name IN ('utf8','utf8mb3')
+       ORDER BY table_schema;" 2>/dev/null)
+  if [ -n "${_utf8mb3}" ]; then
+    _n=$(echo "${_utf8mb3}" | wc -l | tr -d ' ')
+    {
+      echo "  INFO    ${_n} database(s) still on utf8mb3 (works on 8.4; convert when 4-byte/emoji data is needed):"
+      echo "${_utf8mb3}" | sed 's/^/      /'
+    } | tee -a "${_log}"
+  fi
+
+  _restabs=$(mysql --defaults-file="${_mycnf}" -N -e \
+    "SELECT CONCAT(table_schema,'.',table_name) FROM information_schema.tables
+       WHERE table_schema NOT IN (${_sys})
+         AND LOWER(table_name) IN (${_in})
+         AND LOWER(table_name) <> 'system'
+       ORDER BY table_schema, table_name;" 2>/dev/null)
+  if [ -n "${_restabs}" ]; then
+    _n=$(echo "${_restabs}" | wc -l | tr -d ' ')
+    _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + _n))
+    {
+      echo "  REVIEW  ${_n} contrib table(s) named with a MySQL-8 reserved word (verify raw/unquoted SQL against them):"
+      echo "${_restabs}" | sed 's/^/      /'
+    } | tee -a "${_log}"
+  fi
+  return 0
+}
+
+# ---------------------------------------------------------------------------
 # Box mode: scan every Octopus account on this box and roll up one readiness verdict.
 # ---------------------------------------------------------------------------
 run_box_mode() {
@@ -250,6 +396,8 @@ run_box_mode() {
   local _acct_blocked
   local _blocked_accounts=()
   local _box_status="READY"
+  local _all_platforms=()
+  local _uplr
   _host=$(hostname -f 2>/dev/null || hostname)
   _log="/var/log/boa/core/box-readiness-$(date +%y%m%d-%H%M%S).log"
 
@@ -283,6 +431,7 @@ run_box_mode() {
       esac
       [ -d "${_plr}" ] || continue
       _plr_count=$((_plr_count + 1))
+      _all_platforms+=("${_plr}")
       _result_line=$(classify_codebase "${_plr}")
       _status=$(echo "${_result_line}" | cut -f1)
       _version=$(echo "${_result_line}" | cut -f2)
@@ -309,26 +458,54 @@ run_box_mode() {
     printf '%s\n' "${_acct_lines[@]}" | tee -a "${_log}"
   done
 
+  # Deep contrib analysis: only meaningful for cores that already pass (a BLOCKED box moves the
+  # offending account off first), but run regardless so the operator sees every signal at once.
+  if [ "${_DEEP}" = "1" ]; then
+    { echo ""; echo "=== DEEP CONTRIB ANALYSIS ==="; } | tee -a "${_log}"
+    if [ "${#_all_platforms[@]}" -gt 0 ]; then
+      for _uplr in $(printf '%s\n' "${_all_platforms[@]}" | sort -u); do
+        _deep_static_scan "${_uplr}" "${_log}"
+      done
+    fi
+    _deep_db_scan "${_log}"
+    if [ "${_DEEP_REVIEW_COUNT}" -eq 0 ]; then
+      echo "  No deep contrib red-flags found." | tee -a "${_log}"
+    fi
+  fi
+
   {
     echo ""
     echo "--------------------------------------------------------"
-    if [ "${_box_status}" = "READY" ]; then
-      echo "RESULT: READY — every codebase on this box is compatible with Percona 8.x."
-    else
+    if [ "${_box_status}" = "BLOCKED" ]; then
       echo "RESULT: BLOCKED — these account(s) must move to a legacy Percona 5.7 VM before this box upgrades:"
       printf '  - %s\n' "${_blocked_accounts[@]}"
+    elif [ "${_DEEP}" = "1" ] && [ "${_DEEP_REVIEW_COUNT}" -gt 0 ]; then
+      echo "RESULT: REVIEW — cores are compatible, but ${_DEEP_REVIEW_COUNT} deep finding(s) need a human"
+      echo "before trusting the upgrade (see DEEP CONTRIB ANALYSIS above)."
+    else
+      echo "RESULT: READY — every codebase on this box is compatible with Percona 8.x."
     fi
   } | tee -a "${_log}"
 
   echo "Report saved to ${_log}" >&2
-  [ "${_box_status}" = "READY" ]
+  [ "${_box_status}" = "BLOCKED" ] && return 1
+  [ "${_DEEP}" = "1" ] && [ "${_DEEP_REVIEW_COUNT}" -gt 0 ] && return 2
+  return 0
 }
 
 # ---------------------------------------------------------------------------
 # Dispatch.
 # ---------------------------------------------------------------------------
 case "$1" in
+  --deep)
+    # Deep implies box mode plus the contrib/schema analysis.
+    _DEEP=1
+    run_box_mode
+    exit $?
+    ;;
   --box|-b|box)
+    # Optional second arg enables the deep pass: `codebasecheck --box --deep`.
+    [ "$2" = "--deep" ] && _DEEP=1
     run_box_mode
     exit $?
     ;;
@@ -336,6 +513,7 @@ case "$1" in
     echo "Usage:" >&2
     echo "  codebasecheck <platform-path>   check one codebase" >&2
     echo "  codebasecheck --box             box-wide Percona 8.x readiness report" >&2
+    echo "  codebasecheck --box --deep      box report + deep contrib/schema analysis" >&2
     exit 1
     ;;
   *)
