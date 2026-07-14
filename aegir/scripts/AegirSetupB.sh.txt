@@ -70,14 +70,14 @@ _panic_exit() {
 ###
 ### Include helper functions
 ###
-if [ -e "${_vBs}/${_tocIncO}" ]; then
+# Only the per-user include materialised by the octopus producer for this
+# instance is accepted; a silent fallback to the shared bootstrap would run
+# the child on non-instance values
+if [ -r "${_vBs}/${_tocIncO}" ]; then
   source "${_vBs}/${_tocIncO}"
   _tInc="${_vBs}/${_tocIncO}"
-elif [ -e "${_vBs}/${_filIncO}" ]; then
-  source "${_vBs}/${_filIncO}"
-  _tInc="${_vBs}/${_filIncO}"
 else
-  _panic_exit "${_tInc}"
+  _panic_exit "${_vBs}/${_tocIncO}"
 fi
 
 
