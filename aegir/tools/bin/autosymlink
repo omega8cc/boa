@@ -11,6 +11,12 @@
 #   BATCH_IF_CLEAN    : run DRY and if CLEAN automatically run BATCH (cron-safe)
 #   REPORT  (report)  : read-only report of shared files/private symlinks
 #
+# A DRY run that is NOT CLEAN blocks batch/live for the whole sweep, so it ends
+# with an [EXPLAINED] section: every finding that caused the verdict is re-checked
+# against the filesystem right then and printed with what was seen, what was
+# probed, the diagnosis and the fix. The commonest one by far is a ghost Drush
+# alias whose site no longer exists. Read-only, and drush is never called.
+#
 
 export HOME=/root
 export SHELL=/bin/bash
@@ -99,6 +105,16 @@ _STATE_FILE="${_LOG_DIR}/autosymlink.state"
 _DRY_HAS_ERRORS="NO"
 _DRY_HAS_EDGE_CASES="NO"
 
+# Findings behind those two flags, for the end-of-run [EXPLAINED] section. The
+# flags are bare booleans, so a NOT CLEAN verdict on its own never says which
+# site tripped it, and every context variable in this script is a plain global
+# that the next site/account iteration overwrites -- the offender's identity has
+# to be captured at detection time or it is lost. One element per finding:
+# "CODE|k=v|k=v|...". The probing is deliberately deferred to render time, so a
+# CLEAN run pays nothing and every reported detail is read from the live
+# filesystem rather than from a value cached earlier in the run.
+_ANOMALIES=()
+
 # Count applied changes in LIVE/BATCH modes
 _APPLY_COUNT=0
 _LAST_ACTION=NO
@@ -131,6 +147,24 @@ _log() {
   fi
 
   echo "${_LINE}" | tee -a "${_LOG_FILE}"
+}
+
+_record_anomaly() {
+  # Capture one not-clean finding WITH its identity, next to the flag it raises.
+  # Args: 1: CODE, 2..: k=v context fields.
+  # '|' separates fields, so strip it from values ("${_SRC_DEV}|${_TGT_DEV}" pair
+  # keys are the one real source of a stray pipe); values are single log-line
+  # fragments already, so no newline can reach here.
+  _REC="$1"
+  shift
+  for _RECF in "$@"; do
+    _REC="${_REC}|${_RECF//|/ }"
+  done
+  _ANOMALIES+=("${_REC}")
+}
+
+_reset_anomalies() {
+  _ANOMALIES=()
 }
 
 _write_state() {
@@ -190,6 +224,9 @@ _finalize_dry_run_state() {
     _write_state "CLEAN" "DRY"
   else
     _log "[DRY] NOT CLEAN: edge cases and/or errors detected. Batch LIVE mode is NOT allowed."
+    # Explain before writing state, so the section is the last thing in the log
+    # and in the mail body the operator actually opens.
+    _explain_anomalies
     _write_state "NOT_CLEAN" "DRY"
   fi
 }
@@ -257,6 +294,686 @@ _get_site_path() {
   # Split by single quote and take the path part
   _SITE_PATH=$(printf '%s\n' "${_LINE}" | awk -F"'" '{print $4}')
   echo "${_SITE_PATH}"
+}
+
+# ---------------------------------------------------------------------------
+# [EXPLAINED] diagnostics
+# ---------------------------------------------------------------------------
+# A single anomaly anywhere in the sweep marks the whole DRY run NOT CLEAN and
+# blocks batch/live, but the verdict line names neither the site nor the reason:
+# the operator had to find the one [WARN] among hundreds of [INFO] lines, work
+# out which site it belonged to, then hand-check the alias, the platform and the
+# store to learn what it meant. _explain_anomalies() does exactly that hand-check
+# for every recorded finding and prints the result.
+#
+# All probes are read-only filesystem reads. Drush is deliberately NEVER called:
+# this script runs as root with HOME=/root, so a drush run would resolve
+# ~/.drush instead of the account's /data/disk/oN/.drush, provision refuses to
+# run as root anyway, and it would leave root-owned cache/log files behind in an
+# oN-owned tree.
+#
+# Probe locals are all prefixed _EXP_/_AN_ because this file is global-by-design
+# (it has exactly one `local`), and render time is late enough that clobbering a
+# name like _SITE_PATH or _ALIAS_FILE would corrupt state a caller still reads.
+
+_explain_log() {
+  # One [EXPLAINED] line, through _log so it keeps the timestamp and reaches the
+  # log file + the "AutoSymlink Details Report" mail body like everything else.
+  # Two literals must never appear in this output: "[APPLY]", which _log counts
+  # as an applied change, and "[REPORT] ORPHAN", which updatesymlinks greps
+  # (case-sensitively) to decide whether to send an orphan report mail. Use
+  # lowercase "orphan" in prose here.
+  _log "[EXPLAINED] $*"
+}
+
+_explain_wrap() {
+  # Emit a remedy sentence at the same width as the rest of the section, so a
+  # long fix does not run off the edge of a mail body.
+  # Args: 1 label (blank-padded by the caller), 2.. text.
+  _EXP_WL="$1"
+  shift
+  printf '%s\n' "$*" | fold -s -w 74 | sed 's/[[:space:]]*$//' | while IFS= read -r _EXP_WLINE; do
+    _explain_log "  ${_EXP_WL}${_EXP_WLINE}"
+    _EXP_WL="             "
+  done
+}
+
+_anom_field() {
+  # Echo field <key> of a recorded anomaly, or "" when the key is absent.
+  # Args: 1 record, 2 key.
+  _AN_REC="$1"
+  _AN_KEY="$2"
+
+  case "${_AN_REC}" in
+    *"|${_AN_KEY}="*)
+      _AN_TAIL="${_AN_REC#*|${_AN_KEY}=}"
+      echo "${_AN_TAIL%%|*}"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+_alias_field() {
+  # Read one "'key' => value," field from a Drush alias file, in the two shapes
+  # provision-save writes: a quoted string ('root' => '/data/disk/o1/...') and a
+  # bare scalar ('site_enabled' => true). Echoes "" when the key is absent.
+  # Args: 1 alias file, 2 key.
+  _EXP_AF_FILE="$1"
+  _EXP_AF_KEY="$2"
+
+  if [ ! -f "${_EXP_AF_FILE}" ]; then
+    echo ""
+    return
+  fi
+
+  _EXP_AF_LINE=$(grep -E "'${_EXP_AF_KEY}'[[:space:]]*=>" "${_EXP_AF_FILE}" 2>/dev/null | head -n 1)
+  if [ -z "${_EXP_AF_LINE}" ]; then
+    echo ""
+    return
+  fi
+
+  case "${_EXP_AF_LINE}" in
+    *"=>"*"'"*"'"*)
+      # Quoted string: same field split as _get_site_path().
+      printf '%s\n' "${_EXP_AF_LINE}" | awk -F"'" '{print $4}'
+      ;;
+    *)
+      # Bare scalar (true/false/NULL/number).
+      printf '%s\n' "${_EXP_AF_LINE#*=>}" | tr -d " ,"
+      ;;
+  esac
+}
+
+_exp_is_abs_path() {
+  # Guard before probing a path taken out of an alias file: only an absolute
+  # path is worth stat-ing, and refusing the rest keeps a malformed or hand-edited
+  # alias from producing a nonsense probe result.
+  case "$1" in
+    /*) return 0 ;;
+    *)  return 1 ;;
+  esac
+}
+
+_exp_file_stamp() {
+  # Args: 1 path. Echoes "" when the file is gone.
+  date -r "$1" "+%Y-%m-%d %H:%M:%S" 2>/dev/null
+}
+
+_exp_platform_root() {
+  # Resolve a site alias's 'platform' ref (@platform_foo) to the platform's own
+  # recorded root. Echoes "" when the platform alias is gone -- itself a finding.
+  # Args: 1 account dir, 2 platform ref.
+  _EXP_PR_ACCT="$1"
+  _EXP_PR_REF="${2#@}"
+
+  if [ -z "${_EXP_PR_REF}" ]; then
+    echo ""
+    return
+  fi
+  _alias_field "${_EXP_PR_ACCT}/.drush/${_EXP_PR_REF}.alias.drushrc.php" "root"
+}
+
+_exp_site_on_other_platform() {
+  # Look for the site's directory under any OTHER platform of this account, which
+  # is what a completed-but-unfinished migrate leaves behind. The platform roots
+  # come from the account's platform_* Drush aliases (the authoritative registry):
+  # a static/*/* glob would sweep static/files, static/control and static/trash,
+  # which are not platforms, and would miss the distro/ and aegir/distro/ trees
+  # that most platforms actually live in.
+  # Args: 1 account dir, 2 site name, 3 the site_path already known to be missing.
+  _EXP_OP_ACCT="$1"
+  _EXP_OP_SITE="$2"
+  _EXP_OP_SKIP="$3"
+  _EXP_OP_HIT=""
+
+  for _EXP_OP_ALIAS in "${_EXP_OP_ACCT}"/.drush/platform_*.alias.drushrc.php; do
+    [ -f "${_EXP_OP_ALIAS}" ] || continue
+    _EXP_OP_ROOT=$(_alias_field "${_EXP_OP_ALIAS}" "root")
+    _exp_is_abs_path "${_EXP_OP_ROOT}" || continue
+    _EXP_OP_CAND="${_EXP_OP_ROOT}/sites/${_EXP_OP_SITE}"
+    [ "${_EXP_OP_CAND}" = "${_EXP_OP_SKIP}" ] && continue
+    if [ -d "${_EXP_OP_CAND}" ]; then
+      _EXP_OP_HIT="${_EXP_OP_CAND}"
+      break
+    fi
+  done
+  echo "${_EXP_OP_HIT}"
+}
+
+_exp_client_symlink() {
+  # Report the site's clients/<client>/<uri> symlink, which provision points at
+  # site_path on install and on verify (_provision_client_create_symlink). It
+  # tells apart a site directory that once existed (link present but dangling)
+  # from one that never got that far (no link at all).
+  # Args: 1 account dir, 2 client name, 3 site name.
+  _EXP_CS_LINK="$1/clients/$2/$3"
+
+  if [ -z "$2" ]; then
+    echo "not checked (alias records no client_name)"
+    return
+  fi
+  if [ -L "${_EXP_CS_LINK}" ]; then
+    if [ -d "${_EXP_CS_LINK}" ]; then
+      echo "present and resolves: ${_EXP_CS_LINK}"
+    else
+      echo "present but DANGLING: ${_EXP_CS_LINK} -> $(readlink "${_EXP_CS_LINK}" 2>/dev/null)"
+    fi
+    return
+  fi
+  echo "absent under $1/clients/$2/"
+}
+
+_exp_vhost_kind() {
+  # Classify a site's nginx vhost the way symlinkinfo does: BOA rewrites a
+  # DISABLED site's vhost into an inert placeholder on the nginx default docroot,
+  # while an enabled site keeps a real docroot vhost.
+  # Args: 1 vhost file.
+  if [ ! -f "$1" ]; then
+    echo "absent"
+    return
+  fi
+  if grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' "$1" 2>/dev/null; then
+    echo "present, disabled placeholder (inert, serves nothing)"
+  else
+    echo "present, real docroot (nginx still serves this name)"
+  fi
+}
+
+_exp_store_state() {
+  # Describe the per-site store, which answers the only question that matters
+  # before any cleanup: is there data to lose here? A site delete never removes
+  # the store, so a store here can outlive its site.
+  # Args: 1 account dir, 2 site name.
+  _EXP_ST_DIR="$1/static/files/$2"
+
+  if [ -d "${_EXP_ST_DIR}" ]; then
+    _EXP_ST_KB=$(du -sk "${_EXP_ST_DIR}" 2>/dev/null | awk 'NR==1 {print $1}')
+    echo "present at ${_EXP_ST_DIR} (${_EXP_ST_KB:-?}K) -- DATA PRESENT, do not remove by hand"
+  else
+    echo "none at ${_EXP_ST_DIR} (no files data at stake)"
+  fi
+}
+
+_explain_ghost_alias() {
+  # SITE_PATH_DIR_ABSENT: the alias parses and names a site_path, but that
+  # directory is not on disk. The account sweep only reaches a site that has BOTH
+  # a Drush alias and an nginx vhost, so this is Aegir context outliving its site.
+  # Walk platform -> sites/ -> this site's dir and let the first level that fails
+  # name the cause; report the store and the vhost either way.
+  # Args: 1 site, 2 account dir, 3 alias file, 4 missing site_path.
+  _EXP_GA_SITE="$1"
+  _EXP_GA_ACCT="$2"
+  _EXP_GA_ALIAS="$3"
+  _EXP_GA_PATH="$4"
+
+  # The alias can be rewritten or removed by a task between detection and here;
+  # say so rather than reporting every field as missing and calling it corrupt.
+  if [ ! -f "${_EXP_GA_ALIAS}" ]; then
+    _explain_log "  Seen: the Drush alias named a site_path that was not on disk."
+    _explain_log "  Alias      : ${_EXP_GA_ALIAS} -- GONE since the check"
+    _explain_log "  Diagnosis  : the alias was removed while this run was in progress, so a task"
+    _explain_log "    was working on this site during the sweep."
+    _explain_log "  Fix        : re-run the dry run; this finding should not come back."
+    return
+  fi
+
+  _EXP_GA_URI=$(_alias_field "${_EXP_GA_ALIAS}" "uri")
+  _EXP_GA_SROOT=$(_alias_field "${_EXP_GA_ALIAS}" "root")
+  _EXP_GA_PLAT=$(_alias_field "${_EXP_GA_ALIAS}" "platform")
+  _EXP_GA_ENABLED=$(_alias_field "${_EXP_GA_ALIAS}" "site_enabled")
+  _EXP_GA_CLIENT=$(_alias_field "${_EXP_GA_ALIAS}" "client_name")
+  _EXP_GA_PROOT=$(_exp_platform_root "${_EXP_GA_ACCT}" "${_EXP_GA_PLAT}")
+  _EXP_GA_STAMP=$(_exp_file_stamp "${_EXP_GA_ALIAS}")
+  _EXP_GA_VHOST=$(_exp_vhost_kind "${_EXP_GA_ACCT}/config/server_master/nginx/vhost.d/${_EXP_GA_SITE}")
+  _EXP_GA_STORE=$(_exp_store_state "${_EXP_GA_ACCT}" "${_EXP_GA_SITE}")
+
+  _explain_log "  Seen: the Drush alias names a site_path that is not on disk, so the site was"
+  _explain_log "    skipped and the run was marked NOT CLEAN."
+  _explain_log "  Alias      : ${_EXP_GA_ALIAS}${_EXP_GA_STAMP:+ (modified ${_EXP_GA_STAMP})}"
+  _explain_log "  site_path  : ${_EXP_GA_PATH} -- MISSING"
+  _explain_log "  Alias says : platform=${_EXP_GA_PLAT:-?} uri=${_EXP_GA_URI:-?} site_enabled=${_EXP_GA_ENABLED:-?} client=${_EXP_GA_CLIENT:-?}"
+  _explain_log "  nginx vhost: ${_EXP_GA_VHOST}"
+  _explain_log "  Files store: ${_EXP_GA_STORE}"
+
+  if [ -z "${_EXP_GA_SROOT}" ] && [ -z "${_EXP_GA_PROOT}" ]; then
+    _explain_log "  Platform   : the alias records no 'root' and its platform alias is gone"
+    _explain_log "  Diagnosis  : INCOMPLETE ALIAS -- the platform behind this site cannot be"
+    _explain_log "    resolved at all, so the alias is corrupt or truncated rather than merely"
+    _explain_log "    stale."
+    _EXP_GA_FIX="Verify the site's platform in the Aegir front-end to rewrite its contexts."
+  elif ! _exp_is_abs_path "${_EXP_GA_PROOT:-${_EXP_GA_SROOT}}"; then
+    _explain_log "  Platform   : recorded root is not an absolute path: '${_EXP_GA_PROOT:-${_EXP_GA_SROOT}}'"
+    _explain_log "  Diagnosis  : INCOMPLETE ALIAS -- the recorded platform root is malformed."
+    _EXP_GA_FIX="Verify the site's platform in the Aegir front-end to rewrite its contexts."
+  elif [ ! -d "${_EXP_GA_PROOT:-${_EXP_GA_SROOT}}" ]; then
+    _explain_log "  Platform   : ${_EXP_GA_PROOT:-${_EXP_GA_SROOT}} -- MISSING"
+    _explain_log "  Diagnosis  : PLATFORM GONE -- the whole platform directory is missing, so"
+    _explain_log "    every site on it is a ghost, not just this one. Deleting a platform that"
+    _explain_log "    still had sites removes the platform root and the platform's own alias,"
+    _explain_log "    but leaves each site's alias and vhost behind; a platform moved or"
+    _explain_log "    removed outside Aegir looks identical from here."
+    _explain_log "    Expect sibling findings for the other sites of the same platform."
+    _EXP_GA_FIX="Restore or rebuild the platform if the sites are still wanted; otherwise delete the platform and its sites in the Aegir front-end so the contexts go with them."
+  elif [ ! -d "${_EXP_GA_PROOT:-${_EXP_GA_SROOT}}/sites" ]; then
+    _explain_log "  Platform   : ${_EXP_GA_PROOT:-${_EXP_GA_SROOT}} (present)"
+    _explain_log "  Platform sites/: MISSING"
+    _explain_log "  Diagnosis  : BROKEN PLATFORM -- the platform directory exists but has no"
+    _explain_log "    sites/ tree, so it is not a usable Drupal docroot (an incomplete or"
+    _explain_log "    half-built platform)."
+    _EXP_GA_FIX="Verify (or rebuild) the platform in the Aegir front-end."
+  else
+    _EXP_GA_ROOT="${_EXP_GA_PROOT:-${_EXP_GA_SROOT}}"
+    _EXP_GA_SIBS=$(ls -1 "${_EXP_GA_ROOT}/sites" 2>/dev/null | grep -c .)
+    _EXP_GA_ELSE=$(_exp_site_on_other_platform "${_EXP_GA_ACCT}" "${_EXP_GA_SITE}" "${_EXP_GA_PATH}")
+    _explain_log "  Platform   : ${_EXP_GA_ROOT} (present, sites/ entries: ${_EXP_GA_SIBS:-0})"
+
+    if [ -n "${_EXP_GA_URI}" ] && [ "${_EXP_GA_URI}" != "${_EXP_GA_SITE}" ]; then
+      _explain_log "  Alias name : file is named for '${_EXP_GA_SITE}' but its own uri is '${_EXP_GA_URI}'"
+      _explain_log "  Diagnosis  : RENAME LEFTOVER -- a rename/migrate writes one alias file per"
+      _explain_log "    name and only unlinks the site's current name, so this file is a leftover"
+      _explain_log "    under the OLD name while the live site runs under '${_EXP_GA_URI}'."
+      _EXP_GA_FIX="Confirm '${_EXP_GA_URI}' is healthy in the Aegir front-end; this leftover alias belongs to the old name."
+    elif [ -n "${_EXP_GA_ELSE}" ]; then
+      _explain_log "  Site dir   : FOUND on a different platform: ${_EXP_GA_ELSE}"
+      _explain_log "  Diagnosis  : MIGRATE STRANDED -- this alias names a platform that has no"
+      _explain_log "    directory for the site, while the site's data still sits on the platform"
+      _explain_log "    shown above. A migrate re-points the alias at the new platform before the"
+      _explain_log "    new directory is deployed, so an interrupted migrate leaves exactly this"
+      _explain_log "    split. Which of the two platforms is the newer one cannot be told from"
+      _explain_log "    disk alone."
+      _explain_log "    The data shown above is intact -- do not delete anything."
+      _EXP_GA_FIX="Verify the site in the Aegir front-end so its alias matches where the site actually lives; if the migrate failed, re-run or roll it back from the front-end."
+    elif [ -n "${_EXP_GA_SROOT}" ] && [ -n "${_EXP_GA_PROOT}" ] && [ "${_EXP_GA_SROOT}" != "${_EXP_GA_PROOT}" ]; then
+      _explain_log "  Site dir   : MISSING (not found on any other platform of this account)"
+      _explain_log "  Root drift : alias root='${_EXP_GA_SROOT}' but platform alias root='${_EXP_GA_PROOT}'"
+      _explain_log "  Diagnosis  : STALE ALIAS -- the site alias's cached root disagrees with its"
+      _explain_log "    own platform's current root, so the alias was written against a platform"
+      _explain_log "    layout that no longer holds."
+      _EXP_GA_FIX="Verify the site in the Aegir front-end to rewrite its alias from the front-end database."
+    else
+      _EXP_GA_CS=$(_exp_client_symlink "${_EXP_GA_ACCT}" "${_EXP_GA_CLIENT}" "${_EXP_GA_SITE}")
+      _explain_log "  Site dir   : MISSING (not found on any other platform of this account)"
+      _explain_log "  Client link: ${_EXP_GA_CS}"
+      _explain_log "  Diagnosis  : GHOST ALIAS -- the platform is healthy and still hosts other"
+      _explain_log "    sites, but this site's directory exists nowhere. Aegir context was"
+      _explain_log "    written for a site that was never finished or whose directory was removed"
+      _explain_log "    later: typically an install or clone that failed or was rolled back, or a"
+      _explain_log "    directory removed outside Aegir. An interrupted DELETE is ruled out --"
+      _explain_log "    delete unlinks the alias first and the directory second, so a half-done"
+      _explain_log "    delete leaves the opposite (a directory with no alias)."
+      case "${_EXP_GA_CS}" in
+        *DANGLING*)
+          _explain_log "    The dangling client symlink says the directory DID exist once, so this"
+          _explain_log "    is a rolled-back install/clone or a later manual removal."
+          ;;
+        absent*)
+          _explain_log "    No client symlink was ever created, which points at an install/clone"
+          _explain_log "    that died before it got that far rather than a later removal."
+          ;;
+      esac
+      _EXP_GA_FIX="Nothing here is recoverable from disk. Resolve the stale context in the Aegir front-end: delete the site, or re-run the failed install/clone."
+    fi
+  fi
+
+  case "${_EXP_GA_VHOST}" in
+    *"real docroot"*)
+      # An enabled vhost roots at the PLATFORM, not at site_path, so nginx keeps
+      # answering for the name (and configtest keeps passing) with no site behind
+      # it. A disabled site would instead have an inert placeholder vhost.
+      _explain_log "  Note       : this name still has an enabled vhost rather than a disabled"
+      _explain_log "    placeholder, so nginx keeps answering for it with no site behind it --"
+      _explain_log "    visitors get errors rather than a disabled page. Disabling the site in"
+      _explain_log "    the Aegir front-end makes the vhost inert."
+      ;;
+  esac
+
+  _explain_wrap "Fix        : " "${_EXP_GA_FIX}"
+  _explain_log "    Removing the alias file by hand is NOT a fix: the alias is only provision's"
+  _explain_log "    cache of the front-end database, and the next Verify task writes it back."
+  _explain_log "    History for this name: symlinkinfo ${_EXP_GA_SITE}"
+}
+
+_explain_alias_no_site_path() {
+  # ALIAS_NO_SITE_PATH: the alias file is there and vhost-paired, but no
+  # 'site_path' line could be read out of it at all.
+  # Args: 1 site, 2 account dir, 3 alias file.
+  _EXP_NP_SITE="$1"
+  _EXP_NP_ACCT="$2"
+  _EXP_NP_ALIAS="$3"
+
+  if [ ! -f "${_EXP_NP_ALIAS}" ]; then
+    _explain_log "  Seen: no 'site_path' could be read from the alias."
+    _explain_log "  Alias      : ${_EXP_NP_ALIAS} -- GONE since the check"
+    _explain_log "  Diagnosis  : the alias was removed while this run was in progress, so a task"
+    _explain_log "    was working on this site during the sweep."
+    _explain_log "  Fix        : re-run the dry run; this finding should not come back."
+    return
+  fi
+
+  _EXP_NP_STAMP=$(_exp_file_stamp "${_EXP_NP_ALIAS}")
+  _EXP_NP_CTX=$(_alias_field "${_EXP_NP_ALIAS}" "context_type")
+  _EXP_NP_URI=$(_alias_field "${_EXP_NP_ALIAS}" "uri")
+  _EXP_NP_ROOT=$(_alias_field "${_EXP_NP_ALIAS}" "root")
+  _EXP_NP_BYTES=$(wc -c < "${_EXP_NP_ALIAS}" 2>/dev/null | tr -d " ")
+  _EXP_NP_OWNER=$(ls -ld "${_EXP_NP_ALIAS}" 2>/dev/null | awk '{print $3":"$4" "$1}')
+
+  _explain_log "  Seen: no 'site_path' could be read from the alias, so the site was skipped"
+  _explain_log "    and the run was marked NOT CLEAN."
+  _explain_log "  Alias      : ${_EXP_NP_ALIAS}${_EXP_NP_STAMP:+ (modified ${_EXP_NP_STAMP})}"
+  _explain_log "  Alias size : ${_EXP_NP_BYTES:-?} bytes, owner/mode ${_EXP_NP_OWNER:-?}"
+  _explain_log "  Alias says : context_type=${_EXP_NP_CTX:-<none>} uri=${_EXP_NP_URI:-<none>} root=${_EXP_NP_ROOT:-<none>}"
+  _explain_log "  Files store: $(_exp_store_state "${_EXP_NP_ACCT}" "${_EXP_NP_SITE}")"
+
+  if [ -n "${_EXP_NP_CTX}" ] && [ "${_EXP_NP_CTX}" != "site" ]; then
+    _explain_log "  Diagnosis  : NOT A SITE CONTEXT -- this alias describes a '${_EXP_NP_CTX}',"
+    _explain_log "    which has no site_path by design, yet a vhost exists under the same name,"
+    _explain_log "    which is why the sweep picked it up as a site."
+    _explain_log "  Fix        : check why an nginx vhost exists for a ${_EXP_NP_CTX} context named"
+    _explain_log "    '${_EXP_NP_SITE}'; the alias itself is not the problem."
+  elif [ "${_EXP_NP_BYTES:-0}" -lt 100 ] 2>/dev/null; then
+    _explain_log "  Diagnosis  : TRUNCATED ALIAS -- the file is far too short to be a complete"
+    _explain_log "    site alias, so it was most likely cut off while being written."
+    _explain_log "  Fix        : Verify the site in the Aegir front-end to rewrite the alias."
+  else
+    _explain_log "  Diagnosis  : MALFORMED ALIAS -- the file exists and looks site-sized, but"
+    _explain_log "    carries no readable site_path line."
+    _explain_log "  Fix        : inspect the file, then Verify the site in the Aegir front-end to"
+    _explain_log "    rewrite it from the front-end database."
+  fi
+  _explain_log "    Removing the alias file by hand is NOT a fix: the next Verify writes it back."
+}
+
+_explain_symlink_broken() {
+  # SYMLINK_EMPTY_OR_BROKEN: the in-site path IS a symlink but readlink gave
+  # nothing back.
+  # Args: 1 site, 2 account dir, 3 type, 4 path.
+  _EXP_SB_SITE="$1"
+  _EXP_SB_ACCT="$2"
+  _EXP_SB_TYPE="$3"
+  _EXP_SB_PATH="$4"
+
+  _explain_log "  Seen: the in-site ${_EXP_SB_TYPE} path is a symlink whose target could not be"
+  _explain_log "    read, so it was skipped and the run was marked NOT CLEAN."
+  _explain_log "  Symlink    : ${_EXP_SB_PATH}"
+  _explain_log "  Reads back : '$(readlink "${_EXP_SB_PATH}" 2>&1)'"
+  if [ -L "${_EXP_SB_PATH}" ]; then
+    _explain_log "  Still a symlink now: yes"
+  else
+    _explain_log "  Still a symlink now: NO -- it changed since the check, so a task was probably"
+    _explain_log "    running over this site during the sweep; re-run the dry run."
+  fi
+  _explain_log "  Files store: $(_exp_store_state "${_EXP_SB_ACCT}" "${_EXP_SB_SITE}")"
+  _explain_log "  Diagnosis  : BROKEN SYMLINK -- autosymlink will not repoint a link it cannot"
+  _explain_log "    read, because it cannot tell whose data is on the other side."
+  _explain_log "  Fix        : inspect the link above. If the store shown holds this site's data,"
+  _explain_log "    the link can be recreated to point at it; otherwise Verify the site in the"
+  _explain_log "    Aegir front-end and re-run the dry run."
+}
+
+_explain_symlink_unknown() {
+  # SYMLINK_UNKNOWN_PATTERN: the only edge-case (rather than error) finding.
+  # Args: 1 site, 2 account dir, 3 type, 4 path, 5 link target.
+  _EXP_SU_SITE="$1"
+  _EXP_SU_ACCT="$2"
+  _EXP_SU_TYPE="$3"
+  _EXP_SU_PATH="$4"
+  _EXP_SU_TGT="$5"
+
+  _explain_log "  Seen: the in-site ${_EXP_SU_TYPE} symlink points somewhere that does not match"
+  _explain_log "    the expected .../static/files/<site>/${_EXP_SU_TYPE} store layout, so the"
+  _explain_log "    script refused to guess who owns the target and marked the run NOT CLEAN."
+  _explain_log "  Symlink    : ${_EXP_SU_PATH}"
+  _explain_log "  Points at  : ${_EXP_SU_TGT}"
+  # readlink hands back the link text verbatim, and a hand-made link -- exactly
+  # the population that lands here -- is often relative. Resolve it against the
+  # link's own directory before probing: this script never chdir's, so testing
+  # the raw text would answer from cron's cwd and could call a live link
+  # dangling (or size up an unrelated directory). Absolute targets are unchanged.
+  if _exp_is_abs_path "${_EXP_SU_TGT}"; then
+    _EXP_SU_PROBE="${_EXP_SU_TGT}"
+  else
+    _EXP_SU_PROBE="${_EXP_SU_PATH%/*}/${_EXP_SU_TGT}"
+  fi
+  if [ -e "${_EXP_SU_PROBE}" ]; then
+    _EXP_SU_KB=$(du -sk "${_EXP_SU_PROBE}" 2>/dev/null | awk 'NR==1 {print $1}')
+    _explain_log "  Target     : exists (${_EXP_SU_KB:-?}K) -- the site's ${_EXP_SU_TYPE} are being"
+    _explain_log "    served from there right now, so this link is live"
+  else
+    _explain_log "  Target     : DOES NOT EXIST -- this link is dangling, so the site's"
+    _explain_log "    ${_EXP_SU_TYPE} are unavailable to it right now"
+  fi
+  case "${_EXP_SU_TGT}" in
+    /data/disk/*) _explain_log "  Location   : inside /data/disk (an Aegir account tree)" ;;
+    /*)           _explain_log "  Location   : OUTSIDE /data/disk -- points off the Aegir account tree" ;;
+    *)            _explain_log "  Location   : a RELATIVE link, resolved against ${_EXP_SU_PATH%/*}" ;;
+  esac
+  _explain_log "  Files store: $(_exp_store_state "${_EXP_SU_ACCT}" "${_EXP_SU_SITE}")"
+  _explain_log "  Diagnosis  : NON-STANDARD SYMLINK -- most often a hand-made link (an admin"
+  _explain_log "    pointing files at attached storage, or a leftover from a manual migration)."
+  _explain_log "    It is reported rather than touched, on purpose: repointing it blindly could"
+  _explain_log "    strand live data."
+  _explain_log "  Fix        : if the link is intentional, move the data under the per-site store"
+  _explain_log "    (.../static/files/${_EXP_SU_SITE}/${_EXP_SU_TYPE}) and relink so the sweep"
+  _explain_log "    can manage it; if it is a leftover, remove it and Verify the site in the"
+  _explain_log "    Aegir front-end. Until then this finding keeps batch/live blocked."
+}
+
+_explain_break_sharing_source() {
+  # BREAK_SHARING_SOURCE_MISSING: this site's link points at another site's store
+  # and the source we would copy from is gone.
+  # Args: 1 site, 2 account dir, 3 type, 4 path, 5 link target, 6 target site,
+  #       7 original top.
+  _EXP_BS_SITE="$1"
+  _EXP_BS_ACCT="$2"
+  _EXP_BS_TYPE="$3"
+  _EXP_BS_PATH="$4"
+  _EXP_BS_TGT="$5"
+  _EXP_BS_TSITE="$6"
+  _EXP_BS_ORIG="$7"
+
+  _explain_log "  Seen: this site's ${_EXP_BS_TYPE} are shared from another site's store, and the"
+  _explain_log "    source to copy from is missing, so un-sharing would fail and the run was"
+  _explain_log "    marked NOT CLEAN."
+  _explain_log "  Symlink    : ${_EXP_BS_PATH}"
+  _explain_log "  Points at  : ${_EXP_BS_TGT} (store owned by ${_EXP_BS_TSITE})"
+  _explain_log "  Copy source: ${_EXP_BS_ORIG} -- MISSING"
+
+  # The store's owner can live in ANOTHER account: an inherited cross-account
+  # symlink (a clone of a shared site into a different account) points into the
+  # source account's store, which is why the break-sharing path derives its copy
+  # source from the link's own prefix rather than from this account. Probe the
+  # owner where the link actually points, or a cross-account share reports its
+  # recoverable data as lost. Same-account shares are unaffected: the prefix
+  # equals this account.
+  _EXP_BS_OWNACCT="${_EXP_BS_TGT%%/static/files/*}"
+  if [ -z "${_EXP_BS_OWNACCT}" ] || [ "${_EXP_BS_OWNACCT}" = "${_EXP_BS_TGT}" ]; then
+    _EXP_BS_OWNACCT="${_EXP_BS_ACCT}"
+  fi
+
+  _EXP_BS_OWNER_ALIAS="${_EXP_BS_OWNACCT}/.drush/${_EXP_BS_TSITE}.alias.drushrc.php"
+  if [ -f "${_EXP_BS_OWNER_ALIAS}" ]; then
+    _explain_log "  Owner site : ${_EXP_BS_TSITE} still has an alias in $(basename "${_EXP_BS_OWNACCT}")"
+  else
+    _explain_log "  Owner site : ${_EXP_BS_TSITE} has NO alias in $(basename "${_EXP_BS_OWNACCT}") -- it looks deleted"
+  fi
+  if [ "${_EXP_BS_OWNACCT}" != "${_EXP_BS_ACCT}" ]; then
+    _explain_log "  Note       : this is a CROSS-ACCOUNT share -- the store belongs to account"
+    _explain_log "    $(basename "${_EXP_BS_OWNACCT}"), not to $(basename "${_EXP_BS_ACCT}")"
+  fi
+
+  # The nightly sweep archives a deleted site's leftover store into .archived, so
+  # a source that vanished is very often sitting there rather than lost.
+  _EXP_BS_ARCH=""
+  for _EXP_BS_CAND in "${_EXP_BS_OWNACCT}"/static/files/.archived/*/"${_EXP_BS_TSITE}"; do
+    if [ -e "${_EXP_BS_CAND}" ]; then
+      _EXP_BS_ARCH="${_EXP_BS_CAND}"
+    fi
+  done
+  if [ -n "${_EXP_BS_ARCH}" ]; then
+    _EXP_BS_AKB=$(du -sk "${_EXP_BS_ARCH}" 2>/dev/null | awk 'NR==1 {print $1}')
+    _explain_log "  Archived   : the owner's store WAS archived by an earlier sweep and is still"
+    _explain_log "    on disk: ${_EXP_BS_ARCH} (${_EXP_BS_AKB:-?}K)"
+    _explain_log "  Diagnosis  : SHARED FROM AN ARCHIVED STORE -- ${_EXP_BS_TSITE} was deleted and"
+    _explain_log "    its leftover store archived aside, which pulled the data out from under"
+    _explain_log "    this site's symlink. The data is not lost; it is in the archive above."
+    _explain_log "  Fix        : restore the archived copy to ${_EXP_BS_ORIG}, or copy it straight"
+    _explain_log "    to ${_EXP_BS_ACCT}/static/files/${_EXP_BS_SITE}/${_EXP_BS_TYPE} and repoint"
+    _explain_log "    the link, then re-run the dry run."
+  else
+    _explain_log "  Archived   : no archived copy of ${_EXP_BS_TSITE} found under $(basename "${_EXP_BS_OWNACCT}")"
+    _explain_log "  Diagnosis  : SHARED FROM A MISSING STORE -- this site's ${_EXP_BS_TYPE} link"
+    _explain_log "    points into a store that no longer exists, so the site has no ${_EXP_BS_TYPE}"
+    _explain_log "    right now and the un-share has nothing to copy."
+    _explain_log "  Fix        : restore ${_EXP_BS_ORIG} from backup if the data is wanted, or"
+    _explain_log "    remove/repoint the dangling link and Verify the site in the Aegir front-end."
+  fi
+  _explain_log "    History for both names: symlinkinfo ${_EXP_BS_SITE} ${_EXP_BS_TSITE}"
+}
+
+_explain_space() {
+  # The four _check_space_for_transfer findings. Re-read df/du now rather than
+  # reprinting the recorded numbers, so the operator sees whether the condition
+  # still holds.
+  # Args: 1 code, 2 record.
+  _EXP_SP_CODE="$1"
+  _EXP_SP_REC="$2"
+
+  _EXP_SP_SITE=$(_anom_field "${_EXP_SP_REC}" "site")
+  _EXP_SP_DESC=$(_anom_field "${_EXP_SP_REC}" "desc")
+  _EXP_SP_SRC=$(_anom_field "${_EXP_SP_REC}" "src_dir")
+  _EXP_SP_TGT=$(_anom_field "${_EXP_SP_REC}" "target_check")
+  _EXP_SP_NEED=$(_anom_field "${_EXP_SP_REC}" "size_kb")
+  _EXP_SP_AVAIL=$(_anom_field "${_EXP_SP_REC}" "avail_kb")
+  _EXP_SP_RES=$(_anom_field "${_EXP_SP_REC}" "reserved_kb")
+
+  _explain_log "  Operation  : ${_EXP_SP_DESC:-?} for site ${_EXP_SP_SITE}"
+  _explain_log "  Source     : ${_EXP_SP_SRC:-?}"
+
+  case "${_EXP_SP_CODE}" in
+    SPACE_SRC_DIR_MISSING)
+      _explain_log "  Seen: the directory to transfer does not exist."
+      if [ -e "${_EXP_SP_SRC}" ]; then
+        _explain_log "  Now        : it EXISTS again -- it was created or restored since the check,"
+        _explain_log "    so a task was probably running over this site during the sweep."
+        _explain_log "  Fix        : re-run the dry run; it should come back clean."
+      else
+        _explain_log "  Now        : still missing"
+        _explain_log "  Diagnosis  : the site's ${_EXP_SP_DESC##* } directory is gone from the"
+        _explain_log "    platform while the site is still registered."
+        _explain_log "  Fix        : Verify the site in the Aegir front-end, which recreates the"
+        _explain_log "    missing site directories, then re-run the dry run."
+      fi
+      ;;
+    SPACE_SIZE_UNKNOWN)
+      _EXP_SP_NOW=$(du -sk "${_EXP_SP_SRC}" 2>&1 | awk 'NR==1 {print $1}')
+      _explain_log "  Seen: the source size could not be measured (du returned nothing)."
+      _explain_log "  Now        : du reports '${_EXP_SP_NOW:-nothing}'"
+      _explain_log "  Owner/mode : $(ls -ld "${_EXP_SP_SRC}" 2>&1 | awk '{print $3":"$4" "$1}')"
+      _explain_log "  Diagnosis  : the source could not be read. An unreadable directory is the"
+      _explain_log "    usual cause -- for example ownership changed to root by an edit made as"
+      _explain_log "    root -- or it vanished mid-sweep."
+      _explain_log "  Fix        : make the source readable (restore its oN ownership if a root"
+      _explain_log "    edit changed it), then re-run the dry run."
+      ;;
+    SPACE_TARGET_AVAIL_UNKNOWN)
+      _explain_log "  Seen: free space on the target could not be read (df returned nothing)."
+      _explain_log "  Target     : ${_EXP_SP_TGT:-?}"
+      _explain_log "  Now        : df says '$(df -Pk "${_EXP_SP_TGT}" 2>&1 | awk 'NR==2 {print $4"K free on "$1}')'"
+      _explain_log "  Diagnosis  : the target filesystem could not be queried -- typically a mount"
+      _explain_log "    that is not there (attached storage for static/files), rather than a"
+      _explain_log "    problem with the site itself."
+      _explain_log "  Fix        : check the mount behind ${_EXP_SP_TGT:-the target}, then re-run"
+      _explain_log "    the dry run."
+      ;;
+    SPACE_INSUFFICIENT)
+      _explain_log "  Seen: the transfer does not fit on the target filesystem."
+      _explain_log "  Needs      : ${_EXP_SP_NEED:-?}K"
+      _explain_log "  Target     : ${_EXP_SP_TGT:-?}"
+      _explain_log "  At check   : ${_EXP_SP_AVAIL:-?}K free${_EXP_SP_RES:+, ${_EXP_SP_RES}K already reserved for other planned copies this run}"
+      _explain_log "  Now        : $(df -Pk "${_EXP_SP_TGT}" 2>/dev/null | awk 'NR==2 {print $4"K free on "$1" ("$6")"}')"
+      _explain_log "  Diagnosis  : OUT OF SPACE -- nothing is wrong with the site; the target"
+      _explain_log "    filesystem cannot hold the copy. Reservations are cumulative across the"
+      _explain_log "    run, so several planned copies onto one filesystem are counted together"
+      _explain_log "    rather than each 'fitting' on its own."
+      _explain_log "  Fix        : free space on the target, then re-run the dry run. The archived"
+      _explain_log "    store pile under <account>/static/files/.archived is never pruned"
+      _explain_log "    automatically and is usually the cheapest thing to reclaim -- the report"
+      _explain_log "    run lists its size per account."
+      ;;
+  esac
+}
+
+_explain_anomalies() {
+  # Render the [EXPLAINED] section for every finding recorded this run.
+  _EXP_N="${#_ANOMALIES[@]}"
+
+  if [ "${_EXP_N}" -eq 0 ]; then
+    return 0
+  fi
+
+  _log "=================================================================="
+  if [ "${_EXP_N}" -eq 1 ]; then
+    _explain_log "1 finding made this run NOT CLEAN. It is re-checked below against the"
+  else
+    _explain_log "${_EXP_N} findings made this run NOT CLEAN. Each is re-checked below against the"
+  fi
+  _explain_log "filesystem as it is right now, and nothing here was changed."
+  # The narrow run is a Provision install/clone hook: it has no batch gate to
+  # block, it just declined to convert this one site.
+  if [ "${_NARROW}" = "YES" ]; then
+    _explain_log "The files/private conversion for this site was skipped as a result."
+  else
+    _explain_log "Batch and live mode stay blocked until every finding is resolved and a fresh"
+    _explain_log "dry run reports CLEAN."
+  fi
+
+  _EXP_I=0
+  while [ "${_EXP_I}" -lt "${_EXP_N}" ]; do
+    _EXP_REC="${_ANOMALIES[${_EXP_I}]}"
+    _EXP_I=$(( _EXP_I + 1 ))
+    _EXP_CODE="${_EXP_REC%%|*}"
+    _EXP_SITE=$(_anom_field "${_EXP_REC}" "site")
+    _EXP_ACCT=$(_anom_field "${_EXP_REC}" "account_dir")
+    _EXP_ALIAS=$(_anom_field "${_EXP_REC}" "alias")
+
+    _log "------------------------------------------------------------------"
+    _explain_log "(${_EXP_I}/${_EXP_N}) ${_EXP_CODE} -- site ${_EXP_SITE:-?} in account $(basename "${_EXP_ACCT:-?}")"
+
+    case "${_EXP_CODE}" in
+      SITE_PATH_DIR_ABSENT)
+        _explain_ghost_alias "${_EXP_SITE}" "${_EXP_ACCT}" "${_EXP_ALIAS}" \
+          "$(_anom_field "${_EXP_REC}" "site_path")"
+        ;;
+      ALIAS_NO_SITE_PATH)
+        _explain_alias_no_site_path "${_EXP_SITE}" "${_EXP_ACCT}" "${_EXP_ALIAS}"
+        ;;
+      SYMLINK_EMPTY_OR_BROKEN)
+        _explain_symlink_broken "${_EXP_SITE}" "${_EXP_ACCT}" \
+          "$(_anom_field "${_EXP_REC}" "type")" "$(_anom_field "${_EXP_REC}" "path")"
+        ;;
+      SYMLINK_UNKNOWN_PATTERN)
+        _explain_symlink_unknown "${_EXP_SITE}" "${_EXP_ACCT}" \
+          "$(_anom_field "${_EXP_REC}" "type")" "$(_anom_field "${_EXP_REC}" "path")" \
+          "$(_anom_field "${_EXP_REC}" "link_target")"
+        ;;
+      BREAK_SHARING_SOURCE_MISSING)
+        _explain_break_sharing_source "${_EXP_SITE}" "${_EXP_ACCT}" \
+          "$(_anom_field "${_EXP_REC}" "type")" "$(_anom_field "${_EXP_REC}" "path")" \
+          "$(_anom_field "${_EXP_REC}" "link_target")" \
+          "$(_anom_field "${_EXP_REC}" "target_site")" \
+          "$(_anom_field "${_EXP_REC}" "original_top")"
+        ;;
+      SPACE_*)
+        _explain_space "${_EXP_CODE}" "${_EXP_REC}"
+        ;;
+      *)
+        _explain_log "  No explainer for this code; raw record: ${_EXP_REC}"
+        ;;
+    esac
+  done
+  _log "------------------------------------------------------------------"
 }
 
 _ask_confirm_site() {
@@ -444,6 +1161,10 @@ _check_space_for_transfer() {
     _log "[WARN] Source directory missing for ${_DESC} of site ${_SITE}: ${_SRC_DIR}"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
+      # Returns before the target device/space is resolved, so there is no
+      # df/du context to record here yet.
+      _record_anomaly "SPACE_SRC_DIR_MISSING" "site=${_SITE}" "account_dir=${_ACCOUNT_DIR}" \
+        "desc=${_DESC}" "src_dir=${_SRC_DIR}" "target_base=${_TARGET_BASE}"
     fi
     return 1
   fi
@@ -524,6 +1245,8 @@ _check_space_for_transfer() {
     _log "[WARN] Unable to determine size for ${_SRC_DIR} (${_DESC} of site ${_SITE})"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
+      _record_anomaly "SPACE_SIZE_UNKNOWN" "site=${_SITE}" "account_dir=${_ACCOUNT_DIR}" \
+        "desc=${_DESC}" "src_dir=${_SRC_DIR}" "target_check=${_TARGET_CHECK}"
     fi
     return 1
   fi
@@ -533,6 +1256,8 @@ _check_space_for_transfer() {
     _log "[WARN] Unable to determine available space on ${_TARGET_CHECK} (${_DESC} of site ${_SITE})"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
+      _record_anomaly "SPACE_TARGET_AVAIL_UNKNOWN" "site=${_SITE}" "account_dir=${_ACCOUNT_DIR}" \
+        "desc=${_DESC}" "src_dir=${_SRC_DIR}" "size_kb=${_SIZE_KB}" "target_check=${_TARGET_CHECK}"
     fi
     return 1
   fi
@@ -573,6 +1298,9 @@ _check_space_for_transfer() {
     fi
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
+      _record_anomaly "SPACE_INSUFFICIENT" "site=${_SITE}" "account_dir=${_ACCOUNT_DIR}" \
+        "desc=${_DESC}" "src_dir=${_SRC_DIR}" "size_kb=${_SIZE_KB}" \
+        "avail_kb=${_AVAIL_KB}" "reserved_kb=${_RESERVED_KB}" "target_check=${_TARGET_CHECK}"
     fi
     return 1
   fi
@@ -615,6 +1343,8 @@ _check_symlink_sharing() {
     _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} is empty or broken: ${_PATH}"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
+      _record_anomaly "SYMLINK_EMPTY_OR_BROKEN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}"
     fi
     return
   fi
@@ -634,6 +1364,11 @@ _check_symlink_sharing() {
       _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} points to unknown pattern: ${_LINK_TARGET} – skipping"
       if [ "${_MODE}" = "DRY" ]; then
         _DRY_HAS_EDGE_CASES="YES"
+        # The only edge-case (rather than error) finding in the script.
+        # _TARGET_SITE_NAME is deliberately not recorded: this is the case where
+        # the target layout did not parse, so no owner site is known.
+        _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+          "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
       fi
       return
       ;;
@@ -713,6 +1448,10 @@ _check_symlink_sharing() {
     if [ ! -d "${_ORIGINAL_TOP}" ]; then
       _log "[WARN] Original ${_TYPE} directory not found at ${_ORIGINAL_TOP} – would fail breaking sharing"
       _DRY_HAS_ERRORS="YES"
+      # No inline mode test here on purpose: this whole block is already DRY-only.
+      _record_anomaly "BREAK_SHARING_SOURCE_MISSING" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}" \
+        "target_site=${_TARGET_SITE_NAME}" "original_top=${_ORIGINAL_TOP}"
       return
     fi
     # Check space on target filesystem (if different FS)
@@ -870,6 +1609,8 @@ _process_site() {
     _log "[WARN] No site_path found for ${_SITE_NAME} in ${_ALIAS_FILE} – skipping"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
+      _record_anomaly "ALIAS_NO_SITE_PATH" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "alias=${_ALIAS_FILE}"
     fi
     return
   fi
@@ -878,6 +1619,8 @@ _process_site() {
     _log "[WARN] site_path directory does not exist for ${_SITE_NAME}: ${_SITE_PATH} – skipping"
     if [ "${_MODE}" = "DRY" ]; then
       _DRY_HAS_ERRORS="YES"
+      _record_anomaly "SITE_PATH_DIR_ABSENT" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "alias=${_ALIAS_FILE}" "site_path=${_SITE_PATH}"
     fi
     return
   fi
@@ -1290,6 +2033,7 @@ _run_one_site() {
   _APPLY_COUNT=0
   _DRY_HAS_ERRORS="NO"
   _DRY_HAS_EDGE_CASES="NO"
+  _reset_anomalies
   _FS_PAIR_STATUS=()
   _FS_RESERVED_KB=()
 
@@ -1317,10 +2061,14 @@ _run_one_site() {
     _MODE="DRY"
     _DRY_HAS_ERRORS="NO"
     _DRY_HAS_EDGE_CASES="NO"
+    _reset_anomalies
     _APPLY_COUNT=0
     _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ALIAS_FILE}"
     if [ "${_DRY_HAS_ERRORS}" != "NO" ] || [ "${_DRY_HAS_EDGE_CASES}" != "NO" ]; then
       _log "[WARN] Narrow dry-run for ${_SITE} is NOT CLEAN; skipping apply (manual review needed)."
+      # Same explanation for the Provision install/clone hook: this is where a
+      # clone silently declines to convert, so the reason belongs in its log too.
+      _explain_anomalies
       if [ "${_FORCE_UNSHARE}" = "YES" ]; then
         _log "[ALERT] Clone unshare for ${_SITE} not completed (dry-run not clean); files may still be shared with the source - manual review required"
         return 3
@@ -1373,6 +2121,7 @@ _main() {
     _MODE="DRY"
     _DRY_HAS_ERRORS="NO"
     _DRY_HAS_EDGE_CASES="NO"
+    _reset_anomalies
     _APPLY_COUNT=0
 
     for _ACCOUNT_DIR in /data/disk/*; do
