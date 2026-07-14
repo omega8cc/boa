@@ -1708,6 +1708,17 @@ _install_php_deb() {
   if ! _install_boa_deb "boa-php${1}" "${_PHP_VERSION}"; then
     return 1
   fi
+  # dpkg unpacks the boa-phpNN payload as group root with the hardened 0750
+  # mode already baked in by the builder box, and _strict_bin_permissions
+  # (which converts group root to users across _BIN_PATHS) only runs at the
+  # end of a barracuda pass. AegirSetupM runs inside that window as the aegir
+  # user, so its _T_CLI -x probes all fail and the master install dies with
+  # a "/php" fatal. Normalize to the canonical root:users shape immediately,
+  # matching what a source build reaches via the hardening pass.
+  for _phpDebFix in $(find /opt/php${1}/bin ! -perm -4000 ! -perm -2000 -type f 2>/dev/null); do
+    chgrp users "${_phpDebFix}" &> /dev/null
+    chmod 750 "${_phpDebFix}" &> /dev/null
+  done
   _PHP_DEB_ITD=$(/opt/php${1}/bin/php -v 2>/dev/null \
     | grep ^PHP \
     | head -1 \
