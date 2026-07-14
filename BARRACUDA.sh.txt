@@ -464,8 +464,11 @@ fi
 
 ###
 ### Install OpenSSH from sources
+### Always-on component since D-2026-07-14 (the retired _SSH_FROM_SOURCES
+### opt-out was effectively forced YES anyway); _sshd_install_src still
+### rebuilds only when its own version/linkage checks say so.
 ###
-if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _sshd_install_src
@@ -481,7 +484,7 @@ fi
 ### and any tooling that connects out from the box.  Strip it unconditionally
 ### (idempotent no-op once clean) from the live config AND the vanilla backup, so
 ### boxes that got it from any prior release self-heal on the next run, regardless
-### of the _SSH_FROM_SOURCES / _SSH_ARMOUR settings that gate _sshd_armour above.
+### of the _SSH_ARMOUR setting that gates _sshd_armour above.
 ###
 if [ -e "/etc/ssh/ssh_config" ]; then
   sed -i '/^[[:space:]]*WarnWeakCrypto\b/d' /etc/ssh/ssh_config
