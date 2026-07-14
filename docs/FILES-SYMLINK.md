@@ -114,6 +114,79 @@ nightly maintenance pause is active, so it never races the batch sweep. It also
 sets each new symlink's owner:group to match its store target (so the link is not
 left `root`-owned).
 
+#### Why a dry run is NOT CLEAN — the `[EXPLAINED]` section
+
+A dry run ends either **CLEAN** (batch/live allowed) or **NOT CLEAN**, and a
+single anomaly anywhere in the sweep blocks batch/live for **every** account on
+the box until it is resolved. When that happens the run ends with an
+`[EXPLAINED]` section: every finding behind the verdict is re-checked against the
+filesystem right then and printed with what was seen, what was probed, the
+diagnosis and the fix. Without it the verdict named neither the site nor the
+reason, and the one `[WARN]` had to be found by hand among hundreds of `[INFO]`
+lines.
+
+It appears in `autosymlink` (dry), `--batch-if-clean` (whose dry pass is what
+exits `10`), and the narrow `--site … --apply` path when its per-site dry-run
+declines to apply. It never appears on a CLEAN run or in `report` mode.
+
+The section is **read-only** — it changes nothing, and it deliberately never
+calls drush: `autosymlink` runs as root with `HOME=/root`, so drush would resolve
+`/root/.drush` instead of the account's, Provision refuses to run as root anyway,
+and it would leave root-owned files behind in an `oN`-owned tree. Everything it
+reports is read from the filesystem. The probes run only for actual findings, so
+a clean run costs nothing.
+
+Every finding carries a code:
+
+| Code | What tripped |
+|---|---|
+| `SITE_PATH_DIR_ABSENT` | The alias names a `site_path` that is not on disk — **the common one**, expanded below. |
+| `ALIAS_NO_SITE_PATH` | No `site_path` line could be read from the alias at all (truncated, malformed, or a non-site context that happens to have a vhost). |
+| `SYMLINK_EMPTY_OR_BROKEN` | The in-site `files`/`private` path is a symlink whose target `readlink` could not read. |
+| `SYMLINK_UNKNOWN_PATTERN` | The link resolves but points outside the expected `…/static/files/<site>/<type>` store layout, so ownership cannot be inferred and it is reported rather than touched. |
+| `BREAK_SHARING_SOURCE_MISSING` | The site shares another site's store and the source to copy from is gone, so the un-share would fail. |
+| `SPACE_SRC_DIR_MISSING` | The directory to move/copy does not exist. |
+| `SPACE_SIZE_UNKNOWN` | `du` could not measure the source (usually unreadable — check ownership). |
+| `SPACE_TARGET_AVAIL_UNKNOWN` | `df` could not read the target filesystem (usually a missing mount). |
+| `SPACE_INSUFFICIENT` | The transfer does not fit. Reservations are cumulative per filesystem, so several planned copies are counted together. |
+
+Only `SYMLINK_UNKNOWN_PATTERN` is an *edge case*; the other eight are *errors*.
+That is why the stock verdict says "edge cases and/or errors" — the `[EXPLAINED]`
+header states which actually fired.
+
+**The ghost alias.** `SITE_PATH_DIR_ABSENT` means Ægir context (a Drush alias,
+and a vhost — the sweep only reaches a site that has both) outliving its site.
+The section walks platform → `sites/` → the site's own directory and reports the
+first level that fails:
+
+| Verdict | Observed | Typical cause |
+|---|---|---|
+| `INCOMPLETE ALIAS` | No resolvable `root` in the alias or its platform alias. | Corrupt or truncated alias. |
+| `PLATFORM GONE` | The platform root directory is missing. | A platform deleted while it still had sites removes the root and the platform's own alias but leaves every site's alias and vhost behind — so **expect one finding per site of that platform**. A platform moved or removed outside Ægir looks identical from here. |
+| `BROKEN PLATFORM` | Platform root present, no `sites/` tree. | An incomplete or half-built platform. |
+| `RENAME LEFTOVER` | The alias file's name differs from its own `uri`. | A rename/migrate writes one alias file per name and only unlinks the current name; the live site runs under the other name. |
+| `MIGRATE STRANDED` | The site's directory is found on a **different** platform. | An interrupted migrate: the alias is re-pointed at the new platform before the new directory is deployed. **The data is intact — delete nothing.** |
+| `STALE ALIAS` | The alias's cached `root` disagrees with its platform's `root`. | The alias was written against a platform layout that no longer holds. |
+| `GHOST ALIAS` | Platform healthy and still hosting other sites; this site's directory exists nowhere. | An install or clone that failed or was rolled back, or a directory removed outside Ægir. An interrupted *delete* is ruled out: delete unlinks the alias **first** and the directory second, so a half-done delete leaves the opposite (a directory with no alias). |
+
+Each ghost finding also reports three things that decide what to do next:
+
+- **Files store** — whether `static/files/<site>` still holds data, i.e. whether
+  there is anything to lose. A site delete never removes the store.
+- **nginx vhost** — an *enabled* vhost roots at the platform, not at `site_path`,
+  so nginx keeps answering for the name with no site behind it and visitors get
+  errors rather than a disabled page. A *disabled* site instead has an inert
+  placeholder vhost.
+- **Client link** — `clients/<client>/<uri>`, which Provision points at
+  `site_path` on install and on verify. Present but dangling means the directory
+  existed once (a rolled-back install/clone or a later removal); absent means it
+  never got that far.
+
+**Deleting the alias by hand is not a fix.** The alias file is only Provision's
+cache of the front-end database, and the next Verify task writes it back. Resolve
+the context in the Ægir front-end instead — delete the site, or re-run the failed
+task.
+
 ### `updatesymlinks` — the scheduler / orchestrator
 
 Wraps `autosymlink` with Ægir-queue pausing (the self-healing
@@ -507,6 +580,10 @@ ls -ld /data/disk/o1/static/files/example.com/files
 # Dry-run report for one site (no changes):
 autosymlink --site example.com
 
+# Why is the dry run NOT CLEAN (and batch/live therefore blocked)?
+# Each finding is re-checked live and explained; read-only, safe any time:
+autosymlink dry | sed -n '/EXPLAINED/,$p'
+
 # Box-wide read-only report incl. orphans and the archived-store pile:
 autosymlink report | grep -E '\[REPORT\]'
 
@@ -651,6 +728,26 @@ Check, in order:
    root but the contents are preserved from the source; the store dir should be
    `<account>:www-data`. The in-site symlink itself is owner-matched to the store
    target by `autosymlink`, so it should not be left `root:root`.
+
+### "The nightly batch never converts anything"
+
+The usual cause is the clean-dry gate: one anomaly on **any** account marks the
+dry run NOT CLEAN, `--batch-if-clean` exits `10` without applying, and it stays
+that way every night until the cause is resolved. The nightly run emails an
+`AutoSymlink Details Report` subject `NOT CLEAN (manual review required)`; the
+`[EXPLAINED]` section at the end of that mail body names the site and the reason.
+
+```bash
+# Same thing on demand (read-only):
+autosymlink dry | sed -n '/EXPLAINED/,$p'
+
+# Current gate state — batch runs only on _LAST_MODE=DRY + _LAST_STATUS=CLEAN:
+cat /var/log/boa/autosymlink.state
+```
+
+A ghost Drush alias whose site no longer exists is by far the most common cause;
+`autosymlink` skips that site and never removes an alias itself. See *Why a dry
+run is NOT CLEAN* above for the verdicts and what each one means.
 
 ### Deployment note
 
