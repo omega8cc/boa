@@ -2376,10 +2376,10 @@ _barracuda_cnf() {
     echo "_RESERVED_RAM=${_RESERVED_RAM}"                     >> ${_barCnf}
     echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}"               >> ${_barCnf}
     echo "_SSH_ARMOUR=${_SSH_ARMOUR}"                         >> ${_barCnf}
-    echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}"             >> ${_barCnf}
     echo "_SSH_PORT=${_SSH_PORT}"                             >> ${_barCnf}
     echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${_barCnf}
     echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"             >> ${_barCnf}
+    echo "_USE_PREBUILT_PKGS=${_USE_PREBUILT_PKGS}"           >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}"           >> ${_barCnf}
@@ -2430,7 +2430,8 @@ _barracuda_cnf() {
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${_barCnf}
     wait
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
+    ### Retired: OpenSSH is an always-on component now (D-2026-07-14)
+    sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
     wait
     sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
     wait
@@ -2779,9 +2780,9 @@ _barracuda_cnf() {
       echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${_barCnf}
     fi
 
-    _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES ${_barCnf} 2>&1)
-    if [[ ! "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]]; then
-      echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${_barCnf}
+    _USE_PREBUILT_PKGS_TEST=$(grep _USE_PREBUILT_PKGS ${_barCnf} 2>&1)
+    if [[ ! "${_USE_PREBUILT_PKGS_TEST}" =~ "_USE_PREBUILT_PKGS" ]]; then
+      echo "_USE_PREBUILT_PKGS=${_USE_PREBUILT_PKGS}" >> ${_barCnf}
     fi
 
     _SSH_ARMOUR_TEST=$(grep _SSH_ARMOUR ${_barCnf} 2>&1)
@@ -2899,8 +2900,8 @@ _barracuda_cnf() {
     ### Force ImageMagick from packages
     sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${_barCnf}
     wait
-    ### Force latest OpenSSH from sources on supported systems
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
+    ### Retired: OpenSSH is an always-on component now (D-2026-07-14)
+    sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
     wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
@@ -3584,15 +3585,34 @@ _install_icu() {
       != "/usr/local/lib/icu/${_ICU_DOT}" ]; then
     _msg "INFO: Installing ICU libs version ${_ICU_TARGET_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
-    if [ ! -e "/var/opt/icu-release-${_ICU_TARGET_VRN}/icu4c/source" ]; then
-      cd /var/opt
-      rm -rf icu*
-      _get_dev_src "icu-release-${_ICU_TARGET_VRN}.tar.gz"
+    # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the compile;
+    # the per-version marker and 'current' symlink logic below run unchanged.
+    # A pinned _ICU_FORCE_VRN self-corrects by construction: only the default
+    # target versions are ever published, so an exotic pin 404s and falls
+    # through to the source build.
+    _ICU_DEB_INSTALLED=NO
+    if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
+      if _install_boa_deb "boa-icu" "${_ICU_TARGET_VRN}"; then
+        if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+          _ICU_DEB_INSTALLED=YES
+          _msg "INFO: ICU ${_ICU_TARGET_VRN} installed from prebuilt package"
+        else
+          dpkg --purge boa-icu &> /dev/null
+          _msg "NOTE: Prebuilt boa-icu failed health check; building from sources"
+        fi
+      fi
     fi
-    cd /var/opt/icu-release-${_ICU_TARGET_VRN}/icu4c/source
-    _mrun "bash ./configure --prefix=/usr/local"
-    _mrun "make -j $(nproc) --quiet"
-    _mrun "make --quiet install"
+    if [ "${_ICU_DEB_INSTALLED}" = "NO" ]; then
+      if [ ! -e "/var/opt/icu-release-${_ICU_TARGET_VRN}/icu4c/source" ]; then
+        cd /var/opt
+        rm -rf icu*
+        _get_dev_src "icu-release-${_ICU_TARGET_VRN}.tar.gz"
+      fi
+      cd /var/opt/icu-release-${_ICU_TARGET_VRN}/icu4c/source
+      _mrun "bash ./configure --prefix=/usr/local"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+    fi
     ldconfig 2> /dev/null
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
@@ -4957,41 +4977,67 @@ _ssl_install_src() {
   ldconfig 2> /dev/null
 
   ###--------------------###
-  _msg "INFO: Building ${1} OpenSSL from sources..."
-  _msg "WAIT: This may take a while, please wait..."
-
-  if [ ! -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
-    cd /var/opt
-    rm -rf openssl*
-    _get_dev_src_wget "openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
-  fi
-  if [ -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
-    cd /var/opt/openssl-${_OPENSSL_BUILD_VRN}
+  # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the OpenSSL
+  # compile below. The zlib build above stays on the fly, and every
+  # post-install step (_ssl_paths_update, apt locks) runs unchanged. Any
+  # failure falls through to the untouched source build.
+  _SSL_DEB_INSTALLED=NO
+  if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
     if [ "${1}" = "Modern" ]; then
-      _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-        --openssldir=/usr/local/ssl3 enable-ktls"
-      _patchMakefile=YES
+      _SSL_DEB_PKG="boa-ssl3"
     else
-      _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-        --openssldir=/usr/local/ssl"
-      _patchMakefile=YES
+      _SSL_DEB_PKG="boa-ssl-legacy"
     fi
-    _mrun "sh ./config \
-      shared \
-      no-tests \
-      no-ssl3 \
-      zlib-dynamic \
-      enable-ec_nistp_64_gcc_128 \
-      ${_SSL_BUILD_ARGS}"
-    if [ "${_patchMakefile}" = "YES" ]; then
-      sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
+    if _install_boa_deb "${_SSL_DEB_PKG}" "${_OPENSSL_BUILD_VRN}"; then
+      _SSL_DEB_ITD=$(${_THIS_SSL_BINARY} version 2>&1 | awk '{print $2}')
+      if [ -x "${_THIS_SSL_BINARY}" ] \
+        && [ "${_SSL_DEB_ITD}" = "${_OPENSSL_BUILD_VRN}" ]; then
+        _SSL_DEB_INSTALLED=YES
+        _msg "INFO: ${1} OpenSSL ${_OPENSSL_BUILD_VRN} installed from prebuilt package"
+      else
+        dpkg --purge "${_SSL_DEB_PKG}" &> /dev/null
+        _msg "NOTE: Prebuilt ${_SSL_DEB_PKG} failed health check; building from sources"
+      fi
     fi
-    if [ "${1}" = "Modern" ]; then
-      _mrun "make dclean" || true
+  fi
+
+  if [ "${_SSL_DEB_INSTALLED}" = "NO" ]; then
+    _msg "INFO: Building ${1} OpenSSL from sources..."
+    _msg "WAIT: This may take a while, please wait..."
+
+    if [ ! -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
+      cd /var/opt
+      rm -rf openssl*
+      _get_dev_src_wget "openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
     fi
-    _mrun "make depend" || true
-    _mrun "make -j $(nproc)"
-    _mrun "make install"
+    if [ -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
+      cd /var/opt/openssl-${_OPENSSL_BUILD_VRN}
+      if [ "${1}" = "Modern" ]; then
+        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
+          --openssldir=/usr/local/ssl3 enable-ktls"
+        _patchMakefile=YES
+      else
+        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
+          --openssldir=/usr/local/ssl"
+        _patchMakefile=YES
+      fi
+      _mrun "sh ./config \
+        shared \
+        no-tests \
+        no-ssl3 \
+        zlib-dynamic \
+        enable-ec_nistp_64_gcc_128 \
+        ${_SSL_BUILD_ARGS}"
+      if [ "${_patchMakefile}" = "YES" ]; then
+        sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
+      fi
+      if [ "${1}" = "Modern" ]; then
+        _mrun "make dclean" || true
+      fi
+      _mrun "make depend" || true
+      _mrun "make -j $(nproc)"
+      _mrun "make install"
+    fi
   fi
 
   if [ -x "${_THIS_SSL_BINARY}" ]; then
@@ -5417,65 +5463,90 @@ _curl_install_src() {
         fi
       fi
     else
-      _apt_clean_update
-      # Check for libssl1.0-dev and remove conditionally
-      if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
-        _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
-      fi
-      _mrun "apt-get autoremove -y"
-      for _PKG in libssl-dev; do
-        if ! _pkg_installed "${_PKG}"; then
-          _mrun "${_INSTAPP} ${_PKG}"
-        fi
-      done
-      _mrun "apt-get build-dep curl -y"
-      cd /var/opt
-      rm -rf curl*
-      _get_dev_src_wget "curl-${_CURL_VRN}.tar.gz"
-      if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
-        _msg "INFO: Building cURL ${_CURL_VRN} from sources..."
-        _msg "WAIT: This may take a while, please wait..."
-        if [ -e "/root/.install.modern.openssl.cnf" ] \
-          && [ -x "/usr/local/ssl3/bin/openssl" ]; then
-          _SSL_BINARY=/usr/local/ssl3/bin/openssl
-        else
-          _SSL_BINARY=/usr/local/ssl/bin/openssl
-        fi
-        _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-          | tr -d "\n" \
-          | cut -d" " -f2 \
-          | awk '{ print $1}')
-        if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-          || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-          _SSL_PATH="/usr/local/ssl3"
-          _SSL_LIB_PATH="${_SSL_PATH}/lib64"
-        else
-          _SSL_PATH="/usr/local/ssl"
-          _SSL_LIB_PATH="${_SSL_PATH}/lib"
-        fi
-        _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
-        if [ -e "${_PKG_CONFIG_PATH}" ]; then
-          cd /var/opt/curl-${_CURL_VRN}
-          _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
-            --with-openssl \
-            --with-zlib=/usr \
-            --prefix=/usr/local"
-          _mrun "make -j $(nproc)"
-          _mrun "make install"
-          ldconfig 2> /dev/null
-          if [ -x "/usr/local/bin/curl" ]; then
-            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
+      # Prebuilt package path (_USE_PREBUILT_PKGS): replaces the apt build
+      # prep and the compile; the shared libs-symlink tail below runs for
+      # both paths. Any failure falls through to the untouched source build.
+      _CURL_DEB_INSTALLED=NO
+      if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
+        if _install_boa_deb "boa-curl" "${_CURL_VRN}"; then
+          _CURL_DEB_ITD=$(/usr/local/bin/curl --version 2>&1 \
+            | tr -d "\n" \
+            | cut -d" " -f2 \
+            | awk '{ print $1}' 2>&1)
+          if [ -x "/usr/local/bin/curl" ] \
+            && [ "${_CURL_DEB_ITD}" = "${_CURL_VRN}" ]; then
+            _CURL_DEB_INSTALLED=YES
+            _msg "INFO: cURL ${_CURL_VRN} installed from prebuilt package"
+            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S) &> /dev/null
             ln -sfn /usr/local/bin/curl /usr/bin/curl
+            echo "curl hold" | dpkg --set-selections &> /dev/null
+          else
+            dpkg --purge boa-curl &> /dev/null
+            _msg "NOTE: Prebuilt boa-curl failed health check; building from sources"
           fi
-          if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
-            cp -af /etc/ssl/certs/* ${_SSL_PATH}/certs/ &> /dev/null
-          fi
-          echo "curl hold" | dpkg --set-selections &> /dev/null
-        else
-          _msg "OOPS: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources failed!"
         fi
-      else
-        _msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
+      fi
+      if [ "${_CURL_DEB_INSTALLED}" = "NO" ]; then
+        _apt_clean_update
+        # Check for libssl1.0-dev and remove conditionally
+        if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+          _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+        fi
+        _mrun "apt-get autoremove -y"
+        for _PKG in libssl-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
+        _mrun "apt-get build-dep curl -y"
+        cd /var/opt
+        rm -rf curl*
+        _get_dev_src_wget "curl-${_CURL_VRN}.tar.gz"
+        if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
+          _msg "INFO: Building cURL ${_CURL_VRN} from sources..."
+          _msg "WAIT: This may take a while, please wait..."
+          if [ -e "/root/.install.modern.openssl.cnf" ] \
+            && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+            _SSL_BINARY=/usr/local/ssl3/bin/openssl
+          else
+            _SSL_BINARY=/usr/local/ssl/bin/openssl
+          fi
+          _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
+            | tr -d "\n" \
+            | cut -d" " -f2 \
+            | awk '{ print $1}')
+          if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+            || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+            _SSL_PATH="/usr/local/ssl3"
+            _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+          else
+            _SSL_PATH="/usr/local/ssl"
+            _SSL_LIB_PATH="${_SSL_PATH}/lib"
+          fi
+          _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+          if [ -e "${_PKG_CONFIG_PATH}" ]; then
+            cd /var/opt/curl-${_CURL_VRN}
+            _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+              --with-openssl \
+              --with-zlib=/usr \
+              --prefix=/usr/local"
+            _mrun "make -j $(nproc)"
+            _mrun "make install"
+            ldconfig 2> /dev/null
+            if [ -x "/usr/local/bin/curl" ]; then
+              mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
+              ln -sfn /usr/local/bin/curl /usr/bin/curl
+            fi
+            if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
+              cp -af /etc/ssl/certs/* ${_SSL_PATH}/certs/ &> /dev/null
+            fi
+            echo "curl hold" | dpkg --set-selections &> /dev/null
+          else
+            _msg "OOPS: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources failed!"
+          fi
+        else
+          _msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
+        fi
       fi
       if [ -x "/usr/local/bin/curl" ] \
         && [ ! -e "/var/log/boa/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
