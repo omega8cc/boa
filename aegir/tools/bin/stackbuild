@@ -1,0 +1,502 @@
+#!/bin/bash
+#
+# stackbuild - package the heavy stack components a real "barracuda up-<tree>"
+# run just built on THIS builder mirror VM, and publish them as prebuilt .deb
+# packages to the mirror tree the fleet fetches from (_USE_PREBUILT_PKGS).
+#
+# The builder NEVER re-implements build logic: run the real barracuda upgrade
+# first (the _*_VRN pins in BARRACUDA.sh.txt stay the single source of truth,
+# and the mirror src tarballs it fetches are the canonical sources, BOA-patched
+# or not - by construction); stackbuild only snapshots the installed trees,
+# assembles per-release .debs, and publishes them with sha256 sidecars. A
+# package can only exist if the real upgrade succeeded on a real box of this
+# release, so the builder doubles as a standing upgrade canary. Run daily from
+# cron right after "barracuda up-<tree>" (both are cheap no-ops when nothing
+# changed).
+#
+# Components (phase 1): ssl3 ssl-legacy icu curl php56..php85 (whatever
+# /opt/php*/bin/php exists). Versions are NOT hardcoded - each is detected
+# from the installed tree, so a pin bump is packaged on the next run.
+# Inter-boa companion ordering is enforced by the INSTALLER, not by control
+# file Depends (a box whose companion fell back to source has the correct
+# tree but no dpkg record); Depends carries distro libs only, resolved on
+# this box via dpkg-shlibdeps --ignore-missing-info.
+#
+# Usage:
+#   stackbuild check                report installed versions vs published packages
+#   stackbuild package [name ...]   build the missing (or named) packages
+#   stackbuild publish              gzip + sha256 sidecar into the mirror tree
+#   stackbuild sync                 rsync fresh packages to the peer active mirror
+#   stackbuild all                  package missing + publish + sync
+# Component names: ssl3 ssl-legacy icu curl php56 php70 .. php85
+#
+# The builder box MUST keep _USE_PREBUILT_PKGS=NO in /root/.barracuda.cnf
+# (it must always compile from source, or it would install its own packages
+# and repackage them in a circle) - stackbuild refuses to run otherwise.
+
+# ---------------------------------------------------------------------------
+# Configuration.
+# ---------------------------------------------------------------------------
+
+# Where the mirror serves https://<mirror>/dev/ from. Empty = auto-detect from
+# the existing prebuilt packages (mydumper precedent) under /var/www.
+_PUB_DIR=""
+
+# Peer ACTIVE builder mirror to cross-sync fresh packages to (rsync-over-ssh
+# target, e.g. "root@excalibur-mirror:/var/www/...dev/"). Empty = skip sync
+# with a note. Passive mirrors keep syncing from the authoritative Daedalus
+# mirror exactly as they do today - that is not stackbuild's job.
+_PEER_MIRROR=""
+
+# Codenames packages are built for (D-2026-07-14: daedalus + excalibur only;
+# beowulf/chimaera age out on the source path).
+_BUILD_CODENAMES="daedalus excalibur"
+
+_WORK_DIR="/var/opt/stackbuild"
+_LOCK="/run/stackbuild.lock"
+_MAINTAINER="BOA Dev Team <boa@omega8.cc>"
+_ARCH="amd64"
+
+# Runtime state.
+_OS_CODE=""
+_LOCK_HELD=0
+_RESULTS=()
+
+# ---------------------------------------------------------------------------
+# Output helpers.
+# ---------------------------------------------------------------------------
+
+_msg()  { printf '%s\n' "$*"; }
+_info() { printf '\033[0;32m%s\033[0m\n' "$*"; }
+_alrt() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
+_die()  { printf '\033[0;31mFATAL ERROR: %s\033[0m\n' "$*" >&2; _cleanup; exit 1; }
+
+_cleanup() {
+  if [[ "${_LOCK_HELD}" == "1" ]]; then
+    rmdir "${_LOCK}" 2>/dev/null
+    _LOCK_HELD=0
+  fi
+}
+
+_acquire_lock() {
+  if ! mkdir "${_LOCK}" 2>/dev/null; then
+    _die "another stackbuild run holds ${_LOCK} (remove it if stale)"
+  fi
+  _LOCK_HELD=1
+}
+
+# ---------------------------------------------------------------------------
+# Environment checks.
+# ---------------------------------------------------------------------------
+
+_require_root() {
+  [[ "$(id -u)" == "0" ]] || _die "must run as root (dpkg-deb staging + mirror writes)"
+}
+
+_require_builder() {
+  # The whole design collapses if the builder installs its own packages.
+  if grep -q "^_USE_PREBUILT_PKGS=YES" /root/.barracuda.cnf 2>/dev/null; then
+    _die "_USE_PREBUILT_PKGS=YES in /root/.barracuda.cnf - a builder box must compile from source"
+  fi
+  _OS_CODE="$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)"
+  [[ -n "${_OS_CODE}" ]] || _die "cannot detect the OS codename (lsb_release)"
+  case " ${_BUILD_CODENAMES} " in
+    *" ${_OS_CODE} "*) ;;
+    *) _die "codename '${_OS_CODE}' is not a build target (${_BUILD_CODENAMES}); edit _BUILD_CODENAMES if the matrix grew" ;;
+  esac
+}
+
+_require_tools() {
+  command -v dpkg-deb >/dev/null 2>&1 || _die "dpkg-deb not found"
+  command -v file >/dev/null 2>&1 || _die "file not found"
+  command -v sha256sum >/dev/null 2>&1 || _die "sha256sum not found"
+  if ! command -v dpkg-shlibdeps >/dev/null 2>&1; then
+    _alrt "dpkg-shlibdeps missing; installing dpkg-dev"
+    apt-get install -y dpkg-dev -qq >/dev/null 2>&1
+    command -v dpkg-shlibdeps >/dev/null 2>&1 || _die "dpkg-shlibdeps still missing (dpkg-dev)"
+  fi
+}
+
+_detect_pub_dir() {
+  if [[ -z "${_PUB_DIR}" ]]; then
+    # Evidence-driven: the dir serving the existing prebuilt .deb.gz packages
+    # (mydumper precedent) IS the https://<mirror>/dev/ docroot.
+    _PUB_DIR="$(find /var/www -maxdepth 6 -name 'mydumper_*_amd64.deb.gz' 2>/dev/null \
+      | head -n 1 | xargs -r dirname)"
+  fi
+  [[ -n "${_PUB_DIR}" && -d "${_PUB_DIR}" ]] \
+    || _die "cannot resolve the /dev/ publish dir; set _PUB_DIR in the configuration block"
+}
+
+# ---------------------------------------------------------------------------
+# Component registry - everything below is data-driven from these four maps.
+# _comp_version  : installed version on this box, empty = not installed here
+# _comp_paths    : absolute paths to snapshot (whitespace-separated, may glob)
+# _comp_excludes : tar --exclude patterns relative to / (may be empty)
+# _comp_desc     : one-line package description
+# ---------------------------------------------------------------------------
+
+_all_components() {
+  local _c _n
+  _c="ssl3 ssl-legacy icu curl"
+  for _n in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    [[ -x "/opt/php${_n}/bin/php" ]] && _c="${_c} php${_n}"
+  done
+  printf '%s\n' "${_c}"
+}
+
+_comp_version() {
+  local _comp="$1" _v=""
+  case "${_comp}" in
+    ssl3)
+      [[ -x /usr/local/ssl3/bin/openssl ]] \
+        && _v="$(/usr/local/ssl3/bin/openssl version 2>/dev/null | awk '{print $2}')" ;;
+    ssl-legacy)
+      [[ -x /usr/local/ssl/bin/openssl ]] \
+        && _v="$(/usr/local/ssl/bin/openssl version 2>/dev/null | awk '{print $2}')" ;;
+    icu)
+      # /usr/local/lib/icu/current -> .../76.1; the package version keeps the
+      # icu-release tarball form (76-1), which is what the installer's
+      # _ICU_TARGET_VRN carries in the fetch filename.
+      if [[ -e /usr/local/lib/icu/current ]]; then
+        _v="$(basename "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" 2>/dev/null)"
+        _v="${_v/./-}"
+      fi ;;
+    curl)
+      [[ -x /usr/local/bin/curl ]] \
+        && _v="$(/usr/local/bin/curl --version 2>/dev/null | head -n 1 | awk '{print $2}')" ;;
+    php*)
+      local _n="${_comp#php}"
+      [[ -x "/opt/php${_n}/bin/php" ]] \
+        && _v="$("/opt/php${_n}/bin/php" -v 2>/dev/null | grep '^PHP' | head -n 1 | awk '{print $2}')" ;;
+  esac
+  printf '%s\n' "${_v}"
+}
+
+_comp_paths() {
+  local _comp="$1" _dot
+  case "${_comp}" in
+    ssl3)       printf '%s\n' "/usr/local/ssl3" ;;
+    ssl-legacy) printf '%s\n' "/usr/local/ssl" ;;
+    icu)
+      _dot="$(basename "$(readlink -f /usr/local/lib/icu/current 2>/dev/null)" 2>/dev/null)"
+      # The versioned tree + the libs/headers/tools an ICU consumer (PHP build
+      # or runtime link) needs. 'current' itself stays installer-managed.
+      printf '%s\n' "/usr/local/lib/icu/${_dot} /usr/local/lib/libicu* /usr/local/include/unicode /usr/local/lib/pkgconfig/icu-*.pc /usr/local/share/icu/${_dot} /usr/local/bin/icu-config /usr/local/bin/icuinfo /usr/local/bin/icuexportdata /usr/local/bin/uconv /usr/local/bin/derb /usr/local/bin/genbrk /usr/local/bin/gencfu /usr/local/bin/gencnval /usr/local/bin/gendict /usr/local/bin/genrb /usr/local/bin/makeconv /usr/local/bin/pkgdata /usr/local/sbin/genccode /usr/local/sbin/gencmn /usr/local/sbin/gensprep /usr/local/sbin/icupkg /usr/local/sbin/escapesrc" ;;
+    curl)
+      printf '%s\n' "/usr/local/bin/curl /usr/local/bin/curl-config /usr/local/lib/libcurl.so* /usr/local/lib/libcurl.a /usr/local/lib/libcurl.la /usr/local/lib/pkgconfig/libcurl.pc /usr/local/include/curl" ;;
+    php*)
+      printf '%s\n' "/opt/php${_comp#php}" ;;
+  esac
+}
+
+_comp_excludes() {
+  local _comp="$1"
+  case "${_comp}" in
+    php*)
+      # Runtime config is host-tuned and regenerated on every target from the
+      # repo templates - never baked into the package.
+      printf '%s\n' "opt/php${_comp#php}/etc opt/php${_comp#php}/lib/php.ini" ;;
+    *) printf '%s\n' "" ;;
+  esac
+}
+
+_comp_desc() {
+  local _comp="$1"
+  case "${_comp}" in
+    ssl3)       printf '%s\n' "BOA Modern OpenSSL tree (/usr/local/ssl3), built by barracuda on ${_OS_CODE}" ;;
+    ssl-legacy) printf '%s\n' "BOA Legacy OpenSSL tree (/usr/local/ssl), built by barracuda on ${_OS_CODE}" ;;
+    icu)        printf '%s\n' "BOA ICU libs (/usr/local), built by barracuda on ${_OS_CODE}" ;;
+    curl)       printf '%s\n' "BOA cURL (/usr/local), built by barracuda on ${_OS_CODE}" ;;
+    php*)       printf '%s\n' "BOA PHP ${_comp#php} prefix (/opt/${_comp}) incl. phpize/headers, built by barracuda on ${_OS_CODE}" ;;
+  esac
+}
+
+_deb_name() {
+  # boa-<comp>_<ver>.<codename>_amd64.deb - the exact filename grammar the
+  # installer constructs from its own pins (the mydumper precedent).
+  local _comp="$1" _ver="$2"
+  printf '%s\n' "boa-${_comp}_${_ver}.${_OS_CODE}_${_ARCH}.deb"
+}
+
+# ---------------------------------------------------------------------------
+# Packaging primitives.
+# ---------------------------------------------------------------------------
+
+_stage_tree() {
+  # Snapshot the component's paths into ${_stage} preserving ownership/modes.
+  # Paths may glob; excludes are tar patterns relative to /.
+  local _stage="$1" _paths="$2" _excludes="$3"
+  local _p _rel _tarx=()
+  local _rels=()
+  # ${_paths} expands globs here; an unmatched glob stays literal and is
+  # reported as absent (optional members like .la files are tolerated).
+  for _p in ${_paths}; do
+    if [[ -e "${_p}" || -L "${_p}" ]]; then
+      _rels+=("${_p#/}")
+    else
+      _msg "  note: ${_p} not present; skipped"
+    fi
+  done
+  [[ "${#_rels[@]}" -gt 0 ]] || return 1
+  for _rel in ${_excludes}; do
+    _tarx+=("--exclude=${_rel}")
+  done
+  tar -C / -cf - "${_tarx[@]}" "${_rels[@]}" 2>/dev/null | tar -C "${_stage}" -xf -
+}
+
+_calc_depends() {
+  # Resolve distro-lib Depends for every ELF object in the staged tree via
+  # dpkg-shlibdeps on THIS box (per-release sonames come out right by
+  # construction). --ignore-missing-info skips the unpackaged /usr/local
+  # trees, which is exactly the inter-boa ordering the installer owns.
+  # Echoes the Depends value (may be empty); never fails the build.
+  local _stage="$1" _work="$2"
+  local _elves=() _f _out
+  while IFS= read -r -d '' _f; do
+    if file -b "${_f}" 2>/dev/null | grep -q '^ELF'; then
+      _elves+=("${_f}")
+    fi
+  done < <(find "${_stage}" -type f \( -perm -u+x -o -name '*.so*' \) -print0 2>/dev/null)
+  [[ "${#_elves[@]}" -gt 0 ]] || { printf '\n'; return 0; }
+  mkdir -p "${_work}/debian"
+  cat > "${_work}/debian/control" <<EOF
+Source: stackbuild-stub
+Section: misc
+Priority: optional
+Maintainer: ${_MAINTAINER}
+
+Package: stackbuild-stub
+Architecture: ${_ARCH}
+Description: shlibdeps stub
+EOF
+  _out="$(cd "${_work}" \
+    && dpkg-shlibdeps -O --ignore-missing-info "${_elves[@]}" 2>/dev/null \
+    | grep '^shlibs:Depends=' | sed 's/^shlibs:Depends=//')"
+  rm -rf "${_work}/debian"
+  printf '%s\n' "${_out}"
+}
+
+_package_one() {
+  local _comp="$1"
+  local _ver _deb _paths _excludes _stage _work _deps
+  _ver="$(_comp_version "${_comp}")"
+  if [[ -z "${_ver}" ]]; then
+    _RESULTS+=("SKIP  ${_comp} (not installed on this box)")
+    return 0
+  fi
+  _deb="$(_deb_name "${_comp}" "${_ver}")"
+  if [[ -e "${_WORK_DIR}/${_deb}" ]]; then
+    _RESULTS+=("SKIP  ${_deb} (already built; publish pending)")
+    return 0
+  fi
+  _msg "package: ${_deb}"
+  _work="${_WORK_DIR}/.work.${_comp}"
+  _stage="${_work}/root"
+  rm -rf "${_work}"
+  mkdir -p "${_stage}/DEBIAN"
+  _paths="$(_comp_paths "${_comp}")"
+  _excludes="$(_comp_excludes "${_comp}")"
+  if ! _stage_tree "${_stage}" "${_paths}" "${_excludes}"; then
+    _RESULTS+=("FAIL  ${_deb} (staging produced nothing)")
+    rm -rf "${_work}"
+    return 1
+  fi
+  _deps="$(_calc_depends "${_stage}" "${_work}")"
+  {
+    printf 'Package: boa-%s\n' "${_comp}"
+    printf 'Version: %s\n' "${_ver}"
+    printf 'Section: misc\n'
+    printf 'Priority: optional\n'
+    printf 'Architecture: %s\n' "${_ARCH}"
+    [[ -n "${_deps}" ]] && printf 'Depends: %s\n' "${_deps}"
+    printf 'Maintainer: %s\n' "${_MAINTAINER}"
+    printf 'Description: %s\n' "$(_comp_desc "${_comp}")"
+  } > "${_stage}/DEBIAN/control"
+  if dpkg-deb --build --root-owner-group "${_stage}" "${_WORK_DIR}/${_deb}" >/dev/null 2>&1; then
+    _RESULTS+=("OK    ${_deb}")
+  else
+    _RESULTS+=("FAIL  ${_deb} (dpkg-deb)")
+    rm -rf "${_work}"
+    return 1
+  fi
+  rm -rf "${_work}"
+}
+
+# ---------------------------------------------------------------------------
+# Verbs.
+# ---------------------------------------------------------------------------
+
+do_check() {
+  local _comp _ver _deb _state
+  _detect_pub_dir
+  _msg "codename: ${_OS_CODE}   publish dir: ${_PUB_DIR}"
+  for _comp in $(_all_components); do
+    _ver="$(_comp_version "${_comp}")"
+    if [[ -z "${_ver}" ]]; then
+      printf '  %-12s %-12s %s\n' "${_comp}" "-" "not installed on this box"
+      continue
+    fi
+    _deb="$(_deb_name "${_comp}" "${_ver}")"
+    if [[ -e "${_PUB_DIR}/${_deb}.gz" ]]; then
+      _state="published"
+    elif [[ -e "${_WORK_DIR}/${_deb}" ]]; then
+      _state="BUILT, publish pending"
+    else
+      _state="MISSING"
+    fi
+    printf '  %-12s %-12s %s\n' "${_comp}" "${_ver}" "${_state}"
+  done
+}
+
+_missing_components() {
+  local _comp _ver _deb
+  for _comp in $(_all_components); do
+    _ver="$(_comp_version "${_comp}")"
+    [[ -n "${_ver}" ]] || continue
+    _deb="$(_deb_name "${_comp}" "${_ver}")"
+    [[ -e "${_PUB_DIR}/${_deb}.gz" ]] && continue
+    printf '%s ' "${_comp}"
+  done
+}
+
+do_package() {
+  # $@ = component names, or empty for every missing one.
+  local _targets="$*" _comp
+  _detect_pub_dir
+  mkdir -p "${_WORK_DIR}"
+  [[ -n "${_targets}" ]] || _targets="$(_missing_components)"
+  if [[ -z "${_targets// /}" ]]; then
+    _msg "nothing to package - all installed components are published"
+    return 0
+  fi
+  for _comp in ${_targets}; do
+    case "${_comp}" in
+      ssl3|ssl-legacy|icu|curl|php[0-9][0-9]) _package_one "${_comp}" ;;
+      *) _alrt "unknown component: ${_comp}" ;;
+    esac
+  done
+}
+
+do_publish() {
+  # Move every built .deb into the mirror tree as .deb.gz + sha256 sidecar.
+  # The sidecar hashes the COMPRESSED file (the installer verifies before
+  # gunzip). Old versions are never deleted - mirrors keep them so slower
+  # trees and older pins keep finding their exact filename.
+  local _t _base _n=0
+  _detect_pub_dir
+  for _t in "${_WORK_DIR}"/boa-*.deb; do
+    [[ -e "${_t}" ]] || continue
+    _base="${_t##*/}"
+    if ! gzip -9 -c "${_t}" > "${_PUB_DIR}/${_base}.gz.tmp"; then
+      _alrt "gzip failed: ${_base}"
+      rm -f "${_PUB_DIR}/${_base}.gz.tmp"
+      continue
+    fi
+    mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"
+    # Sidecar gets the same tmp+mv treatment as the .gz: an in-place rewrite
+    # would expose a new-.gz/old-sidecar window on a same-version republish,
+    # tripping spurious checksum-mismatch source fallbacks fleet-wide.
+    if ! (cd "${_PUB_DIR}" && sha256sum "${_base}.gz" > "${_base}.gz.sha256.tmp" \
+      && mv -f "${_base}.gz.sha256.tmp" "${_base}.gz.sha256"); then
+      # Fail closed: no sidecar means the installer will not use the package.
+      _alrt "sha256 sidecar failed: ${_base}.gz; removing the package"
+      rm -f "${_PUB_DIR}/${_base}.gz" "${_PUB_DIR}/${_base}.gz.sha256" \
+        "${_PUB_DIR}/${_base}.gz.sha256.tmp"
+      continue
+    fi
+    rm -f "${_t}"
+    _msg "published: ${_base}.gz (+ sha256)"
+    _n=$((_n + 1))
+  done
+  [[ "${_n}" -gt 0 ]] || _msg "nothing to publish (run 'package' first)"
+}
+
+do_sync() {
+  # Cross-sync to the peer ACTIVE mirror so both hold the complete package
+  # tree; never delete on the peer (keep-old-versions applies there too).
+  _detect_pub_dir
+  if [[ -z "${_PEER_MIRROR}" ]]; then
+    _msg "note: _PEER_MIRROR not set; skipping cross-sync"
+    return 0
+  fi
+  # --delay-updates moves every transferred file into place at the end of the
+  # run, keeping the .gz/.sha256 pair window on the peer as small as possible.
+  if rsync -a --delay-updates \
+    --include='boa-*_amd64.deb.gz' --include='boa-*_amd64.deb.gz.sha256' \
+    --exclude='*' "${_PUB_DIR}/" "${_PEER_MIRROR}/"; then
+    _msg "cross-synced boa-* packages to ${_PEER_MIRROR}"
+  else
+    _alrt "cross-sync to ${_PEER_MIRROR} failed"
+    return 1
+  fi
+}
+
+print_summary() {
+  [[ "${#_RESULTS[@]}" -gt 0 ]] || return 0
+  _msg ""
+  _info "=== stackbuild summary (${_OS_CODE}) ==="
+  local _r
+  for _r in "${_RESULTS[@]}"; do
+    _msg "  ${_r}"
+  done
+}
+
+usage() {
+  awk 'NR<3{next} !/^#/{exit} {sub(/^# ?/,""); print}' "$0"
+}
+
+main() {
+  local _action="${1:-}"
+  [[ -n "${_action}" ]] || { usage; exit 1; }
+  shift || true
+
+  case "${_action}" in
+    -h|--help|help)
+      usage
+      exit 0
+      ;;
+    check)
+      _require_root
+      _require_builder
+      do_check
+      ;;
+    package)
+      _require_root
+      _require_builder
+      _require_tools
+      trap '_cleanup' EXIT
+      _acquire_lock
+      do_package "$@"
+      print_summary
+      ;;
+    publish)
+      _require_root
+      _require_builder
+      trap '_cleanup' EXIT
+      _acquire_lock
+      do_publish
+      ;;
+    sync)
+      _require_root
+      _require_builder
+      do_sync
+      ;;
+    all)
+      _require_root
+      _require_builder
+      _require_tools
+      trap '_cleanup' EXIT
+      _acquire_lock
+      do_package
+      do_publish
+      do_sync
+      print_summary
+      ;;
+    *)
+      _die "unknown action '${_action}' (try -h)"
+      ;;
+  esac
+}
+
+main "$@"
