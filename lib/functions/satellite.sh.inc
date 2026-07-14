@@ -2665,6 +2665,13 @@ _satellite_add_user_dirs() {
   fi
   chown -R ${_USER}:${_USRG} /opt/tmp &> /dev/null
   chown -R ${_USER}:${_USRG} /data/conf &> /dev/null
+  # On a fresh install the per-user include is materialised before this
+  # user exists, so ownership must be re-asserted here or the su'd
+  # children cannot read their 0600 copy
+  if [ -e "${_vBs}/${_filIncO}.${_USER}" ]; then
+    chown ${_USER}:${_USRG} ${_vBs}/${_filIncO}.${_USER} &> /dev/null
+    chmod 0600 ${_vBs}/${_filIncO}.${_USER}
+  fi
 }
 
 _satellite_prepare_child_scripts() {
@@ -4267,10 +4274,51 @@ _satellite_make() {
 
   _tocIncO="${_filIncO}.${_USER}"
 
+  # The su'd children source only their per-user include; build it on a
+  # private same-dir temp copy of this pass's base (the wrapper's per-user
+  # clone on upgrades, the freshly fetched shared include on installs) and
+  # swap it in place 0600 user-owned, so the values are never half-written
+  # nor readable by other local users
   if [ -e "${_vBs}/${_tocIncO}" ]; then
-    _writeTo="${_vBs}/${_tocIncO}"
+    _incBase="${_vBs}/${_tocIncO}"
   elif [ -e "${_vBs}/${_filIncO}" ]; then
-    _writeTo="${_vBs}/${_filIncO}"
+    _incBase="${_vBs}/${_filIncO}"
+  else
+    _msg "FATAL ERROR: ${_vBs}/${_filIncO} is missing"
+    _msg "FATAL ERROR: Aborting Octopus installer NOW!"
+    touch /opt/tmp/status-Octopus-FAIL
+    _clean_pid_exit _satellite_make_inc
+  fi
+  _tmpIncO="${_vBs}/.${_tocIncO}.tmp"
+  rm -f ${_tmpIncO}
+  cp -af ${_incBase} ${_tmpIncO}
+  chown ${_USER}:${_USRG} ${_tmpIncO} &> /dev/null
+  chmod 0600 ${_tmpIncO}
+  _writeTo="${_tmpIncO}"
+
+  # Never serialize an empty PHP version: these appends shadow the
+  # template's shipped default, so an empty value here would reach the
+  # su'd child as-is and break its version branch table
+  if [ -z "${_PHP_CLI_VERSION}" ]; then
+    _cliPhpBin=$(readlink -f /usr/bin/php 2>/dev/null)
+    _cliPhpNum="${_cliPhpBin%/bin/php}"
+    _cliPhpNum="${_cliPhpNum##*php}"
+    if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
+      _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
+    else
+      for _fbV in 84 85 83 82 81 80 74; do
+        if [ -x "/opt/php${_fbV}/bin/php" ]; then
+          _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
+          break
+        fi
+      done
+    fi
+    if [ -z "${_PHP_CLI_VERSION}" ]; then
+      _PHP_CLI_VERSION=8.4
+    fi
+  fi
+  if [ -z "${_PHP_FPM_VERSION}" ]; then
+    _PHP_FPM_VERSION="${_PHP_CLI_VERSION}"
   fi
 
   export _xSrl=5103proT01
@@ -4434,6 +4482,8 @@ _satellite_make() {
   echo "export _WEBG=\"${_WEBG}\""                           >> ${_writeTo}
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
+
+  mv -f ${_tmpIncO} ${_vBs}/${_tocIncO}
 
   _THISHOST="${_hName}"
   if [ -e "/usr/bin/sipcalc" ]; then
