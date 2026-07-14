@@ -819,6 +819,32 @@ _aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
+    # Never serialize an empty PHP version: the drush shebang update just
+    # below hard-exits on an unresolved value, and the appends further down
+    # shadow the template's shipped default, so an empty value here would
+    # reach the su'd child as-is and break its version branch table
+    if [ -z "${_PHP_CLI_VERSION}" ]; then
+      _cliPhpBin=$(readlink -f /usr/bin/php 2>/dev/null)
+      _cliPhpNum="${_cliPhpBin%/bin/php}"
+      _cliPhpNum="${_cliPhpNum##*php}"
+      if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
+        _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
+      else
+        for _fbV in 84 85 83; do
+          if [ -x "/opt/php${_fbV}/bin/php" ]; then
+            _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
+            break
+          fi
+        done
+      fi
+      if [ -z "${_PHP_CLI_VERSION}" ]; then
+        _PHP_CLI_VERSION=8.4
+      fi
+    fi
+    if [ -z "${_PHP_FPM_VERSION}" ]; then
+      _PHP_FPM_VERSION="${_PHP_CLI_VERSION}"
+    fi
+
     _DRUSH_FILES="drush.php drush"
     for _df in ${_DRUSH_FILES}; do
       _php_cli_drush_update "${_df}"
@@ -827,26 +853,37 @@ _aegir_master_upgrade() {
     export _xSrl=5103ltsT01
     export _X_VERSION="${_X_VERSION}"
 
-    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
-    echo "_AEGIR_XTS_VRN=\"${_tRee}\""                  >> ${_vBs}/${_filIncB}
-    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${_vBs}/${_filIncB}
-    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_vBs}/${_filIncB}
-    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_vBs}/${_filIncB}
-    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_vBs}/${_filIncB}
-    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_vBs}/${_filIncB}
-    echo "_DL_MODE=\"${_DL_MODE}\""                     >> ${_vBs}/${_filIncB}
-    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${_vBs}/${_filIncB}
-    echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${_vBs}/${_filIncB}
-    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_vBs}/${_filIncB}
-    echo "_NOW=\"${_NOW}\""                             >> ${_vBs}/${_filIncB}
-    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_vBs}/${_filIncB}
-    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_vBs}/${_filIncB}
-    echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_vBs}/${_filIncB}
-    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_vBs}/${_filIncB}
-    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_vBs}/${_filIncB}
-    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_vBs}/${_filIncB}
-    echo "_xSrl=\"${_xSrl}\""                           >> ${_vBs}/${_filIncB}
-    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_vBs}/${_filIncB}
+    # Build the child include on a private same-dir temp copy and swap it
+    # in place 0600 aegir-owned: the values the child sources must never
+    # be half-written nor readable by other local users
+    _tmpIncB="${_vBs}/.${_filIncB}.tmp"
+    rm -f ${_tmpIncB}
+    cp -af ${_vBs}/${_filIncB} ${_tmpIncB}
+    chown aegir:aegir ${_tmpIncB} &> /dev/null
+    chmod 0600 ${_tmpIncB}
+
+    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_tmpIncB}
+    echo "_AEGIR_XTS_VRN=\"${_tRee}\""                  >> ${_tmpIncB}
+    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${_tmpIncB}
+    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_tmpIncB}
+    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_tmpIncB}
+    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_tmpIncB}
+    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_tmpIncB}
+    echo "_DL_MODE=\"${_DL_MODE}\""                     >> ${_tmpIncB}
+    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${_tmpIncB}
+    echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${_tmpIncB}
+    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_tmpIncB}
+    echo "_NOW=\"${_NOW}\""                             >> ${_tmpIncB}
+    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_tmpIncB}
+    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_tmpIncB}
+    echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_tmpIncB}
+    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_tmpIncB}
+    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_tmpIncB}
+    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_tmpIncB}
+    echo "_xSrl=\"${_xSrl}\""                           >> ${_tmpIncB}
+    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_tmpIncB}
+
+    mv -f ${_tmpIncB} ${_vBs}/${_filIncB}
 
     mysqladmin -u root flush-hosts &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
@@ -1194,29 +1231,65 @@ EOFMYSQL
     export _xSrl=5103ltsT01
     export _X_VERSION="${_X_VERSION}"
 
-    echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${_vBs}/${_filIncB}
-    echo "_AEGIR_HOST=\"${_AEGIR_HOST}\""               >> ${_vBs}/${_filIncB}
-    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
-    echo "_AEGIR_XTS_VRN=\"${_tRee}\""                  >> ${_vBs}/${_filIncB}
-    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${_vBs}/${_filIncB}
-    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_vBs}/${_filIncB}
-    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_vBs}/${_filIncB}
-    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_vBs}/${_filIncB}
-    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_vBs}/${_filIncB}
-    echo "_DL_MODE=\"${_DL_MODE}\""                     >> ${_vBs}/${_filIncB}
-    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${_vBs}/${_filIncB}
-    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_vBs}/${_filIncB}
-    echo "_ESC_PASS=\"${_ESC_PASS}\""                   >> ${_vBs}/${_filIncB}
-    echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${_vBs}/${_filIncB}
-    echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_vBs}/${_filIncB}
-    echo "_NOW=\"${_NOW}\""                             >> ${_vBs}/${_filIncB}
-    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_vBs}/${_filIncB}
-    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_vBs}/${_filIncB}
-    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_vBs}/${_filIncB}
-    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_vBs}/${_filIncB}
-    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_vBs}/${_filIncB}
-    echo "_xSrl=\"${_xSrl}\""                           >> ${_vBs}/${_filIncB}
-    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_vBs}/${_filIncB}
+    # Never serialize an empty PHP version: these appends shadow the
+    # template's shipped default, so an empty value here would reach the
+    # su'd child as-is and break its version branch table
+    if [ -z "${_PHP_CLI_VERSION}" ]; then
+      _cliPhpBin=$(readlink -f /usr/bin/php 2>/dev/null)
+      _cliPhpNum="${_cliPhpBin%/bin/php}"
+      _cliPhpNum="${_cliPhpNum##*php}"
+      if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
+        _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
+      else
+        for _fbV in 84 85 83; do
+          if [ -x "/opt/php${_fbV}/bin/php" ]; then
+            _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
+            break
+          fi
+        done
+      fi
+      if [ -z "${_PHP_CLI_VERSION}" ]; then
+        _PHP_CLI_VERSION=8.4
+      fi
+    fi
+    if [ -z "${_PHP_FPM_VERSION}" ]; then
+      _PHP_FPM_VERSION="${_PHP_CLI_VERSION}"
+    fi
+
+    # Build the child include on a private same-dir temp copy and swap it
+    # in place 0600 aegir-owned: the Ægir DB password lands in this file,
+    # so it must never be half-written nor readable by other local users
+    _tmpIncB="${_vBs}/.${_filIncB}.tmp"
+    rm -f ${_tmpIncB}
+    cp -af ${_vBs}/${_filIncB} ${_tmpIncB}
+    chown aegir:aegir ${_tmpIncB} &> /dev/null
+    chmod 0600 ${_tmpIncB}
+
+    echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${_tmpIncB}
+    echo "_AEGIR_HOST=\"${_AEGIR_HOST}\""               >> ${_tmpIncB}
+    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_tmpIncB}
+    echo "_AEGIR_XTS_VRN=\"${_tRee}\""                  >> ${_tmpIncB}
+    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${_tmpIncB}
+    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_tmpIncB}
+    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_tmpIncB}
+    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_tmpIncB}
+    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_tmpIncB}
+    echo "_DL_MODE=\"${_DL_MODE}\""                     >> ${_tmpIncB}
+    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${_tmpIncB}
+    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_tmpIncB}
+    echo "_ESC_PASS=\"${_ESC_PASS}\""                   >> ${_tmpIncB}
+    echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${_tmpIncB}
+    echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_tmpIncB}
+    echo "_NOW=\"${_NOW}\""                             >> ${_tmpIncB}
+    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_tmpIncB}
+    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_tmpIncB}
+    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_tmpIncB}
+    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_tmpIncB}
+    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_tmpIncB}
+    echo "_xSrl=\"${_xSrl}\""                           >> ${_tmpIncB}
+    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_tmpIncB}
+
+    mv -f ${_tmpIncB} ${_vBs}/${_filIncB}
 
     ###  Download Drupal core and modules
     _master_download_for_local_build
