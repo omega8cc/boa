@@ -16,6 +16,8 @@ You can easily upgrade your system from any supported Debian version, starting w
 
 **NOTE:** You can't upgrade from Percona 5.7 to Percona 8.4 directly, so you first run `barracuda up-lts system percona-8.0` and then `barracuda up-lts system percona-8.4`
 
+**NOTE:** Because one shared Percona server serves the whole host, its oldest codebase gates this upgrade. Before you start, run `codebasecheck --box --deep` to see which accounts (if any) cannot run on Percona 8 and must move to a legacy Percona 5.7 host first — see the Percona 8 Upgrade Readiness How To [docs/CODEBASECHECK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CODEBASECHECK.md)
+
 Please follow the required steps closely!
 
 First, update your BOA Meta Installers with:
