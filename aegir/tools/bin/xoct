@@ -567,6 +567,14 @@ REMOTE
 }
 
 _migrate_prepare() {
+  # Pause the mysql.sh watchdog for the DB-critical commands: export runs
+  # mydumper against the LIVE source; import runs myloader + renameaegirhost
+  # (which dumps and reimports the Aegir DB). A watchdog restart or long-query
+  # kill mid dump/load corrupts the migrated data. Cleared at function end; the
+  # watchdog self-ignores a stale marker (>4h) and /run is tmpfs.
+  case "${_cmd}" in
+    import|export) : > /run/boa_sql_maintenance.pid ;;
+  esac
   _THIS_HM_USER=$(_xoct_runtime_oct)
   _USR=/data/disk/${_THIS_HM_USER}
   _THIS_HM_SITE=`cat ${_USR}/.drush/hostmaster.alias.drushrc.php \
@@ -758,6 +766,9 @@ _migrate_prepare() {
     # container and bootstraps clean on this box.
     _xoct_flush_caches_target
   fi
+  case "${_cmd}" in
+    import|export) rm -f /run/boa_sql_maintenance.pid ;;
+  esac
   echo Done ${_cmd} for ${_USR}
   _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
 }
