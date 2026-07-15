@@ -21,6 +21,24 @@ _check_root
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
+# Stand down ENTIRELY during a controlled SQL maintenance window. A Percona
+# upgrade or an xmass/xoct migration deliberately stops, locks, dumps, restores
+# or restarts MySQL, and ANY action from this watchdog -- auto-heal restart,
+# high-load restart, busy restart, long-query kill -- races that into a corrupt
+# xtrabackup snapshot, a broken replica, a broken cutover FLUSH-lock (DATA LOSS),
+# or a half-applied 5.7->8.0 DD upgrade (the ibdata1 lock loop). The operation
+# holds /run/boa_sql_maintenance.pid for its critical section and clears it at
+# the end. A STALE marker (>4h, e.g. an operation that died without cleanup) is
+# ignored so auto-heal can never be disabled forever; /run is tmpfs so it also
+# clears on reboot.
+if [ -e "/run/boa_sql_maintenance.pid" ]; then
+  if [ -n "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ]; then
+    rm -f /run/boa_sql_maintenance.pid
+  else
+    exit 0
+  fi
+fi
+
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
