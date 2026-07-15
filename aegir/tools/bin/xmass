@@ -558,7 +558,7 @@ SLAVEEOF
   _info "Verifying slave is running on target ..."
   local _slave_status
   _slave_status=$(ssh root@"${_tgt}" \
-    "mysql --defaults-file=/root/.my.cnf -sNe \
+    "mysql --defaults-file=/root/.my.cnf -e \
     \"SHOW SLAVE STATUS\G\" 2>/dev/null \
     | grep -E 'Slave_IO_Running|Slave_SQL_Running'" 2>/dev/null)
   _info "Slave status: ${_slave_status}"
@@ -1065,7 +1065,7 @@ _xmass_sync_solr() {
 
 _xmass_get_repl_lag() {
   ssh root@"${_tgt}" \
-    "mysql --defaults-file=/root/.my.cnf -sNe \
+    "mysql --defaults-file=/root/.my.cnf -e \
     \"SHOW SLAVE STATUS\G\" 2>/dev/null \
     | grep 'Seconds_Behind_Master' | awk '{print \$2}'" 2>/dev/null
 }
