@@ -1470,6 +1470,7 @@ _xmass_cmd_init() {
 
 _xmass_cmd_sync() {
   _xmass_load_state
+  _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
   [ "${_XMASS_PHASE}" = "syncing" ] \
     || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — run 'xmass init' first"
 
@@ -1507,6 +1508,7 @@ _xmass_cmd_sync() {
 
 _xmass_cmd_status() {
   _xmass_load_state
+  _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
   local _lag="N/A"
   if [ "${_XMASS_PHASE}" = "syncing" ] && [ -n "${_XMASS_TARGET_IP}" ]; then
     _tgt="${_XMASS_TARGET_IP}"
@@ -1530,6 +1532,7 @@ _xmass_cmd_status() {
 
 _xmass_cmd_cutover() {
   _xmass_load_state
+  _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
   [ "${_XMASS_PHASE}" = "syncing" ] \
     || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — cannot cut over"
 
