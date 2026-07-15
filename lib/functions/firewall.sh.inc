@@ -256,6 +256,7 @@ _csf_install() {
       else
         rm -f ${_SSHD_CAND}
         _msg "OOPS: sshd_config update failed sshd -t validation, keeping current config"
+        _msg "OOPS: verify csf.conf TCP_IN matches the port sshd actually listens on (${_SSH_PORT} was not applied)"
       fi
     fi
     pkill -9 -f /usr/sbin/sshd || true
