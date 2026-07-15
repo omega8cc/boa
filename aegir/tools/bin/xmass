@@ -186,31 +186,43 @@ _xmass_xtrabackup_repo() {
 
 ###-------------XTRABACKUP INSTALL-------###
 
-# Enable the matching Percona pxb repo, reusing the keyring + codename BOA
+# Enable the Percona repos xtrabackup needs, reusing the keyring + codename BOA
 # already set up for the ps-* server repo (so signing + Devuan->bookworm
-# mapping stay consistent). Idempotent; safe to re-run. Meant to run on the
-# LOCAL box -- the target path wraps this same body over ssh. Emits the shell
-# to run so both paths share one definition.
+# mapping stay consistent). Two components are required:
+#   ${_repo}  -- the version-specific xtrabackup repo (pxb-24/pxb-80/pxb-84-lts)
+#   tools     -- ships Percona's libdbd-mysql-perl (epoch 1:5.013), which
+#                percona-xtrabackup Depends on. Debian's libdbd-mysql-perl
+#                Depends on libmariadb3, which BOA pins uninstallable
+#                (/etc/apt/preferences.d/mariadb-common) to keep MariaDB libs
+#                off a Percona box -- so without 'tools' the install dies on
+#                'libmariadb3 not installable'. Percona's build Depends on the
+#                Percona client instead and its epoch-1 version outranks
+#                Debian's, so enabling 'tools' makes it the candidate.
+# Idempotent; safe to re-run. Meant to run on the LOCAL box -- the target path
+# wraps this same body over ssh. Emits the shell to run so both paths share one
+# definition.
 _xmass_pxb_repo_setup_cmd() {
   local _repo="$1"
   cat <<REPOEOF
 _psList=/etc/apt/sources.list.d/percona-release.list
-_pxbList=/etc/apt/sources.list.d/percona-${_repo}.list
 if [ ! -e "\${_psList}" ]; then
   echo "ERROR: \${_psList} missing -- Percona server repo not configured; cannot derive pxb repo" >&2
   exit 1
 fi
 # Reuse the server repo's exact codename + signed-by keyring; only swap the
-# repo component (ps-XX -> ${_repo}) and drop deb-src.
+# repo component (ps-XX -> target) and drop deb-src.
 _psLine=\$(grep -E '^deb ' "\${_psList}" | grep -E 'ps-[0-9]' | head -1)
 if [ -z "\${_psLine}" ]; then
   echo "ERROR: no ps-* deb line in \${_psList}" >&2
   exit 1
 fi
-_pxbLine=\$(echo "\${_psLine}" | sed -E 's#/ps-[0-9a-zA-Z-]+/#/${_repo}/#')
-if ! grep -qF "\${_pxbLine}" "\${_pxbList}" 2>/dev/null; then
-  echo "\${_pxbLine}" > "\${_pxbList}"
-fi
+for _comp in ${_repo} tools; do
+  _compList=/etc/apt/sources.list.d/percona-\${_comp}.list
+  _compLine=\$(echo "\${_psLine}" | sed -E "s#/ps-[0-9a-zA-Z-]+/#/\${_comp}/#")
+  if ! grep -qF "\${_compLine}" "\${_compList}" 2>/dev/null; then
+    echo "\${_compLine}" > "\${_compList}"
+  fi
+done
 apt-get -q -y update >/dev/null 2>&1
 REPOEOF
 }
