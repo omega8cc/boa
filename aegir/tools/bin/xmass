@@ -1225,6 +1225,21 @@ _xmass_remove_http_off_target() {
 
 ###-------------BOA PROCESS CHECK--------###
 
+# Pause / resume the mysql.sh watchdog on BOTH hosts for a migration's critical
+# section. While /run/boa_sql_maintenance.pid exists the watchdog stands down
+# entirely (see monitor/check/mysql.sh), so it never restarts, lock-breaks, or
+# query-kills MySQL mid xtrabackup snapshot, replica setup, or the cutover
+# FLUSH lock. Best-effort on the target; the watchdog self-ignores a stale
+# marker (>4h) and /run is tmpfs, so a died operation never wedges auto-heal.
+_xmass_maint_on() {
+  : > /run/boa_sql_maintenance.pid
+  ssh root@"${_tgt}" ": > /run/boa_sql_maintenance.pid" 2>/dev/null || true
+}
+_xmass_maint_off() {
+  rm -f /run/boa_sql_maintenance.pid
+  ssh root@"${_tgt}" "rm -f /run/boa_sql_maintenance.pid" 2>/dev/null || true
+}
+
 _xmass_check_no_boa_running() {
   _info "Verifying BOA background jobs are stopped ..."
   local _fail=NO _p
@@ -1434,6 +1449,10 @@ _xmass_cmd_init() {
   fi
   _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
 
+  # Pause the mysql.sh watchdog on BOTH hosts for the whole init critical
+  # section: it must not restart the LIVE source mid xtrabackup snapshot
+  # (corrupt backup) nor the target during restore/replica setup.
+  _xmass_maint_on
   _xmass_install_xtrabackup_local
   _xmass_install_xtrabackup_target
   _xmass_configure_gtid_local
@@ -1457,6 +1476,9 @@ _xmass_cmd_init() {
 
   _XMASS_PHASE="syncing"
   _xmass_save_state
+  # Sync is plain rsync + live replication; the watchdog can resume protecting
+  # both servers between now and cutover.
+  _xmass_maint_off
 
   _info ""
   _info "======================================================"
@@ -1579,6 +1601,12 @@ _xmass_cmd_cutover() {
   # Pre-flight checks
   _xmass_check_no_boa_running
   _xmass_enumerate_accounts
+
+  # Pause the mysql.sh watchdog on BOTH hosts for the whole cutover: the
+  # FLUSH TABLES WITH READ LOCK on the source piles up connections, and the
+  # watchdog's busy/high-load restart would break that lock mid-cutover =>
+  # DATA LOSS. Also covers the target promote + renameaegirhost DB work.
+  _xmass_maint_on
 
   # Step 0: Re-hold Solr on target in case it was manually started since init.
   # Also stops any running instance so the final Solr rsync gets a clean state.
@@ -1712,6 +1740,9 @@ REMOTE
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     echo "COMPLETE" > "/data/disk/${_oct}/log/proxied.pid"
   done
+
+  # Cutover done: re-arm the watchdog on both hosts.
+  _xmass_maint_off
 
   _XMASS_PHASE="complete"
   _xmass_save_state
