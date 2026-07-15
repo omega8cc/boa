@@ -223,6 +223,30 @@ _run_drush8_nosilent_cmd() {
   wait
 }
 
+_xoct_flush_caches_target() {
+  # A migrated-in site can carry the source box's stale D8+ service container /
+  # opcode caches. Rather than fragile per-site drush rebuilds (which fatal on
+  # the D8+ Symfony/Drush patch state outside provision's context), flush HARD
+  # at the infrastructure level -- the only treatment trusted against cache/
+  # container poisoning: cold-restart Valkey (or Redis) to drop the object
+  # cache, and restart every PHP-FPM master to drop opcache/APCu. Correct
+  # per-site PHP version is preserved separately (multi-fpm.info).
+  echo "INFO: cold cache flush on target (Valkey/Redis drop + PHP-FPM restart)"
+  if [ -x "/etc/init.d/valkey-server" ]; then
+    killall -9 valkey-server &> /dev/null
+    rm -f /var/lib/valkey/* &> /dev/null
+    service valkey-server start &> /dev/null
+  elif [ -x "/etc/init.d/redis-server" ]; then
+    killall -9 redis-server &> /dev/null
+    rm -f /var/lib/redis/* &> /dev/null
+    service redis-server start &> /dev/null
+  fi
+  local _f
+  for _f in /etc/init.d/php*-fpm; do
+    [ -x "${_f}" ] && service "$(basename "${_f}")" restart &> /dev/null
+  done
+}
+
 _migrate_sites() {
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
@@ -489,7 +513,57 @@ _xoct_rewrite_target_account_refs() {
   fi
 
   echo "INFO: rename mode active on target ${_X_TGT_HOST}: rewriting refs ${_X_SRC_OCT} -> ${_X_DST_OCT} in selected text configs"
-  ssh root@${_X_TGT_HOST} "    _D='${_X_DST_USR}';     for _F in       \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       ; do       [ -f "\${_F}" ] || continue;       grep -q '/data/disk/${_X_SRC_OCT}\|/home/${_X_SRC_OCT}\.ftp' "\${_F}" 2>/dev/null || continue;       sed -i 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g; s#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' "\${_F}";     done;     for _L in \$(find "\${_D}/static" -type l 2>/dev/null); do       _T=\$(readlink "\${_L}" 2>/dev/null);       _R="\${_T#/data/disk/${_X_SRC_OCT}/}";       if [ "\${_R}" != "\${_T}" ]; then         _O=\$(stat -c '%U:%G' "\${_L}" 2>/dev/null);         ln -sfn "/data/disk/${_X_DST_OCT}/\${_R}" "\${_L}";         [ -n "\${_O}" ] && chown -h "\${_O}" "\${_L}" 2>/dev/null;       fi;     done"
+  # Heredoc (not a nested one-liner) so the fpm socket-token rewrite -- which
+  # carries literal double quotes -- stays readable. Local vars (_X_SRC_OCT
+  # etc.) expand here before ssh; remote-only vars are \-escaped.
+  ssh root@"${_X_TGT_HOST}" "bash -s" <<REMOTE
+_D='${_X_DST_USR}'
+for _F in \
+  \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  ; do
+  [ -f "\${_F}" ] || continue
+  # The post.d fpm includes carry no /data/disk path -- only the account's
+  # own \$user_socket "oN.NN" token -- so match that too, else a rename left
+  # the source socket name and requests hit the WRONG account's FPM pool
+  # (403/permission-denied) on any target that also has an account by the
+  # source name.
+  grep -qE "/data/disk/${_X_SRC_OCT}|/home/${_X_SRC_OCT}\.ftp|user_socket \"${_X_SRC_OCT}[.\"]" "\${_F}" 2>/dev/null || continue
+  sed -i \
+    -e 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g' \
+    -e 's#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' \
+    -e 's#user_socket "${_X_SRC_OCT}\.#user_socket "${_X_DST_OCT}.#g' \
+    -e 's#user_socket "${_X_SRC_OCT}"#user_socket "${_X_DST_OCT}"#g' \
+    "\${_F}"
+done
+for _L in \$(find "\${_D}/static" -type l 2>/dev/null); do
+  _T=\$(readlink "\${_L}" 2>/dev/null)
+  _R="\${_T#/data/disk/${_X_SRC_OCT}/}"
+  if [ "\${_R}" != "\${_T}" ]; then
+    _O=\$(stat -c '%U:%G' "\${_L}" 2>/dev/null)
+    ln -sfn "/data/disk/${_X_DST_OCT}/\${_R}" "\${_L}"
+    [ -n "\${_O}" ] && chown -h "\${_O}" "\${_L}" 2>/dev/null
+  fi
+done
+# Ownership: rsync kept the SOURCE account's uid on the migrated tree, so the
+# renamed account's files/quota/FTP were attributed to the wrong account (and
+# the site's own site-local Drush was unreachable). Remap ONLY the source
+# account's files to the dest account -- root-owned control files are left
+# untouched (find -user matches by owner, not a blanket chown -R).
+if id "${_X_SRC_OCT}" >/dev/null 2>&1; then
+  find "/data/disk/${_X_DST_OCT}" -user "${_X_SRC_OCT}" -print0 2>/dev/null | xargs -0r chown -h "${_X_DST_OCT}" 2>/dev/null
+fi
+if id "${_X_SRC_OCT}.ftp" >/dev/null 2>&1; then
+  find "/data/disk/${_X_DST_OCT}" -user "${_X_SRC_OCT}.ftp" -print0 2>/dev/null | xargs -0r chown -h "${_X_DST_OCT}.ftp" 2>/dev/null
+  find "/home/${_X_DST_OCT}.ftp" -user "${_X_SRC_OCT}.ftp" -print0 2>/dev/null | xargs -0r chown -h "${_X_DST_OCT}.ftp" 2>/dev/null
+fi
+REMOTE
 }
 
 _migrate_prepare() {
@@ -680,6 +754,9 @@ _migrate_prepare() {
     if [ -d "/var/lib/nginx/speed" ]; then
       find /var/lib/nginx/speed -type f -delete &> /dev/null
     fi
+    # Harsh cache flush so any migrated D8+ site drops the source box's stale
+    # container and bootstraps clean on this box.
+    _xoct_flush_caches_target
   fi
   echo Done ${_cmd} for ${_USR}
   _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
@@ -952,6 +1029,18 @@ _xoct_transfer_static_symlink_safe() {
   echo "INFO: Static sync pass 1/2 (preserve symlinks, exclude static/files)"
   mkdir -p "${_X_SRC_USR}/static"
   _xoct_rsync -aEAXqu ${_X_IENI} --exclude=/files -e ssh "${_X_SRC_USR}/static/" "root@${_X_TGT_HOST}:${_X_DST_STATIC}/"
+
+  # The static sync uses -u (skip-newer), but `xoct create` on the target just
+  # wrote a FRESH default control/multi-fpm.info (newer mtime) that shadows the
+  # migrated one -> every migrated site loses its per-site PHP-version pin and
+  # silently falls back to the account default. The per-site lines key on the
+  # site domain (unchanged by migration/rename), so the source copy is directly
+  # valid on the target. Force it over WITHOUT -u to preserve the pins.
+  if [ -e "${_X_SRC_USR}/static/control/multi-fpm.info" ]; then
+    _xoct_rsync -aEAX ${_X_IENI} -e ssh \
+      "${_X_SRC_USR}/static/control/multi-fpm.info" \
+      "root@${_X_TGT_HOST}:${_X_DST_STATIC}/control/multi-fpm.info"
+  fi
 
   echo "INFO: Static sync pass 2/2 (materialize/mirror static/files per target disk reality)"
   # Canonical mount layout uses the DEST account name, so a rename lands correctly.

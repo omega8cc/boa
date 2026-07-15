@@ -1679,6 +1679,23 @@ _xmass_post_mig() {
     _info "  jetty9 restarted"
   fi
   service nginx reload &>/dev/null
+  # Harsh cache flush: cold-restart Valkey/Redis (drop stale D8+ containers
+  # carried from the source) + restart every PHP-FPM master (drop opcache/APCu),
+  # the only treatment trusted against cache/container poisoning. Correct
+  # per-site PHP is preserved by the migrated multi-fpm.info.
+  _info "Cold cache flush (Valkey/Redis drop + PHP-FPM restart) ..."
+  if [ -x "/etc/init.d/valkey-server" ]; then
+    killall -9 valkey-server &>/dev/null
+    rm -f /var/lib/valkey/* &>/dev/null
+    service valkey-server start &>/dev/null
+  elif [ -x "/etc/init.d/redis-server" ]; then
+    killall -9 redis-server &>/dev/null
+    rm -f /var/lib/redis/* &>/dev/null
+    service redis-server start &>/dev/null
+  fi
+  for _fpm in /etc/init.d/php*-fpm; do
+    [ -x "${_fpm}" ] && service "$(basename "${_fpm}")" restart &>/dev/null
+  done
   rm -f /run/boa_wait.pid
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ ! -e "/var/xdrago/${_script}" ] \
