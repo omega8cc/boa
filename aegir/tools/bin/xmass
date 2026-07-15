@@ -187,6 +187,18 @@ _xmass_detect_percona_version() {
     _XM_IO_FIELD="Slave_IO_Running"; _XM_SQL_FIELD="Slave_SQL_Running"
     _XM_LAG_FIELD="Seconds_Behind_Master"
   fi
+  # 8.0+ default the replication user to caching_sha2_password, which refuses
+  # password auth over the plain (non-TLS) replication connection unless the
+  # replica fetches the source's public key for the RSA exchange. 5.7 uses
+  # mysql_native_password and needs neither (and lacks the option). Verified
+  # live on 8.4: without it the IO thread stalls "Connecting" with errno 2061
+  # 'Authentication requires secure connection'. Trailing comma so it drops
+  # cleanly into the CHANGE ... SOURCE/MASTER statement (empty line on 5.7).
+  case "${_XMASS_PERCONA_V}" in
+    8.4) _XM_GET_PUBKEY="  GET_SOURCE_PUBLIC_KEY = 1," ;;
+    8.0) _XM_GET_PUBKEY="  GET_MASTER_PUBLIC_KEY = 1," ;;
+    *)   _XM_GET_PUBKEY="" ;;
+  esac
 }
 
 _xmass_xtrabackup_pkg() {
@@ -596,23 +608,36 @@ ${_XM_CHANGE}
   ${_XM_HOST}='${_XMASS_SRC_IP}',
   ${_XM_USER}='${_REPL_USER}',
   ${_XM_PASSWORD}='${_XMASS_REPL_PSWD}',
+${_XM_GET_PUBKEY}
   ${_XM_AUTOPOS}=1;
 ${_XM_START};
 SLAVEEOF
   [ $? -eq 0 ] || _die "Slave configuration failed on target ${_tgt}"
 
-  sleep 5
-  _info "Verifying slave is running on target ..."
-  local _slave_status
-  _slave_status=$(ssh root@"${_tgt}" \
-    "mysql --defaults-file=/root/.my.cnf -e \
-    \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
-    | grep -E '${_XM_IO_FIELD}|${_XM_SQL_FIELD}'" 2>/dev/null)
-  _info "Slave status: ${_slave_status}"
-  if ! echo "${_slave_status}" | grep -q "Yes"; then
-    _die "Slave not running on target — check ${_XM_SHOW_STATUS}\\G on ${_tgt}"
-  fi
-  _info "Slave running on target ${_tgt}: OK"
+  # The IO thread needs a moment to connect, so poll (not a single check), and
+  # require BOTH threads = Yes -- the old single "Yes" match passed on
+  # SQL_Running=Yes alone while IO_Running was still "Connecting" (or wedged on
+  # an auth error), letting a broken replica through to sync/cutover.
+  _info "Verifying replica IO+SQL threads are running on target ..."
+  local _i _io _sql
+  for _i in $(seq 1 12); do
+    _io=$(ssh root@"${_tgt}" \
+      "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+       | grep '${_XM_IO_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
+    _sql=$(ssh root@"${_tgt}" \
+      "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+       | grep '${_XM_SQL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
+    if [ "${_io}" = "Yes" ] && [ "${_sql}" = "Yes" ]; then
+      _info "Replica running on target ${_tgt} (IO+SQL = Yes): OK"
+      return 0
+    fi
+    sleep 5
+  done
+  local _err
+  _err=$(ssh root@"${_tgt}" \
+    "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+     | grep -E 'Last_IO_Error:|Last_SQL_Error:' | grep -v ': *\$'" 2>/dev/null)
+  _die "Replica not running on target ${_tgt} (IO=${_io} SQL=${_sql}). ${_err}"
 }
 
 ###-------------SOLR MANAGEMENT----------###
