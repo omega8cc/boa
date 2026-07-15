@@ -160,6 +160,45 @@ _xmass_detect_percona_version() {
       _die "Cannot detect Percona version from: ${_raw}"
     ;;
   esac
+  # MySQL 8.4 REMOVED the legacy SLAVE/MASTER replication vocabulary
+  # (CHANGE MASTER TO, START/STOP SLAVE, RESET MASTER/SLAVE, SHOW SLAVE STATUS
+  # and the Slave_*/Seconds_Behind_Master fields). Pick the right dialect once
+  # here; 5.7 and 8.0 keep the old verbs (8.0 still accepts them), 8.4 uses the
+  # REPLICA/SOURCE forms. Verified live on 8.4 (RESET MASTER -> 1064; RESET
+  # BINARY LOGS AND GTIDS / STOP REPLICA / CHANGE REPLICATION SOURCE TO OK).
+  if [ "${_XMASS_PERCONA_V}" = "8.4" ]; then
+    _XM_RESET_MASTER="RESET BINARY LOGS AND GTIDS"
+    _XM_CHANGE="CHANGE REPLICATION SOURCE TO"
+    _XM_HOST="SOURCE_HOST"; _XM_USER="SOURCE_USER"
+    _XM_PASSWORD="SOURCE_PASSWORD"; _XM_AUTOPOS="SOURCE_AUTO_POSITION"
+    _XM_START="START REPLICA"; _XM_STOP="STOP REPLICA"
+    _XM_RESET_SLAVE="RESET REPLICA ALL"
+    _XM_SHOW_STATUS="SHOW REPLICA STATUS"
+    _XM_IO_FIELD="Replica_IO_Running"; _XM_SQL_FIELD="Replica_SQL_Running"
+    _XM_LAG_FIELD="Seconds_Behind_Source"
+  else
+    _XM_RESET_MASTER="RESET MASTER"
+    _XM_CHANGE="CHANGE MASTER TO"
+    _XM_HOST="MASTER_HOST"; _XM_USER="MASTER_USER"
+    _XM_PASSWORD="MASTER_PASSWORD"; _XM_AUTOPOS="MASTER_AUTO_POSITION"
+    _XM_START="START SLAVE"; _XM_STOP="STOP SLAVE"
+    _XM_RESET_SLAVE="RESET SLAVE ALL"
+    _XM_SHOW_STATUS="SHOW SLAVE STATUS"
+    _XM_IO_FIELD="Slave_IO_Running"; _XM_SQL_FIELD="Slave_SQL_Running"
+    _XM_LAG_FIELD="Seconds_Behind_Master"
+  fi
+  # 8.0+ default the replication user to caching_sha2_password, which refuses
+  # password auth over the plain (non-TLS) replication connection unless the
+  # replica fetches the source's public key for the RSA exchange. 5.7 uses
+  # mysql_native_password and needs neither (and lacks the option). Verified
+  # live on 8.4: without it the IO thread stalls "Connecting" with errno 2061
+  # 'Authentication requires secure connection'. Trailing comma so it drops
+  # cleanly into the CHANGE ... SOURCE/MASTER statement (empty line on 5.7).
+  case "${_XMASS_PERCONA_V}" in
+    8.4) _XM_GET_PUBKEY="  GET_SOURCE_PUBLIC_KEY = 1," ;;
+    8.0) _XM_GET_PUBKEY="  GET_MASTER_PUBLIC_KEY = 1," ;;
+    *)   _XM_GET_PUBKEY="" ;;
+  esac
 }
 
 _xmass_xtrabackup_pkg() {
@@ -313,7 +352,15 @@ _xmass_write_gtid_conf_local() {
     echo "enforce_gtid_consistency = ON"
     echo "log_slave_updates        = ON"
     echo "binlog_format            = ROW"
-    echo "expire_logs_days         = 7"
+    # expire_logs_days was REMOVED in MySQL/Percona 8.4 (deprecated in 8.0);
+    # its presence aborts mysqld at startup ("unknown variable"). Use the
+    # replacement binlog_expire_logs_seconds on 8.0+; keep the old name on 5.7
+    # where the new one does not exist.
+    if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
+      echo "expire_logs_days             = 7"
+    else
+      echo "binlog_expire_logs_seconds   = 604800"
+    fi
     [ "${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
   } > "${_cnf}"
   chmod 644 "${_cnf}"
@@ -328,16 +375,20 @@ _xmass_check_gtid_enabled_local() {
 _xmass_configure_gtid_local() {
   local _mode
   _mode=$(_xmass_check_gtid_enabled_local)
-  if [ "${_mode}" = "ON" ]; then
-    _info "GTID already ON on source: OK"
-    return
-  fi
-  _info "GTID not enabled on source (mode=${_mode}) — configuring now ..."
+  # ALWAYS (re)write the conf so GTID is PERSISTED. A runtime-only ON -- e.g. an
+  # init re-run after a failed attempt, or a source already in a replication
+  # topology -- is lost on the next restart, and on the target that restart is
+  # the xtrabackup copy-back, after which CHANGE REPLICATION SOURCE fails with
+  # GTID_MODE=OFF. Writing the conf is idempotent; restart only if it was OFF.
   local _src_id
   _src_id=$(_ip_to_server_id \
     "${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}")
   _xmass_write_gtid_conf_local "${_src_id}"
-  _info "Restarting MySQL on source via move_sql.sh ..."
+  if [ "${_mode}" = "ON" ]; then
+    _info "GTID already ON on source (conf persisted): OK"
+    return
+  fi
+  _info "GTID not enabled on source (mode=${_mode}) — restarting to apply ..."
   /var/xdrago/move_sql.sh restart \
     || _die "MySQL restart failed on source (move_sql.sh)"
   _mode=$(_xmass_check_gtid_enabled_local)
@@ -352,11 +403,11 @@ _xmass_configure_gtid_target() {
     "mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe \
     \"SHOW VARIABLES LIKE 'gtid_mode'\" 2>/dev/null | awk '{print \$2}'" \
     2>/dev/null)
-  if [ "${_mode}" = "ON" ]; then
-    _info "GTID already ON on target ${_tgt}: OK"
-    return
-  fi
-  _info "GTID not enabled on target ${_tgt} (mode=${_mode}) — configuring ..."
+  # ALWAYS (re)write the conf so GTID is PERSISTED across the upcoming
+  # xtrabackup copy-back restart, even when runtime GTID is already ON (init
+  # re-run / pre-existing topology) -- a runtime-only ON is lost on that restart
+  # and CHANGE REPLICATION SOURCE then fails with GTID_MODE=OFF. Idempotent;
+  # restart only if it was OFF (below).
   local _tgt_id
   _tgt_id=$(_ip_to_server_id "${_tgt}")
   # Write the GTID config remotely. Detect the conf dir the SAME way as the
@@ -389,16 +440,24 @@ _logbin=\$(mysql --defaults-file=/root/.my.cnf \
   echo "enforce_gtid_consistency = ON"
   echo "log_slave_updates        = ON"
   echo "binlog_format            = ROW"
-  echo "expire_logs_days         = 7"
+  if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
+    echo "expire_logs_days             = 7"
+  else
+    echo "binlog_expire_logs_seconds   = 604800"
+  fi
   [ "\${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
 } > "\${_cnf}"
 chmod 644 "\${_cnf}"
 REMOTEBASH
-  _info "Restarting MySQL on target ${_tgt} via move_sql.sh ..."
+  if [ "${_mode}" = "ON" ]; then
+    _info "GTID already ON on target ${_tgt} (conf persisted): OK"
+    return
+  fi
+  _info "GTID not enabled on target ${_tgt} (mode=${_mode}) — restarting to apply ..."
   ssh root@"${_tgt}" "/var/xdrago/move_sql.sh restart" \
     || _die "MySQL restart failed on target ${_tgt}"
   # Verify GTID actually came ON (the source path does the same). A silent
-  # miss here otherwise surfaces much later at CHANGE MASTER.
+  # miss here otherwise surfaces much later at CHANGE REPLICATION SOURCE.
   local _tmode
   _tmode=$(ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf -sNe \"SHOW VARIABLES LIKE 'gtid_mode'\" 2>/dev/null | awk '{print \$2}'")
@@ -543,29 +602,42 @@ _xmass_setup_slave() {
 
   _info "Configuring replication slave on target ${_tgt} ..."
   ssh root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf" <<SLAVEEOF
-RESET MASTER;
+${_XM_RESET_MASTER};
 SET GLOBAL gtid_purged='${_gtid_set}';
-CHANGE MASTER TO
-  MASTER_HOST='${_XMASS_SRC_IP}',
-  MASTER_USER='${_REPL_USER}',
-  MASTER_PASSWORD='${_XMASS_REPL_PSWD}',
-  MASTER_AUTO_POSITION=1;
-START SLAVE;
+${_XM_CHANGE}
+  ${_XM_HOST}='${_XMASS_SRC_IP}',
+  ${_XM_USER}='${_REPL_USER}',
+  ${_XM_PASSWORD}='${_XMASS_REPL_PSWD}',
+${_XM_GET_PUBKEY}
+  ${_XM_AUTOPOS}=1;
+${_XM_START};
 SLAVEEOF
   [ $? -eq 0 ] || _die "Slave configuration failed on target ${_tgt}"
 
-  sleep 5
-  _info "Verifying slave is running on target ..."
-  local _slave_status
-  _slave_status=$(ssh root@"${_tgt}" \
-    "mysql --defaults-file=/root/.my.cnf -e \
-    \"SHOW SLAVE STATUS\G\" 2>/dev/null \
-    | grep -E 'Slave_IO_Running|Slave_SQL_Running'" 2>/dev/null)
-  _info "Slave status: ${_slave_status}"
-  if ! echo "${_slave_status}" | grep -q "Yes"; then
-    _die "Slave not running on target — check SHOW SLAVE STATUS\\G on ${_tgt}"
-  fi
-  _info "Slave running on target ${_tgt}: OK"
+  # The IO thread needs a moment to connect, so poll (not a single check), and
+  # require BOTH threads = Yes -- the old single "Yes" match passed on
+  # SQL_Running=Yes alone while IO_Running was still "Connecting" (or wedged on
+  # an auth error), letting a broken replica through to sync/cutover.
+  _info "Verifying replica IO+SQL threads are running on target ..."
+  local _i _io _sql
+  for _i in $(seq 1 12); do
+    _io=$(ssh root@"${_tgt}" \
+      "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+       | grep '${_XM_IO_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
+    _sql=$(ssh root@"${_tgt}" \
+      "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+       | grep '${_XM_SQL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
+    if [ "${_io}" = "Yes" ] && [ "${_sql}" = "Yes" ]; then
+      _info "Replica running on target ${_tgt} (IO+SQL = Yes): OK"
+      return 0
+    fi
+    sleep 5
+  done
+  local _err
+  _err=$(ssh root@"${_tgt}" \
+    "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+     | grep -E 'Last_IO_Error:|Last_SQL_Error:' | grep -v ': *\$'" 2>/dev/null)
+  _die "Replica not running on target ${_tgt} (IO=${_io} SQL=${_sql}). ${_err}"
 }
 
 ###-------------SOLR MANAGEMENT----------###
@@ -1066,8 +1138,8 @@ _xmass_sync_solr() {
 _xmass_get_repl_lag() {
   ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf -e \
-    \"SHOW SLAVE STATUS\G\" 2>/dev/null \
-    | grep 'Seconds_Behind_Master' | awk '{print \$2}'" 2>/dev/null
+    \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+    | grep '${_XM_LAG_FIELD}' | awk '{print \$2}'" 2>/dev/null
 }
 
 _xmass_wait_for_sync() {
@@ -1398,6 +1470,7 @@ _xmass_cmd_init() {
 
 _xmass_cmd_sync() {
   _xmass_load_state
+  _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
   [ "${_XMASS_PHASE}" = "syncing" ] \
     || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — run 'xmass init' first"
 
@@ -1435,6 +1508,7 @@ _xmass_cmd_sync() {
 
 _xmass_cmd_status() {
   _xmass_load_state
+  _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
   local _lag="N/A"
   if [ "${_XMASS_PHASE}" = "syncing" ] && [ -n "${_XMASS_TARGET_IP}" ]; then
     _tgt="${_XMASS_TARGET_IP}"
@@ -1458,6 +1532,7 @@ _xmass_cmd_status() {
 
 _xmass_cmd_cutover() {
   _xmass_load_state
+  _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
   [ "${_XMASS_PHASE}" = "syncing" ] \
     || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — cannot cut over"
 
@@ -1570,7 +1645,7 @@ _xmass_cmd_cutover() {
   _info "Stopping and decoupling slave on target ${_tgt} ..."
   ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf \
-     -e 'STOP SLAVE; RESET SLAVE ALL;'" \
+     -e '${_XM_STOP}; ${_XM_RESET_SLAVE};'" \
     || _die "Failed to stop/decouple slave on target ${_tgt}"
   _info "Target MySQL is now standalone: OK"
 

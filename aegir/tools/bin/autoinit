@@ -113,8 +113,9 @@ _init_sysv_net_repair() {
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
 
   # Install SysV core bits (safe after systemd-sysv is removed/purged).
-  ${_INITINS} initscripts sysv-rc insserv startpar -qq >> "${_logSlt}"
-  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+  # Checked + retried: a transient DNS/mirror failure here otherwise silently
+  # leaves the box without checkroot/mountall (root boots read-only).
+  _autoinit_apt_install_checked "initscripts sysv-rc insserv startpar" "initscripts sysv-rc insserv startpar"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
 
   # Remove dhcpcd to avoid DHCP race with ifupdown/dhclient (seen on some vendor images).
@@ -571,14 +572,166 @@ _init_aegir() {
 }
 
 ###
-### Check Systemd
+### Connectivity + DNS resilience for the Debian->Devuan conversion
+###
+### The conversion removes systemd-resolved (which manages /etc/resolv.conf on
+### cloud images) and repeatedly renames/reconfigures the interface, so BOTH DNS
+### and raw connectivity can drop for short windows exactly when the mirror is
+### needed. A single silent apt failure then leaves a critical package
+### uninstalled and the whole conversion half-done. So: force a static, locked
+### resolv.conf, and before every critical network step confirm connectivity AND
+### DNS actually work (repairing via vmnetfix), then retry + verify the install.
+###
+_autoinit_force_dns() {
+  chattr -i /etc/resolv.conf 2>/dev/null || true
+  rm -f /etc/resolv.conf 2>/dev/null || true
+  { echo "nameserver 1.1.1.1"
+    echo "nameserver 8.8.8.8"
+    echo "nameserver 9.9.9.9"
+  } > /etc/resolv.conf 2>/dev/null || true
+  chmod 0644 /etc/resolv.conf 2>/dev/null || true
+  chattr +i /etc/resolv.conf 2>/dev/null || true
+}
+
+# True only if BOTH raw connectivity (route to a public resolver) AND name
+# resolution (via /etc/resolv.conf) work — either one failing means a network
+# apt step would just fail.
+_autoinit_net_ready() {
+  _RH="${1:-deb.devuan.org}"
+  ping -c1 -W2 1.1.1.1 >/dev/null 2>&1 || ping -c1 -W2 9.9.9.9 >/dev/null 2>&1 || return 1
+  getent hosts "${_RH}" >/dev/null 2>&1 || return 1
+  return 0
+}
+
+# Wait until connectivity + DNS are both confirmed, re-forcing DNS and letting
+# vmnetfix repair the route between checks. Returns 1 if not ready after _tries.
+_autoinit_wait_net() {
+  _RH="${1:-deb.devuan.org}"
+  _tries="${2:-12}"
+  _n=0
+  while [ "${_n}" -lt "${_tries}" ]; do
+    _n=$(( _n + 1 ))
+    _autoinit_force_dns
+    if _autoinit_net_ready "${_RH}"; then
+      _msg "[init] net ==> connectivity + DNS OK (check ${_n})" >> "${_logInt}"
+      return 0
+    fi
+    _msg "[init] net ==> not ready (check ${_n}/${_tries}); re-forcing DNS + vmnetfix repair" >> "${_logInt}"
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}" 2>&1
+    sleep 5
+  done
+  _msg "[init][ERROR] net ==> connectivity/DNS NOT confirmed after ${_tries} checks" >> "${_logInt}"
+  return 1
+}
+
+# Install packages the conversion depends on, resilient to transient DNS /
+# connectivity loss. $1 = full apt install argument string (may include removal
+# tokens like 'systemd-sysv-' and flags); $2 = the packages that MUST be
+# installed afterwards. Confirms net first, retries + verifies. Loud on failure.
+_autoinit_apt_install_checked() {
+  _instArgs="$1"
+  _mustHave="$2"
+  _try=0
+  while [ "${_try}" -lt 3 ]; do
+    _try=$(( _try + 1 ))
+    _autoinit_wait_net
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}" 2>&1
+    ${_INITINS} ${_instArgs} -qq >> "${_logSlt}" 2>&1
+    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}" 2>&1
+    /usr/bin/dpkg --configure -a >> "${_logSlt}" 2>&1
+    _allok=YES
+    for _p in ${_mustHave}; do
+      _pkg_installed "${_p}" || _allok=NO
+    done
+    if [ "${_allok}" = "YES" ]; then
+      _msg "[init] crit ==> installed [${_mustHave}] (attempt ${_try})" >> "${_logInt}"
+      return 0
+    fi
+    _msg "[init] crit ==> [${_mustHave}] not installed yet (attempt ${_try}); retrying" >> "${_logInt}"
+    sleep 5
+  done
+  _msg "[init][ERROR] crit ==> FAILED to install [${_mustHave}] after ${_try} attempts (transient DNS/mirror?) -- conversion may be incomplete" >> "${_logInt}"
+  return 1
+}
+
+# Ensure a working sysvinit /etc/inittab (sysvinit-core ships one, but if it was
+# installed mid-conversion the file can be absent). Without an 'initdefault' line
+# sysvinit hangs at the "Enter runlevel:" prompt on boot.
+_autoinit_ensure_inittab() {
+  if [ ! -e "/etc/inittab" ] \
+    || ! grep -q "^id:.*:initdefault:" /etc/inittab 2>/dev/null; then
+    _msg "[init] nosd ==> Writing a default /etc/inittab (sysvinit)" >> "${_logInt}"
+    cat > /etc/inittab <<'EOF'
+id:2:initdefault:
+si::sysinit:/etc/init.d/rcS
+l0:0:wait:/etc/init.d/rc 0
+l1:1:wait:/etc/init.d/rc 1
+l2:2:wait:/etc/init.d/rc 2
+l3:3:wait:/etc/init.d/rc 3
+l4:4:wait:/etc/init.d/rc 4
+l5:5:wait:/etc/init.d/rc 5
+l6:6:wait:/etc/init.d/rc 6
+z6:6:respawn:/sbin/sulogin
+ca:12345:ctrlaltdel:/sbin/shutdown -t1 -a -r now
+1:2345:respawn:/sbin/getty --noclear 38400 tty1
+2:23:respawn:/sbin/getty 38400 tty2
+T0:23:respawn:/sbin/getty -L ttyS0 115200 vt100
+EOF
+  fi
+}
+
+# Mark /boot/efi 'nofail' so a slow by-partuuid device (eudev vs systemd-udev
+# timing on cloud images) cannot drop the box to emergency mode mid-conversion.
+_autoinit_efi_nofail() {
+  [ -e "/etc/fstab" ] || return 0
+  grep -qE "[[:space:]]/boot/efi[[:space:]]" /etc/fstab || return 0
+  grep -qE "[[:space:]]/boot/efi[[:space:]].*nofail" /etc/fstab && return 0
+  awk '$2=="/boot/efi" && $4 !~ /nofail/ { sub($4, $4",nofail,x-systemd.device-timeout=5") } { print }' \
+    /etc/fstab > /etc/fstab.autoinit.tmp 2>/dev/null \
+    && cat /etc/fstab.autoinit.tmp > /etc/fstab
+  rm -f /etc/fstab.autoinit.tmp
+  _msg "[init] prep ==> Marked /boot/efi nofail in /etc/fstab" >> "${_logInt}"
+}
+
+###
+### Check Systemd -- authoritative: repair a half-converted box and reboot clean;
+### never proceed to "ready for boa install" with systemd left or sysvinit gone.
 ###
 _init_no_systemd() {
-  if [ -e "/lib/systemd/systemd" ]; then
-    echo " " >> "${_logInt}"
-    _msg "[init] nosd ==> OOPS: Systemd still not removed cleanly" >> "${_logInt}"
-    echo " " >> "${_logInt}"
+  if [ ! -e "/lib/systemd/systemd" ] \
+    && _pkg_installed sysvinit-core \
+    && _pkg_installed initscripts \
+    && [ -e "/etc/inittab" ] \
+    && grep -q "^id:.*:initdefault:" /etc/inittab 2>/dev/null; then
+    rm -f /root/.autoinit.nosd.retry
+    return 0
   fi
+
+  _CNT=0
+  [ -e "/root/.autoinit.nosd.retry" ] && _CNT=$(cat /root/.autoinit.nosd.retry 2>/dev/null)
+  case "${_CNT}" in ''|*[!0-9]*) _CNT=0 ;; esac
+  if [ "${_CNT}" -ge 3 ]; then
+    _msg "[init][ERROR] nosd ==> conversion STILL incomplete after ${_CNT} remediation cycles -- manual attention needed; continuing" >> "${_logInt}"
+    return 0
+  fi
+  echo $(( _CNT + 1 )) > /root/.autoinit.nosd.retry
+
+  _msg "[init] nosd ==> Conversion incomplete (systemd left / sysvinit missing); remediating (cycle $(( _CNT + 1 ))/3)..." >> "${_logInt}"
+  _autoinit_apt_install_checked "eudev sysvinit-core" "eudev sysvinit-core"
+  _autoinit_apt_install_checked "initscripts sysv-rc insserv startpar" "initscripts sysv-rc insserv startpar"
+  _autoinit_ensure_inittab
+  if _pkg_installed sysvinit-core && [ -e "/lib/systemd/systemd" ]; then
+    /usr/bin/apt-get purge systemd systemd-sysv systemd-resolved libnss-systemd -y -qq >> "${_logSlt}" 2>&1
+    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}" 2>&1
+    /usr/bin/dpkg --configure -a >> "${_logSlt}" 2>&1
+  fi
+  _autoinit_force_dns
+
+  _msg "[init] nosd ==> Rebooting to complete the sysvinit switch, then re-checking..." >> "${_logInt}"
+  touch /root/.run-cycle-devuan-init.cnf
+  rm -f /run/autoinit.pid
+  shutdown -r now
+  exit 0
 }
 
 ###
@@ -935,6 +1088,7 @@ EOF
 ### Prepare system
 ###
 _init_prepare() {
+  _autoinit_efi_nofail
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -1470,18 +1624,15 @@ _init_cycle() {
     if [ "${_OLD_SYS}" = "Debian" ]; then
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
+      # Checked + retried: this install (eudev + the sysvinit-core swap) is the
+      # linchpin of the whole conversion. A transient DNS/mirror failure here
+      # used to silently no-op, leaving systemd in place and the box half
+      # converted -- confirm connectivity + DNS, retry, and verify it took.
       if [ "${_NEW_OS_CODE}" = "excalibur" ] || [ -e "/root/.top-excalibur.cnf" ]; then
-        ${_INITINS} eudev sysvinit-core systemd-sysv- --allow-remove-essential -qq >> "${_logSlt}"
+        _autoinit_apt_install_checked "eudev sysvinit-core systemd-sysv- --allow-remove-essential" "eudev sysvinit-core"
       else
-        ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+        _autoinit_apt_install_checked "eudev sysvinit-core" "eudev sysvinit-core"
       fi
-      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-      if [ "${_NEW_OS_CODE}" = "excalibur" ] || [ -e "/root/.top-excalibur.cnf" ]; then
-        ${_INITINS} eudev sysvinit-core systemd-sysv- --allow-remove-essential -qq >> "${_logSlt}"
-      else
-        ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
-      fi
-      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
