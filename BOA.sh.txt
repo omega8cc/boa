@@ -3658,7 +3658,7 @@ _update_boa_tools() {
     # --- unique to _update_boa_tools ---
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f98 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f98 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f98 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f97 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f99 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f97 --guard /local/bin/codebasecheck
