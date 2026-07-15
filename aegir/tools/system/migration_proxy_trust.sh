@@ -25,7 +25,7 @@
 #
 # Idempotent and safe to re-run. Mirrors the csf.allow/csf.ignore line format and
 # the cleanup-by-"migration proxy"-tag used by _whitelist_ip_migration_proxy in
-# host-water.sh / guest-water.sh.
+# guest-water.sh.
 
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 

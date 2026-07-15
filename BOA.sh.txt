@@ -1369,7 +1369,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/tools/bin/lock.inc" f97
 
   if [ ! -e "${_optBin}/vmnetfix" ] \
-    || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc vmnetfix)
     if (( _CNT > 0 )); then
       echo "The vmnetfix is running!"
@@ -1388,7 +1388,7 @@ _update_agents() {
       if [ -e "${_optBin}/vmnetfix" ]; then
         chmod 700 ${_optBin}/vmnetfix
         chown root:root ${_optBin}/vmnetfix
-        touch ${_pthLog}/vmnetfix.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/vmnetfix.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
         rm -f ${_optBin}/vmnetfix.old
       else
         if [ -e "${_optBin}/vmnetfix.old" ]; then
@@ -1412,7 +1412,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver
   _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f86 --guard /local/bin/xoct
   _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/tools/bin/xcopy" f92 --guard /local/bin/xcopy
-  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f91 --guard /local/bin/xmass
+  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f85 --guard /local/bin/xmass
   _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f97 --guard /local/bin/autobeowulf
   _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f97 --guard /local/bin/autoexcalibur
   _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f85 --guard /local/bin/boa
@@ -1648,7 +1648,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f89
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f86
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f85
 
   if ! grep -q "bee eval" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
@@ -3653,7 +3653,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f92 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f91 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f85 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f86 --guard /local/bin/xoct
     # --- unique to _update_boa_tools ---
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f98 --guard /local/bin/autochimaera
@@ -3916,6 +3916,18 @@ _if_update_boa_key_tools_only() {
       ### CVE-2019-11478 SACK Slowness
       ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
       if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+        ### Persist the rules via csfpost.sh so csf -r cannot flush them; the
+        ### appended lines use POSIX redirects only (csfpost.sh runs under
+        ### sh). Gated on -x so the fresh-install csfpost.sh seeding block
+        ### above (gated on ! -x) is never preempted.
+        if [ -x "/etc/csf/csfpost.sh" ] \
+          && ! grep -q "BOA-SACK-MITIGATION" /etc/csf/csfpost.sh; then
+          echo "### BOA-SACK-MITIGATION begin (CVE-2019-11477/78/79) do not edit" >> /etc/csf/csfpost.sh
+          echo "sysctl net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1" >> /etc/csf/csfpost.sh
+          echo "iptables -C INPUT -p tcp -m tcpmss --mss 1:500 -j DROP >/dev/null 2>&1 || iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP" >> /etc/csf/csfpost.sh
+          echo "ip6tables -C INPUT -p tcp -m tcpmss --mss 1:500 -j DROP >/dev/null 2>&1 || ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP" >> /etc/csf/csfpost.sh
+          echo "### BOA-SACK-MITIGATION end" >> /etc/csf/csfpost.sh
+        fi
         _SACK_TEST=$(ip6tables --list | grep tcpmss)
         if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
           sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
@@ -4422,6 +4434,18 @@ if [ "$(id -u)" -eq 0 ]; then
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    ### Persist the rules via csfpost.sh so csf -r cannot flush them; the
+    ### appended lines use POSIX redirects only (csfpost.sh runs under sh).
+    ### Gated on -x so the fresh-install csfpost.sh seeding block (gated
+    ### on ! -x) is never preempted.
+    if [ -x "/etc/csf/csfpost.sh" ] \
+      && ! grep -q "BOA-SACK-MITIGATION" /etc/csf/csfpost.sh; then
+      echo "### BOA-SACK-MITIGATION begin (CVE-2019-11477/78/79) do not edit" >> /etc/csf/csfpost.sh
+      echo "sysctl net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1" >> /etc/csf/csfpost.sh
+      echo "iptables -C INPUT -p tcp -m tcpmss --mss 1:500 -j DROP >/dev/null 2>&1 || iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP" >> /etc/csf/csfpost.sh
+      echo "ip6tables -C INPUT -p tcp -m tcpmss --mss 1:500 -j DROP >/dev/null 2>&1 || ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP" >> /etc/csf/csfpost.sh
+      echo "### BOA-SACK-MITIGATION end" >> /etc/csf/csfpost.sh
+    fi
     _SACK_TEST=$(ip6tables --list | grep tcpmss)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
