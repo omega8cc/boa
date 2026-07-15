@@ -205,11 +205,23 @@ _gw_hint_save() {
   ( umask 077; printf '%s\n' "${_g}" > "${_GW_HINT_FILE}" ) 2>/dev/null || true
 }
 
-# Prefer the persisted hint (authoritative on routed blocks); else the live route.
+# Prefer a valid live default route that is not one of the host's own IPs;
+# fall back to the persisted hint. A working live route must win so a cloned
+# template (or a box whose network moved) never keeps a stale hint and a wrong
+# hint self-heals on the next healthy run; the hint covers the routed blocks
+# where the live route is lost mid-conversion.
 _default_gw_v4() {
-  _hint="$(_gw_hint_read 2>/dev/null)"
-  if [ -n "${_hint}" ]; then printf '%s\n' "${_hint}"; return 0; fi
-  ip -4 route show default 2>/dev/null | awk '{print $3; exit}'
+  _lgw="$(ip -4 route show default 2>/dev/null \
+    | awk '{for(i=1;i<=NF;i++) if ($i=="via"){print $(i+1); exit}}')"
+  case "${_lgw}" in
+    [0-9]*.[0-9]*.[0-9]*.[0-9]*)
+      if ! _gw_is_local_ip "${_lgw}"; then
+        printf '%s\n' "${_lgw}"
+        return 0
+      fi
+      ;;
+  esac
+  _gw_hint_read 2>/dev/null
 }
 _live_v4_list_if()  { ip -o -4 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
 _live_v4_cidr()     { _live_v4_list_if "$1" | head -n1; }
@@ -978,6 +990,13 @@ _main() {
       _DEF_WAS_DHCP="NO"
       _iface_v4_is_dynamic "${_DEF}" && _DEF_WAS_DHCP="YES"
       _default_route_is_dhcp && _DEF_WAS_DHCP="YES"
+      if [ "${_DEF_WAS_DHCP}" != "YES" ] && { [ -z "${_LIVE}" ] || [ -z "${_GW}" ]; }; then
+        # A static stanza without an address or gateway would be written as a
+        # broken config yet reported as success; the gateway can now be empty
+        # when base+1 is the guest itself and no hint exists.
+        _err "Insufficient data for a static config (LIVE=${_LIVE:-none} GW=${_GW:-none}). Cannot fix safely."
+        exit 1
+      fi
       if [ "${_DEF_WAS_DHCP}" = "YES" ]; then
         _msg "Detected DHCP-managed IPv4 on ${_DEF}; generating ifupdown DHCP stanza (no static pinning)."
       else

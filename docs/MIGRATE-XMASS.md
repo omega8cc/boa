@@ -285,11 +285,14 @@ the running Percona version and installed automatically if absent.
 ## GTID Configuration
 
 `xmass init` writes `xmass_gtid.cnf` on both servers if GTID is not already
-enabled. The MySQL include directory is detected at runtime, preferring the
-first that exists: `/etc/mysql/percona-server.conf.d`, then
-`/etc/mysql/conf.d`, then `/etc/mysql/mysql.conf.d`, falling back to
-`/etc/mysql`. On a current Percona box this is normally
-`/etc/mysql/percona-server.conf.d/xmass_gtid.cnf`. Contents:
+enabled. The MySQL include directory is detected from the `!includedir` that
+`my.cnf` actually reads (parsed at runtime), falling back to the first of
+`/etc/mysql/conf.d`, `/etc/mysql/percona-server.conf.d`,
+`/etc/mysql/mysql.conf.d`, then `/etc/mysql` only if `my.cnf` declares none.
+On a BOA box this resolves to `/etc/mysql/conf.d/xmass_gtid.cnf` — detecting by
+directory existence alone is wrong there, because `percona-server.conf.d`
+exists but BOA's `my.cnf` includes only `conf.d`, so a conf dropped in the
+former is never parsed and GTID stays OFF after restart. Contents:
 
 ```ini
 [mysqld]

@@ -5463,15 +5463,14 @@ _curl_install_src() {
 
   fi
 
+  # The multiarch libcurl backup-move happens INSIDE the install arms below,
+  # never before them: on a fresh box the only working curl is the distro one,
+  # and moving its runtime lib here would break the very curl the prebuilt
+  # boa-curl fetch runs a moment later (fetch exits 127 on the loader error,
+  # which reads as not-published and silently forces the source build).
   if [ "${_ifAnySymlinksCleaned}" = "YES" ] \
-    || [ "${_ifAnyFilesCleaned}" = "YES" ] \
-    || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
+    || [ "${_ifAnyFilesCleaned}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    _bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
-    mkdir -p ${_bkLibcurlPre}
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${_bkLibcurlPre}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${_bkLibcurlPre}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${_bkLibcurlPre}/ &> /dev/null
   fi
 
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -5481,6 +5480,11 @@ _curl_install_src() {
         _msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
       fi
       [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
+      _bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
+      mkdir -p ${_bkLibcurlPre}
+      mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${_bkLibcurlPre}/ &> /dev/null
+      mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${_bkLibcurlPre}/ &> /dev/null
+      mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${_bkLibcurlPre}/ &> /dev/null
       if [ -e "/usr/local/bin/curl" ]; then
         mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S)
       fi
@@ -5526,6 +5530,14 @@ _curl_install_src() {
           fi
         fi
       fi
+      # Only NOW retire the distro/legacy multiarch libcurl: the deb fetch
+      # above ran through whatever curl the box had -- on a fresh box that
+      # is the distro one, alive only as long as its runtime lib stays put
+      _bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
+      mkdir -p ${_bkLibcurlPre}
+      mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${_bkLibcurlPre}/ &> /dev/null
+      mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${_bkLibcurlPre}/ &> /dev/null
+      mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${_bkLibcurlPre}/ &> /dev/null
       if [ "${_CURL_DEB_INSTALLED}" = "NO" ]; then
         _apt_clean_update
         # Check for libssl1.0-dev and remove conditionally
