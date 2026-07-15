@@ -345,7 +345,10 @@ _barCnf="/root/.barracuda.cnf"
 _logInt="/root/.autoinit.log"
 _logSlt="/root/.autoinit-verbose.log"
 _aptAllow="--allow-unauthenticated"
-_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
+# force-confdef/confold: a dpkg conffile prompt is fatal when unattended (EOF
+# on stdin under cron/nohup aborts the install mid-conversion); keep the local
+# file and continue -- same policy as _nrmUpArg below.
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
 _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
@@ -711,8 +714,9 @@ _init_no_systemd() {
   [ -e "/root/.autoinit.nosd.retry" ] && _CNT=$(cat /root/.autoinit.nosd.retry 2>/dev/null)
   case "${_CNT}" in ''|*[!0-9]*) _CNT=0 ;; esac
   if [ "${_CNT}" -ge 5 ]; then
-    _msg "[init][ERROR] nosd ==> conversion STILL incomplete after ${_CNT} remediation cycles -- manual attention needed; continuing" >> "${_logInt}"
-    return 0
+    _msg "[init][ERROR] nosd ==> conversion STILL incomplete after ${_CNT} remediation cycles" >> "${_logInt}"
+    _msg "[init][ERROR] nosd ==> NOT declaring the system ready; fix the network/mirror, then 'rm -f /root/.autoinit.nosd.retry' and run 'autoinit' again" >> "${_logInt}"
+    return 1
   fi
   echo $(( _CNT + 1 )) > /root/.autoinit.nosd.retry
 
@@ -729,8 +733,18 @@ _init_no_systemd() {
 
   _msg "[init] nosd ==> Rebooting to complete the sysvinit switch, then re-checking..." >> "${_logInt}"
   touch /root/.run-cycle-devuan-init.cnf
-  rm -f /run/autoinit.pid
-  shutdown -r now
+  # Re-entry after this reboot depends on the minutely cron line -- self-heal
+  # it (a prior bound-exhaustion strips it to stop the churn).
+  sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
+  echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
+  if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+    service cron stop
+    sleep 90
+    rm -f /run/autoinit.pid
+  else
+    rm -f /run/autoinit.pid
+    shutdown -r now
+  fi
   exit 0
 }
 
@@ -841,7 +855,27 @@ _init_cron() {
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    ${_INITINS} cron >> "${_logSlt}"
+    # A script-created /etc/crontab on a cron-less cloud image (the boa
+    # pre-flight writes its killer entry before cron is ever installed) makes
+    # the cron-daemon-common install hit a dpkg conffile collision; with
+    # force-confold the local file wins, silently losing the stock run-parts
+    # entries. Stash ours, install cron checked (autoinit re-entry across the
+    # conversion reboots depends on a working cron), then merge the stashed
+    # entries back into the maintainer file.
+    if [ -e "/etc/crontab" ]; then
+      mv -f /etc/crontab /etc/crontab.autoinit.keep
+    fi
+    _autoinit_apt_install_checked "cron" "cron"
+    if [ -e "/etc/crontab.autoinit.keep" ]; then
+      if [ -e "/etc/crontab" ]; then
+        grep -vE "^#|^[[:space:]]*$" /etc/crontab.autoinit.keep | while read -r _CRN_LN; do
+          grep -qF "${_CRN_LN}" /etc/crontab || echo "${_CRN_LN}" >> /etc/crontab
+        done
+        rm -f /etc/crontab.autoinit.keep
+      else
+        mv -f /etc/crontab.autoinit.keep /etc/crontab
+      fi
+    fi
   fi
 }
 
@@ -1684,7 +1718,16 @@ _init_cycle() {
     if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
       _init_base_sync
       _init_post_ready
-      _init_no_systemd
+      # Authoritative gate: on remediation-bound exhaustion do NOT declare the
+      # system ready -- keep the init ctrl file and the queued boa install
+      # command so a manual re-run can finish the job; only stop the minutely
+      # cron churn.
+      if ! _init_no_systemd; then
+        _msg "[init][ERROR] cycl ==> Conversion incomplete -- NOT launching boa install; see the nosd errors above" >> "${_logInt}"
+        sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
+        rm -f /run/autoinit.pid
+        exit 1
+      fi
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
