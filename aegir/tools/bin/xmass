@@ -363,16 +363,20 @@ _xmass_check_gtid_enabled_local() {
 _xmass_configure_gtid_local() {
   local _mode
   _mode=$(_xmass_check_gtid_enabled_local)
-  if [ "${_mode}" = "ON" ]; then
-    _info "GTID already ON on source: OK"
-    return
-  fi
-  _info "GTID not enabled on source (mode=${_mode}) — configuring now ..."
+  # ALWAYS (re)write the conf so GTID is PERSISTED. A runtime-only ON -- e.g. an
+  # init re-run after a failed attempt, or a source already in a replication
+  # topology -- is lost on the next restart, and on the target that restart is
+  # the xtrabackup copy-back, after which CHANGE REPLICATION SOURCE fails with
+  # GTID_MODE=OFF. Writing the conf is idempotent; restart only if it was OFF.
   local _src_id
   _src_id=$(_ip_to_server_id \
     "${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}")
   _xmass_write_gtid_conf_local "${_src_id}"
-  _info "Restarting MySQL on source via move_sql.sh ..."
+  if [ "${_mode}" = "ON" ]; then
+    _info "GTID already ON on source (conf persisted): OK"
+    return
+  fi
+  _info "GTID not enabled on source (mode=${_mode}) — restarting to apply ..."
   /var/xdrago/move_sql.sh restart \
     || _die "MySQL restart failed on source (move_sql.sh)"
   _mode=$(_xmass_check_gtid_enabled_local)
@@ -387,11 +391,11 @@ _xmass_configure_gtid_target() {
     "mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe \
     \"SHOW VARIABLES LIKE 'gtid_mode'\" 2>/dev/null | awk '{print \$2}'" \
     2>/dev/null)
-  if [ "${_mode}" = "ON" ]; then
-    _info "GTID already ON on target ${_tgt}: OK"
-    return
-  fi
-  _info "GTID not enabled on target ${_tgt} (mode=${_mode}) — configuring ..."
+  # ALWAYS (re)write the conf so GTID is PERSISTED across the upcoming
+  # xtrabackup copy-back restart, even when runtime GTID is already ON (init
+  # re-run / pre-existing topology) -- a runtime-only ON is lost on that restart
+  # and CHANGE REPLICATION SOURCE then fails with GTID_MODE=OFF. Idempotent;
+  # restart only if it was OFF (below).
   local _tgt_id
   _tgt_id=$(_ip_to_server_id "${_tgt}")
   # Write the GTID config remotely. Detect the conf dir the SAME way as the
@@ -433,11 +437,15 @@ _logbin=\$(mysql --defaults-file=/root/.my.cnf \
 } > "\${_cnf}"
 chmod 644 "\${_cnf}"
 REMOTEBASH
-  _info "Restarting MySQL on target ${_tgt} via move_sql.sh ..."
+  if [ "${_mode}" = "ON" ]; then
+    _info "GTID already ON on target ${_tgt} (conf persisted): OK"
+    return
+  fi
+  _info "GTID not enabled on target ${_tgt} (mode=${_mode}) — restarting to apply ..."
   ssh root@"${_tgt}" "/var/xdrago/move_sql.sh restart" \
     || _die "MySQL restart failed on target ${_tgt}"
   # Verify GTID actually came ON (the source path does the same). A silent
-  # miss here otherwise surfaces much later at CHANGE MASTER.
+  # miss here otherwise surfaces much later at CHANGE REPLICATION SOURCE.
   local _tmode
   _tmode=$(ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf -sNe \"SHOW VARIABLES LIKE 'gtid_mode'\" 2>/dev/null | awk '{print \$2}'")
