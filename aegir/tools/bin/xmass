@@ -1133,6 +1133,24 @@ _xmass_remove_http_off_all() {
   fi
 }
 
+_xmass_remove_http_off_target() {
+  # The source's export-time 503 gate (http-off.pid, a cache-TTL integer, not a
+  # self-expiry) rides the final account rsync into each target account's
+  # static/control and nothing on the target removes it -- so a freshly
+  # promoted target serves 503 on every site (and the source proxy relays that
+  # 503). Clear it on the target once the accounts are renamed and ready.
+  _info "Removing http-off.pid from all target accounts on ${_tgt} ..."
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    ssh root@"${_tgt}" \
+      "rm -f /data/disk/${_oct}/static/control/http-off.pid" 2>/dev/null \
+      || _alrt "Could not remove http-off.pid for ${_oct} on target ${_tgt}"
+  done
+  ssh root@"${_tgt}" \
+    "[ -d /var/lib/nginx/speed ] && find /var/lib/nginx/speed -type f -delete &>/dev/null; service nginx reload &>/dev/null; true"
+  _info "Target web serving enabled (http-off.pid cleared): OK"
+}
+
 ###-------------BOA PROCESS CHECK--------###
 
 _xmass_check_no_boa_running() {
@@ -1581,6 +1599,10 @@ _xmass_cmd_cutover() {
   # This rewrites drush aliases, vhosts, and the Aegir DB to the new hostname,
   # then runs the Aegir task queue 5 times to regenerate everything on disk.
   _xmass_renameaegirhost_all
+
+  # Step 13.5: Clear the migrated-in 503 gate on the target so it actually
+  # serves (the source's http-off.pid arrived with the final account rsync).
+  _xmass_remove_http_off_target
 
   # Step 14: Start Solr on target now that Solr data sync is complete
   _xmass_start_solr_target
