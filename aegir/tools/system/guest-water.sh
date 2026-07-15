@@ -610,16 +610,24 @@ _guard_stats() {
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
         _FF_TEST=
-        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        _FG_TEST=
+        ### Permanent block means membership in csf.deny; csf -g cannot be
+        ### used for that test because an active TEMP ban also prints DENY
+        ### (DENYIN chain), which kept persistent attackers from ever being
+        ### promoted to a permanent block. csf -g still detects every allow
+        ### form (plain, advanced, CIDR, temp).
+        _IP_ESC=$(printf '%s' "${_IP}" | sed 's/\./\\./g')
+        _FW_TEST=$(grep -E "^${_IP_ESC}([ #]|$)" /etc/csf/csf.deny 2>/dev/null)
         _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
-        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+        _FG_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [ ! -z "${_FW_TEST}" ] || [[ "${_FG_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 22"
           if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
             csf -dr ${_IP}
             csf -tr ${_IP}
           fi
         else
-          _IP_RV=$(host -s ${_IP} 2>&1)
+          _IP_RV=$(host -s ${_IP} 2>&1 | tr -d '\n' | tr -cd 'a-zA-Z0-9 ._-' | cut -c1-80)
           if [ "${_NR_TEST}" -ge 24 ]; then
             echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks ${_IP_RV}
@@ -653,16 +661,24 @@ _guard_stats() {
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
         _FF_TEST=
-        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        _FG_TEST=
+        ### Permanent block means membership in csf.deny; csf -g cannot be
+        ### used for that test because an active TEMP ban also prints DENY
+        ### (DENYIN chain), which kept persistent attackers from ever being
+        ### promoted to a permanent block. csf -g still detects every allow
+        ### form (plain, advanced, CIDR, temp).
+        _IP_ESC=$(printf '%s' "${_IP}" | sed 's/\./\\./g')
+        _FW_TEST=$(grep -E "^${_IP_ESC}([ #]|$)" /etc/csf/csf.deny 2>/dev/null)
         _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
-        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+        _FG_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [ ! -z "${_FW_TEST}" ] || [[ "${_FG_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 80"
           if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
             csf -dr ${_IP}
             csf -tr ${_IP}
           fi
         else
-          _IP_RV=$(host -s ${_IP} 2>&1)
+          _IP_RV=$(host -s ${_IP} 2>&1 | tr -d '\n' | tr -cd 'a-zA-Z0-9 ._-' | cut -c1-80)
           if [ "${_NR_TEST}" -ge 24 ]; then
             echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks ${_IP_RV}
@@ -696,16 +712,24 @@ _guard_stats() {
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
         _FF_TEST=
-        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        _FG_TEST=
+        ### Permanent block means membership in csf.deny; csf -g cannot be
+        ### used for that test because an active TEMP ban also prints DENY
+        ### (DENYIN chain), which kept persistent attackers from ever being
+        ### promoted to a permanent block. csf -g still detects every allow
+        ### form (plain, advanced, CIDR, temp).
+        _IP_ESC=$(printf '%s' "${_IP}" | sed 's/\./\\./g')
+        _FW_TEST=$(grep -E "^${_IP_ESC}([ #]|$)" /etc/csf/csf.deny 2>/dev/null)
         _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
-        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+        _FG_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [ ! -z "${_FW_TEST}" ] || [[ "${_FG_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 21"
           if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
             csf -dr ${_IP}
             csf -tr ${_IP}
           fi
         else
-          _IP_RV=$(host -s ${_IP} 2>&1)
+          _IP_RV=$(host -s ${_IP} 2>&1 | tr -d '\n' | tr -cd 'a-zA-Z0-9 ._-' | cut -c1-80)
           if [ "${_NR_TEST}" -ge 24 ]; then
             echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks ${_IP_RV}
