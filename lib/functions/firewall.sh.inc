@@ -235,16 +235,28 @@ _csf_install() {
       chmod 600 /etc/csf/csf.conf
     fi
     if [ -e "/etc/ssh/sshd_config" ]; then
-      sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /etc/ssh/sshd_config
+      ### Apply the edits to a same-dir candidate and validate with the real
+      ### daemon before swapping it in — a bad edit must never leave the box
+      ### with an sshd that cannot restart (console-only recovery).
+      _SSHD_CAND="/etc/ssh/.sshd_config.boa-cand"
+      cp -af /etc/ssh/sshd_config ${_SSHD_CAND}
+      sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  ${_SSHD_CAND}
       wait
-      sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /etc/ssh/sshd_config
+      sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" ${_SSHD_CAND}
       wait
-      sed -i "s/^UsePrivilegeSeparation.*//g" /etc/ssh/sshd_config
+      sed -i "s/^UsePrivilegeSeparation.*//g" ${_SSHD_CAND}
       wait
-      sed -i "s/^ClientAliveCountMax.*/ClientAliveCountMax 10000/g" /etc/ssh/sshd_config
+      sed -i "s/^ClientAliveCountMax.*/ClientAliveCountMax 10000/g" ${_SSHD_CAND}
       wait
-      sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
+      sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" ${_SSHD_CAND}
       wait
+      if [ ! -x "/usr/sbin/sshd" ] \
+        || /usr/sbin/sshd -t -f ${_SSHD_CAND} &> /dev/null; then
+        mv -f ${_SSHD_CAND} /etc/ssh/sshd_config
+      else
+        rm -f ${_SSHD_CAND}
+        _msg "OOPS: sshd_config update failed sshd -t validation, keeping current config"
+      fi
     fi
     pkill -9 -f /usr/sbin/sshd || true
     _mrun "service ssh start"
