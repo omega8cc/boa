@@ -439,8 +439,8 @@ _xmass_take_backup() {
     rm -rf "${_XTRA_STAGE_SRC}"
     mkdir -p "${_XTRA_STAGE_SRC}"
     xtrabackup \
-      --backup \
       --defaults-file=/root/.my.cnf \
+      --backup \
       --target-dir="${_XTRA_STAGE_SRC}" \
       || _die "xtrabackup --backup failed on source"
 
@@ -459,8 +459,8 @@ _xmass_take_backup() {
   else
     _info "xtrabackup: streaming backup directly to target ${_tgt} ..."
     xtrabackup \
-      --backup \
       --defaults-file=/root/.my.cnf \
+      --backup \
       --stream=xbstream \
       | ssh root@"${_tgt}" "xbstream -x -C ${_XTRA_STAGE_TGT}" \
       || _die "xtrabackup stream to target failed"
