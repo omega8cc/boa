@@ -52,3 +52,4 @@ ln -sfn /opt/local/bin/xoct /opt/local/bin/xboa
 
 - [Single-account migration with xoct](MIGRATE-XOCT.md)
 - [Full-server migration with xmass](MIGRATE-XMASS.md)
+- [Migrating to Percona 8 — cross-version behaviour and verification](MIGRATE-PERCONA8.md)
