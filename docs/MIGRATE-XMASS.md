@@ -301,7 +301,7 @@ gtid_mode                = ON
 enforce_gtid_consistency = ON
 log_slave_updates        = ON
 binlog_format            = ROW
-expire_logs_days         = 7
+expire_logs_days         = 7          # 5.7 only; 8.0+ uses binlog_expire_logs_seconds = 604800 (expire_logs_days was removed in 8.4)
 log_bin                  = /var/lib/mysql/mysql-bin  # only if binlog not already on
 ```
 
