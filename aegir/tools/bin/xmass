@@ -273,11 +273,22 @@ _ip_to_server_id() {
 }
 
 _xmass_mysql_conf_dir() {
-  # Detect the appropriate MySQL include config directory on this system
-  if [ -d "/etc/mysql/percona-server.conf.d" ]; then
-    echo "/etc/mysql/percona-server.conf.d"
+  # Return the include dir my.cnf ACTUALLY reads. Detecting by directory
+  # existence is wrong on BOA boxes: /etc/mysql/percona-server.conf.d exists
+  # but BOA's my.cnf only '!includedir /etc/mysql/conf.d/', so a gtid conf
+  # dropped in the former is never parsed and GTID stays OFF after restart.
+  # Parse the active !includedir first; fall back to existence guesses only if
+  # my.cnf has none.
+  local _inc
+  _inc=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  if [ -n "${_inc}" ] && [ -d "${_inc}" ]; then
+    echo "${_inc}"
   elif [ -d "/etc/mysql/conf.d" ]; then
     echo "/etc/mysql/conf.d"
+  elif [ -d "/etc/mysql/percona-server.conf.d" ]; then
+    echo "/etc/mysql/percona-server.conf.d"
   elif [ -d "/etc/mysql/mysql.conf.d" ]; then
     echo "/etc/mysql/mysql.conf.d"
   else
