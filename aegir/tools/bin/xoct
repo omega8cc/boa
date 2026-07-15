@@ -1171,7 +1171,14 @@ _migrate_init() {
               _xoct_rewrite_target_account_refs "${_oct}" "${_dst}" "${_tgt}" "${_DST}"
             fi
             echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
-            touch ${_USR}/log/transferred.pid
+            # Only the real transfer marks the account migrated -- pretransfer
+            # shares this completion path (warm-up rsync while the account is
+            # still live) and marking it here made the documented
+            # pretransfer -> export -> transfer sequence self-blocking at the
+            # transferred.pid eligibility gate.
+            if [ "${_cmd}" = "transfer" ]; then
+              touch ${_USR}/log/transferred.pid
+            fi
           else
             _xoct_finalize_dry "${_oct}" "${_tgt}"
           fi
