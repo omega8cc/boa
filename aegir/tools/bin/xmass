@@ -856,7 +856,7 @@ _xmass_sync_static_symlink_safe() {
   [ -d "${_src_static}" ] || return 0
 
   # Pass 1: sync static/ tree preserving symlinks, skip files/
-  _xmass_rsync -aEAXqu ${_ieni} --exclude=files \
+  _xmass_rsync -aEAXqu ${_ieni} --exclude=/files \
     -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/" &>/dev/null || true
 
   # Pass 2: relocate static/files per target disk reality. Canonical mount layout

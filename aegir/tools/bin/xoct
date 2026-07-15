@@ -489,7 +489,7 @@ _xoct_rewrite_target_account_refs() {
   fi
 
   echo "INFO: rename mode active on target ${_X_TGT_HOST}: rewriting refs ${_X_SRC_OCT} -> ${_X_DST_OCT} in selected text configs"
-  ssh root@${_X_TGT_HOST} "    _D='${_X_DST_USR}';     for _F in       \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       ; do       [ -f "\${_F}" ] || continue;       grep -q '/data/disk/${_X_SRC_OCT}\|/home/${_X_SRC_OCT}\.ftp' "\${_F}" 2>/dev/null || continue;       sed -i 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g; s#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' "\${_F}";     done"
+  ssh root@${_X_TGT_HOST} "    _D='${_X_DST_USR}';     for _F in       \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       ; do       [ -f "\${_F}" ] || continue;       grep -q '/data/disk/${_X_SRC_OCT}\|/home/${_X_SRC_OCT}\.ftp' "\${_F}" 2>/dev/null || continue;       sed -i 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g; s#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' "\${_F}";     done;     for _L in \$(find "\${_D}/static" -type l 2>/dev/null); do       _T=\$(readlink "\${_L}" 2>/dev/null);       _R="\${_T#/data/disk/${_X_SRC_OCT}/}";       if [ "\${_R}" != "\${_T}" ]; then         _O=\$(stat -c '%U:%G' "\${_L}" 2>/dev/null);         ln -sfn "/data/disk/${_X_DST_OCT}/\${_R}" "\${_L}";         [ -n "\${_O}" ] && chown -h "\${_O}" "\${_L}" 2>/dev/null;       fi;     done"
 }
 
 _migrate_prepare() {
@@ -951,7 +951,7 @@ _xoct_transfer_static_symlink_safe() {
 
   echo "INFO: Static sync pass 1/2 (preserve symlinks, exclude static/files)"
   mkdir -p "${_X_SRC_USR}/static"
-  _xoct_rsync -aEAXqu ${_X_IENI} --exclude=files -e ssh "${_X_SRC_USR}/static/" "root@${_X_TGT_HOST}:${_X_DST_STATIC}/"
+  _xoct_rsync -aEAXqu ${_X_IENI} --exclude=/files -e ssh "${_X_SRC_USR}/static/" "root@${_X_TGT_HOST}:${_X_DST_STATIC}/"
 
   echo "INFO: Static sync pass 2/2 (materialize/mirror static/files per target disk reality)"
   # Canonical mount layout uses the DEST account name, so a rename lands correctly.
