@@ -313,7 +313,15 @@ _xmass_write_gtid_conf_local() {
     echo "enforce_gtid_consistency = ON"
     echo "log_slave_updates        = ON"
     echo "binlog_format            = ROW"
-    echo "expire_logs_days         = 7"
+    # expire_logs_days was REMOVED in MySQL/Percona 8.4 (deprecated in 8.0);
+    # its presence aborts mysqld at startup ("unknown variable"). Use the
+    # replacement binlog_expire_logs_seconds on 8.0+; keep the old name on 5.7
+    # where the new one does not exist.
+    if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
+      echo "expire_logs_days             = 7"
+    else
+      echo "binlog_expire_logs_seconds   = 604800"
+    fi
     [ "${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
   } > "${_cnf}"
   chmod 644 "${_cnf}"
@@ -389,7 +397,11 @@ _logbin=\$(mysql --defaults-file=/root/.my.cnf \
   echo "enforce_gtid_consistency = ON"
   echo "log_slave_updates        = ON"
   echo "binlog_format            = ROW"
-  echo "expire_logs_days         = 7"
+  if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
+    echo "expire_logs_days             = 7"
+  else
+    echo "binlog_expire_logs_seconds   = 604800"
+  fi
   [ "\${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
 } > "\${_cnf}"
 chmod 644 "\${_cnf}"
