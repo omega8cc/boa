@@ -223,55 +223,6 @@ _run_drush8_nosilent_cmd() {
   wait
 }
 
-_xoct_rebuild_d8plus_sites() {
-  # A freshly imported D8+ site carries the SOURCE box's cached service
-  # container; the async post-rename verify eventually rebuilds it, but not
-  # before import returns, so a migrated Drupal 10+ can serve 403 until then.
-  # Run the site-local `cr` explicitly, mirroring provision's
-  # _provision_drupal_rebuild_d8plus(): flip ONLY the exec bits (NEVER revert
-  # the Aegir vendor patches -- reverting bakes an invalid logger into the
-  # persisted container and the patched web then fatals) and restore the
-  # at-rest lock posture. Degraded codebases (no site-local Drush, e.g. a bare
-  # core) are skipped, exactly as the helper does. Any failure is non-fatal:
-  # the async verify remains the backstop.
-  local _acct="$1"
-  local _root="/data/disk/${_acct}"
-  [ -d "${_root}/.drush" ] || return 0
-  local _al _dom _plr _app _drush _was_exec _d
-  for _al in $(find "${_root}/.drush" -maxdepth 1 -type f -name '*.alias.drushrc.php' 2>/dev/null | sort); do
-    case "${_al}" in
-      *server_*|*hostmaster*|*/hm.alias*|*platform_*) continue ;;
-    esac
-    _dom=$(basename "${_al}" .alias.drushrc.php)
-    _plr=$(grep "'root'" "${_al}" 2>/dev/null | head -1 | cut -d'>' -f2 | sed "s/[ ,';]//g")
-    [ -n "${_plr}" ] && [ -d "${_plr}" ] || continue
-    # findAppRoot: walk up from the docroot until a dir contains vendor/
-    _app="${_plr}"
-    while [ "${_app}" != "/" ] && [ ! -d "${_app}/vendor" ]; do
-      _app=$(dirname "${_app}")
-    done
-    _drush="${_app}/vendor/drush/drush/drush.php"
-    { [ -d "${_app}/vendor" ] && [ -e "${_drush}" ]; } || continue
-    echo "INFO: D8+ site-local cache rebuild for ${_dom} (app ${_app})"
-    if [ -x "${_drush}" ]; then
-      _was_exec=YES
-    else
-      _was_exec=NO
-      for _d in "${_app}/vendor/drush" "${_app}/vendor/symfony/console/Input" "${_app}/vendor/symfony/console/Style"; do
-        [ -d "${_d}" ] && chmod 0775 "${_d}" 2>/dev/null
-      done
-      chmod 0775 "${_drush}" "${_app}/vendor/drush/drush/drush" 2>/dev/null
-    fi
-    su -s /bin/bash - "${_acct}" -c "cd '${_app}' && '${_drush}' -l '${_dom}' cr" 2>&1 | tail -2 || true
-    if [ "${_was_exec}" = "NO" ]; then
-      chmod 0400 "${_drush}" "${_app}/vendor/drush/drush/drush" 2>/dev/null
-      for _d in "${_app}/vendor/drush" "${_app}/vendor/symfony/console/Input" "${_app}/vendor/symfony/console/Style"; do
-        [ -d "${_d}" ] && chmod 0400 "${_d}" 2>/dev/null
-      done
-    fi
-  done
-}
-
 _migrate_sites() {
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
@@ -767,9 +718,6 @@ _migrate_prepare() {
     if [ -d "/var/lib/nginx/speed" ]; then
       find /var/lib/nginx/speed -type f -delete &> /dev/null
     fi
-    # Rebuild the stale container for any migrated D8+ site so it serves now,
-    # not only after the async post-rename verify catches up.
-    _xoct_rebuild_d8plus_sites "$(basename ${_USR})"
   fi
   echo Done ${_cmd} for ${_USR}
   _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
