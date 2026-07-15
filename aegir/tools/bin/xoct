@@ -489,7 +489,45 @@ _xoct_rewrite_target_account_refs() {
   fi
 
   echo "INFO: rename mode active on target ${_X_TGT_HOST}: rewriting refs ${_X_SRC_OCT} -> ${_X_DST_OCT} in selected text configs"
-  ssh root@${_X_TGT_HOST} "    _D='${_X_DST_USR}';     for _F in       \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort)       ; do       [ -f "\${_F}" ] || continue;       grep -q '/data/disk/${_X_SRC_OCT}\|/home/${_X_SRC_OCT}\.ftp' "\${_F}" 2>/dev/null || continue;       sed -i 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g; s#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' "\${_F}";     done;     for _L in \$(find "\${_D}/static" -type l 2>/dev/null); do       _T=\$(readlink "\${_L}" 2>/dev/null);       _R="\${_T#/data/disk/${_X_SRC_OCT}/}";       if [ "\${_R}" != "\${_T}" ]; then         _O=\$(stat -c '%U:%G' "\${_L}" 2>/dev/null);         ln -sfn "/data/disk/${_X_DST_OCT}/\${_R}" "\${_L}";         [ -n "\${_O}" ] && chown -h "\${_O}" "\${_L}" 2>/dev/null;       fi;     done"
+  # Heredoc (not a nested one-liner) so the fpm socket-token rewrite -- which
+  # carries literal double quotes -- stays readable. Local vars (_X_SRC_OCT
+  # etc.) expand here before ssh; remote-only vars are \-escaped.
+  ssh root@"${_X_TGT_HOST}" "bash -s" <<REMOTE
+_D='${_X_DST_USR}'
+for _F in \
+  \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  ; do
+  [ -f "\${_F}" ] || continue
+  # The post.d fpm includes carry no /data/disk path -- only the account's
+  # own \$user_socket "oN.NN" token -- so match that too, else a rename left
+  # the source socket name and requests hit the WRONG account's FPM pool
+  # (403/permission-denied) on any target that also has an account by the
+  # source name.
+  grep -qE "/data/disk/${_X_SRC_OCT}|/home/${_X_SRC_OCT}\.ftp|user_socket \"${_X_SRC_OCT}[.\"]" "\${_F}" 2>/dev/null || continue
+  sed -i \
+    -e 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g' \
+    -e 's#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' \
+    -e 's#user_socket "${_X_SRC_OCT}\.#user_socket "${_X_DST_OCT}.#g' \
+    -e 's#user_socket "${_X_SRC_OCT}"#user_socket "${_X_DST_OCT}"#g' \
+    "\${_F}"
+done
+for _L in \$(find "\${_D}/static" -type l 2>/dev/null); do
+  _T=\$(readlink "\${_L}" 2>/dev/null)
+  _R="\${_T#/data/disk/${_X_SRC_OCT}/}"
+  if [ "\${_R}" != "\${_T}" ]; then
+    _O=\$(stat -c '%U:%G' "\${_L}" 2>/dev/null)
+    ln -sfn "/data/disk/${_X_DST_OCT}/\${_R}" "\${_L}"
+    [ -n "\${_O}" ] && chown -h "\${_O}" "\${_L}" 2>/dev/null
+  fi
+done
+REMOTE
 }
 
 _migrate_prepare() {
