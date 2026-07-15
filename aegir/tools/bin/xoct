@@ -667,6 +667,20 @@ _migrate_prepare() {
     || [ "${_cmd}" = "proxy" ]; then
     _migrate_sites
   fi
+  if [ "${_cmd}" = "import" ]; then
+    ###
+    ### The export-time 503 gate travels inside static/control with the
+    ### account transfer, and nothing on the target removed it, so imported
+    ### accounts stayed on 503 indefinitely (the pid content is a cache TTL
+    ### for the 503 response, not a self-expiry). The account imported onto
+    ### THIS box is ready to serve now; the source keeps its own copy until
+    ### the proxy step replaces it there.
+    ###
+    rm -f ${_USR}/static/control/http-off.pid
+    if [ -d "/var/lib/nginx/speed" ]; then
+      find /var/lib/nginx/speed -type f -delete &> /dev/null
+    fi
+  fi
   echo Done ${_cmd} for ${_USR}
   _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
 }
