@@ -172,15 +172,60 @@ _xmass_xtrabackup_pkg() {
   esac
 }
 
+_xmass_xtrabackup_repo() {
+  # Percona ships xtrabackup in a SEPARATE apt repo component from the server
+  # (BOA configures only the ps-* server repo), so 'apt-get install
+  # percona-xtrabackup-NN' finds nothing until the matching pxb repo is added.
+  case "${_XMASS_PERCONA_V}" in
+    5.7) echo "pxb-24" ;;
+    8.0) echo "pxb-80" ;;
+    8.4) echo "pxb-84-lts" ;;
+    *)   _die "No xtrabackup repo known for Percona ${_XMASS_PERCONA_V}" ;;
+  esac
+}
+
 ###-------------XTRABACKUP INSTALL-------###
 
+# Enable the matching Percona pxb repo, reusing the keyring + codename BOA
+# already set up for the ps-* server repo (so signing + Devuan->bookworm
+# mapping stay consistent). Idempotent; safe to re-run. Meant to run on the
+# LOCAL box -- the target path wraps this same body over ssh. Emits the shell
+# to run so both paths share one definition.
+_xmass_pxb_repo_setup_cmd() {
+  local _repo="$1"
+  cat <<REPOEOF
+_psList=/etc/apt/sources.list.d/percona-release.list
+_pxbList=/etc/apt/sources.list.d/percona-${_repo}.list
+if [ ! -e "\${_psList}" ]; then
+  echo "ERROR: \${_psList} missing -- Percona server repo not configured; cannot derive pxb repo" >&2
+  exit 1
+fi
+# Reuse the server repo's exact codename + signed-by keyring; only swap the
+# repo component (ps-XX -> ${_repo}) and drop deb-src.
+_psLine=\$(grep -E '^deb ' "\${_psList}" | grep -E 'ps-[0-9]' | head -1)
+if [ -z "\${_psLine}" ]; then
+  echo "ERROR: no ps-* deb line in \${_psList}" >&2
+  exit 1
+fi
+_pxbLine=\$(echo "\${_psLine}" | sed -E 's#/ps-[0-9a-zA-Z-]+/#/${_repo}/#')
+if ! grep -qF "\${_pxbLine}" "\${_pxbList}" 2>/dev/null; then
+  echo "\${_pxbLine}" > "\${_pxbList}"
+fi
+apt-get -q -y update >/dev/null 2>&1
+REPOEOF
+}
+
 _xmass_install_xtrabackup_local() {
-  local _pkg
+  local _pkg _repo
   _pkg=$(_xmass_xtrabackup_pkg)
+  _repo=$(_xmass_xtrabackup_repo)
   if dpkg -l "${_pkg}" 2>/dev/null | grep -q "^ii"; then
     _info "xtrabackup (${_pkg}) already installed on source: OK"
     return
   fi
+  _info "Enabling Percona ${_repo} repo on source ..."
+  bash -c "$(_xmass_pxb_repo_setup_cmd "${_repo}")" \
+    || _die "Failed to enable ${_repo} repo on source"
   _info "Installing ${_pkg} on source ..."
   apt-get -q -y install "${_pkg}" \
     || _die "Failed to install ${_pkg} on source"
@@ -188,8 +233,9 @@ _xmass_install_xtrabackup_local() {
 }
 
 _xmass_install_xtrabackup_target() {
-  local _pkg
+  local _pkg _repo
   _pkg=$(_xmass_xtrabackup_pkg)
+  _repo=$(_xmass_xtrabackup_repo)
   local _already
   _already=$(ssh root@"${_tgt}" \
     "dpkg -l ${_pkg} 2>/dev/null | grep -c '^ii' || true" 2>/dev/null)
@@ -197,6 +243,9 @@ _xmass_install_xtrabackup_target() {
     _info "xtrabackup (${_pkg}) already installed on target ${_tgt}: OK"
     return
   fi
+  _info "Enabling Percona ${_repo} repo on target ${_tgt} ..."
+  _xmass_pxb_repo_setup_cmd "${_repo}" | ssh root@"${_tgt}" "bash -s" \
+    || _die "Failed to enable ${_repo} repo on target ${_tgt}"
   _info "Installing ${_pkg} on target ${_tgt} ..."
   ssh root@"${_tgt}" "apt-get -q -y install ${_pkg}" \
     || _die "Failed to install ${_pkg} on target ${_tgt}"
