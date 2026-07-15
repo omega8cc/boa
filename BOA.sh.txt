@@ -1070,10 +1070,21 @@ _fetch_versioned() {
   [[ -n "${_lbl}" ]] || _lbl="${_grd##*/}"   # default notice subject = basename of guard
   # shellcheck disable=SC2154  # _pthLog/_tRee/_xSrl are globals provided by BOA.sh.txt
   local _ctl="${_pthLog}/${_cnm}.ctrl.${_srl}.${_tRee}.${_xSrl}.pid"
+  # Revalidation window (minutes). Even a serial-matched marker is re-checked
+  # against the mirror once it is older than this, so a box that ever recorded a
+  # marker against STALE bytes -- a publish race (the serial in BOA.sh.txt visible
+  # before the file content propagated), CDN per-file TTL skew, or a partially
+  # synced mirror -- self-heals instead of being pinned to stale content forever.
+  # The serial alone cannot detect this: the marker says "f78 fetched" while the
+  # bytes are pre-f78. Overridable; conservative 24h default.
+  local _reMin="${_FETCH_REVALIDATE_MIN:-1440}"
 
-  # Up to date? stamp present AND dest non-empty AND (symlink intact if required).
+  # Up to date? marker present AND dest non-empty AND (symlink intact if required)
+  # AND the marker still within the revalidation window. "find -mmin +N" prints
+  # the marker only when it is OLDER than N minutes, so an empty result == fresh.
   if [[ -e "${_ctl}" ]] && [[ -s "${_dst}" ]] \
-    && { [[ -z "${_lnk}" ]] || [[ -L "${_lnk}" ]]; }; then
+    && { [[ -z "${_lnk}" ]] || [[ -L "${_lnk}" ]]; } \
+    && [[ -z "$(find "${_ctl}" -mmin "+${_reMin}" 2>/dev/null)" ]]; then
     return 0
   fi
 
@@ -1090,22 +1101,40 @@ _fetch_versioned() {
     fi
   fi
 
-  [[ -e "${_dst}" ]] && mv -f "${_dst}" "${_dst}.old"
+  # Fetch to a private temp; the live dest is only ever touched AFTER a non-empty
+  # download, so a failed or short fetch can never blank a working copy. This one
+  # path serves both first install (marker absent / serial change) and periodic
+  # revalidation (marker past the window): if the mirror's current bytes differ
+  # from what is deployed we replace and re-stamp; if they are identical we keep
+  # the file untouched and merely re-arm the marker; if the fetch failed we leave
+  # the working copy and its marker alone.
+  local _new="${_dst}.new.$$"
   # shellcheck disable=SC2086,SC2154  # intentional _crlGet flag-string split; _crlGet is a BOA.sh.txt global
-  curl ${_crlGet} "${_url}" -o "${_dst}"
-  if [[ -s "${_dst}" ]]; then
-    chmod "${_mode}" "${_dst}"
-    chown "${_own}" "${_dst}"
+  curl ${_crlGet} "${_url}" -o "${_new}"
+  # A mirror answers a MISSING path with HTTP 200 + an HTML "Under Construction"
+  # stub (a soft 404 that --fail cannot catch). No versioned BOA file is HTML --
+  # scripts start with #!, PHP with <?php -- so a leading HTML tag means the file
+  # is absent on this mirror right now: discard it and keep the working copy,
+  # exactly as for an empty fetch. This also matters more now that the block
+  # above revalidates on a cadence, not only on a serial change.
+  if [[ -s "${_new}" ]] && head -c 64 "${_new}" | grep -qiE '^[[:space:]]*<(html|!doctype|head)'; then
+    rm -f "${_new}"
+  fi
+  if [[ -s "${_new}" ]]; then
+    if [[ -e "${_dst}" ]] && cmp -s "${_new}" "${_dst}"; then
+      rm -f "${_new}"                       # already current -- no disruption
+    else
+      chmod "${_mode}" "${_new}"
+      chown "${_own}" "${_new}"
+      mv -f "${_new}" "${_dst}"             # first install or self-heal (atomic)
+    fi
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."*
-    touch "${_ctl}"
-    # Drop the rollback backup now the new copy is good (it is only needed to
-    # restore a FAILED fetch, handled in the else branch); avoids leaving a
-    # stale <dest>.old behind on every successful update.
-    rm -f "${_dst}.old"
+    touch "${_ctl}"                         # (re-)arm marker + revalidation window
   else
-    [[ -e "${_dst}.old" ]] && mv -f "${_dst}.old" "${_dst}"
+    rm -f "${_new}"                         # fetch failed -- keep the working copy
   fi
+  return 0
 }
 
 _update_agents() {
