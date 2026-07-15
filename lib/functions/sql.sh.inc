@@ -1168,6 +1168,19 @@ _install_with_aptitude_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Installing ${_DB_SERVER}..."
   fi
+  # The Percona package install stops the old mysqld and starts the new one
+  # (a 5.7->8.0 major upgrade also runs the data-dictionary upgrade at that
+  # start). Throughout this window mysqld is intermittently down. The
+  # cron-launched mysql.sh watchdog (_mysql_health_check_fix) would see it
+  # down and start a COMPETING mysqld via move_sql.sh -> two servers race for
+  # the datadir -> "InnoDB: Unable to lock ./ibdata1 error: 11" and the DD
+  # upgrade aborts (observed on a fast box where the upgrade start coincided
+  # with a monitor tick). Hold /run/mysql_restart_running.pid for the whole
+  # install/upgrade: the watchdog already stands down when it exists, and
+  # nothing here calls move_sql.sh (which would honour it), so there is no
+  # self-deadlock. Cleared at function exit; /run is tmpfs so it never
+  # survives a reboot.
+  : > /run/mysql_restart_running.pid
   _prep_for_install_db_sql
   if [ "${_SQL_SCR}" = "APT" ]; then
     _mrun "${_INSTAPP} ${_SQLDEB}"
@@ -1211,6 +1224,9 @@ _install_with_aptitude_sql() {
     fi
   fi
   usermod -aG users mysql
+  # Upgrade window over: the new server is up and DD-upgraded, so re-arm the
+  # mysql.sh watchdog.
+  rm -f /run/mysql_restart_running.pid
 }
 
 #
