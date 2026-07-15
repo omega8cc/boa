@@ -420,6 +420,18 @@ _csf_lfd_install_upgrade() {
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
         if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+          ### Persist the rules via csfpost.sh so csf -r cannot flush them;
+          ### the appended lines use POSIX redirects only (csfpost.sh runs
+          ### under sh). Gated on -x so the fresh-install csfpost.sh seeding
+          ### block in BOA.sh.txt (gated on ! -x) is never preempted.
+          if [ -x "/etc/csf/csfpost.sh" ] \
+            && ! grep -q "BOA-SACK-MITIGATION" /etc/csf/csfpost.sh; then
+            echo "### BOA-SACK-MITIGATION begin (CVE-2019-11477/78/79) do not edit" >> /etc/csf/csfpost.sh
+            echo "sysctl net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1" >> /etc/csf/csfpost.sh
+            echo "iptables -C INPUT -p tcp -m tcpmss --mss 1:500 -j DROP >/dev/null 2>&1 || iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP" >> /etc/csf/csfpost.sh
+            echo "ip6tables -C INPUT -p tcp -m tcpmss --mss 1:500 -j DROP >/dev/null 2>&1 || ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP" >> /etc/csf/csfpost.sh
+            echo "### BOA-SACK-MITIGATION end" >> /etc/csf/csfpost.sh
+          fi
           _SACK_TEST=$(ip6tables --list | grep tcpmss)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
