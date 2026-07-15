@@ -37,8 +37,29 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=5103ltsT01
+
+### Match the box's installed BOA tree (see the same derivation in xoct):
+### hardcoded dev would route any tree-sensitive action through the
+### dev-license gate on lts boxes. Self-report first, ctrl marker fallback,
+### historical dev default last.
+_tRee=$(boa info 2>/dev/null \
+  | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+  | tail -1 \
+  | grep -oE '(dev|lts|pro)$')
+if [ -z "${_tRee}" ]; then
+  _tRee=$(ls -t /var/log/boa/*.ctrl.* 2>/dev/null \
+    | head -1 \
+    | grep -oE '\.(dev|lts|pro)\.' \
+    | tr -d '.')
+fi
+[ -z "${_tRee}" ] && _tRee=dev
+export _tRee
+_xSrl=$(boa info 2>/dev/null \
+  | grep -oE "BOA-[0-9.]+-${_tRee}-[0-9a-zA-Z]+" \
+  | tail -1 \
+  | awk -F- '{ print $NF }')
+[ -z "${_xSrl}" ] && _xSrl="5103${_tRee}T01"
+export _xSrl
 
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
