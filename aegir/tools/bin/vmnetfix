@@ -33,6 +33,14 @@ _MODE="auto"    # auto | init-only | full
 
 _DEF_WAS_DHCP="NO"
 
+# Persisted gateway hint. Required on routed blocks (e.g. Cherry /28 public IPs)
+# where the real gateway is OUTSIDE the interface subnet and none of the
+# auto-detection methods can find it — the last-resort base+1 guess there yields
+# the guest's OWN address. vmnetfix reads this first and auto-saves a good live
+# gateway into it, so networking survives transient route loss during the
+# systemd->sysvinit / interface-rename conversion.
+_GW_HINT_FILE="/root/.net_gateway.cnf"
+
 # ----------------------------- Core helpers -----------------------------------
 
 _dt() { date +%Y%m%d-%H%M%S; }
@@ -167,7 +175,42 @@ _ifup_variant() {
 }
 
 _default_route_if() { ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="dev"){print $(i+1); exit}}'; }
-_default_gw_v4()    { ip -4 route show default 2>/dev/null | awk '{print $3; exit}'; }
+
+# Read the persisted gateway hint, if present and a plausible IPv4.
+_gw_hint_read() {
+  [ -r "${_GW_HINT_FILE}" ] || return 1
+  _h="$(tr -dc '0-9.' < "${_GW_HINT_FILE}" 2>/dev/null | head -c 15)"
+  case "${_h}" in
+    [0-9]*.[0-9]*.[0-9]*.[0-9]*) printf '%s\n' "${_h}"; return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# True if the given IPv4 is one of THIS host's own global addresses — so a
+# gateway can never be mistaken for the guest itself (the /28 base+1 failure).
+_gw_is_local_ip() {
+  _cand="$1"; [ -n "${_cand}" ] || return 1
+  for _c in $(ip -o -4 addr show scope global 2>/dev/null | awk '{print $4}'); do
+    [ "${_c%/*}" = "${_cand}" ] && return 0
+  done
+  return 1
+}
+
+# Persist a good gateway to the hint file (valid IPv4, not the guest's own IP).
+_gw_hint_save() {
+  _g="$1"
+  case "${_g}" in [0-9]*.[0-9]*.[0-9]*.[0-9]*) : ;; *) return 0 ;; esac
+  _gw_is_local_ip "${_g}" && return 0
+  [ "$(_gw_hint_read 2>/dev/null)" = "${_g}" ] && return 0
+  ( umask 077; printf '%s\n' "${_g}" > "${_GW_HINT_FILE}" ) 2>/dev/null || true
+}
+
+# Prefer the persisted hint (authoritative on routed blocks); else the live route.
+_default_gw_v4() {
+  _hint="$(_gw_hint_read 2>/dev/null)"
+  if [ -n "${_hint}" ]; then printf '%s\n' "${_hint}"; return 0; fi
+  ip -4 route show default 2>/dev/null | awk '{print $3; exit}'
+}
 _live_v4_list_if()  { ip -o -4 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
 _live_v4_cidr()     { _live_v4_list_if "$1" | head -n1; }
 _iface_v4_is_dynamic() {
@@ -788,13 +831,17 @@ _find_gateway_for_if() {
   _GW="$(_do_meta_gateway_for_if "${_IF}")"
   [ -n "${_GW}" ] && { printf '%s\n' "${_GW}"; return 0; }
 
-  # 4) Guess base+1 from live CIDR
+  # 4) Guess base+1 from live CIDR — but NEVER return the interface's own IP.
+  #    On a /28 whose base+1 is the guest itself (routed blocks) this guess is
+  #    always wrong; better to return nothing than write "default via <self>".
   _CIDR="$(_live_v4_cidr "${_IF}")"
   if [ -n "${_CIDR}" ]; then
     _IP="${_CIDR%/*}"; _PFX="${_CIDR#*/}"
     _GW="$(_calc_base_plus_one "${_IP}" "${_PFX}")"
-    printf '%s\n' "${_GW}"
-    return 0
+    if [ -n "${_GW}" ] && ! _gw_is_local_ip "${_GW}"; then
+      printf '%s\n' "${_GW}"
+      return 0
+    fi
   fi
 
   printf '%s\n' ""
@@ -904,6 +951,9 @@ _main() {
 
   _DEF="$(_default_route_if)"; _GW="$(_default_gw_v4)"; _LIVE="$(_live_v4_cidr "${_DEF}")"
   _msg "Default IF: ${_DEF:-<none>}  GW4: ${_GW:-<none>}  LIVE: ${_LIVE:-<none>}"
+  # Capture a good live gateway into the hint so later runs recover it after any
+  # transient route loss during conversion (see _GW_HINT_FILE note above).
+  _gw_hint_save "${_GW}"
 
   case "${_MODE}" in
     init-only)
