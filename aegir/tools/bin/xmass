@@ -359,13 +359,21 @@ _xmass_configure_gtid_target() {
   _info "GTID not enabled on target ${_tgt} (mode=${_mode}) — configuring ..."
   local _tgt_id
   _tgt_id=$(_ip_to_server_id "${_tgt}")
-  # Write the GTID config remotely, detecting the conf dir on the target
+  # Write the GTID config remotely. Detect the conf dir the SAME way as the
+  # local path (_xmass_mysql_conf_dir): parse the !includedir my.cnf actually
+  # reads, since the buggy existence-based guess wrote to percona-server.conf.d
+  # (unread on a BOA box) and GTID stayed OFF -- surfacing only later as
+  # 'CHANGE MASTER ... cannot be executed because GTID_MODE = OFF'.
   ssh root@"${_tgt}" "bash -s" <<REMOTEBASH
-_conf_dir=""
-if [ -d "/etc/mysql/percona-server.conf.d" ]; then
-  _conf_dir="/etc/mysql/percona-server.conf.d"
+_inc=\$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+  | head -1 \
+  | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*\$##; s/[[:space:]]*\$//')
+if [ -n "\${_inc}" ] && [ -d "\${_inc}" ]; then
+  _conf_dir="\${_inc}"
 elif [ -d "/etc/mysql/conf.d" ]; then
   _conf_dir="/etc/mysql/conf.d"
+elif [ -d "/etc/mysql/percona-server.conf.d" ]; then
+  _conf_dir="/etc/mysql/percona-server.conf.d"
 elif [ -d "/etc/mysql/mysql.conf.d" ]; then
   _conf_dir="/etc/mysql/mysql.conf.d"
 else
@@ -389,6 +397,14 @@ REMOTEBASH
   _info "Restarting MySQL on target ${_tgt} via move_sql.sh ..."
   ssh root@"${_tgt}" "/var/xdrago/move_sql.sh restart" \
     || _die "MySQL restart failed on target ${_tgt}"
+  # Verify GTID actually came ON (the source path does the same). A silent
+  # miss here otherwise surfaces much later at CHANGE MASTER.
+  local _tmode
+  _tmode=$(ssh root@"${_tgt}" \
+    "mysql --defaults-file=/root/.my.cnf -sNe \"SHOW VARIABLES LIKE 'gtid_mode'\" 2>/dev/null | awk '{print \$2}'")
+  if [ "${_tmode}" != "ON" ]; then
+    _die "GTID still not ON after restart on target ${_tgt} (mode=${_tmode})"
+  fi
   _info "GTID configured on target ${_tgt}: OK"
 }
 
