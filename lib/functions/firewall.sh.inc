@@ -235,16 +235,28 @@ _csf_install() {
       chmod 600 /etc/csf/csf.conf
     fi
     if [ -e "/etc/ssh/sshd_config" ]; then
-      sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /etc/ssh/sshd_config
+      ### Apply the edits to a same-dir candidate and validate with the real
+      ### daemon before swapping it in — a bad edit must never leave the box
+      ### with an sshd that cannot restart (console-only recovery).
+      _SSHD_CAND="/etc/ssh/.sshd_config.boa-cand"
+      cp -af /etc/ssh/sshd_config ${_SSHD_CAND}
+      sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  ${_SSHD_CAND}
       wait
-      sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /etc/ssh/sshd_config
+      sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" ${_SSHD_CAND}
       wait
-      sed -i "s/^UsePrivilegeSeparation.*//g" /etc/ssh/sshd_config
+      sed -i "s/^UsePrivilegeSeparation.*//g" ${_SSHD_CAND}
       wait
-      sed -i "s/^ClientAliveCountMax.*/ClientAliveCountMax 10000/g" /etc/ssh/sshd_config
+      sed -i "s/^ClientAliveCountMax.*/ClientAliveCountMax 10000/g" ${_SSHD_CAND}
       wait
-      sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
+      sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" ${_SSHD_CAND}
       wait
+      if [ ! -x "/usr/sbin/sshd" ] \
+        || /usr/sbin/sshd -t -f ${_SSHD_CAND} &> /dev/null; then
+        mv -f ${_SSHD_CAND} /etc/ssh/sshd_config
+      else
+        rm -f ${_SSHD_CAND}
+        _msg "OOPS: sshd_config update failed sshd -t validation, keeping current config"
+      fi
     fi
     pkill -9 -f /usr/sbin/sshd || true
     _mrun "service ssh start"
@@ -420,6 +432,18 @@ _csf_lfd_install_upgrade() {
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
         if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+          ### Persist the rules via csfpost.sh so csf -r cannot flush them;
+          ### the appended lines use POSIX redirects only (csfpost.sh runs
+          ### under sh). Gated on -x so the fresh-install csfpost.sh seeding
+          ### block in BOA.sh.txt (gated on ! -x) is never preempted.
+          if [ -x "/etc/csf/csfpost.sh" ] \
+            && ! grep -q "BOA-SACK-MITIGATION" /etc/csf/csfpost.sh; then
+            echo "### BOA-SACK-MITIGATION begin (CVE-2019-11477/78/79) do not edit" >> /etc/csf/csfpost.sh
+            echo "sysctl net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1" >> /etc/csf/csfpost.sh
+            echo "iptables -C INPUT -p tcp -m tcpmss --mss 1:500 -j DROP >/dev/null 2>&1 || iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP" >> /etc/csf/csfpost.sh
+            echo "ip6tables -C INPUT -p tcp -m tcpmss --mss 1:500 -j DROP >/dev/null 2>&1 || ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP" >> /etc/csf/csfpost.sh
+            echo "### BOA-SACK-MITIGATION end" >> /etc/csf/csfpost.sh
+          fi
           _SACK_TEST=$(ip6tables --list | grep tcpmss)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
