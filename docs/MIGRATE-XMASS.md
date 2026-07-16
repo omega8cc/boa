@@ -235,8 +235,8 @@ confirm `CLEAN`, then re-run with `--live` to perform the real cutover.
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source |
 | Step 12 | Start nginx on target (serves proxied traffic while rename runs) |
-| Step 13 | `renameaegirhost --aegir-root /var/aegir` on target (Ægir master) |
-| Step 13 | `renameaegirhost --aegir-root /data/disk/oN` on target (each Octopus account) |
+| Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master) |
+| Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account) |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
 | Step 16 | `xoct proxy oN target-ip` for each account on source (vhost conversion + notifications) |
@@ -377,9 +377,14 @@ is still serving 503 (`http-off.pid` in place). Manually remove
 `/data/disk/*/static/control/http-off.pid` on source and reload nginx to
 restore service, then investigate before retrying.
 
-**If `cutover` completes but renameaegirhost failed** for one or more accounts:
-run `renameaegirhost --aegir-root /data/disk/oN` manually on the target for
-the affected accounts. This is safe to re-run.
+**If renameaegirhost fails** for any root, `cutover` parks resumably at
+`phase=rename-failed` instead of completing — the failure report names the
+affected roots. Fix the cause, then re-run `xmass cutover target-ip --live` to
+resume from the rename step (already-renamed roots converge to a no-op). To
+iterate on a single root first, run
+`renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` manually
+on the target — it is convergent and safe to re-run — then resume the cutover
+so the remaining cutover steps complete.
 
 ---
 
