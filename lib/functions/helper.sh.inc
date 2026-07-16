@@ -1173,6 +1173,7 @@ _os_detection() {
 
   _NGINX_FORWARD_SECRECY=YES
   _NGINX_SPDY=YES
+  _NGINX_KTLS=YES
   if [ "${_DB_SERIES}" = "8.4" ]; then
     _DBS_VRN="${_PERCONA_8_4_VRN}"
     _turn_on_password_update
