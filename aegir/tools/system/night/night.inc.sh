@@ -435,6 +435,7 @@ night_emit_run_env() {
     echo "export _ADMIN_EMAIL=\"${_MY_EMAIL}\""
     echo "export _INCIDENT_REPORT=\"${_INCIDENT_REPORT}\""
     echo "export _LE_CLIENT_NOTIFY=\"${_LE_CLIENT_NOTIFY}\""
+    echo "export _GHOST_CLIENT_NOTIFY=\"${_GHOST_CLIENT_NOTIFY}\""
   } > /run/night/run.env
   chmod 0600 /run/night/run.env &> /dev/null
 }

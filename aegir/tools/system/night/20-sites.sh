@@ -1634,6 +1634,23 @@ _cleanup_ghost_vhosts() {
 
 _cleanup_ghost_drushrc() {
   _provision_running && return
+  # Sites-reap enablement is resolved once per account, and every OFF->ON flip
+  # only ARMS on its first enabled run (nothing moved): the consecutive-night
+  # ghost counters keep counting during dry-run, so a flip would otherwise
+  # reap every long-accumulated ghost at once with no fresh enabled-mode look.
+  _GH_REAP_ON=NO
+  if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITES_CLEANUP \
+    || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITES_CLEANUP; then
+    if [ -e "${_usEr}/log/ctrl/ghost-reap-armed.info" ]; then
+      _GH_REAP_ON=YES
+    else
+      mkdir -p ${_usEr}/log/ctrl
+      touch ${_usEr}/log/ctrl/ghost-reap-armed.info
+      echo "GHOST sites cleanup enabled -- arming run for ${_HM_U}, nothing moved tonight"
+    fi
+  else
+    rm -f ${_usEr}/log/ctrl/ghost-reap-armed.info
+  fi
   for _thisAlias in `find ${_usEr}/.drush/*.alias.drushrc.php -maxdepth 1 -type f \
     | sort`; do
     _aliasName=$(echo "${_thisAlias}" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
@@ -1683,8 +1700,7 @@ _cleanup_ghost_drushrc() {
         # .restore leftover: move only the alias (never the vhost, matching the
         # authoritative ltd-user handling), gated + persisted.
         if _ghost_seen_enough "${_gh_smark}" \
-          && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITES_CLEANUP \
-            || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITES_CLEANUP; }; then
+          && [ "${_GH_REAP_ON}" = "YES" ]; then
           mkdir -p ${_usEr}/undo
           mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
           echo "GHOST .restore alias ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
@@ -1719,10 +1735,52 @@ _cleanup_ghost_drushrc() {
           # consecutive nights, then split flags: registration (alias + vhost)
           # under _GHOST_SITES_CLEANUP; the site files dir under the stricter
           # _GHOST_SITE_FILES_CLEANUP (data, not registration).
+          # Classify BEFORE any move. An aegir/distro site_path (FRONT-END) is
+          # the account's control panel or its hm/oN.<host> alias companions --
+          # a stale one (hostname rename, distro version bump) is system
+          # machinery, never a customer leftover, so it must neither be reaped
+          # nor ever generate a client notice. A missing platform root
+          # (PLATFORM GONE) or a site dir found on another platform of this
+          # account (MIGRATE STRANDED) is a platform-level event where the
+          # data may be intact elsewhere -- reaping would take every such
+          # site's registration (and vhost) down at once. All three are left
+          # for operator review; only a true per-site ghost (platform healthy,
+          # site dir nowhere) is ever reaped. The root parses are anchored to
+          # the 'root' KEY so a value that merely ends in root (e.g.
+          # client_name 'root') can never pollute them.
+          _GH_CLASS=ghost
+          if [[ "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
+            _GH_CLASS=front-end
+          else
+            _T_SITE_ROOT=$(cat ${_thisAlias} \
+              | grep "'root' =>" \
+              | cut -d: -f2 \
+              | awk '{ print $3}' \
+              | sed "s/[\,']//g" 2>&1)
+            if [ -n "${_T_SITE_ROOT}" ] && [ ! -d "${_T_SITE_ROOT}" ]; then
+              _GH_CLASS=platform-gone
+            else
+              for _GH_PALIAS in ${_usEr}/.drush/platform_*.alias.drushrc.php; do
+                [ -e "${_GH_PALIAS}" ] || continue
+                _GH_PROOT=$(cat ${_GH_PALIAS} \
+                  | grep "'root' =>" \
+                  | cut -d: -f2 \
+                  | awk '{ print $3}' \
+                  | sed "s/[\,']//g" 2>&1)
+                if [ -n "${_GH_PROOT}" ] \
+                  && [ "${_GH_PROOT}" != "${_T_SITE_ROOT}" ] \
+                  && [ -d "${_GH_PROOT}/sites/${_T_SITE_NAME}" ]; then
+                  _GH_CLASS=stranded
+                  break
+                fi
+              done
+            fi
+          fi
           if ! _ghost_seen_enough "${_gh_smark}"; then
             echo "GHOST drushrc for ${_T_SITE_NAME} detected (grace run, not moved)"
-          elif _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITES_CLEANUP \
-            || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITES_CLEANUP; then
+          elif [ "${_GH_CLASS}" != "ghost" ]; then
+            echo "GHOST candidate ${_T_SITE_NAME} SKIPPED (${_GH_CLASS}: operator review needed, nothing moved)"
+          elif [ "${_GH_REAP_ON}" = "YES" ]; then
             mkdir -p ${_usEr}/undo
             mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
             echo "GHOST drushrc for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"

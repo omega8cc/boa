@@ -2219,15 +2219,25 @@ _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf"
   fi
-  # The omega8.cc-hosted fleet (hostname ends in .aegir.cc) defaults both nightly
-  # symlink toggles to YES, but ONLY when they are not already present in the cnf,
-  # so they are written as ordinary .barracuda.cnf lines and stay operator-toggleable
-  # (turn off/on in the cnf anytime) -- never forced on each run. Keyed on the
-  # hostname only, never _if_hosted_sys / .host8.cnf, so remotely-managed boxes that
-  # carry .host8.cnf are not opted in (same split as _MTD_VR below).
+  # The omega8.cc-hosted fleet (hostname ends in .aegir.cc) defaults the nightly
+  # symlink toggles and the two NIGHTLY registration-level ghost reapers (site
+  # alias+vhost, orphaned vhosts -- reversible moves to undo/, never data:
+  # _GHOST_SITE_FILES_CLEANUP stays opt-in) to YES, but ONLY when they are not
+  # already present in the cnf, so they are written as ordinary .barracuda.cnf
+  # lines and stay operator-toggleable (turn off/on in the cnf anytime) --
+  # never forced on each run. _GHOST_ALIASES_CLEANUP is deliberately NOT
+  # seeded: its 3-minute manage_ltd_users cadence has no consecutive-run
+  # persistence and no migration interlock, so an xoct/xcopy transfer window
+  # (rsync-preserved old alias mtimes defeat the 60-min guard, rsync is not a
+  # provision process) could reap freshly-arrived aliases before their site
+  # dirs land; the nightly reaper alone converges within two nights. Keyed on
+  # the hostname only, never _if_hosted_sys / .host8.cnf, so remotely-managed
+  # boxes that carry .host8.cnf are not opted in (same split as _MTD_VR below).
   if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     grep -q "^_AUTOSYMLINK_NIGHTLY=" ${_barCnf} 2>/dev/null || _AUTOSYMLINK_NIGHTLY=YES
     grep -q "^_ORPHAN_FILES_REPORT=" ${_barCnf} 2>/dev/null || _ORPHAN_FILES_REPORT=YES
+    grep -q "^_GHOST_SITES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_SITES_CLEANUP=YES
+    grep -q "^_GHOST_VHOSTS_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_VHOSTS_CLEANUP=YES
   fi
   # Prebuilt heavy-stack packages default to YES on Devuan Daedalus, where the
   # mirrors publish the complete boa-* set, but ONLY when the toggle is not
@@ -2431,6 +2441,7 @@ _barracuda_cnf() {
     echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}"             >> ${_barCnf}
     echo "_CLEAR_BOOST=${_CLEAR_BOOST}"                           >> ${_barCnf}
     echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}"                 >> ${_barCnf}
+    echo "_GHOST_CLIENT_NOTIFY=${_GHOST_CLIENT_NOTIFY}"           >> ${_barCnf}
     echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}"   >> ${_barCnf}
     echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}"   >> ${_barCnf}
@@ -2884,6 +2895,11 @@ _barracuda_cnf() {
     _LE_CLIENT_NOTIFY_TEST=$(grep _LE_CLIENT_NOTIFY ${_barCnf} 2>&1)
     if [[ ! "${_LE_CLIENT_NOTIFY_TEST}" =~ "_LE_CLIENT_NOTIFY" ]]; then
       echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}" >> ${_barCnf}
+    fi
+
+    _GHOST_CLIENT_NOTIFY_TEST=$(grep _GHOST_CLIENT_NOTIFY ${_barCnf} 2>&1)
+    if [[ ! "${_GHOST_CLIENT_NOTIFY_TEST}" =~ "_GHOST_CLIENT_NOTIFY" ]]; then
+      echo "_GHOST_CLIENT_NOTIFY=${_GHOST_CLIENT_NOTIFY}" >> ${_barCnf}
     fi
 
     _SHARED_CODEBASES_CLEANUP_TEST=$(grep _SHARED_CODEBASES_CLEANUP ${_barCnf} 2>&1)
