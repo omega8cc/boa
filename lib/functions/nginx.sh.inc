@@ -349,6 +349,16 @@ _install_nginx_deb() {
     rm -f /var/opt/nginx-pre-deb
     return 1
   fi
+  # dpkg unpacks the payload with the builder's hardened 0750 mode but
+  # archive ownership root:root, and AegirSetupM's provision probes
+  # `nginx -V` as the aegir user for feature detection inside the window
+  # before _strict_bin_permissions converts group root to users. An
+  # unexecutable binary silently degrades the generated server config to
+  # the ancient pre-1.1.8 shape (limit_zone), which the modern binary
+  # then refuses to load on the next start. Normalize to the canonical
+  # root:users shape immediately, matching the boa-php deb precedent.
+  chown root:users /usr/sbin/nginx &> /dev/null
+  chmod 750 /usr/sbin/nginx &> /dev/null
   _NGINX_DEB_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
     | cut -d"/" -f2 | awk '{ print $1}' 2>&1)
   _NGINX_DEB_V_ITD=$(/usr/sbin/nginx -V 2>&1)
