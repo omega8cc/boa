@@ -166,12 +166,29 @@ _makeactions() {
 
     # Pattern filter (mirrors Perl if/elsif):
     #   match: syntax|path|command
-    #   OR: "shell escape" present AND "exit" absent
+    #   OR: "shell escape" whose offending command is not the benign 'exit' teardown
     local _match=0
-    if [[ "${_line,,}" =~ syntax|path|command ]]; then
+    local _ll="${_line,,}"
+    if [[ "${_ll}" =~ syntax|path|command ]]; then
       _match=1
-    elif [[ "${_line,,}" =~ "shell escape" && ! "${_line,,}" =~ exit ]]; then
-      _match=1
+    elif [[ "${_ll}" == *"shell escape"* ]]; then
+      # Skip ONLY the benign bare-'exit' teardown, closing the whole-line-'exit'
+      # evasion that let an attacker suppress a real escape by embedding 'exit'
+      # anywhere on the line. Anchor on the FIRST 'shell escape' (#*, not ##*): the
+      # genuine 'forbidden shell escape:' label is always first, so the attacker
+      # cannot re-anchor the parser by embedding the label inside their command.
+      # Compare the WHOLE command (surrounding quotes + whitespace stripped) to
+      # 'exit' -- a chained 'exit && wget …' or 'exit; …' is a real escape and MUST
+      # alert, so only a command that IS exactly 'exit' is skipped. (The command is
+      # the quoted field; the sanitiser above is a positional no-op, so strip the
+      # quotes here explicitly.)
+      local _esc_cmd
+      _esc_cmd="${_ll#*shell escape}"                       # after the FIRST label
+      _esc_cmd="${_esc_cmd#:}"                              # drop optional ':'
+      _esc_cmd="${_esc_cmd#"${_esc_cmd%%[![:space:]]*}"}"   # ltrim
+      _esc_cmd="${_esc_cmd%"${_esc_cmd##*[![:space:]]}"}"   # rtrim
+      _esc_cmd="${_esc_cmd#\"}"; _esc_cmd="${_esc_cmd%\"}"   # strip surrounding quotes
+      [[ "${_esc_cmd}" == "exit" ]] || _match=1
     fi
     (( _match )) || continue
 

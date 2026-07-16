@@ -861,6 +861,54 @@ _is_ignored_request() {
   return 1
 }
 
+# Return 0 if the log line's $host vhost field is an internal Ægir file server
+# (*.files.{boa.io,o8.io,host8.biz,aegir.cc}). The vhost is field 2 -- the first
+# whitespace token AFTER the leading quoted IP-chain field -- parsed positionally
+# so a "files.*" token smuggled into the request URI, Referer or User-Agent
+# cannot launder the exemption (that was the flaw of the whole-line match this
+# replaces). Parameter expansion only; forces a whitespace IFS locally because
+# the script runs under the global IFS=$'\n\t'.
+_is_internal_fileserver() {
+  local _after _host IFS=$' \t\n'
+  _after="${1#*\"*\"}"                            # drop the "IP-chain" field
+  _after="${_after#"${_after%%[![:space:]]*}"}"  # ltrim leading whitespace
+  _host="${_after%% *}"                          # $host = first token
+  case "${_host}" in
+    *.files.boa.io|files.boa.io)       return 0 ;;
+    *.files.o8.io|files.o8.io)         return 0 ;;
+    *.files.host8.biz|files.host8.biz) return 0 ;;
+    *.files.aegir.cc|files.aegir.cc)   return 0 ;;
+  esac
+  return 1
+}
+
+# Set _REQ_PATH to the request URI path (query string stripped) parsed out of the
+# line's "$request" field only -- same positional model as _is_ignored_request
+# (field 2 = $host, then [time], then "$request" = METHOD URI PROTO). Asset path
+# tokens in the Referer/User-Agent/vhost therefore cannot be mistaken for the real
+# request path. Literal ".." and the encoded-traversal / double-encoding sequences
+# %2e (.) / %2f (/) / %25 (%) are refused: the raw $request is un-normalized, so an
+# encoded traversal could prefix-match an asset path yet resolve elsewhere. Other
+# %-encoding is allowed so legit image-style filenames (e.g. %20 spaces, UTF-8) stay
+# exemptable. Sets _REQ_PATH="" on any malformed/suspicious line so callers fail
+# closed (score the request). Assigns to the caller's local _REQ_PATH via dynamic
+# scope; parameter expansion only.
+_set_request_path() {
+  local _after _req IFS=$' \t\n'
+  _REQ_PATH=""
+  _after="${1#*\"*\"}"        # drop the "IP-chain" field
+  _req="${_after#*\"}"        # advance to the opening quote of $request
+  _req="${_req%%\"*}"         # _req = METHOD URI PROTO
+  case "${_req}" in [A-Z]*" /"*" HTTP/"[0-9]*) : ;; *) return 1 ;; esac
+  _req="${_req#* }"           # strip METHOD
+  _req="${_req%% *}"          # strip PROTO
+  _req="${_req%%\?*}"         # strip query string
+  [[ "${_req}" == /* && "${_req}" != *".."* ]] || return 1
+  case "${_req}" in *%2[eEfF]*|*%25*) return 1 ;; esac
+  _REQ_PATH="${_req}"
+  return 0
+}
+
 # Function to process each IP
 _process_ip() {
   local _IP="$1"
@@ -868,6 +916,7 @@ _process_ip() {
   local _line="$3"
   local _IGNORE_ADMIN=0
   local _IGNORE_OTHER=0
+  local _REQ_PATH=""
 
   # Validate that _COUNT_REF is a recognized associative array
   if [[ "${_COUNT_REF}" != "_LI_CNT" && "${_COUNT_REF}" != "_PX_CNT" ]]; then
@@ -911,8 +960,17 @@ _process_ip() {
       return
     fi
 
+    # Static aggregated-asset paths: match the parsed request URI path only, not
+    # the whole line. These are Drupal aggregate/preprocessed file paths served
+    # statically, so an attacker cannot launder the exemption by putting the token
+    # in a spoofed Referer/User-Agent, and a real asset-path request cannot carry
+    # an effective app-layer attack (static files ignore the query string).
+    _set_request_path "${_line}"
+    if [[ -n "${_REQ_PATH}" ]] && [[ "${_REQ_PATH}" =~ /files/css/css_ || "${_REQ_PATH}" =~ /files/js/js_ || "${_REQ_PATH}" =~ /files/advagg_ || "${_REQ_PATH}" =~ /files/(imagecache|styles) ]]; then
+      _IGNORE_OTHER=1
+    fi
     # Define other patterns to skip (combined multiple checks into one conditional with OR)
-    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?advagg.*\"\ (200|302) || "${_line}" =~ /files/css/css_ || "${_line}" =~ /files/js/js_ || "${_line}" =~ /files/advagg_ || "${_line}" =~ /files/(imagecache|styles) || "${_line}" =~ (ajax|autocomplete|shs).*\"\ (200|302) || "${_line}" =~ (plupload|json|api/rest).*\"\ (200|302) || "${_line}" =~ GET\ /(filefield/progress|files/progress|file/progress|elfinder/connector).*\"\ (200|302) || "${_line}" =~ POST\ /js/.*\"\ (200|302) || "${_line}" =~ /files/media.*\"\ (200|302) || "${_line}" =~ GET\ /.*\.(mp4|m4a|flv|avi|mpeg|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|tgz|rar|dmg|exe|apk|pxl|ipa|jpe?g|gif|png|ico).*\"\ (200|302) || "${_line}" =~ GET\ /timemachine/[0-9]{4}/.*\"\ (200|302) || "${_line}" =~ POST\ /.*/(cart/checkout|embed/preview).*\"\ (200|302) || "${_line}" =~ files\.aegir\.cc ]]; then
+    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?advagg.*\"\ (200|302) || "${_line}" =~ (ajax|autocomplete|shs).*\"\ (200|302) || "${_line}" =~ (plupload|json|api/rest).*\"\ (200|302) || "${_line}" =~ GET\ /(filefield/progress|files/progress|file/progress|elfinder/connector).*\"\ (200|302) || "${_line}" =~ POST\ /js/.*\"\ (200|302) || "${_line}" =~ /files/media.*\"\ (200|302) || "${_line}" =~ GET\ /.*\.(mp4|m4a|flv|avi|mpeg|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|tgz|rar|dmg|exe|apk|pxl|ipa|jpe?g|gif|png|ico).*\"\ (200|302) || "${_line}" =~ GET\ /timemachine/[0-9]{4}/.*\"\ (200|302) || "${_line}" =~ POST\ /.*/(cart/checkout|embed/preview).*\"\ (200|302) ]]; then
       _IGNORE_OTHER=1
     fi
     # Exclude lines containing configured ignore keywords or default 'doccomment'
@@ -1914,14 +1972,13 @@ while IFS= read -r _line <&3; do
     done
   fi
 
-  # Skip internal Ægir file server requests — *.files.boa.io hostnames appear
-  # in the log's vhost field and must not feed counters, UA tracking, or path-flood
-  # detection.  The same pattern is also guarded inside _process_ip, but that gate
-  # does not cover _track_ua_ip / _track_path_flood called later in this loop.
-  [[ "${_line}" =~ files\.boa\.io ]] && continue
-  [[ "${_line}" =~ files\.o8\.io ]] && continue
-  [[ "${_line}" =~ files\.host8\.biz ]] && continue
-  [[ "${_line}" =~ files\.aegir\.cc ]] && continue
+  # Skip internal Ægir file server requests — *.files.{boa.io,o8.io,host8.biz,
+  # aegir.cc} hostnames appear in the log's vhost field and must not feed counters,
+  # UA tracking, or path-flood detection. Matched on the parsed $host vhost field
+  # only (not the whole line), so a "files.*" token in a spoofed URI/Referer/UA
+  # cannot launder the full-bypass exemption. At loop scope so it exempts all three
+  # scorers (_process_ip, _track_ua_ip, _track_path_flood).
+  _is_internal_fileserver "${_line}" && continue
 
   # Skip configured webhook / API endpoints (_NGINX_DOS_IGNORE_PATHS). Parsed
   # from the real $request URI, not the whole line, so it cannot be laundered via
