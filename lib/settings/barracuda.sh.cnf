@@ -1297,6 +1297,19 @@ _INCIDENT_REPORT=MINI
 _LE_CLIENT_NOTIFY=YES
 
 ###
+### When the nightly maintenance confirms a ghost site -- a registration
+### (Drush alias + nginx vhost) whose site directory no longer exists, left
+### behind by a failed or rolled-back install/clone -- it emails the affected
+### account's client (_CLIENT_EMAIL) an actionable notice, throttled to once
+### per 30 days per site, so they can remove the dead record in their own
+### Aegir control panel (the only place it can be removed; the backend
+### leftovers alone grow back on the next task run). Default YES (enabled).
+### Set to NO here to disable fleet-wide, or per-account in
+### /root/.<user>.octopus.cnf.
+###
+_GHOST_CLIENT_NOTIFY=YES
+
+###
 ### Max TTL for mysql process per user (seconds)
 ###
 ### It will be automatically lowered to 300 if
