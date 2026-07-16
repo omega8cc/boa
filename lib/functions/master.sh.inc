@@ -918,9 +918,9 @@ _aegir_master_upgrade() {
       mv -f ${_mtrInc}/global.inc \
         ${_mtrInc}/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
-    mkdir -p /data/conf
-    cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    ### Deploy the full global include set (per-core chain + dispatcher);
+    ### the dispatcher alone would be inert without the chain.
+    _global_inc_conf_update
     if [ -e "${_mtrInc}" ] && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
@@ -1399,9 +1399,9 @@ EOFMYSQL
       mv -f ${_mtrInc}/global.inc \
         ${_mtrInc}/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
-    mkdir -p /data/conf
-    cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    ### Deploy the full global include set (per-core chain + dispatcher);
+    ### the dispatcher alone would be inert without the chain.
+    _global_inc_conf_update
     if [ -e "${_mtrInc}" ] \
       && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
