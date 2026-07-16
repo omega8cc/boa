@@ -867,6 +867,13 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    _BANGUARD_TEST=$(grep is_banned ${_WILD_SSL_VHOST} 2>&1)
+    if [[ ! "${_BANGUARD_TEST}" =~ "is_banned" ]]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs IDS enforcement update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
       _validate_public_ip &> /dev/null
       _validate_xtras_ip &> /dev/null
