@@ -815,8 +815,11 @@ _nginx_wildcard_ssl_install() {
       -newkey rsa:2048 \
       -keyout /etc/ssl/private/nginx-wild-ssl.key \
       -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
+    ### The upstream must stay pinned to 127.0.0.1 — `localhost` resolves to
+    ### [::1] too on dual-stack /etc/hosts while nginx listens v4-only, adding
+    ### a permanently-refusing peer; one backend hiccup then marks 127.0.0.1
+    ### down as well and every proxied vhost 502s ("no live upstreams").
     cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
-    sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
     sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
     if [ -e "${_locCnf}/global/global.inc" ]; then
       ### Deploy the full global include set (per-core chain + dispatcher);
@@ -850,8 +853,8 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
-    _WILDCARD_SSL_TEST=$(grep "localhost:80" ${_WILD_SSL_VHOST} 2>&1)
-    if [[ ! "${_WILDCARD_SSL_TEST}" =~ "localhost:80" ]]; then
+    _WILDCARD_SSL_TEST=$(grep "127.0.0.1:80" ${_WILD_SSL_VHOST} 2>&1)
+    if [[ ! "${_WILDCARD_SSL_TEST}" =~ "127.0.0.1:80" ]]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: nginx_wild_ssl.conf proxy needs port update..."
       fi
@@ -868,8 +871,6 @@ _nginx_wildcard_ssl_install() {
       _validate_public_ip &> /dev/null
       _validate_xtras_ip &> /dev/null
       cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
-      sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST}
-      wait
       sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
     fi
   fi
