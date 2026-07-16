@@ -1493,7 +1493,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity
-    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f56
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f55
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f78
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f90
@@ -1677,7 +1677,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f88
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f84
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f83
 
   if ! grep -q "bee eval" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
