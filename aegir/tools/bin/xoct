@@ -747,8 +747,16 @@ _migrate_prepare() {
     fi
     if [ "${_RAH_RC}" -ne 0 ]; then
       echo "ERROR: renameaegirhost failed (rc=${_RAH_RC}) for ${_USR} — this import is INCOMPLETE"
-      echo "ERROR: re-running xoct import will NOT retry the rename (imported.pid already exists)"
-      echo "ERROR: fix the cause, then re-run on this box: renameaegirhost --aegir-root ${_USR} --force-old ${_RAH_OLD:-<source-fqdn>}"
+      echo "ERROR: every import step after the rename was skipped: the per-site db_host and"
+      echo "ERROR: vhost fixes and the 503-gate removal (static/control/http-off.pid) — the"
+      echo "ERROR: imported panel and sites stay 503-gated until the import tail runs"
+      echo "ERROR: recovery — fix the cause, then re-run the FULL import:"
+      echo "ERROR:   rm ${_USR}/log/imported.pid"
+      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      echo "ERROR: (safe: re-imports the same already-transferred dump, redoes rename + tail)"
+      echo "ERROR: to iterate on the rename failure alone first (convergent, safe to re-run):"
+      echo "ERROR:   renameaegirhost --aegir-root ${_USR} --force-old ${_RAH_OLD:-<source-fqdn>}"
+      echo "ERROR: the full import re-run above is still required to finish the skipped tail"
       exit 1
     fi
 
