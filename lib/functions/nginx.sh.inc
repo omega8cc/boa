@@ -818,16 +818,16 @@ _nginx_wildcard_ssl_install() {
     cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
     sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
     sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
-    mkdir -p /data/conf
     if [ -e "${_locCnf}/global/global.inc" ]; then
-      cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
+      ### Deploy the full global include set (per-core chain + dispatcher);
+      ### the dispatcher alone would be inert without the chain.
+      _global_inc_conf_update
     fi
     if [ -e "${_mtrInc}" ] \
       && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
     elif [ -e "/etc/init.d/redis-server" ]; then
