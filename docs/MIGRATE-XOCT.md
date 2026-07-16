@@ -284,6 +284,19 @@ Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
 
 ## Notes
 
+- **Chained migrations (a former target becomes a source):** a box that was
+  once a migration TARGET keeps `src/prev_hostmaster.sql` and
+  `log/imported.pid` under the account. With `prev_hostmaster.sql` present,
+  a new `xoct export` does NOT write a fresh dump (the dump step is gated on
+  its absence, protecting a dump a pending import still needs) — so a
+  chained transfer would ship the STALE dump from the earlier migration.
+  `imported.pid` additionally blocks the account from ever being an import
+  target again. Before exporting a former target onward (target-of-target,
+  or migrating back), clear both:
+  `rm -f /data/disk/o1/src/prev_hostmaster.sql /data/disk/o1/log/imported.pid`.
+  `log/sourcefqdn.txt` needs no such cleanup — it is rewritten in lockstep
+  with every dump, so it can never go stale independently of
+  `prev_hostmaster.sql`.
 - **Drupal 6 IP blocking:** for D6 sites that block by IP, whitelist `source-ip`
   at `/admin/user/rules` (Host rule, Allow type) before migration, or flush
   the `{access}` table via Chive afterwards.
