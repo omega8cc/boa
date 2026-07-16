@@ -15,8 +15,15 @@
 # changed).
 #
 # Components (phase 1): ssl3 ssl-legacy icu curl php56..php85 (whatever
-# /opt/php*/bin/php exists). Versions are NOT hardcoded - each is detected
-# from the installed tree, so a pin bump is packaged on the next run.
+# /opt/php*/bin/php exists). Phase 2 adds valkey (major 9 only -- the
+# builder always runs the forced-default Valkey 9, and majors 7/8 plus
+# Redis stay source-only by never being published) and nginx (default
+# build shape only -- custom-shape boxes are refused the deb installer-
+# side; the payload is the bare binary, overlaying the file the distro
+# nginx package owns on fresh boxes via Replaces:, while that package
+# stays installed, pinned and held as the structure provider). Versions
+# are NOT hardcoded - each is detected from the installed tree, so a pin
+# bump is packaged on the next run.
 # Inter-boa companion ordering is enforced by the INSTALLER, not by control
 # file Depends (a box whose companion fell back to source has the correct
 # tree but no dpkg record); Depends carries distro libs only, resolved on
@@ -28,7 +35,7 @@
 #   stackbuild publish              gzip + sha256 sidecar into the mirror tree
 #   stackbuild sync                 rsync fresh packages to the peer active mirror
 #   stackbuild all                  package missing + publish + sync
-# Component names: ssl3 ssl-legacy icu curl php56 php70 .. php85
+# Component names: ssl3 ssl-legacy icu curl valkey nginx php56 php70 .. php85
 #
 # The builder box MUST keep _USE_PREBUILT_PKGS=NO in /root/.barracuda.cnf
 # (it must always compile from source, or it would install its own packages
@@ -138,7 +145,7 @@ _detect_pub_dir() {
 
 _all_components() {
   local _c _n
-  _c="ssl3 ssl-legacy icu curl"
+  _c="ssl3 ssl-legacy icu curl valkey nginx"
   for _n in 56 70 71 72 73 74 80 81 82 83 84 85; do
     [[ -x "/opt/php${_n}/bin/php" ]] && _c="${_c} php${_n}"
   done
@@ -165,6 +172,23 @@ _comp_version() {
     curl)
       [[ -x /usr/local/bin/curl ]] \
         && _v="$(/usr/local/bin/curl --version 2>/dev/null | head -n 1 | awk '{print $2}')" ;;
+    valkey)
+      # Mirror the installer's quirk-aware parse (valkey.sh.inc) so the
+      # filename version equals the _VALKEY_NINE_VRN pin character-for-
+      # character; tr -d strips the v/= characters, and when the banner's
+      # leading words collapse to 'serer' the version sits in field 3.
+      if [[ -x /usr/bin/valkey-server ]]; then
+        _v="$(/usr/bin/valkey-server -v 2>/dev/null | tr -d '\n' | tr -d 'v=' \
+          | cut -d' ' -f2 | awk '{print $1}')"
+        [[ "${_v}" == "serer" ]] \
+          && _v="$(/usr/bin/valkey-server -v 2>/dev/null | tr -d '\n' | tr -d 'v=' \
+            | cut -d' ' -f3 | awk '{print $1}')"
+      fi ;;
+    nginx)
+      # Mirror the installer's parse (nginx.sh.inc) so the filename version
+      # equals the _NGINX_VRN pin character-for-character.
+      [[ -x /usr/sbin/nginx ]] \
+        && _v="$(/usr/sbin/nginx -v 2>&1 | tr -d '\n' | cut -d'/' -f2 | awk '{print $1}')" ;;
     php*)
       local _n="${_comp#php}"
       [[ -x "/opt/php${_n}/bin/php" ]] \
@@ -185,6 +209,18 @@ _comp_paths() {
       printf '%s\n' "/usr/local/lib/icu/${_dot} /usr/local/lib/libicu* /usr/local/include/unicode /usr/local/lib/pkgconfig/icu-*.pc /usr/local/share/icu/${_dot} /usr/local/bin/icu-config /usr/local/bin/icuinfo /usr/local/bin/icuexportdata /usr/local/bin/uconv /usr/local/bin/derb /usr/local/bin/genbrk /usr/local/bin/gencfu /usr/local/bin/gencnval /usr/local/bin/gendict /usr/local/bin/genrb /usr/local/bin/makeconv /usr/local/bin/pkgdata /usr/local/sbin/genccode /usr/local/sbin/gencmn /usr/local/sbin/gensprep /usr/local/sbin/icupkg /usr/local/sbin/escapesrc" ;;
     curl)
       printf '%s\n' "/usr/local/bin/curl /usr/local/bin/curl-config /usr/local/lib/libcurl.so* /usr/local/lib/libcurl.a /usr/local/lib/libcurl.la /usr/local/lib/pkgconfig/libcurl.pc /usr/local/include/curl" ;;
+    valkey)
+      # The valkey-* binaries plus the redis-* compat symlinks valkey's
+      # 'make PREFIX=/usr install' creates; the builder is a Valkey-9 box
+      # by construction (the installer forces major 9), so no real Redis
+      # build can be swept up. /etc/valkey and the runtime dirs stay
+      # installer-managed and are never packaged.
+      printf '%s\n' "/usr/bin/valkey* /usr/bin/redis*" ;;
+    nginx)
+      # The bare binary only: BOA owns /etc/nginx, the init script and
+      # mime.types on every box, and the smaller the payload the smaller
+      # the Replaces: surface against the distro nginx package.
+      printf '%s\n' "/usr/sbin/nginx" ;;
     php*)
       printf '%s\n' "/opt/php${_comp#php}" ;;
   esac
@@ -201,6 +237,22 @@ _comp_excludes() {
   esac
 }
 
+_comp_replaces() {
+  # Extra control-file fields per component (beyond the computed Depends).
+  # nginx: on fresh boxes /usr/sbin/nginx is dpkg-OWNED by the distro nginx
+  # package (naming varies by release), so without Replaces: dpkg refuses
+  # the overwrite and every fresh box silently source-builds. Replaces:
+  # against a package that is not installed is inert, so the full alias
+  # list is safe on every codename. Deliberately NO Conflicts: - the
+  # distro package stays installed (pinned and held) as the structure
+  # provider, and it must never be dragged out by our package.
+  local _comp="$1"
+  case "${_comp}" in
+    nginx) printf '%s\n' "nginx, nginx-core, nginx-full, nginx-light, nginx-extras" ;;
+    *)     printf '%s\n' "" ;;
+  esac
+}
+
 _comp_desc() {
   local _comp="$1"
   case "${_comp}" in
@@ -208,6 +260,8 @@ _comp_desc() {
     ssl-legacy) printf '%s\n' "BOA Legacy OpenSSL tree (/usr/local/ssl), built by barracuda on ${_OS_CODE}" ;;
     icu)        printf '%s\n' "BOA ICU libs (/usr/local), built by barracuda on ${_OS_CODE}" ;;
     curl)       printf '%s\n' "BOA cURL (/usr/local), built by barracuda on ${_OS_CODE}" ;;
+    valkey)     printf '%s\n' "BOA Valkey (/usr/bin, incl. redis-compat symlinks), built by barracuda on ${_OS_CODE}" ;;
+    nginx)      printf '%s\n' "BOA Nginx binary (/usr/sbin/nginx, static OpenSSL), built by barracuda on ${_OS_CODE}" ;;
     php*)       printf '%s\n' "BOA PHP ${_comp#php} prefix (/opt/${_comp}) incl. phpize/headers, built by barracuda on ${_OS_CODE}" ;;
   esac
 }
@@ -279,7 +333,7 @@ EOF
 
 _package_one() {
   local _comp="$1"
-  local _ver _deb _paths _excludes _stage _work _deps
+  local _ver _deb _paths _excludes _stage _work _deps _replaces
   _ver="$(_comp_version "${_comp}")"
   if [[ -z "${_ver}" ]]; then
     _RESULTS+=("SKIP  ${_comp} (not installed on this box)")
@@ -303,6 +357,7 @@ _package_one() {
     return 1
   fi
   _deps="$(_calc_depends "${_stage}" "${_work}")"
+  _replaces="$(_comp_replaces "${_comp}")"
   {
     printf 'Package: boa-%s\n' "${_comp}"
     printf 'Version: %s\n' "${_ver}"
@@ -310,6 +365,7 @@ _package_one() {
     printf 'Priority: optional\n'
     printf 'Architecture: %s\n' "${_ARCH}"
     [[ -n "${_deps}" ]] && printf 'Depends: %s\n' "${_deps}"
+    [[ -n "${_replaces}" ]] && printf 'Replaces: %s\n' "${_replaces}"
     printf 'Maintainer: %s\n' "${_MAINTAINER}"
     printf 'Description: %s\n' "$(_comp_desc "${_comp}")"
   } > "${_stage}/DEBIAN/control"
@@ -372,7 +428,7 @@ do_package() {
   fi
   for _comp in ${_targets}; do
     case "${_comp}" in
-      ssl3|ssl-legacy|icu|curl|php[0-9][0-9]) _package_one "${_comp}" ;;
+      ssl3|ssl-legacy|icu|curl|valkey|nginx|php[0-9][0-9]) _package_one "${_comp}" ;;
       *) _alrt "unknown component: ${_comp}" ;;
     esac
   done
