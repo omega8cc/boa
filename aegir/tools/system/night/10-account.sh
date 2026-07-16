@@ -304,6 +304,7 @@ _account_process() {
   fi
   echo "Done for ${_usEr}"
   _le_account_report
+  _ghost_account_report
   _enable_chattr ${_HM_U}.ftp
 }
 
@@ -571,6 +572,87 @@ EOF
   else
     echo "${_clBody}" \
       | s-nail -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+  fi
+}
+
+# Ghost-site client notices follow the LE gate model: ON unless the literal NO,
+# per-account octopus.cnf override wins over the barracuda.cnf default.
+_ghost_client_notify_on() {
+  local _v
+  _v=$(echo "${_GHOST_CLIENT_NOTIFY}" | tr -d "\"' " | tr '[:lower:]' '[:upper:]')
+  [ "${_v}" = "NO" ] && return 1
+  return 0
+}
+
+# Build and send the ghost-site notice for THIS account from its own night log.
+# A ghost site is a registration (Drush alias + nginx vhost) whose site
+# directory no longer exists -- typically an install or clone that failed or
+# was rolled back. The nightly _cleanup_ghost_drushrc sweep already logs each
+# one (and moves the backend leftovers aside when _GHOST_SITES_CLEANUP=YES),
+# but a record still present in the account's own Aegir front-end can only be
+# removed there, and any task run on it re-creates the backend leftovers -- so
+# the account owner gets an actionable notice, throttled per site. Only the
+# post-grace "GHOST drushrc" lines are matched, which the sweep emits ONLY
+# after confirming the front-end record still exists (_hmr_context_exists):
+# a ghost whose node the customer already deleted is logged as a backend
+# leftover instead and cleaned without any mail, since there is nothing they
+# could see or act on. Never matched either: the single-night grace line, the
+# SKIPPED classifications, the vhost/platform/.restore variants. Same source
+# discipline as _le_account_report: only THIS account's log and THIS
+# account's _CLIENT_EMAIL, so a notice can never reach the wrong account.
+_ghost_account_report() {
+  local _acctLog _ghosts _throttle _now _markerDir _marker _fresh
+  local _site _ghList _clBody _reply
+  _acctLog="$(_acct_night_log "${_usEr}")"
+  [ -r "${_acctLog}" ] || return 0
+  _ghosts="$(awk '
+    /^GHOST drushrc for [^ ]+ detected and moved to / { print $4; next }
+    /^GHOST drushrc for [^ ]+ detected \(dry-run/ { print $4 }
+  ' "${_acctLog}" 2>/dev/null | sort -u)"
+  [ -z "${_ghosts}" ] && return 0
+  _ghost_client_notify_on || return 0
+  if [ -z "${_CLIENT_EMAIL}" ] || [ "${_CLIENT_EMAIL}" = "root" ]; then
+    return 0
+  fi
+  # Ghosts are not urgent (the dead record is the only thing left), so the
+  # throttle is much longer than the 7-day LE one to keep mail volume low.
+  _throttle=30
+  _now=$(date +%s)
+  _markerDir="${_usEr}/log/ctrl"
+  mkdir -p "${_markerDir}"
+  _ghList=""
+  for _site in ${_ghosts}; do
+    _marker="${_markerDir}/ghost-notify.$(printf '%s' "${_site}" | tr -c 'a-zA-Z0-9._-' '_').info"
+    _fresh=YES
+    if [ -f "${_marker}" ]; then
+      if [ "$(( (_now - $(stat -c %Y "${_marker}" 2>/dev/null || echo 0)) / 86400 ))" -lt "${_throttle}" ]; then
+        _fresh=NO
+      fi
+    fi
+    [ "${_fresh}" = "NO" ] && continue
+    _ghList="${_ghList}"$'\n'"  - ${_site}"
+    touch "${_marker}"
+  done
+  [ -z "${_ghList}" ] && return 0
+  _clBody="Hello,"$'\n'
+  _clBody="${_clBody}"$'\n'"The nightly maintenance on ${_hName} found broken leftover site"$'\n'"registration(s) in your hosting account:"$'\n'"${_ghList}"$'\n'
+  _clBody="${_clBody}"$'\n'"Each of these is a record of a site that has no directory on the server"$'\n'"any more -- typically an install or clone that failed or was rolled back,"$'\n'"so only its registration was left behind. The record still shows up in"$'\n'"your Aegir control panel and keeps being re-detected until it is removed"$'\n'"there; the server cannot remove it for you, because the control panel"$'\n'"re-creates the backend records on the next task run."$'\n'
+  _clBody="${_clBody}"$'\n'"How to remove it in your Aegir control panel (takes a minute):"$'\n'
+  _clBody="${_clBody}"$'\n'"  - If you do not need the site: open the site's page in the control"$'\n'"    panel, run Disable first if the site still shows as enabled (the"$'\n'"    Delete button appears only on a disabled site), then run Delete."$'\n'"    If Delete fails or never finishes, note the number at the end of"$'\n'"    the site page's address (it looks like /node/12345), then open"$'\n'"    /node/12345/delete in your browser and confirm -- this removes the"$'\n'"    stuck record directly."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If you still need the site: open the site's page and re-run the"$'\n'"    failed task (Install or Clone), or delete the broken record and"$'\n'"    create the site afresh."$'\n'
+  _clBody="${_clBody}"$'\n'"These records point at no site data on the server, so removing them"$'\n'"does not touch any of your working sites, and nothing is deleted on the"$'\n'"server side by this process."$'\n'
+  _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
+  _reply="${_MY_OCTO_EMAIL}"
+  if [ -z "${_reply}" ] || [ "${_reply}" = "root" ]; then
+    _reply="${_ADMIN_EMAIL}"
+  fi
+  echo "Sending ghost-site client notice for ${_HM_U} to ${_CLIENT_EMAIL} on $(date)"
+  if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] && [[ "${_reply}" =~ @ ]]; then
+    echo "${_clBody}" \
+      | s-nail -S replyto="${_reply}" -s "Action suggested: broken leftover site record(s) in your control panel" "${_CLIENT_EMAIL}"
+  else
+    echo "${_clBody}" \
+      | s-nail -s "Action suggested: broken leftover site record(s) in your control panel" "${_CLIENT_EMAIL}"
   fi
 }
 

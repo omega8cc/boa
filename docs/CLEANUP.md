@@ -92,9 +92,55 @@ extra safeguards always apply before anything is moved: the Provision interlock
 above; the item must be seen as a ghost across consecutive nightly runs (a single
 snapshot never acts); files/private are checked symlink-aware, so a transiently
 absent native-symlink store target never counts as gone; and a degraded/unparseable
-site path keeps the site rather than reaping it. These checks are newer than the
-codebase ones — exercise them in dry-run, then on a disposable VM, before
-enabling on production.
+site path keeps the site rather than reaping it. The site reaper additionally
+classifies each confirmed candidate before acting: a site path under
+`aegir/distro` is the account's own Ægir front-end (or its `hm`/`oN.<host>`
+alias companions) — system machinery, never reaped and never reported to the
+client; when the site's platform root is missing entirely (a platform moved
+or removed outside Ægir), or the site's directory turns up on another
+platform of the same account (an interrupted migrate), the event is
+platform-level — the data may be intact — so nothing is moved and the finding
+is logged for operator review instead. Only a true per-site ghost (platform
+healthy, site directory nowhere) is ever reaped. Because the
+consecutive-night counters keep counting while a reaper is in dry-run,
+turning `_GHOST_SITES_CLEANUP` on does not act immediately either: the first
+enabled run per account only arms the reaper (logged, nothing moved), so
+accumulated candidates always get one fresh enabled-mode night before any
+move. These checks are newer than the codebase ones — exercise them in
+dry-run, then on a disposable VM, before enabling on production.
+
+On the omega8.cc-hosted fleet (hostname ending in `.aegir.cc`) the two nightly
+registration-level reapers — `_GHOST_SITES_CLEANUP` and `_GHOST_VHOSTS_CLEANUP`
+— are seeded to `YES` in `.barracuda.cnf` (only when the line is not already
+present, so an explicit operator value always wins and the toggle stays
+available). `_GHOST_ALIASES_CLEANUP` is not seeded: it runs on the 3-minute
+limited-shell sweep with no consecutive-run persistence and no migration
+interlock, so it stays a per-box operator decision — the nightly site reaper
+already converges within two nights. During an `xoct`/`xcopy` account
+migration, set `/etc/boa/.pause_tasks_maint.cnf` on the target for the
+duration of the transfer if that sweep is enabled there.
+`_GHOST_SITE_FILES_CLEANUP` moves data, not just registration, and stays
+opt-in everywhere.
+
+## Client notification for ghost sites
+
+A ghost site's registration lives in the account's own Aegir front-end, and
+only there can it be removed for good — the backend reapers can move the
+leftover alias and vhost aside, but any task run on the record re-creates
+them. So when the nightly sweep confirms a ghost site (post-grace, whether or
+not `_GHOST_SITES_CLEANUP` is enabled), it first checks the account's own
+front-end for the site's record (`hosting_context` row). Only when the record
+still exists — so the customer can actually see and remove it — does the
+account owner get an email notice naming the site(s) with the exact
+control-panel steps: Disable, then run the Delete task, or remove a stuck
+record directly via its `node/NNN/delete` address, or re-run the failed
+Install/Clone if the site is still wanted. A ghost whose node the customer
+already deleted (only backend leftovers remain, invisible to them) is logged
+as a backend leftover and cleaned silently, with no mail. The notice follows
+the Let's Encrypt client-notice model: it goes to the account's
+`_CLIENT_EMAIL` only, is throttled to once per 30 days per site, and is gated
+by `_GHOST_CLIENT_NOTIFY` (default `YES`; set `NO` in `/root/.barracuda.cnf`
+fleet-wide or in an account's `octopus.cnf` to disable).
 
 ## Recovering a moved item
 
