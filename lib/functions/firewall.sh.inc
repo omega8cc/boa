@@ -408,6 +408,17 @@ _csf_lfd_install_upgrade() {
       fi
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf &> /dev/null
       wait
+      ### Broadcast/multicast noise on shared L2 segments gets logged as
+      ### attack drops (SSDP/mDNS were missing from the shipped DROP_NOLOG
+      ### set) and outbound drop logging only duplicates that noise; retune
+      ### the exact previously shipped defaults only, so operator-customised
+      ### values are never overwritten.
+      if [ "${_CUSTOM_CONFIG_CSF}" != "YES" ]; then
+        sed -i "s/^DROP_NOLOG = \"67,68,111,113,135:139,445,500,513,520\"$/DROP_NOLOG = \"67,68,111,113,135:139,445,500,513,520,1900,5353\"/g" /etc/csf/csf.conf &> /dev/null
+        wait
+        sed -i "s/^DROP_OUT_LOGGING = \"1\"$/DROP_OUT_LOGGING = \"0\"/g" /etc/csf/csf.conf &> /dev/null
+        wait
+      fi
       if [ "${_VMFAMILY}" = "VZ" ]; then
         sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
         wait

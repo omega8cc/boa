@@ -187,6 +187,20 @@ cache of the front-end database, and the next Verify task writes it back. Resolv
 the context in the Ægir front-end instead — delete the site, or re-run the failed
 task.
 
+**Confirmed ghosts can self-heal.** With `_GHOST_SITES_CLEANUP=YES` the nightly
+maintenance moves a confirmed ghost's alias and vhost aside to the account's
+`undo/` dir (so the next dry run is CLEAN again), after classifying the candidate
+first: a front-end/system alias (`aegir/distro`), a missing platform root (the
+`PLATFORM GONE` verdict), or a directory found on another platform (`MIGRATE
+STRANDED`) is left for operator review and never touched. Any other site whose
+`site_path` is gone while its platform directory exists — `GHOST ALIAS` itself,
+but also a `RENAME LEFTOVER` or a registration on a `BROKEN PLATFORM` — is
+treated as a per-site leftover and reaped the same reversible way. When the
+site's record still exists in the account's own Ægir front-end, the account owner
+also gets a throttled email notice with the exact panel steps, since only
+deleting the record there is final (`_GHOST_CLIENT_NOTIFY`); a ghost whose node
+was already deleted is cleaned silently. Details in [CLEANUP.md](CLEANUP.md).
+
 ### `updatesymlinks` — the scheduler / orchestrator
 
 Wraps `autosymlink` with Ægir-queue pausing (the self-healing
