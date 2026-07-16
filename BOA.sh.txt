@@ -1429,7 +1429,7 @@ _update_agents() {
 
   _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/tools/bin/screenfetch" f99 --guard screenfetch
   _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f99 --guard fixrepo
-  _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f95 --guard renameaegirhost
+  _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f94 --guard renameaegirhost
   _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f79 --guard autosymlink
   _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f93 --guard updatesymlinks
   _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/tools/bin/symlinkinfo" f98 --guard symlinkinfo
@@ -1439,7 +1439,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror
   _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/tools/bin/ffdevuan" f95 --guard xffdevuan
   _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver
-  _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f79 --guard /local/bin/xoct
+  _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f78 --guard /local/bin/xoct
   _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/tools/bin/xcopy" f91 --guard /local/bin/xcopy
   _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f74 --guard /local/bin/xmass
   _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f97 --guard /local/bin/autobeowulf
@@ -1493,7 +1493,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f99 --guard duplicity
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f99 --guard duplicity
-    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f54
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f53
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f78
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f90
@@ -1506,7 +1506,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f83
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f91
-    _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f96
+    _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f95
     _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f94
     _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/bind9.sh "${_urlHmr}/tools/system/monitor/check/bind9.sh" f01
@@ -3668,7 +3668,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --guard /local/bin/mybackup
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f94 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f97 --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f95 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f94 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f93 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
@@ -3683,7 +3683,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f91 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f74 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f79 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f78 --guard /local/bin/xoct
     # --- unique to _update_boa_tools ---
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f98 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f98 --guard /local/bin/autodaedalus
