@@ -149,11 +149,20 @@ _whitelist_ip_cloudflare() {
   #   Plain text: https://www.cloudflare.com/ips-v4  (primary)
   #   JSON API:   https://api.cloudflare.com/client/v4/ips  (fallback, no auth needed)
   # Reference: https://www.cloudflare.com/ips/
+  # Allow both web ports: CF edges terminate visitors on 443 as much as 80, and
+  # a d=80-only entry leaves 443 exposed to csf.deny hits on a busy edge.
+  # Deliberately NOT mirrored into csf.ignore (unlike the migration proxy):
+  # realip bans the real client at nginx, and an lfd-immune CF range would mask
+  # a misbehaving edge. IPv6 ranges are also deliberately not ingested while
+  # TCP6_IN excludes 80/443 - they would match no inbound traffic.
   if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
-    sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
+    # Delete the tagged lines outright rather than blanking them: the old
+    # s///-to-empty form left one blank line per wipe, and with two lines
+    # (d=80 + d=443) per CIDR now they would accumulate twice as fast.
+    sed -i "/cloudflare/d" /etc/csf/csf.allow
     wait
   fi
   _IPS=$(curl ${_crlGet} https://www.cloudflare.com/ips-v4 \
@@ -172,19 +181,14 @@ _whitelist_ip_cloudflare() {
   echo _IPS cloudflare list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
-    echo checking csf.allow cloudflare ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # cloudflare ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # cloudflare ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # cloudflare ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
 }
 
