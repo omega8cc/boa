@@ -1161,6 +1161,9 @@ _sub_ssl_gen() {
       wait
       sed -i "s/_dedicated_sn/${_dedicated_sn}/g"   ${_Ssl}
       wait
+      [ -e "/etc/nginx/no_ktls.conf" ] \
+        && sed -i "/ssl_conf_command Options.*KTLS/d" ${_Ssl}
+      wait
       ###
       if [ -e "${_Ssl}" ]; then
         _sslFile="/etc/ssl/private/${_domain_name}.dhp"
