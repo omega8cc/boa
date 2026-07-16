@@ -821,6 +821,8 @@ _nginx_wildcard_ssl_install() {
     ### down as well and every proxied vhost 502s ("no live upstreams").
     cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
     sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
+    [ -e "/etc/nginx/no_ktls.conf" ] \
+      && sed -i "/ssl_conf_command Options.*KTLS/d" ${_WILD_SSL_VHOST} &> /dev/null
     if [ -e "${_locCnf}/global/global.inc" ]; then
       ### Deploy the full global include set (per-core chain + dispatcher);
       ### the dispatcher alone would be inert without the chain.
@@ -874,12 +876,42 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    ### Re-deploy when the deployed KTLS state disagrees with the opt-out
+    ### control file, so toggling _NGINX_KTLS self-heals the front either way.
+    _KTLS_STATE_TEST=$(grep "Options.*KTLS" ${_WILD_SSL_VHOST} 2>&1)
+    if [ -e "/etc/nginx/no_ktls.conf" ]; then
+      [[ "${_KTLS_STATE_TEST}" =~ "KTLS" ]] && _WILD_SSL_PROXY_UP=YES
+    else
+      [[ ! "${_KTLS_STATE_TEST}" =~ "KTLS" ]] && _WILD_SSL_PROXY_UP=YES
+    fi
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
       _validate_public_ip &> /dev/null
       _validate_xtras_ip &> /dev/null
       cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
       sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
+      [ -e "/etc/nginx/no_ktls.conf" ] \
+        && sed -i "/ssl_conf_command Options.*KTLS/d" ${_WILD_SSL_VHOST}
     fi
+  fi
+}
+
+_nginx_ktls_control_update() {
+  ### KTLS opt-out signal. `ssl_conf_command Options KTLS` on OpenSSL 3.2+ can
+  ### throw recv() (5: Input/output error) alerts that abort TLS connections
+  ### mid-request (kernel kTLS RX returns EIO on a control record - alert,
+  ### handshake or TLS 1.3 KeyUpdate - see nginx issue 651). This control file
+  ### lets an operator shed KTLS server-wide via _NGINX_KTLS=NO: the provision
+  ### render reads it (like basic_nginx.conf) to leave nginx_has_ktls FALSE, and
+  ### the static wild-ssl / ssl_proxy fronts strip their KTLS line on deploy.
+  ### Default _NGINX_KTLS=YES removes the file, so KTLS stays on unchanged.
+  if [ "${_NGINX_KTLS}" = "NO" ]; then
+    mkdir -p /etc/nginx
+    if [ ! -e "/etc/nginx/no_ktls.conf" ]; then
+      echo "# KTLS disabled server-wide via _NGINX_KTLS=NO in barracuda.cnf" \
+        > /etc/nginx/no_ktls.conf
+    fi
+  else
+    rm -f /etc/nginx/no_ktls.conf
   fi
 }
 

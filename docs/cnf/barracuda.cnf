@@ -90,6 +90,7 @@ _NGINX_DOS_STOP="foo|bar" #----- Keywords to trigger counter +5 increase if foun
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
 _NGINX_HEADERS=NO #------------- Installs Nginx Headers More support when YES
+_NGINX_KTLS=YES #--------------- Kernel TLS on when YES (default); NO sheds EIO noise
 _NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
 _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)

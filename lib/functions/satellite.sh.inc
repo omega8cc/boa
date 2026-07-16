@@ -5370,9 +5370,18 @@ _satellite_letsencrypt_vhost_setup() {
           || [[ "${_FPM_SOCKET_RUN}" =~ "fpm.socket" ]]; then
           _FPM_SOCKET_TEST="fpm.socket"
         fi
+        ### KTLS opt-out aware: demand KTLS present only when the control file
+        ### is absent; when _NGINX_KTLS=NO set it, demand KTLS absent instead,
+        ### so the per-domain front is not regenerated in an endless loop.
+        _KTLS_NEEDS_UPDATE=NO
+        if [ -e "/etc/nginx/no_ktls.conf" ]; then
+          [[ "${_KTLS_TEST}" =~ "KTLS" ]] && _KTLS_NEEDS_UPDATE=YES
+        else
+          [[ ! "${_KTLS_TEST}" =~ "KTLS" ]] && _KTLS_NEEDS_UPDATE=YES
+        fi
         if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
           || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
-          || [[ ! "${_KTLS_TEST}" =~ "KTLS" ]] \
+          || [ "${_KTLS_NEEDS_UPDATE}" = "YES" ] \
           || [[ "${_RPRT_TEST}" =~ "reuseport" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]] \
           || [[ ! "${_HTTPVER_TEST}" =~ "proxy_http_version" ]]; then
