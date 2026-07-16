@@ -1875,13 +1875,16 @@ while IFS= read -r _line <&3; do
     echo "DEBUG: Extracted IPs: ${_IP_LIST[*]}"
   fi
 
-  # Resolve the real client as the LAST token of the logged chain. nginx logs
-  # $proxy_add_x_forwarded_for (the X-Forwarded-For values with $remote_addr
-  # appended last), and nginx realip rewrites $remote_addr to the CF-Connecting-IP
-  # value on Cloudflare vhosts (CF-controlled, NOT client-spoofable) or leaves it
-  # as the direct peer otherwise. So the last token is the trustworthy client,
-  # whereas the earlier X-Forwarded-For entries are client-supplied and spoofable
-  # (a client can prepend a forged public IP) and must never be scored or banned.
+  # Resolve the real client as the LAST token of the logged field. The current
+  # 'main' format logs a single realip-resolved $remote_addr as field 1 (the
+  # spoofable X-Forwarded-For chain is relegated to a trailing xff= field this
+  # parser never reads), so the array has one element; the last-token rule is
+  # kept because it also stays correct on boxes still logging the older
+  # chain-style first field ($proxy_add_x_forwarded_for = client-supplied,
+  # spoofable entries with the trustworthy $remote_addr appended last).
+  # realip rewrites $remote_addr to the CF-Connecting-IP value only for peers
+  # inside the trusted Cloudflare ranges (CF-controlled, NOT client-spoofable)
+  # and leaves it as the direct peer otherwise.
   # Act only on a valid, public client. An IPv4 last token bans via csf (IPv4).
   # An IPv6 last token can ONLY be a realip-recovered client from a trusted proxy
   # (BOA disables IPv6 server-side and pins realip to the CF ranges, so no direct
@@ -2003,7 +2006,12 @@ while IFS= read -r _line <&3; do
   # never reach here.  Matches a leading two-letter language prefix on the
   # request path (optionally with a script/region suffix, e.g. /pt-br/,
   # /zh-hans/) and the D7 ?q=<lang>/ form, mirroring the Tier-A guardrail class.
-  if (( _I18N_ON )) && [[ "${_line}" =~ ${_I18N_LINE_RE} ]]; then
+  # Lines whose client field is exactly 127.0.0.1 are skipped: a request riding
+  # a local 443 front (wild-ssl proxy) logs twice -- once at the front with the
+  # real visitor and once at the port-80 backend as loopback -- and counting
+  # both would halve the detector's effective per-vhost thresholds.
+  if (( _I18N_ON )) && [[ "${_line}" != '"127.0.0.1" '* ]] \
+    && [[ "${_line}" =~ ${_I18N_LINE_RE} ]]; then
     _LH="${BASH_REMATCH[1]}"
     _LP="${BASH_REMATCH[2]}"
     _LS="${BASH_REMATCH[3]}"
