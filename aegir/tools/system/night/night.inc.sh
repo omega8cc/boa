@@ -262,6 +262,26 @@ _run_drush8_hmr_cmd() {
   wait
 }
 
+# Whether the account's own Aegir front-end still has a record for a site
+# name. A site's hosting_context row is registered with the domain on node
+# insert and removed by hosting_context_delete when the node is deleted, so
+# it distinguishes "the customer can still see and remove this in the panel"
+# (YES) from "only backend leftovers remain" (NO). Echoes YES / NO / UNKNOWN
+# (front-end unreachable or unparseable output) -- callers pick the
+# fail-direction. Same @hostmaster/account-user shape as _run_drush8_hmr_cmd,
+# but CAPTURES output; tail -n1 keeps the count row under any profile noise.
+_hmr_context_exists() {
+  local _name="$1"
+  local _out
+  _out=$(su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_context WHERE name='${_name}'\"" 2>/dev/null \
+    | grep -o '[0-9][0-9]*' | tail -n 1)
+  case "${_out}" in
+    "") echo UNKNOWN ;;
+    0)  echo NO ;;
+    *)  echo YES ;;
+  esac
+}
+
 _run_drush8_hmr_master_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)

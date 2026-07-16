@@ -589,14 +589,17 @@ _ghost_client_notify_on() {
 # directory no longer exists -- typically an install or clone that failed or
 # was rolled back. The nightly _cleanup_ghost_drushrc sweep already logs each
 # one (and moves the backend leftovers aside when _GHOST_SITES_CLEANUP=YES),
-# but the record in the account's own Aegir front-end can only be removed
-# there, and any task run on it re-creates the backend leftovers -- so the
-# account owner gets an actionable notice, throttled per site. Only the
-# post-grace site-ghost lines are matched: never the single-night grace line,
-# never the vhost/platform/.restore variants (backend-only, nothing for the
-# client to act on). Same source discipline as _le_account_report: only THIS
-# account's log and THIS account's _CLIENT_EMAIL, so a notice can never reach
-# the wrong account.
+# but a record still present in the account's own Aegir front-end can only be
+# removed there, and any task run on it re-creates the backend leftovers -- so
+# the account owner gets an actionable notice, throttled per site. Only the
+# post-grace "GHOST drushrc" lines are matched, which the sweep emits ONLY
+# after confirming the front-end record still exists (_hmr_context_exists):
+# a ghost whose node the customer already deleted is logged as a backend
+# leftover instead and cleaned without any mail, since there is nothing they
+# could see or act on. Never matched either: the single-night grace line, the
+# SKIPPED classifications, the vhost/platform/.restore variants. Same source
+# discipline as _le_account_report: only THIS account's log and THIS
+# account's _CLIENT_EMAIL, so a notice can never reach the wrong account.
 _ghost_account_report() {
   local _acctLog _ghosts _throttle _now _markerDir _marker _fresh
   local _site _ghList _clBody _reply

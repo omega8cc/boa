@@ -1780,22 +1780,39 @@ _cleanup_ghost_drushrc() {
             echo "GHOST drushrc for ${_T_SITE_NAME} detected (grace run, not moved)"
           elif [ "${_GH_CLASS}" != "ghost" ]; then
             echo "GHOST candidate ${_T_SITE_NAME} SKIPPED (${_GH_CLASS}: operator review needed, nothing moved)"
-          elif [ "${_GH_REAP_ON}" = "YES" ]; then
-            mkdir -p ${_usEr}/undo
-            mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-            echo "GHOST drushrc for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
-            if [[ ! "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
-              mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} ${_usEr}/undo/ghost-vhost-${_T_SITE_NAME} &> /dev/null
-              echo "GHOST vhost for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
-            fi
-            if [ -d "${_T_SITE_FDIR}" ] \
-              && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITE_FILES_CLEANUP \
-                || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITE_FILES_CLEANUP; }; then
-              mv -f ${_T_SITE_FDIR} ${_usEr}/undo/ghost-site-${_T_SITE_NAME} &> /dev/null
-              echo "GHOST site dir ${_T_SITE_FDIR} for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
-            fi
           else
-            echo "GHOST drushrc for ${_T_SITE_NAME} detected (dry-run; set _GHOST_SITES_CLEANUP=YES to move)"
+            # Only a confirmed true ghost pays for the front-end lookup. YES
+            # keeps the customer-facing line: the record is still in their
+            # panel, so the client notice is accurate and actionable. NO (the
+            # customer already deleted the node -- only backend leftovers
+            # remain, which they cannot see or touch) and UNKNOWN both take
+            # the backend-leftover line, which the client notice never
+            # matches, so that cleanup stays silent.
+            _GH_FE=$(_hmr_context_exists "${_T_SITE_NAME}")
+            if [ "${_GH_FE}" = "YES" ]; then
+              _GH_LINE="GHOST drushrc for ${_T_SITE_NAME}"
+            elif [ "${_GH_FE}" = "NO" ]; then
+              _GH_LINE="GHOST backend leftover for ${_T_SITE_NAME} (no front-end record)"
+            else
+              _GH_LINE="GHOST backend leftover for ${_T_SITE_NAME} (front-end check failed)"
+            fi
+            if [ "${_GH_REAP_ON}" = "YES" ]; then
+              mkdir -p ${_usEr}/undo
+              mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
+              echo "${_GH_LINE} detected and moved to ${_usEr}/undo/"
+              if [[ ! "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
+                mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} ${_usEr}/undo/ghost-vhost-${_T_SITE_NAME} &> /dev/null
+                echo "GHOST vhost for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
+              fi
+              if [ -d "${_T_SITE_FDIR}" ] \
+                && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITE_FILES_CLEANUP \
+                  || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITE_FILES_CLEANUP; }; then
+                mv -f ${_T_SITE_FDIR} ${_usEr}/undo/ghost-site-${_T_SITE_NAME} &> /dev/null
+                echo "GHOST site dir ${_T_SITE_FDIR} for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
+              fi
+            else
+              echo "${_GH_LINE} detected (dry-run; set _GHOST_SITES_CLEANUP=YES to move)"
+            fi
           fi
         fi
       fi

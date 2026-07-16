@@ -128,13 +128,18 @@ A ghost site's registration lives in the account's own Aegir front-end, and
 only there can it be removed for good — the backend reapers can move the
 leftover alias and vhost aside, but any task run on the record re-creates
 them. So when the nightly sweep confirms a ghost site (post-grace, whether or
-not `_GHOST_SITES_CLEANUP` is enabled), the account owner gets an email notice
-naming the site(s) with the exact control-panel steps: run the Delete task, or
-remove a stuck record directly via its `node/NNN/delete` address, or re-run
-the failed Install/Clone if the site is still wanted. The notice follows the
-Let's Encrypt client-notice model: it goes to the account's `_CLIENT_EMAIL`
-only, is throttled to once per 30 days per site, and is gated by
-`_GHOST_CLIENT_NOTIFY` (default `YES`; set `NO` in `/root/.barracuda.cnf`
+not `_GHOST_SITES_CLEANUP` is enabled), it first checks the account's own
+front-end for the site's record (`hosting_context` row). Only when the record
+still exists — so the customer can actually see and remove it — does the
+account owner get an email notice naming the site(s) with the exact
+control-panel steps: Disable, then run the Delete task, or remove a stuck
+record directly via its `node/NNN/delete` address, or re-run the failed
+Install/Clone if the site is still wanted. A ghost whose node the customer
+already deleted (only backend leftovers remain, invisible to them) is logged
+as a backend leftover and cleaned silently, with no mail. The notice follows
+the Let's Encrypt client-notice model: it goes to the account's
+`_CLIENT_EMAIL` only, is throttled to once per 30 days per site, and is gated
+by `_GHOST_CLIENT_NOTIFY` (default `YES`; set `NO` in `/root/.barracuda.cnf`
 fleet-wide or in an account's `octopus.cnf` to disable).
 
 ## Recovering a moved item
