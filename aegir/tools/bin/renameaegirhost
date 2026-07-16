@@ -211,6 +211,43 @@ _backup_files() {
   _info "Backup timestamp: ${_TS}"
 }
 
+###-------------§2b HOSTMASTER SITE DIR--###
+
+_rename_hostmaster_site_dir() {
+  # The hostmaster frontend site dir is host-derived (sites/<user>.FQDN) and
+  # must follow the rename BEFORE §3 rewrites the aliases: §5 re-derives the
+  # drushrc path from the (by then rewritten) alias and would die against an
+  # OLD-named dir. GUARD (load-bearing for xoct/xmass): when a NEW-named dir
+  # already exists (fresh-install migration targets), skip -- renaming the
+  # source's OLD-named dir over it would clobber the target's correct
+  # settings.php.
+  local _HM_RAW
+  _HM_RAW=$(grep "site_path'" \
+    "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g" \
+    | tr -d ' ')
+  if [ -z "${_HM_RAW}" ]; then
+    _alrt "Could not extract site_path for the site-dir rename; leaving to §5"
+    return 0
+  fi
+  local _HM_DIR_NEW="${_HM_RAW//${_OLD_HOST}/${_NEW_HOST}}"
+  local _HM_DIR_OLD="${_HM_DIR_NEW//${_NEW_HOST}/${_OLD_HOST}}"
+  if [ "${_HM_DIR_OLD}" = "${_HM_DIR_NEW}" ]; then
+    return 0
+  fi
+  if [ -d "${_HM_DIR_NEW}" ]; then
+    _info "Hostmaster site dir already ${_HM_DIR_NEW##*/} — not renaming"
+    return 0
+  fi
+  if [ -d "${_HM_DIR_OLD}" ]; then
+    _info "Renaming hostmaster site dir: ${_HM_DIR_OLD##*/} -> ${_HM_DIR_NEW##*/}"
+    _maybe_run mv -f \'"${_HM_DIR_OLD}"\' \'"${_HM_DIR_NEW}"\'
+  else
+    _alrt "Neither ${_HM_DIR_OLD##*/} nor ${_HM_DIR_NEW##*/} found on disk"
+  fi
+}
+
 ###-------------§3 REWRITE DRUSH FILES---###
 
 _rewrite_drush_files() {
@@ -253,6 +290,22 @@ _rewrite_vhosts() {
   done
 }
 
+###-------------§4b OCTOPUS CONTROL CNF--###
+
+_rewrite_octopus_cnf() {
+  # Octopus roots only: /root/.<oN>.octopus.cnf (_DOMAIN etc.) drives future
+  # octopus up-* runs and must follow the rename. The master root has no
+  # octopus cnf. Idempotent: no-op when the old FQDN is absent (migration
+  # targets get a correct cnf from their fresh install).
+  [[ "${_AEGIR_ROOT}" == /data/disk/* ]] || return 0
+  local _OCT_CNF="/root/.${_AEGIR_USER}.octopus.cnf"
+  [ -e "${_OCT_CNF}" ] || return 0
+  if grep -q "${_OLD_HOST}" "${_OCT_CNF}" 2>/dev/null; then
+    _info "Rewriting ${_OCT_CNF} (_DOMAIN etc.) ..."
+    _maybe_run sed -i "s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_OCT_CNF}"\'
+  fi
+}
+
 ###-------------§5 DATABASE RENAME-------###
 
 _detect_aegir_db() {
@@ -269,6 +322,20 @@ _detect_aegir_db() {
   fi
 
   _HM_DRUSHRC="${_HM_SITE_PATH}/drushrc.php"
+
+  if [ ! -f "${_HM_DRUSHRC}" ]; then
+    # Resume/dry-run tolerance: the alias may hold either hostname variant
+    # while the on-disk dir holds the other (e.g. dry-run skips the §3
+    # rewrite; a resumed run may find the dir already renamed). Try the
+    # other variant before giving up.
+    _HM_SITE_ALT="${_HM_SITE_PATH//${_NEW_HOST}/${_OLD_HOST}}"
+    if [ "${_HM_SITE_ALT}" = "${_HM_SITE_PATH}" ]; then
+      _HM_SITE_ALT="${_HM_SITE_PATH//${_OLD_HOST}/${_NEW_HOST}}"
+    fi
+    if [ -f "${_HM_SITE_ALT}/drushrc.php" ]; then
+      _HM_DRUSHRC="${_HM_SITE_ALT}/drushrc.php"
+    fi
+  fi
 
   if [ ! -f "${_HM_DRUSHRC}" ]; then
     _die "Hostmaster drushrc.php not found: ${_HM_DRUSHRC}"
@@ -394,6 +461,26 @@ _run_aegir_tasks() {
   _info "§7 Aegir task queue complete"
 }
 
+###-------------§8 HOSTMASTER VERIFY-----###
+
+_verify_hostmaster() {
+  # §7's queued tasks verify only the SERVER contexts; the hostmaster SITE's
+  # own settings.php (file paths etc.) is re-rendered only by a provision
+  # verify of the site itself -- without it the panel answers HTTP 400 on
+  # the new hostname.
+  _info "§8 Synchronous hostmaster site verify (regenerates settings.php) ..."
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _info "(dry-run) Would run: drush8 @hostmaster provision-verify"
+    return
+  fi
+
+  _run_as_aegir "drush8 @hostmaster provision-verify > /dev/null 2>&1" \
+    || _alrt "hostmaster provision-verify returned non-zero"
+
+  _info "§8 Hostmaster site verify complete"
+}
+
 ###-------------SUMMARY------------------###
 
 _print_summary() {
@@ -417,12 +504,15 @@ _check_root
 _detect_old_hostname
 _detect_new_hostname
 _backup_files
+_rename_hostmaster_site_dir
 _rewrite_drush_files
 _rewrite_vhosts
+_rewrite_octopus_cnf
 _detect_aegir_db
 _rename_in_database
 _reload_nginx
 _run_aegir_tasks
+_verify_hostmaster
 _print_summary
 
 exit 0
