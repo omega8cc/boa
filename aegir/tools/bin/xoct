@@ -668,6 +668,20 @@ _migrate_prepare() {
     _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1"
     if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${_oct} db export complete"
+      # Record the source FQDN for the import-side rename. renameaegirhost
+      # auto-detects OLD from whichever server_master alias survived the
+      # transfer, and the alias rsync runs with -u (skip-newer), so whether
+      # the source copy wins over the target's fresh one is an mtime race —
+      # a lost race makes the rename silently no-op at OLD==NEW while the
+      # imported DB still holds this FQDN. Recording it here pins OLD
+      # deterministically (and keeps an aborted rename re-runnable after §3
+      # already rewrote the aliases). Travels with the log/ transfer sync.
+      _SRC_FQDN=$(grep "remote_host" ${_USR}/.drush/server_master.alias.drushrc.php 2>/dev/null \
+        | head -1 \
+        | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+      _SRC_FQDN=${_SRC_FQDN//[^a-zA-Z0-9.\-]/}
+      [ -z "${_SRC_FQDN}" ] && _SRC_FQDN=$(hostname -f 2>/dev/null | tr -d '\n')
+      echo -n "${_SRC_FQDN}" > ${_USR}/log/sourcefqdn.txt
       touch ${_USR}/log/exported.pid
     else
       echo "ALRT: no ${_USR}/src/prev_hostmaster.sql exists!"
@@ -700,22 +714,43 @@ _migrate_prepare() {
     ###
     ### Rename all source-hostname references in this Aegir instance to the
     ### FQDN of the current (target) server. renameaegirhost:
-    ###   §1  detects old hostname from server_master.alias.drushrc.php
+    ###   §1  old hostname: pinned via --force-old from log/sourcefqdn.txt
+    ###       (recorded at export; alias auto-detection is an rsync -u mtime
+    ###       race and a partial-rename re-run would no-op at OLD==NEW)
     ###   §2  detects new hostname from system FQDN (hostname -f)
     ###   §3  rewrites .drush/*.alias.drushrc.php files
     ###   §4  rewrites + renames nginx vhost files in config/server_master/
-    ###   §5  dumps Aegir DB, sed s/old/new/g, re-imports (replaces manual
-    ###       UPDATE node/node_revision title WHERE nid=2 and any other
-    ###       occurrence of the source FQDN string in the DB)
+    ###   §5  renames the source FQDN inside the Aegir DB with serialize-safe
+    ###       targeted statements (identity rows by hosting_context nid,
+    ###       varchar REPLACE sweeps, unserialize/replace/re-serialize pass
+    ###       over the variable table); keeps a plain backup dump
     ###   §6  reloads nginx
     ###   §7  runs the Aegir task queue 5 times (cc drush + server verify +
     ###       hosting-dispatch + hosting-tasks) to regenerate all on-disk
     ###       aliases, vhosts, and db-host entries from the updated DB
     ### Must run AFTER all structural SQL fixes above (hosting_context,
-    ### node types, platform paths, etc.) because it dumps and reimports the
-    ### entire Aegir DB as its atomic rename step.
+    ### node types, platform paths, etc.) because §7 regenerates everything
+    ### from the DB state those fixes shaped.
     ###
-    renameaegirhost --aegir-root "${_USR}"
+    _RAH_OLD=""
+    if [ -s "${_USR}/log/sourcefqdn.txt" ]; then
+      _RAH_OLD=$(cat ${_USR}/log/sourcefqdn.txt | tr -d "\n")
+      _RAH_OLD=${_RAH_OLD//[^a-zA-Z0-9.\-]/}
+    fi
+    if [ ! -z "${_RAH_OLD}" ]; then
+      renameaegirhost --aegir-root "${_USR}" --force-old "${_RAH_OLD}"
+      _RAH_RC=$?
+    else
+      # export predates sourcefqdn.txt — fall back to alias auto-detection
+      renameaegirhost --aegir-root "${_USR}"
+      _RAH_RC=$?
+    fi
+    if [ "${_RAH_RC}" -ne 0 ]; then
+      echo "ERROR: renameaegirhost failed (rc=${_RAH_RC}) for ${_USR} — this import is INCOMPLETE"
+      echo "ERROR: re-running xoct import will NOT retry the rename (imported.pid already exists)"
+      echo "ERROR: fix the cause, then re-run on this box: renameaegirhost --aegir-root ${_USR} --force-old ${_RAH_OLD:-<source-fqdn>}"
+      exit 1
+    fi
 
   fi
   if [ "${_cmd}" = "create" ]; then
@@ -1221,10 +1256,16 @@ _migrate_init() {
             _xoct_rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_oct}.ftp/
           fi
 
+          # Drush aliases are copied WHOLE — including the source's
+          # server_master/hostmaster aliases. Which side's copy survives is
+          # an rsync -u (skip-newer) mtime race, which is why the import
+          # step pins renameaegirhost's OLD via --force-old
+          # (log/sourcefqdn.txt) instead of trusting alias auto-detection.
+          # Do NOT add excludes for server_master/hostmaster here: the
+          # rename converges either way, and the source platform_* and
+          # per-site aliases must always arrive.
           _xoct_rsync -aEAXqu \
             ${_ieni} \
-            --exclude=server_ \
-            --exclude=hostmaster \
             -e ssh ${_USR}/.drush/*.alias.drushrc.php \
             root@${_tgt}:${_DST}/.drush/
 
