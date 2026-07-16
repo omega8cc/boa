@@ -316,6 +316,57 @@ _valkey_password_update() {
   fi
 }
 #
+# Try the prebuilt boa-valkey .deb for the resolved pin; fall back to sources
+# on any failure. Published for Valkey major 9 only -- majors 7/8 and Redis
+# keep the source path by construction (their packages are never published,
+# and the gate below refuses them up front). The payload carries /usr/bin
+# binaries plus the redis-* compat symlinks valkey's make install creates;
+# runtime dirs, init script, config and password stay installer-managed on
+# both paths. Health check is the version probe only: no service, socket or
+# config exists yet at this point on a fresh box, and the binary links
+# distro libs only (no /usr/local trees), so no loader sync is needed.
+_install_valkey_deb() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_valkey_deb"
+  fi
+  _VALKEY_DEB_INSTALLED=NO
+  if [ -z "${_VALKEY_VRN}" ]; then
+    return 1
+  fi
+  if [ "${_VALKEY_MAJOR_RELEASE}" != "9" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Valkey major ${_VALKEY_MAJOR_RELEASE}; skipping prebuilt boa-valkey"
+    fi
+    return 1
+  fi
+  if ! _install_boa_deb "boa-valkey" "${_VALKEY_VRN}"; then
+    return 1
+  fi
+  _VALKEY_DEB_ITD=$(/usr/bin/valkey-server -v 2>&1 \
+    | tr -d "\n" \
+    | tr -d "v=" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_VALKEY_DEB_ITD}" = "serer" ]; then
+    _VALKEY_DEB_ITD=$(/usr/bin/valkey-server -v 2>&1 \
+      | tr -d "\n" \
+      | tr -d "v=" \
+      | cut -d" " -f3 \
+      | awk '{ print $1}' 2>&1)
+  fi
+  if [ -x "/usr/bin/valkey-server" ] \
+    && [ -x "/usr/bin/valkey-cli" ] \
+    && [ "${_VALKEY_DEB_ITD}" = "${_VALKEY_VRN}" ]; then
+    _VALKEY_DEB_INSTALLED=YES
+    _msg "INFO: Valkey ${_VALKEY_VRN} installed from prebuilt package"
+    return 0
+  fi
+  dpkg --purge "boa-valkey" &> /dev/null
+  _msg "NOTE: Prebuilt boa-valkey failed health check; building from sources"
+  return 1
+}
+
+#
 # Install Valkey from sources.
 _install_valkey_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -325,14 +376,27 @@ _install_valkey_src() {
   if [ ! -e "/var/lib/valkey" ]; then
     _mrun "adduser --system --group valkey --home /home/valkey"
   fi
-  cd /var/opt
-  rm -rf valkey*
-  _get_dev_src "valkey-${_VALKEY_VRN}.tar.gz"
-  rm -f /usr/local/bin/valkey*
-  rm -f /usr/bin/valkey*
-  cd valkey-${_VALKEY_VRN}
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet PREFIX=/usr install"
+  # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the source
+  # fetch + compile; the shared tail below (init script, runtime dirs owned
+  # by the valkey user, config template, password, redis disable, restart)
+  # runs unchanged for both paths.
+  _VALKEY_DEB_INSTALLED=NO
+  if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
+    _install_valkey_deb
+  fi
+  if [ "${_VALKEY_DEB_INSTALLED}" = "YES" ]; then
+    # Stale pre-/usr copies would shadow the deb binaries in root's PATH.
+    rm -f /usr/local/bin/valkey*
+  else
+    cd /var/opt
+    rm -rf valkey*
+    _get_dev_src "valkey-${_VALKEY_VRN}.tar.gz"
+    rm -f /usr/local/bin/valkey*
+    rm -f /usr/bin/valkey*
+    cd valkey-${_VALKEY_VRN}
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet PREFIX=/usr install"
+  fi
   cp -af ${_locCnf}/valkey/valkey-server /etc/init.d/valkey-server
   chmod 755 /etc/init.d/valkey-server &> /dev/null
   _mrun "update-rc.d valkey-server defaults"
