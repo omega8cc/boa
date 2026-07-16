@@ -105,6 +105,31 @@ _maybe_run() {
   fi
 }
 
+_renamed_already() {
+  # NEW-contains-OLD guard, path/name flavor: in that regime any value that
+  # already carries NEW would double on a second forward substitution
+  # (master.xy.example.com -> master.xy.xy.example.com on a re-run). Same
+  # semantics as the §5 sweeps' AND-NOT-LIKE guard. Returns 0 when the
+  # argument must be left alone.
+  case "${_NEW_HOST}" in
+    *"${_OLD_HOST}"*)
+      case "$1" in
+        *"${_NEW_HOST}"*) return 0 ;;
+      esac
+    ;;
+  esac
+  return 1
+}
+
+_file_needs_rename() {
+  # Eligible = the file has a line carrying OLD that is not already
+  # NEW-carrying (line-level twin of _renamed_already; whole file counts
+  # when no guard regime is active).
+  grep -q "${_OLD_HOST}" "$1" 2>/dev/null || return 1
+  [ -z "${_SED_RENAME_GUARD}" ] && return 0
+  grep -v "${_NEW_HOST}" "$1" 2>/dev/null | grep -q "${_OLD_HOST}"
+}
+
 ###-------------CHECKS--------------------###
 
 _check_root() {
@@ -199,6 +224,28 @@ _detect_new_hostname() {
     _info "Old and new hostname are identical — nothing to do."
     exit 0
   fi
+
+  # Line-level sed guard for the NEW-contains-OLD regime: never touch lines
+  # already carrying NEW (a second s/OLD/NEW/ pass would double the prefix).
+  _SED_RENAME_GUARD=""
+  case "${_NEW_HOST}" in
+    *"${_OLD_HOST}"*) _SED_RENAME_GUARD="/${_NEW_HOST}/!" ;;
+  esac
+
+  # The box identity on a BOA host is cnf-driven: barracuda re-asserts
+  # _MY_HOSTN into /etc/hostname on its next run (install final phase,
+  # up-*), which mid-queue flips provision back to remote-host mode against
+  # the OLD identity (failed self-rsync, legacy nginx conf fallback). Warn
+  # until the operator updates the cnf. In-place renames only; migration
+  # targets get a correct cnf from their fresh install.
+  if [ -e "/root/.barracuda.cnf" ]; then
+    _CNF_HOSTN=$(grep "^_MY_HOSTN=" /root/.barracuda.cnf 2>/dev/null \
+      | head -1 | cut -d'"' -f2)
+    if [ -n "${_CNF_HOSTN}" ] && [ "${_CNF_HOSTN}" != "${_NEW_HOST}" ]; then
+      _alrt "/root/.barracuda.cnf records _MY_HOSTN=${_CNF_HOSTN} — the next barracuda run will revert /etc/hostname to it"
+      _alrt "Update _MY_HOSTN (and _MY_FRONT) in /root/.barracuda.cnf to match ${_NEW_HOST} before any barracuda run"
+    fi
+  fi
 }
 
 ###-------------BACKUP--------------------###
@@ -243,6 +290,14 @@ _rename_hostmaster_site_dir() {
     _alrt "Could not extract site_path for the site-dir rename; leaving to §5"
     return 0
   fi
+  if _renamed_already "${_HM_RAW}"; then
+    # Re-run over a renamed root in the NEW-contains-OLD regime: the forward
+    # substitution below would walk the name forward again
+    # (master.xy.example.com -> master.xy.xy.example.com) and §7 would then
+    # import the doubled dir as a brand-new site.
+    _info "Hostmaster site dir already carries ${_NEW_HOST} — not renaming"
+    return 0
+  fi
   local _HM_DIR_NEW="${_HM_RAW//${_OLD_HOST}/${_NEW_HOST}}"
   local _HM_DIR_OLD="${_HM_DIR_NEW//${_NEW_HOST}/${_OLD_HOST}}"
   if [ "${_HM_DIR_OLD}" = "${_HM_DIR_NEW}" ]; then
@@ -266,9 +321,9 @@ _rewrite_drush_files() {
   _info "§3 Rewriting Drush alias files in ${_DRUSH_DIR} ..."
 
   for _F in $(find "${_DRUSH_DIR}" -maxdepth 1 -type f -name '*.drushrc.php' | sort); do
-    if grep -q "${_OLD_HOST}" "${_F}" 2>/dev/null; then
+    if _file_needs_rename "${_F}"; then
       _info "  sed in-place: ${_F}"
-      _maybe_run sed -i "s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+      _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
     fi
   done
 }
@@ -287,13 +342,15 @@ _rewrite_vhosts() {
     _BASENAME=$(basename "${_F}")
 
     # Rewrite content regardless of filename
-    if grep -q "${_OLD_HOST}" "${_F}" 2>/dev/null; then
+    if _file_needs_rename "${_F}"; then
       _info "  sed in-place content: ${_F}"
-      _maybe_run sed -i "s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+      _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
     fi
 
-    # Rename the file if old hostname appears in the filename
-    if [[ "${_BASENAME}" == *"${_OLD_HOST}"* ]]; then
+    # Rename the file if old hostname appears in the filename — unless the
+    # name already carries NEW (NEW-contains-OLD re-run would double it)
+    if [[ "${_BASENAME}" == *"${_OLD_HOST}"* ]] \
+      && ! _renamed_already "${_BASENAME}"; then
       _NEW_BASENAME="${_BASENAME//${_OLD_HOST}/${_NEW_HOST}}"
       _NEW_F="${_VHOSTD}/${_NEW_BASENAME}"
       _info "  rename: ${_BASENAME} -> ${_NEW_BASENAME}"
@@ -312,9 +369,9 @@ _rewrite_octopus_cnf() {
   [[ "${_AEGIR_ROOT}" == /data/disk/* ]] || return 0
   local _OCT_CNF="/root/.${_AEGIR_USER}.octopus.cnf"
   [ -e "${_OCT_CNF}" ] || return 0
-  if grep -q "${_OLD_HOST}" "${_OCT_CNF}" 2>/dev/null; then
+  if _file_needs_rename "${_OCT_CNF}"; then
     _info "Rewriting ${_OCT_CNF} (_DOMAIN etc.) ..."
-    _maybe_run sed -i "s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_OCT_CNF}"\'
+    _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_OCT_CNF}"\'
   fi
 }
 
@@ -361,6 +418,65 @@ _detect_aegir_db() {
 
   if [ -z "${_AEGIR_DB}" ]; then
     _die "Could not detect Aegir DB name from ${_HM_DRUSHRC}"
+  fi
+
+  # The drushrc the alias points at can be a fresh-install LEFTOVER whose DB
+  # no longer exists: on an xmass/xoct target the NEW-host-named panel dir
+  # survives by design (§2b guard), but its DB died with the replicated-in
+  # datadir — the LIVE hostmaster DB is the one in the OLD-host-named dir's
+  # drushrc. Never trust a drushrc whose schema is gone; re-derive from the
+  # other hostname variant before giving up. (Pre-B3 §5 silently no-op'd
+  # here — the mysqldump failure was swallowed and the DB simply kept the
+  # source hostname.)
+  if [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B \
+      -e "SHOW DATABASES LIKE '${_AEGIR_DB}'" 2>/dev/null)" ]; then
+    _alrt "DB '${_AEGIR_DB}' from ${_HM_DRUSHRC} does not exist — trying the other hostname variant"
+    _HM_SITE_ALT="${_HM_SITE_PATH//${_NEW_HOST}/${_OLD_HOST}}"
+    if [ "${_HM_SITE_ALT}" = "${_HM_SITE_PATH}" ]; then
+      _HM_SITE_ALT="${_HM_SITE_PATH//${_OLD_HOST}/${_NEW_HOST}}"
+    fi
+    _ALT_DB=""
+    if [ -f "${_HM_SITE_ALT}/drushrc.php" ]; then
+      _ALT_DB=$(grep "options\['db_name'\]" "${_HM_SITE_ALT}/drushrc.php" \
+        | head -1 \
+        | sed "s/.*=//; s/[' ,;]//g" \
+        | tr -d ' ')
+      _ALT_DB=${_ALT_DB//[^a-zA-Z0-9_]/}
+      if [ -n "${_ALT_DB}" ] \
+        && [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B \
+            -e "SHOW DATABASES LIKE '${_ALT_DB}'" 2>/dev/null)" ]; then
+        _ALT_DB=""
+      fi
+    fi
+    if [ -z "${_ALT_DB}" ]; then
+      # No variant drushrc on disk either (migration targets never receive
+      # the source's panel platform tree — only the DB replicates in). Probe
+      # the live schemas for the hostmaster DB that belongs to THIS aegir
+      # root: it is the one that has a server_master context AND whose
+      # platform publish paths live under the root. Refuse to guess when
+      # zero or several match.
+      local _CAND
+      for _CAND in $(mysql --defaults-file=/root/.my.cnf -N -B \
+          -e "SHOW DATABASES" 2>/dev/null \
+        | grep -vE "^(information_schema|performance_schema|mysql|sys)$"); do
+        if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B "${_CAND}" \
+            -e "SELECT name FROM hosting_context WHERE name='server_master' LIMIT 1" 2>/dev/null)" ] \
+          && [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B "${_CAND}" \
+            -e "SELECT publish_path FROM hosting_platform WHERE publish_path LIKE '${_AEGIR_ROOT}/%' LIMIT 1" 2>/dev/null)" ]; then
+          if [ -n "${_ALT_DB}" ]; then
+            _die "Multiple live hostmaster DBs match ${_AEGIR_ROOT} (${_ALT_DB}, ${_CAND}) — refusing to guess"
+          fi
+          _ALT_DB="${_CAND}"
+        fi
+      done
+      [ -n "${_ALT_DB}" ] \
+        && _info "Live hostmaster DB for ${_AEGIR_ROOT} found by schema probe: ${_ALT_DB}"
+    fi
+    if [ -n "${_ALT_DB}" ]; then
+      _AEGIR_DB="${_ALT_DB}"
+    else
+      _die "Neither '${_AEGIR_DB}' nor any live hostmaster DB for ${_AEGIR_ROOT} found — cannot locate the live Aegir DB"
+    fi
   fi
 
   _info "Detected Aegir database: ${_AEGIR_DB}"
@@ -416,7 +532,7 @@ _repair_serialized_variables() {
     return 0
   fi
 
-  _info "  Repairing ${_CNT} serialized variable value(s) via drush ..."
+  _info "  Repairing ${_CNT} serialized variable value(s) via php/mysqli ..."
   _PHP="${_BACKUP_DIR}/varfix_${_TS}.php"
   _VOUT="${_BACKUP_DIR}/varfix_${_TS}.log"
   {
@@ -450,26 +566,69 @@ function rah_replace($v, $old, $new, &$hadobj, $guard) {
   }
   return $v;
 }
+// Bootstrap-free DB access: `drush @hostmaster php-script` needs a working
+// hostmaster bootstrap, which an xmass target does not have at §5 time (its
+// panel settings still point at the pre-restore DB) — the pass then
+// silently no-ops and panel-FQDN variables survive the rename. Talk to the
+// live DB directly instead, over the same credentials the rest of §5 uses.
+$h = getenv('RAH_DB_HOST'); if ($h === FALSE || $h === '') { $h = 'localhost'; }
+$prt = getenv('RAH_DB_PORT'); if ($prt === FALSE || $prt === '') { $prt = '3306'; }
+$conn = @mysqli_connect($h, getenv('RAH_DB_USER'), getenv('RAH_DB_PASS'),
+  getenv('RAH_DB_NAME'), (int) $prt);
+if (!$conn) {
+  print "RAH-ERROR: cannot connect to database '" . getenv('RAH_DB_NAME') . "'\n";
+  exit(1);
+}
 $guard = (strpos($new, $old) !== FALSE);
 $fixed = 0;
 $objrows = array();
 $broken = array();
-$rows = db_query("SELECT name FROM {variable} WHERE value LIKE :pat",
-  array(':pat' => '%' . db_like($old) . '%'))->fetchCol();
-foreach ($rows as $name) {
-  $raw = db_query("SELECT value FROM {variable} WHERE name = :n",
-    array(':n' => $name))->fetchField();
+$esc = mysqli_real_escape_string($conn, $old);
+$res = mysqli_query($conn,
+  "SELECT name, value FROM variable WHERE value LIKE '%" . $esc . "%'");
+if (!$res) {
+  print "RAH-ERROR: variable query failed\n";
+  exit(1);
+}
+$stmt = mysqli_prepare($conn, "UPDATE variable SET value = ? WHERE name = ?");
+if (!$stmt) {
+  print "RAH-ERROR: update prepare failed\n";
+  exit(1);
+}
+while ($row = mysqli_fetch_assoc($res)) {
+  $name = $row['name'];
+  $raw = $row['value'];
   $val = @unserialize($raw);
   if ($val === FALSE && $raw !== serialize(FALSE)) {
     $broken[] = $name;
     continue;
   }
   $hadobj = FALSE;
-  variable_set($name, rah_replace($val, $old, $new, $hadobj, $guard));
+  $new_val = rah_replace($val, $old, $new, $hadobj, $guard);
   if ($hadobj) {
     $objrows[] = $name;
   }
-  $fixed++;
+  // Count and write only real changes: in a NEW-contains-OLD rename every
+  // NEW-carrying value matches the %OLD% candidate query forever, and an
+  // unconditional write would report converged rows as "fixed" on every
+  // re-run.
+  $new_raw = serialize($new_val);
+  if ($new_raw !== $raw) {
+    mysqli_stmt_bind_param($stmt, 'ss', $new_raw, $name);
+    if (!mysqli_stmt_execute($stmt)) {
+      print "RAH-ERROR: update failed for " . $name . "\n";
+      exit(1);
+    }
+    $fixed++;
+  }
+}
+if ($fixed > 0) {
+  // variable_set() would have invalidated the bootstrap variables cache;
+  // replicate that without a bootstrap (gated: cache layouts vary).
+  $ct = mysqli_query($conn, "SHOW TABLES LIKE 'cache_bootstrap'");
+  if ($ct && mysqli_num_rows($ct) > 0) {
+    mysqli_query($conn, "DELETE FROM cache_bootstrap WHERE cid = 'variables'");
+  }
 }
 print "RAH: variables re-serialized: " . $fixed . "\n";
 if (count($objrows)) {
@@ -483,7 +642,13 @@ PHPEOF
   } > "${_PHP}"
   chmod 644 "${_PHP}"
 
-  if _run_as_aegir "drush8 @hostmaster php-script ${_PHP}" > "${_VOUT}" 2>&1 \
+  local _MY_U _MY_W
+  _MY_U=$(grep -m1 "^user" /root/.my.cnf 2>/dev/null | cut -d= -f2- | tr -d " \"'")
+  _MY_W=$(grep -m1 "^password" /root/.my.cnf 2>/dev/null | cut -d= -f2- | tr -d " \"'")
+  if RAH_DB_HOST="localhost" RAH_DB_PORT="3306" \
+    RAH_DB_USER="${_MY_U:-root}" RAH_DB_PASS="${_MY_W}" \
+    RAH_DB_NAME="${_AEGIR_DB}" \
+    php "${_PHP}" > "${_VOUT}" 2>&1 \
     && grep -q '^RAH-DONE' "${_VOUT}"; then
     grep '^RAH: ' "${_VOUT}" | sed 's/^RAH: /  /'
     rm -f "${_PHP}" "${_VOUT}"
@@ -504,14 +669,12 @@ _rename_in_database() {
   if [ "${_DRY_RUN}" = "YES" ]; then
     _info "(dry-run) Would dump ${_AEGIR_DB} to ${_DUMP_ORIG} (backup only)"
     _info "(dry-run) Would run serialize-safe UPDATEs: '${_OLD_HOST}' -> '${_NEW_HOST}'"
-    _info "(dry-run) Would repair serialized variable values via drush php-script"
+    _info "(dry-run) Would repair serialized variable values via php/mysqli"
     return
   fi
 
   mkdir -p "${_BACKUP_DIR}"
-  # The php-script pass below runs as ${_AEGIR_USER} and must read its
-  # staged script from this root-created dir even under a strict root
-  # umask. Nothing here is secret from that user — the dumps are the
+  # Nothing here is secret from the account user — the dumps are the
   # account's own hostmaster DB.
   chmod 755 "${_BACKUP_DIR}"
 

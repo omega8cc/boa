@@ -1371,10 +1371,17 @@ _xmass_renameaegirhost_all() {
   _XMASS_RENAME_FAILED=""
   _info "Running renameaegirhost on target ${_tgt} for all Aegir roots (old FQDN: ${_src_fqdn}) ..."
 
-  # Aegir master first
-  if ssh root@"${_tgt}" \
+  # Aegir master first. The existence probe's own rc is only meaningful for
+  # 0 (present) and 1 (absent): 255 (and anything else) is an ssh-layer
+  # failure — an UNREACHABLE target at exactly this step must count as a
+  # failed root and park the cutover, not silently skip toward
+  # phase=complete with nothing renamed.
+  local _probe_rc
+  ssh root@"${_tgt}" \
     "[ -d '/var/aegir' ] && \
-     [ -f '/var/aegir/.drush/server_master.alias.drushrc.php' ]" 2>/dev/null; then
+     [ -f '/var/aegir/.drush/server_master.alias.drushrc.php' ]" 2>/dev/null
+  _probe_rc=$?
+  if [ "${_probe_rc}" -eq 0 ]; then
     _info "  Renaming /var/aegir on target ..."
     ssh root@"${_tgt}" "renameaegirhost --aegir-root /var/aegir --force-old ${_src_fqdn}"
     _rc=$?
@@ -1382,16 +1389,21 @@ _xmass_renameaegirhost_all() {
       _alrt "renameaegirhost /var/aegir returned rc=${_rc} on target"
       _XMASS_RENAME_FAILED="${_XMASS_RENAME_FAILED} /var/aegir"
     fi
-  else
+  elif [ "${_probe_rc}" -eq 1 ]; then
     _alrt "Skipping renameaegirhost for /var/aegir — not found on target"
+  else
+    _alrt "Cannot check /var/aegir on target (ssh rc=${_probe_rc})"
+    _XMASS_RENAME_FAILED="${_XMASS_RENAME_FAILED} /var/aegir"
   fi
 
-  # All Octopus accounts
+  # All Octopus accounts — same 0/1-vs-ssh-failure split as the master root
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    if ssh root@"${_tgt}" \
+    ssh root@"${_tgt}" \
       "[ -f '/data/disk/${_oct}/.drush/server_master.alias.drushrc.php' ]" \
-      2>/dev/null; then
+      2>/dev/null
+    _probe_rc=$?
+    if [ "${_probe_rc}" -eq 0 ]; then
       _info "  Renaming /data/disk/${_oct} on target ..."
       ssh root@"${_tgt}" "renameaegirhost --aegir-root /data/disk/${_oct} --force-old ${_src_fqdn}"
       _rc=$?
@@ -1399,8 +1411,11 @@ _xmass_renameaegirhost_all() {
         _alrt "renameaegirhost /data/disk/${_oct} returned rc=${_rc} on target"
         _XMASS_RENAME_FAILED="${_XMASS_RENAME_FAILED} /data/disk/${_oct}"
       fi
-    else
+    elif [ "${_probe_rc}" -eq 1 ]; then
       _alrt "Skipping renameaegirhost for ${_oct} — alias not found on target"
+    else
+      _alrt "Cannot check /data/disk/${_oct} on target (ssh rc=${_probe_rc})"
+      _XMASS_RENAME_FAILED="${_XMASS_RENAME_FAILED} /data/disk/${_oct}"
     fi
   done
 
