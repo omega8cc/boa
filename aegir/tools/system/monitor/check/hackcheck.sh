@@ -18,6 +18,10 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+# Stable month parsing regardless of the host locale — rsyslog writes English
+# %b month names, but date(1) follows the locale, so under a non-C locale the
+# classic-syslog recency comparator never matches and detection goes dead.
+export LC_ALL=C
 
 # -----------------------------------------------------------------------------
 # Configuration
@@ -112,6 +116,9 @@ _line_is_recent() {
 # Helpers
 # -----------------------------------------------------------------------------
 
+# Value-valid IPv4 octet: 0-255, no leading zeros
+readonly _IPV4_OCTET_RX="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+
 _LOCAL_IPS=()
 
 _load_local_ips() {
@@ -121,17 +128,70 @@ _load_local_ips() {
   done < <(ip -4 addr show | grep -oE 'inet ([0-9]{1,3}\.){3}[0-9]{1,3}' | awk '{print $2}')
 }
 
+# Escape dots so an IP can be used safely in a regex (dots are wildcards
+# there — 1.2.3.4 would otherwise match 112.3.4).
+_rx() {
+  local _s="${1}"
+  echo "${_s//./\\.}"
+}
+
 _is_ipv4() {
-  [[ "${1}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  local _ip="${1}"
+  # Log lines are attacker-controlled input: only a value-valid address
+  # (each octet 0-255, no leading zeros) outside the reserved ranges
+  # (0/8, 127/8 loopback, 224+ multicast) may ever reach csf.
+  [[ "${_ip}" =~ ^(${_IPV4_OCTET_RX}\.){3}${_IPV4_OCTET_RX}$ ]] || return 1
+  local _o1="${_ip%%.*}"
+  (( _o1 == 0 || _o1 == 127 || _o1 >= 224 )) && return 1
   local _local
   for _local in "${_LOCAL_IPS[@]}"; do
-    [[ "${1}" == "${_local}" ]] && return 1
+    [[ "${_ip}" == "${_local}" ]] && return 1
   done
   return 0
 }
 
+_ip_to_int() {
+  local _a _b _c _d
+  IFS=. read -r _a _b _c _d <<< "${1}"
+  echo $(( (_a << 24) + (_b << 16) + (_c << 8) + _d ))
+}
+
+# Return 0 if any CIDR block read from stdin covers the IP.
+_cidr_covers_ip() {
+  local _ip="${1}"
+  local _int; _int="$(_ip_to_int "${_ip}")"
+  local _entry _net _pfx _mask
+  while IFS= read -r _entry; do
+    _net="${_entry%/*}"; _pfx="${_entry#*/}"
+    [[ "${_pfx}" =~ ^[0-9]+$ ]] || continue
+    (( _pfx >= 1 && _pfx <= 31 )) || continue
+    [[ "${_net}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || continue
+    _mask=$(( (0xFFFFFFFF << (32 - _pfx)) & 0xFFFFFFFF ))
+    if (( ( _int & _mask ) == ( $(_ip_to_int "${_net}") & _mask ) )); then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Membership test against a CSF state file, honouring every entry form CSF
+# accepts: plain first-field IP, IP/32, advanced syntax (tcp|in|d=22|s=IP),
+# and covering CIDR blocks. A bare substring grep silently matched unrelated
+# entries (1.2.3.4 inside 91.2.3.45) and missed nothing but matched too much.
+_csf_file_matches_ip() {
+  local _ip="${1}" _file="${2}"
+  local _ip_rx; _ip_rx="$(_rx "${_ip}")"
+  [[ -f "${_file}" ]] || return 1
+  grep -qE "(^|\|s=|\|d=)${_ip_rx}(/32)?([[:space:]#|]|$)" "${_file}" 2>/dev/null \
+    && return 0
+  cut -d'#' -f1 "${_file}" 2>/dev/null \
+    | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
+    | sort -u \
+    | _cidr_covers_ip "${_ip}"
+}
+
 _already_logged() {
-  [[ -f "${_SSH_LOG}" ]] && grep -qE "^${1} #" "${_SSH_LOG}"
+  [[ -f "${_SSH_LOG}" ]] && grep -qE "^$(_rx "${1}") #" "${_SSH_LOG}"
 }
 
 _csf_ban() {
@@ -143,8 +203,8 @@ _csf_ban() {
   # Never ban an IP that is explicitly allowed or ignored in CSF — these are
   # trusted addresses (admin IPs, monitoring services, etc.) and must not be
   # blocked even if a pattern match fires (e.g. Timeout after a valid session).
-  grep -qF "${_ip}" /etc/csf/csf.allow  2>/dev/null && return 0
-  grep -qF "${_ip}" /etc/csf/csf.ignore 2>/dev/null && return 0
+  _csf_file_matches_ip "${_ip}" /etc/csf/csf.allow  && return 0
+  _csf_file_matches_ip "${_ip}" /etc/csf/csf.ignore && return 0
   "${_CSF}" -td "${_ip}" "${_BAN_SECONDS}" -p 22 &>/dev/null
 }
 
@@ -189,11 +249,24 @@ _makeactions() {
   # Without this, a Timeout/disconnect event minutes after a valid login would
   # not see the earlier Accepted line and would wrongly ban the trusted IP.
   declare -A _accepted=()
+  # Anchor the match to a genuine sshd "Accepted <method> for <user> from <ip>"
+  # line, not a bare "Accepted " substring. Otherwise an attacker who probes
+  # with the username "Accepted" produces "Invalid user Accepted from <ip>",
+  # whose <ip> would be added to _accepted[] and permanently exempt that
+  # attacker from every detection branch (a full IDS bypass). The sed strips
+  # the syslog header up to and including the first program tag ("...sshd[pid]: "
+  # / "...sshd-session[pid]: "), which is written by sshd/syslog and never by
+  # the client; the ^Accepted anchor then cannot be satisfied by any
+  # attacker-controlled username text, which can only ever appear AFTER a fixed
+  # "Invalid user "/"Failed password for " prefix.
   while IFS= read -r _acc_line; do
     local _acc_ip
     _acc_ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_acc_line}" | tail -1)
     _is_ipv4 "${_acc_ip}" && _accepted["${_acc_ip}"]=1
-  done < <(grep -F "Accepted " "${_AUTH_LOG}" 2>/dev/null | tail -n "${_AUTH_LOG_BASELINE}")
+  done < <(grep -F "Accepted " "${_AUTH_LOG}" 2>/dev/null \
+    | sed -E 's/^[^]]*\]: //' \
+    | grep -E '^Accepted ' \
+    | tail -n "${_AUTH_LOG_BASELINE}")
 
   # -------------------------------------------------------------------------
   # Byte-offset tracking — read only new lines since the last run.
@@ -221,8 +294,10 @@ _makeactions() {
   fi
 
   while IFS= read -r _line <&3; do
-    # Sanitise — strip chars outside the safe set (mirrors Perl regex)
-    _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-]/}"
+    # Sanitise — keep only safe characters. In a bracket expression ']' must
+    # come first and '-' last to be literal; the previous form closed the
+    # class early and stripped nothing.
+    _line="${_line//[^]a-zA-Z0-9: 	\/@_()*[.,-]/}"
 
     local _ip=""
 
