@@ -101,7 +101,7 @@ or removed outside Ægir), or the site's directory turns up on another
 platform of the same account (an interrupted migrate), the event is
 platform-level — the data may be intact — so nothing is moved and the finding
 is logged for operator review instead. Only a true per-site ghost (platform
-healthy, site directory nowhere) is ever reaped. Because the
+directory present, site directory nowhere) is ever reaped. Because the
 consecutive-night counters keep counting while a reaper is in dry-run,
 turning `_GHOST_SITES_CLEANUP` on does not act immediately either: the first
 enabled run per account only arms the reaper (logged, nothing moved), so

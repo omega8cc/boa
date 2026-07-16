@@ -18,7 +18,13 @@
 ###   §2  Detect new hostname from system FQDN (hostname -f)
 ###   §3  Rewrite all Drush alias files in <aegir-root>/.drush/
 ###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/
-###   §5  Dump Aegir DB → sed replace → re-import
+###   §5  Rename the hostname inside the Aegir DB with serialize-safe, targeted
+###       statements: identity rows keyed by hosting_context nid, REPLACE()
+###       sweeps over plain-varchar columns, and an unserialize/replace/
+###       re-serialize pass over the variable table. Never a blanket dump+sed:
+###       that corrupts PHP-serialized byte lengths when the FQDN length
+###       changes, and (with --hex-blob) never reached blob values anyway.
+###       A plain dump is still taken first, as a backup only.
 ###   §6  Reload nginx
 ###   §7  Flush Drush cache and run Aegir task queue (5 passes) to regenerate
 ###       all aliases, vhosts, and db-host entries from the updated database.
@@ -145,7 +151,11 @@ _check_root() {
 
 _detect_old_hostname() {
   if [ -n "${_FORCE_OLD}" ]; then
-    _OLD_HOST="${_FORCE_OLD}"
+    # Same charset guard as auto-detection — the value feeds sed and SQL
+    _OLD_HOST="${_FORCE_OLD//[^a-zA-Z0-9.\-]/}"
+    if [ -z "${_OLD_HOST}" ]; then
+      _die "--force-old value '${_FORCE_OLD}' is not a usable hostname"
+    fi
     _info "Old hostname forced via --force-old: ${_OLD_HOST}"
     return
   fi
@@ -170,6 +180,8 @@ _detect_old_hostname() {
 
 _detect_new_hostname() {
   _NEW_HOST=$(hostname -f 2>/dev/null | tr -d '\n')
+  # Same charset guard as §1 — the value feeds sed and SQL
+  _NEW_HOST=${_NEW_HOST//[^a-zA-Z0-9.\-]/}
 
   if [ -z "${_NEW_HOST}" ]; then
     _die "Could not determine system FQDN via hostname -f"
@@ -354,23 +366,157 @@ _detect_aegir_db() {
   _info "Detected Aegir database: ${_AEGIR_DB}"
 }
 
+_sql() {
+  # Batch/silent query against the Aegir DB; -N drops headers so callers can
+  # capture single values.
+  mysql --defaults-file=/root/.my.cnf -N -B "${_AEGIR_DB}" -e "$1"
+}
+
+_sql_table_exists() {
+  # Hostmaster on Backdrop lacks some D7 tables (e.g. variable), so every §5
+  # step is existence-gated: one schema must never break the other.
+  [ -n "$(_sql "SHOW TABLES LIKE '$1'")" ]
+}
+
+_sql_replace_col() {
+  # REPLACE() sweep over one plain-varchar column. Never point this at
+  # serialized/blob storage — that is what the variable pass below is for.
+  # When NEW contains OLD (a subdomain-augmenting rename), a REPLACE applied
+  # to an already-renamed value doubles it (sub.example.com ->
+  # sub.sub.example.com — the nid-keyed identity rows and any forced re-run
+  # would hit this), so such rows are skipped; single-domain columns never
+  # legitimately hold both values.
+  local _T="$1" _C="$2" _N _G=""
+  _sql_table_exists "${_T}" || return 0
+  case "${_NEW_HOST}" in
+    *"${_OLD_HOST}"*) _G=" AND ${_C} NOT LIKE '%${_NEW_HOST}%'" ;;
+  esac
+  _N=$(_sql "SELECT COUNT(*) FROM ${_T} WHERE ${_C} LIKE '%${_OLD_HOST}%'${_G}")
+  if [ "${_N:-0}" -gt 0 ]; then
+    _sql "UPDATE ${_T} SET ${_C} = REPLACE(${_C}, '${_OLD_HOST}', '${_NEW_HOST}') WHERE ${_C} LIKE '%${_OLD_HOST}%'${_G}"
+    _info "  ${_T}.${_C}: ${_N} row(s) renamed"
+  fi
+}
+
+_repair_serialized_variables() {
+  # D7 stores every variable PHP-serialized in a blob column. A text-level
+  # replacement either corrupts the declared s:N:"..." byte lengths (value
+  # silently unserializes to FALSE) or, in a --hex-blob dump, never reaches
+  # the value at all. unserialize -> str_replace -> variable_set() instead:
+  # correct lengths by construction and the variable cache stays coherent.
+  _sql_table_exists variable || {
+    _info "  variable table absent (Backdrop hostmaster?) — serialized pass skipped"
+    return 0
+  }
+
+  local _CNT _PHP _VOUT
+  _CNT=$(_sql "SELECT COUNT(*) FROM variable WHERE value LIKE '%${_OLD_HOST}%'")
+  if [ "${_CNT:-0}" -eq 0 ]; then
+    _info "  variable table: no values reference ${_OLD_HOST}"
+    return 0
+  fi
+
+  _info "  Repairing ${_CNT} serialized variable value(s) via drush ..."
+  _PHP="${_BACKUP_DIR}/varfix_${_TS}.php"
+  _VOUT="${_BACKUP_DIR}/varfix_${_TS}.log"
+  {
+    printf '<?php\n$old = '\''%s'\'';\n$new = '\''%s'\'';\n' "${_OLD_HOST}" "${_NEW_HOST}"
+    cat <<'PHPEOF'
+// When $new contains $old (subdomain-augmenting rename), re-applying the
+// replace to an already-renamed string would double it — skip strings
+// already carrying $new in that case (mirrors the SQL sweep guard).
+function rah_replace($v, $old, $new, &$hadobj, $guard) {
+  if (is_string($v)) {
+    if ($guard && strpos($v, $new) !== FALSE) {
+      return $v;
+    }
+    return str_replace($old, $new, $v);
+  }
+  if (is_array($v)) {
+    $out = array();
+    foreach ($v as $k => $item) {
+      if (is_string($k) && !($guard && strpos($k, $new) !== FALSE)) {
+        $k = str_replace($old, $new, $k);
+      }
+      $out[$k] = rah_replace($item, $old, $new, $hadobj, $guard);
+    }
+    return $out;
+  }
+  if (is_object($v)) {
+    // Leave objects untouched: re-building an arbitrary (possibly
+    // incomplete) class instance is riskier than a reported residual.
+    $hadobj = TRUE;
+    return $v;
+  }
+  return $v;
+}
+$guard = (strpos($new, $old) !== FALSE);
+$fixed = 0;
+$objrows = array();
+$broken = array();
+$rows = db_query("SELECT name FROM {variable} WHERE value LIKE :pat",
+  array(':pat' => '%' . db_like($old) . '%'))->fetchCol();
+foreach ($rows as $name) {
+  $raw = db_query("SELECT value FROM {variable} WHERE name = :n",
+    array(':n' => $name))->fetchField();
+  $val = @unserialize($raw);
+  if ($val === FALSE && $raw !== serialize(FALSE)) {
+    $broken[] = $name;
+    continue;
+  }
+  $hadobj = FALSE;
+  variable_set($name, rah_replace($val, $old, $new, $hadobj, $guard));
+  if ($hadobj) {
+    $objrows[] = $name;
+  }
+  $fixed++;
+}
+print "RAH: variables re-serialized: " . $fixed . "\n";
+if (count($objrows)) {
+  print "RAH: object values left untouched in: " . implode(', ', $objrows) . "\n";
+}
+if (count($broken)) {
+  print "RAH: unserialize already failing (left as-is): " . implode(', ', $broken) . "\n";
+}
+print "RAH-DONE\n";
+PHPEOF
+  } > "${_PHP}"
+  chmod 644 "${_PHP}"
+
+  if _run_as_aegir "drush8 @hostmaster php-script ${_PHP}" > "${_VOUT}" 2>&1 \
+    && grep -q '^RAH-DONE' "${_VOUT}"; then
+    grep '^RAH: ' "${_VOUT}" | sed 's/^RAH: /  /'
+    rm -f "${_PHP}" "${_VOUT}"
+  else
+    _alrt "serialized variable repair did not confirm — last 15 lines:"
+    tail -n 15 "${_VOUT}"
+    _alrt "full output kept: ${_VOUT}; script kept: ${_PHP}"
+  fi
+  return 0
+}
+
 _rename_in_database() {
   _info "§5 Renaming hostname in Aegir database (${_AEGIR_DB}) ..."
 
   _TS=$(date +%Y%m%d_%H%M%S)
   _DUMP_ORIG="${_BACKUP_DIR}/aegirdb_${_TS}_orig.sql"
-  _DUMP_PATCHED="${_BACKUP_DIR}/aegirdb_${_TS}_patched.sql"
 
   if [ "${_DRY_RUN}" = "YES" ]; then
-    _info "(dry-run) Would dump ${_AEGIR_DB} to ${_DUMP_ORIG}"
-    _info "(dry-run) Would sed s/${_OLD_HOST}/${_NEW_HOST}/g -> ${_DUMP_PATCHED}"
-    _info "(dry-run) Would re-import ${_DUMP_PATCHED} into ${_AEGIR_DB}"
+    _info "(dry-run) Would dump ${_AEGIR_DB} to ${_DUMP_ORIG} (backup only)"
+    _info "(dry-run) Would run serialize-safe UPDATEs: '${_OLD_HOST}' -> '${_NEW_HOST}'"
+    _info "(dry-run) Would repair serialized variable values via drush php-script"
     return
   fi
 
   mkdir -p "${_BACKUP_DIR}"
+  # The php-script pass below runs as ${_AEGIR_USER} and must read its
+  # staged script from this root-created dir even under a strict root
+  # umask. Nothing here is secret from that user — the dumps are the
+  # account's own hostmaster DB.
+  chmod 755 "${_BACKUP_DIR}"
 
-  _info "  Dumping ${_AEGIR_DB} ..."
+  # Backup only — never sed-patched, never re-imported
+  _info "  Dumping ${_AEGIR_DB} (pre-rename backup) ..."
   mysqldump \
     --defaults-file=/root/.my.cnf \
     --single-transaction \
@@ -386,27 +532,69 @@ _rename_in_database() {
     _die "mysqldump produced an empty file: ${_DUMP_ORIG}"
   fi
 
-  _info "  Dump size: $(du -sh "${_DUMP_ORIG}" | cut -f1)"
+  _info "  Backup size: $(du -sh "${_DUMP_ORIG}" | cut -f1), kept in ${_BACKUP_DIR}"
 
-  _info "  Applying sed replacement ..."
-  # Use | as sed delimiter to avoid colliding with dots in FQDNs
-  sed "s|${_OLD_HOST}|${_NEW_HOST}|g" "${_DUMP_ORIG}" > "${_DUMP_PATCHED}"
-
-  _CHANGED=$(diff "${_DUMP_ORIG}" "${_DUMP_PATCHED}" | grep -c "^[<>]" || true)
-  _info "  Lines changed in dump: ${_CHANGED}"
-
-  if [ "${_CHANGED}" -eq 0 ]; then
-    _info "  No occurrences of '${_OLD_HOST}' found in DB dump — skipping re-import"
-    return
+  # Identity rows first, keyed by hosting_context nid (aegir2boa-stage2
+  # pattern): server verifies regenerate remote_host FROM the server node
+  # title, so it must become the new FQDN even when the stored title is not
+  # the exact string the sweeps below key on (e.g. a short nodename).
+  local _SRV_NID _HM_NID
+  _SRV_NID=$(_sql "SELECT nid FROM hosting_context WHERE name = 'server_master'")
+  _HM_NID=$(_sql "SELECT nid FROM hosting_context WHERE name = 'hostmaster'")
+  _SRV_NID=${_SRV_NID//[^0-9]/}
+  _HM_NID=${_HM_NID//[^0-9]/}
+  if [ -z "${_SRV_NID}" ] || [ -z "${_HM_NID}" ]; then
+    _die "hosting_context misses server_master/hostmaster — ${_AEGIR_DB} is not an Aegir hostmaster DB?"
   fi
+  # The hostmaster REPLACE carries the same already-renamed guard as
+  # _sql_replace_col: on a forced re-run with NEW containing OLD it would
+  # otherwise double the title. The server_master SET is idempotent as-is.
+  local _HMG=""
+  case "${_NEW_HOST}" in
+    *"${_OLD_HOST}"*) _HMG=" AND title NOT LIKE '%${_NEW_HOST}%'" ;;
+  esac
+  _sql "UPDATE node SET title = '${_NEW_HOST}' WHERE nid = ${_SRV_NID}"
+  _sql "UPDATE node_revision SET title = '${_NEW_HOST}' WHERE nid = ${_SRV_NID}"
+  _sql "UPDATE node SET title = REPLACE(title, '${_OLD_HOST}', '${_NEW_HOST}') WHERE nid = ${_HM_NID}${_HMG}"
+  _sql "UPDATE node_revision SET title = REPLACE(title, '${_OLD_HOST}', '${_NEW_HOST}') WHERE nid = ${_HM_NID}${_HMG}"
+  _info "  Identity rows updated (server_master nid ${_SRV_NID}, hostmaster nid ${_HM_NID})"
 
-  _info "  Re-importing patched dump into ${_AEGIR_DB} ..."
-  mysql \
-    --defaults-file=/root/.my.cnf \
-    "${_AEGIR_DB}" \
-    < "${_DUMP_PATCHED}"
+  # Plain-varchar sweeps: REPLACE() cannot corrupt these columns, and they
+  # cover panel contexts plus sites/aliases living on subdomains of the
+  # renamed FQDN — the same scope the old blanket sed renamed here.
+  _sql_replace_col hosting_context name
+  _sql_replace_col node title
+  _sql_replace_col node_revision title
+  _sql_replace_col hosting_platform publish_path
+  _sql_replace_col hosting_site_alias alias
+  _sql_replace_col hosting_site_alias redirection
+  _sql_replace_col users mail
+  _sql_replace_col users init
 
-  _info "  DB rename complete. Originals kept in ${_BACKUP_DIR}"
+  _repair_serialized_variables
+
+  # Drop the caches wholesale: cache blobs carried over from the old
+  # hostname keep it inside serialized (often hex-dumped) values that no
+  # safe rewrite should chase — everything in them regenerates.
+  _run_as_aegir "drush8 @hostmaster cc all" > /dev/null 2>&1 \
+    || _alrt "drush cc all returned non-zero after the DB rename"
+
+  # Honest residual report — task history keeps old-host rows by design.
+  # Same already-renamed guard as the sweeps, so a NEW-contains-OLD rename
+  # does not count every renamed value as residual forever.
+  local _RES_VAR="n/a" _RES_TASKS="n/a" _RG=""
+  case "${_NEW_HOST}" in
+    *"${_OLD_HOST}"*) _RG=" AND value NOT LIKE '%${_NEW_HOST}%'" ;;
+  esac
+  if _sql_table_exists variable; then
+    _RES_VAR=$(_sql "SELECT COUNT(*) FROM variable WHERE value LIKE '%${_OLD_HOST}%'${_RG}")
+  fi
+  if _sql_table_exists hosting_task_arguments; then
+    _RES_TASKS=$(_sql "SELECT COUNT(*) FROM hosting_task_arguments WHERE value LIKE '%${_OLD_HOST}%'${_RG}")
+  fi
+  _info "  Residual '${_OLD_HOST}' refs: variable=${_RES_VAR} task-history=${_RES_TASKS}"
+
+  _info "  DB rename complete. Pre-rename backup kept in ${_BACKUP_DIR}"
 }
 
 ###-------------§6 RELOAD NGINX----------###
@@ -475,8 +663,19 @@ _verify_hostmaster() {
     return
   fi
 
-  _run_as_aegir "drush8 @hostmaster provision-verify > /dev/null 2>&1" \
-    || _alrt "hostmaster provision-verify returned non-zero"
+  # Capture the verify output: during a migration cutover this is the step
+  # most likely to hiccup, and a bare ALRT with the detail thrown away left
+  # nothing to debug with.
+  local _VLOG
+  _VLOG="${_BACKUP_DIR}/hm_verify_$(date +%Y%m%d_%H%M%S).log"
+  mkdir -p "${_BACKUP_DIR}"
+  if _run_as_aegir "drush8 @hostmaster provision-verify" > "${_VLOG}" 2>&1; then
+    rm -f "${_VLOG}"
+  else
+    _alrt "hostmaster provision-verify returned non-zero — last 15 lines:"
+    tail -n 15 "${_VLOG}"
+    _alrt "full output kept: ${_VLOG}"
+  fi
 
   _info "§8 Hostmaster site verify complete"
 }
