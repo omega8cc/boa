@@ -30,6 +30,75 @@ _emit_valid_ips() {
   done
 }
 
+# Escape dots so an IP can be used safely in a regex (dots are wildcards
+# there — 1.2.3.4 would otherwise match 112.3.4).
+_rx() {
+  local _s="${1}"
+  echo "${_s//./\\.}"
+}
+
+# Strict IPv4 for ban/promotion candidates: the archive logs are
+# attacker-adjacent input, so only a value-valid address outside the
+# reserved ranges (0/8, 127/8 loopback, 224+ multicast) may ever steer
+# a csf -d at an address.
+_is_ipv4_strict() {
+  local _ip="${1}"
+  [[ "${_ip}" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}$ ]] || return 1
+  local _o1="${_ip%%.*}"
+  (( _o1 == 0 || _o1 == 127 || _o1 >= 224 )) && return 1
+  return 0
+}
+
+_ip_to_int() {
+  local _a _b _c _d
+  IFS=. read -r _a _b _c _d <<< "${1}"
+  echo $(( (_a << 24) + (_b << 16) + (_c << 8) + _d ))
+}
+
+# Return 0 if any CIDR block read from stdin covers the IP.
+_cidr_covers_ip() {
+  local _ip="${1}"
+  local _int; _int="$(_ip_to_int "${_ip}")"
+  local _entry _net _pfx _mask
+  while IFS= read -r _entry; do
+    _net="${_entry%/*}"; _pfx="${_entry#*/}"
+    [[ "${_pfx}" =~ ^[0-9]+$ ]] || continue
+    (( _pfx >= 1 && _pfx <= 31 )) || continue
+    [[ "${_net}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || continue
+    _mask=$(( (0xFFFFFFFF << (32 - _pfx)) & 0xFFFFFFFF ))
+    if (( ( _int & _mask ) == ( $(_ip_to_int "${_net}") & _mask ) )); then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Membership test against a CSF state file, honouring every entry form CSF
+# accepts: plain first-field IP, IP/32, advanced syntax (s=/d=), and covering
+# CIDR blocks anywhere in an entry — the same set the per-IP `csf -g` fork
+# it replaces used to detect, tested in-shell instead.
+_csf_file_matches_ip() {
+  local _ip="${1}" _file="${2}"
+  local _ip_rx; _ip_rx="$(_rx "${_ip}")"
+  [[ -f "${_file}" ]] || return 1
+  grep -qE "(^|\|s=|\|d=)${_ip_rx}(/32)?([[:space:]#|]|$)" "${_file}" 2>/dev/null \
+    && return 0
+  cut -d'#' -f1 "${_file}" 2>/dev/null \
+    | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
+    | sort -u \
+    | _cidr_covers_ip "${_ip}"
+}
+
+# Return 0 if the IP has an active temp allow (any port).
+# /var/lib/csf/csf.tempallow line format: epoch|ip|port|direction|ttl|comment
+_is_temp_allowed() {
+  local _ip="${1}"
+  [[ -f "/var/lib/csf/csf.tempallow" ]] || return 1
+  awk -F'|' -v ip="${_ip}" \
+    '$2 == ip { _found=1; exit } END { exit !_found }' \
+    /var/lib/csf/csf.tempallow 2>/dev/null
+}
+
 _whitelist_ip_pingdom() {
   # Pingdom provides probe IPs in multiple formats:
   #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
@@ -590,17 +659,19 @@ _guard_stats() {
     mv -f ${_FA} ${_FX}
   fi
   if [ -e "${_HA}" ]; then
+    _FW_MUTATED=
     for _IP in `cat ${_HA} | cut -d '#' -f1 | sort | uniq`; do
       _IP_RV=
       _NR_TEST="0"
-      _NR_TEST=$(tr -s ' ' '\n' < ${_HA} | grep -cF "${_IP}" 2>&1)
+      if ! _is_ipv4_strict "${_IP}"; then
+        echo "${_IP} is not a valid public IPv4 address, ignoring ${_HA}"
+        continue
+      fi
+      ### Field-exact count — a substring grep let 1.2.3.4 also count the
+      ### lines belonging to 91.2.3.45 and promote on inflated numbers.
+      _NR_TEST=$(awk -v ip="${_IP}" '$1 == ip { _n++ } END { print _n + 0 }' ${_HA} 2>/dev/null)
       if [ -e "/root/.local.IP.list" ]; then
-        _IP_CHECK=$(cat /root/.local.IP.list \
-          | cut -d '#' -f1 \
-          | sort \
-          | uniq \
-          | tr -d "\s" \
-          | grep -F "${_IP}" 2>&1)
+        _IP_CHECK=$(grep -E "^[[:space:]]*$(_rx "${_IP}")([[:space:]#]|$)" /root/.local.IP.list 2>/dev/null)
         if [ ! -z "${_IP_CHECK}" ]; then
           _NR_TEST="0"
           echo "${_IP} is a local IP address, ignoring ${_HA}"
@@ -609,23 +680,24 @@ _guard_stats() {
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 12 ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
-        _FF_TEST=
-        _FG_TEST=
         ### Permanent block means membership in csf.deny; csf -g cannot be
         ### used for that test because an active TEMP ban also prints DENY
         ### (DENYIN chain), which kept persistent attackers from ever being
-        ### promoted to a permanent block. csf -g still detects every allow
-        ### form (plain, advanced, CIDR, temp).
+        ### promoted to a permanent block. The allow side is tested in-shell
+        ### against csf.allow/csf.tempallow (plain, advanced, CIDR, temp) —
+        ### the same set the per-IP `csf -g` fork it replaces detected.
         _IP_ESC=$(printf '%s' "${_IP}" | sed 's/\./\\./g')
         _FW_TEST=$(grep -E "^${_IP_ESC}([ #]|$)" /etc/csf/csf.deny 2>/dev/null)
-        _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
-        _FG_TEST=$(csf -g ${_IP} 2>&1)
-        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [ ! -z "${_FW_TEST}" ] || [[ "${_FG_TEST}" =~ "ALLOW" ]]; then
-          echo "${_IP} already denied or allowed on port 22"
-          if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
-            csf -dr ${_IP}
-            csf -tr ${_IP}
-          fi
+        if _csf_file_matches_ip "${_IP}" /etc/csf/csf.allow; then
+          echo "${_IP} already allowed on port 22, cleaning up blocks"
+          csf -dr ${_IP}
+          csf -tr ${_IP}
+          _FW_MUTATED=YES
+        elif _is_temp_allowed "${_IP}"; then
+          ### Never csf -tr here — that would remove the temp allow itself.
+          echo "${_IP} is temporarily allowed on port 22"
+        elif [ ! -z "${_FW_TEST}" ]; then
+          echo "${_IP} already denied on port 22"
         else
           _IP_RV=$(host -s ${_IP} 2>&1 | tr -d '\n' | tr -cd 'a-zA-Z0-9 ._-' | cut -c1-80)
           if [ "${_NR_TEST}" -ge 24 ]; then
@@ -635,23 +707,29 @@ _guard_stats() {
             echo "Deny ${_IP} until limits rotation ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} Brute force SSH Server ${_NR_TEST} attacks ${_IP_RV}
           fi
+          _FW_MUTATED=YES
         fi
       fi
-      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
+    ### One reassert per archive pass when the rules changed — not one per IP.
+    if [ "${_FW_MUTATED}" = "YES" ] && [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+      synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+    fi
   fi
   if [ -e "${_WA}" ]; then
+    _FW_MUTATED=
     for _IP in `cat ${_WA} | cut -d '#' -f1 | sort | uniq`; do
       _IP_RV=
       _NR_TEST="0"
-      _NR_TEST=$(tr -s ' ' '\n' < ${_WA} | grep -cF "${_IP}" 2>&1)
+      if ! _is_ipv4_strict "${_IP}"; then
+        echo "${_IP} is not a valid public IPv4 address, ignoring ${_WA}"
+        continue
+      fi
+      ### Field-exact count — a substring grep let 1.2.3.4 also count the
+      ### lines belonging to 91.2.3.45 and promote on inflated numbers.
+      _NR_TEST=$(awk -v ip="${_IP}" '$1 == ip { _n++ } END { print _n + 0 }' ${_WA} 2>/dev/null)
       if [ -e "/root/.local.IP.list" ]; then
-        _IP_CHECK=$(cat /root/.local.IP.list \
-          | cut -d '#' -f1 \
-          | sort \
-          | uniq \
-          | tr -d "\s" \
-          | grep -F "${_IP}" 2>&1)
+        _IP_CHECK=$(grep -E "^[[:space:]]*$(_rx "${_IP}")([[:space:]#]|$)" /root/.local.IP.list 2>/dev/null)
         if [ ! -z "${_IP_CHECK}" ]; then
           _NR_TEST="0"
           echo "${_IP} is a local IP address, ignoring ${_WA}"
@@ -660,23 +738,24 @@ _guard_stats() {
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 12 ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
-        _FF_TEST=
-        _FG_TEST=
         ### Permanent block means membership in csf.deny; csf -g cannot be
         ### used for that test because an active TEMP ban also prints DENY
         ### (DENYIN chain), which kept persistent attackers from ever being
-        ### promoted to a permanent block. csf -g still detects every allow
-        ### form (plain, advanced, CIDR, temp).
+        ### promoted to a permanent block. The allow side is tested in-shell
+        ### against csf.allow/csf.tempallow (plain, advanced, CIDR, temp) —
+        ### the same set the per-IP `csf -g` fork it replaces detected.
         _IP_ESC=$(printf '%s' "${_IP}" | sed 's/\./\\./g')
         _FW_TEST=$(grep -E "^${_IP_ESC}([ #]|$)" /etc/csf/csf.deny 2>/dev/null)
-        _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
-        _FG_TEST=$(csf -g ${_IP} 2>&1)
-        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [ ! -z "${_FW_TEST}" ] || [[ "${_FG_TEST}" =~ "ALLOW" ]]; then
-          echo "${_IP} already denied or allowed on port 80"
-          if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
-            csf -dr ${_IP}
-            csf -tr ${_IP}
-          fi
+        if _csf_file_matches_ip "${_IP}" /etc/csf/csf.allow; then
+          echo "${_IP} already allowed on port 80, cleaning up blocks"
+          csf -dr ${_IP}
+          csf -tr ${_IP}
+          _FW_MUTATED=YES
+        elif _is_temp_allowed "${_IP}"; then
+          ### Never csf -tr here — that would remove the temp allow itself.
+          echo "${_IP} is temporarily allowed on port 80"
+        elif [ ! -z "${_FW_TEST}" ]; then
+          echo "${_IP} already denied on port 80"
         else
           _IP_RV=$(host -s ${_IP} 2>&1 | tr -d '\n' | tr -cd 'a-zA-Z0-9 ._-' | cut -c1-80)
           if [ "${_NR_TEST}" -ge 24 ]; then
@@ -686,23 +765,29 @@ _guard_stats() {
             echo "Deny ${_IP} until limits rotation ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} Brute force Web Server ${_NR_TEST} attacks ${_IP_RV}
           fi
+          _FW_MUTATED=YES
         fi
       fi
-      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
+    ### One reassert per archive pass when the rules changed — not one per IP.
+    if [ "${_FW_MUTATED}" = "YES" ] && [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+      synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+    fi
   fi
   if [ -e "${_FA}" ]; then
+    _FW_MUTATED=
     for _IP in `cat ${_FA} | cut -d '#' -f1 | sort | uniq`; do
       _IP_RV=
       _NR_TEST="0"
-      _NR_TEST=$(tr -s ' ' '\n' < ${_FA} | grep -cF "${_IP}" 2>&1)
+      if ! _is_ipv4_strict "${_IP}"; then
+        echo "${_IP} is not a valid public IPv4 address, ignoring ${_FA}"
+        continue
+      fi
+      ### Field-exact count — a substring grep let 1.2.3.4 also count the
+      ### lines belonging to 91.2.3.45 and promote on inflated numbers.
+      _NR_TEST=$(awk -v ip="${_IP}" '$1 == ip { _n++ } END { print _n + 0 }' ${_FA} 2>/dev/null)
       if [ -e "/root/.local.IP.list" ]; then
-        _IP_CHECK=$(cat /root/.local.IP.list \
-          | cut -d '#' -f1 \
-          | sort \
-          | uniq \
-          | tr -d "\s" \
-          | grep -F "${_IP}" 2>&1)
+        _IP_CHECK=$(grep -E "^[[:space:]]*$(_rx "${_IP}")([[:space:]#]|$)" /root/.local.IP.list 2>/dev/null)
         if [ ! -z "${_IP_CHECK}" ]; then
           _NR_TEST="0"
           echo "${_IP} is a local IP address, ignoring ${_FA}"
@@ -711,23 +796,24 @@ _guard_stats() {
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 12 ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
-        _FF_TEST=
-        _FG_TEST=
         ### Permanent block means membership in csf.deny; csf -g cannot be
         ### used for that test because an active TEMP ban also prints DENY
         ### (DENYIN chain), which kept persistent attackers from ever being
-        ### promoted to a permanent block. csf -g still detects every allow
-        ### form (plain, advanced, CIDR, temp).
+        ### promoted to a permanent block. The allow side is tested in-shell
+        ### against csf.allow/csf.tempallow (plain, advanced, CIDR, temp) —
+        ### the same set the per-IP `csf -g` fork it replaces detected.
         _IP_ESC=$(printf '%s' "${_IP}" | sed 's/\./\\./g')
         _FW_TEST=$(grep -E "^${_IP_ESC}([ #]|$)" /etc/csf/csf.deny 2>/dev/null)
-        _FF_TEST=$(grep -F "=${_IP} " /etc/csf/csf.allow 2>&1)
-        _FG_TEST=$(csf -g ${_IP} 2>&1)
-        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [ ! -z "${_FW_TEST}" ] || [[ "${_FG_TEST}" =~ "ALLOW" ]]; then
-          echo "${_IP} already denied or allowed on port 21"
-          if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
-            csf -dr ${_IP}
-            csf -tr ${_IP}
-          fi
+        if _csf_file_matches_ip "${_IP}" /etc/csf/csf.allow; then
+          echo "${_IP} already allowed on port 21, cleaning up blocks"
+          csf -dr ${_IP}
+          csf -tr ${_IP}
+          _FW_MUTATED=YES
+        elif _is_temp_allowed "${_IP}"; then
+          ### Never csf -tr here — that would remove the temp allow itself.
+          echo "${_IP} is temporarily allowed on port 21"
+        elif [ ! -z "${_FW_TEST}" ]; then
+          echo "${_IP} already denied on port 21"
         else
           _IP_RV=$(host -s ${_IP} 2>&1 | tr -d '\n' | tr -cd 'a-zA-Z0-9 ._-' | cut -c1-80)
           if [ "${_NR_TEST}" -ge 24 ]; then
@@ -737,10 +823,14 @@ _guard_stats() {
             echo "Deny ${_IP} until limits rotation ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} Brute force FTP Server ${_NR_TEST} attacks ${_IP_RV}
           fi
+          _FW_MUTATED=YES
         fi
       fi
-      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
+    ### One reassert per archive pass when the rules changed — not one per IP.
+    if [ "${_FW_MUTATED}" = "YES" ] && [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+      synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+    fi
   fi
 }
 
