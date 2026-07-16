@@ -632,6 +632,9 @@ _explain_ghost_alias() {
   _explain_wrap "Fix        : " "${_EXP_GA_FIX}"
   _explain_log "    Removing the alias file by hand is NOT a fix: the alias is only provision's"
   _explain_log "    cache of the front-end database, and the next Verify task writes it back."
+  _explain_log "    Nightly maintenance can move the leftover alias and vhost aside once the"
+  _explain_log "    ghost is confirmed across runs (_GHOST_SITES_CLEANUP=YES) and notify the"
+  _explain_log "    account owner to remove the front-end record (_GHOST_CLIENT_NOTIFY=YES)."
   _explain_log "    History for this name: symlinkinfo ${_EXP_GA_SITE}"
 }
 

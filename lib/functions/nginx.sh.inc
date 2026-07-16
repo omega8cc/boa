@@ -268,6 +268,151 @@ _nginx_clean_legacy_config() {
 
 #
 # Install or upgrade Nginx.
+#
+# Try the prebuilt boa-nginx .deb for the pinned version; fall back to
+# sources on any failure. Published for the default build shape only: any
+# box with a non-default module set (extra conf, headers-more, LDAP, NAXSI,
+# purge) is refused up front and keeps the source path -- the phase-1
+# _PHP_EXTRA_CONF refusal pattern -- because installing a default-shape
+# binary over a working custom one and then failing the health check would
+# leave a module-less nginx in place mid-run. The deb overlays the binary
+# the distro nginx package owns on fresh boxes (Replaces: in the package
+# control), while the distro package itself stays installed, pinned and
+# held -- it keeps providing the config/init/user structure. nginx links
+# its OpenSSL statically, so no loader sync is needed before the probe;
+# the expected OpenSSL token is resolved here the same way the source
+# build resolves it, so a marker-less box expects the version it would
+# have built rather than the one the builder baked.
+_install_nginx_deb() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_nginx_deb"
+  fi
+  _NGINX_DEB_INSTALLED=NO
+  if [ -z "${_NGINX_VRN}" ]; then
+    return 1
+  fi
+  if [ ! -z "${_NGINX_EXTRA_CONF}" ] \
+    || [ "${_NGINX_HEADERS}" = "YES" ] \
+    || [ "${_NGINX_LDAP}" = "YES" ] \
+    || [ "${_NGINX_NAXSI}" = "YES" ] \
+    || [ "${_PURGE_MODE}" = "ON" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Custom Nginx build shape; skipping prebuilt boa-nginx"
+    fi
+    return 1
+  fi
+  # Read-only mirror of the source build's OpenSSL selection; the stretch
+  # marker cleanup stays in the source path only.
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "beowulf" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
+    || [ "${_OS_CODE}" = "bullseye" ] \
+    || [ "${_OS_CODE}" = "buster" ]; then
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+    fi
+  elif [ "${_OS_CODE}" = "stretch" ]; then
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+  else
+    _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+  fi
+  # Builders are modern-marker boxes by construction, so every published
+  # deb bakes the modern OpenSSL statically. A box that expects any other
+  # version could only install the deb, fail the token check and purge --
+  # leaving no binary until the source rebuild lands. Refuse up front
+  # instead; such boxes keep the source path untouched.
+  if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_MODERN_VRN}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Non-modern OpenSSL expected; skipping prebuilt boa-nginx"
+    fi
+    return 1
+  fi
+  # Snapshot the working binary: with Replaces: in play the deb takes
+  # ownership of /usr/sbin/nginx, so a purge on any failure below removes
+  # the file itself -- and the source rebuild that follows can fail
+  # silently (_mrun). The snapshot keeps the failure envelope identical
+  # to the source path's: a failed attempt leaves the previous working
+  # binary in place. The source branch's rm -rf nginx* sweeps any stray
+  # snapshot on its next run.
+  if [ -x "/usr/sbin/nginx" ]; then
+    cp -af /usr/sbin/nginx /var/opt/nginx-pre-deb
+  fi
+  # An attacker-set immutable flag would make dpkg's unpack fail silently.
+  chattr -i /usr/sbin/nginx &> /dev/null
+  if ! _install_boa_deb "boa-nginx" "${_NGINX_VRN}"; then
+    if [ ! -x "/usr/sbin/nginx" ] && [ -x "/var/opt/nginx-pre-deb" ]; then
+      cp -af /var/opt/nginx-pre-deb /usr/sbin/nginx
+    fi
+    rm -f /var/opt/nginx-pre-deb
+    return 1
+  fi
+  # dpkg unpacks the payload with the builder's hardened 0750 mode but
+  # archive ownership root:root, and AegirSetupM's provision probes
+  # `nginx -V` as the aegir user for feature detection inside the window
+  # before _strict_bin_permissions converts group root to users. An
+  # unexecutable binary silently degrades the generated server config to
+  # the ancient pre-1.1.8 shape (limit_zone), which the modern binary
+  # then refuses to load on the next start. Normalize to the canonical
+  # root:users shape immediately, matching the boa-php deb precedent.
+  chown root:users /usr/sbin/nginx &> /dev/null
+  chmod 750 /usr/sbin/nginx &> /dev/null
+  _NGINX_DEB_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
+    | cut -d"/" -f2 | awk '{ print $1}' 2>&1)
+  _NGINX_DEB_V_ITD=$(/usr/sbin/nginx -V 2>&1)
+  _NGINX_DEB_V_ITD="$(printf '%s' "${_NGINX_DEB_V_ITD}" | tr '\n\t' '  ')"
+  _NGINX_DEB_OK=YES
+  if [ ! -x "/usr/sbin/nginx" ] \
+    || [ "${_NGINX_DEB_F_ITD}" != "${_NGINX_VRN}" ]; then
+    _NGINX_DEB_OK=NO
+  fi
+  # The same compiled-in tokens the next run's rebuild decision checks; a
+  # payload that would immediately re-trigger a rebuild must not pass.
+  if ! printf '%s' "${_NGINX_DEB_V_ITD}" | grep -Fq -- 'geoip'; then
+    _NGINX_DEB_OK=NO
+  fi
+  if ! printf '%s' "${_NGINX_DEB_V_ITD}" | grep -Fq -- ' --with-http_flv_module'; then
+    _NGINX_DEB_OK=NO
+  fi
+  if ! printf '%s' "${_NGINX_DEB_V_ITD}" | grep -Fq -- ' --with-http_mp4_module'; then
+    _NGINX_DEB_OK=NO
+  fi
+  if ! printf '%s' "${_NGINX_DEB_V_ITD}" | grep -Fq -- "OpenSSL ${_OPENSSL_NEW_VRN}"; then
+    _NGINX_DEB_OK=NO
+  fi
+  if [ "${_NGINX_SPDY}" = "YES" ]; then
+    if ! printf '%s' "${_NGINX_DEB_V_ITD}" | grep -Fq -- ' --with-http_v2_module'; then
+      _NGINX_DEB_OK=NO
+    fi
+    if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
+      if ! printf '%s' "${_NGINX_DEB_V_ITD}" | grep -Fq -- ' --with-http_v3_module'; then
+        _NGINX_DEB_OK=NO
+      fi
+      if ! printf '%s' "${_NGINX_DEB_V_ITD}" | grep -Fq -- 'enable-ktls'; then
+        _NGINX_DEB_OK=NO
+      fi
+    fi
+  fi
+  if [ "${_NGINX_DEB_OK}" = "YES" ]; then
+    rm -f /var/opt/nginx-pre-deb
+    _NGINX_DEB_INSTALLED=YES
+    _msg "INFO: Nginx ${_NGINX_VRN} installed from prebuilt package"
+    return 0
+  fi
+  # The purge removes the binary boa-nginx now owns; restore the snapshot
+  # so the box keeps a working nginx even if the source rebuild that runs
+  # next fails silently.
+  dpkg --purge "boa-nginx" &> /dev/null
+  if [ -x "/var/opt/nginx-pre-deb" ]; then
+    cp -af /var/opt/nginx-pre-deb /usr/sbin/nginx
+    rm -f /var/opt/nginx-pre-deb
+  fi
+  _msg "NOTE: Prebuilt boa-nginx failed health check; building from sources"
+  return 1
+}
+
 _nginx_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_install_upgrade"
@@ -432,123 +577,130 @@ _nginx_install_upgrade() {
     else
       _msg "INFO: Installing Nginx ${_NGINX_VRN}..."
     fi
-    cd /var/opt; rm -rf nginx*
-    _get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
-    sed -i "s/nginx/${_CUSTOM_NAME}/g" \
-      /var/opt/nginx-${_NGINX_VRN}/src/core/nginx.h &> /dev/null
-    wait
-    if [ ! -z "${_NGINX_EXTRA_CONF}" ]; then
-      _NGINX_EXTRA="${_NGINX_EXTRA_CONF}"
-    else
-      _NGINX_EXTRA=""
+    # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the source
+    # fetch + compile below; the shared tail (ldconfig, legacy-config
+    # cleanup, service restart) and the follow-up _nginx_initd_check +
+    # _nginx_mime_check_fix service wiring run unchanged for both paths.
+    _NGINX_DEB_INSTALLED=NO
+    if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
+      _install_nginx_deb
     fi
-    if [ "${_NGINX_HEADERS}" = "YES" ]; then
-      cd /var/opt
-      rm -rf /var/opt/nginx-headers-more*
-      _get_dev_src "nginx-headers-more.tar.gz"
-      if [ -e "/var/opt/nginx-headers-more" ]; then
-        _NGINX_EXTRA="--add-module=/var/opt/nginx-headers-more/ ${_NGINX_EXTRA}"
-      fi
-    fi
-    if [ "${_NGINX_LDAP}" = "YES" ]; then
-      cd /var/opt
-      rm -rf /var/opt/nginx-auth-ldap*
-      _get_dev_src "nginx-auth-ldap.tar.gz"
-      if [ -e "/var/opt/nginx-auth-ldap" ]; then
-        _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ ${_NGINX_EXTRA}"
-      fi
-    fi
-    if [ "${_NGINX_NAXSI}" = "YES" ]; then
-      cd /var/opt
-      rm -rf /var/opt/nginx-naxsi*
-      _get_dev_src "nginx-naxsi.tar.gz"
-      if [ -e "/var/opt/nginx-naxsi" ]; then
-        _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ ${_NGINX_EXTRA}"
-      fi
-    fi
-    if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OS_CODE}" = "none" ]; then
-        _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
+    if [ "${_NGINX_DEB_INSTALLED}" != "YES" ]; then
+      cd /var/opt; rm -rf nginx*
+      _get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
+      if [ ! -z "${_NGINX_EXTRA_CONF}" ]; then
+        _NGINX_EXTRA="${_NGINX_EXTRA_CONF}"
       else
-        _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
+        _NGINX_EXTRA=""
       fi
-    fi
-    if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
-      _NGINX_EXTRA="--with-http_v3_module ${_NGINX_EXTRA}"
-    fi
-    if [ "${_OS_CODE}" = "excalibur" ] \
-      || [ "${_OS_CODE}" = "daedalus" ] \
-      || [ "${_OS_CODE}" = "chimaera" ] \
-      || [ "${_OS_CODE}" = "beowulf" ] \
-      || [ "${_OS_CODE}" = "bookworm" ] \
-      || [ "${_OS_CODE}" = "bullseye" ] \
-      || [ "${_OS_CODE}" = "buster" ]; then
-      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+      if [ "${_NGINX_HEADERS}" = "YES" ]; then
+        cd /var/opt
+        rm -rf /var/opt/nginx-headers-more*
+        _get_dev_src "nginx-headers-more.tar.gz"
+        if [ -e "/var/opt/nginx-headers-more" ]; then
+          _NGINX_EXTRA="--add-module=/var/opt/nginx-headers-more/ ${_NGINX_EXTRA}"
+        fi
       fi
-    elif [ "${_OS_CODE}" = "stretch" ]; then
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        chattr -i /root/.install.modern.openssl.cnf
-        rm -f /root/.install.modern.openssl.cnf
+      if [ "${_NGINX_LDAP}" = "YES" ]; then
+        cd /var/opt
+        rm -rf /var/opt/nginx-auth-ldap*
+        _get_dev_src "nginx-auth-ldap.tar.gz"
+        if [ -e "/var/opt/nginx-auth-ldap" ]; then
+          _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ ${_NGINX_EXTRA}"
+        fi
       fi
-      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-    else
-      _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+      if [ "${_NGINX_NAXSI}" = "YES" ]; then
+        cd /var/opt
+        rm -rf /var/opt/nginx-naxsi*
+        _get_dev_src "nginx-naxsi.tar.gz"
+        if [ -e "/var/opt/nginx-naxsi" ]; then
+          _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ ${_NGINX_EXTRA}"
+        fi
+      fi
+      if [ "${_NGINX_SPDY}" = "YES" ]; then
+        if [ "${_OS_CODE}" = "none" ]; then
+          _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
+        else
+          _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
+        fi
+      fi
+      if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
+        _NGINX_EXTRA="--with-http_v3_module ${_NGINX_EXTRA}"
+      fi
+      if [ "${_OS_CODE}" = "excalibur" ] \
+        || [ "${_OS_CODE}" = "daedalus" ] \
+        || [ "${_OS_CODE}" = "chimaera" ] \
+        || [ "${_OS_CODE}" = "beowulf" ] \
+        || [ "${_OS_CODE}" = "bookworm" ] \
+        || [ "${_OS_CODE}" = "bullseye" ] \
+        || [ "${_OS_CODE}" = "buster" ]; then
+        _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+        if [ -e "/root/.install.modern.openssl.cnf" ]; then
+          _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+        fi
+      elif [ "${_OS_CODE}" = "stretch" ]; then
+        if [ -e "/root/.install.modern.openssl.cnf" ]; then
+          chattr -i /root/.install.modern.openssl.cnf
+          rm -f /root/.install.modern.openssl.cnf
+        fi
+        _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+      else
+        _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+      fi
+      if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
+        cd /var/opt
+        rm -rf "/var/opt/openssl-${_OPENSSL_NEW_VRN}" "/var/opt/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+        _get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+      fi
+      cd /var/opt/nginx-${_NGINX_VRN}
+      _mrun "bash ./configure \
+        --conf-path=/etc/nginx/nginx.conf \
+        --error-log-path=/var/log/nginx/error.log \
+        --group=www-data \
+        --http-client-body-temp-path=/var/lib/nginx/body \
+        --http-fastcgi-temp-path=/var/lib/nginx/fastcgi \
+        --http-log-path=/var/log/nginx/access.log \
+        --http-proxy-temp-path=/var/lib/nginx/proxy \
+        --http-scgi-temp-path=/var/lib/nginx/scgi \
+        --http-uwsgi-temp-path=/var/lib/nginx/uwsgi \
+        --lock-path=/var/lock/nginx.lock \
+        --pid-path=/run/nginx.pid \
+        --prefix=/usr \
+        --sbin-path=/usr/sbin/nginx \
+        --user=www-data \
+        --with-compat \
+        --with-file-aio \
+        --with-http_auth_request_module \
+        --with-http_dav_module \
+        --with-http_flv_module \
+        --with-http_geoip_module \
+        --with-http_gunzip_module \
+        --with-http_gzip_static_module \
+        --with-http_mp4_module \
+        --with-http_realip_module \
+        --with-http_secure_link_module \
+        --with-http_slice_module \
+        --with-http_ssl_module \
+        --with-http_stub_status_module \
+        --with-http_sub_module \
+        --with-stream \
+        --with-stream_realip_module \
+        --with-stream_ssl_module \
+        --with-stream_ssl_preread_module \
+        --with-threads \
+        --without-http_scgi_module \
+        --without-http_uwsgi_module \
+        --without-mail_imap_module \
+        --without-mail_pop3_module \
+        --without-mail_smtp_module \
+        --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
+        --with-openssl-opt='no-tests no-ssl3 enable-ktls zlib-dynamic enable-ec_nistp_64_gcc_128' \
+        --with-cc-opt='-g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fPIC' \
+        --with-ld-opt='-Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie' \
+        --with-debug ${_NGINX_EXTRA}"
+      _mrun "make -j $(nproc)"
+      _mrun "make install"
     fi
-    if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
-      cd /var/opt
-      rm -rf "/var/opt/openssl-${_OPENSSL_NEW_VRN}" "/var/opt/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-      _get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-    fi
-    cd /var/opt/nginx-${_NGINX_VRN}
-    _mrun "bash ./configure \
-      --conf-path=/etc/nginx/nginx.conf \
-      --error-log-path=/var/log/nginx/error.log \
-      --group=www-data \
-      --http-client-body-temp-path=/var/lib/nginx/body \
-      --http-fastcgi-temp-path=/var/lib/nginx/fastcgi \
-      --http-log-path=/var/log/nginx/access.log \
-      --http-proxy-temp-path=/var/lib/nginx/proxy \
-      --http-scgi-temp-path=/var/lib/nginx/scgi \
-      --http-uwsgi-temp-path=/var/lib/nginx/uwsgi \
-      --lock-path=/var/lock/nginx.lock \
-      --pid-path=/run/nginx.pid \
-      --prefix=/usr \
-      --sbin-path=/usr/sbin/nginx \
-      --user=www-data \
-      --with-compat \
-      --with-file-aio \
-      --with-http_auth_request_module \
-      --with-http_dav_module \
-      --with-http_flv_module \
-      --with-http_geoip_module \
-      --with-http_gunzip_module \
-      --with-http_gzip_static_module \
-      --with-http_mp4_module \
-      --with-http_realip_module \
-      --with-http_secure_link_module \
-      --with-http_slice_module \
-      --with-http_ssl_module \
-      --with-http_stub_status_module \
-      --with-http_sub_module \
-      --with-stream \
-      --with-stream_realip_module \
-      --with-stream_ssl_module \
-      --with-stream_ssl_preread_module \
-      --with-threads \
-      --without-http_scgi_module \
-      --without-http_uwsgi_module \
-      --without-mail_imap_module \
-      --without-mail_pop3_module \
-      --without-mail_smtp_module \
-      --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
-      --with-openssl-opt='no-tests no-ssl3 enable-ktls zlib-dynamic enable-ec_nistp_64_gcc_128' \
-      --with-cc-opt='-g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fPIC' \
-      --with-ld-opt='-Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie' \
-      --with-debug ${_NGINX_EXTRA}"
-    _mrun "make -j $(nproc)"
-    _mrun "make install"
     ldconfig 2> /dev/null
     _nginx_clean_legacy_config
     _mrun "service nginx restart"

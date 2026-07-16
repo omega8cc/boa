@@ -69,6 +69,7 @@ _NIGHT_PARALLEL=NO #------------ Process Octopus accounts in parallel at night
 _NIGHT_MAX_PARALLEL= #---------- Max parallel accounts (empty = CPU cores)
 _CLEAR_BOOST=YES #-------------- Clear all boost caches daily when YES (default)
 _LE_CLIENT_NOTIFY=YES #--------- Notify clients of their LE renewal failures
+_GHOST_CLIENT_NOTIFY=YES #------ Notify clients of ghost site records to remove
 _SHARED_CODEBASES_CLEANUP=NO #-- Move unused shared codebases aside when YES
 _GHOST_CODEBASES_CLEANUP=NO #--- Move ghost/orphaned codebases aside when YES
 _GHOST_PLATFORMS_CLEANUP=NO #--- Move ghost/empty platform aliases aside when YES
