@@ -54,11 +54,12 @@ INFO: <Component> <version> installed from prebuilt package
 A component that fell back leaves a different trace depending on where it
 fell back:
 
-- `NOTE: Prebuilt <package> failed health check; building from sources` --
-  the package installed but its post-install probe failed, and the source
-  build took over for that component.
-- No line at all -- the package (or its checksum sidecar) could not be
-  fetched. This is deliberately indistinguishable from "not published": the
+- A `NOTE:` line naming the reason -- a failed package download, a checksum
+  mismatch, a `dpkg` error, or a failed post-install health check each log
+  one `NOTE: ... falling back to sources` / `... building from sources`
+  line before the source build takes over for that component.
+- No line at all -- the checksum sidecar probe found nothing to fetch.
+  This is deliberately indistinguishable from "not published": the
   component compiles from sources silently, exactly as on a mirror that
   never carried it.
 
