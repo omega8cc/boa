@@ -132,13 +132,14 @@ _recycle_log() {
 # -----------------------------------------------------------------------------
 # Main detection logic  (replaces makeactions + verify_timestamp + check_ip)
 #
-# FTP log format in /var/log/messages:
-#   "... host proftpd[N]: Authentication failed for user user@1.2.3.4"
-#   "... host proftpd[N]: Sorry, cleartext sessions are not accepted from user@1.2.3.4"
+# BOA runs pure-ftpd (DontResolve/-H), which logs to /var/log/messages as:
+#   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Authentication failed for user [name]"
+#   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Sorry, cleartext sessions are not accepted"
 #
-# The Perl original extracts the 6th whitespace field (user@IP) then splits on @.
-# We do the same via positional read, keeping it format-faithful while also
-# supporting ISO 8601 timestamps (where field positions shift by one).
+# The peer IP is the server-written "(?@<ip>)" prefix; the login name is
+# attacker-controlled and logged later inside "[...]". We anchor extraction on
+# that prefix so it is timestamp-position-invariant (classic AND ISO 8601 syslog)
+# and can never be spoofed by an IP-shaped username.
 # -----------------------------------------------------------------------------
 
 _makeactions() {
@@ -184,22 +185,20 @@ _makeactions() {
 
       _line_is_recent "${_line}" || continue
 
-      # Extract user@IP field — position differs between classic and ISO syslog:
-      #   Classic:  "Mon DD HH:MM:SS host proc[N]: ... user@1.2.3.4"  → field 6
-      #   ISO 8601: "YYYY-MM-DDTHH:MM:SS+TZ host proc[N]: ... user@1.2.3.4" → field 6
-      # Field position is the same in both cases because the ISO timestamp is
-      # one field (no spaces), so field count is identical.
-      local _f1 _f2 _f3 _f4 _f5 _visitorx _rest
-      read -r _f1 _f2 _f3 _f4 _f5 _visitorx _rest <<< "${_line}"
-
-      # Strip trailing punctuation, then split on @ to get the IP part
-      _visitorx="${_visitorx//[^a-zA-Z0-9.@]/}"
-      local _ip="${_visitorx##*@}"
-      _ip="${_ip//[^0-9.]/}"
-
-      # Fallback: if field-based extraction didn't yield an IP, grep for it
-      if ! _is_ipv4 "${_ip}"; then
-        _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      # Extract the peer IP from pure-ftpd's server-written "(?@<ip>)" prefix --
+      # the FIRST parenthesised @-token on the line. The '?' user slot is absorbed
+      # by the discarded capture group [^()]* (BASH_REMATCH[2] is the IPv4), so the
+      # prefix parses whether or not the '?' is present. This is position-invariant,
+      # so it works for both classic and ISO 8601 syslog, and the attacker-controlled
+      # login name (logged later inside "[...]") can never be mistaken for the peer.
+      #
+      # The previous code read a fixed field-6 (correct only for classic syslog)
+      # and, on the ISO field-shift, fell back to `grep IPv4 | tail -1` -- the LAST
+      # IPv4 on the line, which is the username when an attacker logs in as an
+      # IP-shaped name (e.g. "8.8.8.8"), banning that IP instead of the real peer.
+      local _ip=""
+      if [[ "${_line}" =~ \(([^()]*)@([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\) ]]; then
+        _ip="${BASH_REMATCH[2]}"
       fi
 
       _is_ipv4 "${_ip}" || continue
