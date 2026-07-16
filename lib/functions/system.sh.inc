@@ -751,12 +751,6 @@ _global_inc_conf_update() {
     fi
     cp -af ${_locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
   done
-  cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-  cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
-  if [ ! -z "${_SPEED_VALID_MAX}" ]; then
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    wait
-  fi
   cp -af ${_locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
   cp -af ${_locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
   cp -af ${_locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
@@ -774,6 +768,10 @@ _global_inc_conf_update() {
   ### Backdrop-only shared settings (Valkey wiring, visit-cron off); the
   ### Backdrop settings tpl includes it only when present, so it ships inert.
   cp -af ${_locCnf}/global/global-bd.inc ${_GL_D}/global-bd.inc
+  ### The legacy-path dispatcher is deployed LAST: it only hands off to the
+  ### per-core chain above, so it must never land without the chain present.
+  cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
 }
 
 #
