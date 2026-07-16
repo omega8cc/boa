@@ -2382,6 +2382,7 @@ _barracuda_cnf() {
     echo "_NGINX_LDAP=${_NGINX_LDAP}"                         >> ${_barCnf}
     echo "_NGINX_NAXSI=${_NGINX_NAXSI}"                       >> ${_barCnf}
     echo "_NGINX_SPDY=${_NGINX_SPDY}"                         >> ${_barCnf}
+    echo "_NGINX_KTLS=${_NGINX_KTLS}"                         >> ${_barCnf}
     echo "_NGINX_WORKERS=${_NGINX_WORKERS}"                   >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -2782,6 +2783,11 @@ _barracuda_cnf() {
     _NGINX_SPDY_TEST=$(grep _NGINX_SPDY ${_barCnf} 2>&1)
     if [[ ! "${_NGINX_SPDY_TEST}" =~ "_NGINX_SPDY" ]]; then
       echo "_NGINX_SPDY=${_NGINX_SPDY}" >> ${_barCnf}
+    fi
+
+    _NGINX_KTLS_TEST=$(grep _NGINX_KTLS ${_barCnf} 2>&1)
+    if [[ ! "${_NGINX_KTLS_TEST}" =~ "_NGINX_KTLS" ]]; then
+      echo "_NGINX_KTLS=${_NGINX_KTLS}" >> ${_barCnf}
     fi
 
     _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY ${_barCnf} 2>&1)
