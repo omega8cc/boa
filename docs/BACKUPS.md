@@ -19,7 +19,7 @@
   databases archives, Nginx configuration and more) on a freshly installed BOA:
 
 ```text
-    /etc /var/aegir /var/www /home /data
+    /data /etc /home /opt/solr4 /var/aegir /var/solr7 /var/solr9 /var/www /var/xdrago
 ```
 
   It will start to run nightly at 3:15 AM (server time) only once you will add
@@ -99,8 +99,9 @@
     desired region with correct name as shown below.
 
     Replace only the `srv-foo-bar` part after `daily-boa-` static prefix with
-    your system hostname, typically displayed when you type `uname -n`
-    where all dots are replaced with dashes, for compatibility reasons:
+    your system hostname, read from `/etc/hostname` (with `hostname -f`
+    as fallback), where all dots are replaced with dashes, for
+    compatibility reasons:
 
       `daily-boa-srv-foo-bar`
 

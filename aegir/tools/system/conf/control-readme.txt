@@ -125,12 +125,8 @@
 ### Otherwise it will be ignored.
 ###
 ### NOTE: if the file doesn't exist, the system will create it and set to the
-### lowest available PHP version installed, not to the system default version.
-### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
-### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 8.1, and this could break
-### most of the sites hosted, never before tested for PHP 8.1 compatibility.
+### current default PHP version when installed, otherwise the newest one
+### available - not to the system-wide default version.
 ###
 
 
@@ -185,12 +181,8 @@
 ### Otherwise it will be ignored.
 ###
 ### NOTE: if the file doesn't exist, the system will create it and set to the
-### lowest available PHP version installed, not to the system default version.
-### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
-### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 8.1, and this could break
-### most of the sites hosted, never before tested for PHP 8.1 compatibility.
+### current default PHP version when installed, otherwise the newest one
+### available - not to the system-wide default version.
 ###
 ### IMPORTANT: this file will affect only Drush on command line and Drush
 ### in Ægir backend, used for all tasks on hosted sites, but it will not
