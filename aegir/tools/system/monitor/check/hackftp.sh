@@ -185,21 +185,29 @@ _makeactions() {
 
       _line_is_recent "${_line}" || continue
 
-      # Extract the peer IP from pure-ftpd's server-written "(?@<ip>)" prefix --
-      # the FIRST parenthesised @-token on the line. The '?' user slot is absorbed
-      # by the discarded capture group [^()]* (BASH_REMATCH[2] is the IPv4), so the
-      # prefix parses whether or not the '?' is present. This is position-invariant,
-      # so it works for both classic and ISO 8601 syslog, and the attacker-controlled
-      # login name (logged later inside "[...]") can never be mistaken for the peer.
+      # Extract the peer IP from pure-ftpd's server-written prefix -- the FIRST
+      # parenthesised "(user@host)" token AFTER the "pure-ftpd:" program tag. That
+      # tag is written by pure-ftpd/syslog, never the client, so anchoring on it is
+      # injection-proof: the attacker-controlled login name (logged later inside
+      # "[...]", and which may itself contain a "(x@1.2.3.4)" token because the
+      # sanitiser keeps parentheses) can never be reached by the match. We take THAT
+      # token's host and require it to be IPv4 -- we deliberately do NOT let a free
+      # "@<ipv4>" =~ search run, because on a non-IPv4 first paren (an IPv6 or
+      # IPv4-mapped peer) it would skip the real prefix and match the attacker's
+      # "(x@8.8.8.8)" username token, banning an attacker-framed third party.
+      # Position-invariant across classic and ISO 8601 syslog (the tag precedes both
+      # message variants).
       #
-      # The previous code read a fixed field-6 (correct only for classic syslog)
-      # and, on the ISO field-shift, fell back to `grep IPv4 | tail -1` -- the LAST
-      # IPv4 on the line, which is the username when an attacker logs in as an
-      # IP-shaped name (e.g. "8.8.8.8"), banning that IP instead of the real peer.
+      # IPv4-mapped IPv6 peer (::ffff:1.2.3.4 -- the default log form for an IPv4
+      # client on a dual-stack pure-ftpd): recover the embedded IPv4 so a real
+      # client is still banned. A pure IPv6 peer has no IPv4 form, so _is_ipv4 skips
+      # it (csf is IPv4-only) rather than mis-attributing the ban.
       local _ip=""
-      if [[ "${_line}" =~ \(([^()]*)@([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\) ]]; then
-        _ip="${BASH_REMATCH[2]}"
+      local _ftp_peer_re='pure-ftpd(\[[0-9]+\])?:[[:space:]]*\(([^()]*)@([^()]*)\)'
+      if [[ "${_line}" =~ ${_ftp_peer_re} ]]; then
+        _ip="${BASH_REMATCH[3]}"
       fi
+      [[ "${_ip}" == *:*.*.*.* ]] && _ip="${_ip##*:}"
 
       _is_ipv4 "${_ip}" || continue
       (( _hits["${_ip}"]++ )) || true
