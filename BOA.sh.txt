@@ -1458,7 +1458,7 @@ _update_agents() {
   # PHP-selecting bee launcher (D-021 identity policy). Deployed unconditionally
   # but inert until the gated _get_bee installs /opt/tools/bee and the
   # /usr/bin/bee symlink; clients execute it, so it ships world-executable.
-  _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f99 --mode 755 --guard /local/bin/bee
+  _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f98 --mode 755 --guard /local/bin/bee
   # staticbuild: mirror-source testing-codebase + Backdrop-family builder. Needs
   # root plus an existing build user (o8 unless -u says otherwise) or it refuses
   # to act - it never guesses an account from /data/disk. Kept on every box so
