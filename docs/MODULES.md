@@ -4,7 +4,7 @@ added to all 6.x and 7.x platforms -- even to your custom
 platforms created in the ~/static directory tree.
 
 Some core and contrib modules are either enabled or disabled
-by default, by running weekly (on Saturday) maintenance monitor.
+by default, by running weekly (on Tuesday) maintenance monitor.
 
 NOTE: You can disable this feature with _MODULES_FIX=NO in the
       standard Barracuda configuration file: /root/.barracuda.cnf
@@ -89,7 +89,6 @@ Contrib [S]upported and [B]undled:
  tag1_d7es ------------------ [D7] --------- [S] [B]
  taxonomy_edge -------------- [D6,D7] ------ [S] [B]
  variable_clean ------------- [D6,D7] ------ [S] [B]
- vars ----------------------- [D7] --------- [S] [B]
  views_accelerator ---------- [D7] --------- [S] [B]
  views_cache_bully ---------- [D6,D7] ------ [S] [B]
  views_content_cache -------- [D6,D7] ------ [S] [B]
