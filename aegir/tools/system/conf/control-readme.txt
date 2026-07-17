@@ -125,7 +125,8 @@
 ### Otherwise it will be ignored.
 ###
 ### NOTE: if the file doesn't exist, the system will create it and set to the
-### newest available PHP version installed, not to the system default version.
+### current default PHP version when installed, otherwise the newest one
+### available - not to the system-wide default version.
 ###
 
 
@@ -180,7 +181,8 @@
 ### Otherwise it will be ignored.
 ###
 ### NOTE: if the file doesn't exist, the system will create it and set to the
-### newest available PHP version installed, not to the system default version.
+### current default PHP version when installed, otherwise the newest one
+### available - not to the system-wide default version.
 ###
 ### IMPORTANT: this file will affect only Drush on command line and Drush
 ### in Ægir backend, used for all tasks on hosted sites, but it will not

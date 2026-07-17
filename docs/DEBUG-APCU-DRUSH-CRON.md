@@ -22,7 +22,8 @@ and takes significant read pressure off the disk and database layer.
 
 The key architectural points are:
 
-- **APCu** is process-local: each PHP-FPM worker maintains its own separate APCu memory segment
+- **APCu** is pool-shared but web-only: a single shared memory segment serves the
+  entire PHP-FPM pool, and CLI drush processes never see it
 - **Valkey/Redis** is shared across all processes: both PHP-FPM workers and CLI drush
   processes read from and write to the same instance
 - **Both tiers require sufficient memory allocation** for the number of sites hosted —
@@ -350,7 +351,7 @@ BOA's PHP ini template seeds APCu shared memory at 256M:
 apc.shm_size=256M
 ```
 
-APCu is the first tier of the chainedfast stack, local to each PHP-FPM worker process.
+APCu is the first tier of the chainedfast stack, one shared memory segment per PHP-FPM pool.
 This 256M is only a seed: on every barracuda upgrade BOA's memory tuner rewrites it,
 scaling `apc.shm_size` up from the server's usable RAM, so an adequately provisioned server
 already runs well above 256M. For servers hosting a large number of Drupal 8/9/10 sites even
