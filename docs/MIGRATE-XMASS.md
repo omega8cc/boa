@@ -40,12 +40,16 @@ filesystem data is run on demand via `xmass sync`. At cutover:
 5. Source MySQL is briefly locked (`FLUSH TABLES WITH READ LOCK`) while the
    last file writes drain.
 6. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`).
-7. `renameaegirhost` runs on the target for every Ægir root (master +
+7. Panel DB access is rewired on the target for every Ægir root: the datadir
+   swap killed the target's own panel databases, so the live (replicated)
+   hostmaster DB is rediscovered per root, its DB user's password reset, and
+   the surviving panel site dir's credentials rewritten to match.
+8. `renameaegirhost` runs on the target for every Ægir root (master +
    all Octopus accounts), replacing the source hostname with the target FQDN
    and running a 5-pass Ægir task queue per root.
-8. Target Solr starts (transaction logs pre-cleared for clean first start).
-9. Source vhosts are converted to proxy via `xoct proxy` per account.
-10. DNS is updated; traffic flows directly to target.
+9. Target Solr starts (transaction logs pre-cleared for clean first start).
+10. Source vhosts are converted to proxy via `xoct proxy` per account.
+11. DNS is updated; traffic flows directly to target.
 
 Typical total cutover window: **1–3 hours** (dominated by `renameaegirhost`
 task queues for large numbers of accounts).
@@ -235,8 +239,9 @@ confirm `CLEAN`, then re-run with `--live` to perform the real cutover.
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source |
 | Step 12 | Start nginx on target (serves proxied traffic while rename runs) |
-| Step 13 | `renameaegirhost --aegir-root /var/aegir` on target (Ægir master) |
-| Step 13 | `renameaegirhost --aegir-root /data/disk/oN` on target (each Octopus account) |
+| Step 12.5 | Rewire panel DB access on target per Ægir root (rediscover live hostmaster DB, reset its user's password, rewrite the panel dir's credentials — the datadir swap killed the fresh-install panel DBs) |
+| Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master) |
+| Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account) |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
 | Step 16 | `xoct proxy oN target-ip` for each account on source (vhost conversion + notifications) |
@@ -377,9 +382,15 @@ is still serving 503 (`http-off.pid` in place). Manually remove
 `/data/disk/*/static/control/http-off.pid` on source and reload nginx to
 restore service, then investigate before retrying.
 
-**If `cutover` completes but renameaegirhost failed** for one or more accounts:
-run `renameaegirhost --aegir-root /data/disk/oN` manually on the target for
-the affected accounts. This is safe to re-run.
+**If the panel rewire or renameaegirhost fails** for any root, `cutover` parks
+resumably at `phase=rename-failed` instead of completing — the failure report
+names the affected roots. Fix the cause, then re-run
+`xmass cutover target-ip --live` to resume from the parked step (both steps
+converge: already-rewired panels and already-renamed roots no-op). To
+iterate on a single root first, run
+`renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` manually
+on the target — it is convergent and safe to re-run — then resume the cutover
+so the remaining cutover steps complete.
 
 ---
 
