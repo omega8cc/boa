@@ -4259,8 +4259,9 @@ _drush_system_install_update() {
       _get_civicrm_cli
     fi
     ###
-    ### Native Backdrop CLI (bee); gated dark. /usr/bin/bee points at the
-    ### PHP-selecting wrapper shipped as /opt/local/bin/bee (aegir/tools/bin/bee).
+    ### Native Backdrop CLI (bee); gated dark. The PHP-selecting wrapper is
+    ### /opt/local/bin/bee (aegir/tools/bin/bee) -- canonical path like websh,
+    ### no /usr/bin symlink; websh's PATH resolves bare bee to /opt/local/bin.
     ###
     if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
       mkdir -p /opt/tools/bee
@@ -4278,10 +4279,8 @@ _drush_system_install_update() {
           _msg "INFO: bee already installed"
         fi
       fi
-      if [ -e "/opt/tools/bee/bee.php" ] && [ -x "/opt/local/bin/bee" ]; then
-        rm -f /usr/bin/bee
-        ln -sfn /opt/local/bin/bee /usr/bin/bee
-      fi
+      # Clean up the /usr/bin/bee symlink earlier revisions created.
+      [ -L "/usr/bin/bee" ] && rm -f /usr/bin/bee
     fi
     cd /opt/tmp
   fi

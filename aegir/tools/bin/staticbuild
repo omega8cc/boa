@@ -5,8 +5,8 @@
 #
 # Runs on the mirror SOURCE VM only. Builds happen as the Octopus build user
 # (o8 unless -u USER says otherwise) under /data/disk/<user>/static/<MM-DD>/;
-# packaging + publishing to /var/www/static/{distro,core,dev/dev} and the per-build
-# /usr/bin/php switch need root, so run this as root.
+# packaging + publishing to /var/www/static/{distro,core,dev/{dev,lts,pro}} and the
+# per-build /usr/bin/php switch need root, so run this as root.
 #
 # Versions are NOT hardcoded. Each distribution is built from its Composer spec (or,
 # for farmOS, the latest GitHub release) and each vanilla core from its minor's latest
@@ -24,7 +24,7 @@
 #   staticbuild all                 build everything, package, publish
 #   staticbuild build [name ...]    build all (or only named) targets
 #   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
-#   staticbuild distribute          copy tarballs to /var/www/static/{distro,core,dev/dev}
+#   staticbuild distribute          copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
 #   staticbuild check               report the latest upstream versions a build would pull
 # Options:
 #   -d MM-DD   build-day directory (default: today, date +%m-%d)
@@ -49,7 +49,8 @@ _DAY="$(date +%m-%d)"                           # -d overrides (MM-DD)
 _STATIC_ROOT="/data/disk"                       # o8 home base; static lives under here
 _DISTRO_OUT="/var/www/static/distro"            # non-core (distribution) tarballs
 _CORE_OUT="/var/www/static/core"                # raw core tarballs
-_DEVEXT_OUT="/var/www/static/dev/dev"           # dev extensions (bee, drush ext) BOA _get_dev_ext pulls
+_DEVEXT_BASE="/var/www/static/dev"              # dev extensions (bee, drush ext) BOA _get_dev_ext pulls
+_DEV_TREES="dev lts pro"                        # per-tree dirs under it: every box pulls its own _tRee
 
 _SYS_PHP="/usr/bin/php"                          # per-build switch target
 _PHP_85="/opt/php85/bin/php"
@@ -842,6 +843,30 @@ do_package() {
   package_batch distro
 }
 
+_ensure_devext_dirs() {
+  local _tree
+  for _tree in ${_DEV_TREES}; do
+    mkdir -p "${_DEVEXT_BASE}/${_tree}" || _die "cannot create ${_DEVEXT_BASE}/${_tree}"
+  done
+}
+
+_publish_devext() {
+  # $1 = tarball path. Every box pulls dev extensions from its own tree dir
+  # (_get_dev_ext -> ${_urlDev}/${_tRee}/<file>), so the tarball must exist
+  # under dev, lts AND pro - a dev-only publish 404s every lts/pro box.
+  local _src="$1" _base _tree _ok=1
+  _base="${_src##*/}"
+  for _tree in ${_DEV_TREES}; do
+    if cp -a "${_src}" "${_DEVEXT_BASE}/${_tree}/"; then
+      _msg "devext <- ${_base} (${_tree})"
+    else
+      _alrt "copy failed: ${_base} (${_tree})"
+      _ok=0
+    fi
+  done
+  [[ "${_ok}" == "1" ]]
+}
+
 do_backdrop_family() {
   # Lightweight: build + package + publish ONLY the Backdrop family (backdrop
   # core + bee + backdrop-drush-extension), all at their newest upstream. No
@@ -860,19 +885,21 @@ do_backdrop_family() {
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz backdrop" || _alrt "tar failed: backdrop"
   fi
   # Publish only the family artifacts.
-  mkdir -p "${_CORE_OUT}" "${_DEVEXT_OUT}" || _die "cannot create ${_CORE_OUT} / ${_DEVEXT_OUT}"
+  mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
+  _ensure_devext_dirs
   local _f
   for _f in backdrop.tar.gz backdrop.txt; do
     [[ -e "${_DAY_DIR}/${_f}" ]] && { cp -a "${_DAY_DIR}/${_f}" "${_CORE_OUT}/" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"; }
   done
   for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
-    [[ -e "${_DAY_DIR}/${_f}" ]] && { cp -a "${_DAY_DIR}/${_f}" "${_DEVEXT_OUT}/" && _msg "devext <- ${_f}" || _alrt "copy failed: ${_f}"; }
+    [[ -e "${_DAY_DIR}/${_f}" ]] && _publish_devext "${_DAY_DIR}/${_f}"
   done
 }
 
 do_distribute() {
-  mkdir -p "${_DISTRO_OUT}" "${_CORE_OUT}" "${_DEVEXT_OUT}" \
-    || _die "cannot create ${_DISTRO_OUT} / ${_CORE_OUT} / ${_DEVEXT_OUT}"
+  mkdir -p "${_DISTRO_OUT}" "${_CORE_OUT}" \
+    || _die "cannot create ${_DISTRO_OUT} / ${_CORE_OUT}"
+  _ensure_devext_dirs
   local _t _base _n=0
   for _t in "${_DAY_DIR}"/*.tar.gz; do
     [[ -e "${_t}" ]] || continue
@@ -881,7 +908,7 @@ do_distribute() {
     # backdrop* core arm.
     case "${_base}" in
       bee.tar.gz|backdrop-drush-extension.tar.gz)
-        cp -a "${_t}" "${_DEVEXT_OUT}/" && { _msg "devext <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
+        _publish_devext "${_t}" && _n=$((_n + 1)) ;;
       drupal-*.tar.gz|backdrop.tar.gz)
         cp -a "${_t}" "${_CORE_OUT}/"   && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
       *)
