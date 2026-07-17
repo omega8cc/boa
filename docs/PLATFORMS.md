@@ -4,7 +4,7 @@ Octopus can install and/or support the Ægir platforms listed below.
 
 ## Note on required and supported PHP versions
 
-Supported Drupal core versions and distributions have different PHP version requirements, while not all PHP versions out of currently supported ten versions are installed by default.
+Supported Drupal core versions and distributions have different PHP version requirements, while not all PHP versions out of currently supported twelve versions are installed by default.
 
 Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions.
 

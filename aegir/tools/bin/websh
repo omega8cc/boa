@@ -982,6 +982,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS}" =~ "_tmp_" ]] \
           || [[ "${_ARGS}" =~ ".tmp" ]] \
           || [[ "${_ARGS}" =~ "avconv" ]] \
+          || [[ "${_ARGS}" =~ "bee " ]] \
           || [[ "${_ARGS}" =~ "bzr " ]] \
           || [[ "${_ARGS}" =~ "chdir " ]] \
           || [[ "${_ARGS}" =~ "compass " ]] \
