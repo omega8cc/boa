@@ -17,7 +17,7 @@ BOA allows you to manage the PHP-FPM version across all sites hosted on an Octop
 
 #### **NOTE**:
 - Only one line and one value (e.g., `8.3`) should be present in this file; otherwise, the system will ignore it.
-- If the `fpm.info` file doesn’t exist, the system will create it and set it to the lowest available PHP version installed, not the system default version. This ensures backward compatibility for instances installed before upgrading to BOA-4.1.3 when the default PHP version was 5.6. Without this safeguard, upgrading could break most hosted sites that haven't been tested for PHP 8.1+ compatibility.
+- If the `fpm.info` file doesn’t exist, the system will create it and set it to a current installed PHP version (BOA's default when present, otherwise the newest installed), not the lowest, so a fresh instance starts on a modern PHP version. Edit the file to pin any other installed version.
 
 ---
 
@@ -66,14 +66,15 @@ Plans fall into two classes.
 | Plan | pm.max_children | memory_limit |
 |---|---|---|
 | `POWER` / `BUS` | 16 | 768 MB |
+| `QUIET` | 8 | 256 MB |
 | `EDGE` / `AGAIN` / `SSD` / `CLASSIC` | 4 | 512 MB |
-| `MINI` / `MICRO` / `QUIET` / `HEADSPACE` | 2 | 256 MB |
+| `MINI` / `MICRO` / `HEADSPACE` | 2 | 256 MB |
 
 The worker count is `base × engines × 2`, where *engines* is the instance's
 allotted cores (`_CLIENT_CORES`, default 1). The `memory_limit` band is capped
 at the box's RAM-scaled ceiling (below), so on a small VM even these values are
-reduced. (`QUIET` is the exception that is not doubled — it stays at the
-minimum.)
+reduced. (`QUIET` is the exception — its worker count is not doubled, so it
+lands on the floor of 8.)
 
 ### Dedicated plans
 

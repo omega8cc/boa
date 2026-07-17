@@ -24,7 +24,7 @@ You can set `_AUTO_UP_MONTH` and `_AUTO_UP_DAY` to any date in the past or futur
 
 Remember that day/month upgrades will include a complete upgrade to the latest BOA head for Barracuda and all Octopus instances, while weekly upgrades are designed to run only the `barracuda up-<tier> system` upgrade, where `<tier>` is the value of `_AUTO_VER` (which defaults to this box's own BOA tree — see below).
 
-You can further modify the auto-upgrade by specifying the upgrade tier — `dev`, `pro`, or `lts` — with the `_AUTO_VER` variable. Additionally, you can include all supported PHP versions with the `_AUTO_PHP` variable set to "php-min"; otherwise, it will be ignored.
+You can further modify the auto-upgrade by specifying the upgrade tier — `dev`, `pro`, or `lts` — with the `_AUTO_VER` variable. Additionally, you can control which PHP versions are installed during the upgrade with the `_AUTO_PHP` variable: `php-min` (or its alias `php-all`) installs PHP 8.3, 8.4, and 8.5 with 8.4 as the default, while `php-max` installs all supported PHP versions; any other value is ignored.
 
 Note that the start times are governed by the `_AUTO_UP_*` hour/minute variables below. On an ordinary operator box, if you leave those unset, the defaults place the Barracuda pass (weekly system as well as the day/month system and Ægir Master upgrade) shortly after midnight (00:15) and the Octopus pass (all Octopus-based Ægir instances) about an hour later (01:15). On hosted BOA systems these are forced to a fixed later schedule — approximately 3 AM for the Barracuda pass and 4 AM for the Octopus pass — regardless of the values above.
 
@@ -35,7 +35,7 @@ _AUTO_UP_WEEKLY=  # Day of week (1-7) for weekly system upgrades
 _AUTO_UP_MONTH=   # Month (1-12) to define the date of one-time upgrade
 _AUTO_UP_DAY=     # Day (1-31) to define the date of one-time upgrade
 _AUTO_VER=        # The BOA tier to use; if unset, defaults to this box's own BOA tree (dev/pro/lts)
-_AUTO_PHP=        # Useful to force php-min, otherwise ignored
+_AUTO_PHP=        # Force php-min, php-all, or php-max; otherwise ignored
 ```
 
 > **NOTE:** New extra `_AUTO_UP_*` variables can be also defined or default values will be used
