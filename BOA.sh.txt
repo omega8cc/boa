@@ -2182,6 +2182,7 @@ _update_agents() {
       chmod 755 /opt/local/bin/websh
       chown root:root /opt/local/bin/websh
       [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
+      rm -f ${_pthLog}/websh.ctrl.*
       touch ${_pthLog}/websh.ctrl.f69.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/websh.sh.old
     else
