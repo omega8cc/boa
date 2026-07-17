@@ -107,12 +107,14 @@ BOA sets Valkey's `maxmemory` using the formula:
 _MAX_MEM_VALKEY=$(( _RAM / 3 ))
 ```
 
-On a 24GB server this produces an 8GB ceiling. For a server hosting a small number of sites
-this is more than adequate, but for servers hosting 100+ Drupal 8/9/10 sites the working set
-of bootstrap, discovery, config, render cache, and dynamic page cache across all sites can
-still exceed this allocation.
+Here `_RAM` is not physical RAM: BOA first subtracts a reservation — a quarter of physical
+RAM by default — leaving the usable figure the formula divides. On a 24GB server that
+reservation is ~6GB, leaving ~18GB usable, so the formula produces a ceiling of about 6GB.
+For a server hosting a small number of sites this is more than adequate, but for servers
+hosting 100+ Drupal 8/9/10 sites the working set of bootstrap, discovery, config, render
+cache, and dynamic page cache across all sites can still exceed this allocation.
 
-Older BOA installations used a smaller `_RAM / 6` allocation (a 4GB ceiling on the same
+Older BOA installations used a smaller `_RAM / 6` allocation (a 3GB ceiling on the same
 24GB host). Servers upgraded to current BOA have the ceiling recalculated to `_RAM / 3`
 automatically. On installations that have not been upgraded, or where the ceiling has been
 manually set, review and increase as described below.
@@ -342,20 +344,28 @@ See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
 
 ## APCu memory sizing
 
-BOA defaults APCu shared memory to 256M:
+BOA's PHP ini template seeds APCu shared memory at 256M:
 
 ```ini
 apc.shm_size=256M
 ```
 
 APCu is the first tier of the chainedfast stack, local to each PHP-FPM worker process.
-For servers hosting a large number of Drupal 8/9/10 sites, 256M can be insufficient.
-Sustained APCu utilisation above 75% increases per-worker miss rates, causing more
-frequent fallthrough to Valkey and the database.
+This 256M is only a seed: on every barracuda upgrade BOA's memory tuner rewrites it,
+scaling `apc.shm_size` up from the server's usable RAM, so an adequately provisioned server
+already runs well above 256M. For servers hosting a large number of Drupal 8/9/10 sites even
+the tuned value can be insufficient. Sustained APCu utilisation above 75% increases
+per-worker miss rates, causing more frequent fallthrough to Valkey and the database.
 
-On high-utilisation servers the `apc.shm_size` value should be reviewed and increased —
-512M is a reasonable starting point. Note that APCu memory is allocated per-server, not
-per-worker, so increasing it has a fixed cost regardless of worker count.
+Because the tuner reseeds this value, hand-editing `apc.shm_size` in a `phpNN.ini` is not
+durable — the manual value is overwritten on the next upgrade (the template seed at 256M,
+then the RAM-derived figure, which is set equal to the PHP-FPM per-pool `memory_limit`), and
+there is no per-value override BOA honours. The durable way to raise APCu is to raise the
+usable RAM the tuner works from — add RAM, or lower `_RESERVED_RAM` in `barracuda.cnf` if it
+was set — then rerun the barracuda upgrade so the tuner recomputes and reapplies the value.
+Sustained APCu saturation on a busy server is, like Valkey starvation, usually a sign the box
+is under-provisioned for its site count. APCu memory is allocated per-server, not per-worker,
+so it has a fixed cost regardless of worker count.
 
 Increasing Valkey `maxmemory` (Issue 1) should be the first priority, as Valkey starvation
 has a much larger impact on overall cache performance than APCu sizing. APCu increases
@@ -380,4 +390,5 @@ For any BOA server experiencing the symptoms described in this document, follow 
 - [ ] Confirm drush operations are run as `oN.ftp` under the limited shell, not as `oN`
       under bash; confirm PHP-CLI version control files match sites' PHP-FPM version
 - [ ] Confirm site-local drush (Composer) is used for all Drupal 8+ sites
-- [ ] Review APCu utilisation; consider increasing `apc.shm_size` if above 75%
+- [ ] Review APCu utilisation; if sustained above 75%, raise usable RAM so the tuner
+      resizes APCu — a hand-edited `apc.shm_size` does not persist

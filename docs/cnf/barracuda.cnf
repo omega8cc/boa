@@ -30,8 +30,8 @@ _DL_MODE=BATCH #---------------- Allows to switch to GIT src or OLD static
 _INCIDENT_REPORT=MINI #--------- Control incidents reports via OFF/ALL/MINI/CRIT
 _MY_EMAIL="my@email" #---------- System admin email address
 ###
-_CPU_CRIT_RATIO=6.1 #----------- Max load per CPU core before killing PHP/Drush
-_CPU_MAX_RATIO=4.1 #------------ Max load per CPU core before disabling Nginx
+_CPU_CRIT_RATIO=8.1 #----------- Max load per CPU core before killing PHP/Drush
+_CPU_MAX_RATIO=6.1 #------------ Max load per CPU core before disabling Nginx
 _CPU_TASK_RATIO=3.1 #----------- Max load per CPU core to launch tasks queue
 _CPU_SPIDER_RATIO=2.1 #--------- Max load per CPU core before blocking spiders
 ###
@@ -85,7 +85,7 @@ _NGINX_DOS_LIMIT=399 #---------- Default 399/1999 limit of page views per IP
 _NGINX_DOS_LINES=1999 #--------- Default number of access.log lines to check
 _NGINX_DOS_LOG=SILENT #--------- Logging mode, can be SILENT, NORMAL or VERBOSE
 _NGINX_DOS_MODE=2 #------------- 1 or 2 (default)
-_NGINX_DOS_STOP="foo|bar" #----- Keywords to trigger counter +5 increase if found
+_NGINX_DOS_STOP="foo|bar" #----- Adds full _NGINX_DOS_LIMIT to counter (immediate ban)
 ###
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
@@ -103,7 +103,7 @@ _PHP_FPM_VERSION=8.4 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="8.3 7.4" #-- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6
+_PHP_MULTI_INSTALL="8.3 8.4 8.5" #-- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.3
 ###
 _VALKEY_LISTEN_MODE=SOCKET #---- Valkey listen mode: SOCKET (recommended) or PORT
@@ -155,7 +155,7 @@ _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ### head for Barracuda and all Octopus instances, while weekly upgrade is
 ### designed to run only 'barracuda up-lts system' upgrade.
 ###
-### You can further modify the auto-upgrade by specifying either head or dev
+### You can further modify the auto-upgrade by specifying lts, pro or dev
 ### with _AUTO_VER variable, plus you can include all supported PHP versions
 ### with _AUTO_PHP variable set to "php-min" -- otherwise it will be ignored.
 ###
@@ -169,7 +169,7 @@ _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 _AUTO_UP_WEEKLY= #-------------- Day of week (1-7) for weekly system upgrades
 _AUTO_UP_MONTH= #--------------- Month (1-12) to define date of one-time upgrade
 _AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
-_AUTO_VER=dev #----------------- The BOA version to use (dev by default)
+_AUTO_VER= #-------------------- The BOA tier to use; unset = host's own tree
 _AUTO_PHP= #-------------------- Useful to force php-min, otherwise ignored
 
 ###
@@ -349,45 +349,3 @@ _DAEDALUS_TO_EXCALIBUR=NO
 ### from Debian Trixie to Devuan Excalibur.
 ###
 _TRIXIE_TO_EXCALIBUR=NO
-
-###
-### Use YES to enable The Hourly Hot DB Server Backups with Percona XtraBackup
-###
-### Once enabled, the system will use XtraBackup to create complete and very
-### fast, non-blocking backups of all databases on the system, every hour.
-### These backups will be compressed and rotated after 2 days.
-###
-### The recovery procedure shown below uses the latest, hourly, complete backup
-### of all databases hosted on the system. It should be used only for global
-### data recovery, as there is no option to reliably recover data per database,
-### so this method should be used as a last resort, when trying to recover from
-### disaster or human error - see the GitLab horror story: http://bit.ly/2jvJ5YG
-###
-### In theory you could try to copy over the data only from the affected
-### database directory manually, but then there will be conflicts in the binary
-### log which may even prevent the db server from starting properly,
-### and another InnoDB recovery procedure may be required.
-###
-### If you are not sure what to do, and you have never tried this before
-### at least few times with good results, it's probably better to ask someone
-### more experienced for assistance.
-###
-### You can use any other existing hourly backup you can find in the
-### /data/disk/arch/hourly/ directory and replace the "latest" keyword
-### with the correct filename, for example: "server.name.foo-170218-1518"
-###
-### $ cd /data/disk/arch/hourly/
-### $ tar xjf latest.tar.bz2
-### $ service cron stop
-### $ sleep 180
-### $ service mysql stop
-### $ mkdir /tmp/mysql
-### $ mv /var/lib/mysql/* /tmp/mysql/
-### $ innobackupex --copy-back /data/disk/arch/hourly/latest
-### $ chown -R mysql:mysql: /var/lib/mysql
-### $ chown -R mysql:mysql: /var/log/mysql
-### $ chown -R mysql:mysql: /run/mysqld
-### $ service mysql start
-### $ service cron start
-###
-_HOURLY_DB_BACKUPS=NO
