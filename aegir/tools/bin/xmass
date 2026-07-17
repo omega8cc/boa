@@ -1341,6 +1341,189 @@ _xmass_setup_migration_proxy_trust() {
   fi
 }
 
+###-------------PANEL DB REWIRE ON TARGET---###
+
+_xmass_rewire_panel_db_access() {
+  # The init-time datadir swap replaced the target's MySQL wholesale with
+  # the source's: the fresh-install panel DBs that the surviving
+  # NEW-host-named panel site dirs point at died with it, and the live
+  # (source-named) panel DB users' passwords exist only as hashes inside
+  # the replicated mysql.user — nothing on the target can rewire the panel
+  # without resetting them. Rewire every Aegir root's control panel BEFORE
+  # the step-13 rename so its queue passes (§5 cc, §7, §8) run against a
+  # bootstrappable hostmaster: discover the live hostmaster DB per root
+  # (same publish-path discriminator as renameaegirhost §5, refusing to
+  # guess on zero or several matches), reset that DB user's password across
+  # its enumerated host variants, and rewrite the panel dir's credential
+  # fields in place, preserving exact ownership and modes. Idempotent: a
+  # root whose panel drushrc already names a live DB is skipped, so resumed
+  # runs and any flow without a datadir swap no-op here. Per-root failures
+  # collect like the rename step's so the caller parks the cutover
+  # resumably.
+  local _rc _src_fqdn
+  _src_fqdn=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
+    | head -1 \
+    | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+  _src_fqdn=${_src_fqdn//[^a-zA-Z0-9.\-]/}
+  [ -z "${_src_fqdn}" ] && _src_fqdn=$(hostname -f 2>/dev/null | tr -d '\n')
+  if [ -z "${_src_fqdn}" ]; then
+    _alrt "Cannot determine the source FQDN for the panel rewire step"
+    _XMASS_PANEL_FAILED=" fqdn-detection"
+    return 1
+  fi
+
+  _XMASS_PANEL_FAILED=""
+  _info "Rewiring panel DB access on target ${_tgt} for all Aegir roots ..."
+
+  local _probe_rc _root
+  for _root in /var/aegir $(printf '/data/disk/%s ' ${_ELIGIBLE_ACCOUNTS}); do
+    # Same 0/1-vs-ssh-failure split as the rename step: 255 (and anything
+    # else) is an ssh-layer failure and must park, not silently skip.
+    ssh root@"${_tgt}" \
+      "[ -f '${_root}/.drush/hostmaster.alias.drushrc.php' ]" 2>/dev/null
+    _probe_rc=$?
+    if [ "${_probe_rc}" -eq 1 ]; then
+      _alrt "Skipping panel rewire for ${_root} — hostmaster alias not found on target"
+      continue
+    elif [ "${_probe_rc}" -ne 0 ]; then
+      _alrt "Cannot check ${_root} on target (ssh rc=${_probe_rc})"
+      _XMASS_PANEL_FAILED="${_XMASS_PANEL_FAILED} ${_root}"
+      continue
+    fi
+    _info "  Rewiring panel DB access for ${_root} on target ..."
+    ssh root@"${_tgt}" "bash -s -- '${_root}' '${_src_fqdn}'" <<'REMOTE'
+_R="$1"
+_S="$2"
+_R=${_R//[^a-zA-Z0-9\/._-]/}
+_S=${_S//[^a-zA-Z0-9.-]/}
+_NEW=$(hostname -f 2>/dev/null | tr -d '\n')
+_NEW=${_NEW//[^a-zA-Z0-9.-]/}
+if [ -z "${_R}" ] || [ -z "${_S}" ] || [ -z "${_NEW}" ]; then
+  echo "PANEL-ERROR: bad arguments or no system FQDN (root=${_R} src=${_S} new=${_NEW})"
+  exit 1
+fi
+_ALS="${_R}/.drush/hostmaster.alias.drushrc.php"
+_SP=$(grep "site_path'" "${_ALS}" 2>/dev/null | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+if [ -z "${_SP}" ]; then
+  echo "PANEL-ERROR: cannot read site_path from ${_ALS}"
+  exit 1
+fi
+# The alias copy that survived the rsync -u mtime race may name either
+# hostname variant, and on account roots BOTH panel dirs can exist on disk
+# (the source platform tree rsyncs in). The dir the renamed site node will
+# serve is the NEW-host-named one — prefer it whenever it exists.
+_SPN=${_SP//${_S}/${_NEW}}
+if [ -f "${_SPN}/drushrc.php" ]; then
+  _SP="${_SPN}"
+fi
+if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
+  echo "PANEL-ERROR: no panel settings.php/drushrc.php under ${_R} (looked at ${_SP})"
+  exit 1
+fi
+_DEAD_DB=$(grep "options\['db_name'\]" "${_SP}/drushrc.php" | head -1 | sed "s/.*=//; s/[' ,;]//g")
+_DEAD_DB=${_DEAD_DB//[^a-zA-Z0-9_]/}
+if [ -z "${_DEAD_DB}" ]; then
+  echo "PANEL-ERROR: cannot read db_name from ${_SP}/drushrc.php"
+  exit 1
+fi
+if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
+    -e "SHOW DATABASES LIKE '${_DEAD_DB}'" 2>/dev/null)" ]; then
+  echo "PANEL-OK: ${_R} panel DB ${_DEAD_DB} is live — nothing to rewire"
+  exit 0
+fi
+_LIVE=""
+for _C in $(mysql --defaults-file=/root/.my.cnf -N -B \
+    -e "SHOW DATABASES" 2>/dev/null \
+  | grep -vE "^(information_schema|performance_schema|mysql|sys)$"); do
+  case "${_C}" in *[!A-Za-z0-9_]*) continue ;; esac
+  if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B "${_C}" \
+      -e "SELECT name FROM hosting_context WHERE name='server_master' LIMIT 1" 2>/dev/null)" ] \
+    && [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B "${_C}" \
+      -e "SELECT publish_path FROM hosting_platform WHERE publish_path LIKE '${_R}/%' LIMIT 1" 2>/dev/null)" ]; then
+    if [ -n "${_LIVE}" ]; then
+      echo "PANEL-ERROR: multiple live hostmaster DBs match ${_R} (${_LIVE}, ${_C}) — refusing to guess"
+      exit 1
+    fi
+    _LIVE="${_C}"
+  fi
+done
+if [ -z "${_LIVE}" ]; then
+  echo "PANEL-ERROR: dead panel DB ${_DEAD_DB} and no live hostmaster DB found for ${_R}"
+  exit 1
+fi
+# Aegir derives the site DB user from the DB name; enumerate its host
+# variants from mysql.user instead of assuming (@% vs @127.0.0.1 vs
+# @localhost all occur in the wild).
+_HOSTS=$(mysql --defaults-file=/root/.my.cnf -N -B \
+  -e "SELECT Host FROM mysql.user WHERE User='${_LIVE}'" 2>/dev/null)
+if [ -z "${_HOSTS}" ]; then
+  echo "PANEL-ERROR: no mysql user '${_LIVE}' found to reset"
+  exit 1
+fi
+_PW=$(od -An -N8 -tx8 /dev/urandom | tr -d " \n" | cut -c1-14)
+if [ -z "${_PW}" ]; then
+  echo "PANEL-ERROR: could not generate a password"
+  exit 1
+fi
+_SQL=""
+while read -r _H; do
+  [ -z "${_H}" ] && continue
+  case "${_H}" in
+    *[!A-Za-z0-9._%:-]*)
+      echo "PANEL-ERROR: unexpected host variant '${_H}' for ${_LIVE} — refusing"
+      exit 1
+      ;;
+  esac
+  _SQL="${_SQL}ALTER USER '${_LIVE}'@'${_H}' IDENTIFIED BY '${_PW}'; "
+done <<< "${_HOSTS}"
+if ! mysql --defaults-file=/root/.my.cnf -e "${_SQL}FLUSH PRIVILEGES;"; then
+  echo "PANEL-ERROR: password reset failed for ${_LIVE}"
+  exit 1
+fi
+# Key-anchored rewrites so a re-entered run converges regardless of what
+# the fields currently hold; root sed -i recreates files, so capture and
+# restore the exact ownership and modes (a root-owned settings.php is
+# silently skipped by drush/PHP). Each file is verified right after its
+# rewrite, settings.php FIRST: drushrc.php is the re-entry skip key, so it
+# must only be written once settings.php verifiably took the rewrite —
+# a silent sed no-op (anchor drift) then parks loudly and re-entry retries
+# instead of skipping past a stranded settings.php.
+for _F in "${_SP}/settings.php" "${_SP}/drushrc.php"; do
+  _O=$(stat -c '%U:%G' "${_F}")
+  _M=$(stat -c '%a' "${_F}")
+  sed -i \
+    -e "s#^\( *'database' => \)[\"'][^\"']*[\"'],#\1\"${_LIVE}\",#" \
+    -e "s#^\( *'username' => \)[\"'][^\"']*[\"'],#\1\"${_LIVE}\",#" \
+    -e "s#^\( *'password' => \)[\"'][^\"']*[\"'],#\1\"${_PW}\",#" \
+    -e "s#^\( *\$db_url\['default'\] = \"mysqli\{0,1\}://\)[^@]*@\([^/]*\)/[A-Za-z0-9_]*\";#\1${_LIVE}:${_PW}@\2/${_LIVE}\";#" \
+    -e "s#^\(\$options\['db_name'\] = \)'[^']*';#\1'${_LIVE}';#" \
+    -e "s#^\(\$options\['db_user'\] = \)'[^']*';#\1'${_LIVE}';#" \
+    -e "s#^\(\$options\['db_passwd'\] = \)'[^']*';#\1'${_PW}';#" \
+    "${_F}"
+  [ -n "${_O}" ] && chown "${_O}" "${_F}"
+  [ -n "${_M}" ] && chmod "${_M}" "${_F}"
+  if ! grep -q "${_LIVE}" "${_F}"; then
+    echo "PANEL-ERROR: rewrite did not land in ${_F} (no ${_LIVE} after sed) — check the credential line format"
+    exit 1
+  fi
+done
+echo "PANEL-OK: ${_R} panel rewired from dead ${_DEAD_DB} to live DB ${_LIVE}"
+exit 0
+REMOTE
+    _rc=$?
+    if [ "${_rc}" -ne 0 ]; then
+      _alrt "panel rewire for ${_root} returned rc=${_rc} on target"
+      _XMASS_PANEL_FAILED="${_XMASS_PANEL_FAILED} ${_root}"
+    fi
+  done
+
+  if [ -n "${_XMASS_PANEL_FAILED}" ]; then
+    return 1
+  fi
+  _info "Panel DB access rewired for all Aegir roots on target: OK"
+  return 0
+}
+
 ###-------------RENAMEAEGIRHOST ON TARGET---###
 
 _xmass_renameaegirhost_all() {
@@ -1611,11 +1794,24 @@ _xmass_cmd_status() {
 }
 
 _xmass_cutover_finish() {
-  # Steps 13..18 — everything after the target promotion. Shared by the
+  # Steps 12.5..18 — everything after the target promotion. Shared by the
   # normal cutover flow and the 'rename-failed' resume path; every step here
-  # is safe to re-enter (rm/touch/service loops, forced renames converge).
+  # is safe to re-enter (rm/touch/service loops, forced renames converge,
+  # the panel rewire skips roots whose panel already names a live DB).
   # NB: a resumed run re-sends the per-account migration-complete emails via
   # xoct proxy — accepted cost of a rare recovery path.
+
+  # Step 12.5: Rewire panel DB access on the target BEFORE the rename, so
+  # the rename step's queue passes run against a bootstrappable hostmaster
+  # (the datadir swap killed the fresh-install panel DBs — panels answered
+  # 500 after every completed cutover until this step existed).
+  if ! _xmass_rewire_panel_db_access; then
+    _XMASS_PHASE="rename-failed"
+    _xmass_save_state
+    _die "panel DB rewire failed on target for:${_XMASS_PANEL_FAILED} — cutover PARKED (phase=rename-failed)." \
+         " The source stays 503-gated and the SQL watchdogs stay paused." \
+         " Fix the cause on ${_tgt}, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
+  fi
 
   # Step 13: Run renameaegirhost on target for all Aegir roots.
   # This rewrites drush aliases, vhosts, and the Aegir DB to the new hostname,

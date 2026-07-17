@@ -230,6 +230,14 @@ xoct proxy o1 target-ip o2
 - `transfer shared` does not use `o2` — it is not account-specific
 - All path references (`/data/disk/o1.ftp`, etc.) are rewritten to `o2`
   automatically during transfer
+- `import` also moves the ACCOUNT axis inside the imported Ægir DB (via
+  renameaegirhost `--old-account/--new-account`): the control panel identity
+  becomes `o2.<target-fqdn>` (adopting the fresh install's panel site dir and
+  its valid credentials), and `/data/disk/o1` paths in platform, git, backup
+  and package records become `/data/disk/o2` — otherwise the first DB-driven
+  regeneration after migration would re-stamp the stale source paths over the
+  transfer-time fixes. Customer-site URIs are never touched: a site living on
+  the account subdomain (e.g. `shop.o1.<fqdn>`) keeps its name.
 
 ---
 
