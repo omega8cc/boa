@@ -18,7 +18,7 @@ BOA offers a highly secure hosting environment for Ægir and Drupal sites, featu
 4. **Firewall Monitoring**: Repeated failed login attempts for SSH, SFTP, or FTPS result in temporary one-hour blocks, escalating to permanent blocks. Whitelisted IPs are not exempt if abuse is detected.
 5. **Load Management**: The web server may be temporarily disabled during high system loads due to undetected DoS attacks. Normal service resumes within 10 seconds after load stabilization.
 6. **Port Scan and Flood Protection**: Detected port scans or floods result in temporary one-hour blocks, escalating to permanent blocks after repeated offenses. False positives are detailed in our [How Firewall Works article](https://omega8.cc/how-firewall-works-is-my-ip-blocked-121).
-7. **Resource Scaling**: Automated resource scaling on hosted BOA mitigates high load spikes, ensuring system stability during short-term traffic surges.
+7. **Per-Plan Resource Limits**: PHP-FPM runs each account with a capped worker pool, so a single site cannot monopolize the server or destabilize its neighbours during a traffic spike. Shared plans keep a fixed per-plan worker limit; dedicated plans size their pool dynamically from available RAM and CPU.
 8. **Perfect Forward Secrecy and HTTP/2**: All HTTPS services utilize Perfect Forward Secrecy and HTTP/2 for enhanced security and speed. Non-supportive browsers default to classic HTTPS with SSL and Perfect Forward Secrecy.
 9. **PHP Error Protection**: PHP errors are not displayed in browsers. Debugging can be performed using protected dev domain aliases.
 10. **Password Expiration Policy**: SSH, SFTP, and FTPS passwords expire every 90 days and must be updated, even if SSH keys are in use.

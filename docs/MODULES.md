@@ -4,7 +4,7 @@ added to all 6.x and 7.x platforms -- even to your custom
 platforms created in the ~/static directory tree.
 
 Some core and contrib modules are either enabled or disabled
-by default, by running weekly (on Saturday) maintenance monitor.
+by default, by running weekly (on Tuesday) maintenance monitor.
 
 NOTE: You can disable this feature with _MODULES_FIX=NO in the
       standard Barracuda configuration file: /root/.barracuda.cnf
