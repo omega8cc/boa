@@ -9,7 +9,7 @@
 ###
 _USER="o1" #-------------------- Ægir Octopus Instance system account name
 _MY_OCTO_EMAIL="my@email" #----- Ægir Octopus Instance owner email
-_PLATFORMS_LIST=ALL #----------- Platforms to install - see docs/PLATFORMS.md
+_PLATFORMS_LIST= #-------------- Platforms to install - see docs/PLATFORMS.md
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _HM_ONLY=NO #------------------- Allows to upgrade Ægir Hostmaster only
 _PLATFORMS_ONLY=NO #------------ Install only new Ægir platforms when YES
@@ -52,9 +52,9 @@ _SITES_COLLATION_SQL= #--------- By default in sites hosted: utf8mb4_unicode_ci
 ###
 _DOMAIN="o1.f-q-d-n" #---------- URL of the Ægir control panel
 _CLIENT_EMAIL= #---------------- Create client user if different than _MY_OCTO_EMAIL
-_CLIENT_OPTION="POWER" #-------- Currently not used
+_CLIENT_OPTION="POWER" #-------- Active PHP-FPM plan tier (workers + memory)
 _CLIENT_SUBSCR="M" #------------ Currently not used
-_CLIENT_CORES="1" #------------- Currently not used
+_CLIENT_CORES="1" #------------- Core multiplier for shared-plan pm.max_children
 ###
 ### Octopus
 ###
@@ -111,13 +111,8 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### NOTE: There must be only one line and one value in this control file.
 ### Otherwise it will be ignored.
 ###
-### NOTE: if the file doesn't exist, the system will create it and set to the
-### lowest available PHP version installed, not to the system default version.
-### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
-### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 8.1, and this could break
-### most of the sites hosted, never before tested for PHP 8.1 compatibility.
+### NOTE: if the file doesn't exist, the system will create it and set it to
+### the default PHP version when installed, otherwise the newest one available.
 ###
 
 ###
@@ -168,21 +163,16 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### There must be only one line and one value in this control file.
 ### Otherwise it will be ignored.
 ###
-### NOTE: if the file doesn't exist, the system will create it and set to the
-### lowest available PHP version installed, not to the system default version.
-### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
-### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 8.1, and this could break
-### most of the sites hosted, never before tested for PHP 8.1 compatibility.
+### NOTE: if the file doesn't exist, the system will create it and set it to
+### the default PHP version when installed, otherwise the newest one available.
 ###
-### IMPORTANT: this file will affect only Drush on command line and Drush
-### in Ægir backend, used for all tasks on hosted sites, but it will not
-### affect PHP-CLI version used by Composer on command line, because Composer
-### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-5.0.0, PHP 8.1 and can be
-### changed only by changing system default _PHP_CLI_VERSION in the file
-### /root/.barracuda.cnf and running barracuda upgrade.
+### IMPORTANT: this file governs the PHP-CLI version for both Drush (on the
+### command line and in the Ægir backend, used for all tasks on hosted sites)
+### and Composer on the command line, whenever they run under the oN.ftp
+### limited shell wrapper. See docs/DRUSH-CLI.md for details. Note that the
+### wrapper is temporarily disabled during barracuda and octopus upgrades, so
+### any Drush or Composer command run while an upgrade is in progress reverts
+### to the system default _PHP_CLI_VERSION set in /root/.barracuda.cnf.
 ###
 
 ###
@@ -282,6 +272,8 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
 ### system releases.
+###
+### Note: the 'ALL' wildcard is not the default.
 ###
 ### Examples:
 #

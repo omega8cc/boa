@@ -127,10 +127,17 @@ Run on the **source** only.
 xmass init target-ip [--permanent-proxy]
 ```
 
-`--permanent-proxy` signals that the source server will remain a permanent HTTP
-proxy after cutover (rather than a temporary one pending DNS update). This
-affects the wording of the migration-complete notification emails sent by
-`xoct proxy` during cutover.
+`--permanent-proxy` marks the source server as a **permanent** HTTP proxy after
+cutover, rather than a temporary one to be decommissioned once DNS points at the
+target. It changes two things at cutover and post-migration:
+
+- The migration-proxy trust wired on the target — nginx realip recovery of the
+  real client plus the CSF whitelist of the source's proxy IP — is marked
+  permanent (`/data/conf/.migration_proxy_permanent.pid`). The `post-mig`
+  teardown that would otherwise drop that trust becomes a deliberate no-op, so
+  the source stays trusted (realip + csf) indefinitely.
+- The migration-complete notification emails sent by `xoct proxy` are worded for
+  a permanent rather than a temporary proxy.
 
 What `init` does:
 
@@ -407,6 +414,9 @@ so the remaining cutover steps complete.
   all migrated sites. It is independent of the target and can be
   decommissioned as soon as DNS has propagated and you are satisfied with the
   target.
-- The `--permanent-proxy` flag changes only the wording in the notification
-  emails sent during `xoct proxy` calls at cutover. All technical steps are
-  identical regardless.
+- The `--permanent-proxy` flag keeps the source's migration-proxy trust on the
+  target permanent: the `post-mig` teardown that normally drops the nginx realip
+  + CSF whitelist of the source proxy IP is skipped, so the source stays trusted
+  indefinitely. It also words the `xoct proxy` notification emails for a
+  permanent rather than a temporary proxy. Without it, the trust is temporary and
+  `post-mig` removes it once traffic flows directly to the target.
