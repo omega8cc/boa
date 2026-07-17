@@ -83,14 +83,26 @@ Backdrop is a Drupal-7-lineage fork, and BOA manages it through the same
 
 Backdrop sites answer to **both** CLIs:
 
-- `bee` — the native Backdrop CLI. The BOA launcher picks a modern PHP
-  automatically (Backdrop's own floor is PHP 7.1; `bee` never runs under
-  PHP 5.6). Backend identities (root, `aegir`, `o1`-style Octopus users)
-  have the full verb set. Client shell identities (`o1.ftp`-style) get
-  the everyday verbs, while destructive ones (database import and drop,
-  fresh site install, `eval`-class verbs) are refused — restores go
-  through the Ægir control panel. `bee db-export` stays available to
-  clients.
+- `bee` — the native Backdrop CLI. The launcher (`/opt/local/bin/bee`,
+  no `/usr/bin` symlink — the shell wrapper's PATH resolves it) runs it
+  under the same per-account PHP-CLI selection as Drush: `cli.info`
+  sets the lasting choice and the `phpNN.info` markers switch it
+  instantly, highest marked-and-installed version winning. Client
+  commands arrive through the shell wrapper (websh), which resolves the
+  control files and hands the choice to the launcher; direct backend
+  calls (root, `aegir`, `oN`) resolve the same files themselves — from
+  the account tree they run in, or the calling identity's own account.
+  One clamp on top: `bee` requires a modern PHP (Backdrop's own floor
+  is 7.1; BOA enforces 7.4), so an account choice below that makes
+  `bee` alone use the newest installed modern version while Drush still
+  honours the choice exactly. The matching php.ini always follows the
+  version finally picked, including any per-account
+  `~/.drush/phpNN/php.ini` override. Backend identities (root, `aegir`,
+  `o1`-style Octopus users) have the full verb set. Client shell
+  identities (`o1.ftp`-style) get the everyday verbs, while destructive
+  ones (database import and drop, fresh site install, `eval`-class
+  verbs) are refused — restores go through the Ægir control panel.
+  `bee db-export` stays available to clients.
 - `drush` (Drush 8) — the backdrop-drush-extension teaches Drush 8 to
   bootstrap Backdrop, so per-site aliases, `status`, `cc all`,
   `sql-dump` and friends work as on Drupal 7. All Ægir backend tasks run
