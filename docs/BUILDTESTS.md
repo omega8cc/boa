@@ -28,22 +28,22 @@ what it does.
 Distributions, published to `/var/www/static/distro`:
 
 ```sh
-  312M  commerce_kickstart-5.x-dev-11.4.1
-  524M  drupal_cms_installer-2.1.3-11.4.1
-  226M  farm-4.0.3-11.3.12
-  404M  localgov-4.0.3-11.4.1
-  524M  openculturas-3.0.1-11.4.1
-  272M  thunder-8.4.0-11.4.1
+  commerce_kickstart-5.1.0-11.4.4
+  drupal_cms_installer-2.1.3-11.4.4
+  farm-4.0.4-11.3.14
+  localgov-4.0.2-11.4.4
+  openculturas-3.0.3-11.3.14
+  thunder-8.4.0-11.4.4
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
 
 ```sh
-  169M  drupal-10.2.12    188M  drupal-11.2.14
-  178M  drupal-10.3.14    194M  drupal-11.3.13
-  185M  drupal-10.4.10    202M  drupal-11.4.1
-  187M  drupal-10.5.12
-  188M  drupal-10.6.12    182M  drupal-11.1.10
+  drupal-10.2.12    drupal-11.1.10
+  drupal-10.3.14    drupal-11.2.14
+  drupal-10.4.10    drupal-11.3.14
+  drupal-10.5.12    drupal-11.4.4
+  drupal-10.6.13
 ```
 
 ## Backdrop family
@@ -108,19 +108,19 @@ Common shape for the create-project distros (farmOS is a release tarball instead
 etc., which current Composer blocks unless allowed.
 
 ```sh
-farmos     # farm-4.0.3-11.3.12  (farmOS caps core at 11.3)
+farmos     # farm-4.0.4-11.3.14  (farmOS caps core at 11.3)
            # visit: https://github.com/farmOS/farmOS/releases
-           # wget https://github.com/farmOS/farmOS/releases/download/4.0.3/farmOS-4.0.3.tar.gz
-           # tar -xzf farmOS-4.0.3.tar.gz && mv farmOS farm-4.0.3-11.3.12
-           # cd ~/static/MONTH-DAY/farm-4.0.3-11.3.12
+           # wget https://github.com/farmOS/farmOS/releases/download/4.0.4/farmOS-4.0.4.tar.gz
+           # tar -xzf farmOS-4.0.4.tar.gz && mv farmOS farm-4.0.4-11.3.14
+           # cd ~/static/MONTH-DAY/farm-4.0.4-11.3.14
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.1 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.3-11.4.1
+cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.4 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.3-11.4.4
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
@@ -128,8 +128,8 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.1-11.4.1 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.0.1-11.4.1/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.3-11.3.14 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.0.3-11.3.14/
            # composer config --no-plugins allow-plugins true
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # build unpatched (stale core patch)
            # composer update --no-install --no-scripts
@@ -137,12 +137,13 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.3-11.3.12/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.1-11.4.1/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.4-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.3-11.3.14/web/sites/
 ```
 
 ```sh
-commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.x-dev-11.4.1 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/commerce_kickstart-5.x-dev-11.4.1
+commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.1.0-11.4.4 --no-dev --no-interaction --no-install --no-scripts
+           # name by centarro/commerce_kickstart (the profile, 5.1.0); the project template stays dev-only
+           # cd ~/static/MONTH-DAY/commerce_kickstart-5.1.0-11.4.4
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false   # commerce_kickstart blocks advisory-affected deps
            # composer install --no-dev
@@ -152,17 +153,18 @@ commerce   # composer create-project -s dev centarro/commerce-kickstart-project 
 ```
 
 ```sh
-localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.3-11.4.1 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/localgov-4.0.3-11.4.1
+localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.2-11.4.4 --no-dev --no-interaction --no-install --no-scripts
+           # name by drupal/localgov (the distribution, 4.0.2); localgov_project versions separately
+           # cd ~/static/MONTH-DAY/localgov-4.0.2-11.4.4
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
 ```
 
 ```sh
-thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.1 --no-dev --no-interaction --no-install --no-scripts
+thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.4 --no-dev --no-interaction --no-install --no-scripts
            # name by thunder/thunder-distribution (8.4.0); thunder/thunder-project versions separately (5.0.0)
-           # cd ~/static/MONTH-DAY/thunder-8.4.0-11.4.1
+           # cd ~/static/MONTH-DAY/thunder-8.4.0-11.4.4
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
@@ -180,7 +182,7 @@ Vanilla cores, latest patch of each supported minor (full install, add drush, au
 vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # composer create-project drupal/recommended-project:<minor>.* drupal-<version> --no-dev --no-interaction
            # cd drupal-<version> && composer require drush/drush && composer audit
-           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.12 11.1.10 11.2.14 11.3.13 11.4.1
+           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.13 11.1.10 11.2.14 11.3.14 11.4.4
 ```
 
 ### Clean up artefacts before packaging
@@ -224,7 +226,7 @@ Raw cores (`drupal-*`) go to `core/`; everything else goes to `distro/`.
 
 ## Add them all as platforms in Ægir
 
-Use paths like `MONTH-DAY/drupal-11.4.1` and run tests for site install, clone and migration.
+Use paths like `MONTH-DAY/drupal-11.4.4` and run tests for site install, clone and migration.
 
 ## Notes on non-standard issues
 
