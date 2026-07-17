@@ -63,8 +63,9 @@ These settings ensure:
    - The system retains all incremental backups linked to full backups within the `KEEP_WITHIN` period.
    - This ensures backup chains remain valid for restoration.
 
-3. **No Use of `remove-all-but-n-full`**:
-   - The `remove-all-but-n-full` command is not used in this system, as it is unsuitable for live backups. It deletes full backups and their associated incremental chains, which can disrupt active backup sets.
+3. **`remove-all-but-n-full` Not Used for Routine Cleanup**:
+   - Routine cleanup does not use `remove-all-but-n-full`, as it is unsuitable for trimming live backups. It deletes full backups and their associated incremental chains, which can disrupt active backup sets.
+   - The command is used only by the `purge` action, which runs `remove-all-but-n-full 0 --force` to wipe a bucket completely.
 
 ---
 
@@ -129,7 +130,7 @@ If needed, you can adjust the retention settings to better fit your needs.
    - Balance the frequency of full backups (`FULL_BACKUP_FREQUENCY`) with your available storage capacity.
 
 3. **No Incremental Chain Disruption**:
-   - The system ensures incremental chains remain intact by avoiding commands that delete intermediate full backups (e.g., `remove-all-but-n-full`).
+   - Routine backup and cleanup keep incremental chains intact by avoiding commands that delete intermediate full backups. `remove-all-but-n-full` is used only by the explicit `purge` action, which wipes the bucket entirely.
 
 ---
 
@@ -153,9 +154,9 @@ To ensure your retention settings work as intended:
 1. **What happens if `KEEP_WITHIN` is too short?**
    - Backups older than the `KEEP_WITHIN` period are deleted, which may reduce the number of available recovery points.
 
-2. **Why isn't `remove-all-but-n-full` used?**
-   - `remove-all-but-n-full` deletes full backups and their associated incremental chains, which can disrupt live backups.
-   - It is better suited for managing static, archived backups, which are outside the scope of this system.
+2. **Why isn't `remove-all-but-n-full` used for routine retention?**
+   - For trimming live backups it would delete full backups and their associated incremental chains, which can disrupt them, so time-based retention is used instead.
+   - It is used only by the `purge` action, which runs it with a count of `0` to wipe a bucket completely.
 
 3. **Can I customize settings for different storage services?**
    - Yes, you can define different retention settings for each service (e.g., AWS, B2) in their respective credentials files.

@@ -110,7 +110,7 @@ The procedure discussed above automates major OS upgrades by running them in the
 
 ### NOTE on unused PHP versions automatic deactivation
 
-Both the automated major OS upgrade tools and the classic manual major OS upgrade with barracuda will automatically disable all installed but not used in any hosted site PHP versions, effectively enforcing an otherwise optional procedure normally triggered on barracuda upgrade if the control file exists: `/root/.allow-php-multi-install-cleanup.cnf`.
+The automated major OS upgrade tools will automatically disable all installed but not used in any hosted site PHP versions, effectively enforcing an otherwise optional procedure normally triggered on barracuda upgrade only when the control file exists: `/root/.allow-php-multi-install-cleanup.cnf`. The classic manual major OS upgrade with barracuda does not enforce it automatically -- there it runs only if that same control file is present.
 
 It will not affect migration/upgrade from Debian Bullseye to Devuan Chimaera (or newer), though, since it doesn’t involve re-installing all existing PHP versions normally required in other major upgrades, which otherwise significantly extends the procedure for no good reasons (not used PHP versions should be skipped and deactivated).
 
@@ -132,7 +132,7 @@ Both the automated and classic Daedalus to Excalibur major OS upgrade procedures
 
 This is expected and self-correcting behaviour caused by a system library soname bump between the two OS versions -- for example `libavif.so.15` in Daedalus becoming `libavif.so.16` in Excalibur. Since PHP is built from sources and links against these libraries at compile time, the running PHP binary becomes temporarily invalid after the dist-upgrade replaces the shared library.
 
-BOA automatically detects and fixes this by rebuilding all active PHP versions from sources immediately after the dist-upgrade completes, before the first post-upgrade reboot. No operator action is required.
+BOA automatically detects and fixes this by rebuilding all active PHP versions from sources. During a classic major OS upgrade the rebuild runs immediately after the dist-upgrade completes, before the first post-upgrade reboot. During the automated major OS upgrade it is deferred until the post-upgrade step that runs after that reboot. No operator action is required in either case.
 
 The expected downtime is approximately 3-5 minutes per active PHP version during this rebuild phase.
 
