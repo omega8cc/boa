@@ -172,11 +172,14 @@ service cron start
 
 `import` re-imports the Ægir hostmaster database, sets the site front page
 back to `hosting/sites`, then calls
-`renameaegirhost --aegir-root /data/disk/o1` which:
+`renameaegirhost --aegir-root /data/disk/o1 --force-old source-fqdn` (the
+source hostname was recorded at export time, so the rename never depends on
+which side's alias copy survived the transfer) which:
 
 - Rewrites all drush alias files (old source hostname → target FQDN).
 - Rewrites and renames nginx vhost files.
-- Dumps the Ægir DB, replaces the source hostname throughout, and re-imports.
+- Renames the source hostname inside the Ægir DB with serialize-safe,
+  targeted statements (a plain dump is taken first, as a backup only).
 - Reloads nginx.
 - Runs the Ægir task queue **5 passes** (cc drush + server_master verify +
   server_localhost verify + hosting-dispatch + hosting-tasks) to regenerate
@@ -227,6 +230,14 @@ xoct proxy o1 target-ip o2
 - `transfer shared` does not use `o2` — it is not account-specific
 - All path references (`/data/disk/o1.ftp`, etc.) are rewritten to `o2`
   automatically during transfer
+- `import` also moves the ACCOUNT axis inside the imported Ægir DB (via
+  renameaegirhost `--old-account/--new-account`): the control panel identity
+  becomes `o2.<target-fqdn>` (adopting the fresh install's panel site dir and
+  its valid credentials), and `/data/disk/o1` paths in platform, git, backup
+  and package records become `/data/disk/o2` — otherwise the first DB-driven
+  regeneration after migration would re-stamp the stale source paths over the
+  transfer-time fixes. Customer-site URIs are never touched: a site living on
+  the account subdomain (e.g. `shop.o1.<fqdn>`) keeps its name.
 
 ---
 

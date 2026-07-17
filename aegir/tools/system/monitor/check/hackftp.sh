@@ -132,13 +132,14 @@ _recycle_log() {
 # -----------------------------------------------------------------------------
 # Main detection logic  (replaces makeactions + verify_timestamp + check_ip)
 #
-# FTP log format in /var/log/messages:
-#   "... host proftpd[N]: Authentication failed for user user@1.2.3.4"
-#   "... host proftpd[N]: Sorry, cleartext sessions are not accepted from user@1.2.3.4"
+# BOA runs pure-ftpd (DontResolve/-H), which logs to /var/log/messages as:
+#   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Authentication failed for user [name]"
+#   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Sorry, cleartext sessions are not accepted"
 #
-# The Perl original extracts the 6th whitespace field (user@IP) then splits on @.
-# We do the same via positional read, keeping it format-faithful while also
-# supporting ISO 8601 timestamps (where field positions shift by one).
+# The peer IP is the server-written "(?@<ip>)" prefix; the login name is
+# attacker-controlled and logged later inside "[...]". We anchor extraction on
+# that prefix so it is timestamp-position-invariant (classic AND ISO 8601 syslog)
+# and can never be spoofed by an IP-shaped username.
 # -----------------------------------------------------------------------------
 
 _makeactions() {
@@ -184,23 +185,29 @@ _makeactions() {
 
       _line_is_recent "${_line}" || continue
 
-      # Extract user@IP field — position differs between classic and ISO syslog:
-      #   Classic:  "Mon DD HH:MM:SS host proc[N]: ... user@1.2.3.4"  → field 6
-      #   ISO 8601: "YYYY-MM-DDTHH:MM:SS+TZ host proc[N]: ... user@1.2.3.4" → field 6
-      # Field position is the same in both cases because the ISO timestamp is
-      # one field (no spaces), so field count is identical.
-      local _f1 _f2 _f3 _f4 _f5 _visitorx _rest
-      read -r _f1 _f2 _f3 _f4 _f5 _visitorx _rest <<< "${_line}"
-
-      # Strip trailing punctuation, then split on @ to get the IP part
-      _visitorx="${_visitorx//[^a-zA-Z0-9.@]/}"
-      local _ip="${_visitorx##*@}"
-      _ip="${_ip//[^0-9.]/}"
-
-      # Fallback: if field-based extraction didn't yield an IP, grep for it
-      if ! _is_ipv4 "${_ip}"; then
-        _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      # Extract the peer IP from pure-ftpd's server-written prefix -- the FIRST
+      # parenthesised "(user@host)" token AFTER the "pure-ftpd:" program tag. That
+      # tag is written by pure-ftpd/syslog, never the client, so anchoring on it is
+      # injection-proof: the attacker-controlled login name (logged later inside
+      # "[...]", and which may itself contain a "(x@1.2.3.4)" token because the
+      # sanitiser keeps parentheses) can never be reached by the match. We take THAT
+      # token's host and require it to be IPv4 -- we deliberately do NOT let a free
+      # "@<ipv4>" =~ search run, because on a non-IPv4 first paren (an IPv6 or
+      # IPv4-mapped peer) it would skip the real prefix and match the attacker's
+      # "(x@8.8.8.8)" username token, banning an attacker-framed third party.
+      # Position-invariant across classic and ISO 8601 syslog (the tag precedes both
+      # message variants).
+      #
+      # IPv4-mapped IPv6 peer (::ffff:1.2.3.4 -- the default log form for an IPv4
+      # client on a dual-stack pure-ftpd): recover the embedded IPv4 so a real
+      # client is still banned. A pure IPv6 peer has no IPv4 form, so _is_ipv4 skips
+      # it (csf is IPv4-only) rather than mis-attributing the ban.
+      local _ip=""
+      local _ftp_peer_re='pure-ftpd(\[[0-9]+\])?:[[:space:]]*\(([^()]*)@([^()]*)\)'
+      if [[ "${_line}" =~ ${_ftp_peer_re} ]]; then
+        _ip="${BASH_REMATCH[3]}"
       fi
+      [[ "${_ip}" == *:*.*.*.* ]] && _ip="${_ip##*:}"
 
       _is_ipv4 "${_ip}" || continue
       (( _hits["${_ip}"]++ )) || true
