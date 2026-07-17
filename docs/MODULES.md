@@ -89,7 +89,6 @@ Contrib [S]upported and [B]undled:
  tag1_d7es ------------------ [D7] --------- [S] [B]
  taxonomy_edge -------------- [D6,D7] ------ [S] [B]
  variable_clean ------------- [D6,D7] ------ [S] [B]
- vars ----------------------- [D7] --------- [S] [B]
  views_accelerator ---------- [D7] --------- [S] [B]
  views_cache_bully ---------- [D6,D7] ------ [S] [B]
  views_content_cache -------- [D6,D7] ------ [S] [B]
