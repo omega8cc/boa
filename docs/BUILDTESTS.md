@@ -15,7 +15,7 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
   staticbuild all                # build every distro + core, package, publish
   staticbuild build [name ...]   # build all, or only named targets
   staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
-  staticbuild distribute         # copy tarballs to /var/www/static/{distro,core}
+  staticbuild distribute         # copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
 ```
 
 Configuration (Composer specs + core floor/exclude) is the block at the top of the
@@ -70,12 +70,12 @@ Three artefacts, always rebuilt at the latest upstream tag (pin any with the mat
   `/var/www/static/core`.
 - **bee** — native Backdrop CLI (`backdrop-contrib/bee`), from its latest git tag,
   packaged version-less as `bee.tar.gz` (`bee.php` at the root). Published to
-  `/var/www/static/dev/dev`.
+  `/var/www/static/dev/{dev,lts,pro}` — every box pulls its own tree dir.
 - **backdrop-drush-extension** — the Backdrop Drush extension
   (`backdrop-contrib/backdrop-drush-extension`), from its latest git tag, packaged
   version-less as `backdrop-drush-extension.tar.gz` and shipped pristine (BOA applies
   its own PHP 5.6 de-hint and `__DIR__` include fix on deploy). Published to
-  `/var/www/static/dev/dev`.
+  `/var/www/static/dev/{dev,lts,pro}` — every box pulls its own tree dir.
 
 ## Manual procedure (reference)
 

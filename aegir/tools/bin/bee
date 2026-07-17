@@ -9,8 +9,13 @@
 #    set -- every alias -- before exec. Restores go through the Ægir control
 #    panel, so db-import/sql-import are blocked too; db-export stays allowed.
 # 2. Picks a modern /opt/phpNN CLI (>= 7.4 floor) so bee never runs under
-#    php56 (bee's own floor is 7.1); per-site cli.info when resolvable, else the
-#    newest installed modern PHP.
+#    php56 (bee's own floor is 7.1). Selection authority mirrors the drush
+#    dispatch: a validated DRUSH_PHP exported by websh wins (it already encodes
+#    cli.info + the phpNN.info instant switch for the calling identity); direct
+#    invocations without websh in the chain self-resolve the same control files;
+#    the newest installed modern PHP is the last resort. PHPRC/PHP_INI are
+#    re-exported to match the final pick so bee never runs one PHP version
+#    with another version's ini.
 
 _BEE_FLOOR=74
 _BEE_REAL=/opt/tools/bee/bee.php
@@ -69,17 +74,52 @@ if [[ "${_BACKEND}" = "NO" ]]; then
 fi
 
 # --- PHP selection (>= 7.4 clamp) --------------------------------------------
+# 1. The websh hand-off: lshell runs every client command through websh
+#    (/bin/sh), which resolves cli.info + phpNN.info per account and exports
+#    DRUSH_PHP before forwarding. Strictly validated, never trusted verbatim:
+#    a forged value can only select an installed /opt/phpNN CLI -- the same
+#    power the control files already grant -- and anything else is ignored.
 _BEE_PHP=""
-_i="${PWD}"
-while [[ -n "${_i}" ]] && [[ "${_i}" != "/" ]]; do
-  if [[ -e "${_i}/static/control/cli.info" ]]; then
-    _v="$(tr -cd '0-9' < "${_i}/static/control/cli.info" 2>/dev/null)"
-    [[ -n "${_v}" ]] && _BEE_PHP="/opt/php${_v}/bin/php"
-    break
-  fi
-  _i="${_i%/*}"
-done
+if [[ "${DRUSH_PHP}" =~ ^/opt/php[0-9][0-9]/bin/php$ ]] && [[ -x "${DRUSH_PHP}" ]]; then
+  _BEE_PHP="${DRUSH_PHP}"
+fi
 
+# 2. No websh in the chain (root/aegir/o<N> direct calls): resolve the same
+#    control files websh reads. Control dir from the PWD walk (works in any
+#    account tree regardless of identity), else derived from the identity the
+#    way websh derives it; cli.info first, then the phpNN.info instant switch
+#    overrides it -- highest version wins, matching check_php_cli_version.
+if [[ -z "${_BEE_PHP}" ]]; then
+  _BEE_CTRL=""
+  _i="${PWD}"
+  while [[ -n "${_i}" ]] && [[ "${_i}" != "/" ]]; do
+    if [[ -d "${_i}/static/control" ]]; then
+      _BEE_CTRL="${_i}/static/control"
+      break
+    fi
+    _i="${_i%/*}"
+  done
+  if [[ -z "${_BEE_CTRL}" ]]; then
+    if [[ "${_ID}" = "aegir" ]] || [[ "${HOME}" = "/var/aegir" ]]; then
+      _BEE_CTRL="/var/aegir/static/control"
+    elif [[ -d "/data/disk/${_ID%.*}/static/control" ]]; then
+      _BEE_CTRL="/data/disk/${_ID%.*}/static/control"
+    fi
+  fi
+  if [[ -n "${_BEE_CTRL}" ]] && [[ -e "${_BEE_CTRL}/cli.info" ]]; then
+    _v="$(tr -cd '0-9' < "${_BEE_CTRL}/cli.info" 2>/dev/null)"
+    [[ -n "${_v}" ]] && [[ -x "/opt/php${_v}/bin/php" ]] && _BEE_PHP="/opt/php${_v}/bin/php"
+  fi
+  if [[ -n "${_BEE_CTRL}" ]]; then
+    for _c in 56 70 71 72 73 74 80 81 82 83 84 85; do
+      if [[ -e "${_BEE_CTRL}/php${_c}.info" ]] && [[ -x "/opt/php${_c}/bin/php" ]]; then
+        _BEE_PHP="/opt/php${_c}/bin/php"
+      fi
+    done
+  fi
+fi
+
+# 3. Clamp to the floor; last resort is the newest installed modern PHP.
 if [[ -n "${_BEE_PHP}" ]] && [[ -x "${_BEE_PHP}" ]]; then
   _n="$(printf '%s' "${_BEE_PHP}" | tr -cd '0-9')"
   if [[ -z "${_n}" ]] || [[ "${_n}" -lt "${_BEE_FLOOR}" ]]; then
@@ -93,5 +133,17 @@ if [[ -z "${_BEE_PHP}" ]] || [[ ! -x "${_BEE_PHP}" ]]; then
   _alrt "bee: no PHP >= 7.4 CLI available"
   exit 1
 fi
+
+# Align the ini with the chosen CLI: websh may have exported another version's
+# PHPRC (clamp/self-resolve divergence), and direct calls carry none at all.
+# The per-account ~/.drush/phpNN/php.ini override applies exactly as in websh.
+_n="$(printf '%s' "${_BEE_PHP}" | tr -cd '0-9')"
+PHP_INI="/opt/php${_n}/lib/php.ini"
+PHPRC="/opt/php${_n}/lib"
+if [[ -n "${HOME}" ]] && [[ -f "${HOME}/.drush/php${_n}/php.ini" ]]; then
+  PHP_INI="${HOME}/.drush/php${_n}/php.ini"
+  PHPRC="${HOME}/.drush/php${_n}"
+fi
+export PHP_INI PHPRC
 
 exec "${_BEE_PHP}" "${_BEE_REAL}" "$@"
