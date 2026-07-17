@@ -1463,7 +1463,7 @@ _update_agents() {
   # root plus an existing build user (o8 unless -u says otherwise) or it refuses
   # to act - it never guesses an account from /data/disk. Kept on every box so
   # the mirror source always carries the current builder.
-  _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f96 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+  _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f95 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
