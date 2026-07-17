@@ -4,6 +4,7 @@
 ### renameaegirhost — in-place rename of the Aegir hostname on BOA
 ###
 ### Usage: renameaegirhost --aegir-root PATH [--dry-run] [--force-old OLDFQDN]
+###                        [--old-account SRCOCT --new-account DSTOCT]
 ###
 ###   --aegir-root PATH  Aegir home directory (required); validated as a real
 ###                      Aegir root before any changes are made.
@@ -12,6 +13,14 @@
 ###      --aegir-root /data/disk/o1 (BOA octopus account)
 ###   --dry-run    Print what would be changed; make no modifications
 ###   --force-old FQDN   Override auto-detected old hostname with FQDN
+###   --old-account/--new-account   Also rename the OCTOPUS ACCOUNT axis
+###      (rename-mode migrations, e.g. xoct import o1 -> o2): the panel
+###      identity (site dir, node title, panel vhost, hostmaster aliases)
+###      moves from <old>.<NEWFQDN> to <new>.<NEWFQDN>, and /data/disk/<old>
+###      paths inside the Aegir DB and on-disk configs become
+###      /data/disk/<new>. Customer-site URIs are NEVER touched — a site on
+###      the account subdomain keeps its name. Both flags or neither;
+###      --aegir-root must be /data/disk/<new-account>.
 ###
 ### What it does:
 ###   §1  Detect old hostname from <aegir-root>/.drush/server_master.alias.drushrc.php
@@ -40,6 +49,8 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _AEGIR_ROOT=""
 _DRY_RUN=NO
 _FORCE_OLD=""
+_OLD_ACCT=""
+_NEW_ACCT=""
 
 ###-------------ARGUMENT PARSING----------###
 
@@ -57,13 +68,21 @@ while [ $# -gt 0 ]; do
       _FORCE_OLD="$2"
       shift 2
       ;;
+    --old-account)
+      _OLD_ACCT="$2"
+      shift 2
+      ;;
+    --new-account)
+      _NEW_ACCT="$2"
+      shift 2
+      ;;
     -h|--help)
       sed -n '/^###/{ s/^### \?//; p }' "$0"
       exit 0
       ;;
     *)
       echo "ERROR: Unknown argument: $1"
-      echo "Usage: $0 --aegir-root PATH [--dry-run] [--force-old OLDFQDN]"
+      echo "Usage: $0 --aegir-root PATH [--dry-run] [--force-old OLDFQDN] [--old-account SRCOCT --new-account DSTOCT]"
       exit 1
       ;;
   esac
@@ -71,7 +90,7 @@ done
 
 if [ -z "${_AEGIR_ROOT}" ]; then
   echo "ERROR: --aegir-root PATH is required"
-  echo "Usage: $0 --aegir-root PATH [--dry-run] [--force-old OLDFQDN]"
+  echo "Usage: $0 --aegir-root PATH [--dry-run] [--force-old OLDFQDN] [--old-account SRCOCT --new-account DSTOCT]"
   exit 1
 fi
 
@@ -80,6 +99,27 @@ _DRUSH_DIR=${_AEGIR_ROOT}/.drush
 _VHOSTD=${_AEGIR_ROOT}/config/server_master/nginx/vhost.d
 _BACKUP_DIR=${_AEGIR_ROOT}/backups/rename-hostname
 _AEGIR_USER=$(basename "${_AEGIR_ROOT}")
+
+# Account axis: both flags or neither; the tool runs on the already-landed
+# DESTINATION tree, so the root must be the new account's.
+_ACCT_AXIS=NO
+if [ -n "${_OLD_ACCT}" ] || [ -n "${_NEW_ACCT}" ]; then
+  if [ -z "${_OLD_ACCT}" ] || [ -z "${_NEW_ACCT}" ]; then
+    echo "ERROR: --old-account and --new-account must be given together"
+    exit 1
+  fi
+  case "${_OLD_ACCT}" in *[!a-z0-9]*|[!a-z]*) echo "ERROR: bad --old-account '${_OLD_ACCT}'"; exit 1 ;; esac
+  case "${_NEW_ACCT}" in *[!a-z0-9]*|[!a-z]*) echo "ERROR: bad --new-account '${_NEW_ACCT}'"; exit 1 ;; esac
+  if [ "${_OLD_ACCT}" = "${_NEW_ACCT}" ]; then
+    echo "ERROR: --old-account equals --new-account (${_OLD_ACCT}) — nothing to do"
+    exit 1
+  fi
+  if [ "${_AEGIR_ROOT}" != "/data/disk/${_NEW_ACCT}" ]; then
+    echo "ERROR: with --new-account ${_NEW_ACCT} the --aegir-root must be /data/disk/${_NEW_ACCT} (got ${_AEGIR_ROOT})"
+    exit 1
+  fi
+  _ACCT_AXIS=YES
+fi
 
 ###-------------HELPERS-------------------###
 
@@ -720,6 +760,14 @@ _rename_in_database() {
   _sql "UPDATE node_revision SET title = '${_NEW_HOST}' WHERE nid = ${_SRV_NID}"
   _sql "UPDATE node SET title = REPLACE(title, '${_OLD_HOST}', '${_NEW_HOST}') WHERE nid = ${_HM_NID}${_HMG}"
   _sql "UPDATE node_revision SET title = REPLACE(title, '${_OLD_HOST}', '${_NEW_HOST}') WHERE nid = ${_HM_NID}${_HMG}"
+  # The panel's frontend record must name the DB the panel actually lives
+  # in: xoct imports the panel dump into the TARGET-named DB, so the
+  # imported hosting_site row still carries the SOURCE-derived name — a
+  # frontend-driven panel verify would then push the dead name back into
+  # the backend context. Tautological (no-op) everywhere else.
+  if _sql_table_exists hosting_site; then
+    _sql "UPDATE hosting_site SET db_name = '${_AEGIR_DB}' WHERE nid = ${_HM_NID}"
+  fi
   _info "  Identity rows updated (server_master nid ${_SRV_NID}, hostmaster nid ${_HM_NID})"
 
   # Plain-varchar sweeps: REPLACE() cannot corrupt these columns, and they
@@ -758,6 +806,331 @@ _rename_in_database() {
   _info "  Residual '${_OLD_HOST}' refs: variable=${_RES_VAR} task-history=${_RES_TASKS}"
 
   _info "  DB rename complete. Pre-rename backup kept in ${_BACKUP_DIR}"
+}
+
+###-------------§5b ACCOUNT AXIS---------###
+
+# Rename-mode migrations (xoct import <src> ... <dst>) land the source
+# account's data under /data/disk/<dst>, but the imported hostmaster DB and
+# panel identity still say <src>: publish paths point at a tree that does
+# not exist and the panel is named after the source account, so the first
+# DB-driven regeneration re-stamps the stale values over the transfer-time
+# fixes. These passes move the ACCOUNT axis: panel identity to
+# <new>.<NEWFQDN> and /data/disk/<old> paths to /data/disk/<new> — and
+# nothing else. Customer-site URIs (including sites living on the account
+# subdomain, e.g. shop.<old>.<FQDN>) are deliberately untouched: a site's
+# name belongs to the site, so front-label rewrites are exact-match or
+# '/'-anchored only, never a free substring sweep. Both passes converge on
+# re-runs (trailing-slash path anchors; already-renamed guards).
+
+_rename_account_on_disk() {
+  [ "${_ACCT_AXIS}" = "YES" ] || return 0
+  _OLD_FRONT="${_OLD_ACCT}.${_NEW_HOST}"
+  _NEW_FRONT="${_NEW_ACCT}.${_NEW_HOST}"
+  _info "§5b Renaming account axis on disk: ${_OLD_ACCT} -> ${_NEW_ACCT} (panel ${_OLD_FRONT} -> ${_NEW_FRONT}) ..."
+
+  local _ACCT_SED_GUARD=""
+  case "${_NEW_FRONT}" in
+    *"${_OLD_FRONT}"*) _ACCT_SED_GUARD="/${_NEW_FRONT}/!" ;;
+  esac
+
+  # Panel site dir: the fresh install already created sites/<new front>
+  # with valid credentials for the DB the import landed in — the panel must
+  # adopt it. Park the imported <old front> dir instead of leaving it in
+  # place: §7's queue imports orphan dirs under a platform as brand-new
+  # sites. Without a fresh dir (no-fresh-install edge) rename instead.
+  local _D _SITES _NEWD
+  for _D in $(find "${_AEGIR_ROOT}" -maxdepth 5 -type d -path '*/sites/*' -name "${_OLD_FRONT}" 2>/dev/null | sort); do
+    _SITES=$(dirname "${_D}")
+    _NEWD="${_SITES}/${_NEW_FRONT}"
+    if [ -d "${_NEWD}" ]; then
+      _info "  parking imported panel dir ${_D} (fresh ${_NEW_FRONT} adopted)"
+      [ "${_DRY_RUN}" = "YES" ] || mkdir -p "${_BACKUP_DIR}"
+      _maybe_run mv -f \'"${_D}"\' \'"${_BACKUP_DIR}/parked_${_TS}_${_OLD_FRONT}"\'
+    else
+      _alrt "no fresh ${_NEW_FRONT} dir next to ${_D} — renaming the imported dir instead"
+      _maybe_run mv -f \'"${_D}"\' \'"${_NEWD}"\'
+    fi
+  done
+
+  # Hostmaster aliases (panel-own files ONLY — per-site alias files keep
+  # their URIs): front label plus the path pair.
+  local _F
+  for _F in "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" "${_DRUSH_DIR}/hm.alias.drushrc.php"; do
+    [ -f "${_F}" ] || continue
+    if grep -q "${_OLD_FRONT}\|/data/disk/${_OLD_ACCT}/" "${_F}" 2>/dev/null; then
+      _info "  sed in-place: ${_F}"
+      _maybe_run sed -i \
+        -e "\"${_ACCT_SED_GUARD}s/${_OLD_FRONT}/${_NEW_FRONT}/g\"" \
+        -e "\"s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g\"" \
+        \'"${_F}"\'
+    fi
+  done
+
+  # All .drush files: path pair + home/socket tokens only (URI-safe).
+  for _F in $(find "${_DRUSH_DIR}" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort); do
+    if grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp" "${_F}" 2>/dev/null; then
+      _info "  sed in-place: ${_F}"
+      _maybe_run sed -i \
+        -e "\"s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g\"" \
+        -e "\"s#/home/${_OLD_ACCT}\.ftp#/home/${_NEW_ACCT}.ftp#g\"" \
+        \'"${_F}"\'
+    fi
+  done
+
+  # Vhosts: every file gets the URI-safe pairs (paths, ftp home, fpm socket
+  # tokens); ONLY the panel's own vhost files (exact <old front> basename,
+  # incl. disabled/ssl-prefixed forms) get the front label + a rename. A
+  # customer vhost like shop.<old front> keeps its server_name.
+  if [ -d "${_VHOSTD}" ]; then
+    local _BASE _NEWB
+    for _F in $(find "${_VHOSTD}" -maxdepth 1 -type f 2>/dev/null | sort); do
+      _BASE=$(basename "${_F}")
+      if grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp\|user_socket \"${_OLD_ACCT}[.\"]" "${_F}" 2>/dev/null; then
+        _info "  sed in-place content: ${_F}"
+        _maybe_run sed -i \
+          -e "\"s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g\"" \
+          -e "\"s#/home/${_OLD_ACCT}\.ftp#/home/${_NEW_ACCT}.ftp#g\"" \
+          -e "\"s#user_socket \\\"${_OLD_ACCT}\.#user_socket \\\"${_NEW_ACCT}.#g\"" \
+          -e "\"s#user_socket \\\"${_OLD_ACCT}\\\"#user_socket \\\"${_NEW_ACCT}\\\"#g\"" \
+          \'"${_F}"\'
+      fi
+      # Exact-label matching is the re-run convergence here: after the
+      # first pass the panel vhost is NEW-front-named and matches none of
+      # these labels, so a repeat run skips it.
+      case "${_BASE}" in
+        "${_OLD_FRONT}"|".${_OLD_FRONT}"|"https.${_OLD_FRONT}")
+          _NEWB="${_BASE/${_OLD_FRONT}/${_NEW_FRONT}}"
+          if [ -e "${_VHOSTD}/${_NEWB}" ]; then
+            _info "  parking panel vhost ${_BASE} (fresh ${_NEWB} present)"
+            [ "${_DRY_RUN}" = "YES" ] || mkdir -p "${_BACKUP_DIR}"
+            _maybe_run mv -f \'"${_F}"\' \'"${_BACKUP_DIR}/parked_${_TS}_vhost_${_BASE}"\'
+          else
+            _info "  sed + rename panel vhost: ${_BASE} -> ${_NEWB}"
+            _maybe_run sed -i "\"${_ACCT_SED_GUARD}s/${_OLD_FRONT}/${_NEW_FRONT}/g\"" \'"${_F}"\'
+            _maybe_run mv -f \'"${_F}"\' \'"${_VHOSTD}/${_NEWB}"\'
+          fi
+        ;;
+      esac
+    done
+  fi
+}
+
+_sql_replace_path_col() {
+  # /data/disk/<old>/ -> /data/disk/<new>/ over one start-anchored varchar
+  # column; the trailing slash makes re-runs convergent even when the new
+  # account name extends the old one (o1 -> o11). A value equal to the bare
+  # old root converges via the exact-match arm.
+  local _T="$1" _C="$2" _N
+  _sql_table_exists "${_T}" || return 0
+  _N=$(_sql "SELECT COUNT(*) FROM ${_T} WHERE ${_C} LIKE '/data/disk/${_OLD_ACCT}/%' OR ${_C} = '/data/disk/${_OLD_ACCT}'")
+  if [ "${_N:-0}" -gt 0 ]; then
+    _sql "UPDATE ${_T} SET ${_C} = REPLACE(${_C}, '/data/disk/${_OLD_ACCT}/', '/data/disk/${_NEW_ACCT}/') WHERE ${_C} LIKE '/data/disk/${_OLD_ACCT}/%'"
+    _sql "UPDATE ${_T} SET ${_C} = '/data/disk/${_NEW_ACCT}' WHERE ${_C} = '/data/disk/${_OLD_ACCT}'"
+    _info "  ${_T}.${_C}: ${_N} row(s) re-pathed"
+  fi
+}
+
+_rename_account_in_database() {
+  [ "${_ACCT_AXIS}" = "YES" ] || return 0
+  # Same derivation as the on-disk pass — repeated so neither §5b half
+  # depends on the other having run first.
+  _OLD_FRONT="${_OLD_ACCT}.${_NEW_HOST}"
+  _NEW_FRONT="${_NEW_ACCT}.${_NEW_HOST}"
+  _info "§5b Renaming account axis in Aegir database (${_AEGIR_DB}) ..."
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _info "(dry-run) Would move panel identity ${_OLD_FRONT} -> ${_NEW_FRONT} (nid-keyed)"
+    _info "(dry-run) Would re-path /data/disk/${_OLD_ACCT} -> /data/disk/${_NEW_ACCT} in platform/git/backup/package rows"
+    _info "(dry-run) Would repair path/front values in serialized variables via php/mysqli"
+    return
+  fi
+
+  # Panel identity, nid-keyed (the panel's hosting_context is named
+  # 'hostmaster' — account-free — so only the node title carries the front).
+  local _HM_NID _FG=""
+  _HM_NID=$(_sql "SELECT nid FROM hosting_context WHERE name = 'hostmaster'")
+  _HM_NID=${_HM_NID//[^0-9]/}
+  if [ -z "${_HM_NID}" ]; then
+    _die "hosting_context misses hostmaster — ${_AEGIR_DB} is not an Aegir hostmaster DB?"
+  fi
+  case "${_NEW_FRONT}" in
+    *"${_OLD_FRONT}"*) _FG=" AND title NOT LIKE '%${_NEW_FRONT}%'" ;;
+  esac
+  _sql "UPDATE node SET title = REPLACE(title, '${_OLD_FRONT}', '${_NEW_FRONT}') WHERE nid = ${_HM_NID}${_FG}"
+  _sql "UPDATE node_revision SET title = REPLACE(title, '${_OLD_FRONT}', '${_NEW_FRONT}') WHERE nid = ${_HM_NID}${_FG}"
+  _info "  Panel identity rows updated (hostmaster nid ${_HM_NID})"
+
+  # Start-anchored path rows the account owns (task history stays, matching
+  # the host axis policy — it shows up in the residual report instead).
+  _sql_replace_path_col hosting_platform publish_path
+  _sql_replace_path_col hosting_git repo_path
+  _sql_replace_path_col hosting_site_backups filename
+  _sql_replace_path_col hosting_package_instance filename
+
+  _repair_account_variables
+
+  _run_as_aegir "drush8 @hostmaster cc all" > /dev/null 2>&1 \
+    || _alrt "drush cc all returned non-zero after the account-axis rename"
+
+  # Residual report, account axis: trailing-slash pattern so converged
+  # prefix-extension renames (o1 -> o11) do not count forever.
+  local _RES_PATH="n/a"
+  if _sql_table_exists variable; then
+    _RES_PATH=$(_sql "SELECT COUNT(*) FROM variable WHERE value LIKE '%/data/disk/${_OLD_ACCT}/%'")
+  fi
+  _info "  Residual '/data/disk/${_OLD_ACCT}/' refs in variable: ${_RES_PATH}"
+}
+
+_repair_account_variables() {
+  # Same bootstrap-free serialize-safe machinery as the host axis, with the
+  # account-axis pairs and their anchors: the path pair is a free substring
+  # (unambiguous, trailing-slash-convergent), the front pair applies only
+  # '/'-anchored or to whole values so customer URIs on the account
+  # subdomain (shop.<old front>) can never match.
+  _sql_table_exists variable || {
+    _info "  variable table absent (Backdrop hostmaster?) — account variable pass skipped"
+    return 0
+  }
+
+  local _CNT _PHP _VOUT
+  _CNT=$(_sql "SELECT COUNT(*) FROM variable WHERE value LIKE '%/data/disk/${_OLD_ACCT}/%' OR value LIKE '%/${_OLD_FRONT}%' OR value LIKE '%\"${_OLD_FRONT}%'")
+  if [ "${_CNT:-0}" -eq 0 ]; then
+    _info "  variable table: no values reference the ${_OLD_ACCT} account axis"
+    return 0
+  fi
+
+  _info "  Repairing ${_CNT} account-axis variable value(s) via php/mysqli ..."
+  mkdir -p "${_BACKUP_DIR}"
+  _PHP="${_BACKUP_DIR}/acctfix_${_TS}.php"
+  _VOUT="${_BACKUP_DIR}/acctfix_${_TS}.log"
+  {
+    printf '<?php\n$pOld = '\''/data/disk/%s/'\'';\n$pNew = '\''/data/disk/%s/'\'';\n$fOld = '\''%s'\'';\n$fNew = '\''%s'\'';\n' \
+      "${_OLD_ACCT}" "${_NEW_ACCT}" "${_OLD_FRONT}" "${_NEW_FRONT}"
+    cat <<'PHPEOF'
+$fGuard = (strpos($fNew, $fOld) !== FALSE);
+function acct_fix_str($s) {
+  global $pOld, $pNew, $fOld, $fNew, $fGuard;
+  if ($s === rtrim($pOld, '/')) {
+    return rtrim($pNew, '/');
+  }
+  $s = str_replace($pOld, $pNew, $s);
+  if ($s === $fOld) {
+    return $fNew;
+  }
+  // A front at string START is quote-anchored in the serialized form —
+  // still unambiguous (customer subdomains always carry a label + dot
+  // BEFORE the front, so they never sit at offset 0).
+  if (strpos($s, $fOld) === 0 && !($fGuard && strpos($s, $fNew) === 0)) {
+    $s = $fNew . substr($s, strlen($fOld));
+  }
+  if (!($fGuard && strpos($s, '/' . $fNew) !== FALSE)) {
+    $s = str_replace('/' . $fOld, '/' . $fNew, $s);
+  }
+  return $s;
+}
+function acct_fix($v, &$hadobj) {
+  if (is_string($v)) {
+    return acct_fix_str($v);
+  }
+  if (is_array($v)) {
+    $out = array();
+    foreach ($v as $k => $item) {
+      if (is_string($k)) {
+        $k = acct_fix_str($k);
+      }
+      $out[$k] = acct_fix($item, $hadobj);
+    }
+    return $out;
+  }
+  if (is_object($v)) {
+    $hadobj = TRUE;
+    return $v;
+  }
+  return $v;
+}
+$h = getenv('RAH_DB_HOST'); if ($h === FALSE || $h === '') { $h = 'localhost'; }
+$prt = getenv('RAH_DB_PORT'); if ($prt === FALSE || $prt === '') { $prt = '3306'; }
+$conn = @mysqli_connect($h, getenv('RAH_DB_USER'), getenv('RAH_DB_PASS'),
+  getenv('RAH_DB_NAME'), (int) $prt);
+if (!$conn) {
+  print "RAH-ERROR: cannot connect to database '" . getenv('RAH_DB_NAME') . "'\n";
+  exit(1);
+}
+$fixed = 0;
+$objrows = array();
+$broken = array();
+$e1 = mysqli_real_escape_string($conn, $pOld);
+$e2 = mysqli_real_escape_string($conn, '/' . $fOld);
+$e3 = mysqli_real_escape_string($conn, '"' . $fOld);
+$res = mysqli_query($conn,
+  "SELECT name, value FROM variable WHERE value LIKE '%" . $e1 . "%' OR value LIKE '%" . $e2 . "%' OR value LIKE '%" . $e3 . "%'");
+if (!$res) {
+  print "RAH-ERROR: variable query failed\n";
+  exit(1);
+}
+$stmt = mysqli_prepare($conn, "UPDATE variable SET value = ? WHERE name = ?");
+if (!$stmt) {
+  print "RAH-ERROR: update prepare failed\n";
+  exit(1);
+}
+while ($row = mysqli_fetch_assoc($res)) {
+  $name = $row['name'];
+  $raw = $row['value'];
+  $val = @unserialize($raw);
+  if ($val === FALSE && $raw !== serialize(FALSE)) {
+    $broken[] = $name;
+    continue;
+  }
+  $hadobj = FALSE;
+  $new_val = acct_fix($val, $hadobj);
+  if ($hadobj) {
+    $objrows[] = $name;
+  }
+  $new_raw = serialize($new_val);
+  if ($new_raw !== $raw) {
+    mysqli_stmt_bind_param($stmt, 'ss', $new_raw, $name);
+    if (!mysqli_stmt_execute($stmt)) {
+      print "RAH-ERROR: update failed for " . $name . "\n";
+      exit(1);
+    }
+    $fixed++;
+  }
+}
+if ($fixed > 0) {
+  $ct = mysqli_query($conn, "SHOW TABLES LIKE 'cache_bootstrap'");
+  if ($ct && mysqli_num_rows($ct) > 0) {
+    mysqli_query($conn, "DELETE FROM cache_bootstrap WHERE cid = 'variables'");
+  }
+}
+print "RAH: account-axis variables re-serialized: " . $fixed . "\n";
+if (count($objrows)) {
+  print "RAH: object values left untouched in: " . implode(', ', $objrows) . "\n";
+}
+if (count($broken)) {
+  print "RAH: unserialize already failing (left as-is): " . implode(', ', $broken) . "\n";
+}
+print "RAH-DONE\n";
+PHPEOF
+  } > "${_PHP}"
+  chmod 644 "${_PHP}"
+
+  local _MY_U _MY_W
+  _MY_U=$(grep -m1 "^user" /root/.my.cnf 2>/dev/null | cut -d= -f2- | tr -d " \"'")
+  _MY_W=$(grep -m1 "^password" /root/.my.cnf 2>/dev/null | cut -d= -f2- | tr -d " \"'")
+  if RAH_DB_HOST="localhost" RAH_DB_PORT="3306" \
+    RAH_DB_USER="${_MY_U:-root}" RAH_DB_PASS="${_MY_W}" \
+    RAH_DB_NAME="${_AEGIR_DB}" \
+    php "${_PHP}" > "${_VOUT}" 2>&1 \
+    && grep -q '^RAH-DONE' "${_VOUT}"; then
+    grep '^RAH: ' "${_VOUT}" | sed 's/^RAH: /  /'
+    rm -f "${_PHP}" "${_VOUT}"
+  else
+    _alrt "account-axis variable repair did not confirm — last 15 lines:"
+    tail -n 15 "${_VOUT}"
+    _alrt "full output kept: ${_VOUT}; script kept: ${_PHP}"
+  fi
+  return 0
 }
 
 ###-------------§6 RELOAD NGINX----------###
@@ -856,6 +1229,10 @@ _print_summary() {
   echo "  Aegir root   : ${_AEGIR_ROOT}"
   echo "  Old hostname : ${_OLD_HOST}"
   echo "  New hostname : ${_NEW_HOST}"
+  if [ "${_ACCT_AXIS}" = "YES" ]; then
+    echo "  Old account  : ${_OLD_ACCT}"
+    echo "  New account  : ${_NEW_ACCT}"
+  fi
   echo "======================================================"
   echo ""
 }
@@ -872,6 +1249,8 @@ _rewrite_vhosts
 _rewrite_octopus_cnf
 _detect_aegir_db
 _rename_in_database
+_rename_account_on_disk
+_rename_account_in_database
 _reload_nginx
 _run_aegir_tasks
 _verify_hostmaster
