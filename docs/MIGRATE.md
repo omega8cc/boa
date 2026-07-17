@@ -1,7 +1,9 @@
 # BOA Migration Tools
 
-BOA provides two purpose-built tools for migrating Octopus instances and full
-server environments between remote hosts.
+BOA provides three purpose-built tools for migrating Octopus instances and full
+server environments between remote hosts. `xoct` and `xmass` are compared below;
+`xcopy` is `xoct`'s proxy-less variant — the same per-account (or shared-platform)
+migration, without the automatic intermediate DNS proxy.
 
 ## Choosing the Right Tool
 
@@ -22,7 +24,7 @@ migration, or move between servers running different Percona versions.
 downtime, especially at large scale (many accounts, large databases, large Solr
 indices) where per-account mydumper/myloader cycles would be impractical.
 
-## Third Tool: renameaegirhost
+## Rename helper: renameaegirhost
 
 `renameaegirhost` handles in-place Ægir hostname rename on a single Ægir root
 — the BOA master (`--aegir-root /var/aegir`) or an Octopus account
