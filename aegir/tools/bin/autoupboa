@@ -559,12 +559,12 @@ _if_disable_not_used_services() {
     if [ -e "/etc/init.d/clamav-daemon" ]; then
       _clearSwap=YES
       update-rc.d -f clamav-daemon remove &> /dev/null
-      mv -f /etc/init.d/clamav-daemon /var/backups/
+      mv -f /etc/init.d/clamav-daemon /var/backups/clamav-daemon.initd
     fi
     if [ -e "/etc/init.d/clamav-freshclam" ]; then
       _clearSwap=YES
       update-rc.d -f clamav-freshclam remove &> /dev/null
-      mv -f /etc/init.d/clamav-freshclam /var/backups/
+      mv -f /etc/init.d/clamav-freshclam /var/backups/clamav-freshclam.initd
     fi
     pkill -9 -f clamd
     pkill -9 -f freshclam
@@ -575,17 +575,17 @@ _if_disable_not_used_services() {
     if [ -e "/etc/init.d/solr9" ]; then
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
-      mv -f /etc/init.d/solr9 /var/backups/
+      mv -f /etc/init.d/solr9 /var/backups/solr9.initd
     fi
     if [ -e "/etc/init.d/solr7" ]; then
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
-      mv -f /etc/init.d/solr7 /var/backups/
+      mv -f /etc/init.d/solr7 /var/backups/solr7.initd
     fi
     if [ -e "/etc/init.d/jetty9" ]; then
       _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
-      mv -f /etc/init.d/jetty9 /var/backups/
+      mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
     fi
     pkill -9 -f avahi-daemon
     pkill -9 -f java
@@ -595,7 +595,7 @@ _if_disable_not_used_services() {
     if [ -e "/etc/init.d/jetty9" ]; then
       _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
-      mv -f /etc/init.d/jetty9 /var/backups/
+      mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
       pkill -9 -f avahi-daemon
       pkill -9 -f jetty9
     fi
@@ -605,7 +605,7 @@ _if_disable_not_used_services() {
     if [ -e "/etc/init.d/solr7" ]; then
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
-      mv -f /etc/init.d/solr7 /var/backups/
+      mv -f /etc/init.d/solr7 /var/backups/solr7.initd
       pkill -9 -f avahi-daemon
       pkill -9 -f solr7
     fi
@@ -615,7 +615,7 @@ _if_disable_not_used_services() {
     if [ -e "/etc/init.d/solr9" ]; then
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
-      mv -f /etc/init.d/solr9 /var/backups/
+      mv -f /etc/init.d/solr9 /var/backups/solr9.initd
       pkill -9 -f avahi-daemon
       pkill -9 -f solr9
     fi
