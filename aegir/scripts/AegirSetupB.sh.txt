@@ -47,6 +47,7 @@ _gitHub="https://github.com/omega8cc"
 _gitLab="https://gitlab.com/omega8cc"
 _libFnc="${_bldPth}/lib/functions"
 _tocIncO="${_filIncO}.$1"
+_hndIncO="${_tocIncO}.AegirSetupB"
 _vBs="/var/backups"
 _vSet="variable-set --always-set"
 export _tRee=pro
@@ -70,14 +71,19 @@ _panic_exit() {
 ###
 ### Include helper functions
 ###
-# Only the per-user include materialised by the octopus producer for this
-# instance is accepted; a silent fallback to the shared bootstrap would run
-# the child on non-instance values
-if [ -r "${_vBs}/${_tocIncO}" ]; then
-  source "${_vBs}/${_tocIncO}"
-  _tInc="${_vBs}/${_tocIncO}"
+# Only the sealed per-spawn include materialised by the octopus producer
+# for this child is accepted; a silent fallback to the shared bootstrap
+# would run the child on non-instance values
+if [ -r "${_vBs}/${_hndIncO}" ]; then
+  source "${_vBs}/${_hndIncO}"
+  _tInc="${_vBs}/${_hndIncO}"
 else
-  _panic_exit "${_vBs}/${_tocIncO}"
+  _panic_exit "${_vBs}/${_hndIncO}"
+fi
+# The producer writes the seal as the LAST line; a missing or foreign
+# seal means a truncated or stale include -- never run on such values
+if [ "${_HANDOFF_SEAL}" != "AegirSetupB" ]; then
+  _panic_exit "Truncated or foreign hand-off include ${_vBs}/${_hndIncO}"
 fi
 
 
@@ -88,7 +94,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   echo DEBUG AegirSetupB
   echo DEBUG AegirSetupB
   echo Effective _USER is $1
-  [ -r "${_vBs}/${_tocIncO}" ] && echo Effective _tocIncO is ${_tocIncO}
+  [ -r "${_vBs}/${_hndIncO}" ] && echo Effective _hndIncO is ${_hndIncO}
   echo DEBUG AegirSetupB
   echo DEBUG AegirSetupB
   env
