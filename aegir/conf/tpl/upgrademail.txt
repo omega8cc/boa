@@ -2,17 +2,29 @@ Hello,
 
 We are pleased to inform you that your Ægir instance has been successfully upgraded to [boa.version]
 
-@=> A sharper, smarter shield around your sites
+@=> A whole new home for the documentation
 
-Your sites just gained a noticeably stronger guard at the edge. BOA now spots and turns away a whole spectrum of automated abuse before it ever touches your Drupal -- botnets that hammer your login and password-reset forms, web-shell scanners hunting for a way in, and distributed scrapers that try to exhaust a server by forcing multilingual sites to translate page after page on the fly. Each of these now meets a purpose-built detector that recognises the pattern and shuts it down at the front door. And here is the part you will feel day to day: the detection was retuned so that real, lively traffic -- a burst of on-site searches, a page that suddenly gets popular -- is read as the genuine activity it is, never mistaken for an attack. The outcome is the best of both worlds: far tougher on real abuse, far gentler on your actual visitors, and a faster, steadier site for everyone browsing it.
+Everything you can do in your Ægir control panel and your account's shell is now documented in one place: https://docs.boa.io -- a brand-new, unified documentation site with guides organised around the work you actually do, quick-start cheat sheets, and a complete reference. And whenever a new release lands, it is announced with substance at https://omega8.cc/news -- worth a bookmark, or grab the RSS feed.
 
-@=> A smoother, more confident maintenance workflow on Drupal 10 and 11
+@=> Backdrop CMS, welcome aboard
 
-If you manage your sites from the Ægir control panel, the everyday work just got genuinely more pleasant. "Lock Local Drush" is now a fast, dependable one-click task -- the targeted way to restore your platform's Drush environment after you have been working with site-local Drush or Composer, so you no longer have to reach for a full Platform Verify just to get things back in order. Run it whenever you like: it is completely safe to repeat and simply settles your platform into the state you want. "Rebuild registry" and "Flush all caches" now do precisely the right thing on modern Drupal -- rebuilding the service container and clearing caches so your changes take effect at once and your site feels crisp the moment an update lands. And when you clone or migrate a site, it comes up clean, fully refreshed, and immediately aware of any available updates, with none of the old manual fiddling. Less guesswork, fewer surprises, and more of your time spent on the work you actually enjoy.
+Your control panel now speaks a second language: Backdrop CMS, the community continuation of the Drupal 7 lineage. Backdrop platforms appear alongside your Drupal ones with their own clear badge, and Backdrop sites install, clone, back up, restore and renew their HTTPS certificates through exactly the same one-click tasks you already know. If you look after Drupal 6 or 7 sites that need a long-term future, there is now a complete upgrade path you can drive from the panel: a task that converts a copy of a Drupal 7 site to Backdrop while the original keeps serving untouched, a companion task that lifts a Drupal 6 site to Drupal 7 first, and a cutover task that hands the original address over to the new copy the moment you are happy with it. Your site keeps its URL, its content, and its home -- it simply gains a future.
 
-@=> Quietly faster and more resilient underneath
+@=> Smoother, more dependable modern Drupal
 
-Below the surface, the platform now keeps a smarter eye on its own health and shares its resources more fairly between sites, so a busy neighbour is far less likely to slow you down and your sites ride out traffic spikes and routine backups without a stumble. You will not touch a single setting -- you will simply feel a steadier, more responsive platform under everything you do.
+Drupal 10 and 11 sites now come out of clones, migrations and fresh installs in a reliably consistent state -- a subtle class of cache poisoning that could leave a freshly deployed site confused until its next Verify is gone for good. A failed install now says so clearly instead of pretending everything went fine, and the one-time login link on a fresh site works every time. Renaming a site between its www and bare-domain form is now a single Migrate step, and imported sites arrive enabled and ready instead of parked in a queue.
+
+@=> A sharper shield, with fewer moving parts for you
+
+The abuse guard around your sites learned several new tricks: it now recognises scanner fleets that spread their probing across many addresses to stay under the radar, refuses requests for admin pages that simply cannot exist on your sites, and extends its automatic protection to IPv6 traffic. None of it needs anything from you -- your sites are simply harder to bother.
+
+@=> A note for CiviCRM and Elysia cron users
+
+This release also hardens how BOA's command-line layer loads background (Drush) extensions -- only trusted locations are used now, closing a long-standing attack path. CiviCRM and Elysia cron background tasks keep working once a small server-side opt-in is enabled by your host or server admin -- web pages are unaffected either way. If you rely on either of these and notice anything unusual about scheduled tasks after this upgrade, just ask your host or server admin to enable that opt-in.
+
+@=> Develop locally, deploy confidently
+
+If you like working on your sites locally, the new ddev-boa add-on pulls a copy of your site -- database and files -- straight into a local DDEV project through your own account's shell access. Develop and experiment locally, then deploy through the panel as usual.
 
 @=> You can access your upgraded Ægir instance at the following URL:
 
