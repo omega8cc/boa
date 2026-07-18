@@ -26,7 +26,11 @@
 ###   §1  Detect old hostname from <aegir-root>/.drush/server_master.alias.drushrc.php
 ###   §2  Detect new hostname from system FQDN (hostname -f)
 ###   §3  Rewrite all Drush alias files in <aegir-root>/.drush/
-###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/
+###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/,
+###       then rewrite the platform sites/sites.php alias maps (the queued
+###       verifies only ever ADD new-hostname records there; stale
+###       old-hostname records would otherwise survive the rename
+###       indefinitely)
 ###   §5  Rename the hostname inside the Aegir DB with serialize-safe, targeted
 ###       statements: identity rows keyed by hosting_context nid, REPLACE()
 ###       sweeps over plain-varchar columns, and an unserialize/replace/
@@ -51,6 +55,7 @@ _DRY_RUN=NO
 _FORCE_OLD=""
 _OLD_ACCT=""
 _NEW_ACCT=""
+_SITESPHP_N=0
 
 ###-------------ARGUMENT PARSING----------###
 
@@ -413,6 +418,135 @@ _rewrite_octopus_cnf() {
     _info "Rewriting ${_OCT_CNF} (_DOMAIN etc.) ..."
     _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_OCT_CNF}"\'
   fi
+}
+
+###-------------§4c PLATFORM SITES.PHP---###
+
+_sites_php_candidates() {
+  # Registered platforms first: hosting_platform.publish_path is
+  # authoritative and depth-independent — operators nest composer platforms
+  # arbitrarily under ~/static (and aegir2boa lands them under static/a2b/),
+  # where any fixed find depth silently misses them. provision roots the
+  # alias store at the real docroot (web|docroot|html on composer trees), so
+  # probe each variant. The bounded find still sweeps shallow unregistered
+  # trees — their records are inert (no vhost roots a request there), but
+  # cleaning them is free. Callers filter with [ -f ], which also follows a
+  # symlinked docroot the find would skip.
+  {
+    local _P _D
+    if _sql_table_exists hosting_platform; then
+      for _P in $(_sql "SELECT DISTINCT publish_path FROM hosting_platform" 2>/dev/null); do
+        # Rename-mode migrations: the imported rows still carry the SOURCE
+        # account root until the §5b DB pass re-paths them — remap so they
+        # resolve on the landed tree.
+        if [ "${_ACCT_AXIS}" = "YES" ]; then
+          case "${_P}" in
+            "/data/disk/${_OLD_ACCT}"/*)
+              _P="${_AEGIR_ROOT}${_P#/data/disk/${_OLD_ACCT}}"
+            ;;
+          esac
+        fi
+        # Every legitimate platform of this root lives under it; anything
+        # else (e.g. a LIVE same-named account on the destination box whose
+        # tree the imported rows still point at) must never be probed, let
+        # alone written.
+        case "${_P}" in
+          "${_AEGIR_ROOT}"/*) ;;
+          *) continue ;;
+        esac
+        for _D in "" /web /docroot /html; do
+          echo "${_P%/}${_D}/sites/sites.php"
+        done
+      done
+    fi
+    find "${_AEGIR_ROOT}" -maxdepth 5 -type f -name sites.php \
+      -path '*/sites/sites.php' 2>/dev/null
+  } | sort -u
+}
+
+_rewrite_sites_php_files() {
+  # Rewrite one token pair across every platform sites/sites.php:
+  # $1 = old token, $2 = new token, $3 = non-empty when lines already
+  # carrying the new token must be left alone (NEW-contains-OLD regime,
+  # same guard as §3/§4), $4 = axis label for messages.
+  #
+  # Provision's alias store maintain() only deletes records whose VALUE
+  # equals the site's CURRENT uri, so after a rename every verify re-adds
+  # the new record while the old-token record survives forever. Stale
+  # sites.php records are the class behind the migrate-rename data-loss
+  # near-miss — rewrite them at the file layer, before anything can resolve
+  # a hostname through them. Line-level semantics: a token-carrying record
+  # whose rewritten twin already exists in the file (resumed run after the
+  # verifies added it) is dropped; any other token-carrying line is
+  # rewritten in place. The file is include()d by conf_path() on every
+  # bootstrap of the platform, so the write is committed only from a
+  # fully-written temp — a failed awk/cp must never truncate it.
+  local _O="$1" _N="$2" _G="$3" _LBL="$4"
+  local _F _BAK _TMP _OWN _MODE
+  for _F in $(_sites_php_candidates); do
+    [ -f "${_F}" ] || continue
+    grep -qF -- "${_O}" "${_F}" 2>/dev/null || continue
+    if [ -n "${_G}" ]; then
+      grep -F -- "${_O}" "${_F}" 2>/dev/null | grep -qvF -- "${_N}" || continue
+    fi
+    if [ "${_DRY_RUN}" = "YES" ]; then
+      _info "(dry-run) Would rewrite/drop stale ${_LBL} record(s) in ${_F}"
+      continue
+    fi
+    # Global counter: the host-axis and account-axis calls run under _TS
+    # stamps that can land in the same second — a per-call index would then
+    # overwrite the earlier pass's pre-edit backup of the same file.
+    _SITESPHP_N=$((_SITESPHP_N + 1))
+    _BAK="${_BACKUP_DIR}/sitesphp_${_TS}_${_SITESPHP_N}_${_F//\//_}"
+    _TMP="${_BACKUP_DIR}/sitesphp_${_TS}_${_SITESPHP_N}.tmp"
+    if ! cp -a "${_F}" "${_BAK}"; then
+      _alrt "backup copy failed for ${_F} — leaving it untouched"
+      rm -f "${_BAK}"
+      continue
+    fi
+    _OWN=$(stat -c '%u:%g' "${_F}")
+    _MODE=$(stat -c '%a' "${_F}")
+    # Tokens are used as awk regexes with loose dots — same laxity as the
+    # sed sweeps above; the §1/§2 charset guard keeps hostnames
+    # metachar-free, and the account-axis token adds only quotes/=/> (all
+    # literal in ERE).
+    if ! awk -v o="${_O}" -v n="${_N}" -v g="${_G}" '
+      NR == FNR { seen[$0] = 1; next }
+      index($0, o) && !(g && index($0, n)) {
+        t = $0
+        gsub(o, n, t)
+        if (t in seen) next
+        $0 = t
+      }
+      { print }
+    ' "${_F}" "${_F}" > "${_TMP}" || [ ! -s "${_TMP}" ]; then
+      _alrt "sites.php rewrite failed for ${_F} — left untouched"
+      rm -f "${_TMP}" "${_BAK}"
+      continue
+    fi
+    _info "  sites.php records (${_LBL}): ${_F}"
+    # cat-over keeps the inode, but a root-side edit must never be able to
+    # leave a backend-user-owned file root:root — restore the captured
+    # identity explicitly.
+    if ! cat "${_TMP}" > "${_F}"; then
+      cat "${_BAK}" > "${_F}" \
+        || _die "write-back AND restore failed for ${_F} — pre-edit copy kept at ${_BAK}"
+      _alrt "write-back failed for ${_F} — pre-edit content restored"
+    fi
+    rm -f "${_TMP}"
+    chown "${_OWN}" "${_F}"
+    chmod "${_MODE}" "${_F}"
+  done
+}
+
+_rewrite_sites_php() {
+  # Host axis: every OLD-host occurrence under this root is renamed by the
+  # §5 sweeps, so the records rewrite is a free substring pass. Runs right
+  # after DB detection (the platform list lives in the Ægir DB) and before
+  # any DB mutation.
+  _info "§4c Rewriting platform sites.php alias maps ..."
+  _rewrite_sites_php_files "${_OLD_HOST}" "${_NEW_HOST}" \
+    "${_SED_RENAME_GUARD:+1}" "${_OLD_HOST}"
 }
 
 ###-------------§5 DATABASE RENAME-------###
@@ -914,6 +1048,19 @@ _rename_account_on_disk() {
       esac
     done
   fi
+
+  # Panel record in the platform alias maps: the same maintain() asymmetry
+  # §4c covers on the host axis applies to the account front — verifies add
+  # the <new front> record but never remove the imported one (dormant while
+  # the old-front dir stays parked, re-armed if such a dir ever reappears).
+  # EXACT full-record token only: a free front substring would rewrite
+  # tenant records living on the account subdomain (shop.<front>), whose
+  # site dirs keep their names by design. The full-record token is
+  # prefix-extension-safe (o1 -> o11) without a guard.
+  _rewrite_sites_php_files \
+    "'www.${_OLD_FRONT}' => '${_OLD_FRONT}'" \
+    "'www.${_NEW_FRONT}' => '${_NEW_FRONT}'" \
+    "" "${_OLD_FRONT}"
 }
 
 _sql_replace_path_col() {
@@ -1248,6 +1395,7 @@ _rewrite_drush_files
 _rewrite_vhosts
 _rewrite_octopus_cnf
 _detect_aegir_db
+_rewrite_sites_php
 _rename_in_database
 _rename_account_on_disk
 _rename_account_in_database
