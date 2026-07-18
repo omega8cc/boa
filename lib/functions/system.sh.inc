@@ -8134,19 +8134,14 @@ _if_major_os_upgrade() {
     fi
     ###
     ### Make sure that Ægir Master system user is added to sudo.
-    _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
-    if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
-      echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    fi
+    _sudoers_safe_append /etc/sudoers \
+      "aegir ALL=NOPASSWD: /etc/init.d/nginx" "aegir ALL=NOPASSWD"
     ###
     ### Make sure that Ægir special system-wide scripts are added to sudo.
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
-      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
-      if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
-        echo "aegir ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
-        chmod 0440 /etc/sudoers.d/${_SCRIPT}
-      fi
+      _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
+        "aegir ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
     done
     ###
     ### Make sure that Ægir Octopus system users are added to sudo.
@@ -8156,17 +8151,12 @@ _if_major_os_upgrade() {
           && [ ! -e "${_usEr}/log/proxied.pid" ] \
           && [ ! -e "${_usEr}/log/CANCELLED" ]; then
           _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-          _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)
-          if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-            echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-          fi
+          _sudoers_safe_append /etc/sudoers \
+            "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" "${_HM_U} ALL=NOPASSWD"
           _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
           for _SCRIPT in ${_SCRIPTS[@]}; do
-            _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
-            if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-              echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
-              chmod 0440 /etc/sudoers.d/${_SCRIPT}
-            fi
+            _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
+              "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
           done
         fi
       done

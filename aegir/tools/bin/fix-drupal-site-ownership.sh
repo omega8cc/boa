@@ -33,16 +33,41 @@ fi
 #     This is compatible with any root-managed symlinks within the tree —
 #     their own metadata is adjusted but their targets are never followed.
 _validate_path_prefix() {
-  local _resolved
+  # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
+  # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
+  # tenant must not drive this root-run chown against another tenant's
+  # /data/disk/oM/ files. Validating the realpath (not the raw arg) also defeats
+  # a symlink planted inside the caller's own tree that points out to another
+  # tenant. A direct root run (no SUDO_USER) is trusted and keeps the historical
+  # BOA-tree allowlist.
+  local _resolved _caller _home
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
     printf "Error: path does not resolve: %s\n" "$1" >&2
     exit 1
   }
-  case "${_resolved}/" in
-    /var/aegir/*|/data/disk/*|/home/*)
-      ;;
+  _caller="${SUDO_USER:-}"
+  if [ -z "${_caller}" ]; then
+    case "${_resolved}/" in
+      /var/aegir/*|/data/disk/*|/home/*) return 0 ;;
+      *)
+        printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+        exit 1
+        ;;
+    esac
+  fi
+  _home=$(getent passwd "${_caller}" 2>/dev/null | cut -d: -f6)
+  _home="${_home%/}"
+  case "${_home}" in
+    /var/aegir|/data/disk/*) ;;
     *)
-      printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
+      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller}" "${_home}" >&2
+      exit 1
+      ;;
+  esac
+  case "${_resolved}/" in
+    "${_home}"/*) ;;
+    *)
+      printf "Error: path '%s' is outside the caller's own tree (%s).\n" "${_resolved}" "${_home}" >&2
       exit 1
       ;;
   esac
