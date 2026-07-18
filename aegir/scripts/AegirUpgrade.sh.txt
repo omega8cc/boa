@@ -40,6 +40,7 @@
 ###
 _bldPth="/opt/tmp/boa"
 _filIncB="barracuda.sh.cnf"
+_hndIncB="${_filIncB}.AegirUpgrade"
 _libFnc="${_bldPth}/lib/functions"
 _vBs="/var/backups"
 export _tRee=lts
@@ -61,10 +62,15 @@ _panic_exit() {
 
 
 ###
-### Include default settings and basic functions
+### Include the per-spawn hand-off values
 ###
-[ -r "${_vBs}/${_filIncB}" ] || _panic_exit "${_vBs}/${_filIncB}"
-  source "${_vBs}/${_filIncB}"
+[ -r "${_vBs}/${_hndIncB}" ] || _panic_exit "${_vBs}/${_hndIncB}"
+  source "${_vBs}/${_hndIncB}"
+# The producer writes the seal as the LAST line; a missing or foreign
+# seal means a truncated or stale include -- never run on such values
+if [ "${_HANDOFF_SEAL}" != "AegirUpgrade" ]; then
+  _panic_exit "Truncated or foreign hand-off include ${_vBs}/${_hndIncB}"
+fi
 
 
 ###
