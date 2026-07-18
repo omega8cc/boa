@@ -61,7 +61,6 @@ _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 #_ICU_FORCE_VRN="73-1"
 ###
 _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
-_MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
 _AUTOSYMLINK_NIGHTLY=NO #------- Nightly files-symlink auto-fix run when YES
 _ORPHAN_FILES_REPORT=NO #------- Daily orphaned files-dir email report when YES

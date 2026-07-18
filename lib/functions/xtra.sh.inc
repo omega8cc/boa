@@ -544,15 +544,6 @@ _if_install_ruby() {
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
 
-_magick_install_upgrade() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _magick_install_upgrade"
-  fi
-  if [ "${_MAGICK_FROM_SOURCES}" = "YES" ]; then
-    _install_magick_src
-  fi
-}
-
 _if_install_ffmpeg() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_ffmpeg"
