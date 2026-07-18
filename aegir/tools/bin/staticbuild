@@ -546,7 +546,7 @@ build_culturas() {
     _alrt "culturas: expected wrapper ${_wrap##*/} not found; layout may have changed"
   fi
   _ensure_example_sites "${_wd}/web/sites" "${_wd}"
-  # Name by the openculturas distribution package (the pinned drupal.org release, e.g. 3.0.2).
+  # Name by the openculturas distribution package (the pinned drupal.org release, e.g. 3.0.3).
   local _dist
   _dist="$(_lock_version "${_wd}" "${_CULTURAS_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
