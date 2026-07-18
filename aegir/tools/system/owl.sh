@@ -188,7 +188,12 @@ _daily_action() {
   ###
   night_emit_run_env
   : "${_NIGHT_PARALLEL:=NO}"
-  : "${_NIGHT_MAX_PARALLEL:=${_CPU_NR}}"
+  ### AUTO (or a legacy empty value) means the CPU core count; count first,
+  ### or the fallback below would silently resolve to a single slot.
+  _count_cpu
+  if [ -z "${_NIGHT_MAX_PARALLEL}" ] || [ "${_NIGHT_MAX_PARALLEL}" = "AUTO" ]; then
+    _NIGHT_MAX_PARALLEL="${_CPU_NR}"
+  fi
   _NIGHT_MAX_PARALLEL="$(_sanitize_number "${_NIGHT_MAX_PARALLEL}")"
   [ -z "${_NIGHT_MAX_PARALLEL}" ] && _NIGHT_MAX_PARALLEL=1
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
