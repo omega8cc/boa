@@ -1,4 +1,306 @@
 ###
+### Stable BOA-5.88.8 PRO/LTS - CONTINUITY EDITION
+### Date: Sat 18 Jul 2026 20:22:23 CEST in Warsaw
+### Enjoy continuity for every Drupal era -- from classic Ægir to Backdrop
+### 422 commits since BOA-5.10.3
+###
+
+@=> Continuity Edition
+
+  BOA-5.88.8 PRO/LTS is a milestone for the 5.x tree -- a continuity
+  release in every sense. Every generation of the Drupal family now has a
+  first-class, supported home on one platform: Backdrop CMS support ships
+  enabled by default, a complete Drupal 6 -> 7 -> Backdrop upgrade chain
+  runs as ordinary control-panel tasks, classic Ægir estates can be
+  imported wholesale with the new aegir2boa toolset, and the rebuilt
+  server migration suite moves whole servers across Percona generations.
+  Around the code, the project's public face is renewed: docs.boa.io --
+  the new unified documentation site -- and the new omega8.cc website with
+  its /news section are both live. And yes, the version says 5.88.8: we
+  are staying in the 5.x tree, and after a cycle this large the eights
+  felt earned.
+
+  Alongside the headliners: native files-directory symlinking for new
+  sites and clones, prebuilt stack packages on Devuan Daedalus, the
+  nightly maintenance monolith rebuilt as owl.sh with classified
+  ghost-site handling and client notices, a major web-IDS wave (UA-burst
+  fleet detector, foreign-CMS probe guard, IPv6 adaptive bans, per-site
+  /user+/admin allow-lists, default-secure Drush extension filtering),
+  Drupal 10/11 container-poison fixes, a serialized task dispatcher, new
+  boa suspend/unsuspend verbs, and working control-panel logins in every
+  welcome email. The LTS edition remains fully current alongside PRO --
+  every headline feature ships for both. 422 commits across six
+  repositories went into this release.
+
+  As always, this entry highlights only the most significant changes. For
+  the full picture please refer to the commit history on GitHub.
+
+@=> Security
+
+    * Distributed UA-burst scanner-fleet detector, on by default. A
+      scanner fleet sharing one User-Agent across many IPs -- each IP too
+      quiet to trip per-IP limits -- is recognised by the fingerprint's
+      aggregate behaviour (many distinct IPs, high request count,
+      overwhelmingly bad statuses) and banned as a unit. Opt out or tune
+      via _NGINX_UA_BURST_DETECT and its companions.
+
+    * Foreign-CMS admin-probe guard. Requests for admin paths that cannot
+      exist on a Drupal, Backdrop or hostmaster docroot (wp-admin,
+      wp-login, wp-content, phpmyadmin and friends as whole path segments)
+      are dropped with 444 at the edge before PHP ever sees them. Adminer
+      paths are untouched -- BOA ships Adminer.
+
+    * IPv6 joins the adaptive web ban. The web IDS now scores IPv6 clients
+      and bans them through an nginx-native, self-expiring store, closing
+      the gap left by the IPv4-only firewall layer (_NGINX_V6_BAN_DETECT,
+      on by default). The per-site ip_access allow-list gains IPv6 and
+      CIDR support as well.
+
+    * Per-site /user + /admin IP allow-list (user_admin_access). One
+      root-managed control file per Octopus instance locks any site's
+      login and admin paths to listed IPv4/IPv6 addresses or subnets while
+      the rest of the site stays public. Anti-lockout rules always admit
+      the server itself and established SSH peers. See
+      docs/USER-ADMIN-ACCESS.md.
+
+    * Drush extension hygiene, default-secure. Ægir backend identities no
+      longer load *.drush.inc extensions from tenant-writable locations,
+      closing a long-standing upstream attack path. Per-instance
+      root-created opt-ins exist for CiviCRM and Elysia cron; BOA's own
+      extensions always load; client shell sessions are never filtered.
+      Verification runbook: docs/DRUSH-FILTER-TESTING.md.
+
+    * A quieter, harder edge everywhere else: SSH/Web/FTP IDS input
+      validation and a ban-evasion fix; log-scanner guards anchored to
+      parsed log fields, so an attacker-controlled username can no longer
+      spoof its way past the SSH or FTP scanners; every /etc/sudoers write
+      is visudo-validated and de-duplicated; the fix-drupal-* NOPASSWD
+      wrappers are scoped to the calling tenant's own tree; Ægir install
+      values hand off through sealed, per-spawn, owner-scoped includes;
+      the TCP SACK mitigation persists across firewall restarts; a rebuilt
+      sshd_config is validated before sshd restarts; and an invalid legacy
+      ssh_config option that silently broke outbound SSH is removed.
+
+    * Cloudflare-fronted sites: the intermittent box-wide 502 on proxied
+      HTTPS is root-caused and gone. The wild-ssl proxy upstream is pinned
+      to 127.0.0.1 (a dead IPv6 localhost candidate could poison the
+      upstream group under load), Cloudflare ranges are whitelisted on
+      port 443 as well as 80, and the proxied HTTPS path is now enforced,
+      observed and scored like any other.
+
+@=> New Features
+
+    * Backdrop CMS support, enabled by default (_BACKDROP_SUPPORT=YES,
+      opt-out in /root/.barracuda.cnf). Backdrop -- the community
+      continuation of the Drupal 7 lineage -- is a first-class citizen:
+      platforms are built automatically alongside the Drupal set, and
+      Backdrop sites install, verify, clone, back up, restore and renew
+      HTTPS through the same Ægir tasks Drupal sites use, with BDR badges
+      in the panel, bee CLI support wired into the safe shell, a
+      Valkey/Redis object cache, and site cron routed natively to
+      core/cron.php. See docs/BACKDROP.md.
+
+    * The legacy-Drupal upgrade chain. Two new clone-preserving site tasks
+      carry a legacy site forward without touching the original: Drupal 7
+      -> Backdrop runs the whole conversion on a dark copy, and Drupal 6
+      -> Drupal 7 covers the first hop with a pinned contrib kit and a
+      dark D7 intermediate. The backdrop_cutover task then takes over the
+      original domain in one step, so the site keeps its URL. A new
+      utf8mb4_convert task converts imported Drupal 7 estates still on
+      3-byte utf8 tables. Backdrop-to-Backdrop Migrate works across
+      Backdrop platforms; cross-lineage Migrate is deliberately refused --
+      the upgrade tasks are the supported path.
+
+    * Import from classic Ægir. The aegir2boa toolset ships in the tools
+      distribution: aegir2boa-preflight surveys a vanilla Ægir 3.x
+      server, stage 1 converts it from Apache to Nginx in place, and
+      stage 2 adopts the /var/aegir estate into a BOA Octopus instance via
+      two routes (per-site adoption for mixed estates, whole-DB import for
+      homogeneous current-3.x ones). aegir3-install builds unattended
+      rehearsal estates. See docs/AEGIR2BOA.md.
+
+    * BOA Local and DDEV integration. boa in-lts local installs a slim
+      local-development BOA profile (no public DNS, no licence gate), and
+      the public ddev-boa add-on pulls a BOA-hosted site's database and
+      files into a local DDEV project through the client's own limited
+      shell. See docs/DDEV-BOA.md.
+
+    * Native files-directory symlinking. New sites and clones keep their
+      files/ and private/ directories in a per-site static store outside
+      the platform tree, symlinked into place (on by default,
+      kill-switchable) -- codebases stay disposable while file assets stay
+      put, and clones get their own separate copy. New symlinkinfo tool;
+      opt-in nightly auto-fix and read-only orphan reporting; stale stores
+      are archived, never deleted. See docs/FILES-SYMLINK.md.
+
+    * Prebuilt stack packages on Devuan Daedalus. BOA installs its heavy
+      stack (Nginx, Valkey, OpenSSL, PHP and friends) from prebuilt boa-*
+      Debian packages instead of compiling from source; installs and
+      upgrades get dramatically shorter, with per-component fallback to
+      the source build. _USE_PREBUILT_PKGS auto-resolves to YES on
+      Daedalus only; an explicit cnf setting always wins. See
+      docs/PREBUILT.md.
+
+    * boa suspend / boa unsuspend (root-only). Gate every site of an
+      Octopus instance behind an HTTP 503 with Retry-After while backend,
+      Drush and cron keep working -- the clean billing-grade switch. The
+      flag lives outside the account tree, so the account owner cannot
+      remove it. See docs/SUSPEND.md.
+
+    * Night maintenance rebuilt. daily.sh is now owl.sh plus single-purpose
+      night workers: per-account work runs as isolated subprocesses under
+      a run-freeze, and all nightly cleanup blocks while a Provision task
+      runs. Classified ghost-site handling detects and reports by default
+      and notifies the affected account's client contact
+      (_GHOST_CLIENT_NOTIFY=YES, throttled); every destructive cleanup
+      move stays opt-in, moves items into an undo/ area, and arms itself
+      one night before the first real move. Failed HTTPS renewals are
+      reported per account to the operator, with a throttled actionable
+      client notice per site (_LE_CLIENT_NOTIFY=YES).
+
+    * Server migration suite overhauled. xmass speaks the modern Percona
+      replication dialect end to end (REPLICA/SOURCE verbs on 8.4, GTID
+      persistence in the include dir my.cnf actually reads,
+      binlog_expire_logs_seconds, GET_SOURCE_PUBLIC_KEY auth, matching
+      xtrabackup repos) and refuses cross-version 5.7 -> 8.x replication
+      by design -- xoct covers the cross-version path. All three tools are
+      storage-aware and DRY-gated, fold Solr indices into the disk-space
+      gate, and fail loudly and resumably. New migratefs relocates heavy
+      site data onto attached storage; renameaegirhost handles in-place
+      hostname renames end to end, including stale sites.php records and
+      an account axis for rename-mode migrations. Per-site PHP pins are
+      preserved through migration, and migrated Drupal 8+ sites arrive
+      with a cold Valkey flush plus PHP-FPM restart.
+
+    * Working control-panel logins in welcome emails. A new client account
+      is tied to the instance's SSH identity, so the recipient can sign
+      into Ægir from day one. Password reset requests route to host
+      support, and every BOA-sent email is vendor-agnostic, pointing at
+      docs.boa.io.
+
+    * codebasecheck gains a box-wide Percona 8 upgrade-readiness report
+      and a --deep contrib/schema analysis that cuts false-OK results
+      before a database major upgrade.
+
+    * staticbuild: the mirror-source build tool that assembles and
+      publishes the tested Drupal/Backdrop codebases, with versions
+      derived from the actual build.
+
+@=> Improvements
+
+    * Drupal 10/11 container-poison class of failures fixed. Sites could
+      come out of a clone, deploy or fresh install with a service
+      container compiled while Ægir's compatibility patches were
+      reverted, poisoning the cached container until the next verify. All
+      service-container rebuilds now run inside a chmod-only window that
+      keeps the patches applied (deploy updatedb, fresh site-install, and
+      the post-deploy rebuild alike). Fresh D11 installs fail loudly or
+      succeed cleanly: a failed site-install errors the task out, the
+      one-time login link is generated correctly again, and the
+      installer's policy-module cleanup actually runs.
+
+    * Task queue and dispatch reliability. The dispatcher is serialized so
+      concurrent runs cannot double-launch a task batch, backed by a
+      per-instance lock on the queue runner; a crashed run frees the
+      queue lock far sooner; the dispatcher re-enables itself after instance
+      installs/upgrades and failed setup self-tests; orphaned build
+      temporaries no longer wedge the queue; and an empty upstream
+      database record can no longer wipe stored database credentials.
+
+    * One-step www/non-www rename in the Migrate form, with the old alias
+      handled correctly; imported installed sites land ENABLED in the
+      panel; Backdrop platforms and sites carry a clear BDR badge.
+
+    * /root/.barracuda.cnf now displays effective defaults for all YES/NO
+      options -- no more guessing what an empty line means -- and the
+      self-heal never overwrites an operator-set value.
+
+    * _NGINX_KTLS opt-out lever for the OpenSSL 3.2+ kernel-TLS
+      receive-path noise seen on some kernels; kTLS remains on by
+      default. See docs/NGINX-KTLS.md.
+
+    * /etc/apt/sources.list self-heals: a missing or half-written file is
+      regenerated crash-safely (Debian trixie aware), and a failed fetch
+      enforces the canonical mirror rather than restoring a possibly
+      stale backup.
+
+    * Sturdier plumbing: versioned fetches are content-aware so a stale
+      serial marker self-heals; lock-pid ownership guards ported to
+      barracuda and octopus with all non-owner exit paths side-effect
+      free; websh is single-sourced; the Debian-to-Devuan autoinit
+      conversion helper rides out DNS and network flaps with a safe
+      re-entry gate; and the mysql watchdog pauses during Percona
+      upgrades and migrations.
+
+@=> Changes and Upgrades
+
+    * Documentation has a new home: docs.boa.io consolidates the BOA
+      documentation into one unified site organised by audience (Using
+      Ægir / Self-Hosting / Operating / Developing) with cheat sheets
+      and a generated reference. The new omega8.cc is live with a /news
+      section (and RSS) where releases are announced. Release notes now
+      also live in the documentation itself.
+
+    * The LTS edition remains fully current alongside PRO; the code freeze
+      once pencilled in for the free edition did not take effect, and
+      every headline feature in this release ships for both editions.
+
+    * Component updates: Nginx 1.31.3, OpenSSH 10.4p1, PHP 8.5.8 /
+      8.4.23 / 8.3.32 (8.4 remains the default CLI/FPM; 8.2.32
+      available), Composer 2.10.2, classic Drush 8.5.4, New Relic
+      12.8.0.37, backup stack Python 3.14.6 + Duplicity 3.1.0. Unchanged:
+      OpenSSL 3.5.7 LTS, cURL 8.21.0, Apache Solr 9.10.1, Valkey 9.1.0
+      (now also delivered as the prebuilt boa-valkey package on
+      Daedalus), Percona Server (8.4 current, 5.7 legacy), mydumper.
+
+    * Tested platform catalogue moved to the 2026-07-17 static build:
+      Backdrop CMS 1.34.2 (new), Drupal CMS 2.1.3 on the new Drupal
+      11.4.4 platform, Commerce Kickstart 5.1.0 (11.4.4), LocalGov 4.0.2,
+      Thunder 8.4.0, farmOS 4.0.4, OpenCulturas 3.0.3, plus vanilla cores
+      6.60.1, 7.105.1, 9.5.11, 10.0.11 through 10.6.13, 11.1.10, 11.2.14,
+      11.3.14 and 11.4.4. Varbase stays available as its last working
+      build, frozen until the upstream project template is fixed.
+
+    * Cleanups: the dormant from-source ImageMagick build path was removed
+      (boxes use the distro package; the PHP imagick extension pin is
+      unchanged); the obsolete standalone BOND.sh.txt script and the
+      legacy Drupalgeddon-era hacked-site detector were retired; legacy
+      direct-SQL surgery for migrated accounts was dropped from the
+      nightly and migration paths in favour of the supported task flows.
+
+@=> Important Fixes
+
+    * Composer works for shell users again: Composer 2.8.3+ switched its
+      subprocess model and collided with the safe-shell wrapper; websh now
+      executes those calls correctly, unblocking the Composer 2.10.2
+      update.
+
+    * _SMTP_RELAY_HOST was never written to Postfix main.cf -- the
+      outbound relay opt-in now actually configures the relay, and the
+      relay is skipped where local sendmail is enabled for sites.
+
+    * Special files can no longer break site backups: device/special
+      files are excluded from backups and all tree transfers, so a stray
+      device node no longer aborts a restore or deploy.
+
+    * Octopus bundle installs set the instance email again (regression),
+      and an empty _PHP_CLI_VERSION can no longer abort an Ægir install.
+
+    * FTP log scanning anchors on the real pure-ftpd tag and handles
+      IPv6/::ffff: peers, so a crafted username can no longer confuse the
+      FTP scanner.
+
+    * Assorted: nightly log preparation no longer grows a pid-file name
+      without bound; the argless unlock path in the lock library is
+      fixed; a false space-check failure in autosymlink when the static
+      base was absent is fixed; Java initd disabling no longer collides
+      on a path; GRUB rewrites are skipped when config is already in sync
+      and update-grub runs when the command line really changed; backup
+      run scripts self-heal via their live fetch stamps; and PRO backups
+      stay on own-fleet domains regardless of tree.
+
+
+###
 ### Stable BOA-5.10.3 PRO/LTS - WATCHTOWER EDITION
 ### Date: Fri 26 Jun 2026 01:29:00 CEST in Warsaw
 ### Enjoy a self-healing monitor stack and a sharper-eyed, calmer web IDS
