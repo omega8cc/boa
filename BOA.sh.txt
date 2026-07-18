@@ -1474,13 +1474,18 @@ _update_agents() {
   _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f95 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
+    # Fetch stamps for the backup family live in ${_pthLog} since the
+    # _fetch_versioned collapse; the old ${_pthCtrl} location holds none,
+    # so clearing it healed nothing.
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
-      rm -f ${_pthCtrl}/*.pid
+      rm -f ${_pthLog}/install_dependencies.sh.ctrl.* ${_pthLog}/create_*.sh.ctrl.*
+      rm -f ${_pthLog}/dcysetup.ctrl.* ${_pthLog}/multiback.ctrl.* ${_pthLog}/mybackup.ctrl.*
     fi
     _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /root/.remote_backups/run/*.sh 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
-      rm -f ${_pthCtrl}/*.pid
+      rm -f ${_pthLog}/install_dependencies.sh.ctrl.* ${_pthLog}/create_*.sh.ctrl.*
+      rm -f ${_pthLog}/dcysetup.ctrl.* ${_pthLog}/multiback.ctrl.* ${_pthLog}/mybackup.ctrl.*
     fi
   fi
 
