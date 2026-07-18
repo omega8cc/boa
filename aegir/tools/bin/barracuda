@@ -190,6 +190,17 @@ _ifnames_grub_check_sync() {
         echo "GRUB: Update in the LIVE MODE"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         echo "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}"
+
+        # The edit is inert until grub.cfg is regenerated
+        if [ -x "/usr/sbin/update-grub" ]; then
+          if /usr/sbin/update-grub > /dev/null 2>&1; then
+            echo "GRUB: update-grub completed, new config applied"
+          else
+            echo "GRUB: update-grub failed, run update-grub manually to apply"
+          fi
+        else
+          echo "GRUB: update-grub not available, regenerate grub config manually to apply"
+        fi
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
         echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
