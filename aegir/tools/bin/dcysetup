@@ -143,12 +143,14 @@ _install_dependencies() {
   echo "Installing dependencies..."
   service cron stop && ln -sfn /bin/dash /usr/bin/sh
   bash "${_INSTALL_DEPENDENCIES_SCRIPT}"
-  if [ $? -ne 0 ]; then
+  _RET=$?
+  # Cron must come back on every exit path, not only on success
+  service cron start
+  if [ ${_RET} -ne 0 ]; then
     echo "Error: Failed to install dependencies."
     exit 1
   fi
   echo "Dependencies installed successfully."
-  service cron start
 }
 
 # Function to perform setup (initial configuration)
