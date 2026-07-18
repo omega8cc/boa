@@ -52,7 +52,7 @@ if [ -z "${_tRee}" ]; then
     | grep -oE '\.(dev|lts|pro)\.' \
     | tr -d '.')
 fi
-[ -z "${_tRee}" ] && _tRee=dev
+[ -z "${_tRee}" ] && _tRee=lts
 export _tRee
 _xSrl=$(boa info 2>/dev/null \
   | grep -oE "BOA-[0-9.]+-${_tRee}-[0-9a-zA-Z]+" \
