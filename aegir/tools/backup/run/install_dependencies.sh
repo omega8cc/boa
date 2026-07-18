@@ -4,9 +4,11 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-_PTN_VRN=3.13.9
-_DCY_VRN=3.0.6
+_PTN_VRN=3.14.6
+_PTN_MNR="${_PTN_VRN%.*}"
+_DCY_VRN=3.1.0
 _DCY_CMD="/usr/local/bin/duplicity"
+_DCY_PTN="/usr/local/bin/python${_PTN_MNR}"
 
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
@@ -199,11 +201,10 @@ _python_install_src() {
     make install --quiet
     cd
   fi
-  _PTN_TEST=$(/usr/local/bin/python3.12 --version 2>&1)
+  _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
   if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installed"
-    _DCY_PTN="/usr/local/bin/python3.12"
-    export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
+    export PYTHONPATH="/usr/local/lib/python${_PTN_MNR}/site-packages"
   else
     echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
     exit 1
@@ -221,7 +222,8 @@ _python_install_src() {
   _PIP_TEST=$(${_usePip} --version 2>&1)
   if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
     || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+    || [[ "${_PIP_TEST}" =~ "python 3.13" ]] \
+    || [[ "${_PIP_TEST}" =~ "python ${_PTN_MNR}" ]]; then
     ${_usePip} install --upgrade pip --root-user-action ignore
   else
     ${_usePip} install --upgrade pip

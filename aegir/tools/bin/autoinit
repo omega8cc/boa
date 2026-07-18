@@ -1043,9 +1043,6 @@ _ifnames_grub() {
     fi
 
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
-      # Backup the GRUB file
-      cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
-
       # Remove existing options from GRUB_CMDLINE_LINUX
       _NEW_GRUB_CMDLINE_LINUX=$(echo "${_GRUB_CMDLINE_LINUX}" | sed -E "s/(net.ifnames=[01]|biosdevname=[01]|memhp_default_state=online)//g")
 
@@ -1062,8 +1059,22 @@ _ifnames_grub() {
       # Form the new GRUB_CMDLINE_LINUX line
       _NEW_GRUB_CMDLINE_LINUX="GRUB_CMDLINE_LINUX=\"${_UPDATED_CMDLINE}\""
 
+      # Already in the desired state: record it, stamp LIVE boxes so the
+      # early short-circuit applies on re-runs, and skip the no-op rewrite
+      # so .bak keeps the last pre-change snapshot
+      if [[ "${_NEW_GRUB_CMDLINE_LINUX}" == "${_GRUB_CMDLINE_LINUX}" ]]; then
+        _msg "_ifnames_grub ==> GRUB: config already in sync (${_USE_NINC}), no update needed." >> "${_logInt}"
+        if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
+          [ -e "/root/.ninc.grub.updated.cnf" ] || touch /root/.ninc.grub.updated.cnf
+        fi
+        return 0
+      fi
+
       echo " " >> "${_logInt}"
       if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
+        # Backup the GRUB file only when it is about to change
+        cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
+
         # Update the GRUB file
         _msg "_ifnames_grub ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
         _msg "_ifnames_grub ==> GRUB: Update in the LIVE MODE" >> "${_logInt}"
@@ -1080,7 +1091,7 @@ _ifnames_grub() {
         echo " " >> "${_logInt}"
         _msg "_ifnames_grub ==> GRUB: Update in the LIVE MODE requires presence of control file:" >> "${_logInt}"
         _msg "   /root/.ninc.selected.auto.cnf" >> "${_logInt}"
-        echo " "
+        echo " " >> "${_logInt}"
         _msg "_ifnames_grub ==> GRUB: Note that this extra control file must not exist:" >> "${_logInt}"
         _msg "   /root/.ignore.ifnames.cnf" >> "${_logInt}"
         echo " " >> "${_logInt}"
