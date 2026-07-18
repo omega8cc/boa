@@ -3145,24 +3145,20 @@ _satellite_run_pre_install() {
       mysqladmin -u root flush-hosts &> /dev/null
     fi
     _provision_backend_dbpass_generate
-    echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    _sudoers_safe_append /etc/sudoers \
+      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" "${_USER} ALL=NOPASSWD"
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
-      echo "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
-      chmod 0440 /etc/sudoers.d/${_SCRIPT}
+      _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
+        "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
     done
   else
-    _VAR_IF_PRESENT=$(grep "${_USER} ALL=NOPASSWD" /etc/sudoers 2>&1)
-    if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then
-      echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    fi
+    _sudoers_safe_append /etc/sudoers \
+      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" "${_USER} ALL=NOPASSWD"
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
-      _VAR_IF_PRESENT=$(grep "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
-      if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then
-        echo "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
-        chmod 0440 /etc/sudoers.d/${_SCRIPT}
-      fi
+      _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
+        "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
     done
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
