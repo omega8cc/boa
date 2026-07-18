@@ -848,10 +848,25 @@ _aegir_master_upgrade() {
     export _xSrl=5103proT01
     export _X_VERSION="${_X_VERSION}"
 
-    # Build the child include on a private same-dir temp copy and swap it
-    # in place 0600 aegir-owned: the values the child sources must never
-    # be half-written nor readable by other local users
-    _tmpIncB="${_vBs}/.${_filIncB}.tmp"
+    # Refuse to hand off provably broken values: an empty front domain or
+    # mirror here means a guaranteed child fatal much later, with far
+    # worse diagnostics than failing loudly now
+    for _hndVar in _THIS_FRONT _USE_MIR; do
+      if [ -z "${!_hndVar}" ]; then
+        _msg "FATAL ERROR: ${_hndVar} is empty, AegirUpgrade hand-off aborted"
+        _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+        touch /opt/tmp/status-Barracuda-FAIL
+        _clean_pid_exit _aegir_master_upgrade_b
+      fi
+    done
+
+    # Build the per-spawn child include on a private same-dir temp copy
+    # and swap it in place 0600 aegir-owned: AegirUpgrade sources ONLY
+    # this file and the values must never be half-written nor readable
+    # by other local users; the shared barracuda.sh.cnf stays root's own
+    # load path and no longer carries these appends
+    _hndIncB="${_filIncB}.AegirUpgrade"
+    _tmpIncB="${_vBs}/.${_hndIncB}.tmp"
     rm -f ${_tmpIncB}
     cp -af ${_vBs}/${_filIncB} ${_tmpIncB}
     chown aegir:aegir ${_tmpIncB} &> /dev/null
@@ -877,8 +892,11 @@ _aegir_master_upgrade() {
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_tmpIncB}
     echo "_xSrl=\"${_xSrl}\""                           >> ${_tmpIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_tmpIncB}
+    # The seal must stay the LAST line: the child asserts it after
+    # sourcing, so any truncated append sequence is detected, not used
+    echo "_HANDOFF_SEAL=\"AegirUpgrade\""               >> ${_tmpIncB}
 
-    mv -f ${_tmpIncB} ${_vBs}/${_filIncB}
+    mv -f ${_tmpIncB} ${_vBs}/${_hndIncB}
 
     mysqladmin -u root flush-hosts &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
@@ -904,6 +922,8 @@ _aegir_master_upgrade() {
       touch /opt/tmp/status-Barracuda-FAIL
       _clean_pid_exit _aegir_master_upgrade_a
     else
+      # Consumed once; kept only on failure for post-mortem reading
+      rm -f ${_vBs}/${_hndIncB}
       if [ -e "${_U_HD}/php.ini" ]; then
         chattr +i ${_U_HD}/php.ini
       fi
@@ -1252,10 +1272,26 @@ EOFMYSQL
       _PHP_FPM_VERSION="${_PHP_CLI_VERSION}"
     fi
 
-    # Build the child include on a private same-dir temp copy and swap it
-    # in place 0600 aegir-owned: the Ægir DB password lands in this file,
-    # so it must never be half-written nor readable by other local users
-    _tmpIncB="${_vBs}/.${_filIncB}.tmp"
+    # Refuse to hand off provably broken values: each of these fatals the
+    # child (aegir_host/db_user/db_pass args, the distro path, the mirror
+    # fetches) and none is a legitimate empty state on the INIT path
+    for _hndVar in _AEGIR_HOST _AEGIR_DB_USER _ESC_PASS \
+      _AEGIR_VERSION _USE_MIR; do
+      if [ -z "${!_hndVar}" ]; then
+        _msg "FATAL ERROR: ${_hndVar} is empty, AegirSetupM hand-off aborted"
+        _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+        touch /opt/tmp/status-Barracuda-FAIL
+        _clean_pid_exit _aegir_master_install_upgrade_h
+      fi
+    done
+
+    # Build the per-spawn child include on a private same-dir temp copy
+    # and swap it in place 0600 aegir-owned: the Ægir DB password lands in
+    # this file, so it must never be half-written nor readable by other
+    # local users; AegirSetupM sources ONLY this file and the shared
+    # barracuda.sh.cnf stays root's own load path
+    _hndIncB="${_filIncB}.AegirSetupM"
+    _tmpIncB="${_vBs}/.${_hndIncB}.tmp"
     rm -f ${_tmpIncB}
     cp -af ${_vBs}/${_filIncB} ${_tmpIncB}
     chown aegir:aegir ${_tmpIncB} &> /dev/null
@@ -1284,8 +1320,11 @@ EOFMYSQL
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_tmpIncB}
     echo "_xSrl=\"${_xSrl}\""                           >> ${_tmpIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_tmpIncB}
+    # The seal must stay the LAST line: the child asserts it after
+    # sourcing, so any truncated append sequence is detected, not used
+    echo "_HANDOFF_SEAL=\"AegirSetupM\""                >> ${_tmpIncB}
 
-    mv -f ${_tmpIncB} ${_vBs}/${_filIncB}
+    mv -f ${_tmpIncB} ${_vBs}/${_hndIncB}
 
     ###  Download Drupal core and modules
     _master_download_for_local_build
@@ -1329,6 +1368,9 @@ EOFMYSQL
       touch /opt/tmp/status-Barracuda-FAIL
       _clean_pid_exit _aegir_master_install_upgrade_d
     fi
+    # Consumed once and it carries the Ægir DB password; kept only on
+    # failure (the exit above) for post-mortem reading
+    rm -f ${_vBs}/${_hndIncB}
     if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hm.alias.drushrc.php \
         | grep "root'" \

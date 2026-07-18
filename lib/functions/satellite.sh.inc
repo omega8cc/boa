@@ -2665,13 +2665,16 @@ _satellite_add_user_dirs() {
   fi
   chown -R ${_USER}:${_USRG} /opt/tmp &> /dev/null
   chown -R ${_USER}:${_USRG} /data/conf &> /dev/null
-  # On a fresh install the per-user include is materialised before this
-  # user exists, so ownership must be re-asserted here or the su'd
-  # children cannot read their 0600 copy
-  if [ -e "${_vBs}/${_filIncO}.${_USER}" ]; then
-    chown ${_USER}:${_USRG} ${_vBs}/${_filIncO}.${_USER} &> /dev/null
-    chmod 0600 ${_vBs}/${_filIncO}.${_USER}
-  fi
+  # On a fresh install the per-child includes are materialised before
+  # this user exists, so ownership must be re-asserted here or the su'd
+  # children cannot read their 0600 copies
+  for _hndChd in AegirSetupB AegirSetupC; do
+    if [ -e "${_vBs}/${_filIncO}.${_USER}.${_hndChd}" ]; then
+      chown ${_USER}:${_USRG} \
+        ${_vBs}/${_filIncO}.${_USER}.${_hndChd} &> /dev/null
+      chmod 0600 ${_vBs}/${_filIncO}.${_USER}.${_hndChd}
+    fi
+  done
 }
 
 _satellite_prepare_child_scripts() {
@@ -4270,11 +4273,24 @@ _satellite_make() {
 
   _tocIncO="${_filIncO}.${_USER}"
 
-  # The su'd children source only their per-user include; build it on a
-  # private same-dir temp copy of this pass's base (the wrapper's per-user
-  # clone on upgrades, the freshly fetched shared include on installs) and
-  # swap it in place 0600 user-owned, so the values are never half-written
-  # nor readable by other local users
+  # Refuse to hand off provably broken values: each of these breaks the
+  # children unconditionally (paths, mirror fetches, the shared-core prep)
+  # and none is a legitimate empty state in any octopus mode
+  for _hndVar in _USER _USE_MIR _DOMAIN _HM_DISTRO _ALL_DISTRO \
+    _DRUPAL6 _DRUPAL7 _SMALLCORE6_V _SMALLCORE7_V; do
+    if [ -z "${!_hndVar}" ]; then
+      _msg "FATAL ERROR: ${_hndVar} is empty, child hand-off aborted"
+      _msg "FATAL ERROR: Aborting Octopus installer NOW!"
+      touch /opt/tmp/status-Octopus-FAIL
+      _clean_pid_exit _satellite_make_env
+    fi
+  done
+
+  # Each child sources only its own sealed per-spawn include; build the
+  # common payload on a private same-dir temp copy of this pass's base
+  # (the wrapper's per-user clone on upgrades, the freshly fetched shared
+  # include on installs), so the values are never half-written nor
+  # readable by other local users
   if [ -e "${_vBs}/${_tocIncO}" ]; then
     _incBase="${_vBs}/${_tocIncO}"
   elif [ -e "${_vBs}/${_filIncO}" ]; then
@@ -4288,7 +4304,6 @@ _satellite_make() {
   _tmpIncO="${_vBs}/.${_tocIncO}.tmp"
   rm -f ${_tmpIncO}
   cp -af ${_incBase} ${_tmpIncO}
-  chown ${_USER}:${_USRG} ${_tmpIncO} &> /dev/null
   chmod 0600 ${_tmpIncO}
   _writeTo="${_tmpIncO}"
 
@@ -4479,7 +4494,27 @@ _satellite_make() {
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
 
-  mv -f ${_tmpIncO} ${_vBs}/${_tocIncO}
+  # Fan the common payload out to one sealed single-consumer include per
+  # child, atomically, 0600, owned by the identity that sources it
+  # (AegirSetupA runs as root; B/C run su'd as the instance user). The
+  # per-user octopus.sh.cnf.<user> stays the wrapper-managed root channel
+  # and no longer carries these appends. The seal must stay the LAST
+  # line: each child asserts it after sourcing, so a truncated append
+  # sequence or a foreign include is detected, not used.
+  for _hndChd in AegirSetupA AegirSetupB AegirSetupC; do
+    _hndTmp="${_vBs}/.${_tocIncO}.${_hndChd}.tmp"
+    rm -f ${_hndTmp}
+    cp -af ${_tmpIncO} ${_hndTmp}
+    echo "export _HANDOFF_SEAL=\"${_hndChd}\"" >> ${_hndTmp}
+    if [ "${_hndChd}" = "AegirSetupA" ]; then
+      chown root:root ${_hndTmp} &> /dev/null
+    else
+      chown ${_USER}:${_USRG} ${_hndTmp} &> /dev/null
+    fi
+    chmod 0600 ${_hndTmp}
+    mv -f ${_hndTmp} ${_vBs}/${_tocIncO}.${_hndChd}
+  done
+  rm -f ${_tmpIncO}
 
   _THISHOST="${_hName}"
   if [ -e "/usr/bin/sipcalc" ]; then
