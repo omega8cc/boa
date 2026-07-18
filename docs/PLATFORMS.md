@@ -12,16 +12,16 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 11
 
-- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.1)
+- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.4)
 - [Drupal 11.1.10](https://drupal.org/project/drupal/releases/11.1.10)
 - [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
-- [Drupal 11.3.13](https://drupal.org/project/drupal/releases/11.3.13)
-- [Drupal 11.4.1](https://drupal.org/project/drupal/releases/11.4.1)
-- [Drupal CMS 2.1.3](https://drupal.org/project/cms) (11.4.1)
-- [farmOS 4.0.3](https://drupal.org/project/farm) (11.3.12)
-- [LocalGov 4.0.2](https://drupal.org/project/localgov) (11.4.1)
-- [OpenCulturas 3.0.2](https://drupal.org/project/openculturas) (11.3.13)
-- [Thunder 8.4.0](https://drupal.org/project/thunder) (11.4.1)
+- [Drupal 11.3.14](https://drupal.org/project/drupal/releases/11.3.14)
+- [Drupal 11.4.4](https://drupal.org/project/drupal/releases/11.4.4)
+- [Drupal CMS 2.1.3](https://drupal.org/project/cms) (11.4.4)
+- [farmOS 4.0.4](https://drupal.org/project/farm) (11.3.14)
+- [LocalGov 4.0.2](https://drupal.org/project/localgov) (11.4.4)
+- [OpenCulturas 3.0.3](https://drupal.org/project/openculturas) (11.3.14)
+- [Thunder 8.4.0](https://drupal.org/project/thunder) (11.4.4)
 - [Varbase 10.1.0](https://drupal.org/project/varbase) (11.3.12)
 
 ## Drupal 10
@@ -33,7 +33,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
 - [Drupal 10.4.10](https://drupal.org/project/drupal/releases/10.4.10)
 - [Drupal 10.5.12](https://drupal.org/project/drupal/releases/10.5.12)
-- [Drupal 10.6.12](https://drupal.org/project/drupal/releases/10.6.12)
+- [Drupal 10.6.13](https://drupal.org/project/drupal/releases/10.6.13)
 - [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
