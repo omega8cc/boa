@@ -421,6 +421,16 @@ if ! [[ "${_NGINX_DOS_INC_MIN}" =~ ^[1-9][0-9]*$ ]]; then
   _NGINX_DOS_INC_MIN=3
 fi
 
+# Validate _NGINX_DOS_DIV_INC_NR: must be a positive integer. An empty or
+# invalid cnf value would otherwise clobber the built-in default and feed a
+# zero divisor into the increment math below. Recompute the doubled
+# short-window divisor so a cnf override keeps the x2 relationship.
+if ! [[ "${_NGINX_DOS_DIV_INC_NR}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Warning: Invalid _NGINX_DOS_DIV_INC_NR ('${_NGINX_DOS_DIV_INC_NR}'). Setting to default (40)."
+  _NGINX_DOS_DIV_INC_NR=40
+fi
+_NGINX_DOS_DIV_INC_S_NR=$(( _NGINX_DOS_DIV_INC_NR * 2 ))
+
 # Validate _NGINX_DOS_LIMIT: must be a number within the range
 if ! [[ "${_NGINX_DOS_LIMIT}" =~ ^[0-9]+$ ]] || (( _NGINX_DOS_LIMIT < _MIN_LIMIT || _NGINX_DOS_LIMIT > _MAX_LIMIT )); then
   echo "Warning: Invalid _NGINX_DOS_LIMIT ('${_NGINX_DOS_LIMIT}'). Setting to default (${_DEFAULT_LIMIT})."
