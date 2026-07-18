@@ -2363,7 +2363,6 @@ _barracuda_cnf() {
 
     echo "###"                                                >> ${_barCnf}
     echo "_ENABLE_GOACCESS=${_ENABLE_GOACCESS}"               >> ${_barCnf}
-    echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_NGINX_DOS_DIV_INC_NR=\"${_NGINX_DOS_DIV_INC_NR}\"" >> ${_barCnf}
@@ -2458,8 +2457,8 @@ _barracuda_cnf() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${_barCnf}
     wait
-    ### Force ImageMagick from packages
-    sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${_barCnf}
+    ### Retired: ImageMagick is distro-packages-only now (D-2026-07-15)
+    sed -i "/^_MAGICK_FROM_SOURCES=/d"                           ${_barCnf}
     wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
@@ -2835,11 +2834,6 @@ _barracuda_cnf() {
       echo "_SSH_ARMOUR=${_SSH_ARMOUR}" >> ${_barCnf}
     fi
 
-    _MAGICK_FROM_SOURCES_TEST=$(grep _MAGICK_FROM_SOURCES ${_barCnf} 2>&1)
-    if [[ ! "${_MAGICK_FROM_SOURCES_TEST}" =~ "_MAGICK_FROM_SOURCES" ]]; then
-      echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}" >> ${_barCnf}
-    fi
-
     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${_barCnf} 2>&1)
     if [[ ! "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
       echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${_barCnf}
@@ -2947,8 +2941,8 @@ _barracuda_cnf() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${_barCnf}
     wait
-    ### Force ImageMagick from packages
-    sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${_barCnf}
+    ### Retired: ImageMagick is distro-packages-only now (D-2026-07-15)
+    sed -i "/^_MAGICK_FROM_SOURCES=/d"                           ${_barCnf}
     wait
     ### Retired: OpenSSH is an always-on component now (D-2026-07-14)
     sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
@@ -4620,65 +4614,6 @@ _sshd_install_src() {
     _mrun "service ssh start"
   fi
   _SSH_FORCE_REINSTALL=NO
-}
-
-#
-# Install ImageMagick from sources.
-_install_magick_src() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _install_magick_src"
-  fi
-  _MAGICK_SRC_BUILD_CTRL="${_pthLog}/ImageMagick-src-build-${_IMAGE_MAGICK_VRN}.log"
-  _MAGICK_INSTALL_REQUIRED=NO
-  _MAGICK_ITD=$(convert --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f3 \
-    | awk '{ print $1}' 2>&1)
-  if [ "${_MAGICK_ITD}" != "${_IMAGE_MAGICK_VRN}" ] \
-    || [ ! -e "${_MAGICK_SRC_BUILD_CTRL}" ]; then
-    if [ "${_OS_CODE}" = "none" ]; then
-      _MAGICK_INSTALL_REQUIRED=NO
-    else
-      _MAGICK_INSTALL_REQUIRED=YES
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Installed ImageMagick version ${_MAGICK_ITD}, upgrade required"
-      fi
-    fi
-  fi
-  if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
-    _msg "INFO: Installing ImageMagick ${_IMAGE_MAGICK_VRN}..."
-    _msg "WAIT: This may take a while, please wait..."
-    cd /var/opt
-    rm -rf ImageMagick*
-    _get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
-    cd /var/opt/ImageMagick-${_IMAGE_MAGICK_VRN}
-    _mrun "bash ./configure --prefix=/usr"
-    _mrun "make -j $(nproc) --quiet"
-    if [ ! -e "/etc/.ImageMagick-6" ] \
-      && [ -e "/etc/ImageMagick-6" ]; then
-        cp -a /etc/ImageMagick-6 /etc/.ImageMagick-6
-    fi
-    if [ ! -e "/etc/.ImageMagick" ] \
-      && [ -e "/etc/ImageMagick" ]; then
-        cp -a /etc/ImageMagick /etc/.ImageMagick
-    fi
-    ###
-    for _PKG in imagemagick libmagickwand-dev graphviz libgraphviz-dev; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      fi
-    done
-    ###
-    _mrun "make --quiet install"
-    ldconfig 2> /dev/null
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
-    fi
-    touch ${_MAGICK_SRC_BUILD_CTRL}
-  fi
 }
 
 #
@@ -7337,7 +7272,6 @@ _if_post_major_os_upgrade() {
       _curl_install_src
       _sshd_install_src
       _nginx_install_upgrade
-      _magick_install_upgrade
       _php_install_deps
       _php_libs_fix
       _php_if_versions_cleanup_cnf
@@ -8089,7 +8023,6 @@ _if_major_os_upgrade() {
       _curl_install_src
       _sshd_install_src
       _nginx_install_upgrade
-      _magick_install_upgrade
       _php_install_deps
       _php_libs_fix
       _php_if_versions_cleanup_cnf
@@ -8969,11 +8902,8 @@ _sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_MAGICK_FROM_SOURCES}" = "NO" ] \
-    || [ -z "${_MAGICK_FROM_SOURCES}" ]; then
-    _EXTRA_PACKAGES="imagemagick libmagickwand-dev graphviz libgraphviz-dev \
-                     ${_EXTRA_PACKAGES}"
-  fi
+  _EXTRA_PACKAGES="imagemagick libmagickwand-dev graphviz libgraphviz-dev \
+                   ${_EXTRA_PACKAGES}"
 
   _MAILSERV="postfix postfix-pcre s-nail"
 }
