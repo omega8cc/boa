@@ -1026,9 +1026,9 @@ _NIGHT_PARALLEL=NO
 
 ###
 ### Max Octopus accounts owl.sh processes in parallel when _NIGHT_PARALLEL=YES.
-### Leave empty to default to the CPU core count.
+### AUTO will default to the CPU core count.
 ###
-_NIGHT_MAX_PARALLEL=
+_NIGHT_MAX_PARALLEL=AUTO
 
 ###
 ### Nightly global files-symlink auto-fix (updatesymlinks --auto-fix). The
@@ -1149,6 +1149,19 @@ _NGINX_DOS_IGNORE="doccomment"
 _NGINX_DOS_STOP="WAITFOR.DELAY|DECLARE.*@x|/\*\*/|%27.*%29.*%3B|0x[0-9a-f]{6}"
 
 ###
+### Divisor applied to _NGINX_DOS_LIMIT to derive the per-hit counter
+### increment step used by the web IDS; the short-window step uses
+### twice this divisor. Positive integer.
+###
+_NGINX_DOS_DIV_INC_NR=40
+
+###
+### Minimum allowed counter increment step for the web IDS, used when
+### the divisor-derived step would fall below it. Positive integer.
+###
+_NGINX_DOS_INC_MIN=3
+
+###
 ### Nginx Headers More support is available
 ### via third-party Nginx module. To enable
 ### change this option to _NGINX_HEADERS=YES
@@ -1186,6 +1199,14 @@ _NGINX_SPDY=YES
 ### upgrade / re-install.
 ###
 _NGINX_FORWARD_SECRECY=YES
+
+###
+### Kernel TLS (KTLS) offload in Nginx. The default YES keeps KTLS
+### active. Set to NO to disable KTLS server-wide -- useful where
+### OpenSSL 3.2+ kernel kTLS RX aborts TLS connections mid-request
+### with recv() Input/output error alerts.
+###
+_NGINX_KTLS=YES
 
 ###
 ### Use this only when you need to always
