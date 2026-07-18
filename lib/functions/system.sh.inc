@@ -2539,8 +2539,8 @@ _barracuda_cnf() {
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${_barCnf}
     wait
 
-    _CUSTOM_COLLATION_SQL=$(grep _CUSTOM_COLLATION_SQL ${_barCnf} 2>&1)
-    if [[ "${_CUSTOM_COLLATION_SQL}" =~ "_CUSTOM_COLLATION_SQL" ]]; then
+    _CUSTOM_COLLATION_SQL_TEST=$(grep _CUSTOM_COLLATION_SQL ${_barCnf} 2>&1)
+    if [[ "${_CUSTOM_COLLATION_SQL_TEST}" =~ "_CUSTOM_COLLATION_SQL" ]]; then
       _DO_NOTHING=YES
     else
       echo "_CUSTOM_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}" >> ${_barCnf}
@@ -2585,7 +2585,7 @@ _barracuda_cnf() {
     if [[ "${_NGINX_DOS_DIV_INC_NR_TEST}" =~ "_NGINX_DOS_DIV_INC_NR" ]]; then
       _DO_NOTHING=YES
     else
-      echo "_NGINX_DOS_DIV_INC_NR=${_NGINX_DOS_DIV_INC_NR}" >> ${_barCnf}
+      echo "_NGINX_DOS_DIV_INC_NR=\"${_NGINX_DOS_DIV_INC_NR}\"" >> ${_barCnf}
     fi
 
     _NGINX_DOS_IGNORE_TEST=$(grep _NGINX_DOS_IGNORE ${_barCnf} 2>&1)
@@ -2599,7 +2599,7 @@ _barracuda_cnf() {
     if [[ "${_NGINX_DOS_INC_MIN_TEST}" =~ "_NGINX_DOS_INC_MIN" ]]; then
       _DO_NOTHING=YES
     else
-      echo "_NGINX_DOS_INC_MIN=${_NGINX_DOS_INC_MIN}" >> ${_barCnf}
+      echo "_NGINX_DOS_INC_MIN=\"${_NGINX_DOS_INC_MIN}\"" >> ${_barCnf}
     fi
 
     _NGINX_WORKERS_TEST=$(grep _NGINX_WORKERS ${_barCnf} 2>&1)
@@ -2956,6 +2956,21 @@ _barracuda_cnf() {
     sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${_barCnf}
     wait
     sed -i "s/^_PERMISSIONS_.*/_PERMISSIONS_FIX=YES/g"           ${_barCnf}
+    wait
+    ### Heal value-less lines appended before these options had settings
+    ### defaults; YES/NO/number options must display their effective value.
+    ### Exact-empty match only, so operator-set values are never touched.
+    sed -i "s/^_NGINX_KTLS=$/_NGINX_KTLS=YES/g"                  ${_barCnf}
+    wait
+    sed -i "s/^_NIGHT_MAX_PARALLEL=$/_NIGHT_MAX_PARALLEL=AUTO/g" ${_barCnf}
+    wait
+    sed -i "s/^_NGINX_DOS_DIV_INC_NR=\"\"$/_NGINX_DOS_DIV_INC_NR=\"40\"/g" ${_barCnf}
+    wait
+    sed -i "s/^_NGINX_DOS_DIV_INC_NR=$/_NGINX_DOS_DIV_INC_NR=\"40\"/g"     ${_barCnf}
+    wait
+    sed -i "s/^_NGINX_DOS_INC_MIN=\"\"$/_NGINX_DOS_INC_MIN=\"3\"/g" ${_barCnf}
+    wait
+    sed -i "s/^_NGINX_DOS_INC_MIN=$/_NGINX_DOS_INC_MIN=\"3\"/g"     ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
     wait
