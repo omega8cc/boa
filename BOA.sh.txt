@@ -1264,7 +1264,14 @@ _update_agents() {
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
     _pthCtrl="/root/.remote_backups/ctrl"
-    if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+    # Own-fleet domains keep PRO backups on any tree: the backup tools
+    # (dcysetup/multiback/mybackup/backboa) hardcode _tRee=dev plus this
+    # same domain pass, so a tree-only gate here wiped /root/.remote_backups
+    # on own lts boxes and dcysetup could never bootstrap there.
+    if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ] \
+      || [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
       [ ! -e "${_pthCtrl}" ] && mkdir -p ${_pthCtrl}
       [ ! -e "/root/.remote_backups/run" ] && mkdir -p /root/.remote_backups/run
     else
