@@ -770,17 +770,12 @@ _aegir_master_upgrade() {
     fi
     rm -f /opt/tmp/testecho*
     usermod -aG users aegir
-    _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
-    if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
-      echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    fi
+    _sudoers_safe_append /etc/sudoers \
+      "aegir ALL=NOPASSWD: /etc/init.d/nginx" "aegir ALL=NOPASSWD"
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for SCRIPT in ${_SCRIPTS[@]}; do
-      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
-      if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
-        echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-        chmod 0440 /etc/sudoers.d/${SCRIPT}
-      fi
+      _sudoers_safe_append /etc/sudoers.d/${SCRIPT} \
+        "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh"
     done
 
     _hostmaster_dr_up
@@ -1042,7 +1037,8 @@ _aegir_master_install_upgrade() {
     adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
-    echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    _sudoers_safe_append /etc/sudoers \
+      "aegir ALL=NOPASSWD: /etc/init.d/nginx" "aegir ALL=NOPASSWD"
 
     _unlock_sendmail_for_snail
     if getent group allow-snail >/dev/null 2>&1 && \
