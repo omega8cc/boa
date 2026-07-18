@@ -78,6 +78,42 @@ if [ -n "${_account}" ]; then
   fi
 fi
 
+# Caller-scope: an Octopus tenant may only convert a site that lives in ITS OWN
+# account tree. autosymlink narrow mode trusts a caller-supplied --account
+# (_ACCOUNT_DIR=/data/disk/<account>) and, when it is omitted, resolves the owner
+# by scanning every /data/disk/* -- so without this gate tenant o1 could pass a
+# victim --site (and/or --account=o2) to drive this root-run conversion/unshare
+# against another tenant. Derive the sudo identity: a per-tenant caller (home
+# /data/disk/oN) may only act on a site whose Drush alias -- the authoritative
+# "owned here" marker -- exists under its OWN account, and any explicit --account
+# must name it. aegir (master) and a direct root run are trusted. Rejection here
+# is non-fatal to Provision (it logs a warning and leaves the site as plain dirs).
+_caller="${SUDO_USER:-}"
+if [ -n "${_caller}" ]; then
+  _caller_home=$(getent passwd "${_caller}" 2>/dev/null | cut -d: -f6)
+  _caller_home="${_caller_home%/}"
+  case "${_caller_home}" in
+    /data/disk/*)
+      _caller_acct="${_caller_home##*/}"
+      if [ -n "${_account}" ] && [ "${_account}" != "${_caller_acct}" ]; then
+        printf "Error: --account '%s' is not the caller's own account '%s'.\n" "${_account}" "${_caller_acct}" >&2
+        exit 1
+      fi
+      if [ ! -f "/data/disk/${_caller_acct}/.drush/${_site}.alias.drushrc.php" ]; then
+        printf "Error: site '%s' is not owned by the caller account '%s'.\n" "${_site}" "${_caller_acct}" >&2
+        exit 1
+      fi
+      ;;
+    /var/aegir)
+      : # master aegir: trusted (narrow autosymlink only handles /data/disk sites)
+      ;;
+    *)
+      printf "Error: unexpected sudo caller '%s' (home '%s'); refusing.\n" "${_caller}" "${_caller_home}" >&2
+      exit 1
+      ;;
+  esac
+fi
+
 if [ ! -x "${_AUTOSYMLINK}" ]; then
   printf "Error: autosymlink not found at %s\n" "${_AUTOSYMLINK}"
   exit 1
