@@ -65,7 +65,7 @@ _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 _AUTOSYMLINK_NIGHTLY=NO #------- Nightly files-symlink auto-fix run when YES
 _ORPHAN_FILES_REPORT=NO #------- Daily orphaned files-dir email report when YES
 _NIGHT_PARALLEL=NO #------------ Process Octopus accounts in parallel at night
-_NIGHT_MAX_PARALLEL= #---------- Max parallel accounts (empty = CPU cores)
+_NIGHT_MAX_PARALLEL=AUTO #------ Max parallel accounts (AUTO = CPU cores)
 _CLEAR_BOOST=YES #-------------- Clear all boost caches daily when YES (default)
 _LE_CLIENT_NOTIFY=YES #--------- Notify clients of their LE renewal failures
 _GHOST_CLIENT_NOTIFY=YES #------ Notify clients of ghost site records to remove
