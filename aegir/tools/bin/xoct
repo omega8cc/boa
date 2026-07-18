@@ -19,13 +19,13 @@ if [ -z "${_tRee}" ]; then
     | grep -oE '\.(dev|lts|pro)\.' \
     | tr -d '.')
 fi
-[ -z "${_tRee}" ] && _tRee=dev
+[ -z "${_tRee}" ] && _tRee=lts
 export _tRee
 _xSrl=$(boa info 2>/dev/null \
   | grep -oE "BOA-[0-9.]+-${_tRee}-[0-9a-zA-Z]+" \
   | tail -1 \
   | awk -F- '{ print $NF }')
-[ -z "${_xSrl}" ] && _xSrl="5103${_tRee}T01"
+[ -z "${_xSrl}" ] && _xSrl="5888${_tRee}T01"
 export _xSrl
 
 _WEBG=www-data
