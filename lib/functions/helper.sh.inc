@@ -590,7 +590,12 @@ _mode_detection() {
         ### mv -f /root/.my.cnf ${_ZOMBIE_HOME}/ &> /dev/null
         ### mv -f /root/.my.pass.txt ${_ZOMBIE_HOME}/ &> /dev/null
         cp -af /etc/sudoers ${_ZOMBIE_HOME}/ &> /dev/null
-        sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
+        _sd_tmp=$(mktemp /etc/.sudoers.boa.XXXXXX 2>/dev/null)
+        if [ -n "${_sd_tmp}" ]; then
+          cat /etc/sudoers > "${_sd_tmp}" 2>/dev/null
+          sed -i "s/^aegir.*//g" "${_sd_tmp}" &> /dev/null
+          _sudoers_commit /etc/sudoers "${_sd_tmp}"
+        fi
         pkill -9 -f gpg-agent
         deluser aegir &> /dev/null
         rm -f /usr/bin/drush
@@ -1381,6 +1386,73 @@ port=${_port}
 protocol=tcp
 CLUSTER_CNF
   return 0
+}
+
+# Validate a candidate sudoers file with visudo(8) and, only if it passes,
+# install it over the live target as mode 0440 root:root using an atomic
+# rename. On failure the live target is left untouched and the candidate is
+# discarded, so a malformed rule can never lock sudo out of the machine.
+# The candidate must live in the same directory as the target (same
+# filesystem) so the rename is atomic; the ".sudoers.boa." prefix and the
+# embedded dot make sudo's #includedir skip it should a crash leave one
+# behind. Used by _sudoers_safe_append and by the in-place removal paths.
+#
+# Usage: _sudoers_commit <target> <candidate>
+# Returns 0 if committed, 1 if rejected or on error.
+_sudoers_commit() {
+  local _target="${1}"
+  local _cand="${2}"
+  if [ -z "${_target}" ] || [ ! -e "${_cand}" ]; then
+    [ -n "${_cand}" ] && rm -f "${_cand}" 2>/dev/null
+    return 1
+  fi
+  if visudo -cf "${_cand}" >/dev/null 2>&1; then
+    chown root:root "${_cand}" 2>/dev/null
+    chmod 0440 "${_cand}" 2>/dev/null
+    mv -f "${_cand}" "${_target}" 2>/dev/null
+    return 0
+  fi
+  _msg "OOPS: Refusing to write invalid sudoers content to ${_target}"
+  rm -f "${_cand}" 2>/dev/null
+  return 1
+}
+
+# Idempotently append a line to a sudoers file, validating the resulting
+# file with visudo(8) before it goes live (via _sudoers_commit). The
+# presence check makes a repeated call a no-op, which also prevents the
+# duplicate INIT-branch appends that the unconditional fresh-install paths
+# in master.sh.inc / satellite.sh.inc produced on every re-run. When visudo
+# is not yet available the historical guarded append is used so a first
+# install is never blocked on a missing validator.
+#
+# Usage: _sudoers_safe_append <file> <line> [match]
+#   match defaults to <line>; pass a shorter prefix (e.g. "<user> ALL=NOPASSWD")
+#   to treat any existing line starting with it as already present, which
+#   preserves the prior per-user grep semantics for /etc/sudoers.
+# Returns 0 on append or no-op, 1 on error.
+_sudoers_safe_append() {
+  local _file="${1}"
+  local _line="${2}"
+  local _match="${3:-${2}}"
+  local _tmp
+  if [ -z "${_file}" ] || [ -z "${_line}" ]; then
+    return 1
+  fi
+  if [ -e "${_file}" ] && grep -qF "${_match}" "${_file}" 2>/dev/null; then
+    return 0
+  fi
+  if ! command -v visudo >/dev/null 2>&1; then
+    echo "${_line}" >> "${_file}"
+    chmod 0440 "${_file}" 2>/dev/null
+    return 0
+  fi
+  _tmp=$(mktemp "$(dirname "${_file}")/.sudoers.boa.XXXXXX" 2>/dev/null)
+  if [ -z "${_tmp}" ] || [ ! -e "${_tmp}" ]; then
+    return 1
+  fi
+  [ -e "${_file}" ] && cat "${_file}" > "${_tmp}" 2>/dev/null
+  echo "${_line}" >> "${_tmp}"
+  _sudoers_commit "${_file}" "${_tmp}"
 }
 
 _check_prepare_dirs_permissions() {
