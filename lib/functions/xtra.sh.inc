@@ -384,10 +384,13 @@ _if_install_bind() {
         if [ ! -e "/etc/init.d/bind" ]; then
           ln -sfn /etc/init.d/bind9 /etc/init.d/bind
         fi
-        sed -i "s/.*bind.*//g" /etc/sudoers &> /dev/null
-        wait
-        sed -i "/^$/d" /etc/sudoers &> /dev/null
-        wait
+        _sd_tmp=$(mktemp /etc/.sudoers.boa.XXXXXX 2>/dev/null)
+        if [ -n "${_sd_tmp}" ]; then
+          cat /etc/sudoers > "${_sd_tmp}" 2>/dev/null
+          sed -i "s/.*bind.*//g" "${_sd_tmp}" &> /dev/null
+          sed -i "/^$/d" "${_sd_tmp}" &> /dev/null
+          _sudoers_commit /etc/sudoers "${_sd_tmp}"
+        fi
         _msg "INFO: Bind9 DNS Server installed"
       else
         _msg "INFO: Bind9 DNS Server installation skipped"
