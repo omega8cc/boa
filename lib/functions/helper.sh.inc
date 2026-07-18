@@ -1178,7 +1178,12 @@ _os_detection() {
 
   _NGINX_FORWARD_SECRECY=YES
   _NGINX_SPDY=YES
-  _NGINX_KTLS=YES
+  ### Fallback only -- the cnf is already sourced by now, so an
+  ### unconditional YES here would clobber an operator _NGINX_KTLS=NO
+  ### and kill the KTLS opt-out lever.
+  if [ -z "${_NGINX_KTLS}" ]; then
+    _NGINX_KTLS=YES
+  fi
   if [ "${_DB_SERIES}" = "8.4" ]; then
     _DBS_VRN="${_PERCONA_8_4_VRN}"
     _turn_on_password_update
