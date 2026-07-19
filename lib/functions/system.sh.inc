@@ -2237,9 +2237,10 @@ _barracuda_cnf() {
     grep -q "^_GHOST_SITES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_SITES_CLEANUP=YES
     grep -q "^_GHOST_VHOSTS_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_VHOSTS_CLEANUP=YES
   fi
-  # Prebuilt heavy-stack packages default to YES on Devuan Daedalus, where the
-  # mirrors publish the complete boa-* set, but ONLY when the toggle is not
-  # already present in the cnf, so an explicit operator YES/NO always wins.
+  # Prebuilt heavy-stack packages default to YES on Devuan Daedalus and
+  # Excalibur, where the mirrors publish the complete boa-* set, but ONLY
+  # when the toggle is not already present in the cnf, so an explicit
+  # operator YES/NO always wins (builder boxes keep NO).
   # Covers install (no cnf yet -- the generated cnf then records YES) and
   # upgrade (resolved before the append-missing-vars pass below persists it).
   # Probed locally: _os_detection runs later than this function, and on a
@@ -2254,6 +2255,9 @@ _barracuda_cnf() {
     if [ "${_osCodeNow}" = "daedalus" ]; then
       _USE_PREBUILT_PKGS=YES
       _msg "INFO: Prebuilt stack packages enabled by default on Devuan Daedalus"
+    elif [ "${_osCodeNow}" = "excalibur" ]; then
+      _USE_PREBUILT_PKGS=YES
+      _msg "INFO: Prebuilt stack packages enabled by default on Devuan Excalibur"
     fi
   fi
   _VMFAMILY=XEN
