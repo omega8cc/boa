@@ -5387,6 +5387,12 @@ _satellite_letsencrypt_vhost_sync() {
   else
     sed -i "s/.*ssl_dhparam .*//g" ${_Ssl}
   fi
+  ### Mirror xoct's KTLS opt-out strip here, at the tar-delivered layer:
+  ### the fetched xoct can lag this lib, and a stale copy would regenerate
+  ### the front with KTLS against the opt-out, re-triggering the update
+  ### check on every upgrade while nginx keeps serving KTLS.
+  [ -e "/etc/nginx/no_ktls.conf" ] \
+    && sed -i "/ssl_conf_command Options.*KTLS/d" ${_Ssl}
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
     _mrun "service nginx reload"
