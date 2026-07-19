@@ -17,12 +17,15 @@ _USE_PREBUILT_PKGS=YES|NO
 
 in `/root/.barracuda.cnf` controls the behaviour:
 
-- On **Devuan Daedalus** the default is `YES` -- packages are used whenever a
-  matching one is published, on install and upgrade alike. Set
-  `_USE_PREBUILT_PKGS=NO` explicitly to always compile from sources.
+- On **Devuan Daedalus** and **Devuan Excalibur** the default is `YES` --
+  packages are used whenever a matching one is published, on install and
+  upgrade alike (Excalibur since 2026-07-20, when its complete boa-* set
+  went live on the mirrors). Set `_USE_PREBUILT_PKGS=NO` explicitly to
+  always compile from sources.
 - On all other systems the default is `NO` until a complete package set for
   that release is published and propagated; the default then flips per
-  release. An explicit value in `.barracuda.cnf` always wins.
+  release. An explicit value in `.barracuda.cnf` always wins. Builder boxes
+  keep an explicit `NO` -- see the builder requirements below.
 
 The switch never changes *whether* a component is (re)built -- all existing
 version checks, force flags, and self-heal logic stay exactly as they were.
