@@ -142,7 +142,14 @@ fi
 
 if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
   _R_M=`echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ "`
-  _ARGS=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+  ### Empty match must not reach sed: s///g errors to stderr on every
+  ### non-drush /bin/sh -c (task-log noise); keep the historical empty
+  ### result, only silence the error path.
+  if [ -n "${_R_M}" ]; then
+    _ARGS=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+  else
+    _ARGS=
+  fi
 fi
 
 if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
@@ -162,7 +169,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -176,7 +187,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -192,7 +207,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       _R_M=`echo -n ${_ARGS}  | grep -o "drush"`
     fi
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -208,7 +227,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       _R_M=`echo -n ${_ARGS}  | grep -o "drush8"`
     fi
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -224,7 +247,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       _R_M=`echo -n ${_ARGS}  | grep -o "drush10"`
     fi
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -240,7 +267,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       _R_M=`echo -n ${_ARGS}  | grep -o "drush11"`
     fi
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -254,7 +285,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -268,7 +303,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -282,7 +321,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -302,7 +345,11 @@ if [[ "${_ARGS}" =~ "composer " ]] && [[ ! "${_ARGS}" =~ "git remote add compose
     _C_RM=`echo -n ${_ARGS}  | grep -o "composer "`
   fi
   ### echo _C_RM is ${_C_RM}
-  _CLR=`echo ${_ARGS}  | sed "s/\${_C_RM}//g"`
+  if [ -n "${_C_RM}" ]; then
+    _CLR=`echo ${_ARGS}  | sed "s/\${_C_RM}//g"`
+  else
+    _CLR=
+  fi
   _C_ARR=() # the buffer array for filtered parameters
   for arg in "${_CLR}"; do
     case ${_C_RM} in
@@ -364,7 +411,11 @@ if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
     _OCTO_SYS_ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in

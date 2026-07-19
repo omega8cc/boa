@@ -5924,6 +5924,17 @@ _satellite_child_b_drush_xts_install() {
         "s#require_once 'includes/output.inc';#require_once __DIR__ . '/includes/output.inc';#" \
         ${_ROOT}/.drush/usr/backdrop/BackdropBoot.php &> /dev/null
     fi
+    ### Make BackdropBoot::conf_path() pass its arguments through: the stock
+    ### wrapper re-hardcodes TRUE/FALSE inside the call, so no caller can ever
+    ### force reset=TRUE and a '.' cached by an early empty-sites.php probe
+    ### stays poisoned for the whole process (RCA 2026-07-19: B->B migrate
+    ### fatal right after backdrop-updatedb). Idempotent: only the stock
+    ### hardcoded form matches; the method-to-global call is not recursive.
+    if [ -e "${_ROOT}/.drush/usr/backdrop/BackdropBoot.php" ]; then
+      sed -i \
+        "s/return conf_path(\$require_settings = TRUE, \$reset = FALSE);/return conf_path(\$require_settings, \$reset);/" \
+        ${_ROOT}/.drush/usr/backdrop/BackdropBoot.php &> /dev/null
+    fi
     ### Stop the extension's command_alter from hijacking Aegir/Provision.
     ### When BackdropBoot is the active bootstrap it replaces any command it
     ### does not recognise with a "not supported by Backdrop" fallback -- which
