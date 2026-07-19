@@ -1451,10 +1451,10 @@ _update_agents() {
   _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f78 --guard /local/bin/xoct
   _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/tools/bin/xcopy" f91 --guard /local/bin/xcopy
   _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f74 --guard /local/bin/xmass
-  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f97 --guard /local/bin/autobeowulf
-  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f97 --guard /local/bin/autoexcalibur
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f81 --guard /local/bin/boa
-  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f83 --guard /local/bin/barracuda
+  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f96 --guard /local/bin/autobeowulf
+  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f96 --guard /local/bin/autoexcalibur
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f80 --guard /local/bin/boa
+  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f82 --guard /local/bin/barracuda
   _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f93 --guard /local/bin/octopus
   _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f98 --guard /local/bin/dhcpfix
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f96 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
@@ -3662,13 +3662,13 @@ _update_boa_tools() {
     # --- shared with _update_agents (serials MUST match that function) ---
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f97 --guard /local/bin/aptfast
-    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f97 --guard /local/bin/autobeowulf
-    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f97 --guard /local/bin/autoexcalibur
+    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f96 --guard /local/bin/autobeowulf
+    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f96 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f79 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f53 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard /local/bin/backboa
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f83 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f81 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f82 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f80 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard /local/bin/dcysetup
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f96 --guard /local/bin/duobackboa
@@ -3702,10 +3702,10 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f74 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f78 --guard /local/bin/xoct
     # --- unique to _update_boa_tools ---
-    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f98 --guard /local/bin/autochimaera
+    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f97 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f97 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f95 --guard /local/bin/autoinit
-    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f99 --guard /local/bin/automini
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f94 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f98 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f97 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
