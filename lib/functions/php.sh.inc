@@ -1944,7 +1944,14 @@ _install_php_multi_src() {
       _msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
   fi
-  _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+  ### GCC 14 on Excalibur promotes incompatible-pointer-types and
+  ### implicit-function-declaration to hard errors; legacy PHP trips both
+  ### in the Zend macros, so relax them to warnings for pre-7.4 builds only.
+  _LGC_CFL=""
+  if [ "${_OS_CODE}" = "excalibur" ] && [ "$1" -lt 74 ]; then
+    _LGC_CFL="CFLAGS=\"-g -O2 -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration\" "
+  fi
+  _mrun "${_LGC_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1976,7 +1983,7 @@ _install_php_multi_src() {
     sleep 60
     _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     _mrun "make clean"
-    _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+    _mrun "${_LGC_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
