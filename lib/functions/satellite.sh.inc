@@ -100,7 +100,12 @@ _stage_bee() {
   ### Subshell keeps the caller's working directory untouched.
   ( cd /opt/tools/bee && _get_dev_ext "bee.tar.gz" )
   if [ -e "/opt/tools/bee/bee.php" ]; then
+    ### Root extraction preserves the build-box owner from the tarball;
+    ### normalize like drush.
     chown -R root:root /opt/tools/bee
+    find /opt/tools/bee -type d -exec chmod 0755 {} \; &> /dev/null
+    find /opt/tools/bee -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 755 /opt/tools/bee/bee.php
   else
     _msg "OOPS: bee download failed; Backdrop site installs will not work yet"
   fi

@@ -4066,6 +4066,9 @@ _set_drush_perm() {
   if [ -e "/opt/tools/drush/11/drush/vendor/bin/drush" ]; then
     chmod 755 /opt/tools/drush/11/drush/vendor/bin/*
   fi
+  if [ -e "/opt/tools/bee/bee.php" ]; then
+    chmod 755 /opt/tools/bee/bee.php
+  fi
 }
 
 #
@@ -4129,6 +4132,12 @@ _get_bee() {
   ### The stamp must certify a landed bee only; a stamp over an empty dir
   ### hides a failed fetch from operators reading the ctrl state.
   if [ -e "/opt/tools/bee/bee.php" ]; then
+    ### Root extraction preserves the build-box owner from the tarball;
+    ### normalize like drush (the _set_drush_perm sweep ran pre-fetch).
+    chown -R root:root /opt/tools/bee
+    find /opt/tools/bee -type d -exec chmod 0755 {} \; &> /dev/null
+    find /opt/tools/bee -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 755 /opt/tools/bee/bee.php
     touch /opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: bee installation complete"
