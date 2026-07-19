@@ -872,7 +872,8 @@ _is_ignored_request() {
 }
 
 # Return 0 if the log line's $host vhost field is an internal Ægir file server
-# (*.files.{boa.io,o8.io,host8.biz,aegir.cc}). The vhost is field 2 -- the first
+# (*.files.{boa.io,o8.io,host8.biz,aegir.cc,aegir.biz,aoboshi.com}). The vhost is
+# field 2 -- the first
 # whitespace token AFTER the leading quoted IP-chain field -- parsed positionally
 # so a "files.*" token smuggled into the request URI, Referer or User-Agent
 # cannot launder the exemption (that was the flaw of the whole-line match this
@@ -884,10 +885,12 @@ _is_internal_fileserver() {
   _after="${_after#"${_after%%[![:space:]]*}"}"  # ltrim leading whitespace
   _host="${_after%% *}"                          # $host = first token
   case "${_host}" in
-    *.files.boa.io|files.boa.io)       return 0 ;;
-    *.files.o8.io|files.o8.io)         return 0 ;;
-    *.files.host8.biz|files.host8.biz) return 0 ;;
-    *.files.aegir.cc|files.aegir.cc)   return 0 ;;
+    *.files.boa.io|files.boa.io)             return 0 ;;
+    *.files.o8.io|files.o8.io)               return 0 ;;
+    *.files.host8.biz|files.host8.biz)       return 0 ;;
+    *.files.aegir.cc|files.aegir.cc)         return 0 ;;
+    *.files.aegir.biz|files.aegir.biz)       return 0 ;;
+    *.files.aoboshi.com|files.aoboshi.com)   return 0 ;;
   esac
   return 1
 }
