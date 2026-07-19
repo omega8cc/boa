@@ -130,7 +130,7 @@ from the Ægir frontend with the same semantics as Drupal sites. Notes:
   Encryption for the new name (re-enable it deliberately afterwards).
   A Drupal 7 site does **not** migrate to Backdrop — that is the
   dedicated upgrade task below.
-- **Cutover (take over a domain)** makes a Backdrop site answer at a
+- **Cutover** makes a Backdrop site answer at a
   domain currently held by another site — typically the original domain
   of the site it was upgraded from. The holder is re-checked when the
   task runs, backed up in full and then deleted; the Backdrop site is
@@ -230,7 +230,7 @@ install profile, so this only affects panel bookkeeping.
   settings move into Backdrop's config files.
 - Enable cron on the copy's node when you are satisfied.
 - Enable Encryption (LE) for the new domain deliberately.
-- Cut over when you are satisfied: run **Cutover (take over a domain)**
+- Cut over when you are satisfied: run **Cutover**
   on the copy's node and give it the original domain — the old site is
   backed up and retired, and the copy takes its place at the original
   address (re-enable Encryption for it afterwards). Prefer a manual
@@ -242,7 +242,7 @@ install profile, so this only affects panel bookkeeping.
 Backdrop upgrades from Drupal 7 only (its own rule, enforced in its
 code), so a Drupal 6 site takes two steps — and both are panel tasks:
 
-1. **Upgrade to Drupal 7 (Backdrop step 1)** on the Drupal 6 site node
+1. **Upgrade to Drupal 7** on the Drupal 6 site node
    converts a copy of the site — the core schema AND the CCK field
    data — at a NEW domain on a Drupal 7 platform. The Drupal 6 original
    is never in the write path and keeps serving throughout.
@@ -331,7 +331,7 @@ copy — run Delete on the copy's node (or alias) and re-run the task.
   was Drupal 6's era standard, whatever the server) — while on a
   Percona 8.4 box new tables default to utf8mb4, so such sites end up
   mixed and can surface illegal-collation errors on JOIN-heavy pages.
-  The dedicated **Convert database to utf8mb4** site task (Aegir
+  The dedicated **Convert to utf8mb4** site task (Aegir
   Extras / hosting_tasks_extra, works on any Drupal 7 site) fixes this:
   probe first (an already-converted database completes as an honest
   no-op), then backup, convert every utf8 table and text column in a
