@@ -83,6 +83,35 @@ _stage_d6d7_kit() {
 }
 
 #
+# Stage the native Backdrop CLI (bee) when the barracuda layer has not put
+# it in place yet: bee is normally installed by _get_bee on barracuda runs,
+# but the Backdrop platform build, hosting_backdrop and the drush extension
+# are all octopus-gated, so an octopus-only box (or one whose barracuda cnf
+# still carries a pre-migration NO) ends up with a working frontend and no
+# backend CLI. Fetch-when-missing only; serial-driven refresh stays with
+# the barracuda side, so the two never race over /opt/tools/bee.
+_stage_bee() {
+  if [ "${_BACKDROP_SUPPORT}" != "YES" ] || [ -e "/opt/tools/bee/bee.php" ]; then
+    return 0
+  fi
+  _msg "INFO: Staging bee, the native Backdrop CLI"
+  mkdir -p /opt/tools/bee
+  rm -rf /opt/tools/bee/*
+  ### Subshell keeps the caller's working directory untouched.
+  ( cd /opt/tools/bee && _get_dev_ext "bee.tar.gz" )
+  if [ -e "/opt/tools/bee/bee.php" ]; then
+    ### Root extraction preserves the build-box owner from the tarball;
+    ### normalize like drush.
+    chown -R root:root /opt/tools/bee
+    find /opt/tools/bee -type d -exec chmod 0755 {} \; &> /dev/null
+    find /opt/tools/bee -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 755 /opt/tools/bee/bee.php
+  else
+    _msg "OOPS: bee download failed; Backdrop site installs will not work yet"
+  fi
+}
+
+#
 # Check key things in every proc.
 _debug_proc() {
   if [ -e "/root/.dev.server.cnf" ]; then
@@ -781,6 +810,7 @@ _satellite_cnf() {
     echo "_HM_ONLY=${_HM_ONLY}"                                 >> ${_octCnf}
     echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}"                   >> ${_octCnf}
     echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"               >> ${_octCnf}
+    echo "### _BACKDROP_SUPPORT_MIGRATED"                       >> ${_octCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
     echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
@@ -889,11 +919,19 @@ _satellite_cnf() {
     else
       echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}" >> ${_octCnf}
     fi
-    _BACKDROP_SUPPORT_TEST=$(grep _BACKDROP_SUPPORT ${_octCnf} 2>&1)
-    if [[ "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT" ]]; then
+    _BACKDROP_SUPPORT_TEST=$(grep "^_BACKDROP_SUPPORT=" ${_octCnf} 2>&1)
+    if [[ "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       _DO_NOTHING=YES
     else
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_octCnf}
+    fi
+    ### One-shot opt-out migration; see the barracuda-side twin in
+    ### system.sh.inc for the why. Runs before this cnf is sourced, so
+    ### the flipped value takes effect in the same run.
+    _BDR_MIGRATED_TEST=$(grep _BACKDROP_SUPPORT_MIGRATED ${_octCnf} 2>&1)
+    if [[ ! "${_BDR_MIGRATED_TEST}" =~ "_BACKDROP_SUPPORT_MIGRATED" ]]; then
+      sed -i "s/^_BACKDROP_SUPPORT=NO$/_BACKDROP_SUPPORT=YES/g" ${_octCnf}
+      echo "### _BACKDROP_SUPPORT_MIGRATED" >> ${_octCnf}
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
@@ -4621,6 +4659,8 @@ _satellite_make() {
   ### Stage the pinned D6->D7 contrib kit for provision-backdrop-d6-upgrade,
   ### behind _BACKDROP_SUPPORT (D-012). Stamp-gated no-op when current.
   _stage_d6d7_kit
+  ### Backstop bee for octopus-only boxes; no-op when already installed.
+  _stage_bee
 
   if [ -e "${_ROOT}/log/email.txt" ]; then
     _PHP_FPM_MULTI=NO
@@ -5899,6 +5939,18 @@ _satellite_child_b_drush_xts_install() {
         "/^  \$backdrop_command = NULL;/i\\
   if (strpos(\$command['command'], 'provision') === 0 || strpos(\$command['command'], 'hosting') === 0) {\n    return;\n  }\n" \
         ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc &> /dev/null
+    fi
+    ### Stop update_check_requirements() logging informational requirements as
+    ### warnings: it emits every severity != REQUIREMENT_OK as 'warning', which
+    ### also catches REQUIREMENT_INFO -- so core's PHP-version info row lands
+    ### in every clone/deploy task log as a "(Currently using PHP Version: ...)"
+    ### warning, confusing users. Demote INFO-severity entries to 'info'; real
+    ### warnings/errors are unchanged. Idempotent: only the stock two-argument
+    ### form matches.
+    if [ -e "${_ROOT}/.drush/usr/backdrop/includes/update.inc" ]; then
+      sed -i \
+        "s/backdrop_set_message(\$message, 'warning');/backdrop_set_message(\$message, (\$requirement['severity'] == REQUIREMENT_INFO) ? 'info' : 'warning');/" \
+        ${_ROOT}/.drush/usr/backdrop/includes/update.inc &> /dev/null
     fi
     cd ${_ROOT}/.drush
     wait

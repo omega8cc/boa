@@ -2421,6 +2421,7 @@ _barracuda_cnf() {
     echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}"       >> ${_barCnf}
     echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${_barCnf}
     echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"             >> ${_barCnf}
+    echo "### _BACKDROP_SUPPORT_MIGRATED"                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -2640,9 +2641,17 @@ _barracuda_cnf() {
       echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}" >> ${_barCnf}
     fi
 
-    _BACKDROP_SUPPORT_TEST=$(grep _BACKDROP_SUPPORT ${_barCnf} 2>&1)
-    if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT" ]]; then
+    _BACKDROP_SUPPORT_TEST=$(grep "^_BACKDROP_SUPPORT=" ${_barCnf} 2>&1)
+    if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
+    fi
+    ### One-shot opt-out migration: a NO seeded while the gate briefly
+    ### defaulted to NO (2026-07-11..13) predates any operator choice, so
+    ### flip it once; a NO written after the marker lands stays sticky.
+    _BDR_MIGRATED_TEST=$(grep _BACKDROP_SUPPORT_MIGRATED ${_barCnf} 2>&1)
+    if [[ ! "${_BDR_MIGRATED_TEST}" =~ "_BACKDROP_SUPPORT_MIGRATED" ]]; then
+      sed -i "s/^_BACKDROP_SUPPORT=NO$/_BACKDROP_SUPPORT=YES/g" ${_barCnf}
+      echo "### _BACKDROP_SUPPORT_MIGRATED" >> ${_barCnf}
     fi
 
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
@@ -4057,6 +4066,9 @@ _set_drush_perm() {
   if [ -e "/opt/tools/drush/11/drush/vendor/bin/drush" ]; then
     chmod 755 /opt/tools/drush/11/drush/vendor/bin/*
   fi
+  if [ -e "/opt/tools/bee/bee.php" ]; then
+    chmod 755 /opt/tools/bee/bee.php
+  fi
 }
 
 #
@@ -4117,9 +4129,21 @@ _get_bee() {
   rm -rf /opt/tools/bee/*
   cd /opt/tools/bee/
   _get_dev_ext "bee.tar.gz"
-  touch /opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: bee installation complete"
+  ### The stamp must certify a landed bee only; a stamp over an empty dir
+  ### hides a failed fetch from operators reading the ctrl state.
+  if [ -e "/opt/tools/bee/bee.php" ]; then
+    ### Root extraction preserves the build-box owner from the tarball;
+    ### normalize like drush (the _set_drush_perm sweep ran pre-fetch).
+    chown -R root:root /opt/tools/bee
+    find /opt/tools/bee -type d -exec chmod 0755 {} \; &> /dev/null
+    find /opt/tools/bee -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 755 /opt/tools/bee/bee.php
+    touch /opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: bee installation complete"
+    fi
+  else
+    _msg "OOPS: bee download failed; Backdrop site installs will not work yet"
   fi
 }
 
