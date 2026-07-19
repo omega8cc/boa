@@ -5940,6 +5940,18 @@ _satellite_child_b_drush_xts_install() {
   if (strpos(\$command['command'], 'provision') === 0 || strpos(\$command['command'], 'hosting') === 0) {\n    return;\n  }\n" \
         ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc &> /dev/null
     fi
+    ### Stop update_check_requirements() logging informational requirements as
+    ### warnings: it emits every severity != REQUIREMENT_OK as 'warning', which
+    ### also catches REQUIREMENT_INFO -- so core's PHP-version info row lands
+    ### in every clone/deploy task log as a "(Currently using PHP Version: ...)"
+    ### warning, confusing users. Demote INFO-severity entries to 'info'; real
+    ### warnings/errors are unchanged. Idempotent: only the stock two-argument
+    ### form matches.
+    if [ -e "${_ROOT}/.drush/usr/backdrop/includes/update.inc" ]; then
+      sed -i \
+        "s/backdrop_set_message(\$message, 'warning');/backdrop_set_message(\$message, (\$requirement['severity'] == REQUIREMENT_INFO) ? 'info' : 'warning');/" \
+        ${_ROOT}/.drush/usr/backdrop/includes/update.inc &> /dev/null
+    fi
     cd ${_ROOT}/.drush
     wait
   fi
