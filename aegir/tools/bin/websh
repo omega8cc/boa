@@ -142,13 +142,14 @@ fi
 
 if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
   _R_M=`echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ "`
-  ### Empty match must not reach sed: s///g errors to stderr on every
-  ### non-drush /bin/sh -c (task-log noise); keep the historical empty
-  ### result, only silence the error path.
+  ### Strip only the well-formed "true COLUMNS=NNN " prefix. On no match
+  ### (malformed COLUMNS: empty value or non-space separator) leave _ARGS
+  ### UNCHANGED - blanking it made the command miss every drush/composer/php
+  ### branch below and fall through to a bare _forward_to_dash that bypasses
+  ### per-account PHP-CLI selection. Empty match must not reach sed either:
+  ### s///g errors to stderr on every non-drush /bin/sh -c (task-log noise).
   if [ -n "${_R_M}" ]; then
     _ARGS=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-  else
-    _ARGS=
   fi
 fi
 
