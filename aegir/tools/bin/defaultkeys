@@ -1,0 +1,196 @@
+#!/bin/bash
+
+# defaultkeys — ensure the omega8.cc default public SSH keys for root.
+#
+# Fetches the two current default public keys (ed25519 + rsa, noc@omega8.cc)
+# from the omega8.cc mirror and appends only the missing ones to
+# /root/.ssh/authorized_keys. A key counts as present when its base64 blob
+# is already in the file — a different comment or an options= prefix does
+# not matter — so nothing is ever duplicated. When both keys are already in
+# place the script only says so and changes nothing. On apply it also
+# normalizes /root/.ssh to 0700 and authorized_keys to 0600 root:root.
+# Idempotent, safe to re-run.
+#
+# Usage:
+#   defaultkeys --apply    # add whichever default keys are missing
+#   defaultkeys --check    # report present/missing only, change nothing
+#   defaultkeys -h | --help
+#
+# Exit codes: 0 = both keys in place (already or just added); 1 = error;
+# --check exits 2 when at least one default key is missing.
+
+export HOME='/root'
+export PATH='/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin'
+set -u
+
+_URL_KEYS="https://omega8.cc/dev/keys"
+_SSH_DIR="/root/.ssh"
+_KEYS_FILE="${_SSH_DIR}/authorized_keys"
+# The proven old-curl-safe flag set (mirrors _crlGet; the mirror requires the
+# iCab UA), plus a hard time cap so an interactive run can never hang.
+_CRL_GET="-L --max-redirs 3 -s --fail --retry 3 --retry-delay 3 --max-time 30 -A iCab"
+_LOCK="/run/defaultkeys.lock"
+# Fetch staging lives in root-only /run, never /tmp: a predictable /tmp name
+# would let a local user pre-plant a symlink for root's curl to write through.
+_TMP_BASE="/run/defaultkeys.$$"
+
+_MODE=""
+
+# --- output -----------------------------------------------------------------
+if [[ -t 1 ]]; then
+  _CG=$'\033[32m'; _CR=$'\033[31m'; _CY=$'\033[33m'; _C0=$'\033[0m'
+else
+  _CG=; _CR=; _CY=; _C0=
+fi
+_msg()  { echo "$*"; }
+_info() { echo "${_CG}$*${_C0}"; }
+_alrt() { echo "${_CY}$*${_C0}"; }
+_die()  { echo "${_CR}ERROR: $*${_C0}" >&2; exit 1; }
+_usage() { grep '^# ' "$0" | sed 's/^# \{0,1\}//'; }
+
+# --- args -------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --apply)   _MODE="apply"; shift ;;
+    --check)   _MODE="check"; shift ;;
+    -h|--help) _usage; exit 0 ;;
+    *) echo "unknown option: $1"; echo; _usage; exit 1 ;;
+  esac
+done
+if [[ -z "${_MODE}" ]]; then
+  _usage
+  exit 1
+fi
+
+[[ "$(id -u)" -eq 0 ]] || _die "must run as root"
+command -v curl >/dev/null 2>&1 || _die "curl not found"
+
+trap 'rm -f "${_TMP_BASE}".*' EXIT
+
+# Re-entrancy guard: two concurrent applies could append the same key twice.
+# --check is read-only and never blocks. No stderr redirect on the exec: it
+# would permanently silence the whole script's stderr, eating every _die.
+if [[ "${_MODE}" = "apply" ]]; then
+  exec 9>"${_LOCK}"
+  if ! flock -n 9; then
+    _die "another defaultkeys is already running"
+  fi
+fi
+
+# Fetch one key file from the mirror and print only valid public key lines of
+# the EXPECTED type (validated per key type, not just line shape, so a CDN
+# edge serving a truncated blob as a complete HTTP 200 -- or the wrong file's
+# body -- yields no valid line). Fail-closed: HTML soft-404 stubs, truncated
+# or otherwise mangled content never reaches authorized_keys. Deliberately no
+# ssh-keygen validation: legacy OpenSSH (< 6.5) cannot parse ed25519 at all,
+# and the tool must still work there (old sshd just ignores such lines).
+# Returns non-zero when the fetch produced no usable key.
+_fetch_keys() {
+  local _name="$1" _type="$2" _raw="${_TMP_BASE}.${1}.raw" _line _blob _got=1
+  # shellcheck disable=SC2086  # intentional _CRL_GET flag-string split
+  if ! curl ${_CRL_GET} "${_URL_KEYS}/${_name}" -o "${_raw}"; then
+    return 1
+  fi
+  [[ -s "${_raw}" ]] || return 1
+  while IFS= read -r _line; do
+    _blob="$(echo "${_line}" | awk '{print $2}')"
+    case "${_type}" in
+      ssh-ed25519)
+        # Every ed25519 public blob is exactly 68 base64 chars behind this
+        # fixed prefix; any other length means truncation or corruption.
+        [[ "${_blob}" =~ ^AAAAC3NzaC1lZDI1NTE5[A-Za-z0-9+/]{48}$ ]] || continue ;;
+      ssh-rsa)
+        # Fixed type prefix, sane minimum length, base64 group alignment;
+        # a mid-stream truncation fails the alignment or the floor.
+        [[ "${_blob}" =~ ^AAAAB3NzaC1yc2E[A-Za-z0-9+/]+={0,2}$ ]] || continue
+        (( ${#_blob} >= 200 )) || continue
+        (( ${#_blob} % 4 == 0 )) || continue ;;
+      *) continue ;;
+    esac
+    echo "${_line}"
+    _got=0
+  done < <(tr -d '\r' < "${_raw}" \
+    | grep -E "^${_type} [A-Za-z0-9+/=]+( .+)?$")
+  return "${_got}"
+}
+
+# A key is present when its base64 blob appears anywhere in authorized_keys;
+# comments and an options= prefix are irrelevant to sshd matching the key.
+_key_present() {
+  local _blob="$1"
+  [[ -s "${_KEYS_FILE}" ]] || return 1
+  grep -qF "${_blob}" "${_KEYS_FILE}"
+}
+
+# Report each fetched key line as present or missing; collect the missing
+# full lines in _MISSING for the apply stage.
+_scan_keys() {
+  local _label="$1" _lines="$2" _line _blob
+  while IFS= read -r _line; do
+    [[ -n "${_line}" ]] || continue
+    _blob="$(echo "${_line}" | awk '{print $2}')"
+    if _key_present "${_blob}"; then
+      _msg "  ${_label} : already in place"
+    else
+      _msg "  ${_label} : MISSING"
+      _MISSING="${_MISSING}${_line}
+"
+    fi
+  done <<< "${_lines}"
+}
+
+_ED_LINES="$(_fetch_keys ed25519_authorized_keys.txt ssh-ed25519)" \
+  || _die "no valid ed25519 default key from ${_URL_KEYS}"
+_RSA_LINES="$(_fetch_keys rsa_authorized_keys.txt ssh-rsa)" \
+  || _die "no valid rsa default key from ${_URL_KEYS}"
+
+_MISSING=""
+_msg "defaultkeys — omega8.cc default root SSH keys"
+_scan_keys "ed25519" "${_ED_LINES}"
+_scan_keys "rsa    " "${_RSA_LINES}"
+
+if [[ "${_MODE}" = "check" ]]; then
+  if [[ -z "${_MISSING}" ]]; then
+    _info "Both default keys are already in place."
+    exit 0
+  fi
+  _alrt "Missing default key(s); run 'defaultkeys --apply' to add them."
+  exit 2
+fi
+
+# --- apply ------------------------------------------------------------------
+if [[ ! -d "${_SSH_DIR}" ]]; then
+  mkdir -p "${_SSH_DIR}" || _die "cannot create ${_SSH_DIR}"
+fi
+chmod 700 "${_SSH_DIR}"
+chown root:root "${_SSH_DIR}"
+
+_ADDED=0
+if [[ -n "${_MISSING}" ]]; then
+  if [[ ! -e "${_KEYS_FILE}" ]]; then
+    touch "${_KEYS_FILE}" || _die "cannot create ${_KEYS_FILE}"
+  fi
+  # A file without a trailing newline would glue the appended key onto its
+  # last line, corrupting both entries; terminate it first.
+  if [[ -s "${_KEYS_FILE}" ]] && [[ -n "$(tail -c1 "${_KEYS_FILE}")" ]]; then
+    echo >> "${_KEYS_FILE}"
+  fi
+  while IFS= read -r _line; do
+    [[ -n "${_line}" ]] || continue
+    # Re-check against the growing file so a blob repeated across the two
+    # mirror files can still only land once.
+    _blob="$(echo "${_line}" | awk '{print $2}')"
+    _key_present "${_blob}" && continue
+    echo "${_line}" >> "${_KEYS_FILE}" || _die "cannot write to ${_KEYS_FILE}"
+    _ADDED=$(( _ADDED + 1 ))
+  done <<< "${_MISSING}"
+fi
+chmod 600 "${_KEYS_FILE}"
+chown root:root "${_KEYS_FILE}"
+
+if [[ "${_ADDED}" -eq 0 ]]; then
+  _info "Both default keys are already in place; nothing added."
+else
+  _info "Done. Added ${_ADDED} default key(s) to ${_KEYS_FILE}."
+fi
+exit 0

@@ -1462,6 +1462,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
   _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f93 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f98 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
+  _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
   # PHP-selecting bee launcher (D-021 identity policy). Deployed unconditionally
   # but inert until the gated _get_bee installs /opt/tools/bee; canonical path
   # /opt/local/bin/bee (no /usr/bin symlink, websh's PATH resolves it);
