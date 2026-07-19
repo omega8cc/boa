@@ -30,13 +30,9 @@ If you like working on your sites locally, the new ddev-boa add-on pulls a copy 
 
   https://aegir.url.name
 
-@=> For detailed information about the upgrade, please refer to:
+@=> Full release notes, for this and every release:
 
-  BOA Changelog: https://bit.ly/boa-changelog
-
-@=> Please check also the built-in documentation in your account:
-
-  ~/static/control/README.txt
+  https://docs.boa.io/releases
 
 Thank you for choosing Ægir!
 
