@@ -73,9 +73,11 @@ done
 [[ "$(id -u)" -eq 0 ]] || _die "must run as root"
 
 # Re-entrancy guard: a concurrent run would fight over csf. Skip on a dry run
-# (read-only) so reporting never blocks an in-progress cleanup.
+# (read-only) so reporting never blocks an in-progress cleanup. No stderr
+# redirect on the exec: it would permanently silence the whole script's
+# stderr, eating the _die message below.
 if [[ "${_DRY}" -eq 0 ]]; then
-  exec 9>"${_LOCK}" 2>/dev/null
+  exec 9>"${_LOCK}"
   if ! flock -n 9; then
     _die "another clearwebbans is already running"
   fi
