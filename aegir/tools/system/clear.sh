@@ -98,17 +98,21 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2026-05.txt"
+    _ffList="/var/backups/boa-mirrors-2026-07.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "files.boa.io"  > ${_ffList}
       echo "files.o8.io" >> ${_ffList}
       echo "files.host8.biz" >> ${_ffList}
+      echo "files.aegir.biz" >> ${_ffList}
+      echo "files.aoboshi.com" >> ${_ffList}
       if [ -e "/etc/csf/csf.allow" ]; then
         sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
         csf -a 172.235.166.69  files.boa.io &> /dev/null
         csf -a 172.233.219.37  files.o8.io &> /dev/null
         csf -a 172.105.168.103 files.host8.biz &> /dev/null
+        csf -a 88.216.74.103  files.aegir.biz &> /dev/null
+        csf -a 88.216.74.97   files.aoboshi.com &> /dev/null
         if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
           csf -ra &> /dev/null
           synproxy_reassert -p "443 80" --no-quic -q &> /dev/null

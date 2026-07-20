@@ -40,7 +40,7 @@
 
 1. Configure your domain DNS to point its wildcard-enabled A record to your server IP address, and make sure it propagated on the Internet by trying `host server.mydomain.org` or `getent hosts server.mydomain.org` command on any other server/system.
 
-   See our DNS wildcard configuration example for reference: [http://bit.ly/UM2nRb](http://bit.ly/UM2nRb)
+   See our DNS wildcard configuration guidance for reference: [https://docs.boa.io/self-hosting/before-you-install](https://docs.boa.io/self-hosting/before-you-install)
 
    **NOTE!** You shouldn't use anything like "mydomain.org" as your hostname. It should be some **subdomain**, like "server.mydomain.org".
 

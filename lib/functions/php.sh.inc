@@ -1944,7 +1944,16 @@ _install_php_multi_src() {
       _msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
   fi
-  _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+  ### GCC 14 on Excalibur promotes several legacy-C diagnostics to hard
+  ### errors (incompatible-pointer-types, implicit-function-declaration,
+  ### implicit-int, int-conversion, return-mismatch); pre-7.4 PHP and its
+  ### bundled libs (Zend macros, libmagic) trip them, so relax the full
+  ### GCC 14 porting set to warnings for pre-7.4 builds only.
+  _LGC_CFL=""
+  if [ "${_OS_CODE}" = "excalibur" ] && [ "$1" -lt 74 ]; then
+    _LGC_CFL="CFLAGS=\"-g -O2 -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=return-mismatch -Wno-error=declaration-missing-parameter-type\" "
+  fi
+  _mrun "${_LGC_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1976,7 +1985,7 @@ _install_php_multi_src() {
     sleep 60
     _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     _mrun "make clean"
-    _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+    _mrun "${_LGC_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
