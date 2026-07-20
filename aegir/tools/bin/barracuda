@@ -1907,12 +1907,12 @@ _check_manufacturer_compatibility() {
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
     echo "Not supported environment detected: ${_HOST_INFO}"
-    echo "Please check https://bit.ly/boa-caveats"
+    echo "Please check https://docs.boa.io/self-hosting/before-you-install"
     echo "Bye!"
     _clean_pid_exit _check_manufacturer_compatibility_a
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
     echo "Mysterious environment: ${_HOST_INFO}"
-    echo "Please check https://bit.ly/boa-caveats"
+    echo "Please check https://docs.boa.io/self-hosting/before-you-install"
     echo "Bye!"
     _clean_pid_exit _check_manufacturer_compatibility_b
   fi

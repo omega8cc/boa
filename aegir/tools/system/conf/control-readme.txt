@@ -1,368 +1,162 @@
 
-###
-### Ægir upgrade on-demand
-###
-### You can now launch Ægir upgrade to (re)install platforms listed in the file
-### ~/static/control/platforms.info (see further below) by creating empty file:
-###
-###   ~/static/control/run-upgrade.pid
-###
-### This file, if exists, will launch your Ægir upgrade in just a few minutes,
-### and will be automatically deleted afterwards. This means that you can
-### upgrade your Ægir instance easily to install supported platforms
-### even if you don't have root access or are on hosted BOA system.
-###
-### Note that this pid file will be ignored if there will be no platforms.info
-### file, as explained further below.
-###
+BOA control files — quick cheat sheet (~/static/control/)
+=========================================================
+
+The small plain-text files in this folder let you switch PHP versions,
+choose platforms, speed up cloning and more — from your own account, no
+root access needed. Create or edit a file, save it, and a background
+agent applies the change, usually within a few minutes.
+
+This cheat sheet covers the moves most people need. The full story for
+every file lives in the documentation:
+
+  https://docs.boa.io/using                      the guide for your account
+  https://docs.boa.io/reference/control-files    every control file, indexed
+  https://docs.boa.io/cheat-sheets               all quick-start cheat sheets
 
 
-###
-### Super fast site cloning and migration
-###
-### It is now possible to enable blazing fast migrations and cloning even sites
-### with complex and giant databases with this empty control file:
-###
-###  ~/static/control/MyQuick.info
-###
-### By the way, how fast is the super-fast? It's faster than you would expect!
-### We have seen it speeding up the clone and migrate tasks normally taking
-### 1-2 hours to... even 3-6 minutes! Yes, that's how fast it's!
-###
-### This file, if exists, will enable a super fast per table and parallel DB
-### dump and import, although without leaving a conventional complete database
-### dump file in the site archive normally created by Ægir when you run
-### not only the backup task, but also clone, migrate and delete tasks, hence
-### also restore task will not work anymore.
-###
-### We need to emphasise this again: with this control file present all normally
-### super slow tasks will become blazing fast, but at the cost of not keeping
-### an archived complete database dump file in the archive of the site directory
-### where it would be otherwise included.
-###
-### Of course the system still maintains nightly backups of all your sites
-### using the new split sql dump archives, but with this control file present
-### you won't be able to use restore task in Ægir, because the site archive
-### won't include the database dump -- you can still find that sql dump split
-### into per table files in the backups directory, though, in the subdirectory
-### with timestamp added, so you can still access it manually, if needed.
-###
+Switch PHP versions
+-------------------
+
+  echo 8.4 > ~/static/control/fpm.info    the version serving ALL your sites
+  echo 8.4 > ~/static/control/cli.info    the version for Drush + shell
+
+Twelve versions are supported, 5.6 through 8.5, but only versions
+installed on the server can be used — ask your host if one you need
+is missing. Changes apply within about three minutes.
+
+Per-site exceptions go one per line into multi-fpm.info — the main
+domain, a space, then the version. Sites not listed keep following
+fpm.info:
+
+  foo.com 8.5
+  old.com 7.4
+
+Need your shell on another version right now? Create an empty marker
+like php83.info here and your next shell/Drush command uses it
+immediately.
+
+Drush, Composer and bee all follow cli.info (or your phpNN.info
+marker) in the shell.
+
+  Docs: https://docs.boa.io/using/tuning/php-version
 
 
-###
-### Even faster site cloning and migration
-###
-### It is now possible to speed up the already blazing fast migrations and
-### cloning with this empty control file:
-###
-###  ~/static/control/FastTrack.info
-###
-### This file, if exists, will drastically reduce the number of tasks otherwise
-### launched automatically in preparation for clone and migrate, namely:
-###
-###  1. Both source and target platforms will no longer be verified
-###  2. The site will no longer be verified before running clone or migrate
-###
-### Please carefully consider implications, though, because there are very good
-### reasons for these extra tasks to be launched before running clone or migrate
-### to make sure that any issues are detected and fixed for you early and not
-### during migration or clone, which could otherwise break the site and leave it
-### in some state not easy to fix, especially without root access to the system.
-###
-### The potential reasons to disable these extra tasks with the help of
-### this new control file can be twofold:
-###
-###  1. To restore default and much faster Ægir own behaviour
-###  2. To help those running mass migrations to avoid running duplicate tasks
-###
-### Still, it's your responsibility to run these extra verify tasks when you
-### need to migrate or clone just single site, but you prefer to have them run
-### for you automatically as before, you can easily restore previous behaviour:
-###
-###  1. Create empty ~/static/control/ClassicTrack.info
-###  2. Delete ~/static/control/FastTrack.info
-###
+Install or refresh platforms (no root needed)
+---------------------------------------------
+
+  1. Put the platform symbols you want in ~/static/control/platforms.info
+     (UPPERCASE, separated by spaces or newlines), or the keyword ALL
+     to always get everything:
+
+       DE4 CMS BDR
+       (or)
+       ALL
+
+  2. touch ~/static/control/run-upgrade.pid
+
+Your Ægir instance upgrade starts within a few minutes; the trigger
+file is removed automatically. Without platforms.info the trigger is
+ignored. Note that platforms.info REPLACES the default list — pinned
+symbols mean you skip distributions added in future releases, while
+ALL never skips anything.
+
+Platform symbols:
+
+  Drupal 11.4   DE4 + CK3 Commerce v.3, CMS Drupal CMS, LGV LocalGov,
+                THR Thunder
+  Drupal 11.3   DE3 + FOS farmOS, OCS OpenCulturas, VBX Varbase 10
+  Drupal 11.2   DE2
+  Drupal 11.1   DE1
+  Drupal 10.6   DX6
+  Drupal 10.5   DX5
+  Drupal 10.4   DX4
+  Drupal 10.3   DX3 + DXP DXPR Marketing, EZC EzContent
+  Drupal 10.2   DX2 + OFD OpenFed, SOC Social
+  Drupal 10.1   DX1 + CK2 Commerce v.2
+  Drupal 10.0   DX0
+  Drupal 9      DL9 + OLS OpenLucius, OPG Opigno LMS
+  Drupal 7      DL7 + CK1 Commerce v.1, UC7 Ubercart
+  Drupal 6      DL6 Pressflow (LTS) + UC6 Ubercart
+  Backdrop CMS  BDR (needs Backdrop support enabled on the server)
+
+Older cores need matching legacy PHP versions installed — on hosted
+BOA ask your host if you need one enabled.
+
+  Docs: https://docs.boa.io/using/sites-and-platforms/platforms
 
 
-###
-### Ægir version provided by BOA is now fully compatible with PHP 8.5 and 8.4,
-### so both can be used as default versions in the Ægir PHP configuration files
-### ~/static/control/cli.info and ~/static/control/fpm.info
-###
-### !!! >>> PHP CAVEATS for Drupal core 7-10 versions:
-###
-###   => https://www.drupal.org/docs/7/system-requirements/php-requirements
-###   => https://www.drupal.org/docs/system-requirements/php-requirements
-###
-###
-### Support for PHP-FPM version switch per Octopus instance (also per site)
-###
-###  ~/static/control/fpm.info
-###
-### This file, if exists and contains supported and installed PHP-FPM version,
-### will be used by running every 2-3 minutes system agent to switch PHP-FPM
-### version used for serving web requests by this Octopus instance.
-###
-### IMPORTANT: If used, it will switch PHP-FPM for all Drupal sites
-### hosted on the instance, unless multi-fpm.info control file also exists.
-###
-### Supported values for single PHP-FPM mode which can be written in this file:
-###
-### 8.5
-### 8.4
-### 8.3
-### 8.2
-### 8.1
-### 8.0
-### 7.4
-### 7.3
-### 7.2
-### 7.1
-### 7.0
-### 5.6
-###
-### NOTE: There must be only one line and one value (like: 8.1) in this file.
-### Otherwise it will be ignored.
-###
-### NOTE: if the file doesn't exist, the system will create it and set to the
-### current default PHP version when installed, otherwise the newest one
-### available - not to the system-wide default version.
-###
+Fast cloning and migration
+--------------------------
+
+Super-fast per-table parallel database dumps are the default — clone
+and migrate runs that once took hours finish in minutes. The
+trade-off: the site archive keeps no classic single-file DB dump, so
+the Restore task cannot use archives made this way. Nightly backups
+still cover you, and a Backup task run in classic mysqldump mode
+stays restorable.
+
+  touch ~/static/control/MyClassic.info    opt out — classic dumps again
+  touch ~/static/control/FastTrack.info    opt in — also skip the verify
+                                           tasks run before clone/migrate
+
+Verify-first is the default; to return to it later, create
+ClassicTrack.info and delete FastTrack.info.
+
+  Docs: https://docs.boa.io/using/sites-and-platforms/cloning-and-migrating
 
 
-###
-### It is now possible to make all installed PHP-FPM versions available
-### simultaneously for sites on the Octopus instance with additional
-### control file:
-###
-###  ~/static/control/multi-fpm.info
-###
-### This file, if exists, will switch all sites listed in it to their
-### respective PHP-FPM versions as shown in the example below, while all
-### other sites not listed in multi-fpm.info will continue to use PHP-FPM
-### version defined in fpm.info instead, which can be modified independently.
-###
-### foo.com 8.5
-### bar.com 7.4
-### old.com 5.6
-###
-### NOTE: Each line in the multi-fpm.info file must start with main site name,
-### followed by single space, and then the PHP-FPM version to use.
-###
+When the task queue is stuck
+----------------------------
+
+  touch ~/static/control/clear-drush-cache.info
+
+A broken platform build can pause queued tasks for a day or two; this
+purges the backend build workspace and Drush caches so tasks flow
+again, then removes itself.
+
+  Docs: https://docs.boa.io/using/deploying-code/building-a-platform
+  More first aid: https://docs.boa.io/cheat-sheets/when-somethings-wrong
 
 
-###
-### Support for PHP-CLI version switch per Octopus instance (all sites)
-###
-###  ~/static/control/cli.info
-###
-### This file, while similar to fpm.info, if exists and contains supported
-### and installed PHP version, will be used by running every 2-3 minutes
-### system agent to switch PHP-CLI version for this Octopus instance, but
-### it will do this for all hosted sites. There is no option to switch this
-### or override per site hosted.
-###
-### Supported values which can be written in this file:
-###
-### 8.5
-### 8.4
-### 8.3
-### 8.2
-### 8.1
-### 8.0
-### 7.4
-### 7.3
-### 7.2
-### 7.1
-### 7.0
-### 5.6
-###
-### There must be only one line and one value (like: 8.4) in this control file.
-### Otherwise it will be ignored.
-###
-### NOTE: if the file doesn't exist, the system will create it and set to the
-### current default PHP version when installed, otherwise the newest one
-### available - not to the system-wide default version.
-###
-### IMPORTANT: this file will affect only Drush on command line and Drush
-### in Ægir backend, used for all tasks on hosted sites, but it will not
-### affect PHP-CLI version used by Composer on command line, because Composer
-### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-5.0.0, PHP 8.1 and can be
-### changed only by changing system default _PHP_CLI_VERSION in the file
-### /root/.barracuda.cnf and running barracuda upgrade.
-###
+Also available here
+-------------------
+
+  run-sftp-password-update.pid — rotate your SSH/SFTP password; the
+      new one appears here as new-<account>.ftp-password.txt
+
+  run-php-fpm-reload.pid — graceful PHP-FPM reload, clears APCu
+      (higher plans, or ask your host)
+      https://docs.boa.io/using/caching/php-opcache-and-apcu
+
+  newrelic.info — your New Relic license key (pairs with a per-site
+      INI opt-in)
+      https://docs.boa.io/using/on-your-site/new-relic
+
+  compass.info — Ruby Gems (Sass/Compass) and NPM (Gulp/Bower)
+      tooling for your shell
+      https://docs.boa.io/using/deploying-code/dev-workflow
+
+  ip/access.txt — allow or deny visitor IPs for your sites
+  ip/user_admin.txt — lock login + admin pages to your IPs
+  ai/policy.txt — your AI crawler policy
+      https://docs.boa.io/using/on-your-site/access-control
+
+  remote_backups/ — off-site backup credentials and config
+      https://docs.boa.io/using/backups/mybackup-and-quota
+
+Everything else, indexed: https://docs.boa.io/reference/control-files
 
 
-###
-### Customize Octopus platform list via control file
-###
-###  ~/static/control/platforms.info
-###
-### This file, if exists and contains a list of symbols used to define supported
-### platforms, allows to control/override the value of _PLATFORMS_LIST variable
-### normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
-### modified by the Ægir instance owner with no system root access.
-###
-### IMPORTANT: If used, it will replace/override the value defined on initial
-### instance install and all previous upgrades. It takes effect on every future
-### Octopus instance upgrade, which means that you will miss all newly added
-### distributions, if they will not be listed also in this control file.
-###
-### Supported values which can be written in this file, listed in a single line
-### or one per line:
-###
+A note on INI files
+-------------------
 
-### Drupal 11.4
-#
-# DE4 — Drupal 11.4 prod/stage/dev
-# CK3 — Commerce v.3
-# CMS — Drupal CMS
-# LGV — LocalGov
-# THR — Thunder
+Per-site settings (caching, cookies, module opt-outs and more) do not
+live in this folder — they go in boa_site_control.ini or
+boa_platform_control.ini inside your platform tree:
 
-### Drupal 11.3
-#
-# DE3 — Drupal 11.3 prod/stage/dev
-# FOS — farmOS
-# OCS — OpenCulturas
-# VBX — Varbase 10
-
-### Drupal 11.2
-#
-# DE2 — Drupal 11.2 prod/stage/dev
-
-### Drupal 11.1
-#
-# DE1 — Drupal 11.1 prod/stage/dev
-
-### Drupal 10.6
-#
-# DX6 — Drupal 10.6 prod/stage/dev
-
-### Drupal 10.5
-#
-# DX5 — Drupal 10.5 prod/stage/dev
-
-### Drupal 10.4
-#
-# DX4 — Drupal 10.4 prod/stage/dev
-
-### Drupal 10.3
-#
-# DX3 — Drupal 10.3 prod/stage/dev
-# DXP — DXPR Marketing
-# EZC — EzContent
-
-### Drupal 10.2
-#
-# DX2 — Drupal 10.2 prod/stage/dev
-# OFD — OpenFed
-# SOC — Social
-
-### Drupal 10.1
-#
-# DX1 — Drupal 10.1 prod/stage/dev
-# CK2 — Commerce v.2
-
-### Drupal 10.0
-#
-# DX0 — Drupal 10.0 prod/stage/dev
-
-### Drupal 9
-#
-# DL9 — Drupal 9 prod/stage/dev
-# OLS — OpenLucius
-# OPG — Opigno LMS
-
-### Drupal 7
-#
-# DL7 — Drupal 7 prod/stage/dev
-# CK1 — Commerce v.1
-# UC7 — Ubercart
-
-### Drupal 6
-#
-# DL6 — Pressflow (LTS) prod/stage/dev
-# UC6 — Ubercart
-
-### Backdrop
-#
-# BDR — Backdrop CMS prod/stage/dev (requires _BACKDROP_SUPPORT=YES)
-
-### You can also use special keyword 'ALL' instead of any other symbols to have
-### all available platforms installed, including newly added in all future BOA
-### system releases.
-###
-### Examples:
-#
-# DX2 DX3 SOC UC7
-# (or)
-# ALL
-
-###
-### IMPORTANT: Supported Drupal core versions and distributions have different
-### PHP versions requirements, while not all PHP versions out of currently
-### supported ten versions are installed by default.
-###
-### Ensure that you have corresponding PHP versions installed with barracuda
-### before attempting to install older Drupal versions and distributions.
-###
-### On hosted BOA contact your host if you need any legacy PHP installed again.
-###
+  https://docs.boa.io/cheat-sheets/control-files
 
 
-###
-### Support for forced Drush cache clear in the Ægir backend
-###
-###  ~/static/control/clear-drush-cache.info
-###
-### Octopus instance will pause all scheduled tasks in its queue, if it will
-### detect a platform build from the makefile in progress, to make sure
-### that no other running task could break the build.
-###
-### This is great, until there will be a broken build, and Drush will fail
-### to clean up all leftovers from its .tmp/cache directory, which in turn
-### will pause all tasks in the queue for up to 24-48 hours, until the cache
-### directory will be automatically purged by running daily cleanup tasks,
-### designed to not touch anything not old enough (24 hours at minimum)
-### to not break any running builds.
-###
-### If you need to unlock the tasks queue by forcefully removing everything
-### from the Ægir backend Drush cache, you can create an empty control file:
-### ~/static/control/clear-drush-cache.info
-###
-
-
-###
-### Support for New Relic monitoring with per Octopus instance license key
-###
-###  ~/static/control/newrelic.info
-###
-### This feature will disable global New Relic monitoring by deactivating
-### server-level license key, so it can safely auto-enable or auto-disable it
-### every 5 minutes, but per Octopus instance -- for all sites hosted on
-### the given instance -- when a valid license key is present in the special
-### new ~/static/control/newrelic.info control file.
-###
-### Please note that valid license key is a 40-character hexadecimal string
-### that New Relic provides when you sign up for an account.
-###
-### To disable New Relic monitoring for the Octopus instance, simply delete
-### its ~/static/control/newrelic.info control file and wait a few minutes.
-###
-### Please note that on a self-hosted BOA you still need to add your valid
-### license key as _NEWRELIC_KEY in the /root/.barracuda.cnf file and run
-### system upgrade with at least 'barracuda up-lts' first. This step is
-### not required on Omega8.cc hosted service, where New Relic agent is already
-### pre-installed for you.
-###
-
-
-###
-### Support for Ruby Gems to install Compass or NPM to install Gulp/Bower
-###
-###  ~/static/control/compass.info
-###
-### Details: https://github.com/omega8cc/boa/blob/5.x-dev/docs/GEM.md
-###
+This README is refreshed automatically with every BOA release — edits
+made here will be overwritten.
