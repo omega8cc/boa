@@ -4,22 +4,7 @@ BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack sup
 
 ## BOA-5.88.8: The Continuity Edition
 
-A milestone for the 5.x tree — **422 commits across six repositories** — gives every generation of the Drupal family a first-class, supported home on one platform. And it is a continuity release in one more sense: every headline feature ships for **both PRO and LTS**.
-
-- **Backdrop CMS support, enabled by default** — Backdrop platforms and sites install, verify, clone, back up and renew HTTPS through the same Ægir tasks Drupal sites use, with Backdrop's `bee` CLI wired in alongside Drush.
-- **The Drupal 6 → 7 → Backdrop upgrade chain** — clone-preserving control-panel tasks carry a legacy site forward on a dark copy without ever touching the original, then a one-step cutover takes over the site's domain.
-- **A new home for the documentation** — [**docs.boa.io**](https://docs.boa.io) consolidates years of BOA documentation into one unified, searchable site, and the new [**omega8.cc**](https://omega8.cc) announces every release in its [**/news**](https://omega8.cc/news) section.
-- **Import from classic Ægir** — the new `aegir2boa` toolset converts a vanilla Ægir 3.x server from Apache to Nginx in place, then adopts its `/var/aegir` estate into a BOA Octopus instance.
-- **Local development, two ways** — BOA Local is back (`boa in-lts local` installs a slim local profile, no public DNS required), and the public `ddev-boa` add-on pulls a BOA-hosted site into a local DDEV project through the client's own limited shell.
-- **Native files-directory symlinking** — new sites and clones keep `files/` and `private/` in a per-site static store outside the platform tree, so codebases stay disposable and platform upgrades move code while file assets stay put.
-- **Prebuilt stack packages** — on Devuan Daedalus the heavy stack (Nginx, Valkey, OpenSSL, PHP and friends) installs from prebuilt `boa-*` packages instead of compiling from source, making installs and upgrades dramatically shorter.
-- **The server migration suite, overhauled** — `xoct`, `xcopy` and `xmass` are now storage-aware and dry-run-gated, `xmass` speaks the modern Percona 8.0/8.4 replication dialect end to end, and the new `migratefs` relocates heavy site data onto attached storage.
-- **Night maintenance, rebuilt** — the nightly monolith is now `owl.sh` plus single-purpose night workers: per-account isolation, no more racing control-panel tasks, classified ghost-site handling, and HTTPS-renewal failure notices that actually reach humans.
-- **Security and the Web IDS** — a distributed scanner-fleet detector, a foreign-CMS probe guard, IPv6 adaptive web bans, a per-site `/user` + `/admin` IP allow-list, default-secure Drush extension hygiene — and the intermittent Cloudflare 502 is root-caused and gone.
-- **Modern Drupal 10/11 reliability** — the container-poisoning class of clone/deploy/install failures is fixed, the task-queue dispatcher is serialized, and Drupal 11.4 joins the tested catalogue alongside Backdrop CMS 1.34.2.
-- **Client experience and operator tools** — welcome emails include a working control-panel login, sites rename between `www` and non-`www` in one step, new `boa suspend`/`boa unsuspend` gates a whole instance behind a clean 503, and `/root/.barracuda.cnf` now shows effective defaults for every YES/NO option.
-
-Fresh components across the stack, too: Nginx 1.31.3, PHP 8.5/8.4/8.3, Composer 2.10.2, and the 2026-07-17 tested-codebase catalogue. [**Read the full release notes!**](https://github.com/omega8cc/boa/blob/5.x-dev/releases/BOA-5.88.8-PRO.md) — and explore the new [**BOA documentation site**](https://docs.boa.io).
+A milestone for the 5.x tree — **422 commits across six repositories**, with every headline feature shipping for **both PRO and LTS**. Backdrop CMS becomes a first-class citizen, enabled by default, complete with a Drupal 6 → 7 → Backdrop upgrade chain running as ordinary control-panel tasks. Classic Ægir estates get a supported road into BOA, the rebuilt migration suite moves whole servers across Percona generations, and years of documentation come together on the new unified docs site: [**docs.boa.io**](https://docs.boa.io). Why the eights? Turn one on its side — continuity is the point. [**Read the full story!**](https://github.com/omega8cc/boa/blob/5.x-dev/releases/BOA-5.88.8-PRO.md)
 
 ## Strap in, your sites are getting an F1 engine
 
