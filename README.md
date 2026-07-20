@@ -2,6 +2,25 @@
 
 BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11, as well as Backdrop CMS and Grav CMS (soon).
 
+## BOA-5.88.8: The Continuity Edition
+
+A milestone for the 5.x tree — **422 commits across six repositories** — gives every generation of the Drupal family a first-class, supported home on one platform. And it is a continuity release in one more sense: every headline feature ships for **both PRO and LTS**.
+
+- **Backdrop CMS support, enabled by default** — Backdrop platforms and sites install, verify, clone, back up and renew HTTPS through the same Ægir tasks Drupal sites use, with Backdrop's `bee` CLI wired in alongside Drush.
+- **The Drupal 6 → 7 → Backdrop upgrade chain** — clone-preserving control-panel tasks carry a legacy site forward on a dark copy without ever touching the original, then a one-step cutover takes over the site's domain.
+- **A new home for the documentation** — [**docs.boa.io**](https://docs.boa.io) consolidates years of BOA documentation into one unified, searchable site, and the new [**omega8.cc**](https://omega8.cc) announces every release in its [**/news**](https://omega8.cc/news) section.
+- **Import from classic Ægir** — the new `aegir2boa` toolset converts a vanilla Ægir 3.x server from Apache to Nginx in place, then adopts its `/var/aegir` estate into a BOA Octopus instance.
+- **Local development, two ways** — BOA Local is back (`boa in-lts local` installs a slim local profile, no public DNS required), and the public `ddev-boa` add-on pulls a BOA-hosted site into a local DDEV project through the client's own limited shell.
+- **Native files-directory symlinking** — new sites and clones keep `files/` and `private/` in a per-site static store outside the platform tree, so codebases stay disposable and platform upgrades move code while file assets stay put.
+- **Prebuilt stack packages** — on Devuan Daedalus the heavy stack (Nginx, Valkey, OpenSSL, PHP and friends) installs from prebuilt `boa-*` packages instead of compiling from source, making installs and upgrades dramatically shorter.
+- **The server migration suite, overhauled** — `xoct`, `xcopy` and `xmass` are now storage-aware and dry-run-gated, `xmass` speaks the modern Percona 8.0/8.4 replication dialect end to end, and the new `migratefs` relocates heavy site data onto attached storage.
+- **Night maintenance, rebuilt** — the nightly monolith is now `owl.sh` plus single-purpose night workers: per-account isolation, no more racing control-panel tasks, classified ghost-site handling, and HTTPS-renewal failure notices that actually reach humans.
+- **Security and the Web IDS** — a distributed scanner-fleet detector, a foreign-CMS probe guard, IPv6 adaptive web bans, a per-site `/user` + `/admin` IP allow-list, default-secure Drush extension hygiene — and the intermittent Cloudflare 502 is root-caused and gone.
+- **Modern Drupal 10/11 reliability** — the container-poisoning class of clone/deploy/install failures is fixed, the task-queue dispatcher is serialized, and Drupal 11.4 joins the tested catalogue alongside Backdrop CMS 1.34.2.
+- **Client experience and operator tools** — welcome emails include a working control-panel login, sites rename between `www` and non-`www` in one step, new `boa suspend`/`boa unsuspend` gates a whole instance behind a clean 503, and `/root/.barracuda.cnf` now shows effective defaults for every YES/NO option.
+
+Fresh components across the stack, too: Nginx 1.31.3, PHP 8.5/8.4/8.3, Composer 2.10.2, and the 2026-07-17 tested-codebase catalogue. [**Read the full release notes!**](https://github.com/omega8cc/boa/blob/5.x-dev/releases/BOA-5.88.8-PRO.md) — and explore the new [**BOA documentation site**](https://docs.boa.io).
+
 ## Strap in, your sites are getting an F1 engine
 
 We’re rolling out a meaningful upgrade across BOA/Omega8.cc nodes: HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and responsive (and stay that way during spikes), this is genuinely good news. Why this is a big deal? What visitors should notice? Why it matters for *your server* too [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-dev/HTTP3.md)
@@ -174,6 +193,8 @@ Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5
 
 ## Useful Links
 
+- BOA Documentation: [**docs.boa.io**](https://docs.boa.io)
+- Release News and Announcements: [**omega8.cc/news**](https://omega8.cc/news)
 - BOA User Handbook (legacy): [**Learn BOA**](https://learn.omega8.cc/library/good-to-know)
 - Ægir Docs (legacy): [**Ægir Project**](https://docs.aegirproject.org)
 
