@@ -45,7 +45,7 @@ _XTRAS_LIST="ALL SR9 CSS NPM"
 **NOTE**: `123.45.67.89` below is a placeholder for your server's public, real IP address.
 
 **NOTE**: `f-q-d-n` below is a placeholder for your real wildcard-enabled hostname.
-Refer to our [DNS wildcard configuration example](http://bit.ly/UM2nRb) for reference.
+Refer to our [DNS wildcard configuration guidance](https://docs.boa.io/self-hosting/before-you-install) for reference.
 
 **NOTE**: If your outgoing SMTP requires using relayhost, define `_SMTP_RELAY_HOST` first.
 
