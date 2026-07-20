@@ -379,11 +379,11 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
 
  There is new ${_X_VERSION} release available!
 
- Please review the changelog and upgrade as soon as possible to receive all security updates and new features.
+ Please review the release notes and upgrade as soon as possible to receive all security updates and new features.
 
- BOA Changelog: https://bit.ly/boa-changelog
+ Release notes: https://docs.boa.io/releases
 
- BOA Upgrade: https://bit.ly/boa-upgrade-docs
+ Upgrade guide: https://docs.boa.io/self-hosting/keeping-current
 
  ---
  This email has been sent by your BOA system release monitor

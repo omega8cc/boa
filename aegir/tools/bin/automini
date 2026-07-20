@@ -193,20 +193,20 @@ _init_mnfr() {
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
     _msg "[init] mnfr ==> Not supported environment detected: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "[init] mnfr ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
+    _msg "[init] mnfr ==> Please check https://docs.boa.io/self-hosting/before-you-install" >> "${_logInt}"
     _msg "[init] mnfr ==> Bye!" >> "${_logInt}"
     echo "[init] mnfr ==> Not supported environment detected: ${_HOST_INFO}"
-    echo "[init] mnfr ==> Please check https://bit.ly/boa-caveats"
+    echo "[init] mnfr ==> Please check https://docs.boa.io/self-hosting/before-you-install"
     echo "[init] mnfr ==> Bye!"
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
     _msg "[init] mnfr ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "[init] mnfr ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
+    _msg "[init] mnfr ==> Please check https://docs.boa.io/self-hosting/before-you-install" >> "${_logInt}"
     _msg "[init] mnfr ==> Bye!" >> "${_logInt}"
     echo "[init] mnfr ==> Mysterious environment: ${_HOST_INFO}"
-    echo "[init] mnfr ==> Please check https://bit.ly/boa-caveats"
+    echo "[init] mnfr ==> Please check https://docs.boa.io/self-hosting/before-you-install"
     echo "[init] mnfr ==> Bye!"
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
