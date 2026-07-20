@@ -123,12 +123,14 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2026-05.txt"
+    _ffList="/var/backups/boa-mirrors-2026-07.txt"
     [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "files.boa.io"  > ${_ffList}
       echo "files.o8.io" >> ${_ffList}
       echo "files.host8.biz" >> ${_ffList}
+      echo "files.aegir.biz" >> ${_ffList}
+      echo "files.aoboshi.com" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -377,11 +379,11 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
 
  There is new ${_X_VERSION} release available!
 
- Please review the changelog and upgrade as soon as possible to receive all security updates and new features.
+ Please review the release notes and upgrade as soon as possible to receive all security updates and new features.
 
- BOA Changelog: https://bit.ly/boa-changelog
+ Release notes: https://docs.boa.io/releases
 
- BOA Upgrade: https://bit.ly/boa-upgrade-docs
+ Upgrade guide: https://docs.boa.io/self-hosting/keeping-current
 
  ---
  This email has been sent by your BOA system release monitor

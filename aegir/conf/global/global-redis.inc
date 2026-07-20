@@ -59,7 +59,8 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       $conf['redis_flush_mode_cache_block']   = 2; // Redis default is 1
       $conf['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
       $conf['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
-      // See http://bit.ly/1drmi35 for more information
+      // Flush modes are documented in the D7 Redis module README ("Flush mode"):
+      // https://git.drupalcode.org/project/redis/-/blob/e87b339af89203f1f6428add41800ecdee3fc1e5/README.txt#L173
       if ($is_dev && !$is_backend) {
         header("X-Redis-Flush-Forced-Mode: Forced");
       }
