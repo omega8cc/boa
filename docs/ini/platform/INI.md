@@ -128,7 +128,8 @@
 ;;  redis_flush_mode and per cache bin, in the local.settings.php file.
 ;;
 ;;  Please refer to the module README for more information on all available
-;;  advanced flush modes: http://bit.ly/1drmi35
+;;  advanced flush modes:
+;;  https://git.drupalcode.org/project/redis/-/blob/e87b339af89203f1f6428add41800ecdee3fc1e5/README.txt#L173
 ```
 
 ```text

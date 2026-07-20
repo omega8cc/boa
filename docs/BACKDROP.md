@@ -316,6 +316,37 @@ Same contract as the Backdrop upgrade: a validation failure creates
 nothing; a later failure leaves the source untouched and a disposable
 copy — run Delete on the copy's node (or alias) and re-run the task.
 
+## Leftover artifacts from interrupted tasks
+
+A restore, migrate or upgrade that dies mid-operation can strand a
+`sites/<domain>.restore` directory on the platform — the staging copy the
+task would have cleaned up on success — and sometimes an orphan copy
+database next to it. This hits **Drupal and Backdrop platforms alike**, and
+the handling is CMS-neutral (it works the same on instances without
+Backdrop support). These leftovers are **not sites**: Ægir no longer
+imports them as sites during platform verify (they are skipped with a note
+in the verify log) and the backend deliberately keeps them on disk, because
+a task revert depends on them.
+
+Cleaning one up is a two-step UI flow (no shell access needed):
+
+1. **Import leftover** (platform task, admins/platform managers): the
+   platform's verify records any leftovers it sees; this task exposes a
+   recorded leftover as a *pseudo-site* — a clearly badged "Leftover
+   artifact" record, disabled, serving nothing, owned by the same client as
+   the original site. Nothing on the server changes at this step.
+2. **Purge leftover** (the only task button on a pseudo-site; also granted
+   to clients, scoped to their own sites): deletes the stranded directory
+   and — only when it is provably unused by every site Ægir knows about —
+   drops the orphan copy database. Anything ambiguous degrades to a
+   directory-only purge with the reason in the task log. Live sites are
+   never touched.
+
+Failed *upgrade copies* at a real domain (e.g. a Backdrop copy whose
+conversion failed) are different: those are real, importable sites — the
+platform verify still imports them, and the standard Delete Site task
+removes them (files and database) when discarded.
+
 ## Limitations and non-goals
 
 - **The Drupal 7 → Backdrop task still refuses Drupal 6 sources** — by
