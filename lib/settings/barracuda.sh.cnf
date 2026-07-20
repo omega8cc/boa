@@ -32,7 +32,8 @@ _EASY_SETUP=PUBLIC
 ### so you may need to wait for propagation
 ### on the Internet before it will work.
 ###
-### See for reference: http://bit.ly/UM2nRb
+### See for reference:
+### https://docs.boa.io/self-hosting/before-you-install
 ###
 ### NOTE! You shouldn't use "mydomain.org"
 ### as your hostname. It should be some
