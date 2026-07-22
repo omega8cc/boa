@@ -277,8 +277,8 @@ barracuda up-lts log
 octopus up-lts all force log
 ```
 
-Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/UPGRADE.md
-Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/SELFUPGRADE.md
+Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-lts/docs/UPGRADE.md
+Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-lts/docs/SELFUPGRADE.md
 
 > **Daedalus → Excalibur note:** if your server is still on Devuan Daedalus,
 > the OS upgrade will be offered as part of this cycle. Ensure Percona is on a

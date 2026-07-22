@@ -437,8 +437,8 @@ barracuda up-lts log
 octopus up-lts all force log
 ```
 
-Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/UPGRADE.md
-Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/SELFUPGRADE.md
+Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-lts/docs/UPGRADE.md
+Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-lts/docs/SELFUPGRADE.md
 
 ## Links
 
