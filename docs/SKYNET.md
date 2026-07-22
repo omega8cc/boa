@@ -26,6 +26,7 @@ Gradually it grew into its current incarnation, so at the moment BOA Skynet auto
 * Every 6 minutes update for all meta-installers and related tools
 * Hourly update for key BOA tools, monitors and self-healing agents
 * Hourly check if your DNS resolver works as expected and repair if not
+* Automatic OS security-only updates between BOA upgrades, on modern systems
 
 While it is a very convenient to have all this work done for you, and we
 believe that it should be still enabled by default, we should make it
@@ -42,3 +43,17 @@ NOTE: Critically important BOA tools will be still auto-updated every 6 minutes 
 Better idea, though:
 
   `_SKYNET_MODE=ON`
+
+### Automatic OS security updates
+
+On modern systems (Devuan Daedalus and Excalibur, Debian Bookworm and Trixie) BOA also keeps the operating system's own **security** updates applied between BOA upgrades, so a freshly disclosed vulnerability does not sit unpatched for days until your next `barracuda` run. This is security-only: general package upgrades remain `barracuda`'s job, and the stack components BOA builds itself (Nginx, PHP, Percona) are excluded. On older systems, whose security archives are dead or dying upstream, it is deliberately skipped.
+
+When a security update includes a new kernel, BOA does not reboot blindly. The kernel is activated through BOA's own graceful reboot flow, with the same gating as before (hosted `*.aegir.cc` systems, or an explicit `/root/.allow.auto.reboot.cnf`) — the automatic reboot behaviour is unchanged.
+
+This is on by default. To opt out and manage OS security updates yourself, add this line to `/root/.barracuda.cnf`:
+
+  `_SYSTEM_AUTO_SECURITY=NO`
+
+Opting out only stops BOA from managing the automatic updates from that point on; it removes nothing already configured.
+
+Because this runs inside `autoupboa`, it is also inactive whenever `_SKYNET_MODE=OFF`: turning Skynet off stands the whole agent down, OS security updates included.
