@@ -292,6 +292,24 @@ reload() {
     return
 }
 
+rotate() {
+    log_daemon_msg "Re-opening logs (via USR1) $DESCRIPTION"
+
+    isRunning
+
+    if [ $? -eq $TRUE ]; then
+        kill -USR1 `cat $PIDSPATH/$PIDFILE`
+        log_end_msg $SCRIPT_OK
+    else
+        # Nothing to signal when nginx is down; still exit 0 so the
+        # logrotate postrotate (invoke-rc.d nginx rotate) does not fail.
+        log_warning_msg "$DESCRIPTION is NOT running."
+    fi
+    rc=0
+
+    return
+}
+
 quietupgrade() {
     log_daemon_msg "Performing Quiet Upgrade $DESCRIPTION"
 
@@ -394,6 +412,9 @@ case "$1" in
     reload)
         $1
         ;;
+    rotate)
+        $1
+        ;;
     status)
         status
         ;;
@@ -411,7 +432,7 @@ case "$1" in
         ;;
     *)
         FULLPATH=/etc/init.d/$PS
-        echo "Usage: $FULLPATH {start|stop|restart|force-reload|status|configtest|quietupgrade|terminate|destroy}"
+        echo "Usage: $FULLPATH {start|stop|restart|force-reload|status|configtest|rotate|quietupgrade|terminate|destroy}"
         echo "       The 'destroy' command should only be used as a last resort."
         exit 3
         ;;
