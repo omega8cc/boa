@@ -50,9 +50,10 @@
 _PUB_DIR=""
 
 # Peer ACTIVE builder mirror to cross-sync fresh packages to (rsync-over-ssh
-# target, e.g. "root@excalibur-mirror:/var/www/...dev/"). Empty = skip sync
-# with a note. Passive mirrors keep syncing from the authoritative Daedalus
-# mirror exactly as they do today - that is not stackbuild's job.
+# target, e.g. "root@excalibur-mirror:/var/www/...dev/"). Set it in
+# /root/.stackbuild.cnf (sourced below), never by editing this copy. Empty =
+# skip sync with a WARNING. Passive mirrors keep syncing from the
+# authoritative mirror exactly as they do today - that is not stackbuild's job.
 _PEER_MIRROR=""
 
 # Codenames packages are built for (D-2026-07-14: daedalus + excalibur only;
@@ -63,6 +64,14 @@ _WORK_DIR="/var/opt/stackbuild"
 _LOCK="/run/stackbuild.lock"
 _MAINTAINER="BOA Dev Team <boa@omega8.cc>"
 _ARCH="amd64"
+
+# Box-local builder configuration. This script is redeployed from the boa
+# tree on every barracuda run, which resets the defaults above -- values that
+# must survive updates (notably _PEER_MIRROR) belong in the control file,
+# never in edits to a deployed copy.
+if [[ -r "/root/.stackbuild.cnf" ]]; then
+  source "/root/.stackbuild.cnf"
+fi
 
 # Runtime state.
 _OS_CODE=""
@@ -473,7 +482,9 @@ do_sync() {
   # tree; never delete on the peer (keep-old-versions applies there too).
   _detect_pub_dir
   if [[ -z "${_PEER_MIRROR}" ]]; then
-    _msg "note: _PEER_MIRROR not set; skipping cross-sync"
+    _alrt "SKIPPED cross-sync: _PEER_MIRROR is not set, so freshly built"
+    _alrt "packages exist ONLY on this mirror. On a paired builder set"
+    _alrt "_PEER_MIRROR in /root/.stackbuild.cnf and re-run: stackbuild sync"
     return 0
   fi
   # --delay-updates moves every transferred file into place at the end of the

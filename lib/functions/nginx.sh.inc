@@ -757,8 +757,15 @@ _nginx_initd_check() {
   if [ -e "/etc/init.d/nginx" ]; then
     _X_INIT_TEST_A=$(cat /etc/init.d/nginx | grep ULIMIT 2>&1)
     _X_INIT_TEST_B=$(cat /etc/init.d/nginx | grep Giedymin 2>&1)
+    ### The rotate action is required by the stock logrotate.d/nginx
+    ### postrotate (invoke-rc.d nginx rotate); scripts without it made
+    ### the daily logrotate cron fail and left nginx writing to the
+    ### renamed log files until the next reload.
+    _X_INIT_TEST_C=$(cat /etc/init.d/nginx | grep rotate 2>&1)
   fi
-  if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]]; then
+  if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] \
+    && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
+    && [[ "${_X_INIT_TEST_C}" =~ rotate ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
   else

@@ -1,4 +1,177 @@
 ###
+### Stable BOA-5.88.811 PRO/LTS - CADENCE EDITION
+### Date: Wed 22 Jul 2026 18:58:19 CEST in Warsaw
+### Enjoy a tidier estate and a steadier release rhythm
+### 40 commits since BOA-5.88.8
+###
+
+@=> Cadence Edition
+
+  BOA-5.88.811 PRO/LTS opens a new cadence: small, frequent releases
+  that keep the pace of the work visible in the release stream itself
+  rather than buried in the commit history. To make that legible the
+  patch number now reads as three digits, 8XY -- the last digit (Y)
+  advances for fixes, the middle digit (X) for features and components,
+  and both together for a combined release. BOA-5.88.8 counts as
+  5.88.800; this release carries new features and fixes alike, so it
+  lands at 5.88.811. We are staying firmly in the 5.x tree, and the
+  eights stay with us as the tree grows.
+
+  This is the Continuity Edition's first sequel, and it builds on that
+  milestone rather than patching it. The headliner is leftover-artifact
+  management: an interrupted migrate, clone or restore used to strand
+  invisible leftover sites and databases, and BOA now finds them,
+  surfaces them as disabled placeholder sites you can inspect, and gives
+  you a clean, tenant-bound purge -- for Drupal and Backdrop alike.
+  Prebuilt stack packages reach Devuan Excalibur, extending the Daedalus
+  fast-install work from 5.88.8, and every PHP version BOA builds now
+  compiles natively on Excalibur. Backdrop support gains its first round
+  of real-world polish, automatic OS security updates arrive on by
+  default for modern systems, the distribution network gains two fresh
+  mirrors, and the whole live tree now points at the new documentation
+  home.
+
+  As always, this entry highlights only the most significant changes. For
+  the full picture please refer to the commit history on GitHub.
+
+@=> Security
+
+    * The two new distribution mirrors are exempted from the web IDS by a
+      positional match on the parsed vhost host field, so heavy legitimate
+      mirror traffic passes freely while a files.* token smuggled into a
+      URI, Referer or User-Agent cannot launder the exemption. Paired CSF
+      allow rules admit the new mirror hosts.
+
+@=> New Features
+
+    * Leftover-artifact management, for Drupal and Backdrop alike. An
+      interrupted migrate, clone or restore could strand a leftover site
+      directory and its database invisibly; verify now skips and records
+      each leftover per platform instead. A new leftover import task
+      surfaces them in the control panel as disabled, badged placeholder
+      sites owned by the base site's client, and a tenant-bound leftover
+      purge task -- the only action offered on such a placeholder --
+      removes the directory cleanly, including any provably-orphaned copy
+      database. Root-level provision-leftover-import and
+      provision-leftover-purge commands give operators the same reach from
+      the shell. The orphaned-database drop is fleet-wide gated: it never
+      fires while any live site still references the name.
+
+    * Automatic OS security updates, on by default on modern systems
+      (Devuan Daedalus and Excalibur, Debian Bookworm and Trixie).
+      Updates from the distribution's own security archive now apply
+      automatically between BOA upgrades, so a freshly disclosed
+      vulnerability is not left unpatched until the next barracuda run.
+      Security-only: general upgrades remain barracuda's job, and the
+      stack BOA builds itself (Nginx, PHP, Percona) is excluded. A new
+      security kernel is activated only by BOA's own gated, graceful
+      reboot flow -- never an unscheduled reboot. Opt out with
+      _SYSTEM_AUTO_SECURITY=NO.
+
+@=> Improvements
+
+    * Prebuilt stack packages reach Devuan Excalibur. Fresh installs and
+      upgrades on Excalibur now consume the prebuilt boa-* Debian packages
+      by default instead of compiling the heavy stack from source,
+      extending the fast-install path introduced on Daedalus in
+      BOA-5.88.8; an explicit _USE_PREBUILT_PKGS=NO in the cnf still wins.
+      The companion GCC 14 build porting means every PHP version BOA
+      builds, the legacy ones included, now compiles natively on Excalibur.
+      In a timed test on a modest 4-core cloud VM, a fresh single-PHP
+      install reached a serving Ægir master plus first satellite in about
+      25 minutes -- under 40 from a bare Debian VM including the automatic
+      Devuan conversion.
+
+    * The BOA distribution network gains two fresh, redundant package and
+      fetch mirrors. The mirror seed is written only where absent, so an
+      operator's customised mirror list is preserved, and the cutover adds
+      the new hosts with no fleet downtime.
+
+    * Documentation pointers realigned across the live tree. Tool banners,
+      INI templates, the per-instance control-files cheat sheet and the
+      nightly release-nag email now lead to the current documentation at
+      docs.boa.io; the legacy shortlinks are retired from the live tree.
+
+    * Backdrop enablement polish. The bee command-line tool -- Backdrop's
+      counterpart to Drush -- is staged and normalised on the same footing
+      as Drush; informational requirement rows are logged as info rather
+      than warnings in Backdrop task logs; and the control panel is
+      tidied, with wrong-major upgrade tasks hidden, Backdrop task titles
+      shortened, and task action buttons kept on one line.
+
+    * A new defaultkeys tool seeds the fleet's default root SSH keys
+      idempotently.
+
+@=> Changes and Upgrades
+
+    * _USE_PREBUILT_PKGS now auto-resolves to YES on Devuan Excalibur as
+      well as Daedalus; an explicit cnf setting always wins, so builder
+      boxes keep their explicit NO.
+
+    * _BACKDROP_SUPPORT gains a one-time heal: an opt-in-era NO is lifted
+      to YES once, gated by an internal migration marker, so boxes that
+      predate the default-on switch pick up Backdrop support. An explicit
+      NO written after the marker is honoured as a deliberate choice.
+
+    * The fast-mirror seed advances to the 2026-07 dated list, so existing
+      boxes regenerate it with the two new mirror hosts.
+
+    * Valkey refreshed to 9.1.1.
+
+    * No new mandatory control file, no reboot and no OS upgrade gate this
+      cycle. PRO/LTS parity holds -- every change ships in both editions.
+
+@=> Important Fixes
+
+    * Daily log rotation reliably re-opens nginx logs. The stock
+      logrotate postrotate calls an init-script action the nginx init
+      script did not implement, so the daily logrotate cron failed and
+      nginx kept writing to the renamed files until the next reload. The
+      init script now implements the rotate action, signalling nginx to
+      re-open its logs (and succeeding harmlessly when nginx is
+      intentionally stopped); deployed servers pick up the updated
+      script automatically on the next barracuda run.
+
+    * Backdrop conversion and migrate runs are steady again: sites.php is
+      kept truthy before the first deploy bootstrap, the views module
+      loads before the Drupal 7 conversion update batch, and boot
+      conf_path() arguments are passed through at stage time -- clearing a
+      class of intermittent fatals. The 12-leg task matrix is green under
+      PHP 8.4 and 8.3, and a zero-overlay, mirror-delivered re-verify
+      passed, so the shipped code is proven, not just the source.
+
+    * The Backdrop admin bar is reliably present again. BOA's nginx /js/
+      handling now falls through to the front controller when js.php is
+      absent, so Backdrop core's admin-bar cache callback is served; and a
+      stale menu router after a Drupal 7 to Backdrop conversion is cured by
+      rebuilding the registries in a fresh process at the end of the
+      conversion.
+
+    * Backdrop restore reloads its database credentials before the restore
+      maintenance settings re-render, so the live credentials are no longer
+      blanked for the restore window.
+
+    * websh keeps the argument list intact when handed a malformed COLUMNS
+      prefix, so per-account PHP-CLI selection is preserved for that
+      invocation instead of the arguments being dropped and the command
+      re-run under the wrong PHP.
+
+    * clearwebbans no longer sends its own error output to /dev/null, so
+      its "already running" notice and any later error reach the operator
+      again.
+
+    * The per-domain ssl_proxy vhost sync on satellites now strips kernel
+      TLS from the regenerated front when a box has opted out via
+      /etc/nginx/no_ktls.conf, so the sync converges cleanly for any
+      fetched-tool vintage -- self-healing hardening for a real staleness
+      class.
+
+    * websh no longer runs its prefix-strip sed on a non-match, removing
+      the stray "no previous regular expression" noise from task logs for
+      non-Drush /bin/sh commands; the filtering result is byte-identical.
+
+
+###
 ### Stable BOA-5.88.8 PRO/LTS - CONTINUITY EDITION
 ### Date: Sat 18 Jul 2026 20:22:23 CEST in Warsaw
 ### Enjoy continuity for every Drupal era -- from classic Ægir to Backdrop
@@ -834,15 +1007,15 @@
 @=> New Documentation
 
     * AI bot control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-USER.md
     * AI bot policy, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY.md
     * AI bot policy and edge testing (edgetest):
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-TESTING.md
     * IP access control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS-USER.md
     * IP access control, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS.md
 
 
 ###

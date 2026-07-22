@@ -45,9 +45,9 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
-export _xSrl=5888proT01
-export _rLsn="BOA-5.88.8"
-export _bTs=5888v01
+export _xSrl=588811proT01
+export _rLsn="BOA-5.88.811"
+export _bTs=588811v01
 
 ###
 ### Avoid too many questions
@@ -1562,7 +1562,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f82
     # autoupboa/fixmounts are also fetched by _update_boa_tools and share its
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f53 --guard autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f52 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f89
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f91
@@ -3665,7 +3665,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f96 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f96 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f79 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f53 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f52 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard /local/bin/backboa
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f82 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f80 --guard /local/bin/boa
