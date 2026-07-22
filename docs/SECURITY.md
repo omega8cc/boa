@@ -24,6 +24,7 @@ BOA offers a highly secure hosting environment for Ægir and Drupal sites, featu
 10. **Password Expiration Policy**: SSH, SFTP, and FTPS passwords expire every 90 days and must be updated, even if SSH keys are in use.
 11. **Restricted Admin Access**: Admin account access (uid=1) is unavailable in Ægir to prevent potential misuse. Non-admin main account access provides sufficient privileges for safe management in a multi-Ægir environment.
 12. **Restricted System Binaries Access**: BOA modifies access permissions to system binaries and commands that could potentially be used as attack vectors by web shells and other intrusion methods, significantly limiting damage potential even for sites running older Drupal versions.
+13. **Automatic OS Security Updates**: On modern systems, operating-system security updates are applied automatically between BOA upgrades, so critical patches do not wait for your next manual run. Updates are security-only, and a new security kernel is activated through BOA's own graceful reboot flow rather than an unscheduled reboot. This is on by default and can be turned off with `_SYSTEM_AUTO_SECURITY=NO` in `/root/.barracuda.cnf`.
 
 # Drush Extension (`*.drush.inc`) Loading Restrictions
 

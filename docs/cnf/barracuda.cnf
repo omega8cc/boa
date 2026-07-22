@@ -235,6 +235,28 @@ _BACKEND_ITEMS_LIST=
 _SKYNET_MODE=ON
 
 ###
+### On modern systems (Devuan Daedalus/Excalibur and Debian Bookworm/Trixie)
+### BOA keeps the operating system's own SECURITY updates applied automatically
+### between BOA upgrades, so a freshly disclosed vulnerability is not left
+### unpatched until your next barracuda run.
+###
+### It is security-only: general package upgrades remain barracuda's job, and
+### the stack components BOA builds itself (Nginx, PHP, Percona) are excluded.
+### A new security kernel is not activated by an unscheduled reboot; it is
+### applied through BOA's own graceful reboot flow, with the existing gating
+### (hosted *.aegir.cc systems or /root/.allow.auto.reboot.cnf) unchanged.
+###
+### Enabled by default. To manage OS security updates yourself, opt out with:
+###
+###   _SYSTEM_AUTO_SECURITY=NO
+###
+### Opting out only stops BOA from managing them; it removes nothing already
+### configured. Like the rest of autoupboa, it is also inactive while
+### _SKYNET_MODE=OFF, which stands the whole agent down.
+###
+_SYSTEM_AUTO_SECURITY=YES
+
+###
 ### NOTE: the group of settings displayed below is never stored
 ### permanently in this config file, since they are intended to be used
 ### only when required/useful for some reason, and while can be added
