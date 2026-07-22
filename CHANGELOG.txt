@@ -1,8 +1,8 @@
 ###
 ### Stable BOA-5.88.811 PRO/LTS - CADENCE EDITION
-### Date: Wed 22 Jul 2026 17:46:43 CEST in Warsaw
+### Date: Wed 22 Jul 2026 18:58:19 CEST in Warsaw
 ### Enjoy a tidier estate and a steadier release rhythm
-### 36 commits since BOA-5.88.8
+### 40 commits since BOA-5.88.8
 ###
 
 @=> Cadence Edition
@@ -26,8 +26,10 @@
   Prebuilt stack packages reach Devuan Excalibur, extending the Daedalus
   fast-install work from 5.88.8, and every PHP version BOA builds now
   compiles natively on Excalibur. Backdrop support gains its first round
-  of real-world polish, the distribution network gains two fresh mirrors,
-  and the whole live tree now points at the new documentation home.
+  of real-world polish, automatic OS security updates arrive on by
+  default for modern systems, the distribution network gains two fresh
+  mirrors, and the whole live tree now points at the new documentation
+  home.
 
   As always, this entry highlights only the most significant changes. For
   the full picture please refer to the commit history on GitHub.
@@ -54,6 +56,17 @@
       provision-leftover-purge commands give operators the same reach from
       the shell. The orphaned-database drop is fleet-wide gated: it never
       fires while any live site still references the name.
+
+    * Automatic OS security updates, on by default on modern systems
+      (Devuan Daedalus and Excalibur, Debian Bookworm and Trixie).
+      Updates from the distribution's own security archive now apply
+      automatically between BOA upgrades, so a freshly disclosed
+      vulnerability is not left unpatched until the next barracuda run.
+      Security-only: general upgrades remain barracuda's job, and the
+      stack BOA builds itself (Nginx, PHP, Percona) is excluded. A new
+      security kernel is activated only by BOA's own gated, graceful
+      reboot flow -- never an unscheduled reboot. Opt out with
+      _SYSTEM_AUTO_SECURITY=NO.
 
 @=> Improvements
 
@@ -109,6 +122,15 @@
       cycle. PRO/LTS parity holds -- every change ships in both editions.
 
 @=> Important Fixes
+
+    * Daily log rotation reliably re-opens nginx logs. The stock
+      logrotate postrotate calls an init-script action the nginx init
+      script did not implement, so the daily logrotate cron failed and
+      nginx kept writing to the renamed files until the next reload. The
+      init script now implements the rotate action, signalling nginx to
+      re-open its logs (and succeeding harmlessly when nginx is
+      intentionally stopped); deployed servers pick up the updated
+      script automatically on the next barracuda run.
 
     * Backdrop conversion and migrate runs are steady again: sites.php is
       kept truthy before the first deploy bootstrap, the views module
