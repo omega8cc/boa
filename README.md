@@ -2,6 +2,10 @@
 
 BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11, as well as Backdrop CMS and Grav CMS (soon).
 
+## BOA-5.88.811: The Cadence Edition
+
+BOA-5.88.811 opens a new release cadence — **36 commits across four repositories**, with every headline feature shipping for **both PRO and LTS**. The centrepiece is estate-wide leftover management: an interrupted migrate, clone or restore no longer leaves invisible orphan sites and databases behind — the control panel now surfaces each one as a clearly-marked placeholder and purges it, including any orphaned copy database, on Drupal and Backdrop alike. Prebuilt stack packages reach Devuan Excalibur, extending the fast-install story BOA-5.88.8 opened on Daedalus — a timed fresh install now reaches a serving Ægir in **about 25 minutes** on a modest 4-core VM — while Backdrop support gains its first real-world polish: smoother conversions, a dependable admin bar, and a tidier control panel. Why 811? BOA now moves in small, frequent steps — a three-digit patch read as 8XY, the last digit tracking fixes and the middle one new features, both advancing here — so progress shows in the release stream itself. The whole picture lives at [**docs.boa.io**](https://docs.boa.io). [**Read the full story!**](https://docs.boa.io/releases)
+
 ## BOA-5.88.8: The Continuity Edition
 
 A milestone for the 5.x tree — **422 commits across six repositories**, with every headline feature shipping for **both PRO and LTS**. Backdrop CMS becomes a first-class citizen, enabled by default, complete with a Drupal 6 → 7 → Backdrop upgrade chain running as ordinary control-panel tasks. Classic Ægir estates get a supported road into BOA, the rebuilt migration suite moves whole servers across Percona generations, and years of documentation come together on the new unified docs site: [**docs.boa.io**](https://docs.boa.io). Why the eights? Turn one on its side — continuity is the point. [**Read the full story!**](https://github.com/omega8cc/boa/blob/5.x-dev/releases/BOA-5.88.8-PRO.md)
