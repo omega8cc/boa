@@ -67,7 +67,7 @@ Leverage one Ægir Master Instance and multiple Satellite Instances. Use Satelli
 
 ## Bug Reporting
 
-Follow the guidelines in [**docs/CONTRIBUTING.md**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CONTRIBUTING.md).
+Follow the guidelines in [**docs/CONTRIBUTING.md**](https://github.com/omega8cc/boa/tree/5.x-pro/docs/CONTRIBUTING.md).
 
 ## Requirements
 
@@ -81,7 +81,7 @@ Follow the guidelines in [**docs/CONTRIBUTING.md**](https://github.com/omega8cc/
 
 ## Provided Services and Features
 
-Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PROVIDES.md).
+Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/tree/5.x-pro/docs/PROVIDES.md).
 
 ## Supported Virtualization Systems
 
@@ -124,61 +124,61 @@ Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5
 
 ## Documentation and Templates
 
-- Installation Instructions: [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)
-- Upgrade Instructions: [docs/UPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE.md)
-- Major-Upgrade Instructions: [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)
-- Importance of Keeping SKYNET Enabled in BOA: [docs/SKYNET.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SKYNET.md)
-- INI configuration per site: [docs/ini/site/INI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ini/site/INI.md)
-- INI configuration per platform: [docs/ini/platform/INI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ini/platform/INI.md)
-- Configuration Templates: [docs/cnf/barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf), [docs/cnf/octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf)
-- System Control Files Index: [docs/ctrl/system.ctrl](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ctrl/system.ctrl)
-- How we build newer codebases for testing: [docs/BUILDTESTS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BUILDTESTS.md)
+- Installation Instructions: [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/INSTALL.md)
+- Upgrade Instructions: [docs/UPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/UPGRADE.md)
+- Major-Upgrade Instructions: [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MAJORUPGRADE.md)
+- Importance of Keeping SKYNET Enabled in BOA: [docs/SKYNET.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SKYNET.md)
+- INI configuration per site: [docs/ini/site/INI.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/ini/site/INI.md)
+- INI configuration per platform: [docs/ini/platform/INI.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/ini/platform/INI.md)
+- Configuration Templates: [docs/cnf/barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-pro/docs/cnf/barracuda.cnf), [docs/cnf/octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-pro/docs/cnf/octopus.cnf)
+- System Control Files Index: [docs/ctrl/system.ctrl](https://github.com/omega8cc/boa/tree/5.x-pro/docs/ctrl/system.ctrl)
+- How we build newer codebases for testing: [docs/BUILDTESTS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BUILDTESTS.md)
 
 ## Documentation for BOA PRO
 
-- New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-- New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-- New Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
-- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+- New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_ROOT.md)
+- New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_USER.md)
+- New Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_RETENTION.md)
+- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_REGIONS.md)
 
 ## Additional Documentation
 
-- AI Bot Control, per-server policy overview: [docs/AI-POLICY.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/AI-POLICY.md)
-- AI Bot Control, per-site how-to: [docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/AI-POLICY-USER.md)
-- AI Bot Policy and Edge Testing: [docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/AI-POLICY-TESTING.md)
-- Composer How-To: [docs/COMPOSER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/COMPOSER.md)
-- Dev-Mode Notes: [docs/DEVELOPMENT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DEVELOPMENT.md)
-- Drupal Contrib Modules: [docs/MODULES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MODULES.md)
-- Extra Comments: [docs/CAVEATS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CAVEATS.md)
-- FAQ: [docs/FAQ.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FAQ.md)
-- Fast DB Operations: [docs/MYQUICK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MYQUICK.md)
-- Fast Migrate/Clone: [docs/FASTTRACK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FASTTRACK.md)
-- Files Directories Symlinking, per-server overview + testing: [docs/FILES-SYMLINK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FILES-SYMLINK.md)
-- Files Directories Symlinking, per-site how-to: [docs/FILES-SYMLINK-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FILES-SYMLINK-USER.md)
-- Relocating Files Stores to Attached Storage (`migratefs`): [docs/MIGRATEFS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATEFS.md)
-- Included Platforms: [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
-- IP Access Control, per-server overview: [docs/IP-ACCESS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/IP-ACCESS.md)
-- IP Access Control, per-site how-to: [docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/IP-ACCESS-USER.md)
-- Let’s Encrypt: [docs/SSL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SSL.md)
-- Live Disk Resize How-To: [docs/DISK_RESIZE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DISK_RESIZE.md)
-- Migration for Single Octopus Instance: [docs/MIGRATE-XOCT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-XOCT.md)
-- Migration for All Octopus Instances: [docs/MIGRATE-XMASS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-XMASS.md)
-- Migration (Legacy Docs): [docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE.md)
-- Migration (Single Site): [docs/REMOTE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REMOTE.md)
-- New Relic How-To: [docs/NEWRELIC.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NEWRELIC.md)
-- Nginx Abuse Guard (IDS, request guards, ban pipeline): [docs/ABUSE-GUARD.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ABUSE-GUARD.md)
-- Nginx Custom Rewrites: [docs/REWRITES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REWRITES.md)
-- PHP-CLI and Drush Configuration How-To: [docs/DRUSH-CLI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DRUSH-CLI.md)
-- PHP-FPM Configuration How-To: [docs/PHP-FPM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PHP-FPM.md)
-- Remote S3 Backups: [docs/BACKUPS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPS.md)
-- Ruby Gems and NPM: [docs/GEM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/GEM.md)
-- Security Settings: [docs/SECURITY.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SECURITY.md)
-- Self-Healing Monitor Stack (auto-healing, load control, process guards): [docs/MONITOR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MONITOR.md)
-- Self-Upgrade How-To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md)
-- SMTP SSL Error Debugging: [docs/SMTP_SSL_DEBUG.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SMTP_SSL_DEBUG.md)
-- Solr and Jetty How-To: [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SOLR.md)
-- SSH Encryption: [docs/BLOWFISH.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BLOWFISH.md)
-- VServer Cluster: [docs/CLUSTER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CLUSTER.md) (deprecated)
+- AI Bot Control, per-server policy overview: [docs/AI-POLICY.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/AI-POLICY.md)
+- AI Bot Control, per-site how-to: [docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/AI-POLICY-USER.md)
+- AI Bot Policy and Edge Testing: [docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/AI-POLICY-TESTING.md)
+- Composer How-To: [docs/COMPOSER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/COMPOSER.md)
+- Dev-Mode Notes: [docs/DEVELOPMENT.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/DEVELOPMENT.md)
+- Drupal Contrib Modules: [docs/MODULES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MODULES.md)
+- Extra Comments: [docs/CAVEATS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/CAVEATS.md)
+- FAQ: [docs/FAQ.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/FAQ.md)
+- Fast DB Operations: [docs/MYQUICK.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MYQUICK.md)
+- Fast Migrate/Clone: [docs/FASTTRACK.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/FASTTRACK.md)
+- Files Directories Symlinking, per-server overview + testing: [docs/FILES-SYMLINK.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/FILES-SYMLINK.md)
+- Files Directories Symlinking, per-site how-to: [docs/FILES-SYMLINK-USER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/FILES-SYMLINK-USER.md)
+- Relocating Files Stores to Attached Storage (`migratefs`): [docs/MIGRATEFS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MIGRATEFS.md)
+- Included Platforms: [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/PLATFORMS.md)
+- IP Access Control, per-server overview: [docs/IP-ACCESS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/IP-ACCESS.md)
+- IP Access Control, per-site how-to: [docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/IP-ACCESS-USER.md)
+- Let’s Encrypt: [docs/SSL.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SSL.md)
+- Live Disk Resize How-To: [docs/DISK_RESIZE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/DISK_RESIZE.md)
+- Migration for Single Octopus Instance: [docs/MIGRATE-XOCT.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MIGRATE-XOCT.md)
+- Migration for All Octopus Instances: [docs/MIGRATE-XMASS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MIGRATE-XMASS.md)
+- Migration (Legacy Docs): [docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MIGRATE.md)
+- Migration (Single Site): [docs/REMOTE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/REMOTE.md)
+- New Relic How-To: [docs/NEWRELIC.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/NEWRELIC.md)
+- Nginx Abuse Guard (IDS, request guards, ban pipeline): [docs/ABUSE-GUARD.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/ABUSE-GUARD.md)
+- Nginx Custom Rewrites: [docs/REWRITES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/REWRITES.md)
+- PHP-CLI and Drush Configuration How-To: [docs/DRUSH-CLI.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/DRUSH-CLI.md)
+- PHP-FPM Configuration How-To: [docs/PHP-FPM.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/PHP-FPM.md)
+- Remote S3 Backups: [docs/BACKUPS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUPS.md)
+- Ruby Gems and NPM: [docs/GEM.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/GEM.md)
+- Security Settings: [docs/SECURITY.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SECURITY.md)
+- Self-Healing Monitor Stack (auto-healing, load control, process guards): [docs/MONITOR.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/MONITOR.md)
+- Self-Upgrade How-To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SELFUPGRADE.md)
+- SMTP SSL Error Debugging: [docs/SMTP_SSL_DEBUG.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SMTP_SSL_DEBUG.md)
+- Solr and Jetty How-To: [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SOLR.md)
+- SSH Encryption: [docs/BLOWFISH.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BLOWFISH.md)
+- VServer Cluster: [docs/CLUSTER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/CLUSTER.md) (deprecated)
 
 ## Useful Links
 

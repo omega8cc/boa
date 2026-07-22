@@ -1007,15 +1007,15 @@
 @=> New Documentation
 
     * AI bot control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-USER.md
     * AI bot policy, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY.md
     * AI bot policy and edge testing (edgetest):
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-TESTING.md
     * IP access control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS-USER.md
     * IP access control, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md
+      https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS.md
 
 
 ###
