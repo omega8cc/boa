@@ -115,12 +115,15 @@ Daedalus):
 2. Set `_USE_PREBUILT_PKGS=NO` explicitly in `/root/.barracuda.cnf` and
    select `php-max` so all PHP versions build.
 3. Confirm the box serves (or will serve) the mirror `/dev/` tree; set
-   `_PUB_DIR` in `stackbuild`'s configuration block if the auto-detection
-   (keyed on the existing prebuilt packages under `/var/www`) does not apply
-   yet on a fresh mirror.
-4. Set `_PEER_MIRROR` on BOTH active builders so each pushes its release's
-   fresh packages to the other -- both then hold the complete package tree.
-   Passive mirrors keep syncing from the authoritative Daedalus mirror
+   `_PUB_DIR` in `/root/.stackbuild.cnf` if the auto-detection (keyed on the
+   existing prebuilt packages under `/var/www`) does not apply yet on a
+   fresh mirror.
+4. Set `_PEER_MIRROR` in `/root/.stackbuild.cnf` on BOTH active builders so
+   each pushes its release's fresh packages to the other -- both then hold
+   the complete package tree. Never set it by editing the script: deployed
+   copies are refreshed from the boa tree on every barracuda run, which
+   resets in-script edits (a build with it unset publishes only locally and
+   warns). Passive mirrors keep syncing from the authoritative mirror
    exactly as before.
 5. Add the daily cron: `barracuda up-<tree>` then `stackbuild all`.
 6. Only after the new release's package set is published and propagated,

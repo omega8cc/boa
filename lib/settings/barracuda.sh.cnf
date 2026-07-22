@@ -938,6 +938,25 @@ _PHP_FPM_DENY=""
 _STRICT_BIN_PERMISSIONS=YES
 
 ###
+### On modern systems (Devuan Daedalus and
+### Excalibur, Debian Bookworm and Trixie) BOA
+### keeps the operating system security updates
+### applied automatically between BOA upgrades.
+### It uses an archive-based, security-only origin,
+### so no general upgrades are pulled in, and the
+### stack BOA builds itself (Nginx, PHP, Percona)
+### is excluded. A new security kernel is activated
+### only through BOA's own graceful reboot flow,
+### with the existing reboot gating left unchanged.
+###
+### Enabled by default. Set it to NO if you prefer
+### to manage OS security updates yourself; opting
+### out only stops BOA from managing them and does
+### not remove anything already configured.
+###
+_SYSTEM_AUTO_SECURITY=YES
+
+###
 ### Define the amount of RAM you want to keep
 ### reserved for other services installed which
 ### are not controlled by BOA, so it will
@@ -1361,8 +1380,8 @@ _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
-export _tRee=lts
-export _xSrl=5888ltsT01
+export _tRee=dev
+export _xSrl=588811devT01
 
 
 ###
