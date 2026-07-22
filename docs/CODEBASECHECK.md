@@ -23,7 +23,7 @@ these thresholds only flag a customer's frozen custom platform pinned to an old 
 
 A flagged (incompatible) codebase means that account must move to a legacy Percona 5.7
 host before this box can upgrade — see the migration How Tos
-[docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE.md).
+[docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/MIGRATE.md).
 
 ## Modes
 
@@ -89,10 +89,10 @@ tree and every database, so it takes longer.
 
 1. `codebasecheck --box --deep`
 2. If **BLOCKED**: move the named account(s) to a legacy Percona 5.7 host
-   ([docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE.md)),
+   ([docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/MIGRATE.md)),
    then re-run.
 3. If **REVIEW**: check each finding (raw SQL against a reserved-word table, a flagged
    module) on a test clone.
 4. When **READY**: run the staged upgrade `barracuda up-lts system percona-8.0` then
    `barracuda up-lts system percona-8.4`
-   ([docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)).
+   ([docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/MAJORUPGRADE.md)).

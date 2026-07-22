@@ -22,5 +22,5 @@ Of course, the system still maintains nightly backups of all your sites using th
 
 If you need a Restore-capable archive without opting out of super-fast dumps for the whole account, run the site Backup task and choose the **Site files with classic mysqldump DB** option under Backup Mode. That one archive bypasses `MyQuick.info` and produces a conventional single-file mysqldump that the Restore task can use, while `MyQuick.info` continues to provide fast dumps for all other Ægir tasks. It is the only Backup Mode option usable for the Site Restore task.
 
-For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
+For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-lts/docs).
 
