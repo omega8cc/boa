@@ -319,6 +319,13 @@ _if_php_idle_on_off
 ###
 ### Packages install/update on init
 ###
+### Free the dpkg lock before the apt phases: a concurrent daily
+### unattended-upgrades run would otherwise block them. A killed security-only
+### run simply retries on its next daily timer.
+###
+if pgrep -f unattended-upgrades >/dev/null 2>&1; then
+  pkill -9 -f unattended-upgrades
+fi
 _sources_list_update
 _basic_packages_install_on_init
 _more_packages_install_on_init

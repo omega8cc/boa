@@ -76,11 +76,11 @@ writes the per-site nginx fragments across every Octopus instance, with per-clas
 rate-limit zones.
 
 **Docs:** per-site how-to —
-[docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md);
+[docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-USER.md);
 per-server overview —
-[docs/AI-POLICY.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md);
+[docs/AI-POLICY.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY.md);
 edge testing —
-[docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md).
+[docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-TESTING.md).
 
 ---
 
@@ -95,9 +95,9 @@ allowed) and a ~2-minute pickup. Behind Cloudflare the list matches on the
 visitor's real IP.
 
 **Docs:** per-site how-to —
-[docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md);
+[docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS-USER.md);
 per-server overview —
-[docs/IP-ACCESS.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md).
+[docs/IP-ACCESS.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS.md).
 
 ---
 
@@ -259,11 +259,11 @@ tested set:
 
 The new per-site edge controls and the edge-test harness are documented in the repo:
 
-- AI bot control, per site: [docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md)
-- AI bot policy, per-server overview: [docs/AI-POLICY.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md)
-- AI bot policy and edge testing: [docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md)
-- IP access control, per site: [docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md)
-- IP access control, per-server overview: [docs/IP-ACCESS.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md)
+- AI bot control, per site: [docs/AI-POLICY-USER.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-USER.md)
+- AI bot policy, per-server overview: [docs/AI-POLICY.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY.md)
+- AI bot policy and edge testing: [docs/AI-POLICY-TESTING.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-TESTING.md)
+- IP access control, per site: [docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS-USER.md)
+- IP access control, per-server overview: [docs/IP-ACCESS.md](https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS.md)
 
 ---
 
@@ -289,8 +289,8 @@ barracuda up-lts log
 octopus up-lts all force log
 ```
 
-Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/UPGRADE.md
-Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-dev/docs/SELFUPGRADE.md
+Full upgrade documentation: https://github.com/omega8cc/boa/blob/5.x-pro/docs/UPGRADE.md
+Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-pro/docs/SELFUPGRADE.md
 
 ---
 
