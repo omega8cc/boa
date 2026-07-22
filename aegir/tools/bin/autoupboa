@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=5888ltsT01
+export _xSrl=588811ltsT01
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
@@ -174,6 +174,15 @@ _swap_purge_if_bloated
 # Protect from any autoupboa updates when _SKYNET_MODE=OFF
 if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
   exit 0
+fi
+
+# Free the dpkg lock before this run's apt work (avahi purge, apparmor removal,
+# the unattended-upgrades self-heal install), all of which is below this point.
+# Heal any interrupted dpkg state the kill may leave, matching the autoinit
+# backstop. A killed security-only run simply retries on its next daily timer.
+if pgrep -f unattended-upgrades >/dev/null 2>&1; then
+  pkill -9 -f unattended-upgrades
+  /usr/bin/dpkg --configure -a &> /dev/null
 fi
 
 #
@@ -645,6 +654,82 @@ _apt_clean_update() {
   _CALLER_SCRIPT="${_CALLER_SCRIPT//[^a-zA-Z0-9._-]/_}"
   date +%s > "/run/_latest_apt_clean_update.${_CALLER_SCRIPT}.pid"
 }
+
+###
+### Ensure the unattended-upgrades package is present and configured for
+### security-only updates. Idempotent and cheap once converged: the codename
+### floor, the opt-out check and the installed-package check all short-circuit
+### before any apt work, and the two managed apt.conf.d files are rewritten only
+### on content drift. Never touches the stock 50 conffile (dist-upgrades replace
+### it). Kernel activation stays with _if_new_kernel_reboot and its existing
+### gating -- Automatic-Reboot is deliberately left false.
+###
+_write_managed_apt_conf() {
+  # Returns 2 when the target is rewritten, 0 when already converged, 1 on error.
+  local _dst="$1"
+  local _want="$2"
+  local _tmp
+  if [[ -e "${_dst}" ]] && [[ "$(cat "${_dst}" 2>/dev/null)" = "${_want}" ]]; then
+    return 0
+  fi
+  _tmp="$(mktemp /etc/apt/.boa-apt-conf.XXXXXX 2>/dev/null)"
+  [[ -z "${_tmp}" ]] && return 1
+  printf '%s\n' "${_want}" > "${_tmp}"
+  chmod 0644 "${_tmp}"
+  mv -f "${_tmp}" "${_dst}" || return 1
+  return 2
+}
+
+_ensure_unattended_upgrades() {
+  # Floor to distros with a live *-security archive; older codenames are
+  # dead/dying upstream, so enabling there would be a pointless no-op.
+  case "${_OS_CODE}" in
+    daedalus|excalibur|bookworm|trixie) ;;
+    *) return 0 ;;
+  esac
+  # Opt-out wins but never tears down: NO means "stop managing", not "remove".
+  if [[ "${_SYSTEM_AUTO_SECURITY}" = "NO" ]]; then
+    return 0
+  fi
+  local _uu_changed=NO
+  # Install only when missing. A conffile prompt is fatal under cron (EOF on
+  # stdin aborts mid-install), so keep the local file and continue. Refresh the
+  # lists first so the install works on a box with empty/stale lists -- the
+  # in-run _apt_clean_update happens later, after this self-heal.
+  if ! _pkg_installed unattended-upgrades; then
+    ${_APT_UPDATE} -qq 2>/dev/null
+    DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get install unattended-upgrades \
+      -y -qq -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+      &> /dev/null
+    _uu_changed=YES
+  fi
+  # Enabler: refresh package lists and run the unattended upgrade periodically.
+  _write_managed_apt_conf "/etc/apt/apt.conf.d/20auto-upgrades" \
+'APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";'
+  [[ "$?" -eq 2 ]] && _uu_changed=YES
+  # BOA policy overlay (apt merges *.conf.d): the archive-based a=*-security
+  # origin matches both Debian and Devuan security archives, where the stock
+  # origin= patterns miss Devuan. The blacklist documents intent -- our
+  # nginx/php are source-built and Percona is not a *-security repo.
+  _write_managed_apt_conf "/etc/apt/apt.conf.d/51unattended-upgrades-boa" \
+'// Managed by BOA (autoupboa). Security-only unattended upgrades.
+// Opt out with _SYSTEM_AUTO_SECURITY=NO in /root/.barracuda.cnf.
+Unattended-Upgrade::Origins-Pattern {
+  "a=*-security";
+};
+Unattended-Upgrade::Package-Blacklist {
+  "percona-*";
+  "nginx*";
+  "php*";
+};'
+  [[ "$?" -eq 2 ]] && _uu_changed=YES
+  # Narrate only when something actually changed; converged runs stay quiet.
+  if [[ "${_uu_changed}" = "YES" ]]; then
+    echo "INFO: unattended-upgrades configured for automatic OS security updates"
+  fi
+}
+_ensure_unattended_upgrades
 
 _system_hostname_check_fix() {
   if [ -e "${_barCnf}" ]; then
@@ -1215,14 +1300,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_5888v01.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588811v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_5888v01.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588811v01.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_5888v01.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588811v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
       if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -1230,7 +1315,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_5888v01.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588811v01.${_tRee}.${_xSrl}.pid"
     fi
   fi
 
