@@ -3578,6 +3578,57 @@ _fix_nginx_crawler_access() {
   )
 }
 
+#
+# Self-heal for nginx configs wiped by the pre-hardening crawler-fix race
+# (or any other crashed writer): these files are never legitimately empty,
+# so an empty file older than 10 minutes means a crashed write, not a
+# render in progress. Recovery queues the account's own on-demand Octopus
+# upgrade via the documented tenant trigger consumed by run-xdrago, which
+# re-renders every config from fresh code. run-upgrade.pid is ignored
+# there unless platforms.info exists, so seed an inert list when the
+# account has none: it must be UPPERCASE to survive the [ 0-9A-Z]
+# sanitizer in the satellite code -- a lowercase word sanitizes to empty
+# and falls back to installing the full default platforms list.
+#
+_fix_wiped_nginx_config() {
+  local _bAse=""
+  local _uSr=""
+  local _fIle=""
+  local _wIped=""
+  local _ctlDir=""
+  local _tPl="/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php"
+  local _sTpl="/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php"
+  for _bAse in /data/disk/*; do
+    [ -d "${_bAse}/config" ] || continue
+    _wIped=""
+    for _fIle in "${_bAse}/config/includes/nginx_vhost_common.conf" \
+      "${_bAse}/config/server_master/nginx.conf" \
+      "${_bAse}${_tPl}" "${_bAse}${_sTpl}"; do
+      [ -f "${_fIle}" ] || continue
+      if [ -n "$(find "${_fIle}" -maxdepth 0 -type f -size 0 -mmin +10 2> /dev/null)" ]; then
+        _wIped="${_fIle}"
+        break
+      fi
+    done
+    [ -n "${_wIped}" ] || continue
+    _uSr=$(basename "${_bAse}")
+    _ctlDir="${_bAse}/static/control"
+    if [ ! -d "${_ctlDir}" ]; then
+      mkdir -p "${_ctlDir}"
+      chmod 755 "${_ctlDir}"
+    fi
+    if [ ! -s "${_ctlDir}/platforms.info" ]; then
+      echo "FOOBAR" > "${_ctlDir}/platforms.info"
+      chown ${_uSr}.ftp:users "${_ctlDir}/platforms.info" 2> /dev/null
+    fi
+    if [ ! -e "${_ctlDir}/run-upgrade.pid" ]; then
+      touch "${_ctlDir}/run-upgrade.pid"
+      chown ${_uSr}.ftp:users "${_ctlDir}/run-upgrade.pid" 2> /dev/null
+      _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); octopus upgrade queued for ${_uSr}"
+    fi
+  done
+}
+
 _force_rebuild() {
   if [ ! -e "${_pthLog}/forced.rebuild.glibc.txt" ]; then
     echo "_GIT_FORCE_REINSTALL=YES" >> ${_barCnf}
@@ -4847,6 +4898,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_newrelic
     _fix_leftovers
     _fix_nginx_crawler_access
+    _fix_wiped_nginx_config
     _update_agents
     _sysctl_update
     # _saCoreN="SA-CORE-2018-002"
