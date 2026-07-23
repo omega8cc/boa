@@ -35,10 +35,11 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
 
   /**
    * Block excessive language-prefix chaining
-   * Examples (3+ prefixes):
+   * Examples (4+ prefixes):
    * /pl/en/fr/de/office/...
+   * 3 would 404 real multilingual short-slug content (/pl/co/to-jest/...).
    */
-  if (preg_match('#^/(?:[a-z]{2}(?:-[a-z0-9]+)?/){3,}#i', $path)) {
+  if (preg_match('#^/(?:[a-z]{2}(?:-[a-z0-9]+)?/){4,}#i', $path)) {
     header($proto . ' 404 Not Found');
     exit;
   }

@@ -445,13 +445,22 @@ detector is off, so the hot loop pays nothing.
 
 ### Whitelisting (scorer side)
 
-Three layers protect known-good addresses from every detector:
+Four layers protect known-good addresses from every detector:
 
 - **CSF allow list.** `_is_whitelisted_ip` refuses to block any IP the firewall already
   allows (exact host or CIDR). It is a keystone guard covering every call path into
   `_block_ip` — including the bulk DDoS and path-flood passes — so a bulk ban can't drop a
   CDN PoP or a search-engine crawler. The allow is honoured **on every port** regardless of
   the port scope of the `csf.allow` entry (an `s=` record means "trusted source").
+- **IPv6 allow store.** `csf.allow` cannot hold an IPv6 entry (CSF is IPv4-only), so the
+  IPv6 counterpart lives in `/var/xdrago/monitor/log/web6.allow`: `guest-water.sh` mirrors
+  the published Googlebot `ipv6Prefix` crawl ranges into it daily (Bingbot's too, once
+  Microsoft publishes any), and `_is_whitelisted_ip` family-dispatches every IPv6 client to
+  it — same scoring gates, same `_block_ip` keystone, so a legitimate IPv6 crawler is
+  exempt from both scoring and the nginx-native v6 ban. Untagged manual entries survive
+  the daily refresh, and an empty provider fetch keeps the existing entries rather than
+  stripping protection. Loaded only when `_NGINX_V6_BAN_DETECT=YES` (with the v6 arm
+  opted out no IPv6 client is scored, so there is nothing to whitelist).
 - **`/root/.local.IP.list`.** Loaded into `_ALLOWED_IPS`; these IPs are never scored.
 - **In-run cache.** `_BANNED_IPS` (seeded from the current `web.log`) prevents an IP being
   written twice in one pass.
@@ -579,8 +588,10 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > (Cloudflare, Googlebot, Bingbot, Pingdom, and — behind
 > `/root/.extended.firewall.exceptions.cnf` — Imperva, Sucuri, Auth0, Site24x7), with a
 > diff-guard that reverts an unexpected `csf.allow` change and per-provider backups under
-> `/var/backups/csf/water/`. That allow-list maintenance is what makes the keystone
-> `_is_whitelisted_ip` guard reliable across the whole pipeline.
+> `/var/backups/csf/water/`. The same pass mirrors the crawler `ipv6Prefix` ranges into
+> the nginx-native IPv6 allow store `/var/xdrago/monitor/log/web6.allow` (CSF cannot hold
+> them). That allow-list maintenance is what makes the keystone `_is_whitelisted_ip`
+> guard reliable across the whole pipeline, for both address families.
 
 ### Stage 3 — geo regeneration (`nginx_deny.sh`)
 
@@ -1295,6 +1306,19 @@ allow exempts only the named source. A second, scorer-local layer is `/root/.loc
 (loaded into `_ALLOWED_IPS`, skipped before scoring) — a convenience for
 local/infrastructure addresses; for anything that must also be trusted by the firewall
 stages, use `csf.allow`.
+
+**Whitelist an IPv6 address or range** — `csf.allow` cannot hold one (CSF is IPv4-only), so
+append an *untagged* line to the nginx-native allow store instead:
+
+```bash
+# Exempt an IPv6 range from all scan_nginx scoring and the v6 web ban
+echo "2a01:db8:beef::/48 # partner service" >> /var/xdrago/monitor/log/web6.allow
+```
+
+`guest-water.sh`'s daily refresh only rewrites its own provider-tagged lines (`googlebot`,
+`microsoft`), so a manual entry persists. Note this exempts the address from the **web IDS
+only** — there is no v6 firewall layer to allow it through, and none is needed (BOA
+disables IPv6 server-side; a v6 client only ever appears via the trusted realip proxy).
 
 **Whitelist a path — `_NGINX_DOS_IGNORE_PATHS`.** When the thing to protect is an endpoint
 that authenticates per request (a webhook receiver, an API root), exempt the path rather than
