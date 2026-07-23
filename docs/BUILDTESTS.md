@@ -50,10 +50,10 @@ Raw cores, published to `/var/www/static/core`, latest patch of each supported m
 
 staticbuild is also the Backdrop-family builder. Backdrop is not Composer-based, so
 it is built apart from the Drupal distros/cores — no Composer, no `/usr/bin/php`
-switch, just git/wget/unzip — and always fetched at its newest upstream, published
-version-less so BOA never falls behind. `staticbuild all` builds it alongside
-everything else; the `backdrop` subcommand does a lightweight build + package +
-publish of only this family:
+switch, just git/wget/unzip — and always fetched at its newest upstream, so BOA
+never falls behind. `staticbuild all` builds it alongside everything else; the
+`backdrop` subcommand does a lightweight build + package + publish of only this
+family:
 
 ```sh
   staticbuild backdrop           # build + package + publish only the Backdrop family
@@ -63,11 +63,16 @@ Three artefacts, always rebuilt at the latest upstream tag (pin any with the mat
 `_*_TAG` in the config block):
 
 - **backdrop** — Backdrop CMS core (`backdrop/backdrop`), from its latest GitHub
-  release `backdrop.zip`. Repackaged version-less as `backdrop.tar.gz` (extracts to
-  `backdrop/`), classified as a core, with the resolved version stamped to
-  `backdrop.txt` so BOA can name the platform. The Backdrop redis contrib module is
-  baked into `modules/` for Valkey/Redis object-cache support. Published to
-  `/var/www/static/core`.
+  release `backdrop.zip`. Repackaged versioned as `backdrop-<ver>.tar.gz` (extracts
+  to `backdrop-<ver>/`), classified as a core and managed on the mirror exactly like
+  the Drupal cores: every published version is retained, the resolved version is
+  stamped to `backdrop.txt` (published only after its tarball, so the stamp never
+  points at a missing file) — BOA names the platform from the stamp and fetches the
+  matching tarball — and a version-less `backdrop.tar.gz` compat tarball of the newest
+  release (extracting to `backdrop/`, the pre-versioning contract) is refreshed for
+  already-deployed BOA releases. The Backdrop redis contrib
+  module is baked into `modules/` for Valkey/Redis object-cache support. Published
+  to `/var/www/static/core`.
 - **bee** — native Backdrop CLI (`backdrop-contrib/bee`), from its latest git tag,
   packaged version-less as `bee.tar.gz` (`bee.php` at the root). Published to
   `/var/www/static/dev/{dev,lts,pro}` — every box pulls its own tree dir.

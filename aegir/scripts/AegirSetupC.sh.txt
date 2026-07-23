@@ -827,15 +827,27 @@ _create_drupal_basic_version() {
 }
 
 # Create Backdrop core-only basic platform (has core/, no web/). Fetches the
-# version-less backdrop.tar.gz (always the newest) which extracts to backdrop/,
-# then names the platform from the resolved version via _SHRD_PLNAME.
+# versioned backdrop-<ver>.tar.gz like the Drupal cores (<ver> = _BACKDROP_V,
+# resolved from the mirror's backdrop.txt stamp at satellite-make time), which
+# extracts to backdrop-<ver>/, then names the platform via _SHRD_PLNAME.
 _create_backdrop_basic_version() {
   if [ ! -d "${_OCTO_PLPATH}" ]; then
     cd "${_pthDst}"
-    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext 'backdrop.tar.gz'"
-    rm -rf "${_pthDst}/backdrop"
-    _get_core_ext "backdrop.tar.gz"
-    mv -f "${_pthDst}/backdrop" "${_SHRD_PLNAME}"
+    rm -rf "${_pthDst}/backdrop-${_BACKDROP_V}" "${_pthDst}/backdrop"
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext 'backdrop-${_BACKDROP_V}.tar.gz'"
+    _get_core_ext "backdrop-${_BACKDROP_V}.tar.gz"
+    if [ ! -d "${_pthDst}/backdrop-${_BACKDROP_V}" ]; then
+      # Transitional fallback: a mirror that does not publish versioned Backdrop
+      # tarballs yet still carries the version-less backdrop.tar.gz refreshed
+      # together with the backdrop.txt stamp _BACKDROP_V was resolved from, so
+      # its content matches the version in the platform name.
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext 'backdrop.tar.gz' (fallback)"
+      _get_core_ext "backdrop.tar.gz"
+      if [ -d "${_pthDst}/backdrop" ]; then
+        mv -f "${_pthDst}/backdrop" "${_pthDst}/backdrop-${_BACKDROP_V}"
+      fi
+    fi
+    mv -f "${_pthDst}/backdrop-${_BACKDROP_V}" "${_SHRD_PLNAME}"
   fi
 }
 
