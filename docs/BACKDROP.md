@@ -43,9 +43,11 @@ flip it to `YES` (or delete the line) to adopt the new default.
 After the run the instance has:
 
 - **Three Backdrop platforms** (dev/stage/prod trees), auto-built from
-  the version-less `backdrop.tar.gz` on the BOA mirror and registered in
-  Ægir. Backdrop platforms always track the newest release — there is no
-  per-version pin to maintain (see `PLATFORMS.md`).
+  the versioned `backdrop-<ver>.tar.gz` on the BOA mirror (selected by
+  its `backdrop.txt` newest-version stamp, managed like the Drupal core
+  tarballs) and registered in Ægir. Backdrop platforms always track the
+  newest release — there is no per-version pin to maintain (see
+  `PLATFORMS.md`).
 - **The `hosting_backdrop` frontend module** enabled on the hostmaster
   (the `backdropcms` hosting feature). Enabling it queues a one-time
   verify of every existing platform so each platform's Backdrop marker

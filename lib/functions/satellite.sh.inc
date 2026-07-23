@@ -4460,7 +4460,8 @@ _satellite_make() {
   echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
 
   # Resolve the newest Backdrop version from the mirror stamp so platforms track
-  # the latest release without a hardcoded pin (fallback: _BACKDROP_V_FALLBACK).
+  # the latest release without a hardcoded pin (fallback: _BACKDROP_V_FALLBACK);
+  # the platform build fetches the matching versioned backdrop-<ver>.tar.gz.
   _bdrVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/backdrop.txt" 2>/dev/null | tr -cd '0-9.')
   [ -z "${_bdrVrn}" ] && _bdrVrn="${_BACKDROP_V_FALLBACK}"
   echo "export _BACKDROP_V=\"${_bdrVrn}\""                   >> ${_writeTo}
