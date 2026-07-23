@@ -1470,11 +1470,15 @@ _update_agents() {
   # /opt/local/bin/bee (no /usr/bin symlink, websh's PATH resolves it);
   # clients execute it, so it ships world-executable.
   _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f98 --mode 755 --guard /local/bin/bee
-  # staticbuild: mirror-source testing-codebase + Backdrop-family builder. Needs
-  # root plus an existing build user (o8 unless -u says otherwise) or it refuses
-  # to act - it never guesses an account from /data/disk. Kept on every box so
-  # the mirror source always carries the current builder.
-  _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f95 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+  # Mirror-source build boxes only, marked by /root/.stackbuild.cnf (even an
+  # empty file opts a box in): staticbuild (testing-codebase + Backdrop-family
+  # builder) and stackbuild (heavy stack-component packager). Both need root
+  # and fail closed elsewhere - staticbuild also requires an existing build
+  # user (o8 unless -u says otherwise) and never guesses one from /data/disk.
+  if [ -e "/root/.stackbuild.cnf" ]; then
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f94 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f99 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
+  fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     # Fetch stamps for the backup family live in ${_pthLog} since the

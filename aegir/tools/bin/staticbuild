@@ -32,12 +32,16 @@
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
 # Build target names: farm cms culturas commerce localgov thunder varbase
-#   backdrop (core, version-less backdrop.tar.gz) bee backdrop-drush-extension cores
+#   backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension cores
 #
 # The Backdrop family (backdrop core, bee, backdrop-drush-extension) is always
-# fetched at its newest upstream version and published version-less, so BOA never
-# falls behind: run "staticbuild all" (or just the named targets) on the mirror
-# source VM, e.g. from cron alongside get-boa-dev.
+# fetched at its newest upstream version, so BOA never falls behind: run
+# "staticbuild all" (or just the named targets) on the mirror source VM, e.g.
+# from cron alongside get-boa-dev. Backdrop core is published versioned
+# (backdrop-<ver>.tar.gz, retained per version like the Drupal cores) with a
+# backdrop.txt newest-version stamp plus a version-less backdrop.tar.gz compat
+# tarball of the newest (extracts to backdrop/, the pre-versioning contract);
+# bee + the drush extension stay version-less.
 
 # ---------------------------------------------------------------------------
 # Configuration - review the specs/minors each cycle ("staticbuild check").
@@ -65,9 +69,12 @@ _FARM_TAG=""
 
 # Backdrop CMS core: the latest GitHub release is resolved automatically; set
 # _BACKDROP_TAG to pin one. Ships as a single backdrop.zip release asset (no
-# Composer), repackaged version-less as backdrop.tar.gz (extracts to backdrop/)
-# and classified as a core, so BOA always pulls the newest and derives the
-# version from the fetched code.
+# Composer), repackaged versioned as backdrop-<ver>.tar.gz (extracts to
+# backdrop-<ver>/) and classified as a core, managed on the mirror exactly like
+# the Drupal cores: every published version is retained, backdrop.txt stamps
+# the newest, and a version-less backdrop.tar.gz compat tarball of the newest
+# (extracting to backdrop/, the pre-versioning contract) is refreshed for
+# already-deployed BOA releases.
 _BACKDROP_REPO="backdrop/backdrop"
 _BACKDROP_TAG=""
 
@@ -666,11 +673,14 @@ build_cores() {
 
 build_backdrop() {
   # Backdrop CMS core: a single GitHub release zip (no Composer, no profiles to
-  # strip). Kept VERSION-LESS as backdrop/ -> backdrop.tar.gz, preserving the
-  # top-level core/ layouts/ modules/ themes/ sites/ and core/scripts/install.sh,
-  # so BOA always pulls the newest and derives the version from the fetched code.
-  # Always rebuilt (a fast zip download) - no _begin_build skip, and no glob
-  # collision with backdrop-drush-extension.
+  # strip). Packaged VERSIONED like the Drupal cores: backdrop-<ver>/ ->
+  # backdrop-<ver>.tar.gz, preserving the top-level core/ layouts/ modules/
+  # themes/ sites/ and core/scripts/install.sh, so every published release stays
+  # available on the mirror instead of being overwritten by the next one. The
+  # resolved version is stamped to backdrop.txt (the newest-version pointer BOA
+  # resolves _BACKDROP_V from). Always rebuilt (a fast zip download) - no
+  # _begin_build skip. The backdrop-[0-9]* globs never match the
+  # backdrop-drush-extension dir.
   if ! command -v unzip >/dev/null 2>&1; then
     _record_fail "backdrop (unzip not found)"
     return 1
@@ -678,25 +688,30 @@ build_backdrop() {
   local _tag _zip _url
   _tag="$(_resolve_backdrop_tag)"
   [[ -n "${_tag}" ]] || { _record_fail "backdrop (could not resolve release tag)"; return 1; }
+  # The tag comes from the GitHub API and lands in a root shell command and in
+  # file names - accept plain dotted versions only, fail closed on anything else.
+  if [[ ! "${_tag}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+    _record_fail "backdrop (unexpected release tag format: ${_tag})"
+    return 1
+  fi
   _zip=".backdrop.zip"
   _url="https://github.com/${_BACKDROP_REPO}/releases/download/${_tag}/backdrop.zip"
-  # The zip's top-level dir is backdrop/; keep that name (version-less). Also
-  # stamp the resolved version to backdrop.txt so BOA can name the platform
-  # (backdrop-<ver>-{dev,stage,prod}) while fetching the version-less tarball.
-  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf backdrop backdrop.tar.gz backdrop.txt '${_zip}' \
+  # The zip's top-level dir is backdrop/; rename it to the versioned
+  # backdrop-<ver>/ so the tarball extracts like a Drupal core one does.
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf backdrop backdrop-[0-9]* backdrop.tar.gz backdrop.txt '${_zip}' \
     && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' \
-    && rm -f '${_zip}' && printf '%s\n' '${_tag}' > backdrop.txt"; then
+    && rm -f '${_zip}' && mv backdrop 'backdrop-${_tag}' \
+    && printf '%s\n' '${_tag}' > backdrop.txt"; then
     _record_fail "backdrop"
     return 1
   fi
-  # Bake in the Backdrop redis contrib module (into the version-less backdrop/
-  # so it rides backdrop.tar.gz onto every platform). Non-fatal: if the fetch
-  # fails the platform simply ships without Valkey support and global-bd.inc
-  # stays a no-op.
+  # Bake in the Backdrop redis contrib module (into backdrop-<ver>/ so it rides
+  # the platform tarball). Non-fatal: if the fetch fails the platform simply
+  # ships without Valkey support and global-bd.inc stays a no-op.
   local _redis_tag
   _redis_tag="${_REDIS_TAG:-$(_latest_git_tag "${_REDIS_REPO}")}"
   if [[ -n "${_redis_tag}" ]]; then
-    if _run_as_o8 "cd '${_DAY_DIR}/backdrop/modules' && rm -rf redis \
+    if _run_as_o8 "cd '${_DAY_DIR}/backdrop-${_tag}/modules' && rm -rf redis \
       && git clone -q --depth 1 --branch '${_redis_tag}' 'https://github.com/${_REDIS_REPO}.git' redis \
       && rm -rf redis/.git"; then
       _info "backdrop: baked modules/redis (${_redis_tag})"
@@ -706,8 +721,8 @@ build_backdrop() {
   else
     _alrt "backdrop: could not resolve redis tag; platform ships without Valkey support"
   fi
-  _RESULTS+=("OK    backdrop (${_tag})")
-  _info "backdrop: built backdrop/ (${_tag})"
+  _RESULTS+=("OK    backdrop-${_tag}")
+  _info "backdrop: built backdrop-${_tag}/"
 }
 
 build_bee() {
@@ -810,7 +825,7 @@ strip_core_profiles() {
   _list="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d */ 2>/dev/null")"
   for _name in ${_list}; do
     _name="${_name%/}"
-    case "${_name}" in drupal-*|backdrop) continue ;; esac
+    case "${_name}" in drupal-*|backdrop-[0-9]*) continue ;; esac
     _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}'/*/core/profiles/* ; true"
   done
 }
@@ -822,8 +837,10 @@ package_batch() {
   for _name in ${_list}; do
     _name="${_name%/}"
     case "${_name}" in
-      drupal-*|backdrop) [[ "${_kind}" == "core" ]]   || continue ;;
-      *)                 [[ "${_kind}" == "distro" ]] || continue ;;
+      # backdrop-[0-9]* keeps backdrop-drush-extension (a dev extension, never a
+      # day-dir build residue unless its build failed mid-way) out of the core arm.
+      drupal-*|backdrop-[0-9]*) [[ "${_kind}" == "core" ]]   || continue ;;
+      *)                        [[ "${_kind}" == "distro" ]] || continue ;;
     esac
     _msg "tar: ${_name}.tar.gz"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf '${_name}.tar.gz' '${_name}'" || _alrt "tar failed: ${_name}"
@@ -837,6 +854,7 @@ do_package() {
   clean_platforms
   _msg "packaging core platforms (with core/profiles)"
   package_batch core
+  package_backdrop_compat
   _msg "stripping stock core profiles from distributions"
   strip_core_profiles
   _msg "packaging distribution platforms (without core/profiles)"
@@ -867,6 +885,27 @@ _publish_devext() {
   [[ "${_ok}" == "1" ]]
 }
 
+_backdrop_day_version() {
+  # Version stamped by the current build (empty if none).
+  [[ -e "${_DAY_DIR}/backdrop.txt" ]] || return 0
+  tr -cd '0-9.' < "${_DAY_DIR}/backdrop.txt"
+}
+
+package_backdrop_compat() {
+  # Version-less backdrop.tar.gz for already-deployed BOA releases, which still
+  # fetch that name AND expect it to extract to backdrop/ (the pre-versioning
+  # contract). So it is re-tarred from the current backdrop-<ver>/ tree with the
+  # top-level dir renamed - NOT a byte copy of the versioned tarball, which
+  # extracts to backdrop-<ver>/ and would break their mv of backdrop/.
+  local _ver
+  _ver="$(_backdrop_day_version)"
+  [[ -n "${_ver}" ]] || return 0
+  _run_as_o8 "test -d '${_DAY_DIR}/backdrop-${_ver}'" || return 0
+  _msg "tar: backdrop.tar.gz (compat, extracts to backdrop/)"
+  _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz --transform 's,^backdrop-${_ver},backdrop,' 'backdrop-${_ver}'" \
+    || _alrt "tar failed: backdrop.tar.gz (compat)"
+}
+
 do_backdrop_family() {
   # Lightweight: build + package + publish ONLY the Backdrop family (backdrop
   # core + bee + backdrop-drush-extension), all at their newest upstream. No
@@ -879,18 +918,27 @@ do_backdrop_family() {
     _msg "=== build: ${_t} ==="
     run_build "${_t}"
   done
-  # Package the core dir (bee + extension are already tarballs from their build).
-  if _run_as_o8 "test -d '${_DAY_DIR}/backdrop'"; then
-    _msg "tar: backdrop.tar.gz"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz backdrop" || _alrt "tar failed: backdrop"
+  # Package the versioned core dir (bee + extension are already tarballs from
+  # their build), plus the version-less compat tarball.
+  local _ver
+  _ver="$(_backdrop_day_version)"
+  if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/backdrop-${_ver}'"; then
+    _msg "tar: backdrop-${_ver}.tar.gz"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'backdrop-${_ver}.tar.gz' 'backdrop-${_ver}'" \
+      || _alrt "tar failed: backdrop-${_ver}"
+    package_backdrop_compat
   fi
-  # Publish only the family artifacts.
+  # Publish only the family artifacts. Tarballs first, the backdrop.txt stamp
+  # last: a consumer must never resolve a version whose tarball is not there yet.
   mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
   _ensure_devext_dirs
   local _f
-  for _f in backdrop.tar.gz backdrop.txt; do
-    [[ -e "${_DAY_DIR}/${_f}" ]] && { cp -a "${_DAY_DIR}/${_f}" "${_CORE_OUT}/" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"; }
-  done
+  if [[ -n "${_ver}" && -e "${_DAY_DIR}/backdrop-${_ver}.tar.gz" ]]; then
+    for _f in "backdrop-${_ver}.tar.gz" backdrop.tar.gz backdrop.txt; do
+      [[ -e "${_DAY_DIR}/${_f}" ]] || continue
+      cp -a "${_DAY_DIR}/${_f}" "${_CORE_OUT}/" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"
+    done
+  fi
   for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
     [[ -e "${_DAY_DIR}/${_f}" ]] && _publish_devext "${_DAY_DIR}/${_f}"
   done
@@ -905,19 +953,24 @@ do_distribute() {
     [[ -e "${_t}" ]] || continue
     _base="${_t##*/}"
     # Dev extensions first: backdrop-drush-extension.tar.gz must NOT fall into the
-    # backdrop* core arm.
+    # backdrop-* core arm. The version-less backdrop.tar.gz is the compat tarball
+    # built by package_backdrop_compat (extracts to backdrop/).
     case "${_base}" in
       bee.tar.gz|backdrop-drush-extension.tar.gz)
         _publish_devext "${_t}" && _n=$((_n + 1)) ;;
-      drupal-*.tar.gz|backdrop.tar.gz)
+      drupal-*.tar.gz|backdrop-[0-9]*.tar.gz|backdrop.tar.gz)
         cp -a "${_t}" "${_CORE_OUT}/"   && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
       *)
         cp -a "${_t}" "${_DISTRO_OUT}/" && { _msg "distro <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
     esac
   done
-  # Publish the Backdrop version stamp alongside backdrop.tar.gz so BOA can name
-  # the platform from the latest version without a hardcoded pin.
-  if [[ -e "${_DAY_DIR}/backdrop.txt" ]]; then
+  # Publish the Backdrop newest-version stamp AFTER the tarballs, and only when
+  # the tarball it points to is really on the mirror: BOA resolves _BACKDROP_V
+  # from the stamp and fetches the matching backdrop-<ver>.tar.gz, so the stamp
+  # must never advance ahead of its tarball.
+  local _bdrv
+  _bdrv="$(_backdrop_day_version)"
+  if [[ -n "${_bdrv}" && -e "${_CORE_OUT}/backdrop-${_bdrv}.tar.gz" ]]; then
     cp -a "${_DAY_DIR}/backdrop.txt" "${_CORE_OUT}/" && _msg "core   <- backdrop.txt" || _alrt "copy failed: backdrop.txt"
   fi
   [[ "${_n}" -gt 0 ]] || _alrt "no tarballs found in ${_DAY_DIR} (run 'package' first)"
