@@ -3448,7 +3448,7 @@ _satellite_run_post_install() {
     rm -f ${_HM_ROOT}/*.txt
     _mrun "service nginx reload"
     cd ${_HM_ROOT}
-    cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
+    cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ${_HM_ROOT}/
     cd ${_ROOT}
   fi
 }
@@ -6086,10 +6086,12 @@ _satellite_child_b_aegir_build() {
     fi
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
     cd ${_HM_ROOT}
-    mkdir -p sites/all/{modules,themes,libraries}
-    mkdir -p sites/${_DOMAIN}/files/{tmp,js,css}
-    chmod 02775 -R sites/${_DOMAIN}/files &> /dev/null
-    chgrp -R ${_WEBG} sites/${_DOMAIN}/files &> /dev/null
+    ### Absolute paths on purpose: when hostmaster-install failed, the cd
+    ### above fails too and relative writes pollute the previous cwd.
+    mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
+    mkdir -p ${_HM_ROOT}/sites/${_DOMAIN}/files/{tmp,js,css}
+    chmod 02775 -R ${_HM_ROOT}/sites/${_DOMAIN}/files &> /dev/null
+    chgrp -R ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/files &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
     ln -sfn ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
     rm -f /data/u/${_DOMAIN} &> /dev/null
@@ -6278,7 +6280,10 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
     cd ${_HM_ROOT}
-    mkdir -p sites/all/{modules,themes,libraries}
+    ### Absolute path on purpose: when hostmaster-migrate failed, the cd
+    ### above fails too and a relative mkdir pollutes the previous cwd
+    ### (stray aegir/distro/sites/all skeleton).
+    mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
     export DEBIAN_FRONTEND=text
     mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
       ${_ROOT}/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
