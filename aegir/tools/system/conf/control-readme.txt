@@ -63,6 +63,7 @@ ALL never skips anything.
 
 Platform symbols:
 
+  Backdrop CMS  BDR (needs Backdrop support enabled on the server)
   Drupal 11.4   DE4 + CK3 Commerce v.3, CMS Drupal CMS, LGV LocalGov,
                 THR Thunder
   Drupal 11.3   DE3 + FOS farmOS, OCS OpenCulturas, VBX Varbase 10
@@ -78,7 +79,6 @@ Platform symbols:
   Drupal 9      DL9 + OLS OpenLucius, OPG Opigno LMS
   Drupal 7      DL7 + CK1 Commerce v.1, UC7 Ubercart
   Drupal 6      DL6 Pressflow (LTS) + UC6 Ubercart
-  Backdrop CMS  BDR (needs Backdrop support enabled on the server)
 
 Older cores need matching legacy PHP versions installed — on hosted
 BOA ask your host if you need one enabled.
