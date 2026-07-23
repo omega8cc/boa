@@ -14,8 +14,9 @@
 # Notes:
 #   - Designed for shared workflows (e.g. o1 + o1.ftp in the same group).
 #   - Applies to the whole codebase and explicitly to .git when present.
-#   - Sets git core.sharedRepository=group (best effort).
+#   - Sets git core.sharedRepository=group (best effort, as the repo owner).
 #   - Uses g+rwX (capital X) so regular non-executable files do not become executable.
+#   - Refuses paths outside /data/disk/<user>/, /var/aegir/, /var/www/, /home/<user>/.
 #
 
 export HOME=/root
@@ -53,10 +54,12 @@ Description:
   Fixes group-writable permissions recursively on the codebase root, ensures setgid on
   all directories, and (if present) explicitly fixes .git internals and sets:
     git config core.sharedRepository group
+  Only paths inside /data/disk/<user>/, /var/aegir/, /var/www/ or /home/<user>/ are
+  accepted; anything else is refused before any change is made.
 
 Environment (optional):
   _DEBUG_MODE=YES   Enable verbose progress messages
-  _STRICT_MODE=NO   Continue on non-fatal chmod/find/git config errors (default: YES)
+  _STRICT_MODE=NO   Continue on non-fatal chmod/find errors (default: YES)
 EOF
 }
 
@@ -111,11 +114,25 @@ _set_git_shared_mode() {
   [ -d "${_REPO_ROOT}" ] || return 1
   [ -d "${_REPO_ROOT}/.git" ] || return 0
 
-  if command -v git >/dev/null 2>&1; then
-    _run_cmd "git core.sharedRepository=group in ${_REPO_ROOT}" \
-      git -C "${_REPO_ROOT}" config core.sharedRepository group
-  else
+  if ! command -v git >/dev/null 2>&1; then
     printf 'WARNING: git not found; skipped core.sharedRepository setting for %s\n' "${_REPO_ROOT}" >&2
+    return 0
+  fi
+
+  # Run git as the repo owner: git refuses cross-owner repos ("dubious
+  # ownership"), and a root-run config rewrite would leave .git/config
+  # root-owned. Best effort by design -- a failure warns, never aborts.
+  _GIT_OWNER="$(stat -c %U "${_REPO_ROOT}/.git" 2>/dev/null)"
+  if [ -n "${_GIT_OWNER}" ] && [ "${_GIT_OWNER}" != "root" ] \
+    && id -u "${_GIT_OWNER}" >/dev/null 2>&1; then
+    _msg "==> git core.sharedRepository=group in ${_REPO_ROOT} (as ${_GIT_OWNER})"
+    su -s /bin/bash "${_GIT_OWNER}" -c "git -C '${_REPO_ROOT}' config core.sharedRepository group"
+  else
+    _msg "==> git core.sharedRepository=group in ${_REPO_ROOT}"
+    git -C "${_REPO_ROOT}" config core.sharedRepository group
+  fi
+  if [ $? -ne 0 ]; then
+    printf 'WARNING: could not set core.sharedRepository=group in %s\n' "${_REPO_ROOT}" >&2
   fi
 
   return 0
@@ -130,11 +147,14 @@ _show_summary() {
   if [ -d "${_REPO_ROOT}/.git" ]; then
     printf 'Git metadata fixed: %s/.git\n' "${_REPO_ROOT}"
     if command -v git >/dev/null 2>&1; then
-      _GIT_SHARED="$(git -C "${_REPO_ROOT}" config --get core.sharedRepository 2>/dev/null)"
+      # --file skips repo discovery, so root can read it on any-owner repos.
+      _GIT_SHARED="$(git config --file "${_REPO_ROOT}/.git/config" --get core.sharedRepository 2>/dev/null)"
       if [ -n "${_GIT_SHARED}" ]; then
         printf 'git core.sharedRepository: %s\n' "${_GIT_SHARED}"
       fi
     fi
+  elif [ -e "${_REPO_ROOT}/.git" ]; then
+    printf '.git exists but is not a directory (worktree or submodule checkout?); Git-specific steps skipped.\n'
   else
     printf 'No .git directory detected (skipped Git-specific steps).\n'
   fi
@@ -165,13 +185,29 @@ _main() {
   [ -e "${_REPO_ROOT}" ] || _die "Path does not exist: ${_REPO_ROOT}"
   [ -d "${_REPO_ROOT}" ] || _die "Path is not a directory: ${_REPO_ROOT}"
 
-  # Resolve to absolute path if possible (best effort, no hard dependency on readlink -f).
-  if command -v readlink >/dev/null 2>&1; then
-    _RESOLVED="$(readlink -f "${_REPO_ROOT}" 2>/dev/null)"
-    if [ -n "${_RESOLVED}" ] && [ -d "${_RESOLVED}" ]; then
-      _REPO_ROOT="${_RESOLVED}"
-    fi
+  # Resolve to an absolute physical path; the scope guard below must see the
+  # real target, not a relative path or a symlink alias.
+  _RESOLVED="$(readlink -f "${_REPO_ROOT}" 2>/dev/null)"
+  if [ -z "${_RESOLVED}" ] || [ ! -d "${_RESOLVED}" ]; then
+    _RESOLVED="$(CDPATH= cd -- "${_REPO_ROOT}" 2>/dev/null && pwd -P)"
   fi
+  if [ -n "${_RESOLVED}" ] && [ -d "${_RESOLVED}" ]; then
+    _REPO_ROOT="${_RESOLVED}"
+  else
+    _die "Cannot resolve path: ${_REPO_ROOT}"
+  fi
+
+  # Scope guard: a recursive chmod as root must never run outside the trees
+  # that hold codebases -- a typo like / or /etc would loosen system files
+  # box-wide. Same allowlist idea as fix-drupal-platform-permissions.sh, plus
+  # /var/www, and at least one level below each allowed base.
+  case "${_REPO_ROOT}" in
+    /data/disk/*/?*|/var/aegir/?*|/var/www/?*|/home/*/?*)
+      ;;
+    *)
+      _die "Refusing ${_REPO_ROOT}; allowed: /data/disk/<user>/..., /var/aegir/..., /var/www/..., /home/<user>/..."
+      ;;
+  esac
 
   _msg "Target codebase root: ${_REPO_ROOT}"
   _msg "STRICT_MODE=${_STRICT_MODE}"
