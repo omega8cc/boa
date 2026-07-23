@@ -287,6 +287,17 @@ _backup_this_database_with_mydumper() {
   if [[ "${_DB_V}" == "5.7" ]]; then
     _MYDUMPER_LOCK_MODE="FTWRL"
   fi
+  ### Any non-transactional table makes mydumper abort the whole database
+  ### unless --trx-tables=0 is passed; InnoDB-only keeps the fast path.
+  _NON_TRX_COUNT=$(mysql -u root -s -N -e "SELECT COUNT(*) FROM \
+information_schema.TABLES WHERE TABLE_SCHEMA='${_DB}' AND \
+TABLE_TYPE='BASE TABLE' AND ENGINE IS NOT NULL AND \
+ENGINE NOT IN ('InnoDB')" 2> /dev/null)
+  _MYDUMPER_TRX_OPT=""
+  if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
+    _MYDUMPER_TRX_OPT="--trx-tables=0"
+  fi
+  ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
   mydumper \
     --defaults-file=/root/.my.cnf \
     --database=${_DB} \
@@ -298,6 +309,7 @@ _backup_this_database_with_mydumper() {
     --threads=4 \
     --long-query-guard=900 \
     --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
+    ${_MYDUMPER_TRX_OPT} \
     --verbose=1
 }
 

@@ -22,5 +22,13 @@ Of course, the system still maintains nightly backups of all your sites using th
 
 If you need a Restore-capable archive without opting out of super-fast dumps for the whole account, run the site Backup task and choose the **Site files with classic mysqldump DB** option under Backup Mode. That one archive bypasses `MyQuick.info` and produces a conventional single-file mysqldump that the Restore task can use, while `MyQuick.info` continues to provide fast dumps for all other Ægir tasks. It is the only Backup Mode option usable for the Site Restore task.
 
+## mydumper and myloader Compatibility
+
+mydumper 1.0 removed the `--overwrite-tables` option in favour of the equivalent `--drop-table=DROP`, which both the current and the 1.x lines accept. When BOA installs the packaged mydumper/myloader pair, it probes the installed `myloader` for the removed option: while the option is still available, `/usr/local/bin/myloader` remains a plain symlink to `/usr/bin/myloader`; once it is not, BOA writes a small wrapper there instead, which translates `--overwrite-tables` into `--drop-table=DROP` before executing the real binary. Every combination of older and newer callers and binaries therefore keeps working, with no required upgrade ordering.
+
+Nightly backups dump every database with mydumper, which in its default mode refuses to dump a database containing non-transactional tables (for example, a stray MyISAM table). The backup scripts count such tables first and add `--trx-tables=0` only for the affected databases, so mixed-engine databases are always included in the nightly archives, while InnoDB-only databases keep the fastest locking path.
+
+The `/root/.my.cnf` credentials file is written with exactly five groups — `[client]`, `[mysql]`, `[mysqldump]`, `[mydumper]` and `[myloader]` — separated by empty lines. mydumper and myloader parse this file with a strict key-file parser, so the separator lines must be genuinely empty, and only groups with real consumers are written.
+
 For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-pro/docs).
 
