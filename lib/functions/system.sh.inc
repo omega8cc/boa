@@ -9270,9 +9270,30 @@ _install_myquick_deb() {
     fi
     if [ -x "/usr/bin/mydumper" ]; then
       [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
-      [ -e "/usr/local/bin/myloader" ] && rm -f /usr/local/bin/myloader
       ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
-      ln -sfn /usr/bin/myloader /usr/local/bin/myloader
+      rm -f /usr/local/bin/myloader
+      ### Line-anchored probe: 1.0.x --help still mentions overwrite-tables
+      ### inside the --overwrite-unsafe description, so match the option only.
+      if [[ -x "/usr/bin/myloader" ]] \
+        && ! /usr/bin/myloader --help 2>&1 \
+        | grep -qE "^[[:space:]]+--overwrite-tables[[:space:]]"; then
+        cat > /usr/local/bin/myloader <<'MYLOADEREOF'
+#!/bin/bash
+# myloader >= 1.0 removed --overwrite-tables; translate for older callers.
+_MYL_ARGS=()
+for _MYL_A in "$@"; do
+  if [[ "${_MYL_A}" == "--overwrite-tables" ]]; then
+    _MYL_ARGS+=("--drop-table=DROP")
+  else
+    _MYL_ARGS+=("${_MYL_A}")
+  fi
+done
+exec /usr/bin/myloader "${_MYL_ARGS[@]}"
+MYLOADEREOF
+        chmod 755 /usr/local/bin/myloader
+      else
+        ln -sfn /usr/bin/myloader /usr/local/bin/myloader
+      fi
     fi
   else
     _MYQUICK_INSTALL_REQUIRED=YES
