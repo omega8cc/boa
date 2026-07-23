@@ -30,5 +30,5 @@ Nightly backups dump every database with mydumper, which in its default mode ref
 
 The `/root/.my.cnf` credentials file is written with exactly five groups — `[client]`, `[mysql]`, `[mysqldump]`, `[mydumper]` and `[myloader]` — separated by empty lines. mydumper and myloader parse this file with a strict key-file parser, so the separator lines must be genuinely empty, and only groups with real consumers are written.
 
-For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
+For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-pro/docs).
 
