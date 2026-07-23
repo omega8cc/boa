@@ -118,9 +118,12 @@ and git upgrades need the owner's rights:
   rm ~/static/control/unlock.info       restore the default protection
                                         (next nightly run)
 
-Back up first, run composer in the repository root, then run Verify
-on the platform when done — Verify also hands ownership straight
-back. An empty skip.info in a platform root excludes just that
+Back up the codebase yourself first — the Backup task never includes
+it. Run composer in the repository root, then WAIT until the PHP and
+Nginx caches expire and the sites are proven working BEFORE you run
+Verify on the platform: Verify hands ownership straight back, and a
+broken platform then stays broken until the next nightly run returns
+it to you. An empty skip.info in a platform root excludes just that
 platform from the nightly ownership management.
 
   Docs: https://docs.boa.io/using/deploying-code/in-place-upgrades
