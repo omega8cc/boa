@@ -30,6 +30,60 @@ _emit_valid_ips() {
   done
 }
 
+# Strict IPv6 / IPv6-CIDR validation for the nginx-native v6 allow store below:
+# the same address grammar scan_nginx.sh and nginx_deny6.sh accept (a strict
+# subset of what nginx parses), so a merely colon-shaped token from a provider
+# format change can never reach the whitelist. Prefix /1-/128; a bare address
+# means an exact host. /0 is refused — it would whitelist the entire IPv6
+# internet.
+_ipv6_hex="[0-9A-Fa-f]{1,4}"
+_ipv6_v4tail="(${_ipv4_octet}\.){3}${_ipv4_octet}"
+_ipv6_addr="((${_ipv6_hex}:){7}${_ipv6_hex}|(${_ipv6_hex}:){1,7}:|(${_ipv6_hex}:){1,6}:${_ipv6_hex}|(${_ipv6_hex}:){1,5}(:${_ipv6_hex}){1,2}|(${_ipv6_hex}:){1,4}(:${_ipv6_hex}){1,3}|(${_ipv6_hex}:){1,3}(:${_ipv6_hex}){1,4}|(${_ipv6_hex}:){1,2}(:${_ipv6_hex}){1,5}|${_ipv6_hex}:((:${_ipv6_hex}){1,6})|:((:${_ipv6_hex}){1,7}|:)|::(ffff(:0{1,4})?:)?${_ipv6_v4tail}|(${_ipv6_hex}:){1,4}:${_ipv6_v4tail})"
+_is_ipv6_or_cidr() { [[ "$1" =~ ^${_ipv6_addr}(/(12[0-8]|1[01][0-9]|[1-9][0-9]|[1-9]))?$ ]]; }
+_emit_valid_ips6() {
+  local _x
+  for _x in $(cat); do
+    if _is_ipv6_or_cidr "${_x}"; then
+      echo "${_x}"
+    else
+      echo "water: skipping invalid IPv6 range: ${_x}" >&2
+    fi
+  done
+}
+
+# nginx-native IPv6 allow store consumed by scan_nginx's _is_whitelisted_ip:
+# csf.allow cannot hold an IPv6 entry (csf is IPv4-only), so the published
+# crawler ipv6Prefix ranges land here instead and exempt a legitimate IPv6
+# crawler from the adaptive IDS scoring and the nginx-native v6 ban. Same
+# remove-tagged-then-add refresh model as the csf.allow providers, with one
+# deliberate difference: an empty fetch (endpoint down, format change) KEEPS
+# the provider's existing entries — a failed refresh must never strip
+# whitelist protection from a live crawler range. Untagged (manual operator)
+# lines are never touched.
+_WEB6_ALLOW="/var/xdrago/monitor/log/web6.allow"
+_update_web6_allow() {
+  local _tag="${1}" _list="${2}" _IP6
+  [ -d "${_WEB6_ALLOW%/*}" ] || mkdir -p "${_WEB6_ALLOW%/*}"
+  [ -f "${_WEB6_ALLOW}" ] || touch ${_WEB6_ALLOW}
+  if [ -z "${_list}" ]; then
+    echo "water: empty ${_tag} IPv6 list; keeping existing ${_WEB6_ALLOW} entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing ${_tag} ips from ${_WEB6_ALLOW}
+    sed -i "/${_tag}/d" ${_WEB6_ALLOW}
+    wait
+  fi
+  for _IP6 in ${_list}; do
+    if ! grep -qF "${_IP6} # ${_tag}" ${_WEB6_ALLOW} 2>/dev/null; then
+      echo "${_IP6} not yet listed in ${_WEB6_ALLOW}"
+      echo "${_IP6} # ${_tag} ips" >> ${_WEB6_ALLOW}
+    else
+      echo "${_IP6} already listed in ${_WEB6_ALLOW}"
+    fi
+  done
+}
+
 # Escape dots so an IP can be used safely in a regex (dots are wildcards
 # there — 1.2.3.4 would otherwise match 112.3.4).
 _rx() {
@@ -307,13 +361,26 @@ _whitelist_ip_googlebot() {
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl ${_crlGet} https://developers.google.com/static/search/apis/ipranges/googlebot.json \
+  # One fetch feeds both families: ipv4Prefix goes to csf.allow below,
+  # ipv6Prefix to the nginx-native v6 allow store (csf cannot hold IPv6).
+  _JSON=$(curl ${_crlGet} https://developers.google.com/static/search/apis/ipranges/googlebot.json 2>&1)
+  _IPS=$(echo "${_JSON}" \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
     | sed 's/"ipv4Prefix": *"//g' \
     | sed 's/"//g' \
     | sort \
     | uniq 2>&1)
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
+  _IPS6=$(echo "${_JSON}" \
+    | grep -o '"ipv6Prefix": *"[^"]*"' \
+    | sed 's/"ipv6Prefix": *"//g' \
+    | sed 's/"//g' \
+    | sort \
+    | uniq 2>&1)
+  _IPS6=$(echo "${_IPS6}" | _emit_valid_ips6)
+  echo _IPS6 googlebot list..
+  echo ${_IPS6}
+  _update_web6_allow googlebot "${_IPS6}"
   echo _IPS googlebot list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
@@ -346,13 +413,27 @@ _whitelist_ip_microsoft() {
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
     wait
   fi
-  _IPS=$(curl ${_crlGet} https://www.bing.com/toolbox/bingbot.json \
+  # One fetch feeds both families. bingbot.json publishes no ipv6Prefix
+  # entries as of 2026-07 (Bingbot crawls over IPv4 only), so the v6 leg is
+  # forward-compatible plumbing: an empty list keeps the store untouched.
+  _JSON=$(curl ${_crlGet} https://www.bing.com/toolbox/bingbot.json 2>&1)
+  _IPS=$(echo "${_JSON}" \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
     | sed 's/"ipv4Prefix": *"//g' \
     | sed 's/"//g' \
     | sort \
     | uniq 2>&1)
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
+  _IPS6=$(echo "${_JSON}" \
+    | grep -o '"ipv6Prefix": *"[^"]*"' \
+    | sed 's/"ipv6Prefix": *"//g' \
+    | sed 's/"//g' \
+    | sort \
+    | uniq 2>&1)
+  _IPS6=$(echo "${_IPS6}" | _emit_valid_ips6)
+  echo _IPS6 microsoft list..
+  echo ${_IPS6}
+  _update_web6_allow microsoft "${_IPS6}"
   echo _IPS microsoft list..
   echo ${_IPS}
   for _IP in ${_IPS}; do

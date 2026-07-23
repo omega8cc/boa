@@ -2,8 +2,6 @@
 
 You can easily add, update, or delete Solr cores. This process is fully automated and can be managed via the site-level active INI file. Ensure Solr is already installed on the system with the `SR9` and/or `SR7` keywords in the `_XTRAS_LIST` in the `/root/.barracuda.cnf` file.
 
-> **NOTE:** New Solr 9 Support is available only in BOA PRO.
-
 There are three INI variables you can use to control the Solr automated setup:
 - `solr_integration_module`
 - `solr_update_config`
