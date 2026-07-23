@@ -118,6 +118,9 @@
 
     * Valkey refreshed to 9.1.1.
 
+    * Backdrop CMS refreshed to 1.34.3 -- the platform builds picked up
+      the same-day upstream maintenance release automatically.
+
     * No new mandatory control file, no reboot and no OS upgrade gate this
       cycle. PRO/LTS parity holds -- every change ships in both editions.
 

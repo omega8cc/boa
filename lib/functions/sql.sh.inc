@@ -1447,74 +1447,28 @@ _forced_mysql_root_password_update() {
       fi
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     fi
+    ### Only groups with real consumers; separators must be empty lines --
+    ### a single-space line breaks the mydumper/myloader defaults-file parser.
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
+    echo "" >> /root/.my.cnf
     echo "[mysql]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
+    echo "" >> /root/.my.cnf
     echo "[mysqldump]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
+    echo "" >> /root/.my.cnf
     echo "[mydumper]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
+    echo "" >> /root/.my.cnf
     echo "[myloader]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[boa]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[barracuda]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[octopus]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[autobeowulf]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[autochimaera]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[autodaedalus]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[autoexcalibur]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[autoupboa]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[mycnfup]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[syncpass]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[xoct]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
-    echo "[xmass]" >> /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      echo " " >> /root/.my.cnf
+    echo "" >> /root/.my.cnf
     chmod 0600 /root/.my.cnf
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
@@ -1987,54 +1941,28 @@ _sql_root_credentials_update() {
         else
           mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
         fi
+        ### Only groups with real consumers; separators must be empty lines --
+        ### a single-space line breaks the mydumper/myloader defaults-file parser.
         echo "[client]" > /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${_PASWD}" >> /root/.my.cnf
-        echo " " >> /root/.my.cnf
+        echo "" >> /root/.my.cnf
         echo "[mysql]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
+        echo "" >> /root/.my.cnf
         echo "[mysqldump]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
+        echo "" >> /root/.my.cnf
         echo "[mydumper]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
+        echo "" >> /root/.my.cnf
         echo "[myloader]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[boa]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[barracuda]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[octopus]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[mycnfup]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[syncpass]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[xoct]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[xmass]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${_PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
+        echo "" >> /root/.my.cnf
         chmod 0600 /root/.my.cnf
         echo "db=mysql" > /root/.mytop
         chmod 0600 /root/.mytop
