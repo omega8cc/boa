@@ -3448,7 +3448,7 @@ _satellite_run_post_install() {
     rm -f ${_HM_ROOT}/*.txt
     _mrun "service nginx reload"
     cd ${_HM_ROOT}
-    cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
+    cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ${_HM_ROOT}/
     cd ${_ROOT}
   fi
 }
@@ -4981,6 +4981,89 @@ _satellite_check_octopus_vs_barracuda_ver() {
   rm -f /opt/tmp/testecho*
 }
 
+_satellite_domain_stamp_guard() {
+  ### The upgrade re-reads _DOMAIN from <root>/log/domain.txt, and a stale
+  ### stamp silently mis-targets destructive steps: the previous-install
+  ### test then declares the healthy platform a zombie and moves it to
+  ### backups/system before a rebuild that cannot bootstrap. Never trust
+  ### the single file — same doctrine as the /root/.my.cnf vs
+  ### /root/.my.pass.txt root-SQL cross-check: converge the witnesses to
+  ### one enforced truth before any upgrade step runs. The on-disk
+  ### hostmaster site (distro/NNN/sites/<domain>/settings.php) is the
+  ### primary arbiter when unambiguous: BOTH the stamp and the octopus cnf
+  ### _DOMAIN converge to it. Without an on-disk arbiter the two files
+  ### must agree; a disagreement aborts while nothing has been modified.
+  ### The cnf is parsed last-assignment-wins (source semantics) and healed
+  ### by replace-then-append so re-runs stay single-line idempotent.
+  ### Hostname-derived values are NOT a witness: custom satellite fronts
+  ### are legitimate and live only in these files.
+  local _cnfDom=""
+  local _realDom=""
+  local _realNr=0
+  local _octCnfG="/root/.${_USER}.octopus.cnf"
+  local _p _d
+  if [ -e "${_octCnfG}" ]; then
+    _cnfDom=$(grep "^_DOMAIN=" ${_octCnfG} 2>/dev/null \
+      | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "\n")
+  fi
+  for _p in ${_ROOT}/aegir/distro/[0-9]*/sites/*/settings.php; do
+    [ -e "${_p}" ] || continue
+    _d=$(basename $(dirname ${_p}))
+    case "${_d}" in
+      all|default) continue ;;
+    esac
+    if [ -z "${_realDom}" ]; then
+      _realDom="${_d}"
+      _realNr=1
+    elif [ "${_d}" != "${_realDom}" ]; then
+      _realNr=2
+    fi
+  done
+  if [ "${_realNr}" = "1" ] && [ -n "${_realDom}" ]; then
+    if [ "${_DOMAIN}" != "${_realDom}" ]; then
+      if [ -n "${_DOMAIN}" ]; then
+        _msg "NOTE: log/domain.txt (${_DOMAIN}) does not match the on-disk"
+        _msg "NOTE: hostmaster site (${_realDom}) — converging the stamp"
+      fi
+      _DOMAIN="${_realDom}"
+      echo "${_DOMAIN}" > ${_ROOT}/log/domain.txt
+      chown ${_USER}:${_USRG} ${_ROOT}/log/domain.txt &> /dev/null
+    fi
+    if [ -e "${_octCnfG}" ] && [ "${_cnfDom}" != "${_realDom}" ]; then
+      if [ -n "${_cnfDom}" ]; then
+        _msg "NOTE: ${_octCnfG} _DOMAIN (${_cnfDom}) does not match the"
+        _msg "NOTE: on-disk hostmaster site (${_realDom}) — converging"
+      fi
+      sed -i "/^_DOMAIN=/d" ${_octCnfG}
+      echo "_DOMAIN=\"${_realDom}\"" >> ${_octCnfG}
+    fi
+  else
+    if [ -n "${_cnfDom}" ] && [ -n "${_DOMAIN}" ]; then
+      if [ "${_cnfDom}" != "${_DOMAIN}" ]; then
+        _msg "FATAL ERROR: Octopus identity mismatch for ${_USER}"
+        _msg "FATAL ERROR: ${_ROOT}/log/domain.txt says: ${_DOMAIN}"
+        _msg "FATAL ERROR: ${_octCnfG} _DOMAIN says: ${_cnfDom}"
+        _msg "FATAL ERROR: and the on-disk platform cannot arbitrate"
+        _msg "FATAL ERROR: (settings.php for neither or several). Fix the"
+        _msg "FATAL ERROR: stale side before re-running the upgrade; a"
+        _msg "FATAL ERROR: hostname rename must update both (current"
+        _msg "FATAL ERROR: renameaegirhost does). Nothing was modified."
+        _clean_pid_exit _satellite_domain_stamp_guard
+      fi
+    elif [ -n "${_cnfDom}" ] && [ -z "${_DOMAIN}" ]; then
+      _DOMAIN="${_cnfDom}"
+      echo "${_DOMAIN}" > ${_ROOT}/log/domain.txt
+      chown ${_USER}:${_USRG} ${_ROOT}/log/domain.txt &> /dev/null
+      _msg "NOTE: empty log/domain.txt healed from ${_octCnfG}: ${_DOMAIN}"
+    elif [ -z "${_cnfDom}" ] && [ -n "${_DOMAIN}" ] && [ -e "${_octCnfG}" ]; then
+      ### No arbiter and no cnf witness: proceed on the stamp but never
+      ### launder the unverified value into the cnf.
+      _msg "NOTE: ${_octCnfG} carries no _DOMAIN line; proceeding on the"
+      _msg "NOTE: stamp ${_DOMAIN} (no on-disk hostmaster site to verify)"
+    fi
+  fi
+}
+
 _satellite_if_init_or_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_init_or_upgrade"
@@ -4992,6 +5075,7 @@ _satellite_if_init_or_upgrade() {
       if [ -e "${_ROOT}/log/domain.txt" ]; then
         _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>/dev/null | tr -d '\n')
       fi
+      _satellite_domain_stamp_guard
       if [ -z "${_DOMAIN}" ]; then
         _msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
         _clean_pid_exit _satellite_if_init_or_upgrade_a
@@ -5108,6 +5192,7 @@ _satellite_if_init_or_upgrade() {
         _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
         _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
       fi
+      _satellite_domain_stamp_guard
     fi
   else
     _msg "New Octopus Setup on ${_hName} in progress..."
@@ -6086,10 +6171,12 @@ _satellite_child_b_aegir_build() {
     fi
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
     cd ${_HM_ROOT}
-    mkdir -p sites/all/{modules,themes,libraries}
-    mkdir -p sites/${_DOMAIN}/files/{tmp,js,css}
-    chmod 02775 -R sites/${_DOMAIN}/files &> /dev/null
-    chgrp -R ${_WEBG} sites/${_DOMAIN}/files &> /dev/null
+    ### Absolute paths on purpose: when hostmaster-install failed, the cd
+    ### above fails too and relative writes pollute the previous cwd.
+    mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
+    mkdir -p ${_HM_ROOT}/sites/${_DOMAIN}/files/{tmp,js,css}
+    chmod 02775 -R ${_HM_ROOT}/sites/${_DOMAIN}/files &> /dev/null
+    chgrp -R ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/files &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
     ln -sfn ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
     rm -f /data/u/${_DOMAIN} &> /dev/null
@@ -6278,7 +6365,10 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
     cd ${_HM_ROOT}
-    mkdir -p sites/all/{modules,themes,libraries}
+    ### Absolute path on purpose: when hostmaster-migrate failed, the cd
+    ### above fails too and a relative mkdir pollutes the previous cwd
+    ### (stray aegir/distro/sites/all skeleton).
+    mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
     export DEBIAN_FRONTEND=text
     mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
       ${_ROOT}/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
