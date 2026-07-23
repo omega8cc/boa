@@ -3596,6 +3596,8 @@ _fix_wiped_nginx_config() {
   local _fIle=""
   local _wIped=""
   local _ctlDir=""
+  local _bLog=""
+  local _bcdaLaunched=0
   local _tPl="/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php"
   local _sTpl="/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php"
   for _bAse in /data/disk/*; do
@@ -3611,6 +3613,21 @@ _fix_wiped_nginx_config() {
       fi
     done
     [ -n "${_wIped}" ] || continue
+    ### The octopus installer refuses to run while barracuda lags the
+    ### release (same "Barracuda ${_rLsn}-" test it applies), so bring the
+    ### base system current first; the wipe is still present on the next
+    ### battery pass, which then arms the account upgrade normally.
+    _bLog=$(cat /var/log/barracuda_log.txt 2> /dev/null)
+    if [[ ! "${_bLog}" =~ "Barracuda ${_rLsn}-" ]]; then
+      if [ "${_bcdaLaunched}" = "0" ] && [ ! -e "/run/boa_run.pid" ]; then
+        _bcdaLaunched=1
+        _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); barracuda ${_rLsn} upgrade launched first"
+        rm -rf /opt/tmp/*
+        nohup /opt/local/bin/barracuda up-${_tRee} system noscreen \
+          >> /var/log/boa/barracuda-selfheal.log 2>&1 &
+      fi
+      continue
+    fi
     _uSr=$(basename "${_bAse}")
     _ctlDir="${_bAse}/static/control"
     if [ ! -d "${_ctlDir}" ]; then
