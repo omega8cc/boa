@@ -154,7 +154,7 @@ Also available here
 
   newrelic.info — your New Relic license key (pairs with a per-site
       INI opt-in)
-      https://docs.boa.io/using/on-your-site/new-relic
+      https://docs.boa.io/using/extra-services/new-relic
 
   compass.info — Ruby Gems (Sass/Compass) and NPM (Gulp/Bower)
       tooling for your shell
@@ -163,7 +163,7 @@ Also available here
   ip/access.txt — allow or deny visitor IPs for your sites
   ip/user_admin.txt — lock login + admin pages to your IPs
   ai/policy.txt — your AI crawler policy
-      https://docs.boa.io/using/on-your-site/access-control
+      https://docs.boa.io/using/protecting-your-site/access-control
 
   remote_backups/ — off-site backup credentials and config
       https://docs.boa.io/using/backups/mybackup-and-quota
