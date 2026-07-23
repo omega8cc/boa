@@ -145,6 +145,33 @@ and cURL trees) is enforced by the installer itself, so a box whose companion
 component fell back to a source build keeps working without any dpkg-level
 coupling.
 
+## Archived Legacy Database Packages
+
+Distinct from the `_USE_PREBUILT_PKGS` stack packages above -- a separate
+mechanism with its own trigger and no switch. Percona Server 5.7 is EOL and
+`repo.percona.com` has stopped serving its apt suite reliably; a fresh
+Daedalus/bookworm install that still defaults to `_DB_SERIES=5.7` would then
+get "no installation candidate" from apt and, because that error is silent,
+hang forever waiting for a MySQLD that never installs. BOA therefore archives
+the frozen 5.7 debs -- `percona-server-common-5.7`, `libperconaserverclient20`,
+`libperconaserverclient20-dev`, `percona-server-client-5.7`,
+`percona-server-server-5.7` -- on its own static `/dev/` mirror, each as a
+`.deb.gz` with a `.sha256` sidecar hashing the compressed file, exactly like
+the stack packages.
+
+The recovery is automatic and needs no configuration. When the apt path does
+not deliver `percona-server-server-5.7` on a fresh 5.7/bookworm box, BOA fetches
+the five archived debs from the mirror, verifies each checksum before unpacking,
+installs them with `dpkg -i`, and pulls the distro-lib dependencies
+(`libaio1`, `libdbi-perl` ...) from the OS repos with `apt-get install -f` --
+these are ordinary distro packages, so the dead Percona repo does not affect
+them. It is idempotent: an upgrade run on a box with a working 5.7 already
+installed never triggers it, and it only ever runs for the 5.7/bookworm Percona
+path -- the 8.x and Excalibur paths are untouched. If both the apt path and the
+mirror fallback fail to install a database server, the install now aborts
+immediately with a clear `FATAL ERROR:` naming both failures, instead of
+wedging in the MySQLD wait loop.
+
 ## Verified Baseline
 
 Fresh-install verification on Devuan Daedalus against the public mirrors
