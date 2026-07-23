@@ -106,6 +106,26 @@ ClassicTrack.info and delete FastTrack.info.
   Docs: https://docs.boa.io/using/sites-and-platforms/cloning-and-migrating
 
 
+Unlock your codebase for in-place upgrades
+------------------------------------------
+
+Nightly maintenance keeps your platform code owned by the backend
+user — day-to-day edits still work via the shared group, but composer
+and git upgrades need the owner's rights:
+
+  touch ~/static/control/unlock.info    hand code ownership to your
+                                        shell user (next nightly run)
+  rm ~/static/control/unlock.info       restore the default protection
+                                        (next nightly run)
+
+Back up first, run composer in the repository root, then run Verify
+on the platform when done — Verify also hands ownership straight
+back. An empty skip.info in a platform root excludes just that
+platform from the nightly ownership management.
+
+  Docs: https://docs.boa.io/using/deploying-code/in-place-upgrades
+
+
 When the task queue is stuck
 ----------------------------
 
