@@ -50,6 +50,6 @@ You can obtain a **BOA PRO** license from [Omega8.cc](https://omega8.cc/licenses
 
 ## **PRO-Only** Features
 
-The **extended backup sub-system** is exclusive to **BOA PRO**.
+The **extended backup sub-system** is exclusive to **BOA PRO** — designed as something extra for those who decided to support BOA.
 
 Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md)
