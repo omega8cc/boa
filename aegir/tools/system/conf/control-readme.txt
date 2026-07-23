@@ -63,22 +63,67 @@ ALL never skips anything.
 
 Platform symbols:
 
-  Drupal 11.4   DE4 + CK3 Commerce v.3, CMS Drupal CMS, LGV LocalGov,
-                THR Thunder
-  Drupal 11.3   DE3 + FOS farmOS, OCS OpenCulturas, VBX Varbase 10
-  Drupal 11.2   DE2
-  Drupal 11.1   DE1
-  Drupal 10.6   DX6
-  Drupal 10.5   DX5
-  Drupal 10.4   DX4
-  Drupal 10.3   DX3 + DXP DXPR Marketing, EZC EzContent
-  Drupal 10.2   DX2 + OFD OpenFed, SOC Social
-  Drupal 10.1   DX1 + CK2 Commerce v.2
-  Drupal 10.0   DX0
-  Drupal 9      DL9 + OLS OpenLucius, OPG Opigno LMS
-  Drupal 7      DL7 + CK1 Commerce v.1, UC7 Ubercart
-  Drupal 6      DL6 Pressflow (LTS) + UC6 Ubercart
-  Backdrop CMS  BDR (needs Backdrop support enabled on the server)
+  Backdrop (needs Backdrop support enabled on the server)
+    BDR — Backdrop CMS prod/stage/dev
+
+  Drupal 11.4
+    DE4 — Drupal 11.4 prod/stage/dev
+    CK3 — Commerce v.3
+    CMS — Drupal CMS
+    LGV — LocalGov
+    THR — Thunder
+
+  Drupal 11.3
+    DE3 — Drupal 11.3 prod/stage/dev
+    FOS — farmOS
+    OCS — OpenCulturas
+    VBX — Varbase 10
+
+  Drupal 11.2
+    DE2 — Drupal 11.2 prod/stage/dev
+
+  Drupal 11.1
+    DE1 — Drupal 11.1 prod/stage/dev
+
+  Drupal 10.6
+    DX6 — Drupal 10.6 prod/stage/dev
+
+  Drupal 10.5
+    DX5 — Drupal 10.5 prod/stage/dev
+
+  Drupal 10.4
+    DX4 — Drupal 10.4 prod/stage/dev
+
+  Drupal 10.3
+    DX3 — Drupal 10.3 prod/stage/dev
+    DXP — DXPR Marketing
+    EZC — EzContent
+
+  Drupal 10.2
+    DX2 — Drupal 10.2 prod/stage/dev
+    OFD — OpenFed
+    SOC — Social
+
+  Drupal 10.1
+    DX1 — Drupal 10.1 prod/stage/dev
+    CK2 — Commerce v.2
+
+  Drupal 10.0
+    DX0 — Drupal 10.0 prod/stage/dev
+
+  Drupal 9
+    DL9 — Drupal 9 prod/stage/dev
+    OLS — OpenLucius
+    OPG — Opigno LMS
+
+  Drupal 7
+    DL7 — Drupal 7 prod/stage/dev
+    CK1 — Commerce v.1
+    UC7 — Ubercart
+
+  Drupal 6
+    DL6 — Pressflow (LTS) prod/stage/dev
+    UC6 — Ubercart
 
 Older cores need matching legacy PHP versions installed — on hosted
 BOA ask your host if you need one enabled.
@@ -154,7 +199,7 @@ Also available here
 
   newrelic.info — your New Relic license key (pairs with a per-site
       INI opt-in)
-      https://docs.boa.io/using/on-your-site/new-relic
+      https://docs.boa.io/using/extra-services/new-relic
 
   compass.info — Ruby Gems (Sass/Compass) and NPM (Gulp/Bower)
       tooling for your shell
@@ -163,7 +208,7 @@ Also available here
   ip/access.txt — allow or deny visitor IPs for your sites
   ip/user_admin.txt — lock login + admin pages to your IPs
   ai/policy.txt — your AI crawler policy
-      https://docs.boa.io/using/on-your-site/access-control
+      https://docs.boa.io/using/protecting-your-site/access-control
 
   remote_backups/ — off-site backup credentials and config
       https://docs.boa.io/using/backups/mybackup-and-quota
