@@ -376,7 +376,7 @@ EOFMYSQL
               --port=3306 \
               --directory=${_USR}/src/${_DBN}/ \
               --threads=4 \
-              --overwrite-tables \
+              --drop-table=DROP \
               --verbose=1
             echo "INFO: site ${_Dom} db import on ${_oct} complete"
           else
