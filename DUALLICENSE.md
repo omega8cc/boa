@@ -2,7 +2,7 @@
 
 **BOA** remains a **Free/Libre Open Source Project**. While all of **BOA** code is **Free/Libre Open Source**, only the **BOA LTS** branch and **Ægir** are available without any cost or restrictions.
 
-- **LTS**: This public branch remains completely free to use without any commercial license, as it has been from the beginning (previously named HEAD or STABLE). This branch should be considered the **BOA Long Term Support** variant, with slow updates focused on security and bug fixes, and limited new features.
+- **LTS**: This public branch remains completely free to use without any commercial license, as it has been from the beginning (previously named HEAD or STABLE). This branch should be considered the **BOA Long Term Support** variant.
 
 - **DEV**: This public branch requires a commercial license for both installation and upgrades. It includes the latest features, security updates, bug fixes, and updated service versions. This branch should not be used in production without extensive testing.
 
@@ -18,17 +18,13 @@ The LTS branch is **kept up to date alongside PRO**: frequent security updates a
 
 A **feature-freeze may be announced in the future**, once the project enters a quieter, security-mainly update cycle — but no date is set, and it should not be assumed.
 
-Several of the upcoming and most impactful features are planned **exclusively for BOA PRO**, as outlined in the [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/ROADMAP.md).
+The **extended backup sub-system** is available **exclusively for BOA PRO**, as outlined in the [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md).
 
 For a professionally supported stack — the PRO support levels, monitoring and managed updates behind your own servers — [BOA PRO](https://omega8.cc/licenses) is the recommended upgrade path.
 
 ## Practical Differences Between **LTS** and **PRO**
 
-Over time, **PRO** will be ahead of **LTS** as its name suggests.
-
-The `BOA-5.88.811` release is the last parallel release including all features developed for **PRO**, so both **PRO** and **LTS** users will enjoy the same improvements, bug fixes, and new features.
-
-In the future, new features will be regularly added to **PRO**, while **LTS** will receive only security updates and critical fixes for BOA itself. There may be exceptions, and some new features may find their way to **LTS**, but only as exceptions.
+**LTS** is kept **1:1** with **PRO**: both branches receive the same improvements, bug fixes, and new features. The only functional difference is the **extended backup sub-system**, available exclusively in **BOA PRO**.
 
 The **PRO** will be available in three main variants, and while all **BOA PRO** licenses will grant access to the same **BOA PRO** branch and features, they will differ in terms of available support levels.
 
@@ -52,8 +48,8 @@ Ideal for: Enterprises requiring comprehensive, around-the-clock support with qu
 
 You can obtain a **BOA PRO** license from [Omega8.cc](https://omega8.cc/licenses).
 
-## Upcoming **PRO-Only** Features
+## **PRO-Only** Features
 
-Certain planned features are likely to be exclusive to **BOA PRO**. If these features are added to other **BOA** versions, it will be with a significant delay.
+The **extended backup sub-system** is exclusive to **BOA PRO** — designed as something extra for those who decided to support BOA.
 
-Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/ROADMAP.md)
+Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md)
