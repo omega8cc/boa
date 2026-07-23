@@ -1437,7 +1437,7 @@ _update_agents() {
   fi
 
   _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/tools/bin/screenfetch" f99 --guard screenfetch
-  _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f99 --guard fixrepo
+  _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f98 --guard fixrepo
   _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f93 --guard renameaegirhost
   _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f79 --guard autosymlink
   _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f93 --guard updatesymlinks
@@ -3679,7 +3679,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f95 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f99 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
-    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f99 --guard /local/bin/fixrepo
+    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f98 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/${_tBn}/loadguard" f98 --guard /local/bin/loadguard
