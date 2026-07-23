@@ -66,10 +66,10 @@ visits them on a schedule, so the grant is durable until you change it.
 **Codebases that carry a registered site get nightly maintenance.** The
 nightly worker re-asserts BOA's standard model on registered platforms
 under `~/static`: directories back to plain `0775` (this clears the setgid
-bit) and files to `0664` (group-write itself survives). It also enforces
-the codebase lock model: by default the tree is chowned to `oN`, or to
-`oN.ftp` while `~/static/control/unlock.info` exists; a `skip.info` file in
-the codebase root opts that tree out of the ownership sweep. In practice
+bit) and files to `0664` (group-write itself survives). The same pass also
+manages the ownership direction — chowning the tree to `oN`, or to `oN.ftp`
+while the tenant's `unlock.info` switch exists — as described in
+[UNLOCK.md](UNLOCK.md). In practice
 the setgid loss is harmless for the standard pair, because both identities
 already share `users` as their primary group.
 
