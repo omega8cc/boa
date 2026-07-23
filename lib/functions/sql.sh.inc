@@ -1161,6 +1161,112 @@ _prep_for_install_db_sql() {
 
 }
 
+#
+# Fetch one archived Percona .deb.gz plus its .sha256 sidecar from the BOA dev
+# mirror, verify the checksum of the COMPRESSED file (the sidecar hashes the
+# .gz, so the check runs before gunzip), then gunzip in place -- leaving the
+# plain .deb in the current dir. Same _crlGet/_urlDev fetch + sha256sum -c
+# verify idiom as _install_boa_deb, so no new curl flags reach the shared
+# fetch path (the fleet still has curl older than the flags a rewrite would
+# add). Returns non-zero on any fetch or integrity failure so the caller never
+# installs an unverified package.
+_fetch_archived_sql_deb() {
+  local _debFile="${1}"
+  local _debSum=""
+  [[ -z "${_debFile}" ]] && return 1
+  rm -f "${_debFile}" "${_debFile}.gz" "${_debFile}.gz.sha256"
+  if ! curl ${_crlGet} "${_urlDev}/${_debFile}.gz.sha256" -o "${_debFile}.gz.sha256"; then
+    _msg "NOTE: Fetch of archived ${_debFile}.gz.sha256 failed"
+    rm -f "${_debFile}.gz.sha256"
+    return 1
+  fi
+  if ! curl ${_crlGet} "${_urlDev}/${_debFile}.gz" -o "${_debFile}.gz"; then
+    _msg "NOTE: Fetch of archived ${_debFile}.gz failed"
+    rm -f "${_debFile}.gz" "${_debFile}.gz.sha256"
+    return 1
+  fi
+  _debSum=$(awk '{print $1}' "${_debFile}.gz.sha256" 2>/dev/null)
+  if [[ -z "${_debSum}" ]] \
+    || ! echo "${_debSum}  ${_debFile}.gz" | sha256sum -c - &> /dev/null; then
+    _msg "NOTE: Checksum mismatch on archived ${_debFile}.gz"
+    rm -f "${_debFile}.gz" "${_debFile}.gz.sha256"
+    return 1
+  fi
+  if ! gunzip -q "${_debFile}.gz"; then
+    _msg "NOTE: Decompression of archived ${_debFile}.gz failed"
+    rm -f "${_debFile}" "${_debFile}.gz" "${_debFile}.gz.sha256"
+    return 1
+  fi
+  rm -f "${_debFile}.gz.sha256"
+  return 0
+}
+
+#
+# Mirror fallback for the archived Percona 5.7 package set.
+#
+# Percona 5.7 is EOL and repo.percona.com has stopped serving its apt suite.
+# On a fresh daedalus/bookworm box with _DB_SERIES=5.7 the apt attempts in
+# _install_with_aptitude_sql then deliver nothing -- _mrun swallows the "no
+# installation candidate" error -- and the install would otherwise wedge
+# forever in the _check_sql_running WAIT loop. BOA archives the frozen 5.7 debs
+# on its own static /dev/ mirror; fetch, verify and install them from there so
+# a fresh 5.7 install survives repo.percona.com being unreachable. The
+# distro-lib Depends (libaio1, libnuma1, libdbi-perl ...) still come from the
+# OS repos via the trailing apt-get install -f, unaffected by the dead Percona
+# repo. Idempotent: no-ops when the server package is already installed, and
+# leaves nothing half-fetched behind on failure so the caller's fail-fast fires
+# cleanly.
+_db_server_mirror_fallback_57() {
+  if [[ "${_DEBUG_MODE}" = "YES" ]]; then
+    _msg "PROC: _db_server_mirror_fallback_57"
+  fi
+  local _dbVrn="5.7.44-48-1"
+  local _dbPkg=""
+  local _debFile=""
+  local _debSet=""
+  # Dependency-safe order: common, the two client libs, client, then server.
+  # A single dpkg -i of the whole set lets dpkg configure them in Depends
+  # order regardless of the order they are listed here.
+  local _dbPkgs="percona-server-common-5.7 libperconaserverclient20 libperconaserverclient20-dev percona-server-client-5.7 percona-server-server-5.7"
+  if _pkg_installed "percona-server-server-5.7"; then
+    return 0
+  fi
+  _msg "NOTE: Percona 5.7 apt repository did not deliver percona-server-server-5.7"
+  _msg "INFO: Installing archived Percona 5.7 packages from the BOA mirror..."
+  # The set Pre-Depends on mysql-common and debsums (dpkg -i cannot satisfy a
+  # missing Pre-Depends and the whole chain collapses to removal on apt -f),
+  # and the -dev lib needs zlib1g-dev. All three are distro packages, still
+  # reachable with the Percona repo dead; the rest of the Depends chain is
+  # completed by the trailing apt-get install -f. Harness-proven on a bare
+  # bookworm base.
+  _mrun "apt-get install ${_aptYesUnth} mysql-common debsums zlib1g-dev"
+  mkdir -p /var/opt
+  cd /var/opt
+  for _dbPkg in ${_dbPkgs}; do
+    _debFile="${_dbPkg}_${_dbVrn}.${_SQL_OS_CODE}_amd64.deb"
+    if ! _fetch_archived_sql_deb "${_debFile}"; then
+      _msg "NOTE: Archived Percona 5.7 mirror fetch failed for ${_dbPkg}"
+      [[ -n "${_debSet}" ]] && rm -f ${_debSet}
+      return 1
+    fi
+    _debSet="${_debSet} ${_debFile}"
+  done
+  # dpkg -i the whole set at once (dpkg orders configuration by Depends), then
+  # apt-get install -f pulls the distro-lib Depends from the OS repos. The
+  # authoritative success signal is the _pkg_installed re-check below, not the
+  # dpkg exit code, so a first-pass unmet-Depends dpkg return is expected.
+  dpkg -i ${_debSet} &> /dev/null
+  _mrun "apt-get install -f ${_aptYesUnth}"
+  rm -f ${_debSet}
+  ldconfig 2> /dev/null
+  if _pkg_installed "percona-server-server-5.7"; then
+    _msg "INFO: Archived Percona 5.7 packages installed from the BOA mirror"
+    return 0
+  fi
+  _msg "NOTE: Archived Percona 5.7 install from the BOA mirror did not complete"
+  return 1
+}
+
 _install_with_aptitude_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _install_with_aptitude_sql"
@@ -1188,6 +1294,32 @@ _install_with_aptitude_sql() {
   elif [ "${_SQL_SCR}" = "DPKG" ]; then
     _dpkg_install_mysql
     _mrun "${_INSTAPP} ${_SQLXTR}"
+  fi
+  # Archived Percona 5.7 mirror fallback + loud fail-fast. Scoped to the fresh
+  # 5.7/bookworm Percona apt path only: 8.x, excalibur, MySQL and the DPKG
+  # branch are untouched, and an upgrade run with 5.7 already installed skips
+  # both the fallback (idempotent) and the abort. When repo.percona.com is
+  # unreachable the apt attempts above deliver nothing (5.7 is EOL and _mrun
+  # hides the "no installation candidate" error), so recover from BOA's own
+  # archived-deb mirror. If even that fails, abort here -- before any
+  # _check_sql_running is reached -- with a clear reason, rather than hang
+  # forever in the WAIT-for-MySQLD loop.
+  if [[ "${_DB_SERIES}" = "5.7" ]] \
+    && [[ "${_SQL_OS_CODE}" = "bookworm" ]] \
+    && [[ "${_DB_SERVER}" = "Percona" ]]; then
+    if ! _pkg_installed "${_SQLDEB}"; then
+      _db_server_mirror_fallback_57
+    fi
+    if ! _pkg_installed "${_SQLDEB}"; then
+      _msg "FATAL ERROR: No ${_DB_SERVER} 5.7 database server package could be installed."
+      _msg "FATAL ERROR: The Percona 5.7 apt repository (repo.percona.com) is unreachable"
+      _msg "FATAL ERROR: -- 5.7 is EOL upstream -- AND the BOA archived-deb mirror fallback"
+      _msg "FATAL ERROR: also failed. Aborting the install now instead of waiting forever"
+      _msg "FATAL ERROR: for a MySQLD that can never start. Check network and DNS access to"
+      _msg "FATAL ERROR: the BOA mirrors (${_urlDev}) and run the install again."
+      rm -f /run/boa_sql_maintenance.pid
+      _clean_pid_exit _db_server_install_5_7_unavailable
+    fi
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
