@@ -394,6 +394,14 @@ _NGINX_V6_BAN_TTL=900
 # nginx-native IPv6 ban store (append-with-expiry): scan_nginx writes offenders,
 # nginx_deny6.sh prunes+mirrors them into the geo set. Not a csf file.
 _WEB6_STORE="/var/xdrago/monitor/log/web6.tempban"
+# nginx-native IPv6 ALLOW store — the v6 counterpart of csf.allow, which cannot
+# hold an IPv6 entry (csf is IPv4-only). guest-water.sh mirrors the published
+# Googlebot ipv6Prefix crawl ranges into it daily (Bingbot too, once Microsoft
+# publishes any); untagged manual entries survive that refresh. One
+# `<ip6>[/bits] # comment` per line. _is_whitelisted_ip consults it for every
+# IPv6 client, so a legitimate IPv6 crawler is exempt from scoring AND banning
+# at the same gates that protect an IPv4 crawler via csf.allow.
+_WEB6_ALLOW="/var/xdrago/monitor/log/web6.allow"
 
 # ==============================
 # Load Configuration File
@@ -655,6 +663,42 @@ _is_private_ip6() {
   [[ "$1" =~ ^(::1|::|[Ff][CcDd][0-9A-Fa-f][0-9A-Fa-f]:|[Ff][Ee][89AaBb][0-9A-Fa-f]:) ]]
 }
 
+# Expand a syntactically valid IPv6 address into 8 decimal hextet values in
+# _V6_HEX[0..7] (assigned in the caller's scope). Handles :: compression and a
+# trailing embedded IPv4 (converted to two hextets). Returns non-zero unless the
+# expansion yields exactly 8 groups of clean hex — inputs are pre-validated with
+# _validate_ip6 everywhere, so a failure here is defence-in-depth only. Pure
+# builtins: no subshells, printf -v for the v4 conversion.
+_expand_ip6() {
+  local _in="$1" _v4 _a _b _c _d _h _i _n IFS=$' \t\n'
+  local -a _LP=() _RP=()
+  _V6_HEX=()
+  if [[ "${_in}" == *.* ]]; then
+    _v4="${_in##*:}"
+    IFS=. read -r _a _b _c _d <<< "${_v4}"
+    [[ "${_d:-}" =~ ^[0-9]+$ ]] || return 1
+    printf -v _h '%x:%x' $(( (_a << 8) + _b )) $(( (_c << 8) + _d ))
+    _in="${_in%"${_v4}"}${_h}"
+  fi
+  if [[ "${_in}" == *::* ]]; then
+    [[ -n "${_in%%::*}" ]] && IFS=: read -ra _LP <<< "${_in%%::*}"
+    [[ -n "${_in#*::}" ]] && IFS=: read -ra _RP <<< "${_in#*::}"
+    _n=$(( 8 - ${#_LP[@]} - ${#_RP[@]} ))
+    (( _n >= 1 )) || return 1
+  else
+    IFS=: read -ra _LP <<< "${_in}"
+    _n=0
+  fi
+  for _h in "${_LP[@]}" "${_RP[@]}"; do
+    [[ "${_h}" =~ ^[0-9A-Fa-f]{1,4}$ ]] || return 1
+  done
+  _i=0
+  for _h in "${_LP[@]}"; do _V6_HEX[_i]=$(( 16#${_h} )); (( _i++ )); done
+  while (( _n-- > 0 )); do _V6_HEX[_i]=0; (( _i++ )); done
+  for _h in "${_RP[@]}"; do _V6_HEX[_i]=$(( 16#${_h} )); (( _i++ )); done
+  (( _i == 8 ))
+}
+
 # NOTE: Removed _resolve_real_ip_traversal function (its logic is inlined in the main loop for performance)
 
 # Function to check if an IP is banned using associative array
@@ -679,7 +723,53 @@ _is_allowed_local() {
   return 1
 }
 
-# Return 0 if IPv4 $1 is whitelisted in csf.allow (exact host or CIDR).
+# Return 0 if IPv6 $1 lies inside any prefix loaded from the nginx-native v6
+# allow store (guest-water-maintained crawler ranges + manual entries). The
+# store entries are pre-expanded at load time to 8 decimal hextets + prefix
+# bits, so the walk is pure integer arithmetic: full hextets compare exactly,
+# a non-hextet-aligned boundary compares under a partial mask. The verdict is
+# cached per address — the same client repeats across many log lines in a scan
+# window, so each unique IPv6 pays for one expansion + one prefix walk per run.
+_is_whitelisted_ip6() {
+  local _ip="$1" _e _bits _full _rem _msk _i _hit IFS=$' \t\n'
+  local -a _V6_HEX _P
+  (( ${#_V6_ALLOW[@]} )) || return 1
+  case "${_V6_WL_CACHE["${_ip}"]:-}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  if ! _expand_ip6 "${_ip}"; then
+    _V6_WL_CACHE["${_ip}"]=0
+    return 1
+  fi
+  for _e in "${_V6_ALLOW[@]}"; do
+    read -r -a _P <<< "${_e}"
+    _bits="${_P[8]}"
+    _full=$(( _bits / 16 ))
+    _rem=$(( _bits % 16 ))
+    _hit=1
+    for (( _i = 0; _i < _full; _i++ )); do
+      (( _V6_HEX[_i] == _P[_i] )) || { _hit=0; break; }
+    done
+    if (( _hit && _rem )); then
+      _msk=$(( (0xFFFF << (16 - _rem)) & 0xFFFF ))
+      (( (_V6_HEX[_full] & _msk) == (_P[_full] & _msk) )) || _hit=0
+    fi
+    if (( _hit )); then
+      _V6_WL_CACHE["${_ip}"]=1
+      return 0
+    fi
+  done
+  _V6_WL_CACHE["${_ip}"]=0
+  return 1
+}
+
+# Return 0 if $1 is whitelisted — IPv4 in csf.allow (exact host or CIDR), IPv6
+# in the nginx-native v6 allow store (csf.allow cannot hold an IPv6 entry, so
+# guest-water.sh mirrors the published crawler ipv6Prefix ranges into
+# _WEB6_ALLOW instead; see _is_whitelisted_ip6). The family dispatch here is
+# the single point that makes EVERY scoring gate and the _block_ip keystone
+# v6-aware at once.
 #
 # guest-water.sh maintains /etc/csf/csf.allow daily with every provider
 # range the firewall trusts: Cloudflare, Googlebot, Bingbot, Pingdom,
@@ -700,6 +790,11 @@ _is_allowed_local() {
 # block decision on every port, including 443.
 _is_whitelisted_ip() {
   local _ip="$1" _a _b _c _d _ipi _k
+  # IPv6 client (only ever scored when _V6_ON): consult the v6 allow store.
+  if [[ "${_ip}" == *:* ]]; then
+    _is_whitelisted_ip6 "${_ip}"
+    return
+  fi
   [[ -n "${_CSF_ALLOW_IPS["${_ip}"]:-}" ]] && return 0
   IFS=. read -r _a _b _c _d <<< "${_ip}"
   [[ -z "${_CSF_ALLOW_CIDR_OCTET1["${_a}"]:-}" ]] && return 1
@@ -727,12 +822,13 @@ _is_logged_in() {
 _block_ip() {
   local _IP="$1"
   local _SILENT="${2:-}"
-  # Keystone safety net: never block any IP the firewall already whitelists
-  # (exact host or CIDR). guest-water.sh maintains the allow list daily;
-  # blocking one of its entries would drop an entire CDN PoP, monitoring
-  # network, or search-engine crawler and surface as origin 502/520 errors.
-  # This guard covers every call path to _block_ip, including bulk passes
-  # from _handle_ddos_blocking and _handle_path_flood_blocking.
+  # Keystone safety net: never block any whitelisted IP — IPv4 via csf.allow
+  # (exact host or CIDR), IPv6 via the nginx-native v6 allow store; both are
+  # maintained daily by guest-water.sh. Blocking one of those entries would
+  # drop an entire CDN PoP, monitoring network, or search-engine crawler and
+  # surface as origin 502/520 errors. This guard covers every call path to
+  # _block_ip, including bulk passes from _handle_ddos_blocking and
+  # _handle_path_flood_blocking.
   if _is_whitelisted_ip "${_IP}"; then
     _verbose_log "Whitelisted IP ${_IP} -- refusing to block" "_block_ip"
     return
@@ -1572,6 +1668,36 @@ if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
       _CSF_ALLOW_CIDR_OCTET1["${_a}"]=1
     fi
   done < "${_CSF_ALLOW_FILE}"
+fi
+
+# Load the nginx-native IPv6 allow store — the v6 counterpart of the csf.allow
+# loader above, closing the gap where a legitimate IPv6 crawler tripping the
+# scoring thresholds had no whitelist to save it. guest-water.sh maintains the
+# store daily from the published Googlebot/Bingbot ipv6Prefix ranges; untagged
+# manual entries survive its refresh. Each `<ip6>[/bits]` entry is strictly
+# validated (comment-stripped, bits 1-128, _validate_ip6 grammar) and
+# pre-expanded to "8 hextets + bits" so _is_whitelisted_ip6 runs on pure
+# integer arithmetic; a malformed line is skipped, never fatal. Gated on
+# _V6_ON: with the v6 arm opted out no IPv6 client is ever scored, so there is
+# nothing to whitelist and behaviour stays byte-identical to v4-only.
+_V6_ALLOW=()
+declare -A _V6_WL_CACHE
+if (( _V6_ON )) && [[ -f "${_WEB6_ALLOW}" ]]; then
+  while IFS= read -r _aline; do
+    _entry="${_aline%%#*}"
+    _entry="${_entry//[[:space:]]/}"
+    [[ -n "${_entry}" ]] || continue
+    _addr6="${_entry%%/*}"
+    _bits6=128
+    if [[ "${_entry}" == */* ]]; then
+      _bits6="${_entry##*/}"
+      [[ "${_bits6}" =~ ^[0-9]+$ ]] || continue
+      (( _bits6 >= 1 && _bits6 <= 128 )) || continue
+    fi
+    _validate_ip6 "${_addr6}" || continue
+    _expand_ip6 "${_addr6}" || continue
+    _V6_ALLOW+=( "${_V6_HEX[0]} ${_V6_HEX[1]} ${_V6_HEX[2]} ${_V6_HEX[3]} ${_V6_HEX[4]} ${_V6_HEX[5]} ${_V6_HEX[6]} ${_V6_HEX[7]} ${_bits6}" )
+  done < "${_WEB6_ALLOW}"
 fi
 
 # ==============================
