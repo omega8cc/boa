@@ -1,5 +1,16 @@
 # In-Place Upgrades — Unlocking Your Codebase (`unlock.info`)
 
+**Never use this method unless you are prepared for extended downtime.**
+An in-place upgrade has no safety net beyond the one you build yourself,
+and the recovery path is slow by design: one mistake — most commonly
+running a platform *Verify* before the PHP and Nginx caches have expired
+and shown that the sites really still work — hands code ownership
+straight back to the backend user while the new code is broken. From that
+moment you cannot touch the code: the sites stay down until the next
+nightly run returns ownership to you, or until support can step in. If a
+day of downtime is unacceptable, take the safe path instead: build the
+upgraded codebase as a new platform and migrate your sites onto it.
+
 Every night BOA re-asserts a **codebase lock** on the platforms your sites
 run on: the code trees are chowned back to your account's backend user
 (`o1`), and a standard permission map is applied. Day-to-day work is not
@@ -24,17 +35,6 @@ registered platform codebases are chowned to your **shell user** instead,
 so composer, git and chmod all work in an ordinary shell session. Remove
 the file and the next nightly run hands ownership back to the backend user
 and restores the default protection.
-
-**Never use this method unless you are prepared for extended downtime.**
-An in-place upgrade has no safety net beyond the one you build yourself,
-and the recovery path is slow by design: one mistake — most commonly
-running a platform *Verify* before the PHP and Nginx caches have expired
-and shown that the sites really still work — hands code ownership
-straight back to the backend user while the new code is broken. From that
-moment you cannot touch the code: the sites stay down until the next
-nightly run returns ownership to you, or until support can step in. If a
-day of downtime is unacceptable, take the safe path instead: build the
-upgraded codebase as a new platform and migrate your sites onto it.
 
 ## The upgrade workflow
 
