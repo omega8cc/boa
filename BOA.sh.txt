@@ -3598,6 +3598,9 @@ _fix_wiped_nginx_config() {
   local _ctlDir=""
   local _bLog=""
   local _bcdaLaunched=0
+  local _rBoot=""
+  local _rBootLogged=0
+  local _hName=""
   local _tPl="/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php"
   local _sTpl="/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php"
   for _bAse in /data/disk/*; do
@@ -3625,6 +3628,30 @@ _fix_wiped_nginx_config() {
         rm -rf /opt/tmp/*
         nohup /opt/local/bin/barracuda up-${_tRee} system noscreen \
           >> /var/log/boa/barracuda-selfheal.log 2>&1 &
+      fi
+      continue
+    fi
+    ### The barracuda run may stage a new kernel, and on auto-reboot boxes
+    ### autoupboa then fires a gated boa reboot that could land mid-octopus
+    ### (its safeguards have been beaten before). Same signals and box class
+    ### as autoupboa _if_new_kernel_reboot: defer arming until after the
+    ### reboot -- the wipe persists, so the next pass arms cleanly.
+    if [ -z "${_rBoot}" ]; then
+      _rBoot=0
+      _hName="$(cat /etc/hostname 2> /dev/null | tr -d '\n')"
+      if [ -e "/root/.allow.auto.reboot.cnf" ] || [ -e "/root/.host8.cnf" ] \
+        || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
+        if { [ -e "/run/reboot-required.pkgs" ] \
+          && grep -q linux /run/reboot-required.pkgs 2> /dev/null; } \
+          || [ "$(/opt/local/bin/boa info 2> /dev/null | grep -c Next)" -ge 1 ]; then
+          _rBoot=1
+        fi
+      fi
+    fi
+    if [ "${_rBoot}" = "1" ]; then
+      if [ "${_rBootLogged}" = "0" ]; then
+        _rBootLogged=1
+        _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); kernel reboot pending, arming deferred"
       fi
       continue
     fi
