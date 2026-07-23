@@ -60,7 +60,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 - [Backdrop CMS (latest stable release)](https://backdropcms.org)
 
-* Backdrop platforms track the newest release automatically (version-less `backdrop.tar.gz`), so there is no per-version pin to maintain.
+* Backdrop platforms track the newest release automatically (the mirror's `backdrop.txt` stamp selects the versioned `backdrop-<ver>.tar.gz` to fetch, managed like the Drupal core tarballs), so there is no per-version pin to maintain.
 * Each Backdrop platform ships the Valkey/Redis object-cache module baked in — used per site when Valkey is available, otherwise the site falls back to Backdrop's database cache.
 * Backdrop sites are managed with both `bee` (the native Backdrop CLI) and Drush 8 (via the backdrop-drush-extension).
 * Ships ON by default: Backdrop platforms build whenever the platform list includes the `BDR` symbol (or `ALL`); set `_BACKDROP_SUPPORT=NO` in the Octopus config to opt an instance out.
