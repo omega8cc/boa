@@ -1438,7 +1438,7 @@ _update_agents() {
 
   _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/tools/bin/screenfetch" f99 --guard screenfetch
   _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f98 --guard fixrepo
-  _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f93 --guard renameaegirhost
+  _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f92 --guard renameaegirhost
   _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f79 --guard autosymlink
   _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f93 --guard updatesymlinks
   _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/tools/bin/symlinkinfo" f98 --guard symlinkinfo
@@ -1566,7 +1566,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f82
     # autoupboa/fixmounts are also fetched by _update_boa_tools and share its
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f52 --guard autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f51 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f89
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f91
@@ -3366,13 +3366,17 @@ _fix_leftovers() {
 # (Cloudflare 520, GSC "Sitemap could not be read") on assets it must fetch.
 # Guards on private/robots-disallowed locations are kept. All edits write via
 # tmp + cat to preserve inode and ownership of files owned by o* users.
+# The tmp name carries $$ because two cron schedules can start clear.sh in
+# the same second (:00): a shared tmp path let one instance validate a tmp
+# the other instance had just truncated, which emptied a live include.
 #
 _strip_isbot_xml_guards() {
   local _fIle="$1"
-  local _tMp="${_fIle}.crawler-fix.tmp"
+  local _tMp="${_fIle}.crawler-fix.$$.tmp"
   local _cntPre=0
   local _cntPost=0
   [ -f "${_fIle}" ] || return 1
+  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
   grep -qF 'if ( $is_bot )' "${_fIle}" || return 1
   _cntPre=$(grep -cF 'if ( $is_bot )' "${_fIle}")
   awk 'BEGIN {
@@ -3418,13 +3422,19 @@ $0 in t { w = 1 }' "${_fIle}" > "${_tMp}"
     return 1
   fi
   _cntPost=$(grep -cF 'if ( $is_bot )' "${_tMp}")
-  if [ "${_cntPost}" -ge "${_cntPre}" ]; then
+  ### Kept guards always survive a legitimate strip, so a zero count can
+  ### only mean a corrupted read -- fail closed.
+  if [ "${_cntPost}" -ge "${_cntPre}" ] || [ "${_cntPost}" -eq 0 ]; then
     rm -f "${_tMp}"
     return 1
   fi
   [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
   cat "${_tMp}" > "${_fIle}"
   rm -f "${_tMp}"
+  if [ ! -s "${_fIle}" ]; then
+    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
+    return 1
+  fi
   return 0
 }
 
@@ -3436,8 +3446,9 @@ $0 in t { w = 1 }' "${_fIle}" > "${_tMp}"
 #
 _relax_crawler_roster() {
   local _fIle="$1"
-  local _tMp="${_fIle}.crawler-fix.tmp"
+  local _tMp="${_fIle}.crawler-fix.$$.tmp"
   [ -f "${_fIle}" ] || return 1
+  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
   grep -qF 'map $http_user_agent $is_crawler {' "${_fIle}" || return 1
   sed '/map $http_user_agent $is_crawler {/,/^}/ { s/|TikTok//; s/Go-http-client|//; s/|Pinterest//; s/|Sogou//; }' \
     "${_fIle}" > "${_tMp}"
@@ -3448,6 +3459,10 @@ _relax_crawler_roster() {
   [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
   cat "${_tMp}" > "${_fIle}"
   rm -f "${_tMp}"
+  if [ ! -s "${_fIle}" ]; then
+    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
+    return 1
+  fi
   return 0
 }
 
@@ -3459,8 +3474,9 @@ _relax_crawler_roster() {
 #
 _soften_print_guard() {
   local _fIle="$1"
-  local _tMp="${_fIle}.crawler-fix.tmp"
+  local _tMp="${_fIle}.crawler-fix.$$.tmp"
   [ -f "${_fIle}" ] || return 1
+  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
   grep -qF 'block_print_no_referer' "${_fIle}" || return 1
   sed '/^if ($block_print_no_referer) {$/,/^}$/ s/^  return 444;$/  return 404;/' \
     "${_fIle}" > "${_tMp}"
@@ -3471,6 +3487,10 @@ _soften_print_guard() {
   [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
   cat "${_tMp}" > "${_fIle}"
   rm -f "${_tMp}"
+  if [ ! -s "${_fIle}" ]; then
+    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
+    return 1
+  fi
   return 0
 }
 
@@ -3480,6 +3500,10 @@ _soften_print_guard() {
 # fixed config) AND already-rendered includes (so the fix is live without a
 # verify). Reload nginx only when something changed and the config test
 # passes; on a failed test restore every file changed in this run.
+# The whole run holds the shared nginx-config lock: clear.sh is scheduled
+# twice (*/5 root crontab + the autoupboa /etc/crontab line) and both fire
+# at :00, so without the lock two instances race each other over the same
+# files -- that race emptied a rendered include on tr071 (2026-07-23).
 #
 _log_crawler_fix() {
   echo "$1"
@@ -3494,6 +3518,16 @@ _fix_nginx_crawler_access() {
   local _tPl="/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php"
   local _sTpl="/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php"
   [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] || return 0
+  (
+  ### Boxes without util-linux flock still run, protected by the per-process
+  ### tmp names and post-write verification in the helpers.
+  exec 9> /run/boa_nginx_config.lock 2> /dev/null
+  if command -v flock > /dev/null 2>&1; then
+    if ! flock -w 30 9; then
+      _log_crawler_fix "NOTE: crawler-access fix: nginx-config lock busy, skipping this run"
+      exit 0
+    fi
+  fi
   for _bAse in /var/aegir /data/disk/*; do
     [ -d "${_bAse}" ] || continue
     for _fIle in "${_bAse}${_tPl}" "${_bAse}/config/includes/nginx_vhost_common.conf"; do
@@ -3541,6 +3575,102 @@ _fix_nginx_crawler_access() {
       _log_crawler_fix "ERROR: crawler-access fix reverted -- nginx -t failed after patching"
     fi
   fi
+  )
+}
+
+#
+# Self-heal for nginx configs wiped by the pre-hardening crawler-fix race
+# (or any other crashed writer): these files are never legitimately empty,
+# so an empty file older than 10 minutes means a crashed write, not a
+# render in progress. Recovery queues the account's own on-demand Octopus
+# upgrade via the documented tenant trigger consumed by run-xdrago, which
+# re-renders every config from fresh code. run-upgrade.pid is ignored
+# there unless platforms.info exists, so seed an inert list when the
+# account has none: it must be UPPERCASE to survive the [ 0-9A-Z]
+# sanitizer in the satellite code -- a lowercase word sanitizes to empty
+# and falls back to installing the full default platforms list.
+#
+_fix_wiped_nginx_config() {
+  local _bAse=""
+  local _uSr=""
+  local _fIle=""
+  local _wIped=""
+  local _ctlDir=""
+  local _bLog=""
+  local _bcdaLaunched=0
+  local _rBoot=""
+  local _rBootLogged=0
+  local _hName=""
+  local _tPl="/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php"
+  local _sTpl="/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php"
+  for _bAse in /data/disk/*; do
+    [ -d "${_bAse}/config" ] || continue
+    _wIped=""
+    for _fIle in "${_bAse}/config/includes/nginx_vhost_common.conf" \
+      "${_bAse}/config/server_master/nginx.conf" \
+      "${_bAse}${_tPl}" "${_bAse}${_sTpl}"; do
+      [ -f "${_fIle}" ] || continue
+      if [ -n "$(find "${_fIle}" -maxdepth 0 -type f -size 0 -mmin +10 2> /dev/null)" ]; then
+        _wIped="${_fIle}"
+        break
+      fi
+    done
+    [ -n "${_wIped}" ] || continue
+    ### The octopus installer refuses to run while barracuda lags the
+    ### release (same "Barracuda ${_rLsn}-" test it applies), so bring the
+    ### base system current first; the wipe is still present on the next
+    ### battery pass, which then arms the account upgrade normally.
+    _bLog=$(cat /var/log/barracuda_log.txt 2> /dev/null)
+    if [[ ! "${_bLog}" =~ "Barracuda ${_rLsn}-" ]]; then
+      if [ "${_bcdaLaunched}" = "0" ] && [ ! -e "/run/boa_run.pid" ]; then
+        _bcdaLaunched=1
+        _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); barracuda ${_rLsn} upgrade launched first"
+        rm -rf /opt/tmp/*
+        nohup /opt/local/bin/barracuda up-${_tRee} system noscreen \
+          >> /var/log/boa/barracuda-selfheal.log 2>&1 &
+      fi
+      continue
+    fi
+    ### The barracuda run may stage a new kernel, and on auto-reboot boxes
+    ### autoupboa then fires a gated boa reboot that could land mid-octopus
+    ### (its safeguards have been beaten before). Same signals and box class
+    ### as autoupboa _if_new_kernel_reboot: defer arming until after the
+    ### reboot -- the wipe persists, so the next pass arms cleanly.
+    if [ -z "${_rBoot}" ]; then
+      _rBoot=0
+      _hName="$(cat /etc/hostname 2> /dev/null | tr -d '\n')"
+      if [ -e "/root/.allow.auto.reboot.cnf" ] || [ -e "/root/.host8.cnf" ] \
+        || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
+        if { [ -e "/run/reboot-required.pkgs" ] \
+          && grep -q linux /run/reboot-required.pkgs 2> /dev/null; } \
+          || [ "$(/opt/local/bin/boa info 2> /dev/null | grep -c Next)" -ge 1 ]; then
+          _rBoot=1
+        fi
+      fi
+    fi
+    if [ "${_rBoot}" = "1" ]; then
+      if [ "${_rBootLogged}" = "0" ]; then
+        _rBootLogged=1
+        _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); kernel reboot pending, arming deferred"
+      fi
+      continue
+    fi
+    _uSr=$(basename "${_bAse}")
+    _ctlDir="${_bAse}/static/control"
+    if [ ! -d "${_ctlDir}" ]; then
+      mkdir -p "${_ctlDir}"
+      chmod 755 "${_ctlDir}"
+    fi
+    if [ ! -s "${_ctlDir}/platforms.info" ]; then
+      echo "FOOBAR" > "${_ctlDir}/platforms.info"
+      chown ${_uSr}.ftp:users "${_ctlDir}/platforms.info" 2> /dev/null
+    fi
+    if [ ! -e "${_ctlDir}/run-upgrade.pid" ]; then
+      touch "${_ctlDir}/run-upgrade.pid"
+      chown ${_uSr}.ftp:users "${_ctlDir}/run-upgrade.pid" 2> /dev/null
+      _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); octopus upgrade queued for ${_uSr}"
+    fi
+  done
 }
 
 _force_rebuild() {
@@ -3853,7 +3983,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f96 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f96 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f79 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f52 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f51 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard /local/bin/backboa
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f82 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f80 --guard /local/bin/boa
@@ -3873,7 +4003,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --guard /local/bin/mybackup
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f93 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f96 --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f93 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f92 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f93 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
@@ -4812,6 +4942,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_newrelic
     _fix_leftovers
     _fix_nginx_crawler_access
+    _fix_wiped_nginx_config
     _update_agents
     _sysctl_update
     # _saCoreN="SA-CORE-2018-002"
