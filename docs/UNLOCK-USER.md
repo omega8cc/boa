@@ -1,5 +1,16 @@
 # In-Place Upgrades — Unlocking Your Codebase (`unlock.info`)
 
+**Never use this method unless you are prepared for extended downtime.**
+An in-place upgrade has no safety net beyond the one you build yourself,
+and the recovery path is slow by design: one mistake — most commonly
+running a platform *Verify* before the PHP and Nginx caches have expired
+and shown that the sites really still work — hands code ownership
+straight back to the backend user while the new code is broken. From that
+moment you cannot touch the code: the sites stay down until the next
+nightly run returns ownership to you, or until support can step in. If a
+day of downtime is unacceptable, take the safe path instead: build the
+upgraded codebase as a new platform and migrate your sites onto it.
+
 Every night BOA re-asserts a **codebase lock** on the platforms your sites
 run on: the code trees are chowned back to your account's backend user
 (`o1`), and a standard permission map is applied. Day-to-day work is not
@@ -27,9 +38,14 @@ and restores the default protection.
 
 ## The upgrade workflow
 
-1. **Back up first.** Run the *Backup* task on the site before touching
-   code. In-place upgrades are the brave path — a botched
-   `composer update` leaves the site broken until you restore or fix it.
+1. **Back up the codebase yourself.** The Ægir *Backup* task never
+   includes the platform codebase — it archives the site directory plus,
+   depending on the backup mode, a database dump, and nothing else.
+   Codebase backup is a fully manual job: copy the platform tree aside
+   as your shell user, or make sure git and the committed `composer.lock`
+   can rebuild the exact pre-upgrade code. Run the site *Backup* task as
+   well for a site-directory and database restore point — just know it
+   cannot bring your code back.
 2. `touch ~/static/control/unlock.info` as your shell user.
 3. **Wait for the nightly run** (early morning, server time) to flip
    ownership, or ask support to expedite it. You can confirm with
@@ -39,10 +55,17 @@ and restores the default protection.
    directory holding `composer.json`), not the web docroot. If a hardened
    path such as `vendor/drush` is in the way, you now own it — chmod it
    and carry on; the nightly sweep re-hardens it later.
-5. **Run Verify** on the platform (and the site) from the Ægir control
-   panel when you are done. Verify registers the changed code — and a
-   platform Verify also chowns the code back to the backend user
-   immediately, which is part of the point.
+5. **Prove the sites still work — only then run Verify.** Do not trust
+   the first page loads after the code swap: the PHP opcache and the
+   Nginx cache can go on serving the pre-upgrade code and cached pages
+   for a while, so a site can look fine while the new code is already
+   broken. Wait for those caches to expire, then test properly — log
+   in, hit uncached pages, watch the logs. Once you are confident, run
+   *Verify* on the platform (and the site) from the Ægir control panel.
+   Verify registers the changed code — and a platform Verify also
+   chowns the code back to the backend user immediately. Run it while
+   the code is broken and you have locked yourself out of the fix (see
+   the warning above).
 6. `rm ~/static/control/unlock.info` so the next nightly run restores the
    default lock. Do not leave the unlock in place permanently — it exists
    for maintenance windows, not as a lifestyle.
@@ -84,5 +107,6 @@ the backend user means a leaked SFTP credential cannot quietly chmod away
 the hardening or tamper with git internals on your platforms (the operator
 mechanics live in [UNLOCK.md](UNLOCK.md)). Treat the unlock as you would
 `sudo` — switch it on for the job, switch it off after. And if an upgrade
-goes wrong, the platform can always be restored from the backup you made
-in step one.
+goes wrong, the way back is the codebase copy you made yourself in step
+one (or a git/composer rebuild) — the Ægir *Backup* archive can restore
+the site directory and database, never the code.
