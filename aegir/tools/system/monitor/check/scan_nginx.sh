@@ -183,6 +183,14 @@ _NGINX_HARVEST_BAD_PCT=5
 # Collapsed-realip guard: if this share of a cohort sits inside csf.allow the
 # vhost is probably reporting CDN edges as clients, so skip it entirely.
 _NGINX_HARVEST_ALLOW_PCT=20
+# Cost path. A harvest that pulls expensive pages melts the box on a handful
+# of requests per address, so no volume floor can see it. Measured on a real
+# incident: the attacker held 90-97% of all backend seconds in every 5-minute
+# window of the episode that no volume gate caught, while the worst legitimate
+# cohort ever measured on the same box held 22.8%.
+_NGINX_HARVEST_COST_PCT=50
+_NGINX_HARVEST_COST_IP_MIN=16
+_NGINX_HARVEST_COST_MEAN=5
 _NGINX_HARVEST_IP_MAX_UAS=2
 _NGINX_HARVEST_EXCL_PCT=90
 _NGINX_HARVEST_MAX_BANS=10
@@ -555,6 +563,9 @@ fi
 [[ "${_NGINX_HARVEST_OK_PCT}" =~ ^[1-9][0-9]*$ ]]       || _NGINX_HARVEST_OK_PCT=70
 [[ "${_NGINX_HARVEST_BAD_PCT}" =~ ^[0-9]+$ ]]           || _NGINX_HARVEST_BAD_PCT=5
 [[ "${_NGINX_HARVEST_ALLOW_PCT}" =~ ^[1-9][0-9]*$ ]]    || _NGINX_HARVEST_ALLOW_PCT=20
+[[ "${_NGINX_HARVEST_COST_PCT}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_COST_PCT=50
+[[ "${_NGINX_HARVEST_COST_IP_MIN}" =~ ^[1-9][0-9]*$ ]]  || _NGINX_HARVEST_COST_IP_MIN=16
+[[ "${_NGINX_HARVEST_COST_MEAN}" =~ ^[1-9][0-9]*$ ]]    || _NGINX_HARVEST_COST_MEAN=5
 [[ "${_NGINX_HARVEST_IP_MAX_UAS}" =~ ^[1-9][0-9]*$ ]]   || _NGINX_HARVEST_IP_MAX_UAS=2
 [[ "${_NGINX_HARVEST_EXCL_PCT}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_EXCL_PCT=90
 [[ "${_NGINX_HARVEST_MAX_BANS}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_MAX_BANS=10
@@ -1566,15 +1577,28 @@ use strict;
 use warnings;
 use Time::Local ();
 use MIME::Base64 ();
-my ($cut, $m_min, $k_min) = @ARGV;
+my ($cut, $m_min, $k_min, $c_pct, $c_ips, $c_mean) = @ARGV;
 $cut ||= 0; $m_min ||= 10; $k_min ||= 32;
+$c_pct ||= 50; $c_ips ||= 16; $c_mean ||= 5;
 my %mon = (Jan=>0,Feb=>1,Mar=>2,Apr=>3,May=>4,Jun=>5,
            Jul=>6,Aug=>7,Sep=>8,Oct=>9,Nov=>10,Dec=>11);
-my (%tc, %docs, %uris, %ok, %bad, %tot, %ipd, %ipu, %ipuri, %iptot);
+my (%tc, %docs, %uris, %ok, %bad, %tot, %ipd, %ipu, %ipuri, %iptot, %cost);
+my $costall = 0;
 my ($lo, $hi) = (0, 0);
-my $re = qr{^"([^"]*)" (\S+) \[(\d+/\w+/\d+:\d+:\d+:\d+) [^\]]*\] "\S+ ([^ "]+)[^"]*" (\d{3}) \d+ \d+ \d+ "[^"]*" "([^"]*)" };
+my $re = qr{^"([^"]*)" (\S+) \[(\d+/\w+/\d+:\d+:\d+:\d+) [^\]]*\] "\S+ ([^ "]+)[^"]*" (\d{3}) \d+ \d+ \d+ "[^"]*" "([^"]*)" ([0-9.]+)};
 while (my $l = <STDIN>) {
-  my ($ipf, $host, $ts, $path, $st, $ua) = $l =~ $re or next;
+  my ($ipf, $host, $ts, $path, $st, $ua, $rt) = $l =~ $re or next;
+  # Cost: prefer the real upstream field when the log carries it (ut="..."),
+  # which is authoritative for backend time and reads "-" whenever nginx
+  # answered the request itself. Fall back to $request_time, which on BOA is a
+  # close proxy because access_log is off for every static location, so a
+  # logged line is almost always a backend request.
+  my $c_r = $rt;
+  if ($l =~ / ut="([^"]*)"/) {
+    my $u = $1;
+    if ($u eq '-') { $c_r = 0; }
+    else { $c_r = 0; $c_r += $_ for ($u =~ /([0-9]+\.[0-9]+)/g); }
+  }
   my $e = $tc{$ts};
   unless (defined $e) {
     my ($d,$mo,$y,$H,$M,$S) = $ts =~ m{^(\d+)/(\w+)/(\d+):(\d+):(\d+):(\d+)$};
@@ -1596,6 +1620,8 @@ while (my $l = <STDIN>) {
   $path =~ s/\?.*$//;
   my $c = $host . "\x1f" . $ua;
   $tot{$c}++;
+  $cost{$c} += $c_r;
+  $costall  += $c_r;
   $ok{$c}++  if $st =~ /^2/;
   $bad{$c}++ if $st =~ /^5/ || $st eq '444';
   $docs{$c}{$ip}++;
@@ -1609,15 +1635,27 @@ printf "SPAN %d %d\n", $lo, $hi;
 my $id = 0;
 for my $c (keys %tot) {
   my @heavy = grep { $docs{$c}{$_} >= $m_min } keys %{$docs{$c}};
-  next if scalar(@heavy) < $k_min;
+  my $nip   = scalar(keys %{$docs{$c}});
+  my $share = $costall ? int(100 * $cost{$c} / $costall) : 0;
+  my $mean  = $tot{$c} ? $cost{$c} / $tot{$c} : 0;
+  # Two independent ways in. VOLUME catches a fast harvest. COST catches the
+  # slow one that melts the box on a handful of requests per address, which no
+  # volume floor can ever see.
+  my $why = '';
+  $why = 'VOLUME' if scalar(@heavy) >= $k_min;
+  if (!$why && $share >= $c_pct && $nip >= $c_ips && $mean >= $c_mean) {
+    $why = 'COST';
+    @heavy = keys %{$docs{$c}};
+  }
+  next unless $why;
   $id++;
   my ($host, $ua) = split /\x1f/, $c, 2;
   my $t = $tot{$c} || 1;
-  printf "COHORT %d %d %d %d %d %d %s %s\n", $id, scalar(@heavy),
+  printf "COHORT %d %d %d %d %d %d %s %s %s %d %d\n", $id, scalar(@heavy),
     int(100 * scalar(keys %{$uris{$c}}) / $t),
     int(100 * ($ok{$c}  || 0) / $t),
     int(100 * ($bad{$c} || 0) / $t),
-    $t, _b64($ua), _b64($host);
+    $t, _b64($ua), _b64($host), $why, $share, int($mean);
   for my $ip (@heavy) {
     my $d = $ipd{$c}{$ip} || 1;
     printf "IP %d %s %d %d %d %d\n", $id, $ip, $d,
@@ -1665,11 +1703,11 @@ _handle_harvest_blocking() {
   _harvest_due "${_now}" || return 0
 
   local _SAVE_IFS="${IFS}"
-  local _kind _a _b _c _d _e _f _g _h
+  local _kind _a _b _c _d _e _f _g _h _i _j _k
   local _lo=0 _hi=0 _span=0 _ncoh=0
-  local -A _C_HV _C_UNIQ _C_OK _C_BAD _C_TOT _C_UA _C_HOST _C_IPS
+  local -A _C_HV _C_UNIQ _C_OK _C_BAD _C_TOT _C_UA _C_HOST _C_IPS _C_WHY _C_SHARE _C_MEAN
   IFS=$' \t\n'
-  while read -r _kind _a _b _c _d _e _f _g _h; do
+  while read -r _kind _a _b _c _d _e _f _g _h _i _j _k; do
     case "${_kind}" in
       SPAN)
         [[ "${_a}" =~ ^[0-9]+$ ]] && _lo="${_a}"
@@ -1681,6 +1719,9 @@ _handle_harvest_blocking() {
         _C_OK["${_a}"]="${_d}";  _C_BAD["${_a}"]="${_e}"
         _C_TOT["${_a}"]="${_f}"; _C_UA["${_a}"]="${_g}"
         _C_HOST["${_a}"]="${_h}"
+        case "${_i}" in VOLUME|COST) _C_WHY["${_a}"]="${_i}" ;; *) continue ;; esac
+        [[ "${_j}" =~ ^[0-9]+$ ]] && _C_SHARE["${_a}"]="${_j}" || _C_SHARE["${_a}"]=0
+        [[ "${_k}" =~ ^[0-9]+$ ]] && _C_MEAN["${_a}"]="${_k}" || _C_MEAN["${_a}"]=0
         (( _ncoh++ ))
         ;;
       IP)
@@ -1693,7 +1734,10 @@ _handle_harvest_blocking() {
     | perl -e "${_HRV_PL}" -- \
         "$(( _now - _NGINX_HARVEST_WINDOW ))" \
         "${_NGINX_HARVEST_IP_MIN_REQS}" \
-        "${_NGINX_HARVEST_IP_THRESHOLD}" 2> /dev/null)
+        "${_NGINX_HARVEST_IP_THRESHOLD}" \
+        "${_NGINX_HARVEST_COST_PCT}" \
+        "${_NGINX_HARVEST_COST_IP_MIN}" \
+        "${_NGINX_HARVEST_COST_MEAN}" 2> /dev/null)
 
   ### IFS deliberately stays $' \t\n' for the rest of this function: the
   ### script's global IFS has no space in it, and the per-cohort records below
@@ -1718,7 +1762,15 @@ _handle_harvest_blocking() {
     _host=$(_harvest_show "${_C_HOST["${_id}"]}")
     (( _C_HV["${_id}"] > _NGINX_HARVEST_IP_MAX )) && continue
     (( _C_UNIQ["${_id}"] < _NGINX_HARVEST_UNIQ_PCT )) && continue
-    (( _C_OK["${_id}"] < _NGINX_HARVEST_OK_PCT )) && continue
+    if [[ "${_C_WHY["${_id}"]}" = "VOLUME" ]]; then
+      (( _C_OK["${_id}"] < _NGINX_HARVEST_OK_PCT )) && continue
+    else
+      ### Cost path: re-check its own floors here too, so a malformed analyser
+      ### line can never promote a cohort past them.
+      (( _C_SHARE["${_id}"] < _NGINX_HARVEST_COST_PCT )) && continue
+      (( _C_MEAN["${_id}"] < _NGINX_HARVEST_COST_MEAN )) && continue
+      (( _C_HV["${_id}"] < _NGINX_HARVEST_COST_IP_MIN )) && continue
+    fi
     (( _C_BAD["${_id}"] > _NGINX_HARVEST_BAD_PCT )) && continue
     if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]] \
       && [[ "${_ua}" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]]; then
@@ -1737,7 +1789,7 @@ _handle_harvest_blocking() {
       _harvest_log "REALIP-SUSPECT ${_host} [${_wl}/${_tot} cohort IPs whitelisted] ua=${_ua}"
       continue
     fi
-    _harvest_log "=== HARVEST COHORT [${_C_HV["${_id}"]} heavy IPs | ${_C_TOT["${_id}"]} docs | uniq ${_C_UNIQ["${_id}"]}% | ok ${_C_OK["${_id}"]}% | bad ${_C_BAD["${_id}"]}% | span ${_span}s] ==="
+    _harvest_log "=== HARVEST COHORT via ${_C_WHY["${_id}"]} [${_C_HV["${_id}"]} IPs | ${_C_TOT["${_id}"]} docs | uniq ${_C_UNIQ["${_id}"]}% | ok ${_C_OK["${_id}"]}% | bad ${_C_BAD["${_id}"]}% | cost ${_C_SHARE["${_id}"]}% | mean ${_C_MEAN["${_id}"]}s | span ${_span}s] ==="
     _harvest_log "=== host=${_host} ua=${_ua} action=${_NGINX_HARVEST_ACTION} ==="
     _banned=0
     for _rec in ${_C_IPS["${_id}"]}; do
