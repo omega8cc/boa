@@ -4770,7 +4770,7 @@ _csf_allow_quic_udp_443() {
 # chose a higher value, or 0 for unlimited, keeps it.
 _csf_raise_temp_ban_limit() {
   local _CSF_CNF="/etc/csf/csf.conf"
-  local _WANT="5000"
+  local _WANT="2000"
   local _CUR=""
   if ! command -v csf > /dev/null 2>&1; then
     return 0
