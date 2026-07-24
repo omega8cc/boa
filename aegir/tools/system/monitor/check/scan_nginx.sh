@@ -1666,7 +1666,7 @@ _handle_harvest_blocking() {
 
   local _SAVE_IFS="${IFS}"
   local _kind _a _b _c _d _e _f _g _h
-  local _lo=0 _hi=0 _span=0
+  local _lo=0 _hi=0 _span=0 _ncoh=0
   local -A _C_HV _C_UNIQ _C_OK _C_BAD _C_TOT _C_UA _C_HOST _C_IPS
   IFS=$' \t\n'
   while read -r _kind _a _b _c _d _e _f _g _h; do
@@ -1681,6 +1681,7 @@ _handle_harvest_blocking() {
         _C_OK["${_a}"]="${_d}";  _C_BAD["${_a}"]="${_e}"
         _C_TOT["${_a}"]="${_f}"; _C_UA["${_a}"]="${_g}"
         _C_HOST["${_a}"]="${_h}"
+        (( _ncoh++ ))
         ;;
       IP)
         [[ "${_a}" =~ ^[0-9]+$ ]] || continue
@@ -1693,12 +1694,21 @@ _handle_harvest_blocking() {
         "$(( _now - _NGINX_HARVEST_WINDOW ))" \
         "${_NGINX_HARVEST_IP_MIN_REQS}" \
         "${_NGINX_HARVEST_IP_THRESHOLD}" 2> /dev/null)
-  IFS="${_SAVE_IFS}"
 
-  (( ${#_C_HV[@]} )) || return 0
+  ### IFS deliberately stays $' \t\n' for the rest of this function: the
+  ### script's global IFS has no space in it, and the per-cohort records below
+  ### are space-joined, so restoring it here would collapse each cohort's whole
+  ### IP list into a single word.
+  ### Counted, not probed: ${#arr[@]} on a never-populated associative array
+  ### is an unbound-variable error under set -u.
+  if (( _ncoh == 0 )); then
+    IFS="${_SAVE_IFS}"
+    return 0
+  fi
   _span=$(( _hi - _lo ))
   if (( _span < _NGINX_HARVEST_MIN_SPAN )); then
     _harvest_log "NOTE: harvest scan span ${_span}s below ${_NGINX_HARVEST_MIN_SPAN}s -- sample not representative, skipping"
+    IFS="${_SAVE_IFS}"
     return 0
   fi
 
@@ -1736,8 +1746,8 @@ _handle_harvest_blocking() {
       (( _uniq < _NGINX_HARVEST_UNIQ_PCT )) && _elig="uniq"
       (( _uas > _NGINX_HARVEST_IP_MAX_UAS )) && _elig="multi-ua"
       (( _excl < _NGINX_HARVEST_EXCL_PCT )) && _elig="shared-ip"
-      [[ -n "${_BANNED_IPS["${_ip}"]}" ]] && _elig="already-banned"
-      [[ -n "${_ALLOWED_IPS["${_ip}"]}" ]] && _elig="allowed"
+      [[ -n "${_BANNED_IPS["${_ip}"]:-}" ]] && _elig="already-banned"
+      [[ -n "${_ALLOWED_IPS["${_ip}"]:-}" ]] && _elig="allowed"
       _is_whitelisted_ip "${_ip}" && _elig="whitelisted"
       _is_logged_in "${_ip}" > /dev/null 2>&1 && _elig="logged-in"
       [[ "${_ip}" = "${_MYIP}" ]] && _elig="local"
@@ -1759,8 +1769,8 @@ _handle_harvest_blocking() {
         _harvest_log "WOULD-BAN ${_ip} docs=${_docs} uniq=${_uniq} uas=${_uas} excl=${_excl}"
       fi
     done
-    IFS="${_SAVE_IFS}"
   done
+  IFS="${_SAVE_IFS}"
 }
 
 # _track_path_flood IP PATH_KEY STATUS REQUEST_TIME
