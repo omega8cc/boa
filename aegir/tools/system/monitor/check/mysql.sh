@@ -350,12 +350,33 @@ _mysql_flush_hosts() {
   fi
 }
 
+_mysql_is_answering() {
+  # Authoritative liveness probe. A reply of ANY kind -- including an auth error
+  # -- proves the server is up and accepting connections. `timeout` bounds a hung
+  # server; --connect-timeout bounds a dead socket. Uses /root/.my.cnf implicitly.
+  local _out
+  _out=$(timeout 5 mysqladmin -u root --connect-timeout=2 ping 2>&1)
+  case "${_out}" in
+    *"is alive"*|*"denied"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 _mysql_health_check_fix() {
-  if ! pgrep -f /usr/sbin/mysqld \
-    || [ ! -e "/run/mysqld/mysqld.sock" ] \
-    || [ ! -e "/run/mysqld/mysqld.pid" ]; then
-    _sql_restart "DOWN MySQL"
-  fi
+  # A momentarily missing process/socket/pid is NOT proof of a hard outage:
+  # mysqld_safe (the SysV supervisor) respawns an unexpectedly dead mysqld within
+  # ~1-2s, during which the socket and pid are legitimately absent. Acting on that
+  # self-healing window -- restarting a recovering DB, wiping the cache and bouncing
+  # the whole web stack -- is what turned a 1s blip into a 14-minute restart storm.
+  # Confirm a genuine outage with the live probe across a short grace; stand down
+  # the moment the server answers. Only sustained silence counts as DOWN.
+  _mysql_is_answering && return 0
+  local _try
+  for _try in 1 2 3 4; do
+    sleep 3
+    _mysql_is_answering && return 0
+  done
+  _sql_restart "DOWN MySQL"
 }
 
 ### Main start here
