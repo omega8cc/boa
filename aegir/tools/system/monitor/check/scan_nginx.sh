@@ -144,6 +144,52 @@ _NGINX_UA_BURST_BAD_PCT=80
 # 200s (zero bad) and is therefore never blocked.
 _NGINX_UA_BURST_IP_MIN_BAD=3
 
+# ---- Coordinated document-harvest detection ----
+# The existing scorers all key on error ratio or per-IP rate. A distributed
+# content scraper trips neither: it succeeds (mostly 2xx) and each of its
+# addresses stays far below _NGINX_DOS_LIMIT. What it cannot hide is shape --
+# many addresses, under one user agent, each pulling a different document and
+# almost never re-reading one.
+#
+# This runs as its own periodic pass, NOT in the per-line loop. nginx_guard.sh
+# invokes this script roughly every 5s and the byte-offset reader means a pass
+# sees only a few seconds of log; every candidate signal for this attack class
+# is dead or inverted at that width. It needs a few minutes of context, so it
+# re-reads a bounded tail on its own schedule.
+_NGINX_HARVEST_DETECT="YES"
+# REPORT logs WOULD-BAN lines and bans nothing. BAN_NAMED bans only cohorts
+# that ALSO match _NGINX_HARVEST_BAN_UA, an operator decision about a known
+# attacker. BAN arms the heuristic itself and must not be a default.
+_NGINX_HARVEST_ACTION="REPORT"
+_NGINX_HARVEST_BAN_UA=""
+_NGINX_HARVEST_INTERVAL=60
+_NGINX_HARVEST_WINDOW=300
+# Fail closed: if the bounded tail does not span this many seconds the box is
+# too busy for MAX_LINES and the sample is not representative, so no trip.
+_NGINX_HARVEST_MIN_SPAN=180
+_NGINX_HARVEST_MAX_LINES=20000
+# M: documents an address must pull before it counts as a cohort member.
+_NGINX_HARVEST_IP_MIN_REQS=10
+# K: heavy members needed to call it coordinated.
+_NGINX_HARVEST_IP_THRESHOLD=32
+_NGINX_HARVEST_IP_MAX=400
+# The keystone. A harvest reads each document once, so distinct-URI share runs
+# at or near 100%; real audiences re-read popular pages and sit far below.
+_NGINX_HARVEST_UNIQ_PCT=85
+_NGINX_HARVEST_OK_PCT=70
+# Melt guard: under saturation everything degrades, and a degrading box is not
+# evidence of a harvest.
+_NGINX_HARVEST_BAD_PCT=5
+# Collapsed-realip guard: if this share of a cohort sits inside csf.allow the
+# vhost is probably reporting CDN edges as clients, so skip it entirely.
+_NGINX_HARVEST_ALLOW_PCT=20
+_NGINX_HARVEST_IP_MAX_UAS=2
+_NGINX_HARVEST_EXCL_PCT=90
+_NGINX_HARVEST_MAX_BANS=10
+_NGINX_HARVEST_UA_EXEMPT="Googlebot|Google-|GoogleOther|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake"
+_HRV_STAMP="/var/xdrago/monitor/log/.harvest.stamp"
+_HRV_LOG="/var/xdrago/monitor/log/harvest.log"
+
 # Minimum raw requests before _handle_blocking can individually block an IP.
 # Scoring multipliers can push a 1-request IP well over DOS_LIMIT; this guard
 # ensures only genuinely high-volume IPs enter web.log individually.
@@ -497,6 +543,50 @@ fi
 [[ "${_NGINX_UA_BURST_REQ_MIN}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_UA_BURST_REQ_MIN=60
 [[ "${_NGINX_UA_BURST_BAD_PCT}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_UA_BURST_BAD_PCT=80
 [[ "${_NGINX_UA_BURST_IP_MIN_BAD}" =~ ^[1-9][0-9]*$ ]]  || _NGINX_UA_BURST_IP_MIN_BAD=3
+
+[[ "${_NGINX_HARVEST_INTERVAL}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_INTERVAL=60
+[[ "${_NGINX_HARVEST_WINDOW}" =~ ^[1-9][0-9]*$ ]]       || _NGINX_HARVEST_WINDOW=300
+[[ "${_NGINX_HARVEST_MIN_SPAN}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_MIN_SPAN=180
+[[ "${_NGINX_HARVEST_MAX_LINES}" =~ ^[1-9][0-9]*$ ]]    || _NGINX_HARVEST_MAX_LINES=20000
+[[ "${_NGINX_HARVEST_IP_MIN_REQS}" =~ ^[1-9][0-9]*$ ]]  || _NGINX_HARVEST_IP_MIN_REQS=10
+[[ "${_NGINX_HARVEST_IP_THRESHOLD}" =~ ^[1-9][0-9]*$ ]] || _NGINX_HARVEST_IP_THRESHOLD=32
+[[ "${_NGINX_HARVEST_IP_MAX}" =~ ^[1-9][0-9]*$ ]]       || _NGINX_HARVEST_IP_MAX=400
+[[ "${_NGINX_HARVEST_UNIQ_PCT}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_UNIQ_PCT=85
+[[ "${_NGINX_HARVEST_OK_PCT}" =~ ^[1-9][0-9]*$ ]]       || _NGINX_HARVEST_OK_PCT=70
+[[ "${_NGINX_HARVEST_BAD_PCT}" =~ ^[0-9]+$ ]]           || _NGINX_HARVEST_BAD_PCT=5
+[[ "${_NGINX_HARVEST_ALLOW_PCT}" =~ ^[1-9][0-9]*$ ]]    || _NGINX_HARVEST_ALLOW_PCT=20
+[[ "${_NGINX_HARVEST_IP_MAX_UAS}" =~ ^[1-9][0-9]*$ ]]   || _NGINX_HARVEST_IP_MAX_UAS=2
+[[ "${_NGINX_HARVEST_EXCL_PCT}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_EXCL_PCT=90
+[[ "${_NGINX_HARVEST_MAX_BANS}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_MAX_BANS=10
+### Operator-supplied patterns are the only regexes here; log-derived text is
+### never used as a pattern. Probe both so a malformed one cannot abort a scan.
+if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]]; then
+  if ! [[ "probe" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]] 2> /dev/null; then
+    if [[ "$?" -gt 1 ]]; then
+      echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, exemptions disabled"
+      _NGINX_HARVEST_UA_EXEMPT=""
+    fi
+  fi
+fi
+if [[ -n "${_NGINX_HARVEST_BAN_UA}" ]]; then
+  if ! [[ "probe" =~ ${_NGINX_HARVEST_BAN_UA} ]] 2> /dev/null; then
+    if [[ "$?" -gt 1 ]]; then
+      echo "CONFIG: _NGINX_HARVEST_BAN_UA is not a valid ERE, named bans disabled"
+      _NGINX_HARVEST_BAN_UA=""
+    fi
+  fi
+fi
+case "${_NGINX_HARVEST_ACTION}" in
+  REPORT|BAN_NAMED|BAN) : ;;
+  *) _NGINX_HARVEST_ACTION="REPORT" ;;
+esac
+### BAN_NAMED without a pattern would ban nothing; say so rather than pretend.
+if [[ "${_NGINX_HARVEST_ACTION}" = "BAN_NAMED" ]] && [[ -z "${_NGINX_HARVEST_BAN_UA}" ]]; then
+  echo "CONFIG: _NGINX_HARVEST_ACTION=BAN_NAMED needs _NGINX_HARVEST_BAN_UA, falling back to REPORT"
+  _NGINX_HARVEST_ACTION="REPORT"
+fi
+_HRV_ON=0
+[[ "${_NGINX_HARVEST_DETECT}" = "YES" ]] && _HRV_ON=1
 
 echo "CONFIG: _NGINX_DOS_LIMIT is ${_NGINX_DOS_LIMIT}"
 echo "CONFIG: _NGINX_DOS_LINES is ${_NGINX_DOS_LINES}"
@@ -1459,7 +1549,221 @@ _handle_ua_burst_blocking() {
 # Path-Flood / Search-Amplification Detection
 # ==============================
 
-# _track_path_flood IP PATH_KEY STATUS UPSTREAM_TIME
+# ==============================
+# Coordinated document-harvest detector
+# ==============================
+#
+# SECURITY: everything below the first quote of a log line is attacker
+# controlled. The analyser is a quoted here-doc, so the shell interpolates
+# nothing into it; log text reaches perl only on stdin; the only arguments are
+# integers this script validated; user agents and hosts are compared with eq
+# and returned base64-encoded, so no log-derived byte is ever used as a regex,
+# a file path, or a shell word. The stamp file is a fixed path for the same
+# reason -- a per-agent marker would hand a UA of ../../../etc/csf/csf.allow a
+# root-owned truncate.
+read -r -d '' _HRV_PL <<'_HRV_PERL_EOF'
+use strict;
+use warnings;
+use Time::Local ();
+use MIME::Base64 ();
+my ($cut, $m_min, $k_min) = @ARGV;
+$cut ||= 0; $m_min ||= 10; $k_min ||= 32;
+my %mon = (Jan=>0,Feb=>1,Mar=>2,Apr=>3,May=>4,Jun=>5,
+           Jul=>6,Aug=>7,Sep=>8,Oct=>9,Nov=>10,Dec=>11);
+my (%tc, %docs, %uris, %ok, %bad, %tot, %ipd, %ipu, %ipuri, %iptot);
+my ($lo, $hi) = (0, 0);
+my $re = qr{^"([^"]*)" (\S+) \[(\d+/\w+/\d+:\d+:\d+:\d+) [^\]]*\] "\S+ ([^ "]+)[^"]*" (\d{3}) \d+ \d+ \d+ "[^"]*" "([^"]*)" };
+while (my $l = <STDIN>) {
+  my ($ipf, $host, $ts, $path, $st, $ua) = $l =~ $re or next;
+  my $e = $tc{$ts};
+  unless (defined $e) {
+    my ($d,$mo,$y,$H,$M,$S) = $ts =~ m{^(\d+)/(\w+)/(\d+):(\d+):(\d+):(\d+)$};
+    $e = 0;
+    if (defined $mo && exists $mon{$mo}) {
+      $e = eval { Time::Local::timelocal($S,$M,$H,$d,$mon{$mo},$y) } || 0;
+    }
+    $tc{$ts} = $e;
+  }
+  next unless $e;
+  $lo = $e if !$lo || $e < $lo;
+  $hi = $e if $e > $hi;
+  next if $e < $cut;
+  my ($ip) = split /,/, $ipf, 2;
+  $ip =~ s/^\s+|\s+$//g;
+  next unless $ip =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+  # Strip the query string: cache-busting parameters would make every human
+  # ajax call look like a distinct document and invert the keystone.
+  $path =~ s/\?.*$//;
+  my $c = $host . "\x1f" . $ua;
+  $tot{$c}++;
+  $ok{$c}++  if $st =~ /^2/;
+  $bad{$c}++ if $st =~ /^5/ || $st eq '444';
+  $docs{$c}{$ip}++;
+  $uris{$c}{$path} = 1;
+  $ipuri{$c}{$ip}{$path} = 1;
+  $ipd{$c}{$ip}++;
+  $ipu{$ip}{$ua} = 1;
+  $iptot{$ip}++;
+}
+printf "SPAN %d %d\n", $lo, $hi;
+my $id = 0;
+for my $c (keys %tot) {
+  my @heavy = grep { $docs{$c}{$_} >= $m_min } keys %{$docs{$c}};
+  next if scalar(@heavy) < $k_min;
+  $id++;
+  my ($host, $ua) = split /\x1f/, $c, 2;
+  my $t = $tot{$c} || 1;
+  printf "COHORT %d %d %d %d %d %d %s %s\n", $id, scalar(@heavy),
+    int(100 * scalar(keys %{$uris{$c}}) / $t),
+    int(100 * ($ok{$c}  || 0) / $t),
+    int(100 * ($bad{$c} || 0) / $t),
+    $t, _b64($ua), _b64($host);
+  for my $ip (@heavy) {
+    my $d = $ipd{$c}{$ip} || 1;
+    printf "IP %d %s %d %d %d %d\n", $id, $ip, $d,
+      int(100 * scalar(keys %{$ipuri{$c}{$ip}}) / $d),
+      scalar(keys %{$ipu{$ip}}),
+      int(100 * $d / ($iptot{$ip} || $d));
+  }
+}
+sub _b64 {
+  my $x = shift;
+  $x = '' unless defined $x;
+  my $t = MIME::Base64::encode_base64($x, '');
+  return $t eq '' ? '-' : $t;
+}
+_HRV_PERL_EOF
+
+# One pass per _NGINX_HARVEST_INTERVAL, claimed by mtime on a FIXED path.
+_harvest_due() {
+  local _now="$1"
+  local _last=0
+  [[ -f "${_HRV_STAMP}" ]] && _last=$(stat -c %Y "${_HRV_STAMP}" 2> /dev/null)
+  [[ "${_last}" =~ ^[0-9]+$ ]] || _last=0
+  (( _now - _last < _NGINX_HARVEST_INTERVAL )) && return 1
+  : > "${_HRV_STAMP}" 2> /dev/null || return 1
+  return 0
+}
+
+_harvest_log() {
+  echo "$1"
+  echo "$(date 2> /dev/null) $1" >> "${_HRV_LOG}"
+}
+
+# Decode a base64 field for display only. Never used as a path or a pattern.
+_harvest_show() {
+  local _b="$1"
+  [[ "${_b}" =~ ^[A-Za-z0-9+/=]+$ ]] || { echo "(unprintable)"; return; }
+  printf '%s' "${_b}" | base64 -d 2> /dev/null | tr -cd '[:print:]' | cut -c1-160
+}
+
+_handle_harvest_blocking() {
+  (( _HRV_ON )) || return 0
+  local _now
+  _now=$(date +%s 2> /dev/null)
+  [[ "${_now}" =~ ^[0-9]+$ ]] || return 0
+  _harvest_due "${_now}" || return 0
+
+  local _SAVE_IFS="${IFS}"
+  local _kind _a _b _c _d _e _f _g _h
+  local _lo=0 _hi=0 _span=0
+  local -A _C_HV _C_UNIQ _C_OK _C_BAD _C_TOT _C_UA _C_HOST _C_IPS
+  IFS=$' \t\n'
+  while read -r _kind _a _b _c _d _e _f _g _h; do
+    case "${_kind}" in
+      SPAN)
+        [[ "${_a}" =~ ^[0-9]+$ ]] && _lo="${_a}"
+        [[ "${_b}" =~ ^[0-9]+$ ]] && _hi="${_b}"
+        ;;
+      COHORT)
+        [[ "${_a}" =~ ^[0-9]+$ ]] || continue
+        _C_HV["${_a}"]="${_b}"; _C_UNIQ["${_a}"]="${_c}"
+        _C_OK["${_a}"]="${_d}";  _C_BAD["${_a}"]="${_e}"
+        _C_TOT["${_a}"]="${_f}"; _C_UA["${_a}"]="${_g}"
+        _C_HOST["${_a}"]="${_h}"
+        ;;
+      IP)
+        [[ "${_a}" =~ ^[0-9]+$ ]] || continue
+        _validate_ip "${_b}" || continue
+        _C_IPS["${_a}"]="${_C_IPS["${_a}"]:-}${_C_IPS["${_a}"]:+ }${_b}:${_c}:${_d}:${_e}:${_f}"
+        ;;
+    esac
+  done < <(tail -n "${_NGINX_HARVEST_MAX_LINES}" "${_log_file}" 2> /dev/null \
+    | perl -e "${_HRV_PL}" -- \
+        "$(( _now - _NGINX_HARVEST_WINDOW ))" \
+        "${_NGINX_HARVEST_IP_MIN_REQS}" \
+        "${_NGINX_HARVEST_IP_THRESHOLD}" 2> /dev/null)
+  IFS="${_SAVE_IFS}"
+
+  (( ${#_C_HV[@]} )) || return 0
+  _span=$(( _hi - _lo ))
+  if (( _span < _NGINX_HARVEST_MIN_SPAN )); then
+    _harvest_log "NOTE: harvest scan span ${_span}s below ${_NGINX_HARVEST_MIN_SPAN}s -- sample not representative, skipping"
+    return 0
+  fi
+
+  local _id _ua _host _rec _ip _docs _uniq _uas _excl _wl _tot _elig _banned
+  for _id in "${!_C_HV[@]}"; do
+    _ua=$(_harvest_show "${_C_UA["${_id}"]}")
+    _host=$(_harvest_show "${_C_HOST["${_id}"]}")
+    (( _C_HV["${_id}"] > _NGINX_HARVEST_IP_MAX )) && continue
+    (( _C_UNIQ["${_id}"] < _NGINX_HARVEST_UNIQ_PCT )) && continue
+    (( _C_OK["${_id}"] < _NGINX_HARVEST_OK_PCT )) && continue
+    (( _C_BAD["${_id}"] > _NGINX_HARVEST_BAD_PCT )) && continue
+    if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]] \
+      && [[ "${_ua}" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]]; then
+      continue
+    fi
+    ### Collapsed realip: if much of the cohort is inside csf.allow we are
+    ### looking at CDN edges, not clients. Skip the whole vhost.
+    _wl=0; _tot=0
+    for _rec in ${_C_IPS["${_id}"]}; do
+      _ip="${_rec%%:*}"
+      (( _tot++ ))
+      _is_whitelisted_ip "${_ip}" && (( _wl++ ))
+    done
+    (( _tot )) || continue
+    if (( 100 * _wl / _tot >= _NGINX_HARVEST_ALLOW_PCT )); then
+      _harvest_log "REALIP-SUSPECT ${_host} [${_wl}/${_tot} cohort IPs whitelisted] ua=${_ua}"
+      continue
+    fi
+    _harvest_log "=== HARVEST COHORT [${_C_HV["${_id}"]} heavy IPs | ${_C_TOT["${_id}"]} docs | uniq ${_C_UNIQ["${_id}"]}% | ok ${_C_OK["${_id}"]}% | bad ${_C_BAD["${_id}"]}% | span ${_span}s] ==="
+    _harvest_log "=== host=${_host} ua=${_ua} action=${_NGINX_HARVEST_ACTION} ==="
+    _banned=0
+    for _rec in ${_C_IPS["${_id}"]}; do
+      IFS=':' read -r _ip _docs _uniq _uas _excl <<< "${_rec}"
+      _elig="yes"
+      (( _uniq < _NGINX_HARVEST_UNIQ_PCT )) && _elig="uniq"
+      (( _uas > _NGINX_HARVEST_IP_MAX_UAS )) && _elig="multi-ua"
+      (( _excl < _NGINX_HARVEST_EXCL_PCT )) && _elig="shared-ip"
+      [[ -n "${_BANNED_IPS["${_ip}"]}" ]] && _elig="already-banned"
+      [[ -n "${_ALLOWED_IPS["${_ip}"]}" ]] && _elig="allowed"
+      _is_whitelisted_ip "${_ip}" && _elig="whitelisted"
+      _is_logged_in "${_ip}" > /dev/null 2>&1 && _elig="logged-in"
+      [[ "${_ip}" = "${_MYIP}" ]] && _elig="local"
+      if [[ "${_elig}" != "yes" ]]; then
+        _harvest_log "SKIP ${_ip} docs=${_docs} uniq=${_uniq} uas=${_uas} excl=${_excl} gate=${_elig}"
+        continue
+      fi
+      if [[ "${_NGINX_HARVEST_ACTION}" = "BAN" ]] \
+        || { [[ "${_NGINX_HARVEST_ACTION}" = "BAN_NAMED" ]] \
+             && [[ "${_ua}" =~ ${_NGINX_HARVEST_BAN_UA} ]]; }; then
+        if (( _banned >= _NGINX_HARVEST_MAX_BANS )); then
+          _harvest_log "CAP ${_ip} docs=${_docs} -- per-pass ban cap ${_NGINX_HARVEST_MAX_BANS} reached"
+          continue
+        fi
+        _block_ip "${_ip}" "silent"
+        (( _banned++ ))
+        _harvest_log "BAN ${_ip} docs=${_docs} uniq=${_uniq} uas=${_uas} excl=${_excl}"
+      else
+        _harvest_log "WOULD-BAN ${_ip} docs=${_docs} uniq=${_uniq} uas=${_uas} excl=${_excl}"
+      fi
+    done
+    IFS="${_SAVE_IFS}"
+  done
+}
+
+# _track_path_flood IP PATH_KEY STATUS REQUEST_TIME
 #
 # Called for every non-ignored request line whose URI matches one of the
 # watched path prefixes defined in _NGINX_PATH_FLOOD_WATCH.
@@ -2285,6 +2589,10 @@ _handle_path_flood_blocking
 # windowed; runs after the passes above so _BANNED_IPS is fully populated and
 # double-blocking avoided.
 _handle_http10_auth_flood
+
+### Runs last: the four existing scorers have already populated _BANNED_IPS,
+### so this layer never double-bans and never changes their authority.
+_handle_harvest_blocking
 
 # Tier B: evaluate the cross-run distributed-i18n-flood window and tail the
 # PHP-FPM error logs for new pool-saturation events.  These detect, alert and
