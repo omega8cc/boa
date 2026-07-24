@@ -29,18 +29,16 @@ renice ${_B_NICE} -p $$ &> /dev/null
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 
-_free_memory() {
-  echo "Freeing memory..."
-  sync && echo 3 | tee /proc/sys/vm/drop_caches
-}
-
 _create_locks() {
+  # NB: do NOT drop the page/dentry/inode cache here. A restart must not evict the
+  # box-wide cache -- on a busy box that forces cold re-reads and a stampede, which
+  # is one of the amplifiers behind the am095 restart storm. Genuine memory pressure
+  # is handled by the OOM path, not by every MySQL restart.
   echo "Creating locks..."
   : > /run/boa_wait.pid
   : > /run/fmp_wait.pid
   : > /run/restarting_fmp_wait.pid
   : > /run/mysql_restart_running.pid
-  _free_memory
 }
 
 _remove_locks() {
@@ -49,7 +47,6 @@ _remove_locks() {
   rm -f /run/fmp_wait.pid
   rm -f /run/restarting_fmp_wait.pid
   rm -f /run/mysql_restart_running.pid
-  _free_memory
 }
 
 _check_running() {
@@ -87,11 +84,23 @@ _start_sql() {
   fi
   renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start &> /dev/null
+  _mysqld_wait=0
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
+    _mysqld_wait=$(( _mysqld_wait + 1 ))
+    if [ "${_mysqld_wait}" -ge 20 ]; then
+      # Bounded: a start that cannot succeed (corrupt data, disk full, bad config)
+      # must not spin forever holding the restart locks, which would block every
+      # future auto-heal. Give up this attempt, clear the locks and let the caller
+      # report it; the next monitor tick can retry.
+      echo "MySQLD did not come up within ~60s -- giving up this attempt"
+      _remove_locks
+      [ "$1" != "chain" ] && exit 1
+      return 1
+    fi
   done
   echo "MySQLD started"
 
@@ -183,11 +192,73 @@ _re_start_sql() {
   exit 0
 }
 
+_mysqld_answering() {
+  # Local liveness probe (mirrors mysql.sh _mysql_is_answering): any reply --
+  # including an auth error or "Too many connections" -- proves the server is up.
+  case "$(timeout 5 mysqladmin -u root --connect-timeout=2 ping 2>&1)" in
+    *"is alive"*|*"denied"*|*"Too many connections"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+_stop_mysqld_only() {
+  # Stop ONLY mysqld -- never nginx/php-fpm, never the cache. Used by the DB
+  # watchdog to recover a wedged-but-present mysqld (hung/deadlocked) with minimal
+  # blast radius. A hung server will not honour a graceful mysqladmin shutdown, so
+  # cap the graceful attempt (timeout) and then force the survivor down (TERM, then
+  # KILL).
+  #
+  # CRITICAL: stop escalating the instant the server answers again. On a mysqld_safe
+  # box the supervisor respawns a fresh mysqld within ~1-2s; hard-killing or
+  # de-socketing that healthy respawn would recreate the am095 restart flap this
+  # redesign exists to prevent. So re-probe between each step and leave a live,
+  # answering server alone; only clear the socket/pid when mysqld is genuinely gone.
+  _check_running
+  _create_locks
+  if [ -z "$(pgrep -f /usr/sbin/mysqld)" ]; then
+    echo "MySQLD already stopped"
+    _remove_locks
+    return 0
+  fi
+  echo "Stopping MySQLD (db-only) ..."
+  timeout 60 service mysql stop &> /dev/null
+  if _mysqld_answering; then
+    echo "MySQLD answering after stop (healthy respawn) -- leaving it"
+    _remove_locks
+    return 0
+  fi
+  if pgrep -f /usr/sbin/mysqld > /dev/null 2>&1; then
+    pkill -TERM -f /usr/sbin/mysqld
+    sleep 5
+    if _mysqld_answering; then
+      echo "MySQLD answering after TERM (healthy respawn) -- leaving it"
+      _remove_locks
+      return 0
+    fi
+    pkill -KILL -f /usr/sbin/mysqld
+    sleep 2
+  fi
+  # Never de-socket a live server: only clear stale files once mysqld is truly gone.
+  if [ -z "$(pgrep -f /usr/sbin/mysqld)" ]; then
+    rm -f /run/mysqld/mysql*
+  fi
+  _remove_locks
+  echo "MySQLD stopped (db-only)"
+}
+
+_re_start_mysqld_only() {
+  _stop_mysqld_only
+  _start_sql "chain"
+  _remove_locks
+  exit 0
+}
+
 case "$1" in
-  restart) _re_start_sql ;;
-  start)   _start_sql "only" ;;
-  stop)    _stop_sql "only" ;;
-  *)       _re_start_sql
+  restart)   _re_start_sql ;;
+  start)     _start_sql "only" ;;
+  stop)      _stop_sql "only" ;;
+  dbrestart) _re_start_mysqld_only ;;
+  *)         _re_start_sql
   ;;
 esac
 
