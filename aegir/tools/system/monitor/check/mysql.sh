@@ -130,41 +130,39 @@ _incident_email_report() {
   fi
 }
 
-_valkey_cold_restart() {
-  killall -9 valkey-server &> /dev/null
-  rm -f /var/lib/valkey/*
-  service valkey-server start &> /dev/null
-  wait
-}
-
-_redis_cold_restart() {
-  killall -9 redis-server &> /dev/null
-  rm -f /var/lib/redis/*
-  service redis-server start &> /dev/null
-  wait
-}
-
 _sql_restart() {
+  # Minimal-blast-radius recovery: a DB fault heals ONLY the DB. Never stop
+  # nginx/php-fpm, drop caches, wipe the cache or kill php from here -- that
+  # amplifies a DB blip into a site-wide outage and a cache stampede (the am095
+  # restart storm).
+  #
+  # A server that answers at all is not something to restart: return at once so
+  # the caller's real remedies (flush-hosts, long-query kill) still run and no
+  # incident is logged or emailed for a non-event. This also catches a DB that
+  # recovered on its own between detection and here (e.g. a mysqld_safe respawn).
+  if _mysql_is_answering; then
+    return 0
+  fi
+  # Genuinely not answering. Recover mysqld and nothing else.
   touch /run/boa_mysql_auto_healing.pid
   if [ ! -d "/run/mysqld" ]; then
     mkdir -p /run/mysqld
     chown -R mysql:root /run/mysqld
   fi
-  sleep 3
-  echo "$(date) $1 incident detected" >> ${_pthOml}
-  killall sleep &> /dev/null
-  killall php
-  bash /var/xdrago/move_sql.sh
-  wait
-  echo "$(date) $1 incident Percona server restarted" >> ${_pthOml}
-  if [ -e "/var/lib/valkey" ]; then
-    _valkey_cold_restart
-    echo "$(date) $1 incident Valkey server restarted" >> ${_pthOml}
-  elif [ -e "/var/lib/redis" ]; then
-    _redis_cold_restart
-    echo "$(date) $1 incident Redis server restarted" >> ${_pthOml}
+  if pgrep -f /usr/sbin/mysqld > /dev/null 2>&1; then
+    # Present but not answering = wedged/deadlocked. A plain start would no-op on
+    # the live PID, so force a db-only restart (stop the hung mysqld, start fresh).
+    echo "$(date) $1 incident: mysqld present but not answering -- db-only restart" >> ${_pthOml}
+    bash /var/xdrago/move_sql.sh dbrestart
+  else
+    echo "$(date) $1 incident: mysqld absent -- starting it" >> ${_pthOml}
+    bash /var/xdrago/move_sql.sh start
   fi
-  echo "$(date) $1 incident response completed" >> ${_pthOml}
+  if _mysql_is_answering; then
+    echo "$(date) $1 incident response completed: MySQL answering" >> ${_pthOml}
+  else
+    echo "$(date) $1 incident response completed: MySQL still not answering" >> ${_pthOml}
+  fi
   _incident_email_report "$1"
   echo >> ${_pthOml}
   [ -e "/run/boa_mysql_auto_healing.pid" ] && rm -f /run/boa_mysql_auto_healing.pid
@@ -357,7 +355,7 @@ _mysql_is_answering() {
   local _out
   _out=$(timeout 5 mysqladmin -u root --connect-timeout=2 ping 2>&1)
   case "${_out}" in
-    *"is alive"*|*"denied"*) return 0 ;;
+    *"is alive"*|*"denied"*|*"Too many connections"*) return 0 ;;
     *) return 1 ;;
   esac
 }
