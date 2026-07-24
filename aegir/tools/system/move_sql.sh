@@ -69,7 +69,13 @@ _start_sql() {
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
     _remove_locks
-    [ "$1" != "chain" ] && exit 1
+    # A running mysqld is the desired end state -- return/exit success. NEVER fall
+    # through to rm the LIVE socket/pid below and 'service mysql start' a second
+    # mysqld_safe: when mysqld_safe has already respawned mysqld between the stop
+    # and start phases of a restart, that duplicate-supervisor race is what drove
+    # the every-minute "mysqld_safe: 0 processes / mysqld restarted" flap on am095.
+    [ "$1" = "chain" ] && return 0
+    exit 0
   fi
 
   echo "Starting MySQLD again..."
