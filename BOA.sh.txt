@@ -3495,7 +3495,37 @@ _soften_print_guard() {
 }
 
 #
-# Orchestrator: apply all three crawler-access fixes to the Aegir master and
+# Restore the bare 'bot' token in the $deny_on_high_load map. That roster is
+# byte-identical to $is_bot minus this one token, so a UA self-identifying only
+# as '...bot' matched $is_bot but never high-load shedding, leaving Spider
+# Protection a silent no-op against it: an observed distributed crawler drove
+# a hosted box to load 264 while being served zero 503s. Scoped to the map
+# block, fail-closed on a customised roster, and a no-op once applied.
+#
+_fix_high_load_bot_token() {
+  local _fIle="$1"
+  local _tMp="${_fIle}.crawler-fix.$$.tmp"
+  [ -f "${_fIle}" ] || return 1
+  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
+  grep -qF 'map $http_user_agent $deny_on_high_load {' "${_fIle}" || return 1
+  sed '/map $http_user_agent $deny_on_high_load {/,/^}/ s/~\*crawl|spider|/~*crawl|bot|spider|/' \
+    "${_fIle}" > "${_tMp}"
+  if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ] || cmp -s "${_fIle}" "${_tMp}"; then
+    rm -f "${_tMp}"
+    return 1
+  fi
+  [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
+  cat "${_tMp}" > "${_fIle}"
+  rm -f "${_tMp}"
+  if [ ! -s "${_fIle}" ]; then
+    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
+    return 1
+  fi
+  return 0
+}
+
+#
+# Orchestrator: apply all four crawler-access fixes to the Aegir master and
 # every Octopus account -- provision templates (so verify tasks re-render the
 # fixed config) AND already-rendered includes (so the fix is live without a
 # verify). Reload nginx only when something changed and the config test
@@ -3544,6 +3574,10 @@ _fix_nginx_crawler_access() {
       if _relax_crawler_roster "${_fIle}"; then
         _chAnged=1
         _log_crawler_fix "NOTE: crawler-access fix: is_crawler roster relaxed in ${_fIle}"
+      fi
+      if _fix_high_load_bot_token "${_fIle}"; then
+        _chAnged=1
+        _log_crawler_fix "NOTE: crawler-access fix: high-load bot token restored in ${_fIle}"
       fi
     done
   done
