@@ -174,9 +174,12 @@ _NGINX_PATH_FLOOD_IP_THRESHOLD=30
 # i.e. ~3 req/s, which any popular search page exceeds at peak).
 _NGINX_PATH_FLOOD_REQ_THRESHOLD=100
 
-# Upstream response time (whole seconds) above which a request is considered
-# "slow" -- i.e., it consumed real backend (Solr/PHP-FPM) cycles. Slow 200s
-# get an extra per-IP counter increment on top of normal scoring.
+# Request time (whole seconds) above which a request is considered "slow".
+# NOTE: this is nginx's $request_time, NOT $upstream_response_time -- the log
+# format carries no upstream field, so this cannot tell an FPM-served request
+# from one nginx answered itself. Under saturation $request_time inflates
+# uniformly across every status, static files included, so treat this as a
+# latency signal and never as proof that backend cycles were consumed.
 _NGINX_PATH_FLOOD_SLOW_SECS=3
 
 # Per-(path-prefix, IP) minimum 200-response count before that IP is added to
@@ -553,7 +556,7 @@ declare -A _UAB_IP_BAD
 # _PATH_IP_SET[prefix:ip]    = sentinel: IP seen on this path prefix with 200 or 444
 # _PATH_IP_LIST[prefix]      = space-separated list of contributing IPs
 # _PATH_IP_REQS[prefix:ip]   = per-(prefix, IP) request count (200 and 444)
-# _PATH_SLOW_COUNT[prefix]   = requests with upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS
+# _PATH_SLOW_COUNT[prefix]   = requests with request_time >= _NGINX_PATH_FLOOD_SLOW_SECS
 declare -A _PATH_REQ_COUNT
 declare -A _PATH_IP_COUNT
 declare -A _PATH_IP_SET
@@ -1443,7 +1446,7 @@ _handle_ua_burst_blocking() {
 #
 # Tracks two response classes:
 #   200 — request reached the backend (Solr/PHP-FPM) and consumed real resources.
-#         Slow responses (upstream_time >= _NGINX_PATH_FLOOD_SLOW_SECS) are
+#         Slow responses (request_time >= _NGINX_PATH_FLOOD_SLOW_SECS) are
 #         counted separately so the flood report shows backend load generated.
 #   444 — Nginx blocked the request before it touched the backend.
 #         Passing them here populates aggregate path/IP counts so
@@ -1455,7 +1458,7 @@ _track_path_flood() {
   local _IP="$1"
   local _PATH_KEY="$2"
   local _STATUS="$3"
-  local _UP_TIME="$4"
+  local _REQ_TIME="$4"
 
   # Accept confirmed-attack (444) and resource-consuming (200) responses only
   [[ "${_STATUS}" != "200" && "${_STATUS}" != "444" ]] && return
@@ -1479,11 +1482,11 @@ _track_path_flood() {
   # Avoid [[ -v assoc[key] ]] for compatibility with older Bash 4.x.
   (( _PATH_REQ_COUNT["${_PATH_KEY}"] += 1 ))
 
-  # Track slow responses (upstream_time as whole-second integer comparison;
+  # Track slow responses (request_time as whole-second integer comparison;
   # avoids bc/awk dependency by stripping the fractional part via parameter
   # expansion before the arithmetic test).
-  local _UP_INT="${_UP_TIME%%.*}"
-  if [[ "${_UP_INT}" =~ ^[0-9]+$ ]] && (( _UP_INT >= _NGINX_PATH_FLOOD_SLOW_SECS )); then
+  local _REQ_INT="${_REQ_TIME%%.*}"
+  if [[ "${_REQ_INT}" =~ ^[0-9]+$ ]] && (( _REQ_INT >= _NGINX_PATH_FLOOD_SLOW_SECS )); then
     (( _PATH_SLOW_COUNT["${_PATH_KEY}"] += 1 ))
   fi
 
@@ -2139,15 +2142,16 @@ while IFS= read -r _line <&3; do
   done
 
   # ---- DDoS / Shared-UA tracking + upstream time extraction ----
-  # The log format ends: ..."UA" upstream_time "cache_status" proto=...
-  # We capture both the final quoted UA token and the decimal upstream time
-  # that follows it. Both values are reused by the path-flood tracker below,
+  # The log format ends: ..."UA" $request_time "$gzip_ratio" proto=...
+  # We capture the final quoted UA token and the decimal REQUEST time that
+  # follows it -- not upstream time; the log has no upstream field at all.
+  # Both values are reused by the path-flood tracker below,
   # so extracting them once here avoids a second regex match per line.
   _DDOS_UA=""
-  _UP_TIME="0"
+  _REQ_TIME="0"
   if [[ -n "${_REAL_IP}" && "${_line}" =~ \"([^\"]+)\"\ ([0-9]+\.[0-9]+) ]]; then
     _DDOS_UA="${BASH_REMATCH[1]}"
-    _UP_TIME="${BASH_REMATCH[2]}"
+    _REQ_TIME="${BASH_REMATCH[2]}"
     # Only track if UA is non-trivial (longer than 10 chars) and the line is
     # not a redirect (301) so we stay consistent with _process_ip filtering.
     if [[ ${#_DDOS_UA} -gt 10 && ! "${_line}" =~ \"\ 301 ]]; then
@@ -2186,7 +2190,7 @@ while IFS= read -r _line <&3; do
     if [[ "${_LINE_STATUS}" == "200" || "${_LINE_STATUS}" == "444" ]]; then
       for _WPFX in "${_WATCH_PATTERNS[@]}"; do
         if [[ -n "${_WPFX}" && "${_line}" =~ ${_WPFX} ]]; then
-          _track_path_flood "${_REAL_IP}" "${_WPFX}" "${_LINE_STATUS}" "${_UP_TIME}"
+          _track_path_flood "${_REAL_IP}" "${_WPFX}" "${_LINE_STATUS}" "${_REQ_TIME}"
           # Stop after the first matching prefix to avoid double-counting a
           # single request against multiple overlapping patterns.
           break
@@ -2213,7 +2217,7 @@ while IFS= read -r _line <&3; do
     _LS="${BASH_REMATCH[3]}"
     if [[ "${_LP}" =~ ^/[A-Za-z][A-Za-z](-[A-Za-z]+)?/ \
        || "${_LP}" =~ [?\&]q=/?[A-Za-z][A-Za-z](-[A-Za-z]+)?/ ]]; then
-      _track_i18n_flood "${_LH}" "${_LS}" "${_UP_TIME}"
+      _track_i18n_flood "${_LH}" "${_LS}" "${_REQ_TIME}"
     fi
   fi
 
