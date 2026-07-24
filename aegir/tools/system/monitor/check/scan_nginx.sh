@@ -517,6 +517,7 @@ echo "CONFIG: _NGINX_V6_BAN_DETECT is ${_NGINX_V6_BAN_DETECT}"
 # Declare Associative Arrays
 # ==============================
 
+declare -A _WL_CACHE
 declare -A _BANNED_IPS
 declare -A _ALLOWED_IPS
 declare -A _LOGGED_IN_IPS
@@ -791,6 +792,11 @@ _is_whitelisted_ip6() {
 # Honours the allow regardless of the iptables port scope of the csf.allow
 # entry: an s= record expresses "trusted source" and must gate the monitor's
 # block decision on every port, including 443.
+# Memoised, mirroring _V6_WL_CACHE: _CSF_ALLOW_IPS and the _CIDR_* tables are
+# loaded once at startup and never re-read, so a verdict cannot go stale within
+# a run. Four existing trackers ask about the same IPs repeatedly and each miss
+# costs a here-string plus a CIDR walk; the harvest cohort sweep asks about
+# every cohort member.
 _is_whitelisted_ip() {
   local _ip="$1" _a _b _c _d _ipi _k
   # IPv6 client (only ever scored when _V6_ON): consult the v6 allow store.
@@ -798,14 +804,28 @@ _is_whitelisted_ip() {
     _is_whitelisted_ip6 "${_ip}"
     return
   fi
-  [[ -n "${_CSF_ALLOW_IPS["${_ip}"]:-}" ]] && return 0
+  case "${_WL_CACHE["${_ip}"]:-}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  if [[ -n "${_CSF_ALLOW_IPS["${_ip}"]:-}" ]]; then
+    _WL_CACHE["${_ip}"]=1
+    return 0
+  fi
   IFS=. read -r _a _b _c _d <<< "${_ip}"
-  [[ -z "${_CSF_ALLOW_CIDR_OCTET1["${_a}"]:-}" ]] && return 1
+  if [[ -z "${_CSF_ALLOW_CIDR_OCTET1["${_a}"]:-}" ]]; then
+    _WL_CACHE["${_ip}"]=0
+    return 1
+  fi
   _ipi=$(( (_a<<24)+(_b<<16)+(_c<<8)+_d ))
   for _k in "${!_CIDR_NET[@]}"; do
     [[ "${_CIDR_O1[_k]}" == "${_a}" ]] || continue
-    (( (_ipi & _CIDR_MASK[_k]) == _CIDR_NET[_k] )) && return 0
+    if (( (_ipi & _CIDR_MASK[_k]) == _CIDR_NET[_k] )); then
+      _WL_CACHE["${_ip}"]=1
+      return 0
+    fi
   done
+  _WL_CACHE["${_ip}"]=0
   return 1
 }
 
