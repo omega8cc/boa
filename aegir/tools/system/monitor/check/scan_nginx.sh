@@ -89,8 +89,8 @@ _NGINX_DOS_LOG=VERBOSE
 # high-traffic site the single most common mobile-browser UA string is shared
 # by well over 20 distinct IPs (and 200 reqs) within 5s, so the detector flagged
 # a legitimate popular browser as an "attack fingerprint" and banned every
-# visitor that made >=3 requests under it (am095 / kwestiasmaku.com, a busy D7
-# recipe site: dozens of real residential IPs banned at [x3]-[x6] mid-search).
+# visitor that made >=3 requests under it (observed on a busy hosted D7 site:
+# dozens of real residential IPs banned at [x3]-[x6] mid-search).
 # Note a genuine distributed botnet RANDOMISES its UA per IP, so one UA shared
 # by many IPs is the signature of a real browser, not a bot. The values below
 # are sized so only an implausibly homogeneous burst trips the detector;
@@ -128,7 +128,7 @@ _NGINX_DDOS_IP_MIN_REQS=20
 # nonexistent paths.  That bad-status ratio is the key false-positive guard: a
 # real popular-browser UA shared by many legitimate IPs is ~all 200/304, so it
 # never trips, which is why the IP threshold can sit far below the DDoS-UA one
-# without re-introducing the am095/kwestiasmaku over-ban.  Set DETECT=NO in
+# without re-introducing that popular-browser over-ban.  Set DETECT=NO in
 # /root/.barracuda.cnf to disable.  Tune tighter, never looser, on real reports.
 _NGINX_UA_BURST_DETECT="YES"
 # Minimum distinct IPs sharing one exact UA in the scan window.

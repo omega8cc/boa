@@ -32,6 +32,19 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
 
+# Nor on top of another run of this script. The nightly cron cannot overlap
+# itself, but `backchain` runs the basic mode on demand and can land inside the
+# full nightly run, putting two dump chains on the same server. The marker is
+# only believed while the process that wrote it is alive, so a killed backup
+# cannot lock the next one out.
+if [ -s "/run/boa_sql_backup.pid" ]; then
+  _RUNNING_PID="$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)"
+  if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null; then
+    echo "Another SQL backup (pid ${_RUNNING_PID}) is already running"
+    exit 0
+  fi
+fi
+
 if [ "${1}" = "full" ] || [ -z "${1}" ]; then
   _THIS_MODE="full"
 elif [ "${1}" = "basic" ]; then
@@ -105,7 +118,9 @@ if [ -e "/root/.my.optimize.cnf" ]; then
 else
   _OPTIM=NO
 fi
-touch /run/boa_sql_backup.pid
+# Record the owning pid so a later run can tell a live backup from a leaked
+# marker; clear.sh still age-reaps it as a backstop.
+echo $$ > /run/boa_sql_backup.pid
 
 # (Previously: _SQL_PSWD=$(cat /root/.my.pass.txt ...). Removed in the
 #  security-audit credential-exposure pass — mydumper now reads creds
