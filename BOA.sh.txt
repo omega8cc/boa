@@ -1513,7 +1513,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f96 --guard duplicity
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f96 --guard duplicity
-    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f50
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f49
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f75
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f90
@@ -1559,7 +1559,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f96
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f98
     _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f99
-    _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f88
+    _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f87
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f95
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f99
@@ -3533,7 +3533,7 @@ _fix_high_load_bot_token() {
 # The whole run holds the shared nginx-config lock: clear.sh is scheduled
 # twice (*/5 root crontab + the autoupboa /etc/crontab line) and both fire
 # at :00, so without the lock two instances race each other over the same
-# files -- that race emptied a rendered include on tr071 (2026-07-23).
+# files -- that race emptied a rendered include on a hosted box (2026-07-23).
 #
 _log_crawler_fix() {
   echo "$1"
