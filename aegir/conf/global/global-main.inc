@@ -339,8 +339,19 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
  * for the CLI ini).
  *
  * Milliseconds, and it applies to read-only SELECTs only. Anything at or above
- * the 180s FPM ceiling is inert. Set $conf['boa_sql_web_max_exec_ms'] = 0 to
- * opt a site out, or to another value to tune it.
+ * the 180s FPM ceiling is inert.
+ *
+ * Per-site override is the BOA ini, sql_web_max_exec_ms in
+ * sites/<host>/modules/boa_site_control.ini (or the platform-level
+ * boa_platform_control.ini); 0 disables the cap for that site. It has to be the
+ * ini rather than $conf, because local.settings.php and sites/all/settings.php
+ * are both included AFTER this file, so anything they set in $conf arrives too
+ * late to be read here. $conf is still honoured for the rare case where it was
+ * set earlier in the global chain.
+ *
+ * A site that must override from local.settings.php can instead edit the
+ * init_commands entry directly, which works because Drupal only reads that
+ * array when it opens the connection, long after every settings file has run.
  *
  * D6 has no $databases array, so the guard below skips it.
  *
@@ -349,7 +360,10 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
  */
 if (PHP_SAPI !== 'cli' && isset($databases['default']['default'])) {
   $boa_max_exec_ms = 30000;
-  if (isset($conf['boa_sql_web_max_exec_ms'])) {
+  if (isset($all_ini['sql_web_max_exec_ms'])) {
+    $boa_max_exec_ms = (int) $all_ini['sql_web_max_exec_ms'];
+  }
+  elseif (isset($conf['boa_sql_web_max_exec_ms'])) {
     $boa_max_exec_ms = (int) $conf['boa_sql_web_max_exec_ms'];
   }
   if ($boa_max_exec_ms > 0) {
