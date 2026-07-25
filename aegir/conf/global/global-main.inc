@@ -322,3 +322,57 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
   header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
 }
+
+/**
+ * Bound how long a single WEB query may run.
+ *
+ * Percona ships max_execution_time = 0 and BOA never set it, so one
+ * pathological SELECT holds a php-fpm worker and a database thread until the
+ * 180s request reaper fires. A few hundred of those stack into a metastable
+ * collapse the box cannot recover from on its own, which is exactly how a
+ * distributed scraper hitting one uncached expensive view took a 64-core
+ * server to load 264.
+ *
+ * Web only: drush, cron, migrations and mydumper backups all run long queries
+ * legitimately, so CLI keeps the unlimited default. This mirrors the split BOA
+ * already applies to PHP's own max_execution_time (180 for the FPM inis, 3600
+ * for the CLI ini).
+ *
+ * Milliseconds, and it applies to read-only SELECTs only. Anything at or above
+ * the 180s FPM ceiling is inert.
+ *
+ * Per-site override is the BOA ini, sql_web_max_exec_ms in
+ * sites/<host>/modules/boa_site_control.ini (or the platform-level
+ * boa_platform_control.ini); 0 disables the cap for that site. It has to be the
+ * ini rather than $conf, because local.settings.php and sites/all/settings.php
+ * are both included AFTER this file, so anything they set in $conf arrives too
+ * late to be read here. $conf is still honoured for the rare case where it was
+ * set earlier in the global chain.
+ *
+ * A site that must override from local.settings.php can instead edit the
+ * init_commands entry directly, which works because Drupal only reads that
+ * array when it opens the connection, long after every settings file has run.
+ *
+ * D6 has no $databases array, so the guard below skips it.
+ *
+ * Caveat: a site whose own settings ASSIGN init_commands rather than adding a
+ * key are included later and will drop this.
+ */
+if (PHP_SAPI !== 'cli' && isset($databases['default']['default'])) {
+  $boa_max_exec_ms = 30000;
+  if (isset($all_ini['sql_web_max_exec_ms'])) {
+    $boa_max_exec_ms = (int) $all_ini['sql_web_max_exec_ms'];
+  }
+  elseif (isset($conf['boa_sql_web_max_exec_ms'])) {
+    $boa_max_exec_ms = (int) $conf['boa_sql_web_max_exec_ms'];
+  }
+  if ($boa_max_exec_ms > 0) {
+    if (!isset($databases['default']['default']['init_commands'])
+      || !is_array($databases['default']['default']['init_commands'])) {
+      $databases['default']['default']['init_commands'] = array();
+    }
+    $databases['default']['default']['init_commands']['boa_max_exec'] =
+      'SET SESSION max_execution_time = ' . $boa_max_exec_ms;
+  }
+  unset($boa_max_exec_ms);
+}
