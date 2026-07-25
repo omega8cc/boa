@@ -99,9 +99,25 @@ _normalize_incident_report
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
+    # One alert per cooldown, not one per pass. A service that keeps failing
+    # used to send a mail every time a watchdog acted, which buries the signal
+    # exactly when it matters most. Nothing is lost: every incident is still
+    # written to the log below, and the mail body is the tail of that log, so
+    # the next alert that does go out carries the ones that did not. An older
+    # lock.inc without the helper simply sends as before.
+    local _sfx=""
+    if command -v _incident_email_ratelimit >/dev/null 2>&1; then
+      if ! _incident_email_ratelimit "${2:-php}"; then
+        echo "$(date) INFO: alert for '${1}' held back, one was already sent this cooldown" >> ${_pthOml}
+        return 1
+      fi
+      if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+        _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+      fi
+    fi
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
+    s-nail -s "Incident Report: ${1}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
   fi
 }
 
@@ -444,7 +460,41 @@ if [ ! -e "/var/tmp/fpm" ]; then
   chmod 1777 /var/tmp/fpm
 fi
 
-if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+###
+### Stand down while the database is being deliberately restarted
+###
+export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
+: "${_SQL_MUTATION_MAX_MINS:=15}"
+
+_sql_mutation_in_flight() {
+  # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database, and
+  # it never brings them back: these watchdogs are the intended recovery. That
+  # only works if they wait for the restart to finish. Restarting the web tier
+  # mid-teardown stands it in front of a database that is still down, so workers
+  # pile onto failed connections and the whole herd arrives at a cold cache the
+  # moment the database returns; that cascade is what turns a brief database
+  # fault into a site-wide one. runner.sh and system.sh already stand down on
+  # the same two markers: mysql_restart_running.pid, written by move_sql.sh and
+  # by mycnfup, and boa_mysql_auto_healing.pid, held by the database watchdog
+  # for the length of its heal.
+  #
+  # Honoured only while the marker is recent, deliberately. clear.sh reaps a
+  # leaked mysql_restart_running.pid an hour after the writer died, and an hour
+  # with no web auto-healing is a worse outcome than the cascade this avoids; a
+  # marker older than the bound is treated as abandoned rather than authoritative.
+  local _m
+  for _m in /run/mysql_restart_running.pid /run/boa_mysql_auto_healing.pid; do
+    [ -e "${_m}" ] || continue
+    if [ -z "$(find "${_m}" -mmin "+${_SQL_MUTATION_MAX_MINS}" 2>/dev/null)" ]; then
+      echo "$(date) INFO: MySQL restart in progress (${_m##*/}); standing down this pass" >> ${_pthOml}
+      return 0
+    fi
+  done
+  return 1
+}
+
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
+  && ! _sql_mutation_in_flight; then
   _fpm_apcu_reload_sentinel
   _fpm_logs_empty
   _fpm_duplicate_instances_detection
