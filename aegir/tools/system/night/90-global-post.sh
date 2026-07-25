@@ -284,13 +284,23 @@ _fix_nginx_forward_secrecy() {
       sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
     fi
+    ### sed -i rewrites every file it is handed, match or no match, so running
+    ### it blind over the vhost tree refreshed the mtime of every vhost on the
+    ### system every night. That destroyed the only freshness signal the ghost
+    ### vhost reaper has (see _cleanup_ghost_vhosts), and long after the last
+    ### TLSv1.1 line was gone it still rewrote thousands of files for nothing.
+    ### Rewrite only the files that actually still carry the old directive.
     if [ -d "/data/u" ]; then
-      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
+      grep -Zl "TLSv1.1 TLSv1.2 TLSv1.3;" /data/disk/*/config/server_*/nginx/vhost.d/* 2>/dev/null \
+        | xargs -0 -r sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
     fi
     if [ -e "/var/aegir/config" ]; then
-      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
-      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
-      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
+      grep -Zl "TLSv1.1 TLSv1.2 TLSv1.3;" /var/aegir/config/server_*/nginx.conf 2>/dev/null \
+        | xargs -0 -r sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
+      grep -Zl "TLSv1.1 TLSv1.2 TLSv1.3;" /var/aegir/config/server_*/nginx/vhost.d/* 2>/dev/null \
+        | xargs -0 -r sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
+      grep -Zl "TLSv1.1 TLSv1.2 TLSv1.3;" /var/aegir/config/server_*/nginx/pre.d/*.conf 2>/dev/null \
+        | xargs -0 -r sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
     fi
     service nginx reload
   fi

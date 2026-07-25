@@ -10,6 +10,12 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _FIX_FILE="/var/xdrago/acrashsql.sh"
+# The repair script is built in a private file and only published under the
+# well-known name once it is complete. Two concurrent runs used to write AND
+# execute the same path, so one could truncate and rewrite the header while the
+# other was part-way through running it.
+_FIX_WORK="$(mktemp "${_FIX_FILE}.XXXXXX" 2>/dev/null)" || _FIX_WORK="${_FIX_FILE}.$$"
+trap 'rm -f "${_FIX_WORK}"' EXIT
 _LOG_FILE="/var/log/boa/mysqlcheck.log"
 _TOUCH_FILE="/var/log/boa/last-run-acrashsql"
 
@@ -26,6 +32,18 @@ _check_root() {
 _check_root
 
 [ -f "/root/.proxy.cnf" ] && exit 0
+
+# Stand down while the database is already being worked on. A full-server
+# mysqlcheck taken while a backup holds its locks, or while the watchdog is
+# restarting the server, competes for the same tables and can turn a slow
+# window into a stuck one. A crashed table is not urgent: the next pass picks
+# it up as soon as the window closes, and these markers are age-reaped, so a
+# operation that died cannot hold this off indefinitely.
+for _m in /run/boa_sql_backup.pid /run/boa_sql_cluster_backup.pid \
+          /run/boa_sql_maintenance.pid /run/boa_mysql_auto_healing.pid \
+          /run/mysql_restart_running.pid; do
+  [ -e "${_m}" ] && exit 0
+done
 
 export _B_NICE=${_B_NICE//[^0-9-]/}
 if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
@@ -94,6 +112,8 @@ sleep 90
 /usr/bin/mysqlcheck -u root -Aa > "${_LOG_FILE}"
 
 ###############################################################################
+declare -A _DB_DONE
+
 _repair_this_action() {
   local _FIXDB="${1}"
   local _FIXTBL="${2}"
@@ -108,18 +128,24 @@ _repair_this_action() {
   # ways that only a full-db pass can detect.
   {
     printf '#-- BELOW --# %s.%s [%s] recorded...\n' "${_FIXDB}" "${_FIXTBL}" "${_COUNTER}"
-    printf '/usr/bin/mysqlcheck -u root -r %s\n'    "${_FIXDB}"
+    # Once per database, not once per table. This pass rebuilds every table in
+    # the database, so queueing it again for the next crashed table in the same
+    # database repeats the most expensive step of the repair for nothing.
+    if [ -z "${_DB_DONE[${_FIXDB}]+set}" ]; then
+      printf '/usr/bin/mysqlcheck -u root -r %s\n'  "${_FIXDB}"
+    fi
     printf '/usr/bin/mysqlcheck -u root -r %s.%s\n' "${_FIXDB}" "${_FIXTBL}"
     printf '/usr/bin/mysqlcheck -u root -o %s.%s\n' "${_FIXDB}" "${_FIXTBL}"
     printf '/usr/bin/mysqlcheck -u root -a %s.%s\n' "${_FIXDB}" "${_FIXTBL}"
     printf '\n'
-  } >> "${_FIX_FILE}"
+  } >> "${_FIX_WORK}"
+  _DB_DONE["${_FIXDB}"]=1
 }
 
 ###############################################################################
 _make_actions() {
   # Write a fresh fix-script header
-  printf '#!/bin/bash\n\n' > "${_FIX_FILE}"
+  printf '#!/bin/bash\n\n' > "${_FIX_WORK}"
 
   # Associative array: key = "database\tTable" → error count
   declare -A _ERR_COUNT
@@ -171,8 +197,8 @@ if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
   if [ "${_STATUS}" != "CLEAN" ]; then
     s-nail -s "SQL check ERROR [${_hName}] ${_TIMEDATE}" \
       "${_MY_EMAIL}" < "${_LOG_FILE}"
-    if [ -f "${_FIX_FILE}" ]; then
-      bash "${_FIX_FILE}" \
+    if [ -f "${_FIX_WORK}" ]; then
+      bash "${_FIX_WORK}" \
         | s-nail -s "SQL REPAIR done [${_hName}] ${_TIMEDATE}" "${_MY_EMAIL}"
     fi
   fi
@@ -180,6 +206,15 @@ if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     s-nail -s "SQL check CLEAN [${_hName}] ${_TIMEDATE}" \
       "${_MY_EMAIL}" < "${_LOG_FILE}"
   fi
+fi
+
+# Publish the completed script under the well-known name, for an operator who
+# wants to see or re-run what was done. This happens LAST, after the run above,
+# so the copy that executed is always the private one and nothing was reading
+# this path while it was being written. Publishing any earlier would move the
+# file out from under the run and silently repair nothing.
+if [ -f "${_FIX_WORK}" ]; then
+  mv -f "${_FIX_WORK}" "${_FIX_FILE}" 2>/dev/null || rm -f "${_FIX_WORK}"
 fi
 
 rm -f "${_LOG_FILE}"

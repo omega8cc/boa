@@ -1545,16 +1545,40 @@ _cleanup_ghost_vhosts() {
     # Never reap while a migrate/export of this account is in flight.
     [ -e "${_usEr}/log/exported.pid" ] && continue
     _gh_vmark="${_usEr}/log/ctrl/ghost-vhost-${_Dom}.seen"
+    _gh_amark="${_usEr}/log/ctrl/ghost-vhost-noalias-${_Dom}.seen"
+    # Freshness is sampled ONCE, here, before this run's own vhost rewrites
+    # further down touch the file. BOA rewrites vhosts every night (the http2 /
+    # quic fixes below, and the forward-secrecy TLS pass in 90-global-post.sh),
+    # so a mtime read after that point always looks fresh, which reset the
+    # consecutive-run counters on every run and left the reap permanently
+    # unarmed -- while the log blamed the opt-in flag instead.
+    _gh_vfresh=NO
+    [ -n "$(find "${_Site}" -mmin -1440 2>/dev/null)" ] && _gh_vfresh=YES
+    # Resolved once per vhost so the reason reported below is the real one.
+    _gh_vflag=NO
+    if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_VHOSTS_CLEANUP \
+      || _cnf_flag_yes /root/.barracuda.cnf _GHOST_VHOSTS_CLEANUP; then
+      _gh_vflag=YES
+    fi
     if [[ "${_Dom}" =~ ".restore"($) ]]; then
-      if _ghost_seen_enough "${_gh_vmark}" \
-        && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_VHOSTS_CLEANUP \
-          || _cnf_flag_yes /root/.barracuda.cnf _GHOST_VHOSTS_CLEANUP; }; then
-        mkdir -p ${_usEr}/undo
-        mv -f ${_usEr}/.drush/${_Dom}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-        mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} ${_usEr}/undo/ &> /dev/null
-        echo "GHOST vhost for ${_Dom} detected and moved to ${_usEr}/undo/"
+      if [ "${_gh_vfresh}" = "YES" ]; then
+        # Freshly written = a restore still in flight; give it a grace run.
+        _ghost_seen_reset "${_gh_vmark}"
       else
-        echo "GHOST vhost for ${_Dom} detected (dry-run; set _GHOST_VHOSTS_CLEANUP=YES to move)"
+        _gh_vseen=NO
+        _ghost_seen_enough "${_gh_vmark}" && _gh_vseen=YES
+        if [ "${_gh_vseen}" = "YES" ] && [ "${_gh_vflag}" = "YES" ]; then
+          mkdir -p ${_usEr}/undo
+          mv -f ${_usEr}/.drush/${_Dom}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
+          mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} ${_usEr}/undo/ &> /dev/null
+          _ghost_seen_reset "${_gh_vmark}"
+          _ghost_seen_reset "${_gh_amark}"
+          echo "GHOST vhost for ${_Dom} detected and moved to ${_usEr}/undo/"
+        elif [ "${_gh_vflag}" = "YES" ]; then
+          echo "GHOST vhost for ${_Dom} detected (grace; moves on the next consecutive run)"
+        else
+          echo "GHOST vhost for ${_Dom} detected (dry-run; set _GHOST_VHOSTS_CLEANUP=YES to move)"
+        fi
       fi
     fi
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
@@ -1562,7 +1586,11 @@ _cleanup_ghost_vhosts() {
       local _fixHttpReqired=NO
       if grep -q -e "ssl http2" "${_thisVhost}"; then
         local _fixHttpReqired=YES
-      elif ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+      elif grep -q -E '^\s*listen[^;]*443[^;]*ssl' "${_thisVhost}" \
+        && ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+        # Only a TLS-terminating vhost needs 'http2 on;'. Without this test a
+        # plain :80 vhost never satisfied the check, so it was rewritten (and
+        # its mtime refreshed) every single night for no change at all.
         local _fixHttpReqired=YES
       elif grep -q -E '^\s+listen.*443\s+quic;$' "${_thisVhost}"; then
         local _fixHttpReqired=YES
@@ -1591,7 +1619,7 @@ _cleanup_ghost_vhosts() {
           if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
             sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
           fi
-        elif grep -q -E '^\s*#http3_hq\s+on;$' "${_thisVhost}"; then
+        elif grep -q -E '^\s*#?http3_hq\s+on;$' "${_thisVhost}"; then
           # Add 'http2 on;' after 'http3_hq on;', only if not already present
           if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
             sed -i '/http3_hq on;/ a\  http2 on;' "${_thisVhost}"
@@ -1611,21 +1639,29 @@ _cleanup_ghost_vhosts() {
       else
         if [ ! -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
           # No matching site alias. Skip a freshly written/staged vhost (mtime
-          # < 24h = mid-import/activation), require the no-alias state across
-          # consecutive nights, then gate on the opt-in flag.
-          if [ -n "$(find "${_Site}" -mmin -1440 2>/dev/null)" ]; then
-            _ghost_seen_reset "${_gh_vmark}"
-          elif _ghost_seen_enough "${_gh_vmark}" \
-            && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_VHOSTS_CLEANUP \
-              || _cnf_flag_yes /root/.barracuda.cnf _GHOST_VHOSTS_CLEANUP; }; then
-            mkdir -p ${_usEr}/undo
-            mv -f ${_Site} ${_usEr}/undo/ &> /dev/null
-            echo "GHOST vhost for ${_Dom} with no drushrc detected and moved to ${_usEr}/undo/"
+          # < 24h = mid-import/activation, sampled at the top of this iteration
+          # before our own fixes rewrote it), require the no-alias state across
+          # consecutive nights, then gate on the opt-in flag. Own counter, so
+          # this test and the .restore test above never reset or double-count
+          # each other through a shared marker.
+          if [ "${_gh_vfresh}" = "YES" ]; then
+            _ghost_seen_reset "${_gh_amark}"
           else
-            echo "GHOST vhost for ${_Dom} with no drushrc detected (dry-run/grace; set _GHOST_VHOSTS_CLEANUP=YES to move)"
+            _gh_aseen=NO
+            _ghost_seen_enough "${_gh_amark}" && _gh_aseen=YES
+            if [ "${_gh_aseen}" = "YES" ] && [ "${_gh_vflag}" = "YES" ]; then
+              mkdir -p ${_usEr}/undo
+              mv -f ${_Site} ${_usEr}/undo/ &> /dev/null
+              _ghost_seen_reset "${_gh_amark}"
+              echo "GHOST vhost for ${_Dom} with no drushrc detected and moved to ${_usEr}/undo/"
+            elif [ "${_gh_vflag}" = "YES" ]; then
+              echo "GHOST vhost for ${_Dom} with no drushrc detected (grace; moves on the next consecutive run)"
+            else
+              echo "GHOST vhost for ${_Dom} with no drushrc detected (dry-run; set _GHOST_VHOSTS_CLEANUP=YES to move)"
+            fi
           fi
         else
-          _ghost_seen_reset "${_gh_vmark}"
+          _ghost_seen_reset "${_gh_amark}"
         fi
       fi
     fi

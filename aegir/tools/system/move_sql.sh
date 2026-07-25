@@ -32,7 +32,7 @@ _NOW=${_NOW//[^0-9-]/}
 _create_locks() {
   # NB: do NOT drop the page/dentry/inode cache here. A restart must not evict the
   # box-wide cache -- on a busy box that forces cold re-reads and a stampede, which
-  # is one of the amplifiers behind the am095 restart storm. Genuine memory pressure
+  # is one of the amplifiers behind the observed restart storm. Genuine memory pressure
   # is handled by the OOM path, not by every MySQL restart.
   echo "Creating locks..."
   : > /run/boa_wait.pid
@@ -70,7 +70,8 @@ _start_sql() {
     # through to rm the LIVE socket/pid below and 'service mysql start' a second
     # mysqld_safe: when mysqld_safe has already respawned mysqld between the stop
     # and start phases of a restart, that duplicate-supervisor race is what drove
-    # the every-minute "mysqld_safe: 0 processes / mysqld restarted" flap on am095.
+    # the every-minute "mysqld_safe: 0 processes / mysqld restarted" flap observed
+    # on a busy hosted box.
     [ "$1" = "chain" ] && return 0
     exit 0
   fi
@@ -210,7 +211,7 @@ _stop_mysqld_only() {
   #
   # CRITICAL: stop escalating the instant the server answers again. On a mysqld_safe
   # box the supervisor respawns a fresh mysqld within ~1-2s; hard-killing or
-  # de-socketing that healthy respawn would recreate the am095 restart flap this
+  # de-socketing that healthy respawn would recreate the restart flap this
   # redesign exists to prevent. So re-probe between each step and leave a live,
   # answering server alone; only clear the socket/pid when mysqld is genuinely gone.
   _check_running
