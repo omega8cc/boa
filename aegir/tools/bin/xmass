@@ -14,6 +14,7 @@
 ###   xmass status  <target-ip>                      (run on SOURCE)
 ###   xmass cutover <target-ip> [--permanent-proxy] [--live]  (run on SOURCE)
 ###   xmass post-mig                                 (run on TARGET after DNS update)
+###   xmass reset-phase <phase>                      (run on SOURCE; recovery only)
 ###
 ### DRY/live gate: `sync` and `cutover` default to a read-only DRY run that resolves
 ### the target's attached mount, plans every storage decision (mirror onto the target
@@ -78,6 +79,17 @@ _XMASS_SOLR_HOLD_FILE="/var/log/boa/.xmass_solr_hold.pid"
 _PERM_PROXY_FLAG="/data/conf/xmass_permanent_proxy.pid"
 _ieni="--ignore-errors"
 
+### Replica catch-up ceiling for the cutover, in seconds. Percona 5.7 applies the
+### relay log single-threaded unless slave_parallel_workers is set, so one large
+### purge or index rebuild on a busy source can need far longer than the former
+### hardcoded 1800s -- and that abort landed mid-outage with the web already
+### blocked. Raise or lower per run by exporting _XMASS_SYNC_MAX_WAIT.
+_XMASS_SYNC_MAX_WAIT="${_XMASS_SYNC_MAX_WAIT:-7200}"
+
+### Set non-zero by _xmass_rsync when a transfer fails. Gated before every
+### destructive step so a truncated tree can never reach the target promote.
+_XMASS_RSYNC_RC=0
+
 ###-------------HELPERS--------------------###
 
 _info() {
@@ -135,7 +147,11 @@ _check_root() {
   _DF_TEST="$(df -P -l / 2>/dev/null | awk '
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
     NR==2 { gsub(/%/,"",$u); print $u }')"
-  if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+  # reset-phase only rewrites one line of the state file. Refusing it on a full
+  # disk locks the operator out of the recovery verb exactly when a stalled
+  # migration is the likely reason the disk filled.
+  if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ] \
+    && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ]; then
     _die "Disk usage at ${_DF_TEST}% — must be below 90% to proceed"
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -525,11 +541,22 @@ _xmass_take_backup() {
       --target-dir="${_XTRA_STAGE_SRC}" \
       || _die "xtrabackup --prepare failed on source"
 
+    # _xmass_rsync deliberately returns 0 so a per-account transfer cannot abort
+    # the middle of a multi-account pass; the rc is reported through
+    # _XMASS_RSYNC_RC instead. This site is the exception that MUST fail closed:
+    # everything after it rebuilds the target datadir from this snapshot, so a
+    # short copy here is restored over a wiped /var/lib/mysql and replication is
+    # attached to an incomplete dataset that only surfaces as missing rows days
+    # later, after the source has already been proxied.
     _info "xtrabackup: rsyncing prepared backup to target ${_tgt} ..."
+    _XMASS_RSYNC_RC=0
     _xmass_rsync -aEAXq ${_ieni} -e ssh \
       "${_XTRA_STAGE_SRC}/" \
-      "root@${_tgt}:${_XTRA_STAGE_TGT}/" \
-      || _die "rsync of xtrabackup backup to target failed"
+      "root@${_tgt}:${_XTRA_STAGE_TGT}/"
+    if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
+      _die "rsync of the xtrabackup snapshot to target failed" \
+           "(rc=${_XMASS_RSYNC_RC}) — target datadir NOT touched"
+    fi
 
   else
     _info "xtrabackup: streaming backup directly to target ${_tgt} ..."
@@ -733,24 +760,42 @@ _xmass_solr_check_target() {
 
 _xmass_enumerate_accounts() {
   _ELIGIBLE_ACCOUNTS=""
-  local _oct _udir
+  local _oct _udir _miss _skipped="" _line
   for _udir in $(find /data/disk -maxdepth 1 -mindepth 1 -type d | sort); do
     _oct=$(basename "${_udir}")
     case "${_oct}" in
       arch|all|lost+found|lostfound|backups|codebases-cleanup|legacy|xusage)
         continue ;;
     esac
-    if [ -e "${_udir}/log/cores.txt" ] \
-      && [ -e "${_udir}/log/option.txt" ] \
-      && [ -e "${_udir}/log/email.txt" ] \
-      && [ -e "${_udir}/tools/le/dehydrated" ] \
-      && [ ! -e "${_udir}/log/CANCELLED" ]; then
+    # Collect the reason(s) instead of silently dropping the account: an
+    # ineligible account still replicates its databases, but its files are never
+    # transferred and its vhosts are never converted, while the cutover reports
+    # success. On a multi-account box the dropped account can be the one carrying
+    # most of the traffic, so this must be visible BEFORE the operator commits.
+    _miss=""
+    [ -e "${_udir}/log/cores.txt" ]       || _miss="${_miss} log/cores.txt"
+    [ -e "${_udir}/log/option.txt" ]      || _miss="${_miss} log/option.txt"
+    [ -e "${_udir}/log/email.txt" ]       || _miss="${_miss} log/email.txt"
+    [ -e "${_udir}/tools/le/dehydrated" ] || _miss="${_miss} tools/le/dehydrated"
+    [ -e "${_udir}/log/CANCELLED" ]       && _miss="${_miss} log/CANCELLED(present)"
+    if [ -z "${_miss}" ]; then
       _ELIGIBLE_ACCOUNTS="${_ELIGIBLE_ACCOUNTS} ${_oct}"
+    else
+      _skipped="${_skipped}${_oct}: ${_miss## }
+"
     fi
   done
   _ELIGIBLE_ACCOUNTS="${_ELIGIBLE_ACCOUNTS## }"
   _info "Eligible Octopus accounts: ${_ELIGIBLE_ACCOUNTS:-none found}"
+  if [ -n "${_skipped}" ]; then
+    _alrt "SKIPPED accounts under /data/disk — these will NOT be migrated:"
+    printf '%s' "${_skipped}" | while IFS= read -r _line; do
+      [ -n "${_line}" ] && _alrt "    ${_line}"
+    done
+    _alrt "Confirm every skip above is intended before running --live."
+  fi
   [ -z "${_ELIGIBLE_ACCOUNTS}" ] && _die "No eligible Octopus accounts found on source"
+  return 0
 }
 
 # --- storage-aware store relocation (attached /mnt vs root, source vs target) ------
@@ -835,14 +880,31 @@ _xmass_finalize_dry() {   # 1 tgt
 }
 # Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
 _xmass_rsync() {
+  local _rc=0
   if [ "${_MODE}" = "LIVE" ]; then
     # Trailing (after "$@") is deliberate: callers pass -a/-aEAX which implies
     # -D; rsync honours the LAST matching option, so these must follow -a to
     # actually drop device/fifo/socket nodes. Never transfer specials.
-    rsync "$@" --no-devices --no-specials
+    rsync "$@" --no-devices --no-specials || _rc=$?
+    if [ "${_rc}" != "0" ]; then
+      if [ "${_rc}" = "24" ]; then
+        # 24 = "some files vanished before transfer". Expected on a live tree and
+        # not an integrity problem: the file is gone on the source as well.
+        _info "  rsync: some source files vanished during transfer (rc=24, benign)"
+      else
+        # Everything else -- including 23, partial transfer due to error -- means
+        # the target tree may be incomplete. Callers never see this because they
+        # cannot abort mid-account, so record it and let the caller's gate stop
+        # the run before anything destructive happens.
+        _alrt "DENY: rsync FAILED rc=${_rc}: $*"
+        _XMASS_RSYNC_RC="${_rc}"
+        _XMASS_NOT_CLEAN=YES
+      fi
+    fi
   else
     _info "[DRY-PLAN] would rsync: $*"
   fi
+  return 0
 }
 
 # Solr indices can be large; fold them into the disk-space gate. Checks that <src>
@@ -907,7 +969,7 @@ _xmass_put_on_mount() {
 #   4 target host  5 target mount ("path"|""|"MULTI")  6 ieni  7 label
 _xmass_handle_store() {
   local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
-  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason=""
+  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0
 
   if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
     return 0
@@ -958,7 +1020,11 @@ _xmass_handle_store() {
       ;;
     MIRROR)
       if [ "${_MODE}" = "LIVE" ]; then
-        _xmass_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" || { _XMASS_NOT_CLEAN=YES; return $?; }
+        # Capture rc FIRST: `|| { _XMASS_NOT_CLEAN=YES; return $?; }` returned the
+        # assignment's status (always 0), so a failed placement reported success
+        # and _XMASS_STORE_RC was never set by the caller.
+        _xmass_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" \
+          || { _rc=$?; _XMASS_NOT_CLEAN=YES; return "${_rc}"; }
         _info "${_lbl}: mirrored to target mount ${_mntDest}, symlinked ${_dstRoot}"
       else
         _info "[DRY-PLAN] ${_lbl}: would mirror onto target mount ${_mntDest} and symlink ${_dstRoot} (source ${_sz:-?}K)"
@@ -966,7 +1032,8 @@ _xmass_handle_store() {
       ;;
     ROOT)
       if [ "${_MODE}" = "LIVE" ]; then
-        _xmass_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" || { _XMASS_NOT_CLEAN=YES; return $?; }
+        _xmass_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" \
+          || { _rc=$?; _XMASS_NOT_CLEAN=YES; return "${_rc}"; }
         _info "${_lbl}: real dir on target root ${_dstRoot}"
       else
         _info "[DRY-PLAN] ${_lbl}: would place real dir on target root ${_dstRoot} (source ${_sz:-?}K)"
@@ -1017,7 +1084,38 @@ _xmass_sync_static_symlink_safe() {
 
   # Pass 1: sync static/ tree preserving symlinks, skip files/
   _xmass_rsync -aEAXqu ${_ieni} --exclude=/files \
-    -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/" &>/dev/null || true
+    -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/"
+
+  # Pass 1b: the static sync uses -u (skip-newer), but the target's own fresh
+  # Octopus install wrote default control files with a NEWER mtime, which shadow
+  # the migrated ones -> every migrated site silently loses its per-site PHP pin
+  # and falls back to the account default. multi-fpm.info's lines key on the site
+  # domain, which migration and rename do not change, so the source copy is
+  # directly valid on the target: force it over WITHOUT -u. Same defect and same
+  # fix as xoct's _xoct_transfer_static_symlink_safe.
+  if [ -e "${_src_static}/control/multi-fpm.info" ]; then
+    _xmass_rsync -aEAX ${_ieni} -e ssh \
+      "${_src_static}/control/multi-fpm.info" \
+      "root@${_tgt}:${_dst_static}/control/multi-fpm.info"
+  fi
+
+  # fpm.info and cli.info are the ACCOUNT-level defaults, not per-site pins, and
+  # BOA re-derives them from /root/.<oN>.octopus.cnf on the target at every
+  # upgrade. Forcing the source copies over them would look correct and then be
+  # silently reverted by the next `octopus up-*`, so report the mismatch and name
+  # the file that actually has to change instead of papering over it.
+  local _ctl _srcv _tgtv
+  for _ctl in fpm.info cli.info; do
+    [ -e "${_src_static}/control/${_ctl}" ] || continue
+    [ "${_MODE}" = "LIVE" ] || continue
+    _srcv="$(tr -d " \t\r\n" < "${_src_static}/control/${_ctl}" 2>/dev/null)"
+    _tgtv="$(ssh root@"${_tgt}" "tr -d ' \t\r\n' < '${_dst_static}/control/${_ctl}' 2>/dev/null" 2>/dev/null)"
+    if [ -n "${_srcv}" ] && [ -n "${_tgtv}" ] && [ "${_srcv}" != "${_tgtv}" ]; then
+      _alrt "PHP default mismatch for $(basename "${_dst_usr}"): ${_ctl} source=${_srcv} target=${_tgtv}."
+      _alrt "  Fix /root/.$(basename "${_dst_usr}").octopus.cnf on the TARGET and re-run its octopus install;"
+      _alrt "  copying ${_ctl} alone is reverted by the next 'octopus up-*'."
+    fi
+  done
 
   # Pass 2: relocate static/files per target disk reality. Canonical mount layout
   # uses the DEST account name, so a rename lands correctly.
@@ -1037,14 +1135,14 @@ _xmass_sync_account() {
 
   # Platform codebases (large; delta-synced efficiently by rsync)
   _xmass_rsync -aEAXqu ${_ieni} -e ssh \
-    "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/" &>/dev/null || true
+    "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/"
 
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
   _xmass_sync_static_symlink_safe "${_udir}" "${_dst}" "${_TGT_MNT}"
 
   # Log and control files (includes domain.txt, email.txt, etc.)
   _xmass_rsync -aEAXqu ${_ieni} -e ssh \
-    "${_udir}/log/" "root@${_tgt}:${_dst}/log/" &>/dev/null || true
+    "${_udir}/log/" "root@${_tgt}:${_dst}/log/"
 
   # Drush aliases are copied WHOLE — including the source's server_master
   # and hostmaster aliases (site aliases get regenerated by renameaegirhost
@@ -1056,37 +1154,37 @@ _xmass_sync_account() {
   # way, and the source platform_* and per-site aliases must always arrive.
   _xmass_rsync -aEAXqu ${_ieni} \
     -e ssh "${_udir}/.drush/" \
-    "root@${_tgt}:${_dst}/.drush/" &>/dev/null || true
+    "root@${_tgt}:${_dst}/.drush/"
 
   # Nginx vhost configs
   _xmass_rsync -aEAXqu ${_ieni} \
     --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc \
     -e ssh "${_udir}/config/server_master/nginx/vhost.d/" \
-    "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/" &>/dev/null || true
+    "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/"
 
   for _subdir in pre.d post.d subdir.d platform.d; do
     _xmass_rsync -aEAXqu ${_ieni} \
       -e ssh "${_udir}/config/server_master/nginx/${_subdir}/" \
       "root@${_tgt}:${_dst}/config/server_master/nginx/${_subdir}/" \
-      &>/dev/null || true
+
   done
 
   # SSL certificates and LE config
   _xmass_rsync -aEAXqu ${_ieni} \
     -e ssh "${_udir}/config/ssl.d/" \
-    "root@${_tgt}:${_dst}/config/ssl.d/" &>/dev/null || true
+    "root@${_tgt}:${_dst}/config/ssl.d/"
   _xmass_rsync -aEAXqu ${_ieni} \
     -e ssh "${_udir}/config/server_master/ssl.d/" \
-    "root@${_tgt}:${_dst}/config/server_master/ssl.d/" &>/dev/null || true
+    "root@${_tgt}:${_dst}/config/server_master/ssl.d/"
   _xmass_rsync -aEAXqu ${_ieni} \
     -e ssh "${_udir}/tools/le" \
-    "root@${_tgt}:${_dst}/tools/" &>/dev/null || true
+    "root@${_tgt}:${_dst}/tools/"
 
   # FTP account SSH keys
   if [ -d "/home/${_oct}.ftp/.ssh" ]; then
     _xmass_rsync -aEAXqu ${_ieni} \
       -e ssh "/home/${_oct}.ftp/.ssh" \
-      "root@${_tgt}:/home/${_oct}.ftp/" &>/dev/null || true
+      "root@${_tgt}:/home/${_oct}.ftp/"
   fi
 
   # Catch-all: fix any OTHER /mnt-anchored symlink in the account tree that the
@@ -1101,8 +1199,7 @@ _xmass_sync_shared() {
     [ -d "${_item}" ] || continue
     [ -L "${_item}" ] && continue
     _xmass_rsync -aEAXqu ${_ieni} -e ssh \
-      "${_item}" "root@${_tgt}:$(dirname "${_item}")/" \
-      &>/dev/null || _alrt "rsync ${_item} failed"
+      "${_item}" "root@${_tgt}:$(dirname "${_item}")/"
   done
   # arch: storage-aware -- mirror onto the target mount, or de-reference to root,
   # per the target's disk reality (canonical layout <mount>/files/system/arch).
@@ -1110,13 +1207,13 @@ _xmass_sync_shared() {
     "${_tgt}" "${_TGT_MNT}" "${_ieni}" "arch" || _XMASS_STORE_RC=$?
   [ -d "/var/www/static" ] && \
     _xmass_rsync -aEAXqu ${_ieni} -e ssh \
-      /var/www/static "root@${_tgt}:/var/www/" &>/dev/null || true
+      /var/www/static "root@${_tgt}:/var/www/"
   [ -d "/etc/bind" ] && \
     _xmass_rsync -aEAXq ${_ieni} -e ssh \
-      /etc/bind "root@${_tgt}:/etc/" &>/dev/null || true
+      /etc/bind "root@${_tgt}:/etc/"
   [ -d "/var/log/boa/usage" ] && \
     _xmass_rsync -aEAXq ${_ieni} -e ssh \
-      /var/log/boa/usage "root@${_tgt}:/var/log/boa/" &>/dev/null || true
+      /var/log/boa/usage "root@${_tgt}:/var/log/boa/"
   _info "Shared data sync complete"
 }
 
@@ -1129,11 +1226,19 @@ _xmass_sync_solr() {
   local _dir
   for _dir in /opt/solr4 /var/solr7/data /var/solr9/data; do
     [ -e "${_dir}" ] || continue
-    _xmass_solr_check "${_dir}" "$(dirname "${_dir}")" "solr ${_dir}" || continue
+    # A Solr tree that does not fit is a DENY, not a skip: continuing here
+    # promoted a target carrying no search index, after the source's Solr had
+    # already been stopped and deny-filed. Record it so the cutover gate stops.
+    if ! _xmass_solr_check "${_dir}" "$(dirname "${_dir}")" "solr ${_dir}"; then
+      _XMASS_STORE_RC=3
+      continue
+    fi
+    # No output redirect here: _xmass_rsync emits the DENY line that the abort
+    # messages tell the operator to look for, and it always returns 0, so a
+    # `|| _alrt` handler on this call could never fire.
     _xmass_rsync -aEAXq ${_ieni} -e ssh \
-      "${_dir}" "root@${_tgt}:$(dirname "${_dir}")/" \
-      &>/dev/null || _alrt "rsync ${_dir} failed"
-    _info "  Synced ${_dir}"
+      "${_dir}" "root@${_tgt}:$(dirname "${_dir}")/"
+    [ "${_XMASS_RSYNC_RC:-0}" = "0" ] && _info "  Synced ${_dir}"
   done
   _info "Solr data sync complete"
 }
@@ -1147,23 +1252,63 @@ _xmass_get_repl_lag() {
     | grep '${_XM_LAG_FIELD}' | awk '{print \$2}'" 2>/dev/null
 }
 
+# Say whether waiting longer would actually have helped. A replica that is falling
+# further behind will never catch up by extending the timeout, and the operator is
+# mid-outage with the web already blocked when they read this.
+_xmass_report_lag_trend() {
+  local _first="$1" _prev="$2" _last="$3" _elapsed="$4" _overall _recent
+  [ -z "${_first}" ] && return 0
+  [ -z "${_prev}" ] && _prev="${_first}"
+  _overall=$(( _last - _first ))
+  _recent=$(( _last - _prev ))
+  _alrt "  Lag samples: first ${_first}s, previous ${_prev}s, last ${_last}s over ${_elapsed}s"
+  # Judge on the RECENT interval, not first-vs-last: a replica that spiked early
+  # and has been draining ever since looks "GROWING" overall while it is in fact
+  # about to finish, and telling the operator to give up there is the worst call
+  # the tool can make mid-window.
+  if [ "${_recent}" -lt 0 ]; then
+    _alrt "  Trend: CLOSING by $(( 0 - _recent ))s in the last interval — more time would likely help"
+  elif [ "${_recent}" -gt 0 ]; then
+    _alrt "  Trend: GROWING by ${_recent}s in the last interval — the replica is falling behind; more time alone will NOT help"
+  else
+    _alrt "  Trend: FLAT in the last interval"
+  fi
+  [ "${_overall}" != "${_recent}" ] \
+    && _alrt "  Overall change since the first sample: ${_overall}s"
+  return 0
+}
+
 _xmass_wait_for_sync() {
   # Wait until replica lag reaches 0, with triple-check confirmation.
-  # $1 = max wait seconds (default 1800)
-  local _max="${1:-1800}"
+  # $1 = max wait seconds (default _XMASS_SYNC_MAX_WAIT)
+  local _max="${1:-${_XMASS_SYNC_MAX_WAIT}}"
+  # A non-numeric or empty override would make every `[ "${_elapsed}" -ge ... ]`
+  # comparison error out and the loop never terminate, mid-cutover.
+  case "${_max}" in
+    ''|*[!0-9]*) _die "_XMASS_SYNC_MAX_WAIT must be a whole number of seconds (got '${_max}')" ;;
+  esac
+  [ "${_max}" -lt 60 ] && _die "_XMASS_SYNC_MAX_WAIT of ${_max}s is too short to be meaningful"
   local _elapsed=0
-  local _lag _pass
+  local _lag _pass _first="" _prev=""
   _info "Waiting for replica lag to reach 0 (max ${_max}s) ..."
   while true; do
     _lag=$(_xmass_get_repl_lag)
     if [ -z "${_lag}" ] || [ "${_lag}" = "NULL" ]; then
+      _xmass_restore_hint
       _die "Cannot read replication lag — slave may have stopped on ${_tgt}"
     fi
+    [ -z "${_first}" ] && _first="${_lag}"
     _info "  Replica lag: ${_lag}s (waited: ${_elapsed}s / ${_max}s)"
     [ "${_lag}" -eq 0 ] && break
     if [ "${_elapsed}" -ge "${_max}" ]; then
-      _die "Replica did not catch up within ${_max}s (last lag: ${_lag}s)"
+      _xmass_report_lag_trend "${_first}" "${_prev}" "${_lag}" "${_elapsed}"
+      _xmass_restore_hint
+      _die "Replica did not catch up within ${_max}s (last lag: ${_lag}s)." \
+           "Raise _XMASS_SYNC_MAX_WAIT, or set slave_parallel_type=LOGICAL_CLOCK" \
+           "and slave_parallel_workers=4 on the target. The phase is still" \
+           "'syncing', so recover with a fresh DRY then 'xmass cutover ${_tgt} --live'."
     fi
+    _prev="${_lag}"
     sleep 15
     _elapsed=$(( _elapsed + 15 ))
   done
@@ -1182,8 +1327,28 @@ _xmass_wait_for_sync() {
 
 ###-------------WEB BLOCK / UNBLOCK------###
 
+# Set once the source is serving 503, so _xmass_restore_hint stays silent for any
+# abort that happened before the web was touched.
+_XMASS_WEB_BLOCKED=NO
+
+# Every abort after the web block leaves the source down. The operator reads this
+# mid-window, so spell out the restore rather than making them find the runbook.
+_xmass_restore_hint() {
+  [ "${_XMASS_WEB_BLOCKED}" = "YES" ] || return 0
+  _alrt "SOURCE IS STILL SERVING 503. To restore service on the SOURCE:"
+  _alrt '    rm -f /data/disk/*/static/control/http-off.pid'
+  _alrt '    find /var/lib/nginx/speed -type f -delete'
+  _alrt '    service nginx reload'
+  _alrt "    rm -f ${_SOLR_DENY_FILE}   # only if Solr was serving from here"
+  _alrt '    service cron start'
+  _alrt '    for s in runner owl usage graceful manage_ltd_users; do \'
+  _alrt '      mv -f /var/xdrago/.$s.sh.off /var/xdrago/$s.sh 2>/dev/null; done'
+  _alrt "Then confirm a site returns 200 before deciding what to do next."
+}
+
 _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
+  _XMASS_WEB_BLOCKED=YES
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     mkdir -p "/data/disk/${_oct}/static/control"
@@ -1663,7 +1828,8 @@ _xmass_cmd_init() {
     || [ "${_XMASS_PHASE}" = "rename-failed" ] \
     || [ "${_XMASS_PHASE}" = "complete" ]; then
     _die "xmass already in phase '${_XMASS_PHASE}' — cannot re-init." \
-         " Remove ${_XMASS_STATE_FILE} to start over."
+         " Remove ${_XMASS_STATE_FILE} to start over, or use" \
+         " 'xmass reset-phase <phase>' to correct a wedged phase."
   fi
 
   _XMASS_TARGET_IP="${_tgt}"
@@ -1735,7 +1901,8 @@ _xmass_cmd_sync() {
   _xmass_load_state
   _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
   [ "${_XMASS_PHASE}" = "syncing" ] \
-    || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — run 'xmass init' first"
+    || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — run 'xmass init' first," \
+            "or 'xmass reset-phase syncing' if a cutover aborted before promoting the target"
 
   # Resolve the target's attached mount ONCE up-front (aborts on empty/unreachable/
   # multi-mount) and reuse it for every account + shared store below.
@@ -1743,6 +1910,7 @@ _xmass_cmd_sync() {
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   [ "${_MODE}" = "LIVE" ] && _xmass_require_clean_dry "${_tgt}"
   _XMASS_STORE_RC=0
+  _XMASS_RSYNC_RC=0
 
   if [ "${_MODE}" = "LIVE" ]; then
     _info "xmass sync: syncing files to ${_tgt} ..."
@@ -1761,12 +1929,61 @@ _xmass_cmd_sync() {
     if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
       _die "a store/symlink could not be placed on the target (see DENY above); sync incomplete"
     fi
+    if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
+      _die "a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
+    fi
     _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
     _xmass_save_state
     _info "xmass sync complete at ${_XMASS_LAST_SYNC}"
   else
     _xmass_finalize_dry "${_tgt}"
   fi
+}
+
+# Any failure between the lag wait and the panel rewire leaves _XMASS_PHASE at
+# "cutover", which init, sync and cutover all refuse — so the migration was wedged
+# with no recovery except hand-editing the state file, undocumented and mid-outage.
+# This makes that an explicit, auditable operator action instead. It is deliberately
+# NOT an automatic re-entry: whether resuming is safe depends on whether the target
+# was already promoted, and only the operator can know that from the log.
+_xmass_cmd_reset_phase() {
+  _xmass_load_state
+  local _new="$1"
+  [ -e "${_XMASS_STATE_FILE}" ] \
+    || _die "No xmass state file at ${_XMASS_STATE_FILE} — nothing to reset"
+  case "${_new}" in
+    init|syncing|cutover|rename-failed|complete) : ;;
+    *) _die "reset-phase: unknown phase '${_new}'." \
+            "Valid: init | syncing | cutover | rename-failed | complete" ;;
+  esac
+  _info "======================================================"
+  _info "  xmass reset-phase"
+  _info "  Current phase : ${_XMASS_PHASE:-none}"
+  _info "  New phase     : ${_new}"
+  _info "======================================================"
+  if [ "${_new}" = "rename-failed" ]; then
+    _alrt "'rename-failed' arms the RESUME path, which skips the web block, the"
+    _alrt "final sync, the lag wait, the MySQL lock and the target promote, and"
+    _alrt "goes straight to the rename and panel rewire. Set it ONLY when the"
+    _alrt "target was already promoted and only the rename tail remains."
+  fi
+  if [ "${_new}" = "complete" ]; then
+    _alrt "'complete' closes the migration: no subcommand will resume afterwards."
+  fi
+  if [ "${_XMASS_PHASE}" = "cutover" ] && [ "${_new}" = "syncing" ]; then
+    _alrt "Returning to 'syncing' is correct ONLY if the cutover aborted BEFORE the"
+    _alrt "target was promoted — i.e. the log never printed 'Target MySQL is now"
+    _alrt "standalone: OK'. After that point replication is gone, the target has"
+    _alrt "diverged, and re-running cutover will fail at the lag check. In that"
+    _alrt "case use 'xmass reset-phase rename-failed' to resume the rename tail"
+    _alrt "instead, and only rebuild from a fresh 'xmass init' if the promote"
+    _alrt "itself did not complete."
+    _alrt "Also confirm the source is not still holding a read lock (UNLOCK TABLES)"
+    _alrt "and that its cron and runners are back before you resume."
+  fi
+  _XMASS_PHASE="${_new}"
+  _xmass_save_state
+  _info "Phase set to '${_new}'. Confirm with 'xmass status'."
 }
 
 _xmass_cmd_status() {
@@ -1914,7 +2131,9 @@ _xmass_cmd_cutover() {
   fi
 
   [ "${_XMASS_PHASE}" = "syncing" ] \
-    || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — cannot cut over"
+    || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — cannot cut over." \
+            "If a previous cutover aborted before promoting the target, resume with" \
+            "'xmass reset-phase syncing' then re-run the DRY and --live"
 
   _tgt="${_XMASS_TARGET_IP}"
   [ -z "${_tgt}" ] && _die "No target IP in state file — was xmass init run?"
@@ -1934,7 +2153,12 @@ _xmass_cmd_cutover() {
     _info "======================================================"
     _xmass_enumerate_accounts
     _XMASS_STORE_RC=0
+    _XMASS_RSYNC_RC=0
     _xmass_sync_shared
+    # Solr must be space-gated in the DRY run too. The LIVE path syncs it at step 3
+    # and `sync` gates it, but the cutover DRY did not — so a Solr tree too large
+    # for the target was only discovered mid-cutover, with the 503 already up.
+    _xmass_sync_solr
     local _oct
     for _oct in ${_ELIGIBLE_ACCOUNTS}; do
       _xmass_sync_account "${_oct}"
@@ -1946,6 +2170,7 @@ _xmass_cmd_cutover() {
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   _xmass_require_clean_dry "${_tgt}"
   _XMASS_STORE_RC=0
+  _XMASS_RSYNC_RC=0
 
   _info "======================================================"
   _info "  xmass cutover starting"
@@ -1985,29 +2210,62 @@ _xmass_cmd_cutover() {
     _xmass_sync_account "${_oct}"
   done
 
-  # A store/symlink that could not be placed on the target is a hard stop BEFORE any
-  # destructive step (MySQL lock, target promotion) — abort with source untouched.
+  # A store/symlink that could not be placed on the target, or a failed transfer, is
+  # a hard stop BEFORE any destructive step (MySQL lock, target promotion) — abort
+  # with source untouched.
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
+    _xmass_restore_hint
     _die "a store/symlink could not be placed on the target (see DENY above); cutover aborted before locking MySQL"
+  fi
+  if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
+    _xmass_restore_hint
+    _die "a file transfer failed (see DENY above); the target tree may be incomplete — cutover aborted before locking MySQL"
   fi
 
   # Step 4: Wait for replica to fully catch up
-  _XMASS_PHASE="cutover"
-  _xmass_save_state
-  _xmass_wait_for_sync 1800
+  _xmass_wait_for_sync
 
-  # Step 5: Lock source MySQL — no more writes possible
-  _info "Flushing and locking source MySQL (FLUSH TABLES WITH READ LOCK) ..."
-  mysql --defaults-file=/root/.my.cnf \
-    -e "FLUSH TABLES WITH READ LOCK;" \
-    || _die "FLUSH TABLES WITH READ LOCK failed on source"
-
-  # Step 6: Final rsync of static/files only, to catch last writes before lock
-  _info "Final static/files rsync pass (post table-lock) ..."
+  # Step 5: Final static/files pass — deliberately BEFORE the MySQL lock.
+  #
+  # This pass used to run INSIDE FLUSH TABLES WITH READ LOCK, which was wrong on
+  # both counts: a read lock gates database writes, not file writes, so it bought
+  # nothing here; and _xmass_handle_store runs `du -sk` over each store plus an ssh
+  # `df` probe, so on a large account it held the entire source database locked for
+  # hours while it walked millions of files, with the SQL watchdog muted. What
+  # actually quiesces the files is the web block from step 1, which is already in
+  # force, and nothing between here and the lock writes to them.
+  _info "Final static/files rsync pass (web already blocked; pre-lock) ..."
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_static_symlink_safe \
       "/data/disk/${_oct}" "/data/disk/${_oct}" "${_TGT_MNT}"
   done
+
+  # Re-gate: this pass can set either rc again, and until now nothing re-checked
+  # them, so a store that failed placement here proceeded to promote the target.
+  if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
+    _xmass_restore_hint
+    _die "a store/symlink could not be placed on the target in the final pass (see DENY above); cutover aborted before locking MySQL"
+  fi
+  if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
+    _xmass_restore_hint
+    _die "the final static/files transfer failed (see DENY above); cutover aborted before locking MySQL"
+  fi
+
+  # Everything above this line is still recoverable: the source serves 503, but
+  # nothing on either host has been mutated destructively, so an abort should
+  # leave the state machine at "syncing" and let the operator simply re-run.
+  # Persisting phase=cutover any earlier wedged the run on a pre-lock failure and
+  # made the abort messages ("source untouched") untrue.
+  _XMASS_PHASE="cutover"
+  _xmass_save_state
+
+  # Step 6: Lock source MySQL — no more writes possible
+  _info "Flushing and locking source MySQL (FLUSH TABLES WITH READ LOCK) ..."
+  if ! mysql --defaults-file=/root/.my.cnf \
+    -e "FLUSH TABLES WITH READ LOCK;"; then
+    _xmass_restore_hint
+    _die "FLUSH TABLES WITH READ LOCK failed on source"
+  fi
 
   # Step 7: Triple-check lag is still zero after the lock
   local _lag _pass
@@ -2024,12 +2282,20 @@ _xmass_cmd_cutover() {
     _info "Post-lock confirmation check ${_pass}/3: lag=${_lag}s OK"
   done
 
-  # Step 8: Promote target — stop slave, decouple completely
+  # Step 8: Promote target — stop slave, decouple completely.
+  # On failure the source MUST be unlocked before aborting, exactly as step 7 does.
+  # Without this the source was left holding a global read lock indefinitely, with
+  # the SQL watchdog deliberately muted by _xmass_maint_on — so nothing on the box
+  # would recover it and every site stayed down until someone found it by hand.
   _info "Stopping and decoupling slave on target ${_tgt} ..."
-  ssh root@"${_tgt}" \
+  if ! ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf \
-     -e '${_XM_STOP}; ${_XM_RESET_SLAVE};'" \
-    || _die "Failed to stop/decouple slave on target ${_tgt}"
+     -e '${_XM_STOP}; ${_XM_RESET_SLAVE};'"; then
+    mysql --defaults-file=/root/.my.cnf \
+      -e "UNLOCK TABLES;" &>/dev/null || true
+    _die "Failed to stop/decouple slave on target ${_tgt}" \
+         "— cutover aborted, source MySQL unlocked"
+  fi
   _info "Target MySQL is now standalone: OK"
 
   # Step 9: Unlock source MySQL
@@ -2190,6 +2456,13 @@ case "${_cmd}" in
     _check_root
     _xmass_cmd_cutover
   ;;
+  reset-phase)
+    _new="$1"
+    [ -z "${_new}" ] \
+      && _die "Usage: xmass reset-phase <init|syncing|cutover|rename-failed|complete>"
+    _check_root
+    _xmass_cmd_reset_phase "${_new}"
+  ;;
   post-mig)
     _check_root
     _xmass_post_mig
@@ -2202,12 +2475,17 @@ case "${_cmd}" in
     echo "Usage: xmass status  [target-ip]                      (run on source)"
     echo "Usage: xmass cutover <target-ip> [--permanent-proxy] [--live]  (run on source)"
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
+    echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
     echo ""
     echo "Notes:"
     echo "  - Requires identical Percona MySQL versions on both servers."
     echo "  - Migrates ALL Octopus accounts and Solr cores in one operation."
     echo "  - For single-account or cross-version migrations use xoct instead."
     echo "  - State is kept in ${_XMASS_STATE_FILE}"
+    echo "  - reset-phase is a recovery verb: a cutover that fails between the lag"
+    echo "    wait and the panel rewire leaves phase=cutover, which every other"
+    echo "    subcommand refuses. Only safe back to 'syncing' if the target was NOT"
+    echo "    yet promoted."
     echo ""
     exit 1
   ;;
