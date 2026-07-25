@@ -89,6 +89,56 @@ _single_instance_lock() {
 }
 
 ###
+### Collapse a flap into one alert without silencing a sustained outage
+###
+### Usage: in any _send_email function, after the grace check:
+###
+###        _incident_email_ratelimit <key> [cooldown_secs] || return 1
+###
+### Returns 0 when the mail should go out and 1 when it should be held back,
+### and sets _INCIDENT_SUPPRESSED to how many alerts have been held back since
+### the last one that went out, so the caller can say so in the subject.
+###
+### Nothing is lost by suppressing: every incident is written to the service's
+### own .incident.log regardless, and the mail body is the tail of that log, so
+### the next alert that does go out carries the ones that did not.
+###
+_incident_email_ratelimit() {
+  local _key _cool _stamp _now _gap _ts _cnt
+  _key="${1:-incident}"
+  _key="${_key//[^A-Za-z0-9._-]/}"
+  [ -n "${_key}" ] || _key="incident"
+  _cool="${2:-${_INCIDENT_EMAIL_COOLDOWN_SECS:-1800}}"
+  _cool="${_cool//[^0-9]/}"
+  [ -n "${_cool}" ] || _cool=1800
+  _INCIDENT_SUPPRESSED=0
+  # A zero cooldown is a deliberate opt-out: never hold anything back.
+  [ "${_cool}" -gt 0 ] || return 0
+  _stamp="/run/incident.${_key}.stamp"
+  _now=$(date +%s)
+  if [ -s "${_stamp}" ]; then
+    read -r _ts _cnt < "${_stamp}" 2>/dev/null
+    _ts="${_ts//[^0-9]/}"
+    _cnt="${_cnt//[^0-9]/}"
+    [ -n "${_cnt}" ] || _cnt=0
+    if [ -n "${_ts}" ]; then
+      _gap=$(( _now - _ts ))
+      # A negative gap means the clock stepped backwards; treat the stamp as
+      # unusable and alert, rather than going quiet until it catches up.
+      if [ "${_gap}" -ge 0 ] && [ "${_gap}" -lt "${_cool}" ]; then
+        printf '%s %s\n' "${_ts}" "$(( _cnt + 1 ))" > "${_stamp}" 2>/dev/null
+        return 1
+      fi
+    fi
+    _INCIDENT_SUPPRESSED="${_cnt}"
+  fi
+  # A stamp that cannot be written fails open: alerting matters more than the
+  # throttle, and /run is tmpfs so this clears on reboot in any case.
+  printf '%s 0\n' "${_now}" > "${_stamp}" 2>/dev/null
+  return 0
+}
+
+###
 ### Prevent a flood of alerts on services up/down status if uptime < 15 minutes
 ###
 ### Usage: in any _send_email function add at the top this line

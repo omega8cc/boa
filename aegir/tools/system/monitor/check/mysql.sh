@@ -169,9 +169,30 @@ _normalize_incident_report
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
+    # One alert per cooldown, not one per heal. The restart storm this watchdog
+    # was rebuilt around sent nine near-identical mails in fourteen minutes, and
+    # an operator cannot tell one flap from nine faults that way. Nothing is
+    # lost: every incident is still written to the log below, and the mail body
+    # is the tail of that log, so the next alert carries the ones held back.
+    # The caller passes its own key as $2 to keep a class of alert on its own
+    # cooldown, and classes that are not the same incident must not share one:
+    # the circuit-breaker page has its own so it is never held behind the heal
+    # mails it explains, and backup contention has its own so a busy backup
+    # window cannot swallow the page that says the database went down. An older
+    # lock.inc sends as before.
+    local _sfx=""
+    if command -v _incident_email_ratelimit >/dev/null 2>&1; then
+      if ! _incident_email_ratelimit "${2:-mysql}"; then
+        echo "$(date) INFO: alert for '${1}' held back, one was already sent this cooldown" >> ${_pthOml}
+        return 1
+      fi
+      if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+        _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+      fi
+    fi
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
+    s-nail -s "Incident Report: ${1}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
   fi
 }
 
@@ -278,7 +299,7 @@ _sql_restart() {
     # just enabled. Re-arming, by hand or by cool-off, starts counting at zero.
     rm -f "${_pthLdg}"
     echo "$(date) $1 incident: CIRCUIT OPEN after ${_SQL_FLAP_COUNT} auto-restarts within ${_SQL_FLAP_WINDOW_SECS}s -- refusing to restart MySQL again" >> ${_pthOml}
-    _incident_email_report "CIRCUIT OPEN: MySQL auto-restart disabled after ${_SQL_FLAP_COUNT} restarts"
+    _incident_email_report "CIRCUIT OPEN: MySQL auto-restart disabled after ${_SQL_FLAP_COUNT} restarts" "mysql-circuit"
     echo >> ${_pthOml}
     exit 0
   fi
@@ -473,14 +494,14 @@ _if_mydumper_is_locked() {
       pkill -f aegir.sh
       echo "$(date) TOO MANY (${_AR_C}) aegir.sh required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
-      _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper"
+      _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper" "mysql-mydumper"
     fi
     if [ "${_DR_C}" -gt "${_MULTI_MX}" ]; then
       pkill -f mydumper
       pkill -f drush.php
       echo "$(date) TOO MANY (${_DR_C}) drush.php required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
-      _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper"
+      _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper" "mysql-mydumper"
     fi
   fi
 }

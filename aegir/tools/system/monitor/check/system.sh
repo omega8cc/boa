@@ -94,9 +94,39 @@ _incident_email_report() {
     CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;; # veto unless ALERT
     ALL) : ;;                                    # allow
   esac
+  # One alert per cooldown, not one per pass. This watchdog reports sixteen
+  # different conditions, so a single service failing repeatedly used to bury
+  # the rest. Nothing is lost: every incident is still written to the log, and
+  # the mail body is the tail of that log, so the next alert that goes out
+  # carries the ones held back. $3 overrides the key for a class of alert that
+  # should keep its own cooldown. An older lock.inc simply sends as before.
+  local _sfx=""
+  # Keep the severity ladder meaningful through the throttle. This watchdog
+  # reports sixteen conditions and exactly one of them is ALERT: the whole-stack
+  # OOM teardown. On a shared key a routine notice about vnstat or cron could
+  # hold that page back, which inverts the ranking the ladder just applied. So
+  # an ALERT keeps its own cooldown by construction, not by remembering to pass
+  # a key at the call site. $3 still overrides for a finer split.
+  local _key="${3:-}"
+  if [ -z "${_key}" ]; then
+    if [ "${_lvl}" = "ALERT" ]; then
+      _key="system-alert"
+    else
+      _key="system"
+    fi
+  fi
+  if command -v _incident_email_ratelimit >/dev/null 2>&1; then
+    if ! _incident_email_ratelimit "${_key}"; then
+      echo "$(date) INFO: alert for '${_subject}' held back, one was already sent this cooldown" >> ${_pthOml}
+      return 1
+    fi
+    if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+      _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+    fi
+  fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < <(tail -n 200 "${_pthOml}")
+  s-nail -s "Incident Report on ${_hName}: ${_subject}${_sfx}" "${_MY_EMAIL}" < <(tail -n 200 "${_pthOml}")
 }
 
 _wkhtmltopdf_php_cli_oom_kill() {

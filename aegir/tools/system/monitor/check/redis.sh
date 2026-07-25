@@ -103,9 +103,25 @@ _normalize_incident_report
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
+    # One alert per cooldown, not one per pass. A service that keeps failing
+    # used to send a mail every time a watchdog acted, which buries the signal
+    # exactly when it matters most. Nothing is lost: every incident is still
+    # written to the log below, and the mail body is the tail of that log, so
+    # the next alert that does go out carries the ones that did not. An older
+    # lock.inc without the helper simply sends as before.
+    local _sfx=""
+    if command -v _incident_email_ratelimit >/dev/null 2>&1; then
+      if ! _incident_email_ratelimit "${2:-redis}"; then
+        echo "$(date) INFO: alert for '${1}' held back, one was already sent this cooldown" >> ${_pthOml}
+        return 1
+      fi
+      if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+        _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+      fi
+    fi
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
+    s-nail -s "Incident Report: ${1}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
   fi
 }
 
