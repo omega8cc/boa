@@ -1513,7 +1513,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f96 --guard duplicity
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f96 --guard duplicity
-    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f51
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f50
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f76
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f90
@@ -3495,7 +3495,37 @@ _soften_print_guard() {
 }
 
 #
-# Orchestrator: apply all three crawler-access fixes to the Aegir master and
+# Restore the bare 'bot' token in the $deny_on_high_load map. That roster is
+# byte-identical to $is_bot minus this one token, so a UA self-identifying only
+# as '...bot' matched $is_bot but never high-load shedding, leaving Spider
+# Protection a silent no-op against it: an observed distributed crawler drove
+# a hosted box to load 264 while being served zero 503s. Scoped to the map
+# block, fail-closed on a customised roster, and a no-op once applied.
+#
+_fix_high_load_bot_token() {
+  local _fIle="$1"
+  local _tMp="${_fIle}.crawler-fix.$$.tmp"
+  [ -f "${_fIle}" ] || return 1
+  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
+  grep -qF 'map $http_user_agent $deny_on_high_load {' "${_fIle}" || return 1
+  sed '/map $http_user_agent $deny_on_high_load {/,/^}/ s/~\*crawl|spider|/~*crawl|bot|spider|/' \
+    "${_fIle}" > "${_tMp}"
+  if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ] || cmp -s "${_fIle}" "${_tMp}"; then
+    rm -f "${_tMp}"
+    return 1
+  fi
+  [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
+  cat "${_tMp}" > "${_fIle}"
+  rm -f "${_tMp}"
+  if [ ! -s "${_fIle}" ]; then
+    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
+    return 1
+  fi
+  return 0
+}
+
+#
+# Orchestrator: apply all four crawler-access fixes to the Aegir master and
 # every Octopus account -- provision templates (so verify tasks re-render the
 # fixed config) AND already-rendered includes (so the fix is live without a
 # verify). Reload nginx only when something changed and the config test
@@ -3544,6 +3574,10 @@ _fix_nginx_crawler_access() {
       if _relax_crawler_roster "${_fIle}"; then
         _chAnged=1
         _log_crawler_fix "NOTE: crawler-access fix: is_crawler roster relaxed in ${_fIle}"
+      fi
+      if _fix_high_load_bot_token "${_fIle}"; then
+        _chAnged=1
+        _log_crawler_fix "NOTE: crawler-access fix: high-load bot token restored in ${_fIle}"
       fi
     done
   done
@@ -4725,6 +4759,48 @@ _csf_allow_quic_udp_443() {
   return 0
 }
 
+# Raise the csf temporary ban ceiling on boxes still carrying the stock 300.
+# csf evicts the OLDEST temp bans once the list is full and re-allows those
+# hosts regardless of time remaining, so at 300 the web IDS unblocks addresses
+# that are still attacking and a distributed flood never converges (98 source
+# addresses in one observed scraper flood, 72 in an earlier auth-probe
+# flood). LF_IPSET
+# is on, so entries are an O(1) ipset lookup, which is the condition csf itself
+# recommends raising these limits under. Only ever raises: an operator who
+# chose a higher value, or 0 for unlimited, keeps it.
+_csf_raise_temp_ban_limit() {
+  local _CSF_CNF="/etc/csf/csf.conf"
+  local _WANT="2000"
+  local _CUR=""
+  if ! command -v csf > /dev/null 2>&1; then
+    return 0
+  fi
+  if [ ! -s "${_CSF_CNF}" ]; then
+    return 0
+  fi
+  _CUR=$(grep -E "^DENY_TEMP_IP_LIMIT[[:space:]]*=" "${_CSF_CNF}" 2> /dev/null \
+    | head -n1 | sed -E 's/^[^"]*"([^"]*)".*$/\1/')
+  ### Absent, non-numeric, or 0 (csf's "unlimited") -- never touch it.
+  if [ -z "${_CUR}" ] || [ "${_CUR}" = "0" ]; then
+    return 0
+  fi
+  case "${_CUR}" in
+    *[!0-9]*) return 0 ;;
+  esac
+  if [ "${_CUR}" -ge "${_WANT}" ]; then
+    return 0
+  fi
+  if [ ! -e "${_CSF_CNF}.bak" ]; then
+    cp -af "${_CSF_CNF}" "${_CSF_CNF}.bak"
+  fi
+  sed -i -E "0,/^DENY_TEMP_IP_LIMIT[[:space:]]*=/{s|^(DENY_TEMP_IP_LIMIT[[:space:]]*=[[:space:]]*\").*(\".*)|\1${_WANT}\2|}" \
+    "${_CSF_CNF}"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "INFO: CSF DENY_TEMP_IP_LIMIT raised ${_CUR} -> ${_WANT}"
+  fi
+  csf -r > /dev/null 2>&1 || csf -ra > /dev/null 2>&1
+}
+
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
 
@@ -4733,6 +4809,9 @@ if [ "$(id -u)" -eq 0 ]; then
 
   # Fix CSF config only if Quic HTTP3 support is not enabled yet
   _csf_allow_quic_udp_443
+
+  # Raise the csf temp ban ceiling if it is still at the stock 300
+  _csf_raise_temp_ban_limit
 
   if ! command -v bc &> /dev/null; then
     apt-get update -qq &> /dev/null
