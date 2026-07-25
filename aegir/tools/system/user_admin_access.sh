@@ -2,10 +2,10 @@
 
 # user_admin_access.sh — per-site nginx IP allow/deny scoped to the Drupal /user
 # and /admin URIs only, GLOBAL across every Octopus instance.  Parallel to
-# ip_access.sh (which guards the WHOLE site and is IPv4-only to stay aligned with
-# csf): this one restricts just the login/admin surface and — because it is a
-# pure nginx allow/deny layer with no csf involvement — accepts IPv4 AND IPv6,
-# single addresses AND CIDR subnets.
+# ip_access.sh, which denies the WHOLE site to anyone off its list: this one
+# denies only the login/admin surface and leaves the rest of the site public.
+# Both are pure nginx allow/deny layers with no csf involvement, so both accept
+# IPv4 AND IPv6, single addresses AND CIDR subnets; the only difference is scope.
 #
 # For each instance it reads a control file of `<site>  <ip|cidr…>` records and
 # writes two per-site nginx includes into that instance's config/includes/:
