@@ -5,6 +5,9 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _pthOml="/var/log/boa/mysql.incident.log"
+_pthLdg="/var/log/boa/mysql.restart.ledger"
+_pthCdn="/run/mysql-monitor.cooldown"
+_pthLch="/run/boa_mysql_restart_latched.pid"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -69,6 +72,48 @@ export _THREAD_THRESHOLD=${_THREAD_THRESHOLD//[^0-9]/}
 : "${_THREAD_THRESHOLD:=99}" # Example: More than 99 MySQL threads
 
 ###
+### Flap control for the auto-heal. A restart that has to be repeated is evidence
+### the restart is not the remedy, so the second one is spaced out (cooldown) and
+### the run of them is capped (circuit-breaker). Every value can be overridden
+### from /root/.barracuda.cnf.
+###
+_sql_flap_num() {
+  # Normalise one operator-supplied number: digits only, and with any leading
+  # zeros stripped. Bash reads a zero-padded number as octal inside $(( )),
+  # where 08 is a hard error and 0900 is not 900 -- either would quietly corrupt
+  # the window arithmetic below and leave the breaker silently never opening,
+  # which is the one failure this whole mechanism must not have. Falls back to
+  # the given default when nothing usable is left.
+  local _v="${1//[^0-9]/}"
+  while [ "${#_v}" -gt 1 ] && [ "${_v:0:1}" = "0" ]; do
+    _v="${_v:1}"
+  done
+  [ -n "${_v}" ] || _v="$2"
+  printf '%s' "${_v}"
+}
+
+_SQL_COOLDOWN_SECS=$(_sql_flap_num "${_SQL_COOLDOWN_SECS}" 120)   # Minimum gap between two auto-heals
+
+_SQL_FLAP_MAX=$(_sql_flap_num "${_SQL_FLAP_MAX}" 3)               # Auto-heals tolerated inside the window
+# Zero would latch the breaker before the first legitimate recovery could run.
+[ "${_SQL_FLAP_MAX}" -lt 1 ] && _SQL_FLAP_MAX=1
+
+_SQL_FLAP_WINDOW_SECS=$(_sql_flap_num "${_SQL_FLAP_WINDOW_SECS}" 3600) # Window those auto-heals are counted in
+# The window has to be wide enough to still hold _SQL_FLAP_MAX heals at the pace
+# this watchdog itself enforces, or the oldest entry ages out before the breaker
+# can count it and the circuit never opens -- silently, and worst on exactly the
+# big boxes it exists for, where confirming the outage, stopping a wedged server
+# and waiting out a multi-gigabyte buffer pool can put minutes between heals on
+# top of the cooldown. Floor it at that pace so a narrowed window cannot disable
+# the breaker by accident.
+_SQL_FLAP_FLOOR=$(( _SQL_FLAP_MAX * (_SQL_COOLDOWN_SECS + 240) ))
+if [ "${_SQL_FLAP_WINDOW_SECS}" -lt "${_SQL_FLAP_FLOOR}" ]; then
+  _SQL_FLAP_WINDOW_SECS="${_SQL_FLAP_FLOOR}"
+fi
+
+_SQL_FLAP_LATCH_MINS=$(_sql_flap_num "${_SQL_FLAP_LATCH_MINS}" 60)     # Cool-off before an open circuit re-arms
+
+###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
 _manage_single_lock() {
@@ -130,11 +175,65 @@ _incident_email_report() {
   fi
 }
 
+_sql_flap_prune_ledger() {
+  # Count the auto-heals recorded within the flap window and rewrite the ledger
+  # with only those, so it stays small and needs no rotation. Result in the
+  # global _SQL_FLAP_COUNT. Reads via redirect, not a pipe, so the counter is
+  # incremented in this shell and not in a subshell that discards it.
+  #
+  # An entry stamped in the future can only come from a backwards clock step; it
+  # is dropped rather than counted, because the breaker must never latch on a
+  # clock artefact and refuse a genuine recovery.
+  #
+  # The ledger outlives a reboot, but the flap history does not: restarts from
+  # before the box came up say nothing about this boot, and counting them could
+  # latch the breaker during the post-boot window where alerts are suppressed --
+  # a latch nobody is paged about. So never look further back than boot time.
+  local _cut _boot _line _stamp _tmp
+  _SQL_FLAP_COUNT=0
+  [ -s "${_pthLdg}" ] || return 0
+  _cut=$(( $1 - _SQL_FLAP_WINDOW_SECS ))
+  _boot=$(awk '{print int($1)}' /proc/uptime 2>/dev/null)
+  _boot="${_boot//[^0-9]/}"
+  if [ -n "${_boot}" ] && [ "$(( $1 - _boot ))" -gt "${_cut}" ]; then
+    _cut=$(( $1 - _boot ))
+  fi
+  _tmp="${_pthLdg}.$$"
+  : > "${_tmp}" 2>/dev/null || return 0
+  while read -r _line; do
+    _stamp="${_line//[^0-9]/}"
+    [ -n "${_stamp}" ] || continue
+    if [ "${_stamp}" -gt "${_cut}" ] && [ "${_stamp}" -le "$1" ]; then
+      echo "${_stamp}" >> "${_tmp}"
+      _SQL_FLAP_COUNT=$(( _SQL_FLAP_COUNT + 1 ))
+    fi
+  done < "${_pthLdg}"
+  mv -f "${_tmp}" "${_pthLdg}" 2>/dev/null || rm -f "${_tmp}"
+}
+
+_sql_flap_breaker_is_open() {
+  # The open circuit is a latched refusal to auto-restart MySQL, cleared by an
+  # operator (remove the file) or by the cool-off. Age comes from the file mtime
+  # with the same `find -mmin` idiom the SQL-maintenance stand-down uses above,
+  # so a forgotten latch can never disable auto-healing permanently.
+  [ -e "${_pthLch}" ] || return 1
+  if [ -n "$(find "${_pthLch}" -mmin "+${_SQL_FLAP_LATCH_MINS}" 2>/dev/null)" ]; then
+    rm -f "${_pthLch}"
+    # Opening the circuit already discarded the history, and nothing is counted
+    # while it is open. Clear it again anyway so the invariant "a re-armed
+    # breaker starts counting at zero" holds however the ledger got there.
+    rm -f "${_pthLdg}"
+    echo "$(date) MySQL auto-restart re-armed after the ${_SQL_FLAP_LATCH_MINS} min cool-off" >> ${_pthOml}
+    return 1
+  fi
+  return 0
+}
+
 _sql_restart() {
   # Minimal-blast-radius recovery: a DB fault heals ONLY the DB. Never stop
   # nginx/php-fpm, drop caches, wipe the cache or kill php from here -- that
-  # amplifies a DB blip into a site-wide outage and a cache stampede (the am095
-  # restart storm).
+  # amplifies a DB blip into a site-wide outage and a cache stampede (the
+  # observed restart storm).
   #
   # A server that answers at all is not something to restart: return at once so
   # the caller's real remedies (flush-hosts, long-query kill) still run and no
@@ -143,6 +242,49 @@ _sql_restart() {
   if _mysql_is_answering; then
     return 0
   fi
+  # Flap control. A database that was just auto-restarted and is down AGAIN is
+  # not one another restart will fix; repeating the heal is what turned a 1s blip
+  # into nine whole-stack teardowns in fourteen minutes on one busy hosted box
+  # with the most cache to lose and the largest herd behind it. Two guards,
+  # cheapest first: a cooldown that spaces consecutive heals, and a breaker that
+  # latches once _SQL_FLAP_MAX heals have run inside _SQL_FLAP_WINDOW_SECS and
+  # then refuses to act at all, pages once, and waits for an operator.
+  local _now _ts _gap
+  _now=$(date +%s)
+  if _sql_flap_breaker_is_open; then
+    echo "$(date) $1 incident: CIRCUIT OPEN, auto-restart refused -- see ${_pthLch}" >> ${_pthOml}
+    echo >> ${_pthOml}
+    exit 0
+  fi
+  if [ -s "${_pthCdn}" ]; then
+    _ts=$(tr -dc '0-9' < "${_pthCdn}" 2>/dev/null)
+    if [ -n "${_ts}" ]; then
+      _gap=$(( _now - _ts ))
+      # A negative gap means the clock stepped backwards: treat the stamp as
+      # unusable and act, instead of freezing the watchdog until it catches up.
+      if [ "${_gap}" -ge 0 ] && [ "${_gap}" -lt "${_SQL_COOLDOWN_SECS}" ]; then
+        echo "$(date) INFO: MySQL not answering but in cooldown (${_gap}s < ${_SQL_COOLDOWN_SECS}s); skipping restart" >> ${_pthOml}
+        exit 0
+      fi
+    fi
+  fi
+  _sql_flap_prune_ledger "${_now}"
+  if [ "${_SQL_FLAP_COUNT}" -ge "${_SQL_FLAP_MAX}" ]; then
+    echo "$(date) CIRCUIT OPEN: ${_SQL_FLAP_COUNT} MySQL auto-restarts in the last ${_SQL_FLAP_WINDOW_SECS} seconds, so auto-restart is now disabled. Fix the cause, then delete this file to re-arm it; it also re-arms on its own ${_SQL_FLAP_LATCH_MINS} minutes after this stamp." > "${_pthLch}"
+    # The latch now carries the whole state of the breaker, so the history that
+    # opened it goes with it. Otherwise an operator who fixes the cause and does
+    # what the latch file tells them -- delete it -- would be re-latched and
+    # re-paged on those same stale entries, and left refusing the restart they
+    # just enabled. Re-arming, by hand or by cool-off, starts counting at zero.
+    rm -f "${_pthLdg}"
+    echo "$(date) $1 incident: CIRCUIT OPEN after ${_SQL_FLAP_COUNT} auto-restarts within ${_SQL_FLAP_WINDOW_SECS}s -- refusing to restart MySQL again" >> ${_pthOml}
+    _incident_email_report "CIRCUIT OPEN: MySQL auto-restart disabled after ${_SQL_FLAP_COUNT} restarts"
+    echo >> ${_pthOml}
+    exit 0
+  fi
+  # Record the attempt BEFORE acting: a heal that ends this script (or the box)
+  # must still leave evidence, or the breaker forgets the restart ever happened.
+  echo "${_now}" >> "${_pthLdg}"
   # Genuinely not answering. Recover mysqld and nothing else.
   touch /run/boa_mysql_auto_healing.pid
   if [ ! -d "/run/mysqld" ]; then
@@ -163,6 +305,9 @@ _sql_restart() {
   else
     echo "$(date) $1 incident response completed: MySQL still not answering" >> ${_pthOml}
   fi
+  # Hold the next auto-heal off for the cooldown window. Stamped after the action
+  # so the gap is measured from when this heal finished, matching nginx.sh/php.sh.
+  date +%s > "${_pthCdn}"
   _incident_email_report "$1"
   echo >> ${_pthOml}
   [ -e "/run/boa_mysql_auto_healing.pid" ] && rm -f /run/boa_mysql_auto_healing.pid
@@ -390,6 +535,7 @@ fi
 
 if [ -x "/etc/init.d/mysql" ] \
   && pgrep -f /usr/sbin/mysqld \
+  && [ ! -e "/run/boa_mysql_auto_healing.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
   _mysql_high_load
   _sql_busy_detection
