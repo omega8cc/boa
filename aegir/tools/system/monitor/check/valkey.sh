@@ -341,7 +341,41 @@ else
   _ALLOW_CTRL=YES
 fi
 
-if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+###
+### Stand down while the database is being deliberately restarted
+###
+export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
+: "${_SQL_MUTATION_MAX_MINS:=15}"
+
+_sql_mutation_in_flight() {
+  # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database, and
+  # it never brings them back: these watchdogs are the intended recovery. That
+  # only works if they wait for the restart to finish. Restarting the web tier
+  # mid-teardown stands it in front of a database that is still down, so workers
+  # pile onto failed connections and the whole herd arrives at a cold cache the
+  # moment the database returns; that cascade is what turns a brief database
+  # fault into a site-wide one. runner.sh and system.sh already stand down on
+  # the same two markers: mysql_restart_running.pid, written by move_sql.sh and
+  # by mycnfup, and boa_mysql_auto_healing.pid, held by the database watchdog
+  # for the length of its heal.
+  #
+  # Honoured only while the marker is recent, deliberately. clear.sh reaps a
+  # leaked mysql_restart_running.pid an hour after the writer died, and an hour
+  # with no web auto-healing is a worse outcome than the cascade this avoids; a
+  # marker older than the bound is treated as abandoned rather than authoritative.
+  local _m
+  for _m in /run/mysql_restart_running.pid /run/boa_mysql_auto_healing.pid; do
+    [ -e "${_m}" ] || continue
+    if [ -z "$(find "${_m}" -mmin "+${_SQL_MUTATION_MAX_MINS}" 2>/dev/null)" ]; then
+      echo "$(date) INFO: MySQL restart in progress (${_m##*/}); standing down this pass" >> ${_pthOml}
+      return 0
+    fi
+  done
+  return 1
+}
+
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
+  && ! _sql_mutation_in_flight; then
   if [ -x "/etc/init.d/valkey-server" ] \
     && [ -x "/usr/bin/valkey-server" ]; then
     _valkey_health_check_fix
