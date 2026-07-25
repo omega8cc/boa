@@ -939,10 +939,21 @@ _xmass_put_on_root() {
   local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _q
   _q="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
-  if ! rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh "${_real}/" root@"${_th}":"${_dstRoot}/"; then
-    _alrt "DENY: rsync to ${_dstRoot} on target root failed"
+  # Tolerate rc 24 exactly as _xmass_rsync does. This gate was previously inert
+  # (_xmass_handle_store returned an assignment's status instead of this one), so
+  # making it work exposes it to the benign case: on a live tree during `xmass
+  # sync`, files vanishing mid-transfer is normal and must not deny the run.
+  local _rc=0
+  rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
+    "${_real}/" root@"${_th}":"${_dstRoot}/" || _rc=$?
+  if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ]; then
+    _alrt "DENY: rsync to ${_dstRoot} on target root failed (rc=${_rc})"
     return 3
   fi
+  if [ "${_rc}" = "24" ]; then
+    _info "  ${_dstRoot}: some source files vanished during transfer (rc=24, benign)"
+  fi
+  return 0
 }
 
 # Mirror: rsync contents to <mntDest> on the target mount, then make <dstRoot> a symlink
@@ -954,9 +965,16 @@ _xmass_put_on_mount() {
   local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _qm _qd
   _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "mkdir -p '${_qm}'"
-  if ! rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh "${_real}/" root@"${_th}":"${_mntDest}/"; then
-    _alrt "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
+  # Same rc-24 tolerance as _xmass_put_on_root; see the note there.
+  local _rc=0
+  rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
+    "${_real}/" root@"${_th}":"${_mntDest}/" || _rc=$?
+  if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ]; then
+    _alrt "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed (rc=${_rc}); target link left untouched"
     return 3
+  fi
+  if [ "${_rc}" = "24" ]; then
+    _info "  ${_lbl}: some source files vanished during transfer (rc=24, benign)"
   fi
   if ! ssh root@"${_th}" "d='${_qd}'; case \"\$d\" in /data/disk/*) : ;; *) echo 'refuse: dstRoot outside /data/disk'; exit 9 ;; esac; if [ -L \"\$d\" ]; then rm -f \"\$d\"; elif [ -d \"\$d\" ]; then rm -rf \"\$d\"; elif [ -e \"\$d\" ]; then rm -f \"\$d\"; fi; mkdir -p \"\$(dirname \"\$d\")\"; ln -sfn '${_qm}' \"\$d\""; then
     _alrt "DENY: ${_lbl}: could not place symlink ${_dstRoot} -> ${_mntDest} on target"
