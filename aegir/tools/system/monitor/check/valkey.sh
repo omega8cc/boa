@@ -5,6 +5,8 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _pthOml="/var/log/boa/valkey.incident.log"
+_pthLdg="/var/log/boa/valkey.restart.ledger"
+_pthLch="/run/boa_valkey_restart_latched.pid"
 _cd="/run/valkey-monitor.cooldown"
 
 _check_root() {
@@ -42,10 +44,57 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
-: "${_VALKEY_COOLDOWN_SECS:=30}"
+###
+### Flap control for the auto-heal. A restart that has to be repeated is
+### evidence the restart is not the remedy, so the second one is spaced out
+### (cooldown) and the run of them is capped (circuit-breaker). Every value
+### can be overridden from /root/.barracuda.cnf. The machinery is kept
+### INLINE, like the database watchdog keeps its own copy and for the same
+### reason: this file is fetched under its own serial, and a box that has
+### taken a new valkey.sh but not yet a new lock.inc must not lose its
+### breaker to that skew -- worst on exactly the box that needs it, one
+### whose cache server is failing every pass. lock.inc's generic primitives
+### stay the shared home; migrate to them only once consuming them cannot
+### outrun their delivery.
+###
+_valkey_flap_num() {
+  # Normalise one operator-supplied number: digits only, and with any leading
+  # zeros stripped. Bash reads a zero-padded number as octal inside $(( )),
+  # where 08 is a hard error and 0900 is not 900 -- either would quietly
+  # corrupt the window arithmetic below and leave the breaker silently never
+  # opening, which is the one failure this whole mechanism must not have.
+  # Falls back to the given default when nothing usable is left.
+  local _v="${1//[^0-9]/}"
+  while [ "${#_v}" -gt 1 ] && [ "${_v:0:1}" = "0" ]; do
+    _v="${_v:1}"
+  done
+  [ -n "${_v}" ] || _v="$2"
+  printf '%s' "${_v}"
+}
 
-_NOW=$(date +%y%m%d-%H%M%S)
-_NOW=${_NOW//[^0-9-]/}
+_VALKEY_COOLDOWN_SECS=$(_valkey_flap_num "${_VALKEY_COOLDOWN_SECS}" 30)    # Minimum gap between two auto-heals
+
+_VALKEY_FLAP_MAX=$(_valkey_flap_num "${_VALKEY_FLAP_MAX}" 3)               # Auto-heals tolerated inside the window
+# Zero would latch the breaker before the first legitimate recovery could run.
+[ "${_VALKEY_FLAP_MAX}" -lt 1 ] && _VALKEY_FLAP_MAX=1
+
+_VALKEY_FLAP_WINDOW_SECS=$(_valkey_flap_num "${_VALKEY_FLAP_WINDOW_SECS}" 3600) # Window those auto-heals are counted in
+# The window has to be wide enough to still hold _VALKEY_FLAP_MAX heals at
+# the pace they actually land, or the oldest entry ages out before the
+# breaker can count it and the circuit never opens -- silently. That pace is
+# NOT the cooldown: it is set by the dispatch tick, and a pass that has to
+# confirm a wedged server (five bounded probes) and then walk the whole
+# stop/start sequence overruns the tick, so consecutive heals quantise to a
+# multiple of it. The slack per heal is therefore minutes, not seconds --
+# the same four minutes the database watchdog allows, and for the same
+# reason -- and it must clear the achievable pace strictly, because the
+# ledger's window test drops an entry that lands exactly on the boundary.
+_VALKEY_FLAP_FLOOR=$(( _VALKEY_FLAP_MAX * (_VALKEY_COOLDOWN_SECS + 240) ))
+if [ "${_VALKEY_FLAP_WINDOW_SECS}" -lt "${_VALKEY_FLAP_FLOOR}" ]; then
+  _VALKEY_FLAP_WINDOW_SECS="${_VALKEY_FLAP_FLOOR}"
+fi
+
+_VALKEY_FLAP_LATCH_MINS=$(_valkey_flap_num "${_VALKEY_FLAP_LATCH_MINS}" 60)     # Cool-off before an open circuit re-arms
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -102,72 +151,205 @@ _normalize_incident_report
 
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
-    # One alert per cooldown, not one per pass. A service that keeps failing
-    # used to send a mail every time a watchdog acted, which buries the signal
-    # exactly when it matters most. Nothing is lost: every incident is still
-    # written to the log below, and the mail body is the tail of that log, so
-    # the next alert that does go out carries the ones that did not. An older
-    # lock.inc without the helper simply sends as before.
-    local _sfx=""
-    if command -v _incident_email_ratelimit >/dev/null 2>&1; then
-      if ! _incident_email_ratelimit "${2:-valkey}"; then
-        echo "$(date) INFO: alert for '${1}' held back, one was already sent this cooldown" >> ${_pthOml}
-        return 1
-      fi
-      if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
-        _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
-      fi
+  local _subject="${1:-(no subject)}"
+  local _lvl="${2:-INFO}"
+  _lvl="${_lvl^^}"
+  [ -n "${_MY_EMAIL}" ] || return 1
+  # The severity ladder, applied to what this watchdog can say:
+  #   ALERT == the circuit breaker latched: auto-healing has stopped acting
+  #            and an operator is the only way forward.
+  #   MINI  == a genuine restart of the cache server happened. The default
+  #            reporting level hears about this now: a cache restart empties
+  #            the cache, and while it was ALL-only an operator learnt about
+  #            a flapping cache server from the load graphs, not from a mail.
+  #   INFO  == routine notices, ALL only.
+  case "${_INCIDENT_REPORT}" in
+    OFF)  return 1 ;;
+    CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;;
+    MINI) [ "${_lvl}" = "ALERT" ] || [ "${_lvl}" = "MINI" ] || return 1 ;;
+    ALL)  : ;;
+  esac
+  # One alert per cooldown, not one per pass. A service that keeps failing
+  # used to send a mail every time a watchdog acted, which buries the signal
+  # exactly when it matters most. Nothing is lost: every incident is still
+  # written to the log below, and the mail body is the tail of that log, so
+  # the next alert that does go out carries the ones that did not. Classes
+  # that are not the same incident keep their own key -- the circuit-breaker
+  # page must never be held back behind the heal mails it explains -- and an
+  # ALERT gets its own cooldown by construction, not by remembering to pass a
+  # key at the call site. An older lock.inc without the helper sends as before.
+  local _sfx=""
+  local _key="${3:-}"
+  if [ -z "${_key}" ]; then
+    if [ "${_lvl}" = "ALERT" ]; then
+      _key="valkey-alert"
+    else
+      _key="valkey"
     fi
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
   fi
+  if command -v _incident_email_ratelimit >/dev/null 2>&1; then
+    if ! _incident_email_ratelimit "${_key}"; then
+      echo "$(date) INFO: alert for '${_subject}' held back, one was already sent this cooldown" >> ${_pthOml}
+      return 1
+    fi
+    if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+      _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+    fi
+  fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+  s-nail -s "Incident Report: ${_subject}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
 }
 
-_valkey_ping_ok() {
-  # Check if Valkey responds to PING (authenticated or NOAUTH)
-  _sock="/run/valkey/valkey.sock"
-  _cli="/usr/bin/valkey-cli"
-  _pass_file="/root/.valkey.pass.txt"
-  _out=
-  _pass=
-  if [ ! -x "${_cli}" ]; then
+_valkey_is_answering() {
+  # Authoritative liveness probe. Only a demonstrable failure to CONNECT --
+  # refused, missing socket, reset, or a hang past the timeout -- counts as
+  # down. A reply of ANY other kind proves a live server: WRONGPASS/NOAUTH is
+  # an auth drift to fix, not an outage (restarting on it turns a stale
+  # password file into a restart loop, because the restart never changes the
+  # password), LOADING is a dataset being read back in that a restart would
+  # only start over, and any other error is still a reply the server composed
+  # and sent. The classification reads the reply, never the exit code,
+  # because valkey-cli's exit status does not separate "server answered with
+  # an error" from "no server". `timeout` bounds a wedged server.
+  local _out _pass
+  if [ ! -x "/usr/bin/valkey-cli" ]; then
+    # No cli to ask: process presence is the only evidence left. Thin, but it
+    # can only under-heal (a wedged-but-present server is left alone), never
+    # restart a healthy one.
+    pgrep -f "/usr/bin/valkey-server" >/dev/null 2>&1 && return 0
     return 1
   fi
-  if [ -r "${_pass_file}" ]; then
-    _pass="$(head -n1 "${_pass_file}" 2>/dev/null | tr -d '\r\n')"
+  _pass=
+  if [ -r "/root/.valkey.pass.txt" ]; then
+    _pass="$(head -n1 /root/.valkey.pass.txt 2>/dev/null | tr -d '\r\n')"
   fi
   if [ -n "${_pass}" ]; then
-    _out="$(${_cli} -s "${_sock}" -a "${_pass}" ping 2>&1)"
+    _out="$(timeout 5 /usr/bin/valkey-cli -s /run/valkey/valkey.sock --no-auth-warning -a "${_pass}" ping 2>&1)"
   else
-    _out="$(${_cli} -s "${_sock}" ping 2>&1)"
+    _out="$(timeout 5 /usr/bin/valkey-cli -s /run/valkey/valkey.sock ping 2>&1)"
   fi
-  if echo "${_out}" | grep -qi '^PONG$'; then
-    return 0
+  # The cli's -a advice line goes to stderr BEFORE it even connects, so it is
+  # the one thing a probe killed mid-hang has always managed to say -- left
+  # in, it would satisfy the emptiness test below and disguise every wedged
+  # server as an answering one. --no-auth-warning silences it at the source
+  # and the filter drops whatever advice another cli build still prints,
+  # because only the SERVER's words may count as a reply.
+  _out="$(printf '%s\n' "${_out}" | grep -v '^Warning:')"
+  # Empty output means the cli said nothing at all: killed by the timeout
+  # while a wedged server sat on the reply, or crashed before it could even
+  # report a connection error.
+  [ -n "${_out}" ] || return 1
+  if echo "${_out}" | grep -qiE "Could not connect|Connection refused|Connection reset|Connection timed out|Failed to connect|Server closed the connection|Broken pipe|I/O error"; then
+    return 1
   fi
-  if echo "${_out}" | grep -qi 'NOAUTH'; then
-    return 0
-  fi
-  return 1
+  return 0
 }
 
-_fpm_reload() {
-  : > /run/fmp_wait.pid
-  : > /run/restarting_fmp_wait.pid
-  sleep 3
-  [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
-  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/ &> /dev/null
-  renice ${_B_NICE} -p $$ &> /dev/null
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      service "php${e}-fpm" reload
+_valkey_flap_prune_ledger() {
+  # Count the auto-heals recorded within the flap window and rewrite the
+  # ledger with only those, so it stays small and needs no rotation. Result
+  # in the global _VALKEY_FLAP_COUNT. Reads via redirect, not a pipe, so the
+  # counter is incremented in this shell and not in a subshell that discards
+  # it.
+  #
+  # An entry stamped in the future can only come from a backwards clock step;
+  # it is dropped rather than counted, because the breaker must never latch
+  # on a clock artefact and refuse a genuine recovery.
+  #
+  # The ledger outlives a reboot, but the flap history does not: restarts
+  # from before the box came up say nothing about this boot, and counting
+  # them could latch the breaker during the post-boot window where alerts
+  # are suppressed -- a latch nobody is paged about. So never look further
+  # back than boot time.
+  local _cut _boot _line _stamp _tmp
+  _VALKEY_FLAP_COUNT=0
+  [ -s "${_pthLdg}" ] || return 0
+  _cut=$(( $1 - _VALKEY_FLAP_WINDOW_SECS ))
+  _boot=$(awk '{print int($1)}' /proc/uptime 2>/dev/null)
+  _boot="${_boot//[^0-9]/}"
+  if [ -n "${_boot}" ] && [ "$(( $1 - _boot ))" -gt "${_cut}" ]; then
+    _cut=$(( $1 - _boot ))
+  fi
+  _tmp="${_pthLdg}.$$"
+  : > "${_tmp}" 2>/dev/null || return 0
+  while read -r _line; do
+    _stamp="${_line//[^0-9]/}"
+    [ -n "${_stamp}" ] || continue
+    if [ "${_stamp}" -gt "${_cut}" ] && [ "${_stamp}" -le "$1" ]; then
+      echo "${_stamp}" >> "${_tmp}"
+      _VALKEY_FLAP_COUNT=$(( _VALKEY_FLAP_COUNT + 1 ))
     fi
-  done
-  echo "$(date) $1 incident PHP-FPM reloaded" >> ${_pthOml}
-  sleep 1
-  rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
+  done < "${_pthLdg}"
+  mv -f "${_tmp}" "${_pthLdg}" 2>/dev/null || rm -f "${_tmp}"
+}
+
+_valkey_flap_breaker_is_open() {
+  # The open circuit is a latched refusal to auto-restart Valkey, cleared by
+  # an operator (remove the file) or by the cool-off. Age comes from the file
+  # mtime with the same `find -mmin` idiom the SQL-mutation stand-down uses
+  # below, so a forgotten latch can never disable auto-healing permanently;
+  # /run is tmpfs, so a reboot clears it too.
+  [ -e "${_pthLch}" ] || return 1
+  if [ -n "$(find "${_pthLch}" -mmin "+${_VALKEY_FLAP_LATCH_MINS}" 2>/dev/null)" ]; then
+    rm -f "${_pthLch}"
+    # Opening the circuit already discarded the history, and nothing is
+    # counted while it is open. Clear it again anyway so the invariant "a
+    # re-armed breaker starts counting at zero" holds however the ledger got
+    # there.
+    rm -f "${_pthLdg}"
+    echo "$(date) Valkey auto-restart re-armed after the ${_VALKEY_FLAP_LATCH_MINS} min cool-off" >> ${_pthOml}
+    return 1
+  fi
+  return 0
+}
+
+_valkey_heal_gate() {
+  # Every AUTO-heal passes here before acting; the operator-requested restart
+  # deliberately does not (an explicit request must not be refused on the
+  # strength of automation history -- it keeps its own cooldown only).
+  # Order, cheapest refusal first: a server that answers again needs nothing;
+  # an open circuit refuses everything; a heal inside the cooldown waits; and
+  # a heal that would overrun the flap budget latches the circuit, pages once
+  # on its own key, and stops the run. Passing the gate records the attempt
+  # in the ledger BEFORE acting, so a heal that ends this script still leaves
+  # evidence for the breaker.
+  local _now _ts _gap
+  if _valkey_is_answering; then
+    echo "$(date) INFO: Valkey answering again before action ($1); standing down" >> ${_pthOml}
+    return 1
+  fi
+  _now=$(date +%s)
+  if _valkey_flap_breaker_is_open; then
+    echo "$(date) $1 incident: CIRCUIT OPEN, auto-restart refused -- see ${_pthLch}" >> ${_pthOml}
+    echo >> ${_pthOml}
+    return 1
+  fi
+  if [ -s "${_cd}" ]; then
+    _ts=$(tr -dc '0-9' < "${_cd}" 2>/dev/null)
+    if [ -n "${_ts}" ]; then
+      _gap=$(( _now - _ts ))
+      # A negative gap means the clock stepped backwards: treat the stamp as
+      # unusable and act, instead of freezing the watchdog until it catches up.
+      if [ "${_gap}" -ge 0 ] && [ "${_gap}" -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
+        echo "$(date) INFO: Valkey unhealthy but in cooldown (${_gap}s < ${_VALKEY_COOLDOWN_SECS}s); skipping restart" >> ${_pthOml}
+        return 1
+      fi
+    fi
+  fi
+  _valkey_flap_prune_ledger "${_now}"
+  if [ "${_VALKEY_FLAP_COUNT}" -ge "${_VALKEY_FLAP_MAX}" ]; then
+    # The latch carries the whole state of the breaker; the history that
+    # opened it goes with it, so any re-arm starts counting at zero.
+    echo "$(date) CIRCUIT OPEN: ${_VALKEY_FLAP_COUNT} Valkey auto-restarts in the last ${_VALKEY_FLAP_WINDOW_SECS} seconds, so auto-restart is now disabled. Fix the cause, then delete this file to re-arm it; it also re-arms on its own ${_VALKEY_FLAP_LATCH_MINS} minutes after this stamp." > "${_pthLch}"
+    rm -f "${_pthLdg}"
+    echo "$(date) $1 incident: CIRCUIT OPEN after ${_VALKEY_FLAP_COUNT} auto-restarts within ${_VALKEY_FLAP_WINDOW_SECS}s -- refusing to restart Valkey again" >> ${_pthOml}
+    _incident_email_report "CIRCUIT OPEN: Valkey auto-restart disabled after ${_VALKEY_FLAP_COUNT} restarts" "ALERT" "valkey-circuit"
+    echo >> ${_pthOml}
+    return 1
+  fi
+  echo "${_now}" >> "${_pthLdg}"
+  return 0
 }
 
 _valkey_restart() {
@@ -175,82 +357,42 @@ _valkey_restart() {
   sleep 3
   echo "$(date) $1 incident detected" >> ${_pthOml}
   service valkey-server stop &> /dev/null
-  wait
   killall -9 valkey-server &> /dev/null
+  # Last-resort path only: clearing the data files is what a plain restart
+  # cannot do, and a dataset the server refuses to load back is the one fault
+  # left once a plain restart has failed. The files hold a disposable page
+  # cache, so losing them costs warm-up, not data.
   rm -f /var/lib/valkey/*
   service valkey-server start &> /dev/null
-  wait
   echo "$(date) $1 incident valkey-server restarted" >> ${_pthOml}
-  if [[ "${1}" =~ "REFUSED" ]] || [[ "${1}" =~ "SLOW" ]]; then
-    _fpm_reload "$1"
+  sleep 3
+  if _valkey_is_answering; then
+    echo "$(date) $1 incident response completed: Valkey answering" >> ${_pthOml}
+  else
+    echo "$(date) $1 incident response completed: Valkey still not answering" >> ${_pthOml}
   fi
-  echo "$(date) $1 incident response completed" >> ${_pthOml}
+  # Hold the next auto-heal off for the cooldown window. Stamped after the
+  # action so the gap is measured from when this heal finished.
   date +%s > "${_cd}"
-  _incident_email_report "$1"
+  _incident_email_report "$1" "MINI"
   echo >> ${_pthOml}
   [ -e "/run/boa_valkey_auto_healing.pid" ] && rm -f /run/boa_valkey_auto_healing.pid
   exit 0
 }
 
 _valkey_bind_check_fix() {
-  # Bind/socket/address-in-use issues → verify twice; restart only if socket missing
+  # Bind/socket/address-in-use issues -> verify twice; restart only if socket
+  # missing. This reads Valkey's own server log and its own socket, so it is
+  # first-hand evidence, unlike the PHP-side symptom checks this file used to
+  # carry.
   _hits=$(tail -n 8 /var/log/valkey/valkey-server.log 2>/dev/null | egrep -ci "Address already in use")
   if [ "${_hits}" -gt 0 ]; then
     sleep 2
     _hits2=$(tail -n 8 /var/log/valkey/valkey-server.log 2>/dev/null | egrep -ci "Address already in use")
     if [ "${_hits2}" -gt 0 ] && [ ! -S "/run/valkey/valkey.sock" ]; then
-      _now=$(date +%s)
-      if [ -s "${_cd}" ]; then
-        _ts=$(tr -d '\n' < "${_cd}")
-        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
-          echo "$(date) INFO: Valkey bind/socket conflict but in cooldown; skipping restart" >> ${_pthOml}
-          return 0
-        fi
-      fi
+      _valkey_heal_gate "ValkeyException BIND PORT" || return 0
       echo "$(date) Valkey bind/socket conflict; restarting" >> ${_pthOml}
       _valkey_restart "ValkeyException BIND PORT"
-    fi
-  fi
-}
-
-_valkey_connection_check_fix() {
-  # Sustained connection/backlog issues → verify twice; cooldown then restart
-  _hits=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
-  if [ "${_hits}" -gt 19 ]; then
-    sleep 2
-    _hits2=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
-    if [ "${_hits2}" -gt 19 ]; then
-      _now=$(date +%s)
-      if [ -s "${_cd}" ]; then
-        _ts=$(tr -d '\n' < "${_cd}")
-        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
-          echo "$(date) INFO: Valkey connection issues but in cooldown; skipping restart" >> ${_pthOml}
-          return 0
-        fi
-      fi
-      echo "$(date) Valkey sustained connection issues (${_hits2} hits) — restart" >> ${_pthOml}
-      _valkey_restart "ValkeyException REFUSED"
-    fi
-  fi
-}
-
-_valkey_slow_check_fix() {
-  # Sustained latency/slowlog/accept issues → verify twice; cooldown then restart
-  _hits=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
-  if [ "${_hits}" -gt 19 ]; then
-    sleep 2
-    _hits2=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
-    if [ "${_hits2}" -gt 19 ]; then
-      _now=$(date +%s)
-      if [ -s "${_cd}" ]; then
-        _ts=$(tr -d '\n' < "${_cd}")
-        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
-          echo "$(date) INFO: Valkey latency symptoms but in cooldown; skipping restart" >> ${_pthOml}
-          return 0
-        fi
-      fi
-      echo "$(date) Valkey sustained latency symptoms (${_hits2} hits) — restart" >> ${_pthOml}
-      _valkey_restart "ValkeyException SLOW"
     fi
   fi
 }
@@ -289,69 +431,37 @@ _if_valkey_restart() {
 }
 
 _valkey_health_check_fix() {
-
-  # Double-check health: process + socket PING
-  _ok_proc=false
-  _ok_ping=false
-
-  pgrep -f "/usr/bin/valkey-server" >/dev/null 2>&1 && _ok_proc=true
-  if [ -x "/usr/bin/valkey-cli" ]; then
-    if _valkey_ping_ok; then
-      _ok_ping=true
-    fi
-  fi
-
-  if ! ${_ok_proc} || ! ${_ok_ping}; then
-    sleep 2
-    _ok_proc=false; _ok_ping=false
-    pgrep -f "/usr/bin/valkey-server" >/dev/null 2>&1 && _ok_proc=true
-    if [ -x "/usr/bin/valkey-cli" ]; then
-      if _valkey_ping_ok; then
-        _ok_ping=true
-      fi
-    fi
-  fi
-
-  if ! ${_ok_proc} || ! ${_ok_ping}; then
-    _now=$(date +%s)
-    if [ -s "${_cd}" ]; then
-      _ts=$(tr -d '\n' < "${_cd}")
-      if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
-        echo "$(date) INFO: Valkey unhealthy but in cooldown; skipping restart" >> ${_pthOml}
-        return 0
-      fi
-    fi
-
-    echo "$(date) Valkey health failed (proc=${_ok_proc} ping=${_ok_ping}) — restart" >> ${_pthOml}
-    service valkey-server restart
-    wait
+  # A momentarily silent probe is NOT proof of a hard outage; only sustained
+  # silence is. Confirm across spaced probes of Valkey itself and stand down
+  # the moment any probe answers. Down-detection must come from Valkey, not
+  # from PHP-side symptoms: the log-driven checks this replaces counted other
+  # services' error lines, restarted a healthy cache server on them, and then
+  # reloaded every PHP-FPM pool behind it -- which is how a transient blip
+  # elsewhere used to become a cold cache and a site-wide slowdown here.
+  _valkey_is_answering && return 0
+  local _try
+  for _try in 1 2 3 4; do
     sleep 3
-
-    # Post-restart verification
-    _ok_proc=false; _ok_ping=false
-    pgrep -f "/usr/bin/valkey-server" >/dev/null 2>&1 && _ok_proc=true
-    if [ -x "/usr/bin/valkey-cli" ]; then
-      if _valkey_ping_ok; then
-        _ok_ping=true
-      fi
-    fi
-
+    _valkey_is_answering && return 0
+  done
+  _valkey_heal_gate "DOWN Valkey" || return 0
+  echo "$(date) Valkey down (sustained across 5 probes) -- restart" >> ${_pthOml}
+  service valkey-server restart &> /dev/null
+  sleep 3
+  if _valkey_is_answering; then
+    # Hold the next auto-heal off for the cooldown window, measured from when
+    # this heal finished.
     date +%s > "${_cd}"
-
-    if ${_ok_proc} && ${_ok_ping}; then
-      echo "$(date) Valkey was down, restarted" >> ${_pthOml}
-      _incident_email_report "Valkey was down, restarted"
-      echo >> ${_pthOml}
-      exit 0
-    else
-      echo "$(date) Valkey still unhealthy after restart; forced stop/start" >> ${_pthOml}
-      _valkey_restart "Valkey required stop/start after failed restart"
-    fi
+    echo "$(date) Valkey was down, restarted" >> ${_pthOml}
+    _incident_email_report "Valkey was down, restarted" "MINI"
+    echo >> ${_pthOml}
+    exit 0
   fi
+  echo "$(date) Valkey still not answering after restart; forced stop/start" >> ${_pthOml}
+  _valkey_restart "Valkey required stop/start after failed restart"
 }
 
-if [ -e "/run/boa_valkey_auto_healing.pid" ] \
-  || [ -e "/run/boa_valkey_auto_healing.pid" ]; then
+if [ -e "/run/boa_valkey_auto_healing.pid" ]; then
   _ALLOW_CTRL=NO
 else
   _ALLOW_CTRL=YES
@@ -395,8 +505,6 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   if [ -x "/etc/init.d/valkey-server" ] \
     && [ -x "/usr/bin/valkey-server" ]; then
     _valkey_health_check_fix
-    [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_slow_check_fix
-    [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_connection_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_bind_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_valkey_restart
   fi
