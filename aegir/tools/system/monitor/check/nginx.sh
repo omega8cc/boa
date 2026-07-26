@@ -119,15 +119,49 @@ _incident_email_report() {
   fi
 }
 
+_stop_nginx_processes() {
+  # Ask the recorded master to quit first: QUIT lets in-flight requests
+  # finish, where the old unconditional -9 severed every connection on the
+  # box. The -9 still follows, but only for what survives the grace, and
+  # the pattern is bracket-tricked so it can never match this script's own
+  # command line.
+  local _mpid _w=0
+  _mpid=$(tr -dc '0-9' < /run/nginx.pid 2>/dev/null)
+  # The number must still BE nginx: a pidfile left by a -9'd master outlives
+  # its owner on tmpfs, and a recycled pid would receive root's SIGQUIT.
+  if [ -n "${_mpid}" ] \
+    && [ "$(cat /proc/${_mpid}/comm 2>/dev/null)" = "nginx" ] \
+    && kill -0 "${_mpid}" 2>/dev/null; then
+    kill -QUIT "${_mpid}" 2>/dev/null
+    while kill -0 "${_mpid}" 2>/dev/null && [ "${_w}" -lt 10 ]; do
+      sleep 1
+      _w=$(( _w + 1 ))
+    done
+  fi
+  pkill -9 -f '[n]ginx: ' || true
+}
+
 _restart_nginx() {
   touch /run/boa_nginx_auto_healing.pid
   sleep 3
   echo "$(date) NGX $1 detected" >> ${_pthOml}
+  # The hard-restart entry used by the OOM/bind/state detectors carried no
+  # cooldown at all, so a symptom that survives a restart re-ran the whole
+  # teardown on every pass; the down-detection path has always had one.
+  _now=$(date +%s)
+  if [ -s "${_cd}" ]; then
+    _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+    if [ -n "${_ts}" ] && [ $((_now - _ts)) -ge 0 ] && [ $((_now - _ts)) -lt "${_NGINX_COOLDOWN_SECS}" ]; then
+      echo "$(date) INFO: NGX $1 but in cooldown; skipping restart" >> ${_pthOml}
+      [ -e "/run/boa_nginx_auto_healing.pid" ] && rm -f /run/boa_nginx_auto_healing.pid
+      return 0
+    fi
+  fi
   echo "Killing all Nginx processes and restarting Nginx..."
-  pkill -9 -f nginx: || true
+  _stop_nginx_processes
   mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
   service nginx restart
-  wait
+  date +%s > "${_cd}"
   if pidof nginx > /dev/null; then
     echo "Nginx service restarted successfully."
     _NGINX_RESTARTED=true
@@ -148,7 +182,7 @@ _nginx_oom_detection() {
     if [ `tail --lines=500 /var/log/nginx/error.log \
       | grep --count "Cannot allocate memory"` -gt 0 ]; then
       _thisErrLog="$(date) Nginx OOM error"
-      echo ${_thisErrLog} >> ${_pthOml}
+      echo "${_thisErrLog}" >> ${_pthOml}
       _restart_nginx "Nginx OOM"
     fi
   fi
@@ -158,7 +192,7 @@ _nginx_bind_check_fix() {
   if [ `tail --lines=8 /var/log/nginx/error.log \
     | grep --count "Address already in use"` -gt 0 ]; then
     _thisErrLog="$(date) Nginx BIND PORT error, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
+    echo "${_thisErrLog}" >> ${_pthOml}
     _restart_nginx "Nginx BIND PORT error"
   fi
 }
@@ -231,14 +265,26 @@ _nginx_if_up_check_fix() {
             return 0
           fi
         fi
-        pkill -9 -f nginx: || true
+        # Positive evidence beats absence -- but only for the pidfile
+        # artefact: a LIVE master whose /run/nginx.pid went missing is not
+        # an outage, and restarting a serving nginx for it would be one.
+        # When the MASTER is gone the opposite holds: workers inherit the
+        # listen sockets and keep serving headless, so a listening port is
+        # exactly what the one state this restart exists to clear looks
+        # like, and standing down on it would leave the box unhealable.
+        if pgrep -f 'nginx: [m]aster process' >/dev/null 2>&1 \
+          && command -v ss >/dev/null 2>&1 \
+          && ss -Hltn 2>/dev/null | grep -qE ':(80|443) '; then
+          echo "$(date) INFO: Nginx master alive and serving; missing pidfile treated as an artefact, standing down" >> ${_pthOml}
+          return 0
+        fi
+        _stop_nginx_processes
         mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
         service nginx restart
-        wait
         # Stamp cooldown after attempting recovery
         date +%s > "${_cd}"
         _thisErrLog="$(date) Nginx Server was down, restarted"
-        echo ${_thisErrLog} >> ${_pthOml}
+        echo "${_thisErrLog}" >> ${_pthOml}
         _incident_email_report "Nginx Server was down, restarted"
         echo >> ${_pthOml}
         exit 0
@@ -253,7 +299,12 @@ _if_nginx_restart() {
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
   _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
-  ReTest=$(ls /data/disk/*/static/control/run-nginx-restart.pid | wc -l 2>&1)
+  # Counted without ls: an unmatched glob stays literal and fails the -e
+  # test, so no error text ever feeds the count.
+  ReTest=0
+  for _cp in /data/disk/*/static/control/run-nginx-restart.pid; do
+    [ -e "${_cp}" ] && ReTest=$(( ReTest + 1 ))
+  done
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
@@ -261,9 +312,20 @@ _if_nginx_restart() {
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [ -e "/etc/boa/.allow.nginx.restart.cnf" ]; then
     if [ "${ReTest}" -ge 1 ]; then
+      # The sentinel is consumed only when the restart can actually run:
+      # _restart_nginx now refuses inside the cooldown, and a request eaten
+      # by a refusal would simply vanish. Leave it for the next pass instead.
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -ge 0 ] && [ $((_now - _ts)) -lt "${_NGINX_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Nginx restart requested but in cooldown; request kept for the next pass" >> ${_pthOml}
+          return 0
+        fi
+      fi
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
       _thisErrLog="$(date) Nginx Server Restart Requested"
-      echo ${_thisErrLog} >> ${_pthOml}
+      echo "${_thisErrLog}" >> ${_pthOml}
       _restart_nginx "Nginx Server Restart Requested"
     fi
   fi
