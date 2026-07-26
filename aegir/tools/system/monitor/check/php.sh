@@ -295,7 +295,8 @@ _fpm_health_check_fix() {
       fi
 
       if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
-        # Per-version cooldown: /run/php<ver>-fpm.cooldown (15 seconds default)
+        # Per-version cooldown: /run/php<ver>-fpm.cooldown, gated by
+        # _FPM_COOLDOWN_SECS
         _cd="/run/php${e}-fpm.cooldown"
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
@@ -316,14 +317,23 @@ _fpm_health_check_fix() {
         [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
         mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
         service "php${e}-fpm" restart
-        wait
-        sleep 1
 
-        # Re-check after restart
+        # Readiness poll, bounded: a master that just restarted can take a
+        # few seconds to bind its socket under load, and one second of
+        # patience escalated to a needless stop/start.
+        _w=0
         _ok_master=false; _ok_socket=false; _ok_pid=false
-        pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
-        [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
-        [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
+        while [ "${_w}" -lt 10 ]; do
+          sleep 1
+          _ok_master=false; _ok_socket=false; _ok_pid=false
+          pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+          [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
+          [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
+          if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then
+            break
+          fi
+          _w=$(( _w + 1 ))
+        done
 
         if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then
           _thisErrLog="$(date) PHP-FPM ${e} was down, restarted"
@@ -365,12 +375,34 @@ _spawn_detached() {
 }
 
 _fpm_logs_empty() {
-  _LOG_NR=$(ls /var/log/php | wc -l)
-  if [ -n "${_LOG_NR}" ] && [ "${_LOG_NR}" -ge 3 ]; then
-    _LOGS=OK
-  else
-    _fpm_reload "NOLOGS"
-  fi
+  # Decided on the logs the installed versions should actually be writing,
+  # not on a bare count of directory entries: the old threshold of three
+  # counted anything in the directory and reloaded EVERY pool (clearing
+  # APCu box-wide) when it came up short. The remedy is scoped the same
+  # way: only the version missing its log is reloaded, behind its own
+  # cooldown stamp, so a log that stays absent for a reason a reload does
+  # not fix cannot become an APCu-clearing storm.
+  local _e _cdE _tsE _nowE
+  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  for _e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${_e}-fpm" ] && [ -x "/opt/php${_e}/bin/php" ] \
+      && [ ! -e "/var/log/php/php${_e}-fpm-error.log" ]; then
+      # Its OWN stamp, never the health path's: this reload cannot start a
+      # dead master, and re-stamping the shared cooldown just before the
+      # health check reads it would starve the one remedy that can.
+      _cdE="/run/php${_e}-fpm.logfix.cooldown"
+      _nowE=$(date +%s)
+      if [ -s "${_cdE}" ]; then
+        _tsE=$(tr -dc '0-9' < "${_cdE}" 2>/dev/null)
+        if [ -n "${_tsE}" ] && [ $((_nowE - _tsE)) -ge 0 ] && [ $((_nowE - _tsE)) -lt "${_FPM_COOLDOWN_SECS}" ]; then
+          continue
+        fi
+      fi
+      echo "$(date) php${_e}-fpm error log missing; reloading that version" >> ${_pthOml}
+      service "php${_e}-fpm" reload &> /dev/null
+      date +%s > "${_cdE}"
+    fi
+  done
 }
 
 _fpm_apcu_reload_sentinel() {

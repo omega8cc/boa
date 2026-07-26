@@ -403,8 +403,15 @@ _if_valkey_restart() {
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
   _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
-  _VkTest=$(ls /data/disk/*/static/control/run-valkey-restart.pid | wc -l 2>&1)
-  _ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  # Counted without ls: an unmatched glob stays literal and fails the -e
+  # test, so no error text ever feeds the count.
+  _VkTest=0; _ReTest=0
+  for _cp in /data/disk/*/static/control/run-valkey-restart.pid; do
+    [ -e "${_cp}" ] && _VkTest=$(( _VkTest + 1 ))
+  done
+  for _cp in /data/disk/*/static/control/run-redis-restart.pid; do
+    [ -e "${_cp}" ] && _ReTest=$(( _ReTest + 1 ))
+  done
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
@@ -424,7 +431,7 @@ _if_valkey_restart() {
       rm -f /data/disk/*/static/control/run-valkey-restart.pid
       rm -f /data/disk/*/static/control/run-redis-restart.pid
       _thisErrLog="$(date) Valkey Server Restart Requested"
-      echo ${_thisErrLog} >> ${_pthOml}
+      echo "${_thisErrLog}" >> ${_pthOml}
       _valkey_restart "Valkey Server Restart Requested"
     fi
   fi
