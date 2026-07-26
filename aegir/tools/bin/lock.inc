@@ -41,7 +41,10 @@ _single_instance_unlock() {
         exec {_FD}>&-
         ;;
     esac
-    [ -n "${_PATH}" ] && rm -f "${_PATH}" 2>/dev/null || true
+    # The lockfile itself stays: flock lives on the inode, so removing the
+    # name would hand the NEXT opener a fresh inode while a process still
+    # waiting on the old one proceeds too -- two holders of one lock. A
+    # 0-byte file on tmpfs costs nothing and clears on reboot.
   else
     [ -n "${_PATH}" ] && rm -rf "${_PATH}" 2>/dev/null || true
   fi
@@ -59,7 +62,7 @@ _single_instance_lock() {
   if [ -n "${1:-}" ]; then
     _LOCK_PATH="$1"
   else
-    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/tmp"
     _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
   fi
 
@@ -76,12 +79,26 @@ _single_instance_lock() {
       exit 0
     fi
     printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
+    # This trap is the lock's release path; a caller that installs its own
+    # EXIT trap after locking replaces it and must call
+    # _single_instance_unlock itself (flock still auto-releases when the
+    # process exits, so the worst a lost trap costs is the tidy-up).
     trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
   else
-    # mkdir is atomic; directory presence == lock held
+    # mkdir is atomic; directory presence == lock held. A holder that died
+    # without its trap (SIGKILL, power loss) must not lock every future run
+    # out: a recorded owner that is no longer alive, on a lock old enough
+    # that no live run can still own it, is reclaimed once.
     if ! mkdir "${_LOCK_PATH}" 2>/dev/null; then
-      echo "${_SELF_NAME}: another instance is running; exiting."
-      exit 0
+      _OWNER_PID="$(tr -dc '0-9' < "${_LOCK_PATH}/pid" 2>/dev/null)"
+      if { [ -z "${_OWNER_PID}" ] || ! kill -0 "${_OWNER_PID}" 2>/dev/null; } \
+        && [ -n "$(find "${_LOCK_PATH}" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
+        rm -rf "${_LOCK_PATH}" 2>/dev/null
+        mkdir "${_LOCK_PATH}" 2>/dev/null || { echo "${_SELF_NAME}: another instance is running; exiting."; exit 0; }
+      else
+        echo "${_SELF_NAME}: another instance is running; exiting."
+        exit 0
+      fi
     fi
     echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
     trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
@@ -220,6 +237,9 @@ _incident_email_ratelimit() {
 ###
 _check_uptime_grace_period() {
   _UPTIME_MIN=$(awk '{print int($1/60)}' /proc/uptime 2>/dev/null)
+  # An unreadable /proc/uptime must read as "just booted", not as a shell
+  # error in the comparison below: staying quiet is the safe direction.
+  [ -n "${_UPTIME_MIN}" ] || _UPTIME_MIN=0
   if [ "${_UPTIME_MIN}" -lt 15 ] \
     || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     || [ ! -x "/usr/sbin/csf" ] \
