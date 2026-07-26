@@ -170,11 +170,11 @@ _nginx_health_check_fix() {
   _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
   # Check for multiple master processes (shouldn't happen)
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _MASTER_COUNT=$(pgrep -fc 'nginx: master process')
+    _MASTER_COUNT=$(pgrep -fc 'nginx: [m]aster process')
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
       # Double-check after a short grace to avoid flapping
       sleep 5
-      _MASTER_COUNT=$(pgrep -fc 'nginx: master process')
+      _MASTER_COUNT=$(pgrep -fc 'nginx: [m]aster process')
       if [ "${_MASTER_COUNT}" -gt 1 ]; then
         echo "Multiple (${_MASTER_COUNT}) Nginx master processes detected. Possible stuck processes."
         echo "$(date) NGX multiple (${_MASTER_COUNT}) master processes detected" >> ${_pthOml}
@@ -217,11 +217,11 @@ _nginx_health_check_fix() {
 _nginx_if_up_check_fix() {
   # Standard check first
   if [ -x "/etc/init.d/nginx" ]; then
-    if ! pgrep -f 'nginx: master process' \
+    if ! pgrep -f 'nginx: [m]aster process' \
       || [ ! -e "/run/nginx.pid" ]; then
       # Double-check after a short grace to avoid flapping
       sleep 3
-      if ! pgrep -f 'nginx: master process' \
+      if ! pgrep -f 'nginx: [m]aster process' \
         || [ ! -e "/run/nginx.pid" ]; then
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
