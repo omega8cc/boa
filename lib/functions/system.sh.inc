@@ -9456,15 +9456,18 @@ _xdrago_install_upgrade() {
     if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
       _DO_NOTHING=YES
     else
+      ### Scoped to the long-query TTL knobs. The previous blanket s/3600/N/
+      ### also rewrote every LATER 3600 added to the file, silently retuning
+      ### unrelated defaults (observed on the flap-breaker window default).
       if [ -e "/root/.high_load.cnf" ] \
         && [ ! -e "/root/.big_db.cnf" ] \
         && [ ! -e "/root/.tg.cnf" ]; then
-        sed -i "s/3600/300/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
+        sed -i "s/_SQL_MAX_TTL:=3600/_SQL_MAX_TTL:=300/g;s/_limit=\${1:-3600}/_limit=\${1:-300}/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
         wait
       elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
         _DO_NOTHING=YES
       else
-        sed -i "s/3600/1800/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
+        sed -i "s/_SQL_MAX_TTL:=3600/_SQL_MAX_TTL:=1800/g;s/_limit=\${1:-3600}/_limit=\${1:-1800}/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
         wait
       fi
     fi
@@ -9501,15 +9504,16 @@ _xdrago_install_upgrade() {
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
+        ### Scoped to the long-query TTL knobs (see the upgrade path above).
         if [ -e "/root/.high_load.cnf" ] \
           && [ ! -e "/root/.big_db.cnf" ] \
           && [ ! -e "/root/.tg.cnf" ]; then
-          sed -i "s/3600/300/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
+          sed -i "s/_SQL_MAX_TTL:=3600/_SQL_MAX_TTL:=300/g;s/_limit=\${1:-3600}/_limit=\${1:-300}/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
           wait
         elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
           _DO_NOTHING=YES
         else
-          sed -i "s/3600/1800/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
+          sed -i "s/_SQL_MAX_TTL:=3600/_SQL_MAX_TTL:=1800/g;s/_limit=\${1:-3600}/_limit=\${1:-1800}/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
           wait
         fi
         _ROTATE_TEST=$(grep "rotate 9999" /etc/logrotate.d/nginx 2>&1)
