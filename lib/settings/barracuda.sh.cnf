@@ -1118,10 +1118,13 @@ _GHOST_SITES_CLEANUP=NO
 _GHOST_SITE_FILES_CLEANUP=NO
 
 ###
-### Nightly cleanup of stale per-site Drush alias copies in the limited-shell
-### (FTPS) user tree. The default NO only detects and logs them (dry-run). Set
-### to YES to move a stale alias copy aside. Per Octopus account override in
-### octopus.cnf.
+### Cleanup of stale per-site Drush alias copies in the limited-shell (FTPS)
+### user tree, on the 3-minute manage_ltd_users.sh cadence. The default NO
+### only detects and logs them (dry-run). Set to YES to move a stale alias
+### aside: each candidate is held 48h from its first sighting (the marker is
+### cleared by any valid sighting and only accumulates while YES, so enabling
+### never mass-reaps a backlog), and aegir/distro front-end companion aliases
+### are never touched here. Per Octopus account override in octopus.cnf.
 ###
 _GHOST_ALIASES_CLEANUP=NO
 
