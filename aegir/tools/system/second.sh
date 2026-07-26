@@ -33,6 +33,10 @@ _RESUME_FRACTION="$(_sanitize_number "${_RESUME_FRACTION}")"
 : "${_CPU_MAX_RATIO:=6.1}"     # MAX:  pause web + block spiders
 : "${_CPU_SPIDER_RATIO:=2.1}"  # SPIDER: allow web; block spiders only
 : "${_LOAD_IOWAIT_MIN:=10}"    # min system iowait% to treat high load as disk-bound (gates the backup pause-skip)
+# Digits-and-dots sanitising can leave a bare dot behind, and a non-numeric
+# threshold turns the awk comparison in _load_is_iowait_bound into a string
+# compare that inverts the guard. Reset anything non-numeric to the default.
+[[ "${_LOAD_IOWAIT_MIN}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || _LOAD_IOWAIT_MIN=10
 : "${_RESUME_FRACTION:=0.8}"   # resume web only after load falls below MAX * this (hysteresis vs flap)
 # Clamp to the open interval (0,1). A 0 (or a typo that sanitizes to a bare '.') would make the
 # resume threshold 0 — load is always >= 0, so the latch would never clear and web would stay
@@ -57,7 +61,7 @@ elif (( _B_NICE > 19 )); then
   _B_NICE=19
 fi
 
-renice ${_B_NICE} -p $$ &> /dev/null
+renice "${_B_NICE}" -p $$ &> /dev/null
 
 # Get CPU count
 _CPU_COUNT=$(nproc)
@@ -82,7 +86,7 @@ _manage_single_lock() {
     # launch on exactly the lock.inc-less boxes this fallback exists for.
     # True single-instance comes from the shared flock above.
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "${_SCRIPT}")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -190,6 +194,11 @@ _terminate_processes() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
+  # TERM first so shutdown handlers run -- a drush job SIGKILLed mid-write
+  # leaves half-applied state on disk that no rollback repairs. The -9
+  # follows only for what ignored the polite request.
+  killall php drush.php wget curl &> /dev/null
+  sleep 2
   killall -9 php drush.php wget curl &> /dev/null
   local _log_message
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
@@ -290,7 +299,9 @@ _get_iowait_pct() {
   _IOWAIT_PCT=0
   head -n1 /proc/stat >/dev/null 2>&1 || return
   read -r _ _u1 _n1 _s1 _i1 _w1 _q1 _sq1 _st1 _rest 2>/dev/null < /proc/stat
-  sleep 0.2
+  # A full second: a 0.2s slice could land inside a burst of compression
+  # CPU and misread a disk-bound backup as CPU-bound.
+  sleep 1
   read -r _ _u2 _n2 _s2 _i2 _w2 _q2 _sq2 _st2 _rest 2>/dev/null < /proc/stat
   _tot=$(( (_u2-_u1)+(_n2-_n1)+(_s2-_s1)+(_i2-_i1)+(_w2-_w1)+(_q2-_q1)+(_sq2-_sq1)+(_st2-_st1) ))
   [ "${_tot}" -le 0 ] && return
@@ -425,6 +436,13 @@ _load_control() {
   _CPU_SPIDER_THRESHOLD=$(echo "${_CPU_SPIDER_RATIO} * 100" | bc -l)
   _CPU_MAX_THRESHOLD=$(echo "${_CPU_MAX_RATIO} * 100" | bc -l)
   _CPU_CRIT_THRESHOLD=$(echo "${_CPU_CRIT_RATIO} * 100" | bc -l)
+  # A ratio that sanitised to garbage (a bare dot, two dots) makes bc emit
+  # nothing, and an empty threshold turns every tier comparison below false
+  # -- the whole controller silently off. Fall back to the documented
+  # defaults instead.
+  awk "BEGIN{exit !(${_CPU_SPIDER_THRESHOLD}>0)}" 2>/dev/null || _CPU_SPIDER_THRESHOLD=$(echo "2.1 * 100" | bc -l)
+  awk "BEGIN{exit !(${_CPU_MAX_THRESHOLD}>0)}" 2>/dev/null || _CPU_MAX_THRESHOLD=$(echo "6.1 * 100" | bc -l)
+  awk "BEGIN{exit !(${_CPU_CRIT_THRESHOLD}>0)}" 2>/dev/null || _CPU_CRIT_THRESHOLD=$(echo "8.1 * 100" | bc -l)
   _CPU_RESUME_THRESHOLD=$(echo "${_CPU_MAX_THRESHOLD} * ${_RESUME_FRACTION}" | bc -l)
 
   echo "Current Load Averages:"
@@ -586,6 +604,11 @@ case "${_BOX_CLASS}" in
   *)    _HEAVY_EVERY=1  ;;
 esac
 [[ "${_MONITOR_HEAVY_EVERY}" =~ ^[0-9]+$ ]] && _HEAVY_EVERY="${_MONITOR_HEAVY_EVERY}"
+# Leading zeros off before the arithmetic below reads them as octal: 08 is
+# a hard (( )) error that would silently disable the heavy fan-out forever.
+while [ "${#_HEAVY_EVERY}" -gt 1 ] && [ "${_HEAVY_EVERY:0:1}" = "0" ]; do
+  _HEAVY_EVERY="${_HEAVY_EVERY:1}"
+done
 (( _HEAVY_EVERY < 1 )) && _HEAVY_EVERY=1
 
 # Main execution
@@ -599,9 +622,9 @@ for _iteration in {1..10}; do
     else
       echo "Limits exceeded; skipping process control."
     fi
-    nohup ${_monPath}/hackcheck.sh > /dev/null 2>&1 &
-    nohup ${_monPath}/hackftp.sh > /dev/null 2>&1 &
-    nohup ${_monPath}/escapecheck.sh > /dev/null 2>&1 &
+    nohup "${_monPath}/hackcheck.sh" > /dev/null 2>&1 &
+    nohup "${_monPath}/hackftp.sh" > /dev/null 2>&1 &
+    nohup "${_monPath}/escapecheck.sh" > /dev/null 2>&1 &
   fi
   sleep 5
 done

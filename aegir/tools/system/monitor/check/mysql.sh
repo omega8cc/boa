@@ -357,7 +357,6 @@ _sql_busy_detection() {
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -s /root/.my.pass.txt ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
-      echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
       if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
         _sql_restart "BUSY MySQL"
       fi
@@ -373,7 +372,7 @@ _mysql_proc_kill() {
     echo "Killing process ${_each} by ${_xuser} after ${_xtime} seconds"
     _xkill=$(mysqladmin -u root kill ${_each} 2>&1)
     _times=$(date)
-    _load=$(cat /proc/_loadavg)
+    _load=$(cat /proc/loadavg)
 
     # Log the _load and the process killing details
     echo "${_load}" >> /var/log/boa/sql_watch.log
@@ -415,8 +414,11 @@ _mysql_proc_control() {
   # Default TTL _limit in seconds (can be adjusted)
   _limit=${1:-3600}
 
-  # Get all MySQL processes and extract PID, user, and running time
-  _mysql_proc_list=$(mysqladmin -u root proc | awk 'NR>3 {print $2, $4, $12}')
+  # Get all MySQL processes and extract PID, user, and running time. Asked
+  # for by name: the old positional parse of formatted output shifted
+  # whenever a column was blank (NULL db, empty host), so the time tested
+  # could be some other field entirely -- on the path that kills.
+  _mysql_proc_list=$(mysql -Nse "SELECT id, user, time FROM information_schema.processlist WHERE id != CONNECTION_ID() AND command != 'Daemon' AND command NOT LIKE 'Binlog Dump%' AND user != 'system user';" 2>/dev/null)
 
   # Iterate over _each process
   echo "${_mysql_proc_list}" | while read -r _each _xuser _xtime; do
@@ -433,7 +435,10 @@ _mysql_proc_control() {
     if [[ -n "${_each}" && "${_each}" -gt 5 && -n "${_xtime}" ]]; then
       echo "Process ID: ${_each}, User: ${_xuser}, Time: ${_xtime} seconds"
 
-      # Check if the user is listed on the problematic users list
+      # The limit is computed fresh for every process: it used to be lowered
+      # once a problematic user matched and never restored, so a single
+      # short-TTL user dragged every later process in the pass down with it.
+      _limit=${_SQL_MAX_TTL}
       if [[ -e "/etc/boa/.sql.problematic.users.cnf" ]]; then
         for _XQ in $(cat /etc/boa/.sql.problematic.users.cnf | cut -d '#' -f1 | sort | uniq); do
           if [[ "${_xuser}" == "${_XQ}" ]]; then
@@ -441,8 +446,6 @@ _mysql_proc_control() {
             _limit=${_SQL_LOW_MAX_TTL}
           fi
         done
-      else
-        _limit=${_SQL_MAX_TTL}  # Default _limit for non-problematic users
       fi
 
       _mysql_proc_kill
@@ -507,7 +510,7 @@ _if_mydumper_is_locked() {
 }
 
 _mysql_flush_hosts() {
-  if pgrep -f /usr/sbin/mysqld \
+  if pgrep -f /usr/sbin/mysqld >/dev/null 2>&1 \
     && [ -e "/run/mysqld/mysqld.sock" ] \
     && [ -e "/run/mysqld/mysqld.pid" ]; then
     mysqladmin -u root flush-hosts &> /dev/null
@@ -555,7 +558,7 @@ if [ -x "/etc/init.d/mysql" ] \
 fi
 
 if [ -x "/etc/init.d/mysql" ] \
-  && pgrep -f /usr/sbin/mysqld \
+  && pgrep -f /usr/sbin/mysqld >/dev/null 2>&1 \
   && [ ! -e "/run/boa_mysql_auto_healing.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
   _mysql_high_load
