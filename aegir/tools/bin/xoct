@@ -456,7 +456,15 @@ EOFMYSQL
       elif [ "${_cmd}" = "proxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then
           if [ -e "${_Vht}" ]; then
-            _NMS=`cat ${_Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
+            ### On a repair ${_Vht} is already a proxy vhost, whose name list a
+            ### previous repair could have narrowed. The saved real vhost is the
+            ### authoritative source, so prefer it whenever it exists.
+            _NMS_SRC="${_Vht}"
+            if grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null \
+              && [ -e "${_Vhd}" ]; then
+              _NMS_SRC="${_Vhd}"
+            fi
+            _NMS=`cat ${_NMS_SRC} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
             if [ -e "${_USR}/config/server_master/ssl.d/${_Dom}/openssl.key" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
               cp -a /var/xdrago/conf/https_proxy_le.conf ${_Vhs}
@@ -471,7 +479,18 @@ EOFMYSQL
               chown ${_oct}:users ${_Vhs}
               chmod 600 ${_Vhs}
             fi
-            mv -f ${_Vht} ${_Vhd}
+            ### Preserve the FIRST backup only. On a repair pass ${_Vht} is
+            ### already the proxy template, and mv -f would overwrite ${_Vhd}
+            ### with it -- destroying the only surviving copy of the real vhost
+            ### and with it any chance of reverting or re-harvesting the names.
+            _VHT_IS_PROXY=NO
+            grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null \
+              && _VHT_IS_PROXY=YES
+            if [ "${_VHT_IS_PROXY}" = "YES" ] && [ -e "${_Vhd}" ]; then
+              echo "INFO: site ${_Dom} on ${_oct}: proxy vhost already in place, keeping saved ${_Vhd}"
+            else
+              mv -f ${_Vht} ${_Vhd}
+            fi
             cp -a /var/xdrago/conf/proxy.conf ${_Vht}
             sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vht}
             wait
@@ -585,6 +604,13 @@ _migrate_prepare() {
   echo _THIS_HM_USER ${_THIS_HM_USER}
   echo _USR ${_USR}
   echo _THIS_HM_SITE ${_THIS_HM_SITE}
+  ### _DOMAIN is otherwise assigned only in the import+fix branch, so every
+  ### proxy/export notice has gone out with an empty subject tail. Read the
+  ### per-account stamp here, alongside the other facts the mails are built from.
+  if [ -e "${_USR}/log/domain.txt" ]; then
+    _DOMAIN=`cat ${_USR}/log/domain.txt`
+    _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
+  fi
   if [ -e "${_USR}/log/option.txt" ]; then
     _CLIENT_OPTION=`cat ${_USR}/log/option.txt`
     _CLIENT_OPTION=`echo -n ${_CLIENT_OPTION} | tr -d "\n"`
