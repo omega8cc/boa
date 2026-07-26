@@ -2301,6 +2301,7 @@ _xmass_cmd_cutover() {
       # Unlock before aborting so source MySQL is not stuck
       mysql --defaults-file=/root/.my.cnf \
         -e "UNLOCK TABLES;" &>/dev/null || true
+      _xmass_restore_hint
       _die "Replica lag not zero after FLUSH LOCK on check ${_pass}/3" \
            " (lag=${_lag}s) — cutover aborted, source MySQL unlocked"
     fi
@@ -2318,6 +2319,7 @@ _xmass_cmd_cutover() {
      -e '${_XM_STOP}; ${_XM_RESET_SLAVE};'"; then
     mysql --defaults-file=/root/.my.cnf \
       -e "UNLOCK TABLES;" &>/dev/null || true
+    _xmass_restore_hint
     _die "Failed to stop/decouple slave on target ${_tgt}" \
          "— cutover aborted, source MySQL unlocked"
   fi
