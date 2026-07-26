@@ -26,6 +26,24 @@ _check_root
 : "${_LFD_COOLDOWN_SECS:=30}"
 
 ###
+### Pacing for the OOM response. Sanitised where used; the flap knobs are only
+### consumed when the shared lock.inc breaker primitives are present.
+###
+export _OOM_COOLDOWN_SECS=${_OOM_COOLDOWN_SECS//[^0-9]/}
+: "${_OOM_COOLDOWN_SECS:=60}"      # Minimum gap between two OOM kills
+: "${_OOM_FLAP_MAX:=3}"            # Kills tolerated inside the window
+: "${_OOM_FLAP_WINDOW_SECS:=3600}" # Window those kills are counted in
+: "${_OOM_FLAP_LATCH_MINS:=60}"    # Cool-off before an open circuit re-arms
+# Never the victim of an automatic kill: the database (killing it IS the outage
+# this machinery exists to prevent, and on a database box it is always the
+# largest resident set), the ssh lifeline, and the provision/backup chain,
+# where a kill means a broken task or a corrupt dump rather than freed memory.
+# Matching too much here is the SAFE direction -- an over-broad exemption skips
+# a candidate, never kills an extra one.
+_OOM_EXEMPT='mysqld|sshd|provision|drush|mydumper|duplicity|aegir.sh|backboa|multiback'
+
+
+###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
 _manage_single_lock() {
@@ -133,71 +151,142 @@ _wkhtmltopdf_php_cli_oom_kill() {
   echo "$(date) OOM $1 wkhtmltopdf detected" >> ${_pthOml}
   pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
-  killall -9 sleep &> /dev/null
+  # No killall sleep here: a sleeping process holds almost no memory, and the
+  # sleeps on a BOA box belong to the monitors themselves -- killing them just
+  # makes every watchdog loop lurch forward at once.
   echo "$(date) OOM wkhtmltopdf incident response completed" >> ${_pthOml}
   _incident_email_report "OOM $1 wkhtmltopdf"
   echo >> ${_pthOml}
   exit 0
 }
 
-_oom_critical_restart() {
+_oom_kill_top_offender() {
+  # A memory emergency is healed by freeing memory, not by taking the site
+  # down. The previous response here killed seven services within one second
+  # of a single low sample -- nginx, every php-fpm pool, java, the cache
+  # server (with its data files wiped) -- then restarted the database through
+  # the whole-stack path, and never restarted the web tier it had killed. On
+  # the box where that was measured, the kernel recorded zero OOM kills during
+  # the entire event: the kernel was coping, and only this response was not.
+  #
+  # Now: confirm the pressure is sustained (the caller), then kill the single
+  # largest resident process that is safe to kill, once per cooldown, with a
+  # circuit breaker capping the run of them. If nothing is safe to kill, say
+  # so loudly and leave the rest to the kernel OOM killer, which picks its
+  # victims with far better information than a shell script can.
+  local _now _ts _gap _victim _vpid _vrss _vcmd
   touch /run/boa_system_auto_healing.pid
   echo "$(date) OOM $1 detected" >> ${_pthOml}
-  sleep 3
-  pkill -9 -f wkhtmltopdf
-  echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
-  killall -9 sleep &> /dev/null
-  killall -9 php
-  echo "$(date) OOM php-cli killed" >> ${_pthOml}
-  mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
-  pkill -9 -f nginx
-  echo "$(date) OOM nginx killed" >> ${_pthOml}
-  pkill -9 -f php-fpm
-  echo "$(date) OOM php-fpm killed" >> ${_pthOml}
-  pkill -9 -f java
-  echo "$(date) OOM solr/jetty killed" >> ${_pthOml}
-  pkill -9 -f newrelic-daemon
-  echo "$(date) OOM newrelic-daemon killed" >> ${_pthOml}
-  if [ -e "/etc/init.d/valkey-server" ]; then
-    rm -f /var/lib/valkey/*
-    pkill -9 -f valkey-server
-    echo "$(date) OOM valkey-server killed" >> ${_pthOml}
-  elif [ -e "/etc/init.d/redis-server" ]; then
-    rm -f /var/lib/redis/*
-    pkill -9 -f redis-server
-    echo "$(date) OOM redis-server killed" >> ${_pthOml}
+  # Record kernel corroboration when present. Not required: the point of
+  # acting at all is to act before the kernel has to.
+  if [ -e "/var/log/kern.log" ]; then
+    tail -n 200 /var/log/kern.log 2>/dev/null | grep -i "out of memory\|oom-kill" \
+      | tail -n 3 >> ${_pthOml}
   fi
-  bash /var/xdrago/move_sql.sh
-  wait
-  echo "$(date) OOM Percona MySQL Server restarted" >> ${_pthOml}
+  _now=$(date +%s)
+  if command -v _flap_breaker_is_open >/dev/null 2>&1; then
+    _OOM_FLAP_MAX=$(_flap_num "${_OOM_FLAP_MAX}" 3)
+    [ "${_OOM_FLAP_MAX}" -lt 1 ] && _OOM_FLAP_MAX=1
+    _OOM_FLAP_WINDOW_SECS=$(_flap_num "${_OOM_FLAP_WINDOW_SECS}" 3600)
+    _OOM_FLAP_LATCH_MINS=$(_flap_num "${_OOM_FLAP_LATCH_MINS}" 60)
+    # The window must still hold _OOM_FLAP_MAX kills at the pace this path
+    # enforces on itself, or the oldest entry ages out before the breaker can
+    # count it and the circuit never opens -- silently, while the box keeps
+    # SIGKILLing something every cooldown. Reachable both ways: narrowing the
+    # window (120s reads as "three kills in two minutes is flapping") and
+    # raising only the cooldown (1800s reads as "at most one kill per half
+    # hour") each remove the cap with the other knobs left at their defaults.
+    # The +30 covers the confirmation samples plus the rest of a pass.
+    _OOM_FLAP_FLOOR=$(( _OOM_FLAP_MAX * (_OOM_COOLDOWN_SECS + 30) ))
+    if [ "${_OOM_FLAP_WINDOW_SECS}" -lt "${_OOM_FLAP_FLOOR}" ]; then
+      _OOM_FLAP_WINDOW_SECS="${_OOM_FLAP_FLOOR}"
+    fi
+    if _flap_breaker_is_open "/run/boa_oom_latched.pid" "${_OOM_FLAP_LATCH_MINS}" \
+      "/var/log/boa/oom.kill.ledger" "${_pthOml}"; then
+      echo "$(date) OOM $1: CIRCUIT OPEN, response refused -- see /run/boa_oom_latched.pid" >> ${_pthOml}
+      echo >> ${_pthOml}
+      rm -f /run/boa_system_auto_healing.pid
+      exit 0
+    fi
+  fi
+  if [ -s "/run/oom-monitor.cooldown" ]; then
+    _ts=$(tr -dc '0-9' < /run/oom-monitor.cooldown 2>/dev/null)
+    if [ -n "${_ts}" ]; then
+      _gap=$(( _now - _ts ))
+      # A negative gap means the clock stepped backwards: treat the stamp as
+      # unusable and act, rather than going quiet until the clock catches up.
+      if [ "${_gap}" -ge 0 ] && [ "${_gap}" -lt "${_OOM_COOLDOWN_SECS}" ]; then
+        echo "$(date) INFO: OOM response in cooldown (${_gap}s < ${_OOM_COOLDOWN_SECS}s); skipping" >> ${_pthOml}
+        rm -f /run/boa_system_auto_healing.pid
+        exit 0
+      fi
+    fi
+  fi
+  if command -v _flap_prune_ledger >/dev/null 2>&1; then
+    _flap_prune_ledger "/var/log/boa/oom.kill.ledger" "${_now}" "${_OOM_FLAP_WINDOW_SECS}"
+    if [ "${_FLAP_COUNT}" -ge "${_OOM_FLAP_MAX}" ]; then
+      # The latch carries the whole state of the breaker; the history that
+      # opened it goes with it, so any re-arm starts counting at zero.
+      echo "$(date) CIRCUIT OPEN: ${_FLAP_COUNT} OOM kills in the last ${_OOM_FLAP_WINDOW_SECS} seconds, so the automatic OOM response is now disabled. Fix the memory consumer, then delete this file to re-arm it; it also re-arms on its own ${_OOM_FLAP_LATCH_MINS} minutes after this stamp." > /run/boa_oom_latched.pid
+      rm -f /var/log/boa/oom.kill.ledger
+      echo "$(date) OOM $1: CIRCUIT OPEN after ${_FLAP_COUNT} kills within ${_OOM_FLAP_WINDOW_SECS}s -- refusing further automatic kills" >> ${_pthOml}
+      _incident_email_report "OOM circuit open: automatic response disabled after ${_FLAP_COUNT} kills" "ALERT" "system-oom-circuit"
+      echo >> ${_pthOml}
+      rm -f /run/boa_system_auto_healing.pid
+      exit 0
+    fi
+    # Record the attempt BEFORE acting, so a kill that takes this script (or
+    # the box) with it still leaves evidence for the breaker.
+    echo "${_now}" >> /var/log/boa/oom.kill.ledger
+  fi
+  # The single largest resident set that is safe to kill. The grep runs on a
+  # ps snapshot, so an over-match only ever EXCLUDES a candidate; kernel
+  # threads carry no RSS and sort last on their own.
+  _victim=$(ps -eo pid=,rss=,args= --sort=-rss 2>/dev/null \
+    | grep -vE "${_OOM_EXEMPT}" | head -n 1)
+  _vpid=$(echo "${_victim}" | awk '{print $1}')
+  _vpid=${_vpid//[^0-9]/}
+  _vrss=$(echo "${_victim}" | awk '{print $2}')
+  _vcmd=$(echo "${_victim}" | awk '{$1=""; $2=""; print}' | cut -c1-160)
+  if [ -z "${_vpid}" ] || [ "${_vpid}" -le 1 ]; then
+    echo "$(date) OOM $1: no eligible offender (everything large is exempt) -- leaving it to the kernel" >> ${_pthOml}
+    _incident_email_report "OOM $1: no safe process to kill" "ALERT"
+    echo >> ${_pthOml}
+    rm -f /run/boa_system_auto_healing.pid
+    exit 0
+  fi
+  kill -9 "${_vpid}" 2>/dev/null
+  echo "$(date) OOM $1: killed pid ${_vpid} rss ${_vrss}kB cmd${_vcmd}" >> ${_pthOml}
+  date +%s > /run/oom-monitor.cooldown
   echo "$(date) OOM incident response completed" >> ${_pthOml}
-  _incident_email_report "OOM $1 system" "ALERT"
+  _incident_email_report "OOM $1: top offender killed" "ALERT"
   echo >> ${_pthOml}
-  sleep 3
-  [ -e "/run/boa_system_auto_healing.pid" ] && rm -f /run/boa_system_auto_healing.pid
+  rm -f /run/boa_system_auto_healing.pid
   exit 0
 }
 
 _system_oom_detection() {
-  _RAM_TOTAL=$(free -mt | grep Mem: | cut -d: -f2 | awk '{ print $1}' 2>&1)
-  _RAM_FREE_TEST=$(free -mt 2>&1)
-  if [[ "${_RAM_FREE_TEST}" =~ "buffers/cache:" ]]; then
-    _RAM_FREE=$(free -mt | grep /+ | cut -d: -f2 | awk '{ print $2}' 2>&1)
-  else
-    _RAM_FREE=$(free -mt | grep Mem: | cut -d: -f2 | awk '{ print $6}' 2>&1)
-  fi
-  _RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "${_RAM_FREE} / ${_RAM_TOTAL} * 100")/1" | bc 2>&1)
-  _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
-  echo _RAM_TOTAL is ${_RAM_TOTAL}
-  echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
-  if [ ! -z "${_RAM_PCT_FREE}" ]; then
-    if [ "${_RAM_PCT_FREE}" -le 5 ]; then
-      _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
-    elif [ "${_RAM_PCT_FREE}" -le 10 ]; then
-      _CNT=$(pgrep -fc wkhtmltopdf)
-      if (( _CNT > 2 )); then
-        _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
-      fi
+  # Pressure is judged from MemAvailable, which already counts reclaimable
+  # cache, and it must be SUSTAINED: one low sample is how a brief allocation
+  # burst that the kernel absorbs on its own used to trigger a whole-stack
+  # teardown. Stand down the moment any sample recovers.
+  local _pct_free _try
+  _check_system_ram
+  case "${_ram_usage_percent}" in ''|*[!0-9]*) return 0 ;; esac
+  _pct_free=$(( 100 - _ram_usage_percent ))
+  if [ "${_pct_free}" -le 5 ]; then
+    for _try in 1 2; do
+      sleep 5
+      _check_system_ram
+      case "${_ram_usage_percent}" in ''|*[!0-9]*) return 0 ;; esac
+      _pct_free=$(( 100 - _ram_usage_percent ))
+      [ "${_pct_free}" -gt 5 ] && return 0
+    done
+    _oom_kill_top_offender "RAM ${_pct_free}pct-free sustained"
+  elif [ "${_pct_free}" -le 10 ]; then
+    _CNT=$(pgrep -fc wkhtmltopdf)
+    if (( _CNT > 2 )); then
+      _wkhtmltopdf_php_cli_oom_kill "RAM ${_pct_free}pct-free"
     fi
   fi
 }
@@ -218,17 +307,23 @@ _check_system_ram() {
   _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
   _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
 
+  # Fail towards "no reading" rather than a shell arithmetic error: a caller
+  # that cannot read the pressure must do nothing destructive.
+  if [ -z "${_total_ram_kb}" ] || [ -z "${_available_ram_kb}" ] \
+    || [ "${_total_ram_kb}" -eq 0 ] 2>/dev/null; then
+    _ram_usage_percent=""
+    return 0
+  fi
+
   # Calculate RAM usage percentage
   _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
 }
 
-# Function to check and optimize RAM and disk caches
-_optimize_ram() {
-  _check_system_ram
-  if [ "${_ram_usage_percent}" -gt 90 ]; then
-    sync && echo 3 | tee /proc/sys/vm/drop_caches
-  fi
-}
+# (The per-minute drop_caches that lived here is gone. Evicting the box-wide
+# page cache while memory is tight forces cold re-reads across every site at
+# once -- the same stampede amplifier removed from the database heal path --
+# and MemAvailable already counts reclaimable cache, so the kernel frees it on
+# demand without the stampede.)
 
 _if_fix_dhcp() {
   # Determine the correct log file
@@ -548,7 +643,6 @@ if [ -e "/run/boa_system_auto_healing.pid" ] \
   || [ -e "/run/boa_sql_backup.pid" ]; then
   exit 0
 else
-  _optimize_ram
   _system_oom_detection
   _lfd_health_check_fix
   _ftpd_health_check_fix
