@@ -1,5 +1,18 @@
 #!/bin/bash
 
+###
+### memorytuner -- ADVISORY ONLY. It measures, computes and reports; it
+### never edits /etc/mysql/my.cnf, never issues SET GLOBAL, and never
+### restarts anything. It used to do all three: any restart-flagged
+### difference rewrote my.cnf in place (no backup) and took the whole
+### stack down through move_sql.sh on a perfectly healthy box. That gate
+### could not be sane, because the recommendation derives from the live
+### RSS of the other services, so it can never stay equal to a
+### deliberately set value: config drift is this tool's NORMAL state,
+### not a fault to heal. Applying is the operator's call, made with the
+### report and a maintenance window.
+###
+
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
@@ -239,6 +252,7 @@ declare -A _services_pidfiles=(
   ["php84-fpm"]="/run/php84-fpm.pid"
   ["php85-fpm"]="/run/php85-fpm.pid"
   ["redis"]="/run/redis/redis.pid"
+  ["valkey"]="/run/valkey/valkey.pid"
   ["java"]="/var/solr9/solr-9099.pid"
 )
 
@@ -252,6 +266,7 @@ declare -A _service_estimated_mem_mb=(
   ["php84-fpm"]=200
   ["php85-fpm"]=200
   ["redis"]=200
+  ["valkey"]=200
   ["java"]=100
 )
 
@@ -374,8 +389,12 @@ fi
 if [ "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" -gt 0 ]; then
   echo "Using MySQLTuner recommended InnoDB buffer pool size: ${_REC_INNODB_BUFFER_POOL_SIZE_MB} MB"
 else
-  # Default to 75% of available MySQL memory
+  # Default to 75% of available MySQL memory, snapped down to a 512 MB step.
+  # The input is the live RSS of everything else on the box, which moves a
+  # little every run; unsnapped, two consecutive runs recommend two different
+  # pool sizes and the report reads as churn instead of advice.
   _REC_INNODB_BUFFER_POOL_SIZE_MB=$(echo "(${_AVA_MEM_FOR_MYSQL_MB} * 75) / 100" | bc)
+  _REC_INNODB_BUFFER_POOL_SIZE_MB=$(echo "(${_REC_INNODB_BUFFER_POOL_SIZE_MB} / 512) * 512" | bc)
   echo "Calculated InnoDB buffer pool size: ${_REC_INNODB_BUFFER_POOL_SIZE_MB} MB"
 fi
 
@@ -439,13 +458,14 @@ if ! [[ "${_MAX_POS_CONS}" =~ ^[0-9]+$ ]]; then
   _MAX_POS_CONS=25
 fi
 
-# Ensure max_connections is not set unreasonably high
+# Ensure max_connections is not set unreasonably high, and snap to a step of
+# 25 for the same run-to-run stability reason as the pool size above.
 if [ "${_MAX_POS_CONS}" -gt 500 ]; then
   _REC_MAX_CONS=500
 elif [ "${_MAX_POS_CONS}" -lt 25 ]; then
   _REC_MAX_CONS=25
 else
-  _REC_MAX_CONS=${_MAX_POS_CONS}
+  _REC_MAX_CONS=$(( (_MAX_POS_CONS / 25) * 25 ))
 fi
 echo "Calculated max_connections: ${_REC_MAX_CONS}"
 
@@ -476,89 +496,86 @@ fi
 # Get current MySQL settings
 _get_current_mysql_settings
 
-# Initialize a variable to track if a restart is needed
-_NEEDS_RESTART=0
+###
+### The advisory report. Differences are collected, never applied: the
+### restart-flagged ones list the my.cnf lines to consider, the dynamic
+### ones additionally list the SET GLOBAL that would apply them live.
+### Everything below is words on a page until an operator acts on it.
+###
+_pthRpt="/var/log/boa/memorytuner.log"
+_RESTART_ROWS=()
+_DYNAMIC_ROWS=()
+_DYNAMIC_SQL=()
 
-# Function to update MySQL configuration settings
-_update_setting() {
+_report_setting() {
   _setting_name=$1
   _new_value=$2
   _current_value=$3
   _requires_restart=$4
-  _is_memory_size=$5  # New parameter indicating if setting is a memory size
+  _is_memory_size=$5
+  local _unit="" _shown_cur="unset"
 
   # Ensure _new_value is valid
   if [ -z "${_new_value}" ] || ! [[ "${_new_value}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-    echo "Warning: Invalid value for ${_setting_name}. Skipping update."
+    echo "Warning: Invalid value for ${_setting_name}. Skipping."
     return
   fi
+  [ "${_current_value}" = "${_new_value}" ] && return
 
-  if [ "${_current_value}" != "${_new_value}" ]; then
-    if grep -q "^${_setting_name}" "${_TMP_CONFIG_FILE}"; then
-      if [ "${_is_memory_size}" -eq 1 ]; then
-        sed -i "s|^${_setting_name}.*|${_setting_name} = ${_new_value}M|" "${_TMP_CONFIG_FILE}"
-      else
-        sed -i "s|^${_setting_name}.*|${_setting_name} = ${_new_value}|" "${_TMP_CONFIG_FILE}"
-      fi
+  [ "${_is_memory_size}" -eq 1 ] && _unit="M"
+  [ -n "${_current_value}" ] && _shown_cur="${_current_value}${_unit}"
+  local _row
+  _row=$(printf '  %-28s %12s  ->  %s' "${_setting_name}" "${_shown_cur}" "${_new_value}${_unit}")
+  if [ "${_requires_restart}" -eq 1 ]; then
+    _RESTART_ROWS+=("${_row}")
+  else
+    _DYNAMIC_ROWS+=("${_row}")
+    if [ "${_is_memory_size}" -eq 1 ]; then
+      _DYNAMIC_SQL+=("mysql -e \"SET GLOBAL ${_setting_name}=$(echo "${_new_value} * 1024 * 1024" | bc);\"")
     else
-      if [ "${_is_memory_size}" -eq 1 ]; then
-        echo "${_setting_name} = ${_new_value}M" >> "${_TMP_CONFIG_FILE}"
-      else
-        echo "${_setting_name} = ${_new_value}" >> "${_TMP_CONFIG_FILE}"
-      fi
-    fi
-
-    if [ "${_requires_restart}" -eq 1 ]; then
-      _NEEDS_RESTART=1
-    else
-      if [ "${_is_memory_size}" -eq 1 ]; then
-        # Apply setting dynamically with multiplication
-        mysql -e "SET GLOBAL ${_setting_name}=$(echo "${_new_value} * 1024 * 1024" | bc);"
-      else
-        # Apply setting dynamically without multiplication
-        mysql -e "SET GLOBAL ${_setting_name}=${_new_value};"
-      fi
+      _DYNAMIC_SQL+=("mysql -e \"SET GLOBAL ${_setting_name}=${_new_value};\"")
     fi
   fi
 }
 
-# Update /etc/mysql/my.cnf if settings differ
-_update_mysql_config() {
-  _CONFIG_FILE="/etc/mysql/my.cnf"
-  _TMP_CONFIG_FILE="/tmp/my.cnf.$$"
-  cp "${_CONFIG_FILE}" "${_TMP_CONFIG_FILE}"
-
-  # Update settings
-  _update_setting "innodb_buffer_pool_size" "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" "${_CUR_INNODB_BUFFER_POOL_SIZE}" 1 1
-  if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
-    _update_setting "innodb_redo_log_capacity" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1 1
-  else
-    _update_setting "innodb_log_file_size" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1 1
-  fi
-  _update_setting "key_buffer_size" "${_REC_KEY_BUFFER_SIZE_MB}" "${_CUR_KEY_BUFFER_SIZE}" 1 1
-  _update_setting "max_connections" "${_REC_MAX_CONS}" "${_CUR_MAX_CONS}" 0 0  # Not a memory size
-  _update_setting "tmp_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0 1
-  _update_setting "max_heap_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0 1
-  _update_setting "read_rnd_buffer_size" "${_REC_READ_RND_BUFFER_SIZE_MB}" "${_CUR_READ_RND_BUFFER_SIZE}" 0 1
-  _update_setting "join_buffer_size" "${_REC_JOIN_BUFFER_SIZE_MB}" "${_CUR_JOIN_BUFFER_SIZE}" 0 1
-
-  # Replace the original config file if changes were made
-  if cmp -s "${_TMP_CONFIG_FILE}" "${_CONFIG_FILE}"; then
-    rm "${_TMP_CONFIG_FILE}"
-  else
-    mv "${_TMP_CONFIG_FILE}" "${_CONFIG_FILE}"
-  fi
-}
-
-_update_mysql_config
-
-if [ "${_NEEDS_RESTART}" -eq 1 ]; then
-  echo "Some settings require a MySQL restart to take effect."
-  echo "Invoking /var/xdrago/move_sql.sh to safely restart MySQL."
-  bash /var/xdrago/move_sql.sh
-  wait
+_report_setting "innodb_buffer_pool_size" "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" "${_CUR_INNODB_BUFFER_POOL_SIZE}" 1 1
+if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
+  _report_setting "innodb_redo_log_capacity" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1 1
 else
-  echo "Settings have been applied dynamically where possible."
-  echo "No restart required."
+  _report_setting "innodb_log_file_size" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1 1
 fi
-echo "MySQL configuration update completed."
+_report_setting "key_buffer_size" "${_REC_KEY_BUFFER_SIZE_MB}" "${_CUR_KEY_BUFFER_SIZE}" 1 1
+_report_setting "max_connections" "${_REC_MAX_CONS}" "${_CUR_MAX_CONS}" 0 0  # Not a memory size
+_report_setting "tmp_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0 1
+_report_setting "max_heap_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0 1
+_report_setting "read_rnd_buffer_size" "${_REC_READ_RND_BUFFER_SIZE_MB}" "${_CUR_READ_RND_BUFFER_SIZE}" 0 1
+_report_setting "join_buffer_size" "${_REC_JOIN_BUFFER_SIZE_MB}" "${_CUR_JOIN_BUFFER_SIZE}" 0 1
+
+_emit_report() {
+  echo "==== memorytuner advisory on $(cat /etc/hostname 2>/dev/null) -- $(date) ===="
+  if [ "${#_RESTART_ROWS[@]}" -eq 0 ] && [ "${#_DYNAMIC_ROWS[@]}" -eq 0 ]; then
+    echo "  /etc/mysql/my.cnf already matches every recommendation. Nothing to consider."
+    return 0
+  fi
+  echo "  Nothing has been changed. The differences found, current -> recommended:"
+  if [ "${#_RESTART_ROWS[@]}" -gt 0 ]; then
+    echo "  Take effect only after a database restart:"
+    printf '%s\n' "${_RESTART_ROWS[@]}"
+  fi
+  if [ "${#_DYNAMIC_ROWS[@]}" -gt 0 ]; then
+    echo "  Applicable live, or in my.cnf to survive the next restart:"
+    printf '%s\n' "${_DYNAMIC_ROWS[@]}"
+  fi
+  echo "  To apply, at your own pace:"
+  echo "    1. Back up /etc/mysql/my.cnf, then edit in the values you accept."
+  echo "    2. Restart-flagged settings need a database-only restart in a"
+  echo "       maintenance window:  bash /var/xdrago/move_sql.sh dbrestart"
+  if [ "${#_DYNAMIC_SQL[@]}" -gt 0 ]; then
+    echo "    3. Dynamic settings can also be applied to the running server:"
+    printf '       %s\n' "${_DYNAMIC_SQL[@]}"
+  fi
+}
+
+_emit_report
+_emit_report >> "${_pthRpt}" 2>/dev/null
+echo "Advisory written to ${_pthRpt}. No configuration was modified."

@@ -76,7 +76,11 @@ _manage_single_lock() {
     _single_instance_lock
   else
     # -------- legacy pgrep guard ---------
-    # Exit if more than 2 instances of this script are running
+    # Exit if more than 2 instances of this script are running.
+    # The 2-instance slack is deliberate here: pgrep -fc matches the cron
+    # sh -c wrapper as well as this shell, so a cap of 1 could refuse every
+    # launch on exactly the lock.inc-less boxes this fallback exists for.
+    # True single-instance comes from the shared flock above.
     _SCRIPT=$(basename "$0")
     _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
@@ -132,9 +136,26 @@ _incident_email_report() {
     CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;; # veto unless ALERT
     ALL) : ;;                                    # allow
   esac
+  # One alert per cooldown, not one per pass. This was the one mail-sending
+  # script the shared throttle never reached, and it is the one that mails on
+  # every pause: a pause/resume flap used to page once or twice per cycle,
+  # unbounded. A terminate-and-pause pair is one incident, so both classes
+  # share the key and the second mail is held with the first carrying it.
+  # Nothing is lost: every incident still lands in the log below, the mail
+  # body is the tail of that log, and an older lock.inc sends as before.
+  local _sfx=""
+  if command -v _incident_email_ratelimit >/dev/null 2>&1; then
+    if ! _incident_email_ratelimit "second"; then
+      echo "$(date) INFO: alert for '${_subject}' held back, one was already sent this cooldown" >> ${_pthOml}
+      return 1
+    fi
+    if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+      _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+    fi
+  fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < <(tail -n 200 "${_pthOml}")
+  s-nail -s "Incident Report on ${_hName}: ${_subject}${_sfx}" "${_MY_EMAIL}" < <(tail -n 200 "${_pthOml}")
 }
 
 # Function to pause web services
@@ -285,19 +306,110 @@ _load_is_iowait_bound() {
   awk -v i="${_IOWAIT_PCT}" -v th="${_LOAD_IOWAIT_MIN}" 'BEGIN{exit (i>=th)?0:1}'
 }
 
+###
+### Stand down the latch clear while the database is being deliberately
+### restarted — the same two markers, and the same recency bound, every web
+### watchdog already honours. A latch cleared mid-restart only queues the
+### herd against a database that is not back yet.
+###
+export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
+: "${_SQL_MUTATION_MAX_MINS:=15}"
+
+_sql_mutation_in_flight() {
+  local _m
+  for _m in /run/mysql_restart_running.pid /run/boa_mysql_auto_healing.pid; do
+    [ -e "${_m}" ] || continue
+    if [ -z "$(find "${_m}" -mmin "+${_SQL_MUTATION_MAX_MINS}" 2>/dev/null)" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Passes of confirmed calm required before the pause latch clears (below).
+# Clamped BOTH ways, like _RESUME_FRACTION above and for the same reason: this
+# knob gates the removal of the latch that keeps web paused, so a pasted date
+# or serial that sanitises to a huge number would demand millions of calm
+# passes and leave web stuck paused with nothing ever logging why. The length
+# guard runs first so an oversized value never reaches a numeric test at all.
+export _RESUME_HOLD_PASSES=${_RESUME_HOLD_PASSES//[^0-9]/}
+# Leading zeros come off before the length test reads length as magnitude,
+# or a padded 010 would clamp to the ceiling instead of meaning ten.
+while [ "${#_RESUME_HOLD_PASSES}" -gt 1 ] && [ "${_RESUME_HOLD_PASSES:0:1}" = "0" ]; do
+  _RESUME_HOLD_PASSES="${_RESUME_HOLD_PASSES:1}"
+done
+: "${_RESUME_HOLD_PASSES:=3}"
+[ "${#_RESUME_HOLD_PASSES}" -gt 2 ] && _RESUME_HOLD_PASSES=60
+[ "${_RESUME_HOLD_PASSES}" -lt 1 ] && _RESUME_HOLD_PASSES=1
+[ "${_RESUME_HOLD_PASSES}" -gt 60 ] && _RESUME_HOLD_PASSES=60
+_pthStreak="/run/second_resume_streak"
+
 # Resume hysteresis: the watchdogs in monitor/check/{nginx,php,mysql,...}.sh restart
 # web only when BOTH /run/max_load.pid and /run/critical_load.pid are absent. Hold
 # that latch until load falls below _CPU_RESUME_THRESHOLD (= MAX * _RESUME_FRACTION)
 # on BOTH 1m and 5m; without this the latch cleared the instant load dipped under
 # MAX, so a box hovering at the threshold flapped pause/resume. Fails toward RESUME:
-# a missing/unusable threshold clears the latch rather than leaving web stuck paused.
+# a missing/unusable threshold clears the latch, after the minimum hold below,
+# rather than leaving web stuck paused.
+#
+# The threshold alone cannot see one flap: a pause that stopped the web tier
+# collapses load toward zero, and a single below-resume reading is exactly what
+# that collapse produces — it proves the web is off, not that the pressure is
+# gone. Clearing on it resurrected web into the same pressure and re-paused a
+# minute later. So the latch clears only after _RESUME_HOLD_PASSES consecutive
+# below-resume readings; the streak lives in /run so it spans this script's
+# one-minute lifetimes, goes stale after a quiet gap so calm measured during
+# one episode can never pre-approve the resume of another, and resets whenever
+# the calm is interrupted or a database restart owns the quiet.
 _clear_pause_latch() {
-  if [ -n "${_CPU_RESUME_THRESHOLD}" ] \
-     && awk "BEGIN {exit !(${_O_LOAD} >= ${_CPU_RESUME_THRESHOLD} || ${_F_LOAD} >= ${_CPU_RESUME_THRESHOLD})}" 2>/dev/null; then
+  local _streak=0
+  if [ ! -e "/run/critical_load.pid" ] && [ ! -e "/run/max_load.pid" ]; then
+    [ -e "${_pthStreak}" ] && rm -f "${_pthStreak}"
     return 0
   fi
+  if [ -n "${_CPU_RESUME_THRESHOLD}" ] \
+     && awk "BEGIN {exit !(${_O_LOAD} >= ${_CPU_RESUME_THRESHOLD} || ${_F_LOAD} >= ${_CPU_RESUME_THRESHOLD})}" 2>/dev/null; then
+    rm -f "${_pthStreak}" 2>/dev/null
+    return 0
+  fi
+  if _sql_mutation_in_flight; then
+    if [ -z "${_SQL_HOLD_LOGGED}" ]; then
+      echo "$(date) INFO: MySQL restart in progress; holding the web pause latch" >> ${_pthOml}
+      _SQL_HOLD_LOGGED=1
+    fi
+    rm -f "${_pthStreak}" 2>/dev/null
+    return 0
+  fi
+  if [ -s "${_pthStreak}" ] && [ -z "$(find "${_pthStreak}" -mmin +5 2>/dev/null)" ]; then
+    _streak=$(tr -dc '0-9' < "${_pthStreak}" 2>/dev/null)
+    [ -n "${_streak}" ] || _streak=0
+  fi
+  _streak=$(( _streak + 1 ))
+  if [ "${_streak}" -lt "${_RESUME_HOLD_PASSES}" ]; then
+    echo "${_streak}" > "${_pthStreak}"
+    return 0
+  fi
+  rm -f "${_pthStreak}" 2>/dev/null
   [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
   [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+  echo "$(date) INFO: load below the resume threshold for ${_streak} consecutive passes; web pause latch cleared" >> ${_pthOml}
+  return 0
+}
+
+# The hold marker gates the drastic tiers so overlapping passes cannot stack
+# teardowns. It is written for the ~10 s of _hold_services, so a marker much
+# older than that is an orphan from a run that died mid-hold (the minute.sh
+# flood guard's pkill -9 is one way). clear.sh already reaps boa*_auto_healing
+# orphans past five minutes on its own five-minute cadence, so the pre-change
+# exposure was up to ~10 minutes of silently disabled MAX/CRIT pauses, not
+# forever; this bound narrows that window to the gate's own scale and keeps
+# the gate honest even if clear.sh is not running.
+_second_heal_hold_active() {
+  [ -e "/run/boa_second_auto_healing.pid" ] || return 1
+  if [ -n "$(find /run/boa_second_auto_healing.pid -mmin +2 2>/dev/null)" ]; then
+    rm -f /run/boa_second_auto_healing.pid
+    return 1
+  fi
   return 0
 }
 
@@ -345,7 +457,7 @@ _load_control() {
         _current_load="${_F_LOAD}"
         _load_period="5-minute"
       fi
-      if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
+      if ! _second_heal_hold_active; then
         if _backup_in_progress && _load_is_iowait_bound; then
           echo "$(date) Critical load ${_current_load}% (${_load_period}) during a running backup, I/O-wait-bound (iowait ${_IOWAIT_PCT}% >= ${_LOAD_IOWAIT_MIN}%) - NOT terminating/pausing (expected, self-limiting backup I/O)" >> ${_pthOml}
         else
@@ -373,7 +485,7 @@ _load_control() {
         _current_load="${_F_LOAD}"
         _load_period="5-minute"
       fi
-      if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
+      if ! _second_heal_hold_active; then
         if _backup_in_progress && _load_is_iowait_bound; then
           echo "$(date) Max load ${_current_load}% (${_load_period}) during a running backup, I/O-wait-bound (iowait ${_IOWAIT_PCT}% >= ${_LOAD_IOWAIT_MIN}%) - NOT pausing web (expected, self-limiting backup I/O)" >> ${_pthOml}
         else
@@ -387,7 +499,6 @@ _load_control() {
     _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
-      _clear_pause_latch   # hysteresis: keep web paused until load < resume threshold
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
       echo "Load exceeds spider protection threshold but below max threshold."
       _limits_exceeded=true
@@ -403,7 +514,6 @@ _load_control() {
     _get_load   # re-read AFTER the cooldown — act only if the load is STILL high
     if awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
       touch /run/spider_load.pid
-      _clear_pause_latch   # hysteresis: keep web paused until load < resume threshold
       [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
       echo "Load exceeds spider protection threshold but below max threshold."
       _limits_exceeded=true
@@ -416,7 +526,6 @@ _load_control() {
     fi
   else
     touch /run/normal_load.pid
-    _clear_pause_latch   # hysteresis: keep web paused until load < resume threshold
     [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
     # If load is below spider protection threshold, disable spider protection if it's enabled
     if [ -e "/data/conf/nginx_high_load.conf" ] && \
@@ -427,6 +536,14 @@ _load_control() {
       echo "Load within normal parameters."
     fi
   fi
+
+  # Resume is evaluated on the freshest sample no matter which tier ran above.
+  # It used to run only in the spider/normal branches, so a MAX/CRIT pass whose
+  # post-sleep re-check just-missed the tier ran nothing at all, and a latch set
+  # a minute earlier survived exactly the passes that should have been counting
+  # toward resume. The clear itself stays guarded by the hysteresis, the
+  # database stand-down and the minimum hold above.
+  _clear_pause_latch
 
   # _proc_control is invoked by the main loop on the heavy fan-out cadence,
   # gated by _skip_proc_control (set true above when load limits were exceeded).
