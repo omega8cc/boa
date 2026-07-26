@@ -2218,24 +2218,29 @@ _barracuda_cnf() {
     _msg "PROC: _barracuda_cnf"
   fi
   # The omega8.cc-hosted fleet (hostname ends in .aegir.cc) defaults the nightly
-  # symlink toggles and the two NIGHTLY registration-level ghost reapers (site
-  # alias+vhost, orphaned vhosts -- reversible moves to undo/, never data:
-  # _GHOST_SITE_FILES_CLEANUP stays opt-in) to YES, but ONLY when they are not
-  # already present in the cnf, so they are written as ordinary .barracuda.cnf
-  # lines and stay operator-toggleable (turn off/on in the cnf anytime) --
-  # never forced on each run. _GHOST_ALIASES_CLEANUP is deliberately NOT
-  # seeded: its 3-minute manage_ltd_users cadence has no consecutive-run
-  # persistence and no migration interlock, so an xoct/xcopy transfer window
-  # (rsync-preserved old alias mtimes defeat the 60-min guard, rsync is not a
-  # provision process) could reap freshly-arrived aliases before their site
-  # dirs land; the nightly reaper alone converges within two nights. Keyed on
-  # the hostname only, never _if_hosted_sys / .host8.cnf, so remotely-managed
-  # boxes that carry .host8.cnf are not opted in (same split as _MTD_VR below).
+  # symlink toggles and the whole ghost-cleanup family to YES, but ONLY when
+  # they are not already present in the cnf, so they are written as ordinary
+  # .barracuda.cnf lines and stay operator-toggleable (turn off/on in the cnf
+  # anytime) -- never forced on each run. Every mover is a reversible move
+  # (account undo/, /var/aegir/undo/, /var/backups/ghost-codebases-cleanup/),
+  # never a delete. _GHOST_ALIASES_CLEANUP joined the seed once its 3-minute
+  # manage_ltd_users reaper gained the 48h first-sighting hold marker and the
+  # aegir/distro front-end skip: the hold outlives any xoct/xcopy transfer or
+  # rename-rewrite window (rsync-preserved old alias mtimes defeat the 60-min
+  # guard, and the /etc/boa/.pause_tasks_maint.cnf interlock is auto-removed
+  # on hosted systems within minutes), so freshly-arrived aliases can no
+  # longer be reaped before their site dirs land. Keyed on the hostname only,
+  # never _if_hosted_sys / .host8.cnf, so remotely-managed boxes that carry
+  # .host8.cnf are not opted in (same split as _MTD_VR below).
   if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     grep -q "^_AUTOSYMLINK_NIGHTLY=" ${_barCnf} 2>/dev/null || _AUTOSYMLINK_NIGHTLY=YES
     grep -q "^_ORPHAN_FILES_REPORT=" ${_barCnf} 2>/dev/null || _ORPHAN_FILES_REPORT=YES
     grep -q "^_GHOST_SITES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_SITES_CLEANUP=YES
     grep -q "^_GHOST_VHOSTS_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_VHOSTS_CLEANUP=YES
+    grep -q "^_GHOST_PLATFORMS_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_PLATFORMS_CLEANUP=YES
+    grep -q "^_GHOST_CODEBASES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_CODEBASES_CLEANUP=YES
+    grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
+    grep -q "^_GHOST_ALIASES_CLEANUP=" ${_barCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
   fi
   # Prebuilt heavy-stack packages default to YES on Devuan Daedalus and
   # Excalibur, where the mirrors publish the complete boa-* set, but ONLY

@@ -2069,11 +2069,15 @@ _manage_site_drush_alias_mirror() {
         if [ -z "${_SiteDir}" ] \
           || [ "${_SiteDir}" = "${_SiteDir#/data/disk/}" ]; then
           _IS_SITE=YES
+          rm -f ${_pthParen_tUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
         elif [ -e "${_SiteDir}/drushrc.php" ] \
           || [ -L "${_SiteDir}/drushrc.php" ]; then
           # drushrc.php present = a registered, live site. Mirror its alias to
           # the limited-shell user. Do NOT also require files/private: those are
           # native-symlinked store targets that can be transiently absent.
+          # A valid sighting always clears the ghost hold marker, so a site
+          # that recovered mid-hold never carries a stale count into a reap.
+          rm -f ${_pthParen_tUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
           _pthAliasMain="${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php"
           _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
           if [ ! -e "${_pthAliasCopy}" ]; then
@@ -2099,6 +2103,10 @@ _manage_site_drush_alias_mirror() {
             : # Ægir task in flight -- the site may be mid-build
           elif [ -n "$(find ${_Alias} -mmin -60 2>/dev/null)" ]; then
             : # alias freshly written (< 60 min) -- likely mid-install/clone
+          elif [[ "${_SiteDir}" =~ "aegir/distro" ]]; then
+            : # front-end companion (control panel machinery, stale after a
+            : # hostname rename or distro bump) -- never reaped here; the
+            : # nightly classifier owns these as operator-review items
           else
             _GA_OCT="/root/.$(basename ${_pthParen_tUsr} 2>/dev/null).octopus.cnf"
             _GA_ON=NO
@@ -2106,11 +2114,31 @@ _manage_site_drush_alias_mirror() {
             grep -qiE "^[[:space:]]*_GHOST_ALIASES_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _GA_ON=YES
             echo "ZOMBIE ${_SiteDir} detected for ${_SiteName}"
             if [ "${_GA_ON}" = "YES" ]; then
-              mkdir -p ${_pthParen_tUsr}/undo
-              _GHOST_REAPED=YES
-              rm -f ${_pthAliasCopy}
-              mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
-              echo "GHOST ${_SiteName}.alias.drushrc.php moved to ${_pthParen_tUsr}/undo/"
+              # The alias mtime is no protection during an inbound xoct/xcopy
+              # transfer (rsync -a preserves source mtimes; rsync is not a
+              # provision process), and /etc/boa/.pause_tasks_maint.cnf is
+              # auto-removed on hosted systems within minutes. So persist the
+              # first sighting in a marker this script owns and act only once
+              # the marker is 48h old: any transfer or rename-rewrite window
+              # is far shorter, and on an armed system the classified nightly
+              # reaper (client notice, operator-review skips) acts first.
+              # Markers start only while the flag is YES, so a flip never
+              # mass-reaps accumulated ghosts on its first pass.
+              mkdir -p ${_pthParen_tUsr}/log/ctrl
+              _GA_MARK="${_pthParen_tUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen"
+              if [ ! -e "${_GA_MARK}" ]; then
+                touch ${_GA_MARK}
+                echo "GHOST ${_SiteName}.alias sighted, held for 48h before any move"
+              elif [ -n "$(find ${_GA_MARK} -mmin +2880 2>/dev/null)" ]; then
+                mkdir -p ${_pthParen_tUsr}/undo
+                _GHOST_REAPED=YES
+                rm -f ${_GA_MARK}
+                rm -f ${_pthAliasCopy}
+                mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
+                echo "GHOST ${_SiteName}.alias.drushrc.php moved to ${_pthParen_tUsr}/undo/"
+              else
+                echo "GHOST ${_SiteName}.alias sighted, still inside the 48h hold"
+              fi
             else
               echo "GHOST ${_SiteName}.alias detected (dry-run; set _GHOST_ALIASES_CLEANUP=YES to move)"
             fi
