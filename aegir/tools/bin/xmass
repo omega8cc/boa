@@ -9,12 +9,18 @@
 ###
 ### Usage:
 ###   xmass pre-mig <source-fqdn>                   (run on BOTH source and target)
-###   xmass init    <target-ip> [--permanent-proxy]  (run on SOURCE)
+###   xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]
+###                             [--proxy-deadline=YYYY-MM-DD|+Nd]   (run on SOURCE)
 ###   xmass sync    <target-ip> [--live]             (run on SOURCE, repeat as needed)
 ###   xmass status  <target-ip>                      (run on SOURCE)
-###   xmass cutover <target-ip> [--permanent-proxy] [--live]  (run on SOURCE)
+###   xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]
 ###   xmass post-mig                                 (run on TARGET after DNS update)
 ###   xmass reset-phase <phase>                      (run on SOURCE; recovery only)
+###
+### Proxy modes are per ACCOUNT, not per box: --proxy-mode writes only the box
+### DEFAULT (/data/conf/migproxy_mode.txt); a per-account pin set with
+### 'xoct proxy-mode <oN> <mode>' always wins over it. --permanent-proxy is a
+### deprecated alias for --proxy-mode=permanent.
 ###
 ### DRY/live gate: `sync` and `cutover` default to a read-only DRY run that resolves
 ### the target's attached mount, plans every storage decision (mirror onto the target
@@ -105,6 +111,166 @@ _die() {
   exit 1
 }
 
+###-------------MIGRATION PROXY POLICY-###
+###
+### Mirrors xoct's migration-proxy policy primitives -- master and satellite
+### copies are kept in step, not DRY-ed (the two tools ship and fetch
+### independently). ONE deliberate difference: this _mig_resolve never runs
+### the legacy-orphan sweep (xmass resolves inside read-only DRY runs, and
+### the sweep writes), so the live paths call _mig_sweep_legacy explicitly.
+### It also honours _MIG_BOX_MODE_OVERRIDE/_MIG_BOX_DEADLINE_OVERRIDE so a
+### DRY cutover can simulate the box default its --live would write without
+### touching disk.
+###
+_MIG_CNF_NAME="log/migproxy.cnf"
+_MIG_BOX_MODE_FILE="/data/conf/migproxy_mode.txt"
+_MIG_BOX_DEADLINE_FILE="/data/conf/migproxy_deadline.txt"
+# The retired touch/rm pair around the old _PERM_PROXY_FLAG is gone; the file
+# can only exist as the orphan of a cutover that died between those lines, and
+# the sweep below converts it once into the box default it meant to express.
+_MIG_LEGACY_ORPHAN="${_PERM_PROXY_FLAG}"
+
+_mig_get() {
+  local _f="$1" _k="$2"
+  [ -r "${_f}" ] || return 1
+  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+}
+
+_mig_valid_mode() {
+  case "$1" in
+    temporary|permanent|ha-switch|retired) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+_mig_valid_ip()  { [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; }
+_mig_valid_date() { [[ "$1" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]$ ]]; }
+
+_mig_is_mine() {
+  local _hip
+  _hip="$(_mig_get "$1" _MIG_HOST_IP)"
+  _mig_valid_ip "${_hip}" || return 1
+  hostname -I 2>/dev/null | tr ' ' '\n' | grep -qxF "${_hip}"
+}
+
+_mig_norm_deadline() {
+  local _in="$1" _out
+  [ -z "${_in}" ] && { printf ''; return 0; }
+  case "${_in}" in
+    +[0-9]*d) _out="$(date -u -d "${_in%d} days" '+%Y-%m-%d' 2>/dev/null)" ;;
+    *)        _out="$(date -u -d "${_in}" '+%Y-%m-%d' 2>/dev/null)" ;;
+  esac
+  _mig_valid_date "${_out}" || return 1
+  [[ "${_out}" < "$(date -u '+%Y-%m-%d')" ]] && return 1
+  printf '%s' "${_out}"
+}
+
+_mig_sweep_legacy() {
+  [ -e "${_MIG_LEGACY_ORPHAN}" ] || return 0
+  if [ ! -s "${_MIG_BOX_MODE_FILE}" ]; then
+    mkdir -p "$(dirname "${_MIG_BOX_MODE_FILE}")" 2>/dev/null
+    echo permanent > "${_MIG_BOX_MODE_FILE}"
+    _alrt "legacy xmass permanent-proxy flag found; converted to box default 'permanent'"
+  else
+    _alrt "legacy xmass permanent-proxy flag found; box default already declared, flag removed"
+  fi
+  rm -f "${_MIG_LEGACY_ORPHAN}"
+}
+
+### SETS GLOBALS (_MIG_MODE/_MIG_DEADLINE/_MIG_SOURCE): never call inside
+### $( ) or a pipeline, or the resolution is lost to the subshell.
+_mig_resolve() {
+  local _root="$1" _cnf _m _d
+  _cnf="${_root}/${_MIG_CNF_NAME}"
+  _MIG_MODE=""; _MIG_DEADLINE=""; _MIG_SOURCE=""
+
+  if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}"; then
+    _m="$(_mig_get "${_cnf}" _MIG_MODE)"
+    _d="$(_mig_get "${_cnf}" _MIG_DEADLINE)"
+    if _mig_valid_mode "${_m}"; then
+      _MIG_MODE="${_m}"
+      _MIG_SOURCE="$(_mig_get "${_cnf}" _MIG_SCOPE)"
+      [ "${_MIG_SOURCE}" = "account" ] || _MIG_SOURCE=box
+      _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
+    else
+      [ -n "${_m}" ] && echo "ALRT: ${_cnf}: invalid _MIG_MODE '${_m}' ignored"
+    fi
+  fi
+
+  if [ -z "${_MIG_MODE}" ] && [ -r "${_MIG_BOX_MODE_FILE}" ]; then
+    _m="$(head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null | tr -d '\r\n')"
+    if _mig_valid_mode "${_m}"; then
+      _MIG_MODE="${_m}"; _MIG_SOURCE=box
+    fi
+  fi
+
+  if [ -z "${_MIG_MODE}" ] && [ -n "${_MIG_BOX_MODE_OVERRIDE}" ] \
+    && _mig_valid_mode "${_MIG_BOX_MODE_OVERRIDE}"; then
+    _MIG_MODE="${_MIG_BOX_MODE_OVERRIDE}"; _MIG_SOURCE=box
+  fi
+
+  if [ -n "${_MIG_MODE}" ] && [ -z "${_MIG_DEADLINE}" ]; then
+    _d="$(head -n1 "${_MIG_BOX_DEADLINE_FILE}" 2>/dev/null | tr -d '\r\n')"
+    _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
+    if [ -z "${_MIG_DEADLINE}" ] && _mig_valid_date "${_MIG_BOX_DEADLINE_OVERRIDE}"; then
+      _MIG_DEADLINE="${_MIG_BOX_DEADLINE_OVERRIDE}"
+    fi
+  fi
+
+  if [ -z "${_MIG_MODE}" ]; then
+    _MIG_MODE=temporary
+    _MIG_SOURCE=default
+  fi
+
+  if [ "${_MIG_MODE}" = "ha-switch" ] && [ -n "${_MIG_DEADLINE}" ]; then
+    _MIG_DEADLINE=""
+  fi
+  return 0
+}
+
+### Box DEFAULTS, never decisions: written only when the operator explicitly
+### chose one (a flag now, or the legacy state mapping). Absent files leave
+### every undeclared account on the built-in fallback, which cutover --live
+### refuses.
+_xmass_write_box_defaults() {
+  [ -n "${_XMASS_PROXY_MODE}" ] || return 0
+  mkdir -p /data/conf 2>/dev/null
+  echo "${_XMASS_PROXY_MODE}" > "${_MIG_BOX_MODE_FILE}"
+  if [ -n "${_XMASS_PROXY_DEADLINE}" ]; then
+    echo "${_XMASS_PROXY_DEADLINE}" > "${_MIG_BOX_DEADLINE_FILE}"
+  else
+    rm -f "${_MIG_BOX_DEADLINE_FILE}"
+  fi
+  _info "Box proxy default: ${_XMASS_PROXY_MODE}${_XMASS_PROXY_DEADLINE:+ (deadline ${_XMASS_PROXY_DEADLINE})}"
+}
+
+### Print each account's resolved proxy mode BEFORE anything destructive and
+### collect the accounts that would fall back to the built-in default. At init
+### this is free to fix; cutover --live refuses on it, because one wrong mail
+### is recoverable and a boxful is not. A mode pin NEVER affects migration
+### eligibility -- it only pins what that customer is told.
+_xmass_report_account_modes() {
+  local _oct
+  _XMASS_MODE_UNDECLARED=""
+  _info "Per-account proxy modes as they resolve now:"
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _mig_resolve "/data/disk/${_oct}" >/dev/null
+    if [ "${_MIG_SOURCE}" = "account" ]; then
+      _info "  ${_oct}: ${_MIG_MODE}${_MIG_DEADLINE:+ until ${_MIG_DEADLINE}} [pinned per account -- box default not applied]"
+    elif [ "${_MIG_SOURCE}" = "default" ]; then
+      _alrt "  ${_oct}: UNDECLARED -- would fall back to '${_MIG_MODE}'"
+      _XMASS_MODE_UNDECLARED="${_XMASS_MODE_UNDECLARED} ${_oct}"
+    else
+      _info "  ${_oct}: ${_MIG_MODE}${_MIG_DEADLINE:+ until ${_MIG_DEADLINE}} [box default]"
+    fi
+  done
+  if [ -n "${_XMASS_MODE_UNDECLARED}" ]; then
+    _alrt "Declare a mode before 'cutover --live' (it refuses undeclared accounts):"
+    _alrt "  box-wide:    xmass cutover <target-ip> --proxy-mode=<temporary|permanent|ha-switch>"
+    _alrt "  per account: xoct proxy-mode <oN> <mode> [--deadline=YYYY-MM-DD|+Nd]"
+  fi
+  return 0
+}
+
 ###-------------STATE FILE----------------###
 
 _xmass_load_state() {
@@ -112,10 +278,26 @@ _xmass_load_state() {
     # shellcheck disable=SC1090
     source "${_XMASS_STATE_FILE}"
   fi
+  # A state file written by a pre-mode xmass carries only the old boolean. Map
+  # it faithfully: the old NO path took the plain (non---permanent) trust and
+  # the "as soon as possible" wording, which is exactly 'temporary'. The
+  # source is the box-default level, NOT 'default', so the cutover --live gate
+  # does not block an in-flight migration.
+  if [ -z "${_XMASS_PROXY_MODE}" ] && [ -n "${_XMASS_PERMANENT_PROXY}" ]; then
+    if [ "${_XMASS_PERMANENT_PROXY}" = "YES" ]; then
+      _XMASS_PROXY_MODE=permanent
+    else
+      _XMASS_PROXY_MODE=temporary
+    fi
+    _alrt "state file carried the retired _XMASS_PERMANENT_PROXY=${_XMASS_PERMANENT_PROXY}"
+    _alrt "mapped to --proxy-mode=${_XMASS_PROXY_MODE}; confirm with 'xmass status'"
+  fi
 }
 
 _xmass_save_state() {
   mkdir -p "$(dirname "${_XMASS_STATE_FILE}")"
+  # _XMASS_PERMANENT_PROXY is the legacy key, written for one more release so
+  # a rolled-back xmass mid-migration still reads a coherent file.
   cat > "${_XMASS_STATE_FILE}" <<STATEEOF
 _XMASS_TARGET_IP=${_XMASS_TARGET_IP}
 _XMASS_SRC_IP=${_XMASS_SRC_IP}
@@ -125,6 +307,8 @@ _XMASS_INIT_TIME=${_XMASS_INIT_TIME}
 _XMASS_LAST_SYNC=${_XMASS_LAST_SYNC}
 _XMASS_PHASE=${_XMASS_PHASE}
 _XMASS_PERMANENT_PROXY=${_XMASS_PERMANENT_PROXY}
+_XMASS_PROXY_MODE=${_XMASS_PROXY_MODE}
+_XMASS_PROXY_DEADLINE=${_XMASS_PROXY_DEADLINE}
 STATEEOF
   chmod 600 "${_XMASS_STATE_FILE}"
 }
@@ -1390,9 +1574,19 @@ _xmass_block_web_all() {
 }
 
 _xmass_remove_http_off_all() {
-  _info "Removing http-off.pid from all source accounts ..."
+  _info "Removing http-off.pid from source accounts ..."
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    case " ${_XMASS_PROXY_CONV_FAILED:-} " in
+      *" ${_oct} "*)
+        # A failed conversion means this account's vhosts still serve the OLD
+        # local copy while the database now lives on the target; serving it
+        # would fork the data silently. The 503 gate stays up until the
+        # operator fixes the cause and re-runs xoct proxy for the account.
+        _alrt "  ${_oct}: proxy conversion failed; keeping the 503 gate up"
+        continue
+      ;;
+    esac
     rm -f "/data/disk/${_oct}/static/control/http-off.pid"
   done
   if [ -d "/var/lib/nginx/speed" ]; then
@@ -1456,28 +1650,39 @@ _xmass_check_no_boa_running() {
 ###-------------PROXY CONVERSION---------###
 
 _xmass_convert_source_to_proxy() {
-  # Delegate per-account proxy vhost conversion to xoct, which also sends
-  # the per-account migration-complete notification email.
-  # Both xoct and xmass are always installed; calling xoct avoids duplicating
-  # its vhost template logic and notification code.
-  #
-  # If _XMASS_PERMANENT_PROXY=YES the _PERM_PROXY_FLAG control file is created
-  # so xoct can adjust notification language accordingly (requires xoct support).
+  # Delegate per-account proxy vhost conversion to xoct, which resolves each
+  # account's proxy mode from its own record (or the box default written at
+  # init/cutover), writes and pushes the policy records, wires the target
+  # trust and mails the mode-selected completion notice. No mode flag is
+  # passed down: a box-wide choice injected at flag precedence would clobber
+  # per-account pins, which is the exact property the records exist for.
   #
   # exported.pid is touched per account to satisfy xoct's proxy gate check
   # (_migrate_sites verifies it before converting vhosts); xmass never runs
   # the export step that would normally create it.
+  #
+  # Failures collect per account instead of _alrt-and-forget: a failed
+  # conversion must keep its 503 gate (step 17) and must not be stamped
+  # proxied (step 18) -- its vhosts still serve the OLD local copy while the
+  # database now lives on the target.
   _info "Converting all source accounts to proxy vhosts via xoct ..."
-  [ "${_XMASS_PERMANENT_PROXY}" = "YES" ] && touch "${_PERM_PROXY_FLAG}"
-  local _oct
+  _XMASS_PROXY_CONV_FAILED=""
+  local _oct _rc
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
+      _info "  ${_oct}: already proxied earlier; leaving as is"
+      continue
+    fi
     touch "/data/disk/${_oct}/log/exported.pid"
     _info "  xoct proxy ${_oct} ${_tgt} ..."
-    xoct proxy "${_oct}" "${_tgt}" \
-      || _alrt "xoct proxy returned non-zero for account ${_oct}"
+    xoct proxy "${_oct}" "${_tgt}"
+    _rc=$?
+    if [ "${_rc}" -ne 0 ]; then
+      _alrt "xoct proxy returned rc=${_rc} for account ${_oct} -- NOT converted"
+      _XMASS_PROXY_CONV_FAILED="${_XMASS_PROXY_CONV_FAILED} ${_oct}"
+    fi
   done
-  rm -f "${_PERM_PROXY_FLAG}"
-  _info "Source proxy conversion via xoct complete: OK"
+  _info "Source proxy conversion via xoct complete"
 }
 
 ###-------------MIGRATION PROXY TRUST------###
@@ -1506,7 +1711,19 @@ _xmass_setup_migration_proxy_trust() {
     | grep -vE '^127\.' | tr '\n' ' ')"
   _src_ips="${_src_ips%"${_src_ips##*[![:space:]]}"}"
   [ -n "${_src_ips}" ] || _src_ips="${_XMASS_SRC_IP}"
-  [ "${_XMASS_PERMANENT_PROXY}" = "YES" ] && _perm="--permanent"
+  # The permanent marker on the target is box-level and cannot be split per
+  # account, so the aggregate takes the longest-lived mode present: ANY
+  # account resolving permanent or ha-switch keeps the trust past post-mig
+  # (ha-switch behaves exactly as permanent for trust and teardown; it
+  # differs only in the client notification). The target's reconcile later
+  # refines this from its own per-account records.
+  local _poct
+  for _poct in ${_ELIGIBLE_ACCOUNTS}; do
+    _mig_resolve "/data/disk/${_poct}" >/dev/null
+    case "${_MIG_MODE}" in
+      permanent|ha-switch) _perm="--permanent"; break ;;
+    esac
+  done
 
   # The proxy resolves the real client for CF-fronted sites via its OWN http-level
   # Cloudflare realip (server.tpl.php), which the proxy vhost inherits.  Refresh
@@ -1896,6 +2113,16 @@ _xmass_cmd_init() {
   _info "Source IP : ${_XMASS_SRC_IP}"
   _info "Target IP : ${_XMASS_TARGET_IP}"
 
+  # Proxy-mode declaration, surfaced NOW where it is free to fix: cutover
+  # --live refuses undeclared accounts, and discovering that inside the
+  # maintenance window is the most expensive possible moment.
+  _mig_sweep_legacy
+  [ -n "${_proxy_mode}" ] && _XMASS_PROXY_MODE="${_proxy_mode}"
+  [ -n "${_proxy_deadline}" ] && _XMASS_PROXY_DEADLINE="${_proxy_deadline}"
+  _xmass_write_box_defaults
+  _xmass_enumerate_accounts
+  _xmass_report_account_modes
+
   # Verify SSH connectivity to target
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
@@ -1930,7 +2157,13 @@ _xmass_cmd_init() {
   _XMASS_INIT_TIME=$(date +%Y%m%d-%H%M%S)
   _XMASS_LAST_SYNC=""
   _XMASS_PHASE="init"
-  _XMASS_PERMANENT_PROXY="${_permanent_proxy:-NO}"
+  # Legacy boolean derived from the mode (kept one release for a rolled-back
+  # xmass mid-migration); ha-switch keeps trust like permanent.
+  case "${_XMASS_PROXY_MODE}" in
+    permanent|ha-switch) _XMASS_PERMANENT_PROXY=YES ;;
+    temporary)           _XMASS_PERMANENT_PROXY=NO ;;
+    *)                   _XMASS_PERMANENT_PROXY="${_permanent_proxy:-NO}" ;;
+  esac
   _xmass_save_state
 
   _xmass_create_repl_user
@@ -1952,7 +2185,10 @@ _xmass_cmd_init() {
   _info "  Replication from ${_XMASS_SRC_IP} to ${_tgt} is running."
   _info "  Run 'xmass sync ${_tgt}' to sync files (repeat as often as needed)."
   _info "  Run 'xmass status ${_tgt}' to check replication lag."
-  _info "  When ready: 'xmass cutover ${_tgt} [--permanent-proxy]'"
+  _info "  When ready: 'xmass cutover ${_tgt} [--proxy-mode=...] [--proxy-deadline=...]'"
+  if [ -n "${_XMASS_MODE_UNDECLARED}" ]; then
+    _info "  NB: undeclared proxy modes above must be resolved before cutover --live."
+  fi
   _info "======================================================"
 }
 
@@ -2064,8 +2300,14 @@ _xmass_cmd_status() {
   echo "  Init time        : ${_XMASS_INIT_TIME:-n/a}"
   echo "  Last file sync   : ${_XMASS_LAST_SYNC:-never}"
   echo "  Replication lag  : ${_lag}s"
-  echo "  Permanent proxy  : ${_XMASS_PERMANENT_PROXY:-NO}"
+  echo "  Proxy default    : $( [ -s "${_MIG_BOX_MODE_FILE}" ] && head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null || echo "none (per-account records or fallback)" )"
   echo "======================================================"
+  # Same table xoct renders: what each account's customer will be told and
+  # what they were last told.
+  if command -v xoct >/dev/null 2>&1; then
+    echo ""
+    xoct proxy-mode --all 2>/dev/null | sed 's/^/  /'
+  fi
   echo ""
 }
 
@@ -2073,9 +2315,9 @@ _xmass_cutover_finish() {
   # Steps 12.5..18 — everything after the target promotion. Shared by the
   # normal cutover flow and the 'rename-failed' resume path; every step here
   # is safe to re-enter (rm/touch/service loops, forced renames converge,
-  # the panel rewire skips roots whose panel already names a live DB).
-  # NB: a resumed run re-sends the per-account migration-complete emails via
-  # xoct proxy — accepted cost of a rare recovery path.
+  # the panel rewire skips roots whose panel already names a live DB, and
+  # step 16 skips accounts already stamped proxied, so a resumed run does
+  # not re-send their completion emails).
 
   # Step 12.5: Rewire panel DB access on the target BEFORE the rename, so
   # the rename step's queue passes run against a bootstrappable hostmaster
@@ -2136,15 +2378,19 @@ REMOTE
   # already removes it per account, but clean up any missed by xoct).
   _xmass_remove_http_off_all
 
-  # Step 18: Mark all eligible source accounts as proxied
+  # Step 18: Mark all eligible source accounts as proxied. xoct proxy now
+  # stamps its own successes, so this is belt-and-braces -- and it must never
+  # stamp what step 16 could not convert: a bare COMPLETE over a failed
+  # conversion hides the failure and stops owl.sh renewing certificates for
+  # an account whose vhosts still serve locally.
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    ### Stamp only if absent. _xmass_enumerate_accounts does NOT filter on
-    ### proxied.pid (unlike xoct), so an account converted by an earlier
-    ### standalone xoct run is still enumerated here; step 16's xoct proxy
-    ### correctly refuses it, and writing a bare COMPLETE anyway would both
-    ### hide that refusal and stop owl.sh renewing certificates for an account
-    ### whose vhosts are still served locally.
+    case " ${_XMASS_PROXY_CONV_FAILED:-} " in
+      *" ${_oct} "*)
+        _alrt "  ${_oct}: proxy conversion FAILED; NOT stamping proxied.pid"
+        continue
+      ;;
+    esac
     if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
       _info "  ${_oct}: already stamped proxied, left as found"
       continue
@@ -2166,11 +2412,12 @@ REMOTE
   _info "======================================================"
   _info "  xmass cutover COMPLETE"
   _info "  Source ${_hName} is now proxying all sites to ${_tgt}"
-  if [ "${_XMASS_PERMANENT_PROXY}" = "YES" ]; then
-    _info "  Proxy mode: PERMANENT — update DNS at your own pace"
-  else
-    _info "  Proxy mode: TEMPORARY — update DNS and decommission source asap"
+  if [ -n "${_XMASS_PROXY_CONV_FAILED}" ]; then
+    _alrt "  Accounts NOT converted to proxy:${_XMASS_PROXY_CONV_FAILED}"
+    _alrt "  They stay 503-gated on this source; fix the cause and re-run"
+    _alrt "  'xoct proxy <oN> ${_tgt}' for each, then clear its http-off.pid"
   fi
+  _info "  Proxy modes are per account: see 'xoct proxy-mode --all' on this box"
   _info "  Next: run 'xmass post-mig' on the TARGET after DNS is updated"
   _info "======================================================"
 }
@@ -2179,8 +2426,14 @@ _xmass_cmd_cutover() {
   _xmass_load_state
   _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
 
-  # --permanent-proxy on cutover command overrides whatever was set at init
-  [ -n "${_permanent_proxy}" ] && _XMASS_PERMANENT_PROXY="${_permanent_proxy}"
+  # Cutover flags override whatever was set at init (--permanent-proxy is the
+  # deprecated alias, already mapped to _proxy_mode=permanent by the parser).
+  [ -n "${_proxy_mode}" ] && _XMASS_PROXY_MODE="${_proxy_mode}"
+  [ -n "${_proxy_deadline}" ] && _XMASS_PROXY_DEADLINE="${_proxy_deadline}"
+  case "${_XMASS_PROXY_MODE}" in
+    permanent|ha-switch) _XMASS_PERMANENT_PROXY=YES ;;
+    temporary)           _XMASS_PERMANENT_PROXY=NO ;;
+  esac
 
   if [ "${_XMASS_PHASE}" = "rename-failed" ]; then
     # Parked by a failed step-13 rename: everything up to and including the
@@ -2196,6 +2449,15 @@ _xmass_cmd_cutover() {
     _info "======================================================"
     _xmass_check_no_boa_running
     _xmass_enumerate_accounts
+    # A run parked by a pre-mode xmass has its mode only in the mapped state,
+    # not on disk yet; the resumed tail re-runs xoct proxy, which resolves
+    # from the box default files, so materialise them and gate exactly as the
+    # normal --live path does.
+    _mig_sweep_legacy
+    _xmass_write_box_defaults
+    _xmass_report_account_modes
+    [ -n "${_XMASS_MODE_UNDECLARED}" ] \
+      && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run"
     # Keep the SQL watchdogs paused through the resumed tail (idempotent;
     # re-asserts the marker in case the box rebooted while parked)
     _xmass_maint_on
@@ -2225,6 +2487,16 @@ _xmass_cmd_cutover() {
     _info "  Target           : ${_tgt}"
     _info "======================================================"
     _xmass_enumerate_accounts
+    # DRY stays read-only: simulate the box default --live would write, so
+    # the printed per-account plan matches what --live will do.
+    if [ ! -s "${_MIG_BOX_MODE_FILE}" ] && [ -n "${_XMASS_PROXY_MODE}" ]; then
+      _MIG_BOX_MODE_OVERRIDE="${_XMASS_PROXY_MODE}"
+      _MIG_BOX_DEADLINE_OVERRIDE="${_XMASS_PROXY_DEADLINE}"
+      _info "[DRY-PLAN] would write box default: mode=${_XMASS_PROXY_MODE}${_XMASS_PROXY_DEADLINE:+ deadline=${_XMASS_PROXY_DEADLINE}}"
+    fi
+    _xmass_report_account_modes
+    [ -n "${_XMASS_MODE_UNDECLARED}" ] \
+      && _alrt "[DRY] --live would REFUSE: undeclared proxy mode for:${_XMASS_MODE_UNDECLARED}"
     _XMASS_STORE_RC=0
     _XMASS_RSYNC_RC=0
     _xmass_sync_shared
@@ -2248,12 +2520,22 @@ _xmass_cmd_cutover() {
   _info "======================================================"
   _info "  xmass cutover starting"
   _info "  Target           : ${_tgt}"
-  _info "  Permanent proxy  : ${_XMASS_PERMANENT_PROXY}"
+  _info "  Proxy default    : ${_XMASS_PROXY_MODE:-none}${_XMASS_PROXY_DEADLINE:+ (deadline ${_XMASS_PROXY_DEADLINE})}"
   _info "======================================================"
 
   # Pre-flight checks
   _xmass_check_no_boa_running
   _xmass_enumerate_accounts
+
+  # Freeze the box default to disk, then refuse to proceed while any account
+  # would resolve to the built-in fallback: a single-account misfire mails one
+  # client the wrong story and warns; a mass cutover mails a whole box the
+  # wrong story at once and cannot be unsent.
+  _mig_sweep_legacy
+  _xmass_write_box_defaults
+  _xmass_report_account_modes
+  [ -n "${_XMASS_MODE_UNDECLARED}" ] \
+    && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run the DRY and --live"
 
   # Pause the mysql.sh watchdog on BOTH hosts for the whole cutover: the
   # FLUSH TABLES WITH READ LOCK on the source piles up connections, and the
@@ -2448,13 +2730,15 @@ _xmass_post_mig() {
       _info "  Restored ${_script}"
     fi
   done
-  # Traffic now flows directly to this host, so drop the migration-proxy realip+
-  # csf trust (a deliberate no-op if it was set up --permanent). This lets the
-  # source proxy be decommissioned without leaving a stale trusted/whitelisted IP
-  # that could later be reassigned to someone else.
+  # Traffic now flows directly to this host. Reconcile the migration-proxy
+  # trust from the per-account policy records: temporary peers are dropped,
+  # permanent/ha-switch peers stay trusted (restricted to the live peer set),
+  # and with no records at all this behaves exactly as the old unconditional
+  # teardown (permanent marker honoured), so an unconverted fleet sees
+  # bit-identical behaviour.
   if [ -x "/var/xdrago/migration_proxy_trust.sh" ]; then
-    /var/xdrago/migration_proxy_trust.sh teardown \
-      || _alrt "migration_proxy_trust teardown returned non-zero"
+    /var/xdrago/migration_proxy_trust.sh reconcile \
+      || _alrt "migration_proxy_trust reconcile returned non-zero"
   fi
   _info "post-mig complete on ${_hName}"
 }
@@ -2499,11 +2783,26 @@ case "${_cmd}" in
     shift 2>/dev/null || true
     while [ $# -gt 0 ]; do
       case "$1" in
-        --permanent-proxy) _permanent_proxy=YES; shift ;;
+        --proxy-mode=*)
+          _proxy_mode="${1#*=}"
+          case "${_proxy_mode}" in
+            temporary|permanent|ha-switch) : ;;
+            *) _die "invalid --proxy-mode '${_proxy_mode}' (temporary|permanent|ha-switch)" ;;
+          esac
+          shift ;;
+        --proxy-deadline=*)
+          _proxy_deadline="$(_mig_norm_deadline "${1#*=}")" \
+            || _die "invalid --proxy-deadline '${1#*=}' (YYYY-MM-DD or +Nd, today or later)"
+          shift ;;
+        --permanent-proxy)
+          _alrt "--permanent-proxy is deprecated; use --proxy-mode=permanent"
+          _permanent_proxy=YES
+          _proxy_mode=permanent
+          shift ;;
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass init <target-ip> [--permanent-proxy]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass init <target-ip> [--proxy-mode=...] [--proxy-deadline=...]"
     _check_root
     _xmass_cmd_init
   ;;
@@ -2523,11 +2822,26 @@ case "${_cmd}" in
     shift 2>/dev/null || true
     while [ $# -gt 0 ]; do
       case "$1" in
-        --permanent-proxy) _permanent_proxy=YES; shift ;;
+        --proxy-mode=*)
+          _proxy_mode="${1#*=}"
+          case "${_proxy_mode}" in
+            temporary|permanent|ha-switch) : ;;
+            *) _die "invalid --proxy-mode '${_proxy_mode}' (temporary|permanent|ha-switch)" ;;
+          esac
+          shift ;;
+        --proxy-deadline=*)
+          _proxy_deadline="$(_mig_norm_deadline "${1#*=}")" \
+            || _die "invalid --proxy-deadline '${1#*=}' (YYYY-MM-DD or +Nd, today or later)"
+          shift ;;
+        --permanent-proxy)
+          _alrt "--permanent-proxy is deprecated; use --proxy-mode=permanent"
+          _permanent_proxy=YES
+          _proxy_mode=permanent
+          shift ;;
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass cutover <target-ip> [--permanent-proxy] [--live]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
     _check_root
     _xmass_cmd_cutover
   ;;
@@ -2545,10 +2859,11 @@ case "${_cmd}" in
   *)
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
-    echo "Usage: xmass init    <target-ip> [--permanent-proxy]  (run on source)"
+    echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"
+    echo "                     [--proxy-deadline=YYYY-MM-DD|+Nd]  (run on source)"
     echo "Usage: xmass sync    <target-ip> [--live]             (run on source, repeat)"
     echo "Usage: xmass status  [target-ip]                      (run on source)"
-    echo "Usage: xmass cutover <target-ip> [--permanent-proxy] [--live]  (run on source)"
+    echo "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
     echo ""
@@ -2556,6 +2871,9 @@ case "${_cmd}" in
     echo "  - Requires identical Percona MySQL versions on both servers."
     echo "  - Migrates ALL Octopus accounts and Solr cores in one operation."
     echo "  - For single-account or cross-version migrations use xoct instead."
+    echo "  - Proxy modes are per ACCOUNT: --proxy-mode writes only the box DEFAULT;"
+    echo "    a pin set with 'xoct proxy-mode <oN> <mode>' always wins over it."
+    echo "    --permanent-proxy is a deprecated alias for --proxy-mode=permanent."
     echo "  - State is kept in ${_XMASS_STATE_FILE}"
     echo "  - reset-phase is a recovery verb: a cutover that fails between the lag"
     echo "    wait and the panel rewire leaves phase=cutover, which every other"

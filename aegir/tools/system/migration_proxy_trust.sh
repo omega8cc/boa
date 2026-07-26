@@ -5,6 +5,7 @@
 #
 #   migration_proxy_trust.sh trust <ip|cidr> [<ip|cidr>...] [--permanent] [--csf-only]
 #   migration_proxy_trust.sh teardown [--force]
+#   migration_proxy_trust.sh reconcile [--force]
 #
 # trust: register the given peer IP(s) as trusted migration sources on this host.
 #   L4 (always): add to csf.allow on ports 80 AND 443 and to csf.ignore -- applied
@@ -22,6 +23,19 @@
 #   the .cmig realip include, the csf entries) unless the permanent marker is set
 #   (--force overrides). csf entries that the immediate strip misses are also
 #   cleaned by the next *-water.sh tick (control file gone -> nothing re-added).
+#
+# reconcile: recompute the trust set from the per-account migration proxy policy
+#   records (/data/disk/<oN>/log/migproxy.cnf, written by xoct/xmass). Records
+#   this host owns (its own _MIG_HOST_IP) with _MIG_ROLE=target decide which
+#   peers stay trusted: any permanent or ha-switch peer keeps trust and the
+#   permanent marker (ha-switch behaves exactly as permanent for trust and
+#   teardown; it differs only in the client notification); all-temporary,
+#   all-retired or no live peers tears everything down INCLUDING the marker,
+#   because the union proves nothing needs it. An account stamped proxied with
+#   no valid record is never guessed at: its trust and the marker are left as
+#   found and reported. With no records at all this behaves exactly as
+#   teardown always has (marker honoured; --force overrides), so an
+#   unconverted fleet sees bit-identical post-mig behaviour.
 #
 # Idempotent and safe to re-run. Mirrors the csf.allow/csf.ignore line format and
 # the cleanup-by-"migration proxy"-tag used by _whitelist_ip_migration_proxy in
@@ -153,12 +167,175 @@ _cmd_teardown() {
   _msg "migration proxy trust torn down on this host"
 }
 
+# --- per-account policy records (mirrors xoct's _mig_* primitives) -----------
+
+_mig_get() {
+  local _f="$1" _k="$2"
+  [ -r "${_f}" ] || return 1
+  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+}
+
+_mig_valid_mode() {
+  case "$1" in
+    temporary|permanent|ha-switch|retired) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+_my_ipv4s() {
+  hostname -I 2>/dev/null | tr ' ' '\n' \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+}
+
+_cmd_reconcile() {
+  local _force="${1:-}"
+  local _keep="" _perm=NO _undeclared="" _records=0
+  local _cnf _root _acct _mode _peer _hip _role _pid _myips _ip _kept=""
+
+  _myips="$(_my_ipv4s)"
+  if [ -z "${_myips}" ]; then
+    # Cannot verify which records are OURS (a record that arrived by the log/
+    # rsync must never be a decision input). Refusing to act beats silently
+    # degrading into a teardown under a live proxy.
+    _msg "reconcile: cannot determine this host's IPv4 addresses; leaving trust as found"
+    return 0
+  fi
+
+  for _cnf in /data/disk/*/log/migproxy.cnf; do
+    [ -e "${_cnf}" ] || continue
+    _hip="$(_mig_get "${_cnf}" _MIG_HOST_IP)"
+    # A record whose host IP is not ours arrived from the peer by rsync:
+    # provenance for reporting, never a decision input here.
+    echo "${_myips}" | grep -qxF "${_hip}" || continue
+    _role="$(_mig_get "${_cnf}" _MIG_ROLE)"
+    # Source-authored records describe OUTBOUND proxying; only target-role
+    # records say who this host must keep trusting.
+    [ "${_role}" = "target" ] || continue
+    _records=$(( _records + 1 ))
+    _acct="$(basename "$(dirname "$(dirname "${_cnf}")")")"
+    _mode="$(_mig_get "${_cnf}" _MIG_MODE)"
+    _peer="$(_mig_get "${_cnf}" _MIG_PEER_IP)"
+    if ! _mig_valid_mode "${_mode}" || ! _is_ipv4_or_cidr "${_peer}"; then
+      # A record failing validation is never partially honoured; treat the
+      # account as undeclared and keep its peer where one parses.
+      _undeclared="${_undeclared} ${_acct}"
+      _is_ipv4_or_cidr "${_peer}" && _keep="${_keep} ${_peer}"
+      continue
+    fi
+    case "${_mode}" in
+      permanent|ha-switch)
+        # ha-switch behaves exactly as permanent for trust and teardown; it
+        # differs only in the client notification.
+        _keep="${_keep} ${_peer}"
+        _perm=YES
+      ;;
+      temporary|retired)
+        # reconcile runs post-mig (DNS moved) or after a policy change:
+        # temporary trust ends here, retired never needed it.
+        :
+      ;;
+    esac
+  done
+
+  # Accounts stamped proxied with no valid record of their own: never guess.
+  # Keep whatever trust exists, leave the permanent marker as found, report.
+  for _pid in /data/disk/*/log/proxied.pid; do
+    [ -e "${_pid}" ] || continue
+    _root="$(dirname "$(dirname "${_pid}")")"
+    _acct="$(basename "${_root}")"
+    case " ${_undeclared} " in *" ${_acct} "*) continue ;; esac
+    _cnf="${_root}/log/migproxy.cnf"
+    _hip="$(_mig_get "${_cnf}" _MIG_HOST_IP)"
+    _mode="$(_mig_get "${_cnf}" _MIG_MODE)"
+    if [ -n "${_hip}" ] && echo "${_myips}" | grep -qxF "${_hip}" \
+      && _mig_valid_mode "${_mode}"; then
+      continue   # declared (either role); its policy already spoke above
+    fi
+    _undeclared="${_undeclared} ${_acct}"
+  done
+
+  if [ "${_records}" -eq 0 ] && [ -z "${_undeclared}" ]; then
+    if [ ! -e "${_realip_ctrl}" ] && [ ! -e "${_csf_ctrl}" ] && [ ! -e "${_perm_flag}" ]; then
+      _msg "reconcile: no migration-proxy records and no trust wired; nothing to do"
+      return 0
+    fi
+    # Pre-records fleet: behave exactly as teardown always has (the permanent
+    # marker is honoured; --force overrides). Unquoted on purpose: an empty
+    # _force must vanish, not arrive as an empty first argument.
+    # shellcheck disable=SC2086
+    _cmd_teardown ${_force}
+    return $?
+  fi
+
+  # Unquoted on purpose: _keep is a space-separated set being split into lines.
+  # shellcheck disable=SC2086
+  _keep="$(printf '%s\n' ${_keep} | sort -u | tr '\n' ' ')"
+
+  if [ -n "${_undeclared}" ]; then
+    # Undeclared accounts have peers this host cannot know, so existing trust
+    # is only ever ADDED to here, never stripped, and the permanent marker is
+    # left as found (set only if a declared record demands it).
+    for _ip in ${_keep}; do
+      _uniq_append "${_csf_ctrl}" "${_ip}"
+      _uniq_append "${_realip_ctrl}" "${_ip}"
+      _csf_add_ip "${_ip}"
+      _kept="${_kept} ${_ip}"
+    done
+    [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
+    [ -n "${_kept}" ] && [ -x "${_realip_tool}" ] && "${_realip_tool}"
+    if [ "${_perm}" = "YES" ]; then
+      mkdir -p "$(dirname "${_perm_flag}")"
+      : > "${_perm_flag}"
+    fi
+    _msg "reconcile: UNDECLARED proxied accounts:${_undeclared}"
+    _msg "  their trust and the permanent marker are left as found; declare policy on the"
+    _msg "  proxying source (xoct proxy-mode <oN> <mode>, then xoct proxy ... --repair) so"
+    _msg "  the record propagates here"
+    [ -n "${_kept}" ] && _msg "reconcile: declared peers (re)trusted:${_kept}"
+    return 0
+  fi
+
+  if [ -z "${_keep// /}" ]; then
+    # Records exist and none needs trust: the union proves nothing needs the
+    # marker either, so clear it even though plain teardown would honour it.
+    rm -f "${_realip_ctrl}" "${_csf_ctrl}" "${_perm_flag}"
+    _csf_strip
+    _csf_reload
+    [ -x "${_realip_tool}" ] && "${_realip_tool}"
+    _msg "reconcile: no live permanent/ha-switch peers; migration proxy trust torn down"
+    return 0
+  fi
+
+  # Rewrite both control files to exactly the keep set; strip every tagged csf
+  # entry and re-add the keep set (no selective strip exists -- strip-all then
+  # re-add exploits the existing idempotency).
+  rm -f "${_realip_ctrl}" "${_csf_ctrl}"
+  _csf_strip
+  for _ip in ${_keep}; do
+    _uniq_append "${_csf_ctrl}" "${_ip}"
+    _uniq_append "${_realip_ctrl}" "${_ip}"
+    _csf_add_ip "${_ip}"
+    _kept="${_kept} ${_ip}"
+  done
+  _csf_reload
+  [ -x "${_realip_tool}" ] && "${_realip_tool}"
+  if [ "${_perm}" = "YES" ]; then
+    mkdir -p "$(dirname "${_perm_flag}")"
+    : > "${_perm_flag}"
+  else
+    rm -f "${_perm_flag}"
+  fi
+  _msg "reconcile: trusted migration peers now:${_kept}"
+}
+
 case "${1:-}" in
-  trust)    shift; _cmd_trust "$@" ;;
-  teardown) shift; _cmd_teardown "$@" ;;
+  trust)     shift; _cmd_trust "$@" ;;
+  teardown)  shift; _cmd_teardown "$@" ;;
+  reconcile) shift; _cmd_reconcile "$@" ;;
   *)
     echo "Usage: $0 trust <ip|cidr>... [--permanent] [--csf-only]"
     echo "       $0 teardown [--force]"
+    echo "       $0 reconcile [--force]"
     exit 1
   ;;
 esac
