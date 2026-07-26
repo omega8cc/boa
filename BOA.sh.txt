@@ -1444,7 +1444,6 @@ _update_agents() {
   _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/tools/bin/symlinkinfo" f98 --guard symlinkinfo
   _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/tools/bin/migratefs" f96 --guard migratefs
   _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup
-  _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/tools/bin/loadguard" f98 --guard xloadguard
   _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror
   _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/tools/bin/ffdevuan" f95 --guard xffdevuan
   _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver
@@ -4029,7 +4028,6 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f98 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --guard /local/bin/fpmreport
-    _fetch_versioned ${_optBin}/loadguard "${_urlHmr}/${_tBn}/loadguard" f98 --guard /local/bin/loadguard
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f96 --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f94 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard /local/bin/multiback
@@ -4090,7 +4088,7 @@ _update_boa_tools() {
 
   if [ -e "${_optBin}/fixmounts" ] && [ ! -e "${_usrBin}/fixmounts" ]; then
     rm -f ${_usrBin}/{aptcleanup*,autoinit*,automini*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*,ffmirror*,fixmounts*}
-    rm -f ${_usrBin}/{aptfast*,killer*,loadguard*,perftest*,octopus*,screenfetch*,vmnetfix*,webserver*,websh*}
+    rm -f ${_usrBin}/{aptfast*,killer*,perftest*,octopus*,screenfetch*,vmnetfix*,webserver*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -sfn ${_optBin}/automini    ${_usrBin}/automini
@@ -4102,7 +4100,6 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/ffmirror    ${_usrBin}/ffmirror
     ln -sfn ${_optBin}/fixmounts   ${_usrBin}/fixmounts
     ln -sfn ${_optBin}/killer      ${_usrBin}/killer
-    ln -sfn ${_optBin}/loadguard   ${_usrBin}/loadguard
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
     ln -sfn ${_optBin}/perftest    ${_usrBin}/perftest
     ln -sfn ${_optBin}/screenfetch ${_usrBin}/screenfetch
@@ -4147,7 +4144,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver}
-  chmod 700 ${_optBin}/{loadguard,lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
+  chmod 700 ${_optBin}/{lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
