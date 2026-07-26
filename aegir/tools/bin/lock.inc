@@ -89,6 +89,78 @@ _single_instance_lock() {
 }
 
 ###
+### Flap circuit-breaker primitives (shared)
+###
+### A heal that has to be repeated is evidence the heal is not the remedy. A
+### caller keeps a ledger of action timestamps; once too many land inside a
+### window it latches a breaker file, pages once, and stops acting until an
+### operator deletes the latch or a cool-off passes. These are the generic
+### forms of the machinery the database watchdog ships inline; that copy stays
+### inline for now, deliberately -- it is fetched under its own serial, and a
+### box holding a new mysql.sh against an old lock.inc must not lose its
+### breaker. Migrate it here only once this library has been on boxes a while.
+### First shared consumer: the system watchdog's OOM response.
+###
+_flap_num() {
+  # Normalise one operator-supplied number: digits only, leading zeros
+  # stripped (bash reads a zero-padded number as octal inside $(( )), where 08
+  # is a hard error), falling back to the given default.
+  local _v="${1//[^0-9]/}"
+  while [ "${#_v}" -gt 1 ] && [ "${_v:0:1}" = "0" ]; do
+    _v="${_v:1}"
+  done
+  [ -n "${_v}" ] || _v="$2"
+  printf '%s' "${_v}"
+}
+
+_flap_prune_ledger() {
+  # Usage: _flap_prune_ledger <ledger> <now-epoch> <window-secs>
+  # Counts the actions recorded inside the window into the global _FLAP_COUNT
+  # and rewrites the ledger with only those, so it stays small and needs no
+  # rotation. Entries stamped in the future (a backwards clock step) are
+  # dropped rather than counted, and nothing older than boot is counted: a
+  # breaker must never latch on a clock artefact or on a previous boot's
+  # history and refuse a genuine recovery.
+  local _ldg="$1" _now="$2" _win="$3" _cut _boot _line _stamp _tmp
+  _FLAP_COUNT=0
+  [ -s "${_ldg}" ] || return 0
+  _cut=$(( _now - _win ))
+  _boot=$(awk '{print int($1)}' /proc/uptime 2>/dev/null)
+  _boot="${_boot//[^0-9]/}"
+  if [ -n "${_boot}" ] && [ "$(( _now - _boot ))" -gt "${_cut}" ]; then
+    _cut=$(( _now - _boot ))
+  fi
+  _tmp="${_ldg}.$$"
+  : > "${_tmp}" 2>/dev/null || return 0
+  while read -r _line; do
+    _stamp="${_line//[^0-9]/}"
+    [ -n "${_stamp}" ] || continue
+    if [ "${_stamp}" -gt "${_cut}" ] && [ "${_stamp}" -le "${_now}" ]; then
+      echo "${_stamp}" >> "${_tmp}"
+      _FLAP_COUNT=$(( _FLAP_COUNT + 1 ))
+    fi
+  done < "${_ldg}"
+  mv -f "${_tmp}" "${_ldg}" 2>/dev/null || rm -f "${_tmp}"
+}
+
+_flap_breaker_is_open() {
+  # Usage: _flap_breaker_is_open <latch> <cooloff-mins> <ledger> [logfile]
+  # Returns 0 while the latch is fresh. An aged latch re-arms the breaker and
+  # discards the history that opened it, so the count restarts at zero and a
+  # forgotten latch can never disable healing permanently; /run is tmpfs, so a
+  # reboot clears it too.
+  local _lch="$1" _mins="$2" _ldg="$3" _log="$4"
+  [ -e "${_lch}" ] || return 1
+  if [ -n "$(find "${_lch}" -mmin "+${_mins}" 2>/dev/null)" ]; then
+    rm -f "${_lch}"
+    rm -f "${_ldg}"
+    [ -n "${_log}" ] && echo "$(date) auto-heal re-armed after the ${_mins} min cool-off" >> "${_log}"
+    return 1
+  fi
+  return 0
+}
+
+###
 ### Collapse a flap into one alert without silencing a sustained outage
 ###
 ### Usage: in any _send_email function, after the grace check:

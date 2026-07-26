@@ -1170,7 +1170,14 @@ _xmass_sync_account() {
   # --force-old instead of trusting alias auto-detection. Do NOT add
   # excludes for server_master/hostmaster here: the rename converges either
   # way, and the source platform_* and per-site aliases must always arrive.
-  _xmass_rsync -aEAXqu ${_ieni} \
+  #
+  # php.ini is the ONE exception: BOA generates it per box for the local
+  # drush CLI and hardens it immutable (chattr +i), so the target's copy is
+  # both correct and unreplaceable. Without the exclude, every sync to a
+  # real BOA target fails rc=23 on the rename over the immutable file — a
+  # failure the pre-rc-capture code swallowed silently for years and the
+  # transfer gate now rightly refuses to ignore.
+  _xmass_rsync -aEAXqu ${_ieni} --exclude=php.ini \
     -e ssh "${_udir}/.drush/" \
     "root@${_tgt}:${_dst}/.drush/"
 
@@ -1598,6 +1605,40 @@ fi
 _SPN=${_SP//${_S}/${_NEW}}
 if [ -f "${_SPN}/drushrc.php" ]; then
   _SP="${_SPN}"
+fi
+if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
+  # The fqdn substitution cannot heal a DISTRO-NUMBER divergence: the alias
+  # that survived the rsync -u mtime race names the SOURCE's panel platform
+  # (e.g. distro/003 after one more satellite upgrade there), while the
+  # freshly built target's panel lives under a lower number (e.g. 002). A
+  # months-old production source vs a fresh target ALWAYS has this shape, so
+  # scan the target's own panel tree for the NEW-host-named panel dir and
+  # adopt it only when the match is unambiguous — refuse to guess otherwise.
+  _TREE=$(dirname "$(dirname "$(dirname "${_SP}")")")
+  _FOUND=""; _N=0
+  for _CAND in "${_TREE}"/*/sites/*"${_NEW}"*; do
+    [ -f "${_CAND}/drushrc.php" ] || continue
+    [ -f "${_CAND}/settings.php" ] || continue
+    _FOUND="${_CAND}"; _N=$((_N+1))
+  done
+  if [ "${_N}" = "1" ]; then
+    echo "PANEL-NOTE: alias-named panel ${_SP} absent; adopted ${_FOUND} (distro number diverged source vs target)"
+    # Heal the alias too, or the divergence just bites the next consumer:
+    # renameaegirhost resolves the panel through this same alias and dies on
+    # the same nonexistent distro/NNN — live-observed on the resume that
+    # followed the first version of this fallback. The alias is the lie;
+    # correct it once here and every downstream reader gets the truth.
+    _OLD_PLAT=$(dirname "$(dirname "${_SP}")")
+    _NEW_PLAT=$(dirname "$(dirname "${_FOUND}")")
+    if [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ] && [ -f "${_ALS}" ]; then
+      sed -i "s|${_OLD_PLAT}|${_NEW_PLAT}|g" "${_ALS}" \
+        && echo "PANEL-NOTE: hostmaster alias platform path corrected ${_OLD_PLAT} -> ${_NEW_PLAT}"
+    fi
+    _SP="${_FOUND}"
+  elif [ "${_N}" -gt 1 ]; then
+    echo "PANEL-ERROR: ${_N} candidate panel dirs under ${_TREE} match ${_NEW} — refusing to guess"
+    exit 1
+  fi
 fi
 if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   echo "PANEL-ERROR: no panel settings.php/drushrc.php under ${_R} (looked at ${_SP})"
@@ -2294,6 +2335,7 @@ _xmass_cmd_cutover() {
       # Unlock before aborting so source MySQL is not stuck
       mysql --defaults-file=/root/.my.cnf \
         -e "UNLOCK TABLES;" &>/dev/null || true
+      _xmass_restore_hint
       _die "Replica lag not zero after FLUSH LOCK on check ${_pass}/3" \
            " (lag=${_lag}s) — cutover aborted, source MySQL unlocked"
     fi
@@ -2311,6 +2353,7 @@ _xmass_cmd_cutover() {
      -e '${_XM_STOP}; ${_XM_RESET_SLAVE};'"; then
     mysql --defaults-file=/root/.my.cnf \
       -e "UNLOCK TABLES;" &>/dev/null || true
+    _xmass_restore_hint
     _die "Failed to stop/decouple slave on target ${_tgt}" \
          "— cutover aborted, source MySQL unlocked"
   fi
