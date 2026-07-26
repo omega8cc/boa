@@ -2139,6 +2139,20 @@ REMOTE
   # Step 18: Mark all eligible source accounts as proxied
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    ### Stamp only if absent. _xmass_enumerate_accounts does NOT filter on
+    ### proxied.pid (unlike xoct), so an account converted by an earlier
+    ### standalone xoct run is still enumerated here; step 16's xoct proxy
+    ### correctly refuses it, and writing a bare COMPLETE anyway would both
+    ### hide that refusal and stop owl.sh renewing certificates for an account
+    ### whose vhosts are still served locally.
+    if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
+      _info "  ${_oct}: already stamped proxied, left as found"
+      continue
+    fi
+    if [ ! -e "/data/disk/${_oct}/config/server_master/nginx/vhost.d" ]; then
+      _alrt "  ${_oct}: no vhost.d on this box; NOT stamping proxied.pid"
+      continue
+    fi
     echo "COMPLETE" > "/data/disk/${_oct}/log/proxied.pid"
   done
 
