@@ -787,6 +787,20 @@ _satellite_cnf() {
     _msg "PROC: _satellite_cnf"
     _debug_proc
   fi
+  # The omega8.cc-hosted fleet (hostname ends in .aegir.cc) defaults the
+  # per-account ghost-cleanup flags to YES, mirroring the barracuda.cnf seed
+  # in _barracuda_cnf: only when the line is not already present in the cnf,
+  # so the values are written as ordinary octopus.cnf lines and stay
+  # operator-toggleable -- never forced on each run. Covers INIT (no cnf yet)
+  # and upgrade (resolved before the append-missing pass below persists it),
+  # so accounts created on a hosted box are born with the fleet defaults.
+  if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
+    grep -q "^_GHOST_PLATFORMS_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_PLATFORMS_CLEANUP=YES
+    grep -q "^_GHOST_VHOSTS_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_VHOSTS_CLEANUP=YES
+    grep -q "^_GHOST_SITES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITES_CLEANUP=YES
+    grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
+    grep -q "^_GHOST_ALIASES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
+  fi
   if [ ! -e "${_octCnf}" ]; then
     if [[ "${_MY_OCTO_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
