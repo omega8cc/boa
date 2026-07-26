@@ -189,8 +189,8 @@ _my_ipv4s() {
 
 _cmd_reconcile() {
   local _force="${1:-}"
-  local _keep="" _perm=NO _undeclared="" _records=0
-  local _cnf _root _acct _mode _peer _hip _role _pid _myips _ip _kept=""
+  local _keep="" _perm=NO _undeclared="" _records=0 _record_ips="" _legacy=""
+  local _cnf _root _acct _mode _peer _peers _hip _role _pid _myips _ip _kept=""
 
   _myips="$(_my_ipv4s)"
   if [ -z "${_myips}" ]; then
@@ -215,18 +215,27 @@ _cmd_reconcile() {
     _acct="$(basename "$(dirname "$(dirname "${_cnf}")")")"
     _mode="$(_mig_get "${_cnf}" _MIG_MODE)"
     _peer="$(_mig_get "${_cnf}" _MIG_PEER_IP)"
+    # The source may hold several routable addresses (_MIG_PEER_IPS); the
+    # relay's egress interface is not always its primary one, so all of them
+    # count -- both as trust candidates and as record-owned for the legacy
+    # separation below. Invalid tokens are dropped, never partially honoured.
+    _peers=""
+    for _ip in $(_mig_get "${_cnf}" _MIG_PEER_IPS) ${_peer}; do
+      _is_ipv4_or_cidr "${_ip}" && _peers="${_peers} ${_ip}"
+    done
+    _record_ips="${_record_ips}${_peers}"
     if ! _mig_valid_mode "${_mode}" || ! _is_ipv4_or_cidr "${_peer}"; then
       # A record failing validation is never partially honoured; treat the
-      # account as undeclared and keep its peer where one parses.
+      # account as undeclared and keep its peers where they parse.
       _undeclared="${_undeclared} ${_acct}"
-      _is_ipv4_or_cidr "${_peer}" && _keep="${_keep} ${_peer}"
+      _keep="${_keep}${_peers}"
       continue
     fi
     case "${_mode}" in
       permanent|ha-switch)
         # ha-switch behaves exactly as permanent for trust and teardown; it
         # differs only in the client notification.
-        _keep="${_keep} ${_peer}"
+        _keep="${_keep}${_peers}"
         _perm=YES
       ;;
       temporary|retired)
@@ -235,6 +244,16 @@ _cmd_reconcile() {
         :
       ;;
     esac
+  done
+
+  # Trust entries the records do NOT account for predate the record system
+  # (an old --permanent migration from a pre-record source). The records
+  # cannot prove anything about them, so they are preserved -- "the union
+  # proves nothing needs it" only ever applies to record-owned entries.
+  for _ip in $(cat "${_csf_ctrl}" "${_realip_ctrl}" 2>/dev/null | sort -u); do
+    _is_ipv4_or_cidr "${_ip}" || continue
+    echo "${_record_ips}" | tr ' ' '\n' | grep -qxF "${_ip}" && continue
+    _legacy="${_legacy} ${_ip}"
   done
 
   # Accounts stamped proxied with no valid record of their own: never guess.
@@ -267,9 +286,11 @@ _cmd_reconcile() {
     return $?
   fi
 
-  # Unquoted on purpose: _keep is a space-separated set being split into lines.
+  # Unquoted on purpose: these are space-separated sets being split into lines.
   # shellcheck disable=SC2086
   _keep="$(printf '%s\n' ${_keep} | sort -u | tr '\n' ' ')"
+  # shellcheck disable=SC2086
+  _legacy="$(printf '%s\n' ${_legacy} | sort -u | tr '\n' ' ')"
 
   if [ -n "${_undeclared}" ]; then
     # Undeclared accounts have peers this host cannot know, so existing trust
@@ -295,9 +316,10 @@ _cmd_reconcile() {
     return 0
   fi
 
-  if [ -z "${_keep// /}" ]; then
-    # Records exist and none needs trust: the union proves nothing needs the
-    # marker either, so clear it even though plain teardown would honour it.
+  if [ -z "${_keep// /}" ] && [ -z "${_legacy// /}" ]; then
+    # Records exist, none needs trust, and no pre-record entries survive: the
+    # union proves nothing needs the marker either, so clear it even though
+    # plain teardown would honour it.
     rm -f "${_realip_ctrl}" "${_csf_ctrl}" "${_perm_flag}"
     _csf_strip
     _csf_reload
@@ -306,12 +328,12 @@ _cmd_reconcile() {
     return 0
   fi
 
-  # Rewrite both control files to exactly the keep set; strip every tagged csf
-  # entry and re-add the keep set (no selective strip exists -- strip-all then
+  # Rewrite both control files to exactly keep + legacy; strip every tagged
+  # csf entry and re-add that set (no selective strip exists -- strip-all then
   # re-add exploits the existing idempotency).
   rm -f "${_realip_ctrl}" "${_csf_ctrl}"
   _csf_strip
-  for _ip in ${_keep}; do
+  for _ip in ${_keep} ${_legacy}; do
     _uniq_append "${_csf_ctrl}" "${_ip}"
     _uniq_append "${_realip_ctrl}" "${_ip}"
     _csf_add_ip "${_ip}"
@@ -322,8 +344,17 @@ _cmd_reconcile() {
   if [ "${_perm}" = "YES" ]; then
     mkdir -p "$(dirname "${_perm_flag}")"
     : > "${_perm_flag}"
+  elif [ -n "${_legacy// /}" ]; then
+    # Pre-record entries may belong to an old --permanent proxy this host
+    # cannot re-derive; the marker stays exactly as found.
+    :
   else
     rm -f "${_perm_flag}"
+  fi
+  if [ -n "${_legacy// /}" ]; then
+    _msg "reconcile: pre-record trust entries preserved:${_legacy}"
+    _msg "  (no policy record accounts for them; the permanent marker is left as found."
+    _msg "  Remove them with 'teardown --force' once the old proxies are confirmed gone.)"
   fi
   _msg "reconcile: trusted migration peers now:${_kept}"
 }

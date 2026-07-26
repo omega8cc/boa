@@ -196,23 +196,28 @@ _mig_resolve() {
     fi
   fi
 
-  if [ -z "${_MIG_MODE}" ] && [ -r "${_MIG_BOX_MODE_FILE}" ]; then
-    _m="$(head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null | tr -d '\r\n')"
-    if _mig_valid_mode "${_m}"; then
-      _MIG_MODE="${_m}"; _MIG_SOURCE=box
+  ### The override REPLACES the box-file level when set: a DRY cutover uses it
+  ### to simulate exactly what --live will write over both files, so a stale
+  ### on-disk mode or deadline must not leak past a pending change.
+  if [ -z "${_MIG_MODE}" ]; then
+    if [ -n "${_MIG_BOX_MODE_OVERRIDE}" ] \
+      && _mig_valid_mode "${_MIG_BOX_MODE_OVERRIDE}"; then
+      _MIG_MODE="${_MIG_BOX_MODE_OVERRIDE}"; _MIG_SOURCE=box
+    elif [ -r "${_MIG_BOX_MODE_FILE}" ]; then
+      _m="$(head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null | tr -d '\r\n')"
+      if _mig_valid_mode "${_m}"; then
+        _MIG_MODE="${_m}"; _MIG_SOURCE=box
+      fi
     fi
   fi
 
-  if [ -z "${_MIG_MODE}" ] && [ -n "${_MIG_BOX_MODE_OVERRIDE}" ] \
-    && _mig_valid_mode "${_MIG_BOX_MODE_OVERRIDE}"; then
-    _MIG_MODE="${_MIG_BOX_MODE_OVERRIDE}"; _MIG_SOURCE=box
-  fi
-
   if [ -n "${_MIG_MODE}" ] && [ -z "${_MIG_DEADLINE}" ]; then
-    _d="$(head -n1 "${_MIG_BOX_DEADLINE_FILE}" 2>/dev/null | tr -d '\r\n')"
-    _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
-    if [ -z "${_MIG_DEADLINE}" ] && _mig_valid_date "${_MIG_BOX_DEADLINE_OVERRIDE}"; then
-      _MIG_DEADLINE="${_MIG_BOX_DEADLINE_OVERRIDE}"
+    if [ -n "${_MIG_BOX_MODE_OVERRIDE}" ]; then
+      _mig_valid_date "${_MIG_BOX_DEADLINE_OVERRIDE}" \
+        && _MIG_DEADLINE="${_MIG_BOX_DEADLINE_OVERRIDE}"
+    else
+      _d="$(head -n1 "${_MIG_BOX_DEADLINE_FILE}" 2>/dev/null | tr -d '\r\n')"
+      _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
     fi
   fi
 
@@ -232,7 +237,13 @@ _mig_resolve() {
 ### every undeclared account on the built-in fallback, which cutover --live
 ### refuses.
 _xmass_write_box_defaults() {
-  [ -n "${_XMASS_PROXY_MODE}" ] || return 0
+  if [ -z "${_XMASS_PROXY_MODE}" ]; then
+    # A deadline with no mode would be normalised, accepted and then silently
+    # dropped by the early return below -- refuse it instead.
+    [ -n "${_XMASS_PROXY_DEADLINE}" ] \
+      && _die "a proxy deadline needs a proxy mode: add --proxy-mode=temporary|permanent|ha-switch"
+    return 0
+  fi
   mkdir -p /data/conf 2>/dev/null
   echo "${_XMASS_PROXY_MODE}" > "${_MIG_BOX_MODE_FILE}"
   if [ -n "${_XMASS_PROXY_DEADLINE}" ]; then
@@ -283,7 +294,12 @@ _xmass_load_state() {
   # the "as soon as possible" wording, which is exactly 'temporary'. The
   # source is the box-default level, NOT 'default', so the cutover --live gate
   # does not block an in-flight migration.
-  if [ -z "${_XMASS_PROXY_MODE}" ] && [ -n "${_XMASS_PERMANENT_PROXY}" ]; then
+  # Gated on the schema marker: a state file the NEW xmass wrote also carries
+  # _XMASS_PERMANENT_PROXY (kept one release), and without the marker a
+  # no-flag init would round-trip NO into a phantom 'temporary' box default
+  # that silently satisfies the very gate meant to refuse undeclared boxes.
+  if [ -z "${_XMASS_STATE_V}" ] \
+    && [ -z "${_XMASS_PROXY_MODE}" ] && [ -n "${_XMASS_PERMANENT_PROXY}" ]; then
     if [ "${_XMASS_PERMANENT_PROXY}" = "YES" ]; then
       _XMASS_PROXY_MODE=permanent
     else
@@ -309,6 +325,7 @@ _XMASS_PHASE=${_XMASS_PHASE}
 _XMASS_PERMANENT_PROXY=${_XMASS_PERMANENT_PROXY}
 _XMASS_PROXY_MODE=${_XMASS_PROXY_MODE}
 _XMASS_PROXY_DEADLINE=${_XMASS_PROXY_DEADLINE}
+_XMASS_STATE_V=2
 STATEEOF
   chmod 600 "${_XMASS_STATE_FILE}"
 }
@@ -2488,11 +2505,17 @@ _xmass_cmd_cutover() {
     _info "======================================================"
     _xmass_enumerate_accounts
     # DRY stays read-only: simulate the box default --live would write, so
-    # the printed per-account plan matches what --live will do.
-    if [ ! -s "${_MIG_BOX_MODE_FILE}" ] && [ -n "${_XMASS_PROXY_MODE}" ]; then
+    # the printed per-account plan matches what --live will do. The override
+    # must engage whenever a mode is pending -- INCLUDING when it changes an
+    # existing box default -- or the DRY table shows the stale file while
+    # --live rewrites it and mails a different story.
+    if [ -n "${_XMASS_PROXY_MODE}" ]; then
       _MIG_BOX_MODE_OVERRIDE="${_XMASS_PROXY_MODE}"
       _MIG_BOX_DEADLINE_OVERRIDE="${_XMASS_PROXY_DEADLINE}"
-      _info "[DRY-PLAN] would write box default: mode=${_XMASS_PROXY_MODE}${_XMASS_PROXY_DEADLINE:+ deadline=${_XMASS_PROXY_DEADLINE}}"
+      if [ "$(head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null)" != "${_XMASS_PROXY_MODE}" ] \
+        || [ "$(head -n1 "${_MIG_BOX_DEADLINE_FILE}" 2>/dev/null)" != "${_XMASS_PROXY_DEADLINE}" ]; then
+        _info "[DRY-PLAN] would write box default: mode=${_XMASS_PROXY_MODE}${_XMASS_PROXY_DEADLINE:+ deadline=${_XMASS_PROXY_DEADLINE}}"
+      fi
     fi
     _xmass_report_account_modes
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
@@ -2512,11 +2535,6 @@ _xmass_cmd_cutover() {
     return 0
   fi
 
-  # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
-  _xmass_require_clean_dry "${_tgt}"
-  _XMASS_STORE_RC=0
-  _XMASS_RSYNC_RC=0
-
   _info "======================================================"
   _info "  xmass cutover starting"
   _info "  Target           : ${_tgt}"
@@ -2530,12 +2548,18 @@ _xmass_cmd_cutover() {
   # Freeze the box default to disk, then refuse to proceed while any account
   # would resolve to the built-in fallback: a single-account misfire mails one
   # client the wrong story and warns; a mass cutover mails a whole box the
-  # wrong story at once and cannot be unsent.
+  # wrong story at once and cannot be unsent. This gate runs BEFORE the
+  # clean-dry token is consumed, so a refusal here does not force another DRY.
   _mig_sweep_legacy
   _xmass_write_box_defaults
   _xmass_report_account_modes
   [ -n "${_XMASS_MODE_UNDECLARED}" ] \
-    && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run the DRY and --live"
+    && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run --live"
+
+  # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
+  _xmass_require_clean_dry "${_tgt}"
+  _XMASS_STORE_RC=0
+  _XMASS_RSYNC_RC=0
 
   # Pause the mysql.sh watchdog on BOTH hosts for the whole cutover: the
   # FLUSH TABLES WITH READ LOCK on the source piles up connections, and the

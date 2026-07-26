@@ -90,16 +90,36 @@ _mig_is_mine() {
   hostname -I 2>/dev/null | tr ' ' '\n' | grep -qxF "${_hip}"
 }
 
-### This box's first routable IPv4 address -- the identity records are written
-### with and the "old address" the client mails print.
+### This box's routable IPv4 identity -- what records are written with and the
+### "old address" the client mails print. _MY_OWNIP (barracuda.cnf) is the
+### authoritative value, matching the rest of the migration tooling; the
+### hostname -I scan is only the fallback, because on a multi-homed box its
+### first address can be a private one.
 _mig_my_ip() {
-  local _ip
-  _ip="$(hostname -I 2>/dev/null | tr ' ' '\n' \
-    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
-    | grep -vE '^127\.' | head -1)"
-  [ -z "${_ip}" ] && _ip="${_MY_OWNIP}"
+  local _ip="${_MY_OWNIP}"
+  if ! [[ "${_ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || [[ "${_ip}" =~ ^127\. ]]; then
+    _ip="$(hostname -I 2>/dev/null | tr ' ' '\n' \
+      | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+      | grep -vE '^127\.' | head -1)"
+  fi
   printf '%s' "${_ip}"
 }
+
+### Every routable IPv4 this box holds, space-separated: the target must trust
+### them all (the relay's egress interface is not always the primary address).
+_mig_my_ips() {
+  local _l
+  _l="$(hostname -I 2>/dev/null | tr ' ' '\n' \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+    | grep -vE '^127\.' | tr '\n' ' ')"
+  _l="${_l%"${_l##*[![:space:]]}"}"
+  [ -z "${_l}" ] && _l="$(_mig_my_ip)"
+  printf '%s' "${_l}"
+}
+
+### Account names travel into remote paths and a remote heredoc; validate
+### before any of that, fail-closed.
+_mig_valid_acct() { [[ "$1" =~ ^[a-zA-Z0-9._-]+$ ]]; }
 
 ### Normalise a deadline to an absolute date at WRITE time; a stored relative
 ### date would drift between the write and the mail. Empty stays empty. A date
@@ -197,8 +217,11 @@ _mig_resolve() {
 }
 
 ### Write the policy record, preserving ownership/mode. Root-owned 0600.
+### Optional $8 is the space-separated full peer IP list (_MIG_PEER_IPS): a
+### relaying source can hold several routable addresses and the target's
+### reconcile must keep trusting all of them, not just the primary.
 _mig_write_record() {
-  local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7"
+  local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7" _peer_ips="$8"
   local _cnf="${_root}/${_MIG_CNF_NAME}" _tmp
   _mig_valid_mode "${_mode}" || { echo "ALRT: refusing to write invalid mode '${_mode}'"; return 1; }
   mkdir -p "${_root}/log" 2>/dev/null
@@ -212,6 +235,7 @@ _mig_write_record() {
     echo "_MIG_MODE=${_mode}"
     echo "_MIG_SCOPE=${_scope}"
     echo "_MIG_DEADLINE=${_dl}"
+    [ -n "${_peer_ips}" ] && echo "_MIG_PEER_IPS=${_peer_ips}"
     echo "_MIG_STAMPED=$(date -u '+%Y-%m-%d')"
   } > "${_tmp}" || { rm -f "${_tmp}"; return 1; }
   mv -f "${_tmp}" "${_cnf}" || { rm -f "${_tmp}"; return 1; }
@@ -270,11 +294,22 @@ _mig_load_account_mail_facts() {
 ### (_MIG_MODE/_MIG_DEADLINE/_MIG_SOURCE). Sets _MIG_DNS_BLOCK (the forwarding
 ### arrangement), _MIG_COVERAGE_BLOCK (what the old address covers -- identical
 ### in every mode) and _MIG_ADDR_BLOCK (old/new address pair). $1 = context
-### (complete|start|change), $2 = the new system's IP.
+### (complete|start|change|retire), $2 = the new system's IP, $3 = the old
+### address (defaults to this box -- callers acting on a TARGET-role record
+### must pass the peer here, or the customer is told to move DNS backwards).
 _mig_build_mail_blocks() {
-  local _ctx="$1" _new_ip="$2" _pd="" _old_ip
+  local _ctx="$1" _new_ip="$2" _old_ip="$3" _pd=""
+  [ -z "${_old_ip}" ] && _old_ip="$(_mig_my_ip)"
+  ### A promise about a date that has already been and gone must never be
+  ### mailed: a record can sit between declaration and send for months, so
+  ### the write-time floor in _mig_norm_deadline is not enough on its own.
+  if [ -n "${_MIG_DEADLINE}" ] \
+    && [[ "${_MIG_DEADLINE}" < "$(date -u '+%Y-%m-%d')" ]]; then
+    echo "ALRT: stored deadline ${_MIG_DEADLINE} has already passed; composing the"
+    echo "ALRT: no-deadline variant -- set a new date (xoct proxy-mode ... --deadline=+Nd)"
+    _MIG_DEADLINE=""
+  fi
   [ -n "${_MIG_DEADLINE}" ] && _pd="$(_mig_pretty_date "${_MIG_DEADLINE}")"
-  _old_ip="$(_mig_my_ip)"
 
   _MIG_ADDR_BLOCK="YOUR OLD SYSTEM IP ADDRESS WAS: [${_old_ip}]
 YOUR NEW SYSTEM IP ADDRESS IS:  [${_new_ip}]
@@ -1608,8 +1643,10 @@ _xoct_transfer_static_symlink_safe() {
 
 ###-------------MIGRATION PROXY VERBS----###
 
-### Octopus account dirs under /data/disk, system dirs excluded (same list the
-### xmass enumerator uses).
+### Octopus account dirs under /data/disk, system dirs excluded (same
+### EXCLUSION list as the xmass enumerator, deliberately without its
+### eligibility filter: this feeds the policy table, and a broken account's
+### policy state is exactly what the operator needs to see).
 _mig_list_accounts() {
   local _d
   for _d in $(find /data/disk -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
@@ -1687,15 +1724,35 @@ _xoct_warn_proxy_cert_horizon() {
 ### Write the peer's half of the policy record over ssh. The peer's own
 ### reconcile decides teardown from records whose _MIG_HOST_IP it owns, so the
 ### pushed record carries the PEER's address as its identity, this box as the
-### peer field, and the local account name for tracing.
+### peer field(s), and the local account name for tracing.
+### set -e on the remote side: without it the exit status is the trailing
+### chmod's and a truncated write (full disk) would pass the fail-closed gate.
+### rc 7 = the peer owns a SOURCE-role record for that account (it has since
+### become a source itself, chained migration); callers decide whether that is
+### fatal (fresh conversion: yes) or an alert (late policy edits: no).
 ### Args: 1 peer-ip 2 peer-acct 3 role 4 mode 5 scope 6 deadline 7 src-acct
 _xoct_push_peer_record() {
   local _pip="$1" _pacct="$2" _prole="$3" _pmode="$4" _pscope="$5" _pdl="$6" _psrc="$7"
-  local _my
+  local _my _myall
+  if ! _mig_valid_acct "${_pacct}" || ! _mig_valid_acct "${_psrc}"; then
+    echo "ALRT: refusing peer record push: invalid account name '${_pacct}'/'${_psrc}'"
+    return 1
+  fi
   _my="$(_mig_my_ip)"
+  _myall="$(_mig_my_ips)"
   ssh root@"${_pip}" "bash -s" <<PEERREC
+set -e
+_cnf="/data/disk/${_pacct}/log/migproxy.cnf"
+if [ -r "\${_cnf}" ] \\
+  && grep -qx "_MIG_ROLE=source" "\${_cnf}" \\
+  && hostname -I 2>/dev/null | tr ' ' '\\n' \\
+     | grep -qxF "\$(grep -m1 '^_MIG_HOST_IP=' "\${_cnf}" | cut -d= -f2-)"; then
+  # This box authored its own SOURCE record for the account (it migrated on
+  # somewhere else); an inbound push must not destroy its outbound policy.
+  exit 7
+fi
 mkdir -p "/data/disk/${_pacct}/log" 2>/dev/null
-cat > "/data/disk/${_pacct}/log/migproxy.cnf.new.\$\$" <<'RECEOF'
+cat > "\${_cnf}.new.\$\$" <<'RECEOF'
 # BOA migration proxy policy. Managed by xoct/xmass. Do not edit by hand.
 _MIG_ROLE=${_prole}
 _MIG_HOST_IP=${_pip}
@@ -1704,18 +1761,21 @@ _MIG_PEER_OCT=${_psrc}
 _MIG_MODE=${_pmode}
 _MIG_SCOPE=${_pscope}
 _MIG_DEADLINE=${_pdl}
+_MIG_PEER_IPS=${_myall}
 _MIG_STAMPED=$(date -u '+%Y-%m-%d')
 RECEOF
-mv -f "/data/disk/${_pacct}/log/migproxy.cnf.new.\$\$" "/data/disk/${_pacct}/log/migproxy.cnf"
-chown root:root "/data/disk/${_pacct}/log/migproxy.cnf" 2>/dev/null
-chmod 600 "/data/disk/${_pacct}/log/migproxy.cnf"
+mv -f "\${_cnf}.new.\$\$" "\${_cnf}"
+chown root:root "\${_cnf}" 2>/dev/null || true
+chmod 600 "\${_cnf}"
 PEERREC
 }
 
 ### Run reconcile on a peer so its trust set follows the record just pushed.
+### A missing tool on the peer is tolerated (older BOA); a reconcile that runs
+### and fails must propagate, or the callers' failure branches can never fire.
 _xoct_peer_reconcile() {
   ssh root@"$1" \
-    "[ -x '${_MIG_TRUST_TOOL}' ] && '${_MIG_TRUST_TOOL}' reconcile || true" \
+    "if [ -x '${_MIG_TRUST_TOOL}' ]; then '${_MIG_TRUST_TOOL}' reconcile; else echo 'reconcile tool absent on peer (older BOA); trust left as found'; fi" \
     2>/dev/null
 }
 
@@ -1729,11 +1789,7 @@ _xoct_peer_reconcile() {
 _xoct_wire_target_proxy_trust() {
   local _realip="/var/xdrago/migration_proxy_realip.sh"
   local _src_ips _perm=""
-  _src_ips="$(hostname -I 2>/dev/null | tr ' ' '\n' \
-    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
-    | grep -vE '^127\.' | tr '\n' ' ')"
-  _src_ips="${_src_ips%"${_src_ips##*[![:space:]]}"}"
-  [ -n "${_src_ips}" ] || _src_ips="$(_mig_my_ip)"
+  _src_ips="$(_mig_my_ips)"
   [ "${_MIG_MODE}" != "temporary" ] && _perm="--permanent"
   [ -x "/var/xdrago/cloudflare_realip.sh" ] \
     && /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
@@ -1765,6 +1821,10 @@ _xoct_proxy_preflight() {
   _XOCT_WAS_PROXIED=NO
   [ -e "${_USR}/log/proxied.pid" ] && _XOCT_WAS_PROXIED=YES
   _XOCT_PEER_ACCT="${_dst:-${_oct}}"
+  if ! _mig_valid_acct "${_XOCT_PEER_ACCT}" || ! _mig_valid_acct "${_oct}"; then
+    echo "ERROR: invalid account name '${_oct}'/'${_XOCT_PEER_ACCT}'"
+    exit 1
+  fi
   if ! _mig_valid_ip "${_tgt}"; then
     echo "ERROR: proxy requires a target IPv4 address (got '${_tgt}')"
     exit 1
@@ -1775,19 +1835,30 @@ _xoct_proxy_preflight() {
   fi
 
   ### A typo in an IP must not silently repoint a live account's traffic.
+  ### Role-gated: only a SOURCE-role record is this box's own outbound proxy
+  ### record. An inbound target-role record (this box was migrated ONTO
+  ### earlier) must never trip the retarget refusal, or a chained B-to-C
+  ### migration aborts every account at cutover with the sites already 503.
   _XOCT_OLD_PEER=""
   _XOCT_OLD_PEER_OCT=""
   if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}"; then
-    _old_peer="$(_mig_get "${_cnf}" _MIG_PEER_IP)"
-    if _mig_valid_ip "${_old_peer}" && [ "${_old_peer}" != "${_tgt}" ]; then
-      if [ "${_XOCT_PROXY_RETARGET}" != "YES" ]; then
-        echo "ERROR: this account's proxy record points at ${_old_peer}, not ${_tgt}"
-        echo "ERROR: a changed target IP must be explicit; if the repoint is intended, re-run:"
-        echo "ERROR:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --retarget"
-        exit 1
+    if [ "$(_mig_get "${_cnf}" _MIG_ROLE)" = "source" ]; then
+      _old_peer="$(_mig_get "${_cnf}" _MIG_PEER_IP)"
+      if _mig_valid_ip "${_old_peer}" && [ "${_old_peer}" != "${_tgt}" ]; then
+        if [ "${_XOCT_PROXY_RETARGET}" != "YES" ]; then
+          echo "ERROR: this account's proxy record points at ${_old_peer}, not ${_tgt}"
+          echo "ERROR: a changed target IP must be explicit; if the repoint is intended, re-run:"
+          echo "ERROR:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --retarget"
+          exit 1
+        fi
+        _XOCT_OLD_PEER="${_old_peer}"
+        _XOCT_OLD_PEER_OCT="$(_mig_get "${_cnf}" _MIG_PEER_OCT)"
       fi
-      _XOCT_OLD_PEER="${_old_peer}"
-      _XOCT_OLD_PEER_OCT="$(_mig_get "${_cnf}" _MIG_PEER_OCT)"
+    else
+      echo "ALRT: ${_oct}: superseding an inbound target-role record (this box was itself"
+      echo "ALRT: migrated onto earlier -- chained migration). The single-record model"
+      echo "ALRT: cannot express both roles: if the upstream proxy chain must keep working,"
+      echo "ALRT: keep its trust by hand: ${_MIG_TRUST_TOOL} trust $(_mig_get "${_cnf}" _MIG_PEER_IP) --permanent"
     fi
   fi
 
@@ -1811,7 +1882,9 @@ _xoct_proxy_preflight() {
     _MIG_SOURCE=flag
     _XOCT_SCOPE=account
   fi
-  if [ -n "${_XOCT_DEADLINE_FLAG}" ]; then
+  if [ "${_XOCT_NO_DEADLINE}" = "YES" ]; then
+    _MIG_DEADLINE=""
+  elif [ -n "${_XOCT_DEADLINE_FLAG}" ]; then
     if ! _MIG_DEADLINE="$(_mig_norm_deadline "${_XOCT_DEADLINE_FLAG}")"; then
       echo "ERROR: invalid --deadline '${_XOCT_DEADLINE_FLAG}' (YYYY-MM-DD or +Nd, today or later)"
       exit 1
@@ -1831,11 +1904,21 @@ _xoct_proxy_preflight() {
 
   echo "INFO: ${_oct}: proxy mode ${_MIG_MODE}${_MIG_DEADLINE:+ (deadline ${_MIG_DEADLINE})} [source: ${_MIG_SOURCE}]"
 
-  if ! _xoct_push_peer_record "${_tgt}" "${_XOCT_PEER_ACCT}" target \
-    "${_MIG_MODE}" "${_XOCT_SCOPE}" "${_MIG_DEADLINE}" "${_oct}"; then
-    echo "ERROR: could not write the policy record on peer ${_tgt} -- refusing to proxy"
-    exit 1
-  fi
+  _xoct_push_peer_record "${_tgt}" "${_XOCT_PEER_ACCT}" target \
+    "${_MIG_MODE}" "${_XOCT_SCOPE}" "${_MIG_DEADLINE}" "${_oct}"
+  case "$?" in
+    0) : ;;
+    7)
+      echo "ERROR: peer ${_tgt} owns a SOURCE-role record for ${_XOCT_PEER_ACCT}: it has since"
+      echo "ERROR: migrated that account onward itself -- proxying to it would relay into a"
+      echo "ERROR: box that no longer serves the account; refusing"
+      exit 1
+    ;;
+    *)
+      echo "ERROR: could not write the policy record on peer ${_tgt} -- refusing to proxy"
+      exit 1
+    ;;
+  esac
   _mig_write_record "${_USR}" source "${_tgt}" "${_XOCT_PEER_ACCT}" \
     "${_MIG_MODE}" "${_XOCT_SCOPE}" "${_MIG_DEADLINE}" || exit 1
   _mig_log "${_USR}" xoct set "${_XOCT_SCOPE}" "${_MIG_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
@@ -1846,10 +1929,16 @@ _xoct_proxy_preflight() {
 ### body whenever the promise differs from the last one actually mailed;
 ### --renotify forces, --no-notify suppresses and logs the suppression. A
 ### client never mailed anything gets nothing here -- the completion notice at
-### proxy time is the first promise.
+### proxy time is the first promise -- and an account not yet CONVERTED gets
+### nothing either: before proxied.pid exists no forwarding arrangement is in
+### force, so a "the arrangement has changed" follow-up would be false (the
+### start notice alone having been sent is not a forwarding promise).
+### $5 = the record's role: on a target-role record the old/new addresses
+### swap, because the customer's NEW system is THIS box and the old address
+### is the peer.
 _xoct_policy_notify() {
-  local _a="$1" _mode="$2" _dl="$3" _peer="$4"
-  local _root="/data/disk/${_a}" _last
+  local _a="$1" _mode="$2" _dl="$3" _peer="$4" _role="$5"
+  local _root="/data/disk/${_a}" _last _new_ip _old_ip
   _last="$(_mig_last_mail "${_root}")"
   if [ "${_XOCT_NO_NOTIFY}" = "YES" ]; then
     if [ -n "${_last}" ] && [ "${_last}" != "${_mode}|${_dl:--}" ]; then
@@ -1857,6 +1946,10 @@ _xoct_policy_notify() {
       echo "ALRT: ${_a}: promise changed but the notice was suppressed by --no-notify (logged);"
       echo "ALRT: the client's last mailed arrangement is now stale"
     fi
+    return 0
+  fi
+  if [ ! -e "${_root}/log/proxied.pid" ] && [ "${_XOCT_RENOTIFY}" != "YES" ]; then
+    echo "INFO: ${_a}: not yet converted; the completion notice at proxy time carries this promise"
     return 0
   fi
   if [ "${_XOCT_RENOTIFY}" != "YES" ]; then
@@ -1873,9 +1966,14 @@ _xoct_policy_notify() {
     echo "ALRT: ${_a}: no peer recorded; cannot compose the change notice (it names the new address)"
     return 0
   fi
+  if [ "${_role}" = "target" ]; then
+    _new_ip="$(_mig_my_ip)"; _old_ip="${_peer}"
+  else
+    _new_ip="${_peer}"; _old_ip="$(_mig_my_ip)"
+  fi
   _mig_load_account_mail_facts "${_root}" "${_a}"
   _MIG_MODE="${_mode}"; _MIG_DEADLINE="${_dl}"; _MIG_SOURCE=account
-  _mig_build_mail_blocks change "${_peer}" || return 0
+  _mig_build_mail_blocks change "${_new_ip}" "${_old_ip}" || return 0
   _send_notice_migration_change
   if [ "${_MAIL_SENT}" = "YES" ]; then
     _mig_log "${_root}" xoct mail change "${_mode}" "${_dl}" "${_peer}"
@@ -1891,7 +1989,7 @@ _xoct_policy_notify() {
 ### the promise changed.
 _xoct_apply_policy() {
   local _a="$1" _mode="$2" _scope="$3"
-  local _root="/data/disk/${_a}" _cnf _role=source _peer="" _peer_oct="" _dl="" _oldscope="" _oldmode=""
+  local _root="/data/disk/${_a}" _cnf _role=source _peer="" _peer_oct="" _dl="" _oldscope="" _oldmode="" _peer_ips=""
   _cnf="${_root}/${_MIG_CNF_NAME}"
   if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}"; then
     _role="$(_mig_get "${_cnf}" _MIG_ROLE)"
@@ -1903,6 +2001,7 @@ _xoct_apply_policy() {
     _oldmode="$(_mig_get "${_cnf}" _MIG_MODE)"
     _dl="$(_mig_get "${_cnf}" _MIG_DEADLINE)"
     _mig_valid_date "${_dl}" || _dl=""
+    _peer_ips="$(_mig_get "${_cnf}" _MIG_PEER_IPS)"
   fi
   ### A box-wide sweep never overwrites a per-account pin (requirement 5).
   if [ "${_scope}" = "box" ] && [ "${_oldscope}" = "account" ] \
@@ -1934,20 +2033,36 @@ _xoct_apply_policy() {
     echo "ALRT: ${_a}: the client mail asserts a live mirror with automatic failover;"
     echo "ALRT: this tool cannot verify one exists -- confirm the pair is real first"
   fi
-  ### Peer propagation first, fail closed. Source-authored records only: on a
-  ### target the record is this box's own reconcile input and goes nowhere.
+  ### Peer propagation first, fail closed PER ACCOUNT (a --all sweep must not
+  ### abort half-applied on one unreachable peer -- the caller collects the
+  ### failures and exits non-zero at the end). Source-authored records only:
+  ### on a target the record is this box's own reconcile input, goes nowhere.
   if [ "${_role}" = "source" ] && [ -n "${_peer}" ]; then
-    if ! _xoct_push_peer_record "${_peer}" "${_peer_oct:-${_a}}" target \
-      "${_mode}" "${_scope}" "${_dl}" "${_a}"; then
-      echo "ERROR: ${_a}: peer ${_peer} unreachable -- policy NOT changed (a change that does"
-      echo "ERROR: not reach the peer record flips its teardown decision the wrong way)"
-      exit 1
-    fi
-    _xoct_peer_reconcile "${_peer}" \
-      || echo "ALRT: ${_a}: reconcile on peer ${_peer} failed; run ${_MIG_TRUST_TOOL} reconcile there"
+    _xoct_push_peer_record "${_peer}" "${_peer_oct:-${_a}}" target \
+      "${_mode}" "${_scope}" "${_dl}" "${_a}"
+    case "$?" in
+      0)
+        _xoct_peer_reconcile "${_peer}" \
+          || echo "ALRT: ${_a}: reconcile on peer ${_peer} failed; run ${_MIG_TRUST_TOOL} reconcile there"
+      ;;
+      7)
+        ### The peer moved on (its record for this account is its own
+        ### source-role one): its teardown decisions no longer key on this
+        ### account, so the local change may proceed.
+        echo "ALRT: ${_a}: peer ${_peer} has migrated this account onward (chained); its"
+        echo "ALRT: record was left untouched -- verify its trust by hand if the chain matters"
+      ;;
+      *)
+        echo "ERROR: ${_a}: peer ${_peer} unreachable -- policy NOT changed (a change that does"
+        echo "ERROR: not reach the peer record flips its teardown decision the wrong way)"
+        return 1
+      ;;
+    esac
   fi
+  ### A target-role rewrite must carry the _MIG_PEER_IPS list forward: it is
+  ### the source's full address set and reconcile trusts from it.
   _mig_write_record "${_root}" "${_role}" "${_peer}" "${_peer_oct:-${_a}}" \
-    "${_mode}" "${_scope}" "${_dl}" || exit 1
+    "${_mode}" "${_scope}" "${_dl}" "${_peer_ips}" || return 1
   _mig_log "${_root}" xoct set "${_scope}" "${_mode}" "${_dl}" "${_peer}"
   echo "INFO: ${_a}: proxy mode set to ${_mode}${_dl:+ (deadline ${_dl})} [${_scope}]"
   ### On a TARGET record the change affects THIS box's own trust set.
@@ -1955,7 +2070,7 @@ _xoct_apply_policy() {
     "${_MIG_TRUST_TOOL}" reconcile \
       || echo "ALRT: local reconcile returned non-zero"
   fi
-  _xoct_policy_notify "${_a}" "${_mode}" "${_dl}" "${_peer}"
+  _xoct_policy_notify "${_a}" "${_mode}" "${_dl}" "${_peer}" "${_role}"
   return 0
 }
 
@@ -1980,6 +2095,10 @@ _xoct_proxy_mode() {
     fi
     _accts="${_sel}"
   fi
+  ### A --proxy-mode=/--mode= flag spelling is accepted as the mode too;
+  ### silently rendering the table instead of setting would be the worst
+  ### possible reading of that invocation.
+  [ -z "${_mode}" ] && [ -n "${_XOCT_MODE_FLAG}" ] && _mode="${_XOCT_MODE_FLAG}"
   if [ -z "${_mode}" ]; then
     if [ -n "${_XOCT_DEADLINE_FLAG}${_XOCT_NO_DEADLINE}" ]; then
       echo "ERROR: a deadline change must restate the mode, e.g.:"
@@ -2001,18 +2120,26 @@ _xoct_proxy_mode() {
   fi
   _mig_sweep_legacy
   ### A single-account set is a per-account operator instruction (a pin); the
-  ### --all form is a box-wide statement that never overwrites a pin.
+  ### --all form is a box-wide statement that never overwrites a pin. Per-
+  ### account failures collect rather than aborting a half-applied sweep.
   _scope=account
   [ "${_sel}" = "--all" ] && _scope=box
+  local _failed=""
   for _a in ${_accts}; do
-    _xoct_apply_policy "${_a}" "${_mode}" "${_scope}"
+    _xoct_apply_policy "${_a}" "${_mode}" "${_scope}" || _failed="${_failed} ${_a}"
   done
+  if [ -n "${_failed}" ]; then
+    echo "ALRT: policy NOT changed for:${_failed}"
+    echo "ALRT: fix the cause (peer reachability) and re-run for those accounts"
+    exit 1
+  fi
   exit 0
 }
 
 _xoct_retire_one() {
   local _a="$1" _wdl="$2"
-  local _root="/data/disk/${_a}" _cnf _role _peer _peer_oct _scope _mode
+  local _root="/data/disk/${_a}" _cnf _role _peer _peer_oct _scope _mode _peer_ips
+  local _new_ip _old_ip
   _cnf="${_root}/${_MIG_CNF_NAME}"
   if [ ! -r "${_cnf}" ] || ! _mig_is_mine "${_cnf}"; then
     echo "INFO: ${_a}: no local proxy policy record; nothing to retire"
@@ -2030,18 +2157,28 @@ _xoct_retire_one() {
   _peer_oct="$(_mig_get "${_cnf}" _MIG_PEER_OCT)"
   _scope="$(_mig_get "${_cnf}" _MIG_SCOPE)"
   [ "${_scope}" = "account" ] || _scope=box
+  _peer_ips="$(_mig_get "${_cnf}" _MIG_PEER_IPS)"
   if [ "${_role}" = "source" ] && [ -n "${_peer}" ]; then
-    if ! _xoct_push_peer_record "${_peer}" "${_peer_oct:-${_a}}" target \
-      retired "${_scope}" "" "${_a}"; then
-      echo "ERROR: ${_a}: peer ${_peer} unreachable -- NOT retiring (the target would keep"
-      echo "ERROR: trusting a peer that no longer proxies to it); retry when reachable"
-      exit 1
-    fi
-    _xoct_peer_reconcile "${_peer}" \
-      || echo "ALRT: ${_a}: reconcile on peer ${_peer} failed; run ${_MIG_TRUST_TOOL} reconcile there"
+    _xoct_push_peer_record "${_peer}" "${_peer_oct:-${_a}}" target \
+      retired "${_scope}" "" "${_a}"
+    case "$?" in
+      0)
+        _xoct_peer_reconcile "${_peer}" \
+          || echo "ALRT: ${_a}: reconcile on peer ${_peer} failed; run ${_MIG_TRUST_TOOL} reconcile there"
+      ;;
+      7)
+        echo "ALRT: ${_a}: peer ${_peer} has migrated this account onward (chained); its"
+        echo "ALRT: record was left untouched"
+      ;;
+      *)
+        echo "ERROR: ${_a}: peer ${_peer} unreachable -- NOT retiring (the target would keep"
+        echo "ERROR: trusting a peer that no longer proxies to it); retry when reachable"
+        return 1
+      ;;
+    esac
   fi
   _mig_write_record "${_root}" "${_role}" "${_peer}" "${_peer_oct:-${_a}}" \
-    retired "${_scope}" "" || exit 1
+    retired "${_scope}" "" "${_peer_ips}" || return 1
   _mig_log "${_root}" xoct retire "${_scope}" retired "${_wdl}" "${_peer}"
   echo "INFO: ${_a}: proxy policy retired"
   if [ "${_role}" = "target" ] && [ -x "${_MIG_TRUST_TOOL}" ]; then
@@ -2059,10 +2196,17 @@ _xoct_retire_one() {
     echo "ALRT: ${_a}: no peer recorded; cannot compose the retirement notice"
     return 0
   fi
+  ### On a target-role record the customer's NEW system is THIS box and the
+  ### old address is the peer.
+  if [ "${_role}" = "target" ]; then
+    _new_ip="$(_mig_my_ip)"; _old_ip="${_peer}"
+  else
+    _new_ip="${_peer}"; _old_ip="$(_mig_my_ip)"
+  fi
   _mig_load_account_mail_facts "${_root}" "${_a}"
   _MIG_RETIRE_DATE="${_wdl}"
   _MIG_MODE=retired; _MIG_DEADLINE=""
-  _mig_build_mail_blocks retire "${_peer}"
+  _mig_build_mail_blocks retire "${_new_ip}" "${_old_ip}"
   _send_notice_migration_retire
   if [ "${_MAIL_SENT}" = "YES" ]; then
     _mig_log "${_root}" xoct mail retire retired "${_wdl}" "${_peer}"
@@ -2097,11 +2241,16 @@ _xoct_proxy_retire() {
       exit 1
     fi
   fi
+  local _failed=""
   for _a in ${_accts}; do
-    _xoct_retire_one "${_a}" "${_wdl}"
+    _xoct_retire_one "${_a}" "${_wdl}" || _failed="${_failed} ${_a}"
   done
   echo "INFO: records marked retired; the nginx proxy vhosts are left in place -- withdraw"
   echo "INFO: service by decommissioning this box (or removing the vhosts) once DNS is confirmed moved"
+  if [ -n "${_failed}" ]; then
+    echo "ALRT: NOT retired:${_failed} -- fix the cause (peer reachability) and re-run"
+    exit 1
+  fi
   exit 0
 }
 
@@ -2372,6 +2521,13 @@ _migrate_init() {
           if [ "${_XOCT_PROXY_FAIL:-0}" != "0" ] || [ "${_XOCT_PROXY_OK:-0}" = "0" ]; then
             echo "ALRT: proxy conversion for ${_oct}: ${_XOCT_PROXY_OK:-0} site(s) converted, ${_XOCT_PROXY_FAIL:-0} failed"
             echo "ERROR: NOT stamping proxied.pid and NOT mailing the client; fix the cause and re-run"
+            if [ -n "${_XOCT_OLD_PEER}" ]; then
+              ### The record already points at the new target; without this
+              ### hint the abandoned one would be findable only in migproxy.log.
+              echo "ALRT: retarget was in flight: the abandoned target ${_XOCT_OLD_PEER} still trusts"
+              echo "ALRT: this proxy; when the repoint completes (or is given up), run there:"
+              echo "ALRT:   ${_MIG_TRUST_TOOL} reconcile"
+            fi
             exit 1
           fi
           service nginx reload
