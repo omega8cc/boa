@@ -175,20 +175,33 @@ csf -ra
 Run on the **source** only.
 
 ```sh
-xmass init target-ip [--permanent-proxy]
+xmass init target-ip [--proxy-mode=temporary|permanent|ha-switch] [--proxy-deadline=YYYY-MM-DD|+Nd]
 ```
 
-`--permanent-proxy` marks the source server as a **permanent** HTTP proxy after
-cutover, rather than a temporary one to be decommissioned once DNS points at the
-target. It changes two things at cutover and post-migration:
+Proxy policy is **per Octopus account**, not per box. `--proxy-mode` writes only
+the box **default** (`/data/conf/migproxy_mode.txt`); each account's own record
+(`/data/disk/oN/log/migproxy.cnf`, set with `xoct proxy-mode oN <mode>`) always
+wins over it. The resolved mode decides, per account:
 
-- The migration-proxy trust wired on the target — nginx realip recovery of the
-  real client plus the CSF whitelist of the source's proxy IP — is marked
-  permanent (`/data/conf/.migration_proxy_permanent.pid`). The `post-mig`
-  teardown that would otherwise drop that trust becomes a deliberate no-op, so
-  the source stays trusted (realip + csf) indefinitely.
-- The migration-complete notification emails sent by `xoct proxy` are worded for
-  a permanent rather than a temporary proxy.
+- what the migration-complete email tells that customer about the old address
+  (temporary with or without a deadline, kept in place, or an HA switch point);
+- whether the migration-proxy trust on the target (nginx realip recovery of the
+  real client plus the CSF whitelist of the source's proxy IP) survives
+  `post-mig` — any account resolving `permanent` or `ha-switch` keeps it, and
+  the target's `migration_proxy_trust.sh reconcile` recomputes the kept peer
+  set from the per-account records (`ha-switch` behaves exactly as `permanent`
+  for trust and teardown; it differs only in the client notification).
+
+`--proxy-deadline` sets the box-default deadline the temporary/permanent mail
+blocks quote; it accepts an absolute date or `+Nd` and refuses past dates.
+`--permanent-proxy` remains a deprecated alias for `--proxy-mode=permanent`.
+
+`init` prints each account's resolved mode and names any account that would
+fall back to the built-in default — declare those before cutover, because
+`cutover --live` refuses to proceed while any account is undeclared. Modes are
+declared here at init time precisely because this is the cheap moment to fix
+them; discovering an undeclared account inside the cutover window is the
+expensive one.
 
 What `init` does:
 
@@ -265,14 +278,19 @@ seconds. Aim for lag < 60 s before scheduling cutover.
 Run on the **source**. This is the only step with user-visible downtime.
 
 ```sh
-xmass cutover target-ip [--permanent-proxy]            # DRY: plan only, no lock/downtime
-xmass cutover target-ip --live [--permanent-proxy]     # perform the cutover
+xmass cutover target-ip [--proxy-mode=...] [--proxy-deadline=...]          # DRY: plan only
+xmass cutover target-ip --live [--proxy-mode=...] [--proxy-deadline=...]   # perform the cutover
 ```
 
 Without `--live`, `cutover` does a plan-only pass over every account's files store and
 stops **before** any destructive step (no MySQL read-lock, no downtime). Run it once to
 confirm `CLEAN`, then re-run with `--live` to perform the real cutover.
-`--permanent-proxy` on cutover overrides whatever was set at `init`.
+`--proxy-mode`/`--proxy-deadline` on cutover override whatever was set at `init`
+(box default only — per-account pins always win). The DRY pass prints each
+account's resolved mode; `--live` **refuses** to proceed while any account
+would fall back to the built-in default, because a mass cutover mails every
+customer on the box and a wrong story cannot be unsent. A mode pin never
+affects migration eligibility — it only pins what that customer is told.
 
 **Pre-flight checks** (automatic):
 
@@ -304,9 +322,9 @@ confirm `CLEAN`, then re-run with `--live` to perform the real cutover.
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account) |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
-| Step 16 | `xoct proxy oN target-ip` for each account on source (vhost conversion + notifications) |
-| Step 17 | Remove `http-off.pid` from all source accounts (belt-and-braces) |
-| Step 18 | Write `proxied.pid` for all source accounts |
+| Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + vhost conversion + mode-selected notification); failures collect per account |
+| Step 17 | Remove `http-off.pid` from source accounts — a failed conversion keeps its 503 gate (its vhosts would otherwise serve the old local copy against a database that now lives on the target) |
+| Step 18 | Write `proxied.pid` for successfully converted accounts only |
 | Step 19 | Mark state `complete` |
 
 If any step between 4 and 8 fails the tool aborts and unlocks source MySQL
@@ -344,8 +362,13 @@ Run on the **target** after DNS has been updated and traffic flows directly.
 xmass post-mig
 ```
 
-Ensures Solr services are running cleanly, reloads nginx, and restores any
-remaining BOA runner scripts.
+Ensures Solr services are running cleanly, reloads nginx, restores any
+remaining BOA runner scripts, and **reconciles** the migration-proxy trust
+from the per-account policy records: peers whose accounts resolved
+`temporary` are dropped, `permanent`/`ha-switch` peers stay trusted
+(restricted to the live peer set), undeclared accounts leave everything as
+found and are reported. With no records at all it behaves exactly as the old
+unconditional teardown (the permanent marker is honoured).
 
 ---
 
@@ -489,9 +512,12 @@ so the remaining cutover steps complete.
   all migrated sites. It is independent of the target and can be
   decommissioned as soon as DNS has propagated and you are satisfied with the
   target.
-- The `--permanent-proxy` flag keeps the source's migration-proxy trust on the
-  target permanent: the `post-mig` teardown that normally drops the nginx realip
-  + CSF whitelist of the source proxy IP is skipped, so the source stays trusted
-  indefinitely. It also words the `xoct proxy` notification emails for a
-  permanent rather than a temporary proxy. Without it, the trust is temporary and
-  `post-mig` removes it once traffic flows directly to the target.
+- Proxy longevity is per account, driven by each account's policy record
+  (`/data/disk/oN/log/migproxy.cnf`, see `xoct proxy-mode --all` for the
+  table). At `post-mig` the target reconciles rather than tears down: accounts
+  resolved `permanent` or `ha-switch` keep the source trusted (nginx realip +
+  CSF whitelist, restricted to the live peer set); `temporary` accounts drop
+  it once traffic flows directly. A later mode change on the source
+  (`xoct proxy-mode oN <mode>`) pushes the updated record to the target and
+  re-reconciles there, so the teardown decision never goes stale.
+  `--permanent-proxy` is a deprecated alias for `--proxy-mode=permanent`.
