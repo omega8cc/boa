@@ -191,24 +191,54 @@ which side's alias copy survived the transfer) which:
 
 **On source:**
 ```sh
-xoct proxy o1 target-ip
+xoct proxy o1 target-ip [--proxy-mode=temporary|permanent|ha-switch] [--deadline=YYYY-MM-DD|+Nd]
 service nginx reload
 xoct post-mig
 ```
 
-`proxy o1` converts all nginx vhost files for the account to proxy templates
-that forward traffic to `target-ip`, removes `http-off.pid` (sites return to
-200 responses, now proxied), and sends the migration-complete notification email
-to the account owner.
+`proxy o1` resolves the account's proxy mode (explicit flag, else the
+account's own record set with `xoct proxy-mode`, else the box default in
+`/data/conf/migproxy_mode.txt`, else `temporary` with a loud warning), writes
+the policy record on both ends (`log/migproxy.cnf`, root-owned, parsed never
+sourced), wires the migration-proxy trust on the **target** (nginx realip
+recovery + CSF whitelist of this source's IP, `--permanent` for
+`permanent`/`ha-switch`), converts all nginx vhost files for the account to
+proxy templates that forward traffic to `target-ip`, removes `http-off.pid`
+(sites return to 200 responses, now proxied), and sends the mode-selected
+migration-complete notification to the account owner. A failed conversion
+sends nothing, stamps nothing and exits non-zero.
 
-`post-mig` restores BOA runner scripts on source.
+Repair and repoint (the tool names the flag when you need it):
+
+```sh
+xoct proxy o1 target-ip --repair              # rebuild the proxy vhosts; mails only if the promise changed
+xoct proxy o1 new-target-ip o2 --repair --retarget   # repoint to a new target; releases trust on the old one
+```
+
+Policy without re-running a migration:
+
+```sh
+xoct proxy-mode --all                         # the table: mode, deadline, scope, peer, last told
+xoct proxy-mode o1 permanent                  # pin one account (wins over any box default)
+xoct proxy-mode --all temporary --deadline=+30d   # box sweep; never overwrites pins (--force-pinned overrides)
+xoct proxy-retire o1 [--deadline=+14d]        # mark retired + send the withdrawal notice
+```
+
+Every policy change is pushed to the target's record and re-reconciled there,
+so the target's teardown decision follows the promise; the client is mailed a
+short follow-up whenever the promised arrangement changes (`--no-notify`
+suppresses and logs, `--renotify` forces).
+
+`post-mig` restores BOA runner scripts on source and reconciles migration-proxy
+trust from the policy records (a quiet no-op on a box holding none).
 
 ### 10. Update DNS
 
 Update DNS A records for all sites in `o1` to point to `target-ip`. Once DNS
 has propagated, traffic flows directly to the target without the proxy hop.
 Remove the source CSF whitelist entry added in step 1 after the proxy is no
-longer needed.
+longer needed; the target side is handled by `xmass post-mig` /
+`migration_proxy_trust.sh reconcile` per the account's proxy mode.
 
 ---
 
