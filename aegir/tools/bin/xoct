@@ -41,6 +41,159 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
+###-------------MIGRATION PROXY POLICY-###
+###
+### Per-ACCOUNT proxy policy, deliberately not per-box: accounts from one
+### source can migrate to different targets, so a box-level flag cannot
+### express what each account's customer should be told or which peer the
+### target must keep trusting.
+###
+### The policy record is NOT stored in log/proxied.pid. That file is the
+### migration STATE and three other tools own it: aegir2beoa-stage2 writes it
+### as a freeze mutex and rm -f's it again, and xmass/xcopy rewrite it to a
+### bare COMPLETE. Policy living there would be destroyed by an unrelated
+### freeze cycle. It also cannot live under static/control, which is chowned
+### to the client's SFTP user -- a customer could then choose the mode and
+### rewrite the mail they are sent.
+###
+_MIG_CNF_NAME="log/migproxy.cnf"
+_MIG_LOG_NAME="log/migproxy.log"
+_MIG_BOX_MODE_FILE="/data/conf/migproxy_mode.txt"
+_MIG_BOX_DEADLINE_FILE="/data/conf/migproxy_deadline.txt"
+
+### Parsed, never sourced: log/ is rsynced host to host, so this file WILL
+### arrive from the peer, and sourcing a line that came over the network as
+### root is not worth the convenience.
+_mig_get() {
+  local _f="$1" _k="$2"
+  [ -r "${_f}" ] || return 1
+  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+}
+
+_mig_valid_mode() {
+  case "$1" in
+    temporary|permanent|ha-switch|retired) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+_mig_valid_ip()  { [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; }
+_mig_valid_date() { [[ "$1" =~ ^20[0-9]{2}-[01][0-9]-[0-3][0-9]$ ]]; }
+
+### A record whose _MIG_HOST_IP is not one of this box's own addresses arrived
+### by the log/ rsync. It is provenance for reporting, never a decision input.
+_mig_is_mine() {
+  local _hip
+  _hip="$(_mig_get "$1" _MIG_HOST_IP)"
+  _mig_valid_ip "${_hip}" || return 1
+  hostname -I 2>/dev/null | tr ' ' '\n' | grep -qxF "${_hip}"
+}
+
+### Normalise a deadline to an absolute date at WRITE time; a stored relative
+### date would drift between the write and the mail. Empty stays empty.
+_mig_norm_deadline() {
+  local _in="$1" _out
+  [ -z "${_in}" ] && { printf ''; return 0; }
+  case "${_in}" in
+    +[0-9]*d) _out="$(date -u -d "${_in%d} days" '+%Y-%m-%d' 2>/dev/null)" ;;
+    *)        _out="$(date -u -d "${_in}" '+%Y-%m-%d' 2>/dev/null)" ;;
+  esac
+  _mig_valid_date "${_out}" || return 1
+  printf '%s' "${_out}"
+}
+
+### LC_ALL=C is load-bearing: without it a locale leak puts a non-English
+### month name into a customer email.
+_mig_pretty_date() {
+  [ -z "$1" ] && { printf ''; return 0; }
+  LC_ALL=C date -u -d "$1" '+%-d %B %Y' 2>/dev/null
+}
+
+### Resolve mode for an account, setting _MIG_MODE/_MIG_DEADLINE/_MIG_SOURCE.
+### SETS GLOBALS: never call this inside $( ) or a pipeline, or the resolution
+### is lost to the subshell and the caller silently proceeds on stale values.
+### Source matters: "default" selects the neutral mail block and is what a mass
+### cutover refuses, because one wrong mail is recoverable and a boxful is not.
+_mig_resolve() {
+  local _root="$1" _cnf _m _d
+  _cnf="${_root}/${_MIG_CNF_NAME}"
+  _MIG_MODE=""; _MIG_DEADLINE=""; _MIG_SOURCE=""
+
+  if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}"; then
+    _m="$(_mig_get "${_cnf}" _MIG_MODE)"
+    _d="$(_mig_get "${_cnf}" _MIG_DEADLINE)"
+    if _mig_valid_mode "${_m}"; then
+      _MIG_MODE="${_m}"
+      _MIG_SOURCE="$(_mig_get "${_cnf}" _MIG_SCOPE)"
+      [ "${_MIG_SOURCE}" = "account" ] || _MIG_SOURCE=box
+      _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
+    else
+      [ -n "${_m}" ] && echo "ALRT: ${_cnf}: invalid _MIG_MODE '${_m}' ignored"
+    fi
+  fi
+
+  if [ -z "${_MIG_MODE}" ] && [ -r "${_MIG_BOX_MODE_FILE}" ]; then
+    _m="$(head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null | tr -d '\r\n')"
+    if _mig_valid_mode "${_m}"; then
+      _MIG_MODE="${_m}"; _MIG_SOURCE=box
+      _d="$(head -n1 "${_MIG_BOX_DEADLINE_FILE}" 2>/dev/null | tr -d '\r\n')"
+      _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
+    fi
+  fi
+
+  if [ -z "${_MIG_MODE}" ]; then
+    _MIG_MODE=temporary
+    _MIG_SOURCE=default
+    echo "ALRT: ${_root}: no proxy mode declared; falling back to '${_MIG_MODE}'."
+    echo "ALRT:   Declare it with: xoct proxy-mode $(basename "${_root}") <temporary|permanent|ha-switch>"
+  fi
+
+  ### A date by which the customer must leave the switch point contradicts
+  ### what a switch point is for.
+  if [ "${_MIG_MODE}" = "ha-switch" ] && [ -n "${_MIG_DEADLINE}" ]; then
+    echo "ALRT: ${_root}: ha-switch ignores the resolved deadline ${_MIG_DEADLINE}"
+    _MIG_DEADLINE=""
+  fi
+  return 0
+}
+
+### Write the policy record, preserving ownership/mode. Root-owned 0600.
+_mig_write_record() {
+  local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7"
+  local _cnf="${_root}/${_MIG_CNF_NAME}" _tmp
+  _mig_valid_mode "${_mode}" || { echo "ALRT: refusing to write invalid mode '${_mode}'"; return 1; }
+  mkdir -p "${_root}/log" 2>/dev/null
+  _tmp="${_cnf}.new.$$"
+  {
+    echo "# BOA migration proxy policy. Managed by xoct/xmass. Do not edit by hand."
+    echo "_MIG_ROLE=${_role}"
+    echo "_MIG_HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}')"
+    echo "_MIG_PEER_IP=${_peer_ip}"
+    echo "_MIG_PEER_OCT=${_peer_oct}"
+    echo "_MIG_MODE=${_mode}"
+    echo "_MIG_SCOPE=${_scope}"
+    echo "_MIG_DEADLINE=${_dl}"
+    echo "_MIG_STAMPED=$(date -u '+%Y-%m-%d')"
+  } > "${_tmp}" || { rm -f "${_tmp}"; return 1; }
+  mv -f "${_tmp}" "${_cnf}" || { rm -f "${_tmp}"; return 1; }
+  chown root:root "${_cnf}" 2>/dev/null
+  chmod 600 "${_cnf}" 2>/dev/null
+  return 0
+}
+
+### Append-only audit. The only place the answer to "what were they actually
+### told, and when" lives; the re-notify decision reads its last mail line.
+_mig_log() {
+  local _root="$1" _tool="$2" _action="$3" _detail="$4" _mode="$5" _dl="$6" _peer="$7"
+  local _lg="${_root}/${_MIG_LOG_NAME}"
+  _detail="$(printf '%s' "${_detail}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-120)"
+  mkdir -p "${_root}/log" 2>/dev/null
+  echo "$(date -u '+%Y-%m-%dT%H:%M:%S')|${_tool}|${_action}|${_detail}|${_mode}|${_dl:--}|${_peer:--}" \
+    >> "${_lg}" 2>/dev/null
+  chown root:root "${_lg}" 2>/dev/null
+  chmod 600 "${_lg}" 2>/dev/null
+  return 0
+}
+
 ###-------------SYSTEM-----------------###
 
 _send_notice_migration_complete() {
