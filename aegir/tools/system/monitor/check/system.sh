@@ -343,6 +343,19 @@ _if_fix_dhcp() {
 
     # Proceed only if there is at least one failure
     if [ "$count" -gt 0 ]; then
+      # On an idle box one failure line can sit in the log tail for many
+      # minutes, and each pass used to rewrite csf.allow and reload the
+      # whole firewall again for it. One rewrite per five minutes is plenty
+      # for a lease that is genuinely flapping.
+      _cdDhcp="/run/dhcp-monitor.cooldown"
+      _nowDhcp=$(date +%s)
+      if [ -s "${_cdDhcp}" ]; then
+        _tsDhcp=$(tr -dc '0-9' < "${_cdDhcp}" 2>/dev/null)
+        if [ -n "${_tsDhcp}" ] && [ $((_nowDhcp - _tsDhcp)) -ge 0 ] && [ $((_nowDhcp - _tsDhcp)) -lt 300 ]; then
+          return 0
+        fi
+      fi
+      date +%s > "${_cdDhcp}"
       # Clear existing DHCP entries in csf.allow
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
@@ -392,7 +405,11 @@ _cron_duplicate_instances_detection() {
           return 0
         fi
       fi
-      killall -9 cron &> /dev/null
+      # TERM first so the masters exit cleanly; -9 only what survives. The
+      # pattern kills the duplicate masters, not the jobs they exec'd.
+      pkill -TERM -f /usr/sbin/cron &> /dev/null
+      sleep 1
+      pkill -KILL -f /usr/sbin/cron &> /dev/null
       service cron start &> /dev/null
       # Cooldown stamp
       date +%s > "${_cd}"
@@ -516,7 +533,7 @@ _vnstat_health_check_fix() {
 
 _lfd_health_check_fix() {
   if [ -x "/etc/init.d/lfd" ]; then
-    if ! pgrep -f lfd \
+    if ! pgrep -f lfd >/dev/null 2>&1 \
       || [ ! -e "/run/lfd.pid" ]; then
       _cd="/run/lfd-monitor.cooldown"
       _now=$(date +%s)
@@ -528,7 +545,9 @@ _lfd_health_check_fix() {
         fi
       fi
       service lfd start
-      csf -e
+      # No csf -e here: it re-enabled the firewall even when an operator had
+      # deliberately disabled it with csf -x for maintenance. Starting lfd is
+      # this healer's job; the firewall's enablement state is the operator's.
       # Set cooldown timestamp after attempting recovery
       date +%s > "${_cd}"
       _thisErrLog="$(date) LFD Monitor was down, started"
@@ -614,15 +633,26 @@ _clamav_health_check_fix() {
 }
 
 _rsyslog_health_check_fix() {
+  # A missing pidfile alone is not a dead daemon, and killing a healthy
+  # rsyslogd -9 for it lost whatever was in its queues. Only a process that
+  # is genuinely absent across a short grace is treated as down, and the
+  # remedy is the init script, not a kill; a lone stale pidfile gets the
+  # same graceful restart, which rewrites it.
   if [ -x "/etc/init.d/rsyslog" ]; then
-    if ! pgrep -f /usr/sbin/rsyslogd \
-      || [ ! -e "/run/rsyslogd.pid" ]; then
-      pkill -9 -f /usr/sbin/rsyslogd || true
+    if ! pgrep -f /usr/sbin/rsyslogd >/dev/null 2>&1; then
+      sleep 2
+      if ! pgrep -f /usr/sbin/rsyslogd >/dev/null 2>&1; then
+        service rsyslog restart
+        _thisErrLog="$(date) Rsyslog was down, restarted"
+        echo "${_thisErrLog}" >> ${_pthOml}
+        _incident_email_report "Rsyslog was down, restarted"
+        echo >> ${_pthOml}
+      fi
+    elif [ ! -e "/run/rsyslogd.pid" ]; then
       service rsyslog restart
-      wait
-      _thisErrLog="$(date) Rsyslog was down, restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Rsyslog was down, restarted"
+      _thisErrLog="$(date) Rsyslog pidfile was missing, service restarted"
+      echo "${_thisErrLog}" >> ${_pthOml}
+      _incident_email_report "Rsyslog pidfile was missing, service restarted"
       echo >> ${_pthOml}
     fi
   fi

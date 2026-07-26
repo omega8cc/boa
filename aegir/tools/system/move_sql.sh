@@ -58,7 +58,11 @@ _check_running() {
 }
 
 _start_sql() {
-  _check_running
+  # In a chain the stop phase already checked and still HOLDS the locks --
+  # re-checking here would read our own lock as a foreign run and abort;
+  # re-creating merely refreshes the marker mtimes the stand-down consumers
+  # age-bound against.
+  [ "$1" != "chain" ] && _check_running
   _create_locks
 
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
@@ -83,7 +87,6 @@ _start_sql() {
     || [ -e "/run/mysqld/mysqlx.sock" ]; then
     rm -f /run/mysqld/mysql*
   fi
-  renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start &> /dev/null
   _mysqld_wait=0
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
@@ -116,10 +119,15 @@ _stop_sql() {
 
   echo "Stopping Nginx now..."
   service nginx stop &> /dev/null
-  until [ -z "${_IS_NGINX_RUNNING}" ]; do
-    _IS_NGINX_RUNNING=$(pgrep -f 'nginx: ')
+  # Seeded and bounded: the variable used to start empty, so this "wait"
+  # never waited at all and the kill below landed on a tier mid-shutdown.
+  _IS_NGINX_RUNNING=$(pgrep -f 'nginx: ')
+  _ngx_stop_wait=0
+  until [ -z "${_IS_NGINX_RUNNING}" ] || [ "${_ngx_stop_wait}" -ge 30 ]; do
     echo "Waiting for Nginx graceful shutdown..."
     sleep 1
+    _ngx_stop_wait=$(( _ngx_stop_wait + 1 ))
+    _IS_NGINX_RUNNING=$(pgrep -f 'nginx: ')
   done
   killall nginx &> /dev/null
   echo "Nginx stopped"
@@ -133,10 +141,13 @@ _stop_sql() {
       service "php${e}-fpm" force-quit &> /dev/null
     fi
   done
-  until [ -z "${_IS_FPM_RUNNING}" ]; do
-    _IS_FPM_RUNNING=$(pgrep -f 'php-fpm: ')
+  _IS_FPM_RUNNING=$(pgrep -f 'php-fpm: ')
+  _fpm_stop_wait=0
+  until [ -z "${_IS_FPM_RUNNING}" ] || [ "${_fpm_stop_wait}" -ge 30 ]; do
     echo "Waiting for PHP-FPM graceful shutdown..."
     sleep 1
+    _fpm_stop_wait=$(( _fpm_stop_wait + 1 ))
+    _IS_FPM_RUNNING=$(pgrep -f 'php-fpm: ')
   done
   pkill -9 -f php-fpm
   echo "PHP-FPM stopped"
@@ -165,23 +176,34 @@ _stop_sql() {
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
     echo "Stopping MySQLD now..."
     service mysql stop &> /dev/null
-    wait
     rm -f /run/mysqld/mysql*
   else
     echo "MySQLD already stopped?"
     echo "Nothing to do. Bye!"
-    _remove_locks
+    [ "$1" != "chain" ] && _remove_locks
     [ "$1" != "chain" ] && exit 1
   fi
 
+  # Bounded: a shutdown that flushes a large buffer pool legitimately takes
+  # minutes, but one that never finishes must not hold the restart lock
+  # forever -- ten minutes is generous for the former and a hard stop for
+  # the latter.
+  _mysqld_stop_wait=0
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
+    _mysqld_stop_wait=$(( _mysqld_stop_wait + 1 ))
+    if [ "${_mysqld_stop_wait}" -ge 200 ]; then
+      echo "$(date) MySQLD did not stop within ~10 minutes -- giving up this attempt" >> /var/log/boa/mysql.incident.log
+      [ "$1" != "chain" ] && _remove_locks
+      [ "$1" != "chain" ] && exit 1
+      return 1
+    fi
   done
   echo "MySQLD stopped"
 
-  _remove_locks
+  [ "$1" != "chain" ] && _remove_locks
   echo "MySQLD stop procedure completed"
   [ "$1" != "chain" ] && exit 0
 }
@@ -218,14 +240,14 @@ _stop_mysqld_only() {
   _create_locks
   if [ -z "$(pgrep -f /usr/sbin/mysqld)" ]; then
     echo "MySQLD already stopped"
-    _remove_locks
+    [ "$1" != "chain" ] && _remove_locks
     return 0
   fi
   echo "Stopping MySQLD (db-only) ..."
   timeout 60 service mysql stop &> /dev/null
   if _mysqld_answering; then
     echo "MySQLD answering after stop (healthy respawn) -- leaving it"
-    _remove_locks
+    [ "$1" != "chain" ] && _remove_locks
     return 0
   fi
   if pgrep -f /usr/sbin/mysqld > /dev/null 2>&1; then
@@ -233,7 +255,7 @@ _stop_mysqld_only() {
     sleep 5
     if _mysqld_answering; then
       echo "MySQLD answering after TERM (healthy respawn) -- leaving it"
-      _remove_locks
+      [ "$1" != "chain" ] && _remove_locks
       return 0
     fi
     pkill -KILL -f /usr/sbin/mysqld
@@ -243,12 +265,12 @@ _stop_mysqld_only() {
   if [ -z "$(pgrep -f /usr/sbin/mysqld)" ]; then
     rm -f /run/mysqld/mysql*
   fi
-  _remove_locks
+  [ "$1" != "chain" ] && _remove_locks
   echo "MySQLD stopped (db-only)"
 }
 
 _re_start_mysqld_only() {
-  _stop_mysqld_only
+  _stop_mysqld_only "chain"
   _start_sql "chain"
   _remove_locks
   exit 0

@@ -34,7 +34,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "${_SCRIPT}")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -46,7 +46,7 @@ _manage_single_lock
 [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
 if [ -e "${_pthOml}" ] && [ ! -e "${_oldOml}" ]; then
-  mv -f ${_pthOml} ${_oldOml}
+  mv -f "${_pthOml}" "${_oldOml}"
 fi
 
 _second_flood_guard() {
@@ -61,7 +61,7 @@ _second_flood_guard() {
 # Protect from high load due to csf loop/flood
 _csf_flood_guard() {
   _thisCountCsf=$(pgrep -fc /csf)
-  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt 4 ]; then
+  if [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountCsf}" -gt 4 ]; then
     echo "$(date) Too many ${_thisCountCsf} csf processes killed" >> \
       /var/log/boa/csf-count.kill.log
     pkill -9 -f csf
@@ -71,7 +71,7 @@ _csf_flood_guard() {
     wait
   fi
   _thisCountFire=$(pgrep -fc /var/xdrago/guest-fire.sh)
-  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 9 ]; then
+  if [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountFire}" -gt 9 ]; then
     echo "$(date) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/boa/fire-purge.kill.log
     csf -tf
@@ -79,7 +79,7 @@ _csf_flood_guard() {
     csf -df
     wait
     pkill -9 -f fire.sh
-  elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 7 ]; then
+  elif [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountFire}" -gt 7 ]; then
     echo "$(date) Too many ${_thisCountFire} fire.sh processes killed" >> \
       /var/log/boa/fire-count.kill.log
     csf -tf
@@ -155,6 +155,15 @@ case "${_BOX_CLASS}" in
 esac
 [[ "${_MONITOR_FANOUT_ITER}"  =~ ^[0-9]+$ ]] && _ITER="${_MONITOR_FANOUT_ITER}"
 [[ "${_MONITOR_FANOUT_SLEEP}" =~ ^[0-9]+$ ]] && _SLEEP="${_MONITOR_FANOUT_SLEEP}"
+# Leading zeros off before (( )) reads them as octal: an 08 here would error
+# out of the clamp AND out of the loop condition below, running the whole
+# watchdog fan-out zero times, silently, on every pass.
+while [ "${#_ITER}" -gt 1 ] && [ "${_ITER:0:1}" = "0" ]; do
+  _ITER="${_ITER:1}"
+done
+while [ "${#_SLEEP}" -gt 1 ] && [ "${_SLEEP:0:1}" = "0" ]; do
+  _SLEEP="${_SLEEP:1}"
+done
 (( _ITER  < 1 )) && _ITER=1
 (( _SLEEP < 1 )) && _SLEEP=1
 
