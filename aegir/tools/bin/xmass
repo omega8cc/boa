@@ -1623,6 +1623,17 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   done
   if [ "${_N}" = "1" ]; then
     echo "PANEL-NOTE: alias-named panel ${_SP} absent; adopted ${_FOUND} (distro number diverged source vs target)"
+    # Heal the alias too, or the divergence just bites the next consumer:
+    # renameaegirhost resolves the panel through this same alias and dies on
+    # the same nonexistent distro/NNN — live-observed on the resume that
+    # followed the first version of this fallback. The alias is the lie;
+    # correct it once here and every downstream reader gets the truth.
+    _OLD_PLAT=$(dirname "$(dirname "${_SP}")")
+    _NEW_PLAT=$(dirname "$(dirname "${_FOUND}")")
+    if [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ] && [ -f "${_ALS}" ]; then
+      sed -i "s|${_OLD_PLAT}|${_NEW_PLAT}|g" "${_ALS}" \
+        && echo "PANEL-NOTE: hostmaster alias platform path corrected ${_OLD_PLAT} -> ${_NEW_PLAT}"
+    fi
     _SP="${_FOUND}"
   elif [ "${_N}" -gt 1 ]; then
     echo "PANEL-ERROR: ${_N} candidate panel dirs under ${_TREE} match ${_NEW} — refusing to guess"
