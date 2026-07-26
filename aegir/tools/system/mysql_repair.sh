@@ -26,6 +26,18 @@ _check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
+# Stand down while the database is already being worked on. A full-server
+# mysqlcheck taken while a backup holds its locks, or while the watchdog is
+# restarting the server, competes for the same tables and can turn a slow
+# window into a stuck one. A crashed table is not urgent: the next pass picks
+# it up as soon as the window closes, and these markers are age-reaped, so a
+# operation that died cannot hold this off indefinitely.
+for _m in /run/boa_sql_backup.pid /run/boa_sql_cluster_backup.pid \
+          /run/boa_sql_maintenance.pid /run/boa_mysql_auto_healing.pid \
+          /run/mysql_restart_running.pid; do
+  [ -e "${_m}" ] && exit 0
+done
+
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
@@ -49,6 +61,15 @@ _manage_single_lock() {
   fi
 }
 _manage_single_lock
+
+# A full-server check, repair and optimize locks and rewrites every table, which
+# is exactly what the watchdog's maintenance marker exists to announce: while it
+# is held the database watchdog stands down entirely, so it cannot read this
+# work as a fault and restart the server underneath it. The trap means a killed
+# run cannot leave auto-healing disabled, and the watchdog ignores the marker
+# once it is stale in any case.
+touch /run/boa_sql_maintenance.pid
+trap 'rm -f /run/boa_sql_maintenance.pid' EXIT
 
 dir=/var/log/boa/mysql_optimize
 mkdir -p $dir
