@@ -1607,6 +1607,29 @@ if [ -f "${_SPN}/drushrc.php" ]; then
   _SP="${_SPN}"
 fi
 if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
+  # The fqdn substitution cannot heal a DISTRO-NUMBER divergence: the alias
+  # that survived the rsync -u mtime race names the SOURCE's panel platform
+  # (e.g. distro/003 after one more satellite upgrade there), while the
+  # freshly built target's panel lives under a lower number (e.g. 002). A
+  # months-old production source vs a fresh target ALWAYS has this shape, so
+  # scan the target's own panel tree for the NEW-host-named panel dir and
+  # adopt it only when the match is unambiguous — refuse to guess otherwise.
+  _TREE=$(dirname "$(dirname "$(dirname "${_SP}")")")
+  _FOUND=""; _N=0
+  for _CAND in "${_TREE}"/*/sites/*"${_NEW}"*; do
+    [ -f "${_CAND}/drushrc.php" ] || continue
+    [ -f "${_CAND}/settings.php" ] || continue
+    _FOUND="${_CAND}"; _N=$((_N+1))
+  done
+  if [ "${_N}" = "1" ]; then
+    echo "PANEL-NOTE: alias-named panel ${_SP} absent; adopted ${_FOUND} (distro number diverged source vs target)"
+    _SP="${_FOUND}"
+  elif [ "${_N}" -gt 1 ]; then
+    echo "PANEL-ERROR: ${_N} candidate panel dirs under ${_TREE} match ${_NEW} — refusing to guess"
+    exit 1
+  fi
+fi
+if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   echo "PANEL-ERROR: no panel settings.php/drushrc.php under ${_R} (looked at ${_SP})"
   exit 1
 fi
