@@ -29,7 +29,17 @@ _check_root() {
 }
 _check_root
 
-[ -f "/run/boa_mysql_auto_healing.pid" ] && exit 0
+# Stand down while the database is already being worked on. A full-server
+# mysqlcheck taken while a backup holds its locks, or while the watchdog is
+# restarting the server, competes for the same tables and can turn a slow
+# window into a stuck one. A crashed table is not urgent: the next pass picks
+# it up as soon as the window closes, and these markers are age-reaped, so a
+# operation that died cannot hold this off indefinitely.
+for _m in /run/boa_sql_backup.pid /run/boa_sql_cluster_backup.pid \
+          /run/boa_sql_maintenance.pid /run/boa_mysql_auto_healing.pid \
+          /run/mysql_restart_running.pid; do
+  [ -e "${_m}" ] && exit 0
+done
 
 ###
 ### Detect which log file MySQL actually writes to on this system.
