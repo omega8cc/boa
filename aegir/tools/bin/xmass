@@ -1170,7 +1170,14 @@ _xmass_sync_account() {
   # --force-old instead of trusting alias auto-detection. Do NOT add
   # excludes for server_master/hostmaster here: the rename converges either
   # way, and the source platform_* and per-site aliases must always arrive.
-  _xmass_rsync -aEAXqu ${_ieni} \
+  #
+  # php.ini is the ONE exception: BOA generates it per box for the local
+  # drush CLI and hardens it immutable (chattr +i), so the target's copy is
+  # both correct and unreplaceable. Without the exclude, every sync to a
+  # real BOA target fails rc=23 on the rename over the immutable file — a
+  # failure the pre-rc-capture code swallowed silently for years and the
+  # transfer gate now rightly refuses to ignore.
+  _xmass_rsync -aEAXqu ${_ieni} --exclude=php.ini \
     -e ssh "${_udir}/.drush/" \
     "root@${_tgt}:${_dst}/.drush/"
 
