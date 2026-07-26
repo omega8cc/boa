@@ -564,12 +564,15 @@ _GHOST_SITE_FILES_CLEANUP=NO
 ### GHOST ALIASES CLEANUP                   ###
 ###----------------------------------------###
 ###
-### Nightly cleanup of stale per-site Drush
-### alias copies in the limited-shell (FTPS)
-### user tree. The default NO only detects and
-### logs them (dry-run). Change to YES to move
-### a stale alias copy aside. System-wide
-### default may also be set in barracuda.cnf.
+### Cleanup of stale per-site Drush alias
+### copies in the limited-shell (FTPS) user
+### tree, on the 3-minute sweep. The default
+### NO only detects and logs them (dry-run).
+### Change to YES to move a stale alias aside:
+### each candidate is held 48h from its first
+### sighting, and aegir/distro front-end
+### companion aliases are never touched.
+### System-wide default: barracuda.cnf.
 ###
 _GHOST_ALIASES_CLEANUP=NO
 

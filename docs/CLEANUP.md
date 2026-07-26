@@ -109,18 +109,22 @@ accumulated candidates always get one fresh enabled-mode night before any
 move. These checks are newer than the codebase ones — exercise them in
 dry-run, then on a disposable VM, before enabling on production.
 
-On the omega8.cc-hosted fleet (hostname ending in `.aegir.cc`) the two nightly
-registration-level reapers — `_GHOST_SITES_CLEANUP` and `_GHOST_VHOSTS_CLEANUP`
-— are seeded to `YES` in `.barracuda.cnf` (only when the line is not already
-present, so an explicit operator value always wins and the toggle stays
-available). `_GHOST_ALIASES_CLEANUP` is not seeded: it runs on the 3-minute
-limited-shell sweep with no consecutive-run persistence and no migration
-interlock, so it stays a per-box operator decision — the nightly site reaper
-already converges within two nights. During an `xoct`/`xcopy` account
-migration, set `/etc/boa/.pause_tasks_maint.cnf` on the target for the
-duration of the transfer if that sweep is enabled there.
-`_GHOST_SITE_FILES_CLEANUP` moves data, not just registration, and stays
-opt-in everywhere.
+On the omega8.cc-hosted fleet (hostname ending in `.aegir.cc`) the whole
+`_GHOST_*_CLEANUP` family is seeded to `YES` in `.barracuda.cnf` (only when
+the line is not already present, so an explicit operator value always wins
+and the toggle stays available). `_GHOST_ALIASES_CLEANUP` joined the seed
+once its 3-minute limited-shell sweep gained a 48-hour first-sighting hold
+(marker `log/ctrl/ghost-ltd-<domain>.seen`, cleared on any valid sighting,
+accumulated only while the flag is YES — so a flip never mass-reaps a
+backlog) and a skip for `aegir/distro` front-end companion aliases. The hold
+is the migration protection: `rsync -a` preserves source mtimes so the
+60-minute freshness guard cannot recognise a freshly-arrived alias, and a
+hand-set `/etc/boa/.pause_tasks_maint.cnf` does not survive on a hosted box
+(the box automation removes it within minutes outside a `barracuda` run). On
+builds that predate the hold, keep the flag at `NO` in both control files on
+any box while it is receiving an account transfer. Everything the sweep moves
+lands in the account's `undo/` directory, and the nightly site reaper — with
+classification and the client notice — still acts first on an armed system.
 
 ## Client notification for ghost sites
 
