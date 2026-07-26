@@ -184,6 +184,36 @@ if [ ! -e "${_pthEtc}/.migrated.newrelic.txt" ]; then
   [ -e "/root/.enable.newrelic.sysmond.cnf" ] && cp -a /root/.enable.newrelic.sysmond.cnf "${_pthEtc}/" 2>/dev/null
   touch "${_pthEtc}/.migrated.newrelic.txt"
 fi
+### One-shot fleet switch: on omega8.cc-hosted systems (hostname ends in
+### .aegir.cc) normalize the whole ghost-cleanup family to YES -- every mover
+### is a reversible move to an undo/-family location, proven by the 2026-07
+### all-flags crash test. Each flag is collapsed to a single clean NAME=YES
+### line (drops =NO leftovers, duplicates and comment-tail variants, so the
+### last-match and any-match flag parsers agree), in the system cnf and in
+### every per-account octopus cnf regardless of the account name prefix.
+### Runs once per box per stamp serial; operator toggles set afterwards
+### stick. Decrement the serial in the stamp name to re-run fleet-wide.
+### Accounts created later are covered by the hosted cnf seeding instead.
+if [ ! -e "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+  _ghHn="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  if [[ "${_ghHn}" =~ ".aegir.cc"($) ]] && [ -e "${_barCnf}" ]; then
+    for _ghFlag in _GHOST_CODEBASES_CLEANUP _GHOST_PLATFORMS_CLEANUP \
+      _GHOST_VHOSTS_CLEANUP _GHOST_SITES_CLEANUP _GHOST_SITE_FILES_CLEANUP \
+      _GHOST_ALIASES_CLEANUP _GHOST_CLIENT_NOTIFY; do
+      sed -i "/^[[:space:]]*${_ghFlag}=/d" "${_barCnf}" 2>/dev/null
+      echo "${_ghFlag}=YES" >> "${_barCnf}"
+    done
+    for _ghOct in /root/.*.octopus.cnf; do
+      [ -e "${_ghOct}" ] || continue
+      for _ghFlag in _GHOST_PLATFORMS_CLEANUP _GHOST_VHOSTS_CLEANUP \
+        _GHOST_SITES_CLEANUP _GHOST_SITE_FILES_CLEANUP _GHOST_ALIASES_CLEANUP; do
+        sed -i "/^[[:space:]]*${_ghFlag}=/d" "${_ghOct}" 2>/dev/null
+        echo "${_ghFlag}=YES" >> "${_ghOct}"
+      done
+    done
+  fi
+  touch "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid"
+fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
 [ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
