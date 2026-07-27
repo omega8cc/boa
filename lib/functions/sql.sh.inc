@@ -803,6 +803,12 @@ _tune_sql_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _tune_sql_memory_limits"
   fi
+  # The pool budget normally arrives from _sql_pin_overrides; when this
+  # function is reached on any other path it falls back to the derived
+  # value so the pool and the per-session budgets stay in lock-step.
+  if [ -z "${_USE_POOL_SQL}" ]; then
+    _USE_POOL_SQL="${_USE_SQL}"
+  fi
   if [ -e "/root/.run-to-excalibur.cnf" ] \
     || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -830,201 +836,38 @@ _tune_sql_memory_limits() {
   else
     cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
   fi
-  # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
-  _pthTun="/var/opt/mysqltuner.pl"
-  _outTun="/var/opt/mysqltuner-${_xSrl}-${_X_VERSION}-${_NOW}.txt"
-  if [ -e "/root/.run-to-excalibur.cnf" ] \
-    || [ -e "/root/.run-to-daedalus.cnf" ] \
-    || [ -e "/root/.run-to-chimaera.cnf" ] \
-    || [ -e "/root/.run-to-beowulf.cnf" ]; then
-    _USE_MYSQLTUNER=NO
-  fi
-  if [ ! -e "${_outTun}" ] \
-    && [ "${_USE_MYSQLTUNER}" != "NO" ] \
-    && [ "${_STATUS}" = "UPGRADE" ]; then
-    _msg "INFO: Running MySQLTuner check on all databases"
-    _msg "WAIT: This may take a while, please wait..."
-    _MYSQLTUNER_TEST_RESULT=OK
-    rm -f /var/opt/mysqltuner*
-    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
-    if [ ! -e "${_pthTun}" ]; then
-      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
-    fi
-    if [ -e "${_pthTun}" ]; then
-      perl ${_pthTun} > ${_outTun} 2>&1
+  _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
+  _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
+  if [ "${_DB_COUNT}" -gt 3 ]; then
+    if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
+      && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
+      _INNODB_LOG_FILE_SIZE=256
+    elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
+      && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
+      _INNODB_LOG_FILE_SIZE=512
+    elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
+      && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
+      _INNODB_LOG_FILE_SIZE=1024
+    elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
+      && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
+      _INNODB_LOG_FILE_SIZE=2048
+    elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
+      _INNODB_LOG_FILE_SIZE=2048
     fi
   fi
-  if [ -e "${_pthTun}" ] \
-    && [ -e "${_outTun}" ] \
-    && [ "${_USE_MYSQLTUNER}" != "NO" ] \
-    && [ "${_STATUS}" = "UPGRADE" ]; then
-    _REC_MYISAM_MEM=$(cat ${_outTun} \
-      | grep "Data in MyISAM tables" \
-      | cut -d: -f2 \
-      | awk '{ print $1}' 2>&1)
-    _REC_INNODB_MEM=$(cat ${_outTun} \
-      | grep "data size:" \
-      | cut -d/ -f3 \
-      | awk '{ print $1}' 2>&1)
-    _MYSQLTUNER_TEST=$(cat ${_outTun} 2>&1)
-    cp -a ${_outTun} ${_pthLog}/
-    if [ -z "${_REC_INNODB_MEM}" ] \
-      || [[ "${_MYSQLTUNER_TEST}" =~ "Cannot calculate MyISAM index" ]] \
-      || [[ "${_MYSQLTUNER_TEST}" =~ "InnoDB is enabled but isn" ]]; then
-      _MYSQLTUNER_TEST_RESULT=FAIL
-      _msg "NOTE: The MySQLTuner test failed!"
-      _msg "NOTE: Please review ${_outTun}"
-      _msg "NOTE: We will use some sane SQL defaults instead, do not worry!"
-    fi
-    ###--------------------###
-    if [ ! -z "${_REC_MYISAM_MEM}" ] \
-      && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
-      _RAW_MYISAM_MEM=$(echo ${_REC_MYISAM_MEM} | sed "s/[A-Z]//g" 2>&1)
-      if [[ "${_REC_MYISAM_MEM}" =~ "G" ]]; then
-        _RAW_MYISAM_MEM=$(echo ${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}' 2>&1)
-        _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1024" | bc -l 2>&1)
-      elif [[ "${_REC_MYISAM_MEM}" =~ "M" ]]; then
-        _RAW_MYISAM_MEM=$(echo ${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}' 2>&1)
-        _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1" | bc -l 2>&1)
-      fi
-      _RAW_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
-      if [ "${_RAW_MYISAM_MEM}" -gt "${_USE_SQL}" ]; then
-        _USE_MYISAM_MEM="${_USE_SQL}"
-      else
-        _RAW_MYISAM_MEM=$(echo "scale=2; (${_RAW_MYISAM_MEM} * 1.1)" | bc 2>&1)
-        _USE_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
-      fi
-      if [ "${_USE_MYISAM_MEM}" -lt 256 ] \
-        || [ -z "${_USE_MYISAM_MEM}" ]; then
-        _USE_MYISAM_MEM="${_USE_SQL}"
-      fi
-      _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
-    else
-      _USE_MYISAM_MEM="${_USE_SQL}M"
-      if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
-        _msg "NOTE: _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
-      fi
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
-    fi
-    ###--------------------###
-    if [ ! -z "${_REC_INNODB_MEM}" ] \
-      && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
-      _RAW_INNODB_MEM=$(echo ${_REC_INNODB_MEM} | sed "s/[A-Z]//g" 2>&1)
-      if [[ "${_REC_INNODB_MEM}" =~ "G" ]]; then
-        _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
-        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1024" | bc -l 2>&1)
-      elif [[ "${_REC_INNODB_MEM}" =~ "M" ]]; then
-        _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
-        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1" | bc -l 2>&1)
-      fi
-      _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
-      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
-        || [ -z "${_USE_INNODB_MEM}" ] \
-        || [ "${_RAW_INNODB_MEM}" -lt 512 ]; then
-        _USE_INNODB_MEM="${_USE_SQL}"
-      else
-        _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
-        _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
-      fi
-      _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024/2" | bc 2>&1)
-      if [ "${_INNODB_BPI}" -lt 1 ] || [ -z "${_INNODB_BPI}" ]; then
-        _INNODB_BPI="1"
-      fi
-      if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
-        sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
-      fi
-      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
-      _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt 3 ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
-          _INNODB_LOG_FILE_SIZE=256
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
-          _INNODB_LOG_FILE_SIZE=512
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
-          _INNODB_LOG_FILE_SIZE=1024
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
-          _INNODB_LOG_FILE_SIZE=2048
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
-          _INNODB_LOG_FILE_SIZE=2048
-        fi
-      fi
-      if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
-        || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        _INNODB_LOG_FILE_SIZE=64
-      fi
-      _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
-      if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
-      fi
-    else
-      _USE_INNODB_MEM="${_USE_SQL}M"
-      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
-      _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt 3 ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
-          _INNODB_LOG_FILE_SIZE=256
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
-          _INNODB_LOG_FILE_SIZE=512
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
-          _INNODB_LOG_FILE_SIZE=1024
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
-          _INNODB_LOG_FILE_SIZE=2048
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
-          _INNODB_LOG_FILE_SIZE=2048
-        fi
-      fi
-      if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
-        || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        _INNODB_LOG_FILE_SIZE=64
-      fi
-      _msg "NOTE: _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
-      if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
-      fi
-    fi
-  else
-    _THIS_USE_MEM="${_USE_SQL}M"
-    if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ] \
-      && [ "${_STATUS}" = "UPGRADE" ]; then
-      _msg "NOTE: _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
-      _msg "NOTE: _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
-    fi
-    _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
-    _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-    if [ "${_DB_COUNT}" -gt 3 ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
-        _INNODB_LOG_FILE_SIZE=256
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
-        _INNODB_LOG_FILE_SIZE=512
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
-        _INNODB_LOG_FILE_SIZE=1024
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
-        _INNODB_LOG_FILE_SIZE=2048
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
-        _INNODB_LOG_FILE_SIZE=2048
-      fi
-    fi
-    if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
-      || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      _INNODB_LOG_FILE_SIZE=64
-    fi
-    if [ -e "/etc/mysql/my.cnf" ]; then
-      sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf &> /dev/null
-    fi
+  if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
+    || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+    _INNODB_LOG_FILE_SIZE=64
+  fi
+  if [ -e "/etc/mysql/my.cnf" ]; then
+    sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_POOL_SQL}M/g"  /etc/mysql/my.cnf &> /dev/null
+  fi
+  # An explicit log size pin wins over every derivation arm above. It is
+  # deliberately the only way a pool pin can move the redo band: the
+  # derived size keeps using the unpinned base, so a pool pin alone
+  # never triggers _innodb_log_file_size_update and its mysqld restart.
+  if [ -n "${_LOG_FILE_SIZE_PIN}" ]; then
+    _INNODB_LOG_FILE_SIZE="${_LOG_FILE_SIZE_PIN}"
   fi
 }
 
