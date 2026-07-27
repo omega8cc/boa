@@ -1482,8 +1482,8 @@ _update_agents() {
   _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f69 --guard /local/bin/xmass
   _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f96 --guard /local/bin/autobeowulf
   _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f96 --guard /local/bin/autoexcalibur
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f80 --guard /local/bin/boa
-  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f82 --guard /local/bin/barracuda
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f79 --guard /local/bin/boa
+  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f81 --guard /local/bin/barracuda
   _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f93 --guard /local/bin/octopus
   _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f98 --guard /local/bin/dhcpfix
   _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f96 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
@@ -4048,7 +4048,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f50 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard /local/bin/backboa
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f82 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f80 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f79 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard /local/bin/dcysetup
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f96 --guard /local/bin/duobackboa
@@ -4090,11 +4090,9 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
-    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f97 --guard /local/bin/memorytuner
+    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f96 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
     _fetch_versioned ${_optBin}/mycnfup "${_urlHmr}/${_tBn}/mycnfup" f98 --guard /local/bin/mycnfup
-    _fetch_versioned ${_optBin}/mysqltuner5 "${_urlHmr}/helpers/mysqltuner5" f99 --guard /local/bin/mysqltuner5
-    _fetch_versioned ${_optBin}/mysqltuner8 "${_urlHmr}/helpers/mysqltuner8" f99 --guard /local/bin/mysqltuner8
     _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --guard /local/bin/randpass
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f99 --guard /local/bin/setprio
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
@@ -4177,7 +4175,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
+  chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,perftest}
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps}
