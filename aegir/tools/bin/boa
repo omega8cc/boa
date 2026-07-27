@@ -2692,7 +2692,6 @@ _display_info() {
       _SKY=$(grep _SKYNET_MODE ${_barCnf} 2>&1)
       _STP=$(grep _STRONG_PASSWORDS ${_barCnf} 2>&1)
       _SUO=$(grep _SYSTEM_UP_ONLY ${_barCnf} 2>&1)
-      _UMY=$(grep _USE_MYSQLTUNER ${_barCnf} 2>&1)
       _XTR=$(grep _XTRAS_LIST ${_barCnf} 2>&1)
       _crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
         | cut -d '/' -f4 \
@@ -2783,7 +2782,6 @@ _display_info() {
       [ ! -z "${_SFS}" ] && echo "  _SFS ${_SFS}"
       [ ! -z "${_STP}" ] && echo "  _STP ${_STP}"
       [ ! -z "${_SUO}" ] && echo "  _SUO ${_SUO}"
-      [ ! -z "${_UMY}" ] && echo "  _UMY ${_UMY}"
       [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
       [ ! -z "${_NRC}" ] && echo "  _NRC ${_NRC}"
       [ ! -z "${_MON}" ] && echo "  _MON ${_MON}"

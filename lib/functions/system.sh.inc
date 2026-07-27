@@ -847,6 +847,99 @@ _php_budget_for_ram() {
 }
 
 #
+# Validate a single pin override: a plain integer within [min, max].
+# Anything else -- empty, unit suffixes like 32G, negatives, out of
+# range -- is rejected fail-closed so the derived value stays. Never
+# strip characters: 32G silently becoming 32 would be a 1024x error.
+_sql_pin_valid() {
+  local _pin_value="${1}"
+  local _pin_min="${2}"
+  local _pin_max="${3}"
+  if [[ ! "${_pin_value}" =~ ^[0-9]+$ ]]; then
+    return 1
+  fi
+  if [ "${_pin_value}" -lt "${_pin_min}" ] \
+    || [ "${_pin_value}" -gt "${_pin_max}" ]; then
+    return 1
+  fi
+  return 0
+}
+
+#
+# Apply operator per-knob pins on top of the derived model. All pins
+# default to unset: with none set every downstream value is identical
+# to the derived output. Values are absolute megabytes, except
+# _SQL_MAX_CONNECTIONS_FORCE which is a plain count. Memory pins are
+# clamped against installed RAM so a stale pin on a resized guest
+# fails closed to the derived value instead of over-committing.
+# _USE_POOL_SQL carries the buffer pool budget separately from
+# _USE_SQL so a pool pin can never inflate the per-session
+# tmp_table/max_heap budget, and the log file size keeps deriving
+# from the unpinned base -- a pool pin alone stays restart-free.
+_sql_pin_overrides() {
+  local _RAW_RAM=$(( _RAM + _RESERVED_RAM ))
+  _USE_POOL_SQL="${_USE_SQL}"
+  _KEY_BUFFER_PIN=""
+  _LOG_FILE_SIZE_PIN=""
+  _VALKEY_MAXMEM_PIN=""
+  _SOLR_HEAP_PIN=""
+  if [ -n "${_SQL_BUFFER_POOL_FORCE}" ]; then
+    if _sql_pin_valid "${_SQL_BUFFER_POOL_FORCE}" "64" "${_RAW_RAM}"; then
+      _USE_POOL_SQL="${_SQL_BUFFER_POOL_FORCE}"
+    else
+      _msg "NOTE: Ignoring invalid _SQL_BUFFER_POOL_FORCE=${_SQL_BUFFER_POOL_FORCE}"
+    fi
+  fi
+  if [ -n "${_SQL_TMP_TABLE_FORCE}" ]; then
+    if _sql_pin_valid "${_SQL_TMP_TABLE_FORCE}" "16" "${_RAW_RAM}"; then
+      _TMP_SQL="${_SQL_TMP_TABLE_FORCE}M"
+    else
+      _msg "NOTE: Ignoring invalid _SQL_TMP_TABLE_FORCE=${_SQL_TMP_TABLE_FORCE}"
+    fi
+  fi
+  if [ -n "${_SQL_KEY_BUFFER_FORCE}" ]; then
+    if _sql_pin_valid "${_SQL_KEY_BUFFER_FORCE}" "8" "${_RAW_RAM}"; then
+      _KEY_BUFFER_PIN="${_SQL_KEY_BUFFER_FORCE}"
+    else
+      _msg "NOTE: Ignoring invalid _SQL_KEY_BUFFER_FORCE=${_SQL_KEY_BUFFER_FORCE}"
+    fi
+  fi
+  if [ -n "${_SQL_LOG_FILE_SIZE_FORCE}" ]; then
+    if _sql_pin_valid "${_SQL_LOG_FILE_SIZE_FORCE}" "64" "8192"; then
+      _LOG_FILE_SIZE_PIN="${_SQL_LOG_FILE_SIZE_FORCE}"
+    else
+      _msg "NOTE: Ignoring invalid _SQL_LOG_FILE_SIZE_FORCE=${_SQL_LOG_FILE_SIZE_FORCE}"
+    fi
+  fi
+  if [ -n "${_SQL_MAX_CONNECTIONS_FORCE}" ]; then
+    if _sql_pin_valid "${_SQL_MAX_CONNECTIONS_FORCE}" "10" "10000"; then
+      _MXC_SQL="${_SQL_MAX_CONNECTIONS_FORCE}"
+    else
+      _msg "NOTE: Ignoring invalid _SQL_MAX_CONNECTIONS_FORCE=${_SQL_MAX_CONNECTIONS_FORCE}"
+    fi
+  fi
+  if [ -n "${_VALKEY_MAXMEM_FORCE}" ]; then
+    if _sql_pin_valid "${_VALKEY_MAXMEM_FORCE}" "64" "${_RAW_RAM}"; then
+      _VALKEY_MAXMEM_PIN="${_VALKEY_MAXMEM_FORCE}"
+    else
+      _msg "NOTE: Ignoring invalid _VALKEY_MAXMEM_FORCE=${_VALKEY_MAXMEM_FORCE}"
+    fi
+  fi
+  if [ -n "${_SOLR_HEAP_FORCE}" ]; then
+    if _sql_pin_valid "${_SOLR_HEAP_FORCE}" "64" "${_RAW_RAM}"; then
+      _SOLR_HEAP_PIN="${_SOLR_HEAP_FORCE}"
+    else
+      _msg "NOTE: Ignoring invalid _SOLR_HEAP_FORCE=${_SOLR_HEAP_FORCE}"
+    fi
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "TUNE: _USE_POOL_SQL is ${_USE_POOL_SQL}"
+    _msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
+    _msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
+  fi
+}
+
+#
 # Tune memory limits for PHP, Nginx and Percona.
 _tune_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -992,6 +1085,7 @@ _tune_memory_limits() {
     _msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
     _msg "TUNE: _SRT_SQL is ${_SRT_SQL}"
   fi
+  _sql_pin_overrides
   _php_budget_for_ram
   #
   # Platform adjustments. _VMFAMILY governs nginx worker count, the legacy
@@ -1150,6 +1244,10 @@ _tune_memory_limits() {
     wait
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf &> /dev/null
     wait
+    if [ -n "${_KEY_BUFFER_PIN}" ]; then
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_KEY_BUFFER_PIN}M/g" /etc/mysql/my.cnf &> /dev/null
+      wait
+    fi
     if [ ! -z "${_CUSTOM_COLLATION_SQL}" ]; then
       _SYS_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}
     fi
@@ -1161,6 +1259,9 @@ _tune_memory_limits() {
   fi
 
   _MAX_MEM_VALKEY=$(( _RAM / 3 ))
+  if [ -n "${_VALKEY_MAXMEM_PIN}" ]; then
+    _MAX_MEM_VALKEY="${_VALKEY_MAXMEM_PIN}"
+  fi
   _MAX_VALKEY="${_MAX_MEM_VALKEY}MB"
 
   if [ -e "/etc/valkey/valkey.conf" ]; then
@@ -1219,6 +1320,9 @@ _tune_memory_limits() {
   fi
 
   _USE_SOLR_MEM=$(( _RAM / 6 ))
+  if [ -n "${_SOLR_HEAP_PIN}" ]; then
+    _USE_SOLR_MEM="${_SOLR_HEAP_PIN}"
+  fi
   _USE_SOLR="-Xmx${_USE_SOLR_MEM}m"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
@@ -1506,6 +1610,11 @@ _barracuda_cnf_cleanup() {
   _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${_barCnf} 2>&1)
   if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
     sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${_barCnf}
+    wait
+  fi
+  _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${_barCnf} 2>&1)
+  if [[ "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
+    sed -i "s/^_USE_MYSQLTUNER.*//g" ${_barCnf}
     wait
   fi
   _USE_STOCK_TEST=$(grep _USE_STOCK ${_barCnf} 2>&1)
@@ -2360,7 +2469,15 @@ _barracuda_cnf() {
     echo "_DB_SERVER=${_DB_SERVER}"                           >> ${_barCnf}
     echo "_SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL}"               >> ${_barCnf}
     echo "_SQL_MAX_TTL=${_SQL_MAX_TTL}"                       >> ${_barCnf}
-    echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${_barCnf}
+
+    echo "###"                                                >> ${_barCnf}
+    echo "_SQL_BUFFER_POOL_FORCE=\"${_SQL_BUFFER_POOL_FORCE}\""         >> ${_barCnf}
+    echo "_SQL_TMP_TABLE_FORCE=\"${_SQL_TMP_TABLE_FORCE}\""             >> ${_barCnf}
+    echo "_SQL_KEY_BUFFER_FORCE=\"${_SQL_KEY_BUFFER_FORCE}\""           >> ${_barCnf}
+    echo "_SQL_LOG_FILE_SIZE_FORCE=\"${_SQL_LOG_FILE_SIZE_FORCE}\""     >> ${_barCnf}
+    echo "_SQL_MAX_CONNECTIONS_FORCE=\"${_SQL_MAX_CONNECTIONS_FORCE}\"" >> ${_barCnf}
+    echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\""             >> ${_barCnf}
+    echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
@@ -2757,9 +2874,39 @@ _barracuda_cnf() {
       echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${_barCnf}
     fi
 
-    _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${_barCnf} 2>&1)
-    if [[ ! "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
-      echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${_barCnf}
+    _SQL_BUFFER_POOL_FORCE_TEST=$(grep _SQL_BUFFER_POOL_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_BUFFER_POOL_FORCE_TEST}" =~ "_SQL_BUFFER_POOL_FORCE" ]]; then
+      echo "_SQL_BUFFER_POOL_FORCE=\"${_SQL_BUFFER_POOL_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_TMP_TABLE_FORCE_TEST=$(grep _SQL_TMP_TABLE_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_TMP_TABLE_FORCE_TEST}" =~ "_SQL_TMP_TABLE_FORCE" ]]; then
+      echo "_SQL_TMP_TABLE_FORCE=\"${_SQL_TMP_TABLE_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_KEY_BUFFER_FORCE_TEST=$(grep _SQL_KEY_BUFFER_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_KEY_BUFFER_FORCE_TEST}" =~ "_SQL_KEY_BUFFER_FORCE" ]]; then
+      echo "_SQL_KEY_BUFFER_FORCE=\"${_SQL_KEY_BUFFER_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_LOG_FILE_SIZE_FORCE_TEST=$(grep _SQL_LOG_FILE_SIZE_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_LOG_FILE_SIZE_FORCE_TEST}" =~ "_SQL_LOG_FILE_SIZE_FORCE" ]]; then
+      echo "_SQL_LOG_FILE_SIZE_FORCE=\"${_SQL_LOG_FILE_SIZE_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_MAX_CONNECTIONS_FORCE_TEST=$(grep _SQL_MAX_CONNECTIONS_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_MAX_CONNECTIONS_FORCE_TEST}" =~ "_SQL_MAX_CONNECTIONS_FORCE" ]]; then
+      echo "_SQL_MAX_CONNECTIONS_FORCE=\"${_SQL_MAX_CONNECTIONS_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _VALKEY_MAXMEM_FORCE_TEST=$(grep _VALKEY_MAXMEM_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_VALKEY_MAXMEM_FORCE_TEST}" =~ "_VALKEY_MAXMEM_FORCE" ]]; then
+      echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SOLR_HEAP_FORCE_TEST=$(grep _SOLR_HEAP_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SOLR_HEAP_FORCE_TEST}" =~ "_SOLR_HEAP_FORCE" ]]; then
+      echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\"" >> ${_barCnf}
     fi
 
     _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
