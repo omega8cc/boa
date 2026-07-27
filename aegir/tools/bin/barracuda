@@ -1011,10 +1011,6 @@ _up_action() {
       wait
       sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"         ${_barCnf}
       wait
-      if [ -e "/etc/init.d/valkey-server" ] || [ -e "/etc/init.d/redis-server" ]; then
-        sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"           ${_barCnf}
-        wait
-      fi
     fi
 
     _if_hosted_sys
