@@ -998,15 +998,6 @@ _RESERVED_RAM=0
 _DB_BINARY_LOG=NO
 
 ###
-### Use MySQLTuner to configure SQL limits.
-### Can be enabled when set to YES, but may cause
-### very high load spikes or forced SQL restarts
-### on systems with not enough RAM and CPU power
-### and hundreds of sites hosted.
-###
-_USE_MYSQLTUNER=NO
-
-###
 ### Optional per-knob tuning pins. Each accepts a plain
 ### integer only: megabytes for the memory pins, a count
 ### for _SQL_MAX_CONNECTIONS_FORCE. Anything else, incl.
@@ -1024,13 +1015,13 @@ _USE_MYSQLTUNER=NO
 ### heap -Xmx for Solr 7 and Solr 9 alike (not jetty/solr4).
 ### Pins have no effect on Galera cluster nodes.
 ###
-### _SQL_BUFFER_POOL_FORCE=8192
-### _SQL_TMP_TABLE_FORCE=256
-### _SQL_KEY_BUFFER_FORCE=64
-### _SQL_LOG_FILE_SIZE_FORCE=512
-### _SQL_MAX_CONNECTIONS_FORCE=300
-### _VALKEY_MAXMEM_FORCE=2048
-### _SOLR_HEAP_FORCE=4096
+_SQL_BUFFER_POOL_FORCE=""
+_SQL_TMP_TABLE_FORCE=""
+_SQL_KEY_BUFFER_FORCE=""
+_SQL_LOG_FILE_SIZE_FORCE=""
+_SQL_MAX_CONNECTIONS_FORCE=""
+_VALKEY_MAXMEM_FORCE=""
+_SOLR_HEAP_FORCE=""
 
 ###
 ### Set max 1 min load per CPU core before killing
