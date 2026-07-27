@@ -1612,6 +1612,11 @@ _barracuda_cnf_cleanup() {
     sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${_barCnf}
     wait
   fi
+  _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${_barCnf} 2>&1)
+  if [[ "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
+    sed -i "s/^_USE_MYSQLTUNER.*//g" ${_barCnf}
+    wait
+  fi
   _USE_STOCK_TEST=$(grep _USE_STOCK ${_barCnf} 2>&1)
   if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
     sed -i "s/^_USE_STOCK.*//g" ${_barCnf}
@@ -2464,7 +2469,15 @@ _barracuda_cnf() {
     echo "_DB_SERVER=${_DB_SERVER}"                           >> ${_barCnf}
     echo "_SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL}"               >> ${_barCnf}
     echo "_SQL_MAX_TTL=${_SQL_MAX_TTL}"                       >> ${_barCnf}
-    echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${_barCnf}
+
+    echo "###"                                                >> ${_barCnf}
+    echo "_SQL_BUFFER_POOL_FORCE=\"${_SQL_BUFFER_POOL_FORCE}\""         >> ${_barCnf}
+    echo "_SQL_TMP_TABLE_FORCE=\"${_SQL_TMP_TABLE_FORCE}\""             >> ${_barCnf}
+    echo "_SQL_KEY_BUFFER_FORCE=\"${_SQL_KEY_BUFFER_FORCE}\""           >> ${_barCnf}
+    echo "_SQL_LOG_FILE_SIZE_FORCE=\"${_SQL_LOG_FILE_SIZE_FORCE}\""     >> ${_barCnf}
+    echo "_SQL_MAX_CONNECTIONS_FORCE=\"${_SQL_MAX_CONNECTIONS_FORCE}\"" >> ${_barCnf}
+    echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\""             >> ${_barCnf}
+    echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
@@ -2861,9 +2874,39 @@ _barracuda_cnf() {
       echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${_barCnf}
     fi
 
-    _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${_barCnf} 2>&1)
-    if [[ ! "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
-      echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${_barCnf}
+    _SQL_BUFFER_POOL_FORCE_TEST=$(grep _SQL_BUFFER_POOL_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_BUFFER_POOL_FORCE_TEST}" =~ "_SQL_BUFFER_POOL_FORCE" ]]; then
+      echo "_SQL_BUFFER_POOL_FORCE=\"${_SQL_BUFFER_POOL_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_TMP_TABLE_FORCE_TEST=$(grep _SQL_TMP_TABLE_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_TMP_TABLE_FORCE_TEST}" =~ "_SQL_TMP_TABLE_FORCE" ]]; then
+      echo "_SQL_TMP_TABLE_FORCE=\"${_SQL_TMP_TABLE_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_KEY_BUFFER_FORCE_TEST=$(grep _SQL_KEY_BUFFER_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_KEY_BUFFER_FORCE_TEST}" =~ "_SQL_KEY_BUFFER_FORCE" ]]; then
+      echo "_SQL_KEY_BUFFER_FORCE=\"${_SQL_KEY_BUFFER_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_LOG_FILE_SIZE_FORCE_TEST=$(grep _SQL_LOG_FILE_SIZE_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_LOG_FILE_SIZE_FORCE_TEST}" =~ "_SQL_LOG_FILE_SIZE_FORCE" ]]; then
+      echo "_SQL_LOG_FILE_SIZE_FORCE=\"${_SQL_LOG_FILE_SIZE_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SQL_MAX_CONNECTIONS_FORCE_TEST=$(grep _SQL_MAX_CONNECTIONS_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SQL_MAX_CONNECTIONS_FORCE_TEST}" =~ "_SQL_MAX_CONNECTIONS_FORCE" ]]; then
+      echo "_SQL_MAX_CONNECTIONS_FORCE=\"${_SQL_MAX_CONNECTIONS_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _VALKEY_MAXMEM_FORCE_TEST=$(grep _VALKEY_MAXMEM_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_VALKEY_MAXMEM_FORCE_TEST}" =~ "_VALKEY_MAXMEM_FORCE" ]]; then
+      echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _SOLR_HEAP_FORCE_TEST=$(grep _SOLR_HEAP_FORCE ${_barCnf} 2>&1)
+    if [[ ! "${_SOLR_HEAP_FORCE_TEST}" =~ "_SOLR_HEAP_FORCE" ]]; then
+      echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\"" >> ${_barCnf}
     fi
 
     _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
