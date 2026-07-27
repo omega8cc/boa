@@ -866,6 +866,98 @@ _sql_pin_valid() {
 }
 
 #
+# Derive the SQL budget from what the box actually hosts, not from RAM
+# alone. Three corrections over the historical fractions, each bounded:
+# - The InnoDB buffer pool grows toward the measured datadir size (the
+#   upper bound of the working set) under a tiered ceiling: never below
+#   the historical _RAM/8 floor, never above 2/5 (>=32G), 1/3 (>=8G) or
+#   1/4 (smaller) of usable RAM, and never on the memory-fragile VZ/VS
+#   families, which keep the historical behaviour. Snapped to 512M
+#   steps so run-to-run datadir drift does not churn my.cnf.
+# - tmp_table_size / max_heap_table_size stop granting the whole SQL
+#   budget PER SESSION: clamp(_RAM/64, 32..256) MB.
+# - key_buffer_size drops to 64M when no user-schema MyISAM table
+#   exists (the 1024M template constant predates the all-InnoDB
+#   fleet); any detection failure keeps the historical value.
+# All three targets are in the my.cnf restart-suppressor ignore list,
+# so corrected values are written at upgrade time and take effect at
+# each box's next natural database restart -- no fleet restart wave.
+_sql_budget_derive() {
+  local _DATADIR_MB _POOL_CEILING _POOL_FROM_DATA _MYI_TEST _MYI_RC _MYI_DIRS
+  _USE_POOL_SQL="${_USE_SQL}"
+  _KEY_BUFFER_DEFAULT=""
+  if [ "${_VMFAMILY}" != "VZ" ] && [ "${_VMFAMILY}" != "VS" ]; then
+    # Measure table data only: redo/undo/ibtmp1/binlogs are not working
+    # set (ibtmp1 is unbounded autoextend and only shrinks on restart,
+    # so counting it would let one heavy query inflate the pool, and the
+    # tmp_table cut below would feed that loop). The trailing slash
+    # follows a symlinked datadir. A successful measurement is cached so
+    # a later timed-out run can never shrink a pool already derived.
+    _DATADIR_MB=$(timeout 30 nice -n19 du -sm \
+      --exclude='ibdata*' --exclude='ib_logfile*' --exclude='ibtmp*' \
+      --exclude='#innodb_redo' --exclude='#innodb_temp' --exclude='undo_*' \
+      --exclude='binlog.*' --exclude='mysql-bin.*' --exclude='*.log' \
+      /var/lib/mysql/ 2>/dev/null | cut -f1)
+    _DATADIR_MB="${_DATADIR_MB//[^0-9]/}"
+    if [ -n "${_DATADIR_MB}" ] && [ "${_DATADIR_MB}" -gt 0 ]; then
+      echo "${_DATADIR_MB}" 2>/dev/null > /var/log/boa/.my.datadir_mb.txt || true
+    elif [ -e "/var/log/boa/.my.datadir_mb.txt" ]; then
+      _DATADIR_MB=$(cat /var/log/boa/.my.datadir_mb.txt 2>/dev/null)
+      _DATADIR_MB="${_DATADIR_MB//[^0-9]/}"
+    fi
+    if [ -n "${_DATADIR_MB}" ] && [ "${_DATADIR_MB}" -gt 0 ]; then
+      # Tiered ceilings leave the co-resident grants this same function
+      # hands out (valkey _RAM/3, solr _RAM/6, web/PHP headroom) intact:
+      # 3/8 on big boxes, 3/10 mid, 1/4 small.
+      if [ "${_RAM}" -ge 32768 ]; then
+        _POOL_CEILING=$(( _RAM * 3 / 8 ))
+      elif [ "${_RAM}" -ge 8192 ]; then
+        _POOL_CEILING=$(( _RAM * 3 / 10 ))
+      else
+        _POOL_CEILING=$(( _RAM / 4 ))
+      fi
+      _POOL_FROM_DATA=$(( _DATADIR_MB * 11 / 10 ))
+      if [ "${_POOL_FROM_DATA}" -gt "${_POOL_CEILING}" ]; then
+        _POOL_FROM_DATA="${_POOL_CEILING}"
+      fi
+      # Snap to 1024M: the template pins innodb_buffer_pool_instances=8
+      # with the default 128M chunk, so the server rounds anything finer
+      # UP past the ceiling on its own.
+      _POOL_FROM_DATA=$(( _POOL_FROM_DATA / 1024 * 1024 ))
+      if [ "${_POOL_FROM_DATA}" -gt "${_USE_SQL}" ]; then
+        _USE_POOL_SQL="${_POOL_FROM_DATA}"
+      fi
+    fi
+  fi
+  _TMP_MB_SQL=$(( _RAM / 64 ))
+  if [ "${_TMP_MB_SQL}" -lt 32 ]; then
+    _TMP_MB_SQL=32
+  elif [ "${_TMP_MB_SQL}" -gt 256 ]; then
+    _TMP_MB_SQL=256
+  fi
+  _TMP_SQL="${_TMP_MB_SQL}M"
+  # -H follows a symlinked datadir; the depth-1 probe demands positive
+  # evidence the tree was actually walked, so "scanned nothing at all"
+  # can never read as "proved no user MyISAM".
+  _MYI_DIRS=$(timeout 5 find -H /var/lib/mysql -mindepth 1 -maxdepth 1 -type d -print -quit 2>/dev/null)
+  _MYI_RC=$?
+  if [ "${_MYI_RC}" -eq 0 ] && [ -n "${_MYI_DIRS}" ]; then
+    _MYI_TEST=$(timeout 15 find -H /var/lib/mysql -mindepth 2 -maxdepth 2 -name "*.MYI" \
+      -not -path "*/mysql/*" -print -quit 2>/dev/null)
+    _MYI_RC=$?
+    if [ "${_MYI_RC}" -eq 0 ] && [ -z "${_MYI_TEST}" ]; then
+      _KEY_BUFFER_DEFAULT=64
+    fi
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "TUNE: _DATADIR_MB is ${_DATADIR_MB}"
+    _msg "TUNE: _USE_POOL_SQL is ${_USE_POOL_SQL}"
+    _msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
+    _msg "TUNE: _KEY_BUFFER_DEFAULT is ${_KEY_BUFFER_DEFAULT}"
+  fi
+}
+
+#
 # Apply operator per-knob pins on top of the derived model. All pins
 # default to unset: with none set every downstream value is identical
 # to the derived output. Values are absolute megabytes, except
@@ -878,7 +970,11 @@ _sql_pin_valid() {
 # from the unpinned base -- a pool pin alone stays restart-free.
 _sql_pin_overrides() {
   local _RAW_RAM=$(( _RAM + _RESERVED_RAM ))
-  _USE_POOL_SQL="${_USE_SQL}"
+  # _USE_POOL_SQL arrives from _sql_budget_derive; fall back to the
+  # plain derived value if this runs on any other path.
+  if [ -z "${_USE_POOL_SQL:-}" ]; then
+    _USE_POOL_SQL="${_USE_SQL}"
+  fi
   _KEY_BUFFER_PIN=""
   _LOG_FILE_SIZE_PIN=""
   _VALKEY_MAXMEM_PIN=""
@@ -1085,6 +1181,7 @@ _tune_memory_limits() {
     _msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
     _msg "TUNE: _SRT_SQL is ${_SRT_SQL}"
   fi
+  _sql_budget_derive
   _sql_pin_overrides
   _php_budget_for_ram
   #
@@ -1247,6 +1344,9 @@ _tune_memory_limits() {
     if [ -n "${_KEY_BUFFER_PIN}" ]; then
       sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_KEY_BUFFER_PIN}M/g" /etc/mysql/my.cnf &> /dev/null
       wait
+    elif [ -n "${_KEY_BUFFER_DEFAULT}" ]; then
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_KEY_BUFFER_DEFAULT}M/g" /etc/mysql/my.cnf &> /dev/null
+      wait
     fi
     if [ ! -z "${_CUSTOM_COLLATION_SQL}" ]; then
       _SYS_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}
@@ -1259,6 +1359,66 @@ _tune_memory_limits() {
   fi
 
   _MAX_MEM_VALKEY=$(( _RAM / 3 ))
+  # Measured guard: the Valkey ceiling may drop below the historical
+  # _RAM/3 only when the running instance itself confirms low usage
+  # (4x headroom over live used_memory, floored at _RAM/16 and 512M).
+  # Any read failure keeps the historical ceiling, and Redis-legacy
+  # boxes (no valkey.conf) keep it unconditionally.
+  _VK_PSW=""
+  _VK_MEASURED=""
+  if [ -e "/etc/valkey/valkey.conf" ] && [ -z "${_VALKEY_MAXMEM_PIN}" ]; then
+    _VK_PSW=$(grep -m1 "^user default on >" /etc/valkey/valkey.conf 2>/dev/null \
+      | sed "s/.*>//; s/ .*//")
+    _VK_USED=""
+    _VK_PEAK=""
+    _VK_UPTM=""
+    _VK_BASE_MB=""
+    if [ -n "${_VK_PSW}" ]; then
+      _VK_INFO=$(timeout 5 valkey-cli -a "${_VK_PSW}" --no-auth-warning INFO 2>/dev/null)
+      if [ -z "${_VK_INFO}" ] && [ -S "/run/valkey/valkey.sock" ]; then
+        _VK_INFO=$(timeout 5 valkey-cli -s /run/valkey/valkey.sock -a "${_VK_PSW}" --no-auth-warning INFO 2>/dev/null)
+      fi
+      _VK_USED=$(echo "${_VK_INFO}" | grep "^used_memory:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_USED="${_VK_USED//[^0-9]/}"
+      _VK_PEAK=$(echo "${_VK_INFO}" | grep "^used_memory_peak:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_PEAK="${_VK_PEAK//[^0-9]/}"
+      _VK_UPTM=$(echo "${_VK_INFO}" | grep "^uptime_in_seconds:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_UPTM="${_VK_UPTM//[^0-9]/}"
+      if [ -n "${_VK_PEAK}" ] && [ -n "${_VK_USED}" ] \
+        && [ "${_VK_PEAK}" -gt "${_VK_USED}" ]; then
+        _VK_USED="${_VK_PEAK}"
+      fi
+    fi
+    # A cache the upgrade itself just restarted (the per-run password
+    # rotation bounces it before this runs) measures near-zero, so a
+    # live sample is trusted only after an hour of uptime -- and then
+    # cached, so runs that catch the cache freshly restarted reuse the
+    # last trustworthy peak instead of re-widening to _RAM/3.
+    if [ -n "${_VK_USED}" ] && [ "${_VK_USED}" -gt 0 ] \
+      && [ -n "${_VK_UPTM}" ] && [ "${_VK_UPTM}" -ge 3600 ]; then
+      _VK_BASE_MB=$(( _VK_USED / 1048576 ))
+      if [ "${_VK_BASE_MB}" -lt 1 ]; then
+        _VK_BASE_MB=1
+      fi
+      echo "${_VK_BASE_MB}" 2>/dev/null > /var/log/boa/.valkey.used_mb.txt || true
+    elif [ -e "/var/log/boa/.valkey.used_mb.txt" ]; then
+      _VK_BASE_MB=$(cat /var/log/boa/.valkey.used_mb.txt 2>/dev/null)
+      _VK_BASE_MB="${_VK_BASE_MB//[^0-9]/}"
+    fi
+    if [ -n "${_VK_BASE_MB}" ] && [ "${_VK_BASE_MB}" -gt 0 ]; then
+      _VK_CEIL=$(( _VK_BASE_MB * 4 ))
+      if [ "${_VK_CEIL}" -lt $(( _RAM / 16 )) ]; then
+        _VK_CEIL=$(( _RAM / 16 ))
+      fi
+      if [ "${_VK_CEIL}" -lt 512 ]; then
+        _VK_CEIL=512
+      fi
+      if [ "${_VK_CEIL}" -lt "${_MAX_MEM_VALKEY}" ]; then
+        _MAX_MEM_VALKEY="${_VK_CEIL}"
+        _VK_MEASURED=YES
+      fi
+    fi
+  fi
   if [ -n "${_VALKEY_MAXMEM_PIN}" ]; then
     _MAX_MEM_VALKEY="${_VALKEY_MAXMEM_PIN}"
   fi
@@ -1266,6 +1426,17 @@ _tune_memory_limits() {
 
   if [ -e "/etc/valkey/valkey.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
+    if [ -n "${_VK_PSW}" ] && [ "${_VK_MEASURED}" = "YES" ]; then
+      # Best-effort live apply, ONLY for a measured ceiling (>= 4x the
+      # trusted peak, so no eviction wave); the _RAM/3 fallback path
+      # never touches the running server. Same socket fallback as the
+      # measurement read.
+      if ! timeout 5 valkey-cli -a "${_VK_PSW}" --no-auth-warning CONFIG SET maxmemory $(( _MAX_MEM_VALKEY * 1024 * 1024 )) &> /dev/null; then
+        if [ -S "/run/valkey/valkey.sock" ]; then
+          timeout 5 valkey-cli -s /run/valkey/valkey.sock -a "${_VK_PSW}" --no-auth-warning CONFIG SET maxmemory $(( _MAX_MEM_VALKEY * 1024 * 1024 )) &> /dev/null
+        fi
+      fi
+    fi
     _NEEDS_VALKEY_RESTART=
     if ! grep -qE '^maxmemory-policy[[:space:]]*volatile-lfu' /etc/valkey/valkey.conf; then
       sed -i "s/^maxmemory-policy .*/maxmemory-policy volatile-lfu/g" /etc/valkey/valkey.conf &> /dev/null
