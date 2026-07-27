@@ -803,6 +803,12 @@ _tune_sql_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _tune_sql_memory_limits"
   fi
+  # The pool budget normally arrives from _sql_pin_overrides; when this
+  # function is reached on any other path it falls back to the derived
+  # value so the pool and the per-session budgets stay in lock-step.
+  if [ -z "${_USE_POOL_SQL}" ]; then
+    _USE_POOL_SQL="${_USE_SQL}"
+  fi
   if [ -e "/root/.run-to-excalibur.cnf" ] \
     || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -919,10 +925,10 @@ _tune_sql_memory_limits() {
         _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1" | bc -l 2>&1)
       fi
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
-      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
+      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_POOL_SQL}" ] \
         || [ -z "${_USE_INNODB_MEM}" ] \
         || [ "${_RAW_INNODB_MEM}" -lt 512 ]; then
-        _USE_INNODB_MEM="${_USE_SQL}"
+        _USE_INNODB_MEM="${_USE_POOL_SQL}"
       else
         _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
         _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
@@ -963,7 +969,7 @@ _tune_sql_memory_limits() {
         sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
     else
-      _USE_INNODB_MEM="${_USE_SQL}M"
+      _USE_INNODB_MEM="${_USE_POOL_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
       if [ "${_DB_COUNT}" -gt 3 ]; then
@@ -1023,8 +1029,15 @@ _tune_sql_memory_limits() {
       _INNODB_LOG_FILE_SIZE=64
     fi
     if [ -e "/etc/mysql/my.cnf" ]; then
-      sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_POOL_SQL}M/g"  /etc/mysql/my.cnf &> /dev/null
     fi
+  fi
+  # An explicit log size pin wins over every derivation arm above. It is
+  # deliberately the only way a pool pin can move the redo band: the
+  # derived size keeps using the unpinned base, so a pool pin alone
+  # never triggers _innodb_log_file_size_update and its mysqld restart.
+  if [ -n "${_LOG_FILE_SIZE_PIN}" ]; then
+    _INNODB_LOG_FILE_SIZE="${_LOG_FILE_SIZE_PIN}"
   fi
 }
 
