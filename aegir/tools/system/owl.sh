@@ -325,6 +325,7 @@ if [ -e "/data/all" ]; then
   _O_CONTRIB_NINE="/data/all/${_LAST_ALL}/o_contrib_nine"
   _O_CONTRIB_TEN="/data/all/${_LAST_ALL}/o_contrib_ten"
   _O_CONTRIB_ELEVEN="/data/all/${_LAST_ALL}/o_contrib_eleven"
+  _O_CONTRIB_BACKDROP="/data/all/${_LAST_ALL}/o_contrib_backdrop"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
   _listl=([0-9]*)
@@ -335,6 +336,7 @@ elif [ -e "/data/disk/all" ]; then
   _O_CONTRIB_NINE="/data/disk/all/${_LAST_ALL}/o_contrib_nine"
   _O_CONTRIB_TEN="/data/disk/all/${_LAST_ALL}/o_contrib_ten"
   _O_CONTRIB_ELEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_eleven"
+  _O_CONTRIB_BACKDROP="/data/disk/all/${_LAST_ALL}/o_contrib_backdrop"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
@@ -342,6 +344,7 @@ else
   _O_CONTRIB_NINE=NO
   _O_CONTRIB_TEN=NO
   _O_CONTRIB_ELEVEN=NO
+  _O_CONTRIB_BACKDROP=NO
 fi
 #
 mkdir -p /var/log/boa/daily
