@@ -32,7 +32,7 @@ Distributions, published to `/var/www/static/distro`:
   drupal_cms_installer-2.1.3-11.4.4
   farm-4.0.4-11.3.14
   localgov-4.0.2-11.4.4
-  openculturas-3.0.3-11.3.14
+  openculturas-3.0.4-11.3.16
   thunder-8.4.0-11.4.4
 ```
 
@@ -41,9 +41,9 @@ Raw cores, published to `/var/www/static/core`, latest patch of each supported m
 ```sh
   drupal-10.2.12    drupal-11.1.10
   drupal-10.3.14    drupal-11.2.14
-  drupal-10.4.10    drupal-11.3.14
+  drupal-10.4.10    drupal-11.3.16
   drupal-10.5.12    drupal-11.4.4
-  drupal-10.6.13
+  drupal-10.6.14
 ```
 
 ## Backdrop family
@@ -145,8 +145,8 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.3-11.3.14 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.0.3-11.3.14/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.4-11.3.16 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.0.4-11.3.16/
            # composer config --no-plugins allow-plugins true
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # build unpatched (stale core patch)
            # composer update --no-install --no-scripts
@@ -154,7 +154,7 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.4-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.3-11.3.14/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.4-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.4-11.3.16/web/sites/
 ```
 
 ```sh
@@ -199,7 +199,7 @@ Vanilla cores, latest patch of each supported minor (full install, add drush, au
 vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # composer create-project drupal/recommended-project:<minor>.* drupal-<version> --no-dev --no-interaction
            # cd drupal-<version> && composer require drush/drush && composer audit
-           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.13 11.1.10 11.2.14 11.3.14 11.4.4
+           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.14 11.1.10 11.2.14 11.3.16 11.4.4
 ```
 
 ### Clean up artefacts before packaging
