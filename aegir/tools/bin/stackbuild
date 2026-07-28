@@ -21,9 +21,11 @@
 # build shape only -- custom-shape boxes are refused the deb installer-
 # side; the payload is the bare binary, overlaying the file the distro
 # nginx package owns on fresh boxes via Replaces:, while that package
-# stays installed, pinned and held as the structure provider). Versions
-# are NOT hardcoded - each is detected from the installed tree, so a pin
-# bump is packaged on the next run.
+# stays installed, pinned and held as the structure provider). Unbound
+# follows the nginx overlay pattern (binaries only, Replaces: against the
+# distro unbound/unbound-anchor packages, which stay installed as the
+# structure providers). Versions are NOT hardcoded - each is detected
+# from the installed tree, so a pin bump is packaged on the next run.
 # Inter-boa companion ordering is enforced by the INSTALLER, not by control
 # file Depends (a box whose companion fell back to source has the correct
 # tree but no dpkg record); Depends carries distro libs only, resolved on
@@ -35,7 +37,7 @@
 #   stackbuild publish              gzip + sha256 sidecar into the mirror tree
 #   stackbuild sync                 rsync fresh packages to the peer active mirror
 #   stackbuild all                  package missing + publish + sync
-# Component names: ssl3 ssl-legacy icu curl valkey nginx php56 php70 .. php85
+# Component names: ssl3 ssl-legacy icu curl valkey nginx unbound php56 php70 .. php85
 #
 # The builder box MUST keep _USE_PREBUILT_PKGS=NO in /root/.barracuda.cnf
 # (it must always compile from source, or it would install its own packages
@@ -154,7 +156,7 @@ _detect_pub_dir() {
 
 _all_components() {
   local _c _n
-  _c="ssl3 ssl-legacy icu curl valkey nginx"
+  _c="ssl3 ssl-legacy icu curl valkey nginx unbound"
   for _n in 56 70 71 72 73 74 80 81 82 83 84 85; do
     [[ -x "/opt/php${_n}/bin/php" ]] && _c="${_c} php${_n}"
   done
@@ -198,6 +200,14 @@ _comp_version() {
       # equals the _NGINX_VRN pin character-for-character.
       [[ -x /usr/sbin/nginx ]] \
         && _v="$(/usr/sbin/nginx -v 2>&1 | tr -d '\n' | cut -d'/' -f2 | awk '{print $1}')" ;;
+    unbound)
+      # Mirror the installer's parse (dns.sh.inc) so the filename version
+      # equals the _UNBOUND_VRN pin character-for-character; the newline
+      # strip glues 'Configure' onto the 'Version N.N.N' banner field,
+      # which the sed removes.
+      [[ -x /usr/sbin/unbound ]] \
+        && _v="$(/usr/sbin/unbound -V 2>/dev/null | tr -d '\n' | cut -d' ' -f2 \
+          | awk '{print $1}' | sed 's/Configure//gi')" ;;
     php*)
       local _n="${_comp#php}"
       [[ -x "/opt/php${_n}/bin/php" ]] \
@@ -230,6 +240,15 @@ _comp_paths() {
       # mime.types on every box, and the smaller the payload the smaller
       # the Replaces: surface against the distro nginx package.
       printf '%s\n' "/usr/sbin/nginx" ;;
+    unbound)
+      # The six sbin binaries only, listed explicitly (no glob) so the
+      # payload is deterministic - a tool upstream adds on a pin bump is
+      # reviewed in, never swept in. The make-install /usr/lib/libunbound.*
+      # residue is never packaged: the libunbound.so.8 the anchor and host
+      # tools resolve at runtime is the distro multiarch lib (ld.so.cache
+      # order), which the computed Depends carries. /etc/unbound,
+      # /usr/etc/unbound, keys and the init script stay installer-managed.
+      printf '%s\n' "/usr/sbin/unbound /usr/sbin/unbound-anchor /usr/sbin/unbound-checkconf /usr/sbin/unbound-control /usr/sbin/unbound-control-setup /usr/sbin/unbound-host" ;;
     php*)
       printf '%s\n' "/opt/php${_comp#php}" ;;
   esac
@@ -257,8 +276,21 @@ _comp_replaces() {
   # provider, and it must never be dragged out by our package.
   local _comp="$1"
   case "${_comp}" in
-    nginx) printf '%s\n' "nginx, nginx-core, nginx-full, nginx-light, nginx-extras" ;;
-    *)     printf '%s\n' "" ;;
+    nginx)   printf '%s\n' "nginx, nginx-core, nginx-full, nginx-light, nginx-extras" ;;
+    unbound)
+      # The distro unbound package owns four of the six payload paths and
+      # unbound-anchor owns the fifth; unbound-host is not listed because
+      # its distro binary lives in /usr/bin, outside the payload. Same
+      # deliberate no-Conflicts shape as nginx: both distro packages stay
+      # installed as the structure providers (unbound user, init
+      # integration, dns-root-data pull-in). Unlike nginx they are NOT
+      # pinned/held, because the DNS repair branch in
+      # _dns_unbound_install_upgrade must stay able to purge and
+      # reinstall them; dpkg never hands Replaces:-owned paths back, so
+      # that branch drops the boa-unbound record first (installer-side
+      # counterpart in dns.sh.inc).
+      printf '%s\n' "unbound, unbound-anchor" ;;
+    *)       printf '%s\n' "" ;;
   esac
 }
 
@@ -271,6 +303,7 @@ _comp_desc() {
     curl)       printf '%s\n' "BOA cURL (/usr/local), built by barracuda on ${_OS_CODE}" ;;
     valkey)     printf '%s\n' "BOA Valkey (/usr/bin, incl. redis-compat symlinks), built by barracuda on ${_OS_CODE}" ;;
     nginx)      printf '%s\n' "BOA Nginx binary (/usr/sbin/nginx, static OpenSSL), built by barracuda on ${_OS_CODE}" ;;
+    unbound)    printf '%s\n' "BOA Unbound DNS cache binaries (/usr/sbin, BOA OpenSSL linked), built by barracuda on ${_OS_CODE}" ;;
     php*)       printf '%s\n' "BOA PHP ${_comp#php} prefix (/opt/${_comp}) incl. phpize/headers, built by barracuda on ${_OS_CODE}" ;;
   esac
 }
@@ -437,7 +470,7 @@ do_package() {
   fi
   for _comp in ${_targets}; do
     case "${_comp}" in
-      ssl3|ssl-legacy|icu|curl|valkey|nginx|php[0-9][0-9]) _package_one "${_comp}" ;;
+      ssl3|ssl-legacy|icu|curl|valkey|nginx|unbound|php[0-9][0-9]) _package_one "${_comp}" ;;
       *) _alrt "unknown component: ${_comp}" ;;
     esac
   done
