@@ -1097,6 +1097,17 @@ _php_cli_drush_update() {
       | fmt -su -w 2500 | tee -a ${_dscUsr}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:${_usrGroup} ${_dscUsr}/aegir.sh &> /dev/null
     chmod 0700 ${_dscUsr}/aegir.sh &> /dev/null
+    # The shebang pin on drush.php is bypassed whenever the drush 8 finder
+    # runs: it execs drush.launcher, which re-selects PHP via `which php`.
+    # The launcher also cannot run at all via its stock `env sh` shebang,
+    # because /bin/sh is websh, which refuses user-area scripts. Run it
+    # under bash and pin PHP via its native DRUSH_PHP override instead.
+    _DRUSH_LNCH="${_dscUsr}/tools/drush/drush.launcher"
+    if [ -e "${_DRUSH_LNCH}" ]; then
+      sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
+      sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
+      sed -i "1a export DRUSH_PHP=\"${_T_CLI}/php\"" ${_DRUSH_LNCH} &> /dev/null
+    fi
   fi
   rm -f ${_dscUsr}/static/control/.ctrl.cli.*.pid
   echo "${_T_CLI_VRN}" > ${_dscUsr}/static/control/.ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid
