@@ -1103,9 +1103,14 @@ _octopus_install() {
       elif [ -x "/opt/php83/bin/php" ]; then
         _USE_PHP=8.3
       fi
-      sed -i "s/^_PHP_FPM.*/_PHP_FPM_VERSION=${_USE_PHP}/g"  ${_vBs}/${_filIncO}
+      # Anchor on the full variable name: the greedy ^_PHP_FPM.* form also
+      # matched _PHP_FPM_WORKERS/_TIMEOUT/_MAX_CHILDREN_FORCE/_RAM_PCT/
+      # _CPU_FACTOR/_MEMORY_LIMIT_FORCE/_DENY and collapsed all seven into
+      # duplicate VERSION lines, so every new account was born with those
+      # knobs unset in its octopus.cnf.
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_USE_PHP}/g"  ${_vBs}/${_filIncO}
       wait
-      sed -i "s/^_PHP_CLI.*/_PHP_CLI_VERSION=${_USE_PHP}/g"  ${_vBs}/${_filIncO}
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_USE_PHP}/g"  ${_vBs}/${_filIncO}
       wait
     fi
 

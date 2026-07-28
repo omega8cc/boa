@@ -332,6 +332,475 @@ STATEEOF
 
 ###-------------CHECK ROOT----------------###
 
+###-------------MIGRATION TARGET SEEDING----###
+###
+### Same block as in xoct (master and satellite copies are kept in step by
+### convention, never DRY-ed): close the "wrong PHP / wrong identity after
+### migration" class. The control files static/control/{fpm,cli}.info are the
+### AUTHORITATIVE witnesses -- BOA derives /root/.<acct>.octopus.cnf FROM
+### them (_satellite_cnf, manage_ltd_users), never the reverse -- so the
+### seeding order is: gate on installed PHP, install, merge the cnf, force
+### the control files, carry the credentials.
+
+### Normalise a PHP version token to the dotted form BOA control files use;
+### prints nothing for a token that is not a known BOA PHP version.
+_mig_php_norm() {
+  local _t="${1//[^0-9.]/}"
+  case "${_t}" in
+    8.5|85) echo 8.5 ;;
+    8.4|84) echo 8.4 ;;
+    8.3|83) echo 8.3 ;;
+    8.2|82) echo 8.2 ;;
+    8.1|81) echo 8.1 ;;
+    8.0|80) echo 8.0 ;;
+    7.4|74) echo 7.4 ;;
+    7.3|73) echo 7.3 ;;
+    7.2|72) echo 7.2 ;;
+    7.1|71) echo 7.1 ;;
+    7.0|70) echo 7.0 ;;
+    5.6|56) echo 5.6 ;;
+  esac
+}
+
+### Union of PHP versions one account is pinned to: the account-level
+### static/control/{fpm,cli}.info defaults plus the per-site column of
+### static/control/multi-fpm.info (dotted and shorthand forms both count).
+_mig_php_versions_needed() {
+  local _u="$1" _f _v _dom _rest _out=""
+  for _f in "${_u}/static/control/fpm.info" "${_u}/static/control/cli.info"; do
+    [ -e "${_f}" ] || continue
+    _v="$(_mig_php_norm "$(tr -d ' \t\r\n' < "${_f}" 2>/dev/null)")"
+    [ -n "${_v}" ] && _out="${_out} ${_v}"
+  done
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      ### place.holder.dont.remove is manage_ltd_users' filler line, not a
+      ### site pin -- counting it would refuse migrations over a version no
+      ### site actually uses.
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      [ -n "${_v}" ] && _out="${_out} ${_v}"
+    done < "${_u}/static/control/multi-fpm.info"
+  fi
+  echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
+}
+
+### The tree the TARGET runs, for target-side barracuda verbs; fall back to
+### this box's own tree when the query fails.
+_xmass_target_tree() {
+  local _t="$1" _tt _lt
+  _tt=$(ssh root@"${_t}" "boa info 2>/dev/null" 2>/dev/null \
+    | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+    | tail -1 \
+    | grep -oE '(dev|lts|pro)$')
+  if [ -z "${_tt}" ]; then
+    _lt=$(boa info 2>/dev/null \
+      | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+      | tail -1 \
+      | grep -oE '(dev|lts|pro)$')
+    # stderr: callers capture stdout as the tree token and splice it into a
+    # remote root command -- a warning on stdout would become part of it.
+    echo "ALRT: could not detect the BOA tree on ${_t}; falling back to local '${_lt:-lts}'" >&2
+    _tt="${_lt:-lts}"
+  fi
+  echo "${_tt}"
+}
+
+### Extend the target's _PHP_MULTI_INSTALL with missing versions and run one
+### barracuda system pass there to build them. Idempotent.
+_xmass_fix_target_php() {
+  local _t="$1" _add="$2" _cur _new _v _nv _tree
+  # Normalise the fetched value token by token: the raw line may carry an
+  # inline comment or quotes, and anything not a known PHP version must
+  # never reach the remote root shell that rewrites the cnf.
+  _cur=$(ssh root@"${_t}" "grep '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf 2>/dev/null" 2>/dev/null \
+    | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g' | tr -d '\n')
+  _new=""
+  for _v in ${_cur} ${_add}; do
+    _nv="$(_mig_php_norm "${_v}")"
+    [ -n "${_nv}" ] || continue
+    case " ${_new} " in
+      *" ${_nv} "*) : ;;
+      *) _new="${_new} ${_nv}" ;;
+    esac
+  done
+  _new="${_new## }"
+  if [ -z "${_new}" ]; then
+    _alrt "computed empty _PHP_MULTI_INSTALL for ${_t}; refusing"
+    return 1
+  fi
+  _info "Setting _PHP_MULTI_INSTALL=\"${_new}\" on ${_t}"
+  ssh root@"${_t}" "_m=\$(stat -c %a /root/.barracuda.cnf 2>/dev/null); \
+    grep -v '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew 2>/dev/null; \
+    echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew \
+    && chmod \${_m:-600} /root/.barracuda.cnf.phpnew \
+    && mv -f /root/.barracuda.cnf.phpnew /root/.barracuda.cnf" \
+    || { _alrt "could not update _PHP_MULTI_INSTALL on ${_t}"; return 1; }
+  _tree="$(_xmass_target_tree "${_t}")"
+  case "${_tree}" in
+    dev|lts|pro) : ;;
+    *) _alrt "invalid tree token '${_tree}' -- refusing the remote barracuda run"; return 1 ;;
+  esac
+  _info "Driving 'barracuda up-${_tree} system noscreen' on ${_t} to build the missing PHP set;"
+  _info "this is a full system pass and typically takes ~30 minutes"
+  ssh root@"${_t}" "barracuda up-${_tree} system noscreen" \
+    || { _alrt "barracuda system run on ${_t} returned non-zero"; return 1; }
+  return 0
+}
+
+### Verify every PHP version pinned by ANY eligible account is installed on
+### the target (the /opt/phpNN/bin/php probe BOA's own fallback ladders use).
+### $2 selects the consequence: die | deny (DRY: DENY + NOT_CLEAN) | fix
+### (extend _PHP_MULTI_INSTALL + one barracuda pass, then re-verify).
+_xmass_php_coverage_gate() {
+  local _t="$1" _on_missing="${2:-die}" _oct _need="" _v _sv _miss=""
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _need="${_need} $(_mig_php_versions_needed "/data/disk/${_oct}")"
+  done
+  _need=$(echo "${_need}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+  [ -n "${_need// /}" ] || return 0
+  _info "PHP versions required by the eligible accounts: ${_need}"
+  for _v in ${_need}; do
+    _sv=${_v//[^0-9]/}
+    if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+      _miss="${_miss} ${_v}"
+    fi
+  done
+  _miss="${_miss## }"
+  [ -z "${_miss}" ] && { _info "Target PHP coverage: OK"; return 0; }
+  case "${_on_missing}" in
+    fix)
+      _alrt "target ${_t} lacks pinned PHP version(s): ${_miss} -- fixing (--fix-php)"
+      _xmass_fix_target_php "${_t}" "${_miss}" || return 1
+      for _v in ${_miss}; do
+        _sv=${_v//[^0-9]/}
+        ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null \
+          || { _alrt "PHP ${_v} still missing on ${_t} after the fix run"; return 1; }
+      done
+      return 0
+    ;;
+    deny)
+      _alrt "DENY: target ${_t} lacks pinned PHP version(s): ${_miss} -- every affected"
+      _alrt "DENY: site would silently serve on a different PHP after cutover."
+      _alrt "DENY: fix: 'xmass prep-target ${_t} --fix-php', or add '${_miss}' to"
+      _alrt "DENY: _PHP_MULTI_INSTALL in /root/.barracuda.cnf on the target and run"
+      _alrt "DENY: 'barracuda up-<tree> system noscreen' there"
+      _XMASS_NOT_CLEAN=YES
+      return 1
+    ;;
+    *)
+      _die "target ${_t} lacks pinned PHP version(s): ${_miss}." \
+           " Every affected site would silently serve on a different PHP after cutover." \
+           " Fix: 'xmass prep-target ${_t} --fix-php', or add '${_miss}' to _PHP_MULTI_INSTALL" \
+           " in /root/.barracuda.cnf on the target and run 'barracuda up-<tree> system noscreen' there."
+    ;;
+  esac
+}
+
+### Verify the eligible accounts EXIST on the target as real installs (system
+### users + install stamps), not just as rsync-created trees. $2: die | deny.
+_xmass_verify_target_accounts() {
+  local _t="$1" _on_missing="${2:-die}" _oct _bad="" _out
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _out=$(ssh root@"${_t}" "getent passwd ${_oct} >/dev/null 2>&1 \
+      && getent passwd ${_oct}.ftp >/dev/null 2>&1 \
+      && [ -e /data/disk/${_oct}/log/octopus_log.txt ] \
+      && [ -e /data/disk/${_oct}/config/includes/nginx_vhost_common.conf ] \
+      && [ -e /root/.${_oct}.octopus.cnf ] \
+      && echo PRESENT" 2>/dev/null)
+    [ "${_out}" = "PRESENT" ] || _bad="${_bad} ${_oct}"
+  done
+  _bad="${_bad## }"
+  [ -z "${_bad}" ] && { _info "All eligible accounts installed on ${_t}: OK"; return 0; }
+  if [ "${_on_missing}" = "deny" ]; then
+    _alrt "DENY: account(s) missing or incomplete on target ${_t}: ${_bad}"
+    _alrt "DENY: rsync into a never-installed account creates a root-owned tree with no"
+    _alrt "DENY: system user, no FPM pool and no vhost include -- run 'xmass prep-target ${_t}'"
+    _XMASS_NOT_CLEAN=YES
+    return 1
+  fi
+  _die "account(s) missing or incomplete on target ${_t}: ${_bad}." \
+       " Run 'xmass prep-target ${_t}' to install and seed them first."
+}
+
+### Merge the account-portable octopus.cnf lines from the source cnf into the
+### target's copy: replace-or-append per key, whole lines, host axis excluded
+### (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN are re-derived
+### target-correct when absent and actively harmful when copied). Runs AFTER
+### the target install by design: _satellite_cnf derives the PHP pins from
+### static/control/*.info, so the control-file force is what makes the pins
+### stick and the cnf carries everything only it owns.
+_xmass_push_account_cnf() {
+  local _acct="$1" _t="$2"
+  local _sCnf="/root/.${_acct}.octopus.cnf"
+  local _dCnf="/root/.${_acct}.octopus.cnf"
+  local _rTmp="/root/.${_acct}.octopus.cnf.migrate-merge.tmp"
+  local _rRun="/root/.${_acct}.octopus.cnf.migrate-merge.run"
+  local _lTmp="/var/backups/.xmass.cnfmerge.$$.lines"
+  local _lRun="/var/backups/.xmass.cnfmerge.$$.run"
+  local _v _l _lst
+  if [ ! -e "${_sCnf}" ]; then
+    _alrt "no ${_sCnf} on the source; the target account keeps its install-time defaults"
+    return 0
+  fi
+  if ! ssh root@"${_t}" "[ -e ${_dCnf} ]" 2>/dev/null; then
+    _alrt "no ${_dCnf} on ${_t} (account not installed there?); skipping the cnf merge"
+    return 1
+  fi
+  _lst="_PHP_FPM_VERSION _PHP_CLI_VERSION _PHP_FPM_WORKERS _PHP_FPM_TIMEOUT \
+    _PHP_FPM_MAX_CHILDREN_FORCE _PHP_FPM_MEMORY_LIMIT_FORCE _PHP_FPM_RAM_PCT \
+    _PHP_FPM_CPU_FACTOR _PHP_FPM_DENY _RESERVED_RAM _MY_OCTO_EMAIL \
+    _CLIENT_EMAIL _CLIENT_OPTION _CLIENT_SUBSCR _CLIENT_CORES \
+    _GHOST_PLATFORMS_CLEANUP _GHOST_VHOSTS_CLEANUP _GHOST_SITES_CLEANUP \
+    _GHOST_SITE_FILES_CLEANUP _GHOST_ALIASES_CLEANUP \
+    _DEL_OLD_BACKUPS _DEL_OLD_TMP _DEL_OLD_EMPTY_PLATFORMS \
+    _SQL_CONVERT _STRONG_PASSWORDS _BACKDROP_SUPPORT _HOT_SAUCE \
+    _USE_CURRENT _DL_MODE _FORCE_GIT_MIRROR _PLATFORMS_LIST \
+    _AUTOPILOT _DNS_SETUP_TEST"
+  echo "_USER=\"${_acct}\"" > "${_lTmp}"
+  for _v in ${_lst}; do
+    _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
+    [ -n "${_l}" ] && printf '%s\n' "${_l}" >> "${_lTmp}"
+  done
+  {
+    echo '#!/bin/bash'
+    echo "_cnf=\"${_dCnf}\""
+    echo "_mrg=\"${_rTmp}\""
+    cat <<'MERGESH'
+[ -e "${_cnf}" ] || exit 1
+[ -e "${_mrg}" ] || exit 1
+while IFS= read -r _l; do
+  case "${_l}" in
+    _*=*) : ;;
+    *) continue ;;
+  esac
+  _k="${_l%%=*}"
+  grep -v "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+  printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
+  mv -f "${_cnf}.mrgnew" "${_cnf}"
+done < "${_mrg}"
+chmod 644 "${_cnf}"
+rm -f "${_mrg}"
+MERGESH
+  } > "${_lRun}"
+  if ! rsync -a -e ssh "${_lTmp}" "root@${_t}:${_rTmp}" \
+    || ! rsync -a -e ssh "${_lRun}" "root@${_t}:${_rRun}"; then
+    _alrt "could not stage the cnf merge on ${_t}"
+    rm -f "${_lTmp}" "${_lRun}"
+    return 1
+  fi
+  rm -f "${_lTmp}" "${_lRun}"
+  if ssh root@"${_t}" "bash ${_rRun}; _rc=\$?; rm -f ${_rRun}; exit \${_rc}"; then
+    _info "  ${_acct}: merged source octopus.cnf values into the target copy"
+    return 0
+  fi
+  _alrt "cnf merge for ${_acct} on ${_t} failed; the target keeps its current cnf"
+  return 1
+}
+
+### Force the plan/identity stamps over WITHOUT -u: the target's fresh
+### install wrote newer defaults that shadow every -u sync, and these files
+### are exactly what BOA re-reads as _CLIENT_* on later upgrades and what
+### sizes the FPM pools. domain.txt is deliberately NOT forced: the target's
+### own FQDN stamp is what renameaegirhost wants.
+_xmass_seed_account_stamps() {
+  local _acct="$1" _t="$2" _f
+  local _u="/data/disk/${_acct}"
+  for _f in log/fpm.txt log/cli.txt log/email.txt log/option.txt \
+    log/cores.txt log/subscr.txt; do
+    [ -e "${_u}/${_f}" ] || continue
+    _xmass_rsync -aEAX ${_ieni} -e ssh \
+      "${_u}/${_f}" \
+      "root@${_t}:${_u}/${_f}"
+  done
+  return 0
+}
+
+### Carry the client shell identity: the main <acct>.ftp shadow hash and
+### log/pass.txt as a consistent pair, the sub-account password store
+### /home/<acct>.ftp/users (whose carried entries manage_ltd_users honours at
+### sub-user creation), and each existing sub-user's shadow hash and .ssh
+### where the target user already exists (repeated syncs converge the rest).
+### LIVE only -- callers must never invoke this from a DRY path.
+_xmass_sync_shell_credentials() {
+  local _acct="$1" _t="$2"
+  local _u="/data/disk/${_acct}"
+  local _hash _d _n _set=NO
+  _hash=$(getent shadow "${_acct}.ftp" 2>/dev/null | cut -d: -f2)
+  if [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ]; then
+    if ssh root@"${_t}" "getent passwd ${_acct}.ftp" &> /dev/null; then
+      if printf '%s.ftp:%s\n' "${_acct}" "${_hash}" | ssh root@"${_t}" "chpasswd -e"; then
+        _set=YES
+        _info "  ${_acct}: carried the ${_acct}.ftp shell/SFTP password to ${_t}"
+      else
+        _alrt "  ${_acct}: could not set the carried password for ${_acct}.ftp on ${_t}"
+      fi
+    else
+      _alrt "  ${_acct}: user ${_acct}.ftp missing on ${_t}; password not carried yet"
+    fi
+  fi
+  # pass.txt travels ONLY when the paired hash actually landed: the file is
+  # what the client is shown, and shipping it after a failed chpasswd would
+  # advertise a password that does not work. A re-run converges both.
+  if [ "${_set}" = "YES" ] && [ -e "${_u}/log/pass.txt" ]; then
+    rsync -aEAX ${_ieni} -e ssh --no-devices --no-specials \
+      "${_u}/log/pass.txt" \
+      "root@${_t}:${_u}/log/pass.txt" 2>/dev/null \
+      || _alrt "  ${_acct}: could not carry log/pass.txt (password IS set; re-run to converge)"
+  elif [ -e "${_u}/log/pass.txt" ]; then
+    _alrt "  ${_acct}: NOT carrying log/pass.txt -- the shadow hash was not set on ${_t}"
+  fi
+  if [ -d "/home/${_acct}.ftp/users" ]; then
+    rsync -aEAX ${_ieni} -e ssh --no-devices --no-specials \
+      "/home/${_acct}.ftp/users/" \
+      "root@${_t}:/home/${_acct}.ftp/users/" 2>/dev/null \
+      || _alrt "  ${_acct}: could not carry the sub-account password store"
+  fi
+  for _d in "${_u}"/clients/*/; do
+    [ -d "${_d}" ] || continue
+    _n=$(basename "${_d}")
+    getent passwd "${_acct}.${_n}" &> /dev/null || continue
+    _hash=$(getent shadow "${_acct}.${_n}" 2>/dev/null | cut -d: -f2)
+    [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ] || continue
+    if ssh root@"${_t}" "getent passwd ${_acct}.${_n}" &> /dev/null; then
+      if printf '%s.%s:%s\n' "${_acct}" "${_n}" "${_hash}" | ssh root@"${_t}" "chpasswd -e"; then
+        _info "  ${_acct}: carried sub-account password for ${_acct}.${_n}"
+      else
+        _alrt "  ${_acct}: could not carry the sub-account password for ${_acct}.${_n}"
+      fi
+      if [ -d "/home/${_acct}.${_n}/.ssh" ]; then
+        rsync -aEAXu ${_ieni} -e ssh --no-devices --no-specials \
+          "/home/${_acct}.${_n}/.ssh" \
+          "root@${_t}:/home/${_acct}.${_n}/" 2>/dev/null \
+          || _alrt "  ${_acct}: could not carry .ssh for ${_acct}.${_n}"
+      fi
+    elif [ -d "/home/${_acct}.${_n}/.ssh" ]; then
+      # The sub-user does not exist there yet: manage_ltd_users creates it
+      # from clients/ within minutes and honours the carried store entry, so
+      # the password converges. Its .ssh cannot be placed before the home
+      # exists -- stage it where that creation pass adopts it.
+      ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_acct}.${_n}" &> /dev/null
+      rsync -aEAXu ${_ieni} -e ssh --no-devices --no-specials \
+        "/home/${_acct}.${_n}/.ssh" \
+        "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/" 2>/dev/null \
+        || _alrt "  ${_acct}: could not stage .ssh for ${_acct}.${_n}"
+    fi
+  done
+  return 0
+}
+
+### Mirror the billing-suspension flag: it lives OUTSIDE the account tree on
+### purpose (the owner must not be able to delete it), so no account sync can
+### carry it -- a suspended account must never come back up serving 200s on
+### the target. Mirrors presence AND absence (an un-suspension mid-migration
+### must converge too).
+_xmass_copy_suspended_flag() {
+  local _acct="$1" _t="$2"
+  if [ -e "/data/conf/suspended/${_acct}.pid" ]; then
+    if ssh root@"${_t}" "mkdir -p /data/conf/suspended \
+      && echo SUSPENDED > /data/conf/suspended/${_acct}.pid" 2>/dev/null; then
+      _alrt "  ${_acct}: account is SUSPENDED on the source; flag mirrored to ${_t}"
+    else
+      # Loud AND blocking: an unmirrored suspension means a non-paying
+      # account comes back up serving 200s on the target.
+      _alrt "DENY: ${_acct}: could not mirror the SUSPENDED flag to ${_t} --"
+      _alrt "DENY: the account would resume serving there after cutover"
+      _XMASS_NOT_CLEAN=YES
+      return 1
+    fi
+  else
+    ssh root@"${_t}" "rm -f /data/conf/suspended/${_acct}.pid" 2>/dev/null
+  fi
+  return 0
+}
+
+### Source-side LE health sweep: dehydrated's broken-renewal shape writes a
+### fresh key and a ZERO-BYTE certificate nightly and never advances the
+### symlink. Migrating a broken renewal means debugging two things at once
+### inside the cutover window, so name every broken pair now. Advisory.
+_xmass_check_le_health() {
+  local _c _end _bad=0
+  _info "Checking source certificates for broken renewals ..."
+  for _c in /data/disk/*/config/server_master/ssl.d/*/openssl.crt; do
+    [ -e "${_c}" ] || continue
+    if [ ! -s "${_c}" ]; then
+      _alrt "  ZERO-BYTE certificate: ${_c} -- fix the renewal BEFORE migrating"
+      _bad=$(( _bad + 1 ))
+      continue
+    fi
+    _end=$(openssl x509 -noout -enddate -in "${_c}" 2>/dev/null | cut -d= -f2)
+    if [ -z "${_end}" ]; then
+      _alrt "  UNPARSEABLE certificate: ${_c} -- fix the renewal BEFORE migrating"
+      _bad=$(( _bad + 1 ))
+      continue
+    fi
+    if [ "$(date -u -d "${_end}" '+%s' 2>/dev/null || echo 0)" -lt "$(date -u '+%s')" ]; then
+      _alrt "  EXPIRED certificate (${_end}): ${_c}"
+      _bad=$(( _bad + 1 ))
+    fi
+  done
+  if [ "${_bad}" -gt 0 ]; then
+    _alrt "${_bad} broken/expired certificate(s) found -- fix renewals on the source first"
+  else
+    _info "Source certificates: OK"
+  fi
+  return 0
+}
+
+### Compare Solr core sets after the target's Solr starts: an rsynced core a
+### fresh build never regenerates arrives as data and stays unregistered,
+### silently returning wrong search results. Check-gate only: registration
+### is core-shape-specific and stays with the operator.
+_xmass_solr_core_parity() {
+  local _t="$1" _src="" _d _tgtcores _c _missing=""
+  for _d in /opt/solr4/*/ /var/solr7/data/*/ /var/solr9/data/*/; do
+    [ -d "${_d}" ] || continue
+    if [ -e "${_d}core.properties" ] || [ -e "${_d}conf/solrconfig.xml" ]; then
+      _src="${_src} $(basename "${_d}")"
+    fi
+  done
+  _src="${_src## }"
+  [ -z "${_src}" ] && return 0
+  _tgtcores=$(ssh root@"${_t}" "for p in 8983 8099 8091; do curl -s -A iCab \"http://127.0.0.1:\${p}/solr/admin/cores?action=STATUS&wt=json\" 2>/dev/null; done" 2>/dev/null)
+  for _c in ${_src}; do
+    case "${_tgtcores}" in
+      *"\"${_c}\""*) : ;;
+      *) _missing="${_missing} ${_c}" ;;
+    esac
+  done
+  if [ -n "${_missing}" ]; then
+    _alrt "Solr cores present on the source but NOT registered on ${_t}:${_missing}"
+    _alrt "their data arrived with the sync; register them on the target or the"
+    _alrt "affected search indexes silently return wrong results"
+  else
+    _info "Solr core parity source vs target: OK"
+  fi
+  return 0
+}
+
+### Devuan-safe cron stop + runner park, shared by the cutover LIVE path and
+### the resume path: the box's own cron restores parked runners within
+### minutes, so a park done at pre-mig time never survives until cutover --
+### park HERE, immediately before the destructive sequence, then verify.
+_xmass_park_runners_and_cron() {
+  local _p
+  _info "Stopping cron and parking BOA runners for the cutover window ..."
+  _XMASS_RUNNERS_PARKED=YES
+  /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
+  pkill -x cron &> /dev/null
+  for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
+    if [ -e "/var/xdrago/${_p}" ]; then
+      mv -f "/var/xdrago/${_p}" "/var/xdrago/.${_p}.off"
+      pkill -9 -f "${_p}" &> /dev/null
+    fi
+  done
+  if pgrep -x cron &> /dev/null; then
+    _die "cron is still running after the stop attempt -- stop it manually" \
+         " (/etc/init.d/cron stop; pkill -x cron), then re-run"
+  fi
+  _info "cron stopped and runners parked: OK"
+}
+
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
     _die "This script must be run as root"
@@ -575,6 +1044,11 @@ _xmass_write_gtid_conf_local() {
     # where the new one does not exist.
     if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
       echo "expire_logs_days             = 7"
+      # 5.7 applies the relay log single-threaded by default; on a
+      # write-heavy source the replica drifts and blows the cutover lag
+      # wait. 8.0.27+ already defaults to LOGICAL_CLOCK with 4 workers.
+      echo "slave_parallel_type          = LOGICAL_CLOCK"
+      echo "slave_parallel_workers       = ${_XMASS_PARALLEL_WORKERS:-4}"
     else
       echo "binlog_expire_logs_seconds   = 604800"
     fi
@@ -659,6 +1133,8 @@ _logbin=\$(mysql --defaults-file=/root/.my.cnf \
   echo "binlog_format            = ROW"
   if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
     echo "expire_logs_days             = 7"
+    echo "slave_parallel_type          = LOGICAL_CLOCK"
+    echo "slave_parallel_workers       = ${_XMASS_PARALLEL_WORKERS:-4}"
   else
     echo "binlog_expire_logs_seconds   = 604800"
   fi
@@ -720,6 +1196,18 @@ _xmass_decide_transfer_method() {
   fi
   _info "xtrabackup method: ${_XTRA_METHOD}" \
     "(mysql=${_mysql_kb}K free=${_free_kb}K needed=${_needed_kb}K)"
+  if [ "${_XTRA_METHOD}" = "stream" ]; then
+    # Stream is one unresumable pipe with the target datadir already moved
+    # aside; stage can resume an interrupted transfer. When reclaimable bulk
+    # (duplicity caches, old backups, build trees) is what forces stream,
+    # relocating it first is almost always worth it -- name the shortfall
+    # and the usual suspects so that decision is informed, not discovered.
+    _alrt "STREAM selected: the transfer is a single unresumable pipe. Shortfall:"
+    _alrt "  $(( (_needed_kb - _free_kb) / 1024 ))M more free on / would enable resumable STAGE."
+    _alrt "  Largest reclaim candidates (relocate, do not delete):"
+    du -sk /root/.cache /var/backups /opt/tmp 2>/dev/null \
+      | sort -rn | head -3 | awk '{ printf "ALRT:     %sM  %s\n", int($1/1024), $2 }'
+  fi
 }
 
 _xmass_take_backup() {
@@ -827,6 +1315,16 @@ _xmass_setup_slave() {
          "was GTID enabled on source before taking backup?"
   fi
   _info "GTID set from backup: ${_gtid_set}"
+
+  # Runtime half of the 5.7 parallel-apply setup (the conf half persists it):
+  # covers a target whose GTID was already ON, where no restart read the conf.
+  # Legal here because the replica threads are not started yet.
+  if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
+    ssh root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf \
+      -e \"SET GLOBAL slave_parallel_type='LOGICAL_CLOCK'; \
+           SET GLOBAL slave_parallel_workers=${_XMASS_PARALLEL_WORKERS:-4};\"" \
+      || _alrt "could not set 5.7 parallel-apply on target (replica may lag single-threaded)"
+  fi
 
   _info "Configuring replication slave on target ${_tgt} ..."
   ssh root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf" <<SLAVEEOF
@@ -1306,33 +1804,24 @@ _xmass_sync_static_symlink_safe() {
     -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/"
 
   # Pass 1b: the static sync uses -u (skip-newer), but the target's own fresh
-  # Octopus install wrote default control files with a NEWER mtime, which shadow
-  # the migrated ones -> every migrated site silently loses its per-site PHP pin
-  # and falls back to the account default. multi-fpm.info's lines key on the site
-  # domain, which migration and rename do not change, so the source copy is
-  # directly valid on the target: force it over WITHOUT -u. Same defect and same
-  # fix as xoct's _xoct_transfer_static_symlink_safe.
-  if [ -e "${_src_static}/control/multi-fpm.info" ]; then
-    _xmass_rsync -aEAX ${_ieni} -e ssh \
-      "${_src_static}/control/multi-fpm.info" \
-      "root@${_tgt}:${_dst_static}/control/multi-fpm.info"
-  fi
-
-  # fpm.info and cli.info are the ACCOUNT-level defaults, not per-site pins, and
-  # BOA re-derives them from /root/.<oN>.octopus.cnf on the target at every
-  # upgrade. Forcing the source copies over them would look correct and then be
-  # silently reverted by the next `octopus up-*`, so report the mismatch and name
-  # the file that actually has to change instead of papering over it.
-  local _ctl _srcv _tgtv
-  for _ctl in fpm.info cli.info; do
-    [ -e "${_src_static}/control/${_ctl}" ] || continue
-    [ "${_MODE}" = "LIVE" ] || continue
-    _srcv="$(tr -d " \t\r\n" < "${_src_static}/control/${_ctl}" 2>/dev/null)"
-    _tgtv="$(ssh root@"${_tgt}" "tr -d ' \t\r\n' < '${_dst_static}/control/${_ctl}' 2>/dev/null" 2>/dev/null)"
-    if [ -n "${_srcv}" ] && [ -n "${_tgtv}" ] && [ "${_srcv}" != "${_tgtv}" ]; then
-      _alrt "PHP default mismatch for $(basename "${_dst_usr}"): ${_ctl} source=${_srcv} target=${_tgtv}."
-      _alrt "  Fix /root/.$(basename "${_dst_usr}").octopus.cnf on the TARGET and re-run its octopus install;"
-      _alrt "  copying ${_ctl} alone is reverted by the next 'octopus up-*'."
+  # Octopus install wrote default control files with a NEWER mtime, which
+  # shadow the migrated ones -> every migrated site silently loses its PHP
+  # pins and falls back to the target's install-time default. The per-site
+  # multi-fpm.info lines key on the site domain (unchanged by migration), and
+  # the account-level fpm.info/cli.info are the AUTHORITATIVE witnesses BOA
+  # derives the octopus.cnf and the FPM pools from (_satellite_cnf and
+  # manage_ltd_users both read .info -> rewrite cnf, never the reverse -- an
+  # earlier comment here claimed the opposite direction and left the pins to
+  # a hand-fix that never came). All three are directly valid on the target:
+  # force them over WITHOUT -u. The PHP coverage gate already proved the
+  # pinned versions are installed there, so a forced pin cannot strand a
+  # site without a pool.
+  local _ctl
+  for _ctl in multi-fpm.info fpm.info cli.info; do
+    if [ -e "${_src_static}/control/${_ctl}" ]; then
+      _xmass_rsync -aEAX ${_ieni} -e ssh \
+        "${_src_static}/control/${_ctl}" \
+        "root@${_tgt}:${_dst_static}/control/${_ctl}"
     fi
   done
 
@@ -1359,8 +1848,16 @@ _xmass_sync_account() {
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
   _xmass_sync_static_symlink_safe "${_udir}" "${_dst}" "${_TGT_MNT}"
 
-  # Log and control files (includes domain.txt, email.txt, etc.)
-  _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+  # Log and control files (includes domain.txt, email.txt, etc.).
+  # proxied.pid and migproxy.cnf are TARGET-ROLE state and must never arrive
+  # from the source: on the documented reset-phase recovery path the source
+  # already carries its own source-role copies, and landing them on the
+  # target disables LE renewal there and overwrites the target's policy
+  # record. pass.txt rides the credential carry below instead, paired with
+  # the shadow hash so the two can never disagree.
+  _xmass_rsync -aEAXqu ${_ieni} \
+    --exclude=proxied.pid --exclude=migproxy.cnf --exclude=pass.txt \
+    -e ssh \
     "${_udir}/log/" "root@${_tgt}:${_dst}/log/"
 
   # Drush aliases are copied WHOLE — including the source's server_master
@@ -1411,6 +1908,64 @@ _xmass_sync_account() {
     _xmass_rsync -aEAXqu ${_ieni} \
       -e ssh "/home/${_oct}.ftp/.ssh" \
       "root@${_tgt}:/home/${_oct}.ftp/"
+  fi
+
+  # The sub-account password store must land BEFORE clients/ does:
+  # manage_ltd_users creates sub-users from clients/ within minutes on the
+  # target, and honours a pre-existing store entry (the carried password)
+  # only if it is already there. Forced (no -u): the target's fresh install
+  # must never shadow the carried credentials.
+  if [ -d "/home/${_oct}.ftp/users" ]; then
+    _xmass_rsync -aEAX ${_ieni} \
+      -e ssh "/home/${_oct}.ftp/users/" \
+      "root@${_tgt}:/home/${_oct}.ftp/users/"
+  fi
+
+  # Sub-account registry + the two dirs xoct always carried and xmass did
+  # not: clients/ drives manage_ltd_users' sub-user creation on the target,
+  # and backups/ is a hard requirement of renameaegirhost's Aegir-root
+  # validation -- without it the cutover rename dies on every account.
+  # backups/ can be large, so it goes through the same space gate the Solr
+  # trees use before any bytes move; the dir itself must exist regardless.
+  if [ -d "${_udir}/clients" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+      "${_udir}/clients/" "root@${_tgt}:${_dst}/clients/"
+  fi
+  if [ -d "${_udir}/backups" ]; then
+    if _xmass_solr_check "${_udir}/backups" "${_dst}/backups" "backups (${_oct})"; then
+      _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+        "${_udir}/backups/" "root@${_tgt}:${_dst}/backups/"
+    fi
+  fi
+  [ "${_MODE}" = "LIVE" ] \
+    && ssh root@"${_tgt}" "mkdir -p ${_dst}/backups ${_dst}/clients" 2>/dev/null
+  if [ -d "${_udir}/undo" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+      "${_udir}/undo/" "root@${_tgt}:${_dst}/undo/"
+  fi
+
+  # Client-installed toolchains live outside /data/disk in the lshell jail's
+  # writable trees and never travelled before -- migrate AS-IS.
+  if [ -d "/opt/user/gems/${_oct}.ftp" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+      "/opt/user/gems/${_oct}.ftp/" "root@${_tgt}:/opt/user/gems/${_oct}.ftp/"
+  fi
+  if [ -d "/opt/user/npm/${_oct}.ftp" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+      "/opt/user/npm/${_oct}.ftp/" "root@${_tgt}:/opt/user/npm/${_oct}.ftp/"
+  fi
+
+  # Plan/identity stamps forced over the fresh install's newer defaults
+  # (mode-aware helper; prints the plan in DRY).
+  _xmass_seed_account_stamps "${_oct}" "${_tgt}"
+
+  # Target-mutating seeding runs only in LIVE: merge the portable cnf values,
+  # carry the client credentials, mirror the suspension flag. Repeated syncs
+  # keep all three converged with source-side changes until cutover.
+  if [ "${_MODE}" = "LIVE" ]; then
+    _xmass_push_account_cnf "${_oct}" "${_tgt}"
+    _xmass_sync_shell_credentials "${_oct}" "${_tgt}"
+    _xmass_copy_suspended_flag "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
   fi
 
   # Catch-all: fix any OTHER /mnt-anchored symlink in the account tree that the
@@ -1560,12 +2115,22 @@ _XMASS_WEB_BLOCKED=NO
 # Every abort after the web block leaves the source down. The operator reads this
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
-  [ "${_XMASS_WEB_BLOCKED}" = "YES" ] || return 0
-  _alrt "SOURCE IS STILL SERVING 503. To restore service on the SOURCE:"
-  _alrt '    rm -f /data/disk/*/static/control/http-off.pid'
-  _alrt '    find /var/lib/nginx/speed -type f -delete'
-  _alrt '    service nginx reload'
-  _alrt "    rm -f ${_SOLR_DENY_FILE}   # only if Solr was serving from here"
+  # Fire when the web block is up OR when only the park happened (an abort
+  # between the park and the web block must still tell the operator that
+  # cron and the runners are down on this box).
+  if [ "${_XMASS_WEB_BLOCKED}" != "YES" ] \
+    && [ "${_XMASS_RUNNERS_PARKED}" != "YES" ]; then
+    return 0
+  fi
+  if [ "${_XMASS_WEB_BLOCKED}" = "YES" ]; then
+    _alrt "SOURCE IS STILL SERVING 503. To restore service on the SOURCE:"
+    _alrt '    rm -f /data/disk/*/static/control/http-off.pid'
+    _alrt '    find /var/lib/nginx/speed -type f -delete'
+    _alrt '    service nginx reload'
+    _alrt "    rm -f ${_SOLR_DENY_FILE}   # only if Solr was serving from here"
+  else
+    _alrt "cron and the BOA runners are PARKED on this source. To restore them:"
+  fi
   _alrt '    service cron start'
   _alrt '    for s in runner owl usage graceful manage_ltd_users; do \'
   _alrt '      mv -f /var/xdrago/.$s.sh.off /var/xdrago/$s.sh 2>/dev/null; done'
@@ -1648,8 +2213,11 @@ _xmass_maint_off() {
 
 _xmass_check_no_boa_running() {
   _info "Verifying BOA background jobs are stopped ..."
+  # usage.sh was missing from this loop while pre-mig parks all five -- a
+  # cron-restored usage.sh could be live through the whole cutover with this
+  # gate reporting OK.
   local _fail=NO _p
-  for _p in runner.sh owl.sh graceful.sh manage_ltd_users.sh; do
+  for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_p}" ]; then
       _alrt "BOA script still active: /var/xdrago/${_p} — run xmass pre-mig first"
       _fail=YES
@@ -2069,6 +2637,157 @@ _xmass_renameaegirhost_all() {
 
 ###=============SUBCOMMANDS===============###
 
+_xmass_cmd_prep_target() {
+  # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
+  # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
+  # directions with the reverse 3306 path proven, the pinned PHP set present
+  # (or built with --fix-php), one Octopus account per eligible source
+  # account installed by driving 'xoct create' (which installs from the
+  # target's own tree with the source's plan stamps, seeds the sanitised
+  # octopus.cnf, forces the PHP pin witnesses and carries the credentials),
+  # the suspension flags mirrored, and a final installed-state verification.
+  # Idempotent: a re-run skips existing installs and re-seeds/re-verifies.
+  _XMASS_SRC_IP="${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
+  _info "======================================================"
+  _info "  xmass prep-target ${_tgt}"
+  _info "======================================================"
+  _xmass_enumerate_accounts
+  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
+    | grep -q "SSH_OK" \
+    || _die "Cannot SSH to target ${_tgt} — run xmass pre-mig on both hosts first"
+
+  # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
+  # guard temp-denies, and the target dials BACK to source:3306 for
+  # replication -- getting this wrong fails init AFTER the datadir swap.
+  if [ -x "/usr/sbin/csf" ]; then
+    if csf -a "${_tgt}" "xmass migration target" &> /dev/null; then
+      _info "Source CSF: allowed ${_tgt}"
+    else
+      _alrt "source csf -a for ${_tgt} returned non-zero -- verify /etc/csf/csf.allow by hand"
+    fi
+  else
+    _info "Source has no csf; nothing to allow here"
+  fi
+  local _tcsf
+  _tcsf=$(ssh root@"${_tgt}" "if [ -x /usr/sbin/csf ]; then csf -a ${_XMASS_SRC_IP} 'xmass migration source' &> /dev/null && echo CSF_OK || echo CSF_FAIL; else echo CSF_NONE; fi" 2>/dev/null)
+  case "${_tcsf}" in
+    CSF_OK)   _info "Target CSF: allowed ${_XMASS_SRC_IP}" ;;
+    CSF_NONE) _info "Target has no csf; nothing to allow there" ;;
+    *)        _alrt "target CSF allow for ${_XMASS_SRC_IP} FAILED or was unreadable (${_tcsf:-no answer})" ;;
+  esac
+  # Fail closed: init's failure mode for a dead reverse path is a refused
+  # replication AFTER the target datadir has been replaced.
+  if ssh root@"${_tgt}" "timeout 5 bash -c '</dev/tcp/${_XMASS_SRC_IP}/3306'" 2>/dev/null; then
+    _info "Reverse path target->source:3306: OK"
+  elif [ "${_XMASS_SKIP_REVERSE_CHECK}" = "YES" ]; then
+    _alrt "reverse path target->source:3306 is DEAD; continuing on _XMASS_SKIP_REVERSE_CHECK=YES"
+  else
+    _die "target ${_tgt} cannot reach ${_XMASS_SRC_IP}:3306 -- replication WILL fail at init," \
+         " after the target datadir has already been replaced." \
+         " Check CSF on the source and any parent-host firewall (a Proxmox parent running CSF" \
+         " must be trusted by hand: migration_proxy_trust.sh trust <ip> --csf-only -- xmass" \
+         " wires the guest only). Override with _XMASS_SKIP_REVERSE_CHECK=YES."
+  fi
+
+  # The pinned PHP set must exist before ANY account install: a fresh install
+  # is born on the box default and every later heal depends on the pinned
+  # interpreter being present.
+  if [ "${_XMASS_FIX_PHP}" = "YES" ]; then
+    _xmass_php_coverage_gate "${_tgt}" fix \
+      || _die "PHP coverage fix failed on ${_tgt}"
+  else
+    _xmass_php_coverage_gate "${_tgt}" die
+  fi
+
+  # Advisory sweeps while acting on them is still cheap.
+  _xmass_check_le_health
+  _xmass_decide_transfer_method
+
+  local _oct _rc _failed=""
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _info "Preparing account ${_oct} on ${_tgt} ..."
+    if [ "${_XMASS_FIX_PHP}" = "YES" ]; then
+      xoct create "${_oct}" "${_tgt}" --fix-php
+    else
+      xoct create "${_oct}" "${_tgt}"
+    fi
+    _rc=$?
+    if [ "${_rc}" -ne 0 ]; then
+      _alrt "xoct create returned rc=${_rc} for ${_oct}"
+      _failed="${_failed} ${_oct}"
+    fi
+    _xmass_copy_suspended_flag "${_oct}" "${_tgt}"
+  done
+  [ -n "${_failed}" ] \
+    && _die "account preparation failed for:${_failed} -- fix the cause and re-run prep-target"
+
+  _xmass_verify_target_accounts "${_tgt}" die
+  _info ""
+  _info "======================================================"
+  _info "  xmass prep-target COMPLETE for ${_tgt}"
+  _info "  All eligible accounts installed and seeded."
+  _info "  Next: 'xmass init ${_tgt} [--proxy-mode=...]' on this source."
+  _info "======================================================"
+}
+
+_xmass_cmd_verify() {
+  # Read-only post-cutover sweep replacing the manual checklist: one site per
+  # account fetched twice >=5s apart direct-to-target (BOA answers fetch
+  # bursts with transient 200 soft-404 bodies, so spacing matters and a
+  # single fetch proves little), one relayed request through this source's
+  # proxy, plus the local leftovers that keep sites 503-gated and the cron/
+  # certificate-mirror state a long-lived proxy depends on.
+  _xmass_enumerate_accounts
+  local _oct _dom _vhd _c1 _c2 _cr _cs
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    if [ -e "/data/disk/${_oct}/static/control/http-off.pid" ]; then
+      _alrt "  ${_oct}: http-off.pid still present on the source -- sites 503-gated here"
+    fi
+    # Real site vhosts only: post-cutover the ASCII-first entry is always the
+    # dot-prefixed pre-proxy backup, and https.* companions are not domains.
+    _vhd=$(find /data/disk/${_oct}/config/server_master/nginx/vhost.d \
+      -maxdepth 1 -type f ! -name '.*' ! -name 'https.*' 2>/dev/null | sort | head -1)
+    if [ -z "${_vhd}" ]; then
+      _alrt "  ${_oct}: no vhosts found on the source"
+      continue
+    fi
+    _dom=$(basename "${_vhd}")
+    if ! printf '%s' "${_dom}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'; then
+      _alrt "  ${_oct}: skipping vhost '${_dom}' (not a plain domain name)"
+      continue
+    fi
+    _c1=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+      --resolve "${_dom}:80:${_tgt}" "http://${_dom}/" 2>/dev/null)
+    sleep 6
+    _c2=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+      --resolve "${_dom}:80:${_tgt}" "http://${_dom}/" 2>/dev/null)
+    _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+      -H "Host: ${_dom}" "http://127.0.0.1/" 2>/dev/null)
+    _cs="-"
+    if [ -d "/data/disk/${_oct}/config/server_master/ssl.d/${_dom}" ]; then
+      _cs=$(curl -sk -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+        --resolve "${_dom}:443:${_tgt}" "https://${_dom}/" 2>/dev/null)
+    fi
+    if { [ "${_c1}" = "200" ] || [ "${_c2}" = "200" ]; } \
+      && { [ "${_cr}" = "200" ] || [ "${_cr}" = "301" ] || [ "${_cr}" = "302" ]; }; then
+      _info "  ${_oct}: ${_dom} target=${_c1}/${_c2} relay=${_cr} https=${_cs}: OK"
+    else
+      _alrt "  ${_oct}: ${_dom} target=${_c1}/${_c2} relay=${_cr} https=${_cs} -- investigate"
+      _alrt "    (transient 200 'Page not found' bodies are BOA burst protection; re-run"
+      _alrt "    verify before recording a site broken)"
+    fi
+  done
+  if ! pgrep -x cron &> /dev/null; then
+    _alrt "cron is NOT running on this source -- the daily certificate mirror is DOWN"
+  fi
+  if [ ! -x "/var/xdrago/migration_proxy_certs.sh" ]; then
+    _alrt "/var/xdrago/migration_proxy_certs.sh is MISSING on this source (see cutover notes)"
+  elif ! grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
+    _alrt "migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line)"
+  fi
+  _info "verify sweep complete (read-only)"
+}
+
 _xmass_pre_mig() {
   # Stop BOA background jobs and exchange SSH keys between source and target.
   # Run on BOTH hosts: first on source (to publish its pub key),
@@ -2145,6 +2864,26 @@ _xmass_cmd_init() {
     | grep -q "SSH_OK" \
     || _die "Cannot SSH to target ${_tgt} — run xmass pre-mig on both hosts first"
 
+  # The datadir swap below is destructive; everything the target must already
+  # have is gated HERE, where a refusal costs nothing: real account installs
+  # (not rsync-created trees), the full pinned PHP set, and distinct
+  # replication server ids (last two IP octets only -- two boxes in the same
+  # /16 can collide, and replication then simply refuses to start AFTER the
+  # target datadir has been replaced).
+  _xmass_verify_target_accounts "${_tgt}" die
+  _xmass_php_coverage_gate "${_tgt}" die
+  local _src_sid _tgt_sid
+  _src_sid=$(_ip_to_server_id "${_XMASS_SRC_IP}")
+  _tgt_sid=$(_ip_to_server_id "${_tgt}")
+  if [ "${_src_sid}" = "${_tgt_sid}" ]; then
+    _die "server_id collision: source ${_XMASS_SRC_IP} and target ${_tgt} both derive" \
+         " server_id=${_src_sid} (last two octets) — replication cannot start." \
+         " Give the target an IP differing in the last two octets, or migrate via xoct."
+  fi
+  _info "Replication server ids distinct (${_src_sid} vs ${_tgt_sid}): OK"
+  # Advisory: broken LE renewals migrate into two problems at once.
+  _xmass_check_le_health
+
   _xmass_detect_percona_version
 
   # Verify target runs the same Percona version
@@ -2158,6 +2897,30 @@ _xmass_cmd_init() {
          " xmass requires identical versions on both servers. Use xoct instead."
   fi
   _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
+
+  # The restore replaces the target's datadir while the snapshot is still on
+  # its disk, so the target transiently needs room for both plus growth
+  # margin. Until now this was human arithmetic that failed AFTER the old
+  # datadir was displaced. Override: _XMASS_SKIP_DISK_GATE=YES.
+  local _src_dd_kb _tgt_free_kb _need_kb
+  _src_dd_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
+  _tgt_free_kb=$(ssh root@"${_tgt}" "df -Pk /var/lib/mysql 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
+  _need_kb=$(( ${_src_dd_kb:-0} * 22 / 10 ))
+  if [ "${_XMASS_SKIP_DISK_GATE}" = "YES" ]; then
+    _alrt "target datadir space gate SKIPPED by _XMASS_SKIP_DISK_GATE=YES"
+  elif [ -z "${_src_dd_kb}" ] || [ -z "${_tgt_free_kb}" ]; then
+    # Fail closed: an unmeasurable gate that prints OK is worse than none,
+    # because init's next steps displace the target's datadir.
+    _die "could not measure datadir space (source=${_src_dd_kb:-unknown}K" \
+         " target-free=${_tgt_free_kb:-unknown}K) -- re-check the target, or export" \
+         " _XMASS_SKIP_DISK_GATE=YES to proceed deliberately."
+  elif [ "${_tgt_free_kb}" -lt "${_need_kb}" ]; then
+    _die "target ${_tgt} has ${_tgt_free_kb}K free at /var/lib/mysql but the restore" \
+         " transiently needs ~${_need_kb}K (2.2x the ${_src_dd_kb}K source datadir)." \
+         " Free space on the target, or export _XMASS_SKIP_DISK_GATE=YES to override."
+  else
+    _info "Target datadir space check: OK (free=${_tgt_free_kb}K need~${_need_kb}K)"
+  fi
 
   # Pause the mysql.sh watchdog on BOTH hosts for the whole init critical
   # section: it must not restart the LIVE source mid xtrabackup snapshot
@@ -2219,6 +2982,19 @@ _xmass_cmd_sync() {
   # Resolve the target's attached mount ONCE up-front (aborts on empty/unreachable/
   # multi-mount) and reuse it for every account + shared store below.
   _xmass_resolve_target_mnt "${_tgt}"
+  # Target-readiness gates run BEFORE the clean-dry token is consumed, so a
+  # refusal here never forces another DRY: rsync into a never-installed
+  # account creates a root-owned tree that renames and serves nothing, and a
+  # missing pinned PHP means silent wrong-PHP serving after cutover. In DRY
+  # both report as DENY and mark the run NOT CLEAN.
+  _xmass_enumerate_accounts
+  if [ "${_MODE}" = "LIVE" ]; then
+    _xmass_verify_target_accounts "${_tgt}" die
+    _xmass_php_coverage_gate "${_tgt}" die
+  else
+    _xmass_verify_target_accounts "${_tgt}" deny || true
+    _xmass_php_coverage_gate "${_tgt}" deny || true
+  fi
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   [ "${_MODE}" = "LIVE" ] && _xmass_require_clean_dry "${_tgt}"
   _XMASS_STORE_RC=0
@@ -2369,6 +3145,11 @@ _xmass_cutover_finish() {
   # Step 14: Start Solr on target now that Solr data sync is complete
   _xmass_start_solr_target
 
+  # Step 14.5: Core parity check -- an rsynced core a fresh build never
+  # regenerates arrives as data and stays unregistered, silently returning
+  # wrong search results on a cutover this tool then calls successful.
+  _xmass_solr_core_parity "${_tgt}"
+
   # Step 15: Start cron and restore BOA runners on target
   _info "Starting cron and restoring BOA runners on target ${_tgt} ..."
   ssh root@"${_tgt}" bash <<'REMOTE'
@@ -2389,6 +3170,20 @@ REMOTE
   # Step 16: Convert source vhosts to proxy via xoct (handles vhost templates,
   # nginx reload, and per-account migration-complete notification emails).
   # http-off.pid removal per account is also handled by xoct proxy.
+  # First confirm the certificate mirror is present on this box: from here on
+  # the source serves the proxied sites' TLS, renewals stop by design, and
+  # only the daily mirror keeps a long-lived proxy from serving expired
+  # certificates in ~90 days.
+  if [ ! -x "/var/xdrago/migration_proxy_certs.sh" ]; then
+    _alrt "/var/xdrago/migration_proxy_certs.sh is MISSING on this source -- long-lived"
+    _alrt "proxies will serve expired certificates once the current ones age out."
+    _alrt "It ships with the current release: run 'barracuda up-<tree> system noscreen'"
+    _alrt "here after the cutover, or copy the script from the target."
+  elif ! grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
+    _alrt "migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line);"
+    _alrt "the daily mirror never runs until the 06:45 line exists -- a barracuda up-* run"
+    _alrt "or the BOA fetch pass restores it."
+  fi
   _xmass_convert_source_to_proxy
 
   # Step 17: Remove http-off.pid on source (belt-and-braces; xoct proxy
@@ -2418,6 +3213,27 @@ REMOTE
     fi
     echo "COMPLETE" > "/data/disk/${_oct}/log/proxied.pid"
   done
+
+  # Step 18.5: Restore cron and the five runners on the SOURCE. Until now
+  # only the abort path printed this recipe and only the TARGET got a live
+  # restore -- so a successful cutover left the source with cron stopped
+  # forever, which silently disabled the daily certificate mirror (the one
+  # mechanism that keeps a long-lived proxy's TLS fresh) and every runner.
+  # The runners self-skip proxied accounts, so restoring them is safe for
+  # every proxy mode.
+  _info "Restoring cron and BOA runners on the source ..."
+  /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
+  local _scr
+  for _scr in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
+    if [ ! -e "/var/xdrago/${_scr}" ] && [ -e "/var/xdrago/.${_scr}.off" ]; then
+      mv -f "/var/xdrago/.${_scr}.off" "/var/xdrago/${_scr}"
+      _info "  Restored ${_scr}"
+    fi
+  done
+  if ! pgrep -x cron &> /dev/null; then
+    _alrt "cron did not start on the source; the daily certificate mirror is DOWN --"
+    _alrt "start it manually: /etc/init.d/cron start"
+  fi
 
   # Cutover done: re-arm the watchdog on both hosts.
   _xmass_maint_off
@@ -2464,17 +3280,19 @@ _xmass_cmd_cutover() {
     _info "  xmass cutover RESUME (from parked rename step)"
     _info "  Target           : ${_tgt}"
     _info "======================================================"
-    _xmass_check_no_boa_running
     _xmass_enumerate_accounts
     # A run parked by a pre-mode xmass has its mode only in the mapped state,
     # not on disk yet; the resumed tail re-runs xoct proxy, which resolves
     # from the box default files, so materialise them and gate exactly as the
-    # normal --live path does.
+    # normal --live path does. Gates BEFORE the park: a refused resume must
+    # not leave cron and the runners freshly stopped.
     _mig_sweep_legacy
     _xmass_write_box_defaults
     _xmass_report_account_modes
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run"
+    _xmass_park_runners_and_cron
+    _xmass_check_no_boa_running
     # Keep the SQL watchdogs paused through the resumed tail (idempotent;
     # re-asserts the marker in case the box rebooted while parked)
     _xmass_maint_on
@@ -2504,6 +3322,11 @@ _xmass_cmd_cutover() {
     _info "  Target           : ${_tgt}"
     _info "======================================================"
     _xmass_enumerate_accounts
+    # Target-readiness gates as DENY: a missing account install or a missing
+    # pinned PHP version discovered inside the cutover window is the most
+    # expensive possible discovery -- surface both in the plan.
+    _xmass_verify_target_accounts "${_tgt}" deny || true
+    _xmass_php_coverage_gate "${_tgt}" deny || true
     # DRY stays read-only: simulate the box default --live would write, so
     # the printed per-account plan matches what --live will do. The override
     # must engage whenever a mode is pending -- INCLUDING when it changes an
@@ -2541,9 +3364,20 @@ _xmass_cmd_cutover() {
   _info "  Proxy default    : ${_XMASS_PROXY_MODE:-none}${_XMASS_PROXY_DEADLINE:+ (deadline ${_XMASS_PROXY_DEADLINE})}"
   _info "======================================================"
 
-  # Pre-flight checks
-  _xmass_check_no_boa_running
+  # A dropped ssh session mid-cutover strands the source on 503 (the runbooks
+  # mandated screen for years); make the discipline a refusal instead of lore.
+  if [ -z "${STY}" ] && [ -z "${TMUX}" ] && [ "${_XMASS_NO_SCREEN}" != "YES" ]; then
+    _die "cutover --live outside screen/tmux: a dropped session strands the source on 503." \
+         " Run: screen -dmS xmass xmass cutover ${_tgt} --live" \
+         " (or export _XMASS_NO_SCREEN=YES to override deliberately)"
+  fi
+
+  # EVERY refusable gate runs BEFORE the first source mutation: a refused
+  # cutover must leave the live source exactly as found. Parking cron/runners
+  # is a mutation, so it comes only after the last gate below.
   _xmass_enumerate_accounts
+  _xmass_verify_target_accounts "${_tgt}" die
+  _xmass_php_coverage_gate "${_tgt}" die
 
   # Freeze the box default to disk, then refuse to proceed while any account
   # would resolve to the built-in fallback: a single-account misfire mails one
@@ -2560,6 +3394,14 @@ _xmass_cmd_cutover() {
   _xmass_require_clean_dry "${_tgt}"
   _XMASS_STORE_RC=0
   _XMASS_RSYNC_RC=0
+
+  # All gates passed: park cron + runners HERE instead of refusing -- the
+  # box's own cron restores a pre-mig-time park within minutes, so demanding
+  # a manual re-park immediately before --live was a race the operator had
+  # to win. This is the first source mutation of the cutover; step 18.5
+  # restores it on success and _xmass_restore_hint covers the aborts below.
+  _xmass_park_runners_and_cron
+  _xmass_check_no_boa_running
 
   # Pause the mysql.sh watchdog on BOTH hosts for the whole cutover: the
   # FLUSH TABLES WITH READ LOCK on the source piles up connections, and the
@@ -2802,6 +3644,30 @@ case "${_cmd}" in
     _check_root
     _xmass_pre_mig
   ;;
+  prep-target)
+    _tgt="$1"
+    shift 2>/dev/null || true
+    _XMASS_FIX_PHP=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --fix-php) _XMASS_FIX_PHP=YES; shift ;;
+        *) _die "Unknown argument: $1" ;;
+      esac
+    done
+    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php]"
+    _check_root
+    _xmass_cmd_prep_target
+  ;;
+  verify)
+    _tgt="${1:-}"
+    _check_root
+    if [ -z "${_tgt}" ]; then
+      _xmass_load_state
+      _tgt="${_XMASS_TARGET_IP}"
+    fi
+    [ -z "${_tgt}" ] && _die "Usage: xmass verify [target-ip]"
+    _xmass_cmd_verify
+  ;;
   init)
     _tgt="$1"
     shift 2>/dev/null || true
@@ -2883,11 +3749,14 @@ case "${_cmd}" in
   *)
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
+    echo "Usage: xmass prep-target <target-ip> [--fix-php]      (run on source AFTER both pre-migs:"
+    echo "                     CSF both ways, PHP coverage, per-account installs + seeding)"
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"
     echo "                     [--proxy-deadline=YYYY-MM-DD|+Nd]  (run on source)"
     echo "Usage: xmass sync    <target-ip> [--live]             (run on source, repeat)"
     echo "Usage: xmass status  [target-ip]                      (run on source)"
     echo "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
+    echo "Usage: xmass verify  [target-ip]                      (run on source after cutover; read-only)"
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
     echo ""
