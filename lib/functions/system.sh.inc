@@ -807,6 +807,8 @@ _fix_on_upgrade() {
 # The 16384 tier corresponds to roughly 85 GB of installed RAM. Sets the PHP
 # limits (_USE_PHP/_USE_OPC/_USE_CLI) and the matching Percona buffer sizes
 # (_QCE_SQL/_RND_SQL/_JBF_SQL); platform-specific caps are applied by the caller.
+# NB _QCE_SQL is a dead output: every tier still computes it, nothing consumes
+# it since the query-cache era ended. Kept inert on purpose (C-004 Q9 ruling).
 _php_budget_for_ram() {
   if [ "${_USE}" -ge 16384 ]; then
     _USE_PHP=8192
@@ -1191,6 +1193,9 @@ _tune_memory_limits() {
   # scales purely with usable RAM in _php_budget_for_ram above. Decoupling the
   # two is what lets high-RAM VS/TG nodes scale past _USE_PHP=2048; XEN, AWS and
   # VZ outputs are unchanged from the pre-refactor formula.
+  # NB _L_NGX_WRKS is a dead output: the ladder below still derives it, nothing
+  # consumes it (the vhost writer reads the _CPU_* values directly). Kept inert
+  # on purpose (C-004 Q9 ruling).
   if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
     _L_NGX_WRKS=${_CPU_MX}
   else
