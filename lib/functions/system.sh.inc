@@ -807,6 +807,8 @@ _fix_on_upgrade() {
 # The 16384 tier corresponds to roughly 85 GB of installed RAM. Sets the PHP
 # limits (_USE_PHP/_USE_OPC/_USE_CLI) and the matching Percona buffer sizes
 # (_QCE_SQL/_RND_SQL/_JBF_SQL); platform-specific caps are applied by the caller.
+# NB _QCE_SQL is a dead output: every tier still computes it, nothing consumes
+# it since the query-cache era ended. Kept inert on purpose (C-004 Q9 ruling).
 _php_budget_for_ram() {
   if [ "${_USE}" -ge 16384 ]; then
     _USE_PHP=8192
@@ -1191,6 +1193,9 @@ _tune_memory_limits() {
   # scales purely with usable RAM in _php_budget_for_ram above. Decoupling the
   # two is what lets high-RAM VS/TG nodes scale past _USE_PHP=2048; XEN, AWS and
   # VZ outputs are unchanged from the pre-refactor formula.
+  # NB _L_NGX_WRKS is a dead output: the ladder below still derives it, nothing
+  # consumes it (the vhost writer reads the _CPU_* values directly). Kept inert
+  # on purpose (C-004 Q9 ruling).
   if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
     _L_NGX_WRKS=${_CPU_MX}
   else
@@ -1327,9 +1332,9 @@ _tune_memory_limits() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "TUNE: _UXC_SQL is ${_UXC_SQL}"
     fi
-    sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_user_connections.*/max_user_connections    = ${_UXC_SQL}/g"    /etc/mysql/my.cnf &> /dev/null
     wait
-    sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_connections.*/max_connections         = ${_MXC_SQL}/g"         /etc/mysql/my.cnf &> /dev/null
     wait
     sed -i "s/^tmp_table_size.*/tmp_table_size          = ${_TMP_SQL}/g"          /etc/mysql/my.cnf &> /dev/null
     wait
@@ -10834,7 +10839,8 @@ _initd_update() {
           -I tmp_table_size \
           -I max_heap_table_size \
           -I myisam_sort_buffer_size \
-          -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
+          -I key_buffer_size \
+          -I max_connect_errors ${_myCnf} ${_preCnf} 2>&1)
         if [ -z "${_diffMyTest}" ]; then
           _myCnfUpdate=NO
           _myTopReinstall=NO
@@ -10850,9 +10856,17 @@ _initd_update() {
           fi
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          _myCnfUpdate=NO
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          # Suppress only when the surviving diff carries nothing but
+          # ignore-listed knob lines; a mixed hunk keeps its restart for
+          # the co-riding knob the -I list does not cover.
+          _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
+            | grep -E "^[<>] " \
+            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size|max_connect_errors" 2>&1)
+          if [ -z "${_diffMyOther}" ]; then
+            _myCnfUpdate=NO
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+            fi
           fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
