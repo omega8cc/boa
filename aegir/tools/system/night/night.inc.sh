@@ -441,6 +441,7 @@ night_emit_run_env() {
     echo "export _O_CONTRIB_NINE=\"${_O_CONTRIB_NINE}\""
     echo "export _O_CONTRIB_TEN=\"${_O_CONTRIB_TEN}\""
     echo "export _O_CONTRIB_ELEVEN=\"${_O_CONTRIB_ELEVEN}\""
+    echo "export _O_CONTRIB_BACKDROP=\"${_O_CONTRIB_BACKDROP}\""
     echo "export _MODULES_FORCE=\"${_MODULES_FORCE}\""
     echo "export _MODULES_ON_SEVEN=\"${_MODULES_ON_SEVEN}\""
     echo "export _MODULES_ON_SIX=\"${_MODULES_ON_SIX}\""
