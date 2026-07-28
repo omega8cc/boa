@@ -1529,7 +1529,8 @@ _db_server_install() {
           -I tmp_table_size \
           -I max_heap_table_size \
           -I myisam_sort_buffer_size \
-          -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
+          -I key_buffer_size \
+          -I max_connect_errors ${_myCnf} ${_preCnf} 2>&1)
         if [ -z "${_diffMyTest}" ]; then
           _myCnfUpdate=NO
           _myTopReinstall=NO
@@ -1545,9 +1546,17 @@ _db_server_install() {
           fi
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          _myCnfUpdate=NO
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          # Suppress only when the surviving diff carries nothing but
+          # ignore-listed knob lines; a mixed hunk keeps its restart for
+          # the co-riding knob the -I list does not cover.
+          _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
+            | grep -E "^[<>] " \
+            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size|max_connect_errors" 2>&1)
+          if [ -z "${_diffMyOther}" ]; then
+            _myCnfUpdate=NO
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+            fi
           fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
