@@ -1327,9 +1327,9 @@ _tune_memory_limits() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "TUNE: _UXC_SQL is ${_UXC_SQL}"
     fi
-    sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_user_connections.*/max_user_connections    = ${_UXC_SQL}/g"    /etc/mysql/my.cnf &> /dev/null
     wait
-    sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_connections.*/max_connections         = ${_MXC_SQL}/g"         /etc/mysql/my.cnf &> /dev/null
     wait
     sed -i "s/^tmp_table_size.*/tmp_table_size          = ${_TMP_SQL}/g"          /etc/mysql/my.cnf &> /dev/null
     wait
@@ -10834,7 +10834,8 @@ _initd_update() {
           -I tmp_table_size \
           -I max_heap_table_size \
           -I myisam_sort_buffer_size \
-          -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
+          -I key_buffer_size \
+          -I max_connect_errors ${_myCnf} ${_preCnf} 2>&1)
         if [ -z "${_diffMyTest}" ]; then
           _myCnfUpdate=NO
           _myTopReinstall=NO
@@ -10855,7 +10856,7 @@ _initd_update() {
           # the co-riding knob the -I list does not cover.
           _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
             | grep -E "^[<>] " \
-            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size" 2>&1)
+            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size|max_connect_errors" 2>&1)
           if [ -z "${_diffMyOther}" ]; then
             _myCnfUpdate=NO
             if [ "${_DEBUG_MODE}" = "YES" ]; then
