@@ -1744,6 +1744,18 @@ _satellite_update_drush_php_cli() {
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
   fi
+  # The shebang pin on drush.php is bypassed whenever the drush 8 finder
+  # runs: it execs drush.launcher, which re-selects PHP via `which php`.
+  # The launcher also cannot run at all via its stock `env sh` shebang,
+  # because /bin/sh is websh, which refuses user-area scripts. Run it
+  # under bash and pin PHP via its native DRUSH_PHP override instead.
+  _DRUSH_LNCH="${_ROOT}/tools/drush/drush.launcher"
+  _LNCH_PHP="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
+  if [ -e "${_DRUSH_LNCH}" ] && [ -x "${_LNCH_PHP}" ]; then
+    sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
+    sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
+    sed -i "1a export DRUSH_PHP=\"${_LNCH_PHP}\"" ${_DRUSH_LNCH} &> /dev/null
+  fi
 }
 
 #
