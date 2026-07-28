@@ -2423,7 +2423,14 @@ _SPN=${_SP//${_S}/${_NEW}}
 if [ -f "${_SPN}/drushrc.php" ]; then
   _SP="${_SPN}"
 fi
-if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
+_OLD_PLAT=""
+_NEW_PLAT=""
+# A hollow panel platform passes the site-file tests alone: §8 regenerates
+# settings.php/drushrc.php into the DB-declared path even when the platform
+# CODE was never built there, so a re-entered run would skip the divergence
+# it still has. Probe the platform code, not just the site dir.
+if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ] \
+  || [ ! -e "$(dirname "$(dirname "${_SP}")")/index.php" ]; then
   # The fqdn substitution cannot heal a DISTRO-NUMBER divergence: the alias
   # that survived the rsync -u mtime race names the SOURCE's panel platform
   # (e.g. distro/003 after one more satellite upgrade there), while the
@@ -2436,6 +2443,9 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   for _CAND in "${_TREE}"/*/sites/*"${_NEW}"*; do
     [ -f "${_CAND}/drushrc.php" ] || continue
     [ -f "${_CAND}/settings.php" ] || continue
+    # A site dir on a code-less platform is the hollow shape this branch
+    # exists to escape — it must never count as an adoption candidate.
+    [ -e "$(dirname "$(dirname "${_CAND}")")/index.php" ] || continue
     _FOUND="${_CAND}"; _N=$((_N+1))
   done
   if [ "${_N}" = "1" ]; then
@@ -2469,6 +2479,11 @@ if [ -z "${_DEAD_DB}" ]; then
 fi
 if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
     -e "SHOW DATABASES LIKE '${_DEAD_DB}'" 2>/dev/null)" ]; then
+  if [ -n "${_OLD_PLAT}" ] && [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ]; then
+    _NUP=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DEAD_DB}" \
+      -e "UPDATE hosting_platform SET publish_path='${_NEW_PLAT}' WHERE publish_path='${_OLD_PLAT}'; SELECT ROW_COUNT();" 2>/dev/null | tail -1)
+    echo "PANEL-NOTE: hostmaster platform row repointed ${_OLD_PLAT} -> ${_NEW_PLAT} in ${_DEAD_DB} (rows=${_NUP})"
+  fi
   echo "PANEL-OK: ${_R} panel DB ${_DEAD_DB} is live — nothing to rewire"
   exit 0
 fi
@@ -2491,6 +2506,16 @@ done
 if [ -z "${_LIVE}" ]; then
   echo "PANEL-ERROR: dead panel DB ${_DEAD_DB} and no live hostmaster DB found for ${_R}"
   exit 1
+fi
+# Persist the adoption into the live DB. §8's hostmaster verify regenerates
+# the alias FROM the DB, so an alias-only correction is undone on the next
+# verify and the panel 404s from a hollow platform path. Path-keyed exact
+# match; the stale row already naming the adopted path (the source's own
+# platform history) carries no site and stays inert.
+if [ -n "${_OLD_PLAT}" ] && [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ]; then
+  _NUP=$(mysql --defaults-file=/root/.my.cnf -N -B "${_LIVE}" \
+    -e "UPDATE hosting_platform SET publish_path='${_NEW_PLAT}' WHERE publish_path='${_OLD_PLAT}'; SELECT ROW_COUNT();" 2>/dev/null | tail -1)
+  echo "PANEL-NOTE: hostmaster platform row repointed ${_OLD_PLAT} -> ${_NEW_PLAT} in ${_LIVE} (rows=${_NUP})"
 fi
 # Aegir derives the site DB user from the DB name; enumerate its host
 # variants from mysql.user instead of assuming (@% vs @127.0.0.1 vs
