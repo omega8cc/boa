@@ -1101,12 +1101,15 @@ _php_cli_drush_update() {
     # runs: it execs drush.launcher, which re-selects PHP via `which php`.
     # The launcher also cannot run at all via its stock `env sh` shebang,
     # because /bin/sh is websh, which refuses user-area scripts. Run it
-    # under bash and pin PHP via its native DRUSH_PHP override instead.
+    # under bash and default its native DRUSH_PHP to the pin -- default,
+    # not override: websh exports DRUSH_PHP per invocation from the
+    # static/control files (cli.info + instant phpNN.info switches), and
+    # that runtime choice must always win over the baked pin.
     _DRUSH_LNCH="${_dscUsr}/tools/drush/drush.launcher"
     if [ -e "${_DRUSH_LNCH}" ]; then
       sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
       sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
-      sed -i "1a export DRUSH_PHP=\"${_T_CLI}/php\"" ${_DRUSH_LNCH} &> /dev/null
+      sed -i "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_T_CLI}/php}\"" ${_DRUSH_LNCH} &> /dev/null
     fi
   fi
   rm -f ${_dscUsr}/static/control/.ctrl.cli.*.pid
