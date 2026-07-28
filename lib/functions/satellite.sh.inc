@@ -603,7 +603,15 @@ _satellite_tune_fpm_config() {
   cp -af ${_bldPth}/aegir/conf/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
   cp -af ${_bldPth}/aegir/conf/php/fpm-pool-foo.conf /var/xdrago/conf/
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
-    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
+    # Guard on the INTERPRETER, not the pool.d dir: BOA creates pool.d for
+    # every known PHP version regardless of what is installed, so a dir test
+    # passes on essentially any box. With a pin to a version that is not
+    # installed the delete sweep would succeed and the pool would be written
+    # for a PHP that cannot run it, leaving the account without a working
+    # pool (nginx 502). A bad pin must degrade to "unchanged", never "gone".
+    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] \
+      && [ -x "/opt/php${_PHP_SV}/bin/php" ] \
+      && [ -d "/opt/php${_PHP_SV}/etc/pool.d" ]; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
       cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi
@@ -1735,6 +1743,21 @@ _satellite_update_drush_php_cli() {
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
+  fi
+  # The shebang pin on drush.php is bypassed whenever the drush 8 finder
+  # runs: it execs drush.launcher, which re-selects PHP via `which php`.
+  # The launcher also cannot run at all via its stock `env sh` shebang,
+  # because /bin/sh is websh, which refuses user-area scripts. Run it
+  # under bash and default its native DRUSH_PHP to the pin -- default,
+  # not override: websh exports DRUSH_PHP per invocation from the
+  # static/control files (cli.info + instant phpNN.info switches), and
+  # that runtime choice must always win over the baked pin.
+  _DRUSH_LNCH="${_ROOT}/tools/drush/drush.launcher"
+  _LNCH_PHP="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
+  if [ -e "${_DRUSH_LNCH}" ] && [ -x "${_LNCH_PHP}" ]; then
+    sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
+    sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
+    sed -i "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" ${_DRUSH_LNCH} &> /dev/null
   fi
 }
 

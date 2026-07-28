@@ -701,6 +701,16 @@ _ok_create_user() {
       adduser ${_usrLtd} ${_WEBG}
       _ESC_LUPASS=""
       _LEN_LUPASS=0
+      # A migration carries /home/<admin>/users/<name> from the source box
+      # before this user exists here; honour that stored password so the
+      # client's sub-account credential survives the move, instead of
+      # minting a new one the carried store would then contradict. Normal
+      # operation is unchanged: the store exists before user creation only
+      # when something deliberately placed it there.
+      if [ -e "/home/${_ADMIN}/users/${_usrLtd}" ]; then
+        _ESC_LUPASS=$(cat /home/${_ADMIN}/users/${_usrLtd} 2>/dev/null | tr -d "\n")
+        _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
+      fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ]  ; then
         _PWD_CHARS=64
       elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
@@ -717,7 +727,8 @@ _ok_create_user() {
           _PWD_CHARS=128
         fi
       fi
-      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt 32 ]; then
+      if [ -z "${_ESC_LUPASS}" ] \
+        && { [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt 32 ]; }; then
         _RANDPASS_TEST=$(randpass -V 2>&1)
         if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
           _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
@@ -745,8 +756,7 @@ _ok_create_user() {
       usermod -aG lshellg ${_usrLtd}
       usermod -aG ltd-shell ${_usrLtd}
     fi
-    if [ ! -e "/home/${_ADMIN}/users/${_usrLtd}" ] \
-      && [ ! -z "${_ESC_LUPASS}" ]; then
+    if [ ! -z "${_ESC_LUPASS}" ]; then
       if [ -e "/usr/bin/mysecureshell" ] \
         && [ -e "/etc/ssh/sftp_config" ]; then
         chsh -s /usr/bin/mysecureshell ${_usrLtd}
@@ -758,7 +768,25 @@ _ok_create_user() {
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
       chmod 700 ${_usrLtdRoot}
       mkdir -p /home/${_ADMIN}/users
-      echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${_usrLtd}
+      if [ ! -e "/home/${_ADMIN}/users/${_usrLtd}" ]; then
+        echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${_usrLtd}
+      elif [ "$(cat /home/${_ADMIN}/users/${_usrLtd} 2>/dev/null | tr -d '\n')" != "${_ESC_LUPASS}" ]; then
+        # The quality floor regenerated over a too-short carried entry; the
+        # store must always match the shadow hash that was just set, never
+        # advertise a password that no longer works.
+        echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${_usrLtd}
+      fi
+    fi
+    # A migration stages a sub-account's SSH keys here because the home did
+    # not exist on this box yet; adopt them now that it does, once.
+    if [ -d "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" ] \
+      && [ -d "${_usrLtdRoot}" ]; then
+      cp -af "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" "${_usrLtdRoot}/"
+      chown -R ${_usrLtd}:${_usrLtd} "${_usrLtdRoot}/.ssh" &> /dev/null
+      chmod 700 "${_usrLtdRoot}/.ssh" &> /dev/null
+      chmod 600 "${_usrLtdRoot}"/.ssh/* &> /dev/null
+      rm -rf "/var/backups/migrate-subuser-ssh/${_usrLtd}"
+      echo "Adopted migrated SSH keys for ${_usrLtd}"
     fi
     _fix_dot_dirs
     rm -f ${_usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
@@ -1069,6 +1097,20 @@ _php_cli_drush_update() {
       | fmt -su -w 2500 | tee -a ${_dscUsr}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:${_usrGroup} ${_dscUsr}/aegir.sh &> /dev/null
     chmod 0700 ${_dscUsr}/aegir.sh &> /dev/null
+    # The shebang pin on drush.php is bypassed whenever the drush 8 finder
+    # runs: it execs drush.launcher, which re-selects PHP via `which php`.
+    # The launcher also cannot run at all via its stock `env sh` shebang,
+    # because /bin/sh is websh, which refuses user-area scripts. Run it
+    # under bash and default its native DRUSH_PHP to the pin -- default,
+    # not override: websh exports DRUSH_PHP per invocation from the
+    # static/control files (cli.info + instant phpNN.info switches), and
+    # that runtime choice must always win over the baked pin.
+    _DRUSH_LNCH="${_dscUsr}/tools/drush/drush.launcher"
+    if [ -e "${_DRUSH_LNCH}" ]; then
+      sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
+      sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
+      sed -i "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_T_CLI}/php}\"" ${_DRUSH_LNCH} &> /dev/null
+    fi
   fi
   rm -f ${_dscUsr}/static/control/.ctrl.cli.*.pid
   echo "${_T_CLI_VRN}" > ${_dscUsr}/static/control/.ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid
@@ -2251,6 +2293,32 @@ _manage_user() {
         fi
       fi
 
+      # Blank the cnf-supplied values before the conditional source below:
+      # when an account has no cnf (a half-finished migration is exactly that
+      # state), the previous loop iteration's values would otherwise leak in
+      # and this account's pools would be sized and switched from a foreign
+      # account's config. The sibling night/10-account.sh blanks its trio for
+      # the same reason.
+      _PHP_FPM_VERSION=""
+      _PHP_CLI_VERSION=""
+      _PHP_FPM_WORKERS=""
+      _PHP_FPM_TIMEOUT=""
+      _PHP_FPM_MAX_CHILDREN_FORCE=""
+      _PHP_FPM_MEMORY_LIMIT_FORCE=""
+      _PHP_FPM_RAM_PCT=""
+      _PHP_FPM_CPU_FACTOR=""
+      _PHP_FPM_DENY=""
+      _RESERVED_RAM=""
+      _CLIENT_EMAIL=""
+      _CLIENT_OPTION=""
+      _CLIENT_SUBSCR=""
+      _CLIENT_CORES=""
+      _STRONG_PASSWORDS=""
+      _PHP_FPM_USS_MB=""
+      _CHILD_MAX_FPM=""
+      if [ ! -e "/root/.${_USER}.octopus.cnf" ]; then
+        echo "ALRT: no /root/.${_USER}.octopus.cnf for /data/disk/${_USER}"
+      fi
       # shellcheck disable=SC1091
       [ -e "/root/.${_USER}.octopus.cnf" ] && source /root/.${_USER}.octopus.cnf
 

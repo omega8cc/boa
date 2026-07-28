@@ -1,27 +1,64 @@
 #!/bin/bash
 
 ###
-### memorytuner -- ADVISORY ONLY. It measures, computes and reports; it
-### never edits /etc/mysql/my.cnf, never issues SET GLOBAL, and never
-### restarts anything. It used to do all three: any restart-flagged
-### difference rewrote my.cnf in place (no backup) and took the whole
-### stack down through move_sql.sh on a perfectly healthy box. That gate
-### could not be sane, because the recommendation derives from the live
-### RSS of the other services, so it can never stay equal to a
-### deliberately set value: config drift is this tool's NORMAL state,
-### not a fault to heal. Applying is the operator's call, made with the
-### report and a maintenance window.
+### memorytuner -- ADVISORY ONLY. It reads, computes and reports; it never
+### edits /etc/mysql/my.cnf, never issues SET GLOBAL, and never restarts
+### anything. It used to do all three: any restart-flagged difference
+### rewrote my.cnf in place (no backup) and took the whole stack down
+### through move_sql.sh on a perfectly healthy box. Applying is the
+### operator's call, made with the report and a maintenance window.
+###
+### v2.0 (C-004 Phase 2): the guesswork budget model (75% of RAM minus
+### service RSS estimates) is gone. Evidence now comes from the sqlprobe
+### monitor corpus (/var/log/boa/sqlprobe/*.jsonl, one record per ~5 min)
+### plus the two derive stores (.my.datadir_mb.txt, .valkey.used_mb.txt),
+### and the recommendation block is the exact _SQL_*_FORCE pin lines the
+### evidence supports -- ready to paste into /root/.barracuda.cnf. The
+### sensor measures, this advisory names pins, a human applies them.
+###
+### Usage: memorytuner [--days N]   (corpus horizon, default 7)
 ###
 
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-# Ensure the script is run with root privileges
-if [ "$EUID" -ne 0 ]; then
-  echo "Please run as root."
-  exit 1
-fi
+_pthDat="/var/log/boa/sqlprobe"
+_pthRpt="/var/log/boa/memorytuner.log"
+_DATADIR_STORE="/var/log/boa/.my.datadir_mb.txt"
+_VALKEY_STORE="/var/log/boa/.valkey.used_mb.txt"
+_DAYS=7
+
+_arg_prev=""
+for _arg in "$@"; do
+  if [ "${_arg_prev}" = "--days" ]; then
+    _DAYS="${_arg//[^0-9]/}"
+    if [ -z "${_DAYS}" ] || ! [ "${_DAYS}" -ge 1 ] 2>/dev/null; then
+      _DAYS=7
+    fi
+    _arg_prev=""
+    continue
+  fi
+  case "${_arg}" in
+    --days)    _arg_prev="--days" ;;
+    -h|--help) echo "Usage: memorytuner [--days N]"; exit 0 ;;
+    *) echo "Unknown argument: ${_arg}" >&2; exit 2 ;;
+  esac
+done
+
+# Ensure the script is run with root privileges; the cnf supplies
+# _USE_SQLPROBE for the degrade diagnosis below.
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    chmod a+w /dev/null
+  else
+    echo "Please run as root."
+    exit 1
+  fi
+}
+_check_root
 
 # Function to register failures
 _clean_pid_exit() {
@@ -31,14 +68,33 @@ _clean_pid_exit() {
   exit 1
 }
 
-# Function to check if MySQL server is running
+###
+### Atomic lock/unlock to prevent TOCTOU race (same pattern as the monitors).
+###
+_manage_single_lock() {
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "${_L}" ] && . "${_L}" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    _single_instance_lock
+  else
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc ${_SCRIPT})
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+_manage_single_lock
+
+# Bounded wait for mysqld: an advisory tool waiting forever for a database
+# that is not coming back helps nobody; a minute covers a normal start.
 _check_sql_running() {
-  # Bounded: an advisory tool waiting forever for a database that is not
-  # coming back helps nobody; a minute of patience covers a normal start.
   local _try=0
-  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep mysqld 2>&1)
+  while ! pgrep -x mysqld >/dev/null 2>&1 \
+    || { [ ! -S "/run/mysqld/mysqld.sock" ] && [ ! -S "/var/run/mysqld/mysqld.sock" ]; }; do
     echo "INFO: Waiting for MySQLD availability..."
     _try=$(( _try + 1 ))
     [ "${_try}" -ge 12 ] && _clean_pid_exit _check_sql_running_timeout
@@ -47,411 +103,237 @@ _check_sql_running() {
 }
 _check_sql_running
 
-# Function to check if MySQL server access credentials for root are working
 _check_sql_access() {
-  if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_SYNC_SQL_PSWD=$(grep "password=${_SQL_PSWD}" /root/.my.cnf 2>&1)
-  else
-    echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
-    echo "ALERT: Please fix this before trying again, giving up."
-    echo "Bye"
-    echo " "
-    _clean_pid_exit _check_sql_access_a
+  local _t
+  _t=$(timeout 10 mysql -u root -e "status" 2>&1)
+  if [ -z "${_t}" ]; then
+    _clean_pid_exit _check_sql_access_empty
   fi
-  if [ -z "${_IS_SYNC_SQL_PSWD}" ]; then
-    echo "ALERT: SQL password is out of sync between"
-    echo "ALERT: /root/.my.cnf and /root/.my.pass.txt"
-    echo "ALERT: Please fix this before trying again, giving up."
-    echo "Bye"
-    echo " "
-    _clean_pid_exit _check_sql_access_b
-  else
-    _IS_MYSQLD_RUNNING=$(pgrep mysqld 2>&1)
-    if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
-      echo "ALERT: SQL server on this system is not running at all."
-      echo "ALERT: Please fix this before trying again, giving up."
-      echo "Bye"
-      echo " "
-      _clean_pid_exit _check_sql_access_c
-    else
-      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
-      if [ -z "${_MYSQL_CONN_TEST}" ] \
-        || [[ "${_MYSQL_CONN_TEST}" =~ "Access denied" ]]; then
-        echo "ALERT: SQL password in /root/.my.cnf does not work."
-        echo "ALERT: Please fix this before trying again, giving up."
-        echo "Bye"
-        echo " "
-        _clean_pid_exit _check_sql_access_d
-      fi
-    fi
-  fi
+  case "${_t}" in
+    *"Access denied"*) _clean_pid_exit _check_sql_access_denied ;;
+  esac
 }
 _check_sql_access
 
-# Function to get total system memory in MB
-_get_total_mem_mb() {
-  local _mem_kb
-  _mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-  echo $((_mem_kb / 1024))
-}
+# Sanitise to a non-negative integer (default 0).
+_num() { local _x="${1//[^0-9]/}"; printf '%s' "${_x:-0}"; }
 
-# Function to get memory usage of a process or group of processes in MB
-_get_mem_usage_mb() {
-  local _process_name=$1
-  local _mem_usage_kb
-  _mem_usage_kb=$(ps -eo rss,args | grep -w "${_process_name}" | grep -v grep | awk '{sum+=$1} END {print sum}')
-  _mem_usage_kb=${_mem_usage_kb:-0}
-  echo "scale=2; ${_mem_usage_kb} / 1024" | bc
-}
-
-# Function to get service uptime in seconds
-_get_service_uptime() {
-  local service_name=$1
-  local pidfile=$2
-
-  if [ ! -f "$pidfile" ]; then
-    echo 0  # Service is not running
-    return
-  fi
-
-  # Get the PID from the PID file
-  local pid
-  pid=$(cat "$pidfile")
-
-  # Check if the process is running
-  if ! ps -p "$pid" > /dev/null 2>&1; then
-    echo 0  # Process is not running
-    return
-  fi
-
-  # Get the current time and the PID file modification time in seconds since epoch
-  local current_time
-  local file_time
-  current_time=$(date +%s)
-  file_time=$(stat -c %Y "$pidfile")
-
-  # Calculate the uptime in seconds
-  local uptime
-  uptime=$((current_time - file_time))
-
-  echo "$uptime"
-}
-
-# Function to get MySQL version
-_get_mysql_version() {
-  mysql -V 2>&1 \
-    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
-    | head -1 \
-    | cut -d"." -f1,2
-}
-
-# Function to get current MySQL settings from /etc/mysql/my.cnf
-_get_current_mysql_settings() {
-  _CUR_INNODB_BUFFER_POOL_SIZE=$(grep -i "^innodb_buffer_pool_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
-  _CUR_KEY_BUFFER_SIZE=$(grep -i "^key_buffer_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
-  _CUR_TMP_TABLE_SIZE=$(grep -i "^tmp_table_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
-  _CUR_MAX_CONS=$(grep -i "^max_connections" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d ' ')
-  _CUR_READ_RND_BUFFER_SIZE=$(grep -i "^read_rnd_buffer_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
-  _CUR_JOIN_BUFFER_SIZE=$(grep -i "^join_buffer_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
-
-  if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
-    _CUR_INNODB_LOG_SIZE=$(grep -i "^innodb_redo_log_capacity" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
-  else
-    _CUR_INNODB_LOG_SIZE=$(grep -i "^innodb_log_file_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
-  fi
-}
-
-### Main script starts here
-
-# Get total system memory
-_TOTAL_MEM_MB=$(_get_total_mem_mb)
-
-# Define services and their PID files
-declare -A _services_pidfiles=(
-  ["nginx"]="/run/nginx.pid"
-  ["php74-fpm"]="/run/php74-fpm.pid"
-  ["php81-fpm"]="/run/php81-fpm.pid"
-  ["php82-fpm"]="/run/php82-fpm.pid"
-  ["php83-fpm"]="/run/php83-fpm.pid"
-  ["php84-fpm"]="/run/php84-fpm.pid"
-  ["php85-fpm"]="/run/php85-fpm.pid"
-  ["redis"]="/run/redis/redis.pid"
-  ["valkey"]="/run/valkey/valkey.pid"
-  ["java"]="/var/solr9/solr-9099.pid"
-)
-
-# Define estimated memory usage for services (in MB)
-declare -A _service_estimated_mem_mb=(
-  ["nginx"]=100
-  ["php74-fpm"]=200
-  ["php81-fpm"]=200
-  ["php82-fpm"]=200
-  ["php83-fpm"]=200
-  ["php84-fpm"]=200
-  ["php85-fpm"]=200
-  ["redis"]=200
-  ["valkey"]=200
-  ["java"]=100
-)
-
-# Ensure _TOTAL_MEM_MB is set by default to 75% of available RAM
-_MAX_MEM_MB="${_TOTAL_MEM_MB}"
-_TOTAL_MEM_MB=$(echo "(${_TOTAL_MEM_MB} * 75) / 100" | bc)
-
-# Threshold for uptime (e.g., 1 hour = 3600 seconds)
-_UPTIME_THRESHOLD=3600
-
-# Initialize total memory usage of other services
-_TOTAL_OTHER_SERVICES_MEM_MB=500
-
-# Array to store debugging information
-declare -A _service_mem_usage_mb
-
-# Loop through the services
-for _service in "${!_services_pidfiles[@]}"; do
-  _pidfile="${_services_pidfiles[${_service}]}"
-  _uptime=$(_get_service_uptime "${_service}" "${_pidfile}")
-
-  if [ "${_uptime}" -ge "${_UPTIME_THRESHOLD}" ]; then
-    # Use actual memory usage
-    _mem_usage_mb=$(_get_mem_usage_mb "${_service}")
-  else
-    # Use estimated memory usage
-    _mem_usage_mb=${_service_estimated_mem_mb[${_service}]}
-    echo "Service ${_service} has short uptime (${_uptime} seconds). Using estimated memory usage: ${_mem_usage_mb} MB"
-  fi
-
-  # Ensure _mem_usage_mb is a valid number
-  if ! [[ "${_mem_usage_mb}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-    _mem_usage_mb=0
-  fi
-
-  # Accumulate total memory usage
-  _TOTAL_OTHER_SERVICES_MEM_MB=${_TOTAL_OTHER_SERVICES_MEM_MB:-0}
-  _TOTAL_OTHER_SERVICES_MEM_MB=$(echo "${_TOTAL_OTHER_SERVICES_MEM_MB} + ${_mem_usage_mb}" | bc)
-  # Store for debugging
-  _service_mem_usage_mb["${_service}"]=${_mem_usage_mb}
-done
-
-# Get current memory usage of MySQL server
-_MYSQL_MEM_MB=$(_get_mem_usage_mb 'mysqld')
-
-# Ensure variables are not empty and are valid numbers
-for _service in "${!_service_mem_usage_mb[@]}"; do
-  _mem_usage=${_service_mem_usage_mb[${_service}]}
-  if ! [[ "${_mem_usage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-    _mem_usage=0
-  fi
-  _service_mem_usage_mb[${_service}]=${_mem_usage}
-done
-
-# Debugging statements to verify memory usage
-for _service in "${!_service_mem_usage_mb[@]}"; do
-  echo "${_service} Memory Usage: ${_service_mem_usage_mb[${_service}]} MB"
-done
-
-# Get current MySQL usage statistics
-_MYSQL_VERSION=$(_get_mysql_version)
-
-# Ensure _TOTAL_OTHER_SERVICES_MEM_MB is valid
-if ! [[ "${_TOTAL_OTHER_SERVICES_MEM_MB}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-  _TOTAL_OTHER_SERVICES_MEM_MB=0
-fi
-
-# Calculate max memory for MySQL
-_MAX_MEM_FOR_MYSQL_MB=$(echo "${_TOTAL_MEM_MB} - ${_TOTAL_OTHER_SERVICES_MEM_MB}" | bc)
-
-# Ensure _AVA_MEM_FOR_MYSQL_MB is set by default to 75% of _MAX_MEM_FOR_MYSQL_MB
-_AVA_MEM_FOR_MYSQL_MB=$(echo "(${_MAX_MEM_FOR_MYSQL_MB} * 75) / 100" | bc)
-
-echo "Max raw RAM available: ${_MAX_MEM_MB} MB"
-echo "Memory safely available for all services: ${_TOTAL_MEM_MB} MB"
-echo "Memory actually used by other services now: ${_TOTAL_OTHER_SERVICES_MEM_MB} MB"
-echo "Memory actually used by MySQL now: ${_MYSQL_MEM_MB} MB"
-echo "Memory available for MySQL theoretically: ${_AVA_MEM_FOR_MYSQL_MB} MB"
-echo "Max RAM available for MySQL: ${_MAX_MEM_FOR_MYSQL_MB} MB"
-
-# Safety check: Ensure there's enough memory for MySQL
-_MIN_MYSQL_MEM_MB=1024  # Minimum memory required for MySQL in MB
-if (( $(echo "${_AVA_MEM_FOR_MYSQL_MB} < ${_MIN_MYSQL_MEM_MB}" | bc -l) )); then
-  echo "Error: Not enough memory available for MySQL after accounting for other services."
-  echo "Available memory for MySQL: ${_AVA_MEM_FOR_MYSQL_MB} MB"
-  echo "Consider upgrading your system's RAM."
-  exit 1
-fi
-
-# Ensure _AVA_MEM_FOR_MYSQL_MB is valid
-if ! [[ "${_AVA_MEM_FOR_MYSQL_MB}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-  _AVA_MEM_FOR_MYSQL_MB=0
-fi
-
-# Recommended InnoDB buffer pool size: 75% of available MySQL memory,
-# snapped down to a 512 MB step. The input is the live RSS of everything
-# else on the box, which moves a little every run; unsnapped, two
-# consecutive runs recommend two different pool sizes and the report
-# reads as churn instead of advice.
-_REC_INNODB_BUFFER_POOL_SIZE_MB=$(echo "(${_AVA_MEM_FOR_MYSQL_MB} * 75) / 100" | bc)
-_REC_INNODB_BUFFER_POOL_SIZE_MB=$(echo "(${_REC_INNODB_BUFFER_POOL_SIZE_MB} / 512) * 512" | bc)
-echo "Calculated InnoDB buffer pool size: ${_REC_INNODB_BUFFER_POOL_SIZE_MB} MB"
-
-# Ensure InnoDB buffer pool size does not exceed available memory
-if (( $(echo "${_REC_INNODB_BUFFER_POOL_SIZE_MB} > ${_AVA_MEM_FOR_MYSQL_MB}" | bc -l) )); then
-  _REC_INNODB_BUFFER_POOL_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
-fi
-
-# Minimal key_buffer_size: MyISAM is not used for site databases.
-_REC_KEY_BUFFER_SIZE_MB=8
-echo "Calculated key_buffer_size: ${_REC_KEY_BUFFER_SIZE_MB} MB"
-
-# tmp_table_size / max_heap_table_size: a quarter of the MySQL budget,
-# capped at a sane per-table ceiling.
-_EST_MEM_PER_TMP_TABLE_MB=64  # Estimated size per temp table in MB
-_REC_TMP_TABLE_SIZE_MB=$(echo "${_AVA_MEM_FOR_MYSQL_MB} / 4" | bc)
-if (( $(echo "${_REC_TMP_TABLE_SIZE_MB} > ${_EST_MEM_PER_TMP_TABLE_MB}" | bc -l) )); then
-  _REC_TMP_TABLE_SIZE_MB=${_EST_MEM_PER_TMP_TABLE_MB}
-fi
-echo "Calculated tmp_table_size: ${_REC_TMP_TABLE_SIZE_MB} MB"
-
-_REC_READ_RND_BUFFER_SIZE_MB=4  # 4MB is a reasonable default
-echo "Calculated read_rnd_buffer_size: ${_REC_READ_RND_BUFFER_SIZE_MB} MB"
-
-_REC_JOIN_BUFFER_SIZE_MB=8  # 8MB is a reasonable default
-echo "Calculated join_buffer_size: ${_REC_JOIN_BUFFER_SIZE_MB} MB"
-
-# Estimate average memory per connection, including per-connection buffers
-_EST_MEM_PER_CON_MB=$(echo "${_REC_READ_RND_BUFFER_SIZE_MB} + ${_REC_JOIN_BUFFER_SIZE_MB} + 4" | bc)  # 4MB for other per-connection buffers
-
-# Ensure _EST_MEM_PER_CON_MB is valid
-if ! [[ "${_EST_MEM_PER_CON_MB}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-  _EST_MEM_PER_CON_MB=16  # Default value
-fi
-
-# Calculate max_connections based on available memory
-_MAX_POS_CONS=$(echo "${_AVA_MEM_FOR_MYSQL_MB} / ${_EST_MEM_PER_CON_MB}" | bc)
-
-# Ensure _MAX_POS_CONS is valid
-if ! [[ "${_MAX_POS_CONS}" =~ ^[0-9]+$ ]]; then
-  _MAX_POS_CONS=25
-fi
-
-# Ensure max_connections is not set unreasonably high, and snap to a step of
-# 25 for the same run-to-run stability reason as the pool size above.
-if [ "${_MAX_POS_CONS}" -gt 500 ]; then
-  _REC_MAX_CONS=500
-elif [ "${_MAX_POS_CONS}" -lt 25 ]; then
-  _REC_MAX_CONS=25
+# Budget basis mirrors _tune_memory_limits (system.sh.inc): every fleet
+# formula runs on RESERVED-ADJUSTED RAM, never raw MemTotal — raw would
+# inflate each ceiling by ~33% (2026-07-28 review finding). _RESERVED_RAM
+# comes from the sourced barracuda.cnf; unset/zero means the same RAM/4
+# reservation the tune pass applies. A frozen reservation from before a
+# box shrink could exceed MemTotal — the tune pass goes negative there
+# (known trap), an advisory must not: fall back to the RAM/4 default.
+_RAM_TOTAL=$(awk '/^MemTotal:/ { printf "%d", $2 / 1024 }' /proc/meminfo 2>/dev/null)
+_RAM_TOTAL=$(_num "${_RAM_TOTAL}")
+_RESERVED_RAM=$(_num "${_RESERVED_RAM:-}")
+if [ "${_RESERVED_RAM}" -gt 0 ] && [ "${_RESERVED_RAM}" -lt "${_RAM_TOTAL}" ]; then
+  _RAM=$(( _RAM_TOTAL - _RESERVED_RAM ))
 else
-  _REC_MAX_CONS=$(( (_MAX_POS_CONS / 25) * 25 ))
-fi
-echo "Calculated max_connections: ${_REC_MAX_CONS}"
-
-# innodb log sizing: a fifth (8.x redo capacity) or a quarter (5.7 log
-# file) of the recommended pool.
-if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
-  _REC_INNODB_LOG_SIZE_MB=$(echo "(${_REC_INNODB_BUFFER_POOL_SIZE_MB} * 20) / 100" | bc)
-  echo "Calculated innodb_redo_log_capacity: ${_REC_INNODB_LOG_SIZE_MB} MB"
-else
-  _REC_INNODB_LOG_SIZE_MB=$(echo "(${_REC_INNODB_BUFFER_POOL_SIZE_MB} * 25) / 100" | bc)
-  echo "Calculated innodb_log_file_size: ${_REC_INNODB_LOG_SIZE_MB} MB"
+  _RAM=$(( _RAM_TOTAL - _RAM_TOTAL / 4 ))
 fi
 
-# Ensure it does not exceed available memory
-if (( $(echo "${_REC_INNODB_LOG_SIZE_MB} > ${_AVA_MEM_FOR_MYSQL_MB}" | bc -l) )); then
-  _REC_INNODB_LOG_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
-fi
-
-# Get current MySQL settings
-_get_current_mysql_settings
+# Running values -- gauges read live, not only from the corpus.
+_VR=$(timeout 10 mysql -u root -Nse "SHOW GLOBAL VARIABLES" 2>/dev/null)
+_ST=$(timeout 10 mysql -u root -Nse "SHOW GLOBAL STATUS" 2>/dev/null)
+_vv() { printf '%s\n' "${_VR}" | grep -m1 "^${1}	" | cut -f2; }
+_sv() { printf '%s\n' "${_ST}" | grep -m1 "^${1}	" | cut -f2; }
+_POOL_MB=$(( $(_num "$(_vv innodb_buffer_pool_size)") / 1048576 ))
+_TMP_MB=$(( $(_num "$(_vv tmp_table_size)") / 1048576 ))
+_KEY_MB=$(( $(_num "$(_vv key_buffer_size)") / 1048576 ))
+_MAXCONN=$(_num "$(_vv max_connections)")
+_MAXUSED=$(_num "$(_sv Max_used_connections)")
+_SQLUP=$(_num "$(_sv Uptime)")
+_DATADIR_MB=$(_num "$(cat "${_DATADIR_STORE}" 2>/dev/null)")
+_VK_MB=$(_num "$(cat "${_VALKEY_STORE}" 2>/dev/null)")
 
 ###
-### The advisory report. Differences are collected, never applied: the
-### restart-flagged ones list the my.cnf lines to consider, the dynamic
-### ones additionally list the SET GLOBAL that would apply them live.
-### Everything below is words on a page until an operator acts on it.
+### Corpus aggregation: one awk pass over the last _DAYS daily files. Warm
+### samples are valid deltas taken >= 1h after the last mysqld restart --
+### everything a cold pool would bias comes from warm samples only. The
+### sort is a hand insertion sort: mawk has no asort().
 ###
-_pthRpt="/var/log/boa/memorytuner.log"
-_RESTART_ROWS=()
-_DYNAMIC_ROWS=()
-_DYNAMIC_SQL=()
-
-_report_setting() {
-  _setting_name=$1
-  _new_value=$2
-  _current_value=$3
-  _requires_restart=$4
-  _is_memory_size=$5
-  local _unit="" _shown_cur="unset"
-
-  # Ensure _new_value is valid
-  if [ -z "${_new_value}" ] || ! [[ "${_new_value}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-    echo "Warning: Invalid value for ${_setting_name}. Skipping."
-    return
-  fi
-  [ "${_current_value}" = "${_new_value}" ] && return
-
-  [ "${_is_memory_size}" -eq 1 ] && _unit="M"
-  if [ -n "${_current_value}" ]; then
-    if [[ "${_current_value}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-      _shown_cur="${_current_value}${_unit}"
-    else
-      # A value the my.cnf parser could not normalise (a G suffix, an
-      # included file) is shown as found, not dressed in a unit.
-      _shown_cur="${_current_value}"
-    fi
-  fi
-  local _row
-  _row=$(printf '  %-28s %12s  ->  %s' "${_setting_name}" "${_shown_cur}" "${_new_value}${_unit}")
-  if [ "${_requires_restart}" -eq 1 ]; then
-    _RESTART_ROWS+=("${_row}")
-  else
-    _DYNAMIC_ROWS+=("${_row}")
-    if [ "${_is_memory_size}" -eq 1 ]; then
-      _DYNAMIC_SQL+=("mysql -e \"SET GLOBAL ${_setting_name}=$(echo "${_new_value} * 1024 * 1024" | bc);\"")
-    else
-      _DYNAMIC_SQL+=("mysql -e \"SET GLOBAL ${_setting_name}=${_new_value};\"")
-    fi
-  fi
-}
-
-_report_setting "innodb_buffer_pool_size" "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" "${_CUR_INNODB_BUFFER_POOL_SIZE}" 1 1
-if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
-  _report_setting "innodb_redo_log_capacity" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1 1
-else
-  _report_setting "innodb_log_file_size" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1 1
+_CORPUS=$(find "${_pthDat}" -name '*.jsonl' -mtime "-${_DAYS}" 2>/dev/null | sort)
+_AGG=""
+if [ -n "${_CORPUS}" ]; then
+  # shellcheck disable=SC2086
+  _AGG=$(cat ${_CORPUS} 2>/dev/null | awk '
+    function jnum(k,   re, s) {
+      re = "\"" k "\":[0-9.]+"
+      if (match($0, re)) { s = substr($0, RSTART, RLENGTH); sub(".*:", "", s); return s + 0 }
+      return 0
+    }
+    /"scope":"sql"/ {
+      n++
+      if (jnum("valid") == 1) {
+        v++
+        ivl = jnum("interval")
+        tmp_t += jnum("tmp_ps") * ivl
+        tmp_d += jnum("tmp_disk_ps") * ivl
+        keyr  += jnum("key_reads_ps") * ivl
+        if (jnum("up") >= 3600) {
+          w++
+          ppm[w] = jnum("miss_ppm")
+          lr    += jnum("lread_ps") * ivl
+          lrs   += ivl
+        }
+      }
+      ma = jnum("mem_avail_mb")
+      if (ma > 0 && (min_avail == 0 || ma < min_avail)) min_avail = ma
+      mu = jnum("max_used_conn")
+      if (mu > max_used) max_used = mu
+      rss = jnum("mysqld_vmrss_mb")
+      if (rss > max_rss) max_rss = rss
+      psi = jnum("psi_mem_some10_x100")
+      if (psi > max_psi) max_psi = psi
+    }
+    END {
+      p50 = 0; p95 = 0
+      if (w > 0) {
+        for (i = 2; i <= w; i++) {
+          x = ppm[i]
+          for (j = i - 1; j >= 1 && ppm[j] > x; j--) ppm[j + 1] = ppm[j]
+          ppm[j + 1] = x
+        }
+        i50 = int(w * 50 / 100); if (i50 < 1) i50 = 1
+        i95 = int(w * 95 / 100); if (i95 < 1) i95 = 1
+        p50 = ppm[i50]; p95 = ppm[i95]
+      }
+      spill = 0
+      if (tmp_t > 0) spill = tmp_d * 100 / tmp_t
+      avg_lr = 0
+      if (lrs > 0) avg_lr = lr / lrs
+      printf "%d %d %d %.0f %.0f %.2f %.0f %d %d %d %d %.0f",
+        n, v, w, p50, p95, spill, keyr, max_used, min_avail, max_rss, max_psi, avg_lr
+    }')
 fi
-_report_setting "key_buffer_size" "${_REC_KEY_BUFFER_SIZE_MB}" "${_CUR_KEY_BUFFER_SIZE}" 1 1
-_report_setting "max_connections" "${_REC_MAX_CONS}" "${_CUR_MAX_CONS}" 0 0  # Not a memory size
-_report_setting "tmp_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0 1
-_report_setting "max_heap_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0 1
-_report_setting "read_rnd_buffer_size" "${_REC_READ_RND_BUFFER_SIZE_MB}" "${_CUR_READ_RND_BUFFER_SIZE}" 0 1
-_report_setting "join_buffer_size" "${_REC_JOIN_BUFFER_SIZE_MB}" "${_CUR_JOIN_BUFFER_SIZE}" 0 1
+_N=0; _NV=0; _NW=0; _P50=0; _P95=0; _SPILL=0; _KEYR_TOTAL=0
+_C_MAXUSED=0; _MIN_AVAIL=0; _MAX_RSS=0; _MAX_PSI=0; _AVG_LR=0
+if [ -n "${_AGG}" ]; then
+  read -r _N _NV _NW _P50 _P95 _SPILL _KEYR_TOTAL _C_MAXUSED _MIN_AVAIL \
+    _MAX_RSS _MAX_PSI _AVG_LR <<< "${_AGG}"
+fi
+if [ "${_C_MAXUSED}" -gt "${_MAXUSED}" ] 2>/dev/null; then
+  _MAXUSED="${_C_MAXUSED}"
+fi
+
+###
+### Recommendations. Every pin line is emitted only when the evidence clears
+### its stated threshold, with the reason on the line.
+###
+_REC=""
+_OBS=""
+_add_obs() { _OBS="${_OBS}  ${1}\n"; }
+_add_rec() { _REC="${_REC}  ${1}\n"; }
+
+# Data-aware pool target, same tiers and snap as _sql_budget_derive.
+if [ "${_RAM}" -ge 32768 ]; then
+  _POOL_CEILING=$(( _RAM * 3 / 8 ))
+elif [ "${_RAM}" -ge 8192 ]; then
+  _POOL_CEILING=$(( _RAM * 3 / 10 ))
+else
+  _POOL_CEILING=$(( _RAM / 4 ))
+fi
+_POOL_TARGET=0
+if [ "${_DATADIR_MB}" -gt 0 ]; then
+  _POOL_TARGET=$(( _DATADIR_MB * 11 / 10 ))
+  [ "${_POOL_TARGET}" -gt "${_POOL_CEILING}" ] && _POOL_TARGET="${_POOL_CEILING}"
+  _POOL_TARGET=$(( _POOL_TARGET / 1024 * 1024 ))
+fi
+
+if [ "${_NW}" -gt 0 ]; then
+  _add_obs "warm miss ratio: p50 ${_P50} ppm, p95 ${_P95} ppm (${_NW} warm of ${_NV} valid samples, ${_N} total; avg ${_AVG_LR} logical reads/s)"
+  _add_obs "tmp table disk spill: ${_SPILL}% at tmp_table_size ${_TMP_MB}M"
+  _add_obs "MyISAM key reads over corpus: ${_KEYR_TOTAL} (key_buffer ${_KEY_MB}M)"
+  _add_obs "connections: max used ${_MAXUSED} of ${_MAXCONN}"
+  _add_obs "mysqld VmRSS max ${_MAX_RSS}M; MemAvailable min ${_MIN_AVAIL}M of ${_RAM_TOTAL}M total (budget RAM ${_RAM}M after reservation); PSI mem some10 max $(awk -v p="${_MAX_PSI}" 'BEGIN { printf "%.2f", p / 100 }')"
+  _add_obs "table data ${_DATADIR_MB}M vs pool ${_POOL_MB}M (data-aware target ${_POOL_TARGET}M, ceiling ${_POOL_CEILING}M)"
+
+  # Pool: sustained warm misses above 1% of logical reads mean the working
+  # set exceeds the pool; recommend the next 1024M step (a pin may exceed
+  # the derived ceiling -- that is what pins are for), bounded by RAM/2.
+  if [ "${_P95}" -gt 10000 ] && [ "${_POOL_MB}" -lt $(( _RAM / 2 )) ]; then
+    _POOL_REC=$(( ( _POOL_MB + 1024 ) / 1024 * 1024 ))
+    if [ "${_POOL_TARGET}" -gt "${_POOL_REC}" ]; then
+      _POOL_REC="${_POOL_TARGET}"
+    fi
+    _add_rec "_SQL_BUFFER_POOL_FORCE=${_POOL_REC}   # warm p95 miss ${_P95} ppm > 10000 at pool ${_POOL_MB}M"
+  elif [ "${_POOL_TARGET}" -gt 0 ] && [ "${_POOL_MB}" -lt "${_POOL_TARGET}" ]; then
+    _add_rec "_SQL_BUFFER_POOL_FORCE=${_POOL_TARGET}   # pool below its data-aware target; the weekly upgrade derives this anyway -- pin only to get it sooner"
+  fi
+
+  # tmp: spill above 5% at the current size earns a doubled step, capped at
+  # 1024M -- beyond that the query mix is the problem, not the buffer.
+  if awk -v s="${_SPILL}" 'BEGIN { exit !(s > 5) }'; then
+    _TMP_REC=$(( _TMP_MB * 2 ))
+    [ "${_TMP_REC}" -lt 32 ] && _TMP_REC=32
+    [ "${_TMP_REC}" -gt 1024 ] && _TMP_REC=1024
+    if [ "${_TMP_REC}" -gt "${_TMP_MB}" ]; then
+      _add_rec "_SQL_TMP_TABLE_FORCE=${_TMP_REC}   # disk spill ${_SPILL}% > 5% at ${_TMP_MB}M"
+    fi
+  fi
+
+  # key_buffer: zero observed key reads = no MyISAM read workload; the
+  # derive already lands 64M on proven-MyISAM-free boxes -- a pin is named
+  # only when the corpus contradicts the running value.
+  if [ "${_KEYR_TOTAL}" -eq 0 ] && [ "${_KEY_MB}" -gt 64 ]; then
+    _add_rec "_SQL_KEY_BUFFER_FORCE=64   # zero MyISAM key reads over ${_DAYS}d; ${_KEY_MB}M is idle reservation"
+  elif [ "${_KEYR_TOTAL}" -gt 10000 ] && [ "${_KEY_MB}" -le 64 ]; then
+    _add_rec "_SQL_KEY_BUFFER_FORCE=1024   # ${_KEYR_TOTAL} key reads over ${_DAYS}d -- real MyISAM workload at ${_KEY_MB}M"
+  fi
+
+  # max_connections: recommend a raise only above 80% observed use of the
+  # cap; an oversized cap is reported, never auto-shrunk (bursts are real).
+  if [ "${_MAXCONN}" -gt 0 ] && [ $(( _MAXUSED * 100 / _MAXCONN )) -ge 80 ]; then
+    _MC_REC=$(( ( _MAXCONN + 100 ) / 100 * 100 ))
+    _add_rec "_SQL_MAX_CONNECTIONS_FORCE=${_MC_REC}   # max used ${_MAXUSED} >= 80% of ${_MAXCONN}; NB this pin costs one managed restart"
+  fi
+
+  # valkey: mirror the derive ceiling math (4x measured peak, floored at
+  # RAM/16 and 512M); name the pin only when meaningfully below the
+  # historical RAM/3 grant.
+  if [ "${_VK_MB}" -gt 0 ]; then
+    _VK_CEIL=$(( _VK_MB * 4 ))
+    [ "${_VK_CEIL}" -lt $(( _RAM / 16 )) ] && _VK_CEIL=$(( _RAM / 16 ))
+    [ "${_VK_CEIL}" -lt 512 ] && _VK_CEIL=512
+    if [ "${_VK_CEIL}" -lt $(( _RAM / 3 * 9 / 10 )) ]; then
+      _add_rec "_VALKEY_MAXMEM_FORCE=${_VK_CEIL}   # measured peak ${_VK_MB}M x4 vs historical grant $(( _RAM / 3 ))M"
+    fi
+  fi
+
+  # Memory pressure trumps tuning ambition (raw total: a system fact).
+  if [ "${_MIN_AVAIL}" -gt 0 ] && [ "${_MIN_AVAIL}" -lt $(( _RAM_TOTAL / 20 )) ]; then
+    _add_rec "# CAUTION: MemAvailable dipped to ${_MIN_AVAIL}M (<5% of RAM) inside the corpus -- raise no pin before that is understood"
+  fi
+else
+  _add_obs "no warm sqlprobe samples in the last ${_DAYS} days"
+  if [ ! -e "/var/xdrago/monitor/check/sqlprobe.sh" ]; then
+    _add_obs "sqlprobe monitor not present yet (arrives with the next release serial)"
+  elif [ "${_USE_SQLPROBE}" = "NO" ]; then
+    _add_obs "_USE_SQLPROBE=NO is set -- the sampler is opted out on this box"
+  elif [ "${_SQLUP}" -lt 3600 ]; then
+    _add_obs "mysqld uptime ${_SQLUP}s -- warm evidence needs >= 1h"
+  fi
+  _add_obs "running values: pool ${_POOL_MB}M, tmp ${_TMP_MB}M, key_buffer ${_KEY_MB}M, max_connections ${_MAXCONN} (max used ${_MAXUSED})"
+  _add_obs "stores: table data ${_DATADIR_MB}M, valkey measured peak ${_VK_MB}M"
+fi
 
 _emit_report() {
-  echo "==== memorytuner advisory on $(cat /etc/hostname 2>/dev/null) -- $(date) ===="
-  if [ "${#_RESTART_ROWS[@]}" -eq 0 ] && [ "${#_DYNAMIC_ROWS[@]}" -eq 0 ]; then
-    echo "  /etc/mysql/my.cnf already matches every recommendation. Nothing to consider."
-    return 0
-  fi
-  echo "  Nothing has been changed. The differences found, current -> recommended:"
-  if [ "${#_RESTART_ROWS[@]}" -gt 0 ]; then
-    echo "  Take effect only after a database restart:"
-    printf '%s\n' "${_RESTART_ROWS[@]}"
-  fi
-  if [ "${#_DYNAMIC_ROWS[@]}" -gt 0 ]; then
-    echo "  Applicable live, or in my.cnf to survive the next restart:"
-    printf '%s\n' "${_DYNAMIC_ROWS[@]}"
-  fi
-  echo "  To apply, at your own pace:"
-  echo "    1. Back up /etc/mysql/my.cnf, then edit in the values you accept."
-  echo "    2. Restart-flagged settings need a database-only restart in a"
-  echo "       maintenance window:  bash /var/xdrago/move_sql.sh dbrestart"
-  if [ "${#_DYNAMIC_SQL[@]}" -gt 0 ]; then
-    echo "    3. Dynamic settings can also be applied to the running server:"
-    printf '       %s\n' "${_DYNAMIC_SQL[@]}"
+  echo "==== memorytuner advisory on $(cat /etc/hostname 2>/dev/null || hostname) -- $(date) ===="
+  echo "Evidence (sqlprobe corpus, last ${_DAYS} days):"
+  printf '%b' "${_OBS}"
+  if [ -n "${_REC}" ]; then
+    echo "Recommended pins -- add to /root/.barracuda.cnf; the next barracuda"
+    echo "run writes them and values apply at the next natural mysqld restart"
+    echo "(only the max_connections pin triggers a managed restart):"
+    printf '%b' "${_REC}"
+  else
+    echo "No pin recommendation: current settings match the observed workload."
   fi
 }
-
 _emit_report
 _emit_report >> "${_pthRpt}" 2>/dev/null
 echo "Advisory written to ${_pthRpt}. No configuration was modified."
+
+exit 0

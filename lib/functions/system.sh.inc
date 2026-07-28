@@ -807,6 +807,8 @@ _fix_on_upgrade() {
 # The 16384 tier corresponds to roughly 85 GB of installed RAM. Sets the PHP
 # limits (_USE_PHP/_USE_OPC/_USE_CLI) and the matching Percona buffer sizes
 # (_QCE_SQL/_RND_SQL/_JBF_SQL); platform-specific caps are applied by the caller.
+# NB _QCE_SQL is a dead output: every tier still computes it, nothing consumes
+# it since the query-cache era ended. Kept inert on purpose (C-004 Q9 ruling).
 _php_budget_for_ram() {
   if [ "${_USE}" -ge 16384 ]; then
     _USE_PHP=8192
@@ -1191,6 +1193,9 @@ _tune_memory_limits() {
   # scales purely with usable RAM in _php_budget_for_ram above. Decoupling the
   # two is what lets high-RAM VS/TG nodes scale past _USE_PHP=2048; XEN, AWS and
   # VZ outputs are unchanged from the pre-refactor formula.
+  # NB _L_NGX_WRKS is a dead output: the ladder below still derives it, nothing
+  # consumes it (the vhost writer reads the _CPU_* values directly). Kept inert
+  # on purpose (C-004 Q9 ruling).
   if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
     _L_NGX_WRKS=${_CPU_MX}
   else
@@ -1327,9 +1332,9 @@ _tune_memory_limits() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "TUNE: _UXC_SQL is ${_UXC_SQL}"
     fi
-    sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_user_connections.*/max_user_connections    = ${_UXC_SQL}/g"    /etc/mysql/my.cnf &> /dev/null
     wait
-    sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_connections.*/max_connections         = ${_MXC_SQL}/g"         /etc/mysql/my.cnf &> /dev/null
     wait
     sed -i "s/^tmp_table_size.*/tmp_table_size          = ${_TMP_SQL}/g"          /etc/mysql/my.cnf &> /dev/null
     wait
@@ -2363,9 +2368,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.3 if used
-      _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 3>&1)
-      _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 3>&1)
-      _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 3>&1)
+      _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 2>&1)
       _is_PHP_eight_three=
       if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
         || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
@@ -2375,9 +2380,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.4 if used
-      _is_PHP_multi_eight_four=$(grep "8\.4" /data/disk/*/static/control/multi-fpm.info 4>&1)
-      _is_PHP_FPM_eight_four=$(grep "8\.4" /data/disk/*/static/control/fpm.info 4>&1)
-      _is_PHP_CLI_eight_four=$(grep "8\.4" /data/disk/*/static/control/cli.info 4>&1)
+      _is_PHP_multi_eight_four=$(grep "8\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_four=$(grep "8\.4" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_four=$(grep "8\.4" /data/disk/*/static/control/cli.info 2>&1)
       _is_PHP_eight_four=
       if [[ "${_is_PHP_multi_eight_four}" =~ "8.4" ]] \
         || [[ "${_is_PHP_FPM_eight_four}" =~ "8.4" ]] \
@@ -2387,9 +2392,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.5 if used
-      _is_PHP_multi_eight_five=$(grep "8\.5" /data/disk/*/static/control/multi-fpm.info 5>&1)
-      _is_PHP_FPM_eight_five=$(grep "8\.5" /data/disk/*/static/control/fpm.info 5>&1)
-      _is_PHP_CLI_eight_five=$(grep "8\.5" /data/disk/*/static/control/cli.info 5>&1)
+      _is_PHP_multi_eight_five=$(grep "8\.5" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_five=$(grep "8\.5" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_five=$(grep "8\.5" /data/disk/*/static/control/cli.info 2>&1)
       _is_PHP_eight_five=
       if [[ "${_is_PHP_multi_eight_five}" =~ "8.5" ]] \
         || [[ "${_is_PHP_FPM_eight_five}" =~ "8.5" ]] \
@@ -2649,6 +2654,7 @@ _barracuda_cnf() {
     echo "_SQL_MAX_CONNECTIONS_FORCE=\"${_SQL_MAX_CONNECTIONS_FORCE}\"" >> ${_barCnf}
     echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\""             >> ${_barCnf}
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
+    echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
@@ -3078,6 +3084,11 @@ _barracuda_cnf() {
     _SOLR_HEAP_FORCE_TEST=$(grep _SOLR_HEAP_FORCE ${_barCnf} 2>&1)
     if [[ ! "${_SOLR_HEAP_FORCE_TEST}" =~ "_SOLR_HEAP_FORCE" ]]; then
       echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _USE_SQLPROBE_TEST=$(grep _USE_SQLPROBE ${_barCnf} 2>&1)
+    if [[ ! "${_USE_SQLPROBE_TEST}" =~ "_USE_SQLPROBE" ]]; then
+      echo "_USE_SQLPROBE=${_USE_SQLPROBE}" >> ${_barCnf}
     fi
 
     _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
@@ -10828,9 +10839,11 @@ _initd_update() {
           -I tmp_table_size \
           -I max_heap_table_size \
           -I myisam_sort_buffer_size \
-          -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
+          -I key_buffer_size \
+          -I max_connect_errors ${_myCnf} ${_preCnf} 2>&1)
         if [ -z "${_diffMyTest}" ]; then
           _myCnfUpdate=NO
+          _myTopReinstall=NO
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff0 empty"
           fi
@@ -10843,9 +10856,17 @@ _initd_update() {
           fi
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          _myCnfUpdate=NO
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          # Suppress only when the surviving diff carries nothing but
+          # ignore-listed knob lines; a mixed hunk keeps its restart for
+          # the co-riding knob the -I list does not cover.
+          _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
+            | grep -E "^[<>] " \
+            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size|max_connect_errors" 2>&1)
+          if [ -z "${_diffMyOther}" ]; then
+            _myCnfUpdate=NO
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+            fi
           fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
