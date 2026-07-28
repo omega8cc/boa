@@ -59,7 +59,7 @@ family:
   staticbuild backdrop           # build + package + publish only the Backdrop family
 ```
 
-Three artefacts, always rebuilt at the latest upstream tag (pin any with the matching
+Four artefacts, always rebuilt at the latest upstream tag (pin any with the matching
 `_*_TAG` in the config block):
 
 - **backdrop** — Backdrop CMS core (`backdrop/backdrop`), from its latest GitHub
@@ -70,8 +70,12 @@ Three artefacts, always rebuilt at the latest upstream tag (pin any with the mat
   points at a missing file) — BOA names the platform from the stamp and fetches the
   matching tarball — and a version-less `backdrop.tar.gz` compat tarball of the newest
   release (extracting to `backdrop/`, the pre-versioning contract) is refreshed for
-  already-deployed BOA releases. The Backdrop redis contrib
-  module is baked into `modules/` for Valkey/Redis object-cache support. Published
+  already-deployed BOA releases. No contrib is baked into the versioned core
+  tarballs — Valkey/Redis integration reaches platforms through the shared
+  `o_contrib_backdrop` bundle (the `redis_backdrop` artefact below). Only the
+  version-less compat tarball still carries a baked `modules/redis`, injected at
+  tar time: the `/core/` shelf is shared by every release, and the pre-bundle
+  releases consuming that name probe only `modules/redis`. Published
   to `/var/www/static/core`.
 - **bee** — native Backdrop CLI (`backdrop-contrib/bee`), from its latest git tag,
   packaged version-less as `bee.tar.gz` (`bee.php` at the root). Published to
@@ -81,6 +85,14 @@ Three artefacts, always rebuilt at the latest upstream tag (pin any with the mat
   version-less as `backdrop-drush-extension.tar.gz` and shipped pristine (BOA applies
   its own PHP 5.6 de-hint and `__DIR__` include fix on deploy). Published to
   `/var/www/static/dev/{dev,lts,pro}` — every box pulls its own tree dir.
+- **redis_backdrop** — the Backdrop redis contrib module (`backdrop-contrib/redis`),
+  packaged versioned as `redis_backdrop-<tag>.tar.gz` wrapping a `redis_backdrop/`
+  directory (the tarball's top-level name is the deployed directory name under the
+  shared contrib store). Published to the per-tree contrib shelf
+  `/var/www/static/dev/{dev,lts,pro}/contrib`. Unlike the other family members it
+  is consumed by a pinned version on the BOA side — after publishing a newer tag,
+  bump the pin in `OCTOPUS.sh.txt` and `BOA.sh.txt` together (a newer publish is
+  inert until then; `staticbuild check` surfaces the drift as the `bd-redis` row).
 
 ## Manual procedure (reference)
 

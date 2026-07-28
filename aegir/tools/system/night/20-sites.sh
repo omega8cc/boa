@@ -323,11 +323,42 @@ _fix_o_contrib_symlink() {
   if [ "${_O_CONTRIB_SEVEN}" != "NO" ]; then
     symlinks -d ${_Plr}/modules &> /dev/null
     if [ -e "${_Plr}/core/misc/backdrop.js" ]; then
-      # Backdrop platform: BOA ships no o_contrib bundle for Backdrop in Phase 1
-      # (Drupal 6/7/8 module sets are not Backdrop-compatible). Placed before the
-      # D8 arm, which its core/ (+ absent olivero/stable9/workspaces_ui) would
-      # otherwise match and wire o_contrib_eight into a Backdrop tree.
-      _DO_NOTHING=YES
+      # Backdrop platform: attach the shared Backdrop bundle. Wrong-core Drupal
+      # bundles are purged first (the Drupal module sets are not
+      # Backdrop-compatible). Placed before the D8 arm, which its core/
+      # (+ absent olivero/stable9/workspaces_ui) would otherwise match and
+      # wire o_contrib_eight into a Backdrop tree.
+      if [ -e "${_Plr}/modules/o_contrib_eight" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eight
+        rm -f ${_Plr}/modules/.o_contrib_eight_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_nine" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_nine
+        rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_ten" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_ten
+        rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+      fi
+      # Attach only when the platform has no modules/redis copy: two copies of
+      # the module in one scan dir make the winner readdir-order dependent.
+      # The verify task owns demoting a baked copy (BOA-built platforms only);
+      # after that demotion this repair arm takes over.
+      if [ ! -e "${_Plr}/modules/o_contrib_backdrop" ] \
+        && [ ! -e "${_Plr}/modules/redis" ] \
+        && [ ! -z "${_O_CONTRIB_BACKDROP}" ] \
+        && [ "${_O_CONTRIB_BACKDROP}" != "NO" ] \
+        && [ -e "${_O_CONTRIB_BACKDROP}" ]; then
+        ln -sfn ${_O_CONTRIB_BACKDROP} ${_Plr}/modules/o_contrib_backdrop &> /dev/null
+      fi
     elif [ -e "${_Plr}/web.config" ] \
       && [ -e "${_O_CONTRIB_SEVEN}" ] \
       && [ ! -e "${_Plr}/core" ]; then
