@@ -75,11 +75,20 @@ Backdrop is a Drupal-7-lineage fork, and BOA manages it through the same
   store and the endpoint is `core/cron.php?cron_key=...`. Ægir owns cron
   scheduling exactly as for Drupal sites; Backdrop's own visit-triggered
   cron is switched off via the global include so runs never double up.
-- **Object cache**: every Backdrop platform ships the Backdrop-native
-  Valkey/Redis cache module baked in. The BOA global include
-  (`global-bd.inc`) wires each site to Valkey when it is available and
-  falls back to Backdrop's database cache — with the shared backoff flag,
-  so a stopped Valkey is not re-probed on every request.
+- **Object cache**: every Backdrop platform gets the Backdrop-native
+  Valkey/Redis cache module through the shared `o_contrib_backdrop`
+  bundle — the same shared-contrib model the Drupal cores use. The
+  bundle lives under `/data/all/<NNN>/` with the module in the single
+  shared `/data/all/000/modules/redis_backdrop` store; Octopus creates
+  and refreshes it on every upgrade, the platform verify task symlinks
+  it as `modules/o_contrib_backdrop` into every platform (including
+  platforms uploaded to the `static/` tree), and the nightly agent
+  repairs a missing symlink. The BOA global include (`global-bd.inc`)
+  prefers the shared bundle, still honours the baked `modules/redis`
+  copy that older platform tarballs carried, wires each site to Valkey
+  when it is available and falls back to Backdrop's database cache —
+  with the shared backoff flag, so a stopped Valkey is not re-probed on
+  every request.
 
 ## Command line: bee and Drush
 
