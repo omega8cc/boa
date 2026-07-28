@@ -2228,6 +2228,73 @@ _satellite_o_contrib_eleven_update_global() {
   cd
 }
 
+_satellite_o_contrib_backdrop_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_o_contrib_backdrop_update_global"
+    _debug_proc
+  fi
+
+  _RMMODULES="some_foo_bar"
+
+  for i in `dir -d ${_D}/*`; do
+    if [ -e "${i}/o_contrib_backdrop" ] \
+      && [ ! -e "${i}/o_contrib_backdrop/update-${_xSrl}-${_X_VERSION}.info" ]; then
+      _FORCE_UP_BACKDROP=YES
+    elif [ -e "${i}/o_contrib_backdrop" ] \
+      && [ ! -L "${i}/o_contrib_backdrop/redis_backdrop" ]; then
+      _FORCE_UP_BACKDROP=YES
+    else
+      _FORCE_UP_BACKDROP=NO
+    fi
+    if [ "${_FORCE_UP_BACKDROP}" = "YES" ] \
+      && [ -e "${i}/o_contrib_backdrop" ]; then
+      for m in ${_RMMODULES}; do
+        if [ -d "${i}/o_contrib_backdrop/$m" ]; then
+          rm -rf ${i}/o_contrib_backdrop/$m
+        fi
+      done
+      cd ${i}/o_contrib_backdrop
+      if [ -e "${_D}/000/modules/redis_backdrop" ] \
+        && [ ! -L "${i}/o_contrib_backdrop/redis_backdrop" ]; then
+        ln -sfn ${_D}/000/modules/redis_backdrop ${i}/o_contrib_backdrop/redis_backdrop
+      fi
+      find ${i}/o_contrib_backdrop -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib_backdrop -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${i}/o_contrib_backdrop/update-${_xSrl}-${_X_VERSION}.info
+    fi
+  done
+  cd
+}
+
+
+#
+# Download o_contrib_backdrop. The bundle carries the Backdrop-native contrib
+# BOA maintains for every Backdrop platform; like the D6/D7 bundles the redis
+# integration is a symlink into the single shared /data/all/000/modules copy,
+# created here at download time so a fresh space is never redis-less.
+_satellite_download_o_contrib_backdrop() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_download_o_contrib_backdrop"
+    _debug_proc
+  fi
+  touch update-${_xSrl}-${_X_VERSION}.info
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "${_STATUS} A: Downloading o_contrib_backdrop modules..."
+  fi
+  if [ ! -L "./redis_backdrop" ]; then
+    ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
+  fi
+  if [ ! -e "${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_backdrop
+    _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
+  fi
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+}
+
 
 #
 # Download o_contrib_eleven.
@@ -2575,6 +2642,16 @@ _satellite_check_fix_o_contrib() {
       cd ${_CORE}/o_contrib
     fi
   fi
+  if [ -e "${_CORE}/o_contrib_backdrop" ]; then
+    if [ ! -e "${_CORE}/o_contrib_backdrop/redis_backdrop" ] \
+      || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
+      _msg "${_STATUS} A: Running o_contrib_backdrop forced upgrade..."
+      cd ${_CORE}/o_contrib_backdrop
+      rm -rf ${_CORE}/o_contrib_backdrop/*
+      _satellite_download_o_contrib_backdrop
+      cd ${_CORE}/o_contrib_backdrop
+    fi
+  fi
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_xSrl}-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -2619,6 +2696,18 @@ _satellite_check_fix_o_contrib() {
     rm -rf ${_D}/000/modules/redis_ten_eleven
     _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
+  fi
+  ### The Backdrop store is refreshed only where the bundle exists (or the
+  ### support gate is on) so opted-out boxes never fetch it.
+  if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
+    || [ -e "${_D}/000/modules/o_contrib_backdrop" ]; then
+    if [ ! -e "${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info" ]; then
+      mkdir -p ${_D}/000/modules
+      cd ${_D}/000/modules
+      rm -rf ${_D}/000/modules/redis_backdrop
+      _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+      echo update > ${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
+    fi
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2667,6 +2756,15 @@ _satellite_manage_o_contrib() {
     _satellite_download_o_contrib_six
     cd ${_CORE}/o_contrib
   fi
+  ### Backdrop bundle creation is support-gated; an already existing bundle
+  ### is kept fresh below regardless (opt-out is never a teardown).
+  if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
+    && [ ! -e "${_CORE}/o_contrib_backdrop" ]; then
+    mkdir -p ${_CORE}/o_contrib_backdrop
+    cd ${_CORE}/o_contrib_backdrop
+    _satellite_download_o_contrib_backdrop
+    cd ${_CORE}/o_contrib_backdrop
+  fi
   mkdir -p ${_D}/000/modules
   rm -f ${_D}/000/modules/o_contrib_eleven
   ln -sfn ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
@@ -2680,6 +2778,10 @@ _satellite_manage_o_contrib() {
   ln -sfn ${_CORE}/o_contrib_seven ${_D}/000/modules/o_contrib_seven
   rm -f ${_D}/000/modules/o_contrib
   ln -sfn ${_CORE}/o_contrib ${_D}/000/modules/o_contrib
+  if [ -e "${_CORE}/o_contrib_backdrop" ]; then
+    rm -f ${_D}/000/modules/o_contrib_backdrop
+    ln -sfn ${_CORE}/o_contrib_backdrop ${_D}/000/modules/o_contrib_backdrop
+  fi
   if [ "${_STATUS}" != "INIT" ]; then
     _satellite_check_fix_o_contrib
   fi
@@ -4536,6 +4638,7 @@ _satellite_make() {
   echo "export _REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_E_VERSION=\"${_REDIS_E_VERSION}\""     >> ${_writeTo}
+  echo "export _REDIS_B_VERSION=\"${_REDIS_B_VERSION}\""     >> ${_writeTo}
   echo "export _SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${_writeTo}
 
   echo "export _SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${_writeTo}
@@ -5792,6 +5895,7 @@ _satellite_display_url_finalize() {
     _satellite_o_contrib_nine_update_global
     _satellite_o_contrib_ten_update_global
     _satellite_o_contrib_eleven_update_global
+    _satellite_o_contrib_backdrop_update_global
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
