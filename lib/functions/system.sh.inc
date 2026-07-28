@@ -10831,6 +10831,7 @@ _initd_update() {
           -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
         if [ -z "${_diffMyTest}" ]; then
           _myCnfUpdate=NO
+          _myTopReinstall=NO
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff0 empty"
           fi
