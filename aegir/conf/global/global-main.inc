@@ -358,6 +358,31 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
  * Caveat: a site whose own settings ASSIGN init_commands rather than adding a
  * key are included later and will drop this.
  */
+
+/**
+ * Pin the D7 fallback hash salt BEFORE the web-only mutation below.
+ *
+ * The Aegir D7 settings template ships $drupal_hash_salt = '', so core
+ * derives the salt at call time as sha256(serialize($databases)). Adding
+ * init_commands on web requests only would make the web and the CLI
+ * serialize different arrays, i.e. two different salts; every one-time
+ * login link minted by Drush or the Aegir backend (drush uli, the panel
+ * Log in button) would then be rejected by the web side with a redirect
+ * to the request-new-password page.
+ *
+ * Pinning the pre-mutation value keeps the salt identical in both
+ * contexts and byte-identical to the salt all previously issued tokens
+ * were minted with, so nothing outstanding is invalidated. It also makes
+ * the salt immune to any future $databases edits lower in this chain.
+ * D6 has no hash salt, D8+ get a real hash_salt from the settings
+ * template, so only D7 needs the pin.
+ */
+if (isset($drupal_core) && $drupal_core == '7'
+  && empty($drupal_hash_salt)
+  && isset($databases['default']['default'])) {
+  $drupal_hash_salt = hash('sha256', serialize($databases));
+}
+
 if (PHP_SAPI !== 'cli' && isset($databases['default']['default'])) {
   $boa_max_exec_ms = 30000;
   if (isset($all_ini['sql_web_max_exec_ms'])) {

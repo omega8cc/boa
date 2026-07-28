@@ -458,14 +458,14 @@ ${_MIG_COVERAGE_BLOCK}
 Important Changes to Note:
 
 1. New Ægir Control Panel URL
-   Your new welcome email will include details about the updated Ægir URL, including SQL Adminer access.
+   Your Ægir Control Panel and SQL Adminer addresses follow the address change described above: replace the old server name with the new one in the addresses you use today.
 
 2. Access Credentials
-   Ægir Control Panel access credentials for all current admins remain the same. Updated SSH/SFTP credentials (with a new password) are in your welcome email.
+   All your access credentials remain the same: the Ægir Control Panel, SSH/SFTP and SQL passwords have been carried over to the new server.
 
 3. SSH Key Transfer
-   Only the main SSH account keys have been transferred.
-   - SSH sub-accounts (Clients) will need to be recreated, so their old passwords and SSH keys will no longer work.
+   The main SSH account keys have been transferred.
+   - SSH sub-accounts (Clients) are recreated automatically on the new server with their existing passwords and SSH keys.
 
 4. Main SSH Account Directory
    The contents of your main SSH account’s home directory have NOT been migrated. Please download any necessary files from the old server.
@@ -509,7 +509,7 @@ This notification is to inform you that the migration of your Ægir hosting syst
 
 YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
 
-You will receive another message once the migration is complete, along with a separate New Welcome Email containing important details about your updated system.
+You will receive another message once the migration is complete, with the updated addresses and everything else you need to know.
 
 Please do not run any tasks in your old Ægir Control Panel during this migration, as it may interfere with special proxy configurations set up to ensure service continuity.
 
@@ -522,14 +522,14 @@ ${_MIG_COVERAGE_BLOCK}
 Important Changes to Note:
 
 1. New Ægir Control Panel URL
-   Your New Welcome Email will include details about the updated Ægir URL, including SQL Adminer access.
+   Your Ægir Control Panel and SQL Adminer addresses will follow the address change: replace the old server name with the new one in the addresses you use today.
 
 2. Access Credentials
-   Ægir Control Panel credentials for all current admins will remain the same. Updated SSH/SFTP credentials (with a new password) will be provided in your welcome email.
+   All your access credentials will remain the same: the Ægir Control Panel, SSH/SFTP and SQL passwords are carried over to the new server.
 
 3. SSH Key Transfer
-   Only the main SSH account keys will be transferred.
-   - SSH sub-accounts (Clients) will need to be recreated, so their old passwords and SSH keys will no longer work.
+   The main SSH account keys will be transferred.
+   - SSH sub-accounts (Clients) will be recreated automatically on the new server with their existing passwords and SSH keys.
 
 4. Main SSH Account Directory
    The contents of your main SSH account’s home directory will NOT be migrated. Please download any necessary files from the old server.
@@ -961,6 +961,14 @@ EOFMYSQL
               wait
               chown ${_oct}:users ${_Vhs}
               chmod 600 ${_Vhs}
+            elif [ -d "${_USR}/config/server_master/ssl.d/${_Dom}" ]; then
+              ### The silent shape behind the manual "confirm https.* vhosts
+              ### exist" post-check: the site has SSL material but never went
+              ### through hosting_le's symlink pass, so no HTTPS proxy vhost
+              ### can be written. Count and name it -- the operator must see
+              ### this in the conversion output, not discover dead 443 later.
+              _XOCT_PROXY_NOSSL="${_XOCT_PROXY_NOSSL} ${_Dom}"
+              echo "ALRT: site ${_Dom} on ${_oct}: NO HTTPS proxy vhost written -- ssl.d/${_Dom}/openssl.key missing"
             fi
             ### Preserve the FIRST backup only. On a repair pass ${_Vht} is
             ### already the proxy template, and mv -f would overwrite ${_Vhd}
@@ -982,6 +990,9 @@ EOFMYSQL
             chown ${_oct}:users ${_Vht}
             chmod 600 ${_Vht}
             _XOCT_PROXY_OK=$(( ${_XOCT_PROXY_OK:-0} + 1 ))
+            ### Remember what THIS run rewrote: a configtest failure must
+            ### revert only these, never a previous conversion's vhosts.
+            _XOCT_CONVERTED_DOMS="${_XOCT_CONVERTED_DOMS} ${_Dom}"
             echo "INFO: site ${_Dom} proxy conversion on ${_oct} complete"
           else
             ### Counted, not just echoed: the caller must never mail "migration
@@ -1072,6 +1083,398 @@ if id "${_X_SRC_OCT}.ftp" >/dev/null 2>&1; then
 fi
 REMOTE
 }
+
+###-------------MIGRATION TARGET SEEDING----###
+###
+### Everything in this block exists to close the "wrong PHP / wrong identity
+### after migration" class: a fresh target install is born on the box-default
+### PHP with fresh client credentials, while the source account's real pins
+### and identity live in /root/.<acct>.octopus.cnf, static/control/*.info and
+### /etc/shadow -- none of which travelled before. The control files are the
+### authoritative witnesses (BOA derives the cnf FROM fpm.info/cli.info, never
+### the reverse, and manage_ltd_users converges pools from them within
+### minutes), so the seeding order is: gate on installed PHP, install, merge
+### the cnf, force the control files, carry the credentials.
+
+### Normalise a PHP version token to the dotted form BOA control files use;
+### prints nothing for a token that is not a known BOA PHP version.
+_mig_php_norm() {
+  local _t="${1//[^0-9.]/}"
+  case "${_t}" in
+    8.5|85) echo 8.5 ;;
+    8.4|84) echo 8.4 ;;
+    8.3|83) echo 8.3 ;;
+    8.2|82) echo 8.2 ;;
+    8.1|81) echo 8.1 ;;
+    8.0|80) echo 8.0 ;;
+    7.4|74) echo 7.4 ;;
+    7.3|73) echo 7.3 ;;
+    7.2|72) echo 7.2 ;;
+    7.1|71) echo 7.1 ;;
+    7.0|70) echo 7.0 ;;
+    5.6|56) echo 5.6 ;;
+  esac
+}
+
+### Union of PHP versions this account is pinned to: the account-level
+### static/control/{fpm,cli}.info defaults plus the per-site column of
+### static/control/multi-fpm.info (dotted and shorthand forms both count --
+### the consumer accepts both, so the gate must too).
+_mig_php_versions_needed() {
+  local _u="$1" _f _v _dom _rest _out=""
+  for _f in "${_u}/static/control/fpm.info" "${_u}/static/control/cli.info"; do
+    [ -e "${_f}" ] || continue
+    _v="$(_mig_php_norm "$(tr -d ' \t\r\n' < "${_f}" 2>/dev/null)")"
+    [ -n "${_v}" ] && _out="${_out} ${_v}"
+  done
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      ### place.holder.dont.remove is manage_ltd_users' filler line, not a
+      ### site pin -- counting it would refuse migrations over a version no
+      ### site actually uses.
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      [ -n "${_v}" ] && _out="${_out} ${_v}"
+    done < "${_u}/static/control/multi-fpm.info"
+  fi
+  echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
+}
+
+### The tree the TARGET runs, for target-side barracuda/octopus verbs; the
+### local _tRee belongs to THIS box and a cross-tree migration must not push
+### the source's tree through the target's licence gate.
+_mig_target_tree() {
+  local _t="$1" _tt
+  _tt=$(ssh root@"${_t}" "boa info 2>/dev/null" 2>/dev/null \
+    | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+    | tail -1 \
+    | grep -oE '(dev|lts|pro)$')
+  if [ -z "${_tt}" ]; then
+    echo "ALRT: could not detect the BOA tree on ${_t}; falling back to local '${_tRee}'" >&2
+    _tt="${_tRee}"
+  fi
+  echo "${_tt}"
+}
+
+### Verify every needed PHP version is installed on the target -- the same
+### /opt/phpNN/bin/php probe BOA's own fallback ladders use. A missing version
+### is fatal by default, because served-on-the-wrong-PHP is the silent failure
+### this whole step exists to prevent. With --fix-php the missing versions are
+### appended to the target's _PHP_MULTI_INSTALL and one barracuda system run
+### is driven remotely to build them (that run is long; expect ~30 minutes).
+_xoct_php_coverage_gate() {
+  local _u="$1" _t="$2" _need _v _sv _miss=""
+  _need="$(_mig_php_versions_needed "${_u}")"
+  [ -n "${_need// /}" ] || return 0
+  echo "INFO: PHP versions required by $(basename "${_u}"): ${_need}"
+  for _v in ${_need}; do
+    _sv=${_v//[^0-9]/}
+    if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+      _miss="${_miss} ${_v}"
+    fi
+  done
+  _miss="${_miss## }"
+  [ -z "${_miss}" ] && return 0
+  echo "ALRT: target ${_t} lacks PHP version(s) required by $(basename "${_u}"): ${_miss}"
+  if [ "${_XOCT_FIX_PHP}" = "YES" ]; then
+    _mig_fix_target_php "${_t}" "${_miss}" || return 1
+    for _v in ${_miss}; do
+      _sv=${_v//[^0-9]/}
+      if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+        echo "ERROR: PHP ${_v} still missing on ${_t} after the fix run"
+        return 1
+      fi
+    done
+    return 0
+  fi
+  echo "ERROR: a pinned PHP version missing on the target means every affected site"
+  echo "ERROR: silently falls back to a different PHP after migration."
+  echo "ERROR: Fix on the target: add '${_miss}' to _PHP_MULTI_INSTALL in /root/.barracuda.cnf"
+  echo "ERROR: and run: barracuda up-<tree> system noscreen"
+  echo "ERROR: Or re-run this command with --fix-php to do both automatically."
+  return 1
+}
+
+### Extend the target's _PHP_MULTI_INSTALL with the missing versions and run
+### one barracuda system pass there to build them. Idempotent: versions
+### already listed are not repeated, and barracuda itself is safe to re-run.
+_mig_fix_target_php() {
+  local _t="$1" _add="$2" _cur _new _v _nv _tree
+  # Normalise the fetched value token by token: the raw line may carry an
+  # inline comment or quotes, and anything not a known PHP version must
+  # never reach the remote root shell that rewrites the cnf.
+  _cur=$(ssh root@"${_t}" "grep '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf 2>/dev/null" 2>/dev/null \
+    | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g' | tr -d '\n')
+  _new=""
+  for _v in ${_cur} ${_add}; do
+    _nv="$(_mig_php_norm "${_v}")"
+    [ -n "${_nv}" ] || continue
+    case " ${_new} " in
+      *" ${_nv} "*) : ;;
+      *) _new="${_new} ${_nv}" ;;
+    esac
+  done
+  _new="${_new## }"
+  if [ -z "${_new}" ]; then
+    echo "ALRT: computed empty _PHP_MULTI_INSTALL for ${_t}; refusing"
+    return 1
+  fi
+  echo "INFO: setting _PHP_MULTI_INSTALL=\"${_new}\" on ${_t}"
+  ssh root@"${_t}" "_m=\$(stat -c %a /root/.barracuda.cnf 2>/dev/null); \
+    grep -v '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew 2>/dev/null; \
+    echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew \
+    && chmod \${_m:-600} /root/.barracuda.cnf.phpnew \
+    && mv -f /root/.barracuda.cnf.phpnew /root/.barracuda.cnf" \
+    || { echo "ERROR: could not update _PHP_MULTI_INSTALL on ${_t}"; return 1; }
+  _tree="$(_mig_target_tree "${_t}")"
+  case "${_tree}" in
+    dev|lts|pro) : ;;
+    *) echo "ALRT: invalid tree token '${_tree}' -- refusing the remote barracuda run"; return 1 ;;
+  esac
+  echo "INFO: driving 'barracuda up-${_tree} system noscreen' on ${_t} to build the missing PHP set;"
+  echo "INFO: this is a full system pass and typically takes ~30 minutes"
+  ssh root@"${_t}" "barracuda up-${_tree} system noscreen" \
+    || { echo "ERROR: barracuda system run on ${_t} returned non-zero"; return 1; }
+  return 0
+}
+
+### Merge the account-portable octopus.cnf lines from the source cnf into the
+### target's /root/.<dst>.octopus.cnf. A wholesale copy would carry the host
+### axis (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN), which
+### is re-derived target-correct when absent and actively harmful when copied,
+### so only the listed keys travel, as whole lines, replace-or-append. The
+### merge runs AFTER the target install on purpose: _satellite_cnf's
+### existing-cnf branch re-derives the PHP pins from static/control/*.info,
+### so a pre-install cnf alone would be overwritten -- the control-file
+### seeding below is what makes the pins stick, and manage_ltd_users then
+### converges the pools within minutes.
+_xoct_push_target_octopus_cnf() {
+  local _src="$1" _dst="$2" _t="$3"
+  local _sCnf="/root/.${_src}.octopus.cnf"
+  local _dCnf="/root/.${_dst}.octopus.cnf"
+  local _rTmp="/root/.${_dst}.octopus.cnf.migrate-merge.tmp"
+  local _rRun="/root/.${_dst}.octopus.cnf.migrate-merge.run"
+  local _lTmp="/var/backups/.xoct.cnfmerge.$$.lines"
+  local _lRun="/var/backups/.xoct.cnfmerge.$$.run"
+  local _v _l _lst
+  if [ ! -e "${_sCnf}" ]; then
+    echo "ALRT: no ${_sCnf} on the source; the target account keeps its install-time defaults"
+    return 0
+  fi
+  if ! ssh root@"${_t}" "[ -e ${_dCnf} ]" 2>/dev/null; then
+    echo "ALRT: no ${_dCnf} on ${_t} (account not installed there yet?);"
+    echo "ALRT: skipping the cnf merge -- run 'xoct create' first, then re-run this step"
+    return 1
+  fi
+  _lst="_PHP_FPM_VERSION _PHP_CLI_VERSION _PHP_FPM_WORKERS _PHP_FPM_TIMEOUT \
+    _PHP_FPM_MAX_CHILDREN_FORCE _PHP_FPM_MEMORY_LIMIT_FORCE _PHP_FPM_RAM_PCT \
+    _PHP_FPM_CPU_FACTOR _PHP_FPM_DENY _RESERVED_RAM _MY_OCTO_EMAIL \
+    _CLIENT_EMAIL _CLIENT_OPTION _CLIENT_SUBSCR _CLIENT_CORES \
+    _GHOST_PLATFORMS_CLEANUP _GHOST_VHOSTS_CLEANUP _GHOST_SITES_CLEANUP \
+    _GHOST_SITE_FILES_CLEANUP _GHOST_ALIASES_CLEANUP \
+    _DEL_OLD_BACKUPS _DEL_OLD_TMP _DEL_OLD_EMPTY_PLATFORMS \
+    _SQL_CONVERT _STRONG_PASSWORDS _BACKDROP_SUPPORT _HOT_SAUCE \
+    _USE_CURRENT _DL_MODE _FORCE_GIT_MIRROR _PLATFORMS_LIST \
+    _AUTOPILOT _DNS_SETUP_TEST"
+  echo "_USER=\"${_dst}\"" > "${_lTmp}"
+  for _v in ${_lst}; do
+    _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
+    [ -n "${_l}" ] && printf '%s\n' "${_l}" >> "${_lTmp}"
+  done
+  {
+    echo '#!/bin/bash'
+    echo "_cnf=\"${_dCnf}\""
+    echo "_mrg=\"${_rTmp}\""
+    cat <<'MERGESH'
+[ -e "${_cnf}" ] || exit 1
+[ -e "${_mrg}" ] || exit 1
+while IFS= read -r _l; do
+  case "${_l}" in
+    _*=*) : ;;
+    *) continue ;;
+  esac
+  _k="${_l%%=*}"
+  grep -v "^${_k}=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+  printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
+  mv -f "${_cnf}.mrgnew" "${_cnf}"
+done < "${_mrg}"
+chmod 644 "${_cnf}"
+rm -f "${_mrg}"
+MERGESH
+  } > "${_lRun}"
+  if ! rsync -a -e ssh "${_lTmp}" "root@${_t}:${_rTmp}" \
+    || ! rsync -a -e ssh "${_lRun}" "root@${_t}:${_rRun}"; then
+    echo "ALRT: could not stage the cnf merge on ${_t}"
+    rm -f "${_lTmp}" "${_lRun}"
+    return 1
+  fi
+  rm -f "${_lTmp}" "${_lRun}"
+  if ssh root@"${_t}" "bash ${_rRun}; _rc=\$?; rm -f ${_rRun}; exit \${_rc}"; then
+    echo "INFO: merged source octopus.cnf values into ${_dCnf} on ${_t}"
+    return 0
+  fi
+  echo "ALRT: cnf merge on ${_t} failed; the target keeps its current ${_dCnf}"
+  return 1
+}
+
+### Force the authoritative PHP pin witnesses over WITHOUT -u: the fresh
+### target install wrote newer defaults that would shadow every -u sync, and
+### these four files are exactly what _satellite_cnf and manage_ltd_users
+### derive the cnf and the pools from.
+_xoct_seed_target_control_pins() {
+  local _sUsr="$1" _dUsr="$2" _dAcct="$3" _t="$4" _f
+  for _f in static/control/fpm.info static/control/cli.info log/fpm.txt log/cli.txt; do
+    [ -e "${_sUsr}/${_f}" ] || continue
+    _xoct_rsync -aEAX ${_ieni} -e ssh \
+      "${_sUsr}/${_f}" \
+      "root@${_t}:${_dUsr}/${_f}"
+  done
+  ssh root@"${_t}" "chown ${_dAcct}.ftp:users ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info" &> /dev/null
+  return 0
+}
+
+### Carry the client shell identity so migration does not silently reset it:
+### the main <acct>.ftp shadow hash and log/pass.txt (kept consistent as a
+### pair), the sub-account password store /home/<acct>.ftp/users (whose
+### carried entries manage_ltd_users now honours at sub-user creation), and
+### each existing sub-user's shadow hash and .ssh where the target user
+### already exists (later passes converge the rest). LIVE operations only --
+### never call this from a DRY path or a proxy repair (a long-lived target's
+### clients may have changed their passwords THERE since the migration).
+_xoct_sync_shell_credentials() {
+  local _src="$1" _dst="$2" _t="$3"
+  local _sUsr="/data/disk/${_src}" _dUsr="/data/disk/${_dst}"
+  local _hash _d _n _e _set=NO
+  _hash=$(getent shadow "${_src}.ftp" 2>/dev/null | cut -d: -f2)
+  if [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ]; then
+    if ssh root@"${_t}" "getent passwd ${_dst}.ftp" &> /dev/null; then
+      if printf '%s.ftp:%s\n' "${_dst}" "${_hash}" | ssh root@"${_t}" "chpasswd -e"; then
+        _set=YES
+        echo "INFO: carried ${_src}.ftp shell/SFTP password to ${_dst}.ftp on ${_t}"
+      else
+        echo "ALRT: could not set the carried password for ${_dst}.ftp on ${_t}"
+      fi
+    else
+      echo "ALRT: user ${_dst}.ftp missing on ${_t}; password not carried yet (re-run converges)"
+    fi
+  fi
+  ### pass.txt travels ONLY when the paired hash actually landed: it is what
+  ### the client is shown, and shipping it after a failed chpasswd would
+  ### advertise a password that does not work. A re-run converges both.
+  if [ "${_set}" = "YES" ] && [ -e "${_sUsr}/log/pass.txt" ]; then
+    _xoct_rsync -aEAX ${_ieni} -e ssh \
+      "${_sUsr}/log/pass.txt" \
+      "root@${_t}:${_dUsr}/log/pass.txt"
+  elif [ -e "${_sUsr}/log/pass.txt" ]; then
+    echo "ALRT: NOT carrying log/pass.txt for ${_dst} -- the shadow hash was not set on ${_t}"
+  fi
+  ### The store is keyed by FULL sub-user name, so a rename must rewrite the
+  ### entry filenames -- an rsync of the directory would land <src>-named
+  ### files that manage_ltd_users never looks for on the target.
+  if [ -d "/home/${_src}.ftp/users" ]; then
+    ssh root@"${_t}" "mkdir -p /home/${_dst}.ftp/users" &> /dev/null
+    for _e in /home/${_src}.ftp/users/*; do
+      [ -f "${_e}" ] || continue
+      _n=$(basename "${_e}")
+      _n="${_n#${_src}.}"
+      _xoct_rsync -aEAX ${_ieni} -e ssh \
+        "${_e}" \
+        "root@${_t}:/home/${_dst}.ftp/users/${_dst}.${_n}"
+    done
+    ssh root@"${_t}" "chown -R ${_dst}.ftp:users /home/${_dst}.ftp/users; chmod 700 /home/${_dst}.ftp/users; chmod 600 /home/${_dst}.ftp/users/* 2>/dev/null; true" &> /dev/null
+  fi
+  for _d in "${_sUsr}"/clients/*/; do
+    [ -d "${_d}" ] || continue
+    _n=$(basename "${_d}")
+    getent passwd "${_src}.${_n}" &> /dev/null || continue
+    _hash=$(getent shadow "${_src}.${_n}" 2>/dev/null | cut -d: -f2)
+    [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ] || continue
+    if ssh root@"${_t}" "getent passwd ${_dst}.${_n}" &> /dev/null; then
+      if printf '%s.%s:%s\n' "${_dst}" "${_n}" "${_hash}" | ssh root@"${_t}" "chpasswd -e"; then
+        echo "INFO: carried sub-account password for ${_dst}.${_n} on ${_t}"
+      else
+        echo "ALRT: could not carry the sub-account password for ${_dst}.${_n} on ${_t}"
+      fi
+      if [ -d "/home/${_src}.${_n}/.ssh" ]; then
+        _xoct_rsync -aEAXqu ${_ieni} -e ssh \
+          "/home/${_src}.${_n}/.ssh" \
+          "root@${_t}:/home/${_dst}.${_n}/"
+      fi
+    else
+      ### The sub-user does not exist there yet: manage_ltd_users creates it
+      ### from clients/ within minutes and honours the carried store entry
+      ### above, so the password converges. Its .ssh cannot be placed before
+      ### the home exists -- stage it for the post-creation pass instead.
+      if [ -d "/home/${_src}.${_n}/.ssh" ]; then
+        ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_dst}.${_n}" &> /dev/null
+        _xoct_rsync -aEAXqu ${_ieni} -e ssh \
+          "/home/${_src}.${_n}/.ssh" \
+          "root@${_t}:/var/backups/migrate-subuser-ssh/${_dst}.${_n}/"
+        echo "INFO: sub-account ${_dst}.${_n} not created on ${_t} yet; password converges via the"
+        echo "INFO: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_dst}.${_n}/.ssh"
+      else
+        echo "INFO: sub-account ${_dst}.${_n} not created on ${_t} yet; its carried password"
+        echo "INFO: store entry makes it converge when manage_ltd_users creates it there"
+      fi
+    fi
+  done
+  return 0
+}
+
+### Bounded replacement for the historical fixed 8-minute wait before the
+### enforced post-install upgrade: the in-flow auto-upgrade is settled once
+### log/octopus_log.txt carries at least two lines (the same signal the
+### golden-master runbook uses). On timeout proceed exactly as the fixed
+### wait did.
+_xoct_wait_target_install_settled() {
+  local _dst="$1" _t="$2" _n _w=0
+  local _max="${_XOCT_CREATE_MAX_WAIT:-900}"
+  case "${_max}" in ''|*[!0-9]*) _max=900 ;; esac
+  # With the in-flow auto-upgrade disabled the two-line signal never comes;
+  # do not burn the whole ceiling waiting for it.
+  if ssh root@"${_t}" "[ -e /root/.dont.upgrade.octopus.on.install.cnf ]" 2>/dev/null; then
+    echo "INFO: in-flow auto-upgrade disabled on ${_t}; skipping the settle wait"
+    return 0
+  fi
+  echo "INFO: waiting for the install on ${_t} to settle (octopus_log >= 2 lines, up to ${_max}s)"
+  while [ "${_w}" -lt "${_max}" ]; do
+    _n=$(ssh root@"${_t}" "wc -l < /data/disk/${_dst}/log/octopus_log.txt 2>/dev/null" 2>/dev/null | tr -d ' \n')
+    case "${_n}" in ''|*[!0-9]*) _n=0 ;; esac
+    if [ "${_n}" -ge 2 ]; then
+      echo "INFO: install on ${_t} settled after ${_w}s"
+      return 0
+    fi
+    sleep 30
+    _w=$(( _w + 30 ))
+  done
+  echo "ALRT: install on ${_t} not settled after ${_max}s; proceeding anyway (legacy fixed-wait behaviour)"
+  return 0
+}
+
+### Bounded wait until BOA's own heavyweight jobs are quiet on THIS box;
+### replaces the runbook's "wait ~5 minutes" guess before an import.
+_xoct_wait_boa_quiet() {
+  local _w=0
+  local _max="${_XOCT_QUIET_MAX_WAIT:-600}"
+  case "${_max}" in ''|*[!0-9]*) _max=600 ;; esac
+  while [ "${_w}" -lt "${_max}" ]; do
+    if ! pgrep -f "[b]arracuda up|[o]ctopus up|[A]egirSetup" &> /dev/null; then
+      return 0
+    fi
+    echo "INFO: waiting for a running barracuda/octopus/AegirSetup job to finish (${_w}s)"
+    sleep 15
+    _w=$(( _w + 15 ))
+  done
+  echo "ALRT: BOA jobs still running after ${_max}s; proceeding -- watch for task collisions"
+  return 0
+}
+
+### NB: no migration read-only mode here on purpose. The historical runbook
+### step appended box-wide read-only settings to global-extra.inc, which
+### froze EVERY account on the source, did not survive a BOA system pass,
+### and on most site shapes froze nothing. The export step's own per-account
+### 503 gate (static/control/http-off.pid) is what actually quiesces writes
+### for the export window.
 
 _migrate_prepare() {
   # Pause the mysql.sh watchdog for the DB-critical commands: export runs
@@ -1219,6 +1622,17 @@ _migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/imported.pid" ]; then
+    ### Target-side quiesce, previously a hand-typed runbook step: BOA's own
+    ### background jobs must not fight the hostmaster import and the rename
+    ### queue. Cron comes back via post-mig. Devuan trap: 'service cron stop'
+    ### does not always stop it -- use the init script plus pkill, verified.
+    /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
+    pkill -x cron &> /dev/null
+    if pgrep -x cron &> /dev/null; then
+      echo "ALRT: cron still running after stop attempt; check manually"
+    fi
+    [ -e "/data/all/cpuinfo" ] && chmod 644 /data/all/cpuinfo
+    _xoct_wait_boa_quiet
     if [ ! -z "${_dst}" ] && [ "${_oct}" != "${_dst}" ]; then
       echo "INFO: rename mode import for source ${_oct} into target account ${_dst}"
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5R -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
@@ -1302,20 +1716,123 @@ _migrate_prepare() {
     else
       _TGT_HM_USER="${_oct}"
     fi
+    ### These values are interpolated into a remote root shell; log/ arrives
+    ### over the network on a chained migration, so validate before use.
+    if ! _mig_valid_acct "${_oct}" || ! _mig_valid_acct "${_TGT_HM_USER}"; then
+      echo "ALRT: refusing create: invalid account name '${_oct}'/'${_TGT_HM_USER}'"
+      exit 1
+    fi
+    if ! printf '%s' "${_CLIENT_EMAIL}" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
+      echo "ALRT: refusing create: client email '${_CLIENT_EMAIL}' failed validation"
+      exit 1
+    fi
+    ### The plan stamps come from log/ files that arrive over the network on
+    ### a chained migration and are spliced into a remote root command --
+    ### strip them to their legal alphabets and refuse when nothing is left.
+    _CLIENT_OPTION=${_CLIENT_OPTION//[^a-zA-Z0-9]/}
+    _CLIENT_SUBSCR=${_CLIENT_SUBSCR//[^a-zA-Z0-9]/}
+    _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
+    if [ -z "${_CLIENT_OPTION}" ] || [ -z "${_CLIENT_SUBSCR}" ] || [ -z "${_CLIENT_CORES}" ]; then
+      echo "ALRT: refusing create: plan stamps failed validation (option/subscr/cores)"
+      exit 1
+    fi
     if [ ! -z "${_CLIENT_EMAIL}" ] \
       && [ ! -z "${_TGT_HM_USER}" ] \
       && [ ! -z "${_CLIENT_OPTION}" ] \
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
-      ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
-      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
-      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
-      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
-      echo "Waiting 8 minutes before attempting to run enforced post-install upgrade..."
-      sleep 500
+      ### The pinned PHP set must exist on the target BEFORE anything is
+      ### installed or seeded there; a missing version means silent fallback
+      ### to a different PHP on the migrated sites.
+      _xoct_php_coverage_gate "${_USR}" "${_tgt}" || exit 1
+      ### Install from the TARGET's own tree: a cross-tree migration must not
+      ### push the source's tree through the target's licence gate.
+      _TGT_TREE="$(_mig_target_tree "${_tgt}")"
+      case "${_TGT_TREE}" in
+        dev|lts|pro) : ;;
+        *)
+          echo "ALRT: invalid tree token '${_TGT_TREE}' from the target probe; refusing create"
+          exit 1
+        ;;
+      esac
+      if [ "${_TGT_TREE}" != "${_tRee}" ]; then
+        echo "ALRT: source tree is ${_tRee} but target ${_tgt} runs ${_TGT_TREE}; installing for ${_TGT_TREE}"
+      fi
+      ### A ProxySQL source account must be born ProxySQL-wired on the
+      ### target, not retro-fitted: in-oct is in-octopus plus that wiring.
+      _IN_VERB=in-octopus
+      if [ -e "/data/conf/${_oct}_use_proxysql.txt" ]; then
+        _IN_VERB=in-oct
+        echo "INFO: source account uses ProxySQL; installing with 'boa in-oct'"
+      fi
+      ### Existence keyed on what only a real INSTALL produces: log/cores.txt
+      ### alone is force-copied by the transfer path, so it would let an
+      ### out-of-order run seed config onto a bare rsync tree.
+      _TGT_PRESENT=$(ssh root@${_tgt} "getent passwd ${_TGT_HM_USER} >/dev/null 2>&1 \
+        && [ -e /root/.${_TGT_HM_USER}.octopus.cnf ] \
+        && [ -e /data/disk/${_TGT_HM_USER}/config/includes/nginx_vhost_common.conf ] \
+        && echo PRESENT" 2>/dev/null)
+      if [ "${_TGT_PRESENT}" = "PRESENT" ]; then
+        ### Idempotent re-run: skip the expensive install, still re-seed the
+        ### config and credentials below so a repeated create converges.
+        echo "INFO: account ${_TGT_HM_USER} already installed on ${_tgt}; skipping install, re-seeding config"
+      else
+        ### The install's welcome mail would hand the client a brand-new
+        ### password that the credential carry below immediately replaces
+        ### with their existing one -- suppress it for this install only,
+        ### preserving any operator-set marker. An unreadable probe means
+        ### "unknown": never touch, never remove someone else's marker.
+        _SILENT_MARKER=NO
+        _SILENT_PROBE=$(ssh root@${_tgt} "[ -e /root/.silent.update.cnf ] && echo YES || echo NO" 2>/dev/null)
+        if [ "${_SILENT_PROBE}" = "NO" ]; then
+          if ssh root@${_tgt} "touch /root/.silent.update.cnf"; then
+            _SILENT_MARKER=YES
+          fi
+        elif [ -z "${_SILENT_PROBE}" ]; then
+          echo "ALRT: could not probe the mail-suppression marker on ${_tgt};"
+          echo "ALRT: the install may mail a welcome password that the credential carry replaces"
+        fi
+        ### The marker must come off even if the install dies, or the target
+        ### stays silent for every later BOA mail on the box.
+        trap '[ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null' EXIT INT TERM
+        ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
+        if [ "${_SILENT_MARKER}" = "YES" ]; then
+          ssh root@${_tgt} "rm -f /root/.silent.update.cnf"
+          _SILENT_MARKER=NO
+        fi
+        trap - EXIT INT TERM
+        ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
+        ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
+        ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
+      fi
+      if [ -e "/data/conf/${_oct}_use_proxysql.txt" ]; then
+        ssh root@${_tgt} "mkdir -p /data/conf && echo ProxySQL > /data/conf/${_TGT_HM_USER}_use_proxysql.txt"
+      fi
+      ### Let the install's own background octopus run settle BEFORE seeding:
+      ### it reads and rewrites the very cnf and control files seeded below,
+      ### so seeding first would race it (the historical fixed wait sat here
+      ### for the same reason).
+      _xoct_wait_target_install_settled "${_TGT_HM_USER}" "${_tgt}"
+      ### Post-install seeding: merge the portable cnf values, force the
+      ### authoritative control-file pins, carry the client credentials.
+      _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _xoct_seed_target_control_pins "${_USR}" "/data/disk/${_TGT_HM_USER}" "${_TGT_HM_USER}" "${_tgt}"
+      _xoct_sync_shell_credentials "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      ### Verify the pins actually took (catches the availability-fallback
+      ### downgrade class at the cheapest possible moment).
+      for _pinVar in _PHP_FPM_VERSION _PHP_CLI_VERSION; do
+        _SRC_PIN=$(grep "^${_pinVar}=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+        [ -n "${_SRC_PIN}" ] || continue
+        _TGT_PIN=$(ssh root@${_tgt} "grep '^${_pinVar}=' /root/.${_TGT_HM_USER}.octopus.cnf 2>/dev/null" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+        if [ "${_SRC_PIN}" != "${_TGT_PIN}" ]; then
+          echo "ALRT: ${_pinVar} differs after seeding: source=${_SRC_PIN} target=${_TGT_PIN}"
+        fi
+      done
+      ### Stale-pid cleanup FIRST, then the enforced-upgrade trigger: the
+      ### historical order deleted the run-upgrade.pid it had just created.
+      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/static/control/*.pid"
       ssh root@${_tgt} "test ! -e /data/disk/${_TGT_HM_USER}/log/upgrademail.txt && /bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info"
       ssh root@${_tgt} "test ! -e /data/disk/${_TGT_HM_USER}/log/upgrademail.txt && /bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
-      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/static/control/*.pid"
       echo "INFO: new octopus ${_TGT_HM_USER} setup on ${_tgt} complete"
     else
       echo "ALRT: new octopus ${_TGT_HM_USER} setup on ${_tgt} failed because of missing arguments"
@@ -1620,16 +2137,24 @@ _xoct_transfer_static_symlink_safe() {
   _xoct_rsync -aEAXqu ${_X_IENI} --exclude=/files -e ssh "${_X_SRC_USR}/static/" "root@${_X_TGT_HOST}:${_X_DST_STATIC}/"
 
   # The static sync uses -u (skip-newer), but `xoct create` on the target just
-  # wrote a FRESH default control/multi-fpm.info (newer mtime) that shadows the
-  # migrated one -> every migrated site loses its per-site PHP-version pin and
-  # silently falls back to the account default. The per-site lines key on the
-  # site domain (unchanged by migration/rename), so the source copy is directly
-  # valid on the target. Force it over WITHOUT -u to preserve the pins.
-  if [ -e "${_X_SRC_USR}/static/control/multi-fpm.info" ]; then
-    _xoct_rsync -aEAX ${_X_IENI} -e ssh \
-      "${_X_SRC_USR}/static/control/multi-fpm.info" \
-      "root@${_X_TGT_HOST}:${_X_DST_STATIC}/control/multi-fpm.info"
-  fi
+  # wrote FRESH default control files (newer mtime) that shadow the migrated
+  # ones -> every migrated site loses its PHP-version pins and silently falls
+  # back to the target's install-time default. The per-site multi-fpm.info
+  # lines key on the site domain (unchanged by migration/rename), and the
+  # account-level fpm.info/cli.info are the AUTHORITATIVE witnesses BOA
+  # derives the octopus.cnf and the pools from (_satellite_cnf and
+  # manage_ltd_users both read .info -> rewrite cnf, never the reverse), so
+  # all three are directly valid on the target: force them over WITHOUT -u.
+  # The create step already gated on the pinned versions being installed on
+  # the target, so the forced pins cannot strand a site without a pool.
+  local _pin
+  for _pin in multi-fpm.info fpm.info cli.info; do
+    if [ -e "${_X_SRC_USR}/static/control/${_pin}" ]; then
+      _xoct_rsync -aEAX ${_X_IENI} -e ssh \
+        "${_X_SRC_USR}/static/control/${_pin}" \
+        "root@${_X_TGT_HOST}:${_X_DST_STATIC}/control/${_pin}"
+    fi
+  done
 
   echo "INFO: Static sync pass 2/2 (materialize/mirror static/files per target disk reality)"
   # Canonical mount layout uses the DEST account name, so a rename lands correctly.
@@ -1701,8 +2226,10 @@ _mig_render_table() {
 
 ### Soonest certificate expiry across the account's proxy-served certs. The
 ### proxy serves THIS box's certificates and proxied accounts stop renewing
-### (owl.sh and the fleet LE sweep both skip them), so a long-lived mode makes
-### that date a real service horizon until the certificate mirror ships.
+### (owl.sh and the fleet LE sweep both skip them). With the certificate
+### mirror present that date is only informational -- the mirror pulls each
+### renewed pair back from the target daily; without the mirror it is a real
+### service horizon, so its absence is the loud case.
 _xoct_warn_proxy_cert_horizon() {
   local _root="$1" _c _end _soon="" _soon_dom=""
   for _c in "${_root}"/config/server_master/ssl.d/*/openssl.crt; do
@@ -1716,9 +2243,21 @@ _xoct_warn_proxy_cert_horizon() {
     fi
   done
   [ -n "${_soon}" ] || return 0
-  echo "ALRT: the proxy serves THIS box's certificates and proxied accounts stop renewing;"
-  echo "ALRT: soonest expiry ${_soon} (${_soon_dom}) -- after that, HTTPS via the old address"
-  echo "ALRT: shows browser warnings until the certificate mirror ships"
+  if [ -x "/var/xdrago/migration_proxy_certs.sh" ] \
+    && grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
+    echo "INFO: proxied certificates refresh daily from the target (migration_proxy_certs.sh);"
+    echo "INFO: soonest local expiry ${_soon} (${_soon_dom}) -- the mirror renews it before that date"
+  elif [ -x "/var/xdrago/migration_proxy_certs.sh" ]; then
+    echo "ALRT: migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line);"
+    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom}) -- add the daily 06:45 line"
+    echo "ALRT: (a barracuda up-* run or the BOA fetch pass restores it) or the mirror never runs"
+  else
+    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom}) and the certificate mirror"
+    echo "ALRT: /var/xdrago/migration_proxy_certs.sh is MISSING on this box -- a long-lived proxy"
+    echo "ALRT: will serve expired certificates after that date. The mirror ships with the"
+    echo "ALRT: current release: run 'barracuda up-<tree> system noscreen' here, or copy the"
+    echo "ALRT: script from the target (it arrives there the same way)"
+  fi
 }
 
 ### Write the peer's half of the policy record over ssh. The peer's own
@@ -2403,6 +2942,17 @@ _migrate_init() {
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/src/*            root@${_tgt}:${_DST}/src/
           _xoct_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}" "${_TGT_MNT}"
           #
+          _DST_ACCT=$(basename "${_DST}")
+          # The sub-account password store must land BEFORE clients/ does:
+          # manage_ltd_users creates sub-users from clients/ within minutes,
+          # and honours a pre-existing store entry (the carried password)
+          # only if it is already there. Forced (no -u): the target's fresh
+          # install must never shadow the carried credentials.
+          if [ -d "/home/${_oct}.ftp/users" ]; then
+            _xoct_rsync -aEAX ${_ieni} -e ssh \
+              /home/${_oct}.ftp/users/ \
+              root@${_tgt}:/home/${_DST_ACCT}.ftp/users/
+          fi
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/ &> /dev/null
@@ -2413,6 +2963,35 @@ _migrate_init() {
             _xoct_rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_dst}.ftp/
           else
             _xoct_rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_oct}.ftp/
+          fi
+
+          # Client-installed toolchains live outside /data/disk in the lshell
+          # jail's writable trees and never travelled before -- migrate AS-IS.
+          if [ -d "/opt/user/gems/${_oct}.ftp" ]; then
+            _xoct_rsync -aEAXqu ${_ieni} -e ssh \
+              /opt/user/gems/${_oct}.ftp/ \
+              root@${_tgt}:/opt/user/gems/${_DST_ACCT}.ftp/
+          fi
+          if [ -d "/opt/user/npm/${_oct}.ftp" ]; then
+            _xoct_rsync -aEAXqu ${_ieni} -e ssh \
+              /opt/user/npm/${_oct}.ftp/ \
+              root@${_tgt}:/opt/user/npm/${_DST_ACCT}.ftp/
+          fi
+
+          # Re-converge the octopus.cnf and the client credentials on every
+          # LIVE transfer: source-side changes since create (a PHP pin move,
+          # a password rotation, new sub-accounts) must reach the target
+          # before cutover. Never in DRY -- these mutate the target. The PHP
+          # coverage gate re-runs first, because the pins forced by the
+          # static pass above must never name a version the target lacks.
+          if [ "${_MODE}" = "LIVE" ]; then
+            if ! _xoct_php_coverage_gate "${_USR}" "${_tgt}"; then
+              echo "ERROR: ${_cmd} for ${_oct}: target PHP coverage failed AFTER the file sync;"
+              echo "ERROR: NOT marking the transfer complete -- fix the target PHP set and re-run"
+              exit 1
+            fi
+            _xoct_push_target_octopus_cnf "${_oct}" "${_DST_ACCT}" "${_tgt}"
+            _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
           fi
 
           # Drush aliases are copied WHOLE — including the source's
@@ -2530,7 +3109,57 @@ _migrate_init() {
             fi
             exit 1
           fi
-          service nginx reload
+          ### Fail-closed reload: a bad render must leave nginx on the OLD
+          ### config with the 503 gate still up, never half-applied. The
+          ### certificate mirror set the configtest-gated precedent.
+          if nginx -t &> /dev/null; then
+            service nginx reload
+          else
+            ### Revert, do not merely refuse to reload: a config that fails
+            ### configtest sitting on disk is a box-wide outage waiting for
+            ### the next unrelated reload or restart. Put every vhost this
+            ### run converted back to its saved original, then prove the
+            ### restored state passes before reporting.
+            echo "ALRT: nginx -t failed after the proxy conversion for ${_oct}"
+            nginx -t 2>&1 | tail -5
+            if [ "${_XOCT_WAS_PROXIED}" = "YES" ]; then
+              ### A repair: the saved dot-file is the ORIGINAL local vhost,
+              ### not the working proxy vhost this run replaced, so there is
+              ### nothing correct to revert to -- restoring it would serve
+              ### the account locally against a database that lives on the
+              ### target. Leave it and make the danger explicit instead.
+              echo "ERROR: this was a --repair, so the saved vhost is the pre-migration ORIGINAL"
+              echo "ERROR: and restoring it would serve this account against the OLD local database."
+              echo "ERROR: nginx has NOT been reloaded and still runs the previous, working config,"
+              echo "ERROR: but the invalid files are on disk: the next reload or restart on this box"
+              echo "ERROR: (including an unrelated one) will fail. Fix the reported error NOW, then:"
+              echo "ERROR:   nginx -t && service nginx reload"
+            else
+              ### A first conversion: reverting to the saved originals is
+              ### exactly the pre-conversion state, so restore what THIS run
+              ### rewrote and prove the config is valid again.
+              for _rvd in ${_XOCT_CONVERTED_DOMS}; do
+                [ -f "${_USR}/config/server_master/nginx/vhost.d/.${_rvd}" ] || continue
+                rm -f "${_USR}/config/server_master/nginx/vhost.d/https.${_rvd}"
+                mv -f "${_USR}/config/server_master/nginx/vhost.d/.${_rvd}" \
+                  "${_USR}/config/server_master/nginx/vhost.d/${_rvd}"
+              done
+              if nginx -t &> /dev/null; then
+                echo "INFO: reverted to the pre-conversion vhosts; nginx config is valid again"
+              else
+                echo "ERROR: the config is STILL invalid after the revert -- inspect nginx -t output"
+                echo "ERROR: before any reload or restart of nginx on this box"
+              fi
+            fi
+            echo "ERROR: ${_oct} was NOT converted. Fix the reported error, then re-run:"
+            echo "ERROR:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+            exit 1
+          fi
+          if [ -n "${_XOCT_PROXY_NOSSL}" ]; then
+            echo "ALRT: converted WITHOUT an HTTPS proxy vhost (ssl.d openssl.key missing):${_XOCT_PROXY_NOSSL}"
+            echo "ALRT: HTTPS via the old address will fail for those sites; once the keys exist,"
+            echo "ALRT: re-run: xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+          fi
           ###
           ### All sites on this account are now served by the proxy vhost
           ### template, so the PHP-level 503 short-circuit is no longer
@@ -2650,6 +3279,15 @@ _post_mig() {
     fi
     if [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && [ -e "/var/xdrago/.manage_ltd_users.sh.off" ]; then
       mv -f /var/xdrago/.manage_ltd_users.sh.off /var/xdrago/manage_ltd_users.sh
+    fi
+    ### Cron must come back on WHICHEVER box runs post-mig: the import step
+    ### stops it on the target, and a source that stays behind as a
+    ### long-lived proxy depends on cron for the daily certificate mirror --
+    ### a stopped cron there means expired certificates in ~90 days.
+    /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
+    if ! pgrep -x cron &> /dev/null; then
+      echo "ALRT: cron did not start; the daily certificate mirror and BOA runners are DOWN"
+      echo "ALRT: start it manually: /etc/init.d/cron start"
     fi
     exit 0
   fi
@@ -2888,6 +3526,24 @@ case "$1" in
     done
     set -- "${_margs[@]}"
     ;;
+  create)
+    ### --fix-php lets create extend the target's _PHP_MULTI_INSTALL and
+    ### drive one barracuda system pass there when a pinned PHP version is
+    ### missing; without it the PHP coverage gate refuses with the recipe.
+    _XOCT_FIX_PHP=""
+    _margs=()
+    for _a in "$@"; do
+      case "${_a}" in
+        --fix-php) _XOCT_FIX_PHP=YES ;;
+        --*)
+          echo "ERROR: unknown option '${_a}' for $1"
+          exit 1
+          ;;
+        *) _margs+=("${_a}") ;;
+      esac
+    done
+    set -- "${_margs[@]}"
+    ;;
   proxy|proxy-mode|proxy-retire)
     ### These flags are recognised (and stripped) ONLY here, so they can never
     ### loosen the export/import/transfer gates. An unknown --flag is fatal
@@ -2972,6 +3628,34 @@ case "$1" in
             _check_root
             _xoct_proxy_retire "$2"
   ;;
+  reset-state) _cmd="$1"
+            _oct="$2"
+            _check_root
+            ### The documented clean-start cleanup, as a deliberate verb
+            ### instead of hand-typed rm lines. Removes the per-account
+            ### migration state so a FRESH migration (or a chained one, a
+            ### former target moving onward) can start; never touches
+            ### serving state (http-off.pid stays).
+            if [ -z "${_oct}" ] || [ ! -d "/data/disk/${_oct}" ]; then
+              echo "Usage: xoct reset-state {o1}"
+              exit 1
+            fi
+            if ! _mig_valid_acct "${_oct}"; then
+              echo "ERROR: invalid account name '${_oct}'"
+              exit 1
+            fi
+            echo "ALRT: clearing migration state for ${_oct}:"
+            echo "ALRT:   src/*.sql dumps (incl. prev_hostmaster.sql) and"
+            echo "ALRT:   log/{exported,transferred,imported,proxied}.pid"
+            echo "ALRT: removing proxied.pid re-arms migration AND re-enables LE renewal"
+            echo "ALRT: on this box -- only do this when the account is meant to migrate"
+            echo "ALRT: (again) FROM here."
+            rm -f /data/disk/${_oct}/src/*.sql
+            for _p in exported transferred imported proxied; do
+              rm -f /data/disk/${_oct}/log/${_p}.pid
+            done
+            echo "INFO: migration state cleared for ${_oct}"
+  ;;
   pre-mig)  _cmd="$1"
             _hst="$2"
             _check_root
@@ -2990,7 +3674,9 @@ case "$1" in
   *)        echo
             echo "Usage: xoct {pre-mig} {fqdn} (source+target vms)"
             echo "Usage: xoct {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
+            echo "Usage: xoct {create} {o1} {target-ip} {o2} [--fix-php] (also seeds octopus.cnf, PHP pins, credentials)"
             echo "Usage: xoct {import} {o1} {target-ip} {o2} (target vms, optional target account rename)"
+            echo "Usage: xoct {reset-state} {o1} (clear migration state for a fresh/chained migration)"
             echo "Usage: xoct {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xoct {proxy} {o1} {target-ip} {o2} [--proxy-mode=temporary|permanent|ha-switch]"
