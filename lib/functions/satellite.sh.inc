@@ -2213,8 +2213,8 @@ _satellite_o_contrib_eleven_update_global() {
       if [ -d "${i}/o_contrib_eleven/redis_eight" ]; then
         rm -rf ${i}/o_contrib_eleven/redis_eight
       fi
-      if [ -d "${i}/o_contrib_ten/redis_nine_ten" ]; then
-        rm -rf ${i}/o_contrib_ten/redis_nine_ten
+      if [ -d "${i}/o_contrib_eleven/redis_nine_ten" ]; then
+        rm -rf ${i}/o_contrib_eleven/redis_nine_ten
       fi
       if [ -e "${_D}/000/modules/redis_ten_eleven" ] \
         && [ ! -L "${i}/o_contrib_eleven/redis_ten_eleven" ]; then
