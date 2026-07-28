@@ -10850,9 +10850,17 @@ _initd_update() {
           fi
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          _myCnfUpdate=NO
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          # Suppress only when the surviving diff carries nothing but
+          # ignore-listed knob lines; a mixed hunk keeps its restart for
+          # the co-riding knob the -I list does not cover.
+          _diffMyOther=$(printf '%s\n' "${_diffMyTest}" \
+            | grep -E "^[<>] " \
+            | grep -vE "userstat|innodb_buffer_pool_size|innodb_buffer_pool_instances|innodb_page_cleaners|tmp_table_size|max_heap_table_size|myisam_sort_buffer_size|key_buffer_size" 2>&1)
+          if [ -z "${_diffMyOther}" ]; then
+            _myCnfUpdate=NO
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+            fi
           fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
