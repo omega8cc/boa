@@ -1024,6 +1024,14 @@ _VALKEY_MAXMEM_FORCE=""
 _SOLR_HEAP_FORCE=""
 
 ###
+### Log-only SQL sensor (sqlprobe monitor): one lightweight sample
+### every 5 minutes feeding the memorytuner advisory and keeping the
+### datadir/valkey measurement stores fresh between upgrades. It never
+### changes any setting. Set to NO to disable on this system.
+###
+_USE_SQLPROBE=YES
+
+###
 ### Set max 1 min load per CPU core before killing
 ### all running PHP, Drush, Wget and Curl processes
 ### until the load stabilizes.
