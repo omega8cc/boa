@@ -429,10 +429,25 @@ _xmass_fix_target_php() {
     _alrt "computed empty _PHP_MULTI_INSTALL for ${_t}; refusing"
     return 1
   fi
+  # Belt-and-braces before the value reaches a remote sed: it is built only
+  # from _mig_php_norm output, so it can hold nothing but digits, dots and
+  # spaces -- assert that rather than trust it.
+  case "${_new}" in
+    *[!0-9.\ ]*) _alrt "refusing to write a non-version _PHP_MULTI_INSTALL value"; return 1 ;;
+  esac
   _info "Setting _PHP_MULTI_INSTALL=\"${_new}\" on ${_t}"
+  # Rewrite in place (keeps the line with the comment that documents it);
+  # append only when the key is absent. The temp+size guard means a failed
+  # write can never blank the box's barracuda.cnf.
   ssh root@"${_t}" "_m=\$(stat -c %a /root/.barracuda.cnf 2>/dev/null); \
-    grep -v '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew 2>/dev/null; \
-    echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew \
+    if grep -q '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf; then \
+      sed 's|^_PHP_MULTI_INSTALL=.*|_PHP_MULTI_INSTALL=\\\"${_new}\\\"|' \
+        /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew; \
+    else \
+      cp -af /root/.barracuda.cnf /root/.barracuda.cnf.phpnew \
+      && echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew; \
+    fi; \
+    [ -s /root/.barracuda.cnf.phpnew ] \
     && chmod \${_m:-600} /root/.barracuda.cnf.phpnew \
     && mv -f /root/.barracuda.cnf.phpnew /root/.barracuda.cnf" \
     || { _alrt "could not update _PHP_MULTI_INSTALL on ${_t}"; return 1; }
@@ -2654,7 +2669,16 @@ _xmass_cmd_prep_target() {
   _xmass_enumerate_accounts
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
-    || _die "Cannot SSH to target ${_tgt} — run xmass pre-mig on both hosts first"
+    || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
+            " is fixable from here, because fixing the target needs the ssh this" \
+            " check just failed:" \
+            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' on BOTH hosts;" \
+            " (2) the TARGET's firewall is blocking this box — on the target run" \
+            " 'csf -g ${_XMASS_SRC_IP:-<source-ip>}' to see it, 'csf -tr" \
+            " ${_XMASS_SRC_IP:-<source-ip>}' to clear a temp deny, and 'csf -a" \
+            " ${_XMASS_SRC_IP:-<source-ip>}' so it cannot come back;" \
+            " (3) first contact needs the target's host key here —" \
+            " 'ssh-keyscan -H ${_tgt} >> /root/.ssh/known_hosts'."
 
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
   # guard temp-denies, and the target dials BACK to source:3306 for
@@ -2862,7 +2886,16 @@ _xmass_cmd_init() {
   # Verify SSH connectivity to target
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
-    || _die "Cannot SSH to target ${_tgt} — run xmass pre-mig on both hosts first"
+    || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
+            " is fixable from here, because fixing the target needs the ssh this" \
+            " check just failed:" \
+            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' on BOTH hosts;" \
+            " (2) the TARGET's firewall is blocking this box — on the target run" \
+            " 'csf -g ${_XMASS_SRC_IP:-<source-ip>}' to see it, 'csf -tr" \
+            " ${_XMASS_SRC_IP:-<source-ip>}' to clear a temp deny, and 'csf -a" \
+            " ${_XMASS_SRC_IP:-<source-ip>}' so it cannot come back;" \
+            " (3) first contact needs the target's host key here —" \
+            " 'ssh-keyscan -H ${_tgt} >> /root/.ssh/known_hosts'."
 
   # The datadir swap below is destructive; everything the target must already
   # have is gated HERE, where a refusal costs nothing: real account installs

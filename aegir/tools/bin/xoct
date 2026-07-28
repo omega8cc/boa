@@ -1219,10 +1219,25 @@ _mig_fix_target_php() {
     echo "ALRT: computed empty _PHP_MULTI_INSTALL for ${_t}; refusing"
     return 1
   fi
+  ### Belt-and-braces before the value reaches a remote sed: it is built only
+  ### from _mig_php_norm output, so it can hold nothing but digits, dots and
+  ### spaces -- assert that rather than trust it.
+  case "${_new}" in
+    *[!0-9.\ ]*) echo "ALRT: refusing to write a non-version _PHP_MULTI_INSTALL value"; return 1 ;;
+  esac
   echo "INFO: setting _PHP_MULTI_INSTALL=\"${_new}\" on ${_t}"
+  ### Rewrite in place (keeps the line with the comment that documents it);
+  ### append only when the key is absent. The temp+size guard means a failed
+  ### write can never blank the box's barracuda.cnf.
   ssh root@"${_t}" "_m=\$(stat -c %a /root/.barracuda.cnf 2>/dev/null); \
-    grep -v '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew 2>/dev/null; \
-    echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew \
+    if grep -q '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf; then \
+      sed 's|^_PHP_MULTI_INSTALL=.*|_PHP_MULTI_INSTALL=\\\"${_new}\\\"|' \
+        /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew; \
+    else \
+      cp -af /root/.barracuda.cnf /root/.barracuda.cnf.phpnew \
+      && echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew; \
+    fi; \
+    [ -s /root/.barracuda.cnf.phpnew ] \
     && chmod \${_m:-600} /root/.barracuda.cnf.phpnew \
     && mv -f /root/.barracuda.cnf.phpnew /root/.barracuda.cnf" \
     || { echo "ERROR: could not update _PHP_MULTI_INSTALL on ${_t}"; return 1; }
@@ -1323,7 +1338,14 @@ MERGESH
 ### derive the cnf and the pools from.
 _xoct_seed_target_control_pins() {
   local _sUsr="$1" _dUsr="$2" _dAcct="$3" _t="$4" _f
-  for _f in static/control/fpm.info static/control/cli.info log/fpm.txt log/cli.txt; do
+  # multi-fpm.info rides the file transfer too, but seed it here as well so
+  # `create` leaves the target holding exactly the pin set the coverage gate
+  # measured -- otherwise an operator who runs only `create` gets the
+  # account-level pins and not the per-site ones. Site lines key on the
+  # domain, which migration does not change, so the copy is valid early and
+  # the transfer's forced copy converges it later either way.
+  for _f in static/control/fpm.info static/control/cli.info \
+    static/control/multi-fpm.info log/fpm.txt log/cli.txt; do
     [ -e "${_sUsr}/${_f}" ] || continue
     _xoct_rsync -aEAX ${_ieni} -e ssh \
       "${_sUsr}/${_f}" \
