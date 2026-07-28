@@ -92,38 +92,66 @@ ssh root@target-ip
 exit
 ```
 
-### 4. Enable Read-Only Mode on Source (Recommended)
+### 4. Write freeze during the export window
 
-Preventing writes during the export window reduces the chance of partial data:
+Nothing to do by hand. `xoct export` already puts every site in the account
+behind a 503 (`static/control/http-off.pid`), which is what actually stops
+writes for the export window; the proxy step lifts it.
 
-**On source:**
-```sh
-cp -af /data/conf/global/global-extra.inc \
-       /data/conf/global/global-extra.inc.bak
-echo >> /data/conf/global/global-extra.inc
-echo "\$settings['config_readonly'] = TRUE;" \
-     >> /data/conf/global/global-extra.inc
-echo "\$conf['site_readonly'] = 1;" \
-     >> /data/conf/global/global-extra.inc
-```
+An older version of this runbook appended `config_readonly` / `site_readonly`
+to `/data/conf/global/global-extra.inc`. Do not do that: the file is box-wide,
+so it freezes every *other* account on the source as well, it is overwritten
+by the next BOA system pass, and on most site shapes it freezes nothing.
 
 ### 5. Clean State and Run Shared Transfer
 
 **On source:**
 ```sh
-rm -f /data/disk/o1/src/*.sql
-rm -f /data/disk/o1/log/*.pid
+xoct reset-state o1              # clears src/*.sql + the migration pid stamps
 xoct transfer shared target-ip
-xoct create o1 target-ip
+xoct create o1 target-ip         # add --fix-php if the target lacks a pinned PHP
 xoct pretransfer o1 target-ip
 ```
+
+`reset-state` replaces the hand-typed `rm -f` lines. It clears
+`src/*.sql` (including `prev_hostmaster.sql`) and the
+`exported`/`transferred`/`imported`/`proxied` pid stamps, which is also what a
+**chained** migration needs — a box that was once a target keeps a stale dump
+and an `imported.pid` that blocks it from ever being an import target again.
+It never touches serving state, so a site's 503 gate is left alone.
 
 `transfer shared` syncs `/data/all`, `/data/disk/all`, `/data/disk/arch`,
 Solr cores, `/var/www/static`, `/etc/bind`, and the usage logs under
 `/var/log/boa/usage` to the target.
 
-`create o1` provisions a fresh Octopus instance on the target using the source
-account's stored metadata (email, subscription, option, cores).
+`create o1` provisions the target Octopus instance **and seeds its identity**:
+
+- **Before installing** it verifies the target has every PHP version this
+  account pins — from `static/control/fpm.info`, `cli.info` and the per-site
+  column of `multi-fpm.info`. A missing version is fatal, because BOA's own
+  fallback ladder would silently downgrade the pin and serve the sites on a
+  different interpreter. `xoct create o1 target-ip --fix-php` instead appends
+  the missing versions to the target's `_PHP_MULTI_INSTALL` and drives one
+  `barracuda up-<tree> system` pass there to build them (~30 minutes).
+- It installs from the **target's** BOA tree, not this box's, so a cross-tree
+  migration does not send the source's tree through the target's licence gate,
+  and uses `boa in-oct` rather than `in-octopus` when the source account is
+  ProxySQL-wired (carrying the marker across).
+- The install's welcome email is suppressed for this run, because the
+  credential carry below immediately replaces the password it would announce.
+- **After the install settles** it merges the portable values of
+  `/root/.<o1>.octopus.cnf` into the target's copy (FPM tuning knobs,
+  `_CLIENT_*` plan identity, ghost-cleanup flags, `_RESERVED_RAM` — never the
+  host-specific lines, which BOA re-derives correctly for the new box), force-
+  copies the PHP pin files, and carries the client's shell credentials: the
+  `<o1>.ftp` shadow hash paired with `log/pass.txt`, the sub-account password
+  store, and each sub-user's hash and SSH keys. Sub-users that do not exist on
+  the target yet converge when `manage_ltd_users.sh` creates them there from
+  `clients/`, adopting the carried password and staged keys.
+- It then verifies the pins actually took, and reports any that did not.
+
+Re-running `create` on an already-installed account skips the install and
+re-seeds only — so it is safe to use to converge a target prepared by hand.
 
 `pretransfer o1` does a first-pass rsync of large data (platforms, files) while
 the account is still live — reducing the time the account must be offline during
@@ -131,12 +159,10 @@ the actual export window.
 
 ### 6. Prepare Target
 
-**On target:**
-```sh
-service cron stop
-chmod 644 /data/all/cpuinfo
-# wait ~5 minutes for any in-progress BOA tasks to settle
-```
+Nothing to do by hand: `xoct import` (step 8) stops cron the Devuan-safe way,
+fixes the `cpuinfo` mode and waits — bounded, on the actual signal — until no
+`barracuda`/`octopus`/`AegirSetup` job is running, instead of the old fixed
+five-minute guess. `xoct post-mig` starts cron again.
 
 ### 7. Export and Transfer
 
@@ -207,6 +233,15 @@ proxy templates that forward traffic to `target-ip`, removes `http-off.pid`
 (sites return to 200 responses, now proxied), and sends the mode-selected
 migration-complete notification to the account owner. A failed conversion
 sends nothing, stamps nothing and exits non-zero.
+
+The completion reload is configtest-gated: if `nginx -t` fails, a first
+conversion reverts the vhosts it just rewrote and confirms the config is valid
+again, while a `--repair` (where the saved copy is the pre-migration original,
+not the working proxy vhost) refuses and says exactly why restoring it would
+be wrong. Either way nginx is never reloaded into a broken config. Sites whose
+account has SSL material but no `ssl.d/<domain>/openssl.key` — so no HTTPS
+proxy vhost can be written — are counted and named rather than skipped
+silently; re-run with `--repair` once the LE symlinks exist.
 
 Repair and repoint (the tool names the flag when you need it):
 
@@ -333,11 +368,14 @@ Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
   chained transfer would ship the STALE dump from the earlier migration.
   `imported.pid` additionally blocks the account from ever being an import
   target again. Before exporting a former target onward (target-of-target,
-  or migrating back), clear both:
-  `rm -f /data/disk/o1/src/prev_hostmaster.sql /data/disk/o1/log/imported.pid`.
+  or migrating back), run `xoct reset-state o1`.
   `log/sourcefqdn.txt` needs no such cleanup — it is rewritten in lockstep
   with every dump, so it can never go stale independently of
   `prev_hostmaster.sql`.
+- **What the client keeps.** Their Ægir panel login, SSH/SFTP password and SQL
+  password all carry over, as do the main account's SSH keys and every
+  sub-account's password and keys. The migration mail says so; if you change
+  the carry behaviour, change that copy in the same work-unit.
 - **Drupal 6 IP blocking:** for D6 sites that block by IP, whitelist `source-ip`
   at `/admin/user/rules` (Host rule, Allow type) before migration, or flush
   the `{access}` table via Chive afterwards.
