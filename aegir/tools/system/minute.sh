@@ -102,6 +102,9 @@ _launch_auto_healing() {
   if [ -e "/var/xdrago/monitor/check/fpm_tune.sh" ]; then
     nohup /var/xdrago/monitor/check/fpm_tune.sh > /dev/null 2>&1 &
   fi
+  if [ -e "/var/xdrago/monitor/check/sqlprobe.sh" ]; then
+    nohup /var/xdrago/monitor/check/sqlprobe.sh > /dev/null 2>&1 &
+  fi
   nohup /var/xdrago/monitor/check/nginx.sh > /dev/null 2>&1 &
   nohup /var/xdrago/monitor/check/nginx_guard.sh > /dev/null 2>&1 &
   nohup /var/xdrago/monitor/check/java.sh > /dev/null 2>&1 &
