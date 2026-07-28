@@ -603,7 +603,15 @@ _satellite_tune_fpm_config() {
   cp -af ${_bldPth}/aegir/conf/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
   cp -af ${_bldPth}/aegir/conf/php/fpm-pool-foo.conf /var/xdrago/conf/
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
-    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
+    # Guard on the INTERPRETER, not the pool.d dir: BOA creates pool.d for
+    # every known PHP version regardless of what is installed, so a dir test
+    # passes on essentially any box. With a pin to a version that is not
+    # installed the delete sweep would succeed and the pool would be written
+    # for a PHP that cannot run it, leaving the account without a working
+    # pool (nginx 502). A bad pin must degrade to "unchanged", never "gone".
+    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] \
+      && [ -x "/opt/php${_PHP_SV}/bin/php" ] \
+      && [ -d "/opt/php${_PHP_SV}/etc/pool.d" ]; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
       cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi

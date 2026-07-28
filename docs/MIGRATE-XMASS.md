@@ -93,11 +93,21 @@ replication has already been torn down on the target.
 
 - Both servers running identical Percona MySQL versions.
 - Root SSH key access from source to target (set up via `xmass pre-mig`).
-- BOA installed on target at the same release as source (Octopus instances are
-  not required on target — replication brings the databases).
+- BOA installed on target at the same release as source.
+- **An installed Octopus account on the target for every eligible source
+  account, with matching names.** Replication brings the databases, but the
+  files rsync into `/data/disk/<oN>/`, the cutover renames each Ægir root and
+  the panel rewire runs per root — all of which need a real install (system
+  user, FPM pool, vhost include), not a directory. `xmass prep-target` creates
+  them; `init`, `sync` and `cutover` all refuse to proceed without them.
 - Disk on source: enough space for the xtrabackup staging directory (or stream
   capability if disk is tight — auto-detected; see [Transfer Method](#xtrabackup-transfer-method)).
-- CSF on target: source IP whitelisted before running `init`.
+  `init` also checks the **target** has room for the datadir restore before
+  displacing anything (override: `_XMASS_SKIP_DISK_GATE=YES`).
+- CSF: source IP allowed on the target **and** target IP allowed on the source
+  — the target dials back to source:3306. `prep-target` does both with `csf -a`
+  (`csf.ignore` alone does not stop guard temp-denies) and proves the reverse
+  path before anything destructive depends on it.
 - `percona-xtrabackup-*` (matching Percona version): installed automatically
   by `xmass init` if not already present.
 - GTID mode: enabled automatically by `xmass init` on both servers if not
@@ -160,15 +170,46 @@ xmass pre-mig source-host
 xmass pre-mig source-host
 ```
 
-Also whitelist the source IP on the target firewall so xtrabackup streaming and
-rsync can reach the target:
+### Phase 0.5 — Prepare the target (`xmass prep-target`)
 
-**On target:**
+Run on the **source**, after `pre-mig` has completed on both hosts and before
+`init`. This is everything the target must have in place before its Octopus
+accounts exist and before `init` replaces its datadir:
+
 ```sh
-echo "source-ip # Legacy Proxy" >> /etc/csf/csf.allow
-echo "source-ip # Legacy Proxy" >> /etc/csf/csf.ignore
-csf -ra
+xmass prep-target target-ip [--fix-php]
 ```
+
+What it does, in order:
+
+1. **CSF both directions** — `csf -a` for the target here and for the source
+   there, then proves the reverse `target → source:3306` path by opening it.
+   A dead reverse path is fatal now rather than at `init`, which fails *after*
+   the target datadir has already been replaced. Override with
+   `_XMASS_SKIP_REVERSE_CHECK=YES` if you firewall differently.
+2. **PHP coverage gate** — collects every version pinned by any eligible
+   account (`static/control/fpm.info`, `cli.info`, and the per-site column of
+   `multi-fpm.info`) and verifies each is installed on the target. Missing
+   versions are fatal, because a pinned-but-absent PHP is silently downgraded
+   by BOA's own fallback ladder and the affected sites serve on the wrong
+   interpreter. With `--fix-php` the missing versions are appended to the
+   target's `_PHP_MULTI_INSTALL` and one `barracuda up-<tree> system` pass is
+   driven there to build them (~30 minutes).
+3. **Certificate health sweep** on the source — names every zero-byte,
+   unparseable or expired certificate, so a broken renewal is fixed before the
+   migration rather than debugged alongside it.
+4. **Per-account install and seeding** — drives `xoct create` for each eligible
+   account, which installs from the **target's own tree** with the source's
+   plan stamps, then seeds the account's `/root/.<oN>.octopus.cnf` (portable
+   values only), force-copies the PHP pin files and carries the client's shell
+   credentials. Already-installed accounts are re-seeded, not re-installed.
+5. **Suspension flags** mirrored (`/data/conf/suspended/<oN>.pid` lives outside
+   the account tree, so no file sync can carry it — an unmirrored suspension
+   means a non-paying account resumes serving on the target).
+6. **Verification** — refuses to report success unless every eligible account
+   is present on the target as a real install.
+
+The verb is idempotent: re-run it after fixing anything it refused on.
 
 ### Phase 1 — Initialise Replication (`xmass init`)
 
@@ -205,6 +246,14 @@ expensive one.
 
 What `init` does:
 
+0. Re-gates what `prep-target` established, because a hand-prepared target must
+   be verified rather than trusted: every eligible account installed on the
+   target, every pinned PHP version present there, the two derived replication
+   `server_id`s distinct (they come from the last two IP octets only, so two
+   boxes in one /16 collide and replication simply refuses to start), and the
+   target has room for the datadir restore. It also sweeps the source's
+   certificates for broken renewals. Each of these refuses **before** anything
+   destructive happens.
 1. Verifies SSH connectivity and Percona version match.
 2. Installs `percona-xtrabackup-*` on source and target if not present.
 3. Enables GTID mode on both servers (writes `xmass_gtid.cnf` into the
@@ -257,8 +306,38 @@ Syncs the following to the target on each run:
 | Per-account nginx vhosts | `/data/disk/oN/config/server_master/nginx/vhost.d/` |
 | Per-account SSL/LE | `/data/disk/oN/config/ssl.d/`, `config/server_master/ssl.d/`, `tools/le` |
 | FTP account SSH keys | `/home/oN.ftp/.ssh` |
+| Sub-account registry + backups/undo | `/data/disk/oN/clients/`, `backups/`, `undo/` (`clients/` drives sub-user creation on the target; `backups/` is required by `renameaegirhost`'s Ægir-root validation and is space-gated like the Solr trees) |
+| Client toolchains | `/opt/user/gems/oN.ftp`, `/opt/user/npm/oN.ftp` |
+| Shell credentials | `<oN>.ftp` shadow hash + `log/pass.txt` as a pair, the sub-account password store `/home/oN.ftp/users/`, and each sub-user's hash and `.ssh` |
+| Per-account config | `/root/.<oN>.octopus.cnf` (portable values merged into the target's copy), `static/control/{fpm,cli,multi-fpm}.info` and `log/{fpm,cli,email,option,cores,subscr}.txt` (forced, no `-u`) |
+| Suspension flag | `/data/conf/suspended/<oN>.pid` (mirrored, presence and absence) |
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
+
+Three deliberate exclusions from the `log/` sync: `proxied.pid` and
+`migproxy.cnf` are target-role state that must never be overwritten from the
+source (they would disable LE renewal on the target and clobber its policy
+record on the documented `reset-phase syncing` recovery path), and `pass.txt`
+rides the credential carry instead so it can never advertise a password the
+target's `/etc/shadow` does not hold. `log/domain.txt` is synced with `-u` on
+purpose: the target's own FQDN stamp is what `renameaegirhost` wants.
+
+### Why the PHP pins and the account cnf need forcing
+
+Both are the same defect class. A `-u` (skip-newer) sync silently loses to the
+target's fresh install, which wrote its own defaults minutes earlier. For the
+PHP pins that means every migrated site quietly serving on the target's
+install-time PHP instead of the version it was pinned to.
+
+The direction of authority matters here: BOA derives
+`/root/.<oN>.octopus.cnf` **from** `static/control/fpm.info` and `cli.info`
+(in `_satellite_cnf`, and again in `manage_ltd_users.sh` every few minutes) —
+never the reverse. So the `.info` files are what actually make a pin stick,
+and they are force-copied without `-u`; the cnf merge carries the values only
+it owns (FPM tuning knobs, `_CLIENT_*` plan identity, ghost-cleanup flags,
+`_RESERVED_RAM`). The merge is per key, so the target's host-specific lines
+(`_MY_OWNIP`, `_LOCAL_NETWORK_IP`, `_THIS_DB_HOST`/`_PORT`, `_DOMAIN`) are
+never touched — BOA re-derives those correctly for the new box.
 
 Run `xmass sync` immediately after `init` for the first full pass (which may
 take several hours for large accounts), then periodically as the cutover date
@@ -292,11 +371,20 @@ would fall back to the built-in default, because a mass cutover mails every
 customer on the box and a wrong story cannot be unsent. A mode pin never
 affects migration eligibility — it only pins what that customer is told.
 
-**Pre-flight checks** (automatic):
+**Pre-flight** (automatic, in this order — every refusal happens before the
+first change to the source):
 
 - Confirms phase is `syncing`.
-- Confirms no BOA background jobs are running (runner.sh, daily.sh, etc.).
-- Confirms system cron is stopped.
+- Refuses to run outside `screen`/`tmux`: a dropped session mid-cutover strands
+  the source on 503. Override with `_XMASS_NO_SCREEN=YES`.
+- Re-gates account existence and PHP coverage on the target.
+- Refuses while any account's proxy mode is undeclared, then consumes the
+  clean-dry token.
+- **Then** stops cron and parks the five BOA runners itself. The box's own cron
+  restores a park done at `pre-mig` time within minutes, so parking here — not
+  refusing and asking the operator to re-park — is what makes the window
+  reliable. If the cutover aborts after this point, the printed restore recipe
+  covers it.
 
 **Cutover sequence:**
 
@@ -321,10 +409,12 @@ affects migration eligibility — it only pins what that customer is told.
 | Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master) |
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account) |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
+| Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual) |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
-| Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + vhost conversion + mode-selected notification); failures collect per account |
+| Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + vhost conversion + mode-selected notification); failures collect per account. First checks that `migration_proxy_certs.sh` exists **and is scheduled** here — from this point the source serves the proxied sites' TLS and only the daily mirror keeps it fresh |
 | Step 17 | Remove `http-off.pid` from source accounts — a failed conversion keeps its 503 gate (its vhosts would otherwise serve the old local copy against a database that now lives on the target) |
 | Step 18 | Write `proxied.pid` for successfully converted accounts only |
+| Step 18.5 | Start cron and un-park the five runners **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later |
 | Step 19 | Mark state `complete` |
 
 If any step between 4 and 8 fails the tool aborts and unlocks source MySQL
@@ -336,6 +426,16 @@ after the web block prints the exact commands to restore service on the source,
 so follow the printed recipe rather than reconstructing it: clear the
 `http-off.pid` files, purge the nginx speed cache, reload nginx, remove the Solr
 deny file if Solr served from here, start cron, and un-park the five runners.
+
+#### Replica parallel apply (Percona 5.7)
+
+Percona 5.7 applies the relay log single-threaded unless told otherwise, which
+on a write-heavy source lets the replica drift and blows the cutover's lag
+wait. `xmass init` now sets `slave_parallel_type=LOGICAL_CLOCK` and
+`slave_parallel_workers` (default 4, `_XMASS_PARALLEL_WORKERS` to change it)
+both persistently in `xmass_gtid.cnf` and at runtime before the replica
+threads start. 8.0+ already defaults to parallel apply, so nothing is written
+there.
 
 #### Tuning the replica wait
 
@@ -353,6 +453,24 @@ growing lag will not be fixed by waiting longer. Percona 5.7 applies the relay
 log single-threaded unless told otherwise, so on a busy source set
 `slave_parallel_type=LOGICAL_CLOCK` and `slave_parallel_workers=4` on the target
 right after `init` rather than raising the ceiling.
+
+### Phase 4.5 — Verify (`xmass verify`)
+
+Run on the **source** after the cutover. Read-only; changes nothing on either
+host:
+
+```sh
+xmass verify [target-ip]        # target-ip defaults to the one in the state file
+```
+
+Per account it takes one real site vhost and fetches it twice, **at least 5 s
+apart**, directly against the target, plus one request relayed through this
+source's proxy and (where the site has certificates) one HTTPS probe. The
+spacing is not cosmetic: BOA answers fetch bursts with transient 200
+"Page not found" bodies, so a single fast fetch proves nothing — re-run
+`verify` before recording any site as broken. It also reports leftover
+`http-off.pid` files, and whether cron and the certificate mirror are alive on
+this box.
 
 ### Phase 5 — Post-migration (`xmass post-mig`)
 
