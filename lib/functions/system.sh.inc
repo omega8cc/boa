@@ -2649,6 +2649,7 @@ _barracuda_cnf() {
     echo "_SQL_MAX_CONNECTIONS_FORCE=\"${_SQL_MAX_CONNECTIONS_FORCE}\"" >> ${_barCnf}
     echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\""             >> ${_barCnf}
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
+    echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
@@ -3078,6 +3079,11 @@ _barracuda_cnf() {
     _SOLR_HEAP_FORCE_TEST=$(grep _SOLR_HEAP_FORCE ${_barCnf} 2>&1)
     if [[ ! "${_SOLR_HEAP_FORCE_TEST}" =~ "_SOLR_HEAP_FORCE" ]]; then
       echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\"" >> ${_barCnf}
+    fi
+
+    _USE_SQLPROBE_TEST=$(grep _USE_SQLPROBE ${_barCnf} 2>&1)
+    if [[ ! "${_USE_SQLPROBE_TEST}" =~ "_USE_SQLPROBE" ]]; then
+      echo "_USE_SQLPROBE=${_USE_SQLPROBE}" >> ${_barCnf}
     fi
 
     _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
@@ -10831,6 +10837,7 @@ _initd_update() {
           -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
         if [ -z "${_diffMyTest}" ]; then
           _myCnfUpdate=NO
+          _myTopReinstall=NO
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff0 empty"
           fi
