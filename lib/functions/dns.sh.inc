@@ -333,6 +333,109 @@ _check_connection() {
 }
 
 #
+# Try the prebuilt boa-unbound .deb for the pinned version; fall back to
+# sources on any failure. The payload carries the six /usr/sbin binaries
+# only, overlaying files the distro unbound and unbound-anchor packages
+# own (Replaces: in the package control) while both distro packages stay
+# installed as the structure providers -- the boa-nginx overlay shape.
+# Config, keys, the init script and the runtime dirs stay
+# installer-managed on both paths, and the shared tail of
+# _dns_unbound_install_upgrade (keys sync, pdnsd removal, service
+# restart) runs unchanged after either path. Builders are modern-marker
+# boxes by construction, so every published binary resolves its OpenSSL
+# through a /usr/local/ssl3/lib64 RUNPATH; a box without the modern
+# OpenSSL tree is refused up front and keeps the source path. With
+# Replaces: in play a purge removes the daemon binary itself and the
+# source rebuild that follows can fail silently (_mrun), so the previous
+# binaries are snapshotted first and restored on any failure -- the
+# failure envelope stays identical to the source path's.
+_install_unbound_deb() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_unbound_deb"
+  fi
+  _UNBOUND_DEB_INSTALLED=NO
+  if [ -z "${_UNBOUND_VRN}" ]; then
+    return 1
+  fi
+  if [ ! -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Modern OpenSSL tree missing; skipping prebuilt boa-unbound"
+    fi
+    return 1
+  fi
+  mkdir -p /var/opt/unbound-pre-deb
+  for _unbDebBin in unbound unbound-anchor unbound-checkconf \
+    unbound-control unbound-control-setup unbound-host; do
+    if [ -e "/usr/sbin/${_unbDebBin}" ]; then
+      cp -af /usr/sbin/${_unbDebBin} /var/opt/unbound-pre-deb/
+    fi
+    # An attacker-set immutable flag would make dpkg's unpack fail silently.
+    chattr -i /usr/sbin/${_unbDebBin} &> /dev/null
+  done
+  if ! _install_boa_deb "boa-unbound" "${_UNBOUND_VRN}"; then
+    for _unbDebBin in unbound unbound-anchor unbound-checkconf \
+      unbound-control unbound-control-setup unbound-host; do
+      if [ ! -x "/usr/sbin/${_unbDebBin}" ] \
+        && [ -x "/var/opt/unbound-pre-deb/${_unbDebBin}" ]; then
+        cp -af /var/opt/unbound-pre-deb/${_unbDebBin} /usr/sbin/${_unbDebBin}
+      fi
+    done
+    rm -rf /var/opt/unbound-pre-deb
+    return 1
+  fi
+  # dpkg unpacks the payload with the builder's hardened 0750 mode but
+  # archive ownership root:root; normalize to the canonical root:users
+  # shape immediately rather than waiting for the end-of-run hardening
+  # pass, matching the boa-nginx/boa-php deb precedent.
+  for _unbDebBin in unbound unbound-anchor unbound-checkconf \
+    unbound-control unbound-control-setup unbound-host; do
+    chown root:users /usr/sbin/${_unbDebBin} &> /dev/null
+    chmod 750 /usr/sbin/${_unbDebBin} &> /dev/null
+  done
+  _UNBOUND_DEB_ITD=$(/usr/sbin/unbound -V 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' \
+    | sed "s/Configure//gi" 2>&1)
+  # The same libevent linkage _dns_unbound_install_upgrade reads as its
+  # fix trigger, plus full loader resolution across the ELF payload
+  # (unbound-control-setup is a shell script) -- a payload that would
+  # immediately re-trigger the fix path must not pass.
+  _UNBOUND_DEB_LIBVT=$(ldd /usr/sbin/unbound 2>&1 | grep libevent 2>&1)
+  _UNBOUND_DEB_MISSING=$(ldd /usr/sbin/unbound /usr/sbin/unbound-anchor \
+    /usr/sbin/unbound-checkconf /usr/sbin/unbound-control \
+    /usr/sbin/unbound-host 2>&1 | grep "not found" 2>&1)
+  if [ -x "/usr/sbin/unbound" ] \
+    && [ -x "/usr/sbin/unbound-anchor" ] \
+    && [ -x "/usr/sbin/unbound-checkconf" ] \
+    && [ -x "/usr/sbin/unbound-control" ] \
+    && [ -x "/usr/sbin/unbound-control-setup" ] \
+    && [ -x "/usr/sbin/unbound-host" ] \
+    && [ "${_UNBOUND_DEB_ITD}" = "${_UNBOUND_VRN}" ] \
+    && [[ "${_UNBOUND_DEB_LIBVT}" =~ "libevent" ]] \
+    && [ -z "${_UNBOUND_DEB_MISSING}" ]; then
+    rm -rf /var/opt/unbound-pre-deb
+    _UNBOUND_DEB_INSTALLED=YES
+    _msg "INFO: Unbound ${_UNBOUND_VRN} installed from prebuilt package"
+    return 0
+  fi
+  # The purge removes the binaries boa-unbound now owns; restore the
+  # snapshot so the box keeps a working resolver even if the source
+  # rebuild that runs next fails silently.
+  dpkg --purge "boa-unbound" &> /dev/null
+  for _unbDebBin in unbound unbound-anchor unbound-checkconf \
+    unbound-control unbound-control-setup unbound-host; do
+    if [ ! -x "/usr/sbin/${_unbDebBin}" ] \
+      && [ -x "/var/opt/unbound-pre-deb/${_unbDebBin}" ]; then
+      cp -af /var/opt/unbound-pre-deb/${_unbDebBin} /usr/sbin/${_unbDebBin}
+    fi
+  done
+  rm -rf /var/opt/unbound-pre-deb
+  _msg "NOTE: Prebuilt boa-unbound failed health check; building from sources"
+  return 1
+}
+
+#
 # Install Unbound from sources.
 _install_unbound_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -342,6 +445,16 @@ _install_unbound_src() {
   ldconfig 2> /dev/null
   cd /var/opt
   rm -rf unbound*
+  # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the source
+  # fetch + compile; the shared tail in _dns_unbound_install_upgrade runs
+  # unchanged for both paths.
+  _UNBOUND_DEB_INSTALLED=NO
+  if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
+    _install_unbound_deb
+  fi
+  if [ "${_UNBOUND_DEB_INSTALLED}" = "YES" ]; then
+    return 0
+  fi
   _get_dev_src "unbound-${_UNBOUND_VRN}.tar.gz"
   cd unbound-${_UNBOUND_VRN}
   if [ -e "/usr/local/ssl3/" ]; then
@@ -447,6 +560,25 @@ _dns_unbound_install_upgrade() {
     fi
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
+    fi
+    # With Replaces: in play the boa-unbound overlay package owns the
+    # /usr/sbin binaries, and dpkg refuses to hand those paths back to
+    # the distro packages (${_INSTAPP} carries no --force-overwrite and
+    # _mrun would swallow the refusal silently) -- so a repair pass that
+    # needs to reinstall any of them must drop the overlay record first.
+    # The overlay binaries go with it, which is safe here: the distro
+    # set is reinstalled right below (restoring /etc/unbound), and
+    # _install_unbound_src reinstates the pinned version (deb or source)
+    # at the end of this run either way -- the same recovery envelope
+    # the source-only path always had.
+    if dpkg-query -W -f='${Status}' "boa-unbound" 2>/dev/null \
+      | grep -q "install ok installed"; then
+      for _PKG in unbound unbound-anchor unbound-host dns-root-data; do
+        if ! _pkg_installed "${_PKG}"; then
+          dpkg --purge "boa-unbound" &> /dev/null
+          break
+        fi
+      done
     fi
     for _PKG in libevent-dev unbound unbound-anchor unbound-host dns-root-data; do
       if ! _pkg_installed "${_PKG}"; then
