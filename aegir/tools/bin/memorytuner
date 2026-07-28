@@ -118,8 +118,21 @@ _check_sql_access
 # Sanitise to a non-negative integer (default 0).
 _num() { local _x="${1//[^0-9]/}"; printf '%s' "${_x:-0}"; }
 
-_RAM=$(awk '/^MemTotal:/ { printf "%d", $2 / 1024 }' /proc/meminfo 2>/dev/null)
-_RAM=$(_num "${_RAM}")
+# Budget basis mirrors _tune_memory_limits (system.sh.inc): every fleet
+# formula runs on RESERVED-ADJUSTED RAM, never raw MemTotal — raw would
+# inflate each ceiling by ~33% (2026-07-28 review finding). _RESERVED_RAM
+# comes from the sourced barracuda.cnf; unset/zero means the same RAM/4
+# reservation the tune pass applies. A frozen reservation from before a
+# box shrink could exceed MemTotal — the tune pass goes negative there
+# (known trap), an advisory must not: fall back to the RAM/4 default.
+_RAM_TOTAL=$(awk '/^MemTotal:/ { printf "%d", $2 / 1024 }' /proc/meminfo 2>/dev/null)
+_RAM_TOTAL=$(_num "${_RAM_TOTAL}")
+_RESERVED_RAM=$(_num "${_RESERVED_RAM:-}")
+if [ "${_RESERVED_RAM}" -gt 0 ] && [ "${_RESERVED_RAM}" -lt "${_RAM_TOTAL}" ]; then
+  _RAM=$(( _RAM_TOTAL - _RESERVED_RAM ))
+else
+  _RAM=$(( _RAM_TOTAL - _RAM_TOTAL / 4 ))
+fi
 
 # Running values -- gauges read live, not only from the corpus.
 _VR=$(timeout 10 mysql -u root -Nse "SHOW GLOBAL VARIABLES" 2>/dev/null)
@@ -234,7 +247,7 @@ if [ "${_NW}" -gt 0 ]; then
   _add_obs "tmp table disk spill: ${_SPILL}% at tmp_table_size ${_TMP_MB}M"
   _add_obs "MyISAM key reads over corpus: ${_KEYR_TOTAL} (key_buffer ${_KEY_MB}M)"
   _add_obs "connections: max used ${_MAXUSED} of ${_MAXCONN}"
-  _add_obs "mysqld VmRSS max ${_MAX_RSS}M; MemAvailable min ${_MIN_AVAIL}M of ${_RAM}M; PSI mem some10 max $(awk -v p="${_MAX_PSI}" 'BEGIN { printf "%.2f", p / 100 }')"
+  _add_obs "mysqld VmRSS max ${_MAX_RSS}M; MemAvailable min ${_MIN_AVAIL}M of ${_RAM_TOTAL}M total (budget RAM ${_RAM}M after reservation); PSI mem some10 max $(awk -v p="${_MAX_PSI}" 'BEGIN { printf "%.2f", p / 100 }')"
   _add_obs "table data ${_DATADIR_MB}M vs pool ${_POOL_MB}M (data-aware target ${_POOL_TARGET}M, ceiling ${_POOL_CEILING}M)"
 
   # Pool: sustained warm misses above 1% of logical reads mean the working
@@ -289,8 +302,8 @@ if [ "${_NW}" -gt 0 ]; then
     fi
   fi
 
-  # Memory pressure trumps tuning ambition.
-  if [ "${_MIN_AVAIL}" -gt 0 ] && [ "${_MIN_AVAIL}" -lt $(( _RAM / 20 )) ]; then
+  # Memory pressure trumps tuning ambition (raw total: a system fact).
+  if [ "${_MIN_AVAIL}" -gt 0 ] && [ "${_MIN_AVAIL}" -lt $(( _RAM_TOTAL / 20 )) ]; then
     _add_rec "# CAUTION: MemAvailable dipped to ${_MIN_AVAIL}M (<5% of RAM) inside the corpus -- raise no pin before that is understood"
   fi
 else
