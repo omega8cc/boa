@@ -234,12 +234,37 @@ _account_process() {
       _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_HM_U}.octopus.cnf 2>&1)
       if [[ "${_CLIENT_EMAIL_TEST}" =~ "${_F_CLIENT_EMAIL}" ]]; then
         _DO_NOTHING=YES
-      else
+      elif grep -q "^_CLIENT_EMAIL=" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
         sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" /root/.${_HM_U}.octopus.cnf
         wait
         _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
+      else
+        echo "_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" >> /root/.${_HM_U}.octopus.cnf
+        _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
       fi
     fi
+
+    # The email healer above kept the cnf honest against log/email.txt, but
+    # its plan-identity siblings could disagree with their log/ stamps
+    # forever (a migrated cnf is exactly that state). Same discipline for
+    # the plan trio: the log/ stamp is the witness, replace-if-present,
+    # append-if-absent.
+    for _idPair in "_CLIENT_OPTION:option" "_CLIENT_SUBSCR:subscr" "_CLIENT_CORES:cores"; do
+      _idVar="${_idPair%%:*}"
+      _idFile="${_usEr}/log/${_idPair##*:}.txt"
+      [ -s "${_idFile}" ] || continue
+      _idVal=$(cat "${_idFile}" 2>/dev/null | tr -d "\n")
+      _idVal=${_idVal//[^a-zA-Z0-9]/}
+      [ -z "${_idVal}" ] && continue
+      if grep -q "^${_idVar}=\"${_idVal}\"" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
+        _DO_NOTHING=YES
+      elif grep -q "^${_idVar}=" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
+        sed -i "s/^${_idVar}=.*/${_idVar}=\"${_idVal}\"/g" /root/.${_HM_U}.octopus.cnf
+        wait
+      else
+        echo "${_idVar}=\"${_idVal}\"" >> /root/.${_HM_U}.octopus.cnf
+      fi
+    done
   fi
   _disable_chattr ${_HM_U}.ftp
   rm -rf /home/${_HM_U}.ftp/drush-backups
