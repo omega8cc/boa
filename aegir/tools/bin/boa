@@ -2776,7 +2776,7 @@ _display_info() {
       [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
       [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
       [ ! -z "${_CCV}" ] && echo "  _CCV ${_CCV}"
-      [ ! -z "${_CCR}" ] && echo "  _CCV ${_CCR}"
+      [ ! -z "${_CCR}" ] && echo "  _CCR ${_CCR}"
       [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
       [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
       [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
