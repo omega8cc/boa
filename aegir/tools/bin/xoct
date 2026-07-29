@@ -1491,6 +1491,123 @@ _xoct_wait_boa_quiet() {
   return 0
 }
 
+_xoct_reconcile_panel_platform() {
+  # Mirror of xmass step 12.5's panel platform drift handling (kept separate
+  # by design -- mirror fixes, don't DRY). The imported hostmaster DB names
+  # the SOURCE's panel platform path; an aged source usually sits on a
+  # different distro/NNN than the freshly installed dest account (the panel
+  # platform is rebuilt whenever the PHP pin changes). Left alone, the rename
+  # queue's hostmaster verify regenerates aliases FROM the DB and the
+  # migrated panel 404s from a hollow platform path. Retired platform trees
+  # keep their code forever, so code presence at the imported number proves
+  # nothing -- the LIVE panel is found by scanning for the unique site dir
+  # that carries drushrc.php + settings.php on a code-bearing platform, and
+  # the DB row is repointed only when that platform differs. Runs on the
+  # TARGET between the DB import and renameaegirhost, so the account axis is
+  # still SOURCE-named in the DB: only the platform number is corrected here
+  # (kept under the source root -- renameaegirhost's account pass remaps the
+  # root). Non-zero return means the panel cannot be resolved and the import
+  # must not ride out as a success.
+  local _dest_root="$1"
+  local _src_acct="$2"
+  local _hdb="$3"
+  local _db_plat _dest_plat _tree _cand _found _n _new_plat _new_src_form
+  local _fqdn _chk _nup _stored_db _pw _f _o _m
+  _fqdn=$(hostname -f 2>/dev/null | tr -d '\n')
+  _fqdn=${_fqdn//[^a-zA-Z0-9.-]/}
+  if [ -z "${_fqdn}" ]; then
+    echo "ALRT: no system FQDN; cannot resolve the live panel platform"
+    return 1
+  fi
+  _db_plat=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "SELECT p.publish_path FROM \
+    hosting_platform p JOIN hosting_site s ON s.platform=p.nid \
+    JOIN hosting_context c ON c.nid=s.nid WHERE c.name='hostmaster' \
+    LIMIT 1" 2>/dev/null)
+  _db_plat=${_db_plat//[^a-zA-Z0-9\/._-]/}
+  if [ -z "${_db_plat}" ]; then
+    echo "ALRT: cannot read the hostmaster platform path from ${_hdb}; cannot reconcile the panel"
+    return 1
+  fi
+  _dest_plat="${_db_plat/#\/data\/disk\/${_src_acct}\//${_dest_root}\/}"
+  _tree="${_dest_root}/aegir/distro"
+  _found=""
+  _n=0
+  for _cand in "${_tree}"/*/sites/*"${_fqdn}"*; do
+    [ -f "${_cand}/drushrc.php" ] || continue
+    [ -f "${_cand}/settings.php" ] || continue
+    [ -e "$(dirname "$(dirname "${_cand}")")/index.php" ] || continue
+    _found="${_cand}"
+    _n=$(( _n + 1 ))
+  done
+  if [ "${_n}" != "1" ]; then
+    echo "ALRT: ${_n} candidate live panels under ${_tree} match ${_fqdn} -- refusing to guess"
+    return 1
+  fi
+  _new_plat=$(dirname "$(dirname "${_found}")")
+  _chk=${_new_plat//[^a-zA-Z0-9\/._-]/}
+  if [ "${_chk}" != "${_new_plat}" ]; then
+    echo "ALRT: live panel platform path carries unexpected characters: ${_new_plat}"
+    return 1
+  fi
+  # The live panel's stored credentials must name the DB the dump actually
+  # landed in: a panel rebuild between create and import replaces the panel
+  # DB, leaving drushrc/settings naming the dropped one -- renameaegirhost
+  # then cannot locate the live DB (its own fallback scan needs dest-form
+  # publish_path rows that only exist AFTER its account remap). Same
+  # credential rewire xmass 12.5 does, applied only on a mismatch.
+  _stored_db=$(grep "options\['db_name'\]" "${_found}/drushrc.php" 2>/dev/null \
+    | head -1 | sed "s/.*=//; s/[' ,;]//g")
+  _stored_db=${_stored_db//[^a-zA-Z0-9_]/}
+  if [ -n "${_stored_db}" ] && [ "${_stored_db}" != "${_hdb}" ]; then
+    _pw=$(od -An -N8 -tx8 /dev/urandom | tr -d " \n" | cut -c1-14)
+    if [ -z "${_pw}" ]; then
+      echo "ALRT: could not generate a password for the panel credential heal"
+      return 1
+    fi
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
+      -e "CREATE USER IF NOT EXISTS '${_hdb}'@'localhost' IDENTIFIED BY '${_pw}'; \
+          ALTER USER '${_hdb}'@'localhost' IDENTIFIED BY '${_pw}'; \
+          GRANT ALL ON \`${_hdb}\`.* TO '${_hdb}'@'localhost'; \
+          FLUSH PRIVILEGES;" 2>/dev/null
+    for _f in "${_found}/settings.php" "${_found}/drushrc.php"; do
+      [ -f "${_f}" ] || continue
+      _o=$(stat -c '%U:%G' "${_f}")
+      _m=$(stat -c '%a' "${_f}")
+      sed -i \
+        -e "s#^\( *'database' => \)[\"'][^\"']*[\"'],#\1\"${_hdb}\",#" \
+        -e "s#^\( *'username' => \)[\"'][^\"']*[\"'],#\1\"${_hdb}\",#" \
+        -e "s#^\( *'password' => \)[\"'][^\"']*[\"'],#\1\"${_pw}\",#" \
+        -e "s#^\(\$options\['db_name'\] = \)'[^']*';#\1'${_hdb}';#" \
+        -e "s#^\(\$options\['db_user'\] = \)'[^']*';#\1'${_hdb}';#" \
+        -e "s#^\(\$options\['db_passwd'\] = \)'[^']*';#\1'${_pw}';#" \
+        "${_f}"
+      [ -n "${_o}" ] && chown "${_o}" "${_f}"
+      [ -n "${_m}" ] && chmod "${_m}" "${_f}"
+      if ! grep -q "${_hdb}" "${_f}"; then
+        echo "ALRT: panel credential heal did not land in ${_f}"
+        return 1
+      fi
+    done
+    echo "PANEL-NOTE: live panel credentials healed ${_stored_db} -> ${_hdb} in ${_found}"
+  fi
+  if [ "${_new_plat}" = "${_dest_plat}" ]; then
+    return 0
+  fi
+  _new_src_form="${_new_plat/#${_dest_root}\//\/data\/disk\/${_src_acct}\/}"
+  echo "PANEL-NOTE: imported panel platform ${_db_plat} is not the live panel on this box; adopting ${_new_plat} (distro number diverged source vs target)"
+  _nup=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "UPDATE hosting_platform SET \
+    publish_path='${_new_src_form}' WHERE publish_path='${_db_plat}'; \
+    SELECT ROW_COUNT();" 2>/dev/null | tail -1)
+  if [ "${_nup}" = "1" ]; then
+    echo "PANEL-NOTE: hostmaster platform row repointed ${_db_plat} -> ${_new_src_form} in ${_hdb} (rows=1)"
+    return 0
+  fi
+  echo "ALRT: panel platform repoint matched ${_nup:-no} row(s) in ${_hdb} -- the panel would 404 after the rename"
+  return 1
+}
+
 ### NB: no migration read-only mode here on purpose. The historical runbook
 ### step appended box-wide read-only settings to global-extra.inc, which
 ### froze EVERY account on the source, did not survive a BOA system pass,
@@ -1661,9 +1778,94 @@ _migrate_prepare() {
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
     fi
-    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+    # The alias-derived _HDB can name a DB an enforced upgrade has already
+    # replaced: fresh dest panels are rebuilt between create and import (new
+    # panel DB created, old one dropped) while the on-disk alias stays stale,
+    # and the dump would then pour into a nonexistent DB with the import
+    # riding on. Resolution order: the recorded decision from a previous
+    # (possibly partial) import run, then the alias-derived name, then a
+    # dest-form panel scan (the 12.5 way), then the already-poured shape (a
+    # partial run leaves the live DB holding SOURCE-form rows, invisible to
+    # the dest-form scan — its hostmaster front names the recorded source
+    # FQDN, which nothing else on the box can carry). The winner is recorded
+    # so the printed recovery path stays deterministic.
+    if [ -s "${_USR}/log/panel_db.txt" ]; then
+      _HDB_REC=$(cat ${_USR}/log/panel_db.txt | tr -d "\n")
+      _HDB_REC=${_HDB_REC//[^a-zA-Z0-9_]/}
+      if [ -n "${_HDB_REC}" ] && [ -n "$(mysql --silent -u root -h${_SQL_CONNECT} \
+          -P${_THIS_DB_PORT} --protocol=tcp -N -B \
+          -e "SHOW DATABASES LIKE '${_HDB_REC}'" 2>/dev/null)" ]; then
+        [ "${_HDB_REC}" != "${_HDB}" ] \
+          && echo "PANEL-NOTE: using the recorded panel DB ${_HDB_REC} (alias-derived ${_HDB} superseded)"
+        _HDB="${_HDB_REC}"
+      fi
+    fi
+    if [ -z "$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+        --protocol=tcp -N -B -e "SHOW DATABASES LIKE '${_HDB}'" 2>/dev/null)" ]; then
+      _SRC_FRONT=""
+      if [ -s "${_USR}/log/sourcefqdn.txt" ]; then
+        _SRC_FRONT="${_oct}.$(cat ${_USR}/log/sourcefqdn.txt | tr -d "\n")"
+        _SRC_FRONT=${_SRC_FRONT//[^a-zA-Z0-9.-]/}
+      fi
+      _HDB_LIVE=""
+      _HDB_POURED=""
+      for _HC in $(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+          --protocol=tcp -N -B -e "SHOW DATABASES" 2>/dev/null \
+        | grep -vE "^(information_schema|performance_schema|mysql|sys)$"); do
+        case "${_HC}" in *[!A-Za-z0-9_]*) continue ;; esac
+        if [ -n "$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+            --protocol=tcp -N -B "${_HC}" -e "SELECT name FROM hosting_context \
+            WHERE name='server_master' LIMIT 1" 2>/dev/null)" ]; then
+          if [ -n "$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+              --protocol=tcp -N -B "${_HC}" -e "SELECT publish_path FROM \
+              hosting_platform WHERE publish_path LIKE '${_USR}/%' LIMIT 1" 2>/dev/null)" ]; then
+            if [ -n "${_HDB_LIVE}" ]; then
+              echo "ERROR: multiple live panel DBs match ${_USR} (${_HDB_LIVE}, ${_HC}) — refusing to guess"
+              exit 1
+            fi
+            _HDB_LIVE="${_HC}"
+          elif [ -n "${_SRC_FRONT}" ] && [ -n "$(mysql --silent -u root \
+              -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -N -B "${_HC}" \
+              -e "SELECT n.title FROM node n JOIN hosting_context c ON c.nid=n.nid \
+              WHERE c.name='hostmaster' AND n.title='${_SRC_FRONT}' LIMIT 1" 2>/dev/null)" ]; then
+            if [ -n "${_HDB_POURED}" ]; then
+              echo "ERROR: multiple DBs carry the source panel front ${_SRC_FRONT} (${_HDB_POURED}, ${_HC}) — refusing to guess"
+              exit 1
+            fi
+            _HDB_POURED="${_HC}"
+          fi
+        fi
+      done
+      if [ -n "${_HDB_LIVE}" ]; then
+        echo "PANEL-NOTE: alias-derived panel DB ${_HDB} is gone (panel rebuilt since create); importing into live panel DB ${_HDB_LIVE}"
+        _HDB="${_HDB_LIVE}"
+      elif [ -n "${_HDB_POURED}" ]; then
+        echo "PANEL-NOTE: alias-derived panel DB ${_HDB} is gone; resuming into ${_HDB_POURED} (already carries the source panel front from a previous run)"
+        _HDB="${_HDB_POURED}"
+      else
+        echo "ERROR: alias-derived panel DB ${_HDB} does not exist and no live panel DB"
+        echo "ERROR: matches ${_USR} — the dest account has no importable panel; re-run"
+        echo "ERROR: 'xoct create ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}' first"
+        exit 1
+      fi
+    fi
+    echo -n "${_HDB}" > ${_USR}/log/panel_db.txt
+    if ! mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql; then
+      echo "ERROR: hostmaster dump import into ${_HDB} FAILED — this import is INCOMPLETE"
+      echo "ERROR: nothing was renamed; fix the cause, then re-run the FULL import"
+      exit 1
+    fi
     _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
     touch ${_USR}/log/imported.pid
+    if ! _xoct_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
+      echo "ERROR: panel platform reconciliation failed for ${_USR} — this import is INCOMPLETE"
+      echo "ERROR: the imported DB names a hostmaster platform this box cannot serve; continuing"
+      echo "ERROR: would leave the migrated control panel dead after the rename queue runs"
+      echo "ERROR: recovery — fix the cause the ALRT above names, then re-run the FULL import:"
+      echo "ERROR:   rm ${_USR}/log/imported.pid"
+      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      exit 1
+    fi
 
     if [ "${_fix}" = "fix" ]; then
       _DOMAIN=`cat ${_USR}/log/domain.txt`
@@ -3667,8 +3869,9 @@ case "$1" in
               exit 1
             fi
             echo "ALRT: clearing migration state for ${_oct}:"
-            echo "ALRT:   src/*.sql dumps (incl. prev_hostmaster.sql) and"
-            echo "ALRT:   log/{exported,transferred,imported,proxied}.pid"
+            echo "ALRT:   src/*.sql dumps (incl. prev_hostmaster.sql),"
+            echo "ALRT:   log/{exported,transferred,imported,proxied}.pid and"
+            echo "ALRT:   log/panel_db.txt (the recorded import panel DB)"
             echo "ALRT: removing proxied.pid re-arms migration AND re-enables LE renewal"
             echo "ALRT: on this box -- only do this when the account is meant to migrate"
             echo "ALRT: (again) FROM here."
@@ -3676,6 +3879,10 @@ case "$1" in
             for _p in exported transferred imported proxied; do
               rm -f /data/disk/${_oct}/log/${_p}.pid
             done
+            ### A chained migration lands on a different panel DB; a stale
+            ### recorded name that happens to exist here would be preferred
+            ### over the correct alias-derived one.
+            rm -f /data/disk/${_oct}/log/panel_db.txt
             echo "INFO: migration state cleared for ${_oct}"
   ;;
   pre-mig)  _cmd="$1"
