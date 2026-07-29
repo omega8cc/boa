@@ -536,8 +536,11 @@ build_culturas() {
   _dver="$(_create_project "${_wd}" "${_CULTURAS_SPEC}" "drupal/openculturas_project" "--remove-vcs")" \
     || { _record_fail "culturas"; return 1; }
   # Pin the distribution to its exact drupal.org release (the template otherwise pulls a
-  # -dev branch), and build unpatched - its core patch is stale on current core and
-  # composer-patches 2.x has no per-patch skip. Approved: unpatched test platform is fine.
+  # -dev branch), and build with the dependency patches DROPPED - several are stale
+  # against the core the distribution itself requires, and composer-patches 2.x cannot
+  # apply patches to dist-installed packages at all here (its GitPatcher skips any
+  # package dir without .git, its FreeformPatcher needs per-patch config), so it is
+  # not a usable channel even for the patches that do apply.
   local _ocrel
   _ocrel="$(_drupal_release "${_CULTURAS_PROJECT}")"
   if ! { _composer_prepare "${_wd}" \
@@ -547,6 +550,21 @@ build_culturas() {
     _record_fail "culturas"
     return 1
   fi
+  # One dependency patch is load-bearing and is applied with GNU patch instead:
+  # the views OpenCulturas ships reference entity_reference_revisions relationship
+  # handlers that only exist with the ERR issue-2799479 patch - unpatched, every
+  # front page request throws ViewsData->get() InvalidArgumentException (empty
+  # table key from the broken relationship handler) and the site serves 500s.
+  # Fail closed: a culturas platform without it is broken by default.
+  local _err_patch_url="https://www.drupal.org/files/issues/2023-06-29/entity_reference_revisions-2799479-fix-only.patch"
+  local _err_mod="${_wd}/web/modules/contrib/entity_reference_revisions"
+  if ! { _run_as_o8 "curl -fsS --retry 3 -o '${_wd}/.err-2799479.patch' '${_err_patch_url}'" \
+         && _run_as_o8 "cd '${_err_mod}' && patch -p1 --no-backup-if-mismatch < '${_wd}/.err-2799479.patch'" \
+         && _run_as_o8 "rm -f '${_wd}/.err-2799479.patch'"; }; then
+    _record_fail "culturas (ERR issue-2799479 views patch did not apply)"
+    return 1
+  fi
+  _info "culturas: applied entity_reference_revisions issue-2799479 views patch"
   # Flatten the openculturas-distribution wrapper: its inner profile/ becomes the
   # openculturas install profile, and its remaining contents move up into contrib/.
   local _contrib="${_wd}/web/profiles/contrib"
