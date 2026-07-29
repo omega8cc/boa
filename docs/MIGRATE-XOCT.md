@@ -114,10 +114,12 @@ xoct pretransfer o1 target-ip
 ```
 
 `reset-state` replaces the hand-typed `rm -f` lines. It clears
-`src/*.sql` (including `prev_hostmaster.sql`) and the
-`exported`/`transferred`/`imported`/`proxied` pid stamps, which is also what a
-**chained** migration needs — a box that was once a target keeps a stale dump
-and an `imported.pid` that blocks it from ever being an import target again.
+`src/*.sql` (including `prev_hostmaster.sql`), the
+`exported`/`transferred`/`imported`/`proxied` pid stamps and the recorded
+import panel database (`log/panel_db.txt`), which is also what a **chained**
+migration needs — a box that was once a target keeps a stale dump, an
+`imported.pid` that blocks it from ever being an import target again, and a
+panel-database pointer that belongs to the previous move.
 It never touches serving state, so a site's 503 gate is left alone.
 
 `transfer shared` syncs `/data/all`, `/data/disk/all`, `/data/disk/arch`,
@@ -196,8 +198,37 @@ xoct post-mig
 service cron start
 ```
 
-`import` re-imports the Ægir hostmaster database, sets the site front page
-back to `hosting/sites`, then calls
+`import` first resolves which panel database to import INTO. The dest
+account's panel is often rebuilt between `create` and `import` (the enforced
+post-install upgrade does exactly that), which replaces the panel database
+and leaves the on-disk alias naming the dropped one — pouring the dump into
+a nonexistent database. So the alias-derived name is validated against the
+live database set, and when it is gone the live panel database is
+rediscovered the same way the `xmass` cutover does. A previous partial run
+is picked up too: a database already carrying the source panel front is
+resumed into rather than abandoned, and the winning name is recorded under
+`log/panel_db.txt` so a re-run is deterministic. The dump import is checked;
+a failure aborts before anything is renamed.
+
+`import` then re-imports the Ægir hostmaster database and sets the site
+front page back to `hosting/sites`, and reconciles the panel platform, which
+absorbs distro-number drift: the imported database names the SOURCE's
+hostmaster platform path, while the target account's live panel usually sits
+on a different `aegir/distro/NNN` (the panel platform is rebuilt whenever
+the PHP pin changes, and retired platform trees keep their code, so code
+presence at the imported number proves nothing). The import locates the
+target's unique live panel — the site dir carrying `drushrc.php` +
+`settings.php` on a code-bearing platform — and repoints the hostmaster
+platform row in the imported database before the rename runs, so the rename
+queue's DB-derived regeneration lands on a platform that really serves. If
+that live panel's stored credentials still name a replaced database, they
+are rewritten to the database actually holding the import (with a fresh
+password) — `renameaegirhost` reads those files to find the Ægir database
+and cannot bootstrap otherwise. An unresolvable panel (zero or several
+candidates, or a repoint that matches no row) aborts the import with
+recovery steps rather than completing with a dead control panel.
+
+With the panel reconciled, `import` calls
 `renameaegirhost --aegir-root /data/disk/o1 --force-old source-fqdn` (the
 source hostname was recorded at export time, so the rename never depends on
 which side's alias copy survived the transfer) which:

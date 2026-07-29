@@ -767,7 +767,7 @@ _xmass_check_le_health() {
 ### silently returning wrong search results. Check-gate only: registration
 ### is core-shape-specific and stays with the operator.
 _xmass_solr_core_parity() {
-  local _t="$1" _src="" _d _tgtcores _c _missing=""
+  local _t="$1" _src="" _d _tgtcores _c _missing="" _failed=""
   for _d in /opt/solr4/*/ /var/solr7/data/*/ /var/solr9/data/*/; do
     [ -d "${_d}" ] || continue
     if [ -e "${_d}core.properties" ] || [ -e "${_d}conf/solrconfig.xml" ]; then
@@ -776,17 +776,37 @@ _xmass_solr_core_parity() {
   done
   _src="${_src## }"
   [ -z "${_src}" ] && return 0
-  _tgtcores=$(ssh root@"${_t}" "for p in 8983 8099 8091; do curl -s -A iCab \"http://127.0.0.1:\${p}/solr/admin/cores?action=STATUS&wt=json\" 2>/dev/null; done" 2>/dev/null)
+  # BOA installs solr9 on 9099 and solr7 on 9077 (solr.sh.inc); jetty9/solr4
+  # answers on 8099. 8983 stays as the upstream default for hand-installed
+  # Solr. Probing the wrong set made every source core report missing and
+  # left the parity-OK branch unreachable on a real Solr box.
+  # Whitespace-stripped so the match survives Solr's pretty-printed output.
+  _tgtcores=$(ssh root@"${_t}" "for p in 9099 9077 8099 8983; do curl -s -A iCab \"http://127.0.0.1:\${p}/solr/admin/cores?action=STATUS&wt=json\" 2>/dev/null; done" 2>/dev/null \
+    | tr -d ' \n\t')
   for _c in ${_src}; do
+    # Key on the core's own name field inside the STATUS entry, never the bare
+    # name: Solr echoes the name of a core that FAILED to load in
+    # initFailures too, and a bare-name match scored those as registered --
+    # reporting parity OK for a core serving nothing.
     case "${_tgtcores}" in
-      *"\"${_c}\""*) : ;;
-      *) _missing="${_missing} ${_c}" ;;
+      *"\"name\":\"${_c}\""*) : ;;
+      *)
+        _missing="${_missing} ${_c}"
+        case "${_tgtcores}" in
+          *"\"initFailures\":{"*"\"${_c}\":"*) _failed="${_failed} ${_c}" ;;
+        esac
+        ;;
     esac
   done
   if [ -n "${_missing}" ]; then
     _alrt "Solr cores present on the source but NOT registered on ${_t}:${_missing}"
     _alrt "their data arrived with the sync; register them on the target or the"
     _alrt "affected search indexes silently return wrong results"
+    if [ -n "${_failed}" ]; then
+      _alrt "of those, Solr FAILED to load (see its initFailures):${_failed}"
+      _alrt "-- the core directory arrived but its configuration does not resolve"
+      _alrt "on this box; fix the core's conf/ or configSet, then reload the core"
+    fi
   else
     _info "Solr core parity source vs target: OK"
   fi
@@ -1448,25 +1468,35 @@ REMOTE
 }
 
 _xmass_solr_check_target() {
-  # Informational HTTP reachability check against common BOA Solr ports.
+  # Informational HTTP reachability check against the ports BOA actually
+  # installs on: solr9 9099, solr7 9077, jetty9/solr4 8099 (plus 8983 for a
+  # hand-installed upstream Solr). Probed over ssh on 127.0.0.1 — Solr binds
+  # localhost and CSF filters the public interface, so the old public-IP
+  # probe of 8983/8984/8080 could never see a healthy BOA Solr.
   # A non-200/302 response is a warning, not a fatal error — Solr may still
   # be replaying its write-ahead log or warming up caches.
   _info "Checking Solr HTTP response on target ${_tgt} ..."
-  local _port _http _ok=NO
-  for _port in 8983 8984 8080; do
-    _http=$(curl -s -o /dev/null -w "%{http_code}" \
-      --max-time 15 \
-      "http://${_tgt}:${_port}/solr/" 2>/dev/null)
-    if [ "${_http}" = "200" ] || [ "${_http}" = "302" ]; then
-      _info "  Solr responding on port ${_port}: HTTP ${_http} OK"
-      _ok=YES
-    else
-      _info "  Solr port ${_port}: HTTP ${_http} (not yet ready or not active)"
-    fi
-  done
+  local _line _rest _ok=NO
+  while read -r _line; do
+    [ -z "${_line}" ] && continue
+    case "${_line}" in
+      OK:*)
+        _rest="${_line#OK:}"
+        _info "  Solr responding on port ${_rest%%:*}: HTTP ${_rest#*:} OK"
+        _ok=YES
+        ;;
+      NO:*)
+        _rest="${_line#NO:}"
+        _info "  Solr port ${_rest%%:*}: HTTP ${_rest#*:} (not yet ready or not active)"
+        ;;
+    esac
+  done <<< "$(ssh root@"${_tgt}" 'for _p in 9099 9077 8099 8983; do
+    _h=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 -A iCab "http://127.0.0.1:${_p}/solr/" 2>/dev/null)
+    if [ "${_h}" = "200" ] || [ "${_h}" = "302" ]; then echo "OK:${_p}:${_h}"; else echo "NO:${_p}:${_h}"; fi
+  done' 2>/dev/null)"
   if [ "${_ok}" = "NO" ]; then
     _alrt "No Solr port responded on target — check manually after cutover:" \
-          " curl http://${_tgt}:8983/solr/"
+          " ssh root@${_tgt} 'curl http://127.0.0.1:9099/solr/'"
   fi
 }
 
