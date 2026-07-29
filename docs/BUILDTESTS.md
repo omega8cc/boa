@@ -148,9 +148,11 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.
 culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.4-11.3.16 --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/openculturas-3.0.4-11.3.16/
            # composer config --no-plugins allow-plugins true
-           # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # build unpatched (stale core patch)
+           # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (stale + composer-patches 2.x cannot apply to dist installs)
            # composer update --no-install --no-scripts
            # composer install --no-dev
+           # curl -fsS -o /tmp/err.patch https://www.drupal.org/files/issues/2023-06-29/entity_reference_revisions-2799479-fix-only.patch
+           # (cd web/modules/contrib/entity_reference_revisions && patch -p1 < /tmp/err.patch)  # LOAD-BEARING: shipped views need it or every page 500s
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
@@ -253,9 +255,15 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   the distros pull composer/installers, cweagans/composer-patches, installers-extender,
   etc., and current Composer blocks any unlisted plugin.
 - **openculturas** — its install profile has a wrong directory tree by default and ships
-  no `sites/example.sites.php` (copy one in). Its core patch no longer applies on current
-  core and composer-patches 2.x has no per-patch skip, so build it unpatched by ignoring
-  its distribution's patches (`extra.composer-patches.ignore-dependency-patches`).
+  no `sites/example.sites.php` (copy one in). Its dependency patches are dropped
+  (`extra.composer-patches.ignore-dependency-patches`): several are stale against the
+  core the distribution itself requires, and composer-patches 2.x cannot apply patches
+  to dist-installed packages at all (its GitPatcher skips any package dir without
+  `.git`, its FreeformPatcher needs per-patch config). One patch is load-bearing and is
+  applied with GNU `patch` after the build instead, fail-closed: the shipped views
+  reference `entity_reference_revisions` relationship handlers that only exist with the
+  ERR issue-2799479 patch — without it every front page request throws
+  `ViewsData->get()` InvalidArgumentException and the site serves 500s.
 - **commerce** — commerce_kickstart enables Composer security-advisory blocking, which
   refuses advisory-affected core/deps; disable it (`policy.advisories.block false`) for the
   test build.
