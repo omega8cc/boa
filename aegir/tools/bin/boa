@@ -2592,7 +2592,7 @@ _display_info() {
           | cut -d: -f1 | awk '{ print $2}' 2>&1)
       fi
     fi
-    _DB_V=$(mysql -V 2>&1 \
+    _DBV=$(mysql -V 2>&1 \
       | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
       | head -1 \
       | cut -d"." -f1,2)
@@ -2622,6 +2622,13 @@ _display_info() {
           | cut -d" " -f3 \
           | awk '{ print $1}' 2>&1)
       fi
+    fi
+    if [ -x "/usr/sbin/unbound" ]; then
+      _UNB=$(/usr/sbin/unbound -V 2>&1 \
+        | grep "^Version" \
+        | head -1 \
+        | cut -d" " -f2 \
+        | awk '{ print $1}' 2>&1)
     fi
     _isLshell="$(which lshell)"
     _LSH=$(${_isLshell} --version 2>&1 \
@@ -2743,6 +2750,7 @@ _display_info() {
     [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
     [ ! -z "${_VKS}" ] && echo "  RDS ${_VKS}"
     [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
+    [ ! -z "${_UNB}" ] && echo "  UNB ${_UNB}"
     [ ! -z "${_SHD}" ] && echo "  SHD ${_SHD}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
     [ ! -z "${_LSH}" ] && echo "  LSH ${_LSH}"
@@ -2768,7 +2776,7 @@ _display_info() {
       [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
       [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
       [ ! -z "${_CCV}" ] && echo "  _CCV ${_CCV}"
-      [ ! -z "${_CCR}" ] && echo "  _CCV ${_CCR}"
+      [ ! -z "${_CCR}" ] && echo "  _CCR ${_CCR}"
       [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
       [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
       [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
@@ -2790,7 +2798,6 @@ _display_info() {
       [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
       [ ! -z "${_NRC}" ] && echo "  _NRC ${_NRC}"
       [ ! -z "${_MON}" ] && echo "  _MON ${_MON}"
-      [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
 
       # Get the currently used GRUB config affecting networking
       _GRUB_FILE="/etc/default/grub"
