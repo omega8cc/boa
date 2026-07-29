@@ -894,6 +894,9 @@ _create_drupal_core_basic() {
     "DE3")
       _create_drupal_basic_version "11_3"
       ;;
+    "DE4")
+      _create_drupal_basic_version "11_4"
+      ;;
     "BDR")
       _create_backdrop_basic_version
       ;;
