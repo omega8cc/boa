@@ -6,6 +6,11 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/log/boa/php.incident.log"
 
+# Default before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the /etc/boa flag stays honoured
+# for one release while fleets converge.
+_ALLOW_PHP_FPM_RELOAD=NO
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -415,8 +420,10 @@ _fpm_apcu_reload_sentinel() {
   # of all PHP-FPM versions, and removes the file automatically.
   #
   # Plan gate: mirrors _if_valkey_restart in valkey.sh — only available on
-  # POWER, PHANTOM, CLUSTER, ULTRA, MONSTER plans or when the explicit allow
-  # file /etc/boa/.allow.php.fpm.reload.cnf is present.
+  # POWER, PHANTOM, CLUSTER, ULTRA, MONSTER plans, or box-wide via
+  # _ALLOW_PHP_FPM_RELOAD=YES in /root/.barracuda.cnf (the former
+  # /etc/boa/.allow.php.fpm.reload.cnf flag stays honoured during the
+  # conversion window).
   #
   # Why this is needed:
   #   APCu caches field definitions, plugin registries, and other Drupal
@@ -443,7 +450,8 @@ _fpm_apcu_reload_sentinel() {
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [[ "${_PrTestUltra}"   =~ "ULTRA"   ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/etc/boa/.allow.php.fpm.reload.cnf" ]; then
+    || [ -e "/etc/boa/.allow.php.fpm.reload.cnf" ] \
+    || [ "${_ALLOW_PHP_FPM_RELOAD}" = "YES" ]; then
     : # plan allows self-service FPM reload — proceed
   else
     return 0  # plan does not allow self-service FPM reload
