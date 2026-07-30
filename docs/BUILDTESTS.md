@@ -32,7 +32,7 @@ Distributions, published to `/var/www/static/distro`:
   drupal_cms_installer-2.1.3-11.4.4
   farm-4.0.4-11.3.14
   localgov-4.0.2-11.4.4
-  openculturas-3.0.3-11.3.14
+  openculturas-3.0.4-11.3.16
   thunder-8.4.0-11.4.4
 ```
 
@@ -41,9 +41,9 @@ Raw cores, published to `/var/www/static/core`, latest patch of each supported m
 ```sh
   drupal-10.2.12    drupal-11.1.10
   drupal-10.3.14    drupal-11.2.14
-  drupal-10.4.10    drupal-11.3.14
+  drupal-10.4.10    drupal-11.3.16
   drupal-10.5.12    drupal-11.4.4
-  drupal-10.6.13
+  drupal-10.6.14
 ```
 
 ## Backdrop family
@@ -59,7 +59,7 @@ family:
   staticbuild backdrop           # build + package + publish only the Backdrop family
 ```
 
-Three artefacts, always rebuilt at the latest upstream tag (pin any with the matching
+Four artefacts, always rebuilt at the latest upstream tag (pin any with the matching
 `_*_TAG` in the config block):
 
 - **backdrop** — Backdrop CMS core (`backdrop/backdrop`), from its latest GitHub
@@ -70,8 +70,12 @@ Three artefacts, always rebuilt at the latest upstream tag (pin any with the mat
   points at a missing file) — BOA names the platform from the stamp and fetches the
   matching tarball — and a version-less `backdrop.tar.gz` compat tarball of the newest
   release (extracting to `backdrop/`, the pre-versioning contract) is refreshed for
-  already-deployed BOA releases. The Backdrop redis contrib
-  module is baked into `modules/` for Valkey/Redis object-cache support. Published
+  already-deployed BOA releases. No contrib is baked into the versioned core
+  tarballs — Valkey/Redis integration reaches platforms through the shared
+  `o_contrib_backdrop` bundle (the `redis_backdrop` artefact below). Only the
+  version-less compat tarball still carries a baked `modules/redis`, injected at
+  tar time: the `/core/` shelf is shared by every release, and the pre-bundle
+  releases consuming that name probe only `modules/redis`. Published
   to `/var/www/static/core`.
 - **bee** — native Backdrop CLI (`backdrop-contrib/bee`), from its latest git tag,
   packaged version-less as `bee.tar.gz` (`bee.php` at the root). Published to
@@ -81,6 +85,14 @@ Three artefacts, always rebuilt at the latest upstream tag (pin any with the mat
   version-less as `backdrop-drush-extension.tar.gz` and shipped pristine (BOA applies
   its own PHP 5.6 de-hint and `__DIR__` include fix on deploy). Published to
   `/var/www/static/dev/{dev,lts,pro}` — every box pulls its own tree dir.
+- **redis_backdrop** — the Backdrop redis contrib module (`backdrop-contrib/redis`),
+  packaged versioned as `redis_backdrop-<tag>.tar.gz` wrapping a `redis_backdrop/`
+  directory (the tarball's top-level name is the deployed directory name under the
+  shared contrib store). Published to the per-tree contrib shelf
+  `/var/www/static/dev/{dev,lts,pro}/contrib`. Unlike the other family members it
+  is consumed by a pinned version on the BOA side — after publishing a newer tag,
+  bump the pin in `OCTOPUS.sh.txt` and `BOA.sh.txt` together (a newer publish is
+  inert until then; `staticbuild check` surfaces the drift as the `bd-redis` row).
 
 ## Manual procedure (reference)
 
@@ -133,16 +145,18 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.3-11.3.14 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.0.3-11.3.14/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.4-11.3.16 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.0.4-11.3.16/
            # composer config --no-plugins allow-plugins true
-           # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # build unpatched (stale core patch)
+           # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (stale + composer-patches 2.x cannot apply to dist installs)
            # composer update --no-install --no-scripts
            # composer install --no-dev
+           # curl -fsS -o /tmp/err.patch https://www.drupal.org/files/issues/2023-06-29/entity_reference_revisions-2799479-fix-only.patch
+           # (cd web/modules/contrib/entity_reference_revisions && patch -p1 < /tmp/err.patch)  # LOAD-BEARING: shipped views need it or every page 500s
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.4-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.3-11.3.14/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.4-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.4-11.3.16/web/sites/
 ```
 
 ```sh
@@ -187,7 +201,7 @@ Vanilla cores, latest patch of each supported minor (full install, add drush, au
 vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # composer create-project drupal/recommended-project:<minor>.* drupal-<version> --no-dev --no-interaction
            # cd drupal-<version> && composer require drush/drush && composer audit
-           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.13 11.1.10 11.2.14 11.3.14 11.4.4
+           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.14 11.1.10 11.2.14 11.3.16 11.4.4
 ```
 
 ### Clean up artefacts before packaging
@@ -241,9 +255,15 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   the distros pull composer/installers, cweagans/composer-patches, installers-extender,
   etc., and current Composer blocks any unlisted plugin.
 - **openculturas** — its install profile has a wrong directory tree by default and ships
-  no `sites/example.sites.php` (copy one in). Its core patch no longer applies on current
-  core and composer-patches 2.x has no per-patch skip, so build it unpatched by ignoring
-  its distribution's patches (`extra.composer-patches.ignore-dependency-patches`).
+  no `sites/example.sites.php` (copy one in). Its dependency patches are dropped
+  (`extra.composer-patches.ignore-dependency-patches`): several are stale against the
+  core the distribution itself requires, and composer-patches 2.x cannot apply patches
+  to dist-installed packages at all (its GitPatcher skips any package dir without
+  `.git`, its FreeformPatcher needs per-patch config). One patch is load-bearing and is
+  applied with GNU `patch` after the build instead, fail-closed: the shipped views
+  reference `entity_reference_revisions` relationship handlers that only exist with the
+  ERR issue-2799479 patch — without it every front page request throws
+  `ViewsData->get()` InvalidArgumentException and the site serves 500s.
 - **commerce** — commerce_kickstart enables Composer security-advisory blocking, which
   refuses advisory-affected core/deps; disable it (`policy.advisories.block false`) for the
   test build.

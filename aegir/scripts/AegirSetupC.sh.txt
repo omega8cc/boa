@@ -894,6 +894,9 @@ _create_drupal_core_basic() {
     "DE3")
       _create_drupal_basic_version "11_3"
       ;;
+    "DE4")
+      _create_drupal_basic_version "11_4"
+      ;;
     "BDR")
       _create_backdrop_basic_version
       ;;
@@ -949,7 +952,7 @@ declare -A _distros_versions=(
   ["EZC"]="2.2.15"
   ["FOS"]="4.0.4"
   ["LGV"]="4.0.2"
-  ["OCS"]="3.0.3"
+  ["OCS"]="3.0.4"
   ["OFD"]="12.2.4"
   ["OLS"]="2.0.0"
   ["OPG"]="3.1.0"
@@ -1581,6 +1584,10 @@ _d_core_platform_install() {
     _CORE_DEV="${_DRUPAL11_3_D}"
     _CORE_STG="${_DRUPAL11_3_S}"
     _CORE_PRD="${_DRUPAL11_3_P}"
+  elif [ "${1}" = "DE4" ]; then
+    _CORE_DEV="${_DRUPAL11_4_D}"
+    _CORE_STG="${_DRUPAL11_4_S}"
+    _CORE_PRD="${_DRUPAL11_4_P}"
   elif [ "${1}" = "DX6" ]; then
     _CORE_DEV="${_DRUPAL10_6_D}"
     _CORE_STG="${_DRUPAL10_6_S}"
@@ -1722,7 +1729,12 @@ _d_dist_loop() {
     _d_webd="${_distros_web_dirs[${_dist}]}"
     _d_phpv="${_distros_php_versions[${_dist}]}"
     _d_xurl="${_distros_urls[${_dist}]}"
-    if [[ "${_dist}" =~ DL || "${_dist}" =~ DX || "${_dist}" =~ DE ]]; then
+    if [[ "${_dist}" =~ ^D[LXE][0-9]$ ]]; then
+      # Anchored: only the DL6/DL7/DL9, DX0..DX6, DE1..DE4 core symbols take
+      # the core-triple path. The old unanchored match also caught DXP and
+      # sent it here, where no _CORE_* mapping arm exists -- it then
+      # registered platform aliases pointing at whatever core the previous
+      # loop iteration left in _CORE_DEV/_STG/_PRD.
       _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     elif [[ "${_dist}" =~ BD ]]; then
       # Backdrop core-only platform; gated dark behind _BACKDROP_SUPPORT.

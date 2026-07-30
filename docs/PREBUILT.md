@@ -1,10 +1,11 @@
 # Prebuilt Stack Packages
 
 BOA can install its heavy stack components -- Modern and Legacy OpenSSL, ICU,
-cURL, and every selected PHP version -- from prebuilt per-release `.deb`
-packages published on the BOA mirrors, instead of compiling each of them from
-sources on every box. A fresh PHP version lands in seconds instead of minutes;
-a version pin bump upgrades the whole fleet without recompiling anything.
+cURL, Valkey, Nginx, Unbound, and every selected PHP version -- from prebuilt
+per-release `.deb` packages published on the BOA mirrors, instead of compiling
+each of them from sources on every box. A fresh PHP version lands in seconds
+instead of minutes; a version pin bump upgrades the whole fleet without
+recompiling anything.
 PHP extensions are still built on the fly on every box (they are cheap and
 bound to the exact PHP build), and every package install is verified against
 a `sha256` sidecar before it is unpacked.
@@ -43,7 +44,10 @@ means that component keeps compiling from sources.
 Boxes with a custom build shape (a non-empty `_PHP_EXTRA_CONF`, or a pinned
 `_ICU_FORCE_VRN`) are refused the PHP packages automatically, because the
 published packages are built with shipped defaults only -- such boxes keep
-the source path without any extra configuration.
+the source path without any extra configuration. The same shipped-defaults
+rule gates the other components: a custom Nginx module set keeps the source
+path, Valkey packages exist for major 9 only, and the Unbound package is
+refused on a box without the Modern OpenSSL tree its binaries link against.
 
 ## Reading the Log
 

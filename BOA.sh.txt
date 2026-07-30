@@ -1358,6 +1358,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/scan_nginx.sh" ] && rm -f ${_pthLog}/scan_nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/fpm_tune.sh" ] && rm -f ${_pthLog}/fpm_tune.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/sqlprobe.sh" ] && rm -f ${_pthLog}/sqlprobe.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/batch_guard.sh" ] && rm -f ${_pthLog}/batch_guard.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${_pthLog}/system.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${_pthLog}/unbound.sh.ctrl.*.pid
 
@@ -1479,12 +1480,12 @@ _update_agents() {
   _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror
   _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/tools/bin/ffdevuan" f95 --guard xffdevuan
   _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver
-  _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f75 --guard /local/bin/xoct
+  _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f73 --guard /local/bin/xoct
   _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/tools/bin/xcopy" f90 --guard /local/bin/xcopy
-  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f68 --guard /local/bin/xmass
+  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f65 --guard /local/bin/xmass
   _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f96 --guard /local/bin/autobeowulf
   _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f96 --guard /local/bin/autoexcalibur
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f78 --guard /local/bin/boa
+  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f75 --guard /local/bin/boa
   _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f81 --guard /local/bin/barracuda
   _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f93 --guard /local/bin/octopus
   _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f98 --guard /local/bin/dhcpfix
@@ -1507,8 +1508,8 @@ _update_agents() {
   # and fail closed elsewhere - staticbuild also requires an existing build
   # user (o8 unless -u says otherwise) and never guesses one from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f94 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
-    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f99 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f92 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f98 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
@@ -1552,6 +1553,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f78
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f02
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f81
     _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f79
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f82
@@ -1578,7 +1580,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f91
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f90 --guard mysql_cluster_backup.sh
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f79
-    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f86
+    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f85
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f90
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f88
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f98
@@ -1616,11 +1618,11 @@ _update_agents() {
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f50 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f89
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f90
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f88
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f89
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f81
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f90
-    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f94
+    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f93
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -2344,6 +2346,24 @@ _update_agents() {
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${_pthLog}/redis_eight.ctrl.${_xSrl}.log
+    fi
+  fi
+  # Backdrop shared contrib store: updated (never created) here -- the extra
+  # o_contrib_backdrop gate means only boxes where Octopus has established the
+  # Backdrop bundle refresh it, so opted-out boxes never fetch the tarball.
+  _Dir="/data/all/000/modules"
+  _REDIS_B_VERSION=1.x-3.20.1
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ -d "${_Dir}/o_contrib_backdrop" ]; then
+    if [ ! -e "${_Dir}/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info" ]; then
+      mkdir -p ${_Dir}
+      cd ${_Dir}
+      rm -rf ${_Dir}/redis_backdrop
+      _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+      echo update > ${_Dir}/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
+      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_pthLog}/redis_backdrop.ctrl.${_xSrl}.log
     fi
   fi
 }
@@ -4071,7 +4091,7 @@ _update_boa_tools() {
     # MUST match or every clear.sh cycle wipes the other's stamp and
     # refetches barracuda forever.
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f81 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f78 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f75 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard /local/bin/dcysetup
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f96 --guard /local/bin/duobackboa
@@ -4101,8 +4121,8 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f90 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f68 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f75 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f65 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f73 --guard /local/bin/xoct
     # --- unique to _update_boa_tools ---
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f97 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f97 --guard /local/bin/autodaedalus
