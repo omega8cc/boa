@@ -1043,6 +1043,36 @@ _USE_SQLPROBE=YES
 _USE_BATCH_GUARD=YES
 
 ###
+### Converted control-file toggles. Each replaces a former /etc/boa
+### presence-marker file; the marker is still honoured for one release
+### while the fleet converges, but the variable is the supported
+### switch. All four default to off.
+###
+### Keeps the New Relic server monitor (nrsysmond) running; when off,
+### the guard actively stops it. Off by default because sysmond
+### exposes system-level details in the New Relic control panel.
+### Replaces /etc/boa/.enable.newrelic.sysmond.cnf
+_ENABLE_NEWRELIC_SYSMOND=NO
+
+###
+### Enables the self-service run-php-fpm-reload.pid sentinel on this
+### host regardless of the per-account plan gate.
+### Replaces /etc/boa/.allow.php.fpm.reload.cnf
+_ALLOW_PHP_FPM_RELOAD=NO
+
+###
+### Runs codebasecheck once per platform in the nightly sweep.
+### Replaces /etc/boa/.allow-codebasecheck.cnf
+_ALLOW_CODEBASECHECK=NO
+
+###
+### Adds an immediate csf temp ban on ports 80/443 for offenders the
+### web IDS decides to ban, ahead of the guest-fire pipeline; needs
+### csf installed to have any effect.
+### Replaces /etc/boa/.instant.csf.block.cnf
+_INSTANT_CSF_BLOCK=NO
+
+###
 ### Set max 1 min load per CPU core before killing
 ### all running PHP, Drush, Wget and Curl processes
 ### until the load stabilizes.
