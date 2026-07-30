@@ -470,10 +470,16 @@ _SCAN=$(tail -n "${_TAIL_LINES}" "${_ACCESS_LOG}" 2>/dev/null | awk -F'"' \
     t = h3[2]; sub(/^\[/, "", t)
     if (substr(t, 1, 14) !~ "^(" hre ")") next
     total++
-    if ($4 !~ /^POST \/bgp-start\/background_batch%3[Aa][0-9]+\//) next
+    # The handle separator reaches the wire in three shapes: raw ':', the
+    # single-encoded '%3A', and the DOUBLE-encoded '%253A' that the current
+    # contrib emits when its own rawurlencode()d handle is passed through
+    # url()/drupal_encode_path() (observed live on a D7.105 + 7.x-1.17 site).
+    # Matching only one shape leaves the guard armed but unable to attribute
+    # any bid, so every shape is accepted here and stripped identically below.
+    if ($4 !~ /^POST \/bgp-start\/background_batch(:|%3[Aa]|%253[Aa])[0-9]+\//) next
     split($4, rq, " ")
     bid = rq[2]
-    sub(/^\/bgp-start\/background_batch%3[Aa]/, "", bid)
+    sub(/^\/bgp-start\/background_batch(:|%3[Aa]|%253[Aa])/, "", bid)
     sub(/\/.*$/, "", bid)
     if (bid !~ /^[0-9]+$/) next
     if (host !~ /^[a-zA-Z0-9.-]+$/) next

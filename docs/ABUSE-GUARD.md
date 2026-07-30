@@ -967,6 +967,66 @@ concurrency is well under 20 while a saturating flood needs hundreds, so 24 clea
 separates the two while bounding the expensive class to a small slice of the pool. The
 Tier-B detector (Part 1) watches the `444`s this guardrail sheds as its earliest signal.
 
+### Background-batch self-request cap (`bgp_flood`)
+
+The D7 `background_process`+`background_batch` pair drives every batch as a chain of HTTP
+POSTs the site sends **to itself** at `/bgp-start/<handle>/<token>`. Under a saturated pool
+each POST times out client-side (499) while still holding a worker for the full request wall,
+and stale processes are re-dispatched, so each pass re-sends everything and the loop feeds
+itself. The source is the box's own address, so csf cannot ban it — one observed storm ran
+~100 stale batches at ~104 POSTs each and drove a 48-core box to load 87 with the DB tier
+healthy throughout.
+
+```nginx
+# /etc/nginx/conf.d/limit-req-zones-boa.conf — BOA-written, http scope
+limit_req_zone $host zone=bgp_flood:1m rate=5r/s;
+
+# Inc/vhost_include.tpl.php — rendered ONLY when that file declares the zone
+location ^~ /bgp-start/ {
+  location ~* ^/bgp-start/[^/]+/[^/]+$ {
+    if ( $is_bot ) { return 444; }
+    limit_req zone=bgp_flood burst=50 nodelay;
+    limit_req_status 444;
+    set $nocache_details "Skip";
+    try_files $uri @drupal;
+  }
+  return 444;
+}
+location ~* ^/\w\w/bgp-start/[^/]+/[^/]+$ { ...same body... }
+```
+
+- **The zone is NOT in the master render.** `/var/aegir/config/server_master/nginx.conf` is
+  mode 600 under a 700 directory, so a satellite instance's render user cannot read it and
+  cannot verify the declaration. Declaring the zone in a world-readable conf.d file instead
+  lets the vhost include gate its consumer on the file's presence, which makes the two halves
+  order-independent: an instance that verifies before its master upgraded renders nothing and
+  keeps today's behaviour, instead of emitting a reference to an undeclared zone. That
+  reference would be a whole-box `nginx -t` failure, and the upgrade path calls
+  `service nginx restart` (stop/start, no configtest) — the box would not come back.
+  **Never delete the conf.d file** while any rendered include references the zone.
+- **Sizing (5 r/s, burst 50).** A running batch re-launches roughly every 10 s
+  (`background_batch_process_lifespan`), sooner when its memory-projection guards end a pass
+  early — up to ~1 r/s in the heaviest case; an open progress page re-dispatches at most 1/s;
+  a cron fan-out is absorbed by the burst. A storm demands an order of magnitude more.
+  Measured on a test box: 386 r/s attempted, 5.6 r/s admitted, the rest shed at the edge for
+  no PHP cost.
+- **A shed launch is final, by design and by trade-off.** `dispatch()` is fire-and-forget: it
+  writes the request and never reads the response, so the module cannot distinguish 444 from
+  200 and never retries at the HTTP layer. That is what collapses a storm — each rejected
+  re-launch permanently ends that chain. The accepted cost: a rejection landing on a
+  legitimate batch with no progress page open stops that batch silently. The rate is set so
+  this cannot occur at modelled legitimate load (validated: a tab-less 120-operation batch
+  completed across 6 hops under sustained competing traffic).
+- **Scope.** Only the exact two-segment shape passes; anything else under the prefix is 444'd
+  before bootstrap (cheaper than the previous 404). The `\w\w` sibling covers the language
+  prefix D7's `url()` prepends; longer prefixes (`pt-br`) fall through, the same limitation
+  the `/xx/search` guards carry. `update.php`, drush and programmatic batches never reach
+  `/bgp-start/` (the conversion is scoped to progressive batches whose URL is `batch`).
+  Access logging stays ON here deliberately — `batch_guard.sh` reads these lines.
+- **Relation to the healer.** This is prevention; `batch_guard.sh` (MONITOR.md) is the cure
+  for boxes not yet carrying the cap. On a box that has it the guard normally stays idle: the
+  499 wall it arms on no longer forms.
+
 ### Edge-policy guards (defined here, documented elsewhere)
 
 Three further request-path defences are defined in the same template pair but belong to BOA's

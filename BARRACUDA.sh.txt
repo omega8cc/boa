@@ -541,6 +541,11 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _if_install_php_newrelic
   _newrelic_check_fix
 fi
+### BOA-managed http-scope rate-limit zones: written unconditionally (also
+### on system-only passes) because provision-rendered vhost includes gate
+### their consumers on this file's presence — it must be able to arrive
+### ahead of any instance verify that could render a consumer.
+_nginx_limit_req_zones_update
 _smtp_check
 _xdrago_install_upgrade
 _if_drupal_patches_update
