@@ -808,6 +808,51 @@ _nginx_mime_check_fix() {
   fi
 }
 
+_nginx_limit_req_zones_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _nginx_limit_req_zones_update"
+  fi
+  local _zones_src="${_locCnf}/nginx/nginx_limit_req_zones.conf"
+  local _zones_dst="/etc/nginx/conf.d/limit-req-zones-boa.conf"
+  [ -e "${_zones_src}" ] || return 0
+  [ -d "/etc/nginx/conf.d" ] || return 0
+  if [ -e "${_zones_dst}" ] && cmp -s "${_zones_src}" "${_zones_dst}"; then
+    return 0
+  fi
+  ### Provision vhost includes render their limit_req consumers only when
+  ### this file is present with the expected zone, so on-disk presence is
+  ### the contract; no reload is needed here — the next configtest-gated
+  ### reload activates the zones together with any consumer that needs them.
+  local _zones_bak=""
+  if [ -e "${_zones_dst}" ]; then
+    _zones_bak="${_zones_dst}.pre-${_NOW}"
+    cp -af "${_zones_dst}" "${_zones_bak}"
+  fi
+  cp -af "${_zones_src}" "${_zones_dst}.tmp"
+  chmod 644 "${_zones_dst}.tmp"
+  chown root:root "${_zones_dst}.tmp"
+  mv -f "${_zones_dst}.tmp" "${_zones_dst}"
+  ### Fail closed on a box whose nginx rejects the zones: rendered includes
+  ### must never be able to trust a file the running nginx cannot load.
+  ### Skip the test where nginx is not installed yet (fresh INIT ordering);
+  ### the shipped content is static and known-good on every nginx BOA builds.
+  if command -v nginx > /dev/null 2>&1; then
+    if ! nginx -t > /dev/null 2>&1; then
+      if [ -n "${_zones_bak}" ] && [ -e "${_zones_bak}" ]; then
+        mv -f "${_zones_bak}" "${_zones_dst}"
+      else
+        rm -f "${_zones_dst}"
+      fi
+      _msg "ALERT: nginx -t rejected ${_zones_dst}; previous state restored"
+      return 0
+    fi
+  fi
+  if [ -n "${_zones_bak}" ]; then
+    rm -f "${_zones_bak}"
+  fi
+  return 0
+}
+
 _nginx_wildcard_ssl_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_wildcard_ssl_install"
