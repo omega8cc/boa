@@ -2497,6 +2497,85 @@ _if_php_idle_on_off() {
 }
 
 #
+# One-shot converter for batch-1 control-file markers: an /etc/boa
+# marker present sets the matching /root/.barracuda.cnf variable to
+# YES. WRITE-ONLY by design: markers are never deleted here, so the
+# file arms still honoured at every read site keep old and new readers
+# in agreement on every path, including runs that abort before any
+# tool delivery. While a marker exists the flip re-asserts on every
+# pass (the marker wins, as it always has); the provenance stamp makes
+# the record-keeping one-shot so neither the cnf nor the log gains
+# duplicates. A /root-only twin is never consumed: after the C-003
+# copy it is either a deliberate opt-out or an inert leftover, and
+# both mean off today.
+_convert_etcboa_markers_to_cnf() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _convert_etcboa_markers_to_cnf"
+  fi
+  local _pair _mrk _var _mrkPth _cntA _cntB _mrkMtm _mnfDir _mnf
+  _mnfDir="${_vBs:-/var/backups}/dragon/config/markers"
+  _mnf="${_mnfDir}/converted-markers.txt"
+  for _pair in \
+    ".enable.newrelic.sysmond.cnf:_ENABLE_NEWRELIC_SYSMOND" \
+    ".allow.php.fpm.reload.cnf:_ALLOW_PHP_FPM_RELOAD" \
+    ".allow-codebasecheck.cnf:_ALLOW_CODEBASECHECK" \
+    ".instant.csf.block.cnf:_INSTANT_CSF_BLOCK" ; do
+    _mrk="${_pair%%:*}"
+    _var="${_pair##*:}"
+    _mrkPth="/etc/boa/${_mrk}"
+    if [ -e "${_mrkPth}" ]; then
+      # Newline-terminate before any append; an unterminated last line
+      # would swallow the previous key.
+      [ -n "$(tail -c1 "${_barCnf}" 2>/dev/null)" ] && echo >> "${_barCnf}"
+      if grep -q "^${_var}=" "${_barCnf}" 2>/dev/null; then
+        sed -i "s/^${_var}=.*/${_var}=YES/" "${_barCnf}"
+        wait
+      else
+        echo "${_var}=YES" >> "${_barCnf}"
+      fi
+      # Verify with source semantics, not grep -- a shadowing later
+      # assignment (export/indented) wins on source; the broad pattern
+      # needs ERE, a BRE grep here matches nothing and refuses all.
+      _cntA=$(grep -c "^${_var}=" "${_barCnf}" 2>/dev/null)
+      _cntB=$(grep -cE "^[[:space:]]*(export[[:space:]]+)?${_var}=" "${_barCnf}" 2>/dev/null)
+      # shellcheck disable=SC1090
+      if [ "${_cntA}" = "${_cntB}" ] \
+        && ( . "${_barCnf}" > /dev/null 2>&1; [ "${!_var}" = "YES" ] ); then
+        case "${_var}" in
+          _ENABLE_NEWRELIC_SYSMOND) _ENABLE_NEWRELIC_SYSMOND=YES ;;
+          _ALLOW_PHP_FPM_RELOAD)    _ALLOW_PHP_FPM_RELOAD=YES ;;
+          _ALLOW_CODEBASECHECK)     _ALLOW_CODEBASECHECK=YES ;;
+          _INSTANT_CSF_BLOCK)       _INSTANT_CSF_BLOCK=YES ;;
+        esac
+        if ! grep -q "^### ${_var} converted" "${_barCnf}" 2>/dev/null; then
+          echo "### ${_var} converted from ${_mrkPth}" >> "${_barCnf}"
+          # The marker mtime is the only record of when the operator
+          # opted in; it vanishes with the file once markers retire.
+          _mrkMtm=$(stat -c %y "${_mrkPth}" 2>/dev/null)
+          mkdir -p "${_mnfDir}" 2>/dev/null
+          chmod 0700 "${_mnfDir}" 2>/dev/null
+          echo "$(date +%Y-%m-%d_%H-%M-%S) ${_mrkPth} (mtime ${_mrkMtm}) -> ${_var}=YES" >> "${_mnf}"
+          chmod 0600 "${_mnf}" 2>/dev/null
+          _msg "INFO: converted ${_mrkPth} -> ${_var}=YES"
+        fi
+      else
+        _msg "NOTE: ${_var}=YES not verified in ${_barCnf} -- conversion not recorded"
+      fi
+    elif [ -e "/root/${_mrk}" ]; then
+      # One-shot advisory: the /root twin is permanent by C-003 design,
+      # so an unguarded note would repeat on every pass forever.
+      if ! grep -q "${_mrk} root-only" "${_mnf}" 2>/dev/null; then
+        mkdir -p "${_mnfDir}" 2>/dev/null
+        chmod 0700 "${_mnfDir}" 2>/dev/null
+        echo "$(date +%Y-%m-%d_%H-%M-%S) /root/${_mrk} root-only noted" >> "${_mnf}"
+        chmod 0600 "${_mnf}" 2>/dev/null
+        _msg "NOTE: ${_mrk} present in /root only -- not converted; set ${_var}=YES in ${_barCnf} if intended"
+      fi
+    fi
+  done
+}
+
+#
 # Read or create Barracuda cnf file.
 _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2753,6 +2832,12 @@ _barracuda_cnf() {
     echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"       >> ${_barCnf}
 
+    echo "###"                                                      >> ${_barCnf}
+    echo "_ENABLE_NEWRELIC_SYSMOND=${_ENABLE_NEWRELIC_SYSMOND:-NO}" >> ${_barCnf}
+    echo "_ALLOW_PHP_FPM_RELOAD=${_ALLOW_PHP_FPM_RELOAD:-NO}"       >> ${_barCnf}
+    echo "_ALLOW_CODEBASECHECK=${_ALLOW_CODEBASECHECK:-NO}"         >> ${_barCnf}
+    echo "_INSTANT_CSF_BLOCK=${_INSTANT_CSF_BLOCK:-NO}"             >> ${_barCnf}
+
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
@@ -2834,6 +2919,7 @@ _barracuda_cnf() {
       sed -i 's~^_MY_EMAIL=.*~_MY_EMAIL="notify@omega8.cc"~'          ${_barCnf}
       wait
     fi
+    _convert_etcboa_markers_to_cnf
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_barCnf} config file"
@@ -2957,6 +3043,29 @@ _barracuda_cnf() {
       sed -i "s/^_BACKDROP_SUPPORT=NO$/_BACKDROP_SUPPORT=YES/g" ${_barCnf}
       echo "### _BACKDROP_SUPPORT_MIGRATED" >> ${_barCnf}
     fi
+
+    ### Converted control-file toggles: anchored on the full key with
+    ### '=' (like _BACKDROP_SUPPORT above, unlike the legacy stanzas)
+    ### -- an unanchored test would match the provenance comments the
+    ### converter writes and suppress the append forever.
+    [ -n "$(tail -c1 "${_barCnf}" 2>/dev/null)" ] && echo >> "${_barCnf}"
+    _ENABLE_NEWRELIC_SYSMOND_TEST=$(grep "^_ENABLE_NEWRELIC_SYSMOND=" ${_barCnf} 2>&1)
+    if [[ ! "${_ENABLE_NEWRELIC_SYSMOND_TEST}" =~ "_ENABLE_NEWRELIC_SYSMOND=" ]]; then
+      echo "_ENABLE_NEWRELIC_SYSMOND=${_ENABLE_NEWRELIC_SYSMOND:-NO}" >> ${_barCnf}
+    fi
+    _ALLOW_PHP_FPM_RELOAD_TEST=$(grep "^_ALLOW_PHP_FPM_RELOAD=" ${_barCnf} 2>&1)
+    if [[ ! "${_ALLOW_PHP_FPM_RELOAD_TEST}" =~ "_ALLOW_PHP_FPM_RELOAD=" ]]; then
+      echo "_ALLOW_PHP_FPM_RELOAD=${_ALLOW_PHP_FPM_RELOAD:-NO}" >> ${_barCnf}
+    fi
+    _ALLOW_CODEBASECHECK_TEST=$(grep "^_ALLOW_CODEBASECHECK=" ${_barCnf} 2>&1)
+    if [[ ! "${_ALLOW_CODEBASECHECK_TEST}" =~ "_ALLOW_CODEBASECHECK=" ]]; then
+      echo "_ALLOW_CODEBASECHECK=${_ALLOW_CODEBASECHECK:-NO}" >> ${_barCnf}
+    fi
+    _INSTANT_CSF_BLOCK_TEST=$(grep "^_INSTANT_CSF_BLOCK=" ${_barCnf} 2>&1)
+    if [[ ! "${_INSTANT_CSF_BLOCK_TEST}" =~ "_INSTANT_CSF_BLOCK=" ]]; then
+      echo "_INSTANT_CSF_BLOCK=${_INSTANT_CSF_BLOCK:-NO}" >> ${_barCnf}
+    fi
+    _convert_etcboa_markers_to_cnf
 
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
     if [[ ! "${_CUSTOM_CONFIG_CSF_TEST}" =~ "_CUSTOM_CONFIG_CSF" ]]; then
@@ -10301,7 +10410,8 @@ _newrelic_check_fix() {
     sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" \
       ${_NEWRELIC_SYS_CFG} &> /dev/null
     wait
-    if [ -e "/etc/boa/.enable.newrelic.sysmond.cnf" ]; then
+    if [ "${_ENABLE_NEWRELIC_SYSMOND}" = "YES" ] \
+      || [ -e "/etc/boa/.enable.newrelic.sysmond.cnf" ]; then
       _mrun "service newrelic-sysmond restart"
     else
       _mrun "service newrelic-sysmond stop"
