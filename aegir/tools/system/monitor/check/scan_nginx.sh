@@ -459,6 +459,12 @@ _WEB6_STORE="/var/xdrago/monitor/log/web6.tempban"
 # IPv6 client, so a legitimate IPv6 crawler is exempt from scoring AND banning
 # at the same gates that protect an IPv4 crawler via csf.allow.
 _WEB6_ALLOW="/var/xdrago/monitor/log/web6.allow"
+# Instant firewall arm for offenders _block_ip has already decided to ban:
+# when YES (and csf is installed) the offender also gets an immediate
+# `csf -td` temp ban on ports 80/443, ahead of the web.log -> guest-fire
+# pipeline. Converted from /etc/boa/.instant.csf.block.cnf (the flag stays
+# honoured for one release). Set to YES in /root/.barracuda.cnf to enable.
+_INSTANT_CSF_BLOCK=NO
 
 # ==============================
 # Load Configuration File
@@ -613,6 +619,7 @@ _V6_ON=0
 [[ "${_NGINX_V6_BAN_DETECT}" == "YES" ]] && _V6_ON=1
 [[ "${_NGINX_V6_BAN_TTL}" =~ ^[1-9][0-9]*$ ]] || _NGINX_V6_BAN_TTL=900
 echo "CONFIG: _NGINX_V6_BAN_DETECT is ${_NGINX_V6_BAN_DETECT}"
+echo "CONFIG: _INSTANT_CSF_BLOCK is ${_INSTANT_CSF_BLOCK}"
 
 # ==============================
 # Declare Associative Arrays
@@ -988,7 +995,9 @@ _block_ip() {
   _BANNED_IPS["${_IP}"]=1
 
   # Block the IP using csf instantly (temporary block for 15 minutes)
-  if [[ -x "/usr/sbin/csf" ]] && [[ -e "/etc/boa/.instant.csf.block.cnf" ]]; then
+  if [[ -x "/usr/sbin/csf" ]] \
+    && { [[ "${_INSTANT_CSF_BLOCK}" == "YES" ]] \
+      || [[ -e "/etc/boa/.instant.csf.block.cnf" ]]; }; then
     /usr/sbin/csf -td "${_IP}" 900 -p 80
     /usr/sbin/csf -td "${_IP}" 900 -p 443
     [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null

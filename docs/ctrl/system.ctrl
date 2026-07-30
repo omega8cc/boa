@@ -77,9 +77,39 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /etc/boa/.enable.newrelic.sysmond.cnf
 
-  This file, if exists, allows to run newrelic-sysmond service, otherwise
+  Converted to _ENABLE_NEWRELIC_SYSMOND=YES in /root/.barracuda.cnf -- the
+  variable is the supported switch; the file stays honoured for one release
+  while fleets converge. Enables the newrelic-sysmond service, otherwise
   disabled for security reasons, because it exposes too much system level
-  information/details in the New Relic control panel.
+  information/details in the New Relic control panel. Two enforcement arms:
+  the ~5s watchdog (restart when down / stop when disabled) and the
+  barracuda upgrade pass itself, which restarts or stops the service with
+  the same test whenever /etc/newrelic/nrsysmond.cfg exists.
+
+ @=> /etc/boa/.allow.php.fpm.reload.cnf
+
+  Converted to _ALLOW_PHP_FPM_RELOAD=YES in /root/.barracuda.cnf (the file
+  stays honoured for one release). Enables the self-service
+  run-php-fpm-reload.pid sentinel box-wide, regardless of the per-account
+  plan gate (POWER/PHANTOM/CLUSTER/ULTRA/MONSTER). Note the shared reload
+  cooldown: a sentinel dropped inside the cooldown window is discarded, not
+  deferred.
+
+ @=> /etc/boa/.allow-codebasecheck.cnf
+
+  Converted to _ALLOW_CODEBASECHECK=YES in /root/.barracuda.cnf (the file
+  stays honoured for one release). Runs codebasecheck once per platform per
+  night in the owl maintenance sweep; findings go to the per-account night
+  log and, for non-OK codebases, /var/log/boa/core/. System cnf only -- a
+  same-named line in an octopus cnf is unsupported.
+
+ @=> /etc/boa/.instant.csf.block.cnf
+
+  Converted to _INSTANT_CSF_BLOCK=YES in /root/.barracuda.cnf (the file
+  stays honoured for one release). Offenders the web IDS decides to ban
+  also get an immediate csf temp ban on ports 80/443, ahead of the
+  web.log -> guest-fire pipeline. Requires csf installed; without it the
+  toggle has no effect.
 
  @=> /root/.use.local.nameservers.cnf
 
