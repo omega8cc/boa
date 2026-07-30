@@ -1545,12 +1545,12 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f96 --guard duplicity
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f96 --guard duplicity
-    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f49
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f48
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f88
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f73
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f86
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f97
-    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f78
+    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f77
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f02
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f98
@@ -1566,7 +1566,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/proxysql.sh "${_urlHmr}/tools/system/monitor/check/proxysql.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/droplet.sh "${_urlHmr}/tools/system/monitor/check/droplet.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/newrelic_daemon.sh "${_urlHmr}/tools/system/monitor/check/newrelic_daemon.sh" f01
-    _fetch_versioned /var/xdrago/monitor/check/newrelic_sysmond.sh "${_urlHmr}/tools/system/monitor/check/newrelic_sysmond.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/newrelic_sysmond.sh "${_urlHmr}/tools/system/monitor/check/newrelic_sysmond.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/collectd.sh "${_urlHmr}/tools/system/monitor/check/collectd.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/xinetd.sh "${_urlHmr}/tools/system/monitor/check/xinetd.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/lsyncd.sh "${_urlHmr}/tools/system/monitor/check/lsyncd.sh" f01
@@ -1619,7 +1619,7 @@ _update_agents() {
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f50 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f88
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f89
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f88
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f81
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f90
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f93

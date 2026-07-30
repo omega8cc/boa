@@ -485,8 +485,11 @@ When a detector decides to block, `_block_ip` branches on the address family:
   1. appends `IP # [xSCORE] TIMESTAMP` to `/var/xdrago/monitor/log/web.log` and to
      `/var/xdrago/monitor/log/scan_nginx.archive.log` (skipping IPs already in the in-run
      cache);
-  2. if `/etc/boa/.instant.csf.block.cnf` exists, also issues `csf -td 900` on ports 80 and
-     443 immediately, shaving one hop off the pipeline.
+  2. if `_INSTANT_CSF_BLOCK=YES` is set in `/root/.barracuda.cnf` (the former
+     `/etc/boa/.instant.csf.block.cnf` flag stays honoured during the conversion window)
+     AND the `csf` binary is installed, also issues `csf -td 900` on ports 80 and 443
+     immediately, shaving one hop off the pipeline, plus a synproxy re-assert when
+     `/etc/csf/csfpost.d/synproxy.sh` exists. Without csf the toggle has no effect.
 - **IPv6:** CSF is IPv4-only and `web.log`'s loader strips non-`[0-9.]` (which would mangle a
   v6), so the offender is appended to the nginx-native store
   `/var/xdrago/monitor/log/web6.tempban` as `IP|EXPIRY-EPOCH` (plus the same archive line for
