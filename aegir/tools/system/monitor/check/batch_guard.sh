@@ -646,8 +646,7 @@ while read -r _tag _host _bid _hits; do
     if [ -n "${_prev}" ]; then
       _pts=$(_bg_num "${_prev%% *}" 0)
       if [ $(( _now - _pts )) -le 3600 ]; then
-        _NEWSTATE="${_NEWSTATE}${_prev}
-"
+        _NEWSTATE="${_NEWSTATE}${_prev}"$'\n'
         _say "HELD db=${_db} bid=${_bid} reason=probe-failed"
         continue
       fi
@@ -672,15 +671,13 @@ while read -r _tag _host _bid _hits; do
         # no-change interval proves a pause, not a death. Start it over.
         _say "RECORDED db=${_db} bid=${_bid} reason=web-restart"
         _RESTAMPED=$(( _RESTAMPED + 1 ))
-        _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}
-"
+        _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}"$'\n'
       elif [ "${_DB_UP_SINCE}" -ge "${_pts}" ]; then
         # mysqld restarted since this sighting: the blobs were frozen for
         # part of the interval, so it proves nothing. Start it over.
         _say "RECORDED db=${_db} bid=${_bid} reason=db-restart"
         _RESTAMPED=$(( _RESTAMPED + 1 ))
-        _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}
-"
+        _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}"$'\n'
       elif [ "${_age}" -ge 480 ] && [ "${_age}" -le 3600 ] && [ "${_fresh}" -ge 1 ]; then
         # Still looping, nothing moved across two full ticks of
         # uninterrupted service — longer than any sane FPM request wall, so
@@ -688,34 +685,28 @@ while read -r _tag _host _bid _hits; do
         # boundary and its chance to write: dead. The full fingerprint
         # rides along so the heal can be conditional on all three values.
         _say "CONFIRMED db=${_db} bid=${_bid} age=${_age}"
-        _CONFIRMED="${_CONFIRMED}${_host} ${_db} ${_bid} ${_hits} ${_len} ${_md5} ${_qn}
-"
-        _NEWSTATE="${_NEWSTATE}${_pts} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}
-"
+        _CONFIRMED="${_CONFIRMED}${_host} ${_db} ${_bid} ${_hits} ${_len} ${_md5} ${_qn}"$'\n'
+        _NEWSTATE="${_NEWSTATE}${_pts} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}"$'\n'
       else
         # Unchanged but not yet judgeable (too young, too stale, or not in
         # the fresh window): keep the original sighting and wait.
         if [ "${_age}" -le 3600 ]; then
           _say "HELD db=${_db} bid=${_bid} age=${_age} fresh=${_fresh}"
-          _NEWSTATE="${_NEWSTATE}${_pts} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}
-"
+          _NEWSTATE="${_NEWSTATE}${_pts} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}"$'\n'
         else
           _say "RECORDED db=${_db} bid=${_bid} reason=stale-entry"
-          _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}
-"
+          _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}"$'\n'
         fi
       fi
     else
       # It progressed — that is a live batch fighting through the storm.
       # Record the new state; hands off.
       _say "RECORDED db=${_db} bid=${_bid} reason=progressed"
-      _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}
-"
+      _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}"$'\n'
     fi
   else
     _say "RECORDED db=${_db} bid=${_bid} reason=first-sight"
-    _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}
-"
+    _NEWSTATE="${_NEWSTATE}${_now} ${_host} ${_db} ${_bid} ${_len} ${_md5} ${_qn}"$'\n'
   fi
 done <<< "$(printf '%s\n' "${_SCAN}" | grep '^BID ')"
 
