@@ -2655,6 +2655,7 @@ _barracuda_cnf() {
     echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\""             >> ${_barCnf}
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
     echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
+    echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
@@ -3089,6 +3090,11 @@ _barracuda_cnf() {
     _USE_SQLPROBE_TEST=$(grep _USE_SQLPROBE ${_barCnf} 2>&1)
     if [[ ! "${_USE_SQLPROBE_TEST}" =~ "_USE_SQLPROBE" ]]; then
       echo "_USE_SQLPROBE=${_USE_SQLPROBE}" >> ${_barCnf}
+    fi
+
+    _USE_BATCH_GUARD_TEST=$(grep _USE_BATCH_GUARD ${_barCnf} 2>&1)
+    if [[ ! "${_USE_BATCH_GUARD_TEST}" =~ "_USE_BATCH_GUARD" ]]; then
+      echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}" >> ${_barCnf}
     fi
 
     _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
