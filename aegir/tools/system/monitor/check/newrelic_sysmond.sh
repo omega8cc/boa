@@ -4,9 +4,11 @@
 # newrelic_sysmond.sh — New Relic server monitor (nrsysmond) watchdog for BOA
 # Split from: proc_num_ctrl.pl (legacy Perl service monitor)
 #
-# Driven by the opt-in flag /etc/boa/.enable.newrelic.sysmond.cnf:
-#   - flag present + daemon down  -> restart
-#   - flag absent  + daemon up    -> stop
+# Driven by the opt-in _ENABLE_NEWRELIC_SYSMOND variable in
+# /root/.barracuda.cnf (the former /etc/boa/.enable.newrelic.sysmond.cnf
+# flag stays honoured during the conversion window):
+#   - enabled  + daemon down -> restart
+#   - disabled + daemon up   -> stop
 # Equivalent to the legacy lines:
 #   system("service newrelic-sysmond restart")
 #     if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond"
@@ -21,6 +23,11 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+# Default before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the /etc/boa flag stays honoured
+# for one release while fleets converge.
+_ENABLE_NEWRELIC_SYSMOND=NO
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -71,7 +78,8 @@ _run_to_active() {
 _run_to_active && exit 0
 
 if [ -f "/etc/init.d/newrelic-sysmond" ]; then
-  if [ -e "/etc/boa/.enable.newrelic.sysmond.cnf" ]; then
+  if [ "${_ENABLE_NEWRELIC_SYSMOND}" = "YES" ] \
+    || [ -e "/etc/boa/.enable.newrelic.sysmond.cnf" ]; then
     pgrep -f nrsysmond >/dev/null 2>&1 || service newrelic-sysmond restart
   else
     pgrep -f nrsysmond >/dev/null 2>&1 && service newrelic-sysmond stop
