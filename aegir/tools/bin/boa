@@ -674,10 +674,14 @@ _check_root_keys_pwd() {
     _ROOT_PWD_LOCKED="YES"
   fi
 
-  # Check for presence of SSH keys
+  # Check for presence of SSH keys; accept plain, options-prefixed,
+  # sk- (FIDO) and certificate entries -- an anchored-only match used to
+  # miss e.g. 'from="..." ssh-ed25519 ...' lines and left such boxes to
+  # the lockout the normalization below exists to prevent.
   _SSH_KEYS_OK="NO"
   if [ -e "/root/.ssh/authorized_keys" ]; then
-    if grep -qE '^(ssh-rsa|ssh-ed25519|ecdsa-sha2)' /root/.ssh/authorized_keys; then
+    if grep -qE '(^|[[:space:]])(sk-)?(ssh-(rsa|ed25519)|ecdsa-sha2-nistp[0-9]+)(-cert-v01)?(@openssh\.com)?[[:space:]]+AAAA' \
+      /root/.ssh/authorized_keys; then
       _SSH_KEYS_OK="YES"
     fi
   fi
@@ -691,6 +695,17 @@ _check_root_keys_pwd() {
   if [[ "${_SSH_KEYS_OK}" == "YES" ]]; then
     _S_TEST=$(grep '^root:!' /etc/shadow 2>&1)
     if [[ "${_S_TEST}" =~ ^root:\! ]]; then
+      # Preserve the pre-edit shadow once: a 'passwd -l' style field
+      # ('!' + hash) holds a real console credential that must stay
+      # recoverable (usermod -p from the backup restores it).
+      if [ ! -e "/var/backups/shadow.boa-orig" ]; then
+        cp -af /etc/shadow /var/backups/shadow.boa-orig
+      fi
+      _S_FIELD=$(grep '^root:' /etc/shadow 2>/dev/null | cut -d: -f2)
+      if [[ ! "${_S_FIELD}" =~ ^![!*]?$ ]]; then
+        echo "NOTE: root was locked over a stored password hash (passwd -l style)"
+        echo "NOTE: the hash stays recoverable in /var/backups/shadow.boa-orig"
+      fi
       # Verify the normalization actually took; failing silently here would
       # re-create the very lockout this guards against once our sshd starts.
       if usermod -p '*' root && ! grep -q '^root:!' /etc/shadow 2>/dev/null; then
@@ -2592,7 +2607,7 @@ _display_info() {
           | cut -d: -f1 | awk '{ print $2}' 2>&1)
       fi
     fi
-    _DB_V=$(mysql -V 2>&1 \
+    _DBV=$(mysql -V 2>&1 \
       | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
       | head -1 \
       | cut -d"." -f1,2)
@@ -2622,6 +2637,13 @@ _display_info() {
           | cut -d" " -f3 \
           | awk '{ print $1}' 2>&1)
       fi
+    fi
+    if [ -x "/usr/sbin/unbound" ]; then
+      _UNB=$(/usr/sbin/unbound -V 2>&1 \
+        | grep "^Version" \
+        | head -1 \
+        | cut -d" " -f2 \
+        | awk '{ print $1}' 2>&1)
     fi
     _isLshell="$(which lshell)"
     _LSH=$(${_isLshell} --version 2>&1 \
@@ -2743,6 +2765,7 @@ _display_info() {
     [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
     [ ! -z "${_VKS}" ] && echo "  RDS ${_VKS}"
     [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
+    [ ! -z "${_UNB}" ] && echo "  UNB ${_UNB}"
     [ ! -z "${_SHD}" ] && echo "  SHD ${_SHD}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
     [ ! -z "${_LSH}" ] && echo "  LSH ${_LSH}"
@@ -2768,7 +2791,7 @@ _display_info() {
       [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
       [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
       [ ! -z "${_CCV}" ] && echo "  _CCV ${_CCV}"
-      [ ! -z "${_CCR}" ] && echo "  _CCV ${_CCR}"
+      [ ! -z "${_CCR}" ] && echo "  _CCR ${_CCR}"
       [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
       [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
       [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
@@ -2790,7 +2813,6 @@ _display_info() {
       [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
       [ ! -z "${_NRC}" ] && echo "  _NRC ${_NRC}"
       [ ! -z "${_MON}" ] && echo "  _MON ${_MON}"
-      [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
 
       # Get the currently used GRUB config affecting networking
       _GRUB_FILE="/etc/default/grub"

@@ -429,10 +429,25 @@ _xmass_fix_target_php() {
     _alrt "computed empty _PHP_MULTI_INSTALL for ${_t}; refusing"
     return 1
   fi
+  # Belt-and-braces before the value reaches a remote sed: it is built only
+  # from _mig_php_norm output, so it can hold nothing but digits, dots and
+  # spaces -- assert that rather than trust it.
+  case "${_new}" in
+    *[!0-9.\ ]*) _alrt "refusing to write a non-version _PHP_MULTI_INSTALL value"; return 1 ;;
+  esac
   _info "Setting _PHP_MULTI_INSTALL=\"${_new}\" on ${_t}"
+  # Rewrite in place (keeps the line with the comment that documents it);
+  # append only when the key is absent. The temp+size guard means a failed
+  # write can never blank the box's barracuda.cnf.
   ssh root@"${_t}" "_m=\$(stat -c %a /root/.barracuda.cnf 2>/dev/null); \
-    grep -v '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew 2>/dev/null; \
-    echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew \
+    if grep -q '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf; then \
+      sed 's|^_PHP_MULTI_INSTALL=.*|_PHP_MULTI_INSTALL=\\\"${_new}\\\"|' \
+        /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew; \
+    else \
+      cp -af /root/.barracuda.cnf /root/.barracuda.cnf.phpnew \
+      && echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew; \
+    fi; \
+    [ -s /root/.barracuda.cnf.phpnew ] \
     && chmod \${_m:-600} /root/.barracuda.cnf.phpnew \
     && mv -f /root/.barracuda.cnf.phpnew /root/.barracuda.cnf" \
     || { _alrt "could not update _PHP_MULTI_INSTALL on ${_t}"; return 1; }
@@ -752,7 +767,7 @@ _xmass_check_le_health() {
 ### silently returning wrong search results. Check-gate only: registration
 ### is core-shape-specific and stays with the operator.
 _xmass_solr_core_parity() {
-  local _t="$1" _src="" _d _tgtcores _c _missing=""
+  local _t="$1" _src="" _d _tgtcores _c _missing="" _failed=""
   for _d in /opt/solr4/*/ /var/solr7/data/*/ /var/solr9/data/*/; do
     [ -d "${_d}" ] || continue
     if [ -e "${_d}core.properties" ] || [ -e "${_d}conf/solrconfig.xml" ]; then
@@ -761,17 +776,37 @@ _xmass_solr_core_parity() {
   done
   _src="${_src## }"
   [ -z "${_src}" ] && return 0
-  _tgtcores=$(ssh root@"${_t}" "for p in 8983 8099 8091; do curl -s -A iCab \"http://127.0.0.1:\${p}/solr/admin/cores?action=STATUS&wt=json\" 2>/dev/null; done" 2>/dev/null)
+  # BOA installs solr9 on 9099 and solr7 on 9077 (solr.sh.inc); jetty9/solr4
+  # answers on 8099. 8983 stays as the upstream default for hand-installed
+  # Solr. Probing the wrong set made every source core report missing and
+  # left the parity-OK branch unreachable on a real Solr box.
+  # Whitespace-stripped so the match survives Solr's pretty-printed output.
+  _tgtcores=$(ssh root@"${_t}" "for p in 9099 9077 8099 8983; do curl -s -A iCab \"http://127.0.0.1:\${p}/solr/admin/cores?action=STATUS&wt=json\" 2>/dev/null; done" 2>/dev/null \
+    | tr -d ' \n\t')
   for _c in ${_src}; do
+    # Key on the core's own name field inside the STATUS entry, never the bare
+    # name: Solr echoes the name of a core that FAILED to load in
+    # initFailures too, and a bare-name match scored those as registered --
+    # reporting parity OK for a core serving nothing.
     case "${_tgtcores}" in
-      *"\"${_c}\""*) : ;;
-      *) _missing="${_missing} ${_c}" ;;
+      *"\"name\":\"${_c}\""*) : ;;
+      *)
+        _missing="${_missing} ${_c}"
+        case "${_tgtcores}" in
+          *"\"initFailures\":{"*"\"${_c}\":"*) _failed="${_failed} ${_c}" ;;
+        esac
+        ;;
     esac
   done
   if [ -n "${_missing}" ]; then
     _alrt "Solr cores present on the source but NOT registered on ${_t}:${_missing}"
     _alrt "their data arrived with the sync; register them on the target or the"
     _alrt "affected search indexes silently return wrong results"
+    if [ -n "${_failed}" ]; then
+      _alrt "of those, Solr FAILED to load (see its initFailures):${_failed}"
+      _alrt "-- the core directory arrived but its configuration does not resolve"
+      _alrt "on this box; fix the core's conf/ or configSet, then reload the core"
+    fi
   else
     _info "Solr core parity source vs target: OK"
   fi
@@ -1433,25 +1468,35 @@ REMOTE
 }
 
 _xmass_solr_check_target() {
-  # Informational HTTP reachability check against common BOA Solr ports.
+  # Informational HTTP reachability check against the ports BOA actually
+  # installs on: solr9 9099, solr7 9077, jetty9/solr4 8099 (plus 8983 for a
+  # hand-installed upstream Solr). Probed over ssh on 127.0.0.1 — Solr binds
+  # localhost and CSF filters the public interface, so the old public-IP
+  # probe of 8983/8984/8080 could never see a healthy BOA Solr.
   # A non-200/302 response is a warning, not a fatal error — Solr may still
   # be replaying its write-ahead log or warming up caches.
   _info "Checking Solr HTTP response on target ${_tgt} ..."
-  local _port _http _ok=NO
-  for _port in 8983 8984 8080; do
-    _http=$(curl -s -o /dev/null -w "%{http_code}" \
-      --max-time 15 \
-      "http://${_tgt}:${_port}/solr/" 2>/dev/null)
-    if [ "${_http}" = "200" ] || [ "${_http}" = "302" ]; then
-      _info "  Solr responding on port ${_port}: HTTP ${_http} OK"
-      _ok=YES
-    else
-      _info "  Solr port ${_port}: HTTP ${_http} (not yet ready or not active)"
-    fi
-  done
+  local _line _rest _ok=NO
+  while read -r _line; do
+    [ -z "${_line}" ] && continue
+    case "${_line}" in
+      OK:*)
+        _rest="${_line#OK:}"
+        _info "  Solr responding on port ${_rest%%:*}: HTTP ${_rest#*:} OK"
+        _ok=YES
+        ;;
+      NO:*)
+        _rest="${_line#NO:}"
+        _info "  Solr port ${_rest%%:*}: HTTP ${_rest#*:} (not yet ready or not active)"
+        ;;
+    esac
+  done <<< "$(ssh root@"${_tgt}" 'for _p in 9099 9077 8099 8983; do
+    _h=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 -A iCab "http://127.0.0.1:${_p}/solr/" 2>/dev/null)
+    if [ "${_h}" = "200" ] || [ "${_h}" = "302" ]; then echo "OK:${_p}:${_h}"; else echo "NO:${_p}:${_h}"; fi
+  done' 2>/dev/null)"
   if [ "${_ok}" = "NO" ]; then
     _alrt "No Solr port responded on target — check manually after cutover:" \
-          " curl http://${_tgt}:8983/solr/"
+          " ssh root@${_tgt} 'curl http://127.0.0.1:9099/solr/'"
   fi
 }
 
@@ -2408,7 +2453,14 @@ _SPN=${_SP//${_S}/${_NEW}}
 if [ -f "${_SPN}/drushrc.php" ]; then
   _SP="${_SPN}"
 fi
-if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
+_OLD_PLAT=""
+_NEW_PLAT=""
+# A hollow panel platform passes the site-file tests alone: §8 regenerates
+# settings.php/drushrc.php into the DB-declared path even when the platform
+# CODE was never built there, so a re-entered run would skip the divergence
+# it still has. Probe the platform code, not just the site dir.
+if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ] \
+  || [ ! -e "$(dirname "$(dirname "${_SP}")")/index.php" ]; then
   # The fqdn substitution cannot heal a DISTRO-NUMBER divergence: the alias
   # that survived the rsync -u mtime race names the SOURCE's panel platform
   # (e.g. distro/003 after one more satellite upgrade there), while the
@@ -2421,6 +2473,9 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   for _CAND in "${_TREE}"/*/sites/*"${_NEW}"*; do
     [ -f "${_CAND}/drushrc.php" ] || continue
     [ -f "${_CAND}/settings.php" ] || continue
+    # A site dir on a code-less platform is the hollow shape this branch
+    # exists to escape — it must never count as an adoption candidate.
+    [ -e "$(dirname "$(dirname "${_CAND}")")/index.php" ] || continue
     _FOUND="${_CAND}"; _N=$((_N+1))
   done
   if [ "${_N}" = "1" ]; then
@@ -2454,6 +2509,11 @@ if [ -z "${_DEAD_DB}" ]; then
 fi
 if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
     -e "SHOW DATABASES LIKE '${_DEAD_DB}'" 2>/dev/null)" ]; then
+  if [ -n "${_OLD_PLAT}" ] && [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ]; then
+    _NUP=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DEAD_DB}" \
+      -e "UPDATE hosting_platform SET publish_path='${_NEW_PLAT}' WHERE publish_path='${_OLD_PLAT}'; SELECT ROW_COUNT();" 2>/dev/null | tail -1)
+    echo "PANEL-NOTE: hostmaster platform row repointed ${_OLD_PLAT} -> ${_NEW_PLAT} in ${_DEAD_DB} (rows=${_NUP})"
+  fi
   echo "PANEL-OK: ${_R} panel DB ${_DEAD_DB} is live — nothing to rewire"
   exit 0
 fi
@@ -2476,6 +2536,16 @@ done
 if [ -z "${_LIVE}" ]; then
   echo "PANEL-ERROR: dead panel DB ${_DEAD_DB} and no live hostmaster DB found for ${_R}"
   exit 1
+fi
+# Persist the adoption into the live DB. §8's hostmaster verify regenerates
+# the alias FROM the DB, so an alias-only correction is undone on the next
+# verify and the panel 404s from a hollow platform path. Path-keyed exact
+# match; the stale row already naming the adopted path (the source's own
+# platform history) carries no site and stays inert.
+if [ -n "${_OLD_PLAT}" ] && [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ]; then
+  _NUP=$(mysql --defaults-file=/root/.my.cnf -N -B "${_LIVE}" \
+    -e "UPDATE hosting_platform SET publish_path='${_NEW_PLAT}' WHERE publish_path='${_OLD_PLAT}'; SELECT ROW_COUNT();" 2>/dev/null | tail -1)
+  echo "PANEL-NOTE: hostmaster platform row repointed ${_OLD_PLAT} -> ${_NEW_PLAT} in ${_LIVE} (rows=${_NUP})"
 fi
 # Aegir derives the site DB user from the DB name; enumerate its host
 # variants from mysql.user instead of assuming (@% vs @127.0.0.1 vs
@@ -2654,7 +2724,16 @@ _xmass_cmd_prep_target() {
   _xmass_enumerate_accounts
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
-    || _die "Cannot SSH to target ${_tgt} — run xmass pre-mig on both hosts first"
+    || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
+            " is fixable from here, because fixing the target needs the ssh this" \
+            " check just failed:" \
+            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' on BOTH hosts;" \
+            " (2) the TARGET's firewall is blocking this box — on the target run" \
+            " 'csf -g ${_XMASS_SRC_IP:-<source-ip>}' to see it, 'csf -tr" \
+            " ${_XMASS_SRC_IP:-<source-ip>}' to clear a temp deny, and 'csf -a" \
+            " ${_XMASS_SRC_IP:-<source-ip>}' so it cannot come back;" \
+            " (3) first contact needs the target's host key here —" \
+            " 'ssh-keyscan -H ${_tgt} >> /root/.ssh/known_hosts'."
 
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
   # guard temp-denies, and the target dials BACK to source:3306 for
@@ -2862,7 +2941,16 @@ _xmass_cmd_init() {
   # Verify SSH connectivity to target
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
-    || _die "Cannot SSH to target ${_tgt} — run xmass pre-mig on both hosts first"
+    || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
+            " is fixable from here, because fixing the target needs the ssh this" \
+            " check just failed:" \
+            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' on BOTH hosts;" \
+            " (2) the TARGET's firewall is blocking this box — on the target run" \
+            " 'csf -g ${_XMASS_SRC_IP:-<source-ip>}' to see it, 'csf -tr" \
+            " ${_XMASS_SRC_IP:-<source-ip>}' to clear a temp deny, and 'csf -a" \
+            " ${_XMASS_SRC_IP:-<source-ip>}' so it cannot come back;" \
+            " (3) first contact needs the target's host key here —" \
+            " 'ssh-keyscan -H ${_tgt} >> /root/.ssh/known_hosts'."
 
   # The datadir swap below is destructive; everything the target must already
   # have is gated HERE, where a refusal costs nothing: real account installs

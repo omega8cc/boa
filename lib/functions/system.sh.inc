@@ -2655,6 +2655,7 @@ _barracuda_cnf() {
     echo "_VALKEY_MAXMEM_FORCE=\"${_VALKEY_MAXMEM_FORCE}\""             >> ${_barCnf}
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
     echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
+    echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
@@ -3089,6 +3090,11 @@ _barracuda_cnf() {
     _USE_SQLPROBE_TEST=$(grep _USE_SQLPROBE ${_barCnf} 2>&1)
     if [[ ! "${_USE_SQLPROBE_TEST}" =~ "_USE_SQLPROBE" ]]; then
       echo "_USE_SQLPROBE=${_USE_SQLPROBE}" >> ${_barCnf}
+    fi
+
+    _USE_BATCH_GUARD_TEST=$(grep _USE_BATCH_GUARD ${_barCnf} 2>&1)
+    if [[ ! "${_USE_BATCH_GUARD_TEST}" =~ "_USE_BATCH_GUARD" ]]; then
+      echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}" >> ${_barCnf}
     fi
 
     _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
@@ -8846,7 +8852,7 @@ _other_sys_java_install() {
       fi
     fi
   elif [ "${_javaVer}" = "17" ]; then
-    _JAVA_NEW=17.0.19
+    _JAVA_NEW=17.0.20
     _JAVA_ITD=$(java17 --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
@@ -10605,17 +10611,35 @@ _fix_root_locked_shadow() {
   # without PAM refuses '!'-locked accounts even for pubkey auth, so root
   # would be locked out completely once our sshd takes over. Normalize the
   # field to '*': password login stays impossible, SSH keys keep working.
-  if grep -q '^root:!' /etc/shadow 2>/dev/null; then
-    if grep -qE '^(ssh-rsa|ssh-ed25519|ecdsa-sha2)' \
-      /root/.ssh/authorized_keys 2>/dev/null; then
-      # Verify it took; a silent failure here would re-create the lockout
-      # once the UsePAM-no sshd restarts right after this.
-      if usermod -p '*' root && ! grep -q '^root:!' /etc/shadow 2>/dev/null; then
-        _msg "INFO: Normalized locked root password entry for keys-only SSH access"
-      else
-        _msg "OOPS: could not normalize the locked root password entry"
-      fi
-    fi
+  # The key test accepts plain, options-prefixed, sk- (FIDO) and certificate
+  # entries; the pre-edit /etc/shadow is preserved once so a 'passwd -l'
+  # style field ('!' + hash, a real console credential) is never silently
+  # destroyed -- restore it from the backup with usermod -p if ever needed.
+  _ROOT_PW_FIELD=$(grep '^root:' /etc/shadow 2>/dev/null | cut -d: -f2)
+  if [[ ! "${_ROOT_PW_FIELD}" =~ ^! ]]; then
+    return 0
+  fi
+  if ! grep -qE '(^|[[:space:]])(sk-)?(ssh-(rsa|ed25519)|ecdsa-sha2-nistp[0-9]+)(-cert-v01)?(@openssh\.com)?[[:space:]]+AAAA' \
+    /root/.ssh/authorized_keys 2>/dev/null; then
+    # No usable key to fall back on -- normalizing would restore nothing,
+    # but the operator must know the UsePAM-no sshd will refuse root.
+    _msg "OOPS: root password is locked ('!') and no usable SSH key is present"
+    _msg "OOPS: sshd (UsePAM no) will refuse root login entirely until fixed"
+    return 0
+  fi
+  if [ ! -e "/var/backups/shadow.boa-orig" ]; then
+    cp -af /etc/shadow /var/backups/shadow.boa-orig
+  fi
+  if [[ ! "${_ROOT_PW_FIELD}" =~ ^![!*]?$ ]]; then
+    _msg "NOTE: root was locked over a stored password hash (passwd -l style)"
+    _msg "NOTE: the hash stays recoverable in /var/backups/shadow.boa-orig"
+  fi
+  # Verify it took; a silent failure here would re-create the lockout
+  # once the UsePAM-no sshd restarts right after this.
+  if usermod -p '*' root && ! grep -q '^root:!' /etc/shadow 2>/dev/null; then
+    _msg "INFO: Normalized locked root password entry for keys-only SSH access"
+  else
+    _msg "OOPS: could not normalize the locked root password entry"
   fi
 }
 
