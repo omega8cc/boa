@@ -19,8 +19,9 @@
 #
 # Usage:
 #   staticbuild backdrop            build+package+publish ONLY the Backdrop family
-#                                   (backdrop core + bee + backdrop-drush-extension),
-#                                   all at latest - lightweight, no Composer
+#                                   (backdrop core + bee + backdrop-drush-extension
+#                                   + redis_backdrop), all at latest - lightweight,
+#                                   no Composer
 #   staticbuild all                 build everything, package, publish
 #   staticbuild build [name ...]    build all (or only named) targets
 #   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
@@ -32,16 +33,21 @@
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
 # Build target names: farm cms culturas commerce localgov thunder varbase
-#   backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension cores
+#   backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
+#   redis_backdrop cores
 #
-# The Backdrop family (backdrop core, bee, backdrop-drush-extension) is always
-# fetched at its newest upstream version, so BOA never falls behind: run
-# "staticbuild all" (or just the named targets) on the mirror source VM, e.g.
-# from cron alongside get-boa-dev. Backdrop core is published versioned
-# (backdrop-<ver>.tar.gz, retained per version like the Drupal cores) with a
-# backdrop.txt newest-version stamp plus a version-less backdrop.tar.gz compat
-# tarball of the newest (extracts to backdrop/, the pre-versioning contract);
-# bee + the drush extension stay version-less.
+# The Backdrop family (backdrop core, bee, backdrop-drush-extension,
+# redis_backdrop) is always fetched at its newest upstream version, so BOA
+# never falls behind: run "staticbuild all" (or just the named targets) on the
+# mirror source VM, e.g. from cron alongside get-boa-dev. Backdrop core is
+# published versioned (backdrop-<ver>.tar.gz, retained per version like the
+# Drupal cores) with a backdrop.txt newest-version stamp plus a version-less
+# backdrop.tar.gz compat tarball of the newest (extracts to backdrop/, the
+# pre-versioning contract); bee + the drush extension stay version-less;
+# redis_backdrop is published versioned to the per-tree contrib shelf
+# (dev/{dev,lts,pro}/contrib/) and consumed by the version pinned in
+# OCTOPUS.sh.txt / BOA.sh.txt, so a newer publish here is inert until the
+# pins are bumped.
 
 # ---------------------------------------------------------------------------
 # Configuration - review the specs/minors each cycle ("staticbuild check").
@@ -89,11 +95,16 @@ _BEE_REPO="backdrop-contrib/bee"
 _BEE_TAG=""
 _BDEXT_REPO="backdrop-contrib/backdrop-drush-extension"
 _BDEXT_TAG=""
-# Backdrop redis contrib module, baked into each platform's modules/ so every
-# Backdrop platform ships Valkey/Redis object-cache support (its Redis_Cache
-# implements BackdropCacheInterface -- the Drupal redis_edge is NOT compatible).
-# The settings side is /data/conf/global/global-bd.inc, which no-ops until it
-# finds modules/redis AND a live Valkey.
+# Backdrop redis contrib module (its Redis_Cache implements
+# BackdropCacheInterface -- the Drupal redis_* modules are NOT compatible).
+# Published VERSIONED to the per-tree contrib shelf as
+# redis_backdrop-<tag>.tar.gz: the shared /data/all/000/modules store BOA
+# symlinks into every Backdrop platform through the o_contrib_backdrop bundle,
+# replacing the retired per-platform modules/redis bake. The settings side is
+# /data/conf/global/global-bd.inc, which prefers the shared bundle and still
+# falls back to a baked modules/redis copy on platforms built from older
+# tarballs. NB: BOA fetches this by its pinned version -- after publishing a
+# new tag here, bump the pin in OCTOPUS.sh.txt and BOA.sh.txt together.
 _REDIS_REPO="backdrop-contrib/redis"
 _REDIS_TAG=""
 
@@ -525,8 +536,11 @@ build_culturas() {
   _dver="$(_create_project "${_wd}" "${_CULTURAS_SPEC}" "drupal/openculturas_project" "--remove-vcs")" \
     || { _record_fail "culturas"; return 1; }
   # Pin the distribution to its exact drupal.org release (the template otherwise pulls a
-  # -dev branch), and build unpatched - its core patch is stale on current core and
-  # composer-patches 2.x has no per-patch skip. Approved: unpatched test platform is fine.
+  # -dev branch), and build with the dependency patches DROPPED - several are stale
+  # against the core the distribution itself requires, and composer-patches 2.x cannot
+  # apply patches to dist-installed packages at all here (its GitPatcher skips any
+  # package dir without .git, its FreeformPatcher needs per-patch config), so it is
+  # not a usable channel even for the patches that do apply.
   local _ocrel
   _ocrel="$(_drupal_release "${_CULTURAS_PROJECT}")"
   if ! { _composer_prepare "${_wd}" \
@@ -536,6 +550,21 @@ build_culturas() {
     _record_fail "culturas"
     return 1
   fi
+  # One dependency patch is load-bearing and is applied with GNU patch instead:
+  # the views OpenCulturas ships reference entity_reference_revisions relationship
+  # handlers that only exist with the ERR issue-2799479 patch - unpatched, every
+  # front page request throws ViewsData->get() InvalidArgumentException (empty
+  # table key from the broken relationship handler) and the site serves 500s.
+  # Fail closed: a culturas platform without it is broken by default.
+  local _err_patch_url="https://www.drupal.org/files/issues/2023-06-29/entity_reference_revisions-2799479-fix-only.patch"
+  local _err_mod="${_wd}/web/modules/contrib/entity_reference_revisions"
+  if ! { _run_as_o8 "curl -fsS --retry 3 -o '${_wd}/.err-2799479.patch' '${_err_patch_url}'" \
+         && _run_as_o8 "cd '${_err_mod}' && patch -p1 --no-backup-if-mismatch < '${_wd}/.err-2799479.patch'" \
+         && _run_as_o8 "rm -f '${_wd}/.err-2799479.patch'"; }; then
+    _record_fail "culturas (ERR issue-2799479 views patch did not apply)"
+    return 1
+  fi
+  _info "culturas: applied entity_reference_revisions issue-2799479 views patch"
   # Flatten the openculturas-distribution wrapper: its inner profile/ becomes the
   # openculturas install profile, and its remaining contents move up into contrib/.
   local _contrib="${_wd}/web/profiles/contrib"
@@ -705,22 +734,11 @@ build_backdrop() {
     _record_fail "backdrop"
     return 1
   fi
-  # Bake in the Backdrop redis contrib module (into backdrop-<ver>/ so it rides
-  # the platform tarball). Non-fatal: if the fetch fails the platform simply
-  # ships without Valkey support and global-bd.inc stays a no-op.
-  local _redis_tag
-  _redis_tag="${_REDIS_TAG:-$(_latest_git_tag "${_REDIS_REPO}")}"
-  if [[ -n "${_redis_tag}" ]]; then
-    if _run_as_o8 "cd '${_DAY_DIR}/backdrop-${_tag}/modules' && rm -rf redis \
-      && git clone -q --depth 1 --branch '${_redis_tag}' 'https://github.com/${_REDIS_REPO}.git' redis \
-      && rm -rf redis/.git"; then
-      _info "backdrop: baked modules/redis (${_redis_tag})"
-    else
-      _alrt "backdrop: redis module bake failed (${_redis_tag}); platform ships without Valkey support"
-    fi
-  else
-    _alrt "backdrop: could not resolve redis tag; platform ships without Valkey support"
-  fi
+  # No contrib is baked into the core tree: Valkey/Redis support reaches every
+  # platform through the shared o_contrib_backdrop bundle instead (see
+  # build_redis_backdrop), the same model the Drupal cores use. The only
+  # remaining bake is the version-less compat tarball's, injected at tar time
+  # for pre-bundle releases (see package_backdrop_compat).
   _RESULTS+=("OK    backdrop-${_tag}")
   _info "backdrop: built backdrop-${_tag}/"
 }
@@ -763,6 +781,31 @@ build_bdext() {
   _info "${_d}: packaged ${_d}.tar.gz (${_tag})"
 }
 
+build_redis_backdrop() {
+  # Backdrop redis contrib module for the shared o_contrib_backdrop bundle.
+  # Packaged VERSIONED as redis_backdrop-<tag>.tar.gz wrapping a redis_backdrop/
+  # dir: the tarball's top-level name IS the deployed directory name under
+  # /data/all/000/modules (the _get_dev_contrib contract, like redis_edge and
+  # friends). Always rebuilt. The clone stays in a dot-prefixed working dir
+  # (like .build.bee) so an interrupted run leaves nothing package_batch's
+  # 'ls -d */' can sweep onto the distro shelf. _latest_git_tag only returns
+  # N.N.N / N.x-N.N.N shapes, so the tag is safe in file names and the root
+  # shell command.
+  local _tag
+  _tag="${_REDIS_TAG:-$(_latest_git_tag "${_REDIS_REPO}")}"
+  [[ -n "${_tag}" ]] || { _record_fail "redis_backdrop (could not resolve tag)"; return 1; }
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .build.redis_backdrop redis_backdrop-*.tar.gz \
+    && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_REDIS_REPO}.git' .build.redis_backdrop \
+    && rm -rf .build.redis_backdrop/.git \
+    && tar -czf 'redis_backdrop-${_tag}.tar.gz' --transform 's,^\.build\.redis_backdrop,redis_backdrop,' .build.redis_backdrop \
+    && rm -rf .build.redis_backdrop"; then
+    _record_fail "redis_backdrop"
+    return 1
+  fi
+  _RESULTS+=("OK    redis_backdrop (${_tag})")
+  _info "redis_backdrop: packaged redis_backdrop-${_tag}.tar.gz (${_tag})"
+}
+
 run_build() {
   local _name="$1"
   case "${_name}" in
@@ -770,6 +813,7 @@ run_build() {
     backdrop) build_backdrop ;;
     bee)      build_bee ;;
     backdrop-drush-extension) build_bdext ;;
+    redis_backdrop) build_redis_backdrop ;;
     cms)      build_cms ;;
     culturas) build_culturas ;;
     commerce) build_commerce ;;
@@ -785,7 +829,7 @@ run_build() {
 do_build() {
   # $@ = target names, or empty for all distros + cores.
   local _targets="$*"
-  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop bee backdrop-drush-extension cores"
+  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop bee backdrop-drush-extension redis_backdrop cores"
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   if [[ "${_SKIP_CLEARCACHE}" != "1" ]]; then
     _msg "composer clearcache (${_O8_USER})"
@@ -885,6 +929,28 @@ _publish_devext() {
   [[ "${_ok}" == "1" ]]
 }
 
+_publish_contrib() {
+  # $1 = tarball path. Shared-contrib tarballs are pulled per tree by BOA's
+  # _get_dev_contrib (${_urlDev}/${_tRee}/contrib/<file>), so like the dev
+  # extensions the tarball must exist under dev, lts AND pro.
+  local _src="$1" _base _tree _ok=1
+  _base="${_src##*/}"
+  for _tree in ${_DEV_TREES}; do
+    if ! mkdir -p "${_DEVEXT_BASE}/${_tree}/contrib"; then
+      _alrt "cannot create ${_DEVEXT_BASE}/${_tree}/contrib"
+      _ok=0
+      continue
+    fi
+    if cp -a "${_src}" "${_DEVEXT_BASE}/${_tree}/contrib/"; then
+      _msg "contrib <- ${_base} (${_tree})"
+    else
+      _alrt "copy failed: ${_base} (${_tree})"
+      _ok=0
+    fi
+  done
+  [[ "${_ok}" == "1" ]]
+}
+
 _backdrop_day_version() {
   # Version stamped by the current build (empty if none).
   [[ -e "${_DAY_DIR}/backdrop.txt" ]] || return 0
@@ -897,23 +963,46 @@ package_backdrop_compat() {
   # contract). So it is re-tarred from the current backdrop-<ver>/ tree with the
   # top-level dir renamed - NOT a byte copy of the versioned tarball, which
   # extracts to backdrop-<ver>/ and would break their mv of backdrop/.
-  local _ver
+  #
+  # The compat tarball ALONE still carries the baked modules/redis: the /core/
+  # shelf is shared by every release, and the pre-bundle releases consuming
+  # this name have no o_contrib_backdrop machinery - their global-bd.inc probes
+  # only modules/redis, so shipping it clean would build Valkey-less platforms
+  # on every not-yet-upgraded box. The module is injected from a dot-dir clone
+  # at tar time (never placed in the tree), so the versioned tarballs the
+  # bundle-aware releases fetch stay contrib-free.
+  local _ver _redis_tag
   _ver="$(_backdrop_day_version)"
   [[ -n "${_ver}" ]] || return 0
   _run_as_o8 "test -d '${_DAY_DIR}/backdrop-${_ver}'" || return 0
-  _msg "tar: backdrop.tar.gz (compat, extracts to backdrop/)"
-  _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz --transform 's,^backdrop-${_ver},backdrop,' 'backdrop-${_ver}'" \
-    || _alrt "tar failed: backdrop.tar.gz (compat)"
+  _redis_tag="${_REDIS_TAG:-$(_latest_git_tag "${_REDIS_REPO}")}"
+  if [[ -n "${_redis_tag}" ]] && _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .compat.redis \
+    && git clone -q --depth 1 --branch '${_redis_tag}' 'https://github.com/${_REDIS_REPO}.git' .compat.redis \
+    && rm -rf .compat.redis/.git"; then
+    _msg "tar: backdrop.tar.gz (compat, extracts to backdrop/, baked modules/redis ${_redis_tag})"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz \
+      --transform 's,^backdrop-${_ver},backdrop,' \
+      --transform 's,^\.compat\.redis,backdrop/modules/redis,' \
+      'backdrop-${_ver}' .compat.redis \
+      && rm -rf .compat.redis" \
+      || _alrt "tar failed: backdrop.tar.gz (compat)"
+  else
+    _alrt "compat redis clone failed (${_redis_tag:-no tag}); backdrop.tar.gz ships without baked modules/redis this run"
+    _msg "tar: backdrop.tar.gz (compat, extracts to backdrop/)"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz --transform 's,^backdrop-${_ver},backdrop,' 'backdrop-${_ver}'" \
+      || _alrt "tar failed: backdrop.tar.gz (compat)"
+  fi
 }
 
 do_backdrop_family() {
   # Lightweight: build + package + publish ONLY the Backdrop family (backdrop
-  # core + bee + backdrop-drush-extension), all at their newest upstream. No
-  # Composer, no distros/cores, no /usr/bin/php switch - just git/wget/unzip.
-  # Scoped to the family so it never touches unrelated day-dir content.
+  # core + bee + backdrop-drush-extension + redis_backdrop), all at their
+  # newest upstream. No Composer, no distros/cores, no /usr/bin/php switch -
+  # just git/wget/unzip. Scoped to the family so it never touches unrelated
+  # day-dir content.
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   local _t
-  for _t in backdrop bee backdrop-drush-extension; do
+  for _t in backdrop bee backdrop-drush-extension redis_backdrop; do
     _msg ""
     _msg "=== build: ${_t} ==="
     run_build "${_t}"
@@ -942,6 +1031,9 @@ do_backdrop_family() {
   for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
     [[ -e "${_DAY_DIR}/${_f}" ]] && _publish_devext "${_DAY_DIR}/${_f}"
   done
+  for _f in "${_DAY_DIR}"/redis_backdrop-*.tar.gz; do
+    [[ -e "${_f}" ]] && _publish_contrib "${_f}"
+  done
 }
 
 do_distribute() {
@@ -958,6 +1050,8 @@ do_distribute() {
     case "${_base}" in
       bee.tar.gz|backdrop-drush-extension.tar.gz)
         _publish_devext "${_t}" && _n=$((_n + 1)) ;;
+      redis_backdrop-*.tar.gz)
+        _publish_contrib "${_t}" && _n=$((_n + 1)) ;;
       drupal-*.tar.gz|backdrop-[0-9]*.tar.gz|backdrop.tar.gz)
         cp -a "${_t}" "${_CORE_OUT}/"   && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
       *)
@@ -1005,6 +1099,9 @@ do_check() {
   _check_row "backdrop" "$(_latest_github "${_BACKDROP_REPO}")"
   _check_row "bee"      "$(_latest_git_tag "${_BEE_REPO}")"
   _check_row "bd-drush" "$(_latest_git_tag "${_BDEXT_REPO}")"
+  # The only pinned Backdrop artifact: a newer tag here means the
+  # _REDIS_B_VERSION pins in OCTOPUS.sh.txt + BOA.sh.txt are due a bump.
+  _check_row "bd-redis" "$(_latest_git_tag "${_REDIS_REPO}")"
   _check_row "cms"      "$(_drupal_release cms)"
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"

@@ -1032,6 +1032,17 @@ _SOLR_HEAP_FORCE=""
 _USE_SQLPROBE=YES
 
 ###
+### Batch storm guard (batch_guard monitor): detects a local self-DoS
+### where the background_process+background_batch module pair floods
+### the box's own address with /bgp-start/ POSTs under load, confirms
+### the looping batches are dead across two passes, and deletes only
+### their transient rows so the loop drains without any restart. Set
+### to NO to disable on this system; _BATCH_GUARD_DETECT_ONLY=YES
+### keeps the detection and alerts but never deletes anything.
+###
+_USE_BATCH_GUARD=YES
+
+###
 ### Set max 1 min load per CPU core before killing
 ### all running PHP, Drush, Wget and Curl processes
 ### until the load stabilizes.

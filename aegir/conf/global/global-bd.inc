@@ -50,8 +50,15 @@ if (php_sapi_name() !== 'cli' && isset($_SERVER['DOCUMENT_ROOT'])
 // $conf['cron_safe_threshold'] = 0 in the Drupal global include.
 $config['system.core']['cron_safe_threshold'] = 0;
 
-// The Backdrop redis module, relative to the platform docroot.
-$bd_redis_dir = 'modules/redis';
+// The Backdrop redis module, relative to the platform docroot. Prefer the
+// canonical shared bundle (modules/o_contrib_backdrop, symlinked into every
+// platform on verify and updatable in place fleet-wide), then fall back to
+// the originally shipped baked copy so platforms built from older
+// backdrop.tar.gz keep their cache wiring without a reverify.
+$bd_redis_dir = 'modules/o_contrib_backdrop/redis_backdrop';
+if (!is_readable(BACKDROP_ROOT . '/' . $bd_redis_dir . '/redis.autoload.inc')) {
+  $bd_redis_dir = 'modules/redis';
+}
 $bd_redis_autoload = BACKDROP_ROOT . '/' . $bd_redis_dir . '/redis.autoload.inc';
 
 // Only wire Valkey when the module is deployed and phpredis is loaded.
