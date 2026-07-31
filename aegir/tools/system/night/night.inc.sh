@@ -241,7 +241,8 @@ _disable_chattr() {
 ###-------------DRUSH8-----------------###
 
 _run_drush8_cmd() {
-  if [ -e "/root/.debug_daily.info" ]; then
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
@@ -254,7 +255,8 @@ _run_drush8_cmd() {
 }
 
 _run_drush8_hmr_cmd() {
-  if [ -e "/root/.debug_daily.info" ]; then
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1"
   fi
@@ -283,7 +285,8 @@ _hmr_context_exists() {
 }
 
 _run_drush8_hmr_master_cmd() {
-  if [ -e "/root/.debug_daily.info" ]; then
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} aegir running drush8 @hostmaster $1"
   fi
@@ -292,7 +295,8 @@ _run_drush8_hmr_master_cmd() {
 }
 
 _run_drush8_nosilent_cmd() {
-  if [ -e "/root/.debug_daily.info" ]; then
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
