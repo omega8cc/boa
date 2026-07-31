@@ -2567,7 +2567,18 @@ _convert_etcboa_markers_to_cnf() {
     "/root/.include-php-latest.cnf:_INCLUDE_PHP_LATEST" \
     "/root/.install.myquick.src.info:_INSTALL_MYQUICK_SRC" \
     "/root/.my.restart_after_optimize.cnf:_MY_RESTART_AFTER_OPTIMIZE" \
-    "/root/.use.sysklogd.cnf:_USE_SYSKLOGD" ; do
+    "/root/.use.sysklogd.cnf:_USE_SYSKLOGD" \
+    "/root/.deny.java.cnf:_DENY_JAVA" \
+    "/etc/boa/.dont.touch.permissions.cnf:_SKIP_PERMISSIONS_PASS" \
+    "/etc/boa/.allow.aegir.queue.cnf:_ALLOW_AEGIR_QUEUE" \
+    "/etc/boa/.disable_mysql_cleanup.cnf:_DISABLE_MYSQL_CLEANUP" \
+    "/etc/boa/.debug.monitor.cnf:_DEBUG_MONITOR" \
+    "/etc/boa/.allow.du.cnf:_ALLOW_DU" \
+    "/etc/boa/.home.no.wildcard.chmod.cnf:_HOME_NO_WILDCARD_CHMOD" \
+    "/root/.allow.clamav.cnf:_ALLOW_CLAMAV" \
+    "/root/.deny.clamav.cnf:_DENY_CLAMAV" \
+    "/etc/boa/.look.like.jenkins.cnf:_FORCE_CI_BOX" \
+    "/root/.upstart.cnf:_NO_CRON_AUTOSTART" ; do
     _mrkSpc="${_pair%%:*}"
     _var="${_pair##*:}"
     _mrkPth=
@@ -2631,6 +2642,72 @@ _convert_etcboa_markers_to_cnf() {
         echo "$(date +%Y-%m-%d_%H-%M-%S) /root/${_mrk} root-only noted" >> "${_mnf}"
         chmod 0600 "${_mnf}" 2>/dev/null
         _msg "NOTE: ${_mrk} present in /root only -- not converted; set ${_var}=YES in ${_barCnf} if intended"
+      fi
+    fi
+  done
+  # .debug.monitor.log.cnf folds into the EXISTING _NGINX_DOS_LOG -- no new
+  # key. Ensure NORMAL only when the effective value is neither NORMAL nor
+  # VERBOSE (SILENT, empty, garbage and absent all qualify; garbage behaves
+  # as SILENT at both read sites). /etc/boa ONLY -- a /root-only twin is
+  # never consumed; it routes to the same advisory as the main loop. The
+  # write repeats while the marker exists (the file wins while it exists);
+  # only the manifest line is one-shot. The probe UNSETS first: this process
+  # sourced the settings template, so without the unset an absent cnf key
+  # would inherit the template value instead of reading as empty.
+  if [ -e "/etc/boa/.debug.monitor.log.cnf" ]; then
+    local _dosLogCur
+    _dosLogCur=$( unset _NGINX_DOS_LOG
+      # shellcheck disable=SC1090
+      . "${_barCnf}" > /dev/null 2>&1
+      printf '%s' "${_NGINX_DOS_LOG}" )
+    if ! [[ "${_dosLogCur}" =~ ^(NORMAL|VERBOSE)$ ]]; then
+      [ -n "$(tail -c1 "${_barCnf}" 2>/dev/null)" ] && echo >> "${_barCnf}"
+      if grep -q "^_NGINX_DOS_LOG=" "${_barCnf}" 2>/dev/null; then
+        sed -i "s/^_NGINX_DOS_LOG=.*/_NGINX_DOS_LOG=NORMAL/" "${_barCnf}"
+        wait
+      else
+        echo "_NGINX_DOS_LOG=NORMAL" >> "${_barCnf}"
+      fi
+      _dosLogCur=$( unset _NGINX_DOS_LOG
+        # shellcheck disable=SC1090
+        . "${_barCnf}" > /dev/null 2>&1
+        printf '%s' "${_NGINX_DOS_LOG}" )
+      if [ "${_dosLogCur}" = "NORMAL" ]; then
+        if ! grep -q "debug.monitor.log.cnf folded" "${_mnf}" 2>/dev/null; then
+          _mrkMtm=$(stat -c %y "/etc/boa/.debug.monitor.log.cnf" 2>/dev/null)
+          mkdir -p "${_mnfDir}" 2>/dev/null
+          chmod 0700 "${_mnfDir}" 2>/dev/null
+          echo "$(date +%Y-%m-%d_%H-%M-%S) /etc/boa/.debug.monitor.log.cnf (mtime ${_mrkMtm}) folded -> _NGINX_DOS_LOG=NORMAL" >> "${_mnf}"
+          chmod 0600 "${_mnf}" 2>/dev/null
+        fi
+        _msg "INFO: folded /etc/boa/.debug.monitor.log.cnf -> _NGINX_DOS_LOG=NORMAL"
+      else
+        _msg "NOTE: _NGINX_DOS_LOG=NORMAL not verified in ${_barCnf} -- fold not recorded"
+      fi
+    fi
+  elif [ -e "/root/.debug.monitor.log.cnf" ]; then
+    if ! grep -q "debug.monitor.log.cnf root-only" "${_mnf}" 2>/dev/null; then
+      mkdir -p "${_mnfDir}" 2>/dev/null
+      chmod 0700 "${_mnfDir}" 2>/dev/null
+      echo "$(date +%Y-%m-%d_%H-%M-%S) /root/.debug.monitor.log.cnf root-only noted" >> "${_mnf}"
+      chmod 0600 "${_mnf}" 2>/dev/null
+      _msg "NOTE: .debug.monitor.log.cnf present in /root only -- not folded; set _NGINX_DOS_LOG=NORMAL in ${_barCnf} if intended"
+    fi
+  fi
+  # .big_db.cnf / .high_load.cnf are inert: every box's cnf carries the SQL
+  # TTL key, which the monitor sources before its fallback can fire, so the
+  # marker-gated installer seds never had an observable effect. Advisory
+  # only -- NEVER write a value (a stale marker must not overwrite a
+  # deliberate operator pin), and never append anything to the cnf here.
+  local _ttlMrk
+  for _ttlMrk in /root/.big_db.cnf /root/.high_load.cnf; do
+    if [ -e "${_ttlMrk}" ]; then
+      if ! grep -q "${_ttlMrk##*/} advisory" "${_mnf}" 2>/dev/null; then
+        mkdir -p "${_mnfDir}" 2>/dev/null
+        chmod 0700 "${_mnfDir}" 2>/dev/null
+        echo "$(date +%Y-%m-%d_%H-%M-%S) ${_ttlMrk} advisory: inert marker; set the SQL TTL key in ${_barCnf} explicitly if a custom ceiling is intended" >> "${_mnf}"
+        chmod 0600 "${_mnf}" 2>/dev/null
+        _msg "NOTE: ${_ttlMrk} is inert -- the cnf SQL TTL value is authoritative"
       fi
     fi
   done
@@ -2918,6 +2995,17 @@ _barracuda_cnf() {
     echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}"  >> ${_barCnf}
     echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}"  >> ${_barCnf}
     echo "_USE_SYSKLOGD=${_USE_SYSKLOGD:-NO}"             >> ${_barCnf}
+    echo "_DENY_JAVA=${_DENY_JAVA:-NO}"                   >> ${_barCnf}
+    echo "_SKIP_PERMISSIONS_PASS=${_SKIP_PERMISSIONS_PASS:-NO}"  >> ${_barCnf}
+    echo "_ALLOW_AEGIR_QUEUE=${_ALLOW_AEGIR_QUEUE:-NO}"   >> ${_barCnf}
+    echo "_DISABLE_MYSQL_CLEANUP=${_DISABLE_MYSQL_CLEANUP:-NO}"  >> ${_barCnf}
+    echo "_DEBUG_MONITOR=${_DEBUG_MONITOR:-NO}"           >> ${_barCnf}
+    echo "_ALLOW_DU=${_ALLOW_DU:-NO}"                     >> ${_barCnf}
+    echo "_HOME_NO_WILDCARD_CHMOD=${_HOME_NO_WILDCARD_CHMOD:-NO}"  >> ${_barCnf}
+    echo "_ALLOW_CLAMAV=${_ALLOW_CLAMAV:-NO}"             >> ${_barCnf}
+    echo "_DENY_CLAMAV=${_DENY_CLAMAV:-NO}"               >> ${_barCnf}
+    echo "_FORCE_CI_BOX=${_FORCE_CI_BOX:-NO}"             >> ${_barCnf}
+    echo "_NO_CRON_AUTOSTART=${_NO_CRON_AUTOSTART:-NO}"   >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
@@ -3225,6 +3313,50 @@ _barracuda_cnf() {
     _USE_SYSKLOGD_TEST=$(grep "^_USE_SYSKLOGD=" ${_barCnf} 2>&1)
     if [[ ! "${_USE_SYSKLOGD_TEST}" =~ "_USE_SYSKLOGD=" ]]; then
       echo "_USE_SYSKLOGD=${_USE_SYSKLOGD:-NO}" >> ${_barCnf}
+    fi
+    _DENY_JAVA_TEST=$(grep "^_DENY_JAVA=" ${_barCnf} 2>&1)
+    if [[ ! "${_DENY_JAVA_TEST}" =~ "_DENY_JAVA=" ]]; then
+      echo "_DENY_JAVA=${_DENY_JAVA:-NO}" >> ${_barCnf}
+    fi
+    _SKIP_PERMISSIONS_PASS_TEST=$(grep "^_SKIP_PERMISSIONS_PASS=" ${_barCnf} 2>&1)
+    if [[ ! "${_SKIP_PERMISSIONS_PASS_TEST}" =~ "_SKIP_PERMISSIONS_PASS=" ]]; then
+      echo "_SKIP_PERMISSIONS_PASS=${_SKIP_PERMISSIONS_PASS:-NO}" >> ${_barCnf}
+    fi
+    _ALLOW_AEGIR_QUEUE_TEST=$(grep "^_ALLOW_AEGIR_QUEUE=" ${_barCnf} 2>&1)
+    if [[ ! "${_ALLOW_AEGIR_QUEUE_TEST}" =~ "_ALLOW_AEGIR_QUEUE=" ]]; then
+      echo "_ALLOW_AEGIR_QUEUE=${_ALLOW_AEGIR_QUEUE:-NO}" >> ${_barCnf}
+    fi
+    _DISABLE_MYSQL_CLEANUP_TEST=$(grep "^_DISABLE_MYSQL_CLEANUP=" ${_barCnf} 2>&1)
+    if [[ ! "${_DISABLE_MYSQL_CLEANUP_TEST}" =~ "_DISABLE_MYSQL_CLEANUP=" ]]; then
+      echo "_DISABLE_MYSQL_CLEANUP=${_DISABLE_MYSQL_CLEANUP:-NO}" >> ${_barCnf}
+    fi
+    _DEBUG_MONITOR_TEST=$(grep "^_DEBUG_MONITOR=" ${_barCnf} 2>&1)
+    if [[ ! "${_DEBUG_MONITOR_TEST}" =~ "_DEBUG_MONITOR=" ]]; then
+      echo "_DEBUG_MONITOR=${_DEBUG_MONITOR:-NO}" >> ${_barCnf}
+    fi
+    _ALLOW_DU_TEST=$(grep "^_ALLOW_DU=" ${_barCnf} 2>&1)
+    if [[ ! "${_ALLOW_DU_TEST}" =~ "_ALLOW_DU=" ]]; then
+      echo "_ALLOW_DU=${_ALLOW_DU:-NO}" >> ${_barCnf}
+    fi
+    _HOME_NO_WILDCARD_CHMOD_TEST=$(grep "^_HOME_NO_WILDCARD_CHMOD=" ${_barCnf} 2>&1)
+    if [[ ! "${_HOME_NO_WILDCARD_CHMOD_TEST}" =~ "_HOME_NO_WILDCARD_CHMOD=" ]]; then
+      echo "_HOME_NO_WILDCARD_CHMOD=${_HOME_NO_WILDCARD_CHMOD:-NO}" >> ${_barCnf}
+    fi
+    _ALLOW_CLAMAV_TEST=$(grep "^_ALLOW_CLAMAV=" ${_barCnf} 2>&1)
+    if [[ ! "${_ALLOW_CLAMAV_TEST}" =~ "_ALLOW_CLAMAV=" ]]; then
+      echo "_ALLOW_CLAMAV=${_ALLOW_CLAMAV:-NO}" >> ${_barCnf}
+    fi
+    _DENY_CLAMAV_TEST=$(grep "^_DENY_CLAMAV=" ${_barCnf} 2>&1)
+    if [[ ! "${_DENY_CLAMAV_TEST}" =~ "_DENY_CLAMAV=" ]]; then
+      echo "_DENY_CLAMAV=${_DENY_CLAMAV:-NO}" >> ${_barCnf}
+    fi
+    _FORCE_CI_BOX_TEST=$(grep "^_FORCE_CI_BOX=" ${_barCnf} 2>&1)
+    if [[ ! "${_FORCE_CI_BOX_TEST}" =~ "_FORCE_CI_BOX=" ]]; then
+      echo "_FORCE_CI_BOX=${_FORCE_CI_BOX:-NO}" >> ${_barCnf}
+    fi
+    _NO_CRON_AUTOSTART_TEST=$(grep "^_NO_CRON_AUTOSTART=" ${_barCnf} 2>&1)
+    if [[ ! "${_NO_CRON_AUTOSTART_TEST}" =~ "_NO_CRON_AUTOSTART=" ]]; then
+      echo "_NO_CRON_AUTOSTART=${_NO_CRON_AUTOSTART:-NO}" >> ${_barCnf}
     fi
     _convert_etcboa_markers_to_cnf
 
@@ -7163,7 +7295,8 @@ _finale() {
     rm -f /root/.skip-aegir-master-upgrade.cnf
   fi
   echo "FINALE" > /root/.latest-barracuda-upgrade-finale.info
-  if [ ! -e "/root/.upstart.cnf" ]; then
+  if [ ! -e "/root/.upstart.cnf" ] \
+    && [ "${_NO_CRON_AUTOSTART}" != "YES" ]; then
     _mrun "service cron start"
   fi
   if [ -x "/usr/sbin/csf" ] \
@@ -10069,24 +10202,14 @@ _xdrago_install_upgrade() {
         sed -i "s/rotate 14/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
       fi
     fi
-    if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-      _DO_NOTHING=YES
-    else
-      ### Scoped to the long-query TTL knobs. The previous blanket s/3600/N/
-      ### also rewrote every LATER 3600 added to the file, silently retuning
-      ### unrelated defaults (observed on the flap-breaker window default).
-      if [ -e "/root/.high_load.cnf" ] \
-        && [ ! -e "/root/.big_db.cnf" ] \
-        && [ ! -e "/root/.tg.cnf" ]; then
-        sed -i "s/_SQL_MAX_TTL:=3600/_SQL_MAX_TTL:=300/g;s/_limit=\${1:-3600}/_limit=\${1:-300}/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
-        wait
-      elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        sed -i "s/_SQL_MAX_TTL:=3600/_SQL_MAX_TTL:=1800/g;s/_limit=\${1:-3600}/_limit=\${1:-1800}/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
-        wait
-      fi
-    fi
+    ### The .debug/.default-guarded, marker-gated long-query TTL retune that
+    ### used to sit here was retired with its guard (the guard's whole body
+    ### WAS the retune on this path): the cnf SQL TTL key exists on every box
+    ### by construction and the monitor sources it before the sed'd fallback
+    ### could fire, so the retune never had an observable effect. The daily
+    ### churn it caused is gone too: the sed'd copy always differed from the
+    ### mirror, so the serial-gated fetch re-downloaded the monitor within a
+    ### day of every pass.
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     mkdir -p ./xdrago
@@ -10120,18 +10243,10 @@ _xdrago_install_upgrade() {
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
-        ### Scoped to the long-query TTL knobs (see the upgrade path above).
-        if [ -e "/root/.high_load.cnf" ] \
-          && [ ! -e "/root/.big_db.cnf" ] \
-          && [ ! -e "/root/.tg.cnf" ]; then
-          sed -i "s/_SQL_MAX_TTL:=3600/_SQL_MAX_TTL:=300/g;s/_limit=\${1:-3600}/_limit=\${1:-300}/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
-          wait
-        elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          sed -i "s/_SQL_MAX_TTL:=3600/_SQL_MAX_TTL:=1800/g;s/_limit=\${1:-3600}/_limit=\${1:-1800}/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
-          wait
-        fi
+        ### The marker-gated long-query TTL retune that used to sit here was
+        ### retired: the cnf SQL TTL key exists on every box by construction
+        ### and the monitor sources it before the sed'd fallback could fire,
+        ### so the retune never had an observable effect.
         _ROTATE_TEST=$(grep "rotate 9999" /etc/logrotate.d/nginx 2>&1)
         if [[ ! "${_ROTATE_TEST}" =~ "rotate 9999" ]]; then
           sed -i "s/rotate 52/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
@@ -10656,7 +10771,8 @@ _java_check_fix() {
     fi
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
-    elif [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
+    elif [ -e "/etc/boa/.look.like.jenkins.cnf" ] \
+      || [ "${_FORCE_CI_BOX}" = "YES" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     else
       _LOOK_LIKE_JENKINS=FALSE

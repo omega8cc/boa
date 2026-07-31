@@ -311,6 +311,76 @@ by the BOA install and upgrade tools exclusively.
   Installs sysklogd as the system logger instead of rsyslog. Absence is the
   active state: the default arm restores rsyslog.
 
+ @=> /root/.deny.java.cnf
+
+  Keeps Java/Solr/Jetty off this box; xmass also sets it at migration
+  cutover. Converted to _DENY_JAVA=YES in /root/.barracuda.cnf (xmass now
+  writes both forms) -- the variable is the supported switch; the file stays
+  honoured for one release. To re-enable Solr, set _DENY_JAVA=NO *and* remove
+  the file.
+
+ @=> /etc/boa/.dont.touch.permissions.cnf
+
+  Skips the nightly per-platform permissions pass (the codebase lock); the
+  box-wide sweep keeps its own gate. Converted to _SKIP_PERMISSIONS_PASS=YES
+  in /root/.barracuda.cnf -- the variable is the supported switch; the file
+  stays honoured for one release; off = NO *and* remove the file.
+
+ @=> /etc/boa/.allow.aegir.queue.cnf
+
+  Allows the automatic Aegir task queue on a CI-classified box. Converted to
+  _ALLOW_AEGIR_QUEUE=YES in /root/.barracuda.cnf -- same one-release
+  transition rules as above.
+
+ @=> /etc/boa/.disable_mysql_cleanup.cnf
+
+  Disables the hourly database cleanup run and the four nightly giant-table
+  truncations in the backup pass (the two halves deliberately differ in
+  scope). Converted to _DISABLE_MYSQL_CLEANUP=YES in /root/.barracuda.cnf --
+  same one-release transition rules.
+
+ @=> /etc/boa/.debug.monitor.cnf
+
+  Enables the abuse-guard scorer's debug instrumentation including the shell
+  trace on manual runs. Converted to _DEBUG_MONITOR=YES in
+  /root/.barracuda.cnf -- same one-release transition rules.
+
+ @=> /etc/boa/.debug.monitor.log.cnf
+
+  FOLDED into the existing _NGINX_DOS_LOG key: while the file exists the
+  upgrade pass ensures _NGINX_DOS_LOG=NORMAL (an explicit NORMAL or VERBOSE
+  in the cnf wins). Off = remove the file *and* set _NGINX_DOS_LOG=SILENT.
+
+ @=> /etc/boa/.allow.du.cnf
+
+  Keeps du available in the restricted client shell. Converted to
+  _ALLOW_DU=YES in /root/.barracuda.cnf -- same one-release transition rules.
+
+ @=> /root/.allow.clamav.cnf
+ @=> /root/.deny.clamav.cnf
+
+  The pair governs ClamAV service registration; absence of allow already
+  denies, deny overrides an allow. Converted to _ALLOW_CLAMAV / _DENY_CLAMAV
+  in /root/.barracuda.cnf (the pair converts together; every read site
+  honours both forms). Until the next release serial reaches the two
+  slow-cycle OS-upgrade drivers, pair _ALLOW_CLAMAV=YES with the marker file.
+
+ @=> /etc/boa/.look.like.jenkins.cnf
+
+  Forces the CI box classification (queue policy, monitor cadence, usage
+  accounting, the Jenkins-era java symlink set); real Jenkins presence is
+  auto-detected separately. Converted to _FORCE_CI_BOX=YES in
+  /root/.barracuda.cnf -- same one-release transition rules.
+
+ @=> /root/.big_db.cnf
+ @=> /root/.high_load.cnf
+
+  RETIRED as inert: the cnf SQL TTL value is authoritative on every box (the
+  watchdog sources the cnf before its fallback can fire), so the historical
+  marker-driven retune never had an observable effect and was removed. Set
+  the SQL TTL key explicitly if a custom ceiling is intended; the upgrade
+  pass leaves a one-time advisory note when either file is present.
+
  @=> /root/.hr.monitor.cnf
 
   RETIRED. This file no longer does anything: its last reader went with the
@@ -422,7 +492,10 @@ by the BOA install and upgrade tools exclusively.
 
   This file, if exists, allows to avoid setting restrictive (but recommended)
   permissions on all directories in the /home/* directory tree, where normally
-  non-system users have their account home directories.
+  non-system users have their account home directories. Converted to
+  _HOME_NO_WILDCARD_CHMOD=YES in /root/.barracuda.cnf -- the variable is the
+  supported switch; the file stays honoured for one release; off = NO *and*
+  remove the file.
 
   Without this file the system will run 'chmod 700 /home/*' every 5 minutes.
 
@@ -495,8 +568,11 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.upstart.cnf
 
-  This is rarely needed file, which allows to skip stopping cron during
-  barracuda upgrade to limit downtime for any running services, so it allows
-  the auto-healing to run all the time. Note that it may break upgrade
-  if the auto-healing will act too fast to bring up a service which is
-  stopped and started during the upgrade.
+  Suppresses the automatic cron service start/reload at the three sites that
+  honour it -- two upgrade-finale starts and one per-tick reload (the
+  historical stop-skipping half no
+  longer exists in code; the name is historical too -- it neither detects nor
+  selects an init system). Converted to _NO_CRON_AUTOSTART=YES in
+  /root/.barracuda.cnf -- the variable is the supported switch; the file stays
+  honoured for one release. To switch it off during the transition, set the
+  variable to NO *and* remove the file.
