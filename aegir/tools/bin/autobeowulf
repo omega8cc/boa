@@ -199,7 +199,10 @@ _faster_reboot() {
   _msg "Cron has been stopped" >> "${_logAbf}"
   _msg "Now waiting 60 seconds for any running tasks to complete" >> "${_logAbf}"
   sleep 55
-  if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
+  if { [ ! -e "/root/.allow.clamav.cnf" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; } \
+    || [ -e "/root/.deny.clamav.cnf" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     if [ -e "/etc/init.d/clamav-daemon" ]; then
       update-rc.d -f clamav-daemon remove &> /dev/null
     fi

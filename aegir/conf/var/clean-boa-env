@@ -141,7 +141,10 @@ case "$1" in
       pkill -9 -f runner.sh
       pkill -9 -f minute.sh
       echo "Cron has been stopped"
-      if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
+      if { [ ! -e "/root/.allow.clamav.cnf" ] \
+        && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; } \
+        || [ -e "/root/.deny.clamav.cnf" ] \
+        || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
         if [ -e "/etc/init.d/clamav-daemon" ]; then
           update-rc.d -f clamav-daemon remove &> /dev/null
         fi
