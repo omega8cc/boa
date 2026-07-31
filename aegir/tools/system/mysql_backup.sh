@@ -80,6 +80,7 @@ echo "INFO: Starting dbs backup on $(date)"
 # variable is the supported switch, the marker stays honoured for
 # one release while fleets converge.
 _MY_RESTART_AFTER_OPTIMIZE=NO
+_DISABLE_MYSQL_CLEANUP=NO
 
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
@@ -454,28 +455,36 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _check_running
     _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
-      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ] && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
+      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ] \
+        && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
+        && [ "${_DISABLE_MYSQL_CLEANUP}" != "YES" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           _truncate_queue_tables &> /dev/null
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ] && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
+      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ] \
+        && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
+        && [ "${_DISABLE_MYSQL_CLEANUP}" != "YES" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
           _truncate_batch_tables &> /dev/null
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ] && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
+      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ] \
+        && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
+        && [ "${_DISABLE_MYSQL_CLEANUP}" != "YES" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ] && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
+      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ] \
+        && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
+        && [ "${_DISABLE_MYSQL_CLEANUP}" != "YES" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
           _truncate_accesslog_tables &> /dev/null
