@@ -9,6 +9,14 @@ export _xSrl=588811devT01
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_DENY_JETTY9=NO
+_DENY_SOLR7=NO
+_DENY_SOLR9=NO
+_ALLOW_SENDMAIL=NO
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091

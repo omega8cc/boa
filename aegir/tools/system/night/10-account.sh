@@ -15,6 +15,12 @@
 ### load, run-freeze, _apt_clean_update, _if_gen_goaccess) and 20-sites.sh
 ### (_daily_process + the per-site family), both sourced below.
 ###
+# Default only: every worker sources /root/.barracuda.cnf after this
+# file (night_load_run_env), so the cnf value wins; the literal keeps
+# the read well-defined and fail-closed if a worker is ever driven
+# outside that chain.
+_GOACCESS_ALL=NO
+
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec

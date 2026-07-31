@@ -1015,6 +1015,12 @@ _find_correct_ip() {
   fi
 }
 
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_DEBUG_PURGE_BUILD_TREE=NO
+_OCTOPUS_UPGRADE_RERUN_SILENT=NO
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091

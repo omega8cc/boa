@@ -2455,6 +2455,9 @@ _if_php_idle_on_off() {
   # The stand-down marker doubles as a proxy-node role marker an operator
   # may own, so take it only when absent and release only what we took --
   # the ownership token is on disk so a crash cannot strand a real proxy.
+  # A token from an earlier interrupted run is cleared first: only a token
+  # this run wrote may authorise removing the marker.
+  rm -f /root/.proxy.cnf.boa-idle-owned
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     rm -f /var/log/boa/._php_libs_fix_*.pid
@@ -2514,9 +2517,10 @@ _if_php_idle_on_off() {
 }
 
 #
-# One-shot converter for batch-1 control-file markers: an /etc/boa
-# marker present sets the matching /root/.barracuda.cnf variable to
-# YES. WRITE-ONLY by design: markers are never deleted here, so the
+# One-shot converter for control-file markers: a marker present sets
+# the matching /root/.barracuda.cnf variable to YES. The table field is
+# a full path -- some markers live in /etc/boa (C-003 relocated them
+# there) and some are /root-native and never moved. WRITE-ONLY by design: markers are never deleted here, so the
 # file arms still honoured at every read site keep old and new readers
 # in agreement on every path, including runs that abort before any
 # tool delivery. While a marker exists the flip re-asserts on every
@@ -2524,7 +2528,8 @@ _if_php_idle_on_off() {
 # the record-keeping one-shot so neither the cnf nor the log gains
 # duplicates. A /root-only twin is never consumed: after the C-003
 # copy it is either a deliberate opt-out or an inert leftover, and
-# both mean off today.
+# both mean off today. That advisory applies only to /etc/boa entries;
+# a /root-native entry is read from /root because that IS its live path.
 _convert_etcboa_markers_to_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _convert_etcboa_markers_to_cnf"

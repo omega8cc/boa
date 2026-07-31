@@ -1043,10 +1043,15 @@ _USE_SQLPROBE=YES
 _USE_BATCH_GUARD=YES
 
 ###
-### Converted control-file toggles. Each replaces a former /etc/boa
-### presence-marker file; the marker is still honoured for one release
-### while the fleet converges, but the variable is the supported
-### switch. They all default to off.
+### Converted control-file toggles. Each replaces a former presence-
+### marker file under /etc/boa or /root; the marker is still honoured
+### for one release while the fleet converges, but the variable is the
+### supported switch. They all default to off.
+###
+### Off-switch during the transition: set the variable to NO *and*
+### remove the marker file. While the marker exists it wins and is
+### re-asserted on every upgrade pass, exactly as it did before the
+### conversion.
 ###
 ### Keeps the New Relic server monitor (nrsysmond) running; when off,
 ### the guard actively stops it. Off by default because sysmond
@@ -1075,76 +1080,96 @@ _INSTANT_CSF_BLOCK=NO
 ### Tears down the Jetty 9 service on the next self-update pass:
 ### deregisters it, parks its init script in /var/backups and kills the
 ### daemon. The teardown does not reverse itself.
+### Replaces /etc/boa/.deny.jetty9.cnf
 _DENY_JETTY9=NO
 ###
 ### Same teardown for Solr 7.
+### Replaces /etc/boa/.deny.solr7.cnf
 _DENY_SOLR7=NO
 ###
 ### Same teardown for Solr 9.
+### Replaces /etc/boa/.deny.solr9.cnf
 _DENY_SOLR9=NO
 ###
 ### Enables the self-service run-nginx-restart.pid sentinel box-wide,
 ### beside the qualifying-plan gate rather than replacing it.
+### Replaces /etc/boa/.allow.nginx.restart.cnf
 _ALLOW_NGINX_RESTART=NO
 ###
 ### Enables the self-service cache-restart sentinel box-wide. One key
 ### covers both the valkey- and redis-named markers it replaces.
+### Replaces /etc/boa/.allow.valkey.restart.cnf or .allow.redis.restart.cnf
 _ALLOW_VALKEY_RESTART=NO
 ###
 ### Redirects the daily usage report to the internal debug inbox instead
 ### of the account owner.
+### Replaces /etc/boa/.debug.email.txt
 _DEBUG_EMAIL=NO
 ###
 ### Nightly GoAccess builds the aggregate ALL-sites report as well as
-### the per-site ones. Needs _ENABLE_GOACCESS=YES.
+### the per-site ones. Needs GoAccess itself switched on.
+### Replaces /etc/boa/.goaccess.all.cnf
 _GOACCESS_ALL=NO
 ###
 ### Suppresses the already-up-to-date notice AND re-runs an Octopus
 ### upgrade that would otherwise be skipped.
+### Replaces /etc/boa/.silent-octopus-upgrade.cnf
 _OCTOPUS_UPGRADE_RERUN_SILENT=NO
 ###
 ### Lets the mysql monitor restart a database that reports too many
 ### connections. Off by default: it restarts a live server.
+### Replaces /etc/boa/.instant.busy.mysql.action.cnf
 _INSTANT_BUSY_MYSQL_ACTION=NO
 ###
 ### Keeps the slow-query log and the mysqladmin process-list monitor on.
 ### When off, the monitor turns slow_query_log off and deletes the
 ### collected logs.
+### Replaces /etc/boa/.mysqladmin.monitor.cnf
 _MYSQLADMIN_MONITOR=NO
 ###
 ### Leaves sendmail executable for tenants and points Postfix at direct
 ### delivery instead of the relay. Off by default.
+### Replaces /etc/boa/.allow.sendmail.cnf
 _ALLOW_SENDMAIL=NO
 ###
 ### Stops BOA refreshing /etc/sysctl.conf and the system limits on
 ### upgrade passes.
+### Replaces /root/.no.sysctl.update.cnf
 _NO_SYSCTL_UPDATE=NO
 ###
 ### Purges the reusable /opt/tmp build tree at the start of every
 ### wrapper run, forcing a full re-download.
+### Replaces /root/.debug-purge-build-tree.cnf
 _DEBUG_PURGE_BUILD_TREE=NO
 ###
 ### Adds a verbose line per drush call to the nightly maintenance log.
+### Replaces /root/.debug_daily.info
 _DEBUG_DAILY=NO
 ###
 ### Stops auditd writing logs. When off, BOA re-asserts write_logs = yes
 ### on every pass.
+### Replaces /root/.disable.auditd.logs.cnf
 _DISABLE_AUDITD_LOGS=NO
 ###
 ### Drops the decorated root login banner and its packages (toilet,
 ### figlet, screenfetch).
+### Replaces /root/.dont.use.fancy.bash.login.cnf
 _DONT_USE_FANCY_BASH_LOGIN=NO
 ###
 ### Includes the newest supported PHP version in multi-version installs.
+### Replaces /root/.include-php-latest.cnf
 _INCLUDE_PHP_LATEST=NO
 ###
 ### Builds mydumper from source instead of the packaged build.
+### Replaces /root/.install.myquick.src.info
 _INSTALL_MYQUICK_SRC=NO
 ###
 ### Restarts MySQL gracefully after the monthly OPTIMIZE pass.
+### Replaces /root/.my.restart_after_optimize.cnf
 _MY_RESTART_AFTER_OPTIMIZE=NO
 ###
 ### Installs sysklogd instead of rsyslog as the system logger.
+### Replaces /root/.use.sysklogd.cnf
 _USE_SYSKLOGD=NO
 
 ###
