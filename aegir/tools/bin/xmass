@@ -1425,9 +1425,29 @@ _xmass_stop_solr_source() {
       _info "  Stopped ${_svc} on source"
     fi
   done
-  # Touch the BOA deny file so BOA never restarts Solr on source again
+  # Touch the BOA deny file so BOA never restarts Solr on source again;
+  # also set the variable form so the deny survives the marker's eventual
+  # retirement. The touch stays unconditional (skew armour: an older
+  # BARRACUDA on this box honours only the file).
   touch "${_SOLR_DENY_FILE}"
-  _info "Solr disabled on source (${_SOLR_DENY_FILE} created): OK"
+  local _denyVarSet=NO
+  if [ -e "/root/.barracuda.cnf" ]; then
+    if grep -q "^_DENY_JAVA=" /root/.barracuda.cnf 2>/dev/null; then
+      sed -i "s/^_DENY_JAVA=.*/_DENY_JAVA=YES/" /root/.barracuda.cnf
+    else
+      # Newline-terminate before the append; an unterminated last line
+      # would swallow the previous key.
+      [ -n "$(tail -c1 /root/.barracuda.cnf 2>/dev/null)" ] && echo >> /root/.barracuda.cnf
+      echo "_DENY_JAVA=YES" >> /root/.barracuda.cnf
+    fi
+    # Report what LANDED, not what was attempted.
+    grep -q "^_DENY_JAVA=YES" /root/.barracuda.cnf 2>/dev/null && _denyVarSet=YES
+  fi
+  if [ "${_denyVarSet}" = "YES" ]; then
+    _info "Solr disabled on source (${_SOLR_DENY_FILE} created, _DENY_JAVA=YES set): OK"
+  else
+    _alrt "Solr disabled on source (${_SOLR_DENY_FILE} created) -- variable form NOT set; add _DENY_JAVA=YES to /root/.barracuda.cnf by hand"
+  fi
 }
 
 _xmass_start_solr_target() {
@@ -2173,6 +2193,7 @@ _xmass_restore_hint() {
     _alrt '    find /var/lib/nginx/speed -type f -delete'
     _alrt '    service nginx reload'
     _alrt "    rm -f ${_SOLR_DENY_FILE}   # only if Solr was serving from here"
+    _alrt '    sed -i "s/^_DENY_JAVA=.*/_DENY_JAVA=NO/" /root/.barracuda.cnf   # the variable form of the same deny'
   else
     _alrt "cron and the BOA runners are PARKED on this source. To restore them:"
   fi

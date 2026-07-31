@@ -165,9 +165,10 @@ _if_allow_aegir_queue() {
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/etc/boa/.allow.aegir.queue.cnf" ]; then
+    || [ -e "/etc/boa/.allow.aegir.queue.cnf" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_AEGIR_QUEUE=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     if [ "${_ReTest}" -ge 1 ]; then
-      _ALLOW_AEGIR_QUEUE=TRUE
+      _QUEUE_OK=TRUE
     fi
   fi
 }
@@ -220,10 +221,13 @@ if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
   exit 0
 else
   _enable_master_cron
-  if [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
-    _ALLOW_AEGIR_QUEUE=FALSE
+  if [ -e "/etc/boa/.look.like.jenkins.cnf" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_FORCE_CI_BOX=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+    # _QUEUE_OK is the internal decision flag; the former name collided
+    # with the _ALLOW_AEGIR_QUEUE cnf key converted from the marker.
+    _QUEUE_OK=FALSE
     _if_allow_aegir_queue
-    if [ "${_ALLOW_AEGIR_QUEUE}" = "TRUE" ]; then
+    if [ "${_QUEUE_OK}" = "TRUE" ]; then
       touch /run/boa_cron_wait.pid
       _runner_action
       sleep 5

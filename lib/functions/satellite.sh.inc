@@ -5897,7 +5897,8 @@ _satellite_display_url_finalize() {
     _satellite_o_contrib_eleven_update_global
     _satellite_o_contrib_backdrop_update_global
   fi
-  if [ ! -e "/root/.upstart.cnf" ]; then
+  if [ ! -e "/root/.upstart.cnf" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_NO_CRON_AUTOSTART=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Starting the cron now"
     fi

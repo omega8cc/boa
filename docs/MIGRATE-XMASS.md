@@ -392,7 +392,7 @@ first change to the source):
 |---|---|
 | Step 0 | Re-hold Solr on target (in case it was manually started since init) |
 | Step 1 | Write `http-off.pid` for all accounts → nginx serves 503 on source; purge speed cache |
-| Step 2 | Stop all Solr instances on source; touch `/root/.deny.java.cnf` (permanent deny) |
+| Step 2 | Stop all Solr instances on source; touch `/root/.deny.java.cnf` AND set `_DENY_JAVA=YES` in `/root/.barracuda.cnf` (permanent deny; to reverse, set `_DENY_JAVA=NO` and remove the marker -- the file wins while it exists) |
 | Step 3 | Final rsync: shared data, Solr (now clean — source stopped), all account data |
 | Step 3.5 | **Gate:** abort if any store could not be placed or any transfer failed — before anything destructive |
 | Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing) |
@@ -548,7 +548,7 @@ are left untouched.
 | After `init` | Running normally | Stopped; held by `/var/log/boa/.xmass_solr_hold.pid` |
 | During `sync` | Running normally | Still held (best-effort Solr rsync only) |
 | Cutover step 0 | Running | Re-held and stopped (safety) |
-| Cutover step 2 | Stopped; `/root/.deny.java.cnf` created | Held |
+| Cutover step 2 | Stopped; `/root/.deny.java.cnf` created + `_DENY_JAVA=YES` set | Held |
 | Cutover step 3 | Stopped (clean index state) | Held (final Solr rsync with clean source) |
 | Cutover step 14 | — | Tlogs cleared; Solr started; HTTP health check |
 | `post-mig` | — | Solr restarted cleanly |
