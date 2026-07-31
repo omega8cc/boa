@@ -1103,8 +1103,11 @@ value disables that feature).
 > `autoupboa` also normalises `_NGINX_DOS_LIMIT` back to `399` on each pass. The DDoS,
 > path-flood, ignore-paths, 444-weight and php-probe knobs are **not** seeded — they take the
 > script's built-in defaults unless you add them to `/root/.barracuda.cnf` yourself. Where the
-> seeded value differs from the script default, the seeded one wins (notably
-> `_NGINX_DOS_LOG`).
+> seeded value differs from the script default, the seeded one wins -- EXCEPT
+> `_NGINX_DOS_LOG`, which is seed-only: an existing uncommented line is never
+> overwritten by a retune, because it is the landing key of the converted
+> `.debug.monitor.log.cnf` marker and a set value must survive fleet retunes.
+> The other `_NGINX_DOS_*` keys ARE reset to their defaults by a retune.
 
 ### Window and per-IP scoring
 
@@ -1113,7 +1116,7 @@ value disables that feature).
 | `_NGINX_DOS_LINES` | `1999` | Lines of `access.log` read on a baseline run (the scan window). |
 | `_NGINX_DOS_LIMIT` | `399` | Per-IP score at which an IP is written to `web.log`. All weights below derive from it. `autoupboa` re-normalises it to `399` each pass. |
 | `_NGINX_DOS_MODE` | `2` | Per-IP algorithm. Mode `1` adds extra `+5` increments for `POST` to `/user`, `/user/(register\|pass\|login)`, `/node/add` and `GET` to `/node/add` and `/search`; mode `2` (default) skips those. **Both modes** apply the `_NGINX_DOS_STOP` check. |
-| `_NGINX_DOS_LOG` | `VERBOSE` *(script)* / `SILENT` *(seeded)* | Log verbosity: `SILENT`, `NORMAL`, or `VERBOSE`. The script's built-in fallback is `VERBOSE`, but `autoupboa` seeds `SILENT`, so a normally-managed box runs **SILENT** unless changed. |
+| `_NGINX_DOS_LOG` | `VERBOSE` *(script)* / `SILENT` *(seeded)* | Log verbosity: `SILENT`, `NORMAL`, or `VERBOSE`. The script's built-in fallback is `VERBOSE`, but `autoupboa` seeds `SILENT` once, so a normally-managed box runs **SILENT** unless changed. Seed-only: a set value (including the `NORMAL` the `.debug.monitor.log.cnf` fold writes) survives retunes, unlike the other `_NGINX_DOS_*` keys. |
 | `_NGINX_DOS_DIV_INC_NR` | `40` | Divisor for the standard 4xx/5xx increment: `_INC_NR = _NGINX_DOS_LIMIT / 40` (≈ 10). |
 | `_NGINX_DOS_INC_MIN` | `3` | Floor for the computed increments — `_INC_NR` and `_INC_S_NR` are never less than this. |
 
@@ -1448,8 +1451,8 @@ control the rest:
 
 | Marker | Effect |
 |---|---|
-| `/etc/boa/.debug.monitor.cnf` | `set -x` shell trace + `declare -p` dumps of every scoring array on startup |
-| `/etc/boa/.debug.monitor.log.cnf` | forces `_verbose_log` on regardless of `_NGINX_DOS_LOG` — the way to get the logs back on a box running `SILENT` |
+| `/etc/boa/.debug.monitor.cnf` | `set -x` shell trace + `declare -p` dumps of every scoring array on startup. Converted: `_DEBUG_MONITOR=YES` in `/root/.barracuda.cnf` is the supported switch; the file stays honoured for one release (off = `NO` *and* remove the file). |
+| `/etc/boa/.debug.monitor.log.cnf` | forces `_verbose_log` on regardless of `_NGINX_DOS_LOG`. FOLDED into the variable: while the file exists, the next `barracuda up-*` pass writes `_NGINX_DOS_LOG=NORMAL` (an explicit `NORMAL`/`VERBOSE` wins), and that write is what persists — removing the marker alone no longer reverts it. Off = remove the file *and* set `_NGINX_DOS_LOG=SILENT`. |
 
 The verbose log fans out by category: `/var/log/scan_nginx_debug.log` (general),
 `/var/log/scan_nginx_flood_debug.log` (counter increments),
@@ -1463,12 +1466,16 @@ no flags — it is normally launched by `nginx_guard.sh`, 10 short overlapping p
 minute, gated by the single-instance lock):
 
 ```bash
-touch /etc/boa/.debug.monitor.log.cnf
+# the supported switch is the variable; NORMAL is enough for the general log
+sed -i "s/^_NGINX_DOS_LOG=.*/_NGINX_DOS_LOG=NORMAL/" /root/.barracuda.cnf
 bash /var/xdrago/monitor/check/scan_nginx.sh
 tail -f /var/log/scan_nginx_debug.log
-# for the per-category split, set _NGINX_DOS_LOG=VERBOSE in /root/.barracuda.cnf
-# and watch scan_nginx_flood_debug.log instead
-rm -f /etc/boa/.debug.monitor.log.cnf   # remember to remove the marker afterwards
+# for the per-category split, set _NGINX_DOS_LOG=VERBOSE instead
+# and watch scan_nginx_flood_debug.log
+sed -i "s/^_NGINX_DOS_LOG=.*/_NGINX_DOS_LOG=SILENT/" /root/.barracuda.cnf   # off
+# (a legacy touch /etc/boa/.debug.monitor.log.cnf still works, but the next
+#  barracuda pass then writes NORMAL into the cnf permanently -- to fully
+#  revert, remove the marker AND set SILENT as above)
 ```
 
 ### Self-healing watchdogs

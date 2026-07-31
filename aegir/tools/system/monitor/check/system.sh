@@ -598,8 +598,10 @@ _clamav_health_check_fix() {
   if [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ]; then
     return 1  # Exit the function but continue the script
   fi
-  if [ -e "${_allow_conf}" ] \
+  if { [ -e "${_allow_conf}" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; } \
     && [ ! -e "${_deny_conf}" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null \
     && [ -e "${_data_dir}" ] \
     && [ -e "${_clamd_service}" ] \
     && [ -e "${_freshclam_service}" ]; then
