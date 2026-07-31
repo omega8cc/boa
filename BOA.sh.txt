@@ -1199,7 +1199,6 @@ _update_agents() {
       && [[ ! "${_PrTestUltra}" =~ "ULTRA" ]] \
       && [[ ! "${_PrTestMonster}" =~ "MONSTER" ]]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
-      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
@@ -1209,7 +1208,6 @@ _update_agents() {
     fi
     if [ "${_InTest}" -ge 9 ] && [ "${_InTest}" -le 50 ]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
-      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
@@ -1220,7 +1218,6 @@ _update_agents() {
     if [ "${_InTest}" -gt 50 ]; then
       [ -e "/root/.fast.cron.cnf" ] && rm -f /root/.fast.cron.cnf
       [ ! -e "/root/.tg.cnf" ] && echo ${_InTest} > /root/.tg.cnf
-      [ ! -e "/root/.hr.monitor.cnf" ] && echo ${_InTest} > /root/.hr.monitor.cnf
       [ ! -e "/root/.slow.cron.cnf" ] && echo ${_InTest} > /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
       mysql -u root -e "SET GLOBAL max_connections = 777;"
@@ -1230,7 +1227,6 @@ _update_agents() {
     if [[ "${_PrTestPower}" =~ "POWER" ]]; then
       [ ! -e "/root/.tg.cnf" ] && echo ${_InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
-      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
       mysql -u root -e "SET GLOBAL max_connections = 333;"
@@ -1240,7 +1236,6 @@ _update_agents() {
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]]; then
       [ ! -e "/root/.tg.cnf" ] && echo ${_InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
-      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
       mysql -u root -e "SET GLOBAL max_connections = 555;"
@@ -1250,7 +1245,6 @@ _update_agents() {
     if [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
       [ ! -e "/root/.tg.cnf" ] && echo ${_InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
-      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
       mysql -u root -e "SET GLOBAL max_connections = 777;"
@@ -1616,7 +1610,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f82
     # autoupboa/fixmounts are also fetched by _update_boa_tools and share its
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f49 --guard autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f48 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f87
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f88
@@ -4085,7 +4079,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f96 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f96 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f79 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f49 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f48 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard /local/bin/backboa
     # barracuda serial re-aligned with _update_agents (f81): the two sites
     # MUST match or every clear.sh cycle wipes the other's stamp and
@@ -4150,7 +4144,7 @@ _update_boa_tools() {
     _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
     _wlOwlCnt=${_wlOwlCnt:-0}
     if (( _wlOwlCnt == 0 )); then
-      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f98 --guard /local/bin/weblogx
+      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f97 --guard /local/bin/weblogx
     else
       echo "The weblogx and owl.sh is running!"
     fi

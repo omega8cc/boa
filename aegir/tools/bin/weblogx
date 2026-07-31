@@ -9,10 +9,8 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
-_USE_GITHUB=/etc/boa/.goaccess.use.github.txt
 _GOACCESS_VRN=1.9.4
 _sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
-[ -e "/etc/boa/.goaccess.use.github.txt" ] && rm -f /etc/boa/.goaccess.use.github.txt
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -153,17 +151,10 @@ _install_goaccess() {
   mkdir -p /var/opt
   cd /var/opt
   rm -rf /var/opt/goaccess*
-  if [ -e "${_USE_GITHUB}" ]; then
-    echo "Downloading from https://github.com/omega8cc/goaccess.git"
-    git clone https://github.com/omega8cc/goaccess.git
-    cd /var/opt/goaccess
-    autoreconf -fi
-  else
-    echo "Downloading from ${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
-    curl -I ${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
-    curl ${_crlGet} "${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
-    cd /var/opt/goaccess-${_GOACCESS_VRN}
-  fi
+  echo "Downloading from ${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
+  curl -I ${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
+  curl ${_crlGet} "${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
+  cd /var/opt/goaccess-${_GOACCESS_VRN}
   bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=mmdb --with-getline
   make --quiet
   make --quiet install
