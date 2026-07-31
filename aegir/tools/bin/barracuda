@@ -1200,7 +1200,8 @@ _up_start() {
     ### reused across runs by design (multi-step installs, bulk upgrades).
     ### With this control file present every run purges it first, so a
     ### freshly re-synced mirror is always fetched -- use on dev/test boxes.
-    if [ -e "/root/.debug-purge-build-tree.cnf" ]; then
+    if [ "${_DEBUG_PURGE_BUILD_TREE}" = "YES" ] \
+      || [ -e "/root/.debug-purge-build-tree.cnf" ]; then
       rm -rf ${_bldPth}
       rm -f /opt/tmp/boa.tar.gz
     fi
@@ -1616,6 +1617,11 @@ _find_correct_ip() {
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
   fi
 }
+
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_DEBUG_PURGE_BUILD_TREE=NO
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then

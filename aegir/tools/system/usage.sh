@@ -82,7 +82,8 @@ _read_account_data() {
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
     _check_account_exceptions
   fi
-  if [ -e "/etc/boa/.debug.email.txt" ]; then
+  if [ "${_DEBUG_EMAIL}" = "YES" ] \
+    || [ -e "/etc/boa/.debug.email.txt" ]; then
     _CLIENT_EMAIL="inbox@boa.io"
   fi
   if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then
@@ -681,6 +682,11 @@ _get_load() {
   read -r _one _five _rest <<< "$(cat /proc/loadavg)"
   _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_NR}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
 }
+
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_DEBUG_EMAIL=NO
 
 _load_control() {
   # shellcheck disable=SC1091
