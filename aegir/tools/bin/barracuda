@@ -1200,7 +1200,8 @@ _up_start() {
     ### reused across runs by design (multi-step installs, bulk upgrades).
     ### With this control file present every run purges it first, so a
     ### freshly re-synced mirror is always fetched -- use on dev/test boxes.
-    if [ -e "/root/.debug-purge-build-tree.cnf" ]; then
+    if [ "${_DEBUG_PURGE_BUILD_TREE}" = "YES" ] \
+      || [ -e "/root/.debug-purge-build-tree.cnf" ]; then
       rm -rf ${_bldPth}
       rm -f /opt/tmp/boa.tar.gz
     fi
