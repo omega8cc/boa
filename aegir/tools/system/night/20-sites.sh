@@ -2184,7 +2184,8 @@ _daily_process() {
             _DONT_TOUCH_PERMISSIONS=NO
           fi
         fi
-        if [ -e "/etc/boa/.dont.touch.permissions.cnf" ]; then
+        if [ -e "/etc/boa/.dont.touch.permissions.cnf" ] \
+          || [ "${_SKIP_PERMISSIONS_PASS}" = "YES" ]; then
           _DONT_TOUCH_PERMISSIONS=YES
         fi
         if [ "${_DONT_TOUCH_PERMISSIONS}" = "NO" ] \

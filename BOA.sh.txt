@@ -1617,7 +1617,7 @@ _update_agents() {
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f47 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f87
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f88
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f87
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f80
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f90
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f93
@@ -1644,7 +1644,7 @@ _update_agents() {
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f85
-    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f74
+    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f73
     # The synproxy family is also fetched by _update_boa_tools and shares its
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
