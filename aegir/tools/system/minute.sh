@@ -129,7 +129,8 @@ _monitor_box_class() {
   local _ram_mb
   _ram_mb="$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')"
   _ram_mb="${_ram_mb//[^0-9]/}"
-  if [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
+  if [ -e "/etc/boa/.look.like.jenkins.cnf" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_FORCE_CI_BOX=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     _BOX_CLASS=CI
   elif { [ -e "/root/.slow.cron.cnf" ] \
        || { [ -n "${_ram_mb}" ] && [ "${_ram_mb}" -le 4096 ]; }; } \

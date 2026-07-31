@@ -18,6 +18,7 @@
 # (night_load_run_env), so the cnf value wins; the literal keeps the read
 # well-defined and fail-closed if a worker is ever driven outside that chain.
 _ALLOW_CODEBASECHECK=NO
+_SKIP_PERMISSIONS_PASS=NO
 
 _check_if_required_with_drush8() {
   _REQ=YES
@@ -2184,7 +2185,8 @@ _daily_process() {
             _DONT_TOUCH_PERMISSIONS=NO
           fi
         fi
-        if [ -e "/etc/boa/.dont.touch.permissions.cnf" ]; then
+        if [ -e "/etc/boa/.dont.touch.permissions.cnf" ] \
+          || [ "${_SKIP_PERMISSIONS_PASS}" = "YES" ]; then
           _DONT_TOUCH_PERMISSIONS=YES
         fi
         if [ "${_DONT_TOUCH_PERMISSIONS}" = "NO" ] \

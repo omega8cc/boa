@@ -1171,6 +1171,56 @@ _MY_RESTART_AFTER_OPTIMIZE=NO
 ### Installs sysklogd instead of rsyslog as the system logger.
 ### Replaces /root/.use.sysklogd.cnf
 _USE_SYSKLOGD=NO
+###
+### Keeps Java/Solr/Jetty off this box; the installer skips the Solr stack
+### and the updater tears down any installed Solr/Jetty init scripts.
+### Replaces /root/.deny.java.cnf
+_DENY_JAVA=NO
+###
+### Skips the nightly per-platform permissions pass (the codebase lock);
+### the box-wide sweep keeps its own gate.
+### Replaces /etc/boa/.dont.touch.permissions.cnf
+_SKIP_PERMISSIONS_PASS=NO
+###
+### Allows the automatic Aegir task queue on a CI-classified box.
+### Replaces /etc/boa/.allow.aegir.queue.cnf
+_ALLOW_AEGIR_QUEUE=NO
+###
+### Disables the hourly database cleanup run and the four nightly
+### giant-table truncations in the backup pass.
+### Replaces /etc/boa/.disable_mysql_cleanup.cnf
+_DISABLE_MYSQL_CLEANUP=NO
+###
+### Enables the abuse-guard scorer's debug instrumentation, including its
+### shell trace on manual runs.
+### Replaces /etc/boa/.debug.monitor.cnf
+_DEBUG_MONITOR=NO
+###
+### Keeps the du command available in the restricted client shell.
+### Replaces /etc/boa/.allow.du.cnf
+_ALLOW_DU=NO
+###
+### Suppresses the wildcard chmod pass over client home directories.
+### Replaces /etc/boa/.home.no.wildcard.chmod.cnf
+_HOME_NO_WILDCARD_CHMOD=NO
+###
+### Keeps ClamAV services registered and monitored on this box.
+### Replaces /root/.allow.clamav.cnf
+_ALLOW_CLAMAV=NO
+###
+### Overrides an allow and forces ClamAV services deregistered.
+### Replaces /root/.deny.clamav.cnf
+_DENY_CLAMAV=NO
+###
+### Forces the CI box classification (queue policy, monitor cadence,
+### usage accounting, the Jenkins-era java symlink set).
+### Replaces /etc/boa/.look.like.jenkins.cnf
+_FORCE_CI_BOX=NO
+###
+### Suppresses the automatic cron service start/reload at the three
+### upgrade-finale sites that honour it.
+### Replaces /root/.upstart.cnf
+_NO_CRON_AUTOSTART=NO
 
 ###
 ### Set max 1 min load per CPU core before killing
@@ -1319,7 +1369,12 @@ _NGINX_DOS_LIMIT=399
 _NGINX_DOS_MODE=2
 
 ###
-### Logging mode, can be SILENT, NORMAL or VERBOSE
+### Logging mode, can be SILENT, NORMAL or VERBOSE.
+### Absorbs the former /etc/boa/.debug.monitor.log.cnf marker: while that
+### file exists the upgrade pass ensures NORMAL here (an explicit NORMAL or
+### VERBOSE wins). Off = remove the marker *and* set SILENT. This key is
+### seed-only on retunes -- a value set here survives fleet DOS retunes,
+### unlike the other _NGINX_DOS_* keys, which retunes reset to defaults.
 ###
 _NGINX_DOS_LOG=SILENT
 
@@ -1515,22 +1570,17 @@ _GHOST_CLIENT_NOTIFY=YES
 ###
 ### Max TTL for mysql process per user (seconds)
 ###
-### It will be automatically lowered to 300 if
-### /root/.high_load.cnf file exists while empty
-### /root/.big_db.cnf file is not present.
-###
-### If both empty /root/.high_load.cnf and empty
-### /root/.big_db.cnf are not present, it will be
-### automatically lowered to 1800.
-###
-### It will remain set to 3600 if empty file
-### /root/.big_db.cnf is present.
+### This value is authoritative: the watchdog sources this file before its
+### built-in fallback can fire, so the value set here is what the kill test
+### uses. The historical /root/.high_load.cnf and /root/.big_db.cnf markers
+### are inert and their installer retune was retired -- set the ceiling you
+### want here explicitly.
 ###
 _SQL_MAX_TTL=3600
 
 ###
 ### Max TTL for mysql process per problematic user
-### listed in the /root/.sql.problematic.users.cnf
+### listed in the /etc/boa/.sql.problematic.users.cnf
 ### file -- one per line.
 ###
 _SQL_LOW_MAX_TTL=60
