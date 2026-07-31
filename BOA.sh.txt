@@ -64,9 +64,11 @@ _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
-# Default before the guarded cnf source later in this file so the cnf
-# value wins; the marker stays honoured for one release.
+# Defaults before the guarded cnf source later in this file so the cnf
+# value wins; the markers stay honoured for one release.
 _NO_SYSCTL_UPDATE=NO
+_NO_CRON_AUTOSTART=NO
+_FORCE_CI_BOX=NO
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
@@ -3132,7 +3134,8 @@ _fix_java_symlinks() {
     fi
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
-    elif [ -e "/etc/boa/.look.like.jenkins.cnf" ]; then
+    elif [ -e "/etc/boa/.look.like.jenkins.cnf" ] \
+      || [ "${_FORCE_CI_BOX}" = "YES" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     else
       _LOOK_LIKE_JENKINS=FALSE
@@ -5112,7 +5115,8 @@ if [ "$(id -u)" -eq 0 ]; then
     chmod 640 /etc/ssl/private/*
     chmod 710 /etc/ssl/private
   fi
-  if [ ! -e "/root/.upstart.cnf" ]; then
+  if [ ! -e "/root/.upstart.cnf" ] \
+    && [ "${_NO_CRON_AUTOSTART}" != "YES" ]; then
     service cron reload &> /dev/null
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
