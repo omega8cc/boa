@@ -1736,7 +1736,8 @@ EOF
     echo "export PIPX_HOME=/opt/pipx/venvs" >> /root/.bashrc
     printf "\n" >> /root/.bashrc
   fi
-  if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
+  if [ "${_DONT_USE_FANCY_BASH_LOGIN}" = "YES" ] \
+    || [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
     _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
     if [[ "${_FANCY_TEST}" =~ "fancynow" ]]; then
       sed -i "s/.*fancynow.*/  \/bin\/true/g" /root/.bashrc &> /dev/null
@@ -2246,7 +2247,8 @@ _php_if_versions_cleanup_cnf() {
       ### Include PHP 8.4 if conditions are met
       _if_hosted_sys
       if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
-        if [ -e "/root/.include-php-latest.cnf" ] \
+        if [ "${_INCLUDE_PHP_LATEST}" = "YES" ] \
+          || [ -e "/root/.include-php-latest.cnf" ] \
           || [ "${_hostedSys}" = "YES" ]; then
           if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
             && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
@@ -6857,7 +6859,8 @@ _sync_apparmor_profiles() {
       chmod 644 ${_proFile}
     done
     if [ -e "/etc/audit/auditd.conf" ]; then
-      if [ -e "/root/.disable.auditd.logs.cnf" ]; then
+      if [ "${_DISABLE_AUDITD_LOGS}" = "YES" ] \
+        || [ -e "/root/.disable.auditd.logs.cnf" ]; then
         sed -i "s/^write_logs =.*/write_logs = no/g" /etc/audit/auditd.conf
       else
         sed -i "s/^write_logs =.*/write_logs = yes/g" /etc/audit/auditd.conf
@@ -7403,7 +7406,8 @@ _run_aptitude_deps_install() {
       fi
     done
   fi
-  if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
+  if { [ "${_DONT_USE_FANCY_BASH_LOGIN}" = "YES" ] \
+    || [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; } \
     && [ -e "/usr/bin/screenfetch" ]; then
     ###
     for _PKG in toilet figlet screenfetch; do
@@ -9357,7 +9361,8 @@ _sys_packages_install() {
     _mrun "apt-get remove rsyslog -y --purge --auto-remove -qq"
     _mrun "killall -9 sysklogd"
     _mrun "killall -9 rsyslogd"
-  elif [ -e "/root/.use.sysklogd.cnf" ]; then
+  elif [ "${_USE_SYSKLOGD}" = "YES" ] \
+    || [ -e "/root/.use.sysklogd.cnf" ]; then
     _SYSLOGD=sysklogd
     _mrun "apt-get remove rsyslog -y --purge --auto-remove -qq"
     _mrun "killall -9 rsyslogd"
@@ -9702,6 +9707,7 @@ EOF
   ### back to direct.
   ###
   if [ ! -z "${_SMTP_RELAY_HOST}" ] \
+    && [ "${_ALLOW_SENDMAIL}" != "YES" ] \
     && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
     sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
     wait
@@ -9709,7 +9715,8 @@ EOF
       /etc/postfix/main.cf &> /dev/null
     wait
     postfix reload &> /dev/null
-  elif [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
+  elif [ "${_ALLOW_SENDMAIL}" = "YES" ] \
+    || [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
     if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
       sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
       wait
@@ -9910,7 +9917,8 @@ _myquick_install_upgrade() {
   else
     _USE_MYQUICK="${_MYQUICK_VRN_TWO}"
   fi
-  if [ -e "/root/.install.myquick.src.info" ]; then
+  if [ "${_INSTALL_MYQUICK_SRC}" = "YES" ] \
+    || [ -e "/root/.install.myquick.src.info" ]; then
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
   fi
   _check_mysql_version
@@ -11233,7 +11241,8 @@ _sysctl_update() {
     _apt_clean_update
     _mrun "${_INITINS} traceroute"
   fi
-  if [ ! -e "/root/.no.sysctl.update.cnf" ] \
+  if [ "${_NO_SYSCTL_UPDATE}" != "YES" ] \
+    && [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "${_pthLog}/sysctl.conf-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
       ${_vBs}/dragon/t/sysctl.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
