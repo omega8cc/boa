@@ -76,6 +76,11 @@ fi
 
 echo "INFO: Starting dbs backup on $(date)"
 
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_MY_RESTART_AFTER_OPTIMIZE=NO
+
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
@@ -532,7 +537,8 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_THIS_MODE}" = "full" ] \
   && [ "${_DOM}" -ge 24 ] \
   && [ "${_DOM}" -lt 31 ] \
-  && [ -e "/root/.my.restart_after_optimize.cnf" ] \
+  && { [ "${_MY_RESTART_AFTER_OPTIMIZE}" = "YES" ] \
+    || [ -e "/root/.my.restart_after_optimize.cnf" ]; } \
   && [ ! -e "/run/boa_run.pid" ]; then
   _check_running
   _check_mysql_version

@@ -9,6 +9,14 @@ export _xSrl=588811devT01
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_DENY_JETTY9=NO
+_DENY_SOLR7=NO
+_DENY_SOLR9=NO
+_ALLOW_SENDMAIL=NO
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -404,7 +412,6 @@ _LOCK_CPU_CONFIG="/root/.lock.cpu.update.f97.cnf"
 _UPDATE_CPU_PID="/var/log/boa/.update_conf_variable.ctrl.f97.${_tRee}.${_xSrl}.pid"
 _LOCK_DOS_CONFIG="/root/.lock.dos.update.f98.cnf"
 _LOCK_DOS_PID="/var/log/boa/.sync_scan_nginx.ctrl.f98.${_tRee}.${_xSrl}.pid"
-_ALLOW_SENDMAIL_PID="/var/log/boa/.allow_sendmail.ctrl.f98.${_tRee}.${_xSrl}.pid"
 _DEFAULT_NGINX_DOS_LINES=1999
 _DEFAULT_NGINX_DOS_LIMIT=399
 _DEFAULT_NGINX_DOS_MODE=2
@@ -600,7 +607,8 @@ _if_disable_not_used_services() {
     pkill -9 -f java
   fi
 
-  if [ -e "/etc/boa/.deny.jetty9.cnf" ]; then
+  if [ "${_DENY_JETTY9}" = "YES" ] \
+    || [ -e "/etc/boa/.deny.jetty9.cnf" ]; then
     if [ -e "/etc/init.d/jetty9" ]; then
       _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
@@ -610,7 +618,8 @@ _if_disable_not_used_services() {
     fi
   fi
 
-  if [ -e "/etc/boa/.deny.solr7.cnf" ]; then
+  if [ "${_DENY_SOLR7}" = "YES" ] \
+    || [ -e "/etc/boa/.deny.solr7.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
@@ -620,7 +629,8 @@ _if_disable_not_used_services() {
     fi
   fi
 
-  if [ -e "/etc/boa/.deny.solr9.cnf" ]; then
+  if [ "${_DENY_SOLR9}" = "YES" ] \
+    || [ -e "/etc/boa/.deny.solr9.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
@@ -793,9 +803,20 @@ _send_boa_system_report() {
       && [ -e "/etc/boa/.run.example.report.cnf" ]; then
       _repSub="BOA Status on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      _repSent=NO
       boa info report both > ${_repBodFile}
-      cat ${_repBodFile} | s-nail -b ${_BCC_EMAIL} -s "${_repSub} at ${_NOW}" ${_RCPT_EMAIL}
+      if [ -s "${_repBodFile}" ]; then
+        s-nail -b ${_BCC_EMAIL} -s "${_repSub} at ${_NOW}" ${_RCPT_EMAIL} \
+          < ${_repBodFile} && _repSent=YES
+      fi
       rm -f ${_repBodFile}
+      ### Consume the request only once the report has reached the local
+      ### MTA on a non-empty body -- handoff, not delivery confirmation.
+      ### Until this, a request made outside the send window was wiped by
+      ### the hosted pass below before it could ever be honoured.
+      if [ "${_repSent}" = "YES" ]; then
+        rm -f /etc/boa/.run.example.report.cnf
+      fi
     fi
   fi
 }
@@ -881,17 +902,18 @@ _restrict_sendmail() {
     chown root /usr/sbin/sendmail &> /dev/null
     chgrp allow-snail /usr/sbin/sendmail &> /dev/null
   fi
-  if [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
+  if [ "${_ALLOW_SENDMAIL}" != "YES" ] \
+    && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
     chmod 750 /usr/sbin/sendmail &> /dev/null
   fi
 }
 
 _if_restrict_sendmail() {
-  if [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
-    if [ ! -e "${_ALLOW_SENDMAIL_PID}" ]; then
-      chmod 755 /usr/sbin/sendmail &> /dev/null
-      touch "${_ALLOW_SENDMAIL_PID}"
-    fi
+  # Symmetric with the 750 arm below: an explicit YES re-asserts 755 on
+  # every pass, so a hand-set 750 no longer sticks until the next serial.
+  if [ "${_ALLOW_SENDMAIL}" = "YES" ] \
+    || [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
+    chmod 755 /usr/sbin/sendmail &> /dev/null
   else
     _restrict_sendmail
   fi
@@ -1240,23 +1262,15 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _AUTO_OCT_UP_MINUTE=10
 
     [ -e "/root/.my.optimize.cnf" ] && rm -f /root/.my.optimize.cnf
-    [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
-    [ -e "/etc/boa/.run.example.report.cnf" ] && rm -f /etc/boa/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ -e "/run/boa_run.pid" ]; then
       touch /etc/boa/.pause_tasks_maint.cnf
     else
       [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && rm -f /etc/boa/.pause_tasks_maint.cnf
     fi
-    if [ -e "/root/.restrict_this_vm.cnf" ]; then
-      killall -9 rsync
-      chmod 700 /usr/bin/rsync
-      chmod 700 /usr/bin/mysqldump
-    else
-      chmod 755 /usr/bin/rsync
-      chmod 755 /usr/bin/mysqldump
-    fi
+    chmod 755 /usr/bin/rsync
+    chmod 755 /usr/bin/mysqldump
   fi
 
   if [ ! -e "/etc/init.d/ssh" ]; then
