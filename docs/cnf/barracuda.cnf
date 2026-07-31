@@ -83,16 +83,38 @@ _GHOST_SITES_CLEANUP=NO #------- Move ghost site alias+vhost aside when YES
 _GHOST_SITE_FILES_CLEANUP=NO #-- Also move a ghost site's files dir when YES
 _GHOST_ALIASES_CLEANUP=NO #----- Move stale ltd-user alias copies aside when YES
 ###
-### Converted control-file toggles; each replaces the former /etc/boa
-### marker named in docs/ctrl/system.ctrl. System cnf only -- a line
-### of the same name in an octopus cnf is unsupported. If you restore
-### an older /root/.barracuda.cnf from the dragon store, re-check these
-### four -- a pre-conversion copy silently reverts them to defaults.
+### Converted control-file toggles; each replaces a former presence-
+### marker file under /etc/boa or /root. System cnf only -- a line
+### of the same name in an octopus cnf is unsupported. To switch one
+### off during the transition, set it to NO *and* remove its marker
+### file: while the marker exists it wins on every pass. If you restore
+### an older /root/.barracuda.cnf from the dragon store, re-check every
+### one of them -- a pre-conversion copy silently reverts them to defaults.
 ###
 _ENABLE_NEWRELIC_SYSMOND=NO #--- Keep nrsysmond running when YES; stopped when NO
 _ALLOW_PHP_FPM_RELOAD=NO #------ FPM-reload sentinel on any plan when YES
 _ALLOW_CODEBASECHECK=NO #------- Nightly per-platform codebasecheck when YES
 _INSTANT_CSF_BLOCK=NO #--------- Instant csf ban for web IDS offenders when YES
+_DENY_JETTY9=NO #-------------- Tear down the Jetty 9 service when YES
+_DENY_SOLR7=NO #--------------- Tear down the Solr 7 service when YES
+_DENY_SOLR9=NO #--------------- Tear down the Solr 9 service when YES
+_ALLOW_NGINX_RESTART=NO #------ Self-service nginx-restart sentinel box-wide when YES
+_ALLOW_VALKEY_RESTART=NO #----- Self-service cache-restart sentinel box-wide when YES
+_DEBUG_EMAIL=NO #-------------- Send the usage report to the debug inbox when YES
+_GOACCESS_ALL=NO #------------- Nightly ALL-sites GoAccess report when YES (needs GoAccess on)
+_OCTOPUS_UPGRADE_RERUN_SILENT=NO #- Silence + re-run already-current Octopus upgrades when YES
+_INSTANT_BUSY_MYSQL_ACTION=NO #- Let the monitor restart a busy live DB when YES
+_MYSQLADMIN_MONITOR=NO #------- Keep slow-query log + process-list monitor on when YES
+_ALLOW_SENDMAIL=NO #----------- Leave sendmail usable and Postfix direct when YES
+_NO_SYSCTL_UPDATE=NO #--------- Skip sysctl/limits refresh on upgrades when YES
+_DEBUG_PURGE_BUILD_TREE=NO #--- Purge the /opt/tmp build tree every run when YES
+_DEBUG_DAILY=NO #-------------- Verbose per-drush lines in the nightly log when YES
+_DISABLE_AUDITD_LOGS=NO #------ Stop auditd writing logs when YES
+_DONT_USE_FANCY_BASH_LOGIN=NO #- Plain root login banner, no toilet/figlet when YES
+_INCLUDE_PHP_LATEST=NO #------- Include the newest supported PHP version when YES
+_INSTALL_MYQUICK_SRC=NO #------ Build mydumper from source when YES
+_MY_RESTART_AFTER_OPTIMIZE=NO #- Graceful MySQL restart after monthly OPTIMIZE when YES
+_USE_SYSKLOGD=NO #------------- Install sysklogd instead of rsyslog when YES
 ###
 _NGINX_DOS_DIV_INC_NR="40" #---- Default divisor for increments
 _NGINX_DOS_IGNORE="foo|bar" #--- Keywords to ignore the requests if found
