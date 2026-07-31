@@ -14,6 +14,11 @@
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
 
+# Default only: every worker sources /root/.barracuda.cnf after this file
+# (night_load_run_env), so the cnf value wins; the literal keeps the read
+# well-defined and fail-closed if a worker is ever driven outside that chain.
+_ALLOW_CODEBASECHECK=NO
+
 _check_if_required_with_drush8() {
   _REQ=YES
   _REI_TEST=$(_run_drush8_nosilent_cmd "pmi $1 --fields=required_by" 2>&1)
@@ -2071,7 +2076,8 @@ _daily_process() {
           | openssl md5 \
           | awk '{ print $2}' \
           | tr -d "\n" 2>&1)
-        if [ -e "/etc/boa/.allow-codebasecheck.cnf" ]; then
+        if [ "${_ALLOW_CODEBASECHECK}" = "YES" ] \
+          || [ -e "/etc/boa/.allow-codebasecheck.cnf" ]; then
           _codeBaseCheckDir="${_usEr}/log/ctrl"
           _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
           _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"

@@ -15,6 +15,12 @@
 ### load, run-freeze, _apt_clean_update, _if_gen_goaccess) and 20-sites.sh
 ### (_daily_process + the per-site family), both sourced below.
 ###
+# Default only: every worker sources /root/.barracuda.cnf after this
+# file (night_load_run_env), so the cnf value wins; the literal keeps
+# the read well-defined and fail-closed if a worker is ever driven
+# outside that chain.
+_GOACCESS_ALL=NO
+
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
@@ -324,7 +330,9 @@ _account_process() {
     rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
   _le_hm_ssl_check_update ${_HM_U}
-  if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "/etc/boa/.goaccess.all.cnf" ]; then
+  if [ "${_ENABLE_GOACCESS}" = "YES" ] \
+    && { [ "${_GOACCESS_ALL}" = "YES" ] \
+      || [ -e "/etc/boa/.goaccess.all.cnf" ]; }; then
     _if_gen_goaccess "ALL"
   fi
   echo "Done for ${_usEr}"

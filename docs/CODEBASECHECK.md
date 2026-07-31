@@ -34,8 +34,11 @@ codebasecheck --box --deep       # box report + deep contrib/schema analysis
 ```
 
 Single-codebase mode is also what the nightly maintenance runs per platform when
-`/etc/boa/.allow-codebasecheck.cnf` exists, writing per-platform findings under each
-account's `log/ctrl/`.
+`_ALLOW_CODEBASECHECK=YES` is set in `/root/.barracuda.cnf` (the former
+`/etc/boa/.allow-codebasecheck.cnf` flag stays honoured during the conversion
+window). The zero-byte stamp under each account's `log/ctrl/` only makes the run
+once-per-platform-per-night; the findings themselves go to the per-account night
+log and, for non-OK codebases, to `/var/log/boa/core/incompatible-*.log`.
 
 `--box` walks every `/data/disk/<user>` Octopus account, resolves each account's
 platforms, classifies them, and rolls the result up per account:
