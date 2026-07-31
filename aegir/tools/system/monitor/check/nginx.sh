@@ -6,6 +6,11 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/log/boa/nginx.incident.log"
 
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_ALLOW_NGINX_RESTART=NO
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -310,7 +315,8 @@ _if_nginx_restart() {
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/etc/boa/.allow.nginx.restart.cnf" ]; then
+    || [ -e "/etc/boa/.allow.nginx.restart.cnf" ] \
+    || [ "${_ALLOW_NGINX_RESTART}" = "YES" ]; then
     if [ "${ReTest}" -ge 1 ]; then
       # The sentinel is consumed only when the restart can actually run:
       # _restart_nginx now refuses inside the cooldown, and a request eaten

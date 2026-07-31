@@ -9,6 +9,11 @@ _pthLdg="/var/log/boa/valkey.restart.ledger"
 _pthLch="/run/boa_valkey_restart_latched.pid"
 _cd="/run/valkey-monitor.cooldown"
 
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_ALLOW_VALKEY_RESTART=NO
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -418,7 +423,8 @@ _if_valkey_restart() {
     || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [ -e "/etc/boa/.allow.valkey.restart.cnf" ] \
-    || [ -e "/etc/boa/.allow.redis.restart.cnf" ]; then
+    || [ -e "/etc/boa/.allow.redis.restart.cnf" ] \
+    || [ "${_ALLOW_VALKEY_RESTART}" = "YES" ]; then
     if [ "${_VkTest}" -ge 1 ] || [ "${_ReTest}" -ge 1 ]; then
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
