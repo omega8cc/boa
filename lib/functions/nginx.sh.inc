@@ -196,10 +196,6 @@ _force_advanced_nginx_config() {
     cp -af ${_locCnf}/nginx/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
     chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
   fi
-  if [ -e "/root/.giant_traffic.cnf" ]; then
-    sed -i "s/access_log .*/access_log             /var/log/nginx/access.log main buffer=32k;/g" ${_mtrNgx}.conf &> /dev/null
-    wait
-  fi
 }
 
 #

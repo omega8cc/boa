@@ -9,6 +9,12 @@ _pthLdg="/var/log/boa/mysql.restart.ledger"
 _pthCdn="/run/mysql-monitor.cooldown"
 _pthLch="/run/boa_mysql_restart_latched.pid"
 
+# Defaults before the cnf source below so the cnf value wins; the
+# variable is the supported switch, the marker stays honoured for
+# one release while fleets converge.
+_INSTANT_BUSY_MYSQL_ACTION=NO
+_MYSQLADMIN_MONITOR=NO
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -350,7 +356,8 @@ _sql_busy_detection() {
       fi
     fi
   fi
-  if [ -e "/etc/boa/.instant.busy.mysql.action.cnf" ]; then
+  if [ "${_INSTANT_BUSY_MYSQL_ACTION}" = "YES" ] \
+    || [ -e "/etc/boa/.instant.busy.mysql.action.cnf" ]; then
     # File-existence check instead of cat'ing the cleartext root password
     # into a shell variable just to test its non-emptiness. The mysql call
     # below uses /root/.my.cnf credentials implicitly via `mysql -u root`.
@@ -382,7 +389,8 @@ _mysql_proc_kill() {
 
 _mysql_proc_control() {
   # Control file to enable _SQLMONITOR
-  if [ -e "/etc/boa/.mysqladmin.monitor.cnf" ]; then
+  if [ "${_MYSQLADMIN_MONITOR}" = "YES" ] \
+    || [ -e "/etc/boa/.mysqladmin.monitor.cnf" ]; then
     _SQLMONITOR=YES
   fi
 

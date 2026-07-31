@@ -20,6 +20,12 @@
 # BOA Tier-0 constants shared by the orchestrator and the night workers. The
 # worker subprocesses get these by sourcing this library; the drush config/
 # variable verbs (_vSet etc.) are used throughout the per-account/per-site work.
+# Default only: every worker sources /root/.barracuda.cnf after this
+# file (night_load_run_env), so the cnf value wins; the literal keeps
+# the read well-defined and fail-closed if a worker is ever driven
+# outside that chain.
+_DEBUG_DAILY=NO
+
 _WEBG=www-data
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
@@ -241,7 +247,8 @@ _disable_chattr() {
 ###-------------DRUSH8-----------------###
 
 _run_drush8_cmd() {
-  if [ -e "/root/.debug_daily.info" ]; then
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
@@ -254,7 +261,8 @@ _run_drush8_cmd() {
 }
 
 _run_drush8_hmr_cmd() {
-  if [ -e "/root/.debug_daily.info" ]; then
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1"
   fi
@@ -283,7 +291,8 @@ _hmr_context_exists() {
 }
 
 _run_drush8_hmr_master_cmd() {
-  if [ -e "/root/.debug_daily.info" ]; then
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} aegir running drush8 @hostmaster $1"
   fi
@@ -292,7 +301,8 @@ _run_drush8_hmr_master_cmd() {
 }
 
 _run_drush8_nosilent_cmd() {
-  if [ -e "/root/.debug_daily.info" ]; then
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
