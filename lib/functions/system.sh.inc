@@ -2452,16 +2452,25 @@ _if_php_idle_on_off() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_php_idle_on_off"
   fi
+  # The stand-down marker doubles as a proxy-node role marker an operator
+  # may own, so take it only when absent and release only what we took --
+  # the ownership token is on disk so a crash cannot strand a real proxy.
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     rm -f /var/log/boa/._php_libs_fix_*.pid
-    touch /root/.proxy.cnf
+    if [ ! -e "/root/.proxy.cnf" ]; then
+      touch /root/.proxy.cnf.boa-idle-owned
+      touch /root/.proxy.cnf
+    fi
     pkill -9 -f second.sh
     sleep 5
     _php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
     wait
-    [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
+    if [ -e "/root/.proxy.cnf.boa-idle-owned" ]; then
+      rm -f /root/.proxy.cnf
+      rm -f /root/.proxy.cnf.boa-idle-owned
+    fi
     _php_install_deps
     _php_libs_fix
     if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -2476,14 +2485,20 @@ _if_php_idle_on_off() {
     _complete
     exit 0
   elif [ "${_PHP_IDLE}" = "OFF" ]; then
-    touch /root/.proxy.cnf
+    if [ ! -e "/root/.proxy.cnf" ]; then
+      touch /root/.proxy.cnf.boa-idle-owned
+      touch /root/.proxy.cnf
+    fi
     pkill -9 -f second.sh
     sleep 5
     touch /root/.allow-php-multi-install-cleanup.cnf
     _php_if_versions_cleanup_cnf
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
     wait
-    [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
+    if [ -e "/root/.proxy.cnf.boa-idle-owned" ]; then
+      rm -f /root/.proxy.cnf
+      rm -f /root/.proxy.cnf.boa-idle-owned
+    fi
     if [ -e "/root/.run-to-excalibur.cnf" ] \
       || [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
