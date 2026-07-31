@@ -1430,14 +1430,23 @@ _xmass_stop_solr_source() {
   # retirement. The touch stays unconditional (skew armour: an older
   # BARRACUDA on this box honours only the file).
   touch "${_SOLR_DENY_FILE}"
+  _denyVarSet=NO
   if [ -e "/root/.barracuda.cnf" ]; then
     if grep -q "^_DENY_JAVA=" /root/.barracuda.cnf 2>/dev/null; then
       sed -i "s/^_DENY_JAVA=.*/_DENY_JAVA=YES/" /root/.barracuda.cnf
     else
+      # Newline-terminate before the append; an unterminated last line
+      # would swallow the previous key.
+      [ -n "$(tail -c1 /root/.barracuda.cnf 2>/dev/null)" ] && echo >> /root/.barracuda.cnf
       echo "_DENY_JAVA=YES" >> /root/.barracuda.cnf
     fi
+    _denyVarSet=YES
   fi
-  _info "Solr disabled on source (${_SOLR_DENY_FILE} created, _DENY_JAVA=YES set): OK"
+  if [ "${_denyVarSet}" = "YES" ]; then
+    _info "Solr disabled on source (${_SOLR_DENY_FILE} created, _DENY_JAVA=YES set): OK"
+  else
+    _info "Solr disabled on source (${_SOLR_DENY_FILE} created; no /root/.barracuda.cnf on this box -- variable form not set): OK"
+  fi
 }
 
 _xmass_start_solr_target() {

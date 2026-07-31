@@ -308,6 +308,9 @@ by the BOA install and upgrade tools exclusively.
   during the transition, set the variable to NO *and* remove the file: while
   the file exists it wins and is re-asserted on every pass.
 
+  Installs sysklogd as the system logger instead of rsyslog. Absence is the
+  active state: the default arm restores rsyslog.
+
  @=> /root/.deny.java.cnf
 
   Keeps Java/Solr/Jetty off this box; xmass also sets it at migration
@@ -377,9 +380,6 @@ by the BOA install and upgrade tools exclusively.
   marker-driven retune never had an observable effect and was removed. Set
   the SQL TTL key explicitly if a custom ceiling is intended; the upgrade
   pass leaves a one-time advisory note when either file is present.
-
-  Installs sysklogd as the system logger instead of rsyslog. Absence is the
-  active state: the default arm restores rsyslog.
 
  @=> /root/.hr.monitor.cnf
 
@@ -568,8 +568,9 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.upstart.cnf
 
-  Suppresses the automatic cron service start/reload at the three
-  upgrade-finale sites that honour it (the historical stop-skipping half no
+  Suppresses the automatic cron service start/reload at the three sites that
+  honour it -- two upgrade-finale starts and one per-tick reload (the
+  historical stop-skipping half no
   longer exists in code; the name is historical too -- it neither detects nor
   selects an init system). Converted to _NO_CRON_AUTOSTART=YES in
   /root/.barracuda.cnf -- the variable is the supported switch; the file stays

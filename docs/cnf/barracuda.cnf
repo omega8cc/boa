@@ -132,7 +132,7 @@ _NGINX_DOS_IGNORE="foo|bar" #--- Keywords to ignore the requests if found
 _NGINX_DOS_INC_MIN="3" #-------- Default min allowed number for increments
 _NGINX_DOS_LIMIT=399 #---------- Default 399/1999 limit of page views per IP
 _NGINX_DOS_LINES=1999 #--------- Default number of access.log lines to check
-_NGINX_DOS_LOG=SILENT #--------- Logging mode, can be SILENT, NORMAL or VERBOSE
+_NGINX_DOS_LOG=SILENT #---------- DOS logging: SILENT, NORMAL or VERBOSE; absorbs .debug.monitor.log.cnf (marker ensures NORMAL; off = rm marker AND set SILENT); survives retunes unlike its _NGINX_DOS_* siblings
 _NGINX_DOS_MODE=2 #------------- 1 or 2 (default)
 _NGINX_DOS_STOP="foo|bar" #----- Adds full _NGINX_DOS_LIMIT to counter (immediate ban)
 ###

@@ -1168,7 +1168,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       # commented-only or missing line gets a fresh appended default, which
       # matches the old uncomment-to-default outcome. The other DOS keys
       # keep force-reset semantics on purpose.
-      if ! grep -qE "^_NGINX_DOS_LOG=" "${_barCnf}"; then
+      if ! grep -qE "^_NGINX_DOS_LOG=" "${_barCnf}" 2>/dev/null; then
         echo "_NGINX_DOS_LOG=\"${_DEFAULT_NGINX_DOS_LOG}\"" >> "${_barCnf}"
       fi
       _update_conf_variable "_NGINX_DOS_IGNORE" "${_DEFAULT_NGINX_DOS_IGNORE}" "${_barCnf}"

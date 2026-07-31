@@ -18,6 +18,7 @@
 # (night_load_run_env), so the cnf value wins; the literal keeps the read
 # well-defined and fail-closed if a worker is ever driven outside that chain.
 _ALLOW_CODEBASECHECK=NO
+_SKIP_PERMISSIONS_PASS=NO
 
 _check_if_required_with_drush8() {
   _REQ=YES

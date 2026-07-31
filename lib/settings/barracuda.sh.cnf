@@ -1369,7 +1369,12 @@ _NGINX_DOS_LIMIT=399
 _NGINX_DOS_MODE=2
 
 ###
-### Logging mode, can be SILENT, NORMAL or VERBOSE
+### Logging mode, can be SILENT, NORMAL or VERBOSE.
+### Absorbs the former /etc/boa/.debug.monitor.log.cnf marker: while that
+### file exists the upgrade pass ensures NORMAL here (an explicit NORMAL or
+### VERBOSE wins). Off = remove the marker *and* set SILENT. This key is
+### seed-only on retunes -- a value set here survives fleet DOS retunes,
+### unlike the other _NGINX_DOS_* keys, which retunes reset to defaults.
 ###
 _NGINX_DOS_LOG=SILENT
 
