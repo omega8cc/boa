@@ -80,7 +80,6 @@ echo "INFO: Starting dbs backup on $(date)"
 # variable is the supported switch, the marker stays honoured for
 # one release while fleets converge.
 _MY_RESTART_AFTER_OPTIMIZE=NO
-_DISABLE_MYSQL_CLEANUP=NO
 
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
@@ -457,7 +456,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     if [ "${_DB}" != "mysql" ]; then
       if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ] \
         && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
-        && [ "${_DISABLE_MYSQL_CLEANUP}" != "YES" ]; then
+        && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_MYSQL_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           _truncate_queue_tables &> /dev/null
@@ -466,7 +465,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ] \
         && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
-        && [ "${_DISABLE_MYSQL_CLEANUP}" != "YES" ]; then
+        && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_MYSQL_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
           _truncate_batch_tables &> /dev/null
@@ -475,7 +474,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ] \
         && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
-        && [ "${_DISABLE_MYSQL_CLEANUP}" != "YES" ]; then
+        && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_MYSQL_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           _truncate_watchdog_tables &> /dev/null
@@ -484,7 +483,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
       if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ] \
         && [ ! -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
-        && [ "${_DISABLE_MYSQL_CLEANUP}" != "YES" ]; then
+        && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_MYSQL_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
           _truncate_accesslog_tables &> /dev/null
