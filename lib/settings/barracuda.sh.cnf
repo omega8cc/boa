@@ -1046,7 +1046,7 @@ _USE_BATCH_GUARD=YES
 ### Converted control-file toggles. Each replaces a former /etc/boa
 ### presence-marker file; the marker is still honoured for one release
 ### while the fleet converges, but the variable is the supported
-### switch. All four default to off.
+### switch. They all default to off.
 ###
 ### Keeps the New Relic server monitor (nrsysmond) running; when off,
 ### the guard actively stops it. Off by default because sysmond
@@ -1071,6 +1071,81 @@ _ALLOW_CODEBASECHECK=NO
 ### csf installed to have any effect.
 ### Replaces /etc/boa/.instant.csf.block.cnf
 _INSTANT_CSF_BLOCK=NO
+###
+### Tears down the Jetty 9 service on the next self-update pass:
+### deregisters it, parks its init script in /var/backups and kills the
+### daemon. The teardown does not reverse itself.
+_DENY_JETTY9=NO
+###
+### Same teardown for Solr 7.
+_DENY_SOLR7=NO
+###
+### Same teardown for Solr 9.
+_DENY_SOLR9=NO
+###
+### Enables the self-service run-nginx-restart.pid sentinel box-wide,
+### beside the qualifying-plan gate rather than replacing it.
+_ALLOW_NGINX_RESTART=NO
+###
+### Enables the self-service cache-restart sentinel box-wide. One key
+### covers both the valkey- and redis-named markers it replaces.
+_ALLOW_VALKEY_RESTART=NO
+###
+### Redirects the daily usage report to the internal debug inbox instead
+### of the account owner.
+_DEBUG_EMAIL=NO
+###
+### Nightly GoAccess builds the aggregate ALL-sites report as well as
+### the per-site ones. Needs _ENABLE_GOACCESS=YES.
+_GOACCESS_ALL=NO
+###
+### Suppresses the already-up-to-date notice AND re-runs an Octopus
+### upgrade that would otherwise be skipped.
+_OCTOPUS_UPGRADE_RERUN_SILENT=NO
+###
+### Lets the mysql monitor restart a database that reports too many
+### connections. Off by default: it restarts a live server.
+_INSTANT_BUSY_MYSQL_ACTION=NO
+###
+### Keeps the slow-query log and the mysqladmin process-list monitor on.
+### When off, the monitor turns slow_query_log off and deletes the
+### collected logs.
+_MYSQLADMIN_MONITOR=NO
+###
+### Leaves sendmail executable for tenants and points Postfix at direct
+### delivery instead of the relay. Off by default.
+_ALLOW_SENDMAIL=NO
+###
+### Stops BOA refreshing /etc/sysctl.conf and the system limits on
+### upgrade passes.
+_NO_SYSCTL_UPDATE=NO
+###
+### Purges the reusable /opt/tmp build tree at the start of every
+### wrapper run, forcing a full re-download.
+_DEBUG_PURGE_BUILD_TREE=NO
+###
+### Adds a verbose line per drush call to the nightly maintenance log.
+_DEBUG_DAILY=NO
+###
+### Stops auditd writing logs. When off, BOA re-asserts write_logs = yes
+### on every pass.
+_DISABLE_AUDITD_LOGS=NO
+###
+### Drops the decorated root login banner and its packages (toilet,
+### figlet, screenfetch).
+_DONT_USE_FANCY_BASH_LOGIN=NO
+###
+### Includes the newest supported PHP version in multi-version installs.
+_INCLUDE_PHP_LATEST=NO
+###
+### Builds mydumper from source instead of the packaged build.
+_INSTALL_MYQUICK_SRC=NO
+###
+### Restarts MySQL gracefully after the monthly OPTIMIZE pass.
+_MY_RESTART_AFTER_OPTIMIZE=NO
+###
+### Installs sysklogd instead of rsyslog as the system logger.
+_USE_SYSKLOGD=NO
 
 ###
 ### Set max 1 min load per CPU core before killing

@@ -2512,17 +2512,54 @@ _convert_etcboa_markers_to_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _convert_etcboa_markers_to_cnf"
   fi
-  local _pair _mrk _var _mrkPth _cntA _cntB _mrkMtm _mnfDir _mnf
+  local _pair _mrk _var _mrkPth _mrkSpc _cand _ifsOrg
+  local _cntA _cntB _mrkMtm _mnfDir _mnf
   _mnfDir="${_vBs:-/var/backups}/dragon/config/markers"
   _mnf="${_mnfDir}/converted-markers.txt"
+  # The first field is a full PATH, not a bare filename: half these
+  # markers are /root-native and were never part of the C-003 copy, so
+  # a bare name would send them to the /root-only advisory arm forever.
+  # A '|'-separated first field means either marker sets the key; the
+  # first one that exists wins and is recorded as the provenance path.
   for _pair in \
-    ".enable.newrelic.sysmond.cnf:_ENABLE_NEWRELIC_SYSMOND" \
-    ".allow.php.fpm.reload.cnf:_ALLOW_PHP_FPM_RELOAD" \
-    ".allow-codebasecheck.cnf:_ALLOW_CODEBASECHECK" \
-    ".instant.csf.block.cnf:_INSTANT_CSF_BLOCK" ; do
-    _mrk="${_pair%%:*}"
+    "/etc/boa/.enable.newrelic.sysmond.cnf:_ENABLE_NEWRELIC_SYSMOND" \
+    "/etc/boa/.allow.php.fpm.reload.cnf:_ALLOW_PHP_FPM_RELOAD" \
+    "/etc/boa/.allow-codebasecheck.cnf:_ALLOW_CODEBASECHECK" \
+    "/etc/boa/.instant.csf.block.cnf:_INSTANT_CSF_BLOCK" \
+    "/etc/boa/.deny.jetty9.cnf:_DENY_JETTY9" \
+    "/etc/boa/.deny.solr7.cnf:_DENY_SOLR7" \
+    "/etc/boa/.deny.solr9.cnf:_DENY_SOLR9" \
+    "/etc/boa/.allow.nginx.restart.cnf:_ALLOW_NGINX_RESTART" \
+    "/etc/boa/.allow.valkey.restart.cnf|/etc/boa/.allow.redis.restart.cnf:_ALLOW_VALKEY_RESTART" \
+    "/etc/boa/.debug.email.txt:_DEBUG_EMAIL" \
+    "/etc/boa/.goaccess.all.cnf:_GOACCESS_ALL" \
+    "/etc/boa/.silent-octopus-upgrade.cnf:_OCTOPUS_UPGRADE_RERUN_SILENT" \
+    "/etc/boa/.instant.busy.mysql.action.cnf:_INSTANT_BUSY_MYSQL_ACTION" \
+    "/etc/boa/.mysqladmin.monitor.cnf:_MYSQLADMIN_MONITOR" \
+    "/etc/boa/.allow.sendmail.cnf:_ALLOW_SENDMAIL" \
+    "/root/.no.sysctl.update.cnf:_NO_SYSCTL_UPDATE" \
+    "/root/.debug-purge-build-tree.cnf:_DEBUG_PURGE_BUILD_TREE" \
+    "/root/.debug_daily.info:_DEBUG_DAILY" \
+    "/root/.disable.auditd.logs.cnf:_DISABLE_AUDITD_LOGS" \
+    "/root/.dont.use.fancy.bash.login.cnf:_DONT_USE_FANCY_BASH_LOGIN" \
+    "/root/.include-php-latest.cnf:_INCLUDE_PHP_LATEST" \
+    "/root/.install.myquick.src.info:_INSTALL_MYQUICK_SRC" \
+    "/root/.my.restart_after_optimize.cnf:_MY_RESTART_AFTER_OPTIMIZE" \
+    "/root/.use.sysklogd.cnf:_USE_SYSKLOGD" ; do
+    _mrkSpc="${_pair%%:*}"
     _var="${_pair##*:}"
-    _mrkPth="/etc/boa/${_mrk}"
+    _mrkPth=
+    _ifsOrg="${IFS}"
+    IFS='|'
+    for _cand in ${_mrkSpc}; do
+      if [ -e "${_cand}" ]; then
+        _mrkPth="${_cand}"
+        break
+      fi
+    done
+    IFS="${_ifsOrg}"
+    [ -z "${_mrkPth}" ] && _mrkPth="${_mrkSpc%%|*}"
+    _mrk="${_mrkPth##*/}"
     if [ -e "${_mrkPth}" ]; then
       # Newline-terminate before any append; an unterminated last line
       # would swallow the previous key.
@@ -2541,11 +2578,12 @@ _convert_etcboa_markers_to_cnf() {
       # shellcheck disable=SC1090
       if [ "${_cntA}" = "${_cntB}" ] \
         && ( . "${_barCnf}" > /dev/null 2>&1; [ "${!_var}" = "YES" ] ); then
+        # Same-run visibility for installer-side reads. printf -v is not
+        # eval; the name guard keeps a malformed table entry from being
+        # used as a variable name.
         case "${_var}" in
-          _ENABLE_NEWRELIC_SYSMOND) _ENABLE_NEWRELIC_SYSMOND=YES ;;
-          _ALLOW_PHP_FPM_RELOAD)    _ALLOW_PHP_FPM_RELOAD=YES ;;
-          _ALLOW_CODEBASECHECK)     _ALLOW_CODEBASECHECK=YES ;;
-          _INSTANT_CSF_BLOCK)       _INSTANT_CSF_BLOCK=YES ;;
+          _[A-Z0-9_]*) printf -v "${_var}" '%s' YES ;;
+          *) _msg "NOTE: refusing malformed key name -- not set in-process" ;;
         esac
         if ! grep -q "^### ${_var} converted" "${_barCnf}" 2>/dev/null; then
           echo "### ${_var} converted from ${_mrkPth}" >> "${_barCnf}"
@@ -2561,9 +2599,10 @@ _convert_etcboa_markers_to_cnf() {
       else
         _msg "NOTE: ${_var}=YES not verified in ${_barCnf} -- conversion not recorded"
       fi
-    elif [ -e "/root/${_mrk}" ]; then
-      # One-shot advisory: the /root twin is permanent by C-003 design,
-      # so an unguarded note would repeat on every pass forever.
+    elif [ "${_mrkPth%/*}" = "/etc/boa" ] && [ -e "/root/${_mrk}" ]; then
+      # One-shot advisory, /etc/boa entries only: the /root twin is
+      # permanent by C-003 design, so an unguarded note would repeat on
+      # every pass forever. A /root-native entry has no twin to report.
       if ! grep -q "${_mrk} root-only" "${_mnf}" 2>/dev/null; then
         mkdir -p "${_mnfDir}" 2>/dev/null
         chmod 0700 "${_mnfDir}" 2>/dev/null
@@ -2837,6 +2876,26 @@ _barracuda_cnf() {
     echo "_ALLOW_PHP_FPM_RELOAD=${_ALLOW_PHP_FPM_RELOAD:-NO}"       >> ${_barCnf}
     echo "_ALLOW_CODEBASECHECK=${_ALLOW_CODEBASECHECK:-NO}"         >> ${_barCnf}
     echo "_INSTANT_CSF_BLOCK=${_INSTANT_CSF_BLOCK:-NO}"             >> ${_barCnf}
+    echo "_DENY_JETTY9=${_DENY_JETTY9:-NO}"               >> ${_barCnf}
+    echo "_DENY_SOLR7=${_DENY_SOLR7:-NO}"                 >> ${_barCnf}
+    echo "_DENY_SOLR9=${_DENY_SOLR9:-NO}"                 >> ${_barCnf}
+    echo "_ALLOW_NGINX_RESTART=${_ALLOW_NGINX_RESTART:-NO}"  >> ${_barCnf}
+    echo "_ALLOW_VALKEY_RESTART=${_ALLOW_VALKEY_RESTART:-NO}"  >> ${_barCnf}
+    echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}"               >> ${_barCnf}
+    echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
+    echo "_OCTOPUS_UPGRADE_RERUN_SILENT=${_OCTOPUS_UPGRADE_RERUN_SILENT:-NO}"  >> ${_barCnf}
+    echo "_INSTANT_BUSY_MYSQL_ACTION=${_INSTANT_BUSY_MYSQL_ACTION:-NO}"  >> ${_barCnf}
+    echo "_MYSQLADMIN_MONITOR=${_MYSQLADMIN_MONITOR:-NO}"  >> ${_barCnf}
+    echo "_ALLOW_SENDMAIL=${_ALLOW_SENDMAIL:-NO}"         >> ${_barCnf}
+    echo "_NO_SYSCTL_UPDATE=${_NO_SYSCTL_UPDATE:-NO}"     >> ${_barCnf}
+    echo "_DEBUG_PURGE_BUILD_TREE=${_DEBUG_PURGE_BUILD_TREE:-NO}"  >> ${_barCnf}
+    echo "_DEBUG_DAILY=${_DEBUG_DAILY:-NO}"               >> ${_barCnf}
+    echo "_DISABLE_AUDITD_LOGS=${_DISABLE_AUDITD_LOGS:-NO}"  >> ${_barCnf}
+    echo "_DONT_USE_FANCY_BASH_LOGIN=${_DONT_USE_FANCY_BASH_LOGIN:-NO}"  >> ${_barCnf}
+    echo "_INCLUDE_PHP_LATEST=${_INCLUDE_PHP_LATEST:-NO}"  >> ${_barCnf}
+    echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}"  >> ${_barCnf}
+    echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}"  >> ${_barCnf}
+    echo "_USE_SYSKLOGD=${_USE_SYSKLOGD:-NO}"             >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
@@ -3064,6 +3123,86 @@ _barracuda_cnf() {
     _INSTANT_CSF_BLOCK_TEST=$(grep "^_INSTANT_CSF_BLOCK=" ${_barCnf} 2>&1)
     if [[ ! "${_INSTANT_CSF_BLOCK_TEST}" =~ "_INSTANT_CSF_BLOCK=" ]]; then
       echo "_INSTANT_CSF_BLOCK=${_INSTANT_CSF_BLOCK:-NO}" >> ${_barCnf}
+    fi
+    _DENY_JETTY9_TEST=$(grep "^_DENY_JETTY9=" ${_barCnf} 2>&1)
+    if [[ ! "${_DENY_JETTY9_TEST}" =~ "_DENY_JETTY9=" ]]; then
+      echo "_DENY_JETTY9=${_DENY_JETTY9:-NO}" >> ${_barCnf}
+    fi
+    _DENY_SOLR7_TEST=$(grep "^_DENY_SOLR7=" ${_barCnf} 2>&1)
+    if [[ ! "${_DENY_SOLR7_TEST}" =~ "_DENY_SOLR7=" ]]; then
+      echo "_DENY_SOLR7=${_DENY_SOLR7:-NO}" >> ${_barCnf}
+    fi
+    _DENY_SOLR9_TEST=$(grep "^_DENY_SOLR9=" ${_barCnf} 2>&1)
+    if [[ ! "${_DENY_SOLR9_TEST}" =~ "_DENY_SOLR9=" ]]; then
+      echo "_DENY_SOLR9=${_DENY_SOLR9:-NO}" >> ${_barCnf}
+    fi
+    _ALLOW_NGINX_RESTART_TEST=$(grep "^_ALLOW_NGINX_RESTART=" ${_barCnf} 2>&1)
+    if [[ ! "${_ALLOW_NGINX_RESTART_TEST}" =~ "_ALLOW_NGINX_RESTART=" ]]; then
+      echo "_ALLOW_NGINX_RESTART=${_ALLOW_NGINX_RESTART:-NO}" >> ${_barCnf}
+    fi
+    _ALLOW_VALKEY_RESTART_TEST=$(grep "^_ALLOW_VALKEY_RESTART=" ${_barCnf} 2>&1)
+    if [[ ! "${_ALLOW_VALKEY_RESTART_TEST}" =~ "_ALLOW_VALKEY_RESTART=" ]]; then
+      echo "_ALLOW_VALKEY_RESTART=${_ALLOW_VALKEY_RESTART:-NO}" >> ${_barCnf}
+    fi
+    _DEBUG_EMAIL_TEST=$(grep "^_DEBUG_EMAIL=" ${_barCnf} 2>&1)
+    if [[ ! "${_DEBUG_EMAIL_TEST}" =~ "_DEBUG_EMAIL=" ]]; then
+      echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}" >> ${_barCnf}
+    fi
+    _GOACCESS_ALL_TEST=$(grep "^_GOACCESS_ALL=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_ALL_TEST}" =~ "_GOACCESS_ALL=" ]]; then
+      echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}" >> ${_barCnf}
+    fi
+    _OCTOPUS_UPGRADE_RERUN_SILENT_TEST=$(grep "^_OCTOPUS_UPGRADE_RERUN_SILENT=" ${_barCnf} 2>&1)
+    if [[ ! "${_OCTOPUS_UPGRADE_RERUN_SILENT_TEST}" =~ "_OCTOPUS_UPGRADE_RERUN_SILENT=" ]]; then
+      echo "_OCTOPUS_UPGRADE_RERUN_SILENT=${_OCTOPUS_UPGRADE_RERUN_SILENT:-NO}" >> ${_barCnf}
+    fi
+    _INSTANT_BUSY_MYSQL_ACTION_TEST=$(grep "^_INSTANT_BUSY_MYSQL_ACTION=" ${_barCnf} 2>&1)
+    if [[ ! "${_INSTANT_BUSY_MYSQL_ACTION_TEST}" =~ "_INSTANT_BUSY_MYSQL_ACTION=" ]]; then
+      echo "_INSTANT_BUSY_MYSQL_ACTION=${_INSTANT_BUSY_MYSQL_ACTION:-NO}" >> ${_barCnf}
+    fi
+    _MYSQLADMIN_MONITOR_TEST=$(grep "^_MYSQLADMIN_MONITOR=" ${_barCnf} 2>&1)
+    if [[ ! "${_MYSQLADMIN_MONITOR_TEST}" =~ "_MYSQLADMIN_MONITOR=" ]]; then
+      echo "_MYSQLADMIN_MONITOR=${_MYSQLADMIN_MONITOR:-NO}" >> ${_barCnf}
+    fi
+    _ALLOW_SENDMAIL_TEST=$(grep "^_ALLOW_SENDMAIL=" ${_barCnf} 2>&1)
+    if [[ ! "${_ALLOW_SENDMAIL_TEST}" =~ "_ALLOW_SENDMAIL=" ]]; then
+      echo "_ALLOW_SENDMAIL=${_ALLOW_SENDMAIL:-NO}" >> ${_barCnf}
+    fi
+    _NO_SYSCTL_UPDATE_TEST=$(grep "^_NO_SYSCTL_UPDATE=" ${_barCnf} 2>&1)
+    if [[ ! "${_NO_SYSCTL_UPDATE_TEST}" =~ "_NO_SYSCTL_UPDATE=" ]]; then
+      echo "_NO_SYSCTL_UPDATE=${_NO_SYSCTL_UPDATE:-NO}" >> ${_barCnf}
+    fi
+    _DEBUG_PURGE_BUILD_TREE_TEST=$(grep "^_DEBUG_PURGE_BUILD_TREE=" ${_barCnf} 2>&1)
+    if [[ ! "${_DEBUG_PURGE_BUILD_TREE_TEST}" =~ "_DEBUG_PURGE_BUILD_TREE=" ]]; then
+      echo "_DEBUG_PURGE_BUILD_TREE=${_DEBUG_PURGE_BUILD_TREE:-NO}" >> ${_barCnf}
+    fi
+    _DEBUG_DAILY_TEST=$(grep "^_DEBUG_DAILY=" ${_barCnf} 2>&1)
+    if [[ ! "${_DEBUG_DAILY_TEST}" =~ "_DEBUG_DAILY=" ]]; then
+      echo "_DEBUG_DAILY=${_DEBUG_DAILY:-NO}" >> ${_barCnf}
+    fi
+    _DISABLE_AUDITD_LOGS_TEST=$(grep "^_DISABLE_AUDITD_LOGS=" ${_barCnf} 2>&1)
+    if [[ ! "${_DISABLE_AUDITD_LOGS_TEST}" =~ "_DISABLE_AUDITD_LOGS=" ]]; then
+      echo "_DISABLE_AUDITD_LOGS=${_DISABLE_AUDITD_LOGS:-NO}" >> ${_barCnf}
+    fi
+    _DONT_USE_FANCY_BASH_LOGIN_TEST=$(grep "^_DONT_USE_FANCY_BASH_LOGIN=" ${_barCnf} 2>&1)
+    if [[ ! "${_DONT_USE_FANCY_BASH_LOGIN_TEST}" =~ "_DONT_USE_FANCY_BASH_LOGIN=" ]]; then
+      echo "_DONT_USE_FANCY_BASH_LOGIN=${_DONT_USE_FANCY_BASH_LOGIN:-NO}" >> ${_barCnf}
+    fi
+    _INCLUDE_PHP_LATEST_TEST=$(grep "^_INCLUDE_PHP_LATEST=" ${_barCnf} 2>&1)
+    if [[ ! "${_INCLUDE_PHP_LATEST_TEST}" =~ "_INCLUDE_PHP_LATEST=" ]]; then
+      echo "_INCLUDE_PHP_LATEST=${_INCLUDE_PHP_LATEST:-NO}" >> ${_barCnf}
+    fi
+    _INSTALL_MYQUICK_SRC_TEST=$(grep "^_INSTALL_MYQUICK_SRC=" ${_barCnf} 2>&1)
+    if [[ ! "${_INSTALL_MYQUICK_SRC_TEST}" =~ "_INSTALL_MYQUICK_SRC=" ]]; then
+      echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}" >> ${_barCnf}
+    fi
+    _MY_RESTART_AFTER_OPTIMIZE_TEST=$(grep "^_MY_RESTART_AFTER_OPTIMIZE=" ${_barCnf} 2>&1)
+    if [[ ! "${_MY_RESTART_AFTER_OPTIMIZE_TEST}" =~ "_MY_RESTART_AFTER_OPTIMIZE=" ]]; then
+      echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}" >> ${_barCnf}
+    fi
+    _USE_SYSKLOGD_TEST=$(grep "^_USE_SYSKLOGD=" ${_barCnf} 2>&1)
+    if [[ ! "${_USE_SYSKLOGD_TEST}" =~ "_USE_SYSKLOGD=" ]]; then
+      echo "_USE_SYSKLOGD=${_USE_SYSKLOGD:-NO}" >> ${_barCnf}
     fi
     _convert_etcboa_markers_to_cnf
 
