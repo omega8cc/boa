@@ -234,6 +234,10 @@ _compute_throttle_state() {
             /root/.fast.cron.cnf:fast.cron /root/.force.queue.runner.cnf:force.queue.runner; do
     [ -e "${_e%%:*}" ] && _MON_SIG+="${_MON_SIG:+, }${_e##*:}"
   done
+  # The CI class can also come from the cnf variable; a plain file read, so
+  # the no-source contract of this tool holds.
+  grep -qiE "^[[:space:]]*(export[[:space:]]+)?_FORCE_CI_BOX=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null \
+    && _MON_SIG+="${_MON_SIG:+, }jenkins(var)"
   [ -n "${_MON_SIG}" ] || _MON_SIG="none"
   _MON_CLASS=""
   if [ -r "${_src}" ]; then
