@@ -4057,7 +4057,7 @@ _run_apt_get_dist_upgrade() {
   done
   nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
   # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl.
-  for _pncw in sendmail_guard convert_guard hostname_sync syslog_legacy \
+  for _pncw in sendmail_guard convert_guard hostname_sync \
                bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
                collectd xinetd lsyncd; do
     [ -e "/var/xdrago/monitor/check/${_pncw}.sh" ] \
@@ -7412,6 +7412,15 @@ _run_aptitude_deps_install() {
       _mrun "apt-get install rsyslog -y -qq"
     fi
   fi
+  # The conflict-swap above removes a legacy syslogd but keeps its conffiles
+  # (package state rc), and a surviving /etc/init.d script is what kept the
+  # retired legacy restart paths firing against a daemon with no binary.
+  # Purge the rc-state leftovers so nothing can act on them again.
+  for _lgcySlgd in sysklogd inetutils-syslogd; do
+    if dpkg -l "${_lgcySlgd}" 2>/dev/null | grep -q '^rc '; then
+      _mrun "dpkg --purge ${_lgcySlgd}"
+    fi
+  done
   if [ "${_UPGRADE_MODE}" = "FULL" ]; then
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _mrun "${_INITINS} devuan-keyring"
@@ -8775,7 +8784,7 @@ _if_major_os_upgrade() {
     done
     nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
     # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl.
-    for _pncw in sendmail_guard convert_guard hostname_sync syslog_legacy \
+    for _pncw in sendmail_guard convert_guard hostname_sync \
                  bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
                  collectd xinetd lsyncd; do
       [ -e "/var/xdrago/monitor/check/${_pncw}.sh" ] \

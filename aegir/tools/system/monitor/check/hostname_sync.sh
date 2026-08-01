@@ -13,8 +13,8 @@
 # A non-empty /etc/hostname is required before applying (avoids ever setting an
 # empty hostname — the only deliberate hardening over the original).
 #
-# This is the DHCP branch of the legacy elsif chain; the no-DHCP branch (legacy
-# syslog recovery) lives in syslog_legacy.sh, preserving their mutual exclusion.
+# This is the DHCP branch of the legacy elsif chain; the no-DHCP branch
+# (legacy syslog recovery) is retired — rsyslog is watched by system.sh.
 #
 # Launched every ~5s (load-gated) from second.sh _proc_control. Single-shot.
 # =============================================================================
