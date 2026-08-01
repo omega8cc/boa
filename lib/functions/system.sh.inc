@@ -7402,9 +7402,15 @@ _run_aptitude_deps_install() {
   # rsyslog is the only supported syslogd; the retired legacy selection arms
   # could leave a box with no syslog daemon at all, and FAST upgrades skip
   # the big package section below, so ensure it on every run. On a box still
-  # running a legacy daemon apt swaps it out here (the packages conflict).
+  # running a legacy daemon apt swaps it out here (mutual Conflicts on
+  # system-log-daemon; swap verified live on the bookworm pool). A box left
+  # logless must never stay that way silently, so on an aptitude miss fall
+  # back to apt-get before giving up.
   if ! _pkg_installed "rsyslog"; then
     _mrun "${_INSTAPP} rsyslog"
+    if ! _pkg_installed "rsyslog"; then
+      _mrun "apt-get install rsyslog -y -qq"
+    fi
   fi
   if [ "${_UPGRADE_MODE}" = "FULL" ]; then
     if [ "${_OS_DIST}" = "Devuan" ]; then
@@ -7586,7 +7592,6 @@ _run_aptitude_deps_install() {
     _mrun "${_INSTAPP} ${_APT_XTRA}"
     _mrun "${_INSTAPP} ${_EXTRA_LIB_APT}"
     _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
-    _mrun "${_INSTAPP} ${_SYSLOGD}"
     _EXTRA_APT="tree"
     _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
   fi
@@ -9505,12 +9510,11 @@ _sys_packages_install() {
     _EXTRA_PACKAGES="screen"
   fi
   # rsyslog is the only supported syslogd and must never be removed: the
-  # legacy sysklogd/inetutils-syslogd arms purged rsyslog first, but neither
-  # replacement is installable on current Devuan/Debian, which left a box
-  # with no syslog daemon at all. _USE_SYSKLOGD and /root/.use.sysklogd.cnf
-  # are retired and ignored; _run_aptitude_deps_install restores a missing
-  # rsyslog on every run.
-  _SYSLOGD=rsyslog
+  # legacy sysklogd/inetutils-syslogd arms purged rsyslog first, and sysklogd
+  # has no install candidate on current Devuan/Debian at all, which left an
+  # opted-in box with no syslog daemon. _USE_SYSKLOGD and
+  # /root/.use.sysklogd.cnf are retired and ignored;
+  # _run_aptitude_deps_install restores a missing rsyslog on every run.
 
   if [ "${_OS_CODE}" = "excalibur" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \

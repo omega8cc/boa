@@ -1553,7 +1553,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f80
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f78
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f77
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f82
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f91
@@ -1568,7 +1568,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/collectd.sh "${_urlHmr}/tools/system/monitor/check/collectd.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/xinetd.sh "${_urlHmr}/tools/system/monitor/check/xinetd.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/lsyncd.sh "${_urlHmr}/tools/system/monitor/check/lsyncd.sh" f01
-    _fetch_versioned /var/xdrago/monitor/check/syslog_legacy.sh "${_urlHmr}/tools/system/monitor/check/syslog_legacy.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/syslog_legacy.sh "${_urlHmr}/tools/system/monitor/check/syslog_legacy.sh" f02
     _fetch_versioned /var/xdrago/monitor/check/sendmail_guard.sh "${_urlHmr}/tools/system/monitor/check/sendmail_guard.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f01
