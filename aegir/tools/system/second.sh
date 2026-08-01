@@ -259,7 +259,7 @@ _proc_control() {
   # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl. Each is
   # a single-shot, self-guarded monitor in monitor/check/; absent ones (e.g. not
   # yet fetched, or deliberately removed) are simply skipped.
-  for _w in sendmail_guard convert_guard hostname_sync syslog_legacy \
+  for _w in sendmail_guard convert_guard hostname_sync \
             bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
             collectd xinetd lsyncd; do
     [ -e "${_monPath}/${_w}.sh" ] && _spawn_detached "bash ${_monPath}/${_w}.sh"
