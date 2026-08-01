@@ -1394,6 +1394,8 @@ _update_agents() {
     [ -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f /var/xdrago/monitor/check/locked_nginx.pl
     [ -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f /var/xdrago/monitor/check/locked_java.pl
 
+    [ -e "/var/xdrago/monitor/check/syslog_legacy.sh" ] && rm -f /var/xdrago/monitor/check/syslog_legacy.sh
+
     # One-time sweep of stale *.old fetch-rollback backups left behind by the
     # fetch helpers on successful updates (now dropped at the source). Script
     # backups only; conf/*.old keep-references are deliberately not touched.
@@ -1568,10 +1570,9 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/collectd.sh "${_urlHmr}/tools/system/monitor/check/collectd.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/xinetd.sh "${_urlHmr}/tools/system/monitor/check/xinetd.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/lsyncd.sh "${_urlHmr}/tools/system/monitor/check/lsyncd.sh" f01
-    _fetch_versioned /var/xdrago/monitor/check/syslog_legacy.sh "${_urlHmr}/tools/system/monitor/check/syslog_legacy.sh" f02
     _fetch_versioned /var/xdrago/monitor/check/sendmail_guard.sh "${_urlHmr}/tools/system/monitor/check/sendmail_guard.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f01
-    _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f02
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f95
     _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f93 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
@@ -1579,7 +1580,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f90 --guard mysql_cluster_backup.sh
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f78
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f84
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f89
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f88
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f88
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f98
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
@@ -1643,7 +1644,7 @@ _update_agents() {
       rm -f /var/xdrago/daily.sh
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
-    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f85
+    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f84
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f73
     # The synproxy family is also fetched by _update_boa_tools and shares its
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
