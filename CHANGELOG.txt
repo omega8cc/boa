@@ -64,7 +64,9 @@
     * OOM response frees the single largest safe process instead of
       tearing down services (_OOM_* knobs).
     * Valkey watchdog rebuilt: sustained connect-level failure only
-      (_VALKEY_* knobs); redis.sh and loadguard retired from delivery.
+      (_VALKEY_* knobs); loadguard retired from delivery. The legacy
+      redis.sh watchdog stays delivered for boxes still on Redis; a
+      Valkey box never launches it.
     * Web watchdogs stand down during database restarts; one alert per
       incident; table repair yields to running backups.
     * Load auto-pause resume hysteresis (_RESUME_HOLD_PASSES).
