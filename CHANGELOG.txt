@@ -1,4 +1,129 @@
 ###
+### Stable BOA-5.88.822 PRO/LTS - CLARITY EDITION
+### Date: Sat 01 Aug 2026 12:57:01 CEST in Warsaw
+### Enjoy every setting in plain sight
+### 174 commits since BOA-5.88.811
+###
+
+@=> Clarity Edition
+
+  Thirty-five presence-marker control files become named, documented
+  settings in /root/.barracuda.cnf — every switch in plain sight, with
+  automatic one-shot conversion on existing systems. Four PHP security
+  releases and a Devuan Excalibur kernel security update arrive through
+  the gated update flows, Backdrop CMS adopts the shared symlinked
+  contrib model the Drupal cores use, and the auto-healing suite now
+  confirms a fault before acting on it. LTS is 1:1 with PRO; no
+  mandatory action this release.
+
+@=> Security
+
+    * PHP 8.2.33, 8.3.33, 8.4.24, 8.5.9 — upstream security releases on
+      all four maintained branches.
+    * Devuan Excalibur kernel security update; staged automatically,
+      activated only via gated `boa reboot`.
+    * csf temporary-ban ceiling sized to the IDS ban rate; raise-only,
+      deliberate values and 0 preserved.
+    * IPv6 crawler whitelist parity in the adaptive IDS
+      (_NGINX_V6_BAN_DETECT to opt out).
+    * Coordinated document-harvest detector, report-only by default
+      (_NGINX_HARVEST_ACTION, _NGINX_HARVEST_BAN_UA).
+    * 30s execution cap on web SQL queries, CLI unlimited; per-site
+      override sql_web_max_exec_ms in boa_site_control.ini.
+    * Locked-root shadow guard recognises options/FIDO/certificate keys;
+      disable root password with usermod -p '*' root, never passwd -l.
+    * fixrepo confined to codebase trees.
+
+@=> New Features
+
+    * 35 marker files under /etc/boa and /root converted to documented
+      barracuda.cnf keys; one-shot converter with provenance manifest.
+    * batch_guard monitor + bgp_flood nginx rate cap against D7
+      background-batch self-request storms (_USE_BATCH_GUARD).
+    * Per-account migration proxy modes (temporary/permanent/ha-switch)
+      with client notices; cutover refuses undeclared accounts.
+    * Migration-proxy certificate mirror with advance expiry warnings.
+    * Migration identity carry: account cnf identity, PHP pins,
+      credentials, suspension state (xmass prep-target / verify,
+      xoct reset-state).
+    * Seven per-knob memory tuning pins: _SQL_BUFFER_POOL_FORCE,
+      _SQL_TMP_TABLE_FORCE, _SQL_KEY_BUFFER_FORCE,
+      _SQL_LOG_FILE_SIZE_FORCE, _SQL_MAX_CONNECTIONS_FORCE,
+      _VALKEY_MAXMEM_FORCE, _SOLR_HEAP_FORCE.
+    * sqlprobe log-only SQL sensor feeding an advisory-only memorytuner
+      (_USE_SQLPROBE).
+
+@=> Improvements
+
+    * Backdrop contrib via shared symlinked o_contrib_backdrop bundle —
+      the Drupal-core model; cache integration updatable in place.
+    * Backdrop core packaged and versioned like the Drupal cores; older
+      releases stay retrievable from the mirror.
+    * SQL auto-heal confirms the outage first, restarts database-only,
+      latches off on flap (_SQL_FLAP_* knobs).
+    * OOM response frees the single largest safe process instead of
+      tearing down services (_OOM_* knobs).
+    * Valkey watchdog rebuilt: sustained connect-level failure only
+      (_VALKEY_* knobs); redis.sh and loadguard retired from delivery.
+    * Web watchdogs stand down during database restarts; one alert per
+      incident; table repair yields to running backups.
+    * Load auto-pause resume hysteresis (_RESUME_HOLD_PASSES).
+    * SQL memory budget derived from the hosted dataset, not RAM alone.
+    * Unbound 1.25.2 joins the prebuilt package set; boa info gains an
+      Unbound row and reports the real database version.
+    * Ghost-cleanup family on by default on hosted systems; 48h alias
+      hold, reversible movers; self-hosted defaults unchanged.
+    * In-place platform upgrades and repository repair documented;
+      control README regains the per-core platform legend.
+
+@=> Changes and Upgrades
+
+    * Converted settings transition: the marker file wins while it
+      exists — to disable, set the key to NO AND remove the marker;
+      re-check converted keys after a dragon-store cnf restore.
+    * Abuse-guard debug logging folds onto _NGINX_DOS_LOG (seeded, not
+      force-reset; debug logs rotate daily).
+    * Long-query TTL markers retired: _SQL_MAX_TTL is authoritative;
+      .big_db.cnf and .high_load.cnf are inert.
+    * memorytuner advisory-only; MySQLTuner integration retired
+      (_USE_MYSQLTUNER auto-stripped).
+    * Never delete /etc/nginx/conf.d/limit-req-zones-boa.conf while
+      rendered vhosts reference the zone; standard upgrade order
+      (barracuda, then octopus with force) satisfies everything.
+    * Builder boxes: config moves to /root/.stackbuild.cnf; build tools
+      deploy only where that file exists.
+    * Pins: New Relic 12.9.0.38, Java 17.0.20, Unbound 1.25.2, Drupal
+      11.4.4 (new triple) / 11.3.16 / 10.6.14, OpenCulturas 3.0.4,
+      Backdrop CMS 1.34.3.
+
+@=> Important Fixes
+
+    * Drupal 7 one-time login links (drush uli) work again — a
+      regression from the web/CLI salt divergence, fixed with a stable
+      pinned fallback hash salt.
+    * Search-crawler access restored to sitemaps, feeds, assets, print
+      and multilingual paths; delivered fleet-wide via self-update.
+    * High-load shedding covers self-identified bots; customised
+      rosters untouched.
+    * Ghost vhost reap arms — nightly blanket rewrites no longer defeat
+      its freshness gate.
+    * Stuck TLS vhosts converge and serve HTTP/2.
+    * Leftover Import/Purge tasks open to standard panel roles
+      (hosting_custom_settings 7.x-1.35).
+    * Per-account CLI PHP pin honoured at the drush 8 launcher.
+    * Accounts left with wiped nginx configs self-heal on the next
+      self-update pass.
+    * Two BOA cron instances can no longer start in the same second.
+    * xmass cutover: no global read lock during the file pass, skipped
+      accounts named, restore recipes on aborts, reset-phase recovery.
+    * Renamed hosts keep their hostmaster platform; identity witnesses
+      cross-validated before destructive upgrade steps.
+    * Mixed-engine databases kept in nightly backups.
+    * Percona 5.7 fresh installs fall back to archived, sha256-verified
+      mirror packages instead of hanging on a dead repository.
+
+
+###
 ### Stable BOA-5.88.811 PRO/LTS - CADENCE EDITION
 ### Date: Wed 22 Jul 2026 18:58:19 CEST in Warsaw
 ### Enjoy a tidier estate and a steadier release rhythm

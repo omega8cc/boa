@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=588811ltsT01
+export _xSrl=588822ltsT01
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -2581,7 +2581,8 @@ else
     sed -i "s/, 'mc':'mc -u'//g" ${_THIS_LTD_CONF}
     wait
   fi
-  if [ ! -e "/etc/boa/.allow.du.cnf" ]; then
+  if [ ! -e "/etc/boa/.allow.du.cnf" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_DU=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     sed -i "s/'du', //g" ${_THIS_LTD_CONF}
     wait
     sed -i "s/, 'du':'du -s -h'//g" ${_THIS_LTD_CONF}
@@ -2646,7 +2647,8 @@ else
     fi
   fi
   rm -f ${_TMP}/*.txt
-  if [ ! -e "/etc/boa/.home.no.wildcard.chmod.cnf" ]; then
+  if [ ! -e "/etc/boa/.home.no.wildcard.chmod.cnf" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_HOME_NO_WILDCARD_CHMOD=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     chmod 700 /home/* &> /dev/null
   fi
   chmod 0600 /var/log/lsh/*

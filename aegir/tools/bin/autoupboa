@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=588811ltsT01
+export _xSrl=588822ltsT01
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
@@ -16,6 +16,7 @@ _DENY_JETTY9=NO
 _DENY_SOLR7=NO
 _DENY_SOLR9=NO
 _ALLOW_SENDMAIL=NO
+_DENY_JAVA=NO
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -571,7 +572,10 @@ _if_disable_not_used_services() {
     _clearSwap=YES
   fi
 
-  if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
+  if { [ ! -e "/root/.allow.clamav.cnf" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; } \
+    || [ -e "/root/.deny.clamav.cnf" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     if [ -e "/etc/init.d/clamav-daemon" ]; then
       _clearSwap=YES
       update-rc.d -f clamav-daemon remove &> /dev/null
@@ -587,7 +591,8 @@ _if_disable_not_used_services() {
     rm -f /run/clamav/*
   fi
 
-  if [ -e "/root/.deny.java.cnf" ]; then
+  if [ "${_DENY_JAVA}" = "YES" ] \
+    || [ -e "/root/.deny.java.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
@@ -1156,7 +1161,17 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _update_conf_variable "_NGINX_DOS_MODE" "${_DEFAULT_NGINX_DOS_MODE}" "${_barCnf}"
       _update_conf_variable "_NGINX_DOS_DIV_INC_NR" "${_DEFAULT_NGINX_DOS_DIV_INC_NR}" "${_barCnf}"
       _update_conf_variable "_NGINX_DOS_INC_MIN" "${_DEFAULT_NGINX_DOS_INC_MIN}" "${_barCnf}"
-      _update_conf_variable "_NGINX_DOS_LOG" "${_DEFAULT_NGINX_DOS_LOG}" "${_barCnf}"
+      # _NGINX_DOS_LOG is seed-only: it is the landing key of the retired
+      # .debug.monitor.log.cnf marker, so an operator/converter value must
+      # survive fleet retunes (the marker used to; the variable is now the
+      # only persistent control). An uncommented line is left alone; a
+      # commented-only or missing line gets a fresh appended default, which
+      # matches the old uncomment-to-default outcome. The other DOS keys
+      # keep force-reset semantics on purpose.
+      if ! grep -qE "^_NGINX_DOS_LOG=" "${_barCnf}" 2>/dev/null; then
+        [ -n "$(tail -c1 "${_barCnf}" 2>/dev/null)" ] && echo >> "${_barCnf}"
+        echo "_NGINX_DOS_LOG=\"${_DEFAULT_NGINX_DOS_LOG}\"" >> "${_barCnf}"
+      fi
       _update_conf_variable "_NGINX_DOS_IGNORE" "${_DEFAULT_NGINX_DOS_IGNORE}" "${_barCnf}"
       _update_conf_variable "_NGINX_DOS_STOP" "${_DEFAULT_NGINX_DOS_STOP}" "${_barCnf}"
       # Update legacy Perl script too
@@ -1318,14 +1333,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588811v02.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588822v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588811v02.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588822v01.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588811v02.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588822v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
       if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -1333,7 +1348,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588811v02.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588822v01.${_tRee}.${_xSrl}.pid"
     fi
   fi
 

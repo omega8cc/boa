@@ -32,8 +32,10 @@ _manage_single_lock
 # Configuration and Environment
 # ==============================
 
-# Enable verbose mode if debug configuration exists
-if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
+# Enable verbose mode if debug configuration exists. The cnf is not sourced
+# yet at this point, so the variable arm reads the file directly.
+if [[ -e "/etc/boa/.debug.monitor.cnf" ]] \
+  || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DEBUG_MONITOR=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
   set -x
 fi
 
@@ -80,6 +82,9 @@ _NGINX_DOS_INC_MIN=3
 
 # Default logging mode, can be SILENT (none), NORMAL or VERBOSE
 _NGINX_DOS_LOG=VERBOSE
+
+# Debug instrumentation gate; the cnf value wins after the source below.
+_DEBUG_MONITOR=NO
 
 # ---- DDoS / Shared-UA flood detection ----
 # These thresholds are evaluated against a SHORT window: nginx_guard.sh runs
@@ -689,7 +694,7 @@ declare -A _I18N_C444     # localized 444 responses (Tier-A guardrail shedding)
 declare -A _H10_AUTH
 
 # Debugging: Confirm associative arrays are declared
-if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
+if [[ -e "/etc/boa/.debug.monitor.cnf" || "${_DEBUG_MONITOR}" = "YES" ]]; then
   declare -p _BANNED_IPS _ALLOWED_IPS _LOGGED_IN_IPS _COUNTERS _LI_CNT _PX_CNT
   declare -p _UA_IP_COUNT _UA_REQ_COUNT _UA_IP_SET _UA_IP_LIST _UA_IP_REQS
   declare -p _PATH_REQ_COUNT _PATH_IP_COUNT _PATH_IP_SET _PATH_IP_LIST _PATH_IP_REQS _PATH_IP_200_REQS _PATH_SLOW_COUNT
@@ -1295,7 +1300,7 @@ _handle_blocking() {
   local _IP _COUNT _CRITNUMBER _MININUMBER _raw_reqs
 
   # Debug: confirm that _COUNTERS is referencing the intended array
-  if [[ -n "${1}" && -e "/etc/boa/.debug.monitor.cnf" ]]; then
+  if [[ -n "${1}" && ( -e "/etc/boa/.debug.monitor.cnf" || "${_DEBUG_MONITOR}" = "YES" ) ]]; then
     declare -p _COUNTERS
     echo "DEBUG: _COUNTERS in _handle_blocking is referencing '${1}'"
   fi
@@ -2466,7 +2471,7 @@ while IFS= read -r _line <&3; do
   done
 
   # Debug: Print extracted IPs if debug mode is enabled
-  if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
+  if [[ -e "/etc/boa/.debug.monitor.cnf" || "${_DEBUG_MONITOR}" = "YES" ]]; then
     echo "DEBUG: Extracted IPs: ${_IP_LIST[*]}"
   fi
 
@@ -2500,10 +2505,10 @@ while IFS= read -r _line <&3; do
   _PROXIES_ARRAY=()
 
   # Debug: Echo the determined real visitor IP and proxy IPs if debug mode is enabled
-  if [[ -n "${_REAL_IP}" && -e "/etc/boa/.debug.monitor.cnf" ]]; then
+  if [[ -n "${_REAL_IP}" && ( -e "/etc/boa/.debug.monitor.cnf" || "${_DEBUG_MONITOR}" = "YES" ) ]]; then
     echo "=== checking ${_REAL_IP} / _LI_CNT ==="
   fi
-  if [[ -e "/etc/boa/.debug.monitor.cnf" ]]; then
+  if [[ -e "/etc/boa/.debug.monitor.cnf" || "${_DEBUG_MONITOR}" = "YES" ]]; then
     for _proxy_ip in "${_PROXIES_ARRAY[@]}"; do
       [[ -n "${_proxy_ip}" ]] && echo "=== checking ${_proxy_ip} / _PX_CNT ==="
     done

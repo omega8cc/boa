@@ -102,13 +102,13 @@ _PHP80_VRN=8.0.30
 _PHP81_API=20210902
 _PHP81_VRN=8.1.34
 _PHP82_API=20220829
-_PHP82_VRN=8.2.32
+_PHP82_VRN=8.2.33
 _PHP83_API=20230831
-_PHP83_VRN=8.3.32
+_PHP83_VRN=8.3.33
 _PHP84_API=20240924
-_PHP84_VRN=8.4.23
+_PHP84_VRN=8.4.24
 _PHP85_API=20250925
-_PHP85_VRN=8.5.8
+_PHP85_VRN=8.5.9
 _PHPREDIS_FIVE_VRN=5.3.7
 _PHPREDIS_FOUR_VRN=4.3.0
 _PHPREDIS_SIX_LATEST_VRN=6.3.0
@@ -599,7 +599,9 @@ if [ "${_STATUS}" = "UPGRADE" ]; then
     _if_install_git_src
     _if_install_ffmpeg
     _if_install_bzr
-    [ ! -e "/root/.deny.java.cnf" ] && _if_install_upgrade_solr
+    [ ! -e "/root/.deny.java.cnf" ] \
+      && [ "${_DENY_JAVA}" != "YES" ] \
+      && _if_install_upgrade_solr
     _if_install_adminer
     _if_install_chive
     _if_install_sqlbuddy
