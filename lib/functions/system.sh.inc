@@ -7399,6 +7399,13 @@ _run_aptitude_deps_install() {
   if ! _pkg_installed "libfcgi-bin"; then
     _mrun "${_INSTAPP} libfcgi-bin"
   fi
+  # rsyslog is the only supported syslogd; the retired legacy selection arms
+  # could leave a box with no syslog daemon at all, and FAST upgrades skip
+  # the big package section below, so ensure it on every run. On a box still
+  # running a legacy daemon apt swaps it out here (the packages conflict).
+  if ! _pkg_installed "rsyslog"; then
+    _mrun "${_INSTAPP} rsyslog"
+  fi
   if [ "${_UPGRADE_MODE}" = "FULL" ]; then
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _mrun "${_INITINS} devuan-keyring"
@@ -9501,8 +9508,8 @@ _sys_packages_install() {
   # legacy sysklogd/inetutils-syslogd arms purged rsyslog first, but neither
   # replacement is installable on current Devuan/Debian, which left a box
   # with no syslog daemon at all. _USE_SYSKLOGD and /root/.use.sysklogd.cnf
-  # are retired and ignored; the install stage below restores a missing
-  # rsyslog on the next FULL run.
+  # are retired and ignored; _run_aptitude_deps_install restores a missing
+  # rsyslog on every run.
   _SYSLOGD=rsyslog
 
   if [ "${_OS_CODE}" = "excalibur" ]; then
