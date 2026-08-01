@@ -657,6 +657,16 @@ _rsyslog_health_check_fix() {
       _incident_email_report "Rsyslog pidfile was missing, service restarted"
       echo >> ${_pthOml}
     fi
+  else
+    # rsyslog is the only supported syslogd; a box without even its init
+    # script lost the package entirely (the retired legacy syslogd arms
+    # could do that) and runs blind until the next barracuda pass restores
+    # it. Say so instead of skipping silently -- the report helper carries
+    # its own cooldown, so this cannot storm.
+    _thisErrLog="$(date) Rsyslog is not installed, box is logless until the next barracuda pass"
+    echo "${_thisErrLog}" >> ${_pthOml}
+    _incident_email_report "Rsyslog is not installed, box is logless until the next barracuda pass" ALERT
+    echo >> ${_pthOml}
   fi
 }
 
