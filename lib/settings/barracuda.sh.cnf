@@ -1168,10 +1168,6 @@ _INSTALL_MYQUICK_SRC=NO
 ### Replaces /root/.my.restart_after_optimize.cnf
 _MY_RESTART_AFTER_OPTIMIZE=NO
 ###
-### Installs sysklogd instead of rsyslog as the system logger.
-### Replaces /root/.use.sysklogd.cnf
-_USE_SYSKLOGD=NO
-###
 ### Keeps Java/Solr/Jetty off this box; the installer skips the Solr stack
 ### and the updater tears down any installed Solr/Jetty init scripts.
 ### Replaces /root/.deny.java.cnf
