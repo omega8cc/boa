@@ -45,9 +45,9 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=588811devT01
-export _rLsn="BOA-5.88.811"
-export _bTs=588811v01
+export _xSrl=588822devT01
+export _rLsn="BOA-5.88.822"
+export _bTs=588822v01
 
 ###
 ### Avoid too many questions
