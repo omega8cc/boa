@@ -1295,7 +1295,7 @@ _update_agents() {
 
     _pthCtrl="/root/.remote_backups/ctrl"
     # Own-fleet domains keep PRO backups on any tree: the backup tools
-    # (dcysetup/multiback/mybackup/backboa) hardcode _tRee=dev plus this
+    # (dcysetup/multiback/mybackup/backboa) hardcode the pro tree plus this
     # same domain pass, so a tree-only gate here wiped /root/.remote_backups
     # on own lts boxes and dcysetup could never bootstrap there.
     if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ] \
