@@ -303,13 +303,11 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.use.sysklogd.cnf
 
-  Converted to _USE_SYSKLOGD=YES in /root/.barracuda.cnf -- the variable is the
-  supported switch; the file stays honoured for one release. To switch it off
-  during the transition, set the variable to NO *and* remove the file: while
-  the file exists it wins and is re-asserted on every pass.
-
-  Installs sysklogd as the system logger instead of rsyslog. Absence is the
-  active state: the default arm restores rsyslog.
+  RETIRED 2026-08-01: rsyslog is the only supported syslog daemon and is
+  never removed. The sysklogd arm purged rsyslog first, but sysklogd is not
+  installable on current Devuan/Debian, so an opted-in box ended up with no
+  syslog daemon at all. The marker and the briefly-lived _USE_SYSKLOGD
+  variable are both ignored; a stale marker or cnf line is inert.
 
  @=> /root/.deny.java.cnf
 
