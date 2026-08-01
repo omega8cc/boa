@@ -1,6 +1,6 @@
 
 export _tRee=pro
-export _rLsn="BOA-5.88.811"
+export _rLsn="BOA-5.88.822"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -4509,7 +4509,7 @@ _satellite_make() {
     _PHP_FPM_VERSION="${_PHP_CLI_VERSION}"
   fi
 
-  export _xSrl=588811proT01
+  export _xSrl=588822proT01
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
