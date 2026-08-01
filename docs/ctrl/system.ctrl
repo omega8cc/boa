@@ -304,10 +304,15 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.use.sysklogd.cnf
 
   RETIRED 2026-08-01: rsyslog is the only supported syslog daemon and is
-  never removed. The sysklogd arm purged rsyslog first, but sysklogd is not
-  installable on current Devuan/Debian, so an opted-in box ended up with no
-  syslog daemon at all. The marker and the briefly-lived _USE_SYSKLOGD
-  variable are both ignored; a stale marker or cnf line is inert.
+  never removed. The sysklogd arm purged rsyslog first, but sysklogd has no
+  install candidate on current Devuan/Debian (verified on the bookworm pool
+  and on Devuan testing), so an opted-in box ended up with no syslog daemon
+  at all. The OpenVZ inetutils-syslogd arm is retired with it (no OpenVZ
+  hosts remain). The marker and the briefly-lived _USE_SYSKLOGD variable are
+  both ignored; a stale marker or cnf line is inert, and every barracuda
+  pass restores a missing rsyslog - installing it over a still-running
+  legacy daemon swaps the old one out via the packages' mutual conflict
+  (verified live).
 
  @=> /root/.deny.java.cnf
 

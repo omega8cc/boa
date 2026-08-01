@@ -61,7 +61,17 @@ if pgrep -x dhcpcd >/dev/null 2>&1 || pgrep -x dhclient >/dev/null 2>&1; then
   exit 0
 fi
 
-if [ -f "/etc/init.d/sysklogd" ]; then
+### rsyslog is the only supported syslogd; once it is deployed this legacy
+### guard stands down for good. The conflict-swap that installs rsyslog
+### REMOVES the legacy package but keeps its init script (a conffile,
+### package state rc) while the daemon binary is gone -- acting on that
+### leftover would be a perpetual failing restart loop.
+if [ -e "/etc/init.d/rsyslog" ]; then
+  exit 0
+fi
+
+if [ -f "/etc/init.d/sysklogd" ] \
+  && { [ -x "/sbin/syslogd" ] || [ -x "/usr/sbin/syslogd" ]; }; then
   if ! pgrep -f /sbin/syslogd >/dev/null 2>&1 || [ ! -e "/run/syslogd.pid" ]; then
     # Legacy quirk preserved: the original killed by the name "sysklogd"
     # (the daemon binary is actually "syslogd"); the restart below recovers
@@ -69,7 +79,8 @@ if [ -f "/etc/init.d/sysklogd" ]; then
     killall -9 sysklogd >/dev/null 2>&1
     service sysklogd restart
   fi
-elif [ -f "/etc/init.d/inetutils-syslogd" ]; then
+elif [ -f "/etc/init.d/inetutils-syslogd" ] \
+  && { [ -x "/sbin/syslogd" ] || [ -x "/usr/sbin/syslogd" ]; }; then
   if ! pgrep -f /sbin/syslogd >/dev/null 2>&1 || [ ! -e "/run/syslog.pid" ]; then
     killall -9 syslogd >/dev/null 2>&1
     service inetutils-syslogd restart
