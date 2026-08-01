@@ -2567,7 +2567,6 @@ _convert_etcboa_markers_to_cnf() {
     "/root/.include-php-latest.cnf:_INCLUDE_PHP_LATEST" \
     "/root/.install.myquick.src.info:_INSTALL_MYQUICK_SRC" \
     "/root/.my.restart_after_optimize.cnf:_MY_RESTART_AFTER_OPTIMIZE" \
-    "/root/.use.sysklogd.cnf:_USE_SYSKLOGD" \
     "/root/.deny.java.cnf:_DENY_JAVA" \
     "/etc/boa/.dont.touch.permissions.cnf:_SKIP_PERMISSIONS_PASS" \
     "/etc/boa/.allow.aegir.queue.cnf:_ALLOW_AEGIR_QUEUE" \
@@ -2994,7 +2993,6 @@ _barracuda_cnf() {
     echo "_INCLUDE_PHP_LATEST=${_INCLUDE_PHP_LATEST:-NO}"  >> ${_barCnf}
     echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}"  >> ${_barCnf}
     echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}"  >> ${_barCnf}
-    echo "_USE_SYSKLOGD=${_USE_SYSKLOGD:-NO}"             >> ${_barCnf}
     echo "_DENY_JAVA=${_DENY_JAVA:-NO}"                   >> ${_barCnf}
     echo "_SKIP_PERMISSIONS_PASS=${_SKIP_PERMISSIONS_PASS:-NO}"  >> ${_barCnf}
     echo "_ALLOW_AEGIR_QUEUE=${_ALLOW_AEGIR_QUEUE:-NO}"   >> ${_barCnf}
@@ -3309,10 +3307,6 @@ _barracuda_cnf() {
     _MY_RESTART_AFTER_OPTIMIZE_TEST=$(grep "^_MY_RESTART_AFTER_OPTIMIZE=" ${_barCnf} 2>&1)
     if [[ ! "${_MY_RESTART_AFTER_OPTIMIZE_TEST}" =~ "_MY_RESTART_AFTER_OPTIMIZE=" ]]; then
       echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}" >> ${_barCnf}
-    fi
-    _USE_SYSKLOGD_TEST=$(grep "^_USE_SYSKLOGD=" ${_barCnf} 2>&1)
-    if [[ ! "${_USE_SYSKLOGD_TEST}" =~ "_USE_SYSKLOGD=" ]]; then
-      echo "_USE_SYSKLOGD=${_USE_SYSKLOGD:-NO}" >> ${_barCnf}
     fi
     _DENY_JAVA_TEST=$(grep "^_DENY_JAVA=" ${_barCnf} 2>&1)
     if [[ ! "${_DENY_JAVA_TEST}" =~ "_DENY_JAVA=" ]]; then
@@ -9503,25 +9497,13 @@ _sys_packages_install() {
   else
     _EXTRA_PACKAGES="screen"
   fi
-  if [ -e "/proc/bean_counters" ]; then
-    _IS_VZ=YES
-  else
-    _IS_VZ=NO
-  fi
-  if [ "${_IS_VZ}" = "YES" ]; then
-    _SYSLOGD=inetutils-syslogd
-    _mrun "apt-get remove sysklogd -y --purge --auto-remove -qq"
-    _mrun "apt-get remove rsyslog -y --purge --auto-remove -qq"
-    _mrun "killall -9 sysklogd"
-    _mrun "killall -9 rsyslogd"
-  elif [ "${_USE_SYSKLOGD}" = "YES" ] \
-    || [ -e "/root/.use.sysklogd.cnf" ]; then
-    _SYSLOGD=sysklogd
-    _mrun "apt-get remove rsyslog -y --purge --auto-remove -qq"
-    _mrun "killall -9 rsyslogd"
-  else
-    _SYSLOGD=rsyslog
-  fi
+  # rsyslog is the only supported syslogd and must never be removed: the
+  # legacy sysklogd/inetutils-syslogd arms purged rsyslog first, but neither
+  # replacement is installable on current Devuan/Debian, which left a box
+  # with no syslog daemon at all. _USE_SYSKLOGD and /root/.use.sysklogd.cnf
+  # are retired and ignored; the install stage below restores a missing
+  # rsyslog on the next FULL run.
+  _SYSLOGD=rsyslog
 
   if [ "${_OS_CODE}" = "excalibur" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
