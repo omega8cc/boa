@@ -8,7 +8,7 @@ BOA-5.88.811 opens a new release cadence — **40 commits across four repositori
 
 ## BOA-5.88.8: The Continuity Edition
 
-A milestone for the 5.x tree — **422 commits across six repositories**, with every headline feature shipping for **both PRO and LTS**. Backdrop CMS becomes a first-class citizen, enabled by default, complete with a Drupal 6 → 7 → Backdrop upgrade chain running as ordinary control-panel tasks. Classic Ægir estates get a supported road into BOA, the rebuilt migration suite moves whole servers across Percona generations, and years of documentation come together on the new unified docs site: [**docs.boa.io**](https://docs.boa.io). Why the eights? Turn one on its side — continuity is the point. [**Read the full story!**](https://github.com/omega8cc/boa/blob/5.x-dev/releases/BOA-5.88.8-PRO.md)
+A milestone for the 5.x tree — **422 commits across six repositories**, with every headline feature shipping for **both PRO and LTS**. Backdrop CMS becomes a first-class citizen, enabled by default, complete with a Drupal 6 → 7 → Backdrop upgrade chain running as ordinary control-panel tasks. Classic Ægir estates get a supported road into BOA, the rebuilt migration suite moves whole servers across Percona generations, and years of documentation come together on the new unified docs site: [**docs.boa.io**](https://docs.boa.io). Why the eights? Turn one on its side — continuity is the point. [**Read the full story!**](https://github.com/omega8cc/boa/blob/5.x-lts/releases/BOA-5.88.8-PRO.md)
 
 ## Strap in, your sites are getting an F1 engine
 
