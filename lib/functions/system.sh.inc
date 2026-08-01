@@ -2567,7 +2567,6 @@ _convert_etcboa_markers_to_cnf() {
     "/root/.include-php-latest.cnf:_INCLUDE_PHP_LATEST" \
     "/root/.install.myquick.src.info:_INSTALL_MYQUICK_SRC" \
     "/root/.my.restart_after_optimize.cnf:_MY_RESTART_AFTER_OPTIMIZE" \
-    "/root/.use.sysklogd.cnf:_USE_SYSKLOGD" \
     "/root/.deny.java.cnf:_DENY_JAVA" \
     "/etc/boa/.dont.touch.permissions.cnf:_SKIP_PERMISSIONS_PASS" \
     "/etc/boa/.allow.aegir.queue.cnf:_ALLOW_AEGIR_QUEUE" \
@@ -2994,7 +2993,6 @@ _barracuda_cnf() {
     echo "_INCLUDE_PHP_LATEST=${_INCLUDE_PHP_LATEST:-NO}"  >> ${_barCnf}
     echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}"  >> ${_barCnf}
     echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}"  >> ${_barCnf}
-    echo "_USE_SYSKLOGD=${_USE_SYSKLOGD:-NO}"             >> ${_barCnf}
     echo "_DENY_JAVA=${_DENY_JAVA:-NO}"                   >> ${_barCnf}
     echo "_SKIP_PERMISSIONS_PASS=${_SKIP_PERMISSIONS_PASS:-NO}"  >> ${_barCnf}
     echo "_ALLOW_AEGIR_QUEUE=${_ALLOW_AEGIR_QUEUE:-NO}"   >> ${_barCnf}
@@ -3309,10 +3307,6 @@ _barracuda_cnf() {
     _MY_RESTART_AFTER_OPTIMIZE_TEST=$(grep "^_MY_RESTART_AFTER_OPTIMIZE=" ${_barCnf} 2>&1)
     if [[ ! "${_MY_RESTART_AFTER_OPTIMIZE_TEST}" =~ "_MY_RESTART_AFTER_OPTIMIZE=" ]]; then
       echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}" >> ${_barCnf}
-    fi
-    _USE_SYSKLOGD_TEST=$(grep "^_USE_SYSKLOGD=" ${_barCnf} 2>&1)
-    if [[ ! "${_USE_SYSKLOGD_TEST}" =~ "_USE_SYSKLOGD=" ]]; then
-      echo "_USE_SYSKLOGD=${_USE_SYSKLOGD:-NO}" >> ${_barCnf}
     fi
     _DENY_JAVA_TEST=$(grep "^_DENY_JAVA=" ${_barCnf} 2>&1)
     if [[ ! "${_DENY_JAVA_TEST}" =~ "_DENY_JAVA=" ]]; then
@@ -4063,7 +4057,7 @@ _run_apt_get_dist_upgrade() {
   done
   nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
   # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl.
-  for _pncw in sendmail_guard convert_guard hostname_sync syslog_legacy \
+  for _pncw in sendmail_guard convert_guard hostname_sync \
                bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
                collectd xinetd lsyncd; do
     [ -e "/var/xdrago/monitor/check/${_pncw}.sh" ] \
@@ -7405,6 +7399,28 @@ _run_aptitude_deps_install() {
   if ! _pkg_installed "libfcgi-bin"; then
     _mrun "${_INSTAPP} libfcgi-bin"
   fi
+  # rsyslog is the only supported syslogd; the retired legacy selection arms
+  # could leave a box with no syslog daemon at all, and FAST upgrades skip
+  # the big package section below, so ensure it on every run. On a box still
+  # running a legacy daemon apt swaps it out here (mutual Conflicts on
+  # system-log-daemon; swap verified live on the bookworm pool). A box left
+  # logless must never stay that way silently, so on an aptitude miss fall
+  # back to apt-get before giving up.
+  if ! _pkg_installed "rsyslog"; then
+    _mrun "${_INSTAPP} rsyslog"
+    if ! _pkg_installed "rsyslog"; then
+      _mrun "apt-get install rsyslog -y -qq"
+    fi
+  fi
+  # The conflict-swap above removes a legacy syslogd but keeps its conffiles
+  # (package state rc), and a surviving /etc/init.d script is what kept the
+  # retired legacy restart paths firing against a daemon with no binary.
+  # Purge the rc-state leftovers so nothing can act on them again.
+  for _lgcySlgd in sysklogd inetutils-syslogd; do
+    if dpkg -l "${_lgcySlgd}" 2>/dev/null | grep -q '^rc '; then
+      _mrun "dpkg --purge ${_lgcySlgd}"
+    fi
+  done
   if [ "${_UPGRADE_MODE}" = "FULL" ]; then
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _mrun "${_INITINS} devuan-keyring"
@@ -7585,7 +7601,6 @@ _run_aptitude_deps_install() {
     _mrun "${_INSTAPP} ${_APT_XTRA}"
     _mrun "${_INSTAPP} ${_EXTRA_LIB_APT}"
     _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
-    _mrun "${_INSTAPP} ${_SYSLOGD}"
     _EXTRA_APT="tree"
     _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
   fi
@@ -8769,7 +8784,7 @@ _if_major_os_upgrade() {
     done
     nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
     # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl.
-    for _pncw in sendmail_guard convert_guard hostname_sync syslog_legacy \
+    for _pncw in sendmail_guard convert_guard hostname_sync \
                  bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
                  collectd xinetd lsyncd; do
       [ -e "/var/xdrago/monitor/check/${_pncw}.sh" ] \
@@ -9503,25 +9518,12 @@ _sys_packages_install() {
   else
     _EXTRA_PACKAGES="screen"
   fi
-  if [ -e "/proc/bean_counters" ]; then
-    _IS_VZ=YES
-  else
-    _IS_VZ=NO
-  fi
-  if [ "${_IS_VZ}" = "YES" ]; then
-    _SYSLOGD=inetutils-syslogd
-    _mrun "apt-get remove sysklogd -y --purge --auto-remove -qq"
-    _mrun "apt-get remove rsyslog -y --purge --auto-remove -qq"
-    _mrun "killall -9 sysklogd"
-    _mrun "killall -9 rsyslogd"
-  elif [ "${_USE_SYSKLOGD}" = "YES" ] \
-    || [ -e "/root/.use.sysklogd.cnf" ]; then
-    _SYSLOGD=sysklogd
-    _mrun "apt-get remove rsyslog -y --purge --auto-remove -qq"
-    _mrun "killall -9 rsyslogd"
-  else
-    _SYSLOGD=rsyslog
-  fi
+  # rsyslog is the only supported syslogd and must never be removed: the
+  # legacy sysklogd/inetutils-syslogd arms purged rsyslog first, and sysklogd
+  # has no install candidate on current Devuan/Debian at all, which left an
+  # opted-in box with no syslog daemon. _USE_SYSKLOGD and
+  # /root/.use.sysklogd.cnf are retired and ignored;
+  # _run_aptitude_deps_install restores a missing rsyslog on every run.
 
   if [ "${_OS_CODE}" = "excalibur" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \

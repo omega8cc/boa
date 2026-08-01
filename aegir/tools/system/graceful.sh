@@ -156,12 +156,6 @@ _graceful_action() {
   if [ -e "/etc/init.d/rsyslog" ]; then
     pkill -9 rsyslogd
     service rsyslog start
-  elif [ -e "/etc/init.d/sysklogd" ]; then
-    pkill -9 sysklogd
-    service sysklogd start
-  elif [ -e "/etc/init.d/inetutils-syslogd" ]; then
-    pkill -9 syslogd
-    service inetutils-syslogd start
   fi
 
   # Swap, RAM and disk cache management
