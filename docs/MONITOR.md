@@ -268,7 +268,6 @@ On its *heavy* passes (cadence below), `second.sh` runs two extra blocks: the `_
 | `sendmail_guard` | Kills any **root-owned** process whose executable name contains `sendmail` (BOA delivers mail via postfix/msmtp, so a root sendmail MTA should never run). Excludes itself and its shell |
 | `convert_guard` | Runaway ImageMagick `convert`. Acts only when more than one is running; a hot one (>10% CPU, accumulated CPU time, R/Z state) is logged to `convert.watch.log`, or **killed** when more than 5 are running *and* it exceeds 50% CPU (logged to `convert.kill.log`) |
 | `hostname_sync` | On DHCP-managed hosts (`dhcpcd`/`dhclient` running), restores the running hostname from a non-empty `/etc/hostname` after a lease renewal reset it |
-| `syslog_legacy` | Restarts a **legacy** syslog daemon (`sysklogd` or `inetutils-syslogd`) when down and its init script is present. rsyslog (the BOA default) is handled by `system.sh`, not here. Skipped while a DHCP client is active so it never collides with `hostname_sync` |
 | `bind9` | Restarts `bind9` (`named`) when the daemon is down and `/etc/init.d/bind9` exists |
 | `proxysql` | Restarts `proxysql` when down and `/etc/init.d/proxysql` exists |
 | `droplet` | Restarts the DigitalOcean `droplet-agent` (serial/web-console access on DO VMs) when down/pidfile missing and `/etc/init.d/droplet-agent` exists |
