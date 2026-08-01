@@ -2,31 +2,29 @@ Hello,
 
 We are pleased to inform you that your Ægir instance has been successfully upgraded to [boa.version]
 
-It arrives on BOA's new rhythm of smaller, more frequent updates, so improvements reach you sooner.
+Here is what this one means for you and your sites.
 
-@=> Never lose track of an interrupted task again
+@=> Your sites are safer without you lifting a finger
 
-If a migrate, clone or restore is ever cut short, BOA no longer leaves the half-finished pieces lying around out of sight: it notices exactly what was left behind and keeps a record for you. A new leftover import task surfaces each one in your control panel as a clearly marked, disabled placeholder site, so you can see at a glance what is there -- and when you are sure you no longer need it, a companion leftover purge task removes that placeholder cleanly in a single step, including any stray copy of its database. It works the same way for both Drupal and Backdrop sites.
+Every supported PHP version received its latest security update, already built and in place -- your sites simply run safer, on the same PHP version they always have. And the protection in front of your sites got smarter: it now spots content scrapers that hide across many addresses, covers IPv6 visitors as thoroughly as IPv4 ones, and stops any single runaway page from slowing down a whole site.
 
-@=> A smoother move from Drupal 7 to Backdrop
+@=> Search engines see your sites properly again
 
-The task that carries a Drupal 7 site over to Backdrop now runs more smoothly and lands more dependably: a class of intermittent hiccups during conversion and migration has been ironed out, so the converted copy comes up clean and ready for you to review. Once a conversion finishes, its menus and admin links are rebuilt properly as part of the run, so the new Backdrop site behaves exactly as you expect from the very first click.
+Sitemaps, feeds, images, styles, print pages and multilingual addresses are all served to search engines normally again -- so crawling and indexing of your sites work the way they should, while abusive bots stay locked out.
 
-@=> A rock-steady Backdrop admin bar
+@=> Cleaning up is now a one-click job for your whole team
 
-Backdrop's admin bar -- the management strip across the top of your site -- is now dependable on every page across all your Backdrop sites. Where it could occasionally flicker out of view, it now loads reliably every time, so the controls you run your sites with are always right where you left them.
+If an interrupted task ever leaves a stray site copy behind, anyone on your team with panel access can now spot it and clear it away with the Import and Purge buttons -- no special account needed.
 
-@=> A tidier Backdrop task list
+@=> Fresher foundations for your next project
 
-Working with Backdrop in the panel is cleaner this time round: task names are shorter and easier to read, the action buttons sit neatly on a single line, and upgrade tasks that simply do not apply to a given site are no longer offered -- less clutter, and fewer wrong turns.
+Drupal 11.4 is ready to use as a complete platform set, Backdrop is now delivered with the same care and versioning as Drupal, and one-time login links on Drupal 7 sites work dependably every time.
+
+Curious about the details? The full story of this release is at https://docs.boa.io/releases
 
 @=> You can access your upgraded Ægir instance at the following URL:
 
   https://aegir.url.name
-
-@=> Full release notes, for this and every release:
-
-  https://docs.boa.io/releases
 
 Thank you for choosing Ægir!
 
