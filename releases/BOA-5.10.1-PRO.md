@@ -298,5 +298,5 @@ Self-upgrade automation: https://github.com/omega8cc/boa/blob/5.x-pro/docs/SELFU
 
 - Commit history (BOA): https://github.com/omega8cc/boa/commits/5.x-dev/
 - Commit history (Provision): https://github.com/omega8cc/provision/commits/5.x-dev/
-- Full changelog: https://github.com/omega8cc/boa/blob/5.x-dev/CHANGELOG.txt
-- License: https://github.com/omega8cc/boa/blob/5.x-dev/DUALLICENSE.md
+- Full changelog: https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt
+- License: https://github.com/omega8cc/boa/blob/5.x-pro/DUALLICENSE.md
