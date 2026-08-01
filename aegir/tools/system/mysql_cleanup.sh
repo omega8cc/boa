@@ -16,7 +16,8 @@ _check_root() {
 }
 _check_root
 
-if [ -e "/etc/boa/.disable_mysql_cleanup.cnf" ]; then
+if [ -e "/etc/boa/.disable_mysql_cleanup.cnf" ] \
+  || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_MYSQL_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
   exit 0
 fi
 

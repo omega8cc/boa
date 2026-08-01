@@ -304,7 +304,7 @@ Shared design notes (verified against all three scripts):
 
 - **Hard stops first.** It exits immediately if `/root/.proxy.cnf`, `/etc/boa/.pause_tasks_maint.cnf`, or a `max_load`/`critical_load` pid is present; and again if too many `runner.sh` instances are already running, or a SQL backup, `owl.sh`, a MySQL restart/cluster-backup, or `boa_cron_wait.pid` is in flight.
 - **Load-gated per runner.** `_runner_action` runs a `/var/xdrago/run-*` runner only while the 1-minute per-CPU load is **below `_CPU_TASK_RATIO * 100`** (default 310%); above that it waits. This is the same task ratio used by the load-control logic — backend tasks are skipped under load while the web tier stays up.
-- **CI hosts (`/etc/boa/.look.like.jenkins.cnf`).** No automatic queue by default. It runs only if the box is a PRO plan (`POWER`/`PHANTOM`/`CLUSTER`/`ULTRA`/`MONSTER` in the octopus control file) **or** `/etc/boa/.allow.aegir.queue.cnf` is present, *and* at least one `run-aegir-queue.info` exists.
+- **CI hosts (`/etc/boa/.look.like.jenkins.cnf` or `_FORCE_CI_BOX=YES` in `/root/.barracuda.cnf`).** No automatic queue by default. It runs only if the box is a PRO plan (`POWER`/`PHANTOM`/`CLUSTER`/`ULTRA`/`MONSTER` in the octopus control file) **or** `/etc/boa/.allow.aegir.queue.cnf` is present (or `_ALLOW_AEGIR_QUEUE=YES`), *and* at least one `run-aegir-queue.info` exists.
 - **Small boxes auto-throttle.** `runner.sh` itself writes `/root/.slow.cron.cnf` and pins it immutable with `chattr +i` when total RAM ≤ 4096 MB. With `.slow.cron.cnf` present (and no `.force.queue.runner.cnf`) it allows only one concurrent runner and runs a single throttled pass per minute with `sleep 15` pads.
 - **Fast / forced.** With `/root/.fast.cron.cnf` or `/root/.force.queue.runner.cnf` it runs the queue 10 times in the minute (`sleep 5` between), mirroring the `second.sh` cadence.
 
@@ -320,7 +320,7 @@ Both loops classify the box once at startup with an identical `_monitor_box_clas
 
 | Order | Condition | Class |
 |---|---|---|
-| 1 | `/etc/boa/.look.like.jenkins.cnf` exists | **CI** |
+| 1 | `/etc/boa/.look.like.jenkins.cnf` exists (or `_FORCE_CI_BOX=YES` in the cnf) | **CI** |
 | 2 | (`/root/.slow.cron.cnf` exists **or** total RAM ≤ 4096 MB from `free -m`) **and** `/root/.force.queue.runner.cnf` is **absent** | **SLOW** |
 | 3 | none of the above | **NORMAL** (default) |
 
@@ -464,6 +464,7 @@ tail -n 20 /var/log/boa/high.load.incident.log
 # which box class this host resolves to (mirror the classifier)
 ls -1 /etc/boa/.look.like.jenkins.cnf /root/.fast.cron.cnf \
       /root/.force.queue.runner.cnf /root/.slow.cron.cnf 2>/dev/null
+grep -E "^_FORCE_CI_BOX=" /root/.barracuda.cnf 2>/dev/null
 free -m | awk '/^Mem:/{print "RAM MB:", $2}'
 
 # who is burning idle load (live 60s profile, then logged history)
