@@ -1615,7 +1615,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f82
     # autoupboa/fixmounts are also fetched by _update_boa_tools and share its
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f46 --guard autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f45 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f87
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f87
@@ -4085,7 +4085,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f95 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f95 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f79 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f46 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f45 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard /local/bin/backboa
     # barracuda serial re-aligned with _update_agents: the two sites
     # MUST match or every clear.sh cycle wipes the other's stamp and
