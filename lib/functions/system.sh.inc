@@ -7421,13 +7421,35 @@ _run_aptitude_deps_install() {
       _mrun "dpkg --purge ${_lgcySlgd}"
     fi
   done
-  if [ "${_UPGRADE_MODE}" = "FULL" ]; then
-    if [ "${_OS_DIST}" = "Devuan" ]; then
+  # The distro archive keyring is the box's only trust root, and _mrun cannot
+  # fail (it returns 0 unconditionally), so the old duplicated call could not
+  # tell whether the package ever arrived -- it just ran the same command
+  # twice. It was also gated on FULL, which happens once, at INIT: a box that
+  # missed it there never retried for the rest of its life, accepted nothing
+  # from the security suite, and unattended-upgrades then installed nothing at
+  # all, silently. So check the state rather than the command, and do it on
+  # every run, like the rsyslog ensure above.
+  if [ "${_OS_DIST}" = "Devuan" ]; then
+    if ! _pkg_installed "devuan-keyring"; then
       _mrun "${_INITINS} devuan-keyring"
-      _mrun "${_INITINS} devuan-keyring"
-    elif [ "${_OS_DIST}" = "Debian" ]; then
+      if ! _pkg_installed "devuan-keyring"; then
+        _mrun "${_APT_UPDATE} ${_aptAllow}"
+        _mrun "${_INITINS} devuan-keyring"
+      fi
+      if ! _pkg_installed "devuan-keyring"; then
+        _msg "WARN: devuan-keyring is missing -- APT cannot verify the Devuan archive, so unattended security upgrades will install nothing"
+      fi
+    fi
+  elif [ "${_OS_DIST}" = "Debian" ]; then
+    if ! _pkg_installed "debian-archive-keyring"; then
       _mrun "${_INITINS} debian-keyring debian-archive-keyring"
-      _mrun "${_INITINS} debian-keyring debian-archive-keyring"
+      if ! _pkg_installed "debian-archive-keyring"; then
+        _mrun "${_APT_UPDATE} ${_aptAllow}"
+        _mrun "${_INITINS} debian-keyring debian-archive-keyring"
+      fi
+      if ! _pkg_installed "debian-archive-keyring"; then
+        _msg "WARN: debian-archive-keyring is missing -- APT cannot verify the Debian archive, so unattended security upgrades will install nothing"
+      fi
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
@@ -8453,10 +8475,19 @@ _if_major_os_upgrade() {
         rm -f /etc/apt/apt.conf
       fi
       ###
-      ### Add devuan-keyring first.
+      ### Add devuan-keyring first. Verified, because _mrun cannot fail and a
+      ### keyring that never arrived leaves the box unable to authenticate the
+      ### suite it has just been pointed at.
       _apt_clean_update_no_releaseinfo_change
       _mrun "${_APT_UPDATE} ${_aptAllow}"
       _mrun "${_INITINS} devuan-keyring"
+      if ! _pkg_installed "devuan-keyring"; then
+        _mrun "${_APT_UPDATE} ${_aptAllow}"
+        _mrun "${_INITINS} devuan-keyring"
+        if ! _pkg_installed "devuan-keyring"; then
+          _msg "WARN: devuan-keyring is missing after the sources switch -- APT cannot verify the new archive"
+        fi
+      fi
     else
       if [ "${_NEW_OS_CODE}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"
