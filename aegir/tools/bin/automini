@@ -728,8 +728,17 @@ _init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
-  if pgrep -f unattended-upgrades >/dev/null 2>&1; then
-    pkill -9 -f unattended-upgrades
+  # Free the dpkg lock for the whole init cycle: the daily unattended-upgrade
+  # worker cmdline is "python3 /usr/bin/unattended-upgrade" -- match the
+  # script path, bracketed so concurrent guards never match each other's
+  # pkill. Kill the apt.systemd.daily parent first or it respawns the worker;
+  # heal any interrupted dpkg state the kill may leave.
+  if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
+    pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+  fi
+  if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
+    pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+    /usr/bin/dpkg --configure -a &> /dev/null
   fi
   if [ ! -e "/root/.autoinit.log" ]; then
     echo "[init] lnch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
