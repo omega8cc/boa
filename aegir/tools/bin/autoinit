@@ -657,6 +657,137 @@ _autoinit_apt_install_checked() {
   return 1
 }
 
+# Report what APT really thinks of the archive: OK / UNTRUSTED / STALE / ERROR.
+#
+# Every apt update in this tool passes --allow-insecure-repositories, and BOA's
+# bootstrap writes Acquire::AllowInsecureRepositories into
+# /etc/apt/apt.conf.d/99ignorestrict before autoinit is even fetched, so a plain
+# update cannot tell a verified archive from an unverifiable one -- it succeeds
+# either way. Force the strict values on the command line, where they win over
+# apt.conf.d, and classify the failure: a missing key is a trust defect the
+# keyring install fixes, an expired Release is a lagging mirror that no amount
+# of retrying will fix.
+_autoinit_apt_trust_state() {
+  # LC_ALL=C: the verdict is read out of apt's own words, so the words must not
+  # depend on whatever locale the box or the cron environment happens to carry.
+  _trstOut=$(LC_ALL=C /usr/bin/apt-get update \
+    -o Acquire::AllowInsecureRepositories=false \
+    -o Acquire::AllowDowngradeToInsecureRepositories=false \
+    -o Acquire::AllowWeakRepositories=false 2>&1)
+  _trstRet=$?
+  if echo "${_trstOut}" | grep -qiE "NO_PUBKEY|is not signed|EXPKEYSIG|KEYEXPIRED|REVKEYSIG"; then
+    echo "UNTRUSTED"
+    return 1
+  fi
+  if echo "${_trstOut}" | grep -qiE "is expired|invalid since|not valid yet"; then
+    echo "STALE"
+    return 1
+  fi
+  if [ "${_trstRet}" != "0" ]; then
+    echo "ERROR"
+    return 1
+  fi
+  # APT's own per-index verdict -- the only positive proof that every suite in
+  # sources.list is signed by a key this box actually trusts. An apt too old to
+  # know the subcommand prints nothing, which counts as no untrusted index: the
+  # strict update above has already passed by then.
+  _trstBad=$(LC_ALL=C /usr/bin/apt-get indextargets 2>/dev/null | grep -c "^Trusted: no")
+  _trstBad="${_trstBad:-0}"
+  if [ "${_trstBad}" -gt 0 ]; then
+    echo "UNTRUSTED"
+    return 1
+  fi
+  echo "OK"
+  return 0
+}
+
+# Point sources.list at a different Devuan mirror, keeping the suite layout the
+# file already has. Used only when the current mirror serves metadata APT
+# refuses outright (an expired Release makes the whole suite unusable, so the
+# keyring cannot be fetched from it either) -- retrying the same host cannot
+# recover from that.
+_autoinit_repick_devuan_mirror() {
+  _rpkOld=$(grep -m1 "^deb " /etc/apt/sources.list 2>/dev/null | awk '{print $2}')
+  [ -n "${_rpkOld}" ] || return 1
+  _rpkNew=""
+  for _rpkTry in "https://mirrors.dotsrc.org/devuan/merged" \
+                 "http://deb.devuan.org/merged" \
+                 "https://mirror.akardam.net/devuan/merged" \
+                 "https://mirror.hootsoftware.com/devuan/merged"; do
+    if [ "${_rpkTry}" != "${_rpkOld}" ]; then
+      _rpkNew="${_rpkTry}"
+      break
+    fi
+  done
+  [ -n "${_rpkNew}" ] || return 1
+  _msg "[init] trst ==> Re-pointing APT sources from ${_rpkOld} to ${_rpkNew}" >> "${_logInt}"
+  sed -i "s|${_rpkOld}|${_rpkNew}|g" /etc/apt/sources.list
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}" 2>&1
+  return 0
+}
+
+# Retire the blanket APT trust bypass, but only once the archive verifies
+# without it. BOA's bootstrap writes 99ignorestrict before this tool runs and it
+# is what masked the missing key in the first place; on a converted box that
+# never gets 'boa install' nothing else ever removes it. Quarantined rather than
+# deleted, and BOA re-creating it later is BOA's call, not ours.
+_autoinit_drop_apt_trust_bypass() {
+  [ -e "/etc/apt/apt.conf.d/99ignorestrict" ] || return 0
+  [ -d "/var/backups" ] || mkdir -p /var/backups
+  mv -f /etc/apt/apt.conf.d/99ignorestrict \
+    /var/backups/99ignorestrict.autoinit-removed >> "${_logSlt}" 2>&1
+  _msg "[init] trst ==> Retired the APT trust bypass 99ignorestrict (archive verifies without it)" >> "${_logInt}"
+  return 0
+}
+
+# Establish the Devuan archive trust root -- the one thing this conversion can
+# lose without anything noticing.
+#
+# It used to be a single unchecked, un-retried apt-get on the one pass where the
+# box is still Debian; once base-files flips to Devuan that pass is unreachable
+# forever. So a mirror flap in that one second left the box with no Devuan key
+# at all, every later apt run passed anyway (--allow-insecure-repositories plus
+# 99ignorestrict), and unattended-upgrades then quietly installed nothing for
+# the life of the box. Now: idempotent, verified against APT's own trust
+# verdict, retried with a mirror re-pick, and loud when it cannot be done.
+# Called from every phase, so a lost attempt self-heals on the next pass.
+_autoinit_ensure_devuan_keyring() {
+  grep -qi "devuan" /etc/apt/sources.list 2>/dev/null || return 0
+  _trstNow="$(_autoinit_apt_trust_state)"
+  if [ "${_trstNow}" = "OK" ] && _pkg_installed "devuan-keyring"; then
+    rm -f /root/.autoinit-untrusted-apt.cnf
+    _autoinit_drop_apt_trust_bypass
+    return 0
+  fi
+  _kryTry=0
+  while [ "${_kryTry}" -lt 3 ]; do
+    _kryTry=$(( _kryTry + 1 ))
+    if ! _pkg_installed "devuan-keyring"; then
+      _autoinit_apt_install_checked "devuan-keyring" "devuan-keyring"
+    fi
+    _trstNow="$(_autoinit_apt_trust_state)"
+    if [ "${_trstNow}" = "OK" ]; then
+      _msg "[init] trst ==> Devuan archive trust established (attempt ${_kryTry})" >> "${_logInt}"
+      rm -f /root/.autoinit-untrusted-apt.cnf
+      _autoinit_drop_apt_trust_bypass
+      return 0
+    fi
+    _msg "[init] trst ==> Devuan archive still ${_trstNow} (attempt ${_kryTry}); retrying" >> "${_logInt}"
+    # Only swap mirrors when a different mirror could plausibly help: an expired
+    # Release, or a keyring that still cannot be fetched at all. If the package
+    # is installed and trust is still refused, the mirror is not the problem and
+    # churning sources.list would just discard the fast one ffdevuan picked.
+    if [ "${_trstNow}" = "STALE" ] \
+      || { [ "${_kryTry}" -ge 2 ] && ! _pkg_installed "devuan-keyring"; }; then
+      _autoinit_repick_devuan_mirror
+    fi
+    sleep 5
+  done
+  _msg "[init][ERROR] trst ==> Devuan archive trust NOT established (${_trstNow}) -- devuan-keyring is missing or unverifiable, so OS security updates will silently install nothing until this is fixed" >> "${_logInt}"
+  touch /root/.autoinit-untrusted-apt.cnf
+  return 1
+}
+
 # Ensure a working sysvinit /etc/inittab (sysvinit-core ships one, but if it was
 # installed mid-conversion the file can be absent). Without an 'initdefault' line
 # sysvinit hangs at the "Enter runlevel:" prompt on boot.
@@ -1190,8 +1321,16 @@ _init_prepare() {
       _if_off_apparmor
       if [ -e "/root/.autoinit-early-upgrade.cnf" ]; then
         _msg "[init] prep ==> Let's update existing system first..." >> "${_logInt}"
-        if pgrep -f unattended-upgrades >/dev/null 2>&1; then
-          pkill -9 -f unattended-upgrades
+        # Free the dpkg lock: the daily unattended-upgrade worker cmdline is
+        # "python3 /usr/bin/unattended-upgrade" -- match the script path,
+        # bracketed so concurrent guards never match each other's pkill. Kill
+        # the apt.systemd.daily parent first or it respawns the worker; the
+        # dpkg heal below covers any interrupted state the kill may leave.
+        if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
+          pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+        fi
+        if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
+          pkill -9 -f '/usr/bin/unattended-upgrad[e]'
         fi
         /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
         /usr/bin/dpkg --configure -a >> "${_logSlt}"
@@ -1446,6 +1585,9 @@ _init_base_sync() {
 ###
 _init_post_ready() {
   _msg "[init] post ==> Final OS post-upgrade to ${_OS_DIST}/${_OS_CODE} procedure..." >> "${_logInt}"
+  # Last convergence point before the box is declared ready: heal a trust root
+  # that an earlier phase failed to establish.
+  _autoinit_ensure_devuan_keyring
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
   /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
@@ -1469,6 +1611,8 @@ _init_offsystemd() {
   fi
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
+  # _init_cycle does not run on this boot, so this phase needs its own attempt.
+  _autoinit_ensure_devuan_keyring
   if [ -e "/root/.top-excalibur.cnf" ]; then
     _msg "[init] offd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
     /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
@@ -1659,9 +1803,10 @@ _init_cycle() {
     _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    if [ "${_OLD_SYS}" = "Debian" ]; then
-      ${_INITINS} devuan-keyring >> "${_logSlt}"
-    else
+    # Not gated on the origin distro: the Devuan->Devuan hops repoint
+    # sources.list at a new suite too, and used to install no keyring at all.
+    _autoinit_ensure_devuan_keyring
+    if [ "${_OLD_SYS}" != "Debian" ]; then
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     fi
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
@@ -1748,6 +1893,13 @@ _init_cycle() {
       _msg "[init] cycl ==> Running APT Cleanup.." >> "${_logInt}"
       /opt/local/bin/aptcleanup >> "${_logSlt}"
       wait
+      # Deliberately a loud notice, not a gate: a box with a working system but
+      # an unverifiable archive is still installable, and blocking on a mirror
+      # that happened to lag would be the worse failure. The marker survives so
+      # a later run (and the operator) can still see it.
+      if [ -e "/root/.autoinit-untrusted-apt.cnf" ]; then
+        _msg "[init][ERROR] trst ==> APT trust is NOT established on this box -- install devuan-keyring by hand and re-check before relying on unattended security updates" >> "${_logInt}"
+      fi
       _msg "[init] cycl ==> The system is now ready for boa install" >> "${_logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
@@ -1826,8 +1978,17 @@ _init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
-  if pgrep -f unattended-upgrades >/dev/null 2>&1; then
-    pkill -9 -f unattended-upgrades
+  # Free the dpkg lock for the whole init cycle: the daily unattended-upgrade
+  # worker cmdline is "python3 /usr/bin/unattended-upgrade" -- match the
+  # script path, bracketed so concurrent guards never match each other's
+  # pkill. Kill the apt.systemd.daily parent first or it respawns the worker;
+  # heal any interrupted dpkg state the kill may leave.
+  if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
+    pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+  fi
+  if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
+    pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+    /usr/bin/dpkg --configure -a &> /dev/null
   fi
   if [ ! -e "/root/.autoinit.log" ]; then
     echo "[init] lnch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
