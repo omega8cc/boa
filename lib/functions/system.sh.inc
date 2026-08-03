@@ -7421,13 +7421,35 @@ _run_aptitude_deps_install() {
       _mrun "dpkg --purge ${_lgcySlgd}"
     fi
   done
-  if [ "${_UPGRADE_MODE}" = "FULL" ]; then
-    if [ "${_OS_DIST}" = "Devuan" ]; then
+  # The distro archive keyring is the box's only trust root, and _mrun cannot
+  # fail (it returns 0 unconditionally), so the old duplicated call could not
+  # tell whether the package ever arrived -- it just ran the same command
+  # twice. It was also gated on FULL, which happens once, at INIT: a box that
+  # missed it there never retried for the rest of its life, accepted nothing
+  # from the security suite, and unattended-upgrades then installed nothing at
+  # all, silently. So check the state rather than the command, and do it on
+  # every run, like the rsyslog ensure above.
+  if [ "${_OS_DIST}" = "Devuan" ]; then
+    if ! _pkg_installed "devuan-keyring"; then
       _mrun "${_INITINS} devuan-keyring"
-      _mrun "${_INITINS} devuan-keyring"
-    elif [ "${_OS_DIST}" = "Debian" ]; then
+      if ! _pkg_installed "devuan-keyring"; then
+        _mrun "${_APT_UPDATE} ${_aptAllow}"
+        _mrun "${_INITINS} devuan-keyring"
+      fi
+      if ! _pkg_installed "devuan-keyring"; then
+        _msg "WARN: devuan-keyring is missing -- APT cannot verify the Devuan archive, so unattended security upgrades will install nothing"
+      fi
+    fi
+  elif [ "${_OS_DIST}" = "Debian" ]; then
+    if ! _pkg_installed "debian-archive-keyring"; then
       _mrun "${_INITINS} debian-keyring debian-archive-keyring"
-      _mrun "${_INITINS} debian-keyring debian-archive-keyring"
+      if ! _pkg_installed "debian-archive-keyring"; then
+        _mrun "${_APT_UPDATE} ${_aptAllow}"
+        _mrun "${_INITINS} debian-keyring debian-archive-keyring"
+      fi
+      if ! _pkg_installed "debian-archive-keyring"; then
+        _msg "WARN: debian-archive-keyring is missing -- APT cannot verify the Debian archive, so unattended security upgrades will install nothing"
+      fi
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
@@ -7635,10 +7657,57 @@ _basic_packages_install_on_init() {
 
   _APT_CONFIG_FILE="/etc/apt/apt.conf.d/99ignorestrict"
 
+  # The Allow* pair is a belt for a box that still carries an index APT cannot
+  # verify -- it was never meant to be permanent, and while it is on nothing can
+  # tell a verified archive from an unverifiable one (that is what hid a missing
+  # devuan-keyring until unattended-upgrades had been inert for weeks). So probe
+  # for real, at most once a day: a strict update is the only proof that also
+  # covers a repo added since the last check, and it doubles as the list refresh
+  # this run needs anyway. Carry the pair only while this box actually needs it.
+  #
+  # A box that needs it can never lose it: every failure direction -- probe
+  # error, unreachable mirror, any untrusted index -- writes the pair back. The
+  # file itself always stays; its Fix-Broken line is load-bearing for aptitude
+  # and has nothing to do with trust.
+  _APT_TRUST_STAMP="${_pthLog}/.apt-trust-probe.stamp"
+  [ -d "${_pthLog}" ] || mkdir -p "${_pthLog}"
+  if [ -e "${_APT_CONFIG_FILE}" ] \
+    && ! grep -q "AllowInsecureRepositories" "${_APT_CONFIG_FILE}" 2>/dev/null; then
+    _APT_TRUST_MODE=STRICT
+  else
+    _APT_TRUST_MODE=BYPASS
+  fi
+  if [ ! -e "${_APT_TRUST_STAMP}" ] \
+    || [ -n "$(find "${_APT_TRUST_STAMP}" -mmin +1440 2>/dev/null)" ]; then
+    _APT_TRUST_OUT=$(LC_ALL=C apt-get update \
+      -o Acquire::AllowInsecureRepositories=false \
+      -o Acquire::AllowDowngradeToInsecureRepositories=false \
+      -o Acquire::AllowWeakRepositories=false 2>&1)
+    _APT_TRUST_RET=$?
+    _APT_TRUST_BAD=$(LC_ALL=C apt-get indextargets 2>/dev/null | grep -c "^Trusted: no")
+    _APT_TRUST_BAD=${_APT_TRUST_BAD:-0}
+    if [ "${_APT_TRUST_RET}" = "0" ] \
+      && [ "${_APT_TRUST_BAD}" -eq 0 ] \
+      && ! echo "${_APT_TRUST_OUT}" | grep -qiE "NO_PUBKEY|is not signed|EXPKEYSIG|KEYEXPIRED|REVKEYSIG"; then
+      _APT_TRUST_MODE=STRICT
+    else
+      _APT_TRUST_MODE=BYPASS
+    fi
+    touch "${_APT_TRUST_STAMP}"
+    if [ "${_APT_TRUST_MODE}" = "STRICT" ] \
+      && grep -q "AllowInsecureRepositories" "${_APT_CONFIG_FILE}" 2>/dev/null; then
+      _msg "INFO: APT verifies every configured repository -- retiring the trust bypass"
+    fi
+  fi
+
   # Desired configuration content
-  _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
+  if [ "${_APT_TRUST_MODE}" = "STRICT" ]; then
+    _DESIRED_APT_CONFIG='Aptitude::CmdLine::Fix-Broken "true";'
+  else
+    _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
     APT::Get::AllowUnauthenticated "true";
     Aptitude::CmdLine::Fix-Broken "true";'
+  fi
 
   # Remove leading whitespace from each line
   _CLEANED_DESIRED_APT_CONFIG=$(echo "${_DESIRED_APT_CONFIG}" | sed 's/^[[:space:]]\+//')
@@ -8453,10 +8522,19 @@ _if_major_os_upgrade() {
         rm -f /etc/apt/apt.conf
       fi
       ###
-      ### Add devuan-keyring first.
+      ### Add devuan-keyring first. Verified, because _mrun cannot fail and a
+      ### keyring that never arrived leaves the box unable to authenticate the
+      ### suite it has just been pointed at.
       _apt_clean_update_no_releaseinfo_change
       _mrun "${_APT_UPDATE} ${_aptAllow}"
       _mrun "${_INITINS} devuan-keyring"
+      if ! _pkg_installed "devuan-keyring"; then
+        _mrun "${_APT_UPDATE} ${_aptAllow}"
+        _mrun "${_INITINS} devuan-keyring"
+        if ! _pkg_installed "devuan-keyring"; then
+          _msg "WARN: devuan-keyring is missing after the sources switch -- APT cannot verify the new archive"
+        fi
+      fi
     else
       if [ "${_NEW_OS_CODE}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"

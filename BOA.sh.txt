@@ -1295,7 +1295,7 @@ _update_agents() {
 
     _pthCtrl="/root/.remote_backups/ctrl"
     # Own-fleet domains keep PRO backups on any tree: the backup tools
-    # (dcysetup/multiback/mybackup/backboa) hardcode _tRee=pro plus this
+    # (dcysetup/multiback/mybackup/backboa) hardcode the pro tree plus this
     # same domain pass, so a tree-only gate here wiped /root/.remote_backups
     # on own lts boxes and dcysetup could never bootstrap there.
     if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ] \
@@ -1615,7 +1615,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f82
     # autoupboa/fixmounts are also fetched by _update_boa_tools and share its
     # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f46 --guard autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f45 --guard autoupboa
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f87
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f87
@@ -4085,7 +4085,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f95 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f95 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f79 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f46 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f45 --guard /local/bin/autoupboa
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard /local/bin/backboa
     # barracuda serial re-aligned with _update_agents: the two sites
     # MUST match or every clear.sh cycle wipes the other's stamp and
@@ -4126,8 +4126,8 @@ _update_boa_tools() {
     # --- unique to _update_boa_tools ---
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f96 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f94 --guard /local/bin/autoinit
-    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f98 --guard /local/bin/automini
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f92 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f96 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f97 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
@@ -4488,10 +4488,54 @@ _boa_setup() {
 
   _APT_CONFIG_FILE="/etc/apt/apt.conf.d/99ignorestrict"
 
+  # The Allow* pair is a belt for a box that still carries an index APT cannot
+  # verify -- it was never meant to be permanent, and while it is on nothing can
+  # tell a verified archive from an unverifiable one (that is what hid a missing
+  # devuan-keyring until unattended-upgrades had been inert for weeks). So probe
+  # for real, at most once a day -- a strict update is the only proof that also
+  # covers a repo added since the last check -- and carry the pair only while
+  # this box actually needs it. The stamp is shared with the barracuda-side copy
+  # of this block, so the two never probe twice.
+  #
+  # A box that needs it can never lose it: every failure direction -- probe
+  # error, unreachable mirror, any untrusted index -- writes the pair back. The
+  # file itself always stays; its Fix-Broken line is load-bearing for aptitude
+  # and has nothing to do with trust.
+  _APT_TRUST_STAMP="${_pthLog}/.apt-trust-probe.stamp"
+  [ -d "${_pthLog}" ] || mkdir -p "${_pthLog}"
+  if [ -e "${_APT_CONFIG_FILE}" ] \
+    && ! grep -q "AllowInsecureRepositories" "${_APT_CONFIG_FILE}" 2>/dev/null; then
+    _APT_TRUST_MODE=STRICT
+  else
+    _APT_TRUST_MODE=BYPASS
+  fi
+  if [ ! -e "${_APT_TRUST_STAMP}" ] \
+    || [ -n "$(find "${_APT_TRUST_STAMP}" -mmin +1440 2>/dev/null)" ]; then
+    _APT_TRUST_OUT=$(LC_ALL=C apt-get update \
+      -o Acquire::AllowInsecureRepositories=false \
+      -o Acquire::AllowDowngradeToInsecureRepositories=false \
+      -o Acquire::AllowWeakRepositories=false 2>&1)
+    _APT_TRUST_RET=$?
+    _APT_TRUST_BAD=$(LC_ALL=C apt-get indextargets 2>/dev/null | grep -c "^Trusted: no")
+    _APT_TRUST_BAD=${_APT_TRUST_BAD:-0}
+    if [ "${_APT_TRUST_RET}" = "0" ] \
+      && [ "${_APT_TRUST_BAD}" -eq 0 ] \
+      && ! echo "${_APT_TRUST_OUT}" | grep -qiE "NO_PUBKEY|is not signed|EXPKEYSIG|KEYEXPIRED|REVKEYSIG"; then
+      _APT_TRUST_MODE=STRICT
+    else
+      _APT_TRUST_MODE=BYPASS
+    fi
+    touch "${_APT_TRUST_STAMP}"
+  fi
+
   # Desired configuration content
-  _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
+  if [ "${_APT_TRUST_MODE}" = "STRICT" ]; then
+    _DESIRED_APT_CONFIG='Aptitude::CmdLine::Fix-Broken "true";'
+  else
+    _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
     APT::Get::AllowUnauthenticated "true";
     Aptitude::CmdLine::Fix-Broken "true";'
+  fi
 
   # Remove leading whitespace from each line
   _CLEANED_DESIRED_APT_CONFIG=$(echo "${_DESIRED_APT_CONFIG}" | sed 's/^[[:space:]]\+//')

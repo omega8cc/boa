@@ -543,6 +543,78 @@ _pkg_installed() {
 }
 
 ###
+### Report what APT really thinks of the archive: OK / UNTRUSTED / STALE / ERROR
+###
+### The updates around the conversion pass --allow-insecure-repositories, and a
+### BOA box also carries Acquire::AllowInsecureRepositories in
+### /etc/apt/apt.conf.d/99ignorestrict, so a plain update succeeds whether or
+### not the archive can be verified. Force the strict values on the command
+### line, where they win over apt.conf.d.
+###
+_apt_trust_state() {
+  # LC_ALL=C: the verdict is read out of apt's own words, so the words must not
+  # depend on whatever locale the box or the cron environment happens to carry.
+  _trstOut=$(LC_ALL=C apt-get update \
+    -o Acquire::AllowInsecureRepositories=false \
+    -o Acquire::AllowDowngradeToInsecureRepositories=false \
+    -o Acquire::AllowWeakRepositories=false 2>&1)
+  _trstRet=$?
+  if echo "${_trstOut}" | grep -qiE "NO_PUBKEY|is not signed|EXPKEYSIG|KEYEXPIRED|REVKEYSIG"; then
+    echo "UNTRUSTED"
+    return 1
+  fi
+  if echo "${_trstOut}" | grep -qiE "is expired|invalid since|not valid yet"; then
+    echo "STALE"
+    return 1
+  fi
+  if [ "${_trstRet}" != "0" ]; then
+    echo "ERROR"
+    return 1
+  fi
+  _trstBad=$(apt-get indextargets 2>/dev/null | grep -c "^Trusted: no")
+  _trstBad="${_trstBad:-0}"
+  if [ "${_trstBad}" -gt 0 ]; then
+    echo "UNTRUSTED"
+    return 1
+  fi
+  echo "OK"
+  return 0
+}
+
+###
+### Establish the Devuan archive trust root
+###
+### This was a single unchecked apt-get: a mirror flap at that moment left the
+### box with no Devuan key, every later apt run passed anyway, and unattended
+### security upgrades then installed nothing at all, silently. Verified against
+### APT's own trust verdict, retried, and loud when it cannot be done.
+###
+_ensure_devuan_keyring() {
+  grep -qi "devuan" /etc/apt/sources.list 2>/dev/null || return 0
+  _trstNow="$(_apt_trust_state)"
+  if [ "${_trstNow}" = "OK" ] && _pkg_installed "devuan-keyring"; then
+    return 0
+  fi
+  _kryTry=0
+  while [ "${_kryTry}" -lt 3 ]; do
+    _kryTry=$(( _kryTry + 1 ))
+    if ! _pkg_installed "devuan-keyring"; then
+      apt-get update --allow-insecure-repositories >> "${_logSlt}" 2>&1
+      ${_INITINS} devuan-keyring -qq >> "${_logSlt}" 2>&1
+    fi
+    _trstNow="$(_apt_trust_state)"
+    if [ "${_trstNow}" = "OK" ]; then
+      _msg "[init] trst ==> Devuan archive trust established (attempt ${_kryTry})" >> "${_logInt}"
+      return 0
+    fi
+    _msg "[init] trst ==> Devuan archive still ${_trstNow} (attempt ${_kryTry}); retrying" >> "${_logInt}"
+    sleep 5
+  done
+  _msg "[init][ERROR] trst ==> Devuan archive trust NOT established (${_trstNow}) -- devuan-keyring is missing or unverifiable, so OS security updates will silently install nothing until this is fixed" >> "${_logInt}"
+  return 1
+}
+
+###
 ### Init cycle procedure
 ###
 _init_cycle() {
@@ -619,7 +691,7 @@ _init_cycle() {
     echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
     echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
     apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    ${_INITINS} devuan-keyring >> "${_logSlt}"
+    _ensure_devuan_keyring
     apt-get update >> "${_logSlt}"
     apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
@@ -728,8 +800,17 @@ _init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
-  if pgrep -f unattended-upgrades >/dev/null 2>&1; then
-    pkill -9 -f unattended-upgrades
+  # Free the dpkg lock for the whole init cycle: the daily unattended-upgrade
+  # worker cmdline is "python3 /usr/bin/unattended-upgrade" -- match the
+  # script path, bracketed so concurrent guards never match each other's
+  # pkill. Kill the apt.systemd.daily parent first or it respawns the worker;
+  # heal any interrupted dpkg state the kill may leave.
+  if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
+    pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+  fi
+  if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
+    pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+    /usr/bin/dpkg --configure -a &> /dev/null
   fi
   if [ ! -e "/root/.autoinit.log" ]; then
     echo "[init] lnch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
