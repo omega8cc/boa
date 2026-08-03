@@ -185,14 +185,26 @@ if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
   exit 0
 fi
 
-# Free the dpkg lock before this run's apt work (avahi purge, apparmor removal,
-# the unattended-upgrades self-heal install), all of which is below this point.
-# Heal any interrupted dpkg state the kill may leave, matching the autoinit
-# backstop. A killed security-only run simply retries on its next daily timer.
-if pgrep -f unattended-upgrades >/dev/null 2>&1; then
-  pkill -9 -f unattended-upgrades
-  /usr/bin/dpkg --configure -a &> /dev/null
-fi
+# Free the dpkg lock right before real apt work (avahi purge, apparmor removal,
+# the unattended-upgrades self-heal install). The daily worker's cmdline is
+# "/usr/bin/python3 /usr/bin/unattended-upgrade" -- match the script path
+# (never the plural package name, which no worker cmdline carries), bracketed
+# so concurrent guards never match each other's pkill. Kill the
+# apt.systemd.daily parent first or it respawns the worker moments later; heal
+# any interrupted dpkg state the kill may leave, matching the autoinit
+# backstop. Called only from branches about to install/remove packages:
+# autoupboa runs every few minutes via clear.sh, so killing on every pass
+# would starve every daily security-updates run. A killed security-only run
+# simply retries on its next daily timer.
+_free_dpkg_lock() {
+  if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
+    pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+  fi
+  if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
+    pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+    /usr/bin/dpkg --configure -a &> /dev/null
+  fi
+}
 
 #
 # Find correct IP.
@@ -248,6 +260,7 @@ _purge_avahi() {
   fi
   service avahi-daemon stop 2>/dev/null
   update-rc.d avahi-daemon disable 2>/dev/null
+  _free_dpkg_lock
   apt-get purge -y avahi-daemon avahi-utils libnss-mdns 2>/dev/null
   apt-get autoremove -y 2>/dev/null
   if dpkg -l avahi-daemon 2>/dev/null | grep -q "^ii"; then
@@ -376,6 +389,7 @@ _turn_off_apparmor() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
   fi
+  _free_dpkg_lock
   for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra; do
     if _pkg_installed "${_PKG}"; then
       /usr/bin/apt-get remove ${_PKG} -y -qq &> /dev/null
@@ -712,6 +726,7 @@ _ensure_unattended_upgrades() {
   # lists first so the install works on a box with empty/stale lists -- the
   # in-run _apt_clean_update happens later, after this self-heal.
   if ! _pkg_installed unattended-upgrades; then
+    _free_dpkg_lock
     ${_APT_UPDATE} -qq 2>/dev/null
     DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get install unattended-upgrades \
       -y -qq -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
