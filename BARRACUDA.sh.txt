@@ -319,11 +319,21 @@ _if_php_idle_on_off
 ### Packages install/update on init
 ###
 ### Free the dpkg lock before the apt phases: a concurrent daily
-### unattended-upgrades run would otherwise block them. A killed security-only
-### run simply retries on its next daily timer.
+### unattended-upgrade run would otherwise block them. The worker's cmdline is
+### "/usr/bin/python3 /usr/bin/unattended-upgrade" -- match the script path
+### (never the plural package name, which no worker cmdline carries),
+### bracketed so concurrent guards never match each other's pkill. Kill the
+### apt.systemd.daily parent first or it respawns the worker moments later;
+### heal any interrupted dpkg state the kill may leave, since the install
+### phases below run before _run_aptitude_full_upgrade's own heal. A killed
+### security-only run simply retries on its next daily timer.
 ###
-if pgrep -f unattended-upgrades >/dev/null 2>&1; then
-  pkill -9 -f unattended-upgrades
+if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
+  pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+fi
+if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
+  pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+  /usr/bin/dpkg --configure -a &> /dev/null
 fi
 _sources_list_update
 _basic_packages_install_on_init
