@@ -44,8 +44,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=pro
-export _xSrl=588822proT01
+export _tRee=dev
+export _xSrl=588822devT01
 export _rLsn="BOA-5.88.822"
 export _bTs=588822v01
 
@@ -1295,7 +1295,7 @@ _update_agents() {
 
     _pthCtrl="/root/.remote_backups/ctrl"
     # Own-fleet domains keep PRO backups on any tree: the backup tools
-    # (dcysetup/multiback/mybackup/backboa) hardcode _tRee=pro plus this
+    # (dcysetup/multiback/mybackup/backboa) hardcode the pro tree plus this
     # same domain pass, so a tree-only gate here wiped /root/.remote_backups
     # on own lts boxes and dcysetup could never bootstrap there.
     if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ] \
@@ -4126,8 +4126,8 @@ _update_boa_tools() {
     # --- unique to _update_boa_tools ---
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f96 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f94 --guard /local/bin/autoinit
-    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f98 --guard /local/bin/automini
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f93 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f97 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f97 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
