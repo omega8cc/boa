@@ -7657,10 +7657,57 @@ _basic_packages_install_on_init() {
 
   _APT_CONFIG_FILE="/etc/apt/apt.conf.d/99ignorestrict"
 
+  # The Allow* pair is a belt for a box that still carries an index APT cannot
+  # verify -- it was never meant to be permanent, and while it is on nothing can
+  # tell a verified archive from an unverifiable one (that is what hid a missing
+  # devuan-keyring until unattended-upgrades had been inert for weeks). So probe
+  # for real, at most once a day: a strict update is the only proof that also
+  # covers a repo added since the last check, and it doubles as the list refresh
+  # this run needs anyway. Carry the pair only while this box actually needs it.
+  #
+  # A box that needs it can never lose it: every failure direction -- probe
+  # error, unreachable mirror, any untrusted index -- writes the pair back. The
+  # file itself always stays; its Fix-Broken line is load-bearing for aptitude
+  # and has nothing to do with trust.
+  _APT_TRUST_STAMP="${_pthLog}/.apt-trust-probe.stamp"
+  [ -d "${_pthLog}" ] || mkdir -p "${_pthLog}"
+  if [ -e "${_APT_CONFIG_FILE}" ] \
+    && ! grep -q "AllowInsecureRepositories" "${_APT_CONFIG_FILE}" 2>/dev/null; then
+    _APT_TRUST_MODE=STRICT
+  else
+    _APT_TRUST_MODE=BYPASS
+  fi
+  if [ ! -e "${_APT_TRUST_STAMP}" ] \
+    || [ -n "$(find "${_APT_TRUST_STAMP}" -mmin +1440 2>/dev/null)" ]; then
+    _APT_TRUST_OUT=$(LC_ALL=C apt-get update \
+      -o Acquire::AllowInsecureRepositories=false \
+      -o Acquire::AllowDowngradeToInsecureRepositories=false \
+      -o Acquire::AllowWeakRepositories=false 2>&1)
+    _APT_TRUST_RET=$?
+    _APT_TRUST_BAD=$(LC_ALL=C apt-get indextargets 2>/dev/null | grep -c "^Trusted: no")
+    _APT_TRUST_BAD=${_APT_TRUST_BAD:-0}
+    if [ "${_APT_TRUST_RET}" = "0" ] \
+      && [ "${_APT_TRUST_BAD}" -eq 0 ] \
+      && ! echo "${_APT_TRUST_OUT}" | grep -qiE "NO_PUBKEY|is not signed|EXPKEYSIG|KEYEXPIRED|REVKEYSIG"; then
+      _APT_TRUST_MODE=STRICT
+    else
+      _APT_TRUST_MODE=BYPASS
+    fi
+    touch "${_APT_TRUST_STAMP}"
+    if [ "${_APT_TRUST_MODE}" = "STRICT" ] \
+      && grep -q "AllowInsecureRepositories" "${_APT_CONFIG_FILE}" 2>/dev/null; then
+      _msg "INFO: APT verifies every configured repository -- retiring the trust bypass"
+    fi
+  fi
+
   # Desired configuration content
-  _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
+  if [ "${_APT_TRUST_MODE}" = "STRICT" ]; then
+    _DESIRED_APT_CONFIG='Aptitude::CmdLine::Fix-Broken "true";'
+  else
+    _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
     APT::Get::AllowUnauthenticated "true";
     Aptitude::CmdLine::Fix-Broken "true";'
+  fi
 
   # Remove leading whitespace from each line
   _CLEANED_DESIRED_APT_CONFIG=$(echo "${_DESIRED_APT_CONFIG}" | sed 's/^[[:space:]]\+//')
