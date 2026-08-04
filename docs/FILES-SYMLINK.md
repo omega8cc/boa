@@ -766,7 +766,8 @@ run is NOT CLEAN* above for the verdicts and what each one means.
 ### Deployment note
 
 `autosymlink` / `updatesymlinks` reach a box via the regular SKYNET self-update
-(`_update_agents` in `BOA.sh.txt`, serial-gated per tool). The privileged wrapper
+(`_update_boa_tools` in `BOA.sh.txt`, serial-gated per tool — the single fetch
+site, which runs on every pass on every class of box). The privileged wrapper
 and the `fix-drupal-*.sh` family are fetched per-file by `_update_boa_tools`. If a
 freshly-bumped tool or a newly added script does not appear, the box has not run
 the relevant update pass yet — it is retried on the next run (the per-file fetch
