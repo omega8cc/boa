@@ -4546,11 +4546,13 @@ _satellite_send_welcome_email() {
         && [ -n "${_CLIENT_EMAIL}" ]; then
         if [ -n "${_MY_OCTO_EMAIL}" ]; then
           cat ${_mailSrc} \
-            | s-nail -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
+            | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+            -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         else
           cat ${_mailSrc} \
-            | s-nail -s "${_Q}" "${_CLIENT_EMAIL}" \
+            | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+            -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         fi
       fi
@@ -4581,11 +4583,13 @@ _satellite_send_welcome_email() {
         && [ -n "${_CLIENT_EMAIL}" ]; then
         if [ -n "${_MY_OCTO_EMAIL}" ]; then
           cat ${_mailBody} \
-            | s-nail -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
+            | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+            -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         else
           cat ${_mailBody} \
-            | s-nail -s "${_Q}" "${_CLIENT_EMAIL}" \
+            | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+            -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         fi
       fi
