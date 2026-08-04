@@ -158,10 +158,60 @@ _find_correct_ip() {
   fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+    ### Self-heal a cache orphaned by a server migration: when the cached
+    ### value is no longer any local address AND the box carries a real
+    ### public IPv4 (so never on 1:1-NAT topologies, where the egress IP
+    ### is legitimately not local -- incl. CGNAT 100.64/10), re-probe at
+    ### most ONCE per process with hard timeouts and replace the cache
+    ### only on a validated, different dotted quad. A failed probe never
+    ### invalidates a working cache. The city memo is dropped on replace,
+    ### else it stays pinned to the old address forever.
+    if [ -z "${_ipHealDone}" ] && [ -n "${_LOC_IP}" ]; then
+      _ipHealDone=YES
+      _locV4s=$(ip -4 addr show scope global 2>/dev/null \
+        | awk '/inet /{sub(/\/.*/,"",$2); print $2}')
+      if [ -n "${_locV4s}" ] && ! echo "${_locV4s}" | grep -qx "${_LOC_IP}"; then
+        _hasPubV4=NO
+        for _v4 in ${_locV4s}; do
+          case "${_v4}" in
+            10.*|127.*|169.254.*|192.168.*) ;;
+            172.1[6-9].*|172.2[0-9].*|172.3[01].*) ;;
+            100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*) ;;
+            *) _hasPubV4=YES ;;
+          esac
+        done
+        if [ "${_hasPubV4}" = "YES" ]; then
+          _freshV4=$(curl -4 -s --connect-timeout 5 --max-time 15 \
+            https://api.ipify.org 2>/dev/null | tr -d '\n')
+          if [[ ! "${_freshV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+            _freshV4=$(curl -4 -s --connect-timeout 5 --max-time 15 \
+              http://ipv4.icanhazip.com 2>/dev/null | tr -d '\n')
+          fi
+          if [[ "${_freshV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
+            && [ "${_freshV4}" != "${_LOC_IP}" ]; then
+            _LOC_IP="${_freshV4}"
+            echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
+            rm -f /root/.found_correct_city.cnf
+          fi
+        fi
+      fi
+    fi
   else
     _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
       _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
+    fi
+    ### Last-resort fallback removed in 2020 in favour of the remote
+    ### probes, restored as a TAIL: when BOTH probes fail (mirror or
+    ### network outage), resolve the box's own name locally -- callers
+    ### assign it via _LOC_DOM right before calling. Single validated
+    ### dotted quad only; anything else stays empty (fail-safe).
+    if [ -z "${_LOC_IP}" ] && [ -n "${_LOC_DOM}" ]; then
+      _LOC_IP=$(getent ahostsv4 "${_LOC_DOM}" 2>/dev/null | awk '{print $1; exit}')
+      [[ "${_LOC_IP}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || _LOC_IP=""
+      ### Stock images map the FQDN to 127.0.1.1 in /etc/hosts; a loopback
+      ### is never the box's public address, so leave empty instead.
+      case "${_LOC_IP}" in 127.*) _LOC_IP="" ;; esac
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -4365,8 +4415,24 @@ _satellite_prepare_setup_email_tpl() {
      wait
      sed -i "s/FN8rXcQn/${_PASWD}/g" ${_ROOT}/log/setupmail.txt
      wait
-     sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
-     wait
+     ### The template placeholder is a real foreign address, so only a
+     ### validated IPv4 may replace it; anything else keeps _ipOk=NO and
+     ### the GOING LIVE strip below removes the whole section instead.
+     _ipOk=NO
+     if [ -n "${_THISHTIP}" ]; then
+       if [ -e "/usr/bin/sipcalc" ]; then
+         _IP_TEST=$(sipcalc ${_THISHTIP} 2>&1)
+         [[ ! "${_IP_TEST}" =~ "ERR" ]] && _ipOk=YES
+       elif [[ "${_THISHTIP}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
+         _ipOk=YES
+       fi
+     fi
+     if [ "${_ipOk}" = "YES" ]; then
+       sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
+       wait
+     else
+       _msg "ALRT: _THISHTIP is empty or invalid; dropping the GOING LIVE section from the welcome email"
+     fi
      sed -i "s/boa\.version/${_X_VERSION}/g" ${_ROOT}/log/setupmail.txt
      wait
      ### FTPS is an opt-in xtra; drop its port line when Pure-FTPd is absent
@@ -4385,6 +4451,27 @@ _satellite_prepare_setup_email_tpl() {
        wait
        sed -i "s/(port 22)/(port ${_SSH_PORT})/" ${_ROOT}/log/setupmail.txt
        wait
+     fi
+     ### GOING LIVE tells the client to publish this box's address as an
+     ### A record; strip the whole section (rule line above the heading
+     ### through the section's closing rule line) when there is nothing
+     ### publishable: LOCAL-network topologies (RFC1918 never belongs in
+     ### client DNS) or an empty/invalid _THISHTIP (the placeholder would
+     ### otherwise ship as a real foreign address). Bounds are computed
+     ### from the rendered file, so a template reflow cannot misdelete.
+     if [ -n "${_LOCAL_NETWORK_IP}" ] || [ "${_ipOk}" != "YES" ]; then
+       _glHead=$(grep -n '^GOING LIVE$' ${_ROOT}/log/setupmail.txt \
+         | head -n 1 | cut -d: -f1)
+       if [ -n "${_glHead}" ] && [ "${_glHead}" -gt 1 ]; then
+         _glTop=$(( _glHead - 1 ))
+         ### Literal 40-dash rule line: mawk has no {n} interval support.
+         _glEnd=$(awk -v s="${_glHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
+           ${_ROOT}/log/setupmail.txt)
+         if [ -n "${_glEnd}" ]; then
+           sed -i "${_glTop},${_glEnd}d" ${_ROOT}/log/setupmail.txt
+           wait
+         fi
+       fi
      fi
     fi
   fi
@@ -4705,6 +4792,9 @@ _satellite_make() {
   echo "export _LAST_ALL=\"${_LAST_ALL}\""                   >> ${_writeTo}
   echo "export _LAST_HMR=\"${_LAST_HMR}\""                   >> ${_writeTo}
   echo "export _LASTNUM=\"${_LASTNUM}\""                     >> ${_writeTo}
+  # The children must know a LOCAL-network topology to keep RFC1918
+  # addresses out of the rendered welcome email's DNS guidance.
+  echo "export _LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${_writeTo}
   echo "export _MY_OCTO_EMAIL=\"${_MY_OCTO_EMAIL}\""         >> ${_writeTo}
   echo "export _MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_writeTo}
   echo "export _NOW=\"${_NOW}\""                             >> ${_writeTo}

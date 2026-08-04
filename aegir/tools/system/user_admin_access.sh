@@ -106,6 +106,10 @@ fi
 # feed every context's anti-lockout allow list.
 _server_ip=""
 [[ -f "${_server_ip_file}" ]] && _server_ip=$(cat "${_server_ip_file}" 2>/dev/null)
+# The cached address can now be healed (rewritten) at runtime, so validate
+# it like every other token -- a malformed value must never reach a geo
+# entry and break the box-wide configtest.
+_valid_ip "${_server_ip}" || _server_ip=""
 
 _get_ssh_ips() {
   # Same source ip_access.sh uses: `who --ips` is unavailable on Excalibur and
@@ -137,7 +141,9 @@ _get_ssh_ips() {
     | sort -u
 }
 _ssh_ips=$(_get_ssh_ips)
-_ssh_ips_hash=$(echo "${_ssh_ips}" | md5sum | awk '{print $1}')
+# The server IP is baked into every fragment, so a healed address must
+# fire the change-gate exactly like a changed SSH-peer set.
+_ssh_ips_hash=$(echo "${_ssh_ips} ${_server_ip}" | md5sum | awk '{print $1}')
 
 _process_instance() {
   local _root="$1"
