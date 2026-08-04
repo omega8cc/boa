@@ -105,6 +105,9 @@ _launch_auto_healing() {
   if [ -e "/var/xdrago/monitor/check/sqlprobe.sh" ]; then
     nohup /var/xdrago/monitor/check/sqlprobe.sh > /dev/null 2>&1 &
   fi
+  if [ -e "/var/xdrago/monitor/check/xdr9000.sh" ]; then
+    nohup /var/xdrago/monitor/check/xdr9000.sh > /dev/null 2>&1 &
+  fi
   if [ -e "/var/xdrago/monitor/check/batch_guard.sh" ]; then
     nohup /var/xdrago/monitor/check/batch_guard.sh > /dev/null 2>&1 &
   fi
