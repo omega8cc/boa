@@ -230,6 +230,55 @@ _harvest_pass() {
   done
 }
 
+# Verbatim stream copy: the metric corpora are already JSONL, so their lines
+# land unchanged in per-day archive streams (provenance via filename).
+_harvest_verbatim() {
+  local _src="$1" _key="$2" _dst="$3" _tmp_f
+  _tmp_f=$(_read_new_lines "${_src}" "${_key}") || return 0
+  cat "${_tmp_f}" >> "${_dst}"
+  rm -f "${_tmp_f}"
+}
+
+###
+### Pass 1b — metric corpora: preserve the three rich JSONL time series BOA
+### self-prunes (fpm-tune 30d, sqlprobe 30d, loadreport 14d). Every file still
+### present in each corpus is offset-tracked, so the first deploy gradually
+### backfills the survivors (bounded per pass) and steady state copies only
+### fresh lines. Archive names: fpm-/sql-/load-YYYYMMDD.jsonl in the source
+### day's YYYY/MM dir. Offset files for vanished source days age out below.
+###
+_metrics_pass() {
+  local _f _tag _dir
+  for _f in /var/log/boa/fpm-tune/[0-9]*.jsonl; do
+    [ -e "${_f}" ] || continue
+    _tag=$(basename "${_f}" .jsonl)
+    [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
+    _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
+    mkdir -p "${_dir}"
+    _harvest_verbatim "${_f}" "met_fpm_${_tag}" "${_dir}/fpm-${_tag}.jsonl"
+  done
+  for _f in /var/log/boa/sqlprobe/[0-9]*.jsonl; do
+    [ -e "${_f}" ] || continue
+    _tag=$(basename "${_f}" .jsonl)
+    [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
+    _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
+    mkdir -p "${_dir}"
+    _harvest_verbatim "${_f}" "met_sql_${_tag}" "${_dir}/sql-${_tag}.jsonl"
+  done
+  for _f in /var/log/boa/load-profile/[0-9]*-[0-9]*-[0-9]*.jsonl; do
+    [ -e "${_f}" ] || continue
+    _tag=$(basename "${_f}" .jsonl)
+    _tag="${_tag//-/}"
+    [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
+    _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
+    mkdir -p "${_dir}"
+    _harvest_verbatim "${_f}" "met_load_${_tag}" "${_dir}/load-${_tag}.jsonl"
+  done
+  # A consumed source file keeps its .pos mtime fresh every pass; once the
+  # corpus prunes the file, the .pos stops being touched and ages out here.
+  find "${_pthSta}" -name 'met_*.pos' -mtime +7 -delete 2>/dev/null
+}
+
 ###
 ### Pass 2 — sample: one JSONL line of gauges + reset-floored counter deltas.
 ###
@@ -359,6 +408,7 @@ _rollup_pass() {
 }
 
 _harvest_pass
+_metrics_pass
 _sample_pass
 _rollup_pass
 
