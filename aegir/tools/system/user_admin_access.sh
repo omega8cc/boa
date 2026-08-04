@@ -116,8 +116,24 @@ _get_ssh_ips() {
   # `1.2.3.4`, IPv6 `2001:db8::2:50913` -> `2001:db8::2`).  Each harvested token is
   # validated by _valid_ip before it reaches a geo entry, so a parsed-garbage /
   # scoped (fe80::1%eth0) token can never break configtest.
+  # sshd may serve a custom _SSH_PORT, but the declared cnf value is not
+  # always the effective one: hosted boxes and a failed sshd -t validation
+  # force 22, and a cnf edit reaches sshd only on a firewall pass. Harvest
+  # against the union of 22, the cnf value (inline comments stripped, never
+  # sourced -- sourcing a slice resets config vars) and every port the live
+  # sshd config serves, so a default-port box can never lose its peers and
+  # a custom-port box is still covered.
+  local _p _ports="22" _cnf_port _sshd_ports
+  _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
+    | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
+  _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2}')
+  for _p in ${_cnf_port} ${_sshd_ports}; do
+    if [[ "${_p}" =~ ^[0-9]+$ ]] && [[ ! " ${_ports} " =~ " ${_p} " ]]; then
+      _ports="${_ports} ${_p}"
+    fi
+  done
   netstat -tn 2>/dev/null \
-    | awk '$6 == "ESTABLISHED" && $4 ~ /:22$/ { addr=$5; sub(/:[0-9]+$/, "", addr); print addr }' \
+    | awk -v p=":(${_ports// /|})$" '$6 == "ESTABLISHED" && $4 ~ p { addr=$5; sub(/:[0-9]+$/, "", addr); print addr }' \
     | sort -u
 }
 _ssh_ips=$(_get_ssh_ips)
