@@ -47,7 +47,6 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=lts
 export _xSrl=588822ltsT01
 export _rLsn="BOA-5.88.822"
-export _bTs=588822v01
 
 ###
 ### Avoid too many questions
@@ -80,7 +79,6 @@ _pthLog="/var/log/boa"
 _pthEtc="/etc/boa"
 _tBn="tools/bin"
 _vBs="/var/backups"
-_boaToolsPid="${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid"
 _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 #
 if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
@@ -1087,18 +1085,23 @@ _fix_sync_system_ssl_certs() {
 # are direction-free, preserves perms per caller. Per-block prereqs stay at the
 # call site. Usage:
 #   [ <prereq> ] && _fetch_versioned <dest> <url> <serial> \
-#     [--mode 700] [--owner root:root] [--symlink P] [--guard PAT]
+#     [--mode 700] [--owner root:root] [--symlink P] [--guard PAT] \
+#     [--require-token TOK]
+# TOK is matched as a fixed string against the LAST 4 KiB of the payload (and
+# of the deployed copy), so it must be a token the genuine file carries near
+# its end -- that placement is what makes it a truncation check as well.
 #
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
-  local _mode="700" _own="root:root" _lnk="" _grd="" _lbl="" _cnm="" _cnt
+  local _mode="700" _own="root:root" _lnk="" _grd="" _lbl="" _cnm="" _cnt _tok=""
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      --mode)        _mode="$2"; shift 2 ;;
-      --owner)       _own="$2";  shift 2 ;;
-      --symlink)     _lnk="$2";  shift 2 ;;
-      --guard)       _grd="$2";  shift 2 ;;
+      --mode)          _mode="$2"; shift 2 ;;
+      --owner)         _own="$2";  shift 2 ;;
+      --symlink)       _lnk="$2";  shift 2 ;;
+      --guard)         _grd="$2";  shift 2 ;;
+      --require-token) _tok="$2";  shift 2 ;;
       *) echo "_fetch_versioned: unknown option '$1'" >&2; return 2 ;;
     esac
   done
@@ -1115,11 +1118,14 @@ _fetch_versioned() {
   # bytes are pre-f78. Overridable; conservative 24h default.
   local _reMin="${_FETCH_REVALIDATE_MIN:-1440}"
 
-  # Up to date? marker present AND dest non-empty AND (symlink intact if required)
+  # Up to date? marker present AND dest non-empty AND (symlink intact if
+  # required) AND (tail token present if required -- a DEPLOYED copy that lost
+  # its sentinel is damaged and gets refetched now, not at the next window)
   # AND the marker still within the revalidation window. "find -mmin +N" prints
   # the marker only when it is OLDER than N minutes, so an empty result == fresh.
   if [[ -e "${_ctl}" ]] && [[ -s "${_dst}" ]] \
     && { [[ -z "${_lnk}" ]] || [[ -L "${_lnk}" ]]; } \
+    && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
     && [[ -z "$(find "${_ctl}" -mmin "+${_reMin}" 2>/dev/null)" ]]; then
     return 0
   fi
@@ -1146,7 +1152,10 @@ _fetch_versioned() {
   # the working copy and its marker alone.
   local _new="${_dst}.new.$$"
   # shellcheck disable=SC2086,SC2154  # intentional _crlGet flag-string split; _crlGet is a BOA.sh.txt global
-  curl ${_crlGet} "${_url}" -o "${_new}"
+  # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
+  # floor forbids --remove-on-error), and a partial file passes every simple
+  # content test -- so discard the temp whenever curl itself reports failure.
+  curl ${_crlGet} "${_url}" -o "${_new}" || rm -f "${_new}"
   # A mirror answers a MISSING path with HTTP 200 + an HTML "Under Construction"
   # stub (a soft 404 that --fail cannot catch). No versioned BOA file is HTML --
   # scripts start with #!, PHP with <?php -- so a leading HTML tag means the file
@@ -1154,6 +1163,17 @@ _fetch_versioned() {
   # exactly as for an empty fetch. This also matters more now that the block
   # above revalidates on a cadence, not only on a serial change.
   if [[ -s "${_new}" ]] && head -c 64 "${_new}" | grep -qiE '^[[:space:]]*<(html|!doctype|head)'; then
+    rm -f "${_new}"
+  fi
+  # Optional content sentinel: a caller can require a token the genuine file
+  # carries NEAR ITS END (the check reads only the payload's last 4 KiB, so
+  # pick a token that lives there). A wrong payload fails it outright and a
+  # payload truncated anywhere before the token fails it too, so neither can
+  # replace the working copy -- critical when the dest is load-bearing beyond
+  # itself, e.g. websh doubling as /bin/sh on hosted boxes.
+  if [[ -s "${_new}" ]] && [[ -n "${_tok}" ]] \
+    && ! tail -c 4096 "${_new}" 2>/dev/null | grep -qF -- "${_tok}"; then
+    echo "The ${_cnm} fetch was refused: content sentinel missing!"
     rm -f "${_new}"
   fi
   if [[ -s "${_new}" ]]; then
@@ -1312,8 +1332,15 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     [ ! -e "/var/xdrago/night" ] && mkdir -p /var/xdrago/night
 
+    # Once per release: sweep stamps left by PREVIOUS releases and legacy
+    # blocks. Current-release stamps are excluded -- _update_boa_tools runs
+    # earlier in this same pass and has already stamped its whole set; wiping
+    # those too would force one full redundant refetch round per release.
+    # (Functionally the sweep is hygiene only: every stamp name embeds
+    # ${_xSrl}, so a release re-fetches everything regardless.)
     if [ ! -e "${_pthLog}/.force.f89.${_tRee}.${_xSrl}.ctrl" ]; then
-      rm -f ${_pthLog}/*.ctrl.*.pid
+      find ${_pthLog} -maxdepth 1 -name "*.ctrl.*.pid" \
+        ! -name "*.${_tRee}.${_xSrl}.pid" -delete 2>/dev/null
       touch ${_pthLog}/.force.f89.${_tRee}.${_xSrl}.ctrl
     fi
 
@@ -1438,64 +1465,27 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/tools/bin/lock.inc" f94
+  # The core tool set every box carries (barracuda, boa, octopus, x*, auto*,
+  # reports, backup tools, synproxy family...) is fetched ONLY by
+  # _update_boa_tools, which runs on every pass in every context this function
+  # runs in (and more: pre-install, _SKYNET_MODE=OFF). This function fetches
+  # only what an installed Skynet-active box additionally needs: agents,
+  # monitors, system scripts, and the few tools scoped to such boxes below.
 
-  if [ ! -e "${_optBin}/vmnetfix" ] \
-    || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc vmnetfix)
-    if (( _CNT > 0 )); then
-      echo "The vmnetfix is running!"
-    else
-      if [ ! -e "/etc/init.d/networking" ]; then
-        mkdir -p /etc/init.d
-        curl ${_crlGet} "${_urlHmr}/conf/network/networking" -o /etc/init.d/networking
-        chmod 0755 /etc/init.d/networking
-        chown root:root /etc/init.d/networking
-        update-rc.d networking defaults >/dev/null 2>&1 || true
-      fi
-      if [ -e "${_optBin}/vmnetfix" ]; then
-        mv -f ${_optBin}/vmnetfix ${_optBin}/vmnetfix.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/vmnetfix" -o ${_optBin}/vmnetfix
-      if [ -e "${_optBin}/vmnetfix" ]; then
-        chmod 700 ${_optBin}/vmnetfix
-        chown root:root ${_optBin}/vmnetfix
-        touch ${_pthLog}/vmnetfix.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
-        rm -f ${_optBin}/vmnetfix.old
-      else
-        if [ -e "${_optBin}/vmnetfix.old" ]; then
-          mv -f ${_optBin}/vmnetfix.old ${_optBin}/vmnetfix
-        fi
-      fi
+  # Boot-path file: only ever installed when absent (a distro-provided or
+  # vmnetfix-written init script is never clobbered), and only through the
+  # validating helper -- a soft-404 stub or short body is refused, the dest
+  # stays absent, and the next pass simply retries instead of latching a
+  # poisoned boot script behind the [ ! -e ] gate forever.
+  if [ ! -e "/etc/init.d/networking" ]; then
+    mkdir -p /etc/init.d
+    _fetch_versioned /etc/init.d/networking "${_urlHmr}/conf/network/networking" f01 \
+      --mode 755 --require-token force-reload
+    if [ -s "/etc/init.d/networking" ]; then
+      update-rc.d networking defaults >/dev/null 2>&1 || true
     fi
   fi
 
-  _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/tools/bin/screenfetch" f99 --guard screenfetch
-  _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/tools/bin/fixrepo" f98 --guard fixrepo
-  _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/tools/bin/renameaegirhost" f92 --guard renameaegirhost
-  _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/tools/bin/autosymlink" f79 --guard autosymlink
-  _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/tools/bin/updatesymlinks" f93 --guard updatesymlinks
-  _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/tools/bin/symlinkinfo" f98 --guard symlinkinfo
-  _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/tools/bin/migratefs" f96 --guard migratefs
-  _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/tools/bin/aptcleanup" f97 --guard aptcleanup
-  _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/tools/bin/ffmirror" f99 --guard xffmirror
-  _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/tools/bin/ffdevuan" f95 --guard xffdevuan
-  _fetch_versioned ${_optBin}/webserver "${_urlHmr}/tools/bin/webserver" f99 --guard xwebserver
-  _fetch_versioned ${_optBin}/xoct "${_urlHmr}/tools/bin/xoct" f73 --guard /local/bin/xoct
-  _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/tools/bin/xcopy" f90 --guard /local/bin/xcopy
-  _fetch_versioned ${_optBin}/xmass "${_urlHmr}/tools/bin/xmass" f64 --guard /local/bin/xmass
-  _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/tools/bin/autobeowulf" f95 --guard /local/bin/autobeowulf
-  _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/tools/bin/autoexcalibur" f95 --guard /local/bin/autoexcalibur
-  _fetch_versioned ${_optBin}/boa "${_urlHmr}/tools/bin/boa" f75 --guard /local/bin/boa
-  _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/tools/bin/barracuda" f80 --guard /local/bin/barracuda
-  _fetch_versioned ${_optBin}/octopus "${_urlHmr}/tools/bin/octopus" f92 --guard /local/bin/octopus
-  _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/tools/bin/dhcpfix" f98 --guard /local/bin/dhcpfix
-  _fetch_versioned ${_optBin}/perftest "${_urlHmr}/tools/bin/perftest" f96 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-  _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/tools/bin/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
-  _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
-  _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/tools/bin/loadreport" f95 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
-  _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/tools/bin/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
-  _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
   _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f93 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f97 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
@@ -1530,11 +1520,6 @@ _update_agents() {
     fi
   fi
 
-  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/tools/bin/dcysetup" f98 --guard duplicity
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/tools/bin/multiback" f35 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/tools/bin/mybackup" f37 --mode 755 --guard duplicity
-  fi
   if [ -d "/root/.remote_backups/run" ]; then
     _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f46
     _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f48
@@ -1545,8 +1530,6 @@ _update_agents() {
     _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48
   fi
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/tools/bin/backboa" f96 --guard duplicity
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/tools/bin/duobackboa" f96 --guard duplicity
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f47
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f88
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f72
@@ -1616,10 +1599,6 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f98
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f82
-    # autoupboa/fixmounts are also fetched by _update_boa_tools and share its
-    # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/tools/bin/autoupboa" f45 --guard autoupboa
-    _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/tools/bin/fixmounts" f98 --guard fixmounts
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f87
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f87
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f80
@@ -1649,15 +1628,6 @@ _update_agents() {
     fi
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f84
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f73
-    # The synproxy family is also fetched by _update_boa_tools and shares its
-    # <name>.ctrl.<serial> stamps -- bump serials in both functions together.
-    _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/tools/bin/synproxy" f93 --guard synproxy_rollback
-    _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/tools/bin/synproxy_rollback" f94 --guard synproxy_rollback
-    _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/tools/bin/synproxy_reassert" f99 --guard synproxy_rollback
-    _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/tools/bin/synproxy_hook_fix" f99 --guard synproxy_rollback
-    _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/tools/bin/synproxy_snapshot" f99 --guard synproxy_rollback
-    _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/tools/bin/synproxy_status" f99 --guard synproxy_rollback
-    _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/tools/bin/synproxy_monitor" f98 --guard synproxy_rollback
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -2241,34 +2211,21 @@ _update_agents() {
     touch ${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  if ! grep -q "defunct" /opt/local/bin/websh; then
-    rm -f ${_pthLog}/websh.ctrl.*
-  fi
+  # websh the FILE is fetched by _update_boa_tools (atomic replace + a
+  # _forward_to_dash content sentinel; websh doubles as /bin/sh on hosted
+  # boxes, so a partial or wrong payload must never reach the live path).
+  # Here only enforce the shell symlinks on installed hosted boxes.
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/websh.ctrl.f67.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /opt/local/bin/websh /var/xdrago/websh.sh.old
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/websh" -o /opt/local/bin/websh
-    if [ -e "/opt/local/bin/websh" ] \
-      && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
-      chmod 755 /opt/local/bin/websh
-      chown root:root /opt/local/bin/websh
-      [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
-      rm -f ${_pthLog}/websh.ctrl.*
-      touch ${_pthLog}/websh.ctrl.f67.${_tRee}.${_xSrl}.pid
-      rm -f /var/xdrago/websh.sh.old
-    else
-      mv -f /var/xdrago/websh.sh.old /opt/local/bin/websh
-    fi
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _WEB_SH="$(readlink -n /bin/sh)"
     if [ -x "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
+      [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
       if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
         ln -sfn /opt/local/bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then
           ln -sfn /opt/local/bin/websh /usr/bin/sh
         fi
-        [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
       fi
     fi
   fi
@@ -4047,15 +4004,20 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
-  # Per-file, serial-gated, retry-on-failure fetch of the privileged helper
-  # scripts (same mechanism as _update_agents via _fetch_versioned). Each script
-  # self-gates on BOTH its own <name>.ctrl.<serial>.<tree>.<xSrl> stamp AND a
-  # non-empty file on disk, and is re-stamped ONLY on a successful (non-empty)
-  # fetch — so a mirror lag or transient curl failure is retried on the next run
-  # instead of being skipped forever, as the old single updateFx*.ctrl gate did
-  # (a partial fetch still set that one marker and never retried). _fetch_versioned
-  # defaults to mode 700 / owner root:root, exactly what these helpers need; bump a
-  # script's serial (counts DOWN, f99->f98...) to force a refresh after editing it.
+  # The ONE home for the core tool set every box carries. Runs on EVERY pass
+  # (installer, Skynet-active, and _SKYNET_MODE=OFF key-tools paths alike) --
+  # the old once-per-release updateBOAtools latch is retired, so a tool update
+  # now reaches the fleet as soon as its serial changes, with no release bump
+  # needed. Cheap by construction: each _fetch_versioned line self-gates on its
+  # own <name>.ctrl.<serial>.<tree>.<xSrl> stamp plus a non-empty file, only
+  # re-checks the mirror once the revalidation window expires, and re-stamps
+  # ONLY on a successful (non-empty, non-HTML) fetch -- a mirror lag or a
+  # transient curl failure is retried on the next pass instead of being latched
+  # skipped, as the old single updateFx*.ctrl gate did. To push one tool: move
+  # its serial to a value not currently deployed (the stamps are wildcard-
+  # cleared, so direction does not matter; convention counts down).
+  rm -f ${_pthLog}/updateBOAtools*.pid
+  rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f98
     _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f98
@@ -4065,51 +4027,42 @@ _update_boa_tools() {
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f98
   fi
   mkdir -p ${_optBin}
-  # Per-file, serial-gated, retry-on-failure fetch of every /opt/local/bin tool
-  # (same mechanism as _update_agents). Replaces the old bulk curl loop, which used
-  # [ -e ] not [ -s ] (an empty --fail curl could overwrite a good tool AND delete
-  # its .prev backup) and had no retry. Final permissions are still set by the
-  # explicit chmod groups below; _fetch_versioned's transient mode is overridden
-  # there, exactly as the old loop's chmod 755 was.
-  #
-  # The first group is ALSO fetched by _update_agents. That duplication is
-  # INTENTIONAL and must stay: _update_boa_tools runs ALWAYS -- including before
-  # BOA is installed, and when _SKYNET_MODE=OFF makes the run update key tools and
-  # exit 0 BEFORE _update_agents is ever reached -- so it must independently fetch
-  # the core tools; _update_agents runs only when Skynet is active. The two share
-  # one <name>.ctrl.<serial> stamp, so each serial here MUST stay in sync with the
-  # same tool in _update_agents -- a divergent serial makes each run wipe the
-  # other's stamp and refetch every cycle. Bump both together; do NOT try to merge
-  # the two functions.
+  # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
+  # tool set. Replaces the old bulk curl loop, which used [ -e ] not [ -s ] (an
+  # empty --fail curl could overwrite a good tool AND delete its .prev backup)
+  # and had no retry. Final permissions are still set by the explicit chmod
+  # groups below. Every tool listed here is fetched HERE and nowhere else --
+  # the old second listing in _update_agents (a workaround for the retired
+  # release latch) is gone, so there are no paired serials to keep in sync.
+  # (_update_agents still fetches its own few Skynet-box-scoped bin tools;
+  # a tool must have exactly ONE fetch line, wherever it lives.)
   if [ -e "${_pthLog}" ]; then
-    # --- shared with _update_agents (serials MUST match that function) ---
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f97 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f95 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f95 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f79 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f45 --guard /local/bin/autoupboa
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard /local/bin/backboa
-    # barracuda serial re-aligned with _update_agents: the two sites
-    # MUST match or every clear.sh cycle wipes the other's stamp and
-    # refetches barracuda forever.
+    # Backup family: guard on duplicity itself -- never replace a backup tool
+    # while a backup run is in flight.
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f80 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f75 --guard /local/bin/boa
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard /local/bin/dcysetup
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f96 --guard /local/bin/duobackboa
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f96 --guard duplicity
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f95 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f99 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f98 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --guard /local/bin/floodreport
-    _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --guard /local/bin/fpmreport
-    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f95 --guard /local/bin/loadreport
+    _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
+    _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
+    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f95 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f94 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard /local/bin/multiback
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --guard /local/bin/mybackup
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f92 --guard /local/bin/octopus
-    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f96 --guard /local/bin/perftest
+    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f96 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f92 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f93 --guard /local/bin/updatesymlinks
@@ -4126,12 +4079,11 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f90 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f64 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f73 --guard /local/bin/xoct
-    # --- unique to _update_boa_tools ---
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f96 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f92 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f96 --guard /local/bin/automini
-    _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --guard /local/bin/backchain
+    _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f97 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
@@ -4139,13 +4091,13 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f95 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
     _fetch_versioned ${_optBin}/mycnfup "${_urlHmr}/${_tBn}/mycnfup" f98 --guard /local/bin/mycnfup
-    _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --guard /local/bin/randpass
+    _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --mode 755 --guard /local/bin/randpass
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f99 --guard /local/bin/setprio
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f98 --guard /local/bin/sqlclean
-    _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f99 --guard /local/bin/sqlmagic
+    _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f99 --mode 755 --guard /local/bin/sqlmagic
     _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f99 --guard /local/bin/syncpass
-    _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --guard /local/bin/thinkdifferent
+    _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f99 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f99 --guard /local/bin/vhostcheck
     _fetch_versioned ${_optBin}/vmnetfix "${_urlHmr}/${_tBn}/vmnetfix" f99 --guard /local/bin/vmnetfix
@@ -4157,8 +4109,12 @@ _update_boa_tools() {
     else
       echo "The weblogx and owl.sh is running!"
     fi
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f99 --guard /local/bin/websh
-    _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --guard /local/bin/xdr9000
+    # websh doubles as /bin/sh on hosted boxes: world-executable, and the
+    # tail-anchored sentinel refuses a wrong OR truncated payload before it
+    # can reach client shells -- websh invokes its dash forwarder near EOF,
+    # so the token must keep living in websh's last 4 KiB.
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f99 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
   if [ -e "${_optBin}/fixmounts" ] && [ ! -e "${_usrBin}/fixmounts" ]; then
@@ -4195,56 +4151,36 @@ _update_boa_tools() {
     fi
   fi
 
-  if [ ! -e "${_usrBin}/fpmreport" ] && [ -e "${_optBin}/fpmreport" ]; then
-    ln -sfn ${_optBin}/fpmreport ${_usrBin}/fpmreport
-  fi
-
-  if [ ! -e "${_usrBin}/loadreport" ] && [ -e "${_optBin}/loadreport" ]; then
-    ln -sfn ${_optBin}/loadreport ${_usrBin}/loadreport
-  fi
-
-  if [ ! -e "${_usrBin}/xdr9000" ] && [ -e "${_optBin}/xdr9000" ]; then
-    ln -sfn ${_optBin}/xdr9000 ${_usrBin}/xdr9000
-  fi
-
-  if [ ! -e "${_usrBin}/floodreport" ] && [ -e "${_optBin}/floodreport" ]; then
-    ln -sfn ${_optBin}/floodreport ${_usrBin}/floodreport
-  fi
-
-  echo "=== BOA executables permissions setup ==="
-  echo "Last updated: $(date)"
-  echo "Groups are organized by function."
+  # Permission self-heal, grouped by function. Runs every pass now, so no
+  # banner output; a missing tool (gated or not-yet-fetched) is not an error.
 
   # _AUTO (700): automatic install/upgrade helpers
-  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoexcalibur,autoinit,automini,autoupboa}
+  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoexcalibur,autoinit,automini,autoupboa} &> /dev/null
 
   # _BACKUP (700): backup helpers
-  chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
+  chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback} &> /dev/null
 
   # _CORE (700): core BOA tools
-  chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver}
-  chmod 700 ${_optBin}/{lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
+  chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver} &> /dev/null
+  chmod 700 ${_optBin}/{lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct} &> /dev/null
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,perftest,xdr9000}
+  chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,perftest,xdr9000} &> /dev/null
 
   # _MAIL (700): mail + priority tools
-  chmod 700 ${_optBin}/{setprio,smtpgapps}
+  chmod 700 ${_optBin}/{setprio,smtpgapps} &> /dev/null
 
   # _NET (700): network protection
-  chmod 700 ${_optBin}/synproxy*
+  chmod 700 ${_optBin}/synproxy* &> /dev/null
 
   # _SYS (700): system utilities
-  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,mergecsf,screenfetch,vmnetfix}
+  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,mergecsf,screenfetch,vmnetfix} &> /dev/null
 
   # _SYS (700): cleanup tools
-  chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,updatesymlinks,verifyvhostsdns,vhostcheck}
+  chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,updatesymlinks,verifyvhostsdns,vhostcheck} &> /dev/null
 
   # _MISC (755): misc user-space utilities
-  chmod 755 ${_optBin}/{backchain,mybackup,randpass,sqlmagic,thinkdifferent,websh}
-
-  echo "Permissions applied successfully"
-  echo "=== End of BOA executables permissions setup ==="
+  chmod 755 ${_optBin}/{backchain,mybackup,randpass,sqlmagic,thinkdifferent,websh} &> /dev/null
 
 }
 
@@ -4446,18 +4382,11 @@ _if_update_boa_key_tools_only() {
       fi
     fi
   fi
-  _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ]; then
-    if [ ! -x "/opt/local/bin/xcopy" ] \
-      || [ ! -e "${_boaToolsPid}" ]; then
-      _BOA_TOOLS_UPDATE=YES
-    fi
-  fi
-  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && _BOA_TOOLS_UPDATE=YES
-  if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
-    _update_boa_tools
-    [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_boaToolsPid}
+  # Unconditional: every tool line self-gates on its own serial stamp, so the
+  # old once-per-release updateBOAtools latch is retired and a bumped serial
+  # reaches Skynet-OFF boxes on their next pass too.
+  _update_boa_tools
+  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -4614,15 +4543,11 @@ _boa_setup() {
   ### Fix or install VM system detection
   _check_virt
 
-  _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_boaToolsPid}" ]; then
-    _BOA_TOOLS_UPDATE=YES
-  fi
-  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && _BOA_TOOLS_UPDATE=YES
-  if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
-    _update_boa_tools
-    [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_boaToolsPid}
+  # Unconditional: every tool line self-gates on its own serial stamp; the
+  # old once-per-release updateBOAtools latch is retired. The completion
+  # message stays meaningful only on a box BOA is not installed on yet.
+  _update_boa_tools
+  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
