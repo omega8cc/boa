@@ -230,6 +230,55 @@ _harvest_pass() {
   done
 }
 
+# Verbatim stream copy: the metric corpora are already JSONL, so their lines
+# land unchanged in per-day archive streams (provenance via filename).
+_harvest_verbatim() {
+  local _src="$1" _key="$2" _dst="$3" _tmp_f
+  _tmp_f=$(_read_new_lines "${_src}" "${_key}") || return 0
+  cat "${_tmp_f}" >> "${_dst}"
+  rm -f "${_tmp_f}"
+}
+
+###
+### Pass 1b — metric corpora: preserve the three rich JSONL time series BOA
+### self-prunes (fpm-tune 30d, sqlprobe 30d, loadreport 14d). Every file still
+### present in each corpus is offset-tracked, so the first deploy gradually
+### backfills the survivors (bounded per pass) and steady state copies only
+### fresh lines. Archive names: fpm-/sql-/load-YYYYMMDD.jsonl in the source
+### day's YYYY/MM dir. Offset files for vanished source days age out below.
+###
+_metrics_pass() {
+  local _f _tag _dir
+  for _f in /var/log/boa/fpm-tune/[0-9]*.jsonl; do
+    [ -e "${_f}" ] || continue
+    _tag=$(basename "${_f}" .jsonl)
+    [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
+    _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
+    mkdir -p "${_dir}"
+    _harvest_verbatim "${_f}" "met_fpm_${_tag}" "${_dir}/fpm-${_tag}.jsonl"
+  done
+  for _f in /var/log/boa/sqlprobe/[0-9]*.jsonl; do
+    [ -e "${_f}" ] || continue
+    _tag=$(basename "${_f}" .jsonl)
+    [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
+    _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
+    mkdir -p "${_dir}"
+    _harvest_verbatim "${_f}" "met_sql_${_tag}" "${_dir}/sql-${_tag}.jsonl"
+  done
+  for _f in /var/log/boa/load-profile/[0-9]*-[0-9]*-[0-9]*.jsonl; do
+    [ -e "${_f}" ] || continue
+    _tag=$(basename "${_f}" .jsonl)
+    _tag="${_tag//-/}"
+    [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
+    _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
+    mkdir -p "${_dir}"
+    _harvest_verbatim "${_f}" "met_load_${_tag}" "${_dir}/load-${_tag}.jsonl"
+  done
+  # A consumed source file keeps its .pos mtime fresh every pass; once the
+  # corpus prunes the file, the .pos stops being touched and ages out here.
+  find "${_pthSta}" -name 'met_*.pos' -mtime +7 -delete 2>/dev/null
+}
+
 ###
 ### Pass 2 — sample: one JSONL line of gauges + reset-floored counter deltas.
 ###
@@ -300,6 +349,84 @@ _sample_pass() {
 }
 
 ###
+### Pass 2b — box facts: one hourly `fct` record in the samples stream with
+### what `boa info` derives live and never stores: kernel, CPU count, RAM,
+### swap, per-mount disk space, uptime, and the boa-info service verdicts
+### (same pidfile map, same not-installed gates, same dead-pid rule).
+###
+_FCT_STAMP="${_pthSta}/.last_fact"
+_svc_down=""
+_svc_total=0
+
+_svc_check() {
+  # args: name pidfile [absence-marker] — mirrors boa's _display_time: the
+  # marker excuses the service only when it would otherwise count as down.
+  local _n="$1" _p="$2" _m="$3" _pid=""
+  if [ -f "${_p}" ]; then
+    _pid=$(head -n 1 "${_p}" 2>/dev/null | tr -dc '0-9')
+  fi
+  if [ -n "${_pid}" ] && ps -p "${_pid}" > /dev/null 2>&1; then
+    (( _svc_total++ ))
+    return
+  fi
+  if [ -n "${_m}" ] && [ ! -e "${_m}" ]; then
+    return
+  fi
+  (( _svc_total++ ))
+  _svc_down="${_svc_down:+${_svc_down},}\"${_n}\""
+}
+
+_fact_pass() {
+  if [ "${_FORCE}" != "YES" ] && [ -e "${_FCT_STAMP}" ] \
+    && [ -z "$(find "${_FCT_STAMP}" -mmin +55 2>/dev/null)" ]; then
+    return 0
+  fi
+  touch "${_FCT_STAMP}"
+  local _kernel _ncpu _mem_t _mem_a _swp_t _swp_f _up
+  _kernel=$(uname -r)
+  _ncpu=$(nproc 2>/dev/null)
+  _mem_t=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+  _mem_a=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
+  _swp_t=$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)
+  _swp_f=$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)
+  _up=$(awk '{print int($1)}' /proc/uptime)
+  local _disks=""
+  local _dev _sz _us _av _pct _mnt
+  while read -r _dev _sz _us _av _pct _mnt; do
+    case "${_mnt}" in
+      /|/data)
+        _disks="${_disks:+${_disks},}{\"m\":\"${_mnt}\",\"sz\":${_sz},\"us\":${_us},\"av\":${_av}}"
+      ;;
+    esac
+  done < <(df -P -k / /data 2>/dev/null | awk 'NR > 1' | sort -u)
+  _svc_down=""
+  _svc_total=0
+  _svc_check sshd      /run/sshd.pid
+  _svc_check crond     /run/crond.pid
+  _svc_check postfix   /var/spool/postfix/pid/master.pid
+  _svc_check nginx     /run/nginx.pid
+  local _e
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    _svc_check "php${_e}-fpm" "/run/php${_e}-fpm.pid" "/opt/php${_e}/bin/php"
+  done
+  _svc_check mysql     /run/mysqld/mysqld.pid
+  _svc_check valkey    /run/valkey/valkey.pid
+  _svc_check jenkins   /run/jenkins/jenkins.pid   /var/lib/jenkins
+  _svc_check solr9     /var/solr9/solr-9099.pid   /var/solr9/logs/solr.log
+  _svc_check solr7     /var/solr7/solr-9077.pid   /var/solr7/logs/solr.log
+  _svc_check solr4     /run/jetty9.pid            /opt/solr4/solr.xml
+  _svc_check pure-ftpd /run/pure-ftpd.pid         /usr/local/sbin/pure-ftpd
+  _svc_check lfd       /run/lfd.pid
+  _svc_check rsyslogd  /run/rsyslogd.pid
+  _svc_check unbound   /run/unbound/unbound.pid
+  _svc_check vnstat    /run/vnstat/vnstat.pid
+  printf '{"t":%s,"c":"fct","kernel":"%s","ncpu":%s,"mem_total":%s,"mem_avail":%s,"swp_total":%s,"swp_used":%s,"up":%s,"disks":[%s],"svc":%s,"down":[%s]}\n' \
+    "${_now}" "${_kernel}" "${_ncpu:-0}" "${_mem_t:-0}" "${_mem_a:-0}" \
+    "${_swp_t:-0}" "$(( ${_swp_t:-0} - ${_swp_f:-0} ))" "${_up:-0}" \
+    "${_disks}" "${_svc_total}" "${_svc_down}" >> "${_SAMPLES}"
+}
+
+###
 ### Pass 3 — rollup: aggregate yesterday into the permanent per-day spine,
 ### then gzip event/sample files from past months.
 ###
@@ -338,6 +465,7 @@ _rollup_pass() {
     fi
     if [ -s "${_sm}" ]; then
       awk '
+        !/"c":"smp"/ { next }
         { if (match($0, /"l1":[0-9.]+/))   { v=substr($0, RSTART+5, RLENGTH-5)+0; if (v>l1max) l1max=v }
           if (match($0, /"rxd":[0-9]+/))   { rx+=substr($0, RSTART+6, RLENGTH-6)+0 }
           if (match($0, /"txd":[0-9]+/))   { tx+=substr($0, RSTART+6, RLENGTH-6)+0 }
@@ -359,7 +487,9 @@ _rollup_pass() {
 }
 
 _harvest_pass
+_metrics_pass
 _sample_pass
+_fact_pass
 _rollup_pass
 
 exit 0
