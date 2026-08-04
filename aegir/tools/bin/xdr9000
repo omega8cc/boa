@@ -1,0 +1,208 @@
+#!/bin/bash
+#
+# XDR9000 — CLI over the permanent health/attack archive (READ-ONLY).
+#
+# Companion to monitor/check/xdr9000.sh, which harvests BOA's ephemeral
+# attack/heal/metric records into /var/log/boa/xdr9000/ before their reapers
+# destroy them. This tool only reads that archive; it never modifies it.
+#
+#   xdr9000 status              archive health: first/last record, size, engine
+#   xdr9000 today               today's attacks + incidents + latest sample
+#   xdr9000 attacks [--days N]  totals per vector, unique IPs, top offenders
+#   xdr9000 heals [--days N]    auto-heal/incident counts per subsystem
+#   xdr9000 report [--days N]   full report incl. since-first-record totals
+#   xdr9000 json events|samples|rollup [--days N]   raw JSONL feed (fleet pull)
+#
+# Default window: 7 days (report: 30). Reads gzipped months transparently.
+#
+
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export LC_ALL=C
+
+_pthArc="/var/log/boa/xdr9000"
+_ROLLUP="${_pthArc}/rollup.jsonl"
+
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This tool should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+_ACTION="${1:-status}"
+shift 2> /dev/null
+_DAYS=""
+_STREAM=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --days) _DAYS="$2"; shift 2 ;;
+    events|samples|rollup) _STREAM="$1"; shift ;;
+    -h|--help) _ACTION="help"; shift ;;
+    *) echo "Unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+[[ "${_DAYS}" =~ ^[0-9]+$ ]] || _DAYS=""
+
+_die() {
+  echo "$1" >&2
+  exit 1
+}
+
+[ -d "${_pthArc}" ] \
+  || _die "No archive at ${_pthArc} yet -- the xdr9000 engine has not run on this box."
+
+# Emit the concatenated JSONL of one stream (events|samples) for the last N
+# days, transparently reading gzipped months, oldest first.
+_stream_days() {
+  local _stream="$1" _days="$2" _d _tag _dir _f
+  for (( _d = _days - 1; _d >= 0; _d-- )); do
+    _tag=$(date -d "-${_d} day" +%Y%m%d 2>/dev/null) || continue
+    _dir="${_pthArc}/$(date -d "-${_d} day" +%Y/%m)"
+    for _f in "${_dir}/${_stream}-${_tag}.jsonl" "${_dir}/${_stream}-${_tag}.jsonl.gz"; do
+      [ -e "${_f}" ] && zcat -f "${_f}" 2> /dev/null
+    done
+  done
+}
+
+_first_record_date() {
+  local _f
+  _f=$(find "${_pthArc}" -mindepth 3 -name '*.jsonl*' -type f 2>/dev/null \
+    | sed 's|.*-\([0-9]\{8\}\)\.jsonl.*|\1|' | sort | head -n 1)
+  if [ -n "${_f}" ]; then
+    echo "${_f:0:4}-${_f:4:2}-${_f:6:2}"
+  else
+    echo "never"
+  fi
+}
+
+_show_status() {
+  local _first _size _files _stamp _age="never" _state="ON"
+  _first=$(_first_record_date)
+  _size=$(du -sh "${_pthArc}" 2>/dev/null | awk '{print $1}')
+  _files=$(find "${_pthArc}" -mindepth 3 -name '*.jsonl*' -type f 2>/dev/null | wc -l)
+  _stamp="${_pthArc}/.state/.last_sample"
+  [ -e "${_stamp}" ] \
+    && _age="$(( ($(date +%s) - $(stat -c %Y "${_stamp}")) / 60 )) min ago"
+  # shellcheck disable=SC1091
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  [ "${_XDR9000}" = "NO" ] && _state="OFF (_XDR9000=NO; archive kept)"
+  echo "XDR9000 archive: ${_pthArc}"
+  echo "  Engine:        ${_state}, last sample ${_age}"
+  echo "  Recording since: ${_first}"
+  echo "  Size:          ${_size:-0} across ${_files} day-files"
+  echo "  Rollup days:   $(wc -l < "${_ROLLUP}" 2>/dev/null || echo 0)"
+}
+
+_show_attacks() {
+  local _days="${_DAYS:-7}"
+  echo "Attacks blocked -- last ${_days} day(s) on $(hostname -f 2>/dev/null || hostname)"
+  echo
+  local _tmp_ev
+  _tmp_ev=$(mktemp /tmp/.xdr9000.attacks.XXXXXX)
+  _stream_days events "${_days}" | grep '"c":"atk"' > "${_tmp_ev}"
+  awk '
+    /"k":"web"/ { web++ }
+    /"k":"ssh"/ { ssh++ }
+    /"k":"ftp"/ { ftp++ }
+    /"s":"i18n"/ { i18n++ }
+    { if (match($0, /"ip":"[^"]+"/)) ips[substr($0, RSTART+6, RLENGTH-7)] = 1 }
+    END {
+      u = 0; for (i in ips) u++
+      printf "  Web IDS bans:   %d\n  SSH abuse bans: %d\n  FTP abuse bans: %d\n  i18n floods:    %d\n  Unique IPs:     %d\n", web+0, ssh+0, ftp+0, i18n+0, u
+    }
+  ' "${_tmp_ev}"
+  if grep -q '"ip":"' "${_tmp_ev}"; then
+    echo
+    echo "  Top offenders (ban events):"
+    awk '{ if (match($0, /"ip":"[^"]+"/)) print substr($0, RSTART+6, RLENGTH-7) }' \
+      "${_tmp_ev}" | sort | uniq -c | sort -rn | head -n 10 \
+      | awk '{ printf "    %-42s x%d\n", $2, $1 }'
+  fi
+  rm -f "${_tmp_ev}"
+}
+
+_show_heals() {
+  local _days="${_DAYS:-7}"
+  echo "Auto-heal + incident events -- last ${_days} day(s)"
+  echo
+  _stream_days events "${_days}" | awk '
+    /"c":"inc"/ {
+      if (match($0, /"s":"[^"]+"/)) srcs[substr($0, RSTART+5, RLENGTH-6)]++
+      total++
+    }
+    END {
+      printf "  Total: %d\n", total+0
+      for (s in srcs) printf "    %-14s %d\n", s, srcs[s]
+    }
+  '
+}
+
+_show_today() {
+  _DAYS=1
+  _show_attacks
+  echo
+  _show_heals
+  echo
+  echo "Latest sample:"
+  _stream_days samples 1 | tail -n 1 | awk '
+    { if (match($0, /"l1":[0-9.]+/))  printf "  load1 %s", substr($0, RSTART+5, RLENGTH-5)
+      if (match($0, /"mem":[0-9]+/))  printf "  memavail %d MB", substr($0, RSTART+6, RLENGTH-6)/1024
+      if (match($0, /"tier":"[^"]+"/)) printf "  tier %s", substr($0, RSTART+8, RLENGTH-9)
+      if (match($0, /"deny":[0-9]+/)) printf "  csf.deny %s", substr($0, RSTART+7, RLENGTH-7)
+      print "" }
+  '
+}
+
+_show_report() {
+  local _days="${_DAYS:-30}"
+  local _first
+  _first=$(_first_record_date)
+  echo "==========================================================="
+  echo " XDR9000 report -- $(hostname -f 2>/dev/null || hostname)"
+  echo " Recording since ${_first}"
+  echo "==========================================================="
+  if [ -s "${_ROLLUP}" ]; then
+    echo
+    echo "Since first record (from daily rollups):"
+    awk '
+      { if (match($0, /"atk_web":[0-9]+/))  web += substr($0, RSTART+10, RLENGTH-10)+0
+        if (match($0, /"atk_ssh":[0-9]+/))  ssh += substr($0, RSTART+10, RLENGTH-10)+0
+        if (match($0, /"atk_ftp":[0-9]+/))  ftp += substr($0, RSTART+10, RLENGTH-10)+0
+        if (match($0, /"inc":[0-9]+/))      inc += substr($0, RSTART+6, RLENGTH-6)+0
+        if (match($0, /"syn":[0-9]+/))      syn += substr($0, RSTART+6, RLENGTH-6)+0
+        days++ }
+      END {
+        printf "  %d day(s) archived\n", days+0
+        printf "  Attacks blocked: %.0f web + %.0f ssh + %.0f ftp\n", web+0, ssh+0, ftp+0
+        printf "  SYN-flood packets absorbed: %.0f\n", syn+0
+        printf "  Auto-heal/incident events survived: %.0f\n", inc+0
+      }
+    ' "${_ROLLUP}"
+  fi
+  echo
+  _show_attacks
+  echo
+  _show_heals
+}
+
+_show_json() {
+  local _days="${_DAYS:-7}"
+  case "${_STREAM}" in
+    events|samples) _stream_days "${_STREAM}" "${_days}" ;;
+    rollup) zcat -f "${_ROLLUP}" 2> /dev/null ;;
+    *) _die "Usage: xdr9000 json events|samples|rollup [--days N]" ;;
+  esac
+}
+
+case "${_ACTION}" in
+  status)  _show_status ;;
+  today)   _show_today ;;
+  attacks) _show_attacks ;;
+  heals)   _show_heals ;;
+  report)  _show_report ;;
+  json)    _show_json ;;
+  help|*)  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac
+
+exit 0
