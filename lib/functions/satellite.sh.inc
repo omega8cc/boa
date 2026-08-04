@@ -4327,15 +4327,17 @@ _satellite_prepare_setup_email_tpl() {
             ${_ROOT}/log/upgrademail-pre-${_THIS_CORE}.txt
         fi
         cp -af /opt/tmp/boa/aegir/conf/tpl/upgrademail.txt ./
-        sed -i "s/aegir.url.name/${_DOMAIN}/g" ${_ROOT}/log/upgrademail.txt
+        ### Anchored patterns: an unescaped dot or bare 'dragon' would also
+        ### match inside a real instance domain injected by an earlier sed.
+        sed -i "s/aegir\.url\.name/${_DOMAIN}/g" ${_ROOT}/log/upgrademail.txt
         wait
-        sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/upgrademail.txt
+        sed -i "s/dragon\.ftp/${_USER}.ftp/g" ${_ROOT}/log/upgrademail.txt
         wait
         sed -i "s/FN8rXcQn/${_PASWD}/g" ${_ROOT}/log/upgrademail.txt
         wait
-        sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/upgrademail.txt
+        sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" ${_ROOT}/log/upgrademail.txt
         wait
-        sed -i "s/boa.version/${_X_VERSION}/g" ${_ROOT}/log/upgrademail.txt
+        sed -i "s/boa\.version/${_X_VERSION}/g" ${_ROOT}/log/upgrademail.txt
         wait
       else
         _SEND_UPGRADE_EMAIL=NO
@@ -4343,16 +4345,24 @@ _satellite_prepare_setup_email_tpl() {
     elif [ "${_STATUS}" = "INIT" ]; then
      cd ${_ROOT}/log
      cp -af /opt/tmp/boa/aegir/conf/tpl/setupmail.txt ./
-     sed -i "s/aegir.url.name/${_DOMAIN}/g" ${_ROOT}/log/setupmail.txt
+     ### Anchored patterns: an unescaped dot or bare 'dragon' would also
+     ### match inside a real instance domain injected by an earlier sed.
+     sed -i "s/aegir\.url\.name/${_DOMAIN}/g" ${_ROOT}/log/setupmail.txt
      wait
-     sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/setupmail.txt
+     sed -i "s/dragon\.ftp/${_USER}.ftp/g" ${_ROOT}/log/setupmail.txt
      wait
      sed -i "s/FN8rXcQn/${_PASWD}/g" ${_ROOT}/log/setupmail.txt
      wait
-     sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
+     sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
      wait
-     sed -i "s/boa.version/${_X_VERSION}/g" ${_ROOT}/log/setupmail.txt
+     sed -i "s/boa\.version/${_X_VERSION}/g" ${_ROOT}/log/setupmail.txt
      wait
+     ### FTPS is an opt-in xtra; drop its port line when Pure-FTPd is absent
+     ### so the email never advertises a port nothing is listening on.
+     if [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
+       sed -i "/21 (FTPS/d" ${_ROOT}/log/setupmail.txt
+       wait
+     fi
     fi
   fi
 }
@@ -4397,10 +4407,24 @@ _satellite_send_welcome_email() {
     if [ -e "${_ROOT}/log/setupmail.txt" ] \
       || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
       || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
-      if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-        cat ${_ROOT}/log/setupmail.txt \
-          | sed "s/[\~]//g" \
-          | s-nail -b ${_MY_OCTO_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
+      ### No send-time filter: the mailed body must stay byte-identical to
+      ### the on-disk copy the operator is told to fall back to.
+      _MAIL_SENT=NO
+      if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
+        && [ -n "${_CLIENT_EMAIL}" ]; then
+        if [ -n "${_MY_OCTO_EMAIL}" ]; then
+          cat ${_ROOT}/log/setupmail.txt \
+            | s-nail -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
+            && _MAIL_SENT=YES
+        else
+          cat ${_ROOT}/log/setupmail.txt \
+            | s-nail -s "${_Q}" "${_CLIENT_EMAIL}" \
+            && _MAIL_SENT=YES
+        fi
+      fi
+      if [ "${_MAIL_SENT}" = "NO" ]; then
+        _msg "ALRT: Welcome email for ${_USER} was NOT sent"
+        _msg "ALRT: Credentials are in ${_ROOT}/log/setupmail.txt"
       fi
     fi
   else
@@ -4412,17 +4436,27 @@ _satellite_send_welcome_email() {
       _Q="[${_X_VERSION}] Ægir Upgrade [${_USER}]"
       echo ${_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
-        if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-          cat ${_ROOT}/log/upgrademail.txt \
-            | sed "s/[\~]//g" \
-            | s-nail -b ${_MY_OCTO_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
-        fi
+        _mailBody="${_ROOT}/log/upgrademail.txt"
       else
-        if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-          cat ${_ROOT}/log/setupmail.txt \
-            | sed "s/[\~]//g" \
-            | s-nail -b ${_MY_OCTO_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
+        _mailBody="${_ROOT}/log/setupmail.txt"
+      fi
+      _MAIL_SENT=NO
+      if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
+        && [ -e "${_mailBody}" ] \
+        && [ -n "${_CLIENT_EMAIL}" ]; then
+        if [ -n "${_MY_OCTO_EMAIL}" ]; then
+          cat ${_mailBody} \
+            | s-nail -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
+            && _MAIL_SENT=YES
+        else
+          cat ${_mailBody} \
+            | s-nail -s "${_Q}" "${_CLIENT_EMAIL}" \
+            && _MAIL_SENT=YES
         fi
+      fi
+      if [ "${_MAIL_SENT}" = "NO" ]; then
+        _msg "ALRT: Upgrade email for ${_USER} was NOT sent"
+        _msg "ALRT: The intended message body is in ${_mailBody}"
       fi
     else
       _SEND_UPGRADE_EMAIL=NO
