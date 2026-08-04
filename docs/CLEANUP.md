@@ -156,5 +156,6 @@ Nothing is deleted, so recovery is just moving the item back from its backup or
 - platform aliases — the account's `undo/` dir, or `/var/aegir/undo/` for the Hostmaster instance
 
 See also [PLATFORMS.md](PLATFORMS.md) for the Octopus platform layout,
-[MIGRATE-XOCT.md](MIGRATE-XOCT.md) for account migration, and
+[MIGRATE-XOCT.md](MIGRATE-XOCT.md) for account migration,
+[SQLCLEAN.md](SQLCLEAN.md) for the database-side orphan cleanup counterpart, and
 [BACKUPS.md](BACKUPS.md) for the backup subsystem.
