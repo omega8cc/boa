@@ -819,6 +819,18 @@ _satellite_cnf() {
         _clean_pid_exit
       fi
     fi
+    ### A client control-panel account can never exist when _CLIENT_EMAIL
+    ### equals _MY_OCTO_EMAIL: the uid-1 super-admin already owns that
+    ### address and hosting_client refuses a duplicate, so the welcome
+    ### email would ship control-panel login details for an account that
+    ### does not exist. Refuse up front, before anything is created.
+    ### Compared with mutt-era escaping stripped, so a\@b matches a@b.
+    if [ -n "${_CLIENT_EMAIL}" ] \
+      && [ "${_MY_OCTO_EMAIL//\\/}" = "${_CLIENT_EMAIL//\\/}" ]; then
+      _msg "EXIT: _CLIENT_EMAIL must not be the same address as _MY_OCTO_EMAIL"
+      _msg "EXIT: the control panel needs a separate client email for its account"
+      _clean_pid_exit
+    fi
     _msg "INFO: Creating your ${_octCnf} config file"
     sleep 1
     echo "###"                                                   > ${_octCnf}
@@ -4397,7 +4409,20 @@ _satellite_set_client_login() {
   # set its password to the shell password. Matched by _CLIENT_EMAIL; the
   # uid>1 guard keeps the super-admin (uid 1) untouched. Runs as the octopus
   # user via the same drush pattern used above; _PASWD exists by this point.
-  su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ev '\$u = user_load_by_mail(\"${_CLIENT_EMAIL}\"); if (\$u && \$u->uid > 1) { user_save(\$u, array(\"name\" => \"${_USER}.ftp\", \"pass\" => \"${_PASWD}\")); }'" &> /dev/null
+  # Never fire-and-forget: the welcome email already states this login, so
+  # any silent failure (bootstrap, DB, missing user) must become a loud
+  # ALRT -- same sentinel pattern as _ensure_hosting_dispatch_enabled.
+  local _login_ev _login_fix
+  _login_ev="\$u = user_load_by_mail(\"${_CLIENT_EMAIL}\"); if (\$u && \$u->uid > 1 && user_save(\$u, array(\"name\" => \"${_USER}.ftp\", \"pass\" => \"${_PASWD}\"))) { echo \"RENAMED\"; }"
+  _login_fix=$(su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster ev '${_login_ev}'" 2>/dev/null)
+  if [[ "${_login_fix}" =~ RENAMED ]]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: control-panel login for ${_USER} set to ${_USER}.ftp"
+    fi
+  else
+    _msg "ALRT: control-panel login for ${_USER} was not set"
+    _msg "ALRT: welcome email login details for the control panel will be wrong"
+  fi
 }
 
 ###---### Sending setup email.
@@ -4415,42 +4440,54 @@ _satellite_send_welcome_email() {
     _TIME=$(date)
     _Q="Your Ægir Install on ${_TIME} [${_USER}]"
     echo ${_TIME} > ${_ROOT}/log/date-init.txt
-    if [ -e "${_ROOT}/log/setupmail.txt" ] \
-      || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
-      || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
+    ### Historic renders can exist under legacy names; resolve the body
+    ### once and use the SAME file for the guard and the send, so the
+    ### guard can never pass on a name the send does not read (that
+    ### combination mailed an empty credentials email).
+    _mailSrc=""
+    for _mailCand in setupmail.txt legacy_setupmail.txt latest_setupmail.txt; do
+      if [ -e "${_ROOT}/log/${_mailCand}" ]; then
+        _mailSrc="${_ROOT}/log/${_mailCand}"
+        break
+      fi
+    done
+    if [ -n "${_mailSrc}" ]; then
       ### No send-time filter: the mailed body must stay byte-identical to
       ### the on-disk copy the operator is told to fall back to.
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
         && [ -n "${_CLIENT_EMAIL}" ]; then
         if [ -n "${_MY_OCTO_EMAIL}" ]; then
-          cat ${_ROOT}/log/setupmail.txt \
+          cat ${_mailSrc} \
             | s-nail -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         else
-          cat ${_ROOT}/log/setupmail.txt \
+          cat ${_mailSrc} \
             | s-nail -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         fi
       fi
       if [ "${_MAIL_SENT}" = "NO" ]; then
         _msg "ALRT: Welcome email for ${_USER} was NOT sent"
-        _msg "ALRT: Credentials are in ${_ROOT}/log/setupmail.txt"
+        _msg "ALRT: Credentials are in ${_mailSrc}"
       fi
     fi
   else
-    if [ "${_DIST_INSTALL}" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ]; then
+    ### _SEND_UPGRADE_EMAIL=NO is an operator off-switch for the upgrade
+    ### notice only; the INIT welcome email always sends.
+    if [ "${_DIST_INSTALL}" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ] \
+      && [ "${_SEND_UPGRADE_EMAIL}" != "NO" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
       _TIME=$(date)
       _Q="[${_X_VERSION}] Ægir Upgrade [${_USER}]"
       echo ${_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
-      if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
-        _mailBody="${_ROOT}/log/upgrademail.txt"
-      else
-        _mailBody="${_ROOT}/log/setupmail.txt"
-      fi
+      ### Never fall back to the INIT-time setupmail render: it carries the
+      ### original password under a Welcome body, so resending it under an
+      ### Upgrade subject would mail stale credentials. No upgrademail.txt
+      ### means no send, only the loud ALRT trail below.
+      _mailBody="${_ROOT}/log/upgrademail.txt"
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
         && [ -e "${_mailBody}" ] \
