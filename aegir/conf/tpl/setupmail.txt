@@ -1,12 +1,12 @@
 Hello,
 
-Welcome — you're now a hosted BOA customer. The hard part, running the server, is already done for you. Your job is the fun part: creating and looking after your Drupal sites, mostly by clicking around a web control panel rather than typing commands.
+Welcome! You're now a hosted BOA customer. The hard part, running the server, is already done for you. Your job is the fun part: creating and looking after your Drupal sites, mostly by clicking around a web control panel rather than typing commands.
 
-Your Ægir control panel [version boa.version] is here:
+Your Ægir control panel is here:
 
 https://aegir.url.name
 
-New here? Start with the first-login guide — it walks you through everything below, slowly and safely:
+New here? Start with the first-login guide. It walks you through logging in and finding your way around, slowly and safely:
 
 https://docs.boa.io/using/welcome/your-account-and-first-login
 
@@ -19,52 +19,75 @@ Go to https://aegir.url.name and sign in with:
 username: dragon.ftp
 password: FN8rXcQn
 
-Please note: your control panel account and your SSH/FTP/SFTP account are two fully separate accounts. They only start out with the same username and password for convenience — they are not linked. We recommend changing the password on each of them separately after your first login: the control panel password from within the panel, and the SSH/FTP/SFTP password over SSH with the "passwd" command.
+Please note: your control panel account and your SSH/FTP/SFTP account are two fully separate accounts. They only start out with the same username and password for convenience; they are not linked. Change the password on each of them separately after your first login: the control panel password from within the panel (Clients, then your account, then Edit), and the SSH/FTP/SFTP password over SSH with the "passwd" command.
 
-Forgot your control panel password? Ask your host's support to reset it for you — the control panel can't send password-reset emails itself.
+The SSH/FTP/SFTP password also expires every 90 days, with a warning first, and a fresh one is emailed to you when that happens. Your control panel password never expires.
+
+Forgot your control panel password? Ask your host's support to reset it for you; the self-service password reset is switched off in the control panel.
 
 ----------------------------------------
 UPLOADING FILES (MODULES, THEMES, PLATFORMS)
 ----------------------------------------
 
-Upload over SSH/SFTP/FTPS with the same username and password:
+Upload over SFTP, with the same username and password as above:
 
 host: aegir.url.name
 user: dragon.ftp
 pass: FN8rXcQn
 port: 22 (SSH/SFTP)
-port: 21 (FTPS, Explicit TLS)
+port: 21 (FTPS, Explicit TLS; your client will warn about a self-signed certificate, which is expected here, while SFTP avoids that prompt)
 
-Type "help" once you're logged in over SSH to see the commands available to you.
+Your SSH login is a limited shell on purpose: a curated set of commands (drush, composer, git, rsync, mysql and friends) that can only reach your own files. Type "help" once you're logged in to see the full list. Anything else is politely refused; note that scp is not available, so use SFTP or rsync to move files.
+
+Upload a new Drupal codebase (a platform) into ~/static/platforms/<name>/ in your account; modules and themes go inside the site that uses them, and the guide below shows exactly where.
+
+Prefer SSH keys? Put your public key into ~/.ssh/authorized_keys over SFTP, or send the .pub file to your host's support and they will install it for you.
+
+The full guide, including client settings and SSH keys:
+
+https://docs.boa.io/using/connecting/shell-and-sftp
 
 ----------------------------------------
-YOUR DATABASES
+MANAGING YOUR DATABASES
 ----------------------------------------
 
-Browse and manage them from the web, no setup required:
+The server has a built-in web database browser (Adminer):
 
 https://aegir.url.name/sqladmin/
 
-Direct MySQL access over the network is closed for security — use the web tool above, or your own desktop client over an SSH tunnel.
+Two things to know before it will open for you:
+
+1. It's kept closed to the internet. To let yourself in, first connect over SSH or SFTP (port 22) with your dragon.ftp login and keep that session open; the server notices your address within a couple of minutes and unlocks the page for it. Once your last SSH session closes, the door shuts again a couple of minutes later, so stay connected while you work. An FTPS connection on port 21 does not unlock it. If you can't use SSH from where you are, ask your host's support to allow your address instead. And on a brand-new server, give it a little while to finish setting itself up before the address answers at all.
+
+2. It has no password of its own. You log in with one site's own database name, user and password, which BOA generated for you when it built the site; read them from that site's drushrc.php file (platforms/<platform>/sites/<yourdomain>/drushrc.php).
+
+The full walkthrough:
+
+https://docs.boa.io/using/extra-services/database-gui
+
+Prefer the command line? mysql, mysqldump, mydumper and myloader all work in your SSH shell. The database port itself is not open to the internet; the server firewall only accepts web, mail and SSH traffic. So for a desktop database client, connect through an SSH tunnel and log in with the same per-site credentials.
 
 ----------------------------------------
 GOING LIVE
 ----------------------------------------
 
-To put a site live on your own domain, point its DNS at your server:
+To put a site live on your own domain, point its DNS at your server BEFORE you create the site in the panel, so the site is reachable from the start and can get its HTTPS certificate:
 
 yourdomain.com.           IN  A      166.84.6.231
+www.yourdomain.com.       IN  CNAME  yourdomain.com.
 subdomain.yourdomain.com. IN  CNAME  aegir.url.name.
 
-For quick tests you don't need DNS at all — any subdomain of aegir.url.name works straight away, for example http://atrium.aegir.url.name.
+Add the www. record too: the panel adds the www alias for you automatically, but only once that name resolves. Use an A (IPv4) record for the bare domain and remove any leftover AAAA (IPv6) record; the server serves IPv4 only, so a stale AAAA record breaks the site for IPv6 visitors. Once the domain resolves, switch Encryption on for the site (Edit, then SSL Settings) and HTTPS is issued and renewed for you.
+
+For quick tests you don't need your own domain at all: if your host has wildcard DNS on aegir.url.name (most hosted setups do), create the site under any subdomain of it, for example atrium.aegir.url.name, and it's reachable as soon as the install task finishes.
 
 ----------------------------------------
 
-Everything else — creating sites, platforms, backups, HTTPS, and what to do when something looks wrong — is in the documentation:
+Everything else, from creating sites and platforms to backups, HTTPS, and what to do when something looks wrong, is in the documentation:
 
 https://docs.boa.io/using
 
-Take it slowly. You can't reach or break anything on the server that isn't yours, so explore freely — and don't hesitate to ask your host when you're stuck.
+Take it slowly. You can't reach or break anything on the server that isn't yours, so explore freely, and don't hesitate to ask your host when you're stuck.
 
 Thank you,
 The BOA Dev Team
