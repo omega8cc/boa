@@ -1,8 +1,83 @@
 #!/bin/bash
 
+###
+### sqlclean — orphan MySQL database cleanup for BOA
+###
+### Usage: sqlclean [LIVE [auto]]
+###
+###   (no args)    DRY report: classify every schema, write logs + manifest,
+###                delete nothing.
+###   LIVE         Interactive cleanup: per-database type-the-name confirmation.
+###                Needs a terminal and /root/.sqlclean.protect.cnf (may be
+###                empty — it proves non-Aegir databases were reviewed).
+###   LIVE auto    Non-interactive cleanup for runbooks. Additionally refuses
+###                unless a reviewed DRY manifest younger than 4 hours matches
+###                the current detection exactly and no resolution alert fired:
+###                run 'sqlclean', inspect /var/log/sqlclean-ghosts.txt, then
+###                cp it to /var/log/sqlclean-ghosts.txt.reviewed and run
+###                'sqlclean LIVE auto'.
+###
+### Source of truth: Drush aliases, never vhosts. A disabled Aegir site keeps
+### its database while its vhost is regenerated from a db-free template, a
+### proxy-converted or mid-transfer site has its vhost dotted away, and a
+### CANCELLED instance has all vhosts wiped long before purge — so vhosts
+### cannot tell a dead database from a live one. Aliases can: every existing
+### site resolves via <root>/.drush/<uri>.alias.drushrc.php -> site_path ->
+### drushrc.php -> $options['db_name'], and site deletion removes the alias
+### together with the database. No alias, no database.
+###
+### Classification, in order:
+###   preserved   system schemas; every alias-resolved site db across
+###               /var/aegir and all /data/disk/* instances; every instance's
+###               own hostmaster db; names listed in /root/.sqlclean.protect.cnf
+###   held        never deleted: panel drift (the panel claims a live site the
+###               aliases cannot vouch for), hostmaster-shaped schemas whose
+###               platform trees still exist on disk, aliases quarantined in
+###               <root>/undo/ by the nightly reaper, and schemas whose
+###               classification queries failed. Fix the cause, re-run.
+###   ghost       everything else, offered for deletion. Hostmaster-shaped
+###               schemas whose trees are gone are tagged panel-orphan: they
+###               additionally break xmass/xoct panel discovery.
+###
+### Any alias or instance root that exists but cannot be resolved raises a
+### resolution alert: the run still reports, but LIVE auto refuses — an
+### unreadable alias must never widen the ghost list unattended.
+###
+
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+_GHOST_DBS_LOG="/var/log/db_cleanup.log"
+_ACTIVE_DBS_LOG="/var/log/dbs_to_remain.log"
+_MANIFEST="/var/log/sqlclean-ghosts.txt"
+_PROTECT_CNF="/root/.sqlclean.protect.cnf"
+_LOCK_FILE="/run/sqlclean.lock"
+_MANIFEST_MAX_AGE=14400
+
+_LIVE_MODE="${1:-DRY}"
+_AUTO_MODE="${2:-}"
+_INCOMPLETE=0
+_DROP_FAILED=0
+
+###-------------HELPERS-------------------###
+
+_msg() {
+  echo "$*" | tee -a "${_GHOST_DBS_LOG}"
+}
+
+_info() {
+  echo "INFO: $*" | tee -a "${_GHOST_DBS_LOG}"
+}
+
+_alrt() {
+  echo "ALRT: $*" | tee -a "${_GHOST_DBS_LOG}"
+}
+
+_die() {
+  echo "ERROR: $*" | tee -a "${_GHOST_DBS_LOG}"
+  exit 1
+}
 
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
@@ -10,123 +85,501 @@ _check_root() {
     exit 1
   fi
 }
+
+_sql_must() {
+  # Queries whose failure makes any classification impossible: die on error.
+  local _out
+  if ! _out=$(mysql -N -B -e "$1" 2>"${_ERRF}"); then
+    _die "Query failed: $1 — $(head -n1 "${_ERRF}")"
+  fi
+  [ -n "${_out}" ] && printf '%s\n' "${_out}"
+}
+
+_sql_probe() {
+  # Per-schema probes: a missing table/database is a normal negative (rc 2),
+  # any other failure is rc 1 — the caller must fail CLOSED on it, because
+  # "query failed" must never look like "no rows".
+  local _out _rc
+  _out=$(mysql -N -B -e "$1" 2>"${_ERRF}")
+  _rc=$?
+  if [ "${_rc}" -ne 0 ]; then
+    if grep -qiE "doesn't exist|Unknown database" "${_ERRF}"; then
+      return 2
+    fi
+    return 1
+  fi
+  [ -n "${_out}" ] && printf '%s\n' "${_out}"
+  return 0
+}
+
+_alias_get() {
+  # 1=alias file 2=key — value of  'key' => 'value'
+  sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" "$1" 2>/dev/null | head -n1
+}
+
+_drushrc_db_name() {
+  # 1=site dir — literal $options['db_name'] from the site drushrc; anchored
+  # at line start so a commented copy can never shadow the real assignment.
+  sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
+    "$1/drushrc.php" 2>/dev/null | head -n1
+}
+
+_sane_ident() {
+  # db names feed SQL and datadir paths; provision emits [A-Za-z0-9_] only —
+  # anything else is not ours to touch. Empty on reject (fail-closed).
+  case "$1" in
+    *[!A-Za-z0-9_]*|"") printf '' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+_db_size() {
+  local _s
+  _s=$(du -sh "/var/lib/mysql/$1" 2>/dev/null | awk '{print $1}')
+  printf '%s' "${_s:--}"
+}
+
+_interlock_check() {
+  # Cleanup policy interlock: while any Aegir/Provision task or BOA upgrade
+  # runs, databases are legitimately in flux (deploy holds an old+new pair,
+  # verify creates probe schemas, installs create dbs before aliases) and a
+  # snapshot lies. Bracketed pattern so wrapper cmdlines carrying the word
+  # cannot self-match.
+  if pgrep -f "[p]rovision" >/dev/null 2>&1; then
+    _die "An Aegir/Provision task is running — try again once the queue is idle"
+  fi
+  if [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ]; then
+    _die "A BOA action is running (/run/boa_run.pid or /run/boa_wait.pid exists) — try again later"
+  fi
+}
+
+###-------------GUARDS--------------------###
+
 _check_root
 
-# Define directories
-_MYSQL_DB_DIR="/var/lib/mysql"
-_VHOSTS_DIRS=("/var/aegir/config/server_master/nginx/vhost.d" "/data/disk/*/config/server_master/nginx/vhost.d")
-_GHOST_DBS_LOG="/var/log/db_cleanup.log"
-_ACTIVE_DBS_LOG="/var/log/dbs_to_remain.log"
+_ERRF=$(mktemp /tmp/sqlclean.err.XXXXXX) || exit 1
+trap 'rm -f "${_ERRF}"' EXIT
 
-export _LIVE_MODE=$1
-: "${_LIVE_MODE:=DRY}"
+# Re-entrancy: a second run must not truncate logs or race the drops.
+exec 9>"${_LOCK_FILE}"
+if ! flock -n 9; then
+  echo "ERROR: Another sqlclean run holds ${_LOCK_FILE}"
+  exit 1
+fi
 
-# Create/empty the log files
+if [ "${_LIVE_MODE}" = "LIVE" ]; then
+  if [ ! -e "${_PROTECT_CNF}" ]; then
+    echo "ERROR: LIVE needs ${_PROTECT_CNF} (may be empty) — create it after"
+    echo "       reviewing non-Aegir databases in the DRY report"
+    exit 1
+  fi
+  if [ "${_AUTO_MODE}" != "auto" ] && [ ! -t 0 ]; then
+    echo "ERROR: Interactive LIVE needs a terminal; use 'sqlclean LIVE auto' in runbooks"
+    exit 1
+  fi
+fi
+
+if ! mysql -N -B -e "SELECT 1" >/dev/null 2>&1; then
+  echo "ERROR: Cannot connect to the local MySQL server"
+  exit 1
+fi
+
+# Authority guard: classification reads local aliases, so the SQL endpoint
+# must be this box's own server — never a remote/cluster endpoint reached
+# through a stray /root/.my.cnf.
+_sql_host=$(mysql -N -B -e "SELECT @@hostname" 2>/dev/null)
+if [ "${_sql_host}" != "$(hostname)" ] && \
+   [ "${_sql_host}" != "$(hostname -f 2>/dev/null)" ] && \
+   [ "${_sql_host%%.*}" != "$(hostname -s 2>/dev/null)" ]; then
+  echo "ERROR: MySQL endpoint reports hostname '${_sql_host}' but this box is '$(hostname)' — refusing to classify a remote server"
+  exit 1
+fi
+
+_interlock_check
+
+# Fresh per-run logs
 > "${_GHOST_DBS_LOG}"
 > "${_ACTIVE_DBS_LOG}"
 
-# Step 1: Get the list of existing MySQL databases
-mapfile -t _mysql_databases < <(find "${_MYSQL_DB_DIR}" -maxdepth 1 -type d -exec basename {} \; | grep -v "^mysql$\|^information_schema$\|^performance_schema$\|^sys$")
+###-------------ENUMERATION---------------###
 
-# Step 2: Get the list of databases from the vhost configurations
-declare -A _vhost_db_map
-_vhost_files=()
-for _dir_pattern in "${_VHOSTS_DIRS[@]}"; do
-  # Expand pattern and check if there are any matching directories
-  for _dir in ${_dir_pattern}; do
-    if [ -d "${_dir}" ]; then
-      # Grep for db_name only if the directory exists and contains files
-      while IFS= read -r _line; do
-        _db_name=$(echo "${_line}" | awk '{print $NF}' | tr -d ';')
-        _vhost_file=$(echo "${_line}" | awk -F':' '{print $1}')
+# Real schemas from the server, never datadir directories: Percona 8.x keeps
+# non-schema entries (#innodb_redo, #innodb_temp) in the datadir.
+mapfile -t _all_databases < <(_sql_must "SHOW DATABASES" \
+  | grep -vE "^(information_schema|performance_schema|mysql|sys|test)$" \
+  | grep -v "^#" | grep -v "^lost+found$")
+if [ "${#_all_databases[@]}" -eq 0 ]; then
+  _die "Schema enumeration returned nothing — refusing to classify"
+fi
 
-        # Track vhost files and map db_name to vhosts
-        _vhost_files+=("${_vhost_file}:${_db_name}")
-        if ! [[ " ${_vhost_db_map["${_db_name}"]} " =~ " ${_vhost_file} " ]]; then
-          _vhost_db_map["${_db_name}"]+="${_vhost_file} "  # Append vhost file to the list for this db_name
-        fi
-
-      done < <(grep -h "fastcgi_param db_name" "${_dir}"/* 2>/dev/null)
-    else
-      echo "Directory ${_dir} does not exist, skipping..." | tee -a "${_GHOST_DBS_LOG}"
-    fi
-  done
+declare -A _db_exists
+for _db in "${_all_databases[@]}"; do
+  _db_exists[${_db}]=1
 done
 
-# Step 3: Compare and separate ghost and active databases
-_ghost_databases=()
-_active_databases=()
-for _db in "${_mysql_databases[@]}"; do
-  if [[ " ${!_vhost_db_map[*]} " =~ " ${_db} " ]]; then
-    _active_databases+=("${_db}")
-  else
-    _ghost_databases+=("${_db}")
+# Every Aegir instance root on the box: the master plus each Octopus
+# satellite. Cross-checked against system users so an unmounted or wiped
+# /data/disk cannot silently turn a whole instance into ghosts.
+_aegir_roots=()
+[ -d "/var/aegir/.drush" ] && _aegir_roots+=("/var/aegir")
+for _dir in /data/disk/*; do
+  [ -d "${_dir}/.drush" ] && _aegir_roots+=("${_dir}")
+done
+if [ "${#_aegir_roots[@]}" -eq 0 ]; then
+  _die "No Aegir instance roots found — refusing to treat every database as a ghost"
+fi
+
+while IFS=: read -r _pw_user _x _x _x _x _pw_home _x; do
+  case "${_pw_home}" in
+    /data/disk/*/*) ;;
+    /var/aegir|/data/disk/*)
+      if [ ! -d "${_pw_home}/.drush" ]; then
+        _alrt "System user ${_pw_user} has home ${_pw_home} but no .drush there — instance unreadable, its databases cannot be classified"
+        _INCOMPLETE=1
+      fi
+      ;;
+  esac
+done < <(getent passwd)
+
+declare -A _preserve   # db name -> reason
+declare -A _hold       # db name -> reason
+_panel_dbs=()          # readable hostmaster schemas for the drift cross-check
+
+###-------------PRESERVE SET--------------###
+
+for _root in "${_aegir_roots[@]}"; do
+
+  # The instance's own hostmaster frontend db (master carries hm.alias,
+  # satellites hostmaster.alias — accept either).
+  _root_hm_db=""
+  for _hma in "${_root}/.drush/hm.alias.drushrc.php" \
+              "${_root}/.drush/hostmaster.alias.drushrc.php"; do
+    [ -e "${_hma}" ] || continue
+    _hm_sp=$(_alias_get "${_hma}" site_path)
+    _hm_db=""
+    [ -n "${_hm_sp}" ] && [ -e "${_hm_sp}/drushrc.php" ] && \
+      _hm_db=$(_sane_ident "$(_drushrc_db_name "${_hm_sp}")")
+    if [ -n "${_hm_db}" ]; then
+      _root_hm_db="${_hm_db}"
+      if [ -z "${_preserve[${_hm_db}]}" ]; then
+        _preserve[${_hm_db}]="hostmaster ${_root}"
+        _panel_dbs+=("${_hm_db}")
+      fi
+    else
+      _alrt "Hostmaster alias $(basename "${_hma}") in ${_root} does not resolve to a db name"
+      _INCOMPLETE=1
+    fi
+  done
+  if [ -z "${_root_hm_db}" ]; then
+    _alrt "No hostmaster db resolvable for ${_root} — its frontend schema is unprotected"
+    _INCOMPLETE=1
+  fi
+
+  # Every site alias of this instance, by context type — server, platform
+  # and artifact aliases (e.g. none.alias) are not sites. Multiple alias
+  # files may resolve to the same site; the map keeps the first reason.
+  for _f in "${_root}"/.drush/*.alias.drushrc.php; do
+    [ -e "${_f}" ] || continue
+    case "$(basename "${_f}")" in
+      hostmaster.alias*|hm.alias*) continue ;;
+    esac
+    _ctx=$(_alias_get "${_f}" context_type)
+    [ "${_ctx}" = "site" ] || continue
+    _sp=$(_alias_get "${_f}" site_path)
+    if [ -z "${_sp}" ]; then
+      _root_v=$(_alias_get "${_f}" root)
+      _uri_v=$(_alias_get "${_f}" uri)
+      [ -n "${_root_v}" ] && [ -n "${_uri_v}" ] && _sp="${_root_v}/sites/${_uri_v}"
+    fi
+    if [ -z "${_sp}" ] || [ ! -e "${_sp}/drushrc.php" ]; then
+      _alrt "Site alias $(basename "${_f}") in ${_root} has no readable site drushrc — its db (if any) cannot be classified"
+      _INCOMPLETE=1
+      continue
+    fi
+    _dbn_raw=$(_drushrc_db_name "${_sp}")
+    _dbn=$(_sane_ident "${_dbn_raw}")
+    if [ -z "${_dbn}" ] || [ "${_dbn}" = "none" ]; then
+      _alrt "Site $(basename "${_f}" .alias.drushrc.php) has unusable db_name '${_dbn_raw}' in ${_sp}/drushrc.php"
+      _INCOMPLETE=1
+      continue
+    fi
+    [ -z "${_preserve[${_dbn}]}" ] && _preserve[${_dbn}]="site $(basename "${_f}" .alias.drushrc.php)"
+  done
+
+  # Aliases the nightly reaper quarantined into undo/ — it deliberately keeps
+  # the database, so a still-resolvable quarantined site is an operator
+  # decision, not a ghost. Unresolvable undo debris is expected and ignored.
+  for _f in "${_root}"/undo/*.alias.drushrc.php; do
+    [ -e "${_f}" ] || continue
+    _ctx=$(_alias_get "${_f}" context_type)
+    [ "${_ctx}" = "site" ] || continue
+    _sp=$(_alias_get "${_f}" site_path)
+    [ -n "${_sp}" ] && [ -e "${_sp}/drushrc.php" ] || continue
+    _dbn=$(_sane_ident "$(_drushrc_db_name "${_sp}")")
+    [ -n "${_dbn}" ] && [ "${_dbn}" != "none" ] || continue
+    if [ -z "${_preserve[${_dbn}]}" ] && [ -z "${_hold[${_dbn}]}" ]; then
+      _hold[${_dbn}]="alias $(basename "${_f}") quarantined in ${_root}/undo/ still resolves to this db — restore or delete the site in Aegir first"
+    fi
+  done
+
+done
+
+# Operator protect list: non-Aegir databases (billing, monitoring, ad-hoc)
+# that no alias can vouch for.
+if [ -e "${_PROTECT_CNF}" ]; then
+  while IFS= read -r _line || [ -n "${_line}" ]; do
+    _line="${_line%%#*}"
+    _line="${_line//[[:space:]]/}"
+    _pdb=$(_sane_ident "${_line}")
+    [ -n "${_pdb}" ] && _preserve[${_pdb}]="protected ${_PROTECT_CNF}"
+  done < "${_PROTECT_CNF}"
+fi
+
+###-------------CLASSIFICATION------------###
+
+_candidates=()
+for _db_raw in "${_all_databases[@]}"; do
+  _db=$(_sane_ident "${_db_raw}")
+  if [ -z "${_db}" ]; then
+    _alrt "Schema '${_db_raw}' has a name provision never generates — not ours, left untouched"
+    continue
+  fi
+  [ -n "${_preserve[${_db}]}" ] && continue
+  [ -n "${_hold[${_db}]}" ] && continue
+  _candidates+=("${_db}")
+done
+
+# Hostmaster fingerprint: a schema with a server_master hosting_context is a
+# frontend db even when no drushrc resolves to it. If any of its platform
+# trees still exist on disk, deleting it would kill a live frontend — hold it
+# as drift. If every tree is gone it is a dead frontend, the exact class that
+# later breaks xmass/xoct panel discovery ("multiple live hostmaster DBs —
+# refusing to guess"), so it stays a ghost but gets called out.
+_ghosts=()
+declare -A _ghost_tag
+for _db in "${_candidates[@]}"; do
+  _fp=$(_sql_probe "SELECT name FROM \`${_db}\`.hosting_context WHERE name='server_master' LIMIT 1")
+  _rc=$?
+  if [ "${_rc}" -eq 1 ]; then
+    _hold[${_db}]="classification query failed on this schema — fix MySQL access, re-run"
+    _INCOMPLETE=1
+    continue
+  fi
+  if [ "${_rc}" -eq 0 ] && [ -n "${_fp}" ]; then
+    _pp_rows=$(_sql_probe "SELECT publish_path FROM \`${_db}\`.hosting_platform WHERE publish_path != ''")
+    _rc=$?
+    if [ "${_rc}" -eq 1 ]; then
+      _hold[${_db}]="hostmaster-shaped schema with unreadable hosting_platform — fix MySQL access, re-run"
+      _INCOMPLETE=1
+      continue
+    fi
+    _served=""
+    while IFS= read -r _pp; do
+      [ -n "${_pp}" ] || continue
+      [ -d "${_pp}" ] && _served="${_pp}"
+      for _root in "${_aegir_roots[@]}"; do
+        case "${_pp}" in
+          "${_root}"/*) _served="${_pp}" ;;
+        esac
+      done
+    done <<< "${_pp_rows}"
+    if [ -n "${_served}" ]; then
+      _hold[${_db}]="hostmaster-shaped schema with live platform tree ${_served} but not alias-resolvable — fix the instance before any cleanup"
+      _panel_dbs+=("${_db}")
+      continue
+    fi
+    _ghost_tag[${_db}]="panel-orphan"
+  fi
+  _ghosts+=("${_db}")
+done
+
+# Panel cross-check: sites a frontend still tracks (status > -2 = not
+# deleted) must agree with the alias set. Disagreement means drift — a
+# deletion there would be a guess, so hold and report instead.
+for _hm_db in "${_panel_dbs[@]}"; do
+  _rows=$(_sql_probe "SELECT DISTINCT db_name FROM \`${_hm_db}\`.hosting_site WHERE status > -2 AND db_name IS NOT NULL AND db_name != ''")
+  _rc=$?
+  if [ "${_rc}" -eq 1 ]; then
+    _alrt "Panel query failed on ${_hm_db} — its drift cross-check is unavailable"
+    _INCOMPLETE=1
+    continue
+  fi
+  [ "${_rc}" -eq 2 ] && continue
+  while IFS= read -r _pdb; do
+    _pdb=$(_sane_ident "${_pdb}")
+    [ -n "${_pdb}" ] || continue
+    [ -n "${_preserve[${_pdb}]}" ] && continue
+    [ -n "${_hold[${_pdb}]}" ] && continue
+    if [ -z "${_db_exists[${_pdb}]}" ]; then
+      _info "Panel ${_hm_db} tracks db ${_pdb} which does not exist on this server (stale panel row)"
+      continue
+    fi
+    _hold[${_pdb}]="panel ${_hm_db} tracks a live site on this db but no drush alias resolves to it — delete the site in Aegir or fix the alias, then re-run"
+  done <<< "${_rows}"
+done
+
+# Final ghost list, holds removed
+_final_ghosts=()
+for _db in "${_ghosts[@]}"; do
+  [ -n "${_hold[${_db}]}" ] || _final_ghosts+=("${_db}")
+done
+
+###-------------REPORT--------------------###
+
+_kept=0
+echo "Databases to remain:" >> "${_ACTIVE_DBS_LOG}"
+for _db in "${_all_databases[@]}"; do
+  if [ -n "${_preserve[${_db}]}" ]; then
+    echo "Active database: ${_db} (${_preserve[${_db}]})" >> "${_ACTIVE_DBS_LOG}"
+    _kept=$(( _kept + 1 ))
   fi
 done
 
-# Step 4: Log active databases
-echo "Databases to remain (referenced in vhosts):" | tee -a "${_ACTIVE_DBS_LOG}"
-for _active_db in "${_active_databases[@]}"; do
-  echo "Active database: ${_active_db}" | tee -a "${_ACTIVE_DBS_LOG}"
+_held=0
+for _db in "${!_hold[@]}"; do
+  _alrt "HOLD ${_db}: ${_hold[${_db}]}"
+  _held=$(( _held + 1 ))
 done
 
-# Function to drop a MySQL user and all host entries
+_msg "Ghost databases (no drush alias resolves to them):"
+for _db in "${_final_ghosts[@]}"; do
+  _tag=""
+  [ -n "${_ghost_tag[${_db}]}" ] && _tag=" [${_ghost_tag[${_db}]}]"
+  _msg "Ghost database: ${_db} ($(_db_size "${_db}"))${_tag}"
+done
+_info "Schemas: ${#_all_databases[@]} total, ${_kept} preserved, ${_held} held, ${#_final_ghosts[@]} ghost"
+[ "${_INCOMPLETE}" -ne 0 ] && \
+  _alrt "Resolution incomplete (see alerts above) — LIVE auto will refuse until every alert is fixed"
+
+# The manifest is a DRY product: LIVE runs must never rewrite it, or a failed
+# auto gate followed by a blind re-copy would approve an unreviewed detection.
+if [ "${_LIVE_MODE}" != "LIVE" ]; then
+  > "${_MANIFEST}"
+  for _db in "${_final_ghosts[@]}"; do
+    echo "${_db}" >> "${_MANIFEST}"
+  done
+fi
+
+###-------------ACTION--------------------###
+
 _drop_mysql_user() {
-  local _db_user=$1
-  # Get all user@host combinations for the user
-  mapfile -t _user_hosts < <(mysql -e "SELECT CONCAT(User, '@', Host) FROM mysql.user WHERE user='${_db_user}';")
-
-  # Drop each user@host entry
-  for _user_host in "${_user_hosts[@]}"; do
-    echo "Dropping user: ${_user_host}" | tee -a "${_GHOST_DBS_LOG}"
-    if [ "${_LIVE_MODE}" == "LIVE" ]; then
-      mysql -e "DROP USER '${_user_host}';" 2>>"${_GHOST_DBS_LOG}"
-    fi
-  done
-}
-
-# Step 5: Prompt admin to confirm ghost database deletion
-_confirm_deletion() {
-  local _ghost_db=$1
-  while true; do
-    echo -e "\nGhost database found: ${_ghost_db}"
-    read -p "Type the name of the ghost database '${_ghost_db}' to confirm deletion, or type 'NO' to skip: " _confirmation
-    if [ "${_confirmation}" == "${_ghost_db}" ]; then
-      echo "Confirmed. Proceeding with deletion of database ${_ghost_db}." | tee -a "${_GHOST_DBS_LOG}"
-      return 0  # Confirm deletion
-    elif [ "${_confirmation}" == "NO" ]; then
-      echo "Skipping deletion of database ${_ghost_db}." | tee -a "${_GHOST_DBS_LOG}"
-      return 1  # Skip deletion
-    else
-      echo "Invalid input. Please type the database name or 'NO' to skip." | tee -a "${_GHOST_DBS_LOG}"
-    fi
-  done
-}
-
-# Step 6: Drop ghost databases and their associated users after _confirmation
-echo "Databases to drop (not referenced in any vhost):" | tee -a "${_GHOST_DBS_LOG}"
-for _ghost_db in "${_ghost_databases[@]}"; do
-  if _confirm_deletion "${_ghost_db}"; then
-    # Drop the database
-    echo "Dropping database: ${_ghost_db}" | tee -a "${_GHOST_DBS_LOG}"
-    if [ "${_LIVE_MODE}" == "LIVE" ]; then
-      mysql -e "DROP DATABASE ${_ghost_db};" 2>>"${_GHOST_DBS_LOG}"
-    fi
-
-    # Drop the associated db_user (assuming db_user matches db_name)
-    _drop_mysql_user "${_ghost_db}"
+  # Provision sets db_user = db_name, so the dropped db's dedicated user is
+  # the same identifier across all its grant hosts — but only when nothing
+  # else grants through it.
+  local _db_user="$1" _u _h _other
+  case "${_db_user}" in
+    root|aegir|debian-sys-maint) return 0 ;;
+  esac
+  _other=$(_sql_probe "SELECT DISTINCT Db FROM mysql.db WHERE User='${_db_user}' AND Db != '${_db_user}' LIMIT 1")
+  if [ -n "${_other}" ]; then
+    _alrt "User ${_db_user} also holds grants on '${_other}' — user kept"
+    return 0
   fi
-done
+  while IFS=$'\t' read -r _u _h; do
+    [ "${_u}" = "${_db_user}" ] || continue
+    case "${_h}" in
+      *[!A-Za-z0-9_.%:-]*|"")
+        _alrt "Skipping user ${_u} with unexpected host '${_h}'"
+        continue
+        ;;
+    esac
+    _msg "Dropping user: ${_u}@${_h}"
+    if ! mysql -e "DROP USER '${_u}'@'${_h}';" 2>>"${_GHOST_DBS_LOG}"; then
+      _alrt "DROP USER '${_u}'@'${_h}' failed"
+      _DROP_FAILED=1
+    fi
+  done < <(_sql_must "SELECT User, Host FROM mysql.user WHERE User='${_db_user}'")
+}
+
+_drop_ghost_db() {
+  local _ghost_db="$1"
+  _interlock_check
+  _msg "Dropping database: ${_ghost_db}"
+  if ! mysql -e "DROP DATABASE \`${_ghost_db}\`;" 2>>"${_GHOST_DBS_LOG}"; then
+    _alrt "DROP DATABASE ${_ghost_db} failed — its user is kept"
+    _DROP_FAILED=1
+    return 1
+  fi
+  _drop_mysql_user "${_ghost_db}"
+}
+
+_confirm_deletion() {
+  local _ghost_db="$1" _confirmation
+  while true; do
+    echo -e "\nGhost database found: ${_ghost_db} ($(_db_size "${_ghost_db}"))"
+    if ! read -r -p "Type the name of the ghost database '${_ghost_db}' to confirm deletion, or type 'NO' to skip: " _confirmation; then
+      _msg "Input closed. Skipping deletion of database ${_ghost_db}."
+      return 1
+    fi
+    if [ "${_confirmation}" = "${_ghost_db}" ]; then
+      _msg "Confirmed. Proceeding with deletion of database ${_ghost_db}."
+      return 0
+    elif [ "${_confirmation}" = "NO" ]; then
+      _msg "Skipping deletion of database ${_ghost_db}."
+      _msg "Add '${_ghost_db}' to ${_PROTECT_CNF} to keep it out of future runs."
+      return 1
+    else
+      _msg "Invalid input. Please type the database name or 'NO' to skip."
+    fi
+  done
+}
+
+_auto_mode_checks() {
+  # Never act on a single snapshot: auto mode replays a reviewed DRY manifest
+  # and refuses on any drift since that review.
+  if [ "${_INCOMPLETE}" -ne 0 ]; then
+    _die "LIVE auto refused: resolution incomplete — fix the alerts above, re-run 'sqlclean', review, retry"
+  fi
+  if [ ! -e "${_MANIFEST}.reviewed" ]; then
+    _die "LIVE auto needs a reviewed manifest: run 'sqlclean', inspect ${_MANIFEST}, then cp ${_MANIFEST} ${_MANIFEST}.reviewed"
+  fi
+  local _age
+  _age=$(( $(date +%s) - $(stat -c %Y "${_MANIFEST}.reviewed" 2>/dev/null || echo 0) ))
+  if [ "${_age}" -gt "${_MANIFEST_MAX_AGE}" ]; then
+    _die "Reviewed manifest is older than $(( _MANIFEST_MAX_AGE / 3600 )) hours — re-run 'sqlclean' and review again"
+  fi
+  if ! diff -q <(for _db in "${_final_ghosts[@]}"; do echo "${_db}"; done) \
+       "${_MANIFEST}.reviewed" >/dev/null 2>&1; then
+    _die "Detection drifted since the reviewed manifest — diff ${_MANIFEST} against ${_MANIFEST}.reviewed, review, retry"
+  fi
+}
+
+if [ "${_LIVE_MODE}" = "LIVE" ]; then
+  if [ "${_AUTO_MODE}" = "auto" ]; then
+    _auto_mode_checks
+    _interlock_check
+    for _ghost_db in "${_final_ghosts[@]}"; do
+      _drop_ghost_db "${_ghost_db}"
+    done
+    rm -f "${_MANIFEST}.reviewed"
+  else
+    [ "${_INCOMPLETE}" -ne 0 ] && \
+      _alrt "Resolution incomplete — the ghost list may be too wide; review the alerts above before confirming anything"
+    _interlock_check
+    for _ghost_db in "${_final_ghosts[@]}"; do
+      if _confirm_deletion "${_ghost_db}"; then
+        _drop_ghost_db "${_ghost_db}"
+      fi
+    done
+  fi
+fi
 
 echo
-if [ "${_LIVE_MODE}" == "LIVE" ]; then
+if [ "${_LIVE_MODE}" = "LIVE" ]; then
   echo "Percona MySQL Server databases LIVE cleanup completed."
   echo "Check SQL cleanup actions logs in ${_GHOST_DBS_LOG}"
   echo "Remaining active databases are listed in ${_ACTIVE_DBS_LOG}"
 else
   echo "Percona MySQL Server databases DRY cleanup completed."
+  echo "Non-Aegir databases to keep belong in ${_PROTECT_CNF} (one name per line)."
+  echo "Verify recent database backups exist before any LIVE run."
   echo "To launch real cleanup use 'sqlclean LIVE' command."
 fi
 echo
+
+if [ "${_DROP_FAILED}" -ne 0 ]; then
+  echo "WARNING: at least one DROP failed — check ${_GHOST_DBS_LOG}"
+  exit 2
+fi
 
 exit 0
