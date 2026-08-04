@@ -1356,6 +1356,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/scan_nginx.sh" ] && rm -f ${_pthLog}/scan_nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/fpm_tune.sh" ] && rm -f ${_pthLog}/fpm_tune.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/sqlprobe.sh" ] && rm -f ${_pthLog}/sqlprobe.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/xdr9000.sh" ] && rm -f ${_pthLog}/xdr9000.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/batch_guard.sh" ] && rm -f ${_pthLog}/batch_guard.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${_pthLog}/system.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${_pthLog}/unbound.sh.ctrl.*.pid
@@ -1493,6 +1494,7 @@ _update_agents() {
   _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/tools/bin/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
   _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/tools/bin/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
   _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/tools/bin/loadreport" f95 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
+  _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/tools/bin/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/tools/bin/aptfast" f97 --guard /local/bin/aptfast
   _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f93 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f97 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
@@ -1553,6 +1555,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f77
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f02
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f80
     _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f77
@@ -1579,7 +1582,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f90
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f90 --guard mysql_cluster_backup.sh
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f78
-    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f84
+    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f83
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f88
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f88
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f98
@@ -4139,7 +4142,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --guard /local/bin/randpass
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f99 --guard /local/bin/setprio
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
-    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f99 --guard /local/bin/sqlclean
+    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f98 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f99 --guard /local/bin/sqlmagic
     _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f99 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --guard /local/bin/thinkdifferent
@@ -4155,6 +4158,7 @@ _update_boa_tools() {
       echo "The weblogx and owl.sh is running!"
     fi
     _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f99 --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --guard /local/bin/xdr9000
   fi
 
   if [ -e "${_optBin}/fixmounts" ] && [ ! -e "${_usrBin}/fixmounts" ]; then
@@ -4199,6 +4203,10 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/loadreport ${_usrBin}/loadreport
   fi
 
+  if [ ! -e "${_usrBin}/xdr9000" ] && [ -e "${_optBin}/xdr9000" ]; then
+    ln -sfn ${_optBin}/xdr9000 ${_usrBin}/xdr9000
+  fi
+
   if [ ! -e "${_usrBin}/floodreport" ] && [ -e "${_optBin}/floodreport" ]; then
     ln -sfn ${_optBin}/floodreport ${_usrBin}/floodreport
   fi
@@ -4218,7 +4226,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct}
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,perftest}
+  chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,perftest,xdr9000}
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps}
