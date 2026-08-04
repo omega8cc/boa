@@ -4363,6 +4363,17 @@ _satellite_prepare_setup_email_tpl() {
        sed -i "/21 (FTPS/d" ${_ROOT}/log/setupmail.txt
        wait
      fi
+     ### The template hardcodes the default SSH port; a self-hosted box may
+     ### run sshd on a custom _SSH_PORT (hosted boxes are forced to 22).
+     ### Substitute both the credentials line (anchored, so the FTPS line
+     ### stays untouched) and the /sqladmin unlock wording. Guarded: only a
+     ### validated numeric port is written, else the template's 22 stays.
+     if [[ "${_SSH_PORT}" =~ ^[0-9]+$ ]] && [ "${_SSH_PORT}" != "22" ]; then
+       sed -i "s/^port: 22 /port: ${_SSH_PORT} /" ${_ROOT}/log/setupmail.txt
+       wait
+       sed -i "s/(port 22)/(port ${_SSH_PORT})/" ${_ROOT}/log/setupmail.txt
+       wait
+     fi
     fi
   fi
 }
@@ -4691,6 +4702,20 @@ _satellite_make() {
   echo "export _SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
 
   echo "export _SPINNER=\"${_SPINNER}\""                     >> ${_writeTo}
+  # The emailed SSH port must be what sshd actually serves, never only a
+  # declared value: hosted boxes and a failed sshd -t validation force 22
+  # while the barracuda cnf may still say otherwise. Prefer the live sshd
+  # config, fall back to the cnf (inline comments stripped, never sourced
+  # -- sourcing a cnf slice resets config vars), then 22. Only a validated
+  # numeric value is handed off, so the email fails safe to the template's
+  # default.
+  _sshPrt=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2; exit}')
+  if [[ ! "${_sshPrt}" =~ ^[0-9]+$ ]]; then
+    _sshPrt=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
+      | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
+  fi
+  [[ "${_sshPrt}" =~ ^[0-9]+$ ]] || _sshPrt=22
+  echo "export _SSH_PORT=\"${_sshPrt}\""                     >> ${_writeTo}
   echo "export _STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_writeTo}
   echo "export _T_BUILD=\"${_T_BUILD}\""                     >> ${_writeTo}
   echo "export _THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_writeTo}
