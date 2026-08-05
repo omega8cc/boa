@@ -293,7 +293,11 @@ _SKYNET_MODE=ON
 ### the stack components BOA builds itself (Nginx, PHP, Percona) are excluded.
 ### A new security kernel is not activated by an unscheduled reboot; it is
 ### applied through BOA's own graceful reboot flow, with the existing gating
-### (hosted *.aegir.cc systems or /root/.allow.auto.reboot.cnf) unchanged.
+### (hosted *.aegir.cc systems or /root/.allow.auto.reboot.cnf), only inside
+### the 04:00-04:59 night window and never on a day with a scheduled
+### barracuda or octopus upgrade in /etc/crontab. Each activation reboot is
+### logged in /var/log/boa/kernel-reboot.log and announced by email alert
+### to the configured admin address.
 ###
 ### Enabled by default. To manage OS security updates yourself, opt out with:
 ###

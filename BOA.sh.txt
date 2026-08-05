@@ -3694,21 +3694,28 @@ _fix_wiped_nginx_config() {
       continue
     fi
     ### The barracuda run may stage a new kernel, and on auto-reboot boxes
-    ### autoupboa then fires a gated boa reboot that could land mid-octopus
-    ### (its safeguards have been beaten before). Same signals and box class
-    ### as autoupboa _if_new_kernel_reboot: defer arming until after the
-    ### reboot -- the wipe persists, so the next pass arms cleanly.
+    ### autoupboa fires a gated boa reboot that could land mid-octopus
+    ### (its safeguards have been beaten before). That reboot only fires
+    ### inside the 04:00-04:59 night window now, so an armed octopus run
+    ### is at risk only when it starts shortly before or inside that
+    ### window: defer arming during 02:00-04:59 while a kernel reboot is
+    ### pending -- the wipe persists, so the next pass arms cleanly. At
+    ### any other hour the reboot cannot fire and arming is safe.
     if [ -z "${_rBoot}" ]; then
       _rBoot=0
-      _hName="$(cat /etc/hostname 2> /dev/null | tr -d '\n')"
-      if [ -e "/root/.allow.auto.reboot.cnf" ] || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
-        if { [ -e "/run/reboot-required.pkgs" ] \
-          && grep -q linux /run/reboot-required.pkgs 2> /dev/null; } \
-          || [ "$(/opt/local/bin/boa info 2> /dev/null | grep -c Next)" -ge 1 ]; then
-          _rBoot=1
-        fi
-      fi
+      case "$(date +%H)" in
+        02|03|04)
+          _hName="$(cat /etc/hostname 2> /dev/null | tr -d '\n')"
+          if [ -e "/root/.allow.auto.reboot.cnf" ] || [ -e "/root/.host8.cnf" ] \
+            || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
+            if { [ -e "/run/reboot-required.pkgs" ] \
+              && grep -q linux /run/reboot-required.pkgs 2> /dev/null; } \
+              || [ "$(/opt/local/bin/boa info 2> /dev/null | grep -c Next)" -ge 1 ]; then
+              _rBoot=1
+            fi
+          fi
+        ;;
+      esac
     fi
     if [ "${_rBoot}" = "1" ]; then
       if [ "${_rBootLogged}" = "0" ]; then
@@ -4042,7 +4049,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f95 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f95 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f78 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f44 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f43 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard duplicity
