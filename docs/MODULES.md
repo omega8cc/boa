@@ -116,7 +116,7 @@ Contrib [F]orce[D]isabled
  hacked --------------------- [D6,D7] ----------- [FD]
  javascript_aggregator ------ [D6] -------------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
- linkchecker ---------------- [D6,D7] ----------- [FD]
+ linkchecker ---------------- [D6-D11] ---------- [FD] D8+ via weekly uninstall (self-DoS: synchronous URL probes in web cron)
  memcache ------------------- [D6,D7] ----------- [FD]
  memcache_admin ------------- [D6,D7] ----------- [FD]
  performance ---------------- [D6,D7] ----------- [FD]

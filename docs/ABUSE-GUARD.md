@@ -693,16 +693,17 @@ before any `try_files`, `@drupal` fallback, or FastCGI round-trip.
 ### The 444-vs-404 convention
 
 - **`return 444`** — nginx's "close the connection, send no response". Used for **abuse
-  denials**: a banned IP, a malformed asset-chain flood, a no-referer print/search probe, a
+  denials**: a banned IP, a malformed asset-chain flood, a no-referer search probe, a
   forged/training AI crawler, a scanner pattern, a TLS handshake on the plain port. It gives
   the attacker no signal (no status line, body, or timing leak) and is the cheapest
   refusal. It also feeds `scan_nginx`'s per-IP `444`-weight, so a 444'd request both costs
   the attacker a connection and accrues score toward a ban.
 - **`return 404`** — a normal, cacheable "not found", reserved for cheap content-shape
   misses where a recoverable error keeps the false-positive blast radius small: the
-  node-chain / lang-chain / content-chain URL-mutation floods, and special `.php`-probe
-  URLs. A 404 still avoids a PHP bootstrap, so it is nearly as cheap as 444 but safer when
-  the pattern *could* rarely match real content.
+  node-chain / lang-chain / content-chain URL-mutation floods, the no-referer print and
+  flag-toggle gates (their traffic class includes search crawlers, which surface a 444 as
+  a 5xx), and special `.php`-probe URLs. A 404 still avoids a PHP bootstrap, so it is
+  nearly as cheap as 444 but safer when the pattern *could* rarely match real content.
 
 > **A note on `return 403`.** `vhost_include.tpl.php` also emits `return 403` in several
 > places, but these are **not** abuse denials. Each is an `if ($cache_uid = '')`
@@ -790,7 +791,7 @@ Both chain guards apply on **full-domain vhosts only**. They are intentionally *
 (which match on `node/<id>` repetition and language-prefix runs, not asset paths) **do**
 apply on subdir vhosts.
 
-### Print no-referer gate → 444
+### Print no-referer gate → 404
 
 A printer-friendly or email-this-page request is always a *click from* a page, so it carries
 a `Referer`; a Referer-less hit to a `/print*` path is the botnet (100% of the observed flood
@@ -804,11 +805,45 @@ map $is_print_path$has_no_referrer $block_print_no_referer {
 }
 ```
 
-enforced as `if ($block_print_no_referer) { return 444; }`. It is **referrer- and
-path-shape only** — no module or version detection — so it is FP-safe and version-agnostic:
-it covers D7 print / print_mail / print_pdf / printer_and_pdf, D10+ entity_print +
-printable, and Backdrop, while content slugs (`/printing-services`, `/print/about-us`,
-`/printable-maps`) never match.
+enforced as `if ($block_print_no_referer) { return 404; }` — a static 404, **not** 444,
+because the no-Referer class also contains search crawlers following linked print pages: a
+444 reached them as Cloudflare 520 / proxy 502 and filled Search Console with 5xx noise,
+while a static 404 is equally php-fpm-free and the right crawl outcome for duplicate print
+content. It is **referrer- and path-shape only** — no module or version detection — so it
+is FP-safe and version-agnostic: it covers D7 print / print_mail / print_pdf /
+printer_and_pdf, D10+ entity_print + printable, and Backdrop, while content slugs
+(`/printing-services`, `/print/about-us`, `/printable-maps`) never match.
+
+### Flag-toggle no-referer gate → 404
+
+The Flag module exposes GET action links (`/flag/flag/<name>/<id>`,
+`/flag/unflag/<name>/<id>`) on every rendered page, and each hit is an uncacheable full
+Drupal bootstrap answered **302** — a status the log-scoring IDS never counts. One observed
+flood drove ~11k such bootstraps/day into a shared FPM pool from ~7k IPs at a **median of
+one request per IP** under rotated browser-family UAs, with a large share carrying
+HTML-entity-mangled tokens (`?destination=&amp%3Btoken=…`) — links scraped from raw HTML
+that no real browser produces. A real flag click always carries a same-origin `Referer`
+(and a Referer-less toggle would fail the anonymous CSRF token check anyway, bootstrapping
+only to redirect), so the gate composes the toggle path shape with `$has_no_referrer`,
+keyed on the method so only GET matches:
+
+```nginx
+map $uri $is_flag_toggle {
+  default 0;
+  "~*^/(?:[a-z]{2}(?:-[a-z]+)?/)?flag/(?:flag|unflag)/[a-z0-9_]+/[0-9]"  1;
+}
+map $request_method$is_flag_toggle$has_no_referrer $block_flag_no_referer {
+  default 0;
+  "GET11"  1;
+}
+```
+
+enforced as `if ($block_flag_no_referer) { return 404; }` — static 404 for the same
+crawler-safety reasons as the print gate above. The tail is anchored to a machine name plus
+a numeric entity id, so content slugs (`/flag-day`, `/flag/flag-history`) never match, and
+POST/AJAX-form flagging flows are untouched. Works on D7 Flag 2/3 and D8+ Flag 4 whether or
+not the module is enabled. To see the gate working, count `404`s on `/flag/` paths in the
+vhost access log — each one is a bootstrap that never reached php-fpm.
 
 ### TLS-on-plain → 444
 
