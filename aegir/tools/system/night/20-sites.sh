@@ -113,6 +113,93 @@ _check_if_force() {
   done
 }
 
+_resolve_site_php_bin() {
+  # Per-site CLI PHP for D8+ backend ops. One account routinely mixes 7.4
+  # D7 sites with 8.x D8+ sites, so the account-wide pin is not enough:
+  # the site row in multi-fpm.info wins, then account fpm.info, then
+  # cli.info. Empty result leaves the drush launcher default in charge.
+  local _mFpm="${_usEr}/static/control/multi-fpm.info"
+  local _phpV=
+  if [ -e "${_mFpm}" ]; then
+    _phpV=$(awk -v d="${_Dom}" '$1 == d { print $2; exit }' \
+      ${_mFpm} 2>/dev/null)
+  fi
+  if [ -z "${_phpV}" ] && [ -e "${_usEr}/static/control/fpm.info" ]; then
+    _phpV=$(head -n 1 ${_usEr}/static/control/fpm.info 2>/dev/null)
+  fi
+  if [ -z "${_phpV}" ] && [ -e "${_usEr}/static/control/cli.info" ]; then
+    _phpV=$(head -n 1 ${_usEr}/static/control/cli.info 2>/dev/null)
+  fi
+  _phpV=${_phpV//[^0-9.]/}
+  _sitePhpBin=
+  if [ ! -z "${_phpV}" ] && [ -x "/opt/php${_phpV//./}/bin/php" ]; then
+    _sitePhpBin="/opt/php${_phpV//./}/bin/php"
+  fi
+}
+
+_run_drush8plus_cmd() {
+  # D8+ twin of _run_drush8_cmd: same launcher, but DRUSH_PHP pinned to
+  # the site's own PHP -- the hardcoded php74 above breaks on D10+ cores.
+  # An empty _sitePhpBin falls through to the launcher default (:- catches
+  # the empty string).
+  if [ "${_DEBUG_DAILY}" = "YES" ] \
+    || [ -e "/root/.debug_daily.info" ]; then
+    _nOw=$(date +%y%m%d-%H%M%S)
+    echo "${_nOw} ${_HM_U} running drush8plus @${_Dom} $1"
+  fi
+  su -s /bin/bash - ${_HM_U} \
+    -c "DRUSH_PHP=${_sitePhpBin} /usr/bin/drush @${_Dom} $1" &> /dev/null
+  wait
+}
+
+_run_drush8plus_nosilent_cmd() {
+  su -s /bin/bash - ${_HM_U} \
+    -c "DRUSH_PHP=${_sitePhpBin} /usr/bin/drush @${_Dom} $1" 2>&1
+  wait
+}
+
+_disable_modules_d8plus() {
+  # D8+ has no pm-disable: uninstall is the only off switch, and core
+  # refuses it while a module's content entities exist. Honours the same
+  # _MODULES_SKIP valve as the D6/D7 helpers; dependency rules are pmu's
+  # own (it refuses when dependents exist), so there is no _MODULES_FORCE
+  # arm here. Outcomes are echoed loudly either way -- a silent failure
+  # would quietly keep a banned self-DoS module running for another week.
+  for m in $1; do
+    _SKIP=NO
+    if [ ! -z "${_MODULES_SKIP}" ]; then
+      _check_if_skip "$m"
+    fi
+    if [ "${_SKIP}" = "NO" ]; then
+      # No --status filter: grep for the machine name AND the Enabled
+      # column instead, so fork differences in filter support cannot
+      # produce a false "not enabled" skip.
+      _MODULE_T=$(_run_drush8plus_nosilent_cmd "pml --type=module \
+        | grep \($m\)" 2>&1)
+      if [[ "${_MODULE_T}" =~ "($m)" ]] \
+        && [[ "${_MODULE_T}" =~ "Enabled" ]]; then
+        if [ "$m" = "linkchecker" ]; then
+          # linkchecker 2.x stores results as linkcheckerlink content
+          # entities; the uninstall validator refuses pmu while any
+          # exist. Dropping them is the point of the ban -- the module
+          # holds no client content, only its own probe results.
+          _run_drush8plus_cmd "sqlq \"DELETE FROM linkchecker_index\""
+          _run_drush8plus_cmd "sqlq \"DELETE FROM linkchecker_link\""
+        fi
+        _run_drush8plus_cmd "pmu $m -y"
+        _MODULE_T=$(_run_drush8plus_nosilent_cmd "pml --type=module \
+          | grep \($m\)" 2>&1)
+        if [[ "${_MODULE_T}" =~ "($m)" ]] \
+          && [[ "${_MODULE_T}" =~ "Enabled" ]]; then
+          echo "$m could NOT be uninstalled in ${_Dom} (dependents or entities)"
+        else
+          echo "$m uninstalled in ${_Dom}"
+        fi
+      fi
+    fi
+  done
+}
+
 _disable_modules_with_drush8() {
   for m in $1; do
     _SKIP=NO
@@ -1078,6 +1165,18 @@ _fix_modules() {
       if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
         _enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
       fi
+    fi
+  elif [ -e "${_Plr}/core/lib/Drupal.php" ]; then
+    ###
+    ### D8+ platform (the alias root is the docroot; core/lib/Drupal.php
+    ### is the D8-11 marker and does not exist in Backdrop). Off-list
+    ### only: enabling modules on config-managed D8+ sites from the
+    ### outside would create config drift, so there is no ON twin.
+    ###
+    _MODX=ON
+    if [ ! -z "${_MODULES_OFF_EIGHT_PLUS}" ]; then
+      _resolve_site_php_bin
+      _disable_modules_d8plus "${_MODULES_OFF_EIGHT_PLUS}"
     fi
   fi
 }
