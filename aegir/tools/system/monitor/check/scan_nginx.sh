@@ -51,7 +51,11 @@ IFS=$'\n\t'
 
 # Constants
 _TIMES=$(date +%y%m%d-%H%M%S)
-_MYIP=$(< /root/.found_correct_ipv4.cnf)
+# Guarded read: this runs every few seconds from the nginx guard, and a
+# missing cache file must not spray shell errors into the monitor log.
+_MYIP=""
+[ -e "/root/.found_correct_ipv4.cnf" ] \
+  && _MYIP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
 
 # Function to perform rounded division
 _inc_round_division() {
