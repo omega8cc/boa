@@ -49,10 +49,12 @@ Every generated fragment always allows, regardless of the listed IPs:
 - `127.0.0.1` and `::1` — loopback;
 - the server's own IPv4, from `/root/.found_correct_ipv4.cnf` (BOA tracks no server IPv6);
 - **every established inbound SSH client IP**, read from `netstat -tn` (peers on an
-  `ESTABLISHED` `:22` connection), **IPv4 or IPv6** — the peer address is taken by stripping
-  the trailing `:port`, so both families are harvested, and each is validated before it
-  reaches an `allow` line. BOA uses `netstat` here, not `who --ips`, because `who --ips` is
-  unavailable on Excalibur and newer.
+  `ESTABLISHED` connection to any local SSH port — the union of `22`, the cnf `_SSH_PORT`
+  and every port the live sshd config serves, so the harvest follows a custom port yet can
+  never go dark on a default-port box), **IPv4 or IPv6** — the peer address is taken by
+  stripping the trailing `:port`, so both families are harvested, and each is validated
+  before it reaches an `allow` line. BOA uses `netstat` here, not `who --ips`, because
+  `who --ips` is unavailable on Excalibur and newer.
 
 So an admin working over SSH is added to every site's allow-list automatically and
 cannot be shut out mid-change. The SSH set is part of the change-gate (below), so a new
