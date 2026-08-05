@@ -335,7 +335,21 @@ _phase_ban_config() {
 _phase_regression() {
   _head "regression spot-checks"
   if command -v netstat >/dev/null 2>&1; then
-    local _ssh; _ssh=$(netstat -tn 2>/dev/null | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { print $5 }' | head -1)
+    # Same port resolution ip_access.sh uses: match the union of 22, the
+    # cnf _SSH_PORT (inline comments stripped, never sourced) and every
+    # port the live sshd config serves -- the declared cnf value is not
+    # always the effective one, and a hardcoded :22 would report a false
+    # negative on a genuine custom-port box.
+    local _p _ports="22" _cnf_port _sshd_ports
+    _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
+      | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
+    _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2}')
+    for _p in ${_cnf_port} ${_sshd_ports}; do
+      if [[ "${_p}" =~ ^[0-9]+$ ]] && [[ ! " ${_ports} " =~ " ${_p} " ]]; then
+        _ports="${_ports} ${_p}"
+      fi
+    done
+    local _ssh; _ssh=$(netstat -tn 2>/dev/null | awk -v p=":(${_ports// /|})$" '$4 ~ p && $6 == "ESTABLISHED" { print $5 }' | head -1)
     [[ -n "${_ssh}" ]] && _pass "netstat sees an established SSH peer (ip_access anti-lockout source works)" \
       || _note "no established SSH peer via netstat (fine if you are on console)"
   else

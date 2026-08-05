@@ -653,6 +653,15 @@ _mode_detection() {
             _XTRAS_LIST="FOO"
           fi
         fi
+        ### The hosted welcome email documents /sqladmin, so hosted boxes
+        ### must actually get Adminer -- same auto-add LOCAL mode does.
+        if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])ADM([[:space:]]|$) ]]; then
+          if [ -n "${_XTRAS_LIST}" ]; then
+            _XTRAS_LIST="${_XTRAS_LIST} ADM"
+          else
+            _XTRAS_LIST="ADM"
+          fi
+        fi
       fi
       _AUTOPILOT=YES
       _SSH_PORT=22

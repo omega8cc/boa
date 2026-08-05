@@ -431,8 +431,10 @@ _rewrite_log_stamps() {
   # under the OLD name, declares the healthy renamed platform a zombie and
   # moves it to backups/system before a rebuild that cannot bootstrap, and
   # each run re-stamps the stale value so it never self-heals. setupmail.txt
-  # is the rendered welcome-mail template BOA re-reads to (re)send. Run
-  # logs and dated files in log/ are history and stay untouched.
+  # is the rendered welcome mail kept as the on-disk credentials copy the
+  # operator is pointed at (the upgrade resend reads only upgrademail.txt,
+  # never this file). Run logs and dated files in log/ are history and
+  # stay untouched.
   [[ "${_AEGIR_ROOT}" == /data/disk/* ]] || return 0
   local _F _OWN _MODE _NEEDS
   for _F in "${_AEGIR_ROOT}/log/domain.txt" "${_AEGIR_ROOT}/log/setupmail.txt"; do
@@ -441,14 +443,17 @@ _rewrite_log_stamps() {
     if _file_needs_rename "${_F}"; then
       _NEEDS=YES
     fi
-    # Account axis: the stamps carry the panel FRONT "<acct>.<fqdn>", so a
-    # --new-account run must also rename the account label or the next
-    # satellite upgrade probes a front that does not exist on this box —
-    # the same zombie class on the account axis. Checked against BOTH
-    # hostnames so the equal-hostname account-move corner (where the
-    # host-axis gate no-ops) still qualifies the file.
+    # Account axis: the stamps carry the panel FRONT "<acct>.<fqdn>" AND
+    # the credential lines' "<acct>.ftp" login form, so a --new-account
+    # run must rename both or the next satellite upgrade probes a front
+    # that does not exist on this box — the same zombie class on the
+    # account axis — while the credential lines keep naming the retired
+    # account. Checked against BOTH hostnames and the .ftp form so the
+    # equal-hostname account-move corner (where the host-axis gate
+    # no-ops) still qualifies the file, even if the panel-URL wording
+    # ever changes.
     if [ "${_ACCT_AXIS}" = "YES" ] \
-      && grep -Eq "${_OLD_ACCT}\.(${_OLD_HOST}|${_NEW_HOST})" "${_F}" 2>/dev/null; then
+      && grep -Eq "${_OLD_ACCT}\.(${_OLD_HOST}|${_NEW_HOST}|ftp\b)" "${_F}" 2>/dev/null; then
       _NEEDS=YES
     fi
     [ "${_NEEDS}" = "YES" ] || continue
@@ -458,6 +463,11 @@ _rewrite_log_stamps() {
     _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
     if [ "${_ACCT_AXIS}" = "YES" ]; then
       _maybe_run sed -i "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" \'"${_F}"\'
+      # The credential lines write the account as "<acct>.ftp" (username:
+      # / user: / login wording), a form the front-axis sed above never
+      # matches — without this the file mixes the old account in
+      # credential lines with the new one in URLs.
+      _maybe_run sed -i "s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g" \'"${_F}"\'
     fi
     # A root-side sed -i must never leave a backend-user-owned stamp
     # root:root — restore the captured identity explicitly.

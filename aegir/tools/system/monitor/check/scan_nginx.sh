@@ -51,7 +51,11 @@ IFS=$'\n\t'
 
 # Constants
 _TIMES=$(date +%y%m%d-%H%M%S)
-_MYIP=$(< /root/.found_correct_ipv4.cnf)
+# Guarded read: this runs every few seconds from the nginx guard, and a
+# missing cache file must not spray shell errors into the monitor log.
+_MYIP=""
+[ -e "/root/.found_correct_ipv4.cnf" ] \
+  && _MYIP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
 
 # Function to perform rounded division
 _inc_round_division() {
@@ -2108,7 +2112,22 @@ fi
 # ==============================
 
 _get_ssh_ips() {
-  netstat -tn | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' | sort | uniq
+  # Same port resolution ip_access.sh uses: sshd may serve a custom
+  # _SSH_PORT, and the declared cnf value is not always the effective one
+  # (hosted boxes and a failed sshd -t validation force 22). Match the
+  # union of 22, the cnf value (inline comments stripped, never sourced)
+  # and every port the live sshd config serves, so the logged-in shield
+  # can never go dark on a default-port box.
+  local _p _ports="22" _cnf_port _sshd_ports
+  _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
+    | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
+  _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2}')
+  for _p in ${_cnf_port} ${_sshd_ports}; do
+    if [[ "${_p}" =~ ^[0-9]+$ ]] && [[ ! " ${_ports} " =~ " ${_p} " ]]; then
+      _ports="${_ports} ${_p}"
+    fi
+  done
+  netstat -tn | awk -v p=":(${_ports// /|})$" '$4 ~ p && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' | sort | uniq
 }
 
 if command -v netstat &>/dev/null; then

@@ -158,10 +158,60 @@ _find_correct_ip() {
   fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+    ### Self-heal a cache orphaned by a server migration: when the cached
+    ### value is no longer any local address AND the box carries a real
+    ### public IPv4 (so never on 1:1-NAT topologies, where the egress IP
+    ### is legitimately not local -- incl. CGNAT 100.64/10), re-probe at
+    ### most ONCE per process with hard timeouts and replace the cache
+    ### only on a validated, different dotted quad. A failed probe never
+    ### invalidates a working cache. The city memo is dropped on replace,
+    ### else it stays pinned to the old address forever.
+    if [ -z "${_ipHealDone}" ] && [ -n "${_LOC_IP}" ]; then
+      _ipHealDone=YES
+      _locV4s=$(ip -4 addr show scope global 2>/dev/null \
+        | awk '/inet /{sub(/\/.*/,"",$2); print $2}')
+      if [ -n "${_locV4s}" ] && ! echo "${_locV4s}" | grep -qx "${_LOC_IP}"; then
+        _hasPubV4=NO
+        for _v4 in ${_locV4s}; do
+          case "${_v4}" in
+            10.*|127.*|169.254.*|192.168.*) ;;
+            172.1[6-9].*|172.2[0-9].*|172.3[01].*) ;;
+            100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*) ;;
+            *) _hasPubV4=YES ;;
+          esac
+        done
+        if [ "${_hasPubV4}" = "YES" ]; then
+          _freshV4=$(curl -4 -s --connect-timeout 5 --max-time 15 \
+            https://api.ipify.org 2>/dev/null | tr -d '\n')
+          if [[ ! "${_freshV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+            _freshV4=$(curl -4 -s --connect-timeout 5 --max-time 15 \
+              http://ipv4.icanhazip.com 2>/dev/null | tr -d '\n')
+          fi
+          if [[ "${_freshV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
+            && [ "${_freshV4}" != "${_LOC_IP}" ]; then
+            _LOC_IP="${_freshV4}"
+            echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
+            rm -f /root/.found_correct_city.cnf
+          fi
+        fi
+      fi
+    fi
   else
     _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
       _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
+    fi
+    ### Last-resort fallback removed in 2020 in favour of the remote
+    ### probes, restored as a TAIL: when BOTH probes fail (mirror or
+    ### network outage), resolve the box's own name locally -- callers
+    ### assign it via _LOC_DOM right before calling. Single validated
+    ### dotted quad only; anything else stays empty (fail-safe).
+    if [ -z "${_LOC_IP}" ] && [ -n "${_LOC_DOM}" ]; then
+      _LOC_IP=$(getent ahostsv4 "${_LOC_DOM}" 2>/dev/null | awk '{print $1; exit}')
+      [[ "${_LOC_IP}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || _LOC_IP=""
+      ### Stock images map the FQDN to 127.0.1.1 in /etc/hosts; a loopback
+      ### is never the box's public address, so leave empty instead.
+      case "${_LOC_IP}" in 127.*) _LOC_IP="" ;; esac
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -818,6 +868,18 @@ _satellite_cnf() {
         _msg "EXIT: in the _MY_OCTO_EMAIL **and** _CLIENT_EMAIL variables"
         _clean_pid_exit
       fi
+    fi
+    ### A client control-panel account can never exist when _CLIENT_EMAIL
+    ### equals _MY_OCTO_EMAIL: the uid-1 super-admin already owns that
+    ### address and hosting_client refuses a duplicate, so the welcome
+    ### email would ship control-panel login details for an account that
+    ### does not exist. Refuse up front, before anything is created.
+    ### Compared with mutt-era escaping stripped, so a\@b matches a@b.
+    if [ -n "${_CLIENT_EMAIL}" ] \
+      && [ "${_MY_OCTO_EMAIL//\\/}" = "${_CLIENT_EMAIL//\\/}" ]; then
+      _msg "EXIT: _CLIENT_EMAIL must not be the same address as _MY_OCTO_EMAIL"
+      _msg "EXIT: the control panel needs a separate client email for its account"
+      _clean_pid_exit
     fi
     _msg "INFO: Creating your ${_octCnf} config file"
     sleep 1
@@ -4353,8 +4415,24 @@ _satellite_prepare_setup_email_tpl() {
      wait
      sed -i "s/FN8rXcQn/${_PASWD}/g" ${_ROOT}/log/setupmail.txt
      wait
-     sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
-     wait
+     ### The template placeholder is a real foreign address, so only a
+     ### validated IPv4 may replace it; anything else keeps _ipOk=NO and
+     ### the GOING LIVE strip below removes the whole section instead.
+     _ipOk=NO
+     if [ -n "${_THISHTIP}" ]; then
+       if [ -e "/usr/bin/sipcalc" ]; then
+         _IP_TEST=$(sipcalc ${_THISHTIP} 2>&1)
+         [[ ! "${_IP_TEST}" =~ "ERR" ]] && _ipOk=YES
+       elif [[ "${_THISHTIP}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
+         _ipOk=YES
+       fi
+     fi
+     if [ "${_ipOk}" = "YES" ]; then
+       sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
+       wait
+     else
+       _msg "ALRT: _THISHTIP is empty or invalid; dropping the GOING LIVE section from the welcome email"
+     fi
      sed -i "s/boa\.version/${_X_VERSION}/g" ${_ROOT}/log/setupmail.txt
      wait
      ### FTPS is an opt-in xtra; drop its port line when Pure-FTPd is absent
@@ -4362,6 +4440,38 @@ _satellite_prepare_setup_email_tpl() {
      if [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
        sed -i "/21 (FTPS/d" ${_ROOT}/log/setupmail.txt
        wait
+     fi
+     ### The template hardcodes the default SSH port; a self-hosted box may
+     ### run sshd on a custom _SSH_PORT (hosted boxes are forced to 22).
+     ### Substitute both the credentials line (anchored, so the FTPS line
+     ### stays untouched) and the /sqladmin unlock wording. Guarded: only a
+     ### validated numeric port is written, else the template's 22 stays.
+     if [[ "${_SSH_PORT}" =~ ^[0-9]+$ ]] && [ "${_SSH_PORT}" != "22" ]; then
+       sed -i "s/^port: 22 /port: ${_SSH_PORT} /" ${_ROOT}/log/setupmail.txt
+       wait
+       sed -i "s/(port 22)/(port ${_SSH_PORT})/" ${_ROOT}/log/setupmail.txt
+       wait
+     fi
+     ### GOING LIVE tells the client to publish this box's address as an
+     ### A record; strip the whole section (rule line above the heading
+     ### through the section's closing rule line) when there is nothing
+     ### publishable: LOCAL-network topologies (RFC1918 never belongs in
+     ### client DNS) or an empty/invalid _THISHTIP (the placeholder would
+     ### otherwise ship as a real foreign address). Bounds are computed
+     ### from the rendered file, so a template reflow cannot misdelete.
+     if [ -n "${_LOCAL_NETWORK_IP}" ] || [ "${_ipOk}" != "YES" ]; then
+       _glHead=$(grep -n '^GOING LIVE$' ${_ROOT}/log/setupmail.txt \
+         | head -n 1 | cut -d: -f1)
+       if [ -n "${_glHead}" ] && [ "${_glHead}" -gt 1 ]; then
+         _glTop=$(( _glHead - 1 ))
+         ### Literal 40-dash rule line: mawk has no {n} interval support.
+         _glEnd=$(awk -v s="${_glHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
+           ${_ROOT}/log/setupmail.txt)
+         if [ -n "${_glEnd}" ]; then
+           sed -i "${_glTop},${_glEnd}d" ${_ROOT}/log/setupmail.txt
+           wait
+         fi
+       fi
      fi
     fi
   fi
@@ -4386,7 +4496,20 @@ _satellite_set_client_login() {
   # set its password to the shell password. Matched by _CLIENT_EMAIL; the
   # uid>1 guard keeps the super-admin (uid 1) untouched. Runs as the octopus
   # user via the same drush pattern used above; _PASWD exists by this point.
-  su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ev '\$u = user_load_by_mail(\"${_CLIENT_EMAIL}\"); if (\$u && \$u->uid > 1) { user_save(\$u, array(\"name\" => \"${_USER}.ftp\", \"pass\" => \"${_PASWD}\")); }'" &> /dev/null
+  # Never fire-and-forget: the welcome email already states this login, so
+  # any silent failure (bootstrap, DB, missing user) must become a loud
+  # ALRT -- same sentinel pattern as _ensure_hosting_dispatch_enabled.
+  local _login_ev _login_fix
+  _login_ev="\$u = user_load_by_mail(\"${_CLIENT_EMAIL}\"); if (\$u && \$u->uid > 1 && user_save(\$u, array(\"name\" => \"${_USER}.ftp\", \"pass\" => \"${_PASWD}\"))) { echo \"RENAMED\"; }"
+  _login_fix=$(su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster ev '${_login_ev}'" 2>/dev/null)
+  if [[ "${_login_fix}" =~ RENAMED ]]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: control-panel login for ${_USER} set to ${_USER}.ftp"
+    fi
+  else
+    _msg "ALRT: control-panel login for ${_USER} was not set"
+    _msg "ALRT: welcome email login details for the control panel will be wrong"
+  fi
 }
 
 ###---### Sending setup email.
@@ -4404,53 +4527,69 @@ _satellite_send_welcome_email() {
     _TIME=$(date)
     _Q="Your Ægir Install on ${_TIME} [${_USER}]"
     echo ${_TIME} > ${_ROOT}/log/date-init.txt
-    if [ -e "${_ROOT}/log/setupmail.txt" ] \
-      || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
-      || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
+    ### Historic renders can exist under legacy names; resolve the body
+    ### once and use the SAME file for the guard and the send, so the
+    ### guard can never pass on a name the send does not read (that
+    ### combination mailed an empty credentials email).
+    _mailSrc=""
+    for _mailCand in setupmail.txt legacy_setupmail.txt latest_setupmail.txt; do
+      if [ -e "${_ROOT}/log/${_mailCand}" ]; then
+        _mailSrc="${_ROOT}/log/${_mailCand}"
+        break
+      fi
+    done
+    if [ -n "${_mailSrc}" ]; then
       ### No send-time filter: the mailed body must stay byte-identical to
       ### the on-disk copy the operator is told to fall back to.
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
         && [ -n "${_CLIENT_EMAIL}" ]; then
         if [ -n "${_MY_OCTO_EMAIL}" ]; then
-          cat ${_ROOT}/log/setupmail.txt \
-            | s-nail -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
+          cat ${_mailSrc} \
+            | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+            -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         else
-          cat ${_ROOT}/log/setupmail.txt \
-            | s-nail -s "${_Q}" "${_CLIENT_EMAIL}" \
+          cat ${_mailSrc} \
+            | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+            -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         fi
       fi
       if [ "${_MAIL_SENT}" = "NO" ]; then
         _msg "ALRT: Welcome email for ${_USER} was NOT sent"
-        _msg "ALRT: Credentials are in ${_ROOT}/log/setupmail.txt"
+        _msg "ALRT: Credentials are in ${_mailSrc}"
       fi
     fi
   else
-    if [ "${_DIST_INSTALL}" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ]; then
+    ### _SEND_UPGRADE_EMAIL=NO is an operator off-switch for the upgrade
+    ### notice only; the INIT welcome email always sends.
+    if [ "${_DIST_INSTALL}" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ] \
+      && [ "${_SEND_UPGRADE_EMAIL}" != "NO" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
       _TIME=$(date)
       _Q="[${_X_VERSION}] Ægir Upgrade [${_USER}]"
       echo ${_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
-      if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
-        _mailBody="${_ROOT}/log/upgrademail.txt"
-      else
-        _mailBody="${_ROOT}/log/setupmail.txt"
-      fi
+      ### Never fall back to the INIT-time setupmail render: it carries the
+      ### original password under a Welcome body, so resending it under an
+      ### Upgrade subject would mail stale credentials. No upgrademail.txt
+      ### means no send, only the loud ALRT trail below.
+      _mailBody="${_ROOT}/log/upgrademail.txt"
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
         && [ -e "${_mailBody}" ] \
         && [ -n "${_CLIENT_EMAIL}" ]; then
         if [ -n "${_MY_OCTO_EMAIL}" ]; then
           cat ${_mailBody} \
-            | s-nail -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
+            | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+            -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         else
           cat ${_mailBody} \
-            | s-nail -s "${_Q}" "${_CLIENT_EMAIL}" \
+            | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+            -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         fi
       fi
@@ -4657,6 +4796,9 @@ _satellite_make() {
   echo "export _LAST_ALL=\"${_LAST_ALL}\""                   >> ${_writeTo}
   echo "export _LAST_HMR=\"${_LAST_HMR}\""                   >> ${_writeTo}
   echo "export _LASTNUM=\"${_LASTNUM}\""                     >> ${_writeTo}
+  # The children must know a LOCAL-network topology to keep RFC1918
+  # addresses out of the rendered welcome email's DNS guidance.
+  echo "export _LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${_writeTo}
   echo "export _MY_OCTO_EMAIL=\"${_MY_OCTO_EMAIL}\""         >> ${_writeTo}
   echo "export _MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_writeTo}
   echo "export _NOW=\"${_NOW}\""                             >> ${_writeTo}
@@ -4691,6 +4833,20 @@ _satellite_make() {
   echo "export _SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
 
   echo "export _SPINNER=\"${_SPINNER}\""                     >> ${_writeTo}
+  # The emailed SSH port must be what sshd actually serves, never only a
+  # declared value: hosted boxes and a failed sshd -t validation force 22
+  # while the barracuda cnf may still say otherwise. Prefer the live sshd
+  # config, fall back to the cnf (inline comments stripped, never sourced
+  # -- sourcing a cnf slice resets config vars), then 22. Only a validated
+  # numeric value is handed off, so the email fails safe to the template's
+  # default.
+  _sshPrt=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2; exit}')
+  if [[ ! "${_sshPrt}" =~ ^[0-9]+$ ]]; then
+    _sshPrt=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
+      | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
+  fi
+  [[ "${_sshPrt}" =~ ^[0-9]+$ ]] || _sshPrt=22
+  echo "export _SSH_PORT=\"${_sshPrt}\""                     >> ${_writeTo}
   echo "export _STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_writeTo}
   echo "export _T_BUILD=\"${_T_BUILD}\""                     >> ${_writeTo}
   echo "export _THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_writeTo}
@@ -5698,6 +5854,9 @@ _satellite_letsencrypt_vhost_setup() {
         _KTLS_TEST=$(grep KTLS ${_Ssl} 2>&1)
         _RPRT_TEST=$(grep reuseport ${_Ssl} 2>&1)
         _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
+        ### The /sqladmin crawler drop and css allow-list arrived together,
+        ### so their absence marks a pre-hardening vhost needing one regen.
+        _SQLADMCRWL_TEST=$(grep is_crawler ${_Ssl} 2>&1)
         _HTTPVER_TEST=$(grep proxy_http_version ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
@@ -5721,6 +5880,7 @@ _satellite_letsencrypt_vhost_setup() {
           || [ "${_KTLS_NEEDS_UPDATE}" = "YES" ] \
           || [[ "${_RPRT_TEST}" =~ "reuseport" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]] \
+          || [[ ! "${_SQLADMCRWL_TEST}" =~ "is_crawler" ]] \
           || [[ ! "${_HTTPVER_TEST}" =~ "proxy_http_version" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
