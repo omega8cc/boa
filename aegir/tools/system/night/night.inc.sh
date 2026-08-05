@@ -457,6 +457,7 @@ night_emit_run_env() {
     echo "export _MODULES_ON_SIX=\"${_MODULES_ON_SIX}\""
     echo "export _MODULES_OFF_SEVEN=\"${_MODULES_OFF_SEVEN}\""
     echo "export _MODULES_OFF_SIX=\"${_MODULES_OFF_SIX}\""
+    echo "export _MODULES_OFF_EIGHT_PLUS=\"${_MODULES_OFF_EIGHT_PLUS}\""
     echo "export _hostedSys=\"${_hostedSys}\""
     echo "export _APT_UPDATE=\"${_APT_UPDATE}\""
     echo "export _PERMISSIONS_FIX=\"${_PERMISSIONS_FIX}\""

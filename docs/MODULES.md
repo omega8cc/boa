@@ -116,7 +116,7 @@ Contrib [F]orce[D]isabled
  hacked --------------------- [D6,D7] ----------- [FD]
  javascript_aggregator ------ [D6] -------------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
- linkchecker ---------------- [D6,D7] ----------- [FD]
+ linkchecker ---------------- [D6-D11] ---------- [FD] on D6/D7; on D8+ detect-and-alert only (see below). Banned: self-DoS (synchronous URL probes in web cron)
  memcache ------------------- [D6,D7] ----------- [FD]
  memcache_admin ------------- [D6,D7] ----------- [FD]
  performance ---------------- [D6,D7] ----------- [FD]
@@ -174,3 +174,22 @@ Hostmaster [E]xtensions [M]aster [S]atellite:
  revision_deletion ---------- [D7] ------ [S] [B] [FE] [ES]
  userprotect ---------------- [D7] ------ [S] [B] [FE] [ES]
 ```
+
+## D8+ enforcement: detect and alert only — never Drush8
+
+A Drush8 full bootstrap against a Drupal 8+ site can corrupt the site's
+internals (cached container/router state), so outside the controlled Aegir
+backend path BOA never bootstraps a D8+ site with Drush8 — including this
+module policy. On D8+ platforms the Tuesday pass therefore only PROBES each
+site's database directly (root mysql; db name parsed from the site
+drushrc; on D8+ a banned module's table presence is an exact installed
+signal, since uninstall drops the schema and no disabled state exists) and
+mails the operator (`_MY_EMAIL`) on a hit, repeating every Tuesday until the
+module is gone. `_MODULES_SKIP` whitelists a module on D8+ exactly as it
+does on D6/D7.
+
+To remove a banned module from a D8+ site, use the site's own admin UI in
+web context: **Extend → Uninstall → the module**. For `linkchecker`, core's
+uninstall page first offers the required *Remove LinkChecker link type
+entities* step — complete it, then uninstall. Do **not** run Drush8 commands
+against a Drupal 8+ site.
