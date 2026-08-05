@@ -305,11 +305,15 @@ if [ "${_DOW}" = "2" ]; then
     supercron \
     watchdog_live \
     xhprof"
-  # D8+ twin of the lists above (uninstall -- D8+ dropped pm-disable).
-  # linkchecker synchronously probes external URLs inside web cron, holding
-  # an FPM worker to the FastCGI kill; the killed queue re-runs forever, a
-  # permanent self-DoS on shared pools, so it is banned on every core like
-  # it always was on D6/D7.
+  # D8+ twin of the lists above -- DETECTION list only: D8+ sites are
+  # never touched with Drush8 (a full Drush8 bootstrap can corrupt a
+  # D8+ site's internals; only the controlled Aegir backend path may),
+  # so the Tuesday pass probes each site's database directly and mails
+  # the operator, who removes the module via the site's own admin UI.
+  # linkchecker synchronously probes external URLs inside web cron,
+  # holding an FPM worker to the FastCGI kill; the killed queue re-runs
+  # forever, a permanent self-DoS on shared pools, so it is banned on
+  # every core like it always was on D6/D7.
   _MODULES_OFF_EIGHT_PLUS="linkchecker"
 else
   _MODULES_ON_SEVEN="robotstxt"

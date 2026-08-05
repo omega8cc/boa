@@ -113,89 +113,75 @@ _check_if_force() {
   done
 }
 
-_resolve_site_php_bin() {
-  # Per-site CLI PHP for D8+ backend ops. One account routinely mixes 7.4
-  # D7 sites with 8.x D8+ sites, so the account-wide pin is not enough:
-  # the site row in multi-fpm.info wins, then account fpm.info, then
-  # cli.info. Empty result leaves the drush launcher default in charge.
-  local _mFpm="${_usEr}/static/control/multi-fpm.info"
-  local _phpV=
-  if [ -e "${_mFpm}" ]; then
-    _phpV=$(awk -v d="${_Dom}" '$1 == d { print $2; exit }' \
-      ${_mFpm} 2>/dev/null)
-  fi
-  if [ -z "${_phpV}" ] && [ -e "${_usEr}/static/control/fpm.info" ]; then
-    _phpV=$(head -n 1 ${_usEr}/static/control/fpm.info 2>/dev/null)
-  fi
-  if [ -z "${_phpV}" ] && [ -e "${_usEr}/static/control/cli.info" ]; then
-    _phpV=$(head -n 1 ${_usEr}/static/control/cli.info 2>/dev/null)
-  fi
-  _phpV=${_phpV//[^0-9.]/}
-  _sitePhpBin=
-  if [ ! -z "${_phpV}" ] && [ -x "/opt/php${_phpV//./}/bin/php" ]; then
-    _sitePhpBin="/opt/php${_phpV//./}/bin/php"
-  fi
+_d8plus_module_sentinel_table() {
+  # Maps a banned module to the database table whose existence proves it
+  # is installed on a D8+ site. D8+ has no disabled-but-installed state
+  # (uninstall drops the schema), so table presence is an exact signal.
+  # Echoes nothing for a module without a wired sentinel -- the caller
+  # reports that loudly instead of silently skipping.
+  case "$1" in
+    linkchecker) echo "linkchecker_link" ;;
+  esac
 }
 
-_run_drush8plus_cmd() {
-  # D8+ twin of _run_drush8_cmd: same launcher, but DRUSH_PHP pinned to
-  # the site's own PHP -- the hardcoded php74 above breaks on D10+ cores.
-  # An empty _sitePhpBin falls through to the launcher default (:- catches
-  # the empty string).
-  if [ "${_DEBUG_DAILY}" = "YES" ] \
-    || [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8plus @${_Dom} $1"
+_check_modules_d8plus_policy() {
+  # D8+ arm of the module policy: DETECT + ALERT ONLY. Ruling 2026-08-05:
+  # a Drush8 full bootstrap against Drupal 8+ can corrupt the site's
+  # internals (cached container/router state), so outside Aegir's own
+  # controlled backend path nothing may bootstrap a D8+ site -- this
+  # probe therefore never runs Drush at all: it reads the site database
+  # directly (root mysql; db name parsed from the site drushrc exactly
+  # like sqlclean does) and mails the operator on a hit. Remediation
+  # stays with the operator via the site's own admin UI (Extend ->
+  # Uninstall runs in web context and its uninstall page offers the
+  # content-entity removal linkchecker needs) -- never via Drush8.
+  # Honours the same _MODULES_SKIP valve as the D6/D7 helpers. Exact
+  # table-name match: BOA provisions one unprefixed DB per site, so a
+  # prefixed edge case is simply not detected rather than false-alerted.
+  local _m _tbl _dbName _hit _hstN
+  _dbName=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
+    "${_Dir}/drushrc.php" 2>/dev/null | head -n 1)
+  if [ -z "${_dbName}" ]; then
+    echo "D8PLUS-POLICY: no db_name in ${_Dir}/drushrc.php for ${_Dom} -- probe skipped"
+    return
   fi
-  su -s /bin/bash - ${_HM_U} \
-    -c "DRUSH_PHP=${_sitePhpBin} /usr/bin/drush @${_Dom} $1" &> /dev/null
-  wait
-}
-
-_run_drush8plus_nosilent_cmd() {
-  su -s /bin/bash - ${_HM_U} \
-    -c "DRUSH_PHP=${_sitePhpBin} /usr/bin/drush @${_Dom} $1" 2>&1
-  wait
-}
-
-_disable_modules_d8plus() {
-  # D8+ has no pm-disable: uninstall is the only off switch, and core
-  # refuses it while a module's content entities exist. Honours the same
-  # _MODULES_SKIP valve as the D6/D7 helpers; dependency rules are pmu's
-  # own (it refuses when dependents exist), so there is no _MODULES_FORCE
-  # arm here. Outcomes are echoed loudly either way -- a silent failure
-  # would quietly keep a banned self-DoS module running for another week.
-  for m in $1; do
+  _hstN="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  for _m in $1; do
     _SKIP=NO
     if [ ! -z "${_MODULES_SKIP}" ]; then
-      _check_if_skip "$m"
+      _check_if_skip "${_m}"
     fi
-    if [ "${_SKIP}" = "NO" ]; then
-      # No --status filter: grep for the machine name AND the Enabled
-      # column instead, so fork differences in filter support cannot
-      # produce a false "not enabled" skip.
-      _MODULE_T=$(_run_drush8plus_nosilent_cmd "pml --type=module \
-        | grep \($m\)" 2>&1)
-      if [[ "${_MODULE_T}" =~ "($m)" ]] \
-        && [[ "${_MODULE_T}" =~ "Enabled" ]]; then
-        if [ "$m" = "linkchecker" ]; then
-          # linkchecker 2.x stores results as linkcheckerlink content
-          # entities; the uninstall validator refuses pmu while any
-          # exist. Dropping them is the point of the ban -- the module
-          # holds no client content, only its own probe results.
-          _run_drush8plus_cmd "sqlq \"DELETE FROM linkchecker_index\""
-          _run_drush8plus_cmd "sqlq \"DELETE FROM linkchecker_link\""
-        fi
-        _run_drush8plus_cmd "pmu $m -y"
-        _MODULE_T=$(_run_drush8plus_nosilent_cmd "pml --type=module \
-          | grep \($m\)" 2>&1)
-        if [[ "${_MODULE_T}" =~ "($m)" ]] \
-          && [[ "${_MODULE_T}" =~ "Enabled" ]]; then
-          echo "$m could NOT be uninstalled in ${_Dom} (dependents or entities)"
-        else
-          echo "$m uninstalled in ${_Dom}"
-        fi
-      fi
+    if [ "${_SKIP}" = "YES" ]; then
+      continue
+    fi
+    _tbl=$(_d8plus_module_sentinel_table "${_m}")
+    if [ -z "${_tbl}" ]; then
+      echo "D8PLUS-POLICY: no sentinel table wired for ${_m} -- cannot probe ${_Dom}"
+      continue
+    fi
+    _hit=$(mysql -N -B -e "SELECT COUNT(*) FROM information_schema.tables \
+      WHERE table_schema = '${_dbName}' AND table_name = '${_tbl}'" 2>/dev/null)
+    if [ "${_hit}" = "1" ]; then
+      echo "D8PLUS-POLICY: banned module ${_m} is installed on ${_Dom} (db ${_dbName})"
+      {
+        echo "The weekly module-policy check found the banned module '${_m}'"
+        echo "installed on the Drupal 8+ site ${_Dom} (account ${_HM_U},"
+        echo "database ${_dbName}) on ${_hstN}."
+        echo ""
+        echo "Why it is banned: ${_m} holds PHP-FPM workers on synchronous"
+        echo "external requests inside web cron, which starves the account's"
+        echo "shared FPM pool (self-inflicted denial of service)."
+        echo ""
+        echo "This check never modifies the site and will repeat every Tuesday"
+        echo "until the module is removed. To remove it, use the site's own"
+        echo "admin UI: Extend -> Uninstall -> ${_m} (for linkchecker the"
+        echo "uninstall page offers the required 'Remove ... entities' step"
+        echo "first). Do NOT use Drush8 against a Drupal 8+ site."
+        echo ""
+        echo "Reference: docs/MODULES.md in the BOA repository."
+      } | s-nail -s "Banned module ${_m} on ${_Dom} (${_HM_U} on ${_hstN})" "${_ADMIN_EMAIL}"
+    elif [ "${_hit}" != "0" ]; then
+      echo "D8PLUS-POLICY: probe FAILED for ${_Dom} (db ${_dbName}, module ${_m}) -- mysql returned '${_hit}'"
     fi
   done
 }
@@ -1169,14 +1155,15 @@ _fix_modules() {
   elif [ -e "${_Plr}/core/lib/Drupal.php" ]; then
     ###
     ### D8+ platform (the alias root is the docroot; core/lib/Drupal.php
-    ### is the D8-11 marker and does not exist in Backdrop). Off-list
-    ### only: enabling modules on config-managed D8+ sites from the
-    ### outside would create config drift, so there is no ON twin.
+    ### is the D8-11 marker and does not exist in Backdrop). Detection
+    ### and operator alert ONLY -- no Drush contact with the site in
+    ### either direction (see _check_modules_d8plus_policy), and no ON
+    ### twin: enabling modules on config-managed D8+ sites from the
+    ### outside would create config drift.
     ###
     _MODX=ON
     if [ ! -z "${_MODULES_OFF_EIGHT_PLUS}" ]; then
-      _resolve_site_php_bin
-      _disable_modules_d8plus "${_MODULES_OFF_EIGHT_PLUS}"
+      _check_modules_d8plus_policy "${_MODULES_OFF_EIGHT_PLUS}"
     fi
   fi
 }
