@@ -158,10 +158,60 @@ _find_correct_ip() {
   fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+    ### Self-heal a cache orphaned by a server migration: when the cached
+    ### value is no longer any local address AND the box carries a real
+    ### public IPv4 (so never on 1:1-NAT topologies, where the egress IP
+    ### is legitimately not local -- incl. CGNAT 100.64/10), re-probe at
+    ### most ONCE per process with hard timeouts and replace the cache
+    ### only on a validated, different dotted quad. A failed probe never
+    ### invalidates a working cache. The city memo is dropped on replace,
+    ### else it stays pinned to the old address forever.
+    if [ -z "${_ipHealDone}" ] && [ -n "${_LOC_IP}" ]; then
+      _ipHealDone=YES
+      _locV4s=$(ip -4 addr show scope global 2>/dev/null \
+        | awk '/inet /{sub(/\/.*/,"",$2); print $2}')
+      if [ -n "${_locV4s}" ] && ! echo "${_locV4s}" | grep -qx "${_LOC_IP}"; then
+        _hasPubV4=NO
+        for _v4 in ${_locV4s}; do
+          case "${_v4}" in
+            10.*|127.*|169.254.*|192.168.*) ;;
+            172.1[6-9].*|172.2[0-9].*|172.3[01].*) ;;
+            100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*) ;;
+            *) _hasPubV4=YES ;;
+          esac
+        done
+        if [ "${_hasPubV4}" = "YES" ]; then
+          _freshV4=$(curl -4 -s --connect-timeout 5 --max-time 15 \
+            https://api.ipify.org 2>/dev/null | tr -d '\n')
+          if [[ ! "${_freshV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+            _freshV4=$(curl -4 -s --connect-timeout 5 --max-time 15 \
+              http://ipv4.icanhazip.com 2>/dev/null | tr -d '\n')
+          fi
+          if [[ "${_freshV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
+            && [ "${_freshV4}" != "${_LOC_IP}" ]; then
+            _LOC_IP="${_freshV4}"
+            echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
+            rm -f /root/.found_correct_city.cnf
+          fi
+        fi
+      fi
+    fi
   else
     _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
       _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
+    fi
+    ### Last-resort fallback removed in 2020 in favour of the remote
+    ### probes, restored as a TAIL: when BOTH probes fail (mirror or
+    ### network outage), resolve the box's own name locally -- callers
+    ### assign it via _LOC_DOM right before calling. Single validated
+    ### dotted quad only; anything else stays empty (fail-safe).
+    if [ -z "${_LOC_IP}" ] && [ -n "${_LOC_DOM}" ]; then
+      _LOC_IP=$(getent ahostsv4 "${_LOC_DOM}" 2>/dev/null | awk '{print $1; exit}')
+      [[ "${_LOC_IP}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || _LOC_IP=""
+      ### Stock images map the FQDN to 127.0.1.1 in /etc/hosts; a loopback
+      ### is never the box's public address, so leave empty instead.
+      case "${_LOC_IP}" in 127.*) _LOC_IP="" ;; esac
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf

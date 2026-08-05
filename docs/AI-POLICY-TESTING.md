@@ -258,9 +258,11 @@ mirrors it into `/data/conf/nginx_banned_ips.conf6`, read by the **same** `$is_b
 ## Phase 7 — Regression spot-checks (this build)
 
 - [ ] **netstat SSH source:**
-      `netstat -tn | awk '$4 ~ /:22$/ && $6=="ESTABLISHED"{print $5}'` shows your session, and
-      that IP appears in every generated `ip_access` fragment's allow list. (Confirms
-      `who --ips` is gone — it is unavailable on Excalibur.)
+      `netstat -tn | awk '$4 ~ /:(22|<your SSH port>)$/ && $6=="ESTABLISHED"{print $5}'` shows
+      your session, and that IP appears in every generated `ip_access` fragment's allow list —
+      the harvesters match the union of `22`, the cnf `_SSH_PORT` and the live sshd ports, so
+      test with the port your session actually uses. (Confirms `who --ips` is gone — it is
+      unavailable on Excalibur.)
 - [ ] **Instance marker:** the `/data/disk/all` checks in Phases 3–4 produced no fragments
       (non-instance pseudo-dirs are skipped even when they carry a control file).
 - [ ] **csf stays IPv4-only:** no IPv6 entries in `csf.allow`/`csf.deny`/`csf.tempban` —
