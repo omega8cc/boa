@@ -48,7 +48,7 @@ Better idea, though:
 
 On modern systems (Devuan Daedalus and Excalibur, Debian Bookworm and Trixie) BOA also keeps the operating system's own **security** updates applied between BOA upgrades, so a freshly disclosed vulnerability does not sit unpatched for days until your next `barracuda` run. This is security-only: general package upgrades remain `barracuda`'s job, and the stack components BOA builds itself (Nginx, PHP, Percona) are excluded. On older systems, whose security archives are dead or dying upstream, it is deliberately skipped.
 
-When a security update includes a new kernel, BOA does not reboot blindly. The kernel is activated through BOA's own graceful reboot flow, with the same gating as before (hosted `*.aegir.cc` systems, or an explicit `/root/.allow.auto.reboot.cnf`) — the automatic reboot behaviour is unchanged.
+When a security update includes a new kernel, BOA does not reboot blindly. The kernel is activated through BOA's own graceful reboot flow, with the same gating as before (hosted `*.aegir.cc` systems, or an explicit `/root/.allow.auto.reboot.cnf`), and only inside the silent night maintenance window between 4:00 and 5:00 server time — never at a random hour, and never on a day when a `barracuda` or `octopus` upgrade is scheduled in `/etc/crontab`. Every automatic activation reboot is recorded in `/var/log/boa/kernel-reboot.log` and announced by an email alert to the configured admin address, so an overnight restart is never a mystery.
 
 This is on by default. To opt out and manage OS security updates yourself, add this line to `/root/.barracuda.cnf`:
 
