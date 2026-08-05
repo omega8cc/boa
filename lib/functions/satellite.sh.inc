@@ -6346,7 +6346,7 @@ _satellite_child_b_drush_xts_install() {
     ### output.inc lacks drush_chalk), so the extension's own drush_chalk -- used
     ### by backdrop-pm-enable/subtheme -- is never defined and those commands
     ### fatal. Anchor it to the extension dir. Idempotent: only the bare form
-    ### matches. (VM-confirmed on ng019, 2026-07-11.)
+    ### matches. (VM-confirmed 2026-07-11.)
     if [ -e "${_ROOT}/.drush/usr/backdrop/BackdropBoot.php" ]; then
       sed -i \
         "s#require_once 'includes/output.inc';#require_once __DIR__ . '/includes/output.inc';#" \
@@ -6370,7 +6370,7 @@ _satellite_child_b_drush_xts_install() {
     ### platform, breaking the whole Provision backend. Provision drives
     ### Backdrop here, so let its commands through untouched. Idempotent: the
     ### guard is inserted once, before the first $backdrop_command assignment.
-    ### (VM-confirmed on ng019, 2026-07-11.)
+    ### (VM-confirmed 2026-07-11.)
     if [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ] \
       && ! grep -q "'provision') === 0" \
         ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc; then
