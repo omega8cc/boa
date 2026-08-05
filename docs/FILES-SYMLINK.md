@@ -420,6 +420,14 @@ If the clone reuses a name whose store was left behind by an earlier site of the
 same name, that stale store is archived aside first (see *Orphan / ghost detection
 and stale-store archiving*), so the clone never collides with it.
 
+The conversion is residue-aware: when an in-site `files`/`private` dir holds
+nothing beyond regenerated residue (tar exclusion tags, core `.htaccess`, the
+ownership/permissions stamp files, backup-excluded cache subtrees) while the
+store target holds real content, the converter keeps the populated store and
+re-links the site to it instead of archiving the store aside — the post-restore
+state of a files-less archive can therefore never displace live content, in the
+narrow per-site mode and the nightly sweep alike.
+
 **Migrate / rename** behaves the same. A migrate (used for renaming, e.g. deploy
 dev/staging to live) deploys from a backup and then, right after the target
 verify, runs the narrow `autosymlink --force-unshare` for the migrated/renamed
