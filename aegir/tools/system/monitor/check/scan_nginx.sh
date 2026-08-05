@@ -414,6 +414,88 @@ _NGINX_HTTP10_AUTH_IP_THRESHOLD=3
 # only.
 _NGINX_HTTP10_AUTH_CIDR_THRESHOLD=6
 
+# ---- Guard-404 scraped-interactive-path detection (ON by default, opt-out) ----
+# Provision's request-guard family answers a cold GET to an interactive-only
+# Drupal path (a Flag toggle, a HybridAuth login window) with a STATIC 404 --
+# a real interaction carries a same-origin Referer (and, on the HybridAuth
+# path, a session cookie), so the 404 is a per-request bot verdict computed by
+# nginx at zero backend cost. A distributed scraper botnet (thousands of
+# residential-proxy IPs, median 1 request/IP, rotated real-browser UAs, mixed
+# 200/302 statuses) is invisible to every volume- and UA-keyed scorer above,
+# and observed IP pools rotate almost completely day to day, so per-IP action
+# cannot rely on recurrence. Two things still pay: the multi-hit tail (an IP
+# tripping the guard repeatedly inside a short window is a scraper following
+# scraped links right now, and stopping it also stops its parallel
+# content-crawl 200s that no other scorer counts), and campaign VISIBILITY --
+# without it a rotating-IP flood operates in silence for months (the reference
+# case ran for over three months before diagnosis).
+#
+# WHY THE PER-IP ACTION DEFAULTS TO REPORT. Unlike the HTTP/1.0 tell (a
+# browser cannot be made to speak HTTP/1.0), this signal is browser-inducible:
+# any third-party page can emit `<img referrerpolicy="no-referrer"
+# src="https://<hosted-site>/flag/flag/x/1">` and make an innocent visitor's
+# browser produce guard 404s on someone else's site -- turning a per-IP ban
+# into a remote, box-wide denial of that visitor. Referer-less real traffic
+# also exists (sites sending Referrer-Policy: no-referrer, privacy extensions,
+# Referer-stripping corporate proxies), and the guard's own 404 is the perfect
+# retry amplifier. So the ban is an operator decision on a confirmed campaign,
+# exactly like _NGINX_HARVEST_ACTION: REPORT (default) logs GUARD404-WOULD-BAN
+# and bans nothing; BAN arms the heuristic. The campaign alert runs in both
+# modes because alerting can never mis-ban.
+#
+# Crawler protection is layered: csf.allow / web6.allow whitelisting exempts
+# the providers guest-water.sh publishes (Googlebot, Bingbot, the CDN and
+# monitoring ranges), the _NGINX_HARVEST_UA_EXEMPT list covers the legitimate
+# crawlers and unfurlers that whitelisting does NOT reach (Applebot,
+# DuckDuckBot, Yandex, Baiduspider, archive.org_bot, the social preview
+# fetchers, the uptime probes), and the guarded URLs answer 404 so crawlers
+# de-index them. No /24 aggregation: unlike the HTTP/1.0 botnet's tight CIDR,
+# this class rides ISP-dispersed CGNAT space where a /24 holds real users. Set
+# to NO in /root/.barracuda.cnf to disable.
+_NGINX_GUARD404_DETECT=YES
+
+# REPORT (default) logs GUARD404-WOULD-BAN lines to the Tier-B alert channel
+# and bans nothing. BAN arms the per-IP ban. Arm it per box, on a confirmed
+# campaign, having read the inducible-signal note above -- never fleet-wide by
+# reflex.
+_NGINX_GUARD404_ACTION="REPORT"
+
+# Bash ERE matched against the query-stripped request URI. Default covers the
+# guard-family paths whose cold GETs nginx already answers 404: Flag toggles
+# (machine-name/<numeric id> tail, D7 Flag 2/3 + D8+ Flag 4) and HybridAuth
+# windows (single provider segment, optional trailing slash), each with an
+# optional language prefix, matched case-insensitively the way the nginx maps
+# (~*) do. Print paths are deliberately NOT here: a bookmarked
+# printer-friendly page refreshed a few times is a plausible real visitor, so
+# print guard 404s stay with the standard weighted scorer only. On a box whose
+# sites 404 these paths from Drupal itself (module absent, guard not yet
+# deployed) the hits still count -- a cold Referer-less GET to an
+# interactive-only path is the same verdict either way. Must be a valid ERE if
+# overridden.
+_NGINX_GUARD404_PATHS="^/([A-Za-z]{2}(-[A-Za-z]+)?/)?([Ff][Ll][Aa][Gg]/(flag|unflag|FLAG|UNFLAG)/[A-Za-z0-9_]+/[0-9]|[Hh]ybrid[Aa]uth/window/[A-Za-z0-9_.-]+/?$)"
+
+# Sliding-window length in seconds across runs (same persistence shape as the
+# HTTP/1.0 detector's window.state).
+_NGINX_GUARD404_WINDOW=600
+
+# Windowed guard-404 count at which an IP is reported (or banned, in BAN
+# mode). Sized above what a real visitor can produce: the guard answers 404,
+# which invites retries, so a Referer-less human clicking a broken control
+# several times must stay under it -- while a scraper walking scraped links
+# clears it within seconds. Raising it costs little (the tail is fast);
+# lowering it is how false positives start.
+_NGINX_GUARD404_IP_THRESHOLD=6
+
+# Campaign visibility: once this many DISTINCT IPs carry windowed guard-404
+# state at once, log one GUARD404-CAMPAIGN line + forensic snapshot to
+# i18n_flood.log (the Tier-B alert channel). Sized far above organic stray
+# 404s -- only a distributed campaign reaches it -- and rate-limited by the
+# cool-down below so a multi-hour flood yields a handful of records.
+_NGINX_GUARD404_CAMPAIGN_IPS=40
+
+# Per-box campaign alert cool-down in seconds.
+_NGINX_GUARD404_COOLDOWN=3600
+
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
 
@@ -559,6 +641,22 @@ if (( $? > 1 )); then
   _NGINX_HTTP10_AUTH_PATHS="^/([a-z]{2}/)?user/(register|password)(/|$)"
 fi
 
+# Validate the guard-404 detector numerics and ERE the same way: numeric
+# fallbacks keep arithmetic safe, the regex probe keeps a typo'd override from
+# silently counting nothing (rc 0/1 = valid; rc>1 = bad regex).
+[[ "${_NGINX_GUARD404_WINDOW}" =~ ^[1-9][0-9]*$ ]]       || _NGINX_GUARD404_WINDOW=600
+[[ "${_NGINX_GUARD404_IP_THRESHOLD}" =~ ^[1-9][0-9]*$ ]] || _NGINX_GUARD404_IP_THRESHOLD=6
+[[ "${_NGINX_GUARD404_CAMPAIGN_IPS}" =~ ^[1-9][0-9]*$ ]] || _NGINX_GUARD404_CAMPAIGN_IPS=40
+[[ "${_NGINX_GUARD404_COOLDOWN}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_GUARD404_COOLDOWN=3600
+# Only REPORT and BAN are meaningful; anything else falls back to REPORT so a
+# typo can never silently arm the ban.
+[[ "${_NGINX_GUARD404_ACTION}" == "BAN" ]] || _NGINX_GUARD404_ACTION="REPORT"
+[[ "/probe" =~ ${_NGINX_GUARD404_PATHS} ]] 2>/dev/null
+if (( $? > 1 )); then
+  echo "Warning: Invalid _NGINX_GUARD404_PATHS regex -- reverting to default."
+  _NGINX_GUARD404_PATHS="^/([A-Za-z]{2}(-[A-Za-z]+)?/)?([Ff][Ll][Aa][Gg]/(flag|unflag|FLAG|UNFLAG)/[A-Za-z0-9_]+/[0-9]|[Hh]ybrid[Aa]uth/window/[A-Za-z0-9_.-]+/?$)"
+fi
+
 # Validate the UA-burst detector numerics; fall back to defaults on any
 # non-positive-integer override so userland config cannot break arithmetic
 # (the bad-ratio division in particular requires REQ_MIN >= 1).
@@ -621,6 +719,8 @@ echo "CONFIG: _INC_S_NR is ${_INC_S_NR}"
 echo "CONFIG: _NGINX_DOS_444_WEIGHT is ${_NGINX_DOS_444_WEIGHT}"
 echo "CONFIG: _NGINX_PHP_PROBE_WEIGHT is ${_NGINX_PHP_PROBE_WEIGHT}"
 echo "CONFIG: _NGINX_HTTP10_AUTH_DETECT is ${_NGINX_HTTP10_AUTH_DETECT}"
+echo "CONFIG: _NGINX_GUARD404_DETECT is ${_NGINX_GUARD404_DETECT}"
+echo "CONFIG: _NGINX_GUARD404_ACTION is ${_NGINX_GUARD404_ACTION}"
 
 # IPv6 adaptive-ban: derive the on/off flag and validate the TTL. A non-positive
 # override falls back to the default so userland config cannot break arithmetic.
@@ -696,6 +796,11 @@ declare -A _I18N_C444     # localized 444 responses (Tier-A guardrail shedding)
 # HTTP/1.0 auth-spam: per-run tally of HTTP/1.0 hits to auth paths, keyed by the
 # real client IP. Merged into a cross-run sliding window after the loop.
 declare -A _H10_AUTH
+
+# Guard-404 scraped-interactive-path: per-run tally of guard-family 404s,
+# keyed by the real client IP. Merged into a cross-run sliding window after
+# the loop.
+declare -A _G404
 
 # Debugging: Confirm associative arrays are declared
 if [[ -e "/etc/boa/.debug.monitor.cnf" || "${_DEBUG_MONITOR}" = "YES" ]]; then
@@ -2173,6 +2278,13 @@ _H10_ON=0
 [[ "${_NGINX_HTTP10_AUTH_DETECT}" == "YES" ]] && _H10_ON=1
 _H10_STATE="/var/xdrago/monitor/log/http10_auth.window"
 
+# Gate the guard-404 scraped-interactive-path tracker the same way. State
+# persists the cross-run sliding window; the stamp rate-limits campaign alerts.
+_G404_ON=0
+[[ "${_NGINX_GUARD404_DETECT}" == "YES" ]] && _G404_ON=1
+_G404_STATE="/var/xdrago/monitor/log/guard404.window"
+_G404_CAMP_STAMP="/var/xdrago/monitor/log/.guard404.campaign.stamp"
+
 # Gate the UA-burst scanner-fleet tracker on a single flag so the hot loop pays
 # nothing when the (on-by-default) detector is opted out.
 _UAB_ON=0
@@ -2434,6 +2546,156 @@ _handle_http10_auth_flood() {
 }
 
 # ==============================
+# Guard-404 Scraped-Interactive-Path Detection (opt-out)
+# ==============================
+
+# _track_guard404 IP LINE
+# Per-line tally for the guard-404 repeat-offender detector. Counts a hit only
+# when ALL of these hold, which together reproduce exactly what the nginx
+# guards themselves block -- never a request they deliberately let through:
+#   * method GET or HEAD (the guards' composed maps are keyed the same way),
+#   * status 404,
+#   * the logged Referer is absent ("-"): a guard verdict is by definition
+#     Referer-less, so counting a Referer-carrying 404 on the same path would
+#     tally Drupal's own not-found and real visitors along with the botnet,
+#   * the User-Agent is not a known-legitimate crawler (_NGINX_HARVEST_UA_EXEMPT
+#     -- csf.allow whitelisting covers only the handful of providers
+#     guest-water.sh publishes, so the UA list is what protects Applebot,
+#     DuckDuckBot, Yandex, Baiduspider, archive.org_bot, the social unfurlers
+#     and the uptime probes, exactly as it does for the harvest detector),
+#   * the query-stripped URI matches the guard-family path class.
+# Status, method, URI, Referer and UA are all read positionally from the log
+# line's quoted fields via the same traversal-rejecting parse as
+# _track_http10_auth, so a token smuggled into any single field can never fake
+# a signal. Whitelisted / locally-allowed / already-banned / private IPs are
+# skipped here so they never accumulate window state.
+#
+# The URI is compared as logged, i.e. the RAW request target, while nginx
+# matched its normalised $uri: percent-encoded, doubled-slash and dot-segment
+# forms therefore go uncounted even though the guard 404'd them. That
+# divergence only ever UNDER-counts (it can never manufacture a hit), which is
+# the safe direction for a ban input; duplicate slashes are collapsed below
+# because they cost nothing to normalise.
+_track_guard404() {
+  local _IP="$1" _line="$2" _after _req _rest _st _uri _ref _ua IFS=$' \t\n'
+  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    return
+  fi
+  [[ -n "${_BANNED_IPS["${_IP}"]}" ]] && return
+  [[ -n "${_ALLOWED_IPS["${_IP}"]}" ]] && return
+  _is_whitelisted_ip "${_IP}" && return
+  # Isolate field 2's quoted "METHOD URI PROTO" request line and the text
+  # after its closing quote (which starts with the status code).
+  _after="${_line#*\"*\"}"        # drop the leading "remote_addr" quoted field
+  _req="${_after#*\"}"            # advance past the opening quote of $request
+  _rest="${_req#*\"}"            # text after $request's closing quote: " 404 ..."
+  _req="${_req%%\"*}"            # _req = METHOD URI PROTO
+  # Require a full "GET|HEAD /path HTTP/x.y" shape; the "METHOD /" head also
+  # guards the positional parse against a forged request token in an earlier
+  # field.
+  case "${_req}" in "GET /"*" HTTP/"*|"HEAD /"*" HTTP/"*) : ;; *) return ;; esac
+  _st="${_rest# }"
+  _st="${_st%% *}"
+  [[ "${_st}" == "404" ]] || return
+  # Referer is the next quoted field after the status block, the UA the one
+  # after that: ... 404 0 196 122 "$http_referer" "$http_user_agent" ...
+  _ref="${_rest#*\"}"
+  _ref="${_ref%%\"*}"
+  [[ -z "${_ref}" || "${_ref}" == "-" ]] || return
+  _ua="${_rest#*\"}"             # advance past the referer's opening quote
+  _ua="${_ua#*\"}"              # past the referer's closing quote
+  _ua="${_ua#*\"}"              # past the UA's opening quote
+  _ua="${_ua%%\"*}"
+  if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" && -n "${_ua}" ]] \
+    && [[ "${_ua}" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]]; then
+    return
+  fi
+  _uri="${_req#* }"              # strip METHOD
+  _uri="${_uri%% *}"            # strip PROTO
+  _uri="${_uri%%\?*}"          # strip query string
+  [[ "${_uri}" == /* && "${_uri}" != *".."* ]] || return
+  while [[ "${_uri}" == *//* ]]; do _uri="${_uri//\/\//\/}"; done
+  [[ "${_uri}" =~ ${_NGINX_GUARD404_PATHS} ]] || return
+  (( _G404["${_IP}"] += 1 ))
+}
+
+# _handle_guard404_flood
+# Merge this run's per-IP guard-404 tallies into a cross-run sliding window
+# (same persistence shape as _handle_http10_auth_flood), prune expired
+# buckets, then act on each observed IP whose windowed count crosses the
+# per-IP threshold -- WOULD-BAN reporting or a real ban, per
+# _NGINX_GUARD404_ACTION. Deliberately NO /24 aggregation: this botnet class
+# rides ISP-dispersed CGNAT space where a /24 holds real users. After that
+# pass, surface the campaign itself: once enough DISTINCT IPs carry windowed
+# state at the same time, write one GUARD404-CAMPAIGN line + forensic
+# snapshot to the Tier-B alert channel (rate-limited by the cool-down stamp)
+# -- per-IP action alone leaves a rotating-IP flood invisible to the operator,
+# and the campaign alert is the part that is always safe to run. Runs after
+# the other passes so _BANNED_IPS is fully populated, and _block_ip re-checks
+# the csf.allow whitelist on every call as the keystone safety net.
+_handle_guard404_flood() {
+  (( _G404_ON )) || return 0
+  local _state="${_G404_STATE}" _tmp _now _cut _ip _e _c _campc _last _snap
+  _now="$(date +%s)"
+  [[ "${_now}" =~ ^[0-9]+$ ]] || return 0
+  _cut=$(( _now - _NGINX_GUARD404_WINDOW ))
+  declare -A _W_IP
+  _tmp="${_state}.$$"
+  : > "${_tmp}" 2>/dev/null || return 0
+  # Carry forward unexpired per-IP buckets from prior runs.
+  if [[ -f "${_state}" ]]; then
+    while IFS='|' read -r _ip _e _c; do
+      [[ -n "${_ip}" && "${_e}" =~ ^[0-9]+$ ]] || continue
+      (( _e > _cut )) || continue
+      printf '%s|%s|%s\n' "${_ip}" "${_e}" "${_c:-0}" >> "${_tmp}"
+      _W_IP["${_ip}"]=$(( ${_W_IP["${_ip}"]:-0} + ${_c:-0} ))
+    done < "${_state}"
+  fi
+  # Add this run's per-IP tallies.
+  for _ip in "${!_G404[@]}"; do
+    _c=${_G404["${_ip}"]:-0}
+    (( _c > 0 )) || continue
+    printf '%s|%s|%s\n' "${_ip}" "${_now}" "${_c}" >> "${_tmp}"
+    _W_IP["${_ip}"]=$(( ${_W_IP["${_ip}"]:-0} + _c ))
+  done
+  mv -f "${_tmp}" "${_state}" 2>/dev/null
+  # Act on qualifying IPs (per-IP threshold only; no CIDR escalation).
+  # REPORT logs the decision and bans nothing; BAN arms the heuristic.
+  for _ip in "${!_W_IP[@]}"; do
+    if (( ${_W_IP["${_ip}"]:-0} >= _NGINX_GUARD404_IP_THRESHOLD )); then
+      [[ -n "${_BANNED_IPS["${_ip}"]}" ]] && continue
+      [[ -n "${_ALLOWED_IPS["${_ip}"]}" ]] && continue
+      _is_logged_in "${_ip}" && continue
+      [[ "${_ip}" == "${_MYIP}" ]] && continue
+      if [[ "${_NGINX_GUARD404_ACTION}" != "BAN" ]]; then
+        printf '%s GUARD404-WOULD-BAN %s [x%s win=%ss]\n' \
+          "$(date)" "${_ip}" "${_W_IP["${_ip}"]}" "${_NGINX_GUARD404_WINDOW}" >> "${_I18N_LOG}"
+        echo "=== GUARD-404 SCRAPER would-ban ${_ip} [ip=${_W_IP["${_ip}"]}/${_NGINX_GUARD404_IP_THRESHOLD} win=${_NGINX_GUARD404_WINDOW}s] (REPORT mode) ==="
+        continue
+      fi
+      _sumar="${_W_IP["${_ip}"]}"
+      echo "=== GUARD-404 SCRAPER ban ${_ip} [ip=${_W_IP["${_ip}"]}/${_NGINX_GUARD404_IP_THRESHOLD} win=${_NGINX_GUARD404_WINDOW}s] ==="
+      _verbose_log "guard-404 scraper ban ${_ip} [x${_W_IP["${_ip}"]}]" "_handle_guard404_flood"
+      _block_ip "${_ip}" "silent"
+    fi
+  done
+  # Campaign visibility (alert-only; never bans by itself).
+  _campc=${#_W_IP[@]}
+  if (( _campc >= _NGINX_GUARD404_CAMPAIGN_IPS )); then
+    _last=0
+    [[ -f "${_G404_CAMP_STAMP}" ]] && _last="$(< "${_G404_CAMP_STAMP}")"
+    [[ "${_last}" =~ ^[0-9]+$ ]] || _last=0
+    if (( _now - _last >= _NGINX_GUARD404_COOLDOWN )); then
+      echo "${_now}" > "${_G404_CAMP_STAMP}"
+      _snap="$(_i18n_snapshot "*" "guard404-campaign-${_campc}-ips")"
+      printf '%s GUARD404-CAMPAIGN distinct_ips=%s window=%ss -> %s\n' \
+        "$(date)" "${_campc}" "${_NGINX_GUARD404_WINDOW}" "${_snap}" >> "${_I18N_LOG}"
+      echo "=== GUARD404-CAMPAIGN: ${_campc} distinct IPs hit guarded interactive paths in ${_NGINX_GUARD404_WINDOW}s (snapshot ${_snap}) ==="
+    fi
+  fi
+}
+
+# ==============================
 # Processing the Access Log
 # ==============================
 
@@ -2648,6 +2910,14 @@ while IFS= read -r _line <&3; do
     _track_http10_auth "${_REAL_IP}" "${_line}"
   fi
 
+  # ---- Guard-404 scraped-interactive-path tracking (on by default, opt-out) ----
+  # Counts guard-family 404s per real client IP for the cross-run windowed ban
+  # below. files.*, the webhook ignore-list and Site24x7 are already skipped at
+  # loop scope above, so they never reach here.
+  if (( _G404_ON )) && [[ -n "${_REAL_IP}" ]]; then
+    _track_guard404 "${_REAL_IP}" "${_line}"
+  fi
+
 done
 
 # Close the file descriptor for the log input
@@ -2684,6 +2954,11 @@ _handle_path_flood_blocking
 # windowed; runs after the passes above so _BANNED_IPS is fully populated and
 # double-blocking avoided.
 _handle_http10_auth_flood
+
+# Guard-404 scraped-interactive-path blocking + campaign surfacing (on by
+# default, opt-out). Cross-run windowed; runs after the passes above so
+# _BANNED_IPS is fully populated and double-blocking avoided.
+_handle_guard404_flood
 
 ### Runs last: the four existing scorers have already populated _BANNED_IPS,
 ### so this layer never double-bans and never changes their authority.
