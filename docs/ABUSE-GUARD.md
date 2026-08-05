@@ -270,7 +270,7 @@ trivial agents. This is the detector that, before the path-exemption existed, ba
 entire webhook provider's rotating pool on its shared `Shopify-Captain-Hook` / `GuzzleHttp`
 UA — which is why the exemption gate runs at loop scope and covers this detector too.
 
-**Window and tuning (revised after the am095 incident).** Every threshold here is measured
+**Window and tuning (revised after a real over-ban incident).** Every threshold here is measured
 against a short window: `nginx_guard.sh` runs `scan_nginx.sh` about every 5 s and
 byte-offset tracking means each run scores only the lines appended since the previous run.
 The original defaults (20 IPs / 200 reqs / 3-request block) sat far below real traffic for
@@ -384,8 +384,8 @@ accumulate:
 
 The bad-status ratio is the false-positive keystone: a real popular-browser UA shared by
 many legitimate IPs is ~all `200`/`304`, so it never crosses the 80 % gate — which is why the
-IP threshold can sit far below Detector 2's without re-introducing the am095/kwestiasmaku
-over-ban. When a fleet is declared, only IPs that **themselves** sent at least
+IP threshold can sit far below Detector 2's without re-introducing the observed
+popular-browser over-ban. When a fleet is declared, only IPs that **themselves** sent at least
 `_NGINX_UA_BURST_IP_MIN_BAD` (default **3**) bad probes under that UA are blocked; a real
 visitor sharing the UA sent `200`s (zero bad) and is never caught. UAs of 10 characters or
 fewer are ignored. The ban reuses the same whitelist / logged-in / local-IP / already-banned
