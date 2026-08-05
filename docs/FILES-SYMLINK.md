@@ -397,13 +397,17 @@ copy. Cloning is the one exception: a clone always gets its own copy
 
 ## Cloning behaviour in detail
 
-A clone is built from a backup of the source site. BOA backups preserve symlinks
-by default, so a freshly deployed clone initially points its `files` link at the
-**source** site's store. After the clone's verify, the clone task runs the narrow
-`autosymlink --force-unshare` for the new site, which:
+A clone is built from a backup of the source site. Implicit backups preserve
+symlinks by default (see *Backup task modes* below), so the freshly deployed
+clone initially points its `files` link at the **source** site's store; on a
+box opted into dereferencing (`dereference_backups.conf`), it starts with
+plain copied directories instead. After the clone's verify, the clone task
+runs the narrow `autosymlink --force-unshare` for the new site, which ends
+the same either way:
 
-1. copies the source's files into the **new** site's own store, and
-2. repoints the new site's symlink at its own copy.
+1. copies the source's files into the **new** site's own store (or moves the
+   deployed plain directories into it), and
+2. (re)points the new site's symlinks at its own copy.
 
 This is **warn-not-fail**: if disk space is short, the tool is missing, or the
 copy cannot complete, the step logs a warning (and a loud `[ALERT]` if the new
@@ -425,6 +429,55 @@ The old-name store is left as an orphan — reported, and archived into `.archiv
 on the next nightly sweep. Without this a renamed site would keep plain dirs on the
 platform partition or a link into the old store.
 
+## Restore behaviour
+
+A **Restore** task deploys the site from the selected archive and then, right
+after the post-restore verify, re-establishes native symlinking — like clone
+and migrate, but **without** `--force-unshare`: restore re-deploys the same
+site, and a deliberately shared store stays shared (sharing is honoured
+everywhere except cloning). Three archive shapes are handled:
+
+- **Files-carrying archive** (real, populated `files`/`private` dirs): the
+  narrow conversion moves the restored content into the site's own store,
+  re-points the in-site symlinks, and archives the pre-restore store content
+  aside into `.archived/` (nothing is deleted).
+- **Files-less archive** (the DB-only backup mode extracts `files`/`private`
+  as skeleton dirs holding only regenerated residue): converting that into
+  the store would archive the live content away and serve empty dirs, so the
+  restore keeps the existing store and re-links the site to it — the DB comes
+  from the archive, the files keep their pre-restore state.
+- **Symlink-preserving archive** (links extracted as links): nothing was
+  materialised; the links still point where they pointed when the archive was
+  taken, and no conversion runs.
+
+Warn-not-fail, like clone and migrate.
+
+## Backup task modes always capture real content
+
+The panel **Backup** task modes that include site files (*Site files without
+any DB*, *Site files with classic mysqldump DB*) always follow the
+`files`/`private` symlinks into the store, so the archive is self-contained and
+restorable anywhere.
+
+Every other backup **preserves symlinks by default** — the DB-only panel mode,
+the safety copies taken before restore and delete, the pre-clone/pre-migrate
+source backups, and nightly queued backups. That is smaller and faster, and
+safe: the file content still lives in the per-account store and every
+lifecycle flow re-homes it, while a plain-dirs site is archived in full either
+way (not *following* links never skips real directories). Two control files
+adjust this:
+
+- `/data/conf/dereference_backups.conf` — opt back into the old
+  always-dereference behaviour for those backups (self-contained safety
+  copies, at the cost of duplicating store data into each one).
+- `/data/conf/force_symlinks.conf` — the legacy hard-preserve switch. It is
+  now redundant (preserving is the default) but still honoured, and it beats
+  the opt-out above. It can be left in place or removed at leisure; no new
+  system needs it. Historical note: while dereferencing was the accidental
+  default, this file silently made every panel backup of a symlinked site
+  hollow — a ~200 KB archive of bare symlinks where gigabytes were expected —
+  which is why files-carrying modes now ignore both files.
+
 ## Disk space and filesystems
 
 Both local and attached/extra filesystems are supported. Before moving or copying
@@ -444,9 +497,10 @@ would (unexpectedly) cross to a different, too-full device.
 
 ## Backups on the static filesystem
 
-A backup of a native-symlinked site can be **large**: the backup tar follows the
-`files`/`private` symlinks (dereferences the store), so the tarball holds the full
-file data. Those backups land in `/data/disk/<account>/backups` on the **root
+A backup of a native-symlinked site can be **large**: files-carrying
+Backup-task archives always follow the `files`/`private` symlinks (dereference
+the store), and boxes opted into `dereference_backups.conf` do the same for
+implicit backups, so the tarball holds the full file data. Those backups land in `/data/disk/<account>/backups` on the **root
 partition** — a disk-full risk for a big account whose files live on attached
 storage.
 
