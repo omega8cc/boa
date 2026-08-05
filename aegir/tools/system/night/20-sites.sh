@@ -113,6 +113,79 @@ _check_if_force() {
   done
 }
 
+_d8plus_module_sentinel_table() {
+  # Maps a banned module to the database table whose existence proves it
+  # is installed on a D8+ site. D8+ has no disabled-but-installed state
+  # (uninstall drops the schema), so table presence is an exact signal.
+  # Echoes nothing for a module without a wired sentinel -- the caller
+  # reports that loudly instead of silently skipping.
+  case "$1" in
+    linkchecker) echo "linkchecker_link" ;;
+  esac
+}
+
+_check_modules_d8plus_policy() {
+  # D8+ arm of the module policy: DETECT + ALERT ONLY. Ruling 2026-08-05:
+  # a Drush8 full bootstrap against Drupal 8+ can corrupt the site's
+  # internals (cached container/router state), so outside Aegir's own
+  # controlled backend path nothing may bootstrap a D8+ site -- this
+  # probe therefore never runs Drush at all: it reads the site database
+  # directly (root mysql; db name parsed from the site drushrc exactly
+  # like sqlclean does) and mails the operator on a hit. Remediation
+  # stays with the operator via the site's own admin UI (Extend ->
+  # Uninstall runs in web context and its uninstall page offers the
+  # content-entity removal linkchecker needs) -- never via Drush8.
+  # Honours the same _MODULES_SKIP valve as the D6/D7 helpers. Exact
+  # table-name match: BOA provisions one unprefixed DB per site, so a
+  # prefixed edge case is simply not detected rather than false-alerted.
+  local _m _tbl _dbName _hit _hstN
+  _dbName=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
+    "${_Dir}/drushrc.php" 2>/dev/null | head -n 1)
+  if [ -z "${_dbName}" ]; then
+    echo "D8PLUS-POLICY: no db_name in ${_Dir}/drushrc.php for ${_Dom} -- probe skipped"
+    return
+  fi
+  _hstN="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  for _m in $1; do
+    _SKIP=NO
+    if [ ! -z "${_MODULES_SKIP}" ]; then
+      _check_if_skip "${_m}"
+    fi
+    if [ "${_SKIP}" = "YES" ]; then
+      continue
+    fi
+    _tbl=$(_d8plus_module_sentinel_table "${_m}")
+    if [ -z "${_tbl}" ]; then
+      echo "D8PLUS-POLICY: no sentinel table wired for ${_m} -- cannot probe ${_Dom}"
+      continue
+    fi
+    _hit=$(mysql -N -B -e "SELECT COUNT(*) FROM information_schema.tables \
+      WHERE table_schema = '${_dbName}' AND table_name = '${_tbl}'" 2>/dev/null)
+    if [ "${_hit}" = "1" ]; then
+      echo "D8PLUS-POLICY: banned module ${_m} is installed on ${_Dom} (db ${_dbName})"
+      {
+        echo "The weekly module-policy check found the banned module '${_m}'"
+        echo "installed on the Drupal 8+ site ${_Dom} (account ${_HM_U},"
+        echo "database ${_dbName}) on ${_hstN}."
+        echo ""
+        echo "Why it is banned: ${_m} holds PHP-FPM workers on synchronous"
+        echo "external requests inside web cron, which starves the account's"
+        echo "shared FPM pool (self-inflicted denial of service)."
+        echo ""
+        echo "This check never modifies the site and will repeat every Tuesday"
+        echo "until the module is removed. To remove it, use the site's own"
+        echo "admin UI: Extend -> Uninstall -> ${_m} (for linkchecker the"
+        echo "uninstall page offers the required 'Remove ... entities' step"
+        echo "first). Do NOT use Drush8 against a Drupal 8+ site."
+        echo ""
+        echo "Reference: docs/MODULES.md in the BOA repository."
+      } | s-nail -s "Banned module ${_m} on ${_Dom} (${_HM_U} on ${_hstN})" "${_ADMIN_EMAIL}"
+    elif [ "${_hit}" != "0" ]; then
+      echo "D8PLUS-POLICY: probe FAILED for ${_Dom} (db ${_dbName}, module ${_m}) -- mysql returned '${_hit}'"
+    fi
+  done
+}
+
 _disable_modules_with_drush8() {
   for m in $1; do
     _SKIP=NO
@@ -1078,6 +1151,19 @@ _fix_modules() {
       if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
         _enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
       fi
+    fi
+  elif [ -e "${_Plr}/core/lib/Drupal.php" ]; then
+    ###
+    ### D8+ platform (the alias root is the docroot; core/lib/Drupal.php
+    ### is the D8-11 marker and does not exist in Backdrop). Detection
+    ### and operator alert ONLY -- no Drush contact with the site in
+    ### either direction (see _check_modules_d8plus_policy), and no ON
+    ### twin: enabling modules on config-managed D8+ sites from the
+    ### outside would create config drift.
+    ###
+    _MODX=ON
+    if [ ! -z "${_MODULES_OFF_EIGHT_PLUS}" ]; then
+      _check_modules_d8plus_policy "${_MODULES_OFF_EIGHT_PLUS}"
     fi
   fi
 }
