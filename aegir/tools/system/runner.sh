@@ -51,8 +51,12 @@ _disable_master_cron() {
 # stamps a grace file; the cron stays live until a full hour has passed since
 # the LAST activity, so trailing tasks enqueued at the tail of a run always
 # drain before the next idle pass re-parks it. The stamp lives in /run, so a
-# reboot clears the grace along with the activity it covered.
+# reboot clears the grace along with the activity it covered. The same grace
+# also releases the root-side satellite queue below (_runner_action over the
+# run-* dispatchers): master tasks ride the aegir cron, satellite tasks ride
+# run-*, and an upgrade needs both draining or its verify tasks starve.
 _IS_CI_BOX=NO
+_CI_QUEUE_GRACE=NO
 _ci_master_cron_control() {
   local _grace="/run/boa_master_cron_grace.pid"
   if [ -e "/etc/boa/.look.like.jenkins.cnf" ] \
@@ -67,8 +71,10 @@ _ci_master_cron_control() {
       || [ -e "/run/octopus_install_run.pid" ]; then
       touch "${_grace}"
     fi
-    if [ "${_QUEUE_OK}" = "TRUE" ] \
-      || [ -n "$(find "${_grace}" -mmin -60 2>/dev/null)" ]; then
+    if [ -n "$(find "${_grace}" -mmin -60 2>/dev/null)" ]; then
+      _CI_QUEUE_GRACE=YES
+    fi
+    if [ "${_QUEUE_OK}" = "TRUE" ] || [ "${_CI_QUEUE_GRACE}" = "YES" ]; then
       _enable_master_cron
     else
       _disable_master_cron
@@ -267,7 +273,10 @@ else
     # with the _ALLOW_AEGIR_QUEUE cnf key converted from the marker.
     _QUEUE_OK=FALSE
     _if_allow_aegir_queue
-    if [ "${_QUEUE_OK}" = "TRUE" ]; then
+    # Honour the same upgrade grace as the master cron: satellite tasks are
+    # drained by the run-* dispatchers here, and an Octopus upgrade on a CI
+    # box needs them running without anyone touching run-aegir-queue.info.
+    if [ "${_QUEUE_OK}" = "TRUE" ] || [ "${_CI_QUEUE_GRACE}" = "YES" ]; then
       touch /run/boa_cron_wait.pid
       _runner_action
       sleep 5
