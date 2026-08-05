@@ -17,7 +17,7 @@ and `ChatGPT-User` land in different classes, and "ChatGPT" alone matches nothin
 | Class | `$is_ai_*` map | Example tokens | Default action |
 |-------|----------------|----------------|----------------|
 | Scrapers / bad bots | `$is_crawler` (pre-existing) | mass scrapers, download tools | **Hard block (444), always** |
-| AI **training** | `$is_ai_training` | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili | **Blocked (444)**; per-site opt-in to **allow** |
+| AI **training** | `$is_ai_training` | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili, md-proxy (RetrievableAIAgentProxy) | **Blocked (444)**; per-site opt-in to **allow** |
 | AI **search/index** | `$is_ai_search` | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
 | AI **user** (honest assistant fetch a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent | **Allowed + per-vendor aggregate rate-limit (2r/s)**; per-site opt-in to **block** |
 | AI **user — evasive** (user-triggered but ignores robots.txt and evades blocks) | `$is_ai_evasive` | Perplexity-User | **Blocked (444)**; per-site opt-in to **allow** |
