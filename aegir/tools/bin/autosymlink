@@ -1549,6 +1549,49 @@ _self_heal_symlink() {
   fi
 }
 
+_dir_residue_only() {
+  # rc 0 when a dir holds nothing beyond regenerated residue: tar exclusion
+  # tags, core .htaccess, the ownership/permissions stamp files, and the
+  # backup-excluded cache subtrees whose content is never carried by any
+  # archive (css/js aggregates, compiled containers, CiviCRM template caches,
+  # tmp). Such a dir is the post-extract state of a files-less archive plus
+  # whatever the deploy/verify bootstraps regenerated - never user data.
+  # FAIL-CLOSED: this verdict gates a delete, so a find error (captured via
+  # 2>&1 into the output) or non-zero rc must read as "has content", exactly
+  # like the PHP twin in Provision. -path globs, not -regex: an unusual
+  # character in the path can only weaken a prune (more scanned = closer to
+  # "has content"), never abort expression parsing.
+  # Args: 1 dir, 2 type label (files|private).
+  _RES_DIR="$1"
+  _RES_TYPE="$2"
+  if [ ! -d "${_RES_DIR}" ]; then
+    return 1
+  fi
+  if [ "${_RES_TYPE}" = "files" ]; then
+    _RES_OUT=$(find "${_RES_DIR}" \
+      \( -type d \( -path "${_RES_DIR}/advagg_css" -o -path "${_RES_DIR}/advagg_js" \
+         -o -path "${_RES_DIR}/css" -o -path "${_RES_DIR}/js" \
+         -o -path "${_RES_DIR}/php" -o -path "${_RES_DIR}/tmp" \
+         -o -path "${_RES_DIR}/civicrm/templates_c" \) -prune \) -o \
+      \( ! -type d \
+         ! -name exclude.tag ! -name .htaccess \
+         ! -name "ownership-fixed-*.pid" ! -name "permissions-fixed-*.pid" \
+         -print -quit \) 2>&1)
+  else
+    _RES_OUT=$(find "${_RES_DIR}" \
+      \( -type d -path "${_RES_DIR}/temp" -prune \) -o \
+      \( ! -type d \
+         ! -name exclude.tag ! -name .htaccess \
+         ! -name "ownership-fixed-*.pid" ! -name "permissions-fixed-*.pid" \
+         -print -quit \) 2>&1)
+  fi
+  _RES_RC=$?
+  if [ ${_RES_RC} -ne 0 ] || [ -n "${_RES_OUT}" ]; then
+    return 1
+  fi
+  return 0
+}
+
 _convert_dir_to_symlink() {
   # Crash-safe conversion of a real in-site directory into a symlink pointing at
   # the per-site store. Replaces the former non-atomic `mv; ln -s` pair.
@@ -1571,6 +1614,31 @@ _convert_dir_to_symlink() {
 
   if [ ! -d "${_SRC}" ] || [ -L "${_SRC}" ]; then
     return 0
+  fi
+
+  if [ -d "${_DST}" ] && [ ! -L "${_DST}" ] \
+    && _dir_residue_only "${_SRC}" "${_TYPE}" \
+    && ! _dir_residue_only "${_DST}" "${_TYPE}"; then
+    # The in-site dir holds only regenerated residue while the store target
+    # holds real content (a restore from a files-less archive that slipped past
+    # the provision-side guard, or any equivalent leftover): archiving the
+    # store and moving the residue in would serve an empty ${_TYPE} dir. Keep
+    # the populated store and re-point instead; the residue-only verdict makes
+    # the removal safe.
+    _log "[REPORT] Residue-only in-site ${_TYPE} dir for ${_SITE}; keeping the populated store and re-linking (nothing archived)"
+    # Rename aside first (atomic within the parent), so a failed ln -s can be
+    # rolled back and never leaves the site with no ${_TYPE} path at all.
+    _RES_ASIDE="${_SRC}.autosymlink-residue.$$"
+    if mv "${_SRC}" "${_RES_ASIDE}" && ln -s "${_DST}" "${_SRC}"; then
+      _match_symlink_owner "${_SRC}" "${_DST}"
+      rm -rf "${_RES_ASIDE}"
+      return 0
+    fi
+    if [ -d "${_RES_ASIDE}" ] && [ ! -e "${_SRC}" ] && [ ! -L "${_SRC}" ]; then
+      mv "${_RES_ASIDE}" "${_SRC}"
+    fi
+    _log "[ERROR] Could not re-link residue-only ${_TYPE} dir for ${_SITE}; left in place"
+    return 1
   fi
 
   if [ -e "${_DST}" ] || [ -L "${_DST}" ]; then
