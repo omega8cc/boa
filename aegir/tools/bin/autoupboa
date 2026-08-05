@@ -1012,6 +1012,145 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
   fi
 fi
 
+_cron_names_to_numbers() {
+  # crontab(5) accepts three-letter names in the month and dow fields
+  echo "$1" | tr 'A-Z' 'a-z' | sed \
+    -e 's/sun/0/g' -e 's/mon/1/g' -e 's/tue/2/g' -e 's/wed/3/g' \
+    -e 's/thu/4/g' -e 's/fri/5/g' -e 's/sat/6/g' \
+    -e 's/jan/1/g' -e 's/feb/2/g' -e 's/mar/3/g' -e 's/apr/4/g' \
+    -e 's/may/5/g' -e 's/jun/6/g' -e 's/jul/7/g' -e 's/aug/8/g' \
+    -e 's/sep/9/g' -e 's/oct/10/g' -e 's/nov/11/g' -e 's/dec/12/g'
+}
+
+_cron_field_matches() {
+  # Does one crontab date field (dom/mon/dow) cover the given value?
+  # Handles *, N, A-B, */S, A-B/S and comma lists; names are already
+  # normalized by the caller. Anything unparseable counts as a match:
+  # a strange hand-edited entry must block the reboot, not be ignored.
+  local _fLd="$1" _vAl="$2" _mIn="$3"
+  local _aTom="" _rNge="" _sTep="" _lOw="" _hIgh="" _rEst=""
+  [ "${_fLd}" = "*" ] && return 0
+  [[ "${_vAl}" =~ ^[0-9]+$ ]] || return 0
+  ### 10# everywhere a field value enters arithmetic: crontab accepts
+  ### zero-padded values (08/09) which bash $(( )) reads as invalid octal,
+  ### and the arithmetic abort would discard the whole caller block
+  _vAl=$((10#${_vAl}))
+  _rEst="${_fLd},"
+  while [ -n "${_rEst}" ]; do
+    _aTom="${_rEst%%,*}"
+    _rEst="${_rEst#*,}"
+    [ -z "${_aTom}" ] && continue
+    _sTep=1
+    _rNge="${_aTom}"
+    if [[ "${_aTom}" == */* ]]; then
+      _rNge="${_aTom%%/*}"
+      _sTep="${_aTom#*/}"
+      [[ "${_sTep}" =~ ^[0-9]+$ ]] || return 0
+      _sTep=$((10#${_sTep}))
+      [ "${_sTep}" -eq 0 ] && return 0
+    fi
+    if [ "${_rNge}" = "*" ]; then
+      _lOw="${_mIn}"
+      _hIgh=99
+    elif [[ "${_rNge}" =~ ^[0-9]+-[0-9]+$ ]]; then
+      _lOw=$((10#${_rNge%%-*}))
+      _hIgh=$((10#${_rNge#*-}))
+    elif [[ "${_rNge}" =~ ^[0-9]+$ ]]; then
+      _lOw=$((10#${_rNge}))
+      _hIgh="${_lOw}"
+    else
+      return 0
+    fi
+    [ "${_lOw}" -gt "${_hIgh}" ] && return 0
+    if [ "${_vAl}" -ge "${_lOw}" ] && [ "${_vAl}" -le "${_hIgh}" ] \
+      && [ $(( (_vAl - _lOw) % _sTep )) -eq 0 ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+_upgrade_scheduled_today() {
+  # TRUE when any active /etc/crontab entry that runs a barracuda or
+  # octopus upgrade -- directly or via the autoupboa weekly wrapper --
+  # is scheduled for today's date. The kernel-activation reboot must
+  # never share a day with a scheduled upgrade run, so a staged kernel
+  # waits for the next free night instead. crontab(5) semantics: dom
+  # and dow combine as OR when both are restricted, otherwise all date
+  # fields must agree.
+  local _cMin="" _cHour="" _cDom="" _cMon="" _cDow="" _cRest="" _domOk="" _dowOk=""
+  local _dNow="$(date +%-d)" _mNow="$(date +%-m)" _wNow="$(date +%w)"
+  [ -e "/etc/crontab" ] || return 1
+  ### read-splitting, never `set -- $line`: an unquoted * field would
+  ### glob-expand against the current directory
+  while read -r _cMin _cHour _cDom _cMon _cDow _cRest; do
+    if [[ "${_cMin}" == @* ]]; then
+      ### @daily/@weekly/... carry no date fields to test -- fail closed,
+      ### treat the upgrade as scheduled today
+      return 0
+    fi
+    [ -n "${_cRest}" ] || continue
+    _cDom=$(_cron_names_to_numbers "${_cDom}")
+    _cMon=$(_cron_names_to_numbers "${_cMon}")
+    _cDow=$(_cron_names_to_numbers "${_cDow}")
+    _cron_field_matches "${_cMon}" "${_mNow}" 1 || continue
+    _domOk=1
+    _cron_field_matches "${_cDom}" "${_dNow}" 1 && _domOk=0
+    _dowOk=1
+    if _cron_field_matches "${_cDow}" "${_wNow}" 0; then
+      _dowOk=0
+    elif [ "${_wNow}" -eq 0 ] && _cron_field_matches "${_cDow}" "7" 0; then
+      _dowOk=0
+    fi
+    ### Vixie cron flags a dom/dow field as unrestricted from its FIRST
+    ### character, so */N counts as star and keeps the AND rule; only
+    ### two genuinely restricted fields combine as OR
+    if [[ "${_cDom}" != \** ]] && [[ "${_cDow}" != \** ]]; then
+      if [ "${_domOk}" -eq 0 ] || [ "${_dowOk}" -eq 0 ]; then
+        return 0
+      fi
+    else
+      if [ "${_domOk}" -eq 0 ] && [ "${_dowOk}" -eq 0 ]; then
+        return 0
+      fi
+    fi
+  done < <(grep -iE '^[[:space:]]*[^#[:space:]].*((barracuda|octopus)[[:space:]]+up-|autoupboa[[:space:]]+weekly-system)' /etc/crontab 2>/dev/null)
+  return 1
+}
+
+_announce_kernel_reboot() {
+  # An unattended kernel-activation reboot must never be silent: log it
+  # in /var/log/boa/ and alert the admin by email before firing, so an
+  # overnight restart is never a mystery. The short sleep gives postfix
+  # a chance to relay the alert before the shutdown; a queued copy still
+  # delivers after boot either way.
+  local _rLog="/var/log/boa/kernel-reboot.log"
+  local _hostN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  local _mailTo="" _stAmp="$(date 2>/dev/null)" _rBody=""
+  [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+  ### one body, written to the log and mailed as-is -- never re-read the
+  ### append-only log for the mail, a previous entry would splice in
+  _rBody="[${_stAmp}] REBOOT: staged kernel activated via boa reboot (04:00-04:59 window)
+[${_stAmp}] Kernel running before this reboot: $(uname -r 2>/dev/null)"
+  if [ -e "/run/reboot-required.pkgs" ]; then
+    _rBody="${_rBody}
+[${_stAmp}] Pending packages: $(tr '\n' ' ' < /run/reboot-required.pkgs 2>/dev/null)"
+  fi
+  echo "${_rBody}" >> "${_rLog}"
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    _mailTo="$(basename "$0")@omega8.cc"
+  else
+    _mailTo="${_MY_EMAIL}"
+  fi
+  if [ ! -z "${_mailTo}" ] && [ -x "$(command -v s-nail)" ]; then
+    echo "${_rBody}" \
+      | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "REBOOT: New kernel activated on ${_hostN}" "${_mailTo}" &> /dev/null
+    sleep 8
+  fi
+}
+
 _if_new_kernel_reboot() {
   _isReboot=NO
   _is_protected_run
@@ -1025,6 +1164,21 @@ _if_new_kernel_reboot() {
       _isReboot=REQ
     fi
     if [ "${_isReboot}" = "REQ" ]; then
+      ### A staged kernel is activated only inside the silent night
+      ### maintenance window (04:00-04:59 server time): an apt security
+      ### run staging a kernel mid-day must never reboot a box mid-day.
+      if [ "$(date +%H)" != "04" ]; then
+        echo "NOTE: kernel reboot pending, waiting for the night window"
+        return 0
+      fi
+      ### ...and never on a day when /etc/crontab schedules a barracuda
+      ### or octopus upgrade, so the reboot cannot land near or inside
+      ### an upgrade run.
+      if _upgrade_scheduled_today; then
+        echo "NOTE: kernel reboot pending, deferred: upgrade scheduled today"
+        return 0
+      fi
+      _announce_kernel_reboot
       nohup /opt/local/bin/boa reboot > /dev/null 2>&1 &
       exit 1
     fi
@@ -1089,17 +1243,23 @@ _crontab_update() {
     _BCDA_SYST="${_BCDA_SYST} noscreen"
     _OCTO_FULL="${_OCTO_FULL} noscreen"
 
-    if [ ! -z "${_BCDA_SYST}" ]; then
+    ### every interpolated schedule field must be non-empty: an empty one
+    ### shifts the remaining fields left, producing a line cron cannot run
+    ### but _upgrade_scheduled_today must treat as scheduled forever
+    if [ ! -z "${_BCDA_SYST}" ] && [ ! -z "${_AUTO_UP_WEEKLY}" ] \
+      && [ ! -z "${_AUTO_UP_MINUTE}" ] && [ ! -z "${_AUTO_UP_HOUR}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
       echo "${_AUTO_UP_MINUTE} ${_AUTO_UP_HOUR}    * * ${_AUTO_UP_WEEKLY}   root    bash /opt/local/bin/autoupboa weekly-system ${_BCDA_SYST}" >> /etc/crontab
     fi
 
-    if [ ! -z "${_BCDA_FULL}" ]; then
+    if [ ! -z "${_BCDA_FULL}" ] && [ ! -z "${_AUTO_UP_DAY}" ] && [ ! -z "${_AUTO_UP_MONTH}" ] \
+      && [ ! -z "${_AUTO_UP_MINUTE}" ] && [ ! -z "${_AUTO_UP_HOUR}" ]; then
       echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
       echo "${_AUTO_UP_MINUTE} ${_AUTO_UP_HOUR}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    bash /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     fi
 
-    if [ ! -z "${_OCTO_FULL}" ]; then
+    if [ ! -z "${_OCTO_FULL}" ] && [ ! -z "${_AUTO_UP_DAY}" ] && [ ! -z "${_AUTO_UP_MONTH}" ] \
+      && [ ! -z "${_AUTO_OCT_UP_MINUTE}" ] && [ ! -z "${_AUTO_OCT_UP_HOUR}" ]; then
       echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
       echo "${_AUTO_OCT_UP_MINUTE} ${_AUTO_OCT_UP_HOUR}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    bash /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
     fi
