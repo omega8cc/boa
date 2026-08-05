@@ -286,9 +286,10 @@ xmass sync target-ip --live     # perform the sync (after a CLEAN dry run)
 > target. The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
 > pre-checks disk space for every account's files store **and the Solr indices** (which
 > can be large), and records `CLEAN`/`NOT CLEAN`
-> for the whole run — a single `DENY` (dangling source symlink, more than one `/mnt`
-> mount, or a store that fits nowhere) makes it `NOT CLEAN` and refuses `--live` until
-> resolved. Utility/DB commands (`init`, `status`, `pre-mig`, `post-mig`) are not gated,
+> for the whole run — a single `DENY` (a dangling **named store** such as
+> `static/files` or `arch`, more than one `/mnt` mount, or a store that fits nowhere)
+> makes it `NOT CLEAN` and refuses `--live` until resolved. A dangling link found by
+> the out-of-root **sweep** is reported but never a `DENY` by itself. Utility/DB commands (`init`, `status`, `pre-mig`, `post-mig`) are not gated,
 > and MySQL/xtrabackup steps are never gated.
 
 Syncs the following to the target on each run:
@@ -311,6 +312,7 @@ Syncs the following to the target on each run:
 | Shell credentials | `<oN>.ftp` shadow hash + `log/pass.txt` as a pair, the sub-account password store `/home/oN.ftp/users/`, and each sub-user's hash and `.ssh` |
 | Per-account config | `/root/.<oN>.octopus.cnf` (portable values merged into the target's copy), `static/control/{fpm,cli,multi-fpm}.info` and `log/{fpm,cli,email,option,cores,subscr}.txt` (forced, no `-u`) |
 | Suspension flag | `/data/conf/suspended/<oN>.pid` (mirrored, presence and absence) |
+| Out-of-root symlink content | Every synced tree is swept for symlinks whose target lives **outside** the synced trees (typically a secondary `/mnt` volume — per-account backup stores under `/data/disk/arch/sql` are the canonical case). Their content **materialises** on the target as real dirs/files: mirrored onto the target's own single mount when it has one and the store lands under `/data/disk`, de-referenced to a real dir/file on the target root otherwise. Space-gated per store/batch like everything else |
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
 
@@ -321,6 +323,35 @@ record on the documented `reset-phase syncing` recovery path), and `pass.txt`
 rides the credential carry instead so it can never advertise a password the
 target's `/etc/shadow` does not hold. `log/domain.txt` is synced with `-u` on
 purpose: the target's own FQDN stamp is what `renameaegirhost` wants.
+
+### Out-of-root symlinks — what materialises and what stays a link
+
+rsync carries symlinks **as links**, so a link whose target lives outside the
+synced trees would arrive dangling and its content would never travel. Every
+`sync`/`cutover` pass therefore sweeps each synced tree first and classifies
+every symlink:
+
+- **Stays a link, never dereferenced**: links into the normal BOA fabric —
+  platform links into `/data/all`, `.drush` links, links to BOA-installed
+  toolchains (any standard FHS prefix that exists on every BOA box) — and
+  relative links resolving inside the tree being copied.
+- **Materialises**: links whose first hop *and* final target live outside
+  those prefixes and exist (the secondary-mount class). Dir links transfer
+  one store each; file links ride one batched, space-gated `rsync
+  --copy-links` per tree. Nested links inside a materialised tree are handled
+  the same way, a few levels deep.
+- **Reported, never a DENY by itself**: dangling links (a cluster under one
+  `/mnt` prefix usually means the volume is not mounted — the report says so;
+  the target's last materialised copy is left in place), link chains that
+  escape and re-enter the synced trees, links that resolve out-of-root only
+  via an intermediate link, links under an account subtree that its own
+  delta leg re-sends each sync, and links whose name cannot be shell-quoted
+  safely.
+
+`pre-mig` (on the source) and `init` print the full link map with sizes and an
+aggregate space probe **before anything moves**; the binding per-store gates
+run inside the sync legs themselves. `verify` sweeps the target (including its
+mount) for dangling links afterwards.
 
 ### Why the PHP pins and the account cnf need forcing
 
