@@ -54,8 +54,13 @@ _if_install_adminer() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_adminer"
   fi
+  ### Hosted systems are treated as ADM without cnf surgery: the hosted
+  ### welcome email documents /sqladmin, so the existing fleet must converge
+  ### on its routine runs, not only boxes whose cnf carries ADM.
+  _if_hosted_sys
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ADM" ]] \
+    || [ "${_hostedSys}" = "YES" ] \
     || [ -d "/var/www/chive" ]; then
     _ADMINER_VHOST="${_mtrNgx}/vhost.d/adminer.${_THIS_FRONT}"
     if [ ! -e "/var/www/adminer/index.php" ] \

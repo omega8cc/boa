@@ -4,25 +4,35 @@ We are pleased to inform you that your Ægir instance has been successfully upgr
 
 Here is what this one means for you and your sites.
 
-@=> Your sites are safer without you lifting a finger
+----------------------------------------
+YOUR SITES ARE SAFER WITHOUT YOU LIFTING A FINGER
+----------------------------------------
 
 Every supported PHP version received its latest security update, already built and in place -- your sites simply run safer, on the same PHP version they always have. And the protection in front of your sites got smarter: it now spots content scrapers that hide across many addresses, covers IPv6 visitors as thoroughly as IPv4 ones, and stops any single runaway page from slowing down a whole site.
 
-@=> Search engines see your sites properly again
+----------------------------------------
+SEARCH ENGINES SEE YOUR SITES PROPERLY AGAIN
+----------------------------------------
 
 Sitemaps, feeds, images, styles, print pages and multilingual addresses are all served to search engines normally again -- so crawling and indexing of your sites work the way they should, while abusive bots stay locked out.
 
-@=> Cleaning up is now a one-click job for your whole team
+----------------------------------------
+CLEANING UP IS NOW A ONE-CLICK JOB FOR YOUR WHOLE TEAM
+----------------------------------------
 
 If an interrupted task ever leaves a stray site copy behind, anyone on your team with panel access can now spot it and clear it away with the Import and Purge buttons -- no special account needed.
 
-@=> Fresher foundations for your next project
+----------------------------------------
+FRESHER FOUNDATIONS FOR YOUR NEXT PROJECT
+----------------------------------------
 
 Drupal 11.4 is ready to use as a complete platform set, Backdrop is now delivered with the same care and versioning as Drupal, and one-time login links on Drupal 7 sites work dependably every time.
 
-Curious about the details? The full story of this release is at https://docs.boa.io/releases
+Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-822
 
-@=> You can access your upgraded Ægir instance at the following URL:
+----------------------------------------
+YOU CAN ACCESS YOUR UPGRADED ÆGIR INSTANCE AT THE FOLLOWING URL
+----------------------------------------
 
   https://aegir.url.name
 

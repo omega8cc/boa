@@ -29,6 +29,16 @@
 ### migration; --live is accepted only after a CLEAN dry run for the same target and
 ### consumes that token (one dry can never arm two lives).
 ###
+### Out-of-root symlinks: rsync legs carry symlinks AS LINKS, so every sync/cutover
+### pass sweeps the synced trees for links whose target lives outside them
+### (typically a secondary /mnt volume), excludes those from their tree leg, and
+### materialises their content on the target as real dirs/files -- mirrored onto
+### the target's own mount when it has one, space-gated like every other store.
+### Links into the normal BOA fabric (/data/all platforms, .drush, etc.) always
+### stay links; dangling links are reported and skipped, never a DENY by
+### themselves. pre-mig and init print the full link map (classes + sizes) before
+### anything moves; verify checks the target for dangling links afterwards.
+###
 ### Procedure overview:
 ###   1. pre-mig      Stop BOA background jobs; exchange SSH keys.
 ###   2. init         Install xtrabackup, enable GTID, take initial snapshot,
@@ -1581,7 +1591,7 @@ _xmass_enumerate_accounts() {
 # Empty output therefore means ONLY that the ssh query itself failed -> caller aborts,
 # so a transient ssh hiccup never silently downgrades a mirror to a root de-reference.
 _xmass_detect_target_mnt() {
-  ssh root@"$1" 'p=$(stat -c "%d" /mnt 2>/dev/null); n=0; h=""; for m in /mnt/*; do [ -d "$m" ] || continue; if mountpoint -q "$m" 2>/dev/null || { [ -n "$p" ] && [ "$(stat -c "%d" "$m" 2>/dev/null)" != "$p" ]; }; then h="$m"; n=$((n+1)); fi; done; if [ "$n" -gt 1 ]; then echo MULTI; elif [ "$n" -eq 1 ]; then printf "%s" "$h"; else echo NONE; fi'
+  ssh -n root@"$1" 'p=$(stat -c "%d" /mnt 2>/dev/null); n=0; h=""; for m in /mnt/*; do [ -d "$m" ] || continue; if mountpoint -q "$m" 2>/dev/null || { [ -n "$p" ] && [ "$(stat -c "%d" "$m" 2>/dev/null)" != "$p" ]; }; then h="$m"; n=$((n+1)); fi; done; if [ "$n" -gt 1 ]; then echo MULTI; elif [ "$n" -eq 1 ]; then printf "%s" "$h"; else echo NONE; fi'
 }
 
 # Resolve the target's attached mount into _TGT_MNT ("" = none), aborting the run on a
@@ -1688,7 +1698,7 @@ _xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label
 _xmass_target_fits() {
   local _av _q
   _q="$(_shq "$2")"
-  _av=$(ssh root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
+  _av=$(ssh -n root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
   if [ -z "$3" ] || [ -z "${_av}" ]; then return 0; fi
   [ "${_av}" -ge "$3" ]
 }
@@ -1702,7 +1712,7 @@ _shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
 _xmass_put_on_root() {
   local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _q
   _q="$(_shq "${_dstRoot}")"
-  ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
+  ssh -n root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
   # Tolerate rc 24 exactly as _xmass_rsync does. This gate was previously inert
   # (_xmass_handle_store returned an assignment's status instead of this one), so
   # making it work exposes it to the benign case: on a live tree during `xmass
@@ -1728,7 +1738,7 @@ _xmass_put_on_root() {
 _xmass_put_on_mount() {
   local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _qm _qd
   _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
-  ssh root@"${_th}" "mkdir -p '${_qm}'"
+  ssh -n root@"${_th}" "mkdir -p '${_qm}'"
   # Same rc-24 tolerance as _xmass_put_on_root; see the note there.
   local _rc=0
   rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
@@ -1740,7 +1750,7 @@ _xmass_put_on_mount() {
   if [ "${_rc}" = "24" ]; then
     _info "  ${_lbl}: some source files vanished during transfer (rc=24, benign)"
   fi
-  if ! ssh root@"${_th}" "d='${_qd}'; case \"\$d\" in /data/disk/*) : ;; *) echo 'refuse: dstRoot outside /data/disk'; exit 9 ;; esac; if [ -L \"\$d\" ]; then rm -f \"\$d\"; elif [ -d \"\$d\" ]; then rm -rf \"\$d\"; elif [ -e \"\$d\" ]; then rm -f \"\$d\"; fi; mkdir -p \"\$(dirname \"\$d\")\"; ln -sfn '${_qm}' \"\$d\""; then
+  if ! ssh -n root@"${_th}" "d='${_qd}'; case \"\$d\" in /data/disk/*) : ;; *) echo 'refuse: dstRoot outside /data/disk'; exit 9 ;; esac; if [ -L \"\$d\" ]; then rm -f \"\$d\"; elif [ -d \"\$d\" ]; then rm -rf \"\$d\"; elif [ -e \"\$d\" ]; then rm -f \"\$d\"; fi; mkdir -p \"\$(dirname \"\$d\")\"; ln -sfn '${_qm}' \"\$d\""; then
     _alrt "DENY: ${_lbl}: could not place symlink ${_dstRoot} -> ${_mntDest} on target"
     return 3
   fi
@@ -1825,25 +1835,411 @@ _xmass_handle_store() {
   return 0
 }
 
-# Catch-all: any symlink (besides static/files, handled explicitly) whose OWN target
-# is /mnt/... gets the same storage-aware treatment, so non-standard legacy links are
-# never left dangling on the target. Sets _XMASS_STORE_RC on any DENY. NOTE: on a rename
-# the derived on-mount path keeps the SOURCE account name for a legacy link (it still
-# resolves; only the mount-relative path is cosmetically old-named).
-_xmass_catchall_mnt_symlinks() {
-  local _root="$1" _dstRoot="$2" _th="$3" _tm="$4" _ie="$5"
-  local _l _lt _rel _dl
+# --- out-of-root symlink discovery + materialisation (secondary mounts) ------------
+#
+# Every transfer leg runs rsync with -a (implies -l): symlinks always travel AS
+# LINKS, so a link whose target lives outside the trees this tool syncs (typically
+# a secondary volume under /mnt) arrives DANGLING on the target and its content
+# never travels. The sweep below closes that gap: discover every symlink under a
+# synced root, classify it, exclude every non-fabric one from its own tree leg
+# (a source symlink re-sent over an already-materialised copy errors on a dir,
+# silently REVERTS a file back to a link -- both verified -- and a class flip
+# such as out->dangling on a volume unmount must leave the target's last good
+# copy alone), then materialise the out-of-root ones via the storage-aware
+# store machinery. Classes:
+#   fabric   - first hop and final target under a standard BOA/FHS prefix that
+#              exists on any BOA box (/data /home /usr /etc /var /opt ...):
+#              travels as a link, NEVER dereferenced (platform links into
+#              /data/all, .drush links, etc.)
+#   intree   - RELATIVE link resolving inside the tree being scanned: survives
+#              the store copy as a working link; never duplicated
+#   out      - first hop and final target outside those prefixes, and existing
+#              (the secondary-mount class): materialised on the target
+#   chain    - first hop out-of-root but final target back inside (the chain
+#              escapes then re-enters): would dangle on the target because the
+#              intermediate hop does not exist there; report only
+#   indirect - first hop inside but final target out-of-root (an intermediate
+#              link does the escaping): handled where that intermediate link
+#              lives; report only
+#   dangling - final target missing: report only, never a DENY by itself (a
+#              mass of these under one /mnt prefix usually means the volume is
+#              not mounted -- the summary says so)
+# Report-only classes never block a run. Materialised legs are space-gated per
+# store/batch and any transfer failure rides the normal DENY plumbing.
+_XMASS_LINK_DEPTH_MAX=3
+
+# Classify ONE symlink. Sets _LNK_CLASS (fabric|intree|out|chain|indirect|
+# dangling|loop|unsafe), _LNK_REAL (canonical final target, or the unresolved
+# hop for dangling) and _LNK_KIND (dir|file|other, out class only). $2 is the
+# scan root: a RELATIVE link resolving inside it is class intree -- it
+# survives the store copy as a working link and must not be duplicated.
+# An ABSOLUTE intra-tree link would dangle on the target via its link text,
+# so it still classifies out and materialises. Read-only.
+_xmass_link_class() {
+  local _l="$1" _rt="$2" _raw _hop _fin _hopin=NO _finin=NO
+  _LNK_CLASS=""; _LNK_REAL=""; _LNK_KIND=""
+  _raw="$(readlink "${_l}" 2>/dev/null)"
+  case "${_raw}" in
+    /*) _hop="${_raw}" ;;
+    *)  _hop="$(realpath -sm "$(dirname "${_l}")/${_raw}" 2>/dev/null)" ;;
+  esac
+  _fin="$(readlink -f "${_l}" 2>/dev/null)"
+  if [ -z "${_fin}" ] || [ ! -e "${_fin}" ]; then
+    _LNK_CLASS=dangling
+    _LNK_REAL="${_hop}"
+    return 0
+  fi
+  _LNK_REAL="${_fin}"
+  if [ -n "${_rt}" ]; then
+    case "${_raw}" in
+      /*) : ;;
+      *)
+        case "${_fin}/" in
+          "${_rt}"/*) _LNK_CLASS=intree; return 0 ;;
+        esac
+        ;;
+    esac
+  fi
+  case "${_hop}" in
+    /data/*|/home/*|/usr/*|/bin/*|/sbin/*|/lib/*|/lib64/*|/etc/*|/var/*|/opt/*|/run/*|/tmp/*|/root/*|/boot/*) _hopin=YES ;;
+  esac
+  case "${_fin}" in
+    /data/*|/home/*|/usr/*|/bin/*|/sbin/*|/lib/*|/lib64/*|/etc/*|/var/*|/opt/*|/run/*|/tmp/*|/root/*|/boot/*) _finin=YES ;;
+  esac
+  if [ "${_hopin}" = "YES" ]; then
+    if [ "${_finin}" = "YES" ]; then
+      _LNK_CLASS=fabric
+    else
+      _LNK_CLASS=indirect
+    fi
+    return 0
+  fi
+  if [ "${_finin}" = "YES" ]; then
+    _LNK_CLASS=chain
+    return 0
+  fi
+  # Out-of-root and existing: refuse whole namespace roots and links that live
+  # inside their own target tree (materialising either would recurse content
+  # into itself or copy every attached volume at once).
+  case "${_fin}" in
+    /|/mnt|/media|/srv) _LNK_CLASS=unsafe; return 0 ;;
+  esac
+  case "${_l}/" in
+    "${_fin}"/*) _LNK_CLASS=loop; return 0 ;;
+  esac
+  if [ -d "${_fin}" ]; then
+    _LNK_KIND=dir
+  elif [ -f "${_fin}" ]; then
+    _LNK_KIND=file
+  else
+    _LNK_KIND=other
+  fi
+  _LNK_CLASS=out
+  return 0
+}
+
+# Sweep one root for symlinks and classify them, printing the map as it goes.
+# Fills, for the materialise step and the caller's tree leg:
+#   _XMASS_OUT_DIRS    - newline list of out-class DIR link paths, root-relative
+#   _XMASS_OUT_FILES   - newline list of out-class FILE link paths, root-relative
+#   _XMASS_OUT_FILE_KB - total size of the file links (feeds the batch gate)
+#   _XMASS_OUT_KB      - total size of everything that would materialise
+#   _XMASS_OUT_EXCL    - root-anchored --exclude args for the root's own tree
+#                        leg (only shell-safe names; the rare unsafe name is
+#                        reported and left to converge post-leg)
+#   _XMASS_LNK_RPT     - per-class counters for the caller's summary line
+# $2 (optional) - one path to skip (the static/files store, handled explicitly)
+# $3 (optional) - space-separated top-level subdirs whose own delta legs re-send
+#                 links each sync; out-links under them are reported, NOT
+#                 materialised (the leg would fight the materialised copy)
+_xmass_scan_out_links() {
+  local _root="$1" _skip="$2" _cov="$3"
+  local _l _rel _top _sz _covered _uNm
+  local _nfab=0 _nin=0 _nout=0 _nchain=0 _nind=0 _ndang=0 _nskip=0 _mntdang=0
+  _XMASS_OUT_DIRS=""; _XMASS_OUT_FILES=""; _XMASS_OUT_EXCL=""
+  _XMASS_OUT_KB=0; _XMASS_OUT_FILE_KB=0; _XMASS_OUT_MNT_KB=0
   while IFS= read -r _l; do
     [ -n "${_l}" ] || continue
-    [ "${_l}" = "${_root}/static/files" ] && continue
-    _lt="$(readlink "${_l}" 2>/dev/null)"
-    case "${_lt}" in /mnt/*) : ;; *) continue ;; esac
+    [ -n "${_skip}" ] && [ "${_l}" = "${_skip}" ] && continue
+    _xmass_link_class "${_l}" "${_root}"
     _rel="${_l#"${_root}"/}"
-    _dl="${_dstRoot}/${_rel}"
-    _xmass_handle_store "${_l}" "${_dl}" "" "${_th}" "${_tm}" "${_ie}" "legacy symlink ${_rel}" || _XMASS_STORE_RC=$?
+    case "${_rel}" in
+      *[[:space:]\*\?\[]*) _uNm=YES ;;
+      *) _uNm="" ;;
+    esac
+    # Only fabric/intree links travel as links through their tree leg; every
+    # other class is excluded from it (shell-safe names only). Excluding a
+    # path with no materialised copy on the target is a no-op, and a class
+    # flip -- an out link going dangling on a volume unmount -- must leave
+    # the target's last materialised copy in place instead of fighting it
+    # (a re-sent symlink errors over a dir and reverts a file).
+    case "${_LNK_CLASS}" in
+      fabric|intree) : ;;
+      *)
+        [ -z "${_uNm}" ] && _XMASS_OUT_EXCL="${_XMASS_OUT_EXCL} --exclude=/${_rel}"
+        ;;
+    esac
+    case "${_LNK_CLASS}" in
+      fabric)
+        _nfab=$(( _nfab + 1 ))
+        ;;
+      intree)
+        _nin=$(( _nin + 1 ))
+        ;;
+      dangling)
+        _ndang=$(( _ndang + 1 ))
+        case "${_LNK_REAL}" in /mnt/*) _mntdang=$(( _mntdang + 1 )) ;; esac
+        _alrt "  dangling link (content will NOT travel): ${_l} -> ${_LNK_REAL:-?}"
+        ;;
+      chain)
+        _nchain=$(( _nchain + 1 ))
+        _alrt "  link chain escapes then re-enters the synced roots: ${_l}"
+        _alrt "    (would dangle on the target; link it directly to ${_LNK_REAL})"
+        ;;
+      indirect)
+        _nind=$(( _nind + 1 ))
+        _alrt "  link resolves out-of-root via an intermediate link: ${_l} -> ${_LNK_REAL}"
+        _alrt "    (handled where the intermediate link lives, if that tree is synced)"
+        ;;
+      loop|unsafe)
+        _nskip=$(( _nskip + 1 ))
+        _alrt "  refusing to materialise ${_l} -> ${_LNK_REAL} (${_LNK_CLASS})"
+        ;;
+      out)
+        # Covered-subtree guard applies only STRICTLY BELOW a covered dir: a
+        # top-level link NAMED like one (a whole log/ on a volume) is followed
+        # by its own trailing-slash leg, and the materialise pass converges
+        # the same real dir -- it must not be swallowed here.
+        _covered=""
+        if [ -n "${_cov}" ]; then
+          case "${_rel}" in
+            */*)
+              _top="${_rel%%/*}"
+              case " ${_cov} " in
+                *" ${_top} "*) _covered=YES ;;
+              esac
+              ;;
+          esac
+        fi
+        if [ -n "${_covered}" ]; then
+          _nskip=$(( _nskip + 1 ))
+          _alrt "  out-of-root link under delta-synced subtree '${_top}': ${_l} -> ${_LNK_REAL}"
+          _alrt "    its tree leg re-sends the link every sync and would fight a"
+          _alrt "    materialised copy -- content will NOT travel; move the link out"
+          _alrt "    of '${_top}' or attach the same mount on the target"
+          continue
+        fi
+        # A rel path with whitespace or glob chars cannot ride the unquoted
+        # exclude splice or the remote-shell rsync args safely. A DIR link
+        # would fail placement and DENY-block the whole run over a link that
+        # today merely dangles -- report it instead. A FILE link is immune in
+        # the batch (--files-from bypasses the shell) but loses its exclude,
+        # so the tree leg re-flips it each sync and the batch re-copies it:
+        # every run still ends converged.
+        if [ "${_LNK_KIND}" = "dir" ]; then
+          if [ "${_uNm}" = "YES" ]; then
+            _nskip=$(( _nskip + 1 ))
+            _alrt "  out-of-root dir link name is not shell-safe: ${_l} -> ${_LNK_REAL}"
+            _alrt "    content will NOT travel -- rename the link on the source"
+            continue
+          fi
+          _sz="$(du -sk "${_LNK_REAL}" 2>/dev/null | awk '{print $1}')"
+          _XMASS_OUT_DIRS="${_XMASS_OUT_DIRS}${_rel}
+"
+        elif [ "${_LNK_KIND}" = "file" ]; then
+          _sz="$(du -skL "${_l}" 2>/dev/null | awk '{print $1}')"
+          _XMASS_OUT_FILES="${_XMASS_OUT_FILES}${_rel}
+"
+          _XMASS_OUT_FILE_KB=$(( _XMASS_OUT_FILE_KB + ${_sz:-0} ))
+          if [ "${_uNm}" = "YES" ]; then
+            _alrt "  (file link name is not shell-safe; its tree leg cannot exclude it"
+            _alrt "  and may re-flip it -- the batch re-converges it every run)"
+          fi
+        else
+          _nskip=$(( _nskip + 1 ))
+          _alrt "  out-of-root link to a special file, skipped: ${_l} -> ${_LNK_REAL}"
+          continue
+        fi
+        _nout=$(( _nout + 1 ))
+        _XMASS_OUT_KB=$(( _XMASS_OUT_KB + ${_sz:-0} ))
+        case "${_LNK_REAL}" in
+          /mnt/*) _XMASS_OUT_MNT_KB=$(( _XMASS_OUT_MNT_KB + ${_sz:-0} )) ;;
+        esac
+        _info "  out-of-root link, will materialise (${_sz:-?}K): ${_l} -> ${_LNK_REAL}"
+        ;;
+    esac
   done <<EOF
-$(find "${_root}" -type l 2>/dev/null)
+$(find "${_root}" -type l 2>/dev/null | sort)
 EOF
+  _XMASS_LNK_RPT="fabric=${_nfab} intree=${_nin} materialise=${_nout} chain=${_nchain} indirect=${_nind} dangling=${_ndang} skipped=${_nskip}"
+  if [ "${_mntdang}" -gt 0 ]; then
+    _alrt "  ${_mntdang} dangling link(s) under ${_root} point below /mnt -- if a"
+    _alrt "  secondary volume should be mounted there, mount it and re-run: its"
+    _alrt "  content will NOT travel otherwise"
+  fi
+  return 0
+}
+
+# Materialise the out-class links from the LAST scan of <root> onto the target.
+# Dir links go one by one through the storage-aware store machinery (mirrored
+# onto the target's own mount for a /mnt-anchored link when it has one, else a
+# real dir on the target root; space-gated either way), then the resolved tree
+# is re-scanned so a nested out-of-root link inside it travels too, up to the
+# depth cap. File links ride ONE batched, space-gated rsync per root. The batch
+# must never use -u: a fresher-mtime dangling link on the receiver silently
+# wins over the real file (verified), and the links the tree legs may still
+# deliver are exactly that shape.
+_xmass_materialise_out_links() {
+  local _root="$1" _dstRoot="$2" _depth="${3:-1}"
+  local _dirs="${_XMASS_OUT_DIRS}" _files="${_XMASS_OUT_FILES}"
+  local _fkb="${_XMASS_OUT_FILE_KB}"
+  local _rel _real _key _list _n _tmArg _rcStore _nDirs _nFiles _nFkb _nExcl
+  # fd 3 keeps the loop's stdin clear of the here-doc: the store helpers run
+  # ssh whose stdin would otherwise drain the list after the first entry.
+  while IFS= read -r _rel <&3; do
+    [ -n "${_rel}" ] || continue
+    _real="$(readlink -f "${_root}/${_rel}" 2>/dev/null)"
+    # Scan the resolved tree BEFORE its store leg runs, so nested out-of-root
+    # links ride the same exclude treatment as depth 1 (a source symlink
+    # re-sent over the previously materialised copy errors on a dir and
+    # reverts a file), then recurse from that same snapshot.
+    _nDirs=""; _nFiles=""; _nFkb=0; _nExcl=""
+    if [ -n "${_real}" ] && [ -d "${_real}" ]; then
+      if [ "${_depth}" -lt "${_XMASS_LINK_DEPTH_MAX}" ]; then
+        _xmass_scan_out_links "${_real}"
+        _nDirs="${_XMASS_OUT_DIRS}"; _nFiles="${_XMASS_OUT_FILES}"
+        _nFkb="${_XMASS_OUT_FILE_KB}"; _nExcl="${_XMASS_OUT_EXCL}"
+      elif [ -n "$(find "${_real}" -type l -print -quit 2>/dev/null)" ]; then
+        _alrt "  links exist under ${_root}/${_rel} beyond the sweep depth cap and were"
+        _alrt "  NOT classified -- flatten the chain on the source"
+      fi
+    fi
+    # The mount-mirror replace helper is remotely fenced to /data/disk (it
+    # guards an rm -rf and must stay tight); a store landing anywhere else
+    # takes the root de-reference path instead of failing at the fence.
+    _tmArg="${_TGT_MNT}"
+    case "${_dstRoot}/${_rel}" in
+      /data/disk/*) : ;;
+      *) _tmArg="" ;;
+    esac
+    _rcStore=0
+    _xmass_handle_store "${_root}/${_rel}" "${_dstRoot}/${_rel}" "" \
+      "${_tgt}" "${_tmArg}" "${_ieni} ${_nExcl}" "out-of-root link ${_root}/${_rel}" \
+      || _rcStore=$?
+    if [ "${_rcStore}" != "0" ]; then
+      _XMASS_STORE_RC="${_rcStore}"
+      continue
+    fi
+    if [ -n "${_nDirs}${_nFiles}" ]; then
+      _XMASS_OUT_DIRS="${_nDirs}"; _XMASS_OUT_FILES="${_nFiles}"
+      _XMASS_OUT_FILE_KB="${_nFkb}"
+      _xmass_materialise_out_links "${_real}" "${_dstRoot}/${_rel}" $(( _depth + 1 ))
+    fi
+  done 3<<EOF
+${_dirs}
+EOF
+  if [ -n "${_files}" ]; then
+    _key="$(printf '%s' "${_root}" | tr -c 'A-Za-z0-9._-' '_')"
+    _list="/var/log/boa/xmass.outlinks.${_key}.list"
+    mkdir -p /var/log/boa 2>/dev/null
+    printf '%s' "${_files}" > "${_list}"
+    _n="$(grep -c . "${_list}" 2>/dev/null)"
+    if _xmass_target_fits "${_tgt}" "${_dstRoot}" "${_fkb}"; then
+      _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
+      _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
+        "${_root}/" "root@${_tgt}:${_dstRoot}/"
+    else
+      _alrt "DENY: out-of-root file links under ${_root}: ${_fkb}K does not fit at target ${_dstRoot} -- free space and retry"
+      _XMASS_NOT_CLEAN=YES
+      _XMASS_STORE_RC=3
+    fi
+  fi
+  return 0
+}
+
+# Advisory discovery report (pre-mig on the source; init): the full link map of
+# every synced root with sizes, plus one aggregate space probe when the target
+# is already reachable. Modelled on _xmass_check_le_health: report, never a
+# gate -- the per-store gates run inside the sync/cutover legs themselves.
+_xmass_report_out_links() {
+  local _r _d _tot=0 _totMnt=0 _tm=""
+  _info "Scanning synced trees for out-of-root symlinks (secondary mounts) ..."
+  for _r in /data/all /data/disk/all /data/disk/legacy /var/www/static; do
+    if [ -L "${_r}" ]; then
+      _alrt "  ${_r} is itself a symlink -> $(readlink "${_r}" 2>/dev/null) (not"
+      _alrt "  transferred; the target's own install provides it)"
+      continue
+    fi
+    [ -d "${_r}" ] || continue
+    _xmass_scan_out_links "${_r}"
+    case "${_XMASS_LNK_RPT}" in
+      *"materialise=0 chain=0 indirect=0 dangling=0 skipped=0") : ;;
+      *) _info "  ${_r}: ${_XMASS_LNK_RPT}" ;;
+    esac
+    _tot=$(( _tot + _XMASS_OUT_KB ))
+    _totMnt=$(( _totMnt + _XMASS_OUT_MNT_KB ))
+  done
+  _r=""
+  if [ -L "/data/disk/arch" ]; then
+    _r="$(readlink -f /data/disk/arch 2>/dev/null)"
+  elif [ -d "/data/disk/arch" ]; then
+    _r="/data/disk/arch"
+  fi
+  if [ -n "${_r}" ] && [ -d "${_r}" ]; then
+    _xmass_scan_out_links "${_r}"
+    case "${_XMASS_LNK_RPT}" in
+      *"materialise=0 chain=0 indirect=0 dangling=0 skipped=0") : ;;
+      *) _info "  arch (${_r}): ${_XMASS_LNK_RPT}" ;;
+    esac
+    _tot=$(( _tot + _XMASS_OUT_KB ))
+    _totMnt=$(( _totMnt + _XMASS_OUT_MNT_KB ))
+  fi
+  for _d in $(find /data/disk -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+    case "$(basename "${_d}")" in
+      arch|all|lost+found|lostfound|backups|codebases-cleanup|legacy|xusage)
+        continue ;;
+    esac
+    _xmass_scan_out_links "${_d}" "${_d}/static/files" \
+      "distro static log .drush config clients backups undo tools"
+    case "${_XMASS_LNK_RPT}" in
+      *"materialise=0 chain=0 indirect=0 dangling=0 skipped=0") : ;;
+      *) _info "  ${_d}: ${_XMASS_LNK_RPT}" ;;
+    esac
+    _tot=$(( _tot + _XMASS_OUT_KB ))
+    _totMnt=$(( _totMnt + _XMASS_OUT_MNT_KB ))
+  done
+  if [ "${_tot}" -gt 0 ]; then
+    _info "Out-of-root content that would materialise on the target: ${_tot}K total"
+    _info "(top-level links only; nested links found during the sync add to this)"
+    if [ -n "${_tgt}" ]; then
+      # Advisory only -- the binding per-store gates run inside the legs.
+      # When the target has its own single mount, /mnt-anchored content
+      # mirrors onto it rather than landing under /data/disk, so probe the
+      # two classes where they will actually go.
+      _tm="$(_xmass_detect_target_mnt "${_tgt}")"
+      case "${_tm}" in MULTI|NONE) _tm="" ;; esac
+      if [ -n "${_tm}" ] && [ "${_totMnt}" -gt 0 ]; then
+        if _xmass_target_fits "${_tgt}" "${_tm}" "${_totMnt}"; then
+          _info "Aggregate probe for ${_totMnt}K (mirrors) at ${_tm} on ${_tgt}: OK"
+        else
+          _alrt "Aggregate ${_totMnt}K (mirrors) would NOT fit at ${_tm} on ${_tgt}"
+        fi
+        if _xmass_target_fits "${_tgt}" "/data/disk" "$(( _tot - _totMnt ))"; then
+          _info "Aggregate probe for $(( _tot - _totMnt ))K at /data/disk on ${_tgt}: OK"
+        else
+          _alrt "Aggregate $(( _tot - _totMnt ))K would NOT fit at /data/disk on ${_tgt}"
+        fi
+      elif _xmass_target_fits "${_tgt}" "/data/disk" "${_tot}"; then
+        _info "Aggregate space probe for ${_tot}K at /data/disk on ${_tgt}: OK"
+      else
+        _alrt "Aggregate ${_tot}K would NOT fit at /data/disk on ${_tgt} -- the sync"
+        _alrt "legs will DENY per store; free target space first"
+      fi
+    fi
+  else
+    _info "Out-of-root symlink scan: nothing to materialise"
+  fi
+  return 0
 }
 
 ###-------------SYNC FUNCTIONS-----------###
@@ -2033,27 +2429,69 @@ _xmass_sync_account() {
     _xmass_copy_suspended_flag "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
   fi
 
-  # Catch-all: fix any OTHER /mnt-anchored symlink in the account tree that the
-  # rsync -a passes above transferred as a bare (dangling-on-target) link.
-  _xmass_catchall_mnt_symlinks "${_udir}" "${_dst}" "${_tgt}" "${_TGT_MNT}" "${_ieni}"
+  # Catch-all sweep: discover + materialise out-of-root symlinks (secondary-
+  # mount content) so no link in the account tree arrives dangling. Links under
+  # the delta-synced subtrees are report-only -- their own legs above re-send
+  # the source link every sync and would fight a materialised copy (see the
+  # sweep header). Root-level legacy links (the historical /mnt case) are not
+  # under any leg and materialise cleanly.
+  _xmass_scan_out_links "${_udir}" "${_udir}/static/files" \
+    "distro static log .drush config clients backups undo tools"
+  _info "  link sweep ${_oct}: ${_XMASS_LNK_RPT}"
+  _xmass_materialise_out_links "${_udir}" "${_dst}"
 }
 
 _xmass_sync_shared() {
   _info "Syncing shared data (/data/all, arch, legacy, bind, static) ..."
-  local _item
+  local _item _archReal
   for _item in /data/all /data/disk/all /data/disk/legacy; do
+    if [ -L "${_item}" ]; then
+      # Deliberately not transferred (pre-existing rule, now said out loud):
+      # the target's own install provides this tree.
+      _alrt "  ${_item} is itself a symlink -> $(readlink "${_item}" 2>/dev/null); not transferred"
+      continue
+    fi
     [ -d "${_item}" ] || continue
-    [ -L "${_item}" ] && continue
-    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
-      "${_item}" "root@${_tgt}:$(dirname "${_item}")/"
+    # Sweep FIRST: the leg must exclude every out-of-root link, because a
+    # source symlink re-sent over an already-materialised copy fails on a dir
+    # and silently reverts a file. Trailing-slash form so the excludes anchor
+    # at the transfer root.
+    _xmass_scan_out_links "${_item}"
+    _info "  link sweep ${_item}: ${_XMASS_LNK_RPT}"
+    _xmass_rsync -aEAXqu ${_ieni} ${_XMASS_OUT_EXCL} -e ssh \
+      "${_item}/" "root@${_tgt}:${_item}/"
+    _xmass_materialise_out_links "${_item}" "${_item}"
   done
   # arch: storage-aware -- mirror onto the target mount, or de-reference to root,
   # per the target's disk reality (canonical layout <mount>/files/system/arch).
+  # Its own sweep runs against the resolved tree so per-account symlink stores
+  # inside it (nightly backup trees on a secondary volume) materialise on the
+  # target instead of arriving dangling; the excludes ride the store transfer
+  # through the passthrough rsync-args slot.
+  _archReal=""
+  if [ -L "/data/disk/arch" ]; then
+    _archReal="$(readlink -f /data/disk/arch 2>/dev/null)"
+  elif [ -d "/data/disk/arch" ]; then
+    _archReal="/data/disk/arch"
+  fi
+  if [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
+    _xmass_scan_out_links "${_archReal}"
+    _info "  link sweep arch (${_archReal}): ${_XMASS_LNK_RPT}"
+  fi
+  local _rcArch=0
   _xmass_handle_store "/data/disk/arch" "/data/disk/arch" "files/system/arch" \
-    "${_tgt}" "${_TGT_MNT}" "${_ieni}" "arch" || _XMASS_STORE_RC=$?
-  [ -d "/var/www/static" ] && \
-    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
-      /var/www/static "root@${_tgt}:/var/www/"
+    "${_tgt}" "${_TGT_MNT}" "${_ieni} ${_XMASS_OUT_EXCL}" "arch" || _rcArch=$?
+  [ "${_rcArch}" != "0" ] && _XMASS_STORE_RC="${_rcArch}"
+  if [ "${_rcArch}" = "0" ] && [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
+    _xmass_materialise_out_links "${_archReal}" "/data/disk/arch"
+  fi
+  if [ -d "/var/www/static" ] && [ ! -L "/var/www/static" ]; then
+    _xmass_scan_out_links "/var/www/static"
+    _info "  link sweep /var/www/static: ${_XMASS_LNK_RPT}"
+    _xmass_rsync -aEAXqu ${_ieni} ${_XMASS_OUT_EXCL} -e ssh \
+      /var/www/static/ "root@${_tgt}:/var/www/static/"
+    _xmass_materialise_out_links "/var/www/static" "/var/www/static"
+  fi
   [ -d "/etc/bind" ] && \
     _xmass_rsync -aEAXq ${_ieni} -e ssh \
       /etc/bind "root@${_tgt}:/etc/"
@@ -2877,6 +3315,30 @@ _xmass_cmd_verify() {
       _alrt "    verify before recording a site broken)"
     fi
   done
+  # Materialisation acceptance: a dangling symlink on the TARGET under a synced
+  # root is content that never travelled (or a link class the sweep only
+  # reports). Advisory -- BOA trees carry a few intentionally parked links, so
+  # read the paths before acting. The target's own mount is swept too: that is
+  # where mirrored stores land.
+  local _dang _dl _dcnt _tmv
+  _tmv="$(_xmass_detect_target_mnt "${_tgt}")"
+  case "${_tmv}" in MULTI|NONE) _tmv="" ;; esac
+  _dcnt=$(ssh -n root@"${_tgt}" \
+    "find /data/disk /data/all /var/www/static ${_tmv} -xtype l 2>/dev/null | wc -l" \
+    2>/dev/null | tr -d ' ')
+  if [ -z "${_dcnt}" ]; then
+    _alrt "could not sweep ${_tgt} for dangling symlinks (ssh failed?) -- re-run verify"
+  elif [ "${_dcnt}" -gt 0 ] 2>/dev/null; then
+    _alrt "${_dcnt} dangling symlink(s) on the target (content that never travelled?); showing first 20:"
+    _dang=$(ssh -n root@"${_tgt}" \
+      "find /data/disk /data/all /var/www/static ${_tmv} -xtype l 2>/dev/null | head -20" \
+      2>/dev/null)
+    printf '%s\n' "${_dang}" | while IFS= read -r _dl; do
+      [ -n "${_dl}" ] && _alrt "    ${_dl}"
+    done
+  else
+    _info "No dangling symlinks under the synced roots (and mount) on ${_tgt}: OK"
+  fi
   if ! pgrep -x cron &> /dev/null; then
     _alrt "cron is NOT running on this source -- the daily certificate mirror is DOWN"
   fi
@@ -2912,6 +3374,10 @@ _xmass_pre_mig() {
     cp -af /root/.ssh/id_ed25519.pub \
       /var/www/nginx-default/auth_undefined_keys.txt
     _info "Source key published at http://undefined.${_hName}/auth_undefined_keys.txt"
+    # Advisory link map: surface secondary-mount content (and anything that
+    # will NOT travel) at the cheapest possible moment. No target yet, so
+    # sizes only; init repeats this with the aggregate space probe.
+    _xmass_report_out_links
   else
     _info "Target mode: fetching and installing source SSH key ..."
     mkdir -p /root/.ssh
@@ -2992,6 +3458,11 @@ _xmass_cmd_init() {
   _info "Replication server ids distinct (${_src_sid} vs ${_tgt_sid}): OK"
   # Advisory: broken LE renewals migrate into two problems at once.
   _xmass_check_le_health
+  # Advisory link map with the aggregate space probe: secondary-mount content
+  # that will materialise on the target, and every link class that will not
+  # travel, named BEFORE any data moves. The binding per-store gates run
+  # inside the sync/cutover legs.
+  _xmass_report_out_links
 
   _xmass_detect_percona_version
 
