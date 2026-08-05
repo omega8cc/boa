@@ -612,7 +612,6 @@ if [ "${_STATUS}" = "UPGRADE" ]; then
     [ ! -e "/root/.deny.java.cnf" ] \
       && [ "${_DENY_JAVA}" != "YES" ] \
       && _if_install_upgrade_solr
-    _if_install_adminer
     _if_install_chive
     _if_install_sqlbuddy
     _if_install_collectd
@@ -622,6 +621,19 @@ if [ "${_STATUS}" = "UPGRADE" ]; then
     _if_install_node
     _sftp_ftps_modern_fix
   fi
+fi
+
+
+###
+### Adminer is a light add-on (tarball fetch plus vhost copy), not a heavy
+### rebuild, and the hosted welcome email documents /sqladmin, so it must
+### converge on every pass: INIT covers fresh installs before the first
+### welcome email is sent, UPGRADE covers the existing fleet via routine
+### system runs. The function itself stays gated (ADM/ALL in _XTRAS_LIST
+### or a hosted system) and is idempotent once installed.
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  _if_install_adminer
 fi
 
 

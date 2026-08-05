@@ -3646,6 +3646,20 @@ _sub_ssl_gen() {
       [ -e "/etc/nginx/no_ktls.conf" ] \
         && sed -i "/ssl_conf_command Options.*KTLS/d" ${_Ssl}
       wait
+      ### The satellite pass rewrites the template's fastcgi target to the
+      ### fpm socket after calling this generator; a standalone run left
+      ### 127.0.0.1:9000 behind -- nothing listens there, so /sqladmin
+      ### answers 502 until the next satellite pass. Do the same rewrite
+      ### here: resolve the master pool from the cnf without sourcing it
+      ### and rewrite only when that pool socket really listens (fail-safe:
+      ### the satellite pass still converges the vhost otherwise).
+      _fpmVer=$(sed -n 's/^_PHP_FPM_VERSION=//p' /root/.barracuda.cnf 2>/dev/null \
+        | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
+      _fpmCn="www${_fpmVer//[^0-9]/}"
+      if [ -n "${_fpmVer}" ] && [ -S "/var/run/${_fpmCn}.fpm.socket" ]; then
+        sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_fpmCn}.fpm.socket;/g" ${_Ssl}
+        wait
+      fi
       ###
       if [ -e "${_Ssl}" ]; then
         _sslFile="/etc/ssl/private/${_domain_name}.dhp"
