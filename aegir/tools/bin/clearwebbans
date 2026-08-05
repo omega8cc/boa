@@ -15,6 +15,11 @@
 #   - csf PERMANENT web bans     csf.deny "Brute force Web Server"  -> csf -dr
 #   - IPv6 web ban store         /var/xdrago/monitor/log/web6.tempban (nginx-native
 #                                bans; csf is IPv4-only) -> emptied
+#   - cross-run detector windows /var/xdrago/monitor/log/*.window (the HTTP/1.0
+#                                auth-spam and guard-404 sliding windows carry
+#                                hits forward across runs, so a cleared IP would
+#                                be re-banned from state alone, with no new
+#                                traffic at all)
 #   - nginx realip geo-ban sets  regenerated via /var/xdrago/nginx_deny.sh (IPv4)
 #                                and /var/xdrago/nginx_deny6.sh (IPv6)
 #
@@ -44,6 +49,9 @@ _CSF_DENY="/etc/csf/csf.deny"
 _WEB_TAG="Brute force Web Server"
 _NGINX_DENY="/var/xdrago/nginx_deny.sh"
 _WEB6="/var/xdrago/monitor/log/web6.tempban"
+_H10_WINDOW="/var/xdrago/monitor/log/http10_auth.window"
+_G404_WINDOW="/var/xdrago/monitor/log/guard404.window"
+_G404_CAMP_STAMP="/var/xdrago/monitor/log/.guard404.campaign.stamp"
 _NGINX_DENY6="/var/xdrago/nginx_deny6.sh"
 _LOCK="/run/clearwebbans.lock"
 
@@ -169,6 +177,12 @@ fi
 # The IPv6 store too — its bans live at nginx, not in csf, so they are released
 # here by emptying the store and letting nginx_deny6.sh clear the geo set below.
 rm -f "${_WEB_LOG}" "${_WA}" "${_WX}" "${_WEB6}"
+
+# Drop the cross-run detector windows too. Both the HTTP/1.0 auth-spam and the
+# guard-404 detectors carry per-IP hits forward between runs and evaluate them
+# on every tick regardless of new traffic, so leaving the state behind would
+# re-ban a just-cleared IP within seconds of this tool finishing.
+rm -f "${_H10_WINDOW}" "${_G404_WINDOW}" "${_G404_CAMP_STAMP}"
 
 # Reset the scan_nginx byte offset to the CURRENT end of the access log, so the
 # next scan only sees new traffic instead of reprocessing (and possibly
