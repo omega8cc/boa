@@ -259,10 +259,17 @@ _makeactions() {
   # the client; the ^Accepted anchor then cannot be satisfied by any
   # attacker-controlled username text, which can only ever appear AFTER a fixed
   # "Invalid user "/"Failed password for " prefix.
+  # Pure-bash field extraction: the former grep|tail subshell pair forked two
+  # processes for each of up to _AUTH_LOG_BASELINE lines on EVERY run — tens
+  # of CPU-seconds per minute on a login-busy box, and the longest pole in
+  # its minute-top load spikes. sshd itself frames the client address as
+  # " from <ip> port ", so match that directly; ::ffff: IPv4-mapped forms are
+  # unwrapped exactly as the old any-IPv4-in-line extractor did.
+  local _acc_from_rx=" from (::[fF]{4}:)?((${_IPV4_OCTET_RX}\.){3}${_IPV4_OCTET_RX}) port "
   while IFS= read -r _acc_line; do
-    local _acc_ip
-    _acc_ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_acc_line}" | tail -1)
-    _is_ipv4 "${_acc_ip}" && _accepted["${_acc_ip}"]=1
+    if [[ "${_acc_line}" =~ ${_acc_from_rx} ]]; then
+      _is_ipv4 "${BASH_REMATCH[2]}" && _accepted["${BASH_REMATCH[2]}"]=1
+    fi
   done < <(grep -F "Accepted " "${_AUTH_LOG}" 2>/dev/null \
     | sed -E 's/^[^]]*\]: //' \
     | grep -E '^Accepted ' \

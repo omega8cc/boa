@@ -42,6 +42,46 @@ _disable_master_cron() {
   fi
 }
 
+# On a CI box the Ægir master crontab's per-minute hosting-dispatch bootstraps
+# PHP for a queue nothing fills, so park it as .aegir while the box is idle.
+# It MUST come back for any Barracuda/Octopus activity: upgrades enqueue
+# server/hostmaster verify tasks and rely on this cron to execute them — a
+# parked dispatch has already shipped a stale master nginx config on upgrade.
+# Fail toward enabled: any hint of platform activity restores the cron and
+# stamps a grace file; the cron stays live until a full hour has passed since
+# the LAST activity, so trailing tasks enqueued at the tail of a run always
+# drain before the next idle pass re-parks it. The stamp lives in /run, so a
+# reboot clears the grace along with the activity it covered. The same grace
+# also releases the root-side satellite queue below (_runner_action over the
+# run-* dispatchers): master tasks ride the aegir cron, satellite tasks ride
+# run-*, and an upgrade needs both draining or its verify tasks starve.
+_IS_CI_BOX=NO
+_CI_QUEUE_GRACE=NO
+_ci_master_cron_control() {
+  local _grace="/run/boa_master_cron_grace.pid"
+  if [ -e "/etc/boa/.look.like.jenkins.cnf" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_FORCE_CI_BOX=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+    _IS_CI_BOX=YES
+    _QUEUE_OK=FALSE
+    _if_allow_aegir_queue
+    if pgrep -f "/opt/local/bin/barracuda" >/dev/null 2>&1 \
+      || pgrep -f "/opt/local/bin/octopus" >/dev/null 2>&1 \
+      || [ -e "/run/boa_run.pid" ] \
+      || [ -e "/run/boa_wait.pid" ] \
+      || [ -e "/run/octopus_install_run.pid" ]; then
+      touch "${_grace}"
+    fi
+    if [ -n "$(find "${_grace}" -mmin -60 2>/dev/null)" ]; then
+      _CI_QUEUE_GRACE=YES
+    fi
+    if [ "${_QUEUE_OK}" = "TRUE" ] || [ "${_CI_QUEUE_GRACE}" = "YES" ]; then
+      _enable_master_cron
+    else
+      _disable_master_cron
+    fi
+  fi
+}
+
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 # Dedicated, self-healing task-queue stop file: a maintenance op (e.g. the nightly
@@ -210,6 +250,11 @@ else
   _howMany=8
 fi
 
+# Master-cron control runs before the wait gate on purpose: mid-upgrade passes
+# often exit through the wait branch (e.g. mysql restarts), and the dispatch
+# cron must stay live through exactly those windows.
+_ci_master_cron_control
+
 if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
   || [ "${_SQLBACKUP_RUNNING}" = "YES" ] \
   || [ "${_DAILY_RUNNING}" = "YES" ] \
@@ -220,14 +265,18 @@ if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
   echo "Another BOA task is running, we will try again later..."
   exit 0
 else
-  _enable_master_cron
-  if [ -e "/etc/boa/.look.like.jenkins.cnf" ] \
-    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_FORCE_CI_BOX=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+  if [ "${_IS_CI_BOX}" != "YES" ]; then
+    _enable_master_cron
+  fi
+  if [ "${_IS_CI_BOX}" = "YES" ]; then
     # _QUEUE_OK is the internal decision flag; the former name collided
     # with the _ALLOW_AEGIR_QUEUE cnf key converted from the marker.
     _QUEUE_OK=FALSE
     _if_allow_aegir_queue
-    if [ "${_QUEUE_OK}" = "TRUE" ]; then
+    # Honour the same upgrade grace as the master cron: satellite tasks are
+    # drained by the run-* dispatchers here, and an Octopus upgrade on a CI
+    # box needs them running without anyone touching run-aegir-queue.info.
+    if [ "${_QUEUE_OK}" = "TRUE" ] || [ "${_CI_QUEUE_GRACE}" = "YES" ]; then
       touch /run/boa_cron_wait.pid
       _runner_action
       sleep 5
