@@ -1045,6 +1045,18 @@ _USE_SQLPROBE=YES
 _USE_BATCH_GUARD=YES
 
 ###
+### Permanent health/attack archive (XDR9000): a read-only harvester
+### copies attack bans, auto-heal incidents, backup outcomes and metric
+### samples into an append-only archive under /var/log/boa/xdr9000/
+### before routine log cleanup can erase them; the root-only xdr9000
+### command reads it. It never bans, kills or restarts anything. The
+### archive is never pruned (past months are compressed). Set to NO
+### to stop recording on this system; anything already archived is
+### kept.
+###
+_XDR9000=YES
+
+###
 ### Converted control-file toggles. Each replaces a former presence-
 ### marker file under /etc/boa or /root; the marker is still honoured
 ### for one release while the fleet converges, but the variable is the
