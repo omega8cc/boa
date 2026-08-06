@@ -28,12 +28,12 @@ what it does.
 Distributions, published to `/var/www/static/distro`:
 
 ```sh
-  commerce_kickstart-5.1.0-11.4.4
-  drupal_cms_installer-2.1.3-11.4.4
+  commerce_kickstart-5.1.0-11.4.5
+  drupal_cms_installer-2.1.3-11.4.5
   farm-4.0.4-11.3.14
-  localgov-4.0.2-11.4.4
-  openculturas-3.0.4-11.3.16
-  thunder-8.4.0-11.4.4
+  localgov-4.0.2-11.4.5
+  openculturas-3.0.5-11.3.16
+  thunder-8.4.0-11.4.5
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
@@ -42,8 +42,8 @@ Raw cores, published to `/var/www/static/core`, latest patch of each supported m
   drupal-10.2.12    drupal-11.1.10
   drupal-10.3.14    drupal-11.2.14
   drupal-10.4.10    drupal-11.3.16
-  drupal-10.5.12    drupal-11.4.4
-  drupal-10.6.14
+  drupal-10.5.12    drupal-11.4.5
+  drupal-10.6.15
 ```
 
 ## Backdrop family
@@ -136,8 +136,8 @@ farmos     # farm-4.0.4-11.3.14  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.4 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.3-11.4.4
+cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.5 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.3-11.4.5
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
@@ -145,8 +145,8 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.4-11.3.16 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.0.4-11.3.16/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.5-11.3.16 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.0.5-11.3.16/
            # composer config --no-plugins allow-plugins true
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (stale + composer-patches 2.x cannot apply to dist installs)
            # composer update --no-install --no-scripts
@@ -156,13 +156,13 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.4-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.4-11.3.16/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.4-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.5-11.3.16/web/sites/
 ```
 
 ```sh
-commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.1.0-11.4.4 --no-dev --no-interaction --no-install --no-scripts
+commerce   # composer create-project -s dev centarro/commerce-kickstart-project commerce_kickstart-5.1.0-11.4.5 --no-dev --no-interaction --no-install --no-scripts
            # name by centarro/commerce_kickstart (the profile, 5.1.0); the project template stays dev-only
-           # cd ~/static/MONTH-DAY/commerce_kickstart-5.1.0-11.4.4
+           # cd ~/static/MONTH-DAY/commerce_kickstart-5.1.0-11.4.5
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false   # commerce_kickstart blocks advisory-affected deps
            # composer install --no-dev
@@ -172,18 +172,18 @@ commerce   # composer create-project -s dev centarro/commerce-kickstart-project 
 ```
 
 ```sh
-localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.2-11.4.4 --no-dev --no-interaction --no-install --no-scripts
+localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.2-11.4.5 --no-dev --no-interaction --no-install --no-scripts
            # name by drupal/localgov (the distribution, 4.0.2); localgov_project versions separately
-           # cd ~/static/MONTH-DAY/localgov-4.0.2-11.4.4
+           # cd ~/static/MONTH-DAY/localgov-4.0.2-11.4.5
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
 ```
 
 ```sh
-thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.4 --no-dev --no-interaction --no-install --no-scripts
+thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.5 --no-dev --no-interaction --no-install --no-scripts
            # name by thunder/thunder-distribution (8.4.0); thunder/thunder-project versions separately (5.0.0)
-           # cd ~/static/MONTH-DAY/thunder-8.4.0-11.4.4
+           # cd ~/static/MONTH-DAY/thunder-8.4.0-11.4.5
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
@@ -201,7 +201,7 @@ Vanilla cores, latest patch of each supported minor (full install, add drush, au
 vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # composer create-project drupal/recommended-project:<minor>.* drupal-<version> --no-dev --no-interaction
            # cd drupal-<version> && composer require drush/drush && composer audit
-           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.14 11.1.10 11.2.14 11.3.16 11.4.4
+           # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.15 11.1.10 11.2.14 11.3.16 11.4.5
 ```
 
 ### Clean up artefacts before packaging
@@ -245,7 +245,7 @@ Raw cores (`drupal-*`) go to `core/`; everything else goes to `distro/`.
 
 ## Add them all as platforms in Ægir
 
-Use paths like `MONTH-DAY/drupal-11.4.4` and run tests for site install, clone and migration.
+Use paths like `MONTH-DAY/drupal-11.4.5` and run tests for site install, clone and migration.
 
 ## Notes on non-standard issues
 
