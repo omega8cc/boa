@@ -17,21 +17,52 @@
 # THE FALSE-POSITIVE RULE IS ABSOLUTE: killing a client's legitimate batch is
 # worse than the storm. Every stage below must pass before any row is touched:
 #
-#   1. Arm gate: 1-min load at or above 1.0/core, else silent exit — the
-#      guard is a no-op on every healthy box.
-#   2. Volume: the box's OWN IPs (kernel v4 set + /root/.local.IP.list +
-#      ${_MY_OWNIP}; loopback included — self-DoS via 127.0.0.1 counts the
-#      same) answering 499 in the recent access-log window, over threshold.
-#   3. Repetition: a bid POSTed to /bgp-start/ tens of times IS looping — a
-#      legitimate background launch is one or two POSTs. Only looping bids
-#      are ever candidates, and hits count only from the recent hours of
-#      the window, so a long-lived quiet log can never accumulate a slow
-#      trickle into a "loop". Browser-driven batches and update.php batches
-#      never traverse /bgp-start/, so both are outside the kill-list by
-#      construction (update.php shares the {batch} table AND its bid
-#      sequence, and reaping one mid-flight would strand a site in
-#      maintenance mode).
-#   4. Attribution: the vhost named by the log line's $host maps to the site
+#   1. The arm gate — the storm's own shape: many DISTINCT bids looping AT
+#      ONCE. A bid counts only if it is over the per-bid repetition floor
+#      across the window AND still POSTing in the fresh minutes — the
+#      fresh requirement is what makes this a measure of simultaneity, so
+#      a site CHAINING legitimate batches over the hours (every link a new
+#      bid) still counts as one. The count is of the box's OWN IPs (kernel
+#      v4 set + /root/.local.IP.list + ${_MY_OWNIP}; loopback included —
+#      self-DoS via 127.0.0.1 counts the same) answering 499 on
+#      /bgp-start/ REQUESTS only — every fire-and-forget dispatch of any
+#      handle, and any local probe that closes early, logs an own-IP 499
+#      too, and counting those would arm the guard on routine background
+#      noise. The distinct-bids floor is the decisive discriminator: the
+#      module's cron integration re-launches EVERY stale process each
+#      pass, so a storm is tens-to-hundreds of bids looping in the same
+#      fresh window (observed: ~27 and ~100), while healthy use runs a
+#      handful of concurrent batches box-wide — a lone long-running batch,
+#      however chatty, can never arm the guard by itself, and even the
+#      pathological co-incidence of many tenants' batches in one fresh
+#      window only ARMS it (arming is read-only; nothing that progresses
+#      can ever confirm). The volume floor on the same bgp-only count is a
+#      coarse secondary bound — at default knobs the bids floor implies
+#      it; it binds only when an operator re-tunes. Load level is
+#      deliberately NOT an arm criterion: a pool-sized storm pins one FPM
+#      pool and degrades that site while the box-wide average stays under
+#      any workable per-core floor (observed live: ~370 stale batch rows,
+#      ~27 of them looping with live flywheel handles at ~2.3 r/s
+#      aggregate, held a 48-core box at 0.69/core for 40+ minutes while a
+#      1.0/core gate kept this guard disarmed), and that blind spot grows
+#      with core count. The 5-minute self-throttle bounds the cost to one
+#      page-cache log scan per tick. On boxes carrying the bgp_flood edge
+#      cap the two protections are complementary: the cap sheds walls
+#      above its rate at the edge, and this guard heals the sub-cap
+#      simmers the cap deliberately admits — the observed storm ran under
+#      the cap's rate for its whole life.
+#   2. Repetition: only looping bids are ever candidates, and hits count
+#      only from the recent hours of the window, so a long-lived quiet log
+#      can never accumulate a slow trickle into a "loop". NB a RUNNING
+#      batch re-launches itself roughly every 10 s by design, so tens of
+#      hits mark a bid as ACTIVE in the window — stale or legit — not as
+#      dead; the kill decision belongs to the arm gate's bids floor and
+#      the frozen-fingerprint confirmation below, never to this count
+#      alone. Browser-driven batches and update.php batches never traverse
+#      /bgp-start/, so both are outside the kill-list by construction
+#      (update.php shares the {batch} table AND its bid sequence, and
+#      reaping one mid-flight would strand a site in maintenance mode).
+#   3. Attribution: the vhost named by the log line's $host maps to the site
 #      db via its fastcgi_param db_name. Bids are per-db AUTO_INCREMENT
 #      values and COLLIDE across sites, so per-bid attribution must come
 #      from the vhost of the looping requests themselves; a candidate whose
@@ -42,7 +73,7 @@
 #      always has one, while a browser/update.php batch never does. This is
 #      also what defeats forged log lines: a request wall aimed at another
 #      site's Host cannot make its batches loop-eligible.
-#   5. Two-pass no-change confirmation: on first sight a candidate is only
+#   4. Two-pass no-change confirmation: on first sight a candidate is only
 #      RECORDED (batch blob length+MD5, queue count). It heals on a LATER
 #      pass — at least eight minutes on, comfortably past any sane FPM
 #      request wall, so a live batch has had every chance to write — only
@@ -74,9 +105,12 @@
 # a loop that is provably dead. Sites with a D7 table prefix are skipped
 # (no bare `batch` table), by design.
 #
-# LOAD SEMANTICS — a deliberate split. The guard ignores load LEVEL (the
-# storm IS a high-load condition — a guard that waits for calm can never
-# fire, and its heal is cheap SQL, not a restart). But it must never JUDGE
+# LOAD SEMANTICS. The guard ignores load LEVEL entirely — arming is the
+# storm's own log signal (a pool-sized storm can leave a many-core box
+# looking calm, so a guard that waits for high load can never see it; and
+# in the other direction the storm IS a high-load condition, so a guard
+# that waits for calm can never fire either — its heal is cheap SQL, not a
+# restart, and needs no quiet window). But it must never JUDGE
 # on evidence gathered across a service teardown: BOA's own load auto-pause
 # (second.sh) can stop nginx and force-quit every FPM pool, and the DB
 # watchdog can restart mysqld — either freezes every batch blob on the box,
@@ -126,14 +160,19 @@ _pthLch="/run/boa_batch_guard_latched.pid"
 _cd="/run/batch-guard.cooldown"
 _ACCESS_LOG="/var/log/nginx/access.log"
 _LOADAVG="/proc/loadavg"
-# The window size is deliberately not a knob. At the observed storm's rate a
-# stormed box writes thousands of lines a minute, so a window sized in
-# thousands of lines is SECONDS wide and a hundred looping bids would split
-# it to a handful of hits each — under the per-bid floor. Ten thousand lines
-# keep the per-bid counts robust at that scale, and the hour-bound on
-# counted hits (below) stops the same window from spanning days on a
-# quieter box.
-_TAIL_LINES=10000
+# The window size is deliberately not a knob, and it is a LINE budget, so
+# its wall-clock span shrinks as the box's total log rate grows — the
+# per-bid floor needs the span to cover roughly BID_MIN relaunch intervals
+# (20 x 1-3 min), so the budget must hold tens of minutes of a busy box's
+# log. Forty thousand lines are ~45-130 min at typical multi-site rates
+# (5-15 lines/s) and still one page-cache tail read (~8-16 MB) per 5-min
+# tick; the hour-bound on counted hits (below) stops the same window from
+# spanning days on a quiet box. KNOWN LIMIT, accepted: on a box logging
+# ~100+ lines/s the span compresses toward minutes and a wide slow storm
+# (a hundred bids at a low aggregate rate) can fall under the per-bid
+# floor — a time-based window would close that; line-budget tailing
+# cannot.
+_TAIL_LINES=40000
 
 _FORCE=NO
 _STDOUT=NO
@@ -246,6 +285,18 @@ _bg_num() {
   printf '%s' "${_v}"
 }
 
+# Operator WARNs that fire per bid or per tick would flood the 200-line
+# incident-log tail the alert emails carry (a storm has tens of looping
+# bids per pass), so each WARN class writes at most once a day: the first
+# occurrence names the condition, the marker holds the rest.
+_warn_daily() {
+  local _slug="$1" _msg="$2"
+  if [ -z "$(find "${_pthDat}/.warned_${_slug}" -mmin -1440 2>/dev/null)" ]; then
+    echo "$(date) ${_msg}" >> ${_pthOml}
+    touch "${_pthDat}/.warned_${_slug}"
+  fi
+}
+
 # The soak switch is normalised like every YES/NO knob: any case works, and
 # anything that is not YES means the heal is live. The CLI flag wins over
 # the cnf, deliberately and in one direction only — an operator asking for
@@ -254,8 +305,9 @@ _BATCH_GUARD_DETECT_ONLY="${_BATCH_GUARD_DETECT_ONLY^^}"
 _BATCH_GUARD_DETECT_ONLY="${_BATCH_GUARD_DETECT_ONLY//[^A-Z]/}"
 [ "${_CLI_DETECT_ONLY}" = "YES" ] && _BATCH_GUARD_DETECT_ONLY=YES
 
-_BATCH_GUARD_499_MIN=$(_bg_num "${_BATCH_GUARD_499_MIN}" 200)        # Own-IP 499 lines in the window that arm stage 2
-_BATCH_GUARD_BID_MIN=$(_bg_num "${_BATCH_GUARD_BID_MIN}" 20)         # bgp-start POSTs per bid that mean LOOPING
+_BATCH_GUARD_499_MIN=$(_bg_num "${_BATCH_GUARD_499_MIN}" 200)        # Own-IP /bgp-start/ 499 lines in the window — the arm gate's volume half
+_BATCH_GUARD_BID_MIN=$(_bg_num "${_BATCH_GUARD_BID_MIN}" 20)         # bgp-start POSTs per bid that count it as looping (active in the window)
+_BATCH_GUARD_STORM_BIDS_MIN=$(_bg_num "${_BATCH_GUARD_STORM_BIDS_MIN}" 12) # Distinct looping bids that make the wall a STORM — the arm gate's other half; healthy use runs a handful of concurrent batches, observed storms ~27 and ~100
 _BATCH_GUARD_COOLDOWN_SECS=$(_bg_num "${_BATCH_GUARD_COOLDOWN_SECS}" 600) # Minimum gap between two heal passes
 
 _BATCH_GUARD_FLAP_MAX=$(_bg_num "${_BATCH_GUARD_FLAP_MAX}" 3)        # Heal passes tolerated inside the window
@@ -355,18 +407,14 @@ _incident_email_report() {
 }
 
 ###
-### Stage 1 — arm gate. A sub-load loop is not an incident: below 1.0/core
-### the guard exits without reading a single log line, so on every healthy
-### box on the fleet it costs one /proc read per tick.
+### Load and cores are read for the incident record and the --stdout
+### diagnostics only, never for a decision — the arm gate is the two-floor
+### storm signal after the scan (see the header: a pool-sized storm never
+### has to lift box-wide load, so load can never be the gate).
 ###
 _CORES=$(nproc 2>/dev/null)
 _CORES=$(_bg_num "${_CORES}" 1)
 _LOAD1=$(awk '{print $1}' "${_LOADAVG}" 2>/dev/null)
-if ! awk -v l="${_LOAD1:-0}" -v c="${_CORES}" 'BEGIN { exit !(l >= c) }'; then
-  _say "DISARMED load=${_LOAD1:-0} cores=${_CORES}"
-  exit 0
-fi
-_say "ARMED load=${_LOAD1} cores=${_CORES}"
 
 # mysqld must be answering: the confirmation and the heal are both SQL, and
 # database downtime is mysql.sh's business, not ours.
@@ -391,7 +439,7 @@ for _mk in /run/mysql_restart_running.pid /run/boa_mysql_auto_healing.pid; do
 done
 
 ###
-### Stage 2 — the box's own addresses answering 499. The own-IP set is the
+### Stage 1 — the box's own addresses answering 499. The own-IP set is the
 ### kernel's v4 addresses (loopback included), the operator-maintained
 ### /root/.local.IP.list, and ${_MY_OWNIP} from barracuda.cnf. NEVER an
 ### external resolver: a monitor must not depend on the outside world to
@@ -419,7 +467,7 @@ if [ "${#_LOCAL_IPS[@]}" -eq 0 ]; then
 fi
 
 ###
-### Stages 2+3 in one pass over the recent window. The vhost log format puts
+### Stages 1+2 in one pass over the recent window. The vhost log format puts
 ### the client in field 1 as "$remote_addr" and the vhost in field 2 as
 ### $host, so splitting on double quotes is stable: $2=client, $3 carries
 ### "host [time]", $4=request, $5 starts with the status. nginx escapes any
@@ -446,8 +494,9 @@ done
 _HOURS_RE="${_HOURS_RE#|}"
 if [ -z "${_FRESH_RE}" ] || [ -z "${_HOURS_RE}" ]; then
   # Without the time bounds no confirmation is safe; refuse loudly rather
-  # than silently, because a guard that cannot fire should say so once.
-  echo "$(date) WARN: date -d unavailable, time bounds empty -- batch_guard cannot confirm anything on this box" >> ${_pthOml}
+  # than silently — but genuinely once a DAY, not once per tick: every
+  # tick reaches this line now that the arm decision lives after the scan.
+  _warn_daily "nodate" "WARN: date -d unavailable, time bounds empty -- batch_guard cannot confirm anything on this box"
   _say "NO-TIME-BOUNDS"
   exit 0
 fi
@@ -469,14 +518,17 @@ _SCAN=$(tail -n "${_TAIL_LINES}" "${_ACCESS_LOG}" 2>/dev/null | awk -F'"' \
     host = h3[1]
     t = h3[2]; sub(/^\[/, "", t)
     if (substr(t, 1, 14) !~ "^(" hre ")") next
-    total++
     # The handle separator reaches the wire in three shapes: raw ':', the
     # single-encoded '%3A', and the DOUBLE-encoded '%253A' that the current
     # contrib emits when its own rawurlencode()d handle is passed through
     # url()/drupal_encode_path() (observed live on a D7.105 + 7.x-1.17 site).
     # Matching only one shape leaves the guard armed but unable to attribute
     # any bid, so every shape is accepted here and stripped identically below.
+    # TOTAL counts only these storm-shaped requests — own-IP 499s on any
+    # other URI are routine fire-and-forget noise, and counting them would
+    # arm the guard on healthy boxes.
     if ($4 !~ /^POST \/bgp-start\/background_batch(:|%3[Aa]|%253[Aa])[0-9]+\//) next
+    total++
     split($4, rq, " ")
     bid = rq[2]
     sub(/^\/bgp-start\/background_batch(:|%3[Aa]|%253[Aa])/, "", bid)
@@ -495,17 +547,32 @@ _SCAN=$(tail -n "${_TAIL_LINES}" "${_ACCESS_LOG}" 2>/dev/null | awk -F'"' \
 
 _TOTAL499=$(printf '%s\n' "${_SCAN}" | awk '$1 == "TOTAL" { print $2; exit }')
 _TOTAL499=$(_bg_num "${_TOTAL499}" 0)
-_say "TOTAL499=${_TOTAL499} min=${_BATCH_GUARD_499_MIN}"
-if [ "${_TOTAL499}" -lt "${_BATCH_GUARD_499_MIN}" ]; then
-  # Not a storm. Discard any recorded candidates rather than let them age:
-  # confirmation must come from two passes of the SAME storm, so a lull
-  # resets the clock — the conservative direction, it can only delay a heal.
+# A storm bid is looping over the span AND active in the fresh minutes —
+# the fresh requirement is what makes the count a measure of SIMULTANEITY:
+# a site chaining legitimate batches leaves a trail of distinct bids over
+# the hours, but only the current link is still POSTing, so the chain
+# counts as one however long it runs.
+_STORM_BIDS=$(printf '%s\n' "${_SCAN}" | awk -v m="${_BATCH_GUARD_BID_MIN}" '
+  $1 == "BID" && $4 + 0 >= m { loop[$2 " " $3] = 1 }
+  $1 == "FRESH" && $4 + 0 >= 1 { fr[$2 " " $3] = 1 }
+  END { n = 0; for (k in loop) if (k in fr) n++; print n + 0 }')
+_STORM_BIDS=$(_bg_num "${_STORM_BIDS}" 0)
+if [ "${_TOTAL499}" -lt "${_BATCH_GUARD_499_MIN}" ] \
+  || [ "${_STORM_BIDS}" -lt "${_BATCH_GUARD_STORM_BIDS_MIN}" ]; then
+  # Not a storm — THE arm gate, both floors (see the header: the volume
+  # floor alone is crossed by one chatty legitimate batch; the distinct
+  # looping bids are what only a cron-relaunch storm produces). Discard
+  # any recorded candidates rather than let them age: confirmation must
+  # come from two passes of the SAME storm, so a lull resets the clock —
+  # the conservative direction, it can only delay a heal.
+  _say "DISARMED total499=${_TOTAL499} min=${_BATCH_GUARD_499_MIN} bids=${_STORM_BIDS} bidsmin=${_BATCH_GUARD_STORM_BIDS_MIN} load=${_LOAD1:-0} cores=${_CORES}"
   rm -f "${_CAND}"
   exit 0
 fi
+_say "ARMED total499=${_TOTAL499} min=${_BATCH_GUARD_499_MIN} bids=${_STORM_BIDS} bidsmin=${_BATCH_GUARD_STORM_BIDS_MIN} load=${_LOAD1:-0} cores=${_CORES}"
 
 ###
-### Stage 4 — attribution. The vhost file named by $host carries the site db
+### Stage 3 — attribution. The vhost file named by $host carries the site db
 ### as fastcgi_param db_name; the identifier is allowlisted before it can
 ### reach a query. Hostmaster-style docroots are skipped the way the backup
 ### tooling skips them. A live processlist probe is logged as corroboration
@@ -534,7 +601,7 @@ _db_for_host() {
       if [ -z "${_found}" ]; then
         _found="${_db}"
       elif [ "${_db}" != "${_found}" ]; then
-        echo "$(date) WARN: ${_host} maps to more than one db across vhost roots (${_found} vs ${_db}); skipped -- run vhostcheck" >> ${_pthOml}
+        _warn_daily "ambighost" "WARN: ${_host} maps to more than one db across vhost roots (${_found} vs ${_db}); skipped -- run vhostcheck (further hosts latched for a day)"
         return 1
       fi
     fi
@@ -631,12 +698,12 @@ while read -r _tag _host _bid _hits; do
   _say "CANDIDATE host=${_host} bid=${_bid} hits=${_hits} fresh=${_fresh}"
   if ! _db=$(_db_for_host "${_host}"); then
     _say "SKIP bid=${_bid} reason=no-vhost-db"
-    echo "$(date) WARN: looping bid ${_bid} on ${_host} has no resolvable site db; skipped" >> ${_pthOml}
+    _warn_daily "novhostdb" "WARN: looping bid ${_bid} on ${_host} has no resolvable site db; skipped (further bids latched for a day)"
     continue
   fi
   if ! _is_safe_ident "${_db}"; then
     _say "SKIP bid=${_bid} reason=unsafe-ident"
-    echo "$(date) WARN: unsafe db identifier for ${_host}; skipped" >> ${_pthOml}
+    _warn_daily "unsafeident" "WARN: unsafe db identifier for ${_host}; skipped (further hosts latched for a day)"
     continue
   fi
   if ! _bp_is_flywheel "${_db}" "${_bid}"; then
@@ -738,7 +805,7 @@ fi
 _PROC_DB=$(timeout 10 mysql -u root -Nse \
   "SELECT db FROM information_schema.processlist WHERE info LIKE '%drupal_batch%' AND db IS NOT NULL LIMIT 1" 2>/dev/null)
 
-echo "$(date) Batch storm confirmed: own-IP 499s=${_TOTAL499} (threshold ${_BATCH_GUARD_499_MIN}), load ${_LOAD1} on ${_CORES} cores, processlist db hint: ${_PROC_DB:-none}" >> ${_pthOml}
+echo "$(date) Batch storm confirmed: own-IP bgp-start 499s=${_TOTAL499} (threshold ${_BATCH_GUARD_499_MIN}), looping bids=${_STORM_BIDS} (threshold ${_BATCH_GUARD_STORM_BIDS_MIN}), load ${_LOAD1:-0} on ${_CORES} cores, processlist db hint: ${_PROC_DB:-none}" >> ${_pthOml}
 
 ###
 ### Detect-only: everything above ran, nothing below will. The operator soak
