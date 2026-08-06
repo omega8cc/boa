@@ -4441,6 +4441,28 @@ _satellite_prepare_setup_email_tpl() {
        sed -i "/21 (FTPS/d" ${_ROOT}/log/setupmail.txt
        wait
      fi
+     ### Adminer is guaranteed only where the hosted-aware gate installs it
+     ### (hosted systems, or ADM/ALL in _XTRAS_LIST); a self-hosted box
+     ### without it would email a database-browser URL that never opens.
+     ### Strip the MANAGING YOUR DATABASES section (rule line above the
+     ### heading through the line before the next section's rule) when the
+     ### app is absent. Bounds are computed from the rendered file, so a
+     ### template reflow cannot misdelete; no end rule found = keep.
+     if [ ! -e "/var/www/adminer/index.php" ]; then
+       _dbHead=$(grep -n '^MANAGING YOUR DATABASES$' ${_ROOT}/log/setupmail.txt \
+         | head -n 1 | cut -d: -f1)
+       if [ -n "${_dbHead}" ] && [ "${_dbHead}" -gt 1 ]; then
+         _dbTop=$(( _dbHead - 1 ))
+         ### Literal 40-dash rule line: mawk has no {n} interval support.
+         _dbNext=$(awk -v s="${_dbHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
+           ${_ROOT}/log/setupmail.txt)
+         if [ -n "${_dbNext}" ] && [ "${_dbNext}" -gt "$(( _dbTop + 2 ))" ]; then
+           _dbEnd=$(( _dbNext - 1 ))
+           sed -i "${_dbTop},${_dbEnd}d" ${_ROOT}/log/setupmail.txt
+           wait
+         fi
+       fi
+     fi
      ### The template hardcodes the default SSH port; a self-hosted box may
      ### run sshd on a custom _SSH_PORT (hosted boxes are forced to 22).
      ### Substitute both the credentials line (anchored, so the FTPS line
@@ -6346,7 +6368,7 @@ _satellite_child_b_drush_xts_install() {
     ### output.inc lacks drush_chalk), so the extension's own drush_chalk -- used
     ### by backdrop-pm-enable/subtheme -- is never defined and those commands
     ### fatal. Anchor it to the extension dir. Idempotent: only the bare form
-    ### matches. (VM-confirmed on ng019, 2026-07-11.)
+    ### matches. (VM-confirmed 2026-07-11.)
     if [ -e "${_ROOT}/.drush/usr/backdrop/BackdropBoot.php" ]; then
       sed -i \
         "s#require_once 'includes/output.inc';#require_once __DIR__ . '/includes/output.inc';#" \
@@ -6370,7 +6392,7 @@ _satellite_child_b_drush_xts_install() {
     ### platform, breaking the whole Provision backend. Provision drives
     ### Backdrop here, so let its commands through untouched. Idempotent: the
     ### guard is inserted once, before the first $backdrop_command assignment.
-    ### (VM-confirmed on ng019, 2026-07-11.)
+    ### (VM-confirmed 2026-07-11.)
     if [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ] \
       && ! grep -q "'provision') === 0" \
         ${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc; then

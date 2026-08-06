@@ -41,7 +41,7 @@ _pick_modern() {
 # discard -- which in PHP means NOT the empty string and NOT "0" (bee keeps
 # overwriting the command past those, so `bee "" eval` / `bee 0 eval` really run
 # eval). We must skip the same tokens or a client smuggles a destructive verb
-# behind an empty/"0" pad. (VM-verified bypass, ng019 2026-07-11.)
+# behind an empty/"0" pad. (Bypass verified on a test VM, 2026-07-11.)
 _ID="$(id -un 2>/dev/null)"
 _BACKEND=NO
 if [[ "${_ID}" = "root" ]] \

@@ -104,6 +104,18 @@
 
    Specifying Octopus `username` is optional. It will use `o1` if empty.
 
+   The `email` address becomes the client-level control panel account (named
+   `<username>.ftp`, sharing the shell account password). The separate
+   admin-level (uid-1) account uses a derived `root@<hostname>` address, so
+   its notices land in the local root mailbox on the server; generate its
+   one-time login link with `su -s /bin/bash o1 -c "drush @hm uli"`. To give
+   the admin account a real address instead, append the optional trailing
+   token `admail=admin@example.com` to any install command — it also
+   overrides the default admin address on hosted systems, and must differ
+   from the client `email`. To change it later, edit `_MY_OCTO_EMAIL` in
+   `/root/.<username>.octopus.cnf` (picked up by future notices); the panel
+   admin email itself is changed in the control panel.
+
    The last `{percona-8.4|newrelickey|php-8.5|php-min|php-max|nodns}` part is optional and can be used either to install Percona version other than default 5.7 (can be `percona-8.0` or `percona-8.4`) or New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
    The `nodns` option allows skipping DNS and SMTP checks.

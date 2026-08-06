@@ -419,7 +419,7 @@ The example below is illustrative (constructed from the `printf` formats, not ca
 
 ```
 loadreport — BOA recurring-script resource profile
-  host  ng019   span 60s   interval 1s   cores 2   HZ 100
+  host  example   span 60s   interval 1s   cores 2   HZ 100
   load1 3.41 -> 3.18
   forks during span: 2280 (2280/min)   ctxt switches: 41200 (687/s)
   distinct processes sampled: 214
