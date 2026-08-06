@@ -4441,6 +4441,28 @@ _satellite_prepare_setup_email_tpl() {
        sed -i "/21 (FTPS/d" ${_ROOT}/log/setupmail.txt
        wait
      fi
+     ### Adminer is guaranteed only where the hosted-aware gate installs it
+     ### (hosted systems, or ADM/ALL in _XTRAS_LIST); a self-hosted box
+     ### without it would email a database-browser URL that never opens.
+     ### Strip the MANAGING YOUR DATABASES section (rule line above the
+     ### heading through the line before the next section's rule) when the
+     ### app is absent. Bounds are computed from the rendered file, so a
+     ### template reflow cannot misdelete; no end rule found = keep.
+     if [ ! -e "/var/www/adminer/index.php" ]; then
+       _dbHead=$(grep -n '^MANAGING YOUR DATABASES$' ${_ROOT}/log/setupmail.txt \
+         | head -n 1 | cut -d: -f1)
+       if [ -n "${_dbHead}" ] && [ "${_dbHead}" -gt 1 ]; then
+         _dbTop=$(( _dbHead - 1 ))
+         ### Literal 40-dash rule line: mawk has no {n} interval support.
+         _dbNext=$(awk -v s="${_dbHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
+           ${_ROOT}/log/setupmail.txt)
+         if [ -n "${_dbNext}" ] && [ "${_dbNext}" -gt "$(( _dbTop + 2 ))" ]; then
+           _dbEnd=$(( _dbNext - 1 ))
+           sed -i "${_dbTop},${_dbEnd}d" ${_ROOT}/log/setupmail.txt
+           wait
+         fi
+       fi
+     fi
      ### The template hardcodes the default SSH port; a self-hosted box may
      ### run sshd on a custom _SSH_PORT (hosted boxes are forced to 22).
      ### Substitute both the credentials line (anchored, so the FTPS line
