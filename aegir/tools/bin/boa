@@ -967,6 +967,24 @@ _send_errors() {
   fi
 }
 
+_display_admin_email_info() {
+  if [ "${_admDerived}" = "YES" ]; then
+    echo
+    echo "  Octopus admin (uid-1) email: ${_admAddr}"
+    echo "  Admin notices are BCC'd there and land in the local root"
+    echo "  mailbox on this server (/var/mail/root)."
+    echo
+    echo "  Admin one-time login link:"
+    echo "    su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+    echo
+    echo "  To use a real address instead: pass admail=you@example.com at"
+    echo "  install time, or edit _MY_OCTO_EMAIL in /root/.${_usEr}.octopus.cnf"
+    echo "  (picked up by future notices; the panel admin email itself is"
+    echo "  changed in the control panel)."
+    echo
+  fi
+}
+
 _octopus_install() {
   if [ -e "${_vBs}/${_octName}" ] && [ -e "${_vBs}/${_filIncO}" ]; then
     if [ -z "${_usEr}" ]; then
@@ -975,25 +993,52 @@ _octopus_install() {
       _usEr=${_usEr//[^a-zA-Z0-9-.]/}
       _usEr=$(echo -n ${_usEr} | tr A-Z a-z 2>&1)
     fi
+    # Admin-level (uid-1) email resolution. The single {email} argument is
+    # the CLIENT identity; the admin identity must differ or the satellite
+    # email gate refuses the install. Without an admail= override, derive
+    # root@<fqdn>: provision's client-email validation needs a multi-label
+    # domain (bare "root" is coerced to this.email@is.invalid), and postfix
+    # local delivery lands root@<this-host> in the root mailbox.
+    _admDerived=NO
+    if [ -z "${_ADMAIL}" ]; then
+      _admFqdn="${_fQdn}"
+      if [ -z "${_admFqdn}" ] \
+        || [[ "${_admFqdn}" != *.* ]] \
+        || [[ "${_admFqdn}" == *"@"* ]]; then
+        _admFqdn="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+      fi
+      if [ -z "${_admFqdn}" ] || [[ "${_admFqdn}" != *.* ]]; then
+        _admFqdn="$(hostname -f 2>/dev/null | tr -d '\n')"
+      fi
+      if [ -n "${_admFqdn}" ] && [[ "${_admFqdn}" == *.* ]] \
+        && [[ "${_admFqdn}" != *"@"* ]]; then
+        _admAddr="root@${_admFqdn}"
+      else
+        # Last resort on a hostname-less box: the historical sentinel;
+        # provision coerces it instead of aborting, so the install proceeds.
+        _admAddr="root"
+      fi
+    fi
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
       _if_hosted_sys
-      if [ "${_hostedSys}" != "YES" ]; then
+      if [ -n "${_ADMAIL}" ]; then
+        # Explicit override wins everywhere, including the hosted default.
+        sed -i "s~^_MY_OCTO_EMAIL=.*~_MY_OCTO_EMAIL=\"${_ADMAIL}\"~" ${_vBs}/${_octName}
+        wait
+      elif [ "${_hostedSys}" != "YES" ]; then
         if [ -e "${_barCnf}" ]; then
           source ${_barCnf}
         fi
-        if [ ! -z "${_MY_OCTO_EMAIL}" ] \
-          && [ "${_MY_OCTO_EMAIL}" = "${_eMal}" ]; then
-          sed -i 's~^_MY_OCTO.*~_MY_OCTO_EMAIL="root"~'      ${_vBs}/${_octName}
+        _lml="${_MY_OCTO_EMAIL}"
+        if [ ! -z "${_lml}" ] && [ "${_lml}" != "${_eMal}" ]; then
+          sed -i "s~^_MY_OC.*~_MY_OCTO_EMAIL=\"${_lml}\"~"   ${_vBs}/${_octName}
           wait
         else
-          _lml="${_MY_OCTO_EMAIL}"
-          if [ ! -z "${_lml}" ]; then
-            sed -i "s~^_MY_OC.*~_MY_OCTO_EMAIL=\"${_lml}\"~" ${_vBs}/${_octName}
-            wait
-          else
-            sed -i 's~^_MY_OCTO.*~_MY_OCTO_EMAIL="root"~'    ${_vBs}/${_octName}
-            wait
-          fi
+          # Empty or colliding with the client email: derive a distinct
+          # local admin identity (replaces the old "root" sentinel).
+          _admDerived=YES
+          sed -i "s~^_MY_OCTO_EMAIL=.*~_MY_OCTO_EMAIL=\"${_admAddr}\"~" ${_vBs}/${_octName}
+          wait
         fi
       fi
       sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                 ${_vBs}/${_octName}
@@ -1021,8 +1066,18 @@ _octopus_install() {
         wait
       fi
     else
-      sed -i "s~^_MY_OCTO_EMAIL=.*~_MY_OCTO_EMAIL=\"${_eMal}\"~" ${_vBs}/${_octName}
-      wait
+      if [ -n "${_ADMAIL}" ]; then
+        sed -i "s~^_MY_OCTO_EMAIL=.*~_MY_OCTO_EMAIL=\"${_ADMAIL}\"~" ${_vBs}/${_octName}
+        wait
+      else
+        # Never mirror the client email here: the chained bundle install
+        # used to write ${_eMal} into both slots, which the satellite
+        # equality gate now refuses. Deriving keeps the two panel accounts
+        # separate on self-hosted installs.
+        _admDerived=YES
+        sed -i "s~^_MY_OCTO_EMAIL=.*~_MY_OCTO_EMAIL=\"${_admAddr}\"~" ${_vBs}/${_octName}
+        wait
+      fi
     fi
     sed -i "s~^_CLIENT_EMAIL=.*~_CLIENT_EMAIL=\"${_eMal}\"~" ${_vBs}/${_octName}
     wait
@@ -1435,6 +1490,25 @@ _init_finish() {
 # wrapper is a debug-only stub.
 _check_install_args() {
   _eMalRgx="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+  if [ -n "${_ADMAIL}" ]; then
+    if ! [[ "${_ADMAIL}" =~ ${_eMalRgx} ]]; then
+      echo
+      echo "FATAL ERROR: admail= must carry a valid email address, got: '${_ADMAIL}'"
+      echo "Example: boa ${_cmNd} ... admail=admin@example.com"
+      echo
+      _clean_pid_exit
+    fi
+    # The admin-level and client-level accounts need separate addresses or
+    # the satellite email gate refuses the install an hour in. The _fQdn
+    # compare covers the local form, where the email rides in that slot.
+    if [ "${_ADMAIL}" = "${_eMal}" ] || [ "${_ADMAIL}" = "${_fQdn}" ]; then
+      echo
+      echo "FATAL ERROR: admail= must differ from {email} — it names the"
+      echo "separate admin-level (uid-1) account, not the client account"
+      echo
+      _clean_pid_exit
+    fi
+  fi
   if [ "${_cmNd}" = "in-dev" ] \
     || [ "${_cmNd}" = "in-pro" ] \
     || [ "${_cmNd}" = "in-lts" ]; then
@@ -1955,6 +2029,7 @@ _init_setup() {
         fi
       fi
     fi
+    _display_admin_email_info
     sleep 1
     exit 0
   else
@@ -3199,8 +3274,8 @@ _if_display_help() {
     echo
     echo "Installation commands:"
     echo
-    echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
-    echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev|pro} {output}"
+    echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output} [admail=<address>]"
+    echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev|pro} {output} [admail=<address>]"
     echo
     echo "Other available commands:"
     echo
@@ -3230,7 +3305,13 @@ _if_display_help() {
       my.fqdn <------ valid subdomain to use as a hostname
 
     {email}
-      my@email <----- your valid email address
+      my@email <----- your valid email address (the client-level account)
+
+    {admail=} <------ optional trailing token, any install command
+      admail=adm@email  separate admin-level (uid-1) email; without it a
+                        self-hosted install derives root@<fqdn>, delivered
+                        to the local root mailbox; an explicit admail=
+                        also overrides the hosted default
 
     {user}
       o1 <----------- default Octopus system account
@@ -3269,6 +3350,26 @@ _check_root_direct
 _os_detection_minimal
 
 export _ARGS="$@"
+
+# Optional install token: admail=<address> supplies a separate admin-level
+# (uid-1) email, overriding both the derived root@<fqdn> default and the
+# hosted default. Captured and stripped from the positional set BEFORE slot
+# mapping so it can never shift {user}/{extra}/{output}; the install arms
+# re-append it to _BOA_COMMAND so the autoinit replay keeps it.
+_ADMAIL=""
+if [[ "${_ARGS}" == *"admail="* ]]; then
+  for _arg in "$@"; do
+    case "${_arg}" in
+      admail=*) _ADMAIL="${_arg#admail=}" ;;
+    esac
+  done
+  set -- $(for _arg in "$@"; do
+    case "${_arg}" in
+      admail=*) ;;
+      *) echo "${_arg}" ;;
+    esac
+  done)
+fi
 
 case "$1" in
   info)       _cmNd="$1"
@@ -3320,6 +3421,7 @@ case "$1" in
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
+              [ -n "${_ADMAIL}" ] && _BOA_COMMAND="${_BOA_COMMAND} admail=${_ADMAIL}"
               _init_setup
   ;;
   in-dev)     export _tRee=dev
@@ -3338,6 +3440,7 @@ case "$1" in
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
+              [ -n "${_ADMAIL}" ] && _BOA_COMMAND="${_BOA_COMMAND} admail=${_ADMAIL}"
               _init_setup
   ;;
   in-pro)     export _tRee=pro
@@ -3356,6 +3459,7 @@ case "$1" in
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
+              [ -n "${_ADMAIL}" ] && _BOA_COMMAND="${_BOA_COMMAND} admail=${_ADMAIL}"
               _init_setup
   ;;
   in-octopus) _cmNd="$1"
@@ -3373,6 +3477,7 @@ case "$1" in
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
+              [ -n "${_ADMAIL}" ] && _BOA_COMMAND="${_BOA_COMMAND} admail=${_ADMAIL}"
               _init_setup
   ;;
   in-oct)     _cmNd="$1"
@@ -3392,6 +3497,7 @@ case "$1" in
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
+              [ -n "${_ADMAIL}" ] && _BOA_COMMAND="${_BOA_COMMAND} admail=${_ADMAIL}"
               _init_setup
   ;;
   *)          echo
