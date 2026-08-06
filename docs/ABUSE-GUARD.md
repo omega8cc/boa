@@ -96,8 +96,8 @@ read access.log from the last byte offset (incremental)
 for each line:  resolve real IP → exemption gate → per-line tallies (all detectors)
    ↓
 after the loop:  _handle_blocking → _handle_ddos_blocking → _handle_ua_burst_blocking →
-   _handle_path_flood_blocking → _handle_http10_auth_flood → _handle_i18n_flood →
-   _check_fpm_saturation
+   _handle_path_flood_blocking → _handle_http10_auth_flood → _handle_guard404_flood →
+   _handle_harvest_blocking → _handle_i18n_flood → _check_fpm_saturation
    ↓
 write offenders to web.log + scan_nginx.archive.log
 ```
@@ -270,7 +270,7 @@ trivial agents. This is the detector that, before the path-exemption existed, ba
 entire webhook provider's rotating pool on its shared `Shopify-Captain-Hook` / `GuzzleHttp`
 UA — which is why the exemption gate runs at loop scope and covers this detector too.
 
-**Window and tuning (revised after the am095 incident).** Every threshold here is measured
+**Window and tuning (revised after a real over-ban incident).** Every threshold here is measured
 against a short window: `nginx_guard.sh` runs `scan_nginx.sh` about every 5 s and
 byte-offset tracking means each run scores only the lines appended since the previous run.
 The original defaults (20 IPs / 200 reqs / 3-request block) sat far below real traffic for
@@ -384,8 +384,8 @@ accumulate:
 
 The bad-status ratio is the false-positive keystone: a real popular-browser UA shared by
 many legitimate IPs is ~all `200`/`304`, so it never crosses the 80 % gate — which is why the
-IP threshold can sit far below Detector 2's without re-introducing the am095/kwestiasmaku
-over-ban. When a fleet is declared, only IPs that **themselves** sent at least
+IP threshold can sit far below Detector 2's without re-introducing the observed
+popular-browser over-ban. When a fleet is declared, only IPs that **themselves** sent at least
 `_NGINX_UA_BURST_IP_MIN_BAD` (default **3**) bad probes under that UA are blocked; a real
 visitor sharing the UA sent `200`s (zero bad) and is never caught. UAs of 10 characters or
 fewer are ignored. The ban reuses the same whitelist / logged-in / local-IP / already-banned
@@ -393,6 +393,88 @@ guards and feeds the same `guest-fire` → `guest-water` pipeline as every other
 detector is **on by default**, opt-out per box (`_NGINX_UA_BURST_DETECT=NO`); the per-line
 tally is skipped entirely when off. Tune it **tighter, never looser**, and only on a
 confirmed real report.
+
+### Detector 6 — guard-404 scraped-interactive-path (report by default, opt-in ban)
+
+The request guards in **Part 3** answer a **cold** `GET` to an interactive-only Drupal path
+— a Flag toggle, a HybridAuth login window — with a **static 404**: a real interaction
+carries a same-origin Referer (and, on the HybridAuth path, a session cookie), so the 404
+is a per-request bot verdict computed by nginx at zero backend cost. The traffic class
+behind those guards is a distributed residential-proxy scraper botnet: thousands of IPs at
+a **median of one request each**, IP pools that rotate almost completely day to day,
+verbatim real-browser User-Agents rotated per request, and a status mix (`200`/`302`) the
+status-keyed scorers never count. That shape defeats Detectors 1–5 at once, and per-IP
+banning against the median-one body of it is structurally futile — the evidence base showed
+near-zero IP recurrence across days, so a ban would outlive the offender. Two things remain
+profitable, and this detector does both.
+
+**What the tally counts.** `_track_guard404` reproduces exactly what the guards block, and
+nothing they let through: method `GET` or `HEAD`, status `404`, **Referer absent**, the
+User-Agent not on the crawler exempt list, and a query-stripped URI matching
+`_NGINX_GUARD404_PATHS`. Every field is read positionally from the log line's quoted fields
+with the same traversal-rejecting, smuggle-proof parse as Detector 4. The Referer test is
+load-bearing: without it the tally would also count Drupal's own not-found on the same
+paths, and every real visitor who reaches one. Tallies merge into a cross-run sliding
+window (`/var/xdrago/monitor/log/guard404.window`, pruned each tick, the Detector 4 shape).
+The URI is compared **as logged** — the raw request target — while nginx matched its
+normalised `$uri`, so percent-encoded and dot-segment forms go uncounted even though the
+guard 404'd them; that divergence only ever under-counts, which is the safe direction for a
+ban input.
+
+**Why the per-IP action is REPORT by default.** Unlike Detector 4's HTTP/1.0 tell (a
+browser cannot be made to speak HTTP/1.0), this signal is **browser-inducible**: any
+third-party page can carry an `<img referrerpolicy="no-referrer">` pointed at a hosted
+site's guarded path and make an innocent visitor's browser emit the exact trigger against
+someone else's site — turning a per-IP ban into a remote, box-wide denial of that visitor.
+Referer-less real traffic also exists (sites sending `Referrer-Policy: no-referrer`,
+privacy extensions, Referer-stripping corporate proxies), and the guard's own 404 is a
+perfect retry amplifier. So the ban is an operator decision on a confirmed campaign,
+exactly like `_NGINX_HARVEST_ACTION`: **REPORT** (default) writes `GUARD404-WOULD-BAN`
+lines and bans nothing; **BAN** arms the heuristic. In BAN mode the ban is worth more than
+the 404s the IP was already eating — it also cuts off the **content-crawl `200`s** the same
+address fetches in parallel, which no other scorer counts. There is deliberately **no
+`/24` aggregation** — unlike Detector 4's tight source block, this class rides
+ISP-dispersed CGNAT space where a `/24` holds real users.
+
+| Threshold | Default | Meaning |
+|---|---|---|
+| `_NGINX_GUARD404_ACTION` | `REPORT` | `BAN` arms the per-IP ban; anything else reports |
+| `_NGINX_GUARD404_IP_THRESHOLD` | 6 | windowed guard-family 404s from that IP |
+| `_NGINX_GUARD404_WINDOW` | 600 | sliding-window length in seconds |
+| `_NGINX_GUARD404_CAMPAIGN_IPS` | 40 | distinct windowed IPs that declare a campaign |
+| `_NGINX_GUARD404_COOLDOWN` | 3600 | seconds between campaign alerts |
+
+**Campaign surfacing.** The median-one body of the flood never meets any per-IP threshold,
+and without an aggregate signal a rotating-IP crawl can chew a small FPM pool for months in
+silence — the reference case ran for over three months before diagnosis, entirely inside
+the IDS's blind spots. So once `_NGINX_GUARD404_CAMPAIGN_IPS` **distinct** IPs carry
+windowed guard-404 state at once, the handler writes one `GUARD404-CAMPAIGN` line plus a
+box-wide forensic snapshot to `i18n_flood.log` (the Tier-B alert channel), rate-limited by
+the cool-down stamp. It runs in **both** modes, because alerting can never mis-ban — this
+is the part of the detector that is always safe, and the part that was actually missing.
+
+The default path class covers the Flag-toggle and HybridAuth-window guard shapes with an
+optional language prefix, matched case-insensitively the way the nginx maps are. **Print
+paths are deliberately excluded**: a bookmarked printer-friendly page refreshed a few times
+is a plausible real visitor, so print-guard 404s stay with the standard per-IP weighted
+scorer only. On a box where these paths 404 from Drupal itself (module absent, guard not
+yet deployed) the hits still count — a cold Referer-less `GET` to an interactive-only path
+is the same verdict either way.
+
+Crawler protection is layered, because IP whitelisting alone does not cover it: csf.allow /
+web6.allow exempt the providers `guest-water.sh` publishes (Googlebot, Bingbot, the CDN and
+monitoring ranges), while `_NGINX_HARVEST_UA_EXEMPT` — the same list the harvest detector
+uses — covers the legitimate crawlers and unfurlers whitelisting never reaches (Applebot,
+DuckDuckBot, Yandex, Baiduspider, archive.org_bot, the social preview fetchers, the uptime
+probes). The guarded URLs also answer 404, which de-indexes them. In BAN mode the ban
+reuses `_block_ip` (whitelist, logged-in, local-IP and already-banned guards all apply) and
+feeds the same `guest-fire` → `guest-water` pipeline as every other detector, and
+`clearwebbans` now clears this detector's window along with the ban logs, so an operator
+unban is not undone by carried-forward state. The detector is **on by default**, opt-out
+per box (`_NGINX_GUARD404_DETECT=NO`); the per-line tally is skipped entirely when off,
+malformed numeric overrides revert to the defaults, and a malformed `_NGINX_GUARD404_PATHS`
+override is reverted to the default class with a startup warning rather than left to
+silently match nothing.
 
 ### Distributed-i18n-flood detection and the FPM saturation trigger
 
@@ -693,16 +775,17 @@ before any `try_files`, `@drupal` fallback, or FastCGI round-trip.
 ### The 444-vs-404 convention
 
 - **`return 444`** — nginx's "close the connection, send no response". Used for **abuse
-  denials**: a banned IP, a malformed asset-chain flood, a no-referer print/search probe, a
+  denials**: a banned IP, a malformed asset-chain flood, a no-referer search probe, a
   forged/training AI crawler, a scanner pattern, a TLS handshake on the plain port. It gives
   the attacker no signal (no status line, body, or timing leak) and is the cheapest
   refusal. It also feeds `scan_nginx`'s per-IP `444`-weight, so a 444'd request both costs
   the attacker a connection and accrues score toward a ban.
 - **`return 404`** — a normal, cacheable "not found", reserved for cheap content-shape
   misses where a recoverable error keeps the false-positive blast radius small: the
-  node-chain / lang-chain / content-chain URL-mutation floods, and special `.php`-probe
-  URLs. A 404 still avoids a PHP bootstrap, so it is nearly as cheap as 444 but safer when
-  the pattern *could* rarely match real content.
+  node-chain / lang-chain / content-chain URL-mutation floods, the no-referer print and
+  flag-toggle gates (their traffic class includes search crawlers, which surface a 444 as
+  a 5xx), and special `.php`-probe URLs. A 404 still avoids a PHP bootstrap, so it is
+  nearly as cheap as 444 but safer when the pattern *could* rarely match real content.
 
 > **A note on `return 403`.** `vhost_include.tpl.php` also emits `return 403` in several
 > places, but these are **not** abuse denials. Each is an `if ($cache_uid = '')`
@@ -790,7 +873,7 @@ Both chain guards apply on **full-domain vhosts only**. They are intentionally *
 (which match on `node/<id>` repetition and language-prefix runs, not asset paths) **do**
 apply on subdir vhosts.
 
-### Print no-referer gate → 444
+### Print no-referer gate → 404
 
 A printer-friendly or email-this-page request is always a *click from* a page, so it carries
 a `Referer`; a Referer-less hit to a `/print*` path is the botnet (100% of the observed flood
@@ -804,11 +887,96 @@ map $is_print_path$has_no_referrer $block_print_no_referer {
 }
 ```
 
-enforced as `if ($block_print_no_referer) { return 444; }`. It is **referrer- and
-path-shape only** — no module or version detection — so it is FP-safe and version-agnostic:
-it covers D7 print / print_mail / print_pdf / printer_and_pdf, D10+ entity_print +
-printable, and Backdrop, while content slugs (`/printing-services`, `/print/about-us`,
-`/printable-maps`) never match.
+enforced as `if ($block_print_no_referer) { return 404; }` — a static 404, **not** 444,
+because the no-Referer class also contains search crawlers following linked print pages: a
+444 reached them as Cloudflare 520 / proxy 502 and filled Search Console with 5xx noise,
+while a static 404 is equally php-fpm-free and the right crawl outcome for duplicate print
+content. It is **referrer- and path-shape only** — no module or version detection — so it
+is FP-safe and version-agnostic: it covers D7 print / print_mail / print_pdf /
+printer_and_pdf, D10+ entity_print + printable, and Backdrop, while content slugs
+(`/printing-services`, `/print/about-us`, `/printable-maps`) never match.
+
+### Flag-toggle no-referer gate → 404
+
+The Flag module exposes GET action links (`/flag/flag/<name>/<id>`,
+`/flag/unflag/<name>/<id>`) on every rendered page, and each hit is an uncacheable full
+Drupal bootstrap answered **302** — a status the log-scoring IDS never counts. One observed
+flood drove ~11k such bootstraps/day into a shared FPM pool from ~7k IPs at a **median of
+one request per IP** under rotated browser-family UAs, with a large share carrying
+HTML-entity-mangled tokens (`?destination=&amp%3Btoken=…`) — links scraped from raw HTML
+that no real browser produces. A real flag click always carries a same-origin `Referer`
+(and a Referer-less toggle would fail the anonymous CSRF token check anyway, bootstrapping
+only to redirect), so the gate composes the toggle path shape with `$has_no_referrer`,
+keyed on the method so only GET matches:
+
+```nginx
+map $uri $is_flag_toggle {
+  default 0;
+  "~*^/(?:[a-z]{2}(?:-[a-z]+)?/)?flag/(?:flag|unflag)/[a-z0-9_]+/[0-9]"  1;
+}
+map $request_method$is_flag_toggle$has_no_referrer $block_flag_no_referer {
+  default 0;
+  "GET11"  1;
+}
+```
+
+enforced as `if ($block_flag_no_referer) { return 404; }` — static 404 for the same
+crawler-safety reasons as the print gate above. The tail is anchored to a machine name plus
+a numeric entity id, so content slugs (`/flag-day`, `/flag/flag-history`) never match, and
+POST/AJAX-form flagging flows are untouched. Works on D7 Flag 2/3 and D8+ Flag 4 whether or
+not the module is enabled. To see the gate working, count `404`s on `/flag/` paths in the
+vhost access log — each one is a bootstrap that never reached php-fpm.
+
+### HybridAuth-window cold-fetch gate → 404
+
+The HybridAuth module renders social-login links (`/hybridauth/window/<Provider>`) on every
+page that shows its login block or comment form, and each hit is an uncacheable full Drupal
+bootstrap that **starts a session** and answers `302`/`200`. One observed flood followed
+these links from thousands of rotating residential-proxy IPs at a median of one request per
+IP — the same scraped-link class as the flag flood, with the added twist that the bots ran
+headless browsers and partially **executed** the OAuth popup flow, burning up to three
+bootstraps per sequence.
+
+**Referer alone cannot gate this path, and that is why the gate also tests the session.**
+The window path is not only the entry point: the module passes it as `hauth_return_to`, so
+the provider's callback at `/hybridauth/endpoint` redirects the browser **back** to
+`/hybridauth/window/<Provider>`, and only that final hop runs the account match/create, the
+login and the popup-close page. A `302` carries the original request's referrer forward
+rather than substituting the redirecting URL, so whenever the provider strips the `Referer`
+— a policy the operator can neither see nor control — the login-completing hop arrives
+Referer-less. Measured on a hosted box, the completion-shaped window `200`s were
+overwhelmingly Referer-less. A Referer-only gate would therefore 404 real logins, silently,
+with no PHP-side trace to diagnose from.
+
+What every real hop *does* carry is the Drupal session cookie: the outbound leg starts the
+session holding the hauth state, so the return hop cannot work without it. A cold scraper
+following a scraped link carries neither a Referer nor a session. The gate fires on that
+intersection only:
+
+```nginx
+map $cache_uid $has_no_session {
+  default 0;
+  ""      1;
+}
+map $uri $is_hybridauth_window {
+  default 0;
+  "~*^/(?:[a-z]{2}(?:-[a-z]+)?/)?hybridauth/window/[a-z0-9_.-]+/?$"  1;
+}
+map $request_method$is_hybridauth_window$has_no_referrer$has_no_session $block_hybridauth_no_referer {
+  default 0;
+  "GET111"   1;
+  "HEAD111"  1;
+}
+```
+
+enforced as `if ($block_hybridauth_no_referer) { return 404; }`. `$cache_uid` is the same
+map the cache-bypass gates use; any `SESS`/`SSESS` cookie sets it, including an anonymous
+session, which is exactly the mid-flow case. The tail is anchored to a single path segment
+(the provider name) with an optional trailing slash, so deeper paths and content aliases
+never match; `HEAD` is included because a HEAD costs the same bootstrap and no login hop is
+ever a HEAD. `/hybridauth/endpoint` stays ungated — it is the provider's own callback
+target. Works whether or not the module is enabled. Together with the flag and print gates,
+the 404s this gate emits are the tell Detector 6 counts (see Part 1).
 
 ### TLS-on-plain → 444
 
