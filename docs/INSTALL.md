@@ -113,8 +113,10 @@
    token `admail=admin@example.com` to any install command — it also
    overrides the default admin address on hosted systems, and must differ
    from the client `email`. To change it later, edit `_MY_OCTO_EMAIL` in
-   `/root/.<username>.octopus.cnf` (picked up by future notices); the panel
-   admin email itself is changed in the control panel.
+   `/root/.<username>.octopus.cnf` (picked up by future notices and, on the
+   next upgrade run, by the instance's system mail address); the panel
+   admin account's own email is changed in the control panel, and the two
+   are allowed to differ by design.
 
    The last `{percona-8.4|newrelickey|php-8.5|php-min|php-max|nodns}` part is optional and can be used either to install Percona version other than default 5.7 (can be `percona-8.0` or `percona-8.4`) or New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
