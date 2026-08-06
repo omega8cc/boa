@@ -384,6 +384,10 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
   _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [ ! -z "${_X_VERSION}" ]; then
     _MY_OCTO_EMAIL=${_MY_OCTO_EMAIL//\\\@/\@}
+    ### /root/.barracuda.cnf never defines _MY_OCTO_EMAIL, so this notice
+    ### went to an empty recipient and was silently lost on every box; the
+    ### operator address is the intended reader, local root the last resort.
+    [ -z "${_MY_OCTO_EMAIL}" ] && _MY_OCTO_EMAIL="${_MY_EMAIL:-root}"
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
       echo "INFO: Version test result: OK"
