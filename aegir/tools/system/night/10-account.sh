@@ -595,11 +595,15 @@ EOF
   # reaches a human, not the undeliverable root@<host> envelope sender. Only set
   # when it resolves to a real address (non-empty, not "root", has an @).
   _reply="${_MY_OCTO_EMAIL}"
-  if [ -z "${_reply}" ] || [ "${_reply}" = "root" ]; then
+  if [ -z "${_reply}" ] || [ "${_reply}" = "root" ] \
+    || [[ "${_reply}" =~ ^root@ ]]; then
+    # root and the derived root@<fqdn> self-hosted admin identity are both
+    # local-only mailboxes -- as undeliverable for a client reply as bare root.
     _reply="${_ADMIN_EMAIL}"
   fi
   echo "Sending LE client notice for ${_HM_U} to ${_CLIENT_EMAIL} on $(date)"
-  if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] && [[ "${_reply}" =~ @ ]]; then
+  if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] \
+    && ! [[ "${_reply}" =~ ^root@ ]] && [[ "${_reply}" =~ @ ]]; then
     echo "${_clBody}" \
       | s-nail -S replyto="${_reply}" -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
   else
@@ -676,11 +680,15 @@ _ghost_account_report() {
   _clBody="${_clBody}"$'\n'"These records point at no site data on the server, so removing them"$'\n'"does not touch any of your working sites, and nothing is deleted on the"$'\n'"server side by this process."$'\n'
   _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
   _reply="${_MY_OCTO_EMAIL}"
-  if [ -z "${_reply}" ] || [ "${_reply}" = "root" ]; then
+  if [ -z "${_reply}" ] || [ "${_reply}" = "root" ] \
+    || [[ "${_reply}" =~ ^root@ ]]; then
+    # root and the derived root@<fqdn> self-hosted admin identity are both
+    # local-only mailboxes -- as undeliverable for a client reply as bare root.
     _reply="${_ADMIN_EMAIL}"
   fi
   echo "Sending ghost-site client notice for ${_HM_U} to ${_CLIENT_EMAIL} on $(date)"
-  if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] && [[ "${_reply}" =~ @ ]]; then
+  if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] \
+    && ! [[ "${_reply}" =~ ^root@ ]] && [[ "${_reply}" =~ @ ]]; then
     echo "${_clBody}" \
       | s-nail -S replyto="${_reply}" -s "Action suggested: broken leftover site record(s) in your control panel" "${_CLIENT_EMAIL}"
   else
