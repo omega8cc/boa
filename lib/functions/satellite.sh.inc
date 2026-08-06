@@ -4487,9 +4487,12 @@ _satellite_prepare_setup_email_tpl() {
        if [ -n "${_glHead}" ] && [ "${_glHead}" -gt 1 ]; then
          _glTop=$(( _glHead - 1 ))
          ### Literal 40-dash rule line: mawk has no {n} interval support.
-         _glEnd=$(awk -v s="${_glHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
+         ### Stop BEFORE the next rule line: deleting through it removed
+         ### the separator between the preceding section and the sign-off.
+         _glNext=$(awk -v s="${_glHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
            ${_ROOT}/log/setupmail.txt)
-         if [ -n "${_glEnd}" ]; then
+         if [ -n "${_glNext}" ] && [ "${_glNext}" -gt "$(( _glTop + 2 ))" ]; then
+           _glEnd=$(( _glNext - 1 ))
            sed -i "${_glTop},${_glEnd}d" ${_ROOT}/log/setupmail.txt
            wait
          fi
