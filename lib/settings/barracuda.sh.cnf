@@ -1355,6 +1355,20 @@ _GHOST_SITE_FILES_CLEANUP=NO
 _GHOST_ALIASES_CLEANUP=NO
 
 ###
+### Minimum age in days of a converted account's log/proxied.pid before
+### xtrim will agree to shrink it -- the proxy must prove itself quiet
+### first. Hard floor of 7 is enforced by the tool regardless.
+###
+_XTRIM_MIN_DAYS=14
+
+###
+### Warn the admin when the earliest certificate behind a retained
+### migration-proxy vhost expires within this many days AND the daily
+### mirror could not refresh it (migration_proxy_certs.sh).
+###
+_MIGRATION_PROXY_CERT_WARN_DAYS=21
+
+###
 ### Default number of access.log lines to check.
 ###
 _NGINX_DOS_LINES=1999
