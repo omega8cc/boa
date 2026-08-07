@@ -47,9 +47,9 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 7
 
-- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.105.1)
-- [Drupal 7.105.1](https://docs.tag1.com/faqs/)
-- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.105.1)
+- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.105.2)
+- [Drupal 7.105.2](https://docs.tag1.com/faqs/)
+- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.105.2)
 
 ## Drupal 6
 
@@ -65,7 +65,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 * Backdrop sites are managed with both `bee` (the native Backdrop CLI) and Drush 8 (via the backdrop-drush-extension).
 * Ships ON by default: Backdrop platforms build whenever the platform list includes the `BDR` symbol (or `ALL`); set `_BACKDROP_SUPPORT=NO` in the Octopus config to opt an instance out.
 
-* All D7 platforms have been enhanced using [Drupal 7.105.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
+* All D7 platforms have been enhanced using [Drupal 7.105.2 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
 * All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
 
