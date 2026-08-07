@@ -852,7 +852,7 @@ EOFMYSQL
                 echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
               fi
             fi
-            myloader \
+            if myloader \
               --database=${_DBN} \
               --host=localhost \
               --defaults-file=/root/.my.cnf \
@@ -860,8 +860,11 @@ EOFMYSQL
               --directory=${_USR}/src/${_DBN}/ \
               --threads=4 \
               --drop-table=DROP \
-              --verbose=1
-            echo "INFO: site ${_Dom} db import on ${_oct} complete"
+              --verbose=2; then
+              echo "INFO: site ${_Dom} db import on ${_oct} complete"
+            else
+              echo "ALRT: site ${_Dom} db import FAILED on ${_oct}"
+            fi
           else
             echo "ALRT: site ${_Dom} db failure due to missing ${_USR}/src/${_DBN}"
           fi
@@ -923,7 +926,7 @@ EOFMYSQL
           fi
         fi
         mkdir -p ${_USR}/src/${_DBN}
-        mydumper \
+        if mydumper \
           --database=${_DBN} \
           --host=localhost \
           --defaults-file=/root/.my.cnf \
@@ -934,8 +937,12 @@ EOFMYSQL
           --threads=4 \
           --long-query-guard=900 \
           --clear \
-          --verbose=1
-        echo "INFO: site ${_Dom} db export on ${_oct} complete"
+          --verbose=2 \
+          && [ -e "${_USR}/src/${_DBN}/metadata" ]; then
+          echo "INFO: site ${_Dom} db export on ${_oct} complete"
+        else
+          echo "ALRT: site ${_Dom} db export FAILED on ${_oct}"
+        fi
       elif [ "${_cmd}" = "proxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then
           if [ -e "${_Vht}" ]; then
