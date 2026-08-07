@@ -393,9 +393,16 @@ _preflight() {
   done
   pgrep -f "[p]rovision" >/dev/null 2>&1 \
     && _die "a provision task is running -- refusing"
-  for _p in "[b]arracuda" "[o]ctopus " "[x]oct " "[x]mass " "[s]qlclean"; do
+  ### The chained install's legs run as 'bash /var/backups/BARRACUDA.sh.txt'
+  ### (uppercase on disk) and the launcher as 'bash .../boa in-...'; pgrep -f
+  ### is case-sensitive, so the lowercase tool names alone are blind to
+  ### exactly those windows.
+  for _p in "[b]arracuda" "[o]ctopus " "[x]oct " "[x]mass " "[s]qlclean" \
+    "[B]ARRACUDA.sh.txt" "[O]CTOPUS.sh.txt"; do
     pgrep -f "${_p}" >/dev/null 2>&1 && _die "matched running '${_p}' -- refusing"
   done
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" >/dev/null 2>&1 \
+    && _die "a boa install is running -- refusing"
   _resolve_mnt_store
   [ "${_MNT_COUNT}" -gt "1" ] \
     && _die "more than one /mnt mount (${_MNT_COUNT}) -- refusing to resolve stores"
