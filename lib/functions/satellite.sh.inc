@@ -1,6 +1,6 @@
 
 export _tRee=dev
-export _rLsn="BOA-5.88.822"
+export _rLsn="BOA-5.88.833"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -4487,9 +4487,12 @@ _satellite_prepare_setup_email_tpl() {
        if [ -n "${_glHead}" ] && [ "${_glHead}" -gt 1 ]; then
          _glTop=$(( _glHead - 1 ))
          ### Literal 40-dash rule line: mawk has no {n} interval support.
-         _glEnd=$(awk -v s="${_glHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
+         ### Stop BEFORE the next rule line: deleting through it removed
+         ### the separator between the preceding section and the sign-off.
+         _glNext=$(awk -v s="${_glHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
            ${_ROOT}/log/setupmail.txt)
-         if [ -n "${_glEnd}" ]; then
+         if [ -n "${_glNext}" ] && [ "${_glNext}" -gt "$(( _glTop + 2 ))" ]; then
+           _glEnd=$(( _glNext - 1 ))
            sed -i "${_glTop},${_glEnd}d" ${_ROOT}/log/setupmail.txt
            wait
          fi
@@ -4704,7 +4707,7 @@ _satellite_make() {
     _PHP_FPM_VERSION="${_PHP_CLI_VERSION}"
   fi
 
-  export _xSrl=588822devT01
+  export _xSrl=588833devT01
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}

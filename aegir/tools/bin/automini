@@ -360,8 +360,11 @@ _if_launch_boa_install() {
     else
       _BOA_INSTALL_COMMAND="${_BOA_COMMAND} silent"
     fi
+    ### All three bundle verbs write the command file; a captured in-pro
+    ### was never replayed after the OS conversion and the install stalled.
     if [[ "${_BOA_COMMAND}" =~ "boa in-lts" ]] \
-      || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]]; then
+      || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]] \
+      || [[ "${_BOA_COMMAND}" =~ "boa in-pro" ]]; then
       _msg "_if_launch_boa_install ==> Time for ${_BOA_INSTALL_COMMAND} noscreen" >> "${_logInt}"
       eval "${_BOA_INSTALL_COMMAND} noscreen"
       wait

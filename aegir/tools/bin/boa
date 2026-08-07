@@ -1572,24 +1572,17 @@ _init_setup() {
 
   if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
 
-    if [ -e "/lib/systemd/systemd" ]; then
-      # Explain the procedure
+    # Instance-add is EXCLUSIVE to a box already running BOA: never start
+    # the OS conversion from here (it used to, losing the command and
+    # leaving a converted but BOA-less box). Hard refusal on both signals:
+    # an unconverted (systemd) OS and a missing barracuda control file.
+    if [ -e "/lib/systemd/systemd" ] || [ ! -e "${_barCnf}" ]; then
       echo
-      echo "  Since this system is not ready for Octopus installation yet,"
-      echo "  we will run the 'autoinit' for you first, reboot and then"
-      echo "  you can install BOA first and then add more Octopus instances"
+      echo "FATAL ERROR: ${_cmNd} requires an already-installed BOA system"
+      echo "Install BOA first, for example:"
+      echo "  boa in-lts public server.example.com my@email.com o1"
+      echo "then re-run this command to add another Octopus instance"
       echo
-      echo "  NOTE: All required autoinit steps are automated"
-      echo
-      echo "  Feel free to log out now and check back after 10 minutes"
-      echo
-      echo "  PLEASE DON'T REBOOT THIS SERVER WHILE THE PROCEDURE IS RUNNING!"
-      echo
-      echo "  Bye!"
-      echo
-      # Execute the autonit and exit
-      nohup /usr/local/bin/autoinit > /dev/null 2>&1 &
-      sleep 1
       _clean_pid_exit
     fi
 
@@ -1830,7 +1823,7 @@ _init_setup() {
   _check_etc_apt_preferences
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.88.822"
+  export _rLsn="BOA-5.88.833"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="https://files.boa.io/versions/${_tRee}/boa"
