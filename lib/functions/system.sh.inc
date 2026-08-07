@@ -2969,6 +2969,8 @@ _barracuda_cnf() {
     echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}"           >> ${_barCnf}
     echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"       >> ${_barCnf}
+    echo "_XTRIM_MIN_DAYS=${_XTRIM_MIN_DAYS}"                     >> ${_barCnf}
+    echo "_MIGRATION_PROXY_CERT_WARN_DAYS=${_MIGRATION_PROXY_CERT_WARN_DAYS}" >> ${_barCnf}
 
     echo "###"                                                      >> ${_barCnf}
     echo "_ENABLE_NEWRELIC_SYSMOND=${_ENABLE_NEWRELIC_SYSMOND:-NO}" >> ${_barCnf}
@@ -3678,6 +3680,16 @@ _barracuda_cnf() {
     _GHOST_SITES_CLEANUP_TEST=$(grep _GHOST_SITES_CLEANUP ${_barCnf} 2>&1)
     if [[ ! "${_GHOST_SITES_CLEANUP_TEST}" =~ "_GHOST_SITES_CLEANUP" ]]; then
       echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}" >> ${_barCnf}
+    fi
+
+    _XTRIM_MIN_DAYS_TEST=$(grep _XTRIM_MIN_DAYS ${_barCnf} 2>&1)
+    if [[ ! "${_XTRIM_MIN_DAYS_TEST}" =~ "_XTRIM_MIN_DAYS" ]]; then
+      echo "_XTRIM_MIN_DAYS=${_XTRIM_MIN_DAYS}" >> ${_barCnf}
+    fi
+
+    _MIGRATION_PROXY_CERT_WARN_DAYS_TEST=$(grep _MIGRATION_PROXY_CERT_WARN_DAYS ${_barCnf} 2>&1)
+    if [[ ! "${_MIGRATION_PROXY_CERT_WARN_DAYS_TEST}" =~ "_MIGRATION_PROXY_CERT_WARN_DAYS" ]]; then
+      echo "_MIGRATION_PROXY_CERT_WARN_DAYS=${_MIGRATION_PROXY_CERT_WARN_DAYS}" >> ${_barCnf}
     fi
 
     _GHOST_SITE_FILES_CLEANUP_TEST=$(grep _GHOST_SITE_FILES_CLEANUP ${_barCnf} 2>&1)

@@ -1,0 +1,885 @@
+#!/bin/bash
+
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+###
+### xtrim -- shrink a fully proxied (PX0) source box so it fits a minimal
+### plan, without ever guessing: every deletion is derived from this box's
+### own saved vhosts and drush aliases, proven still-served by the TARGET
+### over ssh, dumped and verified locally first, and recorded in a manifest
+### before the first byte is removed.
+###
+### Verbs:
+###   xtrim status                    read-only: proxy state, cert horizon,
+###                                   reclaimable bytes
+###   xtrim plan   <oN|all>           full precondition battery + itemised
+###                                   deletion plan (DRY)
+###   xtrim shrink <oN|all> [--live]  stage A (reversible quiesce) + stage B
+###                                   (one-way data removal)
+###   xtrim finalize [--live] [--drop-datadir]
+###                                   box-wide stage C, only when every
+###                                   account is shrunk
+###   xtrim restore <oN>              undo stage A from quarantine (refused
+###                                   once stage B has started)
+###
+### DRY/--live token is PER VERB: a clean DRY of one verb never arms a live
+### run of another (the historical xoct/xmass defect is not inherited).
+###
+### Certificate refresh is deliberately NOT an xtrim verb -- it belongs to
+### the daily migration_proxy_certs.sh mirror, which must keep running long
+### after the shrink.
+###
+
+_XTRIM_BASE="/var/backups/xtrim"
+_XTRIM_STATE_DIR="/var/log/boa"
+_NGX_LOCK="/run/boa_nginx_config.lock"
+_SQLCLEAN_LOCK="/run/sqlclean.lock"
+
+_msg()  { echo "xtrim: $*"; }
+_info() { echo "INFO: $*"; }
+_alrt() { echo "ALRT: $*"; }
+_die()  { echo "ERROR: $*"; exit 1; }
+
+_check_root() {
+  if [ "$(id -u)" != "0" ]; then
+    _die "This script should be ran as a root user"
+  fi
+}
+
+### Single instance, house pattern (lock.inc when present, legacy fallback).
+_manage_single_lock() {
+  local _L
+  _SELF_NAME="xtrim"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "${_L}" ] && . "${_L}" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] \
+    && command -v _single_instance_lock >/dev/null 2>&1; then
+    _single_instance_lock
+  else
+    if [ "$(pgrep -fc '[x]trim')" -gt 2 ]; then
+      echo "$(date 2>/dev/null) too many xtrim already running" \
+        >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+
+### Mutual exclusion with sqlclean: its interlock greps for provision and
+### the boa pids only -- it cannot see xtrim, so xtrim must hold sqlclean's
+### own lock for the whole run (and thereby also refuses while sqlclean
+### runs). Never call sqlclean from here: it is box-wide by construction
+### and an account mid-trim classifies as ghosts everywhere else.
+_take_sqlclean_lock() {
+  exec 8>"${_SQLCLEAN_LOCK}"
+  if ! flock -n 8; then
+    _die "sqlclean (or another xtrim) is active -- refusing to run"
+  fi
+}
+
+### migproxy.cnf is parsed, never sourced (log/ arrives over rsync).
+_mig_get() {
+  local _f="$1" _k="$2"
+  [ -r "${_f}" ] || return 1
+  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+}
+
+_sane_ident() {
+  local _v="${1//[^A-Za-z0-9_]/}"
+  [ "${_v}" = "$1" ] && [ -n "${_v}" ] && echo "${_v}"
+}
+
+_alias_field() {
+  sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" "$1" \
+    2>/dev/null | head -n1
+}
+
+### -------------------------------------------------------------- state ---
+
+_state_file() {
+  echo "${_XTRIM_STATE_DIR}/xtrim.$1.$2.state"
+}
+
+_state_write() {
+  ### $1 verb, $2 acct, $3 mode, $4 status
+  {
+    echo "_LAST_VERB=$1"
+    echo "_LAST_MODE=$3"
+    echo "_LAST_STATUS=$4"
+    echo "_LAST_TS=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null)"
+  } > "$(_state_file "$1" "$2")"
+  chmod 600 "$(_state_file "$1" "$2")" 2>/dev/null
+}
+
+_require_clean_dry() {
+  ### $1 verb, $2 acct: --live is armed only by a CLEAN DRY of the SAME
+  ### verb for the SAME account, and the token is consumed before work.
+  local _f
+  _f="$(_state_file "$1" "$2")"
+  if [ ! -r "${_f}" ] \
+    || ! grep -q "^_LAST_VERB=$1$" "${_f}" \
+    || ! grep -q "^_LAST_MODE=DRY$" "${_f}" \
+    || ! grep -q "^_LAST_STATUS=CLEAN$" "${_f}"; then
+    _die "$1 --live for $2 requires a prior CLEAN DRY run of '$1' -- run 'xtrim $1 $2' first"
+  fi
+  _state_write "$1" "$2" LIVE LIVE
+}
+
+_phase_get() {
+  local _f="${_XTRIM_BASE}/$1/phase.txt"
+  [ -r "${_f}" ] && cat "${_f}" 2>/dev/null | tr -d '\n'
+}
+
+_phase_set() {
+  mkdir -p "${_XTRIM_BASE}/$1"
+  echo -n "$2" > "${_XTRIM_BASE}/$1/phase.txt"
+}
+
+### ---------------------------------------------------------- discovery ---
+
+_load_cnf_defaults() {
+  ### Operator values in the master cnf always win; scrub to numeric.
+  [ -e "/root/.barracuda.cnf" ] && . /root/.barracuda.cnf
+  _MIN_DAYS="${_XTRIM_MIN_DAYS:-14}"
+  case "${_MIN_DAYS}" in ''|*[!0-9]*) _MIN_DAYS=14 ;; esac
+  ### Hard floor: a proxy younger than 7 days has not proven itself quiet.
+  [ "${_MIN_DAYS}" -lt "7" ] && _MIN_DAYS=7
+}
+
+_list_accounts() {
+  local _d _n
+  for _d in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+    _n="$(basename "${_d}")"
+    case "${_n}" in
+      arch|all|lost+found|lostfound|backups|codebases-cleanup) continue ;;
+    esac
+    [ -e "${_d}/log/cores.txt" ] || continue
+    echo "${_n}"
+  done
+}
+
+_resolve_mnt_store() {
+  ### The single attached store, when one exists. More than one /mnt mount
+  ### is a refusal for any deletion that resolves into /mnt.
+  _MNT_STORE=""
+  _MNT_COUNT=$(mount 2>/dev/null | awk '$3 ~ /^\/mnt\// { print $3 }' | sort -u | wc -l | tr -d ' ')
+  if [ "${_MNT_COUNT}" = "1" ]; then
+    _MNT_STORE=$(mount 2>/dev/null | awk '$3 ~ /^\/mnt\// { print $3 }' | sort -u | head -1)
+  fi
+}
+
+_safe_resolved() {
+  ### $1 path, $2 acct root: resolved target must live inside the account
+  ### or inside the single /mnt store. Anything else is refused upstream.
+  local _r
+  _r=$(readlink -f "$1" 2>/dev/null)
+  [ -z "${_r}" ] && return 1
+  case "${_r}" in
+    "$2"/*) echo "${_r}"; return 0 ;;
+  esac
+  if [ -n "${_MNT_STORE}" ]; then
+    case "${_r}" in
+      "${_MNT_STORE}"/*) echo "${_r}"; return 0 ;;
+    esac
+  elif [ "${_MNT_COUNT}" != "0" ]; then
+    return 1
+  fi
+  return 1
+}
+
+_map_account() {
+  ### Populates the per-account map. Everything downstream reads ONLY
+  ### these; nothing re-derives mid-deletion.
+  local _oN="$1" _v _d _al _sp _db
+  _USR="/data/disk/${_oN}"
+  _VHD="${_USR}/config/server_master/nginx/vhost.d"
+  _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""
+  _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""
+  _MAP_PLATS=""; _MAP_NOSAVED=""
+  ### Live vhosts must all be proxies pointing at ONE target.
+  for _v in $(find "${_VHD}" -maxdepth 1 -mindepth 1 -type f \
+    ! -name '.*' ! -name 'https.*' 2>/dev/null | sort); do
+    _d="$(basename "${_v}")"
+    _MAP_DOMS="${_MAP_DOMS} ${_d}"
+    if ! grep -q "proxy_pass" "${_v}" 2>/dev/null \
+      || grep -q "fastcgi_param db_name" "${_v}" 2>/dev/null; then
+      _MAP_TGT_BAD="${_MAP_TGT_BAD} ${_d}:not-a-proxy-vhost"
+    fi
+    _t=$(grep -m1 "proxy_pass" "${_v}" 2>/dev/null \
+      | sed "s|.*proxy_pass[[:space:]]*https\{0,1\}://||; s|;.*||" | tr -d ' ')
+    if [ -n "${_t}" ]; then
+      if [ -z "${_MAP_TGT}" ]; then
+        _MAP_TGT="${_t}"
+      elif [ "${_MAP_TGT}" != "${_t}" ]; then
+        _MAP_TGT_BAD="${_MAP_TGT_BAD} ${_d}:target-${_t}-disagrees-with-${_MAP_TGT}"
+      fi
+    fi
+    [ -e "${_VHD}/.${_d}" ] || _MAP_NOSAVED="${_MAP_NOSAVED} ${_d}"
+  done
+  ### Sites + DBs from the drush aliases (authoritative), sqlclean idioms:
+  ### context_type == site, anchored db_name parse, fail-closed idents.
+  for _al in "${_USR}"/.drush/*.alias.drushrc.php; do
+    [ -e "${_al}" ] || continue
+    case "$(basename "${_al}")" in
+      hostmaster.alias*|hm.alias*|none.alias*|self*|platform_*|server_*) continue ;;
+    esac
+    [ "$(_alias_field "${_al}" "context_type")" = "site" ] || continue
+    _sp="$(_alias_field "${_al}" "site_path")"
+    [ -z "${_sp}" ] && continue
+    _MAP_SITES="${_MAP_SITES} ${_sp}"
+    if [ -r "${_sp}/drushrc.php" ]; then
+      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
+        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
+      _db="$(_sane_ident "${_db}")"
+      [ -n "${_db}" ] && _MAP_DBS="${_MAP_DBS} ${_db}"
+    fi
+  done
+  _MAP_DBS=$(echo "${_MAP_DBS}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+  ### The account panel database.
+  if [ -r "${_USR}/.drush/hostmaster.alias.drushrc.php" ]; then
+    _sp="$(_alias_field "${_USR}/.drush/hostmaster.alias.drushrc.php" "site_path")"
+    if [ -n "${_sp}" ] && [ -r "${_sp}/drushrc.php" ]; then
+      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
+        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
+      _MAP_HM_DB="$(_sane_ident "${_db}")"
+    fi
+  fi
+  ### Platform roots come from platform_* aliases, never a glob.
+  for _al in "${_USR}"/.drush/platform_*.alias.drushrc.php; do
+    [ -e "${_al}" ] || continue
+    _d="$(_alias_field "${_al}" "root")"
+    case "${_d}" in
+      /*) _MAP_PLATS="${_MAP_PLATS} ${_d}" ;;
+    esac
+  done
+  _MAP_PLATS=$(echo "${_MAP_PLATS}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+}
+
+_solr_cores_for() {
+  ### All historical core-name formats, both live solr trees + solr4.
+  local _oN="$1" _b _c
+  for _b in /var/solr9/data /var/solr7/data /opt/solr4; do
+    [ -d "${_b}" ] || continue
+    for _c in "${_b}/oct.${_oN}."* "${_b}/solr.${_oN}."* "${_b}/${_oN}."*; do
+      [ -d "${_c}" ] && echo "${_c}"
+    done
+  done
+}
+
+### ------------------------------------------------------------- probes ---
+
+_probe_dom() {
+  ### $1 domain, $2 target ip; direct + relayed, iCab UA, spaced >=5s,
+  ### failures re-verified once (BOA answers bursts with soft-404 bodies).
+  local _d="$1" _t="$2" _c1 _cr
+  _c1=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+    --resolve "${_d}:80:${_t}" "http://${_d}/" 2>/dev/null)
+  sleep 6
+  _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+    -H "Host: ${_d}" "http://127.0.0.1/" 2>/dev/null)
+  if [ "${_c1}" != "200" ] || ! echo "${_cr}" | grep -qE '^(200|301|302)$'; then
+    sleep 6
+    _c1=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+      --resolve "${_d}:80:${_t}" "http://${_d}/" 2>/dev/null)
+    sleep 6
+    _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+      -H "Host: ${_d}" "http://127.0.0.1/" 2>/dev/null)
+  fi
+  echo "direct=${_c1} relay=${_cr}"
+  [ "${_c1}" = "200" ] && echo "${_cr}" | grep -qE '^(200|301|302)$'
+}
+
+_probe_all_doms() {
+  local _oN="$1" _d _r _rc=0
+  for _d in ${_MAP_DOMS}; do
+    _r=$(_probe_dom "${_d}" "${_MAP_TGT}")
+    if [ $? -ne 0 ]; then
+      _alrt "${_oN}: ${_d} probe FAILED (${_r})"
+      _rc=1
+    else
+      _info "${_oN}: ${_d} serves through target + relay (${_r})"
+    fi
+    sleep 6
+  done
+  return ${_rc}
+}
+
+_target_ssh_ok() {
+  ssh -o BatchMode=yes -o ConnectTimeout=10 "root@${_MAP_TGT}" 'echo ok' \
+    2>/dev/null | grep -q ok
+}
+
+_target_proof_db() {
+  ### $1 db: the TARGET must hold a schema of this name with a non-zero
+  ### table count AND serve a real (non-proxy) vhost for this account --
+  ### this is what stops a proxy chain being mistaken for a target.
+  local _db="$1" _n
+  _n=$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" \
+    "mysql --silent -u root -N -B -e \"SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${_db}'\"" 2>/dev/null | tr -d ' \n')
+  [ -n "${_n}" ] && [ "${_n}" != "0" ]
+}
+
+_target_proof_vhosts() {
+  ### At least one REAL vhost for this account on the target (fastcgi, not
+  ### proxy_pass) proves the sites genuinely serve THERE.
+  local _oN="$1"
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" \
+    "grep -L proxy_pass /data/disk/*/config/server_master/nginx/vhost.d/* 2>/dev/null | head -1" \
+    2>/dev/null | grep -q "vhost.d"
+}
+
+_cert_horizon() {
+  ### $1 acct: earliest notAfter behind retained https vhosts; refuses on
+  ### an already-expired cert. Prints "<days> <domain>" for the earliest.
+  local _oN="$1" _v _crt _end _now _days _min=999999 _mind=""
+  _now=$(date +%s)
+  for _v in "${_VHD}"/https.*; do
+    [ -e "${_v}" ] || continue
+    _crt=$(grep -m1 "ssl_certificate " "${_v}" 2>/dev/null \
+      | awk '{ print $2 }' | tr -d ';')
+    [ -r "${_crt}" ] || continue
+    _end=$(openssl x509 -noout -enddate -in "${_crt}" 2>/dev/null | cut -d= -f2)
+    [ -z "${_end}" ] && continue
+    _end=$(date -d "${_end}" +%s 2>/dev/null)
+    [ -z "${_end}" ] && continue
+    _days=$(( (_end - _now) / 86400 ))
+    if [ "${_days}" -lt "${_min}" ]; then
+      _min="${_days}"
+      _mind="$(basename "${_v}" | sed 's/^https\.//')"
+    fi
+  done
+  echo "${_min} ${_mind}"
+}
+
+### -------------------------------------------------------- preflight -----
+
+_preflight() {
+  ### The hard refusal battery. $1 acct. Sets the account map.
+  local _oN="$1" _age _hz _hzd _db _fail=0
+  _USR="/data/disk/${_oN}"
+  [ -d "${_USR}" ] || _die "${_oN}: no such account"
+  ### Eligibility triple + ownership markers.
+  if [ ! -e "${_USR}/log/cores.txt" ] \
+    || [ ! -e "${_USR}/log/option.txt" ] \
+    || [ ! -e "${_USR}/log/email.txt" ]; then
+    _die "${_oN}: not eligible: broken (cores/option/email.txt missing)"
+  fi
+  if [ -e "${_USR}/log/CANCELLED" ]; then
+    ### Cancelled accounts belong to boa cleanup; mixing the two
+    ### machineries is how customer data is lost.
+    _die "${_oN}: log/CANCELLED present -- use 'boa cleanup', never xtrim"
+  fi
+  [ -e "${_USR}/log/proxied.pid" ] \
+    || _die "${_oN}: log/proxied.pid absent -- this is not a proxied source"
+  ### Age floor: the proxy must have proven itself quiet first.
+  _age=$(( ( $(date +%s) - $(stat -c %Y "${_USR}/log/proxied.pid" 2>/dev/null || echo 0) ) / 86400 ))
+  if [ "${_age}" -lt "${_MIN_DAYS}" ]; then
+    _die "${_oN}: proxied.pid is ${_age}d old; floor is ${_MIN_DAYS}d (_XTRIM_MIN_DAYS)"
+  fi
+  ### Root disk sanity.
+  local _dfp
+  _dfp=$(df -P / 2>/dev/null | awk 'NR==2 { gsub(/%/,""); print $5 }')
+  [ -n "${_dfp}" ] && [ "${_dfp}" -gt "90" ] \
+    && _die "root filesystem at ${_dfp}% -- refusing to stage dumps"
+  ### Quiescence: no installer/migrator/task machinery in flight.
+  for _p in boa_run.pid boa_wait.pid octopus_install_run.pid; do
+    [ -e "/run/${_p}" ] && _die "/run/${_p} present -- an install/upgrade is in flight"
+  done
+  pgrep -f "[p]rovision" >/dev/null 2>&1 \
+    && _die "a provision task is running -- refusing"
+  for _p in "[b]arracuda" "[o]ctopus " "[x]oct " "[x]mass " "[s]qlclean"; do
+    pgrep -f "${_p}" >/dev/null 2>&1 && _die "matched running '${_p}' -- refusing"
+  done
+  _resolve_mnt_store
+  [ "${_MNT_COUNT}" -gt "1" ] \
+    && _die "more than one /mnt mount (${_MNT_COUNT}) -- refusing to resolve stores"
+  ### Classification reads LOCAL aliases, so the SQL endpoint must be this
+  ### box's own server -- never a remote/cluster endpoint via /root/.my.cnf.
+  local _sqlh
+  _sqlh=$(mysql --silent -u root -N -B -e "SELECT @@hostname" 2>/dev/null | tr -d ' \n')
+  if [ -n "${_sqlh}" ]; then
+    if [ "${_sqlh}" != "$(hostname 2>/dev/null)" ] \
+      && [ "${_sqlh}" != "$(hostname -f 2>/dev/null)" ] \
+      && [ "${_sqlh}" != "$(hostname -s 2>/dev/null)" ]; then
+      _die "SQL endpoint @@hostname='${_sqlh}' is not this box -- refusing (cluster/remote /root/.my.cnf)"
+    fi
+  fi
+  _map_account "${_oN}"
+  ### Proxy integrity.
+  [ -z "${_MAP_DOMS// /}" ] && _die "${_oN}: no live vhosts at all"
+  if [ -n "${_MAP_TGT_BAD// /}" ]; then
+    _alrt "${_oN}: proxy integrity failures:${_MAP_TGT_BAD}"
+    _die "${_oN}: every live vhost must be a proxy vhost agreeing on one target"
+  fi
+  [ -z "${_MAP_TGT}" ] && _die "${_oN}: could not derive the target IP from proxy_pass"
+  if [ -n "${_MAP_NOSAVED// /}" ]; then
+    _alrt "${_oN}: live proxy vhosts without a saved .original:${_MAP_NOSAVED}"
+    _alrt "${_oN}: their site/db map cannot be cross-checked from the saved vhost"
+  fi
+  ### Record disagreement guard, same stance as the cert mirror.
+  local _rec
+  _rec="$(_mig_get "${_USR}/log/migproxy.cnf" _MIG_PEER_IP)"
+  if [ -n "${_rec}" ] && [ "${_rec}" != "${_MAP_TGT}" ]; then
+    _die "${_oN}: migproxy.cnf peer ${_rec} disagrees with vhost target ${_MAP_TGT} -- run 'xoct proxy ${_oN} <ip> --repair --retarget' first"
+  fi
+  ### Cert horizon: refuse on an expired cert behind a retained vhost.
+  read -r _hz _hzd <<< "$(_cert_horizon "${_oN}")"
+  if [ "${_hz}" != "999999" ] && [ "${_hz}" -lt "0" ]; then
+    _die "${_oN}: certificate for ${_hzd} already EXPIRED -- fix the mirror first"
+  fi
+  ### Target liveness for every server_name, direct AND through the proxy.
+  _probe_all_doms "${_oN}" || _die "${_oN}: target liveness probes failed"
+  ### Target-side proof, mandatory in v1.
+  _target_ssh_ok || _die "${_oN}: cannot ssh root@${_MAP_TGT} -- the mandatory target-side proof needs it"
+  _target_proof_vhosts "${_oN}" \
+    || _die "${_oN}: target ${_MAP_TGT} shows no real (non-proxy) vhost -- proxy chain? refusing"
+  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+    if ! _target_proof_db "${_db}"; then
+      _alrt "${_oN}: target has NO populated schema '${_db}'"
+      _fail=1
+    fi
+  done
+  [ "${_fail}" != "0" ] && _die "${_oN}: target-side schema proof failed -- nothing will be dropped"
+  _info "${_oN}: preflight CLEAN (target ${_MAP_TGT}, $(echo ${_MAP_DBS} | wc -w | tr -d ' ') site dbs, panel db ${_MAP_HM_DB:-none})"
+}
+
+### ---------------------------------------------------------- manifest ----
+
+_write_manifest() {
+  local _oN="$1" _mode="$2" _f _d
+  local _mf="${_XTRIM_BASE}/${_oN}/manifest-$(date -u '+%Y%m%d-%H%M%S').txt"
+  mkdir -p "${_XTRIM_BASE}/${_oN}/aliases" "${_XTRIM_BASE}/${_oN}/quarantine"
+  {
+    echo "# xtrim manifest ${_oN} mode=${_mode} $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+    echo "target=${_MAP_TGT}"
+    echo "domains=${_MAP_DOMS# }"
+    echo "site_dbs=${_MAP_DBS# }"
+    echo "panel_db=${_MAP_HM_DB}"
+    echo "platform_roots=${_MAP_PLATS# }"
+    echo "min_days=${_MIN_DAYS}"
+    echo "## dns snapshot"
+    for _d in ${_MAP_DOMS}; do
+      echo "dns ${_d} $(dig +short A "${_d}" 2>/dev/null | tr '\n' ' ')"
+    done
+    echo "## deletion candidates (du -sk)"
+    for _f in "${_USR}/backups" "${_USR}/src" "${_USR}/distro" \
+      ${_MAP_PLATS} "${_USR}/static"; do
+      [ -e "${_f}" ] && du -sk "${_f}" 2>/dev/null
+    done
+    echo "## retained (hard deny list)"
+    echo "keep ${_USR}/config (incl. ssl.d)"
+    echo "keep ${_USR}/tools/le"
+    echo "keep ${_USR}/log"
+    echo "keep ${_USR}/.drush (archived copy below)"
+  } > "${_mf}"
+  cp -a "${_USR}/.drush" "${_XTRIM_BASE}/${_oN}/aliases/.drush-$(date -u '+%Y%m%d-%H%M%S')" 2>/dev/null
+  [ -e "/root/.${_oN}.octopus.cnf" ] \
+    && cp -a "/root/.${_oN}.octopus.cnf" "${_XTRIM_BASE}/${_oN}/aliases/" 2>/dev/null
+  chmod 600 "${_mf}" 2>/dev/null
+  _info "${_oN}: manifest written: ${_mf}"
+}
+
+### ------------------------------------------------------------ stage A ---
+
+_nginx_reload_locked() {
+  ### Every nginx-config writer serialises on the shared advisory lock.
+  (
+    exec 7>"${_NGX_LOCK}"
+    flock -w 30 7 || exit 1
+    nginx -t &> /dev/null || exit 2
+    service nginx reload &> /dev/null
+  )
+}
+
+_stage_a() {
+  ### Two locals: in one statement the RHS expands before _oN is assigned.
+  local _oN="$1"
+  local _q="${_XTRIM_BASE}/${_oN}/quarantine" _p _m _c _fail=0
+  mkdir -p "${_q}/pools" "${_q}/postd" "${_q}/solr"
+  _info "${_oN}: stage A -- quiesce (reversible)"
+  ### Park the runner OUT of /var/xdrago (runner.sh matches any 'run-'
+  ### name there) and NEVER into /var/backups/off-run (BOA.sh.txt copies
+  ### everything back from there on the next release pass).
+  if [ -e "/var/xdrago/run-${_oN}" ]; then
+    mv -f "/var/xdrago/run-${_oN}" "${_q}/held-run-${_oN}"
+    _info "${_oN}: dispatcher parked"
+  fi
+  local _w=0
+  while pgrep -f "[r]un-${_oN}([^0-9a-z]|$)" >/dev/null 2>&1 \
+    || pgrep -u "${_oN}" -f "hosting-dispatch|hosting-tasks|provision-" >/dev/null 2>&1; do
+    _w=$(( _w + 5 ))
+    [ "${_w}" -ge "900" ] && { _alrt "${_oN}: drain timeout"; _fail=1; break; }
+    sleep 5
+  done
+  ### nginx post.d fpm includes FIRST (so nothing references the sockets),
+  ### then the pool files -- never the system www<NN> pool, which backs
+  ### the panel front's /sqladmin box-wide.
+  for _p in "${_USR}/config/server_master/nginx/post.d/fpm_include_default.inc" \
+    "${_USR}"/config/server_master/nginx/post.d/fpm_include_site_*; do
+    [ -e "${_p}" ] && mv -f "${_p}" "${_q}/postd/" 2>/dev/null
+  done
+  _nginx_reload_locked || { _alrt "${_oN}: nginx reload after include removal FAILED"; _fail=1; }
+  _AFFECTED_MASTERS=""
+  for _p in /opt/php*/etc/pool.d/"${_oN}".conf /opt/php*/etc/pool.d/"${_oN}".*.conf; do
+    [ -e "${_p}" ] || continue
+    case "$(basename "${_p}")" in
+      www*) continue ;;
+    esac
+    _m=$(echo "${_p}" | sed "s|/opt/php\([0-9]*\)/.*|\1|")
+    mv -f "${_p}" "${_q}/pools/" && _AFFECTED_MASTERS="${_AFFECTED_MASTERS} ${_m}"
+  done
+  for _m in $(echo "${_AFFECTED_MASTERS}" | tr ' ' '\n' | sort -u); do
+    [ -x "/etc/init.d/php${_m}-fpm" ] && service "php${_m}-fpm" reload &> /dev/null
+  done
+  ### Solr: UNLOAD (all delete flags false) + move aside -- the reversible
+  ### stop, mirroring the orphan archiver. Never 'solr delete' here.
+  for _c in $(_solr_cores_for "${_oN}"); do
+    local _core _port
+    _core="$(basename "${_c}")"
+    case "${_c}" in
+      /var/solr9/*) _port=9099 ;;
+      /var/solr7/*) _port=9077 ;;
+      *) _port=8099 ;;
+    esac
+    curl -s --max-time 15 \
+      "http://127.0.0.1:${_port}/solr/admin/cores?action=UNLOAD&core=${_core}&deleteIndex=false&deleteDataDir=false&deleteInstanceDir=false" &> /dev/null
+    mv -f "$(readlink -f "${_c}")" "${_q}/solr/${_core}" 2>/dev/null \
+      && _info "${_oN}: solr core ${_core} unloaded + quarantined"
+  done
+  ### Re-probe; any regression auto-restores and aborts.
+  if [ "${_fail}" != "0" ] || ! _probe_all_doms "${_oN}"; then
+    _alrt "${_oN}: stage A regression detected -- auto-restoring"
+    _restore_stage_a "${_oN}"
+    _die "${_oN}: stage A aborted and restored; nothing deleted"
+  fi
+  _phase_set "${_oN}" "stage-a"
+  _info "${_oN}: stage A complete (proxy re-probed clean)"
+}
+
+_restore_stage_a() {
+  local _oN="$1"
+  local _q="${_XTRIM_BASE}/${_oN}/quarantine" _p _m _c
+  _USR="/data/disk/${_oN}"
+  if [ "$(_phase_get "${_oN}")" = "stage-b" ]; then
+    _die "${_oN}: stage B already ran -- restore is a migration back, not an unpark (see the manifest + archived aliases)"
+  fi
+  for _p in "${_q}"/pools/*; do
+    [ -e "${_p}" ] || continue
+    _m=$(basename "${_p}" | sed "s/^${_oN}\.\{0,1\}//; s/\.conf$//; s/[^0-9]//g")
+    [ -z "${_m}" ] && _m=$(grep -m1 "^prefix" "${_p}" 2>/dev/null | grep -o '[0-9]*' | head -1)
+    ### Pool filename encodes the tree: oN.NN.conf -> /opt/phpNN/pool.d
+    local _nn
+    _nn=$(basename "${_p}" | sed -n "s/^${_oN}\.\([0-9]*\)\.conf$/\1/p")
+    if [ -n "${_nn}" ] && [ -d "/opt/php${_nn}/etc/pool.d" ]; then
+      mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"
+      service "php${_nn}-fpm" reload &> /dev/null
+    elif [ -d "/opt/php$(cat /root/.barracuda.cnf 2>/dev/null | grep -m1 '^_PHP_FPM_VERSION' | tr -d -c 0-9)/etc/pool.d" ]; then
+      _nn=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
+      mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"
+      service "php${_nn}-fpm" reload &> /dev/null
+    fi
+  done
+  for _p in "${_q}"/postd/*; do
+    [ -e "${_p}" ] || continue
+    mv -f "${_p}" "${_USR}/config/server_master/nginx/post.d/" 2>/dev/null
+  done
+  for _c in "${_q}"/solr/*; do
+    [ -d "${_c}" ] || continue
+    local _core _base _port
+    _core="$(basename "${_c}")"
+    case "${_core}" in
+      oct.*|solr.*)
+        if echo "${_core}" | grep -q "^oct\."; then _base=/var/solr9/data; _port=9099
+        else _base=/var/solr7/data; _port=9077; fi
+        ;;
+      *) _base=/var/solr7/data; _port=9077 ;;
+    esac
+    [ -d "${_base}" ] && mv -f "${_c}" "$(readlink -f "${_base}")/${_core}" \
+      && curl -s --max-time 15 \
+        "http://127.0.0.1:${_port}/solr/admin/cores?action=RELOAD&core=${_core}" &> /dev/null
+  done
+  if [ -e "${_q}/held-run-${_oN}" ]; then
+    mv -f "${_q}/held-run-${_oN}" "/var/xdrago/run-${_oN}"
+    chmod 700 "/var/xdrago/run-${_oN}" 2>/dev/null
+  fi
+  _nginx_reload_locked
+  _phase_set "${_oN}" "restored"
+  _info "${_oN}: stage A restored from quarantine"
+}
+
+### ------------------------------------------------------------ stage B ---
+
+_stage_b() {
+  local _oN="$1"
+  local _db _f _r _dumps="${_XTRIM_BASE}/${_oN}/dbdumps"
+  mkdir -p "${_dumps}"
+  _info "${_oN}: stage B -- data removal (ONE-WAY on this box)"
+  ### Databases: dump + verify EVERY database first, then drop, deriving
+  ### from the map (saved vhosts + aliases) -- never from sqlclean.
+  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+    if mysqldump --single-transaction --quick --no-autocommit \
+      --skip-add-locks --no-tablespaces --hex-blob "${_db}" 2>/dev/null \
+      | gzip > "${_dumps}/${_db}.sql.gz"; then
+      if [ -s "${_dumps}/${_db}.sql.gz" ] && gzip -t "${_dumps}/${_db}.sql.gz" 2>/dev/null; then
+        _info "${_oN}: ${_db} dumped + verified"
+      else
+        rm -f "${_dumps}/${_db}.sql.gz"
+        _die "${_oN}: dump of ${_db} is empty/corrupt -- stopping BEFORE any drop"
+      fi
+    else
+      rm -f "${_dumps}/${_db}.sql.gz"
+      _die "${_oN}: mysqldump ${_db} failed -- stopping BEFORE any drop"
+    fi
+  done
+  ### Re-prove the target one last time between dump and drop.
+  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+    _target_proof_db "${_db}" \
+      || _die "${_oN}: target lost schema ${_db} between dump and drop -- stopping"
+  done
+  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+    mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_db}\`" 2>/dev/null \
+      && _info "${_oN}: dropped database ${_db}"
+    ### Drop the paired user only when it holds no grant on any OTHER db.
+    _r=$(mysql --silent -u root -N -B -e \
+      "SELECT COUNT(*) FROM mysql.db WHERE User='${_db}' AND Db<>'${_db}'" 2>/dev/null | tr -d ' \n')
+    if [ "${_r}" = "0" ]; then
+      mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'localhost'" 2>/dev/null
+      mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'%'" 2>/dev/null
+    fi
+    _probe_all_doms "${_oN}" >/dev/null 2>&1 \
+      || _alrt "${_oN}: probe wobble after dropping ${_db} -- proxy does not depend on local SQL, continuing"
+  done
+  mysqladmin -u root flush-privileges &> /dev/null
+  ### Trees: backups, exports, distro, platforms, dated static trees.
+  for _f in "${_USR}/backups" "${_USR}/src" "${_USR}/undo" "${_USR}/distro"; do
+    [ -e "${_f}" ] && rm -rf "${_f}" && _info "${_oN}: removed ${_f}"
+  done
+  for _f in ${_MAP_PLATS}; do
+    case "${_f}" in
+      "${_USR}"/*) [ -e "${_f}" ] && rm -rf "${_f}" && _info "${_oN}: removed platform ${_f}" ;;
+      *) _alrt "${_oN}: platform root ${_f} lies outside the account -- left in place" ;;
+    esac
+  done
+  ### The files store: resolve FIRST, delete the resolved directory, then
+  ### the symlink -- never 'rm -rf static' blind (the known cleanup leak).
+  if [ -L "${_USR}/static/files" ]; then
+    _r="$(_safe_resolved "${_USR}/static/files" "${_USR}")"
+    if [ -n "${_r}" ]; then
+      rm -rf "${_r}" && rm -f "${_USR}/static/files" \
+        && _info "${_oN}: removed resolved files store ${_r}"
+    else
+      _alrt "${_oN}: static/files resolves outside the account/store -- left in place"
+    fi
+  fi
+  for _f in "${_USR}"/static/*; do
+    [ -e "${_f}" ] || continue
+    case "$(basename "${_f}")" in
+      control) continue ;;
+    esac
+    if [ -L "${_f}" ]; then
+      _r="$(_safe_resolved "${_f}" "${_USR}")"
+      [ -n "${_r}" ] && rm -rf "${_r}"
+      rm -f "${_f}"
+    else
+      rm -rf "${_f}"
+    fi
+    _info "${_oN}: removed static tree ${_f}"
+  done
+  _probe_all_doms "${_oN}" \
+    || _die "${_oN}: POST-REMOVAL probe failed -- proxy vhosts untouched, investigate"
+  _phase_set "${_oN}" "stage-b"
+  _info "${_oN}: stage B complete; dumps retained under ${_dumps}"
+}
+
+### ------------------------------------------------------------ stage C ---
+
+_finalize() {
+  local _mode="$1" _drop_datadir="$2" _n _nn _panel _p
+  ### Only when every real account is shrunk.
+  for _n in $(_list_accounts); do
+    if [ "$(_phase_get "${_n}")" != "stage-b" ]; then
+      _die "finalize: account ${_n} is not shrunk (phase '$(_phase_get "${_n}")') -- finalize is all-accounts-or-nothing"
+    fi
+  done
+  _panel=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
+  [ -z "${_panel}" ] && _panel=84
+  if [ "${_mode}" != "LIVE" ]; then
+    _info "[DRY-PLAN] would remove shared codebases /data/all"
+    _info "[DRY-PLAN] would stop + disable mysql (datadir kept$( [ "${_drop_datadir}" = "YES" ] && echo ", then DROPPED"))"
+    _info "[DRY-PLAN] would stop + disable solr9/solr7/jetty9"
+    _info "[DRY-PLAN] would keep ONLY the www${_panel} pool + master; quarantine the other www pools, stop+disable their masters"
+    _info "[DRY-PLAN] would touch /root/.proxy.cnf LAST"
+    return 0
+  fi
+  mkdir -p "${_XTRIM_BASE}/finalize/pools"
+  [ -d "/data/all" ] && rm -rf /data/all && _info "finalize: removed /data/all"
+  ### Solr off.
+  for _n in solr9 solr7 jetty9; do
+    if [ -x "/etc/init.d/${_n}" ]; then
+      pkill -9 -f "${_n}" &> /dev/null
+      update-rc.d "${_n}" disable &> /dev/null
+      _info "finalize: ${_n} stopped + disabled"
+    fi
+  done
+  ### MySQL off (datadir kept unless explicitly dropped).
+  service mysql stop &> /dev/null
+  update-rc.d mysql disable &> /dev/null
+  _info "finalize: mysql stopped + disabled"
+  if [ "${_drop_datadir}" = "YES" ]; then
+    rm -rf /var/lib/mysql && _info "finalize: /var/lib/mysql DROPPED (--drop-datadir)"
+  fi
+  ### FPM: keep only the panel-front master + its www pool; a master with
+  ### zero pools refuses to start, so disabling the others is stable.
+  for _p in /opt/php*/etc/pool.d/www*.conf; do
+    [ -e "${_p}" ] || continue
+    _nn=$(echo "${_p}" | sed "s|/opt/php\([0-9]*\)/.*|\1|")
+    [ "${_nn}" = "${_panel}" ] && continue
+    mv -f "${_p}" "${_XTRIM_BASE}/finalize/pools/"
+    if [ -x "/etc/init.d/php${_nn}-fpm" ]; then
+      service "php${_nn}-fpm" stop &> /dev/null
+      update-rc.d "php${_nn}-fpm" disable &> /dev/null
+    fi
+    _info "finalize: php${_nn}-fpm stood down (www${_nn} pool quarantined)"
+  done
+  ### LAST: stand the ~20 .proxy.cnf consumers down. This must come after
+  ### everything that still needed the database/backup/usage machinery.
+  ### /var/xdrago/monitor is deliberately NOT gated by this marker -- the
+  ### nginx watchdog keeps running, which is what a proxy box wants.
+  if [ ! -e "/root/.proxy.cnf" ]; then
+    {
+      echo "# PX0 proxy node -- created by xtrim finalize $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+    } > /root/.proxy.cnf
+    _info "finalize: /root/.proxy.cnf created -- BOA machinery stands down"
+  else
+    _alrt "finalize: /root/.proxy.cnf already existed -- left as found"
+  fi
+  _info "finalize: COMPLETE. To retire the proxy itself later, use the boa cleanup sequence -- xtrim never does that."
+}
+
+### ------------------------------------------------------------- verbs ----
+
+_cmd_status() {
+  local _n _hz _hzd _sz _ph
+  _load_cnf_defaults
+  echo "xtrim status -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  [ -e "/root/.proxy.cnf" ] && echo "box: /root/.proxy.cnf PRESENT (finalized proxy node)"
+  for _n in $(_list_accounts); do
+    _USR="/data/disk/${_n}"
+    _VHD="${_USR}/config/server_master/nginx/vhost.d"
+    _ph="$(_phase_get "${_n}")"
+    if [ ! -e "${_USR}/log/proxied.pid" ]; then
+      echo "${_n}: NOT proxied -- not xtrim material"
+      continue
+    fi
+    _map_account "${_n}"
+    read -r _hz _hzd <<< "$(_cert_horizon "${_n}")"
+    _sz=$(du -sk "${_USR}/backups" "${_USR}/src" "${_USR}/distro" \
+      ${_MAP_PLATS} "${_USR}/static" 2>/dev/null | awk '{ s+=$1 } END { printf "%.1fG", s/1048576 }')
+    echo "${_n}: proxied -> ${_MAP_TGT:-?} | phase=${_ph:-none} | cert-horizon=$( [ "${_hz}" = "999999" ] && echo n/a || echo "${_hz}d (${_hzd})" ) | reclaimable~${_sz}"
+  done
+}
+
+_run_one() {
+  ### $1 verb (plan|shrink), $2 acct, $3 mode
+  local _verb="$1" _oN="$2" _mode="$3"
+  _load_cnf_defaults
+  _preflight "${_oN}"
+  _write_manifest "${_oN}" "${_mode}"
+  if [ "${_verb}" = "plan" ]; then
+    _info "${_oN}: PLAN (DRY): stage A would park run-${_oN}, quarantine FPM pools + post.d includes, unload+quarantine solr cores"
+    _info "${_oN}: PLAN (DRY): stage B would dump+verify then DROP:${_MAP_DBS}${_MAP_HM_DB:+ ${_MAP_HM_DB}}"
+    _info "${_oN}: PLAN (DRY): stage B would remove backups/, src/, undo/, distro/, platforms, static trees (store resolved first)"
+    _state_write plan "${_oN}" DRY CLEAN
+    _info "${_oN}: plan CLEAN"
+    return 0
+  fi
+  if [ "${_mode}" = "LIVE" ]; then
+    _stage_a "${_oN}"
+    _stage_b "${_oN}"
+    _state_write shrink "${_oN}" LIVE DONE
+  else
+    _info "${_oN}: shrink DRY -- stage A/B actions planned only (see plan output above)"
+    _state_write shrink "${_oN}" DRY CLEAN
+    _info "${_oN}: shrink DRY CLEAN -- next: xtrim shrink ${_oN} --live"
+  fi
+}
+
+_check_root
+umask 022
+
+_XTRIM_MODE=DRY
+_XTRIM_DROP_DATADIR=NO
+_margs=()
+for _a in "$@"; do
+  case "${_a}" in
+    --live)         _XTRIM_MODE=LIVE ;;
+    --dry|--test)   _XTRIM_MODE=DRY ;;
+    --drop-datadir) _XTRIM_DROP_DATADIR=YES ;;
+    --*)
+      echo "ERROR: unknown option '${_a}'"
+      exit 1
+      ;;
+    *) _margs+=("${_a}") ;;
+  esac
+done
+set -- "${_margs[@]}"
+
+case "$1" in
+  status)
+    _manage_single_lock
+    _cmd_status
+  ;;
+  plan|shrink)
+    _verb="$1"
+    _acct="$2"
+    [ -z "${_acct}" ] && _die "Usage: xtrim ${_verb} <oN|all> [--live]"
+    _manage_single_lock
+    _take_sqlclean_lock
+    if [ "${_verb}" = "shrink" ] && [ "${_XTRIM_MODE}" = "LIVE" ]; then
+      if [ "${_acct}" = "all" ]; then
+        for _n in $(_list_accounts); do
+          _require_clean_dry shrink "${_n}"
+        done
+      else
+        _require_clean_dry shrink "${_acct}"
+      fi
+    fi
+    if [ "${_acct}" = "all" ]; then
+      for _n in $(_list_accounts); do
+        _run_one "${_verb}" "${_n}" "${_XTRIM_MODE}"
+      done
+    else
+      _run_one "${_verb}" "${_acct}" "${_XTRIM_MODE}"
+    fi
+  ;;
+  finalize)
+    _manage_single_lock
+    _take_sqlclean_lock
+    _load_cnf_defaults
+    if [ "${_XTRIM_MODE}" = "LIVE" ]; then
+      _require_clean_dry finalize box
+      _finalize LIVE "${_XTRIM_DROP_DATADIR}"
+      _state_write finalize box LIVE DONE
+    else
+      _finalize DRY "${_XTRIM_DROP_DATADIR}"
+      _state_write finalize box DRY CLEAN
+      _info "finalize DRY CLEAN -- next: xtrim finalize --live"
+    fi
+  ;;
+  restore)
+    _acct="$2"
+    [ -z "${_acct}" ] && _die "Usage: xtrim restore <oN>"
+    _manage_single_lock
+    _take_sqlclean_lock
+    _load_cnf_defaults
+    _map_account "${_acct}"
+    _restore_stage_a "${_acct}"
+    _probe_all_doms "${_acct}" || _alrt "${_acct}: post-restore probes not clean -- check manually"
+  ;;
+  *)
+    echo "Usage: xtrim {status|plan <oN|all>|shrink <oN|all> [--live]|finalize [--live] [--drop-datadir]|restore <oN>}"
+    exit 1
+  ;;
+esac
+exit 0
