@@ -59,6 +59,9 @@ _clean_pid_exit() {
     fi
     [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
     [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+    # _up_start creates the install marker too; leaving it behind turns
+    # every abort into a fleet-visible launcher lockout until it is reaped
+    [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
     service cron start &> /dev/null
   fi
@@ -697,6 +700,18 @@ _up_start() {
     echo
     echo "  Some important system task is running probably"
     echo "  because /run/boa_wait.pid exists"
+    echo
+    exit 1
+  elif [ -e "/run/octopus_install_run.pid" ] \
+    && [ "${_OCTOPUS_CHAINED}" != "YES" ]; then
+    # The chained install drops boa_run/boa_wait mid-chain by design, so
+    # this marker is the only signal spanning its octopus leg; the chain's
+    # own post-install octopus run bypasses via _OCTOPUS_CHAINED and takes
+    # the marker over; a stale copy is reaped by runner.sh/clear.sh
+    echo
+    echo "  An Octopus install or upgrade is still in flight probably"
+    echo "  because /run/octopus_install_run.pid exists"
+    echo "  (auto-clears once the install ends or the marker goes stale)"
     echo
     exit 1
   else

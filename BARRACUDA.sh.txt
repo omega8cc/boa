@@ -123,7 +123,7 @@ _REDIS_SEVEN_VRN=7.0.15
 _REDIS_SIX_VRN=6.2.7
 _RUBY_VRN=3.3.4
 _SLF4J_VRN=1.7.21
-_SMALLCORE7_V=7.105.1
+_SMALLCORE7_V=7.105.2
 _SOLR_1_VRN=1.4.1
 _SOLR_3_VRN=3.6.2
 _SOLR_4_VRN=4.9.1
@@ -210,10 +210,12 @@ _clean_pid_exit() {
   if [ -n "${1}" ]; then
     mkdir -p /var/log/boa 2>/dev/null
     echo "REASON ${1} on $(date)" >> /var/log/boa/.barracuda.sh.exit.exceptions.log
-    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  # The lock pids and the /opt/tmp build staging belong to the wrapper that
+  # invoked this script (created in its _up_start/_init_start); an abort here
+  # must not unlock the box for concurrent passes nor purge a tree another
+  # install may still be consuming -- the owner cleans up on its own exit
+  # paths, and _download_boa_code re-fetches a broken tree by sentinel
   service cron start &> /dev/null
   _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then
@@ -253,8 +255,12 @@ else
   _DB_SERVER=Percona
 fi
 if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+  # The lib probe matches the _download_boa_code sentinel: install aborts no
+  # longer purge /opt/tmp, so a tree truncated mid-extraction must trigger a
+  # re-fetch here or every subsequent run panics on the missing libs
   if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
-    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
+    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ] \
+    || [ ! -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
     _download_helpers_libs
   fi
 else

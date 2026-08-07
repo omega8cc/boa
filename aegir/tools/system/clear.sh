@@ -63,9 +63,30 @@ find /run/restarting_fmp_wait.pid   -type f -not -newermt "${_FIVE_MINUTES}" -ex
 find /run/boa_cron_wait.pid         -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -f {} \; 2>/dev/null
 find /run/boa*_auto_healing.pid     -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -f {} \; 2>/dev/null
 
+# Never age-reap an installer lock while its owner may still be alive: a full
+# install routinely outlives these windows, and reaping mid-pass is what let
+# concurrent passes purge the build tree a chained install was still consuming.
+# Once the owner is gone the next tick reaps as before, so nothing leaks.
+_installer_alive() {
+  pgrep -f "/local/bin/barracuda" > /dev/null 2>&1 && return 0
+  pgrep -f "/local/bin/octopus" > /dev/null 2>&1 && return 0
+  # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
+  # (xoct/xcopy driving a remote install) must not hold this box's reaping
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1 && return 0
+  return 1
+}
+
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
 find /run/mysql_restart_running.pid  -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
-find /run/boa_wait.pid               -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
+if ! _installer_alive; then
+  find /run/boa_wait.pid             -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
+  # Second, independent reaper for the install marker: runner.sh's reaper
+  # sits below its own early exits (pause/proxy/queue-stop/df guards), so
+  # it must never be the only recovery path for a leaked marker
+  find /run/octopus_install_run.pid  -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
+fi
 find /run/manage*users.pid           -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
 find /run/speed_cleanup.pid          -type f -not -newermt "${_ONE_HOUR}" -exec rm -f {} \; 2>/dev/null
 
@@ -77,7 +98,16 @@ if [ -e "/run/boa_queue_stop.pid" ]; then
   _qs_pid=$(tr -dc '0-9' < /run/boa_queue_stop.pid 2>/dev/null)
   { [ -z "${_qs_pid}" ] || ! kill -0 "${_qs_pid}" 2>/dev/null; } && rm -f /run/boa_queue_stop.pid
 fi
-find /run/boa_run.pid                -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
+if ! _installer_alive; then
+  find /run/boa_run.pid              -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
+fi
+# Hard ceiling: liveness suppression must never be unbounded -- a hung (not
+# dead) installer still matching the sweep would otherwise hold the locks
+# forever and silently stop the fleet self-update on this box
+_TWELVE_HOURS=$(date --date '12 hours ago' +"%Y-%m-%d %H:%M:%S")
+find /run/boa_wait.pid               -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
+find /run/boa_run.pid                -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
+find /run/octopus_install_run.pid    -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/*_backup.pid               -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/daily-fix.pid              -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 
@@ -233,7 +263,14 @@ _check_dns_curl() {
   fi
 }
 
-if [ ! -e "/run/boa_run.pid" ]; then
+# Hold both the key-tools self-update and autoupboa while ANY install or
+# important task is in flight, not just while boa_run.pid exists -- the
+# chained install's octopus leg holds only octopus_install_run.pid, and a
+# BOA.sh.txt run in that window used to purge the consumed build tree
+if [ ! -e "/run/boa_run.pid" ] \
+  && [ ! -e "/run/boa_wait.pid" ] \
+  && [ ! -e "/run/octopus_install_run.pid" ] \
+  && ! _installer_alive; then
   _check_dns_curl
   rm -f /tmp/*error*
   wget -qO- https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt | bash
