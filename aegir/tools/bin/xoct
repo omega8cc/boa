@@ -852,7 +852,15 @@ EOFMYSQL
                 echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
               fi
             fi
-            if myloader \
+            _XOCT_SITE_IMPORT_OK=NO
+            ### mydumper writes metadata into the outputdir as its LAST act;
+            ### a transferred dir without it is a partial/hollow dump and
+            ### loading it would silently restore an incomplete database.
+            if [ ! -e "${_USR}/src/${_DBN}/metadata" ]; then
+              _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+              _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
+              echo "ALRT: site ${_Dom} db import SKIPPED on ${_oct}: no restorable dump (metadata missing in src/${_DBN})"
+            elif myloader \
               --database=${_DBN} \
               --host=localhost \
               --defaults-file=/root/.my.cnf \
@@ -861,20 +869,35 @@ EOFMYSQL
               --threads=4 \
               --drop-table=DROP \
               --verbose=2; then
+              _XOCT_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
             else
+              _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+              _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
               echo "ALRT: site ${_Dom} db import FAILED on ${_oct}"
             fi
           else
+            _XOCT_SITE_IMPORT_OK=NO
+            _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+            _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
             echo "ALRT: site ${_Dom} db failure due to missing ${_USR}/src/${_DBN}"
           fi
-          if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
+          ### A verify over a failed import regenerates settings/vhost around
+          ### a database that is not there -- schedule it only for clean loads.
+          if [ "${_XOCT_SITE_IMPORT_OK}" != "YES" ]; then
+            echo "ALRT: site ${_Dom} verify NOT scheduled on ${_oct}: db import did not complete"
+          elif [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
             _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           else
             echo "ALRT: site ${_Dom} verify failure due to missing ${_USR}/.drush/${_Dom}.alias.drushrc.php"
           fi
         else
+          ### Counted: a site whose credentials cannot be parsed was NOT
+          ### imported -- the run must not end 0 with imported.pid over it.
+          _XOCT_SITE_IMPORT_OK=NO
+          _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+          _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_Dom}:empty-db-credentials"
           echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
         fi
       elif [ "${_cmd}" = "export" ]; then
@@ -952,10 +975,17 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           && [ -e "${_USR}/src/${_DBN}/metadata" ]; then
           echo "INFO: site ${_Dom} db export on ${_oct} complete"
         else
+          ### Counted, not just echoed: the run verdict must never stamp
+          ### exported.pid over a failed or hollow site dump.
+          _XOCT_EXPORT_FAIL=$(( ${_XOCT_EXPORT_FAIL:-0} + 1 ))
+          _XOCT_EXPORT_FAILED_DBS="${_XOCT_EXPORT_FAILED_DBS} ${_DBN}"
           echo "ALRT: site ${_Dom} db export FAILED on ${_oct}"
         fi
       elif [ "${_cmd}" = "proxy" ]; then
-        if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then
+        if { [ -e "${_USR}/log/exported.pid" ] \
+          || { [ "${_XOCT_FORCE}" = "YES" ] \
+          && [ -e "${_USR}/log/export_failed.pid" ]; }; } \
+          && [ ! -z "${_tgt}" ]; then
           if [ -e "${_Vht}" ]; then
             ### On a repair ${_Vht} is already a proxy vhost, whose name list a
             ### previous repair could have narrowed. The saved real vhost is the
@@ -1020,7 +1050,11 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           fi
         else
           _XOCT_PROXY_FAIL=$(( ${_XOCT_PROXY_FAIL:-0} + 1 ))
-          echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed due to empty tgt/${_tgt}"
+          echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed: missing log/exported.pid or empty tgt/${_tgt}"
+          if [ -e "${_USR}/log/export_failed.pid" ]; then
+            echo "ALRT: export_failed.pid is present -- re-run a clean 'xoct export', or convert"
+            echo "ALRT: anyway with 'xoct proxy ${_oct} ${_tgt} --force' (accepts the partial export)"
+          fi
         fi
       fi
     fi
@@ -1700,13 +1734,30 @@ _migrate_prepare() {
     ### resolver falls back to the built-in default. Only a real send writes a
     ### mail line, and a neutral mail logs mode "-" so the first later promise
     ### correctly reads as a change.
-    _mig_resolve "${_USR}"
-    _mig_build_mail_blocks start "${_tgt}"
-    _send_notice_migration_start
-    if [ "${_MAIL_SENT}" = "YES" ]; then
-      _XOCT_START_MODE="${_MIG_MODE}"
-      [ "${_MIG_SOURCE}" = "default" ] && _XOCT_START_MODE="-"
-      _mig_log "${_USR}" xoct mail start "${_XOCT_START_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
+    ### One notice per account+target: withholding exported.pid made re-running
+    ### export the documented recovery, and every retry entered this block --
+    ### dedupe on the recorded mail line (field 7 = peer), so a later migration
+    ### to a DIFFERENT target still notifies. reset-state clears nothing here
+    ### by design: the log is the audit trail of what the client was told.
+    _XOCT_START_MAILED=$(awk -F'|' -v t="${_tgt}" \
+      '$3=="mail" && $4=="start" && $7==t { c++ } END { print c+0 }' \
+      ${_USR}/log/migproxy.log 2>/dev/null)
+    if [ "${_XOCT_START_MAILED:-0}" != "0" ]; then
+      echo "INFO: migration start notice already sent for ${_oct} to ${_tgt}; not re-mailing"
+    else
+      _mig_resolve "${_USR}"
+      ### A refused compose must never fall through to a send with an empty
+      ### forwarding block.
+      if _mig_build_mail_blocks start "${_tgt}"; then
+        _send_notice_migration_start
+        if [ "${_MAIL_SENT}" = "YES" ]; then
+          _XOCT_START_MODE="${_MIG_MODE}"
+          [ "${_MIG_SOURCE}" = "default" ] && _XOCT_START_MODE="-"
+          _mig_log "${_USR}" xoct mail start "${_XOCT_START_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
+        fi
+      else
+        echo "ALRT: start notice NOT sent: mail blocks refused to compose (see above)"
+      fi
     fi
   fi
 
@@ -1743,16 +1794,24 @@ _migrate_prepare() {
       # across the entire DB on import and its task queue regenerates db-host
       # and alias entries, so a per-table allowlist (which silently dropped any
       # unlisted or newly added schema table) is no longer needed.
-      mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
+      if mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
         --single-transaction \
         --quick \
         --no-autocommit \
         --skip-add-locks \
         --no-tablespaces \
         --hex-blob ${_HDB} \
-        > ${_USR}/src/prev_hostmaster.sql
+        > ${_USR}/src/prev_hostmaster.sql; then
+        _XOCT_HM_DUMP_OK=YES
+      else
+        _XOCT_HM_DUMP_OK=NO
+      fi
     _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1"
-    if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
+    ### The redirect pre-creates the file, so the old existence test read a
+    ### failed mysqldump as success and stamped exported.pid over a zero-byte
+    ### or truncated panel dump. Demand rc=0 AND a non-empty file.
+    if [ "${_XOCT_HM_DUMP_OK}" = "YES" ] \
+      && [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${_oct} db export complete"
       # Record the source FQDN for the import-side rename. renameaegirhost
       # auto-detects OLD from whichever server_master alias survived the
@@ -1768,9 +1827,14 @@ _migrate_prepare() {
       _SRC_FQDN=${_SRC_FQDN//[^a-zA-Z0-9.\-]/}
       [ -z "${_SRC_FQDN}" ] && _SRC_FQDN=$(hostname -f 2>/dev/null | tr -d '\n')
       echo -n "${_SRC_FQDN}" > ${_USR}/log/sourcefqdn.txt
-      touch ${_USR}/log/exported.pid
+      ### exported.pid is stamped by the run verdict AFTER _migrate_sites,
+      ### and only when every site dump completed -- the marker now means
+      ### "this account's export is restorable", not "a dump was attempted".
     else
-      echo "ALRT: no ${_USR}/src/prev_hostmaster.sql exists!"
+      ### Remove the debris so a re-run redumps from scratch instead of
+      ### skipping the hostmaster block on the pre-created file.
+      rm -f ${_USR}/src/prev_hostmaster.sql
+      echo "ALRT: hostmaster ${_oct} db export FAILED (mysqldump error or empty dump)"
       exit 1
     fi
   fi
@@ -2086,6 +2150,27 @@ _migrate_prepare() {
     || [ "${_cmd}" = "proxy" ]; then
     _migrate_sites
   fi
+  if [ "${_cmd}" = "export" ]; then
+    if [ "${_XOCT_EXPORT_FAIL:-0}" != "0" ]; then
+      ### Parsed never sourced. Travels with the log/ transfer sync, so the
+      ### import side refuses on it even when the operator skips the source
+      ### side gate.
+      {
+        echo "failed=${_XOCT_EXPORT_FAIL}"
+        echo "dbs=${_XOCT_EXPORT_FAILED_DBS# }"
+        echo "time=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null)"
+      } > ${_USR}/log/export_failed.pid
+      echo "ALRT: export for ${_oct}: ${_XOCT_EXPORT_FAIL} site database export(s) FAILED:${_XOCT_EXPORT_FAILED_DBS}"
+      echo "ERROR: NOT stamping exported.pid; transfer and import will refuse this account"
+      echo "ERROR: fix the cause, then re-run 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
+      echo "ERROR: (site dumps are redone in place; the hostmaster dump is kept)"
+      _XOCT_RUN_FAIL=YES
+    elif [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
+      rm -f ${_USR}/log/export_failed.pid
+      touch ${_USR}/log/exported.pid
+      echo "INFO: export for ${_oct}: every site database dump completed; exported.pid stamped"
+    fi
+  fi
   if [ "${_cmd}" = "import" ]; then
     ###
     ### The export-time 503 gate travels inside static/control with the
@@ -2102,6 +2187,22 @@ _migrate_prepare() {
     # Harsh cache flush so any migrated D8+ site drops the source box's stale
     # container and bootstraps clean on this box.
     _xoct_flush_caches_target
+    if [ "${_XOCT_IMPORT_FAIL:-0}" != "0" ]; then
+      {
+        echo "failed=${_XOCT_IMPORT_FAIL}"
+        echo "dbs=${_XOCT_IMPORT_FAILED_DBS# }"
+        echo "time=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null)"
+      } > ${_USR}/log/import_failed.pid
+      echo "ALRT: import for ${_oct}: ${_XOCT_IMPORT_FAIL} site database import(s) FAILED or SKIPPED:${_XOCT_IMPORT_FAILED_DBS}"
+      echo "ERROR: their verifies were NOT scheduled; sites with clean loads were imported normally"
+      echo "ERROR: recovery -- fix the cause (re-export/re-transfer the failed dumps if hollow), then:"
+      echo "ERROR:   rm ${_USR}/log/imported.pid"
+      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      echo "ERROR: (safe: the full import re-run re-imports from the same transferred dumps)"
+      _XOCT_RUN_FAIL=YES
+    else
+      rm -f ${_USR}/log/import_failed.pid
+    fi
   fi
   case "${_cmd}" in
     import|export) rm -f /run/boa_sql_maintenance.pid ;;
@@ -3157,6 +3258,20 @@ _migrate_init() {
     elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/transferred.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already transferred"
       exit 1
+    elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/export_failed.pid" ] \
+      && [ "${_XOCT_FORCE}" != "YES" ]; then
+      echo "_USR ${_oct} is not eligible for migration: export incomplete"
+      echo "ALRT: log/export_failed.pid is present -- the last export left FAILED site dumps:"
+      sed "s/^/ALRT:   /" ${_USR}/log/export_failed.pid 2>/dev/null
+      echo "INFO: re-run 'xoct export' after fixing the cause, or pass --force to transfer anyway"
+      exit 1
+    elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/export_failed.pid" ] \
+      && [ "${_XOCT_FORCE}" != "YES" ]; then
+      echo "_USR ${_oct} is not eligible for migration: export incomplete"
+      echo "ALRT: log/export_failed.pid travelled with this account -- the source export left FAILED site dumps:"
+      sed "s/^/ALRT:   /" ${_USR}/log/export_failed.pid 2>/dev/null
+      echo "INFO: fix and re-run export + transfer on the source, or pass --force to import anyway"
+      exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/imported.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already imported"
       exit 1
@@ -3168,6 +3283,11 @@ _migrate_init() {
       exit 1
     else
       echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} start"
+      if [ "${_XOCT_FORCE}" = "YES" ] && [ -e "${_USR}/log/export_failed.pid" ]; then
+        if [ "${_cmd}" = "transfer" ] || [ "${_cmd}" = "import" ]; then
+          echo "ALRT: --force: proceeding although log/export_failed.pid marks FAILED site dumps"
+        fi
+      fi
       if [ "${_cmd}" = "transfer" ] || [ "${_cmd}" = "pretransfer" ]; then
         if [ ! -z "${_dst}" ]; then
           _DST=/data/disk/${_dst}
@@ -3312,6 +3432,13 @@ _migrate_init() {
             # pretransfer -> export -> transfer sequence self-blocking at the
             # transferred.pid eligibility gate.
             if [ "${_cmd}" = "transfer" ]; then
+              ### A transfer that passed the export gate means the source's
+              ### export is clean now -- a stale export_failed.pid that
+              ### travelled with an earlier --force transfer must not wedge
+              ### the import on the target forever.
+              if [ ! -e "${_USR}/log/export_failed.pid" ]; then
+                ssh root@${_tgt} "rm -f ${_DST}/log/export_failed.pid" &> /dev/null
+              fi
               touch ${_USR}/log/transferred.pid
             fi
           else
@@ -3469,6 +3596,12 @@ _migrate_init() {
             fi
           fi
         fi
+      fi
+      if [ "${_XOCT_RUN_FAIL}" = "YES" ]; then
+        ### Truthful run verdict: per-site ALRT lines above already name the
+        ### failures; callers (xmass step 13, harnesses) key on the rc.
+        echo "ALRT: ${_cmd} for ${_oct} to ${_tgt} ${_dst} INCOMPLETE -- see ALRT/ERROR lines above"
+        exit 1
       fi
       echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
       exit 0
@@ -3769,6 +3902,7 @@ _check_root() {
 # recognised (and stripped), so no positional argument is ever mistaken for one.
 _MODE=LIVE
 _XOCT_NOT_CLEAN=NO
+_XOCT_FORCE=""
 case "$1" in
   transfer|pretransfer)
     _MODE=DRY
@@ -3777,6 +3911,29 @@ case "$1" in
       case "${_a}" in
         --live)        _MODE=LIVE ;;
         --dry|--test)  _MODE=DRY ;;
+        --force)       _XOCT_FORCE=YES ;;
+        --*)
+          ### An unknown --flag must never fall through to the positionals:
+          ### the next free slot is the target-account RENAME.
+          echo "ERROR: unknown option '${_a}' for $1"
+          exit 1
+          ;;
+        *) _margs+=("${_a}") ;;
+      esac
+    done
+    set -- "${_margs[@]}"
+    ;;
+  import)
+    ### --force bypasses the export_failed.pid refusal only; every other
+    ### import gate (imported.pid, panel checks) is unaffected.
+    _margs=()
+    for _a in "$@"; do
+      case "${_a}" in
+        --force) _XOCT_FORCE=YES ;;
+        --*)
+          echo "ERROR: unknown option '${_a}' for $1"
+          exit 1
+          ;;
         *) _margs+=("${_a}") ;;
       esac
     done
@@ -3820,6 +3977,11 @@ case "$1" in
         --renotify|--notify) _XOCT_RENOTIFY=YES ;;
         --no-notify)         _XOCT_NO_NOTIFY=YES ;;
         --force-pinned)      _XOCT_FORCE_PINNED=YES ;;
+        ### For proxy: allows converting a source whose export was --forced
+        ### through with export_failed.pid (exported.pid was truthfully
+        ### withheld) -- otherwise the account stays 503 forever with no
+        ### escape on the same axis the transfer/import escape used.
+        --force)             _XOCT_FORCE=YES ;;
         --all)               _margs+=("${_a}") ;;
         --*)
           echo "ERROR: unknown option '${_a}' for $1"
@@ -3902,13 +4064,14 @@ case "$1" in
             fi
             echo "ALRT: clearing migration state for ${_oct}:"
             echo "ALRT:   src/*.sql dumps (incl. prev_hostmaster.sql),"
-            echo "ALRT:   log/{exported,transferred,imported,proxied}.pid and"
+            echo "ALRT:   log/{exported,transferred,imported,proxied}.pid,"
+            echo "ALRT:   log/{export_failed,import_failed}.pid and"
             echo "ALRT:   log/panel_db.txt (the recorded import panel DB)"
             echo "ALRT: removing proxied.pid re-arms migration AND re-enables LE renewal"
             echo "ALRT: on this box -- only do this when the account is meant to migrate"
             echo "ALRT: (again) FROM here."
             rm -f /data/disk/${_oct}/src/*.sql
-            for _p in exported transferred imported proxied; do
+            for _p in exported transferred imported proxied export_failed import_failed; do
               rm -f /data/disk/${_oct}/log/${_p}.pid
             done
             ### A chained migration lands on a different panel DB; a stale

@@ -542,6 +542,14 @@ _up_action_all() {
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
     _load_control
+    ### A proxied account's platforms and sites are served from another
+    ### box; rebuilding them here (or after xtrim shrank them) is the
+    ### failure being guarded against. Read-only test -- octopus never
+    ### creates or removes proxied.pid.
+    if [ -e "${_usEr}/log/proxied.pid" ]; then
+      echo "INFO: skipping ${_usEr}: proxied (served elsewhere)"
+      continue
+    fi
     if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_usEr}/log/cores.txt" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
@@ -620,6 +628,10 @@ _up_action_one() {
   _usEr="/data/disk/${_sCnd}"
   _count_cpu
   _load_control
+  if [ -e "${_usEr}/log/proxied.pid" ]; then
+    echo "INFO: skipping ${_usEr}: proxied (served elsewhere)"
+    return 0
+  fi
   if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
     && [ -e "${_usEr}/log/cores.txt" ] \
     && [ ! -e "${_usEr}/log/CANCELLED" ]; then
