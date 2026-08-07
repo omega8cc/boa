@@ -68,7 +68,20 @@ _tBn="tools/bin"
 _clean_pid_exit() {
   if [ -n "${1}" ]; then
     echo "REASON ${1} on $(date)" >> /root/.cluster.exit.exceptions.log
-    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+    # /opt/tmp/boa is the shared BOA build staging owned by the installer
+    # wrappers, never by cluster -- purge only when no install or pass may
+    # still be consuming it
+    if [ -e "/opt/tmp/boa" ] \
+      && [ ! -e "/run/boa_run.pid" ] \
+      && [ ! -e "/run/boa_wait.pid" ] \
+      && [ ! -e "/run/octopus_install_run.pid" ] \
+      && ! pgrep -f "/local/bin/barracuda" > /dev/null 2>&1 \
+      && ! pgrep -f "/local/bin/octopus" > /dev/null 2>&1 \
+      && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
+      && ! pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 \
+      && ! pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1; then
+      rm -rf /opt/tmp/*
+    fi
   fi
   rm -f /run/cluster_run.pid
   service cron start

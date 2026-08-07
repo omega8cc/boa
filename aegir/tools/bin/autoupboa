@@ -77,7 +77,54 @@ _run_weekly_system_upgrade() {
     wait
   fi
 }
+### The weekly dispatch sits above every other guard in this file, so it
+### needs its own pre-flight: the chained install's octopus leg holds only
+### octopus_install_run.pid, which barracuda's own two-pid pre-flight never
+### consulted -- a weekly pass starting there purges the build tree the
+### install is still consuming. Same checks as _is_protected_run (defined
+### far below, hence mirrored here, not called).
+_weekly_install_in_flight() {
+  local _cbn=""
+  local _cPat=""
+  local _CNT=0
+  for _cbn in autoinit automini barracuda boa octopus; do
+    if [ -e "/opt/local/bin/${_cbn}" ]; then
+      _cPat="/local/bin/${_cbn}"
+      # Bare "boa" also matches the boa-info probes other cron ticks fire
+      # every few minutes, and an unanchored "boa in-" matches a REMOTE
+      # install driven from this box over ssh; only a LOCAL in-flight
+      # INSTALL may defer the weekly, or transient probes and remote legs
+      # walk it into the skip-a-week terminal state
+      [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
+      _CNT=$(pgrep -fc "${_cPat}")
+      if (( _CNT > 0 )); then
+        return 0
+      fi
+    fi
+  done
+  if pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 \
+    || pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1; then
+    return 0
+  fi
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/boa_wait.pid" ] && return 0
+  return 1
+}
 if [ "$1" = "weekly-system" ]; then
+  ### Defer, don't collide: wait for a clear box so the weekly window is
+  ### delayed rather than lost; if still busy after the bounded wait, skip
+  ### -- the next weekly run retries
+  _wCnt=0
+  while _weekly_install_in_flight; do
+    _wCnt=$(( _wCnt + 1 ))
+    if (( _wCnt > 90 )); then
+      echo "INFO: install or pass still in flight after 90 min -- weekly-system skipped"
+      exit 0
+    fi
+    echo "INFO: install or pass in flight -- weekly-system waiting (${_wCnt}/90)"
+    sleep 60
+  done
   _run_weekly_system_upgrade "$@"
   exit 0
 fi
@@ -895,6 +942,12 @@ _is_protected_run() {
       fi
     fi
   done
+  # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
+  # the wrapper binaries swept above -- match them too
+  if pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 \
+    || pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1; then
+    _protectedRun=TRUE
+  fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
