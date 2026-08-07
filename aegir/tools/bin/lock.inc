@@ -14,7 +14,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 ### Idempotent include guard
 ###
 [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && return 0
-_SINGLE_INSTANCE_LIB_VER="1.1"
+_SINGLE_INSTANCE_LIB_VER="1.2"
 
 ###
 ### Atomic unlock to prevent TOCTOU race
@@ -240,13 +240,17 @@ _check_uptime_grace_period() {
   # An unreadable /proc/uptime must read as "just booted", not as a shell
   # error in the comparison below: staying quiet is the safe direction.
   [ -n "${_UPTIME_MIN}" ] || _UPTIME_MIN=0
+  # The .sh.txt pgreps cover the chained install's legs, which drop the
+  # lock pids mid-chain by design: their pkill/restart churn is exactly
+  # the noise this grace period exists to keep out of incident mail
   if [ "${_UPTIME_MIN}" -lt 15 ] \
     || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     || [ ! -x "/usr/sbin/csf" ] \
     || [ ! -e "/run/lfd.pid" ] \
     || [ -e "/run/octopus_install_run.pid" ] \
     || [ -e "/run/boa_run.pid" ] \
-    || [ -e "/run/boa_wait.pid" ]; then
+    || [ -e "/run/boa_wait.pid" ] \
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     export _INCIDENT_REPORT=OFF
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "Skipping alerts: system uptime ${_UPTIME_MIN} min < 15 min threshold."

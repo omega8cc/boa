@@ -251,7 +251,30 @@ _daily_action() {
 ###--------------------###
 [ ! -d "/data/u" ] && exit 1
 echo "INFO: Daily maintenance start"
-while [ -e "/run/boa_run.pid" ]; do
+# Nightly maintenance deletes ghost codebases and purges backups; the old
+# boa_run.pid-only wait exited the moment _finale dropped the pid mid-pass,
+# while the octopus leg was still building against those trees -- wait on
+# the marker and the live process forms too
+_boa_pass_active() {
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/boa_wait.pid" ] && return 0
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  return 1
+}
+# Bounded: a wedged process matching the sweep (or an operator's editor on
+# a wrapper file) must not spin this forever with no reaper -- after 2h,
+# skip tonight and let tomorrow's cron retry; deleting codebases under a
+# possibly-live pass is the one thing this loop must never do
+_wCnt=0
+while _boa_pass_active; do
+  _wCnt=$(( _wCnt + 1 ))
+  if (( _wCnt > 1440 )); then
+    echo "INFO: BOA pass still in flight after 2h -- nightly maintenance skipped"
+    exit 0
+  fi
   echo "Waiting for BOA queue availability..."
   sleep 5
 done

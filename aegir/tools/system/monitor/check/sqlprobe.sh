@@ -82,6 +82,8 @@ done
 
 # Barracuda run in flight: it may restart mysqld under us mid-sample.
 [ -e "/run/boa_run.pid" ] && exit 0
+# Same for an install/upgrade leg, which holds only this marker mid-chain.
+[ -e "/run/octopus_install_run.pid" ] && exit 0
 
 # Nice ourselves down; this is a background sampler.
 export _B_NICE=${_B_NICE//[^0-9-]/}
