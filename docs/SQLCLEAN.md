@@ -65,11 +65,15 @@ run needs a fresh review.
 
 ## Safety guards
 
-The tool refuses to start while any Ægir/Provision task is running or a BOA
-action holds `/run/boa_run.pid` / `/run/boa_wait.pid`, re-checks that
-interlock before every drop, takes a lock against concurrent runs, and
-verifies the MySQL endpoint is this box's own server before classifying
-anything.
+The tool refuses to start while any Ægir/Provision task is running, a BOA
+action holds `/run/boa_run.pid` / `/run/boa_wait.pid` /
+`/run/octopus_install_run.pid`, or a live install/upgrade pass is detected
+by process (the chained install's legs and the wrapper binaries, matched
+with anchored patterns). Before every individual drop it re-checks the
+lock pids and the Ægir/Provision guard (the process sweep runs at entry
+only, so a transient match mid-loop cannot strand auto mode on a drifted
+manifest). It also takes a lock against concurrent runs and verifies the
+MySQL endpoint is this box's own server before classifying anything.
 
 Anything that exists but cannot be resolved — an unreadable site drushrc, an
 instance whose system user has a home but no `.drush`, a hostmaster alias
