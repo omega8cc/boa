@@ -252,13 +252,25 @@ _is_protected_run() {
   _boaBins="autoinit automini barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      _cPat="/local/bin/${_cbn}"
+      # Bare "boa" would match an hours-long remote install driven
+      # from this box over ssh (and every boa-info probe); anchor it
+      # to the LOCAL install form, as clear.sh/runner.sh already do
+      [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
+      _CNT=$(pgrep -fc "${_cPat}")
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
       fi
     fi
   done
+  # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
+  # the wrapper binaries swept above -- match them too: the installer takes
+  # solr/jetty down and up inside those legs, and this watchdog fires ~9x a
+  # minute, so a blind window here is near-certain to be hit
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+    _protectedRun=TRUE
+  fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE

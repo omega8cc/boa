@@ -128,7 +128,8 @@ touch "${_STAMP}"
 _DEP_STAMP="${_pthDat}/.dep_attempt"
 if ! command -v cgi-fcgi >/dev/null 2>&1; then
   # Another package operation in flight: try again on a later tick, silently.
-  if [ -e "/run/boa_run.pid" ]; then
+  # The install marker is the only lock the chained octopus leg holds.
+  if [ -e "/run/boa_run.pid" ] || [ -e "/run/octopus_install_run.pid" ]; then
     exit 0
   fi
   if pgrep -x apt-get >/dev/null 2>&1 || pgrep -x apt >/dev/null 2>&1 \
