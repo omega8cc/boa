@@ -148,9 +148,34 @@ _interlock_check() {
   if pgrep -f "[p]rovision" >/dev/null 2>&1; then
     _die "An Aegir/Provision task is running — try again once the queue is idle"
   fi
-  if [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ]; then
-    _die "A BOA action is running (/run/boa_run.pid or /run/boa_wait.pid exists) — try again later"
+  if [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
+    || [ -e "/run/octopus_install_run.pid" ]; then
+    _die "A BOA action is running (an install/upgrade lock pid exists) — try again later"
   fi
+}
+
+# The chained install's legs run as "bash /var/backups/*.sh.txt" and drop
+# the lock pids mid-chain by design; the wrapper sweeps catch standalone
+# pass tails after _finale has dropped them. Dropping databases is the one
+# action that must never win that race. ENTRY-POINT ONLY: the per-drop
+# re-check keeps just the pid tests and the pre-existing provision guard,
+# so a transient cross-match mid-loop cannot abort after some drops
+# committed and wedge auto mode on the drifted manifest. The patterns are
+# ^-anchored: an anchored ERE can never be satisfied by another script's
+# pgrep argument carrying the same literal.
+_interlock_check_full() {
+  local _lBl=""
+  local _pAt=""
+  _interlock_check
+  while read -r _lBl _pAt; do
+    if pgrep -f "${_pAt}" >/dev/null 2>&1; then
+      _die "A BOA ${_lBl} is running — try again later"
+    fi
+  done <<'PATEOF'
+install-leg ^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt
+upgrade-pass ^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)
+install ^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-
+PATEOF
 }
 
 ###-------------GUARDS--------------------###
@@ -195,7 +220,7 @@ if [ "${_sql_host}" != "$(hostname)" ] && \
   exit 1
 fi
 
-_interlock_check
+_interlock_check_full
 
 # Fresh per-run logs
 > "${_GHOST_DBS_LOG}"
@@ -547,7 +572,7 @@ _auto_mode_checks() {
 if [ "${_LIVE_MODE}" = "LIVE" ]; then
   if [ "${_AUTO_MODE}" = "auto" ]; then
     _auto_mode_checks
-    _interlock_check
+    _interlock_check_full
     for _ghost_db in "${_final_ghosts[@]}"; do
       _drop_ghost_db "${_ghost_db}"
     done
@@ -555,7 +580,7 @@ if [ "${_LIVE_MODE}" = "LIVE" ]; then
   else
     [ "${_INCOMPLETE}" -ne 0 ] && \
       _alrt "Resolution incomplete — the ghost list may be too wide; review the alerts above before confirming anything"
-    _interlock_check
+    _interlock_check_full
     for _ghost_db in "${_final_ghosts[@]}"; do
       if _confirm_deletion "${_ghost_db}"; then
         _drop_ghost_db "${_ghost_db}"
