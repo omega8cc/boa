@@ -1877,8 +1877,12 @@ _cleanup_boa_code() {
   mkdir -p /opt/tmp
   cd /opt/tmp
   [ -e "/opt/tmp/boa.tar.gz" ] && rm -f /opt/tmp/boa.tar.gz
+  # The lib probe catches a tree truncated mid-extraction: install aborts
+  # no longer purge /opt/tmp, so re-fetch-by-sentinel is the only self-heal
+  # for a broken tree and it must see more than the helpers directory
   if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
-    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
+    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ] \
+    || [ ! -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
     rm -rf /opt/tmp/boa
   fi
 }
@@ -1888,15 +1892,19 @@ _cleanup_boa_code() {
 ### Download boa code
 ###
 _download_boa_code() {
+  # See _cleanup_boa_code: the lib probe is the broken-tree self-heal now
+  # that install aborts no longer purge /opt/tmp
   if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
-    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
+    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ] \
+    || [ ! -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
     rm -rf /opt/tmp/boa
     mkdir -p /opt/tmp
     cd /opt/tmp
     _get_dev_ext "boa.tar.gz"
   fi
   if [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
-    && [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
+    && [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ] \
+    && [ -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
     [ -e "/opt/tmp/boa.tar.gz" ] && rm -f /opt/tmp/boa.tar.gz
   fi
 }

@@ -2872,6 +2872,7 @@ _barracuda_cnf() {
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
     echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
     echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
+    echo "_XDR9000=${_XDR9000}"                               >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
@@ -3491,6 +3492,11 @@ _barracuda_cnf() {
     _USE_BATCH_GUARD_TEST=$(grep _USE_BATCH_GUARD ${_barCnf} 2>&1)
     if [[ ! "${_USE_BATCH_GUARD_TEST}" =~ "_USE_BATCH_GUARD" ]]; then
       echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}" >> ${_barCnf}
+    fi
+
+    _XDR9000_TEST=$(grep _XDR9000 ${_barCnf} 2>&1)
+    if [[ ! "${_XDR9000_TEST}" =~ "_XDR9000" ]]; then
+      echo "_XDR9000=${_XDR9000}" >> ${_barCnf}
     fi
 
     _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
@@ -10017,6 +10023,101 @@ _if_install_vnstat() {
   fi
 }
 
+_myquick_myloader_wrapper() {
+  local _MYL_HELP
+  local _MYL_LOCAL=/usr/local/bin/myloader
+  local _MYL_MARK="BOA myloader wrapper"
+  local _MYL_REAL
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _myquick_myloader_wrapper"
+  fi
+  ### Every shipped caller resolves /usr/local/bin/myloader (or bare
+  ### myloader with /usr/local/bin first in PATH), so that path must
+  ### translate between the caller flag style and what the installed
+  ### binary accepts: pre-0.20.1 has no --drop-table, 1.0.x removed
+  ### --overwrite-tables. Idempotent; safe to run on every pass.
+  if [[ -x "/usr/bin/myloader" ]]; then
+    _MYL_REAL=/usr/bin/myloader
+  elif [[ -x "${_MYL_LOCAL}.bin" ]]; then
+    ### Source layout already healed on a prior pass.
+    _MYL_REAL="${_MYL_LOCAL}.bin"
+  elif [[ -e "${_MYL_LOCAL}" ]] \
+    && [[ ! -L "${_MYL_LOCAL}" ]] \
+    && ! grep -q "${_MYL_MARK}" "${_MYL_LOCAL}" 2> /dev/null; then
+    ### Fresh source build installed in place.
+    _MYL_REAL="${_MYL_LOCAL}"
+  else
+    return 0
+  fi
+  _MYL_HELP=$("${_MYL_REAL}" --help 2>&1)
+  ### Fail-safe: leave everything untouched if the binary cannot even
+  ### print its help (missing libs mid-upgrade etc.).
+  if ! echo "${_MYL_HELP}" | grep -q "Usage"; then
+    return 0
+  fi
+  ### Line-anchored probes: 1.0.x --help still mentions overwrite-tables
+  ### inside the --overwrite-unsafe description, so match the option
+  ### only; the short prefix moved between versions, so allow "-o, ".
+  if ! echo "${_MYL_HELP}" \
+    | grep -qE "^[[:space:]]+(-o, )?--drop-table"; then
+    if [[ "${_MYL_REAL}" = "${_MYL_LOCAL}" ]]; then
+      mv -f "${_MYL_LOCAL}" "${_MYL_LOCAL}.bin"
+      _MYL_REAL="${_MYL_LOCAL}.bin"
+    fi
+    rm -f "${_MYL_LOCAL}"
+    cat > "${_MYL_LOCAL}" <<'MYLOADEREOF'
+#!/bin/bash
+# BOA myloader wrapper
+# Pre-0.20.1 myloader has no --drop-table; translate for current
+# callers. Legacy modes other than DROP were never used by BOA.
+_MYL_REAL=/usr/bin/myloader
+[[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/local/bin/myloader.bin
+_MYL_ARGS=()
+for _MYL_A in "$@"; do
+  if [[ "${_MYL_A}" == "--drop-table" ]] \
+    || [[ "${_MYL_A}" == --drop-table=* ]]; then
+    _MYL_ARGS+=("--overwrite-tables")
+  else
+    _MYL_ARGS+=("${_MYL_A}")
+  fi
+done
+exec "${_MYL_REAL}" "${_MYL_ARGS[@]}"
+MYLOADEREOF
+    chmod 755 "${_MYL_LOCAL}"
+  elif ! echo "${_MYL_HELP}" \
+    | grep -qE "^[[:space:]]+(-o, )?--overwrite-tables[[:space:]]"; then
+    if [[ "${_MYL_REAL}" = "${_MYL_LOCAL}" ]]; then
+      mv -f "${_MYL_LOCAL}" "${_MYL_LOCAL}.bin"
+      _MYL_REAL="${_MYL_LOCAL}.bin"
+    fi
+    rm -f "${_MYL_LOCAL}"
+    cat > "${_MYL_LOCAL}" <<'MYLOADEREOF'
+#!/bin/bash
+# BOA myloader wrapper
+# myloader >= 1.0 removed --overwrite-tables; translate for older callers.
+_MYL_REAL=/usr/bin/myloader
+[[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/local/bin/myloader.bin
+_MYL_ARGS=()
+for _MYL_A in "$@"; do
+  if [[ "${_MYL_A}" == "--overwrite-tables" ]]; then
+    _MYL_ARGS+=("--drop-table=DROP")
+  else
+    _MYL_ARGS+=("${_MYL_A}")
+  fi
+done
+exec "${_MYL_REAL}" "${_MYL_ARGS[@]}"
+MYLOADEREOF
+    chmod 755 "${_MYL_LOCAL}"
+  else
+    ### Both styles accepted; a plain symlink is enough, but leave a
+    ### source build that already owns the path untouched.
+    if [[ "${_MYL_REAL}" != "${_MYL_LOCAL}" ]]; then
+      rm -f "${_MYL_LOCAL}"
+      ln -sfn "${_MYL_REAL}" "${_MYL_LOCAL}"
+    fi
+  fi
+}
+
 _install_myquick_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _install_myquick_src"
@@ -10079,6 +10180,7 @@ _install_myquick_src() {
       _mrun "make --quiet install"
     fi
     ldconfig 2> /dev/null
+    _myquick_myloader_wrapper
   fi
 }
 
@@ -10099,29 +10201,7 @@ _install_myquick_deb() {
     if [ -x "/usr/bin/mydumper" ]; then
       [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
       ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
-      rm -f /usr/local/bin/myloader
-      ### Line-anchored probe: 1.0.x --help still mentions overwrite-tables
-      ### inside the --overwrite-unsafe description, so match the option only.
-      if [[ -x "/usr/bin/myloader" ]] \
-        && ! /usr/bin/myloader --help 2>&1 \
-        | grep -qE "^[[:space:]]+--overwrite-tables[[:space:]]"; then
-        cat > /usr/local/bin/myloader <<'MYLOADEREOF'
-#!/bin/bash
-# myloader >= 1.0 removed --overwrite-tables; translate for older callers.
-_MYL_ARGS=()
-for _MYL_A in "$@"; do
-  if [[ "${_MYL_A}" == "--overwrite-tables" ]]; then
-    _MYL_ARGS+=("--drop-table=DROP")
-  else
-    _MYL_ARGS+=("${_MYL_A}")
-  fi
-done
-exec /usr/bin/myloader "${_MYL_ARGS[@]}"
-MYLOADEREOF
-        chmod 755 /usr/local/bin/myloader
-      else
-        ln -sfn /usr/bin/myloader /usr/local/bin/myloader
-      fi
+      _myquick_myloader_wrapper
     fi
   else
     _MYQUICK_INSTALL_REQUIRED=YES
@@ -10211,6 +10291,10 @@ _myquick_install_upgrade() {
       _install_myquick_deb
     fi
   fi
+  ### Heal the wrapper on every pass: boxes on a still-pinned version
+  ### never re-enter the install paths, yet their callers ship newer
+  ### flags than the installed binary understands.
+  _myquick_myloader_wrapper
 }
 
 _xdrago_install_upgrade() {
