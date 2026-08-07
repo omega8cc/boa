@@ -64,8 +64,10 @@ _ci_master_cron_control() {
     _IS_CI_BOX=YES
     _QUEUE_OK=FALSE
     _if_allow_aegir_queue
-    if pgrep -f "/opt/local/bin/barracuda" >/dev/null 2>&1 \
-      || pgrep -f "/opt/local/bin/octopus" >/dev/null 2>&1 \
+    # /local/bin matches both the /opt and the PATH-resolved /usr symlink
+    # form; the .sh.txt pgreps cover the chained install's legs
+    if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" >/dev/null 2>&1 \
+      || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" >/dev/null 2>&1 \
       || [ -e "/run/boa_run.pid" ] \
       || [ -e "/run/boa_wait.pid" ] \
       || [ -e "/run/octopus_install_run.pid" ]; then
@@ -104,9 +106,9 @@ _ci_master_cron_control() {
 # design (queued backend tasks must run for INIT to complete).
 _accel_now=NO
 if [ -e "/run/octopus_install_run.pid" ]; then
-  if pgrep -f "/local/bin/octopus" > /dev/null 2>&1 \
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus" > /dev/null 2>&1 \
     || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
-    || pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1; then
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
     _accel_now=YES
     touch /run/octopus_install_run.pid
   elif [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then

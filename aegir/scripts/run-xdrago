@@ -149,10 +149,16 @@ _run_action() {
   # In accelerated mode (an Octopus install/upgrade is genuinely in progress) the
   # backend config and Drush aliases must reload promptly so queued tasks run in
   # the correct Aegir context; run the queue even with a build in progress. The
-  # marker is honoured only while fresh, so a crashed run cannot force this on.
-  if [ -e "/run/octopus_install_run.pid" ] \
-    && [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then
-    _buildTest="0"
+  # marker is honoured while fresh OR backed by a live install process, so a
+  # crashed run cannot force this on, and a stalled heartbeat (runner.sh held
+  # by a maintenance pause) cannot switch a genuinely live install off it.
+  if [ -e "/run/octopus_install_run.pid" ]; then
+    if [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ] \
+      || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus" > /dev/null 2>&1 \
+      || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/OCTOPUS\.sh\.txt" > /dev/null 2>&1 \
+      || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1; then
+      _buildTest="0"
+    fi
   fi
   if [ "${_buildTest}" = "0" ] \
     || [ -z "${_buildTest}" ] \
