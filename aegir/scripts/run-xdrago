@@ -122,6 +122,14 @@ _if_sftp_password_update() {
 _if_octopus_upgrade() {
   _upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
   _plCtr="/data/disk/${_H_USER}/static/control/platforms.info"
+  # Defer, never consume-and-lose: while an install/upgrade is in flight the
+  # octopus wrapper refuses to start, so deleting the trigger before a launch
+  # that cannot succeed would silently drop the tenant's queued upgrade --
+  # leave it in place and let the next runner tick retry
+  if [ -e "/run/octopus_install_run.pid" ] \
+    || [ -e "/run/boa_run.pid" ]; then
+    return 0
+  fi
   if [ -e "${_plCtr}" ] && [ -e "${_upCtr}" ]; then
     rm -f ${_upCtr}
     [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
