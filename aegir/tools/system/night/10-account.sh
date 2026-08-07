@@ -24,8 +24,8 @@ _GOACCESS_ALL=NO
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=pro
-export _xSrl=588822proT01
+export _tRee=dev
+export _xSrl=588833devT01
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
 # shellcheck disable=SC1091
