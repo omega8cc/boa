@@ -1186,6 +1186,18 @@ _up_start() {
     echo "  because /run/boa_wait.pid exists"
     echo
     exit 1
+  elif [ -e "/run/octopus_install_run.pid" ]; then
+    # The chained install drops boa_run/boa_wait mid-chain by design, so
+    # this marker is the only signal spanning its octopus leg; a barracuda
+    # pass starting inside that window purges and refetches the build tree
+    # the install is still consuming; a stale marker is reaped by
+    # runner.sh/clear.sh
+    echo
+    echo "  An Octopus install or upgrade is still in flight probably"
+    echo "  because /run/octopus_install_run.pid exists"
+    echo "  (auto-clears once the install ends or the marker goes stale)"
+    echo
+    exit 1
   else
     touch /run/boa_run.pid
     touch /run/boa_wait.pid

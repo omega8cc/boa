@@ -209,7 +209,7 @@ EOFMYSQL
                 echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
               fi
             fi
-            myloader \
+            if myloader \
               --database=${_DBN} \
               --host=localhost \
               --defaults-file=/root/.my.cnf \
@@ -217,8 +217,11 @@ EOFMYSQL
               --directory=${_USR}/src/${_DBN}/ \
               --threads=4 \
               --drop-table=DROP \
-              --verbose=1
-            echo "INFO: site ${_Dom} db import on ${_oct} complete"
+              --verbose=2; then
+              echo "INFO: site ${_Dom} db import on ${_oct} complete"
+            else
+              echo "ALRT: site ${_Dom} db import FAILED on ${_oct}"
+            fi
           else
             echo "ALRT: site ${_Dom} db failure due to missing ${_USR}/src/${_DBN}"
           fi
@@ -255,7 +258,18 @@ EOFMYSQL
           fi
         fi
         mkdir -p ${_USR}/src/${_DBN}
-        mydumper \
+        ### Any non-transactional table makes mydumper abort the whole
+        ### database unless --trx-tables=0 is passed; mirrors mysql_backup.sh.
+        _NON_TRX_COUNT=$(mysql -u root -s -N -e "SELECT COUNT(*) FROM \
+information_schema.TABLES WHERE TABLE_SCHEMA='${_DBN}' AND \
+TABLE_TYPE='BASE TABLE' AND ENGINE IS NOT NULL AND \
+ENGINE NOT IN ('InnoDB')" 2> /dev/null)
+        _MYDUMPER_TRX_OPT=""
+        if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
+          _MYDUMPER_TRX_OPT="--trx-tables=0"
+        fi
+        ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
+        if mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
           --host=localhost \
           --defaults-file=/root/.my.cnf \
@@ -266,8 +280,12 @@ EOFMYSQL
           --threads=4 \
           --long-query-guard=900 \
           --clear \
-          --verbose=1
-        echo "INFO: site ${_Dom} db export on ${_oct} complete"
+          --verbose=2 \
+          && [ -e "${_USR}/src/${_DBN}/metadata" ]; then
+          echo "INFO: site ${_Dom} db export on ${_oct} complete"
+        else
+          echo "ALRT: site ${_Dom} db export FAILED on ${_oct}"
+        fi
       elif [ "${_cmd}" = "fooproxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then
           if [ -e "${_Vht}" ]; then
