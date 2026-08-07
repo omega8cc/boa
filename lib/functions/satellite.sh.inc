@@ -7020,8 +7020,6 @@ _satellite_child_b_aegir_ui_enhance() {
       rm -f make_home.php
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
         SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
-      cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
-      mv -f make_client.php.txt make_client.php &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -7031,10 +7029,80 @@ _satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
           SET status=-1 WHERE nid=5" &> /dev/null
       fi
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL}
-      else
-        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
+      ### The client node is what hosting_client turns into the client
+      ### control-panel account; without it the welcome email's panel
+      ### login does not exist. The helper used to be copied only from
+      ### the transient /opt/tmp build tree, which a concurrent barracuda
+      ### or autoupboa pass purges mid-install (observed live on a fresh
+      ### install: the copy hit the purge window, every failure below was
+      ### silent, and the account never existed). Write the helper in
+      ### place when the tree copy is gone, verify the account by mail,
+      ### retry once (a stack restart under the chain also breaks the
+      ### first attempt), and alert loudly instead of failing silently --
+      ### same sentinel pattern as _satellite_set_client_login.
+      local _client_chk _client_ev _client_mk_ev _client_try
+      _client_ev="\$u = user_load_by_mail(\"${_CLIENT_EMAIL}\"); if (\$u && \$u->uid > 1) { echo \"CLIENTOK\"; }"
+      _client_mk_ev="\$number = rand(100000, 999999); \$types = node_types_rebuild(); \$node = new stdClass(); \$node->uid = 1; \$node->type = \"client\"; \$node->email = \"${_CLIENT_EMAIL}\"; \$node->title = \"Octopus\" . \$number; \$node->language = LANGUAGE_NONE; \$node->status = 1; node_object_prepare(\$node); \$node = node_submit(\$node); node_save(\$node); variable_set(\"hosting_default_client\", \$node->nid);"
+      for _client_try in 1 2; do
+        ### Check first so a retry can never double-create the client
+        ### when only the previous verification read failed.
+        _client_chk=$(${_DRUSHCMD} @hostmaster ev "${_client_ev}" 2>/dev/null)
+        if [[ "${_client_chk}" =~ CLIENTOK ]]; then
+          break
+        fi
+        if [ "${_client_try}" = "2" ]; then
+          ### The php-script channel executes at whatever bootstrap
+          ### phase drush reached and can silently no-op below a full
+          ### bootstrap (observed live: the script ran with node
+          ### functions undefined). The retry therefore goes through
+          ### drush ev against @hostmaster -- the same channel the
+          ### login-set step relies on -- which is full-bootstrap or a
+          ### visible error.
+          sleep 10
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            ${_DRUSHCMD} @hostmaster ev "${_client_mk_ev}"
+          else
+            ${_DRUSHCMD} @hostmaster ev "${_client_mk_ev}" &> /dev/null
+          fi
+          continue
+        fi
+        if [ -e "/opt/tmp/boa/aegir/helpers/make_client.php.txt" ]; then
+          cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./make_client.php
+        else
+          cat > ./make_client.php <<'MKCLIENTEOF'
+<?php
+
+  // Create the client node
+  global $argv;
+  var_dump($argv);
+  $number = rand(100000, 999999);
+  $types = node_types_rebuild();
+  $node = new stdClass();
+  $node->uid = 1;
+  $node->type = 'client';
+  $node->email = $_SERVER['argv'][3];
+  $node->title = 'Octopus' . $number;
+  $node->language = LANGUAGE_NONE;
+  $node->status = 1;
+  node_object_prepare($node);
+  $node = node_submit($node);
+  node_save($node);
+  $this_client_id = $node->nid;
+  variable_set('hosting_default_client', $node->nid);
+
+?>
+MKCLIENTEOF
+        fi
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL}
+        else
+          ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
+        fi
+      done
+      _client_chk=$(${_DRUSHCMD} @hostmaster ev "${_client_ev}" 2>/dev/null)
+      if [[ ! "${_client_chk}" =~ CLIENTOK ]]; then
+        _msg "ALRT: client control-panel account for ${_CLIENT_EMAIL} was not created"
+        _msg "ALRT: the welcome email's control-panel login will not exist on this instance"
       fi
       rm -f make_client.php
     else
