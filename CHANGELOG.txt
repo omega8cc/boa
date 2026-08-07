@@ -1,4 +1,152 @@
 ###
+### Stable BOA-5.88.833 PRO/LTS - CANDOUR EDITION
+### Date: Fri 07 Aug 2026 01:47:58 CEST in Warsaw
+### Enjoy the whole truth from your server
+### 71 commits since BOA-5.88.822
+###
+
+@=> Candour Edition
+
+  A panel backup now holds exactly what its label says and the Restore
+  task restores it, database included. A self-hosted install started
+  with a single email address completes end to end, and the welcome
+  email it sends is true for the exact box it describes. Every hosting
+  box now keeps a permanent record of the attacks it blocked and the
+  repairs it survived, readable with one command. Underneath, the
+  platform proves what it used to assume: archive trust is verified,
+  load-bearing fetched files refuse half-delivered payloads, and
+  staged kernels activate only in a quiet night hour. LTS is 1:1 with
+  PRO; no mandatory action this release.
+
+@=> Security
+
+    * Fetched files can require a content sentinel; a wrong or
+      truncated payload is refused before replacing a working file.
+    * websh, the /bin/sh on hosted boxes, is sentinel-protected; a
+      failed download never leaves a partial body in place.
+    * Devuan/Debian archive keyring verified installed on every run;
+      a box that misses it heals on the next pass.
+    * The permissive APT trust bypass retires itself once the box's
+      repositories verify strictly; kept while genuinely needed.
+    * Referer-less Flag-toggle fetches and cold HybridAuth window
+      fetches answered with a static 404 before php-fpm.
+    * New IDS detector surfaces the distributed campaigns behind those
+      guard 404s; per-IP action REPORT by default (_NGINX_GUARD404_*).
+    * md-proxy retrieval-agent proxy classified as AI bulk collection,
+      blocked by default with the standard per-site opt-in.
+    * The /sqladmin stylesheet sits behind the same allow-list as the
+      browser; both content locations drop UA-declared crawlers.
+    * The backup-mode channel is per-account, whitelist-validated and
+      one-shot; an unwritable mode fails the task closed.
+
+@=> New Features
+
+    * XDR9000: a permanent, append-only on-box archive of attack bans,
+      auto-heal incidents, backup outcomes and metric history.
+    * xdr9000 CLI: status, today, attacks, heals, report and raw JSON
+      feeds (windowed, or the whole daily rollup), gzip-transparent.
+    * XDR9000 recording is ON by default; _XDR9000=NO stops it and
+      keeps the archive.
+    * Backup task modes, labelled: classic dump only, files only, or
+      files with classic dump; the restorable mode is the form default.
+    * Partial backups announce themselves in the Restore and Delete
+      lists; new backups record their mode.
+    * admail= install token names the admin (uid-1) panel address; a
+      self-hosted install otherwise derives a distinct root@<fqdn>.
+    * Single-email chained installs complete with both panel accounts
+      created.
+    * sqlclean rebuilt on Drush aliases as the source of truth; report
+      by default, never invoked by automation.
+    * sqlclean deleting runs need an operator protect file; unattended
+      mode additionally needs a fresh reviewed manifest.
+    * Weekly banned-module sweep covers D8+ sites: detect and alert
+      only; the sweep never runs Drush against a D8+ site.
+    * New /data/conf/dereference_backups.conf makes implicit safety
+      copies self-contained (symlink-preserving is the default).
+
+@=> Improvements
+
+    * Files-carrying panel backups always dereference the site's
+      files/private symlinks; the archive restores on any box.
+    * After a restore the site is re-homed into its per-account files
+      store; archives without site files keep the existing store.
+    * The files-symlink converter never lets a residue-only directory
+      displace a populated store; the verdict fails closed.
+    * The welcome email renders the effective SSH port and drops
+      sections that do not apply on that box, separators kept.
+    * Welcome-email sends are loud on failure, name the on-disk
+      credentials file, and mail a body identical to it.
+    * Hosted systems get the Adminer database browser their welcome
+      email documents; the fleet converges on routine runs.
+    * batch_guard arms on the storm's own signature — many distinct
+      batch ids looping at once — never on box load level.
+    * Staged security kernels activate only in the 04:00-04:59 night
+      window, never on a day with a scheduled BOA upgrade.
+    * Each kernel-activation reboot is logged and announced by email
+      first; the auto-reboot class itself is unchanged.
+    * rsyslog guaranteed on every barracuda run with an apt-get
+      fallback; legacy syslog daemons converge to rsyslog.
+    * Every tool in the updater set refreshes on its own serial on
+      every pass, reaching installer and SKYNET-OFF boxes alike.
+    * One fetch line per tool ends duplicate-serial refetch loops;
+      release day costs one fetch round instead of two.
+    * Backup helpers are never replaced while a backup runs; report
+      tools keep their PATH symlinks.
+    * xmass discovers and materialises out-of-root symlink content on
+      the target, mapped and space-gated before any data moves.
+    * xoct ssl-gen wires the database-browser proxy to the live
+      PHP-FPM socket in the same run.
+    * The cached server IPv4 self-heals after a migration; a failed
+      probe never invalidates a working cache.
+    * Ægir dispatch cron parks on idle CI boxes and fails toward
+      enabled, with an hour's grace after any upgrade activity.
+    * hackcheck's whitelist builder drops its per-line fork pair, the
+      main driver of phantom load waves on login-busy small boxes.
+    * The upgrade notice uses the welcome-email layout and deep-links
+      the release it describes.
+
+@=> Changes and Upgrades
+
+    * _USE_SYSKLOGD and /root/.use.sysklogd.cnf retired; leftovers
+      inert. The legacy-syslog watchdog is retired from the monitors.
+    * /data/conf/force_symlinks.conf no longer affects files-carrying
+      panel backups; implicit backups preserve symlinks by default.
+    * Backup-mode labels appear once the frontend database update runs
+      (applied during the ordinary upgrade); forms are guarded.
+    * The XDR9000 archive under /var/log/boa/xdr9000/ is never pruned;
+      past months compress. Budget for it on long-lived boxes.
+    * in-octopus refuses on a box not already running BOA and prints
+      the correct install order.
+    * _SEND_UPGRADE_EMAIL=NO is honoured for the upgrade notice; the
+      initial welcome email always sends.
+    * Pins: Drupal 10.6.15 and 11.4.5 (distribution set rebuilt on
+      11.4.5), OpenCulturas 3.0.5.
+
+@=> Important Fixes
+
+    * Restore imports the database the selected archive contains;
+      fast-import systems silently re-imported the current one.
+    * Files-only archives restore their files and say plainly the
+      database was left unchanged.
+    * Panel backups of natively-symlinked sites carry the real file
+      content, not bare links, whatever the box-level override.
+    * A backup mode picked once no longer leaks into later safety
+      copies and nightly backups.
+    * An upgrade notice can never fall back to the install-time render
+      and mail the original password under an Upgrade subject.
+    * A concurrent unattended security run no longer blocks a
+      barracuda or init run; interrupted dpkg state is healed.
+    * On D10+ deploys the pending-update-check clear actually runs.
+    * An install captured as in-pro is replayed after the OS
+      conversion, matching in-lts and in-dev.
+    * The new-release notice always reaches a real recipient.
+    * Welcome emails on custom-port boxes carry the port sshd actually
+      serves; placeholder-like domains render correctly.
+    * Renaming an Ægir account also renames the .ftp login form in
+      the stored credentials copy.
+
+
+###
 ### Stable BOA-5.88.822 PRO/LTS - CLARITY EDITION
 ### Date: Sat 01 Aug 2026 12:57:01 CEST in Warsaw
 ### Enjoy every setting in plain sight

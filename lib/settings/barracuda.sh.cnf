@@ -1034,13 +1034,27 @@ _USE_SQLPROBE=YES
 ###
 ### Batch storm guard (batch_guard monitor): detects a local self-DoS
 ### where the background_process+background_batch module pair floods
-### the box's own address with /bgp-start/ POSTs under load, confirms
-### the looping batches are dead across two passes, and deletes only
-### their transient rows so the loop drains without any restart. Set
+### the box's own address with /bgp-start/ POSTs — a pinned pool turns
+### them into a 499 wall at ANY box-wide load, and the guard arms on
+### that storm signal, never on load level — confirms the looping
+### batches are dead across two passes, and deletes only their
+### transient rows so the loop drains without any restart. Set
 ### to NO to disable on this system; _BATCH_GUARD_DETECT_ONLY=YES
 ### keeps the detection and alerts but never deletes anything.
 ###
 _USE_BATCH_GUARD=YES
+
+###
+### Permanent health/attack archive (XDR9000): a read-only harvester
+### copies attack bans, auto-heal incidents, backup outcomes and metric
+### samples into an append-only archive under /var/log/boa/xdr9000/
+### before routine log cleanup can erase them; the root-only xdr9000
+### command reads it. It never bans, kills or restarts anything. The
+### archive is never pruned (past months are compressed). Set to NO
+### to stop recording on this system; anything already archived is
+### kept.
+###
+_XDR9000=YES
 
 ###
 ### Converted control-file toggles. Each replaces a former presence-
@@ -1595,8 +1609,8 @@ _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
-export _tRee=lts
-export _xSrl=588822ltsT01
+export _tRee=dev
+export _xSrl=588833devT01
 
 
 ###
