@@ -5,30 +5,30 @@ We are pleased to inform you that your Ægir instance has been successfully upgr
 Here is what this one means for you and your sites.
 
 ----------------------------------------
-YOUR SITES ARE SAFER WITHOUT YOU LIFTING A FINGER
+BACKUPS THAT MEAN EXACTLY WHAT THEY SAY
 ----------------------------------------
 
-Every supported PHP version received its latest security update, already built and in place -- your sites simply run safer, on the same PHP version they always have. And the protection in front of your sites got smarter: it now spots content scrapers that hide across many addresses, covers IPv6 visitors as thoroughly as IPv4 ones, and stops any single runaway page from slowing down a whole site.
+The Backup button in your control panel now offers three clearly named choices -- a database snapshot, a files snapshot, or the complete restorable backup -- and the complete one is pre-selected, so the natural single click gives you a backup you can restore from. And from now on a database-only or files-only snapshot is labelled as such in your backup lists, so a partial backup can no longer be mistaken for a complete one.
 
 ----------------------------------------
-SEARCH ENGINES SEE YOUR SITES PROPERLY AGAIN
+RESTORE BRINGS BACK EXACTLY WHAT YOU SAVED
 ----------------------------------------
 
-Sitemaps, feeds, images, styles, print pages and multilingual addresses are all served to search engines normally again -- so crawling and indexing of your sites work the way they should, while abusive bots stay locked out.
+Restore a complete backup and your site returns to precisely the moment you saved it, files and database together. Restore a partial one, new or old, and the panel says plainly which half came back and which was left as it was.
 
 ----------------------------------------
-CLEANING UP IS NOW A ONE-CLICK JOB FOR YOUR WHOLE TEAM
+A QUIETER, SHARPER SHIELD IN FRONT OF YOUR SITES
 ----------------------------------------
 
-If an interrupted task ever leaves a stray site copy behind, anyone on your team with panel access can now spot it and clear it away with the Import and Purge buttons -- no special account needed.
+Some scrapers spread their traffic across thousands of addresses to stay below every radar, and the interactive links they lean on hardest -- social-login windows and flag buttons, which have to run your site's code on every hit -- are now answered at the front door before any of your site's code runs, while your genuine visitors carry on exactly as before. The protection layer also recognises and reports the wider campaign behind such traffic, so it can be dealt with instead of showing up as unexplained load.
 
 ----------------------------------------
 FRESHER FOUNDATIONS FOR YOUR NEXT PROJECT
 ----------------------------------------
 
-Drupal 11.4 is ready to use as a complete platform set, Backdrop is now delivered with the same care and versioning as Drupal, and one-time login links on Drupal 7 sites work dependably every time.
+Drupal 10.6 and 11.4 are both ready to use as complete platform sets, and OpenCulturas moves to 3.0.5.
 
-Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-822
+Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-833
 
 ----------------------------------------
 YOU CAN ACCESS YOUR UPGRADED ÆGIR INSTANCE AT THE FOLLOWING URL

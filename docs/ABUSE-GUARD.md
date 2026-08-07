@@ -1194,9 +1194,12 @@ location ~* ^/\w\w/bgp-start/[^/]+/[^/]+$ { ...same body... }
   the `/xx/search` guards carry. `update.php`, drush and programmatic batches never reach
   `/bgp-start/` (the conversion is scoped to progressive batches whose URL is `batch`).
   Access logging stays ON here deliberately — `batch_guard.sh` reads these lines.
-- **Relation to the healer.** This is prevention; `batch_guard.sh` (MONITOR.md) is the cure
-  for boxes not yet carrying the cap. On a box that has it the guard normally stays idle: the
-  499 wall it arms on no longer forms.
+- **Relation to the healer.** This is prevention; `batch_guard.sh` (MONITOR.md) is the cure,
+  and the two are complementary, not redundant: the cap sheds only walls ABOVE its rate, and
+  a sub-cap simmer is a real storm shape — an observed recurrence re-launched ~27 looping
+  bids at ~2.3 r/s aggregate for 40+ minutes, entirely under the cap, and only the guard can
+  end that one. The cap keeps the runaway wall from saturating FPM; the guard deletes the
+  stale rows any admitted flywheel feeds on.
 
 ### Edge-policy guards (defined here, documented elsewhere)
 
