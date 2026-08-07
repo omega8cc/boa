@@ -1564,7 +1564,7 @@ _update_agents() {
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f90
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f90 --guard mysql_cluster_backup.sh
-    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f77
+    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f76
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f83
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f88
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f86
@@ -1598,7 +1598,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f94
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f92
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f98
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f82
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f81
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f86
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f86
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f79
@@ -3641,6 +3641,28 @@ _fix_nginx_crawler_access() {
 }
 
 #
+# TRUE while any BOA install or upgrade may be consuming /opt/tmp/boa: the
+# chained install drops boa_run/boa_wait mid-chain by design and its octopus
+# leg runs as "bash /var/backups/OCTOPUS.sh.txt", so the lock pids alone are
+# not enough -- sweep the marker AND the live process forms. This gate is
+# self-contained on purpose: BOA.sh.txt reaches every box on the next cron
+# fetch, ahead of any fNN-pinned tool update.
+#
+_install_in_flight() {
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/boa_wait.pid" ] && return 0
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  pgrep -f "/local/bin/barracuda" > /dev/null 2>&1 && return 0
+  pgrep -f "/local/bin/octopus" > /dev/null 2>&1 && return 0
+  # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
+  # (a remote install driven from this box) must not defer this box
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1 && return 0
+  return 1
+}
+
+#
 # Self-heal for nginx configs wiped by the pre-hardening crawler-fix race
 # (or any other crashed writer): these files are never legitimately empty,
 # so an empty file older than 10 minutes means a crashed write, not a
@@ -3684,7 +3706,11 @@ _fix_wiped_nginx_config() {
     ### battery pass, which then arms the account upgrade normally.
     _bLog=$(cat /var/log/barracuda_log.txt 2> /dev/null)
     if [[ ! "${_bLog}" =~ "Barracuda ${_rLsn}-" ]]; then
-      if [ "${_bcdaLaunched}" = "0" ] && [ ! -e "/run/boa_run.pid" ]; then
+      ### The purge below empties the shared build staging, so it must
+      ### never fire while an install may still be consuming it -- the
+      ### old boa_run.pid-only test opened exactly mid-octopus-leg; the
+      ### wipe persists, so a deferred heal simply arms on a later pass.
+      if [ "${_bcdaLaunched}" = "0" ] && ! _install_in_flight; then
         _bcdaLaunched=1
         _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); barracuda ${_rLsn} upgrade launched first"
         rm -rf /opt/tmp/*
@@ -4049,12 +4075,12 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f95 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f95 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f78 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f43 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f42 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f79 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f72 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f78 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f71 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f96 --guard duplicity
@@ -4068,7 +4094,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f94 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f91 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f90 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f96 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f91 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
