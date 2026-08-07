@@ -1432,6 +1432,16 @@ _init_start() {
     echo "  because /run/boa_wait.pid exists"
     echo
     exit 1
+  elif [ -e "/run/octopus_install_run.pid" ]; then
+    # The chained install drops boa_run/boa_wait mid-chain by design, so
+    # this marker is the only signal spanning its octopus leg; a stale
+    # copy is reaped by runner.sh/clear.sh
+    echo
+    echo "  An Octopus install or upgrade is still in flight probably"
+    echo "  because /run/octopus_install_run.pid exists"
+    echo "  (auto-clears once the install ends or the marker goes stale)"
+    echo
+    exit 1
   else
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
@@ -1887,7 +1897,9 @@ _init_setup() {
     fi
   fi
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${_sYst}" = "bundle" ]; then
-    [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
+    # Unconditional touch: the marker's mtime is its freshness heartbeat;
+    # the [ ! -e ] form let it age into runner.sh staleness mid-chain
+    touch /run/octopus_install_run.pid
     sleep 3
     _octopus_install
     if [ ! -e "/data/disk/${_usEr}/config/includes/nginx_vhost_common.conf" ] \
@@ -1906,7 +1918,7 @@ _init_setup() {
   fi
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${_sYst}" = "bundle" ]; then
     _init_cleanup
-    [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
+    touch /run/octopus_install_run.pid
     sleep 3
     # Execute post-install octopus upgrade and exit
     touch /data/disk/${_usEr}/static/control/ssl-live-mode.info
@@ -1948,6 +1960,9 @@ _init_setup() {
       _NOW=${_NOW//[^0-9-]/}
       _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
       rm -rf /data/disk/${_usEr}/.tmp/cache
+      # Hand-over: this post-install octopus must not refuse on the very
+      # marker this chain holds; it re-touches and finally clears it
+      export _OCTOPUS_CHAINED=YES
       if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
 #         echo "Launching octopus up-${_tRee} ${_usEr} in the background now..."
 #         echo
@@ -1964,6 +1979,11 @@ _init_setup() {
         echo "Launching octopus up-${_tRee} ${_usEr} now..."
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
         wait
+        # That octopus cleared the marker in its _up_finish; re-take it so
+        # the LE check plus a possible 5-min retry wait stay covered -- the
+        # retry run bypasses via the exported _OCTOPUS_CHAINED and the
+        # no-retry path releases it before the final exit below
+        touch /run/octopus_install_run.pid
         echo "Checking LE setup status..."
         if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
           _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
@@ -1987,6 +2007,9 @@ _init_setup() {
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
           wait
+          # Same as after the first run: cover the remaining LE re-check;
+          # the conditional release before the final exit clears it
+          touch /run/octopus_install_run.pid
           echo "Checking LE setup status..."
           if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
             _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
@@ -2021,6 +2044,13 @@ _init_setup() {
           echo "Enjoy!"
         fi
       fi
+    fi
+    # Release the marker unless a nohup'd post-install octopus now owns it
+    # (the in-octopus form without .dont.upgrade...); every other route
+    # through this block ends here with no octopus left to clear it
+    if [ "${_OCTOPUS_ONLY}" != "YES" ] \
+      || [ -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
+      rm -f /run/octopus_install_run.pid
     fi
     _display_admin_email_info
     sleep 1

@@ -91,12 +91,25 @@ _ci_master_cron_control() {
 [ -e "/run/boa_queue_stop.pid" ] && exit 0
 # An Octopus install/upgrade must reload backend config/aliases promptly, so let
 # the queue run even under a web-load pause while a run is genuinely in progress.
-# Honour the marker only when fresh or backed by a live octopus process; clear a
+# Honour the marker only when fresh or backed by a live install process; clear a
 # stale one so a crashed run can never permanently bypass the web-load pause.
+# The liveness sweep must also match the chained boa install, whose octopus leg
+# runs as "bash /var/backups/OCTOPUS.sh.txt" (not the octopus wrapper), and the
+# documented bare "boa in-<tree>" form, which PATH-resolves to /usr/local/bin
+# (a symlink), never /opt/local/bin. The boa pattern is anchored so a remote
+# install driven FROM this box over ssh cannot keep a local marker alive. While
+# a matching process lives, re-touch the marker -- this per-minute heartbeat is
+# what keeps it fresh for every launcher and purge guard that consults it, and
+# it spans the whole install: the accel bypass below therefore does too, by
+# design (queued backend tasks must run for INIT to complete).
 _accel_now=NO
 if [ -e "/run/octopus_install_run.pid" ]; then
-  if pgrep -f "/opt/local/bin/octopus" > /dev/null 2>&1 \
-    || [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then
+  if pgrep -f "/local/bin/octopus" > /dev/null 2>&1 \
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
+    || pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1; then
+    _accel_now=YES
+    touch /run/octopus_install_run.pid
+  elif [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then
     _accel_now=YES
   else
     rm -f /run/octopus_install_run.pid
@@ -174,8 +187,9 @@ _runner_action() {
     elif [ "${_ACCELERATED}" = "YES" ]; then
       # Octopus install/upgrade: force the queue regardless of load so the freshly
       # upgraded backend config/aliases reload before other tasks need them. The
-      # marker is bounded and stale copies are cleared above, so this is a short,
-      # controlled window rather than a standing load-protection bypass.
+      # heartbeat above keeps the marker fresh for the WHOLE install, so this
+      # bypass now spans the full run by design (INIT needs the queue); stale
+      # markers with no live install are still cleared above.
       echo "Accelerated queue (Octopus install/upgrade): running ${_Runner} regardless of load (${_O_LOAD}%)"
       bash "${_Runner}"
       _n=$((RANDOM % 9 + 2))
