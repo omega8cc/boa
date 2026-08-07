@@ -893,6 +893,11 @@ EOFMYSQL
             echo "ALRT: site ${_Dom} verify failure due to missing ${_USR}/.drush/${_Dom}.alias.drushrc.php"
           fi
         else
+          ### Counted: a site whose credentials cannot be parsed was NOT
+          ### imported -- the run must not end 0 with imported.pid over it.
+          _XOCT_SITE_IMPORT_OK=NO
+          _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+          _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_Dom}:empty-db-credentials"
           echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
         fi
       elif [ "${_cmd}" = "export" ]; then
@@ -977,7 +982,10 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           echo "ALRT: site ${_Dom} db export FAILED on ${_oct}"
         fi
       elif [ "${_cmd}" = "proxy" ]; then
-        if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then
+        if { [ -e "${_USR}/log/exported.pid" ] \
+          || { [ "${_XOCT_FORCE}" = "YES" ] \
+          && [ -e "${_USR}/log/export_failed.pid" ]; }; } \
+          && [ ! -z "${_tgt}" ]; then
           if [ -e "${_Vht}" ]; then
             ### On a repair ${_Vht} is already a proxy vhost, whose name list a
             ### previous repair could have narrowed. The saved real vhost is the
@@ -1042,7 +1050,11 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           fi
         else
           _XOCT_PROXY_FAIL=$(( ${_XOCT_PROXY_FAIL:-0} + 1 ))
-          echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed due to empty tgt/${_tgt}"
+          echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed: missing log/exported.pid or empty tgt/${_tgt}"
+          if [ -e "${_USR}/log/export_failed.pid" ]; then
+            echo "ALRT: export_failed.pid is present -- re-run a clean 'xoct export', or convert"
+            echo "ALRT: anyway with 'xoct proxy ${_oct} ${_tgt} --force' (accepts the partial export)"
+          fi
         fi
       fi
     fi
@@ -1722,13 +1734,30 @@ _migrate_prepare() {
     ### resolver falls back to the built-in default. Only a real send writes a
     ### mail line, and a neutral mail logs mode "-" so the first later promise
     ### correctly reads as a change.
-    _mig_resolve "${_USR}"
-    _mig_build_mail_blocks start "${_tgt}"
-    _send_notice_migration_start
-    if [ "${_MAIL_SENT}" = "YES" ]; then
-      _XOCT_START_MODE="${_MIG_MODE}"
-      [ "${_MIG_SOURCE}" = "default" ] && _XOCT_START_MODE="-"
-      _mig_log "${_USR}" xoct mail start "${_XOCT_START_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
+    ### One notice per account+target: withholding exported.pid made re-running
+    ### export the documented recovery, and every retry entered this block --
+    ### dedupe on the recorded mail line (field 7 = peer), so a later migration
+    ### to a DIFFERENT target still notifies. reset-state clears nothing here
+    ### by design: the log is the audit trail of what the client was told.
+    _XOCT_START_MAILED=$(awk -F'|' -v t="${_tgt}" \
+      '$3=="mail" && $4=="start" && $7==t { c++ } END { print c+0 }' \
+      ${_USR}/log/migproxy.log 2>/dev/null)
+    if [ "${_XOCT_START_MAILED:-0}" != "0" ]; then
+      echo "INFO: migration start notice already sent for ${_oct} to ${_tgt}; not re-mailing"
+    else
+      _mig_resolve "${_USR}"
+      ### A refused compose must never fall through to a send with an empty
+      ### forwarding block.
+      if _mig_build_mail_blocks start "${_tgt}"; then
+        _send_notice_migration_start
+        if [ "${_MAIL_SENT}" = "YES" ]; then
+          _XOCT_START_MODE="${_MIG_MODE}"
+          [ "${_MIG_SOURCE}" = "default" ] && _XOCT_START_MODE="-"
+          _mig_log "${_USR}" xoct mail start "${_XOCT_START_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
+        fi
+      else
+        echo "ALRT: start notice NOT sent: mail blocks refused to compose (see above)"
+      fi
     fi
   fi
 
@@ -3403,6 +3432,13 @@ _migrate_init() {
             # pretransfer -> export -> transfer sequence self-blocking at the
             # transferred.pid eligibility gate.
             if [ "${_cmd}" = "transfer" ]; then
+              ### A transfer that passed the export gate means the source's
+              ### export is clean now -- a stale export_failed.pid that
+              ### travelled with an earlier --force transfer must not wedge
+              ### the import on the target forever.
+              if [ ! -e "${_USR}/log/export_failed.pid" ]; then
+                ssh root@${_tgt} "rm -f ${_DST}/log/export_failed.pid" &> /dev/null
+              fi
               touch ${_USR}/log/transferred.pid
             fi
           else
@@ -3941,6 +3977,11 @@ case "$1" in
         --renotify|--notify) _XOCT_RENOTIFY=YES ;;
         --no-notify)         _XOCT_NO_NOTIFY=YES ;;
         --force-pinned)      _XOCT_FORCE_PINNED=YES ;;
+        ### For proxy: allows converting a source whose export was --forced
+        ### through with export_failed.pid (exported.pid was truthfully
+        ### withheld) -- otherwise the account stays 503 forever with no
+        ### escape on the same axis the transfer/import escape used.
+        --force)             _XOCT_FORCE=YES ;;
         --all)               _margs+=("${_a}") ;;
         --*)
           echo "ERROR: unknown option '${_a}' for $1"

@@ -250,6 +250,11 @@ EOFMYSQL
             echo "ALRT: site ${_Dom} verify failure due to missing ${_USR}/.drush/${_Dom}.alias.drushrc.php"
           fi
         else
+          ### Counted: a site whose credentials cannot be parsed was NOT
+          ### imported -- the run must not end 0 with imported.pid over it.
+          _XCOPY_SITE_IMPORT_OK=NO
+          _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
+          _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_Dom}:empty-db-credentials"
           echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
         fi
       elif [ "${_cmd}" = "export" ]; then
@@ -1086,6 +1091,13 @@ _migrate_init() {
             # pretransfer -> export -> transfer sequence self-blocking at the
             # transferred.pid eligibility gate. Mirrors the xoct fix.
             if [ "${_cmd}" = "transfer" ]; then
+              ### A transfer that passed the export gate means the source's
+              ### export is clean now -- a stale export_failed.pid that
+              ### travelled with an earlier --force transfer must not wedge
+              ### the import on the target forever.
+              if [ ! -e "${_USR}/log/export_failed.pid" ]; then
+                ssh root@${_tgt} "rm -f ${_DST}/log/export_failed.pid" &> /dev/null
+              fi
               touch ${_USR}/log/transferred.pid
             fi
           else
