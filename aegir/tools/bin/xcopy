@@ -258,7 +258,18 @@ EOFMYSQL
           fi
         fi
         mkdir -p ${_USR}/src/${_DBN}
-        if mydumper \
+        ### Any non-transactional table makes mydumper abort the whole
+        ### database unless --trx-tables=0 is passed; mirrors mysql_backup.sh.
+        _NON_TRX_COUNT=$(mysql -u root -s -N -e "SELECT COUNT(*) FROM \
+information_schema.TABLES WHERE TABLE_SCHEMA='${_DBN}' AND \
+TABLE_TYPE='BASE TABLE' AND ENGINE IS NOT NULL AND \
+ENGINE NOT IN ('InnoDB')" 2> /dev/null)
+        _MYDUMPER_TRX_OPT=""
+        if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
+          _MYDUMPER_TRX_OPT="--trx-tables=0"
+        fi
+        ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
+        if mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
           --host=localhost \
           --defaults-file=/root/.my.cnf \
