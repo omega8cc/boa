@@ -278,7 +278,11 @@ _probe_dom() {
   sleep 6
   _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
     -H "Host: ${_d}" "http://127.0.0.1/" 2>/dev/null)
-  if [ "${_c1}" != "200" ] || ! echo "${_cr}" | grep -qE '^(200|301|302)$'; then
+  ### Both legs land on the target's port 80: an SSL-Required site answers
+  ### a legitimate 301 to https there, so the direct leg must accept
+  ### redirects exactly like the relay leg does.
+  if ! echo "${_c1}" | grep -qE '^(200|301|302)$' \
+    || ! echo "${_cr}" | grep -qE '^(200|301|302)$'; then
     sleep 6
     _c1=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
       --resolve "${_d}:80:${_t}" "http://${_d}/" 2>/dev/null)
@@ -287,7 +291,8 @@ _probe_dom() {
       -H "Host: ${_d}" "http://127.0.0.1/" 2>/dev/null)
   fi
   echo "direct=${_c1} relay=${_cr}"
-  [ "${_c1}" = "200" ] && echo "${_cr}" | grep -qE '^(200|301|302)$'
+  echo "${_c1}" | grep -qE '^(200|301|302)$' \
+    && echo "${_cr}" | grep -qE '^(200|301|302)$'
 }
 
 _probe_all_doms() {
@@ -534,18 +539,30 @@ _stage_a() {
   done
   ### Solr: UNLOAD (all delete flags false) + move aside -- the reversible
   ### stop, mirroring the orphan archiver. Never 'solr delete' here.
+  ### Quarantine SIBLING to the resolved data dir: /var/solrN is routinely
+  ### a symlink onto the attached /mnt store, and moving a large index onto
+  ### the root filesystem would fill it. The origin dir + port are recorded
+  ### in MAP.txt because the core NAME does not encode the tree (oct.* cores
+  ### exist on solr7 and solr9 alike) -- restore replays the map, never a
+  ### name heuristic.
   for _c in $(_solr_cores_for "${_oN}"); do
-    local _core _port
+    local _core _port _res _qsolr
     _core="$(basename "${_c}")"
     case "${_c}" in
       /var/solr9/*) _port=9099 ;;
       /var/solr7/*) _port=9077 ;;
       *) _port=8099 ;;
     esac
+    _res="$(readlink -f "${_c}")"
+    [ -d "${_res}" ] || continue
+    _qsolr="$(dirname "$(dirname "${_res}")")/xtrim-quarantine"
+    mkdir -p "${_qsolr}"
     curl -s --max-time 15 \
       "http://127.0.0.1:${_port}/solr/admin/cores?action=UNLOAD&core=${_core}&deleteIndex=false&deleteDataDir=false&deleteInstanceDir=false" &> /dev/null
-    mv -f "$(readlink -f "${_c}")" "${_q}/solr/${_core}" 2>/dev/null \
-      && _info "${_oN}: solr core ${_core} unloaded + quarantined"
+    if mv -f "${_res}" "${_qsolr}/${_core}" 2>/dev/null; then
+      echo "${_core}|$(dirname "${_res}")|${_port}|${_qsolr}/${_core}" >> "${_q}/solr/MAP.txt"
+      _info "${_oN}: solr core ${_core} unloaded + quarantined at ${_qsolr}/${_core}"
+    fi
   done
   ### Re-probe; any regression auto-restores and aborts.
   if [ "${_fail}" != "0" ] || ! _probe_all_doms "${_oN}"; then
@@ -561,44 +578,50 @@ _restore_stage_a() {
   local _oN="$1"
   local _q="${_XTRIM_BASE}/${_oN}/quarantine" _p _m _c
   _USR="/data/disk/${_oN}"
-  if [ "$(_phase_get "${_oN}")" = "stage-b" ]; then
-    _die "${_oN}: stage B already ran -- restore is a migration back, not an unpark (see the manifest + archived aliases)"
-  fi
+  case "$(_phase_get "${_oN}")" in
+    stage-b*)
+      _die "${_oN}: stage B already ran (or crashed mid-run) -- restore is a migration back, not an unpark (see the manifest + archived aliases)"
+    ;;
+  esac
+  local _nn
   for _p in "${_q}"/pools/*; do
     [ -e "${_p}" ] || continue
-    _m=$(basename "${_p}" | sed "s/^${_oN}\.\{0,1\}//; s/\.conf$//; s/[^0-9]//g")
-    [ -z "${_m}" ] && _m=$(grep -m1 "^prefix" "${_p}" 2>/dev/null | grep -o '[0-9]*' | head -1)
-    ### Pool filename encodes the tree: oN.NN.conf -> /opt/phpNN/pool.d
-    local _nn
+    ### Multi pool oN.NN.conf encodes its tree in the filename; the single
+    ### pool oN.conf is pinned by the ACCOUNT's static/control/fpm.info --
+    ### the box-level _PHP_FPM_VERSION is a different knob and lands the
+    ### pool in a tree whose master never serves this account.
     _nn=$(basename "${_p}" | sed -n "s/^${_oN}\.\([0-9]*\)\.conf$/\1/p")
+    if [ -z "${_nn}" ] && [ -r "${_USR}/static/control/fpm.info" ]; then
+      _nn=$(tr -d -c 0-9 < "${_USR}/static/control/fpm.info")
+    fi
+    if [ -z "${_nn}" ]; then
+      _nn=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
+    fi
     if [ -n "${_nn}" ] && [ -d "/opt/php${_nn}/etc/pool.d" ]; then
       mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"
       service "php${_nn}-fpm" reload &> /dev/null
-    elif [ -d "/opt/php$(cat /root/.barracuda.cnf 2>/dev/null | grep -m1 '^_PHP_FPM_VERSION' | tr -d -c 0-9)/etc/pool.d" ]; then
-      _nn=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
-      mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"
-      service "php${_nn}-fpm" reload &> /dev/null
+    else
+      _alrt "${_oN}: cannot place pool $(basename "${_p}") -- no /opt/php${_nn:-?} tree; left in quarantine"
     fi
   done
   for _p in "${_q}"/postd/*; do
     [ -e "${_p}" ] || continue
     mv -f "${_p}" "${_USR}/config/server_master/nginx/post.d/" 2>/dev/null
   done
-  for _c in "${_q}"/solr/*; do
-    [ -d "${_c}" ] || continue
-    local _core _base _port
-    _core="$(basename "${_c}")"
-    case "${_core}" in
-      oct.*|solr.*)
-        if echo "${_core}" | grep -q "^oct\."; then _base=/var/solr9/data; _port=9099
-        else _base=/var/solr7/data; _port=9077; fi
-        ;;
-      *) _base=/var/solr7/data; _port=9077 ;;
-    esac
-    [ -d "${_base}" ] && mv -f "${_c}" "$(readlink -f "${_base}")/${_core}" \
-      && curl -s --max-time 15 \
-        "http://127.0.0.1:${_port}/solr/admin/cores?action=RELOAD&core=${_core}" &> /dev/null
-  done
+  ### Restore replays the recorded quarantine map -- origin dir + port were
+  ### captured at stage A time; a name heuristic would misplace oct.* cores
+  ### that live on solr7.
+  if [ -r "${_q}/solr/MAP.txt" ]; then
+    while IFS='|' read -r _core _origin _port _held; do
+      [ -d "${_held}" ] || continue
+      [ -d "${_origin}" ] || continue
+      mv -f "${_held}" "${_origin}/${_core}" \
+        && curl -s --max-time 15 \
+          "http://127.0.0.1:${_port}/solr/admin/cores?action=RELOAD&core=${_core}" &> /dev/null \
+        && _info "${_oN}: solr core ${_core} restored to ${_origin}"
+    done < "${_q}/solr/MAP.txt"
+    rm -f "${_q}/solr/MAP.txt"
+  fi
   if [ -e "${_q}/held-run-${_oN}" ]; then
     mv -f "${_q}/held-run-${_oN}" "/var/xdrago/run-${_oN}"
     chmod 700 "/var/xdrago/run-${_oN}" 2>/dev/null
@@ -614,6 +637,10 @@ _stage_b() {
   local _oN="$1"
   local _db _f _r _dumps="${_XTRIM_BASE}/${_oN}/dbdumps"
   mkdir -p "${_dumps}"
+  ### Mark ENTRY, not just completion: a crash mid-stage-B must leave a
+  ### phase that makes 'xtrim restore' refuse -- unparking pools over
+  ### half-dropped databases resurrects sites against nothing.
+  _phase_set "${_oN}" "stage-b-started"
   _info "${_oN}: stage B -- data removal (ONE-WAY on this box)"
   ### Databases: dump + verify EVERY database first, then drop, deriving
   ### from the map (saved vhosts + aliases) -- never from sqlclean.
@@ -644,7 +671,10 @@ _stage_b() {
     _r=$(mysql --silent -u root -N -B -e \
       "SELECT COUNT(*) FROM mysql.db WHERE User='${_db}' AND Db<>'${_db}'" 2>/dev/null | tr -d ' \n')
     if [ "${_r}" = "0" ]; then
+      ### Provision always grants an extra 127.0.0.1 account on top of the
+      ### requested host -- drop all three or the user survives half-dead.
       mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'localhost'" 2>/dev/null
+      mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'127.0.0.1'" 2>/dev/null
       mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'%'" 2>/dev/null
     fi
     _probe_all_doms "${_oN}" >/dev/null 2>&1 \
@@ -713,13 +743,19 @@ _finalize() {
     return 0
   fi
   mkdir -p "${_XTRIM_BASE}/finalize/pools"
+  ### Shared codebases live under BOTH roots.
   [ -d "/data/all" ] && rm -rf /data/all && _info "finalize: removed /data/all"
-  ### Solr off.
+  [ -d "/data/disk/all" ] && rm -rf /data/disk/all && _info "finalize: removed /data/disk/all"
+  ### Solr off -- and DISARMED: the /var/xdrago/monitor tree is deliberately
+  ### not .proxy.cnf-gated, and java.sh restarts any solr whose init script
+  ### is executable. Dropping the exec bit is the guard's own key; the
+  ### script stays on disk, +x re-arms it.
   for _n in solr9 solr7 jetty9; do
     if [ -x "/etc/init.d/${_n}" ]; then
       pkill -9 -f "${_n}" &> /dev/null
       update-rc.d "${_n}" disable &> /dev/null
-      _info "finalize: ${_n} stopped + disabled"
+      chmod -x "/etc/init.d/${_n}" 2>/dev/null
+      _info "finalize: ${_n} stopped + disabled + watchdog disarmed (init script -x)"
     fi
   done
   ### MySQL off (datadir kept unless explicitly dropped).
@@ -836,9 +872,13 @@ case "$1" in
     [ -z "${_acct}" ] && _die "Usage: xtrim ${_verb} <oN|all> [--live]"
     _manage_single_lock
     _take_sqlclean_lock
+    ### 'all' means all PROXIED accounts: a box mid-drain legitimately
+    ### holds unproxied ones, and _die-ing on the first would make the
+    ### fan-out unusable. The single-account form still refuses loudly.
     if [ "${_verb}" = "shrink" ] && [ "${_XTRIM_MODE}" = "LIVE" ]; then
       if [ "${_acct}" = "all" ]; then
         for _n in $(_list_accounts); do
+          [ -e "/data/disk/${_n}/log/proxied.pid" ] || continue
           _require_clean_dry shrink "${_n}"
         done
       else
@@ -847,6 +887,10 @@ case "$1" in
     fi
     if [ "${_acct}" = "all" ]; then
       for _n in $(_list_accounts); do
+        if [ ! -e "/data/disk/${_n}/log/proxied.pid" ]; then
+          _info "${_n}: not proxied -- skipped by 'all' (name it explicitly to see the refusal)"
+          continue
+        fi
         _run_one "${_verb}" "${_n}" "${_XTRIM_MODE}"
       done
     else
