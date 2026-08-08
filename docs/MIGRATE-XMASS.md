@@ -519,6 +519,39 @@ from the per-account policy records: peers whose accounts resolved
 found and are reported. With no records at all it behaves exactly as the old
 unconditional teardown (the permanent marker is honoured).
 
+It also **rebuilds the pinned PHP pools**, which is not cosmetic. A
+migrated account arrives carrying the source's per-release FPM markers
+(`static/control/.multi-fpm.<tree>.<xSrl>.pid` and
+`.multi-nginx-fpm.pid`). Both boxes run the same release, so without this
+step the target reads them as "pool set already built", never creates
+pools for versions that exist only here — exactly the interpreters
+`prep-target --fix-php` built for the carried pins — and never regenerates
+the per-site socket includes. The pins survive intact and stay INERT:
+every pinned site is served by the account's DEFAULT pool, indefinitely,
+because nothing re-triggers until the release serial moves or the pin file
+changes. `post-mig` clears the markers, lets the normal sweep rebuild in
+the two passes it needs (the include generator will not emit a site
+include before that pool's socket exists), then prints per account either
+
+```
+INFO:   o1: every pinned PHP pool is live
+```
+
+or an `ALRT` naming each pin that is still missing. **Treat any such ALRT
+as a stop**: those sites are running on the wrong interpreter right now.
+Spot-check independently with `/run/<oN>.<NN>.fpm.socket` and the site's
+`post.d/fpm_include_site_<domain>.inc`. Note that a site answering HTTP
+200 with correct content proves nothing here — a Drupal 7 core tolerant of
+PHP 8.4 looks perfectly healthy while mis-pinned, whereas a 5.6 or 7.x
+site fatals.
+
+> **Do not skip `post-mig`, and confirm cron afterwards.** The target-side
+> quiesce stops cron, and `post-mig` is what starts it again. A target left
+> without it keeps cron down, which means `clear.sh` never runs, which
+> means the box **silently stops receiving fleet updates entirely** —
+> no BOA self-update, no tool refetch, no nightly work. Nothing warns
+> about it; the box simply goes quiet. Verify with `pgrep -x cron`.
+
 ---
 
 ## xtrabackup Transfer Method
