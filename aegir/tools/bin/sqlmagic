@@ -5,12 +5,31 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _sqlmagic_fix() {
   if [ -f "${_sOurce}" ]; then
-    cat ${_sOurce} \
-      | sed 's|/\*!50001 CREATE ALGORITHM=UNDEFINED \*/|/\*!50001 CREATE \*/|g;
-      s|/\*!50017 DEFINER=`[^`]*`@`[^`]*`\s*\*/||g' \
-      | sed '/\*!50013 DEFINER=.*/ d' > ${_tarGet}
-    sed -i "s/^INSERT INTO/INSERT IGNORE INTO/g" ${_tarGet}
-    wait
+    ### A pipeline reports only its LAST element, so a failed read or a
+    ### full disk left a truncated (or empty) target that was still
+    ### announced as the fixed dump -- which an operator then restores.
+    if ! ( set -o pipefail
+           cat ${_sOurce} \
+             | sed 's|/\*!50001 CREATE ALGORITHM=UNDEFINED \*/|/\*!50001 CREATE \*/|g;
+             s|/\*!50017 DEFINER=`[^`]*`@`[^`]*`\s*\*/||g' \
+             | sed '/\*!50013 DEFINER=.*/ d' > ${_tarGet} ); then
+      echo "ERROR: could not rewrite ${_sOurce} into ${_tarGet}"
+      rm -f ${_tarGet}
+      echo "Bye"
+      exit 1
+    fi
+    if ! sed -i "s/^INSERT INTO/INSERT IGNORE INTO/g" ${_tarGet}; then
+      echo "ERROR: could not apply the INSERT IGNORE pass to ${_tarGet}"
+      rm -f ${_tarGet}
+      echo "Bye"
+      exit 1
+    fi
+    if [ ! -s "${_tarGet}" ]; then
+      echo "ERROR: ${_tarGet} came out empty -- refusing to call it a fixed dump"
+      rm -f ${_tarGet}
+      echo "Bye"
+      exit 1
+    fi
     echo "Fixed database dump stored as ${_tarGet}"
     echo "Bye"
     exit 0

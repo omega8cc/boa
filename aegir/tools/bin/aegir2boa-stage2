@@ -891,9 +891,17 @@ _export_hostmaster() {   # db-import route only
   # shellcheck disable=SC2046
   mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) "${_hdb}" \
     > "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" 2>>"${_LOG}"
+  _a2b_dump_rc=$?
   rm -f "${_myd}"
-  [[ -s "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" ]] \
-    || { _alrt "hostmaster dump FAILED/empty"; return 1; }
+  ### `-s` accepts a dump that died after its header, and this export is
+  ### what the whole adoption is rebuilt from -- demand the dumper's exit
+  ### status and its closing marker as well.
+  if [[ "${_a2b_dump_rc}" -ne 0 ]] \
+    || [[ ! -s "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" ]] \
+    || ! tail -5 "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" 2>/dev/null | grep -q "Dump completed"; then
+    _alrt "hostmaster dump FAILED, empty or truncated (rc=${_a2b_dump_rc}) -- not marking it exported"
+    return 1
+  fi
   chmod 600 "${_AEGIR_ROOT}/src/a2b/hostmaster.sql"
   # the frontend must not take writes that post-date its dump
   _as_aegir "drush @hostmaster vset --always-set maintenance_mode 1" >>"${_LOG}" 2>&1
