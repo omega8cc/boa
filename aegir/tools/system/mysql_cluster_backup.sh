@@ -325,6 +325,16 @@ _backup_this_database_with_mysqldump() {
     --no-tablespaces \
     --hex-blob ${_DB} \
     > ${_SAVELOCATION}/${_DB}.sql
+  ### A failed or truncated dump used to be compressed and kept as THE
+  ### backup for the night: the rc was never read, and gzip turns any
+  ### partial file into a valid archive. Demand rc=0 and mysqldump's own
+  ### trailer, and get the debris out of the way so the compressor cannot
+  ### promote it to a backup.
+  if [ "$?" -ne "0" ] || ! tail -5 ${_SAVELOCATION}/${_DB}.sql 2>/dev/null | grep -q "Dump completed"; then
+    echo "ALRT: mysqldump FAILED or produced a truncated dump for ${_DB} -- discarding it"
+    mv -f ${_SAVELOCATION}/${_DB}.sql ${_SAVELOCATION}/${_DB}.sql.FAILED 2>/dev/null
+    return 1
+  fi
 }
 
 _compress_backup() {
@@ -333,8 +343,18 @@ _compress_backup() {
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
         cd ${_SAVELOCATION}
-        tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null
-        rm -f -r ${DbName}
+        ### NEVER delete the dump until the archive that replaces it is
+        ### proven readable: an unchecked tar (disk full, zstd missing)
+        ### left a 0-byte .tar.zst and the rm then destroyed the only
+        ### copy of the night's backup.
+        if tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null \
+          && [ -s "${DbName}-${_DATE}.tar.zst" ] \
+          && tar -p -I zstd -tf ${DbName}-${_DATE}.tar.zst &> /dev/null; then
+          rm -f -r ${DbName}
+        else
+          echo "ALRT: compressing ${DbName} FAILED -- keeping the uncompressed dump directory"
+          rm -f ${DbName}-${_DATE}.tar.zst
+        fi
       fi
     done
     chmod 600 ${_SAVELOCATION}/*
@@ -351,7 +371,7 @@ _compress_backup() {
   fi
 }
 
-[ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
+[ ! -e ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
 _check_mysql_version() {
   _DB_V=$(mysql -V 2>&1 \
