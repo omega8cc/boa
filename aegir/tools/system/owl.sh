@@ -295,6 +295,7 @@ _MODULES_FORCE="automated_cron \
   coder \
   cookie_cache_bypass \
   hacked \
+  mydropwizard \
   poormanscron \
   security_review \
   site_audit \
@@ -305,12 +306,19 @@ _MODULES_FORCE="automated_cron \
 if [ "${_DOW}" = "2" ]; then
   _MODULES_ON_SEVEN=
   _MODULES_ON_SIX=
+  # mydropwizard exists only to pull update-status data from the
+  # myDropWizard Drupal 6 LTS service, which closed in February 2022.
+  # Its hook_cron() still fires a synchronous request to
+  # updates.mydropwizard.com on every availability check, and that host
+  # now refuses the TLS handshake, so the call can never succeed. A 6.x
+  # and a 7.x branch both shipped, hence both lists below.
   _MODULES_OFF_SEVEN="coder \
     devel \
     filefield_nginx_progress \
     hacked \
     l10n_update \
     linkchecker \
+    mydropwizard \
     performance \
     security_review \
     site_audit \
@@ -322,6 +330,7 @@ if [ "${_DOW}" = "2" ]; then
     hacked \
     l10n_update \
     linkchecker \
+    mydropwizard \
     performance \
     poormanscron \
     security_review \
