@@ -785,8 +785,15 @@ _stage_b() {
       _die "${_oN}: mysqldump ${_db} failed -- stopping BEFORE any drop"
     fi
   done
-  ### Re-prove the target one last time between dump and drop.
-  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+  ### Re-prove the target one last time between dump and drop -- with the
+  ### SAME classification the preflight uses. The account's own panel and
+  ### dedicated site never exist under these names on an xoct target (it
+  ### builds fresh ones named for its own host), so demanding them here
+  ### aborted every shrink after the dumps were already taken.
+  for _db in ${_MAP_DBS}; do
+    case " ${_MAP_OWN_DBS} ${_MAP_HM_DB} " in
+      *" ${_db} "*) continue ;;
+    esac
     _target_proof_db "${_db}" \
       || _die "${_oN}: target lost schema ${_db} between dump and drop -- stopping"
   done
