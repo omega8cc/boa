@@ -3106,6 +3106,48 @@ REMOTE
 
 ###-------------RENAMEAEGIRHOST ON TARGET---###
 
+_xmass_promotion_cleanup_target() {
+  # A cutover TARGET that was itself demoted earlier (failback: the pair
+  # switched, now switches back) still carries the artefacts of its OWN
+  # demotion, and every one of them bites after promotion -- found live on
+  # the first failback drill:
+  #   - its self-authored SOURCE-role migproxy.cnf makes the peer-record
+  #     gate refuse EVERY inbound proxy push (rc 7): the demoted sibling's
+  #     own conversion fails (leaving its sites 503-gated) and a PX0 proxy
+  #     can never be retargeted back to this box;
+  #   - its stale proxied.pid makes create/export refuse this box as a
+  #     future source ("already migrated");
+  #   - its parked dispatcher leaves the promoted account's queue dead, so
+  #     tasks and certificate renewals silently stop.
+  # The promotion ends the demotion those artefacts belonged to. Clearing
+  # them here -- BEFORE step 16 pushes fresh records at this box -- is what
+  # lets the failback complete. Idempotent; a first-migration target has
+  # none of these and every branch is a no-op.
+  _info "Clearing stale demotion artefacts on promoted target ${_tgt} ..."
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    ssh root@"${_tgt}" "bash -s" <<PROMCLEAN
+_cnf="/data/disk/${_oct}/log/migproxy.cnf"
+if [ -r "\${_cnf}" ] \
+  && grep -qx "_MIG_ROLE=source" "\${_cnf}" \
+  && hostname -I 2>/dev/null | tr ' ' '\n' \
+     | grep -qxF "\$(grep -m1 '^_MIG_HOST_IP=' "\${_cnf}" | cut -d= -f2-)"; then
+  mv -f "\${_cnf}" "\${_cnf}.superseded-by-promotion" 2>/dev/null
+  echo "  ${_oct}: retired stale self-authored source-role record"
+fi
+if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
+  rm -f "/data/disk/${_oct}/log/proxied.pid"
+  echo "  ${_oct}: removed stale proxied.pid"
+fi
+if [ ! -e "/var/xdrago/run-${_oct}" ] \
+  && [ -e "/var/backups/off-run/run-${_oct}" ]; then
+  mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
+  echo "  ${_oct}: restored parked dispatcher"
+fi
+PROMCLEAN
+  done
+}
+
 _xmass_renameaegirhost_all() {
   # OLD is pinned via --force-old to the source's own server_master alias
   # value (what a first-run auto-detect would see on the target) because:
@@ -3766,6 +3808,10 @@ for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   fi
 done
 REMOTE
+
+  # Step 15.5: A failback target was itself demoted earlier; its stale
+  # demotion artefacts refuse the steps that follow (see the function).
+  _xmass_promotion_cleanup_target
 
   # Step 15.9: Wire migration-proxy realip+csf trust BEFORE the source starts
   # proxying, so the new host recovers the real client and never bans the proxy
