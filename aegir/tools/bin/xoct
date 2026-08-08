@@ -1075,6 +1075,63 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   done
 }
 
+### A migrated account arrives carrying the SOURCE box's per-release FPM
+### markers under static/control. Both boxes run the same release, so the
+### target's manage_ltd_users reads .multi-fpm.<tree>.<xSrl>.pid as "pool
+### set already built for this release" and never creates pools for the
+### versions that exist only HERE -- exactly the interpreters prep-target's
+### --fix-php just built for the carried per-site pins. .multi-nginx-fpm.pid
+### gates the per-site $user_socket includes the same way. The result is a
+### pinned site silently served by the account's DEFAULT pool, for good:
+### nothing re-triggers until the release serial moves or the pin file's
+### CONTENT changes. Clearing the markers hands the work back to the normal
+### sweep. Two passes by design -- the include generator refuses to emit a
+### site include until that pool's socket exists, so the pools must be built
+### first. (.prev-multi-fpm.info is deliberately NOT touched: the sweep
+### recreates it from the live file before diffing, so removing it proves
+### nothing and only hides the real lever.)
+_xoct_heal_fpm_pins() {
+  local _acct="$1"
+  local _root="/data/disk/${_acct}"
+  local _ctl="${_root}/static/control"
+  local _pin _dom _ver _missing=""
+  [ -d "${_ctl}" ] || return 0
+  [ -e "${_ctl}/multi-fpm.info" ] || return 0
+  ### Deletes only; nothing is created here, and the sweep re-chowns the
+  ### .info files it touches -- so no root-owned residue is left behind in
+  ### the account's control dir.
+  rm -f ${_ctl}/.multi-fpm.*.pid
+  rm -f ${_ctl}/.single-fpm.*.pid
+  rm -f ${_ctl}/.multi-nginx-fpm.pid
+  echo "INFO: cleared carried FPM pool markers for ${_acct}; rebuilding pinned pools"
+  if [ -x "/var/xdrago/manage_ltd_users.sh" ] || [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
+    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+    ### The sockets exist now; re-arm the include generator for pass two.
+    rm -f ${_ctl}/.multi-nginx-fpm.pid
+    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+  fi
+  ### Verify every pinned version really has a live pool socket, and name
+  ### the ones that do not -- a silent wrong-interpreter site is the whole
+  ### failure this heal exists to prevent.
+  while read -r _dom _ver; do
+    case "${_dom}" in ''|place.holder*) continue ;; esac
+    [ -z "${_ver}" ] && continue
+    _ver="${_ver//[^0-9]/}"
+    [ -z "${_ver}" ] && continue
+    if [ ! -S "/run/${_acct}.${_ver}.fpm.socket" ]; then
+      _missing="${_missing} ${_dom}:${_ver}"
+    fi
+  done < ${_ctl}/multi-fpm.info
+  if [ ! -z "${_missing}" ]; then
+    echo "ALRT: account ${_acct}: pinned PHP pool(s) NOT live after heal:${_missing}"
+    echo "ALRT: those sites are being served by the account default pool --"
+    echo "ALRT: check /opt/php<NN>/bin/php exists here and re-run:"
+    echo "ALRT:   bash /var/xdrago/manage_ltd_users.sh"
+  else
+    echo "INFO: account ${_acct}: every pinned PHP pool is live"
+  fi
+}
+
 _xoct_runtime_oct() {
   if [ "${_cmd}" = "import" ] && [ ! -z "${_dst}" ]; then
     echo "${_dst}"
@@ -2201,6 +2258,8 @@ _migrate_prepare() {
     # Harsh cache flush so any migrated D8+ site drops the source box's stale
     # container and bootstraps clean on this box.
     _xoct_flush_caches_target
+    # Carried FPM markers would leave every pinned site on the default pool.
+    _xoct_heal_fpm_pins "${_THIS_HM_USER}"
     if [ "${_XOCT_IMPORT_FAIL:-0}" != "0" ]; then
       {
         echo "failed=${_XOCT_IMPORT_FAIL}"
