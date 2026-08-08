@@ -2112,19 +2112,14 @@ _run_one_site() {
   _log "[INFO] Narrow single-site run: site=${_SITE} account=${_ACCOUNT_NAME} apply=${_APPLY_FLAG}"
 
   if [ "${_APPLY_FLAG}" = "YES" ]; then
-    # Defer if a maintenance pause (e.g. the nightly batch via updatesymlinks)
-    # is in progress, so a clone-time conversion never interleaves with the
-    # global sweep on the same store (break-sharing rsync is not concurrency
-    # safe). The nightly batch in turn bails while a provision/clone process is
-    # running, so the two do not overlap.
-    if [ -e "/etc/boa/.pause_tasks_maint.cnf" ]; then
-      _log "[WARN] Narrow apply for ${_SITE} deferred: maintenance pause in progress"
-      if [ "${_FORCE_UNSHARE}" = "YES" ]; then
-        _log "[ALERT] Clone unshare for ${_SITE} not completed (deferred); files may still be shared with the source - manual review required"
-        return 3
-      fi
-      return 0
-    fi
+    # BY DESIGN (ruled 2026-08-08): autosymlink is controlled ONLY by its
+    # invokers and listens to no global pause or install marker itself.
+    # The interleave protection lives with the invokers: updatesymlinks
+    # bails on a live provision/clone before starting the global sweep,
+    # and the sweep pauses the task queue (boa_queue_stop.pid) so no clone
+    # task can dispatch mid-sweep. The pause-file listener that used to
+    # sit here checked the RETIRED .pause_tasks_maint.cnf anyway, so it
+    # guarded against a file the nightly batch no longer sets.
 
     # Mirror the global "clean dry-run before any live change" rule, scoped to
     # this one site and WITHOUT touching the shared CLEAN-DRY state file: run a
