@@ -13,10 +13,16 @@ SHELL=/bin/bash
 ### Verbs:
 ###   xtrim status                    read-only: proxy state, cert horizon,
 ###                                   reclaimable bytes
-###   xtrim plan   <oN|all>           full precondition battery + itemised
+###   xtrim plan    <oN|all>          full precondition battery + itemised
 ###                                   deletion plan (DRY)
-###   xtrim shrink <oN|all> [--live]  stage A (reversible quiesce) + stage B
-###                                   (one-way data removal)
+###   xtrim quiesce <oN|all> [--live] stage A ONLY: park the account and
+###                                   quarantine its pools/includes/cores.
+###                                   Reversible, deletes nothing. Leaves
+###                                   the account inspectable before the
+###                                   one-way step, and is the state
+###                                   `restore` undoes.
+###   xtrim shrink <oN|all> [--live]  stage A (skipped when already
+###                                   quiesced) + stage B (one-way removal)
 ###   xtrim finalize [--live] [--drop-datadir]
 ###                                   box-wide stage C, only when every
 ###                                   account is shrunk
@@ -828,11 +834,43 @@ _cmd_status() {
 }
 
 _run_one() {
-  ### $1 verb (plan|shrink), $2 acct, $3 mode
+  ### $1 verb (plan|quiesce|shrink), $2 acct, $3 mode
   local _verb="$1" _oN="$2" _mode="$3"
+  local _phase
   _load_cnf_defaults
   _preflight "${_oN}"
   _write_manifest "${_oN}" "${_mode}"
+  _phase="$(_phase_get "${_oN}")"
+  if [ "${_verb}" = "quiesce" ]; then
+    ### Stage A as a first-class operator step. Without it the reversible
+    ### state existed only for the microseconds between stage A's last
+    ### statement and stage B's first, so `restore` could never be used
+    ### deliberately -- the gap the first xtrim leg exposed and Adam ruled
+    ### to close.
+    case "${_phase}" in
+      stage-b*)
+        _die "${_oN}: stage B has already run -- quiesce is not meaningful; see the manifest"
+      ;;
+      stage-a)
+        _info "${_oN}: already quiesced (phase stage-a) -- nothing to do"
+        _info "${_oN}: resume with 'xtrim shrink ${_oN} --live', or undo with 'xtrim restore ${_oN}'"
+        return 0
+      ;;
+    esac
+    if [ "${_mode}" = "LIVE" ]; then
+      _stage_a "${_oN}"
+      _state_write quiesce "${_oN}" LIVE DONE
+      _info "${_oN}: QUIESCED and reversible. Nothing has been deleted."
+      _info "${_oN}:   undo   -> xtrim restore ${_oN}"
+      _info "${_oN}:   proceed-> xtrim shrink ${_oN}  (DRY, then --live; ONE-WAY)"
+    else
+      _info "${_oN}: quiesce DRY -- would park run-${_oN}, quarantine FPM pools + post.d includes, unload+quarantine solr cores, re-probe"
+      _info "${_oN}: nothing would be deleted; the account stays fully restorable"
+      _state_write quiesce "${_oN}" DRY CLEAN
+      _info "${_oN}: quiesce DRY CLEAN -- next: xtrim quiesce ${_oN} --live"
+    fi
+    return 0
+  fi
   if [ "${_verb}" = "plan" ]; then
     _info "${_oN}: PLAN (DRY): stage A would park run-${_oN}, quarantine FPM pools + post.d includes, unload+quarantine solr cores"
     _info "${_oN}: PLAN (DRY): stage B would dump+verify then DROP:${_MAP_DBS}${_MAP_HM_DB:+ ${_MAP_HM_DB}}"
@@ -842,7 +880,13 @@ _run_one() {
     return 0
   fi
   if [ "${_mode}" = "LIVE" ]; then
-    _stage_a "${_oN}"
+    ### An account quiesced earlier is already in stage A; re-running it
+    ### would re-park an empty quarantine and re-drain for nothing.
+    if [ "${_phase}" = "stage-a" ]; then
+      _info "${_oN}: already quiesced -- skipping stage A, going straight to stage B"
+    else
+      _stage_a "${_oN}"
+    fi
     _stage_b "${_oN}"
     _state_write shrink "${_oN}" LIVE DONE
   else
@@ -877,7 +921,7 @@ case "$1" in
     _manage_single_lock
     _cmd_status
   ;;
-  plan|shrink)
+  plan|quiesce|shrink)
     _verb="$1"
     _acct="$2"
     [ -z "${_acct}" ] && _die "Usage: xtrim ${_verb} <oN|all> [--live]"
@@ -886,14 +930,16 @@ case "$1" in
     ### 'all' means all PROXIED accounts: a box mid-drain legitimately
     ### holds unproxied ones, and _die-ing on the first would make the
     ### fan-out unusable. The single-account form still refuses loudly.
-    if [ "${_verb}" = "shrink" ] && [ "${_XTRIM_MODE}" = "LIVE" ]; then
+    ### Per-verb token: quiesce arms only quiesce, shrink only shrink.
+    if { [ "${_verb}" = "shrink" ] || [ "${_verb}" = "quiesce" ]; } \
+      && [ "${_XTRIM_MODE}" = "LIVE" ]; then
       if [ "${_acct}" = "all" ]; then
         for _n in $(_list_accounts); do
           [ -e "/data/disk/${_n}/log/proxied.pid" ] || continue
-          _require_clean_dry shrink "${_n}"
+          _require_clean_dry "${_verb}" "${_n}"
         done
       else
-        _require_clean_dry shrink "${_acct}"
+        _require_clean_dry "${_verb}" "${_acct}"
       fi
     fi
     if [ "${_acct}" = "all" ]; then
@@ -933,7 +979,12 @@ case "$1" in
     _probe_all_doms "${_acct}" || _alrt "${_acct}: post-restore probes not clean -- check manually"
   ;;
   *)
-    echo "Usage: xtrim {status|plan <oN|all>|shrink <oN|all> [--live]|finalize [--live] [--drop-datadir]|restore <oN>}"
+    echo "Usage: xtrim status"
+    echo "       xtrim plan     <oN|all>            read-only preflight + itemised plan"
+    echo "       xtrim quiesce  <oN|all> [--live]   stage A only -- REVERSIBLE, deletes nothing"
+    echo "       xtrim restore  <oN>                undo a quiesce from quarantine"
+    echo "       xtrim shrink   <oN|all> [--live]   stage A (if needed) + stage B -- ONE-WAY"
+    echo "       xtrim finalize [--live] [--drop-datadir]   box-wide, all accounts shrunk"
     exit 1
   ;;
 esac
