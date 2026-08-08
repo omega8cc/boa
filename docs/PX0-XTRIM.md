@@ -15,18 +15,41 @@ There is no guessing and no name matching.
 ## Verbs
 
 ```sh
-xtrim status                    # read-only: proxy state, cert horizon,
-                                # reclaimable bytes per account
-xtrim plan   <oN|all>           # precondition battery + itemised plan (DRY)
-xtrim shrink <oN|all> [--live]  # stage A (reversible) + stage B (one-way)
+xtrim status                     # read-only: proxy state, cert horizon,
+                                 # reclaimable bytes per account
+xtrim plan    <oN|all>           # precondition battery + itemised plan (DRY)
+xtrim quiesce <oN|all> [--live]  # stage A ONLY -- reversible, deletes nothing
+xtrim restore <oN>               # undo a quiesce from quarantine
+xtrim shrink  <oN|all> [--live]  # stage A (skipped if already quiesced)
+                                 # + stage B (ONE-WAY)
 xtrim finalize [--live] [--drop-datadir]
-                                # box-wide stage C when EVERY account is shrunk
-xtrim restore <oN>              # undo stage A from quarantine
+                                 # box-wide stage C when EVERY account is shrunk
 ```
 
 The DRY/`--live` token is per verb AND per account: a clean DRY of `plan`
-never arms `shrink --live`; each `--live` consumes its token before work.
-`all` operates on PROXIED accounts only and skips the rest with a notice.
+never arms `shrink --live`, and a clean DRY of `quiesce` never arms
+`shrink` either; each `--live` consumes its token before work. `all`
+operates on PROXIED accounts only and skips the rest with a notice.
+
+### The recommended sequence
+
+```sh
+xtrim plan    o1                 # read the itemised plan and the manifest
+xtrim quiesce o1                 # DRY
+xtrim quiesce o1 --live          # account parked; NOTHING deleted yet
+#   ... verify the proxy still serves every site, at your leisure ...
+xtrim restore o1                 # changed your mind: fully undone
+#   ... or, when satisfied:
+xtrim shrink  o1                 # DRY
+xtrim shrink  o1 --live          # stage A skipped, stage B runs: ONE-WAY
+```
+
+`quiesce` exists because stage A is the only reversible part of the
+operation and it deserves to be a step an operator can stop at. It is
+idempotent (a second call reports the state and returns), it refuses
+once stage B has run, and it leaves the account exactly where `restore`
+expects it. Running `shrink --live` straight from an unquiesced account
+still works and does both stages, as before.
 
 ## Hard refusals (the plan battery)
 
@@ -46,7 +69,8 @@ mistaken for a target. The SQL endpoint must be this box's own server.
 
 ## What the stages do
 
-**Stage A — reversible.** Parks the account dispatcher OUT of
+**Stage A — reversible** (`quiesce`, or the first half of `shrink`).
+Parks the account dispatcher OUT of
 `/var/xdrago` (never into `off-run/`, which BOA restores from), drains,
 quarantines the nginx fpm includes then the FPM pools (never the system
 `www<NN>` pool that backs `/sqladmin`), UNLOADs Solr cores with all delete
@@ -86,7 +110,10 @@ running long after the shrink.
 ## Rollback truth
 
 Stage A restores automatically on abort, and `xtrim restore <oN>` undoes
-it from quarantine. **Stage B is not reversible on this box**: "I need
+it from quarantine — deliberately reachable now that `quiesce` stops
+there rather than running straight on into stage B.
+
+**Stage B is not reversible on this box**: "I need
 this account back here" is a migration back from the live target using
 the manifest's map and the archived aliases; "the target died" is a
 restore from the remote backup history. The safety dumps under
