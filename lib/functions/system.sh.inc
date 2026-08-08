@@ -10050,14 +10050,17 @@ _myquick_myloader_wrapper() {
   ### --overwrite-tables. Idempotent; safe to run on every pass.
   if [[ -x "/usr/bin/myloader" ]]; then
     _MYL_REAL=/usr/bin/myloader
-  elif [[ -x "${_MYL_LOCAL}.bin" ]]; then
-    ### Source layout already healed on a prior pass.
-    _MYL_REAL="${_MYL_LOCAL}.bin"
   elif [[ -e "${_MYL_LOCAL}" ]] \
     && [[ ! -L "${_MYL_LOCAL}" ]] \
     && ! grep -q "${_MYL_MARK}" "${_MYL_LOCAL}" 2> /dev/null; then
-    ### Fresh source build installed in place.
+    ### Fresh source build installed in place. Must win over a stale
+    ### myloader.bin left by a prior heal, or a version-bump rebuild
+    ### that clobbered the wrapper would get its new binary discarded
+    ### in favour of the old one.
     _MYL_REAL="${_MYL_LOCAL}"
+  elif [[ -x "${_MYL_LOCAL}.bin" ]]; then
+    ### Source layout already healed on a prior pass.
+    _MYL_REAL="${_MYL_LOCAL}.bin"
   else
     return 0
   fi

@@ -5,6 +5,9 @@ platforms created in the ~/static directory tree.
 
 Some core and contrib modules are either enabled or disabled
 by default, by running weekly (on Tuesday) maintenance monitor.
+This applies to Drupal 6 and Drupal 7 sites. On Drupal 8+ nothing
+is enabled, and the only force-disabled module is linkchecker,
+enforced by a different route -- see the last section.
 
 NOTE: You can disable this feature with _MODULES_FIX=NO in the
       standard Barracuda configuration file: /root/.barracuda.cnf
@@ -36,6 +39,15 @@ NOTE: Both [F]orce[E]nabled and [F]orce[D]isabled list can be skipped
       via feature or any other dependency. You can also use _MODULES_SKIP
       variable to list modules which should never be disabled by
       the running weekly maintenance agent.
+
+NOTE: Enforcement acts on the module, never on its files. Modules are
+      matched and switched off by name in the site's own enabled list,
+      so it makes no difference whether the module sits in the bundled
+      o_contrib tree, in sites/all/modules, in a single site's modules
+      directory, or in a codebase you maintain yourself. Duplicate
+      copies on disk collapse to one registry entry, so one disable
+      covers them all. Nothing is ever deleted, moved or edited on disk
+      to enforce this -- a disabled module stays exactly where you put it.
 
 Supported core version is listed for every module or theme
 as [D6] and/or [D7].
@@ -101,7 +113,6 @@ Contrib [F]orce[E]nabled
 
 Core [F]orce[D]isabled:
 
- automated_cron ------------- [D8-D11] ---------- [FD]
  cookie_cache_bypass -------- [D6] -------------- [FD]
  dblog ---------------------- [D6,D7] ----------- [FD]
  syslog --------------------- [D6,D7] ----------- [FD]
@@ -110,26 +121,35 @@ Contrib [F]orce[D]isabled
 
  backup_migrate ------------- [D6,D7] ----------- [FD]
  coder ---------------------- [D6,D7] ----------- [FD]
- css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
  filefield_nginx_progress --- [D7] -------------- [FD]
  hacked --------------------- [D6,D7] ----------- [FD]
- javascript_aggregator ------ [D6] -------------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
- linkchecker ---------------- [D6-D11] ---------- [FD] on D6/D7; on D8+ detect-and-alert only (see below). Banned: self-DoS (synchronous URL probes in web cron)
- memcache ------------------- [D6,D7] ----------- [FD]
- memcache_admin ------------- [D6,D7] ----------- [FD]
+ linkchecker ---------------- [D6-D11] ---------- [FD] Banned: self-DoS (synchronous URL probes in web cron). Enforced on D8+ too, by a different route -- see below
  mydropwizard --------------- [D6,D7] ----------- [FD] Banned: the myDropWizard update service closed in 2022; its synchronous cron call can never succeed
  performance ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]
- search_krumo --------------- [D6,D7] ----------- [FD]
  security_review ------------ [D6,D7] ----------- [FD]
  site_audit ----------------- [D7] -------------- [FD]
- stage_file_proxy ----------- [D6,D7] ----------- [FD]
  supercron ------------------ [D6] -------------- [FD]
- varnish -------------------- [D6,D7] ----------- [FD]
  watchdog_live -------------- [D6,D7] ----------- [FD]
  xhprof --------------------- [D6,D7] ----------- [FD]
+
+No longer [F]orce[D]isabled -- no code disables these any more.
+Kept here as the answer for anyone who remembers the older list:
+
+ css_gzip, javascript_aggregator, memcache, memcache_admin,
+ search_krumo, stage_file_proxy -- dropped from the maintenance
+      lists; nothing in owl.sh or the night workers refers to them.
+
+ automated_cron ------------- [D8-D11] ---------- a leftover from the
+      era when more D8+ modules were auto-disabled with Drush 8.
+      That era is over (see the last section), and its stale
+      _MODULES_FORCE entry has been removed too.
+
+ varnish -------------------- [D6,D7] ----------- never disabled
+      per site: it is purged from the bundled o_contrib tree by
+      _RMMODULES instead, so no site can enable it from the bundle.
 
 Contrib [NA]:
 
@@ -176,16 +196,22 @@ Hostmaster [E]xtensions [M]aster [S]atellite:
  userprotect ---------------- [D7] ------ [S] [B] [FE] [ES]
 ```
 
-## D8+ enforcement: detect and alert only — never Drush8
+## Drupal 8+: linkchecker only, enforced without Drush8
 
-A Drush8 full bootstrap against a Drupal 8+ site can corrupt the site's
-internals (cached container/router state), so outside the controlled Aegir
-backend path BOA never bootstraps a D8+ site with Drush8 — including this
-module policy. On D8+ platforms the Tuesday pass therefore only PROBES each
-site's database directly (root mysql; db name parsed from the site
-drushrc; on D8+ a banned module's table presence is an exact installed
-signal, since uninstall drops the schema and no disabled state exists) and
-mails the operator (`_MY_EMAIL`) on a hit, repeating every Tuesday until the
+BOA stopped touching Drupal 8+ modules with Drush8, which is what carries
+out these actions on D6/D7: a Drush8 full bootstrap against a Drupal 8+
+site can corrupt the site's internals (cached container/router state), so
+outside the controlled Aegir backend path BOA never bootstraps a D8+ site
+with Drush8. There is therefore no D8+ force-enable list at all, and the
+D8+ force-disable list holds exactly one module.
+
+That module is `linkchecker`, force-disabled on every core for the
+reason it always was on D6/D7. Only the route differs, and it uses no
+Drush at all: on D8+ platforms the Tuesday pass PROBES each site's
+database directly (root mysql; db name parsed from the site drushrc; on
+D8+ a banned module's table presence is an exact installed signal, since
+uninstall drops the schema and no disabled state exists) and mails the
+operator (`_MY_EMAIL`) on a hit, repeating every Tuesday until the
 module is gone. `_MODULES_SKIP` whitelists a module on D8+ exactly as it
 does on D6/D7.
 
