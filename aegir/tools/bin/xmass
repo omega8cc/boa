@@ -4153,8 +4153,10 @@ _xmass_post_mig() {
   service nginx reload &>/dev/null
   # Harsh cache flush: cold-restart Valkey/Redis (drop stale D8+ containers
   # carried from the source) + restart every PHP-FPM master (drop opcache/APCu),
-  # the only treatment trusted against cache/container poisoning. Correct
-  # per-site PHP is preserved by the migrated multi-fpm.info.
+  # the only treatment trusted against cache/container poisoning. The migrated
+  # multi-fpm.info preserves the per-site PHP PINS, but a pin only serves once
+  # its pool exists here -- see the marker heal below, without which pinned
+  # sites run on the account default pool.
   _info "Cold cache flush (Valkey/Redis drop + PHP-FPM restart) ..."
   if [ -x "/etc/init.d/valkey-server" ]; then
     killall -9 valkey-server &>/dev/null
@@ -4186,7 +4188,71 @@ _xmass_post_mig() {
     /var/xdrago/migration_proxy_trust.sh reconcile \
       || _alrt "migration_proxy_trust reconcile returned non-zero"
   fi
+  _xmass_heal_fpm_pins
   _info "post-mig complete on ${_hName}"
+}
+
+### Migrated accounts arrive carrying the SOURCE box's per-release FPM
+### markers in static/control. Both boxes run the same release, so this
+### box's manage_ltd_users reads .multi-fpm.<tree>.<xSrl>.pid as "already
+### built" and never creates pools for versions that exist only HERE --
+### exactly the interpreters prep-target's --fix-php built for the carried
+### pins -- while .multi-nginx-fpm.pid gates the per-site $user_socket
+### includes the same way. A pinned site is then served by the account
+### DEFAULT pool indefinitely, which on an aged fleet means a 5.6/7.x site
+### silently running on 8.4. Clearing both markers hands the work back to
+### the normal sweep; two passes because the include generator will not
+### emit a site include before that pool's socket exists. Deletes only --
+### the sweep re-chowns what it touches, so no root-owned residue.
+### (.prev-multi-fpm.info is deliberately left alone: the sweep recreates
+### it from the live file before diffing, so removing it changes nothing.)
+_xmass_heal_fpm_pins() {
+  local _root _acct _ctl _dom _ver _missing _healed=0
+  for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+    _acct=$(basename "${_root}")
+    case "${_acct}" in
+      arch|all|lost+found|lostfound|backups|codebases-cleanup) continue ;;
+    esac
+    _ctl="${_root}/static/control"
+    [ -e "${_ctl}/multi-fpm.info" ] || continue
+    rm -f ${_ctl}/.multi-fpm.*.pid
+    rm -f ${_ctl}/.single-fpm.*.pid
+    rm -f ${_ctl}/.multi-nginx-fpm.pid
+    _healed=$(( _healed + 1 ))
+  done
+  [ "${_healed}" = "0" ] && return 0
+  _info "Rebuilding pinned PHP pools for ${_healed} migrated account(s) ..."
+  if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
+    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+    for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+      rm -f ${_root}/static/control/.multi-nginx-fpm.pid
+    done
+    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+  fi
+  ### Name every pin that is still not live: a silent wrong-interpreter
+  ### site is the failure this heal exists to prevent, so it must never
+  ### pass quietly.
+  for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+    _acct=$(basename "${_root}")
+    _ctl="${_root}/static/control"
+    [ -e "${_ctl}/multi-fpm.info" ] || continue
+    _missing=""
+    while read -r _dom _ver; do
+      case "${_dom}" in ''|place.holder*) continue ;; esac
+      [ -z "${_ver}" ] && continue
+      _ver="${_ver//[^0-9]/}"
+      [ -z "${_ver}" ] && continue
+      [ -S "/run/${_acct}.${_ver}.fpm.socket" ] \
+        || _missing="${_missing} ${_dom}:${_ver}"
+    done < ${_ctl}/multi-fpm.info
+    if [ ! -z "${_missing}" ]; then
+      _alrt "account ${_acct}: pinned PHP pool(s) NOT live:${_missing}"
+      _alrt "  those sites are served by the account default pool right now"
+      _alrt "  check /opt/php<NN>/bin/php here, then: bash /var/xdrago/manage_ltd_users.sh"
+    else
+      _info "  ${_acct}: every pinned PHP pool is live"
+    fi
+  done
 }
 
 ###=============ARGUMENT PARSING==========###
