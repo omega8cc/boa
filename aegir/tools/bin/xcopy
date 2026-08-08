@@ -479,6 +479,10 @@ _migrate_prepare() {
           exit 1
         fi
         _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+        ### Clear the travelled source-role latches with the stamp -- they
+        ### block this box from ever being a source itself (see xoct).
+        rm -f ${_USR}/log/exported.pid ${_USR}/log/transferred.pid \
+          ${_USR}/log/export_failed.pid
         touch ${_USR}/log/imported.pid
       fi
     else
@@ -489,6 +493,10 @@ _migrate_prepare() {
         exit 1
       fi
       _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+      ### Clear the travelled source-role latches with the stamp -- they
+      ### block this box from ever being a source itself (see xoct).
+      rm -f ${_USR}/log/exported.pid ${_USR}/log/transferred.pid \
+        ${_USR}/log/export_failed.pid
       touch ${_USR}/log/imported.pid
     fi
 
