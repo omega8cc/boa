@@ -37,6 +37,15 @@ NOTE: Both [F]orce[E]nabled and [F]orce[D]isabled list can be skipped
       variable to list modules which should never be disabled by
       the running weekly maintenance agent.
 
+NOTE: Enforcement acts on the module, never on its files. Modules are
+      matched and switched off by name in the site's own enabled list,
+      so it makes no difference whether the module sits in the bundled
+      o_contrib tree, in sites/all/modules, in a single site's modules
+      directory, or in a codebase you maintain yourself. Duplicate
+      copies on disk collapse to one registry entry, so one disable
+      covers them all. Nothing is ever deleted, moved or edited on disk
+      to enforce this -- a disabled module stays exactly where you put it.
+
 Supported core version is listed for every module or theme
 as [D6] and/or [D7].
 
