@@ -3118,7 +3118,13 @@ _xmass_promotion_cleanup_target() {
   #   - its stale proxied.pid makes create/export refuse this box as a
   #     future source ("already migrated");
   #   - its parked dispatcher leaves the promoted account's queue dead, so
-  #     tasks and certificate renewals silently stop.
+  #     tasks and certificate renewals silently stop;
+  #   - its PROXY vhosts survive promotion for every site whose name the
+  #     rename does not touch (only renamed sites get verify tasks), so the
+  #     promoted box relays to its demoted sibling, which now relays back:
+  #     a loop nginx surfaces as 400 header-too-large. The dot-prefixed
+  #     pre-proxy backups the conversion kept are restored over any live
+  #     vhost still carrying proxy_pass.
   # The promotion ends the demotion those artefacts belonged to. Clearing
   # them here -- BEFORE step 16 pushes fresh records at this box -- is what
   # lets the failback complete. Idempotent; a first-migration target has
@@ -3143,6 +3149,25 @@ if [ ! -e "/var/xdrago/run-${_oct}" ] \
   && [ -e "/var/backups/off-run/run-${_oct}" ]; then
   mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
   echo "  ${_oct}: restored parked dispatcher"
+fi
+_vhd="/data/disk/${_oct}/config/server_master/nginx/vhost.d"
+_restored=0
+for _bak in "\${_vhd}"/.[a-zA-Z0-9]*; do
+  [ -f "\${_bak}" ] || continue
+  _dom="\$(basename "\${_bak}")"
+  _dom="\${_dom#.}"
+  [ -n "\${_dom}" ] || continue
+  if [ -f "\${_vhd}/\${_dom}" ] \
+    && grep -q "proxy_pass" "\${_vhd}/\${_dom}" 2>/dev/null; then
+    mv -f "\${_bak}" "\${_vhd}/\${_dom}"
+    _restored=\$(( _restored + 1 ))
+    echo "  ${_oct}: restored pre-proxy vhost \${_dom}"
+  fi
+done
+if [ "\${_restored}" -gt 0 ]; then
+  nginx -t &>/dev/null && service nginx reload &>/dev/null \
+    && echo "  ${_oct}: nginx reloaded with restored vhosts" \
+    || echo "  ALRT: ${_oct}: nginx -t FAILED after vhost restore -- NOT reloaded"
 fi
 PROMCLEAN
   done
@@ -3771,6 +3796,13 @@ _xmass_cutover_finish() {
          " Fix the cause on ${_tgt}, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
   fi
 
+  # Step 12.7: A failback target was itself demoted earlier; its stale
+  # demotion artefacts break the steps that follow (see the function), and
+  # the panel machinery in step 13 must see a real-serving box, not a
+  # half-proxied one -- the first failback drill had its hostmaster verify
+  # fail exactly here, on a box still shaped as a proxy.
+  _xmass_promotion_cleanup_target
+
   # Step 13: Run renameaegirhost on target for all Aegir roots.
   # This rewrites drush aliases, vhosts, and the Aegir DB to the new hostname,
   # then runs the Aegir task queue 5 times to regenerate everything on disk.
@@ -3808,10 +3840,6 @@ for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   fi
 done
 REMOTE
-
-  # Step 15.5: A failback target was itself demoted earlier; its stale
-  # demotion artefacts refuse the steps that follow (see the function).
-  _xmass_promotion_cleanup_target
 
   # Step 15.9: Wire migration-proxy realip+csf trust BEFORE the source starts
   # proxying, so the new host recovers the real client and never bans the proxy
