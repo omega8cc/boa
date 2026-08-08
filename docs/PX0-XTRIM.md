@@ -62,10 +62,17 @@ hard floor 7); every live vhost a proxy vhost agreeing on ONE target IP;
 `xoct proxy --repair --retarget`); no expired certificate behind a
 retained HTTPS vhost; every `server_name` serving through the target AND
 through the proxy relay (redirects accepted — SSL-Required sites answer
-301 on port 80); ssh to the target working; and, for every database about
-to be dropped, the TARGET holding a populated schema of that name plus at
-least one real (non-proxy) vhost — which is what stops a proxy chain being
-mistaken for a target. The SQL endpoint must be this box's own server.
+301 on port 80); ssh to the target working; and, for every CLIENT database
+about to be dropped, the TARGET holding a populated schema of that name
+plus at least one real (non-proxy) vhost — which is what stops a proxy
+chain being mistaken for a target. The account's OWN panel and dedicated
+site are the deliberate exception: an xoct target builds those named for
+ITS host, never the source's, so a name match would refuse every migrated
+source. They are proved instead by a live account of the same number on
+the target (account tree, `log/cores.txt` and hostmaster alias all
+present). Stage B re-proves with the SAME classification between dump and
+drop — an earlier mismatch there aborted every shrink after the dumps had
+already been taken. The SQL endpoint must be this box's own server.
 
 ## What the stages do
 
@@ -79,14 +86,29 @@ dir (an `/mnt`-store index never lands on the root filesystem; origin and
 port are recorded in a map), reloads nginx under the shared config lock,
 and re-probes every domain. Any regression auto-restores and aborts.
 
-**Stage B — one-way on this box.** Marks its phase at ENTRY (a crash
-mid-run leaves `restore` refusing), dumps and gzip-verifies every
-database, re-proves the target, then drops databases and their
+**Stage B — one-way on this box.** Dumps and gzip-verifies every
+database once (the panel db is already in the map), re-proves the target,
+then drops databases and their
 single-grant users (all three grant hosts), removes `backups/`, `src/`,
 `undo/`, `distro/`, the platform trees named by the `platform_*` aliases,
 and the static trees — resolving every store symlink FIRST and refusing
 any target outside the account or the single `/mnt` store. The proxy
 keeps serving throughout: nothing in stage B is in its dependency set.
+
+The irreversible phase stamp lands just before the FIRST drop, not at
+function entry. Everything above it — dump, verify, re-proof — deletes
+nothing, so an abort there leaves the account quiesced, dumps written,
+and `restore` still available. Stamping at entry made `restore` refuse
+after failures that had destroyed nothing. A real abort proved this: a
+stage B whose re-proof was still name-matching stopped after taking both
+dumps, and the account came back at phase `stage-a` with every database
+and tree intact.
+
+`restore` puts stage A back — pools, includes, cores, nginx — with one
+deliberate exception: a PROXIED account does NOT get its dispatcher
+back. It is moved to `/var/backups/off-run/run-<oN>` instead, visibly
+parked. Returning it would let the account's own dispatcher tick and
+regenerate the platform vhosts, silently un-converting the proxy.
 
 **Stage C — `finalize`.** Only when every account is shrunk: removes the
 shared codebases (`/data/all` and `/data/disk/all`), stops and disables
