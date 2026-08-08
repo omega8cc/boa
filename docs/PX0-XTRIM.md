@@ -119,6 +119,14 @@ stands down every FPM master except the panel front's, and LAST touches
 `/root/.proxy.cnf`, which stands the BOA machinery down while the nginx
 watchdog keeps running.
 
+Finalize also freezes the box's own tooling: `clear.sh` — the whole
+5-minute channel, tool fetches included — exits immediately on
+`/root/.proxy.cnf`, so the tools present at finalize time (including
+the xoct that handles `--repair --retarget`) never update themselves
+again. Update by hand first when a later retarget needs newer code.
+Open policy question: whether the tool fetch should be exempted from
+the proxy gate.
+
 ## Never touched
 
 `/etc/nginx`, `/var/aegir/config`, the `/data/conf` control files, root
