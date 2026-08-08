@@ -2009,6 +2009,15 @@ _migrate_prepare() {
       exit 1
     fi
     _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+    ### The source-role latches travelled here inside the account's log/
+    ### tree. Left in place they block this box from ever being a source
+    ### itself: create refuses "already created" on exported.pid and export
+    ### refuses "already exported" -- exactly the chained shape a staged
+    ### fleet move needs (old box -> new primary -> HA mirror). A completed
+    ### import starts a fresh lifecycle here, so the latches of the
+    ### migration that ENDED with this import are cleared with the stamp.
+    rm -f ${_USR}/log/exported.pid ${_USR}/log/transferred.pid \
+      ${_USR}/log/export_failed.pid
     touch ${_USR}/log/imported.pid
     if ! _xoct_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
       echo "ERROR: panel platform reconciliation failed for ${_USR} — this import is INCOMPLETE"
