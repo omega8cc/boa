@@ -27,8 +27,22 @@ _check_root() {
 }
 _check_root
 
+# A finalized proxy keeps this gate: the night worker is per-site and
+# per-account work that is meaningless without local sites and DB, and
+# proxied-account certificates renew on the target (migration_proxy_certs).
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
+
+# PHP-idle surgery quiesce: barracuda holds this while swapping PHP
+# versions; a marker whose owner PID is gone is stale (crashed run) and
+# is cleared, never obeyed -- and /run clears itself on reboot.
+if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
+  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
+    exit 0
+  fi
+  rm -f /run/boa_php_idle_quiesce.pid
+fi
 
 ###-------------SYSTEM-----------------###
 
