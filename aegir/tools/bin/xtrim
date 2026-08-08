@@ -201,7 +201,7 @@ _map_account() {
   _USR="/data/disk/${_oN}"
   _VHD="${_USR}/config/server_master/nginx/vhost.d"
   _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""
-  _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""
+  _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""; _MAP_ALL_DBS=""
   _MAP_PLATS=""; _MAP_NOSAVED=""
   ### Live vhosts must all be proxies pointing at ONE target.
   for _v in $(find "${_VHD}" -maxdepth 1 -mindepth 1 -type f \
@@ -279,6 +279,10 @@ _map_account() {
     esac
   done
   _MAP_PLATS=$(echo "${_MAP_PLATS}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+  ### One deduped work list. The panel database is normally already in
+  ### the map (it is one of the account's own), so a plain concatenation
+  ### dumped and dropped it twice.
+  _MAP_ALL_DBS=$(echo ${_MAP_DBS} ${_MAP_HM_DB} | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')
 }
 
 _solr_cores_for() {
@@ -754,7 +758,7 @@ _stage_b() {
   _info "${_oN}: stage B -- data removal (ONE-WAY on this box)"
   ### Databases: dump + verify EVERY database first, then drop, deriving
   ### from the map (saved vhosts + aliases) -- never from sqlclean.
-  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+  for _db in ${_MAP_ALL_DBS}; do
     ### A pipeline reports the LAST element's status, so `mysqldump | gzip`
     ### returns gzip's 0 even when mysqldump died -- and neither `-s` nor
     ### `gzip -t` can catch it, because gzip of an empty stream is a valid
@@ -801,7 +805,7 @@ _stage_b() {
   ### above (dump, verify, re-proof) deletes nothing, and stamping earlier
   ### made `restore` refuse after a failed dump that had destroyed nothing.
   _phase_set "${_oN}" "stage-b-started"
-  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+  for _db in ${_MAP_ALL_DBS}; do
     mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_db}\`" 2>/dev/null \
       && _info "${_oN}: dropped database ${_db}"
     ### Drop the paired user only when it holds no grant on any OTHER db.
@@ -1010,7 +1014,7 @@ _run_one() {
   fi
   if [ "${_verb}" = "plan" ]; then
     _info "${_oN}: PLAN (DRY): stage A would park run-${_oN}, quarantine FPM pools + post.d includes, unload+quarantine solr cores"
-    _info "${_oN}: PLAN (DRY): stage B would dump+verify then DROP:${_MAP_DBS}${_MAP_HM_DB:+ ${_MAP_HM_DB}}"
+    _info "${_oN}: PLAN (DRY): stage B would dump+verify then DROP: ${_MAP_ALL_DBS}"
     _info "${_oN}: PLAN (DRY): stage B would remove backups/, src/, undo/, distro/, platforms, static trees (store resolved first)"
     _state_write plan "${_oN}" DRY CLEAN
     _info "${_oN}: plan CLEAN"
