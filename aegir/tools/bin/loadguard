@@ -158,13 +158,29 @@ _proc_control() {
 }
 
 ###
+### TRUE while any BOA install/upgrade may be running: killing php/drush
+### workers during a pass kills the pass's own builders, and the chained
+### install's octopus leg holds only the install marker -- so test all
+### three pids, not just boa_wait.pid. Deliberately NO pgrep legs here:
+### they would only bridge second-scale hand-off gaps, while a wedged
+### process matching them would veto the load-emergency killer without
+### any reaper (the pids all have ceilings; process liveness has none).
+###
+_install_pass_active() {
+  [ -e "/run/boa_wait.pid" ] && return 0
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  return 1
+}
+
+###
 ### Function to terminate long-running processes
 ###
 _terminate_processes() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
-  if [ ! -e "/run/boa_wait.pid" ]; then
+  if ! _install_pass_active; then
     killall -9 php drush.php wget curl &> /dev/null
     local _log_message
     _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
@@ -374,7 +390,7 @@ _enforce_load_policy() {
     CRIT)
       _action_block_spiders
       _action_pause_web
-      [ ! -e "/run/boa_wait.pid" ] && _action_kill_long_user_procs
+      _install_pass_active || _action_kill_long_user_procs
       ;;
     MAX)
       _action_block_spiders

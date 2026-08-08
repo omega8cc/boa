@@ -1188,6 +1188,61 @@ location ~* ^/\w\w/bgp-start/[^/]+/[^/]+$ { ...same body... }
   legitimate batch with no progress page open stops that batch silently. The rate is set so
   this cannot occur at modelled legitimate load (validated: a tab-less 120-operation batch
   completed across 6 hops under sustained competing traffic).
+
+### Anonymous page-render cap (`boa_perhost_anon`)
+
+Bounds how many anonymous page renders ONE vhost may hold **simultaneously**. It exists for
+a flood class that is unclassifiable at the request level: an observed distributed scraper
+swarm presented a single spoofed browser user-agent across ~270 client IPs at ~1.4 requests
+each against one vhost, every response a 200 from ordinary content routes. It is not an AI
+vendor, not a declared bot (so it receives the short human cache window, not the long
+crawler one), not bad-status, and far too thin per IP for any per-IP control — every request
+is individually indistinguishable from a real visitor. The renders pile up until each takes
+longer than the front cache's own TTL and lock timeout, at which point waiting requests stop
+waiting and render too, and the cache stops absorbing the herd at all. Capping the in-flight
+count keeps render time inside that horizon, which is what keeps the front cache working.
+
+```nginx
+# /etc/nginx/conf.d/limit-req-zones-boa.conf — BOA-written, http scope
+map $http_cookie $boa_perhost_anon_key {
+  default                          $host;
+  ~SESS[[:alnum:]]+=[[:graph:]]    "";
+}
+limit_conn_zone $boa_perhost_anon_key zone=boa_perhost_anon:10m;
+
+# Inc/vhost_include.tpl.php — rendered ONLY when that file declares the zone
+location = /index.php {
+  limit_conn boa_perhost_anon 100;   # nginx_perhost_anon_conn
+  limit_conn_status 444;             # location-wide, shared with the i18n cap
+}
+```
+
+- **Same order-independence contract as `bgp_flood` above**: the zone lives in the
+  BOA-written conf.d file, never the master render, and the consumer is gated on that file
+  declaring the zone. No delivery order can emit a reference to an undeclared zone.
+- **Anonymous only.** The key is `$host` for anonymous requests and EMPTY (uncounted) when a
+  Drupal session cookie is present, so editors and admins are not shed while a flood is
+  trimmed. The regex deliberately mirrors the authoritative `$cache_uid` map in
+  `server.tpl.php`, including the trailing `[[:graph:]]` that makes a valueless `SESSxxx=`
+  cookie anonymous to BOTH guardrails — keep the two in step. Caveat worth knowing: the
+  anonymous **login POST** carries no session cookie yet, so it is counted like any other
+  anonymous request.
+- **It counts requests in the location, not FPM occupancy.** Cache hits and slow readers
+  occupy a slot too. Size it as a ceiling on concurrency, not on renders.
+- **Sizing (default 100).** Above the busiest legitimate per-vhost in-flight peak measured
+  over a full production day (13-57 across every tenant) and far below an observed flood
+  (417). Deliberately loose so it only ever bounds a genuine flood. Tune per instance toward
+  ~1.5x that instance's FPM pool `pm.max_children` via `nginx_perhost_anon_conn`; the render
+  cannot read the pool size, so this cannot be derived automatically. **Known limitation:**
+  on the small pools (16-28 children) FPM saturates long before 100 in-flight is reached, so
+  the shipped default is effectively inert there until tuned down.
+- **Composes with the i18n cap.** A localized anonymous request consumes a slot in both
+  zones and is bounded by the lower of the two (24 by default). On a multilingual vhost the
+  i18n cap therefore binds first for that traffic class.
+- **Shed status is the location-wide 444**, shared with the i18n guardrail because
+  `limit_conn_status` is one-per-context. Consequence to keep in mind: 444s produced by this
+  cap on a multilingual vhost also feed `_NGINX_I18N_FLOOD_C444_THRESHOLD` in `scan_nginx`,
+  so a general flood can trip the i18n detector's early path.
 - **Scope.** Only the exact two-segment shape passes; anything else under the prefix is 444'd
   before bootstrap (cheaper than the previous 404). The `\w\w` sibling covers the language
   prefix D7's `url()` prepends; longer prefixes (`pt-br`) fall through, the same limitation
