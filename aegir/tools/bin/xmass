@@ -1353,13 +1353,34 @@ _xmass_setup_slave() {
   local _binlog_info _gtid_set
   _binlog_info=$(ssh root@"${_tgt}" \
     "cat ${_XTRA_STAGE_TGT}/xtrabackup_binlog_info 2>/dev/null || echo ''" )
-  _gtid_set=$(echo "${_binlog_info}" | awk '{print $3}')
+  ### xtrabackup writes the GTID set as the THIRD tab-separated field of
+  ### line 1, and a set holding MORE THAN ONE UUID continues on the
+  ### following lines. `awk '{print $3}'` kept only the first UUID's range
+  ### -- with its trailing comma -- and silently dropped the rest. A source
+  ### carrying several UUIDs is not an edge case: it is every box that was
+  ### itself migrated or has ever been a replica, i.e. exactly an HA pair
+  ### built on a migrated node. The replica was then told it had not
+  ### executed transactions its own restored datadir already contained,
+  ### re-applied them from the source binlog, and the SQL thread stopped on
+  ### the first conflict (IO=Yes SQL=No) with init reporting failure.
+  _gtid_set=$(printf '%s\n' "${_binlog_info}" \
+    | awk -F'\t' 'NR==1 { if (NF >= 3) printf "%s", $3; next } { printf "%s", $0 }' \
+    | tr -d ' \t\r\n')
+  _gtid_set="${_gtid_set%,}"
 
   if [ -z "${_gtid_set}" ]; then
     _die "Empty GTID set in xtrabackup_binlog_info — " \
          "was GTID enabled on source before taking backup?"
   fi
-  _info "GTID set from backup: ${_gtid_set}"
+  ### Fail closed on anything that is not a well-formed set: feeding a
+  ### truncated or malformed value to gtid_purged produces a replica that
+  ### looks configured and silently re-applies history.
+  if ! printf '%s' "${_gtid_set}" | grep -qE \
+    '^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}:[0-9]+(-[0-9]+)?(:[0-9]+(-[0-9]+)?)*(,[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}:[0-9]+(-[0-9]+)?(:[0-9]+(-[0-9]+)?)*)*$'; then
+    _die "Unparseable GTID set from xtrabackup_binlog_info: '${_gtid_set}'"
+  fi
+  _XM_GTID_UUIDS=$(printf '%s' "${_gtid_set}" | tr ',' '\n' | wc -l | tr -d ' ')
+  _info "GTID set from backup (${_XM_GTID_UUIDS} source UUID(s)): ${_gtid_set}"
 
   # Runtime half of the 5.7 parallel-apply setup (the conf half persists it):
   # covers a target whose GTID was already ON, where no restart read the conf.
