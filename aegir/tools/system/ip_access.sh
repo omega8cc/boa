@@ -199,9 +199,21 @@ _process_context() {
     echo "Nginx configtest failed after ip_access update (${_input_file}): ${_ct}"
     if [[ -f "${_last_good_backup}" ]]; then
       echo "Reverting ${_input_file} ip_access to last known good."
-      rm -f "${_nginx_path}"/*.conf
-      tar -xzf "${_last_good_backup}" -C "${_nginx_path}" 2>/dev/null
-      service nginx reload
+      ### Prove the archive is readable BEFORE deleting what is on disk:
+      ### the old order wiped every fragment and then extracted from an
+      ### unverified tarball, so a corrupt or truncated backup left the
+      ### box with no access-control fragments at all.
+      if tar -tzf "${_last_good_backup}" &> /dev/null; then
+        rm -f "${_nginx_path}"/*.conf
+        if ! tar -xzf "${_last_good_backup}" -C "${_nginx_path}" 2>/dev/null; then
+          echo "ALRT: restoring ${_last_good_backup} FAILED after the fragments were removed."
+        fi
+        service nginx reload
+      else
+        echo "ALRT: last-good backup ${_last_good_backup} is unreadable -- keeping the"
+        echo "ALRT: fragments now on disk rather than deleting them for an archive"
+        echo "ALRT: that cannot be restored. Fix ${_input_file} and re-run."
+      fi
     else
       # No last-good yet (a first run failed configtest). nginx never reloaded the
       # bad config (configtest gates the reload), so just drop the fragments this
@@ -216,14 +228,28 @@ _process_context() {
   if ! service nginx reload; then
     echo "Nginx reload failed after ip_access update (${_input_file}); reverting."
     if [[ -f "${_last_good_backup}" ]]; then
-      rm -f "${_nginx_path}"/*.conf
-      tar -xzf "${_last_good_backup}" -C "${_nginx_path}" 2>/dev/null
-      service nginx reload
+      if tar -tzf "${_last_good_backup}" &> /dev/null; then
+        rm -f "${_nginx_path}"/*.conf
+        if ! tar -xzf "${_last_good_backup}" -C "${_nginx_path}" 2>/dev/null; then
+          echo "ALRT: restoring ${_last_good_backup} FAILED after the fragments were removed."
+        fi
+        service nginx reload
+      else
+        echo "ALRT: last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
+      fi
     fi
     return 1
   fi
 
-  tar -czf "${_last_good_backup}" -C "${_nginx_path}" . 2>/dev/null
+  ### An unverified last-good archive is worse than none: the revert path
+  ### above trusts it enough to delete the live fragments.
+  if tar -czf "${_last_good_backup}" -C "${_nginx_path}" . 2>/dev/null \
+    && tar -tzf "${_last_good_backup}" &> /dev/null; then
+    :
+  else
+    echo "ALRT: could not write a verifiable last-good ip_access backup; removing it"
+    rm -f "${_last_good_backup}"
+  fi
   echo "${_current_mod_time}" > "${_timestamp_file}"
   echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
   echo "ip_access updated (${_input_file}): ${_configured[*]:-none}; Nginx reloaded."

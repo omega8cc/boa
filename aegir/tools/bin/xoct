@@ -2009,6 +2009,15 @@ _migrate_prepare() {
       exit 1
     fi
     _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+    ### The source-role latches travelled here inside the account's log/
+    ### tree. Left in place they block this box from ever being a source
+    ### itself: create refuses "already created" on exported.pid and export
+    ### refuses "already exported" -- exactly the chained shape a staged
+    ### fleet move needs (old box -> new primary -> HA mirror). A completed
+    ### import starts a fresh lifecycle here, so the latches of the
+    ### migration that ENDED with this import are cleared with the stamp.
+    rm -f ${_USR}/log/exported.pid ${_USR}/log/transferred.pid \
+      ${_USR}/log/export_failed.pid
     touch ${_USR}/log/imported.pid
     if ! _xoct_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
       echo "ERROR: panel platform reconciliation failed for ${_USR} — this import is INCOMPLETE"
@@ -3655,6 +3664,21 @@ _migrate_init() {
           if [ ! -e "${_USR}/log/proxied.pid" ]; then
             echo COMPLETE > ${_USR}/log/proxied.pid
           fi
+          ### Park this account's dispatcher NOW, in the same breath as the
+          ### conversion. BOA parks it on the proxied.pid marker, but only
+          ### on its next pass -- and a single tick inside that window runs
+          ### the account's Ægir queue, whose pending Verify regenerates the
+          ### site vhosts straight from the database and silently UNDOES the
+          ### proxy: the old box quietly resumes serving its own stale copy
+          ### to everyone still resolving to it. Observed live: conversion at
+          ### :45, dispatcher tick at :50, both vhosts back to fastcgi.
+          ### Same destination BOA itself uses, so its own housekeeping stays
+          ### authoritative afterwards.
+          if [ -e "/var/xdrago/run-${_THIS_HM_USER}" ]; then
+            mkdir -p /var/backups/off-run
+            mv -f "/var/xdrago/run-${_THIS_HM_USER}" /var/backups/off-run/ 2>/dev/null \
+              && echo "INFO: parked the ${_THIS_HM_USER} dispatcher; its queue can no longer regenerate the proxy vhosts"
+          fi
           ### Retarget: the abandoned target must stop trusting this proxy.
           ### Best-effort by design ("where reachable"): the repoint itself
           ### must not be blocked by an old box that is already half gone.
@@ -3713,6 +3737,18 @@ _post_mig() {
         || echo "ALRT: migration_proxy_trust reconcile returned non-zero"
     fi
     [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+    ### Restoring the box-wide runner is right, but a PROXIED account must
+    ### not get its own dispatcher back: its queue would regenerate the
+    ### site vhosts and undo the proxy conversion.
+    for _pxd in /data/disk/*/log/proxied.pid; do
+      [ -e "${_pxd}" ] || continue
+      _pxa=$(echo "${_pxd}" | cut -d'/' -f4)
+      if [ -e "/var/xdrago/run-${_pxa}" ]; then
+        mkdir -p /var/backups/off-run
+        mv -f "/var/xdrago/run-${_pxa}" /var/backups/off-run/ 2>/dev/null \
+          && echo "INFO: ${_pxa} is proxied -- keeping its dispatcher parked"
+      fi
+    done
     if [ ! -e "/var/xdrago/runner.sh" ] && [ -e "/var/xdrago/.runner.sh.off" ]; then
       mv -f /var/xdrago/.runner.sh.off /var/xdrago/runner.sh
     fi
