@@ -1071,10 +1071,17 @@ _xmass_write_gtid_conf_local() {
   local _conf_dir
   _conf_dir=$(_xmass_mysql_conf_dir)
   local _cnf="${_conf_dir}/xmass_gtid.cnf"
-  # Only add log_bin directive if binlog is not already active
-  local _logbin
+  # log_bin: runtime-OFF means we must add it -- but runtime-ON is NOT a
+  # reason to omit it, because on a rewrite the binlog is usually ON due to
+  # the very line in the conf being overwritten (role swap on a failback:
+  # this dropped the directive, the next restart killed the binlog, and the
+  # box could never serve as a master again). Preserve our own line across
+  # rewrites; omit only when binlog is ON from config OUTSIDE this file.
+  local _logbin _keep_logbin=NO
   _logbin=$(mysql --defaults-file=/root/.my.cnf \
     -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
+  [ "${_logbin}" != "ON" ] && _keep_logbin=YES
+  [ -r "${_cnf}" ] && grep -q "^log_bin" "${_cnf}" && _keep_logbin=YES
   _info "Writing GTID config to ${_cnf} (server_id=${_sid}) ..."
   {
     echo "[mysqld]"
@@ -1097,7 +1104,7 @@ _xmass_write_gtid_conf_local() {
     else
       echo "binlog_expire_logs_seconds   = 604800"
     fi
-    [ "${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
+    [ "${_keep_logbin}" = "YES" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
   } > "${_cnf}"
   chmod 644 "${_cnf}"
 }
@@ -1120,17 +1127,26 @@ _xmass_configure_gtid_local() {
   _src_id=$(_ip_to_server_id \
     "${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}")
   _xmass_write_gtid_conf_local "${_src_id}"
-  if [ "${_mode}" = "ON" ]; then
-    _info "GTID already ON on source (conf persisted): OK"
+  # A source is a replication MASTER: it needs the binlog as much as GTID.
+  # Gating the restart on gtid_mode alone left a promoted failback box
+  # (gtid ON from its replica days, binlog dead since the conf rewrite)
+  # taking backups with an empty GTID set that no replica could ever use.
+  local _logbin_now
+  _logbin_now=$(mysql --defaults-file=/root/.my.cnf \
+    -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
+  if [ "${_mode}" = "ON" ] && [ "${_logbin_now}" = "ON" ]; then
+    _info "GTID + binlog already ON on source (conf persisted): OK"
     return
   fi
-  _info "GTID not enabled on source (mode=${_mode}) — restarting to apply ..."
+  _info "Source not master-ready (gtid=${_mode} log_bin=${_logbin_now}) — restarting to apply ..."
   /var/xdrago/move_sql.sh restart \
     || _die "MySQL restart failed on source (move_sql.sh)"
   _mode=$(_xmass_check_gtid_enabled_local)
-  [ "${_mode}" = "ON" ] \
-    || _die "GTID still not ON after restart on source (mode=${_mode})"
-  _info "GTID enabled on source: OK"
+  _logbin_now=$(mysql --defaults-file=/root/.my.cnf \
+    -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
+  { [ "${_mode}" = "ON" ] && [ "${_logbin_now}" = "ON" ]; } \
+    || _die "Source still not master-ready after restart (gtid=${_mode} log_bin=${_logbin_now})"
+  _info "GTID + binlog enabled on source: OK"
 }
 
 _xmass_configure_gtid_target() {
@@ -1169,6 +1185,9 @@ fi
 _cnf="\${_conf_dir}/xmass_gtid.cnf"
 _logbin=\$(mysql --defaults-file=/root/.my.cnf \
   -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print \$2}')
+_keep_logbin=NO
+[ "\${_logbin}" != "ON" ] && _keep_logbin=YES
+[ -r "\${_cnf}" ] && grep -q "^log_bin" "\${_cnf}" && _keep_logbin=YES
 {
   echo "[mysqld]"
   echo "server_id                = ${_tgt_id}"
@@ -1183,7 +1202,7 @@ _logbin=\$(mysql --defaults-file=/root/.my.cnf \
   else
     echo "binlog_expire_logs_seconds   = 604800"
   fi
-  [ "\${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
+  [ "\${_keep_logbin}" = "YES" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
 } > "\${_cnf}"
 chmod 644 "\${_cnf}"
 REMOTEBASH
