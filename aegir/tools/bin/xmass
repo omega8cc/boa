@@ -1379,7 +1379,11 @@ _xmass_setup_slave() {
     '^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}:[0-9]+(-[0-9]+)?(:[0-9]+(-[0-9]+)?)*(,[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}:[0-9]+(-[0-9]+)?(:[0-9]+(-[0-9]+)?)*)*$'; then
     _die "Unparseable GTID set from xtrabackup_binlog_info: '${_gtid_set}'"
   fi
-  _XM_GTID_UUIDS=$(printf '%s' "${_gtid_set}" | tr ',' '\n' | wc -l | tr -d ' ')
+  ### Count entries, not newlines: `printf '%s' | wc -l` undercounts by one
+  ### because the final element carries no newline, and a line that reports
+  ### "1 source UUID" for a two-UUID set misleads exactly where this fix
+  ### teaches operators to look.
+  _XM_GTID_UUIDS=$(printf '%s' "${_gtid_set}" | tr ',' '\n' | grep -c ':')
   _info "GTID set from backup (${_XM_GTID_UUIDS} source UUID(s)): ${_gtid_set}"
 
   # Runtime half of the 5.7 parallel-apply setup (the conf half persists it):
