@@ -119,6 +119,7 @@ Contrib [F]orce[D]isabled
  linkchecker ---------------- [D6-D11] ---------- [FD] on D6/D7; on D8+ detect-and-alert only (see below). Banned: self-DoS (synchronous URL probes in web cron)
  memcache ------------------- [D6,D7] ----------- [FD]
  memcache_admin ------------- [D6,D7] ----------- [FD]
+ mydropwizard --------------- [D6,D7] ----------- [FD] Banned: the myDropWizard update service closed in 2022; its synchronous cron call can never succeed
  performance ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]
  search_krumo --------------- [D6,D7] ----------- [FD]
