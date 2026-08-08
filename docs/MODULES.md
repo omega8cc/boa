@@ -110,7 +110,7 @@ Contrib [F]orce[E]nabled
 
 Core [F]orce[D]isabled:
 
- automated_cron ------------- [D8-D11] ---------- [FD]
+ automated_cron ------------- [D8-D11] ---------- [FD] Listed in _MODULES_FORCE but absent from every OFF list, so nothing disables it today
  cookie_cache_bypass -------- [D6] -------------- [FD]
  dblog ---------------------- [D6,D7] ----------- [FD]
  syslog --------------------- [D6,D7] ----------- [FD]
@@ -119,26 +119,30 @@ Contrib [F]orce[D]isabled
 
  backup_migrate ------------- [D6,D7] ----------- [FD]
  coder ---------------------- [D6,D7] ----------- [FD]
- css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
  filefield_nginx_progress --- [D7] -------------- [FD]
  hacked --------------------- [D6,D7] ----------- [FD]
- javascript_aggregator ------ [D6] -------------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
  linkchecker ---------------- [D6-D11] ---------- [FD] on D6/D7; on D8+ detect-and-alert only (see below). Banned: self-DoS (synchronous URL probes in web cron)
- memcache ------------------- [D6,D7] ----------- [FD]
- memcache_admin ------------- [D6,D7] ----------- [FD]
  mydropwizard --------------- [D6,D7] ----------- [FD] Banned: the myDropWizard update service closed in 2022; its synchronous cron call can never succeed
  performance ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]
- search_krumo --------------- [D6,D7] ----------- [FD]
  security_review ------------ [D6,D7] ----------- [FD]
  site_audit ----------------- [D7] -------------- [FD]
- stage_file_proxy ----------- [D6,D7] ----------- [FD]
  supercron ------------------ [D6] -------------- [FD]
- varnish -------------------- [D6,D7] ----------- [FD]
  watchdog_live -------------- [D6,D7] ----------- [FD]
  xhprof --------------------- [D6,D7] ----------- [FD]
+
+No longer [F]orce[D]isabled -- no code disables these any more.
+Kept here as the answer for anyone who remembers the older list:
+
+ css_gzip, javascript_aggregator, memcache, memcache_admin,
+ search_krumo, stage_file_proxy -- dropped from the maintenance
+      lists; nothing in owl.sh or the night workers refers to them.
+
+ varnish -------------------- [D6,D7] ----------- never disabled
+      per site: it is purged from the bundled o_contrib tree by
+      _RMMODULES instead, so no site can enable it from the bundle.
 
 Contrib [NA]:
 
