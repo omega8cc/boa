@@ -1353,13 +1353,38 @@ _xmass_setup_slave() {
   local _binlog_info _gtid_set
   _binlog_info=$(ssh root@"${_tgt}" \
     "cat ${_XTRA_STAGE_TGT}/xtrabackup_binlog_info 2>/dev/null || echo ''" )
-  _gtid_set=$(echo "${_binlog_info}" | awk '{print $3}')
+  ### xtrabackup writes the GTID set as the THIRD tab-separated field of
+  ### line 1, and a set holding MORE THAN ONE UUID continues on the
+  ### following lines. `awk '{print $3}'` kept only the first UUID's range
+  ### -- with its trailing comma -- and silently dropped the rest. A source
+  ### carrying several UUIDs is not an edge case: it is every box that was
+  ### itself migrated or has ever been a replica, i.e. exactly an HA pair
+  ### built on a migrated node. The replica was then told it had not
+  ### executed transactions its own restored datadir already contained,
+  ### re-applied them from the source binlog, and the SQL thread stopped on
+  ### the first conflict (IO=Yes SQL=No) with init reporting failure.
+  _gtid_set=$(printf '%s\n' "${_binlog_info}" \
+    | awk -F'\t' 'NR==1 { if (NF >= 3) printf "%s", $3; next } { printf "%s", $0 }' \
+    | tr -d ' \t\r\n')
+  _gtid_set="${_gtid_set%,}"
 
   if [ -z "${_gtid_set}" ]; then
     _die "Empty GTID set in xtrabackup_binlog_info — " \
          "was GTID enabled on source before taking backup?"
   fi
-  _info "GTID set from backup: ${_gtid_set}"
+  ### Fail closed on anything that is not a well-formed set: feeding a
+  ### truncated or malformed value to gtid_purged produces a replica that
+  ### looks configured and silently re-applies history.
+  if ! printf '%s' "${_gtid_set}" | grep -qE \
+    '^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}:[0-9]+(-[0-9]+)?(:[0-9]+(-[0-9]+)?)*(,[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}:[0-9]+(-[0-9]+)?(:[0-9]+(-[0-9]+)?)*)*$'; then
+    _die "Unparseable GTID set from xtrabackup_binlog_info: '${_gtid_set}'"
+  fi
+  ### Count entries, not newlines: `printf '%s' | wc -l` undercounts by one
+  ### because the final element carries no newline, and a line that reports
+  ### "1 source UUID" for a two-UUID set misleads exactly where this fix
+  ### teaches operators to look.
+  _XM_GTID_UUIDS=$(printf '%s' "${_gtid_set}" | tr ',' '\n' | grep -c ':')
+  _info "GTID set from backup (${_XM_GTID_UUIDS} source UUID(s)): ${_gtid_set}"
 
   # Runtime half of the 5.7 parallel-apply setup (the conf half persists it):
   # covers a target whose GTID was already ON, where no restart read the conf.
@@ -4153,8 +4178,10 @@ _xmass_post_mig() {
   service nginx reload &>/dev/null
   # Harsh cache flush: cold-restart Valkey/Redis (drop stale D8+ containers
   # carried from the source) + restart every PHP-FPM master (drop opcache/APCu),
-  # the only treatment trusted against cache/container poisoning. Correct
-  # per-site PHP is preserved by the migrated multi-fpm.info.
+  # the only treatment trusted against cache/container poisoning. The migrated
+  # multi-fpm.info preserves the per-site PHP PINS, but a pin only serves once
+  # its pool exists here -- see the marker heal below, without which pinned
+  # sites run on the account default pool.
   _info "Cold cache flush (Valkey/Redis drop + PHP-FPM restart) ..."
   if [ -x "/etc/init.d/valkey-server" ]; then
     killall -9 valkey-server &>/dev/null
@@ -4186,7 +4213,71 @@ _xmass_post_mig() {
     /var/xdrago/migration_proxy_trust.sh reconcile \
       || _alrt "migration_proxy_trust reconcile returned non-zero"
   fi
+  _xmass_heal_fpm_pins
   _info "post-mig complete on ${_hName}"
+}
+
+### Migrated accounts arrive carrying the SOURCE box's per-release FPM
+### markers in static/control. Both boxes run the same release, so this
+### box's manage_ltd_users reads .multi-fpm.<tree>.<xSrl>.pid as "already
+### built" and never creates pools for versions that exist only HERE --
+### exactly the interpreters prep-target's --fix-php built for the carried
+### pins -- while .multi-nginx-fpm.pid gates the per-site $user_socket
+### includes the same way. A pinned site is then served by the account
+### DEFAULT pool indefinitely, which on an aged fleet means a 5.6/7.x site
+### silently running on 8.4. Clearing both markers hands the work back to
+### the normal sweep; two passes because the include generator will not
+### emit a site include before that pool's socket exists. Deletes only --
+### the sweep re-chowns what it touches, so no root-owned residue.
+### (.prev-multi-fpm.info is deliberately left alone: the sweep recreates
+### it from the live file before diffing, so removing it changes nothing.)
+_xmass_heal_fpm_pins() {
+  local _root _acct _ctl _dom _ver _missing _healed=0
+  for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+    _acct=$(basename "${_root}")
+    case "${_acct}" in
+      arch|all|lost+found|lostfound|backups|codebases-cleanup) continue ;;
+    esac
+    _ctl="${_root}/static/control"
+    [ -e "${_ctl}/multi-fpm.info" ] || continue
+    rm -f ${_ctl}/.multi-fpm.*.pid
+    rm -f ${_ctl}/.single-fpm.*.pid
+    rm -f ${_ctl}/.multi-nginx-fpm.pid
+    _healed=$(( _healed + 1 ))
+  done
+  [ "${_healed}" = "0" ] && return 0
+  _info "Rebuilding pinned PHP pools for ${_healed} migrated account(s) ..."
+  if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
+    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+    for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+      rm -f ${_root}/static/control/.multi-nginx-fpm.pid
+    done
+    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+  fi
+  ### Name every pin that is still not live: a silent wrong-interpreter
+  ### site is the failure this heal exists to prevent, so it must never
+  ### pass quietly.
+  for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+    _acct=$(basename "${_root}")
+    _ctl="${_root}/static/control"
+    [ -e "${_ctl}/multi-fpm.info" ] || continue
+    _missing=""
+    while read -r _dom _ver; do
+      case "${_dom}" in ''|place.holder*) continue ;; esac
+      [ -z "${_ver}" ] && continue
+      _ver="${_ver//[^0-9]/}"
+      [ -z "${_ver}" ] && continue
+      [ -S "/run/${_acct}.${_ver}.fpm.socket" ] \
+        || _missing="${_missing} ${_dom}:${_ver}"
+    done < ${_ctl}/multi-fpm.info
+    if [ ! -z "${_missing}" ]; then
+      _alrt "account ${_acct}: pinned PHP pool(s) NOT live:${_missing}"
+      _alrt "  those sites are served by the account default pool right now"
+      _alrt "  check /opt/php<NN>/bin/php here, then: bash /var/xdrago/manage_ltd_users.sh"
+    else
+      _info "  ${_acct}: every pinned PHP pool is live"
+    fi
+  done
 }
 
 ###=============ARGUMENT PARSING==========###

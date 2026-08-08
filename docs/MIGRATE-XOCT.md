@@ -177,7 +177,23 @@ xoct transfer shared target-ip
 
 `export` puts a 503 on all sites in the account (`http-off.pid`), purges the
 nginx speed cache, dumps each site database via mydumper and the Ægir
-hostmaster database via mysqldump, and marks `exported.pid`.
+hostmaster database via mysqldump, and marks `exported.pid` — but ONLY when
+every dump completed truthfully. The hostmaster dump must exit clean and be
+non-empty, and every per-site mydumper run must exit clean AND leave its
+final `metadata` marker. Any failure withholds `exported.pid`, records the
+failed databases in `log/export_failed.pid`, prints an INCOMPLETE verdict
+and exits non-zero. The recovery is simply re-running the same `export`
+after fixing the cause: site dumps are redone in place, the hostmaster dump
+is kept, and the client start notice is NOT re-mailed (one notice per
+account+target).
+
+While `log/export_failed.pid` exists, `transfer` and `import` refuse the
+account. `--force` on either bypasses ONLY that refusal, loudly. The latch
+travels with the account transfer, so a target refuses a forced-through
+partial export too; a later transfer that passed the gate cleanly clears
+the travelled latch on the target. After a fully forced-through partial
+migration, `xoct proxy` also needs `--force` (exported.pid was truthfully
+withheld), which accepts the partial export on the same explicit axis.
 
 `transfer o1` rsyncs platforms, files, drush aliases, nginx vhosts, SSL certs,
 and Let's Encrypt config to the target. The `static/files` transfer uses a
@@ -197,6 +213,18 @@ service nginx reload
 xoct post-mig
 service cron start
 ```
+
+`import` refuses while the travelled `log/export_failed.pid` marks the
+export incomplete (`--force` bypasses only that gate). Per-site database
+loads are truthful: a transferred dump directory without mydumper's final
+`metadata` marker is SKIPPED (a partial dump silently restoring an
+incomplete database is the failure being guarded against), a failed
+myloader run is counted, and a site whose db credentials cannot be parsed
+is counted too. Sites with a counted failure do NOT get their `verify`
+scheduled; clean sites import and verify normally. Any counted failure
+writes `log/import_failed.pid`, prints an INCOMPLETE verdict naming the
+databases and exits non-zero — the printed recovery re-runs the full
+import from the same transferred dumps after the cause is fixed.
 
 `import` first resolves which panel database to import INTO. The dest
 account's panel is often rebuilt between `create` and `import` (the enforced
