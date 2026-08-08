@@ -5,8 +5,9 @@ platforms created in the ~/static directory tree.
 
 Some core and contrib modules are either enabled or disabled
 by default, by running weekly (on Tuesday) maintenance monitor.
-This applies to Drupal 6 and Drupal 7 sites only -- nothing is
-enabled or disabled on Drupal 8+; see the last section.
+This applies to Drupal 6 and Drupal 7 sites. On Drupal 8+ nothing
+is enabled, and the only force-disabled module is linkchecker,
+enforced by a different route -- see the last section.
 
 NOTE: You can disable this feature with _MODULES_FIX=NO in the
       standard Barracuda configuration file: /root/.barracuda.cnf
@@ -124,7 +125,7 @@ Contrib [F]orce[D]isabled
  filefield_nginx_progress --- [D7] -------------- [FD]
  hacked --------------------- [D6,D7] ----------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
- linkchecker ---------------- [D6,D7] ----------- [FD] Banned: self-DoS (synchronous URL probes in web cron). On D8+ it is reported, never disabled -- see below
+ linkchecker ---------------- [D6-D11] ---------- [FD] Banned: self-DoS (synchronous URL probes in web cron). Enforced on D8+ too, by a different route -- see below
  mydropwizard --------------- [D6,D7] ----------- [FD] Banned: the myDropWizard update service closed in 2022; its synchronous cron call can never succeed
  performance ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]
@@ -195,23 +196,22 @@ Hostmaster [E]xtensions [M]aster [S]atellite:
  userprotect ---------------- [D7] ------ [S] [B] [FE] [ES]
 ```
 
-## Drupal 8+: nothing is enabled or disabled
+## Drupal 8+: linkchecker only, enforced without Drush8
 
-Everything above is a Drupal 6/7 mechanism. BOA does not enable or disable
-any module on a Drupal 8+ site, and there is no D8+ force-enable or
-force-disable list in the sense the flags describe. The reason is general:
-a Drush8 full bootstrap against a Drupal 8+ site can corrupt the site's
-internals (cached container/router state), so outside the controlled Aegir
-backend path BOA never bootstraps a D8+ site with Drush8 — and Drush8 is
-what performs these actions on D6/D7.
+BOA stopped touching Drupal 8+ modules with Drush8, which is what carries
+out these actions on D6/D7: a Drush8 full bootstrap against a Drupal 8+
+site can corrupt the site's internals (cached container/router state), so
+outside the controlled Aegir backend path BOA never bootstraps a D8+ site
+with Drush8. There is therefore no D8+ force-enable list at all, and the
+D8+ force-disable list holds exactly one module.
 
-`linkchecker` is the single exception, and it is handled without Drush
-entirely: it is reported, never disabled. On D8+ platforms the Tuesday
-pass only PROBES each
-site's database directly (root mysql; db name parsed from the site
-drushrc; on D8+ a banned module's table presence is an exact installed
-signal, since uninstall drops the schema and no disabled state exists) and
-mails the operator (`_MY_EMAIL`) on a hit, repeating every Tuesday until the
+That module is `linkchecker`, force-disabled on every core for the
+reason it always was on D6/D7. Only the route differs, and it uses no
+Drush at all: on D8+ platforms the Tuesday pass PROBES each site's
+database directly (root mysql; db name parsed from the site drushrc; on
+D8+ a banned module's table presence is an exact installed signal, since
+uninstall drops the schema and no disabled state exists) and mails the
+operator (`_MY_EMAIL`) on a hit, repeating every Tuesday until the
 module is gone. `_MODULES_SKIP` whitelists a module on D8+ exactly as it
 does on D6/D7.
 
