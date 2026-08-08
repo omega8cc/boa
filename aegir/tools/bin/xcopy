@@ -234,10 +234,21 @@ EOFMYSQL
               echo "ALRT: site ${_Dom} db import FAILED on ${_oct}"
             fi
           else
-            _XCOPY_SITE_IMPORT_OK=NO
-            _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
-            _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
-            echo "ALRT: site ${_Dom} db failure due to missing ${_USR}/src/${_DBN}"
+            ### No transferred dump. A target-native site legitimately has
+            ### none — only a site with NEITHER a dump NOR a populated local
+            ### database is a real import failure (mirrors the xoct fix from
+            ### the first suite leg's false positive).
+            _XCOPY_LOCAL_TBLS=$(mysql --silent -u root -N -B -e \
+              "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${_DBN}'" 2>/dev/null | tr -d ' \n')
+            if [[ "${_XCOPY_LOCAL_TBLS}" =~ ^[0-9]+$ ]] && [ "${_XCOPY_LOCAL_TBLS}" -gt "0" ]; then
+              _XCOPY_SITE_IMPORT_OK=YES
+              echo "INFO: site ${_Dom} has no transferred dump; local db ${_DBN} already populated (${_XCOPY_LOCAL_TBLS} tables) -- target-native site, left as-is"
+            else
+              _XCOPY_SITE_IMPORT_OK=NO
+              _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
+              _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
+              echo "ALRT: site ${_Dom} db failure: no dump in ${_USR}/src/${_DBN} AND local db ${_DBN} is empty/absent"
+            fi
           fi
           ### A verify over a failed import regenerates settings/vhost around
           ### a database that is not there -- schedule it only for clean loads.
