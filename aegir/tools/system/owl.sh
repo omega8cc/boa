@@ -290,8 +290,7 @@ else
   _FORCE_SITES_VERIFY=NO
 fi
 #
-_MODULES_FORCE="automated_cron \
-  backup_migrate \
+_MODULES_FORCE="backup_migrate \
   coder \
   cookie_cache_bypass \
   hacked \
