@@ -142,10 +142,10 @@ Kept here as the answer for anyone who remembers the older list:
  search_krumo, stage_file_proxy -- dropped from the maintenance
       lists; nothing in owl.sh or the night workers refers to them.
 
- automated_cron ------------- [D8-D11] ---------- a D8+ core module,
-      and nothing is disabled on D8+ at all. It is still listed in
-      _MODULES_FORCE, but that only changes how a module already on
-      the day's OFF list is handled, and it is on no OFF list.
+ automated_cron ------------- [D8-D11] ---------- a leftover from the
+      era when more D8+ modules were auto-disabled with Drush 8.
+      That era is over (see the last section), and its stale
+      _MODULES_FORCE entry has been removed too.
 
  varnish -------------------- [D6,D7] ----------- never disabled
       per site: it is purged from the bundled o_contrib tree by
