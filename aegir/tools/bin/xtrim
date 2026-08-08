@@ -13,10 +13,16 @@ SHELL=/bin/bash
 ### Verbs:
 ###   xtrim status                    read-only: proxy state, cert horizon,
 ###                                   reclaimable bytes
-###   xtrim plan   <oN|all>           full precondition battery + itemised
+###   xtrim plan    <oN|all>          full precondition battery + itemised
 ###                                   deletion plan (DRY)
-###   xtrim shrink <oN|all> [--live]  stage A (reversible quiesce) + stage B
-###                                   (one-way data removal)
+###   xtrim quiesce <oN|all> [--live] stage A ONLY: park the account and
+###                                   quarantine its pools/includes/cores.
+###                                   Reversible, deletes nothing. Leaves
+###                                   the account inspectable before the
+###                                   one-way step, and is the state
+###                                   `restore` undoes.
+###   xtrim shrink <oN|all> [--live]  stage A (skipped when already
+###                                   quiesced) + stage B (one-way removal)
 ###   xtrim finalize [--live] [--drop-datadir]
 ###                                   box-wide stage C, only when every
 ###                                   account is shrunk
@@ -195,7 +201,7 @@ _map_account() {
   _USR="/data/disk/${_oN}"
   _VHD="${_USR}/config/server_master/nginx/vhost.d"
   _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""
-  _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""
+  _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""; _MAP_ALL_DBS=""
   _MAP_PLATS=""; _MAP_NOSAVED=""
   ### Live vhosts must all be proxies pointing at ONE target.
   for _v in $(find "${_VHD}" -maxdepth 1 -mindepth 1 -type f \
@@ -236,6 +242,25 @@ _map_account() {
     fi
   done
   _MAP_DBS=$(echo "${_MAP_DBS}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+  ### The account's OWN dedicated Aegir site (oN.<this-host-fqdn>) is local
+  ### infrastructure, not client data: an xoct move gives the account a
+  ### FRESH one on the target under the target's hostname, so this database
+  ### has no same-named counterpart there by construction. Classify it now
+  ### so the target proof can hold client data to a strict name match while
+  ### judging the account's own plumbing by whether the account really
+  ### exists and serves on the target.
+  _MAP_OWN_DBS=""
+  local _selfdom
+  _selfdom="${_oN}.$(hostname -f 2>/dev/null | tr -d '\n')"
+  if [ -r "${_USR}/.drush/${_selfdom}.alias.drushrc.php" ]; then
+    _sp="$(_alias_field "${_USR}/.drush/${_selfdom}.alias.drushrc.php" "site_path")"
+    if [ -n "${_sp}" ] && [ -r "${_sp}/drushrc.php" ]; then
+      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
+        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
+      _db="$(_sane_ident "${_db}")"
+      [ -n "${_db}" ] && _MAP_OWN_DBS="${_MAP_OWN_DBS} ${_db}"
+    fi
+  fi
   ### The account panel database.
   if [ -r "${_USR}/.drush/hostmaster.alias.drushrc.php" ]; then
     _sp="$(_alias_field "${_USR}/.drush/hostmaster.alias.drushrc.php" "site_path")"
@@ -254,6 +279,10 @@ _map_account() {
     esac
   done
   _MAP_PLATS=$(echo "${_MAP_PLATS}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+  ### One deduped work list. The panel database is normally already in
+  ### the map (it is one of the account's own), so a plain concatenation
+  ### dumped and dropped it twice.
+  _MAP_ALL_DBS=$(echo ${_MAP_DBS} ${_MAP_HM_DB} | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')
 }
 
 _solr_cores_for() {
@@ -450,13 +479,33 @@ _preflight() {
   _target_ssh_ok || _die "${_oN}: cannot ssh root@${_MAP_TGT} -- the mandatory target-side proof needs it"
   _target_proof_vhosts "${_oN}" \
     || _die "${_oN}: target ${_MAP_TGT} shows no real (non-proxy) vhost -- proxy chain? refusing"
-  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+  ### CLIENT data: strict name match on the target, no exceptions.
+  for _db in ${_MAP_DBS}; do
+    case " ${_MAP_OWN_DBS} ${_MAP_HM_DB} " in
+      *" ${_db} "*) continue ;;
+    esac
     if ! _target_proof_db "${_db}"; then
       _alrt "${_oN}: target has NO populated schema '${_db}'"
       _fail=1
     fi
   done
   [ "${_fail}" != "0" ] && _die "${_oN}: target-side schema proof failed -- nothing will be dropped"
+  ### The account's OWN plumbing (its panel and its dedicated Aegir site)
+  ### is rebuilt fresh on the target by an xoct move, under the target's
+  ### hostname, so a same-named schema there is the WRONG thing to demand:
+  ### requiring it made xtrim refuse for ever on every xoct-migrated
+  ### source. Prove instead that the account genuinely exists and serves
+  ### its own panel on the target -- if it does not, this is not a
+  ### completed migration and nothing may be dropped.
+  if [ -n "${_MAP_OWN_DBS// /}" ] || [ -n "${_MAP_HM_DB}" ]; then
+    if ! ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" \
+      "[ -d /data/disk/${_oN} ] && [ -s /data/disk/${_oN}/log/cores.txt ] \
+       && [ -e /data/disk/${_oN}/.drush/hostmaster.alias.drushrc.php ] && echo OK" 2>/dev/null \
+      | grep -q OK; then
+      _die "${_oN}: target ${_MAP_TGT} has no working ${_oN} account -- refusing to drop this account's own panel/site databases"
+    fi
+    _info "${_oN}: account plumbing (${_MAP_OWN_DBS# }${_MAP_HM_DB:+ ${_MAP_HM_DB}}) verified by a live ${_oN} account on the target, not by name"
+  fi
   _info "${_oN}: preflight CLEAN (target ${_MAP_TGT}, $(echo ${_MAP_DBS} | wc -w | tr -d ' ') site dbs, panel db ${_MAP_HM_DB:-none})"
 }
 
@@ -588,6 +637,14 @@ _stage_a() {
 _restore_stage_a() {
   local _oN="$1"
   local _q="${_XTRIM_BASE}/${_oN}/quarantine" _p _m _c
+  ### Refuse a typo outright: without this, any string returned a cheerful
+  ### "restored from quarantine" having done nothing at all.
+  if [ -z "${_oN}" ] || [ ! -d "/data/disk/${_oN}" ]; then
+    _die "restore: no such account '${_oN}'"
+  fi
+  if [ ! -d "${_q}" ]; then
+    _die "${_oN}: nothing to restore -- no quarantine at ${_q} (was it ever quiesced?)"
+  fi
   _USR="/data/disk/${_oN}"
   case "$(_phase_get "${_oN}")" in
     stage-b*)
@@ -622,24 +679,74 @@ _restore_stage_a() {
   ### Restore replays the recorded quarantine map -- origin dir + port were
   ### captured at stage A time; a name heuristic would misplace oct.* cores
   ### that live on solr7.
+  local _solr_left=0 _rc
   if [ -r "${_q}/solr/MAP.txt" ]; then
     while IFS='|' read -r _core _origin _port _held; do
-      [ -d "${_held}" ] || continue
-      [ -d "${_origin}" ] || continue
-      mv -f "${_held}" "${_origin}/${_core}" \
-        && curl -s --max-time 15 \
-          "http://127.0.0.1:${_port}/solr/admin/cores?action=RELOAD&core=${_core}" &> /dev/null \
-        && _info "${_oN}: solr core ${_core} restored to ${_origin}"
+      if [ ! -d "${_held}" ]; then
+        _alrt "${_oN}: solr core ${_core}: quarantined dir ${_held} is gone -- skipped"
+        _solr_left=1
+        continue
+      fi
+      if [ ! -d "${_origin}" ]; then
+        _alrt "${_oN}: solr core ${_core}: origin ${_origin} no longer exists -- skipped"
+        _solr_left=1
+        continue
+      fi
+      if ! mv -f "${_held}" "${_origin}/${_core}"; then
+        _alrt "${_oN}: could not move solr core ${_core} back to ${_origin} -- left in quarantine"
+        _solr_left=1
+        continue
+      fi
+      ### RELOAD cannot bring back a core that stage A UNLOADed: unloading
+      ### DE-REGISTERS it, so reload answers 400 and the core stays dark
+      ### with its index intact but invisible. CREATE with the instance dir
+      ### is what re-registers it (core.properties is still in place).
+      _rc=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+        "http://127.0.0.1:${_port}/solr/admin/cores?action=CREATE&name=${_core}&instanceDir=${_origin}/${_core}" 2>/dev/null)
+      if [ "${_rc}" = "200" ]; then
+        _info "${_oN}: solr core ${_core} restored to ${_origin} and re-registered"
+      else
+        _alrt "${_oN}: solr core ${_core} moved back but re-register returned ${_rc:-no-answer}"
+        _alrt "${_oN}:   the index is intact on disk; recover with a solr restart:"
+        _alrt "${_oN}:   pkill -9 -f solr${_port#90} ; service solr${_port#90} start"
+        _solr_left=1
+      fi
     done < "${_q}/solr/MAP.txt"
-    rm -f "${_q}/solr/MAP.txt"
+    ### Keep the map when anything was skipped or failed -- deleting it
+    ### would erase the only record of where those cores belong.
+    if [ "${_solr_left}" = "0" ]; then
+      rm -f "${_q}/solr/MAP.txt"
+    else
+      _alrt "${_oN}: solr quarantine map KEPT at ${_q}/solr/MAP.txt (unfinished entries)"
+    fi
   fi
   if [ -e "${_q}/held-run-${_oN}" ]; then
-    mv -f "${_q}/held-run-${_oN}" "/var/xdrago/run-${_oN}"
-    chmod 700 "/var/xdrago/run-${_oN}" 2>/dev/null
+    ### A PROXIED account must never get its dispatcher back: its Ægir
+    ### queue regenerates the site vhosts from the database and silently
+    ### undoes the proxy conversion (the reason xoct parks it at
+    ### conversion time). Undoing the quiesce must not undo that too, so
+    ### hand it to BOA's own off-run directory instead of /var/xdrago.
+    if [ -e "${_USR}/log/proxied.pid" ]; then
+      mkdir -p /var/backups/off-run
+      mv -f "${_q}/held-run-${_oN}" "/var/backups/off-run/run-${_oN}" 2>/dev/null \
+        && _info "${_oN}: dispatcher kept parked (account is proxied); moved to /var/backups/off-run"
+    else
+      mv -f "${_q}/held-run-${_oN}" "/var/xdrago/run-${_oN}"
+      chmod 700 "/var/xdrago/run-${_oN}" 2>/dev/null
+    fi
   fi
-  _nginx_reload_locked
-  _phase_set "${_oN}" "restored"
-  _info "${_oN}: stage A restored from quarantine"
+  if _nginx_reload_locked; then
+    _phase_set "${_oN}" "restored"
+    _info "${_oN}: stage A restored from quarantine"
+  else
+    ### Do NOT claim success on a failed configtest/reload: the files are
+    ### back but nginx is still serving the quiesced configuration.
+    _phase_set "${_oN}" "restored"
+    _alrt "${_oN}: files restored BUT nginx configtest/reload FAILED -- the"
+    _alrt "${_oN}: running config is still the quiesced one. Run 'nginx -t'"
+    _alrt "${_oN}: and reload by hand before treating this account as live."
+    return 1
+  fi
 }
 
 ### ------------------------------------------------------------ stage B ---
@@ -648,34 +755,57 @@ _stage_b() {
   local _oN="$1"
   local _db _f _r _dumps="${_XTRIM_BASE}/${_oN}/dbdumps"
   mkdir -p "${_dumps}"
-  ### Mark ENTRY, not just completion: a crash mid-stage-B must leave a
-  ### phase that makes 'xtrim restore' refuse -- unparking pools over
-  ### half-dropped databases resurrects sites against nothing.
-  _phase_set "${_oN}" "stage-b-started"
   _info "${_oN}: stage B -- data removal (ONE-WAY on this box)"
   ### Databases: dump + verify EVERY database first, then drop, deriving
   ### from the map (saved vhosts + aliases) -- never from sqlclean.
-  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
-    if mysqldump --single-transaction --quick --no-autocommit \
-      --skip-add-locks --no-tablespaces --hex-blob "${_db}" 2>/dev/null \
-      | gzip > "${_dumps}/${_db}.sql.gz"; then
-      if [ -s "${_dumps}/${_db}.sql.gz" ] && gzip -t "${_dumps}/${_db}.sql.gz" 2>/dev/null; then
-        _info "${_oN}: ${_db} dumped + verified"
+  for _db in ${_MAP_ALL_DBS}; do
+    ### A pipeline reports the LAST element's status, so `mysqldump | gzip`
+    ### returns gzip's 0 even when mysqldump died -- and neither `-s` nor
+    ### `gzip -t` can catch it, because gzip of an empty stream is a valid
+    ### 20-byte archive and gzip of a TRUNCATED dump is a valid archive of
+    ### garbage. That combination would drop a live database against a
+    ### dump containing nothing. pipefail is scoped to this subshell on
+    ### purpose: globally it would change the meaning of the ssh/pgrep
+    ### pipelines used as boolean tests elsewhere in this file.
+    if ( set -o pipefail
+         mysqldump --single-transaction --quick --no-autocommit \
+           --skip-add-locks --no-tablespaces --hex-blob "${_db}" 2>/dev/null \
+           | gzip > "${_dumps}/${_db}.sql.gz" ); then
+      ### Two different faults, two different tests: gzip -t catches a
+      ### corrupt archive, the trailer catches a well-formed archive of an
+      ### incomplete dump. mysqldump writes "-- Dump completed" last and
+      ### no --compact/--skip-comments is passed above, so its absence
+      ### means the dump did not run to the end.
+      if [ -s "${_dumps}/${_db}.sql.gz" ] \
+        && gzip -t "${_dumps}/${_db}.sql.gz" 2>/dev/null \
+        && gzip -dc "${_dumps}/${_db}.sql.gz" 2>/dev/null | tail -5 | grep -q "Dump completed"; then
+        _info "${_oN}: ${_db} dumped + verified (complete)"
       else
         rm -f "${_dumps}/${_db}.sql.gz"
-        _die "${_oN}: dump of ${_db} is empty/corrupt -- stopping BEFORE any drop"
+        _die "${_oN}: dump of ${_db} is empty/truncated/corrupt -- stopping BEFORE any drop"
       fi
     else
       rm -f "${_dumps}/${_db}.sql.gz"
       _die "${_oN}: mysqldump ${_db} failed -- stopping BEFORE any drop"
     fi
   done
-  ### Re-prove the target one last time between dump and drop.
-  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+  ### Re-prove the target one last time between dump and drop -- with the
+  ### SAME classification the preflight uses. The account's own panel and
+  ### dedicated site never exist under these names on an xoct target (it
+  ### builds fresh ones named for its own host), so demanding them here
+  ### aborted every shrink after the dumps were already taken.
+  for _db in ${_MAP_DBS}; do
+    case " ${_MAP_OWN_DBS} ${_MAP_HM_DB} " in
+      *" ${_db} "*) continue ;;
+    esac
     _target_proof_db "${_db}" \
       || _die "${_oN}: target lost schema ${_db} between dump and drop -- stopping"
   done
-  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+  ### Mark the irreversible point HERE, not at function entry: everything
+  ### above (dump, verify, re-proof) deletes nothing, and stamping earlier
+  ### made `restore` refuse after a failed dump that had destroyed nothing.
+  _phase_set "${_oN}" "stage-b-started"
+  for _db in ${_MAP_ALL_DBS}; do
     mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_db}\`" 2>/dev/null \
       && _info "${_oN}: dropped database ${_db}"
     ### Drop the paired user only when it holds no grant on any OTHER db.
@@ -727,9 +857,12 @@ _stage_b() {
     fi
     _info "${_oN}: removed static tree ${_f}"
   done
-  _probe_all_doms "${_oN}" \
-    || _die "${_oN}: POST-REMOVAL probe failed -- proxy vhosts untouched, investigate"
+  ### Stamp BEFORE the closing probe: the deletion is already complete, so
+  ### a probe wobble must not leave the account stuck at stage-b-started,
+  ### where finalize would refuse for ever and restore is meaningless.
   _phase_set "${_oN}" "stage-b"
+  _probe_all_doms "${_oN}" \
+    || _alrt "${_oN}: POST-REMOVAL probe failed -- data removal COMPLETED; proxy vhosts untouched, investigate the proxy"
   _info "${_oN}: stage B complete; dumps retained under ${_dumps}"
 }
 
@@ -828,21 +961,73 @@ _cmd_status() {
 }
 
 _run_one() {
-  ### $1 verb (plan|shrink), $2 acct, $3 mode
+  ### $1 verb (plan|quiesce|shrink), $2 acct, $3 mode
   local _verb="$1" _oN="$2" _mode="$3"
+  local _phase
   _load_cnf_defaults
   _preflight "${_oN}"
   _write_manifest "${_oN}" "${_mode}"
+  _phase="$(_phase_get "${_oN}")"
+  if [ "${_verb}" = "quiesce" ]; then
+    ### Stage A as a first-class operator step. Without it the reversible
+    ### state existed only for the microseconds between stage A's last
+    ### statement and stage B's first, so `restore` could never be used
+    ### deliberately -- the gap the first xtrim leg exposed and Adam ruled
+    ### to close.
+    case "${_phase}" in
+      stage-b-started)
+        _die "${_oN}: stage B has STARTED (deletion may be partial) -- quiesce is not meaningful; inspect ${_XTRIM_BASE}/${_oN}"
+      ;;
+      stage-b)
+        _die "${_oN}: stage B has completed -- quiesce is not meaningful; see the manifest"
+      ;;
+      stage-a)
+        _info "${_oN}: already quiesced (phase stage-a) -- nothing to do"
+        _info "${_oN}: proceed with 'xtrim shrink ${_oN}' then 'xtrim shrink ${_oN} --live' (ONE-WAY),"
+        _info "${_oN}: or undo with 'xtrim restore ${_oN}'"
+        return 0
+      ;;
+    esac
+    if [ "${_mode}" = "LIVE" ]; then
+      _stage_a "${_oN}"
+      _state_write quiesce "${_oN}" LIVE DONE
+      _info "${_oN}: QUIESCED and reversible. Nothing has been deleted."
+      _info "${_oN}:   undo   -> xtrim restore ${_oN}"
+      _info "${_oN}:   proceed-> xtrim shrink ${_oN}  (DRY, then --live; ONE-WAY)"
+    else
+      _info "${_oN}: quiesce DRY -- would park run-${_oN}, quarantine FPM pools + post.d includes, unload+quarantine solr cores, re-probe"
+      _info "${_oN}: nothing would be deleted; the account stays fully restorable"
+      _state_write quiesce "${_oN}" DRY CLEAN
+      _info "${_oN}: quiesce DRY CLEAN -- next: xtrim quiesce ${_oN} --live"
+    fi
+    return 0
+  fi
+  if [ "${_verb}" = "shrink" ]; then
+    case "${_phase}" in
+      stage-b)
+        _die "${_oN}: already shrunk (phase stage-b) -- nothing left to remove"
+      ;;
+      stage-b-started)
+        _die "${_oN}: a previous stage B did not finish (phase stage-b-started) -- inspect ${_XTRIM_BASE}/${_oN} before re-running"
+      ;;
+    esac
+  fi
   if [ "${_verb}" = "plan" ]; then
     _info "${_oN}: PLAN (DRY): stage A would park run-${_oN}, quarantine FPM pools + post.d includes, unload+quarantine solr cores"
-    _info "${_oN}: PLAN (DRY): stage B would dump+verify then DROP:${_MAP_DBS}${_MAP_HM_DB:+ ${_MAP_HM_DB}}"
+    _info "${_oN}: PLAN (DRY): stage B would dump+verify then DROP: ${_MAP_ALL_DBS}"
     _info "${_oN}: PLAN (DRY): stage B would remove backups/, src/, undo/, distro/, platforms, static trees (store resolved first)"
     _state_write plan "${_oN}" DRY CLEAN
     _info "${_oN}: plan CLEAN"
     return 0
   fi
   if [ "${_mode}" = "LIVE" ]; then
-    _stage_a "${_oN}"
+    ### An account quiesced earlier is already in stage A; re-running it
+    ### would re-park an empty quarantine and re-drain for nothing.
+    if [ "${_phase}" = "stage-a" ]; then
+      _info "${_oN}: already quiesced -- skipping stage A, going straight to stage B"
+    else
+      _stage_a "${_oN}"
+    fi
     _stage_b "${_oN}"
     _state_write shrink "${_oN}" LIVE DONE
   else
@@ -877,7 +1062,7 @@ case "$1" in
     _manage_single_lock
     _cmd_status
   ;;
-  plan|shrink)
+  plan|quiesce|shrink)
     _verb="$1"
     _acct="$2"
     [ -z "${_acct}" ] && _die "Usage: xtrim ${_verb} <oN|all> [--live]"
@@ -886,14 +1071,23 @@ case "$1" in
     ### 'all' means all PROXIED accounts: a box mid-drain legitimately
     ### holds unproxied ones, and _die-ing on the first would make the
     ### fan-out unusable. The single-account form still refuses loudly.
-    if [ "${_verb}" = "shrink" ] && [ "${_XTRIM_MODE}" = "LIVE" ]; then
+    ### Per-verb token: quiesce arms only quiesce, shrink only shrink.
+    if { [ "${_verb}" = "shrink" ] || [ "${_verb}" = "quiesce" ]; } \
+      && [ "${_XTRIM_MODE}" = "LIVE" ]; then
       if [ "${_acct}" = "all" ]; then
         for _n in $(_list_accounts); do
           [ -e "/data/disk/${_n}/log/proxied.pid" ] || continue
-          _require_clean_dry shrink "${_n}"
+          ### Accounts the fan-out will skip have no token and need none;
+          ### demanding one made 'all --live' permanently unusable as soon
+          ### as a single account moved past the verb.
+          case "$(_phase_get "${_n}")" in
+            stage-b|stage-b-started) continue ;;
+            stage-a) [ "${_verb}" = "quiesce" ] && continue ;;
+          esac
+          _require_clean_dry "${_verb}" "${_n}"
         done
       else
-        _require_clean_dry shrink "${_acct}"
+        _require_clean_dry "${_verb}" "${_acct}"
       fi
     fi
     if [ "${_acct}" = "all" ]; then
@@ -902,6 +1096,19 @@ case "$1" in
           _info "${_n}: not proxied -- skipped by 'all' (name it explicitly to see the refusal)"
           continue
         fi
+        ### A fan-out must not abort the whole sweep because ONE account is
+        ### already past this verb; name it and move on. The single-account
+        ### form still refuses loudly.
+        case "$(_phase_get "${_n}")" in
+          stage-b|stage-b-started)
+            [ "${_verb}" = "shrink" ] || [ "${_verb}" = "quiesce" ] \
+              && { _info "${_n}: past ${_verb} (phase $(_phase_get "${_n}")) -- skipped by 'all'"; continue; }
+          ;;
+          stage-a)
+            [ "${_verb}" = "quiesce" ] \
+              && { _info "${_n}: already quiesced -- skipped by 'all'"; continue; }
+          ;;
+        esac
         _run_one "${_verb}" "${_n}" "${_XTRIM_MODE}"
       done
     else
@@ -913,13 +1120,16 @@ case "$1" in
     _take_sqlclean_lock
     _load_cnf_defaults
     if [ "${_XTRIM_MODE}" = "LIVE" ]; then
-      _require_clean_dry finalize box
+      ### The datadir drop is part of WHAT was planned, so it belongs in the
+      ### token key: a DRY that planned "datadir kept" must never arm a LIVE
+      ### run that destroys it.
+      _require_clean_dry "finalize-dd${_XTRIM_DROP_DATADIR}" box
       _finalize LIVE "${_XTRIM_DROP_DATADIR}"
-      _state_write finalize box LIVE DONE
+      _state_write "finalize-dd${_XTRIM_DROP_DATADIR}" box LIVE DONE
     else
       _finalize DRY "${_XTRIM_DROP_DATADIR}"
-      _state_write finalize box DRY CLEAN
-      _info "finalize DRY CLEAN -- next: xtrim finalize --live"
+      _state_write "finalize-dd${_XTRIM_DROP_DATADIR}" box DRY CLEAN
+      _info "finalize DRY CLEAN -- next: xtrim finalize --live${_XTRIM_DROP_DATADIR:+ }$([ "${_XTRIM_DROP_DATADIR}" = "YES" ] && echo '--drop-datadir')"
     fi
   ;;
   restore)
@@ -933,7 +1143,12 @@ case "$1" in
     _probe_all_doms "${_acct}" || _alrt "${_acct}: post-restore probes not clean -- check manually"
   ;;
   *)
-    echo "Usage: xtrim {status|plan <oN|all>|shrink <oN|all> [--live]|finalize [--live] [--drop-datadir]|restore <oN>}"
+    echo "Usage: xtrim status"
+    echo "       xtrim plan     <oN|all>            preflight + itemised plan; writes a manifest"
+    echo "       xtrim quiesce  <oN|all> [--live]   stage A only -- REVERSIBLE, deletes nothing"
+    echo "       xtrim restore  <oN>                undo a quiesce from quarantine"
+    echo "       xtrim shrink   <oN|all> [--live]   stage A (if needed) + stage B -- ONE-WAY"
+    echo "       xtrim finalize [--live] [--drop-datadir]   box-wide, all accounts shrunk"
     exit 1
   ;;
 esac

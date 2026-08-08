@@ -1071,10 +1071,17 @@ _xmass_write_gtid_conf_local() {
   local _conf_dir
   _conf_dir=$(_xmass_mysql_conf_dir)
   local _cnf="${_conf_dir}/xmass_gtid.cnf"
-  # Only add log_bin directive if binlog is not already active
-  local _logbin
+  # log_bin: runtime-OFF means we must add it -- but runtime-ON is NOT a
+  # reason to omit it, because on a rewrite the binlog is usually ON due to
+  # the very line in the conf being overwritten (role swap on a failback:
+  # this dropped the directive, the next restart killed the binlog, and the
+  # box could never serve as a master again). Preserve our own line across
+  # rewrites; omit only when binlog is ON from config OUTSIDE this file.
+  local _logbin _keep_logbin=NO
   _logbin=$(mysql --defaults-file=/root/.my.cnf \
     -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
+  [ "${_logbin}" != "ON" ] && _keep_logbin=YES
+  [ -r "${_cnf}" ] && grep -q "^log_bin" "${_cnf}" && _keep_logbin=YES
   _info "Writing GTID config to ${_cnf} (server_id=${_sid}) ..."
   {
     echo "[mysqld]"
@@ -1097,7 +1104,7 @@ _xmass_write_gtid_conf_local() {
     else
       echo "binlog_expire_logs_seconds   = 604800"
     fi
-    [ "${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
+    [ "${_keep_logbin}" = "YES" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
   } > "${_cnf}"
   chmod 644 "${_cnf}"
 }
@@ -1120,17 +1127,26 @@ _xmass_configure_gtid_local() {
   _src_id=$(_ip_to_server_id \
     "${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}")
   _xmass_write_gtid_conf_local "${_src_id}"
-  if [ "${_mode}" = "ON" ]; then
-    _info "GTID already ON on source (conf persisted): OK"
+  # A source is a replication MASTER: it needs the binlog as much as GTID.
+  # Gating the restart on gtid_mode alone left a promoted failback box
+  # (gtid ON from its replica days, binlog dead since the conf rewrite)
+  # taking backups with an empty GTID set that no replica could ever use.
+  local _logbin_now
+  _logbin_now=$(mysql --defaults-file=/root/.my.cnf \
+    -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
+  if [ "${_mode}" = "ON" ] && [ "${_logbin_now}" = "ON" ]; then
+    _info "GTID + binlog already ON on source (conf persisted): OK"
     return
   fi
-  _info "GTID not enabled on source (mode=${_mode}) — restarting to apply ..."
+  _info "Source not master-ready (gtid=${_mode} log_bin=${_logbin_now}) — restarting to apply ..."
   /var/xdrago/move_sql.sh restart \
     || _die "MySQL restart failed on source (move_sql.sh)"
   _mode=$(_xmass_check_gtid_enabled_local)
-  [ "${_mode}" = "ON" ] \
-    || _die "GTID still not ON after restart on source (mode=${_mode})"
-  _info "GTID enabled on source: OK"
+  _logbin_now=$(mysql --defaults-file=/root/.my.cnf \
+    -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
+  { [ "${_mode}" = "ON" ] && [ "${_logbin_now}" = "ON" ]; } \
+    || _die "Source still not master-ready after restart (gtid=${_mode} log_bin=${_logbin_now})"
+  _info "GTID + binlog enabled on source: OK"
 }
 
 _xmass_configure_gtid_target() {
@@ -1169,6 +1185,9 @@ fi
 _cnf="\${_conf_dir}/xmass_gtid.cnf"
 _logbin=\$(mysql --defaults-file=/root/.my.cnf \
   -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print \$2}')
+_keep_logbin=NO
+[ "\${_logbin}" != "ON" ] && _keep_logbin=YES
+[ -r "\${_cnf}" ] && grep -q "^log_bin" "\${_cnf}" && _keep_logbin=YES
 {
   echo "[mysqld]"
   echo "server_id                = ${_tgt_id}"
@@ -1183,7 +1202,7 @@ _logbin=\$(mysql --defaults-file=/root/.my.cnf \
   else
     echo "binlog_expire_logs_seconds   = 604800"
   fi
-  [ "\${_logbin}" != "ON" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
+  [ "\${_keep_logbin}" = "YES" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
 } > "\${_cnf}"
 chmod 644 "\${_cnf}"
 REMOTEBASH
@@ -3106,6 +3125,83 @@ REMOTE
 
 ###-------------RENAMEAEGIRHOST ON TARGET---###
 
+_xmass_promotion_cleanup_target() {
+  # A cutover TARGET that was itself demoted earlier (failback: the pair
+  # switched, now switches back) still carries the artefacts of its OWN
+  # demotion, and every one of them bites after promotion -- found live on
+  # the first failback drill:
+  #   - its self-authored SOURCE-role migproxy.cnf makes the peer-record
+  #     gate refuse EVERY inbound proxy push (rc 7): the demoted sibling's
+  #     own conversion fails (leaving its sites 503-gated) and a PX0 proxy
+  #     can never be retargeted back to this box;
+  #   - its stale proxied.pid makes create/export refuse this box as a
+  #     future source ("already migrated");
+  #   - its parked dispatcher leaves the promoted account's queue dead, so
+  #     tasks and certificate renewals silently stop;
+  #   - its PROXY vhosts survive promotion for every site whose name the
+  #     rename does not touch (only renamed sites get verify tasks), so the
+  #     promoted box relays to its demoted sibling, which now relays back:
+  #     a loop nginx surfaces as 400 header-too-large. The dot-prefixed
+  #     pre-proxy backups the conversion kept are restored over any live
+  #     vhost still carrying proxy_pass.
+  # The promotion ends the demotion those artefacts belonged to. Clearing
+  # them here -- BEFORE step 16 pushes fresh records at this box -- is what
+  # lets the failback complete. Idempotent; a first-migration target has
+  # none of these and every branch is a no-op.
+  _info "Clearing stale demotion artefacts on promoted target ${_tgt} ..."
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    ssh root@"${_tgt}" "bash -s" <<PROMCLEAN
+_cnf="/data/disk/${_oct}/log/migproxy.cnf"
+if [ -r "\${_cnf}" ] \
+  && grep -qx "_MIG_ROLE=source" "\${_cnf}" \
+  && hostname -I 2>/dev/null | tr ' ' '\n' \
+     | grep -qxF "\$(grep -m1 '^_MIG_HOST_IP=' "\${_cnf}" | cut -d= -f2-)"; then
+  mv -f "\${_cnf}" "\${_cnf}.superseded-by-promotion" 2>/dev/null
+  echo "  ${_oct}: retired stale self-authored source-role record"
+fi
+if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
+  rm -f "/data/disk/${_oct}/log/proxied.pid"
+  echo "  ${_oct}: removed stale proxied.pid"
+fi
+# The demotion machinery stamped these to satisfy the conversion gate
+# (xmass touches exported.pid itself; it never runs a real export). On a
+# promoted box they block create/export exactly like the travelled-latch
+# defect on an imported account -- same family, same remedy.
+for _lch in exported transferred; do
+  if [ -e "/data/disk/${_oct}/log/\${_lch}.pid" ]; then
+    rm -f "/data/disk/${_oct}/log/\${_lch}.pid"
+    echo "  ${_oct}: removed stale \${_lch}.pid"
+  fi
+done
+if [ ! -e "/var/xdrago/run-${_oct}" ] \
+  && [ -e "/var/backups/off-run/run-${_oct}" ]; then
+  mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
+  echo "  ${_oct}: restored parked dispatcher"
+fi
+_vhd="/data/disk/${_oct}/config/server_master/nginx/vhost.d"
+_restored=0
+for _bak in "\${_vhd}"/.[a-zA-Z0-9]*; do
+  [ -f "\${_bak}" ] || continue
+  _dom="\$(basename "\${_bak}")"
+  _dom="\${_dom#.}"
+  [ -n "\${_dom}" ] || continue
+  if [ -f "\${_vhd}/\${_dom}" ] \
+    && grep -q "proxy_pass" "\${_vhd}/\${_dom}" 2>/dev/null; then
+    mv -f "\${_bak}" "\${_vhd}/\${_dom}"
+    _restored=\$(( _restored + 1 ))
+    echo "  ${_oct}: restored pre-proxy vhost \${_dom}"
+  fi
+done
+if [ "\${_restored}" -gt 0 ]; then
+  nginx -t &>/dev/null && service nginx reload &>/dev/null \
+    && echo "  ${_oct}: nginx reloaded with restored vhosts" \
+    || echo "  ALRT: ${_oct}: nginx -t FAILED after vhost restore -- NOT reloaded"
+fi
+PROMCLEAN
+  done
+}
+
 _xmass_renameaegirhost_all() {
   # OLD is pinned via --force-old to the source's own server_master alias
   # value (what a first-run auto-detect would see on the target) because:
@@ -3728,6 +3824,13 @@ _xmass_cutover_finish() {
          " The source stays 503-gated and the SQL watchdogs stay paused." \
          " Fix the cause on ${_tgt}, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
   fi
+
+  # Step 12.7: A failback target was itself demoted earlier; its stale
+  # demotion artefacts break the steps that follow (see the function), and
+  # the panel machinery in step 13 must see a real-serving box, not a
+  # half-proxied one -- the first failback drill had its hostmaster verify
+  # fail exactly here, on a box still shaped as a proxy.
+  _xmass_promotion_cleanup_target
 
   # Step 13: Run renameaegirhost on target for all Aegir roots.
   # This rewrites drush aliases, vhosts, and the Aegir DB to the new hostname,
