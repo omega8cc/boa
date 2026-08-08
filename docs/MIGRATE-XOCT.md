@@ -214,6 +214,24 @@ xoct post-mig
 service cron start
 ```
 
+`import` also rebuilds the account's **pinned PHP pools** on this box.
+The account arrives carrying the source's per-release FPM markers
+(`static/control/.multi-fpm.<tree>.<xSrl>.pid` and
+`.multi-nginx-fpm.pid`); both boxes run the same release, so without
+clearing them the target treats the pool set as already built, never
+creates pools for versions that exist only here, and never regenerates
+the per-site socket includes — leaving every pinned site served by the
+account DEFAULT pool indefinitely. The import clears the markers, lets
+the normal sweep rebuild in two passes, and then reports either
+`every pinned PHP pool is live` or an `ALRT` naming each pin that is
+not. Treat such an ALRT as a stop: a site answering 200 with the right
+content can still be running on the wrong interpreter.
+
+> **cron stays stopped until `post-mig`.** The import quiesces the
+> target by stopping cron; only `post-mig` restarts it. A box left
+> without it silently stops receiving fleet updates altogether. Check
+> `pgrep -x cron` before you walk away.
+
 `import` refuses while the travelled `log/export_failed.pid` marks the
 export incomplete (`--force` bypasses only that gate). Per-site database
 loads are truthful: a transferred dump directory without mydumper's final
