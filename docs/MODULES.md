@@ -5,6 +5,8 @@ platforms created in the ~/static directory tree.
 
 Some core and contrib modules are either enabled or disabled
 by default, by running weekly (on Tuesday) maintenance monitor.
+This applies to Drupal 6 and Drupal 7 sites only -- nothing is
+enabled or disabled on Drupal 8+; see the last section.
 
 NOTE: You can disable this feature with _MODULES_FIX=NO in the
       standard Barracuda configuration file: /root/.barracuda.cnf
@@ -110,7 +112,6 @@ Contrib [F]orce[E]nabled
 
 Core [F]orce[D]isabled:
 
- automated_cron ------------- [D8-D11] ---------- [FD] Listed in _MODULES_FORCE but absent from every OFF list, so nothing disables it today
  cookie_cache_bypass -------- [D6] -------------- [FD]
  dblog ---------------------- [D6,D7] ----------- [FD]
  syslog --------------------- [D6,D7] ----------- [FD]
@@ -123,7 +124,7 @@ Contrib [F]orce[D]isabled
  filefield_nginx_progress --- [D7] -------------- [FD]
  hacked --------------------- [D6,D7] ----------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
- linkchecker ---------------- [D6-D11] ---------- [FD] on D6/D7; on D8+ detect-and-alert only (see below). Banned: self-DoS (synchronous URL probes in web cron)
+ linkchecker ---------------- [D6,D7] ----------- [FD] Banned: self-DoS (synchronous URL probes in web cron). On D8+ it is reported, never disabled -- see below
  mydropwizard --------------- [D6,D7] ----------- [FD] Banned: the myDropWizard update service closed in 2022; its synchronous cron call can never succeed
  performance ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]
@@ -139,6 +140,11 @@ Kept here as the answer for anyone who remembers the older list:
  css_gzip, javascript_aggregator, memcache, memcache_admin,
  search_krumo, stage_file_proxy -- dropped from the maintenance
       lists; nothing in owl.sh or the night workers refers to them.
+
+ automated_cron ------------- [D8-D11] ---------- a D8+ core module,
+      and nothing is disabled on D8+ at all. It is still listed in
+      _MODULES_FORCE, but that only changes how a module already on
+      the day's OFF list is handled, and it is on no OFF list.
 
  varnish -------------------- [D6,D7] ----------- never disabled
       per site: it is purged from the bundled o_contrib tree by
@@ -189,12 +195,19 @@ Hostmaster [E]xtensions [M]aster [S]atellite:
  userprotect ---------------- [D7] ------ [S] [B] [FE] [ES]
 ```
 
-## D8+ enforcement: detect and alert only — never Drush8
+## Drupal 8+: nothing is enabled or disabled
 
-A Drush8 full bootstrap against a Drupal 8+ site can corrupt the site's
+Everything above is a Drupal 6/7 mechanism. BOA does not enable or disable
+any module on a Drupal 8+ site, and there is no D8+ force-enable or
+force-disable list in the sense the flags describe. The reason is general:
+a Drush8 full bootstrap against a Drupal 8+ site can corrupt the site's
 internals (cached container/router state), so outside the controlled Aegir
-backend path BOA never bootstraps a D8+ site with Drush8 — including this
-module policy. On D8+ platforms the Tuesday pass therefore only PROBES each
+backend path BOA never bootstraps a D8+ site with Drush8 — and Drush8 is
+what performs these actions on D6/D7.
+
+`linkchecker` is the single exception, and it is handled without Drush
+entirely: it is reported, never disabled. On D8+ platforms the Tuesday
+pass only PROBES each
 site's database directly (root mysql; db name parsed from the site
 drushrc; on D8+ a banned module's table presence is an exact installed
 signal, since uninstall drops the schema and no disabled state exists) and
