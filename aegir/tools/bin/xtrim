@@ -242,6 +242,25 @@ _map_account() {
     fi
   done
   _MAP_DBS=$(echo "${_MAP_DBS}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+  ### The account's OWN dedicated Aegir site (oN.<this-host-fqdn>) is local
+  ### infrastructure, not client data: an xoct move gives the account a
+  ### FRESH one on the target under the target's hostname, so this database
+  ### has no same-named counterpart there by construction. Classify it now
+  ### so the target proof can hold client data to a strict name match while
+  ### judging the account's own plumbing by whether the account really
+  ### exists and serves on the target.
+  _MAP_OWN_DBS=""
+  local _selfdom
+  _selfdom="${_oN}.$(hostname -f 2>/dev/null | tr -d '\n')"
+  if [ -r "${_USR}/.drush/${_selfdom}.alias.drushrc.php" ]; then
+    _sp="$(_alias_field "${_USR}/.drush/${_selfdom}.alias.drushrc.php" "site_path")"
+    if [ -n "${_sp}" ] && [ -r "${_sp}/drushrc.php" ]; then
+      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
+        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
+      _db="$(_sane_ident "${_db}")"
+      [ -n "${_db}" ] && _MAP_OWN_DBS="${_MAP_OWN_DBS} ${_db}"
+    fi
+  fi
   ### The account panel database.
   if [ -r "${_USR}/.drush/hostmaster.alias.drushrc.php" ]; then
     _sp="$(_alias_field "${_USR}/.drush/hostmaster.alias.drushrc.php" "site_path")"
@@ -456,13 +475,33 @@ _preflight() {
   _target_ssh_ok || _die "${_oN}: cannot ssh root@${_MAP_TGT} -- the mandatory target-side proof needs it"
   _target_proof_vhosts "${_oN}" \
     || _die "${_oN}: target ${_MAP_TGT} shows no real (non-proxy) vhost -- proxy chain? refusing"
-  for _db in ${_MAP_DBS} ${_MAP_HM_DB}; do
+  ### CLIENT data: strict name match on the target, no exceptions.
+  for _db in ${_MAP_DBS}; do
+    case " ${_MAP_OWN_DBS} ${_MAP_HM_DB} " in
+      *" ${_db} "*) continue ;;
+    esac
     if ! _target_proof_db "${_db}"; then
       _alrt "${_oN}: target has NO populated schema '${_db}'"
       _fail=1
     fi
   done
   [ "${_fail}" != "0" ] && _die "${_oN}: target-side schema proof failed -- nothing will be dropped"
+  ### The account's OWN plumbing (its panel and its dedicated Aegir site)
+  ### is rebuilt fresh on the target by an xoct move, under the target's
+  ### hostname, so a same-named schema there is the WRONG thing to demand:
+  ### requiring it made xtrim refuse for ever on every xoct-migrated
+  ### source. Prove instead that the account genuinely exists and serves
+  ### its own panel on the target -- if it does not, this is not a
+  ### completed migration and nothing may be dropped.
+  if [ -n "${_MAP_OWN_DBS// /}" ] || [ -n "${_MAP_HM_DB}" ]; then
+    if ! ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" \
+      "[ -d /data/disk/${_oN} ] && [ -s /data/disk/${_oN}/log/cores.txt ] \
+       && [ -e /data/disk/${_oN}/.drush/hostmaster.alias.drushrc.php ] && echo OK" 2>/dev/null \
+      | grep -q OK; then
+      _die "${_oN}: target ${_MAP_TGT} has no working ${_oN} account -- refusing to drop this account's own panel/site databases"
+    fi
+    _info "${_oN}: account plumbing (${_MAP_OWN_DBS# }${_MAP_HM_DB:+ ${_MAP_HM_DB}}) verified by a live ${_oN} account on the target, not by name"
+  fi
   _info "${_oN}: preflight CLEAN (target ${_MAP_TGT}, $(echo ${_MAP_DBS} | wc -w | tr -d ' ') site dbs, panel db ${_MAP_HM_DB:-none})"
 }
 
