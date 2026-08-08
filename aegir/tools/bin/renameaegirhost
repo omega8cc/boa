@@ -923,8 +923,15 @@ _rename_in_database() {
     "${_AEGIR_DB}" \
     > "${_DUMP_ORIG}"
 
-  if [ ! -s "${_DUMP_ORIG}" ]; then
-    _die "mysqldump produced an empty file: ${_DUMP_ORIG}"
+  _RAH_DUMP_RC=$?
+  ### This is the ONLY copy of the Ægir database before a run of in-place
+  ### UPDATEs rewrites identity rows across it. `-s` alone accepts a dump
+  ### that died a byte in, so demand the dumper's own exit status and its
+  ### closing marker too.
+  if [ "${_RAH_DUMP_RC}" -ne "0" ] \
+    || [ ! -s "${_DUMP_ORIG}" ] \
+    || ! tail -5 "${_DUMP_ORIG}" 2>/dev/null | grep -q "Dump completed"; then
+    _die "pre-rename backup of ${_AEGIR_DB} is missing, truncated or failed (rc=${_RAH_DUMP_RC}) -- refusing to rewrite the database without a complete backup: ${_DUMP_ORIG}"
   fi
 
   _info "  Backup size: $(du -sh "${_DUMP_ORIG}" | cut -f1), kept in ${_BACKUP_DIR}"
