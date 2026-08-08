@@ -717,8 +717,19 @@ _restore_stage_a() {
     fi
   fi
   if [ -e "${_q}/held-run-${_oN}" ]; then
-    mv -f "${_q}/held-run-${_oN}" "/var/xdrago/run-${_oN}"
-    chmod 700 "/var/xdrago/run-${_oN}" 2>/dev/null
+    ### A PROXIED account must never get its dispatcher back: its Ægir
+    ### queue regenerates the site vhosts from the database and silently
+    ### undoes the proxy conversion (the reason xoct parks it at
+    ### conversion time). Undoing the quiesce must not undo that too, so
+    ### hand it to BOA's own off-run directory instead of /var/xdrago.
+    if [ -e "${_USR}/log/proxied.pid" ]; then
+      mkdir -p /var/backups/off-run
+      mv -f "${_q}/held-run-${_oN}" "/var/backups/off-run/run-${_oN}" 2>/dev/null \
+        && _info "${_oN}: dispatcher kept parked (account is proxied); moved to /var/backups/off-run"
+    else
+      mv -f "${_q}/held-run-${_oN}" "/var/xdrago/run-${_oN}"
+      chmod 700 "/var/xdrago/run-${_oN}" 2>/dev/null
+    fi
   fi
   if _nginx_reload_locked; then
     _phase_set "${_oN}" "restored"
