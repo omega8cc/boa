@@ -3145,6 +3145,16 @@ if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
   rm -f "/data/disk/${_oct}/log/proxied.pid"
   echo "  ${_oct}: removed stale proxied.pid"
 fi
+# The demotion machinery stamped these to satisfy the conversion gate
+# (xmass touches exported.pid itself; it never runs a real export). On a
+# promoted box they block create/export exactly like the travelled-latch
+# defect on an imported account -- same family, same remedy.
+for _lch in exported transferred; do
+  if [ -e "/data/disk/${_oct}/log/\${_lch}.pid" ]; then
+    rm -f "/data/disk/${_oct}/log/\${_lch}.pid"
+    echo "  ${_oct}: removed stale \${_lch}.pid"
+  fi
+done
 if [ ! -e "/var/xdrago/run-${_oct}" ] \
   && [ -e "/var/backups/off-run/run-${_oct}" ]; then
   mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
