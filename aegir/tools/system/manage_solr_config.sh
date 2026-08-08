@@ -1019,7 +1019,10 @@ _purge_orphan_cores() {
 }
 
 _cleanup_orphan_cores() {
-  # Guard: never run during a BOA install or upgrade
+  # Guard: never run during a BOA install or upgrade; re-evaluate here --
+  # _start_up loops every account and can outlive the top-level check, so
+  # an install that started mid-run must still hold this destructive step
+  _is_protected_run
   [ "${_protectedRun}" = "TRUE" ] && return
 
   # Throttle: run at most once every 6 hours.
@@ -1287,6 +1290,8 @@ _run_optimize_if_due() {
   # Throttle wrapper for _optimize_solr_cores.
   # Runs at most once every _OPTIMIZE_INTERVAL_HOURS hours using a sentinel
   # file, then calls per-instance optimize checks.
+  # Re-evaluated: _start_up can outlive the top-level protection check
+  _is_protected_run
   [ "${_protectedRun}" = "TRUE" ] && return
 
   local _sentinel="/var/backups/solr/.optimize_last_run.pid"
@@ -1391,13 +1396,23 @@ _is_protected_run() {
   _boaBins="autoinit automini barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      _cPat="/local/bin/${_cbn}"
+      # Bare "boa" would match an hours-long remote install driven
+      # from this box over ssh (and every boa-info probe); anchor it
+      # to the LOCAL install form, as clear.sh/runner.sh already do
+      [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
+      _CNT=$(pgrep -fc "${_cPat}")
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
       fi
     fi
   done
+  # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
+  # the wrapper binaries swept above -- match them too
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+    _protectedRun=TRUE
+  fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE

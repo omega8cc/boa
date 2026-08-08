@@ -240,6 +240,12 @@ updatesymlinks --auto-fix --debug
 #   updatesymlinks[debug]: not acting — a heavy task is running, retry next hour: duplicity(1)
 ```
 
+The reason tokens name what blocked the run: a busy binary with its process
+count (`barracuda(1)`, `provision(2)`, `duplicity(1)`), a lock or load pid
+(`boa_run.pid`, `octopus_install_run.pid`, `max_load.pid`), or a chained
+install leg seen by its process form (`BARRACUDA.sh.txt(leg)`,
+`OCTOPUS.sh.txt(leg)`).
+
 ### `fix-drupal-site-symlinks.sh` — the privileged entry point
 
 Provision runs unprivileged, so the install/clone tasks cannot call `autosymlink`
