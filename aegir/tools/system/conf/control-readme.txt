@@ -96,7 +96,6 @@ Platform symbols:
 
   Drupal 10.3
     DX3 — Drupal 10.3 prod/stage/dev
-    DXP — DXPR Marketing
     EZC — EzContent
 
   Drupal 10.2
@@ -113,7 +112,6 @@ Platform symbols:
 
   Drupal 9
     DL9 — Drupal 9 prod/stage/dev
-    OLS — OpenLucius
     OPG — Opigno LMS
 
   Drupal 7
