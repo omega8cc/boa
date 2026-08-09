@@ -1130,14 +1130,21 @@ _fetch_versioned() {
     return 0
   fi
 
-  # Never clobber a running tool. Only applicable when the dest exists:
-  # pgrep -f matches ANY command line containing the pattern (an editor,
-  # a wrapper, an ssh command), and a missing dest cannot be running --
-  # skipping then would leave a dangling symlink behind.
+  # Never clobber a running tool. Only applicable when the dest exists
+  # (a missing dest cannot be running -- skipping then would leave a
+  # dangling symlink behind). Matched against genuine EXECUTIONS only:
+  # an interpreter with the tool path as its script argument, or the
+  # path as argv[0]. A bare substring pgrep refused updates whenever any
+  # command line merely mentioned the path -- an editor, a checksum, an
+  # operator's ssh probe -- observed live when a validation command made
+  # the guard hold a tool update back.
   if [[ -n "${_grd}" ]] && [[ -s "${_dst}" ]]; then
-    _cnt="$(pgrep -fc "${_grd}" 2>/dev/null)"
+    _grdEsc="${_grd//./\\.}"
+    _cnt="$(pgrep -fc "^([^ ]*/)?(ba|da)?sh (-[^ ]+ )*[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
     _cnt="${_cnt:-0}"
-    if (( _cnt > 0 )); then
+    _cntD="$(pgrep -fc "^[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
+    _cntD="${_cntD:-0}"
+    if (( _cnt + _cntD > 0 )); then
       echo "The ${_lbl} is running!"
       return 0
     fi
