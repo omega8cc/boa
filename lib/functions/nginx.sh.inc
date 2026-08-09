@@ -798,9 +798,10 @@ _nginx_mime_check_fix() {
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
-    if [ ! -e "/root/.proxy.cnf" ]; then
-      _mrun "service nginx reload"
-    fi
+    # Reload on proxies too: the mutations above have already landed on
+    # disk, and skipping the reload only leaves the running nginx
+    # diverged from its own config until something else reloads it.
+    _mrun "service nginx reload"
   fi
 }
 
