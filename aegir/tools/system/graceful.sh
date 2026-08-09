@@ -36,9 +36,19 @@ _check_root() {
 }
 _check_root
 
-# Exit if certain config files exist
-[ -e "/root/.proxy.cnf" ] && exit 0
+# Exit if the operator paused heavy maintenance
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
+
+# PHP-idle surgery quiesce: barracuda holds this while swapping PHP
+# versions; a marker whose owner PID is gone is stale (crashed run) and
+# is cleared, never obeyed -- and /run clears itself on reboot.
+if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
+  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
+    exit 0
+  fi
+  rm -f /run/boa_php_idle_quiesce.pid
+fi
 
 # Function to calculate RAM usage percentage as an integer
 _calculate_ram_usage_percent() {
