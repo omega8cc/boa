@@ -302,7 +302,7 @@ Shared design notes (verified against all three scripts):
 
 `runner.sh` is a **separate** per-minute cron job, not part of the `second.sh`/`minute.sh` fan-out. It drains the Ægir verify/migrate/backup task queue by executing the `/var/xdrago/run-*` runners. It is heavily gated so it never adds load on a box that should stay quiet:
 
-- **Hard stops first.** It exits immediately if `/root/.proxy.cnf`, `/etc/boa/.pause_tasks_maint.cnf`, or a `max_load`/`critical_load` pid is present; and again if too many `runner.sh` instances are already running, or a SQL backup, `owl.sh`, a MySQL restart/cluster-backup, or `boa_cron_wait.pid` is in flight.
+- **Hard stops first.** It exits immediately if `/root/.proxy.cnf` (rightful: a proxy has no local sites for tasks), `/etc/boa/.pause_tasks_maint.cnf`, the PHP-idle quiesce marker `/run/boa_php_idle_quiesce.pid` (owner-PID keyed, dead-owner self-cleaning), or a `max_load`/`critical_load` pid is present; and again if too many `runner.sh` instances are already running, or a SQL backup, `owl.sh`, a MySQL restart/cluster-backup, or `boa_cron_wait.pid` is in flight.
 - **Load-gated per runner.** `_runner_action` runs a `/var/xdrago/run-*` runner only while the 1-minute per-CPU load is **below `_CPU_TASK_RATIO * 100`** (default 310%); above that it waits. This is the same task ratio used by the load-control logic — backend tasks are skipped under load while the web tier stays up.
 - **CI hosts (`/etc/boa/.look.like.jenkins.cnf` or `_FORCE_CI_BOX=YES` in `/root/.barracuda.cnf`).** No automatic queue by default. It runs only if the box is a PRO plan (`POWER`/`PHANTOM`/`CLUSTER`/`ULTRA`/`MONSTER` in the octopus control file) **or** `/etc/boa/.allow.aegir.queue.cnf` is present (or `_ALLOW_AEGIR_QUEUE=YES`), *and* at least one `run-aegir-queue.info` exists.
 - **Small boxes auto-throttle.** `runner.sh` itself writes `/root/.slow.cron.cnf` and pins it immutable with `chattr +i` when total RAM ≤ 4096 MB. With `.slow.cron.cnf` present (and no `.force.queue.runner.cnf`) it allows only one concurrent runner and runs a single throttled pass per minute with `sleep 15` pads.
@@ -412,7 +412,7 @@ The root crontab runs the logger every 30 minutes at idle priority:
   bash /opt/local/bin/loadreport --log >/dev/null 2>&1
 ```
 
-The `nice -n10` / `ionice -c3` (idle I/O class) keeps it off the back of real work. The `--log` path **skips proxy nodes** (exits 0 if `/root/.proxy.cnf` exists), runs a normal live profile, appends the JSON object as one line to `${_LOADPROF_DATA}/YYYY-MM-DD.jsonl` (one file per day), and **prunes** `*.jsonl` older than `_LOADPROF_KEEP_DAYS` (default 14). Read the history back with `--data`, which averages CPU seconds per command across the retained records and tracks peak concurrent RSS.
+The `nice -n10` / `ionice -c3` (idle I/O class) keeps it off the back of real work. The `--log` path runs on proxy nodes too (since the 2026-08-09 marker narrowing — relay load is exactly what a PX0 box carries), runs a normal live profile, appends the JSON object as one line to `${_LOADPROF_DATA}/YYYY-MM-DD.jsonl` (one file per day), and **prunes** `*.jsonl` older than `_LOADPROF_KEEP_DAYS` (default 14). Read the history back with `--data`, which averages CPU seconds per command across the retained records and tracks peak concurrent RSS.
 
 ### Reading the output
 
