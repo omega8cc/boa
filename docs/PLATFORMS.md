@@ -34,7 +34,6 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.4.10](https://drupal.org/project/drupal/releases/10.4.10)
 - [Drupal 10.5.12](https://drupal.org/project/drupal/releases/10.5.12)
 - [Drupal 10.6.15](https://drupal.org/project/drupal/releases/10.6.15)
-- [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
 - [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
@@ -42,7 +41,6 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 ## Drupal 9
 
 - [Drupal 9.5.11](https://drupal.org/project/drupal/releases/9.5.11)
-- [OpenLucius 2.0.0](https://drupal.org/project/openlucius) (9.5.11)
 - [Opigno LMS 3.1.0](https://drupal.org/project/opigno_lms) (9.5.11)
 
 ## Drupal 7
@@ -119,7 +117,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 10.3
 
 - `DX3` — Drupal 10.3 prod/stage/dev
-- `DXP` — DXPR Marketing
 - `EZC` — EzContent
 
 ### Drupal 10.2
@@ -140,7 +137,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 9
 
 - `DL9` — Drupal 9 prod/stage/dev
-- `OLS` — OpenLucius
 - `OPG` — Opigno LMS
 
 ### Drupal 7
