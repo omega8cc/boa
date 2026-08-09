@@ -17,7 +17,6 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _pthLog="/var/log/boa"
 
-[ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 
 if [ -x "/usr/bin/gpg2" ]; then

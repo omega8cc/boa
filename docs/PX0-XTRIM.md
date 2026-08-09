@@ -119,13 +119,22 @@ stands down every FPM master except the panel front's, and LAST touches
 `/root/.proxy.cnf`, which stands the BOA machinery down while the nginx
 watchdog keeps running.
 
-Finalize also freezes the box's own tooling: `clear.sh` — the whole
-5-minute channel, tool fetches included — exits immediately on
-`/root/.proxy.cnf`, so the tools present at finalize time (including
-the xoct that handles `--repair --retarget`) never update themselves
-again. Update by hand first when a later retarget needs newer code.
-Open policy question: whether the tool fetch should be exempted from
-the proxy gate.
+The proxy marker was re-evaluated (Adam's ruling, 2026-08-09) and
+narrowed to its role: a finalized proxy is a LIVE server. Still
+running: second.sh (IDS scanners + service watchdogs), clear.sh (the
+5-minute channel INCLUDING tool self-updates — validated live: a
+published tool landed on a finalized proxy through the normal
+channel), graceful.sh (box hygiene incl. the rsyslog watchdog the IDS
+depends on), manage_ltd_users.sh (host hardening for the system users
+that survive finalize), loadreport --log (relay load is the point).
+Still gated: owl.sh (night worker — per-site/account work, meaningless
+here; proxied-account certs renew on the target and mirror back), all
+mysql_* tools and move_sql.sh (the monitor must never resurrect what
+finalize stood down — the L4-proven invariant), sqlmagic-class DB
+work. nginx + cron are boot-registered unconditionally in
+_initd_update, and nginx config mutations reload on proxies too. The
+PHP-idle path no longer borrows this marker as a transient mute: it
+uses /run/boa_php_idle_quiesce.pid (owner-PID keyed, self-cleaning).
 
 ## Never touched
 
