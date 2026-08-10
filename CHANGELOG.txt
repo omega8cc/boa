@@ -2,7 +2,7 @@
 ### Stable BOA-5.88.844 PRO/LTS - CERTAINTY EDITION
 ### Date: Mon 10 Aug 2026 02:20:39 CEST in Warsaw
 ### Enjoy certainty from backup to failback
-### 73 commits since BOA-5.88.833
+### 74 commits since BOA-5.88.833
 ###
 
 @=> Certainty Edition
@@ -115,6 +115,8 @@
     * Drupal 7 core 7.105.2 (in-house D7ES): the sticky 4-byte-UTF-8
       warning self-heals; form errors keep custom field markup.
     * Classic Drush 8.5.5 (vendor dependency refresh).
+    * Unbound 1.26.0, installed from the prebuilt package set on
+      modern systems.
     * DXPR Marketing and OpenLucius retired from the catalogue (both
       unmaintained upstream); existing platforms and sites untouched.
     * Modeless CLI and API backups now take the larger, slower
