@@ -76,8 +76,12 @@ _DEV_TREES="dev lts pro"                        # per-tree dirs under it: every 
 _SYS_PHP="/usr/bin/php"                          # per-build switch target
 _PHP_85="/opt/php85/bin/php"
 _PHP_84="/opt/php84/bin/php"
+_PHP_83="/opt/php83/bin/php"
 _PHP_DISTRO="${_PHP_85}"                         # farm/cms/culturas/commerce/localgov/thunder
 _PHP_VARBASE="${_PHP_84}"                        # varbase pins php84
+_PHP_SOCIAL="${_PHP_83}"                         # Open Social 13 requires php ^8.3 and SOC is
+                                                 # capped at 8.3 in AegirSetupC's per-distro
+                                                 # table - build on the version it will run on
 _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php84
 
 # farmOS: the latest GitHub release is resolved automatically; set _FARM_TAG to pin one.
@@ -136,6 +140,14 @@ _THUNDER_SPEC="thunder/thunder-project"
 _THUNDER_DISTPKG="thunder/thunder-distribution"
 _VARBASE_SPEC="Vardot/varbase-project:~10"
 _VARBASE_DISTPKG="vardot/varbase"
+# Open Social ships NO create-project template for its current major: goalgorilla/social_template
+# has not been touched since 2024-05-21 and its committed lock pins open_social 12.4.2 on core
+# 10.2.6, i.e. an unsupported branch. So we take that template as the chassis - it owns the
+# html/ docroot, the scaffold locations and the installer-paths upstream itself defined - and
+# move only the distribution package to the current major.
+_SOCIAL_SPEC="goalgorilla/social_template:dev-master"
+_SOCIAL_DISTPKG="goalgorilla/open_social"
+_SOCIAL_CONSTRAINT="^13"
 _CORE_SPEC="drupal/recommended-project"
 
 # Vanilla core minors to build. Empty (default) = auto-discover every released minor
@@ -157,7 +169,7 @@ _CORE_CP_FLAGS="--no-dev --no-interaction"
 # canvas/canvas_override final-class fatal. The last working varbase-10.1.0-11.3.12 build is
 # kept on the mirror. Re-enable by restoring "varbase" below and uncommenting build_varbase in
 # do_build + its _check_row, once upstream stabilises.
-_ALL_DISTROS="farm cms culturas commerce localgov thunder"
+_ALL_DISTROS="farm cms culturas commerce localgov social thunder"
 
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
@@ -364,7 +376,8 @@ _detect_core_version() {
   # Echo the resolved Drupal core version from a built platform, probing the three
   # known docroot layouts. Empty output + non-zero on failure.
   local _dir="$1" _rel
-  for _rel in web/core/lib/Drupal.php docroot/core/lib/Drupal.php core/lib/Drupal.php; do
+  for _rel in web/core/lib/Drupal.php docroot/core/lib/Drupal.php html/core/lib/Drupal.php \
+              core/lib/Drupal.php; do
     if _run_as_o8 "test -f '${_dir}/${_rel}'" >/dev/null 2>&1; then
       _run_as_o8 "awk -F\"'\" '/const VERSION =/{print \$2; exit}' '${_dir}/${_rel}'" 2>/dev/null \
         | grep -m1 -oE '[0-9]+\.[0-9]+\.[0-9A-Za-z.-]+'
@@ -636,6 +649,31 @@ build_localgov() {
   _finalize_distro "localgov" "${_wd}" "${_dver}" "localgov"
 }
 
+build_social() {
+  _begin_build "social-" "social" || return 0
+  # Open Social 13 declares php ^8.3 and AegirSetupC caps SOC at 8.3, so floor and cap are
+  # the same number: build on 8.3 rather than the shared _PHP_DISTRO (8.5).
+  use_php "${_PHP_SOCIAL}" || { _record_fail "social"; return 1; }
+  local _wd="${_DAY_DIR}/.build.social" _dver
+  _dver="$(_create_project "${_wd}" "${_SOCIAL_SPEC}" "goalgorilla/social_template" "")" \
+    || { _record_fail "social"; return 1; }
+  # The chassis template is frozen on the 12.4 line, so move the distribution itself to the
+  # current major before resolving; everything else (html/ docroot, scaffold, installer-paths)
+  # is upstream's own layout and is left alone.
+  if ! { _composer_prepare "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_SOCIAL_DISTPKG}:'${_SOCIAL_CONSTRAINT}'" \
+         && _with_core_fallback "${_wd}" "social" _composer_build; }; then
+    _record_fail "social"
+    return 1
+  fi
+  # Name by the distribution package read from the lock, NOT social.info.yml: upstream's
+  # 13.0.2 tag still declares version '13.0.1' in that file.
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_SOCIAL_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
+  _finalize_distro "social" "${_wd}" "${_dver}" "social"
+}
+
 build_thunder() {
   _begin_build "thunder-" "thunder" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "thunder"; return 1; }
@@ -829,6 +867,7 @@ run_build() {
     culturas) build_culturas ;;
     commerce) build_commerce ;;
     localgov) build_localgov ;;
+    social)   build_social ;;
     thunder)  build_thunder ;;
     # varbase)  build_varbase ;;   # DISABLED: upstream template broken (see _ALL_DISTROS note)
     cores)    build_cores ;;
@@ -1117,6 +1156,7 @@ do_check() {
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
   _check_row "localgov" "$(_drupal_release localgov)"
+  _check_row "social"   "$(_drupal_release social)"
   _check_row "thunder"  "$(_drupal_release thunder)"
   # _check_row "varbase"  "$(_drupal_release varbase)"   # DISABLED (see _ALL_DISTROS note)
   _msg ""
