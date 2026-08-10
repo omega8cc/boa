@@ -1509,6 +1509,164 @@ _xmass_stop_solr_source() {
   fi
 }
 
+### True while something answers on 127.0.0.1:<port>. Solr binds localhost only,
+### so a public-interface probe can never see a healthy BOA Solr.
+_xmass_port_listening() {
+  local _p="$1"
+  ss -ltn 2>/dev/null | grep -q ":${_p}[[:space:]]"
+}
+
+### Rebuild an init script the way Solr's own install_solr_service.sh does when
+### no parked copy survived. BOA never keeps a template of its own: the source
+### is the distribution's bin/init.d/solr plus four substitutions.
+_xmass_regen_solr_initd() {
+  local _svc="$1"
+  local _tmpl="/opt/${_svc}/bin/init.d/solr"
+  local _initd="/etc/init.d/${_svc}"
+  case "${_svc}" in
+    solr9|solr7) : ;;
+    *) return 1 ;;
+  esac
+  [ -e "/etc/default/${_svc}.in.sh" ] || return 1
+  [ -e "${_tmpl}" ] || return 1
+  cp -af "${_tmpl}" "${_initd}" || return 1
+  sed -i -e "s#SOLR_INSTALL_DIR=.*#SOLR_INSTALL_DIR=\"/opt/${_svc}\"#" \
+         -e "s#SOLR_ENV=.*#SOLR_ENV=\"/etc/default/${_svc}.in.sh\"#" \
+         -e "s#RUNAS=.*#RUNAS=\"${_svc}\"#" \
+         -e "s#Provides:.*#Provides: ${_svc}#" "${_initd}" || return 1
+  ### BOA's _switch_to_dash sweeps /etc/init.d; matching it here keeps the file
+  ### byte-identical to the same script on a box that never lost it.
+  sed -i "1s#^\#\!/bin/sh\$#\#\!/bin/dash#" "${_initd}"
+  chown root:root "${_initd}" || return 1
+  chmod 744 "${_initd}" || return 1
+  return 0
+}
+
+### Undo _xmass_stop_solr_source -- the recovery verb for a cutover that was
+### rolled back with the source kept in service.
+###
+### The deny that function sets is PERMANENT and exists in TWO forms, and
+### autoupboa (called from /var/xdrago/clear.sh every 5 minutes) honours
+### either one by 'update-rc.d -f <svc> remove', moving /etc/init.d/<svc> to
+### /var/backups/<svc>.initd, and 'pkill -9 -f java'. So a missing init script
+### is only the SYMPTOM: re-arming the service while a deny is still armed is
+### torn straight back down inside five minutes. Clearing the deny BEFORE
+### re-arming is the whole point of this verb, and the reason a hand-typed
+### recipe kept getting this wrong.
+###
+### BOA cannot self-heal it either: _if_solr_nine re-runs install_solr_service.sh
+### only when /var/solr<N>/data or the version stamp is missing, and a rolled-back
+### source still has both -- so no barracuda up-* pass ever brings it back.
+_xmass_restore_solr_source() {
+  local _svc _initd _parked _port _denyVar _waited
+  local _restored=NO _skipped=NO
+  ### A finalized PX0 proxy is MEANT to have Solr down -- xtrim finalize put it
+  ### there deliberately. Never resurrect it on a shrunken proxy.
+  if [ -e "/root/.proxy.cnf" ]; then
+    _die "this box is a finalized PX0 proxy (/root/.proxy.cnf) -- Solr is down here by design; refusing"
+  fi
+  _info "Clearing the source-side Java/Solr deny ..."
+  ### The file wins while it exists, so it goes first.
+  if [ -e "${_SOLR_DENY_FILE}" ]; then
+    rm -f "${_SOLR_DENY_FILE}"
+    _info "  Removed ${_SOLR_DENY_FILE}"
+  else
+    _info "  ${_SOLR_DENY_FILE} already absent"
+  fi
+  if [ -e "/root/.barracuda.cnf" ]; then
+    if grep -q "^_DENY_JAVA=" /root/.barracuda.cnf 2>/dev/null; then
+      sed -i "s/^_DENY_JAVA=.*/_DENY_JAVA=NO/" /root/.barracuda.cnf
+    else
+      ### Newline-terminate before the append; an unterminated last line would
+      ### swallow the previous key.
+      [ -n "$(tail -c1 /root/.barracuda.cnf 2>/dev/null)" ] && echo >> /root/.barracuda.cnf
+      echo "_DENY_JAVA=NO" >> /root/.barracuda.cnf
+    fi
+    ### Report what LANDED, not what was attempted.
+    if grep -q "^_DENY_JAVA=NO" /root/.barracuda.cnf 2>/dev/null; then
+      _info "  _DENY_JAVA=NO set in /root/.barracuda.cnf"
+    else
+      _die "could not clear _DENY_JAVA in /root/.barracuda.cnf -- fix that by hand before retrying"
+    fi
+  fi
+  for _svc in solr9 solr7 jetty9; do
+    ### Every service also keeps its OWN deny, honoured by autoupboa in a block
+    ### of its own. Clearing _DENY_JAVA must never re-enable a service the box
+    ### deliberately runs without.
+    case "${_svc}" in
+      solr9)  _denyVar=_DENY_SOLR9  ; _port=9099 ;;
+      solr7)  _denyVar=_DENY_SOLR7  ; _port=9077 ;;
+      jetty9) _denyVar=_DENY_JETTY9 ; _port=8099 ;;
+    esac
+    if grep -q "^${_denyVar}=YES" /root/.barracuda.cnf 2>/dev/null \
+      || [ -e "/etc/boa/.deny.${_svc}.cnf" ]; then
+      _info "  ${_svc}: its own deny (${_denyVar}) is set -- left down on purpose"
+      _skipped=YES
+      continue
+    fi
+    ### Nothing to restore for a service this box never installed.
+    if [ ! -e "/var/${_svc}" ] && [ ! -e "/opt/${_svc}" ] \
+      && [ ! -e "/etc/init.d/${_svc}" ] && [ ! -e "/var/backups/${_svc}.initd" ]; then
+      continue
+    fi
+    _initd="/etc/init.d/${_svc}"
+    _parked="/var/backups/${_svc}.initd"
+    if [ ! -e "${_initd}" ]; then
+      if [ -e "${_parked}" ]; then
+        cp -af "${_parked}" "${_initd}" \
+          || { _alrt "  ${_svc}: could not restore from ${_parked} -- skipped"; continue; }
+        chown root:root "${_initd}"
+        chmod 744 "${_initd}"
+        _info "  ${_svc}: init script restored from ${_parked}"
+      elif _xmass_regen_solr_initd "${_svc}"; then
+        _info "  ${_svc}: init script regenerated from /opt/${_svc}/bin/init.d/solr"
+      else
+        _alrt "  ${_svc}: no init script, no parked copy in /var/backups, and no usable distribution template -- skipped"
+        continue
+      fi
+    elif [ ! -x "${_initd}" ]; then
+      ### xtrim finalize disarms the watchdog by dropping the exec bit; the
+      ### script stays on disk and +x re-arms it.
+      chmod 744 "${_initd}"
+      _info "  ${_svc}: init script re-armed (exec bit restored)"
+    else
+      _info "  ${_svc}: init script already in place"
+    fi
+    update-rc.d "${_svc}" defaults &> /dev/null
+    ### A pkill -9'd Solr leaves its pid file behind, which the start path trips on.
+    case "${_svc}" in
+      solr9|solr7) rm -f "/var/${_svc}/solr-"*.pid &> /dev/null ;;
+    esac
+    if _xmass_port_listening "${_port}"; then
+      _info "  ${_svc}: already listening on 127.0.0.1:${_port}"
+      _restored=YES
+      continue
+    fi
+    service "${_svc}" start &> /dev/null || true
+    _waited=0
+    while [ "${_waited}" -lt 60 ]; do
+      _xmass_port_listening "${_port}" && break
+      sleep 3
+      _waited=$((_waited + 3))
+    done
+    if _xmass_port_listening "${_port}"; then
+      _info "  ${_svc}: started, listening on 127.0.0.1:${_port}"
+      _restored=YES
+    else
+      _alrt "  ${_svc}: re-armed but not listening on 127.0.0.1:${_port} after ${_waited}s -- check /var/${_svc}/logs/"
+    fi
+  done
+  if [ "${_restored}" = "YES" ]; then
+    _info "Solr restored on source: OK"
+    _info "  The deny is clear, so the next autoupboa pass (clear.sh, every 5 min)"
+    _info "  will no longer tear the init script down."
+  elif [ "${_skipped}" = "YES" ]; then
+    _info "Deny cleared; every Solr service on this box is held down by its own deny -- nothing to start"
+  else
+    _alrt "Deny cleared, but no Solr service could be started -- see the lines above"
+  fi
+}
+
 _xmass_start_solr_target() {
   # Remove Solr transaction logs on target before first start.
   # Source Solr was stopped cleanly before final rsync, so tlogs should be
@@ -2679,8 +2837,9 @@ _xmass_restore_hint() {
     _alrt '    rm -f /data/disk/*/static/control/http-off.pid'
     _alrt '    find /var/lib/nginx/speed -type f -delete'
     _alrt '    service nginx reload'
-    _alrt "    rm -f ${_SOLR_DENY_FILE}   # only if Solr was serving from here"
-    _alrt '    sed -i "s/^_DENY_JAVA=.*/_DENY_JAVA=NO/" /root/.barracuda.cnf   # the variable form of the same deny'
+    _alrt '    xmass restore-solr   # only if Solr was serving from here -- clears'
+    _alrt '                         # BOTH deny forms and re-arms the init script;'
+    _alrt '                         # clearing the deny by hand is NOT enough'
   else
     _alrt "cron and the BOA runners are PARKED on this source. To restore them:"
   fi
@@ -4572,7 +4731,7 @@ _take_verb_lock() {
 }
 
 case "${_cmd}" in
-  pre-mig|prep-target|init|sync|cutover|reset-phase|post-mig)
+  pre-mig|prep-target|init|sync|cutover|reset-phase|post-mig|restore-solr)
     _take_verb_lock
   ;;
 esac
@@ -4703,6 +4862,10 @@ case "${_cmd}" in
     _check_root
     _xmass_post_mig
   ;;
+  restore-solr)
+    _check_root
+    _xmass_restore_solr_source
+  ;;
   *)
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
@@ -4716,6 +4879,7 @@ case "${_cmd}" in
     echo "Usage: xmass verify  [target-ip]                      (run on source after cutover; read-only)"
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
+    echo "Usage: xmass restore-solr                             (run on source; recovery)"
     echo ""
     echo "Notes:"
     echo "  - Requires identical Percona MySQL versions on both servers."
@@ -4729,6 +4893,13 @@ case "${_cmd}" in
     echo "    wait and the panel rewire leaves phase=cutover, which every other"
     echo "    subcommand refuses. Only safe back to 'syncing' if the target was NOT"
     echo "    yet promoted."
+    echo "  - restore-solr is the recovery verb for a cutover that was ROLLED BACK"
+    echo "    with the source kept in service. Cutover disables Solr on the source"
+    echo "    permanently (deny file + _DENY_JAVA=YES), and autoupboa then moves"
+    echo "    /etc/init.d/solr9 aside every 5 minutes -- so restoring the init"
+    echo "    script alone does not hold. This clears both deny forms FIRST, then"
+    echo "    re-arms and starts each Solr whose own deny is not set. Refuses on a"
+    echo "    finalized PX0 proxy, where Solr is down by design."
     echo ""
     exit 1
   ;;
