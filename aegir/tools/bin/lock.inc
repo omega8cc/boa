@@ -250,7 +250,8 @@ _check_uptime_grace_period() {
     || [ -e "/run/octopus_install_run.pid" ] \
     || [ -e "/run/boa_run.pid" ] \
     || [ -e "/run/boa_wait.pid" ] \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 \
+    || pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1; then
     export _INCIDENT_REPORT=OFF
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "Skipping alerts: system uptime ${_UPTIME_MIN} min < 15 min threshold."

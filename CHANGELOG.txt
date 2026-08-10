@@ -2,7 +2,7 @@
 ### Stable BOA-5.88.844 PRO/LTS - CERTAINTY EDITION
 ### Date: Mon 10 Aug 2026 02:20:39 CEST in Warsaw
 ### Enjoy certainty from backup to failback
-### 73 commits since BOA-5.88.833
+### 74 commits since BOA-5.88.833
 ###
 
 @=> Certainty Edition
@@ -115,6 +115,8 @@
     * Drupal 7 core 7.105.2 (in-house D7ES): the sticky 4-byte-UTF-8
       warning self-heals; form errors keep custom field markup.
     * Classic Drush 8.5.5 (vendor dependency refresh).
+    * Unbound 1.26.0, installed from the prebuilt package set on
+      modern systems.
     * DXPR Marketing and OpenLucius retired from the catalogue (both
       unmaintained upstream); existing platforms and sites untouched.
     * Modeless CLI and API backups now take the larger, slower
@@ -374,7 +376,7 @@
       incident; table repair yields to running backups.
     * Load auto-pause resume hysteresis (_RESUME_HOLD_PASSES).
     * SQL memory budget derived from the hosted dataset, not RAM alone.
-    * Unbound 1.25.2 joins the prebuilt package set; boa info gains an
+    * Unbound 1.26.0 joins the prebuilt package set; boa info gains an
       Unbound row and reports the real database version.
     * Ghost-cleanup family on by default on hosted systems; 48h alias
       hold, reversible movers; self-hosted defaults unchanged.
@@ -397,7 +399,7 @@
       (barracuda, then octopus with force) satisfies everything.
     * Builder boxes: config moves to /root/.stackbuild.cnf; build tools
       deploy only where that file exists.
-    * Pins: New Relic 12.9.0.38, Java 17.0.20, Unbound 1.25.2, Drupal
+    * Pins: New Relic 12.9.0.38, Java 17.0.20, Unbound 1.26.0, Drupal
       11.4.4 (new triple) / 11.3.16 / 10.6.14, OpenCulturas 3.0.4,
       Backdrop CMS 1.34.3.
 
