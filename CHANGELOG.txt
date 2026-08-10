@@ -1,4 +1,159 @@
 ###
+### Stable BOA-5.88.844 PRO/LTS - CERTAINTY EDITION
+### Date: Mon 10 Aug 2026 02:20:39 CEST in Warsaw
+### Enjoy certainty from backup to failback
+### 73 commits since BOA-5.88.833
+###
+
+@=> Certainty Edition
+
+  Candour made the platform tell the truth; Certainty makes it prove
+  things before acting. Every backup route that does not name a mode
+  now produces the restorable kind, the pre-restore safety copy
+  included, and no backup, import or migration may report success it
+  cannot show evidence for. Whole-server migrations gained xtrim, a
+  staged shrink tool that proves the migration complete before it
+  removes anything, and the high-availability path completed a full
+  failover and failback round trip on published code with zero manual
+  repairs. Installs are interlocked against the fleet's own
+  housekeeping, and a pasted URL can no longer poison a site's stored
+  name. LTS is 1:1 with PRO; no mandatory action this release.
+
+@=> Security
+
+    * The shared fast-import store refuses a dump it cannot prove
+      belongs to this site; the dump stays put and the task fails.
+    * Database import failure messages carry the importer's output
+      instead of the command line, which holds the database password.
+    * New boa_perhost_anon zone bounds in-flight anonymous page
+      renders per vhost; session holders are exempt by construction.
+    * The per-site ceiling defaults to 100 concurrent anonymous
+      renders, tunable per instance via nginx_perhost_anon_conn.
+    * credentials.json requests are answered 444 before php-fpm, in
+      the same by-name secret family as config.json and secrets.json.
+    * Probe tokens that could be real routes on any hosted app stay
+      excluded; three trialled tokens were withdrawn in review.
+
+@=> New Features
+
+    * xtrim: staged shrink for fully proxied migration sources, with
+      plan, quiesce, restore, shrink and finalize verbs.
+    * xtrim removes nothing before the migration is proven complete
+      and re-proves the live target between dump and drop.
+    * Every xtrim dump verifies, trailer included; the one-way stage
+      is marked only at the first actual drop.
+    * New _XTRIM_MIN_DAYS control (default 14, hard floor 7) keeps
+      xtrim away from fresh conversions.
+    * xmass promotions clean up the whole role swap at cutover;
+      failover and failback are a proven round trip.
+    * _MIGRATION_PROXY_CERT_WARN_DAYS is now a visible, settable
+      control (default 21, unchanged behaviour).
+    * _XDR9000 is written into generated and upgraded barracuda.cnf
+      files, so the recording toggle is discoverable on every box.
+
+@=> Improvements
+
+    * Backup tasks arriving without a mode (CLI, API, sites-list
+      action, schedule) default to the restorable mode.
+    * The automatic safety copy taken before every Restore is itself
+      a restorable backup, database included, on Drupal and Backdrop.
+    * Backup exclusion tags apply per existing directory and stale
+      tags self-heal; Backdrop gains loud failure reporting.
+    * Nightly classic mysqldump backups discard and name a failed
+      or truncated dump; archives must list before cleanup.
+    * renameaegirhost refuses to rewrite the panel database without a
+      complete, verified pre-rename dump.
+    * The Ægir adoption export, hostmaster import and sqlmagic dump
+      rewriter verify file completeness before reporting a result.
+    * The nginx access-control revert verifies its last-good archive
+      before removing live configuration.
+    * mydumper exports of databases with non-transactional tables add
+      --trx-tables=0 automatically, keeping strict checks green.
+    * The myloader flag shim became a bidirectional every-pass
+      healer; version-mixed mydumper/myloader pairs self-repair.
+    * Migration exports stamp "exported" only when restorable;
+      transfer and import refuse a failed export (loud --force).
+    * xoct and xcopy return an explicit INCOMPLETE verdict and a
+      non-zero exit an operator or harness can key on.
+    * An unrecognised --flag on a migration transfer, pretransfer or
+      import stops the run instead of being read as a rename target.
+    * Migration start notices go out once per account and target;
+      retries never re-mail the client.
+    * Pinned PHP pools are rebuilt and verified on a migrated
+      account's new host before it serves a request.
+    * A proxy-converted account parks its task queue in the same
+      breath and stays parked; a Verify cannot undo the conversion.
+    * octopus up-* passes skip proxied accounts with a notice instead
+      of rebuilding trees the migration retired.
+    * Replication bring-up parses multi-identity GTID sets whole; an
+      HA mirror can now be built from a replication-migrated box.
+    * Master-readiness is GTID and binlog together: a box returning
+      to master duty re-arms its binlog, restarting MySQL if needed.
+    * A finalized migration proxy keeps IDS, hardening, load
+      profiling and tool self-updates running, nginx and cron at boot.
+    * Its database and site-serving stack stay intentionally down;
+      the role marker now means exactly that.
+    * PHP maintenance quiesces the fleet channels via a self-expiring
+      /run marker; the task queue is held for the duration.
+    * /opt/tmp purges and pass launches interlock with in-flight
+      installs; launchers refuse over a live pass and say why.
+    * Fleet housekeeping stands down for a running install with
+      bounded waits or stated skips: sqlclean, owl, Solr, load kills.
+    * Install aborts leave shared staging and foreign locks alone; a
+      half-extracted build tree self-heals by re-fetch.
+    * A fresh install verifies its client control-panel account
+      exists, retrying through a full bootstrap, alerting loudly.
+    * The tool-update guard defers only to processes executing the
+      tool; editors, checksums and probes no longer pin updates.
+    * The single-site symlink converter is governed solely by its
+      invokers; the retired global pause listener is gone.
+    * mydropwizard is force-disabled on Drupal 6 and 7 sites; its
+      vendor service closed in 2022. Nothing is removed from disk.
+
+@=> Changes and Upgrades
+
+    * Drupal 7 core 7.105.2 (in-house D7ES): the sticky 4-byte-UTF-8
+      warning self-heals; form errors keep custom field markup.
+    * Classic Drush 8.5.5 (vendor dependency refresh).
+    * DXPR Marketing and OpenLucius retired from the catalogue (both
+      unmaintained upstream); existing platforms and sites untouched.
+    * Modeless CLI and API backups now take the larger, slower
+      restorable shape; an explicit backup_mode keeps the fast one.
+    * The pre-restore safety copy is a full archive for the same
+      reason; each Restore costs more disk than before.
+    * The "exported" migration marker now means "restorable export
+      exists"; operator scripts keying on it must be re-read.
+    * limit-req-zones-boa.conf gains the boa_perhost_anon zone; as
+      before, never delete it while rendered vhosts reference a zone.
+    * Operator docs trued against the code: the MODULES.md
+      force-disabled list (eight drifted rows) and sqlclean's guards.
+
+@=> Important Fixes
+
+    * A site domain pasted with a trailing slash is cleaned at the
+      door; with subdirectories enabled it could self-redirect forever.
+    * The trailing-slash guard is forward-only: already-stored
+      slashed names keep their broken rows until repaired once.
+    * A killed or failed database export fails the backup; an export
+      without its completion marker counts as failed.
+    * Restore no longer reports success over a failed fast import;
+      the dead import check is live via an external contribution.
+    * A classic import whose statements error out refuses to call
+      itself a restore, instead of adopting an empty database.
+    * Truncated archives no longer extract a readable prefix and
+      report success; .tar.lz4 archives are readable at all.
+    * A dump directory without its completion marker is refused
+      before import, matching the export-side requirement.
+    * Large imports can no longer hang on a full stderr pipe.
+    * A short dump write (disk full, quota) fails the backup instead
+      of silently truncating it.
+    * The xcopy static-tree transfer no longer drops nested files/
+      directories living inside shipped codebases.
+    * Travelled source-role markers are cleared when an import
+      completes, so a migrated box can be a source again.
+
+
+###
 ### Stable BOA-5.88.833 PRO/LTS - CANDOUR EDITION
 ### Date: Fri 07 Aug 2026 01:47:58 CEST in Warsaw
 ### Enjoy the whole truth from your server
