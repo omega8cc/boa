@@ -26,10 +26,18 @@
 ###   §1  Detect old hostname from <aegir-root>/.drush/server_master.alias.drushrc.php
 ###   §2  Detect new hostname from system FQDN (hostname -f)
 ###   §2c Move host-derived tenant site dirs onto the new hostname, together
-###       with the surfaces keyed by site URI (per-site Drush alias file and
-###       static files store). A tenant whose URI embeds the box hostname
-###       follows the box; leaving its dir behind strands it under a name
-###       §7 would import as a second, duplicate site node
+###       with every surface keyed by site URI: per-site Drush alias file,
+###       static files store, the site's files/private symlinks into that
+###       store, the client symlink, and the URI-derived values inside
+###       settings.php (file paths, trusted_host_patterns, local.settings
+###       include — never the database name). A tenant whose URI embeds the
+###       box hostname follows the box; leaving its dir behind strands it
+###       under a name §7 would import as a second, duplicate site node,
+###       and leaving the rest behind leaves it not serving
+###   §2d Rewrite the per-site PHP pins in static/control/multi-fpm.info,
+###       whose rows key on the site URI: left stale, every host-derived
+###       site's pin goes inert and the site silently falls back to the
+###       account default PHP version
 ###   §3  Rewrite all Drush alias files in <aegir-root>/.drush/
 ###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/,
 ###       then rewrite the platform sites/sites.php alias maps (the queued
@@ -45,7 +53,9 @@
 ###       A plain dump is still taken first, as a backup only.
 ###   §6  Reload nginx
 ###   §7  Flush Drush cache and run Aegir task queue (5 passes) to regenerate
-###       all aliases, vhosts, and db-host entries from the updated database.
+###       all aliases, vhosts, and db-host entries from the updated database,
+###       plus one queued verify per site §2c renamed (server verifies
+###       regenerate nothing per-site).
 ###       Assumes BOA cron is not running (caller must ensure this).
 ###
 
@@ -62,6 +72,9 @@ _OLD_ACCT=""
 _NEW_ACCT=""
 _SITESPHP_N=0
 _TENANT_DIRS_N=0
+_SETTINGS_SKIPPED_N=0
+_RENAMED_SITE_URIS=()
+_URI_SURFACES_CHANGED=NO
 
 ###-------------ARGUMENT PARSING----------###
 
@@ -378,11 +391,20 @@ _rename_hostmaster_site_dir() {
 # site — leaving two panel nodes per site, the enabled one broken and the
 # orphan owning the only directory and database.
 #
-# So the directory moves with the name, together with the two other on-disk
-# surfaces keyed by URI: the per-site Drush alias FILE (§3 rewrites its
-# contents but cannot rename it) and the static files store that the site's
-# files symlink resolves through. Client symlinks are dropped rather than
-# moved; provision recreates them from the site node on the next verify.
+# So the directory moves with the name, together with every other on-disk
+# surface keyed by URI: the per-site Drush alias FILE (§3 rewrites its
+# contents but cannot rename it), the static files store that the site's
+# files symlink resolves through, the site's own files/private symlinks INTO
+# that store (dangling the moment it moves), the client symlink, and the
+# URI-derived values inside the provision-generated settings.php.
+#
+# None of those are optional and none regenerate on their own. §7 queues
+# SERVER verifies, and every per-site artefact is written by a SITE verify:
+# _provision_client_create_symlink() is reached only under
+# `d()->type === 'site'`. That is why a run whose seven other gates passed
+# still left three renamed sites answering HTTP 400 with a settings.php
+# pinned to the old FQDN, no client symlink and dangling files symlinks,
+# while the one untouched control site kept all three.
 #
 # The account axis deliberately does NOT do this — there the box keeps its
 # name and a site's URI is its own, so §5b stays exact-match. Here the box
@@ -406,7 +428,8 @@ _rename_tenant_site_dirs() {
     fi
     _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES})"
     _maybe_run mv -f \'"${_D}"\' \'"${_NEWD}"\'
-    _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}"
+    _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}" "${_D}" "${_NEWD}"
+    _RENAMED_SITE_URIS+=("${_NEWNAME}")
     _N=$((_N + 1))
   done
 
@@ -418,17 +441,53 @@ _rename_tenant_site_dirs() {
   else
     _info "  ${_N} tenant site dir(s) moved onto ${_NEW_HOST}"
   fi
+
+  _converge_renamed_site_surfaces
 }
 
-_find_old_host_site_dirs() {
+_converge_renamed_site_surfaces() {
+  # A box renamed by an earlier release moved the site DIRS and nothing else:
+  # its sites keep an old-URI settings.php, dangling files symlinks and no
+  # client symlink. The loop above cannot see them — their dirs already carry
+  # the new hostname — so without this a re-run would report a clean pass over
+  # sites that do not serve. That is the whole failure mode being closed here,
+  # so it must converge rather than depend on being run at the right moment.
+  #
+  # Safe on a box with nothing to fix: every action in the surfaces function is
+  # conditioned on old-name evidence, so a correct site — including one freshly
+  # installed on a migration target, which legitimately carries the new
+  # hostname — matches nothing and is not even queued for a verify.
+  local _D _NAME _OLDNAME _N=0
+  for _D in $(_find_host_site_dirs "${_NEW_HOST}" | sort); do
+    _NAME=$(basename "${_D}")
+    _OLDNAME="${_NAME//${_NEW_HOST}/${_OLD_HOST}}"
+    [ "${_OLDNAME}" = "${_NAME}" ] && continue
+    _URI_SURFACES_CHANGED=NO
+    _rename_site_uri_surfaces "${_OLDNAME}" "${_NAME}" "${_D}" "${_D}"
+    if [ "${_URI_SURFACES_CHANGED}" = "YES" ]; then
+      _RENAMED_SITE_URIS+=("${_NAME}")
+      _N=$((_N + 1))
+    fi
+  done
+  if [ "${_N}" -gt 0 ]; then
+    _info "  ${_N} already-renamed site(s) had stale per-site surfaces repaired"
+  fi
+  return 0
+}
+
+_find_host_site_dirs() {
   # Every platform docroot layout at once (sites/, web/sites/, docroot/sites/,
   # html/sites/) — one platform can even carry the same site at two depths.
   # Backups and the Drush checksum store are never site dirs.
   find "${_AEGIR_ROOT}" -maxdepth 8 -type d -path '*/sites/*' \
-    -name "*${_OLD_HOST}*" \
+    -name "*${1}*" \
     -not -path '*/backups/*' \
     -not -path '*/.drush/*' \
     -not -path '*/sites/*/*' 2>/dev/null
+}
+
+_find_old_host_site_dirs() {
+  _find_host_site_dirs "${_OLD_HOST}"
 }
 
 _rename_site_uri_surfaces() {
@@ -437,15 +496,24 @@ _rename_site_uri_surfaces() {
   # re-run both converge.
   local _OLDNAME="$1"
   local _NEWNAME="$2"
+  local _OLD_D="$3"
+  local _NEWD="$4"
   local _OLD_ALIAS="${_DRUSH_DIR}/${_OLDNAME}.alias.drushrc.php"
   local _NEW_ALIAS="${_DRUSH_DIR}/${_NEWNAME}.alias.drushrc.php"
   local _OLD_FILES="${_AEGIR_ROOT}/static/files/${_OLDNAME}"
   local _NEW_FILES="${_AEGIR_ROOT}/static/files/${_NEWNAME}"
-  local _L
+  local _SD _L _NEWL _TGT _SUF _OWN
+
+  # The dir to read from: the moved one live, the source one under --dry-run
+  # (where the move above only printed). Keeps the dry-run report honest
+  # about the settings.php and symlink work instead of silently skipping it.
+  _SD="${_OLD_D}"
+  [ -d "${_NEWD}" ] && _SD="${_NEWD}"
 
   if [ -f "${_OLD_ALIAS}" ] && [ ! -f "${_NEW_ALIAS}" ]; then
     _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php"
     _maybe_run mv -f \'"${_OLD_ALIAS}"\' \'"${_NEW_ALIAS}"\'
+    _URI_SURFACES_CHANGED=YES
   fi
 
   # The site's files symlink resolves through this store. Leave it behind and
@@ -454,13 +522,112 @@ _rename_site_uri_surfaces() {
   if [ -d "${_OLD_FILES}" ] && [ ! -d "${_NEW_FILES}" ]; then
     _info "    static files store: static/files/${_OLDNAME} -> static/files/${_NEWNAME}"
     _maybe_run mv -f \'"${_OLD_FILES}"\' \'"${_NEW_FILES}"\'
+    _URI_SURFACES_CHANGED=YES
   fi
 
+  # ...which leaves the site's own files/private symlinks pointing INTO the
+  # store under its old name: dangling, so the site serves without any of
+  # its files. Repoint every symlink in the site dir that resolves into the
+  # old store; a site whose files are a real directory has none and is left
+  # alone. -h on the chown: the link's own ownership, never the target's.
+  for _L in "${_SD}"/*; do
+    [ -L "${_L}" ] || continue
+    _TGT=$(readlink "${_L}" 2>/dev/null)
+    case "${_TGT}" in
+      "${_OLD_FILES}"|"${_OLD_FILES}"/*) ;;
+      *) continue ;;
+    esac
+    _SUF="${_TGT#${_OLD_FILES}}"
+    _OWN=$(stat -c '%U:%G' "${_L}" 2>/dev/null)
+    _info "    files symlink: ${_L##*/} -> static/files/${_NEWNAME}${_SUF}"
+    _maybe_run ln -sfn \'"${_NEW_FILES}${_SUF}"\' \'"${_L}"\'
+    [ -n "${_OWN}" ] && _maybe_run chown -h \'"${_OWN}"\' \'"${_L}"\'
+    _URI_SURFACES_CHANGED=YES
+  done
+
+  # The client symlink MOVES with the name. Dropping it for provision to
+  # recreate cannot work — that only happens in a site verify, and §7 queues
+  # server verifies — and a missing one takes the site out of the client's
+  # home directory listing.
   for _L in "${_AEGIR_ROOT}"/clients/*/"${_OLDNAME}"; do
     [ -L "${_L}" ] || continue
-    _info "    stale client symlink dropped: ${_L#${_AEGIR_ROOT}/} (verify recreates it)"
+    _NEWL="$(dirname "${_L}")/${_NEWNAME}"
+    if [ -e "${_NEWL}" ] || [ -L "${_NEWL}" ]; then
+      _info "    client symlink already present: ${_NEWL#${_AEGIR_ROOT}/}"
+      _maybe_run rm -f \'"${_L}"\'
+      continue
+    fi
+    _OWN=$(stat -c '%U:%G' "${_L}" 2>/dev/null)
+    _info "    client symlink: ${_L#${_AEGIR_ROOT}/} -> ${_NEWL#${_AEGIR_ROOT}/}"
+    _maybe_run ln -sfn \'"${_NEWD}"\' \'"${_NEWL}"\'
+    [ -n "${_OWN}" ] && _maybe_run chown -h \'"${_OWN}"\' \'"${_NEWL}"\'
     _maybe_run rm -f \'"${_L}"\'
+    _URI_SURFACES_CHANGED=YES
   done
+
+  _rewrite_site_settings_uri "${_SD}/settings.php" "${_OLDNAME}" "${_NEWNAME}"
+}
+
+_rewrite_site_settings_uri() {
+  # settings.php is provision-generated and embeds the site URI in far more
+  # than the host patterns: the public/private/temp file paths, the D10+
+  # config sync directory, the syslog identity and the ABSOLUTE
+  # local.settings.php include path all carry it. Only trusted_host_patterns
+  # produces the visible HTTP 400 ("The provided host name is not valid for
+  # this server") — the rest fail silently, writing into a directory that no
+  # longer exists and quietly dropping a client's local overrides.
+  #
+  # The DATABASE must NOT follow the rename: the site keeps its database by
+  # design. Its name and user are derived from the URI at install time in a
+  # MANGLED form (dots and dashes stripped, then truncated), so the dotted
+  # URI replaced here cannot reach them — and if a file ever does carry the
+  # dotted URI on a credential line, this refuses it rather than repoint a
+  # live site at a database that does not exist. That failure would look
+  # exactly like data loss.
+  local _SET="$1"
+  local _OLDNAME="$2"
+  local _NEWNAME="$3"
+  local _OLD_BS _NEW_BS _RE_BS _RP_BS _RE _EXPR _OWN _MODE
+
+  # The URI appears in TWO spellings. Paths and identities carry it plain;
+  # trusted_host_patterns carries it as a PHP regex with the dots
+  # backslash-escaped ('^d7\.o1\.old\.example\.com$'). A rewrite that knows
+  # only the plain form leaves every host pattern stale — which is to say it
+  # leaves the site answering HTTP 400, the one symptom the whole exercise is
+  # about. Both spellings, one pass.
+  _OLD_BS="${_OLDNAME//./\\.}"
+  _NEW_BS="${_NEWNAME//./\\.}"
+
+  [ -f "${_SET}" ] || return 0
+  grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}" "${_SET}" 2>/dev/null || return 0
+
+  if grep -E "'(database|username|password)'|db_url" "${_SET}" 2>/dev/null \
+    | grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}"; then
+    _alrt "    settings.php NOT rewritten — database credentials embed ${_OLDNAME}:"
+    _alrt "    ${_SET}"
+    _alrt "    Rewrite the URI values by hand; never the database name."
+    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
+    return 0
+  fi
+
+  # Dots are regex metacharacters and a site URI is nothing but dots; in the
+  # escaped spelling the backslashes need escaping too. The expression is
+  # single-quoted through _maybe_run because eval would otherwise eat them.
+  _RE=$(printf '%s' "${_OLDNAME}" | sed -e 's/[.]/\\./g')
+  _RE_BS=$(printf '%s' "${_OLD_BS}" | sed -e 's/[\]/\\\\/g' -e 's/[.]/\\./g')
+  _RP_BS=$(printf '%s' "${_NEW_BS}" | sed -e 's/[\]/\\\\/g')
+  _EXPR="${_SED_RENAME_GUARD}s/${_RE_BS}/${_RP_BS}/g"
+  _EXPR="${_EXPR}; ${_SED_RENAME_GUARD}s/${_RE}/${_NEWNAME}/g"
+  _OWN=$(stat -c '%U:%G' "${_SET}" 2>/dev/null)
+  _MODE=$(stat -c '%a' "${_SET}" 2>/dev/null)
+  _info "    settings.php: file paths + trusted_host_patterns -> ${_NEWNAME}"
+  _maybe_run sed -i \'"${_EXPR}"\' \'"${_SET}"\'
+  _URI_SURFACES_CHANGED=YES
+  # The file is mode 440 owned by the account, and root must hand it back
+  # exactly as it found it.
+  [ -n "${_OWN}" ] && _maybe_run chown \'"${_OWN}"\' \'"${_SET}"\'
+  [ -n "${_MODE}" ] && _maybe_run chmod "${_MODE}" \'"${_SET}"\'
+  return 0
 }
 
 _assert_site_dirs_converged() {
@@ -481,6 +648,40 @@ _assert_site_dirs_converged() {
   _alrt "Site dirs still carrying ${_OLD_HOST} after the rename:"
   echo "${_STRAY}" | sed 's/^/      /'
   _die "Refusing to run the Aegir task queue: §7 would import the above as brand-new sites, giving every one of them a duplicate panel node. Resolve the dirs above, then re-run."
+}
+
+###-------------§2d PER-SITE PHP PINS----###
+
+_rewrite_fpm_pin_control() {
+  # static/control/multi-fpm.info holds one "<site uri> <php version>" row per
+  # PINNED site and is the only record of that pin: manage_ltd_users.sh
+  # regenerates the post.d/fpm_include_site_*.inc files FROM it and never the
+  # reverse. The rows key on the site URI, so a host-derived site's pin goes
+  # INERT the moment the box is renamed — the row names a site that no longer
+  # exists, no include is emitted, and the site silently falls back to the
+  # account's default PHP version. Nothing breaks loudly; the site just starts
+  # running on the wrong interpreter, which for a D7 site pinned to 7.4 is not
+  # a cosmetic difference.
+  #
+  # xmass forces this file onto a migration target verbatim, on the stated
+  # assumption that site URIs are "unchanged by migration". That holds for a
+  # plain migration and fails for exactly the case §2c exists for.
+  #
+  # .prev-multi-fpm.info is deliberately NOT touched: it is the diff baseline,
+  # so leaving it stale is what makes the next manage_ltd_users pass see a
+  # change, wipe every fpm_include_site_* (the stale old-hostname ones
+  # included) and regenerate the lot correctly.
+  local _CTL="${_AEGIR_ROOT}/static/control/multi-fpm.info"
+  local _OWN _MODE
+  [ -f "${_CTL}" ] || return 0
+  _file_needs_rename "${_CTL}" || return 0
+  _info "§2d Rewriting per-site PHP pins in static/control/multi-fpm.info ..."
+  _OWN=$(stat -c '%U:%G' "${_CTL}" 2>/dev/null)
+  _MODE=$(stat -c '%a' "${_CTL}" 2>/dev/null)
+  _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_CTL}"\'
+  [ -n "${_OWN}" ] && _maybe_run chown \'"${_OWN}"\' \'"${_CTL}"\'
+  [ -n "${_MODE}" ] && _maybe_run chmod "${_MODE}" \'"${_CTL}"\'
+  return 0
 }
 
 ###-------------§3 REWRITE DRUSH FILES---###
@@ -1484,6 +1685,28 @@ _run_as_aegir() {
   su -s /bin/bash - "${_AEGIR_USER}" -c "$1"
 }
 
+_queue_renamed_site_verifies() {
+  # Restored from the old xboa procedure, which scheduled
+  # `hosting-task @<site> verify --force` for every site it moved. The
+  # rewrite dropped it and queued only SERVER verifies, which regenerate no
+  # per-site artefact at all — the whole of B7. §2c now leaves each renamed
+  # site correct on disk without any of this; this queues provision's own
+  # regeneration on top, from the panel node, exactly as the old procedure
+  # did. Bounded by the sites §2c actually moved, so a box whose tenants do
+  # not embed the hostname queues nothing.
+  local _U
+  [ "${#_RENAMED_SITE_URIS[@]}" -eq 0 ] && return 0
+  for _U in $(printf '%s\n' "${_RENAMED_SITE_URIS[@]}" | sort -u); do
+    if [ "${_DRY_RUN}" = "YES" ]; then
+      _info "    (dry-run) would queue site verify: ${_U}"
+      continue
+    fi
+    _info "    queueing site verify: ${_U}"
+    _run_as_aegir "drush8 @hostmaster hosting-task @${_U} verify --force"
+  done
+  return 0
+}
+
 _run_aegir_tasks() {
   _info "§7 Flushing Drush cache and running Aegir task queue (5 passes) ..."
   _info "    Each pass: cc drush + server verify tasks + dispatch + hosting-tasks"
@@ -1491,6 +1714,7 @@ _run_aegir_tasks() {
 
   if [ "${_DRY_RUN}" = "YES" ]; then
     _info "(dry-run) Would run 5 passes of drush cc + hosting task queue"
+    _queue_renamed_site_verifies
     return
   fi
 
@@ -1505,6 +1729,10 @@ _run_aegir_tasks() {
 
     _run_as_aegir "drush8 @hostmaster \
       hosting-task @server_localhost verify --force"
+
+    if [ "${_pass}" -eq 1 ]; then
+      _queue_renamed_site_verifies
+    fi
 
     _run_as_aegir "drush8 @hostmaster hosting-dispatch"
 
@@ -1565,6 +1793,9 @@ _print_summary() {
   echo "  Old hostname : ${_OLD_HOST}"
   echo "  New hostname : ${_NEW_HOST}"
   echo "  Tenant dirs  : ${_TENANT_DIRS_N} moved onto the new hostname"
+  if [ "${_SETTINGS_SKIPPED_N}" -gt 0 ]; then
+    echo "  ATTENTION    : ${_SETTINGS_SKIPPED_N} settings.php left untouched — see the ALRT lines above"
+  fi
   if [ "${_ACCT_AXIS}" = "YES" ]; then
     echo "  Old account  : ${_OLD_ACCT}"
     echo "  New account  : ${_NEW_ACCT}"
@@ -1581,6 +1812,7 @@ _detect_new_hostname
 _backup_files
 _rename_hostmaster_site_dir
 _rename_tenant_site_dirs
+_rewrite_fpm_pin_control
 _rewrite_drush_files
 _rewrite_vhosts
 _rewrite_octopus_cnf

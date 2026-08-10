@@ -1174,10 +1174,6 @@ _DONT_USE_FANCY_BASH_LOGIN=NO
 ### Replaces /root/.include-php-latest.cnf
 _INCLUDE_PHP_LATEST=NO
 ###
-### Builds mydumper from source instead of the packaged build.
-### Replaces /root/.install.myquick.src.info
-_INSTALL_MYQUICK_SRC=NO
-###
 ### Restarts MySQL gracefully after the monthly OPTIMIZE pass.
 ### Replaces /root/.my.restart_after_optimize.cnf
 _MY_RESTART_AFTER_OPTIMIZE=NO
