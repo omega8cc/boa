@@ -112,7 +112,6 @@ _DEBUG_DAILY=NO #-------------- Verbose per-drush lines in the nightly log when 
 _DISABLE_AUDITD_LOGS=NO #------ Stop auditd writing logs when YES
 _DONT_USE_FANCY_BASH_LOGIN=NO #- Plain root login banner, no toilet/figlet when YES
 _INCLUDE_PHP_LATEST=NO #------- Include the newest supported PHP version when YES
-_INSTALL_MYQUICK_SRC=NO #------ Build mydumper from source when YES
 _MY_RESTART_AFTER_OPTIMIZE=NO #- Graceful MySQL restart after monthly OPTIMIZE when YES
 _DENY_JAVA=NO #---------------- Keep Java/Solr/Jetty off this box when YES (replaces /root/.deny.java.cnf)
 _SKIP_PERMISSIONS_PASS=NO #---- Skip the nightly per-platform permissions pass when YES (replaces /etc/boa/.dont.touch.permissions.cnf)
