@@ -1118,14 +1118,39 @@ _fetch_versioned() {
   # bytes are pre-f78. Overridable; conservative 24h default.
   local _reMin="${_FETCH_REVALIDATE_MIN:-1440}"
 
+  # A mirror box already HOLDS the published tree this URL is served from, so it must
+  # never fetch its own bytes back over the network: an intermediary can answer with
+  # pre-publish content long after the local tree is current. Measured 2026-08-10: the
+  # tree went current at 19:01:29 and a mirror still received the previous bytes at
+  # 19:03:10, 101 seconds later. Cache purges are best-effort and cannot be relied on.
+  # The webroot mirrors the URL path 1:1, so drop scheme+host and graft it on;
+  # /var/www/static/getboa marks a box that carries the tree (every mirror has it,
+  # publisher or passive). A URL that is not ours, or a tree this box does not hold,
+  # simply has no local file and falls through to curl.
+  local _lcl=""
+  if [[ -e "/var/www/static/getboa" ]]; then
+    _lcl="${_url#*://}"
+    _lcl="/var/www/static/${_lcl#*/}"
+    [[ -s "${_lcl}" ]] || _lcl=""
+  fi
+
   # Up to date? marker present AND dest non-empty AND (symlink intact if
   # required) AND (tail token present if required -- a DEPLOYED copy that lost
   # its sentinel is damaged and gets refetched now, not at the next window)
   # AND the marker still within the revalidation window. "find -mmin +N" prints
   # the marker only when it is OLDER than N minutes, so an empty result == fresh.
+  # AND, where a local source exists, the deployed bytes still MATCH it. The serial
+  # alone cannot detect "stamped against content older than the serial implies": the
+  # marker says f52 while the bytes are pre-f52, and nothing re-triggers a fetch until
+  # the revalidation window expires -- a full day of a tool that visibly will not
+  # update while the correct file sits on local disk (measured on a mirror, 2026-08-10).
+  # Comparing against the local source is exact and costs one local read, so a
+  # mis-stamped box self-heals on the very next pass instead of a day later. Boxes with
+  # no local source keep the window as their only backstop.
   if [[ -e "${_ctl}" ]] && [[ -s "${_dst}" ]] \
     && { [[ -z "${_lnk}" ]] || [[ -L "${_lnk}" ]]; } \
     && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
+    && { [[ -z "${_lcl}" ]] || cmp -s "${_lcl}" "${_dst}"; } \
     && [[ -z "$(find "${_ctl}" -mmin "+${_reMin}" 2>/dev/null)" ]]; then
     return 0
   fi
@@ -1158,22 +1183,9 @@ _fetch_versioned() {
   # the file untouched and merely re-arm the marker; if the fetch failed we leave
   # the working copy and its marker alone.
   local _new="${_dst}.new.$$"
-  # A mirror box already HOLDS the published tree this URL is served from, so it must
-  # never fetch its own bytes back over the network: an intermediary can answer with
-  # pre-publish content long after the local tree is current. Measured 2026-08-10: the
-  # tree went current at 19:01:29 and a mirror still received the previous bytes at
-  # 19:03:10, matched them against its deployed copy, and armed the marker -- pinning
-  # the tool for a whole revalidation window. Cache purges are best-effort and cannot
-  # be relied on. The webroot mirrors the URL path 1:1, so drop scheme+host and graft
-  # it on; /var/www/static/getboa marks a box that carries the tree (every mirror has
-  # it, publisher or passive). A URL that is not ours, or a tree this box does not
-  # hold, simply has no local file and falls through to curl.
-  local _lcl=""
-  if [[ -e "/var/www/static/getboa" ]]; then
-    _lcl="${_url#*://}"
-    _lcl="/var/www/static/${_lcl#*/}"
-  fi
-  if [[ -n "${_lcl}" ]] && [[ -s "${_lcl}" ]]; then
+  # The local source resolved above wins: no network, and it is the very content this
+  # box publishes. Falls through to curl when there is none.
+  if [[ -n "${_lcl}" ]]; then
     cp -f "${_lcl}" "${_new}" 2>/dev/null || rm -f "${_new}"
   else
     # shellcheck disable=SC2086,SC2154  # intentional _crlGet flag-string split; _crlGet is a BOA.sh.txt global
