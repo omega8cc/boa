@@ -1163,6 +1163,34 @@ EOF
   fi
 }
 
+### Fetch an installer file into /var/backups, fail-closed
+###
+### Neither curl's exit code nor the file's existence proves a good fetch:
+### the mirror answers an unknown path with HTTP 200 and a placeholder page
+### (curl exits 0 and writes it), while a transport error under --fail
+### leaves no file at all. _up_finish deletes these files on every run, so a
+### bad fetch here is not recoverable from a previous copy -- land on a temp
+### name, require the sentinel line the real file must carry, and only then
+### replace the live copy. Version floor forbids new curl flags, so this is
+### temp+mv rather than --remove-on-error
+_fetch_boa_file() {
+  local _fUrl="${1}"
+  local _fDst="${2}"
+  local _fSnt="${3}"
+  local _fTmp="${2}.new"
+  rm -f "${_fTmp}"
+  curl ${_crlGet} "${_fUrl}" -o "${_fTmp}"
+  if [ ! -s "${_fTmp}" ] || ! grep -q "${_fSnt}" "${_fTmp}" 2> /dev/null; then
+    rm -f "${_fTmp}"
+    echo
+    echo "  Failed to fetch ${_fUrl}"
+    echo "  (no response, or not a valid BOA file), exit"
+    echo
+    _clean_pid_exit _fetch_boa_file
+  fi
+  mv -f "${_fTmp}" "${_fDst}"
+}
+
 _up_proceed() {
   if [ -e "/root/.run-to-excalibur.cnf" ] \
     || [ -e "/root/.run-to-daedalus.cnf" ] \
@@ -1199,7 +1227,7 @@ _up_proceed() {
   fi
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.88.833"
+  export _rLsn="BOA-5.88.844"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="https://files.boa.io/versions/${_tRee}/boa"
@@ -1239,8 +1267,8 @@ _up_proceed() {
   _satellite_downgrade_protection
   _up_start
 
-  curl ${_crlGet} "${_rgUrl}/${_octName}"  -o ${_vBs}/${_octName}
-  curl ${_crlGet} "${_rgUrl}/${_pthIncO}"  -o ${_vBs}/${_filIncO}
+  _fetch_boa_file "${_rgUrl}/${_octName}" "${_vBs}/${_octName}" '_vBs="/var/backups"'
+  _fetch_boa_file "${_rgUrl}/${_pthIncO}" "${_vBs}/${_filIncO}" "^_X_VERSION="
 
   if [ "${_sCnd}" = "all" ]; then
     _up_action_all

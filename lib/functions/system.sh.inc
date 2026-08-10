@@ -2452,28 +2452,23 @@ _if_php_idle_on_off() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_php_idle_on_off"
   fi
-  # The stand-down marker doubles as a proxy-node role marker an operator
-  # may own, so take it only when absent and release only what we took --
-  # the ownership token is on disk so a crash cannot strand a real proxy.
-  # A token from an earlier interrupted run is cleared first: only a token
-  # this run wrote may authorise removing the marker.
-  rm -f /root/.proxy.cnf.boa-idle-owned
+  # The transient stand-down uses its own /run marker holding this run's
+  # PID -- never /root/.proxy.cnf, which is the permanent finalized-proxy
+  # ROLE marker and must not be borrowed as a mute switch (borrowing it
+  # stood down the IDS and the update channel box-wide, and a crash could
+  # strand the synthetic marker forever). Consumers clear a marker whose
+  # owner PID is dead, and /run clears itself on reboot, so a crash can
+  # strand nothing.
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     rm -f /var/log/boa/._php_libs_fix_*.pid
-    if [ ! -e "/root/.proxy.cnf" ]; then
-      touch /root/.proxy.cnf.boa-idle-owned
-      touch /root/.proxy.cnf
-    fi
+    echo $$ > /run/boa_php_idle_quiesce.pid
     pkill -9 -f second.sh
     sleep 5
     _php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
     wait
-    if [ -e "/root/.proxy.cnf.boa-idle-owned" ]; then
-      rm -f /root/.proxy.cnf
-      rm -f /root/.proxy.cnf.boa-idle-owned
-    fi
+    rm -f /run/boa_php_idle_quiesce.pid
     _php_install_deps
     _php_libs_fix
     if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -2488,20 +2483,14 @@ _if_php_idle_on_off() {
     _complete
     exit 0
   elif [ "${_PHP_IDLE}" = "OFF" ]; then
-    if [ ! -e "/root/.proxy.cnf" ]; then
-      touch /root/.proxy.cnf.boa-idle-owned
-      touch /root/.proxy.cnf
-    fi
+    echo $$ > /run/boa_php_idle_quiesce.pid
     pkill -9 -f second.sh
     sleep 5
     touch /root/.allow-php-multi-install-cleanup.cnf
     _php_if_versions_cleanup_cnf
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
     wait
-    if [ -e "/root/.proxy.cnf.boa-idle-owned" ]; then
-      rm -f /root/.proxy.cnf
-      rm -f /root/.proxy.cnf.boa-idle-owned
-    fi
+    rm -f /run/boa_php_idle_quiesce.pid
     if [ -e "/root/.run-to-excalibur.cnf" ] \
       || [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -7219,9 +7208,9 @@ _finale() {
     fi
   fi
   if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
-    _MTD_VR="BOA-5.88.833-omm"
+    _MTD_VR="BOA-5.88.844-omm"
   elif [ -e "/root/.host8.cnf" ]; then
-    _MTD_VR="BOA-5.88.833-aln"
+    _MTD_VR="BOA-5.88.844-aln"
   else
     _MTD_VR="${_X_VERSION}"
   fi
@@ -11270,6 +11259,14 @@ _initd_update() {
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
     fi
+    # cron and nginx are boot-registered and started UNCONDITIONALLY: a
+    # finalized proxy is still an internet-facing nginx relay whose cron
+    # carries every watchdog, and skipping these left a rebooted proxy
+    # dark with nothing armed to recover it. Only the site-serving stack
+    # (cache backend + FPM) stays proxy-gated.
+    _mrun "update-rc.d cron defaults"
+    _mrun "update-rc.d nginx defaults"
+    _mrun "service nginx start"
     if [ ! -e "/root/.proxy.cnf" ]; then
       if [ -e "/etc/init.d/valkey-server" ]; then
         _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
@@ -11278,7 +11275,6 @@ _initd_update() {
         _msg "INFO: Starting Redis, PHP-FPM and Nginx"
         _mrun "service redis-server start"
       fi
-      _mrun "update-rc.d cron defaults"
       _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
@@ -11286,8 +11282,6 @@ _initd_update() {
           _mrun "service php${e}-fpm start"
         fi
       done
-      _mrun "update-rc.d nginx defaults"
-      _mrun "service nginx start"
     fi
   else
     _if_hosted_sys
@@ -11383,6 +11377,11 @@ _initd_update() {
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
     fi
+    # nginx restarts UNCONDITIONALLY on upgrade: a finalized proxy is
+    # still an internet-facing relay whose upgraded config must activate.
+    # The site-serving stack (cache backend, FPM) and the MySQL tuning
+    # below stay proxy-gated -- those subsystems are intentionally down.
+    _mrun "service nginx restart"
     if [ ! -e "/root/.proxy.cnf" ]; then
       if [ -e "/etc/init.d/valkey-server" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -11406,7 +11405,6 @@ _initd_update() {
           _mrun "service php${e}-fpm reload"
         fi
       done
-      _mrun "service nginx restart"
       _check_mysql_version
       if [ "${_DB_V}" = "5.7" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then

@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
-export _xSrl=588833proT01
+export _xSrl=588844proT01
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -27,8 +27,22 @@ _check_root() {
 }
 _check_root
 
+# A finalized proxy keeps this gate: the night worker is per-site and
+# per-account work that is meaningless without local sites and DB, and
+# proxied-account certificates renew on the target (migration_proxy_certs).
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
+
+# PHP-idle surgery quiesce: barracuda holds this while swapping PHP
+# versions; a marker whose owner PID is gone is stale (crashed run) and
+# is cleared, never obeyed -- and /run clears itself on reboot.
+if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
+  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
+    exit 0
+  fi
+  rm -f /run/boa_php_idle_quiesce.pid
+fi
 
 ###-------------SYSTEM-----------------###
 
@@ -262,6 +276,11 @@ _boa_pass_active() {
   pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  # The Ægir setup children run as "su - oN -c bash .../AegirSetupC.sh.txt"
+  # and match none of the forms above, yet that is exactly the phase that
+  # creates a new distro revision the cleanup movers would reap. The [ABC]
+  # class also keeps this pattern from matching its own pgrep
+  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 # Bounded: a wedged process matching the sweep (or an operator's editor on

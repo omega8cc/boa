@@ -68,6 +68,7 @@ _ci_master_cron_control() {
     # form; the .sh.txt pgreps cover the chained install's legs
     if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" >/dev/null 2>&1 \
       || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" >/dev/null 2>&1 \
+      || pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" >/dev/null 2>&1 \
       || [ -e "/run/boa_run.pid" ] \
       || [ -e "/run/boa_wait.pid" ] \
       || [ -e "/run/octopus_install_run.pid" ]; then
@@ -84,8 +85,21 @@ _ci_master_cron_control() {
   fi
 }
 
+# The task queue stays proxy-gated: a finalized proxy has no local sites
+# for tasks to act on (part of the 2026-08-09 marker narrowing -- this
+# gate was audited RIGHTFUL, unlike the IDS/update gates it sat beside).
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
+# PHP-idle surgery quiesce: barracuda holds this while swapping PHP
+# versions (it used to borrow the proxy marker for the same mute); a
+# marker whose owner PID is gone is stale and is cleared, never obeyed.
+if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
+  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
+    exit 0
+  fi
+  rm -f /run/boa_php_idle_quiesce.pid
+fi
 # Dedicated, self-healing task-queue stop file: a maintenance op (e.g. the nightly
 # backups-to-static-fs relocation) sets /run/boa_queue_stop.pid to hold the queue
 # while it moves data. It lives in /run (cleared on reboot) and clear.sh purges a
