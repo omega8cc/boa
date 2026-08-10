@@ -5,30 +5,36 @@ We are pleased to inform you that your Ægir instance has been successfully upgr
 Here is what this one means for you and your sites.
 
 ----------------------------------------
-BACKUPS THAT MEAN EXACTLY WHAT THEY SAY
+EVERY BACKUP YOU START IS NOW THE RESTORABLE KIND
 ----------------------------------------
 
-The Backup button in your control panel now offers three clearly named choices -- a database snapshot, a files snapshot, or the complete restorable backup -- and the complete one is pre-selected, so the natural single click gives you a backup you can restore from. And from now on a database-only or files-only snapshot is labelled as such in your backup lists, so a partial backup can no longer be mistaken for a complete one.
+The previous release taught the Backup button to pre-select the complete, restorable mode. This one completes the promise everywhere else: backups started from the sites list or on a schedule now produce the same complete archive as a panel click -- files and database together, ready to restore.
 
 ----------------------------------------
-RESTORE BRINGS BACK EXACTLY WHAT YOU SAVED
+THE SAFETY NET UNDER RESTORE GOT REAL
 ----------------------------------------
 
-Restore a complete backup and your site returns to precisely the moment you saved it, files and database together. Restore a partial one, new or old, and the panel says plainly which half came back and which was left as it was.
+Before every Restore, Ægir quietly saves a copy of the site as it stands. That automatic safety copy is now itself a complete, restorable backup, database included -- so even if a restore takes a wrong turn, the way back is a backup you can actually use.
 
 ----------------------------------------
-A QUIETER, SHARPER SHIELD IN FRONT OF YOUR SITES
+EVERY BACKUP NOW PROVES ITSELF
 ----------------------------------------
 
-Some scrapers spread their traffic across thousands of addresses to stay below every radar, and the interactive links they lean on hardest -- social-login windows and flag buttons, which have to run your site's code on every hit -- are now answered at the front door before any of your site's code runs, while your genuine visitors carry on exactly as before. The protection layer also recognises and reports the wider campaign behind such traffic, so it can be dealt with instead of showing up as unexplained load.
+Every backup verifies its database export before it is listed, so what you see in your backup lists is what you can restore from. A restore states plainly what it brought back, every time. And a stale exclusion marker left behind by an interrupted run now clears itself instead of quietly shrinking every later backup.
+
+----------------------------------------
+A SMALL TRAP IN THE SITE FORM IS GONE
+----------------------------------------
+
+Pasting a copied web address as a new site's name could leave a trailing slash in the stored domain, with confusing results. The address is now cleaned at the door, and genuine subdirectory sites like example.com/shop keep working exactly as before. If a site created that way ever ended up redirecting to itself endlessly, it needs a one-off cleanup by your server administrator -- new sites are safe from here on.
 
 ----------------------------------------
 FRESHER FOUNDATIONS FOR YOUR NEXT PROJECT
 ----------------------------------------
 
-Drupal 10.6 and 11.4 are both ready to use as complete platform sets, and OpenCulturas moves to 3.0.5.
+A new Drupal 7 platform is waiting for you on core 7.105.2, our own extended-support release. Verify or migrate a site onto it and a persistent database warning some sites showed clears itself on the first update run, and form validation messages keep your custom field markup intact. And your sites now sit behind a per-site ceiling on anonymous traffic surges, so a flood aimed at one site cannot crowd out the rest -- anyone already signed in is never affected.
 
-Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-833
+Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-844
 
 ----------------------------------------
 YOU CAN ACCESS YOUR UPGRADED ÆGIR INSTANCE AT THE FOLLOWING URL
