@@ -1115,17 +1115,44 @@ _fetch_versioned() {
   # before the file content propagated), CDN per-file TTL skew, or a partially
   # synced mirror -- self-heals instead of being pinned to stale content forever.
   # The serial alone cannot detect this: the marker says "f78 fetched" while the
-  # bytes are pre-f78. Overridable; conservative 24h default.
-  local _reMin="${_FETCH_REVALIDATE_MIN:-1440}"
+  # bytes are pre-f78. Overridable. One hour, not a day: revalidation is a CONDITIONAL
+  # request (see below), so an unchanged source costs a 304 with no body and a box that
+  # ever mis-stamped heals within the hour instead of being visibly stale for a day.
+  local _reMin="${_FETCH_REVALIDATE_MIN:-60}"
+
+  # A mirror box already HOLDS the published tree this URL is served from, so it must
+  # never fetch its own bytes back over the network: an intermediary can answer with
+  # pre-publish content long after the local tree is current. Measured 2026-08-10: the
+  # tree went current at 19:01:29 and a mirror still received the previous bytes at
+  # 19:03:10, 101 seconds later. Cache purges are best-effort and cannot be relied on.
+  # The webroot mirrors the URL path 1:1, so drop scheme+host and graft it on;
+  # /var/www/static/getboa marks a box that carries the tree (every mirror has it,
+  # publisher or passive). A URL that is not ours, or a tree this box does not hold,
+  # simply has no local file and falls through to curl.
+  local _lcl=""
+  if [[ -e "/var/www/static/getboa" ]]; then
+    _lcl="${_url#*://}"
+    _lcl="/var/www/static/${_lcl#*/}"
+    [[ -s "${_lcl}" ]] || _lcl=""
+  fi
 
   # Up to date? marker present AND dest non-empty AND (symlink intact if
   # required) AND (tail token present if required -- a DEPLOYED copy that lost
   # its sentinel is damaged and gets refetched now, not at the next window)
   # AND the marker still within the revalidation window. "find -mmin +N" prints
   # the marker only when it is OLDER than N minutes, so an empty result == fresh.
+  # AND, where a local source exists, the deployed bytes still MATCH it. The serial
+  # alone cannot detect "stamped against content older than the serial implies": the
+  # marker says f52 while the bytes are pre-f52, and nothing re-triggers a fetch until
+  # the revalidation window expires -- a full day of a tool that visibly will not
+  # update while the correct file sits on local disk (measured on a mirror, 2026-08-10).
+  # Comparing against the local source is exact and costs one local read, so a
+  # mis-stamped box self-heals on the very next pass instead of a day later. Boxes with
+  # no local source keep the window as their only backstop.
   if [[ -e "${_ctl}" ]] && [[ -s "${_dst}" ]] \
     && { [[ -z "${_lnk}" ]] || [[ -L "${_lnk}" ]]; } \
     && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
+    && { [[ -z "${_lcl}" ]] || cmp -s "${_lcl}" "${_dst}"; } \
     && [[ -z "$(find "${_ctl}" -mmin "+${_reMin}" 2>/dev/null)" ]]; then
     return 0
   fi
@@ -1157,30 +1184,32 @@ _fetch_versioned() {
   # from what is deployed we replace and re-stamp; if they are identical we keep
   # the file untouched and merely re-arm the marker; if the fetch failed we leave
   # the working copy and its marker alone.
-  local _new="${_dst}.new.$$"
-  # A mirror box already HOLDS the published tree this URL is served from, so it must
-  # never fetch its own bytes back over the network: an intermediary can answer with
-  # pre-publish content long after the local tree is current. Measured 2026-08-10: the
-  # tree went current at 19:01:29 and a mirror still received the previous bytes at
-  # 19:03:10, matched them against its deployed copy, and armed the marker -- pinning
-  # the tool for a whole revalidation window. Cache purges are best-effort and cannot
-  # be relied on. The webroot mirrors the URL path 1:1, so drop scheme+host and graft
-  # it on; /var/www/static/getboa marks a box that carries the tree (every mirror has
-  # it, publisher or passive). A URL that is not ours, or a tree this box does not
-  # hold, simply has no local file and falls through to curl.
-  local _lcl=""
-  if [[ -e "/var/www/static/getboa" ]]; then
-    _lcl="${_url#*://}"
-    _lcl="/var/www/static/${_lcl#*/}"
+  local _new="${_dst}.new.$$" _cod="" _znc=""
+  # A box with no local tree cannot compare content locally, so it asks the server
+  # instead: -z sends If-Modified-Since from the DEPLOYED copy's mtime, so an unchanged
+  # source answers 304 with no body. That makes revalidation nearly free, which is what
+  # lets the window above be an hour rather than a day, and a 304 is a POSITIVE
+  # confirmation that what we hold is current (handled below) rather than a failed
+  # fetch. Safe against a stale copy suppressing its own update: published trees are
+  # re-cloned, so source timestamps only ever move forward. A server that ignores the
+  # header simply returns 200 and we behave exactly as before.
+  # Only offered when the deployed copy is INTACT -- an empty one, or one that lost its
+  # required sentinel, must pull the real bytes rather than be told "not modified".
+  if [[ -s "${_dst}" ]] \
+    && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; }; then
+    _znc="-z ${_dst}"
   fi
-  if [[ -n "${_lcl}" ]] && [[ -s "${_lcl}" ]]; then
+  # The local source resolved above wins: no network, and it is the very content this
+  # box publishes. Falls through to curl when there is none.
+  if [[ -n "${_lcl}" ]]; then
     cp -f "${_lcl}" "${_new}" 2>/dev/null || rm -f "${_new}"
   else
-    # shellcheck disable=SC2086,SC2154  # intentional _crlGet flag-string split; _crlGet is a BOA.sh.txt global
+    # shellcheck disable=SC2086,SC2154  # intentional _crlGet/_znc flag-string split; _crlGet is a BOA.sh.txt global
     # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
     # floor forbids --remove-on-error), and a partial file passes every simple
     # content test -- so discard the temp whenever curl itself reports failure.
-    curl ${_crlGet} "${_url}" -o "${_new}" || rm -f "${_new}"
+    _cod="$(curl ${_crlGet} ${_znc} -w '%{http_code}' "${_url}" -o "${_new}" 2>/dev/null)" \
+      || rm -f "${_new}"
   fi
   # A mirror answers a MISSING path with HTTP 200 + an HTML "Under Construction"
   # stub (a soft 404 that --fail cannot catch). No versioned BOA file is HTML --
@@ -1213,6 +1242,15 @@ _fetch_versioned() {
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."*
     touch "${_ctl}"                         # (re-)arm marker + revalidation window
+  elif [[ "${_cod}" == "304" ]]; then
+    # The server confirmed the deployed copy is current, so this is success with an
+    # empty body -- NOT a failed fetch. Re-arm the marker (otherwise every pass would
+    # re-probe) and still repair the symlink, which a missing-link revalidation came
+    # here to fix and which the body-carrying branch above would have handled.
+    rm -f "${_new}"
+    [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
+    rm -f "${_pthLog}/${_cnm}.ctrl."*
+    touch "${_ctl}"
   else
     rm -f "${_new}"                         # fetch failed -- keep the working copy
   fi
