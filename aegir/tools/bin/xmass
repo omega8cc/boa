@@ -3287,40 +3287,39 @@ _xmass_renameaegirhost_all() {
 
 ###=============SUBCOMMANDS===============###
 
-# Everything the SOURCE can do for itself to make the target reachable, done
-# before the reachability check rather than reported after it. Both were
-# operator steps until 2026-08-10, and an operator step in a one-command
-# procedure is a step someone eventually forgets.
-#
-# Neither call needs ssh, which is the point: the reachability check below
-# cannot fix its own preconditions, so anything fixable without ssh belongs
-# here. What genuinely cannot be done from this side -- the TARGET letting
-# this box in -- is handled on the target by `pre-mig`, which is the one
-# place that knows the source identity while running there.
+# Open the firewall to a migration peer, the way the old MIGRATE.md procedure
+# did it by hand and never had it fail: csf.allow gets the peer through the
+# firewall, csf.ignore stops lfd temp-denying it mid-migration, then reload.
+# Allow ALONE is not durable under load -- lfd can still act on the IP -- and a
+# temp-deny on the reverse path fails init AFTER the target datadir is gone.
+# Idempotent: both files are append-once.
+_xmass_csf_allow_peer() {
+  local _ip="$1" _what="$2"
+  [ -n "${_ip}" ] || return 1
+  [ -x /usr/sbin/csf ] || { _info "No csf here; nothing to allow for ${_what}"; return 0; }
+  grep -q "^${_ip} " /etc/csf/csf.allow 2>/dev/null \
+    || echo "${_ip} # xmass migration ${_what}" >> /etc/csf/csf.allow
+  grep -q "^${_ip} " /etc/csf/csf.ignore 2>/dev/null \
+    || echo "${_ip} # xmass migration ${_what}" >> /etc/csf/csf.ignore
+  csf -q &> /dev/null
+  _info "csf: ${_ip} allowed and ignored (${_what})"
+}
+
+# What the SOURCE can arrange for itself, done before the reachability check
+# instead of reported after it. Neither step needs ssh -- that is the point,
+# because the check below cannot fix its own preconditions.
 _xmass_prepare_target_reach() {
   local _t="$1"
   [ -n "${_t}" ] || return 0
-
-  # Host key: this verb knows the target IP, so first contact needs no
-  # operator. Only scan when we do not already trust it, so a re-run never
-  # appends duplicates.
   if ! ssh-keygen -F "${_t}" > /dev/null 2>&1; then
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
-    if ssh-keyscan -H -T 10 "${_t}" >> /root/.ssh/known_hosts 2>/dev/null \
-      && ssh-keygen -F "${_t}" > /dev/null 2>&1; then
-      _info "Learned host key for ${_t}"
-    else
-      _alrt "Could not learn host key for ${_t} -- target may be unreachable on 22"
-    fi
+    ssh-keyscan -H -T 10 "${_t}" >> /root/.ssh/known_hosts 2>/dev/null
+    ssh-keygen -F "${_t}" > /dev/null 2>&1 \
+      && _info "Learned host key for ${_t}" \
+      || _alrt "Could not learn host key for ${_t} -- target may be unreachable on 22"
   fi
-
-  # Outbound allow on THIS box, so our own firewall is never the blocker.
-  # Idempotent: csf -a on an already-allowed IP is a no-op.
-  if [ -x /usr/sbin/csf ]; then
-    csf -a "${_t}" "xmass migration target" &> /dev/null \
-      && _info "Allowed ${_t} through local csf" || true
-  fi
+  _xmass_csf_allow_peer "${_t}" target
 }
 
 _xmass_cmd_prep_target() {
@@ -3355,21 +3354,13 @@ _xmass_cmd_prep_target() {
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
   # guard temp-denies, and the target dials BACK to source:3306 for
   # replication -- getting this wrong fails init AFTER the datadir swap.
-  if [ -x "/usr/sbin/csf" ]; then
-    if csf -a "${_tgt}" "xmass migration target" &> /dev/null; then
-      _info "Source CSF: allowed ${_tgt}"
-    else
-      _alrt "source csf -a for ${_tgt} returned non-zero -- verify /etc/csf/csf.allow by hand"
-    fi
-  else
-    _info "Source has no csf; nothing to allow here"
-  fi
+  _xmass_csf_allow_peer "${_tgt}" target
   local _tcsf
-  _tcsf=$(ssh root@"${_tgt}" "if [ -x /usr/sbin/csf ]; then csf -a ${_XMASS_SRC_IP} 'xmass migration source' &> /dev/null && echo CSF_OK || echo CSF_FAIL; else echo CSF_NONE; fi" 2>/dev/null)
+  _tcsf=$(ssh root@"${_tgt}" "if [ -x /usr/sbin/csf ]; then grep -q '^${_XMASS_SRC_IP} ' /etc/csf/csf.allow 2>/dev/null || echo '${_XMASS_SRC_IP} # xmass migration source' >> /etc/csf/csf.allow; grep -q '^${_XMASS_SRC_IP} ' /etc/csf/csf.ignore 2>/dev/null || echo '${_XMASS_SRC_IP} # xmass migration source' >> /etc/csf/csf.ignore; csf -q &> /dev/null && echo CSF_OK || echo CSF_FAIL; else echo CSF_NONE; fi" 2>/dev/null)
   case "${_tcsf}" in
-    CSF_OK)   _info "Target CSF: allowed ${_XMASS_SRC_IP}" ;;
+    CSF_OK)   _info "Target CSF: ${_XMASS_SRC_IP} allowed and ignored" ;;
     CSF_NONE) _info "Target has no csf; nothing to allow there" ;;
-    *)        _alrt "target CSF allow for ${_XMASS_SRC_IP} FAILED or was unreadable (${_tcsf:-no answer})" ;;
+    *)        _alrt "target CSF for ${_XMASS_SRC_IP} FAILED or was unreadable (${_tcsf:-no answer})" ;;
   esac
   # Fail closed: init's failure mode for a dead reverse path is a refused
   # replication AFTER the target datadir has been replaced.
@@ -3556,25 +3547,14 @@ _xmass_pre_mig() {
 
     # Let the source IN. This is the ONE thing the source can never arrange
     # for itself: prep-target's reachability check runs FROM the source, and
-    # its csf-allow step sits after that check, so a target firewalling the
-    # source deadlocks -- the check fails, and the code that would have fixed
-    # it never runs. Here we are on the target and we know who the source is,
-    # so this is the only correct place for it. Idempotent; csf -a on an
-    # already-allowed address is a no-op.
-    if [ -x /usr/sbin/csf ]; then
-      _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
-      [ -n "${_src_ip}" ] \
-        || _src_ip=$(dig +short A "${_hst}" 2>/dev/null | grep -m1 -E '^[0-9.]+$')
-      case "${_src_ip}" in
-        [0-9]*.[0-9]*.[0-9]*.[0-9]*)
-          csf -a "${_src_ip}" "xmass migration source" &> /dev/null \
-            && _info "Allowed source ${_src_ip} through csf on this target" \
-            || _alrt "csf -a ${_src_ip} returned non-zero -- check /etc/csf/csf.allow"
-        ;;
-        *)
-          _alrt "Could not resolve ${_hst} to an IPv4 address -- csf allow for the source NOT added; prep-target will refuse until it is"
-        ;;
-      esac
+    # the csf-allow that would fix it sits AFTER that check, so a target
+    # firewalling the source deadlocks. Here we are on the target and we know
+    # who the source is, which makes this the only place it can be done.
+    _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
+    if [ -n "${_src_ip}" ]; then
+      _xmass_csf_allow_peer "${_src_ip}" source
+    else
+      _alrt "Could not resolve ${_hst} -- csf NOT opened for the source; prep-target will refuse until it is"
     fi
   fi
   _info "pre-mig complete on ${_hName}"
