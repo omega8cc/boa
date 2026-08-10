@@ -1854,6 +1854,28 @@ _barracuda_cnf_cleanup() {
     sed -i "s/^_SSL_FROM_SOURCES.*//g" ${_barCnf}
     wait
   fi
+  # MyQuick source builds are an internal fallback now, never an operator
+  # switch, so the key must not survive as something to flip back to YES.
+  # The second sed drops the marker converter's provenance stamp, which an
+  # anchored key delete would leave behind as a comment for a key that no
+  # longer exists.
+  _INSTALL_MYQUICK_SRC_TEST=$(grep _INSTALL_MYQUICK_SRC ${_barCnf} 2>&1)
+  if [[ "${_INSTALL_MYQUICK_SRC_TEST}" =~ "_INSTALL_MYQUICK_SRC" ]]; then
+    sed -i "/^_INSTALL_MYQUICK_SRC/d" ${_barCnf}
+    wait
+    sed -i "/^### _INSTALL_MYQUICK_SRC/d" ${_barCnf}
+    wait
+  fi
+  # rsyslog has been the only supported syslogd since the sysklogd arms
+  # were retired, but that retirement removed only the readers, so every
+  # converted box still carries the dead key and its provenance stamp.
+  _USE_SYSKLOGD_TEST=$(grep _USE_SYSKLOGD ${_barCnf} 2>&1)
+  if [[ "${_USE_SYSKLOGD_TEST}" =~ "_USE_SYSKLOGD" ]]; then
+    sed -i "/^_USE_SYSKLOGD/d" ${_barCnf}
+    wait
+    sed -i "/^### _USE_SYSKLOGD/d" ${_barCnf}
+    wait
+  fi
   ###
   ### legacy config cleanup end
   ###
@@ -2554,7 +2576,6 @@ _convert_etcboa_markers_to_cnf() {
     "/root/.disable.auditd.logs.cnf:_DISABLE_AUDITD_LOGS" \
     "/root/.dont.use.fancy.bash.login.cnf:_DONT_USE_FANCY_BASH_LOGIN" \
     "/root/.include-php-latest.cnf:_INCLUDE_PHP_LATEST" \
-    "/root/.install.myquick.src.info:_INSTALL_MYQUICK_SRC" \
     "/root/.my.restart_after_optimize.cnf:_MY_RESTART_AFTER_OPTIMIZE" \
     "/root/.deny.java.cnf:_DENY_JAVA" \
     "/etc/boa/.dont.touch.permissions.cnf:_SKIP_PERMISSIONS_PASS" \
@@ -2983,7 +3004,6 @@ _barracuda_cnf() {
     echo "_DISABLE_AUDITD_LOGS=${_DISABLE_AUDITD_LOGS:-NO}"  >> ${_barCnf}
     echo "_DONT_USE_FANCY_BASH_LOGIN=${_DONT_USE_FANCY_BASH_LOGIN:-NO}"  >> ${_barCnf}
     echo "_INCLUDE_PHP_LATEST=${_INCLUDE_PHP_LATEST:-NO}"  >> ${_barCnf}
-    echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}"  >> ${_barCnf}
     echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}"  >> ${_barCnf}
     echo "_DENY_JAVA=${_DENY_JAVA:-NO}"                   >> ${_barCnf}
     echo "_SKIP_PERMISSIONS_PASS=${_SKIP_PERMISSIONS_PASS:-NO}"  >> ${_barCnf}
@@ -3291,10 +3311,6 @@ _barracuda_cnf() {
     _INCLUDE_PHP_LATEST_TEST=$(grep "^_INCLUDE_PHP_LATEST=" ${_barCnf} 2>&1)
     if [[ ! "${_INCLUDE_PHP_LATEST_TEST}" =~ "_INCLUDE_PHP_LATEST=" ]]; then
       echo "_INCLUDE_PHP_LATEST=${_INCLUDE_PHP_LATEST:-NO}" >> ${_barCnf}
-    fi
-    _INSTALL_MYQUICK_SRC_TEST=$(grep "^_INSTALL_MYQUICK_SRC=" ${_barCnf} 2>&1)
-    if [[ ! "${_INSTALL_MYQUICK_SRC_TEST}" =~ "_INSTALL_MYQUICK_SRC=" ]]; then
-      echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}" >> ${_barCnf}
     fi
     _MY_RESTART_AFTER_OPTIMIZE_TEST=$(grep "^_MY_RESTART_AFTER_OPTIMIZE=" ${_barCnf} 2>&1)
     if [[ ! "${_MY_RESTART_AFTER_OPTIMIZE_TEST}" =~ "_MY_RESTART_AFTER_OPTIMIZE=" ]]; then
@@ -9324,7 +9340,7 @@ _other_sys_java_install() {
 
   # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
   if [ "${_javaVer}" = "21" ] && [ "${_OS_CODE}" != "excalibur" ]; then
-    _JAVA_NEW=21.0.11
+    _JAVA_NEW=21.0.12
     _JAVA_ITD=$(java21 --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
@@ -10024,11 +10040,29 @@ _if_install_vnstat() {
   fi
 }
 
+#
+# Directory holding the mydumper every caller actually runs. Provision
+# hard-codes /usr/local/bin/mydumper and the shell tools resolve the bare
+# name with /usr/local/bin first in PATH, so that is the one that counts;
+# follow the symlink to reach the build it really belongs to.
+_myquick_real_mydumper_dir() {
+  local _mdReal
+  _mdReal=$(readlink -f /usr/local/bin/mydumper 2> /dev/null)
+  if [ -z "${_mdReal}" ] || [ ! -x "${_mdReal}" ]; then
+    _mdReal=$(readlink -f "$(command -v mydumper 2> /dev/null)" 2> /dev/null)
+  fi
+  if [ -z "${_mdReal}" ] || [ ! -x "${_mdReal}" ]; then
+    return 1
+  fi
+  printf '%s' "${_mdReal%/*}"
+}
+
 _myquick_myloader_wrapper() {
   local _MYL_HELP
   local _MYL_LOCAL=/usr/local/bin/myloader
   local _MYL_MARK="BOA myloader wrapper"
   local _MYL_REAL
+  local _MYL_DIR
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _myquick_myloader_wrapper"
   fi
@@ -10037,19 +10071,27 @@ _myquick_myloader_wrapper() {
   ### translate between the caller flag style and what the installed
   ### binary accepts: pre-0.20.1 has no --drop-table, 1.0.x removed
   ### --overwrite-tables. Idempotent; safe to run on every pass.
-  if [[ -x "/usr/bin/myloader" ]]; then
-    _MYL_REAL=/usr/bin/myloader
-  elif [[ -e "${_MYL_LOCAL}" ]] \
-    && [[ ! -L "${_MYL_LOCAL}" ]] \
-    && ! grep -q "${_MYL_MARK}" "${_MYL_LOCAL}" 2> /dev/null; then
-    ### Fresh source build installed in place. Must win over a stale
-    ### myloader.bin left by a prior heal, or a version-bump rebuild
-    ### that clobbered the wrapper would get its new binary discarded
-    ### in favour of the old one.
-    _MYL_REAL="${_MYL_LOCAL}"
+  ###
+  ### The real binary is the myloader shipped BESIDE the mydumper the
+  ### callers run, never simply whatever sits in /usr/bin: preferring
+  ### /usr/bin unconditionally paired a source-built mydumper with an
+  ### older packaged myloader on a reporter's box, and the resulting
+  ### split pair failed every import.
+  _MYL_DIR=$(_myquick_real_mydumper_dir)
+  if [ -n "${_MYL_DIR}" ] \
+    && [[ -x "${_MYL_DIR}/myloader" ]] \
+    && ! grep -q "${_MYL_MARK}" "${_MYL_DIR}/myloader" 2> /dev/null; then
+    ### The peer binary. Guarded against our own wrapper from a prior
+    ### pass, which would otherwise be treated as the target and exec
+    ### itself; a fresh source build installed in place lands here too,
+    ### winning over a stale myloader.bin left by an earlier heal.
+    _MYL_REAL="${_MYL_DIR}/myloader"
   elif [[ -x "${_MYL_LOCAL}.bin" ]]; then
     ### Source layout already healed on a prior pass.
     _MYL_REAL="${_MYL_LOCAL}.bin"
+  elif [[ -x "/usr/bin/myloader" ]]; then
+    ### Last resort: no resolvable mydumper to pair with.
+    _MYL_REAL=/usr/bin/myloader
   else
     return 0
   fi
@@ -10069,13 +10111,19 @@ _myquick_myloader_wrapper() {
       _MYL_REAL="${_MYL_LOCAL}.bin"
     fi
     rm -f "${_MYL_LOCAL}"
-    cat > "${_MYL_LOCAL}" <<'MYLOADEREOF'
+    cat > "${_MYL_LOCAL}" <<MYLOADERHDR
 #!/bin/bash
 # BOA myloader wrapper
 # Pre-0.20.1 myloader has no --drop-table; translate for current
 # callers. Legacy modes other than DROP were never used by BOA.
-_MYL_REAL=/usr/bin/myloader
+# The target is pinned to the build the installed mydumper came from,
+# not re-derived at run time, so a stale packaged myloader cannot
+# capture this path behind the callers' backs.
+_MYL_REAL=${_MYL_REAL}
+MYLOADERHDR
+    cat >> "${_MYL_LOCAL}" <<'MYLOADEREOF'
 [[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/local/bin/myloader.bin
+[[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/bin/myloader
 _MYL_ARGS=()
 for _MYL_A in "$@"; do
   if [[ "${_MYL_A}" == "--drop-table" ]] \
@@ -10095,12 +10143,16 @@ MYLOADEREOF
       _MYL_REAL="${_MYL_LOCAL}.bin"
     fi
     rm -f "${_MYL_LOCAL}"
-    cat > "${_MYL_LOCAL}" <<'MYLOADEREOF'
+    cat > "${_MYL_LOCAL}" <<MYLOADERHDR
 #!/bin/bash
 # BOA myloader wrapper
 # myloader >= 1.0 removed --overwrite-tables; translate for older callers.
-_MYL_REAL=/usr/bin/myloader
+# The target is pinned to the build the installed mydumper came from.
+_MYL_REAL=${_MYL_REAL}
+MYLOADERHDR
+    cat >> "${_MYL_LOCAL}" <<'MYLOADEREOF'
 [[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/local/bin/myloader.bin
+[[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/bin/myloader
 _MYL_ARGS=()
 for _MYL_A in "$@"; do
   if [[ "${_MYL_A}" == "--overwrite-tables" ]]; then
@@ -10118,6 +10170,85 @@ MYLOADEREOF
     if [[ "${_MYL_REAL}" != "${_MYL_LOCAL}" ]]; then
       rm -f "${_MYL_LOCAL}"
       ln -sfn "${_MYL_REAL}" "${_MYL_LOCAL}"
+    fi
+  fi
+}
+
+#
+# Force one coherent MyQuick pair at /usr/local/bin -- the pair Provision
+# hard-codes and the shell tools resolve first -- and reap whichever build
+# lost. Two layouts drift apart on a real box and neither used to be
+# cleaned: a packaged install leaves the older source binaries in place,
+# and a source build leaves the older packaged ones in /usr/bin, where
+# they capture every bare-name caller. A split pair is not a cosmetic
+# leftover: mydumper and myloader from different releases disagree about
+# the import options BOA passes, which is how imports broke on a
+# reporter's box. Idempotent; runs on every pass.
+_myquick_reconcile() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _myquick_reconcile"
+  fi
+  local _mdVrn _mlVrn
+  ### A dangling symlink still answers -L but not -e, and reads as
+  ### "installed" to the -x tests all over the tree. Drop both first so
+  ### everything below sees the truth.
+  if [ -L "/usr/local/bin/mydumper" ] && [ ! -e "/usr/local/bin/mydumper" ]; then
+    rm -f /usr/local/bin/mydumper
+  fi
+  if [ -L "/usr/local/bin/myloader" ] && [ ! -e "/usr/local/bin/myloader" ]; then
+    rm -f /usr/local/bin/myloader
+  fi
+  if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
+    ### Packaged build owns the box. A real binary left at the canonical
+    ### path by an earlier source build outranks the package for every
+    ### caller, so put the symlink back and drop the stale companion.
+    if [ -x "/usr/bin/mydumper" ]; then
+      if [ ! -L "/usr/local/bin/mydumper" ]; then
+        rm -f /usr/local/bin/mydumper
+        ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
+      fi
+      rm -f /usr/local/bin/mydumper.bin
+    fi
+  fi
+  if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" != "NO" ]; then
+    ### Source build owns the box. The packaged binaries are what an
+    ### earlier deb install left behind. Remove them ONLY once the source
+    ### pair is proven to exist and run, so a failed build can never
+    ### leave the box with no MyQuick at all.
+    if [ -x "/usr/local/bin/mydumper" ] \
+      && [ ! -L "/usr/local/bin/mydumper" ] \
+      && [ -x "/usr/local/bin/myloader" ] \
+      && /usr/local/bin/mydumper -V &> /dev/null; then
+      if dpkg -l mydumper 2> /dev/null | grep -q "^ii"; then
+        _msg "INFO: Removing the packaged MyQuick left beside the source build"
+        _mrun "dpkg --purge mydumper"
+      fi
+      rm -f /usr/bin/mydumper
+      rm -f /usr/bin/myloader
+    fi
+  fi
+  _myquick_myloader_wrapper
+  ### Only now is the source companion safe to reap: the wrapper falls
+  ### back to it when the pinned target is gone, so it must survive
+  ### until the wrapper has run and left a plain symlink behind, which
+  ### it only does when no translation is needed at all.
+  if [ -L "/usr/local/bin/myloader" ]; then
+    rm -f /usr/local/bin/myloader.bin
+  fi
+  ### Post-condition on the pair the callers actually run. After the
+  ### reconcile both paths derive from one build, so a surviving
+  ### mismatch means something outside BOA put a binary here -- say so
+  ### now rather than let a nightly dump or a migration find out.
+  if [ -x "/usr/local/bin/mydumper" ] \
+    && [ -x "/usr/local/bin/myloader" ]; then
+    _mdVrn=$(/usr/local/bin/mydumper -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+)?' | head -1)
+    _mlVrn=$(/usr/local/bin/myloader -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+)?' | head -1)
+    if [ ! -z "${_mdVrn}" ] \
+      && [ ! -z "${_mlVrn}" ] \
+      && [ "${_mdVrn}" != "${_mlVrn}" ]; then
+      _msg "NOTE: MyQuick pair mismatch: mydumper ${_mdVrn} vs myloader ${_mlVrn}"
     fi
   fi
 }
@@ -10158,6 +10289,15 @@ _install_myquick_src() {
       fi
     fi
     ldconfig 2> /dev/null
+    ### A symlink left at either canonical path by an earlier packaged
+    ### install is a live write-through into /usr/bin for `make install`.
+    ### Drop them first; the build recreates real files there.
+    if [ -L "/usr/local/bin/mydumper" ]; then
+      rm -f /usr/local/bin/mydumper
+    fi
+    if [ -L "/usr/local/bin/myloader" ]; then
+      rm -f /usr/local/bin/myloader
+    fi
     cd /var/opt
     rm -rf mydumper*
     _get_dev_src "mydumper-${_MYQUICK_VRN_ONE}.tar.gz"
@@ -10234,10 +10374,13 @@ _myquick_install_upgrade() {
   else
     _USE_MYQUICK="${_MYQUICK_VRN_TWO}"
   fi
-  if [ "${_INSTALL_MYQUICK_SRC}" = "YES" ] \
-    || [ -e "/root/.install.myquick.src.info" ]; then
-    _MYQUICK_SRC_INSTALL_REQUIRED=YES
-  fi
+  # The source build is an internal fallback for codenames with no packaged
+  # build, never an operator switch: it is pinned to _MYQUICK_VRN_ONE, so
+  # forcing it on a supported codename held mydumper a version line back
+  # while myloader came from elsewhere, and imports failed on the option
+  # both binaries no longer agreed about. _INSTALL_MYQUICK_SRC and
+  # /root/.install.myquick.src.info are retired and ignored; a stale key or
+  # marker is inert, and the cnf key is dropped by _barracuda_cnf_cleanup.
   _check_mysql_version
   _isMyQuick="$(which mydumper)"
   if [ ! -x "${_isMyQuick}" ] \
@@ -10245,6 +10388,12 @@ _myquick_install_upgrade() {
     if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
       _install_myquick_deb
     else
+      ### The build body is gated on _MYQUICK_INSTALL_REQUIRED, which
+      ### nothing sets on an install pass, so this arm used to reach the
+      ### source path and do nothing at all -- a fresh install on a
+      ### codename with no packaged build ended with no MyQuick until
+      ### the first upgrade pass. Ask for the build we are here to do.
+      _MYQUICK_INSTALL_REQUIRED=YES
       _install_myquick_src
     fi
   fi
@@ -10295,10 +10444,13 @@ _myquick_install_upgrade() {
       _install_myquick_deb
     fi
   fi
-  ### Heal the wrapper on every pass: boxes on a still-pinned version
-  ### never re-enter the install paths, yet their callers ship newer
-  ### flags than the installed binary understands.
-  _myquick_myloader_wrapper
+  ### Heal on every pass: boxes on a still-pinned version never re-enter
+  ### the install paths, yet their callers ship newer flags than the
+  ### installed binary understands, and a box that switched build kinds
+  ### at some point still carries the other one's leftovers. The
+  ### reconcile owns the wrapper call, so it always runs against a
+  ### layout that has already been made coherent.
+  _myquick_reconcile
 }
 
 _xdrago_install_upgrade() {
