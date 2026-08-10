@@ -1282,9 +1282,14 @@ _xmass_take_backup() {
     _info "xtrabackup: backing up to ${_XTRA_STAGE_SRC} (stage method) ..."
     rm -rf "${_XTRA_STAGE_SRC}"
     mkdir -p "${_XTRA_STAGE_SRC}"
+    # Both default to "wait forever": behind one long query the backup lock
+    # never returns and init hangs with no bound and no diagnostic, on a live
+    # source. The old export capped exactly this with --long-query-guard=900.
     xtrabackup \
       --defaults-file=/root/.my.cnf \
       --backup \
+      --ftwrl-wait-timeout=900 \
+      --kill-long-queries-timeout=60 \
       --target-dir="${_XTRA_STAGE_SRC}" \
       || _die "xtrabackup --backup failed on source"
 
@@ -3293,6 +3298,73 @@ _xmass_renameaegirhost_all() {
 # Allow ALONE is not durable under load -- lfd can still act on the IP -- and a
 # temp-deny on the reverse path fails init AFTER the target datadir is gone.
 # Idempotent: both files are append-once.
+# The cutover's write freeze, done the way the old MIGRATE.md procedure did it
+# and the way that actually holds: a file-backed flag in the global include.
+#
+# What was here before was `mysql -e "FLUSH TABLES WITH READ LOCK;"`. FTWRL is
+# SESSION-scoped -- the lock dies the instant that client exits, so the command
+# returned, the log said writes were frozen, and the source stayed fully
+# writable for the whole cutover window. Every write landing after that point
+# is past the GTID position the cutover captured, i.e. silently lost.
+#
+# A file the web layer reads on every request cannot evaporate when a client
+# disconnects, which is the entire reason the old procedure used one.
+_XMASS_GLOBAL_INC="/data/conf/global/global-extra.inc"
+
+_xmass_freeze_source_writes() {
+  [ -e "${_XMASS_GLOBAL_INC}" ] || {
+    _alrt "No ${_XMASS_GLOBAL_INC} -- cannot freeze writes; sites stay WRITABLE through cutover"
+    return 1
+  }
+  if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
+    _info "Source writes already frozen"
+    return 0
+  fi
+  cp -af "${_XMASS_GLOBAL_INC}" "${_XMASS_GLOBAL_INC}.bak"
+  {
+    echo ""
+    echo "# xmass migration freeze -- remove with the .bak beside this file"
+    echo "\$settings['config_readonly'] = TRUE;"
+    echo "\$conf['site_readonly'] = 1;"
+    echo ""
+  } >> "${_XMASS_GLOBAL_INC}"
+  grep -q "site_readonly" "${_XMASS_GLOBAL_INC}" \
+    && _info "Source writes FROZEN via ${_XMASS_GLOBAL_INC} (backup kept as .bak)" \
+    || { _alrt "Freeze did not take -- sites stay WRITABLE"; return 1; }
+}
+
+_xmass_thaw_writes() {
+  # Used on the abort path so a failed cutover leaves the source usable, and on
+  # the target after promotion so the NEW production box is never read-only.
+  local _host="${1:-}"
+  if [ -n "${_host}" ]; then
+    ssh -o ConnectTimeout=10 root@"${_host}" \
+      "[ -e ${_XMASS_GLOBAL_INC}.bak ] && mv -f ${_XMASS_GLOBAL_INC}.bak ${_XMASS_GLOBAL_INC}; \
+       sed -i '/xmass migration freeze/,+3d' ${_XMASS_GLOBAL_INC} 2>/dev/null; true" &> /dev/null
+    _info "Writes thawed on ${_host}"
+  else
+    [ -e "${_XMASS_GLOBAL_INC}.bak" ] && mv -f "${_XMASS_GLOBAL_INC}.bak" "${_XMASS_GLOBAL_INC}"
+    sed -i '/xmass migration freeze/,+3d' "${_XMASS_GLOBAL_INC}" 2> /dev/null
+    _info "Source writes thawed"
+  fi
+}
+
+# The two guards that keep an unfinished 'delete' task from travelling to the
+# new box. xoct and xcopy have always run these; xmass never did, while its own
+# pre-mig pkill -9's the dispatcher -- which is precisely how a delete ends up
+# stranded at task_status='-1'. Cutover then runs hosting-tasks --force on the
+# target, so Aegir would execute that delete against brand-new production.
+_xmass_clear_pending_deletes() {
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\"" &> /dev/null
+    su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\"" &> /dev/null
+  done
+  _info "Cleared any pending/interrupted delete tasks from all panel queues"
+}
+
 _xmass_csf_allow_peer() {
   local _ip="$1" _what="$2"
   [ -n "${_ip}" ] || return 1
@@ -3609,6 +3681,26 @@ _xmass_cmd_init() {
   # target datadir has been replaced).
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
+
+  # Clear unfinished delete tasks BEFORE the panel databases travel.
+  _xmass_clear_pending_deletes
+
+  # From here until cutover the target is a WRITABLE replica with its own
+  # crontab live: mysql_cleanup.sh TRUNCATEs cache tables hourly, locally, on
+  # the replica. Under ROW binlog a later replicated change to a row the local
+  # TRUNCATE removed stops the SQL thread outright; when it does not, those are
+  # errant transactions written into what is about to become production. The
+  # old procedure stopped cron on the target for exactly this window. xmass
+  # never did -- while its own cutover step 15 STARTS cron on the target, as
+  # though something had stopped it. pkill is required too: on Devuan the init
+  # script alone leaves the daemon up.
+  ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "/etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null; pkill -x cron &> /dev/null; true" &> /dev/null
+  if ssh -o ConnectTimeout=10 root@"${_tgt}" "pgrep -x cron > /dev/null" 2> /dev/null; then
+    _alrt "cron is STILL running on the target -- the replica can take local writes"
+  else
+    _info "Target cron stopped for the replication window"
+  fi
   local _src_sid _tgt_sid
   _src_sid=$(_ip_to_server_id "${_XMASS_SRC_IP}")
   _tgt_sid=$(_ip_to_server_id "${_tgt}")
@@ -3910,6 +4002,10 @@ for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   fi
 done
 REMOTE
+
+  # The freeze belongs to the OLD box. Never let the new production box come up
+  # read-only because it inherited the flag along with the rest of the tree.
+  _xmass_thaw_writes "${_tgt}"
 
   # Step 15.9: Wire migration-proxy realip+csf trust BEFORE the source starts
   # proxying, so the new host recovers the real client and never bans the proxy
@@ -4229,13 +4325,13 @@ _xmass_cmd_cutover() {
   _XMASS_PHASE="cutover"
   _xmass_save_state
 
-  # Step 6: Lock source MySQL — no more writes possible
-  _info "Flushing and locking source MySQL (FLUSH TABLES WITH READ LOCK) ..."
-  if ! mysql --defaults-file=/root/.my.cnf \
-    -e "FLUSH TABLES WITH READ LOCK;"; then
-    _xmass_restore_hint
-    _die "FLUSH TABLES WITH READ LOCK failed on source"
-  fi
+  # Step 6: stop writes for real. The durable flag is what actually holds; the
+  # FLUSH is kept only to push buffers out before the position is read, and is
+  # NOT relied on to keep anything locked (it cannot -- it is session-scoped).
+  _info "Freezing source writes for cutover ..."
+  _xmass_freeze_source_writes \
+    || { _xmass_restore_hint; _die "Could not freeze source writes -- refusing to cut over a writable source"; }
+  mysql --defaults-file=/root/.my.cnf -e "FLUSH TABLES;" &> /dev/null
 
   # Step 7: Triple-check lag is still zero after the lock
   local _lag _pass
