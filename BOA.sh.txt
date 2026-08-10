@@ -1193,22 +1193,39 @@ _fetch_versioned() {
   # fetch. Safe against a stale copy suppressing its own update: published trees are
   # re-cloned, so source timestamps only ever move forward. A server that ignores the
   # header simply returns 200 and we behave exactly as before.
-  # Only offered when the deployed copy is INTACT -- an empty one, or one that lost its
-  # required sentinel, must pull the real bytes rather than be told "not modified".
-  if [[ -s "${_dst}" ]] \
-    && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; }; then
+  # Offered ONLY when all of these hold, because each one is a case where a 304 would be
+  # the wrong answer:
+  #   - the deployed copy is INTACT (an empty one, or one that lost its required
+  #     sentinel, must pull real bytes rather than be told "not modified");
+  #   - a marker for THIS serial already exists, i.e. we are merely revalidating. When
+  #     the serial changed we are being told new content exists, so never risk a 304
+  #     against it -- that is exactly how a box would re-arm the new marker over old
+  #     bytes;
+  #   - that marker is younger than the hard window. At least once a day we ask
+  #     unconditionally, so a deployed copy carrying a wrong mtime (written before -R,
+  #     or touched by hand) can never answer 304 forever. Worst case degrades to the
+  #     unconditional refetch this replaced -- it can delay a heal, never prevent one.
+  if [[ -s "${_dst}" ]] && [[ -e "${_ctl}" ]] \
+    && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
+    && [[ -z "$(find "${_ctl}" -mmin "+${_FETCH_HARD_REVALIDATE_MIN:-1440}" 2>/dev/null)" ]]; then
     _znc="-z ${_dst}"
   fi
   # The local source resolved above wins: no network, and it is the very content this
   # box publishes. Falls through to curl when there is none.
   if [[ -n "${_lcl}" ]]; then
-    cp -f "${_lcl}" "${_new}" 2>/dev/null || rm -f "${_new}"
+    cp -pf "${_lcl}" "${_new}" 2>/dev/null || rm -f "${_new}"
   else
     # shellcheck disable=SC2086,SC2154  # intentional _crlGet/_znc flag-string split; _crlGet is a BOA.sh.txt global
     # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
     # floor forbids --remove-on-error), and a partial file passes every simple
     # content test -- so discard the temp whenever curl itself reports failure.
-    _cod="$(curl ${_crlGet} ${_znc} -w '%{http_code}' "${_url}" -o "${_new}" 2>/dev/null)" \
+    # -R is LOAD-BEARING, not cosmetic: it stamps the deployed copy with the SOURCE's
+    # Last-Modified, so the -z above compares "is the source newer than the VERSION I
+    # HOLD". Without it the comparison is against the time this box happened to WRITE
+    # the file, and a box that ever wrote stale bytes later than the source was
+    # published answers 304 to every probe and stays pinned forever -- strictly worse
+    # than the unconditional refetch this replaced. Same reason cp -p above.
+    _cod="$(curl ${_crlGet} ${_znc} -R -w '%{http_code}' "${_url}" -o "${_new}" 2>/dev/null)" \
       || rm -f "${_new}"
   fi
   # A mirror answers a MISSING path with HTTP 200 + an HTML "Under Construction"
@@ -4178,9 +4195,9 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f81 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f52 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f63 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f80 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f51 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f62 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f90 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f96 --guard /local/bin/autodaedalus
