@@ -294,12 +294,15 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.install.myquick.src.info
 
-  Converted to _INSTALL_MYQUICK_SRC=YES in /root/.barracuda.cnf -- the variable is the
-  supported switch; the file stays honoured for one release. To switch it off
-  during the transition, set the variable to NO *and* remove the file: while
-  the file exists it wins and is re-asserted on every pass.
-
-  Builds mydumper from source instead of using the packaged build.
+  RETIRED 2026-08-10: building mydumper from source is an internal fallback
+  for OS codenames with no packaged build, not an operator switch. The
+  source path is pinned to the older mydumper release, so forcing it on a
+  codename that has a package held mydumper a version line back while
+  myloader could come from elsewhere, and database imports then failed on
+  the command-line option the two binaries no longer agreed about. The
+  marker and the _INSTALL_MYQUICK_SRC variable are both ignored; a stale
+  marker is inert, and the cnf key is dropped from /root/.barracuda.cnf on
+  the next barracuda run.
 
  @=> /root/.use.sysklogd.cnf
 
@@ -320,7 +323,11 @@ by the BOA install and upgrade tools exclusively.
   cutover. Converted to _DENY_JAVA=YES in /root/.barracuda.cnf (xmass now
   writes both forms) -- the variable is the supported switch; the file stays
   honoured for one release. To re-enable Solr, set _DENY_JAVA=NO *and* remove
-  the file.
+  the file -- then re-arm the service, because autoupboa has by then moved
+  /etc/init.d/solr9 to /var/backups/solr9.initd and nothing puts it back
+  (_if_solr_nine only reinstalls when the data dir or version stamp is gone).
+  On a rolled-back migration source, 'xmass restore-solr' does all of it in
+  the required order.
 
  @=> /etc/boa/.dont.touch.permissions.cnf
 
