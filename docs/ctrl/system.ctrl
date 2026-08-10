@@ -320,7 +320,11 @@ by the BOA install and upgrade tools exclusively.
   cutover. Converted to _DENY_JAVA=YES in /root/.barracuda.cnf (xmass now
   writes both forms) -- the variable is the supported switch; the file stays
   honoured for one release. To re-enable Solr, set _DENY_JAVA=NO *and* remove
-  the file.
+  the file -- then re-arm the service, because autoupboa has by then moved
+  /etc/init.d/solr9 to /var/backups/solr9.initd and nothing puts it back
+  (_if_solr_nine only reinstalls when the data dir or version stamp is gone).
+  On a rolled-back migration source, 'xmass restore-solr' does all of it in
+  the required order.
 
  @=> /etc/boa/.dont.touch.permissions.cnf
 
