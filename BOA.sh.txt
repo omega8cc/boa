@@ -1158,11 +1158,30 @@ _fetch_versioned() {
   # the file untouched and merely re-arm the marker; if the fetch failed we leave
   # the working copy and its marker alone.
   local _new="${_dst}.new.$$"
-  # shellcheck disable=SC2086,SC2154  # intentional _crlGet flag-string split; _crlGet is a BOA.sh.txt global
-  # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
-  # floor forbids --remove-on-error), and a partial file passes every simple
-  # content test -- so discard the temp whenever curl itself reports failure.
-  curl ${_crlGet} "${_url}" -o "${_new}" || rm -f "${_new}"
+  # A mirror box already HOLDS the published tree this URL is served from, so it must
+  # never fetch its own bytes back over the network: an intermediary can answer with
+  # pre-publish content long after the local tree is current. Measured 2026-08-10: the
+  # tree went current at 19:01:29 and a mirror still received the previous bytes at
+  # 19:03:10, matched them against its deployed copy, and armed the marker -- pinning
+  # the tool for a whole revalidation window. Cache purges are best-effort and cannot
+  # be relied on. The webroot mirrors the URL path 1:1, so drop scheme+host and graft
+  # it on; /var/www/static/getboa marks a box that carries the tree (every mirror has
+  # it, publisher or passive). A URL that is not ours, or a tree this box does not
+  # hold, simply has no local file and falls through to curl.
+  local _lcl=""
+  if [[ -e "/var/www/static/getboa" ]]; then
+    _lcl="${_url#*://}"
+    _lcl="/var/www/static/${_lcl#*/}"
+  fi
+  if [[ -n "${_lcl}" ]] && [[ -s "${_lcl}" ]]; then
+    cp -f "${_lcl}" "${_new}" 2>/dev/null || rm -f "${_new}"
+  else
+    # shellcheck disable=SC2086,SC2154  # intentional _crlGet flag-string split; _crlGet is a BOA.sh.txt global
+    # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
+    # floor forbids --remove-on-error), and a partial file passes every simple
+    # content test -- so discard the temp whenever curl itself reports failure.
+    curl ${_crlGet} "${_url}" -o "${_new}" || rm -f "${_new}"
+  fi
   # A mirror answers a MISSING path with HTTP 200 + an HTML "Under Construction"
   # stub (a soft 404 that --fail cannot catch). No versioned BOA file is HTML --
   # scripts start with #!, PHP with <?php -- so a leading HTML tag means the file
@@ -4122,7 +4141,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f81 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f53 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f52 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f63 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f90 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
