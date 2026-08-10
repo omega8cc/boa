@@ -3287,6 +3287,42 @@ _xmass_renameaegirhost_all() {
 
 ###=============SUBCOMMANDS===============###
 
+# Everything the SOURCE can do for itself to make the target reachable, done
+# before the reachability check rather than reported after it. Both were
+# operator steps until 2026-08-10, and an operator step in a one-command
+# procedure is a step someone eventually forgets.
+#
+# Neither call needs ssh, which is the point: the reachability check below
+# cannot fix its own preconditions, so anything fixable without ssh belongs
+# here. What genuinely cannot be done from this side -- the TARGET letting
+# this box in -- is handled on the target by `pre-mig`, which is the one
+# place that knows the source identity while running there.
+_xmass_prepare_target_reach() {
+  local _t="$1"
+  [ -n "${_t}" ] || return 0
+
+  # Host key: this verb knows the target IP, so first contact needs no
+  # operator. Only scan when we do not already trust it, so a re-run never
+  # appends duplicates.
+  if ! ssh-keygen -F "${_t}" > /dev/null 2>&1; then
+    mkdir -p /root/.ssh
+    chmod 700 /root/.ssh
+    if ssh-keyscan -H -T 10 "${_t}" >> /root/.ssh/known_hosts 2>/dev/null \
+      && ssh-keygen -F "${_t}" > /dev/null 2>&1; then
+      _info "Learned host key for ${_t}"
+    else
+      _alrt "Could not learn host key for ${_t} -- target may be unreachable on 22"
+    fi
+  fi
+
+  # Outbound allow on THIS box, so our own firewall is never the blocker.
+  # Idempotent: csf -a on an already-allowed IP is a no-op.
+  if [ -x /usr/sbin/csf ]; then
+    csf -a "${_t}" "xmass migration target" &> /dev/null \
+      && _info "Allowed ${_t} through local csf" || true
+  fi
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -3302,6 +3338,7 @@ _xmass_cmd_prep_target() {
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
   _xmass_enumerate_accounts
+  _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
     || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
@@ -3516,6 +3553,29 @@ _xmass_pre_mig() {
     else
       _die "Source key file empty or not fetched"
     fi
+
+    # Let the source IN. This is the ONE thing the source can never arrange
+    # for itself: prep-target's reachability check runs FROM the source, and
+    # its csf-allow step sits after that check, so a target firewalling the
+    # source deadlocks -- the check fails, and the code that would have fixed
+    # it never runs. Here we are on the target and we know who the source is,
+    # so this is the only correct place for it. Idempotent; csf -a on an
+    # already-allowed address is a no-op.
+    if [ -x /usr/sbin/csf ]; then
+      _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
+      [ -n "${_src_ip}" ] \
+        || _src_ip=$(dig +short A "${_hst}" 2>/dev/null | grep -m1 -E '^[0-9.]+$')
+      case "${_src_ip}" in
+        [0-9]*.[0-9]*.[0-9]*.[0-9]*)
+          csf -a "${_src_ip}" "xmass migration source" &> /dev/null \
+            && _info "Allowed source ${_src_ip} through csf on this target" \
+            || _alrt "csf -a ${_src_ip} returned non-zero -- check /etc/csf/csf.allow"
+        ;;
+        *)
+          _alrt "Could not resolve ${_hst} to an IPv4 address -- csf allow for the source NOT added; prep-target will refuse until it is"
+        ;;
+      esac
+    fi
   fi
   _info "pre-mig complete on ${_hName}"
 }
@@ -3547,6 +3607,7 @@ _xmass_cmd_init() {
   _xmass_report_account_modes
 
   # Verify SSH connectivity to target
+  _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
     || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
