@@ -25,6 +25,11 @@
 ### What it does:
 ###   §1  Detect old hostname from <aegir-root>/.drush/server_master.alias.drushrc.php
 ###   §2  Detect new hostname from system FQDN (hostname -f)
+###   §2c Move host-derived tenant site dirs onto the new hostname, together
+###       with the surfaces keyed by site URI (per-site Drush alias file and
+###       static files store). A tenant whose URI embeds the box hostname
+###       follows the box; leaving its dir behind strands it under a name
+###       §7 would import as a second, duplicate site node
 ###   §3  Rewrite all Drush alias files in <aegir-root>/.drush/
 ###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/,
 ###       then rewrite the platform sites/sites.php alias maps (the queued
@@ -56,6 +61,7 @@ _FORCE_OLD=""
 _OLD_ACCT=""
 _NEW_ACCT=""
 _SITESPHP_N=0
+_TENANT_DIRS_N=0
 
 ###-------------ARGUMENT PARSING----------###
 
@@ -358,6 +364,123 @@ _rename_hostmaster_site_dir() {
   else
     _alrt "Neither ${_HM_DIR_OLD##*/} nor ${_HM_DIR_NEW##*/} found on disk"
   fi
+}
+
+###-------------§2c TENANT SITE DIRS-----###
+
+# The host axis renames a site's vhost, its sites.php record and its panel
+# node title by substring, so a tenant whose URI embeds the box hostname
+# (BOA's standard staging shape <site>.<oN>.<FQDN>) followed the rename on
+# every surface EXCEPT its own directory. That split is not survivable:
+# conf_path() finds no sites/<new URI> and serves the installer page, while
+# §7's platform verify enumerates every sites/*/settings.php, finds the
+# stranded old-named dir claimed by no node, and imports it as a brand-new
+# site — leaving two panel nodes per site, the enabled one broken and the
+# orphan owning the only directory and database.
+#
+# So the directory moves with the name, together with the two other on-disk
+# surfaces keyed by URI: the per-site Drush alias FILE (§3 rewrites its
+# contents but cannot rename it) and the static files store that the site's
+# files symlink resolves through. Client symlinks are dropped rather than
+# moved; provision recreates them from the site node on the next verify.
+#
+# The account axis deliberately does NOT do this — there the box keeps its
+# name and a site's URI is its own, so §5b stays exact-match. Here the box
+# name itself is changing and the old name keeps resolving to the source
+# box, which is why the tenant has to follow.
+
+_rename_tenant_site_dirs() {
+  _info "§2c Renaming host-derived tenant site dirs under ${_AEGIR_ROOT} ..."
+
+  local _D _SITES _OLDNAME _NEWNAME _NEWD _N=0
+  for _D in $(_find_old_host_site_dirs | sort); do
+    _OLDNAME=$(basename "${_D}")
+    _renamed_already "${_OLDNAME}" && continue
+    _NEWNAME="${_OLDNAME//${_OLD_HOST}/${_NEW_HOST}}"
+    [ "${_NEWNAME}" = "${_OLDNAME}" ] && continue
+    _SITES=$(dirname "${_D}")
+    _NEWD="${_SITES}/${_NEWNAME}"
+    if [ -d "${_NEWD}" ]; then
+      _alrt "  ${_NEWNAME} already exists beside ${_OLDNAME} — leaving both for review"
+      continue
+    fi
+    _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES})"
+    _maybe_run mv -f \'"${_D}"\' \'"${_NEWD}"\'
+    _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}"
+    _N=$((_N + 1))
+  done
+
+  _TENANT_DIRS_N=${_N}
+  if [ "${_N}" -eq 0 ]; then
+    _info "  no host-derived tenant site dirs found — nothing to move"
+  elif [ "${_DRY_RUN}" = "YES" ]; then
+    _info "  ${_N} tenant site dir(s) would move onto ${_NEW_HOST}"
+  else
+    _info "  ${_N} tenant site dir(s) moved onto ${_NEW_HOST}"
+  fi
+}
+
+_find_old_host_site_dirs() {
+  # Every platform docroot layout at once (sites/, web/sites/, docroot/sites/,
+  # html/sites/) — one platform can even carry the same site at two depths.
+  # Backups and the Drush checksum store are never site dirs.
+  find "${_AEGIR_ROOT}" -maxdepth 8 -type d -path '*/sites/*' \
+    -name "*${_OLD_HOST}*" \
+    -not -path '*/backups/*' \
+    -not -path '*/.drush/*' \
+    -not -path '*/sites/*/*' 2>/dev/null
+}
+
+_rename_site_uri_surfaces() {
+  # Idempotent by construction: every move is skipped when the source is
+  # gone or the target already exists, so a site carried at two depths and a
+  # re-run both converge.
+  local _OLDNAME="$1"
+  local _NEWNAME="$2"
+  local _OLD_ALIAS="${_DRUSH_DIR}/${_OLDNAME}.alias.drushrc.php"
+  local _NEW_ALIAS="${_DRUSH_DIR}/${_NEWNAME}.alias.drushrc.php"
+  local _OLD_FILES="${_AEGIR_ROOT}/static/files/${_OLDNAME}"
+  local _NEW_FILES="${_AEGIR_ROOT}/static/files/${_NEWNAME}"
+  local _L
+
+  if [ -f "${_OLD_ALIAS}" ] && [ ! -f "${_NEW_ALIAS}" ]; then
+    _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php"
+    _maybe_run mv -f \'"${_OLD_ALIAS}"\' \'"${_NEW_ALIAS}"\'
+  fi
+
+  # The site's files symlink resolves through this store. Leave it behind and
+  # the next verify mints an EMPTY store under the new URI and the site loses
+  # its files, so this move is not optional.
+  if [ -d "${_OLD_FILES}" ] && [ ! -d "${_NEW_FILES}" ]; then
+    _info "    static files store: static/files/${_OLDNAME} -> static/files/${_NEWNAME}"
+    _maybe_run mv -f \'"${_OLD_FILES}"\' \'"${_NEW_FILES}"\'
+  fi
+
+  for _L in "${_AEGIR_ROOT}"/clients/*/"${_OLDNAME}"; do
+    [ -L "${_L}" ] || continue
+    _info "    stale client symlink dropped: ${_L#${_AEGIR_ROOT}/} (verify recreates it)"
+    _maybe_run rm -f \'"${_L}"\'
+  done
+}
+
+_assert_site_dirs_converged() {
+  # Fail closed BEFORE the queue runs. §7 turns any unclaimed sites/<dir>
+  # into a new site node, so one stranded old-hostname dir is one duplicate
+  # site — and the duplicate is the half that owns the data. Refusing here
+  # costs a re-run; importing costs a manual panel repair.
+  local _STRAY
+  _STRAY=$(_find_old_host_site_dirs | sort)
+  [ -z "${_STRAY}" ] && return 0
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _alrt "(dry-run) site dirs still carrying ${_OLD_HOST} — the live run moves these first:"
+    echo "${_STRAY}" | sed 's/^/      /'
+    return 0
+  fi
+
+  _alrt "Site dirs still carrying ${_OLD_HOST} after the rename:"
+  echo "${_STRAY}" | sed 's/^/      /'
+  _die "Refusing to run the Aegir task queue: §7 would import the above as brand-new sites, giving every one of them a duplicate panel node. Resolve the dirs above, then re-run."
 }
 
 ###-------------§3 REWRITE DRUSH FILES---###
@@ -1441,6 +1564,7 @@ _print_summary() {
   echo "  Aegir root   : ${_AEGIR_ROOT}"
   echo "  Old hostname : ${_OLD_HOST}"
   echo "  New hostname : ${_NEW_HOST}"
+  echo "  Tenant dirs  : ${_TENANT_DIRS_N} moved onto the new hostname"
   if [ "${_ACCT_AXIS}" = "YES" ]; then
     echo "  Old account  : ${_OLD_ACCT}"
     echo "  New account  : ${_NEW_ACCT}"
@@ -1456,6 +1580,7 @@ _detect_old_hostname
 _detect_new_hostname
 _backup_files
 _rename_hostmaster_site_dir
+_rename_tenant_site_dirs
 _rewrite_drush_files
 _rewrite_vhosts
 _rewrite_octopus_cnf
@@ -1466,6 +1591,7 @@ _rename_in_database
 _rename_account_on_disk
 _rename_account_in_database
 _reload_nginx
+_assert_site_dirs_converged
 _run_aegir_tasks
 _verify_hostmaster
 _print_summary
