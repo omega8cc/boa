@@ -423,7 +423,7 @@ first change to the source):
 |---|---|
 | Step 0 | Re-hold Solr on target (in case it was manually started since init) |
 | Step 1 | Write `http-off.pid` for all accounts → nginx serves 503 on source; purge speed cache |
-| Step 2 | Stop all Solr instances on source; touch `/root/.deny.java.cnf` AND set `_DENY_JAVA=YES` in `/root/.barracuda.cnf` (permanent deny; to reverse, set `_DENY_JAVA=NO` and remove the marker -- the file wins while it exists) |
+| Step 2 | Stop all Solr instances on source; touch `/root/.deny.java.cnf` AND set `_DENY_JAVA=YES` in `/root/.barracuda.cnf` (permanent deny; to reverse on a rolled-back source run `xmass restore-solr` -- clearing the deny by hand is **not** enough, see below) |
 | Step 3 | Final rsync: shared data, Solr (now clean — source stopped), all account data |
 | Step 3.5 | **Gate:** abort if any store could not be placed or any transfer failed — before anything destructive |
 | Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing) |
@@ -620,6 +620,38 @@ are left untouched.
 Clearing transaction logs (`tlog/` directories) before starting Solr on the
 target prevents double-indexing of any writes that were buffered at the moment
 the source Solr was stopped.
+
+### Restoring Solr on a rolled-back source
+
+Cutover step 2 disables Solr on the source **permanently and in two forms**.
+That is correct for a real migration, where the source is being retired, but a
+cutover that gets rolled back with the source kept in service leaves the deny
+armed. Use:
+
+```
+xmass restore-solr
+```
+
+Run it on the source. It clears `/root/.deny.java.cnf` and sets
+`_DENY_JAVA=NO`, then re-arms and starts each Solr service whose **own** deny
+(`_DENY_SOLR9`, `_DENY_SOLR7`, `_DENY_JETTY9` and their `/etc/boa/.deny.*.cnf`
+markers) is not set. It refuses on a finalized PX0 proxy (`/root/.proxy.cnf`),
+where Solr is down by design after `xtrim finalize`. It is idempotent.
+
+**Why clearing the deny by hand is not enough.** `autoupboa`, called from
+`/var/xdrago/clear.sh` every 5 minutes, honours either deny form by running
+`update-rc.d -f solr9 remove`, moving `/etc/init.d/solr9` to
+`/var/backups/solr9.initd`, and `pkill -9 -f java`. So the missing init script
+is a *symptom*: putting it back while a deny is still armed is undone within
+five minutes. The order matters -- deny first, service second.
+
+**BOA does not self-heal this.** `_if_solr_nine` re-runs Solr's
+`install_solr_service.sh` only when `/var/solr9/data` or the version stamp
+`/var/solr9/solr-<version>-version.txt` is missing. A rolled-back source still
+has both, so no `barracuda up-*` pass ever recreates the init script. Where no
+parked copy survives in `/var/backups`, `restore-solr` regenerates it from
+`/opt/solr9/bin/init.d/solr` using the same four substitutions
+`install_solr_service.sh` applies.
 
 ---
 

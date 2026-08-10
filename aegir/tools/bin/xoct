@@ -730,6 +730,28 @@ _xoct_flush_caches_target() {
   done
 }
 
+_xoct_ssl_material_missing() {
+  ### Echo the cert files the HTTPS proxy template references that do NOT
+  ### exist, named relative to the account root; empty output means the
+  ### template can be written safely. Its own function so the gate can be
+  ### proven by a fixture rather than by inspection -- B2 was precisely the
+  ### case where inspection concluded a single openssl.key probe was enough.
+  local _usr="$1"
+  local _dom="$2"
+  local _f
+  local _out=""
+  for _f in \
+    "${_usr}/config/server_master/ssl.d/${_dom}/openssl.key" \
+    "${_usr}/config/server_master/ssl.d/${_dom}/openssl_chain.crt" \
+    "${_usr}/tools/le/certs/${_dom}/chain.pem" \
+  ; do
+    if [ ! -e "${_f}" ]; then
+      _out="${_out} ${_f#${_usr}/}"
+    fi
+  done
+  echo "${_out}"
+}
+
 _migrate_sites() {
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
@@ -1010,7 +1032,20 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               _NMS_SRC="${_Vhd}"
             fi
             _NMS=`cat ${_NMS_SRC} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
-            if [ -e "${_USR}/config/server_master/ssl.d/${_Dom}/openssl.key" ] \
+            ### B2: the template references THREE cert files unconditionally
+            ### (openssl.key, openssl_chain.crt and the LE chain.pem), so every
+            ### one of them must exist before it is written. nginx refuses to
+            ### load a server block whose certificate file is missing, and the
+            ### render is box-wide -- one account's partial cert dir fails
+            ### `nginx -t` and takes the whole conversion down with it. Probing
+            ### the key alone is inherited from the old tool (xboa-old:428-429)
+            ### and has the same hole; what the rewrite added is a configtest
+            ### and revert, which is recovery rather than prevention. A site
+            ### that is missing any of the three cannot serve 443 whether or
+            ### not the vhost is written, so skipping it costs nothing and is
+            ### reported by name below.
+            _SSL_MISSING=$(_xoct_ssl_material_missing "${_USR}" "${_Dom}")
+            if [ -z "${_SSL_MISSING}" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
               cp -a /var/xdrago/conf/https_proxy_le.conf ${_Vhs}
               sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vhs}
@@ -1029,8 +1064,10 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               ### through hosting_le's symlink pass, so no HTTPS proxy vhost
               ### can be written. Count and name it -- the operator must see
               ### this in the conversion output, not discover dead 443 later.
+              ### Name the file(s) actually missing: with the gate widened, a
+              ### present openssl.key is no longer proof of what failed.
               _XOCT_PROXY_NOSSL="${_XOCT_PROXY_NOSSL} ${_Dom}"
-              echo "ALRT: site ${_Dom} on ${_oct}: NO HTTPS proxy vhost written -- ssl.d/${_Dom}/openssl.key missing"
+              echo "ALRT: site ${_Dom} on ${_oct}: NO HTTPS proxy vhost written -- missing:${_SSL_MISSING}"
             fi
             ### Preserve the FIRST backup only. On a repair pass ${_Vht} is
             ### already the proxy template, and mv -f would overwrite ${_Vhd}
