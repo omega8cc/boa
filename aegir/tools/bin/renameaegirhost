@@ -52,6 +52,9 @@
 ###       changes, and (with --hex-blob) never reached blob values anyway.
 ###       A plain dump is still taken first, as a backup only.
 ###   §6  Reload nginx
+###   §9  Confirm every renamed site actually serves before reporting
+###       success, waiting out PHP's per-worker realpath cache instead of
+###       leaving that judgement to an operator with curl
 ###   §7  Flush Drush cache and run Aegir task queue (5 passes) to regenerate
 ###       all aliases, vhosts, and db-host entries from the updated database,
 ###       plus one queued verify per site §2c renamed (server verifies
@@ -75,6 +78,8 @@ _TENANT_DIRS_N=0
 _SETTINGS_SKIPPED_N=0
 _RENAMED_SITE_URIS=()
 _URI_SURFACES_CHANGED=NO
+_SERVE_FAILED=""
+_SERVE_WAIT="${_RENAME_SERVE_WAIT:-180}"
 
 ###-------------ARGUMENT PARSING----------###
 
@@ -568,6 +573,36 @@ _rename_site_uri_surfaces() {
   _rewrite_site_settings_uri "${_SD}/settings.php" "${_OLDNAME}" "${_NEWNAME}"
 }
 
+_rewrite_site_in_place() {
+  # Rewrite a file THROUGH ITS EXISTING INODE.
+  #
+  # `sed -i` does not edit in place: it writes a new file and renames it over
+  # the old one, so the inode changes. PHP resolves this path through its
+  # realpath cache -- default TTL 120s, and held PER FPM WORKER -- so opcache
+  # goes on compiling the copy it already has and the site keeps serving the
+  # OLD settings.php long after the correct one is on disk.
+  #
+  # Measured on the xb1 rig, in both directions: a corrected settings.php sat
+  # on disk while the site answered HTTP 400 for ~3 minutes, and later a
+  # deliberately broken one kept serving 200 for over 3 minutes. Because the
+  # cache is per worker, whether a given request sees the change is luck --
+  # which is exactly why it looked like "the fix did not work" once and "the
+  # fix works instantly" the next time.
+  #
+  # Truncating in place keeps the inode, so opcache's ordinary 2s
+  # revalidation applies and the rename takes effect immediately. It also
+  # preserves ownership and mode for free.
+  local _expr="$1"
+  local _f="$2"
+  local _tmp="${_f}.xrename.$$"
+  sed "${_expr}" "${_f}" > "${_tmp}" 2>/dev/null || { rm -f "${_tmp}"; return 1; }
+  # Never truncate a live settings.php to nothing because sed hiccuped.
+  [ -s "${_tmp}" ] || { rm -f "${_tmp}"; return 1; }
+  cat "${_tmp}" > "${_f}" || { rm -f "${_tmp}"; return 1; }
+  rm -f "${_tmp}"
+  return 0
+}
+
 _rewrite_site_settings_uri() {
   # settings.php is provision-generated and embeds the site URI in far more
   # than the host patterns: the public/private/temp file paths, the D10+
@@ -621,7 +656,11 @@ _rewrite_site_settings_uri() {
   _OWN=$(stat -c '%U:%G' "${_SET}" 2>/dev/null)
   _MODE=$(stat -c '%a' "${_SET}" 2>/dev/null)
   _info "    settings.php: file paths + trusted_host_patterns -> ${_NEWNAME}"
-  _maybe_run sed -i \'"${_EXPR}"\' \'"${_SET}"\'
+  if ! _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_SET}"\'; then
+    _alrt "    settings.php rewrite FAILED — left untouched: ${_SET}"
+    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
+    return 0
+  fi
   _URI_SURFACES_CHANGED=YES
   # The file is mode 440 owned by the account, and root must hand it back
   # exactly as it found it.
@@ -1779,6 +1818,84 @@ _verify_hostmaster() {
   _info "§8 Hostmaster site verify complete"
 }
 
+###-------------§9 SERVING GATE----------###
+
+_verify_renamed_sites_serve() {
+  # The last thing an operator does by hand after a rename is curl a site and
+  # decide whether it worked. That judgement is NOT safe to leave to a human,
+  # and this is the measurement that says so: PHP resolves settings.php
+  # through a realpath cache that is per FPM WORKER with a default 120s TTL,
+  # so a correct file is not necessarily observed yet. Measured on the xb1
+  # rig: 36s to become visible even when the file is rewritten through its
+  # existing inode, and still not visible after THREE MINUTES when the inode
+  # was replaced (which is what `sed -i` does, and why this tool no longer
+  # uses it here).
+  #
+  # Both operator mistakes in that window are expensive. Calling it broken
+  # rolls back a migration that was fine; calling it fine because one early
+  # curl happened to hit a warm worker ships a box whose sites answer 400.
+  # So the tool waits, decides, and says which -- bounded, never forever.
+  local _U _code _deadline _bad=""
+  [ "${#_RENAMED_SITE_URIS[@]}" -eq 0 ] && return 0
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _info "§9 (dry-run) Would confirm each renamed site serves before reporting success"
+    return 0
+  fi
+
+  # A 200 is not proof. An unknown Host lands on the box's catch-all vhost,
+  # which answers 200 with an "Under Construction" page, so a status-only
+  # gate passes for a site that does not exist at all -- caught by pointing
+  # this very gate at a made-up hostname. Take the catch-all's answer once
+  # and treat any 200 identical to it as NOT serving. Self-calibrating, so
+  # nothing here depends on what that page happens to say.
+  local _base _body
+  _body="/tmp/.rename-serve.$$"
+  _base=$(curl -s -A iCab --max-time 20 \
+    -H "Host: no-such-site.rename-probe.invalid" "http://127.0.0.1/" 2>/dev/null \
+    | md5sum | cut -d' ' -f1)
+
+  _info "§9 Confirming each renamed site actually serves (up to ${_SERVE_WAIT}s each) ..."
+  for _U in $(printf '%s\n' "${_RENAMED_SITE_URIS[@]}" | sort -u); do
+    _deadline=$(( $(date +%s) + _SERVE_WAIT ))
+    _code=""
+    while [ "$(date +%s)" -lt "${_deadline}" ]; do
+      _code=$(curl -s -o "${_body}" -w '%{http_code}' -A iCab --max-time 20 \
+        -H "Host: ${_U}" "http://127.0.0.1/" 2>/dev/null)
+      if [ "${_code}" = "200" ] && [ -n "${_base}" ] \
+        && [ "$(md5sum < "${_body}" | cut -d' ' -f1)" = "${_base}" ]; then
+        # The catch-all answered. Keep waiting: a site whose settings.php was
+        # just rewritten can still be in the realpath-cache window.
+        _code="catchall"
+      fi
+      case "${_code}" in
+        200|301|302) break ;;
+      esac
+      sleep 5
+    done
+    rm -f "${_body}"
+    case "${_code}" in
+      200|301|302)
+        _info "    ${_U} serves (${_code})"
+      ;;
+      *)
+        _alrt "    ${_U} does NOT serve (${_code}) after ${_SERVE_WAIT}s"
+        _bad="${_bad} ${_U}"
+      ;;
+    esac
+  done
+
+  if [ -n "${_bad}" ]; then
+    _SERVE_FAILED="${_bad}"
+    _alrt "§9 sites still not serving:${_bad}"
+    _alrt "    A 400 here is the trusted_host_patterns check: compare the site's"
+    _alrt "    settings.php against its directory name before anything else."
+  else
+    _info "§9 every renamed site serves"
+  fi
+  return 0
+}
+
 ###-------------SUMMARY------------------###
 
 _print_summary() {
@@ -1795,6 +1912,11 @@ _print_summary() {
   echo "  Tenant dirs  : ${_TENANT_DIRS_N} moved onto the new hostname"
   if [ "${_SETTINGS_SKIPPED_N}" -gt 0 ]; then
     echo "  ATTENTION    : ${_SETTINGS_SKIPPED_N} settings.php left untouched — see the ALRT lines above"
+  fi
+  if [ -n "${_SERVE_FAILED}" ]; then
+    echo "  NOT SERVING  :${_SERVE_FAILED}"
+  elif [ "${#_RENAMED_SITE_URIS[@]}" -gt 0 ] && [ "${_DRY_RUN}" != "YES" ]; then
+    echo "  Sites        : all ${#_RENAMED_SITE_URIS[@]} renamed site(s) confirmed serving"
   fi
   if [ "${_ACCT_AXIS}" = "YES" ]; then
     echo "  Old account  : ${_OLD_ACCT}"
@@ -1826,6 +1948,7 @@ _reload_nginx
 _assert_site_dirs_converged
 _run_aegir_tasks
 _verify_hostmaster
+_verify_renamed_sites_serve
 _print_summary
 
 exit 0
