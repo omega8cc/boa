@@ -4533,46 +4533,42 @@ shift 2>/dev/null || true
 # recognised (and stripped), so no positional argument is ever mistaken for one.
 ###-------------SINGLE-FLIGHT LOCK-------###
 
-# Two concurrent state-mutating runs raced once and cost a rebuild: two RESET
-# MASTERs, two restores onto the target, interleaved state saves, and rc 0 on
-# a run whose on-disk phase the other had already overwritten. flock is the
-# whole fix. The lock lives on the open descriptor, so a holder that dies —
-# kill -9, dropped ssh, reboot — releases it in the kernel: there is no stale
-# lockfile that can wedge a legitimate retry, which is why this is a lock and
-# not a PID file.
+# A plain owner-PID file: live owner refuses, dead owner is taken over.
 #
-# Read-only verbs (status, verify) stay unlocked, so an operator can always
-# inspect a migration that is in flight.
+# This was flock at first, and flock was WRONG here for a reason worth keeping
+# written down. The lock lives on an open descriptor, and xmass restarts MySQL --
+# so the new mysqld inherited that descriptor and, running forever, held the
+# lock forever. Every later verb was refused by a run that had finished
+# minutes earlier. Any long-lived daemon a migration starts would do the same.
 #
-# The refusal is loud and NON-ZERO on purpose. Exiting 0 the way a cron
-# monitor does would let a harness read "another run holds the lock" as
-# success — precisely the confusion that produced the original incident.
+# A PID file has nothing to inherit. A stale file cannot wedge anything either,
+# because liveness is what is checked, not the file's existence -- so a holder
+# killed outright costs nothing. The cmdline check matters: PIDs get recycled,
+# and without it a recycled number belonging to some daemon would block the
+# tool indefinitely, which is the same bug in a different coat.
+#
+# The refusal is loud and NON-ZERO on purpose: a quiet exit 0 would let a
+# harness read "another run holds it" as success.
 
-_XMASS_LOCK_FILE="/run/xmass.verb.lock"
+_XMASS_LOCK_FILE="/run/xmass.verb.pid"
 
 _take_verb_lock() {
-  local _owner
-  # Non-root runs are refused by each arm's own _check_root with a clearer
-  # message; do not turn that into a lock-file error.
+  local _owner _cmdline
   [ "$(id -u)" = "0" ] || return 0
-  # Prove writability with a normal command FIRST. A bare `exec` applies its
-  # redirections to the whole shell, so hanging 2>/dev/null on it would
-  # silence stderr for the rest of the run and swallow the refusal below —
-  # the operator would see a bare non-zero exit and no reason for it.
-  if ! : >> "${_XMASS_LOCK_FILE}" 2>/dev/null; then
-    _die "cannot open ${_XMASS_LOCK_FILE} — refusing to run unlocked"
+  if [ -s "${_XMASS_LOCK_FILE}" ]; then
+    _owner=$(tr -dc '0-9' < "${_XMASS_LOCK_FILE}" 2>/dev/null | head -c 12)
+    if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
+      _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
+      case "${_cmdline}" in
+        *xmass*)
+    _die "another xmass run is in flight (pid ${_owner}) -- refusing to start '${_cmd}'. Wait for it to finish."
+        ;;
+      esac
+    fi
   fi
-  # Append-open: a contender must not truncate the holder's PID note before
-  # it has even discovered that it lost the race.
-  exec {_XMASS_LOCK_FD}>>"${_XMASS_LOCK_FILE}"
-  if ! flock -n "${_XMASS_LOCK_FD}"; then
-    _owner=$(head -1 "${_XMASS_LOCK_FILE}" 2>/dev/null)
-    _die "another xmass state-mutating run is in flight (${_owner:-owner unknown}) — refusing to start '${_cmd}'. Wait for it to finish, or look with: xmass status"
-  fi
-  : > "${_XMASS_LOCK_FILE}" 2>/dev/null
-  printf 'pid=%s verb=%s started=%s\n' "${BASHPID:-$$}" "${_cmd}" \
-    "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" \
-    >> "${_XMASS_LOCK_FILE}" 2>/dev/null || true
+  echo "$$" > "${_XMASS_LOCK_FILE}" 2>/dev/null \
+    || { _die "cannot write ${_XMASS_LOCK_FILE} -- refusing to run unlocked"; }
+  trap 'rm -f "${_XMASS_LOCK_FILE}"' EXIT INT TERM HUP
 }
 
 case "${_cmd}" in
