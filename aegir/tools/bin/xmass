@@ -4394,6 +4394,56 @@ shift 2>/dev/null || true
 # DRY run and an explicit --live is required (accepted only after a CLEAN dry run for
 # the same target — the autosymlink --batch model). Only --prefixed mode flags are
 # recognised (and stripped), so no positional argument is ever mistaken for one.
+###-------------SINGLE-FLIGHT LOCK-------###
+
+# Two concurrent state-mutating runs raced once and cost a rebuild: two RESET
+# MASTERs, two restores onto the target, interleaved state saves, and rc 0 on
+# a run whose on-disk phase the other had already overwritten. flock is the
+# whole fix. The lock lives on the open descriptor, so a holder that dies —
+# kill -9, dropped ssh, reboot — releases it in the kernel: there is no stale
+# lockfile that can wedge a legitimate retry, which is why this is a lock and
+# not a PID file.
+#
+# Read-only verbs (status, verify) stay unlocked, so an operator can always
+# inspect a migration that is in flight.
+#
+# The refusal is loud and NON-ZERO on purpose. Exiting 0 the way a cron
+# monitor does would let a harness read "another run holds the lock" as
+# success — precisely the confusion that produced the original incident.
+
+_XMASS_LOCK_FILE="/run/xmass.verb.lock"
+
+_take_verb_lock() {
+  local _owner
+  # Non-root runs are refused by each arm's own _check_root with a clearer
+  # message; do not turn that into a lock-file error.
+  [ "$(id -u)" = "0" ] || return 0
+  # Prove writability with a normal command FIRST. A bare `exec` applies its
+  # redirections to the whole shell, so hanging 2>/dev/null on it would
+  # silence stderr for the rest of the run and swallow the refusal below —
+  # the operator would see a bare non-zero exit and no reason for it.
+  if ! : >> "${_XMASS_LOCK_FILE}" 2>/dev/null; then
+    _die "cannot open ${_XMASS_LOCK_FILE} — refusing to run unlocked"
+  fi
+  # Append-open: a contender must not truncate the holder's PID note before
+  # it has even discovered that it lost the race.
+  exec {_XMASS_LOCK_FD}>>"${_XMASS_LOCK_FILE}"
+  if ! flock -n "${_XMASS_LOCK_FD}"; then
+    _owner=$(head -1 "${_XMASS_LOCK_FILE}" 2>/dev/null)
+    _die "another xmass state-mutating run is in flight (${_owner:-owner unknown}) — refusing to start '${_cmd}'. Wait for it to finish, or look with: xmass status"
+  fi
+  : > "${_XMASS_LOCK_FILE}" 2>/dev/null
+  printf 'pid=%s verb=%s started=%s\n' "${BASHPID:-$$}" "${_cmd}" \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)" \
+    >> "${_XMASS_LOCK_FILE}" 2>/dev/null || true
+}
+
+case "${_cmd}" in
+  pre-mig|prep-target|init|sync|cutover|reset-phase|post-mig)
+    _take_verb_lock
+  ;;
+esac
+
 _MODE=LIVE
 _XMASS_NOT_CLEAN=NO
 case "${_cmd}" in
