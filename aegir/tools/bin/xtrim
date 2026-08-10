@@ -298,14 +298,47 @@ _solr_cores_for() {
 
 ### ------------------------------------------------------------- probes ---
 
+_probe_catchall_baseline() {
+  ### Self-calibrating negative control, taken once per account run: what does
+  ### the target answer for a hostname that CANNOT exist? Anything a real
+  ### domain answers that is byte-identical to that is the catch-all vhost
+  ### replying, not a site.
+  ###
+  ### This exists because a status code proves nothing here. The probe below
+  ### is the tool's whole premise -- "proven still-served by the TARGET" --
+  ### and it gates a one-way DROP of this box's databases, yet a renamed
+  ### site's retired old name answers 200 from the target's "Under
+  ### Construction" page and used to sail through. Measured on the xb1 rig:
+  ### two different impossible hostnames hash identically, the retired name
+  ### hashed the same as them, and the live site differed.
+  local _t="$1"
+  local _bogus="no-such-site.xtrim-probe.invalid"
+  _BASE_DIRECT=$(curl -s -A iCab --max-time 30 \
+    --resolve "${_bogus}:80:${_t}" "http://${_bogus}/" 2>/dev/null \
+    | md5sum | cut -d' ' -f1)
+  _BASE_RELAY=$(curl -s -A iCab --max-time 30 \
+    -H "Host: ${_bogus}" "http://127.0.0.1/" 2>/dev/null \
+    | md5sum | cut -d' ' -f1)
+}
+
+_is_catchall_body() {
+  ### $1 body file, $2 status, $3 baseline hash. Only meaningful for a 200:
+  ### a legitimate 301/302 body is an nginx stub and carries no site content
+  ### either way, and those are accepted by status for SSL-required sites.
+  [ "$2" = "200" ] || return 1
+  [ -n "$3" ] || return 1
+  [ "$(md5sum < "$1" | cut -d' ' -f1)" = "$3" ]
+}
+
 _probe_dom() {
   ### $1 domain, $2 target ip; direct + relayed, iCab UA, spaced >=5s,
   ### failures re-verified once (BOA answers bursts with soft-404 bodies).
   local _d="$1" _t="$2" _c1 _cr
-  _c1=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+  local _b1="/tmp/.xtrim-probe-d.$$" _br="/tmp/.xtrim-probe-r.$$"
+  _c1=$(curl -s -o "${_b1}" -w '%{http_code}' -A iCab --max-time 30 \
     --resolve "${_d}:80:${_t}" "http://${_d}/" 2>/dev/null)
   sleep 6
-  _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+  _cr=$(curl -s -o "${_br}" -w '%{http_code}' -A iCab --max-time 30 \
     -H "Host: ${_d}" "http://127.0.0.1/" 2>/dev/null)
   ### Both legs land on the target's port 80: an SSL-Required site answers
   ### a legitimate 301 to https there, so the direct leg must accept
@@ -313,22 +346,95 @@ _probe_dom() {
   if ! echo "${_c1}" | grep -qE '^(200|301|302)$' \
     || ! echo "${_cr}" | grep -qE '^(200|301|302)$'; then
     sleep 6
-    _c1=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+    _c1=$(curl -s -o "${_b1}" -w '%{http_code}' -A iCab --max-time 30 \
       --resolve "${_d}:80:${_t}" "http://${_d}/" 2>/dev/null)
     sleep 6
-    _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+    _cr=$(curl -s -o "${_br}" -w '%{http_code}' -A iCab --max-time 30 \
       -H "Host: ${_d}" "http://127.0.0.1/" 2>/dev/null)
   fi
-  echo "direct=${_c1} relay=${_cr}"
+  ### A 200 that is byte-identical to the impossible-hostname answer is the
+  ### catch-all vhost, not this site. Refusing here is the difference between
+  ### "the target answers" and "the target serves THIS site", and the caller
+  ### is about to drop databases on the strength of it.
+  local _catch=""
+  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}"; then
+    _catch=" direct=CATCH-ALL"
+    _c1="catchall"
+  fi
+  if _is_catchall_body "${_br}" "${_cr}" "${_BASE_RELAY}"; then
+    _catch="${_catch} relay=CATCH-ALL"
+    _cr="catchall"
+  fi
+  rm -f "${_b1}" "${_br}"
+  echo "direct=${_c1} relay=${_cr}${_catch}"
   echo "${_c1}" | grep -qE '^(200|301|302)$' \
     && echo "${_cr}" | grep -qE '^(200|301|302)$'
 }
 
+_probe_rename_map() {
+  ### A rename-mode migration RETIRES the source's host-derived names by
+  ### design: the box FQDN changed, so a site that embedded it now lives on
+  ### the target as <label>.<target FQDN>. Learn the mapping once, so a
+  ### retired name can be re-probed under the name it actually has instead of
+  ### being counted as missing -- refusing every rename-mode shrink would be
+  ### its own kind of wrong.
+  _MAP_SRC_FQDN=$(hostname -f 2>/dev/null)
+  _MAP_TGT_FQDN=$(ssh -o BatchMode=yes -o ConnectTimeout=10 \
+    "root@${_MAP_TGT}" 'hostname -f' 2>/dev/null | tr -d '\r\n')
+}
+
+_renamed_dom() {
+  ### Echo $1 with the source FQDN swapped for the target's. Empty when the
+  ### domain does not embed the source FQDN -- a customer's own domain never
+  ### does, and those must keep proving themselves under their real name.
+  local _d="$1"
+  [ -n "${_MAP_SRC_FQDN}" ] && [ -n "${_MAP_TGT_FQDN}" ] || return 0
+  [ "${_MAP_SRC_FQDN}" = "${_MAP_TGT_FQDN}" ] && return 0
+  case "${_d}" in
+    *"${_MAP_SRC_FQDN}"*) echo "${_d//${_MAP_SRC_FQDN}/${_MAP_TGT_FQDN}}" ;;
+  esac
+}
+
+_probe_dom_direct() {
+  ### Direct leg only, with the same catch-all discrimination. Used for a
+  ### renamed name: the relay leg goes through the SOURCE, which has no vhost
+  ### for a name it never served, so only the target's answer means anything.
+  local _d="$1" _t="$2" _c1
+  local _b1="/tmp/.xtrim-probe-n.$$"
+  _c1=$(curl -s -o "${_b1}" -w '%{http_code}' -A iCab --max-time 30 \
+    --resolve "${_d}:80:${_t}" "http://${_d}/" 2>/dev/null)
+  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}"; then
+    _c1="catchall"
+  fi
+  rm -f "${_b1}"
+  echo "${_c1}"
+  echo "${_c1}" | grep -qE '^(200|301|302)$'
+}
+
 _probe_all_doms() {
-  local _oN="$1" _d _r _rc=0
+  local _oN="$1" _d _r _rc=0 _nd _nr
+  _probe_catchall_baseline "${_MAP_TGT}"
+  _probe_rename_map
   for _d in ${_MAP_DOMS}; do
     _r=$(_probe_dom "${_d}" "${_MAP_TGT}")
     if [ $? -ne 0 ]; then
+      ### Before calling it a failure: was this name simply renamed with the
+      ### box? Only a name embedding the source FQDN can have been, and it
+      ### must then prove itself under its NEW name on the target.
+      _nd=$(_renamed_dom "${_d}")
+      if [ -n "${_nd}" ]; then
+        sleep 6
+        _nr=$(_probe_dom_direct "${_nd}" "${_MAP_TGT}")
+        if [ $? -eq 0 ]; then
+          _info "${_oN}: ${_d} retired by the rename; serves as ${_nd} (direct=${_nr})"
+          sleep 6
+          continue
+        fi
+        _alrt "${_oN}: ${_d} probe FAILED (${_r}) and its renamed form ${_nd} does not serve either (direct=${_nr})"
+        _rc=1
+        sleep 6
+        continue
+      fi
       _alrt "${_oN}: ${_d} probe FAILED (${_r})"
       _rc=1
     else
