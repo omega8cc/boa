@@ -1854,6 +1854,18 @@ _barracuda_cnf_cleanup() {
     sed -i "s/^_SSL_FROM_SOURCES.*//g" ${_barCnf}
     wait
   fi
+  # MyQuick source builds are an internal fallback now, never an operator
+  # switch, so the key must not survive as something to flip back to YES.
+  # The second sed drops the marker converter's provenance stamp, which an
+  # anchored key delete would leave behind as a comment for a key that no
+  # longer exists.
+  _INSTALL_MYQUICK_SRC_TEST=$(grep _INSTALL_MYQUICK_SRC ${_barCnf} 2>&1)
+  if [[ "${_INSTALL_MYQUICK_SRC_TEST}" =~ "_INSTALL_MYQUICK_SRC" ]]; then
+    sed -i "/^_INSTALL_MYQUICK_SRC/d" ${_barCnf}
+    wait
+    sed -i "/^### _INSTALL_MYQUICK_SRC/d" ${_barCnf}
+    wait
+  fi
   ###
   ### legacy config cleanup end
   ###
@@ -2554,7 +2566,6 @@ _convert_etcboa_markers_to_cnf() {
     "/root/.disable.auditd.logs.cnf:_DISABLE_AUDITD_LOGS" \
     "/root/.dont.use.fancy.bash.login.cnf:_DONT_USE_FANCY_BASH_LOGIN" \
     "/root/.include-php-latest.cnf:_INCLUDE_PHP_LATEST" \
-    "/root/.install.myquick.src.info:_INSTALL_MYQUICK_SRC" \
     "/root/.my.restart_after_optimize.cnf:_MY_RESTART_AFTER_OPTIMIZE" \
     "/root/.deny.java.cnf:_DENY_JAVA" \
     "/etc/boa/.dont.touch.permissions.cnf:_SKIP_PERMISSIONS_PASS" \
@@ -2983,7 +2994,6 @@ _barracuda_cnf() {
     echo "_DISABLE_AUDITD_LOGS=${_DISABLE_AUDITD_LOGS:-NO}"  >> ${_barCnf}
     echo "_DONT_USE_FANCY_BASH_LOGIN=${_DONT_USE_FANCY_BASH_LOGIN:-NO}"  >> ${_barCnf}
     echo "_INCLUDE_PHP_LATEST=${_INCLUDE_PHP_LATEST:-NO}"  >> ${_barCnf}
-    echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}"  >> ${_barCnf}
     echo "_MY_RESTART_AFTER_OPTIMIZE=${_MY_RESTART_AFTER_OPTIMIZE:-NO}"  >> ${_barCnf}
     echo "_DENY_JAVA=${_DENY_JAVA:-NO}"                   >> ${_barCnf}
     echo "_SKIP_PERMISSIONS_PASS=${_SKIP_PERMISSIONS_PASS:-NO}"  >> ${_barCnf}
@@ -3291,10 +3301,6 @@ _barracuda_cnf() {
     _INCLUDE_PHP_LATEST_TEST=$(grep "^_INCLUDE_PHP_LATEST=" ${_barCnf} 2>&1)
     if [[ ! "${_INCLUDE_PHP_LATEST_TEST}" =~ "_INCLUDE_PHP_LATEST=" ]]; then
       echo "_INCLUDE_PHP_LATEST=${_INCLUDE_PHP_LATEST:-NO}" >> ${_barCnf}
-    fi
-    _INSTALL_MYQUICK_SRC_TEST=$(grep "^_INSTALL_MYQUICK_SRC=" ${_barCnf} 2>&1)
-    if [[ ! "${_INSTALL_MYQUICK_SRC_TEST}" =~ "_INSTALL_MYQUICK_SRC=" ]]; then
-      echo "_INSTALL_MYQUICK_SRC=${_INSTALL_MYQUICK_SRC:-NO}" >> ${_barCnf}
     fi
     _MY_RESTART_AFTER_OPTIMIZE_TEST=$(grep "^_MY_RESTART_AFTER_OPTIMIZE=" ${_barCnf} 2>&1)
     if [[ ! "${_MY_RESTART_AFTER_OPTIMIZE_TEST}" =~ "_MY_RESTART_AFTER_OPTIMIZE=" ]]; then
@@ -10234,10 +10240,13 @@ _myquick_install_upgrade() {
   else
     _USE_MYQUICK="${_MYQUICK_VRN_TWO}"
   fi
-  if [ "${_INSTALL_MYQUICK_SRC}" = "YES" ] \
-    || [ -e "/root/.install.myquick.src.info" ]; then
-    _MYQUICK_SRC_INSTALL_REQUIRED=YES
-  fi
+  # The source build is an internal fallback for codenames with no packaged
+  # build, never an operator switch: it is pinned to _MYQUICK_VRN_ONE, so
+  # forcing it on a supported codename held mydumper a version line back
+  # while myloader came from elsewhere, and imports failed on the option
+  # both binaries no longer agreed about. _INSTALL_MYQUICK_SRC and
+  # /root/.install.myquick.src.info are retired and ignored; a stale key or
+  # marker is inert, and the cnf key is dropped by _barracuda_cnf_cleanup.
   _check_mysql_version
   _isMyQuick="$(which mydumper)"
   if [ ! -x "${_isMyQuick}" ] \
