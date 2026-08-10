@@ -27,6 +27,9 @@
 #   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
 #   staticbuild distribute          copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
 #   staticbuild check               report the latest upstream versions a build would pull
+#   staticbuild catalogue [tree ...] audit the PUBLISHED catalogue of each tree
+#                                   (default dev lts pro) against the distro mirror;
+#                                   fails if any entry's tarball is not published
 # Options:
 #   -d MM-DD   build-day directory (default: today, date +%m-%d)
 #   -u USER    Octopus build user (default: o8)
@@ -60,6 +63,14 @@ _STATIC_ROOT="/data/disk"                       # o8 home base; static lives und
 _DISTRO_OUT="/var/www/static/distro"            # non-core (distribution) tarballs
 _CORE_OUT="/var/www/static/core"                # raw core tarballs
 _DEVEXT_BASE="/var/www/static/dev"              # dev extensions (bee, drush ext) BOA _get_dev_ext pulls
+
+# Catalogue audit (staticbuild catalogue). The published BOA tree is the source of
+# truth for WHICH tarballs must exist -- read it per tree rather than duplicating
+# the list here, so a catalogue edit can never drift from this check.
+_BOA_VERSIONS_URL="https://files.boa.io/versions" # published per-tree BOA trees
+_BOA_DISTRO_URL="https://files.aegir.biz/distro"  # public distro tarball mirror
+_BOA_UA="iCab"                                    # BOA mirrors reject other agents
+_CATALOGUE_TREES="dev lts pro"
 _DEV_TREES="dev lts pro"                        # per-tree dirs under it: every box pulls its own _tRee
 
 _SYS_PHP="/usr/bin/php"                          # per-build switch target
@@ -1116,6 +1127,139 @@ do_check() {
 }
 
 # ---------------------------------------------------------------------------
+# Catalogue audit.
+#
+# A catalogue entry whose tarball is not published is not a build failure -- it is
+# a silent customer-facing one: the octopus run retries the fetch ten times, nine
+# seconds apart, then carries on, so a de-published tarball costs every box a
+# minute and a half per codebase generation and shows up only as an OOPS line in
+# one customer's console. This is the guard: for every entry the PUBLISHED tree
+# still ships, prove the tarball exists.
+# ---------------------------------------------------------------------------
+
+_catalogue_producers() {
+  # Tarball prefixes an ENABLED target actually emits: walk run_build's live case
+  # arms, then read each named function's _finalize_distro prefix. A commented-out
+  # arm is deliberately not counted -- varbase's tarball is retained on the mirror
+  # but nothing rebuilds it, and that is exactly the state worth surfacing.
+  local _fn
+  for _fn in $(awk '/^run_build\(\)/,/^}/' "$0" \
+    | sed -nE 's/^[[:space:]]*[a-z0-9_-]+\)[[:space:]]+(build_[a-z_]+).*/\1/p'); do
+    awk -v _f="^${_fn}\\(\\)" '$0 ~ _f,/^}/' "$0" \
+      | sed -nE 's/.*_finalize_distro[[:space:]]+"?([a-z_]+)"?.*/\1/p'
+  done | sort -u
+}
+
+_catalogue_rows() {
+  # $1 = tree. Emits "KEY<TAB>prefix<TAB>tarball" for every catalogue entry that is
+  # fetched from the distro mirror. The excluded key shapes mirror _d_dist_loop's
+  # dispatch in AegirSetupC.sh.txt (core-only D[LXE]N, Backdrop BD*, and the
+  # custom CK1/UC* handlers) -- add a class there and it must be added here too.
+  local _tree="$1" _tmp _rc=0
+  _tmp="$(mktemp -d)" || return 1
+  curl -fsSL -A "${_BOA_UA}" \
+    "${_BOA_VERSIONS_URL}/${_tree}/boa/aegir/scripts/AegirSetupC.sh.txt" \
+    -o "${_tmp}/catalogue" 2>/dev/null || _rc=1
+  curl -fsSL -A "${_BOA_UA}" \
+    "${_BOA_VERSIONS_URL}/${_tree}/boa/OCTOPUS.sh.txt" \
+    -o "${_tmp}/settings" 2>/dev/null || _rc=1
+  if [[ "${_rc}" != "0" ]] || [[ ! -s "${_tmp}/catalogue" ]] || [[ ! -s "${_tmp}/settings" ]]; then
+    rm -rf "${_tmp}"
+    return 1
+  fi
+  awk -v _octo="${_tmp}/settings" '
+    function _resolve(_s,   _k) {
+      # One-level ${_NAME} expansion against the published OCTOPUS.sh.txt exports.
+      while (match(_s, /\$\{_[A-Za-z0-9_]+\}/)) {
+        _k = substr(_s, RSTART + 2, RLENGTH - 3)
+        _s = substr(_s, 1, RSTART - 1) (_k in _V ? _V[_k] : "UNRESOLVED") \
+             substr(_s, RSTART + RLENGTH)
+      }
+      return _s
+    }
+    BEGIN {
+      while ((getline _l < _octo) > 0) {
+        if (_l ~ /^export _[A-Za-z0-9_]+=/) {
+          _eq = index(_l, "=")
+          _n = substr(_l, 8, _eq - 8)
+          _v = substr(_l, _eq + 1)
+          gsub(/^"|"$/, "", _v)
+          _V[_n] = _v
+        }
+      }
+    }
+    /^declare -A _distros_profiles_names=\(/ { _sec = "prof"; next }
+    /^declare -A _distros_versions=\(/       { _sec = "ver";  next }
+    /^declare -A _distros_drupal_cores=\(/   { _sec = "core"; next }
+    /^\)/                                    { _sec = "";     next }
+    _sec != "" && match($0, /\["[A-Z0-9]+"\]="[^"]*"/) {
+      split(substr($0, RSTART, RLENGTH), _a, "\"")
+      if (_sec == "prof")     _P[_a[2]] = _a[4]
+      else if (_sec == "ver") _R[_a[2]] = _a[4]
+      else                    _C[_a[2]] = _a[4]
+    }
+    END {
+      for (_k in _P) {
+        if (_k ~ /^D[LXE][0-9]$/ || _k ~ /^BD/ || _k ~ /^UC/ || _k == "CK1") continue
+        printf "%s\t%s\t%s-%s-%s.tar.gz\n", \
+          _k, _P[_k], _P[_k], _resolve(_R[_k]), _resolve(_C[_k])
+      }
+    }
+  ' "${_tmp}/catalogue" | sort
+  rm -rf "${_tmp}"
+}
+
+do_catalogue() {
+  # $@ = trees, or empty for all of _CATALOGUE_TREES.
+  command -v curl >/dev/null 2>&1 || _die "curl not found (needed for the catalogue audit)"
+  local _trees="$*" _tree _key _pfx _tar _local _pub _prod _rows _seenprod
+  local _missing=0 _unread=0
+  [[ -n "${_trees}" ]] || _trees="${_CATALOGUE_TREES}"
+  _seenprod="$(_catalogue_producers)"
+  for _tree in ${_trees}; do
+    _msg ""
+    _info "=== catalogue audit: ${_tree} ==="
+    _rows="$(_catalogue_rows "${_tree}")"
+    if [[ -z "${_rows}" ]]; then
+      # Distinct from a missing tarball: we learned nothing about this tree, and
+      # reporting that as "0 missing" would be the wrong kind of green.
+      _alrt "${_tree}: could not read the published catalogue -- audit INCONCLUSIVE"
+      _unread=$((_unread + 1))
+      continue
+    fi
+    printf '  %-5s %-46s %-8s %-8s %s\n' KEY TARBALL PUBLISHED MIRROR PRODUCER
+    while IFS=$'\t' read -r _key _pfx _tar; do
+      [[ -n "${_key}" ]] || continue
+      if [[ -f "${_DISTRO_OUT}/${_tar}" ]]; then _local="yes"; else _local="NO"; fi
+      # HEAD is enough and costs no transfer: unlike files.boa.io -- which answers
+      # an unknown path with 200 and a placeholder page, so content must be checked
+      # there -- the distro mirror returns a real 404, so curl's status is decisive.
+      if curl -fsSL -A "${_BOA_UA}" --head -o /dev/null \
+        "${_BOA_DISTRO_URL}/${_tar}" 2>/dev/null; then _pub="yes"; else _pub="NO"; fi
+      if printf '%s\n' "${_seenprod}" | grep -qx "${_pfx}"; then _prod="yes"; else _prod="none"; fi
+      printf '  %-5s %-46s %-8s %-8s %s\n' "${_key}" "${_tar}" "${_local}" "${_pub}" "${_prod}"
+      # Only the public fetch is customer-facing: a box never reads _DISTRO_OUT.
+      if [[ "${_pub}" != "yes" ]]; then
+        _missing=$((_missing + 1))
+        _alrt "${_tree}: ${_key} is in the catalogue but ${_tar} is NOT published"
+      fi
+    done <<< "${_rows}"
+  done
+  _msg ""
+  if [[ "${_missing}" -gt 0 ]] && [[ "${_unread}" -gt 0 ]]; then
+    _die "${_missing} catalogue entr(ies) have no published tarball, and ${_unread} tree(s) could not be read"
+  elif [[ "${_missing}" -gt 0 ]]; then
+    _die "${_missing} catalogue entr(ies) have no published tarball -- retire the key in a shipped release, or publish the build, before the tarball goes away"
+  elif [[ "${_unread}" -gt 0 ]]; then
+    _die "${_unread} tree(s) could not be read -- audit INCONCLUSIVE, nothing was proven"
+  fi
+  _info "every catalogue entry has a published tarball"
+  _msg "PRODUCER=none means the tarball is hand-published: nothing here rebuilds it,"
+  _msg "so it can only be kept current by hand. Retiring such a key must happen in a"
+  _msg "shipped release BEFORE the tarball is removed from the mirror."
+}
+
+# ---------------------------------------------------------------------------
 # Summary + dispatch.
 # ---------------------------------------------------------------------------
 
@@ -1166,6 +1310,11 @@ main() {
   case "${_action}" in
     check)
       do_check
+      exit 0
+      ;;
+    catalogue)
+      # Read-only audit: no root, no lock, no build user needed.
+      do_catalogue "$@"
       exit 0
       ;;
     backdrop)
