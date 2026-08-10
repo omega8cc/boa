@@ -7,6 +7,12 @@ trap 'printf "\ncaught signal\nGot only ${#slist[@]}\n" &&
 
 while read line; do
 
+  # Remember every candidate in input order: if not one of them answers in
+  # time we still have to name a mirror. Callers assign this script's output
+  # straight into the mirror HOSTNAME and none of the six guards an empty
+  # value -- that builds https:///versions/... and every fetch fails.
+  [ -n "${line}" ] && all+=("${line}")
+
   # b-a to get time difference.
   # could have used date +%s%N
   # I guess this won't work on a BSD
@@ -26,8 +32,18 @@ while read line; do
     fi
   fi
 
-  # wget stuff if checkline looks fine
-  wget --spider -q -O /dev/null ${checkline} &&
+  # wget stuff if checkline looks fine.
+  #
+  # BOUNDED, which the "try next if not connected within 2s" comment below has
+  # always claimed and the code never did: bare wget defaults to a 900s read
+  # timeout and 20 tries, so a mirror that accepts a connection and then goes
+  # silent -- a firewall change mid-probe is enough -- parks this loop for
+  # hours. That is not theoretical: measured 2026-08-11 on a migration target,
+  # where one probe sat on an established-then-blackholed socket for 8 minutes
+  # inside manage_ltd_users, which holds /run/manage_ltd_users.pid and so
+  # blocks every other BOA task behind that guard, including the migration
+  # phase that had called it.
+  wget --timeout=2 --tries=1 --spider -q -O /dev/null ${checkline} &&
      b=$(</proc/uptime) &&
        b=${b%%\ *} &&
          b=${b/./}
@@ -47,6 +63,17 @@ while read line; do
 done
 
 # printf "%s\n" "${slist[@]}"
+#
+# Never answer with nothing. Every caller takes this output as the mirror
+# hostname and only guards against the literal "printf" (the signature of a
+# broken script), so a transient blip that times out all candidates would
+# otherwise silently produce empty URLs. Falling back to the first listed
+# mirror is what the callers' own else-branches do anyway.
+if [ "${#slist[@]}" -eq 0 ]; then
+  [ -n "${all[0]}" ] && printf "%s\n" "${all[0]}"
+  exit 0
+fi
+
 printf "${slist[@]}"
 
 exit 0
