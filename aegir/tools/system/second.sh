@@ -7,8 +7,16 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _monPath="/var/xdrago/monitor/check"
 
-# Exit if proxy config exists
-[ -e "/root/.proxy.cnf" ] && exit 0
+# PHP-idle surgery quiesce: barracuda holds this while swapping PHP
+# versions; a marker whose owner PID is gone is stale (crashed run) and
+# is cleared, never obeyed -- and /run clears itself on reboot.
+if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
+  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
+    exit 0
+  fi
+  rm -f /run/boa_php_idle_quiesce.pid
+fi
 
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf

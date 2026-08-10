@@ -25,11 +25,17 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=588833ltsT01
+export _xSrl=588844ltsT01
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/20-sites.sh" ] && . /var/xdrago/night/20-sites.sh
+# Fail closed: the two libraries are delivered by independent fNN fetches, so
+# this worker can land ahead of a night.inc.sh that has no in-flight gate --
+# and an undefined function returns 127, which the reap's "! _night_boa_pass_active"
+# would read as "no pass running". Defined only if the real one is absent
+command -v _night_boa_pass_active > /dev/null 2>&1 \
+  || _night_boa_pass_active() { return 0; }
 
 _relocate_one_backup_dir() {
   # Relocate a single per-account backup directory onto the static/files
@@ -891,7 +897,20 @@ _purge_cruft_machine() {
         mkdir -p ${i}/keys
       fi
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
-      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ]; then
+      # An installer creates the new distro/NNN empty and fills it over the
+      # following minutes, and the keys/ mkdir above scores it 1 by itself,
+      # so an under-populated revision is NOT evidence of a ghost on its own:
+      # this used to reap the revision a running install was still building
+      # into, leaving the installer cd-ing into a path that no longer existed
+      # and extracting whole platform trees into the account's home instead.
+      # Two independent brakes, because neither alone is sufficient: the mtime
+      # test (a live revision is touched continuously; a real ghost is stale
+      # for hours, and the keys/ mkdir defers its first sighting by one night)
+      # and the in-flight test (owl.sh gates once at entry, while the octopus
+      # pass drops boa_run.pid per account -- so it must be re-checked HERE)
+      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ] \
+        && [ -z "$(find ${i} -maxdepth 0 -mmin -60 2>/dev/null)" ] \
+        && ! _night_boa_pass_active; then
         echo "_RevisionTest is ${_RevisionTest}"
         _tStamp=$(date +%y%m%d-%H%M%S)
         mkdir -p ${_usEr}/undo/dist/${_tStamp}

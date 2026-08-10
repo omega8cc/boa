@@ -706,7 +706,14 @@ _mysql_downgrade_protection() {
 }
 
 _up_action() {
-  if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
+  # The inc file belongs in this gate: every sed below rewrites it, and the
+  # launcher gate further down refuses without it. Omitting it here let a
+  # missing inc file spray "sed: can't read" over the whole block, skip the
+  # installer launch silently, and still reach the "upgrade completed" line,
+  # while the matching diagnostic in this if's else stayed unreachable
+  if [ -e "${_vBs}/${_barName}" ] \
+    && [ -e "${_vBs}/${_filIncB}" ] \
+    && [ -e "${_barCnf}" ]; then
     if [ ! -z "${_rKey}" ]; then
       if [ "${_rKey}" = "php-85" ] || [ "${_rKey}" = "php-8.5" ]; then
         _phpS="8.5"
@@ -1865,6 +1872,34 @@ _if_force_php_rebuild() {
   fi
 }
 
+### Fetch an installer file into /var/backups, fail-closed
+###
+### Neither curl's exit code nor the file's existence proves a good fetch:
+### the mirror answers an unknown path with HTTP 200 and a placeholder page
+### (curl exits 0 and writes it), while a transport error under --fail
+### leaves no file at all. _up_finish deletes both files on every run, so a
+### bad fetch here is not recoverable from a previous copy -- land on a temp
+### name, require the sentinel line the real file must carry, and only then
+### replace the live copy. Version floor forbids new curl flags, so this is
+### temp+mv rather than --remove-on-error
+_fetch_boa_file() {
+  local _fUrl="${1}"
+  local _fDst="${2}"
+  local _fSnt="${3}"
+  local _fTmp="${2}.new"
+  rm -f "${_fTmp}"
+  curl ${_crlGet} "${_fUrl}" -o "${_fTmp}"
+  if [ ! -s "${_fTmp}" ] || ! grep -q "${_fSnt}" "${_fTmp}" 2> /dev/null; then
+    rm -f "${_fTmp}"
+    echo
+    echo "  Failed to fetch ${_fUrl}"
+    echo "  (no response, or not a valid BOA file), exit"
+    echo
+    _clean_pid_exit _fetch_boa_file
+  fi
+  mv -f "${_fTmp}" "${_fDst}"
+}
+
 _proceed() {
   _check_root_keys_pwd
   _check_root
@@ -1899,8 +1934,8 @@ _proceed() {
     _check_sql_access
   fi
 
-  curl ${_crlGet} "${_rgUrl}/${_barName}" -o ${_vBs}/${_barName}
-  curl ${_crlGet} "${_rgUrl}/${_pthIncB}" -o ${_vBs}/${_filIncB}
+  _fetch_boa_file "${_rgUrl}/${_barName}" "${_vBs}/${_barName}" '_vBs="/var/backups"'
+  _fetch_boa_file "${_rgUrl}/${_pthIncB}" "${_vBs}/${_filIncB}" "^_X_VERSION="
 
   _up_action
   _up_finish
@@ -2050,7 +2085,7 @@ _set_tree_vars() {
   fi
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.88.833"
+  export _rLsn="BOA-5.88.844"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="https://files.boa.io/versions/${_tRee}/boa"

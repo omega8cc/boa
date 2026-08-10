@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=588833ltsT01
+export _xSrl=588844ltsT01
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -17,7 +17,6 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _pthLog="/var/log/boa"
 
-[ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 
 if [ -x "/usr/bin/gpg2" ]; then

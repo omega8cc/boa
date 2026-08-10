@@ -75,7 +75,7 @@ _xSrl=$(boa info 2>/dev/null \
   | grep -oE "BOA-[0-9.]+-${_tRee}-[0-9a-zA-Z]+" \
   | tail -1 \
   | awk -F- '{ print $NF }')
-[ -z "${_xSrl}" ] && _xSrl="588833${_tRee}T01"
+[ -z "${_xSrl}" ] && _xSrl="588844${_tRee}T01"
 export _xSrl
 
 export DEBIAN_FRONTEND=noninteractive
@@ -1282,9 +1282,14 @@ _xmass_take_backup() {
     _info "xtrabackup: backing up to ${_XTRA_STAGE_SRC} (stage method) ..."
     rm -rf "${_XTRA_STAGE_SRC}"
     mkdir -p "${_XTRA_STAGE_SRC}"
+    # Both default to "wait forever": behind one long query the backup lock
+    # never returns and init hangs with no bound and no diagnostic, on a live
+    # source. The old export capped exactly this with --long-query-guard=900.
     xtrabackup \
       --defaults-file=/root/.my.cnf \
       --backup \
+      --ftwrl-wait-timeout=900 \
+      --kill-long-queries-timeout=60 \
       --target-dir="${_XTRA_STAGE_SRC}" \
       || _die "xtrabackup --backup failed on source"
 
@@ -3287,6 +3292,108 @@ _xmass_renameaegirhost_all() {
 
 ###=============SUBCOMMANDS===============###
 
+# Open the firewall to a migration peer, the way the old MIGRATE.md procedure
+# did it by hand and never had it fail: csf.allow gets the peer through the
+# firewall, csf.ignore stops lfd temp-denying it mid-migration, then reload.
+# Allow ALONE is not durable under load -- lfd can still act on the IP -- and a
+# temp-deny on the reverse path fails init AFTER the target datadir is gone.
+# Idempotent: both files are append-once.
+# The cutover's write freeze, done the way the old MIGRATE.md procedure did it
+# and the way that actually holds: a file-backed flag in the global include.
+#
+# What was here before was `mysql -e "FLUSH TABLES WITH READ LOCK;"`. FTWRL is
+# SESSION-scoped -- the lock dies the instant that client exits, so the command
+# returned, the log said writes were frozen, and the source stayed fully
+# writable for the whole cutover window. Every write landing after that point
+# is past the GTID position the cutover captured, i.e. silently lost.
+#
+# A file the web layer reads on every request cannot evaporate when a client
+# disconnects, which is the entire reason the old procedure used one.
+_XMASS_GLOBAL_INC="/data/conf/global/global-extra.inc"
+
+_xmass_freeze_source_writes() {
+  [ -e "${_XMASS_GLOBAL_INC}" ] || {
+    _alrt "No ${_XMASS_GLOBAL_INC} -- cannot freeze writes; sites stay WRITABLE through cutover"
+    return 1
+  }
+  if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
+    _info "Source writes already frozen"
+    return 0
+  fi
+  cp -af "${_XMASS_GLOBAL_INC}" "${_XMASS_GLOBAL_INC}.bak"
+  {
+    echo ""
+    echo "# xmass migration freeze -- remove with the .bak beside this file"
+    echo "\$settings['config_readonly'] = TRUE;"
+    echo "\$conf['site_readonly'] = 1;"
+    echo ""
+  } >> "${_XMASS_GLOBAL_INC}"
+  grep -q "site_readonly" "${_XMASS_GLOBAL_INC}" \
+    && _info "Source writes FROZEN via ${_XMASS_GLOBAL_INC} (backup kept as .bak)" \
+    || { _alrt "Freeze did not take -- sites stay WRITABLE"; return 1; }
+}
+
+_xmass_thaw_writes() {
+  # Used on the abort path so a failed cutover leaves the source usable, and on
+  # the target after promotion so the NEW production box is never read-only.
+  local _host="${1:-}"
+  if [ -n "${_host}" ]; then
+    ssh -o ConnectTimeout=10 root@"${_host}" \
+      "[ -e ${_XMASS_GLOBAL_INC}.bak ] && mv -f ${_XMASS_GLOBAL_INC}.bak ${_XMASS_GLOBAL_INC}; \
+       sed -i '/xmass migration freeze/,+3d' ${_XMASS_GLOBAL_INC} 2>/dev/null; true" &> /dev/null
+    _info "Writes thawed on ${_host}"
+  else
+    [ -e "${_XMASS_GLOBAL_INC}.bak" ] && mv -f "${_XMASS_GLOBAL_INC}.bak" "${_XMASS_GLOBAL_INC}"
+    sed -i '/xmass migration freeze/,+3d' "${_XMASS_GLOBAL_INC}" 2> /dev/null
+    _info "Source writes thawed"
+  fi
+}
+
+# The two guards that keep an unfinished 'delete' task from travelling to the
+# new box. xoct and xcopy have always run these; xmass never did, while its own
+# pre-mig pkill -9's the dispatcher -- which is precisely how a delete ends up
+# stranded at task_status='-1'. Cutover then runs hosting-tasks --force on the
+# target, so Aegir would execute that delete against brand-new production.
+_xmass_clear_pending_deletes() {
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\"" &> /dev/null
+    su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\"" &> /dev/null
+  done
+  _info "Cleared any pending/interrupted delete tasks from all panel queues"
+}
+
+_xmass_csf_allow_peer() {
+  local _ip="$1" _what="$2"
+  [ -n "${_ip}" ] || return 1
+  [ -x /usr/sbin/csf ] || { _info "No csf here; nothing to allow for ${_what}"; return 0; }
+  grep -q "^${_ip} " /etc/csf/csf.allow 2>/dev/null \
+    || echo "${_ip} # xmass migration ${_what}" >> /etc/csf/csf.allow
+  grep -q "^${_ip} " /etc/csf/csf.ignore 2>/dev/null \
+    || echo "${_ip} # xmass migration ${_what}" >> /etc/csf/csf.ignore
+  csf -q &> /dev/null
+  _info "csf: ${_ip} allowed and ignored (${_what})"
+}
+
+# What the SOURCE can arrange for itself, done before the reachability check
+# instead of reported after it. Neither step needs ssh -- that is the point,
+# because the check below cannot fix its own preconditions.
+_xmass_prepare_target_reach() {
+  local _t="$1"
+  [ -n "${_t}" ] || return 0
+  if ! ssh-keygen -F "${_t}" > /dev/null 2>&1; then
+    mkdir -p /root/.ssh
+    chmod 700 /root/.ssh
+    ssh-keyscan -H -T 10 "${_t}" >> /root/.ssh/known_hosts 2>/dev/null
+    ssh-keygen -F "${_t}" > /dev/null 2>&1 \
+      && _info "Learned host key for ${_t}" \
+      || _alrt "Could not learn host key for ${_t} -- target may be unreachable on 22"
+  fi
+  _xmass_csf_allow_peer "${_t}" target
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -3302,6 +3409,7 @@ _xmass_cmd_prep_target() {
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
   _xmass_enumerate_accounts
+  _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
     || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
@@ -3318,21 +3426,13 @@ _xmass_cmd_prep_target() {
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
   # guard temp-denies, and the target dials BACK to source:3306 for
   # replication -- getting this wrong fails init AFTER the datadir swap.
-  if [ -x "/usr/sbin/csf" ]; then
-    if csf -a "${_tgt}" "xmass migration target" &> /dev/null; then
-      _info "Source CSF: allowed ${_tgt}"
-    else
-      _alrt "source csf -a for ${_tgt} returned non-zero -- verify /etc/csf/csf.allow by hand"
-    fi
-  else
-    _info "Source has no csf; nothing to allow here"
-  fi
+  _xmass_csf_allow_peer "${_tgt}" target
   local _tcsf
-  _tcsf=$(ssh root@"${_tgt}" "if [ -x /usr/sbin/csf ]; then csf -a ${_XMASS_SRC_IP} 'xmass migration source' &> /dev/null && echo CSF_OK || echo CSF_FAIL; else echo CSF_NONE; fi" 2>/dev/null)
+  _tcsf=$(ssh root@"${_tgt}" "if [ -x /usr/sbin/csf ]; then grep -q '^${_XMASS_SRC_IP} ' /etc/csf/csf.allow 2>/dev/null || echo '${_XMASS_SRC_IP} # xmass migration source' >> /etc/csf/csf.allow; grep -q '^${_XMASS_SRC_IP} ' /etc/csf/csf.ignore 2>/dev/null || echo '${_XMASS_SRC_IP} # xmass migration source' >> /etc/csf/csf.ignore; csf -q &> /dev/null && echo CSF_OK || echo CSF_FAIL; else echo CSF_NONE; fi" 2>/dev/null)
   case "${_tcsf}" in
-    CSF_OK)   _info "Target CSF: allowed ${_XMASS_SRC_IP}" ;;
+    CSF_OK)   _info "Target CSF: ${_XMASS_SRC_IP} allowed and ignored" ;;
     CSF_NONE) _info "Target has no csf; nothing to allow there" ;;
-    *)        _alrt "target CSF allow for ${_XMASS_SRC_IP} FAILED or was unreadable (${_tcsf:-no answer})" ;;
+    *)        _alrt "target CSF for ${_XMASS_SRC_IP} FAILED or was unreadable (${_tcsf:-no answer})" ;;
   esac
   # Fail closed: init's failure mode for a dead reverse path is a refused
   # replication AFTER the target datadir has been replaced.
@@ -3516,6 +3616,18 @@ _xmass_pre_mig() {
     else
       _die "Source key file empty or not fetched"
     fi
+
+    # Let the source IN. This is the ONE thing the source can never arrange
+    # for itself: prep-target's reachability check runs FROM the source, and
+    # the csf-allow that would fix it sits AFTER that check, so a target
+    # firewalling the source deadlocks. Here we are on the target and we know
+    # who the source is, which makes this the only place it can be done.
+    _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
+    if [ -n "${_src_ip}" ]; then
+      _xmass_csf_allow_peer "${_src_ip}" source
+    else
+      _alrt "Could not resolve ${_hst} -- csf NOT opened for the source; prep-target will refuse until it is"
+    fi
   fi
   _info "pre-mig complete on ${_hName}"
 }
@@ -3547,6 +3659,7 @@ _xmass_cmd_init() {
   _xmass_report_account_modes
 
   # Verify SSH connectivity to target
+  _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
     || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
@@ -3568,6 +3681,26 @@ _xmass_cmd_init() {
   # target datadir has been replaced).
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
+
+  # Clear unfinished delete tasks BEFORE the panel databases travel.
+  _xmass_clear_pending_deletes
+
+  # From here until cutover the target is a WRITABLE replica with its own
+  # crontab live: mysql_cleanup.sh TRUNCATEs cache tables hourly, locally, on
+  # the replica. Under ROW binlog a later replicated change to a row the local
+  # TRUNCATE removed stops the SQL thread outright; when it does not, those are
+  # errant transactions written into what is about to become production. The
+  # old procedure stopped cron on the target for exactly this window. xmass
+  # never did -- while its own cutover step 15 STARTS cron on the target, as
+  # though something had stopped it. pkill is required too: on Devuan the init
+  # script alone leaves the daemon up.
+  ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "/etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null; pkill -x cron &> /dev/null; true" &> /dev/null
+  if ssh -o ConnectTimeout=10 root@"${_tgt}" "pgrep -x cron > /dev/null" 2> /dev/null; then
+    _alrt "cron is STILL running on the target -- the replica can take local writes"
+  else
+    _info "Target cron stopped for the replication window"
+  fi
   local _src_sid _tgt_sid
   _src_sid=$(_ip_to_server_id "${_XMASS_SRC_IP}")
   _tgt_sid=$(_ip_to_server_id "${_tgt}")
@@ -3869,6 +4002,10 @@ for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   fi
 done
 REMOTE
+
+  # The freeze belongs to the OLD box. Never let the new production box come up
+  # read-only because it inherited the flag along with the rest of the tree.
+  _xmass_thaw_writes "${_tgt}"
 
   # Step 15.9: Wire migration-proxy realip+csf trust BEFORE the source starts
   # proxying, so the new host recovers the real client and never bans the proxy
@@ -4188,13 +4325,13 @@ _xmass_cmd_cutover() {
   _XMASS_PHASE="cutover"
   _xmass_save_state
 
-  # Step 6: Lock source MySQL — no more writes possible
-  _info "Flushing and locking source MySQL (FLUSH TABLES WITH READ LOCK) ..."
-  if ! mysql --defaults-file=/root/.my.cnf \
-    -e "FLUSH TABLES WITH READ LOCK;"; then
-    _xmass_restore_hint
-    _die "FLUSH TABLES WITH READ LOCK failed on source"
-  fi
+  # Step 6: stop writes for real. The durable flag is what actually holds; the
+  # FLUSH is kept only to push buffers out before the position is read, and is
+  # NOT relied on to keep anything locked (it cannot -- it is session-scoped).
+  _info "Freezing source writes for cutover ..."
+  _xmass_freeze_source_writes \
+    || { _xmass_restore_hint; _die "Could not freeze source writes -- refusing to cut over a writable source"; }
+  mysql --defaults-file=/root/.my.cnf -e "FLUSH TABLES;" &> /dev/null
 
   # Step 7: Triple-check lag is still zero after the lock
   local _lag _pass
@@ -4394,6 +4531,52 @@ shift 2>/dev/null || true
 # DRY run and an explicit --live is required (accepted only after a CLEAN dry run for
 # the same target — the autosymlink --batch model). Only --prefixed mode flags are
 # recognised (and stripped), so no positional argument is ever mistaken for one.
+###-------------SINGLE-FLIGHT LOCK-------###
+
+# A plain owner-PID file: live owner refuses, dead owner is taken over.
+#
+# This was flock at first, and flock was WRONG here for a reason worth keeping
+# written down. The lock lives on an open descriptor, and xmass restarts MySQL --
+# so the new mysqld inherited that descriptor and, running forever, held the
+# lock forever. Every later verb was refused by a run that had finished
+# minutes earlier. Any long-lived daemon a migration starts would do the same.
+#
+# A PID file has nothing to inherit. A stale file cannot wedge anything either,
+# because liveness is what is checked, not the file's existence -- so a holder
+# killed outright costs nothing. The cmdline check matters: PIDs get recycled,
+# and without it a recycled number belonging to some daemon would block the
+# tool indefinitely, which is the same bug in a different coat.
+#
+# The refusal is loud and NON-ZERO on purpose: a quiet exit 0 would let a
+# harness read "another run holds it" as success.
+
+_XMASS_LOCK_FILE="/run/xmass.verb.pid"
+
+_take_verb_lock() {
+  local _owner _cmdline
+  [ "$(id -u)" = "0" ] || return 0
+  if [ -s "${_XMASS_LOCK_FILE}" ]; then
+    _owner=$(tr -dc '0-9' < "${_XMASS_LOCK_FILE}" 2>/dev/null | head -c 12)
+    if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
+      _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
+      case "${_cmdline}" in
+        *xmass*)
+    _die "another xmass run is in flight (pid ${_owner}) -- refusing to start '${_cmd}'. Wait for it to finish."
+        ;;
+      esac
+    fi
+  fi
+  echo "$$" > "${_XMASS_LOCK_FILE}" 2>/dev/null \
+    || { _die "cannot write ${_XMASS_LOCK_FILE} -- refusing to run unlocked"; }
+  trap 'rm -f "${_XMASS_LOCK_FILE}"' EXIT INT TERM HUP
+}
+
+case "${_cmd}" in
+  pre-mig|prep-target|init|sync|cutover|reset-phase|post-mig)
+    _take_verb_lock
+  ;;
+esac
+
 _MODE=LIVE
 _XMASS_NOT_CLEAN=NO
 case "${_cmd}" in
