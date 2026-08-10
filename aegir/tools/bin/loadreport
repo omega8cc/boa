@@ -453,8 +453,8 @@ case "${_MODE}" in
     _run_data
     ;;
   log)
-    # Periodic logger (cron). Skip proxy nodes; keep the data set bounded.
-    [ -e "/root/.proxy.cnf" ] && exit 0
+    # Periodic logger (cron). Runs on proxy nodes too: relay load is
+    # exactly what a PX0 box exists to carry.
     _run_live
     mkdir -p "${_DATA_DEFAULT}" 2>/dev/null
     _LOGF="${_DATA_DEFAULT}/$(date +%Y-%m-%d 2>/dev/null).jsonl"

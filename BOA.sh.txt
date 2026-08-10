@@ -45,8 +45,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=588833devT01
-export _rLsn="BOA-5.88.833"
+export _xSrl=588844devT01
+export _rLsn="BOA-5.88.844"
 
 ###
 ### Avoid too many questions
@@ -1115,29 +1115,63 @@ _fetch_versioned() {
   # before the file content propagated), CDN per-file TTL skew, or a partially
   # synced mirror -- self-heals instead of being pinned to stale content forever.
   # The serial alone cannot detect this: the marker says "f78 fetched" while the
-  # bytes are pre-f78. Overridable; conservative 24h default.
-  local _reMin="${_FETCH_REVALIDATE_MIN:-1440}"
+  # bytes are pre-f78. Overridable. One hour, not a day: revalidation is a CONDITIONAL
+  # request (see below), so an unchanged source costs a 304 with no body and a box that
+  # ever mis-stamped heals within the hour instead of being visibly stale for a day.
+  local _reMin="${_FETCH_REVALIDATE_MIN:-60}"
+
+  # A mirror box already HOLDS the published tree this URL is served from, so it must
+  # never fetch its own bytes back over the network: an intermediary can answer with
+  # pre-publish content long after the local tree is current. Measured 2026-08-10: the
+  # tree went current at 19:01:29 and a mirror still received the previous bytes at
+  # 19:03:10, 101 seconds later. Cache purges are best-effort and cannot be relied on.
+  # The webroot mirrors the URL path 1:1, so drop scheme+host and graft it on;
+  # /var/www/static/getboa marks a box that carries the tree (every mirror has it,
+  # publisher or passive). A URL that is not ours, or a tree this box does not hold,
+  # simply has no local file and falls through to curl.
+  local _lcl=""
+  if [[ -e "/var/www/static/getboa" ]]; then
+    _lcl="${_url#*://}"
+    _lcl="/var/www/static/${_lcl#*/}"
+    [[ -s "${_lcl}" ]] || _lcl=""
+  fi
 
   # Up to date? marker present AND dest non-empty AND (symlink intact if
   # required) AND (tail token present if required -- a DEPLOYED copy that lost
   # its sentinel is damaged and gets refetched now, not at the next window)
   # AND the marker still within the revalidation window. "find -mmin +N" prints
   # the marker only when it is OLDER than N minutes, so an empty result == fresh.
+  # AND, where a local source exists, the deployed bytes still MATCH it. The serial
+  # alone cannot detect "stamped against content older than the serial implies": the
+  # marker says f52 while the bytes are pre-f52, and nothing re-triggers a fetch until
+  # the revalidation window expires -- a full day of a tool that visibly will not
+  # update while the correct file sits on local disk (measured on a mirror, 2026-08-10).
+  # Comparing against the local source is exact and costs one local read, so a
+  # mis-stamped box self-heals on the very next pass instead of a day later. Boxes with
+  # no local source keep the window as their only backstop.
   if [[ -e "${_ctl}" ]] && [[ -s "${_dst}" ]] \
     && { [[ -z "${_lnk}" ]] || [[ -L "${_lnk}" ]]; } \
     && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
+    && { [[ -z "${_lcl}" ]] || cmp -s "${_lcl}" "${_dst}"; } \
     && [[ -z "$(find "${_ctl}" -mmin "+${_reMin}" 2>/dev/null)" ]]; then
     return 0
   fi
 
-  # Never clobber a running tool. Only applicable when the dest exists:
-  # pgrep -f matches ANY command line containing the pattern (an editor,
-  # a wrapper, an ssh command), and a missing dest cannot be running --
-  # skipping then would leave a dangling symlink behind.
+  # Never clobber a running tool. Only applicable when the dest exists
+  # (a missing dest cannot be running -- skipping then would leave a
+  # dangling symlink behind). Matched against genuine EXECUTIONS only:
+  # an interpreter with the tool path as its script argument, or the
+  # path as argv[0]. A bare substring pgrep refused updates whenever any
+  # command line merely mentioned the path -- an editor, a checksum, an
+  # operator's ssh probe -- observed live when a validation command made
+  # the guard hold a tool update back.
   if [[ -n "${_grd}" ]] && [[ -s "${_dst}" ]]; then
-    _cnt="$(pgrep -fc "${_grd}" 2>/dev/null)"
+    _grdEsc="${_grd//./\\.}"
+    _cnt="$(pgrep -fc "^([^ ]*/)?(ba|da)?sh (-[^ ]+ )*[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
     _cnt="${_cnt:-0}"
-    if (( _cnt > 0 )); then
+    _cntD="$(pgrep -fc "^[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
+    _cntD="${_cntD:-0}"
+    if (( _cnt + _cntD > 0 )); then
       echo "The ${_lbl} is running!"
       return 0
     fi
@@ -1150,12 +1184,50 @@ _fetch_versioned() {
   # from what is deployed we replace and re-stamp; if they are identical we keep
   # the file untouched and merely re-arm the marker; if the fetch failed we leave
   # the working copy and its marker alone.
-  local _new="${_dst}.new.$$"
-  # shellcheck disable=SC2086,SC2154  # intentional _crlGet flag-string split; _crlGet is a BOA.sh.txt global
-  # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
-  # floor forbids --remove-on-error), and a partial file passes every simple
-  # content test -- so discard the temp whenever curl itself reports failure.
-  curl ${_crlGet} "${_url}" -o "${_new}" || rm -f "${_new}"
+  local _new="${_dst}.new.$$" _cod="" _znc=""
+  # A box with no local tree cannot compare content locally, so it asks the server
+  # instead: -z sends If-Modified-Since from the DEPLOYED copy's mtime, so an unchanged
+  # source answers 304 with no body. That makes revalidation nearly free, which is what
+  # lets the window above be an hour rather than a day, and a 304 is a POSITIVE
+  # confirmation that what we hold is current (handled below) rather than a failed
+  # fetch. Safe against a stale copy suppressing its own update: published trees are
+  # re-cloned, so source timestamps only ever move forward. A server that ignores the
+  # header simply returns 200 and we behave exactly as before.
+  # Offered ONLY when all of these hold, because each one is a case where a 304 would be
+  # the wrong answer:
+  #   - the deployed copy is INTACT (an empty one, or one that lost its required
+  #     sentinel, must pull real bytes rather than be told "not modified");
+  #   - a marker for THIS serial already exists, i.e. we are merely revalidating. When
+  #     the serial changed we are being told new content exists, so never risk a 304
+  #     against it -- that is exactly how a box would re-arm the new marker over old
+  #     bytes;
+  #   - that marker is younger than the hard window. At least once a day we ask
+  #     unconditionally, so a deployed copy carrying a wrong mtime (written before -R,
+  #     or touched by hand) can never answer 304 forever. Worst case degrades to the
+  #     unconditional refetch this replaced -- it can delay a heal, never prevent one.
+  if [[ -s "${_dst}" ]] && [[ -e "${_ctl}" ]] \
+    && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
+    && [[ -z "$(find "${_ctl}" -mmin "+${_FETCH_HARD_REVALIDATE_MIN:-1440}" 2>/dev/null)" ]]; then
+    _znc="-z ${_dst}"
+  fi
+  # The local source resolved above wins: no network, and it is the very content this
+  # box publishes. Falls through to curl when there is none.
+  if [[ -n "${_lcl}" ]]; then
+    cp -pf "${_lcl}" "${_new}" 2>/dev/null || rm -f "${_new}"
+  else
+    # shellcheck disable=SC2086,SC2154  # intentional _crlGet/_znc flag-string split; _crlGet is a BOA.sh.txt global
+    # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
+    # floor forbids --remove-on-error), and a partial file passes every simple
+    # content test -- so discard the temp whenever curl itself reports failure.
+    # -R is LOAD-BEARING, not cosmetic: it stamps the deployed copy with the SOURCE's
+    # Last-Modified, so the -z above compares "is the source newer than the VERSION I
+    # HOLD". Without it the comparison is against the time this box happened to WRITE
+    # the file, and a box that ever wrote stale bytes later than the source was
+    # published answers 304 to every probe and stays pinned forever -- strictly worse
+    # than the unconditional refetch this replaced. Same reason cp -p above.
+    _cod="$(curl ${_crlGet} ${_znc} -R -w '%{http_code}' "${_url}" -o "${_new}" 2>/dev/null)" \
+      || rm -f "${_new}"
+  fi
   # A mirror answers a MISSING path with HTTP 200 + an HTML "Under Construction"
   # stub (a soft 404 that --fail cannot catch). No versioned BOA file is HTML --
   # scripts start with #!, PHP with <?php -- so a leading HTML tag means the file
@@ -1187,6 +1259,15 @@ _fetch_versioned() {
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."*
     touch "${_ctl}"                         # (re-)arm marker + revalidation window
+  elif [[ "${_cod}" == "304" ]]; then
+    # The server confirmed the deployed copy is current, so this is success with an
+    # empty body -- NOT a failed fetch. Re-arm the marker (otherwise every pass would
+    # re-probe) and still repair the symlink, which a missing-link revalidation came
+    # here to fix and which the body-carrying branch above would have handled.
+    rm -f "${_new}"
+    [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
+    rm -f "${_pthLog}/${_cnm}.ctrl."*
+    touch "${_ctl}"
   else
     rm -f "${_new}"                         # fetch failed -- keep the working copy
   fi
@@ -1500,7 +1581,7 @@ _update_agents() {
   # and fail closed elsewhere - staticbuild also requires an existing build
   # user (o8 unless -u says otherwise) and never guesses one from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f92 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f90 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f98 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   fi
 
@@ -1564,9 +1645,9 @@ _update_agents() {
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f90
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f89 --guard mysql_cluster_backup.sh
-    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f74
+    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f72
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f82
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f88
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f87
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f85
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f96
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
@@ -1598,12 +1679,12 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f94
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f90
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f98
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f81
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f86
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f80
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f85
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f86
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f79
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f78
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f90
-    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f87
+    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f85
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -1626,7 +1707,7 @@ _update_agents() {
       rm -f /var/xdrago/daily.sh
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
-    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f83
+    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f82
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f73
   fi
 
@@ -1662,14 +1743,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f49.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f48.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f49.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f48.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_ltd_users.sh.old
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
@@ -3659,6 +3740,11 @@ _install_in_flight() {
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
   pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 && return 0
   pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1 && return 0
+  # The Ægir setup children ("su - oN -c bash .../AegirSetupC.sh.txt") match
+  # none of the forms above and are the phase that consumes /opt/tmp/boa the
+  # longest. Anchored on the executor so a remotely driven install cannot
+  # defer this box; the [ABC] class keeps it from matching its own pgrep
+  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -4079,8 +4165,8 @@ _update_boa_tools() {
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f78 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f71 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f77 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f70 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f96 --guard duplicity
@@ -4090,13 +4176,13 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f98 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
-    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f95 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
-    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f92 --guard /local/bin/lock.inc
+    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f94 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
+    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f91 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f89 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f88 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f96 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f90 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f89 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f91 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
@@ -4109,9 +4195,9 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f82 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f56 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f64 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f80 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f51 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f62 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f90 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f96 --guard /local/bin/autodaedalus

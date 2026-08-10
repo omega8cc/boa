@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=588833devT01
+export _xSrl=588844devT01
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
@@ -1458,6 +1458,53 @@ case "$1" in
     done
     set -- "${_margs[@]}"
     ;;
+esac
+
+###-------------SINGLE-FLIGHT LOCK-------###
+
+# A plain owner-PID file: live owner refuses, dead owner is taken over.
+#
+# This was flock at first, and flock was WRONG here for a reason worth keeping
+# written down. The lock lives on an open descriptor, and xcopy restarts MySQL --
+# so the new mysqld inherited that descriptor and, running forever, held the
+# lock forever. Every later verb was refused by a run that had finished
+# minutes earlier. Any long-lived daemon a migration starts would do the same.
+#
+# A PID file has nothing to inherit. A stale file cannot wedge anything either,
+# because liveness is what is checked, not the file's existence -- so a holder
+# killed outright costs nothing. The cmdline check matters: PIDs get recycled,
+# and without it a recycled number belonging to some daemon would block the
+# tool indefinitely, which is the same bug in a different coat.
+#
+# The refusal is loud and NON-ZERO on purpose: a quiet exit 0 would let a
+# harness read "another run holds it" as success.
+
+_XCOPY_LOCK_FILE="/run/xcopy.verb.pid"
+
+_take_verb_lock() {
+  local _owner _cmdline
+  [ "$(id -u)" = "0" ] || return 0
+  if [ -s "${_XCOPY_LOCK_FILE}" ]; then
+    _owner=$(tr -dc '0-9' < "${_XCOPY_LOCK_FILE}" 2>/dev/null | head -c 12)
+    if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
+      _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
+      case "${_cmdline}" in
+        *xcopy*)
+    echo "ERROR: another xcopy run is in flight (pid ${_owner}) -- refusing to start '$1'. Wait for it to finish."
+        exit 1
+        ;;
+      esac
+    fi
+  fi
+  echo "$$" > "${_XCOPY_LOCK_FILE}" 2>/dev/null \
+    || { echo "ERROR: cannot write ${_XCOPY_LOCK_FILE} -- refusing to run unlocked"; exit 1; }
+  trap 'rm -f "${_XCOPY_LOCK_FILE}"' EXIT INT TERM HUP
+}
+
+case "$1" in
+  export|create|import|pretransfer|transfer|noproxy|pre-mig|post-mig|ssl-gen)
+    _take_verb_lock "$1"
+  ;;
 esac
 
 case "$1" in
