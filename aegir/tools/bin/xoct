@@ -730,6 +730,28 @@ _xoct_flush_caches_target() {
   done
 }
 
+_xoct_revert_converted_vhosts() {
+  ### Put every vhost this run converted back to the state it was in before,
+  ### which is BOTH halves: the :80 vhost from its dot-backup and the site's
+  ### real :443 block, saved as .https.<dom> when the proxy template landed on
+  ### top of it. Deleting https.<dom> alone is not a revert -- pre-conversion
+  ### those sites were serving TLS, and the message that followed said the
+  ### config was valid again, which was true for nginx and untrue for the
+  ### customer. Its own function so a fixture can prove the pairing.
+  local _vhd="$1"
+  local _doms="$2"
+  local _rvd
+  for _rvd in ${_doms}; do
+    [ -f "${_vhd}/.${_rvd}" ] || continue
+    rm -f "${_vhd}/https.${_rvd}"
+    if [ -f "${_vhd}/.https.${_rvd}" ]; then
+      mv -f "${_vhd}/.https.${_rvd}" "${_vhd}/https.${_rvd}"
+    fi
+    mv -f "${_vhd}/.${_rvd}" "${_vhd}/${_rvd}"
+  done
+  return 0
+}
+
 _xoct_ssl_material_missing() {
   ### Echo the cert files the HTTPS proxy template references that do NOT
   ### exist, named relative to the account root; empty output means the
@@ -1047,6 +1069,17 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             _SSL_MISSING=$(_xoct_ssl_material_missing "${_USR}" "${_Dom}")
             if [ -z "${_SSL_MISSING}" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
+              ### Save the site's REAL https vhost before the proxy template
+              ### lands on top of it, exactly as ${_Vht} is saved below. It was
+              ### being overwritten with no backup, so the configtest revert
+              ### could only delete https.<dom> and leave the site with NO 443
+              ### server block at all -- while announcing "reverted to the
+              ### pre-conversion vhosts", which was untrue for TLS. Preserve
+              ### the FIRST copy only: on a repair pass ${_Vhs} is already the
+              ### proxy template and would destroy the saved original.
+              if [ -f "${_Vhs}" ] && [ ! -f "${_Vhs%/*}/.https.${_Dom}" ]; then
+                cp -a ${_Vhs} ${_Vhs%/*}/.https.${_Dom}
+              fi
               cp -a /var/xdrago/conf/https_proxy_le.conf ${_Vhs}
               sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vhs}
               wait
@@ -3626,12 +3659,9 @@ _migrate_init() {
               ### A first conversion: reverting to the saved originals is
               ### exactly the pre-conversion state, so restore what THIS run
               ### rewrote and prove the config is valid again.
-              for _rvd in ${_XOCT_CONVERTED_DOMS}; do
-                [ -f "${_USR}/config/server_master/nginx/vhost.d/.${_rvd}" ] || continue
-                rm -f "${_USR}/config/server_master/nginx/vhost.d/https.${_rvd}"
-                mv -f "${_USR}/config/server_master/nginx/vhost.d/.${_rvd}" \
-                  "${_USR}/config/server_master/nginx/vhost.d/${_rvd}"
-              done
+              _xoct_revert_converted_vhosts \
+                "${_USR}/config/server_master/nginx/vhost.d" \
+                "${_XOCT_CONVERTED_DOMS}"
               if nginx -t &> /dev/null; then
                 echo "INFO: reverted to the pre-conversion vhosts; nginx config is valid again"
               else
