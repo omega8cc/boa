@@ -123,6 +123,27 @@ _provision_running() {
   pgrep -f provision > /dev/null 2>&1
 }
 
+# Install/upgrade interlock for the night workers, distinct from the entry gate
+# in owl.sh: that one is evaluated ONCE, before the per-account fan-out, so a
+# pass that starts afterwards is invisible to it -- and the octopus pass drops
+# boa_run.pid at the end of EVERY account (satellite _satellite_post_cleanup),
+# so on a multi-account box the lock pids stop being a reliable signal partway
+# through. The AegirSetup arm covers the phase that actually builds a new
+# distro revision: those children run as "su - oN -c bash .../AegirSetupC.sh.txt"
+# and match none of the wrapper or .sh.txt forms the other gates look for.
+# Anchored on the executor so a remotely driven install cannot defer this box,
+# and the [ABC] class keeps the pattern from matching its own pgrep.
+_night_boa_pass_active() {
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/boa_wait.pid" ] && return 0
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  return 1
+}
+
 # Consecutive-ghost tracking so nothing is reaped on a single night's snapshot.
 # A per-item counter file (caller picks the path, e.g. under <account>/log/ctrl)
 # records how many consecutive runs the item has looked like a ghost. Returns 0

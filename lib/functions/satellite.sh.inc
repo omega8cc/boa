@@ -4207,7 +4207,15 @@ _satellite_if_add_update_user_platforms_symlinks() {
         mkdir -p ${i}/keys
       fi
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
-      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ]; then
+      # Age gate, mirroring the nightly copy in night/10-account.sh: an
+      # under-populated revision is not a ghost by itself, because an
+      # installer creates the new distro/NNN empty and the keys/ mkdir above
+      # scores it 1 on its own. This copy runs inside AegirSetupA, i.e. inside
+      # the install, so it deliberately carries NO in-flight test -- that
+      # would disable it permanently here; the mtime brake is what makes it
+      # safe, and a real ghost is stale for hours
+      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ] \
+        && [ -z "$(find ${i} -maxdepth 0 -mmin -60 2>/dev/null)" ]; then
         [ "${_DEBUG_MODE}" = "YES" ] && echo "_RevisionTest is ${_RevisionTest}"
         _NOW=$(date +%y%m%d-%H%M%S)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
