@@ -49,9 +49,12 @@ filesystem data is run on demand via `xmass sync`. At cutover:
    surviving `FLUSH TABLES` only pushes buffers. The lag is then re-confirmed
    three times.
 7. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`); the freeze
-   flag is removed on the **target** later in the sequence, never on the
-   source — the old box serves through the proxy from here, but if you roll
-   back to it, restore the include from its `.bak`.
+   flag is removed on the **target** later in the sequence. On the source it
+   stays for the life of the proxy — the old box serves through the proxy
+   from here, but if you roll back to it, restore the include from its
+   `.bak`. (An abort that **proves** the promotion did not hold thaws the
+   source by itself; a post-promotion park — and a promotion failure whose
+   state cannot be read back — keeps the source frozen, on purpose.)
 8. Panel DB access is rewired on the target for every Ægir root: the datadir
    swap killed the target's own panel databases, so the live (replicated)
    hostmaster DB is rediscovered per root, its DB user's password reset, and
@@ -88,8 +91,13 @@ warns about the unsafe transitions:
 
 ```sh
 xmass reset-phase syncing         # only if the target was NOT promoted
-xmass reset-phase rename-failed   # target promoted, only the rename tail left
+xmass reset-phase rename-failed   # target promoted, only the cutover tail left
 ```
+
+Arming `rename-failed` re-runs the cutover tail from its head: the resume
+**re-asserts the 503 gate and the write freeze on the source**, drops the
+replication user, and re-proves the target's web layer before the panel
+rewire and the renames.
 
 `reset-phase` is exempt from the 90%-disk precondition, because a stalled
 migration is a likely reason the disk filled in the first place.
@@ -519,12 +527,12 @@ first change to the source):
 | Step 5 | Final rsync pass of `static/files` only, **before** the lock (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
 | Step 6 | Freeze source writes durably: append the read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), **refuse the cutover if the freeze does not take**, then `FLUSH TABLES` to push buffers (a session read lock is no longer relied on — it cannot survive a disconnect) |
-| Step 7 | Triple-check lag = 0 at 10 s intervals (abort if any check fails) |
-| Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone |
+| Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: unlock source MySQL, **thaw the write freeze**, and abort — the target is not promoted at this point, so the source is handed back writable |
+| Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → unlock, **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays **frozen** (a thaw could silently lose writes) and the message spells out how to determine the state and which recovery to run |
 | Step 9 | Belt-and-braces `UNLOCK TABLES` on source (no lock is normally held); the write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
-| Step 11 | Drop replication user `xmass_repl` from source |
-| Step 12 | Prove the target's web layer, then start nginx there: `nginx -t` on the target first (an invalid config **refuses the conversion**, printing the tail of the test output), then require a real HTTP answer on the target's port 80 ("nginx is not answering on port 80 after start — refusing to proxy the source at it"). Either refusal leaves the target promoted and the source still on 503 — repair the target's nginx and resume the cutover |
+| Step 11 | Drop replication user `xmass_repl` from source. Runs at the head of the cutover tail (idempotent), so a park upstream of it — the step-8 committed-promotion park — still gets the grant dropped when the resumed run completes |
+| Step 12 | Prove the target's web layer, then start nginx there: `nginx -t` on the target first (an invalid config **refuses the conversion**, printing the tail of the test output), then require a real HTTP answer on the target's port 80. This proof runs at the **head of the cutover tail**, so every entry re-runs it — the normal flow and each resume of a parked cutover (nothing later in the tail gates on the web layer: the step-13 serve-wait measures and reports, and nothing else can *start* a stopped nginx). Either refusal **parks resumably at `phase=rename-failed`** and prints the full source-restore recipe (write-freeze guidance included): the target stays promoted, the source stays 503-gated and frozen, and the SQL watchdogs stay paused. Fix nginx on the target, then re-run `xmass cutover target-ip --live` — the resume re-runs this proof and starts nginx itself |
 | Step 12.5 | Rewire panel DB access on target per Ægir root (rediscover live hostmaster DB, reset its user's password, rewrite the panel dir's credentials — the datadir swap killed the fresh-install panel DBs). When the source's panel platform number diverges from the target's (an aged source vs a fresh target — the normal production shape), the step adopts the target's code-bearing panel platform and repoints the hostmaster platform row in the live DB; the DB persist is load-bearing because the rename queue's hostmaster verify regenerates the alias FROM the DB, so an alias-only correction is undone and the panel 404s from a hollow platform path |
 | Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master) |
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account). The rename moves host-derived tenant site directories onto the new hostname together with every URI-keyed surface (per-site Drush alias file, static files store, per-site PHP pins), and **aborts before the Ægir task queue** if any site dir still carries the old hostname — the queue would import those as brand-new sites with duplicate panel nodes. Inside a cutover that refusal parks at `phase=rename-failed`. After the renames it waits for each renamed site to actually serve (up to 180 s per site, `_RENAME_SERVE_WAIT`; the box's catch-all page is discriminated so an unknown-host 200 never passes) — minutes per site here are the wait, not a hang; a site named as never serving with a 400 usually means its trusted-host settings |
@@ -539,18 +547,22 @@ first change to the source):
 
 If any step between 4 and 8 fails the tool aborts; no session lock is held any
 more, so there is nothing to unlock (the belt-and-braces `UNLOCK TABLES` runs
-regardless).
+regardless). An abort at step 7 also **thaws the write freeze by itself** — the
+target is not promoted at that point, so the source is handed back writable. A
+step-8 failure first reads the target's replica state back and thaws only when
+the target is provably still a replica; a committed promotion parks resumably,
+and an unreadable target keeps the freeze with explicit instructions (see the
+step table above).
 
 Source sites remain on 503 (`http-off.pid` in place). Every abort that happens
 after the web block prints the exact commands to restore service on the source,
 so follow the printed recipe rather than reconstructing it: clear the
 `http-off.pid` files, purge the nginx speed cache, reload nginx, remove the Solr
 deny file if Solr served from here, start cron, and un-park the five runners.
-**One step is not in the printed recipe: if the abort happened at or after
-step 6, also undo the write freeze** — restore
-`/data/conf/global/global-extra.inc` from the `.bak` kept beside it (or delete
-the `# xmass migration freeze` block). Clearing the 503 alone leaves every
-source site serving **read-only**.
+When the write freeze is still in place as the recipe prints (a post-promotion
+park), the recipe includes the thaw line and says when it is safe to use it:
+thaw only to abandon the cutover and keep the source as production — after the
+promotion, writes accepted on the source can never reach the target.
 
 #### Replica parallel apply (Percona 5.7)
 
@@ -797,18 +809,28 @@ and remove the state file.
 **If `cutover` aborts:** the tool prints the full restore recipe for the
 source; follow it rather than doing it from memory. An abort before the write
 freeze leaves the phase at `syncing`, so retrying is a fresh DRY plus `--live`
-with nothing else to undo. **An abort at or after the freeze (step 6) leaves
-the source read-only** — the durable flag in
-`/data/conf/global/global-extra.inc` is not in the printed recipe; restore the
-file from its `.bak` (or delete the freeze block) or every source site keeps
-refusing writes after the 503 clears.
+with nothing else to undo. An abort at step 7 — and a step-8 failure whose
+read-back proves the target is still a replica — unlocks source MySQL **and
+thaws the write freeze itself**; the phase is `cutover`, so retrying is
+`xmass reset-phase syncing`, a fresh DRY, then `--live`. A refusal at step 12
+or later (and a step-8 failure whose promotion actually committed) parks
+resumably at `phase=rename-failed` with the target promoted: the source stays
+503-gated **and deliberately frozen**, and the printed recipe **leads with the
+resume instruction** — the restore lines below it, including the thaw, are
+only for abandoning the cutover and keeping the source as production. A
+step-8 failure whose target cannot be read back at all keeps the freeze and
+prints how to determine the promotion state and which recovery to run.
 
-**If the panel rewire or renameaegirhost fails** for any root, `cutover` parks
-resumably at `phase=rename-failed` instead of completing — the failure report
-names the affected roots. Fix the cause, then re-run
-`xmass cutover target-ip --live` to resume from the parked step (both steps
-converge: already-rewired panels and already-renamed roots no-op). To
-iterate on a single root first, run
+**If the step-12 web-layer proof, the panel rewire, or renameaegirhost
+fails** — or a step-8 promotion turns out to have **committed** despite a
+reported failure — `cutover` parks resumably at `phase=rename-failed` instead
+of completing; the failure report names the cause (for a failed rename, the
+affected roots). Fix the cause, then re-run
+`xmass cutover target-ip --live` — the resume re-enters the cutover tail at
+its head (re-asserting the source's 503 gate and write freeze, dropping the
+replication user, re-running the web-layer proof — which starts the target's
+nginx itself) and every step in it converges: already-rewired panels and
+already-renamed roots no-op. To iterate on a single root first, run
 `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` manually
 on the target — it is convergent and safe to re-run — then resume the cutover
 so the remaining cutover steps complete.
