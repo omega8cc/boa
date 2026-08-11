@@ -840,8 +840,27 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
   # paths, and a glob-match "already-done" test - fail closed on anything
   # outside a safe filesystem-name charset (the landed dir keeps this name,
   # so the later path/glob matches stay consistent)
-  local _platname
-  _platname="$(basename "${_plr}")"
+  # A D8+/composer platform's Aegir root is the DOCROOT (…/<project>/web),
+  # not the project directory, because vanilla provision validates a Drupal
+  # codebase at the root it is given. Two consequences, both fatal, both
+  # measured on a seeded D9 estate:
+  #   - basename() names every such platform "web", so two composer platforms
+  #     collide in one landing directory and the second is skipped as done;
+  #   - transferring the platform root leaves vendor/ behind (web/autoload.php
+  #     requires ../vendor/autoload.php), so the adopted site cannot boot.
+  # Transfer the PROJECT root instead and let the target's existing docroot
+  # detection register …/web as the platform. A classic platform is its own
+  # project root, so this is a no-op there.
+  local _platname _xfer_root
+  _xfer_root="${_plr}"
+  case "$(basename "${_plr}")" in
+    web|docroot|html|public_html)
+      if [[ -f "$(dirname "${_plr}")/composer.json" || -d "$(dirname "${_plr}")/vendor" ]]; then
+        _xfer_root="$(dirname "${_plr}")"
+        _info "site ${_uri}: composer layout - transferring the project root ${_xfer_root}"
+      fi ;;
+  esac
+  _platname="$(basename "${_xfer_root}")"
   case "${_platname}" in
     *[!A-Za-z0-9._-]*|"" | -* ) _alrt "site ${_uri}: unsafe platform dir name '${_platname}' - SKIP"; return 1 ;;
   esac
@@ -900,7 +919,7 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
     || { _alrt "site ${_uri}: empty dump - SKIP"; return 1; }
   chmod 600 "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
 
-  _manifest_write "${_uri}" "${_ctx}" "${_platname}" "${_plr}" "${_dir}" \
+  _manifest_write "${_uri}" "${_ctx}" "${_platname}" "${_xfer_root}" "${_dir}" \
     "${_dbn}" "${_dbp}" "${_dmaj}" "${_ssl}" "${_base}"
   _marker_set "${_uri}.exported.pid"
   _info "site ${_uri}: exported (db ${_dbn})"
