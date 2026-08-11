@@ -174,7 +174,14 @@ _mig_resolve() {
   _MIG_MODE=""; _MIG_DEADLINE=""; _MIG_SOURCE=""
   _mig_sweep_legacy
 
-  if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}"; then
+  ### A target-role record is the inbound half of the peer-record pair: it
+  ### describes the PEER's proxy policy from the migration that brought this
+  ### account here, not a mode declaration for this box as a future source.
+  ### Without the role check a chained migration (target later becoming a
+  ### source -- the HA mirror build) resolved the OLD migration's mode and
+  ### deadline over the operator's explicit box default.
+  if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}" \
+    && [ "$(_mig_get "${_cnf}" _MIG_ROLE)" != "target" ]; then
     _m="$(_mig_get "${_cnf}" _MIG_MODE)"
     _d="$(_mig_get "${_cnf}" _MIG_DEADLINE)"
     if _mig_valid_mode "${_m}"; then

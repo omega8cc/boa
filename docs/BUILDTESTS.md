@@ -33,8 +33,10 @@ Distributions, published to `/var/www/static/distro`:
   farm-4.0.4-11.3.14
   localgov-4.0.2-11.4.5
   openculturas-3.0.5-11.3.16
+  opigno_lms-3.2.7-10.6.15
   social-13.0.2-10.6.15
   thunder-8.4.0-11.4.5
+  varbase-10.1.1-11.4.4
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
@@ -116,8 +118,10 @@ Four artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   https://www.drupal.org/project/farm
   https://www.drupal.org/project/localgov
   https://www.drupal.org/project/openculturas
+  https://www.drupal.org/project/opigno_lms
   https://www.drupal.org/project/social
   https://www.drupal.org/project/thunder
+  https://www.drupal.org/project/varbase
 ```
 
 ### Build them one by one and document results
@@ -183,6 +187,32 @@ localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.2-1
 ```
 
 ```sh
+opigno     # Opigno's documented create-project is broken as shipped, in three ways the
+           # build corrects. (1) The template replaces h5p/h5p-core + h5p/h5p-editor
+           # without providing them, so \H5PFrameworkInterface never reaches disk and
+           # every install fatals in h5p_install() (opigno_lms #3574405): drop the
+           # replace block. (2) h5p-core 1.28.0 added an interface method drupal/h5p
+           # 2.0.0-beta1 does not implement (h5p #3578071): require h5p/h5p-core:1.27.*
+           # (inside the module's own ^1.27). (3) Twig 3.22+ rejects
+           # opigno_learning_path's empty getOperators() on the first front-page render
+           # (#3561556, RTBC, in no release): apply the issue patch, fail closed.
+           # composer create-project opigno/opigno-composer opigno_lms-3.2.7-10.6.15 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/opigno_lms-3.2.7-10.6.15
+           # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
+           # composer config --unset replace
+           # composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'
+           # composer update --no-install --no-scripts
+           # composer install --no-dev
+           # cd web && patch -p1 < the #3561556 getOperators patch
+           # ACCEPTED TRADE: the platform ships dompdf 2.0.8 with open advisories -
+           # the profile pins dompdf ~2.0.0 and the fixed line (3.x) is outside it,
+           # so advisory blocking must stay off for this build.
+           # name by opigno/opigno_lms read from the LOCK; profile opigno_lms,
+           # docroot web/; builds under php83 (its catalogue cap)
+```
+
+```sh
 social     # Open Social ships NO create-project template for its current major:
            # goalgorilla/social_template is frozen at 12.4.2 on core 10.2.6. Take that
            # template as the chassis - it owns the html/ docroot, the scaffold locations
@@ -209,11 +239,21 @@ thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.
            # composer install --no-dev
 ```
 
-<!-- varbase DISABLED: the upstream Vardot/varbase-project template no longer builds an
-     installable site (a fresh ~10 resolve pins core 11.2.14, which the varbase profile
-     ~11.3.0 rejects; pinned to 11.3.x a drifted dep fatals during install; 11.0.0-alpha3
-     OOMs then hits a canvas final-class fatal). The last working varbase-10.1.0-11.3.12
-     build is kept on the mirror; do not rebuild until upstream is fixed. See staticbuild. -->
+```sh
+varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (core pinned
+           # explicitly + committed lock), after a year of drift that made every fresh
+           # build uninstallable. Builds the stable 10 line; the 11.0 line is beta and
+           # uses a different docroot (web/ instead of docroot/) - do not switch until
+           # 11.0.0 is stable AND the catalogue web_dir is updated with it.
+           # composer create-project Vardot/varbase-project:~10 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
+           # composer config --no-plugins allow-plugins true
+           # composer update --no-install --no-scripts
+           # composer install --no-dev
+           # name by vardot/varbase from the lock (the drupal.org release number)
+           # docroot is docroot/; each recipes/ dir needs a default/content subdir
+           # (the build creates them); builds under php84
+```
 
 Vanilla cores, latest patch of each supported minor (full install, add drush, audit):
 
