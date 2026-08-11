@@ -87,6 +87,7 @@ Platform symbols:
 
   Drupal 10.6
     DX6 — Drupal 10.6 prod/stage/dev
+    OFD — OpenFed
     OPG — Opigno LMS
     SOC — Social
 
@@ -102,7 +103,6 @@ Platform symbols:
 
   Drupal 10.2
     DX2 — Drupal 10.2 prod/stage/dev
-    OFD — OpenFed
 
   Drupal 10.1
     DX1 — Drupal 10.1 prod/stage/dev

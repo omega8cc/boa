@@ -33,6 +33,7 @@ Distributions, published to `/var/www/static/distro`:
   farm-4.0.4-11.3.14
   localgov-4.0.2-11.4.5
   openculturas-3.0.5-11.3.16
+  openfed-13.6.6-10.6.15
   opigno_lms-3.2.7-10.6.15
   social-13.0.2-10.6.15
   thunder-8.4.0-11.4.5
@@ -118,6 +119,7 @@ Four artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   https://www.drupal.org/project/farm
   https://www.drupal.org/project/localgov
   https://www.drupal.org/project/openculturas
+  https://www.drupal.org/project/openfed
   https://www.drupal.org/project/opigno_lms
   https://www.drupal.org/project/social
   https://www.drupal.org/project/thunder
@@ -184,6 +186,29 @@ localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.2-1
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
+```
+
+```sh
+openfed    # The openfed-project template requires only three composer helpers; the whole
+           # distribution (openfed/openfed 13.6.*) is merged in by composer-merge-plugin
+           # from the template's composer.openfed.json. A plugin can only act once
+           # installed, so after a --no-install create the deps must be bootstrap-installed
+           # before the real resolve (--no-scripts: upstream's post-update-cmd recursively
+           # runs `composer install`, which exits non-zero against the bootstrap lock).
+           # composer create-project openfed/openfed-project:^13 openfed-13.6.6-10.6.15 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openfed-13.6.6-10.6.15
+           # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
+           # composer install --no-dev --no-scripts   # bootstrap: puts the merge plugin on disk
+           # composer update --no-install --no-scripts
+           # composer install --no-dev
+           # ACCEPTED TRADE: the platform ships drupal/entity_browser 2.15.0 with an open
+           # XSS advisory (SA-CONTRIB-2026-094) - the profile pins entity_browser 2.15
+           # exactly and the fixed release (2.16.0) is outside it, so advisory blocking
+           # must stay off for this build.
+           # name by openfed/openfed read from the LOCK (the drupal.org release number);
+           # profile openfed, docroot docroot/; the profile pins core-recommended ~10.6,
+           # so no older-core fallback applies; builds under php83 (its catalogue cap)
 ```
 
 ```sh

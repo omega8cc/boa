@@ -35,8 +35,8 @@
 #   -u USER    Octopus build user (default: o8)
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
-# Build target names: farm cms culturas commerce localgov opigno social thunder varbase
-#   backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
+# Build target names: farm cms culturas commerce localgov openfed opigno social thunder
+#   varbase backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
 #   redis_backdrop cores
 #
 # The Backdrop family (backdrop core, bee, backdrop-drush-extension,
@@ -83,6 +83,9 @@ _PHP_SOCIAL="${_PHP_83}"                         # Open Social 13 requires php ^
                                                  # capped at 8.3 in AegirSetupC's per-distro
                                                  # table - build on the version it will run on
 _PHP_OPIGNO="${_PHP_83}"                         # Opigno 3.2.7 is a 2024 D10 codebase; 8.3 is
+                                                 # its catalogue cap - build on the version it
+                                                 # will run on
+_PHP_OPENFED="${_PHP_83}"                        # OpenFed 13.6 rides the D10.6 line; 8.3 is
                                                  # its catalogue cap - build on the version it
                                                  # will run on
 _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php84
@@ -159,6 +162,12 @@ _SOCIAL_CONSTRAINT="^13"
 # profile's own constraint.
 _OPIGNO_SPEC="opigno/opigno-composer"
 _OPIGNO_DISTPKG="opigno/opigno_lms"
+# OpenFed's template requires only its three composer helpers; the distribution
+# itself (openfed/openfed) is merged in by wikimedia/composer-merge-plugin from the
+# template's composer.openfed.json, so build_openfed bootstraps vendor before the
+# real resolve (a plugin can only act once installed).
+_OPENFED_SPEC="openfed/openfed-project:^13"
+_OPENFED_DISTPKG="openfed/openfed"
 _CORE_SPEC="drupal/recommended-project"
 
 # Vanilla core minors to build. Empty (default) = auto-discover every released minor
@@ -180,7 +189,7 @@ _CORE_CP_FLAGS="--no-dev --no-interaction"
 # hashes, so REBUILDS are not reproducible -- each published tarball is the frozen artefact,
 # same as every other distro here. And the 11.0 line (docroot web/, still beta) is NOT the
 # build target; this builds the stable 10 line (docroot/ layout, matching the catalogue).
-_ALL_DISTROS="farm cms culturas commerce localgov opigno social thunder varbase"
+_ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase"
 
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
@@ -660,6 +669,34 @@ build_localgov() {
   _finalize_distro "localgov" "${_wd}" "${_dver}" "localgov"
 }
 
+build_openfed() {
+  _begin_build "openfed-" "openfed" || return 0
+  use_php "${_PHP_OPENFED}" || { _record_fail "openfed"; return 1; }
+  local _wd="${_DAY_DIR}/.build.openfed" _dver _dist
+  _dver="$(_create_project "${_wd}" "${_OPENFED_SPEC}" "openfed/openfed-project" "")" \
+    || { _record_fail "openfed"; return 1; }
+  # The template's own require is just three composer helpers; the whole
+  # distribution (openfed/openfed 13.6.*) arrives through composer-merge-plugin's
+  # require of composer.openfed.json. After a --no-install create the plugin is
+  # not on disk yet, so a straight resolve would lock the three helpers and no
+  # openfed at all: bootstrap-install the template deps first (--no-scripts:
+  # upstream's post-update-cmd recursively runs `composer install`, which exits
+  # non-zero against the mid-bootstrap lock), then resolve+install as usual.
+  # NO _with_core_fallback here, for two reasons: the profile pins its own core
+  # minor (core-recommended ~10.6), so there is no older core to fall back to -
+  # and the fallback's lock+vendor wipe would remove the merge plugin, making the
+  # retry "succeed" into a distribution-less tree. Fail closed instead.
+  if ! { _composer_prepare "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer install --no-dev --no-scripts" \
+         && _composer_build "${_wd}"; }; then
+    _record_fail "openfed"
+    return 1
+  fi
+  _dist="$(_lock_version "${_wd}" "${_OPENFED_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
+  _finalize_distro "openfed" "${_wd}" "${_dver}" "openfed"
+}
+
 build_opigno() {
   _begin_build "opigno_lms-" "opigno" || return 0
   use_php "${_PHP_OPIGNO}" || { _record_fail "opigno"; return 1; }
@@ -945,6 +982,7 @@ run_build() {
     culturas) build_culturas ;;
     commerce) build_commerce ;;
     localgov) build_localgov ;;
+    openfed)  build_openfed ;;
     opigno)   build_opigno ;;
     social)   build_social ;;
     thunder)  build_thunder ;;
@@ -1235,6 +1273,7 @@ do_check() {
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
   _check_row "localgov" "$(_drupal_release localgov)"
+  _check_row "openfed"  "$(_drupal_release openfed)"
   _check_row "opigno"   "$(_drupal_release opigno_lms)"
   _check_row "social"   "$(_drupal_release social)"
   _check_row "thunder"  "$(_drupal_release thunder)"
