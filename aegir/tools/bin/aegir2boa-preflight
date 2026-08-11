@@ -14,7 +14,7 @@
 ### degraded box: every external probe is timeout-wrapped and failure-guarded;
 ### a dead component downgrades a verdict, never aborts the run.
 ###
-### Outputs (per design/discovery-preflight.md §7):
+### Outputs:
 ###   /tmp/aegir2boa-preflight.<host>.<ts>.txt   human report, verdict-first
 ###   /tmp/aegir2boa-preflight.<host>.<ts>.env   machine contract:
 ###       shell-safe A2B_* scalars + #TSV:<name>...#ENDTSV:<name> tables
@@ -46,7 +46,7 @@ _HOSTING_SCHEMA_CEIL=7304
 _usage() {
   echo "Usage: aegir2boa-preflight [--aegir-root /var/aegir]"
   echo "Read-only discovery/preflight for a candidate vanilla Ægir box."
-  echo "Writes only /tmp. Run as root. See design/discovery-preflight.md."
+  echo "Writes only /tmp. Run as root. Runbook: docs/AEGIR2BOA.md in the BOA tree."
 }
 
 while [[ $# -gt 0 ]]; do

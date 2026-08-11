@@ -3,9 +3,9 @@
 # aegir2boa-stage2 - remote adoption of a vanilla Aegir-on-Nginx estate into
 # a BOA Octopus account, with the source demoted to an HTTP(S) proxy and a
 # per-site dotfile revert. Stage 2 of the aegir2boa migration; implements
-# BOTH D-010 routes (per-site adoption DEFAULT; whole-DB-import bridge for
-# eligible homogeneous current-3.x estates). Design: aegir2boa repo,
-# design/stage2-toolset.md (the spec).
+# BOTH adoption routes (per-site adoption DEFAULT; whole-DB-import bridge
+# for eligible homogeneous current-3.x estates). Operator runbook:
+# docs/AEGIR2BOA.md in the BOA tree.
 #
 # DUAL-RESIDENT: place this same script on the SOURCE (vanilla) box and the
 # TARGET (BOA) box. Source verbs refuse to run on a BOA box and vice versa.
@@ -34,7 +34,7 @@
 #   peer       --source <ip> [--pubkey-file <f>]              [--live]
 #   target-status --account <oN>
 #
-# Safety model (DECISIONS D-009): every acting verb is a DRY RUN unless
+# Safety model: every acting verb is a DRY RUN unless
 # --live is given; --live requires a prior CLEAN dry run of the same verb
 # and scope on the same box, and CONSUMES that token on entry. The serving
 # path is never cut before its replacement is functionally proven (nginx -t
@@ -162,7 +162,7 @@ _http_code_body_at() {   # 1 uri 2 addr 3 body-file
 # Self-calibrating negative control, taken once per proxy run: what does the
 # target answer for a hostname that CANNOT exist? Anything a real domain
 # answers byte-identically to that is the catch-all vhost replying, not the
-# site. Mirrored from xtrim (boa-private 22f95be12), which found retired
+# site. Mirrored from xtrim, which found retired
 # hostnames sailing through a 200-only gate on BOA's "Under Construction"
 # page. Here the stakes are the same: this gate is what allows a live site's
 # traffic to be cut over to the target.
@@ -234,7 +234,7 @@ _php_tmp() {
 }
 
 ###-------------DRY/LIVE GATE----------###
-# xoct state-file model with D-009a consumed-on-entry semantics, keyed per
+# xoct state-file model with consumed-on-entry semantics, keyed per
 # verb+scope on THIS box. A CLEAN dry run arms exactly one live run.
 
 _gate_file() { echo "${_STATE_DIR}/state/gate_${_OP}_$(_key_sanitize "$1")"; }
@@ -282,7 +282,7 @@ _stub_of() { echo "$(_pred)/a2b_503_$1.conf"; }
 # parse a site's alias for site_path/root (xoct:221-222 pattern; callers
 # pass the trailing quote - "root'" - so the pattern is NOT re-quoted here:
 # wrapping it as 'root'' can never match and every alias read comes back
-# empty, drill defect 2026-07-12)
+# empty)
 _alias_val() {
   grep "$2" "${_AEGIR_ROOT}/.drush/$1.alias.drushrc.php" 2>/dev/null \
     | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
@@ -357,8 +357,8 @@ _nginx_test_and_reload() {
 }
 
 ###-------------EMBEDDED TEMPLATES-----###
-# Derived from BOA aegir/tools/system/conf/{proxy,https_proxy_le}.conf
-# (boa-private@private-dev), adapted for a vanilla source: no http3/quic/
+# Derived from BOA aegir/tools/system/conf/{proxy,https_proxy_le}.conf,
+# adapted for a vanilla source: no http3/quic/
 # KTLS (distro nginx), cert lines point at the tool's per-domain proxy
 # cert store instead of the Octopus /data/disk layout. Proxy semantics
 # (headers incl. CF-Connecting-IP hand-off, timeouts, buffering) verbatim.
@@ -633,7 +633,7 @@ verb_check() {
   local _schema
   _schema="$(_int_only "$(_report_scalar A2B_HOSTING_SCHEMA)")"
 
-  # db-import eligibility (D-010: discovery-routed, never operator-asserted)
+  # db-import eligibility (discovery-routed, never operator-asserted)
   local _eligible=YES _why=""
   [[ "${_all_d7}" = "YES" ]] || { _eligible=NO; _why="${_why} non-D7-platform"; }
   [[ "${_single}" = "YES" ]] || { _eligible=NO; _why="${_why} multi-box"; }
@@ -661,7 +661,7 @@ verb_check() {
     _info "route auto-selected: ${_route}"
   fi
   if [[ "${_route}" = "db-import" && "${_eligible}" = "NO" ]]; then
-    _die "estate is NOT db-import eligible (${_why# }) - the per-site route applies (D-010)"
+    _die "estate is NOT db-import eligible (${_why# }) - the per-site route applies"
   fi
   if [[ "${_route}" = "db-import" && "${_ACCEPT_SCRUB}" != "YES" ]]; then
     _alrt "db-import route: review the module list above; re-run check with --accept-scrub-list to acknowledge"
@@ -819,7 +819,7 @@ verb_create() {
   _msg "LIVE create: building ${_ACCOUNT} on ${_TARGET} (${_TREE})"
   # hold the enforced post-install upgrade off for the window - in-octopus
   # backgrounds an octopus up- that would churn the fresh account
-  # (schema-spike lesson; the guard file is box-wide, removed right after)
+  # (the guard file is box-wide, removed right after)
   ssh "root@${_TARGET}" "touch /root/.dont.upgrade.octopus.on.install.cnf"
   ssh "root@${_TARGET}" "/opt/local/bin/boa in-octopus ${_EMAIL} ${_ACCOUNT} ${_TREE} ${_OPTION} ${_SUBSCR} ${_CORES} noscreen" \
     | tee -a "${_LOG}"
@@ -836,8 +836,8 @@ verb_create() {
   # second alternative's literal text, because "octopus" is a substring of
   # "in-octopus" - with redirections present the remote bash -c wrapper
   # does not exec-optimize, so its own cmdline (containing the pattern
-  # text) satisfied alternative 1 and the wait always read busy (drill
-  # defect 2026-07-12: create only returned via the 1800s timeout)
+  # text) satisfied alternative 1 and the wait always read busy - create
+  # then returned only via the 1800s timeout
   while ssh -o BatchMode=yes "root@${_TARGET}" \
     "pgrep -f '[o]ctopus.*${_ACCOUNT}|[b]oa.*in-[o]ctopus.*${_ACCOUNT}' >/dev/null 2>&1" 2>/dev/null; do
     [[ "${_waited}" -ge "${_QUIESCE_TIMEOUT}" ]] && { _alrt "target still busy after ${_QUIESCE_TIMEOUT}s - verify manually before import"; break; }
@@ -1097,8 +1097,8 @@ verb_transfer() {
           || _die "platform ${_plat} rsync failed"
         # the tree lands with the SOURCE box's numeric uids (vanilla aegir/
         # www-data mean nothing on the target) - the account user could not
-        # even read its own drushrc.php and every import task died on it
-        # (drill defect 2026-07-12); land it account-owned, BOA's verify +
+        # even read its own drushrc.php and every import task died on it;
+        # land it account-owned, BOA's verify +
         # agents apply the fork's perm scheme from there
         ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:users ${_dst}/static/a2b/${_plat}" \
           || _die "platform ${_plat} chown failed on target"
@@ -1154,7 +1154,8 @@ _t_task_nid_for() {
   _tsql "SELECT MAX(nid) FROM hosting_task WHERE rid = ${_nid} AND task_type = '$2'"
 }
 
-# wait for a hosting task node; latest vid only (D-009c)
+# wait for a hosting task node; latest vid only (finished tasks retain
+# stale status rows)
 _t_wait_task() {
   local _tnid="$1" _label="$2" _waited=0 _st _drained=0
   [[ -n "${_tnid}" && "${_tnid}" != "NULL" ]] || { _alrt "no task to wait for (${_label})"; return 1; }
@@ -1185,7 +1186,7 @@ _t_wait_task() {
   return 1
 }
 
-# account freeze marker + agent drain (schema-spike validated): owl.sh skips
+# account freeze marker + agent drain (validated on disposable VMs): owl.sh skips
 # an account carrying log/proxied.pid; destructive steps additionally wait
 # for any active owl pass to drain
 _t_freeze_on() {
@@ -1207,8 +1208,8 @@ _t_owl_drain() {
 # ONLY /run/boa_queue_stop.pid (runner.sh:51,128) - NOT the proxied.pid
 # marker. renameaegirhost's atomic dump+sed+reimport documents "assumes BOA
 # cron is not running (caller must ensure this)" - so the db-import window
-# holds THIS account's dispatcher aside (the schema-spike drill's proven
-# mechanism) and drains any in-flight pass before surgery.
+# holds THIS account's dispatcher aside (a proven, reversible hold) and
+# drains any in-flight pass before surgery.
 # The held-aside file MUST leave /var/xdrago entirely: runner.sh selects
 # dispatchers with `find /var/xdrago -maxdepth 1 -type f | grep run-`
 # (runner.sh:122-125), which still matches ANY off-name retaining the
@@ -1266,7 +1267,7 @@ _t_panel_domain() {
 # flips it to PROCESSING and executes it synchronously in the same process
 # (task.hosting.inc) - deterministic, no dispatcher dependency, so the
 # whole import can run with the account dispatcher held aside. The latest
-# vid is still polled afterwards (D-009c) as the completion proof.
+# vid is still polled afterwards as the completion proof.
 _t_verify_inline() {   # 1 context-name 2 label
   _as_octo "drush8 @hostmaster hosting-task @$1 verify" >>"${_LOG}" 2>&1
   _t_wait_task "$(_t_task_nid_for "$1" verify)" "$2"
@@ -1284,7 +1285,7 @@ _t_verify_inline() {   # 1 context-name 2 label
 # marker is up, but manage_ltd_users (the every-3-min agent that spawns
 # the per-version pools and applies multi-fpm.info) SKIPS any account
 # carrying log/proxied.pid - an in-window socket wait can never succeed
-# on a fresh account (drill 2026-07-12: 2x420s dead wait; every pool
+# on a fresh account (observed: two 420s dead waits; every pool
 # appeared on the agent's first pass after the freeze lifted). Map early,
 # wait only after the freeze is off.
 _FPM_WANT=""
@@ -1625,7 +1626,7 @@ PHPEOF
   # PHP-serialized variable values whose byte length changes, keys the
   # server rename on the FQDN while the server node title is php_uname('n')
   # (may be a short nodename the FQDN sed silently misses), and its §7
-  # replay drives the queue with `hosting-tasks --force` (D-009c forbids).
+  # replay drives the queue with `hosting-tasks --force` (forbidden here).
   # Instead: targeted UPDATEs by nid, then deterministic inline verifies.
   #
   # 11pre. platform-verify auto-import OFF for the window (same
@@ -1644,7 +1645,7 @@ PHPEOF
   #   domain.txt already carry it, so the imported panel adopts the
   #   existing consistent identity (keeping the SOURCE panel domain would
   #   need a fresh sites/<old-domain>/ whose regenerated settings.php has
-  #   no db creds - panel down; recorded as v2 work, DECISIONS D-012).
+  #   no db creds - panel down; deliberately out of scope here).
   # - imported hostmaster PLATFORM publish_path -> the account's real
   #   distro platform: vanilla installs hostmaster at
   #   <aegir-root>/hostmaster-<ver>, NOT under platforms/, so step 5b's
@@ -1677,8 +1678,8 @@ PHPEOF
   # 11a2. db-server identity restore: the imported server_localhost node
   # carries the SOURCE box's DB credentials (vanilla stores the root DSN
   # on the db server node) - its verify provision-saves that DSN into the
-  # account's alias and every DB op fails "Access denied" (drill defect
-  # 2026-07-12). Restore the TARGET account's own db-server credentials
+  # account's alias and every DB op fails "Access denied".
+  # Restore the TARGET account's own db-server credentials
   # (BOA scheme: SQL user named <oN>) from the step-1 snapshot artifact,
   # which holds the fresh pre-import hosting_db_server row.
   if [[ ! -e "${_step}.11a2.done" ]]; then
@@ -1893,8 +1894,8 @@ PHPEOF
     # hosting-import node_save()s a new site node with import=TRUE, which
     # queues the import task. On an EXISTING node (retry after a failed
     # round) it only updates the node with no_verify=TRUE and queues
-    # NOTHING - the tool then polled the OLD failed task nid and insta-
-    # failed (drill defect 2026-07-12). Detect that no new task was born
+    # NOTHING - polling the OLD failed task nid would insta-fail.
+    # Detect that no new task was born
     # and drive one inline (hosting-task <ctx> import runs synchronously).
     local _itnid _prev_itnid
     _prev_itnid="$(_int_only "$(_t_task_nid_for "${_uri}" import)")"
@@ -2006,9 +2007,9 @@ verb_import() {
 # before the first command. That is the step everyone gets wrong: the
 # target's lfd reads the first key-scan burst as an attack and blocks port
 # 22, and the operator is then debugging a firewall instead of a migration.
-# BOA's own xmass learned the same lesson (boa-private 5c025fd37 opens BOTH
-# csf.allow and csf.ignore for a migration peer; 2f8e5c974 makes the tool
-# arrange its own reachability).
+# BOA's own xmass learned the same lesson: it opens BOTH csf.allow and
+# csf.ignore for a migration peer and arranges its own reachability
+# rather than asking the operator to.
 #
 # Source side:  peer --target <ip>   generate/keep a dedicated key, print the
 #                                    exact one-liner to run on the target,
@@ -2198,7 +2199,7 @@ _proxy_one() {   # 1 uri
   _marker_has "${_uri}.exported.pid" || { _alrt "site ${_uri}: not exported - SKIP"; return 1; }
   [[ -e "${_vh}" ]] || { _alrt "site ${_uri}: vhost missing - SKIP"; return 1; }
 
-  # D-009b: the replacement must be functionally proven FIRST - the target
+  # The replacement must be functionally proven FIRST - the target
   # must answer for this site before its traffic is cut over
   _base="$(_manifest_val "${_mf}" BASELINE)"
   local _body="/tmp/.a2b-proxy-probe.$$"
@@ -2306,7 +2307,7 @@ verb_proxy() {
   done
 
   # hostmaster handling on --all: BOTH routes retire the old panel domain
-  # behind a permanent 503 stub (D-012: on the db-import route the imported
+  # behind a permanent 503 stub (on the db-import route the imported
   # panel ADOPTS the target account identity <oN>.<target-fqdn>, so the old
   # panel domain has no vhost on the target - proxying it would hit BOA's
   # default vhost with wrong content; the operator communicates the new URL)

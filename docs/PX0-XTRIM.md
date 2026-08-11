@@ -71,8 +71,8 @@ ITS host, never the source's, so a name match would refuse every migrated
 source. They are proved instead by a live account of the same number on
 the target (account tree, `log/cores.txt` and hostmaster alias all
 present). Stage B re-proves with the SAME classification between dump and
-drop — an earlier mismatch there aborted every shrink after the dumps had
-already been taken. The SQL endpoint must be this box's own server.
+drop, so a classification change between the two can never abort a shrink
+after the dumps are taken. The SQL endpoint must be this box's own server.
 
 ## What the stages do
 
@@ -98,11 +98,9 @@ keeps serving throughout: nothing in stage B is in its dependency set.
 The irreversible phase stamp lands just before the FIRST drop, not at
 function entry. Everything above it — dump, verify, re-proof — deletes
 nothing, so an abort there leaves the account quiesced, dumps written,
-and `restore` still available. Stamping at entry made `restore` refuse
-after failures that had destroyed nothing. A real abort proved this: a
-stage B whose re-proof was still name-matching stopped after taking both
-dumps, and the account came back at phase `stage-a` with every database
-and tree intact.
+and `restore` still available: an abort anywhere above the stamp returns
+the account at phase `stage-a` with every database and tree intact —
+a path exercised end-to-end on disposable VMs.
 
 `restore` puts stage A back — pools, includes, cores, nginx — with one
 deliberate exception: a PROXIED account does NOT get its dispatcher
@@ -119,8 +117,8 @@ stands down every FPM master except the panel front's, and LAST touches
 `/root/.proxy.cnf`, which stands the BOA machinery down while the nginx
 watchdog keeps running.
 
-The proxy marker was re-evaluated (Adam's ruling, 2026-08-09) and
-narrowed to its role: a finalized proxy is a LIVE server. Still
+The proxy marker is narrowed to its role: a finalized proxy is a LIVE
+server. Still
 running: second.sh (IDS scanners + service watchdogs), clear.sh (the
 5-minute channel INCLUDING tool self-updates — validated live: a
 published tool landed on a finalized proxy through the normal
@@ -130,7 +128,8 @@ that survive finalize), loadreport --log (relay load is the point).
 Still gated: owl.sh (night worker — per-site/account work, meaningless
 here; proxied-account certs renew on the target and mirror back), all
 mysql_* tools and move_sql.sh (the monitor must never resurrect what
-finalize stood down — the L4-proven invariant), sqlmagic-class DB
+finalize stood down — an invariant validated end-to-end on disposable
+VMs), sqlmagic-class DB
 work. nginx + cron are boot-registered unconditionally in
 _initd_update, and nginx config mutations reload on proxies too. The
 PHP-idle path no longer borrows this marker as a transient mute: it
