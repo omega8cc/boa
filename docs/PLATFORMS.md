@@ -22,7 +22,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [LocalGov 4.0.2](https://drupal.org/project/localgov) (11.4.5)
 - [OpenCulturas 3.0.5](https://drupal.org/project/openculturas) (11.3.16)
 - [Thunder 8.4.0](https://drupal.org/project/thunder) (11.4.5)
-- [Varbase 10.1.0](https://drupal.org/project/varbase) (11.3.12)
+- [Varbase 10.1.1](https://drupal.org/project/varbase) (11.4.4)
 
 ## Drupal 10
 
@@ -86,13 +86,13 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `CMS` — Drupal CMS
 - `LGV` — LocalGov
 - `THR` — Thunder
+- `VBX` — Varbase 10
 
 ### Drupal 11.3
 
 - `DE3` — Drupal 11.3 prod/stage/dev
 - `FOS` — farmOS
 - `OCS` — OpenCulturas
-- `VBX` — Varbase 10
 
 ### Drupal 11.2
 
