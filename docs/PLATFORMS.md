@@ -35,7 +35,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.5.12](https://drupal.org/project/drupal/releases/10.5.12)
 - [Drupal 10.6.15](https://drupal.org/project/drupal/releases/10.6.15)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
+- [OpenFed 13.6.6](https://drupal.org/project/openfed) (10.6.15)
 - [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.15)
 - [Social 13.0.2](https://drupal.org/project/social) (10.6.15)
 
@@ -105,6 +105,7 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 10.6
 
 - `DX6` — Drupal 10.6 prod/stage/dev
+- `OFD` — OpenFed
 - `OPG` — Opigno LMS
 - `SOC` — Social
 
@@ -124,7 +125,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 10.2
 
 - `DX2` — Drupal 10.2 prod/stage/dev
-- `OFD` — OpenFed
 
 ### Drupal 10.1
 
