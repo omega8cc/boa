@@ -2516,6 +2516,15 @@ _xmass_sync_account() {
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
   _xmass_sync_static_symlink_safe "${_udir}" "${_dst}" "${_TGT_MNT}"
 
+  # src/ is a real account directory created by the Octopus installer, not a
+  # migration scratch dir -- the old tool, xoct and xcopy all carry it, and
+  # xmass alone dropped the leg. Guarded because an account that has never
+  # used it legitimately has no src/.
+  if [ -d "${_udir}/src" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+      "${_udir}/src/" "root@${_tgt}:${_dst}/src/"
+  fi
+
   # Log and control files (includes domain.txt, email.txt, etc.).
   # proxied.pid and migproxy.cnf are TARGET-ROLE state and must never arrive
   # from the source: on the documented reset-phase recovery path the source
@@ -2553,7 +2562,18 @@ _xmass_sync_account() {
     -e ssh "${_udir}/config/server_master/nginx/vhost.d/" \
     "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/"
 
+  # These six are OPTIONAL: an account without subdir.d, or without any SSL
+  # material, is perfectly normal. rsync answers a missing source with rc 23,
+  # which _xmass_rsync correctly treats as DENY -- and the caller then _die's,
+  # aborting a cutover with the SOURCE ALREADY IN 503. The old procedure
+  # suppressed errors on exactly these transfers; skipping what does not exist
+  # is the same intent stated precisely, and leaves a real rsync failure on a
+  # directory that IS there still fatal. Never silent: a skip is logged.
   for _subdir in pre.d post.d subdir.d platform.d; do
+    if [ ! -d "${_udir}/config/server_master/nginx/${_subdir}" ]; then
+      _info "  no ${_subdir} on this account — nothing to send"
+      continue
+    fi
     _xmass_rsync -aEAXqu ${_ieni} \
       -e ssh "${_udir}/config/server_master/nginx/${_subdir}/" \
       "root@${_tgt}:${_dst}/config/server_master/nginx/${_subdir}/" \
@@ -2561,15 +2581,27 @@ _xmass_sync_account() {
   done
 
   # SSL certificates and LE config
-  _xmass_rsync -aEAXqu ${_ieni} \
-    -e ssh "${_udir}/config/ssl.d/" \
-    "root@${_tgt}:${_dst}/config/ssl.d/"
-  _xmass_rsync -aEAXqu ${_ieni} \
-    -e ssh "${_udir}/config/server_master/ssl.d/" \
-    "root@${_tgt}:${_dst}/config/server_master/ssl.d/"
-  _xmass_rsync -aEAXqu ${_ieni} \
-    -e ssh "${_udir}/tools/le" \
-    "root@${_tgt}:${_dst}/tools/"
+  if [ -d "${_udir}/config/ssl.d" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} \
+      -e ssh "${_udir}/config/ssl.d/" \
+      "root@${_tgt}:${_dst}/config/ssl.d/"
+  else
+    _info "  no config/ssl.d on this account — nothing to send"
+  fi
+  if [ -d "${_udir}/config/server_master/ssl.d" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} \
+      -e ssh "${_udir}/config/server_master/ssl.d/" \
+      "root@${_tgt}:${_dst}/config/server_master/ssl.d/"
+  else
+    _info "  no server_master/ssl.d on this account — nothing to send"
+  fi
+  if [ -d "${_udir}/tools/le" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} \
+      -e ssh "${_udir}/tools/le" \
+      "root@${_tgt}:${_dst}/tools/"
+  else
+    _info "  no tools/le on this account — nothing to send"
+  fi
 
   # FTP account SSH keys
   if [ -d "/home/${_oct}.ftp/.ssh" ]; then
@@ -2914,6 +2946,42 @@ _xmass_remove_http_off_target() {
 # query-kills MySQL mid xtrabackup snapshot, replica setup, or the cutover
 # FLUSH lock. Best-effort on the target; the watchdog self-ignores a stale
 # marker (>4h) and /run is tmpfs, so a died operation never wedges auto-heal.
+_xmass_report_queued_tasks() {
+  # What is sitting in the panel queues at the moment the box moves.
+  #
+  # The whole hostmaster DB travels by replication, rows and all, and cutover
+  # then runs `hosting-tasks --force` on the target -- so anything queued here
+  # executes THERE, against new production. The dangerous type, `delete`, is
+  # purged outright at init (_xmass_clear_pending_deletes, matching what the
+  # old tool did on every export). The rest are mostly benign and some are
+  # wanted, so this reports rather than deletes: an operator who queued a
+  # migrate or a restore minutes before cutover should see it named here
+  # instead of discovering it ran on the new box.
+  #
+  # Deliberately NOT maintenance_mode. xoct sets it at export, but that path
+  # is never reached in the xmass flow, and porting it is not a lift: set
+  # before promotion it replicates INTO new production and leaves the new
+  # panel in maintenance, and set after the write freeze a `drush
+  # variable-set` is blocked by the readonly flag the freeze just turned on.
+  local _oct _rows _total=0
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _rows=$(su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"SELECT CONCAT(task_type,'=',COUNT(*)) FROM hosting_task WHERE task_status IN (0,-1) GROUP BY task_type\"" \
+      2>/dev/null | tr '\n' ' ')
+    _rows=$(echo ${_rows})
+    if [ -n "${_rows}" ]; then
+      _alrt "  ${_oct}: queued/interrupted panel tasks travelling to the target: ${_rows}"
+      _total=$(( _total + 1 ))
+    fi
+  done
+  if [ "${_total}" -eq 0 ]; then
+    _info "  no queued or interrupted panel tasks on any account"
+  else
+    _alrt "  these will run on the TARGET when cutover starts its queue — cancel any you do not want"
+  fi
+  return 0
+}
+
 _xmass_maint_on() {
   : > /run/boa_sql_maintenance.pid
   ssh root@"${_tgt}" ": > /run/boa_sql_maintenance.pid" 2>/dev/null || true
@@ -3350,11 +3418,29 @@ for _bak in "\${_vhd}"/.[a-zA-Z0-9]*; do
   _dom="\$(basename "\${_bak}")"
   _dom="\${_dom#.}"
   [ -n "\${_dom}" ] || continue
+  ### A saved https vhost is handled with its :80 partner below, never on
+  ### its own -- otherwise it is restored twice and counted twice.
+  case "\${_dom}" in https.*) continue ;; esac
   if [ -f "\${_vhd}/\${_dom}" ] \
     && grep -q "proxy_pass" "\${_vhd}/\${_dom}" 2>/dev/null; then
     mv -f "\${_bak}" "\${_vhd}/\${_dom}"
     _restored=\$(( _restored + 1 ))
     echo "  ${_oct}: restored pre-proxy vhost \${_dom}"
+    ### The :443 companion relays to the demoted sibling as well. Restoring
+    ### only :80 leaves the very loop this function exists to break alive on
+    ### TLS -- nginx surfaces it as a 400 header-too-large, which reads like
+    ### anything but a relay loop.
+    if [ -f "\${_vhd}/https.\${_dom}" ] \
+      && grep -q "proxy_pass" "\${_vhd}/https.\${_dom}" 2>/dev/null; then
+      if [ -f "\${_vhd}/.https.\${_dom}" ]; then
+        mv -f "\${_vhd}/.https.\${_dom}" "\${_vhd}/https.\${_dom}"
+        echo "  ${_oct}: restored pre-proxy https vhost \${_dom}"
+      else
+        rm -f "\${_vhd}/https.\${_dom}"
+        echo "  ${_oct}: removed https proxy companion \${_dom} (no saved original)"
+      fi
+      _restored=\$(( _restored + 1 ))
+    fi
   fi
 done
 if [ "\${_restored}" -gt 0 ]; then
@@ -3553,6 +3639,44 @@ _xmass_prepare_target_reach() {
   _xmass_csf_allow_peer "${_t}" target
 }
 
+_xmass_boa_release() {
+  ### The release number out of `boa info`'s stamp, e.g. BOA-5.88.844-lts-...
+  ### -> 5.88.844. Empty when it cannot be read, which the caller treats as
+  ### fatal rather than as "probably fine".
+  local _where="$1"
+  local _raw
+  if [ "${_where}" = "local" ]; then
+    _raw=$(boa info 2>/dev/null | grep -oE "BOA-[0-9.]+-" | head -1)
+  else
+    _raw=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
+      "boa info 2>/dev/null | grep -oE 'BOA-[0-9.]+-' | head -1" 2>/dev/null)
+  fi
+  _raw="${_raw#BOA-}"
+  _raw="${_raw%-}"
+  echo "${_raw}"
+}
+
+_xmass_assert_same_release() {
+  local _t="$1"
+  local _src _dst
+  _src=$(_xmass_boa_release local)
+  _dst=$(_xmass_boa_release "${_t}")
+  [ -n "${_src}" ] \
+    || _die "cannot read this box's BOA release from 'boa info' -- refusing to migrate blind"
+  [ -n "${_dst}" ] \
+    || _die "cannot read the target's BOA release from 'boa info' on ${_t} -- refusing to migrate blind"
+  if [ "${_src}" != "${_dst}" ]; then
+    _alrt "source runs BOA-${_src}, target ${_t} runs BOA-${_dst}"
+    _die "both boxes must run the SAME BOA release before any migration." \
+         " provision gains central-map nginx variables between releases, and a" \
+         " target missing one takes down EVERY migrated site on that box." \
+         " Bring the OLDER box up first with a FULL run -- barracuda AND" \
+         " octopus, not just one of them -- then re-run prep-target."
+  fi
+  _info "  BOA release matches on both ends: ${_src}"
+  return 0
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -3568,6 +3692,9 @@ _xmass_cmd_prep_target() {
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
   _xmass_enumerate_accounts
+  # The target may have been prepared days ago, or by an operator who never ran
+  # pre-mig there. Force its tools current before it is measured or written to.
+  _xmass_force_tool_update "${_tgt}"
   _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
@@ -3581,6 +3708,20 @@ _xmass_cmd_prep_target() {
             " ${_XMASS_SRC_IP:-<source-ip>}' so it cannot come back;" \
             " (3) first contact needs the target's host key here —" \
             " 'ssh-keyscan -H ${_tgt} >> /root/.ssh/known_hosts'."
+
+  # B4: the same BOA RELEASE on both ends, which the old runbook stated as its
+  # one hard requirement and the rewrite never checked -- while this file's own
+  # comments assert the property and build healing logic on it. It is not a
+  # nicety: provision gains central-map nginx variables between releases, and a
+  # target missing one takes down EVERY migrated site on the box, not just the
+  # site that needed it. Checked here, at first target contact, because after
+  # init there is a datadir swap to undo.
+  #
+  # The TREE may differ on purpose (an account can move lts -> pro), so only
+  # the release number is compared. No override: "bring both boxes to the same
+  # release" is always the correct action and is always available, and an
+  # override here buys a box-wide outage.
+  _xmass_assert_same_release "${_tgt}"
 
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
   # guard temp-denies, and the target dials BACK to source:3306 for
@@ -3730,6 +3871,60 @@ _xmass_cmd_verify() {
   _info "verify sweep complete (read-only)"
 }
 
+_xmass_force_tool_update() {
+  # Foolproof the tools this procedure runs on, instead of trusting that the
+  # ordinary channel already refreshed them. A box can carry an ARMED marker
+  # for the current serial while still holding the previous bytes -- measured
+  # on a migration target 2026-08-11 -- and then declines to look again until
+  # its hard window expires. A migration is exactly the wrong place to find
+  # out you were running last week's tool, so drop the markers and run the
+  # 5-minute channel synchronously.
+  #
+  # $1: empty for this box, or a target IP to force remotely.
+  local _where="${1:-}"
+  local _t
+  local _tools="xmass xoct xcopy xtrim renameaegirhost ffmirror"
+
+  if [ -n "${_where}" ]; then
+    ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
+      "for t in ${_tools}; do rm -f /var/log/boa/\${t}.ctrl.*; done; \
+       [ -x /var/xdrago/clear.sh ] && bash /var/xdrago/clear.sh &>/dev/null; true" \
+      2>/dev/null
+    _info "  forced a tool refresh on ${_where}"
+    return 0
+  fi
+
+  if [ ! -e "/var/xdrago/clear.sh" ]; then
+    _alrt "  /var/xdrago/clear.sh is missing — cannot force a tool refresh here"
+    return 0
+  fi
+
+  # The tool running this code needs no special handling: _fetch_versioned
+  # refuses to replace a tool whose process is live ("The <tool> is
+  # running!", BOA.sh.txt) and returns before it stamps anything, so xmass
+  # cannot be swapped underneath this run and its marker simply stays cleared
+  # — the next 5-minute pass refreshes it once this run has exited. Listing it
+  # here is therefore what makes it current for the NEXT verb, not this one.
+  for _t in ${_tools}; do
+    rm -f /var/log/boa/${_t}.ctrl.*
+  done
+  bash /var/xdrago/clear.sh &>/dev/null
+
+  local _mrk
+  for _t in ${_tools}; do
+    _mrk=$(ls /var/log/boa/${_t}.ctrl.* 2>/dev/null | head -1)
+    if [ -n "${_mrk}" ]; then
+      _info "  $(basename "${_mrk}" | sed 's|\.ctrl\.| |; s|\..*||')"
+    else
+      ### No marker means the fetch declined because that tool is running --
+      ### which is the tool executing this line. It refreshes on the next
+      ### 5-minute pass, once this run has exited.
+      _info "  ${_t} (refresh deferred — running now)"
+    fi
+  done
+  return 0
+}
+
 _xmass_pre_mig() {
   # Stop BOA background jobs and exchange SSH keys between source and target.
   # Run on BOTH hosts: first on source (to publish its pub key),
@@ -3738,6 +3933,10 @@ _xmass_pre_mig() {
     _die "Cannot run pre-mig on a parent/host system"
   fi
   _info "Running pre-mig on ${_hName} ..."
+  # FIRST, before anything is parked: make sure this box's migration tools are
+  # the published ones. Done here because pre-mig runs on BOTH hosts.
+  _info "Forcing a tool refresh so this migration runs on current code ..."
+  _xmass_force_tool_update
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_script}" ]; then
       mv -f "/var/xdrago/${_script}" "/var/xdrago/.${_script}.off"
@@ -3762,7 +3961,13 @@ _xmass_pre_mig() {
     _info "Target mode: fetching and installing source SSH key ..."
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
-    rm -f /root/.ssh/auth_undefined_keys.txt
+    rm -f /root/.ssh/auth_undefined_keys.txt*
+    ### ...and this box's OWN published copy, which xoct and xcopy both remove
+    ### and xmass did not. A target that was ever a source (or had pre-mig run
+    ### in source mode) goes on serving a root public key at
+    ### http://undefined.<this box>/auth_undefined_keys.txt indefinitely, and
+    ### a later migration can fetch the wrong box's key from it.
+    rm -f /var/www/nginx-default/auth_undefined_keys.txt*
     curl -s -A iCab \
       "http://undefined.${_hst}/auth_undefined_keys.txt" \
       -o /root/.ssh/auth_undefined_keys.txt \
@@ -3998,7 +4203,11 @@ _xmass_cmd_sync() {
   else
     _info "xmass sync: DRY run — planning file relocation to ${_tgt} (no changes made) ..."
   fi
-  _xmass_enumerate_accounts
+  # (Accounts were enumerated above, before the readiness gates. Nothing
+  # between here and there can change /data/disk, and only this function
+  # assigns _ELIGIBLE_ACCOUNTS -- so a second full find plus five file tests
+  # per account bought nothing except printing the eligible/skipped block to
+  # the operator twice, which reads like two different passes.)
   _xmass_sync_shared
   _xmass_sync_solr
   local _oct
@@ -4413,6 +4622,10 @@ _xmass_cmd_cutover() {
   # DATA LOSS. Also covers the target promote + renameaegirhost DB work.
   _xmass_maint_on
 
+  # What is queued in the panels right now, before anything is blocked: it
+  # travels with the DB and runs on the target.
+  _xmass_report_queued_tasks
+
   # Step 0: Re-hold Solr on target in case it was manually started since init.
   # Also stops any running instance so the final Solr rsync gets a clean state.
   _xmass_prevent_solr_target
@@ -4541,10 +4754,28 @@ _xmass_cmd_cutover() {
   # Step 11: Drop the replication user from source (no longer needed)
   _xmass_drop_repl_user
 
-  # Step 12: Start nginx on target so it can serve proxied traffic immediately
+  # Step 12: Start nginx on target so it can serve proxied traffic immediately.
+  #
+  # PROVE it came up. This is the last moment before the source is converted
+  # into a proxy pointing here and its 503 gate is lifted, so if the target's
+  # nginx is not actually serving, every site on the pair is down and the
+  # operator finds out from customers. The old procedure made this a discrete,
+  # operator-read step; automating it with stdout, stderr and rc all discarded
+  # removed the reading, not the risk. `nginx -t` first, because a config that
+  # fails the test cannot be fixed by trying harder to start it.
   _info "Starting nginx on target ${_tgt} ..."
+  if ! ssh root@"${_tgt}" "nginx -t" &>/dev/null; then
+    _alrt "target ${_tgt}: nginx -t FAILED — output follows:"
+    ssh root@"${_tgt}" "nginx -t" 2>&1 | tail -n 10
+    _die "refusing to convert the source into a proxy pointing at a target whose nginx config is invalid"
+  fi
   ssh root@"${_tgt}" \
-    "service nginx start &>/dev/null || service nginx reload &>/dev/null"
+    "service nginx start &>/dev/null || service nginx reload &>/dev/null; true"
+  if ! ssh root@"${_tgt}" \
+    "curl -s -o /dev/null --max-time 15 -w '%{http_code}' http://127.0.0.1/ 2>/dev/null | grep -qE '^[0-9]{3}$'"; then
+    _die "target ${_tgt}: nginx is not answering on port 80 after start — refusing to proxy the source at it"
+  fi
+  _info "  target nginx validated and answering"
 
   # Steps 13..18 + completion — shared with the 'rename-failed' resume path
   _xmass_cutover_finish

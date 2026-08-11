@@ -33,6 +33,7 @@ Distributions, published to `/var/www/static/distro`:
   farm-4.0.4-11.3.14
   localgov-4.0.2-11.4.5
   openculturas-3.0.5-11.3.16
+  social-13.0.2-10.6.15
   thunder-8.4.0-11.4.5
 ```
 
@@ -115,6 +116,7 @@ Four artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   https://www.drupal.org/project/farm
   https://www.drupal.org/project/localgov
   https://www.drupal.org/project/openculturas
+  https://www.drupal.org/project/social
   https://www.drupal.org/project/thunder
 ```
 
@@ -178,6 +180,24 @@ localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.2-1
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
+```
+
+```sh
+social     # Open Social ships NO create-project template for its current major:
+           # goalgorilla/social_template is frozen at 12.4.2 on core 10.2.6. Take that
+           # template as the chassis - it owns the html/ docroot, the scaffold locations
+           # and the installer-paths upstream itself defined - and move only the
+           # distribution to the current major.
+           # composer create-project goalgorilla/social_template:dev-master social-13.0.2-10.6.15 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/social-13.0.2-10.6.15
+           # composer config --no-plugins allow-plugins true
+           # composer require --no-update --no-scripts goalgorilla/open_social:^13
+           # composer update --no-install --no-scripts
+           # composer install --no-dev
+           # name by goalgorilla/open_social read from the LOCK (13.0.2) - upstream's
+           # 13.0.2 tag still declares version '13.0.1' inside social.info.yml
+           # builds under php83: 13.0.2 requires php ^8.3 and SOC is capped at 8.3
+           # docroot is html/ (not web/), and a fresh install's front page is bare
 ```
 
 ```sh

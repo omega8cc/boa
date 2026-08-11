@@ -730,6 +730,28 @@ _xoct_flush_caches_target() {
   done
 }
 
+_xoct_revert_converted_vhosts() {
+  ### Put every vhost this run converted back to the state it was in before,
+  ### which is BOTH halves: the :80 vhost from its dot-backup and the site's
+  ### real :443 block, saved as .https.<dom> when the proxy template landed on
+  ### top of it. Deleting https.<dom> alone is not a revert -- pre-conversion
+  ### those sites were serving TLS, and the message that followed said the
+  ### config was valid again, which was true for nginx and untrue for the
+  ### customer. Its own function so a fixture can prove the pairing.
+  local _vhd="$1"
+  local _doms="$2"
+  local _rvd
+  for _rvd in ${_doms}; do
+    [ -f "${_vhd}/.${_rvd}" ] || continue
+    rm -f "${_vhd}/https.${_rvd}"
+    if [ -f "${_vhd}/.https.${_rvd}" ]; then
+      mv -f "${_vhd}/.https.${_rvd}" "${_vhd}/https.${_rvd}"
+    fi
+    mv -f "${_vhd}/.${_rvd}" "${_vhd}/${_rvd}"
+  done
+  return 0
+}
+
 _xoct_ssl_material_missing() {
   ### Echo the cert files the HTTPS proxy template references that do NOT
   ### exist, named relative to the account root; empty output means the
@@ -1047,6 +1069,17 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             _SSL_MISSING=$(_xoct_ssl_material_missing "${_USR}" "${_Dom}")
             if [ -z "${_SSL_MISSING}" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
+              ### Save the site's REAL https vhost before the proxy template
+              ### lands on top of it, exactly as ${_Vht} is saved below. It was
+              ### being overwritten with no backup, so the configtest revert
+              ### could only delete https.<dom> and leave the site with NO 443
+              ### server block at all -- while announcing "reverted to the
+              ### pre-conversion vhosts", which was untrue for TLS. Preserve
+              ### the FIRST copy only: on a repair pass ${_Vhs} is already the
+              ### proxy template and would destroy the saved original.
+              if [ -f "${_Vhs}" ] && [ ! -f "${_Vhs%/*}/.https.${_Dom}" ]; then
+                cp -a ${_Vhs} ${_Vhs%/*}/.https.${_Dom}
+              fi
               cp -a /var/xdrago/conf/https_proxy_le.conf ${_Vhs}
               sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vhs}
               wait
@@ -1511,7 +1544,14 @@ _xoct_seed_target_control_pins() {
       "${_sUsr}/${_f}" \
       "root@${_t}:${_dUsr}/${_f}"
   done
-  ssh root@"${_t}" "chown ${_dAcct}.ftp:users ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info" &> /dev/null
+  ### multi-fpm.info gets the same owner as its two siblings. It was left out,
+  ### so it kept the SOURCE's owner name -- which in rename mode does not
+  ### exist on the target and resolves to a bare numeric uid. The `find -user`
+  ### remap that would otherwise repair it is gated on `id <src>.ftp`
+  ### succeeding there, so in exactly that case it never fires. It matters
+  ### more now that renameaegirhost §2d rewrites this file during a rename:
+  ### two writers, one of which was leaving it mis-owned.
+  ssh root@"${_t}" "chown ${_dAcct}.ftp:users ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
   return 0
 }
 
@@ -3312,15 +3352,35 @@ _migrate_init() {
       echo "ERROR: ${_cmd} for ${_oct}: arch could not be placed on the target (see DENY above); refusing"
       exit 1
     fi
-    if [ -e "/opt/solr4" ] && _xoct_solr_check "/opt/solr4" "/opt" "solr4"; then
+    ### A Solr leg that does not fit is a HARD STOP, as it is in xmass and as
+    ### it was in the old tool, which always ran the rsync so a space problem
+    ### surfaced loudly on the console. Skipping it and carrying on migrates
+    ### the account WITHOUT its search indices and still finishes "clean":
+    ### nothing in the LIVE path ever reads _XOCT_NOT_CLEAN.
+    if [ -e "/opt/solr4" ]; then
+      if ! _xoct_solr_check "/opt/solr4" "/opt" "solr4"; then
+        echo "ERROR: solr4 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to migrate ${_oct} without its search indices"
+        exit 1
+      fi
       _xoct_rsync -aEAXq ${_ieni} -e ssh /opt/solr4 root@${_tgt}:/opt/
       echo "INFO: ${_cmd} for ${_oct} /opt/solr4 complete"
     fi
-    if [ -e "/var/solr7/data" ] && _xoct_solr_check "/var/solr7/data" "/var/solr7" "solr7"; then
+    if [ -e "/var/solr7/data" ]; then
+      if ! _xoct_solr_check "/var/solr7/data" "/var/solr7" "solr7"; then
+        echo "ERROR: solr7 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to migrate ${_oct} without its search indices"
+        exit 1
+      fi
       _xoct_rsync -aEAXq ${_ieni} -e ssh /var/solr7/data root@${_tgt}:/var/solr7/
       echo "INFO: ${_cmd} for ${_oct} /var/solr7/data complete"
     fi
-    if [ -e "/var/solr9/data" ] && _xoct_solr_check "/var/solr9/data" "/var/solr9" "solr9"; then
+    if [ -e "/var/solr9/data" ]; then
+      if ! _xoct_solr_check "/var/solr9/data" "/var/solr9" "solr9"; then
+        echo "ERROR: solr9 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to migrate ${_oct} without its search indices"
+        exit 1
+      fi
       _xoct_rsync -aEAXq ${_ieni} -e ssh /var/solr9/data root@${_tgt}:/var/solr9/
       echo "INFO: ${_cmd} for ${_oct} /var/solr9/data complete"
     fi
@@ -3626,12 +3686,9 @@ _migrate_init() {
               ### A first conversion: reverting to the saved originals is
               ### exactly the pre-conversion state, so restore what THIS run
               ### rewrote and prove the config is valid again.
-              for _rvd in ${_XOCT_CONVERTED_DOMS}; do
-                [ -f "${_USR}/config/server_master/nginx/vhost.d/.${_rvd}" ] || continue
-                rm -f "${_USR}/config/server_master/nginx/vhost.d/https.${_rvd}"
-                mv -f "${_USR}/config/server_master/nginx/vhost.d/.${_rvd}" \
-                  "${_USR}/config/server_master/nginx/vhost.d/${_rvd}"
-              done
+              _xoct_revert_converted_vhosts \
+                "${_USR}/config/server_master/nginx/vhost.d" \
+                "${_XOCT_CONVERTED_DOMS}"
               if nginx -t &> /dev/null; then
                 echo "INFO: reverted to the pre-conversion vhosts; nginx config is valid again"
               else
@@ -3905,8 +3962,26 @@ _sub_ssl_gen() {
         _single=NO
       fi
       ###
-      _Pln="/var/aegir/config/server_master/nginx/pre.d/z_${_domain_name}_pln_proxy.conf"
-      _Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_domain_name}_ssl_proxy.conf"
+      ### Check the directory actually written into, not an unrelated install
+      ### marker. The old guard tested the real write target; the rewrite tests
+      ### /var/aegir/.drush/hm.alias.drushrc.php instead and nothing here
+      ### creates pre.d -- so on a master where it is missing every cp fails,
+      ### each sed then edits a file that does not exist, and the loop still
+      ### announces "OK created". The result is a proxy with no proxy config.
+      _PreD="/var/aegir/config/server_master/nginx/pre.d"
+      if [ ! -d "${_PreD}" ]; then
+        mkdir -p "${_PreD}" 2>/dev/null
+        [ -d "/var/aegir/config/server_master/nginx" ] \
+          && chown --reference=/var/aegir/config/server_master/nginx \
+             "${_PreD}" 2>/dev/null
+      fi
+      if [ ! -d "${_PreD}" ]; then
+        echo "ERROR: ${_PreD} is missing and cannot be created"
+        echo "ERROR: NO proxy config written for ${_domain_name}"
+        continue
+      fi
+      _Pln="${_PreD}/z_${_domain_name}_pln_proxy.conf"
+      _Ssl="${_PreD}/z_${_domain_name}_ssl_proxy.conf"
       ###
       if [ "${_single}" = "YES" ]; then
         rm -f ${_Pln}
@@ -3924,7 +3999,13 @@ _sub_ssl_gen() {
         wait
         sed -i "s/_dedicated_sn/${_dedicated_sn}/g" ${_Pln}
         wait
-        echo OK created ${_Pln}
+        ### Say "created" only when it is there. The unconditional echo was
+        ### the reason a failed write read as a success.
+        if [ -s "${_Pln}" ]; then
+          echo OK created ${_Pln}
+        else
+          echo "ERROR: failed to write ${_Pln}"
+        fi
       fi
       ###
       cp -af /var/xdrago/conf/ssl_proxy.conf        ${_Ssl}

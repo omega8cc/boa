@@ -11,6 +11,7 @@
 # TARGET (BOA) box. Source verbs refuse to run on a BOA box and vice versa.
 #
 # Source-resident verbs (vanilla box, root):
+#   peer       --target <ip>                                  [--live]
 #   check      --target <ip> [--route per-site|db-import] [--report <env>]
 #   pre-mig    --target <ip>                                  [--live]
 #   create     --target <ip> --account <oN> --email <e> --tree <dev|lts|pro>
@@ -29,6 +30,7 @@
 #              [--welcome-node]                               [--live]
 #   import     --account <oN> --revert-db-import              [--live]
 #   import     --account <oN> --reset-sites                   [--live]
+#   peer       --source <ip> [--pubkey-file <f>]              [--live]
 #   target-status --account <oN>
 #
 # Safety model (DECISIONS D-009): every acting verb is a DRY RUN unless
@@ -68,6 +70,8 @@ _SUBSCR=M
 _CORES=1
 _SRC_FQDN=""
 _ACCEPT_HTTP_DIFF=NO
+_SOURCE_IP=""
+_PUBKEY_FILE=""
 _ACCEPT_SCRUB=NO
 _INSTALL_CRON=NO
 _WELCOME_NODE=NO
@@ -145,6 +149,34 @@ _kv_get() {
 # HTTP status for a managed uri, asked of a specific host header + address
 _http_code_at() {
   curl -s -o /dev/null -w '%{http_code}' -m 20 -H "Host: $1" "http://$2/" 2>/dev/null
+}
+
+# Same probe, keeping the BODY: a status code alone cannot tell "the target
+# serves this site" from "the target's default vhost answers anything".
+_http_code_body_at() {   # 1 uri 2 addr 3 body-file
+  curl -s -o "$3" -w '%{http_code}' -m 20 -H "Host: $1" "http://$2/" 2>/dev/null
+}
+
+# Self-calibrating negative control, taken once per proxy run: what does the
+# target answer for a hostname that CANNOT exist? Anything a real domain
+# answers byte-identically to that is the catch-all vhost replying, not the
+# site. Mirrored from xtrim (boa-private 22f95be12), which found retired
+# hostnames sailing through a 200-only gate on BOA's "Under Construction"
+# page. Here the stakes are the same: this gate is what allows a live site's
+# traffic to be cut over to the target.
+_A2B_CATCHALL_BASE=""
+_probe_catchall_baseline() {   # 1 target addr
+  local _bogus="no-such-site.a2b-probe.invalid"
+  _A2B_CATCHALL_BASE="$(curl -s -m 20 -H "Host: ${_bogus}" "http://$1/" 2>/dev/null \
+    | md5sum | cut -d' ' -f1)"
+}
+
+# 1 body-file, 2 status, 3 baseline hash. Only meaningful for a 200: a 301/302
+# body is an nginx stub carrying no site content either way.
+_is_catchall_body() {
+  [[ "$2" = "200" ]] || return 1
+  [[ -n "$3" ]] || return 1
+  [[ "$(md5sum < "$1" | cut -d' ' -f1)" = "$3" ]]
 }
 
 ###-------------BOX CLASS + STATE DIRS--###
@@ -354,14 +386,33 @@ server {
 PROXYEOF
 }
 
+# nginx gained the standalone `http2` directive in 1.25.1; before that HTTP/2
+# is a parameter of the listen directive. A vanilla source box runs the
+# DISTRO's nginx - 1.18 on Debian 11 - where `http2 on;` is an unknown
+# directive that fails the WHOLE config. Measured 2026-08-11: every HTTPS site
+# refused to cut over because of exactly this, while the HTTP sites proxied
+# fine. BOA's own template can assume its own modern build; this one cannot.
+_nginx_has_http2_directive() {
+  local _v
+  _v="$(nginx -v 2>&1 | sed -n 's|.*nginx/\([0-9][0-9.]*\).*|\1|p')"
+  [[ -n "${_v}" ]] || return 1
+  [[ "$(printf '%s\n1.25.1\n' "${_v}" | sort -V | tail -1)" = "${_v}" ]]
+}
+
 _emit_proxy_https() {   # 1 domain 2 server_names 3 target_ip 4 cert_store
+  local _listen
+  if _nginx_has_http2_directive; then
+    _listen="listen                       *:443 ssl;
+  http2                        on;"
+  else
+    _listen="listen                       *:443 ssl http2;"
+  fi
   cat <<PROXYEOF
 ###
 ### Secure HTTPS proxy for $1 (START) [aegir2boa-stage2]
 ###
 server {
-  listen                       *:443 ssl;
-  http2                        on;
+  ${_listen}
   server_name                  $2;
   ssl_certificate_key          $4/key.pem;
   ssl_certificate              $4/cert.pem;
@@ -808,8 +859,27 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
   # paths, and a glob-match "already-done" test - fail closed on anything
   # outside a safe filesystem-name charset (the landed dir keeps this name,
   # so the later path/glob matches stay consistent)
-  local _platname
-  _platname="$(basename "${_plr}")"
+  # A D8+/composer platform's Aegir root is the DOCROOT (…/<project>/web),
+  # not the project directory, because vanilla provision validates a Drupal
+  # codebase at the root it is given. Two consequences, both fatal, both
+  # measured on a seeded D9 estate:
+  #   - basename() names every such platform "web", so two composer platforms
+  #     collide in one landing directory and the second is skipped as done;
+  #   - transferring the platform root leaves vendor/ behind (web/autoload.php
+  #     requires ../vendor/autoload.php), so the adopted site cannot boot.
+  # Transfer the PROJECT root instead and let the target's existing docroot
+  # detection register …/web as the platform. A classic platform is its own
+  # project root, so this is a no-op there.
+  local _platname _xfer_root
+  _xfer_root="${_plr}"
+  case "$(basename "${_plr}")" in
+    web|docroot|html|public_html)
+      if [[ -f "$(dirname "${_plr}")/composer.json" || -d "$(dirname "${_plr}")/vendor" ]]; then
+        _xfer_root="$(dirname "${_plr}")"
+        _info "site ${_uri}: composer layout - transferring the project root ${_xfer_root}"
+      fi ;;
+  esac
+  _platname="$(basename "${_xfer_root}")"
   case "${_platname}" in
     *[!A-Za-z0-9._-]*|"" | -* ) _alrt "site ${_uri}: unsafe platform dir name '${_platname}' - SKIP"; return 1 ;;
   esac
@@ -868,7 +938,7 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
     || { _alrt "site ${_uri}: empty dump - SKIP"; return 1; }
   chmod 600 "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
 
-  _manifest_write "${_uri}" "${_ctx}" "${_platname}" "${_plr}" "${_dir}" \
+  _manifest_write "${_uri}" "${_ctx}" "${_platname}" "${_xfer_root}" "${_dir}" \
     "${_dbn}" "${_dbp}" "${_dmaj}" "${_ssl}" "${_base}"
   _marker_set "${_uri}.exported.pid"
   _info "site ${_uri}: exported (db ${_dbn})"
@@ -1070,7 +1140,7 @@ _t_task_nid_for() {
 
 # wait for a hosting task node; latest vid only (D-009c)
 _t_wait_task() {
-  local _tnid="$1" _label="$2" _waited=0 _st
+  local _tnid="$1" _label="$2" _waited=0 _st _drained=0
   [[ -n "${_tnid}" && "${_tnid}" != "NULL" ]] || { _alrt "no task to wait for (${_label})"; return 1; }
   while [[ "${_waited}" -lt "${_TASK_TIMEOUT}" ]]; do
     _st="$(_tsql "SELECT task_status FROM hosting_task WHERE nid = ${_tnid} ORDER BY vid DESC LIMIT 1")"
@@ -1079,6 +1149,19 @@ _t_wait_task() {
       3) _alrt "task ${_tnid} (${_label}) finished with WARNING"; return 0 ;;
       2) _alrt "task ${_tnid} (${_label}) FAILED - see hostmaster task log node/${_tnid}"; return 1 ;;
     esac
+    # A task this tool merely QUEUED can sit there for ever: a freshly
+    # created account's queue is not dispatched during the adoption window,
+    # so polling alone deadlocks until the timeout and the site is counted a
+    # failure (measured 2026-08-11: the site-import task stayed status 0
+    # indefinitely and completed the instant the queue was drained by hand).
+    # Drive the queue ourselves - this is exactly what the dispatcher would
+    # run, so it executes the queued task without minting a duplicate.
+    if [[ "${_st}" = "0" && "${_waited}" -ge 60 && "$(( _waited % 60 ))" -eq 0 ]]; then
+      [[ "${_drained}" -eq 0 ]] \
+        && _info "task ${_tnid} (${_label}) still queued - draining this account's queue"
+      _drained=$(( _drained + 1 ))
+      _as_octo "drush8 @hostmaster hosting-tasks" >>"${_LOG}" 2>&1
+    fi
     sleep 5
     _waited=$(( _waited + 5 ))
   done
@@ -1898,6 +1981,131 @@ verb_import() {
   esac
 }
 
+###-------------VERB: peer-------------###
+
+# Arrange reachability between the two boxes instead of prescribing it.
+#
+# The runbook used to tell the operator to hand-edit /etc/csf/csf.allow and
+# /etc/csf/csf.ignore and to hand-place an SSH key, in the right order,
+# before the first command. That is the step everyone gets wrong: the
+# target's lfd reads the first key-scan burst as an attack and blocks port
+# 22, and the operator is then debugging a firewall instead of a migration.
+# BOA's own xmass learned the same lesson (boa-private 5c025fd37 opens BOTH
+# csf.allow and csf.ignore for a migration peer; 2f8e5c974 makes the tool
+# arrange its own reachability).
+#
+# Source side:  peer --target <ip>   generate/keep a dedicated key, print the
+#                                    exact one-liner to run on the target,
+#                                    then test the connection.
+# Target side:  peer --source <ip> [--pubkey-file <f>]
+#                                    open csf.allow AND csf.ignore, clear any
+#                                    temp block, install the key.
+_peer_source() {
+  local _key=/root/.ssh/id_ed25519 _pub
+  [[ -n "${_TARGET}" ]] || _die "peer on a source box needs --target <ip>"
+  if [[ ! -s "${_key}" ]]; then
+    if [[ "${_LIVE}" != "YES" ]]; then
+      _info "[DRY] would generate a dedicated migration key at ${_key}"
+    else
+      mkdir -p /root/.ssh && chmod 700 /root/.ssh
+      ssh-keygen -t ed25519 -N "" -C "a2b-$(hostname -f 2>/dev/null)" -f "${_key}" >/dev/null 2>&1 \
+        || _die "could not generate ${_key}"
+      _info "generated ${_key}"
+    fi
+  else
+    _info "using the existing key ${_key}"
+  fi
+  [[ -s "${_key}.pub" ]] || { _info "[DRY] no public key yet - re-run with --live"; return 0; }
+  _pub="$(cat "${_key}.pub")"
+  _msg "run this ON THE TARGET (as root), then re-run this verb:"
+  echo
+  echo "  aegir2boa-stage2 peer --source $(_peer_my_ip) --live \\"
+  echo "    --pubkey-file <(echo '${_pub}')"
+  echo
+  _info "testing ssh to ${_TARGET} ..."
+  if ssh -i "${_key}" -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new \
+      "root@${_TARGET}" 'echo A2B-PEER-OK' 2>/dev/null | grep -q A2B-PEER-OK; then
+    _info "reachable: root@${_TARGET} accepts this key"
+    return 0
+  fi
+  _alrt "not reachable yet - run the command above on the target first"
+  return 1
+}
+
+_peer_my_ip() {
+  # the address the target will see; falls back to the first global v4
+  ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1
+}
+
+_peer_target() {
+  local _f _line _added=0
+  [[ -n "${_SOURCE_IP}" ]] || _die "peer on a BOA box needs --source <ip>"
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _info "[DRY] would allow ${_SOURCE_IP} in csf.allow AND csf.ignore, clear any temp block, reload csf"
+    [[ -n "${_PUBKEY_FILE}" ]] && _info "[DRY] would install the supplied public key for root"
+    return 0
+  fi
+  # BOTH files: allow opens the port, ignore stops lfd re-blocking mid-run
+  for _f in /etc/csf/csf.allow /etc/csf/csf.ignore; do
+    [[ -f "${_f}" ]] || continue
+    if grep -q "^${_SOURCE_IP}\b" "${_f}" 2>/dev/null; then
+      _info "${_f}: ${_SOURCE_IP} already present"
+    else
+      echo "${_SOURCE_IP} # a2b migration peer" >> "${_f}"
+      _info "${_f}: allowed ${_SOURCE_IP}"
+      _added=1
+    fi
+  done
+  command -v csf >/dev/null 2>&1 && {
+    csf -tr "${_SOURCE_IP}" >/dev/null 2>&1
+    [[ "${_added}" -eq 1 ]] && csf -ra >/dev/null 2>&1 && _info "csf reloaded"
+  }
+  if [[ -n "${_PUBKEY_FILE}" ]]; then
+    [[ -r "${_PUBKEY_FILE}" ]] || _die "cannot read --pubkey-file ${_PUBKEY_FILE}"
+    _line="$(head -1 "${_PUBKEY_FILE}")"
+    case "${_line}" in
+      ssh-ed25519\ *|ssh-rsa\ *|ecdsa-*) : ;;
+      *) _die "--pubkey-file does not contain a public key" ;;
+    esac
+    mkdir -p /root/.ssh && chmod 700 /root/.ssh
+    touch /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys
+    if grep -qF "${_line}" /root/.ssh/authorized_keys 2>/dev/null; then
+      _info "key already authorised for root"
+    else
+      echo "${_line}" >> /root/.ssh/authorized_keys
+      _info "key authorised for root (revoke by its a2b- comment at decommission)"
+    fi
+  fi
+  return 0
+}
+
+verb_peer() {
+  # same doctrine as every other acting verb: dry by default, and --live
+  # only after a clean dry run of this verb on this box.
+  # Peering happens BEFORE the account exists, so the target side cannot use
+  # the account-scoped state dir every other target verb uses.
+  local _scope="peer-${_TARGET:-${_SOURCE_IP:-any}}"
+  if [[ "$(_box_class)" = "boa" ]]; then
+    _STATE_DIR=/root/.a2b-peer
+    mkdir -p "${_STATE_DIR}/state"
+    chmod 700 "${_STATE_DIR}" "${_STATE_DIR}/state"
+  else
+    _require_source_box
+  fi
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _DRY_FAIL=0
+    if [[ "$(_box_class)" = "boa" ]]; then _peer_target || _DRY_FAIL=1
+    else _peer_source || true; fi
+    _dry_finish "${_scope}"
+  fi
+  _gate_consume "${_scope}"
+  if [[ "$(_box_class)" = "boa" ]]; then
+    _peer_target
+  else
+    _peer_source
+  fi
+}
+
 ###-------------VERB: proxy------------###
 
 _proxy_one() {   # 1 uri
@@ -1913,7 +2121,19 @@ _proxy_one() {   # 1 uri
   # D-009b: the replacement must be functionally proven FIRST - the target
   # must answer for this site before its traffic is cut over
   _base="$(_manifest_val "${_mf}" BASELINE)"
-  _code="$(_http_code_at "${_uri}" "${_TARGET}")"
+  local _body="/tmp/.a2b-proxy-probe.$$"
+  _code="$(_http_code_body_at "${_uri}" "${_TARGET}" "${_body}")"
+  # A 200 that is byte-identical to the target's answer for an impossible
+  # hostname is the catch-all vhost, not this site. Refuse it unconditionally:
+  # --accept-http-diff exists to tolerate a DIFFERENT status, never to accept
+  # a target that is not serving the site at all.
+  if _is_catchall_body "${_body}" "${_code}" "${_A2B_CATCHALL_BASE}"; then
+    rm -f "${_body}"
+    _alrt "site ${_uri}: target answers with its CATCH-ALL page, not the site - NOT proven, SKIP"
+    _alrt "site ${_uri}: check the import actually produced a serving vhost on the target"
+    return 1
+  fi
+  rm -f "${_body}"
   if [[ "${_code}" != "${_base}" ]]; then
     case "${_code}" in
       2??|3??)
@@ -1976,6 +2196,14 @@ verb_proxy() {
   [[ "${_ALL}" = "YES" || -n "${_SITE}" ]] || _die "proxy needs --site <dom> or --all"
   local _scope="${_SITE:-all}" _fails=0 _mf _uri _route
 
+  # negative control first: every per-site gate below is judged against it
+  _probe_catchall_baseline "${_TARGET}"
+  if [[ -n "${_A2B_CATCHALL_BASE}" ]]; then
+    _info "target catch-all fingerprint: ${_A2B_CATCHALL_BASE}"
+  else
+    _alrt "could not fingerprint the target's catch-all answer - proceeding without that discrimination"
+  fi
+
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
     for _mf in "${_STATE_DIR}/manifest/"*.info; do
@@ -2032,7 +2260,7 @@ verb_certsync() {
     _LIVE=YES
   fi
   [[ -n "${_TARGET}" && -n "${_ACCOUNT}" ]] || _die "cert-sync needs --target and --account"
-  local _changed=0 _mf _uri _store _tmpd
+  local _changed=0 _missing=0 _sslcount=0 _mf _uri _store _tmpd
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -2049,6 +2277,7 @@ verb_certsync() {
     [[ "$(_manifest_val "${_mf}" SSL)" = "1" ]] || continue
     _store="${_AEGIR_ROOT}/config/a2b-proxy-ssl/${_uri}"
     [[ -d "${_store}" ]] || continue
+    _sslcount=$(( _sslcount + 1 ))
     _tmpd="$(mktemp -d "${_STATE_DIR}/.certs.XXXXXX")"
     if scp -q -o BatchMode=yes \
         "root@${_TARGET}:/data/disk/${_ACCOUNT}/tools/le/certs/${_uri}/fullchain.pem" \
@@ -2063,6 +2292,14 @@ verb_certsync() {
         _changed=$(( _changed + 1 ))
         _info "site ${_uri}: proxy cert refreshed from target LE"
       fi
+    else
+      # No certificate on the TARGET for a site that is live on HTTPS today.
+      # This is invisible during the window - the source's own certificate is
+      # what visitors see - and becomes an outage at DNS cutover. Adopted
+      # sites ship dark by design (cron and Encryption off), so the target
+      # only obtains its own certificate once Encryption is enabled there.
+      _missing=$(( _missing + 1 ))
+      _alrt "site ${_uri}: the target holds NO certificate for it yet"
     fi
     rm -rf "${_tmpd}"
   done
@@ -2084,6 +2321,14 @@ $(readlink -f "$0" 2>/dev/null || echo "$0") cert-sync --from-state >> ${_LOG} 2
 CRONEOF
     chmod 755 /etc/cron.weekly/a2b-cert-sync
     _info "weekly cert-sync cron installed (/etc/cron.weekly/a2b-cert-sync)"
+  fi
+  if [[ "${_missing}" -gt 0 ]]; then
+    _alrt "${_missing} of ${_sslcount} proxied HTTPS site(s) have NO certificate on the target"
+    _alrt "enable Encryption on them in the target panel and let Let's Encrypt issue"
+    _alrt "BEFORE you repoint DNS - ACME reaches the target through this proxy, so it"
+    _alrt "can issue during the window, but nothing issues it for you"
+    _msg "cert-sync complete (${_changed} refreshed, ${_missing} MISSING on the target)"
+    return 1
   fi
   _msg "cert-sync complete (${_changed} refreshed)"
 }
@@ -2209,6 +2454,12 @@ while [[ $# -gt 0 ]]; do
     --subscr)   _SUBSCR="$2"; shift ;;
     --cores)    _CORES="$(_int_only "$2")"; shift ;;
     --source-fqdn) _SRC_FQDN="$(_sane_domain "$2")" || _die "bad --source-fqdn"; shift ;;
+    --source)   _SOURCE_IP="$2"
+                case "${_SOURCE_IP}" in
+                  *[!A-Za-z0-9.-]*|""|-*|.*) _die "--source must be an IPv4 address or hostname (got '${_SOURCE_IP}')" ;;
+                esac
+                shift ;;
+    --pubkey-file) _PUBKEY_FILE="$2"; shift ;;
     --accept-http-diff)  _ACCEPT_HTTP_DIFF=YES ;;
     --accept-scrub-list) _ACCEPT_SCRUB=YES ;;
     --install-cron)      _INSTALL_CRON=YES ;;
@@ -2262,6 +2513,7 @@ case "${_OP}" in
 esac
 
 case "${_OP}" in
+  peer)          verb_peer ;;
   check)         verb_check ;;
   pre-mig)       verb_premig ;;
   create)        verb_create ;;
