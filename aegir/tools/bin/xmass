@@ -3603,6 +3603,44 @@ _xmass_prepare_target_reach() {
   _xmass_csf_allow_peer "${_t}" target
 }
 
+_xmass_boa_release() {
+  ### The release number out of `boa info`'s stamp, e.g. BOA-5.88.844-lts-...
+  ### -> 5.88.844. Empty when it cannot be read, which the caller treats as
+  ### fatal rather than as "probably fine".
+  local _where="$1"
+  local _raw
+  if [ "${_where}" = "local" ]; then
+    _raw=$(boa info 2>/dev/null | grep -oE "BOA-[0-9.]+-" | head -1)
+  else
+    _raw=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
+      "boa info 2>/dev/null | grep -oE 'BOA-[0-9.]+-' | head -1" 2>/dev/null)
+  fi
+  _raw="${_raw#BOA-}"
+  _raw="${_raw%-}"
+  echo "${_raw}"
+}
+
+_xmass_assert_same_release() {
+  local _t="$1"
+  local _src _dst
+  _src=$(_xmass_boa_release local)
+  _dst=$(_xmass_boa_release "${_t}")
+  [ -n "${_src}" ] \
+    || _die "cannot read this box's BOA release from 'boa info' -- refusing to migrate blind"
+  [ -n "${_dst}" ] \
+    || _die "cannot read the target's BOA release from 'boa info' on ${_t} -- refusing to migrate blind"
+  if [ "${_src}" != "${_dst}" ]; then
+    _alrt "source runs BOA-${_src}, target ${_t} runs BOA-${_dst}"
+    _die "both boxes must run the SAME BOA release before any migration." \
+         " provision gains central-map nginx variables between releases, and a" \
+         " target missing one takes down EVERY migrated site on that box." \
+         " Bring the OLDER box up first with a FULL run -- barracuda AND" \
+         " octopus, not just one of them -- then re-run prep-target."
+  fi
+  _info "  BOA release matches on both ends: ${_src}"
+  return 0
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -3631,6 +3669,20 @@ _xmass_cmd_prep_target() {
             " ${_XMASS_SRC_IP:-<source-ip>}' so it cannot come back;" \
             " (3) first contact needs the target's host key here —" \
             " 'ssh-keyscan -H ${_tgt} >> /root/.ssh/known_hosts'."
+
+  # B4: the same BOA RELEASE on both ends, which the old runbook stated as its
+  # one hard requirement and the rewrite never checked -- while this file's own
+  # comments assert the property and build healing logic on it. It is not a
+  # nicety: provision gains central-map nginx variables between releases, and a
+  # target missing one takes down EVERY migrated site on the box, not just the
+  # site that needed it. Checked here, at first target contact, because after
+  # init there is a datadir swap to undo.
+  #
+  # The TREE may differ on purpose (an account can move lts -> pro), so only
+  # the release number is compared. No override: "bring both boxes to the same
+  # release" is always the correct action and is always available, and an
+  # override here buys a box-wide outage.
+  _xmass_assert_same_release "${_tgt}"
 
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
   # guard temp-denies, and the target dials BACK to source:3306 for
