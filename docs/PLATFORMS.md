@@ -150,6 +150,10 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `DL6` — Pressflow (LTS) prod/stage/dev
 - `UC6` — Ubercart
 
+### Backdrop
+
+- `BDR` — Backdrop CMS prod/stage/dev (built by default; skipped when `_BACKDROP_SUPPORT=NO`)
+
 You can also use the special keyword `ALL` instead of any other symbols to have all available platforms installed, including newly added platforms in all future BOA system releases.
 
 ### Examples:

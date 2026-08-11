@@ -63,7 +63,7 @@ ALL never skips anything.
 
 Platform symbols:
 
-  Backdrop (needs Backdrop support enabled on the server)
+  Backdrop (built by default; a server can opt out)
     BDR — Backdrop CMS prod/stage/dev
 
   Drupal 11.4
