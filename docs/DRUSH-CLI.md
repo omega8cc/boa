@@ -49,7 +49,7 @@ BOA provides two mechanisms for managing the PHP-CLI version used in command-lin
 
 ### How Instant PHP-CLI Switching Works
 
-In addition to the `cli.info` file, BOA supports **instant PHP-CLI switching** through **specific configuration files** located in `~/static/control/`. The filenames of these configuration files dictate the PHP version to use, and their content is irrelevant. This enables you to switch the PHP-CLI version for Drush, Composer, and other CLI operations, including Ægir tasks, instantly.
+In addition to the `cli.info` file, BOA supports **instant PHP-CLI switching** through **specific configuration files** located in `~/static/control/`. The filenames of these configuration files dictate the PHP version to use, and their content is irrelevant. This enables you to switch the PHP-CLI version for Drush, Composer, and other CLI operations, including Ægir tasks, instantly. The platform builds you request via `platforms.info` follow the marker too — each build resolves it once, when its run starts (on accounts force-pinned to PHP 5.6 for `path_alias_cache` the pin outranks any marker for builds).
 
 > **Reminder:** Instant PHP-CLI switching only works under the `oN.ftp` limited shell,
 > and only applies to CLI operations — it does not affect PHP-FPM. See the prerequisite
@@ -91,6 +91,9 @@ If none of these instant switch files are present, the system will default to th
   BOA special shell wrapper, which is only active under the `oN.ftp` limited shell account.
   The wrapper reads these control files to determine which PHP-CLI version to use — without
   it, the control files are ignored and drush runs against the system default PHP version.
+  The one exception is the platforms build requested via `platforms.info`: the build
+  machinery resolves the switch files itself, once per run, so it honours them even
+  though it never passes through the shell wrapper.
   The wrapper is additionally temporarily deactivated during both barracuda and octopus
   upgrades to not interfere with complex procedures which depend on system dash shell. For
   this reason any Drush or Composer command you execute in the limited shell account while
