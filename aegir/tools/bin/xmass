@@ -193,7 +193,15 @@ _mig_resolve() {
   _cnf="${_root}/${_MIG_CNF_NAME}"
   _MIG_MODE=""; _MIG_DEADLINE=""; _MIG_SOURCE=""
 
-  if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}"; then
+  ### A target-role record is the inbound half of the peer-record pair: it
+  ### describes the PEER's proxy policy from the migration that brought this
+  ### account here, not a mode declaration for this box as a future source.
+  ### Without the role check a chained migration (target later becoming a
+  ### source -- the HA mirror build) resolved the OLD migration's mode and
+  ### deadline over the operator's explicit box default, and the override
+  ### path below never fired to correct it.
+  if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}" \
+    && [ "$(_mig_get "${_cnf}" _MIG_ROLE)" != "target" ]; then
     _m="$(_mig_get "${_cnf}" _MIG_MODE)"
     _d="$(_mig_get "${_cnf}" _MIG_DEADLINE)"
     if _mig_valid_mode "${_m}"; then
@@ -1318,9 +1326,14 @@ _xmass_take_backup() {
 
   else
     _info "xtrabackup: streaming backup directly to target ${_tgt} ..."
+    # Same bound as the stage branch above: stream is what runs on tight
+    # disk, where an unbounded backup-lock wait behind one long query
+    # stalls init with no diagnostic.
     xtrabackup \
       --defaults-file=/root/.my.cnf \
       --backup \
+      --ftwrl-wait-timeout=900 \
+      --kill-long-queries-timeout=60 \
       --stream=xbstream \
       | ssh root@"${_tgt}" "xbstream -x -C ${_XTRA_STAGE_TGT}" \
       || _die "xtrabackup stream to target failed"
@@ -2854,6 +2867,11 @@ _xmass_wait_for_sync() {
 # abort that happened before the web was touched.
 _XMASS_WEB_BLOCKED=NO
 
+# Set once the target promotion (step 8) succeeds: past that point an abort may
+# print the restore hint, but nothing may thaw the SOURCE automatically -- a
+# thawed source accepts writes its decoupled replica will never see.
+_XMASS_TARGET_PROMOTED=NO
+
 # Every abort after the web block leaves the source down. The operator reads this
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
@@ -2863,6 +2881,15 @@ _xmass_restore_hint() {
   if [ "${_XMASS_WEB_BLOCKED}" != "YES" ] \
     && [ "${_XMASS_RUNNERS_PARKED}" != "YES" ]; then
     return 0
+  fi
+  # A post-promotion park is resumed, not restored: say so FIRST, or the
+  # recipe below reads as an instruction to re-open the source mid-migration.
+  if [ "${_XMASS_PHASE}" = "rename-failed" ]; then
+    _alrt "This cutover is PARKED with the target already PROMOTED. To RESUME,"
+    _alrt "fix the cause reported with the final error, then re-run:"
+    _alrt "    xmass cutover ${_XMASS_TARGET_IP} --live"
+    _alrt "EVERYTHING below is for ABANDONING the cutover and keeping THIS box"
+    _alrt "as production instead -- do NOT follow it if you intend to resume."
   fi
   if [ "${_XMASS_WEB_BLOCKED}" = "YES" ]; then
     _alrt "SOURCE IS STILL SERVING 503. To restore service on the SOURCE:"
@@ -2878,6 +2905,28 @@ _xmass_restore_hint() {
   _alrt '    service cron start'
   _alrt '    for s in runner owl usage graceful manage_ltd_users; do \'
   _alrt '      mv -f /var/xdrago/.$s.sh.off /var/xdrago/$s.sh 2>/dev/null; done'
+  # Read the freeze from the file, not from a flag: this paragraph must match
+  # what is actually in the include at the moment the operator reads it.
+  if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
+    if [ "${_XMASS_TARGET_PROMOTED}" = "YES" ]; then
+      _alrt "Site writes are still FROZEN via ${_XMASS_GLOBAL_INC}."
+      if [ "${_XMASS_PHASE}" = "rename-failed" ]; then
+        _alrt "The target has been PROMOTED (replica decoupled): writes accepted"
+        _alrt "here can never reach it."
+        _alrt "Leave the freeze in place to fix the cause and resume; thaw ONLY if"
+        _alrt "you are abandoning the cutover and keeping THIS box as production:"
+      else
+        _alrt "The target's promotion state is UNCONFIRMED: writes accepted here"
+        _alrt "may never reach it. Do NOT thaw before determining that state"
+        _alrt "(the final error explains how); once the promotion is proven NOT"
+        _alrt "to have held, thaw with:"
+      fi
+    else
+      _alrt "Site writes are still FROZEN via ${_XMASS_GLOBAL_INC}; thaw them:"
+    fi
+    _alrt "    mv -f ${_XMASS_GLOBAL_INC}.bak ${_XMASS_GLOBAL_INC}"
+    _alrt "    (no .bak? delete the '# xmass migration freeze' block instead)"
+  fi
   _alrt "Then confirm a site returns 200 before deciding what to do next."
 }
 
@@ -4252,10 +4301,11 @@ _xmass_cmd_reset_phase() {
   _info "  New phase     : ${_new}"
   _info "======================================================"
   if [ "${_new}" = "rename-failed" ]; then
-    _alrt "'rename-failed' arms the RESUME path, which skips the web block, the"
-    _alrt "final sync, the lag wait, the MySQL lock and the target promote, and"
-    _alrt "goes straight to the rename and panel rewire. Set it ONLY when the"
-    _alrt "target was already promoted and only the rename tail remains."
+    _alrt "'rename-failed' arms the RESUME path, which skips the final sync, the"
+    _alrt "lag wait, the MySQL lock and the target promote. It RE-ASSERTS the 503"
+    _alrt "gate and the write freeze on this source, then re-proves the target's"
+    _alrt "web layer before the panel rewire and the renames. Set it ONLY when"
+    _alrt "the target was already promoted and only the cutover tail remains."
   fi
   if [ "${_new}" = "complete" ]; then
     _alrt "'complete' closes the migration: no subcommand will resume afterwards."
@@ -4306,13 +4356,71 @@ _xmass_cmd_status() {
   echo ""
 }
 
+# Step 12: Start nginx on target so it can serve proxied traffic immediately.
+#
+# PROVE it came up. This is the last moment before the source is converted
+# into a proxy pointing here and its 503 gate is lifted, so if the target's
+# nginx is not actually serving, every site on the pair is down and the
+# operator finds out from customers. The old procedure made this a discrete,
+# operator-read step; automating it with stdout, stderr and rc all discarded
+# removed the reading, not the risk. `nginx -t` first, because a config that
+# fails the test cannot be fixed by trying harder to start it.
+# Lives at the head of the cutover tail so EVERY entry re-proves it -- the
+# normal flow and each resume of a parked cutover -- because nothing later in
+# the tail gates on the web layer: the step-13 serve-wait measures and
+# reports, it cannot fail the run, and nothing else in the tail can START a
+# stopped nginx. Either refusal parks resumably; the promotion already
+# happened and cannot re-run, which is exactly the state phase=rename-failed
+# models.
+_xmass_prove_target_web() {
+  _info "Starting nginx on target ${_tgt} ..."
+  if ! ssh root@"${_tgt}" "nginx -t" &>/dev/null; then
+    _alrt "target ${_tgt}: nginx -t FAILED — output follows:"
+    ssh root@"${_tgt}" "nginx -t" 2>&1 | tail -n 10
+    _XMASS_PHASE="rename-failed"
+    _xmass_save_state
+    _xmass_restore_hint
+    _die "refusing to convert the source into a proxy pointing at a target whose nginx config is invalid" \
+         "— cutover PARKED (phase=rename-failed); the target stays promoted, the source stays" \
+         "503-gated and the SQL watchdogs stay paused. Fix nginx on ${_tgt}, then re-run" \
+         "'xmass cutover ${_tgt} --live' — the resume re-runs this proof and starts nginx itself." \
+         "(If the invalid config stems from a half-renamed root, running renameaegirhost" \
+         "manually on ${_tgt} converges it — it is safe to re-run.)"
+  fi
+  ssh root@"${_tgt}" \
+    "service nginx start &>/dev/null || service nginx reload &>/dev/null; true"
+  # curl prints literally 000 when no HTTP transaction completed (connection
+  # refused, timeout), so the class must start at 1 or a dead nginx passes.
+  if ! ssh root@"${_tgt}" \
+    "curl -s -o /dev/null --max-time 15 -w '%{http_code}' http://127.0.0.1/ 2>/dev/null | grep -qE '^[1-5][0-9]{2}$'"; then
+    _XMASS_PHASE="rename-failed"
+    _xmass_save_state
+    _xmass_restore_hint
+    _die "target ${_tgt}: nginx is not answering on port 80 after start" \
+         "— cutover PARKED (phase=rename-failed); the target stays promoted, the source stays" \
+         "503-gated and the SQL watchdogs stay paused. Fix nginx on ${_tgt} so port 80 answers," \
+         "then re-run 'xmass cutover ${_tgt} --live' — the resume re-runs this proof."
+  fi
+  _info "  target nginx validated and answering"
+}
+
 _xmass_cutover_finish() {
-  # Steps 12.5..18 — everything after the target promotion. Shared by the
+  # Steps 12..18 — everything after the target promotion. Shared by the
   # normal cutover flow and the 'rename-failed' resume path; every step here
-  # is safe to re-enter (rm/touch/service loops, forced renames converge,
+  # is safe to re-enter (the web-layer proof re-parks on the same refusal,
+  # rm/touch/service loops, forced renames converge,
   # the panel rewire skips roots whose panel already names a live DB, and
   # step 16 skips accounts already stamped proxied, so a resumed run does
   # not re-send their completion emails).
+
+  # Step 11: drop the replication user from source. Idempotent, and it runs
+  # on every entry so a park upstream of it (the step-8 committed-promotion
+  # park) still gets the grant dropped when the resumed run completes.
+  _xmass_drop_repl_user
+
+  # Step 12: prove the target's web layer -- on every entry, including
+  # resumes, because a park means an operator was just repairing it.
+  _xmass_prove_target_web
 
   # Step 12.5: Rewire panel DB access on the target BEFORE the rename, so
   # the rename step's queue passes run against a bootstrappable hostmaster
@@ -4321,6 +4429,7 @@ _xmass_cutover_finish() {
   if ! _xmass_rewire_panel_db_access; then
     _XMASS_PHASE="rename-failed"
     _xmass_save_state
+    _xmass_restore_hint
     _die "panel DB rewire failed on target for:${_XMASS_PANEL_FAILED} — cutover PARKED (phase=rename-failed)." \
          " The source stays 503-gated and the SQL watchdogs stay paused." \
          " Fix the cause on ${_tgt}, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
@@ -4342,6 +4451,7 @@ _xmass_cutover_finish() {
   if ! _xmass_renameaegirhost_all; then
     _XMASS_PHASE="rename-failed"
     _xmass_save_state
+    _xmass_restore_hint
     _die "renameaegirhost failed on target for:${_XMASS_RENAME_FAILED} — cutover PARKED (phase=rename-failed)." \
          " The source stays 503-gated and the SQL watchdogs stay paused." \
          " Fix the cause on ${_tgt}, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
@@ -4482,15 +4592,19 @@ _xmass_cmd_cutover() {
   esac
 
   if [ "${_XMASS_PHASE}" = "rename-failed" ]; then
-    # Parked by a failed step-13 rename: everything up to and including the
-    # target promotion already happened and cannot re-run. Resume from the
-    # rename step and finish the cutover tail.
+    # Parked by a step-12 web-layer refusal, a failed panel rewire (12.5), a
+    # failed rename (13), or a step-8 promotion that committed despite its rc:
+    # everything up to and including the target promotion already happened and
+    # cannot re-run. Resume the cutover tail from step 11.
     [ "${_MODE}" = "LIVE" ] \
-      || _die "cutover is parked at phase 'rename-failed' — re-run 'xmass cutover ${_XMASS_TARGET_IP} --live' to resume from the rename step"
+      || _die "cutover is parked at phase 'rename-failed' — re-run 'xmass cutover ${_XMASS_TARGET_IP} --live' to resume the parked cutover tail"
     _tgt="${_XMASS_TARGET_IP}"
     [ -z "${_tgt}" ] && _die "No target IP in state file — cannot resume"
+    # A park only exists past the step-8 promotion, so any hint printed from
+    # the resumed tail must carry the promoted-target freeze warning.
+    _XMASS_TARGET_PROMOTED=YES
     _info "======================================================"
-    _info "  xmass cutover RESUME (from parked rename step)"
+    _info "  xmass cutover RESUME (parked cutover tail)"
     _info "  Target           : ${_tgt}"
     _info "======================================================"
     _xmass_enumerate_accounts
@@ -4505,6 +4619,15 @@ _xmass_cmd_cutover() {
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run"
     _xmass_park_runners_and_cron
+    # Re-assert the 503 gate: it persists on disk from the parked run, but an
+    # operator may have lifted it via the abandon recipe before deciding to
+    # resume after all -- and the tail assumes a non-serving source. Also
+    # keeps this process's hint truthful about the web state on a re-park.
+    _xmass_block_web_all
+    # Re-assert the write freeze for the same reason: the abandon recipe hands
+    # the operator the thaw, and the tail assumes a frozen source.
+    _xmass_freeze_source_writes \
+      || { _xmass_restore_hint; _die "Could not re-freeze source writes -- refusing to resume the cutover with a writable source"; }
     _xmass_check_no_boa_running
     # Keep the SQL watchdogs paused through the resumed tail (idempotent;
     # re-asserts the marker in case the box rebooted while parked)
@@ -4516,7 +4639,9 @@ _xmass_cmd_cutover() {
   [ "${_XMASS_PHASE}" = "syncing" ] \
     || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — cannot cut over." \
             "If a previous cutover aborted before promoting the target, resume with" \
-            "'xmass reset-phase syncing' then re-run the DRY and --live"
+            "'xmass reset-phase syncing' then re-run the DRY and --live." \
+            "If the target WAS already promoted, 'xmass reset-phase rename-failed'" \
+            "arms the resumable cutover tail instead."
 
   _tgt="${_XMASS_TARGET_IP}"
   [ -z "${_tgt}" ] && _die "No target IP in state file — was xmass init run?"
@@ -4714,9 +4839,12 @@ _xmass_cmd_cutover() {
       # Unlock before aborting so source MySQL is not stuck
       mysql --defaults-file=/root/.my.cnf \
         -e "UNLOCK TABLES;" &>/dev/null || true
+      # The target is NOT promoted yet, so this box is still production: a
+      # refused cutover must hand it back writable, not read-only.
+      _xmass_thaw_writes
       _xmass_restore_hint
       _die "Replica lag not zero after FLUSH LOCK on check ${_pass}/3" \
-           " (lag=${_lag}s) — cutover aborted, source MySQL unlocked"
+           " (lag=${_lag}s) — cutover aborted; source MySQL unlocked, writes thawed"
     fi
     _info "Post-lock confirmation check ${_pass}/3: lag=${_lag}s OK"
   done
@@ -4732,11 +4860,46 @@ _xmass_cmd_cutover() {
      -e '${_XM_STOP}; ${_XM_RESET_SLAVE};'"; then
     mysql --defaults-file=/root/.my.cnf \
       -e "UNLOCK TABLES;" &>/dev/null || true
+    # The rc alone cannot say whether the promotion committed -- transport can
+    # fail AFTER mysql ran. Read the replica state back: only a target still
+    # CONFIGURED as a replica proves the promotion did not hold, and only then
+    # is thawing the source safe.
+    local _probe_rc=1 _probe=""
+    _probe=$(ssh -o ConnectTimeout=15 root@"${_tgt}" \
+      "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null") \
+      && _probe_rc=0
+    if [ "${_probe_rc}" = "0" ] && [ -n "${_probe}" ]; then
+      # Still a replica: the promotion did NOT hold, so the source is still
+      # the only production box -- thaw it on the way out, as step 7 does.
+      _xmass_thaw_writes
+      _xmass_restore_hint
+      _die "Failed to stop/decouple slave on target ${_tgt} (still a replica)" \
+           "— cutover aborted; source MySQL unlocked, writes thawed"
+    fi
+    if [ "${_probe_rc}" = "0" ]; then
+      # Replica config is GONE: the promotion committed despite the rc.
+      # Same window as a web-layer refusal, so park the same way.
+      _XMASS_TARGET_PROMOTED=YES
+      _XMASS_PHASE="rename-failed"
+      _xmass_save_state
+      _xmass_restore_hint
+      _die "The promotion COMMITTED on ${_tgt} although the command reported failure" \
+           "— cutover PARKED (phase=rename-failed); the source stays 503-gated and frozen." \
+           "Re-run 'xmass cutover ${_tgt} --live' to resume the cutover tail."
+    fi
+    # Unreachable: promotion state UNKNOWN. A thaw could silently lose writes,
+    # so the freeze STAYS -- downtime is recoverable, lost writes are not.
+    _XMASS_TARGET_PROMOTED=YES
     _xmass_restore_hint
-    _die "Failed to stop/decouple slave on target ${_tgt}" \
-         "— cutover aborted, source MySQL unlocked"
+    _die "Failed to stop/decouple slave on target ${_tgt} AND its replica state cannot be read back" \
+         "— promotion state UNKNOWN, so the source stays FROZEN (a thaw could silently lose writes)." \
+         "On ${_tgt} run: mysql -e '${_XM_SHOW_STATUS}\G' — a replica config PRESENT means the" \
+         "promotion did not hold: thaw via the recipe above, then 'xmass reset-phase syncing'," \
+         "fresh DRY, --live. NO replica config means it committed: resume via" \
+         "'xmass reset-phase rename-failed' then 'xmass cutover ${_tgt} --live'."
   fi
   _info "Target MySQL is now standalone: OK"
+  _XMASS_TARGET_PROMOTED=YES
 
   # Step 9: Unlock source MySQL
   mysql --defaults-file=/root/.my.cnf \
@@ -4751,33 +4914,9 @@ _xmass_cmd_cutover() {
   ssh root@"${_tgt}" \
     "chmod 600 /root/.my.cnf; chmod 600 /root/.my.pass.txt 2>/dev/null; true"
 
-  # Step 11: Drop the replication user from source (no longer needed)
-  _xmass_drop_repl_user
-
-  # Step 12: Start nginx on target so it can serve proxied traffic immediately.
-  #
-  # PROVE it came up. This is the last moment before the source is converted
-  # into a proxy pointing here and its 503 gate is lifted, so if the target's
-  # nginx is not actually serving, every site on the pair is down and the
-  # operator finds out from customers. The old procedure made this a discrete,
-  # operator-read step; automating it with stdout, stderr and rc all discarded
-  # removed the reading, not the risk. `nginx -t` first, because a config that
-  # fails the test cannot be fixed by trying harder to start it.
-  _info "Starting nginx on target ${_tgt} ..."
-  if ! ssh root@"${_tgt}" "nginx -t" &>/dev/null; then
-    _alrt "target ${_tgt}: nginx -t FAILED — output follows:"
-    ssh root@"${_tgt}" "nginx -t" 2>&1 | tail -n 10
-    _die "refusing to convert the source into a proxy pointing at a target whose nginx config is invalid"
-  fi
-  ssh root@"${_tgt}" \
-    "service nginx start &>/dev/null || service nginx reload &>/dev/null; true"
-  if ! ssh root@"${_tgt}" \
-    "curl -s -o /dev/null --max-time 15 -w '%{http_code}' http://127.0.0.1/ 2>/dev/null | grep -qE '^[0-9]{3}$'"; then
-    _die "target ${_tgt}: nginx is not answering on port 80 after start — refusing to proxy the source at it"
-  fi
-  _info "  target nginx validated and answering"
-
-  # Steps 13..18 + completion — shared with the 'rename-failed' resume path
+  # Steps 11 and 12 run at the head of the cutover tail, shared with the
+  # resume path, so EVERY entry into the tail drops the replication user and
+  # re-proves the target's web layer before anything converts.
   _xmass_cutover_finish
 }
 
