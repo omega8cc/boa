@@ -41,9 +41,17 @@ filesystem data is run on demand via `xmass sync`. At cutover:
    block in step 1 is what stops file writes; a database read lock never gated
    them, so holding one across a walk of every store bought nothing and could
    hold the source database locked for hours on a large account.
-6. Source MySQL is locked (`FLUSH TABLES WITH READ LOCK`) and the lag is
-   re-confirmed three times under the lock.
-7. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`).
+6. Source writes are frozen durably: a read-only flag is appended to
+   `/data/conf/global/global-extra.inc` (the previous file kept beside it as
+   `.bak`), and the cutover **refuses to proceed if the freeze does not
+   take** — a session-scoped read lock cannot hold anything once its client
+   disconnects, so the durable flag is what actually stops writes; the
+   surviving `FLUSH TABLES` only pushes buffers. The lag is then re-confirmed
+   three times.
+7. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`); the freeze
+   flag is removed on the **target** later in the sequence, never on the
+   source — the old box serves through the proxy from here, but if you roll
+   back to it, restore the include from its `.bak`.
 8. Panel DB access is rewired on the target for every Ægir root: the datadir
    swap killed the target's own panel databases, so the live (replicated)
    hostmaster DB is rediscovered per root, its DB user's password reset, and
@@ -89,11 +97,28 @@ migration is a likely reason the disk filled in the first place.
 To abandon and start over, remove the state file — but only do so if
 replication has already been torn down on the target.
 
+**Single-flight.** Every state-mutating verb (`pre-mig`, `prep-target`,
+`init`, `sync`, `cutover`, `reset-phase`, `post-mig`, `restore-solr`) takes a
+box-wide owner-PID lock and a concurrent run is refused non-zero, naming the
+owning process. `status` and `verify` stay unlocked, so a migration can always
+be inspected mid-run. Liveness — not the file — is what is checked: a killed
+run leaves nothing to clean up, and a recycled PID belonging to some other
+process does not block.
+
 ## Prerequisites
 
 - Both servers running identical Percona MySQL versions.
-- Root SSH key access from source to target (set up via `xmass pre-mig`).
-- BOA installed on target at the same release as source.
+- Root SSH key access from source to target (set up via `xmass pre-mig`;
+  the source also learns the target's SSH host key automatically).
+- BOA installed on target at the **same release** as source. This is an
+  enforced gate, not advice: `prep-target` reads the release stamp from
+  `boa info` on both ends at first target contact and **refuses with no
+  override** when they differ — a target missing a central-map nginx variable
+  a newer release introduced fails the box-wide config test and takes down
+  every migrated site, not only the site that needed it. The tree may
+  legitimately differ (lts vs pro); an unreadable stamp on either side is
+  fatal too ("refusing to migrate blind"). The fix is a FULL run — barracuda
+  AND octopus — on the older box, then re-run.
 - **An installed Octopus account on the target for every eligible source
   account, with matching names.** Replication brings the databases, but the
   files rsync into `/data/disk/<oN>/`, the cutover renames each Ægir root and
@@ -105,9 +130,12 @@ replication has already been torn down on the target.
   `init` also checks the **target** has room for the datadir restore before
   displacing anything (override: `_XMASS_SKIP_DISK_GATE=YES`).
 - CSF: source IP allowed on the target **and** target IP allowed on the source
-  — the target dials back to source:3306. `prep-target` does both with `csf -a`
-  (`csf.ignore` alone does not stop guard temp-denies) and proves the reverse
-  path before anything destructive depends on it.
+  — the target dials back to source:3306. `prep-target` appends each peer to
+  **both** `csf.allow` and `csf.ignore` (append-once) and reloads CSF: an
+  allow on its own is not durable, because the login-failure daemon can still
+  temp-deny the peer mid-migration, and a temp-deny on the reverse path fails
+  `init` *after* the target datadir has been replaced. The reverse path is
+  proven before anything destructive depends on it.
 - `percona-xtrabackup-*` (matching Percona version): installed automatically
   by `xmass init` if not already present.
 - GTID mode: enabled automatically by `xmass init` on both servers if not
@@ -160,6 +188,20 @@ account is a legitimate skip. The check is yours to make.
 Run on **both** hosts (source first, then target). Stops BOA background runners
 and sets up root SSH key exchange between the two servers.
 
+On both hosts `pre-mig` first forces the migration tool set current: it drops
+the per-tool control markers for the six migration tools, runs the 5-minute
+housekeeping script synchronously, then logs each tool's resulting version
+line — so a migration is never run on stale tooling. The tool executing the
+command itself refreshes on the next verb, not mid-run (the fetcher refuses to
+replace a live process), and the log says so.
+
+In target mode `pre-mig` also removes this box's OWN published root public key
+from the nginx web root, not just the fetched copy — a box that was ever a
+migration source otherwise goes on serving a root public key at the
+undefined-host URL indefinitely, and a later migration could fetch the wrong
+box's key from it. It also opens the firewall for the source, which the source
+can never arrange for itself.
+
 **On source:**
 ```sh
 xmass pre-mig source-host
@@ -182,11 +224,17 @@ xmass prep-target target-ip [--fix-php]
 
 What it does, in order:
 
-1. **CSF both directions** — `csf -a` for the target here and for the source
-   there, then proves the reverse `target → source:3306` path by opening it.
-   A dead reverse path is fatal now rather than at `init`, which fails *after*
-   the target datadir has already been replaced. Override with
-   `_XMASS_SKIP_REVERSE_CHECK=YES` if you firewall differently.
+0. **Tool refresh + same-release gate** — forces the migration tool set
+   current on the target (markers dropped, housekeeping run, versions logged),
+   then compares both boxes' BOA release stamps and refuses on a mismatch or
+   an unreadable stamp (see Prerequisites — no override).
+1. **CSF both directions** — appends each peer to both `csf.allow` and
+   `csf.ignore` here and there (an allow alone still leaves the peer exposed
+   to a guard temp-deny mid-migration), reloads CSF, then proves the reverse
+   `target → source:3306` path by opening it. A dead reverse path is fatal now
+   rather than at `init`, which fails *after* the target datadir has already
+   been replaced. Override with `_XMASS_SKIP_REVERSE_CHECK=YES` if you
+   firewall differently.
 2. **PHP coverage gate** — collects every version pinned by any eligible
    account (`static/control/fpm.info`, `cli.info`, and the per-site column of
    `multi-fpm.info`) and verifies each is installed on the target. Missing
@@ -222,7 +270,12 @@ xmass init target-ip [--proxy-mode=temporary|permanent|ha-switch] [--proxy-deadl
 Proxy policy is **per Octopus account**, not per box. `--proxy-mode` writes only
 the box **default** (`/data/conf/migproxy_mode.txt`); each account's own record
 (`/data/disk/oN/log/migproxy.cnf`, set with `xoct proxy-mode oN <mode>`) always
-wins over it. The resolved mode decides, per account:
+wins over it. Only a **source-role** record participates: a record whose role
+is `target` — the inbound half of the peer pair, stamped when this box was
+itself brought in by a migration — is ignored for this box's own proxy-mode
+resolution, so on a chained move (a box migrated in yesterday, migrating out
+today) a travelled inbound record can never outrank the operator's explicit
+`--proxy-mode`. The resolved mode decides, per account:
 
 - what the migration-complete email tells that customer about the old address
   (temporary with or without a deadline, kept in place, or an HA switch point);
@@ -262,8 +315,27 @@ What `init` does:
 4. Creates the replication user `xmass_repl`@`target-ip` on source.
 5. Prevents Solr from auto-starting on target (holds it until cutover sync
    is complete).
+5a. **Stops cron on the target** (init script plus `pkill -x cron` — on
+   Devuan the init script alone leaves the daemon up) for the whole
+   replication window, and alerts if it is still running. A writable replica
+   running its own hourly housekeeping TRUNCATEs cache tables locally, which
+   under ROW binlog stops the SQL thread or writes errant transactions into
+   what becomes production. **Do not "fix" a target whose cron looks down
+   during the sync window** — cutover step 15 is what starts it again, and
+   `post-mig` confirms it.
+5b. **Purges unfinished `delete` tasks** from every eligible account's
+   hostmaster queue before the databases travel: the whole panel DB
+   replicates, cutover runs the task queue with force on the target, and a
+   stranded delete (xmass's own `pre-mig` kills the dispatcher, which is
+   exactly how one strands) would execute against brand-new production.
+   Other task types are reported at cutover, never deleted.
 6. Takes an xtrabackup snapshot and transfers it to target (staged or
-   streamed — see [Transfer Method](#xtrabackup-transfer-method)).
+   streamed — see [Transfer Method](#xtrabackup-transfer-method)). The
+   staged snapshot bounds its backup-lock wait (15 minutes) and kills a
+   query that blocks it after 60 s, so a staged `init` cannot sit forever
+   behind one long report. The **streamed** path carries no such cap — on a
+   box tight enough on disk to stream, schedule `init` away from long-running
+   queries.
 7. Restores the snapshot into the target's `/var/lib/mysql` and starts MySQL.
 8. Transfers `/root/.my.pass.txt` and `/root/.my.cnf` so the target MySQL
    client credentials match the restored data directory.
@@ -302,6 +374,7 @@ Syncs the following to the target on each run:
 | Usage logs | `/var/log/boa/usage` |
 | Solr indices (best-effort) | `/opt/solr4`, `/var/solr7/data`, `/var/solr9/data` |
 | Per-account platforms | `/data/disk/oN/distro/` |
+| Per-account source trees | `/data/disk/oN/src/` |
 | Per-account site files | `/data/disk/oN/static/files` (storage-aware: mirrored onto the target's `/mnt` mount, or de-referenced to root if it has none) |
 | Per-account drush aliases | `/data/disk/oN/.drush/` (site aliases only) |
 | Per-account nginx vhosts | `/data/disk/oN/config/server_master/nginx/vhost.d/` |
@@ -315,6 +388,12 @@ Syncs the following to the target on each run:
 | Out-of-root symlink content | Every synced tree is swept for symlinks whose target lives **outside** the synced trees (typically a secondary `/mnt` volume — per-account backup stores under `/data/disk/arch/sql` are the canonical case). Their content **materialises** on the target as real dirs/files: mirrored onto the target's own single mount when it has one and the store lands under `/data/disk`, de-referenced to a real dir/file on the target root otherwise. Space-gated per store/batch like everything else |
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
+
+Optional per-account config directories (`pre.d`, `post.d`, `subdir.d`,
+`platform.d`, `config/ssl.d`, `config/server_master/ssl.d`, `tools/le`) are
+skipped with a logged "nothing to send" when absent rather than failing the
+run — a genuine transfer failure on a directory that IS present still aborts
+before anything destructive.
 
 Three deliberate exclusions from the `log/` sync: `proxied.pid` and
 `migproxy.cnf` are target-role state that must never be overwritten from the
@@ -370,6 +449,12 @@ it owns (FPM tuning knobs, `_CLIENT_*` plan identity, ghost-cleanup flags,
 (`_MY_OWNIP`, `_LOCAL_NETWORK_IP`, `_THIS_DB_HOST`/`_PORT`, `_DOMAIN`) are
 never touched — BOA re-derives those correctly for the new box.
 
+The per-site rows of `multi-fpm.info` key on the site URI, so a rename that
+changes a site's URI also re-keys those pins — `renameaegirhost` carries them
+through its hostname pass. Left stale, a host-derived site's pin goes inert
+(no FPM include is emitted) and the site silently serves on the account's
+default PHP version.
+
 Run `xmass sync` immediately after `init` for the first full pass (which may
 take several hours for large accounts), then periodically as the cutover date
 approaches to reduce the amount of data left to transfer at cutover time.
@@ -411,6 +496,10 @@ first change to the source):
 - Re-gates account existence and PHP coverage on the target.
 - Refuses while any account's proxy mode is undeclared, then consumes the
   clean-dry token.
+- Reports, per account, the tasks still queued or interrupted in its panel
+  queue, by type — they travel with the replicated database and execute on the
+  TARGET when cutover starts its queue, so cancel anything you do not want
+  carried across before proceeding.
 - **Then** stops cron and parks the five BOA runners itself. The box's own cron
   restores a park done at `pre-mig` time within minutes, so parking here — not
   refusing and asking the operator to re-park — is what makes the window
@@ -429,16 +518,16 @@ first change to the source):
 | Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing) |
 | Step 5 | Final rsync pass of `static/files` only, **before** the lock (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
-| Step 6 | `FLUSH TABLES WITH READ LOCK` on source |
-| Step 7 | Triple-check lag = 0 at 10 s intervals (abort + UNLOCK if any check fails) |
+| Step 6 | Freeze source writes durably: append the read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), **refuse the cutover if the freeze does not take**, then `FLUSH TABLES` to push buffers (a session read lock is no longer relied on — it cannot survive a disconnect) |
+| Step 7 | Triple-check lag = 0 at 10 s intervals (abort if any check fails) |
 | Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone |
-| Step 9 | `UNLOCK TABLES` on source |
+| Step 9 | Belt-and-braces `UNLOCK TABLES` on source (no lock is normally held); the write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source |
-| Step 12 | Start nginx on target (serves proxied traffic while rename runs) |
+| Step 12 | Prove the target's web layer, then start nginx there: `nginx -t` on the target first (an invalid config **refuses the conversion**, printing the tail of the test output), then require a real HTTP answer on the target's port 80 ("nginx is not answering on port 80 after start — refusing to proxy the source at it"). Either refusal leaves the target promoted and the source still on 503 — repair the target's nginx and resume the cutover |
 | Step 12.5 | Rewire panel DB access on target per Ægir root (rediscover live hostmaster DB, reset its user's password, rewrite the panel dir's credentials — the datadir swap killed the fresh-install panel DBs). When the source's panel platform number diverges from the target's (an aged source vs a fresh target — the normal production shape), the step adopts the target's code-bearing panel platform and repoints the hostmaster platform row in the live DB; the DB persist is load-bearing because the rename queue's hostmaster verify regenerates the alias FROM the DB, so an alias-only correction is undone and the panel 404s from a hollow platform path |
 | Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master) |
-| Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account) |
+| Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account). The rename moves host-derived tenant site directories onto the new hostname together with every URI-keyed surface (per-site Drush alias file, static files store, per-site PHP pins), and **aborts before the Ægir task queue** if any site dir still carries the old hostname — the queue would import those as brand-new sites with duplicate panel nodes. Inside a cutover that refusal parks at `phase=rename-failed`. After the renames it waits for each renamed site to actually serve (up to 180 s per site, `_RENAME_SERVE_WAIT`; the box's catch-all page is discriminated so an unknown-host 200 never passes) — minutes per site here are the wait, not a hang; a site named as never serving with a 400 usually means its trusted-host settings |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual) |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
@@ -448,15 +537,20 @@ first change to the source):
 | Step 18.5 | Start cron and un-park the five runners **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later |
 | Step 19 | Mark state `complete` |
 
-If any step between 4 and 8 fails the tool aborts and unlocks source MySQL
-automatically — including the target promote in step 8, which previously
-aborted while still holding the lock.
+If any step between 4 and 8 fails the tool aborts; no session lock is held any
+more, so there is nothing to unlock (the belt-and-braces `UNLOCK TABLES` runs
+regardless).
 
 Source sites remain on 503 (`http-off.pid` in place). Every abort that happens
 after the web block prints the exact commands to restore service on the source,
 so follow the printed recipe rather than reconstructing it: clear the
 `http-off.pid` files, purge the nginx speed cache, reload nginx, remove the Solr
 deny file if Solr served from here, start cron, and un-park the five runners.
+**One step is not in the printed recipe: if the abort happened at or after
+step 6, also undo the write freeze** — restore
+`/data/conf/global/global-extra.inc` from the `.bak` kept beside it (or delete
+the `# xmass migration freeze` block). Clearing the 503 alone leaves every
+source site serving **read-only**.
 
 #### Replica parallel apply (Percona 5.7)
 
@@ -562,10 +656,14 @@ available disk space on the source `/` filesystem:
 - **Stage:** if free space > 1.5× the MySQL data directory size, the backup
   is written locally to `/var/backups/xmass_stage`, prepared (`--prepare`),
   then rsynced to the target. More disk I/O but easier to resume if the
-  transfer is interrupted.
+  transfer is interrupted. The staged backup bounds its backup-lock wait to
+  15 minutes and kills a query that blocks it after 60 s, so it cannot sit
+  forever behind one long report.
 - **Stream:** if free space is insufficient, the backup is piped directly via
   `xbstream` over SSH to `/var/backups/xmass_restore` on the target, where it
-  is then prepared. No staging disk required on source.
+  is then prepared. No staging disk required on source. The streamed path
+  carries **no** lock-wait cap — on a box tight enough on disk to stream,
+  schedule `init` away from long-running queries.
 
 Example: 154 GB MySQL, 73 GB free on `/` → stream method selected (73 GB < 231 GB needed).
 
@@ -696,10 +794,14 @@ replication user from source
 (`mysql -e "DROP USER IF EXISTS 'xmass_repl'@'target-ip';"`)
 and remove the state file.
 
-**If `cutover` aborts:** source MySQL is automatically unlocked and the tool
-prints the full restore recipe for the source; follow it rather than doing it
-from memory. An abort before the lock leaves the phase at `syncing`, so retrying
-is a fresh DRY plus `--live` with nothing else to undo.
+**If `cutover` aborts:** the tool prints the full restore recipe for the
+source; follow it rather than doing it from memory. An abort before the write
+freeze leaves the phase at `syncing`, so retrying is a fresh DRY plus `--live`
+with nothing else to undo. **An abort at or after the freeze (step 6) leaves
+the source read-only** — the durable flag in
+`/data/conf/global/global-extra.inc` is not in the printed recipe; restore the
+file from its `.bak` (or delete the freeze block) or every source site keeps
+refusing writes after the 503 clears.
 
 **If the panel rewire or renameaegirhost fails** for any root, `cutover` parks
 resumably at `phase=rename-failed` instead of completing — the failure report
