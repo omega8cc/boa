@@ -88,11 +88,17 @@ claim here that predates it. What that re-run settled:
 
 Which leaves, honestly:
 
-- **The HTTPS proxy window is still the open gap.** The per-site proxy cert
-  store, the https proxy vhosts and the `cert-sync` refresh loop are
-  implemented, and stage 1 now carries certificates correctly, but the proxy
-  window itself has not yet been exercised on an ssl-bearing estate. Drill it
-  on a disposable estate before migrating a client box that has HTTPS sites.
+- **The HTTPS proxy window now serves, and its certificate step is manual.**
+  It was drilled on 2026-08-11: all five sites of an ssl-bearing estate served
+  publicly through the source-side proxy with DNS still pointing at the old
+  box, both encrypted ones presenting their own real certificates. It had been
+  impossible before that day — the https proxy vhost used a directive that does
+  not exist in the nginx a vanilla box actually runs, so every HTTPS site
+  failed `nginx -t` and refused to cut over. What remains manual is issuance ON
+  THE TARGET: adopted sites arrive with Encryption off, so the target holds no
+  certificate until you enable it there (see cert-sync). The renewal-mirroring
+  half of `cert-sync` has still not been exercised against a target that
+  actually holds certificates.
 - **Drupal 6 is untested.** It routes to the per-site path by design; the D6
   PHP-pool gating exists in code only so far, and note that a D6 site whose
   `php56` pool never appears is a per-site FAIL by design, not a warning.
@@ -130,21 +136,27 @@ look on any failure.
 
 ## Prerequisites
 
-- **Whitelist the source IP in CSF on the target BEFORE any key exchange.**
-  The target's lfd reads an `ssh-keyscan` / first-contact burst as abuse
-  and temp-blocks port 22 — proven the hard way. On the target:
+- **Arrange reachability with `peer` rather than by hand.** The target's lfd
+  reads an `ssh-keyscan` / first-contact burst as abuse and temp-blocks port
+  22 — proven the hard way — so the firewall must be opened before the key
+  ever travels. The verb does both halves in the right order:
 
 ```sh
-  echo "source-ip # aegir2boa migration" >> /etc/csf/csf.allow
-  echo "source-ip # aegir2boa migration" >> /etc/csf/csf.ignore
-  csf -ra
-  # if the source already tripped a temp block: csf -tr source-ip
+  # ON THE SOURCE: mint a dedicated key and print the target-side command
+  aegir2boa-stage2 peer --target <target-ip>                     # dry
+  aegir2boa-stage2 peer --target <target-ip> --live
+
+  # ON THE TARGET: open csf.allow AND csf.ignore, clear any tripped block,
+  # reload csf, authorise the key (the command printed above supplies it)
+  aegir2boa-stage2 peer --source <source-ip> --pubkey-file <f>   # dry
+  aegir2boa-stage2 peer --source <source-ip> --pubkey-file <f> --live
+
+  # ON THE SOURCE again: confirms it can reach root@target
+  aegir2boa-stage2 peer --target <target-ip> --live
 ```
 
-- **Root SSH key exchange source→target** (`ssh-copy-id root@target-ip`
-  from the source, or append the source's `/root/.ssh/id_ed25519.pub` to
-  the target's `authorized_keys`). Use a dedicated, commented key so it is
-  easy to revoke at decommission. `check` verifies BatchMode ssh works.
+  Both halves are idempotent. The key carries an `a2b-` comment so it is easy
+  to revoke at decommission. `check` verifies BatchMode ssh works.
 - **A fresh preflight report on the source.** The report lands under
   `/tmp`, which is tmpfs on many boxes — a reboot eats it, and `check`
   refuses a report from a different host. Re-run the preflight after any
@@ -583,8 +595,20 @@ previous pair if `nginx -t` fails). `--install-cron` writes
 `/etc/cron.weekly/a2b-cert-sync` so a months-long proxy window never
 serves an expired certificate: nobody renews ON the proxy box — it
 mirrors the box that does. Remove that cron at decommission (stage 3).
-Remember: this whole path is implemented but undrilled — see Validation
-status.
+
+> **The target does not obtain its own certificates for you.** Adopted
+> sites arrive dark by design — cron and Encryption both off — so the
+> target holds NO certificate for a site that is live on HTTPS today.
+> Nothing looks wrong while you are in the window, because the proxy is
+> serving the SOURCE's certificates; it becomes an outage the moment DNS
+> moves. Enable Encryption per site in the target panel and let LE issue
+> BEFORE you repoint anything. ACME reaches the target through this
+> proxy, so issuance works while DNS still points at the old box.
+>
+> `cert-sync` refuses to report success while any proxied HTTPS site has
+> no certificate on the target: it names each one and exits non-zero.
+> Measured on the 2026-08-11 drill, where it reported `0 refreshed,
+> 2 MISSING on the target`.
 
 ### Reverts — the way back, until DNS moves
 
