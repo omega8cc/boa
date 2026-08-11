@@ -36,11 +36,26 @@ stacks stay installed until sign-off).
 
 All three ship in the BOA tools distribution at `aegir/tools/bin/` but are
 deliberately **not registered for fleet fetch** — no BOA box downloads or
-runs them by itself, and they never self-update. Place them yourself (scp
-from a box that has the BOA tree, or fetch from the files mirror), `chmod
-755`, and run as root. `aegir2boa-stage2` is dual-resident: put the SAME
-script on the source and the target; source verbs refuse to run on a BOA
-box and target verbs refuse to run on a vanilla box.
+runs them by itself, and they never self-update. Download them directly; the
+source box needs no BOA installation, no account and no credentials to do it:
+
+```bash
+cd /usr/local/bin
+for t in aegir2boa-preflight aegir2boa-stage1 aegir2boa-stage2; do
+  wget https://files.boa.io/versions/lts/boa/aegir/tools/bin/$t
+  chmod 755 $t
+done
+```
+
+Substitute `dev` or `pro` for `lts` to take the tools from another tree; the
+three trees carry the same tools. **Use the short tree token** — a path such
+as `versions/5.x-lts/...` returns an HTTP 200 "Under Construction" placeholder
+rather than a 404, so a typo yields a file that looks downloaded and is not a
+script. Check what you got: `head -1` must read `#!/bin/bash`.
+
+Run them as root. `aegir2boa-stage2` is dual-resident: put the SAME script on
+the source and the target; source verbs refuse to run on a BOA box and target
+verbs refuse to run on a vanilla box.
 
 Old-stack tolerance: the source-side tools assume nothing modern — bash
 3.2/4.1-era and PHP 5.3-era safe; nothing executed on the source assumes
