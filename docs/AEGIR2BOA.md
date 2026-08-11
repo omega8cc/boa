@@ -73,7 +73,10 @@ fresh BOA target, on published tool bytes, with an estate carrying real
 Let's Encrypt sites and a Drupal 9 composer platform. That re-validation
 changed tool behaviour — including the new `peer` verb — so use current
 published tool bytes: earlier copies do not carry the stage-1 HTTPS flip,
-composer-platform adoption, or `peer`. What that re-run settled:
+composer-platform adoption, `peer`, or the HTTPS proxy window itself (an
+earlier https proxy template emitted an HTTP/2 directive a distro nginx
+rejects, so every HTTPS site failed `nginx -t` and refused to cut over
+while HTTP sites proxied fine). What that re-run settled:
 
 - **Stage 1 on an encrypted estate is drilled**, not theoretical: flip,
   revert and re-flip on an `apache_ssl` estate with both HTTPS sites
@@ -144,6 +147,12 @@ Which leaves, honestly:
 >
 > Frontend tasks are polled by **latest vid only** (finished Ægir tasks
 > retain stale status rows), and the tools never force-run the task queue.
+> One scoped exception: when a task the tool ITSELF queued still sits at
+> queued status after a minute, the tool runs that account's own
+> dispatcher for it, once a minute, logging the drain — nothing else
+> dispatches a freshly created account's queue during the adoption
+> window, so polling alone would deadlock to the timeout and count the
+> site a failure.
 
 Every verb is idempotent behind marker files and safe to re-run. The
 preflight and the stage-2 tool take a coarse per-scope lock against
@@ -249,16 +258,24 @@ than re-discovering the box. Keep the pair with the migration record.
   aegir2boa-stage1 --revert --live     # nginx -> apache
 ```
 
-Scope: concrete `http_service_type` of `apache` only (`apache_ssl` is
-wired but experimental; `cluster`/`pack` topologies are refused — flip
-each member box instead).
+Scope: concrete `http_service_type` of `apache` AND `apache_ssl`. The
+`apache_ssl` → `nginx_ssl` path is drilled — flip, revert and re-flip
+with the per-site certificates carried and HTTPS verified in both
+directions. `cluster`/`pack` topologies are refused — flip each member
+box instead.
 
 What the live flip does, in order: installs nginx+php-fpm **without
 starting daemons** (a temporary `policy-rc.d` guard; Apache keeps :80
 throughout), starts the versioned FPM pools, adds the `aegir` user's
 sudoers line for the exact nginx reload binary the backend will call,
-enables the `hosting_nginx` frontend feature, flips the server node's
-`http_service_type` exactly as the GUI radio would (queueing the server
+enables every frontend feature the target service class needs — the
+plain and SSL nginx classes come from different modules, and the dry run
+already FAILS if the module providing the target class is absent from
+the hostmaster codebase, because the flip would otherwise die at the
+node save after a clean dry run — then flips the server node's
+`http_service_type` exactly as the GUI radio would, with the node
+payload carrying the estate's own port and, for an `*_ssl` class, its
+`ssl_port` (queueing the server
 verify that writes the nginx config tree), waits out the platform verify
 cascade, then **verifies every site** (hostmaster first — the verify
 cascade stops at platforms, so this per-site loop is what populates
@@ -266,7 +283,11 @@ cascade stops at platforms, so this per-site loop is what populates
 then: `nginx -t`, a **scratch-port FCGI probe** that executes real PHP
 through nginx+FPM while Apache still serves, and the daemon handover
 (stop+disable apache, start+enable nginx and FPM — reboot-persistent).
-Finally every site's HTTP code is compared against the pre-flip baseline.
+Finally every site's HTTP code is compared against the pre-flip
+baseline — and for every site the front end reports as encrypted, the
+HTTPS response too, probed with real SNI and hostname verification, so a
+flip that leaves a site on a regenerated self-signed certificate reads
+as a failure.
 
 The revert proves the Apache config without binding a port **while
 nginx still serves** — the dry run parses a temp wrapper conf with
@@ -291,6 +312,7 @@ Place `aegir2boa-stage2` on both boxes. Verbs, verbatim from `--help`:
 
 ```
 Source-resident verbs (vanilla box, root):
+  peer       --target <ip>                                  [--live]
   check      --target <ip> [--route per-site|db-import] [--report <env>]
   pre-mig    --target <ip>                                  [--live]
   create     --target <ip> --account <oN> --email <e> --tree <dev|lts|pro>
@@ -305,6 +327,7 @@ Source-resident verbs (vanilla box, root):
   status
 
 Target-resident verbs (BOA box, root):
+  peer       --source <ip> [--pubkey-file <f>]              [--live]
   import     --account <oN> --route per-site|db-import
              [--site <dom>|--all] [--source-fqdn <fqdn>]
              [--welcome-node]                               [--live]
@@ -445,7 +468,12 @@ unpauses it.
 
 On the db-import route the estate export also dumps the hostmaster DB and
 puts the source panel into maintenance mode, so nothing post-dates the
-frontend snapshot.
+frontend snapshot. That dump is accepted only if the dumper exits
+cleanly AND the file ends with its own completion marker — a dump that
+died after its header is refused and the estate is NOT marked exported,
+so the failure surfaces at export time rather than as a broken panel
+after the import (this export is what the whole adoption is rebuilt
+from).
 
 ### transfer — ship everything to the target
 
@@ -581,7 +609,15 @@ repair restore it. The steps, each idempotent behind its own marker:
 
 Per site, gated on the **target actually answering** for that site (HTTP
 probe against the manifest baseline; a differing 2xx/3xx needs
-`--accept-http-diff`, anything else is a SKIP): the real vhost is moved
+`--accept-http-diff`, anything else is a SKIP). The gate is not
+status-only: before the per-site probes the tool fingerprints what the
+target answers for an impossible hostname, and refuses any site whose
+200 response body is byte-identical to that fingerprint — a BOA box
+answers an unknown Host with its "Under Construction" catch-all, so a
+200 alone proves nothing. This refusal is unconditional:
+`--accept-http-diff` tolerates a DIFFERENT status but can never accept a
+target that is not serving the site at all; hitting it means the import
+did not produce a serving vhost for that site. Then: the real vhost is moved
 aside to the dotfile `.<domain>` (THE revert artifact) and a proxy vhost
 pointing at the target written in its place; for https sites a per-site
 proxy cert store is seeded from the site's existing cert files and an
@@ -596,6 +632,10 @@ old panel URL must not proxy anywhere. Tell the client the new URL.
 The proxy templates are embedded, vanilla-adapted equivalents of BOA's
 own proxy vhosts (BOA's originals need the BOA nginx build and Octopus
 cert paths, so they cannot be dropped onto a distro nginx verbatim). The
+emitted https vhost also adapts its HTTP/2 syntax to the source's own
+nginx version — the standalone directive only where that nginx knows it,
+the listen-parameter form otherwise — because a vanilla box runs the
+distribution build, not BOA's. The
 catch-all location also forwards `/.well-known/acme-challenge/` — so the
 TARGET can mint and renew real Let's Encrypt certs for domains whose DNS
 still points at the source, for the whole proxy window.
@@ -767,6 +807,7 @@ deliberately:
 | `import` (db-import) fails mid-run | dispatcher stays held on purpose; fix and re-run `import` (steps are idempotent), or `--revert-db-import` |
 | site fails its verify/probe on target | it is listed and skipped; `proxy` will refuse it (probe gate) — fix, re-import that site |
 | `proxy` skips a site: HTTP diff | target answers differently than the baseline; re-check the site on the target, or `--accept-http-diff` if the change is expected |
+| `proxy` skips a site: CATCH-ALL page | the target is not serving that site at all — its 200 is the box's own "Under Construction" answer; re-check the site's import. `--accept-http-diff` cannot override this |
 | FPM socket wait times out | the pool agent needs a pass (runs every few minutes; frozen accounts are skipped until the freeze lifts); D6 sites must not be proxied without their pool |
 | lock held | another run of the same verb+scope is live; stale locks self-clear when the pid is dead |
 | anything else | read `/var/log/aegir2boa-stage2.log`, then the named hostmaster task log (`node/<nid>` on the panel) |

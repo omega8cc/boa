@@ -28,8 +28,20 @@ xtrim finalize [--live] [--drop-datadir]
 
 The DRY/`--live` token is per verb AND per account: a clean DRY of `plan`
 never arms `shrink --live`, and a clean DRY of `quiesce` never arms
-`shrink` either; each `--live` consumes its token before work. `all`
+`shrink` either; each `--live` consumes its token before work. The
+`finalize` token is additionally keyed to `--drop-datadir`: a dry run
+that planned to keep the data directory will not arm a live run that
+drops it (and vice versa) — issue dry and live with the same flags. `all`
 operates on PROXIED accounts only and skips the rest with a notice.
+
+Every verb is gated on a per-account phase, which `xtrim status` prints
+as `phase=` — `none`, `stage-a`, `stage-b-started`, `stage-b` or
+`restored`. A stage B interrupted mid-run leaves the account at
+`stage-b-started`, where `quiesce` ("deletion may be partial"), `shrink`,
+`restore` and `finalize` all refuse and only `status` and `plan` remain
+useful; inspect such an account by hand from the tool's working directory
+under `/var/backups/xtrim/<oN>/`. An `all` fan-out skips by name any
+account already past the verb instead of aborting the sweep.
 
 ### The recommended sequence
 
@@ -53,7 +65,10 @@ still works and does both stages, as before.
 
 ## Hard refusals (the plan battery)
 
-Root; single instance; `/` under 90%; no `sqlclean` (mutual lock) and no
+Root; single instance; `/` under 90% (refused before any dump is staged);
+at most ONE `/mnt` mount — more than one is an unconditional refusal for
+the whole run, because a resolved store path could not then be attributed
+unambiguously; no `sqlclean` (mutual lock) and no
 barracuda/octopus/xoct/xmass/provision/install in flight; the eligibility
 triple present; `log/CANCELLED` means `boa cleanup`, never xtrim;
 `log/proxied.pid` present and older than `_XTRIM_MIN_DAYS` (default 14,
@@ -62,7 +77,22 @@ hard floor 7); every live vhost a proxy vhost agreeing on ONE target IP;
 `xoct proxy --repair --retarget`); no expired certificate behind a
 retained HTTPS vhost; every `server_name` serving through the target AND
 through the proxy relay (redirects accepted — SSL-Required sites answer
-301 on port 80); ssh to the target working; and, for every CLIENT database
+301 on port 80). The serving probe is not status-only: once per run the
+tool fingerprints the target's answer for an impossible hostname, and a
+200 whose body matches that catch-all fingerprint FAILS the probe
+(reported as `direct=CATCH-ALL` / `relay=CATCH-ALL`) — a BOA box answers
+any unknown Host with its "Under Construction" page, so a bare 200 proves
+nothing; a 301/302 is still accepted on status alone. One deliberate
+exception: after a whole-server move that renamed the box, the source's
+host-derived site names are retired by design, so a failing name that
+embeds the old box name is re-probed as the same label under the target's
+FQDN — on the direct leg only, since the relay runs through the source,
+which never served that name. A customer's own domain is never remapped
+and must prove itself by name. Also: ssh to the target working; the SQL
+endpoint answering as THIS box's own server (`@@hostname` must match —
+the classification is derived from this box's aliases, and a cluster or
+remote credential file would judge them against the wrong server); and,
+for every CLIENT database
 about to be dropped, the TARGET holding a populated schema of that name
 plus at least one real (non-proxy) vhost — which is what stops a proxy
 chain being mistaken for a target. The account's OWN panel and dedicated
@@ -72,7 +102,7 @@ source. They are proved instead by a live account of the same number on
 the target (account tree, `log/cores.txt` and hostmaster alias all
 present). Stage B re-proves with the SAME classification between dump and
 drop, so a classification change between the two can never abort a shrink
-after the dumps are taken. The SQL endpoint must be this box's own server.
+after the dumps are taken.
 
 ## What the stages do
 
@@ -150,6 +180,18 @@ running long after the shrink.
 Stage A restores automatically on abort, and `xtrim restore <oN>` undoes
 it from quarantine — deliberately reachable now that `quiesce` stops
 there rather than running straight on into stage B.
+
+`restore` is honest about partial failure rather than unconditionally
+clean. It refuses an account name it does not recognise and refuses when
+no quarantine exists (instead of reporting cheerful success on a no-op).
+Two partial paths and their remedies: a Solr core is re-registered with
+CREATE (an unloaded core is de-registered, so RELOAD cannot bring it
+back) — if the re-register answers non-200, the index is intact on disk
+and the tool prints the Solr restart to run, keeping the quarantine map
+for the unfinished entries; and if the nginx configtest or reload fails,
+the files are back but the running configuration is still the quiesced
+one — the tool says so, returns non-zero, and `nginx -t` plus a manual
+reload are owed before the account counts as live.
 
 **Stage B is not reversible on this box**: "I need
 this account back here" is a migration back from the live target using

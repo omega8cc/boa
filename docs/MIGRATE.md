@@ -24,6 +24,24 @@ migration, or move between servers running different Percona versions.
 downtime, especially at large scale (many accounts, large databases, large Solr
 indices) where per-account mydumper/myloader cycles would be impractical.
 
+## Shared behaviour across the migration tools
+
+- **Single-flight, per box.** Every state-mutating verb of `xoct`, `xcopy` and
+  `xmass` takes an owner-PID lock (`/run/<tool>.verb.pid`) and a second run
+  refuses loudly and non-zero, naming the live owner's pid. The guard is
+  liveness-based — a killed run or a reboot wedges nothing, and there is no
+  stale lock to clear. Read-only verbs (`status`, `verify`, `proxy-mode`)
+  stay unlocked so a migration can always be inspected mid-run.
+- **The tools force themselves current.** `xmass pre-mig` (both hosts) and
+  `prep-target` (the target) drop the per-tool control markers for the
+  migration tool set and run the housekeeping fetcher synchronously, logging
+  each tool's version — a migration prepared days earlier is never run on
+  stale tooling. The tool executing the command refreshes on its next verb,
+  not mid-run.
+- **Same release on both ends.** `xmass prep-target` compares both boxes' BOA
+  release stamps and refuses a migration across releases, with no override
+  (see MIGRATE-XMASS.md Prerequisites for the reason and the fix).
+
 ## Rename helper: renameaegirhost
 
 `renameaegirhost` handles in-place Ægir hostname rename on a single Ægir root
@@ -33,6 +51,10 @@ indices) where per-account mydumper/myloader cycles would be impractical.
 migrations never need a direct invocation. Run it directly only for an
 in-place identity change (renaming a cloned VM, moving a box to a new FQDN) or
 to resume a partial rename; inline `--help` describes each step.
+
+Before any in-place rewrite begins, the plain pre-rename database dump is
+verified complete — exit status plus the dumper's closing marker — and the
+run aborts rather than rewrite the database without a complete backup.
 
 ### Pre-flight for an in-place rename
 
@@ -60,8 +82,15 @@ unaffected: their fresh install writes the cnf with the final FQDN.
 ### Re-runs, resume, and --force-old
 
 Re-running the tool is convergent: already-renamed values are guard-skipped,
-so a repeat run over a completed rename changes nothing — including when the
-new FQDN contains the old one (a subdomain-augmenting rename). After a partial
+so a repeat run over a rename completed by the current tooling changes
+nothing — including when the new FQDN contains the old one (a
+subdomain-augmenting rename). One qualification: a re-run on a box renamed by
+EARLIER tooling repairs the per-site surfaces the older rename left behind —
+settings.php, the `files`/`private` symlinks, the client symlink, the alias
+file and the static store. Every repair stays conditioned on old-name
+evidence, so a correct site (including one freshly installed on a migration
+target) is untouched and not even queued; on such a box the aliases already
+carry the new hostname, so pin the old one with `--force-old`. After a partial
 or aborted rename the on-disk aliases may already carry the new hostname,
 which defeats old-hostname auto-detection (old == new, silent no-op) — resume
 with the old hostname pinned explicitly:
@@ -71,6 +100,49 @@ renameaegirhost --aegir-root /data/disk/o1 --force-old old.example.com
 ```
 
 `--dry-run` prints every planned change without modifying anything.
+
+### Sites whose name contains the box hostname
+
+A tenant site whose URI embeds the box FQDN follows the box through a
+hostname rename. The tool carries, per such site: the site directory itself,
+its per-site Drush alias file, its `static/files` store, the site's own
+`files`/`private` symlinks into that store, its `clients/<client>/` symlink,
+the URI-derived values inside the provision-generated `settings.php`
+(public/private/temp file paths, the D10+ config sync directory, the syslog
+identity, the absolute `local.settings.php` include, and
+`trusted_host_patterns` in **both** its plain and backslash-escaped
+spellings — the escaped one is what produces the HTTP 400 when left stale),
+and the site's per-site PHP pin row in `static/control/multi-fpm.info`. It
+then queues one site verify per renamed site, because the queue's server
+verifies regenerate no per-site artefact at all — none of this is
+self-healing if left behind.
+
+Two deliberate limits and one refusal:
+
+- The **database name and user are never rewritten**. A `settings.php` that
+  carries the old URI on a `database`/`username`/`password`/`db_url` line is
+  refused: the run warns, leaves the file untouched, counts it, and the
+  summary prints `ATTENTION : N settings.php left untouched`. Rewrite the URI
+  values in such a file by hand — never the database name.
+- Immediately before the Ægir task queue a **fail-closed gate** aborts the
+  run if any site directory still carries the old hostname: the queue would
+  import those as brand-new sites, giving each a duplicate panel node — the
+  duplicate being the half that owns the data. Resolve the listed directories
+  and re-run; under `--dry-run` the gate reports them instead of aborting.
+
+### Confirming the renamed sites serve
+
+The run ends with a serving gate: the tool waits for each renamed site to
+actually answer — up to `_RENAME_SERVE_WAIT` seconds per site, default 180 —
+accepting 200/301/302 but self-calibrating against the box's catch-all vhost,
+so an "Under Construction" 200 for a nonexistent Host never counts as
+serving. The closing summary ends with either
+`Sites : all N renamed site(s) confirmed serving` or `NOT SERVING : <uris>` —
+the run itself still exits 0, so read that line rather than the exit status;
+a 400 there is the trusted-host check. The wait exists because `settings.php`
+is resolved through PHP's per-worker realpath cache, so a single immediate
+check proves nothing in either direction. The gate covers only sites the
+rename moved — an account-axis move still needs the usual manual check.
 
 ### Reading the residual report
 
@@ -94,8 +166,13 @@ forms, so this is an edge case).
 ### Octopus control file
 
 On Octopus roots the tool also rewrites `_DOMAIN` (and any other old-FQDN
-values) in `/root/.<oN>.octopus.cnf`, which drives future octopus runs. The
-master root has no octopus cnf, so that step no-ops there.
+values) in `/root/.<oN>.octopus.cnf`, which feeds the install and config
+legs. The satellite UPGRADE, however, re-reads its `_DOMAIN` from the
+per-instance identity stamp in the account's log directory — not from the
+cnf — so the tool rewrites those stamps too (`log/domain.txt` and
+`log/setupmail.txt`, ownership and mode preserved): a stamp naming a host
+that no longer exists is exactly what the upgrade's own `_DOMAIN` cross-check
+trips over. The master root has no octopus cnf, so the cnf step no-ops there.
 
 ## Former xboa tool (renamed to xoct)
 
