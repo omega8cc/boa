@@ -919,15 +919,34 @@ _migrate_init() {
       echo "ERROR: ${_cmd} for ${_oct}: arch could not be placed on the target (see DENY above); refusing"
       exit 1
     fi
-    if [ -e "/opt/solr4" ] && _xcopy_solr_check "/opt/solr4" "/opt" "solr4"; then
+    ### Hard stop, matching xmass and the old tool: a Solr leg that does not
+    ### fit means this account arrives WITHOUT its search indices, and
+    ### nothing in the LIVE path reads _XCOPY_NOT_CLEAN, so skipping it
+    ### finishes "clean" while quietly losing the data.
+    if [ -e "/opt/solr4" ]; then
+      if ! _xcopy_solr_check "/opt/solr4" "/opt" "solr4"; then
+        echo "ERROR: solr4 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to copy ${_oct} without its search indices"
+        exit 1
+      fi
       _xcopy_rsync -aEAXq ${_ieni} -e ssh /opt/solr4 root@${_tgt}:/opt/
       echo "INFO: ${_cmd} for ${_oct} /opt/solr4 complete"
     fi
-    if [ -e "/var/solr7/data" ] && _xcopy_solr_check "/var/solr7/data" "/var/solr7" "solr7"; then
+    if [ -e "/var/solr7/data" ]; then
+      if ! _xcopy_solr_check "/var/solr7/data" "/var/solr7" "solr7"; then
+        echo "ERROR: solr7 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to copy ${_oct} without its search indices"
+        exit 1
+      fi
       _xcopy_rsync -aEAXq ${_ieni} -e ssh /var/solr7/data root@${_tgt}:/var/solr7/
       echo "INFO: ${_cmd} for ${_oct} /var/solr7/data complete"
     fi
-    if [ -e "/var/solr9/data" ] && _xcopy_solr_check "/var/solr9/data" "/var/solr9" "solr9"; then
+    if [ -e "/var/solr9/data" ]; then
+      if ! _xcopy_solr_check "/var/solr9/data" "/var/solr9" "solr9"; then
+        echo "ERROR: solr9 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to copy ${_oct} without its search indices"
+        exit 1
+      fi
       _xcopy_rsync -aEAXq ${_ieni} -e ssh /var/solr9/data root@${_tgt}:/var/solr9/
       echo "INFO: ${_cmd} for ${_oct} /var/solr9/data complete"
     fi
@@ -1054,10 +1073,18 @@ _migrate_init() {
             _xcopy_rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_oct}.ftp/
           fi
 
+          ### No excludes here, and that is deliberate. This leg used to pass
+          ### --exclude=server_ and --exclude=hostmaster, which could never
+          ### match anything: an rsync pattern with no slash is matched
+          ### against the FINAL path component, and with no wildcard the match
+          ### must be exact, so those two would only have excluded files
+          ### literally named `server_` and `hostmaster` -- never
+          ### `server_master.alias.drushrc.php` or
+          ### `hostmaster.alias.drushrc.php`. xoct and xmass removed them
+          ### already; carrying them here read as if the two aliases were
+          ### being held back when they were being transferred all along.
           _xcopy_rsync -aEAXqu \
             ${_ieni} \
-            --exclude=server_ \
-            --exclude=hostmaster \
             -e ssh ${_USR}/.drush/*.alias.drushrc.php \
             root@${_tgt}:${_DST}/.drush/
 
