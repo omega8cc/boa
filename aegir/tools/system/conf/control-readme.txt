@@ -34,7 +34,8 @@ fpm.info:
 
 Need your shell on another version right now? Create an empty marker
 like php83.info here and your next shell/Drush command uses it
-immediately.
+immediately. The marker also steers the platform builds you request
+below — each build reads it once, when its run starts.
 
 Drush, Composer and bee all follow cli.info (or your phpNN.info
 marker) in the shell.
