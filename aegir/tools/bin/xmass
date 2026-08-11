@@ -1326,9 +1326,14 @@ _xmass_take_backup() {
 
   else
     _info "xtrabackup: streaming backup directly to target ${_tgt} ..."
+    # Same bound as the stage branch above: stream is what runs on tight
+    # disk, where an unbounded backup-lock wait behind one long query
+    # stalls init with no diagnostic.
     xtrabackup \
       --defaults-file=/root/.my.cnf \
       --backup \
+      --ftwrl-wait-timeout=900 \
+      --kill-long-queries-timeout=60 \
       --stream=xbstream \
       | ssh root@"${_tgt}" "xbstream -x -C ${_XTRA_STAGE_TGT}" \
       || _die "xtrabackup stream to target failed"
