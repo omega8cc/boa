@@ -68,19 +68,16 @@ revert path (single-site, full two-box, target reset, db-import undo,
 resume), stage-1 flip/revert/re-flip, and public serving through the proxy
 window. That drill estate was Drupal-7-only and HTTP-only.
 
-Re-run in full on 2026-08-11 against a fresh vanilla source and a fresh BOA
-target, on published tool bytes, with an estate carrying real Let's Encrypt
-sites and a Drupal 9 composer platform. That run found and fixed eight defects
-in these tools — and added the `peer` verb — four of which made a documented
-path impossible rather than merely rough — read `aegir2boa/audits/2026-08-11-change-impact.md` and
-`boa-testing tier3/results/A2B-FRESH-E2E-2026-08-11.md` before trusting any
-claim here that predates it. What that re-run settled:
+Re-validated in full on 2026-08-11 against a fresh vanilla source and a
+fresh BOA target, on published tool bytes, with an estate carrying real
+Let's Encrypt sites and a Drupal 9 composer platform. That re-validation
+changed tool behaviour — including the new `peer` verb — so use current
+published tool bytes: earlier copies do not carry the stage-1 HTTPS flip,
+composer-platform adoption, or `peer`. What that re-run settled:
 
-- **Stage 1 on an encrypted estate is now drilled**, not theoretical: flip,
-  revert and re-flip with both HTTPS sites answering 200 on their own
-  certificates at every step. It had never worked before that day — the flip
-  died at the node save on any `apache_ssl` estate, immediately after its own
-  dry run reported CLEAN.
+- **Stage 1 on an encrypted estate is drilled**, not theoretical: flip,
+  revert and re-flip on an `apache_ssl` estate with both HTTPS sites
+  answering 200 on their own certificates at every step.
 - **D8+ composer platforms are adopted as projects**, not as their docroots.
   Before the fix the platform was named after its `web/` directory (so any two
   collided) and `vendor/` never travelled, which no adopted site can survive.
@@ -98,22 +95,24 @@ claim here that predates it. What that re-run settled:
 
 Which leaves, honestly:
 
-- **The HTTPS proxy window now serves, and its certificate step is manual.**
-  It was drilled on 2026-08-11: all five sites of an ssl-bearing estate served
+- **The HTTPS story is drilled end to end, and its certificate step is
+  manual.** 2026-08-11: all five sites of an ssl-bearing estate served
   publicly through the source-side proxy with DNS still pointing at the old
-  box, both encrypted ones presenting their own real certificates. It had been
-  impossible before that day — the https proxy vhost used a directive that does
-  not exist in the nginx a vanilla box actually runs, so every HTTPS site
-  failed `nginx -t` and refused to cut over. What remains manual is issuance ON
-  THE TARGET: adopted sites arrive with Encryption off, so the target holds no
-  certificate until you enable it there (see cert-sync). The renewal-mirroring
-  half of `cert-sync` has still not been exercised against a target that
-  actually holds certificates.
+  box, both encrypted ones presenting their own real certificates. Later the
+  same day the full certificate loop closed: Encryption enabled per site on
+  the target, real LE certificates issued THROUGH the proxy window (the
+  bare-name ACME challenge validated via the proxy; the default `www.` SAN
+  required the proxy-vhost www alias fix first), and
+  `cert-sync --live` mirrored both target-issued certificates back to the
+  proxy edge — `2 refreshed`, exit 0, the proxy thereafter serving the
+  TARGET's certificates, serial-verified. What remains manual is the enable
+  itself: adopted sites arrive with Encryption off, so the target holds no
+  certificate until you enable it there (see cert-sync).
 - **The db-import route has not been re-run since 2026-07.** Its July proof
   stands, and its refusal on ineligible estates is freshly verified, but the
-  positive path predates every fix made on 2026-08-11 and several open audit
-  findings target it specifically. Treat it as the less-proven route until it
-  gets a fresh homogeneous-D7 drill.
+  positive path predates the 2026-08-11 fixes and has not been re-validated
+  against them. Treat it as the less-proven route until it gets a fresh
+  homogeneous-D7 drill.
 - **Drupal 6 is untested.** It routes to the per-site path by design; the D6
   PHP-pool gating exists in code only so far, and note that a D6 site whose
   `php56` pool never appears is a per-site FAIL by design, not a warning.
@@ -641,6 +640,16 @@ mirrors the box that does. Remove that cron at decommission (stage 3).
 > no certificate on the target: it names each one and exits non-zero.
 > Measured on the 2026-08-11 drill, where it reported `0 refreshed,
 > 2 MISSING on the target`.
+>
+> The refresh half is drilled too (same day, same estate): with Encryption
+> enabled on the target and LE issued through the proxy window,
+> `cert-sync --live` reported `2 refreshed`, exit 0, reloaded nginx, and
+> the proxy served the target-issued certificates from then on
+> (serial-verified via `openssl s_client`). Two practical notes from that
+> drill: BOA requests a SAN certificate (bare + `www.`) by default, which
+> is why proxy vhosts carry `www.<domain>`; and back-to-back verifies can
+> collide on the LE tooling's per-account lock — enable and verify sites
+> ONE AT A TIME, and re-run the verify if a run reports a lock abort.
 
 ### Reverts — the way back, until DNS moves
 
