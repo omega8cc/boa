@@ -1319,8 +1319,26 @@ _sub_ssl_gen() {
         _single=NO
       fi
       ###
-      _Pln="/var/aegir/config/server_master/nginx/pre.d/z_${_domain_name}_pln_proxy.conf"
-      _Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_domain_name}_ssl_proxy.conf"
+      ### Check the directory actually written into, not an unrelated install
+      ### marker. The old guard tested the real write target; the rewrite tests
+      ### /var/aegir/.drush/hm.alias.drushrc.php instead and nothing here
+      ### creates pre.d -- so on a master where it is missing every cp fails,
+      ### each sed then edits a file that does not exist, and the loop still
+      ### announces "OK created". The result is a proxy with no proxy config.
+      _PreD="/var/aegir/config/server_master/nginx/pre.d"
+      if [ ! -d "${_PreD}" ]; then
+        mkdir -p "${_PreD}" 2>/dev/null
+        [ -d "/var/aegir/config/server_master/nginx" ] \
+          && chown --reference=/var/aegir/config/server_master/nginx \
+             "${_PreD}" 2>/dev/null
+      fi
+      if [ ! -d "${_PreD}" ]; then
+        echo "ERROR: ${_PreD} is missing and cannot be created"
+        echo "ERROR: NO proxy config written for ${_domain_name}"
+        continue
+      fi
+      _Pln="${_PreD}/z_${_domain_name}_pln_proxy.conf"
+      _Ssl="${_PreD}/z_${_domain_name}_ssl_proxy.conf"
       ###
       if [ "${_single}" = "YES" ]; then
         rm -f ${_Pln}
@@ -1338,7 +1356,13 @@ _sub_ssl_gen() {
         wait
         sed -i "s/_dedicated_sn/${_dedicated_sn}/g" ${_Pln}
         wait
-        echo OK created ${_Pln}
+        ### Say "created" only when it is there. The unconditional echo was
+        ### the reason a failed write read as a success.
+        if [ -s "${_Pln}" ]; then
+          echo OK created ${_Pln}
+        else
+          echo "ERROR: failed to write ${_Pln}"
+        fi
       fi
       ###
       cp -af /var/xdrago/conf/ssl_proxy.conf        ${_Ssl}
