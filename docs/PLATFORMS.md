@@ -36,12 +36,12 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.6.15](https://drupal.org/project/drupal/releases/10.6.15)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
+- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.15)
 - [Social 13.0.2](https://drupal.org/project/social) (10.6.15)
 
 ## Drupal 9
 
 - [Drupal 9.5.11](https://drupal.org/project/drupal/releases/9.5.11)
-- [Opigno LMS 3.1.0](https://drupal.org/project/opigno_lms) (9.5.11)
 
 ## Drupal 7
 
