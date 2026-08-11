@@ -85,6 +85,16 @@ claim here that predates it. What that re-run settled:
   Before the fix the platform was named after its `web/` directory (so any two
   collided) and `vendor/` never travelled, which no adopted site can survive.
   A Drupal 9 site now imports and serves on the target.
+- **Every stage-2 revert path is re-drilled on that same HTTPS+composer
+  estate** (it had only ever been drilled on the D7/HTTP-only July estate):
+  single-site revert with its stale-dump refusal, full two-box revert
+  (`revert --all` + `resume` + target `--reset-sites`), and the
+  retry-needs-fresh-export path taken all the way back — the reverted estate
+  was re-exported, re-adopted over its already-registered panel nodes (a path
+  the first adoption never exercises) and re-proxied to the serving state.
+  The db-import refusal is also verified as a refusal, not assumed:
+  `check --route db-import` dies naming the non-D7 platform on a mixed
+  estate.
 
 Which leaves, honestly:
 
@@ -99,6 +109,11 @@ Which leaves, honestly:
   certificate until you enable it there (see cert-sync). The renewal-mirroring
   half of `cert-sync` has still not been exercised against a target that
   actually holds certificates.
+- **The db-import route has not been re-run since 2026-07.** Its July proof
+  stands, and its refusal on ineligible estates is freshly verified, but the
+  positive path predates every fix made on 2026-08-11 and several open audit
+  findings target it specifically. Treat it as the less-proven route until it
+  gets a fresh homogeneous-D7 drill.
 - **Drupal 6 is untested.** It routes to the per-site path by design; the D6
   PHP-pool gating exists in code only so far, and note that a D6 site whose
   `php56` pool never appears is a per-site FAIL by design, not a warning.
@@ -278,7 +293,8 @@ Source-resident verbs (vanilla box, root):
              [--option EDGE] [--subscr M] [--cores 1]       [--live]
   export     --site <dom>|--all                             [--live]
   transfer   --target <ip> --account <oN> --site <dom>|--all [--live]
-  proxy      --target <ip> --site <dom>|--all [--accept-http-diff] [--live]
+  proxy      --target <ip> --site <dom>|--all [--accept-http-diff]
+             [--refresh]                                    [--live]
   cert-sync  --target <ip> --account <oN> [--install-cron]  [--live]
   revert     --site <dom>|--all                             [--live]
   resume                                                    [--live]
@@ -579,6 +595,22 @@ cert paths, so they cannot be dropped onto a distro nginx verbatim). The
 catch-all location also forwards `/.well-known/acme-challenge/` — so the
 TARGET can mint and renew real Let's Encrypt certs for domains whose DNS
 still points at the source, for the whole proxy window.
+
+Proxy vhosts carry the vanilla vhost's whole `server_name` set **plus
+`www.<domain>`** even when the vanilla vhost never served it. BOA's LE
+requests a SAN certificate for the bare name AND `www.` by default, and
+the adopting BOA box answers `www.` itself — but the challenge for it
+arrives at THIS box, and without the alias it lands on the catch-all and
+the whole certificate order fails (measured live 2026-08-11: bare name
+validated through the proxy, `www.` got 404, `cert.pem` left empty). A
+name the client's DNS does not resolve simply never arrives, so the
+extra alias is inert on estates without `www.` records.
+
+`proxy --refresh` (dry, then `--live`) re-renders the proxy vhost(s) of
+already-proxied sites in place, from the dotfile original plus the
+CURRENT templates — for when a template fix must reach a live window
+without the revert → re-export loop. No markers move, the dotfile is
+untouched, and the previous conf is restored if `nginx -t` fails.
 
 ### cert-sync — keep the proxy's certs fresh (https estates)
 
