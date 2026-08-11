@@ -66,16 +66,36 @@ BOA. Target verbs assume a healthy BOA box.
 Proven end-to-end on disposable VMs (2026-07): both stage-2 routes, every
 revert path (single-site, full two-box, target reset, db-import undo,
 resume), stage-1 flip/revert/re-flip, and public serving through the proxy
-window. That drill estate was Drupal-7-only and HTTP-only. Which leaves,
-honestly:
+window. That drill estate was Drupal-7-only and HTTP-only.
 
-- **HTTPS proxy window UNDRILLED.** The per-site proxy cert store,
-  https proxy vhosts, and the cert-sync refresh loop are implemented but
-  have not been exercised on an ssl-bearing estate. Drill them on a
-  disposable estate with real https sites before migrating a client box
-  that has any.
-- **D6 and D8+ composer platforms UNTESTED.** They route to the per-site
-  path by design; the D6 PHP-pool gating exists in code only so far.
+Re-run in full on 2026-08-11 against a fresh vanilla source and a fresh BOA
+target, on published tool bytes, with an estate carrying real Let's Encrypt
+sites and a Drupal 9 composer platform. That run found and fixed six defects
+in these tools, three of which made a documented path impossible rather than
+merely rough — read `aegir2boa/audits/2026-08-11-change-impact.md` and
+`boa-testing tier3/results/A2B-FRESH-E2E-2026-08-11.md` before trusting any
+claim here that predates it. What that re-run settled:
+
+- **Stage 1 on an encrypted estate is now drilled**, not theoretical: flip,
+  revert and re-flip with both HTTPS sites answering 200 on their own
+  certificates at every step. It had never worked before that day — the flip
+  died at the node save on any `apache_ssl` estate, immediately after its own
+  dry run reported CLEAN.
+- **D8+ composer platforms are adopted as projects**, not as their docroots.
+  Before the fix the platform was named after its `web/` directory (so any two
+  collided) and `vendor/` never travelled, which no adopted site can survive.
+  A Drupal 9 site now imports and serves on the target.
+
+Which leaves, honestly:
+
+- **The HTTPS proxy window is still the open gap.** The per-site proxy cert
+  store, the https proxy vhosts and the `cert-sync` refresh loop are
+  implemented, and stage 1 now carries certificates correctly, but the proxy
+  window itself has not yet been exercised on an ssl-bearing estate. Drill it
+  on a disposable estate before migrating a client box that has HTTPS sites.
+- **Drupal 6 is untested.** It routes to the per-site path by design; the D6
+  PHP-pool gating exists in code only so far, and note that a D6 site whose
+  `php56` pool never appears is a per-site FAIL by design, not a warning.
 - **Pre-3.x Ægir sources are refused** by the preflight floor — recognised
   and named, never mangled. There is no supported path for them yet.
 - **Panel-domain continuity is not implemented.** The adopted panel lives
