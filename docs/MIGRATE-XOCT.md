@@ -57,6 +57,15 @@ For full-server migrations where Percona versions match, consider
 > to review, then re-run with `--live`. Only `transfer`/`pretransfer` are gated —
 > `ssl-gen`, `export`, `import` and the other commands are unaffected.
 
+Only one state-mutating `xoct` verb runs on a box at a time: `export`,
+`create`, `import`, `pretransfer`, `transfer`, `proxy`, `proxy-retire`,
+`reset-state`, `pre-mig`, `post-mig` and `ssl-gen` all take a box-wide
+owner-PID lock, and a second run refuses loudly and non-zero, naming the live
+owner's pid. `proxy-mode` stays unlocked on purpose — it writes a policy pin,
+not data, so policy can be inspected or pinned during a run. The guard is
+liveness-based: a run killed outright (or a reboot) wedges nothing and there
+is no stale lock to clear by hand.
+
 ### 1. Prepare Target Firewall
 
 On the **target host** — allow source IP through CSF so rsync and MySQL traffic
@@ -124,7 +133,11 @@ It never touches serving state, so a site's 503 gate is left alone.
 
 `transfer shared` syncs `/data/all`, `/data/disk/all`, `/data/disk/arch`,
 Solr cores, `/var/www/static`, `/etc/bind`, and the usage logs under
-`/var/log/boa/usage` to the target.
+`/var/log/boa/usage` to the target. A Solr index tree that does not fit on
+the target is a **hard stop**, not a skip: each Solr home is space-checked
+before its rsync and a failure refuses the run non-zero ("refusing to migrate
+without its search indices") — free space on the target and re-run, rather
+than discovering an index-less account later.
 
 `create o1` provisions the target Octopus instance **and seeds its identity**:
 
@@ -178,7 +191,10 @@ xoct transfer shared target-ip
 `export` puts a 503 on all sites in the account (`http-off.pid`), purges the
 nginx speed cache, dumps each site database via mydumper and the Ægir
 hostmaster database via mysqldump, and marks `exported.pid` — but ONLY when
-every dump completed truthfully. The hostmaster dump must exit clean and be
+every dump completed truthfully. A database carrying any non-transactional
+table is dumped with mydumper's transactional-only mode turned off, selected
+automatically per database, so a stray MyISAM table neither fails the export
+nor withholds the account's export stamp. The hostmaster dump must exit clean and be
 non-empty, and every per-site mydumper run must exit clean AND leave its
 final `metadata` marker. Any failure withholds `exported.pid`, records the
 failed databases in `log/export_failed.pid`, prints an INCOMPLETE verdict
@@ -238,7 +254,11 @@ loads are truthful: a transferred dump directory without mydumper's final
 `metadata` marker is SKIPPED (a partial dump silently restoring an
 incomplete database is the failure being guarded against), a failed
 myloader run is counted, and a site whose db credentials cannot be parsed
-is counted too. Sites with a counted failure do NOT get their `verify`
+is counted too. One exception keeps mixed accounts importable: a site with
+no transferred dump whose database on this box is **already populated** is
+a target-native site (the account's own pre-existing dedicated site is the
+common shape) and is left as-is, not counted as a failure — only a site
+with neither a dump nor a populated local database counts. Sites with a counted failure do NOT get their `verify`
 scheduled; clean sites import and verify normally. Any counted failure
 writes `log/import_failed.pid`, prints an INCOMPLETE verdict naming the
 databases and exits non-zero — the printed recovery re-runs the full
@@ -300,8 +320,12 @@ xoct post-mig
 ```
 
 `proxy o1` resolves the account's proxy mode (explicit flag, else the
-account's own record set with `xoct proxy-mode`, else the box default in
-`/data/conf/migproxy_mode.txt`, else `temporary` with a loud warning), writes
+account's own **source-role** record set with `xoct proxy-mode`, else the box
+default in `/data/conf/migproxy_mode.txt`, else `temporary` with a loud
+warning — an inbound *target-role* record left by the migration that brought
+the account onto this box is never resolved as this box's proxy mode, so a
+chained move follows the operator's flag or the box default rather than the
+previous migration's mode and deadline), writes
 the policy record on both ends (`log/migproxy.cnf`, root-owned, parsed never
 sourced), wires the migration-proxy trust on the **target** (nginx realip
 recovery + CSF whitelist of this source's IP, `--permanent` for
@@ -311,14 +335,33 @@ proxy templates that forward traffic to `target-ip`, removes `http-off.pid`
 migration-complete notification to the account owner. A failed conversion
 sends nothing, stamps nothing and exits non-zero.
 
+In the same breath as stamping `proxied.pid`, `proxy` **parks the converted
+account's Ægir dispatcher** (moved into BOA's own off-run directory). Without
+it a single dispatcher tick runs the account's queue, whose pending Verify
+regenerates the site vhosts straight from the database and silently
+un-converts the proxy — the old box then resumes serving its own stale copy.
+`xoct post-mig`, which restores runners, re-parks any account carrying
+`proxied.pid` instead of handing back the dispatcher that would undo the
+proxy; the same reasoning governs a later restore, see
+[PX0-XTRIM.md](PX0-XTRIM.md).
+
 The completion reload is configtest-gated: if `nginx -t` fails, a first
-conversion reverts the vhosts it just rewrote and confirms the config is valid
-again, while a `--repair` (where the saved copy is the pre-migration original,
-not the working proxy vhost) refuses and says exactly why restoring it would
-be wrong. Either way nginx is never reloaded into a broken config. Sites whose
-account has SSL material but no `ssl.d/<domain>/openssl.key` — so no HTTPS
-proxy vhost can be written — are counted and named rather than skipped
-silently; re-run with `--repair` once the LE symlinks exist.
+conversion reverts **both halves** of every vhost it rewrote — the plain HTTP
+vhost from its dot-backup (`.<domain>`) and the site's real HTTPS server
+block, which the conversion saves as `.https.<domain>` before overwriting it
+(first copy only, so a repair pass cannot destroy the original) — so
+"reverted to the pre-conversion vhosts" means TLS is back too, not just that
+nginx parses. A `--repair` (where the saved copy is the pre-migration
+original, not the working proxy vhost) refuses and says exactly why restoring
+it would be wrong. Either way nginx is never reloaded into a broken config.
+An HTTPS proxy vhost is written only when **all three** files its template
+references exist — the account's `ssl.d/<domain>/openssl.key` and
+`openssl_chain.crt`, plus the Let's Encrypt `tools/le/certs/<domain>/chain.pem`
+— because nginx refuses to load a server block whose certificate file is
+missing and the proxy render is box-wide, so one partial certificate
+directory would fail the configtest for the whole conversion. A site missing
+any of the three is counted and **named with the missing files** rather than
+skipped silently; re-run with `--repair` once the material exists.
 
 Repair and repoint (the tool names the flag when you need it):
 
@@ -380,6 +423,15 @@ xoct proxy o1 target-ip o2
   regeneration after migration would re-stamp the stale source paths over the
   transfer-time fixes. Customer-site URIs are never touched: a site living on
   the account subdomain (e.g. `shop.o1.<fqdn>`) keeps its name.
+- The account rename also carries the shell/FTP login name (`o1.ftp` →
+  `o2.ftp`) on the credential lines of the account's stored welcome mail, so
+  the on-disk credentials copy — the file you are pointed at when a send
+  fails — is consistent with the new account rather than naming the retired
+  one.
+- A mistyped or unknown `--flag` on `create`, `transfer`, `pretransfer`,
+  `import` or `proxy` is a **hard error**, precisely because on those verbs
+  the next free positional argument is this rename value — a silently
+  consumed flag would have become a rename instruction.
 
 ---
 
@@ -437,9 +489,14 @@ Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
 
 ## Notes
 
-- **Chained migrations (a former target becomes a source):** a box that was
-  once a migration TARGET keeps `src/prev_hostmaster.sql` and
-  `log/imported.pid` under the account. With `prev_hostmaster.sql` present,
+- **Chained migrations (a former target becomes a source):** a completed
+  `xoct import` starts a fresh migration lifecycle on the new box — the
+  source-role latches that travelled inside the account's `log/` tree
+  (`exported.pid`, `transferred.pid`, `export_failed.pid`) are cleared in the
+  same breath as stamping `imported.pid`, so a box that has just received an
+  account can be a source for the next leg without hand-clearing them. What
+  is deliberately left behind: `src/prev_hostmaster.sql` and
+  `log/imported.pid`. With `prev_hostmaster.sql` present,
   a new `xoct export` does NOT write a fresh dump (the dump step is gated on
   its absence, protecting a dump a pending import still needs) — so a
   chained transfer would ship the STALE dump from the earlier migration.
@@ -465,6 +522,12 @@ Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
 - **xmass calls xoct:** when `xmass cutover` converts source accounts to proxy
   vhosts, it calls `xoct proxy` internally. No manual invocation is needed in
   that flow.
+- **`ssl-gen` reports only what it really wrote:** it creates the nginx
+  `pre.d` config directory if the master is missing it (inheriting the
+  parent's ownership), refuses the domain by name if it cannot ("NO proxy
+  config written"), and reports a proxy config as created only when the file
+  is actually non-empty on disk — so a run that reports success really did
+  write proxy config.
 - **Proxy protocol (HTTP/1.1 to origin):** the proxy vhosts `xoct proxy`
   generates talk **HTTP/1.1** to the origin (`proxy_http_version 1.1`), not
   nginx's default HTTP/1.0, so the origin sees the real request protocol and
