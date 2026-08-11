@@ -1121,7 +1121,7 @@ _t_task_nid_for() {
 
 # wait for a hosting task node; latest vid only (D-009c)
 _t_wait_task() {
-  local _tnid="$1" _label="$2" _waited=0 _st
+  local _tnid="$1" _label="$2" _waited=0 _st _drained=0
   [[ -n "${_tnid}" && "${_tnid}" != "NULL" ]] || { _alrt "no task to wait for (${_label})"; return 1; }
   while [[ "${_waited}" -lt "${_TASK_TIMEOUT}" ]]; do
     _st="$(_tsql "SELECT task_status FROM hosting_task WHERE nid = ${_tnid} ORDER BY vid DESC LIMIT 1")"
@@ -1130,6 +1130,19 @@ _t_wait_task() {
       3) _alrt "task ${_tnid} (${_label}) finished with WARNING"; return 0 ;;
       2) _alrt "task ${_tnid} (${_label}) FAILED - see hostmaster task log node/${_tnid}"; return 1 ;;
     esac
+    # A task this tool merely QUEUED can sit there for ever: a freshly
+    # created account's queue is not dispatched during the adoption window,
+    # so polling alone deadlocks until the timeout and the site is counted a
+    # failure (measured 2026-08-11: the site-import task stayed status 0
+    # indefinitely and completed the instant the queue was drained by hand).
+    # Drive the queue ourselves - this is exactly what the dispatcher would
+    # run, so it executes the queued task without minting a duplicate.
+    if [[ "${_st}" = "0" && "${_waited}" -ge 60 && "$(( _waited % 60 ))" -eq 0 ]]; then
+      [[ "${_drained}" -eq 0 ]] \
+        && _info "task ${_tnid} (${_label}) still queued - draining this account's queue"
+      _drained=$(( _drained + 1 ))
+      _as_octo "drush8 @hostmaster hosting-tasks" >>"${_LOG}" 2>&1
+    fi
     sleep 5
     _waited=$(( _waited + 5 ))
   done
