@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # aegir2boa-stage1 - in-place Apache -> Nginx flip for a vanilla Aegir 3.x box,
-# with a drilled revert. Stage 1 of the aegir2boa migration (see
-# design/stage1-apache-to-nginx.md - "the spec" - for the code-backed model).
+# with a drilled revert. Stage 1 of the aegir2boa migration; operator
+# runbook: docs/AEGIR2BOA.md in the BOA tree.
 #
 # What it does (flip):
 #   1. read-only preflight + dry-run gates (packages, FPM target, sudoers,

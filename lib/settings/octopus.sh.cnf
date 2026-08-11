@@ -63,13 +63,13 @@ _PHP_CLI_VERSION=8.4
 # CMS — Drupal CMS
 # LGV — LocalGov
 # THR — Thunder
+# VBX — Varbase 10
 
 ### Drupal 11.3
 #
 # DE3 — Drupal 11.3 prod/stage/dev
 # FOS — farmOS
 # OCS — OpenCulturas
-# VBX — Varbase 10
 
 ### Drupal 11.2
 #
@@ -82,6 +82,8 @@ _PHP_CLI_VERSION=8.4
 ### Drupal 10.6
 #
 # DX6 — Drupal 10.6 prod/stage/dev
+# OPG — Opigno LMS
+# SOC — Social
 
 ### Drupal 10.5
 #
@@ -100,7 +102,6 @@ _PHP_CLI_VERSION=8.4
 #
 # DX2 — Drupal 10.2 prod/stage/dev
 # OFD — OpenFed
-# SOC — Social
 
 ### Drupal 10.1
 #
@@ -114,7 +115,6 @@ _PHP_CLI_VERSION=8.4
 ### Drupal 9
 #
 # DL9 — Drupal 9 prod/stage/dev
-# OPG — Opigno LMS
 
 ### Drupal 7
 #

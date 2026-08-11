@@ -35,7 +35,7 @@
 #   -u USER    Octopus build user (default: o8)
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
-# Build target names: farm cms culturas commerce localgov thunder varbase
+# Build target names: farm cms culturas commerce localgov opigno social thunder varbase
 #   backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
 #   redis_backdrop cores
 #
@@ -82,6 +82,9 @@ _PHP_VARBASE="${_PHP_84}"                        # varbase pins php84
 _PHP_SOCIAL="${_PHP_83}"                         # Open Social 13 requires php ^8.3 and SOC is
                                                  # capped at 8.3 in AegirSetupC's per-distro
                                                  # table - build on the version it will run on
+_PHP_OPIGNO="${_PHP_83}"                         # Opigno 3.2.7 is a 2024 D10 codebase; 8.3 is
+                                                 # its catalogue cap - build on the version it
+                                                 # will run on
 _PHP_CORE="${_PHP_84}"                           # vanilla cores build under php84
 
 # farmOS: the latest GitHub release is resolved automatically; set _FARM_TAG to pin one.
@@ -148,6 +151,14 @@ _VARBASE_DISTPKG="vardot/varbase"
 _SOCIAL_SPEC="goalgorilla/social_template:dev-master"
 _SOCIAL_DISTPKG="goalgorilla/open_social"
 _SOCIAL_CONSTRAINT="^13"
+# Opigno's documented create-project is broken as shipped: the template replaces the H5P
+# PHP libraries without providing them (their open install Critical) and the profile
+# hard-requires an advisory-affected dompdf line, so build_opigno carries corrections.
+# The published platform ships dompdf 2.0.x with open advisories - a known, accepted
+# trade recorded in docs/BUILDTESTS.md; the fixed dompdf line (3.x) is outside the
+# profile's own constraint.
+_OPIGNO_SPEC="opigno/opigno-composer"
+_OPIGNO_DISTPKG="opigno/opigno_lms"
 _CORE_SPEC="drupal/recommended-project"
 
 # Vanilla core minors to build. Empty (default) = auto-discover every released minor
@@ -162,14 +173,14 @@ _CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/E
 _CP_FLAGS="--no-dev --no-interaction --no-install --no-scripts"
 _CORE_CP_FLAGS="--no-dev --no-interaction"
 
-# varbase is DISABLED (commented out here + in do_build + the check) because the upstream
-# Vardot/varbase-project template no longer yields an installable build: a fresh ~10 resolve
-# pins core 11.2.14, which the varbase profile ~11.3.0 rejects; pinned to 11.3.x a drifted
-# dependency fatals during its extra-component install; 11.0.0-alpha3 OOMs then hits a
-# canvas/canvas_override final-class fatal. The last working varbase-10.1.0-11.3.12 build is
-# kept on the mirror. Re-enable by restoring "varbase" below and uncommenting build_varbase in
-# do_build + its _check_row, once upstream stabilises.
-_ALL_DISTROS="farm cms culturas commerce localgov social thunder"
+# varbase was DISABLED 2026-07-08 (upstream template drift made every build uninstallable)
+# and RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 -- it now pins core
+# explicitly and ships a committed lock, and the current stable line builds AND installs.
+# Two standing caveats. The upstream patch set is fetched from mutable branch refs with no
+# hashes, so REBUILDS are not reproducible -- each published tarball is the frozen artefact,
+# same as every other distro here. And the 11.0 line (docroot web/, still beta) is NOT the
+# build target; this builds the stable 10 line (docroot/ layout, matching the catalogue).
+_ALL_DISTROS="farm cms culturas commerce localgov opigno social thunder varbase"
 
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
@@ -649,6 +660,45 @@ build_localgov() {
   _finalize_distro "localgov" "${_wd}" "${_dver}" "localgov"
 }
 
+build_opigno() {
+  _begin_build "opigno_lms-" "opigno" || return 0
+  use_php "${_PHP_OPIGNO}" || { _record_fail "opigno"; return 1; }
+  local _wd="${_DAY_DIR}/.build.opigno" _dver
+  _dver="$(_create_project "${_wd}" "${_OPIGNO_SPEC}" "opigno/opigno-composer" "")" \
+    || { _record_fail "opigno"; return 1; }
+  # Upstream's template replaces h5p/h5p-core + h5p/h5p-editor without providing either
+  # library, so \H5PFrameworkInterface never reaches disk and every install fatals in
+  # h5p_install() (opigno_lms #3574405, root cause confirmed in h5p #3549506). Drop the
+  # replace block and require the H5P core library explicitly - pinned 1.27.* because
+  # 1.28.0 added an interface method drupal/h5p 2.0.0-beta1 does not implement (h5p
+  # #3578071; the pin is the community-endorsed workaround and sits inside the module's
+  # own ^1.27 constraint).
+  if ! { _composer_prepare "${_wd}" \
+         && _run_as_o8 "cd '${_wd}' && composer config --unset replace" \
+         && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'" \
+         && _with_core_fallback "${_wd}" "opigno" _composer_build; }; then
+    _record_fail "opigno"
+    return 1
+  fi
+  # Twig 3.22+ requires getOperators() to return two arrays; opigno_learning_path
+  # returns none, so the first front-page render 500s on a Twig SyntaxError
+  # (opigno_learning_path #3561556, RTBC with no release to carry it). Fail closed:
+  # an opigno platform without the fix is broken by default.
+  local _twig_patch_url="https://www.drupal.org/files/issues/2026-02-12/3561556-opigno_learning_path--twig3-getoperators-fix.patch"
+  if ! { _run_as_o8 "curl -fsS --retry 3 -o '${_wd}/.twig-3561556.patch' '${_twig_patch_url}'" \
+         && _run_as_o8 "cd '${_wd}/web' && patch -p1 --no-backup-if-mismatch < '${_wd}/.twig-3561556.patch'" \
+         && _run_as_o8 "rm -f '${_wd}/.twig-3561556.patch'"; }; then
+    _record_fail "opigno (learning_path issue-3561556 Twig operators patch did not apply)"
+    return 1
+  fi
+  _info "opigno: applied opigno_learning_path issue-3561556 Twig operators patch"
+  # Name by the distribution profile package from the lock (drupal.org's number).
+  local _dist
+  _dist="$(_lock_version "${_wd}" "${_OPIGNO_DISTPKG}")"
+  [[ -n "${_dist}" ]] && _dver="${_dist}"
+  _finalize_distro "opigno_lms" "${_wd}" "${_dver}" "opigno"
+}
+
 build_social() {
   _begin_build "social-" "social" || return 0
   # Open Social 13 declares php ^8.3 and AegirSetupC caps SOC at 8.3, so floor and cap are
@@ -691,16 +741,44 @@ build_thunder() {
   _finalize_distro "thunder" "${_wd}" "${_dver}" "thunder"
 }
 
-# DISABLED: unwired from _ALL_DISTROS + the do_build dispatch above -- the upstream varbase
-# template no longer produces an installable build (see the _ALL_DISTROS note). Kept for
-# reference / easy re-enable.
 build_varbase() {
   _begin_build "varbase-" "varbase" || return 0
   use_php "${_PHP_VARBASE}" || { _record_fail "varbase"; return 1; }
   local _wd="${_DAY_DIR}/.build.varbase" _dver
   _dver="$(_create_project "${_wd}" "${_VARBASE_SPEC}" "vardot/varbase-project" "")" \
     || { _record_fail "varbase"; return 1; }
-  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "varbase" _composer_build; }; then
+  # varbase installs FROM THE SHIPPED LOCK, uniquely among the distros here. The July
+  # 2026 template fix IS the committed lock: upstream's tested resolve, including the
+  # composer-patches generation their ~76-patch set is written for. A re-resolve
+  # (_composer_build's composer update) discards exactly that -- measured 2026-08-11:
+  # the fresh resolve pulls a newer patches stack that aborts on their own core patch,
+  # and every older-core fallback pin just contradicts the profile's own core
+  # requirement. Config stays PRISTINE except allow-plugins (a config-section key):
+  # that is the shape upstream tests.
+  #
+  # The retry loop exists because their patch set is fetched from ~76 URLs at install
+  # time and a single flaked download aborts the whole install. CRITICAL: their pinned
+  # composer-patches records the ABORTED set as applied, so a retried install in the
+  # SAME tree exits 0 with patches silently missing (measured: a core patch absent
+  # from an exit-0 tree). Every attempt therefore starts from a fresh create-project
+  # (_create_project rm -rf's the workdir) -- on a fresh tree, exit 0 can only mean
+  # every patch applied in that one pass, because a patch failure is fatal. The shared
+  # composer cache still warms across attempts, which is what lets a later attempt
+  # complete. Never "optimise" this to resume a failed tree.
+  local _try _vok=""
+  for _try in 1 2 3; do
+    if [[ "${_try}" != "1" ]]; then
+      _alrt "varbase: install attempt failed; rebuilding fresh (attempt ${_try})"
+      _dver="$(_create_project "${_wd}" "${_VARBASE_SPEC}" "vardot/varbase-project" "")" \
+        || { _record_fail "varbase"; return 1; }
+    fi
+    if _run_as_o8 "cd '${_wd}' && composer config --no-plugins allow-plugins true" \
+      && _run_as_o8 "cd '${_wd}' && composer install --no-dev"; then
+      _vok="YES"
+      break
+    fi
+  done
+  if [[ "${_vok}" != "YES" ]]; then
     _record_fail "varbase"
     return 1
   fi
@@ -867,9 +945,10 @@ run_build() {
     culturas) build_culturas ;;
     commerce) build_commerce ;;
     localgov) build_localgov ;;
+    opigno)   build_opigno ;;
     social)   build_social ;;
     thunder)  build_thunder ;;
-    # varbase)  build_varbase ;;   # DISABLED: upstream template broken (see _ALL_DISTROS note)
+    varbase)  build_varbase ;;
     cores)    build_cores ;;
     *)        _alrt "unknown build target: ${_name}"; return 1 ;;
   esac
@@ -1156,9 +1235,10 @@ do_check() {
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
   _check_row "localgov" "$(_drupal_release localgov)"
+  _check_row "opigno"   "$(_drupal_release opigno_lms)"
   _check_row "social"   "$(_drupal_release social)"
   _check_row "thunder"  "$(_drupal_release thunder)"
-  # _check_row "varbase"  "$(_drupal_release varbase)"   # DISABLED (see _ALL_DISTROS note)
+  _check_row "varbase"  "$(_drupal_release varbase)"
   _msg ""
   local _minors="${_CORE_MINORS}"
   [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"
@@ -1180,8 +1260,9 @@ do_check() {
 _catalogue_producers() {
   # Tarball prefixes an ENABLED target actually emits: walk run_build's live case
   # arms, then read each named function's _finalize_distro prefix. A commented-out
-  # arm is deliberately not counted -- varbase's tarball is retained on the mirror
-  # but nothing rebuilds it, and that is exactly the state worth surfacing.
+  # arm is deliberately not counted -- a frozen target's tarball stays on the mirror
+  # with nothing rebuilding it, and that is exactly the state this audit exists to
+  # surface (as it did through the 2026-07/08 varbase freeze).
   local _fn
   for _fn in $(awk '/^run_build\(\)/,/^}/' "$0" \
     | sed -nE 's/^[[:space:]]*[a-z0-9_-]+\)[[:space:]]+(build_[a-z_]+).*/\1/p'); do

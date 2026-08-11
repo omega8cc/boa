@@ -20,7 +20,8 @@
 
 _KIT_V="1.0.0"
 
-### project version — the ratified pin set (boa-backdrop DECISIONS D-026).
+### project version — the ratified pin set; bump only with a rebuild and
+### republish.
 _PINS="cck 7.x-2.x-dev
 references 7.x-2.4
 date 7.x-2.14

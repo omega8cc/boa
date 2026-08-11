@@ -582,7 +582,7 @@ _rewrite_site_in_place() {
   # goes on compiling the copy it already has and the site keeps serving the
   # OLD settings.php long after the correct one is on disk.
   #
-  # Measured on the xb1 rig, in both directions: a corrected settings.php sat
+  # Measured on a test box, in both directions: a corrected settings.php sat
   # on disk while the site answered HTTP 400 for ~3 minutes, and later a
   # deliberately broken one kept serving 200 for over 3 minutes. Because the
   # cache is per worker, whether a given request sees the change is luck --
