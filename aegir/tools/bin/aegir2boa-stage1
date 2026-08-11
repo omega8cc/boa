@@ -8,14 +8,17 @@
 #   1. read-only preflight + dry-run gates (packages, FPM target, sudoers,
 #      service types, per-site HTTP baseline)
 #   2. installs nginx + php-fpm WITHOUT starting them (Apache keeps :80)
-#   3. enables the hosting_nginx frontend feature, switches the server node's
+#   3. enables the frontend feature(s) that provide the TARGET service class
+#      (hosting_nginx, plus hosting_nginx_ssl when the estate serves SSL),
+#      switches the server node's
 #      Web service type exactly as the GUI would (node_save -> queued verify
 #      -> alias rewrite + nginx config tree + platform cascade)
 #   4. verifies EVERY site explicitly (hostmaster first) - the verify cascade
 #      stops at platforms, so this loop is what populates nginx/vhost.d
 #   5. nginx -t gate, then the daemon handover: stop Apache, swap the OS
 #      include, start Nginx
-#   6. compares every site's HTTP response against the pre-flip baseline
+#   6. compares every site's HTTP response - and, for sites the front end
+#      says are encrypted, its HTTPS response - against the pre-flip baseline
 #
 # The Apache config tree is never deleted (provision behaviour) - that is the
 # revert guarantee. Revert flips the daemon handover back, restores the
@@ -31,8 +34,11 @@
 #   aegir2boa-stage1 --status               show both planes + daemon state
 #   aegir2boa-stage1 --help
 #
-# Scope v0.1: concrete http_service_type 'apache' only (apache_ssl -> nginx_ssl
-# is wired but EXPERIMENTAL; cluster/pack are refused - flip each member).
+# Scope: concrete http_service_type 'apache' and 'apache_ssl'. The
+# apache_ssl -> nginx_ssl path was drilled end to end on 2026-08-11 against an
+# estate holding real Let's Encrypt certificates (flip, revert, re-flip; the
+# per-site certificates are carried and HTTPS is verified each way).
+# cluster/pack are refused - flip each member web server instead.
 # Old-stack tolerance: bash >= 4.1-era, PHP >= 5.3 for anything sent through
 # drush php-script; nothing here assumes BOA.
 #
@@ -174,6 +180,29 @@ _http_code() {
   curl -s -o /dev/null -w '%{http_code}' -m 20 -H "Host: $1" http://127.0.0.1/ 2>/dev/null
 }
 
+# HTTPS status for a managed uri, asked of THIS box regardless of DNS.
+# --resolve (not -H Host) so SNI and hostname verification are real: a flip
+# that leaves the site answering on a regenerated self-signed certificate
+# must read as a FAILURE here, not as a pass. Deliberately NOT -k.
+_https_code() {
+  curl -s -o /dev/null -w '%{http_code}' -m 20 --resolve "$1:443:127.0.0.1" \
+    "https://$1/" 2>/dev/null
+}
+
+# URIs the FRONT END says are encrypted. Empty when hosting_ssl is not
+# enabled, which is the correct answer for a plain-http estate.
+_ssl_sites_list() {
+  _sql "SELECT n.title FROM hosting_ssl_site x INNER JOIN node n ON n.nid = x.nid AND n.vid = x.vid WHERE x.ssl_enabled > 0" 2>/dev/null
+}
+
+_is_ssl_site() {
+  local _u="$1" _s
+  while read -r _s; do
+    [[ "${_s}" = "${_u}" ]] && return 0
+  done < <(_ssl_sites_list)
+  return 1
+}
+
 # newest verify-task nid for a hosting_context name
 _task_nid_for() {
   local _nid
@@ -209,6 +238,36 @@ _verify_and_wait() {
   _wait_task "${_tnid}" "verify ${_name}"
 }
 
+###-------------FRONTEND SERVICE CLASSES----###
+
+# Which frontend module(s) must be ENABLED for a given http service type to
+# exist as a class. These are separate modules in the vanilla hosting package
+# (web_server/nginx/hosting_nginx, web_server/nginx/ssl/hosting_nginx_ssl,
+# web_server/ssl/hosting_ssl), and hosting_server_services_from_post() simply
+# fails to build an object when the class is absent.
+_frontend_modules_for() {
+  case "$1" in
+    nginx_ssl)  echo "hosting_nginx hosting_nginx_ssl" ;;
+    nginx)      echo "hosting_nginx" ;;
+    apache_ssl) echo "hosting_ssl" ;;
+    apache)     echo "" ;;
+    *)          echo "" ;;
+  esac
+}
+
+# enabled | disabled | missing — read straight from the frontend's {system}
+# table, which is read-only and unambiguous. A module that is MISSING cannot
+# be enabled at all: that estate's hosting release cannot serve the type.
+_frontend_module_status() {
+  local _m="$1" _st
+  _st="$(_as_aegir "drush @hostmaster sqlq \"SELECT status FROM system WHERE name = '${_m}' AND type = 'module'\"" 2>/dev/null | tr -dc '0-9')"
+  case "${_st}" in
+    1) echo enabled ;;
+    0) echo disabled ;;
+    *) echo missing ;;
+  esac
+}
+
 ###-------------FRONTEND FLIP----------###
 
 # Switch the server node's http service exactly as the GUI radio does:
@@ -225,9 +284,18 @@ if (!\$nid) { print "A2BERR no server_master context\n"; return; }
 if (!isset(\$node->services['http'])) { print "A2BERR node has no http service\n"; return; }
 \$cur = \$node->services['http']->type;
 if (\$cur === '${_type}') { print "A2BOK already ${_type}\n"; return; }
+// Carry the estate's own ports rather than assuming the defaults: a source
+// may serve on a non-standard port, and an *_ssl service class REQUIRES
+// ssl_port -- omitting it fails the node save with "Column 'ssl_port'
+// cannot be null", which is what the GUI form supplies and this payload did
+// not.
+\$port = isset(\$node->services['http']->port) ? \$node->services['http']->port : 80;
+\$ssl_port = isset(\$node->services['http']->ssl_port) ? \$node->services['http']->ssl_port : 443;
+\$svc = array('restart_cmd' => '${_restart}', 'port' => \$port);
+if (substr('${_type}', -4) === '_ssl') { \$svc['ssl_port'] = \$ssl_port; }
 \$node->services['http'] = array(
   'type' => '${_type}',
-  '${_type}' => array('restart_cmd' => '${_restart}', 'port' => 80),
+  '${_type}' => \$svc,
 );
 hosting_server_services_from_post(\$node);
 if (!is_object(\$node->services['http'])) {
@@ -282,10 +350,25 @@ dryrun_flip() {
 
   case "${_ALIAS_TYPE}" in
     apache) : ;;
-    apache_ssl) _alrt "apache_ssl -> nginx_ssl path is EXPERIMENTAL" ;;
+    apache_ssl) _info "apache_ssl -> nginx_ssl: encrypted estate; HTTPS is baselined and verified alongside HTTP" ;;
     nginx|nginx_ssl) _die "already ${_ALIAS_TYPE} - nothing to flip (use --revert to go back to apache)" ;;
     *) _die "unsupported current type '${_ALIAS_TYPE}'" ;;
   esac
+
+  # the frontend must be ABLE to hold the target service type. This is the
+  # one check whose absence made a CLEAN dry run promise a flip that then
+  # died at node_save on any HTTPS estate.
+  local _dry_target=nginx _fmod _fst
+  [[ "${_ALIAS_TYPE}" = "apache_ssl" ]] && _dry_target=nginx_ssl
+  for _fmod in $(_frontend_modules_for "${_dry_target}"); do
+    _fst="$(_frontend_module_status "${_fmod}")"
+    case "${_fst}" in
+      enabled)  _info "frontend feature ${_fmod}: enabled" ;;
+      disabled) _info "frontend feature ${_fmod}: present, will be enabled on --live" ;;
+      *)        _alrt "frontend feature ${_fmod} is NOT PRESENT in this hostmaster codebase - ${_dry_target} cannot be set, the flip would fail at the node save"
+                _fail=1 ;;
+    esac
+  done
 
   # packages present or installable
   if _have nginx; then
@@ -322,7 +405,7 @@ dryrun_flip() {
   fi
 
   # sites + baseline
-  local _name _uri _c _n=0
+  local _name _uri _c _cs _n=0
   while read -r _name _uri; do
     [[ -n "${_uri}" ]] || continue
     _c="$(_http_code "${_uri}")"
@@ -331,6 +414,16 @@ dryrun_flip() {
     case "${_c}" in
       000|5??) _alrt "site ${_uri} unhealthy BEFORE the flip (HTTP ${_c}) - fix or expect it to stay broken"; ;;
     esac
+    # An encrypted site that survives on :80 and dies on :443 is the exact
+    # failure this stage can cause, so it has to be baselined too.
+    if _is_ssl_site "${_uri}"; then
+      _cs="$(_https_code "${_uri}")"
+      _state_set "baseline_https_$(_key_sanitize "${_uri}")" "${_cs}"
+      _info "baseline ${_uri} -> HTTPS ${_cs}"
+      case "${_cs}" in
+        000|5??) _alrt "site ${_uri} unhealthy over HTTPS BEFORE the flip (${_cs}) - fix or expect it to stay broken"; ;;
+      esac
+    fi
     _n=$(( _n + 1 ))
   done < <(_sites_list)
   [[ "${_n}" -gt 0 ]] || { _alrt "no enabled sites found - nothing to protect, but nothing to verify either"; _fail=1; }
@@ -516,8 +609,16 @@ live_flip() {
     _info "sudoers line added for ${_rbin}"
   fi
 
-  # 2. frontend feature so the nginx service class exists
-  _as_aegir "drush @hostmaster en -y hosting_nginx" >>"${_LOG}" 2>&1
+  # 2. frontend feature so the target service class exists. nginx and
+  # nginx_ssl come from DIFFERENT modules: hosting_nginx provides the plain
+  # class only, so an apache_ssl estate — every client that serves HTTPS —
+  # died here at node_save with "service class for nginx_ssl unavailable"
+  # while the dry run had just reported CLEAN.
+  local _fmod
+  for _fmod in $(_frontend_modules_for "${_target}"); do
+    _as_aegir "drush @hostmaster en -y ${_fmod}" >>"${_LOG}" 2>&1
+    _info "frontend feature enabled: ${_fmod}"
+  done
   _as_aegir "drush @hostmaster cc drush" >>"${_LOG}" 2>&1 || true
 
   # 3.+4. node flip -> queued server verify -> platform cascade
@@ -591,7 +692,7 @@ live_flip() {
 
   # 8. verification against the pre-flip baseline
   _msg "verifying every site against its pre-flip baseline"
-  local _failn=0 _base _now
+  local _failn=0 _base _now _sbase _snow
   while read -r _name _uri; do
     [[ -n "${_uri}" ]] || continue
     _base="$(_state_get "baseline_$(_key_sanitize "${_uri}")")"
@@ -601,6 +702,16 @@ live_flip() {
     else
       _alrt "DIFF ${_uri}: HTTP ${_base} -> ${_now}"
       _failn=$(( _failn + 1 ))
+    fi
+    _sbase="$(_state_get "baseline_https_$(_key_sanitize "${_uri}")")"
+    if [[ -n "${_sbase}" ]]; then
+      _snow="$(_https_code "${_uri}")"
+      if [[ "${_snow}" = "${_sbase}" ]]; then
+        _info "OK   ${_uri}: HTTPS ${_snow} (unchanged)"
+      else
+        _alrt "DIFF ${_uri}: HTTPS ${_sbase} -> ${_snow} (certificate or ssl vhost lost)"
+        _failn=$(( _failn + 1 ))
+      fi
     fi
   done < <(_sites_list)
 
@@ -652,12 +763,21 @@ dryrun_revert() {
     rm -f "${_tc}"
   fi
 
-  local _name _uri _c
+  local _name _uri _c _cs
   while read -r _name _uri; do
     [[ -n "${_uri}" ]] || continue
     _c="$(_http_code "${_uri}")"
     _state_set "baseline_$(_key_sanitize "${_uri}")" "${_c}"
     _info "pre-revert ${_uri} -> HTTP ${_c}"
+    # take a FRESH https baseline: the verify below must compare against the
+    # state this box is in now, not against the one the flip recorded.
+    if _is_ssl_site "${_uri}"; then
+      _cs="$(_https_code "${_uri}")"
+      _state_set "baseline_https_$(_key_sanitize "${_uri}")" "${_cs}"
+      _info "pre-revert ${_uri} -> HTTPS ${_cs}"
+    else
+      _state_set "baseline_https_$(_key_sanitize "${_uri}")" ""
+    fi
   done < <(_sites_list)
 
   if [[ "${_fail}" -eq 0 ]]; then
@@ -716,7 +836,7 @@ live_revert() {
   done < <(_sites_list)
 
   _msg "verifying every site against its pre-revert baseline"
-  local _failn=0 _base _now
+  local _failn=0 _base _now _sbase _snow
   while read -r _name _uri; do
     [[ -n "${_uri}" ]] || continue
     _base="$(_state_get "baseline_$(_key_sanitize "${_uri}")")"
@@ -726,6 +846,16 @@ live_revert() {
     else
       _alrt "DIFF ${_uri}: HTTP ${_base} -> ${_now}"
       _failn=$(( _failn + 1 ))
+    fi
+    _sbase="$(_state_get "baseline_https_$(_key_sanitize "${_uri}")")"
+    if [[ -n "${_sbase}" ]]; then
+      _snow="$(_https_code "${_uri}")"
+      if [[ "${_snow}" = "${_sbase}" ]]; then
+        _info "OK   ${_uri}: HTTPS ${_snow} (unchanged)"
+      else
+        _alrt "DIFF ${_uri}: HTTPS ${_sbase} -> ${_snow} (certificate or ssl vhost lost)"
+        _failn=$(( _failn + 1 ))
+      fi
     fi
   done < <(_sites_list)
 
