@@ -62,7 +62,8 @@ _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 ### legacy Drupal 7 site (Transliterator/locale_*) running after a system ICU
 ### bump, without forcing a client codebase upgrade. Dashed form, e.g. 73-1.
 ### Unset = per-OS default, no behaviour change. Global per box, has a shelf
-### life, and is NOT auto-carried on migration -- see DECISIONS.md.
+### life, and is NOT auto-carried on migration -- set it again explicitly on
+### the new box if the legacy site still needs it.
 ###
 #_ICU_FORCE_VRN="73-1"
 ###
