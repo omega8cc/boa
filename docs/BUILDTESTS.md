@@ -35,6 +35,7 @@ Distributions, published to `/var/www/static/distro`:
   openculturas-3.0.5-11.3.16
   social-13.0.2-10.6.15
   thunder-8.4.0-11.4.5
+  varbase-10.1.1-11.4.4
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
@@ -118,6 +119,7 @@ Four artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   https://www.drupal.org/project/openculturas
   https://www.drupal.org/project/social
   https://www.drupal.org/project/thunder
+  https://www.drupal.org/project/varbase
 ```
 
 ### Build them one by one and document results
@@ -209,11 +211,21 @@ thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.
            # composer install --no-dev
 ```
 
-<!-- varbase DISABLED: the upstream Vardot/varbase-project template no longer builds an
-     installable site (a fresh ~10 resolve pins core 11.2.14, which the varbase profile
-     ~11.3.0 rejects; pinned to 11.3.x a drifted dep fatals during install; 11.0.0-alpha3
-     OOMs then hits a canvas final-class fatal). The last working varbase-10.1.0-11.3.12
-     build is kept on the mirror; do not rebuild until upstream is fixed. See staticbuild. -->
+```sh
+varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (core pinned
+           # explicitly + committed lock), after a year of drift that made every fresh
+           # build uninstallable. Builds the stable 10 line; the 11.0 line is beta and
+           # uses a different docroot (web/ instead of docroot/) - do not switch until
+           # 11.0.0 is stable AND the catalogue web_dir is updated with it.
+           # composer create-project Vardot/varbase-project:~10 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
+           # composer config --no-plugins allow-plugins true
+           # composer update --no-install --no-scripts
+           # composer install --no-dev
+           # name by vardot/varbase from the lock (the drupal.org release number)
+           # docroot is docroot/; each recipes/ dir needs a default/content subdir
+           # (the build creates them); builds under php84
+```
 
 Vanilla cores, latest patch of each supported minor (full install, add drush, audit):
 

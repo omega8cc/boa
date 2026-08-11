@@ -35,7 +35,7 @@
 #   -u USER    Octopus build user (default: o8)
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
-# Build target names: farm cms culturas commerce localgov thunder varbase
+# Build target names: farm cms culturas commerce localgov social thunder varbase
 #   backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
 #   redis_backdrop cores
 #
@@ -162,14 +162,14 @@ _CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/E
 _CP_FLAGS="--no-dev --no-interaction --no-install --no-scripts"
 _CORE_CP_FLAGS="--no-dev --no-interaction"
 
-# varbase is DISABLED (commented out here + in do_build + the check) because the upstream
-# Vardot/varbase-project template no longer yields an installable build: a fresh ~10 resolve
-# pins core 11.2.14, which the varbase profile ~11.3.0 rejects; pinned to 11.3.x a drifted
-# dependency fatals during its extra-component install; 11.0.0-alpha3 OOMs then hits a
-# canvas/canvas_override final-class fatal. The last working varbase-10.1.0-11.3.12 build is
-# kept on the mirror. Re-enable by restoring "varbase" below and uncommenting build_varbase in
-# do_build + its _check_row, once upstream stabilises.
-_ALL_DISTROS="farm cms culturas commerce localgov social thunder"
+# varbase was DISABLED 2026-07-08 (upstream template drift made every build uninstallable)
+# and RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 -- it now pins core
+# explicitly and ships a committed lock, and the current stable line builds AND installs.
+# Two standing caveats. The upstream patch set is fetched from mutable branch refs with no
+# hashes, so REBUILDS are not reproducible -- each published tarball is the frozen artefact,
+# same as every other distro here. And the 11.0 line (docroot web/, still beta) is NOT the
+# build target; this builds the stable 10 line (docroot/ layout, matching the catalogue).
+_ALL_DISTROS="farm cms culturas commerce localgov social thunder varbase"
 
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
@@ -691,16 +691,44 @@ build_thunder() {
   _finalize_distro "thunder" "${_wd}" "${_dver}" "thunder"
 }
 
-# DISABLED: unwired from _ALL_DISTROS + the do_build dispatch above -- the upstream varbase
-# template no longer produces an installable build (see the _ALL_DISTROS note). Kept for
-# reference / easy re-enable.
 build_varbase() {
   _begin_build "varbase-" "varbase" || return 0
   use_php "${_PHP_VARBASE}" || { _record_fail "varbase"; return 1; }
   local _wd="${_DAY_DIR}/.build.varbase" _dver
   _dver="$(_create_project "${_wd}" "${_VARBASE_SPEC}" "vardot/varbase-project" "")" \
     || { _record_fail "varbase"; return 1; }
-  if ! { _composer_prepare "${_wd}" && _with_core_fallback "${_wd}" "varbase" _composer_build; }; then
+  # varbase installs FROM THE SHIPPED LOCK, uniquely among the distros here. The July
+  # 2026 template fix IS the committed lock: upstream's tested resolve, including the
+  # composer-patches generation their ~76-patch set is written for. A re-resolve
+  # (_composer_build's composer update) discards exactly that -- measured 2026-08-11:
+  # the fresh resolve pulls a newer patches stack that aborts on their own core patch,
+  # and every older-core fallback pin just contradicts the profile's own core
+  # requirement. Config stays PRISTINE except allow-plugins (a config-section key):
+  # that is the shape upstream tests.
+  #
+  # The retry loop exists because their patch set is fetched from ~76 URLs at install
+  # time and a single flaked download aborts the whole install. CRITICAL: their pinned
+  # composer-patches records the ABORTED set as applied, so a retried install in the
+  # SAME tree exits 0 with patches silently missing (measured: a core patch absent
+  # from an exit-0 tree). Every attempt therefore starts from a fresh create-project
+  # (_create_project rm -rf's the workdir) -- on a fresh tree, exit 0 can only mean
+  # every patch applied in that one pass, because a patch failure is fatal. The shared
+  # composer cache still warms across attempts, which is what lets a later attempt
+  # complete. Never "optimise" this to resume a failed tree.
+  local _try _vok=""
+  for _try in 1 2 3; do
+    if [[ "${_try}" != "1" ]]; then
+      _alrt "varbase: install attempt failed; rebuilding fresh (attempt ${_try})"
+      _dver="$(_create_project "${_wd}" "${_VARBASE_SPEC}" "vardot/varbase-project" "")" \
+        || { _record_fail "varbase"; return 1; }
+    fi
+    if _run_as_o8 "cd '${_wd}' && composer config --no-plugins allow-plugins true" \
+      && _run_as_o8 "cd '${_wd}' && composer install --no-dev"; then
+      _vok="YES"
+      break
+    fi
+  done
+  if [[ "${_vok}" != "YES" ]]; then
     _record_fail "varbase"
     return 1
   fi
@@ -869,7 +897,7 @@ run_build() {
     localgov) build_localgov ;;
     social)   build_social ;;
     thunder)  build_thunder ;;
-    # varbase)  build_varbase ;;   # DISABLED: upstream template broken (see _ALL_DISTROS note)
+    varbase)  build_varbase ;;
     cores)    build_cores ;;
     *)        _alrt "unknown build target: ${_name}"; return 1 ;;
   esac
@@ -1158,7 +1186,7 @@ do_check() {
   _check_row "localgov" "$(_drupal_release localgov)"
   _check_row "social"   "$(_drupal_release social)"
   _check_row "thunder"  "$(_drupal_release thunder)"
-  # _check_row "varbase"  "$(_drupal_release varbase)"   # DISABLED (see _ALL_DISTROS note)
+  _check_row "varbase"  "$(_drupal_release varbase)"
   _msg ""
   local _minors="${_CORE_MINORS}"
   [[ -n "${_minors}" ]] || _minors="$(_discover_core_minors)"

@@ -100,9 +100,15 @@ fi
 #   exec 'git' 'remote' '-v'
 # or, on --enable-sigchild PHP builds, as
 #   { (exec 'git' ...) <&3 3<&- 3>/dev/null & } 3<&0;...
-# The single-quoted, exec-prefixed form matches none of websh's bare-token or path
-# checks below, so these legit subprocesses of an already-authorized parent were
-# refused (exit 1), surfacing in Composer as "git was not found ... in your PATH env".
+# and Composer's OWN ProcessExecutor (plugin executeCommand, e.g. composer-patches
+# applying a patch) renders the same argv as a quoted-verb string with NO exec prefix:
+#   'git' -C '/path' apply --check --verbose -p2 '/path/to.patch'
+# None of these forms match websh's bare-token or path checks below, so these legit
+# subprocesses of an already-authorized parent were refused (exit 1) -- surfacing in
+# Composer as "git was not found ... in your PATH env", and in composer-patches as
+# "No available patcher was able to apply patch" with git never executed at all
+# (found 2026-08-11 when every varbase core patch failed on a BOA box while applying
+# cleanly by hand; the silent-refusal shape cost a day of patcher forensics).
 # Read the normalised leading token, then exec the ORIGINAL string verbatim so its
 # quoting and the sigchild fd-3 exit-code protocol both survive. An lshell user cannot
 # forge this shape: exec/sh are not in allowed_shell_escape and the wrapper carries
@@ -115,8 +121,11 @@ fi
 # passed through: a user's top-level `composer`/`drush` is a bare string dispatched with
 # PHP-version selection below, and composer's own php subprocess is an absolute-path
 # string caught by (a) - so the PHP-CLI selection is never bypassed here.
+# The leading-quote arm adds NO capability: after quote-stripping it lands in the same
+# allowlist as the bare-token path below, so a quoted verb can only reach what its bare
+# spelling already could.
 if [ "${1}" = "-c" ] \
-  && { [[ "${2}" == "exec "* ]] || [[ "${2}" == "{ (exec "* ]]; }; then
+  && { [[ "${2}" == "exec "* ]] || [[ "${2}" == "{ (exec "* ]] || [[ "${2}" == "'"* ]]; }; then
   _SF_ORIG="${2}"
   _SF_CMD="${2#\{ (}"
   _SF_CMD="${_SF_CMD#exec }"
