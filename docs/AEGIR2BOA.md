@@ -70,9 +70,9 @@ window. That drill estate was Drupal-7-only and HTTP-only.
 
 Re-run in full on 2026-08-11 against a fresh vanilla source and a fresh BOA
 target, on published tool bytes, with an estate carrying real Let's Encrypt
-sites and a Drupal 9 composer platform. That run found and fixed six defects
-in these tools, three of which made a documented path impossible rather than
-merely rough — read `aegir2boa/audits/2026-08-11-change-impact.md` and
+sites and a Drupal 9 composer platform. That run found and fixed eight defects
+in these tools — and added the `peer` verb — four of which made a documented
+path impossible rather than merely rough — read `aegir2boa/audits/2026-08-11-change-impact.md` and
 `boa-testing tier3/results/A2B-FRESH-E2E-2026-08-11.md` before trusting any
 claim here that predates it. What that re-run settled:
 
