@@ -3882,7 +3882,7 @@ _xmass_force_tool_update() {
   #
   # $1: empty for this box, or a target IP to force remotely.
   local _where="${1:-}"
-  local _t _before _after
+  local _t
   local _tools="xmass xoct xcopy xtrim renameaegirhost ffmirror"
 
   if [ -n "${_where}" ]; then
@@ -3899,27 +3899,29 @@ _xmass_force_tool_update() {
     return 0
   fi
 
-  # bash reads a script incrementally, so replacing the file this process is
-  # executing corrupts the rest of THIS run. Notice it and stop cleanly rather
-  # than carry on over a file that changed underneath us.
-  _before=$(md5sum /opt/local/bin/xmass 2>/dev/null | awk '{print $1}')
+  # The tool running this code needs no special handling: _fetch_versioned
+  # refuses to replace a tool whose process is live ("The <tool> is
+  # running!", BOA.sh.txt) and returns before it stamps anything, so xmass
+  # cannot be swapped underneath this run and its marker simply stays cleared
+  # — the next 5-minute pass refreshes it once this run has exited. Listing it
+  # here is therefore what makes it current for the NEXT verb, not this one.
   for _t in ${_tools}; do
     rm -f /var/log/boa/${_t}.ctrl.*
   done
   bash /var/xdrago/clear.sh &>/dev/null
-  _after=$(md5sum /opt/local/bin/xmass 2>/dev/null | awk '{print $1}')
 
+  local _mrk
   for _t in ${_tools}; do
-    _info "  $(ls /var/log/boa/${_t}.ctrl.* 2>/dev/null | head -1 \
-      | sed 's|.*/||; s|\.ctrl\.| |; s|\..*||' || echo "${_t} (no marker)")"
+    _mrk=$(ls /var/log/boa/${_t}.ctrl.* 2>/dev/null | head -1)
+    if [ -n "${_mrk}" ]; then
+      _info "  $(basename "${_mrk}" | sed 's|\.ctrl\.| |; s|\..*||')"
+    else
+      ### No marker means the fetch declined because that tool is running --
+      ### which is the tool executing this line. It refreshes on the next
+      ### 5-minute pass, once this run has exited.
+      _info "  ${_t} (refresh deferred — running now)"
+    fi
   done
-
-  if [ -n "${_before}" ] && [ "${_before}" != "${_after}" ]; then
-    _die "xmass itself was refreshed by that update." \
-         " Re-run this exact command so the migration runs on the new code:" \
-         " bash reads a script incrementally, so continuing over a file that" \
-         " changed underneath this process is not safe."
-  fi
   return 0
 }
 
