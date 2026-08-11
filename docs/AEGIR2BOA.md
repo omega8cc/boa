@@ -293,7 +293,8 @@ Source-resident verbs (vanilla box, root):
              [--option EDGE] [--subscr M] [--cores 1]       [--live]
   export     --site <dom>|--all                             [--live]
   transfer   --target <ip> --account <oN> --site <dom>|--all [--live]
-  proxy      --target <ip> --site <dom>|--all [--accept-http-diff] [--live]
+  proxy      --target <ip> --site <dom>|--all [--accept-http-diff]
+             [--refresh]                                    [--live]
   cert-sync  --target <ip> --account <oN> [--install-cron]  [--live]
   revert     --site <dom>|--all                             [--live]
   resume                                                    [--live]
@@ -594,6 +595,22 @@ cert paths, so they cannot be dropped onto a distro nginx verbatim). The
 catch-all location also forwards `/.well-known/acme-challenge/` — so the
 TARGET can mint and renew real Let's Encrypt certs for domains whose DNS
 still points at the source, for the whole proxy window.
+
+Proxy vhosts carry the vanilla vhost's whole `server_name` set **plus
+`www.<domain>`** even when the vanilla vhost never served it. BOA's LE
+requests a SAN certificate for the bare name AND `www.` by default, and
+the adopting BOA box answers `www.` itself — but the challenge for it
+arrives at THIS box, and without the alias it lands on the catch-all and
+the whole certificate order fails (measured live 2026-08-11: bare name
+validated through the proxy, `www.` got 404, `cert.pem` left empty). A
+name the client's DNS does not resolve simply never arrives, so the
+extra alias is inert on estates without `www.` records.
+
+`proxy --refresh` (dry, then `--live`) re-renders the proxy vhost(s) of
+already-proxied sites in place, from the dotfile original plus the
+CURRENT templates — for when a template fix must reach a live window
+without the revert → re-export loop. No markers move, the dotfile is
+untouched, and the previous conf is restored if `nginx -t` fails.
 
 ### cert-sync — keep the proxy's certs fresh (https estates)
 
