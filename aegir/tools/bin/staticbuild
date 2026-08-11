@@ -677,24 +677,39 @@ build_openfed() {
     || { _record_fail "openfed"; return 1; }
   # The template's own require is just three composer helpers; the whole
   # distribution (openfed/openfed 13.6.*) arrives through composer-merge-plugin's
-  # require of composer.openfed.json. After a --no-install create the plugin is
-  # not on disk yet, so a straight resolve would lock the three helpers and no
-  # openfed at all: bootstrap-install the template deps first (--no-scripts:
-  # upstream's post-update-cmd recursively runs `composer install`, which exits
-  # non-zero against the mid-bootstrap lock), then resolve+install as usual.
+  # require of composer.openfed.json, and that file's include list points INSIDE
+  # packages the resolve itself installs (webform's + ckeditor_codemirror's
+  # composer.libraries.json). Neither layer is visible to a single resolve: the
+  # plugin is not on disk after a --no-install create, and the include files are
+  # not on disk until the first install lands their packages. The plugin closes
+  # that gap itself: the bootstrap install triggers its in-process nested
+  # updates, which converge the whole tree - and then upstream's recursive
+  # post-update-cmd (`composer install`, their own include-file self-heal) fires
+  # against the still-mid-convergence lock and exits 4, so the bootstrap's rc is
+  # deliberately tolerated. --no-scripts CANNOT avoid that (measured): plugin
+  # event subscribers still run under --no-scripts, and the nested update the
+  # plugin dispatches re-enables scripts on its own. The rc-gated resolve+install
+  # pair after the bootstrap is the real gate - with everything on disk it
+  # writes the complete lock (openfed + the include-file libraries), installs it
+  # with no recursion left to trigger, and runs upstream's scaffold scripts.
   # NO _with_core_fallback here, for two reasons: the profile pins its own core
   # minor (core-recommended ~10.6), so there is no older core to fall back to -
   # and the fallback's lock+vendor wipe would remove the merge plugin, making the
   # retry "succeed" into a distribution-less tree. Fail closed instead.
   if ! { _composer_prepare "${_wd}" \
-         && _run_as_o8 "cd '${_wd}' && composer install --no-dev --no-scripts" \
+         && { _run_as_o8 "cd '${_wd}' && composer install --no-dev" || true; } \
          && _composer_build "${_wd}"; }; then
     _record_fail "openfed"
     return 1
   fi
+  # Fail closed on the tolerated bootstrap: if it died before the merge plugin
+  # reached disk, the resolve above quietly locked three helpers and no openfed.
   _dist="$(_lock_version "${_wd}" "${_OPENFED_DISTPKG}")"
-  [[ -n "${_dist}" ]] && _dver="${_dist}"
-  _finalize_distro "openfed" "${_wd}" "${_dver}" "openfed"
+  if [[ -z "${_dist}" ]]; then
+    _record_fail "openfed (openfed/openfed missing from the lock)"
+    return 1
+  fi
+  _finalize_distro "openfed" "${_wd}" "${_dist}" "openfed"
 }
 
 build_opigno() {

@@ -191,16 +191,22 @@ localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.2-1
 ```sh
 openfed    # The openfed-project template requires only three composer helpers; the whole
            # distribution (openfed/openfed 13.6.*) is merged in by composer-merge-plugin
-           # from the template's composer.openfed.json. A plugin can only act once
-           # installed, so after a --no-install create the deps must be bootstrap-installed
-           # before the real resolve (--no-scripts: upstream's post-update-cmd recursively
-           # runs `composer install`, which exits non-zero against the bootstrap lock).
+           # from the template's composer.openfed.json, whose include list points INSIDE
+           # packages the resolve itself installs (webform's + ckeditor_codemirror's
+           # composer.libraries.json). The bootstrap install triggers the plugin's
+           # nested in-process updates, which converge the tree - and then upstream's
+           # recursive post-update-cmd (`composer install`, their include-file
+           # self-heal) exits 4 against the mid-convergence lock, so the bootstrap's
+           # rc is EXPECTED non-zero and tolerated. --no-scripts cannot avoid that
+           # (measured): plugin event subscribers still run under --no-scripts and the
+           # nested update they dispatch re-enables scripts on its own. The explicit
+           # resolve+install pair after it is the real gate and must exit 0.
            # composer create-project openfed/openfed-project:^13 openfed-13.6.6-10.6.15 --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/openfed-13.6.6-10.6.15
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
-           # composer install --no-dev --no-scripts   # bootstrap: puts the merge plugin on disk
-           # composer update --no-install --no-scripts
+           # composer install --no-dev                    # bootstrap; rc 4 EXPECTED, tolerated
+           # composer update --no-install --no-scripts    # complete lock incl. include-file libraries
            # composer install --no-dev
            # ACCEPTED TRADE: the platform ships drupal/entity_browser 2.15.0 with an open
            # XSS advisory (SA-CONTRIB-2026-094) - the profile pins entity_browser 2.15
