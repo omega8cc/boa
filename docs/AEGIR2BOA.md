@@ -108,11 +108,16 @@ Which leaves, honestly:
   TARGET's certificates, serial-verified. What remains manual is the enable
   itself: adopted sites arrive with Encryption off, so the target holds no
   certificate until you enable it there (see cert-sync).
-- **The db-import route has not been re-run since 2026-07.** Its July proof
-  stands, and its refusal on ineligible estates is freshly verified, but the
-  positive path predates the 2026-08-11 fixes and has not been re-validated
-  against them. Treat it as the less-proven route until it gets a fresh
-  homogeneous-D7 drill.
+- **The db-import route is re-drilled end to end** (2026-08-11, on current
+  published tool bytes): a fresh homogeneous-D7 estate — four sites, two on
+  real Let's Encrypt HTTPS — flipped, adopted via the whole-DB import with
+  its identity surgery and inline verify ladder (all four sites serving
+  their baselines), proxied, and then fully reverted on both boxes
+  (`--revert-db-import` restored the pre-import panel exactly; the source
+  served locally again, HTTPS included). Its refusal on ineligible estates
+  is verified as a refusal too. One route nuance stands (see cert-sync):
+  db-import keeps vanilla's alias settings, so enabling Encryption there
+  needs the `www.` alias added or a bare-name certificate requested.
 - **Drupal 6 is untested.** It routes to the per-site path by design; the D6
   PHP-pool gating exists in code only so far, and note that a D6 site whose
   `php56` pool never appears is a per-site FAIL by design, not a warning.
@@ -650,6 +655,16 @@ mirrors the box that does. Remove that cron at decommission (stage 3).
 > is why proxy vhosts carry `www.<domain>`; and back-to-back verifies can
 > collide on the LE tooling's per-account lock — enable and verify sites
 > ONE AT A TIME, and re-run the verify if a run reports a lock abort.
+>
+> **db-import route nuance.** Sites adopted per-site are registered fresh
+> on the BOA panel, whose defaults add the `www.` alias — so their vhosts
+> answer the `www.` ACME challenge. The db-import route imports the
+> vanilla panel as-is, and vanilla adds no automatic `www.` alias, so a
+> default SAN issuance fails its `www.` challenge on the target's
+> catch-all. Before enabling Encryption on a db-import-adopted site,
+> either add its `www.` alias in the target panel, or request a bare-name
+> certificate by creating the empty control file
+> `<oN>/static/control/ssl-no-san-<domain>.info`.
 
 ### Reverts — the way back, until DNS moves
 
