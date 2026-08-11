@@ -33,6 +33,7 @@ Distributions, published to `/var/www/static/distro`:
   farm-4.0.4-11.3.14
   localgov-4.0.2-11.4.5
   openculturas-3.0.5-11.3.16
+  opigno_lms-3.2.7-10.6.15
   social-13.0.2-10.6.15
   thunder-8.4.0-11.4.5
   varbase-10.1.1-11.4.4
@@ -117,6 +118,7 @@ Four artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   https://www.drupal.org/project/farm
   https://www.drupal.org/project/localgov
   https://www.drupal.org/project/openculturas
+  https://www.drupal.org/project/opigno_lms
   https://www.drupal.org/project/social
   https://www.drupal.org/project/thunder
   https://www.drupal.org/project/varbase
@@ -182,6 +184,32 @@ localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.2-1
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
+```
+
+```sh
+opigno     # Opigno's documented create-project is broken as shipped, in three ways the
+           # build corrects. (1) The template replaces h5p/h5p-core + h5p/h5p-editor
+           # without providing them, so \H5PFrameworkInterface never reaches disk and
+           # every install fatals in h5p_install() (opigno_lms #3574405): drop the
+           # replace block. (2) h5p-core 1.28.0 added an interface method drupal/h5p
+           # 2.0.0-beta1 does not implement (h5p #3578071): require h5p/h5p-core:1.27.*
+           # (inside the module's own ^1.27). (3) Twig 3.22+ rejects
+           # opigno_learning_path's empty getOperators() on the first front-page render
+           # (#3561556, RTBC, in no release): apply the issue patch, fail closed.
+           # composer create-project opigno/opigno-composer opigno_lms-3.2.7-10.6.15 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/opigno_lms-3.2.7-10.6.15
+           # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
+           # composer config --unset replace
+           # composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'
+           # composer update --no-install --no-scripts
+           # composer install --no-dev
+           # cd web && patch -p1 < the #3561556 getOperators patch
+           # ACCEPTED TRADE: the platform ships dompdf 2.0.8 with open advisories -
+           # the profile pins dompdf ~2.0.0 and the fixed line (3.x) is outside it,
+           # so advisory blocking must stay off for this build.
+           # name by opigno/opigno_lms read from the LOCK; profile opigno_lms,
+           # docroot web/; builds under php83 (its catalogue cap)
 ```
 
 ```sh
