@@ -386,14 +386,33 @@ server {
 PROXYEOF
 }
 
+# nginx gained the standalone `http2` directive in 1.25.1; before that HTTP/2
+# is a parameter of the listen directive. A vanilla source box runs the
+# DISTRO's nginx - 1.18 on Debian 11 - where `http2 on;` is an unknown
+# directive that fails the WHOLE config. Measured 2026-08-11: every HTTPS site
+# refused to cut over because of exactly this, while the HTTP sites proxied
+# fine. BOA's own template can assume its own modern build; this one cannot.
+_nginx_has_http2_directive() {
+  local _v
+  _v="$(nginx -v 2>&1 | sed -n 's|.*nginx/\([0-9][0-9.]*\).*|\1|p')"
+  [[ -n "${_v}" ]] || return 1
+  [[ "$(printf '%s\n1.25.1\n' "${_v}" | sort -V | tail -1)" = "${_v}" ]]
+}
+
 _emit_proxy_https() {   # 1 domain 2 server_names 3 target_ip 4 cert_store
+  local _listen
+  if _nginx_has_http2_directive; then
+    _listen="listen                       *:443 ssl;
+  http2                        on;"
+  else
+    _listen="listen                       *:443 ssl http2;"
+  fi
   cat <<PROXYEOF
 ###
 ### Secure HTTPS proxy for $1 (START) [aegir2boa-stage2]
 ###
 server {
-  listen                       *:443 ssl;
-  http2                        on;
+  ${_listen}
   server_name                  $2;
   ssl_certificate_key          $4/key.pem;
   ssl_certificate              $4/cert.pem;
@@ -2241,7 +2260,7 @@ verb_certsync() {
     _LIVE=YES
   fi
   [[ -n "${_TARGET}" && -n "${_ACCOUNT}" ]] || _die "cert-sync needs --target and --account"
-  local _changed=0 _mf _uri _store _tmpd
+  local _changed=0 _missing=0 _sslcount=0 _mf _uri _store _tmpd
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
@@ -2258,6 +2277,7 @@ verb_certsync() {
     [[ "$(_manifest_val "${_mf}" SSL)" = "1" ]] || continue
     _store="${_AEGIR_ROOT}/config/a2b-proxy-ssl/${_uri}"
     [[ -d "${_store}" ]] || continue
+    _sslcount=$(( _sslcount + 1 ))
     _tmpd="$(mktemp -d "${_STATE_DIR}/.certs.XXXXXX")"
     if scp -q -o BatchMode=yes \
         "root@${_TARGET}:/data/disk/${_ACCOUNT}/tools/le/certs/${_uri}/fullchain.pem" \
@@ -2272,6 +2292,14 @@ verb_certsync() {
         _changed=$(( _changed + 1 ))
         _info "site ${_uri}: proxy cert refreshed from target LE"
       fi
+    else
+      # No certificate on the TARGET for a site that is live on HTTPS today.
+      # This is invisible during the window - the source's own certificate is
+      # what visitors see - and becomes an outage at DNS cutover. Adopted
+      # sites ship dark by design (cron and Encryption off), so the target
+      # only obtains its own certificate once Encryption is enabled there.
+      _missing=$(( _missing + 1 ))
+      _alrt "site ${_uri}: the target holds NO certificate for it yet"
     fi
     rm -rf "${_tmpd}"
   done
@@ -2293,6 +2321,14 @@ $(readlink -f "$0" 2>/dev/null || echo "$0") cert-sync --from-state >> ${_LOG} 2
 CRONEOF
     chmod 755 /etc/cron.weekly/a2b-cert-sync
     _info "weekly cert-sync cron installed (/etc/cron.weekly/a2b-cert-sync)"
+  fi
+  if [[ "${_missing}" -gt 0 ]]; then
+    _alrt "${_missing} of ${_sslcount} proxied HTTPS site(s) have NO certificate on the target"
+    _alrt "enable Encryption on them in the target panel and let Let's Encrypt issue"
+    _alrt "BEFORE you repoint DNS - ACME reaches the target through this proxy, so it"
+    _alrt "can issue during the window, but nothing issues it for you"
+    _msg "cert-sync complete (${_changed} refreshed, ${_missing} MISSING on the target)"
+    return 1
   fi
   _msg "cert-sync complete (${_changed} refreshed)"
 }
