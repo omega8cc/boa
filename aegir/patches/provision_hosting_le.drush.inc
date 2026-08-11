@@ -320,6 +320,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] You could then replace existing cert with any other cert since it will be left here as-is forever.", 'info');
       drush_log("[hosting_le] NOTE: On hosted Ægir service you need to contact your host support for further assistance.", 'info');
       $output = '';
+      $le_rc = 0;
       $le_options = " --cron --ipv4";
       $le_challenge = " --domain " . $real_name . " --challenge dns-01 --hook " . $cf_hook;
       if ($on_remote_server) {
@@ -329,19 +330,19 @@ function drush_provision_hosting_le_post_provision_verify() {
         if ($no_alt_names || empty($alt_names)) {
           if ($is_wildcard) {
             $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $le_challenge;
-            exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output);
+            exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output, $le_rc);
           }
           else {
-            exec("/bin/bash " . $le_exec . $le_options . " --force --domain " . $main_name . ' 2>&1', $output);
+            exec("/bin/bash " . $le_exec . $le_options . " --force --domain " . $main_name . ' 2>&1', $output, $le_rc);
           }
         }
         else {
           if ($is_wildcard) {
             $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $alt_names . $le_challenge;
-            exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output);
+            exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output, $le_rc);
           }
           else {
-            exec("/bin/bash " . $le_exec . $le_options . " --force --domain " . $real_name . $alt_names . ' 2>&1', $output);
+            exec("/bin/bash " . $le_exec . $le_options . " --force --domain " . $real_name . $alt_names . ' 2>&1', $output, $le_rc);
           }
         }
       }
@@ -349,24 +350,34 @@ function drush_provision_hosting_le_post_provision_verify() {
         if ($no_alt_names || empty($alt_names)) {
           if ($is_wildcard) {
             $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $le_challenge;
-            exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output);
+            exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output, $le_rc);
           }
           else {
-            exec("/bin/bash " . $le_exec . $le_options . " --domain " . $main_name . ' 2>&1', $output);
+            exec("/bin/bash " . $le_exec . $le_options . " --domain " . $main_name . ' 2>&1', $output, $le_rc);
           }
         }
         else {
           if ($is_wildcard) {
             $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $alt_names . $le_challenge;
-            exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output);
+            exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output, $le_rc);
           }
           else {
-            exec("/bin/bash " . $le_exec . $le_options . " --domain " . $real_name . $alt_names . ' 2>&1', $output);
+            exec("/bin/bash " . $le_exec . $le_options . " --domain " . $real_name . $alt_names . ' 2>&1', $output, $le_rc);
           }
         }
       }
       $acme_result = implode(' ', $output);
       drush_log("[hosting_le] ACME Output: " . $acme_result, 'info');
+      drush_log("[hosting_le] ACME Exit Code: " . $le_rc, 'info');
+      // On lock contention dehydrated aborts before creating any cert files;
+      // without this guard the fallback below would report success and wire
+      // symlinks to files which do not exist, breaking nginx -t box-wide.
+      if (preg_match("/Lock file.*aborting/i", $acme_result)) {
+        drush_log("[hosting_le] Another LE task holds the lock " . $le_root . "/lock so this attempt was aborted.", 'warning');
+        drush_log("[hosting_le] No certificate has been issued or renewed for " . $main_name . " in this attempt.", 'warning');
+        drush_log("[hosting_le] Please run Verify again for this site once the other LE task has completed.", 'warning');
+        return FALSE;
+      }
       if (!provision_file()->exists($cert_dir)->status()) {
         $needs_update = FALSE;
         drush_log("[hosting_le] Hmm.. For some reason cert_dir doesn't exist:  " . $cert_dir, 'info');
@@ -415,6 +426,17 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
 
     if ($needs_update && !provision_file()->exists($immutable)->status()) {
+
+      // A [re]generation is only real if dehydrated actually produced the
+      // cert files; openssl.* symlinks wired to missing targets make the
+      // vhost referencing them fail nginx -t for the whole box.
+      if (!provision_file()->exists($cert_dir . "/cert.pem")->status() ||
+          !provision_file()->exists($cert_dir . "/fullchain.pem")->status()) {
+        drush_log("[hosting_le] Expected cert files are missing in " . $cert_dir, 'warning');
+        drush_log("[hosting_le] Skipping symlinks wiring and webserver restart to keep the vhost config valid.", 'warning');
+        drush_log("[hosting_le] Please run Verify again for this site to attempt the LE certificate [re]generation.", 'warning');
+        return FALSE;
+      }
 
       exec("/bin/bash " . $le_exec . " --cleanup", $output_clean);
       $acme_result_clean = implode(' ', $output_clean);

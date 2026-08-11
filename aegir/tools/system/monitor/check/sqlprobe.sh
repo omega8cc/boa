@@ -72,7 +72,7 @@ _check_root
 # Run only on a fully installed system (same guard the sibling monitors use).
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
-# Opt-out (Q4 ruling 2026-07-28: default ON fleet-wide; NO disables).
+# Opt-out (policy: default ON fleet-wide; NO disables).
 [ "${_USE_SQLPROBE}" = "NO" ] && exit 0
 
 # Major system transition in flight: measurements would be noise.

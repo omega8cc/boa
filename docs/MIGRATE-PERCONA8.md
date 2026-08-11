@@ -197,8 +197,7 @@ matrix, all passing:
 | C | `xmass` | 8.4 → 8.4 | PASS (whole-server; xtrabackup-84 + GTID on 8.4) |
 | D | `xmass` | 5.7 → 8.4 | PASS — refused at the version gate, target untouched |
 
-The campaign exercised the tools against real Percona 8.4 for the first time and
-drove the version-aware `xmass` behaviour and the watchdog-pause safety into the
-shipped tools. The detailed per-scenario records and the fix history live in the
-`boa-testing` Tier 3 campaign results, not here — this page documents the
-resulting behaviour, which is what you operate against.
+The version-aware `xmass` behaviour and the watchdog-pause safety were first
+validated against real Percona 8.4 in that campaign, across both same-version
+and cross-version paths. This page documents the resulting behaviour, which is
+what you operate against.
