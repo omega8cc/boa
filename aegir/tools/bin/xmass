@@ -2946,6 +2946,42 @@ _xmass_remove_http_off_target() {
 # query-kills MySQL mid xtrabackup snapshot, replica setup, or the cutover
 # FLUSH lock. Best-effort on the target; the watchdog self-ignores a stale
 # marker (>4h) and /run is tmpfs, so a died operation never wedges auto-heal.
+_xmass_report_queued_tasks() {
+  # What is sitting in the panel queues at the moment the box moves.
+  #
+  # The whole hostmaster DB travels by replication, rows and all, and cutover
+  # then runs `hosting-tasks --force` on the target -- so anything queued here
+  # executes THERE, against new production. The dangerous type, `delete`, is
+  # purged outright at init (_xmass_clear_pending_deletes, matching what the
+  # old tool did on every export). The rest are mostly benign and some are
+  # wanted, so this reports rather than deletes: an operator who queued a
+  # migrate or a restore minutes before cutover should see it named here
+  # instead of discovering it ran on the new box.
+  #
+  # Deliberately NOT maintenance_mode. xoct sets it at export, but that path
+  # is never reached in the xmass flow, and porting it is not a lift: set
+  # before promotion it replicates INTO new production and leaves the new
+  # panel in maintenance, and set after the write freeze a `drush
+  # variable-set` is blocked by the readonly flag the freeze just turned on.
+  local _oct _rows _total=0
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _rows=$(su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"SELECT CONCAT(task_type,'=',COUNT(*)) FROM hosting_task WHERE task_status IN (0,-1) GROUP BY task_type\"" \
+      2>/dev/null | tr '\n' ' ')
+    _rows=$(echo ${_rows})
+    if [ -n "${_rows}" ]; then
+      _alrt "  ${_oct}: queued/interrupted panel tasks travelling to the target: ${_rows}"
+      _total=$(( _total + 1 ))
+    fi
+  done
+  if [ "${_total}" -eq 0 ]; then
+    _info "  no queued or interrupted panel tasks on any account"
+  else
+    _alrt "  these will run on the TARGET when cutover starts its queue — cancel any you do not want"
+  fi
+  return 0
+}
+
 _xmass_maint_on() {
   : > /run/boa_sql_maintenance.pid
   ssh root@"${_tgt}" ": > /run/boa_sql_maintenance.pid" 2>/dev/null || true
@@ -4524,6 +4560,10 @@ _xmass_cmd_cutover() {
   # watchdog's busy/high-load restart would break that lock mid-cutover =>
   # DATA LOSS. Also covers the target promote + renameaegirhost DB work.
   _xmass_maint_on
+
+  # What is queued in the panels right now, before anything is blocked: it
+  # travels with the DB and runs on the target.
+  _xmass_report_queued_tasks
 
   # Step 0: Re-hold Solr on target in case it was manually started since init.
   # Also stops any running instance so the final Solr rsync gets a clean state.
