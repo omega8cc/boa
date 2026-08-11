@@ -4106,7 +4106,11 @@ _xmass_cmd_sync() {
   else
     _info "xmass sync: DRY run — planning file relocation to ${_tgt} (no changes made) ..."
   fi
-  _xmass_enumerate_accounts
+  # (Accounts were enumerated above, before the readiness gates. Nothing
+  # between here and there can change /data/disk, and only this function
+  # assigns _ELIGIBLE_ACCOUNTS -- so a second full find plus five file tests
+  # per account bought nothing except printing the eligible/skipped block to
+  # the operator twice, which reads like two different passes.)
   _xmass_sync_shared
   _xmass_sync_solr
   local _oct
