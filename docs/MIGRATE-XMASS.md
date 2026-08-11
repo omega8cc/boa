@@ -339,11 +339,9 @@ What `init` does:
    Other task types are reported at cutover, never deleted.
 6. Takes an xtrabackup snapshot and transfers it to target (staged or
    streamed — see [Transfer Method](#xtrabackup-transfer-method)). The
-   staged snapshot bounds its backup-lock wait (15 minutes) and kills a
-   query that blocks it after 60 s, so a staged `init` cannot sit forever
-   behind one long report. The **streamed** path carries no such cap — on a
-   box tight enough on disk to stream, schedule `init` away from long-running
-   queries.
+   snapshot bounds its backup-lock wait (15 minutes) and kills a query
+   that blocks it after 60 s regardless of method, so an `init` cannot
+   sit forever behind one long report.
 7. Restores the snapshot into the target's `/var/lib/mysql` and starts MySQL.
 8. Transfers `/root/.my.pass.txt` and `/root/.my.cnf` so the target MySQL
    client credentials match the restored data directory.
@@ -668,14 +666,14 @@ available disk space on the source `/` filesystem:
 - **Stage:** if free space > 1.5× the MySQL data directory size, the backup
   is written locally to `/var/backups/xmass_stage`, prepared (`--prepare`),
   then rsynced to the target. More disk I/O but easier to resume if the
-  transfer is interrupted. The staged backup bounds its backup-lock wait to
-  15 minutes and kills a query that blocks it after 60 s, so it cannot sit
-  forever behind one long report.
+  transfer is interrupted.
 - **Stream:** if free space is insufficient, the backup is piped directly via
   `xbstream` over SSH to `/var/backups/xmass_restore` on the target, where it
-  is then prepared. No staging disk required on source. The streamed path
-  carries **no** lock-wait cap — on a box tight enough on disk to stream,
-  schedule `init` away from long-running queries.
+  is then prepared. No staging disk required on source.
+
+Either way the snapshot bounds its backup-lock wait to 15 minutes and kills
+a query that blocks it after 60 s, so an `init` cannot sit forever behind
+one long report.
 
 Example: 154 GB MySQL, 73 GB free on `/` → stream method selected (73 GB < 231 GB needed).
 
