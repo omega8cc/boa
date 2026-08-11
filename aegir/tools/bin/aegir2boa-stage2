@@ -18,7 +18,8 @@
 #              [--option EDGE] [--subscr M] [--cores 1]       [--live]
 #   export     --site <dom>|--all                             [--live]
 #   transfer   --target <ip> --account <oN> --site <dom>|--all [--live]
-#   proxy      --target <ip> --site <dom>|--all [--accept-http-diff] [--live]
+#   proxy      --target <ip> --site <dom>|--all [--accept-http-diff]
+#              [--refresh]                                    [--live]
 #   cert-sync  --target <ip> --account <oN> [--install-cron]  [--live]
 #   revert     --site <dom>|--all                             [--live]
 #   resume                                                    [--live]
@@ -70,6 +71,7 @@ _SUBSCR=M
 _CORES=1
 _SRC_FQDN=""
 _ACCEPT_HTTP_DIFF=NO
+_REFRESH=NO
 _SOURCE_IP=""
 _PUBKEY_FILE=""
 _ACCEPT_SCRUB=NO
@@ -89,7 +91,7 @@ _die()  { echo "A2B-S2 [$(date +%T 2>/dev/null)] FATAL: $*" | tee -a "${_LOG}" >
 _have() { command -v "$1" >/dev/null 2>&1; }
 
 _usage() {
-  sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,46p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 }
 
@@ -317,6 +319,20 @@ _harvest_listens() {
   grep -hE '^[[:space:]]*listen[[:space:]]' "$1" 2>/dev/null \
     | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | sort -u \
     | sed '/:443/{ /[[:space:]]ssl/!s/;$/ ssl;/ }'
+}
+# BOA's LE requests a SAN certificate for <uri> AND www.<uri> by default,
+# and the adopting BOA target answers www.<uri> itself (alias server block,
+# which carries the ACME challenge location). A proxy answering only the
+# vanilla vhost's exact names drops the www ACME challenge onto this box's
+# catch-all instead (observed live 2026-08-11: the bare name validated
+# through the proxy, the www name got a 404 off the source, and the whole
+# certificate order failed) - so proxy vhosts always carry www.<uri> too.
+# A name public DNS does not resolve simply never arrives.
+_names_plus_www() {   # 1 uri 2 harvested names
+  case " $2 " in
+    *" www.$1 "*) echo "$2" ;;
+    *) echo "$2 www.$1" ;;
+  esac
 }
 _harvest_ssl_lines() {
   grep -hE '^[[:space:]]*ssl_certificate(_key)?[[:space:]]' "$1" 2>/dev/null \
@@ -2108,8 +2124,72 @@ verb_peer() {
 
 ###-------------VERB: proxy------------###
 
+# In-window re-render of an already-proxied site's proxy vhost(s) from the
+# dotfile original + the CURRENT templates (proxy --refresh). Exists so a
+# template fix can reach live proxy vhosts without the revert->re-export
+# loop, which would re-cut serving and stale the target copy over what is
+# only a config regeneration. No markers move; the dotfile is never
+# touched; the previous proxy conf is restored on any nginx -t failure.
+_proxy_refresh_one() {   # 1 uri
+  local _uri="$1" _mf _vh _vhd _vhs _names _code _store _prevh _prevs
+  _mf="$(_manifest_of "${_uri}")"
+  _vh="$(_vhostd)/${_uri}"
+  _vhd="$(_vhostd)/.${_uri}"
+  _vhs="$(_vhostd)/https.${_uri}"
+  _marker_has "${_uri}.proxied.pid" || { _info "site ${_uri}: not proxied - refresh skip"; return 0; }
+  [[ -e "${_vhd}" ]] || { _alrt "site ${_uri}: revert dotfile missing - cannot refresh"; return 1; }
+
+  # same serve-proof discrimination as the swap: never point a fresh conf
+  # at a target that no longer serves the site
+  local _body="/tmp/.a2b-proxy-probe.$$"
+  _code="$(_http_code_body_at "${_uri}" "${_TARGET}" "${_body}")"
+  if _is_catchall_body "${_body}" "${_code}" "${_A2B_CATCHALL_BASE}"; then
+    rm -f "${_body}"
+    _alrt "site ${_uri}: target answers with its CATCH-ALL page - refresh refused"
+    return 1
+  fi
+  rm -f "${_body}"
+
+  if [[ "${_LIVE}" != "YES" ]]; then
+    _info "[DRY] site ${_uri}: would re-render proxy vhost(s) from ${_vhd} + current templates"
+    return 0
+  fi
+
+  _names="$(_names_plus_www "${_uri}" "$(_harvest_names "${_vhd}")")"
+  _prevh="$(_vhostd)/.a2b-prev.${_uri}"
+  _prevs="$(_vhostd)/.a2b-prev.https.${_uri}"
+  cp -a "${_vh}" "${_prevh}"
+  [[ -e "${_vhs}" ]] && cp -a "${_vhs}" "${_prevs}"
+  _emit_proxy_http "${_names}" "${_TARGET}" > "${_vh}"
+  chmod 600 "${_vh}"
+  if [[ "$(_manifest_val "${_mf}" SSL)" = "1" ]]; then
+    _store="${_AEGIR_ROOT}/config/a2b-proxy-ssl/${_uri}"
+    if [[ -s "${_store}/cert.pem" && -s "${_store}/key.pem" ]]; then
+      _emit_proxy_https "${_uri}" "${_names}" "${_TARGET}" "${_store}" > "${_vhs}"
+      chmod 600 "${_vhs}"
+    else
+      _alrt "site ${_uri}: proxy cert store empty - https proxy left as-is"
+    fi
+  fi
+  if ! nginx -t >>"${_LOG}" 2>&1; then
+    mv -f "${_prevh}" "${_vh}"
+    [[ -e "${_prevs}" ]] && mv -f "${_prevs}" "${_vhs}"
+    _nginx_test_and_reload
+    _alrt "site ${_uri}: refreshed conf failed nginx -t - previous proxy conf restored"
+    return 1
+  fi
+  rm -f "${_prevh}" "${_prevs}"
+  _nginx_test_and_reload || { _alrt "site ${_uri}: reload failed AFTER passing -t - inspect nginx now"; return 1; }
+  _info "site ${_uri}: proxy vhost(s) re-rendered (server_name: ${_names})"
+  return 0
+}
+
 _proxy_one() {   # 1 uri
   local _uri="$1" _mf _vh _vhd _vhs _names _base _code _store
+  if [[ "${_REFRESH}" = "YES" ]]; then
+    _proxy_refresh_one "${_uri}"
+    return $?
+  fi
   _mf="$(_manifest_of "$1")"
   _vh="$(_vhostd)/${_uri}"
   _vhd="$(_vhostd)/.${_uri}"
@@ -2154,7 +2234,7 @@ _proxy_one() {   # 1 uri
     return 0
   fi
 
-  _names="$(_harvest_names "${_vh}")"
+  _names="$(_names_plus_www "${_uri}" "$(_harvest_names "${_vh}")")"
   # keep the stub shadowing until the proxy passes nginx -t
   mv -f "${_vh}" "${_vhd}"
   _emit_proxy_http "${_names}" "${_TARGET}" > "${_vh}"
@@ -2195,6 +2275,7 @@ verb_proxy() {
   [[ -n "${_TARGET}" ]] || _die "proxy needs --target <ip>"
   [[ "${_ALL}" = "YES" || -n "${_SITE}" ]] || _die "proxy needs --site <dom> or --all"
   local _scope="${_SITE:-all}" _fails=0 _mf _uri _route
+  [[ "${_REFRESH}" = "YES" ]] && _scope="refresh-${_scope}"
 
   # negative control first: every per-site gate below is judged against it
   _probe_catchall_baseline "${_TARGET}"
@@ -2461,6 +2542,7 @@ while [[ $# -gt 0 ]]; do
                 shift ;;
     --pubkey-file) _PUBKEY_FILE="$2"; shift ;;
     --accept-http-diff)  _ACCEPT_HTTP_DIFF=YES ;;
+    --refresh)           _REFRESH=YES ;;
     --accept-scrub-list) _ACCEPT_SCRUB=YES ;;
     --install-cron)      _INSTALL_CRON=YES ;;
     --welcome-node)      _WELCOME_NODE=YES ;;
