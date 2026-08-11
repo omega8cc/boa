@@ -1208,8 +1208,9 @@ do_check() {
 _catalogue_producers() {
   # Tarball prefixes an ENABLED target actually emits: walk run_build's live case
   # arms, then read each named function's _finalize_distro prefix. A commented-out
-  # arm is deliberately not counted -- varbase's tarball is retained on the mirror
-  # but nothing rebuilds it, and that is exactly the state worth surfacing.
+  # arm is deliberately not counted -- a frozen target's tarball stays on the mirror
+  # with nothing rebuilding it, and that is exactly the state this audit exists to
+  # surface (as it did through the 2026-07/08 varbase freeze).
   local _fn
   for _fn in $(awk '/^run_build\(\)/,/^}/' "$0" \
     | sed -nE 's/^[[:space:]]*[a-z0-9_-]+\)[[:space:]]+(build_[a-z_]+).*/\1/p'); do
