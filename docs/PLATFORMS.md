@@ -36,12 +36,12 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.6.15](https://drupal.org/project/drupal/releases/10.6.15)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
+- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.15)
 - [Social 13.0.2](https://drupal.org/project/social) (10.6.15)
 
 ## Drupal 9
 
 - [Drupal 9.5.11](https://drupal.org/project/drupal/releases/9.5.11)
-- [Opigno LMS 3.1.0](https://drupal.org/project/opigno_lms) (9.5.11)
 
 ## Drupal 7
 
@@ -105,6 +105,8 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 10.6
 
 - `DX6` — Drupal 10.6 prod/stage/dev
+- `OPG` — Opigno LMS
+- `SOC` — Social
 
 ### Drupal 10.5
 
@@ -123,7 +125,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 - `DX2` — Drupal 10.2 prod/stage/dev
 - `OFD` — OpenFed
-- `SOC` — Social
 
 ### Drupal 10.1
 
@@ -137,7 +138,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 9
 
 - `DL9` — Drupal 9 prod/stage/dev
-- `OPG` — Opigno LMS
 
 ### Drupal 7
 
@@ -149,6 +149,10 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 - `DL6` — Pressflow (LTS) prod/stage/dev
 - `UC6` — Ubercart
+
+### Backdrop
+
+- `BDR` — Backdrop CMS prod/stage/dev (built by default; skipped when `_BACKDROP_SUPPORT=NO`)
 
 You can also use the special keyword `ALL` instead of any other symbols to have all available platforms installed, including newly added platforms in all future BOA system releases.
 
