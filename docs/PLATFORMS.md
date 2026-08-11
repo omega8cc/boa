@@ -105,6 +105,8 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 10.6
 
 - `DX6` — Drupal 10.6 prod/stage/dev
+- `OPG` — Opigno LMS
+- `SOC` — Social
 
 ### Drupal 10.5
 
@@ -123,7 +125,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 - `DX2` — Drupal 10.2 prod/stage/dev
 - `OFD` — OpenFed
-- `SOC` — Social
 
 ### Drupal 10.1
 
@@ -137,7 +138,6 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 9
 
 - `DL9` — Drupal 9 prod/stage/dev
-- `OPG` — Opigno LMS
 
 ### Drupal 7
 
