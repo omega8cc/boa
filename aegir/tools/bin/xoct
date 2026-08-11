@@ -1544,7 +1544,14 @@ _xoct_seed_target_control_pins() {
       "${_sUsr}/${_f}" \
       "root@${_t}:${_dUsr}/${_f}"
   done
-  ssh root@"${_t}" "chown ${_dAcct}.ftp:users ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info" &> /dev/null
+  ### multi-fpm.info gets the same owner as its two siblings. It was left out,
+  ### so it kept the SOURCE's owner name -- which in rename mode does not
+  ### exist on the target and resolves to a bare numeric uid. The `find -user`
+  ### remap that would otherwise repair it is gated on `id <src>.ftp`
+  ### succeeding there, so in exactly that case it never fires. It matters
+  ### more now that renameaegirhost §2d rewrites this file during a rename:
+  ### two writers, one of which was leaving it mis-owned.
+  ssh root@"${_t}" "chown ${_dAcct}.ftp:users ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
   return 0
 }
 
@@ -3345,15 +3352,35 @@ _migrate_init() {
       echo "ERROR: ${_cmd} for ${_oct}: arch could not be placed on the target (see DENY above); refusing"
       exit 1
     fi
-    if [ -e "/opt/solr4" ] && _xoct_solr_check "/opt/solr4" "/opt" "solr4"; then
+    ### A Solr leg that does not fit is a HARD STOP, as it is in xmass and as
+    ### it was in the old tool, which always ran the rsync so a space problem
+    ### surfaced loudly on the console. Skipping it and carrying on migrates
+    ### the account WITHOUT its search indices and still finishes "clean":
+    ### nothing in the LIVE path ever reads _XOCT_NOT_CLEAN.
+    if [ -e "/opt/solr4" ]; then
+      if ! _xoct_solr_check "/opt/solr4" "/opt" "solr4"; then
+        echo "ERROR: solr4 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to migrate ${_oct} without its search indices"
+        exit 1
+      fi
       _xoct_rsync -aEAXq ${_ieni} -e ssh /opt/solr4 root@${_tgt}:/opt/
       echo "INFO: ${_cmd} for ${_oct} /opt/solr4 complete"
     fi
-    if [ -e "/var/solr7/data" ] && _xoct_solr_check "/var/solr7/data" "/var/solr7" "solr7"; then
+    if [ -e "/var/solr7/data" ]; then
+      if ! _xoct_solr_check "/var/solr7/data" "/var/solr7" "solr7"; then
+        echo "ERROR: solr7 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to migrate ${_oct} without its search indices"
+        exit 1
+      fi
       _xoct_rsync -aEAXq ${_ieni} -e ssh /var/solr7/data root@${_tgt}:/var/solr7/
       echo "INFO: ${_cmd} for ${_oct} /var/solr7/data complete"
     fi
-    if [ -e "/var/solr9/data" ] && _xoct_solr_check "/var/solr9/data" "/var/solr9" "solr9"; then
+    if [ -e "/var/solr9/data" ]; then
+      if ! _xoct_solr_check "/var/solr9/data" "/var/solr9" "solr9"; then
+        echo "ERROR: solr9 data does not fit on the target — free space and re-run"
+        echo "ERROR: refusing to migrate ${_oct} without its search indices"
+        exit 1
+      fi
       _xoct_rsync -aEAXq ${_ieni} -e ssh /var/solr9/data root@${_tgt}:/var/solr9/
       echo "INFO: ${_cmd} for ${_oct} /var/solr9/data complete"
     fi

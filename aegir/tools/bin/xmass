@@ -2516,6 +2516,15 @@ _xmass_sync_account() {
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
   _xmass_sync_static_symlink_safe "${_udir}" "${_dst}" "${_TGT_MNT}"
 
+  # src/ is a real account directory created by the Octopus installer, not a
+  # migration scratch dir -- the old tool, xoct and xcopy all carry it, and
+  # xmass alone dropped the leg. Guarded because an account that has never
+  # used it legitimately has no src/.
+  if [ -d "${_udir}/src" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+      "${_udir}/src/" "root@${_tgt}:${_dst}/src/"
+  fi
+
   # Log and control files (includes domain.txt, email.txt, etc.).
   # proxied.pid and migproxy.cnf are TARGET-ROLE state and must never arrive
   # from the source: on the documented reset-phase recovery path the source
@@ -3803,7 +3812,13 @@ _xmass_pre_mig() {
     _info "Target mode: fetching and installing source SSH key ..."
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
-    rm -f /root/.ssh/auth_undefined_keys.txt
+    rm -f /root/.ssh/auth_undefined_keys.txt*
+    ### ...and this box's OWN published copy, which xoct and xcopy both remove
+    ### and xmass did not. A target that was ever a source (or had pre-mig run
+    ### in source mode) goes on serving a root public key at
+    ### http://undefined.<this box>/auth_undefined_keys.txt indefinitely, and
+    ### a later migration can fetch the wrong box's key from it.
+    rm -f /var/www/nginx-default/auth_undefined_keys.txt*
     curl -s -A iCab \
       "http://undefined.${_hst}/auth_undefined_keys.txt" \
       -o /root/.ssh/auth_undefined_keys.txt \
