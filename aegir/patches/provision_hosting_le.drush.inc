@@ -106,6 +106,17 @@ function drush_provision_hosting_le_post_provision_verify() {
       $acme_result_c = implode(' ', $output_c);
       drush_log('[hosting_le] ACME Cleanup Symlinks: ' . $acme_result_c, 'info');
     }
+
+    // Remove auto-managed per-site LE control/pid files so a future
+    // re-enable or rename to this name starts clean. Do NOT touch the
+    // immutable flag ($immutable / dont-overwrite-<name>.pid), which
+    // intentionally protects a manually installed certificate.
+    foreach (array($forced_renewal_ctrl, $site_mode_demo_ctrl, $site_mode_live_ctrl, $le_ctrl . "/" . $main_name . ".pid") as $le_ctrl_file) {
+      if (provision_file()->exists($le_ctrl_file)->status()) {
+        @unlink($le_ctrl_file);
+        drush_log('[hosting_le] Removed stale control file ' . $le_ctrl_file, 'info');
+      }
+    }
   }
   elseif (d()->type == 'site' &&
           d()->ssl_enabled) {
