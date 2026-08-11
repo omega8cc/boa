@@ -3692,6 +3692,9 @@ _xmass_cmd_prep_target() {
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
   _xmass_enumerate_accounts
+  # The target may have been prepared days ago, or by an operator who never ran
+  # pre-mig there. Force its tools current before it is measured or written to.
+  _xmass_force_tool_update "${_tgt}"
   _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
@@ -3868,6 +3871,60 @@ _xmass_cmd_verify() {
   _info "verify sweep complete (read-only)"
 }
 
+_xmass_force_tool_update() {
+  # Foolproof the tools this procedure runs on, instead of trusting that the
+  # ordinary channel already refreshed them. A box can carry an ARMED marker
+  # for the current serial while still holding the previous bytes -- measured
+  # on a migration target 2026-08-11 -- and then declines to look again until
+  # its hard window expires. A migration is exactly the wrong place to find
+  # out you were running last week's tool, so drop the markers and run the
+  # 5-minute channel synchronously.
+  #
+  # $1: empty for this box, or a target IP to force remotely.
+  local _where="${1:-}"
+  local _t
+  local _tools="xmass xoct xcopy xtrim renameaegirhost ffmirror"
+
+  if [ -n "${_where}" ]; then
+    ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
+      "for t in ${_tools}; do rm -f /var/log/boa/\${t}.ctrl.*; done; \
+       [ -x /var/xdrago/clear.sh ] && bash /var/xdrago/clear.sh &>/dev/null; true" \
+      2>/dev/null
+    _info "  forced a tool refresh on ${_where}"
+    return 0
+  fi
+
+  if [ ! -e "/var/xdrago/clear.sh" ]; then
+    _alrt "  /var/xdrago/clear.sh is missing — cannot force a tool refresh here"
+    return 0
+  fi
+
+  # The tool running this code needs no special handling: _fetch_versioned
+  # refuses to replace a tool whose process is live ("The <tool> is
+  # running!", BOA.sh.txt) and returns before it stamps anything, so xmass
+  # cannot be swapped underneath this run and its marker simply stays cleared
+  # — the next 5-minute pass refreshes it once this run has exited. Listing it
+  # here is therefore what makes it current for the NEXT verb, not this one.
+  for _t in ${_tools}; do
+    rm -f /var/log/boa/${_t}.ctrl.*
+  done
+  bash /var/xdrago/clear.sh &>/dev/null
+
+  local _mrk
+  for _t in ${_tools}; do
+    _mrk=$(ls /var/log/boa/${_t}.ctrl.* 2>/dev/null | head -1)
+    if [ -n "${_mrk}" ]; then
+      _info "  $(basename "${_mrk}" | sed 's|\.ctrl\.| |; s|\..*||')"
+    else
+      ### No marker means the fetch declined because that tool is running --
+      ### which is the tool executing this line. It refreshes on the next
+      ### 5-minute pass, once this run has exited.
+      _info "  ${_t} (refresh deferred — running now)"
+    fi
+  done
+  return 0
+}
+
 _xmass_pre_mig() {
   # Stop BOA background jobs and exchange SSH keys between source and target.
   # Run on BOTH hosts: first on source (to publish its pub key),
@@ -3876,6 +3933,10 @@ _xmass_pre_mig() {
     _die "Cannot run pre-mig on a parent/host system"
   fi
   _info "Running pre-mig on ${_hName} ..."
+  # FIRST, before anything is parked: make sure this box's migration tools are
+  # the published ones. Done here because pre-mig runs on BOTH hosts.
+  _info "Forcing a tool refresh so this migration runs on current code ..."
+  _xmass_force_tool_update
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_script}" ]; then
       mv -f "/var/xdrago/${_script}" "/var/xdrago/.${_script}.off"
