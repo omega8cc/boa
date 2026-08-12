@@ -95,7 +95,7 @@ as explained in this document further below.
 
   Owing to this requirement, workflows that require renaming sites often, e.g. for
   dev/staging/production environments, are usually better served by moving aliases
-  between site clones per https://learn.omega8.cc/how-to-debug-failed-migrate-task-328.
+  between site clones per https://docs.boa.io/using/caching/redis-valkey-object-cache.
 
 ## Are there any requirements, limitations or exceptions?
 
