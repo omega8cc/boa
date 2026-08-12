@@ -485,7 +485,7 @@ _emit_stub_503() {   # 1 domain (listens/names/ssl read from the vhost file)
 
 _manifest_of() { echo "${_STATE_DIR}/manifest/$1.info"; }
 
-_manifest_write() {   # 1 dom 2 ctx 3 platform 4 plat_root 5 site_path 6 dbn 7 dbp 8 dmajor 9 ssl 10 baseline
+_manifest_write() {   # 1 dom 2 ctx 3 platform 4 plat_root 5 site_path 6 dbn 7 dbp 8 dmajor 9 ssl 10 baseline 11 profile
   local _f
   _f="$(_manifest_of "$1")"
   {
@@ -499,6 +499,7 @@ _manifest_write() {   # 1 dom 2 ctx 3 platform 4 plat_root 5 site_path 6 dbn 7 d
     echo "A2BM_DMAJOR='$8'"
     echo "A2BM_SSL='$9'"
     echo "A2BM_BASELINE='${10}'"
+    echo "A2BM_PROFILE='${11}'"
     echo "A2BM_SRC_FQDN='$(hostname -f 2>/dev/null)'"
   } > "${_f}"
   chmod 600 "${_f}"
@@ -954,8 +955,14 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
     || { _alrt "site ${_uri}: empty dump - SKIP"; return 1; }
   chmod 600 "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
 
+  # the site's own install profile must travel: the import-side site save
+  # would otherwise resolve the panel default (standard), which does not
+  # exist on a D6 platform and NULL-fails the site node there
+  local _prof
+  _prof="$(_alias_val "${_ctx}" "profile'")"
+  case "${_prof}" in *[!A-Za-z0-9_-]*) _prof="" ;; esac
   _manifest_write "${_uri}" "${_ctx}" "${_platname}" "${_xfer_root}" "${_dir}" \
-    "${_dbn}" "${_dbp}" "${_dmaj}" "${_ssl}" "${_base}"
+    "${_dbn}" "${_dbp}" "${_dmaj}" "${_ssl}" "${_base}" "${_prof}"
   _marker_set "${_uri}.exported.pid"
   _info "site ${_uri}: exported (db ${_dbn})"
   return 0
@@ -1897,9 +1904,18 @@ PHPEOF
     # NOTHING - polling the OLD failed task nid would insta-fail.
     # Detect that no new task was born
     # and drive one inline (hosting-task <ctx> import runs synchronously).
-    local _itnid _prev_itnid
+    local _itnid _prev_itnid _prof
+    # profile from the manifest; a manifest from an older export lacks the
+    # field - fall back to each major's core default rather than letting
+    # the import resolve the panel default (absent on D6 platforms)
+    _prof="$(_manifest_val "${_mff}" PROFILE)"
+    case "${_prof}" in *[!A-Za-z0-9_-]*) _prof="" ;; esac
+    if [[ -z "${_prof}" ]]; then
+      [[ "${_dmaj}" = "6" ]] && _prof="default" || _prof="standard"
+      _alrt "site ${_uri}: no profile in manifest - assuming '${_prof}'"
+    fi
     _prev_itnid="$(_int_only "$(_t_task_nid_for "${_uri}" import)")"
-    _as_octo "drush8 provision-save @${_uri} --context_type=site --uri=${_uri} --platform=@${_ctxp} --db_server=@server_localhost" >>"${_LOG}" 2>&1
+    _as_octo "drush8 provision-save @${_uri} --context_type=site --uri=${_uri} --platform=@${_ctxp} --profile=${_prof} --db_server=@server_localhost" >>"${_LOG}" 2>&1
     _as_octo "drush8 @hostmaster hosting-import @${_uri}" >>"${_LOG}" 2>&1
     sleep 5
     _itnid="$(_int_only "$(_t_task_nid_for "${_uri}" import)")"
