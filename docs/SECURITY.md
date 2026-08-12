@@ -14,7 +14,7 @@ BOA offers a highly secure hosting environment for Ægir and Drupal sites, featu
 
 1. **Encrypted Connections**: Account access is restricted to SSH, SFTP (FTP over SSH), and FTPS (FTP over SSL).
 2. **Restricted PHP Scripts**: Only recognized Drupal PHP files are allowed in the BOA secure environment. The web server does not have write access to the website codebase, blocking common attack vectors even for sites with otherwise vulnerable codebases.
-3. **Web Server Monitoring**: IP addresses exhibiting DoS-like activity are temporarily blocked for one hour and permanently blocked after repeated offenses. You can [whitelist your IP on the fly](https://docs.boa.io/using/when-somethings-wrong/blocked-or-slow) by maintaining an active SSH connection.
+3. **Web Server Monitoring**: IP addresses exhibiting DoS-like activity are temporarily blocked for 15 minutes and permanently blocked after repeated offenses. You can [whitelist your IP on the fly](https://docs.boa.io/using/when-somethings-wrong/blocked-or-slow) by maintaining an active SSH connection.
 4. **Firewall Monitoring**: Repeated failed login attempts for SSH, SFTP, or FTPS result in temporary one-hour blocks, escalating to permanent blocks. Whitelisted IPs are not exempt if abuse is detected.
 5. **Load Management**: The web server may be temporarily disabled during high system loads due to undetected DoS attacks. Normal service resumes within 10 seconds after load stabilization.
 6. **Port Scan and Flood Protection**: Detected port scans or floods result in temporary one-hour blocks, escalating to permanent blocks after repeated offenses. False positives are detailed in our [How Firewall Works article](https://docs.boa.io/using/when-somethings-wrong/blocked-or-slow).
