@@ -10,7 +10,7 @@ Given that `node` can be exploited to bypass Limited Shell and pose a significan
 
 # BOA System Security Features Explained
 
-BOA offers a highly secure hosting environment for Ægir and Drupal sites, featuring comprehensive built-in security monitoring and autonomous attack prevention systems. Below is a list of key features that collectively provide robust protection for all hosted sites. For additional information, consider reading about [running performance or load tests](https://learn.omega8.cc/how-to-run-performance-or-load-test-300).
+BOA offers a highly secure hosting environment for Ægir and Drupal sites, featuring comprehensive built-in security monitoring and autonomous attack prevention systems. Below is a list of key features that collectively provide robust protection for all hosted sites. For additional information, consider reading about [running performance or load tests](https://docs.boa.io/using/protecting-your-site/load-testing).
 
 1. **Encrypted Connections**: Account access is restricted to SSH, SFTP (FTP over SSH), and FTPS (FTP over SSL).
 2. **Restricted PHP Scripts**: Only recognized Drupal PHP files are allowed in the BOA secure environment. The web server does not have write access to the website codebase, blocking common attack vectors even for sites with otherwise vulnerable codebases.
