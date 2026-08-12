@@ -679,7 +679,8 @@ _STRONG_PASSWORDS=YES
 ###   boa_platform_control.ini
 ###   boa_site_control.ini
 ###
-### More info: https://omega8.cc/node/293
+### More info:
+### https://docs.boa.io/operating/control-files-ini/ini-precedence
 ###
 ### Please note that if you will change it
 ### to _SQL_CONVERT=YES, the system will
