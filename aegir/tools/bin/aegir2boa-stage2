@@ -1357,6 +1357,28 @@ _t_reset_site_dbs() {
   done
 }
 
+# db-import revert only: the restored panel no longer knows the estate's
+# sites, so the vhosts its verifies rendered have no owner left to clean
+# them - and a later re-adoption of the same names (the documented retry
+# path) then conflicts on server_name, with the DEAD vhost winning by
+# include order. Remove exactly the manifest URIs' vhost files; the
+# account's own panel vhost is not a manifest URI and stays.
+_t_remove_estate_vhosts() {
+  local _vhd="${_ACCT_ROOT}/config/server_master/nginx/vhost.d" _mff _uri _n=0
+  for _mff in "${_ACCT_ROOT}/src/a2b/manifest/"*.info; do
+    [[ -e "${_mff}" ]] || continue
+    _uri="$(_sane_domain "$(_manifest_val "${_mff}" URI)")" || continue
+    if [[ -e "${_vhd}/${_uri}" ]]; then
+      rm -f "${_vhd}/${_uri}"
+      _info "site ${_uri}: orphaned vhost removed"
+      _n=$(( _n + 1 ))
+    fi
+  done
+  if [[ "${_n}" -gt 0 ]]; then
+    nginx -t >/dev/null 2>&1 && service nginx reload >/dev/null 2>&1
+  fi
+}
+
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
 _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile
   local _dbn="$1" _dbp="$2" _dump="$3"
@@ -1969,7 +1991,8 @@ verb_import() {
     if [[ "${_LIVE}" != "YES" ]]; then
       _DRY_FAIL=0
       _info "[DRY] would drop + restore hostmaster db from undo/a2b-pre-import.sql,"
-      _info "[DRY] drop the a2b-loaded site DBs, clear target markers, restore the dispatcher"
+      _info "[DRY] drop the a2b-loaded site DBs, remove the estate's now-ownerless vhosts,"
+      _info "[DRY] clear target markers, restore the dispatcher"
       _dry_finish "revert-db"
     fi
     _gate_consume "revert-db"
@@ -1978,6 +2001,7 @@ verb_import() {
     mysql --defaults-file=/root/.my.cnf "$(_t_hm_db)" < "${_ACCT_ROOT}/undo/a2b-pre-import.sql" \
       || _die "restore failed - hostmaster db is EMPTY, re-import undo/a2b-pre-import.sql manually"
     _t_reset_site_dbs
+    _t_remove_estate_vhosts
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
     _t_dispatch_on
     _t_freeze_off; trap - EXIT
