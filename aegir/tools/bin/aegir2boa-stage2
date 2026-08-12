@@ -485,7 +485,7 @@ _emit_stub_503() {   # 1 domain (listens/names/ssl read from the vhost file)
 
 _manifest_of() { echo "${_STATE_DIR}/manifest/$1.info"; }
 
-_manifest_write() {   # 1 dom 2 ctx 3 platform 4 plat_root 5 site_path 6 dbn 7 dbp 8 dmajor 9 ssl 10 baseline
+_manifest_write() {   # 1 dom 2 ctx 3 platform 4 plat_root 5 site_path 6 dbn 7 dbp 8 dmajor 9 ssl 10 baseline 11 profile
   local _f
   _f="$(_manifest_of "$1")"
   {
@@ -499,6 +499,7 @@ _manifest_write() {   # 1 dom 2 ctx 3 platform 4 plat_root 5 site_path 6 dbn 7 d
     echo "A2BM_DMAJOR='$8'"
     echo "A2BM_SSL='$9'"
     echo "A2BM_BASELINE='${10}'"
+    echo "A2BM_PROFILE='${11}'"
     echo "A2BM_SRC_FQDN='$(hostname -f 2>/dev/null)'"
   } > "${_f}"
   chmod 600 "${_f}"
@@ -954,8 +955,14 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
     || { _alrt "site ${_uri}: empty dump - SKIP"; return 1; }
   chmod 600 "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
 
+  # the site's own install profile must travel: the import-side site save
+  # would otherwise resolve the panel default (standard), which does not
+  # exist on a D6 platform and NULL-fails the site node there
+  local _prof
+  _prof="$(_alias_val "${_ctx}" "profile'")"
+  case "${_prof}" in *[!A-Za-z0-9_-]*) _prof="" ;; esac
   _manifest_write "${_uri}" "${_ctx}" "${_platname}" "${_xfer_root}" "${_dir}" \
-    "${_dbn}" "${_dbp}" "${_dmaj}" "${_ssl}" "${_base}"
+    "${_dbn}" "${_dbp}" "${_dmaj}" "${_ssl}" "${_base}" "${_prof}"
   _marker_set "${_uri}.exported.pid"
   _info "site ${_uri}: exported (db ${_dbn})"
   return 0
@@ -1348,6 +1355,28 @@ _t_reset_site_dbs() {
       && _info "site ${_uri}: db ${_dbn} dropped"
     rm -f "$(_marker "${_uri}.dbloaded.pid")" "$(_marker "${_uri}.imported.pid")"
   done
+}
+
+# db-import revert only: the restored panel no longer knows the estate's
+# sites, so the vhosts its verifies rendered have no owner left to clean
+# them - and a later re-adoption of the same names (the documented retry
+# path) then conflicts on server_name, with the DEAD vhost winning by
+# include order. Remove exactly the manifest URIs' vhost files; the
+# account's own panel vhost is not a manifest URI and stays.
+_t_remove_estate_vhosts() {
+  local _vhd="${_ACCT_ROOT}/config/server_master/nginx/vhost.d" _mff _uri _n=0
+  for _mff in "${_ACCT_ROOT}/src/a2b/manifest/"*.info; do
+    [[ -e "${_mff}" ]] || continue
+    _uri="$(_sane_domain "$(_manifest_val "${_mff}" URI)")" || continue
+    if [[ -e "${_vhd}/${_uri}" ]]; then
+      rm -f "${_vhd}/${_uri}"
+      _info "site ${_uri}: orphaned vhost removed"
+      _n=$(( _n + 1 ))
+    fi
+  done
+  if [[ "${_n}" -gt 0 ]]; then
+    nginx -t >/dev/null 2>&1 && service nginx reload >/dev/null 2>&1
+  fi
 }
 
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
@@ -1897,9 +1926,18 @@ PHPEOF
     # NOTHING - polling the OLD failed task nid would insta-fail.
     # Detect that no new task was born
     # and drive one inline (hosting-task <ctx> import runs synchronously).
-    local _itnid _prev_itnid
+    local _itnid _prev_itnid _prof
+    # profile from the manifest; a manifest from an older export lacks the
+    # field - fall back to each major's core default rather than letting
+    # the import resolve the panel default (absent on D6 platforms)
+    _prof="$(_manifest_val "${_mff}" PROFILE)"
+    case "${_prof}" in *[!A-Za-z0-9_-]*) _prof="" ;; esac
+    if [[ -z "${_prof}" ]]; then
+      [[ "${_dmaj}" = "6" ]] && _prof="default" || _prof="standard"
+      _alrt "site ${_uri}: no profile in manifest - assuming '${_prof}'"
+    fi
     _prev_itnid="$(_int_only "$(_t_task_nid_for "${_uri}" import)")"
-    _as_octo "drush8 provision-save @${_uri} --context_type=site --uri=${_uri} --platform=@${_ctxp} --db_server=@server_localhost" >>"${_LOG}" 2>&1
+    _as_octo "drush8 provision-save @${_uri} --context_type=site --uri=${_uri} --platform=@${_ctxp} --profile=${_prof} --db_server=@server_localhost" >>"${_LOG}" 2>&1
     _as_octo "drush8 @hostmaster hosting-import @${_uri}" >>"${_LOG}" 2>&1
     sleep 5
     _itnid="$(_int_only "$(_t_task_nid_for "${_uri}" import)")"
@@ -1953,7 +1991,8 @@ verb_import() {
     if [[ "${_LIVE}" != "YES" ]]; then
       _DRY_FAIL=0
       _info "[DRY] would drop + restore hostmaster db from undo/a2b-pre-import.sql,"
-      _info "[DRY] drop the a2b-loaded site DBs, clear target markers, restore the dispatcher"
+      _info "[DRY] drop the a2b-loaded site DBs, remove the estate's now-ownerless vhosts,"
+      _info "[DRY] clear target markers, restore the dispatcher"
       _dry_finish "revert-db"
     fi
     _gate_consume "revert-db"
@@ -1962,6 +2001,7 @@ verb_import() {
     mysql --defaults-file=/root/.my.cnf "$(_t_hm_db)" < "${_ACCT_ROOT}/undo/a2b-pre-import.sql" \
       || _die "restore failed - hostmaster db is EMPTY, re-import undo/a2b-pre-import.sql manually"
     _t_reset_site_dbs
+    _t_remove_estate_vhosts
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
     _t_dispatch_on
     _t_freeze_off; trap - EXIT

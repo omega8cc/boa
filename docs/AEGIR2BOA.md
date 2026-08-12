@@ -73,10 +73,12 @@ fresh BOA target, on published tool bytes, with an estate carrying real
 Let's Encrypt sites and a Drupal 9 composer platform. That re-validation
 changed tool behaviour — including the new `peer` verb — so use current
 published tool bytes: earlier copies do not carry the stage-1 HTTPS flip,
-composer-platform adoption, `peer`, or the HTTPS proxy window itself (an
+composer-platform adoption, `peer`, the HTTPS proxy window itself (an
 earlier https proxy template emitted an HTTP/2 directive a distro nginx
 rejects, so every HTTPS site failed `nginx -t` and refused to cut over
-while HTTP sites proxied fine). What that re-run settled:
+while HTTP sites proxied fine), or site-profile carry-over (2026-08-12) —
+without which any site whose install profile is not `standard` fails its
+import, every Drupal 6 site included. What the 2026-08-11 re-run settled:
 
 - **Stage 1 on an encrypted estate is drilled**, not theoretical: flip,
   revert and re-flip on an `apache_ssl` estate with both HTTPS sites
@@ -95,6 +97,29 @@ while HTTP sites proxied fine). What that re-run settled:
   The db-import refusal is also verified as a refusal, not assumed:
   `check --route db-import` dies naming the non-D7 platform on a mixed
   estate.
+
+Extended on 2026-08-12 with the family member both earlier drills lacked: a
+mixed **Drupal 6 + 7** estate (Drupal 6 on d6lts 6.60), adopted per-site
+into a NEW account on a php-max target. What that drill settled:
+
+- **D6 adoption works end to end**: each D6 site registered with its own
+  install profile — the drill found the import dropping the profile
+  entirely, so ANY site on a non-`standard` profile failed, D6's `default`
+  merely first to hit it — mapped to the target's PHP 5.6 pool via
+  `multi-fpm.info`, its pool socket verified live in the nginx config
+  (`$user_socket` → the account's `.56.fpm.socket`), adopted, proxied,
+  publicly served through the window, and reverted: single-site with the
+  stale-dump refusal, then the full two-box revert.
+- **The db-import triad refuses a D6 platform** exactly as it refuses a
+  D8+ one — verified as a refusal on this estate.
+- **A reverted db-import no longer strands the estate's vhosts.** The
+  drill caught `--revert-db-import` leaving vhost files the restored panel
+  no longer owns; a later re-adoption of the same names then loses the
+  server_name conflict to the DEAD vhost by include order and serves 500s
+  while looking healthy. The revert now removes exactly the manifest URIs'
+  vhosts and reloads nginx. The preflight also resolves a D6 platform's
+  core version now (it previously read only D7's `bootstrap.inc` location
+  and graded D6 as `?`).
 
 Which leaves, honestly:
 
@@ -121,9 +146,12 @@ Which leaves, honestly:
   is verified as a refusal too. One route nuance stands (see cert-sync):
   db-import keeps vanilla's alias settings, so enabling Encryption there
   needs the `www.` alias added or a bare-name certificate requested.
-- **Drupal 6 is untested.** It routes to the per-site path by design; the D6
-  PHP-pool gating exists in code only so far, and note that a D6 site whose
-  `php56` pool never appears is a per-site FAIL by design, not a warning.
+- **A target without a php56 pool is not drilled.** D6 adoption is
+  validated against a php-max target; the refusal ladder for a missing
+  pool — `check` flagging the site, and the import's per-site FAIL when
+  the socket never appears (a FAIL by design, not a warning: D6 cannot
+  serve on the account default PHP) — exists in code but has not been
+  exercised on a pool-less target.
 - **Pre-3.x Ægir sources are refused** by the preflight floor — recognised
   and named, never mangled. There is no supported path for them yet.
 - **Panel-domain continuity is not implemented.** The adopted panel lives

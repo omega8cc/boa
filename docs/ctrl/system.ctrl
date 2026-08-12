@@ -556,7 +556,7 @@ by the BOA install and upgrade tools exclusively.
     boa_platform_control.ini
     boa_site_control.ini
 
-  More info: https://omega8.cc/node/293
+  More info: https://docs.boa.io/operating/control-files-ini/ini-precedence
 
   Please note that if you will change it to _SQL_CONVERT=YES, the system will
   ignore sql_conversion_mode variables set in the active INI files, and instead
