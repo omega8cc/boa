@@ -44,7 +44,7 @@ Then:
 - Migrate test sites
 - Migrate live sites after successful verification
 
-📚 Learn more: [Safe Upgrade Workflow](https://learn.omega8.cc/your-drupal-site-upgrade-safe-workflow-298)
+📚 Learn more: [Safe Upgrade Workflow](https://docs.boa.io/using/sites-and-platforms/cloning-and-migrating)
 
 ---
 

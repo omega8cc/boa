@@ -27,6 +27,6 @@ It is also a good idea to search our deprecated issue queues for Barracuda and O
 
 ## Help Options
 
-- **Documentation and How-to:** [Omega8.cc Library](https://omega8.cc/library/development)
+- **Documentation and How-to:** [BOA Documentation](https://docs.boa.io)
 - **Gitter chat:** [Gitter Chat](https://gitter.im/omega8cc/boa)
 - **Commercial support:** [Omega8.cc](https://omega8.cc)
