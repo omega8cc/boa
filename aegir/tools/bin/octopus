@@ -111,12 +111,12 @@ _sql_maint_foreign() {
 
 _sql_error_tail() {
   # Return whatever MySQLD actually reports its startup errors to on this box.
-  # The shipped my.cnf leaves log_error commented and sets syslog in
-  # [mysqld_safe], so a refused start writes "unknown variable ..." to the
-  # syslog family and NOT to /var/log/mysql/error.log, which merely keeps
-  # whatever an earlier in-file-logging vintage left in it. The SQL watchdogs
-  # already resolve it this way; the launcher diagnostics must match or they
-  # print nothing exactly when an operator needs them. Mirrored in the
+  # Which log it reports to depends on the INSTALLED series: BOA enables
+  # log_syslog on 5.7 and log_error on 8.x (sql.sh.inc, _sql_conf_update), so
+  # neither source alone covers the fleet and a 5.7 box leaves
+  # /var/log/mysql/error.log holding stale content while reporting elsewhere.
+  # Read both, as the SQL watchdogs do; the launcher diagnostics must match or
+  # they print nothing exactly when an operator needs them. Mirrored in the
   # barracuda launcher -- kept as its own copy, not shared.
   # Wide window on purpose: a refused start emits its reason and then roughly
   # sixty more lines winding down, so a short tail loses it. daemon.log wins
@@ -867,7 +867,14 @@ _up_finish() {
     rm -f /usr/local/bin/php
   fi
   echo
-  echo OCTOPUS upgrade completed
+  # Same as the barracuda launcher: keep the documented completion prefix so
+  # waiters still terminate, but do not report a clean finish for a run that
+  # already raised an alert.
+  if [ "${_SEND_ALERT}" = "YES" ]; then
+    echo "OCTOPUS upgrade completed WITH ERRORS -- review ${_UP_LOG}"
+  else
+    echo OCTOPUS upgrade completed
+  fi
   echo Bye
   echo
   exit 0
