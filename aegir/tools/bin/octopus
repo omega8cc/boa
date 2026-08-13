@@ -109,6 +109,34 @@ _sql_maint_foreign() {
   return 0
 }
 
+_sql_error_tail() {
+  # Return whatever MySQLD actually reports its startup errors to on this box.
+  # The shipped my.cnf leaves log_error commented and sets syslog in
+  # [mysqld_safe], so a refused start writes "unknown variable ..." to the
+  # syslog family and NOT to /var/log/mysql/error.log, which merely keeps
+  # whatever an earlier in-file-logging vintage left in it. The SQL watchdogs
+  # already resolve it this way; the launcher diagnostics must match or they
+  # print nothing exactly when an operator needs them. Mirrored in the
+  # barracuda launcher -- kept as its own copy, not shared.
+  # Wide window on purpose: a refused start emits its reason and then roughly
+  # sixty more lines winding down, so a short tail loses it. daemon.log wins
+  # only when it really carries mysqld entries, as sqlcheck.sh tests it.
+  local _sqlLog="/var/log/syslog"
+  local _sqlOut=""
+  if [[ -s "/var/log/mysql/error.log" ]]; then
+    _sqlOut="$(tail -n 200 /var/log/mysql/error.log 2>/dev/null)"
+  fi
+  if [[ -e "/var/log/daemon.log" ]] \
+    && tail -n 1000 /var/log/daemon.log 2>/dev/null | grep -qai 'mysqld'; then
+    _sqlLog="/var/log/daemon.log"
+  fi
+  if [[ -e "${_sqlLog}" ]]; then
+    _sqlOut="${_sqlOut}
+$(tail -n 4000 "${_sqlLog}" 2>/dev/null | grep -a -i 'mysqld' | tail -n 200)"
+  fi
+  echo "${_sqlOut}"
+}
+
 _check_sql_running() {
   # Bounded gate: octopus never installs the DB server, so once a start
   # attempt has failed, waiting here can never become productive -- fall
@@ -146,9 +174,18 @@ _check_sql_running() {
     _tot=$(( _tot + 1 ))
     if [ "${_dead}" -gt 20 ] || [ "${_tot}" -gt 1200 ]; then
       echo "ALERT: MySQLD did not become available (down $(( (_dead - 1) * 3 ))s, total wait $(( (_tot - 1) * 3 ))s)."
-      if [ -e "/var/log/mysql/error.log" ]; then
-        echo "ALERT: Last MySQLD error.log lines follow:"
-        tail -n 10 /var/log/mysql/error.log 2>/dev/null
+      local _sqlErrTail="$(_sql_error_tail)"
+      if [ ! -z "${_sqlErrTail}" ]; then
+        echo "ALERT: Last MySQLD error lines follow:"
+        # Prefer the lines that say what went wrong; a failed start's plain
+        # tail is plugin-shutdown noise with the reason above it.
+        local _sqlErrHits="$(echo "${_sqlErrTail}" \
+          | grep -a -iE 'error|unknown variable|unknown option|aborting' | tail -n 10)"
+        if [ ! -z "${_sqlErrHits}" ]; then
+          echo "${_sqlErrHits}"
+        else
+          echo "${_sqlErrTail}" | tail -n 10
+        fi
       fi
       return 1
     fi
