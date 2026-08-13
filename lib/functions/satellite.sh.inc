@@ -4896,6 +4896,46 @@ _satellite_make() {
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
 
+  # The phpNN.info instant markers steer every websh-dispatched CLI run,
+  # but the platforms build child never passes through websh: it is
+  # spawned as an explicit /bin/bash and takes its PHP purely from the
+  # _PHP_CLI_VERSION serialized above, so only cli.info used to reach a
+  # build. Resolve the markers here, at the producer, with websh's exact
+  # rule -- highest marked-and-installed version wins, overriding the
+  # cli.info-derived value while the marker exists -- and hand the
+  # result to AegirSetupC alone via its sealed copy below. A/B keep the
+  # cli.info value: the hostmaster leg must never follow client markers,
+  # and the durable pins (drush shebang, launcher, octopus cnf) stay
+  # cli.info-based so removing the marker leaves no trace. The forced
+  # path_alias_cache 5.6 pin also outranks markers -- that pin exists
+  # because a newer CLI breaks such platforms.
+  _MRK_CLI_VERSION=
+  _MRK_HM_PLR=
+  if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
+    _MRK_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
+      | grep "root'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+  fi
+  if [ -z "${_MRK_HM_PLR}" ] \
+    || [ ! -e "${_MRK_HM_PLR}/modules/path_alias_cache" ] \
+    || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
+    || [ ! -x "/opt/php56/bin/php" ]; then
+    for _mrkV in 56 70 71 72 73 74 80 81 82 83 84 85; do
+      if [ -e "${_ROOT}/static/control/php${_mrkV}.info" ] \
+        && [ -x "/opt/php${_mrkV}/bin/php" ]; then
+        _MRK_CLI_VERSION="${_mrkV:0:1}.${_mrkV:1}"
+      fi
+    done
+  fi
+  if [ "${_MRK_CLI_VERSION}" = "${_PHP_CLI_VERSION}" ]; then
+    _MRK_CLI_VERSION=
+  fi
+  if [ -n "${_MRK_CLI_VERSION}" ]; then
+    _msg "VARS: Platforms build php-cli follows marker ${_MRK_CLI_VERSION} (cli.info ${_PHP_CLI_VERSION})"
+  fi
+
   # Fan the common payload out to one sealed single-consumer include per
   # child, atomically, 0600, owned by the identity that sources it
   # (AegirSetupA runs as root; B/C run su'd as the instance user). The
@@ -4907,6 +4947,9 @@ _satellite_make() {
     _hndTmp="${_vBs}/.${_tocIncO}.${_hndChd}.tmp"
     rm -f ${_hndTmp}
     cp -af ${_tmpIncO} ${_hndTmp}
+    if [ "${_hndChd}" = "AegirSetupC" ] && [ -n "${_MRK_CLI_VERSION}" ]; then
+      echo "export _PHP_CLI_VERSION=\"${_MRK_CLI_VERSION}\"" >> ${_hndTmp}
+    fi
     echo "export _HANDOFF_SEAL=\"${_hndChd}\"" >> ${_hndTmp}
     if [ "${_hndChd}" = "AegirSetupA" ]; then
       chown root:root ${_hndTmp} &> /dev/null

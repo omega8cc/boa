@@ -163,7 +163,7 @@ To switch PHP-FPM version on command line, please type:
 
   echo 8.1 > ~/static/control/fpm.info
 
-You can find more details at: https://learn.omega8.cc/node/330
+You can find more details at: https://docs.boa.io/using/tuning/php-version
 
 We are working hard to provide secure and fast hosting
 for your Drupal sites, and we appreciate your efforts
