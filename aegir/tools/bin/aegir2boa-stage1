@@ -260,7 +260,10 @@ _frontend_modules_for() {
 # be enabled at all: that estate's hosting release cannot serve the type.
 _frontend_module_status() {
   local _m="$1" _st
-  _st="$(_as_aegir "drush @hostmaster sqlq \"SELECT status FROM system WHERE name = '${_m}' AND type = 'module'\"" 2>/dev/null | tr -dc '0-9')"
+  # `system` must be backticked: SYSTEM is a reserved word on MySQL 8.0
+  # sources (Ubuntu 20.04+), where the bare name errors and every feature
+  # read as missing - caught live on the 2026-08-13 Ubuntu drill
+  _st="$(_as_aegir "drush @hostmaster sqlq \"SELECT status FROM \\\`system\\\` WHERE name = '${_m}' AND type = 'module'\"" 2>/dev/null | tr -dc '0-9')"
   case "${_st}" in
     1) echo enabled ;;
     0) echo disabled ;;
@@ -384,10 +387,12 @@ dryrun_flip() {
   local _fpm_t
   _fpm_t="$(_probe_fpm_target)"
   if [[ "${_fpm_t}" = "port:9000" ]] && ! ss -ltn 2>/dev/null | grep -q ':9000 '; then
-    if apt-get -s install php-fpm >/dev/null 2>&1 || apt-get -s install php5-fpm >/dev/null 2>&1; then
-      _info "no FPM pool yet; php-fpm installable via apt (will install on --live)"
+    if apt-get -s install "$(_php_series_fpm)" >/dev/null 2>&1 \
+      || apt-get -s install php-fpm >/dev/null 2>&1 \
+      || apt-get -s install php5-fpm >/dev/null 2>&1; then
+      _info "no FPM pool yet; an FPM package is installable via apt (will install on --live; series-matched $(_php_series_fpm) preferred)"
     else
-      _alrt "no FPM pool and no installable php-fpm/php5-fpm package"; _fail=1
+      _alrt "no FPM pool and no installable $(_php_series_fpm)/php-fpm/php5-fpm package"; _fail=1
     fi
   else
     _info "FPM target provision will pick: ${_fpm_t}"
@@ -560,6 +565,19 @@ _fpm_units() {
   dpkg -l 2>/dev/null | awk '/^ii +php[0-9]+(\.[0-9]+)?-fpm/ {print $2}'
 }
 
+# the FPM package matching the box's OWN PHP series. On a mixed-repo box
+# (a PPA'd legacy Ubuntu keeping D7-era PHP) the unversioned 'php-fpm'
+# meta resolves to the repo's NEWEST PHP - a different series than every
+# site runs on - so the versioned package is always tried first. Empty
+# when the CLI version is unreadable (callers fall through to the metas).
+_php_series_fpm() {
+  local _s
+  _s="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)"
+  case "${_s}" in
+    [0-9].[0-9]|[0-9].[0-9][0-9]) echo "php${_s}-fpm" ;;
+  esac
+}
+
 # Where the aegir apache include LIVES varies by install route AND era, so
 # the helpers PROBE the real candidates instead of deriving a layout:
 #   - conf-available/aegir.conf behind a2enconf/a2disconf (apache 2.4,
@@ -660,7 +678,9 @@ live_flip() {
     apt-get update >>"${_LOG}" 2>&1 \
       || _alrt "apt-get update failed - stale/EOL apt sources? (EOL mirrors move to archive.debian.org / old-releases.ubuntu.com); trying cached lists"
     apt-get install -y nginx >>"${_LOG}" 2>&1 || { _policy_guard_off; _die "nginx install failed"; }
-    apt-get install -y php-fpm >>"${_LOG}" 2>&1 || apt-get install -y php5-fpm >>"${_LOG}" 2>&1 \
+    apt-get install -y "$(_php_series_fpm)" >>"${_LOG}" 2>&1 \
+      || apt-get install -y php-fpm >>"${_LOG}" 2>&1 \
+      || apt-get install -y php5-fpm >>"${_LOG}" 2>&1 \
       || { _policy_guard_off; _die "php-fpm install failed"; }
     _policy_guard_off
   fi
