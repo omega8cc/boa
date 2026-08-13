@@ -1098,6 +1098,17 @@ _cleanup_boa_code() {
 ###
 ### Download boa code
 ###
+_boa_code_tree_is_root_owned() {
+  # Cheap detector for a tree that some other identity owns. Stops at the
+  # first foreign entry, so it costs nothing on a healthy tree. This decides
+  # whether ownership needs RESTORING -- never whether the tree may be reused.
+  local _foreignEnt=""
+  [ -d "/opt/tmp/boa" ] || return 1
+  _foreignEnt=$(find /opt/tmp/boa ! -user root -print -quit 2>/dev/null)
+  [ -z "${_foreignEnt}" ]
+}
+
+
 _download_boa_code() {
   # See _cleanup_boa_code: the lib probe is the broken-tree self-heal now
   # that install aborts no longer purge /opt/tmp
@@ -1108,6 +1119,18 @@ _download_boa_code() {
     mkdir -p /opt/tmp
     cd /opt/tmp
     _get_dev_ext "boa.tar.gz"
+    # This tree is created entirely by this run, so assert the ownership
+    # rather than inheriting whatever uids the archive happened to carry.
+    [ -d "/opt/tmp/boa" ] && chown -R root:root /opt/tmp/boa &> /dev/null
+  fi
+  # Restore ownership rather than discarding the tree. Octopus batch upgrades
+  # walk many instances against one fetched tree and must not re-fetch between
+  # them, so ownership cannot be allowed to decide reuse -- the archives stay
+  # put and only the ownership is corrected. An older satellite pass can still
+  # hand the tree to its instance user; take it back before root sources it.
+  if ! _boa_code_tree_is_root_owned; then
+    echo "NOTE: Build tree was not owned by root -- restoring root ownership"
+    chown -R root:root /opt/tmp/boa &> /dev/null
   fi
   if [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
     && [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ] \

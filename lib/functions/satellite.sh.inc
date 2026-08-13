@@ -1803,7 +1803,7 @@ _satellite_update_drush_php_cli() {
   else
     _msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION is not set correctly"
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-    touch /opt/tmp/status-AegirSetupB-FAIL
+    touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
     exit 1
   fi
   # The shebang pin on drush.php is bypassed whenever the drush 8 finder
@@ -1839,7 +1839,6 @@ _satellite_create_shared_dirs() {
     mkdir -p ${_CORE}
   fi
   chown -R ${_USER}:${_USRG} /data/conf      &> /dev/null
-  chown -R ${_USER}:${_USRG} /opt/tmp        &> /dev/null
   chown ${_USER}:${_USRG} ${_D}              &> /dev/null
   chown ${_USER}:${_USRG} ${_D}/000          &> /dev/null
   chown ${_USER}:${_USRG} ${_D}/000/core     &> /dev/null
@@ -2902,7 +2901,11 @@ _satellite_add_user_dirs() {
     adduser --system --home ${_ROOT} --ingroup ${_USRG} ${_USER} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
   fi
-  chown -R ${_USER}:${_USRG} /opt/tmp &> /dev/null
+  # No blanket chown of the scratch root here. It used to hand the whole tree
+  # to this user -- including the build tree root sources on its next pass, and
+  # every scratch file the next root writer reopens -- while only the top inode
+  # was ever handed back, so root was left opening files it did not own inside
+  # a sticky directory. The children need nothing outside their own paths.
   chown -R ${_USER}:${_USRG} /data/conf &> /dev/null
   # On a fresh install the per-child includes are materialised before
   # this user exists, so ownership must be re-asserted here or the su'd
@@ -2925,8 +2928,19 @@ _satellite_prepare_child_scripts() {
   cd ${_ROOT}
   _AegirSetupB="${_bldPth}/aegir/scripts/AegirSetupB.sh.txt"
   _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
-  chown ${_USER}:${_USRG} ${_AegirSetupB} &> /dev/null
-  chown ${_USER}:${_USRG} ${_AegirSetupC} &> /dev/null
+  # Ownership follows the writer: root owns the state root, and each child gets
+  # exactly one directory of its own to signal in, so nothing a child writes
+  # lands anywhere a later root writer will reopen.
+  mkdir -p /opt/tmp/state/${_USER} &> /dev/null
+  chown root:root /opt/tmp/state &> /dev/null
+  chmod 0755 /opt/tmp/state &> /dev/null
+  chown ${_USER}:${_USRG} /opt/tmp/state/${_USER} &> /dev/null
+  chmod 0700 /opt/tmp/state/${_USER} &> /dev/null
+  # No chown into the build tree: the children are started as
+  # `su - <user> -c "/bin/bash <script>"`, so they need read and nothing more,
+  # and the tree is left 0755 for exactly that. Handing these two files to the
+  # satellite user was only ever a workaround for their 0700 mode, and it put
+  # user-writable files on a path root sources.
 }
 
 #
@@ -3514,10 +3528,11 @@ _satellite_run_child_b() {
     chmod 0771 /data/u &> /dev/null
     su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
     wait
-    if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
+    if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
+      || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
       _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-      touch /opt/tmp/status-AegirSetupA-FAIL
+      touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
       exit 1
     fi
     _U_HD="${_ROOT}/.drush"
@@ -3574,10 +3589,11 @@ _satellite_run_child_b() {
       chown -R ${_USER}:users ${_ROOT}/tools/drush
       _satellite_update_drush_php_cli
       _satellite_update_ini_php_cli
-      if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
+      if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
+        || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-        touch /opt/tmp/status-AegirSetupA-FAIL
+        touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
         exit 1
       else
         if [ -e "${_U_HD}/php.ini" ]; then
@@ -3708,10 +3724,11 @@ _satellite_run_child_c() {
     _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
     su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupC} ${_USER}"
     wait
-    if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ]; then
+    if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupC-FAIL" ] \
+      || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
       _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-      touch /opt/tmp/status-AegirSetupA-FAIL
+      touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
       exit 1
     fi
   else
@@ -3732,10 +3749,11 @@ _satellite_run_child_c() {
         _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
         su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupC} ${_USER}"
         wait
-        if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ]; then
+        if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupC-FAIL" ] \
+          || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
           _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
           _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-          touch /opt/tmp/status-AegirSetupA-FAIL
+          touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
           exit 1
         fi
       else
@@ -4664,6 +4682,7 @@ _satellite_make() {
     if [ -z "${!_hndVar}" ]; then
       _msg "FATAL ERROR: ${_hndVar} is empty, child hand-off aborted"
       _msg "FATAL ERROR: Aborting Octopus installer NOW!"
+      rm -f /opt/tmp/status-Octopus-FAIL
       touch /opt/tmp/status-Octopus-FAIL
       _clean_pid_exit _satellite_make_env
     fi
@@ -4681,6 +4700,7 @@ _satellite_make() {
   else
     _msg "FATAL ERROR: ${_vBs}/${_filIncO} is missing"
     _msg "FATAL ERROR: Aborting Octopus installer NOW!"
+    rm -f /opt/tmp/status-Octopus-FAIL
     touch /opt/tmp/status-Octopus-FAIL
     _clean_pid_exit _satellite_make_inc
   fi
@@ -4992,7 +5012,10 @@ _satellite_make() {
   sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
   wait
   chmod 700 /var/xdrago/run-${_USER} &> /dev/null
-  chmod 700 ${_bldPth}/aegir/scripts/* &> /dev/null
+  # 0755 in the build tree, not 0700: the setup children are read by a su'd
+  # satellite user, and read is all they need. The deployed copy above keeps
+  # 0700 -- it is a different file on a different path.
+  chmod 0755 ${_bldPth}/aegir/scripts/* &> /dev/null
 
   ### Make sure that required web services are up and running
   _mrun "webserver up"
@@ -5003,9 +5026,11 @@ _satellite_make() {
   wait
   ###
 
-  if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ]; then
+  if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL" ] \
+    || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupA-OK" ]; then
     _msg "FATAL ERROR: AegirSetupA installer failed"
     _msg "FATAL ERROR: Aborting Octopus installer NOW!"
+    rm -f /opt/tmp/status-Octopus-FAIL
     touch /opt/tmp/status-Octopus-FAIL
     _clean_pid_exit _satellite_make_a
   fi
@@ -5775,6 +5800,7 @@ _satellite_pre_cleanup() {
   fi
   rm -f /tmp/cache.inc*
   rm -f /opt/tmp/status-*
+  rm -rf /opt/tmp/state/*
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
@@ -6022,6 +6048,26 @@ _satellite_log_update() {
   fi
 }
 
+#
+# Put the scratch root and the build tree back under root ownership.
+#
+# The old compensator re-owned only the /opt/tmp inode itself, so every file
+# inside stayed owned by whichever satellite user ran last -- and since the
+# mode normalizer leaves them 0644, that user kept write access to the shell
+# libraries root sources on its next pass. Recursive on the build tree, which
+# root executes and sources; the scratch root's own inode is reset too. Only
+# the paths root consumes are touched, so a satellite's own scratch is left
+# alone.
+_satellite_normalize_scratch_owner() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_normalize_scratch_owner"
+  fi
+  chown root:root /opt/tmp &> /dev/null
+  if [[ -d "${_bldPth}" ]]; then
+    chown -R root:root "${_bldPth}" &> /dev/null
+  fi
+}
+
 _satellite_batch_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_batch_cleanup"
@@ -6057,7 +6103,7 @@ _satellite_batch_cleanup() {
     _mrun "chown -R root:root ${_D}/000"
     find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
-    chown root:root /opt/tmp &> /dev/null
+    _satellite_normalize_scratch_owner
     chmod 0711 /data ${_D}/* /data/disk /data/conf &> /dev/null
     chmod 644 /data/all/cpuinfo &> /dev/null
     chmod 0755 ${_D} ${_D}/000 &> /dev/null
@@ -6081,7 +6127,7 @@ _satellite_batch_cleanup() {
     _mrun "chown -R root:root /data/disk/all/000"
     find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
-    chown root:root /opt/tmp &> /dev/null
+    _satellite_normalize_scratch_owner
     chmod 0711 /data /data/disk/all/* /data/disk /data/conf &> /dev/null
     chmod 644 /data/disk/all/cpuinfo &> /dev/null
     chmod 0755 /data/disk/all /data/disk/all/000 &> /dev/null
@@ -6179,7 +6225,6 @@ _satellite_display_url_finalize() {
   fi
   _msg "BYE!"
 
-  touch /opt/tmp/status-AegirSetupA-OK
 }
 
 
@@ -6486,7 +6531,7 @@ _satellite_child_b_drush_test() {
   else
     _msg "${_STATUS} B: FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-    touch /opt/tmp/status-AegirSetupB-FAIL
+    touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
     exit 1
   fi
   ### Non-fatal Backdrop extension smoke check (gated); the extension is optional,
@@ -6684,7 +6729,7 @@ _satellite_child_b_aegir_build() {
       _msg "${_STATUS} B: FATAL ERROR: ${_HM_ROOT} already exists"
       _msg "${_STATUS} B: FATAL ERROR: Too many zombies to delete! Try again..."
       _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-      touch /opt/tmp/status-AegirSetupB-FAIL
+      touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
       exit 1
     fi
     _msg "${_STATUS} B: Hostmaster STATUS: Upgrade in progress..."
@@ -6820,7 +6865,7 @@ _satellite_child_b_aegir_health_check() {
     _msg "${_STATUS} B: FATAL ERROR: Required file does not exist:"
     _msg "${_STATUS} B: FATAL ERROR: ${_HM_ROOT}/sites/${_DOMAIN}/settings.php"
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-    touch /opt/tmp/status-AegirSetupB-FAIL
+    touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
     exit 1
   fi
 }
@@ -7302,5 +7347,4 @@ _satellite_child_b_redis_enable_finalize() {
     ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
   fi
-  touch /opt/tmp/status-AegirSetupB-OK
 }
