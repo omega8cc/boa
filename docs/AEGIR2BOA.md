@@ -61,12 +61,28 @@ Old-stack tolerance: the source-side tools assume nothing modern — bash
 3.2/4.1-era and PHP 5.3-era safe; nothing executed on the source assumes
 BOA. Target verbs assume a healthy BOA box.
 
+Source OS: a Debian-family box — Debian, Ubuntu or Devuan. Vanilla Ægir 3
+itself shipped one joint apt suite for Debian AND Ubuntu, and most legacy
+estates ran Ubuntu, so both families are first-class sources. Nothing in
+the tools branches on the distro name: everything the families share
+(apt/dpkg, the `apache2` layout, `www-data`) is used as-is, and everywhere
+their ERAS or install routes genuinely diverge — init system
+(systemd/sysvinit/upstart), where the apache include lives (2.4
+conf-available behind a2enconf, the deb postinst's bare conf-enabled
+symlink, 2.2 conf.d), distro nginx and OpenSSH floors, the DB flavour
+(Ubuntu 20.04+ ships MySQL 8.0 where Debian ships MariaDB) — the tools
+probe the box at runtime, and `check` gates DB-generation parity against
+the target. A non-apt (RPM-family) source is refused cleanly at stage 1
+(its preflight requires `apt-get`); there is no path for it.
+
 ## Validation status — read before using on a client box
 
 Proven end-to-end on disposable VMs (2026-07): both stage-2 routes, every
 revert path (single-site, full two-box, target reset, db-import undo,
 resume), stage-1 flip/revert/re-flip, and public serving through the proxy
-window. That drill estate was Drupal-7-only and HTTP-only.
+window. That drill estate was Drupal-7-only and HTTP-only. Every drill on
+this page ran a Debian 11 (bullseye) source — the OS axis of the tested
+matrix is listed with the other honest gaps below.
 
 Re-validated in full on 2026-08-11 against a fresh vanilla source and a
 fresh BOA target, on published tool bytes, with an estate carrying real
@@ -157,6 +173,13 @@ Which leaves, honestly:
 - **Panel-domain continuity is not implemented.** The adopted panel lives
   at `<oN>.<target-fqdn>`; the old panel URL goes dark (503) at proxy
   time. Communicate the new URL to the client.
+- **No Ubuntu source has been drilled yet.** Ubuntu compatibility is a
+  requirement, not an option — most legacy Ægir estates ran Ubuntu — and
+  the tools are OS-agnostic by construction (2026-08-13 audit: no distro
+  gate anywhere; every mechanism is Debian-family shared, era differences
+  feature-detected). But every drill so far ran a Debian 11 source, so an
+  Ubuntu-source drill is owed; treat the first Ubuntu estate with the
+  usual dry-run care.
 
 ## Safety model (all acting verbs, all stages)
 
@@ -192,6 +215,13 @@ look on any failure.
 
 ## Prerequisites
 
+- **A Debian-family source box** — Debian, Ubuntu or Devuan, with working
+  apt/dpkg sources and the Debian `apache2` layout. Any era the estate
+  survived on: the tools feature-detect the differences that matter (init
+  system, apache 2.2/2.4 include layout, distro nginx and OpenSSH floors,
+  DB flavour). An EOL release whose mirrors moved (archive.debian.org /
+  old-releases.ubuntu.com) must have its apt sources pointed there first —
+  stage 1 installs nginx and php-fpm from the box's own repositories.
 - **Arrange reachability with `peer` rather than by hand.** The target's lfd
   reads an `ssh-keyscan` / first-contact burst as abuse and temp-blocks port
   22 — proven the hard way — so the firewall must be opened before the key
@@ -319,7 +349,10 @@ as a failure.
 
 The revert proves the Apache config without binding a port **while
 nginx still serves** — the dry run parses a temp wrapper conf with
-`apache2 -t -f`; the live revert runs `a2enconf aegir` +
+`apache2 -t -f`; the live revert re-enables the Ægir apache include
+(`a2enconf aegir` where a conf-available backing file exists; a move
+back into `conf-enabled`/`conf.d` on the deb-installed and apache 2.2
+layouts — the tool probes where the include actually lives) and runs
 `apache2ctl configtest` before nginx stops — then hands the daemons back
 in reverse order and flips the config plane back. The
 revert guarantee is that provision never deletes the Apache tree — so
@@ -331,8 +364,11 @@ Timing from the drill (with the hosting-queued daemon running): flip ≈
 65 s, revert ≈ 43 s, re-flip ≈ 54 s. On a cron-dispatch-only box every
 queued verify waits for the next cron minute, so expect materially
 longer. If the flip completes with sites differing from baseline, the
-instant daemon-level fallback is printed by the tool:
-`service nginx stop; a2enconf aegir; service apache2 start`.
+instant daemon-level fallback is printed by the tool — paste it exactly
+as printed: the middle command re-enables the apache include in the form
+the BOX's layout needs (`a2enconf aegir` on the conf-available layout, a
+`mv` back into `conf-enabled`/`conf.d` on the others), so a snippet
+copied from this page instead of from the tool could be the wrong one.
 
 ## Stage 2 — remote adoption
 
@@ -431,7 +467,17 @@ under `/tmp` (root-owned, not world-writable, for THIS host, stage-2
 verdict not FAIL — pass `--report <env>` to pin one), stage-1 actually
 done (`vhost.d` populated, nginx-mode type of record), the CURRENT nginx
 config passes `nginx -t`, BatchMode root ssh to the target works, the
-target looks like a BOA box, and target PHP pools. It computes db-import
+target looks like a BOA box, target PHP pools, and **DB generation
+parity**: both `SELECT VERSION()`s are read and recorded into
+`check.env`, and a MySQL/Percona ≥ 8.0 or MariaDB ≥ 10.6 source is
+REFUSED against a pre-8.0 target (its dumps carry collation names the
+target rejects at import) — the refusal also blanks any earlier recorded
+route, so `export` cannot ride a stale clean check. A provably ≥ 8.0
+source with an unreadable target version is refused too; any other
+unreadable version — the source's, or the target's when the source is
+not provably a newer generation — SKIPS the gate with a named warning,
+so a `check` that only warned here has not actually verified the
+pairing. It computes db-import
 eligibility, enumerates every enabled non-core module on the hostmaster
 (the scrub review list), grades per-site PHP parity (a D6 site with no
 php56 pool on the target is flagged and later SKIPPED, not blocking), and
@@ -828,6 +874,7 @@ deliberately:
 | `check` dies: no preflight report / wrong host | run `aegir2boa-preflight` on THIS box now (reports are per-host and die with `/tmp`) |
 | `check` dies: stage-2 verdict FAIL | resolve the named reasons; re-run preflight |
 | `check` dies: current nginx config fails `nginx -t` | fix the box first — the tool refuses to build on a broken config |
+| `check` dies: source DB newer generation than target | the source runs MySQL/Percona ≥ 8.0 (Ubuntu 20.04+ default) or MariaDB ≥ 10.6 and the target is pre-8.0 — use a Percona 8.4 target for this source |
 | `--live` refused: no prior CLEAN dry run | run the dry form of the same verb+scope first (every failed live consumes the token) |
 | `create` waits forever | another Octopus operation on the target; it times out at 30 min with a warning — verify quiescence manually before `import` |
 | `export` skips a site | the printed reason (missing vhost/alias, multi-host DB, bad creds, missing cert files, headroom); fix or accept, re-run |
