@@ -150,9 +150,19 @@ _remove_locks() {
 }
 
 _check_running() {
+  # Bounded: a cron job waiting forever for a database that is not coming
+  # back helps nobody and holds its lock pid meanwhile -- give up after
+  # ~60s and let the next scheduled run retry.
+  local _try=0
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _try=$(( _try + 1 ))
+    if [ "${_try}" -gt 20 ]; then
+      echo "ALERT: MySQLD did not become available within 60 seconds, giving up."
+      _remove_locks _check_running_timeout
+      exit 1
+    fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
     fi
