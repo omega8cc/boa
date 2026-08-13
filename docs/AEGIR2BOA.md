@@ -61,22 +61,40 @@ Old-stack tolerance: the source-side tools assume nothing modern — bash
 3.2/4.1-era and PHP 5.3-era safe; nothing executed on the source assumes
 BOA. Target verbs assume a healthy BOA box.
 
+Source OS: a Debian-family box — Debian, Ubuntu or Devuan. Vanilla Ægir 3
+itself shipped one joint apt suite for Debian AND Ubuntu, and most legacy
+estates ran Ubuntu, so both families are first-class sources. Nothing in
+the tools branches on the distro name: everything the families share
+(apt/dpkg, the `apache2` layout, `www-data`) is used as-is, and everywhere
+their ERAS or install routes genuinely diverge — init system
+(systemd/sysvinit/upstart), where the apache include lives (2.4
+conf-available behind a2enconf, the deb postinst's bare conf-enabled
+symlink, 2.2 conf.d), distro nginx and OpenSSH floors, the DB flavour
+(Ubuntu 20.04+ ships MySQL 8.0 where Debian ships MariaDB) — the tools
+probe the box at runtime, and `check` gates DB-generation parity against
+the target. A non-apt (RPM-family) source is refused cleanly at stage 1
+(its preflight requires `apt-get`); there is no path for it.
+
 ## Validation status — read before using on a client box
 
 Proven end-to-end on disposable VMs (2026-07): both stage-2 routes, every
 revert path (single-site, full two-box, target reset, db-import undo,
 resume), stage-1 flip/revert/re-flip, and public serving through the proxy
-window. That drill estate was Drupal-7-only and HTTP-only.
+window. That drill estate was Drupal-7-only and HTTP-only. Every drill on
+this page ran a Debian 11 (bullseye) source — the OS axis of the tested
+matrix is listed with the other honest gaps below.
 
 Re-validated in full on 2026-08-11 against a fresh vanilla source and a
 fresh BOA target, on published tool bytes, with an estate carrying real
 Let's Encrypt sites and a Drupal 9 composer platform. That re-validation
 changed tool behaviour — including the new `peer` verb — so use current
 published tool bytes: earlier copies do not carry the stage-1 HTTPS flip,
-composer-platform adoption, `peer`, or the HTTPS proxy window itself (an
+composer-platform adoption, `peer`, the HTTPS proxy window itself (an
 earlier https proxy template emitted an HTTP/2 directive a distro nginx
 rejects, so every HTTPS site failed `nginx -t` and refused to cut over
-while HTTP sites proxied fine). What that re-run settled:
+while HTTP sites proxied fine), or site-profile carry-over (2026-08-12) —
+without which any site whose install profile is not `standard` fails its
+import, every Drupal 6 site included. What the 2026-08-11 re-run settled:
 
 - **Stage 1 on an encrypted estate is drilled**, not theoretical: flip,
   revert and re-flip on an `apache_ssl` estate with both HTTPS sites
@@ -95,6 +113,29 @@ while HTTP sites proxied fine). What that re-run settled:
   The db-import refusal is also verified as a refusal, not assumed:
   `check --route db-import` dies naming the non-D7 platform on a mixed
   estate.
+
+Extended on 2026-08-12 with the family member both earlier drills lacked: a
+mixed **Drupal 6 + 7** estate (Drupal 6 on d6lts 6.60), adopted per-site
+into a NEW account on a php-max target. What that drill settled:
+
+- **D6 adoption works end to end**: each D6 site registered with its own
+  install profile — the drill found the import dropping the profile
+  entirely, so ANY site on a non-`standard` profile failed, D6's `default`
+  merely first to hit it — mapped to the target's PHP 5.6 pool via
+  `multi-fpm.info`, its pool socket verified live in the nginx config
+  (`$user_socket` → the account's `.56.fpm.socket`), adopted, proxied,
+  publicly served through the window, and reverted: single-site with the
+  stale-dump refusal, then the full two-box revert.
+- **The db-import triad refuses a D6 platform** exactly as it refuses a
+  D8+ one — verified as a refusal on this estate.
+- **A reverted db-import no longer strands the estate's vhosts.** The
+  drill caught `--revert-db-import` leaving vhost files the restored panel
+  no longer owns; a later re-adoption of the same names then loses the
+  server_name conflict to the DEAD vhost by include order and serves 500s
+  while looking healthy. The revert now removes exactly the manifest URIs'
+  vhosts and reloads nginx. The preflight also resolves a D6 platform's
+  core version now (it previously read only D7's `bootstrap.inc` location
+  and graded D6 as `?`).
 
 Which leaves, honestly:
 
@@ -121,14 +162,24 @@ Which leaves, honestly:
   is verified as a refusal too. One route nuance stands (see cert-sync):
   db-import keeps vanilla's alias settings, so enabling Encryption there
   needs the `www.` alias added or a bare-name certificate requested.
-- **Drupal 6 is untested.** It routes to the per-site path by design; the D6
-  PHP-pool gating exists in code only so far, and note that a D6 site whose
-  `php56` pool never appears is a per-site FAIL by design, not a warning.
+- **A target without a php56 pool is not drilled.** D6 adoption is
+  validated against a php-max target; the refusal ladder for a missing
+  pool — `check` flagging the site, and the import's per-site FAIL when
+  the socket never appears (a FAIL by design, not a warning: D6 cannot
+  serve on the account default PHP) — exists in code but has not been
+  exercised on a pool-less target.
 - **Pre-3.x Ægir sources are refused** by the preflight floor — recognised
   and named, never mangled. There is no supported path for them yet.
 - **Panel-domain continuity is not implemented.** The adopted panel lives
   at `<oN>.<target-fqdn>`; the old panel URL goes dark (503) at proxy
   time. Communicate the new URL to the client.
+- **No Ubuntu source has been drilled yet.** Ubuntu compatibility is a
+  requirement, not an option — most legacy Ægir estates ran Ubuntu — and
+  the tools are OS-agnostic by construction (2026-08-13 audit: no distro
+  gate anywhere; every mechanism is Debian-family shared, era differences
+  feature-detected). But every drill so far ran a Debian 11 source, so an
+  Ubuntu-source drill is owed; treat the first Ubuntu estate with the
+  usual dry-run care.
 
 ## Safety model (all acting verbs, all stages)
 
@@ -164,6 +215,13 @@ look on any failure.
 
 ## Prerequisites
 
+- **A Debian-family source box** — Debian, Ubuntu or Devuan, with working
+  apt/dpkg sources and the Debian `apache2` layout. Any era the estate
+  survived on: the tools feature-detect the differences that matter (init
+  system, apache 2.2/2.4 include layout, distro nginx and OpenSSH floors,
+  DB flavour). An EOL release whose mirrors moved (archive.debian.org /
+  old-releases.ubuntu.com) must have its apt sources pointed there first —
+  stage 1 installs nginx and php-fpm from the box's own repositories.
 - **Arrange reachability with `peer` rather than by hand.** The target's lfd
   reads an `ssh-keyscan` / first-contact burst as abuse and temp-blocks port
   22 — proven the hard way — so the firewall must be opened before the key
@@ -291,7 +349,10 @@ as a failure.
 
 The revert proves the Apache config without binding a port **while
 nginx still serves** — the dry run parses a temp wrapper conf with
-`apache2 -t -f`; the live revert runs `a2enconf aegir` +
+`apache2 -t -f`; the live revert re-enables the Ægir apache include
+(`a2enconf aegir` where a conf-available backing file exists; a move
+back into `conf-enabled`/`conf.d` on the deb-installed and apache 2.2
+layouts — the tool probes where the include actually lives) and runs
 `apache2ctl configtest` before nginx stops — then hands the daemons back
 in reverse order and flips the config plane back. The
 revert guarantee is that provision never deletes the Apache tree — so
@@ -303,8 +364,11 @@ Timing from the drill (with the hosting-queued daemon running): flip ≈
 65 s, revert ≈ 43 s, re-flip ≈ 54 s. On a cron-dispatch-only box every
 queued verify waits for the next cron minute, so expect materially
 longer. If the flip completes with sites differing from baseline, the
-instant daemon-level fallback is printed by the tool:
-`service nginx stop; a2enconf aegir; service apache2 start`.
+instant daemon-level fallback is printed by the tool — paste it exactly
+as printed: the middle command re-enables the apache include in the form
+the BOX's layout needs (`a2enconf aegir` on the conf-available layout, a
+`mv` back into `conf-enabled`/`conf.d` on the others), so a snippet
+copied from this page instead of from the tool could be the wrong one.
 
 ## Stage 2 — remote adoption
 
@@ -403,7 +467,17 @@ under `/tmp` (root-owned, not world-writable, for THIS host, stage-2
 verdict not FAIL — pass `--report <env>` to pin one), stage-1 actually
 done (`vhost.d` populated, nginx-mode type of record), the CURRENT nginx
 config passes `nginx -t`, BatchMode root ssh to the target works, the
-target looks like a BOA box, and target PHP pools. It computes db-import
+target looks like a BOA box, target PHP pools, and **DB generation
+parity**: both `SELECT VERSION()`s are read and recorded into
+`check.env`, and a MySQL/Percona ≥ 8.0 or MariaDB ≥ 10.6 source is
+REFUSED against a pre-8.0 target (its dumps carry collation names the
+target rejects at import) — the refusal also blanks any earlier recorded
+route, so `export` cannot ride a stale clean check. A provably ≥ 8.0
+source with an unreadable target version is refused too; any other
+unreadable version — the source's, or the target's when the source is
+not provably a newer generation — SKIPS the gate with a named warning,
+so a `check` that only warned here has not actually verified the
+pairing. It computes db-import
 eligibility, enumerates every enabled non-core module on the hostmaster
 (the scrub review list), grades per-site PHP parity (a D6 site with no
 php56 pool on the target is flagged and later SKIPPED, not blocking), and
@@ -800,6 +874,7 @@ deliberately:
 | `check` dies: no preflight report / wrong host | run `aegir2boa-preflight` on THIS box now (reports are per-host and die with `/tmp`) |
 | `check` dies: stage-2 verdict FAIL | resolve the named reasons; re-run preflight |
 | `check` dies: current nginx config fails `nginx -t` | fix the box first — the tool refuses to build on a broken config |
+| `check` dies: source DB newer generation than target | the source runs MySQL/Percona ≥ 8.0 (Ubuntu 20.04+ default) or MariaDB ≥ 10.6 and the target is pre-8.0 — use a Percona 8.4 target for this source |
 | `--live` refused: no prior CLEAN dry run | run the dry form of the same verb+scope first (every failed live consumes the token) |
 | `create` waits forever | another Octopus operation on the target; it times out at 30 min with a warning — verify quiescence manually before `import` |
 | `export` skips a site | the printed reason (missing vhost/alias, multi-host DB, bad creds, missing cert files, headroom); fix or accept, re-run |

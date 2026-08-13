@@ -140,7 +140,8 @@
 ;;  fixed either in your contrib code or in the Redis integration module.
 ;;
 ;;  Normally you had to edit the local.settings.php file which is both tedious
-;;  and dangerous because of extra steps: https://omega8.cc/node/230 to add
+;;  and dangerous because of extra steps:
+;;  https://docs.boa.io/using/deploying-code/dev-workflow to add
 ;;  a line, for example: $conf['cache_class_cache_foo'] = 'DrupalDatabaseCache';
 ;;  Plus, it had to be done for every site separately.
 ;;
