@@ -1190,18 +1190,21 @@ _fetch_archived_sql_deb() {
 #
 # Mirror fallback for the archived Percona 5.7 package set.
 #
-# Percona 5.7 is EOL and repo.percona.com has stopped serving its apt suite.
-# On a fresh daedalus/bookworm box with _DB_SERIES=5.7 the apt attempts in
-# _install_with_aptitude_sql then deliver nothing -- _mrun swallows the "no
-# installation candidate" error -- and the install would otherwise wedge
-# forever in the _check_sql_running WAIT loop. BOA archives the frozen 5.7 debs
-# on its own static /dev/ mirror; fetch, verify and install them from there so
-# a fresh 5.7 install survives repo.percona.com being unreachable. The
-# distro-lib Depends (libaio1, libnuma1, libdbi-perl ...) still come from the
-# OS repos via the trailing apt-get install -f, unaffected by the dead Percona
-# repo. Idempotent: no-ops when the server package is already installed, and
-# leaves nothing half-fetched behind on failure so the caller's fail-fast fires
-# cleanly.
+# Percona 5.7 is EOL upstream. Its apt suite is frozen but still served, and
+# the normal fresh-install path takes 5.7 straight from repo.percona.com; this
+# function is insurance for the day that stops being true, not a workaround for
+# a present outage. It also covers any local reason apt delivers nothing at all
+# (network, DNS, keyring), because the symptom is identical either way: the apt
+# attempts in _install_with_aptitude_sql return no package, _mrun swallows the
+# "no installation candidate" error, and the install would otherwise wedge
+# forever in the _check_sql_running WAIT loop. BOA keeps the frozen 5.7 debs on
+# its own static /dev/ mirror; fetch, verify and install them from there so a
+# fresh 5.7 install survives whatever kept apt from delivering. The distro-lib
+# Depends (libaio1, libnuma1, libdbi-perl ...) come from the OS repos via the
+# trailing apt-get install -f, so they are unaffected regardless. Idempotent:
+# no-ops when the server package is already installed -- which is the normal
+# case -- and leaves nothing half-fetched behind on failure so the caller's
+# fail-fast fires cleanly.
 _db_server_mirror_fallback_57() {
   if [[ "${_DEBUG_MODE}" = "YES" ]]; then
     _msg "PROC: _db_server_mirror_fallback_57"
@@ -1284,12 +1287,12 @@ _install_with_aptitude_sql() {
   # Archived Percona 5.7 mirror fallback + loud fail-fast. Scoped to the fresh
   # 5.7/bookworm Percona apt path only: 8.x, excalibur, MySQL and the DPKG
   # branch are untouched, and an upgrade run with 5.7 already installed skips
-  # both the fallback (idempotent) and the abort. When repo.percona.com is
-  # unreachable the apt attempts above deliver nothing (5.7 is EOL and _mrun
-  # hides the "no installation candidate" error), so recover from BOA's own
-  # archived-deb mirror. If even that fails, abort here -- before any
-  # _check_sql_running is reached -- with a clear reason, rather than hang
-  # forever in the WAIT-for-MySQLD loop.
+  # both the fallback (idempotent) and the abort -- the normal case, since
+  # repo.percona.com still serves the frozen 5.7 suite. Should the apt attempts
+  # above ever deliver nothing (_mrun hides the "no installation candidate"
+  # error), recover from BOA's own archived-deb mirror. If even that fails,
+  # abort here -- before any _check_sql_running is reached -- with a clear
+  # reason, rather than hang forever in the WAIT-for-MySQLD loop.
   if [[ "${_DB_SERIES}" = "5.7" ]] \
     && [[ "${_SQL_OS_CODE}" = "bookworm" ]] \
     && [[ "${_DB_SERVER}" = "Percona" ]]; then
@@ -1298,11 +1301,11 @@ _install_with_aptitude_sql() {
     fi
     if ! _pkg_installed "${_SQLDEB}"; then
       _msg "FATAL ERROR: No ${_DB_SERVER} 5.7 database server package could be installed."
-      _msg "FATAL ERROR: The Percona 5.7 apt repository (repo.percona.com) is unreachable"
-      _msg "FATAL ERROR: -- 5.7 is EOL upstream -- AND the BOA archived-deb mirror fallback"
-      _msg "FATAL ERROR: also failed. Aborting the install now instead of waiting forever"
-      _msg "FATAL ERROR: for a MySQLD that can never start. Check network and DNS access to"
-      _msg "FATAL ERROR: the BOA mirrors (${_urlDev}) and run the install again."
+      _msg "FATAL ERROR: Neither the Percona 5.7 apt repository (repo.percona.com) nor the"
+      _msg "FATAL ERROR: BOA archived-deb mirror fallback delivered it. Aborting the install"
+      _msg "FATAL ERROR: now instead of waiting forever for a MySQLD that can never start."
+      _msg "FATAL ERROR: Check network, DNS and apt keyring access to both repo.percona.com"
+      _msg "FATAL ERROR: and the BOA mirrors (${_urlDev}), then run the install again."
       rm -f /run/boa_sql_maintenance.pid
       _clean_pid_exit _db_server_install_5_7_unavailable
     fi
