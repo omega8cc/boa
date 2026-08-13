@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# aegir3-install - unattended bare-bones VANILLA Aegir 3.x installer for Debian.
+# aegir3-install - unattended bare-bones VANILLA Aegir 3.x installer for
+# Debian and Ubuntu.
 #
 # Installs upstream (aegir-project) Aegir 3.x — Drupal 7 + Drush 8 — from
 # git.drupalcode.org, WITHOUT the dead debian.aegirproject.org apt repo and
@@ -12,9 +13,13 @@
 # is never fetched by the BOA fleet (staticbuild model). Run it on a fresh,
 # dedicated Debian box.
 #
-# Target: Debian 11 "bullseye" (PHP 7.4, MariaDB 10.5). PHP 7.4 is the safe
-# floor — vanilla Aegir 3.x hosting modules are NOT the BOA fork and carry no
-# PHP 8 patches, so the installer refuses PHP 8 unless --allow-php8 is given.
+# Targets: Debian 11 "bullseye" (PHP 7.4, MariaDB 10.5) and Ubuntu 20.04
+# "focal" / 22.04 "jammy" (PHP 7.4, MySQL 8.0 - the DB engine a real legacy
+# Ubuntu estate resolved, and the population aegir2boa's check DB-parity
+# gate exists for; on jammy PHP 7.4 comes from ondrej's PPA, the era-typical
+# route, while MySQL stays distro). PHP 7.4 is the safe floor — vanilla
+# Aegir 3.x hosting modules are NOT the BOA fork and carry no PHP 8 patches,
+# so the installer refuses PHP 8 unless --allow-php8 is given.
 #
 # Fully unattended: FQDN auto-detected, MySQL root password auto-generated and
 # persisted (idempotent re-runs reuse it), admin e-mail defaulted. Prints the
@@ -109,10 +114,15 @@ preflight() {
       debian|devuan|ubuntu) : ;;
       *) _alrt "untested OS '${ID}' - Debian 11 is the reference; continuing" ;;
     esac
-    case "${VERSION_ID}" in
-      11) : ;;
-      "") : ;;
-      *) _alrt "Debian ${VERSION_ID}: reference is 11 (bullseye/PHP 7.4); PHP may differ" ;;
+    case "${ID}-${VERSION_ID}" in
+      debian-11) : ;;
+      # the Ubuntu references: focal is the natural PHP 7.4 + MySQL 8.0
+      # estate; jammy gets PHP 7.4 from ondrej's PPA (the one third-party
+      # repo upstream Aegir docs ever recommended, and what real estates
+      # used to keep D7-era PHP) while MySQL 8.0 stays distro
+      ubuntu-20.04|ubuntu-22.04) : ;;
+      *-"") : ;;
+      *) _alrt "${ID} ${VERSION_ID}: references are Debian 11, Ubuntu 20.04/22.04 (PHP 7.4); PHP may differ" ;;
     esac
   else
     _alrt "no /etc/os-release - cannot confirm Debian; continuing"
@@ -168,16 +178,61 @@ install_base() {
 
   apt-get update >>"${_LOG}" 2>&1 || _die "apt-get update failed"
 
-  # composer: hosting 3.x platform verify shells out to it (D8+ composer
-  # platform support); without it every platform verify logs an error
-  local _pkgs="mariadb-server php php-cli php-gd php-mysql php-mbstring php-curl php-xml php-pear postfix sudo rsync git unzip curl ca-certificates composer"
+  # DB engine per family, matching what a real legacy estate resolved:
+  # Ubuntu's default is mysql-server (MySQL 8.0 on focal+), Debian/Devuan
+  # get MariaDB
+  local _os_id _dbpkg=mariadb-server _phpv="" _php_pkgs _extra_pkgs=""
+  _os_id="$(sed -n 's/^ID=//p' /etc/os-release 2>/dev/null | head -n1 | tr -d '"')"
+  [[ "${_os_id}" = "ubuntu" ]] && _dbpkg=mysql-server
+
+  # Ubuntu newer than focal ships PHP 8.x only; vanilla Aegir needs the 7.4
+  # floor, and the era-typical route real estates took is exactly ondrej's
+  # PPA. A versioned php7.4 set keeps the distro's PHP 8 entirely off the
+  # box, so /usr/bin/php resolves to 7.4 with no alternatives fight.
+  if [[ "${_os_id}" = "ubuntu" ]]; then
+    if ! apt-cache show php7.4-cli >/dev/null 2>&1; then
+      _msg "Ubuntu without PHP 7.4 in apt - adding ppa:ondrej/php"
+      apt-get install -y software-properties-common >>"${_LOG}" 2>&1
+      add-apt-repository -y ppa:ondrej/php >>"${_LOG}" 2>&1 \
+        || _die "cannot add ppa:ondrej/php (see ${_LOG})"
+      apt-get update >>"${_LOG}" 2>&1
+    fi
+    apt-cache show php7.4-cli >/dev/null 2>&1 && _phpv=7.4
+  fi
+
+  if [[ -n "${_phpv}" ]]; then
+    # no php-pear/composer here: both are unversioned metas that would drag
+    # the distro's PHP 8 in via php-cli; composer comes as a phar below
+    _php_pkgs="php${_phpv} php${_phpv}-cli php${_phpv}-gd php${_phpv}-mysql php${_phpv}-mbstring php${_phpv}-curl php${_phpv}-xml"
+  else
+    # composer: hosting 3.x platform verify shells out to it (D8+ composer
+    # platform support); without it every platform verify logs an error
+    _php_pkgs="php php-cli php-gd php-mysql php-mbstring php-curl php-xml php-pear"
+    _extra_pkgs="composer"
+  fi
+
+  local _pkgs="${_dbpkg} ${_php_pkgs} postfix sudo rsync git unzip curl ca-certificates ${_extra_pkgs}"
   if [[ "${_HTTP_TYPE}" = "nginx" ]]; then
-    _pkgs="nginx php-fpm ${_pkgs}"
+    if [[ -n "${_phpv}" ]]; then
+      _pkgs="nginx php${_phpv}-fpm ${_pkgs}"
+    else
+      _pkgs="nginx php-fpm ${_pkgs}"
+    fi
   else
     _pkgs="apache2 ${_pkgs}"
   fi
   # shellcheck disable=SC2086
   apt-get install -y ${_pkgs} >>"${_LOG}" 2>&1 || _die "apt-get install failed (see ${_LOG})"
+
+  if [[ -n "${_phpv}" ]]; then
+    update-alternatives --set php /usr/bin/php"${_phpv}" >>"${_LOG}" 2>&1 || true
+    if ! _have composer; then
+      curl -fsS https://getcomposer.org/download/latest-stable/composer.phar \
+        -o /usr/local/bin/composer >>"${_LOG}" 2>&1 \
+        && chmod +x /usr/local/bin/composer \
+        || _alrt "composer phar download failed - D8+ platform verifies will log errors"
+    fi
+  fi
 }
 
 check_php() {
@@ -236,6 +291,11 @@ setup_user() {
   # aegir must be in the web group to set hosted-file permissions
   adduser "${_AEGIR_USER}" "${_WEB_GROUP}" >>"${_LOG}" 2>&1 || true
 
+  # Ubuntu 21.04+ adduser creates 750 homes (Debian 11 creates 755); the
+  # web server must traverse ${_AEGIR_ROOT} to reach the platform docroots
+  # or every request 403s (caught live on the 2026-08-13 jammy drill)
+  chmod 755 "${_AEGIR_ROOT}" 2>>"${_LOG}"
+
   _msg "Configuring sudoers for passwordless webserver reload"
   if [[ "${_HTTP_TYPE}" = "nginx" ]]; then
     cat > /etc/sudoers.d/aegir <<EOF
@@ -271,13 +331,23 @@ setup_db() {
 
   service mysql start >>"${_LOG}" 2>&1 || service mariadb start >>"${_LOG}" 2>&1 || true
 
-  # Fresh MariaDB root uses unix_socket auth; set a native password so Aegir
-  # (root over localhost) can connect. Socket login as root needs no password.
+  # Fresh MariaDB/MySQL root uses socket auth; set a password so Aegir
+  # (root over localhost) can connect. Socket login as root needs no
+  # password. On MySQL 8 (Ubuntu focal+) pin mysql_native_password - the
+  # era's PHP DB layers predate caching_sha2 - via a syntax MariaDB does
+  # not share, hence the flavour branch.
   if mysql -u root -e 'SELECT 1' >/dev/null 2>&1; then
-    mysql -u root <<SQL >>"${_LOG}" 2>&1
+    if mysql -u root -sN -e 'SELECT VERSION()' 2>/dev/null | grep -qi maria; then
+      mysql -u root <<SQL >>"${_LOG}" 2>&1
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${_DB_PASS}';
 FLUSH PRIVILEGES;
 SQL
+    else
+      mysql -u root <<SQL >>"${_LOG}" 2>&1
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_DB_PASS}';
+FLUSH PRIVILEGES;
+SQL
+    fi
     _info "root@localhost password set"
   elif mysql -u root -p"${_DB_PASS}" -e 'SELECT 1' >/dev/null 2>&1; then
     _info "root password already set and matches state file"

@@ -4,16 +4,48 @@
 
 _check_mysql_version() {
   _DB_V=
-  _DB_V=$(mysql -V 2>&1 \
-    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
-    | head -1 \
-    | cut -d"." -f1,2)
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
+  fi
+  # Prefer the SERVER binary: a partial apt transaction can leave an 8.x
+  # client next to a 5.7 server, and every version-keyed my.cnf branch
+  # below must follow the binary that will actually parse the file.
+  # --no-defaults (must be the first option) keeps the probe from parsing
+  # /etc/mysql/my.cnf -- on a half-flipped box the config is exactly what
+  # the server rejects, and a probe that dies on it would silently fall
+  # back to the untrustworthy client below.
+  if [ -x "/usr/sbin/mysqld" ]; then
+    _DB_V=$(/usr/sbin/mysqld --no-defaults -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
+  if [ -z "${_DB_V}" ]; then
+    _DB_V=$(mysql -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DBST: via _check_mysql_version ${_DB_V}"
   fi
+}
+
+#
+# True when the SQL-maintenance marker is held by a DIFFERENT live process.
+# Our own marker (written with $$ by _install_with_aptitude_sql) and a
+# marker whose writer has died must not suppress the recovery start in the
+# bounded waits below; an EMPTY fresh marker keeps its historical "held"
+# meaning (xoct/xmass/mysql_repair still write it bare), and a stale one
+# (>240 min) is ignored the same way the watchdog ignores it.
+_sql_maint_foreign() {
+  [ -e "/run/boa_sql_maintenance.pid" ] || return 1
+  [ ! -z "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ] && return 1
+  local _mPid="$(tr -dc '0-9' < /run/boa_sql_maintenance.pid 2>/dev/null)"
+  [ -z "${_mPid}" ] && return 0
+  [ "${_mPid}" = "$$" ] && return 1
+  kill -0 "${_mPid}" 2>/dev/null || return 1
+  return 0
 }
 
 _check_sql_running() {
@@ -24,18 +56,49 @@ _check_sql_running() {
   # effect of _sql_conf_update's innodb update; now that directive sync is
   # decoupled from sizing, start it explicitly here when it is down -- e.g.
   # right after the Percona package install on a 5.7->8.0 upgrade, where
-  # nothing else brings it back up. Directives are already normalized for the
-  # target version by this point, so it starts cleanly.
-  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
-  if [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/run/mysqld/mysqld.sock" ]; then
-    _msg "INFO: MySQLD not running -- starting it..."
-    _mrun "service mysql start"
+  # nothing else brings it back up.
+  # Bounded two ways: ~2 min of CONSECUTIVE dead samples catches a mysqld
+  # that died on its config or datadir (a live process with no socket yet is
+  # normal -- the first 8.x start runs the data-dictionary upgrade, minutes
+  # on a big datadir -- and resets the dead counter), while the total-time
+  # ceiling catches a flapping mysqld that a per-sample reset alone would
+  # wait on forever. ONE start attempt via the blessed move_sql.sh path
+  # (a bare `service mysql start` is a no-op on a stale pidfile), skipped
+  # while a fresh SQL-maintenance marker is held by another operation. The
+  # marker is deliberately NOT removed on abort here: this generic wait
+  # cannot know who owns it (xoct/xmass/mysql_repair hold it too) and the
+  # watchdog age-reaps a stale one on its own.
+  [ -e "/root/.proxy.cnf" ] && return 0
+  local _dead=0
+  local _tot=0
+  local _started=NO
+  while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
-  fi
-  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
+      return 0
+    fi
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
+      _dead=0
+    else
+      _dead=$(( _dead + 1 ))
+      if [ "${_started}" = "NO" ] && ! _sql_maint_foreign; then
+        _started=YES
+        _msg "INFO: MySQLD not running -- starting it..."
+        if [ -e "/var/xdrago/move_sql.sh" ]; then
+          _mrun "bash /var/xdrago/move_sql.sh start"
+        else
+          _mrun "service mysql start"
+        fi
+      fi
+    fi
+    _tot=$(( _tot + 1 ))
+    if [ "${_dead}" -gt 24 ] || [ "${_tot}" -gt 720 ]; then
+      _msg "FATAL ERROR: MySQLD did not become available (down $(( (_dead - 1) * 5 ))s, total wait $(( (_tot - 1) * 5 ))s)."
+      _msg "FATAL ERROR: Check /var/log/mysql/error.log for the reason (bad my.cnf"
+      _msg "FATAL ERROR: directive or datadir problem). Aborting instead of waiting"
+      _msg "FATAL ERROR: forever; fix the reported error and run the upgrade again."
+      _clean_pid_exit _check_sql_running_dead
+    fi
     _msg "WAIT: Waiting for MySQLD availability..."
     sleep 5
   done
@@ -412,8 +475,19 @@ _sql_strict_upgrade_path() {
     _msg "PROC: _sql_strict_upgrade_path"
   fi
   _SQL_UPGRADE=NO
+  # Server binary first (--no-defaults so a rejected my.cnf directive cannot
+  # kill the probe), client only as fallback: the staging and reinstall
+  # decisions must follow the binary that owns the datadir, not a client a
+  # partial apt transaction may already have advanced.
+  _NOW_DB_V=
+  if [ -x "/usr/sbin/mysqld" ]; then
+    _NOW_DB_V=$(/usr/sbin/mysqld --no-defaults -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
   _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
+  if [ -z "${_NOW_DB_V}" ] && [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
       | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
       | head -1 \
@@ -438,9 +512,14 @@ _sql_strict_upgrade_path() {
     && [ ! -z "${_DB_SERIES}" ] \
     && [ "${_DB_SERIES}" != "5.7" ] \
     && [ "${_DB_SERIES}" != "8.0" ]; then
+    # Stage 5.7 through 8.0 for THIS run only, never persisted: the durable
+    # sed here destroyed the operator's 8.4 target on distros with no cnf
+    # re-assertion, so an interrupted two-step could never resume its second
+    # leg. With run-scoped staging a completed 8.0 leg resumes toward the
+    # cnf/marker-asserted target on the next run (the launcher still honours
+    # explicit percona-X.Y selectors and /root/.percona.X.Y.cnf markers).
     _DB_SERIES=8.0
     export _DB_SERIES=8.0
-    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g" ${_barCnf}
     export _SQL_UPGRADE=YES
   fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
@@ -462,7 +541,7 @@ _innodb_log_file_size_update() {
   _check_mysql_version
   _sql_directives_sync
   _check_sql_running
-  if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+  if [ "${_DB_V}" != "5.7" ]; then
     _msg "INFO: InnoDB redo log capacity will be set to ${_INNODB_REDO_LOG_CAPACITY_MB}..."
   else
     _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
@@ -492,7 +571,7 @@ _innodb_log_file_size_update() {
         echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
       fi
     fi
-    if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+    if [ "${_DB_V}" != "5.7" ]; then
       if [ ! -z "${_DB_SERIES}" ] && [ "${_DB_SERIES}" != "5.7" ]; then
         if [ -e "/root/.dev.server.cnf" ]; then
           echo "DEBUG2: _DB_SERIES is ${_DB_SERIES}"
@@ -537,7 +616,7 @@ _innodb_log_file_size_update() {
           echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /var/log/boa/.my.innodb_log_file_size.txt
         fi
       fi
-      if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+      if [ "${_DB_V}" != "5.7" ]; then
         if [ ! -z "${_DB_SERIES}" ] && [ "${_DB_SERIES}" != "5.7" ]; then
           if [ -e "/root/.dev.server.cnf" ]; then
             echo "DEBUG4: _DB_SERIES is ${_DB_SERIES}"
@@ -556,7 +635,7 @@ _innodb_log_file_size_update() {
       _mrun "bash /var/xdrago/move_sql.sh start"
       wait
     else
-      if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+      if [ "${_DB_V}" != "5.7" ]; then
         _msg "WARN: ${_DB_SERVER} refused to stop, InnoDB redo log capacity size not updated"
       else
         _msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
@@ -644,6 +723,26 @@ _sql_conf_update() {
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
           -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
+          /etc/mysql/my.cnf &> /dev/null
+      fi
+      # Reconcile the InnoDB sizing directives with the INSTALLED binary:
+      # 5.7 aborts on innodb_redo_log_capacity (an 8.0.30+ variable) and
+      # 8.4 aborts on the removed innodb_log_file_size. A half-flipped box
+      # (my.cnf written for a target series whose package never landed)
+      # must self-heal here so mysqld can start and a retry run can reach
+      # the package phase at all. Strip-only: both versions start fine on
+      # their defaults; the sizing blocks below restore the tuned values.
+      if [ "${_DB_V}" = "5.7" ]; then
+        sed -i -E \
+          -e "s/^\s*(innodb_redo_log_capacity)/#\1/" \
+          /etc/mysql/my.cnf &> /dev/null
+      elif [ ! -z "${_DB_V}" ] \
+        && [ "${_DB_V}" != "8.0" ] && [ "${_DB_V}" != "8.3" ]; then
+        # 8.4 removed innodb_log_file_size outright (8.0/8.3 still accept it
+        # deprecated) -- strip it for 8.4 and anything newer. Empty _DB_V
+        # (no resolvable binary) must not strip anything.
+        sed -i -E \
+          -e "s/^\s*(innodb_log_file_size)/#\1/" \
           /etc/mysql/my.cnf &> /dev/null
       fi
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
@@ -736,7 +835,7 @@ _sql_conf_update() {
       fi
     fi
     if [ "${_CONF_MODE}" != "directives" ] \
-      && { [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; }; then
+      && [ "${_DB_V}" != "5.7" ]; then
       if [ -e "/root/.dev.server.cnf" ]; then
         echo "DEBUG7: _DB_SERIES is ${_DB_SERIES}"
         echo "DEBUG7: _DB_V is ${_DB_V}"
@@ -787,9 +886,42 @@ _check_mysqld_running() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
   fi
-  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
+  # Mirrors the doubly-bounded wait in _check_sql_running (kept separate by
+  # design -- mirror fixes, don't unify): consecutive-dead cap for a mysqld
+  # that died on config/datadir, total-time ceiling for a flapping one, ONE
+  # start attempt via the blessed move_sql.sh path gated on no fresh foreign
+  # SQL-maintenance marker, and no marker removal on abort (unowned here).
+  [ -e "/root/.proxy.cnf" ] && return 0
+  local _dead=0
+  local _tot=0
+  local _started=NO
+  while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
+      return 0
+    fi
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
+      _dead=0
+    else
+      _dead=$(( _dead + 1 ))
+      if [ "${_started}" = "NO" ] && ! _sql_maint_foreign; then
+        _started=YES
+        _msg "INFO: MySQLD not running -- starting it..."
+        if [ -e "/var/xdrago/move_sql.sh" ]; then
+          _mrun "bash /var/xdrago/move_sql.sh start"
+        else
+          _mrun "service mysql start"
+        fi
+      fi
+    fi
+    _tot=$(( _tot + 1 ))
+    if [ "${_dead}" -gt 24 ] || [ "${_tot}" -gt 720 ]; then
+      _msg "FATAL ERROR: MySQLD did not become available before"
+      _msg "FATAL ERROR: _tune_sql_memory_limits (down $(( (_dead - 1) * 5 ))s, total wait $(( (_tot - 1) * 5 ))s)."
+      _msg "FATAL ERROR: Check /var/log/mysql/error.log, fix the reported error"
+      _msg "FATAL ERROR: and run the upgrade again."
+      _clean_pid_exit _check_mysqld_running_dead
+    fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     fi
@@ -910,8 +1042,19 @@ _prep_for_install_db_sql() {
   if [ "${_SQL_OS_CODE}" = "trixie" ]; then
     _SQL_SCR=APT
   fi
+  # Server binary first (--no-defaults so a rejected my.cnf directive cannot
+  # kill the probe), client only as fallback: the staging and reinstall
+  # decisions must follow the binary that owns the datadir, not a client a
+  # partial apt transaction may already have advanced.
+  _NOW_DB_V=
+  if [ -x "/usr/sbin/mysqld" ]; then
+    _NOW_DB_V=$(/usr/sbin/mysqld --no-defaults -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
   _DBS_TEST="$(which mysql)"
-  if [ ! -z "${_DBS_TEST}" ]; then
+  if [ -z "${_NOW_DB_V}" ] && [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
       | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
       | head -1 \
@@ -1127,7 +1270,7 @@ _install_with_aptitude_sql() {
   # the watchdog stands down ENTIRELY for the whole install/upgrade (not just
   # its restart branch). Cleared at function exit; /run is tmpfs and the
   # watchdog self-ignores a stale marker, so a crash can never wedge it.
-  : > /run/boa_sql_maintenance.pid
+  echo "$$" > /run/boa_sql_maintenance.pid
   _prep_for_install_db_sql
   if [ "${_SQL_SCR}" = "APT" ]; then
     _mrun "${_INSTAPP} ${_SQLDEB}"
@@ -1162,6 +1305,30 @@ _install_with_aptitude_sql() {
       _msg "FATAL ERROR: the BOA mirrors (${_urlDev}) and run the install again."
       rm -f /run/boa_sql_maintenance.pid
       _clean_pid_exit _db_server_install_5_7_unavailable
+    fi
+  fi
+  # Fail-closed for EVERY series on the apt path: after the attempts above
+  # the target server package must be fully installed AND at the target
+  # series (_SQLDEB is the unversioned percona-server-server for all 8.x, so
+  # the name alone would pass an 8.0->8.4 leg that delivered nothing; _mrun
+  # swallows the installer's exit code by design). Abort loudly here --
+  # before any _check_sql_running or my.cnf tuning -- so a died package
+  # phase can never leave a half-flipped box waiting forever for a MySQLD
+  # that cannot exist. Live-hit 2026-08-12: an aptfast scratch-file denial
+  # killed a 5.7->8.0 leg silently and the run continued into exactly the
+  # wedge this guard prevents.
+  if [ "${_SQL_SCR}" = "APT" ] && [ "${_DB_SERVER}" = "Percona" ]; then
+    local _SQLDEB_VRN=$(dpkg-query -W -f='${Version}' "${_SQLDEB}" 2>/dev/null)
+    if ! _pkg_installed "${_SQLDEB}" \
+      || [[ ! "${_SQLDEB_VRN}" =~ (^)"${_DB_SERIES}" ]]; then
+      _msg "FATAL ERROR: ${_DB_SERVER} server package ${_SQLDEB} is not fully"
+      _msg "FATAL ERROR: installed at the ${_DB_SERIES} series after the package"
+      _msg "FATAL ERROR: install phase. Observed dpkg state:"
+      _msg "FATAL ERROR: $(dpkg-query -W -f='${Package} ${Status} ${Version}\n' 'percona-server-server*' 2>/dev/null | tr '\n' ';')"
+      _msg "FATAL ERROR: Aborting now, before any config tuning by this run."
+      _msg "FATAL ERROR: Check the apt errors in the log, then run the upgrade again."
+      rm -f /run/boa_sql_maintenance.pid
+      _clean_pid_exit _db_server_install_pkg_missing
     fi
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
