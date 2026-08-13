@@ -216,6 +216,15 @@ _clean_pid_exit() {
   # must not unlock the box for concurrent passes nor purge a tree another
   # install may still be consuming -- the owner cleans up on its own exit
   # paths, and _download_boa_code re-fetches a broken tree by sentinel
+  # The SQL phase parks a two-line always-true stub at /bin/systemctl for the
+  # duration of _db_server_install; an abort inside that window must not
+  # leave a system-wide no-op systemctl behind. Content-checked so a real
+  # systemctl binary can never match.
+  if [ -e "/bin/systemctl" ] \
+    && [ "$(wc -c < /bin/systemctl 2>/dev/null)" -lt 32 ] \
+    && grep -q '^true$' /bin/systemctl 2>/dev/null; then
+    rm -f /bin/systemctl
+  fi
   service cron start &> /dev/null
   _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then

@@ -95,10 +95,63 @@ _if_hosted_sys() {
   fi
 }
 
+_sql_maint_foreign() {
+  # True when the SQL-maintenance marker is held by a DIFFERENT live
+  # process; an empty fresh marker keeps its historical "held" meaning,
+  # a stale (>240 min) or dead-writer marker never blocks recovery.
+  # Mirrored in lib/functions/sql.sh.inc and the barracuda launcher.
+  [ -e "/run/boa_sql_maintenance.pid" ] || return 1
+  [ ! -z "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ] && return 1
+  local _mPid="$(tr -dc '0-9' < /run/boa_sql_maintenance.pid 2>/dev/null)"
+  [ -z "${_mPid}" ] && return 0
+  [ "${_mPid}" = "$$" ] && return 1
+  kill -0 "${_mPid}" 2>/dev/null || return 1
+  return 0
+}
+
 _check_sql_running() {
-  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
+  # Bounded gate: octopus never installs the DB server, so once a start
+  # attempt has failed, waiting here can never become productive -- fall
+  # through to _check_sql_access's loud abort instead of spinning forever
+  # (the same wedge shape the barracuda launcher had after a died Percona
+  # series-upgrade leg). Mirrors the barracuda gate minus its upgrade
+  # pass-through: consecutive-dead samples bound the config-death case (a
+  # live process with no socket yet is a recovery in progress and resets
+  # the counter), the total ceiling bounds a flapping mysqld, ONE start
+  # attempt via the blessed move_sql.sh path, skipped while a fresh
+  # SQL-maintenance marker is held.
+  [ -e "/root/.proxy.cnf" ] && return 0
+  local _dead=0
+  local _tot=0
+  local _started=NO
+  while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
+      return 0
+    fi
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
+      _dead=0
+    else
+      _dead=$(( _dead + 1 ))
+      if [ "${_started}" = "NO" ] && ! _sql_maint_foreign; then
+        _started=YES
+        echo "INFO: MySQLD not running -- starting it..."
+        if [ -e "/var/xdrago/move_sql.sh" ]; then
+          bash /var/xdrago/move_sql.sh start &> /dev/null
+        else
+          service mysql start &> /dev/null
+        fi
+      fi
+    fi
+    _tot=$(( _tot + 1 ))
+    if [ "${_dead}" -gt 20 ] || [ "${_tot}" -gt 1200 ]; then
+      echo "ALERT: MySQLD did not become available (down $(( (_dead - 1) * 3 ))s, total wait $(( (_tot - 1) * 3 ))s)."
+      if [ -e "/var/log/mysql/error.log" ]; then
+        echo "ALERT: Last MySQLD error.log lines follow:"
+        tail -n 10 /var/log/mysql/error.log 2>/dev/null
+      fi
+      return 1
+    fi
     echo "INFO: Waiting for MySQLD availability..."
     sleep 3
   done

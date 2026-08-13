@@ -403,25 +403,44 @@ PROXYEOF
 }
 
 # nginx gained the standalone `http2` directive in 1.25.1; before that HTTP/2
-# is a parameter of the listen directive. A vanilla source box runs the
-# DISTRO's nginx - 1.18 on Debian 11 - where `http2 on;` is an unknown
-# directive that fails the WHOLE config. Measured 2026-08-11: every HTTPS site
-# refused to cut over because of exactly this, while the HTTP sites proxied
-# fine. BOA's own template can assume its own modern build; this one cannot.
-_nginx_has_http2_directive() {
+# is a parameter of the listen directive - and THAT parameter only exists
+# from 1.9.5. A vanilla source box runs the DISTRO's nginx - 1.18 on Debian
+# 11, older still on older releases - where an unknown directive fails the
+# WHOLE config. Measured 2026-08-11: every HTTPS site refused to cut over on
+# `http2 on;` against 1.18, while the HTTP sites proxied fine. BOA's own
+# template can assume its own modern build; this one cannot - so BOTH bounds
+# are probed and the emitted syntax degrades instead of failing nginx -t.
+_nginx_version() {
+  nginx -v 2>&1 | sed -n 's|.*nginx/\([0-9][0-9.]*\).*|\1|p'
+}
+
+_nginx_at_least() {   # 1 floor -> true when the running nginx is >= floor
   local _v
-  _v="$(nginx -v 2>&1 | sed -n 's|.*nginx/\([0-9][0-9.]*\).*|\1|p')"
+  _v="$(_nginx_version)"
   [[ -n "${_v}" ]] || return 1
-  [[ "$(printf '%s\n1.25.1\n' "${_v}" | sort -V | tail -1)" = "${_v}" ]]
+  [[ "$(printf '%s\n%s\n' "$1" "${_v}" | sort -V | head -1)" = "$1" ]]
+}
+
+_nginx_has_http2_directive() {
+  _nginx_at_least 1.25.1
 }
 
 _emit_proxy_https() {   # 1 domain 2 server_names 3 target_ip 4 cert_store
-  local _listen
+  local _listen _nv
+  _nv="$(_nginx_version)"
   if _nginx_has_http2_directive; then
     _listen="listen                       *:443 ssl;
   http2                        on;"
-  else
+  elif [[ -z "${_nv}" ]]; then
+    # unreadable version must NOT mean "older than everything" - fall back
+    # to the drilled listen-parameter form, alerted
+    _alrt "cannot read the nginx version - emitting the proven 'listen ... ssl http2' form for $1"
     _listen="listen                       *:443 ssl http2;"
+  elif _nginx_at_least 1.9.5; then
+    _listen="listen                       *:443 ssl http2;"
+  else
+    _alrt "nginx ${_nv} < 1.9.5: proxying $1 WITHOUT HTTP/2 (listen-parameter unsupported)"
+    _listen="listen                       *:443 ssl;"
   fi
   cat <<PROXYEOF
 ###
@@ -476,7 +495,16 @@ _emit_stub_503() {   # 1 domain (listens/names/ssl read from the vhost file)
     _harvest_ssl_lines "${_vh}" | sed 's/^/  /'
   fi
   echo "  access_log                   off;"
-  echo "  add_header Retry-After 3600 always;"
+  # `add_header ... always` needs nginx >= 1.7.5; without `always` the header
+  # never attaches to a 503, and WITH it an older nginx fails the whole
+  # config at the very first pause - serve the 503 bare there instead. An
+  # unreadable version keeps the drilled `always` form (never "assume oldest")
+  if [[ -z "$(_nginx_version)" ]] || _nginx_at_least 1.7.5; then
+    echo "  add_header Retry-After 3600 always;"
+  else
+    _alrt "nginx $(_nginx_version) < 1.7.5: pause stub for $1 serves 503 WITHOUT Retry-After"
+    echo "  ### Retry-After omitted: nginx < 1.7.5 has no 'add_header ... always'"
+  fi
   echo "  return 503;"
   echo "}"
 }
@@ -562,6 +590,24 @@ _report_tsv() {   # 1 table -> rows between the TSV markers
   sed -n "/^#TSV:$1 /,/^#ENDTSV:$1\$/p" "${_REPORT}" 2>/dev/null | sed '1d;$d'
 }
 
+# version-shape-guarded parses: only a leading MAJOR.MINOR yields numbers -
+# a digit-bearing error/notice string (polluted _sql stdout) must fall to
+# the unparseable alert branch, never scavenge digits into a bogus major
+_ver_major() {
+  printf '%s' "$1" | sed -n 's/^\([0-9][0-9]*\)\.[0-9].*/\1/p'
+}
+_ver_minor() {
+  printf '%s' "$1" | sed -n 's/^[0-9][0-9]*\.\([0-9][0-9]*\).*/\1/p'
+}
+
+# refuse a DB pairing AND poison any earlier clean check in the same stroke,
+# so export/transfer cannot ride a stale recorded route past the refusal
+_db_parity_refuse() {
+  _kv_set "${_STATE_DIR}/state/check.env" "DB_PARITY" "REFUSED"
+  _kv_set "${_STATE_DIR}/state/check.env" "ROUTE" ""
+  _die "$1"
+}
+
 verb_check() {
   _require_source_box
   [[ -n "${_TARGET}" ]] || _die "check needs --target <ip>"
@@ -598,12 +644,62 @@ verb_check() {
     *) _die "http_service_type=$(_report_scalar A2B_HTTP_SERVICE_TYPE) - source is not nginx-mode" ;;
   esac
 
-  # ssh to target (operator-established key)
-  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" true >/dev/null 2>&1 \
-    || _die "cannot ssh root@${_TARGET} with BatchMode - establish the key first (ssh-copy-id)"
+  # ssh to target (peer-established key)
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" true >>"${_LOG}" 2>&1 \
+    || _die "cannot ssh root@${_TARGET} with BatchMode - run the peer verb first (aegir2boa-stage2 peer --target ${_TARGET} --live); ssh detail in ${_LOG}"
   ssh -o BatchMode=yes "root@${_TARGET}" 'test -x /opt/local/bin/boa' >/dev/null 2>&1 \
     || _die "target ${_TARGET} does not look like a BOA box (/opt/local/bin/boa missing)"
   _info "target ${_TARGET}: ssh ok, BOA present"
+
+  # DB generation parity (source dump -> target import). A dump from a
+  # newer-generation server names collations the older target rejects at
+  # import - and on the db-import route that failure would strike only after
+  # the target hostmaster tables are already dropped. Populations that bite:
+  # MySQL/Percona >= 8.0 sources (Ubuntu 20.04+ ships mysql-server 8.0;
+  # Oracle-repo MySQL on Debian) and MariaDB >= 10.6 sources (utf8mb3
+  # rendering) against a Percona 5.7 target; a Percona 8.4 target absorbs
+  # both. Flavour is read from VERSION(), never from a package name.
+  local _sdbv _tdbv _sfl _smaj _smin _tmaj _snew=NO
+  _sdbv="$(_sql "SELECT VERSION()" 2>/dev/null | head -1)"
+  # a MariaDB target's handshake string (mysqladmin route) is prefixed
+  # 5.5.5- for old-client compatibility - strip it before parsing
+  _tdbv="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" \
+    "mysql -sN -e 'SELECT VERSION()' 2>/dev/null || mysqladmin version 2>/dev/null | sed -n 's/^Server version[[:space:]]*//p'" \
+    2>>"${_LOG}" | head -1 | sed 's/^5\.5\.5-//')"
+  _info "db server: source ${_sdbv:-UNKNOWN} | target ${_tdbv:-UNKNOWN}"
+  _kv_set "${_STATE_DIR}/state/check.env" "SOURCE_DB" "${_sdbv}"
+  _kv_set "${_STATE_DIR}/state/check.env" "TARGET_DB" "${_tdbv}"
+  case "${_sdbv}" in *[Mm]aria*) _sfl=mariadb ;; *) _sfl=mysql ;; esac
+  _smaj="$(_ver_major "${_sdbv}")"
+  _smin="$(_ver_minor "${_sdbv}")"
+  _tmaj="$(_ver_major "${_tdbv}")"
+  # is the SOURCE a newer-generation server whose dumps a pre-8.0 target
+  # cannot import?
+  if [[ -n "${_smaj}" ]]; then
+    [[ "${_sfl}" = "mysql" && "${_smaj}" -ge 8 ]] && _snew=YES
+    if [[ "${_sfl}" = "mariadb" ]]; then
+      if [[ "${_smaj}" -gt 10 ]] || [[ "${_smaj}" -eq 10 && -n "${_smin}" && "${_smin}" -ge 6 ]]; then
+        _snew=YES
+      fi
+    fi
+  fi
+  if [[ -n "${_smaj}" && -n "${_tmaj}" ]]; then
+    if [[ "${_tmaj}" -lt 8 && "${_snew}" = "YES" ]]; then
+      _db_parity_refuse "source DB is ${_sfl} ${_smaj}.${_smin:-x} (${_sdbv}), target is pre-8.0 (${_tdbv}) - source dumps carry collation names the target rejects at import; use a Percona 8.4 target for this source"
+    fi
+    _kv_set "${_STATE_DIR}/state/check.env" "DB_PARITY" "OK"
+  elif [[ "${_snew}" = "YES" ]]; then
+    # the dangerous asymmetry: a provably newer source and no readable
+    # target generation - failing open here is exactly the late import
+    # death this gate exists to prevent
+    _db_parity_refuse "source DB is ${_sfl} ${_smaj}.x but the TARGET DB version is unreadable (got: '${_tdbv:-nothing}') - refusing; fix the target probe (see ${_LOG}), a pre-8.0 target would reject this source's dumps mid-import"
+  elif [[ -z "${_sdbv}" || -z "${_tdbv}" ]]; then
+    _kv_set "${_STATE_DIR}/state/check.env" "DB_PARITY" "UNKNOWN"
+    _alrt "DB server version unreadable on $([[ -z "${_sdbv}" ]] && echo source || echo target) - generation-parity gate SKIPPED; verify dump compatibility manually"
+  else
+    _kv_set "${_STATE_DIR}/state/check.env" "DB_PARITY" "UNKNOWN"
+    _alrt "DB version string present but unparseable (source '${_sdbv}' -> major '${_smaj}', target '${_tdbv}' -> major '${_tmaj}') - generation-parity gate SKIPPED; verify dump compatibility manually"
+  fi
 
   # PHP pools available on the target (parity gate input, open-q #4)
   local _pools
@@ -2058,16 +2154,32 @@ verb_import() {
 #                                    open csf.allow AND csf.ignore, clear any
 #                                    temp block, install the key.
 _peer_source() {
-  local _key=/root/.ssh/id_ed25519 _pub
+  local _key _pub
+  # ed25519 arrived in OpenSSH 6.5 (Debian 8+ / Ubuntu 14.04+); the older
+  # clients this tool supports fall back to a DEDICATED rsa-4096 key - a
+  # dedicated path, never the operator's own id_rsa, so the a2b- comment
+  # and the decommission revocation still find it
+  if [[ -s /root/.ssh/id_ed25519 ]]; then
+    _key=/root/.ssh/id_ed25519
+  elif [[ -s /root/.ssh/a2b_rsa ]]; then
+    _key=/root/.ssh/a2b_rsa
+  else
+    _key=/root/.ssh/id_ed25519
+  fi
   [[ -n "${_TARGET}" ]] || _die "peer on a source box needs --target <ip>"
   if [[ ! -s "${_key}" ]]; then
     if [[ "${_LIVE}" != "YES" ]]; then
-      _info "[DRY] would generate a dedicated migration key at ${_key}"
+      _info "[DRY] would generate a dedicated migration key (ed25519; rsa-4096 on an old client)"
     else
       mkdir -p /root/.ssh && chmod 700 /root/.ssh
-      ssh-keygen -t ed25519 -N "" -C "a2b-$(hostname -f 2>/dev/null)" -f "${_key}" >/dev/null 2>&1 \
-        || _die "could not generate ${_key}"
-      _info "generated ${_key}"
+      if ! ssh-keygen -t ed25519 -N "" -C "a2b-$(hostname -f 2>/dev/null)" -f "${_key}" >/dev/null 2>>"${_LOG}"; then
+        _key=/root/.ssh/a2b_rsa
+        ssh-keygen -t rsa -b 4096 -N "" -C "a2b-$(hostname -f 2>/dev/null)" -f "${_key}" >/dev/null 2>>"${_LOG}" \
+          || _die "could not generate a migration key (ed25519 AND rsa-4096 failed - see ${_LOG})"
+        _info "old ssh client (no ed25519): generated rsa-4096 key ${_key}"
+      else
+        _info "generated ${_key}"
+      fi
     fi
   else
     _info "using the existing key ${_key}"
@@ -2080,12 +2192,40 @@ _peer_source() {
   echo "    --pubkey-file <(echo '${_pub}')"
   echo
   _info "testing ssh to ${_TARGET} ..."
-  if ssh -i "${_key}" -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new \
-      "root@${_TARGET}" 'echo A2B-PEER-OK' 2>/dev/null | grep -q A2B-PEER-OK; then
+  # StrictHostKeyChecking=accept-new needs OpenSSH >= 7.6 (Debian 9+ /
+  # Ubuntu 18.04+); the older clients this tool supports fatal at
+  # option-parse time on it - under ANY key state. Probe the option itself
+  # (a bad -o value kills even `ssh -V`), and on an old client seed the
+  # host key via ssh-keyscan instead - the same trust-on-first-use the
+  # option would have provided, managed by the tool, not the operator.
+  local _hko="-o StrictHostKeyChecking=accept-new"
+  if ! ssh -o StrictHostKeyChecking=accept-new -V >/dev/null 2>&1; then
+    _hko=""
+    if ! ssh-keygen -F "${_TARGET}" >/dev/null 2>&1; then
+      if [[ "${_LIVE}" != "YES" ]]; then
+        _info "[DRY] old ssh client: would seed the target host key via ssh-keyscan"
+      else
+        # explicit types: the old clients' keyscan defaults to rsa alone,
+        # and a modern target sshd no longer offers ssh-rsa - ecdsa is the
+        # type both ends of that span share
+        local _ks
+        _ks="$(ssh-keyscan -T 8 -t rsa,ecdsa "${_TARGET}" 2>>"${_LOG}")"
+        if [[ -n "${_ks}" ]]; then
+          printf '%s\n' "${_ks}" >> /root/.ssh/known_hosts
+          _info "old ssh client: target host key seeded via ssh-keyscan"
+        else
+          _alrt "old ssh client AND ssh-keyscan got no host key from ${_TARGET} (see ${_LOG}) - the reachability test below will fail on host-key confirmation"
+        fi
+      fi
+    fi
+  fi
+  # shellcheck disable=SC2086 # _hko is exactly zero or two ssh words
+  if ssh -i "${_key}" -o BatchMode=yes -o ConnectTimeout=8 ${_hko} \
+      "root@${_TARGET}" 'echo A2B-PEER-OK' 2>>"${_LOG}" | grep -q A2B-PEER-OK; then
     _info "reachable: root@${_TARGET} accepts this key"
     return 0
   fi
-  _alrt "not reachable yet - run the command above on the target first"
+  _alrt "not reachable yet - run the command above on the target first (ssh detail: ${_LOG})"
   return 1
 }
 
