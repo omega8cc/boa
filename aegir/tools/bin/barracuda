@@ -1558,7 +1558,15 @@ _up_finish() {
     sleep 1
   fi
   echo
-  echo BARRACUDA upgrade completed
+  # Never claim a clean finish for a run this launcher already decided to
+  # alert on. The prefix is kept intact so anything waiting on the documented
+  # completion line still terminates -- including the operator the console
+  # instructions above tell to watch for exactly that line.
+  if [ "${_SEND_ALERT}" = "YES" ]; then
+    echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}"
+  else
+    echo BARRACUDA upgrade completed
+  fi
   echo Bye
   echo
   exit 0

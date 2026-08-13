@@ -867,7 +867,14 @@ _up_finish() {
     rm -f /usr/local/bin/php
   fi
   echo
-  echo OCTOPUS upgrade completed
+  # Same as the barracuda launcher: keep the documented completion prefix so
+  # waiters still terminate, but do not report a clean finish for a run that
+  # already raised an alert.
+  if [ "${_SEND_ALERT}" = "YES" ]; then
+    echo "OCTOPUS upgrade completed WITH ERRORS -- review ${_UP_LOG}"
+  else
+    echo OCTOPUS upgrade completed
+  fi
   echo Bye
   echo
   exit 0
