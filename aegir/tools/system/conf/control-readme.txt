@@ -34,7 +34,8 @@ fpm.info:
 
 Need your shell on another version right now? Create an empty marker
 like php83.info here and your next shell/Drush command uses it
-immediately.
+immediately. The marker also steers the platform builds you request
+below — each build reads it once, when its run starts.
 
 Drush, Composer and bee all follow cli.info (or your phpNN.info
 marker) in the shell.
@@ -87,6 +88,7 @@ Platform symbols:
 
   Drupal 10.6
     DX6 — Drupal 10.6 prod/stage/dev
+    OFD — OpenFed
     OPG — Opigno LMS
     SOC — Social
 
@@ -102,7 +104,6 @@ Platform symbols:
 
   Drupal 10.2
     DX2 — Drupal 10.2 prod/stage/dev
-    OFD — OpenFed
 
   Drupal 10.1
     DX1 — Drupal 10.1 prod/stage/dev

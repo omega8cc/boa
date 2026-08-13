@@ -29,7 +29,7 @@
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-_A2B_VERSION=0.1.1
+_A2B_VERSION=0.1.2
 _A2B_SCHEMA_VERSION=1
 
 _AEGIR_ROOT=/var/aegir
@@ -803,6 +803,10 @@ probe_platforms() {
       # D6/D7 core constant, else D8+ Drupal.php, else composer.lock
       if [[ -e "${_root}/includes/bootstrap.inc" ]]; then
         _core="$(grep -m1 "define('VERSION'" "${_root}/includes/bootstrap.inc" 2>/dev/null \
+          | sed "s/.*'\([0-9][0-9.]*\)'.*/\1/")"
+        # D6 keeps the core constant in system.module, not bootstrap.inc
+        [[ -z "${_core}" ]] && _core="$(grep -m1 "define('VERSION'" \
+          "${_root}/modules/system/system.module" 2>/dev/null \
           | sed "s/.*'\([0-9][0-9.]*\)'.*/\1/")"
         _contrib="$(find "${_root}/sites/all/modules" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
       elif [[ -e "${_root}/core/lib/Drupal.php" ]]; then

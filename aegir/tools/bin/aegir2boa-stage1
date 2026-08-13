@@ -260,7 +260,10 @@ _frontend_modules_for() {
 # be enabled at all: that estate's hosting release cannot serve the type.
 _frontend_module_status() {
   local _m="$1" _st
-  _st="$(_as_aegir "drush @hostmaster sqlq \"SELECT status FROM system WHERE name = '${_m}' AND type = 'module'\"" 2>/dev/null | tr -dc '0-9')"
+  # `system` must be backticked: SYSTEM is a reserved word on MySQL 8.0
+  # sources (Ubuntu 20.04+), where the bare name errors and every feature
+  # read as missing - caught live on the 2026-08-13 Ubuntu drill
+  _st="$(_as_aegir "drush @hostmaster sqlq \"SELECT status FROM \\\`system\\\` WHERE name = '${_m}' AND type = 'module'\"" 2>/dev/null | tr -dc '0-9')"
   case "${_st}" in
     1) echo enabled ;;
     0) echo disabled ;;
@@ -326,6 +329,7 @@ preflight() {
   [[ -d "${_AEGIR_ROOT}/.drush" ]] || _die "no ${_AEGIR_ROOT}/.drush - not a vanilla Aegir box?"
   getent passwd "${_AEGIR_USER}" >/dev/null 2>&1 || _die "no ${_AEGIR_USER} user"
   _have curl || _die "curl required"
+  _have apt-get || _die "no apt-get - the source must be a Debian-family box (Debian, Ubuntu or Devuan); there is no path for other families"
 
   _ALIAS_TYPE="$(_alias_type)"
   _FRONT_TYPE="$(_frontend_type)"
@@ -383,10 +387,12 @@ dryrun_flip() {
   local _fpm_t
   _fpm_t="$(_probe_fpm_target)"
   if [[ "${_fpm_t}" = "port:9000" ]] && ! ss -ltn 2>/dev/null | grep -q ':9000 '; then
-    if apt-get -s install php-fpm >/dev/null 2>&1 || apt-get -s install php5-fpm >/dev/null 2>&1; then
-      _info "no FPM pool yet; php-fpm installable via apt (will install on --live)"
+    if apt-get -s install "$(_php_series_fpm)" >/dev/null 2>&1 \
+      || apt-get -s install php-fpm >/dev/null 2>&1 \
+      || apt-get -s install php5-fpm >/dev/null 2>&1; then
+      _info "no FPM pool yet; an FPM package is installable via apt (will install on --live; series-matched $(_php_series_fpm) preferred)"
     else
-      _alrt "no FPM pool and no installable php-fpm/php5-fpm package"; _fail=1
+      _alrt "no FPM pool and no installable $(_php_series_fpm)/php-fpm/php5-fpm package"; _fail=1
     fi
   else
     _info "FPM target provision will pick: ${_fpm_t}"
@@ -443,8 +449,13 @@ dryrun_flip() {
     esac
   done
 
-  # frontend queue must be able to run tasks
-  if systemctl is-active hosting-queued >/dev/null 2>&1; then
+  # frontend queue must be able to run tasks. The daemon may be systemd- or
+  # LSB-managed - but upstream's LSB script exits 0 when its hardcoded
+  # DAEMON path is missing, so the non-systemd arm demands positive PROCESS
+  # evidence instead of trusting the init script's exit code (the [d]rush
+  # bracket keeps the probe from ever matching its own invocation)
+  if systemctl is-active hosting-queued >/dev/null 2>&1 \
+    || pgrep -f "[d]rush.*hosting-queued" >/dev/null 2>&1; then
     _info "hosting-queued daemon active (tasks run in seconds)"
   elif crontab -l -u "${_AEGIR_USER}" 2>/dev/null | grep -q hosting-dispatch; then
     _info "cron dispatch present (tasks run within a minute)"
@@ -554,6 +565,95 @@ _fpm_units() {
   dpkg -l 2>/dev/null | awk '/^ii +php[0-9]+(\.[0-9]+)?-fpm/ {print $2}'
 }
 
+# the FPM package matching the box's OWN PHP series. On a mixed-repo box
+# (a PPA'd legacy Ubuntu keeping D7-era PHP) the unversioned 'php-fpm'
+# meta resolves to the repo's NEWEST PHP - a different series than every
+# site runs on - so the versioned package is always tried first. Empty
+# when the CLI version is unreadable (callers fall through to the metas).
+_php_series_fpm() {
+  local _s
+  _s="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)"
+  case "${_s}" in
+    [0-9].[0-9]|[0-9].[0-9][0-9]) echo "php${_s}-fpm" ;;
+  esac
+}
+
+# Where the aegir apache include LIVES varies by install route AND era, so
+# the helpers PROBE the real candidates instead of deriving a layout:
+#   - conf-available/aegir.conf behind a2enconf/a2disconf (apache 2.4,
+#     the aegir3-install / hand-install route)
+#   - a bare symlink straight into conf-enabled/aegir.conf with NO
+#     conf-available file (apache 2.4, upstream's own deb postinst - the
+#     mainstream deb-installed estate; a2enconf/a2disconf cannot act here)
+#   - conf.d/aegir.conf (apache 2.2: Debian 7 / Ubuntu 12.04 era, the
+#     directory is auto-included)
+# Without a conf-available backing file, disable = move the live entry OUT
+# of the auto-included directory entirely (a renamed file inside it could
+# still be swept up by the directory Include); mv moves a symlink itself,
+# never its target.
+_A2B_CONFD_SAVED=/etc/apache2/aegir.conf.a2b-disabled
+
+_apache_uses_a2enconf() {
+  [[ -e /etc/apache2/conf-available/aegir.conf ]]
+}
+
+# the directory a moved include returns to on the non-a2enconf routes
+_apache_confdir() {
+  if [[ -d /etc/apache2/conf-enabled ]]; then
+    echo /etc/apache2/conf-enabled
+  else
+    echo /etc/apache2/conf.d
+  fi
+}
+
+# the include file revert must return to, wherever it lives right now
+_apache_aegir_conf() {
+  local _c
+  for _c in /etc/apache2/conf-available/aegir.conf \
+            /etc/apache2/conf-enabled/aegir.conf \
+            /etc/apache2/conf.d/aegir.conf \
+            "${_A2B_CONFD_SAVED}"; do
+    if [[ -e "${_c}" || -L "${_c}" ]]; then
+      echo "${_c}"
+      return 0
+    fi
+  done
+  echo /etc/apache2/conf-available/aegir.conf
+}
+
+_apache_include_off() {
+  if _apache_uses_a2enconf; then
+    a2disconf aegir
+  elif [[ -e /etc/apache2/conf-enabled/aegir.conf || -L /etc/apache2/conf-enabled/aegir.conf ]]; then
+    mv -f /etc/apache2/conf-enabled/aegir.conf "${_A2B_CONFD_SAVED}"
+  elif [[ -e /etc/apache2/conf.d/aegir.conf ]]; then
+    mv -f /etc/apache2/conf.d/aegir.conf "${_A2B_CONFD_SAVED}"
+  else
+    return 1
+  fi
+}
+
+_apache_include_on() {
+  if _apache_uses_a2enconf; then
+    a2enconf aegir
+  elif [[ -e "${_A2B_CONFD_SAVED}" || -L "${_A2B_CONFD_SAVED}" ]]; then
+    mv -f "${_A2B_CONFD_SAVED}" "$(_apache_confdir)/aegir.conf"
+  else
+    # nothing saved: live already? (a pre-fix flip could not disable the
+    # conf-enabled symlink form, leaving the include in place)
+    [[ -e /etc/apache2/conf-enabled/aegir.conf || -e /etc/apache2/conf.d/aegir.conf ]]
+  fi
+}
+
+# the exact command an operator must paste in an emergency revert
+_apache_include_on_hint() {
+  if _apache_uses_a2enconf; then
+    echo "a2enconf aegir"
+  else
+    echo "mv ${_A2B_CONFD_SAVED} $(_apache_confdir)/aegir.conf"
+  fi
+}
+
 live_flip() {
   [[ -n "$(_state_get dryrun_flip_ok)" ]] \
     || _die "--live requires a prior CLEAN dry run on this box (run without --live first)"
@@ -572,9 +672,15 @@ live_flip() {
   if ! _have nginx || [[ "$(_probe_fpm_target)" = "port:9000" ]]; then
     _msg "installing nginx + php-fpm (policy-rc.d guard: no daemon autostart)"
     _policy_guard_on
-    apt-get update >>"${_LOG}" 2>&1
+    # a failed update is NOT fatal (cached lists may still serve the install,
+    # and one dead third-party repo fails the whole run) - but it must be
+    # named, or the install failure below gets misattributed to the package
+    apt-get update >>"${_LOG}" 2>&1 \
+      || _alrt "apt-get update failed - stale/EOL apt sources? (EOL mirrors move to archive.debian.org / old-releases.ubuntu.com); trying cached lists"
     apt-get install -y nginx >>"${_LOG}" 2>&1 || { _policy_guard_off; _die "nginx install failed"; }
-    apt-get install -y php-fpm >>"${_LOG}" 2>&1 || apt-get install -y php5-fpm >>"${_LOG}" 2>&1 \
+    apt-get install -y "$(_php_series_fpm)" >>"${_LOG}" 2>&1 \
+      || apt-get install -y php-fpm >>"${_LOG}" 2>&1 \
+      || apt-get install -y php5-fpm >>"${_LOG}" 2>&1 \
       || { _policy_guard_off; _die "php-fpm install failed"; }
     _policy_guard_off
   fi
@@ -682,12 +788,12 @@ live_flip() {
   # 7. daemon handover
   _msg "daemon handover: apache down, nginx up"
   service apache2 stop >>"${_LOG}" 2>&1 || _alrt "apache2 stop returned non-zero - continuing (nginx start will prove :80 free)"
-  a2disconf aegir >>"${_LOG}" 2>&1 && _state_set "apache_conf_disabled" "aegir"
+  _apache_include_off >>"${_LOG}" 2>&1 && _state_set "apache_conf_disabled" "aegir"
   systemctl disable apache2 >>"${_LOG}" 2>&1 || update-rc.d apache2 disable >>"${_LOG}" 2>&1 || true
-  service nginx start >>"${_LOG}" 2>&1 || _die "nginx failed to start - REVERT: a2enconf aegir; service apache2 start"
+  service nginx start >>"${_LOG}" 2>&1 || _die "nginx failed to start - REVERT: $(_apache_include_on_hint); service apache2 start"
   systemctl enable nginx >>"${_LOG}" 2>&1 || update-rc.d nginx enable >>"${_LOG}" 2>&1 || true
   while read -r _u; do
-    [[ -n "${_u}" ]] && { systemctl enable "${_u}" >>"${_LOG}" 2>&1 || true; }
+    [[ -n "${_u}" ]] && { systemctl enable "${_u}" >>"${_LOG}" 2>&1 || update-rc.d "${_u}" enable >>"${_LOG}" 2>&1 || true; }
   done < <(_fpm_units)
 
   # 8. verification against the pre-flip baseline
@@ -721,7 +827,7 @@ live_flip() {
     _msg "FLIP COMPLETE - all sites match their baseline on nginx"
   else
     _alrt "FLIP COMPLETE with ${_failn} site(s) DIFFERING from baseline - investigate now"
-    _alrt "instant daemon-level fallback: service nginx stop; a2enconf aegir; service apache2 start"
+    _alrt "instant daemon-level fallback: service nginx stop; $(_apache_include_on_hint); service apache2 start"
     _alrt "full revert (config plane too): $0 --revert && $0 --revert --live"
   fi
 }
@@ -746,14 +852,23 @@ dryrun_revert() {
     || { _alrt "apache2 package gone"; _fail=1; }
   dpkg -l 2>/dev/null | grep -qE '^ii  *libapache2-mod-php' \
     || { _alrt "libapache2-mod-php gone - PHP would not execute under apache"; _fail=1; }
-  [[ -e /etc/apache2/conf-available/aegir.conf ]] \
-    || { _alrt "apache aegir include missing from conf-available"; _fail=1; }
+  local _aconf
+  _aconf="$(_apache_aegir_conf)"
+  [[ -e "${_aconf}" ]] \
+    || { _alrt "apache aegir include missing (looked for ${_aconf})"; _fail=1; }
 
   # prove the WOULD-BE apache config parses (aegir include enabled) without
-  # touching conf-enabled: a temp wrapper conf, truly read-only
-  if [[ -e /etc/apache2/conf-available/aegir.conf && -e /etc/apache2/apache2.conf ]]; then
+  # touching conf-enabled: a temp wrapper conf, truly read-only. The
+  # explicit second Include is added only while the include is actually
+  # disabled - a still-live one (flip died before the handover) already
+  # rides in through apache2.conf's directory includes, and doubling it
+  # would test a config apache will never run
+  if [[ -e "${_aconf}" && -e /etc/apache2/apache2.conf ]]; then
     local _tc=/tmp/.a2b_revert_configtest.conf
-    printf 'Include /etc/apache2/apache2.conf\nInclude /etc/apache2/conf-available/aegir.conf\n' > "${_tc}"
+    printf 'Include /etc/apache2/apache2.conf\n' > "${_tc}"
+    if [[ ! -e /etc/apache2/conf-enabled/aegir.conf && ! -e /etc/apache2/conf.d/aegir.conf ]]; then
+      printf 'Include %s\n' "${_aconf}" >> "${_tc}"
+    fi
     # shellcheck disable=SC1091
     if ( . /etc/apache2/envvars 2>/dev/null; apache2 -t -f "${_tc}" ) >>"${_LOG}" 2>&1; then
       _info "apache config (with aegir include) parses"
@@ -801,20 +916,21 @@ live_revert() {
 
   _msg "LIVE REVERT: ${_ALIAS_TYPE} -> ${_target}"
 
-  # prove apache's config BEFORE taking nginx down: a2enconf + configtest
-  # bind no ports, so nginx keeps serving until apache is proven good
-  a2enconf aegir >>"${_LOG}" 2>&1
+  # prove apache's config BEFORE taking nginx down: re-enabling the include
+  # + configtest bind no ports, so nginx keeps serving until apache is
+  # proven good
+  _apache_include_on >>"${_LOG}" 2>&1 && _state_set "apache_conf_disabled" ""
   if ! apache2ctl configtest >>"${_LOG}" 2>&1; then
-    a2disconf aegir >>"${_LOG}" 2>&1
+    _apache_include_off >>"${_LOG}" 2>&1 && _state_set "apache_conf_disabled" "aegir"
     _die "apache configtest FAILED - apache tree damaged; NGINX STILL SERVING, nothing changed"
   fi
 
   _msg "daemon handover: nginx down, apache up"
   service nginx stop >>"${_LOG}" 2>&1 || true
-  systemctl disable nginx >>"${_LOG}" 2>&1 || true
+  systemctl disable nginx >>"${_LOG}" 2>&1 || update-rc.d nginx disable >>"${_LOG}" 2>&1 || true
   rm -f /etc/nginx/conf.d/aegir.conf
   service apache2 start >>"${_LOG}" 2>&1 || _die "apache failed to start after passing configtest - NOTHING serving; emergency: ln -sf ${_AEGIR_ROOT}/config/nginx.conf /etc/nginx/conf.d/aegir.conf; service nginx start"
-  systemctl enable apache2 >>"${_LOG}" 2>&1 || true
+  systemctl enable apache2 >>"${_LOG}" 2>&1 || update-rc.d apache2 enable >>"${_LOG}" 2>&1 || true
 
   # config plane: frontend node back to apache -> queued verify -> alias
   _msg "switching frontend server node back to ${_target}"
