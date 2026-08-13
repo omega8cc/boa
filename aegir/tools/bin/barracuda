@@ -350,12 +350,15 @@ _sql_maint_foreign() {
 _sql_error_tail() {
   # Return whatever MySQLD actually reports its startup errors to on this box.
   #
-  # The shipped my.cnf leaves log_error commented and sets syslog in
-  # [mysqld_safe], so a refused start writes "unknown variable ..." to the
-  # syslog family and NOT to /var/log/mysql/error.log, whose name invites the
-  # opposite assumption -- the file exists and keeps whatever an earlier
-  # in-file-logging vintage left in it, so it looks alive while never gaining
-  # the line that matters. The SQL watchdogs already resolve it this way
+  # Which log it reports to depends on the INSTALLED series: BOA enables
+  # log_syslog on 5.7 and log_error on 8.x (sql.sh.inc, _sql_conf_update). The
+  # gate below only ever fires when the installed series is BELOW the
+  # configured one -- a 5.7 box pending an upgrade -- which is exactly the case
+  # that reports to the syslog family, while /var/log/mysql/error.log sits
+  # there holding whatever an 8.x vintage or an earlier run left in it and so
+  # looks alive while never gaining the line that matters. Read both, because
+  # an 8.x box genuinely does use error.log. The SQL watchdogs resolve it the
+  # same way
   # (tools/system/monitor/check/sqlcheck.sh, .../mysql.sh); the launcher gates
   # must see the same evidence or a half-flipped box is never recognised as
   # one. Both sources are read so an operator who did set log_error keeps
@@ -1558,7 +1561,15 @@ _up_finish() {
     sleep 1
   fi
   echo
-  echo BARRACUDA upgrade completed
+  # Never claim a clean finish for a run this launcher already decided to
+  # alert on. The prefix is kept intact so anything waiting on the documented
+  # completion line still terminates -- including the operator the console
+  # instructions above tell to watch for exactly that line.
+  if [ "${_SEND_ALERT}" = "YES" ]; then
+    echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}"
+  else
+    echo BARRACUDA upgrade completed
+  fi
   echo Bye
   echo
   exit 0
