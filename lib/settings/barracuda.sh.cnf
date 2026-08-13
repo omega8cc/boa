@@ -1901,16 +1901,40 @@ _cleanup_boa_code() {
 ###
 ### Download boa code
 ###
+_boa_code_tree_is_root_owned() {
+  # Bare existence tests are not enough to trust a tree root is about to
+  # source. Directories are not covered by fs.protected_regular at all, so
+  # wherever the scratch root is writable by anyone else -- including any box
+  # still running an older octopus that hands the tree away -- an unprivileged
+  # user can pre-create the very paths the sentinel below looks for. Require
+  # the tree to be root-owned throughout before reusing it. Stops at the first
+  # foreign entry, so it costs nothing on a healthy tree.
+  local _foreignEnt=""
+  [ -d "/opt/tmp/boa" ] || return 1
+  _foreignEnt=$(find /opt/tmp/boa ! -user root -print -quit 2>/dev/null)
+  [ -z "${_foreignEnt}" ]
+}
+
+
 _download_boa_code() {
   # See _cleanup_boa_code: the lib probe is the broken-tree self-heal now
   # that install aborts no longer purge /opt/tmp
   if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
     || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ] \
-    || [ ! -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
+    || [ ! -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ] \
+    || ! _boa_code_tree_is_root_owned; then
+    if [ -d "/opt/tmp/boa" ] && ! _boa_code_tree_is_root_owned; then
+      echo "NOTE: Build tree is not owned by root -- discarding it and fetching a fresh copy"
+    fi
     rm -rf /opt/tmp/boa
     mkdir -p /opt/tmp
     cd /opt/tmp
     _get_dev_ext "boa.tar.gz"
+    # The tree root is about to source is created entirely by this run, so
+    # assert the ownership rather than inheriting whatever uids the archive
+    # happened to carry. Cheap, and it keeps the reuse test above from ever
+    # discarding a tree this same function just fetched.
+    [ -d "/opt/tmp/boa" ] && chown -R root:root /opt/tmp/boa &> /dev/null
   fi
   if [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
     && [ -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ] \

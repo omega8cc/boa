@@ -122,7 +122,7 @@ _accel_now=NO
 if [ -e "/run/octopus_install_run.pid" ]; then
   if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus" > /dev/null 2>&1 \
     || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
     _accel_now=YES
     touch /run/octopus_install_run.pid
   elif [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then
