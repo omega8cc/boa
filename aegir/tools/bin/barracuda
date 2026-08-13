@@ -333,13 +333,105 @@ _check_root_keys_pwd() {
   fi
 }
 
+_sql_maint_foreign() {
+  # True when the SQL-maintenance marker is held by a DIFFERENT live
+  # process; an empty fresh marker keeps its historical "held" meaning,
+  # a stale (>240 min) or dead-writer marker never blocks recovery.
+  # Mirrored in lib/functions/sql.sh.inc and the octopus launcher.
+  [ -e "/run/boa_sql_maintenance.pid" ] || return 1
+  [ ! -z "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ] && return 1
+  local _mPid="$(tr -dc '0-9' < /run/boa_sql_maintenance.pid 2>/dev/null)"
+  [ -z "${_mPid}" ] && return 0
+  [ "${_mPid}" = "$$" ] && return 1
+  kill -0 "${_mPid}" 2>/dev/null || return 1
+  return 0
+}
+
 _check_sql_running() {
-  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
+  # Bounded gate: a mysqld that cannot start (bad my.cnf directive, corrupt
+  # datadir, half-finished series upgrade) must fall through to the loud
+  # diagnostics in _check_sql_access -- never hang here forever holding the
+  # run lock, which starved that fail-fast one call behind this gate and
+  # made a died Percona upgrade leg unrecoverable without manual surgery.
+  # Consecutive-dead samples bound the config-death case (a live process
+  # with no socket yet is a recovery/DD upgrade in progress and resets the
+  # counter); the total ceiling bounds a flapping mysqld. ONE start attempt
+  # via the blessed move_sql.sh path (a bare service start is a no-op on a
+  # stale pidfile), skipped while a fresh SQL-maintenance marker is held.
+  # When a series UPGRADE is pending (installed server older than the
+  # configured _DB_SERIES) AND the outage matches the half-flip signature,
+  # a dead mysqld is EXPECTED: proceed loudly so the SQL phase can
+  # reinstall the server and reconcile my.cnf.
+  _SQL_UPGRADE_PENDING=NO
+  [ -e "/root/.proxy.cnf" ] && return 0
+  local _dead=0
+  local _tot=0
+  local _started=NO
+  while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
+      return 0
+    fi
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
+      _dead=0
+    else
+      _dead=$(( _dead + 1 ))
+      if [ "${_started}" = "NO" ] && ! _sql_maint_foreign; then
+        _started=YES
+        echo "INFO: MySQLD not running -- starting it..."
+        if [ -e "/var/xdrago/move_sql.sh" ]; then
+          bash /var/xdrago/move_sql.sh start &> /dev/null
+        else
+          service mysql start &> /dev/null
+        fi
+      fi
+    fi
+    _tot=$(( _tot + 1 ))
+    if [ "${_dead}" -gt 12 ] || [ "${_tot}" -gt 720 ]; then
+      echo "ALERT: MySQLD did not become available (down $(( (_dead - 1) * 5 ))s, total wait $(( (_tot - 1) * 5 ))s)."
+      break
+    fi
     echo "INFO: Waiting for MySQLD availability..."
     sleep 5
   done
+  local _dbSn=$(sed -n 's/^_DB_SERIES=[[:space:]]*//p' "${_barCnf}" 2>/dev/null \
+    | head -1 | cut -d'#' -f1 | tr -d '"[:space:]')
+  local _dbVn=""
+  if [ -x "/usr/sbin/mysqld" ]; then
+    _dbVn=$(/usr/sbin/mysqld --no-defaults -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d"." -f1,2)
+  fi
+  if [ -z "${_dbVn}" ]; then
+    _dbVn=$(mysql -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d"." -f1,2)
+  fi
+  local _sqlErrTail=$(tail -n 30 /var/log/mysql/error.log 2>/dev/null)
+  if [ ! -z "${_dbSn}" ] && [ ! -z "${_dbVn}" ] \
+    && [ "${_dbSn}" != "${_dbVn}" ]; then
+    local _lowV=$(printf '%s\n%s\n' "${_dbVn}" "${_dbSn}" | sort -V | head -1)
+    if [ "${_lowV}" = "${_dbVn}" ]; then
+      # Corroborate that the outage is half-flip shaped before an unattended
+      # pass-through: the server rejected an unknown directive, or the server
+      # binary is gone entirely (partial transaction). An unrelated outage on
+      # a box that merely has a series bump configured falls through to the
+      # loud abort instead of triggering a major upgrade by surprise.
+      if [[ "${_sqlErrTail}" =~ "unknown variable" ]] \
+        || [[ "${_sqlErrTail}" =~ "unknown option" ]] \
+        || [ ! -x "/usr/sbin/mysqld" ]; then
+        echo "WARN: MySQLD is down and a ${_dbVn} -> ${_dbSn} series upgrade is pending;"
+        echo "WARN: proceeding so the SQL phase can reinstall the server and heal my.cnf."
+        echo "WARN: Note: without an explicit percona-X.Y argument or /root/.percona.X.Y.cnf"
+        echo "WARN: marker the run settles the box back to the installed series instead."
+        _SQL_UPGRADE_PENDING=YES
+        return 0
+      fi
+    fi
+  fi
+  if [ ! -z "${_sqlErrTail}" ]; then
+    echo "ALERT: Last MySQLD error.log lines follow:"
+    tail -n 10 /var/log/mysql/error.log 2>/dev/null
+  fi
+  return 1
 }
 
 _check_sql_access() {
@@ -362,6 +454,13 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
+    if [ "${_SQL_UPGRADE_PENDING}" = "YES" ]; then
+      # Credential files verified above; the live-connection half is
+      # meaningless with mysqld down for a pending series upgrade -- the
+      # installer re-verifies once the SQL phase brings the server back.
+      echo "WARN: Skipping the live SQL access check -- series upgrade pending."
+      return 0
+    fi
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
@@ -689,14 +788,40 @@ _oops_mysql_exit() {
 
 _mysql_downgrade_protection() {
   _DB_V=""
-  if [ -z "$(which mysql)" ]; then
+  # Server binary first (--no-defaults so a rejected my.cnf directive cannot
+  # kill the probe), client as fallback -- a partial series-upgrade
+  # transaction can remove or advance the client while the server binary is
+  # the one that matters.
+  if [ -x "/usr/sbin/mysqld" ]; then
+    _DB_SERVER_TEST=$(/usr/sbin/mysqld --no-defaults -V 2>&1)
+    _DB_V=$(echo "${_DB_SERVER_TEST}" \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
+  if [ -z "${_DB_V}" ] && [ ! -z "$(which mysql)" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+    _DB_V=$(echo "${_DB_SERVER_TEST}" \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
+  if [ -z "${_DB_V}" ]; then
+    # Neither binary yields a version. If the box has a supported series
+    # configured, this is the torn-transaction shape a series-upgrade retry
+    # must be allowed to reach the SQL phase for -- let the bounded gate
+    # and its corroborated pass-through decide instead of dying here.
+    _dgSn=$(sed -n 's/^_DB_SERIES=[[:space:]]*//p' "${_barCnf}" 2>/dev/null \
+      | head -1 | cut -d'#' -f1 | tr -d '"[:space:]')
+    case "${_dgSn}" in
+      5.7|8.0|8.4)
+        echo "WARN: No usable MySQL binary found, but a supported series"
+        echo "WARN: (${_dgSn}) is configured -- deferring to the SQL gate."
+        return 0
+      ;;
+    esac
     _oops_mysql_exit "MISSING MySQL"
   fi
-  _DB_SERVER_TEST=$(mysql -V 2>&1)
-  _DB_V=$(echo "${_DB_SERVER_TEST}" \
-    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
-    | head -1 \
-    | cut -d"." -f1,2)
   case "${_DB_V}" in
     5.7|8.0|8.4) ;;
     *)
