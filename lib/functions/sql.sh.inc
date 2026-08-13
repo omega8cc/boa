@@ -94,10 +94,11 @@ _check_sql_running() {
     _tot=$(( _tot + 1 ))
     if [ "${_dead}" -gt 24 ] || [ "${_tot}" -gt 720 ]; then
       _msg "FATAL ERROR: MySQLD did not become available (down $(( (_dead - 1) * 5 ))s, total wait $(( (_tot - 1) * 5 ))s)."
-      _msg "FATAL ERROR: Check the mysqld lines in /var/log/syslog (or"
-      _msg "FATAL ERROR: /var/log/daemon.log) for the reason -- the shipped my.cnf"
-      _msg "FATAL ERROR: logs there, not to /var/log/mysql/error.log. Typically a bad"
-      _msg "FATAL ERROR: my.cnf directive or a datadir problem. Aborting instead of"
+      _msg "FATAL ERROR: Check /var/log/mysql/error.log for the reason, and on a"
+      _msg "FATAL ERROR: 5.7 box the mysqld lines in /var/log/syslog (or"
+      _msg "FATAL ERROR: /var/log/daemon.log) instead -- 5.7 is configured with"
+      _msg "FATAL ERROR: log_syslog, 8.x with log_error. Typically a bad my.cnf"
+      _msg "FATAL ERROR: directive or a datadir problem. Aborting instead of"
       _msg "FATAL ERROR: waiting forever; fix it and run the upgrade again."
       _clean_pid_exit _check_sql_running_dead
     fi
@@ -920,10 +921,10 @@ _check_mysqld_running() {
     if [ "${_dead}" -gt 24 ] || [ "${_tot}" -gt 720 ]; then
       _msg "FATAL ERROR: MySQLD did not become available before"
       _msg "FATAL ERROR: _tune_sql_memory_limits (down $(( (_dead - 1) * 5 ))s, total wait $(( (_tot - 1) * 5 ))s)."
-      _msg "FATAL ERROR: Check the mysqld lines in /var/log/syslog (or"
-      _msg "FATAL ERROR: /var/log/daemon.log) -- the shipped my.cnf logs there, not"
-      _msg "FATAL ERROR: to /var/log/mysql/error.log. Fix the reported error and"
-      _msg "FATAL ERROR: run the upgrade again."
+      _msg "FATAL ERROR: Check /var/log/mysql/error.log, and on a 5.7 box the"
+      _msg "FATAL ERROR: mysqld lines in /var/log/syslog (or /var/log/daemon.log)"
+      _msg "FATAL ERROR: instead -- 5.7 is configured with log_syslog, 8.x with"
+      _msg "FATAL ERROR: log_error. Fix the reported error and run the upgrade again."
       _clean_pid_exit _check_mysqld_running_dead
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
