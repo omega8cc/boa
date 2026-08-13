@@ -73,8 +73,9 @@ _installer_alive() {
   # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
   # (xoct/xcopy driving a remote install) must not hold this box's reaping
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
-  pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 && return 0
-  pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1 && return 0
+  # Dual-path for the staging move -- see the same guard in BOA.sh.txt.
+  pgrep -f "/(var/backups|var/opt/boa-dist)/BARRACUDA.sh.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "/(var/backups|var/opt/boa-dist)/OCTOPUS.sh.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 

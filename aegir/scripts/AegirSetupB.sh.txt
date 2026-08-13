@@ -54,6 +54,16 @@ export _tRee=lts
 
 
 ###
+### Where this child signals its outcome.
+###
+### Root creates this directory and hands it to whoever runs this
+### script, so the child writes only inside its own state dir and
+### never into the shared scratch root.
+###
+_stateDir="/opt/tmp/state/${1}"
+mkdir -p "${_stateDir}" 2> /dev/null
+
+###
 ### Panic on missing include
 ###
 _panic_exit() {
@@ -63,7 +73,7 @@ _panic_exit() {
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  touch /opt/tmp/status-AegirSetupB-FAIL
+  touch "${_stateDir}/status-AegirSetupB-FAIL"
   exit 1
 }
 
@@ -210,7 +220,7 @@ fi
 if [ "$(id -u)" -eq 0 ]; then
   _msg "${_STATUS} B: FATAL ERROR: This script should be run as a non-root user"
   _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-  touch /opt/tmp/status-AegirSetupB-FAIL
+  touch "${_stateDir}/status-AegirSetupB-FAIL"
   exit 1
 else
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -243,3 +253,10 @@ _satellite_child_b_redis_enable_finalize
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###
+
+###
+### Reaching this line is the success signal: every failure path above
+### writes FAIL and exits, so the parent can require this marker and
+### treat its absence as failure.
+###
+touch "${_stateDir}/status-AegirSetupB-OK"
