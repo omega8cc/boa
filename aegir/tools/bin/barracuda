@@ -347,6 +347,41 @@ _sql_maint_foreign() {
   return 0
 }
 
+_sql_error_tail() {
+  # Return whatever MySQLD actually reports its startup errors to on this box.
+  #
+  # The shipped my.cnf leaves log_error commented and sets syslog in
+  # [mysqld_safe], so a refused start writes "unknown variable ..." to the
+  # syslog family and NOT to /var/log/mysql/error.log, whose name invites the
+  # opposite assumption -- the file exists and keeps whatever an earlier
+  # in-file-logging vintage left in it, so it looks alive while never gaining
+  # the line that matters. The SQL watchdogs already resolve it this way
+  # (tools/system/monitor/check/sqlcheck.sh, .../mysql.sh); the launcher gates
+  # must see the same evidence or a half-flipped box is never recognised as
+  # one. Both sources are read so an operator who did set log_error keeps
+  # working. The syslog read is bounded -- these files get large.
+  # The window is deliberately wide: a refused start reports its reason and
+  # then emits roughly sixty further lines winding the instance down, so a
+  # short tail scrolls the one line that matters out of sight. 200 mysqld
+  # lines keeps about three start attempts, which is what a flapping server
+  # produces. daemon.log wins only when it really carries mysqld entries --
+  # the same test tools/system/monitor/check/sqlcheck.sh makes.
+  local _sqlLog="/var/log/syslog"
+  local _sqlOut=""
+  if [[ -s "/var/log/mysql/error.log" ]]; then
+    _sqlOut="$(tail -n 200 /var/log/mysql/error.log 2>/dev/null)"
+  fi
+  if [[ -e "/var/log/daemon.log" ]] \
+    && tail -n 1000 /var/log/daemon.log 2>/dev/null | grep -qai 'mysqld'; then
+    _sqlLog="/var/log/daemon.log"
+  fi
+  if [[ -e "${_sqlLog}" ]]; then
+    _sqlOut="${_sqlOut}
+$(tail -n 4000 "${_sqlLog}" 2>/dev/null | grep -a -i 'mysqld' | tail -n 200)"
+  fi
+  echo "${_sqlOut}"
+}
+
 _check_sql_running() {
   # Bounded gate: a mysqld that cannot start (bad my.cnf directive, corrupt
   # datadir, half-finished series upgrade) must fall through to the loud
@@ -405,7 +440,7 @@ _check_sql_running() {
     _dbVn=$(mysql -V 2>&1 \
       | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d"." -f1,2)
   fi
-  local _sqlErrTail=$(tail -n 30 /var/log/mysql/error.log 2>/dev/null)
+  local _sqlErrTail=$(_sql_error_tail)
   if [ ! -z "${_dbSn}" ] && [ ! -z "${_dbVn}" ] \
     && [ "${_dbSn}" != "${_dbVn}" ]; then
     local _lowV=$(printf '%s\n%s\n' "${_dbVn}" "${_dbSn}" | sort -V | head -1)
@@ -428,8 +463,16 @@ _check_sql_running() {
     fi
   fi
   if [ ! -z "${_sqlErrTail}" ]; then
-    echo "ALERT: Last MySQLD error.log lines follow:"
-    tail -n 10 /var/log/mysql/error.log 2>/dev/null
+    echo "ALERT: Last MySQLD error lines follow:"
+    # Prefer the lines that say what went wrong: the plain tail of a failed
+    # start is plugin-shutdown noise, and the reason sits above it.
+    local _sqlErrHits="$(echo "${_sqlErrTail}" \
+      | grep -a -iE 'error|unknown variable|unknown option|aborting' | tail -n 10)"
+    if [ ! -z "${_sqlErrHits}" ]; then
+      echo "${_sqlErrHits}"
+    else
+      echo "${_sqlErrTail}" | tail -n 10
+    fi
   fi
   return 1
 }

@@ -80,9 +80,13 @@ the target. A non-apt (RPM-family) source is refused cleanly at stage 1
 Proven end-to-end on disposable VMs (2026-07): both stage-2 routes, every
 revert path (single-site, full two-box, target reset, db-import undo,
 resume), stage-1 flip/revert/re-flip, and public serving through the proxy
-window. That drill estate was Drupal-7-only and HTTP-only. Every drill on
-this page ran a Debian 11 (bullseye) source — the OS axis of the tested
-matrix is listed with the other honest gaps below.
+window. That drill estate was Drupal-7-only and HTTP-only. The OS axis:
+Debian 11 (bullseye) sources for every drill through 2026-08-12, and an
+Ubuntu source drilled end to end on 2026-08-13 (jammy + PPA PHP 7.4 +
+distro MySQL 8.0, on the deb-installed apache include layout) — stage-1
+flip/revert/re-flip, the `check` DB-generation refusal live against two
+Percona 5.7 boxes, and full per-site adoption of the MySQL 8.0 estate
+into a Percona 8.4 target, proxy window and reverts included.
 
 Re-validated in full on 2026-08-11 against a fresh vanilla source and a
 fresh BOA target, on published tool bytes, with an estate carrying real
@@ -173,13 +177,17 @@ Which leaves, honestly:
 - **Panel-domain continuity is not implemented.** The adopted panel lives
   at `<oN>.<target-fqdn>`; the old panel URL goes dark (503) at proxy
   time. Communicate the new URL to the client.
-- **No Ubuntu source has been drilled yet.** Ubuntu compatibility is a
-  requirement, not an option — most legacy Ægir estates ran Ubuntu — and
-  the tools are OS-agnostic by construction (2026-08-13 audit: no distro
-  gate anywhere; every mechanism is Debian-family shared, era differences
-  feature-detected). But every drill so far ran a Debian 11 source, so an
-  Ubuntu-source drill is owed; treat the first Ubuntu estate with the
-  usual dry-run care.
+- **The upstart-era and apache 2.2 Ubuntu/Debian populations are
+  feature-detected but undrilled.** The Ubuntu axis itself is drilled
+  (2026-08-13: jammy source, MySQL 8.0, deb-installed include layout,
+  full adoption + reverts — record: boa-testing
+  tier3/results/A2B-UBUNTU-2026-08-13.md), and the tools are
+  OS-agnostic by construction (same-day audit: no distro gate
+  anywhere). What no cloud image exists to drill is the oldest era:
+  upstart init (Ubuntu 12.04/14.04) and apache 2.2 (Debian 7 /
+  Ubuntu 12.04) go through code paths that are reviewed and
+  unit-verified only — treat a real estate of that era with the usual
+  dry-run care and expect to read the dry-run output closely.
 
 ## Safety model (all acting verbs, all stages)
 
@@ -218,10 +226,12 @@ look on any failure.
 - **A Debian-family source box** — Debian, Ubuntu or Devuan, with working
   apt/dpkg sources and the Debian `apache2` layout. Any era the estate
   survived on: the tools feature-detect the differences that matter (init
-  system, apache 2.2/2.4 include layout, distro nginx and OpenSSH floors,
-  DB flavour). An EOL release whose mirrors moved (archive.debian.org /
-  old-releases.ubuntu.com) must have its apt sources pointed there first —
-  stage 1 installs nginx and php-fpm from the box's own repositories.
+  system, where the apache include lives, distro nginx and OpenSSH
+  floors, DB flavour — a MySQL 8.0 source needs a current-generation
+  target and `check` gates exactly that). An EOL release whose mirrors
+  moved (archive.debian.org / old-releases.ubuntu.com) must have its apt
+  sources pointed there first — stage 1 installs nginx and php-fpm from
+  the box's own repositories.
 - **Arrange reachability with `peer` rather than by hand.** The target's lfd
   reads an `ssh-keyscan` / first-contact burst as abuse and temp-blocks port
   22 — proven the hard way — so the firewall must be opened before the key
