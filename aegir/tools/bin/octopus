@@ -109,6 +109,34 @@ _sql_maint_foreign() {
   return 0
 }
 
+_sql_error_tail() {
+  # Return whatever MySQLD actually reports its startup errors to on this box.
+  # Which log it reports to depends on the INSTALLED series: BOA enables
+  # log_syslog on 5.7 and log_error on 8.x (sql.sh.inc, _sql_conf_update), so
+  # neither source alone covers the fleet and a 5.7 box leaves
+  # /var/log/mysql/error.log holding stale content while reporting elsewhere.
+  # Read both, as the SQL watchdogs do; the launcher diagnostics must match or
+  # they print nothing exactly when an operator needs them. Mirrored in the
+  # barracuda launcher -- kept as its own copy, not shared.
+  # Wide window on purpose: a refused start emits its reason and then roughly
+  # sixty more lines winding down, so a short tail loses it. daemon.log wins
+  # only when it really carries mysqld entries, as sqlcheck.sh tests it.
+  local _sqlLog="/var/log/syslog"
+  local _sqlOut=""
+  if [[ -s "/var/log/mysql/error.log" ]]; then
+    _sqlOut="$(tail -n 200 /var/log/mysql/error.log 2>/dev/null)"
+  fi
+  if [[ -e "/var/log/daemon.log" ]] \
+    && tail -n 1000 /var/log/daemon.log 2>/dev/null | grep -qai 'mysqld'; then
+    _sqlLog="/var/log/daemon.log"
+  fi
+  if [[ -e "${_sqlLog}" ]]; then
+    _sqlOut="${_sqlOut}
+$(tail -n 4000 "${_sqlLog}" 2>/dev/null | grep -a -i 'mysqld' | tail -n 200)"
+  fi
+  echo "${_sqlOut}"
+}
+
 _check_sql_running() {
   # Bounded gate: octopus never installs the DB server, so once a start
   # attempt has failed, waiting here can never become productive -- fall
@@ -146,9 +174,18 @@ _check_sql_running() {
     _tot=$(( _tot + 1 ))
     if [ "${_dead}" -gt 20 ] || [ "${_tot}" -gt 1200 ]; then
       echo "ALERT: MySQLD did not become available (down $(( (_dead - 1) * 3 ))s, total wait $(( (_tot - 1) * 3 ))s)."
-      if [ -e "/var/log/mysql/error.log" ]; then
-        echo "ALERT: Last MySQLD error.log lines follow:"
-        tail -n 10 /var/log/mysql/error.log 2>/dev/null
+      local _sqlErrTail="$(_sql_error_tail)"
+      if [ ! -z "${_sqlErrTail}" ]; then
+        echo "ALERT: Last MySQLD error lines follow:"
+        # Prefer the lines that say what went wrong; a failed start's plain
+        # tail is plugin-shutdown noise with the reason above it.
+        local _sqlErrHits="$(echo "${_sqlErrTail}" \
+          | grep -a -iE 'error|unknown variable|unknown option|aborting' | tail -n 10)"
+        if [ ! -z "${_sqlErrHits}" ]; then
+          echo "${_sqlErrHits}"
+        else
+          echo "${_sqlErrTail}" | tail -n 10
+        fi
       fi
       return 1
     fi
@@ -830,7 +867,14 @@ _up_finish() {
     rm -f /usr/local/bin/php
   fi
   echo
-  echo OCTOPUS upgrade completed
+  # Same as the barracuda launcher: keep the documented completion prefix so
+  # waiters still terminate, but do not report a clean finish for a run that
+  # already raised an alert.
+  if [ "${_SEND_ALERT}" = "YES" ]; then
+    echo "OCTOPUS upgrade completed WITH ERRORS -- review ${_UP_LOG}"
+  else
+    echo OCTOPUS upgrade completed
+  fi
   echo Bye
   echo
   exit 0
