@@ -90,6 +90,12 @@ _ci_master_cron_control() {
 # gate was audited RIGHTFUL, unlike the IDS/update gates it sat beside).
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
+# A replication standby (xmass target) must never execute the task queue:
+# hosting_task rows arrive by replication, and running them locally writes
+# into the replica. The marker alone gates here -- it also covers the boot
+# minute before second.sh has re-stopped cron, and the mid-init window
+# where replica config does not exist yet.
+[ -e "/root/.standby.cnf" ] && exit 0
 # PHP-idle surgery quiesce: barracuda holds this while swapping PHP
 # versions (it used to borrow the proxy marker for the same mute); a
 # marker whose owner PID is gone is stale and is cleared, never obeyed.

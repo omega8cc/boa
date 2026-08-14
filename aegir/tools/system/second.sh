@@ -18,6 +18,36 @@ if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
   rm -f /run/boa_php_idle_quiesce.pid
 fi
 
+# Standby self-quiesce: an xmass replication target keeps cron STOPPED --
+# the target's whole quiesce model rests on that, because parked runners
+# do not survive a live cron. But cron is boot-registered unconditionally
+# (a rebooted proxy must never come up dark), so a target reboot re-arms
+# it and the replica starts taking local writes. While the standby marker
+# and a configured replica agree, put cron straight back down. A marker
+# WITHOUT replica config is never acted on -- a hand-promoted box must
+# not be strangled -- it is only logged; runner.sh still holds the queue
+# on the marker alone.
+if [ -e "/root/.standby.cnf" ]; then
+  if mysqladmin ping &> /dev/null; then
+    _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+    [ -z "${_rplState}" ] && _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    if [ -n "${_rplState}" ]; then
+      echo "Standby marker + replica config: re-stopping cron on $(date)" \
+        >> /var/log/boa/standby.quiesce.log
+      /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
+      pkill -x cron &> /dev/null
+      exit 0
+    fi
+    echo "STALE /root/.standby.cnf on a box with NO replica config on $(date)" \
+      >> /var/log/boa/standby.quiesce.log
+  else
+    # mysqld down (still booting, or crashed): the role cannot be judged
+    # yet -- defer to the next minute rather than guess either way.
+    echo "Standby marker present, mysqld unreachable, deferring on $(date)" \
+      >> /var/log/boa/standby.quiesce.log
+  fi
+fi
+
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
