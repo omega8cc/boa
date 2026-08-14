@@ -1645,7 +1645,7 @@ _update_agents() {
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f89
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f89 --guard mysql_cluster_backup.sh
-    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f72
+    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f71
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f82
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f87
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f85
@@ -1679,7 +1679,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f94
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f90
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f98
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f80
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f79
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f85
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f86
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f78
@@ -3738,8 +3738,12 @@ _install_in_flight() {
   # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
   # (a remote install driven from this box) must not defer this box
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
-  pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 && return 0
-  pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1 && return 0
+  # Dual-path for the staging move: match both the old /var/backups home and
+  # the root-only /var/opt/boa-dist one, because tools arrive per file and a
+  # box runs whatever mix it has converged on. A watcher that knows only one
+  # path would read a box as idle in the middle of an install.
+  pgrep -f "/(var/backups|var/opt/boa-dist)/BARRACUDA.sh.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "/(var/backups|var/opt/boa-dist)/OCTOPUS.sh.txt" > /dev/null 2>&1 && return 0
   # The Ægir setup children ("su - oN -c bash .../AegirSetupC.sh.txt") match
   # none of the forms above and are the phase that consumes /opt/tmp/boa the
   # longest. Anchored on the executor so a remotely driven install cannot
@@ -4157,7 +4161,7 @@ _update_boa_tools() {
   # a tool must have exactly ONE fetch line, wherever it lives.)
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
-    _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f97 --guard /local/bin/aptfast
+    _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f96 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f95 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f95 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f77 --guard /local/bin/autosymlink
@@ -4165,7 +4169,7 @@ _update_boa_tools() {
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f96 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f76 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f73 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f70 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f98 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
@@ -4180,7 +4184,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f91 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f35 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f37 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f87 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f84 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f96 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f86 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch

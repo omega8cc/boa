@@ -647,6 +647,7 @@ _php_cli_drush_update() {
   else
     _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
     _msg "FATAL ERROR: Aborting AegirM installer NOW!"
+    rm -f /opt/tmp/status-AegirM-FAIL
     touch /opt/tmp/status-AegirM-FAIL
     exit 1
   fi
@@ -870,6 +871,7 @@ _aegir_master_upgrade() {
       if [ -z "${!_hndVar}" ]; then
         _msg "FATAL ERROR: ${_hndVar} is empty, AegirUpgrade hand-off aborted"
         _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+        rm -f /opt/tmp/status-Barracuda-FAIL
         touch /opt/tmp/status-Barracuda-FAIL
         _clean_pid_exit _aegir_master_upgrade_b
       fi
@@ -934,6 +936,7 @@ _aegir_master_upgrade() {
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ]; then
       _msg "FATAL ERROR: AegirUpgrade installer failed"
       _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+      rm -f /opt/tmp/status-Barracuda-FAIL
       touch /opt/tmp/status-Barracuda-FAIL
       _clean_pid_exit _aegir_master_upgrade_a
     else
@@ -1295,6 +1298,7 @@ EOFMYSQL
       if [ -z "${!_hndVar}" ]; then
         _msg "FATAL ERROR: ${_hndVar} is empty, AegirSetupM hand-off aborted"
         _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+        rm -f /opt/tmp/status-Barracuda-FAIL
         touch /opt/tmp/status-Barracuda-FAIL
         _clean_pid_exit _aegir_master_install_upgrade_h
       fi
@@ -1349,6 +1353,11 @@ EOFMYSQL
 
     ###
     AegirSetupM="${_bldPth}/aegir/scripts/AegirSetupM.sh.txt"
+    mkdir -p /opt/tmp/state/aegir &> /dev/null
+    chown root:root /opt/tmp/state &> /dev/null
+    chmod 0755 /opt/tmp/state &> /dev/null
+    chown aegir:aegir /opt/tmp/state/aegir &> /dev/null
+    chmod 0700 /opt/tmp/state/aegir &> /dev/null
     ###
 
     touch /var/log/boa/aegir_install.log
@@ -1375,11 +1384,13 @@ EOFMYSQL
 
     _php_cli_local_ini_update
 
-    if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
+    if [ -e "/opt/tmp/state/aegir/status-AegirSetupM-FAIL" ] \
+      || [ ! -e "/opt/tmp/state/aegir/status-AegirSetupM-OK" ]; then
       _msg "FATAL ERROR: AegirSetupM installer failed"
       _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
       _msg "HINT: Please check /var/log/boa/aegir_install.log"
       _msg "HINT: for more information on errors occured"
+      rm -f /opt/tmp/status-Barracuda-FAIL
       touch /opt/tmp/status-Barracuda-FAIL
       _clean_pid_exit _aegir_master_install_upgrade_d
     fi

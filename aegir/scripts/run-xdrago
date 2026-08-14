@@ -155,7 +155,7 @@ _run_action() {
   if [ -e "/run/octopus_install_run.pid" ]; then
     if [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ] \
       || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus" > /dev/null 2>&1 \
-      || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/OCTOPUS\.sh\.txt" > /dev/null 2>&1 \
+      || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1 \
       || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1; then
       _buildTest="0"
     fi
