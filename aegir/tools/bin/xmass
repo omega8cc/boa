@@ -4107,30 +4107,29 @@ _xmass_cmd_init() {
   # never did -- while its own cutover step 15 STARTS cron on the target, as
   # though something had stopped it. pkill is required too: on Devuan the init
   # script alone leaves the daemon up.
-  ssh -o ConnectTimeout=10 root@"${_tgt}" \
-    "/etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null; pkill -x cron &> /dev/null; true" &> /dev/null
-  if ssh -o ConnectTimeout=10 root@"${_tgt}" "pgrep -x cron > /dev/null" 2> /dev/null; then
-    _alrt "cron is STILL running on the target -- the replica can take local writes"
+  # A proxy-shaped target (an ha-switch failback leg: the demoted former
+  # source, finalized as a PX0 proxy, still relaying production traffic) is
+  # exempt: every DB-writing cron job already exits on /root/.proxy.cnf, so
+  # stopping cron there protects nothing extra -- while killing the daily
+  # certificate mirror and the watchdogs a live relay depends on.
+  if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.proxy.cnf" 2> /dev/null; then
+    _info "Target is proxy-shaped (/root/.proxy.cnf): cron left armed -- its DB writers are proxy-gated"
   else
-    _info "Target cron stopped for the replication window"
+    ssh -o ConnectTimeout=10 root@"${_tgt}" \
+      "/etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null; pkill -x cron &> /dev/null; true" &> /dev/null
+    if ssh -o ConnectTimeout=10 root@"${_tgt}" "pgrep -x cron > /dev/null" 2> /dev/null; then
+      _alrt "cron is STILL running on the target -- the replica can take local writes"
+    else
+      _info "Target cron stopped for the replication window"
+    fi
   fi
-  # The stop above does not survive a target reboot: cron is boot-registered
-  # unconditionally, and a re-armed cron restores parked runners within
-  # minutes -- the replica then takes local writes and breaks its own
-  # replication silently. This durable role marker makes the quiesce
-  # reboot-proof: second.sh re-stops cron while the marker and a configured
-  # replica agree, runner.sh exits on the marker alone, and mysql_cleanup.sh
-  # skips on live replica state regardless. Cutover step 15 removes the
-  # marker before it starts cron; post-mig clears a leftover.
-  ssh -o ConnectTimeout=10 root@"${_tgt}" \
-    "echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf"
-  if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
-    _info "Standby marker set on the target (reboot-proof quiesce armed)"
-  else
-    _alrt "could NOT set /root/.standby.cnf on the target -- a reboot of the"
-    _alrt "target re-arms its cron and the replica WILL take local writes;"
-    _alrt "set the marker there manually before leaving the window unattended"
-  fi
+  # The stop above does not survive a target reboot; the durable standby
+  # marker that makes the quiesce reboot-proof is written AFTER replication
+  # is configured and running (end of init) -- writing it here would leave
+  # it stranded on a box that never became a replica when a later init
+  # gate refuses (every gate below can still _die, and an operator who
+  # then follows the advice to migrate via xoct would inherit a marker
+  # nothing removes).
   local _src_sid _tgt_sid
   _src_sid=$(_ip_to_server_id "${_XMASS_SRC_IP}")
   _tgt_sid=$(_ip_to_server_id "${_tgt}")
@@ -4217,6 +4216,24 @@ _xmass_cmd_init() {
   _xmass_restore_backup
   _xmass_setup_slave
 
+  # Durable standby marker, written only now that the target IS a running
+  # replica -- every init refusal above leaves no marker behind. It makes
+  # the quiesce reboot-proof: second.sh re-stops a re-armed cron while the
+  # marker and a configured replica agree (and self-removes a marker whose
+  # box is definitively no replica -- the hand-promotion path), runner.sh
+  # holds the task queue on the marker alone, and mysql_cleanup.sh skips on
+  # live replica state regardless. Cutover step 15 removes it before it
+  # starts cron; post-mig clears a leftover.
+  ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf"
+  if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
+    _info "Standby marker set on the target (reboot-proof quiesce armed)"
+  else
+    _alrt "could NOT set /root/.standby.cnf on the target -- a reboot of the"
+    _alrt "target re-arms its cron and the replica WILL take local writes;"
+    _alrt "set the marker there manually before leaving the window unattended"
+  fi
+
   _XMASS_PHASE="syncing"
   _xmass_save_state
   # Sync is plain rsync + live replication; the watchdog can resume protecting
@@ -4269,10 +4286,13 @@ _xmass_cmd_sync() {
     # between syncs re-arms cron (it is boot-registered unconditionally), and
     # a target still running pre-marker BOA bytes has no second.sh watchdog
     # to put it back down. The sync cadence is the healing loop covering
-    # both. DRY runs promise "no changes made" and never touch the target.
+    # both. A proxy-shaped target keeps cron (its DB writers are proxy-gated
+    # and a live relay needs its certificate mirror and watchdogs), exactly
+    # as init decides. DRY runs promise "no changes made" and never touch
+    # the target.
     ssh -o ConnectTimeout=10 root@"${_tgt}" \
-      "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null; pkill -x cron &> /dev/null; true" &> /dev/null
-    if ssh -o ConnectTimeout=10 root@"${_tgt}" "pgrep -x cron > /dev/null" 2> /dev/null; then
+      "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; [ -e /root/.proxy.cnf ] || { /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null; pkill -x cron &> /dev/null; }; true" &> /dev/null
+    if ssh -o ConnectTimeout=10 root@"${_tgt}" "test ! -e /root/.proxy.cnf && pgrep -x cron > /dev/null" 2> /dev/null; then
       _alrt "cron is RUNNING on the target and would not stop -- the replica can take local writes"
     fi
     _info "xmass sync: syncing files to ${_tgt} ..."
@@ -4511,6 +4531,19 @@ for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   fi
 done
 REMOTE
+  # Verify the removal actually landed. This ssh is all that stands between
+  # a cutover that reports success and a promoted production box that keeps
+  # the marker -- runner.sh would hold the task queue on it ACROSS reboots,
+  # with cron stopped besides (no backups, renewals or watchdogs). init
+  # verifies its marker write; the removal deserves the same weight.
+  if ! ssh -o ConnectTimeout=15 root@"${_tgt}" \
+    "test ! -e /root/.standby.cnf && pgrep -x cron > /dev/null" 2> /dev/null; then
+    _alrt "could NOT confirm standby-marker removal + cron start on ${_tgt} --"
+    _alrt "run there NOW, by hand:"
+    _alrt "    rm -f /root/.standby.cnf; service cron start"
+    _alrt "(the second.sh watchdog also self-removes the marker once it sees"
+    _alrt " the box is definitively no replica, but only while cron runs)"
+  fi
 
   # The freeze belongs to the OLD box. Never let the new production box come up
   # read-only because it inherited the flag along with the rest of the tree.

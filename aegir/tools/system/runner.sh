@@ -92,9 +92,11 @@ _ci_master_cron_control() {
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 # A replication standby (xmass target) must never execute the task queue:
 # hosting_task rows arrive by replication, and running them locally writes
-# into the replica. The marker alone gates here -- it also covers the boot
-# minute before second.sh has re-stopped cron, and the mid-init window
-# where replica config does not exist yet.
+# into the replica. The marker alone gates here, covering the boot minute
+# before second.sh's first pass. Marker-alone is safe against staleness
+# because second.sh self-removes a marker whose box probes as definitively
+# no replica (hand promotion, abandoned init) -- so the queue is held for
+# at most about a minute of cron uptime on a wrongly-marked box.
 [ -e "/root/.standby.cnf" ] && exit 0
 # PHP-idle surgery quiesce: barracuda holds this while swapping PHP
 # versions (it used to borrow the proxy marker for the same mute); a

@@ -23,23 +23,44 @@ fi
 # do not survive a live cron. But cron is boot-registered unconditionally
 # (a rebooted proxy must never come up dark), so a target reboot re-arms
 # it and the replica starts taking local writes. While the standby marker
-# and a configured replica agree, put cron straight back down. A marker
-# WITHOUT replica config is never acted on -- a hand-promoted box must
-# not be strangled -- it is only logged; runner.sh still holds the queue
-# on the marker alone.
+# and a POSITIVELY confirmed replica agree, put cron straight back down.
+# Everything ambiguous is log-only: a probe that ERRORS (mysqladmin ping
+# returns 0 even on Access denied, so broken /root/.my.cnf credentials
+# land here, not in the ping branch) proves nothing about the role, and
+# acting blind on a box that might be hand-promoted production must never
+# happen. A probe that runs clean and returns EMPTY is definitive the
+# other way -- no replica config -- so the marker is stale (an abandoned
+# init, or a hand promotion after source loss, which can never run the
+# cutover-side removal) and is self-removed here: that is what revives
+# runner.sh's marker-alone queue gate on a hand-promoted box.
 if [ -e "/root/.standby.cnf" ]; then
   if mysqladmin ping &> /dev/null; then
     _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
-    [ -z "${_rplState}" ] && _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
-    if [ -n "${_rplState}" ]; then
-      echo "Standby marker + replica config: re-stopping cron on $(date)" \
-        >> /var/log/boa/standby.quiesce.log
-      /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
-      pkill -x cron &> /dev/null
-      exit 0
+    _rplRc=$?
+    if [ "${_rplRc}" -ne "0" ]; then
+      _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+      _rplRc=$?
     fi
-    echo "STALE /root/.standby.cnf on a box with NO replica config on $(date)" \
-      >> /var/log/boa/standby.quiesce.log
+    if [ "${_rplRc}" -eq "0" ] && [ -n "${_rplState}" ]; then
+      # Confirmed replica. A proxy-shaped box is exempt from the cron
+      # stop (an ha-switch failback target still relaying production
+      # traffic): its DB writers all exit on /root/.proxy.cnf already,
+      # and a live relay needs its certificate mirror and watchdogs.
+      if [ ! -e "/root/.proxy.cnf" ]; then
+        echo "Standby marker + replica config: re-stopping cron on $(date)" \
+          >> /var/log/boa/standby.quiesce.log
+        /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
+        pkill -x cron &> /dev/null
+        exit 0
+      fi
+    elif [ "${_rplRc}" -eq "0" ]; then
+      rm -f /root/.standby.cnf
+      echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config on $(date)" \
+        >> /var/log/boa/standby.quiesce.log
+    else
+      echo "Standby marker present but the role probe FAILED (credentials?) -- no action taken, VERIFY THIS BOX on $(date)" \
+        >> /var/log/boa/standby.quiesce.log
+    fi
   else
     # mysqld down (still booting, or crashed): the role cannot be judged
     # yet -- defer to the next minute rather than guess either way.
