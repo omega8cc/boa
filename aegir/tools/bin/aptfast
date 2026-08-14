@@ -18,20 +18,21 @@ _MAXNUM=5
 # Download manager selection
 
 # aria2c:
-#_DOWNLOADER='aria2c -c -j ${_MAXNUM} --input-file=/opt/tmp/apt-fast.list --connect-timeout=600 --timeout=600 -m0'
+#_DOWNLOADER='aria2c -c -j ${_MAXNUM} --input-file=/opt/tmp/dl/apt-fast.list --connect-timeout=600 --timeout=600 -m0'
 
 # aria2c with a proxy:
-#_DOWNLOADER='aria2c -s 20 -j ${_MAXNUM} --http-proxy=http://username:password@proxy_ip:proxy_port -i /opt/tmp/apt-fast.list'
+#_DOWNLOADER='aria2c -s 20 -j ${_MAXNUM} --http-proxy=http://username:password@proxy_ip:proxy_port -i /opt/tmp/dl/apt-fast.list'
 
 # axel:
-_DOWNLOADER='cat /opt/tmp/apt-fast.list | xargs -r -l1 axel -n ${_MAXNUM} -a'
+_DOWNLOADER='cat /opt/tmp/dl/apt-fast.list | xargs -r -l1 axel -n ${_MAXNUM} -a'
 
 ###################################################################
 # DO NOT EDIT BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING! #
 ###################################################################
 
 _LCK_FILE="/var/lock/apt-fast.lck"
-_URI_LIST="/opt/tmp/apt-fast.list"
+_URI_DIR="/opt/tmp/dl"
+_URI_LIST="${_URI_DIR}/apt-fast.list"
 _APT_CACHE_DIR="/var/cache/apt/archives"
 
 _unlock()
@@ -67,7 +68,13 @@ if [ -z "${_DOWNLOADER}" ]; then
   _die "you must configure apt-fast to use axel or aria2c"
 fi
 
-mkdir -p "/opt/tmp" || _die "cannot create /opt/tmp"
+# The scratch root is shared and world-writable, so a root-owned 0700
+# download dir keeps this list out of reach of any other writer. Reassert the
+# ownership and mode every run: the dir may predate this version, and an
+# inherited foreign-owned one is exactly the failure being designed out.
+mkdir -p "${_URI_DIR}" || _die "cannot create ${_URI_DIR}"
+chown root:root "${_URI_DIR}" 2>/dev/null
+chmod 0700 "${_URI_DIR}" 2>/dev/null
 
 _ORIG_ARGS=( "$@" )
 _APTGET_ARGS=()
@@ -119,8 +126,16 @@ if printf '%s\n' "${_ORIG_ARGS[@]}" | grep -Eq '^(upgrade|full-upgrade|safe-upgr
 
   cd "${_APT_CACHE_DIR}" || _die "cannot enter ${_APT_CACHE_DIR}"
 
+  # Unlink before creating rather than truncating in place: a truncate reopens
+  # whatever inode is already there, which is refused outright when that inode
+  # belongs to someone else and the parent is sticky. Removing first means this
+  # run always writes its own file.
+  rm -f "${_URI_LIST}"
   : > "${_URI_LIST}" || _die "cannot write ${_URI_LIST}"
 
+  # No guard on this second write, deliberately: the create above already
+  # proved the path writable, and the pipeline's status is grep's -- which
+  # reports 1 for "nothing to download", the ordinary no-op case.
   apt-get -y --print-uris "${_APTGET_ARGS[@]}" \
     | grep -Eo "(https?|ftp)://[^']+" > "${_URI_LIST}"
 

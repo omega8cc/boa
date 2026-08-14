@@ -713,12 +713,14 @@ _mode_detection() {
   _SRCDIR="/opt/tmp/files"
   rm -rf /var/opt/*
   mkdir -p ${_SRCDIR}
-  # 1777 (sticky) on the scratch root, not -R 777. Sticky bit prevents
-  # cross-uid deletion of files inside /opt/tmp/, matching the model BOA
-  # already uses for /var/tmp/fpm and /opt/user/{gems,npm}. The follow-up
-  # find calls below explicitly set the boa subtree to 0755/0644; any other
-  # subtree keeps its existing mode rather than being blanket-777'd.
-  chmod 1777 /opt/tmp &> /dev/null
+  # Root-owned 0755, not sticky 1777. Nothing unprivileged writes at the top
+  # of the scratch root any more -- the children signal inside their own
+  # /opt/tmp/state/<user> directories -- so the world-writable grant that made
+  # a planted or inherited inode able to block a root writer is simply gone.
+  # Sticky never restricted creation anyway, and directories are outside
+  # fs.protected_regular entirely, so 1777 could not have been made safe.
+  chown root:root /opt/tmp &> /dev/null
+  chmod 0755 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
   if [ "${_STATUS}" != "UPGRADE" ]; then
