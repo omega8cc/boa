@@ -1364,13 +1364,19 @@ _tune_memory_limits() {
   fi
 
   _MAX_MEM_VALKEY=$(( _RAM / 3 ))
-  # Measured guard: the Valkey ceiling may drop below the historical
-  # _RAM/3 only when the running instance itself confirms low usage
-  # (4x headroom over live used_memory, floored at _RAM/16 and 512M).
-  # Any read failure keeps the historical ceiling, and Redis-legacy
-  # boxes (no valkey.conf) keep it unconditionally.
+  # The Valkey ceiling, in preference order (RM-14): a pin wins outright;
+  # else the HIT-RATE policy below sizes from sqlprobe's demand window
+  # (/var/log/boa/.valkey.demand.txt) — occupancy of a long-TTL cache is
+  # "space granted so far", not need, so peak-based sizing ratchets to
+  # _RAM/3 on every busy box while hit/miss/eviction behaviour does not;
+  # else the legacy measured guard (peak x4, floored _RAM/16 and 512M,
+  # only ever below _RAM/3); else the historical _RAM/3. Any read or
+  # parse failure falls through to the next rung, and Redis-legacy boxes
+  # (no valkey.conf) keep _RAM/3 unconditionally.
   _VK_PSW=""
   _VK_MEASURED=""
+  _VK_LIVE_USED_MB=""
+  _VK_RUN_MB=""
   if [ -e "/etc/valkey/valkey.conf" ] && [ -z "${_VALKEY_MAXMEM_PIN}" ]; then
     _VK_PSW=$(grep -m1 "^user default on >" /etc/valkey/valkey.conf 2>/dev/null \
       | sed "s/.*>//; s/ .*//")
@@ -1389,9 +1395,180 @@ _tune_memory_limits() {
       _VK_PEAK="${_VK_PEAK//[^0-9]/}"
       _VK_UPTM=$(echo "${_VK_INFO}" | grep "^uptime_in_seconds:" | cut -d: -f2 | tr -d "[:space:]\r")
       _VK_UPTM="${_VK_UPTM//[^0-9]/}"
+      # Raw live occupancy and the RUNNING ceiling, captured BEFORE the
+      # peak substitution below repurposes _VK_USED for the legacy rung.
+      # Empty means UNKNOWN — the live-apply gate must then skip, never
+      # treat unknown as zero.
+      if [ -n "${_VK_USED}" ]; then
+        _VK_LIVE_USED_MB=$(( _VK_USED / 1048576 ))
+      fi
+      _VK_RUN_MB=$(echo "${_VK_INFO}" | grep -m1 "^maxmemory:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_RUN_MB="${_VK_RUN_MB//[^0-9]/}"
+      if [ -n "${_VK_RUN_MB}" ]; then
+        _VK_RUN_MB=$(( _VK_RUN_MB / 1048576 ))
+      fi
       if [ -n "${_VK_PEAK}" ] && [ -n "${_VK_USED}" ] \
         && [ "${_VK_PEAK}" -gt "${_VK_USED}" ]; then
         _VK_USED="${_VK_PEAK}"
+      fi
+    fi
+    # RM-14 hit-rate policy: a control loop that converges on the
+    # smallest ceiling the workload's hit rate tolerates, instead of
+    # tracking occupancy (which a long-TTL cache inflates to whatever it
+    # is granted). Its integrator state lives in ITS OWN store,
+    # /var/log/boa/.valkey.ceiling.txt ("v1 <ceiling_mb> <action_epoch>")
+    # — never in valkey.conf, which BOA re-templates (maxmemory 88MB) on
+    # reinstall paths earlier in the same run. Evidence comes from
+    # sqlprobe's demand window; the loop moves ONE bounded step per
+    # decision and RESETS the window whenever it acts, so the next step
+    # is judged on post-action evidence only. volatile-lfu makes the
+    # shrink direction safe (cold volatile keys evict first); the widen
+    # direction reacts to real pain (hit rate under the floor WITH
+    # evictions). An immature-but-present window HOLDS the converged
+    # ceiling rather than falling through to the legacy peak-x4 rung —
+    # falling through would re-widen and restart the ratchet this loop
+    # exists to remove. Only a missing/garbled window or no usable state
+    # reaches the legacy rungs below.
+    _VK_DEMAND_OK=0
+    if [ -r "/var/log/boa/.valkey.demand.txt" ] \
+      && [ -z "$(find /var/log/boa/.valkey.demand.txt -mmin +11520 2>/dev/null)" ]; then
+      read -r _dV _dTS _dN _dH _dM _dE _dP < /var/log/boa/.valkey.demand.txt
+      if [ "${_dV}" = "v1" ]; then
+        _dTS="${_dTS//[^0-9]/}"
+        _dN="${_dN//[^0-9]/}"
+        _dH="${_dH//[^0-9]/}"
+        _dM="${_dM//[^0-9]/}"
+        _dE="${_dE//[^0-9]/}"
+        _dP="${_dP//[^0-9]/}"
+        _VK_FLOOR=$(( _RAM / 16 ))
+        if [ "${_VK_FLOOR}" -lt 512 ]; then
+          _VK_FLOOR=512
+        fi
+        # Loop state: the ceiling store wins; first run seeds it from
+        # valkey.conf, accepted only in the exact NNNMB form BOA itself
+        # writes AND inside [floor..cap] — the template's 88MB and any
+        # hand-set odd-unit value are rejected here, falling through to
+        # the legacy rungs instead of being "stepped" from.
+        _VK_CUR=""
+        _VK_LAST_TS=0
+        if [ -r "/var/log/boa/.valkey.ceiling.txt" ]; then
+          read -r _cV _cMB _cTS < /var/log/boa/.valkey.ceiling.txt
+          if [ "${_cV}" = "v1" ]; then
+            _cMB="${_cMB//[^0-9]/}"
+            _cTS="${_cTS//[^0-9]/}"
+            if [ -n "${_cMB}" ] && [ "${_cMB}" -ge "${_VK_FLOOR}" ] \
+              && [ "${_cMB}" -le "${_MAX_MEM_VALKEY}" ]; then
+              _VK_CUR="${_cMB}"
+              _VK_LAST_TS="${_cTS:-0}"
+            fi
+          fi
+        fi
+        if [ -z "${_VK_CUR}" ]; then
+          _VK_CONF_MB=$(grep -m1 -E "^maxmemory [0-9]+MB$" /etc/valkey/valkey.conf 2>/dev/null \
+            | cut -d" " -f2)
+          _VK_CONF_MB="${_VK_CONF_MB//[^0-9]/}"
+          if [ -n "${_VK_CONF_MB}" ] && [ "${_VK_CONF_MB}" -ge "${_VK_FLOOR}" ] \
+            && [ "${_VK_CONF_MB}" -le "${_MAX_MEM_VALKEY}" ]; then
+            _VK_CUR="${_VK_CONF_MB}"
+          fi
+        fi
+        if [ -n "${_VK_CUR}" ] \
+          && [ -n "${_dN}" ] && [ -n "${_dH}" ] && [ -n "${_dM}" ] \
+          && [ -n "${_dE}" ] && [ -n "${_dP}" ]; then
+          _VK_NOW=$(date +%s)
+          _VK_NEW="${_VK_CUR}"
+          _VK_ACT=""
+          # Maturity: >=96 accumulated deltas over a >=24h span (96
+          # samples alone is only ~8h at the 5-min cadence). Immature or
+          # freshly reset -> HOLD. A step is also HELD when the previous
+          # one is younger than an hour (_tune_memory_limits runs twice
+          # on SQL-upgrade runs and the window cannot change between the
+          # two calls), and when the RUNNING instance still enforces a
+          # visibly higher ceiling than the store (a prior shrink that
+          # never applied live — stepping again would compound into one
+          # large drop at the next restart).
+          if [ "${_dN}" -ge 96 ] && [ "${_dP}" -gt 0 ] \
+            && [ -n "${_dTS}" ] && [ "${_dTS}" -gt 0 ] \
+            && [ $(( _VK_NOW - _dTS )) -ge 86400 ] \
+            && [ $(( _VK_NOW - _VK_LAST_TS )) -ge 3600 ] \
+            && { [ -z "${_VK_RUN_MB}" ] \
+              || [ "${_VK_RUN_MB}" -le $(( _VK_CUR + 128 )) ]; }; then
+            _VK_TRAFFIC=$(( _dH + _dM ))
+            if [ "${_VK_TRAFFIC}" -lt 10000 ] \
+              || { [ "${_dE}" -eq 0 ] && [ $(( _dP * 2 )) -lt "${_VK_CUR}" ]; }; then
+              # Idle or over-granted: converge DOWN toward peak x1.5 in
+              # bounded steps; this branch never widens (an idle cache
+              # is never granted more than it already has).
+              _VK_STEP=$(( _VK_CUR / 4 ))
+              if [ "${_VK_STEP}" -lt 512 ]; then
+                _VK_STEP=512
+              fi
+              _VK_NEW=$(( _VK_CUR - _VK_STEP ))
+              if [ "${_VK_NEW}" -lt $(( _dP * 3 / 2 )) ]; then
+                _VK_NEW=$(( _dP * 3 / 2 ))
+              fi
+              if [ "${_VK_NEW}" -gt "${_VK_CUR}" ]; then
+                _VK_NEW="${_VK_CUR}"
+              fi
+            elif [ $(( _dH * 100 )) -ge $(( _VK_TRAFFIC * 90 )) ]; then
+              # Healthy hit rate (>=90%) on post-action evidence: one
+              # bounded step down. LFU shedding cold keys while the hit
+              # rate holds is the squeeze working, not pain.
+              _VK_STEP=$(( _VK_CUR / 8 ))
+              if [ "${_VK_STEP}" -lt 256 ]; then
+                _VK_STEP=256
+              fi
+              _VK_NEW=$(( _VK_CUR - _VK_STEP ))
+            elif [ "${_dE}" -gt 0 ]; then
+              # Hit rate under the floor WITH evictions: capacity pain,
+              # one bounded step up (never past _RAM/3).
+              _VK_STEP=$(( _VK_CUR / 4 ))
+              if [ "${_VK_STEP}" -lt 512 ]; then
+                _VK_STEP=512
+              fi
+              _VK_NEW=$(( _VK_CUR + _VK_STEP ))
+            fi
+            # Low hit rate without evictions: the misses belong to the
+            # workload, not the ceiling — _VK_NEW stays at _VK_CUR.
+            if [ "${_VK_NEW}" -lt "${_VK_FLOOR}" ]; then
+              _VK_NEW="${_VK_FLOOR}"
+            fi
+            if [ "${_VK_NEW}" -gt "${_MAX_MEM_VALKEY}" ]; then
+              _VK_NEW="${_MAX_MEM_VALKEY}"
+            fi
+            # 128M hysteresis: noise-sized moves are not actions.
+            _VK_DIFF=$(( _VK_NEW - _VK_CUR ))
+            if [ "${_VK_DIFF}" -lt 0 ]; then
+              _VK_DIFF=$(( 0 - _VK_DIFF ))
+            fi
+            if [ "${_VK_DIFF}" -lt 128 ]; then
+              _VK_NEW="${_VK_CUR}"
+            else
+              _VK_ACT=YES
+            fi
+          fi
+          if [ "${_VK_ACT}" = "YES" ]; then
+            # Record the action and reset the evidence window so the
+            # next decision is made on data gathered under THIS ceiling.
+            echo "v1 ${_VK_NEW} ${_VK_NOW}" 2>/dev/null \
+              > /var/log/boa/.valkey.ceiling.txt || true
+            echo "v1 ${_VK_NOW} 0 0 0 0 0" 2>/dev/null \
+              > /var/log/boa/.valkey.demand.txt || true
+          elif [ ! -e "/var/log/boa/.valkey.ceiling.txt" ]; then
+            echo "v1 ${_VK_NEW} 0" 2>/dev/null \
+              > /var/log/boa/.valkey.ceiling.txt || true
+          fi
+          _MAX_MEM_VALKEY="${_VK_NEW}"
+          _VK_MEASURED=YES
+          _VK_DEMAND_OK=1
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _VK_HITPCT=0
+            if [ $(( _dH + _dM )) -gt 0 ]; then
+              _VK_HITPCT=$(( _dH * 100 / ( _dH + _dM ) ))
+            fi
+            _msg "TUNE: valkey demand n=${_dN} hit=${_VK_HITPCT}% evicted=${_dE} peak=${_dP}M cur=${_VK_CUR}M new=${_MAX_MEM_VALKEY}M act=${_VK_ACT:-NO}"
+          fi
+        fi
       fi
     fi
     # A cache the upgrade itself just restarted (the per-run password
@@ -1410,7 +1587,8 @@ _tune_memory_limits() {
       _VK_BASE_MB=$(cat /var/log/boa/.valkey.used_mb.txt 2>/dev/null)
       _VK_BASE_MB="${_VK_BASE_MB//[^0-9]/}"
     fi
-    if [ -n "${_VK_BASE_MB}" ] && [ "${_VK_BASE_MB}" -gt 0 ]; then
+    if [ "${_VK_DEMAND_OK}" -eq 0 ] \
+      && [ -n "${_VK_BASE_MB}" ] && [ "${_VK_BASE_MB}" -gt 0 ]; then
       _VK_CEIL=$(( _VK_BASE_MB * 4 ))
       if [ "${_VK_CEIL}" -lt $(( _RAM / 16 )) ]; then
         _VK_CEIL=$(( _RAM / 16 ))
@@ -1431,11 +1609,15 @@ _tune_memory_limits() {
 
   if [ -e "/etc/valkey/valkey.conf" ]; then
     sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
-    if [ -n "${_VK_PSW}" ] && [ "${_VK_MEASURED}" = "YES" ]; then
-      # Best-effort live apply, ONLY for a measured ceiling (>= 4x the
-      # trusted peak, so no eviction wave); the _RAM/3 fallback path
-      # never touches the running server. Same socket fallback as the
-      # measurement read.
+    if [ -n "${_VK_PSW}" ] && [ "${_VK_MEASURED}" = "YES" ] \
+      && [ -n "${_VK_LIVE_USED_MB}" ] \
+      && [ "${_VK_LIVE_USED_MB}" -le "${_MAX_MEM_VALKEY}" ]; then
+      # Best-effort live apply, ONLY for a measured ceiling that sits at
+      # or above the cache's live occupancy (no forced mid-run eviction
+      # wave — a demand-policy shrink below current usage lands via the
+      # conf at the next natural restart instead); the _RAM/3 fallback
+      # path never touches the running server. Same socket fallback as
+      # the measurement read.
       if ! timeout 5 valkey-cli -a "${_VK_PSW}" --no-auth-warning CONFIG SET maxmemory $(( _MAX_MEM_VALKEY * 1024 * 1024 )) &> /dev/null; then
         if [ -S "/run/valkey/valkey.sock" ]; then
           timeout 5 valkey-cli -s /run/valkey/valkey.sock -a "${_VK_PSW}" --no-auth-warning CONFIG SET maxmemory $(( _MAX_MEM_VALKEY * 1024 * 1024 )) &> /dev/null
