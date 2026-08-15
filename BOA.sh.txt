@@ -1682,7 +1682,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f79
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f85
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f86
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f78
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f77
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f90
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f85
     ###
@@ -4190,7 +4190,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f91 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f96 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f95 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
@@ -4209,7 +4209,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f95 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f97 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f98 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f93 --guard /local/bin/memorytuner
