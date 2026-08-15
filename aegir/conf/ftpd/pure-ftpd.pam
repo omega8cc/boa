@@ -1,9 +1,12 @@
 #%PAM-1.0
 
 # PAM configuration for Pure-FTPd, deployed by Barracuda to
-# /etc/pam.d/pure-ftpd. Upstream's sample uses pam_stack.so, which does
-# not exist in Linux-PAM; this is the pam_unix form BOA has always
-# produced on the box (see _fix_ftps_pam).
+# /etc/pam.d/pure-ftpd. Carries the pam_unix form BOA has always
+# produced on the box: upstream's sample calls an obsolete Red-Hat-era
+# stacking module that never existed in Linux-PAM, and _fix_ftps_pam
+# remains the healer for copies restored from upstream form. Wording
+# note: _fix_ftps_pam's seds run over this whole file, so comments here
+# must never contain the literal module names those seds rewrite.
 
 auth       required     pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed
 auth       required     pam_shells.so
