@@ -196,21 +196,32 @@ _classify() {
   [ -e "/etc/init.d/${_V_SVC}" ] && _C_INIT=present
   [ -e "/etc/init.d/${_V_SVC}" ] && [ ! -x "/etc/init.d/${_V_SVC}" ] && _C_INIT=disarmed
   _C_PARKED=NO; [ -e "/var/backups/${_V_SVC}.initd" ] && _C_PARKED=YES
+  ### autoupboa SOURCES the cnf, so quoted/exported forms count — match its
+  ### own tolerant clamav read. Per-version /root markers are NOT read: only
+  ### /etc/boa twins are consumed (the C-003 copy leaves inert /root
+  ### originals behind); /root is the blanket java marker's home only.
   _C_DENY=NO
-  grep -q "^${_V_DVAR}=YES" "${_BAR_CNF}" 2>/dev/null && _C_DENY=YES
+  grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_V_DVAR}=[\"' ]*YES" "${_BAR_CNF}" 2>/dev/null && _C_DENY=YES
   [ -e "/etc/boa/.deny.${_V_SVC}.cnf" ] && _C_DENY=YES
-  [ -e "/root/.deny.${_V_SVC}.cnf" ] && _C_DENY=YES
   ### Only dotted names are real; solr4's core0-core9 are installer seeds.
   _C_CORES=$(find "${_V_DATA}" -maxdepth 1 -mindepth 1 -type d -name '*.*' 2>/dev/null | wc -l | tr -d ' ')
   _C_BIND=$(echo "${_BINDRAW}" | grep -Ecx "${_V_BINDPAT}")
   _C_DOCS=0
+  _C_DOCSREAD=n/a
   if [ "${_C_LSN}" = "YES" ]; then
     ### Document counts are the decisive use signal: a populated core on a
     ### running service is read-only SERVING even with zero index writes.
-    _C_DOCS=$(curl -s --max-time 15 -A iCab \
+    ### A failed probe must stay distinguishable from a real zero — the
+    ### operator rules on this line.
+    if _C_DOCS=$(curl -sf --max-time 15 -A iCab \
       "http://127.0.0.1:${_V_PORT}/solr/admin/cores?action=STATUS&wt=json" 2>/dev/null \
-      | grep -o '"numDocs":[0-9]*' | awk -F: '{ _s += $2 } END { print _s + 0 }')
-    [ -z "${_C_DOCS}" ] && _C_DOCS=0
+      | grep -o '"numDocs":[0-9]*' | awk -F: '{ _s += $2 } END { print _s + 0 }') \
+      && [ -n "${_C_DOCS}" ]; then
+      _C_DOCSREAD=OK
+    else
+      _C_DOCS=0
+      _C_DOCSREAD=FAILED
+    fi
   fi
 
   _C_VERDICT=""; _C_WHY=""
@@ -222,16 +233,20 @@ _classify() {
     elif [ "${_C_BIND}" -gt 0 ] || [ "${_C_SR}" = "YES" ]; then
       _C_VERDICT=USED; _C_WHY="bound service (bindings=${_C_BIND} sr-token=${_C_SR}); sites not indexed yet"
     elif [ "${_C_CORES}" -gt 0 ]; then
-      _C_VERDICT=AMBIG; _C_WHY="running, ${_C_CORES} core(s) all EMPTY, zero site bindings"
+      if [ "${_C_DOCSREAD}" = "FAILED" ]; then
+        _C_VERDICT=AMBIG; _C_WHY="running, ${_C_CORES} core(s), document probe FAILED -- unreadable, not empty"
+      else
+        _C_VERDICT=AMBIG; _C_WHY="running, ${_C_CORES} core(s) all EMPTY, zero site bindings"
+      fi
     else
       _C_VERDICT=UNUSED; _C_WHY="running, zero cores, zero bindings -- serves nothing"
     fi
   else
     ### Down (denied, parked, or dead) -- document counts are unreadable, so
-    ### bindings alone keep the sceptical verdict: removal of anything that
-    ### might matter needs --force.
-    if [ "${_C_BIND}" -gt 0 ]; then
-      _C_VERDICT=USED; _C_WHY="not running, but live site bindings present"
+    ### bindings and the SR opt-in token keep the sceptical verdict: removal
+    ### of anything that might matter needs --force.
+    if [ "${_C_BIND}" -gt 0 ] || [ "${_C_SR}" = "YES" ]; then
+      _C_VERDICT=USED; _C_WHY="not running, but live site bindings or an SR opt-in token present"
     elif [ "${_C_CORES}" -gt 0 ]; then
       _C_VERDICT=AMBIG; _C_WHY="not running, ${_C_CORES} core(s) on disk, zero site bindings"
     else
@@ -242,28 +257,38 @@ _classify() {
 }
 
 ### Would the installer bring this version (back) on the next full pass?
-### Mirrors the _if_install_upgrade_solr gates: blanket deny wins outright;
-### solr4/solr7 need hosted shape or their SR token or an existing tree,
-### plus java11; solr9's middle test is INVERTED (it fires wherever solr9
-### is absent), held back only by the java17/21 test.
+### Mirrors the _if_install_upgrade_solr gates exactly: blanket deny wins
+### outright; solr4/solr7 are excluded on excalibur and fire on hosted
+### shape, their SR token, or an existing tree trigger -- the hosted/SR
+### package gate installs java11 on the same pass, so only the bare
+### tree trigger depends on java11 already being present; solr9's middle
+### test is INVERTED (it fires wherever solr9 is absent), needing java17
+### or java21 -- which the same hosted pass installs.
 _would_reinstall() {
-  local _sv="${1}" _hosted=NO
+  local _sv="${1}" _hosted=NO _os _trig
   [ -e "${_BLANKET_MARKER}" ] && { echo NO; return; }
-  grep -q "^_DENY_JAVA=YES" "${_BAR_CNF}" 2>/dev/null && { echo NO; return; }
+  grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" "${_BAR_CNF}" 2>/dev/null && { echo NO; return; }
   [ -e "/root/.host8.cnf" ] && _hosted=YES
   case "$(cat /etc/hostname 2>/dev/null)" in
     *.aegir.cc) _hosted=YES ;;
   esac
+  _os=$(. /etc/os-release 2>/dev/null; echo "${VERSION_CODENAME:-unknown}")
   case "${_sv}" in
     solr9)
-      if [ "${_hosted}" = "YES" ] || [ "${_C_SR}" = "YES" ] \
-        || [ -e "/usr/bin/java17" ] || [ -e "/usr/bin/java21" ]; then
+      if [ "${_hosted}" = "YES" ] \
+        || { { [ "${_C_SR}" = "YES" ] || [ ! -e "/var/solr9/logs/solr.log" ]; } \
+          && { [ -e "/usr/bin/java17" ] || [ -e "/usr/bin/java21" ]; }; }; then
         echo YES; return
       fi
     ;;
     *)
-      if { [ "${_hosted}" = "YES" ] || [ "${_C_SR}" = "YES" ]; } \
-        && [ -e "/usr/bin/java11" ]; then
+      [ "${_os}" = "excalibur" ] && { echo NO; return; }
+      case "${_sv}" in
+        solr4) _trig=/opt/solr4/solr.xml ;;
+        solr7) _trig=/var/solr7/logs/solr.log ;;
+      esac
+      if [ "${_hosted}" = "YES" ] || [ "${_C_SR}" = "YES" ] \
+        || { [ -e "${_trig}" ] && [ -e "/usr/bin/java11" ]; }; then
         echo YES; return
       fi
     ;;
@@ -292,11 +317,22 @@ _set_cnf_key() {
 
 ### rm -rf with a resolved-path guard: a symlinked home (/var/solrN on a
 ### mount) or distribution (/opt/solrN -> /opt/solr-x.y.z) is resolved and
-### both halves removed, but never a path outside the trees Solr owns.
+### both halves removed, but never a path outside the trees Solr owns. A
+### DANGLING symlink resolves to nothing -- removing just the link is the
+### safe, correct action there, never a refusal.
 _remove_tree() {
   local _path="${1}" _rsv
   [ -e "${_path}" ] || [ -L "${_path}" ] || return 0
   _rsv=$(readlink -f "${_path}" 2>/dev/null)
+  if [ -z "${_rsv}" ] || [ ! -e "${_rsv}" ]; then
+    if [ -L "${_path}" ]; then
+      rm -f "${_path}"
+      _info "  removed dangling link ${_path}"
+      return 0
+    fi
+    _alrt "refusing to remove ${_path} -- it does not resolve to anything removable"
+    return 1
+  fi
   case "${_rsv}" in
     /opt/solr*|/opt/jetty9*|/var/solr*|/var/log/jetty9*|/mnt/*/var/solr*|/mnt/*/opt/solr*)
       : ;;
@@ -321,12 +357,13 @@ _cmd_status() {
     _classify "${_sv}"
     _re=$(_would_reinstall "${_sv}")
     _msg "  ${_sv}: ${_C_VERDICT} (${_C_WHY})"
-    _msg "    present=${_C_PRES} installed=${_C_INST} port${_V_PORT}=${_C_LSN} init=${_C_INIT} parked=${_C_PARKED} deny=${_C_DENY} cores=${_C_CORES} docs=${_C_DOCS} bindings=${_C_BIND} sr-token=${_C_SR} reinstalls-next-pass=${_re}"
+    _msg "    present=${_C_PRES} installed=${_C_INST} port${_V_PORT}=${_C_LSN} init=${_C_INIT} parked=${_C_PARKED} deny=${_C_DENY} cores=${_C_CORES} docs=${_C_DOCS}$( [ "${_C_DOCSREAD}" = "FAILED" ] && echo "(UNREADABLE)" ) bindings=${_C_BIND} sr-token=${_C_SR} reinstalls-next-pass=${_re}"
     if [ "${_C_VERDICT}" = "AMBIG" ]; then
       _alrt "  ${_sv}: AMBIGUOUS -- per-box operator ruling owed before removal; never auto-dropped"
     fi
   done
-  if [ -e "${_BLANKET_MARKER}" ] || grep -q "^_DENY_JAVA=YES" "${_BAR_CNF}" 2>/dev/null; then
+  if [ -e "${_BLANKET_MARKER}" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" "${_BAR_CNF}" 2>/dev/null; then
     _msg "  blanket java deny: SET (no Solr version can install on this box)"
   else
     _msg "  blanket java deny: not set"
@@ -367,11 +404,21 @@ _remove_one() {
   if [ -x "/etc/init.d/${_V_SVC}" ]; then
     service "${_V_SVC}" stop &> /dev/null
   fi
-  ### First char bracketed: this run's own cmdline carries the version token
-  ### ('solrtrim remove solr7'), and an unbracketed pkill -f would match and
-  ### kill this very process mid-removal.
-  pkill -9 -f "[${_V_SVC:0:1}]${_V_SVC:1}" &> /dev/null
+  ### Kill by TREE PATH, never by the version token: this run's own cmdline
+  ### carries the bare token ('solrtrim remove solr7') and a token pattern
+  ### -- bracketed or not -- matches and kills this very process. The tree
+  ### path can only appear in a Solr JVM's cmdline (BOA's own java monitor
+  ### kills the same way).
+  case "${_sv}" in
+    solr4) pkill -9 -f "/opt/jetty9" &> /dev/null ;;
+    *)     pkill -9 -f "/var/${_V_SVC}" &> /dev/null ;;
+  esac
   update-rc.d -f "${_V_SVC}" remove &> /dev/null
+  ### The init script goes NOW, not after the archive: autoupboa fires every
+  ### 5 minutes, its per-version deny block is gated on this very file, and
+  ### it ends in an unbracketed token pkill that would kill this run (and a
+  ### long archive) mid-flight. With the file gone the block is a no-op.
+  rm -f "/etc/init.d/${_V_SVC}"
 
   ### Forced removal of a version with real cores archives the data tree
   ### first and refuses when the archive cannot land: the ruling that forced
@@ -382,33 +429,43 @@ _remove_one() {
     _avail=$(df -Pk "${_ARCH_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }')
     if [ -n "${_du}" ] && [ -n "${_avail}" ] && [ "${_avail}" -lt "$(( _du + 1048576 ))" ]; then
       _die "not enough space under ${_ARCH_DIR} to archive ${_rsvdata} (${_du}K data," \
-           " ${_avail}K free) -- free space or move the data aside by hand first"
+           " ${_avail}K free). ${_sv} is now denied, stopped and deregistered but its" \
+           " trees are untouched -- free space or move the data aside, then re-run"
     fi
     _ts=$(date -u '+%Y%m%d-%H%M%S')
     _arch="${_ARCH_DIR}/solrtrim-${_V_SVC}-data-${_ts}.tar.gz"
     _info "  archiving ${_C_CORES} core(s) to ${_arch} ..."
-    if ! tar -czf "${_arch}" -C "$(dirname "${_rsvdata}")" "$(basename "${_rsvdata}")" 2>/dev/null \
-      || [ ! -s "${_arch}" ]; then
-      rm -f "${_arch}"
-      _die "archive of ${_rsvdata} failed -- nothing was removed"
+    if ! tar -czf "${_arch}.tmp" -C "$(dirname "${_rsvdata}")" "$(basename "${_rsvdata}")" 2>/dev/null \
+      || [ ! -s "${_arch}.tmp" ]; then
+      rm -f "${_arch}.tmp"
+      _die "archive of ${_rsvdata} failed. ${_sv} is now denied, stopped and" \
+           " deregistered but its trees are untouched -- fix the cause and re-run" \
+           " (nothing was DELETED)"
     fi
+    mv -f "${_arch}.tmp" "${_arch}"
     _info "  archived: $(du -sh "${_arch}" 2>/dev/null | awk '{ print $1 }')"
   fi
 
+  case "${_sv}" in
+    solr4)
+      ### tika9/tika are convenience symlinks into the jetty tree, read with
+      ### plain readlink (their stored target, NOT canonicalised: -f returns
+      ### nothing once the jetty tree is gone) and removed only while they
+      ### still point there. Evaluated BEFORE the dist tree goes away.
+      case "$(readlink /opt/tika9 2>/dev/null)" in
+        /opt/jetty9*) rm -f /opt/tika9 ;;
+      esac
+      case "$(readlink /opt/tika 2>/dev/null)" in
+        /opt/jetty9*) rm -f /opt/tika ;;
+      esac
+    ;;
+  esac
   _remove_tree "${_V_DIST}" || return 1
   _remove_tree "${_V_DATA}" || return 1
   [ -n "${_V_HOME}" ] && { _remove_tree "${_V_HOME}" || return 1; }
-  rm -f "/etc/init.d/${_V_SVC}" "/var/backups/${_V_SVC}.initd" "${_V_DFLT}"
+  rm -f "/var/backups/${_V_SVC}.initd" "${_V_DFLT}"
   case "${_sv}" in
     solr4)
-      ### tika9/tika are convenience symlinks into the jetty tree; remove
-      ### them only while they still point there.
-      case "$(readlink -f /opt/tika9 2>/dev/null)" in
-        /opt/jetty9*) rm -f /opt/tika9 ;;
-      esac
-      case "$(readlink -f /opt/tika 2>/dev/null)" in
-        /opt/jetty9*) rm -f /opt/tika ;;
-      esac
       _remove_tree /var/log/jetty9
       rm -f /run/jetty9.pid /etc/jetty.conf
     ;;
@@ -443,6 +500,13 @@ _cmd_remove() {
   [ -z "${_targets}" ] \
     && _die "nothing to remove -- name versions (solr4 solr7 solr9) or 'all'"
 
+  ### Never delete Solr trees underneath a running barracuda/octopus pass:
+  ### the installer reads and rebuilds these very paths mid-run.
+  if [ "$(pgrep -cf '[b]arracuda|[o]ctopus' 2>/dev/null)" -gt 0 ]; then
+    _die "a barracuda/octopus run is in flight on this box -- wait for it to finish," \
+         " then re-run"
+  fi
+
   _collect_bindings
   for _sv in ${_targets}; do
     _remove_one "${_sv}" "${_force}" || _failed="${_failed} ${_sv}"
@@ -457,15 +521,14 @@ _cmd_remove() {
   if [ "${_blanket}" = "YES" ]; then
     for _sv in solr4 solr7 solr9; do
       _solr_map "${_sv}"
-      if [ -d "${_V_DIST}" ] || [ -e "/etc/init.d/${_V_SVC}" ] \
-        || [ -e "/var/backups/${_V_SVC}.initd" ]; then
-        _still="${_still} ${_sv}"
-      fi
+      [ -d "${_V_DIST}" ] && _still="${_still} ${_sv}(${_V_DIST})"
+      [ -e "/etc/init.d/${_V_SVC}" ] && _still="${_still} ${_sv}(/etc/init.d/${_V_SVC})"
+      [ -e "/var/backups/${_V_SVC}.initd" ] && _still="${_still} ${_sv}(parked /var/backups/${_V_SVC}.initd)"
     done
     if [ -n "${_still}" ]; then
-      _alrt "--blanket refused: still installed:${_still}"
+      _alrt "--blanket refused; install evidence remains:${_still}"
       _alrt "the blanket pair on a box with installed Solr freezes it out of upgrades;"
-      _alrt "remove every version first, or drop --blanket"
+      _alrt "remove every version (or clear the named leftovers), or drop --blanket"
     else
       touch "${_BLANKET_MARKER}"
       _set_cnf_key _DENY_JAVA YES \
