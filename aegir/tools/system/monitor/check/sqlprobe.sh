@@ -1,24 +1,40 @@
 #!/bin/bash
 #
-# BOA SQL sensor — sqlprobe v1.0 (C-004 Phase 2, LOG-ONLY).
+# BOA SQL sensor — sqlprobe v1.1 (C-004 Phase 2 + real-needs Phase A,
+# LOG-ONLY).
 #
 # Appends one JSONL record per ~5 min to /var/log/boa/sqlprobe/<date>.jsonl:
 # per-second rates between THIS sample and the previous one (never cumulative
 # lifetime averages — those carry warmup bias), pool/connection gauges, and
 # host memory facts (MemAvailable, PSI when present, mysqld VmRSS from
 # /proc/<pid>/status — not a ps RSS sweep, which over-counts shared pages).
+# v1.1 adds the per-box needs-ledger facts (additive keys only): per-instance
+# Solr JVM RSS vs its -Xmx, FPM aggregate RSS with per-master pool/worker
+# counts, nginx/clamd/valkey RSS, the residual "everything else" RSS, and
+# the file-cache evidence pair — MemFree beside MemAvailable (opportunistic
+# reclaimable) and Active(file)+SReclaimable (demand-side: recently
+# referenced pages + dentry/inode slab), the measured OS reserve's future
+# evidence base. The memorytuner needs ledger reads these; a record
+# without them (older sampler) simply contributes nothing there.
 # It writes NO my.cnf, runs NO SET GLOBAL, restarts NOTHING. The memorytuner
 # advisory reads this corpus and names pins; a human applies them.
 #
-# Two side facts keep the shipped _sql_budget_derive stores fresh between
-# weekly upgrades (formats byte-identical to the readers in system.sh.inc;
-# the derive fail-closes on anything malformed, so a missing/stale sampler
+# Three side facts keep the shipped tune-pass stores fresh between weekly
+# upgrades (formats byte-identical to the readers in system.sh.inc; the
+# readers fail-close on anything malformed, so a missing/stale sampler
 # never degrades tuning below the historical behaviour):
 #   - /var/log/boa/.my.datadir_mb.txt   refreshed ~daily (same du exclusions)
 #   - /var/log/boa/.valkey.used_mb.txt  seeded from used_memory_peak once the
 #     cache has >= 1h uptime — the up-* password rotation restarts valkey
 #     minutes before the tune pass, so tune-time measurement alone stays
 #     dormant on standard runs; this store is what un-dormants it.
+#   - /var/log/boa/.valkey.demand.txt   the RM-14 hit-rate demand window
+#     ("v1 <start_ts> <samples> <hits> <misses> <evicted> <peak_mb>",
+#     7-day decaying accumulation of >=1h-uptime same-run deltas) — the
+#     PRIMARY input to the valkey ceiling control loop in
+#     _tune_memory_limits; the legacy peak-x4 guard is only its fallback.
+#     NB: _USE_SQLPROBE=NO therefore also starves that loop — after 8
+#     days the tune pass reverts to the legacy measured guard.
 #
 # Samples are SKIPPED (silent exit) while backups/cache-droppers run and for
 # 20 min after (mysql_backup.sh drops caches unconditionally), during
@@ -45,6 +61,8 @@ _BKP_STAMP="${_pthDat}/.backup_seen"
 _RETAIN_DAYS=30
 _DATADIR_STORE="/var/log/boa/.my.datadir_mb.txt"
 _VALKEY_STORE="/var/log/boa/.valkey.used_mb.txt"
+_VALKEY_DEMAND="/var/log/boa/.valkey.demand.txt"
+_VK_PREV="${_pthDat}/.prev_valkey"
 
 _FORCE=NO
 _STDOUT=NO
@@ -217,9 +235,21 @@ printf '%s %s %s %s %s %s %s %s %s %s %s\n' \
   && mv -f "${_PREV}.tmp" "${_PREV}"
 
 #
-# Host memory facts.
-_MEMAVAIL_MB=$(awk '/^MemAvailable:/ { printf "%d", $2 / 1024 }' /proc/meminfo 2>/dev/null)
+# Host memory facts. One meminfo pass so the four values are a matched
+# set — the ledger subtracts them pairwise, and readings taken seconds
+# apart (the datadir du can sit between two reads) would not be.
+# Active(file)+SReclaimable is the demand-side cache evidence (recently
+# referenced pages + dentry/inode slab); MemAvailable-MemFree is only
+# the opportunistic reclaimable total.
+read -r _MEMAVAIL_MB _MEMFREE_MB _MEMACTF_MB _MEMSRE_MB <<< "$(awk '
+  /^MemAvailable:/ { a = $2 } /^MemFree:/ { f = $2 }
+  /^Active\(file\):/ { c = $2 } /^SReclaimable:/ { s = $2 }
+  END { printf "%d %d %d %d", a / 1024, f / 1024, c / 1024, s / 1024 }' \
+  /proc/meminfo 2>/dev/null)"
 _MEMAVAIL_MB=$(_num "${_MEMAVAIL_MB}")
+_MEMFREE_MB=$(_num "${_MEMFREE_MB}")
+_MEMACTF_MB=$(_num "${_MEMACTF_MB}")
+_MEMSRE_MB=$(_num "${_MEMSRE_MB}")
 _PSI_X100=0
 if [ -r "/proc/pressure/memory" ]; then
   _PSI_X100=$(awk '/^some/ { for (f = 2; f <= NF; f++) if ($f ~ /^avg10=/) { sub("avg10=", "", $f); printf "%.0f", $f * 100 } }' \
@@ -287,15 +317,216 @@ if [ -e "/etc/valkey/valkey.conf" ]; then
       echo "${_VK_MB}" 2>/dev/null > "${_VALKEY_STORE}" || true
       _VK_SEEDED=1
     fi
+    #
+    # Demand window for the hit-rate ceiling in _tune_memory_limits
+    # (RM-14): occupancy of a long-TTL cache is "space granted so far",
+    # not need, so the tune pass sizes from hit/miss/eviction behaviour
+    # instead. Deltas follow the SQL-sample discipline exactly — only
+    # between two >=1h-uptime samples of the SAME server run (uptime
+    # monotone), 1-15 min apart, counters non-decreasing — so restarts
+    # and cold refills never pollute the window. The window file is one
+    # line, "v1 <start_ts> <samples> <hits> <misses> <evicted> <peak_mb>",
+    # atomically replaced, self-rotating at 7 days; the tune-side reader
+    # fail-closes on anything malformed, so a missing/garbled window
+    # simply keeps the legacy ceiling behaviour.
+    _vk_hits_ps=0; _vk_miss_ps=0; _vk_evic_ps=0
+    if [ -n "${_VK_UPTM}" ] && [ "${_VK_UPTM}" -ge 3600 ] 2>/dev/null; then
+      _VK_HITS=$(echo "${_VK_INFO}" | grep "^keyspace_hits:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_HITS=$(_num "${_VK_HITS}")
+      _VK_MISS=$(echo "${_VK_INFO}" | grep "^keyspace_misses:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_MISS=$(_num "${_VK_MISS}")
+      _VK_EVIC=$(echo "${_VK_INFO}" | grep "^evicted_keys:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_EVIC=$(_num "${_VK_EVIC}")
+      if [ -r "${_VK_PREV}" ]; then
+        read -r _vpTS _vpUP _vpHITS _vpMISS _vpEVIC < "${_VK_PREV}"
+        _vpTS=$(_num "${_vpTS}"); _vpUP=$(_num "${_vpUP}")
+        _vpHITS=$(_num "${_vpHITS}"); _vpMISS=$(_num "${_vpMISS}")
+        _vpEVIC=$(_num "${_vpEVIC}")
+        _vkIVL=$(( _TS - _vpTS ))
+        if [ "${_vpTS}" -gt 0 ] && [ "${_VK_UPTM}" -gt "${_vpUP}" ] \
+          && [ "${_vkIVL}" -ge 60 ] && [ "${_vkIVL}" -le 900 ] \
+          && [ "${_VK_HITS}" -ge "${_vpHITS}" ] \
+          && [ "${_VK_MISS}" -ge "${_vpMISS}" ] \
+          && [ "${_VK_EVIC}" -ge "${_vpEVIC}" ]; then
+          _vkDH=$(( _VK_HITS - _vpHITS ))
+          _vkDM=$(( _VK_MISS - _vpMISS ))
+          _vkDE=$(( _VK_EVIC - _vpEVIC ))
+          # Two-decimal per-second rates like every sibling _ps key in
+          # the record — integer division would floor sub-1/s eviction
+          # rates to 0, erasing exactly the signal the widen branch
+          # keys on.
+          _vk_hits_ps=$(awk -v d="${_vkDH}" -v i="${_vkIVL}" \
+            'BEGIN { if (i > 0) printf "%.2f", d / i; else printf "0" }')
+          _vk_miss_ps=$(awk -v d="${_vkDM}" -v i="${_vkIVL}" \
+            'BEGIN { if (i > 0) printf "%.2f", d / i; else printf "0" }')
+          _vk_evic_ps=$(awk -v d="${_vkDE}" -v i="${_vkIVL}" \
+            'BEGIN { if (i > 0) printf "%.2f", d / i; else printf "0" }')
+          _wOK=0
+          if [ -r "${_VALKEY_DEMAND}" ]; then
+            read -r _wV _wTS _wN _wH _wM _wE _wP < "${_VALKEY_DEMAND}"
+            if [ "${_wV}" = "v1" ]; then
+              _wTS=$(_num "${_wTS}"); _wN=$(_num "${_wN}")
+              _wH=$(_num "${_wH}"); _wM=$(_num "${_wM}")
+              _wE=$(_num "${_wE}"); _wP=$(_num "${_wP}")
+              if [ "${_wTS}" -gt 0 ] && [ $(( _TS - _wTS )) -lt 604800 ]; then
+                _wOK=1
+              elif [ "${_wTS}" -gt 0 ]; then
+                # 7-day rotation is a DECAY, never a hard reset: halve
+                # the counters and re-anchor the epoch, so the tune-side
+                # maturity gate (n>=96, span>=24h) keeps passing on a box
+                # that samples continuously — a zeroed window would send
+                # the tune pass to its legacy peak-x4 rung for ~a day
+                # after every rotation, re-widening a converged ceiling.
+                # The peak restarts from the CURRENT sample so a
+                # stale-high pre-shrink peak cannot steer the idle rung.
+                _wTS="${_TS}"
+                _wN=$(( _wN / 2 )); _wH=$(( _wH / 2 ))
+                _wM=$(( _wM / 2 )); _wE=$(( _wE / 2 ))
+                _wP=0
+                _wOK=1
+              fi
+            fi
+          fi
+          if [ "${_wOK}" -eq 0 ]; then
+            _wTS="${_TS}"; _wN=0; _wH=0; _wM=0; _wE=0; _wP=0
+          fi
+          _wN=$(( _wN + 1 ))
+          _wH=$(( _wH + _vkDH ))
+          _wM=$(( _wM + _vkDM ))
+          _wE=$(( _wE + _vkDE ))
+          if [ "${_VK_MB}" -gt "${_wP}" ]; then
+            _wP="${_VK_MB}"
+          fi
+          printf 'v1 %s %s %s %s %s %s\n' \
+            "${_wTS}" "${_wN}" "${_wH}" "${_wM}" "${_wE}" "${_wP}" \
+            > "${_VALKEY_DEMAND}.tmp" \
+            && mv -f "${_VALKEY_DEMAND}.tmp" "${_VALKEY_DEMAND}"
+        fi
+      fi
+      printf '%s %s %s %s %s\n' \
+        "${_TS}" "${_VK_UPTM}" "${_VK_HITS}" "${_VK_MISS}" "${_VK_EVIC}" \
+        > "${_VK_PREV}.tmp" && mv -f "${_VK_PREV}.tmp" "${_VK_PREV}"
+    fi
   fi
 fi
 [ "${_VK_MB}" -gt 0 ] 2>/dev/null \
   || _VK_MB=$(_num "$(cat "${_VALKEY_STORE}" 2>/dev/null)")
 
+#
+# Needs-ledger facts (real-needs Phase A): per-consumer RSS from
+# /proc/<pid>/status so the memorytuner ledger can report measured demand
+# instead of granted fractions. Deliberately VmRSS, not USS: RSS matches
+# the hand-measured survey numbers the ledger is gated against, and the
+# shared-page over-count between a master and its workers is the same
+# over-count those surveys carried. Every value fails closed to 0/empty;
+# a reader must treat 0 as "no data", never as "measured zero need".
+#
+# Sum VmRSS in MB over the pids given as arguments; a pid that vanished
+# between discovery and read contributes nothing. Accumulate kB and
+# convert ONCE — per-pid MB truncation would bias every consumer low and
+# push the discarded fractions into the residual, one-directionally.
+_rss_sum_mb() {
+  local _p _t=0 _v
+  for _p in "$@"; do
+    _v=$(awk '/^VmRSS:/ { print $2 }' "/proc/${_p}/status" 2>/dev/null)
+    _v="${_v//[^0-9]/}"
+    [ -n "${_v}" ] && _t=$(( _t + _v ))
+  done
+  printf '%s' "$(( _t / 1024 ))"
+}
+
+# Solr JVMs: classify each java process by the instance token BOA itself
+# launches it with (solr4 rides jetty9 with -Dsolr.solr.home=/opt/solr4;
+# solr7/solr9 run standalone against /var/solrN), then read VmRSS and the
+# LAST -Xmx on the command line (the JVM honours the last one). comm
+# follows the invoked basename, and BOA launches jetty9/solr4 through its
+# versioned /usr/bin/javaNN symlinks — so match java[0-9]*, never bare
+# java. A JVM matching no tier stays in the residual bucket below.
+# solr_i is a compact name:rss_mb:xmx_mb list; a reader must sum
+# same-name entries within one record (restart overlap can show a tier
+# twice).
+_SOLR_I=""
+_SOLR_RSS_MB=0
+_SOLR_N=0
+for _JPID in $(pgrep -x "java[0-9]*" 2>/dev/null); do
+  _JCMD=$(tr '\0' ' ' 2>/dev/null < "/proc/${_JPID}/cmdline")
+  [ -n "${_JCMD}" ] || continue
+  _JNAME=""
+  case "${_JCMD}" in
+    *solr4*) _JNAME="solr4" ;;
+    *solr7*) _JNAME="solr7" ;;
+    *solr9*) _JNAME="solr9" ;;
+  esac
+  [ -n "${_JNAME}" ] || continue
+  _JRSS=$(_rss_sum_mb "${_JPID}")
+  _JXMX_MB=0
+  _JXMX_RAW=$(printf '%s\n' "${_JCMD}" | grep -o '\-Xmx[0-9]\+[kKmMgG]\?' | tail -n1)
+  if [ -n "${_JXMX_RAW}" ]; then
+    _JXMX_NUM="${_JXMX_RAW//[^0-9]/}"
+    case "${_JXMX_RAW}" in
+      *g|*G) _JXMX_MB=$(( _JXMX_NUM * 1024 )) ;;
+      *k|*K) _JXMX_MB=$(( _JXMX_NUM / 1024 )) ;;
+      *m|*M) _JXMX_MB="${_JXMX_NUM}" ;;
+      *)     _JXMX_MB=$(( _JXMX_NUM / 1048576 )) ;;
+    esac
+  fi
+  _SOLR_I="${_SOLR_I:+${_SOLR_I},}${_JNAME}:${_JRSS}:${_JXMX_MB}"
+  _SOLR_RSS_MB=$(( _SOLR_RSS_MB + _JRSS ))
+  _SOLR_N=$(( _SOLR_N + 1 ))
+done
+
+# FPM: one master per live PHP version on BOA. Aggregate = master plus its
+# direct children; fpm_i is ver:pools:workers per master. Pools are
+# counted from the version's pool.d — the system of record for BOTH pool
+# shapes: the default per-account pool's socket carries no version
+# segment (/run/o1.fpm.socket), so socket names cannot attribute it to a
+# version, and the wwwNN socket path has no glob metachar, so nullglob
+# could never zero it.
+_FPM_I=""
+_FPM_RSS_MB=0
+_FPM_PROCS=0
+for _MPID in $(pgrep -f "php-fpm: master process" 2>/dev/null); do
+  _MCMD=$(tr '\0' ' ' 2>/dev/null < "/proc/${_MPID}/cmdline")
+  _MVER=$(printf '%s\n' "${_MCMD}" | grep -o '/opt/php[0-9]\+/' | head -n1)
+  _MVER="${_MVER//[^0-9]/}"
+  [ -n "${_MVER}" ] || continue
+  _MKIDS=$(pgrep -P "${_MPID}" 2>/dev/null)
+  _MNKIDS=$(printf '%s\n' "${_MKIDS}" | grep -c '^[0-9]')
+  # shellcheck disable=SC2086
+  _MRSS=$(_rss_sum_mb "${_MPID}" ${_MKIDS})
+  shopt -s nullglob
+  _MPOOLS=(/opt/php"${_MVER}"/etc/pool.d/*.conf)
+  shopt -u nullglob
+  _FPM_I="${_FPM_I:+${_FPM_I},}${_MVER}:${#_MPOOLS[@]}:${_MNKIDS}"
+  _FPM_RSS_MB=$(( _FPM_RSS_MB + _MRSS ))
+  _FPM_PROCS=$(( _FPM_PROCS + 1 + _MNKIDS ))
+done
+
+# shellcheck disable=SC2046
+_NGX_RSS_MB=$(_rss_sum_mb $(pgrep -x nginx 2>/dev/null))
+# shellcheck disable=SC2046
+_CLAMD_RSS_MB=$(_rss_sum_mb $(pgrep -x clamd 2>/dev/null))
+_VK_RSS_PIDS=$(pgrep -x valkey-server 2>/dev/null)
+[ -n "${_VK_RSS_PIDS}" ] || _VK_RSS_PIDS=$(pgrep -x redis-server 2>/dev/null)
+# shellcheck disable=SC2086
+_VK_RSS_MB=$(_rss_sum_mb ${_VK_RSS_PIDS})
+
+# Whole-box RSS in one pass (cat skips pids that exit mid-sweep), then the
+# residual: everything no named consumer claims — cron/backup/monitor
+# machinery, unclassified JVMs, this sampler itself. Clamped at zero:
+# consumers are read at slightly different instants than the sweep, so a
+# small negative is sampling skew, not data.
+_RSS_ALL_MB=$(cat /proc/[0-9]*/status 2>/dev/null \
+  | awk '/^VmRSS:/ { s += $2 } END { printf "%d", s / 1024 }')
+_RSS_ALL_MB=$(_num "${_RSS_ALL_MB}")
+_RESID_RSS_MB=$(( _RSS_ALL_MB - _VMRSS_MB - _VK_RSS_MB - _SOLR_RSS_MB \
+  - _FPM_RSS_MB - _NGX_RSS_MB - _CLAMD_RSS_MB ))
+[ "${_RESID_RSS_MB}" -lt 0 ] && _RESID_RSS_MB=0
+
 _POOL_MB=$(( _POOL_B / 1048576 ))
 _TMP_MB=$(( _TMPSZ_B / 1048576 ))
 
-_rec="{\"scope\":\"sql\",\"v\":1,\"ts\":${_TS},\"host\":\"${_HOST}\",\"up\":${_UP},\"interval\":${_IVL},\"valid\":${_VALID},\"lread_ps\":${_lread_ps},\"miss_ps\":${_miss_ps},\"miss_ppm\":${_miss_ppm},\"qps\":${_qps},\"conn_ps\":${_conn_ps},\"tmp_ps\":${_tmp_ps},\"tmp_disk_ps\":${_tmpd_ps},\"key_reads_ps\":${_keyr_ps},\"data_read_bps\":${_dread_bps},\"data_write_bps\":${_dwrit_bps},\"pool_pages_total\":${_PGTOT},\"pool_pages_free\":${_PGFREE},\"threads_conn\":${_THRC},\"threads_run\":${_THRR},\"max_used_conn\":${_MAXUSED},\"max_conn\":${_MAXCONN},\"pool_mb\":${_POOL_MB},\"tmp_mb\":${_TMP_MB},\"mem_avail_mb\":${_MEMAVAIL_MB},\"psi_mem_some10_x100\":${_PSI_X100},\"mysqld_vmrss_mb\":${_VMRSS_MB},\"datadir_mb\":${_DATADIR_MB},\"valkey_used_mb\":${_VK_MB},\"valkey_seeded\":${_VK_SEEDED}}"
+_rec="{\"scope\":\"sql\",\"v\":2,\"ts\":${_TS},\"host\":\"${_HOST}\",\"up\":${_UP},\"interval\":${_IVL},\"valid\":${_VALID},\"lread_ps\":${_lread_ps},\"miss_ps\":${_miss_ps},\"miss_ppm\":${_miss_ppm},\"qps\":${_qps},\"conn_ps\":${_conn_ps},\"tmp_ps\":${_tmp_ps},\"tmp_disk_ps\":${_tmpd_ps},\"key_reads_ps\":${_keyr_ps},\"data_read_bps\":${_dread_bps},\"data_write_bps\":${_dwrit_bps},\"pool_pages_total\":${_PGTOT},\"pool_pages_free\":${_PGFREE},\"threads_conn\":${_THRC},\"threads_run\":${_THRR},\"max_used_conn\":${_MAXUSED},\"max_conn\":${_MAXCONN},\"pool_mb\":${_POOL_MB},\"tmp_mb\":${_TMP_MB},\"mem_avail_mb\":${_MEMAVAIL_MB},\"psi_mem_some10_x100\":${_PSI_X100},\"mysqld_vmrss_mb\":${_VMRSS_MB},\"datadir_mb\":${_DATADIR_MB},\"valkey_used_mb\":${_VK_MB},\"valkey_seeded\":${_VK_SEEDED},\"valkey_hits_ps\":${_vk_hits_ps:-0},\"valkey_miss_ps\":${_vk_miss_ps:-0},\"valkey_evicted_ps\":${_vk_evic_ps:-0},\"mem_free_mb\":${_MEMFREE_MB},\"mem_actfile_mb\":${_MEMACTF_MB},\"mem_sreclaim_mb\":${_MEMSRE_MB},\"valkey_rss_mb\":${_VK_RSS_MB},\"solr_rss_mb\":${_SOLR_RSS_MB},\"solr_n\":${_SOLR_N},\"solr_i\":\"${_SOLR_I}\",\"fpm_rss_mb\":${_FPM_RSS_MB},\"fpm_procs\":${_FPM_PROCS},\"fpm_i\":\"${_FPM_I}\",\"nginx_rss_mb\":${_NGX_RSS_MB},\"clamd_rss_mb\":${_CLAMD_RSS_MB},\"resid_rss_mb\":${_RESID_RSS_MB},\"rss_all_mb\":${_RSS_ALL_MB}}"
 echo "${_rec}" >> "${_OUT}"
 [ "${_STDOUT}" = "YES" ] && echo "${_rec}"
 
