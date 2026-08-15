@@ -235,8 +235,9 @@ _SQL_FORCE_REINSTALL=NO
 _SSL_FORCE_REINSTALL=NO
 
 ###
-### Use YES to force installing everything
-### from sources again, even if there are
+### Use YES to force reinstalling everything
+### (prebuilt packages where published, from
+### sources otherwise), even if there are
 ### no updates available.
 ###
 _FULL_FORCE_REINSTALL=NO
