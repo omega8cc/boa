@@ -569,6 +569,28 @@ _mode_detection() {
         _XTRAS_LIST="CSF"
       fi
     fi
+    ### Hosted systems (the .host8.cnf / .aegir.cc rule) include FTPS and
+    ### the image optimize toolchain as part of the service, so upgrades
+    ### must converge the existing fleet, not only fresh installs. IMG's
+    ### package set is already forced on hosted systems package-side;
+    ### listing it makes the policy visible in the cnf-driven list.
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
+      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])FTP([[:space:]]|$) ]]; then
+        if [ -n "${_XTRAS_LIST}" ]; then
+          _XTRAS_LIST="${_XTRAS_LIST} FTP"
+        else
+          _XTRAS_LIST="FTP"
+        fi
+      fi
+      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])IMG([[:space:]]|$) ]]; then
+        if [ -n "${_XTRAS_LIST}" ]; then
+          _XTRAS_LIST="${_XTRAS_LIST} IMG"
+        else
+          _XTRAS_LIST="IMG"
+        fi
+      fi
+    fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "XTRA: ${_XTRAS_LIST}"
     fi
@@ -660,6 +682,22 @@ _mode_detection() {
             _XTRAS_LIST="${_XTRAS_LIST} ADM"
           else
             _XTRAS_LIST="ADM"
+          fi
+        fi
+        ### FTPS and the image optimize toolchain are part of the hosted
+        ### service; seeded here so the generated cnf records the policy.
+        if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])FTP([[:space:]]|$) ]]; then
+          if [ -n "${_XTRAS_LIST}" ]; then
+            _XTRAS_LIST="${_XTRAS_LIST} FTP"
+          else
+            _XTRAS_LIST="FTP"
+          fi
+        fi
+        if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])IMG([[:space:]]|$) ]]; then
+          if [ -n "${_XTRAS_LIST}" ]; then
+            _XTRAS_LIST="${_XTRAS_LIST} IMG"
+          else
+            _XTRAS_LIST="IMG"
           fi
         fi
       fi

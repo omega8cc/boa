@@ -101,8 +101,10 @@ Notes:
   EOL, so this is rare — but **re-pin before deliberately rebuilding 7.4**. A 7.4 that
   is simply left untouched survives ICU upgrades.
 - **Cost.** The pin pass rebuilds all active PHP versions onto ICU 73; the unpin pass
-  rebuilds 8.x back onto ICU 76 — so 8.x compile twice. This is a one-time transition
-  cost, but it is real per-rebuild downtime.
+  rebuilds 8.x back onto ICU 76 — so 8.x are rebuilt twice. The pin pass always
+  compiles from sources (a pinned ICU is a customised build shape, so the prebuilt
+  PHP packages don't apply); the unpin pass can take the prebuilt-package path again.
+  This is a one-time transition cost, but it is real per-rebuild downtime.
 - **ICU 73 runtime libraries must remain.** PHP 7.4's `intl` links against
   `/usr/local/lib/libicu{i18n,uc,data}.so.73*`. They persist across an ICU 76 install
   (versioned sonames coexist), but a manual purge of old ICU libraries would break 7.4

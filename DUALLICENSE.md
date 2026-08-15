@@ -16,8 +16,6 @@ You can install only **BOA LTS** and then upgrade to **PRO** with a license from
 
 The LTS branch is **kept up to date alongside PRO**: frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
 
-A **feature-freeze may be announced in the future**, once the project enters a quieter, security-mainly update cycle — but no date is set, and it should not be assumed.
-
 The **extended backup sub-system** is available **exclusively for BOA PRO**, as outlined in the [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-lts/ROADMAP.md).
 
 For a professionally supported stack — the PRO support levels, monitoring and managed updates behind your own servers — [BOA PRO](https://omega8.cc/licenses) is the recommended upgrade path.

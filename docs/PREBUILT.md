@@ -1,7 +1,7 @@
 # Prebuilt Stack Packages
 
 BOA can install its heavy stack components -- Modern and Legacy OpenSSL, ICU,
-cURL, Valkey, Nginx, Unbound, and every selected PHP version -- from prebuilt
+cURL, Valkey, Nginx, Unbound, Pure-FTPd, and every selected PHP version -- from prebuilt
 per-release `.deb` packages published on the BOA mirrors, instead of compiling
 each of them from sources on every box. A fresh PHP version lands in seconds
 instead of minutes; a version pin bump upgrades the whole fleet without
@@ -46,8 +46,11 @@ Boxes with a custom build shape (a non-empty `_PHP_EXTRA_CONF`, or a pinned
 published packages are built with shipped defaults only -- such boxes keep
 the source path without any extra configuration. The same shipped-defaults
 rule gates the other components: a custom Nginx module set keeps the source
-path, Valkey packages exist for major 9 only, and the Unbound package is
-refused on a box without the Modern OpenSSL tree its binaries link against.
+path, Valkey packages exist for major 9 only, and the Unbound and Pure-FTPd
+packages are refused on a box without the Modern OpenSSL tree their binaries
+link against. The Pure-FTPd package carries the ten `/usr/local` binaries
+only; the TLS certificate, DH parameters, PAM and configuration files stay
+box-generated or installer-managed on both paths.
 
 ## Reading the Log
 
@@ -93,6 +96,13 @@ Builder box invariants:
 - The builder cnf selects the full PHP matrix (`php-max`), with all
   build-shape toggles at shipped defaults, so packages match the default
   build shape.
+- `_XTRAS_LIST` in the builder cnf carries `FTP` (hosted builders converge
+  it automatically). Pure-FTPd is the only packaged component gated on an
+  xtra rather than installed unconditionally, and stackbuild can only
+  package what the real upgrade installed -- a builder without the FTP
+  xtra never publishes `boa-pure-ftpd`, and the fleet then source-builds
+  it silently forever (an unpublished component is the by-design silent
+  opt-out).
 - A daily cron runs `barracuda up-<tree>` (a cheap no-op when nothing
   changed) followed by `stackbuild all` -- any pin bump is packaged within
   24 hours. Boxes upgrading inside that window fall back to source builds by
@@ -116,8 +126,9 @@ Daedalus):
 1. Create the VM and install BOA on the target release the normal way
    (`boa in-lts public <fqdn> <email> o1`); on a Debian base the installer
    converts it via the matching `auto*` tool automatically.
-2. Set `_USE_PREBUILT_PKGS=NO` explicitly in `/root/.barracuda.cnf` and
-   select `php-max` so all PHP versions build.
+2. Set `_USE_PREBUILT_PKGS=NO` explicitly in `/root/.barracuda.cnf`,
+   select `php-max` so all PHP versions build, and make sure `_XTRAS_LIST`
+   carries `FTP` so the xtra-gated `boa-pure-ftpd` gets built too.
 3. Create `/root/.stackbuild.cnf` (an empty file is enough): its presence
    is what marks a build box -- the serial-gated fetch in `_update_agents`
    deploys `stackbuild` (and `staticbuild`) to `/opt/local/bin/` only on
