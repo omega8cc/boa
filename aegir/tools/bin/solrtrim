@@ -18,13 +18,17 @@
 ###   solrtrim remove <solr4|solr7|solr9|all> [...] [--force] [--blanket]
 ###
 ### Rules:
-###   - A version classified USED (documents in real cores, or live site
-###     bindings, or an SR token) is refused without --force.
-###   - A version that LOOKS unused but holds registered cores (all empty,
-###     zero bindings) is AMBIGUOUS: refused without --force, reported for a
-###     per-box operator ruling — never auto-dropped.
-###   - --force archives the version's data tree to /var/backups first and
-###     refuses when the archive cannot be written or verified.
+###   - USED is decided by the one-year index-WRITE bar (queries leave no
+###     filesystem trace, so write recency is the only measurable signal),
+###     with one carve-out: live site bindings or an SR opt-in token count
+###     as USED regardless of write age. USED refuses without --force.
+###   - Registered-but-empty cores with zero bindings are AMBIGUOUS: refused
+###     without --force, reported for a per-box operator ruling — never
+###     auto-dropped. Populated cores with no write inside a year are STALE:
+###     a deny candidate by that bar, removable without --force.
+###   - Any removal of a version with real cores archives its data tree to
+###     /var/backups first and refuses when the archive cannot be written or
+###     verified (--force only overrides the USED/AMBIGUOUS refusals).
 ###   - --blanket additionally writes the blanket java deny pair
 ###     (_DENY_JAVA=YES + /root/.deny.java.cnf), accepted only when NO Solr
 ###     version remains installed afterwards — the golden-master end state,
@@ -195,7 +199,10 @@ _classify() {
   _C_INIT=absent
   [ -e "/etc/init.d/${_V_SVC}" ] && _C_INIT=present
   [ -e "/etc/init.d/${_V_SVC}" ] && [ ! -x "/etc/init.d/${_V_SVC}" ] && _C_INIT=disarmed
-  _C_PARKED=NO; [ -e "/var/backups/${_V_SVC}.initd" ] && _C_PARKED=YES
+  ### Parked means moved ASIDE: restore paths re-arm with a COPY, so a
+  ### backups copy alone is a permanent residue on every restored box.
+  _C_PARKED=NO
+  [ -e "/var/backups/${_V_SVC}.initd" ] && [ ! -e "/etc/init.d/${_V_SVC}" ] && _C_PARKED=YES
   ### autoupboa SOURCES the cnf, so quoted/exported forms count — match its
   ### own tolerant clamav read. Per-version /root markers are NOT read: only
   ### /etc/boa twins are consumed (the C-003 copy leaves inert /root
@@ -205,6 +212,13 @@ _classify() {
   [ -e "/etc/boa/.deny.${_V_SVC}.cnf" ] && _C_DENY=YES
   ### Only dotted names are real; solr4's core0-core9 are installer seeds.
   _C_CORES=$(find "${_V_DATA}" -maxdepth 1 -mindepth 1 -type d -name '*.*' 2>/dev/null | wc -l | tr -d ' ')
+  ### USED is decided by index-WRITE recency, one-year bar: queries leave no
+  ### filesystem trace and the request logs are empty in practice, so write
+  ### recency is the only measurable use signal.
+  _C_FRESH=$(find "${_V_DATA}"/*.*/data/index -maxdepth 0 -mtime -30 2>/dev/null | wc -l | tr -d ' ')
+  _C_FRESHY=$(find "${_V_DATA}"/*.*/data/index -maxdepth 0 -mtime -365 2>/dev/null | wc -l | tr -d ' ')
+  _C_NEWEST=$(find "${_V_DATA}"/*.*/data/index -type f -printf '%TY-%Tm-%Td\n' 2>/dev/null | sort | tail -1)
+  [ -z "${_C_NEWEST}" ] && _C_NEWEST=never
   _C_BIND=$(echo "${_BINDRAW}" | grep -Ecx "${_V_BINDPAT}")
   _C_DOCS=0
   _C_DOCSREAD=n/a
@@ -227,28 +241,27 @@ _classify() {
   _C_VERDICT=""; _C_WHY=""
   if [ "${_C_PRES}" = "NO" ] && [ "${_C_INST}" = "NO" ]; then
     _C_VERDICT=ABSENT; _C_WHY="never installed"
-  elif [ "${_C_LSN}" = "YES" ]; then
-    if [ "${_C_DOCS}" -gt 0 ]; then
-      _C_VERDICT=USED; _C_WHY="${_C_DOCS} documents in ${_C_CORES} core(s)"
-    elif [ "${_C_BIND}" -gt 0 ] || [ "${_C_SR}" = "YES" ]; then
-      _C_VERDICT=USED; _C_WHY="bound service (bindings=${_C_BIND} sr-token=${_C_SR}); sites not indexed yet"
-    elif [ "${_C_CORES}" -gt 0 ]; then
-      if [ "${_C_DOCSREAD}" = "FAILED" ]; then
-        _C_VERDICT=AMBIG; _C_WHY="running, ${_C_CORES} core(s), document probe FAILED -- unreadable, not empty"
-      else
-        _C_VERDICT=AMBIG; _C_WHY="running, ${_C_CORES} core(s) all EMPTY, zero site bindings"
-      fi
+  elif [ "${_C_BIND}" -gt 0 ] || [ "${_C_SR}" = "YES" ]; then
+    ### Live bindings or the SR opt-in count as USED regardless of write
+    ### age -- a bound service whose sites simply have not indexed yet.
+    _C_VERDICT=USED; _C_WHY="bound (bindings=${_C_BIND} sr-token=${_C_SR}), newest write ${_C_NEWEST}"
+  elif [ "${_C_FRESHY}" -gt 0 ]; then
+    ### The one-year index-write bar: recency IS the use signal; document
+    ### counts alone prove nothing -- a populated estate can be long dead.
+    _C_VERDICT=USED; _C_WHY="indexed inside the year (newest write ${_C_NEWEST}$( [ "${_C_FRESH}" -gt 0 ] && echo ", actively indexing" ), docs=${_C_DOCS})"
+  elif [ "${_C_CORES}" -gt 0 ]; then
+    if [ "${_C_LSN}" = "YES" ] && [ "${_C_DOCS}" = "0" ] && [ "${_C_DOCSREAD}" = "OK" ]; then
+      _C_VERDICT=AMBIG; _C_WHY="running, ${_C_CORES} core(s) all EMPTY, zero site bindings"
+    elif [ "${_C_DOCSREAD}" = "FAILED" ]; then
+      _C_VERDICT=AMBIG; _C_WHY="running, ${_C_CORES} core(s), document probe FAILED -- unreadable, not empty"
     else
-      _C_VERDICT=UNUSED; _C_WHY="running, zero cores, zero bindings -- serves nothing"
+      ### Populated (or unreadable-down) cores with no write inside the
+      ### year: a stale estate. Removable without --force, always archived.
+      _C_VERDICT=STALE; _C_WHY="populated cores, newest write ${_C_NEWEST} -- outside the one-year bar"
     fi
   else
-    ### Down (denied, parked, or dead) -- document counts are unreadable, so
-    ### bindings and the SR opt-in token keep the sceptical verdict: removal
-    ### of anything that might matter needs --force.
-    if [ "${_C_BIND}" -gt 0 ] || [ "${_C_SR}" = "YES" ]; then
-      _C_VERDICT=USED; _C_WHY="not running, but live site bindings or an SR opt-in token present"
-    elif [ "${_C_CORES}" -gt 0 ]; then
-      _C_VERDICT=AMBIG; _C_WHY="not running, ${_C_CORES} core(s) on disk, zero site bindings"
+    if [ "${_C_LSN}" = "YES" ]; then
+      _C_VERDICT=UNUSED; _C_WHY="running, zero cores, zero bindings -- serves nothing"
     else
       _C_VERDICT=UNUSED; _C_WHY="present, zero real cores, zero bindings"
     fi
@@ -357,9 +370,13 @@ _cmd_status() {
     _classify "${_sv}"
     _re=$(_would_reinstall "${_sv}")
     _msg "  ${_sv}: ${_C_VERDICT} (${_C_WHY})"
-    _msg "    present=${_C_PRES} installed=${_C_INST} port${_V_PORT}=${_C_LSN} init=${_C_INIT} parked=${_C_PARKED} deny=${_C_DENY} cores=${_C_CORES} docs=${_C_DOCS}$( [ "${_C_DOCSREAD}" = "FAILED" ] && echo "(UNREADABLE)" ) bindings=${_C_BIND} sr-token=${_C_SR} reinstalls-next-pass=${_re}"
+    _msg "    present=${_C_PRES} installed=${_C_INST} port${_V_PORT}=${_C_LSN} init=${_C_INIT} parked=${_C_PARKED} deny=${_C_DENY} cores=${_C_CORES} docs=${_C_DOCS}$( [ "${_C_DOCSREAD}" = "FAILED" ] && echo "(UNREADABLE)" ) bindings=${_C_BIND} sr-token=${_C_SR} fresh30d=${_C_FRESH} fresh1y=${_C_FRESHY} newest=${_C_NEWEST} reinstalls-next-pass=${_re}"
     if [ "${_C_VERDICT}" = "AMBIG" ]; then
       _alrt "  ${_sv}: AMBIGUOUS -- per-box operator ruling owed before removal; never auto-dropped"
+    fi
+    if [ "${_C_VERDICT}" = "STALE" ]; then
+      _info "  ${_sv}: stale estate (no index write since ${_C_NEWEST}) -- removable; the data"
+      _info "  ${_sv}: tree is archived to ${_ARCH_DIR} on removal"
     fi
   done
   if [ -e "${_BLANKET_MARKER}" ] \
@@ -501,8 +518,14 @@ _cmd_remove() {
     && _die "nothing to remove -- name versions (solr4 solr7 solr9) or 'all'"
 
   ### Never delete Solr trees underneath a running barracuda/octopus pass:
-  ### the installer reads and rebuilds these very paths mid-run.
-  if [ "$(pgrep -cf '[b]arracuda|[o]ctopus' 2>/dev/null)" -gt 0 ]; then
+  ### the installer reads and rebuilds these very paths mid-run. Matched by
+  ### the runner BINARY paths, not bare names -- a caller's command line
+  ### mentioning .barracuda.cnf must not read as a run in flight.
+  local _bpid=""
+  [ -s /run/boa_run.pid ] \
+    && _bpid=$(tr -dc '0-9' < /run/boa_run.pid 2>/dev/null | head -c 12)
+  if { [ -n "${_bpid}" ] && [ -d "/proc/${_bpid}" ]; } \
+    || [ "$(pgrep -cf '/local/bin/[b]arracuda|/local/bin/[o]ctopus' 2>/dev/null)" -gt 0 ]; then
     _die "a barracuda/octopus run is in flight on this box -- wait for it to finish," \
          " then re-run"
   fi
@@ -572,13 +595,16 @@ case "${_cmd}" in
     echo "Usage: solrtrim remove <solr4|solr7|solr9|all> [...] [--force] [--blanket]"
     echo ""
     echo "Notes:"
-    echo "  - status classifies each version's real use (service state, dotted cores,"
-    echo "    document counts, per-site boa_site_control.ini bindings, SR tokens) and"
-    echo "    forecasts whether the next full barracuda pass would (re)install it."
+    echo "  - status classifies each version's real use on the one-year index-WRITE"
+    echo "    bar (newest data/index write per dotted core; live site bindings and SR"
+    echo "    tokens count as used regardless of write age) and forecasts whether the"
+    echo "    next full barracuda pass would (re)install it."
     echo "  - remove refuses USED and AMBIGUOUS versions without --force; ambiguous"
     echo "    means registered-but-empty cores with zero bindings -- a per-box operator"
-    echo "    ruling, never auto-dropped. --force archives the data tree to"
-    echo "    ${_ARCH_DIR} first and refuses if the archive cannot land."
+    echo "    ruling, never auto-dropped. STALE (populated, no write inside a year) is"
+    echo "    a deny candidate and removes without --force. Any removal with real"
+    echo "    cores archives the data tree to ${_ARCH_DIR} first and refuses if the"
+    echo "    archive cannot land."
     echo "  - remove writes the version's deny (variable + /etc/boa marker) FIRST, so"
     echo "    the removed version can never serve again even if a later pass on a"
     echo "    hosted-shaped box reinstalls it (it parks within ~5 minutes)."
