@@ -11049,6 +11049,50 @@ _lshell_install_upgrade() {
   fi
 }
 
+#
+# Install Pure-FTPd /usr/local binaries from a prebuilt boa-pure-ftpd
+# package (_USE_PREBUILT_PKGS). Replaces only the source fetch + compile
+# inside _if_install_ftpd; certs, config, PAM and the restart tail run
+# unchanged for both paths. No snapshot/restore needed: the caller has
+# already removed the daemon binary on entry, no distro package owns the
+# payload paths, and a failed attempt falls through to the untouched
+# source-build branch -- the recovery envelope equals the source path's.
+_install_ftpd_deb() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _install_ftpd_deb"
+  fi
+  _FTPD_DEB_INSTALLED=NO
+  if [ -z "${_PURE_FTPD_VRN}" ]; then
+    return 1
+  fi
+  if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
+    # Published binaries link the BOA modern OpenSSL tree; without it the
+    # deb would install a daemon that cannot start (unbound precedent).
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: No /usr/local/ssl3 tree; skipping prebuilt boa-pure-ftpd"
+    fi
+    return 1
+  fi
+  if ! _install_boa_deb "boa-pure-ftpd" "${_PURE_FTPD_VRN}"; then
+    return 1
+  fi
+  _FTPD_DEB_ITD=$(/usr/local/sbin/pure-ftpd --help 2>&1 \
+    | head -n 1 \
+    | cut -d" " -f2 \
+    | tr -d "v" \
+    | awk '{ print $1}' 2>&1)
+  if [ -x "/usr/local/sbin/pure-ftpd" ] \
+    && [ -x "/usr/local/bin/pure-pw" ] \
+    && [ "${_FTPD_DEB_ITD}" = "${_PURE_FTPD_VRN}" ]; then
+    _FTPD_DEB_INSTALLED=YES
+    _msg "INFO: Pure-FTPd ${_PURE_FTPD_VRN} installed from prebuilt package"
+    return 0
+  fi
+  dpkg --purge "boa-pure-ftpd" &> /dev/null
+  _msg "NOTE: Prebuilt boa-pure-ftpd failed health check; building from sources"
+  return 1
+}
+
 _if_install_ftpd() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_ftpd"
@@ -11064,7 +11108,6 @@ _if_install_ftpd() {
       || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-      _msg "INFO: Building Pure-FTPd server from sources..."
       sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -11084,25 +11127,38 @@ _if_install_ftpd() {
         -keyout /etc/ssl/private/pure-ftpd.pem \
         -out /etc/ssl/private/pure-ftpd.pem -batch &> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
-      cd /var/opt
-      rm -rf pure-ftpd*
+      # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the source
+      # fetch + compile; the certs above and the config/PAM/restart tail
+      # below run unchanged for both paths.
+      _FTPD_DEB_INSTALLED=NO
+      if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
+        _install_ftpd_deb
+      fi
+      if [ "${_FTPD_DEB_INSTALLED}" != "YES" ]; then
+        _msg "INFO: Building Pure-FTPd server from sources..."
+        cd /var/opt
+        rm -rf pure-ftpd*
+        _get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
+        cd pure-ftpd-${_PURE_FTPD_VRN}
+        bash autogen.sh &> /dev/null
+        _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"/usr/local/ssl3/lib64/pkgconfig\" ./configure \
+          --oldincludedir=/usr/local/ssl3/include \
+          --includedir=/usr/local/ssl3/include \
+          --with-everything --with-virtualchroot \
+          --without-humor --with-tls --with-diraliases --with-pam \
+          --with-certfile=/etc/ssl/private/pure-ftpd.pem"
+        _mrun "make -j $(nproc) --quiet"
+        _mrun "make --quiet install"
+      fi
       mkdir -p /usr/local/etc
-      _get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
-      cd pure-ftpd-${_PURE_FTPD_VRN}
-      bash autogen.sh &> /dev/null
-      _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"/usr/local/ssl3/lib64/pkgconfig\" ./configure \
-        --oldincludedir=/usr/local/ssl3/include \
-        --includedir=/usr/local/ssl3/include \
-        --with-everything --with-virtualchroot \
-        --without-humor --with-tls --with-diraliases --with-pam \
-        --with-certfile=/etc/ssl/private/pure-ftpd.pem"
-      _mrun "make -j $(nproc) --quiet"
-      _mrun "make --quiet install"
       cd /usr/local/sbin/
       cp -af ${_locCnf}/ftpd/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
       chmod 755 /usr/local/sbin/pure-config.pl 2> /dev/null
-      cp -af /var/opt/pure-ftpd-${_PURE_FTPD_VRN}/pam/pure-ftpd /etc/pam.d/
+      # The PAM template ships in the tree so the prebuilt path has no
+      # source-tree dependency; _fix_ftps_pam stays as the healer for
+      # copies restored from upstream form.
+      cp -af ${_locCnf}/ftpd/pure-ftpd.pam /etc/pam.d/pure-ftpd
       _fix_ftps_pam
       cd /usr/local/etc
       rm -f pure-ftpd.conf

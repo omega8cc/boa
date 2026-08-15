@@ -6,8 +6,8 @@
 
 - **ADM**: Adminer DB Manager (installed by default in LOCAL mode)
 - **CSF**: Firewall (installed by default in PUBLIC mode)
-- **FTP**: Pure-FTPd server with forced FTPS
-- **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant`
+- **FTP**: Pure-FTPd server with forced FTPS (installed by default on hosted systems)
+- **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant` (installed by default on hosted systems)
 
 ### Xtras Which Need to be Listed Explicitly:
 
