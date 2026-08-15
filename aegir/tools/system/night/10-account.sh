@@ -82,7 +82,7 @@ _relocate_one_backup_dir() {
     # fine (both dirs are then co-located on the static FS).
     rsync -a --no-devices --no-specials --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
       || { echo "backups-on-static: move failed ${_src} -> ${_dst}; left as real dir"; return 0; }
-    find "${_src}" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
+    find "${_src}/" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
   fi
 
   # Refuse to replace the dir with a symlink unless it emptied cleanly.

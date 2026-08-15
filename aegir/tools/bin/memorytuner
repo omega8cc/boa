@@ -16,7 +16,19 @@
 ### evidence supports -- ready to paste into /root/.barracuda.cnf. The
 ### sensor measures, this advisory names pins, a human applies them.
 ###
-### Usage: memorytuner [--days N]   (corpus horizon, default 7)
+### v3.0 (real-needs Phase A): renders the per-box needs ledger from the
+### ledger-capable sqlprobe records (per-consumer measured RSS with steady
+### p50 / peak p95, Solr instances vs their -Xmx, FPM topology, the OS
+### reserve derived from residual non-BOA RSS, and file cache treated as
+### the budget REMAINDER -- occupancy is reported, never added as need)
+### plus growth slopes from the /var/log/boa/usage dated series.
+### The ledger is OBSERVATION ONLY -- it names no pin, applies nothing,
+### and changes no recommendation above it; the reconciled budget that
+### will consume it is a later phase. Boxes whose sampler predates the
+### ledger keys simply report "no ledger-capable samples".
+###
+### Usage: memorytuner [--days N]   (corpus horizon, default 7;
+###                                  growth slopes always use up to 92d)
 ###
 
 export HOME=/root
@@ -290,15 +302,31 @@ if [ "${_NW}" -gt 0 ]; then
     _add_rec "_SQL_MAX_CONNECTIONS_FORCE=${_MC_REC}   # max used ${_MAXUSED} >= 80% of ${_MAXCONN}; NB this pin costs one managed restart"
   fi
 
-  # valkey: mirror the derive ceiling math (4x measured peak, floored at
-  # RAM/16 and 512M); name the pin only when meaningfully below the
-  # historical RAM/3 grant.
-  if [ "${_VK_MB}" -gt 0 ]; then
+  # valkey: since RM-14 the ceiling is self-managed by the hit-rate
+  # control loop in _tune_memory_limits (state:
+  # /var/log/boa/.valkey.ceiling.txt, evidence:
+  # /var/log/boa/.valkey.demand.txt). Setting _VALKEY_MAXMEM_FORCE
+  # DISABLES that loop outright, so while a demand window exists this
+  # advisory reports the loop's state and recommends NO pin; the legacy
+  # peak-x4 suggestion survives only for boxes with no demand window
+  # (old sqlprobe, opted out, or redis-legacy).
+  if [ -r "/var/log/boa/.valkey.demand.txt" ]; then
+    read -r _dV _dTS _dN _dH _dM _dE _dP < /var/log/boa/.valkey.demand.txt 2>/dev/null
+    _dN="${_dN//[^0-9]/}"; _dH="${_dH//[^0-9]/}"
+    _dM="${_dM//[^0-9]/}"; _dE="${_dE//[^0-9]/}"
+    _VK_HITPCT="n/a"
+    if [ "${_dV}" = "v1" ] && [ $(( ${_dH:-0} + ${_dM:-0} )) -gt 0 ]; then
+      _VK_HITPCT="$(( _dH * 100 / ( _dH + _dM ) ))%"
+    fi
+    _VK_LOOP_MB=$(cut -d" " -f2 /var/log/boa/.valkey.ceiling.txt 2>/dev/null)
+    _VK_LOOP_MB="${_VK_LOOP_MB//[^0-9]/}"
+    _add_obs "valkey ceiling is SELF-MANAGED (RM-14 loop): current ${_VK_LOOP_MB:-unseeded}M, window n=${_dN:-0} hit=${_VK_HITPCT} evicted=${_dE:-0} -- do NOT set _VALKEY_MAXMEM_FORCE, a pin disables the loop"
+  elif [ "${_VK_MB}" -gt 0 ]; then
     _VK_CEIL=$(( _VK_MB * 4 ))
     [ "${_VK_CEIL}" -lt $(( _RAM / 16 )) ] && _VK_CEIL=$(( _RAM / 16 ))
     [ "${_VK_CEIL}" -lt 512 ] && _VK_CEIL=512
     if [ "${_VK_CEIL}" -lt $(( _RAM / 3 * 9 / 10 )) ]; then
-      _add_rec "_VALKEY_MAXMEM_FORCE=${_VK_CEIL}   # measured peak ${_VK_MB}M x4 vs historical grant $(( _RAM / 3 ))M"
+      _add_rec "_VALKEY_MAXMEM_FORCE=${_VK_CEIL}   # measured peak ${_VK_MB}M x4 vs historical grant $(( _RAM / 3 ))M; NB this pin disables the RM-14 self-managed ceiling once the box gains a demand window"
     fi
   fi
 
@@ -319,6 +347,351 @@ else
   _add_obs "stores: table data ${_DATADIR_MB}M, valkey measured peak ${_VK_MB}M"
 fi
 
+###
+### Needs ledger (real-needs Phase A). One awk pass over the SAME corpus,
+### restricted to records that carry the ledger keys (gated on the
+### resid_rss_mb key so a rolling fleet's pre-ledger records contribute
+### nothing rather than zeros). Steady = p50, peak = p95 of the per-sample
+### series; the file-cache demand proxy is MemAvailable minus MemFree per
+### sample (the reclaimable cache the kernel would give up -- the measured
+### OS reserve's evidence base). Insertion sort again: mawk has no asort().
+###
+_LAGG=""
+if [ -n "${_CORPUS}" ]; then
+  # shellcheck disable=SC2086
+  _LAGG=$(cat ${_CORPUS} 2>/dev/null | awk '
+    function jnum(k,   re, s) {
+      re = "\"" k "\":[0-9.]+"
+      if (match($0, re)) { s = substr($0, RSTART, RLENGTH); sub(".*:", "", s); return s + 0 }
+      return 0
+    }
+    function jstr(k,   re, s) {
+      re = "\"" k "\":\"[^\"]*\""
+      if (match($0, re)) {
+        s = substr($0, RSTART, RLENGTH)
+        sub("^\"" k "\":\"", "", s); sub("\"$", "", s)
+        return s
+      }
+      return ""
+    }
+    function isort(a, n,   i, j, x) {
+      for (i = 2; i <= n; i++) {
+        x = a[i]
+        for (j = i - 1; j >= 1 && a[j] > x; j--) a[j + 1] = a[j]
+        a[j + 1] = x
+      }
+    }
+    function pctl(a, n, p,   i) {
+      if (n < 1) return 0
+      i = int(n * p / 100); if (i < 1) i = 1
+      return a[i]
+    }
+    function crow(name, a, n) {
+      isort(a, n)
+      printf "C %s %d %d %d %d\n", name, n, pctl(a, n, 50), pctl(a, n, 95), a[n]
+    }
+    /"scope":"sql"/ { total++ }
+    /"scope":"sql"/ && /"resid_rss_mb":[0-9]/ {
+      n++
+      my[n] = jnum("mysqld_vmrss_mb")
+      vk[n] = jnum("valkey_rss_mb")
+      fp[n] = jnum("fpm_rss_mb")
+      ng[n] = jnum("nginx_rss_mb")
+      cl[n] = jnum("clamd_rss_mb")
+      rs[n] = jnum("resid_rss_mb")
+      fpc[n] = jnum("fpm_procs")
+      rall[n] = jnum("rss_all_mb")
+      # Co-occurring consumer footprint: the sum THIS sample saw, so its
+      # percentile is a state the box actually reached — unlike a sum of
+      # independently-taken per-consumer percentiles.
+      tot[n] = my[n] + vk[n] + jnum("solr_rss_mb") + fp[n] + ng[n] + cl[n]
+      fc[n] = jnum("mem_avail_mb") - jnum("mem_free_mb")
+      if (fc[n] < 0) fc[n] = 0
+      af[n] = jnum("mem_actfile_mb") + jnum("mem_sreclaim_mb")
+      si = jstr("solr_i")
+      if (si != "") {
+        m = split(si, sa, ",")
+        split("", seen)
+        for (i = 1; i <= m; i++) {
+          if (split(sa[i], sb, ":") != 3) continue
+          if (sb[1] !~ /^[a-z0-9]+$/) continue
+          # sum same-name entries within one record (restart overlap)
+          seen[sb[1]] += sb[2] + 0
+          sxmx[sb[1]] = sb[3] + 0
+        }
+        for (k in seen) {
+          scnt[k]++
+          srss[k, scnt[k]] = seen[k]
+        }
+      }
+      fi = jstr("fpm_i")
+      if (fi ~ /^[0-9:,]+$/) flast = fi
+    }
+    END {
+      if (n < 1) { printf "NONE %d\n", total + 0; exit }
+      crow("mysqld", my, n)
+      crow("valkey", vk, n)
+      crow("fpm", fp, n)
+      crow("nginx", ng, n)
+      crow("clamd", cl, n)
+      crow("resid", rs, n)
+      crow("fcache", fc, n)
+      crow("factive", af, n)
+      crow("fpmprocs", fpc, n)
+      crow("csum", tot, n)
+      crow("rssall", rall, n)
+      for (k in scnt) {
+        split("", tmp)
+        for (i = 1; i <= scnt[k]; i++) tmp[i] = srss[k, i]
+        isort(tmp, scnt[k])
+        printf "S %s %d %d %d %d %d\n", k, scnt[k], pctl(tmp, scnt[k], 50), \
+          pctl(tmp, scnt[k], 95), tmp[scnt[k]], sxmx[k] + 0
+      }
+      if (flast != "") printf "F %s\n", flast
+      printf "N %d %d\n", n, total
+    }')
+fi
+
+_LN=0; _LTOT=0; _LFPM=""; _LSOLR=""
+_LMY_P50=0; _LMY_P95=0; _LVK_P50=0; _LVK_P95=0
+_LFP_P50=0; _LFP_P95=0; _LNG_P50=0; _LNG_P95=0
+_LCL_P50=0; _LCL_P95=0; _LRS_P50=0; _LRS_P95=0
+_LFC_P50=0; _LFC_P95=0; _LAF_P50=0; _LAF_P95=0
+_LFPP_P50=0; _LFPP_P95=0; _LCS_P50=0; _LCS_P95=0
+_LRA_P50=0; _LRA_P95=0
+while read -r _f1 _f2 _f3 _f4 _f5 _f6 _f7; do
+  case "${_f1}" in
+    NONE) _LTOT=$(_num "${_f2}") ;;
+    N) _LN=$(_num "${_f2}"); _LTOT=$(_num "${_f3}") ;;
+    C)
+      case "${_f2}" in
+        mysqld)   _LMY_P50=$(_num "${_f4}"); _LMY_P95=$(_num "${_f5}") ;;
+        valkey)   _LVK_P50=$(_num "${_f4}"); _LVK_P95=$(_num "${_f5}") ;;
+        fpm)      _LFP_P50=$(_num "${_f4}"); _LFP_P95=$(_num "${_f5}") ;;
+        nginx)    _LNG_P50=$(_num "${_f4}"); _LNG_P95=$(_num "${_f5}") ;;
+        clamd)    _LCL_P50=$(_num "${_f4}"); _LCL_P95=$(_num "${_f5}") ;;
+        resid)    _LRS_P50=$(_num "${_f4}"); _LRS_P95=$(_num "${_f5}") ;;
+        fcache)   _LFC_P50=$(_num "${_f4}"); _LFC_P95=$(_num "${_f5}") ;;
+        factive)  _LAF_P50=$(_num "${_f4}"); _LAF_P95=$(_num "${_f5}") ;;
+        fpmprocs) _LFPP_P50=$(_num "${_f4}"); _LFPP_P95=$(_num "${_f5}") ;;
+        csum)     _LCS_P50=$(_num "${_f4}"); _LCS_P95=$(_num "${_f5}") ;;
+        rssall)   _LRA_P50=$(_num "${_f4}"); _LRA_P95=$(_num "${_f5}") ;;
+      esac
+      ;;
+    S) _LSOLR="${_LSOLR}${_f2} ${_f3} ${_f4} ${_f5} ${_f6} ${_f7}"$'\n' ;;
+    F) _LFPM="${_f2}" ;;
+  esac
+done <<< "${_LAGG}"
+
+###
+### Growth slopes from the usage series: one line per dated
+### /var/log/boa/usage/usage-YYMMDD-HHMMSS.log (written by the daily
+### usage.sh runs), account attributed via its "Counting User" marker,
+### values from the "_TotSiz is X kB or Y MB" / "_SumDat is ..." lines.
+### The horizon is fixed at 92d regardless of --days so a short advisory
+### window cannot flatten a real trend. Three robustness gates, each
+### earned on fleet evidence: a zero files-value is a collapsed du run
+### (unmounted volume, truncated walk), dropped on input; endpoints are
+### the MEDIAN of the first/last three sightings so one bad run at either
+### end cannot fabricate a trend; and an account unseen for over 7 days
+### is a departed tenant (migrated boxes inherit the source's usage logs
+### wholesale) — reported as stale, excluded from the fleet totals.
+### Skipped entirely when no ledger-capable records exist: the slopes
+### render inside the ledger, so scanning without one is wasted work.
+###
+_LGROW=""
+if [ "${_LN}" -gt 0 ]; then
+  _USAGE_STREAM=""
+  for _uf in $(find /var/log/boa/usage -maxdepth 1 -name 'usage-[0-9]*.log' -mtime -92 2>/dev/null | sort); do
+    _ufd=${_uf##*/}; _ufd=${_ufd#usage-}; _ufd=${_ufd%%-*}
+    [ "${#_ufd}" -eq 6 ] || continue
+    _ufe=$(date -d "20${_ufd:0:2}-${_ufd:2:2}-${_ufd:4:2}" +%s 2>/dev/null)
+    _ufe="${_ufe//[^0-9]/}"
+    [ -n "${_ufe}" ] || continue
+    _USAGE_STREAM="${_USAGE_STREAM}$(awk -v ep="${_ufe}" '
+      /^Counting User \/data\/disk\// { u = $3; sub(".*\\/", "", u); f = "" }
+      /^_TotSiz is [0-9]/ { f = $6 }
+      /^_SumDat is [0-9]/ { if (u != "" && f != "") printf "%s %s %s %s\n", ep, u, f, $6 }
+    ' "${_uf}" 2>/dev/null)"$'\n'
+  done
+  if [ -n "${_USAGE_STREAM//[[:space:]]/}" ]; then
+    _LGROW=$(printf '%s' "${_USAGE_STREAM}" | awk '
+      function med3(a, b, c,   t) {
+        if (a > b) { t = a; a = b; b = t }
+        if (b > c) { t = b; b = c; c = t }
+        if (a > b) { t = a; a = b; b = t }
+        return b
+      }
+      NF == 4 && $2 ~ /^[a-zA-Z0-9._-]+$/ && $3 + 0 > 0 && $4 + 0 >= 0 {
+        u = $2
+        cnt[u]++
+        c = cnt[u]
+        if (c <= 3) { he[u, c] = $1; hf[u, c] = $3; hd[u, c] = $4 }
+        i = (c - 1) % 3 + 1
+        te[u, i] = $1; tf[u, i] = $3; td[u, i] = $4
+        if ($1 > maxep) maxep = $1
+      }
+      END {
+        nu = 0; nshort = 0; nstale = 0; tfs = 0; tds = 0
+        for (u in cnt) {
+          c = cnt[u]
+          li = (c - 1) % 3 + 1
+          if (maxep - te[u, li] > 604800) { nstale++; continue }
+          if (c < 4) { nshort++; continue }
+          fe = he[u, 2]
+          ff = med3(hf[u, 1], hf[u, 2], hf[u, 3])
+          fd = med3(hd[u, 1], hd[u, 2], hd[u, 3])
+          mi = (c - 2) % 3 + 1
+          le = te[u, mi]
+          lf = med3(tf[u, 1], tf[u, 2], tf[u, 3])
+          ld = med3(td[u, 1], td[u, 2], td[u, 3])
+          span = le - fe
+          if (span < 259200) { nshort++; continue }
+          sf = (lf - ff) * 86400 / span
+          sd = (ld - fd) * 86400 / span
+          printf "A %s %.2f %.2f %.1f %d\n", u, sf, sd, span / 86400, c
+          tfs += sf; tds += sd; nu++
+        }
+        printf "T %d %d %d %.2f %.2f\n", nu, nshort, nstale, tfs, tds
+      }')
+  fi
+fi
+
+###
+### Render the ledger. Need = p95 + 20% margin (stated on every line; the
+### margin is a reporting convention for this phase, not a ruling). A
+### consumer whose whole series is zero was not observed -- rendered as
+### such and excluded from the sum, never counted as a measured zero
+### need. The consumer sum is VmRSS-based and therefore an UPPER BOUND
+### (shared pages count once per process); the co-occurring csum
+### percentile beside it is a box state that was actually reached. File
+### cache is the REMAINDER of the budget, never an additive reserve
+### term: reclaimable cache grows to fill whatever RAM consumers leave
+### free, so adding its percentile to their needs double-books the box
+### -- the hand sizing passes this ledger reproduces allocated the
+### remainder and checked it against a floor, which is what the sum
+### check does below.
+###
+_LED=""
+_add_led() { _LED="${_LED}  ${1}\n"; }
+_LSUM=0
+
+if [ "${_LN}" -gt 0 ]; then
+  # mysqld is always observed: a record exists only when mysqld answered.
+  _LMY_NEED=$(( _LMY_P95 * 12 / 10 ))
+  _LSUM=$(( _LSUM + _LMY_NEED ))
+  _add_led "mysqld: rss p50/p95 ${_LMY_P50}/${_LMY_P95}M, need ${_LMY_NEED}M (p95+20%); pool ${_POOL_MB}M, table data ${_DATADIR_MB}M, warm miss p50/p95 ${_P50}/${_P95} ppm"
+
+  # Valkey need stays OCCUPANCY-based: the RM-14 loop ceiling is seeded
+  # from the granted fraction and converges only over days, so feeding
+  # it into the sum would reinstate exactly the grant-shaped number this
+  # ledger exists to replace. A ceiling the consumer itself would accept
+  # (v1, inside [floor..cap] on this basis, live demand window, no pin)
+  # is reported as context with its state -- epoch 0 means seeded,
+  # never stepped.
+  _VKL_TXT="no enforced RM-14 loop ceiling"
+  if [ -z "${_VALKEY_MAXMEM_FORCE:-}" ] \
+    && [ -r "/var/log/boa/.valkey.demand.txt" ] \
+    && [ -z "$(find /var/log/boa/.valkey.demand.txt -mmin +11520 2>/dev/null)" ] \
+    && [ -r "/var/log/boa/.valkey.ceiling.txt" ]; then
+    read -r _lcV _lcMB _lcTS < /var/log/boa/.valkey.ceiling.txt
+    if [ "${_lcV}" = "v1" ]; then
+      _lcMB="${_lcMB//[^0-9]/}"
+      _lcTS="${_lcTS//[^0-9]/}"
+      _VKL_FLOOR=$(( _RAM / 16 ))
+      [ "${_VKL_FLOOR}" -lt 512 ] && _VKL_FLOOR=512
+      if [ -n "${_lcMB}" ] && [ "${_lcMB}" -ge "${_VKL_FLOOR}" ] \
+        && [ "${_lcMB}" -le $(( _RAM / 3 )) ]; then
+        _VKL_STATE="seeded, no step yet"
+        if [ -n "${_lcTS}" ] && [ "${_lcTS}" -gt 0 ] 2>/dev/null; then
+          _VKL_STATE="loop has acted"
+        fi
+        _VKL_TXT="RM-14 loop ceiling ${_lcMB}M (${_VKL_STATE})"
+      fi
+    fi
+  fi
+  if [ "${_LVK_P95}" -gt 0 ]; then
+    _LVK_NEED=$(( _LVK_P95 * 12 / 10 ))
+    _LSUM=$(( _LSUM + _LVK_NEED ))
+    _add_led "valkey: rss p50/p95 ${_LVK_P50}/${_LVK_P95}M, need ${_LVK_NEED}M (p95+20%, occupancy-based); ${_VKL_TXT}"
+  else
+    _add_led "valkey: not observed in the ledger corpus; ${_VKL_TXT}"
+  fi
+
+  if [ -n "${_LSOLR}" ]; then
+    while read -r _sn _sc _sp50 _sp95 _smax _sxmx; do
+      [ -n "${_sn}" ] || continue
+      _sp50=$(_num "${_sp50}"); _sp95=$(_num "${_sp95}"); _sxmx=$(_num "${_sxmx}")
+      _SNEED=$(( _sp95 * 12 / 10 ))
+      _LSUM=$(( _LSUM + _SNEED ))
+      _add_led "${_sn}: jvm rss p50/p95 ${_sp50}/${_sp95}M vs -Xmx ${_sxmx}M, need ${_SNEED}M (p95+20%; $(_num "${_sc}") samples)"
+    done <<< "${_LSOLR}"
+  else
+    _add_led "solr: no instance observed in the ledger corpus"
+  fi
+
+  if [ "${_LFP_P95}" -gt 0 ]; then
+    _LFP_NEED=$(( _LFP_P95 * 12 / 10 ))
+    _LSUM=$(( _LSUM + _LFP_NEED ))
+    _LFP_PER=0
+    [ "${_LFPP_P95}" -gt 0 ] && _LFP_PER=$(( _LFP_P95 / _LFPP_P95 ))
+    _LFPM_TXT=""
+    if [ -n "${_LFPM}" ]; then
+      _IFS_SAVE="${IFS}"; IFS=','
+      for _fm in ${_LFPM}; do
+        IFS=':' read -r _fmv _fmp _fmw <<< "${_fm}"
+        _LFPM_TXT="${_LFPM_TXT}php$(_num "${_fmv}") pools=$(_num "${_fmp}") workers=$(_num "${_fmw}"); "
+      done
+      IFS="${_IFS_SAVE}"
+    fi
+    _add_led "php-fpm: aggregate rss p50/p95 ${_LFP_P50}/${_LFP_P95}M over procs p50/p95 ${_LFPP_P50}/${_LFPP_P95} (~${_LFP_PER}M per proc at peak), need ${_LFP_NEED}M (p95+20%); topology at last sample: ${_LFPM_TXT:-no master seen}"
+  else
+    _add_led "php-fpm: not observed in the ledger corpus"
+  fi
+
+  if [ "${_LNG_P95}" -gt 0 ]; then
+    _LNG_NEED=$(( _LNG_P95 * 12 / 10 ))
+    _LSUM=$(( _LSUM + _LNG_NEED ))
+    _add_led "nginx: rss p50/p95 ${_LNG_P50}/${_LNG_P95}M, need ${_LNG_NEED}M (p95+20%)"
+  else
+    _add_led "nginx: not observed in the ledger corpus"
+  fi
+  if [ "${_LCL_P95}" -gt 0 ]; then
+    _LCL_NEED=$(( _LCL_P95 * 12 / 10 ))
+    _LSUM=$(( _LSUM + _LCL_NEED ))
+    _add_led "clamd: rss p50/p95 ${_LCL_P50}/${_LCL_P95}M, need ${_LCL_NEED}M (p95+20%)"
+  else
+    _add_led "clamd: not observed in the ledger corpus"
+  fi
+
+  _LRES_FLOOR=$(( _RAM_TOTAL / 32 ))
+  [ "${_LRES_FLOOR}" -lt 1024 ] && _LRES_FLOOR=1024
+  _LRES_MB="${_LRS_P95}"
+  [ "${_LRES_MB}" -lt "${_LRES_FLOOR}" ] && _LRES_MB="${_LRES_FLOOR}"
+  _add_led "os reserve (derived): residual non-BOA rss p50/p95 ${_LRS_P50}/${_LRS_P95}M -> reserve ${_LRES_MB}M (residual p95, floored max(1024, total/32))"
+  _add_led "file cache: occupancy p50/p95 ${_LFC_P50}/${_LFC_P95}M (MemAvailable-MemFree; opportunistic -- grows into free RAM, reported never added); demand-side evidence p50 ${_LAF_P50}M (Active(file)+SReclaimable)"
+
+  if [ -n "${_LGROW}" ]; then
+    _LG_TOT=$(printf '%s\n' "${_LGROW}" | grep -m1 "^T ")
+    read -r _x _lgn _lgs _lgstale _lgf _lgd <<< "${_LG_TOT}"
+    _add_led "growth (usage series, up to 92d): files ${_lgf:-0} MB/day, db ${_lgd:-0} MB/day across ${_lgn:-0} accounts (${_lgs:-0} below the 3d/4-sample gate, ${_lgstale:-0} stale >7d excluded)"
+    while read -r _gt _gu _gf _gd _gspan _gn; do
+      [ "${_gt}" = "A" ] || continue
+      _add_led "  ${_gu}: files ${_gf} MB/day, db ${_gd} MB/day (span ${_gspan}d, ${_gn} samples)"
+    done <<< "${_LGROW}"
+  else
+    _add_led "growth: no dated usage series found (needs >= 4 usage.sh runs spanning 3d)"
+  fi
+
+  _LCACHE_LEFT=$(( _RAM_TOTAL - _LSUM - _LRES_MB ))
+  _LCACHE_MIN=$(( _RAM_TOTAL / 8 ))
+  [ "${_LCACHE_MIN}" -lt 512 ] && _LCACHE_MIN=512
+  _LVERDICT="ok"
+  [ "${_LCACHE_LEFT}" -lt "${_LCACHE_MIN}" ] && _LVERDICT="SQUEEZED below the total/8 floor"
+  _add_led "sum check: consumer needs ${_LSUM}M (each p95+20%; VmRSS-summed upper bound -- co-occurring consumer rss p95 ${_LCS_P95}M, whole-box p95 ${_LRA_P95}M) + reserve ${_LRES_MB}M leaves ${_LCACHE_LEFT}M of ${_RAM_TOTAL}M for file cache vs occupancy p50 ${_LFC_P50}M (floor ${_LCACHE_MIN}M -> ${_LVERDICT})"
+  _add_led "ledger corpus: ${_LN} ledger-capable of ${_LTOT} sql samples over ${_DAYS}d"
+fi
+
 _emit_report() {
   echo "==== memorytuner advisory on $(cat /etc/hostname 2>/dev/null || hostname) -- $(date) ===="
   echo "Evidence (sqlprobe corpus, last ${_DAYS} days):"
@@ -330,6 +703,15 @@ _emit_report() {
     printf '%b' "${_REC}"
   else
     echo "No pin recommendation: current settings match the observed workload."
+  fi
+  echo "Needs ledger (real-needs Phase A; observation only, nothing applied):"
+  if [ "${_LN}" -gt 0 ]; then
+    printf '%b' "${_LED}"
+  else
+    echo "  no ledger-capable sqlprobe samples in the last ${_DAYS} days"
+    echo "  (the sampler on this box predates the ledger keys, is opted out,"
+    echo "  or the corpus is empty -- the ledger fills itself once ledger-aware"
+    echo "  samples accumulate; nothing degrades meanwhile)"
   fi
 }
 _emit_report
