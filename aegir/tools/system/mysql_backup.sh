@@ -27,6 +27,24 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
+# Never TRUNCATE/DROP/OPTIMIZE on a configured replica: under ROW binlog a
+# replicated change to a locally truncated row stops the SQL thread outright
+# -- the same guard mysql_cleanup.sh carries, because this script performs
+# the same class of local writes nightly. The replica config itself is the
+# authoritative role state; it clears at promotion (RESET REPLICA/SLAVE ALL
+# empties the probe). 8.4 removed SHOW SLAVE STATUS and 5.7 lacks SHOW
+# REPLICA STATUS, so try both; with mysqld down both are empty and the run
+# proceeds to fail harmlessly on its own connection attempts. NB: the
+# cluster variant (mysql_cluster_backup.sh) is deliberately NOT guarded --
+# it targets the cluster's designated write node, so its writes replicate
+# correctly by design.
+_REPLICA_STATE=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+[ -z "${_REPLICA_STATE}" ] && _REPLICA_STATE=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+if [ -n "${_REPLICA_STATE}" ]; then
+  echo "Ooops, this box is a configured replication replica, local TRUNCATE/OPTIMIZE would break the SQL thread"
+  exit 0
+fi
+
 _IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_cluster_backup.sh)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
