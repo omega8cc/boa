@@ -26,6 +26,20 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+# Never TRUNCATE on a configured replica: under ROW binlog a replicated
+# change to a locally truncated row stops the SQL thread outright. The
+# replica config itself is the authoritative role state -- it covers xmass
+# replication windows, standing HA mirrors and hand-built replicas alike,
+# and clears at promotion (RESET REPLICA/SLAVE ALL empties the probe).
+# 8.4 removed SHOW SLAVE STATUS and 5.7 lacks SHOW REPLICA STATUS, so try
+# both; with mysqld down both are empty and the run proceeds harmlessly.
+_REPLICA_STATE=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+[ -z "${_REPLICA_STATE}" ] && _REPLICA_STATE=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+if [ -n "${_REPLICA_STATE}" ]; then
+  echo "Ooops, this box is a configured replication replica, a local cache TRUNCATE would break the SQL thread"
+  exit 0
+fi
+
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
