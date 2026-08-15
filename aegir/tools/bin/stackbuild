@@ -24,7 +24,11 @@
 # stays installed, pinned and held as the structure provider). Unbound
 # follows the nginx overlay pattern (binaries only, Replaces: against the
 # distro unbound/unbound-anchor packages, which stay installed as the
-# structure providers). Versions are NOT hardcoded - each is detected
+# structure providers). Pure-ftpd follows the valkey shape (plain
+# /usr/local binaries, no distro overlay): the ten bin/sbin tools,
+# explicitly listed; config, PAM, TLS cert and DH params stay
+# installer-managed and are never packaged. Versions are NOT hardcoded -
+# each is detected
 # from the installed tree, so a pin bump is packaged on the next run.
 # Inter-boa companion ordering is enforced by the INSTALLER, not by control
 # file Depends (a box whose companion fell back to source has the correct
@@ -37,11 +41,13 @@
 #   stackbuild publish              gzip + sha256 sidecar into the mirror tree
 #   stackbuild sync                 rsync fresh packages to the peer active mirror
 #   stackbuild all                  package missing + publish + sync
-# Component names: ssl3 ssl-legacy icu curl valkey nginx unbound php56 php70 .. php85
+# Component names: ssl3 ssl-legacy icu curl valkey nginx unbound pure-ftpd php56 php70 .. php85
 #
 # The builder box MUST keep _USE_PREBUILT_PKGS=NO in /root/.barracuda.cnf
 # (it must always compile from source, or it would install its own packages
 # and repackage them in a circle) - stackbuild refuses to run otherwise.
+# It must also carry FTP in _XTRAS_LIST: pure-ftpd is the only xtra-gated
+# component, and a builder without it silently never publishes the package.
 
 # ---------------------------------------------------------------------------
 # Configuration.
@@ -156,7 +162,7 @@ _detect_pub_dir() {
 
 _all_components() {
   local _c _n
-  _c="ssl3 ssl-legacy icu curl valkey nginx unbound"
+  _c="ssl3 ssl-legacy icu curl valkey nginx unbound pure-ftpd"
   for _n in 56 70 71 72 73 74 80 81 82 83 84 85; do
     [[ -x "/opt/php${_n}/bin/php" ]] && _c="${_c} php${_n}"
   done
@@ -208,6 +214,15 @@ _comp_version() {
       [[ -x /usr/sbin/unbound ]] \
         && _v="$(/usr/sbin/unbound -V 2>/dev/null | tr -d '\n' | cut -d' ' -f2 \
           | awk '{print $1}' | sed 's/Configure//gi')" ;;
+    pure-ftpd)
+      # Mirror the installer's parse (_install_ftpd_deb, system.sh.inc) so
+      # the filename version equals the _PURE_FTPD_VRN pin character-for-
+      # character. The 'pure-ftpd vN.N.NN [privsep]' banner prints only for
+      # root, which _require_root guarantees; a broken binary yields an
+      # empty version -> SKIP, never a garbage-version filename.
+      [[ -x /usr/local/sbin/pure-ftpd ]] \
+        && _v="$(/usr/local/sbin/pure-ftpd --help 2>/dev/null | head -n 1 \
+          | cut -d' ' -f2 | tr -d 'v' | awk '{print $1}')" ;;
     php*)
       local _n="${_comp#php}"
       [[ -x "/opt/php${_n}/bin/php" ]] \
@@ -249,6 +264,13 @@ _comp_paths() {
       # order), which the computed Depends carries. /etc/unbound,
       # /usr/etc/unbound, keys and the init script stay installer-managed.
       printf '%s\n' "/usr/sbin/unbound /usr/sbin/unbound-anchor /usr/sbin/unbound-checkconf /usr/sbin/unbound-control /usr/sbin/unbound-control-setup /usr/sbin/unbound-host" ;;
+    pure-ftpd)
+      # The ten bin/sbin tools, listed explicitly (no glob, unbound
+      # precedent); man pages deliberately not packaged. pure-config.pl,
+      # pure-ftpd.conf and the PAM file stay installer-managed, and the
+      # TLS cert/DH params are box-generated private material that must
+      # never ride a fleet-wide package.
+      printf '%s\n' "/usr/local/sbin/pure-ftpd /usr/local/sbin/pure-ftpwho /usr/local/sbin/pure-mrtginfo /usr/local/sbin/pure-quotacheck /usr/local/sbin/pure-uploadscript /usr/local/sbin/pure-authd /usr/local/sbin/pure-certd /usr/local/bin/pure-pw /usr/local/bin/pure-pwconvert /usr/local/bin/pure-statsdecode" ;;
     php*)
       printf '%s\n' "/opt/php${_comp#php}" ;;
   esac
@@ -304,6 +326,7 @@ _comp_desc() {
     valkey)     printf '%s\n' "BOA Valkey (/usr/bin, incl. redis-compat symlinks), built by barracuda on ${_OS_CODE}" ;;
     nginx)      printf '%s\n' "BOA Nginx binary (/usr/sbin/nginx, static OpenSSL), built by barracuda on ${_OS_CODE}" ;;
     unbound)    printf '%s\n' "BOA Unbound DNS cache binaries (/usr/sbin, BOA OpenSSL linked), built by barracuda on ${_OS_CODE}" ;;
+    pure-ftpd)  printf '%s\n' "BOA Pure-FTPd binaries (/usr/local, BOA OpenSSL linked), built by barracuda on ${_OS_CODE}" ;;
     php*)       printf '%s\n' "BOA PHP ${_comp#php} prefix (/opt/${_comp}) incl. phpize/headers, built by barracuda on ${_OS_CODE}" ;;
   esac
 }
@@ -470,7 +493,7 @@ do_package() {
   fi
   for _comp in ${_targets}; do
     case "${_comp}" in
-      ssl3|ssl-legacy|icu|curl|valkey|nginx|unbound|php[0-9][0-9]) _package_one "${_comp}" ;;
+      ssl3|ssl-legacy|icu|curl|valkey|nginx|unbound|pure-ftpd|php[0-9][0-9]) _package_one "${_comp}" ;;
       *) _alrt "unknown component: ${_comp}" ;;
     esac
   done
