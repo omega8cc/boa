@@ -1618,7 +1618,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f77
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f00
-    _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f96
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f80
@@ -1641,13 +1641,13 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f02
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f95
-    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f89 --guard mysql_backup.sh
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f88 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
-    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f89
+    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f88
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f89 --guard mysql_cluster_backup.sh
-    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f71
+    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f69
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f82
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f87
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f85
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f85
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f96
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
@@ -4200,7 +4200,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f99 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f78 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f40 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f38 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f57 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f89 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
@@ -4212,7 +4212,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f99 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
-    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f95 --guard /local/bin/memorytuner
+    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f94 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
     _fetch_versioned ${_optBin}/mycnfup "${_urlHmr}/${_tBn}/mycnfup" f98 --guard /local/bin/mycnfup
     _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --mode 755 --guard /local/bin/randpass
