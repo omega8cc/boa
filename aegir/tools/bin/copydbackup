@@ -188,10 +188,10 @@ for _user in "${!_all_involved_users[@]}"; do
 
     if [[ "${_days_to_keep}" =~ ^[0-9]+$ ]]; then
       echo "User: ${_user}; removing backups older than ${_days_to_keep} days..."
-      find "/data/disk/${_user}/static/files/dbackup" \
+      find "/data/disk/${_user}/static/files/dbackup/" \
         -type f -mtime +${_days_to_keep} -exec rm -f {} \;
       # Optionally remove empty directories, too:
-      find "/data/disk/${_user}/static/files/dbackup" \
+      find "/data/disk/${_user}/static/files/dbackup/" \
         -type d -empty -delete
     else
       echo "Warning: ${_cycle_file} does not contain a valid integer. Skipping cleanup for ${_user}."
