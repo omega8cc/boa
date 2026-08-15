@@ -4203,6 +4203,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f37 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f57 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f89 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f99 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f96 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f91 --guard /local/bin/autoinit
@@ -4286,7 +4287,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver} &> /dev/null
-  chmod 700 ${_optBin}/{lock.inc,renameaegirhost,syncpass,weblogx,xcopy,xmass,xoct,xtrim} &> /dev/null
+  chmod 700 ${_optBin}/{lock.inc,renameaegirhost,solrtrim,syncpass,weblogx,xcopy,xmass,xoct,xtrim} &> /dev/null
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{floodreport,fpmreport,loadreport,memorytuner,mycnfup,perftest,xdr9000} &> /dev/null

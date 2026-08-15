@@ -1,0 +1,530 @@
+#!/bin/bash
+
+###
+### solrtrim — report and remove per-version Solr installs
+###             (solr4/jetty9, solr7, solr9)
+###
+### A hosted-named box's first full barracuda pass installs all three Solr
+### versions; most boxes use one or none, and a golden master must carry
+### none at all. This tool is the reusable end of that policy: it classifies
+### each version's real use from measured state (the same evidence the xmass
+### Solr coverage gate reads), then removes the version(s) a box does not
+### use — service, init script, distribution, data trees, defaults file and
+### system user — writing the matching per-version deny so the removed
+### version can never serve again.
+###
+### Usage:
+###   solrtrim status
+###   solrtrim remove <solr4|solr7|solr9|all> [...] [--force] [--blanket]
+###
+### Rules:
+###   - A version classified USED (documents in real cores, or live site
+###     bindings, or an SR token) is refused without --force.
+###   - A version that LOOKS unused but holds registered cores (all empty,
+###     zero bindings) is AMBIGUOUS: refused without --force, reported for a
+###     per-box operator ruling — never auto-dropped.
+###   - --force archives the version's data tree to /var/backups first and
+###     refuses when the archive cannot be written or verified.
+###   - --blanket additionally writes the blanket java deny pair
+###     (_DENY_JAVA=YES + /root/.deny.java.cnf), accepted only when NO Solr
+###     version remains installed afterwards — the golden-master end state,
+###     and the only install-time opt-out the installer has.
+###
+### Resurrection caveat (report, not a bug): the per-version deny knobs are
+### honoured by autoupboa only, AFTER install. On a hosted-named box without
+### the blanket pair, the next full barracuda pass reinstalls a removed
+### version and autoupboa parks it again within ~5 minutes. The deny written
+### here guarantees it never SERVES; only the blanket pair (or a source that
+### is not hosted-shaped) prevents the reinstall itself.
+###
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
+###-------------CONSTANTS------------------###
+
+_BAR_CNF="/root/.barracuda.cnf"
+_BLANKET_MARKER="/root/.deny.java.cnf"
+_LOCK_FILE="/run/solrtrim.lock"
+_ARCH_DIR="/var/backups"
+
+###-------------HELPERS--------------------###
+
+_msg() {
+  echo "$*"
+}
+
+_info() {
+  echo "INFO: $*"
+}
+
+_alrt() {
+  echo "ALRT: $*"
+}
+
+_die() {
+  echo "ERROR: $*"
+  exit 1
+}
+
+_check_root() {
+  if [ "$(id -u)" != "0" ]; then
+    _die "This tool must be run as root"
+  fi
+}
+
+### Owner-pid lock, never flock: the same pattern as the other standalone
+### tools, so a dead run can never wedge the next one.
+_take_lock() {
+  local _owner _cmdline
+  if [ -s "${_LOCK_FILE}" ]; then
+    _owner=$(tr -dc '0-9' < "${_LOCK_FILE}" 2>/dev/null | head -c 12)
+    if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
+      _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
+      case "${_cmdline}" in
+        *solrtrim*)
+          _die "another solrtrim run is in flight (pid ${_owner}); wait for it to finish"
+        ;;
+      esac
+    fi
+  fi
+  echo "$$" > "${_LOCK_FILE}" 2>/dev/null \
+    || _die "cannot write ${_LOCK_FILE} -- refusing to run unlocked"
+  trap 'rm -f "${_LOCK_FILE}"' EXIT INT TERM HUP
+}
+
+### Per-version facts. Sets the _V_* globals for one version token.
+_solr_map() {
+  case "${1}" in
+    solr4)
+      _V_SVC=jetty9
+      _V_DVAR=_DENY_JETTY9
+      _V_PORT=8099
+      _V_DATA=/opt/solr4
+      _V_DIST=/opt/jetty9
+      _V_HOME=""
+      _V_DFLT=/etc/default/jetty9
+      _V_USER=jetty9
+      _V_BINDPAT="apachesolr"
+    ;;
+    solr7)
+      _V_SVC=solr7
+      _V_DVAR=_DENY_SOLR7
+      _V_PORT=9077
+      _V_DATA=/var/solr7/data
+      _V_DIST=/opt/solr7
+      _V_HOME=/var/solr7
+      _V_DFLT=/etc/default/solr7.in.sh
+      _V_USER=solr7
+      _V_BINDPAT="search_api_solr|search_api_solr7"
+    ;;
+    solr9)
+      _V_SVC=solr9
+      _V_DVAR=_DENY_SOLR9
+      _V_PORT=9099
+      _V_DATA=/var/solr9/data
+      _V_DIST=/opt/solr9
+      _V_HOME=/var/solr9
+      _V_DFLT=/etc/default/solr9.in.sh
+      _V_USER=solr9
+      _V_BINDPAT="search_api_solr9"
+    ;;
+    *)
+      return 1
+    ;;
+  esac
+  return 0
+}
+
+_port_listening() {
+  ss -ltn 2>/dev/null | grep -q ":${1}[[:space:]]"
+}
+
+### Per-site bindings, one pass for all versions: each account alias resolves
+### its site root, whose boa_site_control.ini declares the Solr module
+### family. Kept in step with the xmass classifier's read of the same
+### surfaces — mirror fixes there.
+_collect_bindings() {
+  local _alias _apath
+  _BINDRAW=$(for _alias in /data/disk/*/.drush/*.alias.drushrc.php; do
+    [ -f "${_alias}" ] || continue
+    _apath=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_alias}" | head -1)
+    [ -n "${_apath}" ] && [ -f "${_apath}/modules/boa_site_control.ini" ] \
+      && grep -h "^solr_integration_module" "${_apath}/modules/boa_site_control.ini"
+  done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
+  ### An empty tally out of a broken alias parse is indistinguishable from
+  ### "no site uses Solr" — spot-verify one alias before believing it.
+  if [ -z "${_BINDRAW}" ]; then
+    _alias=$(ls /data/disk/*/.drush/*.alias.drushrc.php 2>/dev/null | head -1)
+    if [ -n "${_alias}" ]; then
+      _apath=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_alias}" | head -1)
+      [ -z "${_apath}" ] \
+        && _alrt "alias site_path parse failed on $(basename "${_alias}") -- binding tally unreliable, read as zero"
+    fi
+  fi
+}
+
+### Classify one version from measured state. Sets _C_VERDICT (USED | AMBIG
+### | UNUSED | ABSENT), _C_WHY, and the raw facts _C_PRES/_C_LSN/_C_INIT/
+### _C_PARKED/_C_DENY/_C_CORES/_C_DOCS/_C_BIND/_C_SR/_C_INST. Kept in step
+### with xmass's _xmass_solr_classify_source — mirror fixes there. One
+### difference is deliberate: solrtrim classifies THIS box (no recorded-set
+### fallback), and a blanket-denied box classifies every version from disk
+### evidence with the same keep-anything-with-data-or-bindings bias.
+_classify() {
+  local _sv="${1}" _xtras
+  _solr_map "${_sv}" || return 1
+  _xtras=$(grep "^_XTRAS_LIST=" "${_BAR_CNF}" 2>/dev/null \
+    | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g')
+  ### Substring on purpose: the installer's own gate tests =~ "SR4".
+  _C_SR=NO
+  case "${_xtras}" in
+    *"SR${_sv#solr}"*) _C_SR=YES ;;
+  esac
+  _C_PRES=NO; [ -d "${_V_DATA}" ] && _C_PRES=YES
+  _C_INST=NO
+  [ -d "${_V_DIST}" ] && _C_INST=YES
+  [ -e "/etc/init.d/${_V_SVC}" ] && _C_INST=YES
+  [ -e "/var/backups/${_V_SVC}.initd" ] && _C_INST=YES
+  _C_LSN=NO; _port_listening "${_V_PORT}" && _C_LSN=YES
+  _C_INIT=absent
+  [ -e "/etc/init.d/${_V_SVC}" ] && _C_INIT=present
+  [ -e "/etc/init.d/${_V_SVC}" ] && [ ! -x "/etc/init.d/${_V_SVC}" ] && _C_INIT=disarmed
+  _C_PARKED=NO; [ -e "/var/backups/${_V_SVC}.initd" ] && _C_PARKED=YES
+  _C_DENY=NO
+  grep -q "^${_V_DVAR}=YES" "${_BAR_CNF}" 2>/dev/null && _C_DENY=YES
+  [ -e "/etc/boa/.deny.${_V_SVC}.cnf" ] && _C_DENY=YES
+  [ -e "/root/.deny.${_V_SVC}.cnf" ] && _C_DENY=YES
+  ### Only dotted names are real; solr4's core0-core9 are installer seeds.
+  _C_CORES=$(find "${_V_DATA}" -maxdepth 1 -mindepth 1 -type d -name '*.*' 2>/dev/null | wc -l | tr -d ' ')
+  _C_BIND=$(echo "${_BINDRAW}" | grep -Ecx "${_V_BINDPAT}")
+  _C_DOCS=0
+  if [ "${_C_LSN}" = "YES" ]; then
+    ### Document counts are the decisive use signal: a populated core on a
+    ### running service is read-only SERVING even with zero index writes.
+    _C_DOCS=$(curl -s --max-time 15 -A iCab \
+      "http://127.0.0.1:${_V_PORT}/solr/admin/cores?action=STATUS&wt=json" 2>/dev/null \
+      | grep -o '"numDocs":[0-9]*' | awk -F: '{ _s += $2 } END { print _s + 0 }')
+    [ -z "${_C_DOCS}" ] && _C_DOCS=0
+  fi
+
+  _C_VERDICT=""; _C_WHY=""
+  if [ "${_C_PRES}" = "NO" ] && [ "${_C_INST}" = "NO" ]; then
+    _C_VERDICT=ABSENT; _C_WHY="never installed"
+  elif [ "${_C_LSN}" = "YES" ]; then
+    if [ "${_C_DOCS}" -gt 0 ]; then
+      _C_VERDICT=USED; _C_WHY="${_C_DOCS} documents in ${_C_CORES} core(s)"
+    elif [ "${_C_BIND}" -gt 0 ] || [ "${_C_SR}" = "YES" ]; then
+      _C_VERDICT=USED; _C_WHY="bound service (bindings=${_C_BIND} sr-token=${_C_SR}); sites not indexed yet"
+    elif [ "${_C_CORES}" -gt 0 ]; then
+      _C_VERDICT=AMBIG; _C_WHY="running, ${_C_CORES} core(s) all EMPTY, zero site bindings"
+    else
+      _C_VERDICT=UNUSED; _C_WHY="running, zero cores, zero bindings -- serves nothing"
+    fi
+  else
+    ### Down (denied, parked, or dead) -- document counts are unreadable, so
+    ### bindings alone keep the sceptical verdict: removal of anything that
+    ### might matter needs --force.
+    if [ "${_C_BIND}" -gt 0 ]; then
+      _C_VERDICT=USED; _C_WHY="not running, but live site bindings present"
+    elif [ "${_C_CORES}" -gt 0 ]; then
+      _C_VERDICT=AMBIG; _C_WHY="not running, ${_C_CORES} core(s) on disk, zero site bindings"
+    else
+      _C_VERDICT=UNUSED; _C_WHY="present, zero real cores, zero bindings"
+    fi
+  fi
+  return 0
+}
+
+### Would the installer bring this version (back) on the next full pass?
+### Mirrors the _if_install_upgrade_solr gates: blanket deny wins outright;
+### solr4/solr7 need hosted shape or their SR token or an existing tree,
+### plus java11; solr9's middle test is INVERTED (it fires wherever solr9
+### is absent), held back only by the java17/21 test.
+_would_reinstall() {
+  local _sv="${1}" _hosted=NO
+  [ -e "${_BLANKET_MARKER}" ] && { echo NO; return; }
+  grep -q "^_DENY_JAVA=YES" "${_BAR_CNF}" 2>/dev/null && { echo NO; return; }
+  [ -e "/root/.host8.cnf" ] && _hosted=YES
+  case "$(cat /etc/hostname 2>/dev/null)" in
+    *.aegir.cc) _hosted=YES ;;
+  esac
+  case "${_sv}" in
+    solr9)
+      if [ "${_hosted}" = "YES" ] || [ "${_C_SR}" = "YES" ] \
+        || [ -e "/usr/bin/java17" ] || [ -e "/usr/bin/java21" ]; then
+        echo YES; return
+      fi
+    ;;
+    *)
+      if { [ "${_hosted}" = "YES" ] || [ "${_C_SR}" = "YES" ]; } \
+        && [ -e "/usr/bin/java11" ]; then
+        echo YES; return
+      fi
+    ;;
+  esac
+  echo NO
+}
+
+### Replace-or-append one key in barracuda.cnf, temp+size-guarded so a
+### failed write can never blank the box's cnf. Newline-terminate before
+### the append; an unterminated last line would swallow the previous key.
+_set_cnf_key() {
+  local _key="${1}" _val="${2}" _m
+  [ -e "${_BAR_CNF}" ] || { _alrt "no ${_BAR_CNF} on this box; only the marker form is written"; return 0; }
+  _m=$(stat -c %a "${_BAR_CNF}" 2>/dev/null)
+  cp -af "${_BAR_CNF}" "${_BAR_CNF}.solrtrim" || return 1
+  [ -n "$(tail -c1 "${_BAR_CNF}.solrtrim" 2>/dev/null)" ] && echo >> "${_BAR_CNF}.solrtrim"
+  if grep -q "^${_key}=" "${_BAR_CNF}.solrtrim"; then
+    sed -i "s/^${_key}=.*/${_key}=${_val}/" "${_BAR_CNF}.solrtrim"
+  else
+    echo "${_key}=${_val}" >> "${_BAR_CNF}.solrtrim"
+  fi
+  [ -s "${_BAR_CNF}.solrtrim" ] || return 1
+  chmod "${_m:-600}" "${_BAR_CNF}.solrtrim"
+  mv -f "${_BAR_CNF}.solrtrim" "${_BAR_CNF}"
+}
+
+### rm -rf with a resolved-path guard: a symlinked home (/var/solrN on a
+### mount) or distribution (/opt/solrN -> /opt/solr-x.y.z) is resolved and
+### both halves removed, but never a path outside the trees Solr owns.
+_remove_tree() {
+  local _path="${1}" _rsv
+  [ -e "${_path}" ] || [ -L "${_path}" ] || return 0
+  _rsv=$(readlink -f "${_path}" 2>/dev/null)
+  case "${_rsv}" in
+    /opt/solr*|/opt/jetty9*|/var/solr*|/var/log/jetty9*|/mnt/*/var/solr*|/mnt/*/opt/solr*)
+      : ;;
+    *)
+      _alrt "refusing to remove ${_path} -- resolves to '${_rsv}' outside the Solr trees"
+      return 1
+    ;;
+  esac
+  rm -rf "${_rsv}"
+  [ -L "${_path}" ] && rm -f "${_path}"
+  _info "  removed ${_path}$( [ "${_rsv}" != "${_path}" ] && echo " (-> ${_rsv})" )"
+  return 0
+}
+
+###-------------STATUS---------------------###
+
+_cmd_status() {
+  local _sv _re
+  _collect_bindings
+  _msg "Solr per-version state on $(cat /etc/hostname 2>/dev/null):"
+  for _sv in solr4 solr7 solr9; do
+    _classify "${_sv}"
+    _re=$(_would_reinstall "${_sv}")
+    _msg "  ${_sv}: ${_C_VERDICT} (${_C_WHY})"
+    _msg "    present=${_C_PRES} installed=${_C_INST} port${_V_PORT}=${_C_LSN} init=${_C_INIT} parked=${_C_PARKED} deny=${_C_DENY} cores=${_C_CORES} docs=${_C_DOCS} bindings=${_C_BIND} sr-token=${_C_SR} reinstalls-next-pass=${_re}"
+    if [ "${_C_VERDICT}" = "AMBIG" ]; then
+      _alrt "  ${_sv}: AMBIGUOUS -- per-box operator ruling owed before removal; never auto-dropped"
+    fi
+  done
+  if [ -e "${_BLANKET_MARKER}" ] || grep -q "^_DENY_JAVA=YES" "${_BAR_CNF}" 2>/dev/null; then
+    _msg "  blanket java deny: SET (no Solr version can install on this box)"
+  else
+    _msg "  blanket java deny: not set"
+  fi
+}
+
+###-------------REMOVE---------------------###
+
+_remove_one() {
+  local _sv="${1}" _force="${2}" _ts _du _avail _arch _rsvdata
+  _solr_map "${_sv}" || return 1
+  _classify "${_sv}"
+
+  if [ "${_C_VERDICT}" = "USED" ] && [ "${_force}" != "YES" ]; then
+    _alrt "${_sv} is USED (${_C_WHY}) -- refusing to remove it."
+    _alrt "removal of a used version breaks live search; re-run with --force only on an"
+    _alrt "explicit operator ruling."
+    return 1
+  fi
+  if [ "${_C_VERDICT}" = "AMBIG" ] && [ "${_force}" != "YES" ]; then
+    _alrt "${_sv} is AMBIGUOUS (${_C_WHY}) -- refusing without --force."
+    _alrt "registered cores with no bindings need a per-box operator ruling; this tool"
+    _alrt "never auto-drops them."
+    return 1
+  fi
+
+  _info "Removing ${_sv} (${_C_VERDICT}: ${_C_WHY}) ..."
+
+  ### The deny goes FIRST, both forms: from this moment autoupboa keeps the
+  ### service parked whatever else happens, and a later reinstall on a
+  ### hosted box parks again instead of serving.
+  mkdir -p /etc/boa
+  touch "/etc/boa/.deny.${_V_SVC}.cnf"
+  _set_cnf_key "${_V_DVAR}" YES \
+    || _die "could not write ${_V_DVAR}=YES to ${_BAR_CNF} -- fix that first"
+  _info "  deny set: ${_V_DVAR}=YES + /etc/boa/.deny.${_V_SVC}.cnf"
+
+  if [ -x "/etc/init.d/${_V_SVC}" ]; then
+    service "${_V_SVC}" stop &> /dev/null
+  fi
+  ### First char bracketed: this run's own cmdline carries the version token
+  ### ('solrtrim remove solr7'), and an unbracketed pkill -f would match and
+  ### kill this very process mid-removal.
+  pkill -9 -f "[${_V_SVC:0:1}]${_V_SVC:1}" &> /dev/null
+  update-rc.d -f "${_V_SVC}" remove &> /dev/null
+
+  ### Forced removal of a version with real cores archives the data tree
+  ### first and refuses when the archive cannot land: the ruling that forced
+  ### this can be wrong, the tarball is the undo.
+  if [ "${_C_CORES}" -gt 0 ]; then
+    _rsvdata=$(readlink -f "${_V_DATA}" 2>/dev/null)
+    _du=$(du -sk "${_rsvdata}" 2>/dev/null | awk '{ print $1 }')
+    _avail=$(df -Pk "${_ARCH_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }')
+    if [ -n "${_du}" ] && [ -n "${_avail}" ] && [ "${_avail}" -lt "$(( _du + 1048576 ))" ]; then
+      _die "not enough space under ${_ARCH_DIR} to archive ${_rsvdata} (${_du}K data," \
+           " ${_avail}K free) -- free space or move the data aside by hand first"
+    fi
+    _ts=$(date -u '+%Y%m%d-%H%M%S')
+    _arch="${_ARCH_DIR}/solrtrim-${_V_SVC}-data-${_ts}.tar.gz"
+    _info "  archiving ${_C_CORES} core(s) to ${_arch} ..."
+    if ! tar -czf "${_arch}" -C "$(dirname "${_rsvdata}")" "$(basename "${_rsvdata}")" 2>/dev/null \
+      || [ ! -s "${_arch}" ]; then
+      rm -f "${_arch}"
+      _die "archive of ${_rsvdata} failed -- nothing was removed"
+    fi
+    _info "  archived: $(du -sh "${_arch}" 2>/dev/null | awk '{ print $1 }')"
+  fi
+
+  _remove_tree "${_V_DIST}" || return 1
+  _remove_tree "${_V_DATA}" || return 1
+  [ -n "${_V_HOME}" ] && { _remove_tree "${_V_HOME}" || return 1; }
+  rm -f "/etc/init.d/${_V_SVC}" "/var/backups/${_V_SVC}.initd" "${_V_DFLT}"
+  case "${_sv}" in
+    solr4)
+      ### tika9/tika are convenience symlinks into the jetty tree; remove
+      ### them only while they still point there.
+      case "$(readlink -f /opt/tika9 2>/dev/null)" in
+        /opt/jetty9*) rm -f /opt/tika9 ;;
+      esac
+      case "$(readlink -f /opt/tika 2>/dev/null)" in
+        /opt/jetty9*) rm -f /opt/tika ;;
+      esac
+      _remove_tree /var/log/jetty9
+      rm -f /run/jetty9.pid /etc/jetty.conf
+    ;;
+  esac
+  if getent passwd "${_V_USER}" > /dev/null 2>&1; then
+    userdel "${_V_USER}" &> /dev/null
+    groupdel "${_V_USER}" &> /dev/null
+    _info "  removed system user ${_V_USER}"
+  fi
+  _info "${_sv}: removed"
+  return 0
+}
+
+_cmd_remove() {
+  local _force=NO _blanket=NO _targets="" _sv _failed="" _still="" _re
+  while [ $# -gt 0 ]; do
+    case "${1}" in
+      --force)   _force=YES ;;
+      --blanket) _blanket=YES ;;
+      all)       _targets="solr4 solr7 solr9" ;;
+      solr4|solr7|solr9)
+        case " ${_targets} " in
+          *" ${1} "*) : ;;
+          *) _targets="${_targets} ${1}" ;;
+        esac
+      ;;
+      *) _die "unknown argument '${1}' -- see 'solrtrim' usage" ;;
+    esac
+    shift
+  done
+  _targets="${_targets## }"
+  [ -z "${_targets}" ] \
+    && _die "nothing to remove -- name versions (solr4 solr7 solr9) or 'all'"
+
+  _collect_bindings
+  for _sv in ${_targets}; do
+    _remove_one "${_sv}" "${_force}" || _failed="${_failed} ${_sv}"
+  done
+  [ -n "${_failed}" ] \
+    && _die "not removed:${_failed} -- see the lines above (a refusal changes nothing;" \
+            " a mid-removal failure leaves that version denied and partially removed)"
+
+  ### The blanket pair is accepted only when the end state really is
+  ### Solr-free: with any version still installed it would freeze that
+  ### version out of upgrades while it keeps running.
+  if [ "${_blanket}" = "YES" ]; then
+    for _sv in solr4 solr7 solr9; do
+      _solr_map "${_sv}"
+      if [ -d "${_V_DIST}" ] || [ -e "/etc/init.d/${_V_SVC}" ] \
+        || [ -e "/var/backups/${_V_SVC}.initd" ]; then
+        _still="${_still} ${_sv}"
+      fi
+    done
+    if [ -n "${_still}" ]; then
+      _alrt "--blanket refused: still installed:${_still}"
+      _alrt "the blanket pair on a box with installed Solr freezes it out of upgrades;"
+      _alrt "remove every version first, or drop --blanket"
+    else
+      touch "${_BLANKET_MARKER}"
+      _set_cnf_key _DENY_JAVA YES \
+        || _alrt "blanket marker written, but _DENY_JAVA=YES could not be set in ${_BAR_CNF} -- add it by hand"
+      _info "blanket java deny pair set: no Solr version can install on this box"
+    fi
+  fi
+
+  _msg ""
+  _msg "End state:"
+  for _sv in ${_targets}; do
+    _classify "${_sv}"
+    _re=$(_would_reinstall "${_sv}")
+    _msg "  ${_sv}: installed=${_C_INST} deny=${_C_DENY} reinstalls-next-pass=${_re}"
+    if [ "${_re}" = "YES" ]; then
+      _alrt "  ${_sv}: a full barracuda pass on this hosted-shaped box will REINSTALL it;"
+      _alrt "  ${_sv}: the deny written here parks it again within ~5 minutes (it never"
+      _alrt "  ${_sv}: serves), but only the blanket java pair prevents the reinstall"
+    fi
+  done
+}
+
+###-------------DISPATCH-------------------###
+
+_cmd="${1}"
+shift 2>/dev/null || true
+
+case "${_cmd}" in
+  status)
+    _check_root
+    _cmd_status
+  ;;
+  remove)
+    _check_root
+    _take_lock
+    _cmd_remove "$@"
+  ;;
+  *)
+    echo ""
+    echo "Usage: solrtrim status"
+    echo "Usage: solrtrim remove <solr4|solr7|solr9|all> [...] [--force] [--blanket]"
+    echo ""
+    echo "Notes:"
+    echo "  - status classifies each version's real use (service state, dotted cores,"
+    echo "    document counts, per-site boa_site_control.ini bindings, SR tokens) and"
+    echo "    forecasts whether the next full barracuda pass would (re)install it."
+    echo "  - remove refuses USED and AMBIGUOUS versions without --force; ambiguous"
+    echo "    means registered-but-empty cores with zero bindings -- a per-box operator"
+    echo "    ruling, never auto-dropped. --force archives the data tree to"
+    echo "    ${_ARCH_DIR} first and refuses if the archive cannot land."
+    echo "  - remove writes the version's deny (variable + /etc/boa marker) FIRST, so"
+    echo "    the removed version can never serve again even if a later pass on a"
+    echo "    hosted-shaped box reinstalls it (it parks within ~5 minutes)."
+    echo "  - --blanket writes _DENY_JAVA=YES + /root/.deny.java.cnf, the installer's"
+    echo "    only install-time opt-out -- accepted only when NO version remains"
+    echo "    installed: the golden-master end state."
+    echo ""
+    exit 1
+  ;;
+esac
+
+exit 0
