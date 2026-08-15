@@ -290,15 +290,31 @@ if [ "${_NW}" -gt 0 ]; then
     _add_rec "_SQL_MAX_CONNECTIONS_FORCE=${_MC_REC}   # max used ${_MAXUSED} >= 80% of ${_MAXCONN}; NB this pin costs one managed restart"
   fi
 
-  # valkey: mirror the derive ceiling math (4x measured peak, floored at
-  # RAM/16 and 512M); name the pin only when meaningfully below the
-  # historical RAM/3 grant.
-  if [ "${_VK_MB}" -gt 0 ]; then
+  # valkey: since RM-14 the ceiling is self-managed by the hit-rate
+  # control loop in _tune_memory_limits (state:
+  # /var/log/boa/.valkey.ceiling.txt, evidence:
+  # /var/log/boa/.valkey.demand.txt). Setting _VALKEY_MAXMEM_FORCE
+  # DISABLES that loop outright, so while a demand window exists this
+  # advisory reports the loop's state and recommends NO pin; the legacy
+  # peak-x4 suggestion survives only for boxes with no demand window
+  # (old sqlprobe, opted out, or redis-legacy).
+  if [ -r "/var/log/boa/.valkey.demand.txt" ]; then
+    read -r _dV _dTS _dN _dH _dM _dE _dP < /var/log/boa/.valkey.demand.txt 2>/dev/null
+    _dN="${_dN//[^0-9]/}"; _dH="${_dH//[^0-9]/}"
+    _dM="${_dM//[^0-9]/}"; _dE="${_dE//[^0-9]/}"
+    _VK_HITPCT="n/a"
+    if [ "${_dV}" = "v1" ] && [ $(( ${_dH:-0} + ${_dM:-0} )) -gt 0 ]; then
+      _VK_HITPCT="$(( _dH * 100 / ( _dH + _dM ) ))%"
+    fi
+    _VK_LOOP_MB=$(cut -d" " -f2 /var/log/boa/.valkey.ceiling.txt 2>/dev/null)
+    _VK_LOOP_MB="${_VK_LOOP_MB//[^0-9]/}"
+    _add_obs "valkey ceiling is SELF-MANAGED (RM-14 loop): current ${_VK_LOOP_MB:-unseeded}M, window n=${_dN:-0} hit=${_VK_HITPCT} evicted=${_dE:-0} -- do NOT set _VALKEY_MAXMEM_FORCE, a pin disables the loop"
+  elif [ "${_VK_MB}" -gt 0 ]; then
     _VK_CEIL=$(( _VK_MB * 4 ))
     [ "${_VK_CEIL}" -lt $(( _RAM / 16 )) ] && _VK_CEIL=$(( _RAM / 16 ))
     [ "${_VK_CEIL}" -lt 512 ] && _VK_CEIL=512
     if [ "${_VK_CEIL}" -lt $(( _RAM / 3 * 9 / 10 )) ]; then
-      _add_rec "_VALKEY_MAXMEM_FORCE=${_VK_CEIL}   # measured peak ${_VK_MB}M x4 vs historical grant $(( _RAM / 3 ))M"
+      _add_rec "_VALKEY_MAXMEM_FORCE=${_VK_CEIL}   # measured peak ${_VK_MB}M x4 vs historical grant $(( _RAM / 3 ))M; NB this pin disables the RM-14 self-managed ceiling once the box gains a demand window"
     fi
   fi
 
