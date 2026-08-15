@@ -671,11 +671,16 @@ _xmass_solr_classify_source() {
     fi
     ### Only dotted names are real; solr4's core0-core9 are installer seeds.
     _cores=$(find "${_dta}" -maxdepth 1 -mindepth 1 -type d -name '*.*' 2>/dev/null | wc -l | tr -d ' ')
+    ### USED is decided by index-WRITE recency, one-year bar: queries leave
+    ### no filesystem trace and the request logs are empty in practice, so
+    ### write recency is the only measurable use signal. Document counts
+    ### stay as reported evidence, never the verdict.
     _fresh=$(find "${_dta}"/*.*/data/index -maxdepth 0 -mtime -30 2>/dev/null | wc -l | tr -d ' ')
+    _freshy=$(find "${_dta}"/*.*/data/index -maxdepth 0 -mtime -365 2>/dev/null | wc -l | tr -d ' ')
+    _newest=$(find "${_dta}"/*.*/data/index -type f -printf '%TY-%Tm-%Td\n' 2>/dev/null | sort | tail -1)
+    [ -z "${_newest}" ] && _newest=never
     _docs=0
     if [ "${_lsn}" = "YES" ]; then
-      ### Document counts are the decisive use signal: a populated core on a
-      ### running service is read-only SERVING even with zero index writes.
       _docs=$(curl -s --max-time 15 -A iCab \
         "http://127.0.0.1:${_prt}/solr/admin/cores?action=STATUS&wt=json" 2>/dev/null \
         | grep -o '"numDocs":[0-9]*' | awk -F: '{ _s += $2 } END { print _s + 0 }')
@@ -693,49 +698,66 @@ _xmass_solr_classify_source() {
       [ -z "${_verdict}" ] && { _verdict=UNUSED; _why="recorded pre-cutover"; }
     elif [ "${_blanket}" = "YES" ]; then
       ### Post-cutover shape with nothing recorded: services are down and
-      ### document counts unreadable, so keep anything with data or bindings.
+      ### document counts unreadable, but write recency and bindings still
+      ### read from disk -- apply the same one-year bar.
       _XMASS_SOLR_SRC_DEGRADED=YES
-      if [ "${_cores}" -gt 0 ] || [ "${_bind}" -gt 0 ] || [ "${_sr}" = "YES" ]; then
-        _verdict=USED; _why="degraded read: cores or bindings present"
+      if [ "${_bind}" -gt 0 ] || [ "${_sr}" = "YES" ] || [ "${_freshy}" -gt 0 ]; then
+        _verdict=USED; _why="degraded read: bindings or an index write inside a year (newest ${_newest})"
+      elif [ "${_cores}" -gt 0 ]; then
+        _verdict=STALE; _why="degraded read: populated cores, newest write ${_newest} -- outside the one-year bar"
       else
         _verdict=UNUSED; _why="degraded read: no cores, no bindings"
       fi
     elif [ "${_pres}" = "NO" ] && [ "${_init}" = "absent" ] && [ "${_parked}" = "NO" ]; then
       _verdict=ABSENT; _why="never installed"
-    elif [ "${_lsn}" = "YES" ] && { [ "${_docs}" -gt 0 ] || [ "${_bind}" -gt 0 ]; }; then
-      ### Serving evidence outranks every knob: a version with documents or
-      ### live bindings is never auto-dropped, whatever the deny state says.
+    elif [ "${_bind}" -gt 0 ] || { [ "${_lsn}" = "YES" ] && [ "${_sr}" = "YES" ]; }; then
+      ### Live bindings (or a running service with its SR opt-in) count as
+      ### USED regardless of write age -- a bound service whose sites simply
+      ### have not indexed yet. Never auto-dropped, whatever the knobs say.
       if [ "${_deny}" = "YES" ]; then
-        _verdict=AMBIG; _why="deny knob set but STILL SERVING (docs=${_docs} bindings=${_bind}) -- conflicting state"
+        _verdict=AMBIG; _why="deny knob set but live bindings present (bindings=${_bind}) -- conflicting state"
       else
-        _verdict=USED; _why="${_docs} documents in ${_cores} core(s), bindings=${_bind}"
+        _verdict=USED; _why="bound (bindings=${_bind} sr-token=${_sr}), docs=${_docs}, newest write ${_newest}"
+      fi
+    elif [ "${_freshy}" -gt 0 ]; then
+      ### The one-year index-write bar. Queries leave no trace, so write
+      ### recency IS the use signal; document counts alone prove nothing --
+      ### a populated estate can be a long-dead leftover.
+      if [ "${_deny}" = "YES" ]; then
+        _verdict=AMBIG; _why="deny knob set but indexed inside a year (newest ${_newest}) -- conflicting state"
+      else
+        _verdict=USED; _why="indexed inside the year (newest write ${_newest}$( [ "${_fresh}" -gt 0 ] && echo ", actively indexing" ), docs=${_docs})"
       fi
     elif [ "${_deny}" = "YES" ] || { [ "${_parked}" = "YES" ] && [ "${_lsn}" = "NO" ]; }; then
-      ### Denied or parked by the box's own knobs, with no serving evidence:
+      ### Denied or parked by the box's own knobs, with no use evidence:
       ### WAS used. Its data still travels (the sync ships every existing
       ### tree) and the deny mirrors.
       _verdict=UNUSED; _why="denied/parked on the source; data still travels"
-    elif [ "${_lsn}" = "YES" ]; then
-      if [ "${_sr}" = "YES" ]; then
-        _verdict=USED; _why="bound service (sr-token=${_sr}); sites not indexed yet"
-      elif [ "${_cores}" -gt 0 ]; then
-        _verdict=AMBIG; _why="running, ${_cores} core(s) all EMPTY, zero site bindings"
+    elif [ "${_cores}" -gt 0 ]; then
+      if [ "${_docs}" -gt 0 ] || [ "${_lsn}" = "NO" ]; then
+        ### Populated (or unreadable) cores whose newest write is outside
+        ### the year: a stale estate, a deny candidate no matter how real
+        ### the documents look. The date makes the verdict auditable.
+        _verdict=STALE; _why="populated cores, newest write ${_newest} -- outside the one-year bar"
       else
-        _verdict=UNUSED; _why="running, zero cores, zero bindings -- serves nothing"
+        _verdict=AMBIG; _why="running, ${_cores} core(s) all EMPTY, zero site bindings"
       fi
     else
-      if [ "${_cores}" -gt 0 ] || [ "${_bind}" -gt 0 ]; then
-        _verdict=AMBIG; _why="service down (not denied) with cores or bindings present"
+      if [ "${_lsn}" = "YES" ]; then
+        _verdict=UNUSED; _why="running, zero cores, zero bindings -- serves nothing"
       else
         _verdict=UNUSED; _why="present, empty, not running"
       fi
     fi
 
-    _info "  ${_sv}: ${_verdict} (${_why}) present=${_pres} port${_prt}=${_lsn} init=${_init} parked=${_parked} deny=${_deny} cores=${_cores} docs=${_docs} bind=${_bind} fresh30d=${_fresh}"
+    _info "  ${_sv}: ${_verdict} (${_why}) present=${_pres} port${_prt}=${_lsn} init=${_init} parked=${_parked} deny=${_deny} cores=${_cores} docs=${_docs} bind=${_bind} fresh30d=${_fresh} fresh1y=${_freshy} newest=${_newest}"
     case "${_verdict}" in
       USED)  _XMASS_SOLR_USED_SET="${_XMASS_SOLR_USED_SET} ${_sv}" ;;
       AMBIG) _XMASS_SOLR_AMBIG_SET="${_XMASS_SOLR_AMBIG_SET} ${_sv}"
              _alrt "  ${_sv}: AMBIGUOUS -- per-box operator ruling owed; gated as USED, never auto-denied" ;;
+      STALE) _XMASS_SOLR_DENY_SET="${_XMASS_SOLR_DENY_SET} ${_sv}"
+             _alrt "  ${_sv}: STALE -- populated cores, no index write since ${_newest}; treated as"
+             _alrt "  ${_sv}: unused (denied on the target; the data trees still travel with the sync)" ;;
       *)     _XMASS_SOLR_DENY_SET="${_XMASS_SOLR_DENY_SET} ${_sv}" ;;
     esac
   done
