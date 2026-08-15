@@ -10,15 +10,22 @@
 # It writes NO my.cnf, runs NO SET GLOBAL, restarts NOTHING. The memorytuner
 # advisory reads this corpus and names pins; a human applies them.
 #
-# Two side facts keep the shipped _sql_budget_derive stores fresh between
-# weekly upgrades (formats byte-identical to the readers in system.sh.inc;
-# the derive fail-closes on anything malformed, so a missing/stale sampler
+# Three side facts keep the shipped tune-pass stores fresh between weekly
+# upgrades (formats byte-identical to the readers in system.sh.inc; the
+# readers fail-close on anything malformed, so a missing/stale sampler
 # never degrades tuning below the historical behaviour):
 #   - /var/log/boa/.my.datadir_mb.txt   refreshed ~daily (same du exclusions)
 #   - /var/log/boa/.valkey.used_mb.txt  seeded from used_memory_peak once the
 #     cache has >= 1h uptime — the up-* password rotation restarts valkey
 #     minutes before the tune pass, so tune-time measurement alone stays
 #     dormant on standard runs; this store is what un-dormants it.
+#   - /var/log/boa/.valkey.demand.txt   the RM-14 hit-rate demand window
+#     ("v1 <start_ts> <samples> <hits> <misses> <evicted> <peak_mb>",
+#     7-day decaying accumulation of >=1h-uptime same-run deltas) — the
+#     PRIMARY input to the valkey ceiling control loop in
+#     _tune_memory_limits; the legacy peak-x4 guard is only its fallback.
+#     NB: _USE_SQLPROBE=NO therefore also starves that loop — after 8
+#     days the tune pass reverts to the legacy measured guard.
 #
 # Samples are SKIPPED (silent exit) while backups/cache-droppers run and for
 # 20 min after (mysql_backup.sh drops caches unconditionally), during
@@ -45,6 +52,8 @@ _BKP_STAMP="${_pthDat}/.backup_seen"
 _RETAIN_DAYS=30
 _DATADIR_STORE="/var/log/boa/.my.datadir_mb.txt"
 _VALKEY_STORE="/var/log/boa/.valkey.used_mb.txt"
+_VALKEY_DEMAND="/var/log/boa/.valkey.demand.txt"
+_VK_PREV="${_pthDat}/.prev_valkey"
 
 _FORCE=NO
 _STDOUT=NO
@@ -287,6 +296,96 @@ if [ -e "/etc/valkey/valkey.conf" ]; then
       echo "${_VK_MB}" 2>/dev/null > "${_VALKEY_STORE}" || true
       _VK_SEEDED=1
     fi
+    #
+    # Demand window for the hit-rate ceiling in _tune_memory_limits
+    # (RM-14): occupancy of a long-TTL cache is "space granted so far",
+    # not need, so the tune pass sizes from hit/miss/eviction behaviour
+    # instead. Deltas follow the SQL-sample discipline exactly — only
+    # between two >=1h-uptime samples of the SAME server run (uptime
+    # monotone), 1-15 min apart, counters non-decreasing — so restarts
+    # and cold refills never pollute the window. The window file is one
+    # line, "v1 <start_ts> <samples> <hits> <misses> <evicted> <peak_mb>",
+    # atomically replaced, self-rotating at 7 days; the tune-side reader
+    # fail-closes on anything malformed, so a missing/garbled window
+    # simply keeps the legacy ceiling behaviour.
+    _vk_hits_ps=0; _vk_miss_ps=0; _vk_evic_ps=0
+    if [ -n "${_VK_UPTM}" ] && [ "${_VK_UPTM}" -ge 3600 ] 2>/dev/null; then
+      _VK_HITS=$(echo "${_VK_INFO}" | grep "^keyspace_hits:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_HITS=$(_num "${_VK_HITS}")
+      _VK_MISS=$(echo "${_VK_INFO}" | grep "^keyspace_misses:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_MISS=$(_num "${_VK_MISS}")
+      _VK_EVIC=$(echo "${_VK_INFO}" | grep "^evicted_keys:" | cut -d: -f2 | tr -d "[:space:]\r")
+      _VK_EVIC=$(_num "${_VK_EVIC}")
+      if [ -r "${_VK_PREV}" ]; then
+        read -r _vpTS _vpUP _vpHITS _vpMISS _vpEVIC < "${_VK_PREV}"
+        _vpTS=$(_num "${_vpTS}"); _vpUP=$(_num "${_vpUP}")
+        _vpHITS=$(_num "${_vpHITS}"); _vpMISS=$(_num "${_vpMISS}")
+        _vpEVIC=$(_num "${_vpEVIC}")
+        _vkIVL=$(( _TS - _vpTS ))
+        if [ "${_vpTS}" -gt 0 ] && [ "${_VK_UPTM}" -gt "${_vpUP}" ] \
+          && [ "${_vkIVL}" -ge 60 ] && [ "${_vkIVL}" -le 900 ] \
+          && [ "${_VK_HITS}" -ge "${_vpHITS}" ] \
+          && [ "${_VK_MISS}" -ge "${_vpMISS}" ] \
+          && [ "${_VK_EVIC}" -ge "${_vpEVIC}" ]; then
+          _vkDH=$(( _VK_HITS - _vpHITS ))
+          _vkDM=$(( _VK_MISS - _vpMISS ))
+          _vkDE=$(( _VK_EVIC - _vpEVIC ))
+          # Two-decimal per-second rates like every sibling _ps key in
+          # the record — integer division would floor sub-1/s eviction
+          # rates to 0, erasing exactly the signal the widen branch
+          # keys on.
+          _vk_hits_ps=$(awk -v d="${_vkDH}" -v i="${_vkIVL}" \
+            'BEGIN { if (i > 0) printf "%.2f", d / i; else printf "0" }')
+          _vk_miss_ps=$(awk -v d="${_vkDM}" -v i="${_vkIVL}" \
+            'BEGIN { if (i > 0) printf "%.2f", d / i; else printf "0" }')
+          _vk_evic_ps=$(awk -v d="${_vkDE}" -v i="${_vkIVL}" \
+            'BEGIN { if (i > 0) printf "%.2f", d / i; else printf "0" }')
+          _wOK=0
+          if [ -r "${_VALKEY_DEMAND}" ]; then
+            read -r _wV _wTS _wN _wH _wM _wE _wP < "${_VALKEY_DEMAND}"
+            if [ "${_wV}" = "v1" ]; then
+              _wTS=$(_num "${_wTS}"); _wN=$(_num "${_wN}")
+              _wH=$(_num "${_wH}"); _wM=$(_num "${_wM}")
+              _wE=$(_num "${_wE}"); _wP=$(_num "${_wP}")
+              if [ "${_wTS}" -gt 0 ] && [ $(( _TS - _wTS )) -lt 604800 ]; then
+                _wOK=1
+              elif [ "${_wTS}" -gt 0 ]; then
+                # 7-day rotation is a DECAY, never a hard reset: halve
+                # the counters and re-anchor the epoch, so the tune-side
+                # maturity gate (n>=96, span>=24h) keeps passing on a box
+                # that samples continuously — a zeroed window would send
+                # the tune pass to its legacy peak-x4 rung for ~a day
+                # after every rotation, re-widening a converged ceiling.
+                # The peak restarts from the CURRENT sample so a
+                # stale-high pre-shrink peak cannot steer the idle rung.
+                _wTS="${_TS}"
+                _wN=$(( _wN / 2 )); _wH=$(( _wH / 2 ))
+                _wM=$(( _wM / 2 )); _wE=$(( _wE / 2 ))
+                _wP=0
+                _wOK=1
+              fi
+            fi
+          fi
+          if [ "${_wOK}" -eq 0 ]; then
+            _wTS="${_TS}"; _wN=0; _wH=0; _wM=0; _wE=0; _wP=0
+          fi
+          _wN=$(( _wN + 1 ))
+          _wH=$(( _wH + _vkDH ))
+          _wM=$(( _wM + _vkDM ))
+          _wE=$(( _wE + _vkDE ))
+          if [ "${_VK_MB}" -gt "${_wP}" ]; then
+            _wP="${_VK_MB}"
+          fi
+          printf 'v1 %s %s %s %s %s %s\n' \
+            "${_wTS}" "${_wN}" "${_wH}" "${_wM}" "${_wE}" "${_wP}" \
+            > "${_VALKEY_DEMAND}.tmp" \
+            && mv -f "${_VALKEY_DEMAND}.tmp" "${_VALKEY_DEMAND}"
+        fi
+      fi
+      printf '%s %s %s %s %s\n' \
+        "${_TS}" "${_VK_UPTM}" "${_VK_HITS}" "${_VK_MISS}" "${_VK_EVIC}" \
+        > "${_VK_PREV}.tmp" && mv -f "${_VK_PREV}.tmp" "${_VK_PREV}"
+    fi
   fi
 fi
 [ "${_VK_MB}" -gt 0 ] 2>/dev/null \
@@ -295,7 +394,7 @@ fi
 _POOL_MB=$(( _POOL_B / 1048576 ))
 _TMP_MB=$(( _TMPSZ_B / 1048576 ))
 
-_rec="{\"scope\":\"sql\",\"v\":1,\"ts\":${_TS},\"host\":\"${_HOST}\",\"up\":${_UP},\"interval\":${_IVL},\"valid\":${_VALID},\"lread_ps\":${_lread_ps},\"miss_ps\":${_miss_ps},\"miss_ppm\":${_miss_ppm},\"qps\":${_qps},\"conn_ps\":${_conn_ps},\"tmp_ps\":${_tmp_ps},\"tmp_disk_ps\":${_tmpd_ps},\"key_reads_ps\":${_keyr_ps},\"data_read_bps\":${_dread_bps},\"data_write_bps\":${_dwrit_bps},\"pool_pages_total\":${_PGTOT},\"pool_pages_free\":${_PGFREE},\"threads_conn\":${_THRC},\"threads_run\":${_THRR},\"max_used_conn\":${_MAXUSED},\"max_conn\":${_MAXCONN},\"pool_mb\":${_POOL_MB},\"tmp_mb\":${_TMP_MB},\"mem_avail_mb\":${_MEMAVAIL_MB},\"psi_mem_some10_x100\":${_PSI_X100},\"mysqld_vmrss_mb\":${_VMRSS_MB},\"datadir_mb\":${_DATADIR_MB},\"valkey_used_mb\":${_VK_MB},\"valkey_seeded\":${_VK_SEEDED}}"
+_rec="{\"scope\":\"sql\",\"v\":1,\"ts\":${_TS},\"host\":\"${_HOST}\",\"up\":${_UP},\"interval\":${_IVL},\"valid\":${_VALID},\"lread_ps\":${_lread_ps},\"miss_ps\":${_miss_ps},\"miss_ppm\":${_miss_ppm},\"qps\":${_qps},\"conn_ps\":${_conn_ps},\"tmp_ps\":${_tmp_ps},\"tmp_disk_ps\":${_tmpd_ps},\"key_reads_ps\":${_keyr_ps},\"data_read_bps\":${_dread_bps},\"data_write_bps\":${_dwrit_bps},\"pool_pages_total\":${_PGTOT},\"pool_pages_free\":${_PGFREE},\"threads_conn\":${_THRC},\"threads_run\":${_THRR},\"max_used_conn\":${_MAXUSED},\"max_conn\":${_MAXCONN},\"pool_mb\":${_POOL_MB},\"tmp_mb\":${_TMP_MB},\"mem_avail_mb\":${_MEMAVAIL_MB},\"psi_mem_some10_x100\":${_PSI_X100},\"mysqld_vmrss_mb\":${_VMRSS_MB},\"datadir_mb\":${_DATADIR_MB},\"valkey_used_mb\":${_VK_MB},\"valkey_seeded\":${_VK_SEEDED},\"valkey_hits_ps\":${_vk_hits_ps:-0},\"valkey_miss_ps\":${_vk_miss_ps:-0},\"valkey_evicted_ps\":${_vk_evic_ps:-0}}"
 echo "${_rec}" >> "${_OUT}"
 [ "${_STDOUT}" = "YES" ] && echo "${_rec}"
 
