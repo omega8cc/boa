@@ -1385,6 +1385,17 @@ _if_display_help
 _check_root_direct
 _check_root_keys_pwd
 _check_root
+# A replication standby runs NO octopus activity: platform installs and
+# upgrades write into tenant and hostmaster databases that are replicas
+# here -- those changes arrive from the source by replication, and local
+# ones become errant transactions that can stop the SQL thread. The
+# marker lifts at cutover; on a promoted box octopus runs as normal.
+if [ -e "/root/.standby.cnf" ]; then
+  echo "NOTE: This box is a passive replication standby (/root/.standby.cnf)."
+  echo "NOTE: Octopus platform work writes into replicated databases and is"
+  echo "NOTE: refused while the standby role holds. It resumes at promotion."
+  _clean_pid_exit "octopus refused on a replication standby"
+fi
 _check_no_systemd
 _os_detection_minimal
 _check_dns_curl

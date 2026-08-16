@@ -21,6 +21,77 @@ _check_root
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
+# An xmass hold keeps Solr DOWN while its index arrives by rsync, and the
+# hold must be ENFORCED here, not just skipped: a barracuda pass re-arms
+# the init scripts (+x) and starts Solr outright, and boot rc links
+# survive plain stops. This per-minute watchdog is the loop that puts the
+# hold back (the same role second.sh played for the old cron-wide
+# quiesce). Disarm shape mirrors xmass/xtrim: no exec bit, no rc links,
+# no process -- armed (-x) scripts only, so an already-disarmed set stays
+# quiet. Kills go by service USER, never by bare substring: 'pkill -f
+# solr9' matches the rsync receiver carrying /var/solr9 and would kill
+# the very index transfer the hold protects. The marker is re-tested
+# before each service so a concurrent step-14 removal stops us mid-loop.
+if [ -e "/var/log/boa/.xmass_solr_hold.pid" ]; then
+  for _svc in solr9 solr7 jetty9; do
+    [ -e "/var/log/boa/.xmass_solr_hold.pid" ] || break
+    if [ -e "/etc/init.d/${_svc}" ]; then
+      if [ -x "/etc/init.d/${_svc}" ]; then
+        # Record the disarm (a LIST, so the reversal below re-arms only
+        # what this watchdog or xmass actually took down).
+        grep -qx "${_svc}" /var/log/boa/.xmass_solr_disarmed.list 2>/dev/null \
+          || echo "${_svc}" >> /var/log/boa/.xmass_solr_disarmed.list
+        if id "${_svc}" &> /dev/null; then
+          pkill -9 -u "${_svc}" &> /dev/null
+        else
+          pkill -9 -f "jav[a][0-9]* .*${_svc}" &> /dev/null
+        fi
+        update-rc.d "${_svc}" disable &> /dev/null
+        chmod -x "/etc/init.d/${_svc}" 2>/dev/null
+      elif id "${_svc}" &> /dev/null && pgrep -u "${_svc}" &> /dev/null; then
+        # Already disarmed but a stray JVM survived (a raced start):
+        # the hold means DOWN, so reap it.
+        pkill -9 -u "${_svc}" &> /dev/null
+      fi
+    fi
+  done
+  if [ -x "/etc/init.d/solr4" ]; then
+    grep -qx "solr4" /var/log/boa/.xmass_solr_disarmed.list 2>/dev/null \
+      || echo "solr4" >> /var/log/boa/.xmass_solr_disarmed.list
+    update-rc.d solr4 disable &> /dev/null
+    chmod -x /etc/init.d/solr4 2>/dev/null
+  fi
+  exit 0
+fi
+# Belt for a standby without the hold marker (hand-built replica): never
+# (re)start Solr on a box whose index may be arriving by rsync -- and
+# never re-arm anything here either, whatever records linger.
+[ -e "/root/.standby.cnf" ] && exit 0
+# Self-reversing against vintage mix: if the hold's disarm was recorded
+# and the marker is gone, an OLD-bytes xmass step 14 (which never
+# re-arms, its start loop is -x gated) would leave Solr silently dead
+# after cutover -- so restore exec bits and rc links for EXACTLY the
+# recorded set; _solr_health_check_fix below then starts what should
+# run. xtrim-finalized proxies and operator hand-disarms never enter the
+# list and stay down. Below the standby belt on purpose: a standby box
+# must not re-register Solr boot links.
+if [ -e "/var/log/boa/.xmass_solr_disarmed.list" ]; then
+  while read -r _svc; do
+    case "${_svc}" in solr9|solr7|solr4|jetty9) : ;; *) continue ;; esac
+    if [ -e "/etc/init.d/${_svc}" ]; then
+      [ ! -x "/etc/init.d/${_svc}" ] && chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
+      update-rc.d "${_svc}" defaults &> /dev/null
+      update-rc.d "${_svc}" enable &> /dev/null
+    fi
+  done < /var/log/boa/.xmass_solr_disarmed.list
+  rm -f /var/log/boa/.xmass_solr_disarmed.list
+fi
+# Legacy record from the first shape of this mechanism: treat it as an
+# unscoped hint once, then retire it.
+if [ -e "/var/log/boa/.xmass_solr_disarmed.pid" ]; then
+  rm -f /var/log/boa/.xmass_solr_disarmed.pid
+fi
+
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 

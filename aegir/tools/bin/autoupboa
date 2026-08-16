@@ -1217,6 +1217,16 @@ _if_new_kernel_reboot() {
       _isReboot=REQ
     fi
     if [ "${_isReboot}" = "REQ" ]; then
+      ### An xmass critical window (init seed or cutover promotion) must
+      ### never be cut by an unattended reboot: the datadir swap and the
+      ### replica setup are mid-flight exactly while this signal is fresh.
+      ### Steady-state standbys still reboot as normal -- the signal only
+      ### exists inside those windows and /run clears it on boot.
+      if [ -e "/run/boa_xmass_init.pid" ] \
+        && [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+        echo "NOTE: kernel reboot pending, deferred: xmass window in flight"
+        return 0
+      fi
       ### A staged kernel is activated only inside the silent night
       ### maintenance window (04:00-04:59 server time): an apt security
       ### run staging a kernel mid-day must never reboot a box mid-day.
