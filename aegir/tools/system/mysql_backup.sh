@@ -27,23 +27,78 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
+# A passive replication standby takes no local DB dumps or TRUNCATEs even
+# before its replication is configured -- xmass writes the role marker
+# ahead of the datadir swap, and this gate is what protects the copied-in
+# datadir during that window.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 # Never TRUNCATE/DROP/OPTIMIZE on a configured replica: under ROW binlog a
 # replicated change to a locally truncated row stops the SQL thread outright
 # -- the same guard mysql_cleanup.sh carries, because this script performs
 # the same class of local writes nightly. The replica config itself is the
 # authoritative role state; it clears at promotion (RESET REPLICA/SLAVE ALL
 # empties the probe). 8.4 removed SHOW SLAVE STATUS and 5.7 lacks SHOW
-# REPLICA STATUS, so try both; with mysqld down both are empty and the run
-# proceeds to fail harmlessly on its own connection attempts. NB: the
-# cluster variant (mysql_cluster_backup.sh) is deliberately NOT guarded --
-# it targets the cluster's designated write node, so its writes replicate
-# correctly by design.
-_REPLICA_STATE=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
-[ -z "${_REPLICA_STATE}" ] && _REPLICA_STATE=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
-if [ -n "${_REPLICA_STATE}" ]; then
-  echo "Ooops, this box is a configured replication replica, local TRUNCATE/OPTIMIZE would break the SQL thread"
-  exit 0
-fi
+# REPLICA STATUS, so the fallback rides the probe's EXIT CODE: empty output
+# with rc 0 is the only clean "not a replica", and an errored probe (broken
+# or under-privileged credentials) proves nothing and REFUSES -- the old
+# form read both as "not a replica". With mysqld down the role cannot be
+# judged yet: the head call defers, and the gate asks again right after
+# _check_running has waited the daemon up -- the old form probed once,
+# read the empty answer as clean, then waited for the very daemon it
+# failed to reach and proceeded to DROP/TRUNCATE on it. NB: the cluster
+# variant (mysql_cluster_backup.sh) carries the standby ROLE marker gate
+# instead of this probe -- it targets the cluster's designated write node,
+# so a local replica probe there would falsely suppress a backup whose
+# writes replicate correctly by design.
+_replica_role_gate() {
+  local _rplState _rplRc
+  if ! mysqladmin ping &> /dev/null; then
+    # Unreachable (booting or down): defer -- the caller after
+    # _check_running re-asks once the daemon is up.
+    return 0
+  fi
+  _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+  _rplRc=$?
+  if [ "${_rplRc}" -ne "0" ]; then
+    _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    _rplRc=$?
+  fi
+  if [ "${_rplRc}" -ne "0" ]; then
+    # One retry before refusing: a transient server hiccup must not cost
+    # a healthy box its whole nightly backup.
+    sleep 3
+    _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+    _rplRc=$?
+    if [ "${_rplRc}" -ne "0" ]; then
+      _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+      _rplRc=$?
+    fi
+  fi
+  if [ "${_rplRc}" -eq "0" ] && [ -n "${_rplState}" ]; then
+    # The run marker may already exist (the re-ask sits after the pid
+    # write); five watchdog consumers read it as a live backup, so it
+    # must not outlive this exit -- but ONLY when it is OURS: at the head
+    # call this process has not written it yet, and a concurrent run's
+    # live marker must never be deleted from here.
+    if [ "$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)" = "$$" ]; then
+      rm -f /run/boa_sql_backup.pid
+    fi
+    echo "Ooops, this box is a configured replication replica, local TRUNCATE/OPTIMIZE would break the SQL thread"
+    exit 0
+  fi
+  if [ "${_rplRc}" -ne "0" ]; then
+    # mysqladmin ping exits 0 even on Access denied, so credential
+    # failures land here, not in the ping branch. Fail closed.
+    if [ "$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)" = "$$" ]; then
+      rm -f /run/boa_sql_backup.pid
+    fi
+    echo "Ooops, the replica role probe FAILED (credentials?) -- refusing local TRUNCATE/DROP; verify /root/.my.cnf"
+    exit 0
+  fi
+  return 0
+}
+_replica_role_gate
 
 _IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_cluster_backup.sh)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
@@ -469,6 +524,9 @@ _check_mysql_version() {
 }
 
 _check_running
+# Re-ask now that _check_running has waited mysqld up: the head call
+# cannot judge the role while the daemon is unreachable.
+_replica_role_gate
 _check_mysql_version
 
 _MYQUICK_USE=NO
