@@ -363,7 +363,7 @@ _global_cleanup() {
   ###
   ### Delete duplicity ghost pid file if older than 2 days
   ###
-  find /run/*_backup.pid -mtime +1 -exec rm -f {} \; &> /dev/null
+  find /run/*_backup.pid /run/*backboa.pid -mtime +1 -exec rm -f {} \; &> /dev/null
 }
 
 # Prune the SHARED master /var/aegir backup trees once per run. Hoisted out of the

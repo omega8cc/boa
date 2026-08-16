@@ -21,6 +21,10 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 
+# A replication standby keeps the multi-day binlog chain its replication
+# config guarantees; an hourly purge here would destroy the failback chain.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 if [ -z "${_DB_BINARY_LOG}" ] || [ "${_DB_BINARY_LOG}" != "YES" ]; then
   exit 0
 fi
