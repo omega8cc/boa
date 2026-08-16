@@ -2480,7 +2480,9 @@ _xoct_rsync() {
 _xoct_solr_check() {   # 1 src  2 target-dest-dir  3 label
   local _sz
   [ -e "$1" ] || return 0
-  _sz="$(du -sk "$1" 2>/dev/null | awk '{print $1}')"
+  # -L: a symlink operand (e.g. a backups dir relocated into the store)
+  # measures 0 with plain du, which waves the fit gate through unmeasured.
+  _sz="$(du -skL "$1" 2>/dev/null | awk '{print $1}')"
   _xoct_target_fits "${_tgt}" "$2" "${_sz}" && return 0
   echo "DENY: $3: ${_sz:-?}K does not fit at target $2 — free space and retry"
   _XOCT_NOT_CLEAN=YES

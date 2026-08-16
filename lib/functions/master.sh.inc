@@ -996,32 +996,47 @@ _aegir_master_upgrade() {
 #
 # Update php-cli in the cron entry.
 _php_cli_cron_update() {
+  local _mCron
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_cli_cron_update"
   fi
-  rm -f /var/spool/cron/crontabs/aegir
-  if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
+  # Key the target name on the ROLE, not on runner.sh's artifact: on a
+  # standby the dispatch must stay parked across an Aegir master upgrade
+  # (a live crontab minted beside the parked copy re-armed it), while on
+  # every other box -- including a CI box mid-upgrade, whose "fail toward
+  # enabled" contract needs the dispatch LIVE for its verify tasks -- the
+  # live name wins and a leftover parked copy is cleared; runner.sh's own
+  # grace logic re-parks an idle CI box afterwards.
+  if [ -e "/root/.standby.cnf" ]; then
+    _mCron="/var/spool/cron/crontabs/.aegir"
+    rm -f /var/spool/cron/crontabs/aegir
+  else
+    _mCron="/var/spool/cron/crontabs/aegir"
+    rm -f /var/spool/cron/crontabs/.aegir
+  fi
+  rm -f "${_mCron}"
+  if [ ! -e "${_mCron}" ]; then
     #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force;"
     _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch"
     echo -e \
     "\nSHELL=/bin/sh\nPATH=/opt/php84/bin:/usr/bin\n\n*/1 * * * * \
     ${_DRUSH_HOSTING_DISPATCH_CMD}" \
     | fmt -su -w 2500 \
-    | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
+    | tee -a "${_mCron}" >/dev/null 2>&1
   fi
-  if [ -e "/var/spool/cron/crontabs/aegir" ]; then
+  if [ -e "${_mCron}" ]; then
     if [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php85\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
+        "${_mCron}" &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php84\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
+        "${_mCron}" &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php83\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
+        "${_mCron}" &> /dev/null
     fi
-    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
-    chmod 600 /var/spool/cron/crontabs/aegir
+    chown aegir:crontab "${_mCron}" &> /dev/null
+    chmod 600 "${_mCron}"
   fi
 }
 
