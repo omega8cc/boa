@@ -241,7 +241,11 @@ EOF
 # Function to create cron entries
 _create_cron_entries() {
   echo "# Cron job for sequential backups" > "${_CRON_FILE}"
-  echo "0 */$((_BACKUP_INTERVAL / 60)) * * * root ${_WRAPPER_SCRIPT}" >> "${_CRON_FILE}"
+  # bash + full path, never a bare path: cron must not depend on an executable
+  # bit or on PATH. The wrapper is written with chmod +x a few lines above, but
+  # a mode can be lost by any later hand copy, and the failure is silent —
+  # "Permission denied" into a log nobody reads while the schedule looks live.
+  echo "0 */$((_BACKUP_INTERVAL / 60)) * * * root bash ${_WRAPPER_SCRIPT}" >> "${_CRON_FILE}"
   chmod 644 "${_CRON_FILE}"
   echo "Cron entry created at ${_CRON_FILE}"
 

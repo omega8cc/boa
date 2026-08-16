@@ -130,9 +130,9 @@ barracuda php-idle disable
 
 Both the automated and classic Daedalus to Excalibur major OS upgrade procedures involve a brief period where PHP may be unavailable per each active PHP version.
 
-This is expected and self-correcting behaviour caused by a system library soname bump between the two OS versions -- for example `libavif.so.15` in Daedalus becoming `libavif.so.16` in Excalibur. Since PHP is built from sources and links against these libraries at compile time, the running PHP binary becomes temporarily invalid after the dist-upgrade replaces the shared library.
+This is expected and self-correcting behaviour caused by a system library soname bump between the two OS versions -- for example `libavif.so.15` in Daedalus becoming `libavif.so.16` in Excalibur. Since BOA's PHP is compiled against these libraries, whether it arrives as a prebuilt package or a source build, the running PHP binary becomes temporarily invalid after the dist-upgrade replaces the shared library.
 
-BOA automatically detects and fixes this by rebuilding all active PHP versions from sources. During a classic major OS upgrade the rebuild runs immediately after the dist-upgrade completes, before the first post-upgrade reboot. During the automated major OS upgrade it is deferred until the post-upgrade step that runs after that reboot. No operator action is required in either case.
+BOA automatically detects and fixes this by reinstalling all active PHP versions -- from the prebuilt packages where they are in use, from sources otherwise. During a classic major OS upgrade the rebuild runs immediately after the dist-upgrade completes, before the first post-upgrade reboot. During the automated major OS upgrade it is deferred until the post-upgrade step that runs after that reboot. No operator action is required in either case.
 
-The expected downtime is approximately 3-5 minutes per active PHP version during this rebuild phase.
+The expected downtime is per active PHP version, only while its own rebuild runs: seconds where the prebuilt packages are used, approximately 3-5 minutes where the source build runs.
 
