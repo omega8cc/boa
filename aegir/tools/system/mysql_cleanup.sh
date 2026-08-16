@@ -26,17 +26,36 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+# A passive replication standby takes no local cache TRUNCATEs even before
+# its replication is configured -- xmass writes the role marker ahead of
+# the datadir swap, and this gate protects the copied-in datadir during
+# that window.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 # Never TRUNCATE on a configured replica: under ROW binlog a replicated
 # change to a locally truncated row stops the SQL thread outright. The
 # replica config itself is the authoritative role state -- it covers xmass
 # replication windows, standing HA mirrors and hand-built replicas alike,
 # and clears at promotion (RESET REPLICA/SLAVE ALL empties the probe).
-# 8.4 removed SHOW SLAVE STATUS and 5.7 lacks SHOW REPLICA STATUS, so try
-# both; with mysqld down both are empty and the run proceeds harmlessly.
-_REPLICA_STATE=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
-[ -z "${_REPLICA_STATE}" ] && _REPLICA_STATE=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
-if [ -n "${_REPLICA_STATE}" ]; then
+# 8.4 removed SHOW SLAVE STATUS and 5.7 lacks SHOW REPLICA STATUS, so the
+# fallback rides the probe's EXIT CODE: empty output with rc 0 is the only
+# clean "not a replica", and an errored probe (broken or under-privileged
+# credentials) proves nothing and REFUSES -- the old form read both as
+# "not a replica". With mysqld genuinely down (ping fails; mysqladmin ping
+# exits 0 even on Access denied) proceeding is safe here: the database
+# enumeration below runs before any daemon wait and comes back empty.
+_rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+_rplRc=$?
+if [ "${_rplRc}" -ne "0" ]; then
+  _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+  _rplRc=$?
+fi
+if [ "${_rplRc}" -eq "0" ] && [ -n "${_rplState}" ]; then
   echo "Ooops, this box is a configured replication replica, a local cache TRUNCATE would break the SQL thread"
+  exit 0
+fi
+if [ "${_rplRc}" -ne "0" ] && mysqladmin ping &> /dev/null; then
+  echo "Ooops, the replica role probe FAILED (credentials?) -- refusing local cache TRUNCATE; verify /root/.my.cnf"
   exit 0
 fi
 
