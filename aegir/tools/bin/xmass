@@ -4941,7 +4941,11 @@ _xmass_pre_mig() {
     curl -s -A iCab \
       "http://undefined.${_hst}/auth_undefined_keys.txt" \
       -o /root/.ssh/auth_undefined_keys.txt \
-      || _die "Failed to fetch source key from http://undefined.${_hst}/"
+      || _die "Failed to fetch source key from http://undefined.${_hst}/ --" \
+              " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
+              " ${_hst} (source/publish mode), then re-run this verb here. A" \
+              " proxied source relays its undefined vhost onward and cannot" \
+              " serve the key until it publishes again."
     if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
       echo >> /root/.ssh/authorized_keys
       cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
