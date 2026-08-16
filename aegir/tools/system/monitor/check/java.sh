@@ -21,6 +21,31 @@ _check_root
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
+# An xmass hold keeps Solr DOWN while its index arrives by rsync, and the
+# hold must be ENFORCED here, not just skipped: a barracuda pass re-arms
+# the init scripts (+x) and starts Solr outright, and boot rc links
+# survive plain stops. This per-minute watchdog is the loop that puts the
+# hold back (the same role second.sh played for the old cron-wide
+# quiesce). Disarm shape mirrors xmass/xtrim: no exec bit, no rc links,
+# no process; quiet when already disarmed. Cutover step 14 or xmass
+# post-mig re-arms symmetrically and removes the marker.
+if [ -e "/var/log/boa/.xmass_solr_hold.pid" ]; then
+  for _svc in solr9 solr7 jetty9; do
+    if [ -e "/etc/init.d/${_svc}" ]; then
+      if [ -x "/etc/init.d/${_svc}" ] || pgrep -f "${_svc}" &> /dev/null; then
+        pkill -9 -f "${_svc}" &> /dev/null
+        update-rc.d "${_svc}" disable &> /dev/null
+        chmod -x "/etc/init.d/${_svc}" 2>/dev/null
+      fi
+    fi
+  done
+  [ -x "/etc/init.d/solr4" ] && chmod -x /etc/init.d/solr4 2>/dev/null
+  exit 0
+fi
+# Belt for a standby without the hold marker (hand-built replica): never
+# (re)start Solr on a box whose index may be arriving by rsync.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 

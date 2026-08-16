@@ -91,7 +91,6 @@ _REPL_USER="xmass_repl"
 _XTRA_STAGE_SRC="/var/backups/xmass_stage"
 _XTRA_STAGE_TGT="/var/backups/xmass_restore"
 _SOLR_DENY_FILE="/root/.deny.java.cnf"
-_XMASS_SOLR_HOLD_FILE="/var/log/boa/.xmass_solr_hold.pid"
 _XMASS_SOLR_SET_FILE="/data/conf/xmass_solr_used.cnf"
 _PERM_PROXY_FLAG="/data/conf/xmass_permanent_proxy.pid"
 _ieni="--ignore-errors"
@@ -2177,13 +2176,31 @@ _xmass_prevent_solr_target() {
   ssh root@"${_tgt}" bash <<'REMOTE'
 mkdir -p /var/log/boa 2>/dev/null
 touch /var/log/boa/.xmass_solr_hold.pid
+# Durable disarm, not just a stop: java.sh restarts any Solr whose init
+# script is executable, a barracuda pass starts Solr outright, and boot
+# registration survives a plain stop. So drop the exec bit and the rc
+# links (xtrim's proven shape). The hold marker is the record; java.sh
+# re-asserts this state every minute while the marker exists, and cutover
+# step 14 or post-mig re-arms symmetrically. The path is deliberately
+# literal here and in every peer: this heredoc cannot expand a constant.
 for _svc in solr9 solr7 solr4 jetty9; do
   if [ -x "/etc/init.d/${_svc}" ]; then
     service ${_svc} stop &>/dev/null || true
   fi
 done
+for _svc in solr9 solr7 jetty9; do
+  if [ -e "/etc/init.d/${_svc}" ]; then
+    pkill -9 -f "${_svc}" &>/dev/null || true
+    update-rc.d ${_svc} disable &>/dev/null || true
+    chmod -x "/etc/init.d/${_svc}" 2>/dev/null || true
+  fi
+done
+if [ -e "/etc/init.d/solr4" ]; then
+  update-rc.d solr4 disable &>/dev/null || true
+  chmod -x /etc/init.d/solr4 2>/dev/null || true
+fi
 REMOTE
-  _info "Solr held on target ${_tgt}: OK"
+  _info "Solr held on target ${_tgt}: OK (init scripts disarmed until cutover)"
 }
 
 _xmass_stop_solr_source() {
@@ -2394,6 +2411,17 @@ REMOTE
   _info "Starting Solr on target ${_tgt} ..."
   ssh root@"${_tgt}" bash <<'REMOTE'
 rm -f /var/log/boa/.xmass_solr_hold.pid
+# Re-arm what the init-time hold disarmed -- exec bits and rc links come
+# back BEFORE the starts (the start loops require -x), symmetrically with
+# _xmass_prevent_solr_target. Deny-parked services have no init script
+# here and stay parked.
+for _svc in solr9 solr7 solr4 jetty9; do
+  if [ -e "/etc/init.d/${_svc}" ]; then
+    [ ! -x "/etc/init.d/${_svc}" ] && chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
+    update-rc.d ${_svc} defaults &>/dev/null || true
+    update-rc.d ${_svc} enable &>/dev/null || true
+  fi
+done
 for _svc in solr9 solr7; do
   if [ -x "/etc/init.d/${_svc}" ] \
     && [ -e "/etc/default/${_svc}.in.sh" ]; then
@@ -5712,8 +5740,19 @@ _xmass_post_mig() {
     _die "Cannot run post-mig on a parent/host system"
   fi
   _info "Running post-mig on ${_hName} ..."
-  # Remove Solr hold flag if still present
-  rm -f "${_XMASS_SOLR_HOLD_FILE}"
+  # Remove the Solr hold if still present, and re-arm what it disarmed:
+  # the hold drops exec bits and rc links, and the start loop below
+  # requires -x. Deny-parked services have no init script here and stay
+  # parked.
+  rm -f /var/log/boa/.xmass_solr_hold.pid
+  local _svc
+  for _svc in solr9 solr7 solr4 jetty9; do
+    if [ -e "/etc/init.d/${_svc}" ]; then
+      [ ! -x "/etc/init.d/${_svc}" ] && chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
+      update-rc.d "${_svc}" defaults &> /dev/null || true
+      update-rc.d "${_svc}" enable &> /dev/null || true
+    fi
+  done
   # (Re)start Solr services cleanly
   for _svc in solr9 solr7; do
     if [ -x "/etc/init.d/${_svc}" ] && [ -e "/etc/default/${_svc}.in.sh" ]; then

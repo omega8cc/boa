@@ -321,16 +321,23 @@ What `init` does:
    detected MySQL include dir — see [GTID Configuration](#gtid-configuration)
    for the path — then restarts MySQL via `move_sql.sh`).
 4. Creates the replication user `xmass_repl`@`target-ip` on source.
-5. Prevents Solr from auto-starting on target (holds it until cutover sync
-   is complete).
-5a. **Stops cron on the target** (init script plus `pkill -x cron` — on
-   Devuan the init script alone leaves the daemon up) for the whole
-   replication window, and alerts if it is still running. A writable replica
-   running its own hourly housekeeping TRUNCATEs cache tables locally, which
-   under ROW binlog stops the SQL thread or writes errant transactions into
-   what becomes production. **Do not "fix" a target whose cron looks down
-   during the sync window** — cutover step 15 is what starts it again, and
-   `post-mig` confirms it.
+5. Prevents Solr from starting on the target: stops it AND disarms its
+   init scripts (exec bit and rc links dropped), so neither boot, a
+   barracuda pass, nor the java.sh watchdog can bring it back mid-sync.
+   `/var/log/boa/.xmass_solr_hold.pid` records the hold, and java.sh
+   re-asserts the disarm every minute while it exists. Cutover step 14
+   or `post-mig` re-arm symmetrically.
+5a. **Arms the standby write gates on the target.** `/root/.standby.cnf`
+   is written FIRST, before the datadir swap, together with an in-flight
+   signal (`/run/boa_xmass_init.pid`). Cron stays RUNNING for the whole
+   window — a standby is a working BOA box, with duplicity, IDS and every
+   watchdog live — and passivity comes from per-job gates on the marker
+   in every local writer: the task queue and the Aegir dispatch it parks,
+   the night work, cache TRUNCATEs, Solr core management, binlog purge,
+   mysqlcheck repairs and cluster dumps. The in-flight signal tells
+   second.sh that an empty role probe is expected until replication
+   starts; it clears once the replica runs, clears with `/run` on reboot,
+   and ages out under a dead init.
 5b. **Purges unfinished `delete` tasks** from every eligible account's
    hostmaster queue before the databases travel: the whole panel DB
    replicates, cutover runs the task queue with force on the target, and a
@@ -649,12 +656,15 @@ Spot-check independently with `/run/<oN>.<NN>.fpm.socket` and the site's
 PHP 8.4 looks perfectly healthy while mis-pinned, whereas a 5.6 or 7.x
 site fatals.
 
-> **Do not skip `post-mig`, and confirm cron afterwards.** The target-side
-> quiesce stops cron, and `post-mig` is what starts it again. A target left
-> without it keeps cron down, which means `clear.sh` never runs, which
-> means the box **silently stops receiving fleet updates entirely** —
-> no BOA self-update, no tool refetch, no nightly work. Nothing warns
-> about it; the box simply goes quiet. Verify with `pgrep -x cron`.
+> **Do not skip `post-mig`.** It re-arms and restarts Solr, clears any
+> leftover hold or standby marker, restores the five runners, and
+> reconciles the migration-proxy trust. Cron runs on the target for the
+> whole window by design — the per-job standby gates carry the passivity —
+> so a quiet box is NOT the expected state at any point. After `post-mig`,
+> verify the marker is gone (`test -e /root/.standby.cnf` must fail) and
+> the task queue drains. A target quiesced by pre-gate BOA bytes may still
+> have cron stopped; cutover step 15 starts it as vintage tolerance —
+> verify with `pgrep -x cron`.
 
 ---
 
@@ -717,13 +727,13 @@ are left untouched.
 
 | Stage | Solr on source | Solr on target |
 |---|---|---|
-| After `init` | Running normally | Stopped; held by `/var/log/boa/.xmass_solr_hold.pid` |
+| After `init` | Running normally | Stopped and DISARMED (exec bit + rc links dropped; `/var/log/boa/.xmass_solr_hold.pid` records the hold, java.sh re-asserts it every minute — surviving reboots and barracuda passes) |
 | During `sync` | Running normally | Still held (best-effort Solr rsync only) |
 | Cutover step 0 | Running | Re-held and stopped (safety) |
 | Cutover step 2 | Stopped; `/root/.deny.java.cnf` created + `_DENY_JAVA=YES` set | Held |
 | Cutover step 3 | Stopped (clean index state) | Held (final Solr rsync with clean source) |
-| Cutover step 14 | — | Tlogs cleared; Solr started; HTTP health check |
-| `post-mig` | — | Solr restarted cleanly |
+| Cutover step 14 | — | Re-armed (exec bits + rc links restored); tlogs cleared; Solr started; HTTP health check |
+| `post-mig` | — | Hold cleared + re-armed if leftover; Solr restarted cleanly |
 
 Clearing transaction logs (`tlog/` directories) before starting Solr on the
 target prevents double-indexing of any writes that were buffered at the moment
