@@ -18,12 +18,12 @@ if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
   rm -f /run/boa_php_idle_quiesce.pid
 fi
 
-# Standby self-quiesce: an xmass replication target keeps cron STOPPED --
-# the target's whole quiesce model rests on that, because parked runners
-# do not survive a live cron. But cron is boot-registered unconditionally
-# (a rebooted proxy must never come up dark), so a target reboot re-arms
-# it and the replica starts taking local writes. While the standby marker
-# and a POSITIVELY confirmed replica agree, put cron straight back down.
+# Standby role watchdog: a passive replication target stays a WORKING BOA
+# box -- cron armed, duplicity, IDS and every watchdog live -- and its
+# passivity comes from per-job gates on /root/.standby.cnf in every local
+# writer, never from stopping cron. This block only keeps the MARKER
+# honest, and it must never exit: everything below it (the monitor
+# fan-out, hackcheck and friends) runs on a standby box like on any other.
 # Everything ambiguous is log-only: a probe that ERRORS (mysqladmin ping
 # returns 0 even on Access denied, so broken /root/.my.cnf credentials
 # land here, not in the ping branch) proves nothing about the role, and
@@ -32,7 +32,13 @@ fi
 # other way -- no replica config -- so the marker is stale (an abandoned
 # init, or a hand promotion after source loss, which can never run the
 # cutover-side removal) and is self-removed here: that is what revives
-# runner.sh's marker-alone queue gate on a hand-promoted box.
+# runner.sh's marker-alone gates on a hand-promoted box. EXCEPT while an
+# xmass init is in flight: init writes the marker BEFORE replication
+# exists (the copied-in datadir needs the write gates from its first
+# minute), so a clean-and-empty probe is EXPECTED then and the marker must
+# survive it. The in-flight signal is touched by xmass at every init phase
+# boundary, clears on reboot with /run, and carries a generous age ceiling
+# so self-removal resumes if an init dies without cleanup.
 if [ -e "/root/.standby.cnf" ]; then
   if mysqladmin ping &> /dev/null; then
     _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
@@ -42,21 +48,21 @@ if [ -e "/root/.standby.cnf" ]; then
       _rplRc=$?
     fi
     if [ "${_rplRc}" -eq "0" ] && [ -n "${_rplState}" ]; then
-      # Confirmed replica. A proxy-shaped box is exempt from the cron
-      # stop (an ha-switch failback target still relaying production
-      # traffic): its DB writers all exit on /root/.proxy.cnf already,
-      # and a live relay needs its certificate mirror and watchdogs.
-      if [ ! -e "/root/.proxy.cnf" ]; then
-        echo "Standby marker + replica config: re-stopping cron on $(date)" \
-          >> /var/log/boa/standby.quiesce.log
-        /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
-        pkill -x cron &> /dev/null
-        exit 0
-      fi
+      # Confirmed replica: marker and role agree; the per-job gates carry
+      # the passivity, so there is nothing to enforce here.
+      :
     elif [ "${_rplRc}" -eq "0" ]; then
-      rm -f /root/.standby.cnf
-      echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config on $(date)" \
-        >> /var/log/boa/standby.quiesce.log
+      if [ -e "/run/boa_xmass_init.pid" ] \
+        && [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+        # Init in flight: hold the marker silently -- the in-flight file
+        # is the record, and a log line per minute would flood the log
+        # for the whole seed leg.
+        :
+      else
+        rm -f /root/.standby.cnf
+        echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config on $(date)" \
+          >> /var/log/boa/standby.quiesce.log
+      fi
     else
       echo "Standby marker present but the role probe FAILED (credentials?) -- no action taken, VERIFY THIS BOX on $(date)" \
         >> /var/log/boa/standby.quiesce.log
