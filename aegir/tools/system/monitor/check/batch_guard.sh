@@ -204,6 +204,10 @@ _check_root
 # Run only on a fully installed system (same guard the sibling monitors use).
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
+# A replication standby takes no traffic and its batch rows arrive by
+# replication -- never DELETE them locally.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 # Opt-out: fully off when the operator says so (unset means ON).
 [ "${_USE_BATCH_GUARD}" = "NO" ] && exit 0
 

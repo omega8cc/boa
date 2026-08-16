@@ -19,6 +19,12 @@ _pthLog="/var/log/boa"
 
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 
+# A replication standby: aliases and account trees arrive by replication and
+# rsync, and the ghost-alias moves and core:init below are local writes the
+# source owns. The pause marker above is auto-erased on hosted boxes within
+# minutes, so it cannot carry this role.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
 else

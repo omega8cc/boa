@@ -35,9 +35,10 @@ _check_root
 # empties the probe). 8.4 removed SHOW SLAVE STATUS and 5.7 lacks SHOW
 # REPLICA STATUS, so try both; with mysqld down both are empty and the run
 # proceeds to fail harmlessly on its own connection attempts. NB: the
-# cluster variant (mysql_cluster_backup.sh) is deliberately NOT guarded --
-# it targets the cluster's designated write node, so its writes replicate
-# correctly by design.
+# cluster variant (mysql_cluster_backup.sh) carries the standby ROLE marker
+# gate instead of this probe -- it targets the cluster's designated write
+# node, so a local replica probe there would falsely suppress a backup
+# whose writes replicate correctly by design.
 _REPLICA_STATE=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
 [ -z "${_REPLICA_STATE}" ] && _REPLICA_STATE=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
 if [ -n "${_REPLICA_STATE}" ]; then
