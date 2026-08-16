@@ -3371,11 +3371,34 @@ _xmass_sync_account() {
     _xmass_rsync -aEAXqu ${_ieni} -e ssh \
       "${_udir}/clients/" "root@${_tgt}:${_dst}/clients/"
   fi
-  if [ -d "${_udir}/backups" ]; then
+  # On a separate-device box night/10-account.sh relocates backups and
+  # backup-exports INTO the store (static/files/.backups, .backup-exports)
+  # and leaves symlinks behind. The store leg above already carries that
+  # content, and following the link here re-sent every backup byte onto
+  # the target root as a real dir -- a full duplicate of the store copy.
+  # Reproduce the LINK instead: it resolves against the store the
+  # target-side pass has re-created, which satisfies renameaegirhost's
+  # Aegir-root validation exactly as a dir does. A link pointing anywhere
+  # OUTSIDE the store keeps the old follow-and-copy behaviour.
+  local _bkLnk
+  _bkLnk="$(readlink "${_udir}/backups" 2>/dev/null)"
+  if [ -L "${_udir}/backups" ] \
+    && [[ "${_bkLnk}" = "${_udir}/static/files/"* ]]; then
+    [ "${_MODE}" = "LIVE" ] \
+      && ssh root@"${_tgt}" "if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_bkLnk}' '${_dst}/backups'" 2>/dev/null
+  elif [ -d "${_udir}/backups" ]; then
     if _xmass_solr_check "${_udir}/backups" "${_dst}/backups" "backups (${_oct})"; then
       _xmass_rsync -aEAXqu ${_ieni} -e ssh \
         "${_udir}/backups/" "root@${_tgt}:${_dst}/backups/"
     fi
+  fi
+  # backup-exports shares the relocated shape and never had a leg of its
+  # own, so the target used to lack even the symlink.
+  _bkLnk="$(readlink "${_udir}/backup-exports" 2>/dev/null)"
+  if [ -L "${_udir}/backup-exports" ] \
+    && [[ "${_bkLnk}" = "${_udir}/static/files/"* ]] \
+    && [ "${_MODE}" = "LIVE" ]; then
+    ssh root@"${_tgt}" "if [ -d '${_dst}/backup-exports' ] && [ ! -L '${_dst}/backup-exports' ]; then rm -rf '${_dst}/backup-exports'; fi; ln -sfn '${_bkLnk}' '${_dst}/backup-exports'" 2>/dev/null
   fi
   [ "${_MODE}" = "LIVE" ] \
     && ssh root@"${_tgt}" "mkdir -p ${_dst}/backups ${_dst}/clients" 2>/dev/null
