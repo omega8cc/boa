@@ -1523,6 +1523,34 @@ _xmass_park_runners_and_cron() {
   _info "cron stopped and runners parked: OK"
 }
 
+# Exact inverse of the park: used by cutover step 18.5 and by the
+# pre-promotion abort path -- a box that remains production must never
+# sit with cron down waiting for an operator to find the restore hint.
+_xmass_unpark_runners_and_cron() {
+  local _p
+  /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
+  for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
+    if [ ! -e "/var/xdrago/${_p}" ] && [ -e "/var/xdrago/.${_p}.off" ]; then
+      mv -f "/var/xdrago/.${_p}.off" "/var/xdrago/${_p}"
+      _info "  Restored ${_p}"
+    fi
+  done
+  _XMASS_RUNNERS_PARKED=NO
+  if ! pgrep -x cron &> /dev/null; then
+    _alrt "cron did not start on this box; the daily certificate mirror and"
+    _alrt "every watchdog are DOWN -- start it manually: /etc/init.d/cron start"
+  fi
+}
+
+# The init in-flight signal on the TARGET: written beside the early
+# standby marker, it tells second.sh that a clean-and-empty role probe is
+# expected (replication does not exist yet), so the marker must not be
+# self-removed as stale. Touched at every init phase boundary; /run
+# clears it on reboot; second.sh ages it out under a dead init.
+_xmass_init_inflight_touch() {
+  ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid" &> /dev/null
+}
+
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
     _die "This script must be run as root"
@@ -3568,12 +3596,24 @@ _xmass_restore_hint() {
     _alrt '    xmass restore-solr   # only if Solr was serving from here -- clears'
     _alrt '                         # BOTH deny forms and re-arms the init script;'
     _alrt '                         # clearing the deny by hand is NOT enough'
-  else
-    _alrt "cron and the BOA runners are PARKED on this source. To restore them:"
   fi
-  _alrt '    service cron start'
-  _alrt '    for s in runner owl usage graceful manage_ltd_users; do \'
-  _alrt '      mv -f /var/xdrago/.$s.sh.off /var/xdrago/$s.sh 2>/dev/null; done'
+  if [ "${_XMASS_TARGET_PROMOTED}" = "YES" ] \
+    || [ "${_XMASS_PHASE}" = "rename-failed" ]; then
+    # Promoted or parked-for-resume: the quiesce is load-bearing here (a
+    # resume re-parks, and runners on this box could act on names the
+    # target now owns), so only advise.
+    _alrt "cron and the BOA runners are PARKED on this source. To restore them:"
+    _alrt '    service cron start'
+    _alrt '    for s in runner owl usage graceful manage_ltd_users; do \'
+    _alrt '      mv -f /var/xdrago/.$s.sh.off /var/xdrago/$s.sh 2>/dev/null; done'
+  elif [ "${_XMASS_RUNNERS_PARKED}" = "YES" ]; then
+    # Pre-promotion abort: this box REMAINS production and must not sit
+    # with cron down (no duplicity, no IDS, no certificate mirror) until
+    # an operator finds a hint -- restore now. The web block above, if
+    # any, stays manual: un-503ing production is an operator call.
+    _alrt "cron and the BOA runners were PARKED on this source; restoring them now:"
+    _xmass_unpark_runners_and_cron
+  fi
   # Read the freeze from the file, not from a flag: this paragraph must match
   # what is actually in the include at the moment the operator reads it.
   if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
@@ -4793,38 +4833,33 @@ _xmass_cmd_init() {
   # Clear unfinished delete tasks BEFORE the panel databases travel.
   _xmass_clear_pending_deletes
 
-  # From here until cutover the target is a WRITABLE replica with its own
-  # crontab live: mysql_cleanup.sh TRUNCATEs cache tables hourly, locally, on
-  # the replica. Under ROW binlog a later replicated change to a row the local
-  # TRUNCATE removed stops the SQL thread outright; when it does not, those are
-  # errant transactions written into what is about to become production. The
-  # old procedure stopped cron on the target for exactly this window. xmass
-  # never did -- while its own cutover step 15 STARTS cron on the target, as
-  # though something had stopped it. pkill is required too: on Devuan the init
-  # script alone leaves the daemon up.
-  # A proxy-shaped target (an ha-switch failback leg: the demoted former
-  # source, finalized as a PX0 proxy, still relaying production traffic) is
-  # exempt: every DB-writing cron job already exits on /root/.proxy.cnf, so
-  # stopping cron there protects nothing extra -- while killing the daily
-  # certificate mirror and the watchdogs a live relay depends on.
-  if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.proxy.cnf" 2> /dev/null; then
-    _info "Target is proxy-shaped (/root/.proxy.cnf): cron left armed -- its DB writers are proxy-gated"
+  # From here until cutover the target is a WRITABLE replica whose cron
+  # stays ARMED: a standby is a working BOA box -- duplicity, IDS and the
+  # watchdogs all live -- and its passivity comes from per-job gates on
+  # /root/.standby.cnf in every local writer (runner.sh and the Aegir
+  # dispatch it parks, owl.sh, mysql_cleanup.sh, manage_solr_config.sh and
+  # the rest). So the marker goes on FIRST, before the datadir swap: the
+  # copied-in production datadir needs those gates from its first minute,
+  # well before replication exists. Because the box is no replica yet, a
+  # clean-and-empty role probe is EXPECTED all through init -- the
+  # in-flight signal written beside the marker tells second.sh's
+  # stale-marker self-removal to hold; it is touched again at every phase
+  # boundary below, clears with /run on a reboot, and ages out under a
+  # dead init, after which the stale marker self-removes as usual. An init
+  # refusal below therefore leaves at worst a marker+signal pair that
+  # self-heals -- nothing an operator must remember to restart. A
+  # proxy-shaped target (ha-switch failback leg) takes the marker like any
+  # other: its writers are proxy-gated already, and the standby gates are
+  # a superset that lifts at cutover.
+  ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; : > /run/boa_xmass_init.pid" &> /dev/null
+  if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
+    _info "Standby marker set on the target (per-job write gates armed)"
   else
-    ssh -o ConnectTimeout=10 root@"${_tgt}" \
-      "/etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null; pkill -x cron &> /dev/null; true" &> /dev/null
-    if ssh -o ConnectTimeout=10 root@"${_tgt}" "pgrep -x cron > /dev/null" 2> /dev/null; then
-      _alrt "cron is STILL running on the target -- the replica can take local writes"
-    else
-      _info "Target cron stopped for the replication window"
-    fi
+    _die "could NOT write /root/.standby.cnf on the target -- without it the" \
+         " box would take local writes into the copied-in datadir (cache" \
+         " TRUNCATEs, task queue); fix target access and re-run init."
   fi
-  # The stop above does not survive a target reboot; the durable standby
-  # marker that makes the quiesce reboot-proof is written AFTER replication
-  # is configured and running (end of init) -- writing it here would leave
-  # it stranded on a box that never became a replica when a later init
-  # gate refuses (every gate below can still _die, and an operator who
-  # then follows the advice to migrate via xoct would inherit a marker
-  # nothing removes).
   local _src_sid _tgt_sid
   _src_sid=$(_ip_to_server_id "${_XMASS_SRC_IP}")
   _tgt_sid=$(_ip_to_server_id "${_tgt}")
@@ -4907,25 +4942,27 @@ _xmass_cmd_init() {
   _xmass_create_repl_user
   _xmass_prevent_solr_target
   _xmass_decide_transfer_method
+  _xmass_init_inflight_touch
   _xmass_take_backup
+  _xmass_init_inflight_touch
   _xmass_restore_backup
+  _xmass_init_inflight_touch
   _xmass_setup_slave
 
-  # Durable standby marker, written only now that the target IS a running
-  # replica -- every init refusal above leaves no marker behind. It makes
-  # the quiesce reboot-proof: second.sh re-stops a re-armed cron while the
-  # marker and a configured replica agree (and self-removes a marker whose
-  # box is definitively no replica -- the hand-promotion path), runner.sh
-  # holds the task queue on the marker alone, and mysql_cleanup.sh skips on
-  # live replica state regardless. Cutover step 15 removes it before it
-  # starts cron; post-mig clears a leftover.
+  # The target IS a running replica now, so the role probe confirms from
+  # here on and the init in-flight signal can go. The marker itself (set
+  # before the datadir swap) stays for the whole standby life: runner.sh
+  # parks the queue and the Aegir dispatch on it, the per-job gates hold
+  # every local writer, and second.sh self-removes it only when the box is
+  # definitively no replica. Cutover step 15 removes it; post-mig clears a
+  # leftover.
   ssh -o ConnectTimeout=10 root@"${_tgt}" \
-    "echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf"
+    "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; rm -f /run/boa_xmass_init.pid; true" &> /dev/null
   if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
-    _info "Standby marker set on the target (reboot-proof quiesce armed)"
+    _info "Standby marker verified on the running replica (in-flight signal cleared)"
   else
-    _alrt "could NOT set /root/.standby.cnf on the target -- a reboot of the"
-    _alrt "target re-arms its cron and the replica WILL take local writes;"
+    _alrt "could NOT verify /root/.standby.cnf on the target -- without it the"
+    _alrt "replica takes local writes (cache TRUNCATEs, task queue);"
     _alrt "set the marker there manually before leaving the window unattended"
   fi
 
@@ -4979,19 +5016,14 @@ _xmass_cmd_sync() {
   _XMASS_RSYNC_RC=0
 
   if [ "${_MODE}" = "LIVE" ]; then
-    # Re-assert the reboot-proof quiesce on every live sync: a target reboot
-    # between syncs re-arms cron (it is boot-registered unconditionally), and
-    # a target still running pre-marker BOA bytes has no second.sh watchdog
-    # to put it back down. The sync cadence is the healing loop covering
-    # both. A proxy-shaped target keeps cron (its DB writers are proxy-gated
-    # and a live relay needs its certificate mirror and watchdogs), exactly
-    # as init decides. DRY runs promise "no changes made" and never touch
+    # Restore a missing standby marker on every live sync: a target still
+    # running pre-gate BOA bytes has no second.sh guarding it, and a
+    # hand-removed marker must not leave the replica taking local writes
+    # between syncs. Cron stays ARMED by design -- the per-job gates carry
+    # the passivity. DRY runs promise "no changes made" and never touch
     # the target.
     ssh -o ConnectTimeout=10 root@"${_tgt}" \
-      "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; [ -e /root/.proxy.cnf ] || { /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null; pkill -x cron &> /dev/null; }; true" &> /dev/null
-    if ssh -o ConnectTimeout=10 root@"${_tgt}" "test ! -e /root/.proxy.cnf && pgrep -x cron > /dev/null" 2> /dev/null; then
-      _alrt "cron is RUNNING on the target and would not stop -- the replica can take local writes"
-    fi
+      "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; true" &> /dev/null
     _info "xmass sync: syncing files to ${_tgt} ..."
   else
     _info "xmass sync: DRY run — planning file relocation to ${_tgt} (no changes made) ..."
@@ -5216,10 +5248,11 @@ _xmass_cutover_finish() {
   # Step 15: Start cron and restore BOA runners on target
   _info "Starting cron and restoring BOA runners on target ${_tgt} ..."
   ssh root@"${_tgt}" bash <<'REMOTE'
-# The standby marker must go BEFORE cron starts: with it still present,
-# second.sh would put cron straight back down and runner.sh would hold
-# the queue -- strangling the box this step just promoted.
-rm -f /root/.standby.cnf
+# The standby marker must go FIRST: with it still present, the per-job
+# gates keep holding the queue and every local writer on the box this
+# step just promoted. The cron start is vintage tolerance -- a target
+# quiesced by pre-gate BOA bytes still has its cron stopped.
+rm -f /root/.standby.cnf /run/boa_xmass_init.pid
 service cron start &>/dev/null
 for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   if [ ! -e "/var/xdrago/${_s}" ] \
@@ -5306,18 +5339,7 @@ REMOTE
   # The runners self-skip proxied accounts, so restoring them is safe for
   # every proxy mode.
   _info "Restoring cron and BOA runners on the source ..."
-  /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
-  local _scr
-  for _scr in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
-    if [ ! -e "/var/xdrago/${_scr}" ] && [ -e "/var/xdrago/.${_scr}.off" ]; then
-      mv -f "/var/xdrago/.${_scr}.off" "/var/xdrago/${_scr}"
-      _info "  Restored ${_scr}"
-    fi
-  done
-  if ! pgrep -x cron &> /dev/null; then
-    _alrt "cron did not start on the source; the daily certificate mirror is DOWN --"
-    _alrt "start it manually: /etc/init.d/cron start"
-  fi
+  _xmass_unpark_runners_and_cron
 
   # Cutover done: re-arm the watchdog on both hosts.
   _xmass_maint_off
@@ -5740,7 +5762,7 @@ _xmass_post_mig() {
   # replica config also linger, lets second.sh stop cron outright.
   # Cutover step 15 clears it; catch anything that slipped through.
   if [ -e "/root/.standby.cnf" ]; then
-    rm -f /root/.standby.cnf
+    rm -f /root/.standby.cnf /run/boa_xmass_init.pid
     _alrt "  Removed a LEFTOVER /root/.standby.cnf -- cutover step 15 should have"
     _alrt "  cleared it; verify cron and the task queue are actually running here"
   fi
