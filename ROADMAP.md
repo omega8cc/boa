@@ -8,10 +8,6 @@ All features ship to both **LTS** and **PRO** — the branches are kept **1:1**.
 
 Please also note that the LTS branch is **kept up to date alongside PRO**: frequent security updates and serious new-feature work are ongoing — and the free branch receives them.
 
-A **feature-freeze may be announced in the future**, once the project enters a quieter, security-mainly update cycle — but no date is set, and it should not be assumed.
-
-For continued access to new features, ongoing improvements, and a future-proof stack, **BOA PRO is the recommended upgrade path**.
-
 ## IN PROGRESS
 
 - **Grav CMS Support**: Introduce support for Grav CMS (command line only)

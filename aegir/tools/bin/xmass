@@ -92,6 +92,7 @@ _XTRA_STAGE_SRC="/var/backups/xmass_stage"
 _XTRA_STAGE_TGT="/var/backups/xmass_restore"
 _SOLR_DENY_FILE="/root/.deny.java.cnf"
 _XMASS_SOLR_HOLD_FILE="/var/log/boa/.xmass_solr_hold.pid"
+_XMASS_SOLR_SET_FILE="/data/conf/xmass_solr_used.cnf"
 _PERM_PROXY_FLAG="/data/conf/xmass_permanent_proxy.pid"
 _ieni="--ignore-errors"
 
@@ -526,6 +527,674 @@ _xmass_php_coverage_gate() {
            " Every affected site would silently serve on a different PHP after cutover." \
            " Fix: 'xmass prep-target ${_t} --fix-php', or add '${_miss}' to _PHP_MULTI_INSTALL" \
            " in /root/.barracuda.cnf on the target and run 'barracuda up-<tree> system noscreen' there."
+    ;;
+  esac
+}
+
+###-------------SOLR COVERAGE------------###
+###
+### A migration target gets ONLY the Solr versions its source actually USES
+### -- never all three by default, which is what a hosted-named box's first
+### full barracuda pass installs. The mirror rule, version by version:
+###   - serving on the source (running service with documents in real cores,
+###     or empty cores with live site bindings) -> a real install on the
+###     target BEFORE init/sync. The file sync lands every existing source
+###     Solr tree on the target, and a landed data tree makes BOA's own
+###     installer treat that version as already installed FOREVER -- data
+###     with no service, search silently broken until after promotion;
+###   - not serving -> that version's per-version deny written on the target
+###     BEFORE its first full barracuda pass. The per-version knobs park a
+###     service AFTER install (5-minutely autoupboa), never before -- the
+###     accepted fallback when an install cannot be avoided;
+###   - source uses NO Solr at all -> the blanket java deny pair, the only
+###     install-time opt-out the installer has.
+### A version that LOOKS unused but is running (registered cores, all empty,
+### zero site bindings) is REPORTED for a per-box operator ruling and gated
+### as USED -- never auto-denied. Only dotted core names are real cores: the
+### solr4 installer seeds core0-core9 empty.
+
+### Field getter for the 'key=value key=value' probe lines below. $1 is
+### split on purpose.
+_xmass_solr_field() {
+  local _kv
+  for _kv in ${1}; do
+    case "${_kv}" in
+      "${2}="*) echo "${_kv#*=}"; return 0 ;;
+    esac
+  done
+  echo ""
+}
+
+### The target-state line for one version, captured by
+### _xmass_solr_target_state.
+_xmass_solr_ts_line() {
+  case "${1}" in
+    solr4) echo "${_XMASS_TS_SOLR4}" ;;
+    solr7) echo "${_XMASS_TS_SOLR7}" ;;
+    solr9) echo "${_XMASS_TS_SOLR9}" ;;
+  esac
+}
+
+### Classify the SOURCE's per-version Solr use from measured state: service,
+### dotted cores, document counts via the cores STATUS endpoint, per-site
+### boa_site_control.ini bindings and SR tokens. Sets
+### _XMASS_SOLR_USED_SET, _XMASS_SOLR_AMBIG_SET (gated as used, never
+### auto-denied) and _XMASS_SOLR_DENY_SET. A post-cutover source lies about
+### all of this (its own cutover wrote the blanket deny and stopped every
+### service), so that shape prefers the set recorded here while the source
+### was still healthy, then degrades to data-plus-binding evidence with a
+### warning.
+_xmass_solr_classify_source() {
+  local _sv _svc _dvar _prt _dta _pres _lsn _init _parked _deny _cores
+  local _docs _fresh _bind _sr _verdict _why _bindraw _alias _apath _xtras
+  local _blanket=NO _recorded=NO _rec_used="" _rec_ambig=""
+  _XMASS_SOLR_USED_SET=""
+  _XMASS_SOLR_AMBIG_SET=""
+  _XMASS_SOLR_DENY_SET=""
+  _XMASS_SOLR_SRC_DEGRADED=NO
+
+  [ -e "${_SOLR_DENY_FILE}" ] && _blanket=YES
+  grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _blanket=YES
+
+  if [ "${_blanket}" = "YES" ] && [ -r "${_XMASS_SOLR_SET_FILE}" ]; then
+    ### The record's existence is keyed on the stamp the writer always
+    ### emits, never on the payload: an EMPTY used set from a genuinely
+    ### Solr-free source is a correct, complete record.
+    _XMASS_SOLR_RECORDED_AT=""
+    # shellcheck disable=SC1090
+    source "${_XMASS_SOLR_SET_FILE}"
+    _rec_used="${_XMASS_SOLR_USED_SET}"
+    _rec_ambig="${_XMASS_SOLR_AMBIG_SET}"
+    [ -n "${_XMASS_SOLR_RECORDED_AT}" ] && _recorded=YES
+    _XMASS_SOLR_USED_SET=""
+    _XMASS_SOLR_AMBIG_SET=""
+    [ "${_recorded}" = "YES" ] \
+      && _info "  source carries the blanket java deny; using the set recorded ${_XMASS_SOLR_RECORDED_AT} while it was still healthy"
+  fi
+
+  _xtras=$(grep "^_XTRAS_LIST=" /root/.barracuda.cnf 2>/dev/null \
+    | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g')
+
+  ### One pass over every account alias resolves each site root, then its
+  ### boa_site_control.ini declares which Solr module family the site uses.
+  ### solr4 legacy estates predate the ini scheme and usually carry NO
+  ### directive -- for solr4 the STATUS document count is decisive instead.
+  _bindraw=$(for _alias in /data/disk/*/.drush/*.alias.drushrc.php; do
+    [ -f "${_alias}" ] || continue
+    _apath=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_alias}" | head -1)
+    [ -n "${_apath}" ] && [ -f "${_apath}/modules/boa_site_control.ini" ] \
+      && grep -h "^solr_integration_module" "${_apath}/modules/boa_site_control.ini"
+  done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
+  ### An empty tally out of a broken alias parse is indistinguishable from
+  ### "no site uses Solr" -- spot-verify one alias before believing it.
+  if [ -z "${_bindraw}" ]; then
+    _alias=$(ls /data/disk/*/.drush/*.alias.drushrc.php 2>/dev/null | head -1)
+    if [ -n "${_alias}" ]; then
+      _apath=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_alias}" | head -1)
+      [ -z "${_apath}" ] \
+        && _alrt "  alias site_path parse failed on $(basename "${_alias}") -- the binding tally is unreliable and read as zero"
+    fi
+  fi
+
+  for _sv in solr4 solr7 solr9; do
+    case "${_sv}" in
+      solr4) _svc=jetty9; _dvar=_DENY_JETTY9; _prt=8099; _dta=/opt/solr4
+             _bind=$(echo "${_bindraw}" | grep -cx "apachesolr") ;;
+      solr7) _svc=solr7; _dvar=_DENY_SOLR7; _prt=9077; _dta=/var/solr7/data
+             _bind=$(echo "${_bindraw}" | grep -Ecx "search_api_solr|search_api_solr7") ;;
+      solr9) _svc=solr9; _dvar=_DENY_SOLR9; _prt=9099; _dta=/var/solr9/data
+             _bind=$(echo "${_bindraw}" | grep -cx "search_api_solr9") ;;
+    esac
+    ### Substring on purpose: the installer's own gate tests =~ "SR4".
+    _sr=NO
+    case "${_xtras}" in
+      *"SR${_sv#solr}"*) _sr=YES ;;
+    esac
+    _pres=NO; [ -d "${_dta}" ] && _pres=YES
+    _lsn=NO; _xmass_port_listening "${_prt}" && _lsn=YES
+    _init=absent
+    [ -e "/etc/init.d/${_svc}" ] && _init=present
+    [ -e "/etc/init.d/${_svc}" ] && [ ! -x "/etc/init.d/${_svc}" ] && _init=disarmed
+    ### Parked means moved ASIDE: restore-solr re-arms with a COPY, so a
+    ### backups copy alone is a permanent residue on every restored box.
+    _parked=NO
+    [ -e "/var/backups/${_svc}.initd" ] && [ ! -e "/etc/init.d/${_svc}" ] && _parked=YES
+    ### autoupboa SOURCES the cnf (quoted/exported forms count) and consumes
+    ### only the /etc/boa marker; a /root per-version twin is INERT (the
+    ### C-003 copy leaves originals behind) and must never decide a verdict.
+    _deny=NO
+    grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_dvar}=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _deny=YES
+    [ -e "/etc/boa/.deny.${_svc}.cnf" ] && _deny=YES
+    if [ "${_deny}" = "NO" ] && [ -e "/root/.deny.${_svc}.cnf" ]; then
+      _alrt "  ${_sv}: /root/.deny.${_svc}.cnf present but INERT (nothing consumes it);"
+      _alrt "  ${_sv}: set ${_dvar}=YES + /etc/boa/.deny.${_svc}.cnf if a deny is intended"
+    fi
+    ### Only dotted names are real; solr4's core0-core9 are installer seeds.
+    _cores=$(find "${_dta}" -maxdepth 1 -mindepth 1 -type d -name '*.*' 2>/dev/null | wc -l | tr -d ' ')
+    ### USED is decided by index-WRITE recency, one-year bar: queries leave
+    ### no filesystem trace and the request logs are empty in practice, so
+    ### write recency is the only measurable use signal. Document counts
+    ### stay as reported evidence, never the verdict.
+    _fresh=$(find "${_dta}"/*.*/data/index -maxdepth 0 -mtime -30 2>/dev/null | wc -l | tr -d ' ')
+    _freshy=$(find "${_dta}"/*.*/data/index -maxdepth 0 -mtime -365 2>/dev/null | wc -l | tr -d ' ')
+    _newest=$(find "${_dta}"/*.*/data/index -type f -printf '%TY-%Tm-%Td\n' 2>/dev/null | sort | tail -1)
+    [ -z "${_newest}" ] && _newest=never
+    _docs=0
+    if [ "${_lsn}" = "YES" ]; then
+      _docs=$(curl -s --max-time 15 -A iCab \
+        "http://127.0.0.1:${_prt}/solr/admin/cores?action=STATUS&wt=json" 2>/dev/null \
+        | grep -o '"numDocs":[0-9]*' | awk -F: '{ _s += $2 } END { print _s + 0 }')
+      [ -z "${_docs}" ] && _docs=0
+    fi
+
+    _verdict=""; _why=""
+    if [ "${_recorded}" = "YES" ]; then
+      case " ${_rec_used} " in
+        *" ${_sv} "*) _verdict=USED; _why="recorded pre-cutover" ;;
+      esac
+      case " ${_rec_ambig} " in
+        *" ${_sv} "*) _verdict=AMBIG; _why="recorded pre-cutover" ;;
+      esac
+      [ -z "${_verdict}" ] && { _verdict=UNUSED; _why="recorded pre-cutover"; }
+    elif [ "${_blanket}" = "YES" ]; then
+      ### Post-cutover shape with nothing recorded: services are down and
+      ### document counts unreadable, but write recency and bindings still
+      ### read from disk -- apply the same one-year bar.
+      _XMASS_SOLR_SRC_DEGRADED=YES
+      if [ "${_bind}" -gt 0 ] || [ "${_sr}" = "YES" ] || [ "${_freshy}" -gt 0 ]; then
+        _verdict=USED; _why="degraded read: bindings or an index write inside a year (newest ${_newest})"
+      elif [ "${_cores}" -gt 0 ]; then
+        _verdict=STALE; _why="degraded read: populated cores, newest write ${_newest} -- outside the one-year bar"
+      else
+        _verdict=UNUSED; _why="degraded read: no cores, no bindings"
+      fi
+    elif [ "${_pres}" = "NO" ] && [ "${_init}" = "absent" ] && [ "${_parked}" = "NO" ]; then
+      _verdict=ABSENT; _why="never installed"
+    elif [ "${_bind}" -gt 0 ] || { [ "${_lsn}" = "YES" ] && [ "${_sr}" = "YES" ]; }; then
+      ### Live bindings (or a running service with its SR opt-in) count as
+      ### USED regardless of write age -- a bound service whose sites simply
+      ### have not indexed yet. Never auto-dropped, whatever the knobs say.
+      if [ "${_deny}" = "YES" ]; then
+        _verdict=AMBIG; _why="deny knob set but live bindings present (bindings=${_bind}) -- conflicting state"
+      else
+        _verdict=USED; _why="bound (bindings=${_bind} sr-token=${_sr}), docs=${_docs}, newest write ${_newest}"
+      fi
+    elif [ "${_freshy}" -gt 0 ]; then
+      ### The one-year index-write bar. Queries leave no trace, so write
+      ### recency IS the use signal; document counts alone prove nothing --
+      ### a populated estate can be a long-dead leftover.
+      if [ "${_deny}" = "YES" ]; then
+        _verdict=AMBIG; _why="deny knob set but indexed inside a year (newest ${_newest}) -- conflicting state"
+      else
+        _verdict=USED; _why="indexed inside the year (newest write ${_newest}$( [ "${_fresh}" -gt 0 ] && echo ", actively indexing" ), docs=${_docs})"
+      fi
+    elif [ "${_deny}" = "YES" ] || { [ "${_parked}" = "YES" ] && [ "${_lsn}" = "NO" ]; }; then
+      ### Denied or parked by the box's own knobs, with no use evidence:
+      ### WAS used. Its data still travels (the sync ships every existing
+      ### tree) and the deny mirrors.
+      _verdict=UNUSED; _why="denied/parked on the source; data still travels"
+    elif [ "${_cores}" -gt 0 ]; then
+      if [ "${_docs}" -gt 0 ] || [ "${_lsn}" = "NO" ]; then
+        ### Populated (or unreadable) cores whose newest write is outside
+        ### the year: a stale estate, a deny candidate no matter how real
+        ### the documents look. The date makes the verdict auditable.
+        _verdict=STALE; _why="populated cores, newest write ${_newest} -- outside the one-year bar"
+      else
+        _verdict=AMBIG; _why="running, ${_cores} core(s) all EMPTY, zero site bindings"
+      fi
+    else
+      if [ "${_lsn}" = "YES" ]; then
+        _verdict=UNUSED; _why="running, zero cores, zero bindings -- serves nothing"
+      else
+        _verdict=UNUSED; _why="present, empty, not running"
+      fi
+    fi
+
+    _info "  ${_sv}: ${_verdict} (${_why}) present=${_pres} port${_prt}=${_lsn} init=${_init} parked=${_parked} deny=${_deny} cores=${_cores} docs=${_docs} bind=${_bind} fresh30d=${_fresh} fresh1y=${_freshy} newest=${_newest}"
+    case "${_verdict}" in
+      USED)  _XMASS_SOLR_USED_SET="${_XMASS_SOLR_USED_SET} ${_sv}" ;;
+      AMBIG) _XMASS_SOLR_AMBIG_SET="${_XMASS_SOLR_AMBIG_SET} ${_sv}"
+             _alrt "  ${_sv}: AMBIGUOUS -- per-box operator ruling owed; gated as USED, never auto-denied" ;;
+      STALE) _XMASS_SOLR_DENY_SET="${_XMASS_SOLR_DENY_SET} ${_sv}"
+             _alrt "  ${_sv}: STALE -- populated cores, no index write since ${_newest}; treated as"
+             _alrt "  ${_sv}: unused (denied on the target; the data trees still travel with the sync)" ;;
+      *)     _XMASS_SOLR_DENY_SET="${_XMASS_SOLR_DENY_SET} ${_sv}" ;;
+    esac
+  done
+  _XMASS_SOLR_USED_SET="${_XMASS_SOLR_USED_SET## }"
+  _XMASS_SOLR_AMBIG_SET="${_XMASS_SOLR_AMBIG_SET## }"
+  _XMASS_SOLR_DENY_SET="${_XMASS_SOLR_DENY_SET## }"
+  [ "${_XMASS_SOLR_SRC_DEGRADED}" = "YES" ] \
+    && _alrt "  source carries the blanket java deny (post-cutover shape) with nothing recorded -- classification degraded to on-disk evidence"
+
+  ### Record the measured set while the source can still be read live; the
+  ### re-gates prefer this record once a cutover has denied Solr here.
+  if [ "${_blanket}" != "YES" ]; then
+    mkdir -p "$(dirname "${_XMASS_SOLR_SET_FILE}")"
+    cat > "${_XMASS_SOLR_SET_FILE}" <<SOLRSETEOF
+### Written by xmass: the source's measured Solr use, recorded while the
+### source could still be read live (a post-cutover source lies).
+_XMASS_SOLR_USED_SET="${_XMASS_SOLR_USED_SET}"
+_XMASS_SOLR_AMBIG_SET="${_XMASS_SOLR_AMBIG_SET}"
+_XMASS_SOLR_RECORDED_AT="$(date -u '+%Y-%m-%d %H:%M')"
+SOLRSETEOF
+    chmod 600 "${_XMASS_SOLR_SET_FILE}"
+  fi
+  return 0
+}
+
+### One-shot target read: real INSTALL artifacts (distribution dir + init
+### script; a parked copy counts as installed), deny knobs in both forms,
+### landed data trees, and the facts that decide what the target's next full
+### barracuda pass would do (hosted shape, SR tokens, JREs). Running state is
+### deliberately NOT a signal -- init holds the target's Solr down for the
+### whole migration window.
+_xmass_solr_target_state() {
+  local _t="$1" _line _out
+  _XMASS_TS_SOLR4=""; _XMASS_TS_SOLR7=""; _XMASS_TS_SOLR9=""
+  _XMASS_TS_GLOB=""; _XMASS_TS_XTRAS=""
+  _out=$(ssh -o ConnectTimeout=15 root@"${_t}" bash <<'REMOTE' 2>/dev/null
+for _sv in solr4 solr7 solr9; do
+  case "${_sv}" in
+    solr4) _tag=SOLR4; _svc=jetty9; _dvar=_DENY_JETTY9; _dst=/opt/jetty9; _dta=/opt/solr4 ;;
+    solr7) _tag=SOLR7; _svc=solr7;  _dvar=_DENY_SOLR7;  _dst=/opt/solr7;  _dta=/var/solr7/data ;;
+    solr9) _tag=SOLR9; _svc=solr9;  _dvar=_DENY_SOLR9;  _dst=/opt/solr9;  _dta=/var/solr9/data ;;
+  esac
+  _inst=NO
+  [ -d "${_dst}" ] && _inst=YES
+  [ -e "/etc/init.d/${_svc}" ] && _inst=YES
+  [ -e "/var/backups/${_svc}.initd" ] && _inst=YES
+  _deny=NO
+  grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_dvar}=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _deny=YES
+  [ -e "/etc/boa/.deny.${_svc}.cnf" ] && _deny=YES
+  _parked=NO
+  [ -e "/var/backups/${_svc}.initd" ] && [ ! -e "/etc/init.d/${_svc}" ] && _parked=YES
+  _dis=NO
+  [ -e "/etc/init.d/${_svc}" ] && [ ! -x "/etc/init.d/${_svc}" ] && _dis=YES
+  _data=NO
+  [ -d "${_dta}" ] && _data=YES
+  echo "${_tag}:inst=${_inst} deny=${_deny} parked=${_parked} disarmed=${_dis} data=${_data}"
+done
+_blanket=NO
+[ -e /root/.deny.java.cnf ] && _blanket=YES
+grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _blanket=YES
+_hosted=NO
+[ -e /root/.host8.cnf ] && _hosted=YES
+case "$(cat /etc/hostname 2>/dev/null)" in
+  *.aegir.cc) _hosted=YES ;;
+esac
+_j11=NO; [ -e /usr/bin/java11 ] && _j11=YES
+_j17=NO; [ -e /usr/bin/java17 ] && _j17=YES
+_j21=NO; [ -e /usr/bin/java21 ] && _j21=YES
+_os=$(. /etc/os-release 2>/dev/null; echo "${VERSION_CODENAME:-unknown}")
+_hold=NO
+if ls /root/.run-to-*.cnf > /dev/null 2>&1 \
+  && [ ! -e /root/.force.rebuild.src.on.auto.now.cnf ]; then
+  _hold=YES
+fi
+_proxy=NO
+[ -e /root/.proxy.cnf ] && _proxy=YES
+echo "GLOB:blanket=${_blanket} hosted=${_hosted} java11=${_j11} java17=${_j17} java21=${_j21} os=${_os} heavyhold=${_hold} proxy=${_proxy}"
+echo "XTRAS:$(grep '^_XTRAS_LIST=' /root/.barracuda.cnf 2>/dev/null | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g')"
+REMOTE
+)
+  while read -r _line; do
+    case "${_line}" in
+      SOLR4:*) _XMASS_TS_SOLR4="${_line#SOLR4:}" ;;
+      SOLR7:*) _XMASS_TS_SOLR7="${_line#SOLR7:}" ;;
+      SOLR9:*) _XMASS_TS_SOLR9="${_line#SOLR9:}" ;;
+      GLOB:*)  _XMASS_TS_GLOB="${_line#GLOB:}" ;;
+      XTRAS:*) _XMASS_TS_XTRAS="${_line#XTRAS:}" ;;
+    esac
+  done <<< "${_out}"
+  [ -n "${_XMASS_TS_GLOB}" ]
+}
+
+### FIX action on the target: per-version denies for everything outside the
+### used set, the used versions' own denies cleared, and the blanket java
+### pair written only when the source uses NO Solr at all. The cnf edit
+### keeps the temp+size guard so a failed write can never blank the target's
+### barracuda.cnf.
+_xmass_solr_write_target_denies() {
+  local _t="$1" _used="$2" _deny="$3" _blanket="$4"
+  ### Belt-and-braces before the sets reach a remote root shell: they are
+  ### built only from the fixed version tokens, so assert that.
+  case "${_used}${_deny}" in
+    *[!a-z0-9\ ]*) _alrt "refusing to splice a malformed Solr set into a remote shell"; return 1 ;;
+  esac
+  ssh root@"${_t}" "_XM_USED='${_used}' _XM_DENY='${_deny}' _XM_BLANKET='${_blanket}' bash -s" <<'REMOTE' \
+    || { _alrt "could not write the Solr deny set on the target"; return 1; }
+_cnf=/root/.barracuda.cnf
+_tmp=/root/.barracuda.cnf.solrnew
+[ -e "${_cnf}" ] || exit 1
+_m=$(stat -c %a "${_cnf}" 2>/dev/null)
+cp -af "${_cnf}" "${_tmp}" || exit 1
+[ -n "$(tail -c1 "${_tmp}" 2>/dev/null)" ] && echo >> "${_tmp}"
+_set_key() {
+  if grep -q "^${1}=" "${_tmp}"; then
+    sed -i "s/^${1}=.*/${1}=${2}/" "${_tmp}"
+  else
+    echo "${1}=${2}" >> "${_tmp}"
+  fi
+}
+mkdir -p /etc/boa
+for _sv in ${_XM_DENY}; do
+  case "${_sv}" in
+    solr4) _svc=jetty9; _dvar=_DENY_JETTY9 ;;
+    solr7) _svc=solr7;  _dvar=_DENY_SOLR7 ;;
+    solr9) _svc=solr9;  _dvar=_DENY_SOLR9 ;;
+    *) continue ;;
+  esac
+  _set_key "${_dvar}" YES
+  touch "/etc/boa/.deny.${_svc}.cnf"
+  echo "INFO: target deny set: ${_dvar}=YES + /etc/boa/.deny.${_svc}.cnf"
+done
+for _sv in ${_XM_USED}; do
+  case "${_sv}" in
+    solr4) _svc=jetty9; _dvar=_DENY_JETTY9 ;;
+    solr7) _svc=solr7;  _dvar=_DENY_SOLR7 ;;
+    solr9) _svc=solr9;  _dvar=_DENY_SOLR9 ;;
+    *) continue ;;
+  esac
+  if grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_dvar}=[\"' ]*YES" "${_tmp}"; then
+    ### _set_key rewrites the plain form and APPENDS when only an exported/
+    ### quoted line matched -- the cnf is sourced, so the appended line wins.
+    _set_key "${_dvar}" NO
+    echo "INFO: target deny cleared: ${_dvar}=NO"
+  fi
+  rm -f "/etc/boa/.deny.${_svc}.cnf" "/root/.deny.${_svc}.cnf"
+done
+if [ "${_XM_BLANKET}" = "YES" ]; then
+  _set_key _DENY_JAVA YES
+  touch /root/.deny.java.cnf
+  echo "INFO: target blanket java deny set (source uses no Solr)"
+fi
+[ -s "${_tmp}" ] || exit 1
+chmod "${_m:-600}" "${_tmp}"
+mv -f "${_tmp}" "${_cnf}"
+REMOTE
+  return 0
+}
+
+### One full barracuda system pass on the target: on a hosted-named box that
+### is exactly the all-three Solr install trigger, so it may run only AFTER
+### the deny set is on the target's disk -- needed versions install, denied
+### ones are parked again within minutes. Re-probes first, so a pass already
+### driven for the PHP set satisfies this without a second one.
+_xmass_solr_drive_install_pass() {
+  local _t="$1" _sv _missing="" _tree _ts _hosted _os _fires
+  _xmass_solr_target_state "${_t}" \
+    || { _alrt "cannot re-read the target Solr state"; return 1; }
+  for _sv in ${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}; do
+    [ "$(_xmass_solr_field "$(_xmass_solr_ts_line "${_sv}")" inst)" = "YES" ] \
+      || _missing="${_missing} ${_sv}"
+  done
+  _missing="${_missing## }"
+  [ -z "${_missing}" ] \
+    && { _info "Every used Solr version is installed on ${_t}: OK"; return 0; }
+
+  ### Preflight against the installer's REAL gates before burning a ~30
+  ### minute pass that cannot succeed -- each cause below was reachable and
+  ### previously surfaced only as a wrong post-pass message.
+  _hosted="$(_xmass_solr_field "${_XMASS_TS_GLOB}" hosted)"
+  _os="$(_xmass_solr_field "${_XMASS_TS_GLOB}" os)"
+  if [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" heavyhold)" = "YES" ]; then
+    _alrt "target ${_t} is staged for an OS hop (/root/.run-to-*.cnf without the force-"
+    _alrt "rebuild override): heavy rebuilds are HELD there and the pass would install no"
+    _alrt "Solr at all. Finish or clear the staging first, then re-run"
+    return 1
+  fi
+  for _sv in ${_missing}; do
+    _ts="$(_xmass_solr_ts_line "${_sv}")"
+    if [ "$(_xmass_solr_field "${_ts}" data)" = "YES" ]; then
+      _alrt "${_sv}: a data tree already sits on ${_t} with no service -- BOA's installer"
+      _alrt "${_sv}: treats that as installed and will skip it on every pass. Move the tree"
+      _alrt "${_sv}: aside on the target, then re-run"
+      return 1
+    fi
+    if [ "${_sv}" != "solr9" ] && [ "${_os}" = "excalibur" ]; then
+      _alrt "${_sv}: never installs on excalibur (the installer excludes solr4/solr7"
+      _alrt "${_sv}: there outright) -- this used version cannot be provided on ${_t}"
+      return 1
+    fi
+    _fires=NO
+    [ "${_hosted}" = "YES" ] && _fires=YES
+    case "${_XMASS_TS_XTRAS}" in
+      *"SR${_sv#solr}"*) _fires=YES ;;
+    esac
+    if [ "${_sv}" = "solr9" ]; then
+      [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" java17)" = "YES" ] && _fires=YES
+      [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" java21)" = "YES" ] && _fires=YES
+    fi
+    if [ "${_fires}" = "NO" ]; then
+      _alrt "${_sv}: no install gate fires on ${_t} (not hosted-named, no SR token"
+      _alrt "${_sv}: in its _XTRAS_LIST$( [ "${_sv}" = "solr9" ] && echo ", no java17/21" )) -- add SR${_sv#solr} to _XTRAS_LIST"
+      _alrt "${_sv}: in /root/.barracuda.cnf on the target, then re-run"
+      return 1
+    fi
+  done
+
+  _tree="$(_xmass_target_tree "${_t}")"
+  case "${_tree}" in
+    dev|lts|pro) : ;;
+    *) _alrt "invalid tree token '${_tree}' -- refusing the remote barracuda run"; return 1 ;;
+  esac
+  _info "Driving 'barracuda up-${_tree} system noscreen' on ${_t} to install: ${_missing};"
+  _info "this is a full system pass and typically takes ~30 minutes"
+  ssh root@"${_t}" "barracuda up-${_tree} system noscreen" \
+    || { _alrt "barracuda system run on ${_t} returned non-zero"; return 1; }
+  _xmass_solr_target_state "${_t}" \
+    || { _alrt "cannot re-read the target Solr state after the pass"; return 1; }
+  for _sv in ${_missing}; do
+    if [ "$(_xmass_solr_field "$(_xmass_solr_ts_line "${_sv}")" inst)" != "YES" ]; then
+      _alrt "${_sv} still not installed on ${_t} after the pass despite a preflight that"
+      _alrt "said its gate would fire -- read the pass log on the target (barracuda.log)"
+      return 1
+    fi
+  done
+  return 0
+}
+
+### The Solr coverage gate. $2 selects the consequence like the PHP gate
+### above: strict (prep-target without --fix-solr: every defect refuses) |
+### die (init/sync/cutover live: an irrecoverable defect refuses, a
+### repairable one warns) | deny (DRY: DENY + NOT_CLEAN on irrecoverable) |
+### fix (prep-target --fix-solr: write the deny set, clear/unpark used
+### versions, then flag any still-missing install for the system pass).
+### Irrecoverable means: a used version with no real install on the target.
+### The sync lands its data tree there and BOA's installer then skips that
+### version forever, which surfaces only after promotion as silently broken
+### search. Everything else stays repairable at any point.
+_xmass_solr_coverage_gate() {
+  local _t="$1" _on_defect="${2:-strict}"
+  local _sv _need _needinst="" _needdeny="" _needclear="" _cand _ts
+  local _blanket _hosted _needblanket=NO _blanketclear=NO _anycand=NO
+  _XMASS_SOLR_PASS_OWED=NO
+  _info "Solr coverage: classifying the source's per-version use ..."
+  _xmass_solr_classify_source
+  _info "  source used set: [${_XMASS_SOLR_USED_SET:-none}] ambiguous: [${_XMASS_SOLR_AMBIG_SET:-none}] unused: [${_XMASS_SOLR_DENY_SET:-none}]"
+  if ! _xmass_solr_target_state "${_t}"; then
+    case "${_on_defect}" in
+      deny)
+        _alrt "DENY: cannot read the target's Solr state over ssh"
+        _XMASS_NOT_CLEAN=YES
+        return 1
+      ;;
+      fix)
+        _alrt "cannot read the target's Solr state over ssh"
+        return 1
+      ;;
+      *)
+        _die "cannot read the Solr state on ${_t} over ssh -- run 'xmass pre-mig' on both ends first"
+      ;;
+    esac
+  fi
+  _blanket="$(_xmass_solr_field "${_XMASS_TS_GLOB}" blanket)"
+  _hosted="$(_xmass_solr_field "${_XMASS_TS_GLOB}" hosted)"
+  _info "  target ${_t}: ${_XMASS_TS_GLOB}"
+  for _sv in solr4 solr7 solr9; do
+    _info "  target ${_sv}: $(_xmass_solr_ts_line "${_sv}")"
+  done
+
+  _need="${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}"
+  _need=$(echo "${_need}" | tr -s ' ' | sed 's/^ //; s/ $//')
+  for _sv in solr4 solr7 solr9; do
+    _ts="$(_xmass_solr_ts_line "${_sv}")"
+    case " ${_need} " in
+      *" ${_sv} "*)
+        if [ "$(_xmass_solr_field "${_ts}" inst)" != "YES" ]; then
+          _needinst="${_needinst} ${_sv}"
+          if [ "$(_xmass_solr_field "${_ts}" data)" = "YES" ]; then
+            _alrt "  ${_sv}: source data ALREADY LANDED on ${_t} with no service installed --"
+            _alrt "  ${_sv}: BOA's installer now treats it as installed and will skip it; the"
+            _alrt "  ${_sv}: data tree must be moved aside there before any install can land"
+          fi
+        elif [ "$(_xmass_solr_field "${_ts}" deny)" = "YES" ] \
+          || [ "$(_xmass_solr_field "${_ts}" parked)" = "YES" ] \
+          || [ "$(_xmass_solr_field "${_ts}" disarmed)" = "YES" ]; then
+          ### disarmed = init on disk without the exec bit (xtrim finalize):
+          ### exactly as dead after promotion as a parked one.
+          _needclear="${_needclear} ${_sv}"
+        fi
+      ;;
+      *)
+        ### Undenied and either already installed or a candidate on the
+        ### target's next full pass -- both end as an unused running JVM.
+        ### With the blanket deny on the target nothing NEW can install (it
+        ### gates the whole Solr stanza), so only an existing install still
+        ### needs its per-version deny to be parked. The candidacy tests
+        ### mirror the installer's real gates: solr4/solr7 never install on
+        ### excalibur, and their bare tree trigger needs java11 already
+        ### present (hosted/SR installs the JRE on the same pass).
+        _cand=NO
+        [ "$(_xmass_solr_field "${_ts}" inst)" = "YES" ] && _cand=YES
+        if [ "${_blanket}" != "YES" ] && [ "${_cand}" = "NO" ]; then
+          if [ "${_sv}" = "solr9" ]; then
+            ### solr9's install gate is INVERTED (it fires wherever solr9 is
+            ### absent): hosted/SR pulls the JRE in on the same pass, and a
+            ### JRE already present makes it a candidate on any box.
+            [ "${_hosted}" = "YES" ] && _cand=YES
+            case "${_XMASS_TS_XTRAS}" in
+              *"SR9"*) _cand=YES ;;
+            esac
+            [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" java17)" = "YES" ] && _cand=YES
+            [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" java21)" = "YES" ] && _cand=YES
+          elif [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" os)" != "excalibur" ]; then
+            [ "${_hosted}" = "YES" ] && _cand=YES
+            case "${_XMASS_TS_XTRAS}" in
+              *"SR${_sv#solr}"*) _cand=YES ;;
+            esac
+            if [ "$(_xmass_solr_field "${_ts}" data)" = "YES" ] \
+              && [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" java11)" = "YES" ]; then
+              _cand=YES
+            fi
+          fi
+        fi
+        [ "${_cand}" = "YES" ] && _anycand=YES
+        if [ "${_cand}" = "YES" ] \
+          && [ "$(_xmass_solr_field "${_ts}" deny)" != "YES" ]; then
+          _needdeny="${_needdeny} ${_sv}"
+        fi
+      ;;
+    esac
+  done
+  _needinst="${_needinst## }"
+  _needdeny="${_needdeny## }"
+  _needclear="${_needclear## }"
+  if [ -z "${_need}" ]; then
+    ### The blanket pair only matters where an install could ever fire; a
+    ### Solr-inert target (not hosted-named, no SR token, no JRE, nothing
+    ### installed) needs no opt-out and gets no defect for lacking one.
+    [ "${_blanket}" != "YES" ] && [ "${_anycand}" = "YES" ] && _needblanket=YES
+  else
+    [ "${_blanket}" = "YES" ] && _blanketclear=YES
+  fi
+
+  if [ -z "${_needinst}${_needdeny}${_needclear}" ] \
+    && [ "${_needblanket}" = "NO" ] && [ "${_blanketclear}" = "NO" ]; then
+    _info "Target Solr coverage mirrors the source's used set: OK"
+    return 0
+  fi
+
+  [ -n "${_needinst}" ] \
+    && _alrt "DEFECT: used on the source, NOT installed on ${_t}: ${_needinst}"
+  [ -n "${_needclear}" ] \
+    && _alrt "DEFECT: used on the source, denied/parked on ${_t}: ${_needclear}"
+  [ -n "${_needdeny}" ] \
+    && _alrt "DEFECT: unused on the source, undenied install candidate on ${_t}: ${_needdeny}"
+  [ "${_needblanket}" = "YES" ] \
+    && _alrt "DEFECT: source uses NO Solr -- the blanket java deny pair belongs on ${_t}"
+  [ "${_blanketclear}" = "YES" ] \
+    && _alrt "DEFECT: blanket java deny on ${_t} while the source USES Solr -- it blocks Solr install and maintenance there"
+
+  case "${_on_defect}" in
+    fix)
+      _xmass_solr_write_target_denies "${_t}" "${_need}" "${_XMASS_SOLR_DENY_SET}" "${_needblanket}" \
+        || return 1
+      [ -n "${_needdeny}" ] \
+        && _info "Denied versions already installed on ${_t} are parked by its autoupboa within ~5 minutes"
+      if [ "${_blanketclear}" = "YES" ] || [ -n "${_needclear}" ]; then
+        ### restore-solr refuses on a finalized PX0 proxy by design (Solr is
+        ### down there deliberately); name that shape instead of reporting a
+        ### generic failure, and keep "tool missing" distinct from "failed".
+        if [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" proxy)" = "YES" ]; then
+          _alrt "target ${_t} is a finalized PX0 proxy (/root/.proxy.cnf): its own"
+          _alrt "restore-solr refuses there by design. Un-finalize the proxy shape first"
+          _alrt "(or clear the denies and re-arm the init scripts by hand), then re-run"
+          return 1
+        fi
+        if ! ssh root@"${_t}" "command -v xmass >/dev/null 2>&1"; then
+          _alrt "no xmass on ${_t} -- its tools are stale; re-run after 'xmass pre-mig'"
+          _alrt "has refreshed them (or fetch the tools on the target by hand)"
+          return 1
+        fi
+        _info "Clearing the blanket deny / unparking used versions on ${_t} via its own 'xmass restore-solr' ..."
+        ssh root@"${_t}" "xmass restore-solr" \
+          || { _alrt "remote 'xmass restore-solr' failed on ${_t} -- read its output above"; return 1; }
+      fi
+      if [ -n "${_needinst}" ]; then
+        _XMASS_SOLR_PASS_OWED=YES
+        _info "Install still owed on ${_t} for: ${_needinst} -- rides the next system pass"
+      fi
+      return 0
+    ;;
+    deny)
+      if [ -n "${_needinst}${_needclear}" ] || [ "${_blanketclear}" = "YES" ]; then
+        ### The blanket deny is in the irrecoverable class with the parks:
+        ### the target's autoupboa acts on it within 5 minutes, and whether
+        ### the parks have landed yet is cron timing, not a real difference.
+        _alrt "DENY: used Solr version(s) not serviceable on target ${_t}: missing install"
+        _alrt "DENY: [${_needinst:-none}], denied/parked/disarmed [${_needclear:-none}],"
+        _alrt "DENY: blanket java deny [${_blanketclear}] -- a landed data tree suppresses"
+        _alrt "DENY: BOA's installer for that version permanently, and the first tool-side"
+        _alrt "DENY: signal after promotion is silently broken search."
+        _alrt "DENY: fix: 'xmass prep-target ${_t} --fix-solr', then re-run the DRY"
+        _XMASS_NOT_CLEAN=YES
+        return 1
+      fi
+      _alrt "repairable Solr coverage defects on ${_t} (see above) -- fix with"
+      _alrt "'xmass prep-target ${_t} --fix-solr' any time before promotion"
+      return 0
+    ;;
+    strict)
+      _die "the target's Solr set does not mirror the source's used set (see the DEFECT" \
+           " lines above). Re-run with --fix-solr to write the per-version denies (and the" \
+           " blanket java pair when the source uses no Solr), unpark used versions and" \
+           " queue any missing install on the system pass -- or reconcile by hand and re-run."
+    ;;
+    *)
+      if [ -n "${_needinst}${_needclear}" ] || [ "${_blanketclear}" = "YES" ]; then
+        _die "used Solr version(s) not serviceable on ${_t}: missing install" \
+             " [${_needinst:-none}], denied/parked/disarmed [${_needclear:-none}], blanket" \
+             " java deny [${_blanketclear}]. The file sync lands Solr data trees on the" \
+             " target, a landed tree makes BOA's installer skip that version FOREVER, and" \
+             " the target's autoupboa parks on these denies within 5 minutes -- search" \
+             " would come back silently broken after promotion." \
+             " Fix: 'xmass prep-target ${_t} --fix-solr', then re-run."
+      fi
+      _alrt "repairable Solr coverage defects on ${_t} (see above) -- fix with"
+      _alrt "'xmass prep-target ${_t} --fix-solr' any time before promotion"
+      return 0
     ;;
   esac
 }
@@ -3729,9 +4398,10 @@ _xmass_assert_same_release() {
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
-  # directions with the reverse 3306 path proven, the pinned PHP set present
-  # (or built with --fix-php), one Octopus account per eligible source
-  # account installed by driving 'xoct create' (which installs from the
+  # directions with the reverse 3306 path proven, the target's Solr set
+  # mirroring the source's USED set (or reconciled with --fix-solr), the
+  # pinned PHP set present (or built with --fix-php), one Octopus account per
+  # eligible source account installed by driving 'xoct create' (which installs from the
   # target's own tree with the source's plan stamps, seeds the sanitised
   # octopus.cnf, forces the PHP pin witnesses and carries the credentials),
   # the suspension flags mirrored, and a final installed-state verification.
@@ -3797,6 +4467,19 @@ _xmass_cmd_prep_target() {
          " wires the guest only). Override with _XMASS_SKIP_REVERSE_CHECK=YES."
   fi
 
+  # The target's Solr set mirrors the source's USED set, and it must be
+  # settled BEFORE any pass runs on the target: --fix-php below drives a full
+  # barracuda system pass, which is exactly the all-three Solr install
+  # trigger on a hosted-named box -- so the deny set has to be on the
+  # target's disk first. A used version missing there is installed by the
+  # same kind of pass, queued after the PHP gate so one pass can serve both.
+  if [ "${_XMASS_FIX_SOLR}" = "YES" ]; then
+    _xmass_solr_coverage_gate "${_tgt}" fix \
+      || _die "Solr coverage fix failed on ${_tgt}"
+  else
+    _xmass_solr_coverage_gate "${_tgt}" strict
+  fi
+
   # The pinned PHP set must exist before ANY account install: a fresh install
   # is born on the box default and every later heal depends on the pinned
   # interpreter being present.
@@ -3805,6 +4488,14 @@ _xmass_cmd_prep_target() {
       || _die "PHP coverage fix failed on ${_tgt}"
   else
     _xmass_php_coverage_gate "${_tgt}" die
+  fi
+
+  # Any used Solr version still missing installs on one system pass here --
+  # unless the PHP fix above already ran one, which the driver detects and
+  # re-uses by probing before it drives.
+  if [ "${_XMASS_SOLR_PASS_OWED}" = "YES" ]; then
+    _xmass_solr_drive_install_pass "${_tgt}" \
+      || _die "Solr install pass failed on ${_tgt} -- fix the cause and re-run prep-target"
   fi
 
   # Advisory sweeps while acting on them is still cheap.
@@ -4094,6 +4785,10 @@ _xmass_cmd_init() {
   # target datadir has been replaced).
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
+  # Solr's point of no return is HERE, not at cutover: the first sync lands
+  # every source Solr tree on the target, and a landed tree suppresses BOA's
+  # installer for that version permanently.
+  _xmass_solr_coverage_gate "${_tgt}" die
 
   # Clear unfinished delete tasks BEFORE the panel databases travel.
   _xmass_clear_pending_deletes
@@ -4272,9 +4967,11 @@ _xmass_cmd_sync() {
   if [ "${_MODE}" = "LIVE" ]; then
     _xmass_verify_target_accounts "${_tgt}" die
     _xmass_php_coverage_gate "${_tgt}" die
+    _xmass_solr_coverage_gate "${_tgt}" die
   else
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
+    _xmass_solr_coverage_gate "${_tgt}" deny || true
   fi
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   [ "${_MODE}" = "LIVE" ] && _xmass_require_clean_dry "${_tgt}"
@@ -4729,6 +5426,7 @@ _xmass_cmd_cutover() {
     # expensive possible discovery -- surface both in the plan.
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
+    _xmass_solr_coverage_gate "${_tgt}" deny || true
     # DRY stays read-only: simulate the box default --live would write, so
     # the printed per-account plan matches what --live will do. The override
     # must engage whenever a mode is pending -- INCLUDING when it changes an
@@ -4780,6 +5478,7 @@ _xmass_cmd_cutover() {
   _xmass_enumerate_accounts
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
+  _xmass_solr_coverage_gate "${_tgt}" die
 
   # Freeze the box default to disk, then refuse to proceed while any account
   # would resolve to the built-in fallback: a single-account misfire mails one
@@ -5207,13 +5906,15 @@ case "${_cmd}" in
     _tgt="$1"
     shift 2>/dev/null || true
     _XMASS_FIX_PHP=""
+    _XMASS_FIX_SOLR=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --fix-php) _XMASS_FIX_PHP=YES; shift ;;
+        --fix-solr) _XMASS_FIX_SOLR=YES; shift ;;
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr]"
     _check_root
     _xmass_cmd_prep_target
   ;;
@@ -5312,8 +6013,8 @@ case "${_cmd}" in
   *)
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
-    echo "Usage: xmass prep-target <target-ip> [--fix-php]      (run on source AFTER both pre-migs:"
-    echo "                     CSF both ways, PHP coverage, per-account installs + seeding)"
+    echo "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr]  (run on source AFTER both"
+    echo "                     pre-migs: CSF both ways, Solr set, PHP coverage, per-account installs)"
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"
     echo "                     [--proxy-deadline=YYYY-MM-DD|+Nd]  (run on source)"
     echo "Usage: xmass sync    <target-ip> [--live]             (run on source, repeat)"
@@ -5328,6 +6029,10 @@ case "${_cmd}" in
     echo "  - Requires identical Percona MySQL versions on both servers."
     echo "  - Migrates ALL Octopus accounts and Solr cores in one operation."
     echo "  - For single-account or cross-version migrations use xoct instead."
+    echo "  - The target's Solr set MIRRORS the source's USED set: prep-target gates on it"
+    echo "    and --fix-solr reconciles (per-version denies for unused versions, blanket java"
+    echo "    deny when the source uses none, unpark + install for used ones). A version that"
+    echo "    looks unused but runs is reported for a per-box ruling, never auto-denied."
     echo "  - Proxy modes are per ACCOUNT: --proxy-mode writes only the box DEFAULT;"
     echo "    a pin set with 'xoct proxy-mode <oN> <mode>' always wins over it."
     echo "    --permanent-proxy is a deprecated alias for --proxy-mode=permanent."
