@@ -60,6 +60,12 @@ if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
   exit 0
 fi
 
+# A replication standby: the apply leg moves and re-links content inside
+# /data/disk trees that xmass's own store materialisation owns for the
+# whole window -- the two would fight over the same links. The report leg
+# is harmless but pointless mid-sync; skip both.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 # Opt-in gates default OFF on already-installed boxes whose /root/.barracuda.cnf
 # predates these vars (the template only seeds them for fresh installs).
 : "${_AUTOSYMLINK_NIGHTLY:=NO}"

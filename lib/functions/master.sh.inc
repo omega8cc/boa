@@ -1000,15 +1000,19 @@ _php_cli_cron_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_cli_cron_update"
   fi
-  # Respect a parked master cron (.aegir -- runner.sh's standby/CI park):
-  # refresh the parked copy in place instead of minting a live crontab
-  # beside it, or a passive replica would run hosting-dispatch until
-  # runner.sh's next pass re-parks it. Never leave both names present --
-  # the parked copy wins and runner.sh un-parks it when the role allows.
-  _mCron="/var/spool/cron/crontabs/aegir"
-  if [ -e "/var/spool/cron/crontabs/.aegir" ]; then
+  # Key the target name on the ROLE, not on runner.sh's artifact: on a
+  # standby the dispatch must stay parked across an Aegir master upgrade
+  # (a live crontab minted beside the parked copy re-armed it), while on
+  # every other box -- including a CI box mid-upgrade, whose "fail toward
+  # enabled" contract needs the dispatch LIVE for its verify tasks -- the
+  # live name wins and a leftover parked copy is cleared; runner.sh's own
+  # grace logic re-parks an idle CI box afterwards.
+  if [ -e "/root/.standby.cnf" ]; then
     _mCron="/var/spool/cron/crontabs/.aegir"
     rm -f /var/spool/cron/crontabs/aegir
+  else
+    _mCron="/var/spool/cron/crontabs/aegir"
+    rm -f /var/spool/cron/crontabs/.aegir
   fi
   rm -f "${_mCron}"
   if [ ! -e "${_mCron}" ]; then

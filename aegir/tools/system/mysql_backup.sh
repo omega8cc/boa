@@ -64,16 +64,33 @@ _replica_role_gate() {
     _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
     _rplRc=$?
   fi
+  if [ "${_rplRc}" -ne "0" ]; then
+    # One retry before refusing: a transient server hiccup must not cost
+    # a healthy box its whole nightly backup.
+    sleep 3
+    _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+    _rplRc=$?
+    if [ "${_rplRc}" -ne "0" ]; then
+      _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+      _rplRc=$?
+    fi
+  fi
   if [ "${_rplRc}" -eq "0" ] && [ -n "${_rplState}" ]; then
+    # The run marker may already exist (the re-ask sits after the pid
+    # write); five watchdog consumers read it as a live backup, so it
+    # must not outlive this exit.
+    rm -f /run/boa_sql_backup.pid
     echo "Ooops, this box is a configured replication replica, local TRUNCATE/OPTIMIZE would break the SQL thread"
     exit 0
   fi
   if [ "${_rplRc}" -ne "0" ]; then
     # mysqladmin ping exits 0 even on Access denied, so credential
     # failures land here, not in the ping branch. Fail closed.
+    rm -f /run/boa_sql_backup.pid
     echo "Ooops, the replica role probe FAILED (credentials?) -- refusing local TRUNCATE/DROP; verify /root/.my.cnf"
     exit 0
   fi
+  return 0
 }
 _replica_role_gate
 

@@ -19,9 +19,11 @@ series AND patch level** (e.g. both 8.4.13, never 8.4.10 vs 8.4.13). A series
 mismatch means xmass is the wrong tool: use [xoct](MIGRATE-XOCT.md) per
 account instead. A patch-level mismatch means align the packages first —
 failing back a newer datadir onto an older primary is an unsupported
-downgrade. Both are enforced gates at `init` (server-side, via
-`SELECT VERSION()`); a deliberate forward-only patch skew can be allowed
-with `_XMASS_ALLOW_PATCH_SKEW=YES`.
+downgrade. Both are enforced gates at `init` (the series gate reads the
+client binary, the patch gate asks the server via `SELECT VERSION()`); a
+deliberate patch skew can be allowed with `_XMASS_ALLOW_PATCH_SKEW=YES`,
+which accepts the forward direction only — a target older than the source
+is refused regardless.
 
 ## Architecture Overview
 

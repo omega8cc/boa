@@ -833,7 +833,9 @@ if ls /root/.run-to-*.cnf > /dev/null 2>&1 \
 fi
 _proxy=NO
 [ -e /root/.proxy.cnf ] && _proxy=YES
-echo "GLOB:blanket=${_blanket} hosted=${_hosted} java11=${_j11} java17=${_j17} java21=${_j21} os=${_os} heavyhold=${_hold} proxy=${_proxy}"
+_xmh=NO
+[ -e /var/log/boa/.xmass_solr_hold.pid ] && _xmh=YES
+echo "GLOB:blanket=${_blanket} hosted=${_hosted} java11=${_j11} java17=${_j17} java21=${_j21} os=${_os} heavyhold=${_hold} proxy=${_proxy} xmhold=${_xmh}"
 echo "XTRAS:$(grep '^_XTRAS_LIST=' /root/.barracuda.cnf 2>/dev/null | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g')"
 REMOTE
 )
@@ -1049,11 +1051,17 @@ _xmass_solr_coverage_gate() {
             _alrt "  ${_sv}: data tree must be moved aside there before any install can land"
           fi
         elif [ "$(_xmass_solr_field "${_ts}" deny)" = "YES" ] \
-          || [ "$(_xmass_solr_field "${_ts}" parked)" = "YES" ] \
-          || [ "$(_xmass_solr_field "${_ts}" disarmed)" = "YES" ]; then
-          ### disarmed = init on disk without the exec bit (xtrim finalize):
-          ### exactly as dead after promotion as a parked one.
+          || [ "$(_xmass_solr_field "${_ts}" parked)" = "YES" ]; then
           _needclear="${_needclear} ${_sv}"
+        elif [ "$(_xmass_solr_field "${_ts}" disarmed)" = "YES" ]; then
+          ### disarmed = init on disk without the exec bit (xtrim finalize):
+          ### exactly as dead after promotion as a parked one -- EXCEPT under
+          ### xmass's own hold, which disarms used versions on purpose from
+          ### init to cutover step 14 (java.sh re-asserts it); that state is
+          ### expected, not a defect.
+          if [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" xmhold)" != "YES" ]; then
+            _needclear="${_needclear} ${_sv}"
+          fi
         fi
       ;;
       *)
@@ -1548,6 +1556,61 @@ _xmass_unpark_runners_and_cron() {
 # clears it on reboot; second.sh ages it out under a dead init.
 _xmass_init_inflight_touch() {
   ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid" &> /dev/null
+}
+
+# Keepalive for the init critical section: the SQL watchdog mute
+# (/run/boa_sql_maintenance.pid) self-expires after 240 minutes on both
+# ends, and a single xtrabackup/copy-back leg can run far longer -- an
+# expired mute lets mysql.sh start mysqld on a half-copied datadir. The
+# loop also re-touches the in-flight signal, so its age ceiling never
+# fires mid-init. Stopped from the unwind on every exit path.
+_XMASS_KEEPALIVE_PID=""
+_xmass_init_keepalive_start() {
+  (
+    while :; do
+      : > /run/boa_sql_maintenance.pid
+      ssh -o ConnectTimeout=10 root@"${_tgt}" \
+        ": > /run/boa_sql_maintenance.pid; : > /run/boa_xmass_init.pid" &> /dev/null
+      sleep 1200
+    done
+  ) &
+  _XMASS_KEEPALIVE_PID=$!
+}
+_xmass_init_keepalive_stop() {
+  if [ -n "${_XMASS_KEEPALIVE_PID}" ]; then
+    kill "${_XMASS_KEEPALIVE_PID}" &> /dev/null
+    wait "${_XMASS_KEEPALIVE_PID}" 2>/dev/null
+    _XMASS_KEEPALIVE_PID=""
+  fi
+}
+
+# Unwind for an init that refuses BEFORE the datadir swap: strip the role
+# pair and the Solr hold (re-arming what its disarm parked -- java.sh
+# then restarts what should run within a minute) so a refused init leaves
+# a normal box. Several refusal texts prescribe xoct or a full barracuda
+# run as the remedy, and both are standby-gated -- a leftover marker
+# would lock the operator out of the fix for up to 48h. After the swap
+# the marker is load-bearing and stays; the unwind then only reaps the
+# keepalive and the lockfile.
+_XMASS_INIT_COMMITTED=NO
+_XMASS_INIT_UNWOUND=NO
+_xmass_init_unwind() {
+  [ "${_XMASS_INIT_UNWOUND}" = "YES" ] && return 0
+  _XMASS_INIT_UNWOUND=YES
+  _xmass_init_keepalive_stop
+  if [ "${_XMASS_INIT_COMMITTED}" != "YES" ]; then
+    ssh -o ConnectTimeout=10 root@"${_tgt}" bash <<'REMOTE' &> /dev/null
+rm -f /root/.standby.cnf /run/boa_xmass_init.pid /var/log/boa/.xmass_solr_hold.pid
+for _svc in solr9 solr7 solr4 jetty9; do
+  if [ -e "/etc/init.d/${_svc}" ] && [ ! -x "/etc/init.d/${_svc}" ]; then
+    chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
+    update-rc.d ${_svc} defaults &>/dev/null || true
+    update-rc.d ${_svc} enable &>/dev/null || true
+  fi
+done
+REMOTE
+  fi
+  rm -f "${_XMASS_LOCK_FILE}"
 }
 
 _check_root() {
@@ -2190,7 +2253,14 @@ for _svc in solr9 solr7 solr4 jetty9; do
 done
 for _svc in solr9 solr7 jetty9; do
   if [ -e "/etc/init.d/${_svc}" ]; then
-    pkill -9 -f "${_svc}" &>/dev/null || true
+    # Kill by service USER (each Solr runs as its own), never by bare
+    # substring: 'pkill -f solr9' matches the rsync receiver carrying
+    # /var/solr9 and would kill the index transfer this hold protects.
+    if id "${_svc}" &>/dev/null; then
+      pkill -9 -u "${_svc}" &>/dev/null || true
+    else
+      pkill -9 -f "jav[a] .*${_svc}" &>/dev/null || true
+    fi
     update-rc.d ${_svc} disable &>/dev/null || true
     chmod -x "/etc/init.d/${_svc}" 2>/dev/null || true
   fi
@@ -2293,6 +2363,14 @@ _xmass_restore_solr_source() {
     _die "this box is a finalized PX0 proxy (/root/.proxy.cnf) -- Solr is down here by design; refusing"
   fi
   _info "Clearing the source-side Java/Solr deny ..."
+  ### The xmass hold is just another deny for this purpose: while it
+  ### exists java.sh re-disarms and kills whatever this verb starts, so a
+  ### restore that leaves it behind reports success and dies a minute
+  ### later. It goes first.
+  if [ -e "/var/log/boa/.xmass_solr_hold.pid" ]; then
+    rm -f /var/log/boa/.xmass_solr_hold.pid
+    _info "  Removed the xmass Solr hold marker"
+  fi
   ### The file wins while it exists, so it goes first.
   if [ -e "${_SOLR_DENY_FILE}" ]; then
     rm -f "${_SOLR_DENY_FILE}"
@@ -2360,6 +2438,9 @@ _xmass_restore_solr_source() {
       _info "  ${_svc}: init script already in place"
     fi
     update-rc.d "${_svc}" defaults &> /dev/null
+    ### defaults is a no-op once links exist, so the K links a disable
+    ### left behind need an explicit enable to flip back.
+    update-rc.d "${_svc}" enable &> /dev/null
     ### A pkill -9'd Solr leaves its pid file behind, which the start path trips on.
     case "${_svc}" in
       solr9|solr7) rm -f "/var/${_svc}/solr-"*.pid &> /dev/null ;;
@@ -3604,6 +3685,7 @@ _xmass_wait_for_sync() {
     sleep 10
     _lag=$(_xmass_get_repl_lag)
     if [ "${_lag}" != "0" ]; then
+      _xmass_restore_hint
       _die "Replica lag not zero on confirmation check ${_pass}/3 (lag=${_lag}s)"
     fi
     _info "  Confirmation check ${_pass}/3: lag=${_lag}s OK"
@@ -4904,6 +4986,18 @@ _xmass_cmd_init() {
   # proxy-shaped target (ha-switch failback leg) takes the marker like any
   # other: its writers are proxy-gated already, and the standby gates are
   # a superset that lifts at cutover.
+  # The protection now lives in the TARGET's bytes (per-job gates plus an
+  # in-flight-aware second.sh), so refuse a target whose tools pre-date
+  # them: its own older second.sh would strip the early marker within a
+  # minute, and nothing stops cron for the window any more. clear.sh
+  # self-updates tools within ~5 minutes on any live box.
+  if ! ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "grep -q boa_xmass_init /var/xdrago/second.sh 2>/dev/null \
+     && grep -q standby.cnf /var/xdrago/mysql_cleanup.sh 2>/dev/null"; then
+    _die "target ${_tgt} runs pre-standby-gate BOA tools -- wait ~5 minutes for" \
+         " its clear.sh to self-update (or run the BOA.sh.txt refresh there)," \
+         " then re-run init."
+  fi
   ssh -o ConnectTimeout=10 root@"${_tgt}" \
     "echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; : > /run/boa_xmass_init.pid" &> /dev/null
   if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
@@ -4913,6 +5007,9 @@ _xmass_cmd_init() {
          " box would take local writes into the copied-in datadir (cache" \
          " TRUNCATEs, task queue); fix target access and re-run init."
   fi
+  # From here every refusal unwinds the target back to a normal box; the
+  # trap mirrors the global one's signal set and reaps the lockfile too.
+  trap '_xmass_init_unwind' EXIT INT TERM HUP
   local _src_sid _tgt_sid
   _src_sid=$(_ip_to_server_id "${_XMASS_SRC_IP}")
   _tgt_sid=$(_ip_to_server_id "${_tgt}")
@@ -4950,25 +5047,35 @@ _xmass_cmd_init() {
   # the repo can land a newer patch, and failing back a newer datadir onto
   # an older primary is an unsupported downgrade -- the exact operation a
   # standby exists for. Deliberate, forward-only skew is allowed by flag.
-  local _src_full _tgt_full
-  _src_full=$(mysql -Nse "SELECT VERSION();" 2>/dev/null | head -n1 \
-    | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
+  local _src_full _tgt_full _newest
+  _src_full=$(mysql -Nse "SELECT VERSION();" 2>/dev/null \
+    | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
   _tgt_full=$(ssh root@"${_tgt}" "mysql -Nse \"SELECT VERSION();\" 2>/dev/null" 2>/dev/null \
-    | head -n1 | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
-  if [ "${_XMASS_ALLOW_PATCH_SKEW}" = "YES" ]; then
-    _alrt "Percona patch-level gate SKIPPED by _XMASS_ALLOW_PATCH_SKEW=YES (source=${_src_full:-unknown} target=${_tgt_full:-unknown})"
-  elif [ -z "${_src_full}" ] || [ -z "${_tgt_full}" ]; then
-    # Fail closed: an unreadable server version proves nothing either way.
+    | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+  if [ -z "${_src_full}" ] || [ -z "${_tgt_full}" ]; then
+    # Fail closed: an unreadable server version proves nothing either way,
+    # and the skew flag cannot vouch for a version nobody read.
     _die "could not read the server Percona version (source=${_src_full:-unknown}" \
-         " target=${_tgt_full:-unknown}) -- fix credentials/connectivity, or export" \
-         " _XMASS_ALLOW_PATCH_SKEW=YES to proceed deliberately."
-  elif [ "${_src_full}" != "${_tgt_full}" ]; then
-    _die "Percona patch level differs: source ${_src_full} vs target ${_tgt_full}." \
-         " Failing back a newer datadir onto an older primary is an unsupported" \
-         " downgrade. Align the patch level on both ends (same repo snapshot)," \
-         " or export _XMASS_ALLOW_PATCH_SKEW=YES to proceed deliberately."
-  else
+         " target=${_tgt_full:-unknown}) -- fix credentials/connectivity and re-run."
+  elif [ "${_src_full}" = "${_tgt_full}" ]; then
     _info "Percona patch level match (${_src_full}) on both servers: OK"
+  else
+    # The flag allows FORWARD skew only (target newer): restoring a newer
+    # datadir onto an older server is the unsupported downgrade this gate
+    # exists to stop, and no flag makes that safe.
+    _newest=$(printf '%s\n%s\n' "${_src_full}" "${_tgt_full}" | sort -V | tail -n1)
+    if [ "${_XMASS_ALLOW_PATCH_SKEW}" = "YES" ] \
+      && [ "${_newest}" = "${_tgt_full}" ]; then
+      _alrt "Percona patch skew ALLOWED by _XMASS_ALLOW_PATCH_SKEW=YES (source ${_src_full} -> newer target ${_tgt_full})"
+    elif [ "${_newest}" = "${_tgt_full}" ]; then
+      _die "Percona patch level differs: source ${_src_full} vs target ${_tgt_full}." \
+           " Align the patch level on both ends (same repo snapshot), or export" \
+           " _XMASS_ALLOW_PATCH_SKEW=YES to accept the forward skew deliberately."
+    else
+      _die "Percona patch level differs and the TARGET is OLDER (source ${_src_full}" \
+           " vs target ${_tgt_full}): restoring a newer datadir onto an older server" \
+           " is an unsupported downgrade. Upgrade the target; no flag overrides this."
+    fi
   fi
 
   # The restore replaces the target's datadir while the snapshot is still on
@@ -4999,6 +5106,7 @@ _xmass_cmd_init() {
   # section: it must not restart the LIVE source mid xtrabackup snapshot
   # (corrupt backup) nor the target during restore/replica setup.
   _xmass_maint_on
+  _xmass_init_keepalive_start
   _xmass_install_xtrabackup_local
   _xmass_install_xtrabackup_target
   _xmass_configure_gtid_local
@@ -5024,6 +5132,10 @@ _xmass_cmd_init() {
   _xmass_decide_transfer_method
   _xmass_init_inflight_touch
   _xmass_take_backup
+  # Point of no return: the next step displaces the target's datadir, so
+  # from here a refusal must KEEP the role pair (the gates protect the
+  # copied-in data) and the unwind only reaps the keepalive and the lock.
+  _XMASS_INIT_COMMITTED=YES
   _xmass_init_inflight_touch
   _xmass_restore_backup
   _xmass_init_inflight_touch
@@ -5050,6 +5162,7 @@ _xmass_cmd_init() {
   _xmass_save_state
   # Sync is plain rsync + live replication; the watchdog can resume protecting
   # both servers between now and cutover.
+  _xmass_init_keepalive_stop
   _xmass_maint_off
 
   _info ""
@@ -5104,6 +5217,10 @@ _xmass_cmd_sync() {
     # the target.
     ssh -o ConnectTimeout=10 root@"${_tgt}" \
       "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; true" &> /dev/null
+    if ! ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
+      _alrt "could NOT restore /root/.standby.cnf on ${_tgt} -- without it the"
+      _alrt "replica takes local writes; set the marker there by hand"
+    fi
     _info "xmass sync: syncing files to ${_tgt} ..."
   else
     _info "xmass sync: DRY run — planning file relocation to ${_tgt} (no changes made) ..."
@@ -5719,6 +5836,11 @@ _xmass_cmd_cutover() {
   # Without this the source was left holding a global read lock indefinitely, with
   # the SQL watchdog deliberately muted by _xmass_maint_on — so nothing on the box
   # would recover it and every site stayed down until someone found it by hand.
+  # Promotion-window signal FIRST: the RESET below empties the role probe
+  # while the standby marker must HOLD through steps 9-15 (renames, queue
+  # passes) -- without it second.sh would self-remove the marker within a
+  # minute and un-gate every writer mid-cutover. Step 15 clears both.
+  ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid" &> /dev/null
   _info "Stopping and decoupling slave on target ${_tgt} ..."
   if ! ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf \
@@ -5849,9 +5971,9 @@ _xmass_post_mig() {
     fi
   done
   # Belt-and-braces: a leftover standby marker on a box taking direct
-  # traffic holds the task queue (runner.sh exits on it) and, should
-  # replica config also linger, lets second.sh stop cron outright.
-  # Cutover step 15 clears it; catch anything that slipped through.
+  # traffic holds the task queue and every per-job gate (runner.sh, owl,
+  # the backup and cleanup tools all exit on it). Cutover step 15 clears
+  # it; catch anything that slipped through.
   if [ -e "/root/.standby.cnf" ]; then
     rm -f /root/.standby.cnf /run/boa_xmass_init.pid
     _alrt "  Removed a LEFTOVER /root/.standby.cnf -- cutover step 15 should have"

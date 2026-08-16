@@ -50,6 +50,16 @@ if [ "${_rplRc}" -ne "0" ]; then
   _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
   _rplRc=$?
 fi
+if [ "${_rplRc}" -ne "0" ]; then
+  # One retry before refusing: a transient hiccup must not cost the run.
+  sleep 3
+  _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+  _rplRc=$?
+  if [ "${_rplRc}" -ne "0" ]; then
+    _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    _rplRc=$?
+  fi
+fi
 if [ "${_rplRc}" -eq "0" ] && [ -n "${_rplState}" ]; then
   echo "Ooops, this box is a configured replication replica, a local cache TRUNCATE would break the SQL thread"
   exit 0

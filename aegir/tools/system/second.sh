@@ -68,11 +68,18 @@ if [ -e "/root/.standby.cnf" ]; then
         >> /var/log/boa/standby.quiesce.log
     fi
   else
-    # mysqld down (still booting, or crashed): the role cannot be judged
-    # yet -- defer to the next minute rather than guess either way.
-    echo "Standby marker present, mysqld unreachable, deferring on $(date)" \
-      >> /var/log/boa/standby.quiesce.log
+    # mysqld down (still booting, or crashed -- or deliberately stopped
+    # for the whole xtrabackup copy-back): the role cannot be judged yet,
+    # defer. Logged ONCE per outage, not per minute: a multi-hour restore
+    # would otherwise flood the log.
+    if [ ! -e "/run/boa_standby_defer_logged.pid" ]; then
+      touch /run/boa_standby_defer_logged.pid
+      echo "Standby marker present, mysqld unreachable, deferring on $(date)" \
+        >> /var/log/boa/standby.quiesce.log
+    fi
   fi
+  [ -e "/run/boa_standby_defer_logged.pid" ] && mysqladmin ping &> /dev/null \
+    && rm -f /run/boa_standby_defer_logged.pid
 fi
 
 # shellcheck disable=SC1091
@@ -351,6 +358,11 @@ _backup_in_progress() {
   [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
   pgrep -f '/backboa|/duobackboa|/multiback|/mysql_backup\.sh|/mysql_cluster_backup\.sh' >/dev/null 2>&1 && return 0
   pgrep -x mydumper >/dev/null 2>&1 && return 0
+  # xtrabackup/myloader: an xmass seed or a restore is disk-bound work on
+  # a box whose cron now stays armed -- its load must not trip the
+  # drastic tiers any more than a duplicity run's.
+  pgrep -x xtrabackup >/dev/null 2>&1 && return 0
+  pgrep -x myloader >/dev/null 2>&1 && return 0
   pgrep -x duplicity >/dev/null 2>&1
 }
 

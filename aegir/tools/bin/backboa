@@ -266,10 +266,11 @@ _install() {
 
 _check_aws() {
   if [ ! -x "/usr/local/bin/aws" ]; then
-    echo "Upgrade to add AWS tools required..."
-    # The bare `install` here invoked coreutils /usr/bin/install with no
-    # arguments and fell through; the installer function is _install.
-    _install
+    # The bare `install` this used to call invoked coreutils install with
+    # no arguments and fell through -- the de facto behaviour was to
+    # continue without the AWS CLI. Keep that (an unattended full
+    # toolchain reinstall mid-backup would be worse), just say it loudly.
+    echo "NOTE: AWS CLI missing; S3-dependent legs will fail until '$(basename "$0") install' is run"
   fi
 }
 
@@ -684,7 +685,8 @@ if [ "$1" = "backup" ]; then
   # from a crash) made duobackboa skip its day two hours later. A live
   # process holds the gate; a stale file is ignored and overwritten.
   _PID_FILE="/run/${_HST}_backboa.pid"
-  _RUNNING_PID="$(tr -dc '0-9' < "${_PID_FILE}" 2>/dev/null)"
+  _RUNNING_PID=""
+  [ -e "${_PID_FILE}" ] && _RUNNING_PID="$(tr -dc '0-9' < "${_PID_FILE}" 2>/dev/null)"
   if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"

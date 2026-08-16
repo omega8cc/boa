@@ -266,17 +266,30 @@ _install() {
 
 _check_aws() {
   if [ ! -x "/usr/local/bin/aws" ]; then
-    echo "Upgrade to add AWS tools required..."
-    # The bare `install` here invoked coreutils /usr/bin/install with no
-    # arguments and fell through; the installer function is _install.
-    _install
+    # The bare `install` this used to call invoked coreutils install with
+    # no arguments and fell through -- the de facto behaviour was to
+    # continue without the AWS CLI. Keep that (an unattended full
+    # toolchain reinstall mid-backup would be worse), just say it loudly.
+    echo "NOTE: AWS CLI missing; S3-dependent legs will fail until '$(basename "$0") install' is run"
   fi
 }
 
 _CNT=$(pgrep -fc duplicity)
 if (( _CNT > 0 )); then
-  echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
-  exit 1
+  # This exit-1 was what actually cost duobackboa its day whenever the
+  # 03:15 backboa run overran the two-hour gap -- so WAIT (bounded) for
+  # the other duplicity run to finish instead of skipping until tomorrow.
+  echo "[$(date)] Active duplicity process detected, waiting for it to finish..." >> /var/log/mybackup_waiting_queue.log
+  _WAITED=0
+  while (( $(pgrep -fc duplicity) > 0 )); do
+    if (( _WAITED >= 7200 )); then
+      echo "[$(date)] Still busy after ${_WAITED}s, giving up until the next run..." >> /var/log/mybackup_waiting_queue.log
+      exit 1
+    fi
+    sleep 300
+    _WAITED=$(( _WAITED + 300 ))
+  done
+  echo "[$(date)] Duplicity freed after ${_WAITED}s, proceeding..." >> /var/log/mybackup_waiting_queue.log
 fi
 
 if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
@@ -684,7 +697,8 @@ if [ "$1" = "backup" ]; then
   # from a crash) made this one skip its day two hours later. A live
   # process holds the gate; a stale file is ignored and overwritten.
   _PID_FILE="/run/${_HST}_duobackboa.pid"
-  _RUNNING_PID="$(tr -dc '0-9' < "${_PID_FILE}" 2>/dev/null)"
+  _RUNNING_PID=""
+  [ -e "${_PID_FILE}" ] && _RUNNING_PID="$(tr -dc '0-9' < "${_PID_FILE}" 2>/dev/null)"
   if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
