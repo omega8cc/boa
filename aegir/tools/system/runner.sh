@@ -97,7 +97,13 @@ _ci_master_cron_control() {
 # because second.sh self-removes a marker whose box probes as definitively
 # no replica (hand promotion, abandoned init) -- so the queue is held for
 # at most about a minute of cron uptime on a wrongly-marked box.
-[ -e "/root/.standby.cnf" ] && exit 0
+# The Ægir master crontab's own per-minute hosting-dispatch bypasses this
+# script entirely, so the standby role parks it too (as .aegir); the first
+# non-standby pass restores it below once the marker is gone.
+if [ -e "/root/.standby.cnf" ]; then
+  _disable_master_cron
+  exit 0
+fi
 # PHP-idle surgery quiesce: barracuda holds this while swapping PHP
 # versions (it used to borrow the proxy marker for the same mute); a
 # marker whose owner PID is gone is stale and is cleared, never obeyed.
