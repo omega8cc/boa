@@ -274,22 +274,37 @@ _check_aws() {
   fi
 }
 
-_CNT=$(pgrep -fc duplicity)
-if (( _CNT > 0 )); then
-  # This exit-1 was what actually cost duobackboa its day whenever the
-  # 03:15 backboa run overran the two-hour gap -- so WAIT (bounded) for
-  # the other duplicity run to finish instead of skipping until tomorrow.
-  echo "[$(date)] Active duplicity process detected, waiting for it to finish..." >> /var/log/mybackup_waiting_queue.log
-  _WAITED=0
-  while (( $(pgrep -fc duplicity) > 0 )); do
-    if (( _WAITED >= 7200 )); then
-      echo "[$(date)] Still busy after ${_WAITED}s, giving up until the next run..." >> /var/log/mybackup_waiting_queue.log
-      exit 1
-    fi
-    sleep 300
-    _WAITED=$(( _WAITED + 300 ))
-  done
-  echo "[$(date)] Duplicity freed after ${_WAITED}s, proceeding..." >> /var/log/mybackup_waiting_queue.log
+_duplicity_or_backboa_busy() {
+  local _bb
+  (( $(pgrep -fc duplicity) > 0 )) && return 0
+  # A live backboa BETWEEN its sequential duplicity invocations counts as
+  # busy too -- freeing in that gap would run two backup chains at once.
+  _bb="$(tr -dc '0-9' < "/run/${_HST}_backboa.pid" 2>/dev/null)"
+  [ -n "${_bb}" ] && kill -0 "${_bb}" 2>/dev/null && return 0
+  return 1
+}
+if _duplicity_or_backboa_busy; then
+  if [ "$1" = "backup" ]; then
+    # The old immediate exit-1 here is what cost duobackboa its day
+    # whenever the 03:15 backboa run overran the two-hour gap -- so WAIT
+    # (bounded) for the whole sibling run to finish, not just for a gap
+    # between its duplicity invocations. Other verbs keep the immediate
+    # refusal: an operator restore must not silently block for hours.
+    echo "[$(date)] Active duplicity/backboa run detected, waiting for it to finish..." >> /var/log/mybackup_waiting_queue.log
+    _WAITED=0
+    while _duplicity_or_backboa_busy; do
+      if (( _WAITED >= 7200 )); then
+        echo "[$(date)] Still busy after ${_WAITED}s, giving up until the next run..." >> /var/log/mybackup_waiting_queue.log
+        exit 1
+      fi
+      sleep 300
+      _WAITED=$(( _WAITED + 300 ))
+    done
+    echo "[$(date)] Backup slot freed after ${_WAITED}s, proceeding..." >> /var/log/mybackup_waiting_queue.log
+  else
+    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    exit 1
+  fi
 fi
 
 if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then

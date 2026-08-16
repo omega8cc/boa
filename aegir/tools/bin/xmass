@@ -1566,11 +1566,17 @@ _xmass_init_inflight_touch() {
 # fires mid-init. Stopped from the unwind on every exit path.
 _XMASS_KEEPALIVE_PID=""
 _xmass_init_keepalive_start() {
+  local _pp=$$
   (
     while :; do
+      # Self-terminate when the owning xmass is gone (SIGKILL, OOM): an
+      # orphaned beat would defeat the mute's 240-min expiry forever, on
+      # the LIVE source. BatchMode + closed stdin: a degraded auth path
+      # must never steal the operator's keystrokes from the background.
+      kill -0 "${_pp}" 2>/dev/null || exit 0
       : > /run/boa_sql_maintenance.pid
-      ssh -o ConnectTimeout=10 root@"${_tgt}" \
-        ": > /run/boa_sql_maintenance.pid; : > /run/boa_xmass_init.pid" &> /dev/null
+      ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+        ": > /run/boa_sql_maintenance.pid; : > /run/boa_xmass_init.pid" &> /dev/null < /dev/null
       sleep 1200
     done
   ) &
@@ -1598,17 +1604,39 @@ _xmass_init_unwind() {
   [ "${_XMASS_INIT_UNWOUND}" = "YES" ] && return 0
   _XMASS_INIT_UNWOUND=YES
   _xmass_init_keepalive_stop
+  # The watchdog mute must not survive the window on either end -- a
+  # refused init leaves a NORMAL box, and the mute would otherwise sit
+  # for its full 240-min expiry on the live source.
+  _xmass_maint_off
   if [ "${_XMASS_INIT_COMMITTED}" != "YES" ]; then
-    ssh -o ConnectTimeout=10 root@"${_tgt}" bash <<'REMOTE' &> /dev/null
+    # Re-arm ONLY what our own hold disarmed (the target-side list the
+    # prevent step wrote): an ha-switch failback target is a finalized
+    # proxy whose Solr xtrim disarmed on purpose -- those never enter
+    # the list and stay down.
+    if ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" bash <<'REMOTE' &> /dev/null
 rm -f /root/.standby.cnf /run/boa_xmass_init.pid /var/log/boa/.xmass_solr_hold.pid
-for _svc in solr9 solr7 solr4 jetty9; do
-  if [ -e "/etc/init.d/${_svc}" ] && [ ! -x "/etc/init.d/${_svc}" ]; then
-    chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
-    update-rc.d ${_svc} defaults &>/dev/null || true
-    update-rc.d ${_svc} enable &>/dev/null || true
-  fi
-done
+if [ -e "/var/log/boa/.xmass_solr_disarmed.list" ]; then
+  while read -r _svc; do
+    case "${_svc}" in solr9|solr7|solr4|jetty9) : ;; *) continue ;; esac
+    if [ -e "/etc/init.d/${_svc}" ]; then
+      chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
+      update-rc.d ${_svc} defaults >/dev/null 2>&1 || true
+      update-rc.d ${_svc} enable >/dev/null 2>&1 || true
+    fi
+  done < /var/log/boa/.xmass_solr_disarmed.list
+  rm -f /var/log/boa/.xmass_solr_disarmed.list
+fi
+test ! -e /root/.standby.cnf && test ! -e /var/log/boa/.xmass_solr_hold.pid
 REMOTE
+    then
+      _info "init unwound: target restored to a normal box"
+    else
+      _alrt "could NOT verify the init unwind on ${_tgt} -- run there by hand:"
+      _alrt '    rm -f /root/.standby.cnf /run/boa_xmass_init.pid'
+      _alrt '    rm -f /var/log/boa/.xmass_solr_hold.pid'
+      _alrt '    (then re-arm any Solr init scripts the hold disarmed: chmod 744'
+      _alrt '     /etc/init.d/<svc>; update-rc.d <svc> defaults; update-rc.d <svc> enable)'
+    fi
   fi
   rm -f "${_XMASS_LOCK_FILE}"
 }
@@ -2253,19 +2281,30 @@ for _svc in solr9 solr7 solr4 jetty9; do
 done
 for _svc in solr9 solr7 jetty9; do
   if [ -e "/etc/init.d/${_svc}" ]; then
+    # Record what WE disarm (armed scripts only) so the unwind re-arms
+    # exactly this set and never resurrects an xtrim-disarmed proxy Solr.
+    if [ -x "/etc/init.d/${_svc}" ] \
+      && ! grep -qx "${_svc}" /var/log/boa/.xmass_solr_disarmed.list 2>/dev/null; then
+      echo "${_svc}" >> /var/log/boa/.xmass_solr_disarmed.list
+    fi
     # Kill by service USER (each Solr runs as its own), never by bare
     # substring: 'pkill -f solr9' matches the rsync receiver carrying
     # /var/solr9 and would kill the index transfer this hold protects.
+    # The pattern fallback tolerates versioned java binaries (java11).
     if id "${_svc}" &>/dev/null; then
       pkill -9 -u "${_svc}" &>/dev/null || true
     else
-      pkill -9 -f "jav[a] .*${_svc}" &>/dev/null || true
+      pkill -9 -f "jav[a][0-9]* .*${_svc}" &>/dev/null || true
     fi
     update-rc.d ${_svc} disable &>/dev/null || true
     chmod -x "/etc/init.d/${_svc}" 2>/dev/null || true
   fi
 done
 if [ -e "/etc/init.d/solr4" ]; then
+  if [ -x "/etc/init.d/solr4" ] \
+    && ! grep -qx "solr4" /var/log/boa/.xmass_solr_disarmed.list 2>/dev/null; then
+    echo "solr4" >> /var/log/boa/.xmass_solr_disarmed.list
+  fi
   update-rc.d solr4 disable &>/dev/null || true
   chmod -x /etc/init.d/solr4 2>/dev/null || true
 fi
@@ -2361,6 +2400,15 @@ _xmass_restore_solr_source() {
   ### there deliberately. Never resurrect it on a shrunken proxy.
   if [ -e "/root/.proxy.cnf" ]; then
     _die "this box is a finalized PX0 proxy (/root/.proxy.cnf) -- Solr is down here by design; refusing"
+  fi
+  ### An ACTIVE standby holds Solr down for the whole window on purpose:
+  ### restoring it mid-window would start Solr on an index still being
+  ### rsynced. This verb serves prep-target (no marker yet) and
+  ### post-abandon repair (the init unwind removed the marker).
+  if [ -e "/root/.standby.cnf" ]; then
+    _die "this box is an active replication standby (/root/.standby.cnf) --" \
+         " Solr is held down for the window; finish or abort the migration" \
+         " first (a refused init unwinds this automatically)"
   fi
   _info "Clearing the source-side Java/Solr deny ..."
   ### The xmass hold is just another deny for this purpose: while it
@@ -2506,13 +2554,17 @@ done
 for _svc in solr9 solr7; do
   if [ -x "/etc/init.d/${_svc}" ] \
     && [ -e "/etc/default/${_svc}.in.sh" ]; then
-    pkill -9 -f ${_svc} &>/dev/null || true
+    if id "${_svc}" &>/dev/null; then
+      pkill -9 -u "${_svc}" &>/dev/null || true
+    else
+      pkill -9 -f "jav[a][0-9]* .*${_svc}" &>/dev/null || true
+    fi
     service ${_svc} start &>/dev/null || true
     echo "INFO: Started ${_svc} on target"
   fi
 done
 if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-  pkill -9 -f jetty9 &>/dev/null || true
+  pkill -9 -f "jav[a][0-9]* .*jetty9" &>/dev/null || true
   service jetty9 start &>/dev/null || true
   echo "INFO: Started jetty9 on target"
 fi
@@ -3465,8 +3517,11 @@ _xmass_sync_account() {
   _bkLnk="$(readlink "${_udir}/backups" 2>/dev/null)"
   if [ -L "${_udir}/backups" ] \
     && [[ "${_bkLnk}" = "${_udir}/static/files/"* ]]; then
+    # Act only once the store content actually exists on the target (the
+    # store leg runs first in this same pass): replacing a real dir with
+    # a link that dangles would lose the target's only copy.
     [ "${_MODE}" = "LIVE" ] \
-      && ssh root@"${_tgt}" "if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_bkLnk}' '${_dst}/backups'" 2>/dev/null
+      && ssh root@"${_tgt}" "[ -e '${_bkLnk}' ] || exit 0; if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_bkLnk}' '${_dst}/backups'" 2>/dev/null
   elif [ -d "${_udir}/backups" ]; then
     if _xmass_solr_check "${_udir}/backups" "${_dst}/backups" "backups (${_oct})"; then
       _xmass_rsync -aEAXqu ${_ieni} -e ssh \
@@ -3479,7 +3534,7 @@ _xmass_sync_account() {
   if [ -L "${_udir}/backup-exports" ] \
     && [[ "${_bkLnk}" = "${_udir}/static/files/"* ]] \
     && [ "${_MODE}" = "LIVE" ]; then
-    ssh root@"${_tgt}" "if [ -d '${_dst}/backup-exports' ] && [ ! -L '${_dst}/backup-exports' ]; then rm -rf '${_dst}/backup-exports'; fi; ln -sfn '${_bkLnk}' '${_dst}/backup-exports'" 2>/dev/null
+    ssh root@"${_tgt}" "[ -e '${_bkLnk}' ] || exit 0; if [ -d '${_dst}/backup-exports' ] && [ ! -L '${_dst}/backup-exports' ]; then rm -rf '${_dst}/backup-exports'; fi; ln -sfn '${_bkLnk}' '${_dst}/backup-exports'" 2>/dev/null
   fi
   [ "${_MODE}" = "LIVE" ] \
     && ssh root@"${_tgt}" "mkdir -p ${_dst}/backups ${_dst}/clients" 2>/dev/null
@@ -5008,8 +5063,12 @@ _xmass_cmd_init() {
          " TRUNCATEs, task queue); fix target access and re-run init."
   fi
   # From here every refusal unwinds the target back to a normal box; the
-  # trap mirrors the global one's signal set and reaps the lockfile too.
-  trap '_xmass_init_unwind' EXIT INT TERM HUP
+  # trap reaps the lockfile too. Signals get their own handler that EXITS:
+  # a bash signal trap otherwise returns to the next statement, and an
+  # interrupted init must never unwind the gates and then keep marching
+  # into the datadir swap.
+  trap '_xmass_init_unwind' EXIT
+  trap '_xmass_init_unwind; exit 130' INT TERM HUP
   local _src_sid _tgt_sid
   _src_sid=$(_ip_to_server_id "${_XMASS_SRC_IP}")
   _tgt_sid=$(_ip_to_server_id "${_tgt}")
@@ -5599,6 +5658,10 @@ _xmass_cmd_cutover() {
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run"
     _xmass_park_runners_and_cron
+    # Re-assert the promotion-window signal too: the parked run's touch
+    # does not survive a target reboot or a long park's age ceiling, and
+    # the tail runs the renames and queue passes the signal protects.
+    ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid" &> /dev/null
     # Re-assert the 503 gate: it persists on disk from the parked run, but an
     # operator may have lifted it via the abandon recipe before deciding to
     # resume after all -- and the tail assumes a non-serving source. Also
@@ -5930,12 +5993,16 @@ _xmass_post_mig() {
   # (Re)start Solr services cleanly
   for _svc in solr9 solr7; do
     if [ -x "/etc/init.d/${_svc}" ] && [ -e "/etc/default/${_svc}.in.sh" ]; then
-      pkill -9 -f "${_svc}" &>/dev/null || true
+      if id "${_svc}" &> /dev/null; then
+        pkill -9 -u "${_svc}" &> /dev/null || true
+      else
+        pkill -9 -f "jav[a][0-9]* .*${_svc}" &> /dev/null || true
+      fi
       service "${_svc}" start &>/dev/null
       _info "  ${_svc} restarted"
     fi
   done
-  pkill -9 -f jetty9 &>/dev/null || true
+  pkill -9 -f "jav[a][0-9]* .*jetty9" &>/dev/null || true
   rm -rf /tmp/drush* /tmp/pear /tmp/jetty*
   rm -f /var/log/jetty9/* &>/dev/null || true
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then

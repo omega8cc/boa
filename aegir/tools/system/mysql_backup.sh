@@ -78,15 +78,21 @@ _replica_role_gate() {
   if [ "${_rplRc}" -eq "0" ] && [ -n "${_rplState}" ]; then
     # The run marker may already exist (the re-ask sits after the pid
     # write); five watchdog consumers read it as a live backup, so it
-    # must not outlive this exit.
-    rm -f /run/boa_sql_backup.pid
+    # must not outlive this exit -- but ONLY when it is OURS: at the head
+    # call this process has not written it yet, and a concurrent run's
+    # live marker must never be deleted from here.
+    if [ "$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)" = "$$" ]; then
+      rm -f /run/boa_sql_backup.pid
+    fi
     echo "Ooops, this box is a configured replication replica, local TRUNCATE/OPTIMIZE would break the SQL thread"
     exit 0
   fi
   if [ "${_rplRc}" -ne "0" ]; then
     # mysqladmin ping exits 0 even on Access denied, so credential
     # failures land here, not in the ping branch. Fail closed.
-    rm -f /run/boa_sql_backup.pid
+    if [ "$(tr -dc '0-9' < /run/boa_sql_backup.pid 2>/dev/null)" = "$$" ]; then
+      rm -f /run/boa_sql_backup.pid
+    fi
     echo "Ooops, the replica role probe FAILED (credentials?) -- refusing local TRUNCATE/DROP; verify /root/.my.cnf"
     exit 0
   fi

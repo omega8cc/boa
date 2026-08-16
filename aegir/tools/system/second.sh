@@ -78,8 +78,14 @@ if [ -e "/root/.standby.cnf" ]; then
         >> /var/log/boa/standby.quiesce.log
     fi
   fi
-  [ -e "/run/boa_standby_defer_logged.pid" ] && mysqladmin ping &> /dev/null \
-    && rm -f /run/boa_standby_defer_logged.pid
+fi
+# Reap the defer-log stamp whenever the deferral condition no longer
+# holds (mysqld back, or the marker itself gone) -- a leaked stamp would
+# silently swallow the log line for the NEXT genuine outage.
+if [ -e "/run/boa_standby_defer_logged.pid" ]; then
+  if [ ! -e "/root/.standby.cnf" ] || mysqladmin ping &> /dev/null; then
+    rm -f /run/boa_standby_defer_logged.pid
+  fi
 fi
 
 # shellcheck disable=SC1091
@@ -360,9 +366,11 @@ _backup_in_progress() {
   pgrep -x mydumper >/dev/null 2>&1 && return 0
   # xtrabackup/myloader: an xmass seed or a restore is disk-bound work on
   # a box whose cron now stays armed -- its load must not trip the
-  # drastic tiers any more than a duplicity run's.
+  # drastic tiers any more than a duplicity run's. The packaged myloader
+  # is a wrapper exec'ing myloader.bin, so match both comm names.
   pgrep -x xtrabackup >/dev/null 2>&1 && return 0
   pgrep -x myloader >/dev/null 2>&1 && return 0
+  pgrep -x myloader.bin >/dev/null 2>&1 && return 0
   pgrep -x duplicity >/dev/null 2>&1
 }
 

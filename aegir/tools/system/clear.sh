@@ -110,7 +110,6 @@ find /run/boa_wait.pid               -type f -not -newermt "${_TWELVE_HOURS}" -e
 find /run/boa_run.pid                -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/octopus_install_run.pid    -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/*_backup.pid               -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
-find /run/*backboa.pid               -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/daily-fix.pid              -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 
 # PHP-idle surgery quiesce: barracuda holds this while swapping PHP

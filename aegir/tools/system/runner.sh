@@ -101,6 +101,12 @@ _ci_master_cron_control() {
 if [ -e "/root/.standby.cnf" ]; then
   _disable_master_cron
   exit 0
+elif [ -e "/var/spool/cron/crontabs/.aegir" ]; then
+  # Un-park HERE, above the proxy/pause exits: a promoted ha-switch box
+  # can keep its proxy marker, and the parked dispatch must return the
+  # moment the standby role ends -- the un-park at the tail of this
+  # script is unreachable on that shape.
+  _enable_master_cron
 fi
 # The task queue stays proxy-gated: a finalized proxy has no local sites
 # for tasks to act on (part of the 2026-08-09 marker narrowing -- this
