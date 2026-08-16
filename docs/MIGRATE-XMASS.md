@@ -14,9 +14,14 @@ window is needed.
 - Any scenario where per-account `xoct` cycles would be impractical due to
   volume (many accounts, large databases, large Solr indices).
 
-**Requirement:** both servers must run **identical Percona MySQL versions**
-(e.g. both 8.0, both 8.4). If versions differ, use
-[xoct](MIGRATE-XOCT.md) per account instead.
+**Requirement:** both servers must run **identical Percona MySQL versions —
+series AND patch level** (e.g. both 8.4.13, never 8.4.10 vs 8.4.13). A series
+mismatch means xmass is the wrong tool: use [xoct](MIGRATE-XOCT.md) per
+account instead. A patch-level mismatch means align the packages first —
+failing back a newer datadir onto an older primary is an unsupported
+downgrade. Both are enforced gates at `init` (server-side, via
+`SELECT VERSION()`); a deliberate forward-only patch skew can be allowed
+with `_XMASS_ALLOW_PATCH_SKEW=YES`.
 
 ## Architecture Overview
 
@@ -115,7 +120,8 @@ process does not block.
 
 ## Prerequisites
 
-- Both servers running identical Percona MySQL versions.
+- Both servers running identical Percona MySQL versions — series and patch
+  level (both gated at `init`; see the requirement above).
 - Root SSH key access from source to target (set up via `xmass pre-mig`;
   the source also learns the target's SSH host key automatically).
 - BOA installed on target at the **same release** as source. This is an

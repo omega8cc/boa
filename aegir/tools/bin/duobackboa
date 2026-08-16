@@ -267,7 +267,9 @@ _install() {
 _check_aws() {
   if [ ! -x "/usr/local/bin/aws" ]; then
     echo "Upgrade to add AWS tools required..."
-    install
+    # The bare `install` here invoked coreutils /usr/bin/install with no
+    # arguments and fell through; the installer function is _install.
+    _install
   fi
 }
 
@@ -677,20 +679,25 @@ _retrieve() {
 }
 
 if [ "$1" = "backup" ]; then
-  if test -f /run/${_HST}_backup.pid ; then
+  # Own pid file with a real PID inside: the two duplicity wrappers used
+  # to share one empty touch-file, so a slow backboa run (or a leftover
+  # from a crash) made this one skip its day two hours later. A live
+  # process holds the gate; a stale file is ignored and overwritten.
+  _PID_FILE="/run/${_HST}_duobackboa.pid"
+  _RUNNING_PID="$(tr -dc '0-9' < "${_PID_FILE}" 2>/dev/null)"
+  if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
-    echo "Existing /run/${_HST}_backup.pid found..."
-    echo "But no active duplicity process detected..."
+    echo "Live run holds ${_PID_FILE} (pid ${_RUNNING_PID})..."
     exit 1
   else
-    touch /run/${_HST}_backup.pid
+    echo $$ > "${_PID_FILE}"
     echo "The duplicity backup is starting now..."
     _check_aws
     _backup
     echo "The duplicity backup is complete!"
     touch ${_LOGPTH}/run_${_HST}_backup.log
-    rm -f /run/${_HST}_backup.pid
+    rm -f "${_PID_FILE}"
   fi
 elif [ "$1" = "install" ]; then
   _install
