@@ -33,6 +33,11 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
+# A replication standby runs no night work: the hostmaster drush calls,
+# per-site LE renewals and the ghost cleanups all write into state that
+# arrives from the source by replication and rsync.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 # PHP-idle surgery quiesce: barracuda holds this while swapping PHP
 # versions; a marker whose owner PID is gone is stale (crashed run) and
 # is cleared, never obeyed -- and /run clears itself on reboot.

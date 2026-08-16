@@ -19,6 +19,15 @@ _pthLog="/var/log/boa"
 
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
 
+# NB: no whole-script standby gate here, on purpose. The local-only
+# reconciliation this script owns -- system users from clients/, per-user
+# php.ini, FPM $user_socket includes, lshell membership -- must run on a
+# replication standby exactly as anywhere (xmass relies on sub-users
+# appearing on the target within minutes of clients/ landing, and a
+# barracuda system pass on a standby needs its post-step). Only the two
+# writers into replicated/rsynced state carry scoped standby gates below:
+# the ghost-alias reaper and the drush alias-store rebuild.
+
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
 else
@@ -2148,6 +2157,10 @@ _manage_site_drush_alias_mirror() {
             : # front-end companion (control panel machinery, stale after a
             : # hostname rename or distro bump) -- never reaped here; the
             : # nightly classifier owns these as operator-review items
+          elif [ -e "/root/.standby.cnf" ]; then
+            : # replication standby: aliases and site dirs arrive by
+            : # replication and rsync on their own clocks, so a mid-sync
+            : # mismatch is normal -- never reap here
           else
             _GA_OCT="/root/.$(basename ${_pthParen_tUsr} 2>/dev/null).octopus.cnf"
             _GA_ON=NO
@@ -2188,7 +2201,12 @@ _manage_site_drush_alias_mirror() {
       fi
     fi
   done
-  if [ -x "/usr/bin/drush10" ] && [ "${_GHOST_REAPED}" != "YES" ]; then
+  # The alias-store rebuild wipes and regenerates ~/.drush/sites from the
+  # drushrc aliases -- on a standby those arrive by rsync mid-window, and
+  # a rebuild against a half-landed set bakes the gaps in. Scoped gate:
+  # everything above (users, inis, pools) already ran.
+  if [ -x "/usr/bin/drush10" ] && [ "${_GHOST_REAPED}" != "YES" ] \
+    && [ ! -e "/root/.standby.cnf" ]; then
     if [ "${_isAliasUpdate}" = "YES" ] \
       || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
       chage -M 99999 ${_USER}.ftp &> /dev/null

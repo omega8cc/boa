@@ -2286,6 +2286,32 @@ _check_root_direct
 _set_tree_vars
 _if_display_help
 ###_check_manufacturer_compatibility
+# A replication standby stays current -- system, stack, Percona and kernel
+# upgrades run here like on any BOA box -- but the Aegir master half of a
+# full pass writes into the replicated hostmaster database, where local
+# changes become errant transactions. Steer a full up-* to its system
+# flavor while the standby role holds; the master half arrives from the
+# source by replication and runs here directly again after promotion.
+# Sits BEFORE the screen spawn so a refusal costs no session, and AFTER
+# _set_tree_vars so the flavor token is already normalized.
+if [ -e "/root/.standby.cnf" ]; then
+  case "${_cmNd}" in
+    up-dev|up-pro|up-lts|up-distro)
+      if [ "${_outP}" = "aegir" ]; then
+        echo "NOTE: Passive replication standby (/root/.standby.cnf): the Aegir"
+        echo "NOTE: master upgrade writes into a replicated database -- refused"
+        echo "NOTE: while the standby role holds; it resumes at promotion."
+        _clean_pid_exit "up-* aegir refused on a replication standby"
+      fi
+      if [ "${_outP}" != "system" ]; then
+        echo "NOTE: Passive replication standby (/root/.standby.cnf): running the"
+        echo "NOTE: system-only flavor -- the Aegir master half writes into a"
+        echo "NOTE: replicated database and resumes at promotion."
+        export _outP="system"
+      fi
+    ;;
+  esac
+fi
 [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
 [[ "${_ARGS}" =~ noscreen ]] && export _ARGS=$(echo "${_ARGS}" | sed -E "s/noscreen//g")
 _proceed

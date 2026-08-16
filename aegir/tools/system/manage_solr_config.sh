@@ -8,6 +8,14 @@ export _xSrl=588844devT01
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
+# A replication standby holds Solr down until promotion; creating, deleting
+# or restarting cores here would act on an index still being synced. The
+# xmass hold marker gates too: it outlives the standby marker through the
+# cutover window (java.sh enforces the disarm on it until step 14), and
+# core work must not fight that enforcement.
+[ -e "/root/.standby.cnf" ] && exit 0
+[ -e "/var/log/boa/.xmass_solr_hold.pid" ] && exit 0
+
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
