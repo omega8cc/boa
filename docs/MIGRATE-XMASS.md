@@ -125,7 +125,13 @@ process does not block.
 - Both servers running identical Percona MySQL versions — series and patch
   level (both gated at `init`; see the requirement above).
 - Root SSH key access from source to target (set up via `xmass pre-mig`;
-  the source also learns the target's SSH host key automatically).
+  the source also learns the target's SSH host key automatically). The verb
+  is two-sided: run `xmass pre-mig <own-fqdn>` ON the source to publish its
+  key (publish mode fires when the argument equals the box's own hostname),
+  then `xmass pre-mig <source-address>` ON the target to fetch and install
+  it. On a failback chain the roles have swapped — publish on the new
+  source first, or the fetch finds nothing (a proxied box relays its
+  undefined vhost onward instead of serving the key).
 - BOA installed on target at the **same release** as source. This is an
   enforced gate, not advice: `prep-target` reads the release stamp from
   `boa info` on both ends at first target contact and **refuses with no
