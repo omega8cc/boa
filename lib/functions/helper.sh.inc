@@ -271,6 +271,15 @@ _install_boa_deb() {
   local _debFile="${_pkgName}_${_pkgVrn}.${_OS_CODE}_amd64.deb"
   local _debSum=""
   local _debOk=YES
+  local _debDeps=""
+  local _debDep=""
+  local _debDepName=""
+  local _debDepStatus=""
+  local _debDepConstraint=""
+  local _debDepOp=""
+  local _debDepReq=""
+  local _debDepHas=""
+  local _debDepsMissing=""
   if [ -z "${_pkgName}" ] || [ -z "${_pkgVrn}" ] || [ -z "${_OS_CODE}" ]; then
     return 1
   fi
@@ -299,25 +308,69 @@ _install_boa_deb() {
     return 1
   fi
   gunzip -q "${_debFile}.gz"
+  # Pre-satisfy the deb's distro-lib Depends so dpkg -i configures cleanly.
+  # On a fresh box the first boa-php deb's distro libs (libgeos-c1v5,
+  # libc-client2007e) are not yet present, and dpkg -i then prints a
+  # "dependency problems" scroll before the apt-get -f heal below completes
+  # the install -- correct, but it reads as a broken install in debug mode.
+  # Clauses come from the package's own control field (first alternative
+  # only); a present dep still counts as missing when it fails its version
+  # constraint, because dpkg -i prints the same scroll for a too-old lib.
+  # A dpkg-HELD dep is deliberate (see _ssl_apt_locks_update) and always
+  # counts as satisfied: naming a held package here could abort the whole
+  # apt transaction or cancel the hold. Strictly best-effort: _mrun never
+  # fails the run, so any apt hiccup here just falls through to the
+  # dpkg -i + apt-get -f idiom below, which remains the actual guarantee.
+  _debDeps=$(dpkg-deb -f "${_debFile}" Depends 2>/dev/null \
+    | tr ',' '\n' \
+    | sed -e 's/|.*//' -e 's/[[:space:]]//g')
+  for _debDep in ${_debDeps}; do
+    _debDepName="${_debDep%%(*}"
+    if [ -z "${_debDepName}" ]; then
+      continue
+    fi
+    _debDepStatus=$(dpkg-query -W -f='${Status}' "${_debDepName}" 2>/dev/null)
+    if [ "${_debDepStatus}" = "hold ok installed" ]; then
+      continue
+    fi
+    if [ "${_debDepStatus}" != "install ok installed" ]; then
+      _debDepsMissing="${_debDepsMissing} ${_debDepName}"
+      continue
+    fi
+    if [[ "${_debDep}" == *"("* ]]; then
+      _debDepConstraint="${_debDep#*(}"
+      _debDepConstraint="${_debDepConstraint%)}"
+      _debDepOp="${_debDepConstraint//[^<>=]/}"
+      _debDepReq="${_debDepConstraint#"${_debDepOp}"}"
+      _debDepHas=$(dpkg-query -W -f='${Version}' "${_debDepName}" 2>/dev/null)
+      if [ -n "${_debDepOp}" ] && [ -n "${_debDepReq}" ] && [ -n "${_debDepHas}" ]; then
+        if ! dpkg --compare-versions "${_debDepHas}" "${_debDepOp}" "${_debDepReq}" 2>/dev/null; then
+          _debDepsMissing="${_debDepsMissing} ${_debDepName}"
+        fi
+      fi
+    fi
+  done
+  if [ -n "${_debDepsMissing}" ]; then
+    _apt_clean_update
+    _mrun "${_INSTAPP}${_debDepsMissing}"
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     dpkg -i "${_debFile}" || _debOk=NO
   else
     dpkg -i "${_debFile}" &> /dev/null || _debOk=NO
   fi
-  # apt-get -f install always runs next: on the success path it pulls the
-  # package's distro-lib Depends; on a dpkg -i FAILURE it completes a package
-  # left unpacked-but-unconfigured by a distro Depends that was not yet present
-  # (dpkg then exits non-zero), pulling the missing libs from the OS repos --
-  # the standard `dpkg -i` + `apt-get -f install` idiom, and the same deps the
-  # source path installs anyway. Fresh installs need this for the lowest PHP
-  # version built (boa-php83 in the default trio): its libc-client2007e Depends
-  # is absent until the first PHP source build would pull it in, so without this
-  # that one version always source-builds needlessly. Inter-boa ordering stays
-  # installer-enforced (boa-* Depends are deliberately omitted, so apt-get -f
-  # never drags a companion back to source). apt-get -f may instead REMOVE the
-  # package to reach a consistent state (a genuinely unsatisfiable Depends), so
-  # the failure path re-checks the dpkg status and only falls back to sources
-  # when the package is still not properly installed.
+  # apt-get -f install always runs next: on the success path it settles any
+  # distro-lib Depends the pre-satisfy step above could not provide; on a
+  # dpkg -i FAILURE it completes a package left unpacked-but-unconfigured by
+  # a still-missing distro Depends (dpkg then exits non-zero), pulling the
+  # missing libs from the OS repos -- the standard `dpkg -i` +
+  # `apt-get -f install` idiom, and the same deps the source path installs
+  # anyway. Inter-boa ordering stays installer-enforced (boa-* Depends are
+  # deliberately omitted, so apt-get -f never drags a companion back to
+  # source). apt-get -f may instead REMOVE the package to reach a consistent
+  # state (a genuinely unsatisfiable Depends), so the failure path re-checks
+  # the dpkg status and only falls back to sources when the package is still
+  # not properly installed.
   _mrun "apt-get install -f ${_aptYesUnth}"
   if [ "${_debOk}" = "NO" ]; then
     if dpkg-query -W -f='${Status}' "${_pkgName}" 2>/dev/null \
