@@ -240,10 +240,7 @@ _sync_user_register_protection_ini_vars() {
   _ENABLE_STRICT_USER_REGISTER_PROTECTION=NO
   if [ -e "/data/conf/default.boa_platform_control.ini" ] \
     && [ ! -e "${_PLR_CTRL_F}" ]; then
-    cp -af /data/conf/default.boa_platform_control.ini \
-      ${_PLR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
-    chmod 0664 ${_PLR_CTRL_F} &> /dev/null
+    _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
   fi
   if [ -e "${_PLR_CTRL_F}" ]; then
     _EN_URP_T_S=$(grep "^enable_strict_user_register_protection = TRUE" \
@@ -287,9 +284,7 @@ _sync_user_register_protection_ini_vars() {
   fi
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
-    cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-    chmod 0664 ${_DIR_CTRL_F} &> /dev/null
+    _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
   fi
   if [ -e "${_DIR_CTRL_F}" ]; then
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
@@ -332,25 +327,40 @@ _fix_user_register_protection_with_vSet() {
 }
 
 _fix_llms_txt() {
+  # The site files/ dir is tenant-writable (oN:www-data 02775; the shell user is
+  # in www-data), so a tenant can plant files/llms.txt as a symlink. curl -o
+  # follows it and creates the target of a dangling link, and the chown/chmod
+  # below would then retarget it -- a root write to a tenant-chosen path. Strip
+  # any planted link first, fetch into a temp in the site dir (oN:users 0755, not
+  # group-writable, same filesystem), then mv -f -T over the leaf so rename()
+  # replaces a re-planted link instead of following it; guard the trailing
+  # metadata legs with [ ! -L ].
+  _desymlink_planted "${_Dir}/files/llms.txt"
   find ${_Dir}/files/llms.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${_Dir}/files/llms.txt" ] \
-    && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
-    curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
-      -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
-      -o ${_Dir}/files/llms.txt
-    if [ -e "${_Dir}/files/llms.txt" ]; then
-      echo >> ${_Dir}/files/llms.txt
+    && [ ! -e "${_Plr}/profiles/hostmaster" ] \
+    && [ -d "${_Dir}/files" ]; then
+    _LLMS_TMP=$(mktemp "${_Dir}/.llms.XXXXXX" 2>/dev/null)
+    if [ -n "${_LLMS_TMP}" ]; then
+      curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+        -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
+        -o "${_LLMS_TMP}"
+      echo >> "${_LLMS_TMP}"
+      mv -f -T "${_LLMS_TMP}" ${_Dir}/files/llms.txt &> /dev/null \
+        || rm -f "${_LLMS_TMP}"
     fi
   fi
   _VAR_IF_PRESENT=
-  if [ -f "${_Dir}/files/llms.txt" ]; then
+  if [ -f "${_Dir}/files/llms.txt" ] && [ ! -L "${_Dir}/files/llms.txt" ]; then
     _VAR_IF_PRESENT=$(grep "##" ${_Dir}/files/llms.txt 2>&1)
   fi
   if [[ ! "${_VAR_IF_PRESENT}" =~ "##" ]]; then
-    rm -f ${_Dir}/files/llms.txt
+    [ ! -L "${_Dir}/files/llms.txt" ] && rm -f ${_Dir}/files/llms.txt
   else
-    chown ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
-    chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+    if [ ! -L "${_Dir}/files/llms.txt" ]; then
+      chown ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
+      chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+    fi
     if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
       rm -f ${_Plr}/llms.txt
     fi
@@ -358,25 +368,35 @@ _fix_llms_txt() {
 }
 
 _fix_robots_txt() {
+  # See _fix_llms_txt: files/ is tenant-writable, so guard the planted-symlink
+  # class -- strip the leaf, fetch into a temp in the non-group-writable site
+  # dir, mv -f -T over the leaf, and gate the metadata legs with [ ! -L ].
+  _desymlink_planted "${_Dir}/files/robots.txt"
   find ${_Dir}/files/robots.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${_Dir}/files/robots.txt" ] \
-    && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
-    curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
-      -A iCab "http://${_Dom}/robots.txt?nocache=1&noredis=1" \
-      -o ${_Dir}/files/robots.txt
-    if [ -e "${_Dir}/files/robots.txt" ]; then
-      echo >> ${_Dir}/files/robots.txt
+    && [ ! -e "${_Plr}/profiles/hostmaster" ] \
+    && [ -d "${_Dir}/files" ]; then
+    _ROBOTS_TMP=$(mktemp "${_Dir}/.robots.XXXXXX" 2>/dev/null)
+    if [ -n "${_ROBOTS_TMP}" ]; then
+      curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+        -A iCab "http://${_Dom}/robots.txt?nocache=1&noredis=1" \
+        -o "${_ROBOTS_TMP}"
+      echo >> "${_ROBOTS_TMP}"
+      mv -f -T "${_ROBOTS_TMP}" ${_Dir}/files/robots.txt &> /dev/null \
+        || rm -f "${_ROBOTS_TMP}"
     fi
   fi
   _VAR_IF_PRESENT=
-  if [ -f "${_Dir}/files/robots.txt" ]; then
+  if [ -f "${_Dir}/files/robots.txt" ] && [ ! -L "${_Dir}/files/robots.txt" ]; then
     _VAR_IF_PRESENT=$(grep "Disallow:" ${_Dir}/files/robots.txt 2>&1)
   fi
   if [[ ! "${_VAR_IF_PRESENT}" =~ "Disallow:" ]]; then
-    rm -f ${_Dir}/files/robots.txt
+    [ ! -L "${_Dir}/files/robots.txt" ] && rm -f ${_Dir}/files/robots.txt
   else
-    chown ${_HM_U}:www-data ${_Dir}/files/robots.txt &> /dev/null
-    chmod 0664 ${_Dir}/files/robots.txt &> /dev/null
+    if [ ! -L "${_Dir}/files/robots.txt" ]; then
+      chown ${_HM_U}:www-data ${_Dir}/files/robots.txt &> /dev/null
+      chmod 0664 ${_Dir}/files/robots.txt &> /dev/null
+    fi
     if [ -f "${_Plr}/robots.txt" ] || [ -L "${_Plr}/robots.txt" ]; then
       rm -f ${_Plr}/robots.txt
     fi
@@ -565,10 +585,7 @@ _fix_modules() {
   if [ "${_AUTO_CONFIG_ADVAGG}" = "YES" ]; then
     if [ -e "/data/conf/default.boa_site_control.ini" ] \
       && [ ! -e "${_DIR_CTRL_F}" ]; then
-      cp -af /data/conf/default.boa_site_control.ini \
-        ${_DIR_CTRL_F} &> /dev/null
-      chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-      chmod 0664 ${_DIR_CTRL_F} &> /dev/null
+      _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
     fi
     if [ -e "${_DIR_CTRL_F}" ]; then
       _AGG_P=$(grep "advagg_auto_configuration" ${_DIR_CTRL_F} 2>&1)
@@ -591,10 +608,7 @@ _fix_modules() {
   else
     if [ -e "/data/conf/default.boa_site_control.ini" ] \
       && [ ! -e "${_DIR_CTRL_F}" ]; then
-      cp -af /data/conf/default.boa_site_control.ini \
-        ${_DIR_CTRL_F} &> /dev/null
-      chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-      chmod 0664 ${_DIR_CTRL_F} &> /dev/null
+      _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
     fi
     if [ -e "${_DIR_CTRL_F}" ]; then
       _AGG_P=$(grep "advagg_auto_configuration" ${_DIR_CTRL_F} 2>&1)
@@ -640,10 +654,7 @@ _fix_modules() {
     if [ "${_AUTO_CNF_PF_DL}" = "YES" ]; then
       if [ -e "/data/conf/default.boa_site_control.ini" ] \
         && [ ! -e "${_DIR_CTRL_F}" ]; then
-        cp -af /data/conf/default.boa_site_control.ini \
-          ${_DIR_CTRL_F} &> /dev/null
-        chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-        chmod 0664 ${_DIR_CTRL_F} &> /dev/null
+        _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
       fi
       if [ -e "${_DIR_CTRL_F}" ]; then
         _AC_PFD_T=$(grep "^allow_private_file_downloads = TRUE" \
@@ -662,10 +673,7 @@ _fix_modules() {
     else
       if [ -e "/data/conf/default.boa_site_control.ini" ] \
         && [ ! -e "${_DIR_CTRL_F}" ]; then
-        cp -af /data/conf/default.boa_site_control.ini \
-          ${_DIR_CTRL_F} &> /dev/null
-        chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-        chmod 0664 ${_DIR_CTRL_F} &> /dev/null
+        _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
       fi
       if [ -e "${_DIR_CTRL_F}" ]; then
         _AC_PFD_T=$(grep "^allow_private_file_downloads = FALSE" \
@@ -699,10 +707,7 @@ _fix_modules() {
   if [ "${_AUTO_DT_FB_INT}" = "YES" ]; then
     if [ -e "/data/conf/default.boa_platform_control.ini" ] \
       && [ ! -e "${_PLR_CTRL_F}" ]; then
-      cp -af /data/conf/default.boa_platform_control.ini \
-        ${_PLR_CTRL_F} &> /dev/null
-      chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
-      chmod 0664 ${_PLR_CTRL_F} &> /dev/null
+      _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
     fi
     if [ -e "${_PLR_CTRL_F}" ]; then
       _AD_FB_T=$(grep "^auto_detect_facebook_integration = TRUE" \
@@ -723,10 +728,7 @@ _fix_modules() {
   else
     if [ -e "/data/conf/default.boa_platform_control.ini" ] \
       && [ ! -e "${_PLR_CTRL_F}" ]; then
-      cp -af /data/conf/default.boa_platform_control.ini \
-        ${_PLR_CTRL_F} &> /dev/null
-      chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
-      chmod 0664 ${_PLR_CTRL_F} &> /dev/null
+      _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
     fi
     if [ -e "${_PLR_CTRL_F}" ]; then
       _AD_FB_T=$(grep "^auto_detect_facebook_integration = FALSE" \
@@ -759,10 +761,7 @@ _fix_modules() {
   if [ "${_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION}" = "YES" ]; then
     if [ -e "/data/conf/default.boa_platform_control.ini" ] \
       && [ ! -e "${_PLR_CTRL_F}" ]; then
-      cp -af /data/conf/default.boa_platform_control.ini \
-        ${_PLR_CTRL_F} &> /dev/null
-      chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
-      chmod 0664 ${_PLR_CTRL_F} &> /dev/null
+      _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
     fi
     if [ -e "${_PLR_CTRL_F}" ]; then
       _AD_DA_T=$(grep "^auto_detect_domain_access_integration = TRUE" \
@@ -783,10 +782,7 @@ _fix_modules() {
   else
     if [ -e "/data/conf/default.boa_platform_control.ini" ] \
       && [ ! -e "${_PLR_CTRL_F}" ]; then
-      cp -af /data/conf/default.boa_platform_control.ini \
-        ${_PLR_CTRL_F} &> /dev/null
-      chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
-      chmod 0664 ${_PLR_CTRL_F} &> /dev/null
+      _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
     fi
     if [ -e "${_PLR_CTRL_F}" ]; then
       _AD_DA_T=$(grep "^auto_detect_domain_access_integration = FALSE" \
@@ -1478,7 +1474,7 @@ _convert_controls_orig() {
   if [ -e "${_CTRL_DIR}/$1.info" ] \
     || [ -e "${_usEr}/static/control/$1.info" ]; then
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
-      cp -af ${_CTRL_F_TPL} ${_CTRL_F}
+      _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     sed -i "s/.*$1.*/$1 = TRUE/g" ${_CTRL_F} &> /dev/null
     wait
@@ -1489,7 +1485,7 @@ _convert_controls_orig() {
 _convert_controls_orig_no_global() {
   if [ -e "${_CTRL_DIR}/$1.info" ]; then
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
-      cp -af ${_CTRL_F_TPL} ${_CTRL_F}
+      _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     sed -i "s/.*$1.*/$1 = TRUE/g" ${_CTRL_F} &> /dev/null
     wait
@@ -1501,7 +1497,7 @@ _convert_controls_value() {
   if [ -e "${_CTRL_DIR}/$1.info" ] \
     || [ -e "${_usEr}/static/control/$1.info" ]; then
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
-      cp -af ${_CTRL_F_TPL} ${_CTRL_F}
+      _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     if [ "$1" = "nginx_cache_day" ]; then
       _TTL=86400
@@ -1520,7 +1516,7 @@ _convert_controls_value() {
 _convert_controls_renamed() {
   if [ -e "${_CTRL_DIR}/$1.info" ]; then
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
-      cp -af ${_CTRL_F_TPL} ${_CTRL_F}
+      _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     if [ "$1" = "cookie_domain" ]; then
       sed -i "s/.*server_name_cookie.*/server_name_cookie_domain = TRUE/g" \
@@ -1622,10 +1618,8 @@ _fix_platform_control_files() {
   if [ -e "/data/conf/default.boa_platform_control.ini" ]; then
     if [ ! -e "${_Plr}/sites/all/modules/default.boa_platform_control.ini" ] \
       || [ "${_CTRL_TPL_FORCE_UPDATE}" = "YES" ]; then
-      cp -af /data/conf/default.boa_platform_control.ini \
-        ${_Plr}/sites/all/modules/ &> /dev/null
-      chown ${_HM_U}:users ${_Plr}/sites/all/modules/default.boa_platform_control.ini &> /dev/null
-      chmod 0664 ${_Plr}/sites/all/modules/default.boa_platform_control.ini &> /dev/null
+      _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini \
+        "${_Plr}/sites/all/modules/default.boa_platform_control.ini"
     fi
     _CTRL_F_TPL="${_Plr}/sites/all/modules/default.boa_platform_control.ini"
     _CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
@@ -1641,9 +1635,8 @@ _fix_site_control_files() {
   if [ -e "/data/conf/default.boa_site_control.ini" ]; then
     if [ ! -e "${_Dir}/modules/default.boa_site_control.ini" ] \
       || [ "${_CTRL_TPL_FORCE_UPDATE}" = "YES" ]; then
-      cp -af /data/conf/default.boa_site_control.ini ${_Dir}/modules/ &> /dev/null
-      chown ${_HM_U}:users ${_Dir}/modules/default.boa_site_control.ini &> /dev/null
-      chmod 0664 ${_Dir}/modules/default.boa_site_control.ini &> /dev/null
+      _reseed_ctrl_ini /data/conf/default.boa_site_control.ini \
+        "${_Dir}/modules/default.boa_site_control.ini"
     fi
     _CTRL_F_TPL="${_Dir}/modules/default.boa_site_control.ini"
     _CTRL_F="${_Dir}/modules/boa_site_control.ini"
@@ -2158,6 +2151,11 @@ _daily_process() {
         echo "SKIP: _Plr resolves outside allowed roots: ${_Plr}"
         continue
       fi
+      _desymlink_planted \
+        "${_DIR_CTRL_F}" \
+        "${_Dir}/modules/default.boa_site_control.ini" \
+        "${_PLR_CTRL_F}" \
+        "${_Plr}/sites/all/modules/default.boa_platform_control.ini"
       if [ -e "${_Plr}" ]; then
         _PlrID=$(echo ${_Plr} \
           | openssl md5 \

@@ -78,6 +78,7 @@ _check_generate() {
         _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
       fi
       echo "${_ESC_PASS}" > ${_L_SYS}
+      chmod 0600 ${_L_SYS}
     else
        echo "INFO: We will generate new random password using shuf tool"
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
