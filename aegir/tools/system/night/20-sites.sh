@@ -327,25 +327,40 @@ _fix_user_register_protection_with_vSet() {
 }
 
 _fix_llms_txt() {
+  # The site files/ dir is tenant-writable (oN:www-data 02775; the shell user is
+  # in www-data), so a tenant can plant files/llms.txt as a symlink. curl -o
+  # follows it and creates the target of a dangling link, and the chown/chmod
+  # below would then retarget it -- a root write to a tenant-chosen path. Strip
+  # any planted link first, fetch into a temp in the site dir (oN:users 0755, not
+  # group-writable, same filesystem), then mv -f -T over the leaf so rename()
+  # replaces a re-planted link instead of following it; guard the trailing
+  # metadata legs with [ ! -L ].
+  _desymlink_planted "${_Dir}/files/llms.txt"
   find ${_Dir}/files/llms.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${_Dir}/files/llms.txt" ] \
-    && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
-    curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
-      -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
-      -o ${_Dir}/files/llms.txt
-    if [ -e "${_Dir}/files/llms.txt" ]; then
-      echo >> ${_Dir}/files/llms.txt
+    && [ ! -e "${_Plr}/profiles/hostmaster" ] \
+    && [ -d "${_Dir}/files" ]; then
+    _LLMS_TMP=$(mktemp "${_Dir}/.llms.XXXXXX" 2>/dev/null)
+    if [ -n "${_LLMS_TMP}" ]; then
+      curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+        -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
+        -o "${_LLMS_TMP}"
+      echo >> "${_LLMS_TMP}"
+      mv -f -T "${_LLMS_TMP}" ${_Dir}/files/llms.txt &> /dev/null \
+        || rm -f "${_LLMS_TMP}"
     fi
   fi
   _VAR_IF_PRESENT=
-  if [ -f "${_Dir}/files/llms.txt" ]; then
+  if [ -f "${_Dir}/files/llms.txt" ] && [ ! -L "${_Dir}/files/llms.txt" ]; then
     _VAR_IF_PRESENT=$(grep "##" ${_Dir}/files/llms.txt 2>&1)
   fi
   if [[ ! "${_VAR_IF_PRESENT}" =~ "##" ]]; then
-    rm -f ${_Dir}/files/llms.txt
+    [ ! -L "${_Dir}/files/llms.txt" ] && rm -f ${_Dir}/files/llms.txt
   else
-    chown ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
-    chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+    if [ ! -L "${_Dir}/files/llms.txt" ]; then
+      chown ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
+      chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+    fi
     if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
       rm -f ${_Plr}/llms.txt
     fi
@@ -353,25 +368,35 @@ _fix_llms_txt() {
 }
 
 _fix_robots_txt() {
+  # See _fix_llms_txt: files/ is tenant-writable, so guard the planted-symlink
+  # class -- strip the leaf, fetch into a temp in the non-group-writable site
+  # dir, mv -f -T over the leaf, and gate the metadata legs with [ ! -L ].
+  _desymlink_planted "${_Dir}/files/robots.txt"
   find ${_Dir}/files/robots.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${_Dir}/files/robots.txt" ] \
-    && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
-    curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
-      -A iCab "http://${_Dom}/robots.txt?nocache=1&noredis=1" \
-      -o ${_Dir}/files/robots.txt
-    if [ -e "${_Dir}/files/robots.txt" ]; then
-      echo >> ${_Dir}/files/robots.txt
+    && [ ! -e "${_Plr}/profiles/hostmaster" ] \
+    && [ -d "${_Dir}/files" ]; then
+    _ROBOTS_TMP=$(mktemp "${_Dir}/.robots.XXXXXX" 2>/dev/null)
+    if [ -n "${_ROBOTS_TMP}" ]; then
+      curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+        -A iCab "http://${_Dom}/robots.txt?nocache=1&noredis=1" \
+        -o "${_ROBOTS_TMP}"
+      echo >> "${_ROBOTS_TMP}"
+      mv -f -T "${_ROBOTS_TMP}" ${_Dir}/files/robots.txt &> /dev/null \
+        || rm -f "${_ROBOTS_TMP}"
     fi
   fi
   _VAR_IF_PRESENT=
-  if [ -f "${_Dir}/files/robots.txt" ]; then
+  if [ -f "${_Dir}/files/robots.txt" ] && [ ! -L "${_Dir}/files/robots.txt" ]; then
     _VAR_IF_PRESENT=$(grep "Disallow:" ${_Dir}/files/robots.txt 2>&1)
   fi
   if [[ ! "${_VAR_IF_PRESENT}" =~ "Disallow:" ]]; then
-    rm -f ${_Dir}/files/robots.txt
+    [ ! -L "${_Dir}/files/robots.txt" ] && rm -f ${_Dir}/files/robots.txt
   else
-    chown ${_HM_U}:www-data ${_Dir}/files/robots.txt &> /dev/null
-    chmod 0664 ${_Dir}/files/robots.txt &> /dev/null
+    if [ ! -L "${_Dir}/files/robots.txt" ]; then
+      chown ${_HM_U}:www-data ${_Dir}/files/robots.txt &> /dev/null
+      chmod 0664 ${_Dir}/files/robots.txt &> /dev/null
+    fi
     if [ -f "${_Plr}/robots.txt" ] || [ -L "${_Plr}/robots.txt" ]; then
       rm -f ${_Plr}/robots.txt
     fi
