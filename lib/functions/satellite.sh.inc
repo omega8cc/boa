@@ -1127,7 +1127,7 @@ _satellite_cnf() {
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" ${_octCnf}
           echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
           echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
-          chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
+          chown -h ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
         fi
       fi
     fi
@@ -1241,7 +1241,7 @@ _satellite_cnf() {
           sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" ${_octCnf}
           echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
           echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
-          chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
+          chown -h ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
         fi
       fi
     fi
