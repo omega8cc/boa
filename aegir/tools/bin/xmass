@@ -3834,8 +3834,19 @@ _xmass_block_web_all() {
   _XMASS_WEB_BLOCKED=YES
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    # static/ is tenant-writable, so both the control directory and the pid
+    # name can be planted as symlinks: mkdir -p succeeds silently on a link to
+    # a directory and > follows a live link and creates the target of a
+    # dangling one. Strip a planted link and write only into a real directory.
+    [ -L "/data/disk/${_oct}/static/control" ] \
+      && rm -f "/data/disk/${_oct}/static/control" &>/dev/null
     mkdir -p "/data/disk/${_oct}/static/control"
-    echo 7200 > "/data/disk/${_oct}/static/control/http-off.pid"
+    [ -L "/data/disk/${_oct}/static/control/http-off.pid" ] \
+      && rm -f "/data/disk/${_oct}/static/control/http-off.pid" &>/dev/null
+    if [ -d "/data/disk/${_oct}/static/control" ] \
+      && [ ! -L "/data/disk/${_oct}/static/control" ]; then
+      echo 7200 > "/data/disk/${_oct}/static/control/http-off.pid"
+    fi
     chown -h "${_oct}:users" "/data/disk/${_oct}/static/control/http-off.pid" \
       &>/dev/null || true
   done
