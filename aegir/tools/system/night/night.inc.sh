@@ -432,10 +432,19 @@ _if_gen_goaccess() {
     if [ -x "${_isWblgx}" ]; then
       ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait
+      # static/ is tenant-writable (02775, no sticky), so goaccess can be a
+      # planted symlink: -e dereferences it and mkdir -p succeeds silently on a
+      # link to a directory, after which cp -af would drop a root-owned report
+      # tree into a location of the tenant's choosing. Strip a planted link and
+      # publish only into a real directory root itself owns.
+      _desymlink_planted "/data/disk/${_HM_U}/static/goaccess"
       if [ ! -e "/data/disk/${_HM_U}/static/goaccess" ]; then
         mkdir -p /data/disk/${_HM_U}/static/goaccess
       fi
-      if [ -e "/var/www/adminer/access/${_HM_U}/${1}/index.html" ]; then
+      if [ -e "/var/www/adminer/access/${_HM_U}/${1}/index.html" ] \
+        && [ -d "/data/disk/${_HM_U}/static/goaccess" ] \
+        && [ ! -L "/data/disk/${_HM_U}/static/goaccess" ] \
+        && [ -O "/data/disk/${_HM_U}/static/goaccess" ]; then
         cp -af /var/www/adminer/access/${_HM_U}/${1} /data/disk/${_HM_U}/static/goaccess/
       else
         rm -rf /var/www/adminer/access/${_HM_U}/${1}
