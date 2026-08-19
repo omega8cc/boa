@@ -1975,6 +1975,15 @@ _cleanup_ghost_drushrc() {
 _le_ssl_check_update() {
   _exeLe="${_usEr}/tools/le/dehydrated"
   _Vht="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
+  ### The immutable marker Provision honours on Verify must also stop this
+  ### nightly leg: dehydrated decides on the leftover cert.pem, so once that
+  ### cert has less than RENEW_DAYS runway it re-issues LE symlinks straight
+  ### over the operator's custom PEM files. Checked before any www-strip --
+  ### the marker is named after the site URI, like on the Verify side.
+  if [ -e "${_usEr}/tools/le/.ctrl/dont-overwrite-${_Dom}.pid" ]; then
+    echo "LE renewal skipped for ${_Dom} -- immutable dont-overwrite marker present"
+    return 0
+  fi
   if [ -x "${_exeLe}" ] && [ -e "${_Vht}" ]; then
     _SSL_ON_TEST=$(cat ${_Vht} | grep "443 ssl" 2>&1)
     if [[ "${_SSL_ON_TEST}" =~ "443 ssl" ]]; then
