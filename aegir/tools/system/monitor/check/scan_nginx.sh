@@ -203,7 +203,10 @@ _NGINX_HARVEST_COST_MEAN=5
 _NGINX_HARVEST_IP_MAX_UAS=2
 _NGINX_HARVEST_EXCL_PCT=90
 _NGINX_HARVEST_MAX_BANS=10
-_NGINX_HARVEST_UA_EXEMPT="Googlebot|Google-|GoogleOther|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake"
+# NB: the SERP favicon fetcher's token is "Google Favicon" -- with a SPACE, so
+# it matches neither Googlebot nor Google-. The space is Google's, not a typo,
+# and it means a /root/.barracuda.cnf override of this list must be QUOTED.
+_NGINX_HARVEST_UA_EXEMPT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake"
 _HRV_STAMP="/var/xdrago/monitor/log/.harvest.stamp"
 _HRV_LOG="/var/xdrago/monitor/log/harvest.log"
 
@@ -684,20 +687,22 @@ fi
 [[ "${_NGINX_HARVEST_MAX_BANS}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_MAX_BANS=10
 ### Operator-supplied patterns are the only regexes here; log-derived text is
 ### never used as a pattern. Probe both so a malformed one cannot abort a scan.
+### The probe must run as a bare statement (the _NGINX_GUARD404_PATHS shape
+### above): wrapped in `if ! [[ ... ]]`, $? reports the negated compound (0),
+### never the regex-error status 2, so the guard can never fire and a typo'd
+### override silently voids every exemption instead of reverting.
 if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]]; then
-  if ! [[ "probe" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]] 2> /dev/null; then
-    if [[ "$?" -gt 1 ]]; then
-      echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, exemptions disabled"
-      _NGINX_HARVEST_UA_EXEMPT=""
-    fi
+  [[ "probe" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]] 2> /dev/null
+  if (( $? > 1 )); then
+    echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, exemptions disabled"
+    _NGINX_HARVEST_UA_EXEMPT=""
   fi
 fi
 if [[ -n "${_NGINX_HARVEST_BAN_UA}" ]]; then
-  if ! [[ "probe" =~ ${_NGINX_HARVEST_BAN_UA} ]] 2> /dev/null; then
-    if [[ "$?" -gt 1 ]]; then
-      echo "CONFIG: _NGINX_HARVEST_BAN_UA is not a valid ERE, named bans disabled"
-      _NGINX_HARVEST_BAN_UA=""
-    fi
+  [[ "probe" =~ ${_NGINX_HARVEST_BAN_UA} ]] 2> /dev/null
+  if (( $? > 1 )); then
+    echo "CONFIG: _NGINX_HARVEST_BAN_UA is not a valid ERE, named bans disabled"
+    _NGINX_HARVEST_BAN_UA=""
   fi
 fi
 case "${_NGINX_HARVEST_ACTION}" in
@@ -1897,6 +1902,9 @@ _handle_harvest_blocking() {
     (( _C_BAD["${_id}"] > _NGINX_HARVEST_BAD_PCT )) && continue
     if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]] \
       && [[ "${_ua}" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]]; then
+      ### Log the exemption: it outranks even BAN_NAMED, and a silent continue
+      ### leaves the operator unable to tell "no cohort" from "exempted".
+      _harvest_log "EXEMPT ${_host} [${_C_HV["${_id}"]} IPs] ua=${_ua}"
       continue
     fi
     ### Collapsed realip: if much of the cohort is inside csf.allow we are
