@@ -353,9 +353,11 @@ _delete_solr() {
     _SOLR_BASE="/var/solr9/data"
   fi
   if [ ! -z "${1}" ] && [ -e "/data/conf/solr" ] && [ -e "${1}/conf" ]; then
+    # The Solr 9 home holds no solr.xml -- since Solr 9 it is loaded from
+    # the install dir -- so gate on the data dir itself, as _add_solr does.
     if [ "${_SOLR_BASE}" = "/var/solr9/data" ] \
       && [ -x "/opt/solr9/bin/solr" ] \
-      && [ -e "/var/solr9/data/solr.xml" ]; then
+      && [ -e "/var/solr9/data" ]; then
       if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
         su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr delete -p 9099 -c ${_SolrCoreID}"
         wait
@@ -455,6 +457,7 @@ _setup_solr() {
     if [[ "${_SAPI_SOLR_V}" =~ "search_api_solr9" ]]; then
       _SOLR_MODULE="search_api_solr9"
     fi
+    _SOLR_TEARDOWN=NO
     if [ "${_SOLR_MODULE}" = "apachesolr" ] && [ -e "/opt/solr4" ]; then
       _SOLR_BASE="/opt/solr4"
       _SOLR_VER=jetty9
@@ -468,6 +471,13 @@ _setup_solr() {
       _SOLR_BASE="/var/solr9/data"
       _SOLR_VER=solr9
     else
+      # Only an unset, commented out or invalid directive requests core
+      # teardown; a valid module whose Solr base is not installed must
+      # not delete existing cores. The eligibility has to be carried in
+      # its own flag because _SOLR_VER is blanked right here.
+      if [ "${_SOLR_MODULE}" = "your_module_name_here" ]; then
+        _SOLR_TEARDOWN=YES
+      fi
       _SOLR_MODULE=
       _SOLR_BASE=
       _SOLR_VER=
@@ -479,7 +489,7 @@ _setup_solr() {
       || [ "${_SOLR_MODULE}" = "apachesolr" ]; then
       [ -n "${_SOLR_VER}" ] && _check_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}"
     else
-      if [ -n "${_SOLR_VER}" ]; then
+      if [ "${_SOLR_TEARDOWN}" = "YES" ]; then
         _SOLR_DIR_DEL="/opt/solr4/${_SolrCoreID}"
         _delete_solr "${_SOLR_DIR_DEL}"
         _SOLR_DIR_DEL="/var/solr7/data/${_SolrCoreID}"
