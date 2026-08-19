@@ -454,7 +454,13 @@ _le_hm_ssl_check_update() {
   if [ ! -z "${_hmFront}" ]; then
     _leCrtPath="${_usEr}/tools/le/certs/${_hmFront}"
   fi
-  if [ -x "${_exeLe}" ] \
+  if [ ! -z "${_hmFront}" ] \
+    && [ -e "${_usEr}/tools/le/.ctrl/dont-overwrite-${_hmFront}.pid" ]; then
+    ### Same immutable-marker contract as the per-site nightly leg. Only the
+    ### dehydrated run is gated; the copy to /etc/ssl/private below still
+    ### happens, so a manually replaced hostmaster cert propagates.
+    echo "LE renewal skipped for hostmaster ${_hmFront} -- immutable dont-overwrite marker present"
+  elif [ -x "${_exeLe}" ] \
     && [ ! -z "${_hmFront}" ] \
     && [ -e "${_leCrtPath}/fullchain.pem" ]; then
     _DOM=$(date +%e)

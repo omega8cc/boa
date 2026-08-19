@@ -265,6 +265,7 @@ _update_solr() {
       && [ ! -e "${_Plr}/modules/o_contrib" ] \
       && [ ! -e "${2}/conf/.protected.conf" ] \
       && [ -e "${2}/conf" ] \
+      && [ ! -L "${_Plr}/sites/${_Dom}/files/solr" ] \
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/schema.xml" ] \
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/solrconfig.xml" ] \
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/solrcore.properties" ]; then
@@ -272,9 +273,17 @@ _update_solr() {
         _check_config_diff "${_Plr}/sites/${_Dom}/files/solr/solrconfig.xml" "${2}/conf/solrconfig.xml"
         if [ ! -z "${_slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
-          cp -af ${_Plr}/sites/${_Dom}/files/solr/* ${2}/conf/
-          chmod 644 ${2}/conf/*
-          chown ${_SERV}:${_SERV} ${2}/conf/*
+          ### The upload dir is tenant-writable, and cp -af preserves symlinks,
+          ### so a link uploaded there lands in the core conf dir and the mode
+          ### and ownership passes below would follow it. Copy the regular
+          ### files only, and set metadata with find -type f, which never
+          ### matches a link. A client's own relative links are simply not
+          ### published -- the config they upload still is.
+          find ${_Plr}/sites/${_Dom}/files/solr -maxdepth 1 -type f \
+            -exec cp -af {} ${2}/conf/ \; &> /dev/null
+          find ${2}/conf -maxdepth 1 -type f -exec chmod 644 {} \; &> /dev/null
+          find ${2}/conf -maxdepth 1 -type f \
+            -exec chown ${_SERV}:${_SERV} {} \; &> /dev/null
           rm -f ${_Plr}/sites/${_Dom}/files/solr/*
           touch ${2}/conf/.yes-custom.txt
           touch ${2}/conf/.just-updated.pid
