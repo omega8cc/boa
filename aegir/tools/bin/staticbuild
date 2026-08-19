@@ -564,9 +564,13 @@ build_cms() {
   use_php "${_PHP_DISTRO}" || { _record_fail "cms"; return 1; }
   local _wd="${_DAY_DIR}/.build.cms" _dver
   _dver="$(_create_project "${_wd}" "${_CMS_SPEC}" "drupal/cms" "")" || { _record_fail "cms"; return 1; }
+  # Migration pipeline contribs ride along with drush: upstream drupal/cms ships
+  # none of them (core's migrate/migrate_drupal/migrate_drupal_ui need no action),
+  # and a migration source platform must not require per-site composer surgery.
+  # Inert until a site enables them.
   if ! { _composer_prepare "${_wd}" \
          && _with_core_fallback "${_wd}" "cms" _composer_build \
-         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts"; }; then
+         && _run_as_o8 "cd '${_wd}' && composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts"; }; then
     _record_fail "cms"
     return 1
   fi
