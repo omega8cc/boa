@@ -3836,7 +3836,7 @@ _xmass_block_web_all() {
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     mkdir -p "/data/disk/${_oct}/static/control"
     echo 7200 > "/data/disk/${_oct}/static/control/http-off.pid"
-    chown "${_oct}:users" "/data/disk/${_oct}/static/control/http-off.pid" \
+    chown -h "${_oct}:users" "/data/disk/${_oct}/static/control/http-off.pid" \
       &>/dev/null || true
   done
   # Purge the Nginx speed cache so cached 200s don't mask the 503
