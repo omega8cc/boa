@@ -1014,16 +1014,13 @@ _install_php_extensions() {
       || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       ###
-      ### libgeos-dev is the only system dependency; install once per series.
+      ### libgeos-dev is the only system dependency; dpkg status is
+      ### authoritative -- a once-per-series marker could go stale and
+      ### skip a genuinely missing package.
       ###
-      if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
+      if ! _pkg_installed "libgeos-dev"; then
         _apt_clean_update
-        for _PKG in libgeos-dev; do
-          if ! _pkg_installed "${_PKG}"; then
-            _mrun "${_INSTAPP} ${_PKG}"
-          fi
-        done
-        touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
+        _mrun "${_INSTAPP} libgeos-dev"
       fi
       cd /var/opt
       rm -rf php-geos*
@@ -1450,16 +1447,13 @@ _php_extensions_update() {
       || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       ###
-      ### libgeos-dev is the only system dependency; install once per series.
+      ### libgeos-dev is the only system dependency; dpkg status is
+      ### authoritative -- a once-per-series marker could go stale and
+      ### skip a genuinely missing package.
       ###
-      if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
+      if ! _pkg_installed "libgeos-dev"; then
         _apt_clean_update
-        for _PKG in libgeos-dev; do
-          if ! _pkg_installed "${_PKG}"; then
-            _mrun "${_INSTAPP} ${_PKG}"
-          fi
-        done
-        touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
+        _mrun "${_INSTAPP} libgeos-dev"
       fi
       cd /var/opt
       rm -rf php-geos*

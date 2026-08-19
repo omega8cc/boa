@@ -454,7 +454,13 @@ _le_hm_ssl_check_update() {
   if [ ! -z "${_hmFront}" ]; then
     _leCrtPath="${_usEr}/tools/le/certs/${_hmFront}"
   fi
-  if [ -x "${_exeLe}" ] \
+  if [ ! -z "${_hmFront}" ] \
+    && [ -e "${_usEr}/tools/le/.ctrl/dont-overwrite-${_hmFront}.pid" ]; then
+    ### Same immutable-marker contract as the per-site nightly leg. Only the
+    ### dehydrated run is gated; the copy to /etc/ssl/private below still
+    ### happens, so a manually replaced hostmaster cert propagates.
+    echo "LE renewal skipped for hostmaster ${_hmFront} -- immutable dont-overwrite marker present"
+  elif [ -x "${_exeLe}" ] \
     && [ ! -z "${_hmFront}" ] \
     && [ -e "${_leCrtPath}/fullchain.pem" ]; then
     _DOM=$(date +%e)
@@ -867,10 +873,20 @@ _purge_cruft_machine() {
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
   chown -R ${_HM_U}:users ${_usEr}/tools/le
+  # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
+  # tenant, so the tenant can swap the directory for a symlink. mkdir -p then
+  # succeeds silently on the target, a bare chown retargets it, and the glob
+  # trash/* resolves through the link -- which made root chown an arbitrary
+  # directory and rm -rf aged entries inside it. Drop a planted link first, act
+  # only on a real directory, keep the chown off any link, and purge with find
+  # on the bare path (a trailing slash would make find follow a link again).
+  [ -L "${_usEr}/static/trash" ] && rm -f ${_usEr}/static/trash &> /dev/null
   mkdir -p ${_usEr}/static/trash
-  chown ${_HM_U}.ftp:users ${_usEr}/static/trash &> /dev/null
-  find ${_usEr}/static/trash/* \
-    -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
+  if [ -d "${_usEr}/static/trash" ] && [ ! -L "${_usEr}/static/trash" ]; then
+    chown -h ${_HM_U}.ftp:users ${_usEr}/static/trash &> /dev/null
+    find ${_usEr}/static/trash -mindepth 1 \
+      -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
+  fi
 
   for i in $(dir -d /home/${_HM_U}.ftp/platforms/* 2>/dev/null); do
     if [ -e "${i}" ]; then

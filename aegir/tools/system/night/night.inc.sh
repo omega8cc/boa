@@ -57,6 +57,78 @@ _validate_safe_dir() {
   esac
 }
 
+_ctrl_stage_dir() {
+  # Root-only staging dir for control-INI writes, on the same filesystem as the
+  # account's platform trees (they all live under the account root). The account
+  # root itself is 0711 oN:users, so the tenant may traverse it but cannot create
+  # or unlink here; the staging dir is forced root:root 0700 on every call, and a
+  # symlink planted in its place is removed rather than followed. Prints the path
+  # on success. Reads _usEr from the caller.
+  local _s
+  [ -n "${_usEr}" ] && [ -d "${_usEr}" ] || return 1
+  _s="${_usEr}/.boa-ctrl"
+  [ -L "${_s}" ] && rm -f "${_s}" &> /dev/null
+  [ -d "${_s}" ] || mkdir -p "${_s}" 2>/dev/null || return 1
+  [ -d "${_s}" ] && [ ! -L "${_s}" ] || return 1
+  chown root:root "${_s}" &> /dev/null
+  chmod 0700 "${_s}" &> /dev/null
+  echo "${_s}"
+}
+
+_reseed_ctrl_ini() {
+  # Seed/refresh a control INI from a regular template, symlink-proof and atomic.
+  # The per-site/per-platform control INIs live in a tenant-writable setgid
+  # modules dir (oN:users 02775, no sticky, group 'users' shared across all
+  # tenants), so a limited-shell/SFTP tenant can delete the seeded INI and plant
+  # a symlink at its path; a plain cp -af then writes THROUGH a live link and the
+  # following chown/chmod retarget it.
+  #
+  # Stage the new file in a root-owned 0700 dir under the account root, then
+  # mv -f -T it onto the destination. Everything the account owns lives under
+  # that root, so the rename is same-filesystem and atomic; rename() replaces a
+  # planted symlink (incl. a symlink-to-dir) instead of following it, and a
+  # real-dir decoy makes mv fail into the clean skip. Staging outside the
+  # platform tree matters: a freshly built platform can still be group-writable
+  # all the way up to its sites/ dir, and only the chown/chmod land on the temp
+  # -- so a tenant who could write the staging dir could swap the temp for a
+  # symlink and have root chown their target. The account root is 0711, so they
+  # can traverse but not create there. Refuses a symlink/non-regular SOURCE so a
+  # tenant-symlinked template cannot disclose a root file. Reads _usEr and _HM_U
+  # from the caller. $1 = source template, $2 = dest INI path.
+  local _src="$1"
+  local _dst="$2"
+  local _stg _new
+  [ -L "${_src}" ] && return 1
+  [ -f "${_src}" ] || return 1
+  [ -n "${_HM_U}" ] || return 1
+  [ -d "${_dst%/*}" ] || return 1
+  _stg=$(_ctrl_stage_dir) || return 1
+  _new=$(mktemp "${_stg}/ctrl.XXXXXX" 2>/dev/null) || return 1
+  if [ -L "${_new}" ] || [ ! -f "${_new}" ]; then
+    rm -f "${_new}" &> /dev/null
+    return 1
+  fi
+  if ! cat "${_src}" > "${_new}" 2>/dev/null; then
+    rm -f "${_new}" &> /dev/null
+    return 1
+  fi
+  chown "${_HM_U}:users" "${_new}" &> /dev/null
+  chmod 0664 "${_new}" &> /dev/null
+  mv -f -T "${_new}" "${_dst}" &> /dev/null || rm -f "${_new}" &> /dev/null
+}
+
+_desymlink_planted() {
+  # Strip a tenant-planted symlink at a root-maintained control-INI path before
+  # this iteration seeds/edits/appends it. rm -f on a symlink removes only the
+  # link (its target survives), and it is a no-op on a regular file, so a legit
+  # oN(.ftp):users file and the tenant's own edits are left untouched. The next
+  # seed leg re-creates a missing INI as a regular file. Args = paths.
+  local _p
+  for _p in "$@"; do
+    [ -L "${_p}" ] && rm -f "${_p}" &> /dev/null
+  done
+}
+
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
@@ -360,10 +432,19 @@ _if_gen_goaccess() {
     if [ -x "${_isWblgx}" ]; then
       ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait
+      # static/ is tenant-writable (02775, no sticky), so goaccess can be a
+      # planted symlink: -e dereferences it and mkdir -p succeeds silently on a
+      # link to a directory, after which cp -af would drop a root-owned report
+      # tree into a location of the tenant's choosing. Strip a planted link and
+      # publish only into a real directory root itself owns.
+      _desymlink_planted "/data/disk/${_HM_U}/static/goaccess"
       if [ ! -e "/data/disk/${_HM_U}/static/goaccess" ]; then
         mkdir -p /data/disk/${_HM_U}/static/goaccess
       fi
-      if [ -e "/var/www/adminer/access/${_HM_U}/${1}/index.html" ]; then
+      if [ -e "/var/www/adminer/access/${_HM_U}/${1}/index.html" ] \
+        && [ -d "/data/disk/${_HM_U}/static/goaccess" ] \
+        && [ ! -L "/data/disk/${_HM_U}/static/goaccess" ] \
+        && [ -O "/data/disk/${_HM_U}/static/goaccess" ]; then
         cp -af /var/www/adminer/access/${_HM_U}/${1} /data/disk/${_HM_U}/static/goaccess/
       else
         rm -rf /var/www/adminer/access/${_HM_U}/${1}

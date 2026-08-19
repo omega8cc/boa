@@ -564,11 +564,31 @@ build_cms() {
   use_php "${_PHP_DISTRO}" || { _record_fail "cms"; return 1; }
   local _wd="${_DAY_DIR}/.build.cms" _dver
   _dver="$(_create_project "${_wd}" "${_CMS_SPEC}" "drupal/cms" "")" || { _record_fail "cms"; return 1; }
+  # Migration pipeline contribs ride along with drush: upstream drupal/cms ships
+  # none of them (core's migrate/migrate_drupal/migrate_drupal_ui need no action),
+  # and a migration source platform must not require per-site composer surgery.
+  # Inert until a site enables them.
   if ! { _composer_prepare "${_wd}" \
          && _with_core_fallback "${_wd}" "cms" _composer_build \
-         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts"; }; then
+         && _run_as_o8 "cd '${_wd}' && composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts"; }; then
     _record_fail "cms"
     return 1
+  fi
+  # Drupal 11 prefers a plugin's PHP attribute over its legacy annotation, and
+  # pathauto's attribute lost source_module in the conversion (the core attribute
+  # class cannot even express it), so migrate_drupal validation refuses every
+  # Drupal 7 crossing with "The pathauto_pattern plugin must define the
+  # source_module property". Upstream sets it in the migration definition
+  # instead (pathauto #3588684); apply that one-liner until a tagged release
+  # carries it - the grep guard makes this a no-op once it does.
+  local _pa_yml="${_wd}/web/modules/contrib/pathauto/migrations/d7_pathauto_patterns.yml"
+  if [[ -f "${_pa_yml}" ]] && ! grep -q "source_module: pathauto" "${_pa_yml}"; then
+    sed -i "s|^  plugin: pathauto_pattern$|  plugin: pathauto_pattern\n  source_module: pathauto|" "${_pa_yml}"
+    if ! grep -q "source_module: pathauto" "${_pa_yml}"; then
+      _alrt "cms: pathauto source_module correction did not apply"
+      _record_fail "cms"
+      return 1
+    fi
   fi
   _finalize_distro "drupal_cms_installer" "${_wd}" "${_dver}" "cms"
 }

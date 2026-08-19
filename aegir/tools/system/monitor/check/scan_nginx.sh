@@ -203,7 +203,10 @@ _NGINX_HARVEST_COST_MEAN=5
 _NGINX_HARVEST_IP_MAX_UAS=2
 _NGINX_HARVEST_EXCL_PCT=90
 _NGINX_HARVEST_MAX_BANS=10
-_NGINX_HARVEST_UA_EXEMPT="Googlebot|Google-|GoogleOther|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake"
+# NB: the SERP favicon fetcher's token is "Google Favicon" -- with a SPACE, so
+# it matches neither Googlebot nor Google-. The space is Google's, not a typo,
+# and it means a /root/.barracuda.cnf override of this list must be QUOTED.
+_NGINX_HARVEST_UA_EXEMPT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake"
 _HRV_STAMP="/var/xdrago/monitor/log/.harvest.stamp"
 _HRV_LOG="/var/xdrago/monitor/log/harvest.log"
 
@@ -444,14 +447,15 @@ _NGINX_HTTP10_AUTH_CIDR_THRESHOLD=6
 # modes because alerting can never mis-ban.
 #
 # Crawler protection is layered: csf.allow / web6.allow whitelisting exempts
-# the providers guest-water.sh publishes (Googlebot, Bingbot, the CDN and
-# monitoring ranges), the _NGINX_HARVEST_UA_EXEMPT list covers the legitimate
-# crawlers and unfurlers that whitelisting does NOT reach (Applebot,
-# DuckDuckBot, Yandex, Baiduspider, archive.org_bot, the social preview
-# fetchers, the uptime probes), and the guarded URLs answer 404 so crawlers
-# de-index them. No /24 aggregation: unlike the HTTP/1.0 botnet's tight CIDR,
-# this class rides ISP-dispersed CGNAT space where a /24 holds real users. Set
-# to NO in /root/.barracuda.cnf to disable.
+# the providers guest-water.sh publishes (Googlebot, Google's special-case
+# crawlers, Bingbot, the CDN and monitoring ranges), the
+# _NGINX_HARVEST_UA_EXEMPT list covers the legitimate crawlers and unfurlers
+# that whitelisting does NOT reach (Applebot, DuckDuckBot, Yandex, Baiduspider,
+# archive.org_bot, the social preview fetchers, the uptime probes, the
+# space-tokened Google Favicon fetcher), and the guarded URLs answer 404 so
+# crawlers de-index them. No /24 aggregation: unlike the HTTP/1.0 botnet's
+# tight CIDR, this class rides ISP-dispersed CGNAT space where a /24 holds
+# real users. Set to NO in /root/.barracuda.cnf to disable.
 _NGINX_GUARD404_DETECT=YES
 
 # REPORT (default) logs GUARD404-WOULD-BAN lines to the Tier-B alert channel
@@ -544,9 +548,10 @@ _NGINX_V6_BAN_TTL=900
 _WEB6_STORE="/var/xdrago/monitor/log/web6.tempban"
 # nginx-native IPv6 ALLOW store — the v6 counterpart of csf.allow, which cannot
 # hold an IPv6 entry (csf is IPv4-only). guest-water.sh mirrors the published
-# Googlebot ipv6Prefix crawl ranges into it daily (Bingbot too, once Microsoft
-# publishes any); untagged manual entries survive that refresh. One
-# `<ip6>[/bits] # comment` per line. _is_whitelisted_ip consults it for every
+# Googlebot and Google special-case crawler ipv6Prefix ranges into it daily
+# (Bingbot too, once Microsoft publishes any); untagged manual entries survive
+# that refresh. One `<ip6>[/bits] # comment` per line. _is_whitelisted_ip
+# consults it for every
 # IPv6 client, so a legitimate IPv6 crawler is exempt from scoring AND banning
 # at the same gates that protect an IPv4 crawler via csf.allow.
 _WEB6_ALLOW="/var/xdrago/monitor/log/web6.allow"
@@ -684,20 +689,22 @@ fi
 [[ "${_NGINX_HARVEST_MAX_BANS}" =~ ^[1-9][0-9]*$ ]]     || _NGINX_HARVEST_MAX_BANS=10
 ### Operator-supplied patterns are the only regexes here; log-derived text is
 ### never used as a pattern. Probe both so a malformed one cannot abort a scan.
+### The probe must run as a bare statement (the _NGINX_GUARD404_PATHS shape
+### above): wrapped in `if ! [[ ... ]]`, $? reports the negated compound (0),
+### never the regex-error status 2, so the guard can never fire and a typo'd
+### override silently voids every exemption instead of reverting.
 if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]]; then
-  if ! [[ "probe" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]] 2> /dev/null; then
-    if [[ "$?" -gt 1 ]]; then
-      echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, exemptions disabled"
-      _NGINX_HARVEST_UA_EXEMPT=""
-    fi
+  [[ "probe" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]] 2> /dev/null
+  if (( $? > 1 )); then
+    echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, exemptions disabled"
+    _NGINX_HARVEST_UA_EXEMPT=""
   fi
 fi
 if [[ -n "${_NGINX_HARVEST_BAN_UA}" ]]; then
-  if ! [[ "probe" =~ ${_NGINX_HARVEST_BAN_UA} ]] 2> /dev/null; then
-    if [[ "$?" -gt 1 ]]; then
-      echo "CONFIG: _NGINX_HARVEST_BAN_UA is not a valid ERE, named bans disabled"
-      _NGINX_HARVEST_BAN_UA=""
-    fi
+  [[ "probe" =~ ${_NGINX_HARVEST_BAN_UA} ]] 2> /dev/null
+  if (( $? > 1 )); then
+    echo "CONFIG: _NGINX_HARVEST_BAN_UA is not a valid ERE, named bans disabled"
+    _NGINX_HARVEST_BAN_UA=""
   fi
 fi
 case "${_NGINX_HARVEST_ACTION}" in
@@ -998,9 +1005,10 @@ _is_whitelisted_ip6() {
 # v6-aware at once.
 #
 # guest-water.sh maintains /etc/csf/csf.allow daily with every provider
-# range the firewall trusts: Cloudflare, Googlebot, Bingbot, Pingdom,
-# Imperva, Sucuri, Auth0, Site24x7, and local addresses. The monitor must
-# honour that single source of truth rather than maintain its own list.
+# range the firewall trusts: Cloudflare, Googlebot, Google's special-case
+# crawlers, Bingbot, Pingdom, Imperva, Sucuri, Auth0, Site24x7, and local
+# addresses. The monitor must honour that single source of truth rather
+# than maintain its own list.
 #
 # The loader (below) parses csf.allow once at startup into:
 #   _CSF_ALLOW_IPS          -- exact host  -> 1  (O(1) lookup)
@@ -1897,6 +1905,9 @@ _handle_harvest_blocking() {
     (( _C_BAD["${_id}"] > _NGINX_HARVEST_BAD_PCT )) && continue
     if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]] \
       && [[ "${_ua}" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]]; then
+      ### Log the exemption: it outranks even BAN_NAMED, and a silent continue
+      ### leaves the operator unable to tell "no cohort" from "exempted".
+      _harvest_log "EXEMPT ${_host} [${_C_HV["${_id}"]} IPs] ua=${_ua}"
       continue
     fi
     ### Collapsed realip: if much of the cohort is inside csf.allow we are
@@ -2135,7 +2146,8 @@ fi
 
 # Load the CSF allow list into memory — the single source of truth for all
 # provider ranges, maintained daily by guest-water.sh (Cloudflare, Googlebot,
-# Bingbot, Pingdom, Imperva, Sucuri, Auth0, Site24x7, local addresses, ...).
+# Google's special-case crawlers, Bingbot, Pingdom, Imperva, Sucuri, Auth0,
+# Site24x7, local addresses, ...).
 #
 # The previous loader only matched exact hosts (s=A.B.C.D), so every provider
 # whitelisted as a CIDR (Cloudflare, Googlebot, Bingbot, Imperva, Sucuri, ...)
@@ -2185,8 +2197,9 @@ fi
 # Load the nginx-native IPv6 allow store — the v6 counterpart of the csf.allow
 # loader above, closing the gap where a legitimate IPv6 crawler tripping the
 # scoring thresholds had no whitelist to save it. guest-water.sh maintains the
-# store daily from the published Googlebot/Bingbot ipv6Prefix ranges; untagged
-# manual entries survive its refresh. Each `<ip6>[/bits]` entry is strictly
+# store daily from the published Googlebot / Google special-case crawler /
+# Bingbot ipv6Prefix ranges; untagged manual entries survive its refresh.
+# Each `<ip6>[/bits]` entry is strictly
 # validated (comment-stripped, bits 1-128, _validate_ip6 grammar) and
 # pre-expanded to "8 hextets + bits" so _is_whitelisted_ip6 runs on pure
 # integer arithmetic; a malformed line is skipped, never fatal. Gated on
@@ -2561,8 +2574,9 @@ _handle_http10_auth_flood() {
 #   * the User-Agent is not a known-legitimate crawler (_NGINX_HARVEST_UA_EXEMPT
 #     -- csf.allow whitelisting covers only the handful of providers
 #     guest-water.sh publishes, so the UA list is what protects Applebot,
-#     DuckDuckBot, Yandex, Baiduspider, archive.org_bot, the social unfurlers
-#     and the uptime probes, exactly as it does for the harvest detector),
+#     DuckDuckBot, Yandex, Baiduspider, archive.org_bot, the social unfurlers,
+#     the uptime probes and the space-tokened Google Favicon fetcher, exactly
+#     as it does for the harvest detector),
 #   * the query-stripped URI matches the guard-family path class.
 # Status, method, URI, Referer and UA are all read positionally from the log
 # line's quoted fields via the same traversal-rejecting parse as

@@ -195,6 +195,14 @@ export _octInc="${_ROOT}/config/includes"
 export _octTpl="${_ROOT}/.drush/sys/provision/http/Provision/Config/Nginx"
 export _octSetTpl="${_ROOT}/.drush/sys/provision/Provision/Config/Drupal"
 
+### A passive replication standby runs NO octopus work: platform installs
+### and upgrades write into tenant and hostmaster databases that are
+### replicas there. The octopus launcher refuses too; this covers direct
+### invocations of this installer (e.g. via the boa wrapper).
+if [ -e "/root/.standby.cnf" ]; then
+  echo "NOTE: passive replication standby (/root/.standby.cnf) -- octopus work refused until promotion"
+  exit 1
+fi
 
 ###
 ### Helper variables
