@@ -364,5 +364,11 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   require with `--no-scripts`. The same require adds the migration pipeline contribs
   (`migrate_plus`, `migrate_tools`, `migrate_upgrade`) — upstream drupal/cms ships none
   of them, and core's migrate stack lives in drupal/core; inert until a site enables them.
+  The build also corrects pathauto's `d7_pathauto_patterns` migration definition
+  (adds `source_module: pathauto`, upstream pathauto #3588684): Drupal 11 prefers the
+  plugin's PHP attribute, which lost `source_module` in the annotation-to-attribute
+  conversion, and without the correction migrate_drupal validation refuses every
+  Drupal 7 → Drupal CMS upgrade at the credentials step. Guarded no-op once a tagged
+  pathauto release carries the fix.
 - **stale core patches / older cores** — if a distro fails on the newest core, retry pinned
   to progressively older core minors and keep the newest that works.
