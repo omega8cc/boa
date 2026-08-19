@@ -358,16 +358,24 @@ _delete_solr() {
     if [ "${_SOLR_BASE}" = "/var/solr9/data" ] \
       && [ -x "/opt/solr9/bin/solr" ] \
       && [ -e "/var/solr9/data" ]; then
+      # The Solr 9 CLI ignores -p for delete and falls back to port 8983,
+      # so remove the core via the Core Admin API on the instance port
       if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
-        su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr delete -p 9099 -c ${_SolrCoreID}"
+        curl -s --max-time 15 \
+          "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
+          &> /dev/null
         wait
       fi
       if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ]; then
-        su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr delete -p 9099 -c ${_Old_SolrCoreID}"
+        curl -s --max-time 15 \
+          "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Old_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
+          &> /dev/null
         wait
       fi
       if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ]; then
-        su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr delete -p 9099 -c ${_Legacy_SolrCoreID}"
+        curl -s --max-time 15 \
+          "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Legacy_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
+          &> /dev/null
         wait
       fi
       rm -f ${_Dir}/solr.php
