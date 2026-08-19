@@ -348,6 +348,19 @@ _global_cleanup() {
   find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
   find /var/backups/dragon/* -maxdepth 0 ! -name config -mtime +7 -exec rm -rf {} \; &> /dev/null
   # dragon/config is a low-volume, high-value config archive -- never auto-purged.
+  ### Account password backups written by the rotation-on-update path: heal any
+  ### copy left world-readable by older code (the account home allows traversal,
+  ### so a lax mode is readable by local users by exact path), then keep only
+  ### the newest 3 per credential file -- only the newest can hold a
+  ### half-failed-rotation recovery value; older ones are dead history that
+  ### only assists password guessing.
+  chmod 0600 /data/disk/*/.*.pass.txt-pre-* /data/disk/*/.*.pass.php-pre-* &> /dev/null
+  chmod 0600 /var/aegir/backups/system/.*.pass.txt-pre-* &> /dev/null
+  for _P_LIVE in /data/disk/*/.*.pass.txt /data/disk/*/.*.pass.php \
+    /var/aegir/backups/system/.*.pass.txt; do
+    [ -e "${_P_LIVE}" ] || continue
+    ls -t ${_P_LIVE}-pre-* 2>/dev/null | tail -n +4 | xargs -r rm -f
+  done
   if [ "${_hostedSys}" = "YES" ]; then
     if [ -d "/var/backups/codebases-cleanup" ]; then
       find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
