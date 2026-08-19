@@ -1204,23 +1204,23 @@ _nginx_config_update_fix() {
         _pthPrN="provision/http/Provision/Config/Nginx"
         if [ -e "${_OCT}/.drush/sys/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pthPrN}/server.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pthPrN}/vhost.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pthPrN}/vhost_disabled.tpl.php &> /dev/null
           wait
         elif [ -e "${_OCT}/.drush/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pthPrN}/server.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pthPrN}/vhost.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pthPrN}/vhost_disabled.tpl.php &> /dev/null
           wait
         fi
       done
