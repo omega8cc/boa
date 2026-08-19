@@ -10674,6 +10674,14 @@ _xdrago_install_upgrade() {
       cp -af /var/xdrago/conf/lshell.conf ${_vBs}/custom_lshell.conf
     fi
     cp -af ${_bldPth}/aegir/tools/system/* /var/xdrago/ &> /dev/null
+    ### The tree deploy above reverts fetch-delivered tools to the release
+    ### tar's vintage, while their fNN ctrl markers survive and block the
+    ### re-fetch -- so a box upgrading between a mid-cycle tool wave and
+    ### the next release cut silently loses the wave (bitten live: an
+    ### upgrade put a pre-wave second.sh back on a standby while its
+    ### marker still claimed the wave's serial). Invalidate them all: the
+    ### next tools refresh re-fetches every current serial within minutes.
+    rm -f ${_pthLog}/*.ctrl.*.pid
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "${_vBs}/custom_lshell.conf" ]; then
       cp -af ${_vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf

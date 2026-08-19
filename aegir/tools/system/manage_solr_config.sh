@@ -8,6 +8,14 @@ export _xSrl=588844ltsT01
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
+# A replication standby holds Solr down until promotion; creating, deleting
+# or restarting cores here would act on an index still being synced. The
+# xmass hold marker gates too: it outlives the standby marker through the
+# cutover window (java.sh enforces the disarm on it until step 14), and
+# core work must not fight that enforcement.
+[ -e "/root/.standby.cnf" ] && exit 0
+[ -e "/var/log/boa/.xmass_solr_hold.pid" ] && exit 0
+
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
@@ -18,6 +26,91 @@ _vSet="variable-set --always-set"
 
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
+}
+
+_validate_safe_dir() {
+  local _resolved
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
+  case "${_resolved}/" in
+    /data/disk/*|/var/aegir/*|/home/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+_ctrl_stage_dir() {
+  # Root-only staging dir for control-INI writes, on the same filesystem as the
+  # account's platform trees (they all live under the account root). The account
+  # root itself is 0711 oN:users, so the tenant may traverse it but cannot create
+  # or unlink here; the staging dir is forced root:root 0700 on every call, and a
+  # symlink planted in its place is removed rather than followed. Prints the path
+  # on success. Reads _usEr from the caller.
+  local _s
+  [ -n "${_usEr}" ] && [ -d "${_usEr}" ] || return 1
+  _s="${_usEr}/.boa-ctrl"
+  [ -L "${_s}" ] && rm -f "${_s}" &> /dev/null
+  [ -d "${_s}" ] || mkdir -p "${_s}" 2>/dev/null || return 1
+  [ -d "${_s}" ] && [ ! -L "${_s}" ] || return 1
+  chown root:root "${_s}" &> /dev/null
+  chmod 0700 "${_s}" &> /dev/null
+  echo "${_s}"
+}
+
+_reseed_ctrl_ini() {
+  # Seed/refresh a control INI from a regular template, symlink-proof and atomic.
+  # The per-site/per-platform control INIs live in a tenant-writable setgid
+  # modules dir (oN:users 02775, no sticky, group 'users' shared across all
+  # tenants), so a limited-shell/SFTP tenant can delete the seeded INI and plant
+  # a symlink at its path; a plain cp -af then writes THROUGH a live link and the
+  # following chown/chmod retarget it.
+  #
+  # Stage the new file in a root-owned 0700 dir under the account root, then
+  # mv -f -T it onto the destination. Everything the account owns lives under
+  # that root, so the rename is same-filesystem and atomic; rename() replaces a
+  # planted symlink (incl. a symlink-to-dir) instead of following it, and a
+  # real-dir decoy makes mv fail into the clean skip. Staging outside the
+  # platform tree matters: a freshly built platform can still be group-writable
+  # all the way up to its sites/ dir, and only the chown/chmod land on the temp
+  # -- so a tenant who could write the staging dir could swap the temp for a
+  # symlink and have root chown their target. The account root is 0711, so they
+  # can traverse but not create there. Refuses a symlink/non-regular SOURCE so a
+  # tenant-symlinked template cannot disclose a root file. Reads _usEr and _HM_U
+  # from the caller. $1 = source template, $2 = dest INI path.
+  local _src="$1"
+  local _dst="$2"
+  local _stg _new
+  [ -L "${_src}" ] && return 1
+  [ -f "${_src}" ] || return 1
+  [ -n "${_HM_U}" ] || return 1
+  [ -d "${_dst%/*}" ] || return 1
+  _stg=$(_ctrl_stage_dir) || return 1
+  _new=$(mktemp "${_stg}/ctrl.XXXXXX" 2>/dev/null) || return 1
+  if [ -L "${_new}" ] || [ ! -f "${_new}" ]; then
+    rm -f "${_new}" &> /dev/null
+    return 1
+  fi
+  if ! cat "${_src}" > "${_new}" 2>/dev/null; then
+    rm -f "${_new}" &> /dev/null
+    return 1
+  fi
+  chown "${_HM_U}:users" "${_new}" &> /dev/null
+  chmod 0664 "${_new}" &> /dev/null
+  mv -f -T "${_new}" "${_dst}" &> /dev/null || rm -f "${_new}" &> /dev/null
+}
+
+_desymlink_planted() {
+  # Strip a tenant-planted symlink at a root-maintained control-INI path before
+  # this iteration seeds/edits/appends it. rm -f on a symlink removes only the
+  # link (its target survives), and it is a no-op on a regular file, so a legit
+  # oN(.ftp):users file and the tenant's own edits are left untouched. The next
+  # seed leg re-creates a missing INI as a regular file. Args = paths.
+  local _p
+  for _p in "$@"; do
+    [ -L "${_p}" ] && rm -f "${_p}" &> /dev/null
+  done
 }
 
 _check_config_diff() {
@@ -172,6 +265,7 @@ _update_solr() {
       && [ ! -e "${_Plr}/modules/o_contrib" ] \
       && [ ! -e "${2}/conf/.protected.conf" ] \
       && [ -e "${2}/conf" ] \
+      && [ ! -L "${_Plr}/sites/${_Dom}/files/solr" ] \
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/schema.xml" ] \
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/solrconfig.xml" ] \
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/solrcore.properties" ]; then
@@ -179,9 +273,17 @@ _update_solr() {
         _check_config_diff "${_Plr}/sites/${_Dom}/files/solr/solrconfig.xml" "${2}/conf/solrconfig.xml"
         if [ ! -z "${_slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
-          cp -af ${_Plr}/sites/${_Dom}/files/solr/* ${2}/conf/
-          chmod 644 ${2}/conf/*
-          chown ${_SERV}:${_SERV} ${2}/conf/*
+          ### The upload dir is tenant-writable, and cp -af preserves symlinks,
+          ### so a link uploaded there lands in the core conf dir and the mode
+          ### and ownership passes below would follow it. Copy the regular
+          ### files only, and set metadata with find -type f, which never
+          ### matches a link. A client's own relative links are simply not
+          ### published -- the config they upload still is.
+          find ${_Plr}/sites/${_Dom}/files/solr -maxdepth 1 -type f \
+            -exec cp -af {} ${2}/conf/ \; &> /dev/null
+          find ${2}/conf -maxdepth 1 -type f -exec chmod 644 {} \; &> /dev/null
+          find ${2}/conf -maxdepth 1 -type f \
+            -exec chown ${_SERV}:${_SERV} {} \; &> /dev/null
           rm -f ${_Plr}/sites/${_Dom}/files/solr/*
           touch ${2}/conf/.yes-custom.txt
           touch ${2}/conf/.just-updated.pid
@@ -345,19 +447,29 @@ _delete_solr() {
     _SOLR_BASE="/var/solr9/data"
   fi
   if [ ! -z "${1}" ] && [ -e "/data/conf/solr" ] && [ -e "${1}/conf" ]; then
+    # The Solr 9 home holds no solr.xml -- since Solr 9 it is loaded from
+    # the install dir -- so gate on the data dir itself, as _add_solr does.
     if [ "${_SOLR_BASE}" = "/var/solr9/data" ] \
       && [ -x "/opt/solr9/bin/solr" ] \
-      && [ -e "/var/solr9/data/solr.xml" ]; then
+      && [ -e "/var/solr9/data" ]; then
+      # The Solr 9 CLI ignores -p for delete and falls back to port 8983,
+      # so remove the core via the Core Admin API on the instance port
       if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
-        su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr delete -p 9099 -c ${_SolrCoreID}"
+        curl -s --max-time 15 \
+          "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
+          &> /dev/null
         wait
       fi
       if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ]; then
-        su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr delete -p 9099 -c ${_Old_SolrCoreID}"
+        curl -s --max-time 15 \
+          "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Old_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
+          &> /dev/null
         wait
       fi
       if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ]; then
-        su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr delete -p 9099 -c ${_Legacy_SolrCoreID}"
+        curl -s --max-time 15 \
+          "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Legacy_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
+          &> /dev/null
         wait
       fi
       rm -f ${_Dir}/solr.php
@@ -412,9 +524,7 @@ _check_solr() {
 _setup_solr() {
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
-    cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-    chmod 0664 ${_DIR_CTRL_F} &> /dev/null
+    _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
   fi
   ###
   ### Support for solr_integration_module directive
@@ -447,6 +557,7 @@ _setup_solr() {
     if [[ "${_SAPI_SOLR_V}" =~ "search_api_solr9" ]]; then
       _SOLR_MODULE="search_api_solr9"
     fi
+    _SOLR_TEARDOWN=NO
     if [ "${_SOLR_MODULE}" = "apachesolr" ] && [ -e "/opt/solr4" ]; then
       _SOLR_BASE="/opt/solr4"
       _SOLR_VER=jetty9
@@ -460,6 +571,13 @@ _setup_solr() {
       _SOLR_BASE="/var/solr9/data"
       _SOLR_VER=solr9
     else
+      # Only an unset, commented out or invalid directive requests core
+      # teardown; a valid module whose Solr base is not installed must
+      # not delete existing cores. The eligibility has to be carried in
+      # its own flag because _SOLR_VER is blanked right here.
+      if [ "${_SOLR_MODULE}" = "your_module_name_here" ]; then
+        _SOLR_TEARDOWN=YES
+      fi
       _SOLR_MODULE=
       _SOLR_BASE=
       _SOLR_VER=
@@ -471,7 +589,7 @@ _setup_solr() {
       || [ "${_SOLR_MODULE}" = "apachesolr" ]; then
       [ -n "${_SOLR_VER}" ] && _check_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}"
     else
-      if [ -n "${_SOLR_VER}" ]; then
+      if [ "${_SOLR_TEARDOWN}" = "YES" ]; then
         _SOLR_DIR_DEL="/opt/solr4/${_SolrCoreID}"
         _delete_solr "${_SOLR_DIR_DEL}"
         _SOLR_DIR_DEL="/var/solr7/data/${_SolrCoreID}"
@@ -591,6 +709,19 @@ _check_sites_list() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
+      if [ -n "${_Dir}" ] && ! _validate_safe_dir "${_Dir}"; then
+        echo "SKIP: _Dir resolves outside allowed roots: ${_Dir}"
+        continue
+      fi
+      if [ -n "${_Plr}" ] && ! _validate_safe_dir "${_Plr}"; then
+        echo "SKIP: _Plr resolves outside allowed roots: ${_Plr}"
+        continue
+      fi
+      _desymlink_planted \
+        "${_DIR_CTRL_F}" \
+        "${_Dir}/modules/default.boa_site_control.ini" \
+        "${_PLR_CTRL_F}" \
+        "${_Plr}/sites/all/modules/default.boa_platform_control.ini"
       _proceed_solr
     fi
   done
