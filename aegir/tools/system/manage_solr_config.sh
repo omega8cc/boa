@@ -28,6 +28,64 @@ _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
+_validate_safe_dir() {
+  local _resolved
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
+  case "${_resolved}/" in
+    /data/disk/*|/var/aegir/*|/home/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+_reseed_ctrl_ini() {
+  # Seed/refresh a control INI from a regular template, symlink-proof and atomic.
+  # The per-site/per-platform control INIs live in a tenant-writable setgid
+  # modules dir (oN:users 02775, no sticky, group 'users' shared across all
+  # tenants), so a limited-shell/SFTP tenant can delete the seeded INI and plant
+  # a symlink at its path; a plain cp -af then writes THROUGH a live link and the
+  # following chown/chmod retarget it. Build the file with mktemp in the modules
+  # dir PARENT (sites/<uri> or sites/all, which is oN:users 0755/0751, NOT
+  # group-writable and the same filesystem as the dest), populate+chown+chmod it
+  # there, then mv -f -T over the dest: rename() replaces a planted symlink
+  # (incl. a symlink-to-dir) instead of following it, and a real-dir decoy makes
+  # mv fail into the clean skip. Refuses a symlink/non-regular SOURCE so a
+  # tenant-symlinked template cannot disclose a root file. Reads _HM_U from the
+  # caller. $1 = source template, $2 = dest INI path.
+  local _src="$1"
+  local _dst="$2"
+  local _mdir _pdir _new
+  [ -L "${_src}" ] && return 1
+  [ -f "${_src}" ] || return 1
+  [ -n "${_HM_U}" ] || return 1
+  _mdir="${_dst%/*}"
+  _pdir="${_mdir%/*}"
+  [ -d "${_mdir}" ] && [ -d "${_pdir}" ] || return 1
+  _new=$(mktemp "${_pdir}/.ctrl.XXXXXX" 2>/dev/null) || return 1
+  if ! cat "${_src}" > "${_new}" 2>/dev/null; then
+    rm -f "${_new}" &> /dev/null
+    return 1
+  fi
+  chown "${_HM_U}:users" "${_new}" &> /dev/null
+  chmod 0664 "${_new}" &> /dev/null
+  mv -f -T "${_new}" "${_dst}" &> /dev/null || rm -f "${_new}" &> /dev/null
+}
+
+_desymlink_planted() {
+  # Strip a tenant-planted symlink at a root-maintained control-INI path before
+  # this iteration seeds/edits/appends it. rm -f on a symlink removes only the
+  # link (its target survives), and it is a no-op on a regular file, so a legit
+  # oN(.ftp):users file and the tenant's own edits are left untouched. The next
+  # seed leg re-creates a missing INI as a regular file. Args = paths.
+  local _p
+  for _p in "$@"; do
+    [ -L "${_p}" ] && rm -f "${_p}" &> /dev/null
+  done
+}
+
 _check_config_diff() {
   # $1 is template path
   # $2 is a path to core config
@@ -430,9 +488,7 @@ _check_solr() {
 _setup_solr() {
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
-    cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-    chmod 0664 ${_DIR_CTRL_F} &> /dev/null
+    _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
   fi
   ###
   ### Support for solr_integration_module directive
@@ -617,6 +673,19 @@ _check_sites_list() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
+      if [ -n "${_Dir}" ] && ! _validate_safe_dir "${_Dir}"; then
+        echo "SKIP: _Dir resolves outside allowed roots: ${_Dir}"
+        continue
+      fi
+      if [ -n "${_Plr}" ] && ! _validate_safe_dir "${_Plr}"; then
+        echo "SKIP: _Plr resolves outside allowed roots: ${_Plr}"
+        continue
+      fi
+      _desymlink_planted \
+        "${_DIR_CTRL_F}" \
+        "${_Dir}/modules/default.boa_site_control.ini" \
+        "${_PLR_CTRL_F}" \
+        "${_Plr}/sites/all/modules/default.boa_platform_control.ini"
       _proceed_solr
     fi
   done
