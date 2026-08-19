@@ -11,6 +11,19 @@ _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 
 _usrGroup=users
 _WEBG=www-data
+
+_desymlink_planted() {
+  # Strip a tenant-planted symlink at a root-maintained path before this pass
+  # creates, chowns, chmods or writes it. The tenant owns its own home and the
+  # static/control tree, so it controls these names; rm -f on a symlink removes
+  # only the link (its target survives) and is a no-op on a regular file, so a
+  # legitimate file and the tenant's own content are untouched. Args = paths.
+  local _p
+  for _p in "$@"; do
+    [ -L "${_p}" ] && rm -f "${_p}" &> /dev/null
+  done
+  return 0
+}
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
@@ -18,6 +31,15 @@ _aptYesUnth="-y ${_aptAllow}"
 _pthLog="/var/log/boa"
 
 [ -e "/etc/boa/.pause_tasks_maint.cnf" ] && exit 0
+
+# NB: no whole-script standby gate here, on purpose. The local-only
+# reconciliation this script owns -- system users from clients/, per-user
+# php.ini, FPM $user_socket includes, lshell membership -- must run on a
+# replication standby exactly as anywhere (xmass relies on sub-users
+# appearing on the target within minutes of clients/ landing, and a
+# barracuda system pass on a standby needs its post-step). Only the two
+# writers into replicated/rsynced state carry scoped standby gates below:
+# the ghost-alias reaper and the drush alias-store rebuild.
 
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
@@ -164,14 +186,17 @@ _enable_chattr() {
         rm -f ${_U_HD}/.ctrl*
         rm -rf ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
+      _desymlink_planted "${_U_TP}" "${_U_HD}"
       mkdir -p ${_U_HD}/usr
       mkdir -p ${_U_TP}
       touch ${_U_TP}
-      find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-      chown $1:${_usrGroup} ${_U_TP}
-      chown $1:${_usrGroup} ${_U_HD}
-      chmod 02755 ${_U_TP}
-      chmod 02755 ${_U_HD}
+      # Bare path, not ${_U_TP}/ -- a trailing slash makes find follow a
+      # planted link and purge the target tree instead.
+      find ${_U_TP} -mindepth 1 -mtime +0 -exec rm -rf {} \; &> /dev/null
+      chown -h $1:${_usrGroup} ${_U_TP}
+      chown -h $1:${_usrGroup} ${_U_HD}
+      [ ! -L "${_U_TP}" ] && chmod 02755 ${_U_TP}
+      [ ! -L "${_U_HD}" ] && chmod 02755 ${_U_HD}
       if [ ! -L "${_U_HD}/usr/registry_rebuild" ] \
         && [ -e "${_dscUsr}/.drush/usr/registry_rebuild" ]; then
         ln -sfn ${_dscUsr}/.drush/usr/registry_rebuild \
@@ -571,22 +596,24 @@ _fix_dot_dirs() {
   _usrLtdTest=${_usrLtd//[^a-z0-9]/}
   if [ ! -z "${_usrLtdTest}" ]; then
     _usrTmp="/home/${_usrLtd}/.tmp"
+    _desymlink_planted "${_usrTmp}" "/home/${_usrLtd}/.lftp" \
+      "/home/${_usrLtd}/.lhistory"
     if [ ! -d "${_usrTmp}" ]; then
       mkdir -p ${_usrTmp}
-      chown ${_usrLtd}:${_usrGroup} ${_usrTmp}
-      chmod 02755 ${_usrTmp}
+      chown -h ${_usrLtd}:${_usrGroup} ${_usrTmp}
+      [ ! -L "${_usrTmp}" ] && chmod 02755 ${_usrTmp}
     fi
     _usrLftp="/home/${_usrLtd}/.lftp"
     if [ ! -d "${_usrLftp}" ]; then
       mkdir -p ${_usrLftp}
-      chown ${_usrLtd}:${_usrGroup} ${_usrLftp}
-      chmod 02755 ${_usrLftp}
+      chown -h ${_usrLtd}:${_usrGroup} ${_usrLftp}
+      [ ! -L "${_usrLftp}" ] && chmod 02755 ${_usrLftp}
     fi
     _usrLhist="/home/${_usrLtd}/.lhistory"
     if [ ! -e "${_usrLhist}" ]; then
       touch ${_usrLhist}
-      chown ${_usrLtd}:${_usrGroup} ${_usrLhist}
-      chmod 644 ${_usrLhist}
+      chown -h ${_usrLtd}:${_usrGroup} ${_usrLhist}
+      [ ! -L "${_usrLhist}" ] && chmod 644 ${_usrLhist}
     fi
     _usrDrush="/home/${_usrLtd}/.drush"
     if [ ! -d "${_usrDrush}" ]; then
@@ -829,12 +856,13 @@ _add_user_if_not_exists() {
       _disable_chattr ${_usrLtd}
       rm -rf /home/${_usrLtd}/drush-backups
       _usrTmp="/home/${_usrLtd}/.tmp"
+      _desymlink_planted "${_usrTmp}"
       if [ ! -d "${_usrTmp}" ]; then
         mkdir -p ${_usrTmp}
-        chown ${_usrLtd}:${_usrGroup} ${_usrTmp}
-        chmod 02755 ${_usrTmp}
+        chown -h ${_usrLtd}:${_usrGroup} ${_usrTmp}
+        [ ! -L "${_usrTmp}" ] && chmod 02755 ${_usrTmp}
       fi
-      find ${_usrTmp} -mtime +0 -exec rm -rf {} \; &> /dev/null
+      find ${_usrTmp} -mindepth 1 -mtime +0 -exec rm -rf {} \; &> /dev/null
       _ok_update_user
       _enable_chattr ${_usrLtd}
     fi
@@ -1611,6 +1639,7 @@ _site_socket_inc_gen() {
     ln -sfn ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${_hmstAls}
   fi
 
+  _desymlink_planted "${_mltFpm}"
   _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm} 2>&1)
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
@@ -1666,7 +1695,9 @@ _site_socket_inc_gen() {
   fi
 
   if [ -f "${_mltFpm}" ]; then
-    chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/*.info
+    # static/control is tenant-owned, so a symlink named <x>.info is matched by
+    # this glob; -h keeps the chown on the link instead of its target.
+    chown -h ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/*.info
     _mltFpmUpdate=NO
     if [ ! -f "${_preFpm}" ]; then
       rm -rf ${_preFpm}
@@ -1814,8 +1845,9 @@ _switch_php() {
             _php_cli_local_ini_update
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
             echo "${_T_CLI_VRN}" > "${_dscUsr}/log/cli.txt"
+            _desymlink_planted "${_dscUsr}/static/control/cli.info"
             echo "${_T_CLI_VRN}" > "${_dscUsr}/static/control/cli.info"
-            chown "${_USER}.ftp:${_usrGroup}" "${_dscUsr}/static/control/cli.info"
+            chown -h "${_USER}.ftp:${_usrGroup}" "${_dscUsr}/static/control/cli.info"
           fi
         fi
       fi
@@ -1912,9 +1944,10 @@ _switch_php() {
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
         echo "${_T_FPM_VRN}" > ${_dscUsr}/log/fpm.txt
         if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
-          echo "${_T_FPM_VRN}" > ${_dscUsr}/static/control/fpm.info
+          _desymlink_planted "${_dscUsr}/static/control/fpm.info"
+        echo "${_T_FPM_VRN}" > ${_dscUsr}/static/control/fpm.info
         fi
-        chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
+        chown -h ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
 
         _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
@@ -2148,6 +2181,10 @@ _manage_site_drush_alias_mirror() {
             : # front-end companion (control panel machinery, stale after a
             : # hostname rename or distro bump) -- never reaped here; the
             : # nightly classifier owns these as operator-review items
+          elif [ -e "/root/.standby.cnf" ]; then
+            : # replication standby: aliases and site dirs arrive by
+            : # replication and rsync on their own clocks, so a mid-sync
+            : # mismatch is normal -- never reap here
           else
             _GA_OCT="/root/.$(basename ${_pthParen_tUsr} 2>/dev/null).octopus.cnf"
             _GA_ON=NO
@@ -2188,7 +2225,12 @@ _manage_site_drush_alias_mirror() {
       fi
     fi
   done
-  if [ -x "/usr/bin/drush10" ] && [ "${_GHOST_REAPED}" != "YES" ]; then
+  # The alias-store rebuild wipes and regenerates ~/.drush/sites from the
+  # drushrc aliases -- on a standby those arrive by rsync mid-window, and
+  # a rebuild against a half-landed set bakes the gaps in. Scoped gate:
+  # everything above (users, inis, pools) already ran.
+  if [ -x "/usr/bin/drush10" ] && [ "${_GHOST_REAPED}" != "YES" ] \
+    && [ ! -e "/root/.standby.cnf" ]; then
     if [ "${_isAliasUpdate}" = "YES" ] \
       || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
       chage -M 99999 ${_USER}.ftp &> /dev/null
@@ -2275,12 +2317,18 @@ _manage_user() {
       fi
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
         && [ -e "/home/${_USER}.ftp/clients" ]; then
+        _desymlink_planted "${_dscUsr}/static/control"
         mkdir -p ${_dscUsr}/static/control
-        chmod 755 ${_dscUsr}/static/control
-        if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+        [ ! -L "${_dscUsr}/static/control" ] \
+          && chmod 755 ${_dscUsr}/static/control
+        if [ -e "/var/xdrago/conf/control-readme.txt" ] \
+          && [ -d "${_dscUsr}/static/control" ] \
+          && [ ! -L "${_dscUsr}/static/control" ]; then
+          _desymlink_planted "${_dscUsr}/static/control/README.txt"
           cp -af /var/xdrago/conf/control-readme.txt \
             ${_dscUsr}/static/control/README.txt &> /dev/null
-          chmod 0644 ${_dscUsr}/static/control/README.txt
+          [ ! -L "${_dscUsr}/static/control/README.txt" ] \
+            && chmod 0644 ${_dscUsr}/static/control/README.txt
         fi
         chown -R ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control
         rm -f ${_dscUsr}/static/control/.ctrl.*
@@ -2329,7 +2377,8 @@ _manage_user() {
       if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
         && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
-          echo 5.6 > ${_dscUsr}/static/control/cli.info
+        _desymlink_planted "${_dscUsr}/static/control/cli.info"
+        echo 5.6 > ${_dscUsr}/static/control/cli.info
         fi
       fi
       _nrCheck=
@@ -2403,8 +2452,10 @@ _manage_user() {
           _manage_sec
           if [ -d "/home/${_USER}.ftp/users" ]; then
             chown -R ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/users
-            chmod 700 /home/${_USER}.ftp/users
-            chmod 600 /home/${_USER}.ftp/users/*
+            [ ! -L "/home/${_USER}.ftp/users" ] \
+              && chmod 700 /home/${_USER}.ftp/users
+            find /home/${_USER}.ftp/users -maxdepth 1 -type f \
+              -exec chmod 600 {} \; &> /dev/null
           fi
           if [ ! -L "/home/${_USER}.ftp/static" ]; then
             rm -f /home/${_USER}.ftp/{backups,clients,static}
@@ -2413,7 +2464,8 @@ _manage_user() {
             ln -sfn ${_dscUsr}/static  /home/${_USER}.ftp/static
           fi
           if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-            rm -rf /home/${_USER}.ftp/.drush/cache
+            [ ! -L "/home/${_USER}.ftp/.drush" ] \
+              && rm -rf /home/${_USER}.ftp/.drush/cache
             rm -rf /home/${_USER}.ftp/.tmp
             mkdir -p /home/${_USER}.ftp/.tmp
             chown ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null

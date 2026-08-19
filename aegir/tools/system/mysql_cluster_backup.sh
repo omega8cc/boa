@@ -25,6 +25,13 @@ _check_root() {
 _check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
+
+# A passive replication standby takes no DB dumps of its own -- the replica
+# IS the live copy. Role marker only, never a local replica probe: this
+# script targets the cluster's designated write node, so a local probe would
+# falsely suppress a backup whose writes replicate correctly by design.
+[ -e "/root/.standby.cnf" ] && exit 0
+
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
 [ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 

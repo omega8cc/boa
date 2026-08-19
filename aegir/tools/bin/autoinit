@@ -616,10 +616,10 @@ _autoinit_wait_net() {
     _n=$(( _n + 1 ))
     _autoinit_force_dns
     if _autoinit_net_ready "${_RH}"; then
-      _msg "[init] net ==> connectivity + DNS OK (check ${_n})" >> "${_logInt}"
+      _msg "[init] nets ==> connectivity + DNS OK (check ${_n})" >> "${_logInt}"
       return 0
     fi
-    _msg "[init] net ==> not ready (check ${_n}/${_tries}); re-forcing DNS + vmnetfix repair" >> "${_logInt}"
+    _msg "[init] nets ==> not ready (check ${_n}/${_tries}); re-forcing DNS + vmnetfix repair" >> "${_logInt}"
     "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}" 2>&1
     sleep 5
   done

@@ -266,15 +266,45 @@ _install() {
 
 _check_aws() {
   if [ ! -x "/usr/local/bin/aws" ]; then
-    echo "Upgrade to add AWS tools required..."
-    install
+    # The bare `install` this used to call invoked coreutils install with
+    # no arguments and fell through -- the de facto behaviour was to
+    # continue without the AWS CLI. Keep that (an unattended full
+    # toolchain reinstall mid-backup would be worse), just say it loudly.
+    echo "NOTE: AWS CLI missing; S3-dependent legs will fail until '$(basename "$0") install' is run"
   fi
 }
 
-_CNT=$(pgrep -fc duplicity)
-if (( _CNT > 0 )); then
-  echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
-  exit 1
+_duplicity_or_backboa_busy() {
+  local _bb
+  (( $(pgrep -fc duplicity) > 0 )) && return 0
+  # A live backboa BETWEEN its sequential duplicity invocations counts as
+  # busy too -- freeing in that gap would run two backup chains at once.
+  _bb="$(tr -dc '0-9' < "/run/${_HST}_backboa.pid" 2>/dev/null)"
+  [ -n "${_bb}" ] && kill -0 "${_bb}" 2>/dev/null && return 0
+  return 1
+}
+if _duplicity_or_backboa_busy; then
+  if [ "$1" = "backup" ]; then
+    # The old immediate exit-1 here is what cost duobackboa its day
+    # whenever the 03:15 backboa run overran the two-hour gap -- so WAIT
+    # (bounded) for the whole sibling run to finish, not just for a gap
+    # between its duplicity invocations. Other verbs keep the immediate
+    # refusal: an operator restore must not silently block for hours.
+    echo "[$(date)] Active duplicity/backboa run detected, waiting for it to finish..." >> /var/log/mybackup_waiting_queue.log
+    _WAITED=0
+    while _duplicity_or_backboa_busy; do
+      if (( _WAITED >= 7200 )); then
+        echo "[$(date)] Still busy after ${_WAITED}s, giving up until the next run..." >> /var/log/mybackup_waiting_queue.log
+        exit 1
+      fi
+      sleep 300
+      _WAITED=$(( _WAITED + 300 ))
+    done
+    echo "[$(date)] Backup slot freed after ${_WAITED}s, proceeding..." >> /var/log/mybackup_waiting_queue.log
+  else
+    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    exit 1
+  fi
 fi
 
 if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
@@ -677,20 +707,26 @@ _retrieve() {
 }
 
 if [ "$1" = "backup" ]; then
-  if test -f /run/${_HST}_backup.pid ; then
+  # Own pid file with a real PID inside: the two duplicity wrappers used
+  # to share one empty touch-file, so a slow backboa run (or a leftover
+  # from a crash) made this one skip its day two hours later. A live
+  # process holds the gate; a stale file is ignored and overwritten.
+  _PID_FILE="/run/${_HST}_duobackboa.pid"
+  _RUNNING_PID=""
+  [ -e "${_PID_FILE}" ] && _RUNNING_PID="$(tr -dc '0-9' < "${_PID_FILE}" 2>/dev/null)"
+  if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
-    echo "Existing /run/${_HST}_backup.pid found..."
-    echo "But no active duplicity process detected..."
+    echo "Live run holds ${_PID_FILE} (pid ${_RUNNING_PID})..."
     exit 1
   else
-    touch /run/${_HST}_backup.pid
+    echo $$ > "${_PID_FILE}"
     echo "The duplicity backup is starting now..."
     _check_aws
     _backup
     echo "The duplicity backup is complete!"
     touch ${_LOGPTH}/run_${_HST}_backup.log
-    rm -f /run/${_HST}_backup.pid
+    rm -f "${_PID_FILE}"
   fi
 elif [ "$1" = "install" ]; then
   _install

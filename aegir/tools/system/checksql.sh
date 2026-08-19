@@ -33,6 +33,10 @@ _check_root
 
 [ -f "/root/.proxy.cnf" ] && exit 0
 
+# A replication standby: REPAIR/OPTIMIZE/ANALYZE are local writes that land
+# in the binlog as errant transactions on a replica.
+[ -f "/root/.standby.cnf" ] && exit 0
+
 # Stand down while the database is already being worked on. A full-server
 # mysqlcheck taken while a backup holds its locks, or while the watchdog is
 # restarting the server, competes for the same tables and can turn a slow

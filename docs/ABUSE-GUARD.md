@@ -462,11 +462,13 @@ yet deployed) the hits still count — a cold Referer-less `GET` to an interacti
 is the same verdict either way.
 
 Crawler protection is layered, because IP whitelisting alone does not cover it: csf.allow /
-web6.allow exempt the providers `guest-water.sh` publishes (Googlebot, Bingbot, the CDN and
-monitoring ranges), while `_NGINX_HARVEST_UA_EXEMPT` — the same list the harvest detector
-uses — covers the legitimate crawlers and unfurlers whitelisting never reaches (Applebot,
-DuckDuckBot, Yandex, Baiduspider, archive.org_bot, the social preview fetchers, the uptime
-probes). The guarded URLs also answer 404, which de-indexes them. In BAN mode the ban
+web6.allow exempt the providers `guest-water.sh` publishes (Googlebot, Google's special-case
+crawlers, Bingbot, the CDN and monitoring ranges), while `_NGINX_HARVEST_UA_EXEMPT` — the
+same list the harvest detector uses — covers the legitimate crawlers and unfurlers
+whitelisting never reaches (Applebot, DuckDuckBot, Yandex, Baiduspider, archive.org_bot,
+the social preview fetchers, the uptime probes, and the SERP favicon fetcher, whose
+"Google Favicon" token carries a space and matches neither `Googlebot` nor `Google-`).
+The guarded URLs also answer 404, which de-indexes them. In BAN mode the ban
 reuses `_block_ip` (whitelist, logged-in, local-IP and already-banned guards all apply) and
 feeds the same `guest-fire` → `guest-water` pipeline as every other detector, and
 `clearwebbans` now clears this detector's window along with the ban logs, so an operator
@@ -536,8 +538,9 @@ Four layers protect known-good addresses from every detector:
   the port scope of the `csf.allow` entry (an `s=` record means "trusted source").
 - **IPv6 allow store.** `csf.allow` cannot hold an IPv6 entry (CSF is IPv4-only), so the
   IPv6 counterpart lives in `/var/xdrago/monitor/log/web6.allow`: `guest-water.sh` mirrors
-  the published Googlebot `ipv6Prefix` crawl ranges into it daily (Bingbot's too, once
-  Microsoft publishes any), and `_is_whitelisted_ip` family-dispatches every IPv6 client to
+  the published Googlebot and Google special-case crawler `ipv6Prefix` ranges into it
+  daily (Bingbot's too, once Microsoft publishes any), and `_is_whitelisted_ip`
+  family-dispatches every IPv6 client to
   it — same scoring gates, same `_block_ip` keystone, so a legitimate IPv6 crawler is
   exempt from both scoring and the nginx-native v6 ban. Untagged manual entries survive
   the daily refresh, and an empty provider fetch keeps the existing entries rather than
@@ -670,8 +673,10 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 `web.log` / `ssh.log` / `ftp.log` so the next `scan_nginx` window starts clean.
 
 > **Under the hood.** `guest-water.sh` also refreshes the `csf.allow` provider ranges
-> (Cloudflare, Googlebot, Bingbot, Pingdom, and — behind
-> `/root/.extended.firewall.exceptions.cnf` — Imperva, Sucuri, Auth0, Site24x7), with a
+> (Cloudflare, Googlebot, Google's special-case crawlers — the AdsBot / Mediapartners /
+> SERP-favicon-fetcher family, published separately from googlebot.json — Bingbot, Pingdom,
+> and — behind `/root/.extended.firewall.exceptions.cnf` — Imperva, Sucuri, Auth0,
+> Site24x7), with a
 > diff-guard that reverts an unexpected `csf.allow` change and per-provider backups under
 > `/var/backups/csf/water/`. The same pass mirrors the crawler `ipv6Prefix` ranges into
 > the nginx-native IPv6 allow store `/var/xdrago/monitor/log/web6.allow` (CSF cannot hold
@@ -1608,7 +1613,7 @@ echo "2a01:db8:beef::/48 # partner service" >> /var/xdrago/monitor/log/web6.allo
 ```
 
 `guest-water.sh`'s daily refresh only rewrites its own provider-tagged lines (`googlebot`,
-`microsoft`), so a manual entry persists. Note this exempts the address from the **web IDS
+`googlespecial`, `microsoft`), so a manual entry persists. Note this exempts the address from the **web IDS
 only** — there is no v6 firewall layer to allow it through, and none is needed (BOA
 disables IPv6 server-side; a v6 client only ever appears via the trusted realip proxy).
 

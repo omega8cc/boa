@@ -149,7 +149,7 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # composer require drush/drush --no-scripts --no-interaction   # post-update-cmd exits non-zero; cms dev-requires drush, non-interactive confirms the move to require
+           # composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --no-interaction   # post-update-cmd exits non-zero; cms dev-requires drush, non-interactive confirms the move to require; migration pipeline contribs absent upstream
 ```
 
 ```sh
@@ -361,6 +361,14 @@ Some codebases need extra handling; staticbuild does all of this automatically.
 - **thunder** — `thunder/thunder-project` (the template) versions independently (e.g. 5.0.0)
   from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.0); name by the latter.
 - **cms** — drupal_cms's post-update-cmd cleanup script exits non-zero; run its drush
-  require with `--no-scripts`.
+  require with `--no-scripts`. The same require adds the migration pipeline contribs
+  (`migrate_plus`, `migrate_tools`, `migrate_upgrade`) — upstream drupal/cms ships none
+  of them, and core's migrate stack lives in drupal/core; inert until a site enables them.
+  The build also corrects pathauto's `d7_pathauto_patterns` migration definition
+  (adds `source_module: pathauto`, upstream pathauto #3588684): Drupal 11 prefers the
+  plugin's PHP attribute, which lost `source_module` in the annotation-to-attribute
+  conversion, and without the correction migrate_drupal validation refuses every
+  Drupal 7 → Drupal CMS upgrade at the credentials step. Guarded no-op once a tagged
+  pathauto release carries the fix.
 - **stale core patches / older cores** — if a distro fails on the newest core, retry pinned
   to progressively older core minors and keep the newest that works.

@@ -1127,7 +1127,7 @@ _satellite_cnf() {
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" ${_octCnf}
           echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
           echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
-          chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
+          chown -h ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
         fi
       fi
     fi
@@ -1241,7 +1241,7 @@ _satellite_cnf() {
           sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" ${_octCnf}
           echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
           echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
-          chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
+          chown -h ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
         fi
       fi
     fi
@@ -3213,9 +3213,14 @@ _provision_backend_dbpass_sync() {
     _THIS_DB_PORT=3306
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
+  ### The account home allows traversal, so a lax mode on these backups is
+  ### readable by local users by exact path; never trust the moved file's
+  ### inherited mode -- set 0600 explicitly.
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  chmod 0600 ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
   mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  chmod 0600 ${_L_SYS_PHP}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
