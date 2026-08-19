@@ -973,8 +973,17 @@ EOFMYSQL
         ### Replaces readonlymode which is unavailable via system drush 8
         ### on Drupal 8+ and bypassed by commerce/API code paths.
         ###
+        ### static/ is tenant-writable, so control and the pid name can be
+        ### planted as symlinks; -e is false for a DANGLING link, so the guard
+        ### below would otherwise let > create the tenant's chosen target.
+        [ -L "${_USR}/static/control" ] \
+          && rm -f ${_USR}/static/control &> /dev/null
         mkdir -p ${_USR}/static/control
-        if [ ! -e "${_USR}/static/control/http-off.pid" ]; then
+        [ -L "${_USR}/static/control/http-off.pid" ] \
+          && rm -f ${_USR}/static/control/http-off.pid &> /dev/null
+        if [ ! -e "${_USR}/static/control/http-off.pid" ] \
+          && [ -d "${_USR}/static/control" ] \
+          && [ ! -L "${_USR}/static/control" ]; then
           echo 3600 > ${_USR}/static/control/http-off.pid
           chown -h ${_oct}:users ${_USR}/static/control/http-off.pid &> /dev/null
           echo "INFO: account ${_oct} http-off pid created"

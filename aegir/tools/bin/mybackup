@@ -437,12 +437,26 @@ _main_script() {
         fi
 
         echo "Executing backup restore for user ${_user}."
-        chmod 755 /data/disk/${_user}/remote_backups/paths
+        # These paths hang off static/control, which the tenant owns, so every
+        # component here is a name it can replace with a symlink. GNU chmod has
+        # no -h, so it always dereferences a command-line operand, and the
+        # *.txt glob both resolves through a planted directory link and matches
+        # planted links by name. Strip the plantable components, then set modes
+        # with find -type f/-type d, which never match a link.
+        [ -L "/data/disk/${_user}/remote_backups/paths" ] \
+          && rm -f /data/disk/${_user}/remote_backups/paths &> /dev/null
+        [ ! -L "/data/disk/${_user}/remote_backups/paths" ] \
+          && chmod 755 /data/disk/${_user}/remote_backups/paths
         local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
-        chmod 755 ${_user_credentials_dir}
-        chmod 644 ${_user_credentials_dir}/*.txt
-        chattr -i /data/disk/${_user}/remote_backups/.secret.txt
-        chmod 644 /data/disk/${_user}/remote_backups/.secret.txt
+        [ -L "${_user_credentials_dir}" ] \
+          && rm -f "${_user_credentials_dir}" &> /dev/null
+        [ ! -L "${_user_credentials_dir}" ] && chmod 755 ${_user_credentials_dir}
+        find ${_user_credentials_dir} -maxdepth 1 -type f -name '*.txt' \
+          -exec chmod 644 {} \; &> /dev/null
+        [ ! -L "/data/disk/${_user}/remote_backups/.secret.txt" ] \
+          && chattr -i /data/disk/${_user}/remote_backups/.secret.txt
+        [ ! -L "/data/disk/${_user}/remote_backups/.secret.txt" ] \
+          && chmod 644 /data/disk/${_user}/remote_backups/.secret.txt
         # Pass the validated args positionally via -- so each arg arrives at
         # the inner mybackup as a separate $1/$2/$3/$4. No shell-interpolation
         # of attacker-controlled bytes; metacharacters in any arg are inert.
@@ -453,10 +467,13 @@ _main_script() {
         echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /var/log/mybackup_commands_history.log
         echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /data/disk/${_user}/log/mybackup_commands_history.log
         rm -f "${_user_cmd_file}"
-        chmod 700 ${_user_credentials_dir}
-        chmod 600 ${_user_credentials_dir}/*.txt
-        chmod 600 /data/disk/${_user}/remote_backups/.secret.txt
-        chattr +i /data/disk/${_user}/remote_backups/.secret.txt
+        [ ! -L "${_user_credentials_dir}" ] && chmod 700 ${_user_credentials_dir}
+        find ${_user_credentials_dir} -maxdepth 1 -type f -name '*.txt' \
+          -exec chmod 600 {} \; &> /dev/null
+        [ ! -L "/data/disk/${_user}/remote_backups/.secret.txt" ] \
+          && chmod 600 /data/disk/${_user}/remote_backups/.secret.txt
+        [ ! -L "/data/disk/${_user}/remote_backups/.secret.txt" ] \
+          && chattr +i /data/disk/${_user}/remote_backups/.secret.txt
         sleep 10
       fi
     fi
