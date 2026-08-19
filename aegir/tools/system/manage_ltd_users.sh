@@ -1675,7 +1675,9 @@ _site_socket_inc_gen() {
   fi
 
   if [ -f "${_mltFpm}" ]; then
-    chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/*.info
+    # static/control is tenant-owned, so a symlink named <x>.info is matched by
+    # this glob; -h keeps the chown on the link instead of its target.
+    chown -h ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/*.info
     _mltFpmUpdate=NO
     if [ ! -f "${_preFpm}" ]; then
       rm -rf ${_preFpm}
@@ -1824,7 +1826,7 @@ _switch_php() {
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
             echo "${_T_CLI_VRN}" > "${_dscUsr}/log/cli.txt"
             echo "${_T_CLI_VRN}" > "${_dscUsr}/static/control/cli.info"
-            chown "${_USER}.ftp:${_usrGroup}" "${_dscUsr}/static/control/cli.info"
+            chown -h "${_USER}.ftp:${_usrGroup}" "${_dscUsr}/static/control/cli.info"
           fi
         fi
       fi
@@ -1923,7 +1925,7 @@ _switch_php() {
         if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
           echo "${_T_FPM_VRN}" > ${_dscUsr}/static/control/fpm.info
         fi
-        chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
+        chown -h ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
 
         _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}

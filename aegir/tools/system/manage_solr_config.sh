@@ -41,30 +41,57 @@ _validate_safe_dir() {
   esac
 }
 
+_ctrl_stage_dir() {
+  # Root-only staging dir for control-INI writes, on the same filesystem as the
+  # account's platform trees (they all live under the account root). The account
+  # root itself is 0711 oN:users, so the tenant may traverse it but cannot create
+  # or unlink here; the staging dir is forced root:root 0700 on every call, and a
+  # symlink planted in its place is removed rather than followed. Prints the path
+  # on success. Reads _usEr from the caller.
+  local _s
+  [ -n "${_usEr}" ] && [ -d "${_usEr}" ] || return 1
+  _s="${_usEr}/.boa-ctrl"
+  [ -L "${_s}" ] && rm -f "${_s}" &> /dev/null
+  [ -d "${_s}" ] || mkdir -p "${_s}" 2>/dev/null || return 1
+  [ -d "${_s}" ] && [ ! -L "${_s}" ] || return 1
+  chown root:root "${_s}" &> /dev/null
+  chmod 0700 "${_s}" &> /dev/null
+  echo "${_s}"
+}
+
 _reseed_ctrl_ini() {
   # Seed/refresh a control INI from a regular template, symlink-proof and atomic.
   # The per-site/per-platform control INIs live in a tenant-writable setgid
   # modules dir (oN:users 02775, no sticky, group 'users' shared across all
   # tenants), so a limited-shell/SFTP tenant can delete the seeded INI and plant
   # a symlink at its path; a plain cp -af then writes THROUGH a live link and the
-  # following chown/chmod retarget it. Build the file with mktemp in the modules
-  # dir PARENT (sites/<uri> or sites/all, which is oN:users 0755/0751, NOT
-  # group-writable and the same filesystem as the dest), populate+chown+chmod it
-  # there, then mv -f -T over the dest: rename() replaces a planted symlink
-  # (incl. a symlink-to-dir) instead of following it, and a real-dir decoy makes
-  # mv fail into the clean skip. Refuses a symlink/non-regular SOURCE so a
-  # tenant-symlinked template cannot disclose a root file. Reads _HM_U from the
-  # caller. $1 = source template, $2 = dest INI path.
+  # following chown/chmod retarget it.
+  #
+  # Stage the new file in a root-owned 0700 dir under the account root, then
+  # mv -f -T it onto the destination. Everything the account owns lives under
+  # that root, so the rename is same-filesystem and atomic; rename() replaces a
+  # planted symlink (incl. a symlink-to-dir) instead of following it, and a
+  # real-dir decoy makes mv fail into the clean skip. Staging outside the
+  # platform tree matters: a freshly built platform can still be group-writable
+  # all the way up to its sites/ dir, and only the chown/chmod land on the temp
+  # -- so a tenant who could write the staging dir could swap the temp for a
+  # symlink and have root chown their target. The account root is 0711, so they
+  # can traverse but not create there. Refuses a symlink/non-regular SOURCE so a
+  # tenant-symlinked template cannot disclose a root file. Reads _usEr and _HM_U
+  # from the caller. $1 = source template, $2 = dest INI path.
   local _src="$1"
   local _dst="$2"
-  local _mdir _pdir _new
+  local _stg _new
   [ -L "${_src}" ] && return 1
   [ -f "${_src}" ] || return 1
   [ -n "${_HM_U}" ] || return 1
-  _mdir="${_dst%/*}"
-  _pdir="${_mdir%/*}"
-  [ -d "${_mdir}" ] && [ -d "${_pdir}" ] || return 1
-  _new=$(mktemp "${_pdir}/.ctrl.XXXXXX" 2>/dev/null) || return 1
+  [ -d "${_dst%/*}" ] || return 1
+  _stg=$(_ctrl_stage_dir) || return 1
+  _new=$(mktemp "${_stg}/ctrl.XXXXXX" 2>/dev/null) || return 1
+  if [ -L "${_new}" ] || [ ! -f "${_new}" ]; then
+    rm -f "${_new}" &> /dev/null
+    return 1
+  fi
   if ! cat "${_src}" > "${_new}" 2>/dev/null; then
     rm -f "${_new}" &> /dev/null
     return 1
