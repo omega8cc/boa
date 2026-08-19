@@ -354,15 +354,11 @@ _whitelist_ip_imperva() {
 }
 
 _whitelist_ip_googlebot() {
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing googlebot ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
-    sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
-    wait
-  fi
   # One fetch feeds both families: ipv4Prefix goes to csf.allow below,
   # ipv6Prefix to the nginx-native v6 allow store (csf cannot hold IPv6).
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (endpoint down,
+  # format change) must keep the existing entries — the same fail-safe the
+  # v6 store documents — never strip live crawler ranges for a day.
   _JSON=$(curl ${_crlGet} https://developers.google.com/static/search/apis/ipranges/googlebot.json 2>&1)
   _IPS=$(echo "${_JSON}" \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
@@ -383,6 +379,24 @@ _whitelist_ip_googlebot() {
   _update_web6_allow googlebot "${_IPS6}"
   echo _IPS googlebot list..
   echo ${_IPS}
+  # Heal past bans from csf.deny. Static octets, deliberately BEFORE the
+  # empty-fetch guard so healing still runs on a failed fetch.
+  sed -i "/^66\.249\./d" /etc/csf/csf.deny
+  sed -i "/^192\.178\./d" /etc/csf/csf.deny
+  sed -i "/^34\.\(22\|64\|65\|80\|88\|89\|96\|100\|101\|118\|126\|146\|147\|151\|152\|154\|155\|165\|175\|176\)\./d" /etc/csf/csf.deny
+  sed -i "/^35\.247\./d" /etc/csf/csf.deny
+  wait
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty googlebot IPv4 list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing googlebot ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
+    sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
+    wait
+  fi
   for _IP in ${_IPS}; do
     echo checking csf.allow googlebot ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -398,11 +412,73 @@ _whitelist_ip_googlebot() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  sed -i "/^66\.249\./d" /etc/csf/csf.deny
-  sed -i "/^192\.178\./d" /etc/csf/csf.deny
-  sed -i "/^34\.\(22\|64\|65\|80\|88\|89\|96\|100\|101\|118\|126\|146\|147\|151\|152\|154\|155\|165\|175\|176\)\./d" /etc/csf/csf.deny
-  sed -i "/^35\.247\./d" /etc/csf/csf.deny
+}
+
+_whitelist_ip_google_special() {
+  # Google's special-case crawlers (AdsBot, Mediapartners, the SERP favicon
+  # fetcher, ...) operate from their own Google-owned rate-limited-proxy
+  # ranges, published separately from googlebot.json — a favicon fetch banned
+  # here silently drops the site's icon from search results. One fetch feeds
+  # both families: ipv4Prefix goes to csf.allow below, ipv6Prefix to the
+  # nginx-native v6 allow store (csf cannot hold IPv6). Fetch BEFORE the
+  # tagged-line cleanup: an empty fetch must keep the existing entries (the
+  # same fail-safe the v6 store documents), never strip live crawler ranges.
+  _JSON=$(curl ${_crlGet} https://developers.google.com/static/search/apis/ipranges/special-crawlers.json 2>&1)
+  _IPS=$(echo "${_JSON}" \
+    | grep -o '"ipv4Prefix": *"[^"]*"' \
+    | sed 's/"ipv4Prefix": *"//g' \
+    | sed 's/"//g' \
+    | sort \
+    | uniq 2>&1)
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
+  _IPS6=$(echo "${_JSON}" \
+    | grep -o '"ipv6Prefix": *"[^"]*"' \
+    | sed 's/"ipv6Prefix": *"//g' \
+    | sed 's/"//g' \
+    | sort \
+    | uniq 2>&1)
+  _IPS6=$(echo "${_IPS6}" | _emit_valid_ips6)
+  echo _IPS6 googlespecial list..
+  echo ${_IPS6}
+  _update_web6_allow googlespecial "${_IPS6}"
+  echo _IPS googlespecial list..
+  echo ${_IPS}
+  # Heal past bans of these ranges from csf.deny. Static octets, deliberately
+  # BEFORE the empty-fetch guard so healing still runs on a failed fetch.
+  # Third-octet-scoped: the published set covers only slices of wider Google
+  # blocks, and the slices in 66.249 and 192.178 are already cleaned by the
+  # Googlebot pass above.
+  sed -i "/^72\.14\.199\./d" /etc/csf/csf.deny
+  sed -i "/^74\.125\.\(148\|149\|150\|151\|216\|217\|218\|219\)\./d" /etc/csf/csf.deny
+  sed -i "/^108\.177\.2\./d" /etc/csf/csf.deny
+  sed -i "/^209\.85\.238\./d" /etc/csf/csf.deny
   wait
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty googlespecial IPv4 list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing googlespecial ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlespecial-${_NOW}
+    sed -i "s/.*googlespecial.*//g" /etc/csf/csf.allow
+    wait
+  fi
+  for _IP in ${_IPS}; do
+    echo checking csf.allow googlespecial ${_IP} now...
+    _IP_CHECK=$(cat /etc/csf/csf.allow \
+      | cut -d '#' -f1 \
+      | sort \
+      | uniq \
+      | tr -d "\s" \
+      | grep -F "${_IP}" 2>&1)
+    if [ -z "${_IP_CHECK}" ]; then
+      echo "${_IP} not yet listed in /etc/csf/csf.allow"
+      echo "tcp|in|d=80|s=${_IP} # googlespecial ips" >> /etc/csf/csf.allow
+    else
+      echo "${_IP} already listed in /etc/csf/csf.allow"
+    fi
+  done
 }
 
 _whitelist_ip_microsoft() {
@@ -976,6 +1052,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   _whitelist_ip_cloudflare
   _whitelist_ip_migration_proxy
   _whitelist_ip_googlebot
+  _whitelist_ip_google_special
   _whitelist_ip_microsoft
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_imperva
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_sucuri
@@ -988,6 +1065,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       -I pingdom \
       -I cloudflare \
       -I googlebot \
+      -I googlespecial \
       -I microsoft \
       -I imperva \
       -I sucuri \
