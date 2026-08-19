@@ -1385,9 +1385,17 @@ _fix_permissions() {
     ### expected symlinks
     _fix_expected_symlinks
     ### known exceptions
-    chmod -R 775 ${_Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
-    chown -R ${_HM_U}:www-data \
-      ${_Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
+    ### GNU chmod dereferences a symlink given on the command line and has no
+    ### -h to fall back on, and sites/all/libraries is tenant-writable, so both
+    ### tcpdf and its cache child are names the tenant can plant. A planted
+    ### parent redirects the recursive chown too. Precheck both; a real
+    ### directory is treated exactly as before.
+    if [ ! -L "${_Plr}/sites/all/libraries/tcpdf" ] \
+      && [ ! -L "${_Plr}/sites/all/libraries/tcpdf/cache" ]; then
+      chmod -R 775 ${_Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
+      chown -R ${_HM_U}:www-data \
+        ${_Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
+    fi
     touch ${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info
   fi
   if [ -e "${_Dir}" ] \
@@ -1441,21 +1449,24 @@ _fix_permissions() {
     find ${_Dir}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
     chmod 02775 ${_Dir}/files &> /dev/null
     chown ${_HM_U}:www-data ${_Dir}/files &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/files/{tmp,images,pictures,css,js} &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/files/{advagg_css,advagg_js,ctools} &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/files/{ctools/css,imagecache,locations} &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/files/{civicrm,civicrm/templates_c} &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/files/{civicrm/upload,civicrm/persist} &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
+    ### These names sit inside the tenant-writable files dir, so any of them can
+    ### be a planted symlink; -h keeps the chown on the link instead of its
+    ### target and is a no-op on the regular directories they normally are.
+    chown -h ${_HM_U}:www-data ${_Dir}/files/{tmp,images,pictures,css,js} &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/files/{advagg_css,advagg_js,ctools} &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/files/{ctools/css,imagecache,locations} &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/files/{civicrm,civicrm/templates_c} &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/files/{civicrm/upload,civicrm/persist} &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
     ### private - site level
     chown -h -R ${_HM_U}:www-data ${_Dir}/private &> /dev/null
     find ${_Dir}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
     find ${_Dir}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
     chown ${_HM_U}:www-data ${_Dir}/private &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/private/{files,temp} &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/private/files/backup_migrate &> /dev/null
-    chown ${_HM_U}:www-data ${_Dir}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/private/{files,temp} &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/private/files/backup_migrate &> /dev/null
+    chown -h ${_HM_U}:www-data ${_Dir}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
     chown -h -R ${_HM_U}:www-data ${_Dir}/private/config &> /dev/null
     _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" \
       ${_Dir}/drushrc.php 2>&1)
@@ -1975,6 +1986,15 @@ _cleanup_ghost_drushrc() {
 _le_ssl_check_update() {
   _exeLe="${_usEr}/tools/le/dehydrated"
   _Vht="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
+  ### The immutable marker Provision honours on Verify must also stop this
+  ### nightly leg: dehydrated decides on the leftover cert.pem, so once that
+  ### cert has less than RENEW_DAYS runway it re-issues LE symlinks straight
+  ### over the operator's custom PEM files. Checked before any www-strip --
+  ### the marker is named after the site URI, like on the Verify side.
+  if [ -e "${_usEr}/tools/le/.ctrl/dont-overwrite-${_Dom}.pid" ]; then
+    echo "LE renewal skipped for ${_Dom} -- immutable dont-overwrite marker present"
+    return 0
+  fi
   if [ -x "${_exeLe}" ] && [ -e "${_Vht}" ]; then
     _SSL_ON_TEST=$(cat ${_Vht} | grep "443 ssl" 2>&1)
     if [[ "${_SSL_ON_TEST}" =~ "443 ssl" ]]; then
@@ -2243,6 +2263,10 @@ _daily_process() {
         ### Detect permissions fix overrides, if set per platform.
         ###
         _DONT_TOUCH_PERMISSIONS=NO
+        ### The strip at the head of this iteration is many drush runs old by
+        ### now, so re-strip before this late read/append leg. No-op on a
+        ### regular file.
+        _desymlink_planted "${_PLR_CTRL_F}"
         if [ -e "${_PLR_CTRL_F}" ]; then
           _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
             ${_PLR_CTRL_F} 2>&1)

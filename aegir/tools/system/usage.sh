@@ -727,7 +727,22 @@ _usage_action() {
         _THIS_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _uLogDir="${_usEr}/static/usage"
         _uLogFil="${_uLogDir}/usage-${_NOW}.log"
+        # static/ is tenant-writable (02775, no sticky), so the usage directory
+        # name can be replaced with a symlink: -e dereferences it and mkdir -p
+        # succeeds silently on a link to a directory, after which the report
+        # redirects below would truncate a file of the tenant's choosing as
+        # root. Strip a planted link and write only into a real directory root
+        # owns; the directory itself is not group-writable, so the report name
+        # inside it cannot be pre-planted. Fail closed to /dev/null rather than
+        # write somewhere unverified.
+        [ -L "${_uLogDir}" ] && rm -f "${_uLogDir}" &> /dev/null
         [ ! -e "${_uLogDir}" ] && mkdir -p "${_uLogDir}"
+        if [ ! -d "${_uLogDir}" ] \
+          || [ -L "${_uLogDir}" ] \
+          || [ ! -O "${_uLogDir}" ]; then
+          echo "INFO: Usage log dir ${_uLogDir} is not a root-owned directory -- not writing a report"
+          _uLogFil=/dev/null
+        fi
         _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
           | cut -d: -f2 \
