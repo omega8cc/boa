@@ -1680,10 +1680,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f89
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f97
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f79
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f85
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f86
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f84
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f84
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f77
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f89
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f88
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f84
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
@@ -1762,14 +1762,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f79.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f78.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${_pthLog}/manage_solr_config.sh.ctrl.f79.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_solr_config.sh.ctrl.f78.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_solr_config.sh.old
       rm -f /run/manage_solr_config.pid
     else
@@ -4221,7 +4221,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f96 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f98 --mode 755 --guard /local/bin/sqlmagic
-    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f99 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f98 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f99 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f99 --guard /local/bin/vhostcheck
