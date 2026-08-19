@@ -976,7 +976,7 @@ EOFMYSQL
         mkdir -p ${_USR}/static/control
         if [ ! -e "${_USR}/static/control/http-off.pid" ]; then
           echo 3600 > ${_USR}/static/control/http-off.pid
-          chown ${_oct}:users ${_USR}/static/control/http-off.pid &> /dev/null
+          chown -h ${_oct}:users ${_USR}/static/control/http-off.pid &> /dev/null
           echo "INFO: account ${_oct} http-off pid created"
         fi
         ###
