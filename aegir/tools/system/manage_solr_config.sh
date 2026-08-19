@@ -353,9 +353,11 @@ _delete_solr() {
     _SOLR_BASE="/var/solr9/data"
   fi
   if [ ! -z "${1}" ] && [ -e "/data/conf/solr" ] && [ -e "${1}/conf" ]; then
+    # The Solr 9 home holds no solr.xml -- since Solr 9 it is loaded from
+    # the install dir -- so gate on the data dir itself, as _add_solr does.
     if [ "${_SOLR_BASE}" = "/var/solr9/data" ] \
       && [ -x "/opt/solr9/bin/solr" ] \
-      && [ -e "/var/solr9/data/solr.xml" ]; then
+      && [ -e "/var/solr9/data" ]; then
       if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
         su -s /bin/bash - solr9 -c "/opt/solr9/bin/solr delete -p 9099 -c ${_SolrCoreID}"
         wait
