@@ -121,12 +121,6 @@ _install_other_dependencies() {
   echo "Installing b2sdk for Backblaze B2..."
   pipx install b2sdk --include-deps --force
 
-  echo "Installing google-cloud-storage for Google Cloud Storage..."
-  pipx install google-cloud-storage --include-deps --force
-
-  echo "Installing ibm-cos-sdk for IBM Cloud Object Storage..."
-  pipx install ibm-cos-sdk --include-deps --force
-
   echo "All dependencies are installed."
 }
 

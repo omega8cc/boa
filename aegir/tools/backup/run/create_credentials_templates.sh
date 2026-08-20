@@ -94,17 +94,17 @@ EOF
           ;;
         gcs)
           cat << EOF > "${_template_file}"
-export GCS_PROJECT_ID="your_gcs_project_id"
-export GCS_SERVICE_ACCOUNT_KEY="your_gcs_service_account_key"
+export GCS_ACCESS_KEY_ID="your_gcs_hmac_access_key"
+export GCS_SECRET_ACCESS_KEY="your_gcs_hmac_secret"
 export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         ibm)
           cat << EOF > "${_template_file}"
-export IBM_API_KEY_ID="your_ibm_api_key_id"
-export IBM_SERVICE_INSTANCE_ID="your_ibm_service_instance_id"
-export IBM_REGION="your_ibm_region"
+export IBM_ACCESS_KEY_ID="your_ibm_hmac_access_key_id"
+export IBM_SECRET_ACCESS_KEY="your_ibm_hmac_secret_access_key"
+export IBM_REGION="your_ibm_region"  # E.g., "eu-de"
 export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="28D"
 EOF

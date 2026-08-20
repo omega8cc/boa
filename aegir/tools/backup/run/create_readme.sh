@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f62"
+export _sPid="f61"
 
 # Directory for storing README files
 _BASE_DIR="/data/disk"
@@ -49,10 +49,13 @@ Amazon S3 (Standard, One Zone, Standard-IA)
 
 Google Cloud Storage
   File: gcs.txt
-  export GCS_PROJECT_ID="your_gcs_project_id"
-  export GCS_SERVICE_ACCOUNT_KEY="your_gcs_service_account_key"
+  export GCS_ACCESS_KEY_ID="your_gcs_hmac_access_key"
+  export GCS_SECRET_ACCESS_KEY="your_gcs_hmac_secret"
   export KEEP_WITHIN="3M"
   export FULL_BACKUP_FREQUENCY="28D"
+  Note: create an HMAC key pair for a service account with Storage Admin
+  access (Cloud Storage -> Settings -> Interoperability); backups use the
+  S3-compatible XML API endpoint storage.googleapis.com
 
 Backblaze B2
   File: b2.txt
@@ -78,11 +81,14 @@ Azure Blob Storage
 
 IBM Cloud Object Storage
   File: ibm.txt
-  export IBM_API_KEY_ID="your_ibm_api_key_id"
-  export IBM_SERVICE_INSTANCE_ID="your_ibm_service_instance_id"
-  export IBM_REGION="your_ibm_region"
+  export IBM_ACCESS_KEY_ID="your_ibm_hmac_access_key_id"
+  export IBM_SECRET_ACCESS_KEY="your_ibm_hmac_secret_access_key"
+  export IBM_REGION="your_ibm_region"  # E.g., "eu-de"
   export KEEP_WITHIN="3M"
   export FULL_BACKUP_FREQUENCY="28D"
+  Note: create the service credential with HMAC enabled (Include HMAC
+  Credential); backups use the S3-compatible endpoint
+  s3.<region>.cloud-object-storage.appdomain.cloud
 
 Wasabi Hot Cloud Storage
   File: wasabi.txt
