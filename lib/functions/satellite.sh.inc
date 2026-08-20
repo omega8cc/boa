@@ -3294,14 +3294,31 @@ EOFMYSQL
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-dispatch" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0" &> /dev/null
   wait
+  # The sweeps above run their tasks synchronously (--fork=0), but a runner
+  # forked by the regular dispatch can still be in flight. AegirSetupB is
+  # about to swap the live drush/provision trees (.drush/sys, .drush/usr,
+  # tools/drush); a task runner still executing from them dies on its next
+  # lazy include without ever writing its final status - that write only
+  # happens in the runner's own shutdown handler - leaving the task parked
+  # at PROCESSING and the queue wedged behind it for the whole running-items
+  # window. Give in-flight runners a bounded window to finish instead of
+  # racing them; the dispatcher-side reaper heals whatever this misses.
+  _QUIESCE_WAIT=0
+  while pgrep -u "${_USER}" -f "drush.php.*hosting-task" > /dev/null 2>&1; do
+    _QUIESCE_WAIT=$(( _QUIESCE_WAIT + 1 ))
+    if [[ "${_QUIESCE_WAIT}" -ge 60 ]]; then
+      break
+    fi
+    sleep 5
+  done
 }
 
 #
@@ -6660,13 +6677,13 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
     wait
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6774,13 +6791,13 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster hosting-dispatch
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
       wait
       _msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15
