@@ -12,6 +12,20 @@ _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 _usrGroup=users
 _WEBG=www-data
 
+_provision_running() {
+  # Genuine task EXECUTIONS only. BOA spawns them as
+  #   su -s /bin/bash - <user> -c "<php> /usr/bin/drush @<site> provision-<task>"
+  # so a real task always carries the drush command token somewhere in its
+  # process tree, and the php/su process running it always has provision on its
+  # command line. The bare substring match this replaces reported "running" for
+  # any command line that merely MENTIONED a provision path -- a checksum, an
+  # editor, an operator's ssh probe, a monitoring loop. Mirrored from
+  # night/night.inc.sh on purpose: this tool has no library to source.
+  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
+}
+
 _desymlink_planted() {
   # Strip a tenant-planted symlink at a root-maintained path before this pass
   # creates, chowns, chmods or writes it. The tenant owns its own home and the
@@ -2173,7 +2187,7 @@ _manage_site_drush_alias_mirror() {
           # the alias is recently written (< 60 min). Then gate on the opt-in
           # _GHOST_ALIASES_CLEANUP flag (no night.inc.sh here, so check inline).
           _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
-          if pgrep -f provision > /dev/null 2>&1; then
+          if _provision_running; then
             : # Ægir task in flight -- the site may be mid-build
           elif [ -n "$(find ${_Alias} -mmin -60 2>/dev/null)" ]; then
             : # alias freshly written (< 60 min) -- likely mid-install/clone
