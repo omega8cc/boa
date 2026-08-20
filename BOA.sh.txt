@@ -1675,7 +1675,7 @@ _update_agents() {
       chmod 600 /var/spool/cron/crontabs/root &> /dev/null
       service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
     fi
-    _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f86
+    _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f85
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f93
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f89
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f97

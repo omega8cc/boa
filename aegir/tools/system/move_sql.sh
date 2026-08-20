@@ -243,6 +243,16 @@ _stop_mysqld_only() {
     [ "$1" != "chain" ] && _remove_locks
     return 0
   fi
+  # Probe once BEFORE the stop, as this function already does after every
+  # escalation step. The caller decided to restart some time ago and then spent
+  # its flap-control work getting here, so the server may have recovered in
+  # between -- stopping it then is a self-inflicted outage. This can only ever
+  # prevent a restart, never cause one.
+  if _mysqld_answering; then
+    echo "MySQLD answering before stop (recovered while we waited) -- leaving it"
+    [ "$1" != "chain" ] && _remove_locks
+    return 0
+  fi
   echo "Stopping MySQLD (db-only) ..."
   timeout 60 service mysql stop &> /dev/null
   if _mysqld_answering; then
