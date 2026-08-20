@@ -32,6 +32,18 @@ if ! declare -F _desymlink_planted > /dev/null 2>&1; then
   }
 fi
 
+### Same delivery hazard, opposite failure direction: every "_provision_running
+### && return" below BAILS OUT when a Provision task is running, so a missing
+### function -- 127, i.e. false -- reads as "nothing running" and the cleanup
+### walks straight through a live task. Mirror the real one-line body rather
+### than stub it: a conservative stub that always claimed a task was running
+### would disable every nightly cleanup on a lagging box instead.
+if ! declare -F _provision_running > /dev/null 2>&1; then
+  _provision_running() {
+    pgrep -f provision > /dev/null 2>&1
+  }
+fi
+
 # Default only: every worker sources /root/.barracuda.cnf after this file
 # (night_load_run_env), so the cnf value wins; the literal keeps the read
 # well-defined and fail-closed if a worker is ever driven outside that chain.
