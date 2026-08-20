@@ -5805,7 +5805,15 @@ _satellite_pre_cleanup() {
   fi
   rm -f /tmp/cache.inc*
   rm -f /opt/tmp/status-*
-  rm -rf /opt/tmp/state/*
+  # Only this instance's own signal dir. /opt/tmp/state/<user> is per-instance
+  # (0700, instance-owned) and the master keeps its own state/aegir, so purging
+  # the whole state root here destroys the markers of any other run in flight:
+  # that run finishes its work but cannot stamp status-AegirSetupA-OK and dies
+  # with a phantom FATAL. An empty _USER would resolve to the state root itself,
+  # so skip rather than widen.
+  if [ -n "${_USER}" ]; then
+    rm -rf "/opt/tmp/state/${_USER}"
+  fi
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
