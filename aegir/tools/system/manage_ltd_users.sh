@@ -2151,7 +2151,18 @@ _manage_site_drush_alias_mirror() {
       _SiteDir=
       if [[ "${_SiteName}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
-        rm -f ${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php
+        # A .restore alias is Aegir's own transient artifact for a restore task,
+        # and this loop runs every 3 minutes against the AUTHORITATIVE alias dir
+        # -- so deleting one mid-restore pulls the alias out from under the task.
+        # The ghost branch below already refuses to reap while a task is in
+        # flight or while the alias is fresh; this leg had no guard at all.
+        if _provision_running; then
+          : # Ægir task in flight -- the restore may still need this alias
+        elif [ -n "$(find ${_Alias} -mmin -60 2>/dev/null)" ]; then
+          : # written in the last hour -- likely the task that owns it
+        else
+          rm -f ${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php
+        fi
       else
         _SiteDir=$(cat ${_Alias} \
           | grep "site_path'" \
