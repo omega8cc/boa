@@ -709,7 +709,7 @@ _manage_sec_user_drush_aliases() {
     _SiteName=$(echo ${_Symlink}  \
       | cut -d'/' -f5 \
       | awk '{ print $1}' 2>&1)
-    _pthAliasMain="${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php"
+    _pthAliasMain="${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php"
     _pthAliasCopy="${_usrLtdRoot}/.drush/${_SiteName}.alias.drushrc.php"
     if [ ! -z "${_SiteName}" ] && [ ! -e "${_pthAliasCopy}" ]; then
       cp -af ${_pthAliasMain} ${_pthAliasCopy}
@@ -894,9 +894,9 @@ _manage_sec_access_paths() {
 #for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
 for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _rawDom=$(echo ${_Domain} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
-  _STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}.files/"
-  _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${_rawDom}.private/"
-  _NEW_STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}/"
+  _STATIC_FILES="${_pthParentUsr}/static/files/${_rawDom}.files/"
+  _STATIC_PRIVATE="${_pthParentUsr}/static/files/${_rawDom}.private/"
+  _NEW_STATIC_FILES="${_pthParentUsr}/static/files/${_rawDom}/"
   _PATH_DOM="$(readlink -n "${_Domain}")"
   # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
   # Fail-closed: empty when NONE or when MORE THAN ONE is mounted -- multi-mount is
@@ -928,7 +928,7 @@ done
 #
 # Manage Secondary Users.
 _manage_sec() {
-for _Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
+for _Client in `find ${_pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
   _usrLtd=$(echo ${_Client} | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
   _usrLtd=${_usrLtd//[^a-zA-Z0-9]/}
   _usrLtd=$(echo -n ${_usrLtd} | tr A-Z a-z 2>&1)
@@ -943,9 +943,9 @@ for _Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 
     # _ALLD_DIR="${_ALLD_DIR}, '/home/${_usrLtd}'"
     if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
       _add_user_if_not_exists
-      echo Done for ${_Client} at ${_pthParen_tUsr}
+      echo Done for ${_Client} at ${_pthParentUsr}
     else
-      echo Empty ${_Client} at ${_pthParen_tUsr} - deleting now
+      echo Empty ${_Client} at ${_pthParentUsr} - deleting now
       if [ -e "${_Client}" ]; then
         rmdir ${_Client}
       fi
@@ -2105,7 +2105,7 @@ _manage_site_drush_alias_mirror() {
     for _Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
       -maxdepth 1 -type f | sort`; do
       _AliasFile=$(echo "${_Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
-      if [ ! -e "${_pthParen_tUsr}/.drush/${_AliasFile}" ] \
+      if [ ! -e "${_pthParentUsr}/.drush/${_AliasFile}" ] \
         && [ ! -z "${_AliasFile}" ]; then
         rm -f /home/${_USER}.ftp/.drush/${_AliasFile}
      fi
@@ -2124,7 +2124,7 @@ _manage_site_drush_alias_mirror() {
 
   _isAliasUpdate=NO
   _GHOST_REAPED=NO
-  for _Alias in `find ${_pthParen_tUsr}/.drush/*.alias.drushrc.php \
+  for _Alias in `find ${_pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     ### echo Last_AliasName is ${_AliasName}
     _SiteDir=
@@ -2151,7 +2151,18 @@ _manage_site_drush_alias_mirror() {
       _SiteDir=
       if [[ "${_SiteName}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
-        rm -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php
+        # A .restore alias is Aegir's own transient artifact for a restore task,
+        # and this loop runs every 3 minutes against the AUTHORITATIVE alias dir
+        # -- so deleting one mid-restore pulls the alias out from under the task.
+        # The ghost branch below already refuses to reap while a task is in
+        # flight or while the alias is fresh; this leg had no guard at all.
+        if _provision_running; then
+          : # Ægir task in flight -- the restore may still need this alias
+        elif [ -n "$(find ${_Alias} -mmin -60 2>/dev/null)" ]; then
+          : # written in the last hour -- likely the task that owns it
+        else
+          rm -f ${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php
+        fi
       else
         _SiteDir=$(cat ${_Alias} \
           | grep "site_path'" \
@@ -2163,7 +2174,7 @@ _manage_site_drush_alias_mirror() {
         if [ -z "${_SiteDir}" ] \
           || [ "${_SiteDir}" = "${_SiteDir#/data/disk/}" ]; then
           _IS_SITE=YES
-          rm -f ${_pthParen_tUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
+          rm -f ${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
         elif [ -e "${_SiteDir}/drushrc.php" ] \
           || [ -L "${_SiteDir}/drushrc.php" ]; then
           # drushrc.php present = a registered, live site. Mirror its alias to
@@ -2171,8 +2182,8 @@ _manage_site_drush_alias_mirror() {
           # native-symlinked store targets that can be transiently absent.
           # A valid sighting always clears the ghost hold marker, so a site
           # that recovered mid-hold never carries a stale count into a reap.
-          rm -f ${_pthParen_tUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
-          _pthAliasMain="${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php"
+          rm -f ${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
+          _pthAliasMain="${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php"
           _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
           if [ ! -e "${_pthAliasCopy}" ]; then
             cp -af ${_pthAliasMain} ${_pthAliasCopy}
@@ -2206,7 +2217,7 @@ _manage_site_drush_alias_mirror() {
             : # replication and rsync on their own clocks, so a mid-sync
             : # mismatch is normal -- never reap here
           else
-            _GA_OCT="/root/.$(basename ${_pthParen_tUsr} 2>/dev/null).octopus.cnf"
+            _GA_OCT="/root/.$(basename ${_pthParentUsr} 2>/dev/null).octopus.cnf"
             _GA_ON=NO
             grep -qiE "^[[:space:]]*_GHOST_ALIASES_CLEANUP=[\"' ]*YES" "${_GA_OCT}" 2>/dev/null && _GA_ON=YES
             grep -qiE "^[[:space:]]*_GHOST_ALIASES_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && _GA_ON=YES
@@ -2222,18 +2233,18 @@ _manage_site_drush_alias_mirror() {
               # reaper (client notice, operator-review skips) acts first.
               # Markers start only while the flag is YES, so a flip never
               # mass-reaps accumulated ghosts on its first pass.
-              mkdir -p ${_pthParen_tUsr}/log/ctrl
-              _GA_MARK="${_pthParen_tUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen"
+              mkdir -p ${_pthParentUsr}/log/ctrl
+              _GA_MARK="${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen"
               if [ ! -e "${_GA_MARK}" ]; then
                 touch ${_GA_MARK}
                 echo "GHOST ${_SiteName}.alias sighted, held for 48h before any move"
               elif [ -n "$(find ${_GA_MARK} -mmin +2880 2>/dev/null)" ]; then
-                mkdir -p ${_pthParen_tUsr}/undo
+                mkdir -p ${_pthParentUsr}/undo
                 _GHOST_REAPED=YES
                 rm -f ${_GA_MARK}
                 rm -f ${_pthAliasCopy}
-                mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
-                echo "GHOST ${_SiteName}.alias.drushrc.php moved to ${_pthParen_tUsr}/undo/"
+                mv -f ${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParentUsr}/undo/ &> /dev/null
+                echo "GHOST ${_SiteName}.alias.drushrc.php moved to ${_pthParentUsr}/undo/"
               else
                 echo "GHOST ${_SiteName}.alias sighted, still inside the 48h hold"
               fi
@@ -2278,15 +2289,15 @@ _manage_site_drush_alias_mirror() {
 #
 # Manage Primary Users.
 _manage_user() {
-  for _pthParen_tUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-    if [ -e "${_pthParen_tUsr}/config/server_master/nginx/vhost.d" ] \
-      && [ -e "${_pthParen_tUsr}/log/fpm.txt" ] \
-      && [ ! -e "${_pthParen_tUsr}/log/proxied.pid" ] \
-      && [ ! -e "${_pthParen_tUsr}/log/CANCELLED" ]; then
+  for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
+      && [ ! -e "${_pthParentUsr}/log/proxied.pid" ] \
+      && [ ! -e "${_pthParentUsr}/log/CANCELLED" ]; then
       _MNT_STATIC_FILES=""
       _mntPoint=""
       _USER=""
-      _USER=$(echo ${_pthParen_tUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      _USER=$(echo ${_pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       echo "_USER is == ${_USER} == at _manage_user"
       if getent group allow-snail >/dev/null 2>&1 && \
         ! id -nG "${_USER}" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
@@ -2428,13 +2439,13 @@ _manage_user() {
         fi
       fi
       _site_socket_inc_gen
-      if [ -e "${_pthParen_tUsr}/clients" ] && [ ! -z ${_USER} ]; then
-        echo Managing Users for ${_pthParen_tUsr} Instance
-        rm -rf ${_pthParen_tUsr}/clients/admin &> /dev/null
-        rm -rf ${_pthParen_tUsr}/clients/omega8ccgmailcom &> /dev/null
-        rm -rf ${_pthParen_tUsr}/clients/nocomega8cc &> /dev/null
-        rm -rf ${_pthParen_tUsr}/clients/*/backups &> /dev/null
-        symlinks -dr ${_pthParen_tUsr}/clients &> /dev/null
+      if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
+        echo Managing Users for ${_pthParentUsr} Instance
+        rm -rf ${_pthParentUsr}/clients/admin &> /dev/null
+        rm -rf ${_pthParentUsr}/clients/omega8ccgmailcom &> /dev/null
+        rm -rf ${_pthParentUsr}/clients/nocomega8cc &> /dev/null
+        rm -rf ${_pthParentUsr}/clients/*/backups &> /dev/null
+        symlinks -dr ${_pthParentUsr}/clients &> /dev/null
         if [ -d "/home/${_USER}.ftp" ]; then
           _disable_chattr ${_USER}.ftp
           symlinks -dr /home/${_USER}.ftp &> /dev/null
@@ -2493,13 +2504,13 @@ _manage_user() {
             echo OK > /home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
           fi
           _enable_chattr ${_USER}.ftp
-          echo Done for ${_pthParen_tUsr}
+          echo Done for ${_pthParentUsr}
         else
           echo Directory /home/${_USER}.ftp not available
         fi
         echo
       else
-        echo Directory ${_pthParen_tUsr}/clients not available
+        echo Directory ${_pthParentUsr}/clients not available
       fi
       echo
     fi

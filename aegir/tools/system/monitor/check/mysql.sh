@@ -384,7 +384,23 @@ _sql_busy_detection() {
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -s /root/.my.pass.txt ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
-        _sql_restart "BUSY MySQL"
+        # This used to call _sql_restart, which could never act: the trigger
+        # above proves the server is ANSWERING, and _mysql_is_answering counts
+        # "Too many connections" as alive, so _sql_restart returned at its first
+        # line every time. The opt-in silently did nothing.
+        #
+        # Route it to the remedies that actually relieve connection saturation.
+        # Both also run later in an ordinary pass, but the later long-query
+        # sweep is suppressed while max_load/critical_load markers exist -- which
+        # is exactly the regime that produces this saturation -- so running them
+        # here is what makes the opt-in mean something.
+        if ! _provision_running; then
+          echo "INSTANT BUSY MySQL: relieving connection saturation"
+          _mysql_flush_hosts
+          _mysql_proc_control "${_SQL_MAX_TTL}"
+        else
+          echo "INSTANT BUSY MySQL: an Aegir/Provision task is in flight -- deferring"
+        fi
       fi
     fi
   fi
@@ -497,7 +513,15 @@ _mysql_high_load() {
   # Compare against thresholds; use bc for floating point comparison
   if (( $(echo "${_LOAD} > ${_LOAD_THRESHOLD}" | bc -l) )) && [ "${_MYSQL_THREADS}" -gt "${_THREAD_THRESHOLD}" ]; then
     echo "High load and excessive MySQL threads detected. Restarting MySQL..."
-    _sql_restart "HIGH LOAD MySQL"
+    # Gated like the busy path below: a Provision task churns connections and
+    # threads by design, and restarting under it loses the task's work. The DOWN
+    # path (_mysql_health_check_fix) stays UNgated on purpose -- a server that
+    # fails four live probes is a real outage and must be healed regardless.
+    if ! _provision_running; then
+      _sql_restart "HIGH LOAD MySQL"
+    else
+      echo "HIGH LOAD MySQL: an Aegir/Provision task is in flight -- not restarting"
+    fi
   else
     echo "System operating normally."
   fi
