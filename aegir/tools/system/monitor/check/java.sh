@@ -323,7 +323,11 @@ _is_protected_run() {
   _boaBins="autoinit automini barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _cPat="/local/bin/${_cbn}"
+      # Anchored for every member, not just "boa": a bare path substring
+      # matches any command line that merely MENTIONS the wrapper -- an
+      # editor, a checksum, an operator's ssh probe -- and phantom-protects
+      # the run. Same form clear.sh/runner.sh/owl.sh already use.
+      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
       # Bare "boa" would match an hours-long remote install driven
       # from this box over ssh (and every boa-info probe); anchor it
       # to the LOCAL install form, as clear.sh/runner.sh already do

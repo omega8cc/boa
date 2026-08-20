@@ -213,7 +213,24 @@ _graceful_action() {
 # Main script execution
 
 # Check for ongoing operations or skip configurations
-if [ -e "/run/boa_run.pid" ] || [ -e "/root/.skip_cleanup.cnf" ]; then
+# In-flight gate. This mirrors _boa_pass_active in owl.sh deliberately (see the
+# master/satellite mirror rule): boa_run.pid alone is not enough -- the chained
+# install's octopus leg holds only octopus_install_run.pid, boa_wait.pid covers
+# the queued window, and the Ægir setup children match none of the wrapper forms
+# yet are exactly the phase that rewrites the trees this script sed's and
+# reloads nginx against.
+_boa_pass_active() {
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/boa_wait.pid" ] && return 0
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  return 1
+}
+
+if _boa_pass_active || [ -e "/root/.skip_cleanup.cnf" ]; then
   echo "Cleanup skipped due to ongoing operations or configuration settings."
   exit 0
 else

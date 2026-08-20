@@ -289,13 +289,13 @@ _hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster hosting-dispatch
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
     wait
     _msg "INFO: Waiting 15 seconds..."
     sleep 15
@@ -314,13 +314,13 @@ _hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster hosting-dispatch
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
     wait
     touch /var/aegir/disable_nginx_ssl.log
     _msg "INFO: Waiting 5 seconds..."
