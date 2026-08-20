@@ -2596,7 +2596,7 @@ case "$1" in
   ;;
   in-oct)  _cmd="$1"
            _email="$2"
-           _user=="$3"
+           _user="$3"
            _mode="$4"
            _copt="$5"
            _csub="$6"
