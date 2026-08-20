@@ -6949,7 +6949,11 @@ _satellite_child_b_letsencrypt() {
       mv -f ${_leKeyP} "${_leKeyP}-prev"
     fi
   fi
-  if [ -x "${_exeLe}" ] \
+  # Marker branch must come first: the closing else removes ${_leCrtPath},
+  # which must never hit a manually installed (immutable) cert.
+  if [ -e "${_leRoot}/.ctrl/dont-overwrite-${_DOMAIN}.pid" ]; then
+    _msg "${_STATUS} B: LE renewal skipped for hostmaster ${_DOMAIN} -- immutable dont-overwrite marker present"
+  elif [ -x "${_exeLe}" ] \
     && [ ! -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ ! -e "${_leRoot}/config.sh" ]; then
     if [ -e "${_leCrtPath}/fullchain.pem" ]; then
