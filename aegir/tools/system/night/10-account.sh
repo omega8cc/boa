@@ -38,9 +38,11 @@ command -v _night_boa_pass_active > /dev/null 2>&1 \
   || _night_boa_pass_active() { return 0; }
 # Same reason, and the same direction as the reap gate: every
 # "_provision_running && bail" is fail-OPEN when the function is missing, so the
-# cleanup would run through a live Provision task. Mirrored rather than stubbed
-# because a stub claiming a task is always active would spin the drain loop
-# below for its full 60s and then defer every relocation, every night.
+# cleanup would run through a live Provision task. Deliberately the BROAD
+# substring form rather than a copy of the anchored library body: it runs only
+# while the library is briefly behind, and over-matching there just skips a
+# cleanup. A stub claiming a task is always active would instead spin the drain
+# loop below for its full 60s and defer every relocation, every night.
 command -v _provision_running > /dev/null 2>&1 \
   || _provision_running() { pgrep -f provision > /dev/null 2>&1; }
 

@@ -21,7 +21,9 @@
 # of a library that predates the in-flight gate. Every "_provision_running &&
 # return" below is fail-OPEN in that state -- an undefined function returns 127,
 # which reads as "no Provision task running" and lets the cleanups below delete
-# through a live task. Mirror the real one-line body (see night.inc.sh).
+# through a live task. Deliberately the BROAD substring form, not a copy of the
+# anchored library body: it runs only while the library is behind, and
+# over-matching there merely skips a cleanup (see night.inc.sh).
 if ! declare -F _provision_running > /dev/null 2>&1; then
   _provision_running() {
     pgrep -f provision > /dev/null 2>&1
