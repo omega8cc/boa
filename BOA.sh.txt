@@ -1707,7 +1707,7 @@ _update_agents() {
       rm -f /var/xdrago/daily.sh
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
-    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f82
+    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f81
     _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f71
   fi
 
