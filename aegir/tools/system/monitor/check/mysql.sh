@@ -15,6 +15,20 @@ _pthLch="/run/boa_mysql_restart_latched.pid"
 _INSTANT_BUSY_MYSQL_ACTION=NO
 _MYSQLADMIN_MONITOR=NO
 
+_provision_running() {
+  # Genuine task EXECUTIONS only. BOA spawns them as
+  #   su -s /bin/bash - <user> -c "<php> /usr/bin/drush @<site> provision-<task>"
+  # so a real task always carries the drush command token somewhere in its
+  # process tree, and the php/su process running it always has provision on its
+  # command line. The bare substring match this replaces reported "running" for
+  # any command line that merely MENTIONED a provision path -- a checksum, an
+  # editor, an operator's ssh probe, a monitoring loop. Mirrored from
+  # night/night.inc.sh on purpose: this tool has no library to source.
+  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -350,8 +364,7 @@ _sql_busy_detection() {
   if [ -e "${_SQL_LOG}" ]; then
     if [ `tail --lines=333 ${_SQL_LOG} \
       | grep --count "Too many connections"` -gt 111 ]; then
-      _IS_PROVISION_RUNNING=$(pgrep -f provision)
-      if [ -z "${_IS_PROVISION_RUNNING}" ]; then
+      if ! _provision_running; then
         _sql_restart "BUSY MySQL"
       fi
     fi
