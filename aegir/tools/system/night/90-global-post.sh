@@ -17,6 +17,19 @@
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
 
+# night.inc.sh is delivered by its own fNN fetch, so this worker can land ahead
+# of a library that predates the in-flight gate. Every "_provision_running &&
+# return" below is fail-OPEN in that state -- an undefined function returns 127,
+# which reads as "no Provision task running" and lets the cleanups below delete
+# through a live task. Deliberately the BROAD substring form, not a copy of the
+# anchored library body: it runs only while the library is behind, and
+# over-matching there merely skips a cleanup (see night.inc.sh).
+if ! declare -F _provision_running > /dev/null 2>&1; then
+  _provision_running() {
+    pgrep -f provision > /dev/null 2>&1
+  }
+fi
+
 _delete_this_empty_hostmaster_platform() {
   _run_drush8_hmr_master_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"

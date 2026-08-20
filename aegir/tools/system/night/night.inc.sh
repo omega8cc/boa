@@ -192,7 +192,22 @@ _cnf_flag_yes() {
 # process is detected, so every cleanup mover can skip while one is in flight.
 # Same signal BOA already uses in monitor/check/mysql.sh.
 _provision_running() {
-  pgrep -f provision > /dev/null 2>&1
+  # Genuine task EXECUTIONS only. BOA spawns them as
+  #   su -s /bin/bash - <user> -c "<php> /usr/bin/drush @<site> provision-<task>"
+  # (_run_drush8_cmd above), so a real task always carries the drush command
+  # token somewhere in the tree, and the php/su process running it always has
+  # provision on its command line. The bare substring match this replaces
+  # reported "running" for any command line that merely MENTIONED a provision
+  # path -- a checksum, an editor, an operator's ssh probe, a monitoring loop --
+  # and then silently skipped that night's cleanups; observed live when a
+  # watcher holding .drush/sys/provision/... in its argv read as a live task.
+  # Same lesson, and the same fix, as the _fetch_versioned running-tool guard.
+  # The second pattern is the old one plus an execution-shape constraint, so the
+  # only processes this stops matching are the non-executions; the first keeps
+  # the inner `bash -c "... provision-<task>"` link of the su chain covered.
+  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
 }
 
 # Install/upgrade interlock for the night workers, distinct from the entry gate
