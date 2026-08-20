@@ -32,6 +32,21 @@ if ! declare -F _desymlink_planted > /dev/null 2>&1; then
   }
 fi
 
+### Same delivery hazard, opposite failure direction: every "_provision_running
+### && return" below BAILS OUT when a Provision task is running, so a missing
+### function -- 127, i.e. false -- reads as "nothing running" and the cleanup
+### walks straight through a live task. Deliberately the BROAD substring form,
+### not a copy of the anchored library body: this runs only on a box whose
+### library is briefly behind, where over-matching merely skips a cleanup (the
+### safe direction) and where mirroring a two-pattern regex would be the drift
+### risk the anchored version exists to avoid. A stub claiming a task is always
+### running would disable every nightly cleanup on such a box instead.
+if ! declare -F _provision_running > /dev/null 2>&1; then
+  _provision_running() {
+    pgrep -f provision > /dev/null 2>&1
+  }
+fi
+
 # Default only: every worker sources /root/.barracuda.cnf after this file
 # (night_load_run_env), so the cnf value wins; the literal keeps the read
 # well-defined and fail-closed if a worker is ever driven outside that chain.
