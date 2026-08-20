@@ -14,6 +14,24 @@
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
 
+### night.inc.sh carries its own fNN serial and is fetched separately, so a box
+### can briefly hold this file alongside an older library that predates the
+### symlink guards. An undefined function returns 127 and, with no set -e here,
+### execution simply continues -- which would let every _desymlink_planted call
+### below silently no-op and reopen the vector it exists to close. Define a
+### fallback only when the library did not supply one; the body mirrors
+### night.inc.sh deliberately (see the master/satellite mirror rule). The
+### seeding helpers need no such fallback: absent, _reseed_ctrl_ini simply does
+### not seed, which degrades maintenance without writing anything unsafe.
+if ! declare -F _desymlink_planted > /dev/null 2>&1; then
+  _desymlink_planted() {
+    local _p
+    for _p in "$@"; do
+      [ -L "${_p}" ] && rm -f "${_p}" &> /dev/null
+    done
+  }
+fi
+
 # Default only: every worker sources /root/.barracuda.cnf after this file
 # (night_load_run_env), so the cnf value wins; the literal keeps the read
 # well-defined and fail-closed if a worker is ever driven outside that chain.
