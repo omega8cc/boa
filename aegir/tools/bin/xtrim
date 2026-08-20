@@ -546,7 +546,7 @@ _preflight() {
   ### 'wget | bash' window is covered by the /run marker tests above.
   for _p in \
     "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus|xoct|xmass|sqlclean)( |$)" \
-    "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" \
+    "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" \
     "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"; do
     pgrep -f "${_p}" >/dev/null 2>&1 \
       && _die "an install/upgrade/migration process is running (${_p}) -- refusing"
