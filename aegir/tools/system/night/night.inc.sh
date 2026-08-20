@@ -134,7 +134,13 @@ _sanitize_number() {
 }
 
 _check_file_with_wildcard_path() {
-  _WILDCARD_TEST=$(ls $1 2>&1)
+  # 2>/dev/null, NOT 2>&1: a glob that matches nothing is passed through
+  # literally and ls then prints "cannot access ..." on stderr. Capturing that
+  # made _WILDCARD_TEST non-empty for a path that does not exist, so this
+  # answered YES for EVERY input and could never answer NO -- the auto-detect
+  # callers then seeded auto_detect_*_integration = TRUE into every platform
+  # control INI, module present or not. $1 stays unquoted: the glob is the point.
+  _WILDCARD_TEST=$(ls $1 2>/dev/null)
   if [ -z "${_WILDCARD_TEST}" ]; then
     _FILE_EXISTS=NO
   else
