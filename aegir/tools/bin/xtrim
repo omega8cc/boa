@@ -526,7 +526,16 @@ _preflight() {
   for _p in boa_run.pid boa_wait.pid octopus_install_run.pid; do
     [ -e "/run/${_p}" ] && _die "/run/${_p} present -- an install/upgrade is in flight"
   done
-  pgrep -f "[p]rovision" >/dev/null 2>&1 \
+  ### Anchored here too, for the reason the comment below already gives: the
+  ### bracket trick defeats only SELF-match, so any other command line that
+  ### merely mentions a provision path phantom-refuses a live shrink.
+  pgrep -f "provision-[a-z]" >/dev/null 2>&1 \
+    && _die "a provision task is running -- refusing"
+  ### ( |$) is load-bearing: it must not match hosting-tasks / hosting-dispatch,
+  ### the per-minute pollers, or every shrink would be refused.
+  pgrep -f "hosting-task( |$)" >/dev/null 2>&1 \
+    && _die "an Aegir hosting task is running -- refusing"
+  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" >/dev/null 2>&1 \
     && _die "a provision task is running -- refusing"
   ### Anchored EREs, not bracket tricks: bracketing defeats only SELF-match,
   ### while several shipped monitors run unbracketed pgreps every few
