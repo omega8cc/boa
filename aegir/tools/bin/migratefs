@@ -156,7 +156,18 @@ _log() {
 }
 
 _provision_running() {
-  pgrep -f provision >/dev/null 2>&1
+  # Genuine task EXECUTIONS only. BOA spawns them as
+  #   su -s /bin/bash - <user> -c "<php> /usr/bin/drush @<site> provision-<task>"
+  # so a real task always carries the drush command token somewhere in its
+  # process tree, and the php/su process running it always has provision on its
+  # command line. The bare substring match this replaces reported "running" for
+  # any command line that merely MENTIONED a provision path -- a checksum, an
+  # editor, an operator's ssh probe, a monitoring loop -- which in a bounded
+  # drain loop means this tool defers its work on every run, indefinitely.
+  # Mirrored from night/night.inc.sh on purpose: this tool has no library.
+  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
 }
 
 # A backup writer touching the archive (duplicity/mydumper/cluster/sequential): the
