@@ -7266,6 +7266,7 @@ MKCLIENTEOF
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le -y
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
+      ${_DRUSHCMD} @hostmaster en hosting_migrate_source -y
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
       ${_DRUSHCMD} @hostmaster cache-clear all
@@ -7276,10 +7277,32 @@ MKCLIENTEOF
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le -y               &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y         &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_migrate_source -y   &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
       ${_DRUSHCMD} @hostmaster cache-clear all                &> /dev/null
       ${_DRUSHCMD} @hostmaster updb -y                        &> /dev/null
+    fi
+
+    ### The migrate_source backend half loads only once its drush/ dir is
+    ### listed in $options['include'] in the instance drushrc, and only a
+    ### verify of the hostmaster SITE regenerates that list. The builds
+    ### and migrations above run before the module is enabled, so on the
+    ### pass that first enables it the task would report success while
+    ### granting and emitting nothing; regenerate once, only when the
+    ### module is enabled but its include entry is still missing.
+    local _MIGSRC_TEST
+    if ! grep -q "migrate_source/drush" \
+      ${_ROOT}/.drush/drushrc.php 2> /dev/null; then
+      _MIGSRC_TEST=$(${_DRUSHCMD} @hostmaster ev \
+        'if (module_exists("hosting_migrate_source")) { echo "MIGSRCON"; }' 2> /dev/null)
+      if [[ "${_MIGSRC_TEST}" =~ MIGSRCON ]]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          ${_DRUSHCMD} @hostmaster provision-verify
+        else
+          ${_DRUSHCMD} @hostmaster provision-verify &> /dev/null
+        fi
+      fi
     fi
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
