@@ -3,10 +3,10 @@
 
 This guide explains the backup system, including how it works, how to configure it for your needs, and how to restore your data. It also covers the supported storage services, key distinctions in path handling, and the default retention policies for your local database backups.
 
-- New PRO Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-- New PRO Backups for Octopus Lshell User (this document) [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-- New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
-- New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+- New PRO Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_ROOT.md)
+- New PRO Backups for Octopus Lshell User (this document) [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_USER.md)
+- New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_RETENTION.md)
+- New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_REGIONS.md)
 - New boa-restore Workstation Tool to Restore Anywhere Without the Server [github.com/omega8cc/boa-restore](https://github.com/omega8cc/boa-restore)
 
 ---
@@ -161,7 +161,7 @@ The system automatically includes the following directories:
 
 ### **Required Bucket Naming Convention**
 
-Most providers allow **automatic bucket creation** if sufficient credentials and permissions are provided, so you don't need to figure it out yourself. However, some providers (e.g., **Linode**) require **manual bucket creation** before the first backup and others (e.g., **Amazon S3**) are unreliable for automatic creation due to propagation delays between AWS regions. Manual bucket creation is recommended if you use provider known as not reliable or when manual creation is required -- check all details in the docs Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md).
+Most providers allow **automatic bucket creation** if sufficient credentials and permissions are provided, so you don't need to figure it out yourself. However, some providers (e.g., **Linode**) require **manual bucket creation** before the first backup and others (e.g., **Amazon S3**) are unreliable for automatic creation due to propagation delays between AWS regions. Manual bucket creation is recommended if you use provider known as not reliable or when manual creation is required -- check all details in the docs Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_REGIONS.md).
 
 - User-specific bucket names follow the convention: `back-to-USER-HOSTNAME-PROVIDER`.
 - The `USER` is your Ægir system user as visible in the `/data/disk/USER/static` path.
