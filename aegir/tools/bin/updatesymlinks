@@ -121,9 +121,12 @@ _clean_lock() {
   if command -v _single_instance_unlock >/dev/null 2>&1; then
     # Pass the fd/path recorded by _single_instance_lock explicitly; an argless call
     # left _FD empty and tripped "_FD: ambiguous redirect" on the exec {_FD}>&- close.
+    # Covers BOTH lock.inc modes: it releases/closes the flock fd, and in the
+    # no-flock fallback its else-branch rm -rf's the mkdir lock DIRECTORY. So
+    # there is nothing further to tear down here -- do not re-add a separate
+    # lock-dir cleanup, it would double the removal.
     _single_instance_unlock "${_LOCK_FD:-}" "${_LOCK_PATH:-}"
   fi
-  [ -n "${_lockDir:-}" ] && [ -d "${_lockDir}" ] && rm -rf "${_lockDir}"
 }
 
 _action_email_report() {
