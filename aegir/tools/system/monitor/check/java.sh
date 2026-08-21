@@ -343,7 +343,7 @@ _is_protected_run() {
   # the wrapper binaries swept above -- match them too: the installer takes
   # solr/jetty down and up inside those legs, and this watchdog fires ~9x a
   # minute, so a blind window here is near-certain to be hit
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
   fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
