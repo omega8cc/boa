@@ -143,9 +143,15 @@ _interlock_check() {
   # Cleanup policy interlock: while any Aegir/Provision task or BOA upgrade
   # runs, databases are legitimately in flux (deploy holds an old+new pair,
   # verify creates probe schemas, installs create dbs before aliases) and a
-  # snapshot lies. Bracketed pattern so wrapper cmdlines carrying the word
-  # cannot self-match.
-  if pgrep -f "[p]rovision" >/dev/null 2>&1; then
+  # snapshot lies. Anchored to genuine task EXECUTIONS: bracketing defeats only
+  # SELF-match, so any other command line that merely mentions a provision path
+  # -- a checksum, an editor, an operator's ssh probe, a monitoring loop --
+  # phantom-refuses a legitimate run. The ( |$) after hosting-task is
+  # load-bearing: without it this also matches the per-minute hosting-tasks and
+  # hosting-dispatch pollers and no cleanup would ever start.
+  if pgrep -f "provision-[a-z]" >/dev/null 2>&1 \
+    || pgrep -f "hosting-task( |$)" >/dev/null 2>&1 \
+    || pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" >/dev/null 2>&1; then
     _die "An Aegir/Provision task is running — try again once the queue is idle"
   fi
   if [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
@@ -172,7 +178,7 @@ _interlock_check_full() {
       _die "A BOA ${_lBl} is running — try again later"
     fi
   done <<'PATEOF'
-install-leg ^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt
+install-leg ^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt
 upgrade-pass ^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)
 install ^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-
 PATEOF
