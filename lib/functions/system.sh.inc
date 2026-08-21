@@ -3075,6 +3075,7 @@ _barracuda_cnf() {
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
     echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
     echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
+    echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}"                 >> ${_barCnf}
     echo "_XDR9000=${_XDR9000}"                               >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -3692,6 +3693,11 @@ _barracuda_cnf() {
     _USE_BATCH_GUARD_TEST=$(grep _USE_BATCH_GUARD ${_barCnf} 2>&1)
     if [[ ! "${_USE_BATCH_GUARD_TEST}" =~ "_USE_BATCH_GUARD" ]]; then
       echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}" >> ${_barCnf}
+    fi
+
+    _USE_TASK_GUARD_TEST=$(grep _USE_TASK_GUARD ${_barCnf} 2>&1)
+    if [[ ! "${_USE_TASK_GUARD_TEST}" =~ "_USE_TASK_GUARD" ]]; then
+      echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}" >> ${_barCnf}
     fi
 
     _XDR9000_TEST=$(grep _XDR9000 ${_barCnf} 2>&1)
