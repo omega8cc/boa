@@ -3,10 +3,10 @@
 
 This guide explains the global backup system, its configuration, supported services, and best practices. It covers only the aspects managed by the system administrator (root access), including global backups, vendor selection, and service-specific details.
 
-- New PRO Backups for BOA SysAdmin (this document) [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-- New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-- New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
-- New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+- New PRO Backups for BOA SysAdmin (this document) [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_ROOT.md)
+- New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_USER.md)
+- New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_RETENTION.md)
+- New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_REGIONS.md)
 - New boa-restore Workstation Tool to Restore Anywhere Without the Server [github.com/omega8cc/boa-restore](https://github.com/omega8cc/boa-restore)
 
 ---
@@ -239,7 +239,7 @@ The tenant downloads it over SFTP and deletes the copy; if it lingers, remove it
 
 ## **Restoring Global Backups**
 
-Restoring global backups follows the same logic as [user backups](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md), except administrators manage the entire system. Use the `multiback` command for global restores:
+Restoring global backups follows the same logic as [user backups](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_USER.md), except administrators manage the entire system. Use the `multiback` command for global restores:
 
 ```bash
 multiback restore <SERVICE> <USER> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME]
@@ -309,6 +309,6 @@ multiback restore <SERVICE> <USER> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME
 
 The global backup system ensures system-wide data protection and disaster recovery capabilities. By using the configuration and management tools provided, administrators can manage backups efficiently while keeping costs under control.
 
-For user-specific backups, refer to the separate [**User Backup Guide**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+For user-specific backups, refer to the separate [**User Backup Guide**](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_USER.md)
 
 For assistance, contact BOA developers team.
