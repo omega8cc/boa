@@ -1541,7 +1541,7 @@ _is_protected_run() {
   done
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
   fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
