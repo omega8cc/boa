@@ -454,7 +454,7 @@ _le_hm_ssl_check_update() {
   if [ -z "${_hmFront}" ]; then
     if [ -e "${_usEr}/.drush/hostmaster.alias.drushrc.php" ]; then
       _hmFront=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
-        | grep "uri'" \
+        | grep -E "^[[:space:]]*'uri'[[:space:]]*=>" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
