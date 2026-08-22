@@ -39,6 +39,12 @@
 ### Default variables
 ###
 _bldPth="/opt/tmp/boa"
+# Per-user state dir: /opt/tmp itself is root:root 0755 since the scratch-root
+# hardening, so the old flat /opt/tmp/status-AegirUpgrade-FAIL was unwritable
+# for the aegir user and the parent never saw a failure. master.sh.inc creates
+# and owns this dir to aegir before the su.
+_stateDir="/opt/tmp/state/aegir"
+mkdir -p "${_stateDir}" 2> /dev/null
 _filIncB="barracuda.sh.cnf"
 _hndIncB="${_filIncB}.AegirUpgrade"
 _libFnc="${_bldPth}/lib/functions"
@@ -56,7 +62,7 @@ _panic_exit() {
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  touch /opt/tmp/status-AegirUpgrade-FAIL
+  touch "${_stateDir}/status-AegirUpgrade-FAIL"
   exit 1
 }
 
@@ -250,7 +256,7 @@ _hostmaster_dr_tt() {
   else
     _msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
     _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
-    touch /opt/tmp/status-AegirUpgrade-FAIL
+    touch "${_stateDir}/status-AegirUpgrade-FAIL"
     exit 1
   fi
 }
@@ -503,7 +509,7 @@ if [ -d "${_HM_ROOT}" ]; then
   _msg "FATAL ERROR: ${_HM_ROOT} already exists"
   _msg "FATAL ERROR: Too many zombies to delete! Try again..."
   _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
-  touch /opt/tmp/status-AegirUpgrade-FAIL
+  touch "${_stateDir}/status-AegirUpgrade-FAIL"
   exit 1
 fi
 
@@ -513,7 +519,7 @@ if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
   _msg "FATAL ERROR: Required directory does not exist:"
   _msg "FATAL ERROR: /var/aegir/.drush/sys/provision/http"
   _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
-  touch /opt/tmp/status-AegirUpgrade-FAIL
+  touch "${_stateDir}/status-AegirUpgrade-FAIL"
   exit 1
 fi
 if [ -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
@@ -525,12 +531,15 @@ if [ -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
   _hostmaster_go_up
   _hostmaster_dr_tt
   _hostmaster_mi_up
+  # Positive completion stamp: the parent fails closed on its absence, so a
+  # run killed before this line can no longer pass for a clean upgrade.
+  touch "${_stateDir}/status-AegirUpgrade-OK"
 else
   _msg "FATAL ERROR: Your setup is probably broken because required file"
   _msg "FATAL ERROR: ${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php"
   _msg "FATAL ERROR: does not exist"
   _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
-  touch /opt/tmp/status-AegirUpgrade-FAIL
+  touch "${_stateDir}/status-AegirUpgrade-FAIL"
   exit 1
 fi
 

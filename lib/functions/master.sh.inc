@@ -948,11 +948,25 @@ _aegir_master_upgrade() {
 
     ###
     AegirUpgrade="${_bldPth}/aegir/scripts/AegirUpgrade.sh.txt"
+    # Same state dir AegirSetupM signals in: root owns the state root, aegir
+    # owns its own dir. Stale markers from an earlier run are purged first, so
+    # an old FAIL cannot veto a clean run and an old OK cannot vouch for a run
+    # that died before stamping (the satellite twin does this in its
+    # pre-cleanup; the master had no purge at all).
+    mkdir -p /opt/tmp/state/aegir &> /dev/null
+    chown root:root /opt/tmp/state &> /dev/null
+    chmod 0755 /opt/tmp/state &> /dev/null
+    chown aegir:aegir /opt/tmp/state/aegir &> /dev/null
+    chmod 0700 /opt/tmp/state/aegir &> /dev/null
+    rm -f /opt/tmp/state/aegir/status-AegirUpgrade-FAIL \
+      /opt/tmp/state/aegir/status-AegirUpgrade-OK \
+      /opt/tmp/status-AegirUpgrade-FAIL &> /dev/null
     su -s /bin/bash - aegir -c "/bin/bash ${AegirUpgrade} aegir"
     wait
     ###
 
-    if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ]; then
+    if [ -e "/opt/tmp/state/aegir/status-AegirUpgrade-FAIL" ] \
+      || [ ! -e "/opt/tmp/state/aegir/status-AegirUpgrade-OK" ]; then
       _msg "FATAL ERROR: AegirUpgrade installer failed"
       _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
       rm -f /opt/tmp/status-Barracuda-FAIL
@@ -1392,6 +1406,11 @@ EOFMYSQL
     chmod 0755 /opt/tmp/state &> /dev/null
     chown aegir:aegir /opt/tmp/state/aegir &> /dev/null
     chmod 0700 /opt/tmp/state/aegir &> /dev/null
+    # Per-run purge, the master-side mirror of _satellite_pre_cleanup: a FAIL
+    # left by an earlier attempt would veto every later run, a stale OK would
+    # vouch for a child killed before it could stamp.
+    rm -f /opt/tmp/state/aegir/status-AegirSetupM-FAIL \
+      /opt/tmp/state/aegir/status-AegirSetupM-OK &> /dev/null
     ###
 
     touch /var/log/boa/aegir_install.log
