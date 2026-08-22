@@ -23,8 +23,11 @@ _MAXNUM=5
 # aria2c with a proxy:
 #_DOWNLOADER='aria2c -s 20 -j ${_MAXNUM} --http-proxy=http://username:password@proxy_ip:proxy_port -i /opt/tmp/dl/apt-fast.list'
 
-# axel:
-_DOWNLOADER='cat /opt/tmp/dl/apt-fast.list | xargs -r -l1 axel -n ${_MAXNUM} -a'
+# axel: -q, not -a. The alternate progress indicator rewrites its bar with
+# carriage returns for every chunk of every package; under _DEBUG_MODE the
+# whole stream reaches the upgrade log (a verbose Percona+PHP pass wrote ~700 MB
+# of bars in minutes). Errors still reach stderr; stdout carries nothing useful.
+_DOWNLOADER='cat /opt/tmp/dl/apt-fast.list | xargs -r -l1 axel -n ${_MAXNUM} -q'
 
 ###################################################################
 # DO NOT EDIT BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING! #

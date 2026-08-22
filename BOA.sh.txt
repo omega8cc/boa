@@ -4166,7 +4166,7 @@ _update_boa_tools() {
   # a tool must have exactly ONE fetch line, wherever it lives.)
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
-    _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f96 --guard /local/bin/aptfast
+    _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f95 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f95 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f77 --guard /local/bin/autosymlink
