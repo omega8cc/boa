@@ -1619,7 +1619,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f77
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f00
-    _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f96
+    _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f95
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f95
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f01
