@@ -166,11 +166,11 @@ _is_protected_run() {
 
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/BARRACUDA\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} BARRACUDA.sh.txt(leg)"
   fi
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} OCTOPUS.sh.txt(leg)"
   fi

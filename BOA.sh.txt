@@ -3735,8 +3735,11 @@ _install_in_flight() {
   [ -e "/run/boa_run.pid" ] && return 0
   [ -e "/run/boa_wait.pid" ] && return 0
   [ -e "/run/octopus_install_run.pid" ] && return 0
-  pgrep -f "/local/bin/barracuda" > /dev/null 2>&1 && return 0
-  pgrep -f "/local/bin/octopus" > /dev/null 2>&1 && return 0
+  # Anchored, not a bare substring: a command line that merely MENTIONS the
+  # wrapper -- an editor, a checksum, an operator's ssh probe -- must not read
+  # as an install in flight and defer the agent indefinitely.
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
   # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
   # (a remote install driven from this box) must not defer this box
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
@@ -4190,7 +4193,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f96 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f86 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
-    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f86 --guard /local/bin/updatesymlinks
+    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f85 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
     _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f93 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
