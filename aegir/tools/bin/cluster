@@ -75,11 +75,10 @@ _clean_pid_exit() {
       && [ ! -e "/run/boa_run.pid" ] \
       && [ ! -e "/run/boa_wait.pid" ] \
       && [ ! -e "/run/octopus_install_run.pid" ] \
-      && ! pgrep -f "/local/bin/barracuda" > /dev/null 2>&1 \
-      && ! pgrep -f "/local/bin/octopus" > /dev/null 2>&1 \
+      && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 \
+      && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 \
       && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
-      && ! pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 \
-      && ! pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1; then
+      && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
       rm -rf /opt/tmp/*
     fi
   fi
