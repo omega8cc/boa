@@ -3294,13 +3294,13 @@ EOFMYSQL
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-dispatch" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
   # The sweeps above run their tasks synchronously (--fork=0), but a runner
   # forked by the regular dispatch can still be in flight. AegirSetupB is

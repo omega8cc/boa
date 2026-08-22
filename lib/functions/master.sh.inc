@@ -459,13 +459,13 @@ EOFMYSQL
   su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
   # The sweeps above run their tasks synchronously (--fork=0), but a runner
   # forked by the regular dispatch can still be in flight. The master
@@ -1457,13 +1457,13 @@ EOFMYSQL
     su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
     wait
     sleep 5
-    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
     wait
     sleep 5
-    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
     wait
     sleep 5
-    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0" &> /dev/null
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
     wait
     if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hm.alias.drushrc.php \
