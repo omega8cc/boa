@@ -150,7 +150,7 @@ For more details, refer to the [AWS Regional Endpoints documentation](https://do
 
 #### **Google Cloud Storage (gcs)**
 
-- **Bucket Creation:** Automatic if credentials have write permissions.
+- **Bucket Creation:** Must be **manually created** before use -- backups reach GCS through its S3-compatible XML interoperability API (`boto3+s3://` with `--s3-endpoint-url https://storage.googleapis.com`) rather than a native GCS backend, so automatic creation cannot be relied on -- see Required Bucket Naming Convention below.
 - **Supported Regions:** (not all are listed here)
 
 | Data Center Location                 | Region Code     |
