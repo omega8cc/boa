@@ -146,7 +146,11 @@ _is_protected_run() {
 
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _cPat="/local/bin/${_cbn}"
+      # Anchored for every member, not just "boa": a bare path substring
+      # matches any command line that merely MENTIONS the wrapper -- an
+      # editor, a checksum, an operator's ssh probe -- and phantom-holds
+      # this guard. Same form clear.sh/runner.sh/owl.sh/java.sh use.
+      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
       # Bare "boa" would match an hours-long remote install driven
       # from this box over ssh (and every boa-info probe); anchor it
       # to the LOCAL install form, as clear.sh/runner.sh already do
@@ -162,11 +166,11 @@ _is_protected_run() {
 
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/BARRACUDA\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} BARRACUDA.sh.txt(leg)"
   fi
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} OCTOPUS.sh.txt(leg)"
   fi
