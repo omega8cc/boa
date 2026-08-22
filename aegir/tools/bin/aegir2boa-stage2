@@ -219,16 +219,26 @@ _marker_has() { [[ -e "$(_marker "$1")" ]]; }
 # php-script staging: root writes these then runs them as the account user
 # via drush php-script. A fixed /tmp name on a multi-tenant BOA box is a
 # symlink-preplant vector (root cat> follows the link) AND a TOCTOU swap
-# window. Stage inside an ACCOUNT-OWNED 700 dir under the account tree
-# (only that oN + root can enter, so no cross-tenant preplant) with an
-# O_EXCL random mktemp name, chowned to oN so drush can read it and the
-# path stays traversable by oN (every ancestor is oN-owned).
-_php_dir() { echo "${_ACCT_ROOT}/static/.a2b-php"; }
+# window -- and so is anything under ${_ACCT_ROOT}/static: BOA makes that
+# dir oN:users 02775 and every Octopus account's primary group IS users, so
+# any co-hosted tenant can pre-plant a symlink there for root's mkdir/chown/
+# chmod (all of which follow links; protected_symlinks only covers sticky
+# world-writable dirs). Stage under a ROOT-OWNED 0755 parent no tenant can
+# write, with a per-account 0700 dir handed to oN so drush can read the
+# O_EXCL mktemp'd script (the parent is world-traversable, so the path
+# stays reachable by oN). Refuse a symlink where the per-account dir should be.
+_php_base() { echo "/var/opt/a2b-php"; }
+_php_dir() { echo "$(_php_base)/${_ACCOUNT}"; }
 _php_tmp() {
-  local _d _f
+  local _b _d _f
+  _b="$(_php_base)"
   _d="$(_php_dir)"
+  [[ -L "${_b}" ]] && _die "${_b} is a symlink - refusing to stage php scripts"
+  mkdir -p "${_b}" && chown root:root "${_b}" && chmod 0755 "${_b}"
+  [[ -L "${_d}" ]] && _die "${_d} is a symlink - refusing to stage php scripts"
   mkdir -p "${_d}" && chown "${_ACCOUNT}:users" "${_d}" && chmod 700 "${_d}"
   _f="$(mktemp "${_d}/php.XXXXXX")" || _die "cannot create php staging file"
+  [[ -L "${_f}" ]] && _die "${_f} is a symlink - refusing to stage php scripts"
   chown "${_ACCOUNT}:users" "${_f}" && chmod 600 "${_f}"
   echo "${_f}"
 }
@@ -1965,9 +1975,19 @@ _import_per_site() {
     _ctxp="platform_a2b_$(_sane_ident "${_plat}")"
     local _proot="${_ACCT_ROOT}/static/a2b/${_plat}"
     [[ -d "${_proot}" ]] || { _alrt "site ${_uri}: platform tree ${_proot} missing - SKIP"; _fails=$(( _fails + 1 )); continue; }
-    # docroot detect (D8+ composer trees)
-    local _droot="${_proot}"
-    [[ ! -e "${_proot}/index.php" && -e "${_proot}/web/index.php" ]] && _droot="${_proot}/web"
+    # docroot detect (D8+ composer trees) -- the same four docroot names the
+    # export half recognises when it transfers a project root instead of the
+    # docroot (web|docroot|html|public_html); registering the project root as
+    # the platform would fail every site on it at verify.
+    local _droot="${_proot}" _dr
+    if [[ ! -e "${_proot}/index.php" ]]; then
+      for _dr in web docroot html public_html; do
+        if [[ -e "${_proot}/${_dr}/index.php" ]]; then
+          _droot="${_proot}/${_dr}"
+          break
+        fi
+      done
+    fi
 
     # 1. db land
     if ! _marker_has "${_uri}.dbloaded.pid"; then

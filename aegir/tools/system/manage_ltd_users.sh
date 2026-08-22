@@ -194,6 +194,10 @@ _enable_chattr() {
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
     if [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+      # Strip planted links BEFORE the deletes below act on these paths: a
+      # tenant who swapped ~/.drush for a symlink would otherwise have root
+      # rm -rf through it.
+      _desymlink_planted "${_U_TP}" "${_U_HD}"
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
         rm -rf ${_U_HD}/
@@ -206,7 +210,6 @@ _enable_chattr() {
         rm -f ${_U_HD}/.ctrl*
         rm -rf ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
-      _desymlink_planted "${_U_TP}" "${_U_HD}"
       mkdir -p ${_U_HD}/usr
       mkdir -p ${_U_TP}
       touch ${_U_TP}
