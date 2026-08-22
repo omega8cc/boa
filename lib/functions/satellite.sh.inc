@@ -2936,6 +2936,13 @@ _satellite_prepare_child_scripts() {
   chmod 0755 /opt/tmp/state &> /dev/null
   chown ${_USER}:${_USRG} /opt/tmp/state/${_USER} &> /dev/null
   chmod 0700 /opt/tmp/state/${_USER} &> /dev/null
+  # Root's own markers (AegirSetupA OK/FAIL) live in a root-owned tree: a
+  # tenant-planted symlink in the user-owned dir above must never be followed
+  # by root's touch. Same name layout, one level down under .root.
+  mkdir -p /opt/tmp/state/.root/${_USER} &> /dev/null
+  chown root:root /opt/tmp/state/.root /opt/tmp/state/.root/${_USER} &> /dev/null
+  chmod 0755 /opt/tmp/state/.root &> /dev/null
+  chmod 0700 /opt/tmp/state/.root/${_USER} &> /dev/null
   # No chown into the build tree: the children are started as
   # `su - <user> -c "/bin/bash <script>"`, so they need read and nothing more,
   # and the tree is left 0755 for exactly that. Handing these two files to the
@@ -3554,7 +3561,7 @@ _satellite_run_child_b() {
       || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
       _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-      touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
+      touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
       exit 1
     fi
     _U_HD="${_ROOT}/.drush"
@@ -3615,7 +3622,7 @@ _satellite_run_child_b() {
         || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-        touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
+        touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
         exit 1
       else
         if [ -e "${_U_HD}/php.ini" ]; then
@@ -3750,7 +3757,7 @@ _satellite_run_child_c() {
       || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
       _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-      touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
+      touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
       exit 1
     fi
   else
@@ -3775,7 +3782,7 @@ _satellite_run_child_c() {
           || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
           _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
           _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-          touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
+          touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
           exit 1
         fi
       else
@@ -5048,8 +5055,8 @@ _satellite_make() {
   wait
   ###
 
-  if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL" ] \
-    || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupA-OK" ]; then
+  if [ -e "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL" ] \
+    || [ ! -e "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-OK" ]; then
     _msg "FATAL ERROR: AegirSetupA installer failed"
     _msg "FATAL ERROR: Aborting Octopus installer NOW!"
     rm -f /opt/tmp/status-Octopus-FAIL
@@ -5830,6 +5837,9 @@ _satellite_pre_cleanup() {
   # so skip rather than widen.
   if [ -n "${_USER}" ]; then
     rm -rf "/opt/tmp/state/${_USER}"
+    # Root's own marker dir for this instance (AegirSetupA OK/FAIL) -- same
+    # per-run purge, same scoping.
+    rm -rf "/opt/tmp/state/.root/${_USER}"
   fi
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
