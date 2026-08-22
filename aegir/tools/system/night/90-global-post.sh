@@ -437,3 +437,75 @@ _archive_old_daily_logs() {
     mv -f "${_f}" "${_logDir}/${_logMY}/" 2>/dev/null
   done
 }
+
+_migrate_source_sweep_all() {
+  # Nightly migration-source sweep for every hosted instance, executed inside
+  # a box-wide task-queue pause (/run/boa_queue_stop.pid -- the same marker
+  # the backups relocation and updatesymlinks hold, honoured by runner.sh
+  # before it dispatches any instance queue) so no verify can revoke the same
+  # grant concurrently with a sweep pass. The sweep's own frontend hosting
+  # queue stays registered as a daily fallback for plain Aegir; on BOA boxes
+  # it is switched off per instance every night below, making this paused run
+  # the only scheduled executor here. A leaked marker self-heals: clear.sh
+  # removes one whose recorded owner PID is gone.
+  local _stop="/run/boa_queue_stop.pid" _madeStop=NO _drain=0
+  local _swpPth _swpUsr _swpHas _lockfd
+  if [ -e "/data/conf/disable_migrate_sweep_night.cnf" ]; then
+    return 0
+  fi
+  if ! command -v _provision_running > /dev/null 2>&1; then
+    # Delivery-skew stub, deliberately broad -- over-matching only lengthens
+    # the wait, never shortens it.
+    _provision_running() { pgrep -f provision > /dev/null 2>&1; }
+  fi
+  exec {_lockfd}>/run/.boa_migrate_sweep.flock 2>/dev/null || return 0
+  if ! flock -n "${_lockfd}"; then
+    exec {_lockfd}>&-
+    return 0
+  fi
+  if [ ! -e "${_stop}" ]; then
+    echo "$$" > "${_stop}" 2>/dev/null && _madeStop=YES
+  fi
+  if [ "${_madeStop}" != "YES" ]; then
+    # Another operation already holds the pause; its window is not ours to
+    # piggyback on or to extend.
+    echo "migrate-sweep: queue pause held elsewhere; skipping this night"
+    flock -u "${_lockfd}"
+    exec {_lockfd}>&-
+    return 0
+  fi
+  # A runner.sh pass that cleared the gate before the marker landed can still
+  # fork a task within its minute; the grace outlives that window, then the
+  # drain waits out anything already running.
+  sleep 90
+  while _provision_running && [ "${_drain}" -lt 30 ]; do
+    sleep 5
+    _drain=$((_drain + 1))
+  done
+  if _provision_running; then
+    echo "migrate-sweep: provision task still active after grace and drain; skipping this night"
+  else
+    for _swpPth in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${_swpPth}/config/server_master/nginx/vhost.d" ] \
+        && [ ! -e "${_swpPth}/log/proxied.pid" ] \
+        && [ ! -e "${_swpPth}/log/CANCELLED" ]; then
+        _swpUsr=$(echo ${_swpPth} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _swpHas=$(su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster php-eval \"echo (int) module_exists('hosting_migrate_source');\"" 2>/dev/null | tr -dc '0-9')
+        if [ "${_swpHas}" = "1" ]; then
+          # This paused nightly run is the executor on BOA boxes; keep the
+          # frontend daily queue off so an unpaused pass never runs.
+          su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster vset hosting_queue_migrate_source_enabled 0" &> /dev/null
+          echo "migrate-sweep: ${_swpUsr} pass"
+          timeout 300 su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster hosting-migrate-source-sweep" 2>&1
+        fi
+      fi
+    done
+    wait
+  fi
+  if [ "${_madeStop}" = "YES" ] \
+    && [ "$(tr -dc '0-9' < "${_stop}" 2>/dev/null)" = "$$" ]; then
+    rm -f "${_stop}"
+  fi
+  flock -u "${_lockfd}"
+  exec {_lockfd}>&-
+}
