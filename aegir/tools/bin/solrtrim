@@ -521,17 +521,29 @@ _cmd_remove() {
     && _die "nothing to remove -- name versions (solr4 solr7 solr9) or 'all'"
 
   ### Never delete Solr trees underneath a running barracuda/octopus pass:
-  ### the installer reads and rebuilds these very paths mid-run. Matched by
-  ### the runner BINARY paths, not bare names -- a caller's command line
-  ### mentioning .barracuda.cnf must not read as a run in flight.
-  local _bpid=""
-  [ -s /run/boa_run.pid ] \
-    && _bpid=$(tr -dc '0-9' < /run/boa_run.pid 2>/dev/null | head -c 12)
-  if { [ -n "${_bpid}" ] && [ -d "/proc/${_bpid}" ]; } \
-    || [ "$(pgrep -cf '/local/bin/[b]arracuda|/local/bin/[o]ctopus' 2>/dev/null)" -gt 0 ]; then
-    _die "a barracuda/octopus run is in flight on this box -- wait for it to finish," \
-         " then re-run"
-  fi
+  ### the installer reads and rebuilds these very paths mid-run. Anchored
+  ### EREs, not bracket tricks: bracketing defeats only SELF-match, so a
+  ### bare path substring still matches any command line that merely
+  ### MENTIONS the wrapper -- an editor, a checksum, an operator's ssh
+  ### probe -- and phantom-refuses a legitimate removal. Same form
+  ### clear.sh/cluster/xtrim/java.sh use; the refusal names the leg that
+  ### tripped, so a phantom hold is diagnosable instead of opaque.
+  local _p
+  ### The /run markers are touched empty, never written with a pid, so
+  ### existence is the only thing to test -- as every peer guard does.
+  for _p in boa_run.pid boa_wait.pid octopus_install_run.pid; do
+    [ -e "/run/${_p}" ] \
+      && _die "/run/${_p} present -- an install/upgrade is in flight on this box; wait for it to finish, then re-run"
+  done
+  ### The chained install's legs run as "bash /var/backups/*.sh.txt", not
+  ### as the wrapper binaries -- match those too.
+  for _p in \
+    "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" \
+    "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" \
+    "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"; do
+    pgrep -f "${_p}" > /dev/null 2>&1 \
+      && _die "a barracuda/octopus run is in flight on this box (${_p}) -- wait for it to finish, then re-run"
+  done
 
   _collect_bindings
   for _sv in ${_targets}; do

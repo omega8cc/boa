@@ -580,11 +580,15 @@ build_cms() {
   # Drupal 7 crossing with "The pathauto_pattern plugin must define the
   # source_module property". Upstream sets it in the migration definition
   # instead (pathauto #3588684); apply that one-liner until a tagged release
-  # carries it - the grep guard makes this a no-op once it does.
+  # carries it - the grep guard makes this a no-op once it does. Every touch
+  # runs as the build user like the rest of the tree: root must never read or
+  # write a path the o8 account - or a composer plugin executing as it during
+  # this very build - can turn into a symlink first.
   local _pa_yml="${_wd}/web/modules/contrib/pathauto/migrations/d7_pathauto_patterns.yml"
-  if [[ -f "${_pa_yml}" ]] && ! grep -q "source_module: pathauto" "${_pa_yml}"; then
-    sed -i "s|^  plugin: pathauto_pattern$|  plugin: pathauto_pattern\n  source_module: pathauto|" "${_pa_yml}"
-    if ! grep -q "source_module: pathauto" "${_pa_yml}"; then
+  if _run_as_o8 "test -f '${_pa_yml}'" \
+     && ! _run_as_o8 "grep -q 'source_module: pathauto' '${_pa_yml}'"; then
+    _run_as_o8 "sed -i 's|^  plugin: pathauto_pattern$|  plugin: pathauto_pattern\n  source_module: pathauto|' '${_pa_yml}'"
+    if ! _run_as_o8 "grep -q 'source_module: pathauto' '${_pa_yml}'"; then
       _alrt "cms: pathauto source_module correction did not apply"
       _record_fail "cms"
       return 1
