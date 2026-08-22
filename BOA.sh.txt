@@ -4208,7 +4208,7 @@ _update_boa_tools() {
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f32 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f54 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
-    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f97 --guard /local/bin/solrtrim
+    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f96 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f96 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f90 --guard /local/bin/autoinit
