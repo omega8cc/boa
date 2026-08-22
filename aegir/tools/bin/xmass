@@ -4559,14 +4559,38 @@ _xmass_thaw_writes() {
 # stranded at task_status='-1'. Cutover then runs hosting-tasks --force on the
 # target, so Aegir would execute that delete against brand-new production.
 _xmass_clear_pending_deletes() {
-  local _oct
+  # Every account must answer: a hostmaster that cannot be bootstrapped here
+  # (parked dispatcher, mid-upgrade panel, broken alias) would leave the
+  # stranded delete row in the DB that replicates to the target, where
+  # cutover's hosting-tasks --force executes it against production. So count
+  # the failures, re-check what is left, and refuse rather than report a
+  # purge that did not happen.
+  local _oct _bad=0 _left _tot=0
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\"" &> /dev/null
-    su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\"" &> /dev/null
+    _tot=$((_tot + 1))
+    if ! su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\"" &> /dev/null; then
+      _bad=$((_bad + 1))
+      _alrt "${_oct}: could not purge interrupted delete tasks (drush failed)"
+      continue
+    fi
+    if ! su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\"" &> /dev/null; then
+      _bad=$((_bad + 1))
+      _alrt "${_oct}: could not purge pending delete tasks (drush failed)"
+      continue
+    fi
+    _left=$(su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task WHERE task_type='delete' AND task_status IN ('-1','0')\"" 2>/dev/null | tr -dc '0-9')
+    if [ -z "${_left}" ] || [ "${_left}" != "0" ]; then
+      _bad=$((_bad + 1))
+      _alrt "${_oct}: ${_left:-unknown} delete task(s) still queued after the purge"
+    fi
   done
-  _info "Cleared any pending/interrupted delete tasks from all panel queues"
+  if [ "${_bad}" -gt 0 ]; then
+    _die "Pending/interrupted delete tasks could not be cleared on ${_bad} of ${_tot} account(s) -- a stranded delete would travel to the new box. Fix the panel(s) above and re-run."
+  fi
+  _info "Cleared pending/interrupted delete tasks from all ${_tot} panel queue(s)"
 }
 
 _xmass_csf_allow_peer() {
