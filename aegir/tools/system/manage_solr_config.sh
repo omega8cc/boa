@@ -437,6 +437,30 @@ _add_solr() {
   fi
 }
 
+_archive_solr_core() {
+  # ${1} = core dir. A teardown is unrecoverable once UNLOAD&deleteIndex ran,
+  # and the trigger is a cleared directive -- recoverable intent deserves a
+  # recoverable result. Tar the core tree into /var/backups/solr-archive first
+  # (solrtrim does the same before it removes a version); refuse the delete
+  # when the archive cannot be written. An empty or absent core has nothing
+  # worth keeping and passes straight through.
+  local _core="$1" _arch _stamp
+  [ -d "${_core}" ] || return 0
+  [ -n "$(find "${_core}" -type f -print -quit 2>/dev/null)" ] || return 0
+  _stamp=$(date +%y%m%d-%H%M%S)
+  mkdir -p /var/backups/solr-archive &> /dev/null
+  chmod 0700 /var/backups/solr-archive &> /dev/null
+  _arch="/var/backups/solr-archive/$(basename "${_core}")-${_stamp}.tar.gz"
+  if tar -czf "${_arch}.tmp" -C "$(dirname "${_core}")" "$(basename "${_core}")" 2>/dev/null \
+    && mv -f "${_arch}.tmp" "${_arch}" 2>/dev/null; then
+    echo "Archived Solr core ${_core} to ${_arch}"
+    return 0
+  fi
+  rm -f "${_arch}.tmp" &> /dev/null
+  echo "Could not archive Solr core ${_core} -- leaving it in place"
+  return 1
+}
+
 _delete_solr() {
   # ${1} is solr core path
   if [[ "${1}" =~ "solr4" ]]; then
@@ -454,19 +478,22 @@ _delete_solr() {
       && [ -e "/var/solr9/data" ]; then
       # The Solr 9 CLI ignores -p for delete and falls back to port 8983,
       # so remove the core via the Core Admin API on the instance port
-      if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_SolrCoreID}"; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
         wait
       fi
-      if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_Old_SolrCoreID}"; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Old_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
         wait
       fi
-      if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_Legacy_SolrCoreID}"; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Legacy_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
@@ -476,20 +503,23 @@ _delete_solr() {
     elif [ "${_SOLR_BASE}" = "/var/solr7/data" ] \
       && [ -x "/opt/solr7/bin/solr" ] \
       && [ -e "/var/solr7/data/solr.xml" ]; then
-      if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_SolrCoreID}"; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_SolrCoreID}"
         wait
       fi
-      if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_Old_SolrCoreID}"; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_Old_SolrCoreID}"
         wait
       fi
-      if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_Legacy_SolrCoreID}"; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_Legacy_SolrCoreID}"
         wait
       fi
       rm -f ${_Dir}/solr.php
-    elif [ "${_SOLR_BASE}" = "/opt/solr4" ]; then
+    elif [ "${_SOLR_BASE}" = "/opt/solr4" ] && _archive_solr_core "${1}"; then
       sed -i "s/.*instan_ceDir=\"${_SolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
       wait
       sed -i "s/.*name=\"${_Legacy_SolrCoreID}\".*//g"  ${_SOLR_BASE}/solr.xml
@@ -522,9 +552,17 @@ _check_solr() {
 }
 
 _setup_solr() {
+  # A site INI that is MISSING is reseeded from the default template, whose
+  # solr_integration_module line is the commented-out placeholder -- the very
+  # shape the teardown branch below reads as "directive cleared". A missing
+  # file is not an operator decision (a deploy rsync --delete, a hand rm, a
+  # stripped symlink all produce it), so a pass that had to reseed never tears
+  # down: the next pass sees a stable INI and the operator's real intent.
+  _SOLR_INI_RESEEDED=NO
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
+    _SOLR_INI_RESEEDED=YES
   fi
   ###
   ### Support for solr_integration_module directive
@@ -575,7 +613,8 @@ _setup_solr() {
       # teardown; a valid module whose Solr base is not installed must
       # not delete existing cores. The eligibility has to be carried in
       # its own flag because _SOLR_VER is blanked right here.
-      if [ "${_SOLR_MODULE}" = "your_module_name_here" ]; then
+      if [ "${_SOLR_MODULE}" = "your_module_name_here" ] \
+        && [ "${_SOLR_INI_RESEEDED}" != "YES" ]; then
         _SOLR_TEARDOWN=YES
       fi
       _SOLR_MODULE=
