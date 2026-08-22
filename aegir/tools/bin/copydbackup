@@ -187,11 +187,28 @@ for _user in "${!_all_involved_users[@]}"; do
     fi
 
     if [[ "${_days_to_keep}" =~ ^[0-9]+$ ]]; then
+      _dbk="/data/disk/${_user}/static/files/dbackup"
+      # static/ is tenant-writable, so a symlinked dbackup/ is a tenant-chosen
+      # target; a trailing slash would make root's find walk and purge it.
+      # Resolve first: a link must stay inside the account tree, and the walk
+      # starts one level below it so the start dir itself is never removed.
+      if [ -L "${_dbk}" ]; then
+        _dbk_real=$(readlink -f "${_dbk}" 2>/dev/null)
+        case "${_dbk_real}" in
+          "/data/disk/${_user}/"*) ;;
+          *)
+            echo "Warning: ${_dbk} points outside /data/disk/${_user}. Skipping cleanup for ${_user}."
+            continue
+          ;;
+        esac
+        _dbk="${_dbk_real}"
+      fi
+      [ -d "${_dbk}" ] || continue
       echo "User: ${_user}; removing backups older than ${_days_to_keep} days..."
-      find "/data/disk/${_user}/static/files/dbackup/" \
+      find "${_dbk}" -mindepth 1 \
         -type f -mtime +${_days_to_keep} -exec rm -f {} \;
       # Optionally remove empty directories, too:
-      find "/data/disk/${_user}/static/files/dbackup/" \
+      find "${_dbk}" -mindepth 1 -depth \
         -type d -empty -delete
     else
       echo "Warning: ${_cycle_file} does not contain a valid integer. Skipping cleanup for ${_user}."
