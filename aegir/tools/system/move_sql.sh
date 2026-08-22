@@ -29,6 +29,32 @@ renice ${_B_NICE} -p $$ &> /dev/null
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 
+# Every PHP-FPM generation BOA can carry; read by the stop AND the start side,
+# so it lives here rather than inside _stop_sql.
+_PHP_V="85 84 83 82 81 80 74 73 72 71 70 56 55 54 53"
+
+_start_web_tier() {
+  # Bring back exactly what _stop_sql took down, but only once mysqld answers
+  # again (every caller below checks that first). The nginx/php watchdogs still
+  # heal whatever this misses, but they stand down for the whole barracuda pass
+  # that usually runs this script, so leaving the web tier to them meant minutes
+  # of 502s after every post-install or up-* MySQL restart -- observed on both
+  # Daedalus and Excalibur fresh installs. Idempotent: a running service is a
+  # no-op for its init script, and nothing is started while it is still up.
+  local e
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+      if ! pgrep -f "^php-fpm: master process \(/opt/php${e}/" > /dev/null 2>&1; then
+        service "php${e}-fpm" start &> /dev/null
+      fi
+    fi
+  done
+  if ! pgrep -f '^nginx: master process' > /dev/null 2>&1; then
+    service nginx start &> /dev/null
+  fi
+  echo "Web tier checked: PHP-FPM and Nginx running again"
+}
+
 _create_locks() {
   # NB: do NOT drop the page/dentry/inode cache here. A restart must not evict the
   # box-wide cache -- on a busy box that forces cold re-reads and a stampede, which
@@ -69,6 +95,7 @@ _start_sql() {
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
+    _start_web_tier
     _remove_locks
     # A running mysqld is the desired end state -- return/exit success. NEVER fall
     # through to rm the LIVE socket/pid below and 'service mysql start' a second
@@ -108,6 +135,7 @@ _start_sql() {
   done
   echo "MySQLD started"
 
+  _start_web_tier
   _remove_locks
   echo "MySQLD start procedure completed"
   [ "$1" != "chain" ] && exit 0
@@ -133,7 +161,6 @@ _stop_sql() {
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now..."
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
