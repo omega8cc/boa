@@ -32,6 +32,30 @@ if ! declare -F _desymlink_planted > /dev/null 2>&1; then
   }
 fi
 
+### _validate_ctrl_dir is used below as a "continue" gate, so an undefined
+### function -- 127, i.e. false -- would skip EVERY site on a box whose
+### library is briefly behind this file. Fail-open is not an option either
+### (that reopens the vector), so carry the real body as the fallback; it
+### needs nothing but realpath and _usEr. Mirrors night.inc.sh deliberately.
+if ! declare -F _validate_ctrl_dir > /dev/null 2>&1; then
+  _validate_ctrl_dir() {
+    local _resolved _anchor
+    [ -L "$1" ] && return 1
+    [ -e "$1" ] || return 0
+    [ -d "$1" ] || return 1
+    _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
+    _anchor=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+    case "${_resolved}/" in
+      "${_anchor}"/*)
+        return 0
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+fi
+
 ### Same delivery hazard, opposite failure direction: every "_provision_running
 ### && return" below BAILS OUT when a Provision task is running, so a missing
 ### function -- 127, i.e. false -- reads as "nothing running" and the cleanup
@@ -2202,6 +2226,21 @@ _daily_process() {
       fi
       if [ -n "${_Plr}" ] && ! _validate_safe_dir "${_Plr}"; then
         echo "SKIP: _Plr resolves outside allowed roots: ${_Plr}"
+        continue
+      fi
+      # The checks above validate the alias-derived roots, not the modules
+      # dir the control INIs actually live in. That component sits in the
+      # tenant-writable setgid tree, and the bare ">>" appends further down
+      # follow a symlink planted there just as a rename does, so gate it
+      # here too. Absent is allowed; a symlink, or a dir resolving outside
+      # the account root, skips the iteration.
+      if [ -n "${_Dir}" ] && ! _validate_ctrl_dir "${_Dir}/modules"; then
+        echo "SKIP: not a plain dir under ${_usEr}: ${_Dir}/modules"
+        continue
+      fi
+      if [ -n "${_Plr}" ] \
+        && ! _validate_ctrl_dir "${_Plr}/sites/all/modules"; then
+        echo "SKIP: not a plain dir under ${_usEr}: ${_Plr}/sites/all/modules"
         continue
       fi
       _desymlink_planted \

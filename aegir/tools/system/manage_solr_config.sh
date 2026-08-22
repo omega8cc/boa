@@ -41,6 +41,32 @@ _validate_safe_dir() {
   esac
 }
 
+_validate_ctrl_dir() {
+  # Gate the DIRECTORY that will hold a root-maintained control INI. The
+  # alias-derived _Dir/_Plr are validated by _validate_safe_dir, but the
+  # trailing modules component is not, and it lives in the tenant-writable
+  # setgid tree: rename(2) and every ">>" append below resolve each parent
+  # component normally, so a modules symlink planted by a tenant redirects
+  # the whole per-site leg onto a root-parsed path. An ABSENT dir passes --
+  # a later leg creates it with mkdir -p, and refusing here would stop that
+  # on a fresh platform, which breaks more than it guards. Reads _usEr.
+  # $1 = directory.
+  local _resolved _anchor
+  [ -L "$1" ] && return 1
+  [ -e "$1" ] || return 0
+  [ -d "$1" ] || return 1
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
+  _anchor=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+  case "${_resolved}/" in
+    "${_anchor}"/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 _ctrl_stage_dir() {
   # Root-only staging dir for control-INI writes, on the same filesystem as the
   # account's platform trees (they all live under the account root). The account
@@ -77,15 +103,35 @@ _reseed_ctrl_ini() {
   # -- so a tenant who could write the staging dir could swap the temp for a
   # symlink and have root chown their target. The account root is 0711, so they
   # can traverse but not create there. Refuses a symlink/non-regular SOURCE so a
-  # tenant-symlinked template cannot disclose a root file. Reads _usEr and _HM_U
-  # from the caller. $1 = source template, $2 = dest INI path.
+  # tenant-symlinked template cannot disclose a root file.
+  #
+  # rename() refuses to follow only the FINAL component: every directory
+  # above it is resolved normally, so a tenant who swaps the modules dir
+  # itself for a symlink redirects the whole write. Refuse a symlinked
+  # parent, require the resolved parent to sit under the account root, and
+  # then act on that RESOLVED parent -- a link swapped in after the check
+  # is no longer on the path we traverse. Reads _usEr and _HM_U from the
+  # caller. $1 = source template, $2 = dest INI path.
   local _src="$1"
   local _dst="$2"
-  local _stg _new
+  local _stg _new _pnt _rpn _rus
   [ -L "${_src}" ] && return 1
   [ -f "${_src}" ] || return 1
   [ -n "${_HM_U}" ] || return 1
-  [ -d "${_dst%/*}" ] || return 1
+  case "${_dst}" in
+    /*/*) : ;;
+    *) return 1 ;;
+  esac
+  _pnt="${_dst%/*}"
+  [ -L "${_pnt}" ] && return 1
+  [ -d "${_pnt}" ] || return 1
+  _rpn=$(realpath -e -- "${_pnt}" 2>/dev/null) || return 1
+  _rus=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+  case "${_rpn}/" in
+    "${_rus}"/*) : ;;
+    *) return 1 ;;
+  esac
+  _dst="${_rpn}/${_dst##*/}"
   _stg=$(_ctrl_stage_dir) || return 1
   _new=$(mktemp "${_stg}/ctrl.XXXXXX" 2>/dev/null) || return 1
   if [ -L "${_new}" ] || [ ! -f "${_new}" ]; then
@@ -754,6 +800,21 @@ _check_sites_list() {
       fi
       if [ -n "${_Plr}" ] && ! _validate_safe_dir "${_Plr}"; then
         echo "SKIP: _Plr resolves outside allowed roots: ${_Plr}"
+        continue
+      fi
+      # The checks above validate the alias-derived roots, not the modules
+      # dir the control INIs actually live in. That component sits in the
+      # tenant-writable setgid tree, and the bare ">>" appends further down
+      # follow a symlink planted there just as a rename does, so gate it
+      # here too. Absent is allowed; a symlink, or a dir resolving outside
+      # the account root, skips the iteration.
+      if [ -n "${_Dir}" ] && ! _validate_ctrl_dir "${_Dir}/modules"; then
+        echo "SKIP: not a plain dir under ${_usEr}: ${_Dir}/modules"
+        continue
+      fi
+      if [ -n "${_Plr}" ] \
+        && ! _validate_ctrl_dir "${_Plr}/sites/all/modules"; then
+        echo "SKIP: not a plain dir under ${_usEr}: ${_Plr}/sites/all/modules"
         continue
       fi
       _desymlink_planted \
