@@ -1,16 +1,21 @@
 #%PAM-1.0
 
 # PAM configuration for Pure-FTPd, deployed by Barracuda to
-# /etc/pam.d/pure-ftpd. Carries the pam_unix form BOA has always
-# produced on the box: upstream's sample calls an obsolete Red-Hat-era
+# /etc/pam.d/pure-ftpd. The first three auth rules are gates only
+# (deny list, valid shell, no nologin) and all of them succeed for an
+# ordinary account, so the closing pam_unix auth rule is the one that
+# actually verifies the password: without it PAM auth would accept any
+# password at all. Upstream's sample calls an obsolete Red-Hat-era
 # stacking module that never existed in Linux-PAM, and _fix_ftps_pam
-# remains the healer for copies restored from upstream form. Wording
+# remains the healer for copies restored from upstream form; it also
+# appends the auth rule when a deployed copy is missing it. Wording
 # note: _fix_ftps_pam's seds run over this whole file, so comments here
 # must never contain the literal module names those seds rewrite.
 
 auth       required     pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed
 auth       required     pam_shells.so
 auth       required     pam_nologin.so
+auth       required     pam_unix.so
 
 account    required     pam_unix.so
 

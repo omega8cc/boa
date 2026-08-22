@@ -334,7 +334,12 @@ box instead.
 
 What the live flip does, in order: installs nginx+php-fpm **without
 starting daemons** (a temporary `policy-rc.d` guard; Apache keeps :80
-throughout), starts the versioned FPM pools, adds the `aegir` user's
+throughout), starts the FPM pool matching the PHP series this box
+already serves its sites with — provision picks the highest-sorted
+socket, so a newer versioned pool started alongside it would move every
+generated vhost to an interpreter the sites cannot run on, and both the
+dry run and the flip REFUSE on that mismatch (the flip while Apache is
+still serving) — adds the `aegir` user's
 sudoers line for the exact nginx reload binary the backend will call,
 enables every frontend feature the target service class needs — the
 plain and SSL nginx classes come from different modules, and the dry run
@@ -349,7 +354,9 @@ cascade, then **verifies every site** (hostmaster first — the verify
 cascade stops at platforms, so this per-site loop is what populates
 `nginx/vhost.d`), asserting each site's nginx vhost file exists. Only
 then: `nginx -t`, a **scratch-port FCGI probe** that executes real PHP
-through nginx+FPM while Apache still serves, and the daemon handover
+through nginx+FPM while Apache still serves — and reports the
+interpreter version it reached, so a pool whose socket name lies about
+its binary fails the gate too — and the daemon handover
 (stop+disable apache, start+enable nginx and FPM — reboot-persistent).
 Finally every site's HTTP code is compared against the pre-flip
 baseline — and for every site the front end reports as encrypted, the
@@ -732,7 +739,14 @@ arrives at THIS box, and without the alias it lands on the catch-all and
 the whole certificate order fails (measured live 2026-08-11: bare name
 validated through the proxy, `www.` got 404, `cert.pem` left empty). A
 name the client's DNS does not resolve simply never arrives, so the
-extra alias is inert on estates without `www.` records.
+extra alias is inert on estates without `www.` records. It is also
+skipped, with a warning, when `www.<domain>` is served on the source by a
+conf of its own — an estate that manages it as a separate site, which
+vanilla allows. `vhost.d` is included by a sorted glob and the
+first-defined server wins (nginx only warns, and `nginx -t` still passes),
+so claiming that name would capture an unmigrated site's traffic; on those
+estates the `www.` challenge has to come from that other conf, and both
+the dry run and the swap say so by name.
 
 `proxy --refresh` (dry, then `--live`) re-renders the proxy vhost(s) of
 already-proxied sites in place, from the dotfile original plus the

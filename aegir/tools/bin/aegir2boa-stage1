@@ -396,6 +396,21 @@ dryrun_flip() {
     fi
   else
     _info "FPM target provision will pick: ${_fpm_t}"
+    # provision picks the HIGHEST-sorted socket, so a newer versioned pool
+    # already running on a mixed-repo box hands every generated vhost an
+    # interpreter the sites do not run on - D7 on PHP 8 is a WSOD estate.
+    # Refuse HERE, where nothing on the box has been touched yet.
+    local _want_s _sel_s
+    _want_s="$(_expected_php_series)"
+    _sel_s="$(_fpm_target_series "${_fpm_t}")"
+    if [[ -n "${_want_s}" && -n "${_sel_s}" ]]; then
+      if _series_match "${_want_s}" "${_sel_s}"; then
+        _info "FPM series ${_sel_s} matches the PHP series this box serves"
+      else
+        _alrt "FPM series MISMATCH: this box serves PHP ${_want_s}, but provision would pick ${_fpm_t} (PHP ${_sel_s}) for every vhost - stop the php${_sel_s}-fpm pool (and remove its stale socket), or make php${_want_s}-fpm the only running pool, then re-run"
+        _fail=1
+      fi
+    fi
   fi
 
   # sudoers line for the restart cmd nginx.php will resolve
@@ -483,6 +498,7 @@ dryrun_flip() {
 _fcgi_probe() {
   local _pass _php=/tmp/.a2b_fcgi_probe.php _conf=/tmp/.a2b_nginx_probe.conf
   local _pidf=/tmp/.a2b_nginx_probe.pid _errf=/tmp/.a2b_nginx_probe.err _port _out
+  local _got_s _want_s
 
   _pass="$(grep -rho 'fastcgi_pass [^;]*' \
     "${_AEGIR_ROOT}/config/server_master/nginx" "${_AEGIR_ROOT}/config/includes" 2>/dev/null \
@@ -501,7 +517,10 @@ _fcgi_probe() {
     ss -ltn 2>/dev/null | grep -q ":${_port} " || break
   done
 
-  printf '<?php echo "A2B-FCGI-OK";\n' > "${_php}" && chmod 644 "${_php}"
+  # the payload REPORTS its interpreter: a socket name can lie about the
+  # binary its pool runs, and only the answer proves which PHP replied
+  printf '<?php echo "A2B-FCGI-" . PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;\n' \
+    > "${_php}" && chmod 644 "${_php}"
   cat > "${_conf}" <<NGEOF
 user www-data;
 worker_processes 1;
@@ -536,11 +555,19 @@ NGEOF
   nginx -c "${_conf}" -s quit >>"${_LOG}" 2>&1 || { [[ -f "${_pidf}" ]] && kill "$(cat "${_pidf}")" 2>/dev/null; }
   tail -5 "${_errf}" >> "${_LOG}" 2>/dev/null
   rm -f "${_php}" "${_conf}" "${_errf}"
-  if [[ "${_out}" = "A2B-FCGI-OK" ]]; then
-    _info "PHP executes through nginx+FPM (probe OK on :${_port})"
-    return 0
-  fi
-  _alrt "FCGI probe returned '${_out}' instead of A2B-FCGI-OK"
+  case "${_out}" in
+    A2B-FCGI-[0-9]*)
+      _got_s="${_out#A2B-FCGI-}"
+      _want_s="$(_expected_php_series)"
+      if [[ -n "${_want_s}" ]] && ! _series_match "${_want_s}" "${_got_s}"; then
+        _alrt "FCGI probe reached PHP ${_got_s} through ${_pass}, but this box serves its sites with PHP ${_want_s} - that pool is the wrong series"
+        return 1
+      fi
+      _info "PHP ${_got_s} executes through nginx+FPM (probe OK on :${_port})"
+      return 0
+      ;;
+  esac
+  _alrt "FCGI probe returned '${_out}' instead of A2B-FCGI-<version>"
   return 1
 }
 
@@ -565,6 +592,15 @@ _fpm_units() {
   dpkg -l 2>/dev/null | awk '/^ii +php[0-9]+(\.[0-9]+)?-fpm/ {print $2}'
 }
 
+# root's own CLI PHP series ('7.4'), empty when it is unreadable
+_php_series_cli() {
+  local _s
+  _s="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)"
+  case "${_s}" in
+    [0-9].[0-9]|[0-9].[0-9][0-9]) echo "${_s}" ;;
+  esac
+}
+
 # the FPM package matching the box's OWN PHP series. On a mixed-repo box
 # (a PPA'd legacy Ubuntu keeping D7-era PHP) the unversioned 'php-fpm'
 # meta resolves to the repo's NEWEST PHP - a different series than every
@@ -572,10 +608,61 @@ _fpm_units() {
 # when the CLI version is unreadable (callers fall through to the metas).
 _php_series_fpm() {
   local _s
-  _s="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)"
-  case "${_s}" in
-    [0-9].[0-9]|[0-9].[0-9][0-9]) echo "php${_s}-fpm" ;;
+  _s="$(_php_series_cli)"
+  if [[ -n "${_s}" ]]; then
+    echo "php${_s}-fpm"
+  fi
+}
+
+# the PHP series an *fpm.sock path NAMES. Empty for a pool socket whose
+# name carries no series - callers then skip the assertion, never guess.
+_socket_php_series() {
+  local _b="${1##*/}"
+  case "${_b}" in
+    php[0-9]*-fpm.sock) _b="${_b#php}"; echo "${_b%-fpm.sock}" ;;
   esac
+}
+
+# the series behind whatever _probe_fpm_target returned (empty for a port)
+_fpm_target_series() {
+  case "$1" in
+    socket:*) _socket_php_series "${1#socket:}" ;;
+  esac
+}
+
+# the PHP series this box SERVES its sites with today, best provenance
+# first: the enabled apache php module (that IS the interpreter behind
+# every vhost right now), then a single installed mod_php package, then
+# root's CLI php. Empty when none of them is readable.
+_expected_php_series() {
+  local _f _b _p
+  for _f in /etc/apache2/mods-enabled/php*.load; do
+    [[ -e "${_f}" ]] || continue
+    _b="${_f##*/}"; _b="${_b%.load}"; _b="${_b#php}"
+    case "${_b}" in
+      [0-9]*) echo "${_b}"; return 0 ;;
+    esac
+  done
+  _p="$(dpkg -l 2>/dev/null | awk '/^ii +libapache2-mod-php[0-9]/ {print $2}' \
+    | sed -e 's/:.*//' -e 's/^libapache2-mod-php//' | sort -u)"
+  if [[ -n "${_p}" && "$(echo "${_p}" | wc -l)" -eq 1 ]]; then
+    echo "${_p}"
+    return 0
+  fi
+  _php_series_cli
+}
+
+# php5-era module and socket names carry the MAJOR only ('php5.load',
+# '/var/run/php5-fpm.sock'), so a major-only name on either side compares
+# on the major alone: '5' and '5.6' are the same interpreter family here,
+# '7.4' and '8.1' are not.
+_series_match() {
+  local _a="$1" _b="$2"
+  [[ "${_a}" = "${_b}" ]] && return 0
+  if [[ "${_a}" != *.* || "${_b}" != *.* ]]; then
+    [[ "${_a%%.*}" = "${_b%%.*}" ]] && return 0
+  fi
+  return 1
 }
 
 # Where the aegir apache include LIVES varies by install route AND era, so
@@ -686,18 +773,39 @@ live_flip() {
   fi
   service nginx stop >>"${_LOG}" 2>&1 || true
 
-  # FPM must RUN before provision's socket detection (server verify);
-  # start every versioned unit - provision picks the highest socket
-  local _u
-  while read -r _u; do
-    [[ -n "${_u}" ]] && service "${_u}" start >>"${_LOG}" 2>&1
-  done < <(_fpm_units)
+  # FPM must RUN before provision's socket detection (server verify), but
+  # provision picks the HIGHEST-sorted socket: starting a NEWER versioned
+  # unit than the sites run on would write that pool into every vhost. So
+  # start the series-matched unit alone, and fall back to starting the
+  # rest only if that leaves no fastcgi target at all (an off-series pool
+  # is still better than none - the assertion below decides).
+  local _u _want_s _sel_s _unit_s=""
+  _want_s="$(_expected_php_series)"
+  [[ -n "${_want_s}" ]] && _unit_s="$(_fpm_units | grep -Fx "php${_want_s}-fpm" | head -1)"
+  if [[ -n "${_unit_s}" ]]; then
+    service "${_unit_s}" start >>"${_LOG}" 2>&1
+    _info "started series-matched FPM unit ${_unit_s} (this box serves PHP ${_want_s})"
+  fi
   local _fpm_t
   _fpm_t="$(_probe_fpm_target)"
+  if [[ "${_fpm_t}" = "port:9000" ]] && ! ss -ltn 2>/dev/null | grep -q ':9000 '; then
+    while read -r _u; do
+      [[ -n "${_u}" ]] && service "${_u}" start >>"${_LOG}" 2>&1
+    done < <(_fpm_units)
+    _fpm_t="$(_probe_fpm_target)"
+  fi
   if [[ "${_fpm_t}" = "port:9000" ]] && ! ss -ltn 2>/dev/null | grep -q ':9000 '; then
     _die "no FPM socket appeared and nothing listens on :9000 - cannot proceed"
   fi
   _info "FPM target: ${_fpm_t}"
+
+  # the dry run's series assertion, re-taken against the pools running NOW
+  # (a unit started since, by us or by anything else, changes the answer).
+  # Apache still holds :80 here, so refusing costs nothing.
+  _sel_s="$(_fpm_target_series "${_fpm_t}")"
+  if [[ -n "${_want_s}" && -n "${_sel_s}" ]] && ! _series_match "${_want_s}" "${_sel_s}"; then
+    _die "FPM series MISMATCH: this box serves PHP ${_want_s}, provision would pick ${_fpm_t} (PHP ${_sel_s}) for every vhost - stop the php${_sel_s}-fpm pool (and remove its stale socket), or make php${_want_s}-fpm the only running pool, then re-run; apache untouched"
+  fi
 
   # aegir must be in the web group (nginx runs as www-data too)
   id -nG "${_AEGIR_USER}" | grep -qw www-data || {

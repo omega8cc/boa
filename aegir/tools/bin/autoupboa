@@ -1223,9 +1223,12 @@ _if_new_kernel_reboot() {
       ### never be cut by an unattended reboot: the datadir swap and the
       ### replica setup are mid-flight exactly while this signal is fresh.
       ### Steady-state standbys still reboot as normal -- the signal only
-      ### exists inside those windows and /run clears it on boot.
-      if [ -e "/run/boa_xmass_init.pid" ] \
-        && [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+      ### exists inside those windows. Both forms are honoured: the /run
+      ### file xmass touches, and the reboot-proof twin second.sh mirrors
+      ### it to (older tools write only the /run one, so a missing twin is
+      ### never treated as a missing window).
+      if [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid \
+        -mmin -2880 2>/dev/null)" ]; then
         echo "NOTE: kernel reboot pending, deferred: xmass window in flight"
         return 0
       fi

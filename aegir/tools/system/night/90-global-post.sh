@@ -438,6 +438,29 @@ _archive_old_daily_logs() {
   done
 }
 
+# Hand the migration-source sweep back to the module's own daily hosting queue
+# on every hosted instance that carries it. The nightly pass below switches that
+# queue off per instance because the paused nightly run is the only executor on
+# a BOA box -- so when the nightly executor is itself switched off, the queue has
+# to be switched back on, or nothing revokes migration-source grants here again.
+# Enabling is all this does: what the queue then runs is the module's own
+# documented daily cadence, the one plain Aegir installs use.
+_migrate_source_queue_fallback_on() {
+  local _armPth _armUsr _armHas
+  for _armPth in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    if [ -e "${_armPth}/config/server_master/nginx/vhost.d" ] \
+      && [ ! -e "${_armPth}/log/proxied.pid" ] \
+      && [ ! -e "${_armPth}/log/CANCELLED" ]; then
+      _armUsr=$(echo "${_armPth}" | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      _armHas=$(su -s /bin/bash - "${_armUsr}" -c "drush8 @hostmaster php-eval \"echo (int) module_exists('hosting_migrate_source');\"" 2>/dev/null | tr -dc '0-9')
+      if [ "${_armHas}" = "1" ]; then
+        echo "migrate-sweep: ${_armUsr} daily fallback queue re-armed"
+        su -s /bin/bash - "${_armUsr}" -c "drush8 @hostmaster vset hosting_queue_migrate_source_enabled 1" &> /dev/null
+      fi
+    fi
+  done
+}
+
 _migrate_source_sweep_all() {
   # Nightly migration-source sweep for every hosted instance, executed inside
   # a box-wide task-queue pause (/run/boa_queue_stop.pid -- the same marker
@@ -446,11 +469,24 @@ _migrate_source_sweep_all() {
   # grant concurrently with a sweep pass. The sweep's own frontend hosting
   # queue stays registered as a daily fallback for plain Aegir; on BOA boxes
   # it is switched off per instance every night below, making this paused run
-  # the only scheduled executor here. A leaked marker self-heals: clear.sh
-  # removes one whose recorded owner PID is gone.
+  # the only scheduled executor here -- so switching this run off switches the
+  # fallback back on (_migrate_source_queue_fallback_on), never leaving the box
+  # with no executor at all. A leaked marker self-heals: clear.sh removes one
+  # whose recorded owner PID is gone.
   local _stop="/run/boa_queue_stop.pid" _madeStop=NO _drain=0
   local _swpPth _swpUsr _swpHas _lockfd
+  local _armed="/var/log/boa/migrate-sweep-fallback-on.info"
   if [ -e "/data/conf/disable_migrate_sweep_night.cnf" ]; then
+    # The night run is off, so this box has no executor at all until the daily
+    # queue this pass keeps disabled is switched back on. Re-arm it once per
+    # transition, not every night: the stamp is removed again the moment a real
+    # pass disables the queue, and while it is there an operator's own choice in
+    # the panel's queue settings is left alone.
+    if [ ! -e "${_armed}" ]; then
+      echo "migrate-sweep: nightly run disabled; handing the sweep back to the daily queue"
+      _migrate_source_queue_fallback_on
+      touch "${_armed}" 2>/dev/null
+    fi
     return 0
   fi
   if ! command -v _provision_running > /dev/null 2>&1; then
@@ -460,6 +496,9 @@ _migrate_source_sweep_all() {
   fi
   exec {_lockfd}>/run/.boa_migrate_sweep.flock 2>/dev/null || return 0
   if ! flock -n "${_lockfd}"; then
+    # Another nightly pass is sweeping right now -- say so, so a night with no
+    # sweep output is never silent.
+    echo "migrate-sweep: another pass holds the sweep lock; skipping this night"
     exec {_lockfd}>&-
     return 0
   fi
@@ -493,8 +532,11 @@ _migrate_source_sweep_all() {
         _swpHas=$(su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster php-eval \"echo (int) module_exists('hosting_migrate_source');\"" 2>/dev/null | tr -dc '0-9')
         if [ "${_swpHas}" = "1" ]; then
           # This paused nightly run is the executor on BOA boxes; keep the
-          # frontend daily queue off so an unpaused pass never runs.
+          # frontend daily queue off so an unpaused pass never runs. The stamp
+          # goes with it: the fallback is owed a re-arm again the day this
+          # nightly executor is switched off.
           su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster vset hosting_queue_migrate_source_enabled 0" &> /dev/null
+          rm -f "${_armed}"
           echo "migrate-sweep: ${_swpUsr} pass"
           timeout 300 su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster hosting-migrate-source-sweep" 2>&1
         fi

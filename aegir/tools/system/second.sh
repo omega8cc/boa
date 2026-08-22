@@ -37,9 +37,22 @@ fi
 # exists (the copied-in datadir needs the write gates from its first
 # minute), so a clean-and-empty probe is EXPECTED then and the marker must
 # survive it. The in-flight signal is touched by xmass at every init phase
-# boundary, clears on reboot with /run, and carries a generous age ceiling
-# so self-removal resumes if an init dies without cleanup.
+# boundary and carries a generous age ceiling so self-removal resumes if
+# an init dies without cleanup -- but it lives in /run, which is tmpfs, so
+# it is mirrored below to a reboot-proof twin beside the marker.
 if [ -e "/root/.standby.cnf" ]; then
+  # Mirror the in-flight signal to /root, where a reboot cannot wipe it.
+  # A target reboot inside the seed window (host maintenance, panic, a
+  # hand reboot) empties /run while the box sits on a copied-in production
+  # datadir with no replication yet: the probe below would then run
+  # clean-and-empty with no signal left, self-remove the marker within a
+  # minute, and un-gate every local writer. The twin carries the same age
+  # ceiling as the /run file, so a dead init still ages out, and it is
+  # reaped the moment the window is definitively over (replication
+  # confirmed, marker gone, or marker self-removed).
+  if [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+    touch /root/.standby.init.pid
+  fi
   if mysqladmin ping &> /dev/null; then
     _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
     _rplRc=$?
@@ -49,17 +62,20 @@ if [ -e "/root/.standby.cnf" ]; then
     fi
     if [ "${_rplRc}" -eq "0" ] && [ -n "${_rplState}" ]; then
       # Confirmed replica: marker and role agree; the per-job gates carry
-      # the passivity, so there is nothing to enforce here.
-      :
+      # the passivity, so there is nothing to enforce here. The init
+      # window is definitively over once replication runs, so the
+      # reboot-proof twin goes: a leftover would hold the marker through a
+      # LATER hand promotion, which is exactly what this block is for.
+      rm -f /root/.standby.init.pid
     elif [ "${_rplRc}" -eq "0" ]; then
-      if [ -e "/run/boa_xmass_init.pid" ] \
-        && [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
-        # Init in flight: hold the marker silently -- the in-flight file
-        # is the record, and a log line per minute would flood the log
+      if [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid \
+        -mmin -2880 2>/dev/null)" ]; then
+        # Init in flight: hold the marker silently -- the in-flight files
+        # are the record, and a log line per minute would flood the log
         # for the whole seed leg.
         :
       else
-        rm -f /root/.standby.cnf
+        rm -f /root/.standby.cnf /root/.standby.init.pid
         echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config on $(date)" \
           >> /var/log/boa/standby.quiesce.log
       fi
@@ -79,6 +95,11 @@ if [ -e "/root/.standby.cnf" ]; then
     fi
   fi
 fi
+# Reap the reboot-proof in-flight twin whenever the marker itself is gone
+# (cutover promotion, an init unwind, a hand removal): it only ever
+# qualifies a marker, and a leftover would hold the marker written by the
+# NEXT seed run long past that run's own window.
+[ -e "/root/.standby.cnf" ] || rm -f /root/.standby.init.pid
 # Reap the defer-log stamp whenever the deferral condition no longer
 # holds (mysqld back, or the marker itself gone) -- a leaked stamp would
 # silently swallow the log line for the NEXT genuine outage.
