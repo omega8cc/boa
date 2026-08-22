@@ -30,9 +30,12 @@
 #     dormant on standard runs; this store is what un-dormants it.
 #   - /var/log/boa/.valkey.demand.txt   the RM-14 hit-rate demand window
 #     ("v1 <start_ts> <samples> <hits> <misses> <evicted> <peak_mb>",
-#     7-day decaying accumulation of >=1h-uptime same-run deltas) — the
-#     PRIMARY input to the valkey ceiling control loop in
-#     _tune_memory_limits; the legacy peak-x4 guard is only its fallback.
+#     7-day decaying accumulation of >=1h-uptime same-run deltas;
+#     peak_mb is the high-water LIVE occupancy WITHIN the window, never
+#     valkey's since-start used_memory_peak, so the loop's post-action
+#     reset of this file really does clear it) — the PRIMARY input to
+#     the valkey ceiling control loop in _tune_memory_limits; the legacy
+#     peak-x4 guard is only its fallback.
 #     NB: _USE_SQLPROBE=NO therefore also starves that loop — after 8
 #     days the tune pass reverts to the legacy measured guard.
 #
@@ -304,6 +307,20 @@ if [ -e "/etc/valkey/valkey.conf" ]; then
     _VK_PEAK="${_VK_PEAK//[^0-9]/}"
     _VK_UPTM=$(echo "${_VK_INFO}" | grep "^uptime_in_seconds:" | cut -d: -f2 | tr -d "[:space:]\r")
     _VK_UPTM="${_VK_UPTM//[^0-9]/}"
+    # Live occupancy, captured BEFORE the substitution below repurposes
+    # _VK_USED for the legacy peak-x4 rung. The demand window's peak
+    # field must be a high-water mark of THIS window, not valkey's
+    # since-start used_memory_peak: nothing short of a restart ever
+    # resets that counter, so feeding it in would undo both the loop's
+    # post-action window reset and the 7-day decay on the very next
+    # sample. 0 means UNKNOWN — the window then keeps its stored value.
+    _VK_LIVE_MB=0
+    if [ -n "${_VK_USED}" ] && [ "${_VK_USED}" -gt 0 ]; then
+      _VK_LIVE_MB=$(( _VK_USED / 1048576 ))
+      if [ "${_VK_LIVE_MB}" -lt 1 ]; then
+        _VK_LIVE_MB=1
+      fi
+    fi
     if [ -n "${_VK_PEAK}" ] && [ -n "${_VK_USED}" ] \
       && [ "${_VK_PEAK}" -gt "${_VK_USED}" ]; then
       _VK_USED="${_VK_PEAK}"
@@ -377,8 +394,9 @@ if [ -e "/etc/valkey/valkey.conf" ]; then
                 # that samples continuously — a zeroed window would send
                 # the tune pass to its legacy peak-x4 rung for ~a day
                 # after every rotation, re-widening a converged ceiling.
-                # The peak restarts from the CURRENT sample so a
-                # stale-high pre-shrink peak cannot steer the idle rung.
+                # The peak restarts from the CURRENT sample's live
+                # occupancy so a stale-high pre-shrink peak cannot
+                # steer the idle rung.
                 _wTS="${_TS}"
                 _wN=$(( _wN / 2 )); _wH=$(( _wH / 2 ))
                 _wM=$(( _wM / 2 )); _wE=$(( _wE / 2 ))
@@ -394,8 +412,9 @@ if [ -e "/etc/valkey/valkey.conf" ]; then
           _wH=$(( _wH + _vkDH ))
           _wM=$(( _wM + _vkDM ))
           _wE=$(( _wE + _vkDE ))
-          if [ "${_VK_MB}" -gt "${_wP}" ]; then
-            _wP="${_VK_MB}"
+          if [ "${_VK_LIVE_MB}" -gt 0 ] \
+            && [ "${_VK_LIVE_MB}" -gt "${_wP}" ]; then
+            _wP="${_VK_LIVE_MB}"
           fi
           printf 'v1 %s %s %s %s %s %s\n' \
             "${_wTS}" "${_wN}" "${_wH}" "${_wM}" "${_wE}" "${_wP}" \
