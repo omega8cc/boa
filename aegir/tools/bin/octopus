@@ -195,6 +195,11 @@ _check_sql_running() {
 }
 
 _check_sql_access() {
+  # A finalized PX0 proxy (xtrim) has MySQL stopped and disabled on purpose,
+  # with the credential files left in place; the running check above already
+  # returns on the marker, this access check must too or every up-* on a
+  # proxy node aborts here.
+  [ -e "/root/.proxy.cnf" ] && return 0
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
