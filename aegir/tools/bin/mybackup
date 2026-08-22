@@ -453,7 +453,26 @@ _main_script() {
         # no -h, so it always dereferences a command-line operand, and the
         # *.txt glob both resolves through a planted directory link and matches
         # planted links by name. Strip the plantable components, then set modes
-        # with find -type f/-type d, which never match a link.
+        # with find -type f/-type d, which never match a link. The leaf is not
+        # enough: a planted INTERMEDIATE link (static/control itself, or
+        # control/remote_backups) redirects every operand below it, so refuse
+        # the whole run when any ancestor of the credentials dir resolves
+        # outside the account tree or is a link.
+        _user_ctl_ok=YES
+        for _p in "/data/disk/${_user}/static" \
+          "/data/disk/${_user}/static/control" \
+          "/data/disk/${_user}/static/control/remote_backups" \
+          "/data/disk/${_user}/remote_backups"; do
+          if [ -L "${_p}" ]; then
+            _user_ctl_ok=NO
+            echo "[$(date)] REFUSED for ${_user}: ${_p} is a symlink" \
+              >> /var/log/mybackup_invalid_queued.log
+          fi
+        done
+        if [ "${_user_ctl_ok}" != "YES" ]; then
+          rm -f "${_user_cmd_file}"
+          continue
+        fi
         [ -L "/data/disk/${_user}/remote_backups/paths" ] \
           && rm -f /data/disk/${_user}/remote_backups/paths &> /dev/null
         [ ! -L "/data/disk/${_user}/remote_backups/paths" ] \

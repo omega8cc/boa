@@ -344,9 +344,10 @@ export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
 : "${_SQL_MUTATION_MAX_MINS:=15}"
 
 _sql_mutation_in_flight() {
-  # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database, and
-  # it never brings them back: these watchdogs are the intended recovery. That
-  # only works if they wait for the restart to finish. Restarting the web tier
+  # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database and
+  # brings them back itself once mysqld answers; these watchdogs are the
+  # safety net behind that. They only help if they wait for the restart to
+  # finish. Restarting the web tier
   # mid-teardown stands it in front of a database that is still down, so workers
   # pile onto failed connections and the whole herd arrives at a cold cache the
   # moment the database returns; that cascade is what turns a brief database
