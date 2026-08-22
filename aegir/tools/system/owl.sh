@@ -265,6 +265,11 @@ _daily_action() {
   if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
     _cleanup_weblogx
   fi
+  # Skew-guarded: the function ships in 90-global-post.sh and the two files
+  # deliver on independent serials, so a mixed vintage must skip, not fatal.
+  if command -v _migrate_source_sweep_all > /dev/null 2>&1; then
+    _migrate_source_sweep_all
+  fi
 }
 
 ###--------------------###
