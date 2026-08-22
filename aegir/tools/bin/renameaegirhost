@@ -174,6 +174,19 @@ _maybe_run() {
   fi
 }
 
+_safe_name() {
+  # Tenant-derived values (site dir basenames, symlink targets under the
+  # tenant's own tree) travel through _maybe_run's eval inside literal single
+  # quotes and into su -c strings; one quote in such a value would close the
+  # quoting and run the remainder as root. Refuse anything outside the
+  # hostname/path charset. $1 = value, $2 = label for the alert.
+  if [[ ! "$1" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+    _alrt "  ${2:-name} '$1' carries characters outside [A-Za-z0-9._/-] -- skipped"
+    return 1
+  fi
+  return 0
+}
+
 _renamed_already() {
   # NEW-contains-OLD guard, path/name flavor: in that regime any value that
   # already carries NEW would double on a second forward substitution
@@ -422,6 +435,7 @@ _rename_tenant_site_dirs() {
   local _D _SITES _OLDNAME _NEWNAME _NEWD _N=0
   for _D in $(_find_old_host_site_dirs | sort); do
     _OLDNAME=$(basename "${_D}")
+    _safe_name "${_D}" "site dir" || continue
     _renamed_already "${_OLDNAME}" && continue
     _NEWNAME="${_OLDNAME//${_OLD_HOST}/${_NEW_HOST}}"
     [ "${_NEWNAME}" = "${_OLDNAME}" ] && continue
@@ -543,6 +557,10 @@ _rename_site_uri_surfaces() {
       *) continue ;;
     esac
     _SUF="${_TGT#${_OLD_FILES}}"
+    if [ -n "${_SUF}" ] && ! _safe_name "${_SUF}" "files symlink target suffix"; then
+      continue
+    fi
+    _safe_name "${_L}" "files symlink" || continue
     _OWN=$(stat -c '%U:%G' "${_L}" 2>/dev/null)
     _info "    files symlink: ${_L##*/} -> static/files/${_NEWNAME}${_SUF}"
     _maybe_run ln -sfn \'"${_NEW_FILES}${_SUF}"\' \'"${_L}"\'
@@ -556,6 +574,7 @@ _rename_site_uri_surfaces() {
   # home directory listing.
   for _L in "${_AEGIR_ROOT}"/clients/*/"${_OLDNAME}"; do
     [ -L "${_L}" ] || continue
+    _safe_name "${_L}" "client symlink" || continue
     _NEWL="$(dirname "${_L}")/${_NEWNAME}"
     if [ -e "${_NEWL}" ] || [ -L "${_NEWL}" ]; then
       _info "    client symlink already present: ${_NEWL#${_AEGIR_ROOT}/}"
@@ -674,8 +693,13 @@ _assert_site_dirs_converged() {
   # into a new site node, so one stranded old-hostname dir is one duplicate
   # site — and the duplicate is the half that owns the data. Refusing here
   # costs a re-run; importing costs a manual panel repair.
-  local _STRAY
-  _STRAY=$(_find_old_host_site_dirs | sort)
+  local _STRAY _p
+  # NEW-contains-OLD regime (example.com -> srv.example.com): every correctly
+  # renamed dir still matches the *OLD* substring find, so drop the ones that
+  # already carry NEW -- the same guard the mover itself applies.
+  _STRAY=$(_find_old_host_site_dirs | while read -r _p; do
+    _renamed_already "$(basename "${_p}")" || printf '%s\n' "${_p}"
+  done | sort)
   [ -z "${_STRAY}" ] && return 0
 
   if [ "${_DRY_RUN}" = "YES" ]; then
@@ -1740,6 +1764,7 @@ _queue_renamed_site_verifies() {
       _info "    (dry-run) would queue site verify: ${_U}"
       continue
     fi
+    _safe_name "${_U}" "site uri" || continue
     _info "    queueing site verify: ${_U}"
     _run_as_aegir "drush8 @hostmaster hosting-task @${_U} verify --force"
   done
