@@ -6687,13 +6687,13 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6801,13 +6801,13 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster hosting-dispatch
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       _msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15
