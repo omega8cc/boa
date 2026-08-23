@@ -1961,7 +1961,7 @@ _init_conf() {
       _init_mnfr
       _init_info
     fi
-    _init_prepare >> "${_logSlt}"
+    _init_prepare
   fi
 }
 
