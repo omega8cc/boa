@@ -68,14 +68,16 @@ find /run/boa*_auto_healing.pid     -type f -not -newermt "${_FIVE_MINUTES}" -ex
 # concurrent passes purge the build tree a chained install was still consuming.
 # Once the owner is gone the next tick reaps as before, so nothing leaks.
 _installer_alive() {
-  pgrep -f "/local/bin/barracuda" > /dev/null 2>&1 && return 0
-  pgrep -f "/local/bin/octopus" > /dev/null 2>&1 && return 0
+  # Anchored, not a bare substring: any command line merely MENTIONING the
+  # wrapper -- an editor, a checksum, an operator's ssh probe -- would
+  # otherwise hold installer-lock reaping off indefinitely.
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
   # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
   # (xoct/xcopy driving a remote install) must not hold this box's reaping
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
   # Dual-path for the staging move -- see the same guard in BOA.sh.txt.
-  pgrep -f "/(var/backups|var/opt/boa-dist)/BARRACUDA.sh.txt" > /dev/null 2>&1 && return 0
-  pgrep -f "/(var/backups|var/opt/boa-dist)/OCTOPUS.sh.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 

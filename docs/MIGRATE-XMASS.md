@@ -48,20 +48,28 @@ filesystem data is run on demand via `xmass sync`. At cutover:
    block in step 1 is what stops file writes; a database read lock never gated
    them, so holding one across a walk of every store bought nothing and could
    hold the source database locked for hours on a large account.
-6. Source writes are frozen durably: a read-only flag is appended to
+6. An **advisory** read-only flag is appended to
    `/data/conf/global/global-extra.inc` (the previous file kept beside it as
-   `.bak`), and the cutover **refuses to proceed if the freeze does not
-   take** — a session-scoped read lock cannot hold anything once its client
-   disconnects, so the durable flag is what actually stops writes; the
-   surviving `FLUSH TABLES` only pushes buffers. The lag is then re-confirmed
-   three times.
+   `.bak`). This is the step the rest of this runbook calls the *write
+   freeze*, and it is belt-and-braces only: the include is box-wide, most site
+   shapes ignore it (`site_readonly` needs the `readonlymode` module enabled
+   per site), and a `barracuda up-<tree> system` pass on the source rewrites
+   the include from the shipped copy, dropping the block. `xoct` refuses the
+   same mechanism for the same reasons — see
+   [MIGRATE-XOCT.md](MIGRATE-XOCT.md). What actually stops writes for the
+   window is the step-1 503 gate plus the parked cron and BOA runners, both
+   already in force, so a flag that cannot be written **warns and the cutover
+   continues**. A session-scoped read lock is not used at all: it cannot hold
+   anything once its client disconnects; the surviving `FLUSH TABLES` only
+   pushes buffers. The lag is then re-confirmed three times.
 7. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`); the freeze
    flag is removed on the **target** later in the sequence. On the source it
    stays for the life of the proxy — the old box serves through the proxy
    from here, but if you roll back to it, restore the include from its
    `.bak`. (An abort that **proves** the promotion did not hold thaws the
    source by itself; a post-promotion park — and a promotion failure whose
-   state cannot be read back — keeps the source frozen, on purpose.)
+   state cannot be read back — keeps the source 503-gated with the flag in
+   place, on purpose.)
 8. Panel DB access is rewired on the target for every Ægir root: the datadir
    swap killed the target's own panel databases, so the live (replicated)
    hostmaster DB is rediscovered per root, its DB user's password reset, and
@@ -140,13 +148,25 @@ process does not block.
   every migrated site, not only the site that needed it. The tree may
   legitimately differ (lts vs pro); an unreadable stamp on either side is
   fatal too ("refusing to migrate blind"). The fix is a FULL run — barracuda
-  AND octopus — on the older box, then re-run.
+  AND octopus — on the older box, then re-run. The same comparison is
+  re-asserted at `init` and again in the `cutover --live` pre-flight (and
+  reported as a `DENY` in the cutover DRY run), because `prep-target` is not
+  a precondition of `init` and BOA is rolling — a tag can move either box
+  during the days or weeks of incremental syncs.
 - **An installed Octopus account on the target for every eligible source
   account, with matching names.** Replication brings the databases, but the
   files rsync into `/data/disk/<oN>/`, the cutover renames each Ægir root and
   the panel rewire runs per root — all of which need a real install (system
   user, FPM pool, vhost include), not a directory. `xmass prep-target` creates
   them; `init`, `sync` and `cutover` all refuse to proceed without them.
+- **The target's Solr set mirrors the source's *used* set.** A hosted-named
+  target installs all three Solr versions on its first full `barracuda` pass,
+  while a migration target should carry only what its source actually uses.
+  `prep-target` gates on this and, without `--fix-solr`, **refuses on any
+  mismatch**; `init`, `sync` and `cutover` re-gate on the same comparison. The
+  classification measured while the source is still healthy is recorded in
+  `/data/conf/xmass_solr_used.cnf`, because a post-cutover source reads as
+  using nothing.
 - Disk on source: enough space for the xtrabackup staging directory (or stream
   capability if disk is tight — auto-detected; see [Transfer Method](#xtrabackup-transfer-method)).
   `init` also checks the **target** has room for the datadir restore before
@@ -241,7 +261,7 @@ Run on the **source**, after `pre-mig` has completed on both hosts and before
 accounts exist and before `init` replaces its datadir:
 
 ```sh
-xmass prep-target target-ip [--fix-php]
+xmass prep-target target-ip [--fix-php] [--fix-solr]
 ```
 
 What it does, in order:
@@ -257,7 +277,34 @@ What it does, in order:
    rather than at `init`, which fails *after* the target datadir has already
    been replaced. Override with `_XMASS_SKIP_REVERSE_CHECK=YES` if you
    firewall differently.
-2. **PHP coverage gate** — collects every version pinned by any eligible
+2. **Solr coverage gate** — classifies each Solr version's use on the source
+   from measured state (installed and listening service, dotted core names,
+   the one-year `data/index` write bar, `boa_site_control.ini` bindings and
+   the `SR*` opt-in tokens), then compares that used set against the target's
+   own install and deny state. Live bindings count as used regardless of write
+   age, and a version that reads as ambiguous is reported for a per-box ruling,
+   never auto-denied. Without `--fix-solr` the gate is **fatal on every defect
+   class**, repairable ones included — it is stricter here than the `init`,
+   `sync` and `cutover` re-gates, which refuse only on a used version that is
+   not serviceable on the target. It runs **before** the PHP gate on purpose:
+   `--fix-php` drives a full `barracuda system` pass on the target, and on a
+   hosted-named box that pass is exactly the all-three-Solr install trigger, so
+   the deny set must be on the target's disk before it. `--fix-solr`
+   reconciles: per-version denies (`_DENY_JETTY9`/`_DENY_SOLR7`/`_DENY_SOLR9`
+   plus the `/etc/boa/.deny.*.cnf` markers) for every unused version, the
+   blanket java pair when the source uses no Solr at all, unparking of used
+   versions by driving the target's own `xmass restore-solr`, and any still
+   missing used version queued onto the system pass (shared with `--fix-php`'s
+   pass when both are owed). The fix path refuses by design on two target
+   shapes: a finalized PX0 proxy (`/root/.proxy.cnf`), where Solr is down
+   deliberately and the proxy shape has to be undone first, and a target whose
+   tool set is too stale to have `xmass` on `PATH` — re-run `xmass pre-mig`
+   there, then re-run this. Why it is a gate at all: the first `sync` lands
+   every source Solr data tree on the target, and a landed tree makes BOA's
+   installer treat that version as installed forever, so a used version that
+   is not serviceable there surfaces only after promotion, as silently broken
+   search.
+3. **PHP coverage gate** — collects every version pinned by any eligible
    account (`static/control/fpm.info`, `cli.info`, and the per-site column of
    `multi-fpm.info`) and verifies each is installed on the target. Missing
    versions are fatal, because a pinned-but-absent PHP is silently downgraded
@@ -265,18 +312,18 @@ What it does, in order:
    interpreter. With `--fix-php` the missing versions are appended to the
    target's `_PHP_MULTI_INSTALL` and one `barracuda up-<tree> system` pass is
    driven there to build them (~30 minutes).
-3. **Certificate health sweep** on the source — names every zero-byte,
+4. **Certificate health sweep** on the source — names every zero-byte,
    unparseable or expired certificate, so a broken renewal is fixed before the
    migration rather than debugged alongside it.
-4. **Per-account install and seeding** — drives `xoct create` for each eligible
+5. **Per-account install and seeding** — drives `xoct create` for each eligible
    account, which installs from the **target's own tree** with the source's
    plan stamps, then seeds the account's `/root/.<oN>.octopus.cnf` (portable
    values only), force-copies the PHP pin files and carries the client's shell
    credentials. Already-installed accounts are re-seeded, not re-installed.
-5. **Suspension flags** mirrored (`/data/conf/suspended/<oN>.pid` lives outside
+6. **Suspension flags** mirrored (`/data/conf/suspended/<oN>.pid` lives outside
    the account tree, so no file sync can carry it — an unmirrored suspension
    means a non-paying account resumes serving on the target).
-6. **Verification** — refuses to report success unless every eligible account
+7. **Verification** — refuses to report success unless every eligible account
    is present on the target as a real install.
 
 The verb is idempotent: re-run it after fixing anything it refused on.
@@ -322,8 +369,10 @@ expensive one.
 What `init` does:
 
 0. Re-gates what `prep-target` established, because a hand-prepared target must
-   be verified rather than trusted: every eligible account installed on the
-   target, every pinned PHP version present there, the two derived replication
+   be verified rather than trusted: the same BOA release on both ends, every
+   eligible account installed on the target, every pinned PHP version present
+   there, the target's Solr set still
+   mirroring the source's recorded used set, the two derived replication
    `server_id`s distinct (they come from the last two IP octets only, so two
    boxes in one /16 collide and replication simply refuses to start), and the
    target has room for the datadir restore. It also sweeps the source's
@@ -350,8 +399,10 @@ What `init` does:
    the night work, cache TRUNCATEs, Solr core management, binlog purge,
    mysqlcheck repairs and cluster dumps. The in-flight signal tells
    second.sh that an empty role probe is expected until replication
-   starts; it clears once the replica runs, clears with `/run` on reboot,
-   and ages out under a dead init.
+   starts. second.sh mirrors it to a reboot-proof twin
+   (`/root/.standby.init.pid`), so a target reboot inside the window
+   cannot license promotion; both clear once the replica runs, or when the
+   marker goes, and both age out under a dead init.
 5b. **Purges unfinished `delete` tasks** from every eligible account's
    hostmaster queue before the databases travel: the whole panel DB
    replicates, cutover runs the task queue with force on the target, and a
@@ -520,7 +571,9 @@ first change to the source):
 - Confirms phase is `syncing`.
 - Refuses to run outside `screen`/`tmux`: a dropped session mid-cutover strands
   the source on 503. Override with `_XMASS_NO_SCREEN=YES`.
-- Re-gates account existence and PHP coverage on the target.
+- Re-gates the same-release stamp, account existence, PHP coverage and Solr coverage on the target.
+  The release can have drifted since `init`, and a target missing a
+  central-map nginx variable takes down every migrated site at once.
 - Refuses while any account's proxy mode is undeclared, then consumes the
   clean-dry token.
 - Reports, per account, the tasks still queued or interrupted in its panel
@@ -545,9 +598,9 @@ first change to the source):
 | Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing) |
 | Step 5 | Final rsync pass of `static/files` only, **before** the lock (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
-| Step 6 | Freeze source writes durably: append the read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), **refuse the cutover if the freeze does not take**, then `FLUSH TABLES` to push buffers (a session read lock is no longer relied on — it cannot survive a disconnect) |
+| Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect |
 | Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: unlock source MySQL, **thaw the write freeze**, and abort — the target is not promoted at this point, so the source is handed back writable |
-| Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → unlock, **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays **frozen** (a thaw could silently lose writes) and the message spells out how to determine the state and which recovery to run |
+| Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → unlock, **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays 503-gated with the flag in place (lifting either could silently lose writes) and the message spells out how to determine the state and which recovery to run |
 | Step 9 | Belt-and-braces `UNLOCK TABLES` on source (no lock is normally held); the write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source. Runs at the head of the cutover tail (idempotent), so a park upstream of it — the step-8 committed-promotion park — still gets the grant dropped when the resumed run completes |
@@ -556,7 +609,7 @@ first change to the source):
 | Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master) |
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account). The rename moves host-derived tenant site directories onto the new hostname together with every URI-keyed surface (per-site Drush alias file, static files store, per-site PHP pins), and **aborts before the Ægir task queue** if any site dir still carries the old hostname — the queue would import those as brand-new sites with duplicate panel nodes. Inside a cutover that refusal parks at `phase=rename-failed`. After the renames it waits for each renamed site to actually serve (up to 180 s per site, `_RENAME_SERVE_WAIT`; the box's catch-all page is discriminated so an unknown-host 200 never passes) — minutes per site here are the wait, not a hang; a site named as never serving with a 400 usually means its trusted-host settings |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
-| Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual) |
+| Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual). Scoped to the real, dotted cores of the versions expected to **serve** on the target (used + ambiguous): a version this run deliberately denied has no service there by design, and its data trees travel with the sync regardless, so its cores are not reported |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
 | Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + vhost conversion + mode-selected notification); failures collect per account. First checks that `migration_proxy_certs.sh` exists **and is scheduled** here — from this point the source serves the proxied sites' TLS and only the daily mirror keeps it fresh |
 | Step 17 | Remove `http-off.pid` from source accounts — a failed conversion keeps its 503 gate (its vhosts would otherwise serve the old local copy against a database that now lives on the target) |
@@ -741,6 +794,7 @@ are left untouched.
 
 | Stage | Solr on source | Solr on target |
 |---|---|---|
+| Before `init` (`prep-target`) | Classified per version as used / unused / ambiguous from measured state; the verdict is recorded in `/data/conf/xmass_solr_used.cnf` | Deny set mirrored to the source's **used** set: per-version denies for unused versions, the blanket java pair when the source uses none, used versions unparked and installed. Gated at `prep-target` and fatal there without `--fix-solr` |
 | After `init` | Running normally | Stopped and DISARMED (exec bit + rc links dropped; `/var/log/boa/.xmass_solr_hold.pid` records the hold, java.sh re-asserts it every minute — surviving reboots and barracuda passes) |
 | During `sync` | Running normally | Still held (best-effort Solr rsync only) |
 | Cutover step 0 | Running | Re-held and stopped (safety) |
@@ -837,9 +891,10 @@ thaws the write freeze itself**; the phase is `cutover`, so retrying is
 `xmass reset-phase syncing`, a fresh DRY, then `--live`. A refusal at step 12
 or later (and a step-8 failure whose promotion actually committed) parks
 resumably at `phase=rename-failed` with the target promoted: the source stays
-503-gated **and deliberately frozen**, and the printed recipe **leads with the
-resume instruction** — the restore lines below it, including the thaw, are
-only for abandoning the cutover and keeping the source as production. A
+503-gated, with the advisory flag deliberately left in place, and the printed
+recipe **leads with the resume instruction** — the restore lines below it,
+including the thaw, are only for abandoning the cutover and keeping the source
+as production. A
 step-8 failure whose target cannot be read back at all keeps the freeze and
 prints how to determine the promotion state and which recovery to run.
 

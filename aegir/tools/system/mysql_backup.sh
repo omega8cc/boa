@@ -661,7 +661,7 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ ! -e "/run/boa_run.pid" ] \
   && [ ! -e "/run/boa_wait.pid" ] \
   && [ ! -e "/run/octopus_install_run.pid" ] \
-  && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 \
+  && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 \
   && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 \
   && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1; then
   _check_running

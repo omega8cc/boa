@@ -2936,6 +2936,13 @@ _satellite_prepare_child_scripts() {
   chmod 0755 /opt/tmp/state &> /dev/null
   chown ${_USER}:${_USRG} /opt/tmp/state/${_USER} &> /dev/null
   chmod 0700 /opt/tmp/state/${_USER} &> /dev/null
+  # Root's own markers (AegirSetupA OK/FAIL) live in a root-owned tree: a
+  # tenant-planted symlink in the user-owned dir above must never be followed
+  # by root's touch. Same name layout, one level down under .root.
+  mkdir -p /opt/tmp/state/.root/${_USER} &> /dev/null
+  chown root:root /opt/tmp/state/.root /opt/tmp/state/.root/${_USER} &> /dev/null
+  chmod 0755 /opt/tmp/state/.root &> /dev/null
+  chmod 0700 /opt/tmp/state/.root/${_USER} &> /dev/null
   # No chown into the build tree: the children are started as
   # `su - <user> -c "/bin/bash <script>"`, so they need read and nothing more,
   # and the tree is left 0755 for exactly that. Handing these two files to the
@@ -3294,14 +3301,31 @@ EOFMYSQL
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-dispatch" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0" &> /dev/null
   wait
+  # The sweeps above run their tasks synchronously (--fork=0), but a runner
+  # forked by the regular dispatch can still be in flight. AegirSetupB is
+  # about to swap the live drush/provision trees (.drush/sys, .drush/usr,
+  # tools/drush); a task runner still executing from them dies on its next
+  # lazy include without ever writing its final status - that write only
+  # happens in the runner's own shutdown handler - leaving the task parked
+  # at PROCESSING and the queue wedged behind it for the whole running-items
+  # window. Give in-flight runners a bounded window to finish instead of
+  # racing them; the dispatcher-side reaper heals whatever this misses.
+  _QUIESCE_WAIT=0
+  while pgrep -u "${_USER}" -f "drush.php.*hosting-task" > /dev/null 2>&1; do
+    _QUIESCE_WAIT=$(( _QUIESCE_WAIT + 1 ))
+    if [[ "${_QUIESCE_WAIT}" -ge 60 ]]; then
+      break
+    fi
+    sleep 5
+  done
 }
 
 #
@@ -3537,7 +3561,7 @@ _satellite_run_child_b() {
       || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
       _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-      touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
+      touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
       exit 1
     fi
     _U_HD="${_ROOT}/.drush"
@@ -3598,7 +3622,7 @@ _satellite_run_child_b() {
         || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-        touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
+        touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
         exit 1
       else
         if [ -e "${_U_HD}/php.ini" ]; then
@@ -3733,7 +3757,7 @@ _satellite_run_child_c() {
       || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
       _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-      touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
+      touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
       exit 1
     fi
   else
@@ -3758,7 +3782,7 @@ _satellite_run_child_c() {
           || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
           _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
           _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-          touch "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL"
+          touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
           exit 1
         fi
       else
@@ -5031,8 +5055,8 @@ _satellite_make() {
   wait
   ###
 
-  if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupA-FAIL" ] \
-    || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupA-OK" ]; then
+  if [ -e "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL" ] \
+    || [ ! -e "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-OK" ]; then
     _msg "FATAL ERROR: AegirSetupA installer failed"
     _msg "FATAL ERROR: Aborting Octopus installer NOW!"
     rm -f /opt/tmp/status-Octopus-FAIL
@@ -5805,7 +5829,18 @@ _satellite_pre_cleanup() {
   fi
   rm -f /tmp/cache.inc*
   rm -f /opt/tmp/status-*
-  rm -rf /opt/tmp/state/*
+  # Only this instance's own signal dir. /opt/tmp/state/<user> is per-instance
+  # (0700, instance-owned) and the master keeps its own state/aegir, so purging
+  # the whole state root here destroys the markers of any other run in flight:
+  # that run finishes its work but cannot stamp status-AegirSetupA-OK and dies
+  # with a phantom FATAL. An empty _USER would resolve to the state root itself,
+  # so skip rather than widen.
+  if [ -n "${_USER}" ]; then
+    rm -rf "/opt/tmp/state/${_USER}"
+    # Root's own marker dir for this instance (AegirSetupA OK/FAIL) -- same
+    # per-run purge, same scoping.
+    rm -rf "/opt/tmp/state/.root/${_USER}"
+  fi
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
@@ -6652,13 +6687,13 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
     wait
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6766,13 +6801,13 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster hosting-dispatch
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
       wait
       _msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15
@@ -6949,7 +6984,11 @@ _satellite_child_b_letsencrypt() {
       mv -f ${_leKeyP} "${_leKeyP}-prev"
     fi
   fi
-  if [ -x "${_exeLe}" ] \
+  # Marker branch must come first: the closing else removes ${_leCrtPath},
+  # which must never hit a manually installed (immutable) cert.
+  if [ -e "${_leRoot}/.ctrl/dont-overwrite-${_DOMAIN}.pid" ]; then
+    _msg "${_STATUS} B: LE renewal skipped for hostmaster ${_DOMAIN} -- immutable dont-overwrite marker present"
+  elif [ -x "${_exeLe}" ] \
     && [ ! -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ ! -e "${_leRoot}/config.sh" ]; then
     if [ -e "${_leCrtPath}/fullchain.pem" ]; then
@@ -7237,6 +7276,7 @@ MKCLIENTEOF
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le -y
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
+      ${_DRUSHCMD} @hostmaster en hosting_migrate_source -y
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
       ${_DRUSHCMD} @hostmaster cache-clear all
@@ -7247,10 +7287,32 @@ MKCLIENTEOF
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le -y               &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y         &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_migrate_source -y   &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
       ${_DRUSHCMD} @hostmaster cache-clear all                &> /dev/null
       ${_DRUSHCMD} @hostmaster updb -y                        &> /dev/null
+    fi
+
+    ### The migrate_source backend half loads only once its drush/ dir is
+    ### listed in $options['include'] in the instance drushrc, and only a
+    ### verify of the hostmaster SITE regenerates that list. The builds
+    ### and migrations above run before the module is enabled, so on the
+    ### pass that first enables it the task would report success while
+    ### granting and emitting nothing; regenerate once, only when the
+    ### module is enabled but its include entry is still missing.
+    local _MIGSRC_TEST
+    if ! grep -q "migrate_source/drush" \
+      ${_ROOT}/.drush/drushrc.php 2> /dev/null; then
+      _MIGSRC_TEST=$(${_DRUSHCMD} @hostmaster ev \
+        'if (module_exists("hosting_migrate_source")) { echo "MIGSRCON"; }' 2> /dev/null)
+      if [[ "${_MIGSRC_TEST}" =~ MIGSRCON ]]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          ${_DRUSHCMD} @hostmaster provision-verify
+        else
+          ${_DRUSHCMD} @hostmaster provision-verify &> /dev/null
+        fi
+      fi
     fi
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then

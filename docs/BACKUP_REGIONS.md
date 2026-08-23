@@ -7,6 +7,7 @@ This document outlines the supported regions and configuration guidelines for th
 - New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_USER.md)
 - New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_RETENTION.md)
 - New PRO Backups Supported Regions and Bucket Creation Guidelines (this document) [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_REGIONS.md)
+- New boa-restore Workstation Tool to Restore Anywhere Without the Server [github.com/omega8cc/boa-restore](https://github.com/omega8cc/boa-restore)
 
 ---
 
@@ -149,7 +150,7 @@ For more details, refer to the [AWS Regional Endpoints documentation](https://do
 
 #### **Google Cloud Storage (gcs)**
 
-- **Bucket Creation:** Automatic if credentials have write permissions.
+- **Bucket Creation:** Must be **manually created** before use -- backups reach GCS through its S3-compatible XML interoperability API (`boto3+s3://` with `--s3-endpoint-url https://storage.googleapis.com`) rather than a native GCS backend, so automatic creation cannot be relied on -- see Required Bucket Naming Convention below.
 - **Supported Regions:** (not all are listed here)
 
 | Data Center Location                 | Region Code     |

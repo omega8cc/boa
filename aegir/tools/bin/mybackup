@@ -308,12 +308,41 @@ _set_backup_target() {
     gcs)
       _load_credentials "gcs" "${_user}"
       _construct_bucket_name "gcs" "${_user}"
-      _BACKUP_TARGET="gs://${_BUCKET_NAME}"
+
+      # Duplicity has no native gs:// backend; use the GCS XML
+      # interoperability API with HMAC keys via the boto3 backend
+      # A credentials file written before the HMAC switch carries the
+      # pre-HMAC key names, so stop nameably instead of handing
+      # duplicity an empty key pair
+      if [[ -z "${GCS_ACCESS_KEY_ID}" ]] || [[ -z "${GCS_SECRET_ACCESS_KEY}" ]]; then
+        echo "Error: no GCS_ACCESS_KEY_ID / GCS_SECRET_ACCESS_KEY pair in the gcs credentials file"
+        echo "Error: see README.txt in the same directory for the expected variable names"
+        _remove_pid_file "${_PIDFILE}"
+        exit 1
+      fi
+      export AWS_ACCESS_KEY_ID="${GCS_ACCESS_KEY_ID}"
+      export AWS_SECRET_ACCESS_KEY="${GCS_SECRET_ACCESS_KEY}"
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url https://storage.googleapis.com"
       ;;
     ibm)
       _load_credentials "ibm" "${_user}"
       _construct_bucket_name "ibm" "${_user}"
-      _BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${_BUCKET_NAME}"
+
+      # Duplicity has no native ibmcos:// backend; use the IBM COS
+      # S3-compatible endpoint with HMAC service credentials
+      # A credentials file written before the HMAC switch carries the
+      # pre-HMAC key names, so stop nameably instead of handing
+      # duplicity an empty key pair
+      if [[ -z "${IBM_ACCESS_KEY_ID}" ]] || [[ -z "${IBM_SECRET_ACCESS_KEY}" ]]; then
+        echo "Error: no IBM_ACCESS_KEY_ID / IBM_SECRET_ACCESS_KEY pair in the ibm credentials file"
+        echo "Error: see README.txt in the same directory for the expected variable names"
+        _remove_pid_file "${_PIDFILE}"
+        exit 1
+      fi
+      export AWS_ACCESS_KEY_ID="${IBM_ACCESS_KEY_ID}"
+      export AWS_SECRET_ACCESS_KEY="${IBM_SECRET_ACCESS_KEY}"
+      _ibm_endpoint="https://s3.${IBM_REGION}.cloud-object-storage.appdomain.cloud"
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_ibm_endpoint}"
       ;;
     linode)
       _load_credentials "linode" "${_user}"
@@ -442,7 +471,26 @@ _main_script() {
         # no -h, so it always dereferences a command-line operand, and the
         # *.txt glob both resolves through a planted directory link and matches
         # planted links by name. Strip the plantable components, then set modes
-        # with find -type f/-type d, which never match a link.
+        # with find -type f/-type d, which never match a link. The leaf is not
+        # enough: a planted INTERMEDIATE link (static/control itself, or
+        # control/remote_backups) redirects every operand below it, so refuse
+        # the whole run when any ancestor of the credentials dir resolves
+        # outside the account tree or is a link.
+        _user_ctl_ok=YES
+        for _p in "/data/disk/${_user}/static" \
+          "/data/disk/${_user}/static/control" \
+          "/data/disk/${_user}/static/control/remote_backups" \
+          "/data/disk/${_user}/remote_backups"; do
+          if [ -L "${_p}" ]; then
+            _user_ctl_ok=NO
+            echo "[$(date)] REFUSED for ${_user}: ${_p} is a symlink" \
+              >> /var/log/mybackup_invalid_queued.log
+          fi
+        done
+        if [ "${_user_ctl_ok}" != "YES" ]; then
+          rm -f "${_user_cmd_file}"
+          continue
+        fi
         [ -L "/data/disk/${_user}/remote_backups/paths" ] \
           && rm -f /data/disk/${_user}/remote_backups/paths &> /dev/null
         [ ! -L "/data/disk/${_user}/remote_backups/paths" ] \

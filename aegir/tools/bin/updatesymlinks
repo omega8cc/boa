@@ -121,9 +121,12 @@ _clean_lock() {
   if command -v _single_instance_unlock >/dev/null 2>&1; then
     # Pass the fd/path recorded by _single_instance_lock explicitly; an argless call
     # left _FD empty and tripped "_FD: ambiguous redirect" on the exec {_FD}>&- close.
+    # Covers BOTH lock.inc modes: it releases/closes the flock fd, and in the
+    # no-flock fallback its else-branch rm -rf's the mkdir lock DIRECTORY. So
+    # there is nothing further to tear down here -- do not re-add a separate
+    # lock-dir cleanup, it would double the removal.
     _single_instance_unlock "${_LOCK_FD:-}" "${_LOCK_PATH:-}"
   fi
-  [ -n "${_lockDir:-}" ] && [ -d "${_lockDir}" ] && rm -rf "${_lockDir}"
 }
 
 _action_email_report() {
@@ -143,7 +146,11 @@ _is_protected_run() {
 
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _cPat="/local/bin/${_cbn}"
+      # Anchored for every member, not just "boa": a bare path substring
+      # matches any command line that merely MENTIONS the wrapper -- an
+      # editor, a checksum, an operator's ssh probe -- and phantom-holds
+      # this guard. Same form clear.sh/runner.sh/owl.sh/java.sh use.
+      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
       # Bare "boa" would match an hours-long remote install driven
       # from this box over ssh (and every boa-info probe); anchor it
       # to the LOCAL install form, as clear.sh/runner.sh already do
@@ -159,11 +166,11 @@ _is_protected_run() {
 
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/BARRACUDA\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} BARRACUDA.sh.txt(leg)"
   fi
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} OCTOPUS.sh.txt(leg)"
   fi
@@ -174,10 +181,9 @@ _is_protected_run() {
   [ -e "/run/max_load.pid" ]            && { _protectedRun=TRUE; _protectedReason="${_protectedReason} max_load.pid"; }
   [ -e "/run/critical_load.pid" ]       && { _protectedRun=TRUE; _protectedReason="${_protectedReason} critical_load.pid"; }
 
-  _IS_PROVISION_RUNNING=$(pgrep -fc provision)
-  if (( _IS_PROVISION_RUNNING > 0 )); then
+  if _provision_running; then
     _protectedRun=TRUE
-    _protectedReason="${_protectedReason} provision(${_IS_PROVISION_RUNNING})"
+    _protectedReason="${_protectedReason} provision"
   fi
   _IS_DUPLICITY_RUNNING=$(pgrep -fc duplicity)
   if (( _IS_DUPLICITY_RUNNING > 0 )); then
@@ -196,7 +202,24 @@ _read_state_var() {
 }
 
 _provision_running() {
-  pgrep -f provision >/dev/null 2>&1
+  # Genuine task EXECUTIONS only. BOA spawns them as
+  #   su -s /bin/bash - <user> -c "<php> /usr/bin/drush @<site> provision-<task>"
+  # so a real task always carries the drush command token somewhere in its
+  # process tree, and the php/su process running it always has provision on its
+  # command line. The bare substring match this replaces reported "running" for
+  # any command line that merely MENTIONED a provision path -- a checksum, an
+  # editor, an operator's ssh probe, a monitoring loop -- which in a bounded
+  # drain loop means this tool defers its work on every run, indefinitely.
+  # Mirrored from night/night.inc.sh on purpose: this tool has no library.
+  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  # The front-end dispatch phase of a task carries no provision-* token: the
+  # backend child is spawned only after bootstrap, and the post-hooks run after
+  # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without
+  # it this also matches hosting-tasks and hosting-dispatch, the per-minute
+  # pollers, which would pin the gate ON and disable every nightly cleanup.
+  pgrep -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
 }
 
 # Stable per-night id so the hourly retry stamps success once and no-ops for the rest of

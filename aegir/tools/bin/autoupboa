@@ -89,7 +89,11 @@ _weekly_install_in_flight() {
   local _CNT=0
   for _cbn in autoinit automini barracuda boa octopus; do
     if [ -e "/opt/local/bin/${_cbn}" ]; then
-      _cPat="/local/bin/${_cbn}"
+      # Anchored for every member, not just "boa": a bare path substring
+      # matches any command line that merely MENTIONS the wrapper -- an
+      # editor, a checksum, an operator's ssh probe -- and phantom-holds
+      # this guard. Same form clear.sh/runner.sh/owl.sh/java.sh use.
+      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
       # Bare "boa" also matches the boa-info probes other cron ticks fire
       # every few minutes, and an unanchored "boa in-" matches a REMOTE
       # install driven from this box over ssh; only a LOCAL in-flight
@@ -102,8 +106,7 @@ _weekly_install_in_flight() {
       fi
     fi
   done
-  if pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 \
-    || pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     return 0
   fi
   [ -e "/run/octopus_install_run.pid" ] && return 0
@@ -944,8 +947,7 @@ _is_protected_run() {
   done
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "/var/backups/BARRACUDA.sh.txt" > /dev/null 2>&1 \
-    || pgrep -f "/var/backups/OCTOPUS.sh.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
   fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
@@ -1221,9 +1223,12 @@ _if_new_kernel_reboot() {
       ### never be cut by an unattended reboot: the datadir swap and the
       ### replica setup are mid-flight exactly while this signal is fresh.
       ### Steady-state standbys still reboot as normal -- the signal only
-      ### exists inside those windows and /run clears it on boot.
-      if [ -e "/run/boa_xmass_init.pid" ] \
-        && [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+      ### exists inside those windows. Both forms are honoured: the /run
+      ### file xmass touches, and the reboot-proof twin second.sh mirrors
+      ### it to (older tools write only the /run one, so a missing twin is
+      ### never treated as a missing window).
+      if [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid \
+        -mmin -2880 2>/dev/null)" ]; then
         echo "NOTE: kernel reboot pending, deferred: xmass window in flight"
         return 0
       fi

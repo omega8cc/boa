@@ -60,8 +60,14 @@ export _tRee=pro
 ### script, so the child writes only inside its own state dir and
 ### never into the shared scratch root.
 ###
-_stateDir="/opt/tmp/state/${1}"
+# AegirSetupA runs as root and must never touch() inside the instance user's
+# own 0700 state dir (a tenant-planted symlink there would make root create a
+# file of the tenant's choosing); root signals in its own root-owned tree.
+_stateDir="/opt/tmp/state/.root/${1}"
 mkdir -p "${_stateDir}" 2> /dev/null
+chown root:root /opt/tmp/state/.root "${_stateDir}" 2> /dev/null
+chmod 0755 /opt/tmp/state/.root 2> /dev/null
+chmod 0700 "${_stateDir}" 2> /dev/null
 
 ###
 ### Panic on missing include

@@ -1046,6 +1046,20 @@ _USE_SQLPROBE=YES
 _USE_BATCH_GUARD=YES
 
 ###
+### Crashed-task reaper (task_guard monitor): a task runner killed
+### without reaching its own shutdown handler (reboot, an interrupted
+### upgrade swapping the live code trees, a signal) leaves its
+### hosting_task row at PROCESSING forever, and each such corpse is
+### counted against the dispatch concurrency budget for 8h — one can
+### wedge an instance's whole queue. The reaper marks a row failed
+### only when it is past a grace window AND its instance user has no
+### live task runner and no live provision backend. Set to NO to
+### disable on this system; _TASK_GUARD_DETECT_ONLY=YES keeps the
+### detection and alerts but never writes anything.
+###
+_USE_TASK_GUARD=YES
+
+###
 ### Permanent health/attack archive (XDR9000): a read-only harvester
 ### copies attack bans, auto-heal incidents, backup outcomes and metric
 ### samples into an append-only archive under /var/log/boa/xdr9000/
@@ -1131,8 +1145,12 @@ _GOACCESS_ALL=NO
 ### Replaces /etc/boa/.silent-octopus-upgrade.cnf
 _OCTOPUS_UPGRADE_RERUN_SILENT=NO
 ###
-### Lets the mysql monitor restart a database that reports too many
-### connections. Off by default: it restarts a live server.
+### Adds a second saturation detector to the mysql monitor: besides the syslog
+### scan it asks the server directly each pass and treats a "Too many
+### connections" reply as the trigger. It does NOT restart -- that reply proves
+### the server is answering, and the restart path returns without acting on any
+### server that answers. It relieves saturation instead: flush-hosts and the
+### long-query sweep, skipped while a Provision task is in flight.
 ### Replaces /etc/boa/.instant.busy.mysql.action.cnf
 _INSTANT_BUSY_MYSQL_ACTION=NO
 ###
