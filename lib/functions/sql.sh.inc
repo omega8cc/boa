@@ -1507,7 +1507,7 @@ _forced_mysql_root_password_update() {
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     fi
     mysqladmin -u root flush-privileges &> /dev/null
-    mysqladmin -u root flush-hosts &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -2009,7 +2009,7 @@ _sql_root_credentials_update() {
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
         fi
         mysqladmin -u root flush-privileges &> /dev/null
-        mysqladmin -u root flush-hosts &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DAFT: ${_DB_SERVER} PASWD ${_PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -2029,7 +2029,7 @@ _sql_root_credentials_update() {
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
         fi
         mysqladmin -u root flush-privileges &> /dev/null
-        mysqladmin -u root flush-hosts &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
