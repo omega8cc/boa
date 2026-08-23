@@ -438,15 +438,35 @@ function drush_provision_hosting_le_post_provision_verify() {
 
     if ($needs_update && !provision_file()->exists($immutable)->status()) {
 
+      // The openssl.* names are what the vhost loads: ssl_certificate_key
+      // reads openssl.key, ssl_certificate reads openssl_chain.crt or
+      // openssl.crt. Declared here so the guard below can never drift away
+      // from the map the wiring loop further down actually symlinks.
+      $filenames = array(
+        'openssl.crt' => 'cert.pem',
+        'openssl.csr' => 'cert.csr',
+        'openssl.key' => 'privkey.pem',
+        'openssl_chain.crt' => 'fullchain.pem',
+      );
+
       // A [re]generation is only real if dehydrated actually produced the
       // cert files; openssl.* symlinks wired to missing targets make the
-      // vhost referencing them fail nginx -t for the whole box.
-      if (!provision_file()->exists($cert_dir . "/cert.pem")->status() ||
-          !provision_file()->exists($cert_dir . "/fullchain.pem")->status()) {
-        drush_log("[hosting_le] Expected cert files are missing in " . $cert_dir, 'warning');
-        drush_log("[hosting_le] Skipping symlinks wiring and webserver restart to keep the vhost config valid.", 'warning');
-        drush_log("[hosting_le] Please run Verify again for this site to attempt the LE certificate [re]generation.", 'warning');
-        return FALSE;
+      // vhost referencing them fail nginx -t for the whole box. Test with
+      // readable() and not exists(), because exists() is file_exists() or
+      // is_link() and so passes a dangling symlink, which the --cleanup run
+      // below then deletes outright, leaving nothing for the wiring to point
+      // at. The CSR is skipped on purpose: no webserver ever reads it, so
+      // gating on it would only block cert dirs which legitimately lack it.
+      foreach ($filenames as $original => $target) {
+        if ($original == 'openssl.csr') {
+          continue;
+        }
+        if (!provision_file()->readable($cert_dir . "/" . $target)->status()) {
+          drush_log("[hosting_le] Expected cert file " . $target . " is missing or unreadable in " . $cert_dir, 'warning');
+          drush_log("[hosting_le] Skipping symlinks wiring and webserver restart to keep the vhost config valid.", 'warning');
+          drush_log("[hosting_le] Please run Verify again for this site to attempt the LE certificate [re]generation.", 'warning');
+          return FALSE;
+        }
       }
 
       exec("/bin/bash " . $le_exec . " --cleanup", $output_clean);
@@ -484,13 +504,6 @@ function drush_provision_hosting_le_post_provision_verify() {
       }
 
       drush_log('[hosting_le] Replacing openssl symlinks.', 'info');
-
-      $filenames = array(
-        'openssl.crt' => 'cert.pem',
-        'openssl.csr' => 'cert.csr',
-        'openssl.key' => 'privkey.pem',
-        'openssl_chain.crt' => 'fullchain.pem',
-      );
 
       $success = TRUE;
       foreach ($filenames as $original => $target) {
