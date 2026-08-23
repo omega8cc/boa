@@ -78,6 +78,19 @@ _forward_to_dash() {
   fi
 }
 
+# POSIX allows -- to end the option list, and glibc >= 2.41 uses it: popen(),
+# system() and wordexp() now spawn  sh -c -- <command>  where older glibc sent
+# sh -c <command>. Every PHP exec()/shell_exec()/system() call on a Debian 13
+# based box therefore arrives with the separator in $2, which made _ARGS the
+# separator itself, no allowlist could match it, and the run was denied with
+# no output -- silently breaking every shell-out a site or drush makes. Drop
+# the separator here, before anything reads the positional parameters, so the
+# whole script sees the argv shape it has always seen.
+if [ "${1}" = "-c" ] && [ "${2}" = "--" ]; then
+  shift 2
+  set -- "-c" "$@"
+fi
+
 # Capture all arguments
 _ALL="$@"
 ### echo "_ALL is ${_ALL}"
