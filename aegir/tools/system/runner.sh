@@ -67,7 +67,7 @@ _ci_master_cron_control() {
     # /local/bin matches both the /opt and the PATH-resolved /usr symlink
     # form; the .sh.txt pgreps cover the chained install's legs
     if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" >/dev/null 2>&1 \
-      || pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" >/dev/null 2>&1 \
+      || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" >/dev/null 2>&1 \
       || pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" >/dev/null 2>&1 \
       || [ -e "/run/boa_run.pid" ] \
       || [ -e "/run/boa_wait.pid" ] \
@@ -105,8 +105,14 @@ elif [ -e "/var/spool/cron/crontabs/.aegir" ]; then
   # Un-park HERE, above the proxy/pause exits: a promoted ha-switch box
   # can keep its proxy marker, and the parked dispatch must return the
   # moment the standby role ends -- the un-park at the tail of this
-  # script is unreachable on that shape.
-  _enable_master_cron
+  # script is unreachable on that shape. NOT on a CI box: there the park
+  # is _ci_master_cron_control's own doing (below), and un-parking here
+  # would flap the crontab twice a minute and arm dispatch through every
+  # early exit between here and that function.
+  if [ ! -e "/etc/boa/.look.like.jenkins.cnf" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_FORCE_CI_BOX=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+    _enable_master_cron
+  fi
 fi
 # The task queue stays proxy-gated: a finalized proxy has no local sites
 # for tasks to act on (part of the 2026-08-09 marker narrowing -- this

@@ -111,6 +111,9 @@ _launch_auto_healing() {
   if [ -e "/var/xdrago/monitor/check/batch_guard.sh" ]; then
     nohup /var/xdrago/monitor/check/batch_guard.sh > /dev/null 2>&1 &
   fi
+  if [ -e "/var/xdrago/monitor/check/task_guard.sh" ]; then
+    nohup /var/xdrago/monitor/check/task_guard.sh > /dev/null 2>&1 &
+  fi
   nohup /var/xdrago/monitor/check/nginx.sh > /dev/null 2>&1 &
   nohup /var/xdrago/monitor/check/nginx_guard.sh > /dev/null 2>&1 &
   nohup /var/xdrago/monitor/check/java.sh > /dev/null 2>&1 &

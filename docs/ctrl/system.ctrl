@@ -229,8 +229,13 @@ by the BOA install and upgrade tools exclusively.
   during the transition, set the variable to NO *and* remove the file: while
   the file exists it wins and is re-asserted on every pass.
 
-  Lets the mysql monitor restart a database server that reports too many
-  connections. Off by default deliberately: it restarts a LIVE server.
+  Adds a second saturation detector to the mysql monitor: besides the syslog
+  scan it asks the server directly on every pass and treats a "Too many
+  connections" reply as the trigger. It does NOT restart. That reply proves the
+  server is answering, and the restart path returns without acting on a server
+  that answers, so the marker used to buy nothing at all. It now relieves the
+  saturation instead -- flush-hosts and the long-query sweep -- and stands down
+  while a Provision task is in flight, as the syslog arm already did.
 
  @=> /etc/boa/.allow.sendmail.cnf
 

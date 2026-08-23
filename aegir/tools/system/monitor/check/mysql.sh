@@ -15,6 +15,26 @@ _pthLch="/run/boa_mysql_restart_latched.pid"
 _INSTANT_BUSY_MYSQL_ACTION=NO
 _MYSQLADMIN_MONITOR=NO
 
+_provision_running() {
+  # Genuine task EXECUTIONS only. BOA spawns them as
+  #   su -s /bin/bash - <user> -c "<php> /usr/bin/drush @<site> provision-<task>"
+  # so a real task always carries the drush command token somewhere in its
+  # process tree, and the php/su process running it always has provision on its
+  # command line. The bare substring match this replaces reported "running" for
+  # any command line that merely MENTIONED a provision path -- a checksum, an
+  # editor, an operator's ssh probe, a monitoring loop. Mirrored from
+  # night/night.inc.sh on purpose: this tool has no library to source.
+  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  # The front-end dispatch phase of a task carries no provision-* token: the
+  # backend child is spawned only after bootstrap, and the post-hooks run after
+  # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without
+  # it this also matches hosting-tasks and hosting-dispatch, the per-minute
+  # pollers, which would pin the gate ON and disable every nightly cleanup.
+  pgrep -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -350,8 +370,7 @@ _sql_busy_detection() {
   if [ -e "${_SQL_LOG}" ]; then
     if [ `tail --lines=333 ${_SQL_LOG} \
       | grep --count "Too many connections"` -gt 111 ]; then
-      _IS_PROVISION_RUNNING=$(pgrep -f provision)
-      if [ -z "${_IS_PROVISION_RUNNING}" ]; then
+      if ! _provision_running; then
         _sql_restart "BUSY MySQL"
       fi
     fi
@@ -365,7 +384,23 @@ _sql_busy_detection() {
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -s /root/.my.pass.txt ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
-        _sql_restart "BUSY MySQL"
+        # This used to call _sql_restart, which could never act: the trigger
+        # above proves the server is ANSWERING, and _mysql_is_answering counts
+        # "Too many connections" as alive, so _sql_restart returned at its first
+        # line every time. The opt-in silently did nothing.
+        #
+        # Route it to the remedies that actually relieve connection saturation.
+        # Both also run later in an ordinary pass, but the later long-query
+        # sweep is suppressed while max_load/critical_load markers exist -- which
+        # is exactly the regime that produces this saturation -- so running them
+        # here is what makes the opt-in mean something.
+        if ! _provision_running; then
+          echo "INSTANT BUSY MySQL: relieving connection saturation"
+          _mysql_flush_hosts
+          _mysql_proc_control "${_SQL_MAX_TTL}"
+        else
+          echo "INSTANT BUSY MySQL: an Aegir/Provision task is in flight -- deferring"
+        fi
       fi
     fi
   fi
@@ -478,7 +513,15 @@ _mysql_high_load() {
   # Compare against thresholds; use bc for floating point comparison
   if (( $(echo "${_LOAD} > ${_LOAD_THRESHOLD}" | bc -l) )) && [ "${_MYSQL_THREADS}" -gt "${_THREAD_THRESHOLD}" ]; then
     echo "High load and excessive MySQL threads detected. Restarting MySQL..."
-    _sql_restart "HIGH LOAD MySQL"
+    # Gated like the busy path below: a Provision task churns connections and
+    # threads by design, and restarting under it loses the task's work. The DOWN
+    # path (_mysql_health_check_fix) stays UNgated on purpose -- a server that
+    # fails four live probes is a real outage and must be healed regardless.
+    if ! _provision_running; then
+      _sql_restart "HIGH LOAD MySQL"
+    else
+      echo "HIGH LOAD MySQL: an Aegir/Provision task is in flight -- not restarting"
+    fi
   else
     echo "System operating normally."
   fi

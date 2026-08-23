@@ -7,6 +7,7 @@ This guide explains the global backup system, its configuration, supported servi
 - New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
 - New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
 - New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+- New boa-restore Workstation Tool to Restore Anywhere Without the Server [github.com/omega8cc/boa-restore](https://github.com/omega8cc/boa-restore)
 
 ---
 
@@ -219,6 +220,20 @@ Ensure all credentials are secured:
 ```bash
 chmod 600 /root/.remote_backups/credentials/*.txt
 ```
+
+---
+
+## **Handing a Tenant Their Passphrase**
+
+A tenant who wants server-independent access to their own off-site backups — via the read-only [boa-restore](https://github.com/omega8cc/boa-restore) workstation tool ([guide](https://docs.boa.io/using/backups/disaster-proof-restore)) — needs a copy of their `.secret.txt`. **Copy, never move** — the original is immutable (`chattr +i`) and the scheduled backups depend on it:
+
+```bash
+cp /data/disk/<user>/remote_backups/.secret.txt /data/disk/<user>/static/control/remote_backups/credentials/.secret.txt
+chown <user>.ftp:users /data/disk/<user>/static/control/remote_backups/credentials/.secret.txt
+chmod 600 /data/disk/<user>/static/control/remote_backups/credentials/.secret.txt
+```
+
+The tenant downloads it over SFTP and deletes the copy; if it lingers, remove it for them.
 
 ---
 
