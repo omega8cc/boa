@@ -97,7 +97,18 @@ function drush_provision_hosting_le_post_provision_verify() {
   if (d()->type == 'site' &&
      !d()->ssl_enabled &&
      !provision_file()->exists($immutable)->status()) {
-    if (file_exists($cert_dir)) {
+    // dehydrated --cleanup sweeps EVERY cert dir in this account and, unlike
+    // a signing run, never takes $le_root/lock. An issuance in flight (its
+    // signing run holds the lock) has only un-symlinked cert-<ts>.*/privkey
+    // files in its dir, which is precisely what cleanup archives -- the
+    // concurrent run then dies at "Requesting certificate" on a missing CSR.
+    // Observed on a fresh install: the queue's verify of the not-yet-SSL
+    // hostmaster site collided with BOA's own hostmaster LE run. Cleanup is
+    // housekeeping with no deadline, so defer it while the lock is held.
+    if (file_exists($cert_dir) && file_exists($le_root . "/lock")) {
+      drush_log('[hosting_le] ACME Cleanup skipped: another LE run holds ' . $le_root . '/lock, an in-flight issuance must not be archived.', 'info');
+    }
+    elseif (file_exists($cert_dir)) {
       exec("/bin/bash " . $le_exec . " --cleanup", $output_b);
       $acme_result_b = implode(' ', $output_b);
       drush_log('[hosting_le] ACME Cleanup Output: ' . $acme_result_b, 'info');

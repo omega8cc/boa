@@ -78,14 +78,16 @@ _forward_to_dash() {
   fi
 }
 
-# POSIX allows -- to end the option list, and glibc >= 2.41 uses it: popen(),
-# system() and wordexp() now spawn  sh -c -- <command>  where older glibc sent
-# sh -c <command>. Every PHP exec()/shell_exec()/system() call on a Debian 13
-# based box therefore arrives with the separator in $2, which made _ARGS the
-# separator itself, no allowlist could match it, and the run was denied with
-# no output -- silently breaking every shell-out a site or drush makes. Drop
-# the separator here, before anything reads the positional parameters, so the
-# whole script sees the argv shape it has always seen.
+# POSIX allows -- to end the option list, and glibc has sent it since 2.38
+# (BZ#28519, "system and popen should pass -- between /bin/sh and argument"):
+# every libc system()/popen() caller now spawns  sh -c -- <command>  where
+# older glibc sent  sh -c <command>. Measured: Excalibur (glibc 2.41) sends the
+# separator for PHP exec(), PHP shell_exec() and python os.system() alike,
+# Daedalus (glibc 2.36) sends none. Without this the separator itself landed in
+# $2 and became the command, no allowlist could match it, and the run was denied
+# with no output -- silently breaking every shell-out a site or drush makes on
+# any trixie-based box. Drop the separator here, before anything reads the
+# positional parameters, so the whole script sees the argv shape it always saw.
 if [ "${1}" = "-c" ] && [ "${2}" = "--" ]; then
   shift 2
   set -- "-c" "$@"
