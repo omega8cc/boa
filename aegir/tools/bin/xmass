@@ -4653,6 +4653,11 @@ _xmass_clear_pending_deletes() {
   # cutover's hosting-tasks --force executes it against production. So count
   # the failures, re-check what is left, and refuse rather than report a
   # purge that did not happen.
+  # hosting_add_task() never sets executed, so a queued delete carries NULL
+  # there and "executed='0'" matched nothing; and hosting_task is keyed per
+  # node REVISION -- every finished task leaves its creation revision frozen
+  # at task_status 0 -- so both the purge and the re-check join node on vid,
+  # the dispatcher's own view, and count only rows it could ever run.
   local _oct _bad=0 _left _tot=0
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _tot=$((_tot + 1))
@@ -4663,13 +4668,13 @@ _xmass_clear_pending_deletes() {
       continue
     fi
     if ! su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\"" &> /dev/null; then
+      "drush8 @hostmaster sqlq \"DELETE t FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_type='delete' AND t.task_status='0' AND (t.executed IS NULL OR t.executed=0)\"" &> /dev/null; then
       _bad=$((_bad + 1))
       _alrt "${_oct}: could not purge pending delete tasks (drush failed)"
       continue
     fi
     _left=$(su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task WHERE task_type='delete' AND task_status IN ('-1','0')\"" 2>/dev/null | tr -dc '0-9')
+      "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_type='delete' AND t.task_status IN ('-1','0')\"" 2>/dev/null | tail -1 | tr -dc '0-9')
     if [ -z "${_left}" ] || [ "${_left}" != "0" ]; then
       _bad=$((_bad + 1))
       _alrt "${_oct}: ${_left:-unknown} delete task(s) still queued after the purge"
