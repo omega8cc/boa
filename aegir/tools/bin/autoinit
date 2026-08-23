@@ -1051,20 +1051,26 @@ _pkg_installed() {
 _turn_off_apparmor() {
 
   # Fix shell in AppArmor scripts (only do this if needed)
-  grep -q "/usr/bin/sh" /lib/apparmor/apparmor.systemd && \
-    sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/apparmor.systemd
-  grep -q "/bin/sh" /lib/apparmor/apparmor.systemd && \
-    sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/apparmor.systemd
+  if [ -e "/lib/apparmor/apparmor.systemd" ]; then
+    grep -q "/usr/bin/sh" /lib/apparmor/apparmor.systemd && \
+      sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/apparmor.systemd >> "${_logSlt}"
+    grep -q "/bin/sh" /lib/apparmor/apparmor.systemd && \
+      sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/apparmor.systemd >> "${_logSlt}"
+  fi
 
-  grep -q "/usr/bin/sh" /lib/apparmor/rc.apparmor.functions && \
-    sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/rc.apparmor.functions
-  grep -q "/bin/sh" /lib/apparmor/rc.apparmor.functions && \
-    sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/rc.apparmor.functions
+  if [ -e "/lib/apparmor/rc.apparmor.functions" ]; then
+    grep -q "/usr/bin/sh" /lib/apparmor/rc.apparmor.functions && \
+      sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/rc.apparmor.functions >> "${_logSlt}"
+    grep -q "/bin/sh" /lib/apparmor/rc.apparmor.functions && \
+      sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/rc.apparmor.functions >> "${_logSlt}"
+  fi
 
-  grep -q "/usr/bin/sh" /lib/apparmor/profile-load && \
-    sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/profile-load
-  grep -q "/bin/sh" /lib/apparmor/profile-load && \
-    sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/profile-load
+  if [ -e "/lib/apparmor/profile-load" ]; then
+    grep -q "/usr/bin/sh" /lib/apparmor/profile-load && \
+      sed -i "s#/usr/bin/sh#/bin/bash#g" /lib/apparmor/profile-load >> "${_logSlt}"
+    grep -q "/bin/sh" /lib/apparmor/profile-load && \
+      sed -i "s#/bin/sh#/bin/bash#g" /lib/apparmor/profile-load >> "${_logSlt}"
+  fi
 
   # Disable AppArmor and Auditd
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
@@ -1381,7 +1387,7 @@ _init_prepare() {
 ###
 _ensure_devuan_bf() {
   # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan
-  _msg "_ensure_devuan_bf ==> Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
+  _msg "[init] eedn ==> Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
   _BF_CANDIDATE=$(apt-cache policy base-files 2>/dev/null | awk '/Candidate: /{print $2; exit}')
   _APTOPTS="-o Dpkg::Options::=--force-confnew \
             -o Dpkg::Options::=--force-overwrite \
@@ -1955,7 +1961,7 @@ _init_conf() {
       _init_mnfr
       _init_info
     fi
-    _init_prepare >> "${_logSlt}"
+    _init_prepare
   fi
 }
 
