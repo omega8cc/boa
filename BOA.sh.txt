@@ -81,8 +81,9 @@ _tBn="tools/bin"
 _vBs="/var/backups"
 _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 #
+[ -d "${_pthLog}" ] || mkdir -p "${_pthLog}"
+#
 if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
-  mkdir -p "${_pthLog}"
   cp -a ${_xpthLog}/*.pid ${_pthLog}/
   cp -a ${_xpthLog}/.*pid ${_pthLog}/
   cp -a ${_xpthLog}/*.log ${_pthLog}/
@@ -3648,7 +3649,6 @@ _fix_high_load_bot_token() {
 #
 _log_crawler_fix() {
   echo "$1"
-  [ -d "${_pthLog}" ] || mkdir -p "${_pthLog}"
   echo "$(date 2> /dev/null) $1" >> "${_pthLog}/crawler-access-fix.log"
 }
 
@@ -4570,7 +4570,6 @@ _boa_setup() {
   # file itself always stays; its Fix-Broken line is load-bearing for aptitude
   # and has nothing to do with trust.
   _APT_TRUST_STAMP="${_pthLog}/.apt-trust-probe.stamp"
-  [ -d "${_pthLog}" ] || mkdir -p "${_pthLog}"
   if [ -e "${_APT_CONFIG_FILE}" ] \
     && ! grep -q "AllowInsecureRepositories" "${_APT_CONFIG_FILE}" 2>/dev/null; then
     _APT_TRUST_MODE=STRICT
