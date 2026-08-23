@@ -7,6 +7,7 @@ This guide explains the backup system, including how it works, how to configure 
 - New PRO Backups for Octopus Lshell User (this document) [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_USER.md)
 - New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_RETENTION.md)
 - New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BACKUP_REGIONS.md)
+- New boa-restore Workstation Tool to Restore Anywhere Without the Server [github.com/omega8cc/boa-restore](https://github.com/omega8cc/boa-restore)
 
 ---
 
@@ -312,6 +313,15 @@ You can customize what is included or excluded in your backups by editing config
 
 6. **Customizing Defaults**:
    - The entire `/data/disk/your_username/static/` directory and `/home/your_username.ftp/` are included by default. Use exclude files to prevent specific paths from being backed up.
+
+---
+
+### **Restoring Without the Server (boa-restore)**
+
+`mybackup` runs on the server. To open the same encrypted backups with **no BOA server at all** — from your own Mac, Windows PC (via WSL), or any Linux machine — use the read-only `boa-restore` workstation tool:
+
+- Tool: [github.com/omega8cc/boa-restore](https://github.com/omega8cc/boa-restore)
+- Full guide, including how to request your encryption passphrase from your host: [docs.boa.io/using/backups/disaster-proof-restore](https://docs.boa.io/using/backups/disaster-proof-restore)
 
 ---
 

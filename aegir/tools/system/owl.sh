@@ -265,6 +265,11 @@ _daily_action() {
   if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
     _cleanup_weblogx
   fi
+  # Skew-guarded: the function ships in 90-global-post.sh and the two files
+  # deliver on independent serials, so a mixed vintage must skip, not fatal.
+  if command -v _migrate_source_sweep_all > /dev/null 2>&1; then
+    _migrate_source_sweep_all
+  fi
 }
 
 ###--------------------###
@@ -278,7 +283,7 @@ _boa_pass_active() {
   [ -e "/run/boa_run.pid" ] && return 0
   [ -e "/run/boa_wait.pid" ] && return 0
   [ -e "/run/octopus_install_run.pid" ] && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
   # The Ægir setup children run as "su - oN -c bash .../AegirSetupC.sh.txt"

@@ -121,9 +121,13 @@ fi
 # passed through: a user's top-level `composer`/`drush` is a bare string dispatched with
 # PHP-version selection below, and composer's own php subprocess is an absolute-path
 # string caught by (a) - so the PHP-CLI selection is never bypassed here.
-# The leading-quote arm adds NO capability: after quote-stripping it lands in the same
-# allowlist as the bare-token path below, so a quoted verb can only reach what its bare
-# spelling already could.
+# Only the bare-verb case list below is allowlist-equivalent. The absolute-path branch --
+# shared by all three alternatives, not specific to the leading-quote one -- execs verbatim
+# ahead of the group gate, the $0 check and the _IN_PATH path policy, so a quoted or
+# exec-prefixed absolute path under /home/, /data/ or /tmp/ runs here while its bare
+# spelling is denied below. Any tightening has to cover all three alternatives at once and
+# be proven against a real composer/composer-patches run first: legit callers do resolve
+# absolute binaries inside the platform tree.
 if [ "${1}" = "-c" ] \
   && { [[ "${2}" == "exec "* ]] || [[ "${2}" == "{ (exec "* ]] || [[ "${2}" == "'"* ]]; }; then
   _SF_ORIG="${2}"

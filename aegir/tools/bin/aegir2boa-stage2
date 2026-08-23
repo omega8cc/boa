@@ -219,16 +219,26 @@ _marker_has() { [[ -e "$(_marker "$1")" ]]; }
 # php-script staging: root writes these then runs them as the account user
 # via drush php-script. A fixed /tmp name on a multi-tenant BOA box is a
 # symlink-preplant vector (root cat> follows the link) AND a TOCTOU swap
-# window. Stage inside an ACCOUNT-OWNED 700 dir under the account tree
-# (only that oN + root can enter, so no cross-tenant preplant) with an
-# O_EXCL random mktemp name, chowned to oN so drush can read it and the
-# path stays traversable by oN (every ancestor is oN-owned).
-_php_dir() { echo "${_ACCT_ROOT}/static/.a2b-php"; }
+# window -- and so is anything under ${_ACCT_ROOT}/static: BOA makes that
+# dir oN:users 02775 and every Octopus account's primary group IS users, so
+# any co-hosted tenant can pre-plant a symlink there for root's mkdir/chown/
+# chmod (all of which follow links; protected_symlinks only covers sticky
+# world-writable dirs). Stage under a ROOT-OWNED 0755 parent no tenant can
+# write, with a per-account 0700 dir handed to oN so drush can read the
+# O_EXCL mktemp'd script (the parent is world-traversable, so the path
+# stays reachable by oN). Refuse a symlink where the per-account dir should be.
+_php_base() { echo "/var/opt/a2b-php"; }
+_php_dir() { echo "$(_php_base)/${_ACCOUNT}"; }
 _php_tmp() {
-  local _d _f
+  local _b _d _f
+  _b="$(_php_base)"
   _d="$(_php_dir)"
+  [[ -L "${_b}" ]] && _die "${_b} is a symlink - refusing to stage php scripts"
+  mkdir -p "${_b}" && chown root:root "${_b}" && chmod 0755 "${_b}"
+  [[ -L "${_d}" ]] && _die "${_d} is a symlink - refusing to stage php scripts"
   mkdir -p "${_d}" && chown "${_ACCOUNT}:users" "${_d}" && chmod 700 "${_d}"
   _f="$(mktemp "${_d}/php.XXXXXX")" || _die "cannot create php staging file"
+  [[ -L "${_f}" ]] && _die "${_f} is a symlink - refusing to stage php scripts"
   chown "${_ACCOUNT}:users" "${_f}" && chmod 600 "${_f}"
   echo "${_f}"
 }
@@ -328,11 +338,53 @@ _harvest_listens() {
 # through the proxy, the www name got a 404 off the source, and the whole
 # certificate order failed) - so proxy vhosts always carry www.<uri> too.
 # A name public DNS does not resolve simply never arrives.
+#
+# The one shape that must NOT get the alias is www.<uri> already served on
+# THIS box by a conf of its own: vanilla allows www.<uri> as a site in its
+# own right, and sites are migrated one at a time. vhost.d is included by a
+# sorted glob and the first-defined server wins (nginx only warns on the
+# duplicate name and 'nginx -t' still exits 0), so claiming that name here
+# would either capture an unmigrated site's traffic and hand it to the
+# target's catch-all, or - when www.<uri> sorts first - be the block nginx
+# drops, i.e. the alias silently not doing its job. Skip it and say so; on
+# those estates the www challenge has to come from that other conf.
 _names_plus_www() {   # 1 uri 2 harvested names
+  local _www="www.$1"
   case " $2 " in
-    *" www.$1 "*) echo "$2" ;;
-    *) echo "$2 www.$1" ;;
+    *" ${_www} "*) echo "$2"; return 0 ;;
   esac
+  if [[ -e "$(_vhostd)/${_www}" || -e "$(_vhostd)/https.${_www}" ]]; then
+    _alrt "site $1: ${_www} is served here by its own vhost conf - www alias NOT added"
+    _alrt "site $1: migrate ${_www} as well, or carry its ACME challenge from that conf"
+    echo "$2"
+    return 0
+  fi
+  echo "$2 ${_www}"
+}
+
+# Advisory only: name any OTHER conf still present in vhost.d that already
+# declares a name this proxy block is about to claim. Same sorted-glob rule
+# as above, so an overlap silently gives one of the two blocks the other's
+# traffic while 'nginx -t' stays happy. The site's own confs - <uri>,
+# https.<uri> and this tool's dotfiles - are not overlaps. Never blocking:
+# an overlap can be benign (an already-proxied sibling pointing at the same
+# target), and refusing the swap on it would strand a migration that was
+# going to work.
+_warn_name_collisions() {   # 1 uri 2 names about to be claimed
+  local _f _b _n
+  for _f in "$(_vhostd)"/*; do
+    [[ -f "${_f}" ]] || continue
+    _b="$(basename "${_f}")"
+    case "${_b}" in
+      .*|"$1"|"https.$1") continue ;;
+    esac
+    while read -r _n; do
+      [[ -n "${_n}" ]] || continue
+      case " $2 " in
+        *" ${_n} "*) _alrt "site $1: name ${_n} is ALSO declared by vhost.d/${_b} - only the first-included block gets it" ;;
+      esac
+    done < <(_harvest_names "${_f}" | tr ' ' '\n')
+  done
 }
 _harvest_ssl_lines() {
   grep -hE '^[[:space:]]*ssl_certificate(_key)?[[:space:]]' "$1" 2>/dev/null \
@@ -1359,7 +1411,7 @@ _t_panel_domain() {
   local _d
   _d="$(tr -d '\n' < "${_ACCT_ROOT}/log/domain.txt" 2>/dev/null)"
   if [[ -z "${_d}" ]]; then
-    _d="$(grep "uri'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
+    _d="$(grep -E "^[[:space:]]*'uri'[[:space:]]*=>" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
       | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1)"
   fi
   _sane_domain "${_d}"
@@ -1556,7 +1608,9 @@ _import_db_route() {
   fi
 
   _t_freeze_on
-  trap '_t_freeze_off' EXIT
+  # chain, never replace: the global EXIT handler is the only remover of
+  # the per-scope lock dir, and a bare 'trap - EXIT' would strand it in /var/run
+  trap '_t_freeze_off; _cleanup' EXIT
   # 0. the account dispatcher MUST be off for the whole surgery window;
   # a failure below leaves it off deliberately (a broken hostmaster must
   # not dispatch) - success and --revert-db-import restore it
@@ -1917,7 +1971,7 @@ PHPEOF
   _tsql "UPDATE hosting_task SET task_status='2' WHERE task_status='0' AND executed='0'"
   _t_dispatch_on
   _t_freeze_off
-  trap - EXIT
+  trap _cleanup EXIT
   # deferred fpm-socket waits: only now (freeze off) can manage_ltd_users
   # spawn the mapped per-version pools; re-probe each mapped site after
   local _fpend="${_STATE_DIR}/state/fpm-pending.txt" _fu _fd _fw
@@ -1965,9 +2019,19 @@ _import_per_site() {
     _ctxp="platform_a2b_$(_sane_ident "${_plat}")"
     local _proot="${_ACCT_ROOT}/static/a2b/${_plat}"
     [[ -d "${_proot}" ]] || { _alrt "site ${_uri}: platform tree ${_proot} missing - SKIP"; _fails=$(( _fails + 1 )); continue; }
-    # docroot detect (D8+ composer trees)
-    local _droot="${_proot}"
-    [[ ! -e "${_proot}/index.php" && -e "${_proot}/web/index.php" ]] && _droot="${_proot}/web"
+    # docroot detect (D8+ composer trees) -- the same four docroot names the
+    # export half recognises when it transfers a project root instead of the
+    # docroot (web|docroot|html|public_html); registering the project root as
+    # the platform would fail every site on it at verify.
+    local _droot="${_proot}" _dr
+    if [[ ! -e "${_proot}/index.php" ]]; then
+      for _dr in web docroot html public_html; do
+        if [[ -e "${_proot}/${_dr}/index.php" ]]; then
+          _droot="${_proot}/${_dr}"
+          break
+        fi
+      done
+    fi
 
     # 1. db land
     if ! _marker_has "${_uri}.dbloaded.pid"; then
@@ -2092,7 +2156,7 @@ verb_import() {
       _dry_finish "revert-db"
     fi
     _gate_consume "revert-db"
-    _t_freeze_on; trap '_t_freeze_off' EXIT; _t_owl_drain; _t_dispatch_off
+    _t_freeze_on; trap '_t_freeze_off; _cleanup' EXIT; _t_owl_drain; _t_dispatch_off
     _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1
     mysql --defaults-file=/root/.my.cnf "$(_t_hm_db)" < "${_ACCT_ROOT}/undo/a2b-pre-import.sql" \
       || _die "restore failed - hostmaster db is EMPTY, re-import undo/a2b-pre-import.sql manually"
@@ -2100,7 +2164,7 @@ verb_import() {
     _t_remove_estate_vhosts
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
     _t_dispatch_on
-    _t_freeze_off; trap - EXIT
+    _t_freeze_off; trap _cleanup EXIT
     _msg "db-import reverted - hostmaster restored, a2b site DBs dropped; a retry needs fresh export+transfer (stale dumps must never cut over)"
     exit 0
   fi
@@ -2333,10 +2397,12 @@ _proxy_refresh_one() {   # 1 uri
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _info "[DRY] site ${_uri}: would re-render proxy vhost(s) from ${_vhd} + current templates"
+    _warn_name_collisions "${_uri}" "$(_names_plus_www "${_uri}" "$(_harvest_names "${_vhd}")")"
     return 0
   fi
 
   _names="$(_names_plus_www "${_uri}" "$(_harvest_names "${_vhd}")")"
+  _warn_name_collisions "${_uri}" "${_names}"
   _prevh="$(_vhostd)/.a2b-prev.${_uri}"
   _prevs="$(_vhostd)/.a2b-prev.https.${_uri}"
   cp -a "${_vh}" "${_prevh}"
@@ -2412,10 +2478,12 @@ _proxy_one() {   # 1 uri
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _info "[DRY] site ${_uri}: target proven (HTTP ${_code}) - would swap vhost -> proxy"
+    _warn_name_collisions "${_uri}" "$(_names_plus_www "${_uri}" "$(_harvest_names "${_vh}")")"
     return 0
   fi
 
   _names="$(_names_plus_www "${_uri}" "$(_harvest_names "${_vh}")")"
+  _warn_name_collisions "${_uri}" "${_names}"
   # keep the stub shadowing until the proxy passes nginx -t
   mv -f "${_vh}" "${_vhd}"
   _emit_proxy_http "${_names}" "${_TARGET}" > "${_vh}"
@@ -2577,20 +2645,40 @@ verb_certsync() {
     fi
   fi
   if [[ "${_INSTALL_CRON}" = "YES" ]]; then
-    cat > /etc/cron.weekly/a2b-cert-sync <<CRONEOF
+    # the cron must invoke this tool as `bash /full/path` (fleet rule): it is
+    # delivered by hand, so neither its exec bit nor its shebang can be
+    # trusted weeks from now. Resolve our own path once, and refuse to write
+    # a cron that would be dead on arrival.
+    local _self
+    _self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null)"
+    [[ -f "${_self}" ]] || _self="$(readlink -f "$0" 2>/dev/null)"
+    [[ -f "${_self}" ]] || _self="$(command -v "$0" 2>/dev/null)"
+    if [[ ! -f "${_self}" ]]; then
+      _alrt "cannot resolve this tool's own path - weekly cert-sync cron NOT installed"
+      _alrt "re-run cert-sync --install-cron giving this script by absolute path"
+    else
+      cat > /etc/cron.weekly/a2b-cert-sync <<CRONEOF
 #!/bin/sh
-$(readlink -f "$0" 2>/dev/null || echo "$0") cert-sync --from-state >> ${_LOG} 2>&1
+if [ ! -f "${_self}" ]; then
+  echo "a2b-cert-sync: ${_self} is gone - proxy certs are NOT being refreshed"
+  exit 1
+fi
+bash "${_self}" cert-sync --from-state >> "${_LOG}" 2>&1
 CRONEOF
-    chmod 755 /etc/cron.weekly/a2b-cert-sync
-    _info "weekly cert-sync cron installed (/etc/cron.weekly/a2b-cert-sync)"
+      chmod 755 /etc/cron.weekly/a2b-cert-sync
+      _info "weekly cert-sync cron installed (/etc/cron.weekly/a2b-cert-sync -> bash ${_self})"
+    fi
   fi
   if [[ "${_missing}" -gt 0 ]]; then
     _alrt "${_missing} of ${_sslcount} proxied HTTPS site(s) have NO certificate on the target"
     _alrt "enable Encryption on them in the target panel and let Let's Encrypt issue"
     _alrt "BEFORE you repoint DNS - ACME reaches the target through this proxy, so it"
     _alrt "can issue during the window, but nothing issues it for you"
-    _msg "cert-sync complete (${_changed} refreshed, ${_missing} MISSING on the target)"
-    return 1
+    _msg "cert-sync finished (${_changed} refreshed, ${_missing} MISSING on the target)"
+    # the verb dispatch ends in an unconditional 'exit 0', so a bare
+    # 'return 1' here reaches no caller - fail the way every other verb
+    # does, which is what the runbook documents for this condition
+    _die "cert-sync: ${_missing} of ${_sslcount} site(s) MISSING a target certificate - see above"
   fi
   _msg "cert-sync complete (${_changed} refreshed)"
 }

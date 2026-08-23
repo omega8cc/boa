@@ -1460,37 +1460,78 @@ _xmass_check_le_health() {
 ### fresh build never regenerates arrives as data and stays unregistered,
 ### silently returning wrong search results. Check-gate only: registration
 ### is core-shape-specific and stays with the operator.
+### Scoped to the versions expected to SERVE on the target (used +
+### ambiguous): a version this same run denied has no service there BY
+### DESIGN while its data trees travel with the sync anyway, so naming its
+### cores would contradict that deny at the very end of a clean cutover.
+### Only dotted names are real cores -- solr4's core0-core9 are installer
+### seeds, the same rule _xmass_solr_classify_source applies to these trees.
 _xmass_solr_core_parity() {
   local _t="$1" _src="" _d _tgtcores _c _missing="" _failed=""
-  for _d in /opt/solr4/*/ /var/solr7/data/*/ /var/solr9/data/*/; do
-    [ -d "${_d}" ] || continue
-    if [ -e "${_d}core.properties" ] || [ -e "${_d}conf/solrconfig.xml" ]; then
-      _src="${_src} $(basename "${_d}")"
-    fi
+  local _want="" _sv _dta _try
+  ### The LIVE path arrives with the sets filled by its own coverage gate;
+  ### the RESUME path never runs that gate, so fall back to the record the
+  ### classifier wrote while the source was still healthy, and then to all
+  ### three trees -- degrade to the old, wider check, never to silence.
+  _want="${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}"
+  _want="${_want## }"
+  _want="${_want%% }"
+  if [ -z "${_want}" ] && [ -r "${_XMASS_SOLR_SET_FILE}" ]; then
+    ### Read in a subshell on purpose: the record must never overwrite this
+    ### process's own classification.
+    _want=$(. "${_XMASS_SOLR_SET_FILE}" 2>/dev/null \
+      && echo "${_XMASS_SOLR_USED_SET} ${_XMASS_SOLR_AMBIG_SET}")
+    _want="${_want## }"
+    _want="${_want%% }"
+  fi
+  [ -z "${_want}" ] && _want="solr4 solr7 solr9"
+  for _sv in ${_want}; do
+    case "${_sv}" in
+      solr4) _dta=/opt/solr4 ;;
+      solr7) _dta=/var/solr7/data ;;
+      solr9) _dta=/var/solr9/data ;;
+      *)     continue ;;
+    esac
+    for _d in "${_dta}"/*.*/; do
+      [ -d "${_d}" ] || continue
+      if [ -e "${_d}core.properties" ] || [ -e "${_d}conf/solrconfig.xml" ]; then
+        _src="${_src} $(basename "${_d}")"
+      fi
+    done
   done
   _src="${_src## }"
   [ -z "${_src}" ] && return 0
+  _info "Checking Solr core parity for [${_want}] against ${_t} ..."
   # BOA installs solr9 on 9099 and solr7 on 9077 (solr.sh.inc); jetty9/solr4
   # answers on 8099. 8983 stays as the upstream default for hand-installed
   # Solr. Probing the wrong set made every source core report missing and
   # left the parity-OK branch unreachable on a real Solr box.
   # Whitespace-stripped so the match survives Solr's pretty-printed output.
-  _tgtcores=$(ssh root@"${_t}" "for p in 9099 9077 8099 8983; do curl -s -A iCab \"http://127.0.0.1:\${p}/solr/admin/cores?action=STATUS&wt=json\" 2>/dev/null; done" 2>/dev/null \
-    | tr -d ' \n\t')
-  for _c in ${_src}; do
-    # Key on the core's own name field inside the STATUS entry, never the bare
-    # name: Solr echoes the name of a core that FAILED to load in
-    # initFailures too, and a bare-name match scored those as registered --
-    # reporting parity OK for a core serving nothing.
-    case "${_tgtcores}" in
-      *"\"name\":\"${_c}\""*) : ;;
-      *)
-        _missing="${_missing} ${_c}"
-        case "${_tgtcores}" in
-          *"\"initFailures\":{"*"\"${_c}\":"*) _failed="${_failed} ${_c}" ;;
-        esac
-        ;;
-    esac
+  # Probed twice: this runs seconds after the services start and a large
+  # core set can still be loading, so a first-pass miss is re-checked
+  # before anything is reported.
+  for _try in 1 2; do
+    _missing=""
+    _failed=""
+    _tgtcores=$(ssh root@"${_t}" "for p in 9099 9077 8099 8983; do curl -s -A iCab \"http://127.0.0.1:\${p}/solr/admin/cores?action=STATUS&wt=json\" 2>/dev/null; done" 2>/dev/null \
+      | tr -d ' \n\t')
+    for _c in ${_src}; do
+      # Key on the core's own name field inside the STATUS entry, never the bare
+      # name: Solr echoes the name of a core that FAILED to load in
+      # initFailures too, and a bare-name match scored those as registered --
+      # reporting parity OK for a core serving nothing.
+      case "${_tgtcores}" in
+        *"\"name\":\"${_c}\""*) : ;;
+        *)
+          _missing="${_missing} ${_c}"
+          case "${_tgtcores}" in
+            *"\"initFailures\":{"*"\"${_c}\":"*) _failed="${_failed} ${_c}" ;;
+          esac
+          ;;
+      esac
+    done
+    [ -z "${_missing}" ] && break
+    [ "${_try}" = "1" ] && sleep 30
   done
   if [ -n "${_missing}" ]; then
     _alrt "Solr cores present on the source but NOT registered on ${_t}:${_missing}"
@@ -1524,6 +1565,13 @@ _xmass_park_runners_and_cron() {
     fi
   done
   if pgrep -x cron &> /dev/null; then
+    # The loop above already parked all five runners, so this refusal is
+    # NOT free: if the operator abandons the cutover here, the box stays
+    # production with no dispatcher, no owl, no usage accounting and no
+    # sub-user management, and _die prints nothing about it. The hint
+    # discriminates -- it restores here (pre-promotion) and only ADVISES
+    # on the resume path, where the target is already promoted.
+    _xmass_restore_hint
     _die "cron is still running after the stop attempt -- stop it manually" \
          " (/etc/init.d/cron stop; pkill -x cron), then re-run"
   fi
@@ -3801,27 +3849,39 @@ _xmass_restore_hint() {
     # with cron down (no duplicity, no IDS, no certificate mirror) until
     # an operator finds a hint -- restore now. The web block above, if
     # any, stays manual: un-503ing production is an operator call.
-    _alrt "cron and the BOA runners were PARKED on this source; restoring them now:"
+    _alrt "cron and the BOA runners were PARKED on this source, and the SQL watchdog muted on both hosts; restoring them now:"
     _xmass_unpark_runners_and_cron
+    # The mute must not survive a window this box exits as production:
+    # while /run/boa_sql_maintenance.pid exists mysql.sh stands down
+    # ENTIRELY -- no busy/high-load restart, no lock-break, no long-query
+    # kill -- on the source AND the target, for the rest of its 240-min
+    # expiry. Same reasoning as the init unwind; a park that will be
+    # RESUMED keeps its mute, which is why this is the pre-promotion arm.
+    _xmass_maint_off
   fi
-  # Read the freeze from the file, not from a flag: this paragraph must match
-  # what is actually in the include at the moment the operator reads it.
+  # Read the flag from the file, not from a variable: this paragraph must match
+  # what is actually in the include at the moment the operator reads it (a
+  # barracuda system pass on this box removes the block without a log line).
   if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
     if [ "${_XMASS_TARGET_PROMOTED}" = "YES" ]; then
-      _alrt "Site writes are still FROZEN via ${_XMASS_GLOBAL_INC}."
+      _alrt "The advisory read-only flag is still in ${_XMASS_GLOBAL_INC}. It is"
+      _alrt "belt-and-braces only -- most site shapes ignore it: what keeps"
+      _alrt "writes out of this box is the 503 gate, so do not lift THAT while"
+      _alrt "the target is promoted."
       if [ "${_XMASS_PHASE}" = "rename-failed" ]; then
         _alrt "The target has been PROMOTED (replica decoupled): writes accepted"
         _alrt "here can never reach it."
-        _alrt "Leave the freeze in place to fix the cause and resume; thaw ONLY if"
-        _alrt "you are abandoning the cutover and keeping THIS box as production:"
+        _alrt "Leave both in place to fix the cause and resume; clear them ONLY"
+        _alrt "if you are abandoning the cutover and keeping THIS box as"
+        _alrt "production -- clear the flag with:"
       else
         _alrt "The target's promotion state is UNCONFIRMED: writes accepted here"
-        _alrt "may never reach it. Do NOT thaw before determining that state"
-        _alrt "(the final error explains how); once the promotion is proven NOT"
-        _alrt "to have held, thaw with:"
+        _alrt "may never reach it. Do NOT lift the 503 gate or clear the flag"
+        _alrt "before determining that state (the final error explains how);"
+        _alrt "once the promotion is proven NOT to have held, clear it with:"
       fi
     else
-      _alrt "Site writes are still FROZEN via ${_XMASS_GLOBAL_INC}; thaw them:"
+      _alrt "The advisory read-only flag is still in ${_XMASS_GLOBAL_INC}; clear it:"
     fi
     _alrt "    mv -f ${_XMASS_GLOBAL_INC}.bak ${_XMASS_GLOBAL_INC}"
     _alrt "    (no .bak? delete the '# xmass migration freeze' block instead)"
@@ -3947,7 +4007,11 @@ _xmass_maint_on() {
 }
 _xmass_maint_off() {
   rm -f /run/boa_sql_maintenance.pid
-  ssh root@"${_tgt}" "rm -f /run/boa_sql_maintenance.pid" 2>/dev/null || true
+  # Reachable from the abort hint now, so do not assume a caller that has
+  # already resolved the target: an empty _tgt would ssh to a bare "root@".
+  if [ -n "${_tgt}" ]; then
+    ssh root@"${_tgt}" "rm -f /run/boa_sql_maintenance.pid" 2>/dev/null || true
+  fi
 }
 
 _xmass_check_no_boa_running() {
@@ -3966,8 +4030,14 @@ _xmass_check_no_boa_running() {
     _alrt "System cron is still running — stop it before cutover"
     _fail=YES
   fi
-  [ "${_fail}" = "YES" ] \
-    && _die "BOA/cron processes active — stop them before running cutover"
+  if [ "${_fail}" = "YES" ]; then
+    # Both call sites run this immediately after the park, so a failure
+    # here (an unchecked mv that did not take, a runner respawned) aborts
+    # with the runners already moved aside -- same leak as the park's own
+    # refusal, same restore.
+    _xmass_restore_hint
+    _die "BOA/cron processes active — stop them before running cutover"
+  fi
   _info "No conflicting BOA/cron processes: OK"
 }
 
@@ -4502,26 +4572,37 @@ _xmass_renameaegirhost_all() {
 # Allow ALONE is not durable under load -- lfd can still act on the IP -- and a
 # temp-deny on the reverse path fails init AFTER the target datadir is gone.
 # Idempotent: both files are append-once.
-# The cutover's write freeze, done the way the old MIGRATE.md procedure did it
-# and the way that actually holds: a file-backed flag in the global include.
+# The cutover's ADVISORY read-only flag -- the marker the old MIGRATE.md
+# procedure appended to the global include. It is belt-and-braces only, and
+# nothing in the cutover is allowed to depend on it:
 #
-# What was here before was `mysql -e "FLUSH TABLES WITH READ LOCK;"`. FTWRL is
-# SESSION-scoped -- the lock dies the instant that client exits, so the command
-# returned, the log said writes were frozen, and the source stayed fully
-# writable for the whole cutover window. Every write landing after that point
-# is past the GTID position the cutover captured, i.e. silently lost.
+#   - no consumer ships enabled: $conf['site_readonly'] does nothing unless the
+#     readonlymode module is enabled per site (BOA only makes it available as a
+#     dev-contrib download), and $settings['config_readonly'] gates config
+#     writes, never content writes -- on most site shapes it freezes nothing;
+#   - the include is box-wide, so it would hit every OTHER account too;
+#   - it is not durable: a barracuda system pass rewrites global-extra.inc from
+#     the shipped copy, silently dropping the block (the .bak survives).
 #
-# A file the web layer reads on every request cannot evaporate when a client
-# disconnects, which is the entire reason the old procedure used one.
+# xoct refuses the same mechanism for the same reasons -- see MIGRATE-XOCT.md.
+#
+# What actually quiesces the source is asserted before this runs and stays in
+# force for the whole window: the per-account 503 gate (static/control/
+# http-off.pid) on the web path, and the parked cron + BOA runners on the
+# backend path. Neither is gated on this flag. What was here before --
+# `mysql -e "FLUSH TABLES WITH READ LOCK;"` -- was worse than advisory: FTWRL
+# is SESSION-scoped, so the lock died the instant that client exited while the
+# log claimed writes were frozen, and every write landing after that point is
+# past the GTID position the cutover captured, i.e. silently lost.
 _XMASS_GLOBAL_INC="/data/conf/global/global-extra.inc"
 
 _xmass_freeze_source_writes() {
   [ -e "${_XMASS_GLOBAL_INC}" ] || {
-    _alrt "No ${_XMASS_GLOBAL_INC} -- cannot freeze writes; sites stay WRITABLE through cutover"
+    _alrt "No ${_XMASS_GLOBAL_INC} -- advisory read-only flag not written"
     return 1
   }
   if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
-    _info "Source writes already frozen"
+    _info "Advisory read-only flag already present in ${_XMASS_GLOBAL_INC}"
     return 0
   fi
   cp -af "${_XMASS_GLOBAL_INC}" "${_XMASS_GLOBAL_INC}.bak"
@@ -4532,9 +4613,16 @@ _xmass_freeze_source_writes() {
     echo "\$conf['site_readonly'] = 1;"
     echo ""
   } >> "${_XMASS_GLOBAL_INC}"
-  grep -q "site_readonly" "${_XMASS_GLOBAL_INC}" \
-    && _info "Source writes FROZEN via ${_XMASS_GLOBAL_INC} (backup kept as .bak)" \
-    || { _alrt "Freeze did not take -- sites stay WRITABLE"; return 1; }
+  # This re-read proves only that the append reached disk (it catches ENOSPC or
+  # a read-only filesystem); it cannot prove any site honours the flag, so the
+  # message must not claim writes are frozen.
+  if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}"; then
+    _info "Advisory read-only flag written to ${_XMASS_GLOBAL_INC} (backup kept as .bak)"
+    _info "The write barrier stays the 503 gate plus the parked cron and runners"
+  else
+    _alrt "Could not write the advisory read-only flag to ${_XMASS_GLOBAL_INC}"
+    return 1
+  fi
 }
 
 _xmass_thaw_writes() {
@@ -4545,11 +4633,11 @@ _xmass_thaw_writes() {
     ssh -o ConnectTimeout=10 root@"${_host}" \
       "[ -e ${_XMASS_GLOBAL_INC}.bak ] && mv -f ${_XMASS_GLOBAL_INC}.bak ${_XMASS_GLOBAL_INC}; \
        sed -i '/xmass migration freeze/,+3d' ${_XMASS_GLOBAL_INC} 2>/dev/null; true" &> /dev/null
-    _info "Writes thawed on ${_host}"
+    _info "Advisory read-only flag cleared on ${_host}"
   else
     [ -e "${_XMASS_GLOBAL_INC}.bak" ] && mv -f "${_XMASS_GLOBAL_INC}.bak" "${_XMASS_GLOBAL_INC}"
     sed -i '/xmass migration freeze/,+3d' "${_XMASS_GLOBAL_INC}" 2> /dev/null
-    _info "Source writes thawed"
+    _info "Advisory read-only flag cleared on the source"
   fi
 }
 
@@ -4559,14 +4647,38 @@ _xmass_thaw_writes() {
 # stranded at task_status='-1'. Cutover then runs hosting-tasks --force on the
 # target, so Aegir would execute that delete against brand-new production.
 _xmass_clear_pending_deletes() {
-  local _oct
+  # Every account must answer: a hostmaster that cannot be bootstrapped here
+  # (parked dispatcher, mid-upgrade panel, broken alias) would leave the
+  # stranded delete row in the DB that replicates to the target, where
+  # cutover's hosting-tasks --force executes it against production. So count
+  # the failures, re-check what is left, and refuse rather than report a
+  # purge that did not happen.
+  local _oct _bad=0 _left _tot=0
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\"" &> /dev/null
-    su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\"" &> /dev/null
+    _tot=$((_tot + 1))
+    if ! su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\"" &> /dev/null; then
+      _bad=$((_bad + 1))
+      _alrt "${_oct}: could not purge interrupted delete tasks (drush failed)"
+      continue
+    fi
+    if ! su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\"" &> /dev/null; then
+      _bad=$((_bad + 1))
+      _alrt "${_oct}: could not purge pending delete tasks (drush failed)"
+      continue
+    fi
+    _left=$(su -s /bin/bash - "${_oct}" -c \
+      "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task WHERE task_type='delete' AND task_status IN ('-1','0')\"" 2>/dev/null | tr -dc '0-9')
+    if [ -z "${_left}" ] || [ "${_left}" != "0" ]; then
+      _bad=$((_bad + 1))
+      _alrt "${_oct}: ${_left:-unknown} delete task(s) still queued after the purge"
+    fi
   done
-  _info "Cleared any pending/interrupted delete tasks from all panel queues"
+  if [ "${_bad}" -gt 0 ]; then
+    _die "Pending/interrupted delete tasks could not be cleared on ${_bad} of ${_tot} account(s) -- a stranded delete would travel to the new box. Fix the panel(s) above and re-run."
+  fi
+  _info "Cleared pending/interrupted delete tasks from all ${_tot} panel queue(s)"
 }
 
 _xmass_csf_allow_peer() {
@@ -4616,24 +4728,43 @@ _xmass_boa_release() {
 }
 
 _xmass_assert_same_release() {
-  local _t="$1"
-  local _src _dst
+  ### Mode-aware like the accounts/PHP/Solr gates, because this one is called
+  ### from every stage that can still refuse for free: 'die' (the default)
+  ### refuses, 'deny' reports and marks the DRY run NOT CLEAN so a release
+  ### skew shows up in the plan instead of first at --live.
+  local _t="$1" _on_skew="${2:-die}"
+  local _src _dst _why=""
   _src=$(_xmass_boa_release local)
   _dst=$(_xmass_boa_release "${_t}")
-  [ -n "${_src}" ] \
-    || _die "cannot read this box's BOA release from 'boa info' -- refusing to migrate blind"
-  [ -n "${_dst}" ] \
-    || _die "cannot read the target's BOA release from 'boa info' on ${_t} -- refusing to migrate blind"
-  if [ "${_src}" != "${_dst}" ]; then
-    _alrt "source runs BOA-${_src}, target ${_t} runs BOA-${_dst}"
+  if [ -z "${_src}" ]; then
+    _why="cannot read this box's BOA release from 'boa info' -- refusing to migrate blind"
+  elif [ -z "${_dst}" ]; then
+    _why="cannot read the target's BOA release from 'boa info' on ${_t} -- refusing to migrate blind"
+  elif [ "${_src}" != "${_dst}" ]; then
+    _why="source runs BOA-${_src}, target ${_t} runs BOA-${_dst}"
+  else
+    _info "  BOA release matches on both ends: ${_src}"
+    return 0
+  fi
+  if [ "${_on_skew}" = "deny" ]; then
+    _alrt "DENY: ${_why}"
+    _alrt "DENY: both boxes must run the SAME BOA release before any migration --"
+    _alrt "DENY: provision gains central-map nginx variables between releases, and"
+    _alrt "DENY: a target missing one takes down EVERY migrated site on that box."
+    _alrt "DENY: fix: a FULL run on the OLDER box -- barracuda AND octopus, not"
+    _alrt "DENY: just one of them -- then re-run this DRY."
+    _XMASS_NOT_CLEAN=YES
+    return 1
+  fi
+  if [ -n "${_src}" ] && [ -n "${_dst}" ]; then
+    _alrt "${_why}"
     _die "both boxes must run the SAME BOA release before any migration." \
          " provision gains central-map nginx variables between releases, and a" \
          " target missing one takes down EVERY migrated site on that box." \
          " Bring the OLDER box up first with a FULL run -- barracuda AND" \
-         " octopus, not just one of them -- then re-run prep-target."
+         " octopus, not just one of them -- then re-run this step."
   fi
-  _info "  BOA release matches on both ends: ${_src}"
-  return 0
+  _die "${_why}"
 }
 
 _xmass_cmd_prep_target() {
@@ -4675,7 +4806,10 @@ _xmass_cmd_prep_target() {
   # nicety: provision gains central-map nginx variables between releases, and a
   # target missing one takes down EVERY migrated site on the box, not just the
   # site that needed it. Checked here, at first target contact, because after
-  # init there is a datadir swap to undo.
+  # init there is a datadir swap to undo -- and re-asserted at init and at
+  # cutover, both still ahead of their own first destructive step: prep-target
+  # can run weeks before cutover, BOA is rolling, and a tag moves either end
+  # on its own in that window.
   #
   # The TREE may differ on purpose (an account can move lts -> pro), so only
   # the release number is compared. No override: "bring both boxes to the same
@@ -5027,7 +5161,11 @@ _xmass_cmd_init() {
   # (not rsync-created trees), the full pinned PHP set, and distinct
   # replication server ids (last two IP octets only -- two boxes in the same
   # /16 can collide, and replication then simply refuses to start AFTER the
-  # target datadir has been replaced).
+  # target datadir has been replaced). The release gate is re-asserted here
+  # too: prep-target is not a precondition of init (an operator can install
+  # the target's accounts with 'xoct create' by hand), and even after a clean
+  # prep-target a tag on the rolling branches can move either box since.
+  _xmass_assert_same_release "${_tgt}"
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   # Solr's point of no return is HERE, not at cutover: the first sync lands
@@ -5682,10 +5820,12 @@ _xmass_cmd_cutover() {
     # resume after all -- and the tail assumes a non-serving source. Also
     # keeps this process's hint truthful about the web state on a re-park.
     _xmass_block_web_all
-    # Re-assert the write freeze for the same reason: the abandon recipe hands
-    # the operator the thaw, and the tail assumes a frozen source.
+    # Re-assert the advisory read-only flag for the same reason, and because a
+    # barracuda system pass during the park rewrites the include from the
+    # shipped copy. Non-fatal: the 503 gate re-asserted above, not this flag,
+    # is what the resumed tail depends on.
     _xmass_freeze_source_writes \
-      || { _xmass_restore_hint; _die "Could not re-freeze source writes -- refusing to resume the cutover with a writable source"; }
+      || _alrt "Advisory read-only flag not re-asserted -- resuming anyway; the 503 gate above holds the source"
     _xmass_check_no_boa_running
     # Keep the SQL watchdogs paused through the resumed tail (idempotent;
     # re-asserts the marker in case the box rebooted while parked)
@@ -5721,6 +5861,7 @@ _xmass_cmd_cutover() {
     # Target-readiness gates as DENY: a missing account install or a missing
     # pinned PHP version discovered inside the cutover window is the most
     # expensive possible discovery -- surface both in the plan.
+    _xmass_assert_same_release "${_tgt}" deny || true
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
@@ -5773,6 +5914,11 @@ _xmass_cmd_cutover() {
   # cutover must leave the live source exactly as found. Parking cron/runners
   # is a mutation, so it comes only after the last gate below.
   _xmass_enumerate_accounts
+  # The release can have drifted since init: incremental syncs run for days or
+  # weeks and SKYNET moves each box on its own. A skewed target is the one
+  # miss that takes down EVERY migrated site at once, so it is re-checked in
+  # the last free moment before the source is touched.
+  _xmass_assert_same_release "${_tgt}"
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_solr_coverage_gate "${_tgt}" die
@@ -5882,12 +6028,15 @@ _xmass_cmd_cutover() {
   _XMASS_PHASE="cutover"
   _xmass_save_state
 
-  # Step 6: stop writes for real. The durable flag is what actually holds; the
-  # FLUSH is kept only to push buffers out before the position is read, and is
-  # NOT relied on to keep anything locked (it cannot -- it is session-scoped).
-  _info "Freezing source writes for cutover ..."
+  # Step 6: write the advisory read-only flag, then push buffers. Neither is
+  # the write barrier -- the step-1 503 gate and the parked cron/runners are,
+  # and both are already in force -- so a failure here warns and the cutover
+  # continues rather than aborting a source that is already quiesced. The FLUSH
+  # is kept only to push buffers out before the position is read, and is NOT
+  # relied on to keep anything locked (it cannot -- it is session-scoped).
+  _info "Writing the advisory read-only flag on the source ..."
   _xmass_freeze_source_writes \
-    || { _xmass_restore_hint; _die "Could not freeze source writes -- refusing to cut over a writable source"; }
+    || _alrt "Advisory read-only flag not written -- continuing; the 503 gate and the parked runners hold the source"
   mysql --defaults-file=/root/.my.cnf -e "FLUSH TABLES;" &> /dev/null
 
   # Step 7: Triple-check lag is still zero after the lock

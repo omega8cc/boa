@@ -41,6 +41,32 @@ _validate_safe_dir() {
   esac
 }
 
+_validate_ctrl_dir() {
+  # Gate the DIRECTORY that will hold a root-maintained control INI. The
+  # alias-derived _Dir/_Plr are validated by _validate_safe_dir, but the
+  # trailing modules component is not, and it lives in the tenant-writable
+  # setgid tree: rename(2) and every ">>" append below resolve each parent
+  # component normally, so a modules symlink planted by a tenant redirects
+  # the whole per-site leg onto a root-parsed path. An ABSENT dir passes --
+  # a later leg creates it with mkdir -p, and refusing here would stop that
+  # on a fresh platform, which breaks more than it guards. Reads _usEr.
+  # $1 = directory.
+  local _resolved _anchor
+  [ -L "$1" ] && return 1
+  [ -e "$1" ] || return 0
+  [ -d "$1" ] || return 1
+  _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
+  _anchor=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+  case "${_resolved}/" in
+    "${_anchor}"/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 _ctrl_stage_dir() {
   # Root-only staging dir for control-INI writes, on the same filesystem as the
   # account's platform trees (they all live under the account root). The account
@@ -77,15 +103,35 @@ _reseed_ctrl_ini() {
   # -- so a tenant who could write the staging dir could swap the temp for a
   # symlink and have root chown their target. The account root is 0711, so they
   # can traverse but not create there. Refuses a symlink/non-regular SOURCE so a
-  # tenant-symlinked template cannot disclose a root file. Reads _usEr and _HM_U
-  # from the caller. $1 = source template, $2 = dest INI path.
+  # tenant-symlinked template cannot disclose a root file.
+  #
+  # rename() refuses to follow only the FINAL component: every directory
+  # above it is resolved normally, so a tenant who swaps the modules dir
+  # itself for a symlink redirects the whole write. Refuse a symlinked
+  # parent, require the resolved parent to sit under the account root, and
+  # then act on that RESOLVED parent -- a link swapped in after the check
+  # is no longer on the path we traverse. Reads _usEr and _HM_U from the
+  # caller. $1 = source template, $2 = dest INI path.
   local _src="$1"
   local _dst="$2"
-  local _stg _new
+  local _stg _new _pnt _rpn _rus
   [ -L "${_src}" ] && return 1
   [ -f "${_src}" ] || return 1
   [ -n "${_HM_U}" ] || return 1
-  [ -d "${_dst%/*}" ] || return 1
+  case "${_dst}" in
+    /*/*) : ;;
+    *) return 1 ;;
+  esac
+  _pnt="${_dst%/*}"
+  [ -L "${_pnt}" ] && return 1
+  [ -d "${_pnt}" ] || return 1
+  _rpn=$(realpath -e -- "${_pnt}" 2>/dev/null) || return 1
+  _rus=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+  case "${_rpn}/" in
+    "${_rus}"/*) : ;;
+    *) return 1 ;;
+  esac
+  _dst="${_rpn}/${_dst##*/}"
   _stg=$(_ctrl_stage_dir) || return 1
   _new=$(mktemp "${_stg}/ctrl.XXXXXX" 2>/dev/null) || return 1
   if [ -L "${_new}" ] || [ ! -f "${_new}" ]; then
@@ -437,6 +483,30 @@ _add_solr() {
   fi
 }
 
+_archive_solr_core() {
+  # ${1} = core dir. A teardown is unrecoverable once UNLOAD&deleteIndex ran,
+  # and the trigger is a cleared directive -- recoverable intent deserves a
+  # recoverable result. Tar the core tree into /var/backups/solr-archive first
+  # (solrtrim does the same before it removes a version); refuse the delete
+  # when the archive cannot be written. An empty or absent core has nothing
+  # worth keeping and passes straight through.
+  local _core="$1" _arch _stamp
+  [ -d "${_core}" ] || return 0
+  [ -n "$(find "${_core}" -type f -print -quit 2>/dev/null)" ] || return 0
+  _stamp=$(date +%y%m%d-%H%M%S)
+  mkdir -p /var/backups/solr-archive &> /dev/null
+  chmod 0700 /var/backups/solr-archive &> /dev/null
+  _arch="/var/backups/solr-archive/$(basename "${_core}")-${_stamp}.tar.gz"
+  if tar -czf "${_arch}.tmp" -C "$(dirname "${_core}")" "$(basename "${_core}")" 2>/dev/null \
+    && mv -f "${_arch}.tmp" "${_arch}" 2>/dev/null; then
+    echo "Archived Solr core ${_core} to ${_arch}"
+    return 0
+  fi
+  rm -f "${_arch}.tmp" &> /dev/null
+  echo "Could not archive Solr core ${_core} -- leaving it in place"
+  return 1
+}
+
 _delete_solr() {
   # ${1} is solr core path
   if [[ "${1}" =~ "solr4" ]]; then
@@ -454,19 +524,22 @@ _delete_solr() {
       && [ -e "/var/solr9/data" ]; then
       # The Solr 9 CLI ignores -p for delete and falls back to port 8983,
       # so remove the core via the Core Admin API on the instance port
-      if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_SolrCoreID}"; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
         wait
       fi
-      if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_Old_SolrCoreID}"; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Old_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
         wait
       fi
-      if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_Legacy_SolrCoreID}"; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Legacy_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
@@ -476,20 +549,23 @@ _delete_solr() {
     elif [ "${_SOLR_BASE}" = "/var/solr7/data" ] \
       && [ -x "/opt/solr7/bin/solr" ] \
       && [ -e "/var/solr7/data/solr.xml" ]; then
-      if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_SolrCoreID}"; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_SolrCoreID}"
         wait
       fi
-      if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_Old_SolrCoreID}"; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_Old_SolrCoreID}"
         wait
       fi
-      if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ]; then
+      if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ] \
+        && _archive_solr_core "${_SOLR_BASE}/${_Legacy_SolrCoreID}"; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_Legacy_SolrCoreID}"
         wait
       fi
       rm -f ${_Dir}/solr.php
-    elif [ "${_SOLR_BASE}" = "/opt/solr4" ]; then
+    elif [ "${_SOLR_BASE}" = "/opt/solr4" ] && _archive_solr_core "${1}"; then
       sed -i "s/.*instan_ceDir=\"${_SolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
       wait
       sed -i "s/.*name=\"${_Legacy_SolrCoreID}\".*//g"  ${_SOLR_BASE}/solr.xml
@@ -522,9 +598,17 @@ _check_solr() {
 }
 
 _setup_solr() {
+  # A site INI that is MISSING is reseeded from the default template, whose
+  # solr_integration_module line is the commented-out placeholder -- the very
+  # shape the teardown branch below reads as "directive cleared". A missing
+  # file is not an operator decision (a deploy rsync --delete, a hand rm, a
+  # stripped symlink all produce it), so a pass that had to reseed never tears
+  # down: the next pass sees a stable INI and the operator's real intent.
+  _SOLR_INI_RESEEDED=NO
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
+    _SOLR_INI_RESEEDED=YES
   fi
   ###
   ### Support for solr_integration_module directive
@@ -575,7 +659,8 @@ _setup_solr() {
       # teardown; a valid module whose Solr base is not installed must
       # not delete existing cores. The eligibility has to be carried in
       # its own flag because _SOLR_VER is blanked right here.
-      if [ "${_SOLR_MODULE}" = "your_module_name_here" ]; then
+      if [ "${_SOLR_MODULE}" = "your_module_name_here" ] \
+        && [ "${_SOLR_INI_RESEEDED}" != "YES" ]; then
         _SOLR_TEARDOWN=YES
       fi
       _SOLR_MODULE=
@@ -715,6 +800,21 @@ _check_sites_list() {
       fi
       if [ -n "${_Plr}" ] && ! _validate_safe_dir "${_Plr}"; then
         echo "SKIP: _Plr resolves outside allowed roots: ${_Plr}"
+        continue
+      fi
+      # The checks above validate the alias-derived roots, not the modules
+      # dir the control INIs actually live in. That component sits in the
+      # tenant-writable setgid tree, and the bare ">>" appends further down
+      # follow a symlink planted there just as a rename does, so gate it
+      # here too. Absent is allowed; a symlink, or a dir resolving outside
+      # the account root, skips the iteration.
+      if [ -n "${_Dir}" ] && ! _validate_ctrl_dir "${_Dir}/modules"; then
+        echo "SKIP: not a plain dir under ${_usEr}: ${_Dir}/modules"
+        continue
+      fi
+      if [ -n "${_Plr}" ] \
+        && ! _validate_ctrl_dir "${_Plr}/sites/all/modules"; then
+        echo "SKIP: not a plain dir under ${_usEr}: ${_Plr}/sites/all/modules"
         continue
       fi
       _desymlink_planted \
@@ -1527,7 +1627,11 @@ _is_protected_run() {
   _boaBins="autoinit automini barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _cPat="/local/bin/${_cbn}"
+      # Anchored for every member, not just "boa": a bare path substring
+      # matches any command line that merely MENTIONS the wrapper -- an
+      # editor, a checksum, an operator's ssh probe -- and phantom-holds
+      # this guard. Same form clear.sh/runner.sh/owl.sh/java.sh use.
+      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
       # Bare "boa" would match an hours-long remote install driven
       # from this box over ssh (and every boa-info probe); anchor it
       # to the LOCAL install form, as clear.sh/runner.sh already do
@@ -1541,7 +1645,7 @@ _is_protected_run() {
   done
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/var/backups/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
   fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE

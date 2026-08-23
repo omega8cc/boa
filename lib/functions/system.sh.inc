@@ -628,6 +628,24 @@ _fix_ftps_pam() {
   wait
   sed -i "s/ service=system-auth//g"    /etc/pam.d/pure-ftpd &> /dev/null
   wait
+  # The deny-list/shell/nologin rules verify no credential, so a policy
+  # whose auth stack lost its pam_unix rule would accept any password
+  # once PAM auth is selected. Heal it here, because the seds can only
+  # rename. Appending is enough: PAM keeps per-type order. Only a file
+  # carrying our own deny-list rule is touched, so a site policy built
+  # around a different auth module is left alone.
+  local _PAM_FTP_LIST_TEST=
+  local _PAM_FTP_AUTH_TEST=
+  if [ -e "/etc/pam.d/pure-ftpd" ]; then
+    _PAM_FTP_LIST_TEST=$(grep "pam_listfile" /etc/pam.d/pure-ftpd 2>&1)
+    _PAM_FTP_AUTH_TEST=$(grep -E "^[[:space:]]*auth[[:space:]]+.*pam_unix" \
+      /etc/pam.d/pure-ftpd 2>&1)
+    if [[ "${_PAM_FTP_LIST_TEST}" =~ "/etc/ftpusers" ]] \
+      && [[ ! "${_PAM_FTP_AUTH_TEST}" =~ "pam_unix" ]]; then
+      echo "auth       required     pam_unix.so" >> /etc/pam.d/pure-ftpd
+      _msg "NOTE: Missing auth rule restored in the FTPS PAM policy"
+    fi
+  fi
 }
 
 #
@@ -1107,9 +1125,10 @@ _valkey_ceiling_derive() {
             _VK_TRAFFIC=$(( _dH + _dM ))
             if [ "${_VK_TRAFFIC}" -lt 10000 ] \
               || { [ "${_dE}" -eq 0 ] && [ $(( _dP * 2 )) -lt "${_VK_CUR}" ]; }; then
-              # Idle or over-granted: converge DOWN toward peak x1.5 in
-              # bounded steps; this branch never widens (an idle cache
-              # is never granted more than it already has).
+              # Idle or over-granted: converge DOWN toward x1.5 of the
+              # window's high-water OCCUPANCY in bounded steps; this
+              # branch never widens (an idle cache is never granted more
+              # than it already has).
               _VK_STEP=$(( _VK_CUR / 4 ))
               if [ "${_VK_STEP}" -lt 512 ]; then
                 _VK_STEP=512
@@ -3075,6 +3094,7 @@ _barracuda_cnf() {
     echo "_SOLR_HEAP_FORCE=\"${_SOLR_HEAP_FORCE}\""                     >> ${_barCnf}
     echo "_USE_SQLPROBE=${_USE_SQLPROBE}"                     >> ${_barCnf}
     echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
+    echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}"                 >> ${_barCnf}
     echo "_XDR9000=${_XDR9000}"                               >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -3692,6 +3712,11 @@ _barracuda_cnf() {
     _USE_BATCH_GUARD_TEST=$(grep _USE_BATCH_GUARD ${_barCnf} 2>&1)
     if [[ ! "${_USE_BATCH_GUARD_TEST}" =~ "_USE_BATCH_GUARD" ]]; then
       echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}" >> ${_barCnf}
+    fi
+
+    _USE_TASK_GUARD_TEST=$(grep _USE_TASK_GUARD ${_barCnf} 2>&1)
+    if [[ ! "${_USE_TASK_GUARD_TEST}" =~ "_USE_TASK_GUARD" ]]; then
+      echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}" >> ${_barCnf}
     fi
 
     _XDR9000_TEST=$(grep _XDR9000 ${_barCnf} 2>&1)
