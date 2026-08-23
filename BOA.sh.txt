@@ -430,7 +430,7 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat-traditional ${_aptYesUnth} &> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} -qq 2> /dev/null
   fi
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
@@ -960,7 +960,7 @@ _fix_virt_what() {
       echo "INFO: virt-what tool requires small update, fixing..."
       if ! command -v strace &> /dev/null; then
         _apt_clean_update
-        apt-get install strace ${_aptYesUnth}
+        apt-get install strace ${_aptYesUnth} -qq 2> /dev/null
       fi
       _ensure_virt_what_helper_symlink
     fi
@@ -981,7 +981,7 @@ _fix_or_install_virt_what() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install virt-what ${_aptYesUnth}
+    apt-get install virt-what ${_aptYesUnth} -qq 2> /dev/null
     wait
     _fix_virt_what
   fi
@@ -2943,7 +2943,7 @@ _if_fix_lshell() {
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
     [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}
     _apt_clean_update
-    apt-get install python3-pip ${_aptYesUnth}
+    apt-get install python3-pip ${_aptYesUnth} -qq 2> /dev/null
     if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
     elif [ -x "/usr/local/bin/pip3" ]; then
@@ -3952,7 +3952,7 @@ _if_reinstall_curl() {
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
-    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq 2> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -4029,7 +4029,7 @@ _if_reinstall_curl() {
     fi
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
-    apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
+    apt-get build-dep curl ${_aptYesUnth} -qq 2> /dev/null
     if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
@@ -4381,7 +4381,7 @@ _if_update_boa_key_tools_only() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install lsb-release ${_aptYesUnth} &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq 2> /dev/null
   fi
   _IPSET_TEST="$(which ipset)"
   if [ ! -x "${_IPSET_TEST}" ]; then
@@ -4396,7 +4396,7 @@ _if_update_boa_key_tools_only() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${_aptYesUnth} &> /dev/null
+    apt-get install ipset ${_aptYesUnth} -qq 2> /dev/null
   fi
 
   _ensure_ipset_symlinks
@@ -4634,10 +4634,10 @@ _boa_setup() {
 
   _isScreen=$(screen --version 2>&1)
   if [[ ! "${_isScreen}" =~ "GNU" ]] || [ -z "${_isScreen}" ]; then
-    apt-get install screen -y &> /dev/null
-    apt-get install net-tools -y &> /dev/null
-    apt-get install hostname -y &> /dev/null
-    apt-get install ntpsec-ntpdate -y &> /dev/null
+    apt-get install screen ${_aptYesUnth} -qq 2> /dev/null
+    apt-get install net-tools ${_aptYesUnth} -qq 2> /dev/null
+    apt-get install hostname ${_aptYesUnth} -qq 2> /dev/null
+    apt-get install ntpsec-ntpdate ${_aptYesUnth} -qq 2> /dev/null
   fi
 
   _if_reinstall_curl
@@ -4667,7 +4667,7 @@ _boa_setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install lsb-release ${_aptYesUnth}
+    apt-get install lsb-release ${_aptYesUnth} -qq 2> /dev/null
   fi
 
   ### Fix or install VM system detection
