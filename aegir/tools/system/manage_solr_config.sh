@@ -10,9 +10,11 @@ export _xSrl=588844ltsT01
 
 # A replication standby holds Solr down until promotion; creating, deleting
 # or restarting cores here would act on an index still being synced. The
-# xmass hold marker gates too: it outlives the standby marker through the
-# cutover window (java.sh enforces the disarm on it until step 14), and
-# core work must not fight that enforcement.
+# xmass hold marker gates too: java.sh enforces the disarm every minute while
+# it exists, until cutover step 14 or post-mig re-arms symmetrically. It is
+# independent of the standby marker, so it can still be set after second.sh
+# has self-removed a stale one -- and core work must not fight that
+# enforcement.
 [ -e "/root/.standby.cnf" ] && exit 0
 [ -e "/var/log/boa/.xmass_solr_hold.pid" ] && exit 0
 
@@ -484,20 +486,55 @@ _add_solr() {
 }
 
 _archive_solr_core() {
-  # ${1} = core dir. A teardown is unrecoverable once UNLOAD&deleteIndex ran,
-  # and the trigger is a cleared directive -- recoverable intent deserves a
-  # recoverable result. Tar the core tree into /var/backups/solr-archive first
-  # (solrtrim does the same before it removes a version); refuse the delete
-  # when the archive cannot be written. An empty or absent core has nothing
-  # worth keeping and passes straight through.
-  local _core="$1" _arch _stamp
+  # ${1} = core dir. A teardown is unrecoverable once the index is gone, and
+  # the trigger is a cleared directive -- recoverable intent deserves a
+  # recoverable result. For Solr 7 and 9 the archive IS the delete, in the
+  # orphan path's own shape (_archive_orphan_core, recovery recipe there):
+  # UNLOAD without deleting any file, then move the core tree to
+  # /var/backups/solr7|solr9/<ts>-<core>. No copy, no extra disk, and it
+  # cannot repeat, because the source is gone -- the callers delete only a
+  # core that is still in place afterwards. Solr 4 has no core-admin API
+  # here, so its tree is tarred under a free-space precheck before the
+  # rm -rf that follows; a core that cannot be archived is left in place
+  # rather than deleted. An empty or absent core has nothing worth keeping
+  # and passes straight through.
+  local _core="$1" _name _ts _port _bkp _need _free _arch
   [ -d "${_core}" ] || return 0
   [ -n "$(find "${_core}" -type f -print -quit 2>/dev/null)" ] || return 0
-  _stamp=$(date +%y%m%d-%H%M%S)
-  mkdir -p /var/backups/solr-archive &> /dev/null
-  chmod 0700 /var/backups/solr-archive &> /dev/null
-  _arch="/var/backups/solr-archive/$(basename "${_core}")-${_stamp}.tar.gz"
-  if tar -czf "${_arch}.tmp" -C "$(dirname "${_core}")" "$(basename "${_core}")" 2>/dev/null \
+  _name=$(basename "${_core}")
+  _ts=$(date +%Y%m%d-%H%M%S)
+  case "${_core}" in
+    /var/solr9/data/*) _port=9099; _bkp=/var/backups/solr9 ;;
+    /var/solr7/data/*) _port=9077; _bkp=/var/backups/solr7 ;;
+    *) _port=; _bkp=/var/backups/solr-archive ;;
+  esac
+  if [ -n "${_port}" ]; then
+    curl -s --max-time 15 \
+      "http://127.0.0.1:${_port}/solr/admin/cores?action=UNLOAD&core=${_name}&deleteIndex=false&deleteDataDir=false&deleteInstanceDir=false" \
+      &> /dev/null || true
+    wait
+    mkdir -p "${_bkp}" &> /dev/null
+    if mv "${_core}" "${_bkp}/${_ts}-${_name}" 2>/dev/null; then
+      echo "Archived Solr core ${_core} to ${_bkp}/${_ts}-${_name}"
+      return 0
+    fi
+    echo "Could not archive Solr core ${_core} -- leaving it in place"
+    return 1
+  fi
+  _need=$(du -sk "${_core}" 2>/dev/null | cut -f1)
+  _need="${_need//[^0-9]/}"
+  _free=$(df -Pk /var/backups 2>/dev/null | awk 'NR==2 {print $4}')
+  _free="${_free//[^0-9]/}"
+  if [ -z "${_need}" ] || [ -z "${_free}" ] \
+    || [ "${_free}" -lt $(( _need + 262144 )) ]; then
+    echo "Not enough free space under /var/backups to archive Solr core ${_core} -- leaving it in place"
+    return 1
+  fi
+  mkdir -p "${_bkp}" &> /dev/null
+  chmod 0700 "${_bkp}" &> /dev/null
+  _arch="${_bkp}/${_name}-${_ts}.tar.gz"
+  if tar -czf "${_arch}.tmp" -C "$(dirname "${_core}")" "${_name}" 2>/dev/null \
+    && [ -s "${_arch}.tmp" ] \
     && mv -f "${_arch}.tmp" "${_arch}" 2>/dev/null; then
     echo "Archived Solr core ${_core} to ${_arch}"
     return 0
@@ -525,21 +562,24 @@ _delete_solr() {
       # The Solr 9 CLI ignores -p for delete and falls back to port 8983,
       # so remove the core via the Core Admin API on the instance port
       if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ] \
-        && _archive_solr_core "${_SOLR_BASE}/${_SolrCoreID}"; then
+        && _archive_solr_core "${_SOLR_BASE}/${_SolrCoreID}" \
+        && [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
         wait
       fi
       if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ] \
-        && _archive_solr_core "${_SOLR_BASE}/${_Old_SolrCoreID}"; then
+        && _archive_solr_core "${_SOLR_BASE}/${_Old_SolrCoreID}" \
+        && [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ]; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Old_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
         wait
       fi
       if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ] \
-        && _archive_solr_core "${_SOLR_BASE}/${_Legacy_SolrCoreID}"; then
+        && _archive_solr_core "${_SOLR_BASE}/${_Legacy_SolrCoreID}" \
+        && [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ]; then
         curl -s --max-time 15 \
           "http://127.0.0.1:9099/solr/admin/cores?action=UNLOAD&core=${_Legacy_SolrCoreID}&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true" \
           &> /dev/null
@@ -550,17 +590,20 @@ _delete_solr() {
       && [ -x "/opt/solr7/bin/solr" ] \
       && [ -e "/var/solr7/data/solr.xml" ]; then
       if [ -e "${_SOLR_BASE}/${_SolrCoreID}" ] \
-        && _archive_solr_core "${_SOLR_BASE}/${_SolrCoreID}"; then
+        && _archive_solr_core "${_SOLR_BASE}/${_SolrCoreID}" \
+        && [ -e "${_SOLR_BASE}/${_SolrCoreID}" ]; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_SolrCoreID}"
         wait
       fi
       if [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ] \
-        && _archive_solr_core "${_SOLR_BASE}/${_Old_SolrCoreID}"; then
+        && _archive_solr_core "${_SOLR_BASE}/${_Old_SolrCoreID}" \
+        && [ -e "${_SOLR_BASE}/${_Old_SolrCoreID}" ]; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_Old_SolrCoreID}"
         wait
       fi
       if [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ] \
-        && _archive_solr_core "${_SOLR_BASE}/${_Legacy_SolrCoreID}"; then
+        && _archive_solr_core "${_SOLR_BASE}/${_Legacy_SolrCoreID}" \
+        && [ -e "${_SOLR_BASE}/${_Legacy_SolrCoreID}" ]; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_Legacy_SolrCoreID}"
         wait
       fi
@@ -597,18 +640,44 @@ _check_solr() {
   fi
 }
 
+_solr_teardown_intended() {
+  # ${1} = site INI. A commented-out directive is an operator's teardown
+  # request (docs/SOLR.md) -- unless the INI is the placeholder BOA itself
+  # reseeded after the file went missing. That pass sets a root-only sentinel
+  # beside the staging dir, and later passes keep honouring it for as long as
+  # the INI still carries the pristine placeholder line: the first moment the
+  # placeholder can carry operator intent is when that line has been edited,
+  # and BOA's own nightly INI writers never touch it. The sentinel is dropped
+  # again the moment a valid module directive is seen. Durable on purpose: a
+  # shell flag protects one pass, and the cron runs every four minutes.
+  local _sen
+  [ "${_SOLR_INI_RESEEDED}" = "YES" ] && return 1
+  [ -n "${_SolrCoreID}" ] || return 0
+  _sen="${_usEr}/.boa-ctrl/solr-reseeded.${_SolrCoreID}"
+  [ -e "${_sen}" ] || return 0
+  if grep -q "^;solr_integration_module = your_module_name_here" "$1" 2>/dev/null; then
+    return 1
+  fi
+  return 0
+}
+
 _setup_solr() {
   # A site INI that is MISSING is reseeded from the default template, whose
   # solr_integration_module line is the commented-out placeholder -- the very
   # shape the teardown branch below reads as "directive cleared". A missing
   # file is not an operator decision (a deploy rsync --delete, a hand rm, a
   # stripped symlink all produce it), so a pass that had to reseed never tears
-  # down: the next pass sees a stable INI and the operator's real intent.
+  # down, and -- through the sentinel _solr_teardown_intended reads -- neither
+  # does any later pass until the operator has edited the directive itself.
   _SOLR_INI_RESEEDED=NO
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
     _SOLR_INI_RESEEDED=YES
+    if [ -e "${_DIR_CTRL_F}" ] && [ -n "${_SolrCoreID}" ]; then
+      _sen_dir=$(_ctrl_stage_dir) \
+        && touch "${_sen_dir}/solr-reseeded.${_SolrCoreID}" &> /dev/null
+    fi
   fi
   ###
   ### Support for solr_integration_module directive
@@ -660,7 +729,7 @@ _setup_solr() {
       # not delete existing cores. The eligibility has to be carried in
       # its own flag because _SOLR_VER is blanked right here.
       if [ "${_SOLR_MODULE}" = "your_module_name_here" ] \
-        && [ "${_SOLR_INI_RESEEDED}" != "YES" ]; then
+        && _solr_teardown_intended "${_DIR_CTRL_F}"; then
         _SOLR_TEARDOWN=YES
       fi
       _SOLR_MODULE=
@@ -672,6 +741,9 @@ _setup_solr() {
       || [ "${_SOLR_MODULE}" = "search_api_solr7" ] \
       || [ "${_SOLR_MODULE}" = "search_api_solr9" ] \
       || [ "${_SOLR_MODULE}" = "apachesolr" ]; then
+      # A valid directive ends the reseed grace: the operator has spoken.
+      [ -n "${_SolrCoreID}" ] \
+        && rm -f "${_usEr}/.boa-ctrl/solr-reseeded.${_SolrCoreID}" &> /dev/null
       [ -n "${_SOLR_VER}" ] && _check_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}"
     else
       if [ "${_SOLR_TEARDOWN}" = "YES" ]; then
@@ -1659,6 +1731,7 @@ if [ "${_protectedRun}" = "FALSE" ]; then
   _NOW=${_NOW//[^0-9-]/}
   [ -d "/var/backups/solr/log" ] || mkdir -p /var/backups/solr/log
   find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
+  find /var/backups/solr-archive -mindepth 1 -maxdepth 1 -type f -mtime +30 -exec rm -f {} \; &> /dev/null
   _start_up >/var/backups/solr/log/solr-${_NOW}.log 2>&1
 fi
 

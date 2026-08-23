@@ -1803,7 +1803,11 @@ _satellite_update_drush_php_cli() {
   else
     _msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION is not set correctly"
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-    touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
+    # Root-side pass (called from _satellite_run_child_b after the B child
+    # exited): signal root's own outcome in the root-owned tree like the abort
+    # right after the B check does -- never a root touch inside the
+    # instance-owned dir (1145fc647's invariant).
+    touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
     exit 1
   fi
   # The shebang pin on drush.php is bypassed whenever the drush 8 finder
@@ -6687,13 +6691,13 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6801,13 +6805,13 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster hosting-dispatch
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       _msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15
