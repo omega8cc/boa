@@ -1580,6 +1580,13 @@ EOFMYSQL
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Ægir Master Instance upgrade skipped"
       fi
+    elif [ -e "/root/.standby.cnf" ]; then
+      # The standby steer guarantees only the FLAVOR (_outP=system); the
+      # _SYSTEM_UP_ONLY probe above keys on two master artefacts and fails
+      # OPEN when either is missing, which on a damaged standby would run
+      # the master upgrade -- drush updb plus DROP USER/GRANT churn --
+      # against the replicated hostmaster DB. The role marker wins.
+      _msg "NOTE: replication standby -- Ægir Master Instance upgrade refused"
     else
       if [ ! -e "/run/mysqld/mysqld.pid" ] \
         || [ ! -e "/run/mysqld/mysqld.sock" ]; then

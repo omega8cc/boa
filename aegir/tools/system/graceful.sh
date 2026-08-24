@@ -172,9 +172,14 @@ _graceful_action() {
   _IF_BCP="$(pgrep -f duplicity)"
   if [ -d "/dev/disk" ]; then
     if [ ! -e "/root/.no.swap.clear.cnf" ]; then
-      echo "Resetting swap..."
-      swapoff -a
-      if [ -z "${_IF_BCP}" ]; then
+      if [ -n "${_IF_BCP}" ]; then
+        # Old shape ran swapoff unconditionally and skipped only the
+        # swapon, leaving the box SWAPLESS for a day whenever a backup
+        # overlapped 03:01. Defer the whole reset instead.
+        echo "Backup in progress; swap reset deferred to the next run..."
+      else
+        echo "Resetting swap..."
+        swapoff -a
         swapon -a
       fi
     fi
@@ -223,6 +228,12 @@ _boa_pass_active() {
   [ -e "/run/boa_run.pid" ] && return 0
   [ -e "/run/boa_wait.pid" ] && return 0
   [ -e "/run/octopus_install_run.pid" ] && return 0
+  # xmass windows: the init/copy-back phase is exactly when a swapoff or
+  # cache drop can OOM the restore. Fresh-bounded like their consumers
+  # (second.sh 2880 min for the init signal, mysql.sh 240 min for the
+  # maintenance mute) so a stale marker cannot park this script forever.
+  [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2> /dev/null)" ] && return 0
+  [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2> /dev/null)" ] && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0

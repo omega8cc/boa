@@ -299,6 +299,12 @@ _nginx_if_up_check_fix() {
 }
 
 _if_nginx_restart() {
+  # A passive mirror (replication standby): the sentinel is the ACTIVE box's
+  # self-service request, delivered here only because static/control rides the
+  # sync leg. Never consume it on the standby -- acting restarts a box that
+  # serves nothing, and deleting the file eats a request that was never ours.
+  [ -e "/root/.standby.cnf" ] && return 0
+
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)

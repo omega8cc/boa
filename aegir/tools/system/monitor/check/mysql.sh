@@ -564,7 +564,13 @@ _mysql_flush_hosts() {
   if pgrep -f /usr/sbin/mysqld >/dev/null 2>&1 \
     && [ -e "/run/mysqld/mysqld.sock" ] \
     && [ -e "/run/mysqld/mysqld.pid" ]; then
-    mysqladmin -u root flush-hosts &> /dev/null
+    # NO_WRITE_TO_BINLOG: the host-cache flush is a LOCAL remedy. The bare form
+    # is binlogged, so under GTID it minted one errant local transaction per
+    # watchdog pass on every 5.7 replica -- a standing mirror accumulated
+    # ~1440/day of its own UUID, which a later failback can no longer fetch
+    # once binlogs rotate (1236). 8.4 removed FLUSH HOSTS; this form errors
+    # silently there exactly like the old call did.
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
   fi
 }
 
