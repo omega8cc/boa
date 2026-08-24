@@ -411,6 +411,12 @@ _fpm_logs_empty() {
 }
 
 _fpm_apcu_reload_sentinel() {
+  # A passive mirror (replication standby): the sentinel is the ACTIVE box's
+  # self-service request, delivered here only because static/control rides the
+  # sync leg. Never consume it on the standby -- acting restarts a box that
+  # serves nothing, and deleting the file eats a request that was never ours.
+  [ -e "/root/.standby.cnf" ] && return 0
+
   # Allows site owners on qualifying plans to request a graceful PHP-FPM
   # reload (which clears APCu) by creating an empty sentinel file:
   #
