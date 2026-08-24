@@ -115,7 +115,7 @@ _do_syncpass() {
       _check_generate
       chown ${_uname}:${_uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
-        mysqladmin -u root flush-hosts &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         su -s /bin/bash - ${_uname} -c "drush8 @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_PASS}' \
@@ -181,9 +181,9 @@ EOFMYSQL
           if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
             _THIS_DB_PORT=6033
-            mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+            mysql -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
           else
-            mysqladmin -u root flush-hosts &> /dev/null
+            mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
           fi
           su -s /bin/bash - ${_uname} -c "drush8 @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
