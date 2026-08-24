@@ -55,7 +55,16 @@ _DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
-_HST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+_HST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+# The old `|| hostname -f` bound to tr (rc 0 on empty input) and never
+# fired; an empty /etc/hostname then collapsed the bucket name to the
+# SHARED literal prefix, and --allow-source-mismatch let two boxes
+# interleave and force-prune one duplicity chain.
+[ -n "${_HST}" ] || _HST="$(hostname -f 2>/dev/null)"
+if [ -z "${_HST}" ]; then
+  echo "FATAL ERROR: cannot determine this host's name; refusing to touch a shared bucket"
+  exit 1
+fi
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
@@ -403,7 +412,13 @@ fi
 if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "NO" ]; then
   _EXCLUDE="--exclude /data/conf/arch"
 else
-  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups'"
+  # No embedded quotes: quote removal happens before expansion, so quotes
+  # written INTO the variable survive into duplicity's argv and the regexp
+  # then starts with a literal apostrophe no path can match -- the
+  # documented default exclusion silently never fired. The pattern has no
+  # whitespace and the leading ^ defeats pathname expansion, so the bare
+  # word expands intact.
+  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp ^/data/disk/.*/backups"
 fi
 
 _USER_INCLUDE=""

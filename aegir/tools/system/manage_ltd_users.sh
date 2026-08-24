@@ -7,7 +7,13 @@ export _tRee=dev
 export _xSrl=588844devT01
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# The || binds to tr (rc 0 on empty input), so the fallback never fired.
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
+# Script-scope default: the main-body cleanup uses _TMP, but until now the
+# only assignment lived inside _ok_create_user, so every ordinary pass ran
+# `rm -f /*.txt` against the filesystem root (reproduced live 2026-08-24).
+_TMP="/var/tmp"
 
 _usrGroup=users
 _WEBG=www-data

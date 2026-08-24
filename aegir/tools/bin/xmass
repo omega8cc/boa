@@ -4440,6 +4440,21 @@ if [ ! -e "/var/xdrago/run-${_oct}" ] \
   mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
   echo "  ${_oct}: restored parked dispatcher"
 fi
+# A run-upgrade.pid that accumulated during the standby window (rsynced in
+# from the source, or armed by the wiped-config self-heal before it was
+# standby-gated) would fire an unattended full Octopus upgrade on the very
+# first runner tick after this promotion. Consume it loudly; whoever wants
+# the upgrade can re-touch the trigger on the live box. A platforms.info
+# still carrying the heal's inert FOOBAR seed goes with it -- removing it
+# restores the default-platforms fallback.
+if [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ]; then
+  rm -f "/data/disk/${_oct}/static/control/run-upgrade.pid"
+  echo "  ${_oct}: cleared stale run-upgrade.pid (unattended post-promotion upgrade defused)"
+fi
+if [ "\$(cat "/data/disk/${_oct}/static/control/platforms.info" 2>/dev/null)" = "FOOBAR" ]; then
+  rm -f "/data/disk/${_oct}/static/control/platforms.info"
+  echo "  ${_oct}: removed inert FOOBAR platforms.info seed"
+fi
 _vhd="/data/disk/${_oct}/config/server_master/nginx/vhost.d"
 _restored=0
 for _bak in "\${_vhd}"/.[a-zA-Z0-9]*; do

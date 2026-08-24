@@ -1763,7 +1763,16 @@ _db_server_install() {
         _sql_directives_sync
         _check_sql_running
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
-          _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+          # Replication standby: mysql.* is replicated content, and the heal
+          # below is binlogged DDL (CREATE USER / mysqlcheck / ALTER) that
+          # would mint errant own-UUID GTIDs on the replica -- the flush-hosts
+          # class. Empty probe = heal skipped; the active runs the same heal
+          # and replication carries it. The SET GLOBAL tuning below stays.
+          if [ -e "/root/.standby.cnf" ]; then
+            _CHECK_EXISTS=""
+          else
+            _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+          fi
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
             _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
             if [ "${_DEBUG_MODE}" = "YES" ]; then
