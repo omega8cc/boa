@@ -126,6 +126,15 @@ half-flipped box stays bootable), and the line is inserted when an existing
 box's `my.cnf` predates the template. Existing 8.4 boxes converge on their
 next `barracuda up-*` pass; nothing to do by hand.
 
+Horizon: this lane exists only for the 8.x generation. `mysql_native_password`
+is deprecated-but-shipped in 8.4 and REMOVED in MySQL/Percona 9.x, so
+php56-pool sites cannot follow a future move to 9.x — they would need to stay
+on 8.4 hosts (the natural gate for that, when a 9.x target ever appears, is
+codebasecheck). Note the Drupal-side split: the D6 CODE compatibility with
+MySQL 8 comes from d6lts/Pressflow 6.51+ (docs/CODEBASECHECK.md thresholds);
+what BOA's config provides is the PHP 5.6 CLIENT runtime lane, which no
+Drupal version bump could supply.
+
 ## Cross-version xoct: what transfers and what to watch
 
 `xoct`'s logical dump/restore is version-agnostic for the data itself — the DB
