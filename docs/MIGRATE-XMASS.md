@@ -393,11 +393,38 @@ What `init` does:
 5a. **Arms the standby write gates on the target.** `/root/.standby.cnf`
    is written FIRST, before the datadir swap, together with an in-flight
    signal (`/run/boa_xmass_init.pid`). Cron stays RUNNING for the whole
-   window — a standby is a working BOA box, with duplicity, IDS and every
-   watchdog live — and passivity comes from per-job gates on the marker
-   in every local writer: the task queue and the Aegir dispatch it parks,
-   the night work, cache TRUNCATEs, Solr core management, binlog purge,
-   mysqlcheck repairs and cluster dumps. The in-flight signal tells
+   window — a standby is a working BOA box, with IDS and every watchdog
+   live — and passivity comes from per-job gates on the marker in every
+   local writer: the task queue and the Aegir dispatch it parks, the
+   night work, cache TRUNCATEs, Solr core management, binlog purge,
+   mysqlcheck repairs, cluster dumps, and the whole duplicity backup
+   chain (`mybackup`, `multiback`, `backboa`, `duobackboa` exit quietly —
+   the active owns the backup lineage). On top of the gates, init locks
+   the replica's database outright: the `xmass-standby-hold` block
+   (`read_only` + `super_read_only`) is written into the target's
+   `xmass_gtid.cnf` — so the lock survives every mysqld restart and
+   reboot — and set live once the replica threads verify. The
+   replication appliers are exempt by definition; everything else, root
+   included, is refused at the server. The mysql watchdog re-asserts the
+   lock every minute, converts a standing mirror built by older bytes
+   the same way (it appends the block and locks the runtime), and
+   releases it only once the marker is gone — with the runtime unlock
+   verified BEFORE the block is stripped. The web tier is held DOWN for
+   the whole window (the `start()` gate in the shipped nginx init script
+   covers even the boot rc links, the per-minute enforcer covers
+   everything else, and the `BOA_STANDBY_WEB` firewall chain — IPv4+IPv6,
+   loopback exempt — is re-added by `csfpost.sh` after any `csf -r`),
+   FTPS is killed on sight with its self-healer standing down, and
+   tenant lshell/mysecureshell logins flip to `nologin` (recorded, with
+   the release restoring exactly the recorded users). The operator
+   escape hatch `/root/.standby.serve.cnf` opens the WEB tier only — a
+   read-only preview; the DB, tenant, FTPS and backup holds all stay.
+   Both `init` and `prep-target` first read the target's marker back and
+   hard-refuse a role clash: a target serving as a DIFFERENT source's
+   standby is never overlaid (same-source is the normal re-init repair
+   path), `prep-target` refuses ANY standby target, a box that itself
+   carries the marker refuses to source a migration, and the probe fails
+   CLOSED on a transport error. The in-flight signal tells
    second.sh that an empty role probe is expected until replication
    starts. second.sh mirrors it to a reboot-proof twin
    (`/root/.standby.init.pid`), so a target reboot inside the window
@@ -604,7 +631,8 @@ first change to the source):
 | Step 9 | Belt-and-braces `UNLOCK TABLES` on source (no lock is normally held); the write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source. Runs at the head of the cutover tail (idempotent), so a park upstream of it — the step-8 committed-promotion park — still gets the grant dropped when the resumed run completes |
-| Step 12 | Prove the target's web layer, then start nginx there: `nginx -t` on the target first (an invalid config **refuses the conversion**, printing the tail of the test output), then require a real HTTP answer on the target's port 80. This proof runs at the **head of the cutover tail**, so every entry re-runs it — the normal flow and each resume of a parked cutover (nothing later in the tail gates on the web layer: the step-13 serve-wait measures and reports, and nothing else can *start* a stopped nginx). Either refusal **parks resumably at `phase=rename-failed`** and prints the full source-restore recipe (write-freeze guidance included): the target stays promoted, the source stays 503-gated and frozen, and the SQL watchdogs stay paused. Fix nginx on the target, then re-run `xmass cutover target-ip --live` — the resume re-runs this proof and starts nginx itself |
+| Step 11.5 | Unlock the promoted target's database — on EVERY entry into the cutover tail, resumes included, since every step after it writes the target DB. `SET GLOBAL super_read_only=OFF` plus `read_only=OFF`, with the runtime readback verified (both variables) BEFORE the `xmass-standby-hold` block is stripped from `xmass_gtid.cnf`; a failed unlock **parks resumably at `phase=rename-failed`** rather than marching the renames into a read-only DB, and with mysql unreachable the cnf block deliberately survives as the watchdog's retry key |
+| Step 12 | Prove the target's web layer, then start nginx there: the `BOA_STANDBY_WEB` firewall hold is removed first (both address families), then `nginx -t` on the target (an invalid config **refuses the conversion**, printing the tail of the test output), then require a real HTTP answer on the target's port 80 — on loopback AND externally from the source (the path client traffic takes after the DNS flip; a browser UA, because curl's default lands in BOA's own crawler map, and HTTPS too when the target has a public 443 listener), since the loopback curl cannot see an INPUT-chain firewall drop. This proof runs at the **head of the cutover tail**, so every entry re-runs it — the normal flow and each resume of a parked cutover (nothing later in the tail gates on the web layer: the step-13 serve-wait measures and reports, and nothing else can *start* a stopped nginx). Either refusal **parks resumably at `phase=rename-failed`** and prints the full source-restore recipe (write-freeze guidance included): the target stays promoted, the source stays 503-gated and frozen, and the SQL watchdogs stay paused. Fix nginx on the target, then re-run `xmass cutover target-ip --live` — the resume re-runs this proof and starts nginx itself |
 | Step 12.5 | Rewire panel DB access on target per Ægir root (rediscover live hostmaster DB, reset its user's password, rewrite the panel dir's credentials — the datadir swap killed the fresh-install panel DBs). When the source's panel platform number diverges from the target's (an aged source vs a fresh target — the normal production shape), the step adopts the target's code-bearing panel platform and repoints the hostmaster platform row in the live DB; the DB persist is load-bearing because the rename queue's hostmaster verify regenerates the alias FROM the DB, so an alias-only correction is undone and the panel 404s from a hollow platform path |
 | Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master) |
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account). The rename moves host-derived tenant site directories onto the new hostname together with every URI-keyed surface (per-site Drush alias file, static files store, per-site PHP pins), and **aborts before the Ægir task queue** if any site dir still carries the old hostname — the queue would import those as brand-new sites with duplicate panel nodes. Inside a cutover that refusal parks at `phase=rename-failed`. After the renames it waits for each renamed site to actually serve (up to 180 s per site, `_RENAME_SERVE_WAIT`; the box's catch-all page is discriminated so an unknown-host 200 never passes) — minutes per site here are the wait, not a hang; a site named as never serving with a 400 usually means its trusted-host settings |
@@ -727,7 +755,12 @@ site fatals.
 > leftover hold or standby marker, restores the five runners, and
 > reconciles the migration-proxy trust. Cron runs on the target for the
 > whole window by design — the per-job standby gates carry the passivity —
-> so a quiet box is NOT the expected state at any point. After `post-mig`,
+> so a quiet box is NOT the expected state at any point. Every hold
+> releases with the marker: the cutover itself unlocks the DB (step 11.5)
+> and opens the firewall (step 12); the watchdog layers release the rest
+> within about a minute — nginx healed up, FTPS resurrected, backups
+> resumed, tenant logins restored (verified per user, at the
+> manage_ltd cadence). After `post-mig`,
 > verify the marker is gone (`test -e /root/.standby.cnf` must fail) and
 > the task queue drains. A target quiesced by pre-gate BOA bytes may still
 > have cron stopped; cutover step 15 starts it as vintage tolerance —
