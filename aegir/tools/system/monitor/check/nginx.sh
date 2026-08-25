@@ -395,9 +395,36 @@ _sql_mutation_in_flight() {
 #
 # Operator escape hatch for a mirror that must genuinely serve:
 # /root/.standby.serve.cnf
+#
+# FTPS on a standby: the same class of writer as the web tier -- an
+# authenticated tenant upload lands in the synced trees and permanently
+# shadows the active's copy under the -u legs. pure-ftpd has no init
+# script; on a standby it exists only if something resurrected it (the
+# system.sh healer is gated on the same marker), so kill on sight, log on
+# transition only. Deliberately OUTSIDE the serve.cnf-exempt block below:
+# serve is a web-only preview, never a tenant write channel.
+if [ -e "/root/.standby.cnf" ] \
+  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+  if pgrep -f '[p]ure-ftpd' > /dev/null 2>&1; then
+    echo "$(date) FTPD replication standby: holding FTPS DOWN" >> ${_pthOml}
+    pkill -9 -f pure-ftpd > /dev/null 2>&1
+  fi
+fi
+
+# A serving standby is deliberate but must stay VISIBLE (2026-08-25 ruling:
+# web-only scope, no expiry, operator-owned): one line an hour while the
+# escape hatch holds, so a forgotten marker surfaces in the incident log
+# instead of lingering silently for weeks.
+if [ -e "/root/.standby.cnf" ] && [ -e "/root/.standby.serve.cnf" ]; then
+  if [ -z "$(find /var/log/boa/.standby_serve_logged -mmin -60 2>/dev/null)" ]; then
+    echo "$(date) NGX replication standby: SERVING deliberately via /root/.standby.serve.cnf (DB/tenant/backup holds stay)" >> ${_pthOml}
+    mkdir -p /var/log/boa 2>/dev/null
+    touch /var/log/boa/.standby_serve_logged
+  fi
+fi
 if [ -e "/root/.standby.cnf" ] \
   && [ ! -e "/root/.standby.serve.cnf" ] \
-  && [ -z "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
   if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
     # Log on TRANSITION only: an orphan pidfile alone would otherwise write
     # ~9 lines a minute into the incident log forever.
@@ -415,8 +442,47 @@ if [ -e "/root/.standby.cnf" ] \
     && ! pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
     rm -f /run/nginx.pid
   fi
+  # Firewall half of the web hold (2026-08-25 ruling): insurance against a
+  # future init-script regression -- a directly started nginx would serve
+  # for up to a minute before this loop kills it. Loopback stays exempt
+  # (! -i lo): local proofs and cutover's own checks are not the traffic
+  # this blocks. csfpost.sh re-adds the same rules right after any csf
+  # restart flushes them; this loop heals the drift within a minute both
+  # ways. Cutover step 12 removes the chain itself before proving the port
+  # externally, so promotion never waits on this loop.
+  for _ipt in iptables ip6tables; do
+    command -v "${_ipt}" > /dev/null 2>&1 || continue
+    "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1 \
+      || "${_ipt}" -w 5 -N BOA_STANDBY_WEB > /dev/null 2>&1
+    "${_ipt}" -w 5 -C INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1 \
+      || "${_ipt}" -w 5 -I INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1
+    "${_ipt}" -w 5 -C BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1 \
+      || "${_ipt}" -w 5 -A BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1
+  done
+  # Breadcrumb for the release path: only a box that ever HELD pays the
+  # iptables execs on release checks -- a normal box pays one file test.
+  mkdir -p /var/log/boa 2>/dev/null
+  touch /var/log/boa/.standby_web_held.pid 2>/dev/null
   echo "Replication standby: web tier held down."
   exit 0
+fi
+
+# Not held (no marker, serve.cnf, or promotion window): the firewall half
+# must not survive -- remove it so a promotion by bare marker removal (no
+# cutover) opens the web path within a minute, and serve.cnf opens the web
+# tier without touching the DB/tenant/backup holds. Logs on transition only
+# (the chain exists exactly once after a release).
+if [ -e "/var/log/boa/.standby_web_held.pid" ]; then
+  for _ipt in iptables ip6tables; do
+    command -v "${_ipt}" > /dev/null 2>&1 || continue
+    if "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1; then
+      echo "$(date) NGX standby web-hold released: removing firewall hold (${_ipt})" >> ${_pthOml}
+      while "${_ipt}" -w 5 -D INPUT -j BOA_STANDBY_WEB 2>/dev/null; do :; done
+      "${_ipt}" -w 5 -F BOA_STANDBY_WEB > /dev/null 2>&1
+      "${_ipt}" -w 5 -X BOA_STANDBY_WEB > /dev/null 2>&1
+    fi
+  done
+  rm -f /var/log/boa/.standby_web_held.pid
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \

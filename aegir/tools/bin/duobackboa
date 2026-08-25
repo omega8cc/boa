@@ -16,6 +16,16 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
 
+# Passive-mirror hold (2026-08-25 ruling): the active owns the backup
+# lineage -- a mirror's own chain is redundant (its data IS the active's,
+# minutes behind), doubles the offsite cost, and its site-bootstrap steps
+# would log DB-write errors every pass under super_read_only. One line,
+# rc 0: cron stays quiet, an operator sees why. Resumes on promotion.
+if [ -e "/root/.standby.cnf" ]; then
+  echo "Replication standby: backup chain held (active owns the lineage)"
+  exit 0
+fi
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
