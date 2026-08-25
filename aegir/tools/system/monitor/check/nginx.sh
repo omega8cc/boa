@@ -376,6 +376,49 @@ _sql_mutation_in_flight() {
   return 1
 }
 
+# A passive mirror must not serve HTTP. A single rendered Drupal page writes
+# its own panel/tenant database -- cache_bootstrap, the drupal_css_cache_files
+# and drupal_js_cache_files aggregate registries, sessions, watchdog -- and on
+# a replica those local writes both diverge the data and mint errant own-UUID
+# GTIDs (measured: 13 transactions from one GET on an otherwise quiesced
+# standby). Nothing on a standby needs the web tier before promotion, so hold
+# nginx DOWN here and never heal it back up. This loop is the authoritative
+# enforcer: it runs several times a minute, so an nginx a barracuda pass
+# restarts underneath us is taken back down within seconds.
+#
+# Stands down while an xmass window is in flight. Cutover step 12
+# (_xmass_prove_target_web) deliberately starts nginx and requires it to
+# answer, and it runs BEFORE step 15 removes the standby marker -- racing that
+# would park the cutover at rename-failed. xmass owns the same signal for the
+# same window (it writes /run/boa_xmass_init.pid at step 8 so second.sh cannot
+# reap the marker mid-promotion), so honouring it here needs no new state.
+#
+# Operator escape hatch for a mirror that must genuinely serve:
+# /root/.standby.serve.cnf
+if [ -e "/root/.standby.cnf" ] \
+  && [ ! -e "/root/.standby.serve.cnf" ] \
+  && [ -z "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+  if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+    # Log on TRANSITION only: an orphan pidfile alone would otherwise write
+    # ~9 lines a minute into the incident log forever.
+    echo "$(date) NGX replication standby: holding the web tier DOWN" >> ${_pthOml}
+    service nginx stop &> /dev/null
+    sleep 2
+    if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+      _stop_nginx_processes
+    fi
+  fi
+  # The init script only clears the pidfile on its own success branch, and
+  # _stop_nginx_processes never does; a stale one left here would make the
+  # health checks re-enter every pass.
+  if [ -e "/run/nginx.pid" ] \
+    && ! pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+    rm -f /run/nginx.pid
+  fi
+  echo "Replication standby: web tier held down."
+  exit 0
+fi
+
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   && ! _sql_mutation_in_flight; then
   _nginx_if_up_check_fix
