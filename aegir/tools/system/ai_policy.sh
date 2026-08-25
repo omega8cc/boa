@@ -41,6 +41,20 @@ if ! command -v nginx >/dev/null 2>&1; then
   exit 0
 fi
 
+
+# A held web tier (replication standby) makes `service nginx reload` return
+# rc 7 forever, and the revert branch below would then rewrite this instance's
+# backup tarball into the SYNCED undo/ tree on every 2-minute pass -- a
+# permanent mirror-side divergence, because the sync legs are rsync -u and the
+# mirror's copy is always the newer one. On a held standby: keep the generated
+# fragments (they are correct on disk and activate when promotion starts
+# nginx), advance the change-gate markers as a success would, and skip both
+# the reload and the revert.
+_nginx_held_down() {
+  [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
+    && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]
+}
+
 _process_instance() {
   local _root="$1"
   local _input_file="${_root}/static/control/ai/policy.txt"
@@ -121,6 +135,13 @@ _process_instance() {
       echo "Pruned stale AI policy fragment: ${_base}.conf (${_root})"
     fi
   done
+
+  if _nginx_held_down; then
+    echo "${_current_mod_time}" > "${_timestamp_file}"
+    echo "${_emit_version}" > "${_version_file}"
+    echo "AI policy written (${_root}); replication standby -- reload skipped (web tier held)."
+    return 0
+  fi
 
   # Validate the whole host nginx config; revert THIS instance on failure.
   local _ct

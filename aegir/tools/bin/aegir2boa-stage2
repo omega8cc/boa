@@ -1528,8 +1528,8 @@ _t_remove_estate_vhosts() {
 }
 
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
-_t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile
-  local _dbn="$1" _dbp="$2" _dump="$3"
+_t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
+  local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4"
   # defence-in-depth: the source gated _dbp, but it reaches a root SQL
   # heredoc here via a 600 manifest - re-gate so a hand-edited manifest or
   # a wider-than-assumed Aegir password charset can't inject
@@ -1548,6 +1548,23 @@ GRANT ALL ON \`${_dbn}\`.* TO '${_dbn}'@'%' WITH GRANT OPTION;
 ALTER USER '${_dbn}'@'localhost' IDENTIFIED BY '${_dbp}';
 ALTER USER '${_dbn}'@'%' IDENTIFIED BY '${_dbp}';
 EOFMYSQL
+  # a D6 site serves through the php56 pool, and PHP 5.6 mysqli cannot
+  # complete the caching_sha2_password handshake 8.0+ targets mint by
+  # default - the WEB bootstrap loses the DB and D6 answers its own
+  # "Site off-line" 503 while CLI drush (modern PHP) stays healthy. BOA
+  # targets keep mysql_native_password loaded (my.cnf), so pin the site
+  # user to it; a target with the plugin disabled fails HERE, loudly,
+  # instead of adopting a site that cannot serve.
+  if [[ "${_dmaj}" = "6" ]]; then
+    if ! mysql --silent -u root mysql <<EOFMYSQL6
+ALTER USER '${_dbn}'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_dbp}';
+ALTER USER '${_dbn}'@'%' IDENTIFIED WITH mysql_native_password BY '${_dbp}';
+EOFMYSQL6
+    then
+      _alrt "db ${_dbn}: cannot pin mysql_native_password for the php56 pool (plugin disabled on this target?) - enable mysql_native_password in my.cnf, restart mysql, re-run"
+      return 1
+    fi
+  fi
   mysqladmin -u root flush-privileges >/dev/null 2>&1
   # MariaDB >=10.5.25 dumps open with a sandbox directive Percona rejects -
   # stream-strip the first line only, artifact stays pristine
@@ -1783,14 +1800,15 @@ PHPEOF
   fi
 
   # per-site DB land (creds identical to the source, settings.php untouched)
-  local _mff _dbn _dbp _uri
+  local _mff _dbn _dbp _uri _dmajl
   for _mff in "${_src}/manifest/"*.info; do
     [[ -e "${_mff}" ]] || continue
     _uri="$(_manifest_val "${_mff}" URI)"
     _marker_has "${_uri}.dbloaded.pid" && continue
     _dbn="$(_sane_ident "$(_manifest_val "${_mff}" DBN)")"
     _dbp="$(_manifest_val "${_mff}" DBP)"
-    if _t_site_db_create_load "${_dbn}" "${_dbp}" "${_src}/${_dbn}.sql"; then
+    _dmajl="$(_int_only "$(_manifest_val "${_mff}" DMAJOR)")"
+    if _t_site_db_create_load "${_dbn}" "${_dbp}" "${_src}/${_dbn}.sql" "${_dmajl}"; then
       _marker_set "${_uri}.dbloaded.pid"
       _info "site ${_uri}: db ${_dbn} created + loaded"
     else
@@ -1944,6 +1962,10 @@ PHPEOF
       fi
       _codee="$(_http_code_at "${_urie}" 127.0.0.1)"
       _basee="$(_manifest_val "${_mfe}" BASELINE)"
+      if [[ -n "${_basee}" && "${_codee}" != "${_basee}" ]]; then
+        _alrt "site ${_urie}: target serves HTTP ${_codee} but the source baseline was ${_basee} - left unproven, fix + re-run import"
+        _sfails=$(( _sfails + 1 )); continue
+      fi
       _info "site ${_urie}: target serves HTTP ${_codee} (source baseline was ${_basee})"
       _marker_set "${_urie}.imported.pid"
     done
@@ -2035,7 +2057,7 @@ _import_per_site() {
 
     # 1. db land
     if ! _marker_has "${_uri}.dbloaded.pid"; then
-      if _t_site_db_create_load "${_dbn}" "${_dbp}" "${_src}/${_dbn}.sql"; then
+      if _t_site_db_create_load "${_dbn}" "${_dbp}" "${_src}/${_dbn}.sql" "${_dmaj}"; then
         _marker_set "${_uri}.dbloaded.pid"
       else
         _alrt "site ${_uri}: db land failed - SKIP"; _fails=$(( _fails + 1 )); continue
@@ -2118,9 +2140,19 @@ PHPEOF
     sleep 5
     _t_wait_task "$(_t_task_nid_for "${_uri}" verify)" "verify ${_uri}" \
       || { _alrt "site ${_uri}: post-import verify failed"; _fails=$(( _fails + 1 )); continue; }
-    local _code _base
-    _code="$(_http_code_at "${_uri}" 127.0.0.1)"
+    local _code _base _bt=0
     _base="$(_manifest_val "${_mff}" BASELINE)"
+    _code="$(_http_code_at "${_uri}" 127.0.0.1)"
+    # the FPM agent restarts per-version pools on its own passes, so a
+    # single-shot probe can land in a restart window - re-probe briefly
+    while [[ -n "${_base}" && "${_code}" != "${_base}" && "${_bt}" -lt 3 ]]; do
+      sleep 10; _bt=$(( _bt + 1 ))
+      _code="$(_http_code_at "${_uri}" 127.0.0.1)"
+    done
+    if [[ -n "${_base}" && "${_code}" != "${_base}" ]]; then
+      _alrt "site ${_uri}: target serves HTTP ${_code} but the source baseline was ${_base} - NOT adopted; fix serving, then re-run import for this site"
+      _fails=$(( _fails + 1 )); continue
+    fi
     _info "site ${_uri}: target serves HTTP ${_code} (source baseline was ${_base})"
 
     # 7. cron on (ships dark by design; source dispatch is paused for good)
@@ -2134,6 +2166,10 @@ PHPEOF
   [[ "${_fails}" -gt 0 ]] \
     && _alrt "per-site import finished with ${_fails} failure(s) - failed sites left un-adopted" \
     || _msg "per-site import complete"
+  # the operator (and any harness) must see the failures in the exit code,
+  # not only in the log - a partially adopted estate is not a clean run
+  [[ "${_fails}" -gt 0 ]] && return 1
+  return 0
 }
 
 verb_import() {
@@ -2193,7 +2229,7 @@ verb_import() {
   _gate_consume "${_scope}"
   case "${_ROUTE}" in
     db-import) _import_db_route ;;
-    per-site)  _import_per_site ;;
+    per-site)  _import_per_site || exit 1 ;;
     *) _die "unknown route ${_ROUTE}" ;;
   esac
 }

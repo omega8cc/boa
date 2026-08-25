@@ -2308,6 +2308,17 @@ if [ -e "/root/.standby.cnf" ]; then
         echo "NOTE: while the standby role holds; it resumes at promotion."
         _clean_pid_exit "up-* aegir refused on a replication standby"
       fi
+      if [ "${_outP}" = "enable" ] || [ "${_outP}" = "disable" ]; then
+        # The flag verbs write their cnf flag and then still run a full
+        # pass, so steering them to system would silently DROP the flag
+        # change while running an upgrade nobody asked for. Refuse loudly;
+        # the flag itself is one cnf line the operator can set directly.
+        echo "NOTE: Passive replication standby (/root/.standby.cnf): the"
+        echo "NOTE: ${_cmNd} ${_outP} flag change is refused while the standby"
+        echo "NOTE: role holds -- edit /root/.barracuda.cnf directly if the"
+        echo "NOTE: flag must change now, or re-run after promotion."
+        _clean_pid_exit "up-* ${_outP} refused on a replication standby"
+      fi
       if [ "${_outP}" != "system" ]; then
         echo "NOTE: Passive replication standby (/root/.standby.cnf): running the"
         echo "NOTE: system-only flavor -- the Aegir master half writes into a"

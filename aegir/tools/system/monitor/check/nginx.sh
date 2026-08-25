@@ -299,6 +299,12 @@ _nginx_if_up_check_fix() {
 }
 
 _if_nginx_restart() {
+  # A passive mirror (replication standby): the sentinel is the ACTIVE box's
+  # self-service request, delivered here only because static/control rides the
+  # sync leg. Never consume it on the standby -- acting restarts a box that
+  # serves nothing, and deleting the file eats a request that was never ours.
+  [ -e "/root/.standby.cnf" ] && return 0
+
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
@@ -344,10 +350,9 @@ export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
 : "${_SQL_MUTATION_MAX_MINS:=15}"
 
 _sql_mutation_in_flight() {
-  # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database and
-  # brings them back itself once mysqld answers; these watchdogs are the
-  # safety net behind that. They only help if they wait for the restart to
-  # finish. Restarting the web tier
+  # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database, and
+  # it never brings them back: these watchdogs are the intended recovery. That
+  # only works if they wait for the restart to finish. Restarting the web tier
   # mid-teardown stands it in front of a database that is still down, so workers
   # pile onto failed connections and the whole herd arrives at a cold cache the
   # moment the database returns; that cascade is what turns a brief database
@@ -370,6 +375,115 @@ _sql_mutation_in_flight() {
   done
   return 1
 }
+
+# A passive mirror must not serve HTTP. A single rendered Drupal page writes
+# its own panel/tenant database -- cache_bootstrap, the drupal_css_cache_files
+# and drupal_js_cache_files aggregate registries, sessions, watchdog -- and on
+# a replica those local writes both diverge the data and mint errant own-UUID
+# GTIDs (measured: 13 transactions from one GET on an otherwise quiesced
+# standby). Nothing on a standby needs the web tier before promotion, so hold
+# nginx DOWN here and never heal it back up. This loop is the authoritative
+# enforcer: it runs several times a minute, so an nginx a barracuda pass
+# restarts underneath us is taken back down within seconds.
+#
+# Stands down while an xmass window is in flight. Cutover step 12
+# (_xmass_prove_target_web) deliberately starts nginx and requires it to
+# answer, and it runs BEFORE step 15 removes the standby marker -- racing that
+# would park the cutover at rename-failed. xmass owns the same signal for the
+# same window (it writes /run/boa_xmass_init.pid at step 8 so second.sh cannot
+# reap the marker mid-promotion), so honouring it here needs no new state.
+#
+# Operator escape hatch for a mirror that must genuinely serve:
+# /root/.standby.serve.cnf
+#
+# FTPS on a standby: the same class of writer as the web tier -- an
+# authenticated tenant upload lands in the synced trees and permanently
+# shadows the active's copy under the -u legs. pure-ftpd has no init
+# script; on a standby it exists only if something resurrected it (the
+# system.sh healer is gated on the same marker), so kill on sight, log on
+# transition only. Deliberately OUTSIDE the serve.cnf-exempt block below:
+# serve is a web-only preview, never a tenant write channel.
+if [ -e "/root/.standby.cnf" ] \
+  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+  if pgrep -f '[p]ure-ftpd' > /dev/null 2>&1; then
+    echo "$(date) FTPD replication standby: holding FTPS DOWN" >> ${_pthOml}
+    pkill -9 -f pure-ftpd > /dev/null 2>&1
+  fi
+fi
+
+# A serving standby is deliberate but must stay VISIBLE (2026-08-25 ruling:
+# web-only scope, no expiry, operator-owned): one line an hour while the
+# escape hatch holds, so a forgotten marker surfaces in the incident log
+# instead of lingering silently for weeks.
+if [ -e "/root/.standby.cnf" ] && [ -e "/root/.standby.serve.cnf" ]; then
+  if [ -z "$(find /var/log/boa/.standby_serve_logged -mmin -60 2>/dev/null)" ]; then
+    echo "$(date) NGX replication standby: SERVING deliberately via /root/.standby.serve.cnf (DB/tenant/backup holds stay)" >> ${_pthOml}
+    mkdir -p /var/log/boa 2>/dev/null
+    touch /var/log/boa/.standby_serve_logged
+  fi
+fi
+if [ -e "/root/.standby.cnf" ] \
+  && [ ! -e "/root/.standby.serve.cnf" ] \
+  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+  if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+    # Log on TRANSITION only: an orphan pidfile alone would otherwise write
+    # ~9 lines a minute into the incident log forever.
+    echo "$(date) NGX replication standby: holding the web tier DOWN" >> ${_pthOml}
+    service nginx stop &> /dev/null
+    sleep 2
+    if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+      _stop_nginx_processes
+    fi
+  fi
+  # The init script only clears the pidfile on its own success branch, and
+  # _stop_nginx_processes never does; a stale one left here would make the
+  # health checks re-enter every pass.
+  if [ -e "/run/nginx.pid" ] \
+    && ! pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+    rm -f /run/nginx.pid
+  fi
+  # Firewall half of the web hold (2026-08-25 ruling): insurance against a
+  # future init-script regression -- a directly started nginx would serve
+  # for up to a minute before this loop kills it. Loopback stays exempt
+  # (! -i lo): local proofs and cutover's own checks are not the traffic
+  # this blocks. csfpost.sh re-adds the same rules right after any csf
+  # restart flushes them; this loop heals the drift within a minute both
+  # ways. Cutover step 12 removes the chain itself before proving the port
+  # externally, so promotion never waits on this loop.
+  for _ipt in iptables ip6tables; do
+    command -v "${_ipt}" > /dev/null 2>&1 || continue
+    "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1 \
+      || "${_ipt}" -w 5 -N BOA_STANDBY_WEB > /dev/null 2>&1
+    "${_ipt}" -w 5 -C INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1 \
+      || "${_ipt}" -w 5 -I INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1
+    "${_ipt}" -w 5 -C BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1 \
+      || "${_ipt}" -w 5 -A BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1
+  done
+  # Breadcrumb for the release path: only a box that ever HELD pays the
+  # iptables execs on release checks -- a normal box pays one file test.
+  mkdir -p /var/log/boa 2>/dev/null
+  touch /var/log/boa/.standby_web_held.pid 2>/dev/null
+  echo "Replication standby: web tier held down."
+  exit 0
+fi
+
+# Not held (no marker, serve.cnf, or promotion window): the firewall half
+# must not survive -- remove it so a promotion by bare marker removal (no
+# cutover) opens the web path within a minute, and serve.cnf opens the web
+# tier without touching the DB/tenant/backup holds. Logs on transition only
+# (the chain exists exactly once after a release).
+if [ -e "/var/log/boa/.standby_web_held.pid" ]; then
+  for _ipt in iptables ip6tables; do
+    command -v "${_ipt}" > /dev/null 2>&1 || continue
+    if "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1; then
+      echo "$(date) NGX standby web-hold released: removing firewall hold (${_ipt})" >> ${_pthOml}
+      while "${_ipt}" -w 5 -D INPUT -j BOA_STANDBY_WEB 2>/dev/null; do :; done
+      "${_ipt}" -w 5 -F BOA_STANDBY_WEB > /dev/null 2>&1
+      "${_ipt}" -w 5 -X BOA_STANDBY_WEB > /dev/null 2>&1
+    fi
+  done
+  rm -f /var/log/boa/.standby_web_held.pid
+fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   && ! _sql_mutation_in_flight; then

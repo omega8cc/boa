@@ -51,6 +51,20 @@ ${_hex}:((:${_hex}){1,6})|\
 _ipv6_regex="^${_ipv6_core}(/(12[0-8]|1[01][0-9]|[0-9]?[0-9]))?$"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 
+
+# A held web tier (replication standby) makes `service nginx reload` return
+# rc 7 forever, and the revert branch below would then rewrite this instance's
+# backup tarball into the SYNCED undo/ tree on every 2-minute pass -- a
+# permanent mirror-side divergence, because the sync legs are rsync -u and the
+# mirror's copy is always the newer one. On a held standby: keep the generated
+# fragments (correct on disk, they activate when promotion starts nginx),
+# advance the change-gate markers as a success would, and skip both the reload
+# and the revert.
+_nginx_held_down() {
+  [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
+    && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]
+}
+
 _valid_ip() {
   local _ip="$1"
   [[ "${_ip}" =~ ${_ipv4_regex} ]] && return 0
@@ -191,6 +205,13 @@ _process_context() {
       echo "Pruned stale ip_access fragment: ${_base}.conf (${_input_file})"
     fi
   done
+
+  if _nginx_held_down; then
+    echo "${_current_mod_time}" > "${_timestamp_file}"
+    echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
+    echo "ip_access written (${_input_file}); replication standby -- reload skipped (web tier held)."
+    return 0
+  fi
 
   # Validate the whole host nginx config; revert THIS context on failure.
   local _ct

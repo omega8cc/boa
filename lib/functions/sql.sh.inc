@@ -680,6 +680,7 @@ _sql_conf_update() {
         -e "s/^#?\s*(log_error)/#\1/" \
         -e "s/^#?\s*(syseventlog)/#\1/" \
         -e "s/^#?\s*(mysqlx)/#\1/" \
+        -e "s/^#?\s*(authentication_policy)/#\1/" \
         /etc/mysql/my.cnf &> /dev/null
 
       if [ "${_DB_V}" = "5.7" ]; then
@@ -710,6 +711,21 @@ _sql_conf_update() {
           -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
           -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
           /etc/mysql/my.cnf &> /dev/null
+        # Loading the plugin is not enough for legacy clients: the greeting
+        # advertises the default first-factor plugin, and PHP 5.6 mysqli
+        # aborts on a caching_sha2 greeting BEFORE the user's own plugin is
+        # consulted, so a php56-pool site loses its DB on the web while CLI
+        # drush stays healthy. Advertise native; caching_sha2 users still
+        # authenticate via the client auth-switch (aegir2boa D-015).
+        sed -i -E \
+          -e "s/^#?\s*authentication_policy\s*=.*/authentication_policy=mysql_native_password,,/" \
+          /etc/mysql/my.cnf &> /dev/null
+        if ! grep -qE "^authentication_policy" /etc/mysql/my.cnf; then
+          # my.cnf predates the template line (rolling fleet) - insert it
+          sed -i -E \
+            "/^\s*mysql_native_password\s*=\s*ON/a authentication_policy=mysql_native_password,," \
+            /etc/mysql/my.cnf &> /dev/null
+        fi
       fi
       if [ "${_DB_V}" = "5.7" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1506,8 +1522,8 @@ _forced_mysql_root_password_update() {
       mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     fi
-    mysqladmin -u root flush-privileges &> /dev/null
-    mysqladmin -u root flush-hosts &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -1763,7 +1779,16 @@ _db_server_install() {
         _sql_directives_sync
         _check_sql_running
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
-          _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+          # Replication standby: mysql.* is replicated content, and the heal
+          # below is binlogged DDL (CREATE USER / mysqlcheck / ALTER) that
+          # would mint errant own-UUID GTIDs on the replica -- the flush-hosts
+          # class. Empty probe = heal skipped; the active runs the same heal
+          # and replication carries it. The SET GLOBAL tuning below stays.
+          if [ -e "/root/.standby.cnf" ]; then
+            _CHECK_EXISTS=""
+          else
+            _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+          fi
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
             _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
             if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2008,8 +2033,8 @@ _sql_root_credentials_update() {
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
         fi
-        mysqladmin -u root flush-privileges &> /dev/null
-        mysqladmin -u root flush-hosts &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DAFT: ${_DB_SERVER} PASWD ${_PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -2028,8 +2053,8 @@ _sql_root_credentials_update() {
         else
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
         fi
-        mysqladmin -u root flush-privileges &> /dev/null
-        mysqladmin -u root flush-hosts &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
@@ -2046,7 +2071,18 @@ _sql_root_credentials_update() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      if [ ! -e "/root/.mysql.no.new.password.cnf" ]; then
+      if [ ! -e "/root/.mysql.no.new.password.cnf" ] \
+        && [ ! -e "/root/.standby.cnf" ]; then
+        ### A replication standby must never mint its own root password. The
+        ### rotation issues CREATE USER / GRANT / ALTER USER (13 binlogged ACL
+        ### statements), so on a replica it mints errant own-UUID GTIDs AND
+        ### diverges mysql.user -- including a 'root'@'<this box IP>' row the
+        ### active does not have. Worse, mysql.* replicates unfiltered, so the
+        ### active's own rotation lands on top while the replica's local
+        ### /root/.my.cnf still holds the string it just minted: every
+        ### root-credentialed tool on the mirror, xmass included, then fails
+        ### to authenticate. The active owns the password; replication carries
+        ### it; promotion resumes normal rotation.
         if [ -e "/root/.mysql.yes.new.password.cnf" ] \
           || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _forced_mysql_root_password_update

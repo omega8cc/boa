@@ -564,7 +564,13 @@ _mysql_flush_hosts() {
   if pgrep -f /usr/sbin/mysqld >/dev/null 2>&1 \
     && [ -e "/run/mysqld/mysqld.sock" ] \
     && [ -e "/run/mysqld/mysqld.pid" ]; then
-    mysqladmin -u root flush-hosts &> /dev/null
+    # NO_WRITE_TO_BINLOG: the host-cache flush is a LOCAL remedy. The bare form
+    # is binlogged, so under GTID it minted one errant local transaction per
+    # watchdog pass on every 5.7 replica -- a standing mirror accumulated
+    # ~1440/day of its own UUID, which a later failback can no longer fetch
+    # once binlogs rotate (1236). 8.4 removed FLUSH HOSTS; this form errors
+    # silently there exactly like the old call did.
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
   fi
 }
 
@@ -597,6 +603,105 @@ _mysql_health_check_fix() {
   _sql_restart "DOWN MySQL"
 }
 
+_standby_sql_hold() {
+  # DB half of the passive-mirror hold (2026-08-25 ruling): super_read_only
+  # refuses DDL/DML from every connection including root while exempting the
+  # replication appliers -- the only MECHANICAL guard for local writes on a
+  # replica (gate-by-gate found two escapees after the previous audit wave).
+  # xmass sets it at init and clears it at promotion; this loop is the
+  # drift-healer in BOTH directions and the RETROFIT for standing mirrors
+  # built by pre-hold bytes (their cnf lacks the block -- append it once and
+  # lock the runtime, no hands on the box).
+  #
+  # Stands down while an xmass window is in flight (same signal as the web
+  # enforcer: xmass owns the box during promotion) and whenever the server
+  # is not answering (never poke a recovering DB). serve.cnf does NOT
+  # exempt: serve is a web-only preview, never a write channel.
+  [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ] && return 0
+  local _cnf="" _d _sro _inc_dir
+  # The dir my.cnf ACTUALLY reads first (same parse as the xmass writer) --
+  # a box whose include layout changed across a Percona upgrade can carry a
+  # stale twin in an unread candidate dir.
+  _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  for _d in "${_inc_dir}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+    /etc/mysql/mysql.conf.d /etc/mysql; do
+    [ -n "${_d}" ] || continue
+    if [ -r "${_d}/xmass_gtid.cnf" ]; then
+      _cnf="${_d}/xmass_gtid.cnf"
+      break
+    fi
+  done
+  # File tests are all a NORMAL box ever pays here: no cnf, or no marker and
+  # no hold block, means nothing to do -- the mysql ping happens only when a
+  # branch below will actually act.
+  [ -z "${_cnf}" ] && return 0
+  if [ ! -e "/root/.standby.cnf" ] \
+    && ! grep -q "xmass-standby-hold" "${_cnf}" 2>/dev/null; then
+    return 0
+  fi
+  _mysql_is_answering || return 0
+  if [ -e "/root/.standby.cnf" ]; then
+    # HOLD: assert runtime, and persist across restarts/reboots via the cnf.
+    # Only a box that IS an xmass replica carries xmass_gtid.cnf (checked
+    # above); never lock a box whose replication this tool did not set up.
+    if ! grep -q "xmass-standby-hold" "${_cnf}" 2>/dev/null; then
+      # Retrofit path for standing mirrors: the cnf is [mysqld]-scoped to
+      # the end of file, so appending stays in section.
+      {
+        echo "# xmass-standby-hold (cleared at promotion)"
+        echo "read_only                    = ON"
+        echo "super_read_only              = ON"
+      } >> "${_cnf}"
+      echo "$(date) SQL replication standby: persisted super_read_only in ${_cnf}" >> ${_pthOml}
+    fi
+    _sro=$(mysql --defaults-file=/root/.my.cnf \
+      -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+    if [ -z "${_sro}" ]; then
+      # The liveness probe counts an auth error as alive (it is), so an
+      # unreadable variable here means broken credentials -- a mechanical
+      # guard must never fail SILENTLY.
+      echo "$(date) SQL replication standby: super_read_only unreadable (credentials?) -- hold NOT asserted" >> ${_pthOml}
+    elif [ "${_sro}" != "ON" ]; then
+      # lock_wait_timeout bounds the wait SET GLOBAL read_only takes on
+      # in-flight transactions -- an unbounded wait from a per-minute cron
+      # would pile up wedged watchdog runs behind one long transaction.
+      mysql --defaults-file=/root/.my.cnf \
+        -e "SET SESSION lock_wait_timeout=10; SET GLOBAL read_only=ON; SET GLOBAL super_read_only=ON;" 2>/dev/null
+      # Verify the flip landed -- a timed-out SET errors silently above and
+      # the next pass retries; log truthfully either way.
+      _sro=$(mysql --defaults-file=/root/.my.cnf \
+        -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+      if [ "${_sro}" = "ON" ]; then
+        echo "$(date) SQL replication standby: locked DB read-only (super_read_only=ON)" >> ${_pthOml}
+      else
+        echo "$(date) SQL replication standby: lock attempt did NOT land (readback '${_sro:-empty}') -- retrying next pass" >> ${_pthOml}
+      fi
+    fi
+  else
+    # RELEASE: only ever on a box whose cnf carries OUR hold block -- a
+    # deliberate operator read_only on a non-mirror box is not ours to
+    # clear. Handles a promotion by bare marker removal (no cutover ran)
+    # and any cutover interrupted between steps 11.5 and 15. The cnf strip
+    # happens ONLY after the runtime readback proves the unlock landed:
+    # the block is this healer's only retry key, and stripping it on a
+    # failed unlock would leave the box read-only forever with nothing
+    # left to notice.
+    grep -q "xmass-standby-hold" "${_cnf}" 2>/dev/null || return 0
+    mysql --defaults-file=/root/.my.cnf \
+      -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;" 2>/dev/null
+    _sro=$(mysql --defaults-file=/root/.my.cnf \
+      -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+    if [ "${_sro}" = "OFF" ]; then
+      sed -i '/xmass-standby-hold/,+2d' "${_cnf}" 2>/dev/null
+      echo "$(date) SQL standby hold released: super_read_only cleared (marker gone)" >> ${_pthOml}
+    else
+      echo "$(date) SQL standby release: unlock readback '${_sro:-empty}' not OFF -- keeping the cnf block for retry" >> ${_pthOml}
+    fi
+  fi
+}
+
 ### Main start here
 
 if [ -x "/etc/init.d/mysql" ] \
@@ -612,6 +717,7 @@ if [ -x "/etc/init.d/mysql" ] \
   && pgrep -f /usr/sbin/mysqld >/dev/null 2>&1 \
   && [ ! -e "/run/boa_mysql_auto_healing.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
+  _standby_sql_hold
   _mysql_high_load
   _sql_busy_detection
   _mysql_flush_hosts

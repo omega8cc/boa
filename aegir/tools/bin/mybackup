@@ -5,6 +5,17 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
 
+# Passive-mirror hold (2026-08-25 ruling): the active owns the backup
+# lineage -- a mirror's own chain is redundant (its data IS the active's,
+# minutes behind), doubles the offsite cost, and its site-bootstrap steps
+# would log DB-write errors every pass under super_read_only. Covers the
+# queue pass AND the operator restore verb: a restore would write the
+# synced trees and permanently shadow the active's copies. One line, rc 0.
+if [ -e "/root/.standby.cnf" ]; then
+  echo "Replication standby: backup chain held (active owns the lineage)"
+  exit 0
+fi
+
 # Function to print env for debugging
 _print_env() {
   if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
@@ -199,7 +210,9 @@ _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
   _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  # dead-fallback fix: || bound to tr, see backboa
+  [ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
   _hst_dash=$(echo -n ${_hName} | tr . -)
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
@@ -438,7 +451,13 @@ _main_script() {
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
   fi
-  # Process queued commands for all users
+  # Process queued commands for all users.
+  # A passive mirror must never execute this queue: command.txt lives in
+  # the synced static/control tree, so a tenant request queued on the
+  # ACTIVE arrives here by rsync -- replaying it would run a duplicity
+  # restore into the synced tree as the tenant and mail them a duplicate
+  # notice. Leave the file alone; the active consumes its own copy.
+  [ -e "/root/.standby.cnf" ] && return 0
   for _user_dir in "${_BASE_DIR}"/*; do
     if [[ -d "${_user_dir}" ]]; then
       export _user=$(basename "${_user_dir}")
