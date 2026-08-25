@@ -155,6 +155,15 @@
 
 ## NOTES
 
+  On a passive replication standby (a box carrying `/root/.standby.cnf`,
+  built by `xmass init --proxy-mode=ha-switch`) the whole backup chain —
+  `mybackup`, `multiback`, `backboa` and `duobackboa` — exits quietly with
+  a one-line notice: the ACTIVE server owns the backup lineage, a mirror
+  chain would duplicate the offsite cost, and under the standby's
+  `super_read_only` its site-bootstrap steps would only log refusals.
+  The gates release the moment the marker goes, so a promoted box resumes
+  its backups on the next cron pass with no operator step.
+
   The `srv.foo.bar` is a hostname of the BOA system backed up before.
   In the `retrieve` mode it will use the `_AWS_*` variables configured
   in the current system `/root/.barracuda.cnf` file - so make sure to edit
