@@ -1803,7 +1803,11 @@ _satellite_update_drush_php_cli() {
   else
     _msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION is not set correctly"
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-    touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
+    # Root-side pass (called from _satellite_run_child_b after the B child
+    # exited): signal root's own outcome in the root-owned tree like the abort
+    # right after the B check does -- never a root touch inside the
+    # instance-owned dir (1145fc647's invariant).
+    touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
     exit 1
   fi
   # The shebang pin on drush.php is bypassed whenever the drush 8 finder
@@ -3079,7 +3083,7 @@ _provision_backend_dbpass_generate() {
     _THIS_DB_PORT=6033
     mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -3173,7 +3177,7 @@ EOFMYSQL
     _THIS_DB_PORT=6033
     mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
 }
 
@@ -3281,7 +3285,7 @@ EOFMYSQL
     _THIS_DB_PORT=6033
     mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   wait
@@ -3403,7 +3407,7 @@ EOFMYSQL
     _THIS_DB_PORT=6033
     mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
 }
 
@@ -3427,7 +3431,7 @@ _satellite_run_pre_install() {
       _THIS_DB_PORT=6033
       mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     else
-      mysqladmin -u root flush-hosts &> /dev/null
+      mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     fi
     _provision_backend_dbpass_generate
     _sudoers_safe_append /etc/sudoers \
@@ -3450,7 +3454,7 @@ _satellite_run_pre_install() {
       _THIS_DB_PORT=6033
       mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     else
-      mysqladmin -u root flush-hosts &> /dev/null
+      mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     fi
     _RST=$(syncpass fix ${_USER} 2>&1)
     _provision_backend_dbpass_sync
@@ -6687,13 +6691,13 @@ _satellite_child_b_aegir_build() {
     ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0 &> /dev/null
     wait
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6801,13 +6805,13 @@ _satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster hosting-dispatch
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force --fork=0 --strict=0
       wait
       _msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15

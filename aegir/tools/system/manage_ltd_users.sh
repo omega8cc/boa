@@ -7,10 +7,102 @@ export _tRee=lts
 export _xSrl=588844ltsT01
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+# The || binds to tr (rc 0 on empty input), so the fallback never fired.
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+[ -n "${_hName}" ] || _hName="$(hostname -f 2>/dev/null)"
+# Script-scope default: the main-body cleanup uses _TMP, but until now the
+# only assignment lived inside _ok_create_user, so every ordinary pass ran
+# `rm -f /*.txt` against the filesystem root (reproduced live 2026-08-24).
+_TMP="/var/tmp"
 
 _usrGroup=users
 _WEBG=www-data
+
+# Passive-mirror tenant hold (2026-08-25 ruling: deny fully on standby).
+# A tenant login on a mirror is a WRITE channel into the synced trees --
+# credentials converge with the active BY DESIGN (.ssh synced, user store
+# force-pushed), so only the shell can refuse them. serve.cnf does NOT
+# exempt (web-only preview); the xmass promotion window does (xmass owns
+# the box then, same signal as every other hold).
+_LTD_STANDBY_HOLD=NO
+if [ -e "/root/.standby.cnf" ] \
+  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+  _LTD_STANDBY_HOLD=YES
+fi
+
+_standby_tenant_sweep() {
+  # Enforce or release the tenant-shell hold; runs at the end of every
+  # pass. Membership in lshellg is the record of "was a tenant shell", so
+  # the flip is self-inverse: hold = tenant shells -> nologin (live
+  # sessions killed), release = nologin members -> the shell the box-level
+  # heal would give them (the exact conditional the per-user heal uses).
+  local _lsh_usr _lsh_cur _lsh_restore _lsh_nologin
+  _lsh_nologin="/usr/sbin/nologin"
+  [ -x "${_lsh_nologin}" ] || _lsh_nologin="/bin/false"
+  if [ -e "/usr/bin/mysecureshell" ] \
+    && [ -e "/etc/ssh/sftp_config" ]; then
+    _lsh_restore="/usr/bin/mysecureshell"
+  else
+    _lsh_restore="/usr/bin/lshell"
+  fi
+  # The record of WHO this hold flipped: release must restore exactly these
+  # users and no one else -- a tenant an admin deliberately suspended (also
+  # nologin) is not ours to re-enable.
+  # /var/log/boa, NOT /var/backups/ltd/log: BOA.sh.txt rm -rf's the latter
+  # on every release (its manage_ltd refresh block), and this file is the
+  # SOLE input of the release below -- losing it strands every tenant at
+  # nologin after promotion. /var/log/boa survives releases; its sweeps
+  # match *.pid and *.log, neither of which this .txt name matches.
+  local _lsh_rec="/var/log/boa/standby-held-shells.txt"
+  if [ "${_LTD_STANDBY_HOLD}" = "YES" ]; then
+    for _lsh_usr in $(getent group lshellg 2>/dev/null | cut -d: -f4 | tr ',' ' '); do
+      _lsh_cur=$(getent passwd "${_lsh_usr}" 2>/dev/null | cut -d: -f7)
+      if [ "${_lsh_cur}" = "/usr/bin/lshell" ] \
+        || [ "${_lsh_cur}" = "/usr/bin/mysecureshell" ]; then
+        # Record FIRST, flip second: a flip that outruns a failed record
+        # write is a user the release can never restore.
+        mkdir -p /var/log/boa 2>/dev/null
+        grep -qxF "${_lsh_usr}" "${_lsh_rec}" 2>/dev/null \
+          || echo "${_lsh_usr}" >> "${_lsh_rec}"
+        grep -qxF "${_lsh_usr}" "${_lsh_rec}" 2>/dev/null || continue
+        usermod -s "${_lsh_nologin}" "${_lsh_usr}" &> /dev/null
+        pkill -KILL -u "${_lsh_usr}" &> /dev/null
+        echo "$(date) LTD replication standby: tenant login held (${_lsh_usr})" \
+          >> /var/log/boa/manage_ltd.incident.log
+      fi
+    done
+  elif [ -s "${_lsh_rec}" ]; then
+    # Restore ONLY recorded users, verify each restore actually landed, and
+    # keep any failure in the record so the next pass retries it -- one
+    # transient usermod failure must never become a permanent lockout.
+    local _lsh_left=""
+    while read -r _lsh_usr; do
+      [ -n "${_lsh_usr}" ] || continue
+      _lsh_cur=$(getent passwd "${_lsh_usr}" 2>/dev/null | cut -d: -f7)
+      if [ -z "${_lsh_cur}" ]; then
+        continue
+      fi
+      if [ "${_lsh_cur}" = "/usr/sbin/nologin" ] \
+        || [ "${_lsh_cur}" = "/bin/false" ]; then
+        usermod -s "${_lsh_restore}" "${_lsh_usr}" &> /dev/null
+        _lsh_cur=$(getent passwd "${_lsh_usr}" 2>/dev/null | cut -d: -f7)
+        if [ "${_lsh_cur}" = "${_lsh_restore}" ]; then
+          echo "$(date) LTD standby hold released: tenant login restored (${_lsh_usr})" \
+            >> /var/log/boa/manage_ltd.incident.log
+        else
+          _lsh_left="${_lsh_left}${_lsh_usr}\n"
+          echo "$(date) LTD standby release: restore FAILED for ${_lsh_usr}, kept for retry" \
+            >> /var/log/boa/manage_ltd.incident.log
+        fi
+      fi
+    done < "${_lsh_rec}"
+    if [ -n "${_lsh_left}" ]; then
+      printf '%b' "${_lsh_left}" > "${_lsh_rec}"
+    else
+      rm -f "${_lsh_rec}"
+    fi
+  fi
+}
 
 _provision_running() {
   # Genuine task EXECUTIONS only. BOA spawns them as
@@ -741,7 +833,15 @@ _ok_create_user() {
       mv -f ${_usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
     fi
     if [ ! -d "${_usrLtdRoot}" ]; then
-      if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
+      if [ "${_LTD_STANDBY_HOLD}" = "YES" ]; then
+        # A user born on a held standby (users.txt arrives from the active
+        # by sync) never gets a live shell, not even for one pass; record
+        # it so promotion restores it like every other held tenant.
+        useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r ${_usrLtd}
+        mkdir -p /var/log/boa 2>/dev/null
+        grep -qxF "${_usrLtd}" /var/log/boa/standby-held-shells.txt 2>/dev/null \
+          || echo "${_usrLtd}" >> /var/log/boa/standby-held-shells.txt
+      elif [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
         useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${_usrLtd}
         echo "_usrLtdRoot is == ${_usrLtdRoot} == at _ok_create_user"
       else
@@ -806,7 +906,11 @@ _ok_create_user() {
       usermod -aG ltd-shell ${_usrLtd}
     fi
     if [ ! -z "${_ESC_LUPASS}" ]; then
-      if [ -e "/usr/bin/mysecureshell" ] \
+      if [ "${_LTD_STANDBY_HOLD}" = "YES" ]; then
+        : # tenant shells stay nologin while the standby hold is on --
+        # healing them back here would reopen the login for the minutes
+        # between this heal and the end-of-pass sweep
+      elif [ -e "/usr/bin/mysecureshell" ] \
         && [ -e "/etc/ssh/sftp_config" ]; then
         chsh -s /usr/bin/mysecureshell ${_usrLtd}
       else
@@ -2749,6 +2853,7 @@ else
   find /var/aegir/config/server_master \
     -type f -exec chmod 0600 {} \; &> /dev/null
   sleep 5
+  _standby_tenant_sweep
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   exit 0
 fi

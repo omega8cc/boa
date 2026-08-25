@@ -254,7 +254,7 @@ _provision_backend_dbpass_generate() {
   else
     _THIS_DB_PORT=3306
   fi
-  mysqladmin -u root flush-privileges &> /dev/null
+  mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
 
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -353,7 +353,7 @@ ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   fi
-  mysqladmin -u root flush-privileges &> /dev/null
+  mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
 }
 
 #
@@ -440,7 +440,7 @@ EOFMYSQL
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  mysqladmin -u root flush-privileges &> /dev/null
+  mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   wait
   rm -rf /var/aegir/.tmp/cache
@@ -558,7 +558,7 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
-  mysqladmin -u root flush-privileges &> /dev/null
+  mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
 }
 
 #
@@ -934,7 +934,7 @@ _aegir_master_upgrade() {
 
     mv -f ${_tmpIncB} ${_vBs}/${_hndIncB}
 
-    mysqladmin -u root flush-hosts &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
     _find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"
@@ -1580,6 +1580,13 @@ EOFMYSQL
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Ægir Master Instance upgrade skipped"
       fi
+    elif [ -e "/root/.standby.cnf" ]; then
+      # The standby steer guarantees only the FLAVOR (_outP=system); the
+      # _SYSTEM_UP_ONLY probe above keys on two master artefacts and fails
+      # OPEN when either is missing, which on a damaged standby would run
+      # the master upgrade -- drush updb plus DROP USER/GRANT churn --
+      # against the replicated hostmaster DB. The role marker wins.
+      _msg "NOTE: replication standby -- Ægir Master Instance upgrade refused"
     else
       if [ ! -e "/run/mysqld/mysqld.pid" ] \
         || [ ! -e "/run/mysqld/mysqld.sock" ]; then
