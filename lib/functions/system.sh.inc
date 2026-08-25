@@ -11815,7 +11815,15 @@ _initd_update() {
     # still an internet-facing relay whose upgraded config must activate.
     # The site-serving stack (cache backend, FPM) and the MySQL tuning
     # below stay proxy-gated -- those subsystems are intentionally down.
-    _mrun "service nginx restart"
+    # A replication standby holds its web tier down (the nginx watchdog is the
+    # enforcer); restarting it here would only flap it for the few seconds
+    # before the watchdog takes it back down. Promotion restores serving at
+    # cutover step 12.
+    if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ]; then
+      _msg "NOTE: replication standby -- Nginx restart skipped (web tier held)"
+    else
+      _mrun "service nginx restart"
+    fi
     if [ ! -e "/root/.proxy.cnf" ]; then
       if [ -e "/etc/init.d/valkey-server" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
