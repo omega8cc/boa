@@ -232,7 +232,7 @@ _boa_pass_active() {
   # cache drop can OOM the restore. Fresh-bounded like their consumers
   # (second.sh 2880 min for the init signal, mysql.sh 240 min for the
   # maintenance mute) so a stale marker cannot park this script forever.
-  [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2> /dev/null)" ] && return 0
+  [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2> /dev/null)" ] && return 0
   [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2> /dev/null)" ] && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0

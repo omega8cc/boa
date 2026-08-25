@@ -25,7 +25,7 @@ _check_root
 # permanently empty, so the reload below would fire every single pass (it is a
 # no-op on a stopped nginx, but it drags a full nginx -t with it each time).
 if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
-  && [ -z "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
   exit 0
 fi
 

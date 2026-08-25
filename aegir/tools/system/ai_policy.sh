@@ -52,7 +52,7 @@ fi
 # the reload and the revert.
 _nginx_held_down() {
   [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
-    && [ -z "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]
+    && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]
 }
 
 _process_instance() {
