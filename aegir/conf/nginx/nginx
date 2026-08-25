@@ -221,6 +221,29 @@ removePIDFile(){
 start() {
     log_daemon_msg "Starting $DESCRIPTION"
 
+    # A passive replication standby holds its web tier down: a rendered page
+    # writes the replica's own panel/tenant database and those local writes
+    # both diverge the data and mint errant own-UUID GTIDs. Gating the init
+    # script's start() is what makes the hold complete -- it is the single
+    # primitive every `service nginx start|restart|force-reload` funnels
+    # through, including the boot-time rc links, which no cron enforcer can
+    # cover because it is not running yet.
+    #
+    # Cleared for a promotion: xmass writes /run/boa_xmass_init.pid across the
+    # cutover window (step 8 onward) precisely so the role machinery stands
+    # down there, and step 12 must be able to start nginx to prove the web
+    # layer before the marker is removed at step 15. Same predicate as the
+    # nginx watchdog, deliberately.
+    #
+    # Operator escape hatch: /root/.standby.serve.cnf
+    if [ -e "/root/.standby.cnf" ] \
+      && [ ! -e "/root/.standby.serve.cnf" ] \
+      && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+        log_warning_msg "$DESCRIPTION not started: replication standby (web tier held)"
+        rc=0
+        return
+    fi
+
     _load_ktls_module
 
     isRunning

@@ -358,6 +358,7 @@ _global_cleanup() {
   find /var/backups/old-sql* -mtime +1 -exec rm -rf {} \; &> /dev/null
   find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
   find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
+  find /var/backups/solr-archive -mindepth 1 -maxdepth 1 -type f -mtime +30 -exec rm -f {} \; &> /dev/null
   find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
   find /var/backups/dragon/* -maxdepth 0 ! -name config -mtime +7 -exec rm -rf {} \; &> /dev/null
   # dragon/config is a low-volume, high-value config archive -- never auto-purged.
@@ -474,18 +475,19 @@ _migrate_source_sweep_all() {
   # with no executor at all. A leaked marker self-heals: clear.sh removes one
   # whose recorded owner PID is gone.
   local _stop="/run/boa_queue_stop.pid" _madeStop=NO _drain=0
-  local _swpPth _swpUsr _swpHas _lockfd
+  local _swpPth _swpUsr _swpHas _lockfd _armOwned=NO
   local _armed="/var/log/boa/migrate-sweep-fallback-on.info"
   if [ -e "/data/conf/disable_migrate_sweep_night.cnf" ]; then
-    # The night run is off, so this box has no executor at all until the daily
-    # queue this pass keeps disabled is switched back on. Re-arm it once per
-    # transition, not every night: the stamp is removed again the moment a real
-    # pass disables the queue, and while it is there an operator's own choice in
-    # the panel's queue settings is left alone.
-    if [ ! -e "${_armed}" ]; then
+    # The night run is off. Undo ONLY a queue-off this runner wrote: the stamp
+    # is set by a real pass when it switches the daily queue off, so a box
+    # whose queue was never disabled by us -- an operator's own panel setting,
+    # a box that never swept -- is left exactly as found, and the re-arm fires
+    # once, on the genuine transition (nights ran, then the kill-switch
+    # appeared). Consuming the stamp is what makes it once.
+    if [ -e "${_armed}" ]; then
       echo "migrate-sweep: nightly run disabled; handing the sweep back to the daily queue"
       _migrate_source_queue_fallback_on
-      touch "${_armed}" 2>/dev/null
+      rm -f "${_armed}" 2>/dev/null
     fi
     return 0
   fi
@@ -533,15 +535,16 @@ _migrate_source_sweep_all() {
         if [ "${_swpHas}" = "1" ]; then
           # This paused nightly run is the executor on BOA boxes; keep the
           # frontend daily queue off so an unpaused pass never runs. The stamp
-          # goes with it: the fallback is owed a re-arm again the day this
-          # nightly executor is switched off.
+          # written after this loop records that THIS runner owns the
+          # queue-off -- the only state the kill-switch branch above undoes.
           su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster vset hosting_queue_migrate_source_enabled 0" &> /dev/null
-          rm -f "${_armed}"
+          _armOwned=YES
           echo "migrate-sweep: ${_swpUsr} pass"
           timeout 300 su -s /bin/bash - ${_swpUsr} -c "drush8 @hostmaster hosting-migrate-source-sweep" 2>&1
         fi
       fi
     done
+    [ "${_armOwned}" = "YES" ] && touch "${_armed}" 2>/dev/null
     wait
   fi
   if [ "${_madeStop}" = "YES" ] \

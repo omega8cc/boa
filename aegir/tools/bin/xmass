@@ -1662,7 +1662,33 @@ _xmass_init_unwind() {
     # proxy whose Solr xtrim disarmed on purpose -- those never enter
     # the list and stay down.
     if ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" bash <<'REMOTE' &> /dev/null
-rm -f /root/.standby.cnf /run/boa_xmass_init.pid /var/log/boa/.xmass_solr_hold.pid
+rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid /var/log/boa/.xmass_solr_hold.pid
+# A refused init leaves a NORMAL box: the DB hold this init already wrote
+# (cnf block + runtime super_read_only) must not survive the unwind -- the
+# mysql watchdog's release branch would eventually heal it, but only after
+# the marker removal above, and a box mid-repair deserves better than
+# "writable within a watchdog cadence, read-only until then".
+mysql --defaults-file=/root/.my.cnf \
+  -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;" 2>/dev/null
+# Strip the cnf block ONLY when the runtime clear verifiably landed (same
+# guard as the promotion unlock): with mysql down or unauthable here the
+# block must SURVIVE -- marker gone + block present is exactly the state
+# the mysql watchdog's release branch finishes healing later.
+_sro_now=$(mysql --defaults-file=/root/.my.cnf \
+  -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+if [ "${_sro_now}" = "OFF" ]; then
+  _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  for _d in "${_inc_dir}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+    /etc/mysql/mysql.conf.d /etc/mysql; do
+    [ -n "${_d}" ] || continue
+    _c="${_d}/xmass_gtid.cnf"
+    if [ -r "${_c}" ] && grep -q "xmass-standby-hold" "${_c}"; then
+      sed -i '/xmass-standby-hold/,+2d' "${_c}"
+    fi
+  done
+fi
 if [ -e "/var/log/boa/.xmass_solr_disarmed.list" ]; then
   while read -r _svc; do
     case "${_svc}" in solr9|solr7|solr4|jetty9) : ;; *) continue ;; esac
@@ -1680,8 +1706,10 @@ REMOTE
       _info "init unwound: target restored to a normal box"
     else
       _alrt "could NOT verify the init unwind on ${_tgt} -- run there by hand:"
-      _alrt '    rm -f /root/.standby.cnf /run/boa_xmass_init.pid'
+      _alrt '    rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid'
       _alrt '    rm -f /var/log/boa/.xmass_solr_hold.pid'
+      _alrt '    mysql -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;"'
+      _alrt '    (and strip the xmass-standby-hold block from xmass_gtid.cnf)'
       _alrt '    (then re-arm any Solr init scripts the hold disarmed: chmod 744'
       _alrt '     /etc/init.d/<svc>; update-rc.d <svc> defaults; update-rc.d <svc> enable)'
     fi
@@ -2045,6 +2073,15 @@ _keep_logbin=NO
   else
     echo "binlog_expire_logs_seconds   = 604800"
   fi
+  # Standby hold: a replica takes writes from exactly one actor -- the
+  # appliers, which super_read_only exempts by definition. Everything else
+  # (root-credentialed tools, tenants, a stray HTTP hit) is refused at the
+  # server, surviving mysqld restarts and reboots. Promotion strips this
+  # block (cutover step 11.5); the mysql watchdog re-asserts it while
+  # /root/.standby.cnf holds. The SOURCE writer never carries these lines.
+  echo "# xmass-standby-hold (cleared at promotion)"
+  echo "read_only                    = ON"
+  echo "super_read_only              = ON"
   [ "\${_keep_logbin}" = "YES" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
 } > "\${_cnf}"
 chmod 644 "\${_cnf}"
@@ -2220,6 +2257,23 @@ REMOTE
 
 ###-------------SLAVE SETUP--------------###
 
+_xmass_hold_target_db() {
+  # Runtime half of the standby DB hold (the conf half persists it across
+  # restarts): covers the no-restart path where mysqld never re-read the
+  # conf after the hold lines were written. SET GLOBAL is legal here for
+  # root; the replication appliers stay exempt.
+  _info "Locking target DB read-only (super_read_only) ..."
+  ssh root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf \
+    -e 'SET GLOBAL read_only=ON; SET GLOBAL super_read_only=ON;'" \
+    || _die "could not set super_read_only=ON on target ${_tgt}"
+  local _sro
+  _sro=$(ssh root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf \
+    -sNe \"SHOW VARIABLES LIKE 'super_read_only'\" 2>/dev/null | awk '{print \$2}'")
+  [ "${_sro}" = "ON" ] \
+    || _die "super_read_only readback is '${_sro}' (not ON) on target ${_tgt}"
+  _info "Target DB locked: super_read_only=ON (appliers exempt)"
+}
+
 _xmass_setup_slave() {
   _info "Reading GTID set from xtrabackup_binlog_info on target ${_tgt} ..."
   local _binlog_info _gtid_set
@@ -2297,6 +2351,7 @@ SLAVEEOF
        | grep '${_XM_SQL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
     if [ "${_io}" = "Yes" ] && [ "${_sql}" = "Yes" ]; then
       _info "Replica running on target ${_tgt} (IO+SQL = Yes): OK"
+      _xmass_hold_target_db
       return 0
     fi
     sleep 5
@@ -4440,6 +4495,21 @@ if [ ! -e "/var/xdrago/run-${_oct}" ] \
   mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
   echo "  ${_oct}: restored parked dispatcher"
 fi
+# A run-upgrade.pid that accumulated during the standby window (rsynced in
+# from the source, or armed by the wiped-config self-heal before it was
+# standby-gated) would fire an unattended full Octopus upgrade on the very
+# first runner tick after this promotion. Consume it loudly; whoever wants
+# the upgrade can re-touch the trigger on the live box. A platforms.info
+# still carrying the heal's inert FOOBAR seed goes with it -- removing it
+# restores the default-platforms fallback.
+if [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ]; then
+  rm -f "/data/disk/${_oct}/static/control/run-upgrade.pid"
+  echo "  ${_oct}: cleared stale run-upgrade.pid (unattended post-promotion upgrade defused)"
+fi
+if [ "\$(cat "/data/disk/${_oct}/static/control/platforms.info" 2>/dev/null)" = "FOOBAR" ]; then
+  rm -f "/data/disk/${_oct}/static/control/platforms.info"
+  echo "  ${_oct}: removed inert FOOBAR platforms.info seed"
+fi
 _vhd="/data/disk/${_oct}/config/server_master/nginx/vhost.d"
 _restored=0
 for _bak in "\${_vhd}"/.[a-zA-Z0-9]*; do
@@ -4653,6 +4723,11 @@ _xmass_clear_pending_deletes() {
   # cutover's hosting-tasks --force executes it against production. So count
   # the failures, re-check what is left, and refuse rather than report a
   # purge that did not happen.
+  # hosting_add_task() never sets executed, so a queued delete carries NULL
+  # there and "executed='0'" matched nothing; and hosting_task is keyed per
+  # node REVISION -- every finished task leaves its creation revision frozen
+  # at task_status 0 -- so both the purge and the re-check join node on vid,
+  # the dispatcher's own view, and count only rows it could ever run.
   local _oct _bad=0 _left _tot=0
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _tot=$((_tot + 1))
@@ -4663,13 +4738,13 @@ _xmass_clear_pending_deletes() {
       continue
     fi
     if ! su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\"" &> /dev/null; then
+      "drush8 @hostmaster sqlq \"DELETE t FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_type='delete' AND t.task_status='0' AND (t.executed IS NULL OR t.executed=0)\"" &> /dev/null; then
       _bad=$((_bad + 1))
       _alrt "${_oct}: could not purge pending delete tasks (drush failed)"
       continue
     fi
     _left=$(su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task WHERE task_type='delete' AND task_status IN ('-1','0')\"" 2>/dev/null | tr -dc '0-9')
+      "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_type='delete' AND t.task_status IN ('-1','0')\"" 2>/dev/null | tail -1 | tr -dc '0-9')
     if [ -z "${_left}" ] || [ "${_left}" != "0" ]; then
       _bad=$((_bad + 1))
       _alrt "${_oct}: ${_left:-unknown} delete task(s) still queued after the purge"
@@ -4765,6 +4840,66 @@ _xmass_assert_same_release() {
          " octopus, not just one of them -- then re-run this step."
   fi
   _die "${_why}"
+}
+
+_xmass_refuse_role_clash() {
+  # A passive mirror and a migration endpoint are contradictory roles
+  # (2026-08-25 ruling: hard refusal, not a warning). Two checks:
+  #   - the box running this verb is itself a standby: its web tier is held
+  #     and its DB is super_read_only -- it cannot source a migration; the
+  #     operator retires the mirror deliberately first;
+  #   - the target already serves as a standby: the marker records its
+  #     source, and SAME-source is a legitimate re-init/repair of our own
+  #     mirror (init has always tolerated its own marker) -- anything else
+  #     would silently steal another pair's mirror.
+  if [ -e "/root/.standby.cnf" ]; then
+    _die "this box is a passive replication standby (/root/.standby.cnf) --" \
+         " its web tier is held and its DB is read-only, so it cannot source" \
+         " a migration; if this mirror is being retired, remove the marker" \
+         " deliberately first"
+  fi
+  # Fail CLOSED on transport: an unreachable target is not a clean target,
+  # and a refusal gate that shrugs off its own probe refuses nothing. rc 1
+  # from the remote test = marker genuinely absent; anything else that is
+  # not rc 0 = could not verify.
+  local _mrk _mrk_src _one _rc
+  ssh -o ConnectTimeout=10 -o BatchMode=yes \
+    -o StrictHostKeyChecking=accept-new root@"${_tgt}" \
+    "test -e /root/.standby.cnf" 2>/dev/null
+  _rc=$?
+  [ "${_rc}" = "1" ] && return 0
+  if [ "${_rc}" != "0" ]; then
+    _die "cannot verify the standby state of target ${_tgt} (ssh rc=${_rc})" \
+         " -- refusing to proceed on an unverifiable role; fix ssh access" \
+         " to the target first"
+  fi
+  if [ "${1:-init}" = "prep" ]; then
+    # prep-target builds a FRESH target: its xoct installs would be refused
+    # by the standby's own super_read_only. Repair of an existing mirror is
+    # init's job; a retired mirror sheds its marker deliberately first.
+    _die "target ${_tgt} is already a passive standby (its /root/.standby.cnf)" \
+         " -- prep-target builds fresh targets only; re-run 'xmass init' to" \
+         " repair this mirror, or remove the marker deliberately if it is" \
+         " being retired"
+  fi
+  _mrk=$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
+    -o StrictHostKeyChecking=accept-new root@"${_tgt}" \
+    "cat /root/.standby.cnf 2>/dev/null" 2>/dev/null)
+  # Marker shape: 'xmass replication target of <ip> since <date>'. The
+  # writers record ${_MY_OWNIP:-first hostname -I address}, and _MY_OWNIP
+  # is never set in this script's environment -- so the recorded identity
+  # is always an interface address and the interface walk below is exactly
+  # symmetric with the writer.
+  _mrk_src=$(printf '%s' "${_mrk}" | awk '{print $5}')
+  if [ -n "${_mrk_src}" ]; then
+    for _one in $(hostname -I 2>/dev/null); do
+      [ "${_one}" = "${_mrk_src}" ] && return 0
+    done
+  fi
+  _die "target ${_tgt} is already a passive standby of '${_mrk_src:-unknown}'" \
+       " (its /root/.standby.cnf) -- refusing to overlay a second role; if" \
+       " that mirror is retired, remove the marker on the target" \
+       " deliberately first"
 }
 
 _xmass_cmd_prep_target() {
@@ -5558,6 +5693,22 @@ _xmass_cmd_status() {
 # happened and cannot re-run, which is exactly the state phase=rename-failed
 # models.
 _xmass_prove_target_web() {
+  # The standby web hold also lives in the firewall (chain BOA_STANDBY_WEB,
+  # asserted by the nginx watchdog and csfpost.sh while the marker holds).
+  # The enforcer stands down for the promotion window, but the chain it
+  # already installed stays -- remove it here, both families, before proving
+  # the port. Idempotent; a pre-hold target has no chain and this no-ops.
+  ssh root@"${_tgt}" "bash -s" <<'FWOPEN'
+for _ipt in iptables ip6tables; do
+  command -v "${_ipt}" >/dev/null 2>&1 || continue
+  if "${_ipt}" -w 5 -nL BOA_STANDBY_WEB >/dev/null 2>&1; then
+    while "${_ipt}" -w 5 -D INPUT -j BOA_STANDBY_WEB 2>/dev/null; do :; done
+    "${_ipt}" -w 5 -F BOA_STANDBY_WEB 2>/dev/null
+    "${_ipt}" -w 5 -X BOA_STANDBY_WEB 2>/dev/null
+  fi
+done
+exit 0
+FWOPEN
   _info "Starting nginx on target ${_tgt} ..."
   if ! ssh root@"${_tgt}" "nginx -t" &>/dev/null; then
     _alrt "target ${_tgt}: nginx -t FAILED — output follows:"
@@ -5586,7 +5737,89 @@ _xmass_prove_target_web() {
          "503-gated and the SQL watchdogs stay paused. Fix nginx on ${_tgt} so port 80 answers," \
          "then re-run 'xmass cutover ${_tgt} --live' — the resume re-runs this proof."
   fi
-  _info "  target nginx validated and answering"
+  # External reachability -- from the source, the same path client traffic
+  # takes after the DNS flip. The loopback curl above cannot see an
+  # INPUT-chain drop (lo is exempt by design), so a firewall hold that
+  # somehow survived would only surface AFTER the flip, as total outage.
+  # curl prints literally 000 when no HTTP transaction completed.
+  # Browser UA: curl's default UA lands in BOA's own crawler map and gets
+  # a bare 444 (no HTTP code = 000), parking a perfectly healthy cutover.
+  # The 443 leg runs only when the target actually has a PUBLIC 443
+  # listener -- the wildcard ssl vhost binds loopback only; public 443
+  # exists via per-site vhosts, which a bare panel-only box may not have.
+  local _pxt _pxl _pxua
+  _pxua="Mozilla/5.0 (X11; Linux x86_64) xmass-cutover-proof"
+  _pxl="http://${_tgt}/"
+  if ssh root@"${_tgt}" \
+    "ss -tln 2>/dev/null | awk '{print \$4}' | grep -qE '(0\.0\.0\.0|\*|\[::\]):443$'" 2>/dev/null; then
+    _pxl="${_pxl} https://${_tgt}/"
+  else
+    _alrt "target ${_tgt}: no public 443 listener -- skipping the HTTPS half of the external proof"
+  fi
+  for _pxt in ${_pxl}; do
+    if ! curl -sk -A "${_pxua}" -o /dev/null --max-time 15 -w '%{http_code}' \
+      "${_pxt}" 2>/dev/null | grep -qE '^[1-5][0-9]{2}$'; then
+      _XMASS_PHASE="rename-failed"
+      _xmass_save_state
+      _xmass_restore_hint
+      _die "target ${_tgt}: not answering EXTERNALLY at ${_pxt} although loopback works" \
+           "— almost certainly a surviving firewall hold (chain BOA_STANDBY_WEB, or CSF" \
+           "denying the port); cutover PARKED (phase=rename-failed). On ${_tgt} check:" \
+           "iptables -nL BOA_STANDBY_WEB; csf -g <this-box-ip>. Then re-run" \
+           "'xmass cutover ${_tgt} --live' — the resume re-runs this proof."
+    fi
+  done
+  _info "  target nginx validated and answering (loopback + external, 80/443)"
+}
+
+_xmass_unlock_promoted_db() {
+  # Clears the standby DB hold on the promoted target: runtime first (SET
+  # GLOBAL is legal under super_read_only), then the conf block so the next
+  # mysqld restart cannot re-lock a production box. Idempotent and vintage
+  # tolerant: a target built by pre-hold bytes has neither and both halves
+  # no-op. Runs on EVERY entry into the cutover tail, resumes included --
+  # every step after it writes the target DB.
+  _info "Unlocking promoted target DB (clearing super_read_only) ..."
+  ssh root@"${_tgt}" "bash -s" <<'UNLOCKDB'
+mysql --defaults-file=/root/.my.cnf \
+  -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;" 2>/dev/null
+# Strip the cnf block ONLY when the runtime clear verifiably landed: with
+# mysql down here, the block must SURVIVE -- it is the key the mysql
+# watchdog's release branch needs to finish this healing later (marker
+# gone + block present -> clear + strip).
+_sro_now=$(mysql --defaults-file=/root/.my.cnf \
+  -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+if [ "${_sro_now}" = "OFF" ]; then
+  _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  for _d in "${_inc_dir}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+    /etc/mysql/mysql.conf.d /etc/mysql; do
+    [ -n "${_d}" ] || continue
+    _c="${_d}/xmass_gtid.cnf"
+    if [ -r "${_c}" ] && grep -q "xmass-standby-hold" "${_c}"; then
+      sed -i '/xmass-standby-hold/,+2d' "${_c}"
+    fi
+  done
+fi
+exit 0
+UNLOCKDB
+  # Verify BOTH: clearing super_read_only alone leaves plain read_only
+  # blocking every non-SUPER writer (the panel, the queue passes), which
+  # surfaces only later inside the renames.
+  local _sro
+  _sro=$(ssh root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf \
+    -sNe \"SHOW VARIABLES LIKE 'super_read_only'; SHOW VARIABLES LIKE 'read_only'\" 2>/dev/null | awk '{print \$2}' | sort -u | tr '\n' ',' ")
+  if [ "${_sro}" != "OFF," ]; then
+    _XMASS_PHASE="rename-failed"
+    _xmass_save_state
+    _xmass_restore_hint
+    _die "target ${_tgt}: read_only/super_read_only readback is '${_sro:-unreadable}' (not OFF,OFF) after unlock" \
+         "— every rename and queue step after this writes the target DB and would fail" \
+         "read-only; cutover PARKED (phase=rename-failed). Fix MySQL on ${_tgt}, then" \
+         "re-run 'xmass cutover ${_tgt} --live' — the resume re-runs this unlock."
+  fi
+  _info "Promoted target DB unlocked: super_read_only=OFF"
 }
 
 _xmass_cutover_finish() {
@@ -5602,6 +5835,10 @@ _xmass_cutover_finish() {
   # on every entry so a park upstream of it (the step-8 committed-promotion
   # park) still gets the grant dropped when the resumed run completes.
   _xmass_drop_repl_user
+
+  # Step 11.5: unlock the promoted target's DB -- on every entry, like 11
+  # and 12, so a parked resume never runs the rename against a read-only DB.
+  _xmass_unlock_promoted_db
 
   # Step 12: prove the target's web layer -- on every entry, including
   # resumes, because a park means an operator was just repairing it.
@@ -6085,6 +6322,11 @@ _xmass_cmd_cutover() {
     if [ "${_probe_rc}" = "0" ] && [ -n "${_probe}" ]; then
       # Still a replica: the promotion did NOT hold, so the source is still
       # the only production box -- thaw it on the way out, as step 7 does.
+      # And CLOSE the promotion window this step just opened: the fresh pid
+      # would otherwise stand every hold down for its full 48h ceiling on a
+      # box that remains a standby.
+      ssh -o ConnectTimeout=10 root@"${_tgt}" \
+        "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
       _xmass_thaw_writes
       _xmass_restore_hint
       _die "Failed to stop/decouple slave on target ${_tgt} (still a replica)" \
@@ -6382,6 +6624,7 @@ case "${_cmd}" in
     done
     [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr]"
     _check_root
+    _xmass_refuse_role_clash prep
     _xmass_cmd_prep_target
   ;;
   verify)
@@ -6420,6 +6663,7 @@ case "${_cmd}" in
     done
     [ -z "${_tgt}" ] && _die "Usage: xmass init <target-ip> [--proxy-mode=...] [--proxy-deadline=...]"
     _check_root
+    _xmass_refuse_role_clash
     _xmass_cmd_init
   ;;
   sync)

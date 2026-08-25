@@ -459,6 +459,17 @@ _dirmngr_too_many_instances_detection() {
 }
 
 _ftpd_health_check_fix() {
+  # A passive mirror holds FTPS down (2026-08-25 ruling: tenant denial): an
+  # authenticated upload lands in the synced trees and permanently shadows
+  # the active's copy under the -u legs. The nginx.sh enforcer kills a
+  # resurrected daemon within a minute -- this healer must not fight it.
+  # serve.cnf does NOT exempt (web-only preview, never a write channel);
+  # the promotion window does (xmass owns the box then, same signal as the
+  # other holds).
+  if [ -e "/root/.standby.cnf" ] \
+    && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+    return 0
+  fi
   _ftpd_init="/usr/local/sbin/pure-config.pl"
   _ftpd_conf="/usr/local/etc/pure-ftpd.conf"
   _ftpd_bind="/usr/local/sbin/pure-ftpd"

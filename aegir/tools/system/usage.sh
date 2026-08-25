@@ -8,6 +8,10 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 grep -qiE "^[[:space:]]*(export[[:space:]]+)?_FORCE_CI_BOX=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null && exit 0
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
+# A passive mirror must never run usage accounting: it writes the replicated
+# /var/log/boa/usage tree, sweeps account trees, and issues hostmaster drush
+# writes. Until now this was gated only in the caller (mysql_backup.sh).
+[ -e "/root/.standby.cnf" ] && exit 0
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race

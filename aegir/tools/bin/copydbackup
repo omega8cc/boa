@@ -188,19 +188,45 @@ for _user in "${!_all_involved_users[@]}"; do
 
     if [[ "${_days_to_keep}" =~ ^[0-9]+$ ]]; then
       _dbk="/data/disk/${_user}/static/files/dbackup"
-      # static/ is tenant-writable, so a symlinked dbackup/ is a tenant-chosen
-      # target; a trailing slash would make root's find walk and purge it.
-      # Resolve first: a link must stay inside the account tree, and the walk
-      # starts one level below it so the start dir itself is never removed.
+      # static/ is tenant-writable, so a symlinked dbackup/ may be a
+      # tenant-planted name -- and it is also a legitimate operator shape:
+      # a files store relocated onto attached storage (migratefs,
+      # FILES-SYMLINK.md) links dbackup/ onto the mount. A trailing slash
+      # would make root's find walk and purge whatever the link names, so
+      # resolve BOTH sides first and accept only BOA's own store layouts,
+      # strictly below them: the account's static/files store as it resolves
+      # (itself a link on a relocated account), or the attached mount's copy
+      # of that store. "dbackup -> ../" (the store root), /etc and another
+      # account are refused alike. The single-mount detector is the one
+      # manage_ltd_users.sh uses: empty on none OR more than one mount, so
+      # an ambiguous box refuses rather than guesses. The walk then starts
+      # one level below the resolved dir so the start dir itself is never
+      # removed.
       if [ -L "${_dbk}" ]; then
         _dbk_real=$(readlink -f "${_dbk}" 2>/dev/null)
-        case "${_dbk_real}" in
-          "/data/disk/${_user}/"*) ;;
-          *)
-            echo "Warning: ${_dbk} points outside /data/disk/${_user}. Skipping cleanup for ${_user}."
-            continue
-          ;;
-        esac
+        _sto_real=$(readlink -f "/data/disk/${_user}/static/files" 2>/dev/null)
+        _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); _n=0; _hit=; for _m in /mnt/*; do
+          [ -d "${_m}" ] || continue
+          if mountpoint -q "${_m}" 2>/dev/null \
+            || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
+            _hit="${_m}"; _n=$((_n + 1))
+          fi
+        done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :)
+        _dbk_ok=NO
+        if [ -n "${_dbk_real}" ] && [ -n "${_sto_real}" ]; then
+          case "${_dbk_real}" in
+            "${_sto_real}"/?*) _dbk_ok=YES ;;
+          esac
+        fi
+        if [ "${_dbk_ok}" != "YES" ] && [ -n "${_dbk_real}" ] && [ -n "${_mntPoint}" ]; then
+          case "${_dbk_real}" in
+            "${_mntPoint}/files/${_user}/static/files"/?*) _dbk_ok=YES ;;
+          esac
+        fi
+        if [ "${_dbk_ok}" != "YES" ]; then
+          echo "Warning: ${_dbk} resolves outside the account's files store (${_dbk_real:-unresolvable}). Skipping cleanup for ${_user}."
+          continue
+        fi
         _dbk="${_dbk_real}"
       fi
       [ -d "${_dbk}" ] || continue
