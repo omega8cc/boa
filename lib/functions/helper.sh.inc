@@ -1288,7 +1288,10 @@ _os_detection() {
   fi
   if [ "${_DB_SERIES}" = "8.4" ]; then
     _DBS_VRN="${_PERCONA_8_4_VRN}"
-    _turn_on_password_update
+    ### Not on a replication standby: this arms the rotation by DESTROYING the
+    ### opt-out marker, so leaving it out is what lets the opt-out survive on a
+    ### replica whose root credentials the active owns.
+    [ -e "/root/.standby.cnf" ] || _turn_on_password_update
   elif [ "${_DB_SERIES}" = "8.0" ]; then
     _DBS_VRN="${_PERCONA_8_0_VRN}"
   elif [ "${_DB_SERIES}" = "5.7" ]; then

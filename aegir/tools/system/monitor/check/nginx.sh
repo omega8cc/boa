@@ -398,14 +398,22 @@ _sql_mutation_in_flight() {
 if [ -e "/root/.standby.cnf" ] \
   && [ ! -e "/root/.standby.serve.cnf" ] \
   && [ -z "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
-  if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1 \
-    || [ -e "/run/nginx.pid" ]; then
+  if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+    # Log on TRANSITION only: an orphan pidfile alone would otherwise write
+    # ~9 lines a minute into the incident log forever.
     echo "$(date) NGX replication standby: holding the web tier DOWN" >> ${_pthOml}
     service nginx stop &> /dev/null
     sleep 2
     if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
       _stop_nginx_processes
     fi
+  fi
+  # The init script only clears the pidfile on its own success branch, and
+  # _stop_nginx_processes never does; a stale one left here would make the
+  # health checks re-enter every pass.
+  if [ -e "/run/nginx.pid" ] \
+    && ! pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+    rm -f /run/nginx.pid
   fi
   echo "Replication standby: web tier held down."
   exit 0
