@@ -261,6 +261,19 @@ look on any failure.
 - **Stage 1 signed off**: the source serves the whole estate on Nginx.
 - **Target PHP pools** for the estate's needs (a D6 site needs a php56
   pool on the target; `check` grades this per site).
+- **D6 on an 8.0+/8.4 target additionally needs the server to ADVERTISE
+  `mysql_native_password`.** PHP 5.6's mysqli dies at the handshake
+  greeting when the server's default first-factor is
+  `caching_sha2_password` — before the user's own plugin is even
+  consulted — so a D6 site bootstraps in CLI yet serves its own
+  "Site off-line" 503 on the web. The import pins each D6 site's DB
+  user to `mysql_native_password` (and refuses, loudly, when the plugin
+  is disabled), but the server-side default must also be native:
+  `authentication_policy = mysql_native_password,,` in my.cnf (8.4; on
+  8.0 use `default_authentication_plugin`). Modern-PHP sites and
+  `caching_sha2` users are unaffected — clients negotiate the switch.
+  Without it the import now FAILS the site honestly at its serve probe
+  instead of adopting a site that cannot serve.
 - **Disk headroom**: per site roughly 2× its DB size free under
   `/var/aegir` on the source for dumps; the whole estate + 500 MB free
   under `/data/disk` on the target (`transfer` measures and refuses).
