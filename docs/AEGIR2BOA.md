@@ -270,10 +270,16 @@ look on any failure.
   user to `mysql_native_password` (and refuses, loudly, when the plugin
   is disabled), but the server-side default must also be native:
   `authentication_policy = mysql_native_password,,` in my.cnf (8.4; on
-  8.0 use `default_authentication_plugin`). Modern-PHP sites and
-  `caching_sha2` users are unaffected — clients negotiate the switch.
-  Without it the import now FAILS the site honestly at its serve probe
-  instead of adopting a site that cannot serve.
+  8.0 use `default_authentication_plugin`). Current BOA sets this
+  automatically on Percona 8.4 (sql config sync, aegir2boa D-015) — on a
+  target whose BOA predates that change, add the line yourself and
+  restart mysql. Modern-PHP sites and `caching_sha2` users are
+  unaffected — clients negotiate the switch. Without it the import FAILS
+  the site honestly at its serve probe instead of adopting a site that
+  cannot serve — though a probe that lands before the FPM agent maps the
+  site onto its php56 pool can pass on the account-default modern-PHP
+  pool and the site then degrades on the agent's next pass, so fix the
+  policy, don't race the probe.
 - **Disk headroom**: per site roughly 2× its DB size free under
   `/var/aegir` on the source for dumps; the whole estate + 500 MB free
   under `/data/disk` on the target (`transfer` measures and refuses).

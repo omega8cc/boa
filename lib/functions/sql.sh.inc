@@ -680,6 +680,7 @@ _sql_conf_update() {
         -e "s/^#?\s*(log_error)/#\1/" \
         -e "s/^#?\s*(syseventlog)/#\1/" \
         -e "s/^#?\s*(mysqlx)/#\1/" \
+        -e "s/^#?\s*(authentication_policy)/#\1/" \
         /etc/mysql/my.cnf &> /dev/null
 
       if [ "${_DB_V}" = "5.7" ]; then
@@ -710,6 +711,21 @@ _sql_conf_update() {
           -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
           -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
           /etc/mysql/my.cnf &> /dev/null
+        # Loading the plugin is not enough for legacy clients: the greeting
+        # advertises the default first-factor plugin, and PHP 5.6 mysqli
+        # aborts on a caching_sha2 greeting BEFORE the user's own plugin is
+        # consulted, so a php56-pool site loses its DB on the web while CLI
+        # drush stays healthy. Advertise native; caching_sha2 users still
+        # authenticate via the client auth-switch (aegir2boa D-015).
+        sed -i -E \
+          -e "s/^#?\s*authentication_policy\s*=.*/authentication_policy=mysql_native_password,,/" \
+          /etc/mysql/my.cnf &> /dev/null
+        if ! grep -qE "^authentication_policy" /etc/mysql/my.cnf; then
+          # my.cnf predates the template line (rolling fleet) - insert it
+          sed -i -E \
+            "/^\s*mysql_native_password\s*=\s*ON/a authentication_policy=mysql_native_password,," \
+            /etc/mysql/my.cnf &> /dev/null
+        fi
       fi
       if [ "${_DB_V}" = "5.7" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
