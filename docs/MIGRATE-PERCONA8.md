@@ -106,6 +106,26 @@ None of this applies to a same-version 5.7→5.7 `xmass` move, which uses
 The whole 8.x cluster of requirements only appears the first time you run
 `xmass` against real Percona 8 servers.
 
+## Legacy PHP web clients on Percona 8.4
+
+Replication is not the only place the 8.x auth default bites. The handshake
+greeting advertises the server's default first-factor plugin, and PHP 5.6's
+mysqli aborts on a `caching_sha2_password` greeting BEFORE the user's own
+plugin is consulted — so a site served through the `php56` pool loses its
+database on the web while CLI drush (modern PHP) stays healthy, and Drupal 6
+answers its own "Site off-line" 503. Loading the plugin
+(`mysql_native_password=ON`) is necessary but not sufficient.
+
+BOA's 8.4 config pass therefore also sets
+`authentication_policy = mysql_native_password,,` (sql.sh.inc directive sync,
+aegir2boa D-015): the greeting is native, a native-plugin user connects from
+PHP 5.6, and `caching_sha2` users — root, every modern-PHP site — still
+authenticate via the client auth-switch. The reset phase comments the
+directive for every other version (5.7 aborts on the unknown variable, so a
+half-flipped box stays bootable), and the line is inserted when an existing
+box's `my.cnf` predates the template. Existing 8.4 boxes converge on their
+next `barracuda up-*` pass; nothing to do by hand.
+
 ## Cross-version xoct: what transfers and what to watch
 
 `xoct`'s logical dump/restore is version-agnostic for the data itself — the DB

@@ -16,6 +16,9 @@ these thresholds only flag a customer's frozen custom platform pinned to an old 
 
 - **Drupal 6**: d6lts/Pressflow **6.51+** (adds MySQL-8 support — reserved-word escaping,
   `ONLY_FULL_GROUP_BY` handling, `mysql_native_password`). Older Drupal 6 is flagged.
+  The server side is BOA's job and handled on 8.4: the native plugin is loaded AND
+  `authentication_policy` advertises it, without which a `php56`-pool site cannot answer
+  the `caching_sha2` handshake greeting at all (see docs/MIGRATE-PERCONA8.md).
 - **Drupal 7**: **7.76+** (the release that added MySQL-8 support). Older is flagged.
 - **Drupal 8**: **8.6.0+**. Older is flagged.
 - **Drupal 9 / 10 / 11 and Backdrop**: supported.
