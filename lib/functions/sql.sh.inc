@@ -1506,7 +1506,7 @@ _forced_mysql_root_password_update() {
       mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     fi
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
     mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
@@ -2017,7 +2017,7 @@ _sql_root_credentials_update() {
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
         fi
-        mysqladmin -u root flush-privileges &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
         mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DAFT: ${_DB_SERVER} PASWD ${_PASWD}"
@@ -2037,7 +2037,7 @@ _sql_root_credentials_update() {
         else
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
         fi
-        mysqladmin -u root flush-privileges &> /dev/null
+        mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
         mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
@@ -2055,7 +2055,18 @@ _sql_root_credentials_update() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      if [ ! -e "/root/.mysql.no.new.password.cnf" ]; then
+      if [ ! -e "/root/.mysql.no.new.password.cnf" ] \
+        && [ ! -e "/root/.standby.cnf" ]; then
+        ### A replication standby must never mint its own root password. The
+        ### rotation issues CREATE USER / GRANT / ALTER USER (13 binlogged ACL
+        ### statements), so on a replica it mints errant own-UUID GTIDs AND
+        ### diverges mysql.user -- including a 'root'@'<this box IP>' row the
+        ### active does not have. Worse, mysql.* replicates unfiltered, so the
+        ### active's own rotation lands on top while the replica's local
+        ### /root/.my.cnf still holds the string it just minted: every
+        ### root-credentialed tool on the mirror, xmass included, then fails
+        ### to authenticate. The active owns the password; replication carries
+        ### it; promotion resumes normal rotation.
         if [ -e "/root/.mysql.yes.new.password.cnf" ] \
           || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _forced_mysql_root_password_update

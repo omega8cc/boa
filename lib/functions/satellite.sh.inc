@@ -3083,7 +3083,7 @@ _provision_backend_dbpass_generate() {
     _THIS_DB_PORT=6033
     mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -3177,7 +3177,7 @@ EOFMYSQL
     _THIS_DB_PORT=6033
     mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
 }
 
@@ -3285,7 +3285,7 @@ EOFMYSQL
     _THIS_DB_PORT=6033
     mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   wait
@@ -3407,7 +3407,7 @@ EOFMYSQL
     _THIS_DB_PORT=6033
     mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges &> /dev/null
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
 }
 
@@ -3431,7 +3431,7 @@ _satellite_run_pre_install() {
       _THIS_DB_PORT=6033
       mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     else
-      mysqladmin -u root flush-hosts &> /dev/null
+      mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     fi
     _provision_backend_dbpass_generate
     _sudoers_safe_append /etc/sudoers \
@@ -3454,7 +3454,7 @@ _satellite_run_pre_install() {
       _THIS_DB_PORT=6033
       mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     else
-      mysqladmin -u root flush-hosts &> /dev/null
+      mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
     fi
     _RST=$(syncpass fix ${_USER} 2>&1)
     _provision_backend_dbpass_sync
