@@ -2424,6 +2424,9 @@ SLAVEEOF
 ###-------------SOLR MANAGEMENT----------###
 
 _xmass_prevent_solr_target() {
+  # This CHANGES the state the prune guard caches, so any cached verdict is
+  # stale from here on.
+  _XMASS_SOLR_GUARD=""
   _info "Holding Solr on target ${_tgt} until cutover sync completes ..."
   ssh root@"${_tgt}" bash <<'REMOTE'
 mkdir -p /var/log/boa 2>/dev/null
@@ -3955,16 +3958,149 @@ _xmass_sync_shared() {
   _info "Shared data sync complete"
 }
 
+###-------------SOLR PRUNE GUARD-----------###
+###
+### Deleting on the mirror is only safe for a tree nothing there has OPEN.
+### For every other synced tree that is trivially true; Solr is the one case
+### where the mirror could hold the very files a prune removes, so the
+### deletion semantics and the Solr hold are COUPLED, and this makes the
+### coupling mechanical instead of a comment.
+###
+### `xmass init` disarms Solr on the target durably (stop, kill by service
+### USER, `update-rc.d disable`, exec bit dropped) and java.sh re-asserts it
+### every minute while `.xmass_solr_hold.pid` exists. Unless ALL of that is
+### observably true, index segments might be open and the leg stays ADDITIVE.
+###
+### The java.sh half is the same coupling seen from the other side: its kills
+### go by service user precisely because a bare `pkill -9 -f "${_svc}"` also
+### matches the rsync RECEIVER carrying /var/solrN -- it would kill the very
+### transfer the hold protects. We test for that HAZARD (ignoring comments),
+### not for one spelling of the cure.
+###
+### EVERY ambiguity resolves to ADDITIVE. PRUNE is affirmative-only: it needs
+### each fact to read positively, so a garbled line, a truncated answer, a
+### missing java.sh or an empty field can never authorise a deletion.
+_XMASS_SOLR_GUARD=""
+_XMASS_SOLR_GUARD_WHY=""
+
+# Daily-latched source-side warning for a standing condition. Latches only in
+# LIVE: a DRY run promises to change nothing, and consuming the latch there
+# would swallow the first real warning.
+_xmass_warn_daily() {   # 1 = slug  2 = message
+  local _d="/var/log/boa/xmass_autosync"
+  if [ "${_MODE}" != "LIVE" ]; then
+    _alrt "$2"
+    return 0
+  fi
+  mkdir -p "${_d}" 2>/dev/null
+  if [ -z "$(find "${_d}/.warned_$1" -mmin -1440 2>/dev/null)" ]; then
+    _alrt "$2"
+    touch "${_d}/.warned_$1" 2>/dev/null
+  fi
+}
+
+# Probe the target ONCE per call. Callers re-probe per leg, because
+# `--delete-after` removes files at the END of a transfer that can run for
+# hours -- a verdict taken at pass start bounds nothing.
+# Sets _XMASS_SOLR_GUARD (PRUNE | ADDITIVE | SKIP) and _XMASS_SOLR_GUARD_WHY.
+# GLOBALS ONLY, nothing on stdout: a $(...) call site would run this in a
+# subshell and the WHY/cache assignments would die there -- the first cut did
+# exactly that, leaving every reason empty and the cache dead (caught in the
+# re-verification). Callers reset _XMASS_SOLR_GUARD and invoke directly.
+_xmass_solr_target_guard() {
+  [ -n "${_XMASS_SOLR_GUARD}" ] && return 0
+  local _out _line _hold _live _armed _jpresent _jhazard
+  # NO `-n` here: it redirects stdin from /dev/null and would discard the
+  # heredoc, leaving an empty answer and a ZERO exit -- a probe that silently
+  # never runs. (Caught in review after exactly that.)
+  _out=$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
+    -o StrictHostKeyChecking=accept-new root@"${_tgt}" bash 2>/dev/null <<'REMOTE'
+_hold=NO; _live=NO; _armed=NO; _jpresent=NO; _jhazard=NO
+[ -e /var/log/boa/.xmass_solr_hold.pid ] && _hold=YES
+for _svc in solr9 solr7 solr4 jetty9; do
+  [ -x "/etc/init.d/${_svc}" ] && _armed=YES
+  # By uid AND by pattern: the uid test misses a JVM started outside the
+  # init script or running as root, and the account may not exist at all.
+  # Scoped to a java process so the service account's own shell or cron
+  # does not read as a live index.
+  if id "${_svc}" > /dev/null 2>&1; then
+    pgrep -u "${_svc}" -f 'jav[a]' > /dev/null 2>&1 && _live=YES
+  fi
+  pgrep -f "jav[a][0-9]* .*${_svc}" > /dev/null 2>&1 && _live=YES
+done
+# A listening port is proof of a live index whatever owns it.
+for _prt in 9099 9077 8099; do
+  { ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null; } | grep -q ":${_prt} " && _live=YES
+done
+if [ -e /var/xdrago/monitor/check/java.sh ]; then
+  _jpresent=YES
+  grep -qE '^[[:space:]]*[^#]*pkill[[:space:]]+-9[[:space:]]+-f[[:space:]]+"?\$\{_svc\}' \
+    /var/xdrago/monitor/check/java.sh 2>/dev/null && _jhazard=YES
+fi
+echo "XMSOLR hold=${_hold} live=${_live} armed=${_armed} jpresent=${_jpresent} jhazard=${_jhazard}"
+REMOTE
+)
+  # Parse the OWN line only. A remote .bashrc banner or an MOTD can put
+  # arbitrary text on stdout, and a token-scan over the whole blob would
+  # read the banner's value instead of ours.
+  _line=$(printf '%s\n' "${_out}" | grep -m1 '^XMSOLR ')
+  if [ -z "${_line}" ]; then
+    _XMASS_SOLR_GUARD=ADDITIVE
+    _XMASS_SOLR_GUARD_WHY="could not read the target's Solr hold state"
+    return 0
+  fi
+  _hold=$(printf '%s' "${_line}"     | tr ' ' '\n' | sed -n 's/^hold=//p'     | head -n1)
+  _live=$(printf '%s' "${_line}"     | tr ' ' '\n' | sed -n 's/^live=//p'     | head -n1)
+  _armed=$(printf '%s' "${_line}"    | tr ' ' '\n' | sed -n 's/^armed=//p'    | head -n1)
+  _jpresent=$(printf '%s' "${_line}" | tr ' ' '\n' | sed -n 's/^jpresent=//p' | head -n1)
+  _jhazard=$(printf '%s' "${_line}"  | tr ' ' '\n' | sed -n 's/^jhazard=//p'  | head -n1)
+  if [ "${_jhazard}" = "YES" ]; then
+    _XMASS_SOLR_GUARD=SKIP
+    _XMASS_SOLR_GUARD_WHY="the target's java.sh kills Solr by bare pattern, which also matches this leg's own rsync receiver on the /var/solrN path; refresh the target's tools"
+  elif [ "${_hold}" = "YES" ] && [ "${_live}" = "NO" ] && [ "${_armed}" = "NO" ] \
+    && [ "${_jpresent}" = "YES" ] && [ "${_jhazard}" = "NO" ]; then
+    _XMASS_SOLR_GUARD=PRUNE
+    _XMASS_SOLR_GUARD_WHY=""
+  else
+    _XMASS_SOLR_GUARD=ADDITIVE
+    _XMASS_SOLR_GUARD_WHY="the target's Solr hold is not verifiably intact (hold=${_hold:-?} running=${_live:-?} armed=${_armed:-?} java.sh=${_jpresent:-?}); pruning segments a live Solr holds open could corrupt its index"
+  fi
+}
+
 _xmass_sync_solr() {
   # Solr data is server-wide; safe to rsync while Solr is stopped on source.
   # During periodic sync Solr is still running on source, so rsync is
   # best-effort and may catch slightly inconsistent index state — that is
   # acceptable since a clean final sync runs after Solr is stopped at cutover.
   _xmass_auto_assert_standby
+  # Nothing to sync and nothing to warn about on a Solr-free estate: probing
+  # a target about a hold that protects no data would only manufacture noise.
+  local _dir _any=NO
+  for _dir in /opt/solr4 /var/solr7/data /var/solr9/data; do
+    [ -e "${_dir}" ] && _any=YES
+  done
+  [ "${_any}" = "YES" ] || return 0
   _info "Syncing Solr data ..."
-  local _dir
+  local _sGuard _sArgs
   for _dir in /opt/solr4 /var/solr7/data /var/solr9/data; do
     [ -e "${_dir}" ] || continue
+    # Re-probed PER TREE, not once per pass: `--delete-after` removes files
+    # at the END of a transfer that can run for hours, and the hold can lapse
+    # inside that window (cutover step 14, restore-solr, an operator clearing
+    # what looks like a leftover) -- after which java.sh re-arms Solr within
+    # a minute and the deletions would land under a live index.
+    _XMASS_SOLR_GUARD=""
+    _xmass_solr_target_guard
+    _sGuard="${_XMASS_SOLR_GUARD}"
+    if [ "${_sGuard}" = "SKIP" ] && [ "${_XMASS_AUTO}" = "YES" ]; then
+      _xmass_warn_daily "solrguard_java" \
+        "  solr: NOT syncing index data — ${_XMASS_SOLR_GUARD_WHY}"
+      return 0
+    fi
+    if [ "${_sGuard}" != "PRUNE" ] && [ -n "${_XMASS_SOLR_GUARD_WHY}" ]; then
+      _xmass_warn_daily "solrguard_hold" \
+        "  solr: syncing index data ADDITIVELY — ${_XMASS_SOLR_GUARD_WHY}"
+    fi
     # A Solr tree that does not fit is a DENY, not a skip: continuing here
     # promoted a target carrying no search index, after the source's Solr had
     # already been stopped and deny-filed. Record it so the cutover gate stops.
@@ -3975,7 +4111,12 @@ _xmass_sync_solr() {
     # No output redirect here: _xmass_rsync emits the DENY line that the abort
     # messages tell the operator to look for, and it always returns 0, so a
     # `|| _alrt` handler on this call could never fire.
-    _xmass_rsync -aEAXq $(_xmass_leg_args "${_dir}") -e ssh \
+    if [ "${_sGuard}" = "PRUNE" ]; then
+      _sArgs="$(_xmass_leg_args "${_dir}")"
+    else
+      _sArgs="${_ieni}"
+    fi
+    _xmass_rsync -aEAXq ${_sArgs} -e ssh \
       "${_dir}" "root@${_tgt}:$(dirname "${_dir}")/"
     [ "${_XMASS_RSYNC_RC:-0}" = "0" ] && _info "  Synced ${_dir}"
   done
@@ -6000,7 +6141,8 @@ _xmass_autosync_disarm() {
   rm -f "${_XMASS_AUTOSYNC_CNF}" "${_XMASS_AUTOSYNC_FAILCOUNT}" \
     "${_XMASS_AUTOSYNC_STATUS}" \
     /var/log/boa/xmass_autosync/.last_duration \
-    /var/log/boa/xmass_autosync/.last_run
+    /var/log/boa/xmass_autosync/.last_run \
+    /var/log/boa/xmass_autosync/.warned_*
   _info "autosync disarmed: ${1:-marker removed}"
 }
 
@@ -6086,6 +6228,24 @@ _xmass_autosync_arm() {
       _alrt "wall clock regardless, so the EFFECTIVE interval will be longer"
       _alrt "than the one you armed; raise --every to make the two agree."
     fi
+  fi
+  # Report the Solr coupling now, not from a daily note three passes in: an
+  # automated pass may only prune index segments while the target's Solr is
+  # verifiably held, and skips the leg entirely against a target whose
+  # java.sh would kill its own receiver. Unlatched by design — this is the
+  # operator's one interactive moment; fresh probe, never a cached verdict.
+  local _sAny=NO _sD
+  for _sD in /opt/solr4 /var/solr7/data /var/solr9/data; do
+    [ -e "${_sD}" ] && _sAny=YES
+  done
+  if [ "${_sAny}" = "YES" ]; then
+    _XMASS_SOLR_GUARD=""
+    _xmass_solr_target_guard
+    case "${_XMASS_SOLR_GUARD}" in
+      PRUNE) _info "  solr: target hold intact — index data will sync and prune normally" ;;
+      SKIP)  _alrt "  solr: index data will NOT be synced — ${_XMASS_SOLR_GUARD_WHY}" ;;
+      *)     _info "  solr: index data will sync ADDITIVELY — ${_XMASS_SOLR_GUARD_WHY}" ;;
+    esac
   fi
   {
     echo "_XMASS_AUTOSYNC_TARGET=${_tgt}"
@@ -6718,6 +6878,19 @@ _xmass_cmd_cutover() {
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
+    # A hazardous-vintage java.sh on the target would kill the final Solr
+    # rsync's own receiver DURING the cutover window -- with the 503 already
+    # up and the source's Solr already deny-filed. The fact is known before
+    # the window opens; surface it here as a DENY instead of letting the
+    # window discover it. Fresh probe, never a cached verdict.
+    if ls /opt/solr4 /var/solr7/data /var/solr9/data > /dev/null 2>&1; then
+      _XMASS_SOLR_GUARD=""
+      _xmass_solr_target_guard
+      if [ "${_XMASS_SOLR_GUARD}" = "SKIP" ]; then
+        _alrt "DENY: ${_XMASS_SOLR_GUARD_WHY}"
+        _XMASS_NOT_CLEAN=YES
+      fi
+    fi
     # DRY stays read-only: simulate the box default --live would write, so
     # the printed per-account plan matches what --live will do. The override
     # must engage whenever a mode is pending -- INCLUDING when it changes an
@@ -6780,6 +6953,15 @@ _xmass_cmd_cutover() {
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_solr_coverage_gate "${_tgt}" die
+  # Same consult as the DRY plan, in die mode: the receiver-kill hazard must
+  # refuse HERE, at the last free moment, not surface mid-window.
+  if ls /opt/solr4 /var/solr7/data /var/solr9/data > /dev/null 2>&1; then
+    _XMASS_SOLR_GUARD=""
+    _xmass_solr_target_guard
+    if [ "${_XMASS_SOLR_GUARD}" = "SKIP" ]; then
+      _die "${_XMASS_SOLR_GUARD_WHY}"
+    fi
+  fi
 
   # Freeze the box default to disk, then refuse to proceed while any account
   # would resolve to the built-in fallback: a single-account misfire mails one
