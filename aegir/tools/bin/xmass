@@ -4002,8 +4002,13 @@ _xmass_warn_daily() {   # 1 = slug  2 = message
 # Probe the target ONCE per call. Callers re-probe per leg, because
 # `--delete-after` removes files at the END of a transfer that can run for
 # hours -- a verdict taken at pass start bounds nothing.
-_xmass_solr_target_guard() {   # prints PRUNE | ADDITIVE | SKIP
-  [ -n "${_XMASS_SOLR_GUARD}" ] && { printf '%s' "${_XMASS_SOLR_GUARD}"; return 0; }
+# Sets _XMASS_SOLR_GUARD (PRUNE | ADDITIVE | SKIP) and _XMASS_SOLR_GUARD_WHY.
+# GLOBALS ONLY, nothing on stdout: a $(...) call site would run this in a
+# subshell and the WHY/cache assignments would die there -- the first cut did
+# exactly that, leaving every reason empty and the cache dead (caught in the
+# re-verification). Callers reset _XMASS_SOLR_GUARD and invoke directly.
+_xmass_solr_target_guard() {
+  [ -n "${_XMASS_SOLR_GUARD}" ] && return 0
   local _out _line _hold _live _armed _jpresent _jhazard
   # NO `-n` here: it redirects stdin from /dev/null and would discard the
   # heredoc, leaving an empty answer and a ZERO exit -- a probe that silently
@@ -4042,7 +4047,7 @@ REMOTE
   if [ -z "${_line}" ]; then
     _XMASS_SOLR_GUARD=ADDITIVE
     _XMASS_SOLR_GUARD_WHY="could not read the target's Solr hold state"
-    printf '%s' "${_XMASS_SOLR_GUARD}"; return 0
+    return 0
   fi
   _hold=$(printf '%s' "${_line}"     | tr ' ' '\n' | sed -n 's/^hold=//p'     | head -n1)
   _live=$(printf '%s' "${_line}"     | tr ' ' '\n' | sed -n 's/^live=//p'     | head -n1)
@@ -4053,14 +4058,13 @@ REMOTE
     _XMASS_SOLR_GUARD=SKIP
     _XMASS_SOLR_GUARD_WHY="the target's java.sh kills Solr by bare pattern, which also matches this leg's own rsync receiver on the /var/solrN path; refresh the target's tools"
   elif [ "${_hold}" = "YES" ] && [ "${_live}" = "NO" ] && [ "${_armed}" = "NO" ] \
-    && [ "${_jpresent}" = "YES" ]; then
+    && [ "${_jpresent}" = "YES" ] && [ "${_jhazard}" = "NO" ]; then
     _XMASS_SOLR_GUARD=PRUNE
     _XMASS_SOLR_GUARD_WHY=""
   else
     _XMASS_SOLR_GUARD=ADDITIVE
     _XMASS_SOLR_GUARD_WHY="the target's Solr hold is not verifiably intact (hold=${_hold:-?} running=${_live:-?} armed=${_armed:-?} java.sh=${_jpresent:-?}); pruning segments a live Solr holds open could corrupt its index"
   fi
-  printf '%s' "${_XMASS_SOLR_GUARD}"
 }
 
 _xmass_sync_solr() {
@@ -4086,7 +4090,8 @@ _xmass_sync_solr() {
     # what looks like a leftover) -- after which java.sh re-arms Solr within
     # a minute and the deletions would land under a live index.
     _XMASS_SOLR_GUARD=""
-    _sGuard="$(_xmass_solr_target_guard)"
+    _xmass_solr_target_guard
+    _sGuard="${_XMASS_SOLR_GUARD}"
     if [ "${_sGuard}" = "SKIP" ] && [ "${_XMASS_AUTO}" = "YES" ]; then
       _xmass_warn_daily "solrguard_java" \
         "  solr: NOT syncing index data — ${_XMASS_SOLR_GUARD_WHY}"
@@ -6235,7 +6240,8 @@ _xmass_autosync_arm() {
   done
   if [ "${_sAny}" = "YES" ]; then
     _XMASS_SOLR_GUARD=""
-    case "$(_xmass_solr_target_guard)" in
+    _xmass_solr_target_guard
+    case "${_XMASS_SOLR_GUARD}" in
       PRUNE) _info "  solr: target hold intact — index data will sync and prune normally" ;;
       SKIP)  _alrt "  solr: index data will NOT be synced — ${_XMASS_SOLR_GUARD_WHY}" ;;
       *)     _info "  solr: index data will sync ADDITIVELY — ${_XMASS_SOLR_GUARD_WHY}" ;;
@@ -6872,6 +6878,19 @@ _xmass_cmd_cutover() {
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
+    # A hazardous-vintage java.sh on the target would kill the final Solr
+    # rsync's own receiver DURING the cutover window -- with the 503 already
+    # up and the source's Solr already deny-filed. The fact is known before
+    # the window opens; surface it here as a DENY instead of letting the
+    # window discover it. Fresh probe, never a cached verdict.
+    if ls /opt/solr4 /var/solr7/data /var/solr9/data > /dev/null 2>&1; then
+      _XMASS_SOLR_GUARD=""
+      _xmass_solr_target_guard
+      if [ "${_XMASS_SOLR_GUARD}" = "SKIP" ]; then
+        _alrt "DENY: ${_XMASS_SOLR_GUARD_WHY}"
+        _XMASS_NOT_CLEAN=YES
+      fi
+    fi
     # DRY stays read-only: simulate the box default --live would write, so
     # the printed per-account plan matches what --live will do. The override
     # must engage whenever a mode is pending -- INCLUDING when it changes an
@@ -6934,6 +6953,15 @@ _xmass_cmd_cutover() {
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_solr_coverage_gate "${_tgt}" die
+  # Same consult as the DRY plan, in die mode: the receiver-kill hazard must
+  # refuse HERE, at the last free moment, not surface mid-window.
+  if ls /opt/solr4 /var/solr7/data /var/solr9/data > /dev/null 2>&1; then
+    _XMASS_SOLR_GUARD=""
+    _xmass_solr_target_guard
+    if [ "${_XMASS_SOLR_GUARD}" = "SKIP" ]; then
+      _die "${_XMASS_SOLR_GUARD_WHY}"
+    fi
+  fi
 
   # Freeze the box default to disk, then refuse to proceed while any account
   # would resolve to the built-in fallback: a single-account misfire mails one
