@@ -48,7 +48,12 @@ the source path without any extra configuration. The same shipped-defaults
 rule gates the other components: a custom Nginx module set keeps the source
 path, Valkey packages exist for major 9 only, and the Unbound and Pure-FTPd
 packages are refused on a box without the Modern OpenSSL tree their binaries
-link against. The Pure-FTPd package carries the ten `/usr/local` binaries
+link against. The Nginx and PHP packages are additionally verified against
+the compiled-in OpenSSL (and, for PHP 8.1+, ICU) versions the box currently
+expects -- the same tokens the next run's rebuild decision reads -- so a
+stale package published before a pin bump is refused and purged, and that
+component builds from sources instead of silently installing binaries built
+against the previous library. The Pure-FTPd package carries the ten `/usr/local` binaries
 only; the TLS certificate, DH parameters, PAM and configuration files stay
 box-generated or installer-managed on both paths.
 
@@ -105,18 +110,30 @@ Builder box invariants:
   opt-out).
 - A daily cron runs `barracuda up-<tree>` (a cheap no-op when nothing
   changed) followed by `stackbuild all` -- any pin bump is packaged within
-  24 hours. Boxes upgrading inside that window fall back to source builds by
-  design.
+  24 hours, including the packages a companion bump invalidates: when an
+  OpenSSL pin bump makes the upgrade rebuild PHP and Nginx without changing
+  their own versions, `stackbuild all` detects the rebuilt trees (newer than
+  their published packages) and republishes them under the same filenames.
+  Boxes upgrading inside that window fall back to source builds by design.
 
 `stackbuild` verbs:
 
 ```sh
 stackbuild check     # installed versions vs published packages
-stackbuild package   # build the missing packages
+stackbuild package   # build the missing or stale packages
 stackbuild publish   # gzip + sha256 sidecars into the mirror tree
 stackbuild sync      # cross-sync fresh packages to the peer active mirror
-stackbuild all       # package missing + publish + sync
+stackbuild all       # package missing + stale + publish + sync
+stackbuild force     # rebuild + republish regardless of published state
 ```
+
+A published package counts as stale when the real upgrade rebuilt its
+installed tree after the package was published -- the tool compares the
+component's probe binary against the published file instead of
+re-implementing any of the installer's rebuild triggers. Components the
+upgrade does not rebuild on a companion bump (the dynamically linked Unbound
+and cURL simply follow the upgraded library in place) correctly stay
+untouched.
 
 ## Adding a Builder Mirror for a New Release
 

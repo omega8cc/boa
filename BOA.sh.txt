@@ -1584,7 +1584,7 @@ _update_agents() {
   # user (o8 unless -u says otherwise) and never guesses one from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
     _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f83 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
-    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f97 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
+    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f96 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
