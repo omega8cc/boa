@@ -14,6 +14,18 @@
 # cron right after "barracuda up-<tree>" (both are cheap no-ops when nothing
 # changed).
 #
+# A published package can go stale without its own version changing: an
+# OpenSSL pin bump makes the real barracuda run rebuild PHP and Nginx (their
+# own probes force it), yet their versions - and so the published filenames -
+# stay the same, leaving the mirror serving payloads built against the
+# previous OpenSSL. The same trust-the-installer doctrine applies here: a
+# package is stale exactly when the installed tree was rebuilt after the
+# package was published (mtime of the component's probe binary vs the
+# published .gz), and 'package'/'all' rebuild it like a missing one. No
+# dependency map is re-implemented in this tool - components the real
+# upgrade does NOT rebuild on such a bump (the dynamically linked unbound
+# and curl follow the in-place lib) correctly stay untouched.
+#
 # Components (phase 1): ssl3 ssl-legacy icu curl php56..php85 (whatever
 # /opt/php*/bin/php exists). Phase 2 adds valkey (major 9 only -- the
 # builder always runs the forced-default Valkey 9, and majors 7/8 plus
@@ -37,10 +49,12 @@
 #
 # Usage:
 #   stackbuild check                report installed versions vs published packages
-#   stackbuild package [name ...]   build the missing (or named) packages
+#   stackbuild package [name ...]   build the missing/stale (or named) packages
 #   stackbuild publish              gzip + sha256 sidecar into the mirror tree
 #   stackbuild sync                 rsync fresh packages to the peer active mirror
-#   stackbuild all                  package missing + publish + sync
+#   stackbuild all                  package missing + stale + publish + sync
+#   stackbuild force [name ...]     rebuild named (all installed if none given)
+#                                   regardless of state + publish + sync
 # Component names: ssl3 ssl-legacy icu curl valkey nginx unbound pure-ftpd php56 php70 .. php85
 #
 # The builder box MUST keep _USE_PREBUILT_PKGS=NO in /root/.barracuda.cnf
@@ -231,6 +245,27 @@ _comp_version() {
   printf '%s\n' "${_v}"
 }
 
+_comp_mtime_ref() {
+  # The staleness witness: one payload file per component that every real
+  # rebuild reinstalls with a fresh mtime - the same binary _comp_version
+  # probes. Newer than the published .gz means the canonical barracuda run
+  # rebuilt this tree since it was last packaged (an OpenSSL bump forcing
+  # PHP/Nginx rebuilds is the motivating case), so the package must be
+  # rebuilt even though its own version - and filename - did not change.
+  local _comp="$1"
+  case "${_comp}" in
+    ssl3)       printf '%s\n' "/usr/local/ssl3/bin/openssl" ;;
+    ssl-legacy) printf '%s\n' "/usr/local/ssl/bin/openssl" ;;
+    icu)        printf '%s\n' "/usr/local/bin/icuinfo" ;;
+    curl)       printf '%s\n' "/usr/local/bin/curl" ;;
+    valkey)     printf '%s\n' "/usr/bin/valkey-server" ;;
+    nginx)      printf '%s\n' "/usr/sbin/nginx" ;;
+    unbound)    printf '%s\n' "/usr/sbin/unbound" ;;
+    pure-ftpd)  printf '%s\n' "/usr/local/sbin/pure-ftpd" ;;
+    php*)       printf '%s\n' "/opt/php${_comp#php}/bin/php" ;;
+  esac
+}
+
 _comp_paths() {
   local _comp="$1" _dot
   case "${_comp}" in
@@ -398,7 +433,7 @@ EOF
 
 _package_one() {
   local _comp="$1"
-  local _ver _deb _paths _excludes _stage _work _deps _replaces
+  local _ver _deb _paths _excludes _stage _work _deps _replaces _ref
   _ver="$(_comp_version "${_comp}")"
   if [[ -z "${_ver}" ]]; then
     _RESULTS+=("SKIP  ${_comp} (not installed on this box)")
@@ -406,8 +441,18 @@ _package_one() {
   fi
   _deb="$(_deb_name "${_comp}" "${_ver}")"
   if [[ -e "${_WORK_DIR}/${_deb}" ]]; then
-    _RESULTS+=("SKIP  ${_deb} (already built; publish pending)")
-    return 0
+    _ref="$(_comp_mtime_ref "${_comp}")"
+    if [[ -n "${_ref}" && -e "${_ref}" && "${_ref}" -nt "${_WORK_DIR}/${_deb}" ]]; then
+      # The pending build predates a rebuild of the installed tree (a publish
+      # failed, then e.g. an OpenSSL bump rebuilt this component): publishing
+      # it would freshen the .gz mtime over stale bytes and latch them, so
+      # rebuild instead of skipping.
+      _msg "  note: pending ${_deb} predates the installed tree; rebuilding"
+      rm -f "${_WORK_DIR}/${_deb}"
+    else
+      _RESULTS+=("SKIP  ${_deb} (already built; publish pending)")
+      return 0
+    fi
   fi
   _msg "package: ${_deb}"
   _work="${_WORK_DIR}/.work.${_comp}"
@@ -449,7 +494,7 @@ _package_one() {
 # ---------------------------------------------------------------------------
 
 do_check() {
-  local _comp _ver _deb _state
+  local _comp _ver _deb _state _ref
   _detect_pub_dir
   _msg "codename: ${_OS_CODE}   publish dir: ${_PUB_DIR}"
   for _comp in $(_all_components); do
@@ -459,10 +504,17 @@ do_check() {
       continue
     fi
     _deb="$(_deb_name "${_comp}" "${_ver}")"
+    _ref="$(_comp_mtime_ref "${_comp}")"
     if [[ -e "${_PUB_DIR}/${_deb}.gz" ]]; then
       _state="published"
+      if [[ -n "${_ref}" && -e "${_ref}" && "${_ref}" -nt "${_PUB_DIR}/${_deb}.gz" ]]; then
+        _state="STALE (tree rebuilt since publish)"
+      fi
     elif [[ -e "${_WORK_DIR}/${_deb}" ]]; then
       _state="BUILT, publish pending"
+      if [[ -n "${_ref}" && -e "${_ref}" && "${_ref}" -nt "${_WORK_DIR}/${_deb}" ]]; then
+        _state="BUILT, STALE (tree rebuilt since build)"
+      fi
     else
       _state="MISSING"
     fi
@@ -481,14 +533,38 @@ _missing_components() {
   done
 }
 
+_stale_components() {
+  # Published but rebuilt on this box since (see _comp_mtime_ref). A missing
+  # probe file means staleness cannot be judged - never guess, skip.
+  local _comp _ver _deb _ref
+  for _comp in $(_all_components); do
+    _ver="$(_comp_version "${_comp}")"
+    [[ -n "${_ver}" ]] || continue
+    _deb="$(_deb_name "${_comp}" "${_ver}")"
+    [[ -e "${_PUB_DIR}/${_deb}.gz" ]] || continue
+    _ref="$(_comp_mtime_ref "${_comp}")"
+    [[ -n "${_ref}" && -e "${_ref}" ]] || continue
+    if [[ "${_ref}" -nt "${_PUB_DIR}/${_deb}.gz" ]]; then
+      printf '%s ' "${_comp}"
+    fi
+  done
+}
+
+_installed_components() {
+  local _comp
+  for _comp in $(_all_components); do
+    [[ -n "$(_comp_version "${_comp}")" ]] && printf '%s ' "${_comp}"
+  done
+}
+
 do_package() {
-  # $@ = component names, or empty for every missing one.
+  # $@ = component names, or empty for every missing or stale one.
   local _targets="$*" _comp
   _detect_pub_dir
   mkdir -p "${_WORK_DIR}"
-  [[ -n "${_targets}" ]] || _targets="$(_missing_components)"
+  [[ -n "${_targets}" ]] || _targets="$(_missing_components)$(_stale_components)"
   if [[ -z "${_targets// /}" ]]; then
-    _msg "nothing to package - all installed components are published"
+    _msg "nothing to package - all installed components are published and current"
     return 0
   fi
   for _comp in ${_targets}; do
@@ -504,17 +580,40 @@ do_publish() {
   # The sidecar hashes the COMPRESSED file (the installer verifies before
   # gunzip). Old versions are never deleted - mirrors keep them so slower
   # trees and older pins keep finding their exact filename.
-  local _t _base _n=0
+  local _t _base _comp _ref _n=0
   _detect_pub_dir
   for _t in "${_WORK_DIR}"/boa-*.deb; do
     [[ -e "${_t}" ]] || continue
     _base="${_t##*/}"
+    # The same staleness guard as _package_one: a pending deb that predates
+    # a rebuild of its tree (a failed publish, then e.g. an OpenSSL bump)
+    # must never be swept out here - the fresh .gz mtime would latch the
+    # stale bytes beyond staleness detection for good. Dropped debs surface
+    # as MISSING/STALE on the next package run and rebuild through the
+    # guarded path. Component names carry no underscore, so the parse is
+    # exact; an unknown name yields no ref and publishes as before.
+    _comp="${_base#boa-}"
+    _comp="${_comp%%_*}"
+    _ref="$(_comp_mtime_ref "${_comp}")"
+    if [[ -n "${_ref}" && -e "${_ref}" && "${_ref}" -nt "${_t}" ]]; then
+      _alrt "stale pending ${_base} (tree rebuilt since build); dropped, not published"
+      rm -f "${_t}"
+      continue
+    fi
     if ! gzip -9 -c "${_t}" > "${_PUB_DIR}/${_base}.gz.tmp"; then
       _alrt "gzip failed: ${_base}"
       rm -f "${_PUB_DIR}/${_base}.gz.tmp"
       continue
     fi
-    mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"
+    # Checked: on a same-version republish the target already exists, and a
+    # refused overwrite (immutable bit, permissions) would otherwise leave the
+    # old bytes in place while the sidecar below is rebuilt from them and the
+    # run still reports success - stale bytes, self-consistent, undetectable.
+    if ! mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"; then
+      _alrt "publish failed (cannot replace): ${_base}.gz"
+      rm -f "${_PUB_DIR}/${_base}.gz.tmp"
+      continue
+    fi
     # Sidecar gets the same tmp+mv treatment as the .gz: an in-place rewrite
     # would expose a new-.gz/old-sidecar window on a same-version republish,
     # tripping spurious checksum-mismatch source fallbacks fleet-wide.
@@ -545,7 +644,17 @@ do_sync() {
   fi
   # --delay-updates moves every transferred file into place at the end of the
   # run, keeping the .gz/.sha256 pair window on the peer as small as possible.
-  if rsync -a --delay-updates \
+  # --update is load-bearing, not tidiness: this box carries its own copies of
+  # the PEER's codename files, and a same-version republish now rewrites an
+  # existing filename rather than only adding new ones. Without it, a sync
+  # overlapping the peer's publish window pushes our older copy of a file the
+  # peer just republished, reverting it - content and mtime alike, so the
+  # reverted pair looks consistent and staleness detection never fires again
+  # (observed: two components published at the head of a peer's loop reverted
+  # while everything published after it survived). Never move a file backwards
+  # in time on the peer; a deliberate rollback goes through 'force', which
+  # republishes with a current mtime.
+  if rsync -a --update --delay-updates \
     --include='boa-*_amd64.deb.gz' --include='boa-*_amd64.deb.gz.sha256' \
     --exclude='*' "${_PUB_DIR}/" "${_PEER_MIRROR}/"; then
     _msg "cross-synced boa-* packages to ${_PEER_MIRROR}"
@@ -612,6 +721,28 @@ main() {
       trap '_cleanup' EXIT
       _acquire_lock
       do_package
+      do_publish
+      do_sync
+      print_summary
+      ;;
+    force)
+      # Rebuild and republish regardless of what the mirror already holds -
+      # the operator hammer for when the mtime heuristic cannot be trusted
+      # (a mirror tree restored from backup, clock skew, doubt).
+      _require_root
+      _require_builder
+      _require_tools
+      trap '_cleanup' EXIT
+      _acquire_lock
+      local _targets="$*" _fComp _fVer
+      [[ -n "${_targets// /}" ]] || _targets="$(_installed_components)"
+      # force distrusts mtimes entirely - drop any pending build for the
+      # targets first, so the pending-deb heuristic cannot skip the rebuild.
+      for _fComp in ${_targets}; do
+        _fVer="$(_comp_version "${_fComp}")"
+        [[ -n "${_fVer}" ]] && rm -f "${_WORK_DIR}/$(_deb_name "${_fComp}" "${_fVer}")"
+      done
+      do_package ${_targets}
       do_publish
       do_sync
       print_summary
