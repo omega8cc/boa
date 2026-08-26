@@ -2927,6 +2927,19 @@ _xmass_finalize_dry() {   # 1 tgt
 _XMASS_PRUNE=NO
 _XMASS_MAX_DELETE="${_XMASS_MAX_DELETE:-5000}"
 
+# The one explanation of a tripped delete guard. rc 25 can surface from
+# three different rsync call sites (the mode-aware wrapper and both store
+# placements), and the store legs -- static/files and arch, the largest
+# trees and so the likeliest to trip -- are exactly the ones an operator
+# must not meet as a bare "failed (rc=25)".
+_xmass_deny_maxdelete() {   # 1 = label
+  _alrt "DENY: ${1}: the delete guard stopped this leg — more than"
+  _alrt "DENY: ${_XMASS_MAX_DELETE} files would have been removed on the target, so rsync"
+  _alrt "DENY: stopped at the limit. Confirm the source really lost that many files"
+  _alrt "DENY: (an unmounted volume and a genuine mass deletion look identical from"
+  _alrt "DENY: here); if it is genuine, re-run once with a raised _XMASS_MAX_DELETE."
+}
+
 # Delete-flags for one DATA leg, or nothing when it must stay additive.
 # The empty-source refusal is the mount guard: `static/files` and `arch` can
 # live on a secondary volume, and an unmounted volume reads as an EMPTY
@@ -2936,8 +2949,14 @@ _xmass_prune_args() {   # 1 = source dir
   [ "${_XMASS_PRUNE}" = "YES" ] || return 0
   [ -d "$1" ] || return 0
   if [ -z "$(ls -A "$1" 2>/dev/null | head -c 1)" ]; then
-    _alrt "  prune: source $1 is EMPTY — NOT deleting on the target"
-    _alrt "  prune: (an unmounted secondary volume reads exactly like this)"
+    # STDERR, not stdout: this function's stdout IS the argument list its
+    # caller splices into rsync. An _alrt here (which echoes to stdout, as
+    # every BOA helper does) lands inside the rsync command line and the
+    # leg fails rc=1 -- observed on the rig against an empty /var/solr9/data,
+    # which is the ordinary state of a fresh box. The pass log captures
+    # stderr too, so the operator still sees it.
+    _alrt "  prune: source $1 is EMPTY — NOT deleting on the target" >&2
+    _alrt "  prune: (an unmounted secondary volume reads exactly like this)" >&2
     return 0
   fi
   printf '%s' "--delete-after --max-delete=${_XMASS_MAX_DELETE}"
@@ -2974,11 +2993,7 @@ _xmass_rsync() {
         # deleted, which is exactly what the guard is for -- so this is a
         # refusal to read, not a failure to retry blindly. It still fails the
         # pass (the tree is now knowingly incomplete on the delete side).
-        _alrt "DENY: the delete guard stopped this leg: more than ${_XMASS_MAX_DELETE} files"
-        _alrt "DENY: would have been removed on the target. NOTHING beyond the limit was"
-        _alrt "DENY: deleted. Confirm the source really lost that many files (an unmounted"
-        _alrt "DENY: volume or a wrong path looks identical from here); if it is genuine,"
-        _alrt "DENY: re-run once with a raised _XMASS_MAX_DELETE. Leg: $*"
+        _xmass_deny_maxdelete "$*"
         _XMASS_RSYNC_RC="${_rc}"
         _XMASS_NOT_CLEAN=YES
       else
@@ -3048,6 +3063,10 @@ _xmass_put_on_root() {
   local _rc=0
   rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
     "${_real}/" root@"${_th}":"${_dstRoot}/" || _rc=$?
+  if [ "${_rc}" = "25" ]; then
+    _xmass_deny_maxdelete "${_dstRoot} on target root"
+    return 3
+  fi
   if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ]; then
     _alrt "DENY: rsync to ${_dstRoot} on target root failed (rc=${_rc})"
     return 3
@@ -3071,6 +3090,10 @@ _xmass_put_on_mount() {
   local _rc=0
   rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
     "${_real}/" root@"${_th}":"${_mntDest}/" || _rc=$?
+  if [ "${_rc}" = "25" ]; then
+    _xmass_deny_maxdelete "${_lbl} -> ${_mntDest}"
+    return 3
+  fi
   if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ]; then
     _alrt "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed (rc=${_rc}); target link left untouched"
     return 3
