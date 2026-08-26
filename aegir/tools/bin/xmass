@@ -105,6 +105,11 @@ _ieni="--ignore-errors"
 _XMASS_AUTOSYNC_CNF="/root/.xmass.autosync.cnf"
 _XMASS_AUTOSYNC_STATUS="/var/log/boa/xmass.autosync.status"
 _XMASS_AUTOSYNC_FAILCOUNT="/var/log/boa/xmass.autosync.fail.count"
+### Duty cycle: a pass may occupy at most 1/(N+1) of wall clock, so the box
+### rests at least N x the last pass duration between passes. Shared with
+### monitor/check/autosync.sh, which enforces it; kept here so --status can
+### report the same effective interval the driver will honour.
+_XMASS_AUTOSYNC_DUTY="${_XMASS_AUTOSYNC_DUTY:-3}"
 _XMASS_AUTO=NO
 
 ### Replica catch-up ceiling for the cutover, in seconds. Percona 5.7 applies the
@@ -362,6 +367,7 @@ _XMASS_PHASE=${_XMASS_PHASE}
 _XMASS_PERMANENT_PROXY=${_XMASS_PERMANENT_PROXY}
 _XMASS_PROXY_MODE=${_XMASS_PROXY_MODE}
 _XMASS_PROXY_DEADLINE=${_XMASS_PROXY_DEADLINE}
+_XMASS_LAST_SYNC_SECS=${_XMASS_LAST_SYNC_SECS}
 _XMASS_STATE_V=2
 STATEEOF
   then
@@ -707,8 +713,25 @@ _xmass_solr_classify_source() {
     ### stay as reported evidence, never the verdict.
     _fresh=$(find "${_dta}"/*.*/data/index -maxdepth 0 -mtime -30 2>/dev/null | wc -l | tr -d ' ')
     _freshy=$(find "${_dta}"/*.*/data/index -maxdepth 0 -mtime -365 2>/dev/null | wc -l | tr -d ' ')
-    _newest=$(find "${_dta}"/*.*/data/index -type f -printf '%TY-%Tm-%Td\n' 2>/dev/null | sort | tail -1)
-    [ -z "${_newest}" ] && _newest=never
+    ### _newest is REPORT PROSE ONLY -- every verdict below tests _bind,
+    ### _sr, _fresh, _freshy or _docs, never this. Computing it used to cost
+    ### a full recursive walk of every core's index tree (large-file-count
+    ### by nature) plus a sort of the whole result set, on every pass. An
+    ### automated pass therefore derives the same fact in buckets from the
+    ### two -maxdepth 0 tests just above, which are already measured; a
+    ### manual pass, whose output an operator is reading, keeps the date.
+    if [ "${_XMASS_AUTO}" = "YES" ]; then
+      if [ "${_fresh}" -gt 0 ]; then
+        _newest="within 30d"
+      elif [ "${_freshy}" -gt 0 ]; then
+        _newest="within 1y"
+      else
+        _newest="never"
+      fi
+    else
+      _newest=$(find "${_dta}"/*.*/data/index -type f -printf '%TY-%Tm-%Td\n' 2>/dev/null | sort | tail -1)
+      [ -z "${_newest}" ] && _newest=never
+    fi
     _docs=0
     if [ "${_lsn}" = "YES" ]; then
       _docs=$(curl -s --max-time 15 -A iCab \
@@ -3267,6 +3290,37 @@ _xmass_link_class() {
 # $3 (optional) - space-separated top-level subdirs whose own delta legs re-send
 #                 links each sync; out-links under them are reported, NOT
 #                 materialised (the leg would fight the materialised copy)
+# The traversal behind the sweep. On an AUTO pass it PRUNES the covered
+# subtrees ($2, the caller's list of top-level names whose own delta legs
+# re-send their links every pass) instead of descending them.
+#
+# That is an equivalence, not an optimisation gamble, and it rests on two
+# properties of this file: a link found strictly below a covered name is
+# discarded as report-only before it can reach _XMASS_OUT_DIRS/_FILES, and
+# the only other product of such a link -- its --exclude in _XMASS_OUT_EXCL
+# -- is DEAD at the account call site, because _xmass_sync_account runs
+# every tree leg BEFORE the sweep. So on a covered subtree the descent can
+# change no action the pass takes; it can only produce counter lines. The
+# measured cost of those counter lines on a large estate is a full
+# recursive walk of distro/ and static/files per account per pass.
+#
+# Manual passes keep the full descent: their sweep output is an operator
+# report (dangling links under an unmounted volume, chains that will not
+# travel) and a human is reading it. Root-level links and links under an
+# UNCOVERED top-level name are actionable in both modes and are never pruned.
+_xmass_link_find() {
+  local _root="$1" _cov="$2" _one
+  if [ "${_XMASS_AUTO}" != "YES" ] || [ -z "${_cov}" ]; then
+    find "${_root}" -type l 2>/dev/null | sort
+    return 0
+  fi
+  local _args=()
+  for _one in ${_cov}; do
+    _args+=( -path "${_root}/${_one}" -prune -o )
+  done
+  find "${_root}" "${_args[@]}" -type l -print 2>/dev/null | sort
+}
+
 _xmass_scan_out_links() {
   local _root="$1" _skip="$2" _cov="$3"
   local _l _rel _top _sz _covered _uNm
@@ -3384,7 +3438,7 @@ _xmass_scan_out_links() {
         ;;
     esac
   done <<EOF
-$(find "${_root}" -type l 2>/dev/null | sort)
+$(_xmass_link_find "${_root}" "${_cov}")
 EOF
   _XMASS_LNK_RPT="fabric=${_nfab} intree=${_nin} materialise=${_nout} chain=${_nchain} indirect=${_nind} dangling=${_ndang} skipped=${_nskip}"
   if [ "${_mntdang}" -gt 0 ]; then
@@ -5681,6 +5735,11 @@ _xmass_cmd_init() {
 }
 
 _xmass_cmd_sync() {
+  # How long a pass actually takes is the number the cadence has to respect
+  # (and, on a large estate, the one that decides whether a 15-minute
+  # --every is honest). Nothing recorded it before: _XMASS_LAST_SYNC is a
+  # timestamp, not a duration.
+  local _syncT0; _syncT0=$(date +%s)
   _xmass_load_state
   _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
   [ "${_XMASS_PHASE}" = "syncing" ] \
@@ -5768,6 +5827,7 @@ _xmass_cmd_sync() {
       _die "a file transfer failed (see DENY above); sync incomplete — re-run before cutover"
     fi
     _XMASS_LAST_SYNC=$(date +%Y%m%d-%H%M%S)
+    _XMASS_LAST_SYNC_SECS=$(( $(date +%s) - _syncT0 ))
     _xmass_save_state
     _info "xmass sync complete at ${_XMASS_LAST_SYNC}"
   else
@@ -5910,8 +5970,14 @@ _xmass_autosync_probe_target() {
 # pair can never inherit a retired pair's fail counter or "last OK pass"
 # record. Callers pass the reason as prose.
 _xmass_autosync_disarm() {
+  # Everything the cadence owns goes together, the driver's own two files
+  # included: a stale duration would give the NEXT pair a rest window
+  # derived from a retired one, and a stale stamp would delay its first
+  # pass by a whole window.
   rm -f "${_XMASS_AUTOSYNC_CNF}" "${_XMASS_AUTOSYNC_FAILCOUNT}" \
-    "${_XMASS_AUTOSYNC_STATUS}"
+    "${_XMASS_AUTOSYNC_STATUS}" \
+    /var/log/boa/xmass_autosync/.last_duration \
+    /var/log/boa/xmass_autosync/.last_run
   _info "autosync disarmed: ${1:-marker removed}"
 }
 
@@ -5981,6 +6047,23 @@ _xmass_autosync_arm() {
            " — refusing to arm against an unverifiable target"
     ;;
   esac
+  # Measure the cadence against reality rather than hope. A pass that takes
+  # longer than the interval does not overlap -- the lock defers it -- but
+  # the pair then runs back to back, which on a large estate means walking
+  # the whole estate continuously. Warn, never refuse: the duty-cycle guard
+  # in the driver enforces the rest, and the operator may know better.
+  local _lastSecs
+  _lastSecs="${_XMASS_LAST_SYNC_SECS//[^0-9]/}"
+  if [ -n "${_lastSecs}" ] && [ "${_lastSecs}" -gt 0 ]; then
+    _info "  last measured live sync: ${_lastSecs}s"
+    if [ "$(( _every * 60 ))" -lt "$(( _lastSecs * 2 ))" ]; then
+      _alrt "the armed cadence (${_every}m) is less than twice the last measured"
+      _alrt "pass (${_lastSecs}s) — passes will run close to back to back. The"
+      _alrt "driver's duty-cycle guard will hold the box to a bounded share of"
+      _alrt "wall clock regardless, so the EFFECTIVE interval will be longer"
+      _alrt "than the one you armed; raise --every to make the two agree."
+    fi
+  fi
   {
     echo "_XMASS_AUTOSYNC_TARGET=${_tgt}"
     echo "_XMASS_AUTOSYNC_EVERY=${_every}"
@@ -6023,6 +6106,19 @@ _xmass_autosync_show_status() {
     sed 's/^/INFO:   /' "${_XMASS_AUTOSYNC_STATUS}" 2>/dev/null
   else
     _info "  no completed automatic pass recorded yet"
+  fi
+  local _dur
+  _dur="$(cat /var/log/boa/xmass_autosync/.last_duration 2>/dev/null | tr -dc '0-9' | head -c 9)"
+  if [ -n "${_dur}" ] && [ "${_dur}" -gt 0 ]; then
+    # What the driver will actually honour: the armed interval, or the
+    # duty-cycle floor derived from the last pass, whichever is longer.
+    local _floor
+    _floor=$(( (_dur * (_XMASS_AUTOSYNC_DUTY + 1)) / 60 ))
+    if [ "${_floor}" -gt "${_AS_EVERY}" ]; then
+      _info "  last pass ${_dur}s — effective interval ${_floor}m (duty-cycle floor, above the armed ${_AS_EVERY}m)"
+    else
+      _info "  last pass ${_dur}s — effective interval ${_AS_EVERY}m (as armed)"
+    fi
   fi
   if [ -s "${_XMASS_AUTOSYNC_FAILCOUNT}" ]; then
     _alrt "  consecutive target-probe failures: $(tr -dc '0-9' < "${_XMASS_AUTOSYNC_FAILCOUNT}" | head -c 6)"

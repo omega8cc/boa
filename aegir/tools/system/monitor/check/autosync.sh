@@ -61,6 +61,11 @@ _pthOml="/var/log/boa/autosync.incident.log"
 _pthSyncLog="/var/log/boa/xmass.autosync.log"
 _AS_CNF="/root/.xmass.autosync.cnf"
 _AS_STATUS="/var/log/boa/xmass.autosync.status"
+# Pass duration lives HERE, in the driver, not in the status file: the status
+# file is written only by a COMPLETED pass, so a pass killed at the timeout
+# ceiling would leave the guard reasoning from a stale short duration -- the
+# exact case where resting matters most.
+_AS_DURFILE="${_pthDat}/.last_duration"
 
 _FORCE=NO
 _STDOUT=NO
@@ -215,8 +220,33 @@ fi
 # times a minute and ~all ticks end right here.
 _AS_EVERY=$(_as_num "$(grep '^_XMASS_AUTOSYNC_EVERY=' "${_AS_CNF}" 2>/dev/null | head -n1 | cut -d= -f2)" 15)
 [ "${_AS_EVERY}" -lt 5 ] && _AS_EVERY=5
+
+# --- duty-cycle guard -------------------------------------------------
+# The armed cadence is what the operator wants; this is what the box can
+# afford. A pass walks the estate's metadata several times over, so on a
+# large estate it can outlast the interval -- and because an overlapping
+# tick defers silently on the verb lock, the pair would then run back to
+# back forever, walking continuously with nothing to show for it.
+#
+# So a pass may occupy at most 1/(_XMASS_AUTOSYNC_DUTY + 1) of wall clock:
+# the box rests at least DUTY x the last measured pass before the next one.
+# It needs no new gate or exit path, because ${_STAMP} is touched BEFORE the
+# pass (below) and therefore carries the pass START -- "rest DUTY x D after
+# the end" is exactly "(DUTY + 1) x D since the start", which is one
+# widening of the number the throttle already compares against.
+#
+# The armed cadence still wins whenever it is the LONGER of the two: this
+# only ever slows a pair down, never speeds one up.
+_XMASS_AUTOSYNC_DUTY=$(_as_num "${_XMASS_AUTOSYNC_DUTY}" 3)
+_AS_WINDOW="${_AS_EVERY}"
+_AS_LASTDUR=$(_as_num "$(cat "${_AS_DURFILE}" 2>/dev/null)" 0)
+if [ "${_AS_LASTDUR}" -gt 0 ]; then
+  # ceiling division: a 40s pass at duty 3 must not round down to 2 minutes
+  _AS_FLOOR=$(( ( _AS_LASTDUR * (_XMASS_AUTOSYNC_DUTY + 1) + 59 ) / 60 ))
+  [ "${_AS_FLOOR}" -gt "${_AS_WINDOW}" ] && _AS_WINDOW="${_AS_FLOOR}"
+fi
 if [ "${_FORCE}" != "YES" ] && [ -e "${_STAMP}" ] \
-  && [ -z "$(find "${_STAMP}" -mmin "+$(( _AS_EVERY - 1 ))" 2>/dev/null)" ]; then
+  && [ -z "$(find "${_STAMP}" -mmin "+$(( _AS_WINDOW - 1 ))" 2>/dev/null)" ]; then
   exit 0
 fi
 
@@ -291,9 +321,17 @@ fi
 # the remote receiver is unaffected.
 echo "---------------------------- $(date '+%Y-%m-%d %H:%M:%S') autosync tick" >> "${_pthSyncLog}"
 _rc=0
+_AS_T0=$(date +%s)
 ionice -c2 -n7 nice -n10 timeout -k 60 "${_XMASS_AUTOSYNC_TIMEOUT}" \
   bash /opt/local/bin/xmass autosync --run >> "${_pthSyncLog}" 2>&1 || _rc=$?
-_say "PASS rc=${_rc}"
+# Recorded for EVERY outcome, including a deferred tick and a killed pass:
+# a defer is genuinely cheap and should not inflate the rest window, while a
+# pass killed at the ceiling is the most expensive outcome there is and must
+# not be forgotten. The verb's own quick defers cost a second or two, so they
+# naturally leave the window at the armed cadence.
+_AS_DUR=$(( $(date +%s) - _AS_T0 ))
+echo "${_AS_DUR}" > "${_AS_DURFILE}" 2>/dev/null
+_say "PASS rc=${_rc} dur=${_AS_DUR}s window=${_AS_WINDOW}m"
 
 if [ "${_rc}" != "0" ]; then
   if [ "${_rc}" = "124" ]; then
@@ -314,7 +352,11 @@ fi
 # freshly armed pair gets its full grace before the first alarm.
 _AS_REF="${_AS_STATUS}"
 [ -s "${_AS_REF}" ] || _AS_REF="${_AS_CNF}"
-_AS_STALE_MIN=$(( _AS_EVERY * 6 ))
+# Measured against the EFFECTIVE window, not the armed cadence: a pair the
+# duty guard has correctly slowed down is not stale, and an alarm that cries
+# wolf every day is worse than no alarm at all -- it trains the operator to
+# ignore the one signal that backstops every silent-defer class.
+_AS_STALE_MIN=$(( _AS_WINDOW * 6 ))
 [ "${_AS_STALE_MIN}" -lt 180 ] && _AS_STALE_MIN=180
 if [ -n "$(find "${_AS_REF}" -mmin "+${_AS_STALE_MIN}" 2>/dev/null)" ]; then
   if _warn_daily "stale" "WARN: autosync is armed but no pass has completed for over ${_AS_STALE_MIN} minutes — the mirror's files are ageing while its database stays current; read the defer/refusal reasons in ${_pthSyncLog}"; then

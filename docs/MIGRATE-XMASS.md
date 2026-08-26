@@ -689,10 +689,39 @@ cadences, whatever the reason (a phase wedged by an aborted cutover, a stuck
 lock, a hand-edit). If the alarm fires, read the defer/refusal reasons in
 the pass log.
 
-The cadence default is 15 minutes with a floor of 5. Passes overlap-refuse
-via the lock, so a cadence shorter than a pass simply degrades to
-back-to-back passes; the floor exists because below it the rsync tree walk
-never rests on a large estate. Each pass appends its full output (including
+**The cadence you arm is a ceiling on frequency, not a promise.** A pass
+walks the estate's metadata several times over — rsync's own file list, the
+space gates, the symlink sweep — so on a large estate it can take longer
+than the interval. Passes never overlap (the lock defers a late tick), but
+without a second bound the pair would then run *back to back forever*,
+walking continuously with no operator-visible sign of it. So the driver
+enforces a **duty cycle**: a pass may occupy at most one part in
+`_XMASS_AUTOSYNC_DUTY + 1` of wall clock (default 3, i.e. at most a
+quarter), which means the box rests at least three times the last measured
+pass duration before starting the next one. The armed cadence still wins
+whenever it is the longer of the two — the guard only ever slows a pair
+down.
+
+`xmass autosync --status` prints the effective interval alongside the armed
+one, and arming warns when the cadence you asked for is less than twice the
+last measured pass, so the two never silently disagree. The staleness alarm
+measures against the *effective* window, not the armed cadence — a pair the
+guard has correctly slowed down is not stale.
+
+The cadence default is 15 minutes with a floor of 5. The floor exists
+because below it the rsync tree walk never rests on a large estate; the duty
+cycle is what actually protects a box whose passes are long.
+
+Two costs are also skipped on automated passes specifically, because on a
+large estate they are the dominant ones and neither can change what the pass
+does: the per-account symlink sweep no longer descends the subtrees whose
+own delta legs already re-send their links (a link found there is
+report-only, and the exclude list it would build is consumed before the
+sweep runs), and the exact "newest index write" date in the Solr
+classification — report prose that no verdict reads — is bucketed from
+measurements already taken rather than recomputed with a full walk of every
+core's index tree. Manual passes keep both in full, because an operator is
+reading that output. Each pass appends its full output (including
 the eligible/skipped list) to `/var/log/boa/xmass.autosync.log` (size-bounded),
 records the last successful pass in `/var/log/boa/xmass.autosync.status`
 (also shown by `xmass status`), runs under `ionice`/`nice` so the local tree
