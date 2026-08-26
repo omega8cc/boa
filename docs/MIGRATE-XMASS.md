@@ -38,7 +38,11 @@ Solr data           ── rsync (at cutover) ─▶  /var/solr*/data/
 
 During the sync period (which can last days or weeks) the replica stays current
 with zero additional load on the source beyond normal binlog writes. Rsync of
-filesystem data is run on demand via `xmass sync`. At cutover:
+filesystem data is run on demand via `xmass sync` — or continuously, once the
+operator arms `xmass autosync`, which repeats the live sync legs on a fixed
+cadence from the active side (see [Automated file sync](#automated-file-sync-for-a-standing-mirror-xmass-autosync);
+this is what keeps a **standing mirror's** files fresh, not just its
+database). At cutover:
 
 1. All source web traffic is blocked (503 via `http-off.pid`).
 2. Source Solr is stopped and locked out permanently.
@@ -494,6 +498,53 @@ Syncs the following to the target on each run:
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
 
+### Deletions: what a sync removes on the target, and what it never does
+
+Source-side deletions **propagate on the data trees** during `sync` (manual
+and automated alike): `distro/`, `src/`, `static/files`, `arch`, `backups/`,
+`undo/`, the client toolchains, the Solr data trees and the shared
+`/data/all`, `/data/disk/all`, `/data/disk/legacy` and `/var/www/static`
+trees. Without this a standing mirror grows without bound, and it grows
+*nightly*: the per-account SQL dump stores under `arch`, each account's
+`backups/` and the Solr index segments all rotate on the active every night,
+and a mirror can never reclaim any of it on its own — `owl.sh` exits on the
+standby marker, so the box's whole nightly cleanup is parked while it is a
+mirror.
+
+Three things are deliberately **not** pruned:
+
+- **Control, credential and target-role legs stay additive** — `log/`,
+  `.drush/`, `config/`, the sub-account password store and the PHP pin
+  witnesses under `static/control`. They carry target-owned state or are
+  force-copied, and deleting there would fight the target's own install.
+- **The cutover legs stay additive**, plan and live alike. That is the one
+  window where the target is about to become production and a wrong deletion
+  is unrecoverable; a promoted box resumes its own `owl.sh` cleanup within
+  the night and reclaims normally.
+- **Files excluded from a leg are never deletion candidates** (`--delete-excluded`
+  is never passed), so `proxied.pid`, `migproxy.cnf`, `pass.txt` and the
+  target's immutable `php.ini` are safe by construction.
+
+The guards on every pruning leg, none of them optional:
+
+| Guard | What it prevents |
+|---|---|
+| `--delete-after` | Nothing is removed until the transfer succeeded, so a failed leg cannot leave the target both pruned and un-copied |
+| `--max-delete` (`_XMASS_MAX_DELETE`, default 5000) | rsync **refuses** (exit 25) rather than carry out a mass deletion — the catastrophe guard: "wiped the mirror" becomes "a loud pass failure a human reads" |
+| Never with `--ignore-errors` | That flag means *delete even though the source had read errors*, which is exactly what must not happen; a leg either prunes or keeps the historical tolerance, never both |
+| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive |
+
+A tripped delete guard is a refusal to read, not an error to retry: nothing
+beyond the limit was deleted. Confirm the source really lost that many files
+— an unmounted volume and a genuine mass deletion look identical from the
+sending side — and only then re-run once with `_XMASS_MAX_DELETE` raised.
+Expect it to trip on the **first** pruning pass against a mirror that has
+been accreting for months; that is the guard doing its job.
+
+A mirror-side *rewrite* of a file that still exists on the source is still
+never undone — `-u` keeps the newer copy, and only the accretion of files the
+source no longer has is what deletion addresses.
+
 Optional per-account config directories (`pre.d`, `post.d`, `subdir.d`,
 `platform.d`, `config/ssl.d`, `config/server_master/ssl.d`, `tools/le`) are
 skipped with a logged "nothing to send" when absent rather than failing the
@@ -563,6 +614,136 @@ default PHP version.
 Run `xmass sync` immediately after `init` for the first full pass (which may
 take several hours for large accounts), then periodically as the cutover date
 approaches to reduce the amount of data left to transfer at cutover time.
+
+### Automated file sync for a standing mirror (`xmass autosync`)
+
+A standing HA mirror is a migration deliberately parked at `phase=syncing`:
+its database is continuously current through replication, but the file legs
+above only run when someone runs them. `xmass autosync` closes that gap — it
+arms a cadence that repeats the exact `sync --live` leg set unattended, so
+the mirror's files stay minutes behind its database instead of days. It is
+one-way and driven from the **active** side only, by design: nothing moves a
+mirror out of sync except the active server. No daemon and no inotify
+machinery is involved — the driver is the standard per-minute monitor fan-out
+(`monitor/check/autosync.sh` via `minute.sh`), and each pass is the same
+idempotent delta rsync you would have run by hand.
+
+```sh
+xmass autosync target-ip              # arm, default cadence (every 15 min)
+xmass autosync target-ip --every=30   # arm with a custom cadence (5–1440 min)
+xmass autosync --status               # marker, cadence, last completed pass
+xmass autosync --off                  # disarm (cutover disarms by itself)
+```
+
+**Arming requires, and refuses without:** the `syncing` phase; a target that
+matches the replication target in the state file; at least one **completed
+operator-driven `sync --live`** for this migration; and a target that holds
+`/root/.standby.cnf` right now (probed, failing closed on transport errors).
+The completed-live-sync requirement is not ceremony: the automated pass runs
+without the DRY/`--live` token, and what makes that sound is that you have
+read the DRY plan and the eligible/**skipped-account list** at least once.
+An account added later that is missing on the target fails the pass loudly
+(the same target-readiness gates run in die mode every pass) — run
+`xmass prep-target` for it, exactly as before a manual sync.
+
+**Every pass, before any bytes move,** the run re-verifies the whole state
+and prefers doing nothing over doing the wrong thing:
+
+- *Defers silently* (normal ticks, retried at the next cadence): another
+  xmass verb holds the single-flight lock — an operator's own `sync`, a
+  `cutover`, or a previous automated pass still transferring, so passes can
+  never overlap and never fight the migration tooling; a live
+  `barracuda`/`octopus` run (process-anchored evidence, so a stale pid file
+  can never park the cadence forever); the in-flight init window signals;
+  phases `init`, `cutover` and `rename-failed`.
+- *Stands down loudly* (non-zero, mailed through the standard
+  `_INCIDENT_REPORT` throttle): the target **no longer holds its standby
+  marker** — the mirror was promoted or retired, and a sync now could write
+  into a live box; the marker names a different target than the state file;
+  no completed live sync is recorded for the pair (a same-target re-init
+  resets that record on purpose — the cadence stays armed but stands down
+  until you run one manual DRY + `--live` for the rebuilt pair, then it
+  resumes by itself); three consecutive transport failures to the mirror
+  (fail-closed — a dead mirror link must not age the files silently); any
+  real transfer or gate failure inside the legs. One more difference from a
+  manual pass: an unattended pass **never re-places a store** — a store that
+  stops fitting at its established placement (target mount or root) is a
+  loud DENY, never the silent mirror-to-root fallback an operator pass may
+  choose. And the fit gates credit the bytes already sitting at the
+  destination, so a mirror whose storage is sized to the data does not
+  false-refuse every delta pass after the first full copy.
+
+The target's standby marker is verified at pass start **and re-proved at
+every leg boundary** (before the shared, Solr and each account leg), so a
+promotion mid-pass stops the pass at the next boundary rather than after
+hours; the residual exposure is one in-flight transfer leg. Unlike a manual
+`sync --live`, an automated pass **never restores a missing standby marker
+on the target**: automation verifies the mirror's role, it never (re)creates
+it. The marker's absence is the promotion signal, and a blind restore from a
+surviving active would re-hold a freshly promoted production box within a
+minute.
+
+Silent deferral can never become silent death: the driver alarms — one daily
+latched warning plus one mail — whenever no pass has **completed** for six
+cadences, whatever the reason (a phase wedged by an aborted cutover, a stuck
+lock, a hand-edit). If the alarm fires, read the defer/refusal reasons in
+the pass log.
+
+**The cadence you arm is a ceiling on frequency, not a promise.** A pass
+walks the estate's metadata several times over — rsync's own file list, the
+space gates, the symlink sweep — so on a large estate it can take longer
+than the interval. Passes never overlap (the lock defers a late tick), but
+without a second bound the pair would then run *back to back forever*,
+walking continuously with no operator-visible sign of it. So the driver
+enforces a **duty cycle**: a pass may occupy at most one part in
+`_XMASS_AUTOSYNC_DUTY + 1` of wall clock (default 3, i.e. at most a
+quarter), which means the box rests at least three times the last measured
+pass duration before starting the next one. The armed cadence still wins
+whenever it is the longer of the two — the guard only ever slows a pair
+down.
+
+`xmass autosync --status` prints the effective interval alongside the armed
+one, and arming warns when the cadence you asked for is less than twice the
+last measured pass, so the two never silently disagree. The staleness alarm
+measures against the *effective* window, not the armed cadence — a pair the
+guard has correctly slowed down is not stale.
+
+The cadence default is 15 minutes with a floor of 5. The floor exists
+because below it the rsync tree walk never rests on a large estate; the duty
+cycle is what actually protects a box whose passes are long.
+
+Two costs are also skipped on automated passes specifically, because on a
+large estate they are the dominant ones and neither can change what the pass
+does: the per-account symlink sweep no longer descends the subtrees whose
+own delta legs already re-send their links (a link found there is
+report-only, and the exclude list it would build is consumed before the
+sweep runs), and the exact "newest index write" date in the Solr
+classification — report prose that no verdict reads — is bucketed from
+measurements already taken rather than recomputed with a full walk of every
+core's index tree. Manual passes keep both in full, because an operator is
+reading that output. Each pass appends its full output (including
+the eligible/skipped list) to `/var/log/boa/xmass.autosync.log` (size-bounded),
+records the last successful pass in `/var/log/boa/xmass.autosync.status`
+(also shown by `xmass status`), runs under `ionice`/`nice` so the local tree
+walk stays polite on a serving box, and is killed at a hard ceiling
+(`_XMASS_AUTOSYNC_TIMEOUT`, default 21600 s) if a transfer hangs — safe,
+because the legs are idempotent and the next tick resumes the delta.
+
+The marker `/root/.xmass.autosync.cnf` is the single switch. It is cleared
+automatically whenever the migration phase reaches `complete` (a finished
+cutover, `reset-phase complete`); a fresh `init` to a **different** target
+removes a stale marker (a same-target re-init is the mirror-repair path and
+keeps the cadence armed — standing down until the first manual live sync,
+as above). A leftover marker on a box that is itself a standby or a
+finalized proxy is never acted on — one daily latched warning plus one
+daily mail, no sync. `_USE_XMASS_AUTOSYNC=NO` in `/root/.barracuda.cnf`
+parks the driver box-wide without touching the marker.
+
+For a **planned** cutover there is nothing to pre-arrange: a cadence tick
+that meets the running cutover defers on the verb lock, and completion
+clears the marker. If a tick's pass is already *transferring* when you want
+to start, the cutover is refused by the same lock — either wait it out (a
+delta pass is short) or `xmass autosync --off` first and re-run.
 
 ### Phase 3 — Monitor (`xmass status`)
 
@@ -950,7 +1131,9 @@ so the remaining cutover steps complete.
 ## Notes
 
 - `xmass sync` is idempotent — run it as often as you like. Each run is a
-  delta rsync; subsequent runs after the first are fast.
+  delta rsync; subsequent runs after the first are fast. For a standing
+  mirror, `xmass autosync` runs exactly these passes on a fixed cadence so
+  nobody has to remember to (see the sync phase above).
 - The replication user `xmass_repl` is created only on the source and is
   dropped automatically at cutover. It is never present in normal BOA
   configuration.
