@@ -6048,7 +6048,12 @@ _xmass_autosync_run() {
       exit 1
     ;;
     *)
-      _fails="$(tr -dc '0-9' < "${_XMASS_AUTOSYNC_FAILCOUNT}" 2>/dev/null | head -c 6)"
+      # Read via cat, not a redirect: `< missing-file` is the SHELL's error,
+      # which 2>/dev/null on the command cannot suppress -- the first
+      # transport failure of every pair otherwise printed a raw
+      # "No such file or directory" naming this line into the pass log and
+      # the failure mail.
+      _fails="$(cat "${_XMASS_AUTOSYNC_FAILCOUNT}" 2>/dev/null | tr -dc '0-9' | head -c 6)"
       _fails=$(( ${_fails:-0} + 1 ))
       echo "${_fails}" > "${_XMASS_AUTOSYNC_FAILCOUNT}"
       if [ "${_fails}" -lt 3 ]; then
