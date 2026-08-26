@@ -605,7 +605,15 @@ do_publish() {
       rm -f "${_PUB_DIR}/${_base}.gz.tmp"
       continue
     fi
-    mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"
+    # Checked: on a same-version republish the target already exists, and a
+    # refused overwrite (immutable bit, permissions) would otherwise leave the
+    # old bytes in place while the sidecar below is rebuilt from them and the
+    # run still reports success - stale bytes, self-consistent, undetectable.
+    if ! mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"; then
+      _alrt "publish failed (cannot replace): ${_base}.gz"
+      rm -f "${_PUB_DIR}/${_base}.gz.tmp"
+      continue
+    fi
     # Sidecar gets the same tmp+mv treatment as the .gz: an in-place rewrite
     # would expose a new-.gz/old-sidecar window on a same-version republish,
     # tripping spurious checksum-mismatch source fallbacks fleet-wide.
@@ -636,7 +644,17 @@ do_sync() {
   fi
   # --delay-updates moves every transferred file into place at the end of the
   # run, keeping the .gz/.sha256 pair window on the peer as small as possible.
-  if rsync -a --delay-updates \
+  # --update is load-bearing, not tidiness: this box carries its own copies of
+  # the PEER's codename files, and a same-version republish now rewrites an
+  # existing filename rather than only adding new ones. Without it, a sync
+  # overlapping the peer's publish window pushes our older copy of a file the
+  # peer just republished, reverting it - content and mtime alike, so the
+  # reverted pair looks consistent and staleness detection never fires again
+  # (observed: two components published at the head of a peer's loop reverted
+  # while everything published after it survived). Never move a file backwards
+  # in time on the peer; a deliberate rollback goes through 'force', which
+  # republishes with a current mtime.
+  if rsync -a --update --delay-updates \
     --include='boa-*_amd64.deb.gz' --include='boa-*_amd64.deb.gz.sha256' \
     --exclude='*' "${_PUB_DIR}/" "${_PEER_MIRROR}/"; then
     _msg "cross-synced boa-* packages to ${_PEER_MIRROR}"
