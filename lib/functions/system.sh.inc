@@ -9578,7 +9578,7 @@ _other_sys_java_install() {
 
   # Special-case Java 11/17 force install if version is too old
   if [ "${_javaVer}" = "11" ]; then
-    _JAVA_NEW=11.0.31
+    _JAVA_NEW=11.0.32
     _JAVA_ITD=$(java11 --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
