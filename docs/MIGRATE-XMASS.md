@@ -498,6 +498,53 @@ Syncs the following to the target on each run:
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
 
+### Deletions: what a sync removes on the target, and what it never does
+
+Source-side deletions **propagate on the data trees** during `sync` (manual
+and automated alike): `distro/`, `src/`, `static/files`, `arch`, `backups/`,
+`undo/`, the client toolchains, the Solr data trees and the shared
+`/data/all`, `/data/disk/all`, `/data/disk/legacy` and `/var/www/static`
+trees. Without this a standing mirror grows without bound, and it grows
+*nightly*: the per-account SQL dump stores under `arch`, each account's
+`backups/` and the Solr index segments all rotate on the active every night,
+and a mirror can never reclaim any of it on its own — `owl.sh` exits on the
+standby marker, so the box's whole nightly cleanup is parked while it is a
+mirror.
+
+Three things are deliberately **not** pruned:
+
+- **Control, credential and target-role legs stay additive** — `log/`,
+  `.drush/`, `config/`, the sub-account password store and the PHP pin
+  witnesses under `static/control`. They carry target-owned state or are
+  force-copied, and deleting there would fight the target's own install.
+- **The cutover legs stay additive**, plan and live alike. That is the one
+  window where the target is about to become production and a wrong deletion
+  is unrecoverable; a promoted box resumes its own `owl.sh` cleanup within
+  the night and reclaims normally.
+- **Files excluded from a leg are never deletion candidates** (`--delete-excluded`
+  is never passed), so `proxied.pid`, `migproxy.cnf`, `pass.txt` and the
+  target's immutable `php.ini` are safe by construction.
+
+The guards on every pruning leg, none of them optional:
+
+| Guard | What it prevents |
+|---|---|
+| `--delete-after` | Nothing is removed until the transfer succeeded, so a failed leg cannot leave the target both pruned and un-copied |
+| `--max-delete` (`_XMASS_MAX_DELETE`, default 5000) | rsync **refuses** (exit 25) rather than carry out a mass deletion — the catastrophe guard: "wiped the mirror" becomes "a loud pass failure a human reads" |
+| Never with `--ignore-errors` | That flag means *delete even though the source had read errors*, which is exactly what must not happen; a leg either prunes or keeps the historical tolerance, never both |
+| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive |
+
+A tripped delete guard is a refusal to read, not an error to retry: nothing
+beyond the limit was deleted. Confirm the source really lost that many files
+— an unmounted volume and a genuine mass deletion look identical from the
+sending side — and only then re-run once with `_XMASS_MAX_DELETE` raised.
+Expect it to trip on the **first** pruning pass against a mirror that has
+been accreting for months; that is the guard doing its job.
+
+A mirror-side *rewrite* of a file that still exists on the source is still
+never undone — `-u` keeps the newer copy, and only the accretion of files the
+source no longer has is what deletion addresses.
+
 Optional per-account config directories (`pre.d`, `post.d`, `subdir.d`,
 `platform.d`, `config/ssl.d`, `config/server_master/ssl.d`, `tools/le`) are
 skipped with a logged "nothing to send" when absent rather than failing the

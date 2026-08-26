@@ -2868,6 +2868,71 @@ _xmass_finalize_dry() {   # 1 tgt
     _xmass_write_state "$1" "NOT_CLEAN" "DRY"
   fi
 }
+###-------------DELETION ON THE DATA TREES--###
+###
+### Adam's ruling, 2026-08-26: source-side deletions MUST propagate, or a
+### standing mirror grows without bound. It grows fast, not slowly: the
+### per-account nightly SQL dump stores under /data/disk/arch, each account's
+### backups/, and the Solr data trees all rotate on the active every night,
+### and a mirror can never reclaim any of it -- owl.sh exits on the standby
+### marker, so the box's own nightly cleanup never runs there either.
+###
+### Scope of the ruling (deliberate, do not widen without a new one):
+###   - DATA trees only. Control, credential and target-role legs stay
+###     additive: log/, .drush/, config/, the sub-account password store and
+###     the PHP pin witnesses either carry target-owned state or are force-
+###     copied, and deleting there would fight the target's own install.
+###   - `sync` passes only, manual and automated alike. The CUTOVER legs stay
+###     additive on purpose: that is the one window where the target is about
+###     to become production and a wrong deletion is unrecoverable, and a
+###     promoted box resumes its own owl.sh cleanup within the night anyway.
+###
+### Three guards make this safe, and none of them is optional:
+###   1. `--delete-after` -- nothing is removed until the transfer succeeded,
+###      so a failed leg cannot leave the target both pruned and un-copied.
+###   2. `--max-delete` -- rsync REFUSES (exit 25) rather than carry out a
+###      mass deletion. This is the catastrophe guard: it converts "wiped the
+###      mirror" into "a loud pass failure a human reads".
+###   3. Never together with `--ignore-errors`. That flag means "delete even
+###      though the source had read errors", which is the precise opposite of
+###      what we want; a leg either prunes or keeps the historical tolerance.
+### Plus the empty-source refusal below, for the unmounted-volume case.
+###
+### rsync's own behaviour covers one more case for free: files excluded with
+### --exclude are NOT deletion candidates (we never pass --delete-excluded),
+### so proxied.pid, migproxy.cnf, pass.txt and php.ini stay safe by construction.
+_XMASS_PRUNE=NO
+_XMASS_MAX_DELETE="${_XMASS_MAX_DELETE:-5000}"
+
+# Delete-flags for one DATA leg, or nothing when it must stay additive.
+# The empty-source refusal is the mount guard: `static/files` and `arch` can
+# live on a secondary volume, and an unmounted volume reads as an EMPTY
+# directory -- against which a --delete would erase the mirror's only copy of
+# every client file. An empty source is therefore never a licence to delete.
+_xmass_prune_args() {   # 1 = source dir
+  [ "${_XMASS_PRUNE}" = "YES" ] || return 0
+  [ -d "$1" ] || return 0
+  if [ -z "$(ls -A "$1" 2>/dev/null | head -c 1)" ]; then
+    _alrt "  prune: source $1 is EMPTY — NOT deleting on the target"
+    _alrt "  prune: (an unmounted secondary volume reads exactly like this)"
+    return 0
+  fi
+  printf '%s' "--delete-after --max-delete=${_XMASS_MAX_DELETE}"
+}
+
+# What a DATA leg passes where every other leg passes ${_ieni}: the prune
+# flags when pruning is on and safe, the historical --ignore-errors when not.
+# Never both -- see guard 3 above.
+_xmass_leg_args() {   # 1 = source dir
+  local _p
+  _p="$(_xmass_prune_args "$1")"
+  if [ -n "${_p}" ]; then
+    printf '%s' "${_p}"
+  else
+    printf '%s' "${_ieni}"
+  fi
+}
+
 # Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
 _xmass_rsync() {
   local _rc=0
@@ -2881,6 +2946,18 @@ _xmass_rsync() {
         # 24 = "some files vanished before transfer". Expected on a live tree and
         # not an integrity problem: the file is gone on the source as well.
         _info "  rsync: some source files vanished during transfer (rc=24, benign)"
+      elif [ "${_rc}" = "25" ]; then
+        # 25 = the --max-delete guard tripped. Nothing beyond the limit was
+        # deleted, which is exactly what the guard is for -- so this is a
+        # refusal to read, not a failure to retry blindly. It still fails the
+        # pass (the tree is now knowingly incomplete on the delete side).
+        _alrt "DENY: the delete guard stopped this leg: more than ${_XMASS_MAX_DELETE} files"
+        _alrt "DENY: would have been removed on the target. NOTHING beyond the limit was"
+        _alrt "DENY: deleted. Confirm the source really lost that many files (an unmounted"
+        _alrt "DENY: volume or a wrong path looks identical from here); if it is genuine,"
+        _alrt "DENY: re-run once with a raised _XMASS_MAX_DELETE. Leg: $*"
+        _XMASS_RSYNC_RC="${_rc}"
+        _XMASS_NOT_CLEAN=YES
       else
         # Everything else -- including 23, partial transfer due to error -- means
         # the target tree may be incomplete. Callers never see this because they
@@ -3530,7 +3607,7 @@ _xmass_sync_static_symlink_safe() {
     "${_src_usr}/static/files" \
     "${_dst_sf}" \
     "files/${_dst_acct}/static/files" \
-    "${_tgt}" "${_tgt_mnt}" "${_ieni}" \
+    "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files")" \
     "static/files (${_dst_acct})" || _XMASS_STORE_RC=$?
 }
 
@@ -3544,7 +3621,7 @@ _xmass_sync_account() {
   _info "  Syncing account ${_oct} ..."
 
   # Platform codebases (large; delta-synced efficiently by rsync)
-  _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/distro") -e ssh \
     "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/"
 
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
@@ -3555,7 +3632,7 @@ _xmass_sync_account() {
   # xmass alone dropped the leg. Guarded because an account that has never
   # used it legitimately has no src/.
   if [ -d "${_udir}/src" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+    _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/src") -e ssh \
       "${_udir}/src/" "root@${_tgt}:${_dst}/src/"
   fi
 
@@ -3685,7 +3762,7 @@ _xmass_sync_account() {
       && ssh root@"${_tgt}" "[ -e '${_bkLnk}' ] || exit 0; if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_bkLnk}' '${_dst}/backups'" 2>/dev/null
   elif [ -d "${_udir}/backups" ]; then
     if _xmass_solr_check "${_udir}/backups" "${_dst}/backups" "backups (${_oct})"; then
-      _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+      _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/backups") -e ssh \
         "${_udir}/backups/" "root@${_tgt}:${_dst}/backups/"
     fi
   fi
@@ -3700,18 +3777,18 @@ _xmass_sync_account() {
   [ "${_MODE}" = "LIVE" ] \
     && ssh root@"${_tgt}" "mkdir -p ${_dst}/backups ${_dst}/clients" 2>/dev/null
   if [ -d "${_udir}/undo" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+    _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/undo") -e ssh \
       "${_udir}/undo/" "root@${_tgt}:${_dst}/undo/"
   fi
 
   # Client-installed toolchains live outside /data/disk in the lshell jail's
   # writable trees and never travelled before -- migrate AS-IS.
   if [ -d "/opt/user/gems/${_oct}.ftp" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+    _xmass_rsync -aEAXqu $(_xmass_leg_args "/opt/user/gems/${_oct}.ftp") -e ssh \
       "/opt/user/gems/${_oct}.ftp/" "root@${_tgt}:/opt/user/gems/${_oct}.ftp/"
   fi
   if [ -d "/opt/user/npm/${_oct}.ftp" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
+    _xmass_rsync -aEAXqu $(_xmass_leg_args "/opt/user/npm/${_oct}.ftp") -e ssh \
       "/opt/user/npm/${_oct}.ftp/" "root@${_tgt}:/opt/user/npm/${_oct}.ftp/"
   fi
 
@@ -3758,7 +3835,7 @@ _xmass_sync_shared() {
     # at the transfer root.
     _xmass_scan_out_links "${_item}"
     _info "  link sweep ${_item}: ${_XMASS_LNK_RPT}"
-    _xmass_rsync -aEAXqu ${_ieni} ${_XMASS_OUT_EXCL} -e ssh \
+    _xmass_rsync -aEAXqu $(_xmass_leg_args "${_item}") ${_XMASS_OUT_EXCL} -e ssh \
       "${_item}/" "root@${_tgt}:${_item}/"
     _xmass_materialise_out_links "${_item}" "${_item}"
   done
@@ -3780,7 +3857,7 @@ _xmass_sync_shared() {
   fi
   local _rcArch=0
   _xmass_handle_store "/data/disk/arch" "/data/disk/arch" "files/system/arch" \
-    "${_tgt}" "${_TGT_MNT}" "${_ieni} ${_XMASS_OUT_EXCL}" "arch" || _rcArch=$?
+    "${_tgt}" "${_TGT_MNT}" "$(_xmass_leg_args "${_archReal:-/data/disk/arch}") ${_XMASS_OUT_EXCL}" "arch" || _rcArch=$?
   [ "${_rcArch}" != "0" ] && _XMASS_STORE_RC="${_rcArch}"
   if [ "${_rcArch}" = "0" ] && [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
     _xmass_materialise_out_links "${_archReal}" "/data/disk/arch"
@@ -3788,7 +3865,7 @@ _xmass_sync_shared() {
   if [ -d "/var/www/static" ] && [ ! -L "/var/www/static" ]; then
     _xmass_scan_out_links "/var/www/static"
     _info "  link sweep /var/www/static: ${_XMASS_LNK_RPT}"
-    _xmass_rsync -aEAXqu ${_ieni} ${_XMASS_OUT_EXCL} -e ssh \
+    _xmass_rsync -aEAXqu $(_xmass_leg_args /var/www/static) ${_XMASS_OUT_EXCL} -e ssh \
       /var/www/static/ "root@${_tgt}:/var/www/static/"
     _xmass_materialise_out_links "/var/www/static" "/var/www/static"
   fi
@@ -3821,7 +3898,7 @@ _xmass_sync_solr() {
     # No output redirect here: _xmass_rsync emits the DENY line that the abort
     # messages tell the operator to look for, and it always returns 0, so a
     # `|| _alrt` handler on this call could never fire.
-    _xmass_rsync -aEAXq ${_ieni} -e ssh \
+    _xmass_rsync -aEAXq $(_xmass_leg_args "${_dir}") -e ssh \
       "${_dir}" "root@${_tgt}:$(dirname "${_dir}")/"
     [ "${_XMASS_RSYNC_RC:-0}" = "0" ] && _info "  Synced ${_dir}"
   done
@@ -5640,6 +5717,11 @@ _xmass_cmd_sync() {
   fi
   _XMASS_STORE_RC=0
   _XMASS_RSYNC_RC=0
+  # Source-side deletions propagate on the DATA trees for every `sync` pass,
+  # manual and automated alike (Adam 2026-08-26 — a standing mirror that
+  # never deletes grows without bound, and it grows nightly). The cutover
+  # legs deliberately leave this off; see the block above _xmass_rsync.
+  _XMASS_PRUNE=YES
 
   if [ "${_MODE}" = "LIVE" ] && [ "${_XMASS_AUTO}" = "YES" ]; then
     # The autosync pre-flight verified the target's marker seconds ago and
@@ -6535,6 +6617,11 @@ _xmass_cmd_cutover() {
       && _alrt "[DRY] --live would REFUSE: undeclared proxy mode for:${_XMASS_MODE_UNDECLARED}"
     _XMASS_STORE_RC=0
     _XMASS_RSYNC_RC=0
+    # Cutover legs stay ADDITIVE, plan and live alike (Adam 2026-08-26): the
+    # target is about to become production and a wrong deletion here is
+    # unrecoverable, while a promoted box resumes its own owl.sh cleanup
+    # within the night. Stated explicitly so a future edit has to mean it.
+    _XMASS_PRUNE=NO
     _xmass_sync_shared
     # Solr must be space-gated in the DRY run too. The LIVE path syncs it at step 3
     # and `sync` gates it, but the cutover DRY did not — so a Solr tree too large
@@ -6624,6 +6711,8 @@ _xmass_cmd_cutover() {
   # Step 3: Final file sync — Solr is now stopped on both ends so rsync
   # produces a consistent, replay-safe copy of all index data
   _info "Running final pre-cutover file sync ..."
+  # Additive on purpose -- see the DRY branch above and the prune block.
+  _XMASS_PRUNE=NO
   _xmass_sync_shared
   _xmass_sync_solr
   local _oct
