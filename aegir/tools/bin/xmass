@@ -2896,7 +2896,7 @@ _xmass_finalize_dry() {   # 1 tgt
 }
 ###-------------DELETION ON THE DATA TREES--###
 ###
-### Adam's ruling, 2026-08-26: source-side deletions MUST propagate, or a
+### 2026-08-26 ruling: source-side deletions MUST propagate, or a
 ### standing mirror grows without bound. It grows fast, not slowly: the
 ### per-account nightly SQL dump stores under /data/disk/arch, each account's
 ### backups/, and the Solr data trees all rotate on the active every night,
@@ -5941,7 +5941,7 @@ _xmass_cmd_sync() {
   _XMASS_STORE_RC=0
   _XMASS_RSYNC_RC=0
   # Source-side deletions propagate on the DATA trees for every `sync` pass,
-  # manual and automated alike (Adam 2026-08-26 — a standing mirror that
+  # manual and automated alike (2026-08-26 ruling — a standing mirror that
   # never deletes grows without bound, and it grows nightly). The cutover
   # legs deliberately leave this off; see the block above _xmass_rsync.
   _XMASS_PRUNE=YES
@@ -6909,7 +6909,7 @@ _xmass_cmd_cutover() {
       && _alrt "[DRY] --live would REFUSE: undeclared proxy mode for:${_XMASS_MODE_UNDECLARED}"
     _XMASS_STORE_RC=0
     _XMASS_RSYNC_RC=0
-    # Cutover legs stay ADDITIVE, plan and live alike (Adam 2026-08-26): the
+    # Cutover legs stay ADDITIVE, plan and live alike (2026-08-26 ruling): the
     # target is about to become production and a wrong deletion here is
     # unrecoverable, while a promoted box resumes its own owl.sh cleanup
     # within the night. Stated explicitly so a future edit has to mean it.
