@@ -1722,9 +1722,28 @@ _install_php_deb() {
     && [ -x "/opt/php${1}/bin/phpize" ] \
     && [ -x "/opt/php${1}/bin/php-config" ] \
     && [ "${_PHP_DEB_ITD}" = "${_PHP_VERSION}" ]; then
-    _PHP_DEB_INSTALLED=YES
-    _msg "INFO: PHP ${_PHP_VERSION} installed from prebuilt package"
-    return 0
+    # The same compiled-in header tokens the next run's rebuild decision
+    # reads (_check_php_rebuild); a payload that would immediately re-trigger
+    # a forced rebuild must not pass, or a stale package built against a
+    # previous OpenSSL/ICU pin reinstalls in a loop on every daily run
+    # without the box ever reaching the current headers. The nginx deb
+    # asserts its OpenSSL token the same way. ICU applies to 8.1+ only here:
+    # the _ICU_FORCE_VRN arm of the intl gate was already refused up front
+    # as a custom build shape.
+    _PHP_DEB_TOKENS_OK=YES
+    if ! _check_php_ssl_version "${1}"; then
+      _PHP_DEB_TOKENS_OK=NO
+    fi
+    if [ "${1}" -gt 80 ]; then
+      if ! _check_php_icu_version "${1}"; then
+        _PHP_DEB_TOKENS_OK=NO
+      fi
+    fi
+    if [ "${_PHP_DEB_TOKENS_OK}" = "YES" ]; then
+      _PHP_DEB_INSTALLED=YES
+      _msg "INFO: PHP ${_PHP_VERSION} installed from prebuilt package"
+      return 0
+    fi
   fi
   dpkg --purge "boa-php${1}" &> /dev/null
   _msg "NOTE: Prebuilt boa-php${1} failed health check; building from sources"
@@ -2592,7 +2611,7 @@ _check_php_ssl_version() {
     excalibur|daedalus|chimaera|beowulf|trixie|bookworm|bullseye|buster)
       _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
       if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.5.7
+        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.5.8
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Using modern OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
         fi

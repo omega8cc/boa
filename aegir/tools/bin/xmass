@@ -12,6 +12,9 @@
 ###   xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]
 ###                             [--proxy-deadline=YYYY-MM-DD|+Nd]   (run on SOURCE)
 ###   xmass sync    <target-ip> [--live]             (run on SOURCE, repeat as needed)
+###   xmass autosync <target-ip> [--every=N] | --off | --status | --run
+###                                                  (run on SOURCE; standing-mirror
+###                                                   file cadence — see below)
 ###   xmass status  <target-ip>                      (run on SOURCE)
 ###   xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]
 ###   xmass post-mig                                 (run on TARGET after DNS update)
@@ -94,6 +97,15 @@ _SOLR_DENY_FILE="/root/.deny.java.cnf"
 _XMASS_SOLR_SET_FILE="/data/conf/xmass_solr_used.cnf"
 _PERM_PROXY_FLAG="/data/conf/xmass_permanent_proxy.pid"
 _ieni="--ignore-errors"
+
+### Standing-mirror file cadence (the 'autosync' verb + monitor/check/autosync.sh
+### driver). The marker is the single switch: armed by the operator on the ACTIVE,
+### read by the per-minute driver, cleared by cutover/--off/a fresh init to a
+### different target. Never written by automation.
+_XMASS_AUTOSYNC_CNF="/root/.xmass.autosync.cnf"
+_XMASS_AUTOSYNC_STATUS="/var/log/boa/xmass.autosync.status"
+_XMASS_AUTOSYNC_FAILCOUNT="/var/log/boa/xmass.autosync.fail.count"
+_XMASS_AUTO=NO
 
 ### Replica catch-up ceiling for the cutover, in seconds. Percona 5.7 applies the
 ### relay log single-threaded unless slave_parallel_workers is set, so one large
@@ -332,7 +344,14 @@ _xmass_save_state() {
   mkdir -p "$(dirname "${_XMASS_STATE_FILE}")"
   # _XMASS_PERMANENT_PROXY is the legacy key, written for one more release so
   # a rolled-back xmass mid-migration still reads a coherent file.
-  cat > "${_XMASS_STATE_FILE}" <<STATEEOF
+  # Written to a sibling temp file and renamed: a plain `cat >` truncates
+  # BEFORE it writes, so an ENOSPC (autosync passes are exempt from the 90%
+  # disk gate precisely so a filling active keeps its mirror fresh) or a
+  # crash mid-write would destroy the only record of the replication
+  # password and phase. The rename is atomic on one filesystem; on any
+  # write failure the previous file survives untouched.
+  local _tf="${_XMASS_STATE_FILE}.tmp.$$"
+  if cat > "${_tf}" <<STATEEOF
 _XMASS_TARGET_IP=${_XMASS_TARGET_IP}
 _XMASS_SRC_IP=${_XMASS_SRC_IP}
 _XMASS_REPL_PSWD=${_XMASS_REPL_PSWD}
@@ -345,7 +364,19 @@ _XMASS_PROXY_MODE=${_XMASS_PROXY_MODE}
 _XMASS_PROXY_DEADLINE=${_XMASS_PROXY_DEADLINE}
 _XMASS_STATE_V=2
 STATEEOF
-  chmod 600 "${_XMASS_STATE_FILE}"
+  then
+    chmod 600 "${_tf}"
+    mv -f "${_tf}" "${_XMASS_STATE_FILE}"
+  else
+    rm -f "${_tf}"
+    _alrt "could not write ${_XMASS_STATE_FILE} (disk full?) — previous state kept"
+  fi
+  # Migration closed = cadence over. Handled at this chokepoint — every
+  # phase writer pairs with this save — so cutover completion, reset-phase
+  # and any future writer all disarm identically and none can be missed.
+  if [ "${_XMASS_PHASE}" = "complete" ] && [ -e "${_XMASS_AUTOSYNC_CNF}" ]; then
+    _xmass_autosync_disarm "the migration is complete; nothing passive remains to feed"
+  fi
 }
 
 ###-------------CHECK ROOT----------------###
@@ -1735,9 +1766,13 @@ _check_root() {
     NR==2 { gsub(/%/,"",$u); print $u }')"
   # reset-phase only rewrites one line of the state file. Refusing it on a full
   # disk locks the operator out of the recovery verb exactly when a stalled
-  # migration is the likely reason the disk filled.
+  # migration is the likely reason the disk filled. autosync is exempt for the
+  # opposite reason: its passes only READ this disk, and a filling active is
+  # exactly when the mirror must not fall behind — the pass logs an ALRT and
+  # the disk itself is the sibling monitors' business.
   if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ] \
-    && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ]; then
+    && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ] \
+    && [ "${_cmd}" != "autosync" ]; then
     _die "Disk usage at ${_DF_TEST}% — must be below 90% to proceed"
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -2879,11 +2914,21 @@ _xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label
 }
 
 _xmass_target_fits() {
-  local _av _q
+  local _av _q _dex
   _q="$(_shq "$2")"
   _av=$(ssh -n root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
   if [ -z "$3" ] || [ -z "${_av}" ]; then return 0; fi
-  [ "${_av}" -ge "$3" ]
+  [ "${_av}" -ge "$3" ] && return 0
+  # Tight fit: credit the bytes already sitting at the destination — a
+  # repeated (delta) sync needs room for the growth, not the whole store
+  # again. Without this a standing mirror whose storage is sized to the
+  # data fails the plain test on every pass after the first full copy.
+  # Measured only when the plain test fails, so the remote walk is paid
+  # exactly where it changes the answer; an unmeasurable destination
+  # keeps the refusal (fail closed).
+  _dex=$(ssh -n root@"$1" "du -sk '${_q}' 2>/dev/null" 2>/dev/null | awk '{print $1}')
+  [[ "${_dex}" =~ ^[0-9]+$ ]] || return 1
+  [ $(( _av + _dex )) -ge "$3" ]
 }
 
 # Single-quote-escape a value for safe embedding in a remote 'single-quoted' ssh arg
@@ -2974,12 +3019,22 @@ _xmass_handle_store() {
       _mntRel="${_real#/mnt/*/}"
     fi
     [ -n "${_tm}" ] && [ -n "${_mntRel}" ] && _mntDest="${_tm}/${_mntRel}"
+    # The fallback placements are OPERATOR decisions: an unattended autosync
+    # pass must never re-place a store (a MIRROR->ROOT flip silently copies
+    # the whole store onto the target's root filesystem under its replica
+    # DB, and can flip back next pass). In auto mode a preferred placement
+    # that stops fitting is a loud DENY instead — the operator frees space
+    # or accepts the re-placement with a manual sync.
     if [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
       if _xmass_target_fits "${_th}" "${_mntDest}" "${_sz}"; then _act=MIRROR
+      elif [ "${_XMASS_AUTO}" = "YES" ]; then
+        _act=DENY; _reason="does not fit at its established placement (${_mntDest}); an unattended pass never re-places a store — free space there, or run a manual 'xmass sync --live' to accept the root fallback"
       elif _xmass_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
       else _act=DENY; _reason="does not fit on target mount (${_mntDest}) nor root (${_dstRoot})"; fi
     else
       if _xmass_target_fits "${_th}" "${_dstRoot}" "${_sz}"; then _act=ROOT
+      elif [ "${_XMASS_AUTO}" = "YES" ]; then
+        _act=DENY; _reason="does not fit at its established placement (${_dstRoot}); an unattended pass never re-places a store — free space there, or run a manual 'xmass sync --live' to accept a re-placement"
       elif [ -n "${_mntDest}" ]; then _act=MIRROR
       else _act=DENY; _reason="does not fit on target root (${_dstRoot}) and no usable target mount"; fi
     fi
@@ -3483,6 +3538,9 @@ _xmass_sync_account() {
   local _oct="$1"
   local _udir="/data/disk/${_oct}"
   local _dst="/data/disk/${_oct}"
+  # Auto passes re-prove the target's standby role at every leg boundary —
+  # a promotion mid-pass must stop the pass here, not hours later.
+  _xmass_auto_assert_standby
   _info "  Syncing account ${_oct} ..."
 
   # Platform codebases (large; delta-synced efficiently by rsync)
@@ -3683,6 +3741,7 @@ _xmass_sync_account() {
 }
 
 _xmass_sync_shared() {
+  _xmass_auto_assert_standby
   _info "Syncing shared data (/data/all, arch, legacy, bind, static) ..."
   local _item _archReal
   for _item in /data/all /data/disk/all /data/disk/legacy; do
@@ -3747,6 +3806,7 @@ _xmass_sync_solr() {
   # During periodic sync Solr is still running on source, so rsync is
   # best-effort and may catch slightly inconsistent index state — that is
   # acceptable since a clean final sync runs after Solr is stopped at cutover.
+  _xmass_auto_assert_standby
   _info "Syncing Solr data ..."
   local _dir
   for _dir in /opt/solr4 /var/solr7/data /var/solr9/data; do
@@ -5507,6 +5567,24 @@ _xmass_cmd_init() {
 
   _XMASS_PHASE="syncing"
   _xmass_save_state
+  # A stale autosync marker for a DIFFERENT target must not survive a fresh
+  # init: the pair it described is gone, and every later cadence pass would
+  # refuse loudly on the mismatch. A SAME-target re-init is the documented
+  # mirror-repair path and keeps the cadence ARMED — but init just reset
+  # _XMASS_LAST_SYNC, so the passes stand down (loudly, by design) until one
+  # operator-run live sync completes for the rebuilt pair.
+  if [ -e "${_XMASS_AUTOSYNC_CNF}" ]; then
+    _xmass_autosync_read_cnf
+    if [ "${_AS_TGT}" != "${_tgt}" ]; then
+      _xmass_autosync_disarm "stale marker for ${_AS_TGT:-?} — this init built a different pair"
+      _alrt "re-arm with 'xmass autosync ${_tgt}' once the first live sync completes"
+    else
+      _info "autosync stays armed for ${_tgt} — the cadence STANDS DOWN until"
+      _info "you run 'xmass sync ${_tgt}' and '--live' once for the rebuilt"
+      _info "pair (the plan and the skip list are yours to re-read), then it"
+      _info "resumes by itself"
+    fi
+  fi
   # Sync is plain rsync + live replication; the watchdog can resume protecting
   # both servers between now and cutover.
   _xmass_init_keepalive_stop
@@ -5550,12 +5628,28 @@ _xmass_cmd_sync() {
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
   fi
-  # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
-  [ "${_MODE}" = "LIVE" ] && _xmass_require_clean_dry "${_tgt}"
+  # --live requires a prior CLEAN dry run for THIS target (mass plan for all
+  # accounts). An autosync pass runs without the token: arming already required
+  # a completed operator-driven live sync (the plan and the skip list were read
+  # once), every gate above just ran in die mode, and the per-store space gates
+  # run inside the legs in LIVE regardless. It also never CONSUMES an
+  # operator's pending token, so a manual DRY+--live workflow in progress is
+  # left intact.
+  if [ "${_MODE}" = "LIVE" ] && [ "${_XMASS_AUTO}" != "YES" ]; then
+    _xmass_require_clean_dry "${_tgt}"
+  fi
   _XMASS_STORE_RC=0
   _XMASS_RSYNC_RC=0
 
-  if [ "${_MODE}" = "LIVE" ]; then
+  if [ "${_MODE}" = "LIVE" ] && [ "${_XMASS_AUTO}" = "YES" ]; then
+    # The autosync pre-flight verified the target's marker seconds ago and
+    # stands down loudly when it is gone: automation VERIFIES the target's
+    # role, it never (re)creates it. The operator-driven restore below would
+    # be a disaster here — an emergency promotion removes exactly that
+    # marker, and a blind restore from a surviving active would re-hold the
+    # freshly promoted production box within a minute.
+    _info "xmass autosync: syncing files to ${_tgt} ..."
+  elif [ "${_MODE}" = "LIVE" ]; then
     # Restore a missing standby marker on every live sync: a target still
     # running pre-gate BOA bytes has no second.sh guarding it, and a
     # hand-removed marker must not leave the replica taking local writes
@@ -5642,6 +5736,8 @@ _xmass_cmd_reset_phase() {
     _alrt "and that its cron and runners are back before you resume."
   fi
   _XMASS_PHASE="${_new}"
+  # phase=complete also disarms a still-armed autosync cadence, at the
+  # save's own chokepoint.
   _xmass_save_state
   _info "Phase set to '${_new}'. Confirm with 'xmass status'."
 }
@@ -5673,7 +5769,323 @@ _xmass_cmd_status() {
     echo ""
     xoct proxy-mode --all 2>/dev/null | sed 's/^/  /'
   fi
+  if [ -e "${_XMASS_AUTOSYNC_CNF}" ]; then
+    _xmass_autosync_read_cnf
+    echo "  File autosync    : ARMED — target ${_AS_TGT:-?}, every ${_AS_EVERY}m$(grep '^_LAST_OK=' "${_XMASS_AUTOSYNC_STATUS}" 2>/dev/null | head -n1 | sed 's/^_LAST_OK=/; last OK pass /')"
+  else
+    echo "  File autosync    : off (arm with 'xmass autosync <target-ip>' after the first live sync)"
+  fi
   echo ""
+}
+
+###-------------AUTOSYNC (standing-mirror file cadence)----###
+###
+### The database half of a standing mirror replicates live; the autosync verb
+### family closes the file half: an operator-armed, monitor-driven cadence
+### that repeats the exact leg set of 'xmass sync --live' against the recorded
+### target. One-way, active -> mirror, driven from the ACTIVE only (the
+### 2026-08-25 rule: nothing moves a mirror out of sync except the active).
+###
+### Arming is an explicit verb, never implicit in init, for two reasons: an
+### in-flight ordinary migration keeps its documented on-demand sync model
+### unchanged, and the operator must have read the DRY plan and the
+### eligible/skipped account list at least once before a cadence repeats the
+### legs unattended — which is why arming requires a completed live sync.
+###
+### The --run pass defers SILENTLY (exit 0) on every transient state — another
+### xmass verb holding the owner-PID lock, a live barracuda/octopus run, the
+### cutover window — and fails LOUDLY (exit non-zero, which the driver mails)
+### on every state that needs a human: the target's standby marker gone
+### (promoted or retired — syncing then could overwrite a live box), a stale
+### marker/state target mismatch, repeated transport failures. Fail-closed
+### throughout: no pass runs against an unverifiable target role.
+
+# Parse the marker without sourcing it (defensive: the values feed ssh
+# command lines). Sets _AS_TGT / _AS_EVERY.
+_xmass_autosync_read_cnf() {
+  _AS_TGT=$(grep '^_XMASS_AUTOSYNC_TARGET=' "${_XMASS_AUTOSYNC_CNF}" 2>/dev/null \
+    | head -n1 | cut -d= -f2 | tr -cd 'A-Za-z0-9.:_-')
+  _AS_EVERY=$(grep '^_XMASS_AUTOSYNC_EVERY=' "${_XMASS_AUTOSYNC_CNF}" 2>/dev/null \
+    | head -n1 | cut -d= -f2 | tr -cd '0-9')
+  [ -n "${_AS_EVERY}" ] || _AS_EVERY=15
+}
+
+# The ONE standby-marker probe both arm and every pass use (a second copy had
+# already drifted an ssh option before review caught it). rc 0 = marker held;
+# rc 1 = marker genuinely absent; rc 2 = transport, could not verify (fail
+# CLOSED at every caller). Same option set as _xmass_refuse_role_clash.
+_xmass_autosync_probe_target() {
+  local _rc=0
+  ssh -o ConnectTimeout=10 -o BatchMode=yes \
+    -o StrictHostKeyChecking=accept-new root@"$1" \
+    "test -e /root/.standby.cnf" 2>/dev/null || _rc=$?
+  [ "${_rc}" = "0" ] && return 0
+  [ "${_rc}" = "1" ] && return 1
+  return 2
+}
+
+# The ONE disarm: marker plus every autosync-owned state file, so a later
+# pair can never inherit a retired pair's fail counter or "last OK pass"
+# record. Callers pass the reason as prose.
+_xmass_autosync_disarm() {
+  rm -f "${_XMASS_AUTOSYNC_CNF}" "${_XMASS_AUTOSYNC_FAILCOUNT}" \
+    "${_XMASS_AUTOSYNC_STATUS}"
+  _info "autosync disarmed: ${1:-marker removed}"
+}
+
+# Auto passes re-verify the target's role BETWEEN legs: the pass-start probe
+# bounds nothing on a long transfer, and an emergency promotion mid-pass must
+# stop the pass at the next leg boundary, not after hours. Fail closed —
+# transport loss mid-pass would fail the legs anyway. No-op outside auto.
+_xmass_auto_assert_standby() {
+  [ "${_XMASS_AUTO}" = "YES" ] || return 0
+  if ! _xmass_autosync_probe_target "${_tgt}"; then
+    _die "autosync: target ${_tgt} standby marker gone (or unreachable)" \
+         " mid-pass — stopping at the leg boundary, nothing further is synced"
+  fi
+}
+
+_xmass_autosync_arm() {
+  local _every
+  _every="${_AS_EVERY_ARG:-15}"
+  # Reject, never sanitize: stripping non-digits would arm --every=7.5 as 75
+  # and --every=1.5 as 15 — an order of magnitude off what the operator
+  # believes is running. The length bound also keeps the numeric tests from
+  # overflowing on absurd input.
+  [[ "${_every}" =~ ^[0-9]{1,4}$ ]] \
+    || _die "invalid --every value '${_every}' (whole minutes, e.g. --every=15)"
+  [ "${_every}" -lt 5 ] \
+    && _die "--every floor is 5 minutes (got ${_every}) — passes overlap-refuse" \
+            " anyway, so a tighter cadence only burns the tree walk"
+  [ "${_every}" -gt 1440 ] \
+    && _die "--every ceiling is 1440 (daily); beyond that just run" \
+            " 'xmass sync ${_tgt} --live' by hand"
+  # A standby or a finalized proxy never drives: one-way, active -> mirror.
+  [ -e "/root/.standby.cnf" ] \
+    && _die "this box is a passive standby (/root/.standby.cnf) — a mirror" \
+            " never drives autosync; the ACTIVE side arms it"
+  [ -e "/root/.proxy.cnf" ] \
+    && _die "this box is a finalized PX0 proxy (/root/.proxy.cnf) — nothing" \
+            " here to mirror"
+  _xmass_load_state
+  [ "${_XMASS_PHASE}" = "syncing" ] \
+    || _die "autosync arms only in the syncing phase (phase=${_XMASS_PHASE:-none})" \
+            " — a standing mirror IS a migration parked at 'syncing'; run" \
+            " 'xmass init' first"
+  [ "${_tgt}" = "${_XMASS_TARGET_IP}" ] \
+    || _die "target ${_tgt} does not match the replication target" \
+            " ${_XMASS_TARGET_IP:-none} in ${_XMASS_STATE_FILE} — autosync" \
+            " feeds the standing mirror this box already replicates to," \
+            " nothing else"
+  # The cadence repeats the legs unattended, so the operator must have seen
+  # the DRY plan and the eligible/skipped list once. This is also what makes
+  # skipping the clean-dry token inside the auto pass sound.
+  [ -n "${_XMASS_LAST_SYNC}" ] \
+    || _die "no completed live sync recorded for this migration — run" \
+            " 'xmass sync ${_tgt}' (read the plan and the skipped-account" \
+            " list) and 'xmass sync ${_tgt} --live' once, then arm autosync"
+  # The target must hold the standby role RIGHT NOW; fail CLOSED on transport
+  # (an unverifiable target is not a target).
+  _xmass_autosync_probe_target "${_tgt}"
+  case "$?" in
+    0) : ;;
+    1)
+      _die "target ${_tgt} holds no /root/.standby.cnf — it is not a passive" \
+           " standby, and autosync only ever feeds one; re-run 'xmass init'" \
+           " if the mirror needs rebuilding"
+    ;;
+    *)
+      _die "cannot verify the standby role of ${_tgt} (ssh transport failure)" \
+           " — refusing to arm against an unverifiable target"
+    ;;
+  esac
+  {
+    echo "_XMASS_AUTOSYNC_TARGET=${_tgt}"
+    echo "_XMASS_AUTOSYNC_EVERY=${_every}"
+    echo "_XMASS_AUTOSYNC_SINCE=$(date '+%Y-%m-%d %H:%M:%S')"
+  } > "${_XMASS_AUTOSYNC_CNF}"
+  chmod 600 "${_XMASS_AUTOSYNC_CNF}"
+  rm -f "${_XMASS_AUTOSYNC_FAILCOUNT}"
+  _info "======================================================"
+  _info "  xmass autosync ARMED"
+  _info "  Target   : ${_tgt}"
+  _info "  Cadence  : every ${_every} minutes (monitor/check/autosync.sh via minute.sh)"
+  _info "  Pass log : /var/log/boa/xmass.autosync.log"
+  _info "  Disarm   : xmass autosync --off   (cutover disarms by itself)"
+  _info "======================================================"
+  _info "Every pass re-verifies the target still holds its standby marker and"
+  _info "stands down — loudly, without syncing — the moment it is gone, so a"
+  _info "promoted mirror is never written to. Failed passes mail through the"
+  _info "standard incident throttle (_INCIDENT_REPORT)."
+}
+
+_xmass_autosync_off() {
+  if [ -e "${_XMASS_AUTOSYNC_CNF}" ]; then
+    _xmass_autosync_disarm "operator --off"
+    _info "The mirror keeps replicating its database; file freshness is"
+    _info "manual 'xmass sync ... --live' again."
+  else
+    _info "autosync was not armed on this box"
+  fi
+}
+
+_xmass_autosync_show_status() {
+  if [ ! -e "${_XMASS_AUTOSYNC_CNF}" ]; then
+    _info "autosync: not armed on this box"
+    return 0
+  fi
+  _xmass_autosync_read_cnf
+  _info "autosync: ARMED — target ${_AS_TGT:-?}, every ${_AS_EVERY}m"
+  sed 's/^/INFO:   /' "${_XMASS_AUTOSYNC_CNF}" 2>/dev/null
+  if [ -s "${_XMASS_AUTOSYNC_STATUS}" ]; then
+    sed 's/^/INFO:   /' "${_XMASS_AUTOSYNC_STATUS}" 2>/dev/null
+  else
+    _info "  no completed automatic pass recorded yet"
+  fi
+  if [ -s "${_XMASS_AUTOSYNC_FAILCOUNT}" ]; then
+    _alrt "  consecutive target-probe failures: $(tr -dc '0-9' < "${_XMASS_AUTOSYNC_FAILCOUNT}" | head -c 6)"
+  fi
+  _info "  pass log: /var/log/boa/xmass.autosync.log"
+}
+
+_xmass_autosync_run() {
+  # No marker, no work (the driver pre-gates on the same file; this covers a
+  # by-hand invocation).
+  [ -e "${_XMASS_AUTOSYNC_CNF}" ] || exit 0
+  _xmass_autosync_read_cnf
+  if [ -z "${_AS_TGT}" ]; then
+    _alrt "autosync: ${_XMASS_AUTOSYNC_CNF} carries no usable target — disarm"
+    _alrt "with 'xmass autosync --off' and re-arm"
+    exit 1
+  fi
+  # Role anomalies are loud: an armed marker on a standby or a finalized
+  # proxy is a leftover from a role change, and quiet standing down would
+  # hide it forever.
+  if [ -e "/root/.standby.cnf" ]; then
+    _alrt "autosync: this box is a passive standby — a mirror never drives;"
+    _alrt "remove the leftover marker with 'xmass autosync --off'"
+    exit 1
+  fi
+  if [ -e "/root/.proxy.cnf" ]; then
+    _alrt "autosync: this box is a finalized PX0 proxy — nothing to mirror;"
+    _alrt "remove the leftover marker with 'xmass autosync --off'"
+    exit 1
+  fi
+  # In-flight migration window signals on THIS box (it is someone's inbound
+  # target mid-init): contradictory with driving an outbound sync — defer,
+  # the role probes above go loud once the window resolves.
+  local _mk
+  for _mk in /run/boa_xmass_init.pid /root/.standby.init.pid; do
+    if [ -e "${_mk}" ]; then
+      _info "autosync: in-flight migration window signal ${_mk} present — deferred"
+      exit 0
+    fi
+  done
+  # Live barracuda/octopus run: the legs would walk trees the upgrade is
+  # actively swapping. Process-anchored (task_guard.sh precedent) — a stale
+  # /run/boa_run.pid from a killed run must never park the cadence forever,
+  # because a silently parked file sync IS the de-sync.
+  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 \
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1 \
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 \
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
+    _info "autosync: a barracuda/octopus run is in flight — deferred"
+    exit 0
+  fi
+  _xmass_load_state
+  case "${_XMASS_PHASE}" in
+    syncing) : ;;
+    init|cutover|rename-failed)
+      # The migration tooling owns the box right now (a re-init repair, the
+      # cutover window, a parked cutover tail). Its own gates and the verb
+      # lock keep everything honest; the cadence simply waits.
+      _info "autosync: phase=${_XMASS_PHASE} — the migration tooling owns the box; deferred"
+      exit 0
+    ;;
+    *)
+      _alrt "autosync: armed but phase=${_XMASS_PHASE:-none} — the mirror pair this"
+      _alrt "marker described no longer exists; disarm with 'xmass autosync --off'"
+      exit 1
+    ;;
+  esac
+  if [ "${_AS_TGT}" != "${_XMASS_TARGET_IP}" ]; then
+    _alrt "autosync: marker target ${_AS_TGT} != replication target"
+    _alrt "${_XMASS_TARGET_IP:-none} — stale pair; disarm with 'xmass autosync"
+    _alrt "--off' and re-arm after a live sync to the current target"
+    exit 1
+  fi
+  # The arm-time invariant, re-checked EVERY pass because init resets it: a
+  # same-target re-init keeps the cadence armed but clears _XMASS_LAST_SYNC,
+  # and running the legs unattended against a rebuilt pair whose DRY plan
+  # and skip list nobody has re-read is exactly what arming forbids. Loud —
+  # the operator is mid-repair and one throttled mail per cooldown is the
+  # right pressure until the manual live sync lands.
+  if [ -z "${_XMASS_LAST_SYNC}" ]; then
+    _alrt "autosync: armed, but no completed live sync is recorded for this"
+    _alrt "pair (a re-init resets it) — standing down until one operator-run"
+    _alrt "'xmass sync ${_AS_TGT}' DRY + '--live' completes; the cadence then"
+    _alrt "resumes by itself"
+    exit 1
+  fi
+  # Single-flight: the same owner-PID lock every state-mutating verb takes,
+  # in defer mode — for a cadence, "another run holds it" is a normal tick,
+  # not an error.
+  _take_verb_lock defer
+  # The target must still be OUR passive standby, verified per pass. Marker
+  # gone is the promotion signal (single-signal ruling) and goes loud with
+  # nothing synced; transport failures fail closed and escalate to loud
+  # after three consecutive passes, so a dead mirror link cannot age the
+  # files silently for days.
+  local _fails
+  _xmass_autosync_probe_target "${_AS_TGT}"
+  case "$?" in
+    0) : ;;
+    1)
+      _alrt "autosync: target ${_AS_TGT} no longer holds /root/.standby.cnf — the"
+      _alrt "mirror was promoted or retired; NOT syncing (a pass now could write"
+      _alrt "into a live box). Disarm with 'xmass autosync --off', or rebuild the"
+      _alrt "mirror with a fresh 'xmass init'."
+      exit 1
+    ;;
+    *)
+      # Read via cat, not a redirect: `< missing-file` is the SHELL's error,
+      # which 2>/dev/null on the command cannot suppress -- the first
+      # transport failure of every pair otherwise printed a raw
+      # "No such file or directory" naming this line into the pass log and
+      # the failure mail.
+      _fails="$(cat "${_XMASS_AUTOSYNC_FAILCOUNT}" 2>/dev/null | tr -dc '0-9' | head -c 6)"
+      _fails=$(( ${_fails:-0} + 1 ))
+      echo "${_fails}" > "${_XMASS_AUTOSYNC_FAILCOUNT}"
+      if [ "${_fails}" -lt 3 ]; then
+        _info "autosync: cannot reach ${_AS_TGT} (ssh transport) — deferred (goes loud at 3 consecutive failures)"
+        exit 0
+      fi
+      _alrt "autosync: cannot verify the standby role of ${_AS_TGT}"
+      _alrt "(${_fails} consecutive transport failures) — failing closed, NOT"
+      _alrt "syncing blind; fix ssh/network to the mirror"
+      exit 1
+    ;;
+  esac
+  rm -f "${_XMASS_AUTOSYNC_FAILCOUNT}"
+  if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+    # Deliberately not a refusal: a filling active is exactly when the mirror
+    # must stay current. The disk itself is the sibling monitors' business.
+    _alrt "autosync: source disk at ${_DF_TEST}% — syncing anyway (reads only); fix the disk"
+  fi
+  local _t0 _dur
+  _t0=$(date +%s)
+  _info "autosync: pass starting against ${_AS_TGT} ($(date '+%Y-%m-%d %H:%M:%S'))"
+  _tgt="${_AS_TGT}"
+  _MODE=LIVE
+  _XMASS_AUTO=YES
+  _xmass_cmd_sync
+  _dur=$(( $(date +%s) - _t0 ))
+  {
+    echo "_LAST_OK=$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "_LAST_DURATION_SECS=${_dur}"
+    echo "_LAST_TARGET=${_AS_TGT}"
+  } > "${_XMASS_AUTOSYNC_STATUS}"
+  _info "autosync: pass complete in ${_dur}s"
 }
 
 # Step 12: Start nginx on target so it can serve proxied traffic immediately.
@@ -5991,6 +6403,9 @@ REMOTE
   _xmass_maint_off
 
   _XMASS_PHASE="complete"
+  # The save's phase=complete chokepoint also disarms a still-armed autosync
+  # cadence: the mirror is promoted, nothing passive remains to feed, and the
+  # next cadence pass would otherwise refuse loudly on the missing marker.
   _xmass_save_state
 
   _info ""
@@ -6561,23 +6976,62 @@ shift 2>/dev/null || true
 
 _XMASS_LOCK_FILE="/run/xmass.verb.pid"
 
+# $1 = "defer" for the autosync cadence: a tick that meets a live verb (an
+# operator's sync, a cutover, a previous pass still transferring) is a normal
+# event the next tick retries — quiet exit ZERO — where the default refusal
+# stays loud and NON-ZERO on purpose (a harness must never read "another run
+# holds it" as success).
+#
+# Acquisition is atomic (noclobber): the old check-then-write let two verbs
+# started in the same instant both proceed, which an every-N-minutes cadence
+# turns from a curiosity into a standing hazard. A dead owner's file is
+# removed and the create retried; the loser of any race re-examines a LIVE
+# owner and refuses/defers.
+#
+# The owner match is anchored to an xmass INVOCATION ("/xmass" or a bare
+# "xmass" word followed by arguments), never the bare substring: the old
+# *xmass* glob matched any process whose cmdline merely mentions the name —
+# e.g. an operator's tail -F of xmass.autosync.log — so a recycled PID could
+# block every verb forever, the exact recycled-PID bug the liveness check
+# exists to prevent.
+#
+# The signal traps EXIT: a bash signal trap otherwise returns to the next
+# statement, so a TERM (the driver's timeout ceiling) would remove the lock
+# and then keep running the remaining legs, unlocked — the init path
+# documents the same pitfall and installs an exiting handler.
 _take_verb_lock() {
-  local _owner _cmdline
+  local _mode="${1:-die}" _owner _cmdline
   [ "$(id -u)" = "0" ] || return 0
-  if [ -s "${_XMASS_LOCK_FILE}" ]; then
+  while :; do
+    if ( set -C; echo "$$" > "${_XMASS_LOCK_FILE}" ) 2>/dev/null; then
+      trap 'rm -f "${_XMASS_LOCK_FILE}"' EXIT
+      trap 'rm -f "${_XMASS_LOCK_FILE}"; exit 130' INT TERM HUP
+      return 0
+    fi
     _owner=$(tr -dc '0-9' < "${_XMASS_LOCK_FILE}" 2>/dev/null | head -c 12)
+    if [ -z "${_owner}" ] \
+      && [ -n "$(find "${_XMASS_LOCK_FILE}" -newermt '-5 seconds' 2>/dev/null)" ]; then
+      # A just-created lock can be read in the instant between its O_EXCL
+      # open and the PID write — never reap a fresh empty file as dead.
+      sleep 1
+      continue
+    fi
     if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
       _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
       case "${_cmdline}" in
-        *xmass*)
-    _die "another xmass run is in flight (pid ${_owner}) -- refusing to start '${_cmd}'. Wait for it to finish."
+        */xmass\ *|*/xmass|*\ xmass\ *)
+          if [ "${_mode}" = "defer" ]; then
+            _info "autosync: another xmass run is in flight (pid ${_owner}) — deferred"
+            exit 0
+          fi
+          _die "another xmass run is in flight (pid ${_owner}) -- refusing to start '${_cmd}'. Wait for it to finish."
         ;;
       esac
     fi
-  fi
-  echo "$$" > "${_XMASS_LOCK_FILE}" 2>/dev/null \
-    || { _die "cannot write ${_XMASS_LOCK_FILE} -- refusing to run unlocked"; }
-  trap 'rm -f "${_XMASS_LOCK_FILE}"' EXIT INT TERM HUP
+    # Dead or foreign owner: take the file over and retry the atomic create.
+    rm -f "${_XMASS_LOCK_FILE}" 2>/dev/null \
+      || _die "cannot remove stale ${_XMASS_LOCK_FILE} -- refusing to run unlocked"
+  done
 }
 
 case "${_cmd}" in
@@ -6720,6 +7174,48 @@ case "${_cmd}" in
     _check_root
     _xmass_restore_solr_source
   ;;
+  autosync)
+    # Forms: autosync <target-ip> [--every=N]  (arm)
+    #        autosync --off | --status | --run
+    # Deliberately NOT in the _take_verb_lock list above: arm/off/status
+    # never mutate migration state, and --run takes the same lock itself
+    # with defer semantics (a held lock is a normal cadence tick, not an
+    # error worth a non-zero exit that would mail every collision).
+    _sub="${1:-}"
+    shift 2>/dev/null || true
+    case "${_sub}" in
+      --run)
+        _check_root
+        _xmass_autosync_run
+      ;;
+      --off)
+        _check_root
+        _xmass_autosync_off
+      ;;
+      --status)
+        _check_root
+        _xmass_autosync_show_status
+      ;;
+      "")
+        _die "Usage: xmass autosync <target-ip> [--every=N] | --off | --status | --run"
+      ;;
+      --*)
+        _die "Unknown autosync form '${_sub}' (use <target-ip> [--every=N], --off, --status or --run)"
+      ;;
+      *)
+        _AS_EVERY_ARG=""
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --every=*) _AS_EVERY_ARG="${1#*=}"; shift ;;
+            *) _die "Unknown argument: $1" ;;
+          esac
+        done
+        _tgt="${_sub}"
+        _check_root
+        _xmass_autosync_arm
+      ;;
+    esac
+  ;;
   *)
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
@@ -6728,6 +7224,10 @@ case "${_cmd}" in
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"
     echo "                     [--proxy-deadline=YYYY-MM-DD|+Nd]  (run on source)"
     echo "Usage: xmass sync    <target-ip> [--live]             (run on source, repeat)"
+    echo "Usage: xmass autosync <target-ip> [--every=N] | --off | --status"
+    echo "                     (run on source; standing-mirror file cadence — arm AFTER"
+    echo "                      the first 'sync --live'; minute.sh then repeats the live"
+    echo "                      sync every N minutes, default 15, until cutover/--off)"
     echo "Usage: xmass status  [target-ip]                      (run on source)"
     echo "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
     echo "Usage: xmass verify  [target-ip]                      (run on source after cutover; read-only)"
