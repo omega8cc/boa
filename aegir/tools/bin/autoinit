@@ -70,14 +70,25 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 
 ###
-### Uninstall cloud-utils if not required
+### Neutralize cloud-init (default; /root/.preserve.cloud.init.cnf opts out).
 ###
+### cloud-init's one useful job on a cloud box -- first-boot key injection --
+### is over before this script ever runs. Left installed, its per-instance
+### modules re-run on every SNAPSHOT RESTORE (the instance-id changes), and
+### with the stock disable_root/lock_passwd config that LOCKS the root
+### account: the key is on disk and correct while sshd refuses with "account
+### is locked". The vmnetfix drop-in only disables cloud-init NETWORKING;
+### the users module is the one that bites. So the kill-switch file is
+### written FIRST (honoured by cloud-init even if the package removal below
+### is interrupted), then the packages go, then /etc/cloud is parked.
 _if_remove_cloud_utils() {
+  [ -e "/root/.preserve.cloud.init.cnf" ] && return 0
   _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
   _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
     || [ -e "${_etcCloudCfgd}" ]; then
     _msg "[init] rcld ==> Removing problematic cloud-utils detected on this system..." >> "${_logInt}"
+    [ -d "/etc/cloud" ] && touch /etc/cloud/cloud-init.disabled
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get remove cloud-utils cloud-init -y -qq >> "${_logSlt}"
     /usr/bin/apt-get remove cloud-image-utils -y -qq >> "${_logSlt}"
@@ -1667,8 +1678,10 @@ _init_offsystemd() {
   _init_sysv_net_repair
   _init_vmnetfix_failsafe_install
 
-  # Uninstall cloud-utils if not required
-  [ -e "/root/.mode.selected.full.cnf" ] && _if_remove_cloud_utils
+  # Neutralized by DEFAULT on every conversion (2026-08-27 ruling), not only
+  # in full mode: a box that keeps live cloud-init grows a root-lock landmine
+  # in every snapshot taken of it. /root/.preserve.cloud.init.cnf opts out.
+  _if_remove_cloud_utils
 
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
