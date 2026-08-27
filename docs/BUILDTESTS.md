@@ -30,14 +30,14 @@ Distributions, published to `/var/www/static/distro`:
 ```sh
   commerce_kickstart-5.1.0-11.4.5
   drupal_cms_installer-2.1.3-11.4.5
-  farm-4.0.4-11.3.14
+  farm-4.0.5-11.3.14
   localgov-4.0.2-11.4.5
   openculturas-3.0.5-11.3.16
   openfed-13.6.6-10.6.15
   opigno_lms-3.2.7-10.6.15
   social-13.0.2-10.6.15
-  thunder-8.4.0-11.4.5
-  varbase-10.1.1-11.4.4
+  thunder-8.4.1-11.4.5
+  varbase-10.1.2-11.4.5
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
@@ -133,11 +133,11 @@ Common shape for the create-project distros (farmOS is a release tarball instead
 etc., which current Composer blocks unless allowed.
 
 ```sh
-farmos     # farm-4.0.4-11.3.14  (farmOS caps core at 11.3)
+farmos     # farm-4.0.5-11.3.14  (farmOS caps core at 11.3)
            # visit: https://github.com/farmOS/farmOS/releases
-           # wget https://github.com/farmOS/farmOS/releases/download/4.0.4/farmOS-4.0.4.tar.gz
-           # tar -xzf farmOS-4.0.4.tar.gz && mv farmOS farm-4.0.4-11.3.14
-           # cd ~/static/MONTH-DAY/farm-4.0.4-11.3.14
+           # wget https://github.com/farmOS/farmOS/releases/download/4.0.5/farmOS-4.0.5.tar.gz
+           # tar -xzf farmOS-4.0.5.tar.gz && mv farmOS farm-4.0.5-11.3.14
+           # cd ~/static/MONTH-DAY/farm-4.0.5-11.3.14
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
@@ -164,7 +164,7 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.4-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.5-11.3.16/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.5-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.5-11.3.16/web/sites/
 ```
 
 ```sh
@@ -262,9 +262,9 @@ social     # Open Social ships NO create-project template for its current major:
 ```
 
 ```sh
-thunder    # composer create-project thunder/thunder-project thunder-8.4.0-11.4.5 --no-dev --no-interaction --no-install --no-scripts
-           # name by thunder/thunder-distribution (8.4.0); thunder/thunder-project versions separately (5.0.0)
-           # cd ~/static/MONTH-DAY/thunder-8.4.0-11.4.5
+thunder    # composer create-project thunder/thunder-project thunder-8.4.1-11.4.5 --no-dev --no-interaction --no-install --no-scripts
+           # name by thunder/thunder-distribution (8.4.1); thunder/thunder-project versions separately (5.0.0)
+           # cd ~/static/MONTH-DAY/thunder-8.4.1-11.4.5
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
@@ -359,7 +359,7 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   refuses advisory-affected core/deps; disable it (`policy.advisories.block false`) for the
   test build.
 - **thunder** — `thunder/thunder-project` (the template) versions independently (e.g. 5.0.0)
-  from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.0); name by the latter.
+  from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.1); name by the latter.
 - **cms** — drupal_cms's post-update-cmd cleanup script exits non-zero; run its drush
   require with `--no-scripts`. The same require adds the migration pipeline contribs
   (`migrate_plus`, `migrate_tools`, `migrate_upgrade`) — upstream drupal/cms ships none

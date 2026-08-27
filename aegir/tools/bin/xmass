@@ -78,7 +78,7 @@ _xSrl=$(boa info 2>/dev/null \
   | grep -oE "BOA-[0-9.]+-${_tRee}-[0-9a-zA-Z]+" \
   | tail -1 \
   | awk -F- '{ print $NF }')
-[ -z "${_xSrl}" ] && _xSrl="588844${_tRee}T01"
+[ -z "${_xSrl}" ] && _xSrl="588855${_tRee}T01"
 export _xSrl
 
 export DEBIAN_FRONTEND=noninteractive
@@ -971,6 +971,67 @@ REMOTE
   return 0
 }
 
+### The standing-mirror variant of the restore-solr leg: the hold stays and
+### Solr stays down; only the deny/park state is reconciled so BOA keeps
+### maintaining the used versions until promotion. File-level over ssh on
+### purpose -- the target's own restore-solr refuses under the standby
+### marker by design (it would drop the hold and start Solr on an index
+### still being rsynced), and a heredoc has no minimum tool version to
+### depend on. The per-version denies of the used set are already cleared
+### by _xmass_solr_write_target_denies before this runs; what is left is
+### the blanket pair and the parked init scripts, which come back DISARMED
+### (on disk, no exec bit, no rc links) -- the shape java.sh re-asserts
+### every minute while the hold marker exists.
+_xmass_solr_unpark_under_hold() {
+  local _t="$1" _used="$2"
+  case "${_used}" in
+    *[!a-z0-9\ ]*) _alrt "refusing to splice a malformed Solr set into a remote shell"; return 1 ;;
+  esac
+  ssh root@"${_t}" "_XM_USED='${_used}' bash -s" <<'REMOTE' \
+    || { _alrt "could not reconcile the held Solr state on the target"; return 1; }
+[ -e /root/.standby.cnf ] \
+  || { echo "ALRT: not a standby -- refusing the under-hold lane"; exit 1; }
+[ -e /var/log/boa/.xmass_solr_hold.pid ] \
+  || { echo "ALRT: no xmass Solr hold on this standby -- refusing"; exit 1; }
+_cnf=/root/.barracuda.cnf
+if [ -e "${_cnf}" ]; then
+  _m=$(stat -c %a "${_cnf}" 2>/dev/null)
+  _tmp=/root/.barracuda.cnf.solrnew
+  cp -af "${_cnf}" "${_tmp}" || exit 1
+  [ -n "$(tail -c1 "${_tmp}" 2>/dev/null)" ] && echo >> "${_tmp}"
+  if grep -q "^_DENY_JAVA=" "${_tmp}"; then
+    sed -i "s/^_DENY_JAVA=.*/_DENY_JAVA=NO/" "${_tmp}"
+  else
+    echo "_DENY_JAVA=NO" >> "${_tmp}"
+  fi
+  [ -s "${_tmp}" ] || exit 1
+  chmod "${_m:-600}" "${_tmp}"
+  mv -f "${_tmp}" "${_cnf}"
+fi
+rm -f /root/.deny.java.cnf
+echo "INFO: blanket java deny cleared (the hold keeps Solr down)"
+for _sv in ${_XM_USED}; do
+  case "${_sv}" in
+    solr4) _svc=jetty9 ;;
+    solr7) _svc=solr7 ;;
+    solr9) _svc=solr9 ;;
+    *) continue ;;
+  esac
+  _initd="/etc/init.d/${_svc}"
+  _parked="/var/backups/${_svc}.initd"
+  if [ ! -e "${_initd}" ] && [ -e "${_parked}" ]; then
+    cp -af "${_parked}" "${_initd}" \
+      || { echo "ALRT: ${_svc}: could not unpark ${_parked}"; exit 1; }
+    chown root:root "${_initd}"
+    echo "INFO: ${_svc}: init script unparked (stays disarmed under the hold)"
+  fi
+  [ -e "${_initd}" ] && chmod 644 "${_initd}" 2>/dev/null
+done
+exit 0
+REMOTE
+  return 0
+}
+
 ### One full barracuda system pass on the target: on a hosted-named box that
 ### is exactly the all-three Solr install trigger, so it may run only AFTER
 ### the deny set is on the target's disk -- needed versions install, denied
@@ -1204,14 +1265,24 @@ _xmass_solr_coverage_gate() {
           _alrt "(or clear the denies and re-arm the init scripts by hand), then re-run"
           return 1
         fi
-        if ! ssh root@"${_t}" "command -v xmass >/dev/null 2>&1"; then
-          _alrt "no xmass on ${_t} -- its tools are stale; re-run after 'xmass pre-mig'"
-          _alrt "has refreshed them (or fetch the tools on the target by hand)"
-          return 1
+        if [ "$(_xmass_solr_field "${_XMASS_TS_GLOB}" xmhold)" = "YES" ]; then
+          ### A standing mirror under the xmass hold: its own restore-solr
+          ### refuses there by design. Reconcile file-level instead -- the
+          ### blanket deny cleared, used versions unparked DISARMED, the
+          ### hold and the standby marker untouched.
+          _info "Reconciling the held Solr set on ${_t} (hold stays, Solr stays down) ..."
+          _xmass_solr_unpark_under_hold "${_t}" "${_need}" \
+            || { _alrt "under-hold Solr reconcile failed on ${_t} -- read its output above"; return 1; }
+        else
+          if ! ssh root@"${_t}" "command -v xmass >/dev/null 2>&1"; then
+            _alrt "no xmass on ${_t} -- its tools are stale; re-run after 'xmass pre-mig'"
+            _alrt "has refreshed them (or fetch the tools on the target by hand)"
+            return 1
+          fi
+          _info "Clearing the blanket deny / unparking used versions on ${_t} via its own 'xmass restore-solr' ..."
+          ssh root@"${_t}" "xmass restore-solr" \
+            || { _alrt "remote 'xmass restore-solr' failed on ${_t} -- read its output above"; return 1; }
         fi
-        _info "Clearing the blanket deny / unparking used versions on ${_t} via its own 'xmass restore-solr' ..."
-        ssh root@"${_t}" "xmass restore-solr" \
-          || { _alrt "remote 'xmass restore-solr' failed on ${_t} -- read its output above"; return 1; }
       fi
       if [ -n "${_needinst}" ]; then
         _XMASS_SOLR_PASS_OWED=YES
@@ -1270,8 +1341,10 @@ _xmass_verify_target_accounts() {
       && [ -e /data/disk/${_oct}/log/octopus_log.txt ] \
       && [ -e /data/disk/${_oct}/config/includes/nginx_vhost_common.conf ] \
       && [ -e /root/.${_oct}.octopus.cnf ] \
-      && echo PRESENT" 2>/dev/null)
-    [ "${_out}" = "PRESENT" ] || _bad="${_bad} ${_oct}"
+      && echo XMACCT-PRESENT" 2>/dev/null)
+    # Exact-line match: shell login noise around the token (a .bashrc echo
+    # on the target) must not read as a missing account.
+    printf '%s\n' "${_out}" | grep -qx "XMACCT-PRESENT" || _bad="${_bad} ${_oct}"
   done
   _bad="${_bad## }"
   [ -z "${_bad}" ] && { _info "All eligible accounts installed on ${_t}: OK"; return 0; }
@@ -2896,7 +2969,7 @@ _xmass_finalize_dry() {   # 1 tgt
 }
 ###-------------DELETION ON THE DATA TREES--###
 ###
-### Adam's ruling, 2026-08-26: source-side deletions MUST propagate, or a
+### 2026-08-26 ruling: source-side deletions MUST propagate, or a
 ### standing mirror grows without bound. It grows fast, not slowly: the
 ### per-account nightly SQL dump stores under /data/disk/arch, each account's
 ### backups/, and the Solr data trees all rotate on the active every night,
@@ -3034,8 +3107,13 @@ _xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label
 _xmass_target_fits() {
   local _av _q _dex
   _q="$(_shq "$2")"
-  _av=$(ssh -n root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
+  # Token-anchored reads: a target whose shell prints login noise into
+  # non-interactive ssh (a .bashrc echo) must not be able to garble the
+  # numbers into a wrong refusal.
+  _av=$(ssh -n root@"$1" "p='${_q}'; while [ -n \"\$p\" ] && [ \"\$p\" != / ] && [ ! -d \"\$p\" ]; do p=\$(dirname \"\$p\"); done; echo \"XMFIT \$(df -Pk \"\$p\" 2>/dev/null | awk 'NR==2{print \$4}')\"" 2>/dev/null \
+    | grep -m1 '^XMFIT ' | awk '{print $2}')
   if [ -z "$3" ] || [ -z "${_av}" ]; then return 0; fi
+  [[ "${_av}" =~ ^[0-9]+$ ]] || return 0
   [ "${_av}" -ge "$3" ] && return 0
   # Tight fit: credit the bytes already sitting at the destination — a
   # repeated (delta) sync needs room for the growth, not the whole store
@@ -3044,7 +3122,8 @@ _xmass_target_fits() {
   # Measured only when the plain test fails, so the remote walk is paid
   # exactly where it changes the answer; an unmeasurable destination
   # keeps the refusal (fail closed).
-  _dex=$(ssh -n root@"$1" "du -sk '${_q}' 2>/dev/null" 2>/dev/null | awk '{print $1}')
+  _dex=$(ssh -n root@"$1" "echo \"XMDEX \$(du -sk '${_q}' 2>/dev/null | awk '{print \$1}')\"" 2>/dev/null \
+    | grep -m1 '^XMDEX ' | awk '{print $2}')
   [[ "${_dex}" =~ ^[0-9]+$ ]] || return 1
   [ $(( _av + _dex )) -ge "$3" ]
 }
@@ -5141,7 +5220,7 @@ _xmass_prepare_target_reach() {
 }
 
 _xmass_boa_release() {
-  ### The release number out of `boa info`'s stamp, e.g. BOA-5.88.844-lts-...
+  ### The release number out of `boa info`'s stamp, e.g. BOA-5.88.855-lts-...
   ### -> 5.88.844. Empty when it cannot be read, which the caller treats as
   ### fatal rather than as "probably fine".
   local _where="$1"
@@ -5230,12 +5309,20 @@ _xmass_refuse_role_clash() {
   fi
   if [ "${1:-init}" = "prep" ]; then
     # prep-target builds a FRESH target: its xoct installs would be refused
-    # by the standby's own super_read_only. Repair of an existing mirror is
-    # init's job; a retired mirror sheds its marker deliberately first.
-    _die "target ${_tgt} is already a passive standby (its /root/.standby.cnf)" \
-         " -- prep-target builds fresh targets only; re-run 'xmass init' to" \
-         " repair this mirror, or remove the marker deliberately if it is" \
-         " being retired"
+    # by the standby's own super_read_only. The ONE prep that stays valid on
+    # a standing mirror is the Solr reconcile (--fix-solr alone): the
+    # source's used set can change mid-window, and every other door there is
+    # closed by design (init refuses in phase 'syncing', the target's own
+    # restore-solr refuses under the standby marker). Fall through to the
+    # same-source walk below so only OUR OWN mirror takes the reduced lane.
+    if [ "${_XMASS_FIX_SOLR}" = "YES" ] && [ "${_XMASS_FIX_PHP}" != "YES" ]; then
+      _XMASS_PREP_UNDER_HOLD=YES
+    else
+      _die "target ${_tgt} is already a passive standby (its /root/.standby.cnf)" \
+           " -- prep-target builds fresh targets only ('--fix-solr' alone is the" \
+           " exception: it reconciles the held Solr set of a standing mirror);" \
+           " remove the marker deliberately if the mirror is being retired"
+    fi
   fi
   _mrk=$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
     -o StrictHostKeyChecking=accept-new root@"${_tgt}" \
@@ -5272,6 +5359,19 @@ _xmass_cmd_prep_target() {
   _info "======================================================"
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
+  if [ "${_XMASS_PREP_UNDER_HOLD}" = "YES" ]; then
+    # Reduced lane for a STANDING MIRROR (the role walk proved it ours):
+    # only the Solr set is reconciled. Fresh-target work -- accounts, CSF,
+    # the reverse path, the release assert -- is settled on an armed
+    # mirror, and the xoct path would die on its super_read_only. Tools go
+    # first so the probe reads current field names.
+    _info "  (standing mirror: reduced lane -- Solr reconcile only)"
+    _xmass_force_tool_update "${_tgt}"
+    _xmass_solr_coverage_gate "${_tgt}" fix \
+      || _die "Solr coverage fix failed on ${_tgt}"
+    _info "Solr set reconciled under the hold; the next sync pass re-probes it"
+    return 0
+  fi
   _xmass_enumerate_accounts
   # The target may have been prepared days ago, or by an operator who never ran
   # pre-mig there. Force its tools current before it is measured or written to.
@@ -5941,7 +6041,7 @@ _xmass_cmd_sync() {
   _XMASS_STORE_RC=0
   _XMASS_RSYNC_RC=0
   # Source-side deletions propagate on the DATA trees for every `sync` pass,
-  # manual and automated alike (Adam 2026-08-26 — a standing mirror that
+  # manual and automated alike (2026-08-26 ruling — a standing mirror that
   # never deletes grows without bound, and it grows nightly). The cutover
   # legs deliberately leave this off; see the block above _xmass_rsync.
   _XMASS_PRUNE=YES
@@ -6909,7 +7009,7 @@ _xmass_cmd_cutover() {
       && _alrt "[DRY] --live would REFUSE: undeclared proxy mode for:${_XMASS_MODE_UNDECLARED}"
     _XMASS_STORE_RC=0
     _XMASS_RSYNC_RC=0
-    # Cutover legs stay ADDITIVE, plan and live alike (Adam 2026-08-26): the
+    # Cutover legs stay ADDITIVE, plan and live alike (2026-08-26 ruling): the
     # target is about to become production and a wrong deletion here is
     # unrecoverable, while a promoted box resumes its own owl.sh cleanup
     # within the night. Stated explicitly so a future edit has to mean it.
@@ -7459,6 +7559,7 @@ case "${_cmd}" in
     shift 2>/dev/null || true
     _XMASS_FIX_PHP=""
     _XMASS_FIX_SOLR=""
+    _XMASS_PREP_UNDER_HOLD=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --fix-php) _XMASS_FIX_PHP=YES; shift ;;
