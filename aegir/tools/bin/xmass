@@ -78,7 +78,7 @@ _xSrl=$(boa info 2>/dev/null \
   | grep -oE "BOA-[0-9.]+-${_tRee}-[0-9a-zA-Z]+" \
   | tail -1 \
   | awk -F- '{ print $NF }')
-[ -z "${_xSrl}" ] && _xSrl="588844${_tRee}T01"
+[ -z "${_xSrl}" ] && _xSrl="588855${_tRee}T01"
 export _xSrl
 
 export DEBIAN_FRONTEND=noninteractive
@@ -5220,7 +5220,7 @@ _xmass_prepare_target_reach() {
 }
 
 _xmass_boa_release() {
-  ### The release number out of `boa info`'s stamp, e.g. BOA-5.88.844-lts-...
+  ### The release number out of `boa info`'s stamp, e.g. BOA-5.88.855-lts-...
   ### -> 5.88.844. Empty when it cannot be read, which the caller treats as
   ### fatal rather than as "probably fine".
   local _where="$1"
