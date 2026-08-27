@@ -94,8 +94,11 @@ _cloud_init_safe_to_remove() {
 ###
 ### Remove cloud-init when it is safe to, keep it when it is not.
 ###
-### cloud-init's one useful job on a cloud box -- first-boot key injection --
-### is over before this script ever runs. Left installed, its per-instance
+### Three independent reasons want it gone. It slows every reboot
+### considerably while present (the original motivation for having a
+### removal path at all). Its per-instance modules are a snapshot-restore
+### landmine (below). And its one useful job on a cloud box -- first-boot
+### key injection -- is over before this script ever runs. Left installed, its per-instance
 ### modules re-run on every SNAPSHOT RESTORE (the instance-id changes), and
 ### with the stock disable_root/lock_passwd config that LOCKS the root
 ### account: the key is on disk and correct while sshd refuses with "account
