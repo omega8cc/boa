@@ -1,4 +1,343 @@
 ###
+### Stable BOA-5.88.855 PRO/LTS - KRAKEN EDITION
+### Date: Thu 27 Aug 2026 15:48:31 CEST in Warsaw
+### Enjoy the release of the Kraken
+### 294 commits since BOA-5.88.844
+###
+
+@=> !!! ACTION REQUIRED (self-hosted systems): Kernel and OpenSSL updates
+
+  A Linux kernel security update arrives with this release through the
+  automatic security-updates channel, and BOA never forces a reboot --
+  activating it is yours to schedule. Run `boa reboot` at a quiet
+  moment; boxes with auto-reboot enabled restart themselves in their
+  night window. This release also ships the OpenSSL 3.5.8 LTS security
+  update, which rebuilds every bundled PHP version from 7.4 to 8.5, so
+  please run the barracuda and octopus upgrades as soon as feasible.
+  Customers on hosted and remotely managed plans have all of this
+  handled for them by our team.
+
+@=> Kraken Edition
+
+  Certainty made the platform prove things before acting; the Kraken
+  guards what lives in its waters. A replication standby now holds a
+  faithful copy that adds nothing of its own -- its database refuses
+  local writes from root down, its files follow minutes behind on an
+  armed cadence, and its web tier stays dark until promotion proves it
+  from the outside. Your off-site backups open on your own workstation
+  with your own keys. A destroyed database name keeps no residual
+  access, in any spelling, at any scope. Root never follows a path a
+  tenant planted, and a wedged task queue heals itself. The Kraken
+  joins Barracuda, Octopus and Ægir in the bestiary. LTS is 1:1 with
+  PRO; the actions are the kernel reboot, the upgrade itself, and --
+  for gcs or ibm off-site users -- the credentials re-issue listed
+  under Changes and Upgrades.
+
+@=> Security
+
+    * OpenSSL 3.5.8 LTS; every bundled PHP version from 7.4 to 8.5 is
+      rebuilt against it during the upgrade pass.
+    * Root file operations never follow a tenant-planted symlink; the
+      control INIs are seeded atomically from root-only staging.
+    * robots.txt and llms.txt are fetched to a temp file and moved
+      into place, so a planted link cannot steer a root write.
+    * A dangling link in a shell account's home no longer makes root
+      create and hand over the file it points at.
+    * Root chowns on tenant-controlled names under static/ act on the
+      link itself, never on what it points at.
+    * The same class was closed across seven more root tools: creates,
+      copies, chowns, chmods and recursive purges.
+    * mybackup refuses a queued restore when any ancestor of the
+      account credentials directory is a symlink.
+    * The install scratch root /opt/tmp is root-owned 0755; no install
+      file is left tenant-owned for a later root pass to source.
+    * Install children signal in their own state dirs and must stamp
+      OK; a child that cannot signal is failed, not passed.
+    * Password rotation backups are 0600 on creation, lax copies are
+      healed, and only the newest three are kept.
+    * The deployed FTPS PAM policy carries its authenticating rule; a
+      copy missing it is healed on the next pass.
+    * A site's database grant names that database exactly; the old
+      pattern grant also covered similarly named neighbours.
+    * Existing sites converge when credentials are next granted:
+      install, clone, rename, restore or migrate.
+    * Destroying a database revokes every grant on it in the spelling
+      the server stored, so a freed name keeps no access.
+    * Table, column and routine grants on a destroyed database are
+      revoked per object, exactly as the server reported them.
+    * A superseded database user is dropped once only bare USAGE
+      remains; credential rotations leave no residue behind.
+    * Destroying one site never touches grants on databases it is not
+      destroying, whatever host row the account holds.
+    * An account whose grants cannot be read or fully cleared is kept
+      and named in the task log; nothing acts on unknown state.
+    * nosniff and SAMEORIGIN hold in every nginx location that sets
+      its own headers, aggregates and Boost-cached HTML included.
+    * Google's special-case crawler ranges (AdsBot, Mediapartners, the
+      SERP favicon fetcher) are whitelisted from their own list.
+    * A failed crawler-range fetch keeps existing entries instead of
+      stripping the Googlebot whitelist until the next pass.
+    * The "Google Favicon" token, spelled with a space, is exempt from
+      the harvest and guard-404 detectors.
+    * A malformed operator ERE override reverts with a warning instead
+      of silently voiding every crawler exemption.
+
+@=> New Features
+
+    * New Migration source task: one of your sites gains read-only
+      access to another of your own sites' database, on Drupal 8+.
+    * The migrate connection reuses the site's own credentials; the
+      grant is SELECT on one database, issued after a possession proof.
+    * Setting the source to None revokes, deleting either site tears
+      the wiring down, and a clone never inherits the association.
+    * A nightly sweep reclaims grants no live pairing accounts for; it
+      never grants, and bounded revokes alert instead of acting.
+    * Migration source is enabled on every install and upgrade; the
+      sweep runs inside the nightly box-wide task-queue pause.
+    * Tasks whose runner died are reaped and marked failed with a
+      truthful log entry; a corpse no longer wedges a queue for hours.
+    * New task_guard monitor reaps box-wide with no Drush bootstrap,
+      on every hostmaster vintage; detect-only and opt-out knobs.
+    * Every replication standby runs super_read_only, held in the
+      replica's own MySQL include: local writes refused from root down.
+    * Standing mirrors convert themselves; the MySQL watchdog appends
+      the hold and locks the runtime by fleet delivery alone.
+    * A passive mirror serves no HTTP: the shipped Nginx init script
+      refuses to start under the standby marker, boot included.
+    * A per-minute enforcer takes a started Nginx back down; the new
+      BOA_STANDBY_WEB firewall chain drops inbound 80/443, v4 and v6.
+    * Tenant shells flip to nologin on a held mirror and are restored
+      exactly at promotion; FTPS and the backup chain stand down.
+    * A standby stays a working BOA box: cron, IDS and the watchdogs
+      run as normal; passivity comes from per-job gates.
+    * Promotion proves the web tier externally, HTTPS included, before
+      DNS moves; a promotion that did not hold closes its own window.
+    * Mirror and migration endpoint are a hard refusal in both
+      directions; an aborted cutover restores the source itself.
+    * New /root/.standby.serve.cnf serves a held mirror as a web-only
+      preview, logged hourly; database and tenant holds stay.
+    * New xmass autosync arms a standing mirror's file cadence: the
+      live sync legs repeat unattended, minutes behind the database.
+    * Arming needs the syncing phase, the recorded target, one
+      completed live sync and a mirror holding its standby marker.
+    * A marker-gated per-minute driver runs each pass under ionice
+      with a hard timeout ceiling; no marker on a box means no work.
+    * Passes defer quietly behind another xmass verb, a barracuda or
+      octopus run, the init window and the cutover phases.
+    * A promoted mirror stops the pass loudly with nothing synced, and
+      an unattended pass never restores a standby marker itself.
+    * The target's role is re-proved at every leg boundary, so a
+      promotion mid-pass stops the pass at the next boundary.
+    * A duty-cycle guard holds passes to a bounded share of wall
+      clock, so a long pass rests instead of walking continuously.
+    * A daily alarm names an armed cadence whose last completed pass
+      is six windows old, so no silent defer parks the file sync.
+    * Sync passes propagate source deletions on the data trees, so a
+      standing mirror stops growing with every nightly rotation.
+    * Control, credential and target-role legs stay additive, and the
+      cutover legs delete nothing at all, plan and live alike.
+    * Deletions land only after a successful transfer, and a mass
+      deletion is refused at a limit as a loud, readable failure.
+    * An empty source deletes nothing, because an unmounted volume
+      reads as an empty directory; excluded files are never removed.
+    * Index segments are pruned only while the mirror's Solr hold
+      reads verifiably intact; any ambiguity keeps the leg additive.
+    * A target whose Solr watchdog would kill the transfer's own
+      receiver is refused before the cutover window opens.
+    * prep-target --fix-solr reconciles a standing mirror's Solr set
+      under the hold, so a changed source set has a remedy again.
+    * xmass compares the SERVER Percona version on both ends, patch
+      level included; _XMASS_ALLOW_PATCH_SKEW permits forward skew.
+    * New solrtrim tool retires unused Solr versions on a one-year
+      index-write bar: archive first, deny written before delete.
+    * New xmass restore-solr re-arms a rolled-back source's Solr
+      services, clearing both deny forms first.
+    * prep-target measures the source's real per-version Solr use and
+      refuses a target that does not mirror it; --fix-solr reconciles.
+    * New staticbuild catalogue audit HEAD-checks every catalogue
+      entry's tarball on the distro mirror before a release.
+    * The Valkey memory ceiling is a hit-rate control loop, replacing
+      the peak-times-four rung that grew with every grant it made.
+    * memorytuner renders a per-box needs ledger with growth slopes
+      and a measured OS reserve; it observes and names, never applies.
+    * boa-restore, the read-only workstation tool that opens your
+      off-site backups with no server involved, joins every guide.
+    * Pure-FTPd joins the prebuilt package set: FTPS installs from
+      boa-pure-ftpd in seconds, with the source build as fallback.
+
+@=> Improvements
+
+    * Hostmaster upgrades drain the task queue synchronously before
+      swapping the live Drush and Provision trees.
+    * Backup rows record the mode the backend actually applied, safety
+      copies included, ready for the Backups view to show and sort on.
+    * Each task resolves its backup mode once; a concurrent task or a
+      dead task's leftover can never downgrade a safety copy.
+    * A Let's Encrypt run that aborts on a busy lock reports the abort
+      with a retry instruction, never a success.
+    * Certificate symlinks are wired only once every file nginx loads
+      -- certificate, chain and private key -- is readable.
+    * The LE cleanup sweep stands down while another issuance holds
+      the lock, so a fresh install certifies on the first pass.
+    * Nightly renewal and the Octopus hostmaster leg honour the
+      dont-overwrite marker, leaving custom certificates in place.
+    * Disabling Encryption clears the per-site LE control files; a
+      re-enable or a rename starts clean.
+    * A same-name platform migrate re-enables Encryption with the
+      site's stashed level and key, not a bare TRUE.
+    * A box rename carries every per-site surface: directory, alias,
+      files store and its symlinks, client symlink, settings.php, pins.
+    * The rename refuses its closing queue while any directory holds
+      the old hostname, and repairs boxes renamed directory-only.
+    * A migration refuses to start unless both boxes run the same BOA
+      release; the refusal names the fix and has no override.
+    * xmass, xoct and xcopy run one state-mutating verb at a time,
+      owner-proven by liveness, so a killed run wedges nothing.
+    * An abort before promotion thaws and restores the source; after
+      promotion the cutover parks resumably and prints the resume line.
+    * xmass init purges pending and interrupted delete tasks from
+      every panel queue, so a stranded delete cannot travel across.
+    * xtrim proves the target serves the SITE before any drop: a 200
+      byte-identical to the target's catch-all page is refused.
+    * Fetched tools revalidate hourly, carry the source's publication
+      time, and re-fetch on byte drift; mirrors read their local tree.
+    * An upgrade invalidates the fetch markers for the tools its tree
+      overwrote, so a mid-cycle tool wave returns within minutes.
+    * The mirror probe is bounded to two seconds and never answers
+      empty; one hung probe used to park a box's whole task queue.
+    * xmass opens csf.allow AND csf.ignore for the migration peer on
+      both ends, so lfd cannot temp-deny it mid-migration.
+    * The in-flight task gate matches genuine Ægir executions only,
+      covers the dispatch window, and fails closed on a lagging library.
+    * graceful.sh, the high-load MySQL restart and the .restore alias
+      prune take the same in-flight gate as their siblings.
+    * _INSTANT_BUSY_MYSQL_ACTION acts at last: it flushes hosts and
+      sweeps long queries where a restart could never run.
+    * A staged Percona series upgrade whose package phase dies aborts
+      loudly before any tuning; every MySQLD wait is bounded.
+    * Percona upgrade diagnostics read the log the server actually
+      writes, and surface the lines that say what went wrong.
+    * Ubuntu sources are first-class for Ægir adoption, and each
+      site's own install profile travels through it, Drupal 6 included.
+    * Stage 1 flips encrypted estates to nginx_ssl with real SNI
+      checks; cutover is refused on the target's catch-all page.
+    * The new peer verb arranges both boxes' reachability: firewall
+      allow and ignore, temp-block clear, a dedicated migration key.
+    * Percona 8.4 advertises native authentication, so sites on the
+      php56 pool keep their database on the web; an 8.x-only lane.
+    * A barracuda or octopus run that alerted no longer prints a clean
+      completion claim beside its own ALERT.
+    * Prebuilt package dependencies are pre-installed before dpkg; a
+      held package always counts as satisfied.
+    * mydumper and myloader are reconciled to one coherent build on
+      every pass; a failed build never leaves a host with no tools.
+    * Store-relocated account backups travel once in a migration, as a
+      reproduced link; backup-exports gains its missing transfer leg.
+    * backboa and duobackboa keep their own liveness-checked pid
+      files, so a slow run no longer costs the other its day.
+    * Per-account dbackup retention prunes a relocated store, resolved
+      and confined to the account, so it stops growing without bound.
+    * BOA re-arms only queues it disabled itself; an operator's own
+      panel queue switch is respected.
+    * Space-fit and account-presence probes read their own token, so
+      login banners on a target can no longer force a wrong refusal.
+    * The migration verb lock is taken atomically, its signal handlers
+      exit, and its owner match names a real xmass invocation.
+    * The migration state file is written and renamed atomically, so a
+      full disk can no longer truncate the record it holds.
+    * Prebuilt packages rebuilt by a companion bump are republished
+      under the same version, so mirrors stop serving stale binaries.
+    * A prebuilt PHP package is verified against the OpenSSL and ICU
+      the box expects; a stale one is refused and built from source.
+    * Package mirrors no longer overwrite each other: a cross-sync
+      never moves a peer's freshly published file backwards in time.
+    * A Debian to Devuan conversion removes cloud-init when classic
+      networking is provably self-sufficient, and keeps it when not.
+    * That closes a snapshot restore locking out root on a converted
+      cloud VM, and takes the cloud-init delay out of every reboot.
+
+@=> Changes and Upgrades
+
+    * Nginx 1.31.4, OpenSSH 10.5p1, OpenSSL 3.5.8 LTS, Java 21.0.12
+      on the 21 line and Java 11.0.32 on the 11 line.
+    * Varbase 10.1.2 returns on Drupal 11.4 -- the first working fresh
+      Varbase install since the July freeze.
+    * farmOS 4.0.5 and Thunder 8.4.1 refresh the catalogue, and Varbase
+      now builds on the catalogue's own current Drupal 11.4 core.
+    * OpenFed 13.6.6, Opigno LMS 3.2.7 and Open Social 13.0.2, all
+      rebuilt from upstream onto the Drupal 10.6 line.
+    * The Drupal CMS platform ships the migration pipeline modules and
+      the pathauto correction: a Drupal 7 upgrade target out of the box.
+    * The gcs and ibm off-site backup targets (extended backup
+      sub-system) ride the proven S3-compatible route with HMAC keys.
+    * An already filled gcs.txt or ibm.txt is NOT regenerated: rewrite
+      it with the variables its README names, or the run keeps refusing.
+    * Hosted systems carry FTP and IMG in _XTRAS_LIST by default,
+      seeded at install and converged on every upgrade.
+    * _INSTALL_MYQUICK_SRC is retired (source builds stay the
+      automatic fallback); stale keys are removed from live cnf files.
+    * /opt/tmp is root-owned 0755; operator scripts that wrote there
+      as a non-root user must move to the per-user state directory.
+    * Operators overriding _NGINX_HARVEST_UA_EXEMPT must quote the
+      value now that the default list contains a space.
+    * Create /root/.preserve.cloud.init.cnf to keep cloud-init on a
+      converted cloud box that needs it; full mode still removes it.
+    * Platform symbol legends trued against the shipped catalogue,
+      Backdrop's built-by-default group included.
+    * User-facing learn.omega8.cc and dead article links point at
+      their docs.boa.io equivalents, panel help included.
+    * _INSTANT_BUSY_MYSQL_ACTION described truthfully in config and
+      docs: it relieves saturation, it never restarts a live server.
+    * SECURITY.md corrected (web-layer temporary block is 15 minutes);
+      ROADMAP and DUALLICENSE drop feature-freeze speculation.
+
+@=> Important Fixes
+
+    * A misplaced temp-path default made the account manager run
+      `rm -f /*.txt` against the filesystem root on every pass.
+    * The always-true arm of the forced Let's Encrypt re-registration
+      is retired; it destroyed healthy account keys on healthy boxes.
+    * ACME account directories are archived under /var/backups now,
+      never deleted, so a mis-fired heal costs a move back.
+    * The default off-site exclusion for Ægir backups fires again;
+      embedded quotes had made the pattern match nothing.
+    * Backup tools refuse an empty hostname instead of collapsing onto
+      a shared bucket name where two boxes could prune one chain.
+    * A backup overlapping the nightly swap reset no longer leaves the
+      box swapless for a day.
+    * PHP shell-outs work on Debian 13 boxes: websh accepts the POSIX
+      -- separator glibc 2.38+ sends; drush and the panel included.
+    * Deleting a site purges its Valkey/Redis cache namespace, Drupal
+      and Backdrop alike; a recreated same-name site starts clean.
+    * Renamed host-derived sites serve again instead of answering HTTP
+      400, and the rename no longer imports duplicate site nodes.
+    * A failed xoct conversion restores the site's real HTTPS vhost; a
+      promoted box stops relaying HTTPS back to its demoted sibling.
+    * A missing optional config directory no longer kills a cutover
+      with the source already holding 503.
+    * Database imports no longer fail on a mismatched mydumper and
+      myloader pair (#1935).
+    * A standby's own host-cache and privilege flushes stay out of the
+      binary log, on both Percona series.
+    * The per-minute flush remedy alone minted about 1440 errant
+      transactions a day on every Percona 5.7 replica.
+    * A standby no longer rotates its own MySQL root password on
+      Percona 8.4, which locked out every root-credentialed tool.
+    * Clearing a site's Solr integration really removes its cores now,
+      archived first; Solr 9 deletion uses the Core Admin API.
+    * The platform wildcard probe can answer NO again; auto-detect
+      integrations are seeded only where the module is present.
+    * The legacy satellite wildcard template rewrite uses the path the
+      loop assigns; it had expanded to nothing since 2015.
+    * The Valkey demand window records live occupancy instead of the
+      server's lifetime peak, so ceiling steps judge post-action data.
+    * up-* runs on a finalized PX0 proxy skip the SQL access check
+      instead of aborting on a database stopped by design.
+    * The cluster in-oct dispatch passes the Octopus instance name
+      cleanly after a 2024 sweep left it prefixed with an equals sign.
+
+
+###
 ### Stable BOA-5.88.844 PRO/LTS - CERTAINTY EDITION
 ### Date: Mon 10 Aug 2026 02:20:39 CEST in Warsaw
 ### Enjoy certainty from backup to failback

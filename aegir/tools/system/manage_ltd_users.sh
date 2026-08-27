@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=588844ltsT01
+export _xSrl=588855ltsT01
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 # The || binds to tr (rc 0 on empty input), so the fallback never fired.

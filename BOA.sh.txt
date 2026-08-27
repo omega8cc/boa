@@ -45,8 +45,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=588844ltsT01
-export _rLsn="BOA-5.88.844"
+export _xSrl=588855ltsT01
+export _rLsn="BOA-5.88.855"
 
 ###
 ### Avoid too many questions
@@ -4276,13 +4276,13 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f98 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f77 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f20 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f19 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f54 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f96 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f96 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f89 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f87 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f95 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f99 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f97 --guard /local/bin/codebasecheck
