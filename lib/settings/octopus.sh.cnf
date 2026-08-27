@@ -831,8 +831,8 @@ _BOA_REPO_GIT_URL="${_gitHub}"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
-export _tRee=dev
-export _xSrl=588855devT01
+export _tRee=pro
+export _xSrl=588855proT01
 
 
 ###
