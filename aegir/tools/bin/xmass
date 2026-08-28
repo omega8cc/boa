@@ -1857,9 +1857,10 @@ _check_root() {
   # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   [ -e "/root/.my.cnf" ] || _die "/root/.my.cnf missing — MySQL credentials required"
-  _DF_TEST="$(df -P -l / 2>/dev/null | awk '
+  _DF_TEST="$(LC_ALL=C command df -P -l / 2>/dev/null | awk '
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
-    NR==2 { gsub(/%/,"",$u); print $u }')"
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
   # reset-phase only rewrites one line of the state file. Refusing it on a full
   # disk locks the operator out of the recovery verb exactly when a stalled
   # migration is the likely reason the disk filled. autosync is exempt for the

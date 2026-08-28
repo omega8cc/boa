@@ -1650,7 +1650,7 @@ _get_test_mounts() {
 _df_get_used_pct() {
   # $1 = mountpoint
   local _mp="$1"
-  command df -P -l "${_mp}" 2>/dev/null | awk '
+  LC_ALL=C command df -P -l "${_mp}" 2>/dev/null | awk '
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
     NR==2 { if (u>0) { gsub(/%/,"",$u); print $u } }
   '
@@ -1660,7 +1660,7 @@ _df_get_used_pct() {
 _df_get_iused_pct() {
   # $1 = mountpoint
   local _mp="$1"
-  command df -P -i -l "${_mp}" 2>/dev/null | awk '
+  LC_ALL=C command df -P -i -l "${_mp}" 2>/dev/null | awk '
     NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
     NR==2 { if (u>0) { gsub(/%/,"",$u); print $u } }
   '
