@@ -138,6 +138,50 @@ export PYTHONPATH="/usr/local/lib/python${_PTN_MNR}/site-packages"
 
 _DCY_PTN="/usr/local/bin/python3"
 _DCY_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV}"
+_PTN_BIN="/usr/local/bin/python${_PTN_MNR}"
+_PIPX_VNV="/opt/pipx/venvs/venvs"
+
+# The pin is only honoured when the venv actually runs on the pinned
+# interpreter. A version match alone can hide a mixed venv: a box that
+# jumps python and installs the pin in the same run ends with packages
+# under the old lib tree, bin/python on the old binary, and pyvenv.cfg
+# claiming the new version -- then silently depends on the old binary
+# surviving. Field-verified on a box doing exactly that jump.
+_duplicity_venv_on_pin() {
+  local _VNV_PYT
+  _VNV_PYT="$(readlink -f "${_PIPX_VNV}/duplicity/bin/python" 2>/dev/null)"
+  [[ "${_VNV_PYT}" == *"python${_PTN_MNR}" ]] \
+    && [ -x "${_VNV_PYT}" ] \
+    && [ -d "${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity" ]
+}
+
+# pipx install --force reuses an existing venv AND its interpreter -- it
+# ignores --python on that path by design -- so a venv created under an
+# older python must be removed first to be recreated on the pin.
+_pipx_install_pinned() {
+  local _PIP_PKG="$1"
+  local _PIP_VNV="$2"
+  local _VNV_PYT
+  if [ -d "${_PIPX_VNV}/${_PIP_VNV}" ]; then
+    _VNV_PYT="$(readlink -f "${_PIPX_VNV}/${_PIP_VNV}/bin/python" 2>/dev/null)"
+    if [[ "${_VNV_PYT}" != *"python${_PTN_MNR}" ]] || [ ! -x "${_VNV_PYT}" ]; then
+      echo "Recreating the ${_PIP_VNV} venv on python${_PTN_MNR}; found ${_VNV_PYT:-no interpreter}"
+      rm -rf "${_PIPX_VNV:?}/${_PIP_VNV:?}"
+    fi
+  fi
+  if [ -d "${_PIPX_VNV}/${_PIP_VNV}" ]; then
+    # Existing venv already on the pin; pipx ignores --python next to
+    # --force anyway (with a warning), so omit it on this path
+    pipx install "${_PIP_PKG}" --include-deps --force
+  else
+    pipx install "${_PIP_PKG}" --python "${_PTN_BIN}" --include-deps --force
+  fi
+  _VNV_PYT="$(readlink -f "${_PIPX_VNV}/${_PIP_VNV}/bin/python" 2>/dev/null)"
+  if [[ "${_VNV_PYT}" != *"python${_PTN_MNR}" ]]; then
+    echo "ERROR: the ${_PIP_VNV} venv runs on ${_VNV_PYT:-no interpreter}, not the pinned python${_PTN_MNR}"
+    exit 1
+  fi
+}
 
 if [ "$1" != "help" ]; then
   # Check the Python version to ensure we're using the correct one
@@ -231,6 +275,7 @@ _install() {
     && [ -L "/usr/local/bin/jp.py" ] \
     && [ -L "/usr/local/bin/duplicity" ] \
     && [ -L "/usr/local/bin/aws" ] \
+    && _duplicity_venv_on_pin \
     && [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
     echo "Latest duplicity version ${_DCY_VRN} already installed"
   else
@@ -317,20 +362,24 @@ _install() {
       # Pinned: an unpinned install delivers latest-at-install-time, so
       # the fleet drifts across duplicity versions and the version
       # checks here can never match once upstream moves
-      pipx install "duplicity==${_DCY_VRN}" --include-deps --force
-      pipx install awscli --include-deps --force
-      pipx install boto3 --include-deps --force
+      _pipx_install_pinned "duplicity==${_DCY_VRN}" duplicity
+      _pipx_install_pinned awscli awscli
+      _pipx_install_pinned boto3 boto3
     else
       echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
       exit 1
     fi
     _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
-    if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
-      echo "Installation complete!"
-    else
+    if [[ ! "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
       echo "Installation failed with ${_DCY_TEST}"
       exit 1
     fi
+    if ! _duplicity_venv_on_pin; then
+      echo "Installation failed: the duplicity venv is not on python${_PTN_MNR}"
+      echo "Interpreter: $(readlink -f "${_PIPX_VNV}/duplicity/bin/python" 2>/dev/null)"
+      exit 1
+    fi
+    echo "Installation complete!"
   fi
 }
 
