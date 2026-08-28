@@ -230,6 +230,37 @@ _install() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
+    # Decide the Python source rebuild up front and stage its source
+    # tree FIRST: the purge below is irreversible, so a missing or
+    # truncated tar (mirrors can soft-404) must abort while the box
+    # still has working backup tooling. The rebuild test reads only the
+    # source-built /usr/local python, which nothing between here and
+    # the build touches.
+    _PTN_BUILD=NO
+    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
+      || [ ! -x "${_DCY_PTN}" ]; then
+      _PTN_BUILD=YES
+      mkdir -p /var/opt
+      cd /var/opt || { echo "Cannot enter /var/opt"; exit 1; }
+      rm -rf Python*
+      # wget rc alone proves nothing on a soft-404, so the guarded
+      # extraction doubles as the payload check
+      wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
+      if [ ! -s "Python-${_PTN_VRN}.tgz" ] \
+        || ! tar -xzf "Python-${_PTN_VRN}.tgz"; then
+        echo "Python ${_PTN_VRN} source archive missing or invalid on ${_urlDev}"
+        echo "Aborting before any change to the installed backup tooling"
+        exit 1
+      fi
+      cd
+    fi
+    # The startup busy gate has aged by a mirror probe and a fetch by
+    # now; re-assert it on the brink of the irreversible steps
+    if (( $(pgrep -fc duplicity) > 0 )); then
+      echo "Active duplicity process detected, aborting before any change to the installed backup tooling"
+      exit 1
+    fi
     aptitude purge duplicity -y
     rm -f /usr/local/bin/duplicity
     rm -f /usr/local/bin/jp.py
@@ -244,21 +275,25 @@ _install() {
         rclone \
         rdiff \
         tzdata
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
-      || [ ! -x "${_DCY_PTN}" ]; then
-      cd /var/opt
-      rm -rf Python*
-      wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
-      tar -xzf Python-${_PTN_VRN}.tgz
-      cd Python-${_PTN_VRN}
+    if [ "${_PTN_BUILD}" = "YES" ]; then
+      cd "/var/opt/Python-${_PTN_VRN}" || { echo "Cannot enter the Python source tree"; exit 1; }
       if [ -d "/usr/local/ssl3" ]; then
-        bash ./configure --with-openssl=/usr/local/ssl3
+        _PTN_SSL=/usr/local/ssl3
       else
-        bash ./configure --with-openssl=/usr/local/ssl
+        _PTN_SSL=/usr/local/ssl
       fi
-      make -j $(nproc) --quiet
-      make install --quiet
+      if ! bash ./configure --with-openssl="${_PTN_SSL}"; then
+        echo "Python ${_PTN_VRN} configure failed"
+        exit 1
+      fi
+      if ! make -j $(nproc) --quiet; then
+        echo "Python ${_PTN_VRN} make failed"
+        exit 1
+      fi
+      if ! make install --quiet; then
+        echo "Python ${_PTN_VRN} make install failed"
+        exit 1
+      fi
       cd
     fi
     _PTN_TEST=$(${_DCY_PTN} --version 2>&1)

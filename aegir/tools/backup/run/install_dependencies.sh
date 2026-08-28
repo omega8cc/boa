@@ -192,14 +192,30 @@ _python_install_src() {
   _PTN_TEST=$(python3 --version 2>&1)
   if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
     || [ ! -x "${_DCY_PTN}" ]; then
-    cd /var/opt
+    mkdir -p /var/opt
+    cd /var/opt || { echo "Cannot enter /var/opt"; exit 1; }
     rm -rf Python*
+    # wget rc alone proves nothing on a soft-404, so the guarded
+    # extraction doubles as the payload check
     wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
-    tar -xzf Python-${_PTN_VRN}.tgz
-    cd Python-${_PTN_VRN}
-    bash ./configure --with-openssl=/usr/local/ssl3
-    make -j $(nproc) --quiet
-    make install --quiet
+    if [ ! -s "Python-${_PTN_VRN}.tgz" ] \
+      || ! tar -xzf "Python-${_PTN_VRN}.tgz"; then
+      echo "Python ${_PTN_VRN} source archive missing or invalid on ${_urlDev}"
+      exit 1
+    fi
+    cd "Python-${_PTN_VRN}" || { echo "Cannot enter the Python source tree"; exit 1; }
+    if ! bash ./configure --with-openssl=/usr/local/ssl3; then
+      echo "Python ${_PTN_VRN} configure failed"
+      exit 1
+    fi
+    if ! make -j $(nproc) --quiet; then
+      echo "Python ${_PTN_VRN} make failed"
+      exit 1
+    fi
+    if ! make install --quiet; then
+      echo "Python ${_PTN_VRN} make install failed"
+      exit 1
+    fi
     cd
   fi
   _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
