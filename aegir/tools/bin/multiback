@@ -639,13 +639,41 @@ _test() {
   echo "Running ${_BUCKET_NAME} connection test, please wait..."
   echo "Command is ${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET}"
   _ConnTest=$(${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET} 2>&1)
-  if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
+  _ConnRC=$?
+  # A non-zero duplicity exit fails the test -- auth and URL errors never
+  # matched the historic patterns and reported a false OK. The patterns
+  # stay as a net for faults duplicity reports without a failing exit.
+  # Message-only by design: a non-zero multiback exit here would make
+  # backchain abort a chain that still has a backup to run.
+  if [[ "${_ConnRC}" -ne 0 ]] \
+    || [[ "${_ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${_ConnTest}" =~ "does not exist" ]] \
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo "Sorry, I can't connect to ${_BUCKET_NAME}"
+    # Raw duplicity output goes to a side log: _LOGFILE is later grepped
+    # for the repair and OK/ERR sentinels, so foreign text stays out.
+    # The b2 target embeds credentials and error text can quote the URL
+    # or bare netloc, so URL userinfo is stripped and the b2 values are
+    # redacted wherever they appear (URL-encoded, hence glob-safe); the
+    # file stays root-only, and appending keeps same-day runs a report
+    # already points to.
+    _ConnErrLog="${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.conn-test-err.log"
+    touch "${_ConnErrLog}"
+    chmod 600 "${_ConnErrLog}"
+    _ConnScrub=$(echo "${_ConnTest}" | sed 's|://[^@[:space:]]*@|://|g')
+    if [[ -n "${B2_APPLICATION_KEY}" ]]; then
+      _ConnScrub="${_ConnScrub//${B2_APPLICATION_KEY}/[redacted]}"
+    fi
+    if [[ -n "${B2_ACCOUNT_ID}" ]]; then
+      _ConnScrub="${_ConnScrub//${B2_ACCOUNT_ID}/[redacted]}"
+    fi
+    echo "--- $(date) exit code ${_ConnRC} ---" >> "${_ConnErrLog}"
+    echo "${_ConnScrub}" >> "${_ConnErrLog}"
     echo >> ${_LOGFILE}
     echo "Sorry, I can't connect to ${_BUCKET_NAME}" >> ${_LOGFILE}
-    echo "Please check if the bucket has expected name:" >> ${_LOGFILE}
+    echo "The duplicity exit code was ${_ConnRC}" >> ${_LOGFILE}
+    echo "Full output: ${_ConnErrLog}" >> ${_LOGFILE}
+    echo "Please check the credentials and if the bucket has expected name:" >> ${_LOGFILE}
     echo " ${_BUCKET_NAME}" >> ${_LOGFILE}
     echo "This bucket must exist in the specified ${_SERVICE} region" >> ${_LOGFILE}
     echo >> ${_LOGFILE}
