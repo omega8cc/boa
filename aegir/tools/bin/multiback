@@ -784,8 +784,11 @@ _check_if_worked_cleanly_or_log_err() {
 # drives duplicity's backend layer directly under the interpreter that
 # runs duplicity itself: same target URL, same credentials env, every
 # supported scheme. Only files duplicity's own naming parser recognizes
-# are deleted, and the driver re-lists to verify none survived, so a
-# failure can never masquerade as a completed wipe.
+# are deleted, and deleting repeats until a re-list comes back clean, so
+# a failure can never masquerade as a completed wipe. A clean listing is
+# the strongest proof this layer has: bucket-level versioning or
+# soft-delete can retain unlisted older versions no duplicity backend
+# exposes, so the driver states the limit instead of overclaiming.
 _wipe() {
   local _dcyBin _pyBin _wipeOut _wipeRC _wipeScrub
   echo "Running wipe via duplicity backend-level deletion for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
@@ -826,6 +829,11 @@ while args:
         print(f"wipe driver: unknown target option: {flag}")
         sys.exit(2)
 
+# The delete-pass loop already re-attempts anything still listed, so
+# duplicity's default 5 spaced attempts per call would only multiply
+# the worst case (all output is captured, so a stall is silent).
+config.num_retries = 2
+
 try:
     backend.import_backends()
     remote = backend.get_backend(url)
@@ -838,17 +846,35 @@ try:
     if foreign:
         print(f"wipe driver: leaving {foreign} non-duplicity file(s) untouched")
     if doomed:
-        print(f"wipe driver: deleting {len(doomed)} duplicity file(s)")
-        for f in doomed:
-            print(f"wipe driver: deleting {f.decode('ascii', 'replace')}")
-        remote.delete(doomed)
-        left = [f for f in remote.list() if file_naming.parse(f)]
-        if left:
-            print(f"wipe driver: FAILED: {len(left)} duplicity file(s) survived deletion")
-            sys.exit(1)
-        print(f"wipe driver: verified: all {len(doomed)} duplicity file(s) deleted")
+        # A deleted name can come back in the next listing: on a
+        # versioning bucket removing the newest version reveals the one
+        # below it (b2 deletes exactly one version per call), and the
+        # backend wrapper downgrades per-file delete failures to
+        # warnings. So deleting repeats until a listing comes back
+        # clean; the verified claim rests on an empty listing, never on
+        # delete calls having been issued.
+        issued = 0
+        passes = 0
+        while True:
+            passes += 1
+            print(f"wipe driver: deleting {len(doomed)} duplicity file(s)")
+            for f in doomed:
+                print(f"wipe driver: deleting {f.decode('ascii', 'replace')}")
+            remote.delete(doomed)
+            issued += len(doomed)
+            doomed = [f for f in remote.list() if file_naming.parse(f)]
+            if not doomed:
+                break
+            if passes == 5:
+                print(f"wipe driver: FAILED: {len(doomed)} duplicity file(s) still listed after {passes} delete passes")
+                print("wipe driver: re-running purge continues the wipe if deletions were succeeding")
+                sys.exit(1)
+            print(f"wipe driver: {len(doomed)} duplicity file(s) listed again -- older versions revealed or a delete failed; deleting again")
+        print(f"wipe driver: verified: no duplicity-named files remain listed at the target ({issued} deletion(s) in {passes} pass(es))")
     else:
         print("wipe driver: no duplicity files at the target, nothing to delete")
+    if not url.lower().startswith("file:"):
+        print("wipe driver: note: bucket-level versioning or soft-delete, where enabled, can retain unlisted older versions this client cannot see; those follow the provider's lifecycle settings")
 except SystemExit:
     raise
 except Exception as e:

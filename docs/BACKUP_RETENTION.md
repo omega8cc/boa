@@ -66,7 +66,7 @@ These settings ensure:
 
 3. **`remove-all-but-n-full` Not Used**:
    - Routine cleanup does not use `remove-all-but-n-full`, as it is unsuitable for trimming live backups. It deletes full backups and their associated incremental chains, which can disrupt active backup sets.
-   - The `purge` action does not use it either. Duplicity has no command that can empty a repository — every removal command keeps the newest chain — so `purge` wipes a bucket by deleting every file Duplicity's own naming parser recognizes at the target, directly through Duplicity's backend layer (same interpreter, target URL, and credentials as the backup runs; files not created by Duplicity are left untouched). It then re-lists the target to verify no Duplicity files survived and removes the local Duplicity cache for the backup set. If the wipe fails, `purge` reports the failure loudly and exits non-zero without printing a collection status; the closing collection status appears only after a verified wipe.
+   - The `purge` action does not use it either. Duplicity has no command that can empty a repository — every removal command keeps the newest chain — so `purge` wipes a bucket by deleting every file Duplicity's own naming parser recognizes at the target, directly through Duplicity's backend layer (same interpreter, target URL, and credentials as the backup runs; files not created by Duplicity are left untouched). It repeats the deletion until a re-list comes back clean (on a versioning bucket removing the newest version of a name can reveal the one below it), then removes the local Duplicity cache for the backup set. A clean listing is the strongest proof this layer has: bucket-level versioning or soft-delete, where enabled, can retain unlisted older versions no Duplicity backend can see -- the wipe notes this limit in its log; such remnants follow the provider's own lifecycle settings. If the wipe fails, `purge` reports the failure loudly and exits non-zero without printing a collection status; the closing collection status appears only after a verified wipe.
 
 ---
 
@@ -157,7 +157,7 @@ To ensure your retention settings work as intended:
 
 2. **Why isn't `remove-all-but-n-full` used for routine retention?**
    - For trimming live backups it would delete full backups and their associated incremental chains, which can disrupt them, so time-based retention is used instead.
-   - It is not used at all: even the `purge` action, which empties a bucket completely, works by deleting every Duplicity-recognized file at the target through Duplicity's backend layer and verifying the target is empty, because no Duplicity command can empty a repository.
+   - It is not used at all: even the `purge` action, which empties a bucket completely, works by deleting every Duplicity-recognized file at the target through Duplicity's backend layer, repeated until a re-list is clean, because no Duplicity command can empty a repository.
 
 3. **Can I customize settings for different storage services?**
    - Yes, you can define different retention settings for each service (e.g., AWS, B2) in their respective credentials files.
