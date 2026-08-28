@@ -12,6 +12,19 @@ _check_root() {
 }
 _check_root
 
+# Log file shared with the remote_backups config validators -- the nightly
+# caller discards both stdout and stderr, so refusals must land somewhere
+# durable. Callers pass an already bounded, printable message: this log is
+# fed from tenant-owned files and is not rotated.
+_VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
+
+_log_issue() {
+  local _type="$1"
+  local _file="$2"
+  local _message="$3"
+  echo "[$(date)] Validation issue: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
+}
+
 # -----------------------------------------------------------------------------
 # 1) Identify which user references which DB by scanning vhosts
 # -----------------------------------------------------------------------------
@@ -169,77 +182,93 @@ done
 echo "Performing cleanup of old backups based on dBackupCycle.info..."
 
 for _user in "${!_all_involved_users[@]}"; do
-  _days_to_keep=
+  _cycle_value=
+  _days_to_keep=14
   _cycle_file="/data/disk/${_user}/static/control/dBackupCycle.info"
 
-  # If empty or missing, default to 14 days
-  if [ ! -s "${_cycle_file}" ]; then
-    _days_to_keep=14
+  # The override is tenant-authored and its number drives a root-run delete,
+  # so the WHOLE file must be one plain number of days: edge whitespace (CR
+  # included) trimmed, digits only, at most four of them, not zero -- find
+  # -mtime +0 would purge everything older than a day. A value not written
+  # as one is IGNORED in favour of the default window, never obeyed and
+  # never a reason to stop: the cleanup always runs, or an unreadable
+  # override would let the store grow against the account's own quota.
+  # Only a regular file is read; a link or device planted at that path is
+  # ignored the same way.
+  if [ -L "${_cycle_file}" ] \
+    || { [ -e "${_cycle_file}" ] && [ ! -f "${_cycle_file}" ]; }; then
+    echo "Warning: ${_cycle_file} is not a plain file. Using the default ${_days_to_keep} days for ${_user}."
+    _log_issue "${_user}" "${_cycle_file}" "Cycle file is not a plain file"
+  elif [ -s "${_cycle_file}" ]; then
+    # Bounded read: no valid value is long, and what is read is echoed to
+    # the log, so never pull an arbitrary tenant file into root's memory
+    _cycle_value=$(head -c 64 "${_cycle_file}" 2>/dev/null)
+    _cycle_value="${_cycle_value#"${_cycle_value%%[![:space:]]*}"}"
+    _cycle_value="${_cycle_value%"${_cycle_value##*[![:space:]]}"}"
+    if [[ "${_cycle_value}" =~ ^[0-9]{1,4}$ ]] && [ "$((10#${_cycle_value}))" -gt 0 ]; then
+      _days_to_keep="$((10#${_cycle_value}))"
+    elif [ -n "${_cycle_value}" ]; then
+      # Report only what was really written: a file cleared in place still
+      # holds its newline, and that is the documented empty case
+      _shown="${_cycle_value//[^[:print:]]/?}"
+      echo "Warning: ${_cycle_file} does not hold a plain non-zero number of days. Using the default ${_days_to_keep} days for ${_user}."
+      _log_issue "${_user}" "${_cycle_file}" "Invalid cycle value: ${_shown:0:32}"
+    fi
   fi
 
-  # If user has a file OR we have a default
-  if [ -s "${_cycle_file}" ] || [ -n "${_days_to_keep}" ]; then
-    # If the file is non-empty, parse it
-    if [ -s "${_cycle_file}" ]; then
-      _days_to_keep=$(tr -d '[:space:]' < "${_cycle_file}")
-      # Keep only digits
-      _days_to_keep="${_days_to_keep//[^0-9]/}"
-    fi
-
-    if [[ "${_days_to_keep}" =~ ^[0-9]+$ ]]; then
-      _dbk="/data/disk/${_user}/static/files/dbackup"
-      # static/ is tenant-writable, so a symlinked dbackup/ may be a
-      # tenant-planted name -- and it is also a legitimate operator shape:
-      # a files store relocated onto attached storage (migratefs,
-      # FILES-SYMLINK.md) links dbackup/ onto the mount. A trailing slash
-      # would make root's find walk and purge whatever the link names, so
-      # resolve BOTH sides first and accept only BOA's own store layouts,
-      # strictly below them: the account's static/files store as it resolves
-      # (itself a link on a relocated account), or the attached mount's copy
-      # of that store. "dbackup -> ../" (the store root), /etc and another
-      # account are refused alike. The single-mount detector is the one
-      # manage_ltd_users.sh uses: empty on none OR more than one mount, so
-      # an ambiguous box refuses rather than guesses. The walk then starts
-      # one level below the resolved dir so the start dir itself is never
-      # removed.
-      if [ -L "${_dbk}" ]; then
-        _dbk_real=$(readlink -f "${_dbk}" 2>/dev/null)
-        _sto_real=$(readlink -f "/data/disk/${_user}/static/files" 2>/dev/null)
-        _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); _n=0; _hit=; for _m in /mnt/*; do
-          [ -d "${_m}" ] || continue
-          if mountpoint -q "${_m}" 2>/dev/null \
-            || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
-            _hit="${_m}"; _n=$((_n + 1))
-          fi
-        done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :)
-        _dbk_ok=NO
-        if [ -n "${_dbk_real}" ] && [ -n "${_sto_real}" ]; then
-          case "${_dbk_real}" in
-            "${_sto_real}"/?*) _dbk_ok=YES ;;
-          esac
-        fi
-        if [ "${_dbk_ok}" != "YES" ] && [ -n "${_dbk_real}" ] && [ -n "${_mntPoint}" ]; then
-          case "${_dbk_real}" in
-            "${_mntPoint}/files/${_user}/static/files"/?*) _dbk_ok=YES ;;
-          esac
-        fi
-        if [ "${_dbk_ok}" != "YES" ]; then
-          echo "Warning: ${_dbk} resolves outside the account's files store (${_dbk_real:-unresolvable}). Skipping cleanup for ${_user}."
-          continue
-        fi
-        _dbk="${_dbk_real}"
+  _dbk="/data/disk/${_user}/static/files/dbackup"
+  # static/ is tenant-writable, so a symlinked dbackup/ may be a
+  # tenant-planted name -- and it is also a legitimate operator shape:
+  # a files store relocated onto attached storage (migratefs,
+  # FILES-SYMLINK.md) links dbackup/ onto the mount. A trailing slash
+  # would make root's find walk and purge whatever the link names, so
+  # resolve BOTH sides first and accept only BOA's own store layouts,
+  # strictly below them: the account's static/files store as it resolves
+  # (itself a link on a relocated account), or the attached mount's copy
+  # of that store. "dbackup -> ../" (the store root), /etc and another
+  # account are refused alike. The single-mount detector is the one
+  # manage_ltd_users.sh uses: empty on none OR more than one mount, so
+  # an ambiguous box refuses rather than guesses. The walk then starts
+  # one level below the resolved dir so the start dir itself is never
+  # removed.
+  if [ -L "${_dbk}" ]; then
+    _dbk_real=$(readlink -f "${_dbk}" 2>/dev/null)
+    _sto_real=$(readlink -f "/data/disk/${_user}/static/files" 2>/dev/null)
+    _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); _n=0; _hit=; for _m in /mnt/*; do
+      [ -d "${_m}" ] || continue
+      if mountpoint -q "${_m}" 2>/dev/null \
+        || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
+        _hit="${_m}"; _n=$((_n + 1))
       fi
-      [ -d "${_dbk}" ] || continue
-      echo "User: ${_user}; removing backups older than ${_days_to_keep} days..."
-      find "${_dbk}" -mindepth 1 \
-        -type f -mtime +${_days_to_keep} -exec rm -f {} \;
-      # Optionally remove empty directories, too:
-      find "${_dbk}" -mindepth 1 -depth \
-        -type d -empty -delete
-    else
-      echo "Warning: ${_cycle_file} does not contain a valid integer. Skipping cleanup for ${_user}."
+    done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :)
+    _dbk_ok=NO
+    if [ -n "${_dbk_real}" ] && [ -n "${_sto_real}" ]; then
+      case "${_dbk_real}" in
+        "${_sto_real}"/?*) _dbk_ok=YES ;;
+      esac
     fi
+    if [ "${_dbk_ok}" != "YES" ] && [ -n "${_dbk_real}" ] && [ -n "${_mntPoint}" ]; then
+      case "${_dbk_real}" in
+        "${_mntPoint}/files/${_user}/static/files"/?*) _dbk_ok=YES ;;
+      esac
+    fi
+    if [ "${_dbk_ok}" != "YES" ]; then
+      echo "Warning: ${_dbk} resolves outside the account's files store (${_dbk_real:-unresolvable}). Skipping cleanup for ${_user}."
+      _log_issue "${_user}" "${_dbk}" "Store link resolves outside the account: ${_dbk_real:-unresolvable}"
+      continue
+    fi
+    _dbk="${_dbk_real}"
   fi
+  [ -d "${_dbk}" ] || continue
+  echo "User: ${_user}; removing backups older than ${_days_to_keep} days..."
+  # -delete, not -exec rm: the tree is tenant-owned, and find unlinks
+  # relative to the directory it already walked instead of handing an
+  # absolute path to a fresh process that resolves every component again
+  find "${_dbk}" -mindepth 1 \
+    -type f -mtime "+${_days_to_keep}" -delete
+  # Optionally remove empty directories, too:
+  find "${_dbk}" -mindepth 1 -depth \
+    -type d -empty -delete
 done
 
 echo "Cleanup completed."
