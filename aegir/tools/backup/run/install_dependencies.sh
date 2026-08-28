@@ -54,6 +54,58 @@ _check_openssl() {
   fi
 }
 
+_check_disk_headroom() {
+  # The Python source build is inode-hungry, not just byte-hungry: a fresh
+  # vanilla install measured ~51k inodes and ~1.7G end to end (staged
+  # source tree ~6.4k, installed tree ~9.8k, tool venvs ~30k, plus apt
+  # deps), an in-place upgrade ~22k -- while df -h still looks fine. On an
+  # inode-exhausted box the run fails late, mid-extraction, with a
+  # misleading bytes-flavoured "No space left on device" -- and such a box
+  # has already lost duplicity itself (no inode for a temp file), so
+  # refuse loudly before anything is fetched or written. Reclaiming space
+  # is the operator's call, never automated here. Floors are ~1.5x the
+  # measured fresh cost; staging, install and venv paths are each checked
+  # in case they live on different filesystems. LC_ALL pins the df header
+  # tokens; a filesystem without inode accounting (btrfs totals read
+  # zero) is exempt from the inode floor, and unparsable df output skips
+  # a check rather than blocking the install.
+  local _hdr_path _hdr_dev _hdr_seen="" _ino_tot _ino_free _kbs_free _hdr_fail=NO
+  local _ino_need=75000
+  local _kbs_need=2621440
+  for _hdr_path in /var/opt /usr/local /opt/pipx; do
+    [ -d "${_hdr_path}" ] || _hdr_path="${_hdr_path%/*}"
+    _hdr_dev="$(LC_ALL=C command df -P -l "${_hdr_path}" 2>/dev/null | awk 'NR==2 { print $1 }')"
+    if [ ! -z "${_hdr_dev}" ]; then
+      case " ${_hdr_seen} " in *" ${_hdr_dev} "*) continue ;; esac
+      _hdr_seen="${_hdr_seen} ${_hdr_dev}"
+    fi
+    _ino_tot=""
+    _ino_free=""
+    read -r _ino_tot _ino_free <<< "$(LC_ALL=C command df -P -l -i "${_hdr_path}" 2>/dev/null | awk '
+      NR==1 { for (i=1; i<=NF; i++) { if ($i=="Inodes") t=i; if ($i=="IFree") f=i } }
+      NR==2 && t && f { print $t, $f }')"
+    [[ "${_ino_tot}" =~ ^[0-9]+$ ]] || _ino_tot=0
+    [[ "${_ino_free}" =~ ^[0-9]+$ ]] || _ino_free=""
+    if [ "${_ino_tot}" -gt 0 ] && [ ! -z "${_ino_free}" ] && [ "${_ino_free}" -lt "${_ino_need}" ]; then
+      echo "ERROR: Not enough free inodes on ${_hdr_path}: ${_ino_free} free, ${_ino_need} required"
+      echo "ERROR: This is inode exhaustion, not disk space -- df -h can look fine while df -i is full"
+      _hdr_fail=YES
+    fi
+    _kbs_free="$(LC_ALL=C command df -P -l -k "${_hdr_path}" 2>/dev/null | awk '
+      NR==1 { for (i=1; i<=NF; i++) if ($i=="Available" || $i=="Avail") u=i }
+      NR==2 && u { print $u }')"
+    [[ "${_kbs_free}" =~ ^[0-9]+$ ]] || _kbs_free=""
+    if [ ! -z "${_kbs_free}" ] && [ "${_kbs_free}" -lt "${_kbs_need}" ]; then
+      echo "ERROR: Not enough free disk space on ${_hdr_path}: $(( _kbs_free / 1024 ))M free, $(( _kbs_need / 1024 ))M required"
+      _hdr_fail=YES
+    fi
+  done
+  if [ "${_hdr_fail}" = "YES" ]; then
+    echo "ERROR: Aborting before any download or change to the installed backup tooling"
+    exit 1
+  fi
+}
+
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -217,6 +269,7 @@ _install_duplicity() {
 }
 
 _python_install_src() {
+  _check_disk_headroom
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
