@@ -163,9 +163,10 @@ _check_root() {
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
-  _DF_TEST="$(command df -P -l / 2>/dev/null | awk '
+  _DF_TEST="$(LC_ALL=C command df -P -l / 2>/dev/null | awk '
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
-    NR==2 { gsub(/%/,"",$u); print $u }')"
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
@@ -177,6 +178,17 @@ _check_root() {
   if [ -z "${_AWS_VLV}" ]; then
     _AWS_VLV="warning"
   fi
+  # Verbosity floor for the legs that delete remote data. Duplicity 3.2.0.2+
+  # remove-older-than --force also deletes the newest backup set whenever that
+  # set is partial/incomplete, announcing it only at notice -- duplicity's own
+  # default, but below our 'warning' default, so the deletion never reached
+  # the report. Notice is also the only level where remove-older-than and
+  # cleanup --force list what they deleted; at 'warning' cleanup speaks only
+  # when it had nothing to do. A more verbose operator choice is respected.
+  case "${_AWS_VLV}" in
+    i|info|d|debug) _PRN_VLV="${_AWS_VLV}" ;;
+    *) _PRN_VLV="notice" ;;
+  esac
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   _cpuNr="$(cat /data/all/cpuinfo 2>/dev/null | tr -d '\n' || nproc 2>/dev/null)"
   if [ -n "${_cpuNr}" ]; then
@@ -301,7 +313,7 @@ _log_issue() {
 
 # Helper function to URL-encode using jq
 _url_encode() {
-  echo -n "$1" | jq -s -R -r @uri
+  printf '%s' "$1" | jq -s -R -r @uri
 }
 
 # Function to escape values
@@ -366,7 +378,11 @@ _validate_credentials() {
         continue
       fi
 
-      # Safely export the variable (URL-encode if needed)
+      # Safely export the variable. b2 alone embeds its key and secret
+      # inside the duplicity target URL, so a reserved character in
+      # either would corrupt the URL; percent-encode its values. Every
+      # other service authenticates via env vars, where an encoded
+      # value would break auth, so their values must stay verbatim.
       if [ "${_service}" = "b2" ]; then
         export ${_varname}=$(_url_encode "${_value}")
       else
@@ -588,6 +604,16 @@ _set_cmd() {
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
+  ### Utility command with encryption at the _PRN_VLV floor; only for the
+  ### legs that delete remote data (remove-older-than, cleanup --force),
+  ### so remote deletions are always logged. The purge wipe deletes via
+  ### the backend driver in _wipe and logs unconditionally.
+  export _DCY_PRN_CMD="/usr/local/bin/duplicity \
+    -v ${_PRN_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency ${_useCpu}"
+
   ### Custom backup command with encryption and enforced own FULL_BACKUP_FREQUENCY
   export _FBF_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
@@ -614,12 +640,21 @@ _set_cmd() {
     --no-encryption \
     --concurrency ${_useCpu}"
 
+  ### Custom prune command without encryption at the _PRN_VLV floor
+  export _NOE_PRN_CMD="/usr/local/bin/duplicity \
+    -v ${_PRN_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --no-encryption \
+    --concurrency ${_useCpu}"
+
   if [ "${_hostedSys}" = "YES" ]; then
     if [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
       export _DCY_BUP_CMD="${_FBF_BUP_CMD}"
     elif [ "${_user}" = "custom" ]; then
       export _DCY_BUP_CMD="${_NOE_BUP_CMD}"
       export _DCY_UTL_CMD="${_NOE_UTL_CMD}"
+      export _DCY_PRN_CMD="${_NOE_PRN_CMD}"
     fi
   fi
 
@@ -635,13 +670,41 @@ _test() {
   echo "Running ${_BUCKET_NAME} connection test, please wait..."
   echo "Command is ${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET}"
   _ConnTest=$(${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET} 2>&1)
-  if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
+  _ConnRC=$?
+  # A non-zero duplicity exit fails the test -- auth and URL errors never
+  # matched the historic patterns and reported a false OK. The patterns
+  # stay as a net for faults duplicity reports without a failing exit.
+  # Message-only by design: a non-zero multiback exit here would make
+  # backchain abort a chain that still has a backup to run.
+  if [[ "${_ConnRC}" -ne 0 ]] \
+    || [[ "${_ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${_ConnTest}" =~ "does not exist" ]] \
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo "Sorry, I can't connect to ${_BUCKET_NAME}"
+    # Raw duplicity output goes to a side log: _LOGFILE is later grepped
+    # for the repair and OK/ERR sentinels, so foreign text stays out.
+    # The b2 target embeds credentials and error text can quote the URL
+    # or bare netloc, so URL userinfo is stripped and the b2 values are
+    # redacted wherever they appear (URL-encoded, hence glob-safe); the
+    # file stays root-only, and appending keeps same-day runs a report
+    # already points to.
+    _ConnErrLog="${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.conn-test-err.log"
+    touch "${_ConnErrLog}"
+    chmod 600 "${_ConnErrLog}"
+    _ConnScrub=$(echo "${_ConnTest}" | sed 's|://[^@[:space:]]*@|://|g')
+    if [[ -n "${B2_APPLICATION_KEY}" ]]; then
+      _ConnScrub="${_ConnScrub//${B2_APPLICATION_KEY}/[redacted]}"
+    fi
+    if [[ -n "${B2_ACCOUNT_ID}" ]]; then
+      _ConnScrub="${_ConnScrub//${B2_ACCOUNT_ID}/[redacted]}"
+    fi
+    echo "--- $(date) exit code ${_ConnRC} ---" >> "${_ConnErrLog}"
+    echo "${_ConnScrub}" >> "${_ConnErrLog}"
     echo >> ${_LOGFILE}
     echo "Sorry, I can't connect to ${_BUCKET_NAME}" >> ${_LOGFILE}
-    echo "Please check if the bucket has expected name:" >> ${_LOGFILE}
+    echo "The duplicity exit code was ${_ConnRC}" >> ${_LOGFILE}
+    echo "Full output: ${_ConnErrLog}" >> ${_LOGFILE}
+    echo "Please check the credentials and if the bucket has expected name:" >> ${_LOGFILE}
     echo " ${_BUCKET_NAME}" >> ${_LOGFILE}
     echo "This bucket must exist in the specified ${_SERVICE} region" >> ${_LOGFILE}
     echo >> ${_LOGFILE}
@@ -666,8 +729,8 @@ _list() {
 
 _remove_older_than() {
   echo "Running remove-older-than ${KEEP_WITHIN} for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
-  ${_DCY_UTL_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_PRN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
+  ${_DCY_PRN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
@@ -681,8 +744,8 @@ _collection_status() {
 # Function to only repair incomplete backup sets
 _repair_only() {
   echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} cleanup --force ${_BACKUP_TARGET}"
-  ${_DCY_UTL_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_PRN_CMD} cleanup --force ${_BACKUP_TARGET}"
+  ${_DCY_PRN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
@@ -715,19 +778,148 @@ _check_if_worked_cleanly_or_log_err() {
   fi
 }
 
-# Function to wipe the bucket completely
+# Function to wipe the bucket completely. Duplicity 3.2.0.2 has no verb
+# that empties a repository: remove-all-but-n-full asserts on n=0, and
+# every removal verb keeps the newest matched chain by construction --
+# "manually purge the repository" is duplicity's own advice. So the wipe
+# drives duplicity's backend layer directly under the interpreter that
+# runs duplicity itself: same target URL, same credentials env, every
+# supported scheme. Only files duplicity's own naming parser recognizes
+# are deleted, and deleting repeats until a re-list comes back clean, so
+# a failure can never masquerade as a completed wipe. A clean listing is
+# the strongest proof this layer has: bucket-level versioning or
+# soft-delete can retain unlisted older versions no duplicity backend
+# exposes, so the driver states the limit instead of overclaiming.
 _wipe() {
-  echo "Running wipe via remove-all-but-n-full 0 --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
-  ${_DCY_UTL_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
-  wait
+  local _dcyBin _pyBin _wipeOut _wipeRC _wipeScrub
+  echo "Running wipe via duplicity backend-level deletion for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  _dcyBin=$(readlink -f /usr/local/bin/duplicity 2>/dev/null)
+  _pyBin=$(head -1 "${_dcyBin}" 2>/dev/null | tr -d '\r' | sed 's/^#!//; s/^[[:space:]]*//')
+  _pyBin="${_pyBin%% *}"
+  if [[ -z "${_pyBin}" ]] || [[ ! -x "${_pyBin}" ]]; then
+    echo "ERROR: wipe FAILED for ${_BUCKET_NAME}: no python interpreter behind /usr/local/bin/duplicity"
+    echo "ERROR: wipe FAILED for ${_BUCKET_NAME}: no python interpreter behind /usr/local/bin/duplicity" >> ${_LOGFILE}
+    return 1
+  fi
+  echo "Command is ${_pyBin} (duplicity backend wipe driver) ${_BACKUP_TARGET}"
+  _wipeOut=$("${_pyBin}" - ${_BACKUP_TARGET} 2>&1 <<'WIPEDRV'
+import sys
+
+try:
+    from duplicity import backend, config, file_naming, log
+except ImportError as e:
+    print(f"wipe driver: cannot import duplicity: {e}")
+    sys.exit(2)
+
+log.setup()
+
+args = sys.argv[1:]
+if not args:
+    print("wipe driver: no target URL given")
+    sys.exit(2)
+url = args.pop(0)
+while args:
+    flag = args.pop(0)
+    if flag == "--s3-endpoint-url" and args:
+        config.s3_endpoint_url = args.pop(0)
+    elif flag == "--s3-region-name" and args:
+        config.s3_region_name = args.pop(0)
+    elif flag == "--s3-use-ia":
+        pass
+    else:
+        print(f"wipe driver: unknown target option: {flag}")
+        sys.exit(2)
+
+# The delete-pass loop already re-attempts anything still listed, so
+# duplicity's default 5 spaced attempts per call would only multiply
+# the worst case (all output is captured, so a stall is silent).
+config.num_retries = 2
+
+try:
+    backend.import_backends()
+    remote = backend.get_backend(url)
+    if remote is None:
+        print("wipe driver: target is not a recognized backend URL")
+        sys.exit(2)
+    names = remote.list()
+    doomed = [f for f in names if file_naming.parse(f)]
+    foreign = len(names) - len(doomed)
+    if foreign:
+        print(f"wipe driver: leaving {foreign} non-duplicity file(s) untouched")
+    if doomed:
+        # A deleted name can come back in the next listing: on a
+        # versioning bucket removing the newest version reveals the one
+        # below it (b2 deletes exactly one version per call), and the
+        # backend wrapper downgrades per-file delete failures to
+        # warnings. So deleting repeats until a listing comes back
+        # clean; the verified claim rests on an empty listing, never on
+        # delete calls having been issued.
+        issued = 0
+        passes = 0
+        while True:
+            passes += 1
+            print(f"wipe driver: deleting {len(doomed)} duplicity file(s)")
+            for f in doomed:
+                print(f"wipe driver: deleting {f.decode('ascii', 'replace')}")
+            remote.delete(doomed)
+            issued += len(doomed)
+            doomed = [f for f in remote.list() if file_naming.parse(f)]
+            if not doomed:
+                break
+            if passes == 5:
+                print(f"wipe driver: FAILED: {len(doomed)} duplicity file(s) still listed after {passes} delete passes")
+                print("wipe driver: re-running purge continues the wipe if deletions were succeeding")
+                sys.exit(1)
+            print(f"wipe driver: {len(doomed)} duplicity file(s) listed again -- older versions revealed or a delete failed; deleting again")
+        print(f"wipe driver: verified: no duplicity-named files remain listed at the target ({issued} deletion(s) in {passes} pass(es))")
+    else:
+        print("wipe driver: no duplicity files at the target, nothing to delete")
+    if not url.lower().startswith("file:"):
+        print("wipe driver: note: bucket-level versioning or soft-delete, where enabled, can retain unlisted older versions this client cannot see; those follow the provider's lifecycle settings")
+except SystemExit:
+    raise
+except Exception as e:
+    print(f"wipe driver: FAILED: {e.__class__.__name__}: {e}")
+    sys.exit(1)
+sys.exit(0)
+WIPEDRV
+  )
+  _wipeRC=$?
+  # Same scrub as the connection test: strip URL userinfo and redact the
+  # b2 values wherever error text quotes them (URL-encoded, glob-safe).
+  _wipeScrub=$(echo "${_wipeOut}" | sed 's|://[^@[:space:]]*@|://|g')
+  if [[ -n "${B2_APPLICATION_KEY}" ]]; then
+    _wipeScrub="${_wipeScrub//${B2_APPLICATION_KEY}/[redacted]}"
+  fi
+  if [[ -n "${B2_ACCOUNT_ID}" ]]; then
+    _wipeScrub="${_wipeScrub//${B2_ACCOUNT_ID}/[redacted]}"
+  fi
+  echo "${_wipeScrub}" >> ${_LOGFILE}
+  if [[ "${_wipeRC}" -ne 0 ]]; then
+    echo "${_wipeScrub}"
+    echo "ERROR: wipe FAILED for ${_BUCKET_NAME} with exit code ${_wipeRC}"
+    echo "ERROR: remote backup data may still exist at the target"
+    echo "ERROR: wipe FAILED for ${_BUCKET_NAME} with exit code ${_wipeRC}" >> ${_LOGFILE}
+    echo "ERROR: remote backup data may still exist at the target" >> ${_LOGFILE}
+    return 1
+  fi
+  [[ -n "${_NAME}" ]] && rm -rf "/root/.cache/duplicity/${_NAME}"
+  echo "Wipe completed for ${_BUCKET_NAME}; local duplicity cache ${_NAME} removed"
+  echo "Wipe completed for ${_BUCKET_NAME}; local duplicity cache ${_NAME} removed" >> ${_LOGFILE}
 }
 
-# Function to purge all backup sets
+# Function to purge all backup sets. The wipe works at the backend level
+# and removes damaged collections too, so no repair leg runs first; the
+# collection status runs only after a verified wipe -- a failed wipe must
+# never be followed by a healthy-looking status report.
 _purge() {
-  _repair_only
-  _wipe
-  _collection_status
+  if _wipe; then
+    _collection_status
+  else
+    echo "Purge FAILED for ${_BUCKET_NAME}, see ${_LOGFILE}"
+    echo "Purge FAILED for ${_BUCKET_NAME}" >> ${_LOGFILE}
+    exit 1
+  fi
 }
 
 # Function to run weekly cleanup
@@ -923,16 +1115,24 @@ _set_backup_target() {
       _load_credentials "cloudflare" "${_user}"
       _construct_bucket_name "cloudflare" "${_user}"
 
-      # Custom endpoint for Cloudflare R2
+      # Credentials must go via env vars — the boto3 backend reads the
+      # whole URL netloc as the bucket name, never userinfo credentials;
+      # R2 expects the literal region "auto"
+      export AWS_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID}"
+      export AWS_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY}"
       local _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-
-      # Configure the S3 backup target
-      export _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
+      export _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_r2_endpoint} --s3-region-name auto"
       ;;
     do_spaces)
       _load_credentials "do_spaces" "${_user}"
       _construct_bucket_name "do_spaces" "${_user}"
-      export _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
+
+      # Credentials must go via env vars — the boto3 backend reads the
+      # whole URL netloc as the bucket name, never userinfo credentials
+      export AWS_ACCESS_KEY_ID="${DO_SPACES_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${DO_SPACES_SECRET}"
+      local _do_endpoint="https://${DO_SPACES_REGION}.digitaloceanspaces.com"
+      export _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_do_endpoint} --s3-region-name ${DO_SPACES_REGION}"
       ;;
     gcs)
       _load_credentials "gcs" "${_user}"
@@ -974,12 +1174,24 @@ _set_backup_target() {
     linode)
       _load_credentials "linode" "${_user}"
       _construct_bucket_name "linode" "${_user}"
-      export _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
+
+      # Credentials must go via env vars — the boto3 backend reads the
+      # whole URL netloc as the bucket name, never userinfo credentials
+      export AWS_ACCESS_KEY_ID="${LINODE_ACCESS_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${LINODE_SECRET_KEY}"
+      local _linode_endpoint="https://${LINODE_REGION}.linodeobjects.com"
+      export _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_linode_endpoint} --s3-region-name ${LINODE_REGION}"
       ;;
     wasabi)
       _load_credentials "wasabi" "${_user}"
       _construct_bucket_name "wasabi" "${_user}"
-      export _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
+
+      # Credentials must go via env vars — the boto3 backend reads the
+      # whole URL netloc as the bucket name, never userinfo credentials
+      export AWS_ACCESS_KEY_ID="${WASABI_ACCESS_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${WASABI_SECRET_KEY}"
+      local _wasabi_endpoint="https://s3.${WASABI_REGION}.wasabisys.com"
+      export _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_wasabi_endpoint} --s3-region-name ${WASABI_REGION}"
       ;;
     *)
       echo "Error: Unknown service ${_service}"
@@ -1090,6 +1302,7 @@ _remove_pid_file "${_PIDFILE}"
   export _BACKUP_TARGET=
   export _BUCKET_NAME=
   export _DCY_BUP_CMD=
+  export _DCY_PRN_CMD=
   export _DCY_UTL_CMD=
   export _EXCLUDE_LIST=
   export _FBF_BUP_CMD=
@@ -1099,6 +1312,7 @@ _remove_pid_file "${_PIDFILE}"
   export _MODE=
   export _NAME=
   export _NOE_BUP_CMD=
+  export _NOE_PRN_CMD=
   export _NOE_UTL_CMD=
   export _PIDFILE=
   export _RESTORE_PATH=
