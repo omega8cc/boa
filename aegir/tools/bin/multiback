@@ -177,6 +177,17 @@ _check_root() {
   if [ -z "${_AWS_VLV}" ]; then
     _AWS_VLV="warning"
   fi
+  # Verbosity floor for the legs that delete remote data. Duplicity 3.2.0.2+
+  # remove-older-than --force also deletes the newest backup set whenever that
+  # set is partial/incomplete, announcing it only at notice -- duplicity's own
+  # default, but below our 'warning' default, so the deletion never reached
+  # the report. Notice is also the only level where remove-older-than and
+  # cleanup --force list what they deleted; at 'warning' cleanup speaks only
+  # when it had nothing to do. A more verbose operator choice is respected.
+  case "${_AWS_VLV}" in
+    i|info|d|debug) _PRN_VLV="${_AWS_VLV}" ;;
+    *) _PRN_VLV="notice" ;;
+  esac
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   _cpuNr="$(cat /data/all/cpuinfo 2>/dev/null | tr -d '\n' || nproc 2>/dev/null)"
   if [ -n "${_cpuNr}" ]; then
@@ -592,6 +603,15 @@ _set_cmd() {
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
+  ### Utility command with encryption at the _PRN_VLV floor; only for the
+  ### legs that delete remote data (remove-older-than, cleanup --force,
+  ### remove-all-but-n-full), so remote deletions are always logged.
+  export _DCY_PRN_CMD="/usr/local/bin/duplicity \
+    -v ${_PRN_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency ${_useCpu}"
+
   ### Custom backup command with encryption and enforced own FULL_BACKUP_FREQUENCY
   export _FBF_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
@@ -618,12 +638,21 @@ _set_cmd() {
     --no-encryption \
     --concurrency ${_useCpu}"
 
+  ### Custom prune command without encryption at the _PRN_VLV floor
+  export _NOE_PRN_CMD="/usr/local/bin/duplicity \
+    -v ${_PRN_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --no-encryption \
+    --concurrency ${_useCpu}"
+
   if [ "${_hostedSys}" = "YES" ]; then
     if [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
       export _DCY_BUP_CMD="${_FBF_BUP_CMD}"
     elif [ "${_user}" = "custom" ]; then
       export _DCY_BUP_CMD="${_NOE_BUP_CMD}"
       export _DCY_UTL_CMD="${_NOE_UTL_CMD}"
+      export _DCY_PRN_CMD="${_NOE_PRN_CMD}"
     fi
   fi
 
@@ -698,8 +727,8 @@ _list() {
 
 _remove_older_than() {
   echo "Running remove-older-than ${KEEP_WITHIN} for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
-  ${_DCY_UTL_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_PRN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
+  ${_DCY_PRN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
@@ -713,8 +742,8 @@ _collection_status() {
 # Function to only repair incomplete backup sets
 _repair_only() {
   echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} cleanup --force ${_BACKUP_TARGET}"
-  ${_DCY_UTL_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_PRN_CMD} cleanup --force ${_BACKUP_TARGET}"
+  ${_DCY_PRN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
@@ -750,8 +779,8 @@ _check_if_worked_cleanly_or_log_err() {
 # Function to wipe the bucket completely
 _wipe() {
   echo "Running wipe via remove-all-but-n-full 0 --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
-  ${_DCY_UTL_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_PRN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
+  ${_DCY_PRN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
@@ -1142,6 +1171,7 @@ _remove_pid_file "${_PIDFILE}"
   export _BACKUP_TARGET=
   export _BUCKET_NAME=
   export _DCY_BUP_CMD=
+  export _DCY_PRN_CMD=
   export _DCY_UTL_CMD=
   export _EXCLUDE_LIST=
   export _FBF_BUP_CMD=
@@ -1151,6 +1181,7 @@ _remove_pid_file "${_PIDFILE}"
   export _MODE=
   export _NAME=
   export _NOE_BUP_CMD=
+  export _NOE_PRN_CMD=
   export _NOE_UTL_CMD=
   export _PIDFILE=
   export _RESTORE_PATH=
