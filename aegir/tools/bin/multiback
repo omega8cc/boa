@@ -230,8 +230,17 @@ _waiting_notify() {
   fi
 }
 
-_CNT=$(pgrep -fc duplicity)
-if (( _CNT > 0 )); then
+# Matched against genuine executions only: a python interpreter with a
+# duplicity script path as its argument, or duplicity as argv[0] -- the
+# same treatment as the _fetch_versioned guard. A bare substring pgrep
+# held backups back whenever any concurrent command line merely
+# mentioned the literal, e.g. a probe naming /root/.cache/duplicity/
+# paths, observed live.
+_CNT="$(pgrep -fc '^([^ ]*/)?python[0-9.]* [^ ]*duplicity( |$)' 2>/dev/null)"
+_CNT="${_CNT:-0}"
+_CNTD="$(pgrep -fc '^[^ ]*duplicity( |$)' 2>/dev/null)"
+_CNTD="${_CNTD:-0}"
+if (( _CNT + _CNTD > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   _waiting_notify
   exit 1
@@ -764,6 +773,10 @@ _check_if_repair() {
 
 # Function to check if backup worked cleanly or log the errors
 _check_if_worked_cleanly_or_log_err() {
+  # Dispatch-level _USER, never the wrapper's exported _user: a manual
+  # run inherits no _user, so the tenant branch collapsed to
+  # /data/disk//... and the OK/ERR file landed under /data/disk/static/.
+  local _user="${_USER}"
   if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
     local _logs_dir="/root/.remote_backups/logs"
   else
@@ -947,8 +960,31 @@ _run_backup() {
   export _FULL_BACK_CMD="${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
   echo "Running in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
-  ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
+  # Stderr is captured too: duplicity routes errors there, so without it
+  # the emailed log misses why a run failed and the no-signatures retry
+  # below has nothing to detect.
+  ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
+  _BUP_RC=$?
   wait
+  # An explicit incremental against a remote with no signatures is a
+  # fatal in duplicity, never a promotion -- only the implied-inc backup
+  # verb switches to full there. After an emptied remote (provider
+  # account swap, bucket wipe) the local archive log keeps voting
+  # incremental, so every leg would fatal forever. Retry once as full;
+  # _MODE is corrected first so the per-mode day log, the monthly-full
+  # gate and the emailed subject describe the run that happened.
+  if [ "${_BUP_RC}" -ne 0 ] \
+    && [ "${_MODE}" = "incremental" ] \
+    && grep -q "Old signatures not found and incremental specified" "${_LOGFILE}"; then
+    export _MODE="full"
+    _set_cmd
+    echo "Remote has no signatures; retrying in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+    echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
+    ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
+    _BUP_RC=$?
+    wait
+  fi
+  export _BUP_RC
   _print_env "multiback_run_backup"
 }
 
@@ -970,6 +1006,14 @@ _backup() {
   cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
   rm -f ${_LOGFILE}
   _print_env "multiback_backup"
+  # Propagated only after the classifier, cleanup and report steps, so
+  # the ERR file and the emailed log still happen on a failed backup.
+  # The sequential wrapper's verdict is this exit code; with it
+  # discarded a fatal run was reported as completed successfully. The
+  # EXIT trap's bare exit preserves this status after the pid cleanup.
+  if [ "${_BUP_RC:-0}" -ne 0 ]; then
+    exit "${_BUP_RC}"
+  fi
 }
 
 ### Legacy procedure for reference
@@ -1034,6 +1078,9 @@ _backup() {
 
 # Function to restore backup
 _restore() {
+  # Dispatch-level _USER, never the wrapper's exported _user (see
+  # _check_if_worked_cleanly_or_log_err)
+  local _user="${_USER}"
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
@@ -1301,6 +1348,7 @@ _remove_pid_file "${_PIDFILE}"
   export _ACTION=
   export _BACKUP_TARGET=
   export _BUCKET_NAME=
+  export _BUP_RC=
   export _DCY_BUP_CMD=
   export _DCY_PRN_CMD=
   export _DCY_UTL_CMD=
