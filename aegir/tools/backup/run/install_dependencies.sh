@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _PTN_VRN=3.14.6
 _PTN_MNR="${_PTN_VRN%.*}"
-_DCY_VRN=3.1.0
+_DCY_VRN=3.2.0.2
 _DCY_CMD="/usr/local/bin/duplicity"
 _DCY_PTN="/usr/local/bin/python${_PTN_MNR}"
 
@@ -133,23 +133,28 @@ _install_duplicity() {
   export PIPX_BIN_DIR=/usr/local/bin
   export PIPX_HOME=/opt/pipx/venvs
 
+  # Skip only the duplicity reinstall on a matching version; the other
+  # dependencies must still install on every run
   if [ -x "${_DCY_CMD}" ]; then
     _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
     if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
       echo "Already Installed ${_DCY_TEST}"
       if [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
-        exit 1
+        return 0
       fi
     fi
   fi
 
+  # Pinned: an unpinned install delivers latest-at-install-time, so the
+  # fleet drifts across duplicity versions and the check above can
+  # never match once upstream moves
   echo "Installing Duplicity ${_DCY_VRN}..."
-  pipx install duplicity --include-deps --force
+  pipx install "duplicity==${_DCY_VRN}" --include-deps --force
 
   _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
   echo "Just Installed ${_DCY_TEST}"
 
-  if [[ "${_DCY_TEST}" =~ "duplicity 3." ]]; then
+  if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
     echo "Duplicity installation complete!"
   else
     echo "Duplicity installation failed with ${_DCY_TEST}"
