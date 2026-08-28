@@ -705,14 +705,26 @@ _conn_test() {
   echo "Running AWS connection test, please wait..."
   echo "Command is ${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET}"
   _ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET} 2>&1)
-  ### echo _ConnTest is STR ${_ConnTest} END
-  if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
+  _ConnRC=$?
+  # A non-zero duplicity exit fails the test -- auth and URL errors never
+  # matched the historic patterns and reported a false OK. The patterns
+  # stay as a net for faults duplicity reports without a failing exit.
+  # Interactive verb: the exit 1 aborts nothing but this test, and the
+  # raw output goes to the terminal (env-var auth, no secrets in it).
+  if [[ "${_ConnRC}" -ne 0 ]] \
+    || [[ "${_ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo
     echo "  Sorry, I can't connect to ${_TARGET}"
-    echo "  Please check if the bucket has expected name: ${_BUCKET_NAME}"
+    echo "  The duplicity exit code was ${_ConnRC}"
+    echo "  Please check the credentials and if the bucket has expected name: ${_BUCKET_NAME}"
     echo "  This bucket must already exist in the ${_AWS_REG} AWS region"
     echo "  http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region"
+    echo
+    echo "  The duplicity output was:"
+    echo
+    echo "${_ConnTest}"
+    echo
     echo "  Bye"
     echo
     exit 1
