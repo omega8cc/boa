@@ -57,7 +57,7 @@ fi
 
 _PTN_VRN=3.14.6
 _PTN_MNR="${_PTN_VRN%.*}"
-_DCY_VRN=3.1.0
+_DCY_VRN=3.2.0.2
 _LOGPTH="/var/log/boa"
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
@@ -218,7 +218,8 @@ _install() {
   if [ "${_DUPLICITY_ITD}" = "${_DCY_VRN}" ] \
     && [ -L "/usr/local/bin/jp.py" ] \
     && [ -L "/usr/local/bin/duplicity" ] \
-    && [ -L "/usr/local/bin/aws" ]; then
+    && [ -L "/usr/local/bin/aws" ] \
+    && [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
     echo "Latest duplicity version ${_DCY_VRN} already installed"
   else
     echo "Installing duplicity dependencies..."
@@ -266,7 +267,10 @@ _install() {
       pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
       export PIPX_HOME=/opt/pipx/venvs
-      pipx install duplicity --include-deps --force
+      # Pinned: an unpinned install delivers latest-at-install-time, so
+      # the fleet drifts across duplicity versions and the version
+      # checks here can never match once upstream moves
+      pipx install "duplicity==${_DCY_VRN}" --include-deps --force
       pipx install awscli --include-deps --force
       pipx install boto3 --include-deps --force
     else
@@ -298,7 +302,9 @@ _duplicity_or_backboa_busy() {
   (( $(pgrep -fc duplicity) > 0 )) && return 0
   # A live backboa BETWEEN its sequential duplicity invocations counts as
   # busy too -- freeing in that gap would run two backup chains at once.
-  _bb="$(tr -dc '0-9' < "/run/${_HST}_backboa.pid" 2>/dev/null)"
+  # 2>/dev/null must precede the input redirect: redirections apply left
+  # to right, so a missing pid file otherwise prints to stderr
+  _bb="$(tr -dc '0-9' 2>/dev/null < "/run/${_HST}_backboa.pid")"
   [ -n "${_bb}" ] && kill -0 "${_bb}" 2>/dev/null && return 0
   return 1
 }
