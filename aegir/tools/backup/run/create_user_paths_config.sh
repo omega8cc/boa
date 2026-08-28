@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f62"
+export _sPid="f60"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -73,28 +73,44 @@ _log_issue() {
 }
 
 # Function to validate and merge configuration files
+# Appends to the output file -- the caller truncates it once per merge group,
+# so a validated user file extends the default set instead of replacing it
+# (README: user directives are merged with default system directives).
+# Invalid lines are logged and skipped individually; valid lines still apply.
 _validate_and_merge_paths() {
   local _file=$1
   local _user=$2
-  local _allowed_prefixes="'^/((data/disk/${_user}/static)|(home/${_user}\.ftp))"
   local _output_file=$3
   local _if_validate=$4
   local _invalid_paths_found=false
+  # Validation matches the whole line: directive, one space, one argument,
+  # end of line, in a conservative character set -- merged lines are
+  # flattened into a single duplicity command line, so every line must stay
+  # exactly one directive plus one safe argument, with no whitespace inside
+  # the argument. Regex metacharacters are accepted only after the -regexp
+  # directives, whose argument may begin with the documented ^ anchor and
+  # may regex-escape the FTP-home dot.
+  local _bs='\\'
+  local _path_shape="^--(include|exclude) /((data/disk/${_user}/static)|(home/${_user}[.]ftp))(/[A-Za-z0-9_.,+=@~/-]*)?$"
+  local _rgx_shape="^--(include|exclude)-regexp \^?/((data/disk/${_user}/static)|(home/${_user}${_bs}?[.]ftp))(/[][A-Za-z0-9_.,+=@~/\^*?-]*)?$"
 
-  # Ensure output file exists and is empty
-  > "${_output_file}"
+  while IFS= read -r _line || [ -n "${_line}" ]; do
+    # Trim edge whitespace, including the CR of a CRLF-edited file -- a
+    # cosmetic margin must not refuse an otherwise valid line
+    _line="${_line#"${_line%%[![:space:]]*}"}"
+    _line="${_line%"${_line##*[![:space:]]}"}"
 
-  while IFS= read -r _line; do
-    # Skip empty lines and comments
-    if [[ "${_line}" =~ ^\s*(#|$) ]]; then
-      echo "${_line}" >> "${_output_file}"
+    # Drop empty lines and comments -- the merged file is flattened into
+    # duplicity arguments, so they must never reach it
+    if [[ "${_line}" =~ ^[[:space:]]*(#|$) ]]; then
       continue
     fi
 
     if [ "${_if_validate}" = "YES" ]; then
       # Validate directives
       if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp) ]]; then
-        if echo "${_line}" | grep -Eq "^--(include|exclude|include-regexp|exclude-regexp) ${_allowed_prefixes}"; then
+        if echo "${_line}" | grep -Eq "${_path_shape}" \
+          || echo "${_line}" | grep -Eq "${_rgx_shape}"; then
           echo "${_line}" >> "${_output_file}"
         else
           _log_issue "${_user}" "${_file}" "Invalid path: ${_line}"
@@ -109,10 +125,8 @@ _validate_and_merge_paths() {
     fi
   done < "${_file}"
 
-  # If invalid paths were found, alert and skip merging
   if [ "${_invalid_paths_found}" = true ]; then
-    echo "Skipping invalid file '${_file}' for user '${_user}'."
-    > "${_output_file}" # Clear output to avoid invalid entries
+    echo "Skipped invalid lines in '${_file}' for user '${_user}'."
   fi
 }
 
@@ -192,7 +206,7 @@ EOF
 --include /data/disk/${_user}/static
 --include /home/${_user}.ftp
 EOF
-      rm -f "${_user_config_dir}/.backboa.${_user}.*.include.ctrl.file"
+      rm -f "${_user_config_dir}/.backboa.${_user}".*.include.ctrl.file
       touch "${_include_ctrl_file}"
     fi
 
@@ -212,7 +226,7 @@ EOF
 --exclude /home/${_user}.ftp/platforms
 --exclude /home/${_user}.ftp/static
 EOF
-      rm -f ${_user_config_dir}/.backboa.${_user}.*.exclude.ctrl.file
+      rm -f "${_user_config_dir}/.backboa.${_user}".*.exclude.ctrl.file
       touch "${_exclude_ctrl_file}"
     fi
 
@@ -229,18 +243,24 @@ EOF
     fi
 
     # Validate and merge system and user-space include files
+    # Each merged file starts fresh once per run; the passes below append
+    > "${_merged_include_file}"
     _validate_and_merge_paths "${_include_file}" "${_user}" "${_merged_include_file}" NO
     if [ -f "${_user_control_dir}/include.txt" ]; then
       _validate_and_merge_paths "${_user_control_dir}/include.txt" "${_user}" "${_merged_include_file}" YES
     fi
 
     # Validate and merge system and user-space exclude files
+    > "${_merged_exclude_file}"
     _validate_and_merge_paths "${_exclude_file}" "${_user}" "${_merged_exclude_file}" NO
     if [ -f "${_user_control_dir}/exclude.txt" ]; then
       _validate_and_merge_paths "${_user_control_dir}/exclude.txt" "${_user}" "${_merged_exclude_file}" YES
     fi
 
     # Validate and merge regexp include files
+    if [ -f "${_include_regexp_file}" ] || [ -f "${_user_control_dir}/include_regexp.txt" ]; then
+      > "${_merged_regexp_include_file}"
+    fi
     if [ -f "${_include_regexp_file}" ]; then
       _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_merged_regexp_include_file}" NO
     fi
@@ -249,6 +269,9 @@ EOF
     fi
 
     # Validate and merge regexp exclude files
+    if [ -f "${_exclude_regexp_file}" ] || [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
+      > "${_merged_regexp_exclude_file}"
+    fi
     if [ -f "${_exclude_regexp_file}" ]; then
       _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_merged_regexp_exclude_file}" NO
     fi
