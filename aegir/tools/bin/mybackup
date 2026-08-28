@@ -87,7 +87,7 @@ _log_issue() {
 
 # Helper function to URL-encode using jq
 _url_encode() {
-  echo -n "$1" | jq -s -R -r @uri
+  printf '%s' "$1" | jq -s -R -r @uri
 }
 
 # Function to escape values
@@ -131,12 +131,18 @@ _validate_credentials() {
         continue
       fi
 
-      # Safely export the variable (URL-encode if needed)
-      if [ "${_service}" = "b2" ]; then
-        export ${_varname}=$(_url_encode "${_value}")
-      else
-        export ${_varname}="${_value}"
-      fi
+      # Safely export the variable. These services embed the key and
+      # secret inside the duplicity target URL, so a reserved character
+      # in either would corrupt the URL; percent-encode their values.
+      # Services authenticating via env vars must stay verbatim.
+      case "${_service}" in
+        b2|cloudflare|do_spaces|linode|wasabi)
+          export ${_varname}=$(_url_encode "${_value}")
+          ;;
+        *)
+          export ${_varname}="${_value}"
+          ;;
+      esac
     else
       _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
     fi
