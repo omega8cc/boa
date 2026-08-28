@@ -121,6 +121,18 @@ if [ -z "${_AWS_VLV}" ]; then
   _AWS_VLV="warning"
 fi
 
+# Verbosity floor for the legs that delete remote data. Duplicity 3.2.0.2+
+# remove-older-than --force also deletes the newest backup set whenever that
+# set is partial/incomplete, announcing it only at notice -- duplicity's own
+# default, but below our 'warning' default, so the deletion never reached
+# the report. Notice is also the only level where remove-older-than and
+# cleanup --force list what they deleted; at 'warning' cleanup speaks only
+# when it had nothing to do. A more verbose operator choice is respected.
+case "${_AWS_VLV}" in
+  i|info|d|debug) _PRN_VLV="${_AWS_VLV}" ;;
+  *) _PRN_VLV="notice" ;;
+esac
+
 # Set extra environment variables
 export PYTHONPATH="/usr/local/lib/python${_PTN_MNR}/site-packages"
 
@@ -525,6 +537,13 @@ _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
   --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
   --s3-region-name ${_AWS_REG}"
 
+# Same flags at the _PRN_VLV floor; only for remove-older-than and
+# cleanup --force, so remote deletions are always logged.
+_DCY_PRN_CMD="/usr/local/bin/duplicity -v ${_PRN_VLV} \
+  --concurrency 4 \
+  --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
+  --s3-region-name ${_AWS_REG}"
+
 if [ -e "${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log" ]; then
   cat ${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
   mv ${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log /var/backups/${_BUCKET_NAME_DOT}.archive.log
@@ -581,8 +600,10 @@ _monthly_cleanup() {
       sleep ${_n}
     fi
     echo "Running cleanup --force on $(date)" >> ${_LOGFILE}
-    echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
-    ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
+    echo "Command is ${_DCY_PRN_CMD} cleanup --force ${_NAME} ${_TARGET}"
+    # Into the logfile: cron discards stdout, and the deleted-files list
+    # must reach the emailed report.
+    ${_DCY_PRN_CMD} cleanup --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
@@ -669,8 +690,8 @@ _remove_older_than() {
     sleep ${_n}
   fi
   echo "Running remove-older-than on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET}"
-  ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_PRN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET}"
+  ${_DCY_PRN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
 
 _collection_status() {
@@ -735,8 +756,8 @@ _status() {
 }
 
 _cleanup() {
-  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
-  ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
+  echo "Command is ${_DCY_PRN_CMD} cleanup --force ${_NAME} ${_TARGET}"
+  ${_DCY_PRN_CMD} cleanup --force ${_NAME} ${_TARGET}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}
 }
