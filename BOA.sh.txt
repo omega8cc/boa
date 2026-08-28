@@ -4740,6 +4740,19 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth} -qq 2> /dev/null
   fi
 
+  # jq is a base dependency: multiback/mybackup URL-encode b2 credentials
+  # with it, but only the PRO-only backup chain installed it, so a box
+  # could fetch the tools yet miss the encoder they depend on.
+  _JQ_TEST="$(which jq)"
+  if [ ! -x "${_JQ_TEST}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    _apt_clean_update
+    apt-get install jq ${_aptYesUnth} -qq 2> /dev/null
+  fi
+
   ### Fix or install VM system detection
   _check_virt
 
