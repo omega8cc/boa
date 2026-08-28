@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f61"
+export _sPid="f60"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -80,12 +80,26 @@ _log_issue() {
 _validate_and_merge_paths() {
   local _file=$1
   local _user=$2
-  local _allowed_prefixes="/((data/disk/${_user}/static)|(home/${_user}\.ftp))"
   local _output_file=$3
   local _if_validate=$4
   local _invalid_paths_found=false
+  # Validation matches the whole line: directive, one space, one argument,
+  # end of line, in a conservative character set -- merged lines are
+  # flattened into a single duplicity command line, so every line must stay
+  # exactly one directive plus one safe argument, with no whitespace inside
+  # the argument. Regex metacharacters are accepted only after the -regexp
+  # directives, whose argument may begin with the documented ^ anchor and
+  # may regex-escape the FTP-home dot.
+  local _bs='\\'
+  local _path_shape="^--(include|exclude) /((data/disk/${_user}/static)|(home/${_user}[.]ftp))(/[A-Za-z0-9_.,+=@~/-]*)?$"
+  local _rgx_shape="^--(include|exclude)-regexp \^?/((data/disk/${_user}/static)|(home/${_user}${_bs}?[.]ftp))(/[][A-Za-z0-9_.,+=@~/\^*?-]*)?$"
 
   while IFS= read -r _line || [ -n "${_line}" ]; do
+    # Trim edge whitespace, including the CR of a CRLF-edited file -- a
+    # cosmetic margin must not refuse an otherwise valid line
+    _line="${_line#"${_line%%[![:space:]]*}"}"
+    _line="${_line%"${_line##*[![:space:]]}"}"
+
     # Drop empty lines and comments -- the merged file is flattened into
     # duplicity arguments, so they must never reach it
     if [[ "${_line}" =~ ^[[:space:]]*(#|$) ]]; then
@@ -95,7 +109,8 @@ _validate_and_merge_paths() {
     if [ "${_if_validate}" = "YES" ]; then
       # Validate directives
       if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp) ]]; then
-        if echo "${_line}" | grep -Eq "^--(include|exclude|include-regexp|exclude-regexp) ${_allowed_prefixes}"; then
+        if echo "${_line}" | grep -Eq "${_path_shape}" \
+          || echo "${_line}" | grep -Eq "${_rgx_shape}"; then
           echo "${_line}" >> "${_output_file}"
         else
           _log_issue "${_user}" "${_file}" "Invalid path: ${_line}"

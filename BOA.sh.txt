@@ -1608,7 +1608,7 @@ _update_agents() {
     _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f45
     _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f47
     _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
-    _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f47
+    _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f46
     _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f47
     _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f47
     _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f48
