@@ -604,8 +604,9 @@ _set_cmd() {
     --concurrency ${_useCpu}"
 
   ### Utility command with encryption at the _PRN_VLV floor; only for the
-  ### legs that delete remote data (remove-older-than, cleanup --force,
-  ### remove-all-but-n-full), so remote deletions are always logged.
+  ### legs that delete remote data (remove-older-than, cleanup --force),
+  ### so remote deletions are always logged. The purge wipe deletes via
+  ### the backend driver in _wipe and logs unconditionally.
   export _DCY_PRN_CMD="/usr/local/bin/duplicity \
     -v ${_PRN_VLV} \
     --name=${_NAME} \
@@ -776,19 +777,122 @@ _check_if_worked_cleanly_or_log_err() {
   fi
 }
 
-# Function to wipe the bucket completely
+# Function to wipe the bucket completely. Duplicity 3.2.0.2 has no verb
+# that empties a repository: remove-all-but-n-full asserts on n=0, and
+# every removal verb keeps the newest matched chain by construction --
+# "manually purge the repository" is duplicity's own advice. So the wipe
+# drives duplicity's backend layer directly under the interpreter that
+# runs duplicity itself: same target URL, same credentials env, every
+# supported scheme. Only files duplicity's own naming parser recognizes
+# are deleted, and the driver re-lists to verify none survived, so a
+# failure can never masquerade as a completed wipe.
 _wipe() {
-  echo "Running wipe via remove-all-but-n-full 0 --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_PRN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
-  ${_DCY_PRN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
-  wait
+  local _dcyBin _pyBin _wipeOut _wipeRC _wipeScrub
+  echo "Running wipe via duplicity backend-level deletion for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  _dcyBin=$(readlink -f /usr/local/bin/duplicity 2>/dev/null)
+  _pyBin=$(head -1 "${_dcyBin}" 2>/dev/null | tr -d '\r' | sed 's/^#!//; s/^[[:space:]]*//')
+  _pyBin="${_pyBin%% *}"
+  if [[ -z "${_pyBin}" ]] || [[ ! -x "${_pyBin}" ]]; then
+    echo "ERROR: wipe FAILED for ${_BUCKET_NAME}: no python interpreter behind /usr/local/bin/duplicity"
+    echo "ERROR: wipe FAILED for ${_BUCKET_NAME}: no python interpreter behind /usr/local/bin/duplicity" >> ${_LOGFILE}
+    return 1
+  fi
+  echo "Command is ${_pyBin} (duplicity backend wipe driver) ${_BACKUP_TARGET}"
+  _wipeOut=$("${_pyBin}" - ${_BACKUP_TARGET} 2>&1 <<'WIPEDRV'
+import sys
+
+try:
+    from duplicity import backend, config, file_naming, log
+except ImportError as e:
+    print(f"wipe driver: cannot import duplicity: {e}")
+    sys.exit(2)
+
+log.setup()
+
+args = sys.argv[1:]
+if not args:
+    print("wipe driver: no target URL given")
+    sys.exit(2)
+url = args.pop(0)
+while args:
+    flag = args.pop(0)
+    if flag == "--s3-endpoint-url" and args:
+        config.s3_endpoint_url = args.pop(0)
+    elif flag == "--s3-region-name" and args:
+        config.s3_region_name = args.pop(0)
+    elif flag == "--s3-use-ia":
+        pass
+    else:
+        print(f"wipe driver: unknown target option: {flag}")
+        sys.exit(2)
+
+try:
+    backend.import_backends()
+    remote = backend.get_backend(url)
+    if remote is None:
+        print("wipe driver: target is not a recognized backend URL")
+        sys.exit(2)
+    names = remote.list()
+    doomed = [f for f in names if file_naming.parse(f)]
+    foreign = len(names) - len(doomed)
+    if foreign:
+        print(f"wipe driver: leaving {foreign} non-duplicity file(s) untouched")
+    if doomed:
+        print(f"wipe driver: deleting {len(doomed)} duplicity file(s)")
+        for f in doomed:
+            print(f"wipe driver: deleting {f.decode('ascii', 'replace')}")
+        remote.delete(doomed)
+        left = [f for f in remote.list() if file_naming.parse(f)]
+        if left:
+            print(f"wipe driver: FAILED: {len(left)} duplicity file(s) survived deletion")
+            sys.exit(1)
+        print(f"wipe driver: verified: all {len(doomed)} duplicity file(s) deleted")
+    else:
+        print("wipe driver: no duplicity files at the target, nothing to delete")
+except SystemExit:
+    raise
+except Exception as e:
+    print(f"wipe driver: FAILED: {e.__class__.__name__}: {e}")
+    sys.exit(1)
+sys.exit(0)
+WIPEDRV
+  )
+  _wipeRC=$?
+  # Same scrub as the connection test: strip URL userinfo and redact the
+  # b2 values wherever error text quotes them (URL-encoded, glob-safe).
+  _wipeScrub=$(echo "${_wipeOut}" | sed 's|://[^@[:space:]]*@|://|g')
+  if [[ -n "${B2_APPLICATION_KEY}" ]]; then
+    _wipeScrub="${_wipeScrub//${B2_APPLICATION_KEY}/[redacted]}"
+  fi
+  if [[ -n "${B2_ACCOUNT_ID}" ]]; then
+    _wipeScrub="${_wipeScrub//${B2_ACCOUNT_ID}/[redacted]}"
+  fi
+  echo "${_wipeScrub}" >> ${_LOGFILE}
+  if [[ "${_wipeRC}" -ne 0 ]]; then
+    echo "${_wipeScrub}"
+    echo "ERROR: wipe FAILED for ${_BUCKET_NAME} with exit code ${_wipeRC}"
+    echo "ERROR: remote backup data may still exist at the target"
+    echo "ERROR: wipe FAILED for ${_BUCKET_NAME} with exit code ${_wipeRC}" >> ${_LOGFILE}
+    echo "ERROR: remote backup data may still exist at the target" >> ${_LOGFILE}
+    return 1
+  fi
+  [[ -n "${_NAME}" ]] && rm -rf "/root/.cache/duplicity/${_NAME}"
+  echo "Wipe completed for ${_BUCKET_NAME}; local duplicity cache ${_NAME} removed"
+  echo "Wipe completed for ${_BUCKET_NAME}; local duplicity cache ${_NAME} removed" >> ${_LOGFILE}
 }
 
-# Function to purge all backup sets
+# Function to purge all backup sets. The wipe works at the backend level
+# and removes damaged collections too, so no repair leg runs first; the
+# collection status runs only after a verified wipe -- a failed wipe must
+# never be followed by a healthy-looking status report.
 _purge() {
-  _repair_only
-  _wipe
-  _collection_status
+  if _wipe; then
+    _collection_status
+  else
+    echo "Purge FAILED for ${_BUCKET_NAME}, see ${_LOGFILE}"
+    echo "Purge FAILED for ${_BUCKET_NAME}" >> ${_LOGFILE}
+    exit 1
+  fi
 }
 
 # Function to run weekly cleanup
