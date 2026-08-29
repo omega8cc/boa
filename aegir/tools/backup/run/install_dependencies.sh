@@ -73,7 +73,7 @@ _check_disk_headroom() {
   local _hdr_path _hdr_dev _hdr_seen="" _ino_tot _ino_free _kbs_free _hdr_fail=NO
   local _ino_need=75000
   local _kbs_need=2621440
-  for _hdr_path in /var/opt /usr/local /opt/pipx; do
+  for _hdr_path in /var/tmp /usr/local /opt/pipx; do
     [ -d "${_hdr_path}" ] || _hdr_path="${_hdr_path%/*}"
     _hdr_dev="$(LC_ALL=C command df -P -l "${_hdr_path}" 2>/dev/null | awk 'NR==2 { print $1 }')"
     if [ ! -z "${_hdr_dev}" ]; then
@@ -269,6 +269,46 @@ _install_duplicity() {
   echo "Duplicity installation complete!"
 }
 
+# Build in a private directory under /var/tmp, never in the shared
+# /var/opt: a concurrent BARRACUDA or OCTOPUS pass clears that directory
+# wholesale with 'rm -rf /var/opt/*' (system.sh.inc _finale at the end of
+# every pass, and five more sites), and such passes run right through the
+# first post-install hour -- exactly when an operator is told to run the
+# install verb. On a fresh box that hour's first run died inside configure
+# with "cannot find input file: 'Makefile.pre.in'" because the tree went
+# out from under it. /opt/tmp is no refuge, it is blanket-purged just as
+# widely. Nothing sweeps /var/tmp, so this build cleans up after itself.
+_python_build_cleanup() {
+  [ ! -z "${_PTN_DIR}" ] && [ -d "${_PTN_DIR}" ] && rm -rf "${_PTN_DIR}"
+  return 0
+}
+
+_python_stage_src() {
+  mkdir -p /var/tmp
+  rm -rf /var/opt/Python*
+  # A run killed outright never reaches its trap; reap only trees old
+  # enough that no live build can own one
+  find /var/tmp -maxdepth 1 -name 'boa-python-build-*' -type d -mtime +0 \
+    -exec rm -rf {} + 2>/dev/null
+  _PTN_DIR="$(mktemp -d /var/tmp/boa-python-build-XXXXXX 2>/dev/null)"
+  if [ -z "${_PTN_DIR}" ] || [ ! -d "${_PTN_DIR}" ]; then
+    echo "Could not create a private Python build directory under /var/tmp"
+    return 1
+  fi
+  trap _python_build_cleanup EXIT
+  cd "${_PTN_DIR}" || { echo "Cannot enter ${_PTN_DIR}"; return 1; }
+  # wget rc alone proves nothing on a soft-404, so the guarded
+  # extraction doubles as the payload check
+  wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
+  if [ ! -s "Python-${_PTN_VRN}.tgz" ] \
+    || ! tar -xzf "Python-${_PTN_VRN}.tgz"; then
+    echo "Python ${_PTN_VRN} source archive missing or invalid on ${_urlDev}"
+    return 1
+  fi
+  cd
+  return 0
+}
+
 _python_install_src() {
   _check_disk_headroom
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -300,18 +340,8 @@ _python_install_src() {
   _PTN_TEST=$(python3 --version 2>&1)
   if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
     || [ ! -x "${_DCY_PTN}" ]; then
-    mkdir -p /var/opt
-    cd /var/opt || { echo "Cannot enter /var/opt"; exit 1; }
-    rm -rf Python*
-    # wget rc alone proves nothing on a soft-404, so the guarded
-    # extraction doubles as the payload check
-    wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
-    if [ ! -s "Python-${_PTN_VRN}.tgz" ] \
-      || ! tar -xzf "Python-${_PTN_VRN}.tgz"; then
-      echo "Python ${_PTN_VRN} source archive missing or invalid on ${_urlDev}"
-      exit 1
-    fi
-    cd "Python-${_PTN_VRN}" || { echo "Cannot enter the Python source tree"; exit 1; }
+    _python_stage_src || exit 1
+    cd "${_PTN_DIR}/Python-${_PTN_VRN}" || { echo "Cannot enter the Python source tree"; exit 1; }
     if ! bash ./configure --with-openssl=/usr/local/ssl3; then
       echo "Python ${_PTN_VRN} configure failed"
       exit 1
