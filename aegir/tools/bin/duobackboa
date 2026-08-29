@@ -36,13 +36,32 @@ _check_root() {
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
-  _DF_TEST="$(command df -P -l / 2>/dev/null | awk '
+  _DF_TEST="$(LC_ALL=C command df -P -l / 2>/dev/null | awk '
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
-    NR==2 { gsub(/%/,"",$u); print $u }')"
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
+  fi
+  # With zero free inodes duplicity cannot create even a temp file, so
+  # backups die with an obscure traceback while df -h still looks fine.
+  # A run itself needs only dozens of inodes, so warn -- never refuse:
+  # a false refusal here would itself stop working backups. Under 5000
+  # free a multi-million-inode filesystem is >99.9% used and one platform
+  # extraction away from killing the backup chain. Filesystems without
+  # inode accounting (btrfs totals read zero) never warn.
+  _DF_INO_TOT=""
+  _DF_INO=""
+  read -r _DF_INO_TOT _DF_INO <<< "$(LC_ALL=C command df -P -l -i / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) { if ($i=="Inodes") t=i; if ($i=="IFree") f=i } }
+    NR==2 && t && f { print $t, $f }')"
+  [[ "${_DF_INO_TOT}" =~ ^[0-9]+$ ]] || _DF_INO_TOT=0
+  [[ "${_DF_INO}" =~ ^[0-9]+$ ]] || _DF_INO=""
+  if [ "${_DF_INO_TOT}" -gt 0 ] && [ ! -z "${_DF_INO}" ] && [ "${_DF_INO}" -lt 5000 ]; then
+    echo "WARNING: Only ${_DF_INO} free inodes left on / -- with none left duplicity cannot run at all"
+    echo "WARNING: Backups will stop working once inodes are exhausted; free up inodes soon"
   fi
 }
 _check_root
@@ -57,7 +76,7 @@ fi
 
 _PTN_VRN=3.14.6
 _PTN_MNR="${_PTN_VRN%.*}"
-_DCY_VRN=3.1.0
+_DCY_VRN=3.2.0.2
 _LOGPTH="/var/log/boa"
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
@@ -121,11 +140,67 @@ if [ -z "${_AWS_VLV}" ]; then
   _AWS_VLV="warning"
 fi
 
+# Verbosity floor for the legs that delete remote data. Duplicity 3.2.0.2+
+# remove-older-than --force also deletes the newest backup set whenever that
+# set is partial/incomplete, announcing it only at notice -- duplicity's own
+# default, but below our 'warning' default, so the deletion never reached
+# the report. Notice is also the only level where remove-older-than and
+# cleanup --force list what they deleted; at 'warning' cleanup speaks only
+# when it had nothing to do. A more verbose operator choice is respected.
+case "${_AWS_VLV}" in
+  i|info|d|debug) _PRN_VLV="${_AWS_VLV}" ;;
+  *) _PRN_VLV="notice" ;;
+esac
+
 # Set extra environment variables
 export PYTHONPATH="/usr/local/lib/python${_PTN_MNR}/site-packages"
 
 _DCY_PTN="/usr/local/bin/python3"
 _DCY_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV}"
+_PTN_BIN="/usr/local/bin/python${_PTN_MNR}"
+_PIPX_VNV="/opt/pipx/venvs/venvs"
+
+# The pin is only honoured when the venv actually runs on the pinned
+# interpreter. A version match alone can hide a mixed venv: a box that
+# jumps python and installs the pin in the same run ends with packages
+# under the old lib tree, bin/python on the old binary, and pyvenv.cfg
+# claiming the new version -- then silently depends on the old binary
+# surviving. Field-verified on a box doing exactly that jump.
+_duplicity_venv_on_pin() {
+  local _VNV_PYT
+  _VNV_PYT="$(readlink -f "${_PIPX_VNV}/duplicity/bin/python" 2>/dev/null)"
+  [[ "${_VNV_PYT}" == *"python${_PTN_MNR}" ]] \
+    && [ -x "${_VNV_PYT}" ] \
+    && [ -d "${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity" ]
+}
+
+# pipx install --force reuses an existing venv AND its interpreter -- it
+# ignores --python on that path by design -- so a venv created under an
+# older python must be removed first to be recreated on the pin.
+_pipx_install_pinned() {
+  local _PIP_PKG="$1"
+  local _PIP_VNV="$2"
+  local _VNV_PYT
+  if [ -d "${_PIPX_VNV}/${_PIP_VNV}" ]; then
+    _VNV_PYT="$(readlink -f "${_PIPX_VNV}/${_PIP_VNV}/bin/python" 2>/dev/null)"
+    if [[ "${_VNV_PYT}" != *"python${_PTN_MNR}" ]] || [ ! -x "${_VNV_PYT}" ]; then
+      echo "Recreating the ${_PIP_VNV} venv on python${_PTN_MNR}; found ${_VNV_PYT:-no interpreter}"
+      rm -rf "${_PIPX_VNV:?}/${_PIP_VNV:?}"
+    fi
+  fi
+  if [ -d "${_PIPX_VNV}/${_PIP_VNV}" ]; then
+    # Existing venv already on the pin; pipx ignores --python next to
+    # --force anyway (with a warning), so omit it on this path
+    pipx install "${_PIP_PKG}" --include-deps --force
+  else
+    pipx install "${_PIP_PKG}" --python "${_PTN_BIN}" --include-deps --force
+  fi
+  _VNV_PYT="$(readlink -f "${_PIPX_VNV}/${_PIP_VNV}/bin/python" 2>/dev/null)"
+  if [[ "${_VNV_PYT}" != *"python${_PTN_MNR}" ]]; then
+    echo "ERROR: the ${_PIP_VNV} venv runs on ${_VNV_PYT:-no interpreter}, not the pinned python${_PTN_MNR}"
+    exit 1
+  fi
+}
 
 if [ "$1" != "help" ]; then
   # Check the Python version to ensure we're using the correct one
@@ -206,6 +281,98 @@ _find_fast_mirror_early() {
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
+_check_disk_headroom() {
+  # The Python source build is inode-hungry, not just byte-hungry: a fresh
+  # vanilla install measured ~51k inodes and ~1.7G end to end (staged
+  # source tree ~6.4k, installed tree ~9.8k, tool venvs ~30k, plus apt
+  # deps), an in-place upgrade ~22k -- while df -h still looks fine. On an
+  # inode-exhausted box the run fails late, mid-extraction, with a
+  # misleading bytes-flavoured "No space left on device" -- and such a box
+  # has already lost duplicity itself (no inode for a temp file), so
+  # refuse loudly before anything is fetched or written. Reclaiming space
+  # is the operator's call, never automated here. Floors are ~1.5x the
+  # measured fresh cost; staging, install and venv paths are each checked
+  # in case they live on different filesystems. LC_ALL pins the df header
+  # tokens; a filesystem without inode accounting (btrfs totals read
+  # zero) is exempt from the inode floor, and unparsable df output skips
+  # a check rather than blocking the install.
+  local _hdr_path _hdr_dev _hdr_seen="" _ino_tot _ino_free _kbs_free _hdr_fail=NO
+  local _ino_need=75000
+  local _kbs_need=2621440
+  for _hdr_path in /var/tmp /usr/local /opt/pipx; do
+    [ -d "${_hdr_path}" ] || _hdr_path="${_hdr_path%/*}"
+    _hdr_dev="$(LC_ALL=C command df -P -l "${_hdr_path}" 2>/dev/null | awk 'NR==2 { print $1 }')"
+    if [ ! -z "${_hdr_dev}" ]; then
+      case " ${_hdr_seen} " in *" ${_hdr_dev} "*) continue ;; esac
+      _hdr_seen="${_hdr_seen} ${_hdr_dev}"
+    fi
+    _ino_tot=""
+    _ino_free=""
+    read -r _ino_tot _ino_free <<< "$(LC_ALL=C command df -P -l -i "${_hdr_path}" 2>/dev/null | awk '
+      NR==1 { for (i=1; i<=NF; i++) { if ($i=="Inodes") t=i; if ($i=="IFree") f=i } }
+      NR==2 && t && f { print $t, $f }')"
+    [[ "${_ino_tot}" =~ ^[0-9]+$ ]] || _ino_tot=0
+    [[ "${_ino_free}" =~ ^[0-9]+$ ]] || _ino_free=""
+    if [ "${_ino_tot}" -gt 0 ] && [ ! -z "${_ino_free}" ] && [ "${_ino_free}" -lt "${_ino_need}" ]; then
+      echo "ERROR: Not enough free inodes on ${_hdr_path}: ${_ino_free} free, ${_ino_need} required"
+      echo "ERROR: This is inode exhaustion, not disk space -- df -h can look fine while df -i is full"
+      _hdr_fail=YES
+    fi
+    _kbs_free="$(LC_ALL=C command df -P -l -k "${_hdr_path}" 2>/dev/null | awk '
+      NR==1 { for (i=1; i<=NF; i++) if ($i=="Available" || $i=="Avail") u=i }
+      NR==2 && u { print $u }')"
+    [[ "${_kbs_free}" =~ ^[0-9]+$ ]] || _kbs_free=""
+    if [ ! -z "${_kbs_free}" ] && [ "${_kbs_free}" -lt "${_kbs_need}" ]; then
+      echo "ERROR: Not enough free disk space on ${_hdr_path}: $(( _kbs_free / 1024 ))M free, $(( _kbs_need / 1024 ))M required"
+      _hdr_fail=YES
+    fi
+  done
+  if [ "${_hdr_fail}" = "YES" ]; then
+    echo "ERROR: Aborting before any download or change to the installed backup tooling"
+    exit 1
+  fi
+}
+
+# Build in a private directory under /var/tmp, never in the shared
+# /var/opt: a concurrent BARRACUDA or OCTOPUS pass clears that directory
+# wholesale with 'rm -rf /var/opt/*' (system.sh.inc _finale at the end of
+# every pass, and five more sites), and such passes run right through the
+# first post-install hour -- exactly when an operator is told to run the
+# install verb. On a fresh box that hour's first run died inside configure
+# with "cannot find input file: 'Makefile.pre.in'" because the tree went
+# out from under it. /opt/tmp is no refuge, it is blanket-purged just as
+# widely. Nothing sweeps /var/tmp, so this build cleans up after itself.
+_python_build_cleanup() {
+  [ ! -z "${_PTN_DIR}" ] && [ -d "${_PTN_DIR}" ] && rm -rf "${_PTN_DIR}"
+  return 0
+}
+
+_python_stage_src() {
+  mkdir -p /var/tmp
+  rm -rf /var/opt/Python*
+  # A run killed outright never reaches its trap; reap only trees old
+  # enough that no live build can own one
+  find /var/tmp -maxdepth 1 -name 'boa-python-build-*' -type d -mtime +0 \
+    -exec rm -rf {} + 2>/dev/null
+  _PTN_DIR="$(mktemp -d /var/tmp/boa-python-build-XXXXXX 2>/dev/null)"
+  if [ -z "${_PTN_DIR}" ] || [ ! -d "${_PTN_DIR}" ]; then
+    echo "Could not create a private Python build directory under /var/tmp"
+    return 1
+  fi
+  trap _python_build_cleanup EXIT
+  cd "${_PTN_DIR}" || { echo "Cannot enter ${_PTN_DIR}"; return 1; }
+  # wget rc alone proves nothing on a soft-404, so the guarded
+  # extraction doubles as the payload check
+  wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
+  if [ ! -s "Python-${_PTN_VRN}.tgz" ] \
+    || ! tar -xzf "Python-${_PTN_VRN}.tgz"; then
+    echo "Python ${_PTN_VRN} source archive missing or invalid on ${_urlDev}"
+    return 1
+  fi
+  cd
+  return 0
+}
+
 _install() {
   if [ ! -d "${_LOGPTH}" ]; then
     mkdir -p ${_LOGPTH}
@@ -218,9 +385,12 @@ _install() {
   if [ "${_DUPLICITY_ITD}" = "${_DCY_VRN}" ] \
     && [ -L "/usr/local/bin/jp.py" ] \
     && [ -L "/usr/local/bin/duplicity" ] \
-    && [ -L "/usr/local/bin/aws" ]; then
+    && [ -L "/usr/local/bin/aws" ] \
+    && _duplicity_venv_on_pin \
+    && [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
     echo "Latest duplicity version ${_DCY_VRN} already installed"
   else
+    _check_disk_headroom
     echo "Installing duplicity dependencies..."
     cd
     _find_fast_mirror_early
@@ -229,6 +399,28 @@ _install() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
+    # Decide the Python source rebuild up front and stage its source
+    # tree FIRST: the purge below is irreversible, so a missing or
+    # truncated tar (mirrors can soft-404) must abort while the box
+    # still has working backup tooling. The rebuild test reads only the
+    # source-built /usr/local python, which nothing between here and
+    # the build touches.
+    _PTN_BUILD=NO
+    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
+      || [ ! -x "${_DCY_PTN}" ]; then
+      _PTN_BUILD=YES
+      if ! _python_stage_src; then
+        echo "Aborting before any change to the installed backup tooling"
+        exit 1
+      fi
+    fi
+    # The startup busy gate has aged by a mirror probe and a fetch by
+    # now; re-assert it on the brink of the irreversible steps
+    if (( $(pgrep -fc duplicity) > 0 )); then
+      echo "Active duplicity process detected, aborting before any change to the installed backup tooling"
+      exit 1
+    fi
     aptitude purge duplicity -y
     rm -f /usr/local/bin/duplicity
     rm -f /usr/local/bin/jp.py
@@ -243,21 +435,25 @@ _install() {
         rclone \
         rdiff \
         tzdata
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
-      || [ ! -x "${_DCY_PTN}" ]; then
-      cd /var/opt
-      rm -rf Python*
-      wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
-      tar -xzf Python-${_PTN_VRN}.tgz
-      cd Python-${_PTN_VRN}
+    if [ "${_PTN_BUILD}" = "YES" ]; then
+      cd "${_PTN_DIR}/Python-${_PTN_VRN}" || { echo "Cannot enter the Python source tree"; exit 1; }
       if [ -d "/usr/local/ssl3" ]; then
-        bash ./configure --with-openssl=/usr/local/ssl3
+        _PTN_SSL=/usr/local/ssl3
       else
-        bash ./configure --with-openssl=/usr/local/ssl
+        _PTN_SSL=/usr/local/ssl
       fi
-      make -j $(nproc) --quiet
-      make install --quiet
+      if ! bash ./configure --with-openssl="${_PTN_SSL}"; then
+        echo "Python ${_PTN_VRN} configure failed"
+        exit 1
+      fi
+      if ! make -j $(nproc) --quiet; then
+        echo "Python ${_PTN_VRN} make failed"
+        exit 1
+      fi
+      if ! make install --quiet; then
+        echo "Python ${_PTN_VRN} make install failed"
+        exit 1
+      fi
       cd
     fi
     _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
@@ -266,20 +462,27 @@ _install() {
       pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
       export PIPX_HOME=/opt/pipx/venvs
-      pipx install duplicity --include-deps --force
-      pipx install awscli --include-deps --force
-      pipx install boto3 --include-deps --force
+      # Pinned: an unpinned install delivers latest-at-install-time, so
+      # the fleet drifts across duplicity versions and the version
+      # checks here can never match once upstream moves
+      _pipx_install_pinned "duplicity==${_DCY_VRN}" duplicity
+      _pipx_install_pinned awscli awscli
+      _pipx_install_pinned boto3 boto3
     else
       echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
       exit 1
     fi
     _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
-    if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
-      echo "Installation complete!"
-    else
+    if [[ ! "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
       echo "Installation failed with ${_DCY_TEST}"
       exit 1
     fi
+    if ! _duplicity_venv_on_pin; then
+      echo "Installation failed: the duplicity venv is not on python${_PTN_MNR}"
+      echo "Interpreter: $(readlink -f "${_PIPX_VNV}/duplicity/bin/python" 2>/dev/null)"
+      exit 1
+    fi
+    echo "Installation complete!"
   fi
 }
 
@@ -298,7 +501,9 @@ _duplicity_or_backboa_busy() {
   (( $(pgrep -fc duplicity) > 0 )) && return 0
   # A live backboa BETWEEN its sequential duplicity invocations counts as
   # busy too -- freeing in that gap would run two backup chains at once.
-  _bb="$(tr -dc '0-9' < "/run/${_HST}_backboa.pid" 2>/dev/null)"
+  # 2>/dev/null must precede the input redirect: redirections apply left
+  # to right, so a missing pid file otherwise prints to stderr
+  _bb="$(tr -dc '0-9' 2>/dev/null < "/run/${_HST}_backboa.pid")"
   [ -n "${_bb}" ] && kill -0 "${_bb}" 2>/dev/null && return 0
   return 1
 }
@@ -484,6 +689,13 @@ _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
   --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
   --s3-region-name ${_AWS_REG}"
 
+# Same flags at the _PRN_VLV floor; only for remove-older-than and
+# cleanup --force, so remote deletions are always logged.
+_DCY_PRN_CMD="/usr/local/bin/duplicity -v ${_PRN_VLV} \
+  --concurrency 4 \
+  --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
+  --s3-region-name ${_AWS_REG}"
+
 if [ -e "${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log" ]; then
   cat ${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
   mv ${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log /var/backups/${_BUCKET_NAME_DOT}.archive.log
@@ -540,8 +752,10 @@ _monthly_cleanup() {
       sleep ${_n}
     fi
     echo "Running cleanup --force on $(date)" >> ${_LOGFILE}
-    echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
-    ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
+    echo "Command is ${_DCY_PRN_CMD} cleanup --force ${_NAME} ${_TARGET}"
+    # Into the logfile: cron discards stdout, and the deleted-files list
+    # must reach the emailed report.
+    ${_DCY_PRN_CMD} cleanup --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
@@ -628,8 +842,8 @@ _remove_older_than() {
     sleep ${_n}
   fi
   echo "Running remove-older-than on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET}"
-  ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_PRN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET}"
+  ${_DCY_PRN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
 
 _collection_status() {
@@ -672,14 +886,26 @@ _conn_test() {
   echo "Running AWS connection test, please wait..."
   echo "Command is ${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET}"
   _ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET} 2>&1)
-  ### echo _ConnTest is STR ${_ConnTest} END
-  if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
+  _ConnRC=$?
+  # A non-zero duplicity exit fails the test -- auth and URL errors never
+  # matched the historic patterns and reported a false OK. The patterns
+  # stay as a net for faults duplicity reports without a failing exit.
+  # Interactive verb: the exit 1 aborts nothing but this test, and the
+  # raw output goes to the terminal (env-var auth, no secrets in it).
+  if [[ "${_ConnRC}" -ne 0 ]] \
+    || [[ "${_ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo
     echo "  Sorry, I can't connect to ${_TARGET}"
-    echo "  Please check if the bucket has expected name: ${_BUCKET_NAME}"
+    echo "  The duplicity exit code was ${_ConnRC}"
+    echo "  Please check the credentials and if the bucket has expected name: ${_BUCKET_NAME}"
     echo "  This bucket must already exist in the ${_AWS_REG} AWS region"
     echo "  http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region"
+    echo
+    echo "  The duplicity output was:"
+    echo
+    echo "${_ConnTest}"
+    echo
     echo "  Bye"
     echo
     exit 1
@@ -694,8 +920,8 @@ _status() {
 }
 
 _cleanup() {
-  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
-  ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
+  echo "Command is ${_DCY_PRN_CMD} cleanup --force ${_NAME} ${_TARGET}"
+  ${_DCY_PRN_CMD} cleanup --force ${_NAME} ${_TARGET}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}
 }

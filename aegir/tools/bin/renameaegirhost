@@ -219,9 +219,10 @@ _check_root() {
     _die "This script must be run as root"
   fi
 
-  _DF_TEST="$(df -P -l / 2>/dev/null | awk '
+  _DF_TEST="$(LC_ALL=C command df -P -l / 2>/dev/null | awk '
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
-    NR==2 { gsub(/%/,"",$u); print $u }')"
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
   if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     _die "Disk usage is at ${_DF_TEST}% — aborting (must be below 90%)"
   fi
