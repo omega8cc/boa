@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _sPid="f62"
+export _sPid="f61"
 
 # Base directory for user configurations
 _BASE_DIR="/data/disk"
@@ -76,14 +76,14 @@ Usage Instructions:
 3. include_regexp.txt
    Use regular expressions to specify patterns for directories or files to include in the backup.
    Example:
-   --include-regexp '^${_user_ftp_dir_regex}/documents/.*\.pdf$'
-   --include-regexp '^${_user_static_dir}/project_data/.*'
+   --include-regexp ^${_user_ftp_dir_regex}/documents/.*\.pdf
+   --include-regexp ^${_user_static_dir}/project_data/.*
 
 4. exclude_regexp.txt
    Use regular expressions to specify patterns for directories or files to exclude from the backup.
    Example:
-   --exclude-regexp '^${_user_static_dir}/trash/.*'
-   --exclude-regexp '^${_user_ftp_dir_regex}/temp_files/.*'
+   --exclude-regexp ^${_user_static_dir}/trash/.*
+   --exclude-regexp ^${_user_ftp_dir_regex}/temp_files/.*
 
 Security:
 - Ensure these files are restricted to the user only:
@@ -93,21 +93,24 @@ Security:
 Notes:
 - Directives in these files will be merged with default system directives during backup operations.
 - Patterns defined in exclude_regexp.txt will take precedence over those in include_regexp.txt.
-- You can only define paths in the /data/disk/${_user}/static/ directory tree.
+- Write each line as one directive, one space, and one path or pattern - nothing else on the line, and no quotes.
+- Paths may use letters, digits, and the characters _ . , + = @ ~ / -
+- Patterns in include_regexp.txt and exclude_regexp.txt may start with ^, may write the .ftp dot as \. and may additionally use the characters . * + ? [ ] \ ^
+- Paths must stay in the ${_user_static_dir} or ${_user_ftp_dir} directory trees.
 - Paths for platforms without direct access in /data/disk/${_user}/distro are included by default.
-- Invalid entries may cause the backup process to fail.
+- Lines that do not match the expected format are skipped and logged; valid lines and the default directives still apply.
 
 Example Configuration:
 
 If you want to exclude temporary files:
 - Add the following to exclude_regexp.txt:
-  --exclude-regexp '^${_user_static_dir}/temp/.*'
-  --exclude-regexp '^${_user_ftp_dir_regex}/temp/.*'
+  --exclude-regexp ^${_user_static_dir}/temp/.*
+  --exclude-regexp ^${_user_ftp_dir_regex}/temp/.*
 
 If you want to include specific documents:
 - Add the following to include_regexp.txt:
-  --include-regexp '^${_user_ftp_dir_regex}/documents/.*\.pdf$'
-  --include-regexp '^${_user_static_dir}/important_data/.*'
+  --include-regexp ^${_user_ftp_dir_regex}/documents/.*\.pdf
+  --include-regexp ^${_user_static_dir}/important_data/.*
 
 EOF
     chmod 600 "${_readme_file}"
