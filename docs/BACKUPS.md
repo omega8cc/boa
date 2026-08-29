@@ -54,6 +54,16 @@
 
     For more detailed exclude/include configuration see notes further below.
 
+    Note on `_AWS_VLV`: it sets the Duplicity verbosity for the backup runs,
+    but the two maintenance legs that delete remote data — the weekly
+    `remove-older-than` retention pass and the monthly `cleanup --force` —
+    never run below `notice`. Duplicity announces deletions only at `notice`
+    (since 3.2.0.2 that includes auto-removing the newest backup set when it
+    is left partial/incomplete by an interrupted run), so those legs are
+    floored to `notice` and their output lands in the per-bucket log and the
+    emailed report. Setting `_AWS_VLV` to `info` or `debug` raises the
+    maintenance legs too.
+
     Supported values to use as `_AWS_REG` (the symbol after the # comment):
 
 ```ini

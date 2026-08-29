@@ -87,7 +87,7 @@ _log_issue() {
 
 # Helper function to URL-encode using jq
 _url_encode() {
-  echo -n "$1" | jq -s -R -r @uri
+  printf '%s' "$1" | jq -s -R -r @uri
 }
 
 # Function to escape values
@@ -131,7 +131,11 @@ _validate_credentials() {
         continue
       fi
 
-      # Safely export the variable (URL-encode if needed)
+      # Safely export the variable. b2 alone embeds its key and secret
+      # inside the duplicity target URL, so a reserved character in
+      # either would corrupt the URL; percent-encode its values. Every
+      # other service authenticates via env vars, where an encoded
+      # value would break auth, so their values must stay verbatim.
       if [ "${_service}" = "b2" ]; then
         export ${_varname}=$(_url_encode "${_value}")
       else
@@ -307,16 +311,24 @@ _set_backup_target() {
       _load_credentials "cloudflare" "${_user}"
       _construct_bucket_name "cloudflare" "${_user}"
 
-      # Custom endpoint for Cloudflare R2
+      # Credentials must go via env vars — the boto3 backend reads the
+      # whole URL netloc as the bucket name, never userinfo credentials;
+      # R2 expects the literal region "auto"
+      export AWS_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID}"
+      export AWS_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY}"
       _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-
-      # Configure the S3 backup target
-      _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_r2_endpoint} --s3-region-name auto"
       ;;
     do_spaces)
       _load_credentials "do_spaces" "${_user}"
       _construct_bucket_name "do_spaces" "${_user}"
-      _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
+
+      # Credentials must go via env vars — the boto3 backend reads the
+      # whole URL netloc as the bucket name, never userinfo credentials
+      export AWS_ACCESS_KEY_ID="${DO_SPACES_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${DO_SPACES_SECRET}"
+      _do_endpoint="https://${DO_SPACES_REGION}.digitaloceanspaces.com"
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_do_endpoint} --s3-region-name ${DO_SPACES_REGION}"
       ;;
     gcs)
       _load_credentials "gcs" "${_user}"
@@ -360,12 +372,24 @@ _set_backup_target() {
     linode)
       _load_credentials "linode" "${_user}"
       _construct_bucket_name "linode" "${_user}"
-      _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
+
+      # Credentials must go via env vars — the boto3 backend reads the
+      # whole URL netloc as the bucket name, never userinfo credentials
+      export AWS_ACCESS_KEY_ID="${LINODE_ACCESS_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${LINODE_SECRET_KEY}"
+      _linode_endpoint="https://${LINODE_REGION}.linodeobjects.com"
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_linode_endpoint} --s3-region-name ${LINODE_REGION}"
       ;;
     wasabi)
       _load_credentials "wasabi" "${_user}"
       _construct_bucket_name "wasabi" "${_user}"
-      _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
+
+      # Credentials must go via env vars — the boto3 backend reads the
+      # whole URL netloc as the bucket name, never userinfo credentials
+      export AWS_ACCESS_KEY_ID="${WASABI_ACCESS_KEY}"
+      export AWS_SECRET_ACCESS_KEY="${WASABI_SECRET_KEY}"
+      _wasabi_endpoint="https://s3.${WASABI_REGION}.wasabisys.com"
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} --s3-endpoint-url ${_wasabi_endpoint} --s3-region-name ${WASABI_REGION}"
       ;;
     *)
       echo "Error: Unknown service ${_service}"
