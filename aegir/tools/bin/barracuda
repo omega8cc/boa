@@ -969,19 +969,19 @@ _up_action() {
 
         sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${_phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${_phpS}/g"        ${_barCnf}
+        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${_phpS}/g"       ${_barCnf}
         wait
-        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${_phpS}/g"         ${_barCnf}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${_phpS}/g"        ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"           ${_barCnf}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"          ${_barCnf}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"           ${_barCnf}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"          ${_barCnf}
         wait
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
@@ -1030,17 +1030,17 @@ _up_action() {
         wait
         sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
         sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=/g"               ${_barCnf}
         wait
-        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g"     ${_barCnf}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g"    ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_phpS}/g"    ${_barCnf}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_phpS}/g"   ${_barCnf}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_phpS}/g"    ${_barCnf}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_phpS}/g"   ${_barCnf}
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null

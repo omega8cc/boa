@@ -1266,17 +1266,17 @@ _barracuda_install() {
         _pI=8.3
       fi
       if [ -n "${_pI}" ]; then
-        sed -i "s/^_PHP_SI.*/_PHP_SINGLE_INSTALL=${_pI}/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_SI.*/_PHP_SINGLE_INSTALL=${_pI}/g"   ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=${_pI}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=${_pI}/g"    ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g"   ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g"   ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g"   ${_vBs}/${_filIncO}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g"   ${_vBs}/${_filIncO}
         wait
       elif [ "${_eXtr}" = "php-all" ] \
         || [ "${_eXtr}" = "php-min" ] \
@@ -1393,9 +1393,9 @@ _barracuda_install() {
       sleep ${_n}
       echo "Starting now..."
       echo
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${_vBs}/${_barName}
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${_vBs}/${_barName}
       wait
-      sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${_vBs}/${_barName}
+      sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                 ${_vBs}/${_barName}
       wait
     fi
 
