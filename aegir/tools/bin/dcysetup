@@ -200,6 +200,15 @@ _setup_configuration() {
     exit 1
   fi
 
+  echo "Step 7: Applying the duplicity backend patch when needed..."
+  # Non-fatal by design: the update path runs from nightly maintenance,
+  # and a deferred patch (missing venv, pin mismatch, compile refusal)
+  # must never abort the config regeneration above; the next update
+  # retries. The install path applies the same patch via the full
+  # dependencies run.
+  bash "${_INSTALL_DEPENDENCIES_SCRIPT}" --patch-only \
+    || echo "NOTE: duplicity backend patch step did not complete; the next update retries."
+
   echo "Configuration setup completed successfully."
 }
 
