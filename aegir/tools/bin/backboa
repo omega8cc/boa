@@ -268,13 +268,16 @@ _acquire_pid_file() {
 # the next duplicity pin bump.
 _patch_duplicity_b2backend() {
   local _b2fLive _b2fTemp _dcyLive
-  _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
-  [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
+  # Cheapest guards first: this also runs from the nightly dcysetup
+  # update path on every configured box, so the already-patched hot
+  # path must cost a file read, not a duplicity --version subprocess
   _b2fLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/backends/b2backend.py"
   [ -f "${_b2fLive}" ] || return 0
   if grep -q "BOA-b2-error-code" "${_b2fLive}"; then
     return 0
   fi
+  _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
+  [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
   _b2fTemp="${_b2fLive%.py}_boapatch$$.py"
   cp -af "${_b2fLive}" "${_b2fTemp}" || return 0
   cat >> "${_b2fTemp}" <<'B2NOTFOUND'

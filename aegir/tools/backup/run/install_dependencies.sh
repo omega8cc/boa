@@ -214,13 +214,16 @@ _pipx_install_pinned() {
 # the next duplicity pin bump.
 _patch_duplicity_b2backend() {
   local _b2fLive _b2fTemp _dcyLive
-  _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
-  [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
+  # Cheapest guards first: this also runs from the nightly dcysetup
+  # update path on every configured box, so the already-patched hot
+  # path must cost a file read, not a duplicity --version subprocess
   _b2fLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/backends/b2backend.py"
   [ -f "${_b2fLive}" ] || return 0
   if grep -q "BOA-b2-error-code" "${_b2fLive}"; then
     return 0
   fi
+  _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
+  [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
   _b2fTemp="${_b2fLive%.py}_boapatch$$.py"
   cp -af "${_b2fLive}" "${_b2fTemp}" || return 0
   cat >> "${_b2fTemp}" <<'B2NOTFOUND'
@@ -467,6 +470,21 @@ _if_python_install_src() {
     fi
   fi
 }
+
+# Nightly fast path: dcysetup update invokes this to apply the venv
+# patch without touching apt, python or pipx -- the fleet must converge
+# on the patch without an operator ever running the install verb. The
+# patch function guards itself (pin gate, marker, compile check, atomic
+# swap) and this path always exits 0: a deferred patch must never break
+# the nightly config regeneration that calls it.
+if [ "${1:-}" = "--patch-only" ]; then
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+  _patch_duplicity_b2backend
+  exit 0
+fi
 
 _check_root
 _check_openssl
