@@ -372,44 +372,44 @@ _check_report() {
 
 _up_mode() {
   if [ "${_mCmd}" = "aegir" ]; then
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                   ${_octCnf}
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                            ${_octCnf}
     wait
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                   ${_vBs}/${_tocIncO}
     wait
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"              ${_octCnf}
     wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
     bash  ${_vBs}/${_tocName}
     touch ${_usEr}/log/up-${_TODAY}
   elif [ "${_mCmd}" = "platforms" ]; then
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"     ${_octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"              ${_octCnf}
     wait
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"     ${_vBs}/${_tocIncO}
     wait
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_octCnf}
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                            ${_octCnf}
     wait
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_vBs}/${_tocIncO}
     wait
     bash  ${_vBs}/${_tocName}
     touch ${_usEr}/log/up-${_TODAY}
   elif [ "${_mCmd}" = "both" ] || [ "${_mCmd}" = "force" ]; then
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_octCnf}
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                            ${_octCnf}
     wait
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_vBs}/${_tocIncO}
     wait
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"              ${_octCnf}
     wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
     bash  ${_vBs}/${_tocName}
     touch ${_usEr}/log/up-${_TODAY}
   else
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_octCnf}
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                            ${_octCnf}
     wait
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_vBs}/${_tocIncO}
     wait
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"              ${_octCnf}
     wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
