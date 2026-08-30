@@ -202,6 +202,123 @@ _pipx_install_pinned() {
   fi
 }
 
+# Liveness for a recorded lock owner: the pid must exist AND still look
+# like this tooling. A pid recycled by an unrelated long-lived process
+# must not hold a backup lock forever, while a live run must never lose
+# its lock. /proc is used instead of kill -0 because kill -0 reports
+# EPERM for a live pid owned by another user. An unreadable or empty
+# cmdline means the process exited (or is a zombie) between the
+# checks: dead.
+_pid_is_live() {
+  local _pid=$1 _cmd
+  [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
+  [ -d "/proc/${_pid}" ] || return 1
+  _cmd=$(tr '\0' ' ' < "/proc/${_pid}/cmdline" 2>/dev/null)
+  [ -n "${_cmd}" ] || return 1
+  case "${_cmd}" in
+    *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+
+# Function to acquire the backup gate; heals stale leftovers (dead
+# owner, recycled pid, empty file), never removes a live owner's lock.
+# Claim discipline against concurrent starters: the create is an atomic
+# noclobber write that never overwrites; a stale file is removed only
+# while it still holds the same dead pid, so a lock re-created in the
+# gap is never swept up; and every successful claim is read back, so a
+# starter whose fresh claim was swept by a slower healer detects the
+# loss and re-enters instead of running unlocked.
+_acquire_pid_file() {
+  local _pidfile=$1 _old_pid _now_pid _try=0
+  while [ "${_try}" -lt 3 ]; do
+    _try=$((_try + 1))
+    if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
+      _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+      if [ "${_now_pid}" = "$$" ]; then
+        return 0
+      fi
+      continue
+    fi
+    _old_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    if _pid_is_live "${_old_pid}"; then
+      echo "Live run holds ${_pidfile} (pid ${_old_pid})..."
+      return 1
+    fi
+    _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    if [ "${_now_pid}" = "${_old_pid}" ]; then
+      echo "Removing stale PID file ${_pidfile} (pid ${_old_pid:-empty} not running)"
+      rm -f "${_pidfile}"
+    fi
+  done
+  echo "Live run holds ${_pidfile}..."
+  return 1
+}
+
+# Duplicity never maps the B2 SDK's missing-file error onto its own
+# backend_not_found code, so deleting a file already absent on the
+# backend burns the full spaced retry budget per file instead of taking
+# the no-need-to-retry branch; over one historically damaged chain that
+# stalled a weekly retention for hours and starved the whole backup
+# schedule on a hosted box. The pinned venv copy gets the backend's
+# _error_code hook appended: marker-guarded, exact-pin gated, and the
+# candidate is compile-checked before an atomic same-directory swap, so
+# a failed patch leaves the stock file untouched. Re-check the need at
+# the next duplicity pin bump.
+_patch_duplicity_b2backend() {
+  local _b2fLive _b2fTemp _dcyLive
+  # Cheapest guards first: this also runs from the nightly dcysetup
+  # update path on every configured box, so the already-patched hot
+  # path must cost a file read, not a duplicity --version subprocess
+  _b2fLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/backends/b2backend.py"
+  [ -f "${_b2fLive}" ] || return 0
+  if grep -q "BOA-b2-error-code" "${_b2fLive}"; then
+    return 0
+  fi
+  _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
+  [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
+  _b2fTemp="${_b2fLive%.py}_boapatch$$.py"
+  cp -af "${_b2fLive}" "${_b2fTemp}" || return 0
+  cat >> "${_b2fTemp}" <<'B2NOTFOUND'
+
+
+# BOA-b2-error-code: map the SDK's missing-file error onto duplicity's
+# backend_not_found so the retry loop drops the spaced sleeps between
+# re-attempts of a deterministic not-found failure -- non-fatal legs
+# like delete still make each attempt, fatal legs fail fast (a class
+# name match keeps this independent of the b2sdk apiver namespace the
+# backend imported above).
+def _boa_b2_error_code(self, operation, e):
+    if e.__class__.__name__ == "FileNotPresent":
+        return log.ErrorCode.backend_not_found
+    # Defining _error_code shadows the caller's errno fallback branch, so
+    # local OSError codes are mapped here the same way duplicity's own
+    # elif branch would have mapped them
+    import errno as _boa_errno
+    if hasattr(e, "errno"):
+        if e.errno == _boa_errno.EACCES:
+            return log.ErrorCode.backend_permission_denied
+        elif e.errno == _boa_errno.ENOENT:
+            return log.ErrorCode.backend_not_found
+        elif e.errno == _boa_errno.ENOSPC:
+            return log.ErrorCode.backend_no_space
+    return None
+
+
+B2Backend._error_code = _boa_b2_error_code
+B2NOTFOUND
+  if "${_PIPX_VNV}/duplicity/bin/python" -m py_compile "${_b2fTemp}" 2>/dev/null; then
+    chmod 644 "${_b2fTemp}"
+    mv -f "${_b2fTemp}" "${_b2fLive}"
+    find "${_b2fLive%/*}/__pycache__" -name "b2backend*" -delete 2>/dev/null
+    echo "Patched duplicity b2backend: missing-file deletions no longer burn spaced retries"
+  else
+    rm -f "${_b2fTemp}"
+    echo "NOTE: duplicity b2backend patch did not compile; stock file left in place"
+  fi
+}
+
 if [ "$1" != "help" ]; then
   # Check the Python version to ensure we're using the correct one
   echo "Checking expected Python ${_PTN_VRN} version..."
@@ -484,6 +601,9 @@ _install() {
     fi
     echo "Installation complete!"
   fi
+  # Both branches: the already-installed path needs the patch applied
+  # to an unpatched venv just as much as a fresh install does
+  _patch_duplicity_b2backend
 }
 
 _check_aws() {
@@ -502,9 +622,11 @@ _duplicity_or_backboa_busy() {
   # A live backboa BETWEEN its sequential duplicity invocations counts as
   # busy too -- freeing in that gap would run two backup chains at once.
   # 2>/dev/null must precede the input redirect: redirections apply left
-  # to right, so a missing pid file otherwise prints to stderr
+  # to right, so a missing pid file otherwise prints to stderr. The
+  # cmdline-matching liveness check keeps a recycled pid in a leftover
+  # backboa pid file from counting as busy forever.
   _bb="$(tr -dc '0-9' 2>/dev/null < "/run/${_HST}_backboa.pid")"
-  [ -n "${_bb}" ] && kill -0 "${_bb}" 2>/dev/null && return 0
+  _pid_is_live "${_bb}" && return 0
   return 1
 }
 if _duplicity_or_backboa_busy; then
@@ -690,9 +812,15 @@ _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
   --s3-region-name ${_AWS_REG}"
 
 # Same flags at the _PRN_VLV floor; only for remove-older-than and
-# cleanup --force, so remote deletions are always logged.
+# cleanup --force, so remote deletions are always logged. Deletion legs
+# also cap the retry budget: a file already absent on the backend fails
+# identically on every attempt, and the default five spaced attempts
+# per file turned one historically damaged chain into a retention stall
+# of many hours that starved the whole backup schedule on a hosted box.
 _DCY_PRN_CMD="/usr/local/bin/duplicity -v ${_PRN_VLV} \
   --concurrency 4 \
+  --num-retries 2 \
+  --backend-retry-delay 5 \
   --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
   --s3-region-name ${_AWS_REG}"
 
@@ -962,22 +1090,27 @@ if [ "$1" = "backup" ]; then
   # to share one empty touch-file, so a slow backboa run (or a leftover
   # from a crash) made this one skip its day two hours later. A live
   # process holds the gate; a stale file is ignored and overwritten.
+  # A live process holds the gate; a stale file is healed atomically
+  # inside _acquire_pid_file, whose liveness check also matches the
+  # recorded pid's cmdline, so a recycled pid cannot hold the gate
+  # forever.
   _PID_FILE="/run/${_HST}_duobackboa.pid"
-  _RUNNING_PID=""
-  [ -e "${_PID_FILE}" ] && _RUNNING_PID="$(tr -dc '0-9' < "${_PID_FILE}" 2>/dev/null)"
-  if [ -n "${_RUNNING_PID}" ] && kill -0 "${_RUNNING_PID}" 2>/dev/null; then
+  if ! _acquire_pid_file "${_PID_FILE}"; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
-    echo "Live run holds ${_PID_FILE} (pid ${_RUNNING_PID})..."
     exit 1
   else
-    echo $$ > "${_PID_FILE}"
+    # Set only after the gate is ours -- the exit above must not remove
+    # a live owner's file; a signal death re-enters the EXIT trap, and
+    # the trap is the single releaser (an explicit release here opened a
+    # window in which a successor's fresh lock was removed again at exit)
+    trap "rm -f '${_PID_FILE}'; exit" EXIT
+    trap 'exit 1' INT TERM HUP
     echo "The duplicity backup is starting now..."
     _check_aws
     _backup
     echo "The duplicity backup is complete!"
     touch ${_LOGPTH}/run_${_HST}_backup.log
-    rm -f "${_PID_FILE}"
   fi
 elif [ "$1" = "install" ]; then
   _install
