@@ -182,7 +182,7 @@ _if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/var/log/boa/.goaccessrc.fix.019.pid" ]; then
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/var/log/boa/.goaccessrc.fix.021.pid" ]; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
       echo 'log-format "~h{, }" %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
@@ -192,6 +192,23 @@ _if_install() {
       echo 'all-static-files true' >> /root/.goaccessrc
       echo 'anonymize-ip true' >> /root/.goaccessrc
       echo 'browsers-file /usr/etc/goaccess/browsers.list' >> /root/.goaccessrc
+      ### With --no-global-config nothing ever loaded the static-file
+      ### extension registry, so goaccess classified NOTHING as static:
+      ### theme css/js flooded the REQUESTS panel and valid_requests, which
+      ### is exactly the noise that made the reports useless. Carry the
+      ### registry inside the one config we do load; the ignore-statics
+      ### directive below then keeps every classified static out of the
+      ### request metrics.
+      if grep -q "^static-file" /usr/etc/goaccess/goaccess.conf 2>/dev/null; then
+        grep "^static-file" /usr/etc/goaccess/goaccess.conf >> /root/.goaccessrc
+      else
+        for _sfx in css js jpg jpeg png gif ico svg webp avif bmp tiff tif \
+          woff woff2 ttf otf eot map pdf csv txt xml zip gz tgz rar tar xz \
+          zst mp3 mp4 mpeg mpg ogg avi flv swf exe iso dmg doc docx xls \
+          xlsx ppt pptx; do
+          echo "static-file .${_sfx}" >> /root/.goaccessrc
+        done
+      fi
       echo 'double-decode true' >> /root/.goaccessrc
       echo 'enable-panel BROWSERS' >> /root/.goaccessrc
       echo 'enable-panel GEO_LOCATION' >> /root/.goaccessrc
@@ -202,8 +219,12 @@ _if_install() {
       echo 'enable-panel REFERRERS' >> /root/.goaccessrc
       echo 'enable-panel REFERRING_SITES' >> /root/.goaccessrc
       echo 'enable-panel REMOTE_USER' >> /root/.goaccessrc
-      echo 'enable-panel REQUESTS_STATIC' >> /root/.goaccessrc
       echo 'enable-panel REQUESTS' >> /root/.goaccessrc
+      ### enable-panel is additive (every panel renders by default), so the
+      ### static panel must be ignored explicitly -- with statics classified
+      ### it holds nothing an operator reads and only re-adds the noise the
+      ### registry above just removed from the request metrics.
+      echo 'ignore-panel REQUESTS_STATIC' >> /root/.goaccessrc
       echo 'enable-panel STATUS_CODES' >> /root/.goaccessrc
       echo 'enable-panel VIRTUAL_HOSTS' >> /root/.goaccessrc
       echo 'enable-panel VISIT_TIMES' >> /root/.goaccessrc
@@ -227,7 +248,6 @@ _if_install() {
       echo 'sort-panel OS,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REFERRERS,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REFERRING_SITES,BY_VISITORS,DESC' >> /root/.goaccessrc
-      echo 'sort-panel REQUESTS_STATIC,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REQUESTS,BY_VISITORS,DESC' >> /root/.goaccessrc
       if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
         _fetch_geoip
@@ -243,7 +263,7 @@ _if_install() {
       fi
       echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
       rm -f /var/log/boa/.goaccessrc.fix*
-      touch /var/log/boa/.goaccessrc.fix.019.pid
+      touch /var/log/boa/.goaccessrc.fix.021.pid
       sleep 1
     fi
   else
