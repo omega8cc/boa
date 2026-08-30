@@ -271,15 +271,59 @@ _usage() {
   exit 1
 }
 
-# Function to create PID file
+# Liveness for a recorded lock owner: the pid must exist AND still look
+# like this tooling. A pid recycled by an unrelated long-lived process
+# must not hold a backup lock forever, while a live run (a monthly full
+# can span many 6-hour cycles) must never lose its lock. /proc is used
+# instead of kill -0 because kill -0 reports EPERM for a live pid owned
+# by another user. An unreadable or empty cmdline means the process
+# exited (or is a zombie) between the checks: dead.
+_pid_is_live() {
+  local _pid=$1 _cmd
+  [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
+  [ -d "/proc/${_pid}" ] || return 1
+  _cmd=$(tr '\0' ' ' < "/proc/${_pid}/cmdline" 2>/dev/null)
+  [ -n "${_cmd}" ] || return 1
+  case "${_cmd}" in
+    *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Function to create PID file; heals stale leftovers (dead owner,
+# recycled pid, empty file) instead of treating any existing file as a
+# live run -- a leftover from an interrupted run used to block every
+# later cycle until removed by hand. A live owner's lock is never
+# touched. Claim discipline against concurrent starters: the create is
+# an atomic noclobber write that never overwrites; a stale file is
+# removed only while it still holds the same dead pid, so a lock
+# re-created in the gap is never swept up; and every successful claim
+# is read back, so a starter whose fresh claim was swept by a slower
+# healer detects the loss and re-enters instead of running unlocked.
 _create_pid_file() {
-  local _pidfile=$1
-  if [ -e "${_pidfile}" ]; then
-    echo "Process already running with PID file ${_pidfile}"
-    exit 1
-  else
-    echo $$ > "${_pidfile}"
-  fi
+  local _pidfile=$1 _old_pid _now_pid _try=0
+  while [ "${_try}" -lt 3 ]; do
+    _try=$((_try + 1))
+    if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
+      _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+      if [ "${_now_pid}" = "$$" ]; then
+        return 0
+      fi
+      continue
+    fi
+    _old_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    if _pid_is_live "${_old_pid}"; then
+      echo "Process already running with PID ${_old_pid} holding ${_pidfile}"
+      exit 1
+    fi
+    _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    if [ "${_now_pid}" = "${_old_pid}" ]; then
+      echo "Removing stale PID file ${_pidfile} (pid ${_old_pid:-empty} not running)"
+      rm -f "${_pidfile}"
+    fi
+  done
+  echo "Process already running with PID file ${_pidfile}"
+  exit 1
 }
 
 # Function to remove PID file
@@ -289,20 +333,6 @@ _remove_pid_file() {
     rm -f "${_pidfile}" || {
       echo "Warning: Failed to remove PID file: ${_pidfile}"
     }
-  fi
-}
-
-# Function to remove stale multiback PID file
-_remove_stale_multiback_pid() {
-  local _service=$1
-  local _user=$2
-  _multiback_pidfile="/run/duplicity_${_service}_${_user}.pid"
-  if [ -f "${_multiback_pidfile}" ]; then
-    _old_pid=$(cat "${_multiback_pidfile}")
-    if [ -n "${_old_pid}" ] && ! kill -0 "${_old_pid}" 2>/dev/null; then
-      echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."
-      rm -f "${_multiback_pidfile}"
-    fi
   fi
 }
 
@@ -616,11 +646,18 @@ _set_cmd() {
   ### Utility command with encryption at the _PRN_VLV floor; only for the
   ### legs that delete remote data (remove-older-than, cleanup --force),
   ### so remote deletions are always logged. The purge wipe deletes via
-  ### the backend driver in _wipe and logs unconditionally.
+  ### the backend driver in _wipe and logs unconditionally. Deletion
+  ### legs also cap the retry budget: a file already absent on the
+  ### backend fails identically on every attempt, and the default five
+  ### spaced attempts per file turned one historically damaged chain
+  ### into a retention stall of many hours that starved the whole
+  ### 6-hourly schedule on a hosted box (observed live).
   export _DCY_PRN_CMD="/usr/local/bin/duplicity \
     -v ${_PRN_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
+    --num-retries 2 \
+    --backend-retry-delay 5 \
     --concurrency ${_useCpu}"
 
   ### Custom backup command with encryption and enforced own FULL_BACKUP_FREQUENCY
@@ -649,12 +686,15 @@ _set_cmd() {
     --no-encryption \
     --concurrency ${_useCpu}"
 
-  ### Custom prune command without encryption at the _PRN_VLV floor
+  ### Custom prune command without encryption at the _PRN_VLV floor;
+  ### same capped retry budget as _DCY_PRN_CMD, see the note there
   export _NOE_PRN_CMD="/usr/local/bin/duplicity \
     -v ${_PRN_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
     --no-encryption \
+    --num-retries 2 \
+    --backend-retry-delay 5 \
     --concurrency ${_useCpu}"
 
   if [ "${_hostedSys}" = "YES" ]; then
@@ -1286,12 +1326,14 @@ chmod 700 "${_SANITIZATION_TMP_DIR}"
 
 _print_env "multiback_main"
 
-# Create the PID file
+# Create the PID file; stale-heal happens inside, before this point the
+# lock may belong to a live run, so no trap is set yet -- an exit on a
+# held lock must not remove the owner's file
 _create_pid_file "${_PIDFILE}"
-trap "rm -f ${_PIDFILE}; exit" EXIT
-
-# Remove stale multiback PID file if necessary
-_remove_stale_multiback_pid "${_SERVICE}" "${_USER}"
+trap "rm -f '${_PIDFILE}'; exit" EXIT
+# A signal death used to leave the pid file behind; exit re-enters the
+# EXIT trap above for the cleanup
+trap 'exit 1' INT TERM HUP
 
 # Load paths configuration
 _load_paths "${_USER}"
@@ -1340,7 +1382,9 @@ case "${_ACTION}" in
     ;;
 esac
 
-_remove_pid_file "${_PIDFILE}"
+# The EXIT trap is the single lock releaser: an explicit release here
+# opened a window in which a successor's freshly acquired lock would be
+# removed again by the trap at exit
 
 # Wipe out any exported variables to clean up env after running the backup
   export FULL_BACKUP_FREQUENCY=
