@@ -32,22 +32,22 @@ _MY_EMAIL="my@email" #---------- System admin email address
 ###
 _CPU_CRIT_RATIO=8.1 #----------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=6.1 #------------ Max load per CPU core before disabling Nginx
-_CPU_TASK_RATIO=3.1 #----------- Max load per CPU core to launch tasks queue
 _CPU_SPIDER_RATIO=2.1 #--------- Max load per CPU core before blocking spiders
+_CPU_TASK_RATIO=3.1 #----------- Max load per CPU core to launch tasks queue
 ###
 _CUSTOM_COLLATION_SQL= #-------- By default on the DB server: utf8mb4_unicode_ci
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.4
 _DB_SERVER=Percona #------------ Install Percona or MySQL Server (8.4 from Trixie)
-_SQL_LOW_MAX_TTL=60 #----------- Max TTL for mysql process per problematic user
-_SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds); authoritative -- the historical .high_load/.big_db markers are inert
+_SOLR_HEAP_FORCE="" #----------- Pins Solr 7/9 JVM heap -Xmx in MB (AUTO when empty)
 _SQL_BUFFER_POOL_FORCE="" #----- Pins innodb_buffer_pool_size in MB (plain integer; AUTO when empty)
-_SQL_TMP_TABLE_FORCE="" #------- Pins tmp_table_size + max_heap_table_size in MB (AUTO when empty)
 _SQL_KEY_BUFFER_FORCE="" #------ Pins key_buffer_size in MB (AUTO when empty)
 _SQL_LOG_FILE_SIZE_FORCE="" #--- Pins innodb_log_file_size / redo capacity in MB (restart applies)
+_SQL_LOW_MAX_TTL=60 #----------- Max TTL for mysql process per problematic user
 _SQL_MAX_CONNECTIONS_FORCE="" #- Pins max_connections count (restart applies; AUTO when empty)
+_SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds); authoritative -- the historical .high_load/.big_db markers are inert
+_SQL_TMP_TABLE_FORCE="" #------- Pins tmp_table_size + max_heap_table_size in MB (AUTO when empty)
 _VALKEY_MAXMEM_FORCE="" #------- Pins Valkey/Redis maxmemory in MB (AUTO when empty)
-_SOLR_HEAP_FORCE="" #----------- Pins Solr 7/9 JVM heap -Xmx in MB (AUTO when empty)
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt
@@ -67,22 +67,21 @@ _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 ###
 #_ICU_FORCE_VRN="73-1"
 ###
-_ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
-###
 _AUTOSYMLINK_NIGHTLY=NO #------- Nightly files-symlink auto-fix run when YES
-_ORPHAN_FILES_REPORT=NO #------- Daily orphaned files-dir email report when YES
-_NIGHT_PARALLEL=NO #------------ Process Octopus accounts in parallel at night
-_NIGHT_MAX_PARALLEL=AUTO #------ Max parallel accounts (AUTO = CPU cores)
 _CLEAR_BOOST=YES #-------------- Clear all boost caches daily when YES (default)
-_LE_CLIENT_NOTIFY=YES #--------- Notify clients of their LE renewal failures
+_ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
+_GHOST_ALIASES_CLEANUP=NO #----- Move stale ltd-user alias copies aside when YES
 _GHOST_CLIENT_NOTIFY=YES #------ Notify clients of ghost site records to remove
-_SHARED_CODEBASES_CLEANUP=NO #-- Move unused shared codebases aside when YES
 _GHOST_CODEBASES_CLEANUP=NO #--- Move ghost/orphaned codebases aside when YES
 _GHOST_PLATFORMS_CLEANUP=NO #--- Move ghost/empty platform aliases aside when YES
-_GHOST_VHOSTS_CLEANUP=NO #------ Move orphaned nginx vhosts aside when YES
-_GHOST_SITES_CLEANUP=NO #------- Move ghost site alias+vhost aside when YES
 _GHOST_SITE_FILES_CLEANUP=NO #-- Also move a ghost site's files dir when YES
-_GHOST_ALIASES_CLEANUP=NO #----- Move stale ltd-user alias copies aside when YES
+_GHOST_SITES_CLEANUP=NO #------- Move ghost site alias+vhost aside when YES
+_GHOST_VHOSTS_CLEANUP=NO #------ Move orphaned nginx vhosts aside when YES
+_LE_CLIENT_NOTIFY=YES #--------- Notify clients of their LE renewal failures
+_NIGHT_MAX_PARALLEL=AUTO #------ Max parallel accounts (AUTO = CPU cores)
+_NIGHT_PARALLEL=NO #------------ Process Octopus accounts in parallel at night
+_ORPHAN_FILES_REPORT=NO #------- Daily orphaned files-dir email report when YES
+_SHARED_CODEBASES_CLEANUP=NO #-- Move unused shared codebases aside when YES
 ###
 ### Converted control-file toggles; each replaces a former presence-
 ### marker file under /etc/boa or /root. System cnf only -- a line
@@ -92,48 +91,48 @@ _GHOST_ALIASES_CLEANUP=NO #----- Move stale ltd-user alias copies aside when YES
 ### an older /root/.barracuda.cnf from the dragon store, re-check every
 ### one of them -- a pre-conversion copy silently reverts them to defaults.
 ###
-_ENABLE_NEWRELIC_SYSMOND=NO #--- Keep nrsysmond running when YES; stopped when NO
-_ALLOW_PHP_FPM_RELOAD=NO #------ FPM-reload sentinel on any plan when YES
-_ALLOW_CODEBASECHECK=NO #------- Nightly per-platform codebasecheck when YES
-_INSTANT_CSF_BLOCK=NO #--------- Instant csf ban for web IDS offenders when YES
-_DENY_JETTY9=NO #-------------- Tear down the Jetty 9 service when YES
-_DENY_SOLR7=NO #--------------- Tear down the Solr 7 service when YES
-_DENY_SOLR9=NO #--------------- Tear down the Solr 9 service when YES
-_ALLOW_NGINX_RESTART=NO #------ Self-service nginx-restart sentinel box-wide when YES
-_ALLOW_VALKEY_RESTART=NO #----- Self-service cache-restart sentinel box-wide when YES
-_DEBUG_EMAIL=NO #-------------- Send the usage report to the debug inbox when YES
-_GOACCESS_ALL=NO #------------- Nightly ALL-sites GoAccess report when YES (needs GoAccess on)
-_OCTOPUS_UPGRADE_RERUN_SILENT=NO #- Silence + re-run already-current Octopus upgrades when YES
-_INSTANT_BUSY_MYSQL_ACTION=NO #- Add a live saturation probe that relieves, not restarts
-_MYSQLADMIN_MONITOR=NO #------- Keep slow-query log + process-list monitor on when YES
-_ALLOW_SENDMAIL=NO #----------- Leave sendmail usable and Postfix direct when YES
-_NO_SYSCTL_UPDATE=NO #--------- Skip sysctl/limits refresh on upgrades when YES
-_DEBUG_PURGE_BUILD_TREE=NO #--- Purge the /opt/tmp build tree every run when YES
-_DEBUG_DAILY=NO #-------------- Verbose per-drush lines in the nightly log when YES
-_DISABLE_AUDITD_LOGS=NO #------ Stop auditd writing logs when YES
-_DONT_USE_FANCY_BASH_LOGIN=NO #- Plain root login banner, no toilet/figlet when YES
-_INCLUDE_PHP_LATEST=NO #------- Include the newest supported PHP version when YES
-_MY_RESTART_AFTER_OPTIMIZE=NO #- Graceful MySQL restart after monthly OPTIMIZE when YES
-_DENY_JAVA=NO #---------------- Keep Java/Solr/Jetty off this box when YES (replaces /root/.deny.java.cnf)
-_SKIP_PERMISSIONS_PASS=NO #---- Skip the nightly per-platform permissions pass when YES (replaces /etc/boa/.dont.touch.permissions.cnf)
-_ALLOW_AEGIR_QUEUE=NO #-------- Allow the automatic Aegir task queue on a CI box when YES (replaces /etc/boa/.allow.aegir.queue.cnf)
-_DISABLE_MYSQL_CLEANUP=NO #---- Disable hourly db cleanup + nightly giant-table truncations when YES (replaces /etc/boa/.disable_mysql_cleanup.cnf)
-_DEBUG_MONITOR=NO #------------ Enable abuse-guard scorer debug instrumentation when YES (replaces /etc/boa/.debug.monitor.cnf)
-_ALLOW_DU=NO #----------------- Keep du in the restricted client shell when YES (replaces /etc/boa/.allow.du.cnf)
-_HOME_NO_WILDCARD_CHMOD=NO #--- Suppress the wildcard chmod pass over client homes when YES (replaces /etc/boa/.home.no.wildcard.chmod.cnf)
-_ALLOW_CLAMAV=NO #------------- Keep ClamAV registered and monitored when YES (replaces /root/.allow.clamav.cnf)
-_DENY_CLAMAV=NO #-------------- Force ClamAV deregistered, overrides allow, when YES (replaces /root/.deny.clamav.cnf)
-_FORCE_CI_BOX=NO #------------- Force the CI box classification when YES (replaces /etc/boa/.look.like.jenkins.cnf)
-_NO_CRON_AUTOSTART=NO #-------- Suppress cron autostart at the three honouring sites when YES (replaces /root/.upstart.cnf)
+_ALLOW_AEGIR_QUEUE=NO #-------------- Allow the automatic Aegir task queue on a CI box when YES (replaces /etc/boa/.allow.aegir.queue.cnf)
+_ALLOW_CLAMAV=NO #------------------- Keep ClamAV registered and monitored when YES (replaces /root/.allow.clamav.cnf)
+_ALLOW_CODEBASECHECK=NO #------------ Nightly per-platform codebasecheck when YES
+_ALLOW_DU=NO #----------------------- Keep du in the restricted client shell when YES (replaces /etc/boa/.allow.du.cnf)
+_ALLOW_NGINX_RESTART=NO #------------ Self-service nginx-restart sentinel box-wide when YES
+_ALLOW_PHP_FPM_RELOAD=NO #----------- FPM-reload sentinel on any plan when YES
+_ALLOW_SENDMAIL=NO #----------------- Leave sendmail usable and Postfix direct when YES
+_ALLOW_VALKEY_RESTART=NO #----------- Self-service cache-restart sentinel box-wide when YES
+_DEBUG_DAILY=NO #-------------------- Verbose per-drush lines in the nightly log when YES
+_DEBUG_EMAIL=NO #-------------------- Send the usage report to the debug inbox when YES
+_DEBUG_MONITOR=NO #------------------ Enable abuse-guard scorer debug instrumentation when YES (replaces /etc/boa/.debug.monitor.cnf)
+_DEBUG_PURGE_BUILD_TREE=NO #--------- Purge the /opt/tmp build tree every run when YES
+_DENY_CLAMAV=NO #-------------------- Force ClamAV deregistered, overrides allow, when YES (replaces /root/.deny.clamav.cnf)
+_DENY_JAVA=NO #---------------------- Keep Java/Solr/Jetty off this box when YES (replaces /root/.deny.java.cnf)
+_DENY_JETTY9=NO #-------------------- Tear down the Jetty 9 service when YES
+_DENY_SOLR7=NO #--------------------- Tear down the Solr 7 service when YES
+_DENY_SOLR9=NO #--------------------- Tear down the Solr 9 service when YES
+_DISABLE_AUDITD_LOGS=NO #------------ Stop auditd writing logs when YES
+_DISABLE_MYSQL_CLEANUP=NO #---------- Disable hourly db cleanup + nightly giant-table truncations when YES (replaces /etc/boa/.disable_mysql_cleanup.cnf)
+_DONT_USE_FANCY_BASH_LOGIN=NO #------ Plain root login banner, no toilet/figlet when YES
+_ENABLE_NEWRELIC_SYSMOND=NO #-------- Keep nrsysmond running when YES; stopped when NO
+_FORCE_CI_BOX=NO #------------------- Force the CI box classification when YES (replaces /etc/boa/.look.like.jenkins.cnf)
+_GOACCESS_ALL=NO #------------------- Nightly ALL-sites GoAccess report when YES (needs GoAccess on)
+_HOME_NO_WILDCARD_CHMOD=NO #--------- Suppress the wildcard chmod pass over client homes when YES (replaces /etc/boa/.home.no.wildcard.chmod.cnf)
+_INCLUDE_PHP_LATEST=NO #------------- Include the newest supported PHP version when YES
+_INSTANT_BUSY_MYSQL_ACTION=NO #------ Add a live saturation probe that relieves, not restarts
+_INSTANT_CSF_BLOCK=NO #-------------- Instant csf ban for web IDS offenders when YES
+_MY_RESTART_AFTER_OPTIMIZE=NO #------ Graceful MySQL restart after monthly OPTIMIZE when YES
+_MYSQLADMIN_MONITOR=NO #------------- Keep slow-query log + process-list monitor on when YES
+_NO_CRON_AUTOSTART=NO #-------------- Suppress cron autostart at the three honouring sites when YES (replaces /root/.upstart.cnf)
+_NO_SYSCTL_UPDATE=NO #--------------- Skip sysctl/limits refresh on upgrades when YES
+_OCTOPUS_UPGRADE_RERUN_SILENT=NO #--- Silence + re-run already-current Octopus upgrades when YES
+_SKIP_PERMISSIONS_PASS=NO #---------- Skip the nightly per-platform permissions pass when YES (replaces /etc/boa/.dont.touch.permissions.cnf)
 ###
-_NGINX_DOS_DIV_INC_NR="40" #---- Default divisor for increments
-_NGINX_DOS_IGNORE="foo|bar" #--- Keywords to ignore the requests if found
-_NGINX_DOS_INC_MIN="3" #-------- Default min allowed number for increments
-_NGINX_DOS_LIMIT=399 #---------- Default 399/1999 limit of page views per IP
-_NGINX_DOS_LINES=1999 #--------- Default number of access.log lines to check
-_NGINX_DOS_LOG=SILENT #---------- DOS logging: SILENT, NORMAL or VERBOSE; absorbs .debug.monitor.log.cnf (marker ensures NORMAL; off = rm marker AND set SILENT); survives retunes unlike its _NGINX_DOS_* siblings
-_NGINX_DOS_MODE=2 #------------- 1 or 2 (default)
-_NGINX_DOS_STOP="foo|bar" #----- Adds full _NGINX_DOS_LIMIT to counter (immediate ban)
+_NGINX_DOS_DIV_INC_NR="40" #--------- Default divisor for increments
+_NGINX_DOS_IGNORE="foo|bar" #-------- Keywords to ignore the requests if found
+_NGINX_DOS_INC_MIN="3" #------------- Default min allowed number for increments
+_NGINX_DOS_LIMIT=399 #--------------- Default 399/1999 limit of page views per IP
+_NGINX_DOS_LINES=1999 #-------------- Default number of access.log lines to check
+_NGINX_DOS_LOG=SILENT #-------------- DOS logging: SILENT, NORMAL or VERBOSE; absorbs .debug.monitor.log.cnf (marker ensures NORMAL; off = rm marker AND set SILENT); survives retunes unlike its _NGINX_DOS_* siblings
+_NGINX_DOS_MODE=2 #------------------ 1 or 2 (default)
+_NGINX_DOS_STOP="foo|bar" #---------- Adds full _NGINX_DOS_LIMIT to counter (immediate ban)
 ###
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
@@ -151,11 +150,9 @@ _PHP_FPM_VERSION=8.4 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="8.3 8.4 8.5" #-- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6
+_PHP_MULTI_INSTALL="8.3 8.4 8.5" #--- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.3
 ###
-_VALKEY_LISTEN_MODE=SOCKET #---- Valkey listen mode: SOCKET (recommended) or PORT
-_VALKEY_MAJOR_RELEASE=9 #------- Valkey major release version: 9, 8, 7
 _REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
 _REDIS_MAJOR_RELEASE=7 #-------- Redis major release version: 5, 6 or 7
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
@@ -165,12 +162,14 @@ _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
 _STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 _USE_PREBUILT_PKGS=NO #--------- Prebuilt stack packages when YES; auto-YES on Daedalus
+_VALKEY_LISTEN_MODE=SOCKET #---- Valkey listen mode: SOCKET (recommended) or PORT
+_VALKEY_MAJOR_RELEASE=9 #------- Valkey major release version: 9, 8, 7
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
-_CUSTOM_CONFIG_VALKEY=NO #------ Protects custom Valkey config when YES
 _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
+_CUSTOM_CONFIG_VALKEY=NO #------ Protects custom Valkey config when YES
 ###
 _AEGIR_UPGRADE_ONLY=NO #-------- Managed on the fly with 'aegir' keyword
 _SYSTEM_UP_ONLY=NO #------------ Managed on the fly with 'system' keyword
