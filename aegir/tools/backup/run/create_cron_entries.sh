@@ -51,9 +51,13 @@ mkdir -p "${_SCHEDULE_DIR}"
 chown root:root "${_SCHEDULE_DIR}"
 chmod 700 "${_SCHEDULE_DIR}"
 
-# Function to generate the wrapper script
+# Function to generate the wrapper script. Written to a temp file and
+# swapped in with an atomic same-directory mv: truncating the live file
+# in place corrupts any wrapper instance still executing it (bash reads
+# scripts lazily), and this generator runs nightly while a monthly full
+# can hold an instance for many hours.
 _generate_wrapper_script() {
-  cat << 'EOF' > "${_WRAPPER_SCRIPT}"
+  cat << 'EOF' > "${_WRAPPER_SCRIPT}.fresh"
 #!/bin/bash
 
 # Enable strict error handling for debugging only
@@ -69,15 +73,77 @@ _SCHEDULE_FILE="/root/.remote_backups/schedule/backup_schedule.txt"
 _PID_DIR="/run"
 _LOGFILE="/var/log/backup_runtime.log"
 
-# Function to create PID file
-_create_pid_file() {
-  local _pidfile=$1
-  if [ -e "${_pidfile}" ]; then
-    echo "Process already running with PID file ${_pidfile}"
-    exit 1
-  else
-    echo $$ > "${_pidfile}"
-  fi
+# Liveness for a recorded lock owner: the pid must exist AND still look
+# like this tooling. A pid recycled by an unrelated long-lived process
+# must not hold a backup lock forever, while a live run (a monthly full
+# can span many 6-hour cycles) must never lose its lock. /proc is used
+# instead of kill -0 because kill -0 reports EPERM for a live pid owned
+# by another user. An unreadable or empty cmdline means the process
+# exited (or is a zombie) between the checks: dead.
+_pid_is_live() {
+  local _pid=$1 _cmd
+  [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
+  [ -d "/proc/${_pid}" ] || return 1
+  _cmd=$(tr '\0' ' ' < "/proc/${_pid}/cmdline" 2>/dev/null)
+  [ -n "${_cmd}" ] || return 1
+  case "${_cmd}" in
+    *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Function to acquire the per-service PID lock; heals stale leftovers
+# (dead owner, recycled pid, empty file), never removes a live owner's
+# lock. Returns 1 on a live holder so the caller can skip just that
+# service: an exit here used to starve every later schedule entry for
+# as long as one slow service kept running. Claim discipline against
+# concurrent starters: the create is an atomic noclobber write that
+# never overwrites; a stale file is removed only while it still holds
+# the same dead pid, so a lock re-created in the gap is never swept up;
+# and every successful claim is read back, so a starter whose fresh
+# claim was swept by a slower healer detects the loss and re-enters
+# instead of running unlocked.
+_acquire_pid_file() {
+  local _pidfile=$1 _old_pid _now_pid _try=0
+  while [ "${_try}" -lt 3 ]; do
+    _try=$((_try + 1))
+    if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
+      _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+      if [ "${_now_pid}" = "$$" ]; then
+        return 0
+      fi
+      continue
+    fi
+    _old_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    if _pid_is_live "${_old_pid}"; then
+      echo "Process already running with PID ${_old_pid} holding ${_pidfile}"
+      return 1
+    fi
+    _now_pid=$(tr -dc '0-9' < "${_pidfile}" 2>/dev/null)
+    if [ "${_now_pid}" = "${_old_pid}" ]; then
+      echo "Removing stale PID file ${_pidfile} (pid ${_old_pid:-empty} not running)"
+      rm -f "${_pidfile}"
+    fi
+  done
+  echo "Process already running with PID file ${_pidfile}"
+  return 1
+}
+
+# Function to count live backup streams across ALL wrapper instances --
+# the live (non-sequential) multiback locks. One instance dispatches
+# entries strictly one at a time, but each 6-hour cron tick can add an
+# instance while a monthly full still runs (18-hour fulls are real), and
+# unbounded skip-and-continue would pile concurrent fulls onto the same
+# day. At the cap, the remaining entries wait for a later cycle.
+_live_backup_streams() {
+  local _n=0 _f _p
+  for _f in /run/duplicity_*.pid; do
+    [ -e "${_f}" ] || continue
+    case "${_f}" in *_sequential.pid) continue ;; esac
+    _p=$(tr -dc '0-9' < "${_f}" 2>/dev/null)
+    _pid_is_live "${_p}" && _n=$((_n + 1))
+  done
+  echo "${_n}"
 }
 
 # Function to remove PID file
@@ -90,14 +156,30 @@ _remove_pid_file() {
   fi
 }
 
-# Function to remove stale multiback PID file
+# Function to release the currently held per-service lock; clearing the
+# tracker keeps the wrapper-level trap from ever removing a lock this
+# run no longer owns
+_release_current_pid_file() {
+  _remove_pid_file "${_CURRENT_PIDFILE}"
+  _CURRENT_PIDFILE=""
+}
+
+# Function to remove stale multiback PID file; multiback heals its own
+# stale locks too, this covers boxes where the fetched tool lags a
+# regenerated wrapper. The removal is guarded by a content re-read: a
+# concurrently starting manual multiback can heal and re-acquire this
+# very file between the liveness check and the rm, and its fresh live
+# lock must never be swept up.
 _remove_stale_multiback_pid() {
   _multiback_pidfile="/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
-    _old_pid=$(cat "${_multiback_pidfile}")
-    if [ -n "${_old_pid}" ] && ! kill -0 "${_old_pid}" 2>/dev/null; then
-      echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."
-      rm -f "${_multiback_pidfile}"
+    _old_pid=$(tr -dc '0-9' < "${_multiback_pidfile}" 2>/dev/null)
+    if ! _pid_is_live "${_old_pid}"; then
+      _now_pid=$(tr -dc '0-9' < "${_multiback_pidfile}" 2>/dev/null)
+      if [ "${_now_pid}" = "${_old_pid}" ]; then
+        echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."
+        rm -f "${_multiback_pidfile}"
+      fi
     fi
   fi
 }
@@ -121,6 +203,15 @@ _print_env() {
   fi
 }
 
+# One trap set covers whichever per-service lock this run holds right
+# now; single quotes defer expansion to fire time. The old in-loop trap
+# expanded an undefined variable at set time, so it removed nothing and
+# an interrupted run left its pid file behind, blocking every later
+# cycle. A signal death re-enters the EXIT trap for the cleanup.
+_CURRENT_PIDFILE=""
+trap '[ -n "${_CURRENT_PIDFILE}" ] && rm -f "${_CURRENT_PIDFILE}"' EXIT
+trap 'exit 1' INT TERM HUP
+
 # Process each line in the backup configuration file
 while IFS= read -r _line || [ -n "${_line}" ]; do
   # Skip empty lines and comments
@@ -142,12 +233,23 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   export _service="${_service}"
   export _user="${_user}"
 
-  # Define the PID file path
-  _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}_sequential.pid"
+  # Defer the rest of the schedule when two backup streams already run
+  # box-wide; skipping past every held lock must not stack a third
+  if [ "$(_live_backup_streams)" -ge 2 ]; then
+    echo "Two backup streams already running; deferring ${_service} (${_user}) and the rest of the schedule to a later cycle."
+    break
+  fi
 
-  # Create the PID file
-  _create_pid_file "${_CURRENT_PIDFILE}"
-  trap "rm -f ${_PIDFILE}; exit" EXIT
+  # Define the PID file path
+  _SEQ_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}_sequential.pid"
+
+  # Acquire the per-service lock; a service still running from an
+  # earlier cycle skips only itself, the rest of the schedule proceeds
+  if ! _acquire_pid_file "${_SEQ_PIDFILE}"; then
+    echo "Skipping backup for ${_service} (${_user}): a previous run still holds its lock."
+    continue
+  fi
+  _CURRENT_PIDFILE="${_SEQ_PIDFILE}"
 
   # Remove stale multiback PID file if necessary
   _remove_stale_multiback_pid
@@ -160,21 +262,21 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
     if [ ! -f "${_secret_file}" ]; then
       echo "Secret file ${_secret_file} not found."
-      _remove_pid_file "${_CURRENT_PIDFILE}"
+      _release_current_pid_file
       continue
     fi
 
     # Check if _paths_file exists
     if [ ! -f "${_paths_file}" ]; then
       echo "Error: Paths configuration file ${_paths_file} not found."
-      _remove_pid_file "${_CURRENT_PIDFILE}"
+      _release_current_pid_file
       continue
     fi
 
     # Check if credentials file exists
     if [ ! -f "${_credentials_file}" ]; then
       echo "Error: Credentials file ${_credentials_file} not found."
-      _remove_pid_file "${_CURRENT_PIDFILE}"
+      _release_current_pid_file
       continue
     fi
 
@@ -193,19 +295,19 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
     if [ ! -f "${_secret_file}" ]; then
       echo "Secret file ${_secret_file} not found."
-      _remove_pid_file "${_CURRENT_PIDFILE}"
+      _release_current_pid_file
       continue
     fi
 
     if [ ! -f "${_paths_file}" ]; then
       echo "Error: Paths configuration file ${_paths_file} not found."
-      _remove_pid_file "${_CURRENT_PIDFILE}"
+      _release_current_pid_file
       continue
     fi
 
     if [ ! -f "${_credentials_file}" ]; then
       echo "Error: Credentials file ${_credentials_file} not found."
-      _remove_pid_file "${_CURRENT_PIDFILE}"
+      _release_current_pid_file
       continue
     fi
 
@@ -230,12 +332,13 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   _print_env "sequential_backups_d"
 
   # Remove the PID file
-  _remove_pid_file "${_CURRENT_PIDFILE}"
+  _release_current_pid_file
 
 done < "${_SCHEDULE_FILE}"
 EOF
 
-  chmod +x "${_WRAPPER_SCRIPT}"
+  chmod +x "${_WRAPPER_SCRIPT}.fresh"
+  mv -f "${_WRAPPER_SCRIPT}.fresh" "${_WRAPPER_SCRIPT}"
   echo "Wrapper script created at ${_WRAPPER_SCRIPT}"
 }
 
