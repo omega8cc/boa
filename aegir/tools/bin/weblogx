@@ -9,7 +9,7 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
-_GOACCESS_VRN=1.9.4
+_GOACCESS_VRN=1.11
 _sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
 
 _check_root() {
