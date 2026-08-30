@@ -9,7 +9,7 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
-_GOACCESS_VRN=1.9.4
+_GOACCESS_VRN=1.11
 _sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
 
 _check_root() {
@@ -321,8 +321,14 @@ if [ ! -e "${_ARCHLOGS}/unzip/.global.pid" ]; then
   echo "[+] DECOMPRESSING GZ FILES"
   find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
   echo "[+] RENAMING RAW FILES"
+  ### Exclude already-renamed .txt files: renaming them again would move a
+  ### just-refreshed access.log.N.txt (the fresh rename lands earlier in the
+  ### sorted list) to .txt.txt, which the sweep below then deletes -- a
+  ### re-prepare over a previous run's corpus emptied the whole set on every
+  ### second call. Excluding .txt makes re-preparation idempotent: fresh
+  ### renames simply overwrite the previous corpus.
   for _log in `find ${_ARCHLOGS}/unzip \
-    -maxdepth 1 -mindepth 1 -type f | sort`; do
+    -maxdepth 1 -mindepth 1 -type f ! -name '*.txt' | sort`; do
     mv -f ${_log} ${_log}.txt;
   done
   if [ -e "${_ARCHLOGS}/unzip/.global.pid.txt" ]; then
@@ -342,16 +348,30 @@ else
   _SITE_REGEX=" ${_SITE} "
 fi
 
-find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; | grep "${_SITE_REGEX}" >> ${_TARGET}/mrgd_nginx.log
+### -a is load-bearing: one NUL byte anywhere in the concatenated corpus flips
+### grep into binary mode, which silently truncates the merged log and produces
+### an empty report.
+find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; | grep -a "${_SITE_REGEX}" >> ${_TARGET}/mrgd_nginx.log
 
 echo "[+] EXPORTING GOACCESS REPORT HTML"
 _GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
 
+### Operator-owned exclusions (own workstation/monitoring addresses) so reports
+### show real visitor traffic; space-separated IPv4/IPv6 addresses or
+### dash-ranges (1.2.3.4-1.2.3.9) in _GOACCESS_EXCLUDE_IPS (/root/.barracuda.cnf,
+### sourced above). CLI -e entries merge with the exclude-ip list already
+### present in /root/.goaccessrc. CIDR is refused here because goaccess
+### silently ignores slash notation -- a filter that looks armed but is not.
+_xIps=()
+for _xIp in ${_GOACCESS_EXCLUDE_IPS}; do
+  [[ "${_xIp}" =~ ^[0-9a-fA-F.:-]+$ ]] && _xIps+=("-e" "${_xIp}")
+done
+
 [[ ${_GACONF} ]] && conf=(-p "${_GACONF}")
 if [[ ${_GOVER} = 1 ]]; then
-  goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
+  goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" "${_xIps[@]}" -a -o "${_TARGET}/index.html"
 else
-  goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
+  goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" "${_xIps[@]}" > "${_TARGET}/index.html"
 fi
 
 if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
