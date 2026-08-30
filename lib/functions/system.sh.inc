@@ -3207,6 +3207,8 @@ _barracuda_cnf() {
     echo "_ALLOW_VALKEY_RESTART=${_ALLOW_VALKEY_RESTART:-NO}"  >> ${_barCnf}
     echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}"               >> ${_barCnf}
     echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
+    echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}"       >> ${_barCnf}
+    echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\""  >> ${_barCnf}
     echo "_OCTOPUS_UPGRADE_RERUN_SILENT=${_OCTOPUS_UPGRADE_RERUN_SILENT:-NO}"  >> ${_barCnf}
     echo "_INSTANT_BUSY_MYSQL_ACTION=${_INSTANT_BUSY_MYSQL_ACTION:-NO}"  >> ${_barCnf}
     echo "_MYSQLADMIN_MONITOR=${_MYSQLADMIN_MONITOR:-NO}"  >> ${_barCnf}
@@ -3484,6 +3486,14 @@ _barracuda_cnf() {
     _GOACCESS_ALL_TEST=$(grep "^_GOACCESS_ALL=" ${_barCnf} 2>&1)
     if [[ ! "${_GOACCESS_ALL_TEST}" =~ "_GOACCESS_ALL=" ]]; then
       echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}" >> ${_barCnf}
+    fi
+    _GOACCESS_VHOSTS_TEST=$(grep "^_GOACCESS_VHOSTS=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_VHOSTS_TEST}" =~ "_GOACCESS_VHOSTS=" ]]; then
+      echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}" >> ${_barCnf}
+    fi
+    _GOACCESS_EXCLUDE_IPS_TEST=$(grep "^_GOACCESS_EXCLUDE_IPS=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_EXCLUDE_IPS_TEST}" =~ "_GOACCESS_EXCLUDE_IPS=" ]]; then
+      echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\"" >> ${_barCnf}
     fi
     _OCTOPUS_UPGRADE_RERUN_SILENT_TEST=$(grep "^_OCTOPUS_UPGRADE_RERUN_SILENT=" ${_barCnf} 2>&1)
     if [[ ! "${_OCTOPUS_UPGRADE_RERUN_SILENT_TEST}" =~ "_OCTOPUS_UPGRADE_RERUN_SILENT=" ]]; then
