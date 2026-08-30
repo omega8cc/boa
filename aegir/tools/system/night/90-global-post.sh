@@ -152,6 +152,66 @@ _ghost_codebases_cleanup() {
   done
 }
 
+_goaccess_vhosts() {
+  ### Standalone vhosts under /etc/nginx/sites-enabled have no Octopus account,
+  ### so the per-site arm in 20-sites.sh can never reach them. Enumerate every
+  ### literal server_name and build one report per name, plus the box-wide ALL
+  ### aggregate. Reports land in the xdr9000 archive tree (already pulled by the
+  ### operator's fleet tooling), not the tenant-facing adminer path.
+  local _vhDom _vhTgt _isWblgx
+  local -a _vhDoms=()
+  _isWblgx="$(which weblogx)"
+  [ -x "${_isWblgx}" ] || return 0
+  [ -d "/etc/nginx/sites-enabled" ] || return 0
+  ### Multi-line server_name directives are valid nginx config, so collect
+  ### tokens from the directive up to its terminating semicolon, drop what
+  ### follows the semicolon, and lowercase (nginx normalizes server names, the
+  ### $host log field is lowercase, and lowercasing also keeps any name from
+  ### matching weblogx's uppercase ALL trigger). The while-read keeps tokens
+  ### away from pathname expansion, unlike a for-in over a substitution.
+  while IFS= read -r _vhDom; do
+    ### Names become filesystem paths and weblogx arguments; accept only sane
+    ### hostnames (alnum edges), which also rejects wildcards, "_" catch-alls,
+    ### dot-runs and anything option-shaped.
+    if [[ ! "${_vhDom}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] \
+      || [[ "${_vhDom}" =~ \.\. ]] \
+      || [ "${_vhDom}" = "localhost" ]; then
+      continue
+    fi
+    _vhDoms+=("${_vhDom}")
+  done < <(awk '
+    /^[[:space:]]*server_name([[:space:]]|$)/ { inns=1; sub(/^[[:space:]]*server_name/, "") }
+    inns {
+      end = index($0, ";")
+      line = (end ? substr($0, 1, end - 1) : $0)
+      sub(/#.*/, "", line)
+      n = split(line, tok, /[[:space:]]+/)
+      for (i = 1; i <= n; i++) if (tok[i] != "") print tok[i]
+      if (end) inns = 0
+    }' /etc/nginx/sites-enabled/* 2>/dev/null | tr 'A-Z' 'a-z' | sort -u)
+  ### No standalone vhosts -- nothing to report on, including no ALL run.
+  [ "${#_vhDoms[@]}" -eq 0 ] && return 0
+  _vhTgt=/var/log/boa/xdr9000/goaccess
+  mkdir -p "${_vhTgt}"
+  ### The engine keeps the archive root 0700; assert it in case this created it.
+  chmod 700 /var/log/boa/xdr9000 "${_vhTgt}" &> /dev/null
+  ### Build in weblogx's standard working area (it stages its merged-log
+  ### scratch beside the report), then publish ONLY the finished HTML into the
+  ### archive tree, atomically -- the hourly fleet pull must never catch a
+  ### multi-MB scratch corpus or a half-written report.
+  for _vhDom in "${_vhDoms[@]}" ALL; do
+    ${_isWblgx} --site="${_vhDom}" --env=vhosts
+    wait
+    if [ -e "/var/www/adminer/access/vhosts/${_vhDom}/index.html" ]; then
+      mkdir -p "${_vhTgt}/${_vhDom}"
+      cp -af "/var/www/adminer/access/vhosts/${_vhDom}/index.html" \
+        "${_vhTgt}/${_vhDom}/.index.html.new"
+      mv -f "${_vhTgt}/${_vhDom}/.index.html.new" \
+        "${_vhTgt}/${_vhDom}/index.html"
+    fi
+  done
+}
+
 _cleanup_weblogx() {
   _ARCHLOGS=/var/www/adminer/access/archive
   if [ -e "${_ARCHLOGS}/unzip" ]; then

@@ -264,6 +264,12 @@ _daily_action() {
   _check_old_empty_hostmaster_platforms
   _purge_shared_aegir_backups
   if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
+    # Skew-guarded like the sweep below: the function ships in
+    # 90-global-post.sh on its own serial, so a mixed vintage must skip.
+    if [ "${_GOACCESS_VHOSTS}" = "YES" ] \
+      && command -v _goaccess_vhosts > /dev/null 2>&1; then
+      _goaccess_vhosts
+    fi
     _cleanup_weblogx
   fi
   # Skew-guarded: the function ships in 90-global-post.sh and the two files

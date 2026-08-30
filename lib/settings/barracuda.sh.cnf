@@ -1140,6 +1140,17 @@ _DEBUG_EMAIL=NO
 ### Replaces /etc/boa/.goaccess.all.cnf
 _GOACCESS_ALL=NO
 ###
+### Space-separated visitor IPs or dash-ranges like 1.2.3.4-1.2.3.9
+### (IPv4/IPv6; CIDR is not honoured by GoAccess and is refused) left out
+### of every GoAccess report, so operator/monitoring visits do not skew
+### the stats.
+_GOACCESS_EXCLUDE_IPS=""
+###
+### Nightly GoAccess also builds one report per standalone vhost defined
+### in /etc/nginx/sites-enabled, plus the box-wide ALL aggregate, into
+### /var/log/boa/xdr9000/goaccess/. Needs GoAccess itself switched on.
+_GOACCESS_VHOSTS=NO
+###
 ### Suppresses the already-up-to-date notice AND re-runs an Octopus
 ### upgrade that would otherwise be skipped.
 ### Replaces /etc/boa/.silent-octopus-upgrade.cnf
