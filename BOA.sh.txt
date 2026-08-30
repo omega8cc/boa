@@ -1542,11 +1542,28 @@ _update_agents() {
         mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
       fi
     fi
-    if [ "$(pgrep -fc duplicity)" -gt 0 ] \
-      && [ "$(pgrep -fc dcysetup)" -lt 1 ] \
-      && [ "$(pgrep -fc mybackup)" -lt 1 ] \
-      && [ "$(pgrep -fc multiback)" -lt 1 ]; then
-      pkill -9 -f duplicity
+    # Genuine executions only, the same anchored pair as this function's
+    # fetch guard: the bare substrings here SIGKILLed any command line
+    # that merely mentioned duplicity (an editor, a tail on this very
+    # log), and any mention of a wrapper name anywhere spared the reap.
+    # The sparing list also covers the daily backboa/duobackboa pair,
+    # whose legitimately parented in-flight duplicity a pass otherwise
+    # reaped mid-backup whenever no multiback happened to be running.
+    # A wrapper that died leaves its duplicity a genuine orphan (none of
+    # the five counts as alive), so orphan recovery is unchanged.
+    _dcyLive="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
+    _dcyLiveD="$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
+    _dcyLive=$(( ${_dcyLive:-0} + ${_dcyLiveD:-0} ))
+    _bupLive=0
+    for _bupTool in dcysetup mybackup multiback backboa duobackboa; do
+      _bupCnt="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_bupTool}( |$)" 2>/dev/null)"
+      _bupLive=$(( _bupLive + ${_bupCnt:-0} ))
+      _bupCnt="$(pgrep -fc "^[^ ]*${_bupTool}( |$)" 2>/dev/null)"
+      _bupLive=$(( _bupLive + ${_bupCnt:-0} ))
+    done
+    if [ "${_dcyLive}" -gt 0 ] && [ "${_bupLive}" -lt 1 ]; then
+      pkill -9 -f "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)"
+      pkill -9 -f "^[^ ]*duplicity( |$)"
       rm -rf /tmp/duplicity*
       rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
       rm -f /root/.cache/duplicity/*/lockfile
