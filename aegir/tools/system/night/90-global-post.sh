@@ -195,6 +195,20 @@ _goaccess_vhosts() {
   mkdir -p "${_vhTgt}"
   ### The engine keeps the archive root 0700; assert it in case this created it.
   chmod 700 /var/log/boa/xdr9000 "${_vhTgt}" &> /dev/null
+  ### Stage the log corpus ONCE for the whole loop. weblogx's internal prepare
+  ### never plants the .global.pid sentinel, so without it every call would
+  ### re-prepare the corpus; in the nightly, _prepare_weblogx (owl.sh) has
+  ### already staged it and planted the sentinel. Standalone, do the same:
+  ### first call prepares, then the sentinel makes the rest reuse the corpus.
+  if [ ! -e "/var/www/adminer/access/archive/unzip/.global.pid" ]; then
+    if command -v _prepare_weblogx > /dev/null 2>&1; then
+      _prepare_weblogx
+    else
+      ${_isWblgx} --site="${_vhDoms[0]}" --env=vhosts
+      wait
+      touch /var/www/adminer/access/archive/unzip/.global.pid
+    fi
+  fi
   ### Build in weblogx's standard working area (it stages its merged-log
   ### scratch beside the report), then publish ONLY the finished HTML into the
   ### archive tree, atomically -- the hourly fleet pull must never catch a

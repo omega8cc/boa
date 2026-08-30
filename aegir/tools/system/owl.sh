@@ -188,8 +188,13 @@ _prepare_weblogx() {
   # that the sentinel survived, growing .global.pid.txt.txt... until the name
   # exceeded 255 bytes ("File name too long"). Sweep any such accumulated
   # variants too, then re-set the clean sentinel.
+  ### Exclude already-renamed .txt files (crash residue from an interrupted
+  ### run): renaming them again cascades a fresh access.log.N.txt into
+  ### .txt.txt, which the sweep below deletes -- one dirty prepare then feeds
+  ### the whole night empty logs. Excluding .txt makes re-preparation
+  ### idempotent: fresh renames simply overwrite the previous corpus.
   for _log in `find ${_ARCHLOGS}/unzip \
-    -maxdepth 1 -mindepth 1 -type f -name 'access*' | sort`; do
+    -maxdepth 1 -mindepth 1 -type f -name 'access*' ! -name '*.txt' | sort`; do
     mv -f ${_log} ${_log}.txt;
   done
   rm -f ${_ARCHLOGS}/unzip/*.txt.txt*

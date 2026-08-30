@@ -321,8 +321,14 @@ if [ ! -e "${_ARCHLOGS}/unzip/.global.pid" ]; then
   echo "[+] DECOMPRESSING GZ FILES"
   find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
   echo "[+] RENAMING RAW FILES"
+  ### Exclude already-renamed .txt files: renaming them again would move a
+  ### just-refreshed access.log.N.txt (the fresh rename lands earlier in the
+  ### sorted list) to .txt.txt, which the sweep below then deletes -- a
+  ### re-prepare over a previous run's corpus emptied the whole set on every
+  ### second call. Excluding .txt makes re-preparation idempotent: fresh
+  ### renames simply overwrite the previous corpus.
   for _log in `find ${_ARCHLOGS}/unzip \
-    -maxdepth 1 -mindepth 1 -type f | sort`; do
+    -maxdepth 1 -mindepth 1 -type f ! -name '*.txt' | sort`; do
     mv -f ${_log} ${_log}.txt;
   done
   if [ -e "${_ARCHLOGS}/unzip/.global.pid.txt" ]; then
