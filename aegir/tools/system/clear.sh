@@ -347,8 +347,16 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     rm -f /root/.remote_backups/paths/.*
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
   fi
-  _CNT=$(pgrep -fc duplicity)
-  if (( _CNT > 0 )); then
+  # Genuine duplicity executions only, the same anchored pair as the
+  # _fetch_versioned guard: duplicity runs as its venv python with the
+  # console script as the script argument, and a bare substring match
+  # also deferred this arm whenever any command line merely mentioned
+  # the word (an editor, a tail, an operator probe).
+  _CNT="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
+  _CNT="${_CNT:-0}"
+  _CNTD="$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
+  _CNTD="${_CNTD:-0}"
+  if (( _CNT + _CNTD > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   else
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
