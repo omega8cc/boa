@@ -97,6 +97,43 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+
+# --- Grav 2 platform (site capsules; boa-grav D-003) -------------------------
+# A Grav root carries no Drupal system.module; detect it positively and run
+# the capsule model instead of refusing (union seam: further foreign-CMS
+# branches join here the same way).
+if [ -n "${drupal_root}" ] \
+  && [ -f "${drupal_root}/bin/grav" ] \
+  && [ -f "${drupal_root}/system/defines.php" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  if [ -z "${script_user}" ] \
+    || [[ $(id -un "${script_user}" 2> /dev/null) != "${script_user}" ]]; then
+      printf "Error: Please provide a valid user.\n"
+      exit 1
+  fi
+  _validate_path_prefix "${drupal_root}"
+  # Capsule ownership model (spike-proven): code <user>:users; the writable
+  # set <user>:<web_group> so FPM writes via GROUP (version-flip-immune) --
+  # and web-created files are re-homed to the instance user, healing the
+  # web-owned residue the lifecycle verbs otherwise have to park.
+  printf "Setting Grav ownership of %s to: user => %s group => users\n" "${drupal_root}" "${script_user}"
+  chown -h -R ${script_user}:users ${drupal_root}
+  for _capsule in ${drupal_root}/sites/*/; do
+    [ -f "${_capsule}system/defines.php" ] || continue
+    for _wd in user cache logs tmp backup images assets; do
+      [ -d "${_capsule}${_wd}" ] || continue
+      chown -h -R ${script_user}:${web_group:-www-data} "${_capsule}${_wd}"
+    done
+    # The root .env drops its world bit under D-008, so FPM's read comes via
+    # the web group -- the code pass above homed it to :users.
+    [ -f "${_capsule}.env" ] \
+      && chown -h ${script_user}:${web_group:-www-data} "${_capsule}.env"
+  done
+  echo "Done setting proper ownership of files and directories (Grav)."
+  exit 0
+fi
+
 if [ -z "${drupal_root}" ] \
   || [ ! -d "${drupal_root}/sites" ] \
   || [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
