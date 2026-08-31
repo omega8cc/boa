@@ -128,6 +128,18 @@ if [ -n "${site_path}" ] \
     find "${site_path}/${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
     find "${site_path}/${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
   done
+  # Secret surfaces AFTER the generic pass, which would re-widen them
+  # (boa-grav D-008; same class as the TXP private/ store): accounts hold
+  # password hashes and live reset tokens, config holds the session salt and
+  # SMTP/API credentials. Group-rw for FPM, owner-rw for the CLI, NO world
+  # bits. The root .env (phase 2: DB credentials) keeps FPM's read via group.
+  for _sd in user/accounts user/config user/env; do
+    [ -d "${site_path}/${_sd}" ] || continue
+    find "${site_path}/${_sd}" -type d -exec chmod 02770 {} + 2> /dev/null
+    find "${site_path}/${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
+  done
+  [ -f "${site_path}/.env" ] && chmod 0640 "${site_path}/.env" 2> /dev/null
+  [ -f "${site_path}/drushrc.php" ] && chmod 0640 "${site_path}/drushrc.php" 2> /dev/null
   echo "Done setting proper permissions of files and directories (Grav site)."
   exit 0
 fi

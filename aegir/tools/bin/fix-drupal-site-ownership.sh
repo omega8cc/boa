@@ -119,6 +119,10 @@ if [ -n "${site_path}" ] \
     [ -d "${site_path}/${_wd}" ] || continue
     chown -h -R ${script_user}:${web_group:-www-data} "${site_path}/${_wd}"
   done
+  # The root .env drops its world bit under D-008, so FPM's read comes via
+  # the web group -- the code pass above homed it to :users.
+  [ -f "${site_path}/.env" ] \
+    && chown -h ${script_user}:${web_group:-www-data} "${site_path}/.env"
   echo "Done setting proper ownership of files and directories (Grav site)."
   exit 0
 fi

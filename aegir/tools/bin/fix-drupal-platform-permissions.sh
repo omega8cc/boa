@@ -137,6 +137,16 @@ if [ -n "${drupal_root}" ] \
       find "${_capsule}${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
       find "${_capsule}${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
     done
+    # Secret surfaces AFTER the generic pass, which would re-widen them
+    # (boa-grav D-008): group-rw for FPM, owner-rw for the CLI, NO world
+    # bits; the root .env keeps FPM's read via group.
+    for _sd in user/accounts user/config user/env; do
+      [ -d "${_capsule}${_sd}" ] || continue
+      find "${_capsule}${_sd}" -type d -exec chmod 02770 {} + 2> /dev/null
+      find "${_capsule}${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
+    done
+    [ -f "${_capsule}.env" ] && chmod 0640 "${_capsule}.env" 2> /dev/null
+    [ -f "${_capsule}drushrc.php" ] && chmod 0640 "${_capsule}drushrc.php" 2> /dev/null
   done
   chmod 0755 ${drupal_root}/bin/* 2> /dev/null
   echo "Done setting proper permissions of files and directories (Grav)."

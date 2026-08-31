@@ -125,6 +125,10 @@ if [ -n "${drupal_root}" ] \
       [ -d "${_capsule}${_wd}" ] || continue
       chown -h -R ${script_user}:${web_group:-www-data} "${_capsule}${_wd}"
     done
+    # The root .env drops its world bit under D-008, so FPM's read comes via
+    # the web group -- the code pass above homed it to :users.
+    [ -f "${_capsule}.env" ] \
+      && chown -h ${script_user}:${web_group:-www-data} "${_capsule}.env"
   done
   echo "Done setting proper ownership of files and directories (Grav)."
   exit 0
