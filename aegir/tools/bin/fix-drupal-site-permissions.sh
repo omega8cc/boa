@@ -139,7 +139,7 @@ if [ -n "${site_path}" ] \
     find "${site_path}/${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
   done
   [ -f "${site_path}/.env" ] && chmod 0640 "${site_path}/.env" 2> /dev/null
-  [ -f "${site_path}/drushrc.php" ] && chmod 0640 "${site_path}/drushrc.php" 2> /dev/null
+  [ -f "${site_path}/drushrc.php" ] && chmod 0440 "${site_path}/drushrc.php" 2> /dev/null
   echo "Done setting proper permissions of files and directories (Grav site)."
   exit 0
 fi

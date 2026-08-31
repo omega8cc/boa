@@ -146,7 +146,7 @@ if [ -n "${drupal_root}" ] \
       find "${_capsule}${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
     done
     [ -f "${_capsule}.env" ] && chmod 0640 "${_capsule}.env" 2> /dev/null
-    [ -f "${_capsule}drushrc.php" ] && chmod 0640 "${_capsule}drushrc.php" 2> /dev/null
+    [ -f "${_capsule}drushrc.php" ] && chmod 0440 "${_capsule}drushrc.php" 2> /dev/null
   done
   chmod 0755 ${drupal_root}/bin/* 2> /dev/null
   echo "Done setting proper permissions of files and directories (Grav)."
