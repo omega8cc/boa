@@ -100,6 +100,19 @@ get_drupal_version() {
     return
   fi
 
+  # Grav 2: a site capsule or its platform seed — bin/grav + system/defines.php,
+  # no core/ dir (matches the provision detector). Version lives in GRAV_VERSION.
+  if [ -f "${_path}/bin/grav" ] \
+    && [ -f "${_path}/system/defines.php" ] \
+    && [ ! -d "${_path}/core" ]; then
+    echo "Detected Grav." >&2
+    _version_line=$(grep -m1 "define('GRAV_VERSION'" "${_path}/system/defines.php")
+    _version=$(echo "${_version_line}" | sed -E "s/.*define\('GRAV_VERSION',[[:space:]]*'([^']+)'\).*/\1/")
+    echo "Detected Grav version: ${_version}" >&2
+    echo "grav-${_version}"
+    return
+  fi
+
   # Drupal 8 and above.
   if [ -f "${_path}/core/lib/Drupal.php" ]; then
     echo "Detected Drupal 8 or higher." >&2
@@ -177,6 +190,12 @@ classify_codebase() {
 
   # Backdrop: supported on MySQL/Percona 8.x.
   case "${_version}" in
+    grav-*)
+      # Truthful for a flat-file CMS: not "compatible" — the question does
+      # not arise, and the verdict should never imply a database exists.
+      printf 'OK\t%s\tGrav is flat-file (no database) — MySQL-8 review not applicable\n' "${_version}"
+      return 0
+      ;;
     textpattern-*)
       printf 'OK\t%s\tTextpattern is MySQL-8 compatible\n' "${_version}"
       return 0
