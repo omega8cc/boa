@@ -67,6 +67,9 @@ Platform symbols:
   Backdrop (built by default; a server can opt out)
     BDR — Backdrop CMS prod/stage/dev
 
+  Grav (opt-in; ask your host to switch it on for the server)
+    GRV — Grav 2 prod/stage/dev
+
   Drupal 11.4
     DE4 — Drupal 11.4 prod/stage/dev
     CK3 — Commerce v.3
