@@ -130,6 +130,7 @@ _PHP_CLI_VERSION=8.4
 ### Backdrop
 #
 # BDR — Backdrop CMS prod/stage/dev (built by default; skipped when _BACKDROP_SUPPORT=NO)
+# GRV — Grav 2 admin-bundle prod/stage/dev (skipped unless _GRAV_SUPPORT=YES)
 
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
@@ -203,6 +204,18 @@ _PLATFORMS_ONLY=NO
 ### _BACKDROP_SUPPORT=NO
 ###
 _BACKDROP_SUPPORT=YES
+
+###----------------------------------------###
+### GRAV 2 SUPPORT                         ###
+###----------------------------------------###
+###
+### Grav 2 platforms and site capsules
+### ship dark. To enable Grav on this
+### Octopus instance, change this to YES.
+###
+### _GRAV_SUPPORT=YES
+###
+_GRAV_SUPPORT=NO
 
 
 ###----------------------------------------###

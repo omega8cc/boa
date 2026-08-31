@@ -887,6 +887,16 @@ _CUSTOM_CONFIG_SQL=NO
 _BACKDROP_SUPPORT=YES
 
 ###
+### The Grav 2 system tools (the grav CLI
+### wrapper, lshell exposure, release
+### staging) ship dark. To enable them on
+### this system, change this to YES.
+###
+### _GRAV_SUPPORT=YES
+###
+_GRAV_SUPPORT=NO
+
+###
 ### You can define custom list of functions
 ### to disable besides those already denied
 ### in the system level 'disable_functions'.

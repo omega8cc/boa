@@ -3166,6 +3166,7 @@ _barracuda_cnf() {
     echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${_barCnf}
     echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"             >> ${_barCnf}
     echo "### _BACKDROP_SUPPORT_MIGRATED"                     >> ${_barCnf}
+    echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -3428,6 +3429,12 @@ _barracuda_cnf() {
     _BACKDROP_SUPPORT_TEST=$(grep "^_BACKDROP_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
+    fi
+    ### Ships dark (boa-grav D-002); anchored like _BACKDROP_SUPPORT above.
+    ### No _MIGRATED heal: the gate has never defaulted differently.
+    _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_barCnf} 2>&1)
+    if [[ ! "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
+      echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_barCnf}
     fi
     ### One-shot opt-out migration: a NO seeded while the gate briefly
     ### defaulted to NO (2026-07-11..13) predates any operator choice, so

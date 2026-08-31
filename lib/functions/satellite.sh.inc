@@ -83,6 +83,42 @@ _stage_d6d7_kit() {
 }
 
 #
+# Stage the newest official Grav admin-bundle release zip for the
+# per-instance upgrade channel: provision-grav-upgrade resolves the newest
+# grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (boa-grav D-004 --
+# mirror-fed; this box never talks to getgrav.org). Version from the same
+# mirror stamp the platform build resolves; presence-gated for idempotency
+# and re-checked on every up-* run. Older staged zips are kept (rollback
+# food); the resolver always picks the newest by version sort.
+_stage_grav_releases() {
+  local _gVrn _gZip _gDir
+  if [ "${_GRAV_SUPPORT}" != "YES" ] || [ -z "${_ROOT}" ]; then
+    return 0
+  fi
+  _gVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
+  [ -z "${_gVrn}" ] && _gVrn="${_GRAV_V_FALLBACK}"
+  _gZip="grav-admin-v${_gVrn}.zip"
+  _gDir="${_ROOT}/static/grav-releases"
+  if [ -e "${_gDir}/${_gZip}" ]; then
+    return 0
+  fi
+  _msg "INFO: Staging the official Grav admin bundle ${_gVrn} for the upgrade channel"
+  mkdir -p "${_gDir}"
+  curl ${_crlGet} -o "${_gDir}/.${_gZip}.tmp" "https://${_USE_MIR}/core/${_gZip}" 2> /dev/null
+  ### temp+mv: a truncated fetch must never be resolvable as the newest
+  ### artefact (the unzip -l probe rejects short/garbage bodies too).
+  if [ -s "${_gDir}/.${_gZip}.tmp" ] \
+    && unzip -l "${_gDir}/.${_gZip}.tmp" > /dev/null 2>&1; then
+    mv -f "${_gDir}/.${_gZip}.tmp" "${_gDir}/${_gZip}"
+    chown ${_USER}:users "${_gDir}" "${_gDir}/${_gZip}" 2> /dev/null
+    _msg "INFO: Grav admin bundle staged: ${_gDir}/${_gZip}"
+  else
+    rm -f "${_gDir}/.${_gZip}.tmp"
+    _msg "OOPS: Grav admin bundle ${_gVrn} download failed; the upgrade task refuses until staged"
+  fi
+}
+
+#
 # Stage the native Backdrop CLI (bee) when the barracuda layer has not put
 # it in place yet: bee is normally installed by _get_bee on barracuda runs,
 # but the Backdrop platform build, hosting_backdrop and the drush extension
@@ -895,6 +931,7 @@ _satellite_cnf() {
     echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}"                   >> ${_octCnf}
     echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"               >> ${_octCnf}
     echo "### _BACKDROP_SUPPORT_MIGRATED"                       >> ${_octCnf}
+    echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                       >> ${_octCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
     echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
@@ -1008,6 +1045,13 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_octCnf}
+    fi
+    ### Ships dark (boa-grav D-002); no _MIGRATED heal by design.
+    _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_octCnf} 2>&1)
+    if [[ "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_octCnf}
     fi
     ### One-shot opt-out migration; see the barracuda-side twin in
     ### system.sh.inc for the why. Runs before this cnf is sourced, so
@@ -4874,6 +4918,22 @@ _satellite_make() {
   # platforms never auto-build. Fail-closed: NO/empty keeps the gate shut.
   echo "export _BACKDROP_SUPPORT=\"${_BACKDROP_SUPPORT}\""   >> ${_writeTo}
 
+  # Resolve the newest Grav version from the mirror stamp so platforms track
+  # the latest official admin-bundle release without a hardcoded pin
+  # (fallback: _GRAV_V_FALLBACK); the platform build fetches the matching
+  # versioned grav-<ver>.tar.gz.
+  _gravVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
+  [ -z "${_gravVrn}" ] && _gravVrn="${_GRAV_V_FALLBACK}"
+  echo "export _GRAV_V=\"${_gravVrn}\""                      >> ${_writeTo}
+  echo "export _GRAV=\"grav-${_gravVrn}\""                   >> ${_writeTo}
+  echo "export _GRAV_D=\"grav-${_gravVrn}-dev\""             >> ${_writeTo}
+  echo "export _GRAV_P=\"grav-${_gravVrn}-prod\""            >> ${_writeTo}
+  echo "export _GRAV_S=\"grav-${_gravVrn}-stage\""           >> ${_writeTo}
+  # Same sealed-include contract as _BACKDROP_SUPPORT above: the su'd child
+  # installers source ONLY this env include, so the child GRV build arm reads
+  # the gate from here. Fail-closed: NO/empty keeps the gate shut.
+  echo "export _GRAV_SUPPORT=\"${_GRAV_SUPPORT}\""           >> ${_writeTo}
+
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
   echo "export _HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${_writeTo}
@@ -5124,6 +5184,7 @@ _satellite_make() {
   ### Stage the pinned D6->D7 contrib kit for provision-backdrop-d6-upgrade,
   ### behind _BACKDROP_SUPPORT (D-012). Stamp-gated no-op when current.
   _stage_d6d7_kit
+  _stage_grav_releases
   ### Backstop bee for octopus-only boxes; no-op when already installed.
   _stage_bee
 
@@ -7080,6 +7141,12 @@ _satellite_child_b_aegir_ui_enhance() {
     ### its 'backdropcms' hosting feature via hosting_modules_enabled().
     if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_backdrop -y &> /dev/null
+    fi
+    ### Grav platform awareness in the hostmaster frontend; gated dark
+    ### behind _GRAV_SUPPORT (boa-grav D-002). Enabling the module also
+    ### enables its 'gravcms' hosting feature via hosting_modules_enabled().
+    if [ "${_GRAV_SUPPORT}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster en hosting_grav -y &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
