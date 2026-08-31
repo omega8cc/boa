@@ -1583,7 +1583,7 @@ _catalogue_rows() {
     }
     END {
       for (_k in _P) {
-        if (_k ~ /^D[LXE][0-9]$/ || _k ~ /^BD/ || _k ~ /^UC/ || _k == "CK1") continue
+        if (_k ~ /^D[LXE][0-9]$/ || _k ~ /^BD/ || _k ~ /^UC/ || _k == "CK1" || _k == "GRV" || _k == "TXP") continue
         printf "%s\t%s\t%s-%s-%s.tar.gz\n", \
           _k, _P[_k], _P[_k], _resolve(_R[_k]), _resolve(_C[_k])
       }

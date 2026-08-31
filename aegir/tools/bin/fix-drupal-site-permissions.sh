@@ -194,7 +194,7 @@ if [ -n "${site_path}" ] \
   # carries the db credentials, so the generic 0644 pass above widens it to
   # world-readable on every verify. Restore the 0440 the Drushrc writer sets --
   # never fight the writer. (Same class as the private/ prune; caught live on
-  # ng019 by isolating this script from the verify that re-renders the file.)
+  # a test rig by isolating this script from the verify that re-renders the file.)
   [ -f "${site_path}/drushrc.php" ] && chmod 0440 "${site_path}/drushrc.php" 2> /dev/null
   echo "Done setting proper permissions of files and directories (Textpattern site)."
   exit 0

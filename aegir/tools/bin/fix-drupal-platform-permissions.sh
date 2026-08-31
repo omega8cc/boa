@@ -153,6 +153,30 @@ if [ -n "${drupal_root}" ] \
   exit 0
 fi
 
+# --- Textpattern platform (shared core; boa-txp D-002) -----------------------
+# A TXP root carries no Drupal system.module; detect it positively (the same
+# probe as codebasecheck: textpattern/lib/constants.php + css.php + no core/)
+# and run the shared-core model instead of refusing.
+if [ -n "${drupal_root}" ] \
+  && [ -f "${drupal_root}/textpattern/lib/constants.php" ] \
+  && [ -f "${drupal_root}/css.php" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  _validate_path_prefix "${drupal_root}"
+  # Shared-core permission model: pristine core 0755/0644. Everything under
+  # sites/* is the SITE scripts' territory -- those trees carry 0440 secrets
+  # (config.php, drushrc.php) and 02775 setgid writable dirs; a platform-wide
+  # chmod would widen the secrets and strip the setgid bits (the drushrc
+  # lesson: never fight the writer), so sites/* is pruned outright.
+  printf "Setting Textpattern permissions of %s\n" "${drupal_root}"
+  find ${drupal_root} -path "${drupal_root}/sites/*" -prune \
+    -o -type d -exec chmod 0755 {} + 2> /dev/null
+  find ${drupal_root} -path "${drupal_root}/sites/*" -prune \
+    -o -type f -exec chmod 0644 {} + 2> /dev/null
+  echo "Done setting proper permissions of files and directories (Textpattern platform)."
+  exit 0
+fi
+
 if [ -z "${drupal_root}" ] \
   || [ ! -d "${drupal_root}/sites" ] \
   || [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
