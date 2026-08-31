@@ -98,6 +98,56 @@ Four artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   bump the pin in `OCTOPUS.sh.txt` and `BOA.sh.txt` together (a newer publish is
   inert until then; `staticbuild check` surfaces the drift as the `bd-redis` row).
 
+## Grav family
+
+staticbuild is also the Grav 2 builder. Like Backdrop it is not Composer-based
+(no `/usr/bin/php` switch — just wget/unzip) and always fetches the newest
+upstream release (pin with `_GRAV_TAG`). It is NOT part of `staticbuild all` —
+build it with its own subcommand:
+
+```sh
+  staticbuild grav               # build + package + publish only the Grav family
+```
+
+Three artefacts, all published to `/var/www/static/core`:
+
+- **grav-\<ver\>.tar.gz** — the official ADMIN BUNDLE release
+  (`grav-admin-v<ver>.zip`: admin/login/form/email + api + admin2
+  preinstalled), repackaged versioned (extracts to `grav-<ver>/`) for the
+  platform build.
+- **grav-admin-v\<ver\>.zip** — the raw official zip kept verbatim as the
+  per-site upgrade shelf: the upgrade engine feeds it to gpm direct-install as
+  a LOCAL file, so `official_gpm_only` stays enforced and no box ever talks to
+  getgrav.org.
+- **grav.txt** — the version stamp, published LAST so a consumer can never
+  resolve a version whose artefacts are not on the mirror yet.
+
+## Textpattern family
+
+staticbuild is also the Textpattern builder. No Composer, no php switch, and it
+is NOT part of `staticbuild all` either — build it with its own subcommand:
+
+```sh
+  staticbuild txp                # build + package + publish only the Textpattern family
+```
+
+Built from the official GitHub release `.tar.gz` — never the `.zip`, which
+ships no `/sites` scaffold (the always-multisite layout requires it; the build
+asserts `/sites` is present before packaging). The release publishes a
+`.SHA256SUM` beside each asset and the build verifies it before packaging.
+Newest upstream release always; pin with `_TXP_TAG`. Three artefacts, all
+published to `/var/www/static/core`:
+
+- **textpattern-\<ver\>.tar.gz** — the versioned platform tarball (extracts to
+  `textpattern-<ver>/`; the official tarball already uses that layout, so no
+  rename is needed).
+- **textpattern.tar.gz** — the version-less compat tarball of the newest
+  release, built by a SEPARATE `tar --transform` invocation so it extracts to
+  `textpattern/` (a copied archive would extract to the versioned name).
+- **textpattern.txt** — the version stamp, published LAST. BOA resolves the
+  platform version from this stamp at satellite-make time and fetches the
+  matching versioned tarball, with the version-less tarball as the fallback.
+
 ## Manual procedure (reference)
 
 ### Prepare environment
