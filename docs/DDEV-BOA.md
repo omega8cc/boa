@@ -24,8 +24,9 @@ Three commands, all run from the developer's DDEV project:
 - `ddev boa-aliases` — lists the site's Drush aliases so the developer can set the correct
   one.
 - `ddev boa-config` — reads the site's own reported settings (`drush @alias status`) and
-  writes a local DDEV config matching the site's **PHP version**, **database type/version**,
-  **Drupal version** and **docroot**.
+  writes a local DDEV config matching the site's **PHP version**, **Drupal version** and
+  **docroot**. The database engine is only *reported*, as a commented opt-in line: DDEV's
+  own database imports a BOA dump fine, so it is deliberately left unchanged.
 
 ## How it reaches the site: the limited shell
 
@@ -87,8 +88,9 @@ public `files` directory is pulled, not the separate `private` directory.
 
 ## Scope
 
-`ddev-boa` reproduces the runtime a site sees — its database, files, PHP version, database
-type and Drupal type — read from what BOA reports for the site. It does not reproduce the
+`ddev-boa` reproduces the runtime a site sees — its database, files, PHP version and
+Drupal type — read from what BOA reports for the site; the database engine is reported
+as a commented opt-in only, never switched. It does not reproduce the
 BOA server itself: there is no Ægir/Hostmaster panel, no Octopus multi-tenancy, no CSF, and
 DDEV's nginx/PHP are stock builds, not BOA's own compiled ones. Per-site `php.ini` tuning
 and BOA's nginx directives are not exported (they are not readable through the limited
