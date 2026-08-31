@@ -4942,6 +4942,19 @@ _satellite_make() {
   # the gate from here. Fail-closed: NO/empty keeps the gate shut.
   echo "export _GRAV_SUPPORT=\"${_GRAV_SUPPORT}\""           >> ${_writeTo}
 
+  # Resolve the newest Textpattern version from the mirror stamp so platforms
+  # track the latest stable release without a hardcoded pin (fallback:
+  # _TXP_V_FALLBACK); the platform build fetches the matching versioned
+  # textpattern-<ver>.tar.gz. Stable releases are tags on main; the mirror's
+  # textpattern.txt is published LAST by staticbuild, so a version resolved
+  # here always has its artefacts already on the mirror.
+  _txpVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/textpattern.txt" 2>/dev/null | tr -cd '0-9.')
+  [ -z "${_txpVrn}" ] && _txpVrn="${_TXP_V_FALLBACK}"
+  echo "export _TXP_V=\"${_txpVrn}\""                        >> ${_writeTo}
+  echo "export _TXP=\"textpattern-${_txpVrn}\""              >> ${_writeTo}
+  echo "export _TXP_D=\"textpattern-${_txpVrn}-dev\""        >> ${_writeTo}
+  echo "export _TXP_P=\"textpattern-${_txpVrn}-prod\""       >> ${_writeTo}
+  echo "export _TXP_S=\"textpattern-${_txpVrn}-stage\""      >> ${_writeTo}
   # Same reason as the two gates above: the su'd child installers source ONLY
   # this env include, never the root .octopus.cnf where the operator sets the
   # gate, so an unpropagated _TXP_SUPPORT is permanently dead in the child.

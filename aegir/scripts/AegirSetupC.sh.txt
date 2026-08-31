@@ -935,6 +935,32 @@ _create_grav_basic_version() {
   fi
 }
 
+# Create Textpattern core-only basic platform. Fetches the versioned
+# textpattern-<ver>.tar.gz (<ver> = _TXP_V, resolved from the mirror's
+# textpattern.txt stamp at satellite-make time), which extracts to
+# textpattern-<ver>/, then names the platform via _SHRD_PLNAME. The tarball is
+# the release .tar.gz on purpose: the .zip ships no /sites scaffold, and the
+# always-multisite layout (boa-txp D-002) needs it.
+_create_txp_basic_version() {
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    _enter_this_distro_root || return 1
+    rm -rf "${_pthDst}/textpattern-${_TXP_V}" "${_pthDst}/textpattern"
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext 'textpattern-${_TXP_V}.tar.gz'"
+    _get_core_ext "textpattern-${_TXP_V}.tar.gz"
+    if [ ! -d "${_pthDst}/textpattern-${_TXP_V}" ]; then
+      # Transitional fallback: a mirror without versioned Textpattern tarballs
+      # yet still carries the version-less textpattern.tar.gz refreshed
+      # together with the textpattern.txt stamp _TXP_V was resolved from.
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext 'textpattern.tar.gz' (fallback)"
+      _get_core_ext "textpattern.tar.gz"
+      if [ -d "${_pthDst}/textpattern" ]; then
+        mv -f "${_pthDst}/textpattern" "${_pthDst}/textpattern-${_TXP_V}"
+      fi
+    fi
+    mv -f "${_pthDst}/textpattern-${_TXP_V}" "${_SHRD_PLNAME}"
+  fi
+}
+
 # Create Drupal core-only basic platform.
 _create_drupal_core_basic() {
   local version_code="$1"
@@ -984,6 +1010,9 @@ _create_drupal_core_basic() {
     "BDR")
       _create_backdrop_basic_version
       ;;
+    "TXP")
+      _create_txp_basic_version
+      ;;
     "GRV")
       _create_grav_basic_version
       ;;
@@ -1026,6 +1055,7 @@ declare -A _distros_names=(
   ["DE4"]="Drupal"
   ["BDR"]="Backdrop"
   ["GRV"]="Grav"
+  ["TXP"]="Textpattern"
 )
 
 # Define distros versions for configuration
@@ -1061,6 +1091,7 @@ declare -A _distros_versions=(
   ["DE4"]="${_SMALLCORE11_4_V}"
   ["BDR"]="${_BACKDROP_V}"
   ["GRV"]="${_GRAV_V}"
+  ["TXP"]="${_TXP_V}"
 )
 
 # Define distros Drupal cores versions for configuration
@@ -1096,6 +1127,7 @@ declare -A _distros_drupal_cores=(
   ["DE4"]="${_SMALLCORE11_4_V}"
   ["BDR"]="${_BACKDROP_V}"
   ["GRV"]="${_GRAV_V}"
+  ["TXP"]="${_TXP_V}"
 )
 
 # Define distros profiles names for configuration
@@ -1131,6 +1163,7 @@ declare -A _distros_profiles_names=(
   ["DE4"]="standard"
   ["BDR"]="standard"
   ["GRV"]="grav"
+  ["TXP"]="textpattern"
 )
 
 # Define distros profiles paths for configuration
@@ -1166,6 +1199,7 @@ declare -A _distros_profiles_paths=(
   ["DE4"]="/"
   ["BDR"]="/"
   ["GRV"]="/"
+  ["TXP"]="/"
 )
 
 # Define distros web dirs for configuration
@@ -1201,6 +1235,7 @@ declare -A _distros_web_dirs=(
   ["DE4"]="/web"
   ["BDR"]=""
   ["GRV"]=""
+  ["TXP"]=""
 )
 
 # Define distros names and their URLs for information
@@ -1236,6 +1271,7 @@ declare -A _distros_urls=(
   ["DE4"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_4_V}"
   ["BDR"]="${_urlPrt}/backdrop/releases/${_BACKDROP_V}"
   ["GRV"]="${_urlPrt}/grav/releases/${_GRAV_V}"
+  ["TXP"]="https://github.com/textpattern/textpattern/releases/tag/${_TXP_V}"
 )
 
 # Define distros names and their compatible max PHP versions for information
@@ -1271,6 +1307,7 @@ declare -A _distros_php_versions=(
   ["DE4"]="8.4"
   ["BDR"]="8.4"
   ["GRV"]="8.4"
+  ["TXP"]="8.4"
 )
 
 
@@ -1716,6 +1753,10 @@ _d_core_platform_install() {
     _CORE_DEV="${_GRAV_D}"
     _CORE_STG="${_GRAV_S}"
     _CORE_PRD="${_GRAV_P}"
+  elif [ "${1}" = "TXP" ]; then
+    _CORE_DEV="${_TXP_D}"
+    _CORE_STG="${_TXP_S}"
+    _CORE_PRD="${_TXP_P}"
   fi
 
   # Declare 'params' as local to the function
@@ -1831,6 +1872,13 @@ _d_dist_loop() {
       # mis-builds quietly (and the BD substring arm above shows why loose
       # matching is a trap).
       [ "${_GRAV_SUPPORT}" = "YES" ] \
+        && _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
+    elif [ "${_dist}" = "TXP" ]; then
+      # Textpattern core platform; gated dark behind _TXP_SUPPORT. Anchored
+      # EXACT match for the same reason as the GRV arm above: the catch-all
+      # else fetches a prebuilt distro tarball down the single-platform path,
+      # so a fallen-through symbol mis-builds quietly.
+      [ "${_TXP_SUPPORT}" = "YES" ] \
         && _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     elif [[ "${_dist}" =~ CK1 || "${_dist}" =~ UC ]]; then
       _d_dist_custom_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
