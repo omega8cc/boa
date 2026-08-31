@@ -10,7 +10,7 @@ Amazon EC2 is no longer considered a BOA-friendly environment. With its strict r
 
 3. **Server (Public) Install Mode Preferred**
 
-BOA maintainers primarily use the server (public) installation mode for production hosting. The localhost (local) installation mode is supported for local development and testing: it installs the same stack on the private `aegir.local` hostname without any public IP or DNS, and must run inside a real virtual machine — not in an LXC or other container guest, and not on bare metal.
+BOA maintainers primarily use the server (public) installation mode for production hosting. The localhost (local) installation mode is supported for local development and testing: it installs the same stack on the private `aegir.local` hostname without any public IP or DNS, and must run inside a virtual machine rather than on bare metal (a full-OS LXC guest counts as a VM here; an application container in the Docker/microservices sense does not and cannot take a BOA install).
 
 4. **VMware Clarification**
 
