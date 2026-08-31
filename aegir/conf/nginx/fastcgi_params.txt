@@ -27,6 +27,9 @@ fastcgi_param   GEOIP_COUNTRY_CODE      $geoip_country_code;
 fastcgi_param   GEOIP_COUNTRY_CODE3     $geoip_country_code3;
 fastcgi_param   GEOIP_COUNTRY_NAME      $geoip_country_name;
 
+# Stock fastcgi.conf parity: the CMS settings templates gate their
+# proxied-https shims on REQUEST_SCHEME, so it must reach FPM.
+fastcgi_param   REQUEST_SCHEME          $scheme;
 fastcgi_param   HTTPS                   $https;
 
 # PHP only, required if PHP was built with --enable-force-cgi-redirect
