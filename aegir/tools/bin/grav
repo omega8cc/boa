@@ -1,0 +1,177 @@
+#!/bin/bash
+
+# PHP-selecting launcher for the Grav 2 CLI family, enforcing the enforced-PHP
+# floor (boa-grav D-005: >= 8.3, 8.4 preferred) and the identity verb policy
+# (map par.3.3.3). Standalone tool: _msg/_alrt are permitted here.
+#
+# Unlike bee (one global /opt/tools copy), Grav's real CLI lives INSIDE each
+# install (a site capsule or a platform seed), so the target root is resolved
+# from the working directory: the nearest ancestor carrying bin/grav +
+# system/defines.php. Tool dispatch: `grav gpm <args>` runs bin/gpm, `grav
+# plugin <args>` runs bin/plugin, anything else runs bin/grav "$@".
+#
+# 1. Full verb access ONLY for backend identities (root, aegir, o<N>). Every
+#    other identity (*.ftp clients) is denied the platform-mutating set before
+#    exec: self-upgrade/direct-install move a capsule out from under the Ægir
+#    upgrade channel (mirror-fed, boa-grav D-004/D-006), sandbox creates
+#    installs outside management, clean deletes user/config/security.yaml (a
+#    release-build tool, never a hosting operation), scheduler is a later
+#    deliberate wave, and bare `grav install` is a network composer run.
+#    GPM package install/update stays OPEN for clients (D-006: the plugin
+#    long tail is client-managed).
+# 2. PHP selection mirrors bee: a validated DRUSH_PHP exported by websh wins;
+#    direct invocations self-resolve cli.info/phpNN.info; clamp to the 8.3
+#    floor (8.4 preferred by probe order); newest modern PHP as last resort.
+# 3. umask 0002 before exec: a 022-created dir inside the writable trees
+#    loses group-write and fatals the next web save (spike-proven).
+
+_GRAV_FLOOR=83
+
+_msg()  { printf '%s\n' "$*"; }
+_alrt() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
+
+_pick_modern() {
+  local _c
+  for _c in 84 85 83; do
+    if [[ -x "/opt/php${_c}/bin/php" ]]; then
+      printf '/opt/php%s/bin/php\n' "${_c}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# --- Resolve the target Grav install from CWD --------------------------------
+_GRAV_ROOT=""
+_i="${PWD}"
+while [[ -n "${_i}" ]] && [[ "${_i}" != "/" ]]; do
+  if [[ -f "${_i}/bin/grav" ]] && [[ -f "${_i}/system/defines.php" ]]; then
+    _GRAV_ROOT="${_i}"
+    break
+  fi
+  _i="${_i%/*}"
+done
+if [[ -z "${_GRAV_ROOT}" ]]; then
+  _alrt "grav: no Grav install found at or above ${PWD}"
+  _msg  "Run this inside a Grav site directory."
+  exit 1
+fi
+if [[ ! -r "${_GRAV_ROOT}/vendor/autoload.php" ]]; then
+  # A vendor-less tree turns any Grav CLI entry into an unpinned network
+  # composer run (upstream bin/grav self-heals that way) - never allow it.
+  _alrt "grav: ${_GRAV_ROOT} has no vendor/autoload.php; refusing to run"
+  _msg  "Restore the install from a backup, or re-run its Install task."
+  exit 1
+fi
+
+# --- Tool dispatch -----------------------------------------------------------
+_GRAV_TOOL="grav"
+case "${1}" in
+  gpm|plugin)
+    _GRAV_TOOL="${1}"
+    shift
+    ;;
+esac
+
+# --- Identity gate -----------------------------------------------------------
+# Verb = the first non-option token (Symfony Console command resolution);
+# empty-string pads are skipped the same way bee's gate skips them.
+_ID="$(id -un 2>/dev/null)"
+_BACKEND=NO
+if [[ "${_ID}" = "root" ]] \
+  || [[ "${_ID}" = "aegir" ]] \
+  || [[ "${_ID}" =~ ^o[0-9]+$ ]]; then
+  _BACKEND=YES
+fi
+
+if [[ "${_BACKEND}" = "NO" ]]; then
+  _VERB=""
+  for _tok in "$@"; do
+    case "${_tok}" in
+      -*) continue ;;
+    esac
+    if [[ -z "${_tok}" ]]; then
+      continue
+    fi
+    _VERB="${_tok}"
+    break
+  done
+  case "${_GRAV_TOOL}:${_VERB}" in
+    grav:install|grav:sandbox|grav:clean|grav:scheduler| \
+    gpm:self-upgrade|gpm:selfupgrade|gpm:selfupdate| \
+    gpm:direct-install|gpm:directinstall|gpm:di)
+      _alrt "grav: the '${_GRAV_TOOL} ${_VERB}' command is not permitted here."
+      _msg  "This operation is reserved for the hosting backend."
+      _msg  "Please use the Ægir control panel to perform it."
+      exit 1
+      ;;
+  esac
+fi
+
+# --- PHP selection (>= 8.3 clamp, 8.4 preferred) -----------------------------
+_GRAV_PHP=""
+if [[ "${DRUSH_PHP}" =~ ^/opt/php[0-9][0-9]/bin/php$ ]] && [[ -x "${DRUSH_PHP}" ]]; then
+  _GRAV_PHP="${DRUSH_PHP}"
+fi
+
+if [[ -z "${_GRAV_PHP}" ]]; then
+  _GRAV_CTRL=""
+  _i="${PWD}"
+  while [[ -n "${_i}" ]] && [[ "${_i}" != "/" ]]; do
+    if [[ -d "${_i}/static/control" ]]; then
+      _GRAV_CTRL="${_i}/static/control"
+      break
+    fi
+    _i="${_i%/*}"
+  done
+  if [[ -z "${_GRAV_CTRL}" ]]; then
+    if [[ "${_ID}" = "aegir" ]] || [[ "${HOME}" = "/var/aegir" ]]; then
+      _GRAV_CTRL="/var/aegir/static/control"
+    elif [[ -d "/data/disk/${_ID%.*}/static/control" ]]; then
+      _GRAV_CTRL="/data/disk/${_ID%.*}/static/control"
+    fi
+  fi
+  if [[ -n "${_GRAV_CTRL}" ]] && [[ -e "${_GRAV_CTRL}/cli.info" ]]; then
+    _v="$(tr -cd '0-9' < "${_GRAV_CTRL}/cli.info" 2>/dev/null)"
+    [[ -n "${_v}" ]] && [[ -x "/opt/php${_v}/bin/php" ]] && _GRAV_PHP="/opt/php${_v}/bin/php"
+  fi
+  if [[ -n "${_GRAV_CTRL}" ]]; then
+    for _c in 56 70 71 72 73 74 80 81 82 83 84 85; do
+      if [[ -e "${_GRAV_CTRL}/php${_c}.info" ]] && [[ -x "/opt/php${_c}/bin/php" ]]; then
+        _GRAV_PHP="/opt/php${_c}/bin/php"
+      fi
+    done
+  fi
+fi
+
+# Clamp to the floor (D-005: the version is ENFORCED for Grav - a sub-8.3
+# selection from the Drupal-shaped control files is overridden, not honoured).
+if [[ -n "${_GRAV_PHP}" ]] && [[ -x "${_GRAV_PHP}" ]]; then
+  _n="$(printf '%s' "${_GRAV_PHP}" | tr -cd '0-9')"
+  if [[ -z "${_n}" ]] || [[ "${_n}" -lt "${_GRAV_FLOOR}" ]]; then
+    _GRAV_PHP="$(_pick_modern)"
+  fi
+else
+  _GRAV_PHP="$(_pick_modern)"
+fi
+
+if [[ -z "${_GRAV_PHP}" ]] || [[ ! -x "${_GRAV_PHP}" ]]; then
+  _alrt "grav: no PHP >= 8.3 CLI available"
+  exit 1
+fi
+
+# Align the ini with the chosen CLI (the bee contract).
+_n="$(printf '%s' "${_GRAV_PHP}" | tr -cd '0-9')"
+PHP_INI="/opt/php${_n}/lib/php.ini"
+PHPRC="/opt/php${_n}/lib"
+if [[ -n "${HOME}" ]] && [[ -f "${HOME}/.drush/php${_n}/php.ini" ]]; then
+  PHP_INI="${HOME}/.drush/php${_n}/php.ini"
+  PHPRC="${HOME}/.drush/php${_n}"
+fi
+export PHP_INI PHPRC
+
+# Group-writable creations everywhere inside the writable trees.
+umask 0002
+
+cd "${_GRAV_ROOT}" || exit 1
+exec "${_GRAV_PHP}" "${_GRAV_ROOT}/bin/${_GRAV_TOOL}" "$@"

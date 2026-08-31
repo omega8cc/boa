@@ -22,6 +22,9 @@
 #                                   (backdrop core + bee + backdrop-drush-extension
 #                                   + redis_backdrop), all at latest - lightweight,
 #                                   no Composer
+#   staticbuild txp                 build+package+publish ONLY Textpattern (official
+#                                   release tarball at latest; never the .zip, which
+#                                   omits the /sites multisite scaffold)
 #   staticbuild all                 build everything, package, publish
 #   staticbuild build [name ...]    build all (or only named) targets
 #   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
@@ -104,6 +107,25 @@ _FARM_TAG=""
 # already-deployed BOA releases.
 _BACKDROP_REPO="backdrop/backdrop"
 _BACKDROP_TAG=""
+
+# Grav 2 core: the latest GitHub release is resolved automatically; set
+# _GRAV_TAG to pin one. The published artefact is the official ADMIN BUNDLE
+# (grav-admin-v<ver>.zip -- boa-grav D-004: admin/login/form/email + api +
+# admin2 preinstalled), repackaged versioned as grav-<ver>.tar.gz (extracts
+# to grav-<ver>/) for the platform build, PLUS the raw official zip kept
+# verbatim on the /core/ shelf as grav-admin-v<ver>.zip for the per-site
+# upgrade channel (provision-grav-upgrade feeds it to gpm direct-install as
+# a LOCAL file, so official_gpm_only stays enforced and no box ever talks
+# to getgrav.org). grav.txt stamps the newest.
+_GRAV_REPO="getgrav/grav"
+_GRAV_TAG=""
+
+# Textpattern: official GitHub release TARBALL (never the .zip -- the zip ships
+# no /sites scaffold, which the always-multisite layout requires; boa-txp
+# D-002). Stable releases are tags on main; the release publishes a
+# .SHA256SUM alongside each asset, which the build verifies before packaging.
+_TXP_REPO="textpattern/textpattern"
+_TXP_TAG=""
 
 # bee (native Backdrop CLI) and the Backdrop Drush extension. Built from the
 # latest git tag of each backdrop-contrib repo (they publish plain tags, not
@@ -483,6 +505,26 @@ _resolve_backdrop_tag() {
     return 0
   fi
   curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_BACKDROP_REPO}/releases/latest" 2>/dev/null \
+    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+}
+
+_resolve_grav_tag() {
+  # Latest Grav release tag, or the pinned _GRAV_TAG.
+  if [[ -n "${_GRAV_TAG}" ]]; then
+    printf '%s\n' "${_GRAV_TAG}"
+    return 0
+  fi
+  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_GRAV_REPO}/releases/latest" 2>/dev/null \
+    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+}
+
+_resolve_txp_tag() {
+  # Latest Textpattern release tag, or the pinned _TXP_TAG.
+  if [[ -n "${_TXP_TAG}" ]]; then
+    printf '%s\n' "${_TXP_TAG}"
+    return 0
+  fi
+  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_TXP_REPO}/releases/latest" 2>/dev/null \
     | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
 }
 
@@ -946,6 +988,70 @@ build_backdrop() {
   _info "backdrop: built backdrop-${_tag}/"
 }
 
+build_grav() {
+  # Grav 2: the official ADMIN BUNDLE release zip (no Composer). The zip's
+  # top-level dir is grav-admin/; renamed to the versioned grav-<ver>/ so the
+  # tarball extracts like the other cores. The RAW zip is kept verbatim
+  # alongside for the upgrade channel. grav.txt stamps the newest. Always
+  # rebuilt (a fast zip download) - no _begin_build skip.
+  if ! command -v unzip >/dev/null 2>&1; then
+    _record_fail "grav (unzip not found)"
+    return 1
+  fi
+  local _tag _zip _url
+  _tag="$(_resolve_grav_tag)"
+  [[ -n "${_tag}" ]] || { _record_fail "grav (could not resolve release tag)"; return 1; }
+  # The tag lands in root shell commands and file names - accept plain dotted
+  # versions only, fail closed on anything else.
+  if [[ ! "${_tag}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+    _record_fail "grav (unexpected release tag format: ${_tag})"
+    return 1
+  fi
+  _zip="grav-admin-v${_tag}.zip"
+  _url="https://github.com/${_GRAV_REPO}/releases/download/${_tag}/grav-admin-v${_tag}.zip"
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf grav grav-admin grav-[0-9]* grav.tar.gz grav.txt grav-admin-v*.zip \
+    && wget -q -O '${_zip}' '${_url}' && unzip -q '${_zip}' \
+    && mv grav-admin 'grav-${_tag}' \
+    && printf '%s\n' '${_tag}' > grav.txt"; then
+    _record_fail "grav"
+    return 1
+  fi
+  _RESULTS+=("OK    grav-${_tag}")
+  _info "grav: built grav-${_tag}/ (+ kept ${_zip} for the upgrade shelf)"
+}
+
+build_txp() {
+  # Textpattern core: the official release .tar.gz (the .zip is deliberately
+  # NOT used -- it omits the /sites multisite scaffold). The tarball already
+  # extracts to textpattern-<ver>/, so no rename is needed. The published
+  # .SHA256SUM is verified before packaging. textpattern.txt stamps the newest.
+  local _tag _tgz _url _sum
+  _tag="$(_resolve_txp_tag)"
+  [[ -n "${_tag}" ]] || { _record_fail "textpattern (could not resolve release tag)"; return 1; }
+  # The tag lands in root shell commands and file names - accept plain dotted
+  # versions only, fail closed on anything else.
+  if [[ ! "${_tag}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+    _record_fail "textpattern (unexpected release tag format: ${_tag})"
+    return 1
+  fi
+  _tgz="textpattern-${_tag}.tar.gz"
+  _url="https://github.com/${_TXP_REPO}/releases/download/${_tag}"
+  _sum="${_tgz}.SHA256SUM"
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf textpattern textpattern-[0-9]* textpattern.tar.gz textpattern.txt \
+    && wget -q -O '${_tgz}' '${_url}/${_tgz}' \
+    && wget -q -O '${_sum}' '${_url}/${_sum}' \
+    && sha256sum -c '${_sum}' \
+    && tar -xzf '${_tgz}' \
+    && test -d 'textpattern-${_tag}/sites' \
+    && rm -f '${_tgz}' '${_sum}' \
+    && printf '%s\n' '${_tag}' > textpattern.txt"; then
+    _record_fail "textpattern"
+    return 1
+  fi
+  _RESULTS+=("OK    textpattern-${_tag}")
+  _info "textpattern: built textpattern-${_tag}/ (checksum verified, /sites present)"
+}
+
 build_bee() {
   # Native Backdrop CLI. Packaged version-less as bee.tar.gz with bee.php at the
   # root (what BOA's _get_bee extracts into /opt/tools/bee). Always rebuilt.
@@ -1014,6 +1120,8 @@ run_build() {
   case "${_name}" in
     farm)     build_farm ;;
     backdrop) build_backdrop ;;
+    grav)     build_grav ;;
+    txp)      build_txp ;;
     bee)      build_bee ;;
     backdrop-drush-extension) build_bdext ;;
     redis_backdrop) build_redis_backdrop ;;
@@ -1163,6 +1271,18 @@ _backdrop_day_version() {
   tr -cd '0-9.' < "${_DAY_DIR}/backdrop.txt"
 }
 
+_grav_day_version() {
+  # Version stamped by the current Grav build (empty if none).
+  [[ -e "${_DAY_DIR}/grav.txt" ]] || return 0
+  tr -cd '0-9.' < "${_DAY_DIR}/grav.txt"
+}
+
+_txp_day_version() {
+  # Version stamped by the current Textpattern build (empty if none).
+  [[ -e "${_DAY_DIR}/textpattern.txt" ]] || return 0
+  tr -cd '0-9.' < "${_DAY_DIR}/textpattern.txt"
+}
+
 package_backdrop_compat() {
   # Version-less backdrop.tar.gz for already-deployed BOA releases, which still
   # fetch that name AND expect it to extract to backdrop/ (the pre-versioning
@@ -1240,6 +1360,70 @@ do_backdrop_family() {
   for _f in "${_DAY_DIR}"/redis_backdrop-*.tar.gz; do
     [[ -e "${_f}" ]] && _publish_contrib "${_f}"
   done
+}
+
+do_grav_family() {
+  # Lightweight: build + package + publish ONLY the Grav artefacts (the
+  # official admin-bundle release, at its newest upstream). No Composer, no
+  # /usr/bin/php switch - just wget/unzip. Publishes the versioned platform
+  # tarball, the RAW official zip (upgrade shelf) and the grav.txt stamp
+  # LAST: a consumer must never resolve a version whose artefacts are not
+  # there yet.
+  _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
+  _msg ""
+  _msg "=== build: grav ==="
+  run_build "grav"
+  local _ver
+  _ver="$(_grav_day_version)"
+  if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/grav-${_ver}'"; then
+    _msg "tar: grav-${_ver}.tar.gz"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'grav-${_ver}.tar.gz' 'grav-${_ver}'" \
+      || _alrt "tar failed: grav-${_ver}"
+    _msg "tar: grav.tar.gz (version-less compat)"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf grav.tar.gz --transform 's,^grav-${_ver},grav,' 'grav-${_ver}'" \
+      || _alrt "tar failed: grav compat"
+  fi
+  mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
+  local _f
+  if [[ -n "${_ver}" && -e "${_DAY_DIR}/grav-${_ver}.tar.gz" ]]; then
+    for _f in "grav-${_ver}.tar.gz" grav.tar.gz "grav-admin-v${_ver}.zip" grav.txt; do
+      [[ -e "${_DAY_DIR}/${_f}" ]] || continue
+      cp -a "${_DAY_DIR}/${_f}" "${_CORE_OUT}/" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"
+    done
+  fi
+}
+
+do_txp_family() {
+  # Lightweight: build + package + publish ONLY the Textpattern artefacts, at
+  # their newest upstream release. No Composer. Publishes the versioned
+  # platform tarball, the version-less compat tarball and the textpattern.txt
+  # stamp LAST: a consumer must never resolve a version whose artefacts are
+  # not on the mirror yet.
+  _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
+  _msg ""
+  _msg "=== build: textpattern ==="
+  run_build "txp"
+  local _ver
+  _ver="$(_txp_day_version)"
+  if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/textpattern-${_ver}'"; then
+    _msg "tar: textpattern-${_ver}.tar.gz"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'textpattern-${_ver}.tar.gz' 'textpattern-${_ver}'" \
+      || _alrt "tar failed: textpattern-${_ver}"
+    # Separate tar invocation with --transform, never a copy: the compat
+    # archive must EXTRACT to the unversioned directory name.
+    _msg "tar: textpattern.tar.gz (version-less compat)"
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf textpattern.tar.gz --transform 's,^textpattern-${_ver},textpattern,' 'textpattern-${_ver}'" \
+      || _alrt "tar failed: textpattern compat"
+  fi
+  mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
+  local _f
+  if [[ -n "${_ver}" && -e "${_DAY_DIR}/textpattern-${_ver}.tar.gz" ]]; then
+    # textpattern.txt LAST in this list on purpose (see the header).
+    for _f in "textpattern-${_ver}.tar.gz" textpattern.tar.gz textpattern.txt; do
+      [[ -e "${_DAY_DIR}/${_f}" ]] || continue
+      cp -a "${_DAY_DIR}/${_f}" "${_CORE_OUT}/" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"
+    done
+  fi
 }
 
 do_distribute() {
@@ -1524,6 +1708,26 @@ main() {
       trap '_cleanup' EXIT
       _acquire_lock
       do_backdrop_family
+      print_summary
+      ;;
+    grav)
+      # Lightweight Grav build+package+publish (official admin bundle; no
+      # Composer, no php switch). Needs root + an Octopus user.
+      _require_root
+      _require_o8
+      trap '_cleanup' EXIT
+      _acquire_lock
+      do_grav_family
+      print_summary
+      ;;
+    txp|textpattern)
+      # Lightweight Textpattern build+package+publish (official release
+      # tarball; no Composer, no php switch). Needs root + an Octopus user.
+      _require_root
+      _require_o8
+      trap '_cleanup' EXIT
+      _acquire_lock
+      do_txp_family
       print_summary
       ;;
     build|package|distribute|all)
