@@ -1728,7 +1728,7 @@ _xoct_reconcile_panel_platform() {
   local _src_acct="$2"
   local _hdb="$3"
   local _db_plat _dest_plat _tree _cand _found _n _new_plat _new_src_form
-  local _fqdn _chk _nup _stored_db _pw _f _o _m
+  local _fqdn _chk _nup _stored_db _pw _f _o _m _lit _vhf _vo _vm
   _fqdn=$(hostname -f 2>/dev/null | tr -d '\n')
   _fqdn=${_fqdn//[^a-zA-Z0-9.-]/}
   if [ -z "${_fqdn}" ]; then
@@ -1790,6 +1790,14 @@ _xoct_reconcile_panel_platform() {
       [ -f "${_f}" ] || continue
       _o=$(stat -c '%U:%G' "${_f}")
       _m=$(stat -c '%a' "${_f}")
+      # A cloaked settings.php carries no literal credential lines -- it reads
+      # them from the vhost or the sibling drushrc.php -- so the rewrite below
+      # legitimately matches nothing there and must not be asserted.
+      _lit=YES
+      if ! grep -q "^ *'database' => [\"'][^\"']*[\"']," "${_f}" \
+        && ! grep -q "^\$options\['db_name'\] = '" "${_f}"; then
+        _lit=NO
+      fi
       sed -i \
         -e "s#^\( *'database' => \)[\"'][^\"']*[\"'],#\1\"${_hdb}\",#" \
         -e "s#^\( *'username' => \)[\"'][^\"']*[\"'],#\1\"${_hdb}\",#" \
@@ -1800,10 +1808,27 @@ _xoct_reconcile_panel_platform() {
         "${_f}"
       [ -n "${_o}" ] && chown "${_o}" "${_f}"
       [ -n "${_m}" ] && chmod "${_m}" "${_f}"
-      if ! grep -q "${_hdb}" "${_f}"; then
+      if [ "${_lit}" = "YES" ] && ! grep -q "${_hdb}" "${_f}"; then
         echo "ALRT: panel credential heal did not land in ${_f}"
         return 1
       fi
+    done
+    # A cloaked panel reads its web credentials from the vhost, not from
+    # settings.php, so the rewire has to land there too or the panel keeps
+    # authenticating as the dropped DB until the next render.
+    for _vhf in \
+      "${_dest_root}/config/server_master/nginx/vhost.d/$(basename "${_found}")" \
+      "${_dest_root}/config/server_master/nginx/vhost.d/https.$(basename "${_found}")"; do
+      [ -f "${_vhf}" ] || continue
+      _vo=$(stat -c '%U:%G' "${_vhf}")
+      _vm=$(stat -c '%a' "${_vhf}")
+      sed -i \
+        -e "s#^\( *fastcgi_param  *db_name  *\)[^;]*;#\1${_hdb};#" \
+        -e "s#^\( *fastcgi_param  *db_user  *\)[^;]*;#\1${_hdb};#" \
+        -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_pw};#" \
+        "${_vhf}"
+      [ -n "${_vo}" ] && chown "${_vo}" "${_vhf}"
+      [ -n "${_vm}" ] && chmod "${_vm}" "${_vhf}"
     done
     echo "PANEL-NOTE: live panel credentials healed ${_stored_db} -> ${_hdb} in ${_found}"
   fi
