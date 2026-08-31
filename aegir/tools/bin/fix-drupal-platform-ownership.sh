@@ -134,6 +134,34 @@ if [ -n "${drupal_root}" ] \
   exit 0
 fi
 
+# --- Textpattern platform (shared core; boa-txp D-002) -----------------------
+# A TXP root carries no Drupal system.module; detect it positively (the same
+# probe as codebasecheck: textpattern/lib/constants.php + css.php + no core/)
+# and run the shared-core model instead of refusing.
+if [ -n "${drupal_root}" ] \
+  && [ -f "${drupal_root}/textpattern/lib/constants.php" ] \
+  && [ -f "${drupal_root}/css.php" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  if [ -z "${script_user}" ] \
+    || [[ $(id -un "${script_user}" 2> /dev/null) != "${script_user}" ]]; then
+      printf "Error: Please provide a valid user.\n"
+      exit 1
+  fi
+  _validate_path_prefix "${drupal_root}"
+  # Shared-core ownership model: the pristine core is <user>:users throughout.
+  # Everything under sites/* is the SITE scripts' territory -- those trees
+  # carry 0440 group-read secrets (config.php, drushrc.php) and web-group
+  # writable dirs the site pass owns; a platform-wide chown would re-home
+  # their groups and break FPM's group-read path, so sites/* is pruned
+  # outright (only the sites/ directory itself takes core ownership).
+  printf "Setting Textpattern ownership of %s to: user => %s group => users\n" "${drupal_root}" "${script_user}"
+  find ${drupal_root} -path "${drupal_root}/sites/*" -prune \
+    -o -exec chown -h ${script_user}:users {} + 2> /dev/null
+  echo "Done setting proper ownership of files and directories (Textpattern platform)."
+  exit 0
+fi
+
 if [ -z "${drupal_root}" ] \
   || [ ! -d "${drupal_root}/sites" ] \
   || [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
