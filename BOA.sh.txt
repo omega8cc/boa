@@ -5198,7 +5198,8 @@ if [ "$(id -u)" -eq 0 ]; then
     _bupStuckH=$(( _bupIntH * 4 ))
     [ "${_bupStuckH}" -lt 24 ] && _bupStuckH=24
     _bupLiveAny=NO
-    _bupStuckF=""
+    _bupStuckKey=""
+    _bupStuckWhat=""
     _bupStuckAgeH=0
     for _bupPidF in /run/duplicity_*.pid; do
       [ -e "${_bupPidF}" ] || continue
@@ -5220,16 +5221,34 @@ if [ "$(id -u)" -eq 0 ]; then
       _bupHeldT=$(stat -c %Y "${_bupPidF}" 2>/dev/null)
       [ -n "${_bupHeldT}" ] || _bupHeldT="${_bupNowT}"
       _bupHeldH=$(( (_bupNowT - _bupHeldT) / 3600 ))
-      if [ "${_bupHeldH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckF}" ]; then
-        _bupStuckF="${_bupPidF}"
+      if [ "${_bupHeldH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckKey}" ]; then
+        _bupStuckKey="${_bupPidF##*/}"
+        _bupStuckKey="${_bupStuckKey#duplicity_}"
+        _bupStuckKey="${_bupStuckKey%.pid}"
+        _bupStuckKey="${_bupStuckKey%_sequential}"
+        _bupStuckWhat="${_bupStuckKey} (lock ${_bupPidF})"
         _bupStuckAgeH="${_bupHeldH}"
       fi
     done
     for _bupPat in \
       "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(sequential_backups\.sh|multiback|duplicity)( |$)" \
       "^[^ ]*(sequential_backups\.sh|multiback|duplicity)( |$)"; do
-      _bupProcN="$(pgrep -fc "${_bupPat}" 2>/dev/null)"
-      [ "${_bupProcN:-0}" -gt 0 ] && _bupLiveAny=YES
+      # Age these the same way, from the process itself: liveness found
+      # here often owns NO /run/duplicity_*.pid file at all -- the daily
+      # backboa/duobackboa chains lock under their own names, and the
+      # wrapper is briefly live between entries -- so pid-file mtimes
+      # alone would leave this path with no ceiling and suppress for as
+      # long as such a run hangs.
+      for _bupProcP in $(pgrep -f "${_bupPat}" 2>/dev/null); do
+        _bupLiveAny=YES
+        _bupProcS=$(ps -o etimes= -p "${_bupProcP}" 2>/dev/null | tr -dc '0-9')
+        _bupProcH=$(( ${_bupProcS:-0} / 3600 ))
+        if [ "${_bupProcH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckKey}" ]; then
+          _bupStuckKey="pid-${_bupProcP}"
+          _bupStuckWhat="a backup process (pid ${_bupProcP})"
+          _bupStuckAgeH="${_bupProcH}"
+        fi
+      done
     done
     # A stream past the ceiling gets ONE distinct daily notice naming it,
     # and the pending entries behind it stay quiet: the operator should
@@ -5237,22 +5256,19 @@ if [ "$(id -u)" -eq 0 ]; then
     # self-contained -- the older waiting-queue notice above cannot serve
     # as the backstop here, since it fires at most once per box until its
     # queue logs are cleared.
-    if [ -n "${_bupStuckF}" ]; then
-      _bupStuckN="${_bupStuckF##*/}"
-      _bupStuckN="${_bupStuckN#duplicity_}"
-      _bupStuckN="${_bupStuckN%.pid}"
-      _bupStuckN="${_bupStuckN%_sequential}"
-      _bupStamp="/var/log/boa/backup-freshness-stalled-${_bupStuckN}.alerted"
+    if [ -n "${_bupStuckKey}" ]; then
+      _bupStuckKey="${_bupStuckKey//[^a-zA-Z0-9_-]/_}"
+      _bupStamp="/var/log/boa/backup-freshness-stalled-${_bupStuckKey}.alerted"
       if [ ! -e "${_bupStamp}" ] \
         || [ "$(( _bupNowT - $(stat -c %Y "${_bupStamp}" 2>/dev/null || echo 0) ))" -ge 86400 ]; then
         touch "${_bupStamp}"
-        echo "$(date) STALLED: ${_bupStuckN} holding the schedule for ${_bupStuckAgeH} hours" \
+        echo "$(date) STALLED: ${_bupStuckWhat} has held the schedule for ${_bupStuckAgeH} hours" \
           >> /var/log/boa/backup-freshness.log
         if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
           {
             echo "One off-site backup stream has been running for ${_bupStuckAgeH} hours on ${_bupHstN}"
             echo
-            echo "Holding lock: ${_bupStuckF}"
+            echo "Stuck stream: ${_bupStuckWhat}"
             echo
             echo "The schedule is sequential, so every entry behind this one is"
             echo "waiting and no freshness alert is raised for them. Check the"
@@ -5261,7 +5277,7 @@ if [ "$(id -u)" -eq 0 ]; then
             echo "many hours, and killing a full costs the whole chain a cycle."
             echo
             echo "This notice repeats daily until the stream finishes."
-          } | s-nail -s "Backup STALLED Alert for [${_bupHstN}]: ${_bupStuckN} running ${_bupStuckAgeH}h" ${_MY_EMAIL}
+          } | s-nail -s "Backup STALLED Alert for [${_bupHstN}]: ${_bupStuckKey} running ${_bupStuckAgeH}h" ${_MY_EMAIL}
         fi
       fi
     else
