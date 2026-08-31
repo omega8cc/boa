@@ -47,9 +47,14 @@ SSH, and each one is already permitted by the BOA limited shell:
 ## Drush version, deliberately
 
 The database dump uses `drush @alias sql-dump` — that is, **Drush 8**, the only standalone
-Drush that is integrated with Ægir site aliases. `sql-dump` reads the site's database
-credentials straight from the alias, so it produces a correct dump for any Drupal version
-(6 through 11+) without bootstrapping Drupal. Standalone `drush10`/`drush11` exist on BOA
+Drush that is integrated with Ægir site aliases. `sql-dump` gets the site's database
+credentials from the site's own `drushrc.php` (the alias itself carries `db_server` and the
+site context, not the credentials), so it produces a correct dump for any Drupal version
+(6 through 11+) without bootstrapping Drupal. `drushrc.php` is Drush 8 configuration and
+only Drush 8 reads it; a site-local modern Drush ignores it, which is why a cloaked
+`settings.php` parses that file itself rather than relying on Drush to load it. The dump
+path is therefore unaffected by credential cloaking, which removes the literal values from
+`settings.php` only. Standalone `drush10`/`drush11` exist on BOA
 only to convert alias names and return nothing useful for a dump; site-local `vdrush` is
 the right tool for updates but is not reachable over a non-interactive SSH command. So the
 add-on defaults to `drush` and documents `drush8` as the explicit synonym.
