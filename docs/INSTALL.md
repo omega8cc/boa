@@ -238,11 +238,9 @@ Local mode installs the same full BOA stack — Nginx, per-site PHP-FPM, Percona
 Ægir/Hostmaster and one Octopus tenant — on the private hostname `aegir.local`, with no
 public IP or DNS. It is meant for local development and testing on your own machine.
 
-It must run inside a virtual machine, not directly on bare metal. A full-OS LXC guest
-counts as one — it runs a complete OS with its own init, like a lightweight VM; an
-application container in the Docker/microservices sense does not and cannot take a BOA
-install. The system must be Devuan — or a compatible Debian release, which the installer
-first migrates to Devuan for you via `autoinit`. As with a public install, add your SSH key to `root` before you
+It must run inside a virtual machine or an LXC/container guest, not directly on bare metal,
+on Devuan — or on a compatible Debian release, which the installer first migrates to Devuan
+for you via `autoinit`. As with a public install, add your SSH key to `root` before you
 start. You do not need to specify a hostname, an Octopus username, or any public DNS.
 
 1. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md).
