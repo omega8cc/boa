@@ -86,6 +86,20 @@ get_drupal_version() {
     return
   fi
 
+  # Textpattern: shared multisite core, no core/ dir at all, so it can sit
+  # before or after the Drupal probes; kept with Backdrop so every
+  # foreign-CMS arm is in one place. Version lives in $thisversion.
+  if [ -f "${_path}/textpattern/lib/constants.php" ] \
+    && [ -f "${_path}/css.php" ] \
+    && [ ! -d "${_path}/core" ]; then
+    echo "Detected Textpattern." >&2
+    _version_line=$(grep -m1 'thisversion' "${_path}/textpattern/lib/constants.php")
+    _version=$(echo "${_version_line}" | sed -E "s/.*thisversion[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/")
+    echo "Detected Textpattern version: ${_version}" >&2
+    echo "textpattern-${_version}"
+    return
+  fi
+
   # Drupal 8 and above.
   if [ -f "${_path}/core/lib/Drupal.php" ]; then
     echo "Detected Drupal 8 or higher." >&2
@@ -163,6 +177,10 @@ classify_codebase() {
 
   # Backdrop: supported on MySQL/Percona 8.x.
   case "${_version}" in
+    textpattern-*)
+      printf 'OK\t%s\tTextpattern is MySQL-8 compatible\n' "${_version}"
+      return 0
+      ;;
     backdrop-*)
       printf 'OK\t%s\tBackdrop is MySQL-8 compatible\n' "${_version}"
       return 0

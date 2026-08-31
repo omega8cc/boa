@@ -15,6 +15,7 @@ _HM_ONLY=NO #------------------- Allows to upgrade Ægir Hostmaster only
 _PLATFORMS_ONLY=NO #------------ Install only new Ægir platforms when YES
 _BACKDROP_SUPPORT=YES #--------- Set to NO to skip Backdrop CMS platforms - see docs/PLATFORMS.md
 _GRAV_SUPPORT=NO #-------------- Set to YES to enable Grav 2 platforms and site capsules
+_TXP_SUPPORT=NO #--------------- Set to YES to enable Textpattern platforms and sites
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _DL_MODE=BATCH #---------------- Allows to switch to GIT src or OLD static
 _MY_OWNIP= #-------------------- Allows to specify web server IP if not default
@@ -268,6 +269,7 @@ so both can be used as default versions in the Ægir PHP configuration files:
 #
 # BDR — Backdrop CMS prod/stage/dev (built by default; skipped when _BACKDROP_SUPPORT=NO)
 # GRV — Grav 2 admin-bundle prod/stage/dev (skipped unless _GRAV_SUPPORT=YES)
+# TXP — Textpattern prod/stage/dev (skipped unless _TXP_SUPPORT=YES)
 
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA

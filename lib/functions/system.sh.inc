@@ -3167,6 +3167,7 @@ _barracuda_cnf() {
     echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"             >> ${_barCnf}
     echo "### _BACKDROP_SUPPORT_MIGRATED"                     >> ${_barCnf}
     echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                     >> ${_barCnf}
+    echo "_TXP_SUPPORT=${_TXP_SUPPORT}"                       >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -3435,6 +3436,13 @@ _barracuda_cnf() {
     _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_barCnf}
+    fi
+    ### Ships dark (boa-txp D-002); anchored like the gates above. No
+    ### _MIGRATED heal: the gate has never defaulted differently (that
+    ### machinery belongs to the commit that ever flips the default).
+    _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_barCnf} 2>&1)
+    if [[ ! "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
+      echo "_TXP_SUPPORT=${_TXP_SUPPORT}" >> ${_barCnf}
     fi
     ### One-shot opt-out migration: a NO seeded while the gate briefly
     ### defaulted to NO (2026-07-11..13) predates any operator choice, so

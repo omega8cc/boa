@@ -896,6 +896,17 @@ _BACKDROP_SUPPORT=YES
 ###
 _GRAV_SUPPORT=NO
 
+###--------------------------------------###
+###
+### The Textpattern system tools ship dark.
+### To enable Textpattern support on this
+### system, change this to YES. Requires
+### the current BOA release (PHP 8.4).
+###
+### _TXP_SUPPORT=YES
+###
+_TXP_SUPPORT=NO
+
 ###
 ### You can define custom list of functions
 ### to disable besides those already denied

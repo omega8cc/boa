@@ -932,6 +932,7 @@ _satellite_cnf() {
     echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"               >> ${_octCnf}
     echo "### _BACKDROP_SUPPORT_MIGRATED"                       >> ${_octCnf}
     echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                       >> ${_octCnf}
+    echo "_TXP_SUPPORT=${_TXP_SUPPORT}"                         >> ${_octCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
     echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
@@ -1052,6 +1053,13 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_octCnf}
+    fi
+    ### Ships dark (boa-txp D-002); no _MIGRATED heal by design.
+    _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_octCnf} 2>&1)
+    if [[ "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_TXP_SUPPORT=${_TXP_SUPPORT}" >> ${_octCnf}
     fi
     ### One-shot opt-out migration; see the barracuda-side twin in
     ### system.sh.inc for the why. Runs before this cnf is sourced, so
@@ -4934,6 +4942,12 @@ _satellite_make() {
   # the gate from here. Fail-closed: NO/empty keeps the gate shut.
   echo "export _GRAV_SUPPORT=\"${_GRAV_SUPPORT}\""           >> ${_writeTo}
 
+  # Same reason as the two gates above: the su'd child installers source ONLY
+  # this env include, never the root .octopus.cnf where the operator sets the
+  # gate, so an unpropagated _TXP_SUPPORT is permanently dead in the child.
+  # Fail-closed: NO/empty keeps the gate shut.
+  echo "export _TXP_SUPPORT=\"${_TXP_SUPPORT}\""             >> ${_writeTo}
+
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
   echo "export _HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${_writeTo}
@@ -7147,6 +7161,12 @@ _satellite_child_b_aegir_ui_enhance() {
     ### enables its 'gravcms' hosting feature via hosting_modules_enabled().
     if [ "${_GRAV_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_grav -y &> /dev/null
+    fi
+    ### Textpattern platform awareness in the hostmaster frontend; gated dark
+    ### behind _TXP_SUPPORT (boa-txp D-002). Enabling the module also enables
+    ### its 'txpcms' hosting feature via hosting_modules_enabled().
+    if [ "${_TXP_SUPPORT}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster en hosting_txp -y &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
