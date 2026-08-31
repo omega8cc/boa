@@ -132,6 +132,56 @@ if [ -n "${site_path}" ] \
   exit 0
 fi
 
+# --- Textpattern multisite site (boa-txp D-002) -------------------------------
+# A TXP site is sites/<uri>/{admin,private,public} with no settings.php; detect
+# it positively and run the TXP permission model instead of refusing (union seam
+# shared with the Grav branch above).
+if [ -n "${site_path}" ] \
+  && [ -f "${site_path}/public/index.php" ] \
+  && [ -f "${site_path}/public/css.php" ] \
+  && [ -d "${site_path}/admin" ] \
+  && [ ! -f "${site_path}/settings.php" ]; then
+  _validate_path_prefix "${site_path}"
+  # Code 0755/0644; the writable set 02775 dirs + g+rw files (FPM writes via
+  # GROUP; setgid keeps the group on web-created entries).
+  #
+  # private/ is PRUNED from the generic pass on purpose: it is the credential
+  # store, and the generic 0644 file pass would widen private/config.php from
+  # 0440 to world-readable. It is set explicitly below instead.
+  #
+  # find is never given -L, so the four admin symlinks are type l, are not
+  # matched by -type d/f and are not descended into -- the shared core tree is
+  # never touched from here.
+  printf "Setting Textpattern permissions of %s\n" "${site_path}"
+  find ${site_path} -path "${site_path}/private" -prune \
+    -o -path "${site_path}/tmp" -prune \
+    -o -path "${site_path}/modules" -prune \
+    -o -path "${site_path}/admin/plugins" -prune \
+    -o -path "${site_path}/public/files" -prune \
+    -o -path "${site_path}/public/images" -prune \
+    -o -path "${site_path}/public/themes" -prune \
+    -o -type d -exec chmod 0755 {} + 2> /dev/null
+  find ${site_path} -path "${site_path}/private" -prune \
+    -o -path "${site_path}/tmp" -prune \
+    -o -path "${site_path}/modules" -prune \
+    -o -path "${site_path}/admin/plugins" -prune \
+    -o -path "${site_path}/public/files" -prune \
+    -o -path "${site_path}/public/images" -prune \
+    -o -path "${site_path}/public/themes" -prune \
+    -o -type f -exec chmod 0644 {} + 2> /dev/null
+  for _wd in tmp modules admin/plugins public/files public/images public/themes; do
+    [ -d "${site_path}/${_wd}" ] || continue
+    find "${site_path}/${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
+    find "${site_path}/${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
+  done
+  # Credential store: group-traversable (FPM reads config.php through its
+  # www-data group), unreadable to everyone else.
+  chmod 0750 "${site_path}/private" 2> /dev/null
+  find "${site_path}/private" -type f -exec chmod 0440 {} + 2> /dev/null
+  echo "Done setting proper permissions of files and directories (Textpattern site)."
+  exit 0
+fi
+
 if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ]; then
   printf "Error: Please provide a valid Drupal site directory.\n"
   exit 1
