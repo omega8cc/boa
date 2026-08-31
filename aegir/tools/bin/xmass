@@ -4841,6 +4841,14 @@ fi
 for _F in "${_SP}/settings.php" "${_SP}/drushrc.php"; do
   _O=$(stat -c '%U:%G' "${_F}")
   _M=$(stat -c '%a' "${_F}")
+  # A cloaked settings.php carries no literal credential lines -- it reads them
+  # from the vhost or the sibling drushrc.php -- so the rewrite below
+  # legitimately matches nothing there and must not be asserted.
+  _LIT=YES
+  if ! grep -q "^ *'database' => [\"'][^\"']*[\"']," "${_F}" \
+    && ! grep -q "^\$options\['db_name'\] = '" "${_F}"; then
+    _LIT=NO
+  fi
   sed -i \
     -e "s#^\( *'database' => \)[\"'][^\"']*[\"'],#\1\"${_LIVE}\",#" \
     -e "s#^\( *'username' => \)[\"'][^\"']*[\"'],#\1\"${_LIVE}\",#" \
@@ -4852,11 +4860,31 @@ for _F in "${_SP}/settings.php" "${_SP}/drushrc.php"; do
     "${_F}"
   [ -n "${_O}" ] && chown "${_O}" "${_F}"
   [ -n "${_M}" ] && chmod "${_M}" "${_F}"
-  if ! grep -q "${_LIVE}" "${_F}"; then
+  if [ "${_LIT}" = "YES" ] && ! grep -q "${_LIVE}" "${_F}"; then
     echo "PANEL-ERROR: rewrite did not land in ${_F} (no ${_LIVE} after sed) — check the credential line format"
     exit 1
   fi
 done
+# A cloaked panel reads its web credentials from the vhost, not from
+# settings.php, so the rewire has to land there too or the panel keeps
+# authenticating as the dead DB until the next render.
+_VHD="${_SP%%/aegir/distro/*}"
+if [ "${_VHD}" != "${_SP}" ]; then
+  for _VHF in \
+    "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
+    "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
+    [ -f "${_VHF}" ] || continue
+    _VO=$(stat -c '%U:%G' "${_VHF}")
+    _VM=$(stat -c '%a' "${_VHF}")
+    sed -i \
+      -e "s#^\( *fastcgi_param  *db_name  *\)[^;]*;#\1${_LIVE};#" \
+      -e "s#^\( *fastcgi_param  *db_user  *\)[^;]*;#\1${_LIVE};#" \
+      -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_PW};#" \
+      "${_VHF}"
+    [ -n "${_VO}" ] && chown "${_VO}" "${_VHF}"
+    [ -n "${_VM}" ] && chmod "${_VM}" "${_VHF}"
+  done
+fi
 echo "PANEL-OK: ${_R} panel rewired from dead ${_DEAD_DB} to live DB ${_LIVE}"
 exit 0
 REMOTE
