@@ -190,6 +190,12 @@ if [ -n "${site_path}" ] \
   # www-data group), unreadable to everyone else.
   chmod 0750 "${site_path}/private" 2> /dev/null
   find "${site_path}/private" -type f -exec chmod 0440 {} + 2> /dev/null
+  # Aegir's own site drushrc sits at the site ROOT (not inside private/) and
+  # carries the db credentials, so the generic 0644 pass above widens it to
+  # world-readable on every verify. Restore the 0440 the Drushrc writer sets --
+  # never fight the writer. (Same class as the private/ prune; caught live on
+  # ng019 by isolating this script from the verify that re-renders the file.)
+  [ -f "${site_path}/drushrc.php" ] && chmod 0440 "${site_path}/drushrc.php" 2> /dev/null
   echo "Done setting proper permissions of files and directories (Textpattern site)."
   exit 0
 fi
