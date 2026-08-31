@@ -92,6 +92,46 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+# --- Grav 2 site capsule (boa-grav D-003) ------------------------------------
+# A capsule is a full Grav install at sites/<uri>/ with no settings.php;
+# detect it positively and run the capsule permission model instead of
+# refusing (union seam: further foreign-CMS branches join here the same way).
+if [ -n "${site_path}" ] \
+  && [ -f "${site_path}/bin/grav" ] \
+  && [ -f "${site_path}/system/defines.php" ] \
+  && [ ! -f "${site_path}/settings.php" ]; then
+  _validate_path_prefix "${site_path}"
+  # Capsule permission model (spike-proven): code 0755/0644; the writable
+  # set 02775 dirs + g+rw files (FPM writes via GROUP; setgid keeps the
+  # group on web-created entries); the capsule's own bin/ stays executable
+  # (the enforced-PHP wrapper and the upgrade engine exec bin/grav, bin/gpm).
+  printf "Setting Grav permissions of %s\n" "${site_path}"
+  find ${site_path} -path "${site_path}/user" -prune \
+    -o -path "${site_path}/cache" -prune \
+    -o -path "${site_path}/logs" -prune \
+    -o -path "${site_path}/tmp" -prune \
+    -o -path "${site_path}/backup" -prune \
+    -o -path "${site_path}/images" -prune \
+    -o -path "${site_path}/assets" -prune \
+    -o -type d -exec chmod 0755 {} + 2> /dev/null
+  find ${site_path} -path "${site_path}/user" -prune \
+    -o -path "${site_path}/cache" -prune \
+    -o -path "${site_path}/logs" -prune \
+    -o -path "${site_path}/tmp" -prune \
+    -o -path "${site_path}/backup" -prune \
+    -o -path "${site_path}/images" -prune \
+    -o -path "${site_path}/assets" -prune \
+    -o -type f -exec chmod 0644 {} + 2> /dev/null
+  chmod 0755 ${site_path}/bin/* 2> /dev/null
+  for _wd in user cache logs tmp backup images assets; do
+    [ -d "${site_path}/${_wd}" ] || continue
+    find "${site_path}/${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
+    find "${site_path}/${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
+  done
+  echo "Done setting proper permissions of files and directories (Grav site)."
+  exit 0
+fi
+
 if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ]; then
   printf "Error: Please provide a valid Drupal site directory.\n"
   exit 1

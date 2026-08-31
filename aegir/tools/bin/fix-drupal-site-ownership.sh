@@ -97,6 +97,32 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+# --- Grav 2 site capsule (boa-grav D-003) ------------------------------------
+# A capsule is a full Grav install at sites/<uri>/ with no settings.php;
+# detect it positively and run the capsule ownership model instead of
+# refusing (union seam: further foreign-CMS branches join here the same way).
+if [ -n "${site_path}" ] \
+  && [ -f "${site_path}/bin/grav" ] \
+  && [ -f "${site_path}/system/defines.php" ] \
+  && [ ! -f "${site_path}/settings.php" ]; then
+  if [ -z "${script_user}" ] \
+    || [[ $(id -un "${script_user}" 2> /dev/null) != "${script_user}" ]]; then
+    printf "Error: Please provide a valid user.\n"
+    exit 1
+  fi
+  _validate_path_prefix "${site_path}"
+  # Capsule ownership model (spike-proven): code <user>:users; the writable
+  # set <user>:<web_group> so FPM writes via GROUP (version-flip-immune).
+  printf "Setting Grav ownership of %s to: user => %s group => users\n" "${site_path}" "${script_user}"
+  chown -h -R ${script_user}:users ${site_path}
+  for _wd in user cache logs tmp backup images assets; do
+    [ -d "${site_path}/${_wd}" ] || continue
+    chown -h -R ${script_user}:${web_group:-www-data} "${site_path}/${_wd}"
+  done
+  echo "Done setting proper ownership of files and directories (Grav site)."
+  exit 0
+fi
+
 if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ]; then
   printf "Error: Please provide a valid Drupal site directory.\n"
   exit 1
