@@ -1836,7 +1836,14 @@ _update_agents() {
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
     && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f81
 
-  if ! grep -q "grav self-upgrade" /var/xdrago/conf/lshell.conf; then
+  # Re-fetch trigger for the Grav-aware lshell.conf. The sentinel MUST be a
+  # literal that exists in the shipped file: the wrapper dispatches tools as
+  # `grav gpm <verb>`, so the forbidden entry reads 'grav gpm self-upgrade'.
+  # A sentinel missing the tool token can never match, which would drop the
+  # ctrl and re-fetch this security-critical file on EVERY pass, on every
+  # box, forever -- the ctrl mechanism exists to prevent exactly that
+  # (as-shipped E2E catch).
+  if ! grep -q "grav gpm self-upgrade" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
