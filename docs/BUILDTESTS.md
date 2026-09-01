@@ -32,11 +32,11 @@ Distributions, published to `/var/www/static/distro`:
   drupal_cms_installer-2.1.3-11.4.5
   farm-4.0.5-11.3.14
   localgov-4.0.2-11.4.5
-  openculturas-3.0.5-11.3.16
+  openculturas-3.0.6-11.3.16
   openfed-13.6.6-10.6.15
   opigno_lms-3.2.7-10.6.15
   social-13.0.2-10.6.15
-  thunder-8.4.1-11.4.5
+  thunder-8.4.3-11.4.5
   varbase-10.1.2-11.4.5
 ```
 
@@ -203,8 +203,8 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.3-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.5-11.3.16 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.0.5-11.3.16/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.6-11.3.16 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.0.6-11.3.16/
            # composer config --no-plugins allow-plugins true
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (stale + composer-patches 2.x cannot apply to dist installs)
            # composer update --no-install --no-scripts
@@ -214,7 +214,7 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.5-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.5-11.3.16/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.5-11.3.14/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.6-11.3.16/web/sites/
 ```
 
 ```sh
@@ -312,9 +312,9 @@ social     # Open Social ships NO create-project template for its current major:
 ```
 
 ```sh
-thunder    # composer create-project thunder/thunder-project thunder-8.4.1-11.4.5 --no-dev --no-interaction --no-install --no-scripts
-           # name by thunder/thunder-distribution (8.4.1); thunder/thunder-project versions separately (5.0.0)
-           # cd ~/static/MONTH-DAY/thunder-8.4.1-11.4.5
+thunder    # composer create-project thunder/thunder-project thunder-8.4.3-11.4.5 --no-dev --no-interaction --no-install --no-scripts
+           # name by thunder/thunder-distribution (8.4.3); thunder/thunder-project versions separately (5.0.0)
+           # cd ~/static/MONTH-DAY/thunder-8.4.3-11.4.5
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
            # composer install --no-dev
@@ -409,7 +409,7 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   refuses advisory-affected core/deps; disable it (`policy.advisories.block false`) for the
   test build.
 - **thunder** — `thunder/thunder-project` (the template) versions independently (e.g. 5.0.0)
-  from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.1); name by the latter.
+  from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.3); name by the latter.
 - **cms** — drupal_cms's post-update-cmd cleanup script exits non-zero; run its drush
   require with `--no-scripts`. The same require adds the migration pipeline contribs
   (`migrate_plus`, `migrate_tools`, `migrate_upgrade`) — upstream drupal/cms ships none
