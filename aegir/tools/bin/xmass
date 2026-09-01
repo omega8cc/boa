@@ -623,6 +623,7 @@ _xmass_solr_ts_line() {
 _xmass_solr_classify_source() {
   local _sv _svc _dvar _prt _dta _pres _lsn _init _parked _deny _cores
   local _docs _fresh _bind _sr _verdict _why _bindraw _alias _apath _xtras
+  local _docsread _raw
   local _blanket=NO _recorded=NO _rec_used="" _rec_ambig=""
   _XMASS_SOLR_USED_SET=""
   _XMASS_SOLR_AMBIG_SET=""
@@ -733,11 +734,21 @@ _xmass_solr_classify_source() {
       [ -z "${_newest}" ] && _newest=never
     fi
     _docs=0
+    _docsread=n/a
     if [ "${_lsn}" = "YES" ]; then
-      _docs=$(curl -s --max-time 15 -A iCab \
-        "http://127.0.0.1:${_prt}/solr/admin/cores?action=STATUS&wt=json" 2>/dev/null \
-        | grep -o '"numDocs":[0-9]*' | awk -F: '{ _s += $2 } END { print _s + 0 }')
-      [ -z "${_docs}" ] && _docs=0
+      ### curl's own status decides; the old pipeline form took awk's exit
+      ### status and its END always printed 0, so a failed probe read as a
+      ### real zero. Kept in step with solrtrim's _classify.
+      _raw=$(curl -sf --max-time 15 -A iCab \
+        "http://127.0.0.1:${_prt}/solr/admin/cores?action=STATUS&wt=json" 2>/dev/null)
+      if [ $? -eq 0 ] && [ -n "${_raw}" ] && [[ "${_raw}" == *'"status"'* ]]; then
+        _docs=$(printf '%s' "${_raw}" | grep -o '"numDocs":[0-9]*' \
+          | awk -F: '{ _s += $2 } END { print _s + 0 }')
+        _docsread=OK
+      else
+        _docs=0
+        _docsread=FAILED
+      fi
     fi
 
     _verdict=""; _why=""
@@ -792,6 +803,10 @@ _xmass_solr_classify_source() {
         ### the year: a stale estate, a deny candidate no matter how real
         ### the documents look. The date makes the verdict auditable.
         _verdict=STALE; _why="populated cores, newest write ${_newest} -- outside the one-year bar"
+      elif [ "${_docsread}" = "FAILED" ]; then
+        ### An unreadable probe is NOT a proven-empty estate -- say so, so the
+        ### owed operator ruling is made on the real fact.
+        _verdict=AMBIG; _why="running, ${_cores} core(s), document probe FAILED -- unreadable, not empty"
       else
         _verdict=AMBIG; _why="running, ${_cores} core(s) all EMPTY, zero site bindings"
       fi
@@ -803,7 +818,7 @@ _xmass_solr_classify_source() {
       fi
     fi
 
-    _info "  ${_sv}: ${_verdict} (${_why}) present=${_pres} port${_prt}=${_lsn} init=${_init} parked=${_parked} deny=${_deny} cores=${_cores} docs=${_docs} bind=${_bind} fresh30d=${_fresh} fresh1y=${_freshy} newest=${_newest}"
+    _info "  ${_sv}: ${_verdict} (${_why}) present=${_pres} port${_prt}=${_lsn} init=${_init} parked=${_parked} deny=${_deny} cores=${_cores} docs=${_docs}$( [ "${_docsread}" = "FAILED" ] && echo "(UNREADABLE)" ) bind=${_bind} fresh30d=${_fresh} fresh1y=${_freshy} newest=${_newest}"
     case "${_verdict}" in
       USED)  _XMASS_SOLR_USED_SET="${_XMASS_SOLR_USED_SET} ${_sv}" ;;
       AMBIG) _XMASS_SOLR_AMBIG_SET="${_XMASS_SOLR_AMBIG_SET} ${_sv}"
@@ -2689,7 +2704,10 @@ _xmass_restore_solr_source() {
       solr7)  _denyVar=_DENY_SOLR7  ; _port=9077 ;;
       jetty9) _denyVar=_DENY_JETTY9 ; _port=8099 ;;
     esac
-    if grep -q "^${_denyVar}=YES" /root/.barracuda.cnf 2>/dev/null \
+    ### autoupboa SOURCES the cnf, so quoted/exported forms count -- match the
+    ### classifier's own tolerant read. A hand-written variable-only deny
+    ### carries no /etc/boa marker for the second test to catch.
+    if grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_denyVar}=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null \
       || [ -e "/etc/boa/.deny.${_svc}.cnf" ]; then
       _info "  ${_svc}: its own deny (${_denyVar}) is set -- left down on purpose"
       _skipped=YES
