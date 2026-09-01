@@ -22,11 +22,15 @@ _WEBG=www-data
 # A tenant login on a mirror is a WRITE channel into the synced trees --
 # credentials converge with the active BY DESIGN (.ssh synced, user store
 # force-pushed), so only the shell can refuse them. serve.cnf does NOT
-# exempt (web-only preview); the xmass promotion window does (xmass owns
-# the box then, same signal as every other hold).
+# exempt (web-only preview), and neither does the xmass in-flight signal:
+# that signal opens at INIT, the window in which the copied-in production
+# datadir and the freshly seeded trees are most exposed, and a tenant file
+# modified on the mirror then permanently shadows the active's copy under
+# the -u sync legs. The hold releases on the MARKER alone -- cutover step
+# 15 removes it, as does an init unwind or a hand removal -- and this
+# script runs every 3 minutes, so promotion is followed at once.
 _LTD_STANDBY_HOLD=NO
-if [ -e "/root/.standby.cnf" ] \
-  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+if [ -e "/root/.standby.cnf" ]; then
   _LTD_STANDBY_HOLD=YES
 fi
 

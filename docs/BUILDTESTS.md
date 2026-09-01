@@ -109,12 +109,17 @@ build it with its own subcommand:
   staticbuild grav               # build + package + publish only the Grav family
 ```
 
-Three artefacts, all published to `/var/www/static/core`:
+Four artefacts, all published to `/var/www/static/core`:
 
 - **grav-\<ver\>.tar.gz** — the official ADMIN BUNDLE release
   (`grav-admin-v<ver>.zip`: admin/login/form/email + api + admin2
   preinstalled), repackaged versioned (extracts to `grav-<ver>/`) for the
   platform build.
+- **grav.tar.gz** — the version-less compat tarball of the newest release,
+  built by a SEPARATE `tar --transform` invocation so it extracts to `grav/`
+  (a copied archive would extract to the versioned name). It is the
+  transitional fallback `_create_grav_basic_version` falls back to when a
+  mirror carries no versioned Grav tarball yet.
 - **grav-admin-v\<ver\>.zip** — the raw official zip kept verbatim as the
   per-site upgrade shelf: the upgrade engine feeds it to gpm direct-install as
   a LOCAL file, so `official_gpm_only` stays enforced and no box ever talks to

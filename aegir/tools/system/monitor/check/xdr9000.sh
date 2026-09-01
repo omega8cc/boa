@@ -211,7 +211,7 @@ _harvest_pass() {
   _harvest_raw "${_mon}/segfault_alert.archive.log" "inc_segv" "inc" "segv"
   local _b="/var/log/boa"
   local _i
-  for _i in high.load oom nginx mysql php valkey redis unbound java system batch_guard; do
+  for _i in high.load oom nginx mysql php valkey redis unbound java system batch_guard task_guard; do
     _harvest_raw "${_b}/${_i}.incident.log" "inc_${_i//./_}" "inc" "${_i}"
   done
   _harvest_raw "${_b}/oom.incident.old.log" "inc_oom_old" "inc" "oom"

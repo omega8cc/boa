@@ -10731,7 +10731,12 @@ _xdrago_install_upgrade() {
     ### upgrade put a pre-wave second.sh back on a standby while its
     ### marker still claimed the wave's serial). Invalidate them all: the
     ### next tools refresh re-fetches every current serial within minutes.
-    rm -f ${_pthLog}/*.ctrl.*.pid
+    ### Scoped to FETCH markers, the same way the launcher's once-per-release
+    ### sweep is: the one-shot fleet-switch stamp shares this name shape but
+    ### is not a fetch marker, and wiping it re-runs its flag normalisation
+    ### on every pass, silently reverting an operator's own toggles.
+    find ${_pthLog} -maxdepth 1 -name "*.ctrl.*.pid" \
+      ! -name "ghost-family-yes.ctrl.*" -delete 2>/dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "${_vBs}/custom_lshell.conf" ]; then
       cp -af ${_vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf
