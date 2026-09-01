@@ -122,7 +122,7 @@ if [ -n "${site_path}" ] \
     -o -path "${site_path}/images" -prune \
     -o -path "${site_path}/assets" -prune \
     -o -type f -exec chmod 0644 {} + 2> /dev/null
-  chmod 0755 ${site_path}/bin/* 2> /dev/null
+  _chmod_safe 0755 ${site_path}/bin/*
   for _wd in user cache logs tmp backup images assets; do
     [ -d "${site_path}/${_wd}" ] || continue
     find "${site_path}/${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
@@ -138,8 +138,8 @@ if [ -n "${site_path}" ] \
     find "${site_path}/${_sd}" -type d -exec chmod 02770 {} + 2> /dev/null
     find "${site_path}/${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
   done
-  [ -f "${site_path}/.env" ] && chmod 0640 "${site_path}/.env" 2> /dev/null
-  [ -f "${site_path}/drushrc.php" ] && chmod 0440 "${site_path}/drushrc.php" 2> /dev/null
+  _chmod_safe 0640 "${site_path}/.env"
+  _chmod_safe 0440 "${site_path}/drushrc.php"
   echo "Done setting proper permissions of files and directories (Grav site)."
   exit 0
 fi
@@ -188,14 +188,14 @@ if [ -n "${site_path}" ] \
   done
   # Credential store: group-traversable (FPM reads config.php through its
   # www-data group), unreadable to everyone else.
-  chmod 0750 "${site_path}/private" 2> /dev/null
+  _chmod_safe 0750 "${site_path}/private"
   find "${site_path}/private" -type f -exec chmod 0440 {} + 2> /dev/null
   # Aegir's own site drushrc sits at the site ROOT (not inside private/) and
   # carries the db credentials, so the generic 0644 pass above widens it to
   # world-readable on every verify. Restore the 0440 the Drushrc writer sets --
   # never fight the writer. (Same class as the private/ prune; caught live on
   # a test rig by isolating this script from the verify that re-renders the file.)
-  [ -f "${site_path}/drushrc.php" ] && chmod 0440 "${site_path}/drushrc.php" 2> /dev/null
+  _chmod_safe 0440 "${site_path}/drushrc.php"
   echo "Done setting proper permissions of files and directories (Textpattern site)."
   exit 0
 fi
