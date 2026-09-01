@@ -3166,6 +3166,8 @@ _barracuda_cnf() {
     echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${_barCnf}
     echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"             >> ${_barCnf}
     echo "### _BACKDROP_SUPPORT_MIGRATED"                     >> ${_barCnf}
+    echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                     >> ${_barCnf}
+    echo "_TXP_SUPPORT=${_TXP_SUPPORT}"                       >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
@@ -3207,6 +3209,8 @@ _barracuda_cnf() {
     echo "_ALLOW_VALKEY_RESTART=${_ALLOW_VALKEY_RESTART:-NO}"  >> ${_barCnf}
     echo "_DEBUG_EMAIL=${_DEBUG_EMAIL:-NO}"               >> ${_barCnf}
     echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}"             >> ${_barCnf}
+    echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}"       >> ${_barCnf}
+    echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\""  >> ${_barCnf}
     echo "_OCTOPUS_UPGRADE_RERUN_SILENT=${_OCTOPUS_UPGRADE_RERUN_SILENT:-NO}"  >> ${_barCnf}
     echo "_INSTANT_BUSY_MYSQL_ACTION=${_INSTANT_BUSY_MYSQL_ACTION:-NO}"  >> ${_barCnf}
     echo "_MYSQLADMIN_MONITOR=${_MYSQLADMIN_MONITOR:-NO}"  >> ${_barCnf}
@@ -3427,6 +3431,19 @@ _barracuda_cnf() {
     if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
     fi
+    ### Ships dark (boa-grav D-002); anchored like _BACKDROP_SUPPORT above.
+    ### No _MIGRATED heal: the gate has never defaulted differently.
+    _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_barCnf} 2>&1)
+    if [[ ! "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
+      echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_barCnf}
+    fi
+    ### Ships dark (boa-txp D-002); anchored like the gates above. No
+    ### _MIGRATED heal: the gate has never defaulted differently (that
+    ### machinery belongs to the commit that ever flips the default).
+    _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_barCnf} 2>&1)
+    if [[ ! "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
+      echo "_TXP_SUPPORT=${_TXP_SUPPORT}" >> ${_barCnf}
+    fi
     ### One-shot opt-out migration: a NO seeded while the gate briefly
     ### defaulted to NO (2026-07-11..13) predates any operator choice, so
     ### flip it once; a NO written after the marker lands stays sticky.
@@ -3484,6 +3501,14 @@ _barracuda_cnf() {
     _GOACCESS_ALL_TEST=$(grep "^_GOACCESS_ALL=" ${_barCnf} 2>&1)
     if [[ ! "${_GOACCESS_ALL_TEST}" =~ "_GOACCESS_ALL=" ]]; then
       echo "_GOACCESS_ALL=${_GOACCESS_ALL:-NO}" >> ${_barCnf}
+    fi
+    _GOACCESS_VHOSTS_TEST=$(grep "^_GOACCESS_VHOSTS=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_VHOSTS_TEST}" =~ "_GOACCESS_VHOSTS=" ]]; then
+      echo "_GOACCESS_VHOSTS=${_GOACCESS_VHOSTS:-NO}" >> ${_barCnf}
+    fi
+    _GOACCESS_EXCLUDE_IPS_TEST=$(grep "^_GOACCESS_EXCLUDE_IPS=" ${_barCnf} 2>&1)
+    if [[ ! "${_GOACCESS_EXCLUDE_IPS_TEST}" =~ "_GOACCESS_EXCLUDE_IPS=" ]]; then
+      echo "_GOACCESS_EXCLUDE_IPS=\"${_GOACCESS_EXCLUDE_IPS}\"" >> ${_barCnf}
     fi
     _OCTOPUS_UPGRADE_RERUN_SILENT_TEST=$(grep "^_OCTOPUS_UPGRADE_RERUN_SILENT=" ${_barCnf} 2>&1)
     if [[ ! "${_OCTOPUS_UPGRADE_RERUN_SILENT_TEST}" =~ "_OCTOPUS_UPGRADE_RERUN_SILENT=" ]]; then

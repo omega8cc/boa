@@ -96,6 +96,87 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+
+# --- Grav 2 platform (site capsules; boa-grav D-003) -------------------------
+# A Grav root carries no Drupal system.module; detect it positively and run
+# the capsule model instead of refusing (union seam: further foreign-CMS
+# branches join here the same way).
+if [ -n "${drupal_root}" ] \
+  && [ -f "${drupal_root}/bin/grav" ] \
+  && [ -f "${drupal_root}/system/defines.php" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  _validate_path_prefix "${drupal_root}"
+  # Capsule permission model (spike-proven): code 0755/0644; the writable
+  # set 02775 dirs + g+rw files (FPM writes via GROUP; setgid keeps the
+  # group on web-created entries).
+  printf "Setting Grav permissions of %s\n" "${drupal_root}"
+  find ${drupal_root} -path "${drupal_root}/sites/*/user" -prune \
+    -o -path "${drupal_root}/sites/*/cache" -prune \
+    -o -path "${drupal_root}/sites/*/logs" -prune \
+    -o -path "${drupal_root}/sites/*/tmp" -prune \
+    -o -path "${drupal_root}/sites/*/backup" -prune \
+    -o -path "${drupal_root}/sites/*/images" -prune \
+    -o -path "${drupal_root}/sites/*/assets" -prune \
+    -o -type d -exec chmod 0755 {} + 2> /dev/null
+  find ${drupal_root} -path "${drupal_root}/sites/*/user" -prune \
+    -o -path "${drupal_root}/sites/*/cache" -prune \
+    -o -path "${drupal_root}/sites/*/logs" -prune \
+    -o -path "${drupal_root}/sites/*/tmp" -prune \
+    -o -path "${drupal_root}/sites/*/backup" -prune \
+    -o -path "${drupal_root}/sites/*/images" -prune \
+    -o -path "${drupal_root}/sites/*/assets" -prune \
+    -o -type f -exec chmod 0644 {} + 2> /dev/null
+  for _capsule in ${drupal_root}/sites/*/; do
+    [ -f "${_capsule}system/defines.php" ] || continue
+    # The capsule's own bin/ must stay executable (the enforced-PHP wrapper
+    # and the upgrade engine exec bin/grav and bin/gpm).
+    _chmod_safe 0755 ${_capsule}bin/*
+    for _wd in user cache logs tmp backup images assets; do
+      [ -d "${_capsule}${_wd}" ] || continue
+      find "${_capsule}${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
+      find "${_capsule}${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
+    done
+    # Secret surfaces AFTER the generic pass, which would re-widen them
+    # (boa-grav D-008): group-rw for FPM, owner-rw for the CLI, NO world
+    # bits; the root .env keeps FPM's read via group.
+    for _sd in user/accounts user/config user/env; do
+      [ -d "${_capsule}${_sd}" ] || continue
+      find "${_capsule}${_sd}" -type d -exec chmod 02770 {} + 2> /dev/null
+      find "${_capsule}${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
+    done
+    _chmod_safe 0640 "${_capsule}.env"
+    _chmod_safe 0440 "${_capsule}drushrc.php"
+  done
+  _chmod_safe 0755 ${drupal_root}/bin/*
+  echo "Done setting proper permissions of files and directories (Grav)."
+  exit 0
+fi
+
+# --- Textpattern platform (shared core; boa-txp D-002) -----------------------
+# A TXP root carries no Drupal system.module; detect it positively (the same
+# probe as codebasecheck: textpattern/lib/constants.php + css.php + no core/)
+# and run the shared-core model instead of refusing.
+if [ -n "${drupal_root}" ] \
+  && [ -f "${drupal_root}/textpattern/lib/constants.php" ] \
+  && [ -f "${drupal_root}/css.php" ] \
+  && [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  _validate_path_prefix "${drupal_root}"
+  # Shared-core permission model: pristine core 0755/0644. Everything under
+  # sites/* is the SITE scripts' territory -- those trees carry 0440 secrets
+  # (config.php, drushrc.php) and 02775 setgid writable dirs; a platform-wide
+  # chmod would widen the secrets and strip the setgid bits (the drushrc
+  # lesson: never fight the writer), so sites/* is pruned outright.
+  printf "Setting Textpattern permissions of %s\n" "${drupal_root}"
+  find ${drupal_root} -path "${drupal_root}/sites/*" -prune \
+    -o -type d -exec chmod 0755 {} + 2> /dev/null
+  find ${drupal_root} -path "${drupal_root}/sites/*" -prune \
+    -o -type f -exec chmod 0644 {} + 2> /dev/null
+  echo "Done setting proper permissions of files and directories (Textpattern platform)."
+  exit 0
+fi
+
 if [ -z "${drupal_root}" ] \
   || [ ! -d "${drupal_root}/sites" ] \
   || [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
