@@ -138,11 +138,13 @@ fi
 # string caught by (a) - so the PHP-CLI selection is never bypassed here.
 # Only the bare-verb case list below is allowlist-equivalent. The absolute-path branch --
 # shared by all three alternatives, not specific to the leading-quote one -- execs verbatim
-# ahead of the group gate, the $0 check and the _IN_PATH path policy, so a quoted or
-# exec-prefixed absolute path under /home/, /data/ or /tmp/ runs here while its bare
-# spelling is denied below. Any tightening has to cover all three alternatives at once and
-# be proven against a real composer/composer-patches run first: legit callers do resolve
-# absolute binaries inside the platform tree.
+# ahead of the group gate, the $0 check and the _IN_PATH path policy, so an absolute path
+# that the policy would refuse must never reach it. Leads under the tenant-writable /tmp/
+# and /home/ are therefore kept out of this fast lane and fall through to the normal path:
+# the shell accounts already allowed those paths there still run them, everyone else gets
+# the same refusal as for the bare spelling. /data/ deliberately keeps the fast lane --
+# legit callers do resolve absolute binaries inside the platform tree -- so tightening it
+# is a separate change, to be proven against a real composer/composer-patches run first.
 if [ "${1}" = "-c" ] \
   && { [[ "${2}" == "exec "* ]] || [[ "${2}" == "{ (exec "* ]] || [[ "${2}" == "'"* ]]; }; then
   _SF_ORIG="${2}"
@@ -150,7 +152,13 @@ if [ "${1}" = "-c" ] \
   _SF_CMD="${_SF_CMD#exec }"
   _SF_CMD="${_SF_CMD//\'/}"
   _SF_LEAD="${_SF_CMD%% *}"
-  if [[ "${_SF_LEAD}" == /* ]]; then
+  _SF_SKIP=NO
+  case "${_SF_LEAD}" in
+    /tmp/*|/home/*)
+      _SF_SKIP=YES
+      ;;
+  esac
+  if [[ "${_SF_LEAD}" == /* ]] && [ "${_SF_SKIP}" = "NO" ]; then
     exec /bin/dash -c "${_SF_ORIG}"
     exit 0
   fi

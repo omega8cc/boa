@@ -230,13 +230,20 @@ _waiting_notify() {
   fi
 }
 
-# Matched against genuine executions only: a python interpreter with a
+# Matched against genuine executions only: an interpreter with the
 # duplicity script path as its argument, or duplicity as argv[0] -- the
-# same treatment as the _fetch_versioned guard. A bare substring pgrep
-# held backups back whenever any concurrent command line merely
-# mentioned the literal, e.g. a probe naming /root/.cache/duplicity/
-# paths, observed live.
-_CNT="$(pgrep -fc '^([^ ]*/)?python[0-9.]* [^ ]*duplicity( |$)' 2>/dev/null)"
+# same anchored pair the fetch guard and the clear.sh arm use, kept
+# character for character so the engine and the tools cannot drift
+# apart again. Both halves of the interpreter class are load-bearing:
+# duplicity runs as its venv python with an interpreter flag between
+# argv[0] and the console script path, so a flagless python-only
+# pattern matched no live run and left this gate inert, and the direct
+# companion below cannot stand in for it because that argv[0] ends in
+# a path separator rather than a space. A bare substring pgrep held
+# backups back whenever any concurrent command line merely mentioned
+# the literal, e.g. a probe naming /root/.cache/duplicity/ paths,
+# observed live.
+_CNT="$(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2>/dev/null)"
 _CNT="${_CNT:-0}"
 _CNTD="$(pgrep -fc '^[^ ]*duplicity( |$)' 2>/dev/null)"
 _CNTD="${_CNTD:-0}"

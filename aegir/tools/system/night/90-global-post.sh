@@ -551,6 +551,24 @@ _migrate_source_sweep_all() {
   local _stop="/run/boa_queue_stop.pid" _madeStop=NO _drain=0
   local _swpPth _swpUsr _swpHas _lockfd _armOwned=NO
   local _armed="/var/log/boa/migrate-sweep-fallback-on.info"
+  local _armSeed="/var/log/boa/.migrate-sweep-ownership-seeded.info"
+  # One-time transition to the ownership stamp above. The previous serial gave
+  # the same file the opposite meaning and REMOVED it on every real pass, so a
+  # box that was already sweeping nightly carries none -- and the kill-switch
+  # branch below would then leave it with the daily queue off and no executor
+  # at all, the one state this function must never produce. Seed the stamp
+  # once per box, and only where the nightly logs prove a real pass ran here,
+  # so an operator's own panel-off on a box that never swept is untouched.
+  # This can only ever ADD the stamp; the seed marker makes it once, so a
+  # genuine re-arm's consumption of the stamp is never undone.
+  if [ ! -e "${_armSeed}" ]; then
+    if [ ! -e "${_armed}" ] \
+      && grep -qsE 'migrate-sweep: [^ ]+ pass$' /var/log/boa/daily/*.log \
+        /var/log/boa/daily/*/*.log; then
+      touch "${_armed}" 2>/dev/null
+    fi
+    touch "${_armSeed}" 2>/dev/null
+  fi
   if [ -e "/data/conf/disable_migrate_sweep_night.cnf" ]; then
     # The night run is off. Undo ONLY a queue-off this runner wrote: the stamp
     # is set by a real pass when it switches the daily queue off, so a box

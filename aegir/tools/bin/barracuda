@@ -369,9 +369,25 @@ _sql_error_tail() {
   # lines keeps about three start attempts, which is what a flapping server
   # produces. daemon.log wins only when it really carries mysqld entries --
   # the same test tools/system/monitor/check/sqlcheck.sh makes.
+  #
+  # $1 = "live": CORROBORATION mode for the upgrade pass-through in the gate
+  # below, as opposed to the plain diagnostic tail. On exactly the boxes that
+  # gate targets -- installed 5.7, configured 8.x -- error.log is not the live
+  # log, so a stale "unknown variable" line an 8.x vintage or an earlier failed
+  # run left in it would corroborate an entirely unrelated outage and authorise
+  # an unattended series upgrade. In this mode the file counts only while
+  # something is demonstrably still writing it; the syslog family is read
+  # unchanged, because a mysqld reporting there fills it as it dies. The plain
+  # (diagnostic) mode is deliberately unfiltered -- an operator reading an
+  # abort wants every line, stale or not.
   local _sqlLog="/var/log/syslog"
   local _sqlOut=""
-  if [[ -s "/var/log/mysql/error.log" ]]; then
+  local _errUse=YES
+  if [ "${1}" = "live" ] \
+    && [ -z "$(find /var/log/mysql/error.log -mmin -60 2>/dev/null)" ]; then
+    _errUse=NO
+  fi
+  if [[ -s "/var/log/mysql/error.log" ]] && [[ "${_errUse}" = "YES" ]]; then
     _sqlOut="$(tail -n 200 /var/log/mysql/error.log 2>/dev/null)"
   fi
   if [[ -e "/var/log/daemon.log" ]] \
@@ -452,9 +468,13 @@ _check_sql_running() {
       # pass-through: the server rejected an unknown directive, or the server
       # binary is gone entirely (partial transaction). An unrelated outage on
       # a box that merely has a series bump configured falls through to the
-      # loud abort instead of triggering a major upgrade by surprise.
-      if [[ "${_sqlErrTail}" =~ "unknown variable" ]] \
-        || [[ "${_sqlErrTail}" =~ "unknown option" ]] \
+      # loud abort instead of triggering a major upgrade by surprise -- and it
+      # corroborates from a log this box actually writes, so an "unknown
+      # variable" line left in a stale /var/log/mysql/error.log by an older
+      # vintage can never stand in for the live evidence.
+      local _sqlErrLive=$(_sql_error_tail live)
+      if [[ "${_sqlErrLive}" =~ "unknown variable" ]] \
+        || [[ "${_sqlErrLive}" =~ "unknown option" ]] \
         || [ ! -x "/usr/sbin/mysqld" ]; then
         echo "WARN: MySQLD is down and a ${_dbVn} -> ${_dbSn} series upgrade is pending;"
         echo "WARN: proceeding so the SQL phase can reinstall the server and heal my.cnf."

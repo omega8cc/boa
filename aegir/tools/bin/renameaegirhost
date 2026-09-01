@@ -480,6 +480,9 @@ _converge_renamed_site_surfaces() {
   local _D _NAME _OLDNAME _N=0
   for _D in $(_find_host_site_dirs "${_NEW_HOST}" | sort); do
     _NAME=$(basename "${_D}")
+    # Same guard the mover applies: this path reaches _maybe_run's eval
+    # through the surfaces function below.
+    _safe_name "${_D}" "site dir" || continue
     _OLDNAME="${_NAME//${_NEW_HOST}/${_OLD_HOST}}"
     [ "${_OLDNAME}" = "${_NAME}" ] && continue
     _URI_SURFACES_CHANGED=NO
@@ -614,7 +617,12 @@ _rewrite_site_in_place() {
   # preserves ownership and mode for free.
   local _expr="$1"
   local _f="$2"
-  local _tmp="${_f}.xrename.$$"
+  local _tmp
+  # The site dir is tenant-writable and `>` follows symlinks, so the staging
+  # file is created O_EXCL under a random name: a planted link at the path is
+  # refused rather than written through as root. The inode that matters is the
+  # real file's, and that is preserved by the truncate-in-place cat below.
+  _tmp=$(mktemp "${_f}.xrename.XXXXXX" 2>/dev/null) || return 1
   sed "${_expr}" "${_f}" > "${_tmp}" 2>/dev/null || { rm -f "${_tmp}"; return 1; }
   # Never truncate a live settings.php to nothing because sed hiccuped.
   [ -s "${_tmp}" ] || { rm -f "${_tmp}"; return 1; }
@@ -644,6 +652,16 @@ _rewrite_site_settings_uri() {
   local _NEWNAME="$3"
   local _OLD_BS _NEW_BS _RE_BS _RP_BS _RE _EXPR _OWN _MODE
 
+  # A symlink here is never a provision artefact -- provision writes
+  # settings.php as a real file. Everything below dereferences it: the
+  # rewrite, and the chown/chmod that hand the file back. The site dir is
+  # tenant-writable, so refuse rather than re-own whatever a link points at.
+  if [ -L "${_SET}" ]; then
+    _alrt "    settings.php is a symlink — refusing to rewrite: ${_SET}"
+    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
+    return 0
+  fi
+
   # The URI appears in TWO spellings. Paths and identities carry it plain;
   # trusted_host_patterns carries it as a PHP regex with the dots
   # backslash-escaped ('^d7\.o1\.old\.example\.com$'). A rewrite that knows
@@ -654,6 +672,14 @@ _rewrite_site_settings_uri() {
   _NEW_BS="${_NEWNAME//./\\.}"
 
   [ -f "${_SET}" ] || return 0
+  # This path lands in a _maybe_run (eval) argument list below inside literal
+  # single quotes. The files and client symlink legs re-guard their own
+  # values; this one is the exception, so guard it here rather than trust
+  # every caller to have done it.
+  if ! _safe_name "${_SET}" "settings.php path"; then
+    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
+    return 0
+  fi
   grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}" "${_SET}" 2>/dev/null || return 0
 
   if grep -E "'(database|username|password)'|db_url" "${_SET}" 2>/dev/null \
@@ -1861,7 +1887,7 @@ _verify_renamed_sites_serve() {
   # rolls back a migration that was fine; calling it fine because one early
   # curl happened to hit a warm worker ships a box whose sites answer 400.
   # So the tool waits, decides, and says which -- bounded, never forever.
-  local _U _code _deadline _bad=""
+  local _U _code _deadline _md5 _bad=""
   [ "${#_RENAMED_SITE_URIS[@]}" -eq 0 ] && return 0
 
   if [ "${_DRY_RUN}" = "YES" ]; then
@@ -1876,7 +1902,15 @@ _verify_renamed_sites_serve() {
   # and treat any 200 identical to it as NOT serving. Self-calibrating, so
   # nothing here depends on what that page happens to say.
   local _base _body
-  _body="/tmp/.rename-serve.$$"
+  # /tmp is world-writable, so a fixed name can be pre-created by anyone. That
+  # does not overwrite anything here (BOA ships protected_symlinks/
+  # protected_regular), but it can make the body unreadable, which would
+  # silently disable the catch-all comparison below and pass a site that does
+  # not serve. Unguessable name, and no gate at all beats a lying gate.
+  _body=$(mktemp /tmp/.rename-serve.XXXXXX 2>/dev/null) || {
+    _alrt "§9 cannot stage probe output under /tmp — serving gate skipped"
+    return 0
+  }
   _base=$(curl -s -A iCab --max-time 20 \
     -H "Host: no-such-site.rename-probe.invalid" "http://127.0.0.1/" 2>/dev/null \
     | md5sum | cut -d' ' -f1)
@@ -1888,11 +1922,15 @@ _verify_renamed_sites_serve() {
     while [ "$(date +%s)" -lt "${_deadline}" ]; do
       _code=$(curl -s -o "${_body}" -w '%{http_code}' -A iCab --max-time 20 \
         -H "Host: ${_U}" "http://127.0.0.1/" 2>/dev/null)
-      if [ "${_code}" = "200" ] && [ -n "${_base}" ] \
-        && [ "$(md5sum < "${_body}" | cut -d' ' -f1)" = "${_base}" ]; then
-        # The catch-all answered. Keep waiting: a site whose settings.php was
-        # just rewritten can still be in the realpath-cache window.
-        _code="catchall"
+      if [ "${_code}" = "200" ] && [ -n "${_base}" ]; then
+        _md5=$(md5sum < "${_body}" 2>/dev/null | cut -d' ' -f1)
+        if [ -z "${_md5}" ] || [ "${_md5}" = "${_base}" ]; then
+          # Either the catch-all answered, or the body could not be read at
+          # all -- an unread body proves nothing, so it is not a pass either.
+          # Keep waiting: a site whose settings.php was just rewritten can
+          # still be in the realpath-cache window.
+          _code="catchall"
+        fi
       fi
       case "${_code}" in
         200|301|302) break ;;

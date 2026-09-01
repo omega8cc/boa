@@ -159,16 +159,31 @@ _is_safe_ident() {
 }
 
 _check_running() {
-  # Bounded: a cron job waiting forever for a database that is not coming
-  # back helps nobody and holds its lock pid meanwhile -- give up after
-  # ~60s and let the next scheduled run retry.
-  local _try=0
-  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
+  # Bounded two ways, the shape the launcher and lib mirrors already use:
+  # ~60s of CONSECUTIVE dead samples catches a database that is not coming
+  # back, while the total ceiling still ends the run against a flapping
+  # server. A live process with no socket yet is a recovery or
+  # data-dictionary upgrade in progress and RESETS the dead counter --
+  # counting those ticks made the bound a total-time bound and aborted the
+  # nightly run against a healthy, starting server. A cron job waiting
+  # forever helps nobody and holds its lock pid meanwhile; on give-up the
+  # next scheduled run retries. No start attempt here on purpose: bringing
+  # the server up is not a cleanup job's business.
+  local _dead=0
+  local _tot=0
+  while : ; do
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
-    _try=$(( _try + 1 ))
-    if [ "${_try}" -gt 20 ]; then
-      echo "ALERT: MySQLD did not become available within 60 seconds, giving up."
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
+      return 0
+    fi
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
+      _dead=0
+    else
+      _dead=$(( _dead + 1 ))
+    fi
+    _tot=$(( _tot + 1 ))
+    if [ "${_dead}" -gt 20 ] || [ "${_tot}" -gt 400 ]; then
+      echo "ALERT: MySQLD did not become available (down $(( _dead > 0 ? (_dead - 1) * 3 : 0 ))s, total wait $(( (_tot - 1) * 3 ))s), giving up."
       _remove_locks _check_running_timeout
       exit 1
     fi
