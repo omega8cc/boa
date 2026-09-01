@@ -393,7 +393,30 @@ _fix_llms_txt() {
   # replaces a re-planted link instead of following it; guard the trailing
   # metadata legs with [ ! -L ].
   _desymlink_planted "${_Dir}/files/llms.txt"
-  find ${_Dir}/files/llms.txt -mtime +6 -exec rm -f {} \; &> /dev/null
+  # A tenant-uploaded policy is durable content, served as-is for as long as
+  # the tenant keeps it -- the docs promise exactly that. Only a copy this
+  # refresher itself fetched may be expired, re-fetched or content-gated;
+  # provenance is the md5 of the fetched copy, recorded in a marker the tenant
+  # cannot reach (the site dir is not group-writable). No marker, or an md5
+  # mismatch (the tenant replaced or edited the copy): hands off beyond
+  # ownership/mode normalisation.
+  _LLMS_MARK="${_Dir}/.llms-fetched.md5"
+  _LLMS_SUM=
+  if [ -f "${_Dir}/files/llms.txt" ] && [ ! -L "${_Dir}/files/llms.txt" ]; then
+    _LLMS_SUM=$(md5sum "${_Dir}/files/llms.txt" 2>/dev/null | cut -d' ' -f1)
+    if [ ! -f "${_LLMS_MARK}" ] \
+      || [ -z "${_LLMS_SUM}" ] \
+      || ! grep -q "^${_LLMS_SUM}$" "${_LLMS_MARK}" 2>/dev/null; then
+      rm -f "${_LLMS_MARK}"
+      chown ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
+      chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+      if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
+        rm -f ${_Plr}/llms.txt
+      fi
+      return 0
+    fi
+    find ${_Dir}/files/llms.txt -mtime +6 -exec rm -f {} \; &> /dev/null
+  fi
   if [ ! -e "${_Dir}/files/llms.txt" ] \
     && [ ! -e "${_Plr}/profiles/hostmaster" ] \
     && [ -d "${_Dir}/files" ]; then
@@ -413,10 +436,13 @@ _fix_llms_txt() {
   fi
   if [[ ! "${_VAR_IF_PRESENT}" =~ "##" ]]; then
     [ ! -L "${_Dir}/files/llms.txt" ] && rm -f ${_Dir}/files/llms.txt
+    rm -f "${_LLMS_MARK}"
   else
     if [ ! -L "${_Dir}/files/llms.txt" ]; then
       chown ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
       chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+      md5sum "${_Dir}/files/llms.txt" 2>/dev/null | cut -d' ' -f1 \
+        > "${_LLMS_MARK}"
     fi
     if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
       rm -f ${_Plr}/llms.txt
