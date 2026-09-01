@@ -1600,13 +1600,20 @@ _update_agents() {
   # /opt/local/bin/bee (no /usr/bin symlink, websh's PATH resolves it);
   # clients execute it, so it ships world-executable.
   _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f97 --mode 755 --guard /local/bin/bee
+  # PHP-selecting Grav CLI wrapper (identity verb policy + the D-005 enforced
+  # 8.3 floor; boa-grav map par.3.3.3). Deployed unconditionally but inert
+  # without a Grav install in reach (it resolves the target from CWD and
+  # refuses vendor-less trees); the gated surfaces are the platforms and the
+  # release staging, not this launcher. Canonical path /opt/local/bin/grav
+  # (no /usr/bin symlink; websh's PATH resolves it).
+  _fetch_versioned ${_optBin}/grav "${_urlHmr}/tools/bin/grav" f99 --mode 755 --guard /local/bin/grav
   # Mirror-source build boxes only, marked by /root/.stackbuild.cnf (even an
   # empty file opts a box in): staticbuild (testing-codebase + Backdrop-family
   # builder) and stackbuild (heavy stack-component packager). Both need root
   # and fail closed elsewhere - staticbuild also requires an existing build
   # user (o8 unless -u says otherwise) and never guesses one from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f83 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f78 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f95 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   fi
 
@@ -1708,10 +1715,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f97
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f76
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f77
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f78
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f77
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f72
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f83
-    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f81
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f81
+    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f79
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -1829,13 +1836,20 @@ _update_agents() {
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
     && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f81
 
-  if ! grep -q "bee eval" /var/xdrago/conf/lshell.conf; then
+  # Re-fetch trigger for the Grav-aware lshell.conf. The sentinel MUST be a
+  # literal that exists in the shipped file: the wrapper dispatches tools as
+  # `grav gpm <verb>`, so the forbidden entry reads 'grav gpm self-upgrade'.
+  # A sentinel missing the tool token can never match, which would drop the
+  # ctrl and re-fetch this security-critical file on EVERY pass, on every
+  # box, forever -- the ctrl mechanism exists to prevent exactly that
+  # (as-shipped E2E catch).
+  if ! grep -q "grav gpm self-upgrade" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -1844,7 +1858,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f89.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f88.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -4240,10 +4254,10 @@ CSFSTANDBY
   fi
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f98
-    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f98
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f98
-    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f98
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f93
+    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f91
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f95
+    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f95
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f98
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f98
   fi
@@ -4280,7 +4294,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f94 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f23 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f22 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f28 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f81 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f95 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
@@ -4298,8 +4312,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f98 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f76 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f18 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f53 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f15 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f50 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f95 --guard /local/bin/autochimaera
@@ -4307,7 +4321,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f86 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f94 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f98 --mode 755 --guard /local/bin/backchain
-    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f97 --guard /local/bin/codebasecheck
+    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f95 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f95 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
@@ -4328,7 +4342,7 @@ CSFSTANDBY
     _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
     _wlOwlCnt=${_wlOwlCnt:-0}
     if (( _wlOwlCnt == 0 )); then
-      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f96 --guard /local/bin/weblogx
+      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f92 --guard /local/bin/weblogx
     else
       echo "The weblogx and owl.sh is running!"
     fi
@@ -5127,14 +5141,213 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
 
   ### Notify if multiback backups seem to run for too long
-  _DCY=$(pgrep -fc duplicity)
-  _MLT=$(pgrep -fc multiback)
+  # Genuine executions only, the same anchoring the rest of this engine
+  # and the backup tools use: bare substrings counted any command line
+  # that merely mentioned the word, so this notice could fire off an
+  # operator's editor or log tail rather than a real run.
+  _DCY=$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)
+  _DCYD=$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)
+  _DCY=$(( ${_DCY:-0} + ${_DCYD:-0} ))
+  _MLT=$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*multiback( |$)" 2>/dev/null)
+  _MLT=${_MLT:-0}
   if (( _DCY > 0 )) && (( _MLT > 0 )); then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
     if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then
       _backup_waiting_notify
     fi
+  fi
+
+  ### Backup freshness notice: a box whose scheduled off-site backups have
+  ### quietly stopped (dead credentials, dead cron, wedged wrapper) fails
+  ### one run at a time into per-run mail that is easy to miss; this raises
+  ### ONE distinct, daily-throttled alert per service once no successful
+  ### run has landed for too long. Fail-quiet by design: no schedule means
+  ### not configured, standby mirrors hold their chain on purpose, a live
+  ### run defers judgement, and a service with neither an OK nor an ERR
+  ### sentinel is treated as never armed rather than broken. A fresh ERR
+  ### with a stale OK means runs happen and fail (alert early); nothing
+  ### fresh at all means runs stopped entirely (alert on a longer floor
+  ### that clears a monthly full spanning several cycles).
+  _bupSched="/root/.remote_backups/schedule/backup_schedule.txt"
+  if [ -s "${_bupSched}" ] && [ ! -e "/root/.standby.cnf" ]; then
+    _bupIntM=${_BACKUP_INTERVAL//[^0-9]/}
+    _bupIntM=${_bupIntM:-360}
+    _bupIntH=$(( _bupIntM / 60 ))
+    [ "${_bupIntH}" -lt 1 ] && _bupIntH=1
+    _bupFailH=$(( _bupIntH * 5 ))
+    [ "${_bupFailH}" -lt 30 ] && _bupFailH=30
+    _bupDeadH=$(( _bupIntH * 8 ))
+    [ "${_bupDeadH}" -lt 48 ] && _bupDeadH=48
+    _bupHstN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+    [ -n "${_bupHstN}" ] || _bupHstN="$(hostname -f 2>/dev/null)"
+    _bupHstN=$(echo -n ${_bupHstN} | tr A-Z a-z 2>&1)
+    _bupHstD=$(echo -n ${_bupHstN} | tr . - 2>&1)
+    _bupNowT=$(date +%s)
+    # A pass in flight is not a stalled service. The wrapper walks the
+    # schedule strictly sequentially, so an entry whose turn has not come
+    # yet is PENDING, not broken -- judging it by its own idle pid file
+    # alone alerted three boxes whose tail entries were queued behind a
+    # sibling still recovering from a long retention pass, and every one
+    # of them completed within the hour. So freshness is judged only
+    # while the box is idle; a box whose backups run but never finish is
+    # the waiting-notify's business above, not this notice's.
+    # Suppression is bounded: past this ceiling a stream is not busy, it
+    # is stuck, and silence would defeat the whole notice. Four cycles
+    # clears the monthly full that legitimately spans several of them.
+    _bupStuckH=$(( _bupIntH * 4 ))
+    [ "${_bupStuckH}" -lt 24 ] && _bupStuckH=24
+    _bupLiveAny=NO
+    _bupStuckKey=""
+    _bupStuckWhat=""
+    _bupStuckAgeH=0
+    for _bupPidF in /run/duplicity_*.pid; do
+      [ -e "${_bupPidF}" ] || continue
+      _bupPid=$(tr -dc '0-9' 2>/dev/null < "${_bupPidF}")
+      [ -n "${_bupPid}" ] && [ -d "/proc/${_bupPid}" ] || continue
+      # The recorded owner's command line must still look like this
+      # tooling: bare pid liveness would let a leftover file whose pid has
+      # been recycled by an unrelated long-lived process silence the box,
+      # and a pid file for a service no longer in the schedule is never
+      # healed by a later run, so that silence would never lift.
+      _bupCmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_bupPid}/cmdline")
+      case "${_bupCmd}" in
+        *duplicity*|*multiback*|*sequential_backups*) ;;
+        *) continue ;;
+      esac
+      _bupLiveAny=YES
+      # The pid file is written once when the lock is taken, so its mtime
+      # is that run's start; no ps call needed to age it.
+      _bupHeldT=$(stat -c %Y "${_bupPidF}" 2>/dev/null)
+      [ -n "${_bupHeldT}" ] || _bupHeldT="${_bupNowT}"
+      _bupHeldH=$(( (_bupNowT - _bupHeldT) / 3600 ))
+      if [ "${_bupHeldH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckKey}" ]; then
+        _bupStuckKey="${_bupPidF##*/}"
+        _bupStuckKey="${_bupStuckKey#duplicity_}"
+        _bupStuckKey="${_bupStuckKey%.pid}"
+        _bupStuckKey="${_bupStuckKey%_sequential}"
+        _bupStuckWhat="${_bupStuckKey} (lock ${_bupPidF})"
+        _bupStuckAgeH="${_bupHeldH}"
+      fi
+    done
+    for _bupPat in \
+      "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(sequential_backups\.sh|multiback|duplicity)( |$)" \
+      "^[^ ]*(sequential_backups\.sh|multiback|duplicity)( |$)"; do
+      # Age these the same way, from the process itself: liveness found
+      # here often owns NO /run/duplicity_*.pid file at all -- the daily
+      # backboa/duobackboa chains lock under their own names, and the
+      # wrapper is briefly live between entries -- so pid-file mtimes
+      # alone would leave this path with no ceiling and suppress for as
+      # long as such a run hangs.
+      for _bupProcP in $(pgrep -f "${_bupPat}" 2>/dev/null); do
+        _bupLiveAny=YES
+        _bupProcS=$(ps -o etimes= -p "${_bupProcP}" 2>/dev/null | tr -dc '0-9')
+        _bupProcH=$(( ${_bupProcS:-0} / 3600 ))
+        if [ "${_bupProcH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckKey}" ]; then
+          _bupStuckKey="pid-${_bupProcP}"
+          _bupStuckWhat="a backup process (pid ${_bupProcP})"
+          _bupStuckAgeH="${_bupProcH}"
+        fi
+      done
+    done
+    # A stream past the ceiling gets ONE distinct daily notice naming it,
+    # and the pending entries behind it stay quiet: the operator should
+    # read one true cause, not a list of its symptoms. This is deliberately
+    # self-contained -- the older waiting-queue notice above cannot serve
+    # as the backstop here, since it fires at most once per box until its
+    # queue logs are cleared.
+    if [ -n "${_bupStuckKey}" ]; then
+      _bupStuckKey="${_bupStuckKey//[^a-zA-Z0-9_-]/_}"
+      _bupStamp="/var/log/boa/backup-freshness-stalled-${_bupStuckKey}.alerted"
+      if [ ! -e "${_bupStamp}" ] \
+        || [ "$(( _bupNowT - $(stat -c %Y "${_bupStamp}" 2>/dev/null || echo 0) ))" -ge 86400 ]; then
+        touch "${_bupStamp}"
+        echo "$(date) STALLED: ${_bupStuckWhat} has held the schedule for ${_bupStuckAgeH} hours" \
+          >> /var/log/boa/backup-freshness.log
+        if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
+          {
+            echo "One off-site backup stream has been running for ${_bupStuckAgeH} hours on ${_bupHstN}"
+            echo
+            echo "Stuck stream: ${_bupStuckWhat}"
+            echo
+            echo "The schedule is sequential, so every entry behind this one is"
+            echo "waiting and no freshness alert is raised for them. Check the"
+            echo "running duplicity process and its bucket log under /var/log/boa"
+            echo "before killing anything -- a monthly full legitimately runs for"
+            echo "many hours, and killing a full costs the whole chain a cycle."
+            echo
+            echo "This notice repeats daily until the stream finishes."
+          } | s-nail -s "Backup STALLED Alert for [${_bupHstN}]: ${_bupStuckKey} running ${_bupStuckAgeH}h" ${_MY_EMAIL}
+        fi
+      fi
+    else
+      rm -f /var/log/boa/backup-freshness-stalled-*.alerted
+    fi
+    while read -r _bupSvc _bupUsr _bupRest; do
+      case "${_bupSvc}" in ""|\#*) continue ;; esac
+      [ -n "${_bupUsr}" ] || continue
+      _bupSvcD=${_bupSvc//_/-}
+      if [ "${_bupUsr}" = "global" ] \
+        || [ "${_bupUsr}" = "data" ] \
+        || [ "${_bupUsr}" = "custom" ]; then
+        _bupLogD="/root/.remote_backups/logs"
+      else
+        _bupLogD="/data/disk/${_bupUsr}/static/control/remote_backups/logs"
+      fi
+      _bupOkF="${_bupLogD}/OK-back-to-${_bupUsr}-${_bupHstD}-${_bupSvcD}.log"
+      _bupErF="${_bupLogD}/ERR-back-to-${_bupUsr}-${_bupHstD}-${_bupSvcD}.log"
+      if [ ! -e "${_bupOkF}" ] && [ ! -e "${_bupErF}" ]; then
+        continue
+      fi
+      # Box-wide liveness, computed once above and covering this service's
+      # own pid files too: a per-service check alone called a queued entry
+      # stalled while its pass was demonstrably running
+      [ "${_bupLiveAny}" = "YES" ] && continue
+      _bupOkT=$(stat -c %Y "${_bupOkF}" 2>/dev/null)
+      _bupOkT=${_bupOkT:-0}
+      _bupErT=$(stat -c %Y "${_bupErF}" 2>/dev/null)
+      _bupErT=${_bupErT:-0}
+      _bupAgeH=$(( (_bupNowT - _bupOkT) / 3600 ))
+      _bupKind=""
+      if [ "${_bupErT}" -gt "${_bupOkT}" ] && [ "${_bupAgeH}" -ge "${_bupFailH}" ]; then
+        _bupKind="FAILING"
+      elif [ "${_bupAgeH}" -ge "${_bupDeadH}" ]; then
+        _bupKind="NOT RUNNING"
+      fi
+      _bupStamp="/var/log/boa/backup-freshness-${_bupSvc}-${_bupUsr}.alerted"
+      if [ -z "${_bupKind}" ]; then
+        rm -f "${_bupStamp}"
+        continue
+      fi
+      if [ -e "${_bupStamp}" ] \
+        && [ "$(( _bupNowT - $(stat -c %Y "${_bupStamp}" 2>/dev/null || echo 0) ))" -lt 86400 ]; then
+        continue
+      fi
+      touch "${_bupStamp}"
+      _bupOkD="never"
+      [ "${_bupOkT}" -gt 0 ] && _bupOkD="$(date -d @${_bupOkT} 2>/dev/null)"
+      _bupErD="never"
+      [ "${_bupErT}" -gt 0 ] && _bupErD="$(date -d @${_bupErT} 2>/dev/null)"
+      echo "$(date) ${_bupKind}: ${_bupSvc} ${_bupUsr} last OK ${_bupOkD}; last ERR ${_bupErD}" \
+        >> /var/log/boa/backup-freshness.log
+      if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
+        {
+          echo "Off-site backups ${_bupKind} for ${_bupSvc} (${_bupUsr}) on ${_bupHstN}"
+          echo
+          echo "No successful run for ${_bupAgeH} hours."
+          echo "Last OK:  ${_bupOkD}"
+          echo "Last ERR: ${_bupErD}"
+          echo
+          echo "Every scheduled run mails its own report, but this box has had"
+          echo "no completed backup past the alert floor. Check first:"
+          echo "  ${_bupErF}"
+          echo "  /var/log/boa/*conn-test-err.log (credentials/bucket problems)"
+          echo "  /etc/cron.d/duplicity_backup and /var/log/backup_runtime.log"
+          echo
+          echo "This notice repeats daily until a run completes."
+        } | s-nail -s "Backup FRESHNESS Alert for [${_bupHstN}]: ${_bupSvc} ${_bupUsr} ${_bupKind}" ${_MY_EMAIL}
+      fi
+    done < "${_bupSched}"
   fi
 
   ### Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs

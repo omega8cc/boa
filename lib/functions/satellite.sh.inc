@@ -83,6 +83,42 @@ _stage_d6d7_kit() {
 }
 
 #
+# Stage the newest official Grav admin-bundle release zip for the
+# per-instance upgrade channel: provision-grav-upgrade resolves the newest
+# grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (boa-grav D-004 --
+# mirror-fed; this box never talks to getgrav.org). Version from the same
+# mirror stamp the platform build resolves; presence-gated for idempotency
+# and re-checked on every up-* run. Older staged zips are kept (rollback
+# food); the resolver always picks the newest by version sort.
+_stage_grav_releases() {
+  local _gVrn _gZip _gDir
+  if [ "${_GRAV_SUPPORT}" != "YES" ] || [ -z "${_ROOT}" ]; then
+    return 0
+  fi
+  _gVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
+  [ -z "${_gVrn}" ] && _gVrn="${_GRAV_V_FALLBACK}"
+  _gZip="grav-admin-v${_gVrn}.zip"
+  _gDir="${_ROOT}/static/grav-releases"
+  if [ -e "${_gDir}/${_gZip}" ]; then
+    return 0
+  fi
+  _msg "INFO: Staging the official Grav admin bundle ${_gVrn} for the upgrade channel"
+  mkdir -p "${_gDir}"
+  curl ${_crlGet} -o "${_gDir}/.${_gZip}.tmp" "https://${_USE_MIR}/core/${_gZip}" 2> /dev/null
+  ### temp+mv: a truncated fetch must never be resolvable as the newest
+  ### artefact (the unzip -l probe rejects short/garbage bodies too).
+  if [ -s "${_gDir}/.${_gZip}.tmp" ] \
+    && unzip -l "${_gDir}/.${_gZip}.tmp" > /dev/null 2>&1; then
+    mv -f "${_gDir}/.${_gZip}.tmp" "${_gDir}/${_gZip}"
+    chown ${_USER}:users "${_gDir}" "${_gDir}/${_gZip}" 2> /dev/null
+    _msg "INFO: Grav admin bundle staged: ${_gDir}/${_gZip}"
+  else
+    rm -f "${_gDir}/.${_gZip}.tmp"
+    _msg "OOPS: Grav admin bundle ${_gVrn} download failed; the upgrade task refuses until staged"
+  fi
+}
+
+#
 # Stage the native Backdrop CLI (bee) when the barracuda layer has not put
 # it in place yet: bee is normally installed by _get_bee on barracuda runs,
 # but the Backdrop platform build, hosting_backdrop and the drush extension
@@ -895,6 +931,8 @@ _satellite_cnf() {
     echo "_PLATFORMS_ONLY=${_PLATFORMS_ONLY}"                   >> ${_octCnf}
     echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}"               >> ${_octCnf}
     echo "### _BACKDROP_SUPPORT_MIGRATED"                       >> ${_octCnf}
+    echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}"                       >> ${_octCnf}
+    echo "_TXP_SUPPORT=${_TXP_SUPPORT}"                         >> ${_octCnf}
     echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${_octCnf}
     echo "_DL_MODE=\"${_DL_MODE}\""                             >> ${_octCnf}
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${_octCnf}
@@ -1008,6 +1046,20 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_octCnf}
+    fi
+    ### Ships dark (boa-grav D-002); no _MIGRATED heal by design.
+    _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_octCnf} 2>&1)
+    if [[ "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_octCnf}
+    fi
+    ### Ships dark (boa-txp D-002); no _MIGRATED heal by design.
+    _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_octCnf} 2>&1)
+    if [[ "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_TXP_SUPPORT=${_TXP_SUPPORT}" >> ${_octCnf}
     fi
     ### One-shot opt-out migration; see the barracuda-side twin in
     ### system.sh.inc for the why. Runs before this cnf is sourced, so
@@ -2336,7 +2388,10 @@ _satellite_o_contrib_backdrop_update_global() {
 # Download o_contrib_backdrop. The bundle carries the Backdrop-native contrib
 # BOA maintains for every Backdrop platform; like the D6/D7 bundles the redis
 # integration is a symlink into the single shared /data/all/000/modules copy,
-# created here at download time so a fresh space is never redis-less.
+# created here at download time so a fresh space is never redis-less. Plain
+# curated members (webform since 2026-09) extract into the bundle dir the
+# o_contrib_eleven way: version literal here, bumped when a new tag is
+# published to the contrib shelves.
 _satellite_download_o_contrib_backdrop() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_download_o_contrib_backdrop"
@@ -2346,6 +2401,10 @@ _satellite_download_o_contrib_backdrop() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Downloading o_contrib_backdrop modules..."
   fi
+  ### Plain bundle members extract into the bundle dir itself, so they MUST
+  ### run before the redis block below, whose fetch-needed branch cd's into
+  ### the shared store and never returns (same ordering as o_contrib_eleven).
+  _get_dev_contrib "webform-1.x-4.26.5.tar.gz"
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
   fi
@@ -2709,6 +2768,7 @@ _satellite_check_fix_o_contrib() {
   fi
   if [ -e "${_CORE}/o_contrib_backdrop" ]; then
     if [ ! -e "${_CORE}/o_contrib_backdrop/redis_backdrop" ] \
+      || [ ! -d "${_CORE}/o_contrib_backdrop/webform" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_backdrop forced upgrade..."
       cd ${_CORE}/o_contrib_backdrop
@@ -4874,6 +4934,41 @@ _satellite_make() {
   # platforms never auto-build. Fail-closed: NO/empty keeps the gate shut.
   echo "export _BACKDROP_SUPPORT=\"${_BACKDROP_SUPPORT}\""   >> ${_writeTo}
 
+  # Resolve the newest Grav version from the mirror stamp so platforms track
+  # the latest official admin-bundle release without a hardcoded pin
+  # (fallback: _GRAV_V_FALLBACK); the platform build fetches the matching
+  # versioned grav-<ver>.tar.gz.
+  _gravVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/grav.txt" 2>/dev/null | tr -cd '0-9.')
+  [ -z "${_gravVrn}" ] && _gravVrn="${_GRAV_V_FALLBACK}"
+  echo "export _GRAV_V=\"${_gravVrn}\""                      >> ${_writeTo}
+  echo "export _GRAV=\"grav-${_gravVrn}\""                   >> ${_writeTo}
+  echo "export _GRAV_D=\"grav-${_gravVrn}-dev\""             >> ${_writeTo}
+  echo "export _GRAV_P=\"grav-${_gravVrn}-prod\""            >> ${_writeTo}
+  echo "export _GRAV_S=\"grav-${_gravVrn}-stage\""           >> ${_writeTo}
+  # Same sealed-include contract as _BACKDROP_SUPPORT above: the su'd child
+  # installers source ONLY this env include, so the child GRV build arm reads
+  # the gate from here. Fail-closed: NO/empty keeps the gate shut.
+  echo "export _GRAV_SUPPORT=\"${_GRAV_SUPPORT}\""           >> ${_writeTo}
+
+  # Resolve the newest Textpattern version from the mirror stamp so platforms
+  # track the latest stable release without a hardcoded pin (fallback:
+  # _TXP_V_FALLBACK); the platform build fetches the matching versioned
+  # textpattern-<ver>.tar.gz. Stable releases are tags on main; the mirror's
+  # textpattern.txt is published LAST by staticbuild, so a version resolved
+  # here always has its artefacts already on the mirror.
+  _txpVrn=$(curl ${_crlGet} "https://${_USE_MIR}/core/textpattern.txt" 2>/dev/null | tr -cd '0-9.')
+  [ -z "${_txpVrn}" ] && _txpVrn="${_TXP_V_FALLBACK}"
+  echo "export _TXP_V=\"${_txpVrn}\""                        >> ${_writeTo}
+  echo "export _TXP=\"textpattern-${_txpVrn}\""              >> ${_writeTo}
+  echo "export _TXP_D=\"textpattern-${_txpVrn}-dev\""        >> ${_writeTo}
+  echo "export _TXP_P=\"textpattern-${_txpVrn}-prod\""       >> ${_writeTo}
+  echo "export _TXP_S=\"textpattern-${_txpVrn}-stage\""      >> ${_writeTo}
+  # Same reason as the two gates above: the su'd child installers source ONLY
+  # this env include, never the root .octopus.cnf where the operator sets the
+  # gate, so an unpropagated _TXP_SUPPORT is permanently dead in the child.
+  # Fail-closed: NO/empty keeps the gate shut.
+  echo "export _TXP_SUPPORT=\"${_TXP_SUPPORT}\""             >> ${_writeTo}
+
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
   echo "export _HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${_writeTo}
@@ -5124,6 +5219,7 @@ _satellite_make() {
   ### Stage the pinned D6->D7 contrib kit for provision-backdrop-d6-upgrade,
   ### behind _BACKDROP_SUPPORT (D-012). Stamp-gated no-op when current.
   _stage_d6d7_kit
+  _stage_grav_releases
   ### Backstop bee for octopus-only boxes; no-op when already installed.
   _stage_bee
 
@@ -7080,6 +7176,18 @@ _satellite_child_b_aegir_ui_enhance() {
     ### its 'backdropcms' hosting feature via hosting_modules_enabled().
     if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_backdrop -y &> /dev/null
+    fi
+    ### Grav platform awareness in the hostmaster frontend; gated dark
+    ### behind _GRAV_SUPPORT (boa-grav D-002). Enabling the module also
+    ### enables its 'gravcms' hosting feature via hosting_modules_enabled().
+    if [ "${_GRAV_SUPPORT}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster en hosting_grav -y &> /dev/null
+    fi
+    ### Textpattern platform awareness in the hostmaster frontend; gated dark
+    ### behind _TXP_SUPPORT (boa-txp D-002). Enabling the module also enables
+    ### its 'txpcms' hosting feature via hosting_modules_enabled().
+    if [ "${_TXP_SUPPORT}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster en hosting_txp -y &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
