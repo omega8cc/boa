@@ -20,8 +20,8 @@
 # Usage:
 #   staticbuild backdrop            build+package+publish ONLY the Backdrop family
 #                                   (backdrop core + bee + backdrop-drush-extension
-#                                   + redis_backdrop), all at latest - lightweight,
-#                                   no Composer
+#                                   + redis_backdrop + webform_backdrop), all at
+#                                   latest - lightweight, no Composer
 #   staticbuild txp                 build+package+publish ONLY Textpattern (official
 #                                   release tarball at latest; never the .zip, which
 #                                   omits the /sites multisite scaffold)
@@ -150,6 +150,17 @@ _BDEXT_TAG=""
 # new tag here, bump the pin in OCTOPUS.sh.txt and BOA.sh.txt together.
 _REDIS_REPO="backdrop-contrib/redis"
 _REDIS_TAG=""
+
+# Backdrop webform contrib module -- the first curated o_contrib_backdrop
+# bundle member beyond the cache module (2026-09): the heaviest recurring
+# Drupal 7 port gap, with a maintained Backdrop port. Published VERSIONED to
+# the per-tree contrib shelf as webform-<tag>.tar.gz. Unlike redis_backdrop it
+# is a plain bundle member (extracted into o_contrib_backdrop directly, no
+# shared-store symlink, no cnf pin): the satellite side fetches it by a
+# version literal, so after publishing a new tag here bump that literal in
+# lib/functions/satellite.sh.inc (_satellite_download_o_contrib_backdrop).
+_WEBFORM_B_REPO="backdrop-contrib/webform"
+_WEBFORM_B_TAG=""
 
 # Distribution Composer specs (the create-project template) + the distribution PROFILE
 # package. The tarball version is the profile package's version (the authoritative number
@@ -1115,6 +1126,25 @@ build_redis_backdrop() {
   _info "redis_backdrop: packaged redis_backdrop-${_tag}.tar.gz (${_tag})"
 }
 
+build_webform_backdrop() {
+  # Plain o_contrib_backdrop bundle member: packaged VERSIONED as
+  # webform-<tag>.tar.gz wrapping a webform/ dir (the _get_dev_contrib
+  # contract). Same dot-prefixed working-dir discipline as redis_backdrop.
+  local _tag
+  _tag="${_WEBFORM_B_TAG:-$(_latest_git_tag "${_WEBFORM_B_REPO}")}"
+  [[ -n "${_tag}" ]] || { _record_fail "webform_backdrop (could not resolve tag)"; return 1; }
+  if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .build.webform_backdrop webform-*.tar.gz \
+    && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_WEBFORM_B_REPO}.git' .build.webform_backdrop \
+    && rm -rf .build.webform_backdrop/.git \
+    && tar -czf 'webform-${_tag}.tar.gz' --transform 's,^\.build\.webform_backdrop,webform,' .build.webform_backdrop \
+    && rm -rf .build.webform_backdrop"; then
+    _record_fail "webform_backdrop"
+    return 1
+  fi
+  _RESULTS+=("OK    webform_backdrop (${_tag})")
+  _info "webform_backdrop: packaged webform-${_tag}.tar.gz (${_tag})"
+}
+
 run_build() {
   local _name="$1"
   case "${_name}" in
@@ -1125,6 +1155,7 @@ run_build() {
     bee)      build_bee ;;
     backdrop-drush-extension) build_bdext ;;
     redis_backdrop) build_redis_backdrop ;;
+    webform_backdrop) build_webform_backdrop ;;
     cms)      build_cms ;;
     culturas) build_culturas ;;
     commerce) build_commerce ;;
@@ -1143,7 +1174,7 @@ run_build() {
 do_build() {
   # $@ = target names, or empty for all distros + cores.
   local _targets="$*"
-  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop bee backdrop-drush-extension redis_backdrop cores"
+  [[ -n "${_targets}" ]] || _targets="${_ALL_DISTROS} backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop cores"
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   if [[ "${_SKIP_CLEARCACHE}" != "1" ]]; then
     _msg "composer clearcache (${_O8_USER})"
@@ -1322,13 +1353,13 @@ package_backdrop_compat() {
 
 do_backdrop_family() {
   # Lightweight: build + package + publish ONLY the Backdrop family (backdrop
-  # core + bee + backdrop-drush-extension + redis_backdrop), all at their
+  # core + bee + backdrop-drush-extension + redis_backdrop + webform_backdrop), all at their
   # newest upstream. No Composer, no distros/cores, no /usr/bin/php switch -
   # just git/wget/unzip. Scoped to the family so it never touches unrelated
   # day-dir content.
   _run_as_o8 "mkdir -p '${_DAY_DIR}'" || _die "cannot create ${_DAY_DIR}"
   local _t
-  for _t in backdrop bee backdrop-drush-extension redis_backdrop; do
+  for _t in backdrop bee backdrop-drush-extension redis_backdrop webform_backdrop; do
     _msg ""
     _msg "=== build: ${_t} ==="
     run_build "${_t}"
@@ -1357,7 +1388,7 @@ do_backdrop_family() {
   for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
     [[ -e "${_DAY_DIR}/${_f}" ]] && _publish_devext "${_DAY_DIR}/${_f}"
   done
-  for _f in "${_DAY_DIR}"/redis_backdrop-*.tar.gz; do
+  for _f in "${_DAY_DIR}"/redis_backdrop-*.tar.gz "${_DAY_DIR}"/webform-*.tar.gz; do
     [[ -e "${_f}" ]] && _publish_contrib "${_f}"
   done
 }
@@ -1440,7 +1471,7 @@ do_distribute() {
     case "${_base}" in
       bee.tar.gz|backdrop-drush-extension.tar.gz)
         _publish_devext "${_t}" && _n=$((_n + 1)) ;;
-      redis_backdrop-*.tar.gz)
+      redis_backdrop-*.tar.gz|webform-*.tar.gz)
         _publish_contrib "${_t}" && _n=$((_n + 1)) ;;
       drupal-*.tar.gz|backdrop-[0-9]*.tar.gz|backdrop.tar.gz)
         cp -a "${_t}" "${_CORE_OUT}/"   && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
