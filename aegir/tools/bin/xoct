@@ -2297,14 +2297,25 @@ _migrate_prepare() {
           echo "ALRT: the install may mail a welcome password that the credential carry replaces"
         fi
         ### The marker must come off even if the install dies, or the target
-        ### stays silent for every later BOA mail on the box.
-        trap '[ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null' EXIT INT TERM
+        ### stays silent for every later BOA mail on the box. This handler
+        ### REPLACES the single-flight lock's own cleanup for the install
+        ### window, so it must release the lock too -- otherwise an interrupt
+        ### here leaves ${_XOCT_LOCK_FILE} behind with a dead owner. The
+        ### signal handler exits (bash would otherwise resume at the next
+        ### statement and run the rest of the create unlocked); exiting runs
+        ### the EXIT handler, which does the removals.
+        trap '[ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        trap 'exit 130' INT TERM HUP
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         if [ "${_SILENT_MARKER}" = "YES" ]; then
           ssh root@${_tgt} "rm -f /root/.silent.update.cnf"
           _SILENT_MARKER=NO
         fi
-        trap - EXIT INT TERM
+        ### Restore the single-flight lock's cleanup (see _take_verb_lock) --
+        ### a bare `trap -` here would orphan ${_XOCT_LOCK_FILE} for the whole
+        ### rest of the run.
+        trap 'rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        trap 'rm -f "${_XOCT_LOCK_FILE}"; exit 130' INT TERM HUP
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
@@ -4096,7 +4107,14 @@ _sub_ssl_gen() {
         fi
       fi
       ###
-      echo OK created ${_Ssl}
+      ### Say "created" only when it is there -- the same guard as the plain
+      ### half above. The reload stays unconditional: reloading with one
+      ### config missing is harmless, and the plain half may have landed.
+      if [ -s "${_Ssl}" ]; then
+        echo OK created ${_Ssl}
+      else
+        echo "ERROR: failed to write ${_Ssl}"
+      fi
       service nginx reload
     else
       echo some variables missing in the record: $p
@@ -4286,24 +4304,61 @@ esac
 
 _XOCT_LOCK_FILE="/run/xoct.verb.pid"
 
+# Acquisition is atomic (noclobber): the old check-then-write let two verbs
+# started in the same instant both proceed. A dead or foreign owner's file is
+# removed and the create retried; the loser of any race re-examines a LIVE
+# owner and refuses.
+#
+# The owner match is anchored to an xoct INVOCATION ("/xoct" or a bare "xoct"
+# word followed by arguments), never the bare substring: the old *xoct* glob
+# matched any process whose cmdline merely mentions the name -- an operator's
+# tail -F of a migration log was enough -- so a recycled PID could block every
+# verb forever, the exact recycled-PID bug the liveness check exists to
+# prevent.
+#
+# The signal traps EXIT: a bash signal trap otherwise returns to the next
+# statement, so a TERM would remove the lock and then keep running the
+# remaining legs, unlocked.
+#
+# Kept in step with xmass's _take_verb_lock -- mirror any fix there.
 _take_verb_lock() {
-  local _owner _cmdline
+  local _owner _cmdline _tries=0
   [ "$(id -u)" = "0" ] || return 0
-  if [ -s "${_XOCT_LOCK_FILE}" ]; then
+  while :; do
+    if ( set -C; echo "$$" > "${_XOCT_LOCK_FILE}" ) 2>/dev/null; then
+      trap 'rm -f "${_XOCT_LOCK_FILE}"' EXIT
+      trap 'rm -f "${_XOCT_LOCK_FILE}"; exit 130' INT TERM HUP
+      return 0
+    fi
+    ### Bound the retry loop: a lock file that can be neither created nor
+    ### removed (an unwritable /run) must end in the loud refusal this tool
+    ### promises, never in a silent spin.
+    _tries=$((_tries + 1))
+    if [ "${_tries}" -gt 30 ]; then
+      echo "ERROR: cannot claim ${_XOCT_LOCK_FILE} -- refusing to run unlocked"
+      exit 1
+    fi
     _owner=$(tr -dc '0-9' < "${_XOCT_LOCK_FILE}" 2>/dev/null | head -c 12)
+    if [ -z "${_owner}" ] \
+      && [ -n "$(find "${_XOCT_LOCK_FILE}" -newermt '-5 seconds' 2>/dev/null)" ]; then
+      ### A just-created lock can be read in the instant between its O_EXCL
+      ### open and the PID write -- never reap a fresh empty file as dead.
+      sleep 1
+      continue
+    fi
     if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
       _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
       case "${_cmdline}" in
-        *xoct*)
-    echo "ERROR: another xoct run is in flight (pid ${_owner}) -- refusing to start '$1'. Wait for it to finish."
-        exit 1
+        */xoct\ *|*/xoct|*\ xoct\ *)
+          echo "ERROR: another xoct run is in flight (pid ${_owner}) -- refusing to start '$1'. Wait for it to finish, or clear ${_XOCT_LOCK_FILE} if that pid is not an xoct run."
+          exit 1
         ;;
       esac
     fi
-  fi
-  echo "$$" > "${_XOCT_LOCK_FILE}" 2>/dev/null \
-    || { echo "ERROR: cannot write ${_XOCT_LOCK_FILE} -- refusing to run unlocked"; exit 1; }
-  trap 'rm -f "${_XOCT_LOCK_FILE}"' EXIT INT TERM HUP
+    ### Dead or foreign owner: take the file over and retry the atomic create.
+    rm -f "${_XOCT_LOCK_FILE}" 2>/dev/null \
+      || { echo "ERROR: cannot remove stale ${_XOCT_LOCK_FILE} -- refusing to run unlocked"; exit 1; }
+  done
 }
 
 case "$1" in
