@@ -817,18 +817,43 @@ _check_if_worked_cleanly_or_log_err() {
   # run inherits no _user, so the tenant branch collapsed to
   # /data/disk//... and the OK/ERR file landed under /data/disk/static/.
   local _user="${_USER}"
+  local _logs_dir
   if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-    local _logs_dir="/root/.remote_backups/logs"
+    _logs_dir="/root/.remote_backups/logs"
   else
-    local _logs_dir="/data/disk/${_user}/static/control/remote_backups/logs"
+    _logs_dir="/data/disk/${_user}/static/control/remote_backups/logs"
+    # These paths hang off static/control, which the tenant owns, so every
+    # component is a name it can replace with a symlink -- and both verbs
+    # below follow one: cp writes THROUGH a planted destination link, and
+    # a link pointing at an existing directory makes the -e test true, so
+    # the mkdir is skipped and root's write lands in that directory. Same
+    # refusal shape as mybackup's credentials guard. The sentinel is a
+    # diagnostic, so refusing skips it without touching the run's status;
+    # the freshness notice then reports the missing sentinel, which is the
+    # right outcome for an account that planted the link.
+    local _p
+    for _p in "/data/disk/${_user}/static" \
+      "/data/disk/${_user}/static/control" \
+      "/data/disk/${_user}/static/control/remote_backups" \
+      "${_logs_dir}"; do
+      if [ -L "${_p}" ]; then
+        echo "[$(date)] REFUSED sentinel for ${_user}: ${_p} is a symlink" \
+          >> /var/log/mybackup_invalid_queued.log
+        return 0
+      fi
+    done
   fi
+  local _sentinel
   if grep -q "Backup Statistics" "${_LOGFILE}"; then
-    [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
-    cp -af "${_LOGFILE}" "${_logs_dir}/OK-${_BUCKET_NAME}.log"
+    _sentinel="${_logs_dir}/OK-${_BUCKET_NAME}.log"
   else
-    [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
-    cp -af "${_LOGFILE}" "${_logs_dir}/ERR-${_BUCKET_NAME}.log"
+    _sentinel="${_logs_dir}/ERR-${_BUCKET_NAME}.log"
   fi
+  [ ! -d "${_logs_dir}" ] && mkdir -p "${_logs_dir}"
+  [ -d "${_logs_dir}" ] || return 0
+  # rm unlinks a planted leaf link itself, never what it points at.
+  [ -L "${_sentinel}" ] && rm -f "${_sentinel}"
+  cp -af "${_LOGFILE}" "${_sentinel}"
 }
 
 # Function to wipe the bucket completely. Duplicity 3.2.0.2 has no verb
