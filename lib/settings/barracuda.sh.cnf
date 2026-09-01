@@ -887,6 +887,27 @@ _CUSTOM_CONFIG_SQL=NO
 _BACKDROP_SUPPORT=YES
 
 ###
+### The Grav 2 system tools (the grav CLI
+### wrapper, lshell exposure, release
+### staging) ship dark. To enable them on
+### this system, change this to YES.
+###
+### _GRAV_SUPPORT=YES
+###
+_GRAV_SUPPORT=NO
+
+###--------------------------------------###
+###
+### The Textpattern system tools ship dark.
+### To enable Textpattern support on this
+### system, change this to YES. Requires
+### the current BOA release (PHP 8.4).
+###
+### _TXP_SUPPORT=YES
+###
+_TXP_SUPPORT=NO
+
+###
 ### You can define custom list of functions
 ### to disable besides those already denied
 ### in the system level 'disable_functions'.
@@ -1139,6 +1160,17 @@ _DEBUG_EMAIL=NO
 ### the per-site ones. Needs GoAccess itself switched on.
 ### Replaces /etc/boa/.goaccess.all.cnf
 _GOACCESS_ALL=NO
+###
+### Space-separated visitor IPs or dash-ranges like 1.2.3.4-1.2.3.9
+### (IPv4/IPv6; CIDR is not honoured by GoAccess and is refused) left out
+### of every GoAccess report, so operator/monitoring visits do not skew
+### the stats.
+_GOACCESS_EXCLUDE_IPS=""
+###
+### Nightly GoAccess also builds one report per standalone vhost defined
+### in /etc/nginx/sites-enabled, plus the box-wide ALL aggregate, into
+### /var/log/boa/xdr9000/goaccess/. Needs GoAccess itself switched on.
+_GOACCESS_VHOSTS=NO
 ###
 ### Suppresses the already-up-to-date notice AND re-runs an Octopus
 ### upgrade that would otherwise be skipped.

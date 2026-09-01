@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.5
+export _DRUSH_VERSION=8.5.6
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.1
 export _REDIS_N_VERSION=com-19-04-2021
@@ -165,6 +165,8 @@ export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
 ### make time.
 ###
 export _BACKDROP_V_FALLBACK=1.34.3
+export _GRAV_V_FALLBACK=2.0.22
+export _TXP_V_FALLBACK=4.9.1
 export _BACKDROP_V="${_BACKDROP_V_FALLBACK}"
 export _BACKDROP="backdrop-${_BACKDROP_V}"
 export _BACKDROP_D="${_BACKDROP}-dev"
