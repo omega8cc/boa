@@ -131,7 +131,7 @@ if [ -n "${drupal_root}" ] \
     [ -f "${_capsule}system/defines.php" ] || continue
     # The capsule's own bin/ must stay executable (the enforced-PHP wrapper
     # and the upgrade engine exec bin/grav and bin/gpm).
-    chmod 0755 ${_capsule}bin/* 2> /dev/null
+    _chmod_safe 0755 ${_capsule}bin/*
     for _wd in user cache logs tmp backup images assets; do
       [ -d "${_capsule}${_wd}" ] || continue
       find "${_capsule}${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
@@ -145,10 +145,10 @@ if [ -n "${drupal_root}" ] \
       find "${_capsule}${_sd}" -type d -exec chmod 02770 {} + 2> /dev/null
       find "${_capsule}${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
     done
-    [ -f "${_capsule}.env" ] && chmod 0640 "${_capsule}.env" 2> /dev/null
-    [ -f "${_capsule}drushrc.php" ] && chmod 0440 "${_capsule}drushrc.php" 2> /dev/null
+    _chmod_safe 0640 "${_capsule}.env"
+    _chmod_safe 0440 "${_capsule}drushrc.php"
   done
-  chmod 0755 ${drupal_root}/bin/* 2> /dev/null
+  _chmod_safe 0755 ${drupal_root}/bin/*
   echo "Done setting proper permissions of files and directories (Grav)."
   exit 0
 fi
