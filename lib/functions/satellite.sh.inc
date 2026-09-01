@@ -2388,7 +2388,10 @@ _satellite_o_contrib_backdrop_update_global() {
 # Download o_contrib_backdrop. The bundle carries the Backdrop-native contrib
 # BOA maintains for every Backdrop platform; like the D6/D7 bundles the redis
 # integration is a symlink into the single shared /data/all/000/modules copy,
-# created here at download time so a fresh space is never redis-less.
+# created here at download time so a fresh space is never redis-less. Plain
+# curated members (webform since 2026-09) extract into the bundle dir the
+# o_contrib_eleven way: version literal here, bumped when a new tag is
+# published to the contrib shelves.
 _satellite_download_o_contrib_backdrop() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_download_o_contrib_backdrop"
@@ -2398,6 +2401,10 @@ _satellite_download_o_contrib_backdrop() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Downloading o_contrib_backdrop modules..."
   fi
+  ### Plain bundle members extract into the bundle dir itself, so they MUST
+  ### run before the redis block below, whose fetch-needed branch cd's into
+  ### the shared store and never returns (same ordering as o_contrib_eleven).
+  _get_dev_contrib "webform-1.x-4.26.5.tar.gz"
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
   fi
@@ -2761,6 +2768,7 @@ _satellite_check_fix_o_contrib() {
   fi
   if [ -e "${_CORE}/o_contrib_backdrop" ]; then
     if [ ! -e "${_CORE}/o_contrib_backdrop/redis_backdrop" ] \
+      || [ ! -d "${_CORE}/o_contrib_backdrop/webform" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_backdrop forced upgrade..."
       cd ${_CORE}/o_contrib_backdrop
