@@ -213,13 +213,11 @@ _load_credentials() {
     export PASSPHRASE=$(cat "${_secret_file}")
   else
     echo "Secret file ${_secret_file} not found. Unable to proceed."
-    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
   if [ ! -f "${_cred_file}" ]; then
     echo "Error: Credentials file '${_cred_file}' not found."
-    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
@@ -243,7 +241,6 @@ _load_paths() {
 
   if [ ! -f "${_paths_file}" ]; then
     echo "Error: Paths configuration file '${_paths_file}' not found."
-    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
@@ -386,7 +383,6 @@ _set_backup_target() {
       if [[ -z "${GCS_ACCESS_KEY_ID}" ]] || [[ -z "${GCS_SECRET_ACCESS_KEY}" ]]; then
         echo "Error: no GCS_ACCESS_KEY_ID / GCS_SECRET_ACCESS_KEY pair in the gcs credentials file"
         echo "Error: see README.txt in the same directory for the expected variable names"
-        _remove_pid_file "${_PIDFILE}"
         exit 1
       fi
       export AWS_ACCESS_KEY_ID="${GCS_ACCESS_KEY_ID}"
@@ -405,7 +401,6 @@ _set_backup_target() {
       if [[ -z "${IBM_ACCESS_KEY_ID}" ]] || [[ -z "${IBM_SECRET_ACCESS_KEY}" ]]; then
         echo "Error: no IBM_ACCESS_KEY_ID / IBM_SECRET_ACCESS_KEY pair in the ibm credentials file"
         echo "Error: see README.txt in the same directory for the expected variable names"
-        _remove_pid_file "${_PIDFILE}"
         exit 1
       fi
       export AWS_ACCESS_KEY_ID="${IBM_ACCESS_KEY_ID}"
@@ -437,7 +432,6 @@ _set_backup_target() {
       ;;
     *)
       echo "Error: Unknown service ${_service}"
-      _remove_pid_file "${_PIDFILE}"
       exit 1
       ;;
   esac
@@ -684,7 +678,12 @@ export _DCY_MN_CMD="/usr/local/bin/duplicity \
 
 _create_pid_file "${_PIDFILE}"
 # Set only after the lock is ours -- an exit on a held lock must not
-# remove the owner's file; a signal death re-enters the EXIT trap
+# remove the owner's file; a signal death re-enters the EXIT trap.
+# From here down the trap is the SINGLE lock releaser. Never add an
+# explicit release to an error path: it removes the file, and the trap
+# then removes it again on the way out, so a successor that acquired
+# the lock in between loses it to the predecessor's trap. The bare
+# exit is enough on every path below.
 trap "rm -f '${_PIDFILE}'; exit" EXIT
 trap 'exit 1' INT TERM HUP
 
