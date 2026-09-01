@@ -5181,8 +5181,16 @@ if [ "$(id -u)" -eq 0 ]; then
     [ "${_bupDeadH}" -lt 48 ] && _bupDeadH=48
     _bupHstN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
     [ -n "${_bupHstN}" ] || _bupHstN="$(hostname -f 2>/dev/null)"
-    _bupHstN=$(echo -n ${_bupHstN} | tr A-Z a-z 2>&1)
-    _bupHstD=$(echo -n ${_bupHstN} | tr . - 2>&1)
+    # The sentinel name must be derived exactly as its WRITER derives it.
+    # multiback builds the bucket name -- and so the OK/ERR log filename --
+    # from the raw hostname with no case folding, so folding here made the
+    # two disagree on any box carrying an uppercase character in
+    # /etc/hostname: neither sentinel was ever found, every scheduled
+    # service read as never armed, and this notice went permanently silent
+    # on precisely the boxes it exists to catch. The fold is kept for the
+    # display name in the alert subject and body only.
+    _bupHstD=$(echo -n "${_bupHstN}" | tr . - 2>&1)
+    _bupHstN=$(echo -n "${_bupHstN}" | tr A-Z a-z 2>&1)
     _bupNowT=$(date +%s)
     # A pass in flight is not a stalled service. The wrapper walks the
     # schedule strictly sequentially, so an entry whose turn has not come
