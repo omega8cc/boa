@@ -500,13 +500,16 @@ _ensure_example_sites() {
 }
 
 _resolve_farm_tag() {
-  # Latest farmOS release tag, or the pinned _FARM_TAG.
+  # Highest farmOS version tag, or the pinned _FARM_TAG. NOT releases/latest:
+  # GitHub's "latest" follows publish DATE, so an LTS-line hotfix published
+  # after a newer major steals the slot (2026-08-27: 3.5.5 landed 17h after
+  # 4.0.5 and regressed the farm build a whole major). farmOS tags are plain
+  # semver, which _latest_git_tag's version sort handles.
   if [[ -n "${_FARM_TAG}" ]]; then
     printf '%s\n' "${_FARM_TAG}"
     return 0
   fi
-  curl -fsSL -A "${_UA}" "https://api.github.com/repos/${_FARM_REPO}/releases/latest" 2>/dev/null \
-    | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
+  _latest_git_tag "${_FARM_REPO}"
 }
 
 _resolve_backdrop_tag() {
