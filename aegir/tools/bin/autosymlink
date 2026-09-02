@@ -1432,6 +1432,30 @@ _check_symlink_sharing() {
   # shared site into a different account) copies from the real source store.
   # Same-account shares are unaffected (the prefix equals ${_ACCOUNT_DIR}).
   _LINK_PREFIX="${_LINK_TARGET%%/static/files/*}"
+  # The in-site link is tenant-writable, so its target names the copy SOURCE for
+  # the rsync below. Cross-account is legitimate (an inherited clone link), but
+  # only from a real /data/disk/<account> store -- never an arbitrary prefix.
+  # Accept the relocated-store form as well: a store moved onto attached
+  # storage lives at <mount>/files/<acct>/static/files (migratefs, xoct), so a
+  # /data/disk-only test would refuse to unshare on every relocated box.
+  case "${_LINK_PREFIX}" in
+    *..*)               _LINK_PREFIX_OK="NO" ;;
+    /data/disk/*/*)     _LINK_PREFIX_OK="NO" ;;
+    /data/disk/?*)      _LINK_PREFIX_OK="YES" ;;
+    /mnt/*/files/*/*/*) _LINK_PREFIX_OK="NO" ;;
+    /mnt/*/files/?*)    _LINK_PREFIX_OK="YES" ;;
+    *)                  _LINK_PREFIX_OK="NO" ;;
+  esac
+  if [ "${_LINK_PREFIX_OK}" != "YES" ]; then
+    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a non-account store prefix: ${_LINK_PREFIX} – refusing to break sharing"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_EDGE_CASES="YES"
+      _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
+    fi
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
   _ORIGINAL_TOP="${_LINK_PREFIX}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
   _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
 
@@ -1695,6 +1719,26 @@ _process_site() {
     fi
     return
   fi
+
+  # The alias file sits in a directory the ACCOUNT owns (~oN/.drush, oN:users
+  # 0710), so site_path is tenant input, not a trusted fact: the account can
+  # rewrite it and aim this root-run mv/ln -s at /etc/ssl, /var/aegir or another
+  # tenant. Every real site of this account lives under the account dir. Compare
+  # the RESOLVED path so a symlink planted inside the account cannot slip past.
+  _SITE_PATH_REAL=$(realpath -e -- "${_SITE_PATH}" 2>/dev/null)
+  case "${_SITE_PATH_REAL}/" in
+    "${_ACCOUNT_DIR}"/*) ;;
+    *)
+      _log "[WARN] site_path for ${_SITE_NAME} resolves outside account ${_ACCOUNT_DIR}: ${_SITE_PATH} – refusing"
+      if [ "${_MODE}" = "DRY" ]; then
+        _DRY_HAS_ERRORS="YES"
+        _record_anomaly "SITE_PATH_OUTSIDE_ACCOUNT" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+          "alias=${_ALIAS_FILE}" "site_path=${_SITE_PATH}"
+      fi
+      return
+      ;;
+  esac
+  _SITE_PATH="${_SITE_PATH_REAL}"
 
   _FILES_PATH="${_SITE_PATH}/files"
   _PRIVATE_PATH="${_SITE_PATH}/private"

@@ -93,6 +93,10 @@ _fix_permissions_tree() {
   _TARGET_DIR="${1}"
 
   [ -n "${_TARGET_DIR}" ] || return 1
+  # chmod -R below follows a symlink given AS ITS ARGUMENT (it only refuses
+  # ones met during the walk), so never hand it one: [ -d ] alone is true for
+  # a symlink to a directory.
+  [ -L "${_TARGET_DIR}" ] && return 1
   [ -d "${_TARGET_DIR}" ] || return 1
 
   _msg "Processing tree: ${_TARGET_DIR}"
@@ -144,7 +148,7 @@ _show_summary() {
   printf '\nDone.\n'
   printf 'Codebase fixed: %s\n' "${_REPO_ROOT}"
 
-  if [ -d "${_REPO_ROOT}/.git" ]; then
+  if [ -d "${_REPO_ROOT}/.git" ] && [ ! -L "${_REPO_ROOT}/.git" ]; then
     printf 'Git metadata fixed: %s/.git\n' "${_REPO_ROOT}"
     if command -v git >/dev/null 2>&1; then
       # --file skips repo discovery, so root can read it on any-owner repos.
@@ -187,6 +191,7 @@ _main() {
 
   # Resolve to an absolute physical path; the scope guard below must see the
   # real target, not a relative path or a symlink alias.
+  _GIVEN="$(CDPATH= cd -- "${_REPO_ROOT}" 2>/dev/null && pwd)"
   _RESOLVED="$(readlink -f "${_REPO_ROOT}" 2>/dev/null)"
   if [ -z "${_RESOLVED}" ] || [ ! -d "${_RESOLVED}" ]; then
     _RESOLVED="$(CDPATH= cd -- "${_REPO_ROOT}" 2>/dev/null && pwd -P)"
@@ -197,16 +202,82 @@ _main() {
     _die "Cannot resolve path: ${_REPO_ROOT}"
   fi
 
+  # Every component of the argument sits in a tenant-writable tree (~/static is
+  # 02775 oN:users; an lshell home owns its own sites/static links), so an alias
+  # can be re-pointed at another account or at /var/aegir between operator runs
+  # and this root chmod would then open THAT tree instead -- the allowlist below
+  # spans every account and cannot tell the difference. Refuse a target reached
+  # through a symlink unless the operator has seen where it really goes.
+  # BOA's own home links are how an operator reaches a tenant codebase --
+  # /home/<oN>.ftp/static -> ~oN/static (satellite.sh.inc:4386), backups and
+  # clients likewise, /home/<ltd>/sites -> ~oN/clients/<client>
+  # (manage_ltd_users.sh:784) -- and the allowlist below advertises /home/*.
+  # So do not refuse a symlinked target outright: always SHOW where it really
+  # went (the summary only says so after the chmod), and refuse only a
+  # resolution that CROSSES accounts or reaches /var/aegir from outside it.
+  _acct_seg() {
+    case "$1" in
+      /data/disk/*/*) printf '%s' "${1#/data/disk/}" | cut -d/ -f1 ;;
+      *)              printf '' ;;
+    esac
+  }
+  if [ -n "${_GIVEN}" ] && [ "${_GIVEN}" != "${_REPO_ROOT}" ]; then
+    printf 'Note: %s resolves to %s\n' "${_GIVEN}" "${_REPO_ROOT}"
+    _GIVEN_ACCT="$(_acct_seg "${_GIVEN}")"
+    _REAL_ACCT="$(_acct_seg "${_REPO_ROOT}")"
+    if [ "${_ALLOW_SYMLINKED_TARGET:-NO}" != "YES" ]; then
+      if [ -n "${_GIVEN_ACCT}" ] && [ "${_GIVEN_ACCT}" != "${_REAL_ACCT}" ]; then
+        _die "Refusing ${_GIVEN}; it resolves into a different account (${_REPO_ROOT})"
+      fi
+      case "${_GIVEN}" in
+        /var/aegir/*) : ;;
+        *)
+          case "${_REPO_ROOT}/" in
+            /var/aegir/*) _die "Refusing ${_GIVEN}; it resolves into /var/aegir (${_REPO_ROOT})" ;;
+          esac
+          ;;
+      esac
+    fi
+  fi
+
   # Scope guard: a recursive chmod as root must never run outside the trees
   # that hold codebases -- a typo like / or /etc would loosen system files
   # box-wide. Same allowlist idea as fix-drupal-platform-permissions.sh, plus
   # /var/www, and at least one level below each allowed base.
+  # Account credential stores, not codebases: g+rwX there hands every box user
+  # (group users is box-wide) the tenant's DB aliases and pass.txt. Anchor on the
+  # FIRST segment under the account -- "*" matches "/" in a case pattern, so
+  # /data/disk/*/log would also refuse a codebase's own log/ subdirectory.
+  case "${_REPO_ROOT}" in
+    /var/aegir/.drush|/var/aegir/.drush/*|/var/aegir/.ssh|/var/aegir/.ssh/*)
+      _die "Refusing ${_REPO_ROOT}; it is a credential store, not a codebase"
+      ;;
+    /data/disk/*)
+      _SUB="${_REPO_ROOT#/data/disk/}"
+      case "${_SUB}" in
+        */*) _SUB="${_SUB#*/}" ;;
+        *)   _SUB="" ;;
+      esac
+      case "${_SUB}" in
+        .drush|.drush/*|.ssh|.ssh/*|log|log/*)
+          _die "Refusing ${_REPO_ROOT}; it is a credential store, not a codebase"
+          ;;
+      esac
+      ;;
+  esac
+
   case "${_REPO_ROOT}" in
     /data/disk/*/?*|/var/aegir/?*|/var/www/?*|/home/*/?*)
       ;;
     *)
       _die "Refusing ${_REPO_ROOT}; allowed: /data/disk/<user>/..., /var/aegir/..., /var/www/..., /home/<user>/..."
       ;;
+  esac
+
+  # The .git step interpolates this path into a su -c command string; a single
+  # quote in it would break out of that command. No codebase path needs one.
+  case "${_REPO_ROOT}" in
+    *\'*) _die "Refusing ${_REPO_ROOT}; path contains a single quote" ;;
   esac
 
   _msg "Target codebase root: ${_REPO_ROOT}"
@@ -217,7 +288,15 @@ _main() {
   _fix_permissions_tree "${_REPO_ROOT}" || _die "Failed to fix codebase permissions"
 
   # Explicitly fix .git tree too (clarity + robustness in shared workflows).
-  if [ -d "${_REPO_ROOT}/.git" ]; then
+  # .git is a name a tenant can plant in the group-writable codebase root
+  # (~/static is 02775 oN:users), and chmod -R DOES follow a symlink handed to
+  # it as its argument -- it only refuses ones met during the walk -- so a
+  # planted .git -> / would loosen the whole box. A symlinked .git is never
+  # legitimate here; skip it, the tree pass above already covered everything
+  # that really lives in the tree.
+  if [ -L "${_REPO_ROOT}/.git" ]; then
+    printf 'WARNING: %s/.git is a symlink; Git-specific steps skipped.\n' "${_REPO_ROOT}" >&2
+  elif [ -d "${_REPO_ROOT}/.git" ]; then
     _set_git_shared_mode "${_REPO_ROOT}"
     _fix_permissions_tree "${_REPO_ROOT}/.git" || _die "Failed to fix .git permissions"
   fi

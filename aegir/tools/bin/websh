@@ -4,8 +4,44 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
+# Exact group membership, order-independent. id -nG prints the PRIMARY group
+# first, so the whole-string and end-anchored comparisons this file used to
+# make ("users www-data", "lshellg"$) silently stop matching the moment an
+# account's primary group moves (per-instance groups) or a group is appended
+# to a tenant identity -- and a tenant that falls out of the gate below gets
+# an UNFILTERED dash instead of the dispatch and path policy. Test membership
+# of one named group, never the shape of the list.
+_in_grp() {
+  local _g
+  for _g in ${_LTD_GID}; do
+    [ "${_g}" = "${1}" ] && return 0
+  done
+  return 1
+}
+
+# Exact group SET, order-independent: the historical whole-string forms
+# ("www-data users", "users www-data", "aegir www-data users") matched an
+# identity by its complete list, so keep that meaning -- same members, any
+# order -- rather than widening it to "has both". Pure bash on purpose: the
+# system binaries are root:users 0750 here, so an identity outside 'users'
+# (the FPM pool user) cannot run sort/tr, and this runs for every identity.
+# $1 = the expected set, space-separated.
+_grp_set_is() {
+  local _g _e
+  for _g in ${_LTD_GID}; do
+    case " ${1} " in
+      *" ${_g} "*) ;;
+      *) return 1 ;;
+    esac
+  done
+  for _e in ${1}; do
+    _in_grp "${_e}" || return 1
+  done
+  return 0
+}
+
 _forward_to_dash() {
-  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
+  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && _in_grp ltd-shell-more; then
     ### echo FWD 0 DIRECT
     _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
     ### echo _R_M is ${_R_M}
@@ -138,11 +174,13 @@ fi
 # string caught by (a) - so the PHP-CLI selection is never bypassed here.
 # Only the bare-verb case list below is allowlist-equivalent. The absolute-path branch --
 # shared by all three alternatives, not specific to the leading-quote one -- execs verbatim
-# ahead of the group gate, the $0 check and the _IN_PATH path policy, so a quoted or
-# exec-prefixed absolute path under /home/, /data/ or /tmp/ runs here while its bare
-# spelling is denied below. Any tightening has to cover all three alternatives at once and
-# be proven against a real composer/composer-patches run first: legit callers do resolve
-# absolute binaries inside the platform tree.
+# ahead of the group gate, the $0 check and the _IN_PATH path policy, so an absolute path
+# that the policy would refuse must never reach it. Leads under the tenant-writable /tmp/
+# and /home/ are therefore kept out of this fast lane and fall through to the normal path:
+# the shell accounts already allowed those paths there still run them, everyone else gets
+# the same refusal as for the bare spelling. /data/ deliberately keeps the fast lane --
+# legit callers do resolve absolute binaries inside the platform tree -- so tightening it
+# is a separate change, to be proven against a real composer/composer-patches run first.
 if [ "${1}" = "-c" ] \
   && { [[ "${2}" == "exec "* ]] || [[ "${2}" == "{ (exec "* ]] || [[ "${2}" == "'"* ]]; }; then
   _SF_ORIG="${2}"
@@ -150,7 +188,13 @@ if [ "${1}" = "-c" ] \
   _SF_CMD="${_SF_CMD#exec }"
   _SF_CMD="${_SF_CMD//\'/}"
   _SF_LEAD="${_SF_CMD%% *}"
-  if [[ "${_SF_LEAD}" == /* ]]; then
+  _SF_SKIP=NO
+  case "${_SF_LEAD}" in
+    /tmp/*|/home/*)
+      _SF_SKIP=YES
+      ;;
+  esac
+  if [[ "${_SF_LEAD}" == /* ]] && [ "${_SF_SKIP}" = "NO" ]; then
     exec /bin/dash -c "${_SF_ORIG}"
     exit 0
   fi
@@ -582,17 +626,18 @@ if [ "${_IS_JENKINS}" = "FALSE" ]; then
   check_php_cli_version
 fi
 
-if [ "${_LTD_GID}" = "www-data users" ] \
+# Known BOA identity classes take the dispatched path below: the master and
+# the account users by home, the shell identities by lshellg/ltd-shell(-more)
+# membership, and the two historical exact sets ("www-data users" in either
+# order, "aegir www-data users"). Membership and set tests, never the order
+# of the list -- see _in_grp / _grp_set_is.
+if _grp_set_is "users www-data" \
+  || _grp_set_is "aegir users www-data" \
   || [[ "${HOME}" =~ (^)"/var/aegir" ]] \
   || [[ "${HOME}" =~ (^)"/data/disk/" ]] \
-  || [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
-  || [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]] \
-  || [[ "${_LTD_GID}" =~ "lshellg rvm"($) ]] \
-  || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
-  || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]] \
-  || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
-  || [[ "${_LTD_GID}" =~ (^)"users www-data"($) ]] \
-  || [[ "${_LTD_GID}" =~ (^)"aegir www-data users"($) ]]; then
+  || _in_grp lshellg \
+  || _in_grp ltd-shell \
+  || _in_grp ltd-shell-more; then
   if [ "${1}" = "-c" ]; then
     _IS_SH_PATH=NO
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/usr/bin/sh" ]; then
@@ -641,21 +686,56 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           elif [[ "${_ARGS}" =~ "drush10 " ]]; then
             _DEST_DRUSH="/usr/bin/drush10"
           fi
+          # The PHP floor of the Drush 10/11 tree BOA built is whatever its
+          # composer platform check says (8.1 on current builds), not the 7.4
+          # this branch used to claim: the cli.info pin (already resolved into
+          # DRUSH_PHP by check_php_cli_version) and any phpNN.info control file
+          # are honoured only at or above that floor, otherwise the highest
+          # installed PHP that clears it is used and the user is told, so a
+          # 7.4 pin never surfaces as a composer platform error.
+          _D_FLOOR=$(grep -o "PHP_VERSION_ID >= [0-9]*" \
+            "$(dirname "$(readlink -f "${_DEST_DRUSH}")")/../composer/platform_check.php" 2> /dev/null \
+            | head -1 | grep -o "[0-9]*$")
+          case "${_D_FLOOR}" in
+            [0-9][0-9][0-9][0-9][0-9]) _D_FLOOR=$(( _D_FLOOR / 100 )) ;;
+            *) _D_FLOOR=801 ;;
+          esac
+          _D_FLOOR_N="${_D_FLOOR:0:1}${_D_FLOOR:2:1}"
+          _D_PIN=""
+          case "${DRUSH_PHP}" in
+            /opt/php[0-9][0-9]/bin/php) _D_PIN="${DRUSH_PHP:8:2}" ;;
+          esac
+          _D_SEL=""
           if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="74 80 81 82 83 84 85"
             for e in ${_PHP_V}; do
-              if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
-                DRUSH_PHP="/opt/php${e}/bin/php"
-                PHP_INI="/opt/php${e}/lib/php.ini"
-                PHPRC="/opt/php${e}/lib"
-                if [ -f "${HOME}/.drush/php${e}/php.ini" ]; then
-                  PHP_INI="${HOME}/.drush/php${e}/php.ini"
-                  PHPRC="${HOME}/.drush/php${e}"
-                fi
+              if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ] \
+                && [ "${e}" -ge "${_D_FLOOR_N}" ]; then
+                _D_SEL="${e}"
               fi
             done
           fi
-          if [ ! -z "${DRUSH_PHP}" ] && [ ! -z "${PHP_INI}" ]; then
+          if [ -z "${_D_SEL}" ] && [ -n "${_D_PIN}" ] && [ "${_D_PIN}" -ge "${_D_FLOOR_N}" ] \
+            && [ -x "/opt/php${_D_PIN}/bin/php" ]; then
+            _D_SEL="${_D_PIN}"
+          fi
+          if [ -z "${_D_SEL}" ]; then
+            for e in 85 84 83 82 81; do
+              if [ -x "/opt/php${e}/bin/php" ] && [ "${e}" -ge "${_D_FLOOR_N}" ]; then
+                _D_SEL="${e}"
+                echo "  NOTE: Drush 10/11 need PHP ${_D_FLOOR:0:1}.${_D_FLOOR:2:1}+; using PHP ${e:0:1}.${e:1:1}"
+                break
+              fi
+            done
+          fi
+          if [ -n "${_D_SEL}" ]; then
+            DRUSH_PHP="/opt/php${_D_SEL}/bin/php"
+            PHP_INI="/opt/php${_D_SEL}/lib/php.ini"
+            PHPRC="/opt/php${_D_SEL}/lib"
+            if [ -f "${HOME}/.drush/php${_D_SEL}/php.ini" ]; then
+              PHP_INI="${HOME}/.drush/php${_D_SEL}/php.ini"
+              PHPRC="${HOME}/.drush/php${_D_SEL}"
+            fi
             export DRUSH_PHP;export PHP_INI;export PHPRC;
             ### echo INF 3 DRUSH_PHP is ${DRUSH_PHP}
             ### echo INF 3 PHP_INI is ${PHP_INI}
@@ -663,23 +743,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             ### echo INF 3 _DEST_DRUSH is ${_DEST_DRUSH}
           else
             echo
-            echo "  Drush 11 and Drush 10 require at least PHP 7.4"
-            echo "  Please create empty control file:"
-            echo
-            echo "  ${_DRUSH_CLI_CTRL}/php74.info"
-            echo "  or"
-            echo "  ${_DRUSH_CLI_CTRL}/php81.info"
-            echo "  or"
-            echo "  ${_DRUSH_CLI_CTRL}/php82.info"
-            echo "  or"
-            echo "  ${_DRUSH_CLI_CTRL}/php83.info"
-            echo "  or"
-            echo "  ${_DRUSH_CLI_CTRL}/php84.info"
-            echo "  or"
-            echo "  ${_DRUSH_CLI_CTRL}/php85.info"
-            echo
-            echo "  NOTE: If you create more than one,"
-            echo "        the highest version wins."
+            echo "  Drush 11 and Drush 10 need PHP ${_D_FLOOR:0:1}.${_D_FLOOR:2:1} or newer,"
+            echo "  and no such PHP version is installed on this server."
             echo "  Bye"
             echo
             exit 0
@@ -1044,12 +1109,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     fi
   fi
-  if [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
-    || [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]] \
-    || [[ "${_LTD_GID}" =~ "lshellg rvm"($) ]] \
-    || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
-    || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
-    || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]]; then
+  if _in_grp lshellg \
+    || _in_grp ltd-shell \
+    || _in_grp ltd-shell-more; then
     if [[ "${_ARGS}" =~ "*" ]]; then
       if [[ $(whoami) == *.ftp ]]; then
         _SILENT=YES

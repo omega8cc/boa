@@ -402,9 +402,13 @@ _sql_mutation_in_flight() {
 # script; on a standby it exists only if something resurrected it (the
 # system.sh healer is gated on the same marker), so kill on sight, log on
 # transition only. Deliberately OUTSIDE the serve.cnf-exempt block below:
-# serve is a web-only preview, never a tenant write channel.
-if [ -e "/root/.standby.cnf" ] \
-  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+# serve is a web-only preview, never a tenant write channel. It does not
+# honour the xmass in-flight signal either, unlike the web-tier hold below:
+# that signal opens at INIT, the window in which the copied-in datadir and
+# the freshly seeded trees are most exposed to a tenant upload, and no
+# cutover step needs FTPS -- step 15's removal of the standby marker is
+# what releases this hold, within one monitor pass.
+if [ -e "/root/.standby.cnf" ]; then
   if pgrep -f '[p]ure-ftpd' > /dev/null 2>&1; then
     echo "$(date) FTPD replication standby: holding FTPS DOWN" >> ${_pthOml}
     pkill -9 -f pure-ftpd > /dev/null 2>&1

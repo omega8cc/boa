@@ -45,6 +45,33 @@ command -v _night_boa_pass_active > /dev/null 2>&1 \
 # loop below for its full 60s and defer every relocation, every night.
 command -v _provision_running > /dev/null 2>&1 \
   || _provision_running() { pgrep -f provision > /dev/null 2>&1; }
+# Same skew reason: night.inc.sh carries the real _acct_group, but this worker
+# is fetched on its own serial and can land ahead of it -- an undefined
+# function returns 127 with empty output, which would make the account chowns
+# below emit a bare "user:" and reset the group instead of leaving it alone.
+if ! declare -F _acct_group > /dev/null 2>&1; then
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+fi
 
 _relocate_one_backup_dir() {
   # Relocate a single per-account backup directory onto the static/files
@@ -76,6 +103,13 @@ _relocate_one_backup_dir() {
   _ug=$(stat -c '%U:%G' "${_src}" 2>/dev/null)
   [ -n "${_ug}" ] || return 0
 
+  # mkdir -p is a silent no-op on a link to a directory and chown follows it,
+  # so a symlink planted at the destination would take the chown and then the
+  # whole rsync. The store lives under static/, which is group-writable.
+  if [ -L "${_dst}" ]; then
+    echo "backups-on-static: ${_dst} is a symlink; left ${_src} as real dir"
+    return 0
+  fi
   mkdir -p "${_dst}" 2>/dev/null || return 0
   chown "${_ug}" "${_dst}" 2>/dev/null
 
@@ -125,6 +159,24 @@ _relocate_backups_to_static_fs() {
   # for large accounts moved to attached storage -- which is exactly the case this
   # protects; on a default single-filesystem box this is a deliberate no-op.
   [ -e "${_static}" ] || return 0
+  # ${_acct}/static is 02775 group users, so the tenant can replace static/files
+  # with a symlink of their choosing -- and every path below is derived from it,
+  # with root doing the mkdir, the chown and the rsync at the far end. Both
+  # gates here dereference, and a link to a tmpfs (/run, /dev/shm) even passes
+  # the different-device test. The only supported placements are in-account or
+  # the attached store under /mnt; refuse anything else.
+  local _statR _acctR
+  _statR=$(realpath -e -- "${_static}" 2>/dev/null) || return 0
+  # Resolve BOTH sides: comparing a realpath against a raw prefix silently
+  # refuses a legitimate account whose root is reached through a link.
+  _acctR=$(realpath -e -- "${_acct}" 2>/dev/null) || return 0
+  case "${_statR}/" in
+    "${_acctR}"/*|/mnt/*) : ;;
+    *)
+      echo "backups-on-static: ${_static} resolves outside the account and /mnt; skipping"
+      return 0
+    ;;
+  esac
   local _acctDev _statDev
   _acctDev=$(stat -c '%d' "${_acct}" 2>/dev/null)
   _statDev=$(stat -L -c '%d' "${_static}" 2>/dev/null)
@@ -193,7 +245,11 @@ _account_process() {
   su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
   wait
   chage -M 90 ${_HM_U}.ftp &> /dev/null
-  rm -rf /home/${_HM_U}.ftp/.tmp/cache
+  # .tmp sits in the tenant's own, never-immutable home; rm -rf refuses to
+  # follow only the FINAL component, so a link planted at .tmp would send this
+  # at <target>/cache instead.
+  [ -L "/home/${_HM_U}.ftp/.tmp" ] \
+    || rm -rf /home/${_HM_U}.ftp/.tmp/cache
   _SQL_CONVERT=NO
   _DEL_OLD_EMPTY_PLATFORMS="0"
   if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
@@ -679,7 +735,12 @@ _ghost_account_report() {
   _markerDir="${_usEr}/log/ctrl"
   mkdir -p "${_markerDir}"
   _ghList=""
-  for _site in ${_ghosts}; do
+  # One record per line, read literally: ${_ghosts} comes from the night log
+  # and an unquoted expansion here would word-split it and glob it against the
+  # cwd (_account_process cd'd into the hostmaster site dir), putting local
+  # filenames into a customer-facing notice.
+  while IFS= read -r _site; do
+    [ -n "${_site}" ] || continue
     _marker="${_markerDir}/ghost-notify.$(printf '%s' "${_site}" | tr -c 'a-zA-Z0-9._-' '_').info"
     _fresh=YES
     if [ -f "${_marker}" ]; then
@@ -690,7 +751,9 @@ _ghost_account_report() {
     [ "${_fresh}" = "NO" ] && continue
     _ghList="${_ghList}"$'\n'"  - ${_site}"
     touch "${_marker}"
-  done
+  done <<EOF
+${_ghosts}
+EOF
   [ -z "${_ghList}" ] && return 0
   _clBody="Hello,"$'\n'
   _clBody="${_clBody}"$'\n'"The nightly maintenance on ${_hName} found broken leftover site"$'\n'"registration(s) in your hosting account:"$'\n'"${_ghList}"$'\n'
@@ -781,6 +844,34 @@ _check_old_empty_platforms() {
   fi
 }
 
+_purge_hits_under_account() {
+  # Re-anchor each hit fed in on stdin before deleting it. The static/* globs
+  # in _purge_cruft_machine are expanded by the shell, which resolves symlinks
+  # in every component, and ${_usEr}/static is 02775 group users -- so a
+  # tenant-planted link points the pattern at another account's tree. Gate on
+  # the RESOLVED path rather than refusing symlinks, because the site files/
+  # and private/ links into this account's own store are legitimate. The store
+  # may sit on attached storage under /mnt; nothing else is a supported
+  # placement. Reads _usEr.
+  local _f _r _acct _store
+  _acct=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 0
+  # No /mnt restriction: this is the account's OWN static/files, resolved --
+  # a tenant cannot aim it -- and migratefs relocates the store to whatever
+  # --target the operator passed (/mnt is only the auto-detected default), so
+  # an /mnt-only test silently disables the purge on a relocated account.
+  _store=$(realpath -e -- "${_usEr}/static/files" 2>/dev/null) || _store=
+  while IFS= read -r -d '' _f; do
+    _r=$(realpath -e -- "${_f}" 2>/dev/null) || continue
+    case "${_r}/" in
+      "${_acct}"/*) rm -f -- "${_r}" &> /dev/null ; continue ;;
+    esac
+    [ -n "${_store}" ] || continue
+    case "${_r}/" in
+      "${_store}"/*) rm -f -- "${_r}" &> /dev/null ;;
+    esac
+  done
+}
+
 _purge_cruft_machine() {
 
   if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt 0 ]; then
@@ -825,27 +916,33 @@ _purge_cruft_machine() {
   find ${_usEr}/distro/*/*/sites/*/private/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
 
+  # These globs are expanded by the SHELL, which resolves symlinks in every
+  # component, and ${_usEr}/static is 02775 group users -- so a link planted at
+  # any level aims the same pattern at another account's tree and root does the
+  # deleting. find -P is not the fix: the site files/ and private/ components
+  # are legitimately symlinks into this account's own store, and refusing them
+  # would stop the purge working at all. Re-anchor every hit instead.
   find ${_usEr}/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
 
   find ${_usEr}/static/*/*/*/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
 
   find ${_usEr}/distro/*/*/sites/*/files/tmp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
@@ -872,16 +969,28 @@ _purge_cruft_machine() {
   find ${_usEr}/static/*/sites/*/private/temp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
 
-  find /home/${_HM_U}.ftp/.tmp/* \
-    -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
-  find /home/${_HM_U}.ftp/tmp/* \
-    -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
+  # /home/<user>.ftp is the tenant's own (chrooted) home and, unlike a backend
+  # account root, is never immutable, so .tmp and tmp can be swapped for
+  # symlinks. The shell expands the /* glob THROUGH such a link, handing find
+  # real starting points inside the target, and rm -rf then reaps an arbitrary
+  # tree. Purge only a real directory. ! -name ".*" keeps the glob's
+  # dotfile-skipping shape, so the .ctrl.<tree>.<serial>.pid marker that
+  # manage_ltd_users.sh keeps in .tmp is left alone.
+  for _tmpDir in "/home/${_HM_U}.ftp/.tmp" "/home/${_HM_U}.ftp/tmp"; do
+    [ -d "${_tmpDir}" ] && [ ! -L "${_tmpDir}" ] || continue
+    find "${_tmpDir}" -mindepth 1 -maxdepth 1 ! -name ".*" \
+      -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
+  done
   find ${_usEr}/.tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
   find ${_usEr}/tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
-  chown -R ${_HM_U}:users ${_usEr}/tools/le
+  # Both writes below land inside this account's own tree, so the group is
+  # derived from the account rather than hardcoded; 'users' on an unconverted box.
+  local _acctGrp
+  _acctGrp=$(_acct_group "${_HM_U}")
+  chown -R ${_HM_U}:${_acctGrp} ${_usEr}/tools/le
   # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
   # tenant, so the tenant can swap the directory for a symlink. mkdir -p then
   # succeeds silently on the target, a bare chown retargets it, and the glob
@@ -892,7 +1001,7 @@ _purge_cruft_machine() {
   [ -L "${_usEr}/static/trash" ] && rm -f ${_usEr}/static/trash &> /dev/null
   mkdir -p ${_usEr}/static/trash
   if [ -d "${_usEr}/static/trash" ] && [ ! -L "${_usEr}/static/trash" ]; then
-    chown -h ${_HM_U}.ftp:users ${_usEr}/static/trash &> /dev/null
+    chown -h ${_HM_U}.ftp:${_acctGrp} ${_usEr}/static/trash &> /dev/null
     find ${_usEr}/static/trash -mindepth 1 \
       -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
   fi
@@ -950,7 +1059,12 @@ _purge_cruft_machine() {
       _distTrNr=$(echo ${i} \
         | cut -d'/' -f6 \
         | awk '{ print $1}' 2> /dev/null)
-      if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
+      # platforms/ is in the tenant's own home and is mutable for the whole
+      # run (_account_process cleared its immutable bit), so it can be a
+      # planted symlink: the /* glob then names real entries inside the
+      # target and root strips +i off a tree of the tenant's choosing.
+      if [ -d "/home/${_HM_U}.ftp/platforms" ] \
+        && [ ! -L "/home/${_HM_U}.ftp/platforms" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
@@ -959,6 +1073,18 @@ _purge_cruft_machine() {
         chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
         chmod 02775 ${i}/keys &> /dev/null
       fi
+      # platforms/ and its per-revision children are in the tenant's own home
+      # and are mutable for the whole run, so a link planted at either level
+      # makes the mkdir -p a silent no-op on the target and both ln -sfn below
+      # create (or replace) entries inside a directory of the tenant's
+      # choosing. Neither is ever legitimately a symlink; platforms/<rev> is
+      # root-maintained, so drop a planted link there the usual way.
+      [ -L "/home/${_HM_U}.ftp/platforms" ] && continue
+      # Inline rather than _desymlink_planted: that helper lives in night.inc.sh,
+      # which is fetched on its own serial, and this file carries no fallback --
+      # an undefined function returns 127 and the guard would silently no-op.
+      [ -L "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ] \
+        && rm -f "/home/${_HM_U}.ftp/platforms/${_distTrNr}" &> /dev/null
       if [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ]; then
         mkdir -p /home/${_HM_U}.ftp/platforms/${_distTrNr}
       fi
