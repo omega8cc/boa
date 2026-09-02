@@ -38,6 +38,28 @@ _vSet="variable-set --always-set"
 
 ###-------------HELPERS-----------------###
 
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 # Validate that a caller-controlled path (parsed from a Drush alias file)
 # resolves under one of BOA's writable roots. Used by the per-site loop to
 # gate chown/chmod operations on _Dir (site_path) and _Plr (platform root):
@@ -158,7 +180,7 @@ _reseed_ctrl_ini() {
     rm -f "${_new}" &> /dev/null
     return 1
   fi
-  chown "${_HM_U}:users" "${_new}" &> /dev/null
+  chown "${_HM_U}:$(_acct_group "${_HM_U}")" "${_new}" &> /dev/null
   chmod 0664 "${_new}" &> /dev/null
   mv -f -T "${_new}" "${_dst}" &> /dev/null || rm -f "${_new}" &> /dev/null
 }
@@ -384,27 +406,32 @@ _enable_chattr() {
 _disable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
-  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
+  # Same tenant-plantable names as _enable_chattr, inverted harm: clearing +i
+  # through a planted link strips the immutable protection from a tree of the
+  # tenant's choosing (e.g. /var/aegir/.drush and its *.ini, which BOA locks on
+  # purpose). Skip a symlinked component instead of resolving it.
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ] && [ ! -L "/home/$1" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
         chattr -i /home/$1/
       fi
     else
-      if [ -d "/home/$1/platforms/" ]; then
+      if [ -d "/home/$1/platforms/" ] && [ ! -L "/home/$1/platforms" ]; then
         chattr -i /home/$1/platforms/
         chattr -i /home/$1/platforms/* &> /dev/null
       fi
     fi
-    if [ -d "/home/$1/.drush/" ]; then
+    if [ -d "/home/$1/.drush/" ] && [ ! -L "/home/$1/.drush" ]; then
       chattr -i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
+    if [ -d "/home/$1/.drush/usr/" ] && [ ! -L "/home/$1/.drush" ] \
+      && [ ! -L "/home/$1/.drush/usr" ]; then
       chattr -i /home/$1/.drush/usr/
     fi
-    if [ -f "/home/$1/.drush/php.ini" ]; then
+    if [ -f "/home/$1/.drush/php.ini" ] && [ ! -L "/home/$1/.drush" ]; then
       chattr -i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar/" ]; then
+    if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
       chattr -i /home/$1/.bazaar/
     fi
   fi
@@ -412,11 +439,29 @@ _disable_chattr() {
 
 ###-------------DRUSH8-----------------###
 
+# Verbose gate (_DEBUG_DAILY=YES in the cnf, or the legacy marker file): one
+# timestamped line per drush8 run, written to STDERR on purpose. Callers
+# capture the nosilent wrapper's stdout to parse a drush value (variable-get
+# through cut/awk in 20-sites.sh), so a line the wrapper itself printed on
+# stdout became part of that value: the timestamp survived the digits-only
+# filter in _fix_user_register_protection_with_vSet and user_register read as
+# a number like 20020120 instead of 0/1/2, which no branch of the check ever
+# acts on (an unset variable read as non-empty the same way). Every process
+# that runs a wrapper joins stderr into its log (owl.sh redirects
+# _daily_action and each 10-account.sh subprocess with 2>&1), so the line
+# reaches the same log, now also from the calls whose stdout a caller
+# captures, where it used to vanish into the value. Callers that fold stderr
+# into their capture on purpose (2>&1, for drush's own messages) still see
+# the line: they pattern-match rather than parse, and the pml probes match
+# "($m)" while the echoed command line carries the caller's literal "\($m\)",
+# so the line cannot satisfy that test -- keep those backslashes if the
+# probes are ever reworked.
+
 _run_drush8_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
+    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1" >&2
   fi
   if [ -x "/opt/php74/bin/php" ]; then
     su -s /bin/bash - ${_HM_U} -c "/opt/php74/bin/php /usr/bin/drush @${_Dom} $1" &> /dev/null
@@ -430,7 +475,7 @@ _run_drush8_hmr_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1"
+    echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1" >&2
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
   wait
@@ -460,7 +505,7 @@ _run_drush8_hmr_master_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} aegir running drush8 @hostmaster $1"
+    echo "${_nOw} aegir running drush8 @hostmaster $1" >&2
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
   wait
@@ -470,7 +515,7 @@ _run_drush8_nosilent_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
+    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1" >&2
   fi
   if [ -x "/opt/php74/bin/php" ]; then
     su -s /bin/bash - ${_HM_U} -c "/opt/php74/bin/php /usr/bin/drush @${_Dom} $1"
@@ -614,6 +659,10 @@ _le_reason() {
 # idempotency guard, so a worker must INHERIT it here and never re-derive it.
 night_emit_run_env() {
   mkdir -p /run/night
+  # Create it 0600 up front: the redirect below would otherwise leave the file
+  # at the root umask (0644) for the whole write, with the chmod only landing
+  # afterwards. /run is root-only, so this is hardening, not a live hole.
+  install -m 0600 /dev/null /run/night/run.env &> /dev/null
   {
     echo "export _NOW=\"${_NOW}\""
     echo "export _DOW=\"${_DOW}\""

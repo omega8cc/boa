@@ -39,12 +39,16 @@ _validate_path_prefix() {
   _caller="${SUDO_USER:-}"
   if [ -z "${_caller}" ]; then
     case "${_resolved}/" in
-      /var/aegir/*|/data/disk/*|/home/*) return 0 ;;
+      /var/aegir/*) _SCOPE_ROOT="/var/aegir" ;;
+      /data/disk/*) _SCOPE_ROOT="/data/disk" ;;
+      /home/*)      _SCOPE_ROOT="/home" ;;
       *)
         printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
         exit 1
         ;;
     esac
+    _ROOT_RESOLVED="${_resolved}"
+    return 0
   fi
   _home=$(getent passwd "${_caller}" 2>/dev/null | cut -d: -f6)
   _home="${_home%/}"
@@ -62,21 +66,38 @@ _validate_path_prefix() {
       exit 1
       ;;
   esac
+  # Publish what was validated so every later op is pinned to it.
+  _ROOT_RESOLVED="${_resolved}"
+  _SCOPE_ROOT="${_home}"
 }
 
 _chmod_safe() {
   local _mode=$1
   shift
-  local _p
+  local _p _r
   for _p in "$@"; do
     [ -L "${_p}" ] && continue
     [ -e "${_p}" ] || continue
+    # -L guards the FINAL component only: a tenant-planted INTERMEDIATE (vendor,
+    # vendor/symfony) still points this root chmod out of the validated tree, so
+    # re-check the resolved target against the scope _validate_path_prefix set.
+    [ -n "${_SCOPE_ROOT}" ] || continue
+    _r=$(realpath -e -- "${_p}" 2>/dev/null) || continue
+    case "${_r}/" in
+      "${_SCOPE_ROOT}"/*) ;;
+      *)
+        printf "Error: refusing out-of-scope path %s -> %s\n" "${_p}" "${_r}" >&2
+        continue
+        ;;
+    esac
     chmod "${_mode}" "${_p}"
   done
 }
 
-drupal_root=${1%/}
-lock_mode=${2:-lock}
+# Positional invocation is rejected by the parser below; both values come from
+# the named flags, and 'lock' is the documented default.
+drupal_root=""
+mode="lock"
 
 # Parse Command Line Arguments
 while [ "$#" -gt 0 ]; do
@@ -95,17 +116,27 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+# Grouped on purpose: && and || bind equally left-to-right, so without the
+# braces the whole verdict hangs on the D7 marker alone.
 if [ -z "${drupal_root}" ] \
   || [ ! -d "${drupal_root}/sites" ] \
-  || [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
-  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  || { [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+    && [ ! -f "${drupal_root}/modules/system/system.module" ]; }; then
     printf "Error: Please provide a valid Drupal root directory.\n"
     exit 1
 fi
 
+# Set by _validate_path_prefix; empty means "not validated" and _chmod_safe
+# refuses rather than falling open.
+_ROOT_RESOLVED=""
+_SCOPE_ROOT=""
 _validate_path_prefix "${drupal_root}"
+# Operate on the path that was actually validated: a relative --root would be
+# re-resolved against the NEW cwd after the cd below, and a --root swapped for a
+# symlink after the realpath check would be followed by every raw-path op.
+drupal_root="${_ROOT_RESOLVED}"
 
-cd ${drupal_root}
+cd "${drupal_root}" || exit 1
 
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
@@ -115,7 +146,7 @@ if [ -e "${drupal_root}/core" ]; then
       _chmod_safe 0775 "${drupal_root}/vendor/symfony/console/Input"
       _chmod_safe 0775 "${drupal_root}/vendor/symfony/console/Style"
     else
-      printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
+      printf "Locking Drush and Symfony Console Input in %s...\n" "${drupal_root}/vendor"
       _chmod_safe 0400 "${drupal_root}/vendor/drush"
       _chmod_safe 0400 "${drupal_root}/vendor/symfony/console/Input"
       _chmod_safe 0400 "${drupal_root}/vendor/symfony/console/Style"

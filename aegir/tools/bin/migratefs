@@ -453,7 +453,9 @@ _account_list() {
     # aggregate names; the per-account static/ check is the final backstop.
     case "${_ONE_ACCOUNT}" in
       */*|.*|arch|all|legacy)
-        _log "ERROR: refusing invalid --account '${_ONE_ACCOUNT}'"
+        # stderr: the caller captures this function's stdout as the account
+        # list, and the refusal line would otherwise become the list.
+        _log "ERROR: refusing invalid --account '${_ONE_ACCOUNT}'" >&2
         return 0
         ;;
     esac
@@ -512,6 +514,11 @@ if command -v mountpoint >/dev/null 2>&1 && ! mountpoint -q "${_TARGET}"; then
 fi
 
 _accounts=$(_account_list)
+# An explicit --account that produced no list was refused above: stop here
+# rather than pause the queue for a run with nothing valid in it.
+if [ -n "${_ONE_ACCOUNT}" ] && [ -z "${_accounts}" ]; then
+  exit 1
+fi
 if [ -z "${_accounts}" ] && [ "${_DO_ARCH}" != "YES" ]; then
   _log "INFO: nothing to do (no matching accounts under /data/disk, account='${_ONE_ACCOUNT:-all}', arch skipped)"
   exit 0

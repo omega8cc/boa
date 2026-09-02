@@ -18,7 +18,10 @@
 #    release-build tool, never a hosting operation), scheduler is a later
 #    deliberate wave, and bare `grav install` is a network composer run.
 #    GPM package install/update stays OPEN for clients (D-006: the plugin
-#    long tail is client-managed).
+#    long tail is client-managed). new-project is denied with them -- it
+#    runs sandbox and then install internally. The gate matches Symfony's
+#    own resolution rule: a verb that is a PREFIX of a denied name is
+#    refused too, so an abbreviation cannot walk past it.
 # 2. PHP selection mirrors bee: a validated DRUSH_PHP exported by websh wins;
 #    direct invocations self-resolve cli.info/phpNN.info; clamp to the 8.3
 #    floor (8.4 preferred by probe order); newest modern PHP as last resort.
@@ -96,16 +99,35 @@ if [[ "${_BACKEND}" = "NO" ]]; then
     _VERB="${_tok}"
     break
   done
-  case "${_GRAV_TOOL}:${_VERB}" in
-    grav:install|grav:sandbox|grav:clean|grav:scheduler| \
-    gpm:self-upgrade|gpm:selfupgrade|gpm:selfupdate| \
-    gpm:direct-install|gpm:directinstall|gpm:di)
-      _alrt "grav: the '${_GRAV_TOOL} ${_VERB}' command is not permitted here."
-      _msg  "This operation is reserved for the hosting backend."
-      _msg  "Please use the Ægir control panel to perform it."
-      exit 1
+  # Symfony Console resolves a command by its exact name OR by any unambiguous
+  # abbreviation of it, so a gate that compares whole spellings is walked past
+  # by `grav sandb`. Match the way Symfony matches: refuse a verb that is a
+  # PREFIX of any denied name. Nothing legitimate is lost -- an exact command
+  # name wins Symfony's own lookup first and is never a strict prefix of a
+  # denied name (`install` is not a prefix of `direct-install`, so GPM package
+  # install/update stays open per D-006), and a prefix that is ambiguous would
+  # fail in Symfony anyway. new-project is denied with the rest because its own
+  # serve() resolves and runs `sandbox` and then `install` internally.
+  _DENY=""
+  case "${_GRAV_TOOL}" in
+    grav)
+      _DENY="install sandbox clean scheduler new-project newproject"
+      ;;
+    gpm)
+      _DENY="self-upgrade selfupgrade selfupdate direct-install directinstall di"
       ;;
   esac
+  _VERB_LC="$(printf '%s' "${_VERB}" | tr '[:upper:]' '[:lower:]')"
+  if [[ -n "${_VERB_LC}" ]]; then
+    for _d in ${_DENY}; do
+      if [[ "${_d}" == "${_VERB_LC}"* ]]; then
+        _alrt "grav: the '${_GRAV_TOOL} ${_VERB}' command is not permitted here."
+        _msg  "This operation is reserved for the hosting backend."
+        _msg  "Please use the Ægir control panel to perform it."
+        exit 1
+      fi
+    done
+  fi
 fi
 
 # --- PHP selection (>= 8.3 clamp, 8.4 preferred) -----------------------------

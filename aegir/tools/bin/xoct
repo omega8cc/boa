@@ -32,6 +32,30 @@ _WEBG=www-data
 _THIS_DB_PORT=3306
 _ieni="--ignore-errors"
 
+### Copied verbatim from the shared library: a standalone tool cannot source
+### it, so the definition travels with every writer that needs it.
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 ###
 ### Avoid too many questions
 ###
@@ -782,6 +806,11 @@ _xoct_ssl_material_missing() {
 }
 
 _migrate_sites() {
+  ### Group of the tree these vhost/control files live in -- derived from the
+  ### PATH, because on a rename import ${_USR} is the destination account while
+  ### ${_oct} still names the source; 'users' on an unconverted box, so the
+  ### chowns below are unchanged there.
+  _OCT_GRP=$(_acct_group "${_USR}")
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     _Dom=`echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}'`
@@ -789,11 +818,11 @@ _migrate_sites() {
     _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
     if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:users ${_Vht}
+      chown ${_oct}:${_OCT_GRP} ${_Vht}
       chmod 600 ${_Vht}
     fi
     if [ -e "${_Vhd}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:users ${_Vhd}
+      chown ${_oct}:${_OCT_GRP} ${_Vhd}
       chmod 600 ${_Vhd}
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
@@ -819,7 +848,9 @@ _migrate_sites() {
         else
           _TGT_HM_USER="${_oct}"
         fi
-        chown ${_TGT_HM_USER}:users ${_Vht}
+        ### Derived inside the loop, right after the account it belongs to.
+        _TGT_HM_GRP=$(_acct_group "${_TGT_HM_USER}")
+        chown ${_TGT_HM_USER}:${_TGT_HM_GRP} ${_Vht}
         chmod 600 ${_Vht}
         if [ -e "${_Dir}/drushrc.php" ]; then
           sed -i "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g" ${_Dir}/drushrc.php
@@ -985,7 +1016,7 @@ EOFMYSQL
           && [ -d "${_USR}/static/control" ] \
           && [ ! -L "${_USR}/static/control" ]; then
           echo 3600 > ${_USR}/static/control/http-off.pid
-          chown -h ${_oct}:users ${_USR}/static/control/http-off.pid &> /dev/null
+          chown -h ${_oct}:${_OCT_GRP} ${_USR}/static/control/http-off.pid &> /dev/null
           echo "INFO: account ${_oct} http-off pid created"
         fi
         ###
@@ -1033,6 +1064,12 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
           _MYDUMPER_TRX_OPT="--trx-tables=0"
         fi
+        ### --rows=-1 turns integer chunking off: a fixed --rows=N walks the
+        ### whole primary-key span in steps of N key values (a sparse bigint
+        ### key spun out empty chunk files to inode exhaustion), and the
+        ### adaptive chunker used when the flag is absent intermittently
+        ### drops a whole chunk of a sparse-keyed table while exiting clean;
+        ### mirrors mysql_backup.sh.
         ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
         if mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
@@ -1040,7 +1077,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --defaults-file=/root/.my.cnf \
           --port=3306 \
           --outputdir=${_USR}/src/${_DBN}/ \
-          --rows=50000 \
+          --rows=-1 \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
@@ -1105,7 +1142,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               wait
               sed -i "s/_domain_name/${_Dom}/g" ${_Vhs}
               wait
-              chown ${_oct}:users ${_Vhs}
+              chown ${_oct}:${_OCT_GRP} ${_Vhs}
               chmod 600 ${_Vhs}
             elif [ -d "${_USR}/config/server_master/ssl.d/${_Dom}" ]; then
               ### The silent shape behind the manual "confirm https.* vhosts
@@ -1135,7 +1172,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             wait
             sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
             wait
-            chown ${_oct}:users ${_Vht}
+            chown ${_oct}:${_OCT_GRP} ${_Vht}
             chmod 600 ${_Vht}
             _XOCT_PROXY_OK=$(( ${_XOCT_PROXY_OK:-0} + 1 ))
             ### Remember what THIS run rewrote: a configtest failure must
@@ -1567,6 +1604,8 @@ _xoct_seed_target_control_pins() {
   ### succeeding there, so in exactly that case it never fires. It matters
   ### more now that renameaegirhost §2d rewrites this file during a rename:
   ### two writers, one of which was leaving it mis-owned.
+  ### Literal 'users' on purpose: this chown runs on the TARGET box, whose own
+  ### passes re-assert the group there; the group is per-box.
   ssh root@"${_t}" "chown ${_dAcct}.ftp:users ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
   return 0
 }
@@ -1619,6 +1658,8 @@ _xoct_sync_shell_credentials() {
         "${_e}" \
         "root@${_t}:/home/${_dst}.ftp/users/${_dst}.${_n}"
     done
+    ### Literal 'users' on purpose: this chown runs on the TARGET box, whose own
+    ### passes re-assert the group there; the group is per-box.
     ssh root@"${_t}" "chown -R ${_dst}.ftp:users /home/${_dst}.ftp/users; chmod 700 /home/${_dst}.ftp/users; chmod 600 /home/${_dst}.ftp/users/* 2>/dev/null; true" &> /dev/null
   fi
   for _d in "${_sUsr}"/clients/*/; do
@@ -2297,14 +2338,25 @@ _migrate_prepare() {
           echo "ALRT: the install may mail a welcome password that the credential carry replaces"
         fi
         ### The marker must come off even if the install dies, or the target
-        ### stays silent for every later BOA mail on the box.
-        trap '[ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null' EXIT INT TERM
+        ### stays silent for every later BOA mail on the box. This handler
+        ### REPLACES the single-flight lock's own cleanup for the install
+        ### window, so it must release the lock too -- otherwise an interrupt
+        ### here leaves ${_XOCT_LOCK_FILE} behind with a dead owner. The
+        ### signal handler exits (bash would otherwise resume at the next
+        ### statement and run the rest of the create unlocked); exiting runs
+        ### the EXIT handler, which does the removals.
+        trap '[ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        trap 'exit 130' INT TERM HUP
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         if [ "${_SILENT_MARKER}" = "YES" ]; then
           ssh root@${_tgt} "rm -f /root/.silent.update.cnf"
           _SILENT_MARKER=NO
         fi
-        trap - EXIT INT TERM
+        ### Restore the single-flight lock's cleanup (see _take_verb_lock) --
+        ### a bare `trap -` here would orphan ${_XOCT_LOCK_FILE} for the whole
+        ### rest of the run.
+        trap 'rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        trap 'rm -f "${_XOCT_LOCK_FILE}"; exit 130' INT TERM HUP
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
@@ -4096,7 +4148,14 @@ _sub_ssl_gen() {
         fi
       fi
       ###
-      echo OK created ${_Ssl}
+      ### Say "created" only when it is there -- the same guard as the plain
+      ### half above. The reload stays unconditional: reloading with one
+      ### config missing is harmless, and the plain half may have landed.
+      if [ -s "${_Ssl}" ]; then
+        echo OK created ${_Ssl}
+      else
+        echo "ERROR: failed to write ${_Ssl}"
+      fi
       service nginx reload
     else
       echo some variables missing in the record: $p
@@ -4286,24 +4345,61 @@ esac
 
 _XOCT_LOCK_FILE="/run/xoct.verb.pid"
 
+# Acquisition is atomic (noclobber): the old check-then-write let two verbs
+# started in the same instant both proceed. A dead or foreign owner's file is
+# removed and the create retried; the loser of any race re-examines a LIVE
+# owner and refuses.
+#
+# The owner match is anchored to an xoct INVOCATION ("/xoct" or a bare "xoct"
+# word followed by arguments), never the bare substring: the old *xoct* glob
+# matched any process whose cmdline merely mentions the name -- an operator's
+# tail -F of a migration log was enough -- so a recycled PID could block every
+# verb forever, the exact recycled-PID bug the liveness check exists to
+# prevent.
+#
+# The signal traps EXIT: a bash signal trap otherwise returns to the next
+# statement, so a TERM would remove the lock and then keep running the
+# remaining legs, unlocked.
+#
+# Kept in step with xmass's _take_verb_lock -- mirror any fix there.
 _take_verb_lock() {
-  local _owner _cmdline
+  local _owner _cmdline _tries=0
   [ "$(id -u)" = "0" ] || return 0
-  if [ -s "${_XOCT_LOCK_FILE}" ]; then
+  while :; do
+    if ( set -C; echo "$$" > "${_XOCT_LOCK_FILE}" ) 2>/dev/null; then
+      trap 'rm -f "${_XOCT_LOCK_FILE}"' EXIT
+      trap 'rm -f "${_XOCT_LOCK_FILE}"; exit 130' INT TERM HUP
+      return 0
+    fi
+    ### Bound the retry loop: a lock file that can be neither created nor
+    ### removed (an unwritable /run) must end in the loud refusal this tool
+    ### promises, never in a silent spin.
+    _tries=$((_tries + 1))
+    if [ "${_tries}" -gt 30 ]; then
+      echo "ERROR: cannot claim ${_XOCT_LOCK_FILE} -- refusing to run unlocked"
+      exit 1
+    fi
     _owner=$(tr -dc '0-9' < "${_XOCT_LOCK_FILE}" 2>/dev/null | head -c 12)
+    if [ -z "${_owner}" ] \
+      && [ -n "$(find "${_XOCT_LOCK_FILE}" -newermt '-5 seconds' 2>/dev/null)" ]; then
+      ### A just-created lock can be read in the instant between its O_EXCL
+      ### open and the PID write -- never reap a fresh empty file as dead.
+      sleep 1
+      continue
+    fi
     if [ -n "${_owner}" ] && [ -d "/proc/${_owner}" ]; then
       _cmdline=$(tr '\0' ' ' < "/proc/${_owner}/cmdline" 2>/dev/null)
       case "${_cmdline}" in
-        *xoct*)
-    echo "ERROR: another xoct run is in flight (pid ${_owner}) -- refusing to start '$1'. Wait for it to finish."
-        exit 1
+        */xoct\ *|*/xoct|*\ xoct\ *)
+          echo "ERROR: another xoct run is in flight (pid ${_owner}) -- refusing to start '$1'. Wait for it to finish, or clear ${_XOCT_LOCK_FILE} if that pid is not an xoct run."
+          exit 1
         ;;
       esac
     fi
-  fi
-  echo "$$" > "${_XOCT_LOCK_FILE}" 2>/dev/null \
-    || { echo "ERROR: cannot write ${_XOCT_LOCK_FILE} -- refusing to run unlocked"; exit 1; }
-  trap 'rm -f "${_XOCT_LOCK_FILE}"' EXIT INT TERM HUP
+    ### Dead or foreign owner: take the file over and retry the atomic create.
+    rm -f "${_XOCT_LOCK_FILE}" 2>/dev/null \
+      || { echo "ERROR: cannot remove stale ${_XOCT_LOCK_FILE} -- refusing to run unlocked"; exit 1; }
+  done
 }
 
 case "$1" in
