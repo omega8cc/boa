@@ -38,6 +38,28 @@ _vSet="variable-set --always-set"
 
 ###-------------HELPERS-----------------###
 
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 # Validate that a caller-controlled path (parsed from a Drush alias file)
 # resolves under one of BOA's writable roots. Used by the per-site loop to
 # gate chown/chmod operations on _Dir (site_path) and _Plr (platform root):
@@ -158,7 +180,7 @@ _reseed_ctrl_ini() {
     rm -f "${_new}" &> /dev/null
     return 1
   fi
-  chown "${_HM_U}:users" "${_new}" &> /dev/null
+  chown "${_HM_U}:$(_acct_group "${_HM_U}")" "${_new}" &> /dev/null
   chmod 0664 "${_new}" &> /dev/null
   mv -f -T "${_new}" "${_dst}" &> /dev/null || rm -f "${_new}" &> /dev/null
 }

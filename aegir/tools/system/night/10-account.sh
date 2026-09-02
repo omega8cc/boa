@@ -45,6 +45,33 @@ command -v _night_boa_pass_active > /dev/null 2>&1 \
 # loop below for its full 60s and defer every relocation, every night.
 command -v _provision_running > /dev/null 2>&1 \
   || _provision_running() { pgrep -f provision > /dev/null 2>&1; }
+# Same skew reason: night.inc.sh carries the real _acct_group, but this worker
+# is fetched on its own serial and can land ahead of it -- an undefined
+# function returns 127 with empty output, which would make the account chowns
+# below emit a bare "user:" and reset the group instead of leaving it alone.
+if ! declare -F _acct_group > /dev/null 2>&1; then
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+fi
 
 _relocate_one_backup_dir() {
   # Relocate a single per-account backup directory onto the static/files
@@ -959,7 +986,11 @@ _purge_cruft_machine() {
   find ${_usEr}/tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
-  chown -R ${_HM_U}:users ${_usEr}/tools/le
+  # Both writes below land inside this account's own tree, so the group is
+  # derived from the account rather than hardcoded; 'users' on an unconverted box.
+  local _acctGrp
+  _acctGrp=$(_acct_group "${_HM_U}")
+  chown -R ${_HM_U}:${_acctGrp} ${_usEr}/tools/le
   # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
   # tenant, so the tenant can swap the directory for a symlink. mkdir -p then
   # succeeds silently on the target, a bare chown retargets it, and the glob
@@ -970,7 +1001,7 @@ _purge_cruft_machine() {
   [ -L "${_usEr}/static/trash" ] && rm -f ${_usEr}/static/trash &> /dev/null
   mkdir -p ${_usEr}/static/trash
   if [ -d "${_usEr}/static/trash" ] && [ ! -L "${_usEr}/static/trash" ]; then
-    chown -h ${_HM_U}.ftp:users ${_usEr}/static/trash &> /dev/null
+    chown -h ${_HM_U}.ftp:${_acctGrp} ${_usEr}/static/trash &> /dev/null
     find ${_usEr}/static/trash -mindepth 1 \
       -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
   fi

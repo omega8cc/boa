@@ -4,8 +4,44 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
+# Exact group membership, order-independent. id -nG prints the PRIMARY group
+# first, so the whole-string and end-anchored comparisons this file used to
+# make ("users www-data", "lshellg"$) silently stop matching the moment an
+# account's primary group moves (per-instance groups) or a group is appended
+# to a tenant identity -- and a tenant that falls out of the gate below gets
+# an UNFILTERED dash instead of the dispatch and path policy. Test membership
+# of one named group, never the shape of the list.
+_in_grp() {
+  local _g
+  for _g in ${_LTD_GID}; do
+    [ "${_g}" = "${1}" ] && return 0
+  done
+  return 1
+}
+
+# Exact group SET, order-independent: the historical whole-string forms
+# ("www-data users", "users www-data", "aegir www-data users") matched an
+# identity by its complete list, so keep that meaning -- same members, any
+# order -- rather than widening it to "has both". Pure bash on purpose: the
+# system binaries are root:users 0750 here, so an identity outside 'users'
+# (the FPM pool user) cannot run sort/tr, and this runs for every identity.
+# $1 = the expected set, space-separated.
+_grp_set_is() {
+  local _g _e
+  for _g in ${_LTD_GID}; do
+    case " ${1} " in
+      *" ${_g} "*) ;;
+      *) return 1 ;;
+    esac
+  done
+  for _e in ${1}; do
+    _in_grp "${_e}" || return 1
+  done
+  return 0
+}
+
 _forward_to_dash() {
-  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
+  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && _in_grp ltd-shell-more; then
     ### echo FWD 0 DIRECT
     _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
     ### echo _R_M is ${_R_M}
@@ -590,17 +626,18 @@ if [ "${_IS_JENKINS}" = "FALSE" ]; then
   check_php_cli_version
 fi
 
-if [ "${_LTD_GID}" = "www-data users" ] \
+# Known BOA identity classes take the dispatched path below: the master and
+# the account users by home, the shell identities by lshellg/ltd-shell(-more)
+# membership, and the two historical exact sets ("www-data users" in either
+# order, "aegir www-data users"). Membership and set tests, never the order
+# of the list -- see _in_grp / _grp_set_is.
+if _grp_set_is "users www-data" \
+  || _grp_set_is "aegir users www-data" \
   || [[ "${HOME}" =~ (^)"/var/aegir" ]] \
   || [[ "${HOME}" =~ (^)"/data/disk/" ]] \
-  || [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
-  || [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]] \
-  || [[ "${_LTD_GID}" =~ "lshellg rvm"($) ]] \
-  || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
-  || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]] \
-  || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
-  || [[ "${_LTD_GID}" =~ (^)"users www-data"($) ]] \
-  || [[ "${_LTD_GID}" =~ (^)"aegir www-data users"($) ]]; then
+  || _in_grp lshellg \
+  || _in_grp ltd-shell \
+  || _in_grp ltd-shell-more; then
   if [ "${1}" = "-c" ]; then
     _IS_SH_PATH=NO
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/usr/bin/sh" ]; then
@@ -1052,12 +1089,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     fi
   fi
-  if [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
-    || [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]] \
-    || [[ "${_LTD_GID}" =~ "lshellg rvm"($) ]] \
-    || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
-    || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
-    || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]]; then
+  if _in_grp lshellg \
+    || _in_grp ltd-shell \
+    || _in_grp ltd-shell-more; then
     if [[ "${_ARGS}" =~ "*" ]]; then
       if [[ $(whoami) == *.ftp ]]; then
         _SILENT=YES

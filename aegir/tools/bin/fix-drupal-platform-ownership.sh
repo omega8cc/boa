@@ -73,6 +73,27 @@ _validate_path_prefix() {
   esac
 }
 
+
+# Group that owns the code tree at a validated path. Derived here, never
+# taken from argv: this script is reachable through NOPASSWD sudo from every
+# account, so a caller-supplied group would let one tenant chgrp its tree to
+# another tenant's group. 'users' until the account has been converted to a
+# private primary group named after itself, so a tool landing on an
+# unconverted or half-converted box leaves it exactly as it is today.
+_acct_group() {
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 drupal_root=${1%/}
 script_user=${2:-aegir}
 web_group="${3:-www-data}"
@@ -113,12 +134,13 @@ if [ -n "${drupal_root}" ] \
       exit 1
   fi
   _validate_path_prefix "${drupal_root}"
-  # Capsule ownership model (spike-proven): code <user>:users; the writable
-  # set <user>:<web_group> so FPM writes via GROUP (version-flip-immune) --
-  # and web-created files are re-homed to the instance user, healing the
+  _code_group=$(_acct_group "${drupal_root}")
+  # Capsule ownership model (spike-proven): code <user>:<account group>; the
+  # writable set <user>:<web_group> so FPM writes via GROUP (version-flip-immune)
+  # -- and web-created files are re-homed to the instance user, healing the
   # web-owned residue the lifecycle verbs otherwise have to park.
-  printf "Setting Grav ownership of %s to: user => %s group => users\n" "${drupal_root}" "${script_user}"
-  chown -h -R ${script_user}:users ${drupal_root}
+  printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
+  chown -h -R ${script_user}:${_code_group} ${drupal_root}
   for _capsule in ${drupal_root}/sites/*/; do
     [ -f "${_capsule}system/defines.php" ] || continue
     for _wd in user cache logs tmp backup images assets; do
@@ -126,7 +148,7 @@ if [ -n "${drupal_root}" ] \
       chown -h -R ${script_user}:${web_group:-www-data} "${_capsule}${_wd}"
     done
     # The root .env drops its world bit under D-008, so FPM's read comes via
-    # the web group -- the code pass above homed it to :users.
+    # the web group -- the code pass above homed it to the account group.
     [ -f "${_capsule}.env" ] \
       && chown -h ${script_user}:${web_group:-www-data} "${_capsule}.env"
   done
@@ -149,15 +171,17 @@ if [ -n "${drupal_root}" ] \
       exit 1
   fi
   _validate_path_prefix "${drupal_root}"
-  # Shared-core ownership model: the pristine core is <user>:users throughout.
+  _code_group=$(_acct_group "${drupal_root}")
+  # Shared-core ownership model: the pristine core is <user>:<account group>
+  # throughout.
   # Everything under sites/* is the SITE scripts' territory -- those trees
   # carry 0440 group-read secrets (config.php, drushrc.php) and web-group
   # writable dirs the site pass owns; a platform-wide chown would re-home
   # their groups and break FPM's group-read path, so sites/* is pruned
   # outright (only the sites/ directory itself takes core ownership).
-  printf "Setting Textpattern ownership of %s to: user => %s group => users\n" "${drupal_root}" "${script_user}"
+  printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
   find ${drupal_root} -path "${drupal_root}/sites/*" -prune \
-    -o -exec chown -h ${script_user}:users {} + 2> /dev/null
+    -o -exec chown -h ${script_user}:${_code_group} {} + 2> /dev/null
   echo "Done setting proper ownership of files and directories (Textpattern platform)."
   exit 0
 fi
@@ -177,6 +201,7 @@ if [ -z "${script_user}" ] \
 fi
 
 _validate_path_prefix "${drupal_root}"
+_code_group=$(_acct_group "${drupal_root}")
 
 ### sites and sites/all are names a tenant can plant as symlinks (the docroot
 ### is group-writable) and every op below walks THROUGH them; -h protects
@@ -201,8 +226,8 @@ fi
 
 cd ${drupal_root}
 
-printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "users"\n"
-chown -h ${script_user}:users ${drupal_root}
+printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "${_code_group}"\n"
+chown -h ${script_user}:${_code_group} ${drupal_root}
 
 ### Make sure that expected sites/all sub-directories exist
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
@@ -229,18 +254,18 @@ fi
 ### symlinks planted under /data/disk/<o>/ or /home/<u>/ via uploaded tar
 ### archives cannot redirect chown onto system paths).
 if [ -e "${drupal_root}/vendor" ]; then
-  chown -h -R ${script_user}:users ${drupal_root}/vendor
+  chown -h -R ${script_user}:${_code_group} ${drupal_root}/vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
-  chown -h -R ${script_user}:users ${drupal_root}/../vendor
+  chown -h -R ${script_user}:${_code_group} ${drupal_root}/../vendor
 fi
 
-chown -h -R ${script_user}:users \
+chown -h -R ${script_user}:${_code_group} \
   ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 
-chown -h -R ${script_user}:users \
+chown -h -R ${script_user}:${_code_group} \
   ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core}
 
-chown -h ${script_user}:users \
+chown -h ${script_user}:${_code_group} \
   ${drupal_root}/sites/all/drush/drushrc.php \
   ${drupal_root}/sites \
   ${drupal_root}/sites/* \
