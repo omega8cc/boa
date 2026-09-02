@@ -11015,7 +11015,7 @@ _lshell_install_upgrade() {
     _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_CHK_VRN=0.10
+  _LSHELL_CHK_VRN=0.11.3
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -11040,7 +11040,9 @@ _lshell_install_upgrade() {
       _msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
     _apt_clean_update
-    for _PKG in python3-pip python3-setuptools; do
+    # 0.11 needs pyparsing at runtime and setuptools>=61 to build; the Debian
+    # packages satisfy both without a PyPI round-trip.
+    for _PKG in python3-pip python3-setuptools python3-pyparsing; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -11067,8 +11069,10 @@ _lshell_install_upgrade() {
       sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
       wait
     done
-    rm -rf /usr/local/lib/python*/site-packages/lshell*
-    rm -rf /usr/local/lib/python*/dist-packages/lshell*
+    # No pre-emptive removal of the installed package: pip replaces the
+    # previous dist only after the new one has BUILT, so a failed fetch or
+    # build leaves the old lshell in place instead of locking every shell
+    # user out. Verify the result and say so when it did not land.
     cd /var/opt/lshell-${_LSHELL_VRN}
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
@@ -11077,6 +11081,10 @@ _lshell_install_upgrade() {
       _mrun "${_usePip} install . --break-system-packages --root-user-action ignore"
     else
       _mrun "${_usePip} install . "
+    fi
+    _LSHELL_NOW=$(${_PATH_LSHELL} --version 2>&1 | tr -d "\n" | cut -d"-" -f2 | awk '{ print $1}' 2>&1)
+    if [ "${_LSHELL_NOW}" != "${_LSHELL_CHK_VRN}" ]; then
+      _msg "OOPS: lshell ${_LSHELL_VRN} did not install (have: ${_LSHELL_NOW}); previous version kept"
     fi
     if [ "${_STATUS}" = "UPGRADE" ]; then
       [ -f "/etc/lshell.conf-bak-${_NOW}" ] && cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null

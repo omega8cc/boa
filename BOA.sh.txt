@@ -1871,18 +1871,18 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f81
 
   # Re-fetch trigger for the current lshell.conf. The sentinel MUST be a
-  # literal that exists in the shipped file (here the sub-account policy
-  # comment, "files, not code"). A sentinel that can never match would drop
+  # literal that exists in the shipped file (here the Landlock comment,
+  # "child-process confinement"). A sentinel that can never match would drop
   # the ctrl and re-fetch this security-critical file on EVERY pass, on every
   # box, forever -- the ctrl mechanism exists to prevent exactly that
   # (as-shipped E2E catch).
-  if ! grep -q "sub-accounts: files, not code" /var/xdrago/conf/lshell.conf; then
+  if ! grep -q "child-process confinement" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -1891,7 +1891,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f87.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f86.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -3006,9 +3006,9 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.10
+  _LSHELL_VRN=0.11.3
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.10
+  _LSHELL_CHK_VRN=0.11.3
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -3026,7 +3026,9 @@ _if_fix_lshell() {
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
     [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}
     _apt_clean_update
-    apt-get install python3-pip ${_aptYesUnth} -qq 2> /dev/null
+    # 0.11 needs pyparsing at runtime and setuptools>=61 to build; the Debian
+    # packages satisfy both without a PyPI round-trip.
+    apt-get install python3-pip python3-setuptools python3-pyparsing ${_aptYesUnth} -qq 2> /dev/null
     if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
     elif [ -x "/usr/local/bin/pip3" ]; then
@@ -3049,8 +3051,10 @@ _if_fix_lshell() {
       sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
       wait
     done
-    rm -rf /usr/local/lib/python*/site-packages/lshell*
-    rm -rf /usr/local/lib/python*/dist-packages/lshell*
+    # No pre-emptive removal of the installed package: pip replaces the
+    # previous dist only after the new one has BUILT, so a failed fetch or
+    # build leaves the old lshell in place instead of locking every shell
+    # user out. Verify the result and say so when it did not land.
     cd /var/opt/lshell-${_LSHELL_VRN}
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
@@ -3059,6 +3063,10 @@ _if_fix_lshell() {
       ${_usePip} install . --break-system-packages --root-user-action ignore
     else
       ${_usePip} install .
+    fi
+    _LSHELL_NOW=$(${_PATH_LSHELL} --version 2>&1 | tr -d "\n" | cut -d"-" -f2 | awk '{ print $1}' 2>&1)
+    if [ "${_LSHELL_NOW}" != "${_LSHELL_CHK_VRN}" ]; then
+      echo "OOPS: lshell ${_LSHELL_VRN} did not install (have: ${_LSHELL_NOW}); previous version kept"
     fi
     [ -f "/etc/lshell.conf-bak-${_LSHELL_VRN}" ] && cp -af /etc/lshell.conf-bak-${_LSHELL_VRN} /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
