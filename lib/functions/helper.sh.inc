@@ -883,11 +883,15 @@ EOF
   fi
 }
 
+# Diagnostics from the three discovery functions go to stderr: the caller
+# captures their stdout as the helper path, so a message printed there became
+# the path (a dangling symlink to the message text) and, being non-empty, also
+# made the dpkg and find fallbacks unreachable.
 # --- internal: run virt-what under strace and parse the helper's exec path
 _discover_with_strace() {
   local _path_found=""
   if ! command -v strace >/dev/null 2>&1; then
-    _msg "strace not available, skipping strace-based discovery"
+    _msg "strace not available, skipping strace-based discovery" >&2
     echo ""
     return 0
   fi
@@ -916,11 +920,11 @@ _discover_with_strace() {
   rm -f "${_TRACE}"
 
   if [ -n "${_path_found}" ] && [ -x "${_path_found}" ]; then
-    _msg "strace discovered helper at: ${_path_found}"
+    _msg "strace discovered helper at: ${_path_found}" >&2
     echo "${_path_found}"
     return 0
   fi
-  _msg "strace discovery failed"
+  _msg "strace discovery failed" >&2
   echo ""
   return 0
 }
@@ -931,7 +935,7 @@ _discover_with_dpkg() {
   if command -v dpkg >/dev/null 2>&1; then
     _p=$(dpkg -L virt-what 2>/dev/null | grep -E "/${_HELPER_NAME}$" | head -n1)
     if [ -n "${_p}" ] && [ -x "${_p}" ]; then
-      _msg "dpkg discovered helper at: ${_p}"
+      _msg "dpkg discovered helper at: ${_p}" >&2
       echo "${_p}"
       return 0
     fi
@@ -946,7 +950,7 @@ _discover_with_find() {
   # Keep it bounded to /usr to stay fast/noisy-free.
   _p=$(find /usr -maxdepth 4 -type f -name "${_HELPER_NAME}" 2>/dev/null | head -n1)
   if [ -n "${_p}" ] && [ -x "${_p}" ]; then
-    _msg "find discovered helper at: ${_p}"
+    _msg "find discovered helper at: ${_p}" >&2
     echo "${_p}"
     return 0
   fi
