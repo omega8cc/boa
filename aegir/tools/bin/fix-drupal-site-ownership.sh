@@ -73,6 +73,44 @@ _validate_path_prefix() {
   esac
 }
 
+_store_dir() {
+  # Echo the directory to walk for a per-site files/ or private/ store, or
+  # nothing (the caller then skips it). These are LEGITIMATELY symlinks --
+  # autosymlink points them at <account>/static/files/<site>/<type>, and
+  # static/files may itself be a symlink to a dedicated disk -- so they cannot
+  # be refused outright. But the tenant owns ~/static and can own the site dir
+  # itself (sites/ is 02771 on tenant codebases), so both the link and its
+  # target are plantable: accept a real directory, or a link that resolves
+  # inside THIS account's own resolved store root -- the same "never another
+  # account's tree" rule _validate_path_prefix applies to the site path.
+  local _p _acct _root _res
+  _p="$1"
+  [ -d "${_p}" ] || return 1
+  if [ ! -L "${_p}" ]; then
+    printf '%s' "${_p}"
+    return 0
+  fi
+  case "${site_path}/" in
+    /var/aegir/*)
+      _acct="/var/aegir"
+      ;;
+    /data/disk/*/*)
+      _acct="${site_path#/data/disk/}"
+      _acct="/data/disk/${_acct%%/*}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  _root=$(realpath -e -- "${_acct}/static/files" 2>/dev/null) || return 1
+  _res=$(realpath -e -- "${_p}" 2>/dev/null) || return 1
+  case "${_res}/" in
+    "${_root}"/*) ;;
+    *) return 1 ;;
+  esac
+  printf '%s' "${_res}"
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 web_group="${3:-www-data}"
@@ -96,6 +134,14 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+
+### Resolve the caller-supplied path ONCE, before any check or operation reads
+### it: every branch below re-walks the raw argument, and sites/ is 02771 on
+### tenant codebases, so the tenant owns the name it was handed and could
+### re-point it between _validate_path_prefix and the chowns.
+if [ -n "${site_path}" ] && [ -e "${site_path}" ]; then
+  site_path=$(realpath -e -- "${site_path}" 2>/dev/null) || site_path=""
+fi
 
 # --- Grav 2 site capsule (boa-grav D-003) ------------------------------------
 # A capsule is a full Grav install at sites/<uri>/ with no settings.php;
@@ -170,6 +216,18 @@ fi
 
 _validate_path_prefix "${site_path}"
 
+### modules, themes and libraries are names the tenant can plant: it can create
+### the site dir itself under the group-writable sites/ (02771), and the
+### site-level code dirs are 02775 group users. The rm below, the cp -a
+### destination and the globs walk THROUGH them, while chown -h protects only
+### the final component. None is ever legitimately a symlink at site level.
+for _d in modules themes libraries; do
+  if [ -L "${site_path}/${_d}" ]; then
+    printf "Error: %s is a symlink in %s; refusing.\n" "${_d}" "${site_path}" >&2
+    exit 1
+  fi
+done
+
 if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
   rm -f ${site_path}/libraries/ownership-fixed.pid
 fi
@@ -203,30 +261,46 @@ chown -h ${script_user}:users \
   ${site_path}/modules/*.yml \
   ${site_path}/{modules,themes,libraries} &> /dev/null
 
-if [ ! -e "${site_path}/files/ownership-fixed-${_TODAY}.pid" ]; then
+### files/ and private/ are LEGITIMATELY symlinks into the per-account static
+### store, so every path below walks THROUGH them and chown -h protects only
+### the final component: a link planted at either name aims these chowns at,
+### say, /var/aegir/config -- whose nginx vhosts the tenant may then rewrite,
+### with `sudo /etc/init.d/nginx` already granted. Resolve each store once,
+### bounded to this account's own store root, and operate on the resolved dir.
+_files_dir=$(_store_dir "${site_path}/files") || _files_dir=""
+_priv_dir=$(_store_dir "${site_path}/private") || _priv_dir=""
+if [ -z "${_files_dir}" ] && [ -e "${site_path}/files" ]; then
+  printf "Notice: %s is not this account's own files store; skipping.\n" \
+    "${site_path}/files" >&2
+fi
+
+if [ -n "${_files_dir}" ] \
+  && [ ! -e "${_files_dir}/ownership-fixed-${_TODAY}.pid" ]; then
   ### ctrl pid
-  rm -f ${site_path}/files/ownership-fixed*.pid
-  touch ${site_path}/files/ownership-fixed-${_TODAY}.pid
+  rm -f ${_files_dir}/ownership-fixed*.pid
+  touch ${_files_dir}/ownership-fixed-${_TODAY}.pid
   ### files - site level
   ### -h on recursive chown: never dereference symlinks; combined with default
   ### -P traversal this prevents a tar-uploaded symlink from rerouting chown
   ### to a system path.
-  chown -h -R ${script_user}:www-data ${site_path}/files &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/files &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/files/{tmp,images,pictures,css,js} &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/files/{advagg_css,advagg_js,ctools} &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/files/{ctools/css,imagecache,locations} &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/files/{civicrm,civicrm/templates_c} &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/files/{civicrm/upload,civicrm/persist} &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
+  chown -h -R ${script_user}:www-data ${_files_dir} &> /dev/null
+  chown -h ${script_user}:www-data ${_files_dir} &> /dev/null
+  chown -h ${script_user}:www-data ${_files_dir}/{tmp,images,pictures,css,js} &> /dev/null
+  chown -h ${script_user}:www-data ${_files_dir}/{advagg_css,advagg_js,ctools} &> /dev/null
+  chown -h ${script_user}:www-data ${_files_dir}/{ctools/css,imagecache,locations} &> /dev/null
+  chown -h ${script_user}:www-data ${_files_dir}/{xmlsitemap,deployment,styles,private} &> /dev/null
+  chown -h ${script_user}:www-data ${_files_dir}/{civicrm,civicrm/templates_c} &> /dev/null
+  chown -h ${script_user}:www-data ${_files_dir}/{civicrm/upload,civicrm/persist} &> /dev/null
+  chown -h ${script_user}:www-data ${_files_dir}/{civicrm/custom,civicrm/dynamic} &> /dev/null
   ### private - site level
-  chown -h -R ${script_user}:www-data ${site_path}/private &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/private &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/private/{files,temp} &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/private/files/backup_migrate &> /dev/null
-  chown -h ${script_user}:www-data ${site_path}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
-  chown -h -R ${script_user}:www-data ${site_path}/private/config &> /dev/null
+  if [ -n "${_priv_dir}" ]; then
+    chown -h -R ${script_user}:www-data ${_priv_dir} &> /dev/null
+    chown -h ${script_user}:www-data ${_priv_dir} &> /dev/null
+    chown -h ${script_user}:www-data ${_priv_dir}/{files,temp} &> /dev/null
+    chown -h ${script_user}:www-data ${_priv_dir}/files/backup_migrate &> /dev/null
+    chown -h ${script_user}:www-data ${_priv_dir}/files/backup_migrate/{manual,scheduled} &> /dev/null
+    chown -h -R ${script_user}:www-data ${_priv_dir}/config &> /dev/null
+  fi
 fi
 
 echo "Done setting proper ownership of site files and directories."

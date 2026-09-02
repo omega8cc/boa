@@ -359,7 +359,6 @@ vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
   rm -f  */*/sites/all/modules/*
   rm -f  */*/sites/sites.php
   rm -f  */*/local_drush_unlocked.pid
-  rm -f  */*/sites/development.services.yml
   rm -f  */*/sites/all/libraries/*.pid
 ```
 

@@ -1899,7 +1899,15 @@ _satellite_create_shared_dirs() {
   chown ${_USER}:${_USRG} ${_D}/000          &> /dev/null
   chown ${_USER}:${_USRG} ${_D}/000/core     &> /dev/null
   chown ${_USER}:${_USRG} ${_CORE}           &> /dev/null
-  chmod 777 ${_CORE} ${_D} /data /data/disk /data/conf &> /dev/null
+  ### 777 here made /data, /data/disk, /data/conf and the shared /data/all
+  ### store writable by every local user for the whole platform build below
+  ### (reverted only in _satellite_batch_cleanup) -- long enough to drop code
+  ### into a codebase every legacy site loads, or into the global config tree.
+  ### The build runs as ${_USER}, which the chown above already made the owner,
+  ### so owner-write is all it ever needed. These are the same modes
+  ### _satellite_batch_cleanup asserts at the end of the run.
+  chmod 0755 ${_D} &> /dev/null
+  chmod 0711 ${_CORE} /data /data/disk /data/conf &> /dev/null
 }
 
 #
