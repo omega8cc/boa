@@ -384,27 +384,32 @@ _enable_chattr() {
 _disable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
-  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
+  # Same tenant-plantable names as _enable_chattr, inverted harm: clearing +i
+  # through a planted link strips the immutable protection from a tree of the
+  # tenant's choosing (e.g. /var/aegir/.drush and its *.ini, which BOA locks on
+  # purpose). Skip a symlinked component instead of resolving it.
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ] && [ ! -L "/home/$1" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
         chattr -i /home/$1/
       fi
     else
-      if [ -d "/home/$1/platforms/" ]; then
+      if [ -d "/home/$1/platforms/" ] && [ ! -L "/home/$1/platforms" ]; then
         chattr -i /home/$1/platforms/
         chattr -i /home/$1/platforms/* &> /dev/null
       fi
     fi
-    if [ -d "/home/$1/.drush/" ]; then
+    if [ -d "/home/$1/.drush/" ] && [ ! -L "/home/$1/.drush" ]; then
       chattr -i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
+    if [ -d "/home/$1/.drush/usr/" ] && [ ! -L "/home/$1/.drush" ] \
+      && [ ! -L "/home/$1/.drush/usr" ]; then
       chattr -i /home/$1/.drush/usr/
     fi
-    if [ -f "/home/$1/.drush/php.ini" ]; then
+    if [ -f "/home/$1/.drush/php.ini" ] && [ ! -L "/home/$1/.drush" ]; then
       chattr -i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar/" ]; then
+    if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
       chattr -i /home/$1/.bazaar/
     fi
   fi
@@ -614,6 +619,10 @@ _le_reason() {
 # idempotency guard, so a worker must INHERIT it here and never re-derive it.
 night_emit_run_env() {
   mkdir -p /run/night
+  # Create it 0600 up front: the redirect below would otherwise leave the file
+  # at the root umask (0644) for the whole write, with the chmod only landing
+  # afterwards. /run is root-only, so this is hardening, not a live hole.
+  install -m 0600 /dev/null /run/night/run.env &> /dev/null
   {
     echo "export _NOW=\"${_NOW}\""
     echo "export _DOW=\"${_DOW}\""

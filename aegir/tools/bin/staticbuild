@@ -1204,7 +1204,6 @@ clean_platforms() {
     rm -f  */*/sites/all/modules/* ; \
     rm -f  */*/sites/sites.php ; \
     rm -f  */*/local_drush_unlocked.pid ; \
-    rm -f  */*/sites/development.services.yml ; \
     rm -f  */*/sites/all/libraries/*.pid ; \
     true"
 }
