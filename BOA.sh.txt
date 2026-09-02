@@ -1870,20 +1870,19 @@ _update_agents() {
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
     && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f81
 
-  # Re-fetch trigger for the Grav-aware lshell.conf. The sentinel MUST be a
-  # literal that exists in the shipped file: the wrapper dispatches tools as
-  # `grav gpm <verb>`, so the forbidden entry reads 'grav gpm self-upgrade'.
-  # A sentinel missing the tool token can never match, which would drop the
-  # ctrl and re-fetch this security-critical file on EVERY pass, on every
+  # Re-fetch trigger for the current lshell.conf. The sentinel MUST be a
+  # literal that exists in the shipped file (here the sub-account policy
+  # comment, "files, not code"). A sentinel that can never match would drop
+  # the ctrl and re-fetch this security-critical file on EVERY pass, on every
   # box, forever -- the ctrl mechanism exists to prevent exactly that
   # (as-shipped E2E catch).
-  if ! grep -q "grav gpm self-upgrade" /var/xdrago/conf/lshell.conf; then
+  if ! grep -q "sub-accounts: files, not code" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -1892,7 +1891,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f88.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f87.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
