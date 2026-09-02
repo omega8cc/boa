@@ -306,21 +306,24 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
     _MYDUMPER_TRX_OPT="--trx-tables=0"
   fi
-  ### --rows=-1 turns integer chunking off. A fixed --rows=N walks the whole
-  ### primary-key span in steps of N key values, so a sparse bigint key
-  ### (timestamp-derived IDs) had mydumper spin writing empty chunk files
-  ### until the box ran out of inodes; and the adaptive chunker used when
-  ### the flag is absent intermittently drops a whole chunk of a sparse-keyed
-  ### table while still exiting clean with metadata written. Chunking off
-  ### came out complete in every run, on Percona 5.7 and 8.4 alike.
-  ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
+  ### mydumper 1.x fixed the adaptive chunker: 0.21.x truncated a chunk's file
+  ### to 0 bytes when another thread's split landed past the last existing key,
+  ### exiting clean with metadata written. On 1.x the tables are chunked and
+  ### dumped in parallel again; older builds keep chunking off (--rows=-1). A
+  ### fixed --rows=N never comes back: it walks a sparse key span in N-key steps
+  ### until the box runs out of inodes.
+  _MYDUMPER_ROWS_OPT="--rows=-1"
+  case "${_MYQUICK_ITD}" in
+    [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
+  esac
+  ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
   mydumper \
     --defaults-file=/root/.my.cluster_root.cnf \
     --database=${_DB} \
     --host=localhost \
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
-    --rows=-1 \
+    ${_MYDUMPER_ROWS_OPT} \
     --build-empty-files \
     --threads=4 \
     --long-query-guard=900 \
