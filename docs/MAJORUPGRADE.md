@@ -91,6 +91,11 @@ The procedure discussed above automates major OS upgrades by running them in the
 - Devuan Chimaera => upgrade to Daedalus with `_CHIMAERA_TO_DAEDALUS=YES`
 - Devuan Beowulf => upgrade to Chimaera with `_BEOWULF_TO_CHIMAERA=YES`
 
+Devuan Daedalus (recommended) and Excalibur (latest) are the supported, tested
+hosts. Devuan Chimaera and Beowulf are deprecated: they remain only as hops on
+the way up and are not tested in any context, so a host still on either should
+be upgraded rather than kept.
+
 ### Debian to Devuan Major OS Upgrades
 
 - Debian 13 Trixie => upgrade to Excalibur with `_TRIXIE_TO_EXCALIBUR=YES`
