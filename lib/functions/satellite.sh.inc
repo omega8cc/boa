@@ -6465,12 +6465,13 @@ _satellite_child_b_install_drush() {
       fi
     fi
   fi
+  # Checked cd: a relative mv after a failed cd acts on the wrong tree.
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
-    cd ${_ROOT}/tools
+    cd ${_ROOT}/tools || return 1
     mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
     cp -af /opt/tools/drush/8/drush ${_ROOT}/tools/
   else
-    cd ${_ROOT}/tools
+    cd ${_ROOT}/tools || return 1
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
     fi
