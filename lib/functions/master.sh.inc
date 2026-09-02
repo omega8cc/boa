@@ -759,8 +759,14 @@ _hostmaster_dr_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Downloading drush ${_DRUSH_VERSION}..."
   fi
-  # Never run against an empty or missing root: the relative mv and the
-  # copy below would otherwise act on root's HOME and the filesystem root.
+  # Master-only helper: resolve the master home when the caller exported no
+  # _ROOT (the barracuda process), and never run against an empty, missing
+  # or '/' root -- the relative mv and the copy below would otherwise act on
+  # root's HOME and the filesystem root.
+  if [ -z "${_ROOT}" ] || [ ! -d "${_ROOT}" ]; then
+    _ROOT=$(getent passwd aegir 2> /dev/null | cut -d: -f6)
+    _ROOT="${_ROOT:-/var/aegir}"
+  fi
   if [ -z "${_ROOT}" ] || [ ! -d "${_ROOT}" ] || [ "${_ROOT}" = "/" ]; then
     _msg "OOPS: master home '${_ROOT}' unusable; Drush not refreshed"
     return 1
