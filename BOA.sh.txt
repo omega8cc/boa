@@ -4348,7 +4348,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f85 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f93 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f92 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
