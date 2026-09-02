@@ -32,6 +32,30 @@ _WEBG=www-data
 _THIS_DB_PORT=3306
 _ieni="--ignore-errors"
 
+### Copied verbatim from the shared library: a standalone tool cannot source
+### it, so the definition travels with every writer that needs it.
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 ###
 ### Avoid too many questions
 ###
@@ -782,6 +806,11 @@ _xoct_ssl_material_missing() {
 }
 
 _migrate_sites() {
+  ### Group of the tree these vhost/control files live in -- derived from the
+  ### PATH, because on a rename import ${_USR} is the destination account while
+  ### ${_oct} still names the source; 'users' on an unconverted box, so the
+  ### chowns below are unchanged there.
+  _OCT_GRP=$(_acct_group "${_USR}")
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     _Dom=`echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}'`
@@ -789,11 +818,11 @@ _migrate_sites() {
     _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
     if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:users ${_Vht}
+      chown ${_oct}:${_OCT_GRP} ${_Vht}
       chmod 600 ${_Vht}
     fi
     if [ -e "${_Vhd}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:users ${_Vhd}
+      chown ${_oct}:${_OCT_GRP} ${_Vhd}
       chmod 600 ${_Vhd}
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
@@ -819,7 +848,9 @@ _migrate_sites() {
         else
           _TGT_HM_USER="${_oct}"
         fi
-        chown ${_TGT_HM_USER}:users ${_Vht}
+        ### Derived inside the loop, right after the account it belongs to.
+        _TGT_HM_GRP=$(_acct_group "${_TGT_HM_USER}")
+        chown ${_TGT_HM_USER}:${_TGT_HM_GRP} ${_Vht}
         chmod 600 ${_Vht}
         if [ -e "${_Dir}/drushrc.php" ]; then
           sed -i "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g" ${_Dir}/drushrc.php
@@ -985,7 +1016,7 @@ EOFMYSQL
           && [ -d "${_USR}/static/control" ] \
           && [ ! -L "${_USR}/static/control" ]; then
           echo 3600 > ${_USR}/static/control/http-off.pid
-          chown -h ${_oct}:users ${_USR}/static/control/http-off.pid &> /dev/null
+          chown -h ${_oct}:${_OCT_GRP} ${_USR}/static/control/http-off.pid &> /dev/null
           echo "INFO: account ${_oct} http-off pid created"
         fi
         ###
@@ -1033,6 +1064,12 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
           _MYDUMPER_TRX_OPT="--trx-tables=0"
         fi
+        ### --rows=-1 turns integer chunking off: a fixed --rows=N walks the
+        ### whole primary-key span in steps of N key values (a sparse bigint
+        ### key spun out empty chunk files to inode exhaustion), and the
+        ### adaptive chunker used when the flag is absent intermittently
+        ### drops a whole chunk of a sparse-keyed table while exiting clean;
+        ### mirrors mysql_backup.sh.
         ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
         if mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
@@ -1040,7 +1077,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --defaults-file=/root/.my.cnf \
           --port=3306 \
           --outputdir=${_USR}/src/${_DBN}/ \
-          --rows=50000 \
+          --rows=-1 \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
@@ -1105,7 +1142,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               wait
               sed -i "s/_domain_name/${_Dom}/g" ${_Vhs}
               wait
-              chown ${_oct}:users ${_Vhs}
+              chown ${_oct}:${_OCT_GRP} ${_Vhs}
               chmod 600 ${_Vhs}
             elif [ -d "${_USR}/config/server_master/ssl.d/${_Dom}" ]; then
               ### The silent shape behind the manual "confirm https.* vhosts
@@ -1135,7 +1172,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             wait
             sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
             wait
-            chown ${_oct}:users ${_Vht}
+            chown ${_oct}:${_OCT_GRP} ${_Vht}
             chmod 600 ${_Vht}
             _XOCT_PROXY_OK=$(( ${_XOCT_PROXY_OK:-0} + 1 ))
             ### Remember what THIS run rewrote: a configtest failure must
@@ -1567,6 +1604,8 @@ _xoct_seed_target_control_pins() {
   ### succeeding there, so in exactly that case it never fires. It matters
   ### more now that renameaegirhost §2d rewrites this file during a rename:
   ### two writers, one of which was leaving it mis-owned.
+  ### Literal 'users' on purpose: this chown runs on the TARGET box, whose own
+  ### passes re-assert the group there; the group is per-box.
   ssh root@"${_t}" "chown ${_dAcct}.ftp:users ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
   return 0
 }
@@ -1619,6 +1658,8 @@ _xoct_sync_shell_credentials() {
         "${_e}" \
         "root@${_t}:/home/${_dst}.ftp/users/${_dst}.${_n}"
     done
+    ### Literal 'users' on purpose: this chown runs on the TARGET box, whose own
+    ### passes re-assert the group there; the group is per-box.
     ssh root@"${_t}" "chown -R ${_dst}.ftp:users /home/${_dst}.ftp/users; chmod 700 /home/${_dst}.ftp/users; chmod 600 /home/${_dst}.ftp/users/* 2>/dev/null; true" &> /dev/null
   fi
   for _d in "${_sUsr}"/clients/*/; do

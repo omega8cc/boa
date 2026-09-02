@@ -11,6 +11,28 @@ _THIS_DB_PORT=3306
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 # Remove dangerous stuff from the string.
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
@@ -170,13 +192,14 @@ EOFMYSQL
       echo "BYE!"
     else
       if [ -e "/data/disk/${_uname}" ]; then
+        _grp=$(_acct_group "${_uname}")
         _L_SYS="/data/disk/${_uname}/.${_uname}.pass.txt"
         cp /data/disk/${_uname}/.drush/server_localhost.alias.drushrc.php \
           ${_vBs}/server_localhost.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
         cp /data/disk/${_uname}/.drush/server_master.alias.drushrc.php \
           ${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
         _check_generate
-        chown ${_uname}:users ${_L_SYS} &> /dev/null
+        chown ${_uname}:${_grp} ${_L_SYS} &> /dev/null
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
           if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
@@ -246,7 +269,7 @@ EOFMYSQL
         echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
         echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
         echo "\$oct_db_dirs = \"/data/disk/${_uname}/backups\";" >> ${_L_SYS_PHP}
-        chown ${_uname}:users ${_L_SYS_PHP}
+        chown ${_uname}:${_grp} ${_L_SYS_PHP}
         chmod 0600 ${_L_SYS_PHP}
         echo "INFO: Fixed Ægir Satellite Instance system user=${_uname}"
         echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"

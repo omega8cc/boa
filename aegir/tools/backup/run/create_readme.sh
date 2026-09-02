@@ -5,17 +5,40 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _sPid="f61"
 
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 # Directory for storing README files
 _BASE_DIR="/data/disk"
 
 # Function to ensure the README directory exists
 _ensure_readme_dir() {
   _user=$1
+  _grp=$(_acct_group "${_user}")
   _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
   _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.${_sPid}.credentials.dir.ctrl"
   if [ ! -d "${_credentials_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
     mkdir -p "${_credentials_dir}"
-    chown -R ${_user}.ftp:users "${_credentials_dir}"
+    chown -R ${_user}.ftp:${_grp} "${_credentials_dir}"
     chmod 700 "${_credentials_dir}"
     touch "${_dir_ctrl_file}"
     echo "Created credentials directory for user: ${_user}"
@@ -25,6 +48,7 @@ _ensure_readme_dir() {
 # Function to create a README file for a specific user
 _create_readme_file() {
   _user=$1
+  _grp=$(_acct_group "${_user}")
   _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
   _readme_file="${_credentials_dir}/README.txt"
   _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.${_sPid}.credentials.readme.ctrl"
@@ -125,7 +149,7 @@ Linode Object Storage by Akamai
 
 EOF
     chmod 600 "${_readme_file}"
-    chown ${_user}.ftp:users "${_readme_file}"
+    chown ${_user}.ftp:${_grp} "${_readme_file}"
     echo "Created README file for user: ${_user}"
     touch "${_readme_ctrl_file}"
   else

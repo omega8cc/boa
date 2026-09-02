@@ -14,6 +14,35 @@
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
 
+### Same fNN skew as the fallbacks below: this file can land ahead of a
+### night.inc.sh that has no _acct_group; an undefined function returns 127
+### with empty output, and `chown user:` then resets the group to the user's
+### login group instead of the derived one. Carry the library body as the
+### fallback.
+if ! declare -F _acct_group > /dev/null 2>&1; then
+  _acct_group() {
+    # Group that owns an account's tree. Derived, never a literal: an account
+    # converted to a private primary group named after itself gets that group,
+    # everything else (an unconverted box, root, www-data, an adopted odd
+    # group) falls back to 'users' -- so a tool landing on an unconverted or
+    # half-converted box leaves it exactly as it is today. Box-wide paths
+    # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+    # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+    # or /var/aegir (the master keeps 'users' in this phase).
+    local _a="${1}" _g
+    case "${_a}" in
+      /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+      /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+      */*) echo "users"; return 0 ;;
+    esac
+    _a="${_a%%.*}"
+    [ -n "${_a}" ] || { echo "users"; return 0; }
+    _g=$(id -gn "${_a}" 2> /dev/null)
+    [ "${_g}" = "${_a}" ] || _g="users"
+    echo "${_g}"
+  }
+fi
+
 ### night.inc.sh carries its own fNN serial and is fetched separately, so a box
 ### can briefly hold this file alongside an older library that predates the
 ### symlink guards. An undefined function returns 127 and, with no set -e here,
@@ -1399,6 +1428,13 @@ _cleanup_ghost_platforms() {
 }
 
 _fix_seven_core_patch() {
+  ### Derive the owning group from the PLATFORM PATH, never a literal and never
+  ### the account: _Plr may resolve under the shared /data/all or /data/disk/all
+  ### store a legacy instance still hosts sites on, and the helper answers
+  ### 'users' for those (and on an unconverted box), the account's own group
+  ### only for a tree under /data/disk/<account>.
+  local _grp
+  _grp=$(_acct_group "${_Plr}")
   ### profiles/ is 0775 group 'users' on a static platform, so this marker path
   ### is tenant-plantable, and -f is FALSE for a dangling link -- the two
   ### "echo fixed >" writes below would then create the link's TARGET as root.
@@ -1420,7 +1456,7 @@ _fix_seven_core_patch() {
       ### while a planted leaf is -type l and never matches. No trailing slash
       ### on a directory -- that would make find resolve a planted database/
       ### and walk the target. Same shape as the *.php pass in _fix_permissions.
-      chown -h ${_HM_U}:users ${_Plr}/includes/database/*.inc &> /dev/null
+      chown -h ${_HM_U}:${_grp} ${_Plr}/includes/database/*.inc &> /dev/null
       find ${_Plr}/includes/database/*.inc -type f \
         -exec chmod 0664 {} \; &> /dev/null
       echo fixed > ${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info
@@ -1429,7 +1465,7 @@ _fix_seven_core_patch() {
     ### names; -h for the chown, and for the chmod hand find the shell-expanded
     ### leaves -- never a directory with a trailing slash, which find would
     ### resolve through a planted link.
-    chown -h ${_HM_U}:users ${_Plr}/profiles/*-fix.info &> /dev/null
+    chown -h ${_HM_U}:${_grp} ${_Plr}/profiles/*-fix.info &> /dev/null
     find ${_Plr}/profiles/*-fix.info -type f \
       -exec chmod 0664 {} \; &> /dev/null
   fi
@@ -1525,6 +1561,14 @@ _fix_expected_symlinks() {
 }
 
 _fix_permissions() {
+  ### Derive the owning group from the PLATFORM PATH (re-derived from the site
+  ### path below), never a literal and never the account: _Plr and _Dir may
+  ### resolve under the shared /data/all or /data/disk/all store a legacy
+  ### instance still hosts sites on, and the helper answers 'users' there (and
+  ### on an unconverted box), the account's own group only for a tree under
+  ### /data/disk/<account>. Local, so nothing leaks across the per-site loop.
+  local _grp
+  _grp=$(_acct_group "${_Plr}")
   ### modules,themes,libraries - profile level in ~/static
   searchStringT="/static/"
   case ${_Plr} in
@@ -1556,7 +1600,7 @@ _fix_permissions() {
         ### symlink given as its starting point. -h also stops the recursion
         ### rewriting ownership through the legitimate o_contrib* links into
         ### the shared distro tree. Same shape as the files leg at 1550.
-        chown -h -R ${_HM_U}:users \
+        chown -h -R ${_HM_U}:${_grp} \
           ${_Plr}/sites/all/{modules,themes,libraries}/* &> /dev/null
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info
       fi
@@ -1565,7 +1609,7 @@ _fix_permissions() {
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info" ]; then
         ### -h for the same reason as the lock branch above; here the planted
         ### target would be handed straight to the tenant's shell user.
-        chown -h -R ${_HM_U}.ftp:users \
+        chown -h -R ${_HM_U}.ftp:${_grp} \
           ${_Plr}/sites/all/{modules,themes,libraries}/* &> /dev/null
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info
       fi
@@ -1573,7 +1617,7 @@ _fix_permissions() {
     ### -h on the chown and find -P (never a bare glob) on the chmods: the
     ### sites/* entries are tenant-creatable names once sites/ takes group
     ### write below, so none of them may be followed.
-    chown -h ${_HM_U}:users \
+    chown -h ${_HM_U}:${_grp} \
       ${_Plr}/sites/all/drush/drushrc.php \
       ${_Plr}/sites \
       ${_Plr}/sites/* \
@@ -1667,11 +1711,15 @@ _fix_permissions() {
     if [ -e "${_Dir}/aegir.services.yml" ]; then
       rm -f ${_Dir}/aegir.services.yml
     fi
+    ### Site-level writes: re-derive from the SITE path (see the top of this
+    ### function) -- a site can sit on the shared store even when its platform
+    ### variable does not.
+    _grp=$(_acct_group "${_Dir}")
     ### -h on both: the site dir is owned by the tenant's shell user in
     ### unlock.info mode, so each of these names is plantable, and a bare chown
     ### follows the link (settings.php -> /etc/shadow hands root's shadow file
     ### to the tenant). No-op on the regular files they normally are.
-    chown -h ${_HM_U}:users ${_Dir} &> /dev/null
+    chown -h ${_HM_U}:${_grp} ${_Dir} &> /dev/null
     chown -h ${_HM_U}:www-data \
       ${_Dir}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
     find ${_Dir}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
@@ -1696,17 +1744,17 @@ _fix_permissions() {
       ### -h: these three dirs are 02775 group 'users' (see the find below), so
       ### every glob hit is a tenant-plantable name and chown -R follows a
       ### symlink given as its starting point. Same shape as the files leg.
-      chown -h -R ${_HM_U}:users \
+      chown -h -R ${_HM_U}:${_grp} \
         ${_Dir}/{modules,themes,libraries}/* &> /dev/null
     elif [ -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_Plr}/skip.info" ]; then
-      chown -h -R ${_HM_U}.ftp:users \
+      chown -h -R ${_HM_U}.ftp:${_grp} \
         ${_Dir}/{modules,themes,libraries}/* &> /dev/null
     fi
     ### -h: all four are names in a site dir the tenant owns under
     ### unlock.info, and only modules is covered by the _validate_ctrl_dir gate
     ### at the head of the loop. None is ever legitimately a symlink.
-    chown -h ${_HM_U}:users \
+    chown -h ${_HM_U}:${_grp} \
       ${_Dir}/drushrc.php \
       ${_Dir}/{modules,themes,libraries} &> /dev/null
     find ${_Dir}/{modules,themes,libraries} -type d -exec \
