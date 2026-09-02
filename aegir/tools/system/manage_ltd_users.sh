@@ -1072,6 +1072,20 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _NEW_STATIC_FILES="${_pthParentUsr}/static/files/${_rawDom}/"
   _PATH_DOM="$(readlink -n "${_Domain}")"
   _PATH_DOM=${_PATH_DOM//[^a-zA-Z0-9._\/-]/}
+  # Drupal (and Backdrop) sites only. A Grav capsule or a Textpattern site
+  # directory is the whole codebase, so a per-client sub-account reaching it
+  # would hold full code and database access there, against the files-only
+  # policy these accounts have. Skip such a link and drop it, so neither the
+  # lshell path nor the SFTP tree can traverse it (provision no longer
+  # creates them; this converges boxes that still carry one).
+  if [ -n "${_PATH_DOM}" ] && [ -d "${_PATH_DOM}" ] \
+    && [ ! -f "${_PATH_DOM}/settings.php" ] \
+    && { { [ -f "${_PATH_DOM}/bin/grav" ] && [ -f "${_PATH_DOM}/system/defines.php" ]; } \
+      || { [ -f "${_PATH_DOM}/public/index.php" ] && [ -d "${_PATH_DOM}/admin" ]; }; }; then
+    echo "Skipping non-Drupal site ${_Domain} at ${_Client}"
+    [ -L "${_Domain}" ] && rm -f "${_Domain}"
+    continue
+  fi
   # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
   # Fail-closed: empty when NONE or when MORE THAN ONE is mounted -- multi-mount is
   # unsupported fleet-wide and cannot be disambiguated, so refuse to guess.
