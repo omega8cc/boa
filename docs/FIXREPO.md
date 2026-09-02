@@ -75,9 +75,12 @@ already share `users` as their primary group.
 
 **Octopus install and upgrade runs** reset a handful of top-level
 `module*` directories under `~/static` globs to `0775`, and **platform
-Verify** re-tightens a few specific paths on registered platforms (`sites`
-to `0751`, the root-level `*.php` files to `0644`). Re-run `fixrepo` after
-those events if one of the affected paths matters to your workflow.
+Verify** re-tightens a few specific paths on registered platforms (the
+root-level `*.php` files to `0644`, and `sites` to `0751` on built-in
+platforms; on a tenant Composer codebase under `~/static` it asserts the
+group-writable `02771` instead, with `sites/default` at `02775`, so
+Drupal's scaffold plugin can write there). Re-run `fixrepo` after those
+events if one of the affected paths matters to your workflow.
 
 ## Security considerations
 

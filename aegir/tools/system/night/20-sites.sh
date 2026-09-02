@@ -1427,8 +1427,14 @@ _fix_permissions() {
     rm -f ${_Plr}/profiles/*permissions*.info
     rm -f ${_Plr}/sites/all/permissions-fix*
   fi
+  ### sites and sites/all are names a tenant can plant as symlinks (the
+  ### docroot is group-writable), and every root op below walks THROUGH
+  ### them; -h and find -P protect only the final component. A symlinked
+  ### skeleton is never legitimate, so leave such a platform alone.
   if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ] \
-    && [ -e "${_Plr}" ]; then
+    && [ -e "${_Plr}" ] \
+    && [ ! -L "${_Plr}/sites" ] \
+    && [ ! -L "${_Plr}/sites/all" ]; then
     mkdir -p ${_Plr}/sites/all/{modules,themes,libraries,drush}
     find ${_Plr}/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
       -type f -exec rm -f {} \; &> /dev/null
@@ -1447,7 +1453,10 @@ _fix_permissions() {
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info
       fi
     fi
-    chown ${_HM_U}:users \
+    ### -h on the chown and find -P (never a bare glob) on the chmods: the
+    ### sites/* entries are tenant-creatable names once sites/ takes group
+    ### write below, so none of them may be followed.
+    chown -h ${_HM_U}:users \
       ${_Plr}/sites/all/drush/drushrc.php \
       ${_Plr}/sites \
       ${_Plr}/sites/* \
@@ -1455,12 +1464,23 @@ _fix_permissions() {
       ${_Plr}/sites/all \
       ${_Plr}/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 ${_Plr}/sites &> /dev/null
-    chmod 0755 ${_Plr}/sites/* &> /dev/null
-    chmod 0644 ${_Plr}/sites/*.php &> /dev/null
-    chmod 0664 ${_Plr}/autoload.php &> /dev/null
-    chmod 0644 ${_Plr}/sites/*.txt &> /dev/null
-    chmod 0644 ${_Plr}/sites/*.yml &> /dev/null
-    chmod 0755 ${_Plr}/sites/all/drush &> /dev/null
+    find ${_Plr}/sites -mindepth 1 -maxdepth 1 -type d -exec \
+      chmod 0755 {} \; &> /dev/null
+    find ${_Plr}/sites -mindepth 1 -maxdepth 1 -type f \
+      \( -name "*.php" -o -name "*.txt" -o -name "*.yml" \) -exec \
+      chmod 0644 {} \; &> /dev/null
+    [ -L "${_Plr}/autoload.php" ] || chmod 0664 ${_Plr}/autoload.php &> /dev/null
+    [ -L "${_Plr}/sites/all/drush" ] || chmod 0755 ${_Plr}/sites/all/drush &> /dev/null
+    ### Tenant composer codebases: the two directories core's composer
+    ### scaffold writes into stay group-writable for the shell user
+    ### (omega8cc/boa#1936); mirrors fix-drupal-platform-permissions.sh.
+    if [[ "${_Plr}" =~ "/static/" ]] \
+      && [ -e "${_Plr}/core/lib/Drupal.php" ]; then
+      chmod 02771 ${_Plr}/sites &> /dev/null
+      if [ -d "${_Plr}/sites/default" ] && [ ! -L "${_Plr}/sites/default" ]; then
+        chmod 02775 ${_Plr}/sites/default &> /dev/null
+      fi
+    fi
     find ${_Plr}/sites/all/{modules,themes,libraries} -type d -exec \
       chmod 02775 {} \; &> /dev/null
     find ${_Plr}/sites/all/{modules,themes,libraries} -type f -exec \
