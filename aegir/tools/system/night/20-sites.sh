@@ -153,22 +153,22 @@ _check_if_required_with_drush8() {
       _RET_TEST=$(echo "${_REI_TEST}" | grep "Required by.*testing" 2>&1)
       if [[ "${_RET_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${_Dom} == 4 == via ${_RET_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${_Dom} == 4 == via ${_RET_TEST}"
       fi
       _REH_TEST=$(echo "${_REI_TEST}" | grep "Required by.*hacked" 2>&1)
       if [[ "${_REH_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${_Dom} == 5 == via ${_REH_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${_Dom} == 5 == via ${_REH_TEST}"
       fi
       _RED_TEST=$(echo "${_REI_TEST}" | grep "Required by.*devel" 2>&1)
       if [[ "${_RED_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${_Dom} == 6 == via ${_RED_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${_Dom} == 6 == via ${_RED_TEST}"
       fi
       _REW_TEST=$(echo "${_REI_TEST}" | grep "Required by.*watchdog_live" 2>&1)
       if [[ "${_REW_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${_Dom} == 7 == via ${_REW_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${_Dom} == 7 == via ${_REW_TEST}"
       fi
     fi
     _Profile=$(_run_drush8_nosilent_cmd "${_vGet} ^install_profile$" \
