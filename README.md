@@ -108,10 +108,10 @@ Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/
 
 ### Devuan (recommended)
 
-- Excalibur (supported, but only with Percona 8.4)
 - Daedalus (default, with Percona 5.7, 8.0 or 8.4)
-- Chimaera (supported but upgrade recommended)
-- Beowulf (supported for upgrades)
+- Excalibur (supported, but only with Percona 8.4)
+- Chimaera (deprecated, not tested in any context - upgrade to Daedalus)
+- Beowulf (deprecated, not tested in any context - a hop on the way up only)
 
 ### Debian (for migration)
 
@@ -119,8 +119,8 @@ Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/
 - Bookworm (supported only as a base for migration to Devuan)
 - Bullseye (supported only as a base for migration to Devuan)
 - Buster (supported only as a base for migration to Devuan)
-- Stretch (deprecated but still works, please upgrade to Chimaera)
-- Jessie (deprecated but still works, please upgrade to Chimaera)
+- Stretch (deprecated, not tested - migrate up the chain to Devuan Daedalus)
+- Jessie (deprecated, not tested - migrate up the chain to Devuan Daedalus)
 
 ## Project Roadmap
 
