@@ -416,6 +416,13 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
     _MYDUMPER_TRX_OPT="--trx-tables=0"
   fi
+  ### --rows=-1 turns integer chunking off. A fixed --rows=N walks the whole
+  ### primary-key span in steps of N key values, so a sparse bigint key
+  ### (timestamp-derived IDs) had mydumper spin writing empty chunk files
+  ### until the box ran out of inodes; and the adaptive chunker used when
+  ### the flag is absent intermittently drops a whole chunk of a sparse-keyed
+  ### table while still exiting clean with metadata written. Chunking off
+  ### came out complete in every run, on Percona 5.7 and 8.4 alike.
   ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
   mydumper \
     --defaults-file=/root/.my.cnf \
@@ -423,7 +430,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --host=localhost \
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
-    --rows=50000 \
+    --rows=-1 \
     --build-empty-files \
     --threads=4 \
     --long-query-guard=900 \

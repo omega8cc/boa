@@ -83,6 +83,28 @@ _FROM_STATE=NO
 
 ###-------------HELPERS----------------###
 
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 _msg()  { echo "A2B-S2 [$(date +%T 2>/dev/null)] ==> $*" | tee -a "${_LOG}"; }
 _info() { echo "A2B-S2 [$(date +%T 2>/dev/null)] ::  $*" | tee -a "${_LOG}"; }
 _alrt() { echo "A2B-S2 [$(date +%T 2>/dev/null)] !!  $*" | tee -a "${_LOG}" >&2; }
@@ -230,16 +252,19 @@ _marker_has() { [[ -e "$(_marker "$1")" ]]; }
 _php_base() { echo "/var/opt/a2b-php"; }
 _php_dir() { echo "$(_php_base)/${_ACCOUNT}"; }
 _php_tmp() {
-  local _b _d _f
+  local _b _d _f _grp
   _b="$(_php_base)"
   _d="$(_php_dir)"
+  # the per-account staging dir and its files are handed to oN - derive the
+  # account's own group instead of assuming the box-wide one
+  _grp="$(_acct_group "${_ACCOUNT}")"
   [[ -L "${_b}" ]] && _die "${_b} is a symlink - refusing to stage php scripts"
   mkdir -p "${_b}" && chown root:root "${_b}" && chmod 0755 "${_b}"
   [[ -L "${_d}" ]] && _die "${_d} is a symlink - refusing to stage php scripts"
-  mkdir -p "${_d}" && chown "${_ACCOUNT}:users" "${_d}" && chmod 700 "${_d}"
+  mkdir -p "${_d}" && chown "${_ACCOUNT}:${_grp}" "${_d}" && chmod 700 "${_d}"
   _f="$(mktemp "${_d}/php.XXXXXX")" || _die "cannot create php staging file"
   [[ -L "${_f}" ]] && _die "${_f} is a symlink - refusing to stage php scripts"
-  chown "${_ACCOUNT}:users" "${_f}" && chmod 600 "${_f}"
+  chown "${_ACCOUNT}:${_grp}" "${_f}" && chmod 600 "${_f}"
   echo "${_f}"
 }
 
@@ -1255,6 +1280,8 @@ verb_transfer() {
         # even read its own drushrc.php and every import task died on it;
         # land it account-owned, BOA's verify +
         # agents apply the fork's perm scheme from there
+        # literal 'users' stays: this chown runs on the TARGET box, where the
+        # group exists per box and the destination re-asserts it on its own passes
         ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:users ${_dst}/static/a2b/${_plat}" \
           || _die "platform ${_plat} chown failed on target"
         _done_plat="${_done_plat}${_plat} "
@@ -1459,7 +1486,7 @@ _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
   # silently skip the second site's pool line
   if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' "${_ctl}" 2>/dev/null; then
     echo "${_uri} ${_FPM_WANT}" >> "${_ctl}"
-    chown "${_ACCOUNT}:users" "${_ctl}" 2>/dev/null
+    chown "${_ACCOUNT}:$(_acct_group "${_ACCOUNT}")" "${_ctl}" 2>/dev/null
     _info "site ${_uri}: multi-fpm.info -> ${_FPM_WANT}"
   fi
   return 0

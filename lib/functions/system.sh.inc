@@ -5083,8 +5083,22 @@ _get_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_eleven"
   fi
+  # The extraction below lands in the CURRENT directory, so the target must
+  # exist and the cd must be checked: on a box where it did not exist the
+  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
+  # where Drush 10/11 then picked it up as a command-file path. Heal that
+  # leftover here, only when it has the extracted shape and is not the
+  # install itself.
+  mkdir -p /opt/tools/drush/11
   rm -rf /opt/tools/drush/11/*
-  cd /opt/tools/drush/11/
+  if ! cd /opt/tools/drush/11/; then
+    _msg "OOPS: /opt/tools/drush/11 is not enterable; Drush 11 not installed"
+    return 1
+  fi
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+    && [ "$(readlink -f /opt/tools/drush/11/drush 2> /dev/null)" != "/drush" ]; then
+    rm -rf /drush
+  fi
   _get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
   touch /opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5098,8 +5112,22 @@ _get_drush_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_ten"
   fi
+  # The extraction below lands in the CURRENT directory, so the target must
+  # exist and the cd must be checked: on a box where it did not exist the
+  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
+  # where Drush 10/11 then picked it up as a command-file path. Heal that
+  # leftover here, only when it has the extracted shape and is not the
+  # install itself.
+  mkdir -p /opt/tools/drush/10
   rm -rf /opt/tools/drush/10/*
-  cd /opt/tools/drush/10/
+  if ! cd /opt/tools/drush/10/; then
+    _msg "OOPS: /opt/tools/drush/10 is not enterable; Drush 10 not installed"
+    return 1
+  fi
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+    && [ "$(readlink -f /opt/tools/drush/10/drush 2> /dev/null)" != "/drush" ]; then
+    rm -rf /drush
+  fi
   _get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
   touch /opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5113,8 +5141,22 @@ _get_drush_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_eight"
   fi
+  # The extraction below lands in the CURRENT directory, so the target must
+  # exist and the cd must be checked: on a box where it did not exist the
+  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
+  # where Drush 10/11 then picked it up as a command-file path. Heal that
+  # leftover here, only when it has the extracted shape and is not the
+  # install itself.
+  mkdir -p /opt/tools/drush/8
   rm -rf /opt/tools/drush/8/*
-  cd /opt/tools/drush/8/
+  if ! cd /opt/tools/drush/8/; then
+    _msg "OOPS: /opt/tools/drush/8 is not enterable; Drush 8 not installed"
+    return 1
+  fi
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+    && [ "$(readlink -f /opt/tools/drush/8/drush 2> /dev/null)" != "/drush" ]; then
+    rm -rf /drush
+  fi
   _get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
   touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5133,7 +5175,10 @@ _get_bee() {
   [ "${_BACKDROP_SUPPORT}" = "YES" ] || return 0
   mkdir -p /opt/tools/bee
   rm -rf /opt/tools/bee/*
-  cd /opt/tools/bee/
+  if ! cd /opt/tools/bee/; then
+    _msg "OOPS: /opt/tools/bee is not enterable; bee not installed"
+    return 1
+  fi
   _get_dev_ext "bee.tar.gz"
   ### The stamp must certify a landed bee only; a stamp over an empty dir
   ### hides a failed fetch from operators reading the ctrl state.
@@ -11015,7 +11060,7 @@ _lshell_install_upgrade() {
     _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_CHK_VRN=0.10
+  _LSHELL_CHK_VRN=0.11.3
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -11040,7 +11085,9 @@ _lshell_install_upgrade() {
       _msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
     _apt_clean_update
-    for _PKG in python3-pip python3-setuptools; do
+    # 0.11 needs pyparsing at runtime and setuptools>=61 to build; the Debian
+    # packages satisfy both without a PyPI round-trip.
+    for _PKG in python3-pip python3-setuptools python3-pyparsing; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -11067,8 +11114,10 @@ _lshell_install_upgrade() {
       sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
       wait
     done
-    rm -rf /usr/local/lib/python*/site-packages/lshell*
-    rm -rf /usr/local/lib/python*/dist-packages/lshell*
+    # No pre-emptive removal of the installed package: pip replaces the
+    # previous dist only after the new one has BUILT, so a failed fetch or
+    # build leaves the old lshell in place instead of locking every shell
+    # user out. Verify the result and say so when it did not land.
     cd /var/opt/lshell-${_LSHELL_VRN}
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
@@ -11077,6 +11126,10 @@ _lshell_install_upgrade() {
       _mrun "${_usePip} install . --break-system-packages --root-user-action ignore"
     else
       _mrun "${_usePip} install . "
+    fi
+    _LSHELL_NOW=$(${_PATH_LSHELL} --version 2>&1 | tr -d "\n" | cut -d"-" -f2 | awk '{ print $1}' 2>&1)
+    if [ "${_LSHELL_NOW}" != "${_LSHELL_CHK_VRN}" ]; then
+      _msg "OOPS: lshell ${_LSHELL_VRN} did not install (have: ${_LSHELL_NOW}); previous version kept"
     fi
     if [ "${_STATUS}" = "UPGRADE" ]; then
       [ -f "/etc/lshell.conf-bak-${_NOW}" ] && cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
