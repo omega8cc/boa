@@ -79,8 +79,12 @@ and restores the default protection.
 - **BOA-managed files stay managed.** `settings.php` and friends remain
   owned by the backend user and read-only, and the `sites/` directory
   skeleton and a few managed container directories stay owned by the
-  backend user even while unlocked — that does not affect composer or
-  git.
+  backend user even while unlocked. That does not affect git, and it does
+  not affect composer either: on a codebase you own under `~/static`, the
+  two directories Drupal's scaffold plugin writes into (`sites/` and
+  `sites/default/`) stay group-writable for your shell user, so a composer
+  run can refresh its scaffold files there instead of stopping with
+  `Failed to make the directory containing ... writable`.
 - **The nightly permission sweep still runs.** Directories `0775`, files
   `0664`, hardened paths re-locked to `0400` — only the *ownership*
   direction follows `unlock.info`.

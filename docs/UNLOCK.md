@@ -25,8 +25,14 @@ platform, tracked by marker files under `~/log/ctrl/`):
 - **Platform level** (every registered platform, in addition to the pass
   above): `sites/all/{modules,themes,libraries}/*` chowned to `oN:users`;
   the `sites/` skeleton re-asserted (`sites` `0751`, `sites/*` `0755`,
-  `sites/*.php` `0644`); stray code archives (`*.tar`, `*.tar.gz`,
-  `*.zip`) inside `sites/all` trees are deleted.
+  `sites/*.php` `0644`; on a tenant Composer codebase under `~/static` the
+  two directories Drupal's scaffold plugin writes into take group write
+  instead, `sites` `02771` and `sites/default` `02775`, so a tenant
+  composer run can refresh its scaffold files there; others keep
+  execute-only on `sites`, every `sites/<uri>` stays `0755`, and a
+  symlinked `sites` or `sites/all` makes the pass skip the platform);
+  stray code archives (`*.tar`, `*.tar.gz`, `*.zip`) inside `sites/all`
+  trees are deleted.
 - **Site level**: each site's `{modules,themes,libraries}/*` chowned to
   `oN:users` with directories `02775` and files `0664`; settings-class
   files (`settings.php`, `local.settings.php`, `civicrm.settings.php`)
@@ -60,8 +66,9 @@ code in neither state.
   codebases.
 
 Platforms that carry **no registered site** are never visited by the
-nightly pass at all — their ownership and permissions are entirely manual
-(see [FIXREPO.md](FIXREPO.md) for the group-write repair tool for such
+nightly pass at all; a platform Verify still applies the ownership and
+permission map, so only an unregistered, never-verified tree is entirely
+manual (see [FIXREPO.md](FIXREPO.md) for the group-write repair tool for such
 trees).
 
 ## Operator knobs
