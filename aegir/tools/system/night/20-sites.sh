@@ -172,6 +172,7 @@ _check_if_required_with_drush8() {
       fi
     fi
     _Profile=$(_run_drush8_nosilent_cmd "${_vGet} ^install_profile$" \
+      | grep "^install_profile:" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
@@ -410,7 +411,11 @@ _fix_user_register_protection_with_vSet() {
   _sync_user_register_protection_ini_vars
   if [ "${_IGNORE_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ ! -e "${_Plr}/core" ]; then
+    # Keep only the variable's own line before the field split: the stream can
+    # carry other text (a wrapper diagnostic, a shell notice), and the filters
+    # below would fold it into the value instead of rejecting it.
     _Prm=$(_run_drush8_nosilent_cmd "${_vGet} ^user_register$" \
+      | grep "^user_register:" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
@@ -803,6 +808,7 @@ _fix_modules() {
     _AUTO_CNF_PF_DL=NO
     if [ "${_PRIV_TEST_RESULT}" = "OK" ]; then
       _Pri=$(_run_drush8_nosilent_cmd "${_vGet} ^file_default_scheme$" \
+        | grep "^file_default_scheme:" \
         | cut -d: -f2 \
         | awk '{ print $1}' \
         | sed "s/['\"]//g" \

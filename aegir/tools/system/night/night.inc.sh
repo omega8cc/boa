@@ -446,10 +446,16 @@ _disable_chattr() {
 # stdout became part of that value: the timestamp survived the digits-only
 # filter in _fix_user_register_protection_with_vSet and user_register read as
 # a number like 20020120 instead of 0/1/2, which no branch of the check ever
-# acts on. Every night process joins stderr into its log (owl.sh redirects
+# acts on (an unset variable read as non-empty the same way). Every process
+# that runs a wrapper joins stderr into its log (owl.sh redirects
 # _daily_action and each 10-account.sh subprocess with 2>&1), so the line
-# still lands in the same log as before; the callers that capture 2>&1 match
-# a fixed drush phrase, never a parsed value, so it is harmless there.
+# reaches the same log, now also from the calls whose stdout a caller
+# captures, where it used to vanish into the value. Callers that fold stderr
+# into their capture on purpose (2>&1, for drush's own messages) still see
+# the line: they pattern-match rather than parse, and the pml probes match
+# "($m)" while the echoed command line carries the caller's literal "\($m\)",
+# so the line cannot satisfy that test -- keep those backslashes if the
+# probes are ever reworked.
 
 _run_drush8_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
