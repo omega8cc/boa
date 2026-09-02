@@ -1678,7 +1678,7 @@ _fix_permissions() {
     ### The hostmaster site's drushrc.php carries the instance DB user (ALL
     ### PRIVILEGES) and only the backend user, its owner, ever reads it:
     ### no group read, since group users is box-wide.
-    if [[ "${_Dir}" =~ /aegir/distro/ ]] && [ -f "${_Dir}/drushrc.php" ] \
+    if [[ "${_Dir}" =~ /aegir/(distro|host_master)/ ]] && [ -f "${_Dir}/drushrc.php" ] \
       && [ ! -L "${_Dir}/drushrc.php" ]; then
       chmod 0400 ${_Dir}/drushrc.php &> /dev/null
     fi

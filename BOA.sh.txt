@@ -217,6 +217,20 @@ if [ ! -e "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
   fi
   touch "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid"
 fi
+### One-shot fleet heal: the hostmaster site's drushrc.php carries the
+### instance DB user (ALL PRIVILEGES) and only its owner ever reads it, yet
+### it sat at 0440 with group users, a group every shell account on the box
+### is in. Provision now writes it 0400 and the permission passes keep it
+### there; this closes the gap on every box before those tools arrive.
+### Real files only: never chmod through a planted link. Runs once per box
+### per stamp serial; decrement the serial to re-run fleet-wide.
+if [ ! -e "${_pthLog}/hostmaster-drushrc-0400.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+  for _hmRc in /var/aegir/host_master/*/sites/*/drushrc.php \
+    /data/disk/*/aegir/distro/*/sites/*/drushrc.php; do
+    [ -f "${_hmRc}" ] && [ ! -L "${_hmRc}" ] && chmod 0400 "${_hmRc}" &> /dev/null
+  done
+  touch "${_pthLog}/hostmaster-drushrc-0400.ctrl.f99.${_tRee}.${_xSrl}.pid"
+fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
 [ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
@@ -1715,7 +1729,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f97
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f76
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f76
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f74
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f73
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f71
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f79
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f79
@@ -4255,7 +4269,7 @@ CSFSTANDBY
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f91
-    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f89
+    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f88
     _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f94
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f94
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f97

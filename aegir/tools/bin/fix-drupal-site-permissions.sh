@@ -282,7 +282,7 @@ find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
 ### The hostmaster site's drushrc.php carries the instance DB user (ALL
 ### PRIVILEGES) and only the backend user, its owner, ever reads it: no group
 ### read, since group users is box-wide.
-if [[ "${site_path}" =~ /aegir/distro/ ]]; then
+if [[ "${site_path}" =~ /aegir/(distro|host_master)/ ]]; then
   _chmod_safe 0400 "${site_path}/drushrc.php"
 fi
 _chmod_safe 0640 "${site_path}/civicrm.settings.php"
