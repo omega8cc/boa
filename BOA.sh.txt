@@ -1713,10 +1713,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f02
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f95
-    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f83 --guard mysql_backup.sh
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f81 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f86
-    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f86 --guard mysql_cluster_backup.sh
+    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f84 --guard mysql_cluster_backup.sh
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f65
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f80
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f83
@@ -3092,6 +3092,119 @@ _if_fix_lshell() {
   fi
 }
 
+###
+### The dump callers chunk large tables in parallel again on mydumper 1.x
+### and reach every box within minutes of a publish, while the package pin
+### in BARRACUDA.sh.txt lands only on a barracuda pass. Left to that, a box
+### runs the adapted callers against the old build, with chunking off and a
+### large table dumped and restored on one thread, until its next full
+### upgrade. Bring the packaged build to the pin on this pass instead: the
+### same deb from the same mirror path barracuda fetches, one attempt per
+### pin as with lshell, the barracuda pass staying the fallback. Only the
+### packaged layout is handled here; a source build and its myloader are
+### reconciled by barracuda. The pin below moves together with
+### _MYQUICK_VRN_TWO in BARRACUDA.sh.txt; the commit guard checks parity.
+###
+_if_fix_myquick() {
+  _MYQUICK_VRN_TWO=1.0.5-1
+  local _mqCode="" _mqDeb _mqNow _mqHelp _mqMark _mqLocal
+  _mqMark="${_pthLog}/myquick-deb-${_MYQUICK_VRN_TWO}.log"
+  _mqLocal="/usr/local/bin/myloader"
+  case "${_OS_CODE}" in
+    excalibur|trixie) _mqCode=trixie ;;
+    daedalus|bookworm) _mqCode=bookworm ;;
+    chimaera|bullseye) _mqCode=bullseye ;;
+    *) return 0 ;;
+  esac
+  [ -x "/usr/bin/mydumper" ] || return 0
+  [ -e "${_mqMark}" ] && return 0
+  ### Packaged layout only: /usr/local/bin/mydumper absent, dangling, or
+  ### the symlink barracuda points at the packaged binary. A real file
+  ### there is a source build, left to barracuda's reconcile.
+  if [ -e "/usr/local/bin/mydumper" ] \
+    && [ "$(readlink -f /usr/local/bin/mydumper 2>/dev/null)" != "/usr/bin/mydumper" ]; then
+    return 0
+  fi
+  _mqNow=$(/usr/bin/mydumper -V 2>&1 \
+    | tr -d "\n" \
+    | tr -d "," \
+    | tr -d "v" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  [ "${_mqNow}" = "${_MYQUICK_VRN_TWO}" ] && return 0
+  ### A dump or restore in flight keeps its mapped binary through the
+  ### package swap, but the myloader path below is rewritten under it;
+  ### the next pass will find the box idle.
+  if pgrep -x mydumper > /dev/null 2>&1 \
+    || pgrep -x myloader > /dev/null 2>&1; then
+    return 0
+  fi
+  _mqDeb="mydumper_${_MYQUICK_VRN_TWO}.${_mqCode}_amd64.deb"
+  rm -rf /var/opt/mydumper_*
+  curl ${_crlGet} "${_urlDev}/${_mqDeb}.gz" -o "/var/opt/${_mqDeb}.gz"
+  [ -e "/var/opt/${_mqDeb}.gz" ] && gunzip -q "/var/opt/${_mqDeb}.gz"
+  ### The mirror answers a missing file with a page rather than a 404, so
+  ### the deb's own version field is the proof that this is the build asked
+  ### for; the package version carries a ~codename suffix.
+  if [ -e "/var/opt/${_mqDeb}" ] \
+    && [ "$(dpkg-deb -f "/var/opt/${_mqDeb}" Version 2>/dev/null | cut -d"~" -f1)" = "${_MYQUICK_VRN_TWO}" ]; then
+    dpkg -i "/var/opt/${_mqDeb}" &> /dev/null
+  fi
+  rm -rf /var/opt/mydumper_*
+  _mqNow=$(/usr/bin/mydumper -V 2>&1 \
+    | tr -d "\n" \
+    | tr -d "," \
+    | tr -d "v" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_mqNow}" != "${_MYQUICK_VRN_TWO}" ]; then
+    touch "${_mqMark}"
+    echo "OOPS: MyQuick ${_MYQUICK_VRN_TWO} did not install (have: ${_mqNow}); previous build kept"
+    return 0
+  fi
+  ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
+  ### The myloader path the callers resolve, derived as barracuda derives
+  ### it for the packaged pair: 1.x removed --overwrite-tables, so older
+  ### callers get a translating wrapper; a build taking both styles gets a
+  ### plain symlink. Only our own wrapper, a symlink or nothing is replaced.
+  if [ ! -e "${_mqLocal}" ] \
+    || [ -L "${_mqLocal}" ] \
+    || grep -q "BOA myloader wrapper" "${_mqLocal}" 2> /dev/null; then
+    _mqHelp=$(/usr/bin/myloader --help 2>&1)
+    if echo "${_mqHelp}" | grep -q "Usage"; then
+      rm -f "${_mqLocal}"
+      if ! echo "${_mqHelp}" \
+        | grep -qE "^[[:space:]]+(-o, )?--overwrite-tables[[:space:]]"; then
+        cat > "${_mqLocal}" <<MYLOADERHDR
+#!/bin/bash
+# BOA myloader wrapper
+# myloader >= 1.0 removed --overwrite-tables; translate for older callers.
+# The target is pinned to the build the installed mydumper came from.
+_MYL_REAL=/usr/bin/myloader
+MYLOADERHDR
+        cat >> "${_mqLocal}" <<'MYLOADEREOF'
+[[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/local/bin/myloader.bin
+[[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/bin/myloader
+_MYL_ARGS=()
+for _MYL_A in "$@"; do
+  if [[ "${_MYL_A}" == "--overwrite-tables" ]]; then
+    _MYL_ARGS+=("--drop-table=DROP")
+  else
+    _MYL_ARGS+=("${_MYL_A}")
+  fi
+done
+exec "${_MYL_REAL}" "${_MYL_ARGS[@]}"
+MYLOADEREOF
+        chmod 755 "${_mqLocal}"
+      else
+        ln -sfn /usr/bin/myloader "${_mqLocal}"
+      fi
+    fi
+  fi
+  touch "${_mqMark}"
+  echo "INFO: MyQuick ${_MYQUICK_VRN_TWO} installed from the ${_mqCode} package"
+}
+
 _fix_start_stop_ports_solr() {
   if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
     _SOLR9_STOP_TEST=$(grep "STOP\.PORT=19099" /etc/default/solr9.in.sh 2>&1)
@@ -4357,9 +4470,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f98 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f73 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f72 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f13 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f47 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f46 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f95 --guard /local/bin/autochimaera
@@ -5550,6 +5663,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_ping_perms
     _fix_fpm_process_max
     _if_fix_lshell
+    _if_fix_myquick
     _fix_node_in_lshell_access
     # _fix_php_in_lshell_access
     _fix_authorized_keys
