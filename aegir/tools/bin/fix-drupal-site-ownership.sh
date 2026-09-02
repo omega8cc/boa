@@ -111,6 +111,27 @@ _store_dir() {
   printf '%s' "${_res}"
 }
 
+
+# Group that owns the code tree at a validated path. Derived here, never
+# taken from argv: this script is reachable through NOPASSWD sudo from every
+# account, so a caller-supplied group would let one tenant chgrp its tree to
+# another tenant's group. 'users' until the account has been converted to a
+# private primary group named after itself, so a tool landing on an
+# unconverted or half-converted box leaves it exactly as it is today.
+_acct_group() {
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 web_group="${3:-www-data}"
@@ -157,16 +178,17 @@ if [ -n "${site_path}" ] \
     exit 1
   fi
   _validate_path_prefix "${site_path}"
-  # Capsule ownership model (spike-proven): code <user>:users; the writable
-  # set <user>:<web_group> so FPM writes via GROUP (version-flip-immune).
-  printf "Setting Grav ownership of %s to: user => %s group => users\n" "${site_path}" "${script_user}"
-  chown -h -R ${script_user}:users ${site_path}
+  _code_group=$(_acct_group "${site_path}")
+  # Capsule ownership model (spike-proven): code <user>:<account group>; the
+  # writable set <user>:<web_group> so FPM writes via GROUP (version-flip-immune).
+  printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
+  chown -h -R ${script_user}:${_code_group} ${site_path}
   for _wd in user cache logs tmp backup images assets; do
     [ -d "${site_path}/${_wd}" ] || continue
     chown -h -R ${script_user}:${web_group:-www-data} "${site_path}/${_wd}"
   done
   # The root .env drops its world bit under D-008, so FPM's read comes via
-  # the web group -- the code pass above homed it to :users.
+  # the web group -- the code pass above homed it to the account group.
   [ -f "${site_path}/.env" ] \
     && chown -h ${script_user}:${web_group:-www-data} "${site_path}/.env"
   echo "Done setting proper ownership of files and directories (Grav site)."
@@ -188,13 +210,14 @@ if [ -n "${site_path}" ] \
     exit 1
   fi
   _validate_path_prefix "${site_path}"
-  # Code <user>:users; the writable set and the credential store
+  _code_group=$(_acct_group "${site_path}")
+  # Code <user>:<account group>; the writable set and the credential store
   # <user>:<web_group> so FPM reaches them via GROUP (version-flip-immune: a
   # box-default PHP bump changes the pool USER, never its www-data group).
   # -h keeps the four load-bearing admin symlinks as symlinks and never
   # follows them into the shared core.
-  printf "Setting Textpattern ownership of %s to: user => %s group => users\n" "${site_path}" "${script_user}"
-  chown -h -R ${script_user}:users ${site_path}
+  printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
+  chown -h -R ${script_user}:${_code_group} ${site_path}
   for _wd in tmp modules admin/plugins public/files public/images public/themes private; do
     [ -d "${site_path}/${_wd}" ] || continue
     chown -h -R ${script_user}:${web_group:-www-data} "${site_path}/${_wd}"
@@ -215,6 +238,7 @@ if [ -z "${script_user}" ] \
 fi
 
 _validate_path_prefix "${site_path}"
+_code_group=$(_acct_group "${site_path}")
 
 ### modules, themes and libraries are names the tenant can plant: it can create
 ### the site dir itself under the group-writable sites/ (02771), and the
@@ -245,18 +269,18 @@ if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.y
 fi
 
 cd ${site_path}
-printf "Setting ownership of key files and directories inside "${site_path}" to: user => "${script_user}"\n"
+printf "Setting ownership of key files and directories inside "${site_path}" to: user => "${script_user}" group => "${_code_group}"\n"
 if [ ! -e "${site_path}/libraries" ]; then
   mkdir ${site_path}/libraries
 fi
 ### directory and settings files - site level
-chown -h ${script_user}:users ${site_path} &> /dev/null
+chown -h ${script_user}:${_code_group} ${site_path} &> /dev/null
 chown -h ${script_user}:www-data \
   ${site_path}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
 ### modules,themes,libraries - site level
-chown -h -R ${script_user}:users \
+chown -h -R ${script_user}:${_code_group} \
   ${site_path}/{modules,themes,libraries}/* &> /dev/null
-chown -h ${script_user}:users \
+chown -h ${script_user}:${_code_group} \
   ${site_path}/drushrc.php \
   ${site_path}/modules/*.yml \
   ${site_path}/{modules,themes,libraries} &> /dev/null

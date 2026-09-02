@@ -21,6 +21,28 @@ fi
 
 ###-------------SYSTEM-----------------###
 
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 _enable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
@@ -88,6 +110,8 @@ _run_drush8_nosilent_cmd() {
 }
 
 _migrate_sites() {
+  # Account tree group, derived once for this run's account.
+  _octGrp=$(_acct_group "${_oct}")
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     _Dom=`echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}'`
@@ -95,11 +119,11 @@ _migrate_sites() {
     _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
     if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:users ${_Vht}
+      chown ${_oct}:${_octGrp} ${_Vht}
       chmod 600 ${_Vht}
     fi
     if [ -e "${_Vhd}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:users ${_Vhd}
+      chown ${_oct}:${_octGrp} ${_Vhd}
       chmod 600 ${_Vhd}
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
@@ -125,7 +149,9 @@ _migrate_sites() {
         else
           _TGT_HM_USER="${_oct}"
         fi
-        chown ${_TGT_HM_USER}:users ${_Vht}
+        # Derived here, inside the loop, so it can never carry over a site.
+        _TGT_HM_GRP=$(_acct_group "${_TGT_HM_USER}")
+        chown ${_TGT_HM_USER}:${_TGT_HM_GRP} ${_Vht}
         chmod 600 ${_Vht}
         if [ -e "${_Dir}/drushrc.php" ]; then
           sed -i "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g" ${_Dir}/drushrc.php
@@ -302,6 +328,12 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
           _MYDUMPER_TRX_OPT="--trx-tables=0"
         fi
+        ### --rows=-1 turns integer chunking off: a fixed --rows=N walks the
+        ### whole primary-key span in steps of N key values (a sparse bigint
+        ### key spun out empty chunk files to inode exhaustion), and the
+        ### adaptive chunker used when the flag is absent intermittently
+        ### drops a whole chunk of a sparse-keyed table while exiting clean;
+        ### mirrors mysql_backup.sh.
         ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
         if mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
@@ -309,7 +341,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --defaults-file=/root/.my.cnf \
           --port=3306 \
           --outputdir=${_USR}/src/${_DBN}/ \
-          --rows=50000 \
+          --rows=-1 \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
@@ -339,7 +371,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               wait
               sed -i "s/_domain_name/${_Dom}/g" ${_Vhs}
               wait
-              chown ${_oct}:users ${_Vhs}
+              chown ${_oct}:${_octGrp} ${_Vhs}
               chmod 600 ${_Vhs}
             fi
             mv -f ${_Vht} ${_Vhd}
@@ -348,7 +380,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             wait
             sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
             wait
-            chown ${_oct}:users ${_Vht}
+            chown ${_oct}:${_octGrp} ${_Vht}
             chmod 600 ${_Vht}
             echo "INFO: site ${_Dom} proxy conversion on ${_oct} complete"
           else
