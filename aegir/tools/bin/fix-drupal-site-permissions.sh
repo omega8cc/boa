@@ -65,6 +65,44 @@ _validate_path_prefix() {
   esac
 }
 
+_store_dir() {
+  # Echo the directory to walk for a per-site files/ or private/ store, or
+  # nothing (the caller then skips it). These are LEGITIMATELY symlinks --
+  # autosymlink points them at <account>/static/files/<site>/<type>, and
+  # static/files may itself be a symlink to a dedicated disk -- so they cannot
+  # be refused outright. But the tenant owns ~/static and can own the site dir
+  # itself (sites/ is 02771 on tenant codebases), so both the link and its
+  # target are plantable: accept a real directory, or a link that resolves
+  # inside THIS account's own resolved store root -- the same "never another
+  # account's tree" rule _validate_path_prefix applies to the site path.
+  local _p _acct _root _res
+  _p="$1"
+  [ -d "${_p}" ] || return 1
+  if [ ! -L "${_p}" ]; then
+    printf '%s' "${_p}"
+    return 0
+  fi
+  case "${site_path}/" in
+    /var/aegir/*)
+      _acct="/var/aegir"
+      ;;
+    /data/disk/*/*)
+      _acct="${site_path#/data/disk/}"
+      _acct="/data/disk/${_acct%%/*}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  _root=$(realpath -e -- "${_acct}/static/files" 2>/dev/null) || return 1
+  _res=$(realpath -e -- "${_p}" 2>/dev/null) || return 1
+  case "${_res}/" in
+    "${_root}"/*) ;;
+    *) return 1 ;;
+  esac
+  printf '%s' "${_res}"
+}
+
 _chmod_safe() {
   local _mode=$1
   shift
@@ -91,6 +129,14 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+
+### Resolve the caller-supplied path ONCE, before any check or operation reads
+### it: every branch below re-walks the raw argument, and sites/ is 02771 on
+### tenant codebases, so the tenant owns the name it was handed and could
+### re-point it between _validate_path_prefix and the chmods.
+if [ -n "${site_path}" ] && [ -e "${site_path}" ]; then
+  site_path=$(realpath -e -- "${site_path}" 2>/dev/null) || site_path=""
+fi
 
 # --- Grav 2 site capsule (boa-grav D-003) ------------------------------------
 # A capsule is a full Grav install at sites/<uri>/ with no settings.php;
@@ -210,6 +256,18 @@ _validate_path_prefix "${site_path}"
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
+### modules, themes and libraries are names the tenant can plant: it can create
+### the site dir itself under the group-writable sites/ (02771), and the
+### site-level code dirs are 02775 group users. The rm below and the find start
+### points walk THROUGH them, while _chmod_safe protects only the final
+### component. None is ever legitimately a symlink at site level.
+for _d in modules themes libraries; do
+  if [ -L "${site_path}/${_d}" ]; then
+    printf "Error: %s is a symlink in %s; refusing.\n" "${_d}" "${site_path}" >&2
+    exit 1
+  fi
+done
+
 if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
   rm -f ${site_path}/libraries/permissions-fixed.pid
 fi
@@ -228,19 +286,34 @@ find ${site_path}/{modules,themes,libraries} -type d -exec \
 find ${site_path}/{modules,themes,libraries} -type f -exec \
   chmod 0664 {} \; &> /dev/null
 
-if [ ! -e "${site_path}/files/permissions-fixed-${_TODAY}.pid" ]; then
+### The trailing slash makes find DESCEND through files/ and private/, which
+### are legitimately symlinks into the per-account static store -- so a link
+### planted at either name walks this root chmod into an arbitrary tree
+### (files -> /etc turns every file there 0664, i.e. world-readable). Resolve
+### each store once, bounded to this account's own store root.
+_files_dir=$(_store_dir "${site_path}/files") || _files_dir=""
+_priv_dir=$(_store_dir "${site_path}/private") || _priv_dir=""
+if [ -z "${_files_dir}" ] && [ -e "${site_path}/files" ]; then
+  printf "Notice: %s is not this account's own files store; skipping.\n" \
+    "${site_path}/files" >&2
+fi
+
+if [ -n "${_files_dir}" ] \
+  && [ ! -e "${_files_dir}/permissions-fixed-${_TODAY}.pid" ]; then
   ### ctrl pid
-  rm -f ${site_path}/files/permissions-fixed*.pid
-  touch ${site_path}/files/permissions-fixed-${_TODAY}.pid
+  rm -f ${_files_dir}/permissions-fixed*.pid
+  touch ${_files_dir}/permissions-fixed-${_TODAY}.pid
   ### files - site level
-  find ${site_path}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
-  find ${site_path}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
-  _chmod_safe 02775 "${site_path}/files"
+  find ${_files_dir}/ -type d -exec chmod 02775 {} \; &> /dev/null
+  find ${_files_dir}/ -type f -exec chmod 0664 {} \; &> /dev/null
+  _chmod_safe 02775 "${_files_dir}"
   ### private - site level
-  find ${site_path}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
-  find ${site_path}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
+  if [ -n "${_priv_dir}" ]; then
+    find ${_priv_dir}/ -type d -exec chmod 02775 {} \; &> /dev/null
+    find ${_priv_dir}/ -type f -exec chmod 0664 {} \; &> /dev/null
+  fi
   ### known exceptions
-  _chmod_safe 0644 "${site_path}/files/.htaccess"
+  _chmod_safe 0644 "${_files_dir}/.htaccess"
 fi
 
 echo "Done setting proper permissions on site files and directories."

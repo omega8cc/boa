@@ -132,6 +132,16 @@ _ghost_codebases_cleanup() {
       -type d -name vendor | sort 2>&1)
     for _vendor in ${_CodebaseTest}; do
       _ParentDir=`echo ${_vendor} | sed "s/\/vendor//g"`
+      ### The platform root is 02775 group 'users', and 'users' spans every
+      ### account on the box, so ANY tenant can delete a victim's index.php and
+      ### mkdir a decoy vendor/ to have this reap the victim's whole codebase.
+      ### A tree still named by a registered platform alias is never a ghost,
+      ### whatever it looks like on disk.
+      if grep -qsF -e "'${_ParentDir}'" -e "'${_ParentDir}/" \
+        /data/disk/*/.drush/platform_*.alias.drushrc.php \
+        /var/aegir/.drush/platform_*.alias.drushrc.php; then
+        continue
+      fi
       if [ -n "$(_detect_real_docroot "${_ParentDir}")" ]; then
         # A detectable docroot (index.php at root or under web/docroot/html)
         # means a real codebase of ANY Drupal version -- never a ghost. Do NOT
@@ -397,35 +407,69 @@ _global_cleanup() {
   if [ "${_PERMISSIONS_FIX}" = "YES" ] \
     && [ ! -z "${_X_VERSION}" ] \
     && [ -e "/opt/tmp/barracuda-release.txt" ] \
-    && [ ! -e "/data/all/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info" ]; then
+    && [ ! -e "/var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info" ]; then
     echo "INFO: Fixing permissions in the /data/all tree..."
     find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown -R root:root /data/conf &> /dev/null
+    ### sites/all/{modules,libraries,themes} stay 02775 group 'users', and
+    ### 'users' is the PRIMARY group of every account -- so of every site's
+    ### PHP-FPM pool too. Anything under them can be renamed between find's
+    ### stat and the chmod it execs, and chmod follows a symlink named on its
+    ### command line: that race is a root chmod on an arbitrary path. Prune
+    ### those leaves; their own modes are asserted right below, where the
+    ### parent (sites/all, 0755 root:users) is not tenant-writable.
     if [ -e "/data/all" ]; then
-      find /data/all -type d -exec chmod 0755 {} \; &> /dev/null
-      find /data/all -type f -exec chmod 0644 {} \; &> /dev/null
+      find /data/all -path '*/sites/all/*' -prune -o -type d -exec chmod 0755 {} \; &> /dev/null
+      find /data/all -path '*/sites/all/*' -prune -o -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
       chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
       chown -R root:root /data/all &> /dev/null
       chown -R root:users /data/all/*/*/sites &> /dev/null
       chown -R root:users /data/all/000/core/*/sites &> /dev/null
     elif [ -e "/data/disk/all" ]; then
-      find /data/disk/all -type d -exec chmod 0755 {} \; &> /dev/null
-      find /data/disk/all -type f -exec chmod 0644 {} \; &> /dev/null
+      find /data/disk/all -path '*/sites/all/*' -prune -o -type d -exec chmod 0755 {} \; &> /dev/null
+      find /data/disk/all -path '*/sites/all/*' -prune -o -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
       chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
       chown -R root:root /data/disk/all &> /dev/null
       chown -R root:users /data/disk/all/*/*/sites &> /dev/null
       chown -R root:users /data/disk/all/000/core/*/sites &> /dev/null
     fi
-    chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-    echo fixed > /data/all/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info
+    ### distro/NNN is 0711 oN:users, so anything running as the account uid
+    ### (a hostile drush include, a compromised task) can create a whole decoy
+    ### platform dir there and plant these three
+    ### names as symlinks; 02775 on a symlinked FILE also adds o+r. Only ever
+    ### chmod a real directory.
+    local _pDis
+    for _pDis in /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}; do
+      [ -d "${_pDis}" ] && [ ! -L "${_pDis}" ] \
+        && chmod 02775 "${_pDis}" &> /dev/null
+    done
+    ### Stamp in /var/backups: the gate above reads it there, and /data/all
+    ### does not exist on /data/disk/all boxes (the sweep re-ran every night).
+    echo fixed > /var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info
   fi
   if [ ! -e "/var/backups/fix-sites-all-permsissions-${_xSrl}.txt" ]; then
-    chmod 0751  /data/disk/*/distro/*/*/sites &> /dev/null
-    chmod 0755  /data/disk/*/distro/*/*/sites/all &> /dev/null
-    chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes} &> /dev/null
+    ### distro/NNN is 0711 oN:users: the account uid -- every Ægir task and
+    ### site-local Drush run as it -- can create a decoy platform dir there with its
+    ### own sites/ and point sites/all at any path. Plain chmod follows a
+    ### symlink named on its command line, so 0755 on a planted
+    ### sites/all -> /root/.barracuda.cnf would publish the MySQL root
+    ### credentials to every local user. Only ever chmod a real directory
+    ### (final component, like _chmod_safe in the fix-drupal-* pair). None of
+    ### these three names is ever legitimately a symlink.
+    local _pSit _pSub
+    for _pSit in /data/disk/*/distro/*/*/sites; do
+      [ -d "${_pSit}" ] && [ ! -L "${_pSit}" ] || continue
+      chmod 0751 "${_pSit}" &> /dev/null
+      [ -d "${_pSit}/all" ] && [ ! -L "${_pSit}/all" ] || continue
+      chmod 0755 "${_pSit}/all" &> /dev/null
+      for _pSub in modules libraries themes; do
+        [ -d "${_pSit}/all/${_pSub}" ] && [ ! -L "${_pSit}/all/${_pSub}" ] \
+          && chmod 02775 "${_pSit}/all/${_pSub}" &> /dev/null
+      done
+    done
     echo FIXED > /var/backups/fix-sites-all-permsissions-${_xSrl}.txt
     echo "Permissions in sites/all tree just fixed"
   fi
@@ -442,8 +486,16 @@ _global_cleanup() {
   ### the newest 3 per credential file -- only the newest can hold a
   ### half-failed-rotation recovery value; older ones are dead history that
   ### only assists password guessing.
-  chmod 0600 /data/disk/*/.*.pass.txt-pre-* /data/disk/*/.*.pass.php-pre-* &> /dev/null
-  chmod 0600 /var/aegir/backups/system/.*.pass.txt-pre-* &> /dev/null
+  ### The account home is 0711 but OWNED by oN -- the identity every Ægir task and
+  ### site-local Drush run as, so a hostile drush include or a compromised
+  ### task can unlink a backup and plant a symlink at its name. chmod follows that link, and 0600 on a shared system
+  ### path (a config file, a bin dir) takes the box down. Heal real files only.
+  local _pBak
+  for _pBak in /data/disk/*/.*.pass.txt-pre-* /data/disk/*/.*.pass.php-pre-* \
+    /var/aegir/backups/system/.*.pass.txt-pre-*; do
+    [ -f "${_pBak}" ] && [ ! -L "${_pBak}" ] \
+      && chmod 0600 "${_pBak}" &> /dev/null
+  done
   for _P_LIVE in /data/disk/*/.*.pass.txt /data/disk/*/.*.pass.php \
     /var/aegir/backups/system/.*.pass.txt; do
     [ -e "${_P_LIVE}" ] || continue
