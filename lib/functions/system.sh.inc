@@ -5083,8 +5083,22 @@ _get_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_eleven"
   fi
+  # The extraction below lands in the CURRENT directory, so the target must
+  # exist and the cd must be checked: on a box where it did not exist the
+  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
+  # where Drush 10/11 then picked it up as a command-file path. Heal that
+  # leftover here, only when it has the extracted shape and is not the
+  # install itself.
+  mkdir -p /opt/tools/drush/11
   rm -rf /opt/tools/drush/11/*
-  cd /opt/tools/drush/11/
+  if ! cd /opt/tools/drush/11/; then
+    _msg "OOPS: /opt/tools/drush/11 is not enterable; Drush 11 not installed"
+    return 1
+  fi
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+    && [ "$(readlink -f /opt/tools/drush/11/drush 2> /dev/null)" != "/drush" ]; then
+    rm -rf /drush
+  fi
   _get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
   touch /opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5098,8 +5112,22 @@ _get_drush_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_ten"
   fi
+  # The extraction below lands in the CURRENT directory, so the target must
+  # exist and the cd must be checked: on a box where it did not exist the
+  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
+  # where Drush 10/11 then picked it up as a command-file path. Heal that
+  # leftover here, only when it has the extracted shape and is not the
+  # install itself.
+  mkdir -p /opt/tools/drush/10
   rm -rf /opt/tools/drush/10/*
-  cd /opt/tools/drush/10/
+  if ! cd /opt/tools/drush/10/; then
+    _msg "OOPS: /opt/tools/drush/10 is not enterable; Drush 10 not installed"
+    return 1
+  fi
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+    && [ "$(readlink -f /opt/tools/drush/10/drush 2> /dev/null)" != "/drush" ]; then
+    rm -rf /drush
+  fi
   _get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
   touch /opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5113,8 +5141,22 @@ _get_drush_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_eight"
   fi
+  # The extraction below lands in the CURRENT directory, so the target must
+  # exist and the cd must be checked: on a box where it did not exist the
+  # tarball was unpacked at the filesystem root as /drush (found 2026-09-02),
+  # where Drush 10/11 then picked it up as a command-file path. Heal that
+  # leftover here, only when it has the extracted shape and is not the
+  # install itself.
+  mkdir -p /opt/tools/drush/8
   rm -rf /opt/tools/drush/8/*
-  cd /opt/tools/drush/8/
+  if ! cd /opt/tools/drush/8/; then
+    _msg "OOPS: /opt/tools/drush/8 is not enterable; Drush 8 not installed"
+    return 1
+  fi
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+    && [ "$(readlink -f /opt/tools/drush/8/drush 2> /dev/null)" != "/drush" ]; then
+    rm -rf /drush
+  fi
   _get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
   touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5133,7 +5175,10 @@ _get_bee() {
   [ "${_BACKDROP_SUPPORT}" = "YES" ] || return 0
   mkdir -p /opt/tools/bee
   rm -rf /opt/tools/bee/*
-  cd /opt/tools/bee/
+  if ! cd /opt/tools/bee/; then
+    _msg "OOPS: /opt/tools/bee is not enterable; bee not installed"
+    return 1
+  fi
   _get_dev_ext "bee.tar.gz"
   ### The stamp must certify a landed bee only; a stamp over an empty dir
   ### hides a failed fetch from operators reading the ctrl state.
