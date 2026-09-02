@@ -496,6 +496,11 @@ _enable_chattr() {
         wait
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         wait
+        # Root-maintained stamps inside a tenant-owned .drush: the .ctrl.php*
+        # rm above does not cover the tree stamp, and `echo >` follows a link
+        # (truncating an existing target, creating a dangling one).
+        _desymlink_planted "${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid" \
+          "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid"
         echo > ${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid
         echo > ${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid
       fi
@@ -576,7 +581,10 @@ _enable_chattr() {
           chmod 1777 /opt/user/npm
           [ ! -d "/opt/user/npm/${_UQ}" ] && mkdir -p /opt/user/npm/${_UQ}
           [ ! -e "/home/${_UQ}/.npmrc" ] && su -s /bin/bash - ${_UQ} -c "echo 'prefix = /opt/user/npm/${_UQ}/.npm-packages' > ~/.npmrc"
-          [ -e "/home/${_UQ}/.npmrc" ] && chattr +i /home/${_UQ}/.npmrc
+          # chattr opens the referent: refuse a link the tenant planted at this
+          # name, or root sets +i on whatever it points at.
+          [ -e "/home/${_UQ}/.npmrc" ] && [ ! -L "/home/${_UQ}/.npmrc" ] \
+            && chattr +i /home/${_UQ}/.npmrc
           mkdir -p /opt/user/npm/${_UQ}/.bundle
           mkdir -p /opt/user/npm/${_UQ}/.composer
           mkdir -p /opt/user/npm/${_UQ}/.config
@@ -602,24 +610,28 @@ _enable_chattr() {
         chattr +i /home/$1/
       fi
     else
-      if [ -d "/home/$1/platforms/" ]; then
+      # A *.ftp home is never made immutable, so every name below is tenant
+      # replaceable; chattr always opens the referent. Test the bare path --
+      # [ -L "x/" ] with a trailing slash resolves the link and is always false.
+      if [ -d "/home/$1/platforms/" ] && [ ! -L "/home/$1/platforms" ]; then
         chattr +i /home/$1/platforms/
         chattr +i /home/$1/platforms/* &> /dev/null
       fi
     fi
-    if [ -d "/home/$1/.drush/" ]; then
+    if [ -d "/home/$1/.drush/" ] && [ ! -L "/home/$1/.drush" ]; then
       chattr +i /home/$1/.drush/
+      if [ -d "/home/$1/.drush/usr/" ] && [ ! -L "/home/$1/.drush/usr" ]; then
+        chattr +i /home/$1/.drush/usr/
+      fi
+      if [ -f "/home/$1/.drush/php.ini" ] \
+        && [ ! -L "/home/$1/.drush/php.ini" ]; then
+        chattr +i /home/$1/.drush/*.ini
+      fi
     fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
-      chattr +i /home/$1/.drush/usr/
-    fi
-    if [ -f "/home/$1/.drush/php.ini" ]; then
-      chattr +i /home/$1/.drush/*.ini
-    fi
-    if [ -d "/home/$1/.bee/" ]; then
+    if [ -d "/home/$1/.bee/" ] && [ ! -L "/home/$1/.bee" ]; then
       chattr +i /home/$1/.bee/
     fi
-    if [ -d "/home/$1/.bazaar/" ]; then
+    if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
       chattr +i /home/$1/.bazaar/
     fi
   fi
@@ -635,24 +647,27 @@ _disable_chattr() {
         chattr -i /home/$1/
       fi
     else
-      if [ -d "/home/$1/platforms/" ]; then
+      # Mirrors the guards in _enable_chattr: same plantable names, same
+      # dereference, inverse primitive (clearing +i on a root-protected path).
+      if [ -d "/home/$1/platforms/" ] && [ ! -L "/home/$1/platforms" ]; then
         chattr -i /home/$1/platforms/
         chattr -i /home/$1/platforms/* &> /dev/null
       fi
     fi
-    if [ -d "/home/$1/.drush/" ]; then
+    if [ -d "/home/$1/.drush/" ] && [ ! -L "/home/$1/.drush" ]; then
       chattr -i /home/$1/.drush/
+      if [ -d "/home/$1/.drush/usr/" ] && [ ! -L "/home/$1/.drush/usr" ]; then
+        chattr -i /home/$1/.drush/usr/
+      fi
+      if [ -f "/home/$1/.drush/php.ini" ] \
+        && [ ! -L "/home/$1/.drush/php.ini" ]; then
+        chattr -i /home/$1/.drush/*.ini
+      fi
     fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
-      chattr -i /home/$1/.drush/usr/
-    fi
-    if [ -f "/home/$1/.drush/php.ini" ]; then
-      chattr -i /home/$1/.drush/*.ini
-    fi
-    if [ -d "/home/$1/.bee/" ]; then
+    if [ -d "/home/$1/.bee/" ] && [ ! -L "/home/$1/.bee" ]; then
       chattr -i /home/$1/.bee/
     fi
-    if [ -d "/home/$1/.bazaar/" ]; then
+    if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
       chattr -i /home/$1/.bazaar/
     fi
   fi
@@ -715,8 +730,14 @@ _fix_dot_dirs() {
   _usrLtdTest=${_usrLtd//[^a-z0-9]/}
   if [ ! -z "${_usrLtdTest}" ]; then
     _usrTmp="/home/${_usrLtd}/.tmp"
+    # Every dot name this function seeds is root-created and root-chowned in a
+    # home the sub-user owns, and none is ever legitimately a symlink here --
+    # the [ ! -d ] tests and the chown/chmod that follow them all dereference,
+    # so a planted link aims root at any target it names.
     _desymlink_planted "${_usrTmp}" "/home/${_usrLtd}/.lftp" \
-      "/home/${_usrLtd}/.lhistory"
+      "/home/${_usrLtd}/.lhistory" "/home/${_usrLtd}/.drush" \
+      "/home/${_usrLtd}/.bee" "/home/${_usrLtd}/.ssh" \
+      "/home/${_usrLtd}/.bazaar"
     if [ ! -d "${_usrTmp}" ]; then
       mkdir -p ${_usrTmp}
       chown -h ${_usrLtd}:${_usrGroup} ${_usrTmp}
@@ -810,14 +831,19 @@ _manage_sec_user_drush_aliases() {
       | awk '{ print $1}' 2>&1)
     _pthAliasMain="${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php"
     _pthAliasCopy="${_usrLtdRoot}/.drush/${_SiteName}.alias.drushrc.php"
+    # The copy is a root-written control file in a home the sub-user owns, and
+    # is never legitimately a link: cp -af follows a symlinked DESTINATION and
+    # chmod follows too, so strip the plant before either runs. Only the copy --
+    # the main alias may legitimately be the front-end link seeded at ~/.drush.
+    [ ! -z "${_SiteName}" ] && _desymlink_planted "${_pthAliasCopy}"
     if [ ! -z "${_SiteName}" ] && [ ! -e "${_pthAliasCopy}" ]; then
       cp -af ${_pthAliasMain} ${_pthAliasCopy}
-      chmod 440 ${_pthAliasCopy}
+      [ ! -L "${_pthAliasCopy}" ] && chmod 440 ${_pthAliasCopy}
     elif [ ! -z "${_SiteName}" ]  && [ -e "${_pthAliasCopy}" ]; then
       _DIFF_T=$(diff -w -B ${_pthAliasCopy} ${_pthAliasMain} 2>&1)
       if [ ! -z "${_DIFF_T}" ]; then
         cp -af ${_pthAliasMain} ${_pthAliasCopy}
-        chmod 440 ${_pthAliasCopy}
+        [ ! -L "${_pthAliasCopy}" ] && chmod 440 ${_pthAliasCopy}
       fi
     fi
   done
@@ -1005,10 +1031,15 @@ _manage_sec_access_paths() {
 #for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
 for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _rawDom=$(echo ${_Domain} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+  # Both values land inside single quotes in the root-written /etc/lshell.conf:
+  # a quote or backslash would close the string and inject shell-confinement
+  # policy. _sanitize_string is wrong here -- its class strips '/' too.
+  _rawDom=${_rawDom//[^a-zA-Z0-9.-]/}
   _STATIC_FILES="${_pthParentUsr}/static/files/${_rawDom}.files/"
   _STATIC_PRIVATE="${_pthParentUsr}/static/files/${_rawDom}.private/"
   _NEW_STATIC_FILES="${_pthParentUsr}/static/files/${_rawDom}/"
   _PATH_DOM="$(readlink -n "${_Domain}")"
+  _PATH_DOM=${_PATH_DOM//[^a-zA-Z0-9._\/-]/}
   # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
   # Fail-closed: empty when NONE or when MORE THAN ONE is mounted -- multi-mount is
   # unsupported fleet-wide and cannot be disambiguated, so refuse to guess.
@@ -1587,6 +1618,11 @@ _satellite_web_user_update() {
     _T_II="${_T_HD}/php.ini"
     if [ -d "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       chattr -i /home/${_WEB}
+      # /home/<user>.web is owned by the FPM user, so a compromised hosted site
+      # can plant these names; chattr, mkdir -p and cp -af all walk through a
+      # link. Order matters: .drush first, then the file inside it.
+      _desymlink_planted "/home/${_WEB}/.drush" "/home/${_WEB}/.tmp" \
+        "/home/${_WEB}/.aws" "${_T_II}"
       if [ -d "/home/${_WEB}/.drush" ]; then
         chattr -i /home/${_WEB}/.drush
       fi
@@ -1890,8 +1926,12 @@ _switch_php() {
   if [ -e "${_dscUsr}/static/control/fpm.info" ] || [ -e "${_dscUsr}/static/control/cli.info" ]; then
     echo "Custom FPM and CLI settings for ${_USER} exist, running _switch_php checks"
     if [ ! -e "${_dscUsr}/log/un-chattr-ctrl.info" ]; then
-      chattr -i ${_dscUsr}/static/control/fpm.info &> /dev/null
-      chattr -i ${_dscUsr}/static/control/cli.info &> /dev/null
+      # static/control is tenant-owned; chattr opens the referent, so refuse a
+      # planted link rather than clearing +i on whatever it points at.
+      [ ! -L "${_dscUsr}/static/control/fpm.info" ] \
+        && chattr -i ${_dscUsr}/static/control/fpm.info &> /dev/null
+      [ ! -L "${_dscUsr}/static/control/cli.info" ] \
+        && chattr -i ${_dscUsr}/static/control/cli.info &> /dev/null
       chattr -i ${_dscUsr}/log/fpm.txt &> /dev/null
       chattr -i ${_dscUsr}/log/cli.txt &> /dev/null
       chattr -i ${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc &> /dev/null
@@ -2296,15 +2336,19 @@ _manage_site_drush_alias_mirror() {
           rm -f ${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
           _pthAliasMain="${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php"
           _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
+          # Root-written control file in the tenant's own home: cp -af follows a
+          # symlinked DESTINATION and preserves ownership onto it, chmod follows
+          # too. Strip the copy only -- the main alias may legitimately be a link.
+          _desymlink_planted "${_pthAliasCopy}"
           if [ ! -e "${_pthAliasCopy}" ]; then
             cp -af ${_pthAliasMain} ${_pthAliasCopy}
-            chmod 440 ${_pthAliasCopy}
+            [ ! -L "${_pthAliasCopy}" ] && chmod 440 ${_pthAliasCopy}
             _isAliasUpdate=YES
           else
             _DIFF_T=$(diff -w -B ${_pthAliasCopy} ${_pthAliasMain} 2>&1)
             if [ ! -z "${_DIFF_T}" ]; then
               cp -af ${_pthAliasMain} ${_pthAliasCopy}
-              chmod 440 ${_pthAliasCopy}
+              [ ! -L "${_pthAliasCopy}" ] && chmod 440 ${_pthAliasCopy}
               _isAliasUpdate=YES
             fi
           fi
@@ -2435,12 +2479,22 @@ _manage_user() {
         rm -f -r ${_dscUsr}/.config/composer &> /dev/null
         rm -f -r ${_dscUsr}/.composer &> /dev/null
       fi
-      chmod 0440 ${_dscUsr}/.drush/*.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/drushrc.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/hm.alias.drushrc.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/hostmaster*.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/platform_*.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/server_*.php &> /dev/null
+      ### .drush is owned by oN, the identity every Ægir task and site-local
+      ### Drush run as, so a hostile drush include or a compromised task can
+      ### unlink an alias and plant a symlink at its name. chmod follows that link, and 0400 on a shared system path takes
+      ### the box down. Only ever chmod a real file.
+      for _aFil in ${_dscUsr}/.drush/*.php; do
+        [ -f "${_aFil}" ] && [ ! -L "${_aFil}" ] \
+          && chmod 0440 "${_aFil}" &> /dev/null
+      done
+      for _aFil in ${_dscUsr}/.drush/drushrc.php \
+        ${_dscUsr}/.drush/hm.alias.drushrc.php \
+        ${_dscUsr}/.drush/hostmaster*.php \
+        ${_dscUsr}/.drush/platform_*.php \
+        ${_dscUsr}/.drush/server_*.php; do
+        [ -f "${_aFil}" ] && [ ! -L "${_aFil}" ] \
+          && chmod 0400 "${_aFil}" &> /dev/null
+      done
       chmod 0710 ${_dscUsr}/.drush &> /dev/null
       find ${_dscUsr}/config/server_master \
         -type d -exec chmod 0700 {} \; &> /dev/null
@@ -2450,16 +2504,23 @@ _manage_user() {
       chmod +r ${_dscUsr}/config/server_master/nginx/passwords.d/* &> /dev/null
       if [ ! -e "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         rm -rf ${_dscUsr}/.drush/cache
+        _desymlink_planted "${_dscUsr}/.tmp"
         mkdir -p ${_dscUsr}/.tmp
         touch ${_dscUsr}/.tmp
-        find ${_dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-        chown ${_USER}:${_usrGroup} ${_dscUsr}/.tmp &> /dev/null
-        chmod 02755 ${_dscUsr}/.tmp &> /dev/null
+        # Bare path, not ${_dscUsr}/.tmp/ -- a trailing slash makes find follow
+        # a planted link and purge the target tree instead (as at _enable_chattr).
+        find ${_dscUsr}/.tmp -mindepth 1 -mtime +0 -exec rm -rf {} \; &> /dev/null
+        chown -h ${_USER}:${_usrGroup} ${_dscUsr}/.tmp &> /dev/null
+        [ ! -L "${_dscUsr}/.tmp" ] && chmod 02755 ${_dscUsr}/.tmp &> /dev/null
         echo OK > ${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
       fi
+      # ~/static is 02775 group `users` with no sticky bit, so any co-tenant on
+      # the box can replace the `control` name. Strip a plant unconditionally:
+      # gating this on a stamp INSIDE the link lets a target that already
+      # carries a matching stamp skip the guard for the whole pass.
+      _desymlink_planted "${_dscUsr}/static/control"
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
         && [ -e "/home/${_USER}.ftp/clients" ]; then
-        _desymlink_planted "${_dscUsr}/static/control"
         mkdir -p ${_dscUsr}/static/control
         [ ! -L "${_dscUsr}/static/control" ] \
           && chmod 755 ${_dscUsr}/static/control

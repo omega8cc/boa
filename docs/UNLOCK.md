@@ -3,8 +3,10 @@
 BOA treats code ownership on tenant platforms as managed state. Once per
 night, the maintenance worker walks every **registered** site, resolves its
 platform root, and re-asserts both ownership and permissions. The historical
-motivation (post-Drupalgeddon) was to make sure a compromised site or a
-leaked SFTP credential cannot quietly rewrite code or strip the hardening;
+motivation (post-Drupalgeddon) was to make sure a compromised site cannot
+rewrite code at all, and a leaked SFTP credential cannot strip the hardening
+or subvert git's repository-ownership trust (the code trees stay
+group-writable for the shell pair, so the lock is not a write barrier);
 the mechanism survives today as the default *lock*, with a tenant-controlled
 *unlock* for in-place maintenance ([UNLOCK-USER.md](UNLOCK-USER.md) is the
 tenant-facing walkthrough).
@@ -17,7 +19,9 @@ platform, tracked by marker files under `~/log/ctrl/`):
 - **Platforms under `~/static`** (all tenant platforms live there): the
   whole codebase is chowned to the account's backend user (`oN`). For
   composer-managed shapes (a docroot with `core/lib/Drupal.php` next to
-  `../vendor/autoload.php` and a `composer.json` requiring `drupal/core`)
+  `../vendor/autoload.php` and a `composer.json` requiring `drupal/core` or
+  `drupal/core-recommended`, the shape of drupal/recommended-project and
+  Drupal CMS)
   the pass operates on the **repository root**, so `vendor/` and
   `composer.json` are covered too. Then the permission sweep: directories
   `0775`, files `0664`, and the hardened read-only paths (`vendor/drush`,
@@ -33,6 +37,14 @@ platform, tracked by marker files under `~/log/ctrl/`):
   symlinked `sites` or `sites/all` makes the pass skip the platform);
   stray code archives (`*.tar`, `*.tar.gz`, `*.zip`) inside `sites/all`
   trees are deleted.
+- **Built-in platforms** (`~/distro/NNN/<platform>`): the tenant-writable
+  `sites/all/{modules,themes,libraries}` keep `02775`/`0664`; core,
+  profiles, includes, vendor and the platform root take `0755`/`0644`, no
+  group write (the three Drush-lock dirs keep their lock-state mode).
+- **Hostmaster trees** (`aegir/distro/NNN` on an Octopus account,
+  `/var/aegir/distro/NNN` on the master): no shell user has any business
+  there, so the platform script and the nightly keep them at `0755`/`0644`
+  with no group write (root dir included), unlike every other platform.
 - **Site level**: each site's `{modules,themes,libraries}/*` chowned to
   `oN:users` with directories `02775` and files `0664`; settings-class
   files (`settings.php`, `local.settings.php`, `civicrm.settings.php`)

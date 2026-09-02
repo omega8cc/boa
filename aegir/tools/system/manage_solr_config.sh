@@ -1674,7 +1674,10 @@ _start_up() {
           | sed "s/[\,']//g" 2>&1)
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "User ${_usEr}"
-        mkdir -p ${_usEr}/log/ctrl
+        ### The account home is owned by oN, the backend uid site-local Drush
+        ### and the account cron run as, so a planted log symlink would
+        ### redirect this root mkdir.
+        [ ! -L "${_usEr}/log" ] && mkdir -p "${_usEr}/log/ctrl"
         # shellcheck disable=SC1091
         [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
         _check_sites_list

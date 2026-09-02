@@ -99,7 +99,19 @@ if [ -n "${_caller}" ]; then
         printf "Error: --account '%s' is not the caller's own account '%s'.\n" "${_account}" "${_caller_acct}" >&2
         exit 1
       fi
-      if [ ! -f "/data/disk/${_caller_acct}/.drush/${_site}.alias.drushrc.php" ]; then
+      # -f follows symlinks and ~oN/.drush is owned by the account (oN:users
+      # 0710), so a link planted here would let the caller nominate another
+      # account's alias -- and with it another account's site_path. But the
+      # account's OWN front-end alias is legitimately a symlink to
+      # hostmaster.alias.drushrc.php (manage_ltd_users.sh:1769-1771, re-made
+      # every 3 minutes), so refuse only a link that leaves this .drush dir.
+      _alias_f="/data/disk/${_caller_acct}/.drush/${_site}.alias.drushrc.php"
+      _alias_r=$(realpath -e -- "${_alias_f}" 2>/dev/null)
+      case "${_alias_r}" in
+        "/data/disk/${_caller_acct}/.drush/"*) ;;
+        *) _alias_r="" ;;
+      esac
+      if [ -z "${_alias_r}" ] || [ ! -f "${_alias_r}" ]; then
         printf "Error: site '%s' is not owned by the caller account '%s'.\n" "${_site}" "${_caller_acct}" >&2
         exit 1
       fi

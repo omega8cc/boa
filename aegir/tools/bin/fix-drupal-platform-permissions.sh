@@ -199,6 +199,30 @@ fi
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
+### Group write is the shell pair's free-ride territory under ~/static only.
+### A hostmaster tree (aegir/distro on an Octopus account, /var/aegir/distro on
+### the master) serves nothing an lshell user may touch: no group write at all.
+### A built-in platform (~/distro and every other root) keeps its documented
+### tenant-writable sites/all/{modules,themes,libraries}, while core, profiles,
+### includes, vendor and the platform root itself take no group write: the
+### backend user owns them and the web user only reads.
+if [[ "${drupal_root}" =~ /aegir/distro/ ]]; then
+  _MODE_DIR=0755
+  _MODE_FILE=0644
+  _SA_DIR=0755
+  _SA_FILE=0644
+elif [[ "${drupal_root}" =~ /static/ ]]; then
+  _MODE_DIR=02775
+  _MODE_FILE=0664
+  _SA_DIR=02775
+  _SA_FILE=0664
+else
+  _MODE_DIR=0755
+  _MODE_FILE=0644
+  _SA_DIR=02775
+  _SA_FILE=0664
+fi
+
 ### Fix permissions only once daily, unless it's Drupal 8 or newer
 if [ -e "${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid" ]; then
   if [ -e "${drupal_root}/core/themes/olivero" ] \
@@ -219,10 +243,10 @@ rm -f ${drupal_root}/sites/all/libraries/permissions-fixed*.pid
 touch ${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid
 
 printf "Setting permissions of all codebase directories inside "${drupal_root}"...\n"
-find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type d -exec chmod 02775 {} \;
+find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type d -exec chmod ${_MODE_DIR} {} \;
 
 printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
-find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type f -exec chmod 0664 {} \;
+find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type f -exec chmod ${_MODE_FILE} {} \;
 
 if [ -e "${drupal_root}/core/modules/workspaces_ui" ]; then
   printf "Removing all .drush.inc files inside codebase "${drupal_root}"...\n"
@@ -232,14 +256,14 @@ fi
 
 if [ -e "${drupal_root}/vendor" ]; then
   printf "Setting permissions of all codebase directories inside "${drupal_root}/vendor"...\n"
-  find ${drupal_root}/vendor -type d -exec chmod 02775 {} \;
+  find ${drupal_root}/vendor -type d -exec chmod ${_MODE_DIR} {} \;
   printf "Setting permissions of all codebase files inside "${drupal_root}/vendor"...\n"
-  find ${drupal_root}/vendor -type f -exec chmod 0664 {} \;
+  find ${drupal_root}/vendor -type f -exec chmod ${_MODE_FILE} {} \;
 elif [ -e "${drupal_root}/../vendor" ]; then
   printf "Setting permissions of all codebase directories inside "${drupal_root}/../vendor"...\n"
-  find ${drupal_root}/../vendor -type d -exec chmod 02775 {} \;
+  find ${drupal_root}/../vendor -type d -exec chmod ${_MODE_DIR} {} \;
   printf "Setting permissions of all codebase files inside "${drupal_root}/../vendor"...\n"
-  find ${drupal_root}/../vendor -type f -exec chmod 0664 {} \;
+  find ${drupal_root}/../vendor -type f -exec chmod ${_MODE_FILE} {} \;
 fi
 
 if [ -e "${drupal_root}/vendor/bin/drush" ]; then
@@ -260,24 +284,24 @@ elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
   _chmod_safe 0775 "${drupal_root}/../vendor/drush/drush/drush.php"
 fi
 
-[ -d "${drupal_root}" ] && _chmod_safe 02775 "${drupal_root}"
+[ -d "${drupal_root}" ] && _chmod_safe ${_MODE_DIR} "${drupal_root}"
 
 if [ -d "${drupal_root}/web" ]; then
-  _chmod_safe 02775 "${drupal_root}/web"
+  _chmod_safe ${_MODE_DIR} "${drupal_root}/web"
 elif [ -d "${drupal_root}/docroot" ]; then
-  _chmod_safe 02775 "${drupal_root}/docroot"
+  _chmod_safe ${_MODE_DIR} "${drupal_root}/docroot"
 elif [ -d "${drupal_root}/html" ]; then
-  _chmod_safe 02775 "${drupal_root}/html"
+  _chmod_safe ${_MODE_DIR} "${drupal_root}/html"
 fi
 
 printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
-find ${drupal_root}/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
+find ${drupal_root}/sites/all/{modules,themes,libraries} -type d -exec chmod ${_SA_DIR} {} \;
 
 printf "Setting permissions of all codebase files inside "${drupal_root}/sites/all"...\n"
-find ${drupal_root}/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \;
+find ${drupal_root}/sites/all/{modules,themes,libraries} -type f -exec chmod ${_SA_FILE} {} \;
 
 _chmod_safe 0644 ${drupal_root}/*.php
-_chmod_safe 0664 "${drupal_root}/autoload.php"
+_chmod_safe ${_MODE_FILE} "${drupal_root}/autoload.php"
 _chmod_safe 0751 "${drupal_root}/sites"
 _chmod_safe 0755 ${drupal_root}/sites/*
 _chmod_safe 0644 ${drupal_root}/sites/*.php
