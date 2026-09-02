@@ -178,6 +178,14 @@ fi
 
 _validate_path_prefix "${drupal_root}"
 
+### sites and sites/all are names a tenant can plant as symlinks (the docroot
+### is group-writable) and every op below walks THROUGH them; -h protects
+### only the final component. A symlinked skeleton is never legitimate.
+if [ -L "${drupal_root}/sites" ] || [ -L "${drupal_root}/sites/all" ]; then
+  printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root}" >&2
+  exit 1
+fi
+
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
@@ -203,9 +211,17 @@ mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 rm -f ${drupal_root}/sites/all/libraries/ownership-fixed*.pid
 touch ${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid
 
-### BOA specific path and logic for limited user own codebases
-if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
-  rm -f ${drupal_root}/sites/development.services.yml
+### sites/development.services.yml is a core scaffold file. Deleting it
+### here (2019) made every later composer run re-scaffold it into the
+### oN-owned sites/ directory and fail (omega8cc/boa#1936). Put core's own
+### copy back where an earlier run removed it, so the scaffold plugin finds
+### it unchanged and never has to write there.
+_scaffold_yml="${drupal_root}/core/assets/scaffold/files/development.services.yml"
+if [[ "${drupal_root}" =~ "/static/" ]] \
+  && [ -f "${_scaffold_yml}" ] && [ ! -L "${_scaffold_yml}" ] \
+  && [ ! -e "${drupal_root}/sites/development.services.yml" ] \
+  && [ ! -L "${drupal_root}/sites/development.services.yml" ]; then
+  cp -a "${_scaffold_yml}" "${drupal_root}/sites/development.services.yml"
 fi
 
 ### -h on every chown: never dereference symlinks (legacy BOA-managed

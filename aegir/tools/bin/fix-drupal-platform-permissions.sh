@@ -187,6 +187,15 @@ fi
 
 _validate_path_prefix "${drupal_root}"
 
+### sites and sites/all are names a tenant can plant as symlinks (the docroot
+### is group-writable) and the find/chmod passes below walk THROUGH them;
+### _chmod_safe protects only the final component. A symlinked skeleton is
+### never legitimate.
+if [ -L "${drupal_root}/sites" ] || [ -L "${drupal_root}/sites/all" ]; then
+  printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root}" >&2
+  exit 1
+fi
+
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
@@ -275,6 +284,19 @@ _chmod_safe 0644 ${drupal_root}/sites/*.php
 _chmod_safe 0644 ${drupal_root}/sites/*.txt
 _chmod_safe 0644 ${drupal_root}/sites/*.yml
 _chmod_safe 0755 "${drupal_root}/sites/all/drush"
+
+### Tenant composer codebases (~/static, D8+): core's composer scaffold, run
+### by the oN.ftp shell user (a group member, never the owner), rewrites its
+### files under sites/ whenever one is missing or changed and insists on a
+### writable parent first, so its two parents take group write here. Owner
+### and the x-only bit for others stay as they are; BOA-built platforms keep
+### the tight skeleton (omega8cc/boa#1936). Mirrored in night/20-sites.sh
+### and provision's verify exit hook.
+if [[ "${drupal_root}" =~ "/static/" ]] \
+  && [ -e "${drupal_root}/core/lib/Drupal.php" ]; then
+  _chmod_safe 02771 "${drupal_root}/sites"
+  _chmod_safe 02775 "${drupal_root}/sites/default"
+fi
 
 ### Lock Local Drush and Symfony Console Input/Style
 if [ -e "${drupal_root}/core" ]; then
