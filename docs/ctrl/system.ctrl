@@ -265,7 +265,8 @@ by the BOA install and upgrade tools exclusively.
   during the transition, set the variable to NO *and* remove the file: while
   the file exists it wins and is re-asserted on every pass.
 
-  Adds one verbose line per drush call to the nightly maintenance log.
+  Adds one verbose line per drush call to the nightly maintenance log, on
+  stderr, so it never enters a value the nightly parses from a call's stdout.
 
  @=> /root/.disable.auditd.logs.cnf
 
