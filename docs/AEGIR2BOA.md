@@ -141,6 +141,32 @@ into a NEW account on a php-max target. What that drill settled:
   core version now (it previously read only D7's `bootstrap.inc` location
   and graded D6 as `?`).
 
+Re-run in full on **2026-08-25** as an OS × Percona matrix on published
+tool bytes (record: boa-testing `tier3/results/A2B-MX-2026-08-25.md`), the
+first complete suite after ~130 commits to the toolset and the tree: the
+Debian 11 estate (MariaDB 10.5; mixed D6 + D7 with two real-LE HTTPS sites
+and a D9 composer platform, seven sites) adopted per-site into a Percona 5.7
+target AND into a Percona 8.4 target; the Ubuntu 22.04 estate (PPA PHP 7.4,
+distro MySQL 8.0, four D7 sites, two on LE) adopted into a Percona 8.4
+target per-site AND by db-import (12-step import, identity surgery
+asserted, full two-box revert with the orphan-vhost cleanup), and refused
+by `check` against a Percona 5.7 target exactly as the DB-parity gate
+promises (exit 1, `DB_PARITY=REFUSED`, route blanked); both stage-1 flips
+green on both include layouts (a2enconf and the deb bare symlink), every
+site's HTTP and HTTPS response matching its baseline at every transition.
+The matrix found the one cell no earlier drill had visited, **D6 on a
+Percona 8.4 target**: site users were minted `caching_sha2_password` and
+PHP 5.6's mysqli aborts at the greeting, so both D6 sites served 503 while
+the pre-fix import counted them adopted (exit 0; only the proxy gate
+refused). Fixed the same day (aegir2boa 31723df = boa-private eff026d22):
+D6 users pinned native at DB land, a serve-probe equality gate, exit-code
+honesty; re-verified on the republished bytes (stage2 md5 1ae65afc) with a
+fresh pair — db-import on 8.4 green, and the D6 per-site leg both ways: the
+stock `authentication_policy` target FAILS the site loudly with the users
+verifiably pinned, and the my.cnf remedy applied verbatim flips both D6
+sites to 200 with the re-import landing clean. The server-side half is the
+*Prerequisites* bullet on native auth; BOA sets it on Percona 8.4 (D-015).
+
 Which leaves, honestly:
 
 - **The HTTPS story is drilled end to end, and its certificate step is
