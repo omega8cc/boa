@@ -439,11 +439,23 @@ _disable_chattr() {
 
 ###-------------DRUSH8-----------------###
 
+# Verbose gate (_DEBUG_DAILY=YES in the cnf, or the legacy marker file): one
+# timestamped line per drush8 run, written to STDERR on purpose. Callers
+# capture the nosilent wrapper's stdout to parse a drush value (variable-get
+# through cut/awk in 20-sites.sh), so a line the wrapper itself printed on
+# stdout became part of that value: the timestamp survived the digits-only
+# filter in _fix_user_register_protection_with_vSet and user_register read as
+# a number like 20020120 instead of 0/1/2, which no branch of the check ever
+# acts on. Every night process joins stderr into its log (owl.sh redirects
+# _daily_action and each 10-account.sh subprocess with 2>&1), so the line
+# still lands in the same log as before; the callers that capture 2>&1 match
+# a fixed drush phrase, never a parsed value, so it is harmless there.
+
 _run_drush8_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
+    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1" >&2
   fi
   if [ -x "/opt/php74/bin/php" ]; then
     su -s /bin/bash - ${_HM_U} -c "/opt/php74/bin/php /usr/bin/drush @${_Dom} $1" &> /dev/null
@@ -457,7 +469,7 @@ _run_drush8_hmr_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1"
+    echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1" >&2
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
   wait
@@ -487,7 +499,7 @@ _run_drush8_hmr_master_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} aegir running drush8 @hostmaster $1"
+    echo "${_nOw} aegir running drush8 @hostmaster $1" >&2
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
   wait
@@ -497,7 +509,7 @@ _run_drush8_nosilent_cmd() {
   if [ "${_DEBUG_DAILY}" = "YES" ] \
     || [ -e "/root/.debug_daily.info" ]; then
     _nOw=$(date +%y%m%d-%H%M%S)
-    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
+    echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1" >&2
   fi
   if [ -x "/opt/php74/bin/php" ]; then
     su -s /bin/bash - ${_HM_U} -c "/opt/php74/bin/php /usr/bin/drush @${_Dom} $1"
