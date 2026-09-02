@@ -153,25 +153,26 @@ _check_if_required_with_drush8() {
       _RET_TEST=$(echo "${_REI_TEST}" | grep "Required by.*testing" 2>&1)
       if [[ "${_RET_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${_Dom} == 4 == via ${_RET_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${_Dom} == 4 == via ${_RET_TEST}"
       fi
       _REH_TEST=$(echo "${_REI_TEST}" | grep "Required by.*hacked" 2>&1)
       if [[ "${_REH_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${_Dom} == 5 == via ${_REH_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${_Dom} == 5 == via ${_REH_TEST}"
       fi
       _RED_TEST=$(echo "${_REI_TEST}" | grep "Required by.*devel" 2>&1)
       if [[ "${_RED_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${_Dom} == 6 == via ${_RED_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${_Dom} == 6 == via ${_RED_TEST}"
       fi
       _REW_TEST=$(echo "${_REI_TEST}" | grep "Required by.*watchdog_live" 2>&1)
       if [[ "${_REW_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${_Dom} == 7 == via ${_REW_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${_Dom} == 7 == via ${_REW_TEST}"
       fi
     fi
     _Profile=$(_run_drush8_nosilent_cmd "${_vGet} ^install_profile$" \
+      | grep "^install_profile:" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
@@ -410,7 +411,11 @@ _fix_user_register_protection_with_vSet() {
   _sync_user_register_protection_ini_vars
   if [ "${_IGNORE_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ ! -e "${_Plr}/core" ]; then
+    # Keep only the variable's own line before the field split: the stream can
+    # carry other text (a wrapper diagnostic, a shell notice), and the filters
+    # below would fold it into the value instead of rejecting it.
     _Prm=$(_run_drush8_nosilent_cmd "${_vGet} ^user_register$" \
+      | grep "^user_register:" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
@@ -803,6 +808,7 @@ _fix_modules() {
     _AUTO_CNF_PF_DL=NO
     if [ "${_PRIV_TEST_RESULT}" = "OK" ]; then
       _Pri=$(_run_drush8_nosilent_cmd "${_vGet} ^file_default_scheme$" \
+        | grep "^file_default_scheme:" \
         | cut -d: -f2 \
         | awk '{ print $1}' \
         | sed "s/['\"]//g" \

@@ -862,11 +862,15 @@ _msg() {
   fi
 }
 
+# Diagnostics from the three discovery functions go to stderr: the caller
+# captures their stdout as the helper path, so a message printed there became
+# the path (a dangling symlink to the message text) and, being non-empty, also
+# made the dpkg and find fallbacks unreachable.
 # --- internal: run virt-what under strace and parse the helper's exec path
 _discover_with_strace() {
   local _path_found=""
   if ! command -v strace >/dev/null 2>&1; then
-    _msg "strace not available, skipping strace-based discovery"
+    _msg "strace not available, skipping strace-based discovery" >&2
     echo ""
     return 0
   fi
@@ -895,11 +899,11 @@ _discover_with_strace() {
   rm -f "${_TRACE}"
 
   if [ -n "${_path_found}" ] && [ -x "${_path_found}" ]; then
-    _msg "strace discovered helper at: ${_path_found}"
+    _msg "strace discovered helper at: ${_path_found}" >&2
     echo "${_path_found}"
     return 0
   fi
-  _msg "strace discovery failed"
+  _msg "strace discovery failed" >&2
   echo ""
   return 0
 }
@@ -910,7 +914,7 @@ _discover_with_dpkg() {
   if command -v dpkg >/dev/null 2>&1; then
     _p=$(dpkg -L virt-what 2>/dev/null | grep -E "/${_HELPER_NAME}$" | head -n1)
     if [ -n "${_p}" ] && [ -x "${_p}" ]; then
-      _msg "dpkg discovered helper at: ${_p}"
+      _msg "dpkg discovered helper at: ${_p}" >&2
       echo "${_p}"
       return 0
     fi
@@ -925,7 +929,7 @@ _discover_with_find() {
   # Keep it bounded to /usr to stay fast/noisy-free.
   _p=$(find /usr -maxdepth 4 -type f -name "${_HELPER_NAME}" 2>/dev/null | head -n1)
   if [ -n "${_p}" ] && [ -x "${_p}" ]; then
-    _msg "find discovered helper at: ${_p}"
+    _msg "find discovered helper at: ${_p}" >&2
     echo "${_p}"
     return 0
   fi
@@ -1748,8 +1752,8 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f89
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f97
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f76
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f75
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f72
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f73
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f70
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f70
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f79
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f79
@@ -4324,7 +4328,7 @@ CSFSTANDBY
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f83 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f68 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f69 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f68 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f96 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f83 --guard duplicity
@@ -4339,12 +4343,12 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f21 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f26 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f80 --guard /local/bin/octopus
-    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f95 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
+    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f94 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f83 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f85 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f93 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f92 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
