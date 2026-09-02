@@ -971,7 +971,9 @@ _download_benchmark_v4() {
     return 0
   fi
   if [ "${size_download}" -lt "${min_bytes}" ]; then
-    _log "Network test INVALID (${url}): got ${size_download} bytes, expected >=${min_bytes}"
+    # stderr: the caller captures this function's stdout as the result line,
+    # and under --verbose the message would be parsed as a successful probe.
+    _log "Network test INVALID (${url}): got ${size_download} bytes, expected >=${min_bytes}" >&2
     return 0
   fi
 
