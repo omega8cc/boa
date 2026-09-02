@@ -437,6 +437,15 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
     ${_MYDUMPER_TRX_OPT} \
     --verbose=1
+  ### mydumper renames metadata into place only when every table is
+  ### dumped, so a non-zero exit or a missing marker both mean an
+  ### incomplete dump: keep its debris out of the compressor's way and
+  ### in the operator's sight.
+  if [ "$?" -ne "0" ] || [ ! -e "${_SAVELOCATION}/${_DB}/metadata" ]; then
+    echo "ALRT: mydumper FAILED or left no metadata for ${_DB} -- keeping the debris as ${_DB}.FAILED"
+    mv -f ${_SAVELOCATION}/${_DB} ${_SAVELOCATION}/${_DB}.FAILED 2>/dev/null
+    return 1
+  fi
 }
 
 _backup_this_database_with_mysqldump() {
@@ -577,6 +586,49 @@ if [ -x "/usr/local/bin/mydumper" ]; then
   fi
 fi
 
+
+# A dump that failed must never disappear quietly: cron discards this
+# script's stdout, so the ALRT lines above reach nobody. Every failure is
+# counted in the loop, then reported ONCE per run through the same channel
+# the watchdogs use -- a dated line in /var/log/boa and an e-mail to
+# _MY_EMAIL unless _INCIDENT_REPORT is OFF. The debris of a failed dump is
+# kept beside the archives as <name>.FAILED, so the operator can read the
+# tool's own leftovers instead of guessing.
+_notify_dump_failures() {
+  [ "${_DUMP_FAILED_N:-0}" = "0" ] && return 0
+  mkdir -p /var/log/boa
+  echo "$(date) Backup FAILED for ${_DUMP_FAILED_N} database(s) in ${_SAVELOCATION}:${_DUMP_FAILED_DBS}" \
+    >> /var/log/boa/mysql.backup.incident.log
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  [ "${_INCIDENT_REPORT}" = "NO" ] && _INCIDENT_REPORT="OFF"
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ] \
+    && [[ "$(s-nail -V 2>&1)" =~ "built for Linux" ]]; then
+    {
+      echo "The database backup run on ${_hName} could not dump ${_DUMP_FAILED_N} database(s):"
+      echo
+      for _d in ${_DUMP_FAILED_DBS}; do
+        echo "  ${_d}"
+      done
+      echo
+      echo "Their dumps are missing from ${_SAVELOCATION}. Whatever the dump tool"
+      echo "left behind is kept there as <name>.FAILED for inspection; every"
+      echo "other database was archived as usual. Run the script by hand and"
+      echo "read its ALRT lines to see the tool's own error:"
+      echo
+      echo "  bash /var/xdrago/mysql_backup.sh basic"
+      echo
+      echo "Logged to /var/log/boa/mysql.backup.incident.log"
+      echo
+      echo "--"
+      echo "This email has been sent by your nightly database backup"
+    } | s-nail -s "Backup FAILED for ${_DUMP_FAILED_N} database(s) on [${_hName}]" ${_MY_EMAIL}
+    echo "INFO: Backup failure notice sent to ${_MY_EMAIL}"
+  fi
+}
+
+_DUMP_FAILED_N=0
+_DUMP_FAILED_DBS=""
 for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
@@ -654,15 +706,22 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
+    _DUMP_RC=0
     if [ "${_DB}" = "mysql" ]; then
-      _backup_mysql_schema &> /dev/null
+      _backup_mysql_schema &> /dev/null || _DUMP_RC=1
     elif [ "${_MYQUICK_USE}" = "YES" ]; then
-      _backup_this_database_with_mydumper &> /dev/null
+      _backup_this_database_with_mydumper &> /dev/null || _DUMP_RC=1
     else
-      _backup_this_database_with_mysqldump &> /dev/null
+      _backup_this_database_with_mysqldump &> /dev/null || _DUMP_RC=1
     fi
     _remove_locks ${_DB}
-    echo "INFO: Backup completed for ${_DB}"
+    if [ "${_DUMP_RC}" = "0" ]; then
+      echo "INFO: Backup completed for ${_DB}"
+    else
+      _DUMP_FAILED_N=$(( ${_DUMP_FAILED_N:-0} + 1 ))
+      _DUMP_FAILED_DBS="${_DUMP_FAILED_DBS} ${_DB}"
+      echo "ALRT: Backup FAILED for ${_DB} -- this run's archive will not carry it"
+    fi
     echo
   fi
 done
@@ -717,6 +776,7 @@ fi
 echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null
 echo "INFO: Completing dbs backup compress on $(date)"
+_notify_dump_failures
 
 echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
