@@ -110,7 +110,7 @@ _stage_grav_releases() {
   if [ -s "${_gDir}/.${_gZip}.tmp" ] \
     && unzip -l "${_gDir}/.${_gZip}.tmp" > /dev/null 2>&1; then
     mv -f "${_gDir}/.${_gZip}.tmp" "${_gDir}/${_gZip}"
-    chown ${_USER}:users "${_gDir}" "${_gDir}/${_gZip}" 2> /dev/null
+    chown ${_USER}:${_ACCG:-users} "${_gDir}" "${_gDir}/${_gZip}" 2> /dev/null
     _msg "INFO: Grav admin bundle staged: ${_gDir}/${_gZip}"
   else
     rm -f "${_gDir}/.${_gZip}.tmp"
@@ -760,7 +760,7 @@ _satellite_tune_fpm_config() {
     chmod 770 /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
     if [ ! -d "${_ROOT}/tmp" ]; then
       mkdir -p ${_ROOT}/tmp
-      chown ${_USER}:users ${_ROOT}/tmp &> /dev/null
+      chown ${_USER}:${_ACCG:-users} ${_ROOT}/tmp &> /dev/null
     fi
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
@@ -1179,7 +1179,7 @@ _satellite_cnf() {
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" ${_octCnf}
           echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
           echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
-          chown -h ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
+          chown -h ${_USER}.ftp:${_ACCG:-users} ${_ROOT}/static/control/fpm.info
         fi
       fi
     fi
@@ -1293,7 +1293,7 @@ _satellite_cnf() {
           sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" ${_octCnf}
           echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
           echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
-          chown -h ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
+          chown -h ${_USER}.ftp:${_ACCG:-users} ${_ROOT}/static/control/cli.info
         fi
       fi
     fi
@@ -1899,7 +1899,15 @@ _satellite_create_shared_dirs() {
   chown ${_USER}:${_USRG} ${_D}/000          &> /dev/null
   chown ${_USER}:${_USRG} ${_D}/000/core     &> /dev/null
   chown ${_USER}:${_USRG} ${_CORE}           &> /dev/null
-  chmod 777 ${_CORE} ${_D} /data /data/disk /data/conf &> /dev/null
+  ### 777 here made /data, /data/disk, /data/conf and the shared /data/all
+  ### store writable by every local user for the whole platform build below
+  ### (reverted only in _satellite_batch_cleanup) -- long enough to drop code
+  ### into a codebase every legacy site loads, or into the global config tree.
+  ### The build runs as ${_USER}, which the chown above already made the owner,
+  ### so owner-write is all it ever needed. These are the same modes
+  ### _satellite_batch_cleanup asserts at the end of the run.
+  chmod 0755 ${_D} &> /dev/null
+  chmod 0711 ${_CORE} /data /data/disk /data/conf &> /dev/null
 }
 
 #
@@ -3100,7 +3108,7 @@ _provision_backend_dbpass_generate() {
 
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
   echo "${_ESC_PASS}" > ${_L_SYS}
-  chown ${_USER}:${_USRG} ${_L_SYS}
+  chown ${_USER}:${_ACCG:-users} ${_L_SYS}
   chmod 0600 ${_L_SYS}
 
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
@@ -3110,7 +3118,7 @@ _provision_backend_dbpass_generate() {
   echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
   echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
   echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
-  chown ${_USER}:${_USRG} ${_L_SYS_PHP}
+  chown ${_USER}:${_ACCG:-users} ${_L_SYS_PHP}
   chmod 0600 ${_L_SYS_PHP}
 
   _ESC="*.*"
@@ -3667,11 +3675,11 @@ _satellite_run_child_b() {
       if [ -e "${_U_HD}/php.ini" ]; then
         chattr -i ${_U_HD}/php.ini
       fi
-      chown -R ${_USER}:${_USRG} ${_ROOT}/.drush
-      chown -R ${_USER}:${_USRG} ${_ROOT}/backups
-      chown -R ${_USER}:${_USRG} ${_ROOT}/clients
-      chown -R ${_USER}:${_USRG} ${_ROOT}/config
-      chown -R ${_USER}:${_USRG} ${_ROOT}/tools
+      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/.drush
+      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/backups
+      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/clients
+      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/config
+      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/tools
       chown -R ${_USER} ${_THIS_HM_ROOT}
       chown -R ${_USER}:${_WEBG} ${_THIS_HM_SITE}/files
       chmod -R 02775 ${_THIS_HM_SITE}/files
@@ -3679,7 +3687,7 @@ _satellite_run_child_b() {
       chmod 0771 /data/u &> /dev/null
       su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
       wait
-      chown -R ${_USER}:users ${_ROOT}/tools/drush
+      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/tools/drush
       _satellite_update_drush_php_cli
       _satellite_update_ini_php_cli
       if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
@@ -3723,7 +3731,7 @@ _satellite_if_create_local_bin() {
   _L_BIN="${_ROOT}/bin"
   if [ ! -d "${_L_BIN}" ]; then
     mkdir -p ${_L_BIN}
-    chown ${_USER}:${_USRG} ${_L_BIN}
+    chown ${_USER}:${_ACCG:-users} ${_L_BIN}
     chmod 700 ${_L_BIN}
   fi
   if [ ! -L "${_L_BIN}/drush" ]; then
@@ -3781,7 +3789,7 @@ _satellite_set_permissions_for_all() {
   find ${_ROOT}/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
   find ${_ROOT}/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R ${_USER}:${_USRG} ${_ROOT}/.drush &> /dev/null
+  chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/.drush &> /dev/null
   find ${_ROOT}/.drush -type d -exec chmod 0710 {} \; &> /dev/null
   find ${_ROOT}/.drush/usr -type d -exec chmod 0750 {} \; &> /dev/null
   find ${_ROOT}/.drush -type f -exec chmod 0640 {} \; &> /dev/null
@@ -3927,8 +3935,12 @@ _satellite_if_add_ftps_lshell_access() {
   else
     _PATH_LSHELL="/usr/bin/lshell"
   fi
-  _ID_SHELLS=$(id -nG ${_USERFTP} 2>&1)
-  if [[ ! "${_ID_SHELLS}" =~ "users" ]] \
+  # Existence test, not a group-list shape: the old `id -nG =~ users` form
+  # would re-enter this branch -- and mint a NEW password for an existing
+  # account -- on any box where the identity's group list stops carrying
+  # the word 'users' first, which is exactly what a per-instance primary
+  # group does. Group grants are re-asserted below, outside this branch.
+  if ! getent passwd "${_USERFTP}" > /dev/null 2>&1 \
     || [ ! -d "${_USERFTP_ROOT}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Adding ftps/lshell user"
@@ -3936,7 +3948,6 @@ _satellite_if_add_ftps_lshell_access() {
     # add user
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
-    adduser ${_USERFTP} ${_WEBG} &> /dev/null
     # Make sure new file which contains password is private
     cd ${_ROOT}/log
     touch ${_ROOT}/log/pass.txt
@@ -3986,6 +3997,7 @@ _satellite_if_add_ftps_lshell_access() {
     printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
     passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
   fi
+  adduser ${_USERFTP} ${_WEBG} &> /dev/null
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
   # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
@@ -4064,8 +4076,8 @@ _satellite_if_add_update_user_symlinks() {
       _msg "${_STATUS} A: Adding symlink to the system registry_rebuild"
     fi
     mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
     ln -sfn ${_ROOT}/.drush/usr/registry_rebuild \
       ${_USER_DS}/usr/registry_rebuild
@@ -4079,8 +4091,8 @@ _satellite_if_add_update_user_symlinks() {
       _msg "${_STATUS} A: Adding symlink to the system clean_missing_modules"
     fi
     mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
     ln -sfn ${_ROOT}/.drush/usr/clean_missing_modules \
       ${_USER_DS}/usr/clean_missing_modules
@@ -4094,8 +4106,8 @@ _satellite_if_add_update_user_symlinks() {
       _msg "${_STATUS} A: Adding symlink to the system drupalgeddon"
     fi
     mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
     ln -sfn ${_ROOT}/.drush/usr/drupalgeddon \
       ${_USER_DS}/usr/drupalgeddon
@@ -4109,8 +4121,8 @@ _satellite_if_add_update_user_symlinks() {
       _msg "${_STATUS} A: Adding symlink to the system drush_ecl"
     fi
     mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
     ln -sfn ${_ROOT}/.drush/usr/drush_ecl \
       ${_USER_DS}/usr/drush_ecl
@@ -4124,8 +4136,8 @@ _satellite_if_add_update_user_symlinks() {
       _msg "${_STATUS} A: Adding symlink to the system safe_cache_form_clear"
     fi
     mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
     ln -sfn ${_ROOT}/.drush/usr/safe_cache_form_clear \
       ${_USER_DS}/usr/safe_cache_form_clear
@@ -4139,8 +4151,8 @@ _satellite_if_add_update_user_symlinks() {
       _msg "${_STATUS} A: Adding symlink to the system utf8mb4_convert"
     fi
     mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
+    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
     ln -sfn ${_ROOT}/.drush/usr/utf8mb4_convert \
       ${_USER_DS}/usr/utf8mb4_convert
@@ -4173,7 +4185,7 @@ _satellite_if_add_update_user_dot_dirs() {
     mkdir -p ${_USER_TMP}
     touch ${_USER_TMP}
     find ${_USER_TMP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-    chown -R ${_USERFTP}:${_USRG} ${_USER_TMP}
+    chown -R ${_USERFTP}:${_ACCG:-users} ${_USER_TMP}
     chmod 755 ${_USER_TMP}
   fi
 
@@ -4182,7 +4194,7 @@ _satellite_if_add_update_user_dot_dirs() {
   _USER_SSH="${_USER_HD}/.ssh"
   if [ ! -d "${_USER_SSH}" ]; then
     mkdir -p ${_USER_SSH}
-    chown -R ${_USERFTP}:${_USRG} ${_USER_SSH}
+    chown -R ${_USERFTP}:${_ACCG:-users} ${_USER_SSH}
     chmod 700 ${_USER_SSH}
   fi
   chmod 600 ${_USER_SSH}/id_{r,d}sa &> /dev/null
@@ -4194,7 +4206,7 @@ _satellite_if_add_update_user_dot_dirs() {
     if [ ! -e "${_USER_BZR}/bazaar.conf" ]; then
       mkdir -p ${_USER_BZR}
       echo ignore_missing_extensions=True > ${_USER_BZR}/bazaar.conf
-      chown -R ${_USERFTP}:${_USRG} ${_USER_BZR}
+      chown -R ${_USERFTP}:${_ACCG:-users} ${_USER_BZR}
       chmod 700 ${_USER_BZR}
     fi
   else
@@ -4386,7 +4398,7 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     mkdir -p ${_ROOT}/static
     ln -sfn ${_ROOT}/static /home/${_USERFTP}/static
   fi
-  chown ${_USER}:${_USRG} ${_ROOT}/static &> /dev/null
+  chown ${_USER}:${_ACCG:-users} ${_ROOT}/static &> /dev/null
   chmod 02775 ${_ROOT}/static &> /dev/null
   echo empty > ${_ROOT}/static/EMPTY.txt
 
@@ -4395,7 +4407,7 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   if [ ! -d "${_ROOT}/.tmp" ]; then
     rm -rf ${_ROOT}/.tmp
     mkdir -p ${_ROOT}/.tmp
-    chown ${_USER}:users ${_ROOT}/.tmp
+    chown ${_USER}:${_ACCG:-users} ${_ROOT}/.tmp
     chmod 02775 ${_ROOT}/.tmp
   fi
 
@@ -4437,7 +4449,7 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     if [ ! -e "${_SYSTEM_USER_BZR}/bazaar.conf" ]; then
       mkdir -p ${_SYSTEM_USER_BZR}
       echo ignore_missing_extensions=True > ${_SYSTEM_USER_BZR}/bazaar.conf
-      chown -R ${_USER}:${_USRG} ${_SYSTEM_USER_BZR}
+      chown -R ${_USER}:${_ACCG:-users} ${_SYSTEM_USER_BZR}
       chmod 700 ${_SYSTEM_USER_BZR}
     fi
   else
@@ -5040,6 +5052,7 @@ _satellite_make() {
   echo "export _USE_MIR=\"${_USE_MIR}\""                     >> ${_writeTo}
   echo "export _USER=\"${_USER}\""                           >> ${_writeTo}
   echo "export _USRG=\"${_USRG}\""                           >> ${_writeTo}
+  echo "export _ACCG=\"${_ACCG}\""                           >> ${_writeTo}
   echo "export _WEBG=\"${_WEBG}\""                           >> ${_writeTo}
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
@@ -5206,7 +5219,7 @@ _satellite_make() {
     rm -f ${_ROOT}/static/control/.ctrl.*
     echo OK > ${_ROOT}/static/control/.ctrl.${_tRee}.${_xSrl}.pid
   fi
-  chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
+  chown -R ${_USER}.ftp:${_ACCG:-users} ${_ROOT}/static/control
 
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
@@ -5342,6 +5355,11 @@ _satellite_check_sanitize_user_name() {
   _USER=$(echo -n ${_USER} | tr A-Z a-z 2>&1)
   _WEB="${_USER}.web"
   _ROOT="/data/disk/${_USER}"
+  # Group owning this account's tree, derived per run: 'users' until the
+  # account carries a private primary group named after itself (see
+  # _acct_group in helper.sh.inc). _USRG stays the box-wide group for the
+  # shared paths (/data/conf, /data/u, the cores) and must not be repointed.
+  _ACCG=$(_acct_group "${_USER}")
   if [ -d "${_ROOT}" ]; then
     _STATUS=UPGRADE
   fi
@@ -5587,7 +5605,7 @@ _satellite_domain_stamp_guard() {
       fi
       _DOMAIN="${_realDom}"
       echo "${_DOMAIN}" > ${_ROOT}/log/domain.txt
-      chown ${_USER}:${_USRG} ${_ROOT}/log/domain.txt &> /dev/null
+      chown ${_USER}:${_ACCG:-users} ${_ROOT}/log/domain.txt &> /dev/null
     fi
     if [ -e "${_octCnfG}" ] && [ "${_cnfDom}" != "${_realDom}" ]; then
       if [ -n "${_cnfDom}" ]; then
@@ -5613,7 +5631,7 @@ _satellite_domain_stamp_guard() {
     elif [ -n "${_cnfDom}" ] && [ -z "${_DOMAIN}" ]; then
       _DOMAIN="${_cnfDom}"
       echo "${_DOMAIN}" > ${_ROOT}/log/domain.txt
-      chown ${_USER}:${_USRG} ${_ROOT}/log/domain.txt &> /dev/null
+      chown ${_USER}:${_ACCG:-users} ${_ROOT}/log/domain.txt &> /dev/null
       _msg "NOTE: empty log/domain.txt healed from ${_octCnfG}: ${_DOMAIN}"
     elif [ -z "${_cnfDom}" ] && [ -n "${_DOMAIN}" ] && [ -e "${_octCnfG}" ]; then
       ### No arbiter and no cnf witness: proceed on the stamp but never
@@ -6447,12 +6465,13 @@ _satellite_child_b_install_drush() {
       fi
     fi
   fi
+  # Checked cd: a relative mv after a failed cd acts on the wrong tree.
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
-    cd ${_ROOT}/tools
+    cd ${_ROOT}/tools || return 1
     mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
     cp -af /opt/tools/drush/8/drush ${_ROOT}/tools/
   else
-    cd ${_ROOT}/tools
+    cd ${_ROOT}/tools || return 1
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
     fi
@@ -6729,7 +6748,7 @@ _satellite_child_b_aegir_build() {
     echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
     echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
     echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
-    chown ${_USER}:${_USRG} ${_L_SYS_PHP}
+    chown ${_USER}:${_ACCG:-users} ${_L_SYS_PHP}
     chmod 0600 ${_L_SYS_PHP}
 
     _msg "${_STATUS} B: Running hostmaster-install, please wait..."

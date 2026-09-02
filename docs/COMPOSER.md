@@ -52,6 +52,11 @@ Then:
 
 **NOT SUPPORTED — but documented for transparency.**
 Used by some developers who ignore Ægir’s platform immutability.
+BOA does not go out of its way to break this path on a codebase you own
+under `~/static`: the `sites/` and `sites/default/` directories stay
+writable for your shell user, so Composer's scaffold step no longer fails
+with `Failed to make the directory containing ... writable`. That removes
+an error, not the risk.
 
 ### ⚠️ Risks:
 - Overwrites `core`, `vendor`, scaffolded files

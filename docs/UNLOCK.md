@@ -3,8 +3,10 @@
 BOA treats code ownership on tenant platforms as managed state. Once per
 night, the maintenance worker walks every **registered** site, resolves its
 platform root, and re-asserts both ownership and permissions. The historical
-motivation (post-Drupalgeddon) was to make sure a compromised site or a
-leaked SFTP credential cannot quietly rewrite code or strip the hardening;
+motivation (post-Drupalgeddon) was to make sure a compromised site cannot
+rewrite code at all, and a leaked SFTP credential cannot strip the hardening
+or subvert git's repository-ownership trust (the code trees stay
+group-writable for the shell pair, so the lock is not a write barrier);
 the mechanism survives today as the default *lock*, with a tenant-controlled
 *unlock* for in-place maintenance ([UNLOCK-USER.md](UNLOCK-USER.md) is the
 tenant-facing walkthrough).
@@ -17,7 +19,9 @@ platform, tracked by marker files under `~/log/ctrl/`):
 - **Platforms under `~/static`** (all tenant platforms live there): the
   whole codebase is chowned to the account's backend user (`oN`). For
   composer-managed shapes (a docroot with `core/lib/Drupal.php` next to
-  `../vendor/autoload.php` and a `composer.json` requiring `drupal/core`)
+  `../vendor/autoload.php` and a `composer.json` requiring `drupal/core` or
+  `drupal/core-recommended`, the shape of drupal/recommended-project and
+  Drupal CMS)
   the pass operates on the **repository root**, so `vendor/` and
   `composer.json` are covered too. Then the permission sweep: directories
   `0775`, files `0664`, and the hardened read-only paths (`vendor/drush`,
@@ -25,8 +29,22 @@ platform, tracked by marker files under `~/log/ctrl/`):
 - **Platform level** (every registered platform, in addition to the pass
   above): `sites/all/{modules,themes,libraries}/*` chowned to `oN:users`;
   the `sites/` skeleton re-asserted (`sites` `0751`, `sites/*` `0755`,
-  `sites/*.php` `0644`); stray code archives (`*.tar`, `*.tar.gz`,
-  `*.zip`) inside `sites/all` trees are deleted.
+  `sites/*.php` `0644`; on a tenant Composer codebase under `~/static` the
+  two directories Drupal's scaffold plugin writes into take group write
+  instead, `sites` `02771` and `sites/default` `02775`, so a tenant
+  composer run can refresh its scaffold files there; others keep
+  execute-only on `sites`, every `sites/<uri>` stays `0755`, and a
+  symlinked `sites` or `sites/all` makes the pass skip the platform);
+  stray code archives (`*.tar`, `*.tar.gz`, `*.zip`) inside `sites/all`
+  trees are deleted.
+- **Built-in platforms** (`~/distro/NNN/<platform>`): the tenant-writable
+  `sites/all/{modules,themes,libraries}` keep `02775`/`0664`; core,
+  profiles, includes, vendor and the platform root take `0755`/`0644`, no
+  group write (the three Drush-lock dirs keep their lock-state mode).
+- **Hostmaster trees** (`aegir/distro/NNN` on an Octopus account,
+  `/var/aegir/distro/NNN` on the master): no shell user has any business
+  there, so the platform script and the nightly keep them at `0755`/`0644`
+  with no group write (root dir included), unlike every other platform.
 - **Site level**: each site's `{modules,themes,libraries}/*` chowned to
   `oN:users` with directories `02775` and files `0664`; settings-class
   files (`settings.php`, `local.settings.php`, `civicrm.settings.php`)
@@ -60,8 +78,9 @@ code in neither state.
   codebases.
 
 Platforms that carry **no registered site** are never visited by the
-nightly pass at all — their ownership and permissions are entirely manual
-(see [FIXREPO.md](FIXREPO.md) for the group-write repair tool for such
+nightly pass at all; a platform Verify still applies the ownership and
+permission map, so only an unregistered, never-verified tree is entirely
+manual (see [FIXREPO.md](FIXREPO.md) for the group-write repair tool for such
 trees).
 
 ## Operator knobs

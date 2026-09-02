@@ -759,9 +759,29 @@ _hostmaster_dr_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Downloading drush ${_DRUSH_VERSION}..."
   fi
+  # Master-only helper: resolve the master home when the caller exported no
+  # _ROOT (the barracuda process), and never run against an empty, missing
+  # or '/' root -- the relative mv and the copy below would otherwise act on
+  # root's HOME and the filesystem root.
+  if [ -z "${_ROOT}" ] || [ ! -d "${_ROOT}" ]; then
+    _ROOT=$(getent passwd aegir 2> /dev/null | cut -d: -f6)
+    _ROOT="${_ROOT:-/var/aegir}"
+  fi
+  if [ -z "${_ROOT}" ] || [ ! -d "${_ROOT}" ] || [ "${_ROOT}" = "/" ]; then
+    _msg "OOPS: master home '${_ROOT}' unusable; Drush not refreshed"
+    return 1
+  fi
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
-  cd ${_ROOT}
+  if ! cd ${_ROOT}; then
+    _msg "OOPS: cannot enter ${_ROOT}; Drush not refreshed"
+    return 1
+  fi
+  # Heal what the empty-_ROOT form left behind on earlier passes: a Drush
+  # tree at /drush and its rotated copies under /backups/system, both
+  # BOA-named and never legitimate at the filesystem root.
+  [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && rm -rf /drush
+  [ -d "/backups/system" ] && rm -rf /backups/system/drush-pre-* &> /dev/null
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
     mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
     cp -af /opt/tools/drush/8/drush ${_ROOT}/
@@ -785,6 +805,15 @@ _hostmaster_dr_up() {
 #
 # Upgrade Ægir Master Instance.
 _aegir_master_upgrade() {
+  # Reached from the barracuda process, which exports no _ROOT: every
+  # ${_ROOT}/... below then resolves against the filesystem root, and
+  # _hostmaster_dr_up copied a full Drush tree to /drush and rotated the old
+  # one into /backups/system on every pass (found 2026-09-02). The master
+  # home is the aegir account's home, /var/aegir on every BOA box.
+  if [ -z "${_ROOT}" ] || [ ! -d "${_ROOT}" ]; then
+    _ROOT=$(getent passwd aegir 2> /dev/null | cut -d: -f6)
+    _ROOT="${_ROOT:-/var/aegir}"
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _aegir_master_upgrade"
   fi

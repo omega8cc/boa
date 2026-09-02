@@ -75,16 +75,22 @@ already share `users` as their primary group.
 
 **Octopus install and upgrade runs** reset a handful of top-level
 `module*` directories under `~/static` globs to `0775`, and **platform
-Verify** re-tightens a few specific paths on registered platforms (`sites`
-to `0751`, the root-level `*.php` files to `0644`). Re-run `fixrepo` after
-those events if one of the affected paths matters to your workflow.
+Verify** re-tightens a few specific paths on registered platforms (the
+root-level `*.php` files to `0644`, and `sites` to `0751` on built-in
+platforms; on a tenant Composer codebase under `~/static` it asserts the
+group-writable `02771` instead, with `sites/default` at `02775`, so
+Drupal's scaffold plugin can write there). Re-run `fixrepo` after those
+events if one of the affected paths matters to your workflow.
 
 ## Security considerations
 
 The grant is deliberately no wider than BOA's own standard: group `users`
-is shared box-wide, and what keeps tenants apart is the `0711` account
-homes plus the lshell command allowlist, chrooted SFTP and per-account
-PHP-FPM `open_basedir` — not group bits. `fixrepo` extends the same model
+is shared box-wide, and group bits are not what keeps tenants apart. The
+`0711` account homes stop listing but not traversal, and lshell is a
+convenience fence rather than a boundary (composer, git and npm are granted
+shell escape), so the real separations are the per-account PHP-FPM user and
+its `open_basedir`, the per-site settings files kept out of group `users`,
+and the root-run maintenance never following a name a tenant can plant. `fixrepo` extends the same model
 to the git metadata, which means `o1.ftp` can then edit `.git` internals
 (hooks, config) of that repository; that is exactly the shared-write
 workflow the tool exists for, but treat the pair as one trust domain on

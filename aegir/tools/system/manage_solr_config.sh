@@ -26,6 +26,28 @@ _vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###
 
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
@@ -112,8 +134,8 @@ _reseed_ctrl_ini() {
   # itself for a symlink redirects the whole write. Refuse a symlinked
   # parent, require the resolved parent to sit under the account root, and
   # then act on that RESOLVED parent -- a link swapped in after the check
-  # is no longer on the path we traverse. Reads _usEr and _HM_U from the
-  # caller. $1 = source template, $2 = dest INI path.
+  # is no longer on the path we traverse. Reads _usEr, _HM_U and _HM_G from
+  # the caller. $1 = source template, $2 = dest INI path.
   local _src="$1"
   local _dst="$2"
   local _stg _new _pnt _rpn _rus
@@ -144,7 +166,7 @@ _reseed_ctrl_ini() {
     rm -f "${_new}" &> /dev/null
     return 1
   fi
-  chown "${_HM_U}:users" "${_new}" &> /dev/null
+  chown "${_HM_U}:${_HM_G:-users}" "${_new}" &> /dev/null
   chmod 0664 "${_new}" &> /dev/null
   mv -f -T "${_new}" "${_dst}" &> /dev/null || rm -f "${_new}" &> /dev/null
 }
@@ -229,7 +251,7 @@ _write_solr_config() {
     echo "To learn more please make sure to check the module docs at:"   >> ${2}
     echo                                                                 >> ${2}
     echo "https://drupal.org/project/${_module}"                         >> ${2}
-    chown ${_HM_U}:users ${2} &> /dev/null
+    chown ${_HM_U}:${_HM_G:-users} ${2} &> /dev/null
     chmod 440 ${2} &> /dev/null
   fi
 }
@@ -1667,6 +1689,9 @@ _start_up() {
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
       if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
         _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        # Group owning this account's tree, re-derived for every account in
+        # the loop so nothing leaks from the previous iteration.
+        _HM_G=$(_acct_group "${_HM_U}")
         _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
           | cut -d: -f2 \
@@ -1674,7 +1699,10 @@ _start_up() {
           | sed "s/[\,']//g" 2>&1)
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "User ${_usEr}"
-        mkdir -p ${_usEr}/log/ctrl
+        ### The account home is owned by oN, the backend uid site-local Drush
+        ### and the account cron run as, so a planted log symlink would
+        ### redirect this root mkdir.
+        [ ! -L "${_usEr}/log" ] && mkdir -p "${_usEr}/log/ctrl"
         # shellcheck disable=SC1091
         [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
         _check_sites_list
