@@ -108,8 +108,8 @@ Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/
 
 ### Devuan (recommended)
 
-- Excalibur (supported, but only with Percona 8.4)
 - Daedalus (default, with Percona 5.7, 8.0 or 8.4)
+- Excalibur (supported, but only with Percona 8.4)
 - Chimaera (deprecated, not tested in any context - upgrade to Daedalus)
 - Beowulf (deprecated, not tested in any context - a hop on the way up only)
 
