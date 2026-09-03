@@ -112,8 +112,19 @@ fi
 
 # mode = switch
 _check_disk
+# The backup script exits 0 even when a database failed, so the multiback
+# legs below still carry the archives that exist; the failure is reported
+# through its incident log, which is what we read back here.
+_INC_LOG=/var/log/boa/mysql.backup.incident.log
+_INC_N0=$(grep -c . "${_INC_LOG}" 2>/dev/null || echo 0)
 _run_cmd /var/xdrago/mysql_backup.sh basic
-_info "MySQL backup completed successfully."
+_INC_N1=$(grep -c . "${_INC_LOG}" 2>/dev/null || echo 0)
+if [ "${_INC_N1}" -gt "${_INC_N0}" ]; then
+  _error "MySQL backup completed with failures -- see ${_INC_LOG}:"
+  tail -n "$(( _INC_N1 - _INC_N0 ))" "${_INC_LOG}" | sed 's/^/  /' >&2
+else
+  _info "MySQL backup completed successfully."
+fi
 
 _run_cmd /opt/local/bin/multiback repair b2 data
 _run_cmd /opt/local/bin/multiback backup b2 data

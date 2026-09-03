@@ -1069,8 +1069,11 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         ### exiting clean), so on 1.x tables are chunked and dumped in parallel
         ### again; older builds keep chunking off (--rows=-1). A fixed --rows=N
         ### walks a sparse key span to inode exhaustion; mirrors mysql_backup.sh.
+        ### Probed per call and anchored on the banner line, as in the
+        ### nightly: a stray line ahead of it cannot pass as a version.
         _MYDUMPER_ROWS_OPT="--rows=-1"
-        case "${_MYQUICK_ITD}" in
+        _MYDUMPER_MAJOR=$(mydumper -V 2>&1 | grep -m1 "^mydumper v" | cut -d" " -f2 | tr -d "v" | cut -d"." -f1)
+        case "${_MYDUMPER_MAJOR}" in
           [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
         esac
         ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
