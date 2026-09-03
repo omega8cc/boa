@@ -159,7 +159,8 @@ _relocate_backups_to_static_fs() {
   # for large accounts moved to attached storage -- which is exactly the case this
   # protects; on a default single-filesystem box this is a deliberate no-op.
   [ -e "${_static}" ] || return 0
-  # ${_acct}/static is 02775 group users, so the tenant can replace static/files
+  # ${_acct}/static is 02775 and group-writable by the account's shell
+  # identities, so the tenant can replace static/files
   # with a symlink of their choosing -- and every path below is derived from it,
   # with root doing the mkdir, the chown and the rsync at the far end. Both
   # gates here dereference, and a link to a tmpfs (/run, /dev/shm) even passes
@@ -847,8 +848,9 @@ _check_old_empty_platforms() {
 _purge_hits_under_account() {
   # Re-anchor each hit fed in on stdin before deleting it. The static/* globs
   # in _purge_cruft_machine are expanded by the shell, which resolves symlinks
-  # in every component, and ${_usEr}/static is 02775 group users -- so a
-  # tenant-planted link points the pattern at another account's tree. Gate on
+  # in every component, and ${_usEr}/static is 02775 and group-writable by the
+  # account's shell identities -- so a tenant-planted link points the pattern
+  # at another account's tree. Gate on
   # the RESOLVED path rather than refusing symlinks, because the site files/
   # and private/ links into this account's own store are legitimate. The store
   # may sit on attached storage under /mnt; nothing else is a supported
@@ -917,7 +919,8 @@ _purge_cruft_machine() {
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
 
   # These globs are expanded by the SHELL, which resolves symlinks in every
-  # component, and ${_usEr}/static is 02775 group users -- so a link planted at
+  # component, and ${_usEr}/static is 02775 and group-writable by the account's
+  # shell identities -- so a link planted at
   # any level aims the same pattern at another account's tree and root does the
   # deleting. find -P is not the fix: the site files/ and private/ components
   # are legitimately symlinks into this account's own store, and refusing them

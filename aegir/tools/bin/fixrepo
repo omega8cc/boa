@@ -203,7 +203,8 @@ _main() {
   fi
 
   # Every component of the argument sits in a tenant-writable tree (~/static is
-  # 02775 oN:users; an lshell home owns its own sites/static links), so an alias
+  # 02775, group-writable by the account's shell identities; an lshell home owns
+  # its own sites/static links), so an alias
   # can be re-pointed at another account or at /var/aegir between operator runs
   # and this root chmod would then open THAT tree instead -- the allowlist below
   # spans every account and cannot tell the difference. Refuse a target reached
@@ -244,8 +245,9 @@ _main() {
   # that hold codebases -- a typo like / or /etc would loosen system files
   # box-wide. Same allowlist idea as fix-drupal-platform-permissions.sh, plus
   # /var/www, and at least one level below each allowed base.
-  # Account credential stores, not codebases: g+rwX there hands every box user
-  # (group users is box-wide) the tenant's DB aliases and pass.txt. Anchor on the
+  # Account credential stores, not codebases: g+rwX there hands the account's
+  # shell identities -- every box user while the instance still carries the
+  # box-wide 'users' group -- the tenant's DB aliases and pass.txt. Anchor on the
   # FIRST segment under the account -- "*" matches "/" in a case pattern, so
   # /data/disk/*/log would also refuse a codebase's own log/ subdirectory.
   case "${_REPO_ROOT}" in
@@ -289,7 +291,7 @@ _main() {
 
   # Explicitly fix .git tree too (clarity + robustness in shared workflows).
   # .git is a name a tenant can plant in the group-writable codebase root
-  # (~/static is 02775 oN:users), and chmod -R DOES follow a symlink handed to
+  # (~/static is 02775 and group-writable), and chmod -R DOES follow a symlink handed to
   # it as its argument -- it only refuses ones met during the walk -- so a
   # planted .git -> / would loosen the whole box. A symlinked .git is never
   # legitimate here; skip it, the tree pass above already covered everything

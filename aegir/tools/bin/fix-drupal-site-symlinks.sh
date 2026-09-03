@@ -99,7 +99,7 @@ if [ -n "${_caller}" ]; then
         printf "Error: --account '%s' is not the caller's own account '%s'.\n" "${_account}" "${_caller_acct}" >&2
         exit 1
       fi
-      # -f follows symlinks and ~oN/.drush is owned by the account (oN:users
+      # -f follows symlinks and ~oN/.drush is owned by the account (owner oN,
       # 0710), so a link planted here would let the caller nominate another
       # account's alias -- and with it another account's site_path. But the
       # account's OWN front-end alias is legitimately a symlink to

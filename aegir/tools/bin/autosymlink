@@ -1720,7 +1720,7 @@ _process_site() {
     return
   fi
 
-  # The alias file sits in a directory the ACCOUNT owns (~oN/.drush, oN:users
+  # The alias file sits in a directory the ACCOUNT owns (~oN/.drush, owner oN,
   # 0710), so site_path is tenant input, not a trusted fact: the account can
   # rewrite it and aim this root-run mv/ln -s at /etc/ssl, /var/aegir or another
   # tenant. Every real site of this account lives under the account dir. Compare

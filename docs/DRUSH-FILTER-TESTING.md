@@ -103,7 +103,7 @@ function bprobe_drush_command() {
 }
 function drush_bprobe() { drush_print('BOA-PROBE-RAN uid=' . posix_geteuid()); }
 PHP
-chown <OCT>:users "$ROOT/sites/all/drush/bprobe.drush.inc"
+chown <OCT>:$(id -gn <OCT>) "$ROOT/sites/all/drush/bprobe.drush.inc"
 chmod 644 "$ROOT/sites/all/drush/bprobe.drush.inc"
 ```
 

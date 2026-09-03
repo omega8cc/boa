@@ -242,8 +242,9 @@ _marker_has() { [[ -e "$(_marker "$1")" ]]; }
 # via drush php-script. A fixed /tmp name on a multi-tenant BOA box is a
 # symlink-preplant vector (root cat> follows the link) AND a TOCTOU swap
 # window -- and so is anything under ${_ACCT_ROOT}/static: BOA makes that
-# dir oN:users 02775 and every Octopus account's primary group IS users, so
-# any co-hosted tenant can pre-plant a symlink there for root's mkdir/chown/
+# dir 02775 with the account's group -- box-wide 'users' on an instance not
+# yet converted to its per-instance group, shared by every co-hosted tenant --
+# so a tenant can pre-plant a symlink there for root's mkdir/chown/
 # chmod (all of which follow links; protected_symlinks only covers sticky
 # world-writable dirs). Stage under a ROOT-OWNED 0755 parent no tenant can
 # write, with a per-account 0700 dir handed to oN so drush can read the

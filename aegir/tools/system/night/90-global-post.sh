@@ -132,8 +132,9 @@ _ghost_codebases_cleanup() {
       -type d -name vendor | sort 2>&1)
     for _vendor in ${_CodebaseTest}; do
       _ParentDir=`echo ${_vendor} | sed "s/\/vendor//g"`
-      ### The platform root is 02775 group 'users', and 'users' spans every
-      ### account on the box, so ANY tenant can delete a victim's index.php and
+      ### The platform root is 02775 and group-writable -- by the account's
+      ### shell identities, and by ANY tenant while the instance still carries
+      ### the box-wide 'users' group -- so a tenant can delete a victim's index.php and
       ### mkdir a decoy vendor/ to have this reap the victim's whole codebase.
       ### A tree still named by a registered platform alias is never a ghost,
       ### whatever it looks like on disk.
@@ -413,8 +414,10 @@ _global_cleanup() {
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown -R root:root /data/conf &> /dev/null
     ### sites/all/{modules,libraries,themes} stay 02775 group 'users', and
-    ### 'users' is the PRIMARY group of every account -- so of every site's
-    ### PHP-FPM pool too. Anything under them can be renamed between find's
+    ### every account's identities carry 'users' (primary on an unconverted
+    ### instance, supplementary once it has its per-instance group), so this
+    ### stays the one box-wide group-writable code path by design. Anything
+    ### under them can be renamed between find's
     ### stat and the chmod it execs, and chmod follows a symlink named on its
     ### command line: that race is a root chmod on an arbitrary path. Prune
     ### those leaves; their own modes are asserted right below, where the
@@ -436,7 +439,7 @@ _global_cleanup() {
       chown -R root:users /data/disk/all/*/*/sites &> /dev/null
       chown -R root:users /data/disk/all/000/core/*/sites &> /dev/null
     fi
-    ### distro/NNN is 0711 oN:users, so anything running as the account uid
+    ### distro/NNN is 0711 (owner oN), so anything running as the account uid
     ### (a hostile drush include, a compromised task) can create a whole decoy
     ### platform dir there and plant these three
     ### names as symlinks; 02775 on a symlinked FILE also adds o+r. Only ever
@@ -451,7 +454,7 @@ _global_cleanup() {
     echo fixed > /var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info
   fi
   if [ ! -e "/var/backups/fix-sites-all-permsissions-${_xSrl}.txt" ]; then
-    ### distro/NNN is 0711 oN:users: the account uid -- every Ægir task and
+    ### distro/NNN is 0711 (owner oN): the account uid -- every Ægir task and
     ### site-local Drush run as it -- can create a decoy platform dir there with its
     ### own sites/ and point sites/all at any path. Plain chmod follows a
     ### symlink named on its command line, so 0755 on a planted
