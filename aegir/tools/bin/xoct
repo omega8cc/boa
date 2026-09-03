@@ -1269,6 +1269,35 @@ _xoct_runtime_oct() {
   fi
 }
 
+# Group ownership on the target after a transfer, same-name or rename. rsync
+# maps ids by NAME: the source account's private group (per-instance group
+# model) has no name on the target unless the target account is converted
+# too, so every path of the source tree lands in an unassigned numeric gid
+# there; and the literal ':users' writes this tool still makes on the target
+# (control files, the users store) are right only on an unconverted account.
+# Re-group, on the target, every path of the account's roots that is in no
+# group or in the box-wide group to the account's own group there ('users'
+# until the target account is converted), group-only and symlink-safe, and
+# drop a conversion marker carried from the source: it records the SOURCE
+# box's conversion, and instgrp status would read it as a lie.
+_xoct_regroup_target_account() {
+  local _X_DST="$1" _X_HOST="$2"
+  [ -n "${_X_DST}" ] && [ -n "${_X_HOST}" ] || return 0
+  ssh root@"${_X_HOST}" "bash -s" <<REMOTE
+_A='${_X_DST}'
+_G=\$(id -gn "\${_A}" 2>/dev/null); [ "\${_G}" = "\${_A}" ] || _G=users
+_U=\$(getent group users | cut -d: -f3)
+for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp"; do
+  [ -d "\${_R}" ] || continue
+  find -P "\${_R}" \( -nogroup -o -gid "\${_U}" \) ! -group www-data -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+done
+if [ "\${_G}" = "users" ] && [ -f "/data/disk/\${_A}/log/instance-group.txt" ]; then
+  rm -f "/data/disk/\${_A}/log/instance-group.txt"
+fi
+echo "INFO: target group pass for \${_A}: group \${_G}"
+REMOTE
+}
+
 _xoct_rewrite_target_account_refs() {
   _X_SRC_OCT="$1"
   _X_DST_OCT="$2"
@@ -3705,6 +3734,7 @@ _migrate_init() {
             if [ ! -z "${_dst}" ] && [ "${_dst}" != "${_oct}" ]; then
               _xoct_rewrite_target_account_refs "${_oct}" "${_dst}" "${_tgt}" "${_DST}"
             fi
+            _xoct_regroup_target_account "${_dst:-${_oct}}" "${_tgt}"
             echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
             # Only the real transfer marks the account migrated -- pretransfer
             # shares this completion path (warm-up rsync while the account is
