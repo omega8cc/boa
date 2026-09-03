@@ -897,16 +897,23 @@ _ok_create_user() {
         # A user born on a held standby (users.txt arrives from the active
         # by sync) never gets a live shell, not even for one pass; record
         # it so promotion restores it like every other held tenant.
-        useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
         mkdir -p /var/log/boa 2>/dev/null
         grep -qxF "${_usrLtd}" /var/log/boa/standby-held-shells.txt 2>/dev/null \
           || echo "${_usrLtd}" >> /var/log/boa/standby-held-shells.txt
       elif [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-        useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
         echo "_usrLtdRoot is == ${_usrLtdRoot} == at _ok_create_user"
       else
-        useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
       fi
+      # The primary group is the account's own (-g above, users until the
+      # account carries its per-instance group); 'users' stays supplementary
+      # in every case -- it is the binary execute ACL, lshell included.
+      usermod -aG users ${_usrLtd}
       adduser ${_usrLtd} ${_WEBG}
       _ESC_LUPASS=""
       _LEN_LUPASS=0
@@ -1008,6 +1015,22 @@ _ok_create_user() {
   fi
 }
 #
+# Change a sub-user's primary group without usermod's own recursive lchown of
+# the home tree (shadow chown_tree: full pathnames, stops at the first
+# immutable inode -- and these homes carry chattr +i -- with the passwd entry
+# already rewritten). The home field points at an empty root-owned staging
+# dir for that one call and is put back at once; the group on the files is
+# the alias-copy leg's business.
+_set_primary_group() {
+  local _u="$1" _g="$2" _h _stage=/var/backups/ltd/.pg-stage
+  _h=$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)
+  [ -n "${_h}" ] || return 1
+  mkdir -p "${_stage}" && chown root:root "${_stage}" && chmod 0700 "${_stage}"
+  usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
+  usermod -d "${_h}" "${_u}" > /dev/null 2>&1
+  [ "$(id -gn "${_u}" 2>/dev/null)" = "${_g}" ]
+}
+#
 # OK, update user.
 _ok_update_user() {
   _usrLtdTest=${_usrLtd//[^a-z0-9]/}
@@ -1020,6 +1043,30 @@ _ok_update_user() {
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
       _manage_sec_user_drush_aliases
       chmod 700 ${_usrLtdRoot}
+      # 'users' is the binary execute ACL (root:users 0750, lshell included):
+      # every sub-user must be LISTED in it, independently of its primary
+      # group. The test reads the group database -- id -nG would answer yes
+      # through the primary gid alone, and a later primary move would then
+      # drop the group. Repairs an already-stripped identity on every pass.
+      if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
+        usermod -aG users ${_usrLtd}
+      fi
+      # A sub-user still on the box-wide primary group while its account
+      # carries the per-instance group (born under an older worker, or the
+      # account converted since) cannot read its 0440 alias copies: align it,
+      # only once the explicit 'users' membership above is in place, and
+      # verified after the move.
+      if [ "${_usrGroup}" != "users" ] \
+        && [ "$(id -gn ${_usrLtd} 2>/dev/null)" != "${_usrGroup}" ] \
+        && getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
+        _set_primary_group ${_usrLtd} ${_usrGroup}
+        if id -nG ${_usrLtd} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+          echo "Sub-user ${_usrLtd} moved to primary group ${_usrGroup}"
+        else
+          _set_primary_group ${_usrLtd} users
+          echo "ALERT: ${_usrLtd} lost group users on the primary move, reverted to users"
+        fi
+      fi
     fi
     _fix_dot_dirs
     rm -f ${_usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}

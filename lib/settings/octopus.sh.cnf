@@ -602,6 +602,26 @@ _GHOST_ALIASES_CLEANUP=NO
 
 
 ###----------------------------------------###
+### PER-INSTANCE GROUP                      ###
+###----------------------------------------###
+###
+### Every identity of this account (oN, oN.ftp,
+### oN.<client>) gets a private primary group
+### named after the account, and the account's
+### files carry it, so another account's shell
+### or backend identity can no longer read this
+### account's 0440 files (site credentials in
+### drushrc.php, Drush aliases). Applied on the
+### next octopus upgrade by the instgrp tool;
+### 'users' stays a supplementary group. NO
+### keeps or restores the box-wide group model
+### for this account (run `instgrp revert oN`
+### to undo a conversion already made).
+###
+_INSTANCE_GROUP=YES
+
+
+###----------------------------------------###
 ### DELETE OLD BACKUPS                     ###
 ###----------------------------------------###
 ###

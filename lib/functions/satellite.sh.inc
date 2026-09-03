@@ -948,6 +948,7 @@ _satellite_cnf() {
     echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}"         >> ${_octCnf}
     echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_octCnf}
     echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"     >> ${_octCnf}
+    echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}"              >> ${_octCnf}
     echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}"                 >> ${_octCnf}
     echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}"                         >> ${_octCnf}
     echo "_LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP}"               >> ${_octCnf}
@@ -1370,6 +1371,13 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_octCnf}
+    fi
+
+    _INSTANCE_GROUP_TEST=$(grep _INSTANCE_GROUP ${_octCnf} 2>&1)
+    if [[ "${_INSTANCE_GROUP_TEST}" =~ "_INSTANCE_GROUP" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}" >> ${_octCnf}
     fi
 
     _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${_octCnf} 2>&1)
@@ -2970,14 +2978,39 @@ _satellite_add_user_dirs() {
       _msg "${_STATUS} A: Adding user..."
     fi
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
-    adduser --system --home ${_ROOT} --ingroup ${_USRG} ${_USER} &> /dev/null
+    # Born into a private primary group named after the account (the
+    # per-instance group model, see instgrp): everything the account's
+    # identities create from here on is group-owned by the account alone,
+    # never by the box-wide 'users'. 'users' stays SUPPLEMENTARY on the
+    # identity -- it is the binary execute ACL (root:users 0750), not a data
+    # group. A same-named group left behind by an earlier purge is adopted
+    # only while nobody holds it. _INSTANCE_GROUP=NO in the cnf keeps the
+    # box-wide primary group.
+    _ACCG="${_USRG}"
+    if [ "${_INSTANCE_GROUP}" != "NO" ]; then
+      if ! getent group "${_USER}" > /dev/null 2>&1; then
+        addgroup --system "${_USER}" &> /dev/null
+      fi
+      if getent group "${_USER}" > /dev/null 2>&1 \
+        && [ -z "$(getent group "${_USER}" | cut -d: -f4)" ] \
+        && ! getent passwd | awk -F: -v g="$(getent group "${_USER}" | cut -d: -f3)" '$4 == g { f=1 } END { exit !f }'; then
+        _ACCG="${_USER}"
+      fi
+    fi
+    adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
+    adduser ${_USER} ${_USRG} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
+    _ACCG=$(_acct_group "${_USER}")
   fi
   # No blanket chown of the scratch root here. It used to hand the whole tree
   # to this user -- including the build tree root sources on its next pass, and
   # every scratch file the next root writer reopens -- while only the top inode
   # was ever handed back, so root was left opening files it did not own inside
   # a sticky directory. The children need nothing outside their own paths.
+  # /data/conf is box-wide: transiently owned by whichever account is running
+  # and handed back to root by _satellite_post_cleanup. It keeps the box-wide
+  # group on purpose -- never the account's own (_ACCG), which would make a
+  # shared path mean "one account" for the length of the run.
   chown -R ${_USER}:${_USRG} /data/conf &> /dev/null
   # On a fresh install the per-child includes are materialised before
   # this user exists, so ownership must be re-asserted here or the su'd
@@ -3923,6 +3956,43 @@ _satellite_if_add_snail_access() {
   fi
 }
 
+#
+# Per-instance group: hand the account's identities and files to a private
+# group named after the account (tool: instgrp, delivered by BOA.sh.txt). On
+# an upgrade this runs before _satellite_make so the rest of the run already
+# writes with the new group; on a fresh install the identities exist only
+# after AegirSetupA, so it runs after _satellite_make. instgrp refuses while
+# any fetched root-run writer on the box still carries the box-wide form and
+# skips (never half-converts) a busy account. Per-account opt-out:
+# _INSTANCE_GROUP=NO in the octopus cnf.
+_satellite_if_instance_group() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_if_instance_group $1"
+    _debug_proc
+  fi
+  case "$1" in
+    pre)  [ "${_STATUS}" = "UPGRADE" ] || return 0 ;;
+    post) [ "${_STATUS}" = "INIT" ] || return 0 ;;
+    *) return 0 ;;
+  esac
+  if [ "${_INSTANCE_GROUP}" = "NO" ] \
+    || grep -q "^_INSTANCE_GROUP=NO" ${_octCnf} 2> /dev/null; then
+    _msg "NOTE: per-instance group disabled for ${_USER} (_INSTANCE_GROUP=NO)"
+    return 0
+  fi
+  if [ ! -e "/opt/local/bin/instgrp" ]; then
+    _msg "NOTE: instgrp not installed yet, ${_USER} keeps the box-wide group this pass"
+    return 0
+  fi
+  bash /opt/local/bin/instgrp convert ${_USER} --from-octopus
+  _iGrc=$?
+  if [ "${_iGrc}" != "0" ]; then
+    _msg "ALERT: instgrp convert ${_USER} returned ${_iGrc}, see /var/log/boa/instgrp.log"
+  fi
+  # The rest of this run writes with whatever group the account carries now.
+  _ACCG=$(_acct_group "${_USER}")
+}
+
 _satellite_if_add_ftps_lshell_access() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_ftps_lshell_access"
@@ -3947,7 +4017,10 @@ _satellite_if_add_ftps_lshell_access() {
     fi
     # add user
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
-    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
+    # -N leaves the primary group to /etc/default/useradd (users); name it
+    # explicitly so an account carrying its per-instance group gets that one.
+    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
+      -g ${_ACCG:-users} ${_USERFTP} &> /dev/null
     # Make sure new file which contains password is private
     cd ${_ROOT}/log
     touch ${_ROOT}/log/pass.txt
@@ -3997,6 +4070,11 @@ _satellite_if_add_ftps_lshell_access() {
     printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
     passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
   fi
+  # 'users' explicitly supplementary: the binary execute ACL (root:users
+  # 0750, lshell included) must survive the move of the primary group to the
+  # per-instance group. Lists the identity in the group database whatever its
+  # primary group is; a primary 'users' alone is not a listed membership.
+  usermod -aG ${_USRG} ${_USERFTP} &> /dev/null
   adduser ${_USERFTP} ${_WEBG} &> /dev/null
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
@@ -5053,6 +5131,7 @@ _satellite_make() {
   echo "export _USER=\"${_USER}\""                           >> ${_writeTo}
   echo "export _USRG=\"${_USRG}\""                           >> ${_writeTo}
   echo "export _ACCG=\"${_ACCG}\""                           >> ${_writeTo}
+  echo "export _INSTANCE_GROUP=\"${_INSTANCE_GROUP:-YES}\""    >> ${_writeTo}
   echo "export _WEBG=\"${_WEBG}\""                           >> ${_writeTo}
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
@@ -5175,6 +5254,10 @@ _satellite_make() {
     touch /opt/tmp/status-Octopus-FAIL
     _clean_pid_exit _satellite_make_a
   fi
+  # On a fresh install the identities were created inside AegirSetupA, so the
+  # group derived before they existed is stale here; the parent's remaining
+  # writes must use the account's real group.
+  _ACCG=$(_acct_group "${_USER}")
 
   if [ ! -e "${_ROOT}/log/email.txt" ]; then
     echo ${_CLIENT_EMAIL} > ${_ROOT}/log/email.txt

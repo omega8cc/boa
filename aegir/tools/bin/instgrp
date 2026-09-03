@@ -1,0 +1,784 @@
+#!/bin/bash
+
+#
+# instgrp -- the per-instance group of an Octopus account: status, convert, revert.
+#
+# An Octopus account is born with the box-wide primary group 'users' on every
+# one of its identities (oN, oN.ftp, oN.<client>), so each 0440 file in its
+# tree -- sites/<uri>/drushrc.php with the site's DB credentials, the
+# ~/.drush aliases -- is readable by every other account's identities on the
+# box. convert gives the account a private system group named after it, makes
+# that group the PRIMARY group of the account's backend and shell identities,
+# and re-groups the account's files. 'users' stays SUPPLEMENTARY on every
+# identity, permanently: it is the box-wide binary execute ACL (root:users
+# 0750, lshell included), the /data/u traversal grant and the shared-core
+# write grant. The FPM pool identities (oN.web, oN.NN.web) keep www-data as
+# their only group and never join the account group: they read settings.php
+# through www-data and must never reach drushrc.php.
+#
+# Usage:
+#   instgrp status  <account>|all
+#   instgrp convert <account>|all [--from-octopus]
+#   instgrp revert  <account>
+#   instgrp check
+#
+#   status   the marker, the group, every identity's group set, the FPM
+#            assertion and the per-group file counts under the account's
+#            roots; ends with one verdict line (CONVERTED, UNCONVERTED, DRIFT,
+#            INCONSISTENT). DRIFT = converted but files in group 'users' were
+#            written back (a stale tool, an import from an unconverted box, an
+#            operator chown): re-run convert, it is idempotent.
+#   convert  identities first (users supplementary, then the primary group),
+#            then a group-only, symlink-safe walk over the account's roots.
+#            A walk that cannot finish rolls the account back to the box-wide
+#            model (files, then identities) rather than leave it half done.
+#            Refuses while another BOA run holds /run/boa_run.pid (the octopus
+#            arm passes --from-octopus because it holds that lock itself),
+#            waits a bounded time for the account's own provision tasks, and
+#            refuses when any fetched root-run writer on the box predates the
+#            group-aware form (see check): converting under an old writer
+#            would be undone by its next pass, and an old websh would lock the
+#            tenant out of its shell. With 'all', one account's failure is
+#            logged and the loop goes on.
+#   revert   the exact inverse, files first so no identity ever loses a group
+#            its files still carry; removes the group only once empty.
+#   check    the writer inventory only.
+#
+# The octopus upgrade arm runs convert for every account by default; the
+# per-instance opt-out is _INSTANCE_GROUP=NO in /root/.<account>.octopus.cnf
+# (honoured by that arm, not by an explicit operator convert). Log:
+# /var/log/boa/instgrp.log. Exit: 0 done, 1 failed, 2 drift, 3 inconsistent,
+# 4 skipped busy.
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+_USRG=users
+_WEBG=www-data
+_LOG=/var/log/boa/instgrp.log
+_MARK_REL=log/instance-group.txt
+_WAIT_MAX="${_INSTGRP_WAIT_MAX:-300}"
+_FROM_OCTOPUS=NO
+_HELD_LOCK=NO
+_ACCT=""
+
+_msg() {
+  printf '%s\n' "$*"
+}
+
+_info() {
+  printf 'OK: %s\n' "$*"
+}
+
+_alrt() {
+  printf 'ALERT: %s\n' "$*" >&2
+}
+
+# Process-wide failure: usage, root, a missing box-wide group.
+_die() {
+  printf 'ERROR: %s\n' "$*" >&2
+  _log "ERROR ${_ACCT:-?}: $*"
+  exit 1
+}
+
+# Per-account failure: logged and reported, the caller decides (the 'all'
+# loops go on to the next account).
+_fail() {
+  printf 'ERROR: %s\n' "$*" >&2
+  _log "FAIL ${_ACCT:-?}: $*"
+  return 1
+}
+
+_log() {
+  local _ts
+  _ts=$(date '+%Y-%m-%d %H:%M:%S')
+  [ -d /var/log/boa ] || mkdir -p /var/log/boa
+  printf '%s instgrp %s\n' "${_ts}" "$*" >> "${_LOG}" 2> /dev/null
+}
+
+_usage() {
+  cat <<'EOF'
+Usage:
+  instgrp status  <account>|all
+  instgrp convert <account>|all [--from-octopus]
+  instgrp revert  <account>
+  instgrp check
+
+  status   marker, group, every identity's group set, the FPM assertion and
+           the per-group file counts under the account's roots; one verdict
+           line: CONVERTED, UNCONVERTED, DRIFT or INCONSISTENT.
+  convert  identities first (users supplementary, then the primary group),
+           then a group-only, symlink-safe walk over the account's roots.
+           Idempotent; re-run it on DRIFT. Rolls back if the walk fails.
+  revert   the exact inverse, files first; the group goes once it is empty.
+  check    are the fetched root-run writers on this box group-aware?
+
+  --from-octopus  the octopus upgrade arm holds /run/boa_run.pid itself.
+  Exit: 0 done, 1 failed, 2 drift, 3 inconsistent, 4 skipped (busy).
+EOF
+  exit 1
+}
+
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    printf 'ERROR: instgrp must run as root\n' >&2
+    exit 1
+  fi
+}
+
+# Two different questions, never confused:
+#  _in_grp     -- is <group> in the identity's EFFECTIVE set (id -nG, which
+#                 lists the primary group first)? The right test for "can this
+#                 identity still exec root:users binaries".
+#  _in_grp_sup -- is the identity LISTED as a member of <group> in the group
+#                 database? The only test that says whether a supplementary
+#                 grant exists independently of the primary gid: an identity
+#                 whose primary group is 'users' answers _in_grp yes and
+#                 _in_grp_sup no, and moving its primary group would drop
+#                 'users' unless the explicit membership is written first.
+_in_grp() {
+  local _u="$1" _g="$2" _e
+  for _e in $(id -nG "${_u}" 2> /dev/null); do
+    [ "${_e}" = "${_g}" ] && return 0
+  done
+  return 1
+}
+
+_in_grp_sup() {
+  local _u="$1" _g="$2" _m
+  for _m in $(getent group "${_g}" 2> /dev/null | cut -d: -f4 | tr ',' ' '); do
+    [ "${_m}" = "${_u}" ] && return 0
+  done
+  return 1
+}
+
+_grant_sup() {
+  # Explicit supplementary membership, idempotent; verified by re-reading the
+  # group database, never by id -nG.
+  local _u="$1" _g="$2"
+  _in_grp_sup "${_u}" "${_g}" && return 0
+  usermod -aG "${_g}" "${_u}" > /dev/null 2>&1
+  _in_grp_sup "${_u}" "${_g}"
+}
+
+_gid_of() {
+  getent group "$1" 2> /dev/null | cut -d: -f3
+}
+
+# Change an identity's primary group WITHOUT usermod's own walk: shadow's
+# usermod -g also lchowns every file of the old gid under the home tree
+# (chown_tree), by full pathname, and gives up at the first immutable inode
+# with the passwd entry already rewritten (rc 12, tree half done). Pointing
+# the home at an empty root-owned staging directory for that one call keeps
+# usermod off the tree; the group walk here does the files, symlink-safe and
+# immutable-aware. The home field is put back in the same breath.
+_set_primary() {
+  local _u="$1" _g="$2" _h _stage=/root/.instgrp.home
+  _h=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
+  [ -n "${_h}" ] || return 1
+  mkdir -p "${_stage}" && chown root:root "${_stage}" && chmod 0700 "${_stage}"
+  usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
+  usermod -d "${_h}" "${_u}" > /dev/null 2>&1
+  if [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" != "${_h}" ]; then
+    _alrt "${_u}: home field left as $(getent passwd "${_u}" | cut -d: -f6), expected ${_h}"
+    usermod -d "${_h}" "${_u}" > /dev/null 2>&1
+  fi
+  [ "$(_primary_of "${_u}")" = "${_g}" ]
+}
+
+_primary_of() {
+  id -gn "$1" 2> /dev/null
+}
+
+_valid_account() {
+  local _a="$1"
+  [[ "${_a}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || return 1
+  [ "${_a}" != "aegir" ] || return 1
+  [ -d "/data/disk/${_a}" ] || return 1
+  [ -e "/root/.${_a}.octopus.cnf" ] || return 1
+  [ "$(getent passwd "${_a}" 2> /dev/null | cut -d: -f6)" = "/data/disk/${_a}" ] || return 1
+  return 0
+}
+
+# The account's lshell sub-users: passwd names <acct>.<x> that are neither the
+# .ftp shell user nor an FPM pool identity (*.web), and carry an lshell group.
+# Anything else shaped <acct>.<x> is reported and left alone, never guessed.
+_acct_subusers() {
+  local _a="$1" _u
+  for _u in $(getent passwd | cut -d: -f1 | grep -E "^${_a}\.[a-z0-9]+$"); do
+    case "${_u}" in
+      "${_a}.ftp"|*.web) continue ;;
+    esac
+    if _in_grp "${_u}" lshellg || _in_grp "${_u}" ltd-shell; then
+      printf '%s\n' "${_u}"
+    else
+      _alrt "${_u} is named like a sub-user of ${_a} but carries no lshell group; left alone"
+    fi
+  done
+}
+
+_acct_fpm_users() {
+  getent passwd | cut -d: -f1 | grep -E "^${1}(\.[0-9]+)?\.web$"
+}
+
+# The single real mountpoint under /mnt, as the rest of BOA derives it
+# (naming-agnostic, empty when none or more than one is mounted).
+_mnt_point() {
+  local _pd _n=0 _hit="" _m
+  _pd=$(stat -c '%d' /mnt 2> /dev/null)
+  for _m in /mnt/*; do
+    [ -d "${_m}" ] || continue
+    if mountpoint -q "${_m}" 2> /dev/null \
+      || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2> /dev/null)" != "${_pd}" ]; }; then
+      _hit="${_m}"
+      _n=$((_n + 1))
+    fi
+  done
+  [ "${_n}" = "1" ] && printf '%s' "${_hit}"
+}
+
+# Roots the group walk covers. /home/<acct>.ftp/clients is a symlink into the
+# account root (covered there). A static store relocated by migratefs lives
+# at <mount>/files/<acct>/static/files: that path is taken from the
+# root-owned mount layout, never from the tenant-writable ~/static/files
+# link, and only when it is a real directory owned by the account.
+_acct_roots() {
+  local _a="$1" _r _u _mp _st _uid
+  printf '%s\n' "/data/disk/${_a}"
+  [ -d "/home/${_a}.ftp" ] && printf '%s\n' "/home/${_a}.ftp"
+  for _u in $(_acct_subusers "${_a}" 2> /dev/null); do
+    [ -d "/home/${_u}" ] && printf '%s\n' "/home/${_u}"
+  done
+  for _r in /opt/user/gems/"${_a}" /opt/user/gems/"${_a}".* /opt/user/npm/"${_a}" /opt/user/npm/"${_a}".*; do
+    [ -d "${_r}" ] && [ ! -L "${_r}" ] && printf '%s\n' "${_r}"
+  done
+  _mp=$(_mnt_point)
+  if [ -n "${_mp}" ]; then
+    _st="${_mp}/files/${_a}/static/files"
+    _uid=$(id -u "${_a}" 2> /dev/null)
+    if [ -d "${_st}" ] && [ ! -L "${_st}" ] \
+      && [ -n "${_uid}" ] && [ "$(stat -c '%u' "${_st}" 2> /dev/null)" = "${_uid}" ]; then
+      printf '%s\n' "${_st}"
+    fi
+  fi
+}
+
+# Every fetched root-run writer that touches account trees must carry the
+# derived-group form before any account converts: an old fix-drupal script or
+# nightly worker re-flattens a converted tree on its next pass, and an old
+# websh (whole-string group tests) locks the tenant out of its shell. Present
+# and stale = not ready; absent = not installed on this box class, skipped.
+_tools_ready() {
+  local _stale="" _t _p _tok
+  for _t in \
+    "/opt/local/bin/websh:_in_grp" \
+    "/usr/local/bin/fix-drupal-site-ownership.sh:_acct_group" \
+    "/usr/local/bin/fix-drupal-platform-ownership.sh:_acct_group" \
+    "/var/xdrago/manage_ltd_users.sh:_acct_group" \
+    "/var/xdrago/manage_solr_config.sh:_acct_group" \
+    "/var/xdrago/night/night.inc.sh:_acct_group" \
+    "/var/xdrago/night/10-account.sh:_acct_group" \
+    "/var/xdrago/night/20-sites.sh:_acct_group" \
+    "/opt/local/bin/xoct:_acct_group" \
+    "/opt/local/bin/xcopy:_acct_group" \
+    "/opt/local/bin/xmass:_acct_group" \
+    "/opt/local/bin/mybackup:_acct_group" \
+    "/opt/local/bin/copydbackup:_acct_group" \
+    "/opt/local/bin/syncpass:_acct_group" \
+    "/opt/local/bin/octopus:_acct_group" \
+    "/root/.remote_backups/run/create_readme.sh:_acct_group" \
+    "/root/.remote_backups/run/create_config_readme.sh:_acct_group"; do
+    _p="${_t%%:*}"
+    _tok="${_t##*:}"
+    [ -f "${_p}" ] || continue
+    if ! grep -qE "^[[:space:]]*${_tok}\(\) \{" "${_p}" 2> /dev/null; then
+      _stale="${_stale} ${_p}"
+    fi
+  done
+  if [ -n "${_stale}" ]; then
+    _alrt "writers still in the box-wide form (wait for the tools refresh, then retry):${_stale}"
+    return 1
+  fi
+  return 0
+}
+
+_do_check() {
+  if _tools_ready; then
+    _info "every installed root-run writer carries the derived-group form"
+    return 0
+  fi
+  return 3
+}
+
+# Another BOA run must not overlap an identity change: the wrappers refuse to
+# start while /run/boa_run.pid exists, so holding it here gives the same mutual
+# exclusion and makes run-xdrago defer. The octopus arm already holds it.
+_lock_gate() {
+  if [ "${_FROM_OCTOPUS}" = "YES" ]; then
+    return 0
+  fi
+  if [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
+    || [ -e "/run/octopus_install_run.pid" ]; then
+    _die "a BOA install or upgrade run is live (/run/*.pid); retry later"
+  fi
+  touch /run/boa_run.pid
+  _HELD_LOCK=YES
+  trap '[ "${_HELD_LOCK}" = "YES" ] && rm -f /run/boa_run.pid' EXIT
+}
+
+# A backend task already running as the account bootstraps with the old group
+# set; wait for the account's own provision executions to drain, bounded.
+_acct_busy() {
+  local _a="$1"
+  pgrep -u "${_a}" -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -u "${_a}" -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  return 1
+}
+
+_wait_idle() {
+  local _a="$1" _w=0
+  while _acct_busy "${_a}"; do
+    if [ "${_w}" -ge "${_WAIT_MAX}" ]; then
+      return 1
+    fi
+    [ "${_w}" -eq 0 ] && _msg "${_a}: a provision task is running, waiting up to ${_WAIT_MAX}s..."
+    sleep 10
+    _w=$((_w + 10))
+  done
+  return 0
+}
+
+# chgrp on a directory keeps its setgid bit on Linux (the kernel clears
+# S_ISGID on chown only for non-directories); probe rather than assume, and
+# re-assert after the walk only on a kernel that strips it.
+_chgrp_keeps_dir_setgid() {
+  local _d _m
+  _d=$(mktemp -d /root/.instgrp.XXXXXX) || return 0
+  chgrp "${_USRG}" "${_d}" && chmod 02770 "${_d}" && chgrp "${_WEBG}" "${_d}"
+  _m=$(stat -c '%a' "${_d}" 2> /dev/null)
+  rm -rf "${_d}"
+  [ "${_m}" = "2770" ]
+}
+
+# Group-only, current-group-scoped, symlink-safe walk, one process per root:
+# GNU chown -R traverses by directory descriptor (fts + fchownat), so a
+# tenant swapping an intermediate component for a symlink between the stat
+# and the change cannot steer root at a path outside the tree; -P never
+# follows a symlink during the walk and -h changes a link's own group, never
+# its target; --from=:<gid> touches only inodes still in the source group,
+# which leaves every www-data path (files/, private/, settings.php, the SSL
+# key dirs -- the FPM read and write paths) untouched; the gid is numeric so
+# a half-migrated nsswitch cannot widen the match. chown names every inode it
+# could not change on stderr (chattr +i: EPERM for root too); those paths are
+# collected for the immutable pass, so nothing walks the tree twice.
+# $1 = from gid, $2 = to group, then roots. Leaves the failed paths in
+# ${_WALK_FAILED} (one per line).
+_WALK_FAILED=""
+_grp_walk() {
+  local _from="$1" _to="$2" _r _keep _err
+  shift 2
+  _keep=YES
+  _chgrp_keeps_dir_setgid || _keep=NO
+  _err=$(mktemp /root/.instgrp.err.XXXXXX) || _err=/dev/null
+  : > "${_err}"
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    if [ "${_keep}" = "NO" ]; then
+      find -P "${_r}" -type d -gid "${_from}" -perm -2000 \
+        -execdir sh -c 'g="$1"; shift; chgrp -h "$g" "$@" 2> /dev/null; chmod g+s "$@" 2> /dev/null' _ "${_to}" {} + 2> /dev/null
+    fi
+    # LC_ALL=C: the error lines are parsed, and a UTF-8 locale would quote
+    # the path with curly quotes.
+    LC_ALL=C chown -R -h -P --from=":${_from}" ":${_to}" "${_r}" 2>> "${_err}" > /dev/null
+    # A copy from another box (xoct, xcopy, a restore of a foreign archive)
+    # carries the source account's numeric gid, which has no name here unless
+    # this account is converted too: those paths sit in no group at all.
+    # They are this account's tree, so they take its group as well.
+    find -P "${_r}" -nogroup ! -group "${_WEBG}" -execdir chgrp -h "${_to}" {} + 2> /dev/null
+  done
+  _WALK_FAILED=$(sed -n "s/^chown: changing group of '\(.*\)': Operation not permitted$/\1/p" "${_err}" 2> /dev/null)
+  rm -f "${_err}"
+}
+
+# The limited-shell homes carry chattr +i on a known set of names (the home
+# itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh sets and
+# clears them around its own writes). Each path chown reported is re-grouped
+# with the flag dropped and restored around the one operation, addressed by
+# bare name from inside its parent directory (cd -P: the parent is entered
+# once, physically, and the name is acted on there -- the same shape find
+# -execdir gives), never through a pathname a tenant can re-point mid-way.
+# $1 = to group; paths on stdin, one per line.
+_grp_fix_immutable() {
+  local _to="$1" _p _d _n
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] || continue
+    _d=$(dirname -- "${_p}")
+    _n=$(basename -- "${_p}")
+    ( cd -P -- "${_d}" 2> /dev/null || exit 1
+      if lsattr -d -- "${_n}" 2> /dev/null | cut -d' ' -f1 | grep -q i; then
+        chattr -i -- "${_n}" 2> /dev/null && chgrp -h "${_to}" -- "${_n}" 2> /dev/null
+        chattr +i -- "${_n}" 2> /dev/null
+      else
+        chgrp -h "${_to}" -- "${_n}" 2> /dev/null
+      fi )
+  done
+}
+
+_grp_left() {
+  local _gid="$1" _r
+  shift
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    find -P "${_r}" -gid "${_gid}" ! -group "${_WEBG}" -print -quit 2> /dev/null | grep -q . && return 0
+  done
+  return 1
+}
+
+_grp_left_list() {
+  local _gid="$1" _r
+  shift
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    find -P "${_r}" -gid "${_gid}" ! -group "${_WEBG}" 2> /dev/null | head -5
+  done
+}
+
+# The marker sits in a directory the account owns, so a planted name there is
+# removed first and the file lands by rename, which never follows a link.
+_write_marker() {
+  local _a="$1" _m="/data/disk/$1/${_MARK_REL}" _t
+  [ -L "${_m}" ] && rm -f "${_m}"
+  if [ -d "${_m}" ]; then
+    rmdir "${_m}" 2> /dev/null || { _fail "${_m} is a non-empty directory; refusing to replace it"; return 1; }
+  fi
+  _t=$(mktemp /root/.instgrp.mark.XXXXXX) || { _fail "cannot create the marker"; return 1; }
+  printf '%s %s gid=%s\n' "${_a}" "$(date '+%Y-%m-%d %H:%M:%S')" "$(_gid_of "${_a}")" > "${_t}"
+  chown root:root "${_t}"
+  chmod 0644 "${_t}"
+  mv -f "${_t}" "${_m}"
+}
+
+# A pre-existing same-named group is adopted only when everything attached to
+# it belongs to this account: a foreign member or a foreign primary user means
+# the name is taken, and converting onto it would hand this account's files
+# to whoever that is.
+_group_is_ours() {
+  local _a="$1" _gid _m _u
+  _gid=$(_gid_of "${_a}")
+  [ -n "${_gid}" ] || return 0
+  for _m in $(getent group "${_a}" | cut -d: -f4 | tr ',' ' '); do
+    [[ "${_m}" =~ ^${_a}(\.[a-z0-9]+)?$ ]] || return 1
+  done
+  for _u in $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+)?$ ]] || return 1
+  done
+  return 0
+}
+
+_assert_fpm_apart() {
+  local _a="$1" _u _bad=0
+  for _u in $(_acct_fpm_users "${_a}"); do
+    if _in_grp "${_u}" "${_a}"; then
+      _alrt "${_u} (FPM pool) is in group ${_a}; removing -- the pool must never read drushrc.php"
+      gpasswd -d "${_u}" "${_a}" > /dev/null 2>&1
+      _log "${_a}: removed FPM identity ${_u} from group ${_a}"
+    fi
+    if [ "$(_primary_of "${_u}")" != "${_WEBG}" ]; then
+      _alrt "${_u} (FPM pool) primary group is $(_primary_of "${_u}"), expected ${_WEBG}"
+      _bad=1
+    fi
+  done
+  return "${_bad}"
+}
+
+# The inverse of the identity and file moves, shared by revert and by the
+# rollback of a failed convert: files first, so no identity ever loses a group
+# its files still carry, then the primary groups, then the memberships.
+_undo_account() {
+  local _a="$1" _gid="$2" _roots="$3" _u _subs _ids
+  _subs=$(_acct_subusers "${_a}" 2> /dev/null)
+  _ids="${_a} ${_a}.ftp ${_subs}"
+  if [ -n "${_gid}" ]; then
+    # shellcheck disable=SC2086
+    _grp_walk "${_gid}" "${_USRG}" ${_roots}
+    if [ -n "${_WALK_FAILED}" ]; then
+      printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_USRG}"
+    fi
+  fi
+  for _u in ${_ids}; do
+    getent passwd "${_u}" > /dev/null 2>&1 || continue
+    _grant_sup "${_u}" "${_USRG}" || _alrt "${_u}: could not list it in ${_USRG}"
+    if [ "$(_primary_of "${_u}")" != "${_USRG}" ]; then
+      _set_primary "${_u}" "${_USRG}" || _alrt "${_u}: primary group could not be set back to ${_USRG}"
+      _log "${_a}: ${_u} primary group -> ${_USRG}"
+    fi
+    [ -n "${_gid}" ] && _in_grp_sup "${_u}" "${_a}" && gpasswd -d "${_u}" "${_a}" > /dev/null 2>&1
+  done
+  [ -L "/data/disk/${_a}/${_MARK_REL}" ] || [ -f "/data/disk/${_a}/${_MARK_REL}" ] && rm -f "/data/disk/${_a}/${_MARK_REL}"
+}
+
+_do_convert() {
+  local _a="$1" _subs _ids _u _uGid _aGid _roots
+  _ACCT="${_a}"
+  _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
+  _tools_ready || { _fail "${_a}: not converted -- the box is not ready"; return 1; }
+  _uGid=$(_gid_of "${_USRG}")
+  [ -n "${_uGid}" ] || _die "group ${_USRG} not found"
+  _subs=$(_acct_subusers "${_a}")
+  _ids="${_a} ${_a}.ftp ${_subs}"
+  for _u in ${_ids}; do
+    getent passwd "${_u}" > /dev/null 2>&1 || { _fail "identity ${_u} does not exist"; return 1; }
+  done
+  if ! _wait_idle "${_a}"; then
+    _alrt "${_a}: still busy after ${_WAIT_MAX}s, skipped this pass"
+    _log "${_a}: SKIP busy"
+    return 4
+  fi
+  _group_is_ours "${_a}" || { _fail "group ${_a} exists and belongs to someone else"; return 1; }
+  if ! getent group "${_a}" > /dev/null 2>&1; then
+    addgroup --system "${_a}" > /dev/null 2>&1 || { _fail "addgroup --system ${_a} failed"; return 1; }
+    _log "${_a}: group created gid=$(_gid_of "${_a}")"
+  fi
+  _aGid=$(_gid_of "${_a}")
+  _roots=$(_acct_roots "${_a}" 2> /dev/null)
+  # Explicit supplementary grants first, verified in the group database:
+  # 'users' is the binary execute ACL and the lshell login shell ACL, so the
+  # primary group may move only once every identity is LISTED in it (an
+  # identity whose primary group is 'users' is not listed there, and
+  # usermod -g would drop it). www-data (files/ write, settings.php read) and
+  # lshellg are listed for the same reason.
+  for _u in ${_ids}; do
+    _grant_sup "${_u}" "${_USRG}" || { _fail "${_u}: cannot list it in ${_USRG}; refusing to move its primary group"; return 1; }
+    _grant_sup "${_u}" "${_WEBG}" || _alrt "${_u}: could not list it in ${_WEBG}"
+    case "${_u}" in
+      "${_a}") ;;
+      *) _grant_sup "${_u}" lshellg || _alrt "${_u}: could not list it in lshellg" ;;
+    esac
+  done
+  for _u in ${_ids}; do
+    if [ "$(_primary_of "${_u}")" != "${_a}" ]; then
+      if ! _set_primary "${_u}" "${_a}"; then
+        _fail "${_u}: primary group could not be set to ${_a}; rolling ${_a} back"
+        _undo_account "${_a}" "${_aGid}" "${_roots}"
+        return 1
+      fi
+      _log "${_a}: ${_u} primary group -> ${_a}"
+    fi
+    # The effective set must still carry 'users' now that it is no longer
+    # the primary group; a miss here is a lockout in the making.
+    if ! _in_grp "${_u}" "${_USRG}"; then
+      _fail "${_u} lost ${_USRG} on the primary move; rolling ${_a} back"
+      _undo_account "${_a}" "${_aGid}" "${_roots}"
+      return 1
+    fi
+    # The primary group never shows in the group's member list; provision's
+    # membership test reads that list, so list it there too.
+    _grant_sup "${_u}" "${_a}" || _alrt "${_u}: could not list it in ${_a}"
+  done
+  _assert_fpm_apart "${_a}"
+  _msg "${_a}: re-grouping files (${_USRG} -> ${_a}), this walks the whole account tree..."
+  # shellcheck disable=SC2086
+  _grp_walk "${_uGid}" "${_a}" ${_roots}
+  if [ -n "${_WALK_FAILED}" ]; then
+    printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_a}"
+  fi
+  # shellcheck disable=SC2086
+  if _grp_left "${_uGid}" ${_roots}; then
+    # shellcheck disable=SC2086
+    _log "${_a}: walk left paths in ${_USRG}: $(_grp_left_list "${_uGid}" ${_roots} | tr '\n' ' ')"
+    _fail "${_a}: the walk cannot re-group every file (see ${_LOG}); rolling back"
+    _undo_account "${_a}" "${_aGid}" "${_roots}"
+    return 1
+  fi
+  _write_marker "${_a}" || { _undo_account "${_a}" "${_aGid}" "${_roots}"; return 1; }
+  _log "${_a}: CONVERTED identities=[${_ids}] roots=[$(printf '%s ' ${_roots})]"
+  _info "${_a}: converted to per-instance group ${_a} (gid ${_aGid})"
+  _msg "NOTE: a shell session logged in before this keeps its old group set until it reconnects"
+  return 0
+}
+
+_do_revert() {
+  local _a="$1" _gid _roots
+  _ACCT="${_a}"
+  _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
+  _gid=$(_gid_of "${_a}")
+  if ! _wait_idle "${_a}"; then
+    _alrt "${_a}: still busy after ${_WAIT_MAX}s, skipped"
+    return 4
+  fi
+  _roots=$(_acct_roots "${_a}" 2> /dev/null)
+  [ -n "${_gid}" ] && _msg "${_a}: re-grouping files (${_a} -> ${_USRG})..."
+  # This is the one deliberate write of the box-wide group over an account
+  # tree in the whole tree: the exact inverse of convert, on an operator's
+  # explicit order.
+  _undo_account "${_a}" "${_gid}" "${_roots}"
+  if [ -n "${_gid}" ]; then
+    if [ -z "$(getent group "${_a}" | cut -d: -f4)" ] \
+      && ! getent passwd | awk -F: -v g="${_gid}" '$4 == g { f=1 } END { exit !f }'; then
+      groupdel "${_a}" > /dev/null 2>&1 && _log "${_a}: group removed"
+    else
+      _alrt "group ${_a} still has members or primary users; left in place"
+    fi
+  fi
+  _log "${_a}: REVERTED"
+  _info "${_a}: reverted to the box-wide group ${_USRG}"
+  return 0
+}
+
+_do_status() {
+  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _nUsers=0 _nAcct=0 _nWeb=0 _nOther=0 _nNone=0 _prim_ok=YES _bad="" _verdict _rc=0
+  _ACCT="${_a}"
+  _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
+  _gid=$(_gid_of "${_a}")
+  _uGid=$(_gid_of "${_USRG}")
+  _wGid=$(_gid_of "${_WEBG}")
+  _subs=$(_acct_subusers "${_a}")
+  _ids="${_a} ${_a}.ftp ${_subs}"
+  _m="/data/disk/${_a}/${_MARK_REL}"
+  _msg "== ${_a}"
+  # A marker is a record of THIS box's conversion: its gid must be the gid of
+  # the account group here. A copy from another box carries the source's
+  # marker (rsync moves it with the tree); such a marker is stale and counts
+  # as absent -- convert rewrites it, revert removes it.
+  _mValid=NO
+  if [ -f "${_m}" ] && [ ! -L "${_m}" ]; then
+    if [ -n "${_gid}" ] && grep -q " gid=${_gid}$" "${_m}" 2> /dev/null; then
+      _mValid=YES
+      _msg "marker:   $(head -1 "${_m}")"
+    else
+      _msg "marker:   STALE ($(head -1 "${_m}")) -- not this box's conversion, ignored"
+    fi
+  else
+    _msg "marker:   none"
+  fi
+  if [ -n "${_gid}" ]; then
+    _msg "group:    ${_a} gid=${_gid} members=[$(getent group "${_a}" | cut -d: -f4)]"
+  else
+    _msg "group:    none"
+  fi
+  for _u in ${_ids}; do
+    getent passwd "${_u}" > /dev/null 2>&1 || { _msg "identity: ${_u} MISSING"; _bad="${_bad} ${_u}-missing"; continue; }
+    _msg "identity: ${_u} primary=$(_primary_of "${_u}") groups=[$(id -nG "${_u}")]"
+    _in_grp "${_u}" "${_USRG}" || { _alrt "${_u} is not in ${_USRG} (binary execute ACL)"; _bad="${_bad} ${_u}-no-users"; }
+  done
+  for _u in $(_acct_fpm_users "${_a}"); do
+    _msg "fpm:      ${_u} primary=$(_primary_of "${_u}") groups=[$(id -nG "${_u}")]"
+    _in_grp "${_u}" "${_a}" && { _alrt "${_u} (FPM pool) is in group ${_a}"; _bad="${_bad} ${_u}-in-group"; }
+  done
+  _roots=$(_acct_roots "${_a}" 2> /dev/null)
+  for _r in ${_roots}; do
+    [ -d "${_r}" ] || continue
+    while read -r _cnt _g; do
+      [ -n "${_cnt}" ] || continue
+      if [ "${_g}" = "${_uGid}" ]; then _nUsers=$((_nUsers + _cnt))
+      elif [ -n "${_gid}" ] && [ "${_g}" = "${_gid}" ]; then _nAcct=$((_nAcct + _cnt))
+      elif [ "${_g}" = "${_wGid}" ]; then _nWeb=$((_nWeb + _cnt))
+      elif ! getent group "${_g}" > /dev/null 2>&1; then _nNone=$((_nNone + _cnt))
+      else _nOther=$((_nOther + _cnt)); fi
+    done < <(find -P "${_r}" -printf '%G\n' 2> /dev/null | sort | uniq -c)
+  done
+  _msg "files:    ${_USRG}=${_nUsers} ${_a}=${_nAcct} ${_WEBG}=${_nWeb} nogroup=${_nNone} other=${_nOther} (roots: $(printf '%s ' ${_roots}))"
+  for _u in ${_ids}; do
+    getent passwd "${_u}" > /dev/null 2>&1 || continue
+    [ "$(_primary_of "${_u}")" = "${_a}" ] || _prim_ok=NO
+  done
+  if [ -n "${_bad}" ]; then
+    _verdict="INCONSISTENT (${_bad# })"
+    _rc=3
+  elif [ -n "${_gid}" ] && [ "${_prim_ok}" = "YES" ] && [ "${_mValid}" = "YES" ]; then
+    if [ "${_nUsers}" -eq 0 ] && [ "${_nNone}" -eq 0 ]; then
+      _verdict=CONVERTED
+    else
+      _verdict="DRIFT (${_nUsers} paths still in group ${_USRG}, ${_nNone} in no group; re-run convert)"
+      _rc=2
+    fi
+  elif [ -z "${_gid}" ] && [ "${_mValid}" = "NO" ] && [ "${_nAcct}" -eq 0 ]; then
+    _verdict=UNCONVERTED
+    for _u in ${_ids}; do
+      getent passwd "${_u}" > /dev/null 2>&1 || continue
+      [ "$(_primary_of "${_u}")" = "${_USRG}" ] || { _verdict="INCONSISTENT (${_u} primary $(_primary_of "${_u}") without a group)"; _rc=3; }
+    done
+  else
+    _verdict="INCONSISTENT (group=${_gid:-none} primaries=${_prim_ok} marker=${_mValid} ${_a}-files=${_nAcct})"
+    _rc=3
+  fi
+  _msg "STATUS:   ${_verdict}"
+  return "${_rc}"
+}
+
+_all_accounts() {
+  local _f _a
+  for _f in /root/.*.octopus.cnf; do
+    [ -e "${_f}" ] || continue
+    _a="${_f#/root/.}"
+    _a="${_a%.octopus.cnf}"
+    _valid_account "${_a}" && printf '%s\n' "${_a}"
+  done
+}
+
+_check_root
+_ACTION="$1"
+_TARGET=""
+[ -n "${_ACTION}" ] && shift
+case "${_ACTION}" in
+  status|convert|revert)
+    _TARGET="$1"
+    [ -n "${_TARGET}" ] && shift
+  ;;
+esac
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --from-octopus) _FROM_OCTOPUS=YES; shift ;;
+    *) _usage ;;
+  esac
+done
+case "${_ACTION}" in
+  check)
+    _do_check
+    exit $?
+  ;;
+  status)
+    [ -n "${_TARGET}" ] || _usage
+    _RC=0
+    if [ "${_TARGET}" = "all" ]; then
+      for _A in $(_all_accounts); do
+        _do_status "${_A}"
+        _R=$?
+        [ "${_R}" -gt "${_RC}" ] && _RC="${_R}"
+        echo
+      done
+    else
+      _do_status "${_TARGET}"
+      _RC=$?
+    fi
+    exit "${_RC}"
+  ;;
+  convert)
+    [ -n "${_TARGET}" ] || _usage
+    _lock_gate
+    _RC=0
+    if [ "${_TARGET}" = "all" ]; then
+      for _A in $(_all_accounts); do
+        _do_convert "${_A}"
+        _R=$?
+        [ "${_R}" -gt "${_RC}" ] && _RC="${_R}"
+        _msg "-- ${_A}: rc=${_R}"
+      done
+    else
+      _do_convert "${_TARGET}"
+      _RC=$?
+    fi
+    exit "${_RC}"
+  ;;
+  revert)
+    [ -n "${_TARGET}" ] && [ "${_TARGET}" != "all" ] || _usage
+    _lock_gate
+    _do_revert "${_TARGET}"
+    exit $?
+  ;;
+  *)
+    _usage
+  ;;
+esac
