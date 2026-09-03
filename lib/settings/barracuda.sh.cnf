@@ -1801,6 +1801,13 @@ _verify_boa_keys() {
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then
       _allw=YES
     fi
+    # *.sslip.io hostnames (wildcard DNS to the embedded IP, zero setup)
+    # pass on the dev tree only: test boxes run the dev tree end to end
+    # without a per-box key; pro stays licensed outside the fleet domains.
+    if [ "${_tRee}" = "dev" ] \
+      && [[ "${_hName}" =~ ".sslip.io"($) ]]; then
+      _allw=YES
+    fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
     curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
