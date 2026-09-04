@@ -993,13 +993,16 @@ _purge_cruft_machine() {
   # derived from the account rather than hardcoded; 'users' on an unconverted box.
   local _acctGrp _igHit
   _acctGrp=$(_acct_group "${_HM_U}")
-  # Drift probe on a converted account: the credential-bearing paths
-  # (~/.drush aliases, backups, config, tools, the hostmaster sites, every
-  # drushrc.php under static) are re-grouped by the octopus arm only, so a
-  # stale writer or a hand chown between releases would sit unseen for a
-  # release cycle. One early-quit find; instgrp reclaim is the file half
-  # alone (no identities, no lock), idempotent, so the nightly may run it.
-  if [ "${_acctGrp}" != "users" ] && [ -x "/opt/local/bin/instgrp" ]; then
+  # Drift probe: the credential-bearing paths (~/.drush aliases, backups,
+  # config, tools, the hostmaster sites, every drushrc.php under static) are
+  # re-grouped by the octopus arm only, so a stale writer or a hand chown
+  # between releases would sit unseen for a release cycle. One early-quit
+  # find; instgrp reclaim is the file half alone (no identities, no lock),
+  # idempotent, so the nightly may run it. An UNCONVERTED account is probed
+  # too: a copy or a root-run restore can land its tree in another
+  # account's named group there, and reclaim hands it back to the box-wide
+  # group -- the same exposure class, which the converted-only gate missed.
+  if [ -x "/opt/local/bin/instgrp" ]; then
     # backups may be a link into the static store (relocated backups): probe
     # where the files are. The static leg is bounded to the depth where a
     # site's drushrc.php lives (<platform>[/web]/sites/<uri>/drushrc.php),
