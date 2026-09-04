@@ -1057,6 +1057,11 @@ _repair_staged_homes() {
       usermod -d "${_want}" "${_u}" > /dev/null 2>&1
       if [ "$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)" = "${_want}" ]; then
         echo "ALERT: ${_u} home field was left at ${_s} by an interrupted group move; restored to ${_want}"
+        # the per-pass log under /var/backups/ltd is erased on every release;
+        # an identity incident belongs in the durable incident log too
+        mkdir -p /var/log/boa 2>/dev/null
+        echo "$(date) LTD home repair: ${_u} home field was left at ${_s} by an interrupted group move; restored to ${_want}" \
+          >> /var/log/boa/manage_ltd.incident.log
         rm -f "${_rec}"
       fi
     done
@@ -1097,6 +1102,9 @@ _ok_update_user() {
         else
           _set_primary_group ${_usrLtd} users
           echo "ALERT: ${_usrLtd} lost group users on the primary move, reverted to users"
+          mkdir -p /var/log/boa 2>/dev/null
+          echo "$(date) LTD primary move: ${_usrLtd} lost group users on the primary move, reverted to users" \
+            >> /var/log/boa/manage_ltd.incident.log
         fi
       fi
     fi
