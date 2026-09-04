@@ -2345,6 +2345,14 @@ verb_import() {
   # answer: a BOA box replies 200 to any unknown Host with its own page, so
   # a status alone cannot tell "the site serves" from "nothing serves it"
   _probe_catchall_baseline 127.0.0.1
+  # an empty fingerprint turns every _is_catchall_body test negative, so the
+  # discrimination is silently off and a site answering with the catch-all
+  # page is reported adopted - say so, exactly as the proxy verb does
+  if [[ -n "${_A2B_CATCHALL_BASE}" ]]; then
+    _info "catch-all fingerprint: ${_A2B_CATCHALL_BASE}"
+  else
+    _alrt "could not fingerprint this box's catch-all answer - serve probes lose that discrimination"
+  fi
   case "${_ROUTE}" in
     db-import) _import_db_route ;;
     per-site)  _import_per_site || exit 1 ;;
