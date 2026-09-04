@@ -181,8 +181,17 @@ _acct_regroup_remote() {
   ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_X_H}" "bash -s" <<REMOTE
 _A='${_X_A}'
 if [ -x /opt/local/bin/instgrp ]; then
-  bash /opt/local/bin/instgrp reclaim "\${_A}"
-  exit \$?
+  # A live run on the destination (its own octopus finisher, a tool
+  # refresh) makes reclaim defer with rc 4 for a short window; wait it out,
+  # bounded, rather than leave the copied tree in DRIFT until the nightly.
+  _T=0
+  while :; do
+    bash /opt/local/bin/instgrp reclaim "\${_A}"
+    _R=\$?
+    [ "\${_R}" = "4" ] && [ "\${_T}" -lt 12 ] || exit "\${_R}"
+    _T=\$((_T + 1))
+    sleep 15
+  done
 fi
 _G=users
 if getent group "\${_A}" > /dev/null 2>&1; then
