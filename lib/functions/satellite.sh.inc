@@ -895,6 +895,18 @@ _satellite_cnf() {
     grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
     grep -q "^_GHOST_ALIASES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
   fi
+  # A hand-seeded cnf -- the documented opt-out creates /root/.oN.octopus.cnf
+  # before boa in-octopus with _INSTANCE_GROUP=NO -- carries a line or two,
+  # not the forty-odd the creation branch writes, and the append pass below
+  # persists only a subset: the account's first upgrade then refused on the
+  # email that was never written. A cnf without _MY_OCTO_EMAIL is such a
+  # seed: keep its lines, write the full set, lay the seeded lines back.
+  _octSeed=""
+  if [ -e "${_octCnf}" ] && ! grep -q "^_MY_OCTO_EMAIL=" ${_octCnf} 2> /dev/null; then
+    _octSeed=$(grep -E '^_[A-Z0-9_]+=' ${_octCnf} 2> /dev/null)
+    rm -f ${_octCnf}
+    _msg "NOTE: ${_octCnf} was hand-seeded; completing it with the install defaults, seeded lines kept"
+  fi
   if [ ! -e "${_octCnf}" ]; then
     if [[ "${_MY_OCTO_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
@@ -971,6 +983,22 @@ _satellite_cnf() {
     echo "_CLIENT_SUBSCR=\"${_CLIENT_SUBSCR}\""                 >> ${_octCnf}
     echo "_CLIENT_CORES=\"${_CLIENT_CORES}\""                   >> ${_octCnf}
     echo "###"                                                  >> ${_octCnf}
+    if [ -n "${_octSeed}" ]; then
+      while IFS= read -r _seedLine; do
+        [ -n "${_seedLine}" ] || continue
+        _seedKey="${_seedLine%%=*}"
+        _seedRep=$(printf '%s' "${_seedLine}" | sed 's/[&|\\]/\\&/g')
+        if grep -q "^${_seedKey}=" ${_octCnf} 2> /dev/null; then
+          sed -i "s|^${_seedKey}=.*|${_seedRep}|" ${_octCnf}
+        else
+          echo "${_seedLine}" >> ${_octCnf}
+        fi
+        # this run reads the switch from the variable, not from the file
+        if [ "${_seedKey}" = "_INSTANCE_GROUP" ]; then
+          _INSTANCE_GROUP=$(printf '%s' "${_seedLine#*=}" | tr -d '"'"'"' ')
+        fi
+      done <<< "${_octSeed}"
+    fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_octCnf} config file"
@@ -1429,8 +1457,20 @@ _satellite_cnf() {
       echo " "
     fi
 
+    _domDerived="${_DOMAIN}"
     if [ -e "${_octCnf}" ]; then
       source ${_octCnf}
+    fi
+    # A cnf copied from a sibling account (the nearest thing to a template
+    # once the fetched one is gone) carries the sibling's _DOMAIN: at INIT
+    # that hands the new account another account's hostmaster name. A domain
+    # another account's cnf owns is never this one's; the derived name is.
+    if [ "${_STATUS}" = "INIT" ] && [ -n "${_domDerived}" ] \
+      && [ "${_DOMAIN}" != "${_domDerived}" ] \
+      && grep -l "^_DOMAIN=\"${_DOMAIN}\"" /root/.o*.octopus.cnf 2> /dev/null | grep -qv "^${_octCnf}$"; then
+      _msg "NOTE: _DOMAIN ${_DOMAIN} in ${_octCnf} belongs to another account; using ${_domDerived}"
+      _DOMAIN="${_domDerived}"
+      sed -i "s|^_DOMAIN=.*|_DOMAIN=\"${_DOMAIN}\"|" ${_octCnf}
     fi
     _PRE_PLATFORMS_LIST="${_PLATFORMS_LIST}"
     if [ -e "${_ROOT}/static/control/platforms.info" ]; then

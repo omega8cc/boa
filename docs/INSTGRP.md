@@ -133,9 +133,12 @@ the account again (`--keep-enabled` leaves the cnf alone).
 
 `_INSTANCE_GROUP=NO` in `/root/.oN.octopus.cnf` keeps that account on the
 box-wide model: the upgrade arm skips it, and a fresh account carrying the
-line is born the old way (for a NEW account, create `/root/.oN.octopus.cnf`
-from the template with the line before `boa in-octopus`; the created-once
-cnf is reused). It does not undo a conversion already made — run
+line is born the old way. For a NEW account, create `/root/.oN.octopus.cnf`
+before `boa in-octopus` holding just two lines, `_USER="oN"` and
+`_INSTANCE_GROUP=NO`; the install completes the file with its defaults and
+keeps the seeded lines. Never copy another account's cnf for that: it carries
+the other account's `_DOMAIN` (the install puts the derived name back, with a
+NOTE). It does not undo a conversion already made — run
 `instgrp revert oN` for that, which writes the line itself. An explicit
 `instgrp convert` ignores the switch; it is the operator's order. The key
 is persisted per instance (written at install, appended with its default on
