@@ -2970,6 +2970,8 @@ verb_target_status() {
 
 [[ $# -ge 1 ]] || _usage
 _OP="$1"
+# the documented invocation must answer for anyone, before the root gate
+case "${_OP}" in -h|--help|help) _usage ;; esac
 shift
 
 while [[ $# -gt 0 ]]; do
@@ -3084,9 +3086,6 @@ case "${_OP}" in
   resume)        verb_resume ;;
   status)        verb_status ;;
   target-status) verb_target_status ;;
-  # the first argument is the verb, so --help lands here, not in the option
-  # loop above - the documented invocation must not be an error
-  -h|--help|help) _usage ;;
   *) echo "unknown verb: ${_OP}" >&2; _usage ;;
 esac
 
