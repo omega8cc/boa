@@ -4109,6 +4109,17 @@ _satellite_if_add_ftps_lshell_access() {
     fi
   done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
+  # A recreated identity (an out-of-band deluser, then this branch on the next
+  # run) must not leave two [name] sections: lshell's parser is strict and
+  # refuses the whole file for that user until the 3-minute worker rewrites
+  # it, a lockout window of up to three minutes. Drop a stale section first.
+  # Written back in place so the file keeps its inode and ownership.
+  if grep -q "^\[${_USERFTP}\]" /etc/lshell.conf 2> /dev/null; then
+    awk -v s="[${_USERFTP}]" '/^\[/ { skip = ($0 == s) } !skip { print }' \
+      /etc/lshell.conf > /etc/lshell.conf.tmp \
+      && cat /etc/lshell.conf.tmp > /etc/lshell.conf
+    rm -f /etc/lshell.conf.tmp
+  fi
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
   echo "path : ['/opt/user/gems/${_USERFTP}', \
