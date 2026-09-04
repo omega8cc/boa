@@ -303,11 +303,17 @@ look on any failure.
   automatically on Percona 8.0 and 8.4 (sql config sync, aegir2boa D-015)
   — on a target whose BOA predates that, add the lines yourself and
   restart mysql. Modern-PHP sites and `caching_sha2` users are
-  unaffected — clients negotiate the switch. Without it the import FAILS
-  the site honestly at its serve probe instead of adopting a site that
-  cannot serve — though a probe that lands before the FPM agent maps the
-  site onto its php56 pool can pass on the account-default modern-PHP
-  pool and the site then degrades on the agent's next pass, so fix the
+  unaffected — clients negotiate the switch. `check` grades this per
+  D6 site as well, from what the target's server actually advertises —
+  its handshake greeting, or the `authentication_policy` /
+  `default_authentication_plugin` variables when the greeting cannot be
+  read — so a non-native target is named before `pre-mig` pauses
+  anything; a target that answers neither is reported UNKNOWN and
+  accuses nobody. Past that gate the import still FAILS the site
+  honestly at its serve probe instead of adopting a site that cannot
+  serve — though a probe that lands before the FPM agent maps the site
+  onto its php56 pool can pass on the account-default modern-PHP pool
+  and the site then degrades on the agent's next pass, so fix the
   policy, don't race the probe.
 - **Disk headroom**: per site roughly 2× its DB size free under
   `/var/aegir` on the source for dumps; the whole estate + 500 MB free
@@ -545,7 +551,11 @@ so a `check` that only warned here has not actually verified the
 pairing. It computes db-import
 eligibility, enumerates every enabled non-core module on the hostmaster
 (the scrub review list), grades per-site PHP parity (a D6 site with no
-php56 pool on the target is flagged and later SKIPPED, not blocking), and
+php56 pool on the target is flagged and later SKIPPED, not blocking),
+raises the same per-site flag for a D6 site when the target's DB server
+advertises a non-native first factor (the Prerequisites bullet on native
+auth says what to set — the point of grading it here is that it is named
+before `pre-mig` pauses anything), and
 records route+target for the following verbs. Re-run `check` freely; it
 is always read-only.
 
