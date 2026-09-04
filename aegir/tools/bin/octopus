@@ -748,7 +748,13 @@ _up_action_one() {
   _count_cpu
   _load_control
   if [ -e "${_usEr}/log/proxied.pid" ]; then
-    echo "INFO: skipping ${_usEr}: proxied (served elsewhere)"
+    ### The skip is right (the account is served elsewhere, or frozen by a
+    ### migration), but the caller named this one account and nothing ran:
+    ### an explicit request must not read as a completed upgrade, so the
+    ### run is flagged and reported WITH ERRORS. The sweep over all
+    ### accounts keeps its plain INFO line.
+    echo "ALRT: skipping ${_usEr}: proxied (served elsewhere) - nothing was upgraded"
+    _SEND_ALERT=YES
     return 0
   fi
   if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
@@ -900,7 +906,7 @@ _up_finish() {
   # waiters still terminate, but do not report a clean finish for a run that
   # already raised an alert.
   if [ "${_SEND_ALERT}" = "YES" ]; then
-    echo "OCTOPUS upgrade completed WITH ERRORS -- review ${_UP_LOG}"
+    echo "OCTOPUS upgrade completed WITH ERRORS -- review ${_UP_LOG:-the ALRT line above}"
   else
     echo OCTOPUS upgrade completed
   fi
