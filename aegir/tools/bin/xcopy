@@ -3,8 +3,30 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=dev
-export _xSrl=588855devT01
+
+### match the box's installed BOA tree -- the hardcoded dev asked the target
+### for a dev-tree account (boa in-octopus ... ${_tRee}) from an lts or pro
+### box, which sends it through the dev-licence gate. Derive from the box's
+### own self-report; fall back to the newest tools ctrl marker, then to the
+### historical dev default. Verbatim in xoct and xmass.
+_tRee=$(boa info 2>/dev/null \
+  | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+  | tail -1 \
+  | grep -oE '(dev|lts|pro)$')
+if [ -z "${_tRee}" ]; then
+  _tRee=$(ls -t /var/log/boa/*.ctrl.* 2>/dev/null \
+    | head -1 \
+    | grep -oE '\.(dev|lts|pro)\.' \
+    | tr -d '.')
+fi
+[ -z "${_tRee}" ] && _tRee=dev
+export _tRee
+_xSrl=$(boa info 2>/dev/null \
+  | grep -oE "BOA-[0-9.]+-${_tRee}-[0-9a-zA-Z]+" \
+  | tail -1 \
+  | awk -F- '{ print $NF }')
+[ -z "${_xSrl}" ] && _xSrl="588855${_tRee}T01"
+export _xSrl
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
