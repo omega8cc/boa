@@ -43,6 +43,57 @@ _acct_group() {
   echo "${_g}"
 }
 
+#
+# Re-group an account's tree ON A REMOTE BOX after a copy landed there
+# (transfer, sync, cutover): the copy carries this box's numeric gids, and
+# on the destination those are no group at all or -- every box allocates
+# account gids from the same system range -- ANOTHER account's group, whose
+# identities could then read the copied credential files. instgrp reclaim
+# does the whole pass where it is installed (every root incl. the sub-user
+# homes and a relocated store, the marker rule, the DRIFT verdict); a
+# destination without the tool gets the inline form over the same roots.
+# The destination is converted when its account group exists and the
+# backend or the shell identity carries it as primary (one identity that
+# fell back to 'users' must not turn this into a flatten). Returns the
+# pass's rc (0 clean, 2 drift left, 3 identities disagree, 4 deferred: a
+# BOA run is live there). Verbatim in xoct, xcopy and xmass.
+# $1 = account on the destination, $2 = destination host.
+_acct_regroup_remote() {
+  local _X_A="$1" _X_H="$2" _X_RC
+  [ -n "${_X_A}" ] && [ -n "${_X_H}" ] || return 0
+  ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_X_H}" "bash -s" <<REMOTE
+_A='${_X_A}'
+if [ -x /opt/local/bin/instgrp ]; then
+  bash /opt/local/bin/instgrp reclaim "\${_A}"
+  exit \$?
+fi
+_G=users
+if getent group "\${_A}" > /dev/null 2>&1; then
+  [ "\$(id -gn "\${_A}" 2>/dev/null)" = "\${_A}" ] && _G="\${_A}"
+  [ "\$(id -gn "\${_A}.ftp" 2>/dev/null)" = "\${_A}" ] && _G="\${_A}"
+fi
+_MP=""; _N=0
+for _M in /mnt/*; do
+  [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
+done
+[ "\${_N}" = "1" ] || _MP=""
+for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* /opt/user/gems/"\${_A}"* /opt/user/npm/"\${_A}"* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
+  [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+done
+_M="/data/disk/\${_A}/log/instance-group.txt"
+if [ -f "\${_M}" ]; then
+  _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
+  { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
+fi
+echo "INFO: target group pass for \${_A}: group \${_G} (inline form, instgrp not installed there)"
+exit 0
+REMOTE
+  _X_RC=$?
+  [ "${_X_RC}" = "0" ] || echo "ALERT: target group pass for ${_X_A} on ${_X_H} returned ${_X_RC} (2 drift left, 3 identities disagree, 4 deferred, 255 ssh); run 'instgrp status ${_X_A}' there"
+  return "${_X_RC}"
+}
+
 _enable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
@@ -1102,7 +1153,9 @@ _migrate_init() {
           _xcopy_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}" "${_TGT_MNT}"
           #
           _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/
-          _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/
+          # instance-group.txt records the SOURCE box's conversion (its gid);
+          # it must never travel, the destination pass writes its own.
+          _xcopy_rsync -aEAXqu ${_ieni} --exclude=instance-group.txt -e ssh ${_USR}/log/* root@${_tgt}:${_DST}/log/
           _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/
           #
           _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/
@@ -1181,6 +1234,9 @@ _migrate_init() {
           fi
 
           if [ "${_MODE}" = "LIVE" ]; then
+            # The copy landed with this box's numeric gids; hand the tree
+            # to the account's group on the target (mirrors xoct).
+            _acct_regroup_remote "${_dst:-${_oct}}" "${_tgt}"
             echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
             # Only the real transfer marks the account migrated -- pretransfer
             # shares this completion path (warm-up rsync while the account is

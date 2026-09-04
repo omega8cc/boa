@@ -83,6 +83,21 @@ _FROM_STATE=NO
 
 ###-------------HELPERS----------------###
 
+_acct_group_on_target() {
+  # Group owning the account's tree ON THE TARGET: the account's own group
+  # once converted there (instgrp), the box-wide 'users' until then. Asked
+  # of the target itself, never assumed from this box: the two boxes are in
+  # different states for the whole length of a rollout.
+  local _a="$1" _g _rc
+  _g=$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" "id -gn '${_a}' 2>/dev/null; echo \"rc=\$?\"" 2>/dev/null | tr -d '[:space:]')
+  case "${_g}" in
+    *rc=0) _g="${_g%rc=0}" ;;
+    *) _die "cannot read the group of ${_a} on ${_TARGET} (ssh or id failed); refusing to guess it" ;;
+  esac
+  [ "${_g}" = "${_a}" ] || _g="users"
+  printf '%s' "${_g}"
+}
+
 _acct_group() {
   # Group that owns an account's tree. Derived, never a literal: an account
   # converted to a private primary group named after itself gets that group,
@@ -1280,10 +1295,13 @@ verb_transfer() {
         # www-data mean nothing on the target) - the account user could not
         # even read its own drushrc.php and every import task died on it;
         # land it account-owned, BOA's verify +
-        # agents apply the fork's perm scheme from there
-        # literal 'users' stays: this chown runs on the TARGET box, where the
-        # group exists per box and the destination re-asserts it on its own passes
-        ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:users ${_dst}/static/a2b/${_plat}" \
+        # agents apply the fork's perm scheme from there. The group is the
+        # account's group ON THE TARGET (its own once converted there, the
+        # box-wide one until then): a staged tree is registered in
+        # hostmaster only at import, so nothing re-asserts it before then,
+        # and the literal would leave a converted target's adopted
+        # drushrc.php files readable by every other account meanwhile
+        ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:$(_acct_group_on_target "${_ACCOUNT}") ${_dst}/static/a2b/${_plat}" \
           || _die "platform ${_plat} chown failed on target"
         _done_plat="${_done_plat}${_plat} "
         ;;
@@ -1323,6 +1341,10 @@ verb_transfer() {
          "root@${_TARGET}:${_dst}/src/a2b/ssl-ref/" 2>>"${_LOG}"
   rsync -aq --no-devices --no-specials -e ssh "$(_vhostd)/" \
     "root@${_TARGET}:${_dst}/src/a2b/nginx-ref/" 2>>"${_LOG}"
+  # Everything staged above landed with this box's numeric gids; the
+  # target's own tool hands the whole account tree to the account's group
+  # there (the inline chowns above cover a target without it).
+  ssh "root@${_TARGET}" "[ -x /opt/local/bin/instgrp ] && bash /opt/local/bin/instgrp reclaim '${_ACCOUNT}' || true" 2>>"${_LOG}"
   _msg "transfer complete - next: run 'import --account ${_ACCOUNT} --route ${_route}' ON THE TARGET"
 }
 
