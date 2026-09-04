@@ -2024,12 +2024,21 @@ PHPEOF
         _alrt "site ${_urie}: verify failed - left unproven, fix + re-run import"
         _sfails=$(( _sfails + 1 )); continue
       fi
-      _codee="$(_http_code_at "${_urie}" 127.0.0.1)"
+      _bodye="$(mktemp)"
+      _codee="$(_http_code_body_at "${_urie}" 127.0.0.1 "${_bodye}")"
       _basee="$(_manifest_val "${_mfe}" BASELINE)"
       if [[ -n "${_basee}" && "${_codee}" != "${_basee}" ]]; then
+        rm -f "${_bodye}"
         _alrt "site ${_urie}: target serves HTTP ${_codee} but the source baseline was ${_basee} - left unproven, fix + re-run import"
         _sfails=$(( _sfails + 1 )); continue
       fi
+      # same catch-all check as the per-site route: a 200 alone proves nothing
+      if _is_catchall_body "${_bodye}" "${_codee}" "${_A2B_CATCHALL_BASE}"; then
+        rm -f "${_bodye}"
+        _alrt "site ${_urie}: the target answers 200 with its catch-all page, not the site - left unproven, fix serving + re-run import"
+        _sfails=$(( _sfails + 1 )); continue
+      fi
+      rm -f "${_bodye}"
       _info "site ${_urie}: target serves HTTP ${_codee} (source baseline was ${_basee})"
       _marker_set "${_urie}.imported.pid"
     done
@@ -2204,19 +2213,30 @@ PHPEOF
     sleep 5
     _t_wait_task "$(_t_task_nid_for "${_uri}" verify)" "verify ${_uri}" \
       || { _alrt "site ${_uri}: post-import verify failed"; _fails=$(( _fails + 1 )); continue; }
-    local _code _base _bt=0
+    local _code _base _bt=0 _body
     _base="$(_manifest_val "${_mff}" BASELINE)"
-    _code="$(_http_code_at "${_uri}" 127.0.0.1)"
+    _body="$(mktemp)"
+    _code="$(_http_code_body_at "${_uri}" 127.0.0.1 "${_body}")"
     # the FPM agent restarts per-version pools on its own passes, so a
     # single-shot probe can land in a restart window - re-probe briefly
     while [[ -n "${_base}" && "${_code}" != "${_base}" && "${_bt}" -lt 3 ]]; do
       sleep 10; _bt=$(( _bt + 1 ))
-      _code="$(_http_code_at "${_uri}" 127.0.0.1)"
+      _code="$(_http_code_body_at "${_uri}" 127.0.0.1 "${_body}")"
     done
     if [[ -n "${_base}" && "${_code}" != "${_base}" ]]; then
+      rm -f "${_body}"
       _alrt "site ${_uri}: target serves HTTP ${_code} but the source baseline was ${_base} - NOT adopted; fix serving, then re-run import for this site"
       _fails=$(( _fails + 1 )); continue
     fi
+    # a matching 200 is not enough: an unknown Host gets the box's catch-all
+    # page with a 200 too, so a site whose own vhost was not in place yet
+    # was reported adopted here and went dark on the FPM agent's next pass
+    if _is_catchall_body "${_body}" "${_code}" "${_A2B_CATCHALL_BASE}"; then
+      rm -f "${_body}"
+      _alrt "site ${_uri}: the target answers 200 with its catch-all page, not the site - NOT adopted; fix serving, then re-run import for this site"
+      _fails=$(( _fails + 1 )); continue
+    fi
+    rm -f "${_body}"
     _info "site ${_uri}: target serves HTTP ${_code} (source baseline was ${_base})"
 
     # 7. cron on (ships dark by design; source dispatch is paused for good)
@@ -2291,6 +2311,10 @@ verb_import() {
     _dry_finish "${_scope}"
   fi
   _gate_consume "${_scope}"
+  # the serve probes below compare bodies against this box's catch-all
+  # answer: a BOA box replies 200 to any unknown Host with its own page, so
+  # a status alone cannot tell "the site serves" from "nothing serves it"
+  _probe_catchall_baseline 127.0.0.1
   case "${_ROUTE}" in
     db-import) _import_db_route ;;
     per-site)  _import_per_site || exit 1 ;;
@@ -2390,6 +2414,13 @@ _peer_source() {
     return 0
   fi
   _alrt "not reachable yet - run the command above on the target first (ssh detail: ${_LOG})"
+  # nothing changed on this box, so the clean dry run still stands: hand
+  # the token back, or the documented third step ("--live again once the
+  # target has the key") is refused for want of a fresh dry run
+  if [[ "${_LIVE}" = "YES" ]] && [[ -n "${_scope:-}" ]]; then
+    _gate_mark_clean "${_scope}"
+    _msg "the dry run stays armed - re-run this same --live command once the target has the key"
+  fi
   return 1
 }
 
