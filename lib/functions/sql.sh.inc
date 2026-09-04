@@ -681,6 +681,7 @@ _sql_conf_update() {
         -e "s/^#?\s*(syseventlog)/#\1/" \
         -e "s/^#?\s*(mysqlx)/#\1/" \
         -e "s/^#?\s*(authentication_policy)/#\1/" \
+        -e "s/^#?\s*(default_authentication_plugin)/#\1/" \
         /etc/mysql/my.cnf &> /dev/null
 
       if [ "${_DB_V}" = "5.7" ]; then
@@ -739,6 +740,21 @@ _sql_conf_update() {
           # plugin line is not there to anchor on for 8.0)
           sed -i -E \
             "/^\[mysqld\]/a authentication_policy=mysql_native_password,," \
+            /etc/mysql/my.cnf &> /dev/null
+        fi
+      fi
+      if [ "${_DB_V}" = "8.0" ]; then
+        # Measured on 8.0.46: with the policy alone the handshake still
+        # greets caching_sha2 -- on 8.0 the greeting follows
+        # default_authentication_plugin, which 8.4 removed (hence commented
+        # out above on every series and written here only). Both name the
+        # same plugin, which is what 8.0 requires of the pair.
+        sed -i -E \
+          -e "s/^#?\s*default_authentication_plugin\s*=.*/default_authentication_plugin=mysql_native_password/" \
+          /etc/mysql/my.cnf &> /dev/null
+        if ! grep -qE "^default_authentication_plugin" /etc/mysql/my.cnf; then
+          sed -i -E \
+            "/^\[mysqld\]/a default_authentication_plugin=mysql_native_password" \
             /etc/mysql/my.cnf &> /dev/null
         fi
       fi
