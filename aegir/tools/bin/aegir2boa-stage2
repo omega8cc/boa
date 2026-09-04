@@ -208,9 +208,19 @@ _http_code_body_at() {   # 1 uri 2 addr 3 body-file
 # traffic to be cut over to the target.
 _A2B_CATCHALL_BASE=""
 _probe_catchall_baseline() {   # 1 target addr
-  local _bogus="no-such-site.a2b-probe.invalid"
-  _A2B_CATCHALL_BASE="$(curl -s -m 20 -H "Host: ${_bogus}" "http://$1/" 2>/dev/null \
-    | md5sum | cut -d' ' -f1)"
+  local _bogus="no-such-site.a2b-probe.invalid" _body _code
+  _A2B_CATCHALL_BASE=""
+  _body="$(mktemp)"
+  _code="$(curl -s -m 20 -o "${_body}" -w '%{http_code}' -H "Host: ${_bogus}" "http://$1/" 2>/dev/null)"
+  # Hash only a body the probe actually got. Piped straight into md5sum, a
+  # failed probe left the empty-input hash here, so no caller could tell "no
+  # fingerprint" from "the catch-all is an empty page": the warnings that
+  # test for an empty baseline never fired, and a site legitimately answering
+  # 200 with nothing would have been called the catch-all.
+  if [[ "${_code}" = "200" ]] && [[ -s "${_body}" ]]; then
+    _A2B_CATCHALL_BASE="$(md5sum < "${_body}" | cut -d' ' -f1)"
+  fi
+  rm -f "${_body}"
 }
 
 # 1 body-file, 2 status, 3 baseline hash. Only meaningful for a 200: a 301/302
@@ -811,9 +821,13 @@ verb_check() {
   # version-agnostic answer (8.0 follows default_authentication_plugin, 8.4
   # the first element of authentication_policy, 5.7 is native either way).
   # The two variable reads are the fallback for a target without nc/strings;
-  # the greeting comes first, so it wins when both answer. An empty result
-  # is 'not readable', never 'not native' - this gate accuses only on a
-  # plugin it positively read.
+  # the greeting comes first, so it wins when both answer. Among the two,
+  # default_authentication_plugin is read before authentication_policy on
+  # purpose: on 8.0 the greeting follows the former even when the policy
+  # names native, so a policy-only 8.0 target IS non-native to a PHP 5.6
+  # client and is rightly named; 8.4 has no such variable and falls through
+  # to the policy. An empty result is 'not readable', never 'not native' -
+  # this gate accuses only on a plugin it positively read.
   local _tauth
   _tauth="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" \
     "if command -v nc >/dev/null 2>&1 && command -v strings >/dev/null 2>&1; then \
@@ -1039,8 +1053,12 @@ verb_create() {
   # hold the enforced post-install upgrade off for the window - in-octopus
   # backgrounds an octopus up- that would churn the fresh account
   # (the guard file is box-wide, removed right after)
-  ssh "root@${_TARGET}" "touch /root/.dont.upgrade.octopus.on.install.cnf" \
-    && _GUARD_TARGET="${_TARGET}"
+  # recorded BEFORE the touch: ssh can run the command and still exit
+  # non-zero (a connection torn down on the way back), and a guard that is
+  # on the box but not on record is exactly the leak this closes; taking
+  # off a guard that never landed costs nothing
+  _GUARD_TARGET="${_TARGET}"
+  ssh "root@${_TARGET}" "touch /root/.dont.upgrade.octopus.on.install.cnf"
   ssh "root@${_TARGET}" "/opt/local/bin/boa in-octopus ${_EMAIL} ${_ACCOUNT} ${_TREE} ${_OPTION} ${_SUBSCR} ${_CORES} noscreen" \
     | tee -a "${_LOG}"
   ssh "root@${_TARGET}" "test -d /data/disk/${_ACCOUNT}" \
