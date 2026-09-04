@@ -80,6 +80,9 @@ _WELCOME_NODE=NO
 _REVERT_DB_IMPORT=NO
 _RESET_SITES=NO
 _FROM_STATE=NO
+# set while create holds the target's box-wide post-install upgrade guard,
+# so any exit path can take it back off (see _guard_target_off)
+_GUARD_TARGET=""
 
 ###-------------HELPERS----------------###
 
@@ -1010,11 +1013,12 @@ verb_create() {
   # hold the enforced post-install upgrade off for the window - in-octopus
   # backgrounds an octopus up- that would churn the fresh account
   # (the guard file is box-wide, removed right after)
-  ssh "root@${_TARGET}" "touch /root/.dont.upgrade.octopus.on.install.cnf"
+  ssh "root@${_TARGET}" "touch /root/.dont.upgrade.octopus.on.install.cnf" \
+    && _GUARD_TARGET="${_TARGET}"
   ssh "root@${_TARGET}" "/opt/local/bin/boa in-octopus ${_EMAIL} ${_ACCOUNT} ${_TREE} ${_OPTION} ${_SUBSCR} ${_CORES} noscreen" \
     | tee -a "${_LOG}"
   ssh "root@${_TARGET}" "test -d /data/disk/${_ACCOUNT}" \
-    || { ssh "root@${_TARGET}" "rm -f /root/.dont.upgrade.octopus.on.install.cnf"; \
+    || { _guard_target_off; \
          _die "in-octopus finished but /data/disk/${_ACCOUNT} does not exist on ${_TARGET}"; }
   ssh "root@${_TARGET}" "/bin/rm -f /data/disk/${_ACCOUNT}/tools/le/.ctrl/ssl-demo-mode.pid" 2>/dev/null
 
@@ -1033,7 +1037,7 @@ verb_create() {
     [[ "${_waited}" -ge "${_QUIESCE_TIMEOUT}" ]] && { _alrt "target still busy after ${_QUIESCE_TIMEOUT}s - verify manually before import"; break; }
     sleep 30; _waited=$(( _waited + 30 ))
   done
-  ssh "root@${_TARGET}" "rm -f /root/.dont.upgrade.octopus.on.install.cnf"
+  _guard_target_off
   _info "target quiescent (waited ${_waited}s), upgrade guard removed"
   _kv_set "${_STATE_DIR}/state/check.env" "ACCOUNT" "${_ACCOUNT}"
   _marker_set "create.${_ACCOUNT}.pid"
@@ -2963,10 +2967,27 @@ touch "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir2boa-stage2.log
 [[ -n "${_SITE}" && "${_ALL}" = "YES" ]] && _die "--site and --all are mutually exclusive"
 case "${_ROUTE}" in ""|per-site|db-import) : ;; *) _die "--route must be per-site|db-import" ;; esac
 
+# Take the box-wide post-install upgrade guard back off the target. It is
+# read by 'boa in-octopus' on EVERY account created on that box afterwards,
+# by any actor - left behind, it silently skips the whole post-install chain
+# (dispatch, hosting-tasks, the LE completion and the enforced octopus
+# upgrade) for good. Best effort and safe to call twice: the point is that
+# no exit path can keep it.
+_guard_target_off() {
+  [[ -n "${_GUARD_TARGET}" ]] || return 0
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_GUARD_TARGET}" \
+    "rm -f /root/.dont.upgrade.octopus.on.install.cnf" >/dev/null 2>&1
+  _GUARD_TARGET=""
+}
+
 # leaked-tempfile + lock cleanup on any exit (creds mktemp files live 600
 # under the 700 state dir; a _die between create and rm would otherwise
 # leave them). _STATE_DIR is set by the box-class requirement inside a verb.
+# Also the last chance to drop the target's upgrade guard: an operator Ctrl-C
+# or a _die anywhere inside the create window lands here (the INT/TERM trap
+# exits, which runs this), and every chained EXIT trap ends in _cleanup.
 _cleanup() {
+  _guard_target_off
   [[ -n "${_STATE_DIR:-}" ]] && rm -f "${_STATE_DIR}/.myd."* "${_STATE_DIR}/.certs."* 2>/dev/null
   # the lock dir holds a pid file - a bare rmdir leaves every lock stale
   [[ -n "${_LOCK:-}" && -d "${_LOCK}" ]] && { rm -f "${_LOCK}/pid" 2>/dev/null; rmdir "${_LOCK}" 2>/dev/null; }
