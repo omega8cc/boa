@@ -275,9 +275,12 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush"`
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush" | head -1`
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush"`
+      # the token once: a drush command line names drush several times
+      # (the launcher path, the alias, an argument), grep -o printed each,
+      # and the multi-line token broke the sed below on every such call
+      _R_M=`echo -n ${_ARGS}  | grep -o "drush" | head -1`
     fi
     ### echo _R_M is ${_R_M}
     if [ -n "${_R_M}" ]; then
@@ -295,9 +298,9 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush8 " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush8"`
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush8" | head -1`
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush8"`
+      _R_M=`echo -n ${_ARGS}  | grep -o "drush8" | head -1`
     fi
     ### echo _R_M is ${_R_M}
     if [ -n "${_R_M}" ]; then
@@ -315,9 +318,9 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush10 " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush10"`
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush10" | head -1`
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush10"`
+      _R_M=`echo -n ${_ARGS}  | grep -o "drush10" | head -1`
     fi
     ### echo _R_M is ${_R_M}
     if [ -n "${_R_M}" ]; then
@@ -335,9 +338,9 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush11 " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush11"`
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush11" | head -1`
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush11"`
+      _R_M=`echo -n ${_ARGS}  | grep -o "drush11" | head -1`
     fi
     ### echo _R_M is ${_R_M}
     if [ -n "${_R_M}" ]; then
