@@ -419,7 +419,13 @@ _get_dev_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1" -o "$1"; then
+      # _DL_NOCACHE=YES: a per-call query string, so an edge cache that
+      # served a stale archive is bypassed -- the same contract as the
+      # settings include's copy, which this one replaces once the libs are
+      # sourced (the mirror ignores the query; the cache keys on it).
+      _dlQry=""
+      [ "${_DL_NOCACHE}" = "YES" ] && _dlQry="?r=$(date +%s)"
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1${_dlQry}" -o "$1"; then
         _success=1
         break
       else

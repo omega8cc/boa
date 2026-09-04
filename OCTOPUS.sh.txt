@@ -327,8 +327,13 @@ if ! declare -F _satellite_if_instance_group > /dev/null 2>&1; then
     touch "${_libRefetchMark}"
     rm -rf /opt/tmp/boa-refetch
     mkdir -p /opt/tmp/boa-refetch
+    # Fetched inline, never through _get_dev_ext: that name is redefined by
+    # the helper library sourced just above -- by the very tree this guard
+    # distrusts -- and an older copy knows nothing of the no-cache query, so
+    # the re-fetch would hit the same edge cache and land the same stale tree.
     ( cd /opt/tmp/boa-refetch \
-      && _urlDev="https://files.boa.io/dev" _DL_NOCACHE=YES _get_dev_ext "boa.tar.gz" ) > /dev/null 2>&1
+      && curl ${_crlGet} "https://files.boa.io/dev/${_tRee}/boa.tar.gz?r=$(date +%s)" -o boa.tar.gz \
+      && tar -xzf boa.tar.gz ) > /dev/null 2>&1
     if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
       && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
       && [ -e "/opt/tmp/boa-refetch/boa/lib/functions/helper.sh.inc" ] \
