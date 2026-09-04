@@ -4109,11 +4109,10 @@ _satellite_if_add_ftps_lshell_access() {
     fi
   done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
-  # A recreated identity (an out-of-band deluser, then this branch on the next
-  # run) must not leave two [name] sections: lshell's parser is strict and
-  # refuses the whole file for that user until the 3-minute worker rewrites
-  # it, a lockout window of up to three minutes. Drop a stale section first.
-  # Written back in place so the file keeps its inode and ownership.
+  # This runs on every pass, not only when the identity was just made, so the
+  # section is replaced, never stacked: lshell's parser is strict and refuses
+  # the whole file for a user with two [name] sections until the 3-minute
+  # worker rewrites it. Written back in place so the file keeps its inode.
   if grep -q "^\[${_USERFTP}\]" /etc/lshell.conf 2> /dev/null; then
     awk -v s="[${_USERFTP}]" '/^\[/ { skip = ($0 == s) } !skip { print }' \
       /etc/lshell.conf > /etc/lshell.conf.tmp \
@@ -4122,14 +4121,12 @@ _satellite_if_add_ftps_lshell_access() {
   fi
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
-  echo "path : ['/opt/user/gems/${_USERFTP}', \
-                '/opt/user/npm/${_USERFTP}', \
-                '${_MNT_STATIC_FILES}', \
-                '${_ROOT}/distro', \
-                '${_ROOT}/static', \
-                '${_ROOT}/backups', \
-                '${_ROOT}/clients']" \
-                | fmt -su -w 2500 >> /etc/lshell.conf
+  # The attached-files store is listed only when one is mounted; with none,
+  # _mntPoint is empty and the entry would name a path that does not exist.
+  _lshPaths="'/opt/user/gems/${_USERFTP}', '/opt/user/npm/${_USERFTP}'"
+  [ -n "${_mntPoint}" ] && _lshPaths="${_lshPaths}, '${_MNT_STATIC_FILES}'"
+  echo "path : [${_lshPaths}, '${_ROOT}/distro', '${_ROOT}/static', '${_ROOT}/backups', '${_ROOT}/clients']" \
+    | fmt -su -w 2500 >> /etc/lshell.conf
 }
 
 _satellite_if_add_update_user_symlinks() {
