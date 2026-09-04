@@ -3037,7 +3037,7 @@ trap 'exit 2' INT TERM
 # concurrent --live of the same scope (double nginx swap / double DB
 # surgery) are refused. Read-only verbs take no lock.
 case "${_OP}" in
-  check|status|target-status) : ;;
+  check|status|target-status|-h|--help|help) : ;;
   *)
     _LOCK="/var/run/aegir2boa-stage2.$(printf '%s' "${_OP}_${_ACCOUNT}_${_SITE}" | tr -c 'A-Za-z0-9_' '_').lock"
     if ! mkdir "${_LOCK}" 2>/dev/null; then
@@ -3066,6 +3066,9 @@ case "${_OP}" in
   resume)        verb_resume ;;
   status)        verb_status ;;
   target-status) verb_target_status ;;
+  # the first argument is the verb, so --help lands here, not in the option
+  # loop above - the documented invocation must not be an error
+  -h|--help|help) _usage ;;
   *) echo "unknown verb: ${_OP}" >&2; _usage ;;
 esac
 
