@@ -47,6 +47,79 @@ _find_fast_devuan_mirror() {
   echo "${_USE_MIR}"
 }
 
+# Devuan moves a release to archive.devuan.org once it is out of support, and
+# the live mirrors then answer 404 for its Release file. Every hop below the
+# current release transits such a suite sooner or later: beowulf is archived
+# today, and chimaera, the hop both bullseye and beowulf take, will follow.
+# Writing an unserved suite into sources.list is not a stalled hop but a box
+# left on systemd with unusable APT and a minutely cron that keeps rebooting
+# it, so the mirror is chosen before sources.list is touched (see
+# _pick_devuan_suite_mirror) and the repick below can reach the archive.
+# The archive publishes no -updates suite for any release, so that stanza is
+# written only when the chosen mirror is not the archive.
+_ARCHIVED_DEVUAN_SUITES="beowulf"
+_ARCHIVE_DEVUAN_MIRROR="http://archive.devuan.org/merged"
+_DEVUAN_LIVE_MIRRORS="https://mirrors.dotsrc.org/devuan/merged http://deb.devuan.org/merged https://mirror.akardam.net/devuan/merged https://mirror.hootsoftware.com/devuan/merged"
+
+# 0 the mirror serves the suite, 1 it does not, 2 nothing here can probe yet
+_devuan_suite_served() {
+  local _rel="${1}/dists/${2}/Release"
+  if command -v curl > /dev/null 2>&1; then
+    curl -sIL --fail --max-redirs 3 --max-time 20 -A iCab -o /dev/null "${_rel}" 2> /dev/null && return 0
+    return 1
+  elif command -v wget > /dev/null 2>&1; then
+    wget -q --spider --max-redirect=3 --timeout=20 --tries=2 --user-agent='iCab' "${_rel}" 2> /dev/null && return 0
+    return 1
+  fi
+  return 2
+}
+
+###
+### Pick the mirror that actually serves a suite
+###
+# _pick_devuan_suite_mirror <suite> [preferred-mirror]. The known-archived
+# list short-circuits. Otherwise the preferred mirror (the fast one when none
+# is given) is probed; if it has dropped the suite the other live mirrors are
+# walked, one host lagging being the common case, then the archive. A box
+# that cannot probe keeps the preferred mirror, as it did before. Nothing
+# serving the suite at all is logged and answered with the deb.devuan.org
+# redirector, the one host most likely to gain it.
+_pick_devuan_suite_mirror() {
+  local _suite="$1"
+  local _pref="$2"
+  local _mrr=""
+  local _try=""
+  local _srv=0
+  case " ${_ARCHIVED_DEVUAN_SUITES} " in
+    *" ${_suite} "*)
+      echo "${_ARCHIVE_DEVUAN_MIRROR}"
+      return 0
+      ;;
+  esac
+  if [ -n "${_pref}" ]; then
+    _mrr="${_pref}"
+  else
+    _mrr=$(_find_fast_devuan_mirror)
+  fi
+  : "${_mrr:=https://mirrors.dotsrc.org/devuan/merged}"
+  _devuan_suite_served "${_mrr}" "${_suite}"
+  _srv=$?
+  if [ "${_srv}" -ne 1 ]; then
+    echo "${_mrr}"
+    return 0
+  fi
+  for _try in ${_DEVUAN_LIVE_MIRRORS} "${_ARCHIVE_DEVUAN_MIRROR}"; do
+    [ "${_try}" != "${_mrr}" ] || continue
+    if _devuan_suite_served "${_try}" "${_suite}"; then
+      _msg "NOTE: ${_suite} is no longer on ${_mrr}; using ${_try}" >&2
+      echo "${_try}"
+      return 0
+    fi
+  done
+  _msg "ERROR: ${_suite} is served by no known Devuan mirror nor the archive; using the deb.devuan.org redirector" >&2
+  echo "http://deb.devuan.org/merged"
+}
+
 _if_fix_iptables_symlinks() {
   ###
   ### Fix for iptables paths backward compatibility
@@ -5415,9 +5488,10 @@ _sources_list_update() {
           export _MIRROR="http://deb.devuan.org/merged"
         fi
       fi
-      if [ "${_OS_CODE}" = "beowulf" ]; then
-        export _MIRROR="http://archive.devuan.org/merged"
-      fi
+      # After the cnf writes above, so the archive is never persisted as the
+      # preferred mirror; it is chosen per suite, and only while needed.
+      _MIRROR="$(_pick_devuan_suite_mirror "${_OS_CODE}" "${_MIRROR}")"
+      export _MIRROR
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
@@ -5426,7 +5500,9 @@ _sources_list_update() {
       echo "deb ${_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src ${_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      if [ "${_OS_CODE}" != "beowulf" ]; then
+      # Decided by the mirror chosen, not the suite name: the archive serves
+      # <suite>-security but no -updates for any release.
+      if [ "${_MIRROR}" != "${_ARCHIVE_DEVUAN_MIRROR}" ]; then
         echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
         echo "deb ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "deb-src ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
@@ -8798,9 +8874,7 @@ _if_major_os_upgrade() {
     ###
     ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
-      if [ "${_OS_CODE}" = "beowulf" ]; then
-        _TGT_MRR="http://archive.devuan.org/merged"
-      elif [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+      if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
         _TGT_MRR="${_LOCAL_DEVUAN_MIRROR}"
       else
         _DVN_MRR="$(_find_fast_devuan_mirror)"
@@ -8810,11 +8884,16 @@ _if_major_os_upgrade() {
           _TGT_MRR="http://deb.devuan.org/merged"
         fi
       fi
+      # The hop's TARGET suite must be served by the mirror written; an
+      # archived one moves to the archive (beowulf today, chimaera next).
+      _TGT_MRR="$(_pick_devuan_suite_mirror "${_NEW_OS_CODE}" "${_TGT_MRR}")"
       echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
       echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
+      # Decided by the mirror chosen, not the suite name: the archive serves
+      # <suite>-security but no -updates for any release.
+      if [ "${_TGT_MRR}" != "${_ARCHIVE_DEVUAN_MIRROR}" ]; then
         echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
         echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}

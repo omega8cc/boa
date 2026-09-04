@@ -581,9 +581,24 @@ _init_mnfr() {
   elif [ -r "/sys/class/dmi/id/sys_vendor" ]; then
     # Only when dmidecode is absent entirely, so the check is not left blind on
     # a host where the package could not be installed. Never when dmidecode is
-    # merely silent: inside a container that file describes the HOST, and
-    # trusting it there would refuse a container running on an EC2 host.
-    _DMI_RAW="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null)"
+    # merely silent, and never inside a container this can recognise: there
+    # that file describes the HOST, so a container on an EC2 host would be
+    # refused as EC2, and containers are on this tree's supported list. The
+    # apt install above is unchecked, so a container can reach this arm; left
+    # unread, it is the DMI-less guest it is and passes. The recognition set:
+    # Docker leaves /.dockerenv; systemd writes /run/systemd/container when
+    # it is the container's own PID 1; LXC, LXD, podman and nspawn set
+    # container= in PID 1's environment (matched at the start of a record,
+    # not as a substring); an OpenVZ guest has /proc/vz but not the host-only
+    # /proc/bc; a VServer guest carries the VxID that boa's _check_virt
+    # already greps for, same expression.
+    if [ ! -e "/.dockerenv" ] \
+      && [ ! -e "/run/systemd/container" ] \
+      && ! { [ -e "/proc/vz" ] && [ ! -e "/proc/bc" ]; } \
+      && ! { tr '\0' '\n' < /proc/1/environ 2> /dev/null | grep -q '^container='; } \
+      && ! grep -qE 'VxID:[[:space:]]*[0-9]{2,}$' /proc/self/status 2> /dev/null; then
+      _DMI_RAW="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null)"
+    fi
   fi
   # Older dmidecode prints a banner and status lines on stdout ahead of the
   # value, so keep the last line that is none of them.
@@ -753,6 +768,33 @@ _autoinit_apt_trust_state() {
   return 0
 }
 
+# Devuan moves a release to archive.devuan.org once it is out of support, and
+# the live mirrors then answer 404 for its Release file. Every hop below the
+# current release transits such a suite sooner or later: beowulf is archived
+# today, and chimaera, the hop both bullseye and beowulf take, will follow.
+# Writing an unserved suite into sources.list is not a stalled hop but a box
+# left on systemd with unusable APT and a minutely cron that keeps rebooting
+# it, so the mirror is chosen before sources.list is touched (see
+# _pick_devuan_suite_mirror) and the repick below can reach the archive.
+# The archive publishes no -updates suite for any release, so that stanza is
+# written only when the chosen mirror is not the archive.
+_ARCHIVED_DEVUAN_SUITES="beowulf"
+_ARCHIVE_DEVUAN_MIRROR="http://archive.devuan.org/merged"
+_DEVUAN_LIVE_MIRRORS="https://mirrors.dotsrc.org/devuan/merged http://deb.devuan.org/merged https://mirror.akardam.net/devuan/merged https://mirror.hootsoftware.com/devuan/merged"
+
+# 0 the mirror serves the suite, 1 it does not, 2 nothing here can probe yet
+_devuan_suite_served() {
+  local _rel="${1}/dists/${2}/Release"
+  if command -v curl > /dev/null 2>&1; then
+    curl -sIL --fail --max-redirs 3 --max-time 20 -A iCab -o /dev/null "${_rel}" 2> /dev/null && return 0
+    return 1
+  elif command -v wget > /dev/null 2>&1; then
+    wget -q --spider --max-redirect=3 --timeout=20 --tries=2 --user-agent='iCab' "${_rel}" 2> /dev/null && return 0
+    return 1
+  fi
+  return 2
+}
+
 # Point sources.list at a different Devuan mirror, keeping the suite layout the
 # file already has. Used only when the current mirror serves metadata APT
 # refuses outright (an expired Release makes the whole suite unusable, so the
@@ -761,19 +803,29 @@ _autoinit_apt_trust_state() {
 _autoinit_repick_devuan_mirror() {
   _rpkOld=$(grep -m1 "^deb " /etc/apt/sources.list 2>/dev/null | awk '{print $2}')
   [ -n "${_rpkOld}" ] || return 1
+  _rpkSuite=$(grep -m1 "^deb " /etc/apt/sources.list 2>/dev/null | awk '{print $3}')
   _rpkNew=""
-  for _rpkTry in "https://mirrors.dotsrc.org/devuan/merged" \
-                 "http://deb.devuan.org/merged" \
-                 "https://mirror.akardam.net/devuan/merged" \
-                 "https://mirror.hootsoftware.com/devuan/merged"; do
-    if [ "${_rpkTry}" != "${_rpkOld}" ]; then
-      _rpkNew="${_rpkTry}"
-      break
+  # The archive closes the list: a suite Devuan retired since the hop was
+  # written is on no live mirror, and the walk would otherwise visit every
+  # live host for a Release file none of them has. A candidate that
+  # verifiably lacks the suite is skipped; one that has it, or that cannot
+  # be probed, is taken as before.
+  for _rpkTry in ${_DEVUAN_LIVE_MIRRORS} "${_ARCHIVE_DEVUAN_MIRROR}"; do
+    [ "${_rpkTry}" != "${_rpkOld}" ] || continue
+    if [ -n "${_rpkSuite}" ]; then
+      _devuan_suite_served "${_rpkTry}" "${_rpkSuite}"
+      [ "$?" -eq 1 ] && continue
     fi
+    _rpkNew="${_rpkTry}"
+    break
   done
   [ -n "${_rpkNew}" ] || return 1
   _msg "[init] trst ==> Re-pointing APT sources from ${_rpkOld} to ${_rpkNew}" >> "${_logInt}"
   sed -i "s|${_rpkOld}|${_rpkNew}|g" /etc/apt/sources.list
+  # The archive carries no -updates suite; a repointed line for one is a 404.
+  if [ "${_rpkNew}" = "${_ARCHIVE_DEVUAN_MIRROR}" ] && [ -n "${_rpkSuite}" ]; then
+    sed -i "/ ${_rpkSuite}-updates /d" /etc/apt/sources.list
+  fi
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}" 2>&1
   return 0
 }
@@ -1788,6 +1840,54 @@ _find_fast_devuan_mirror() {
 }
 
 ###
+### Pick the mirror that actually serves a suite
+###
+# _pick_devuan_suite_mirror <suite> [preferred-mirror]. The known-archived
+# list short-circuits. Otherwise the preferred mirror (the fast one when none
+# is given) is probed; if it has dropped the suite the other live mirrors are
+# walked, one host lagging being the common case, then the archive. A box
+# that cannot probe keeps the preferred mirror, as it did before. Nothing
+# serving the suite at all is logged and answered with the deb.devuan.org
+# redirector, the one host most likely to gain it. Its two messages go to
+# the init log through stderr (2>> log, then >&2): the caller captures this
+# function's stdout, so nothing but the mirror may ever reach it.
+_pick_devuan_suite_mirror() {
+  local _suite="$1"
+  local _pref="$2"
+  local _mrr=""
+  local _try=""
+  local _srv=0
+  case " ${_ARCHIVED_DEVUAN_SUITES} " in
+    *" ${_suite} "*)
+      echo "${_ARCHIVE_DEVUAN_MIRROR}"
+      return 0
+      ;;
+  esac
+  if [ -n "${_pref}" ]; then
+    _mrr="${_pref}"
+  else
+    _mrr=$(_find_fast_devuan_mirror)
+  fi
+  : "${_mrr:=https://mirrors.dotsrc.org/devuan/merged}"
+  _devuan_suite_served "${_mrr}" "${_suite}"
+  _srv=$?
+  if [ "${_srv}" -ne 1 ]; then
+    echo "${_mrr}"
+    return 0
+  fi
+  for _try in ${_DEVUAN_LIVE_MIRRORS} "${_ARCHIVE_DEVUAN_MIRROR}"; do
+    [ "${_try}" != "${_mrr}" ] || continue
+    if _devuan_suite_served "${_try}" "${_suite}"; then
+      _msg "[init] cycl ==> ${_suite} is no longer on ${_mrr}; using ${_try}" 2>> "${_logInt}" >&2
+      echo "${_try}"
+      return 0
+    fi
+  done
+  _msg "[init][ERROR] cycl ==> ${_suite} is served by no known Devuan mirror nor the archive; using the deb.devuan.org redirector" 2>> "${_logInt}" >&2
+  echo "http://deb.devuan.org/merged"
+}
+
+###
 ### Init cycle procedure
 ###
 _init_cycle() {
@@ -1851,18 +1951,16 @@ _init_cycle() {
     wait
     _msg "[init] cycl ==> Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     _aptLiSys="/etc/apt/sources.list"
-    if [ "${_NEW_OS_CODE}" = "beowulf" ]; then
-      _TGT_MRR="http://archive.devuan.org/merged"
-    else
-      _TGT_MRR=$(_find_fast_devuan_mirror)
-    fi
+    _TGT_MRR=$(_pick_devuan_suite_mirror "${_NEW_OS_CODE}")
     : "${_TGT_MRR:=https://mirrors.dotsrc.org/devuan/merged}"
     _msg "[init] cycl ==> Using Devuan mirror: ${_TGT_MRR}" >> "${_logInt}"
     echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
     echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "" >> ${_aptLiSys}
-    if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
+    # Decided by the mirror chosen, not the suite name: the archive serves
+    # <suite>-security but no -updates for any release.
+    if [ "${_TGT_MRR}" != "${_ARCHIVE_DEVUAN_MIRROR}" ]; then
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
       echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
       echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}

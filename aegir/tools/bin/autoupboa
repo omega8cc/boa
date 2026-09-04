@@ -938,7 +938,16 @@ _is_protected_run() {
   _boaBins="autoinit automini barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      # Anchored, as _weekly_install_in_flight above: a bare path substring
+      # matches any command line that merely MENTIONS the wrapper, and a
+      # bare "boa" matches the boa-info probes other cron ticks fire every
+      # few minutes, which held this guard and deferred what it protects.
+      # For boa only the verbs that change the box count, and only LOCAL
+      # ones: the installs (which /run/boa_run.pid also covers) plus
+      # cleanup, suspend and unsuspend; info, version and help read only.
+      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
+      [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa (in-|cleanup|suspend|unsuspend)"
+      _CNT=$(pgrep -fc "${_cPat}")
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
@@ -955,9 +964,17 @@ _is_protected_run() {
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
 }
 
+# At most one completion attempt per hour, whatever the manufacturer reads
+# back; _status_vm_postinstall reads it, _generic_vm_postinstall writes it.
+_VM_POST_STAMP="/var/log/boa/.vm_postinstall_attempt.pid"
+
 _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
+    # Stamped on a real launch only. Stamped by the caller, a tick that
+    # merely found another tool in flight burnt the whole hour and launched
+    # nothing, deferring the first attempt this promises at once.
+    touch "${_VM_POST_STAMP}"
     rm -f /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
     _TODAY=$(date +%y%m%d)
     _TODAY=${_TODAY//[^0-9]/}
@@ -1029,10 +1046,8 @@ _status_vm_postinstall() {
     # one -- and this runs every five minutes. The first attempt is immediate,
     # so a normal install still converges at once; a failing one now retries
     # hourly instead of relaunching a full system pass twelve times an hour.
-    _VM_POST_STAMP="/var/log/boa/.vm_postinstall_attempt.pid"
     if [ ! -e "${_VM_POST_STAMP}" ] \
       || [ -n "$(find "${_VM_POST_STAMP}" -mmin +59 2> /dev/null)" ]; then
-      touch "${_VM_POST_STAMP}"
       _generic_vm_postinstall
     fi
   else

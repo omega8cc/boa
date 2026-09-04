@@ -1206,10 +1206,14 @@ _apt_sources_list_write_canonical() {
     _hdr="## DEVUAN MAIN REPOSITORIES (canonical fallback)"
     _m="http://deb.devuan.org/merged"
     _sec="${_c}-security"
-    if [ "${_c}" = "beowulf" ]; then
-      _m="http://archive.devuan.org/merged"
-      _updates=NO
-    fi
+    # From the list only, never a probe: this fallback exists for the moment
+    # the network or the stored file cannot be trusted.
+    case " ${_ARCHIVED_DEVUAN_SUITES:-beowulf} " in
+      *" ${_c} "*)
+        _m="${_ARCHIVE_DEVUAN_MIRROR:-http://archive.devuan.org/merged}"
+        _updates=NO
+        ;;
+    esac
     _sm="${_m}"
   elif [ "${_OS_DIST}" = "Debian" ]; then
     _hdr="## DEBIAN MAIN REPOSITORIES (canonical fallback)"

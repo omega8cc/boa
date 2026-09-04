@@ -2164,9 +2164,24 @@ _check_manufacturer_compatibility() {
   elif [ -r "/sys/class/dmi/id/sys_vendor" ]; then
     # Only when dmidecode is absent entirely, so the check is not left blind on
     # a host where the package could not be installed. Never when dmidecode is
-    # merely silent: inside a container that file describes the HOST, and
-    # trusting it there would refuse a container running on an EC2 host.
-    _DMI_RAW="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null)"
+    # merely silent, and never inside a container this can recognise: there
+    # that file describes the HOST, so a container on an EC2 host would be
+    # refused as EC2, and containers are on this tree's supported list. The
+    # apt install above is unchecked, so a container can reach this arm; left
+    # unread, it is the DMI-less guest it is and passes. The recognition set:
+    # Docker leaves /.dockerenv; systemd writes /run/systemd/container when
+    # it is the container's own PID 1; LXC, LXD, podman and nspawn set
+    # container= in PID 1's environment (matched at the start of a record,
+    # not as a substring); an OpenVZ guest has /proc/vz but not the host-only
+    # /proc/bc; a VServer guest carries the VxID that boa's _check_virt
+    # already greps for, same expression.
+    if [ ! -e "/.dockerenv" ] \
+      && [ ! -e "/run/systemd/container" ] \
+      && ! { [ -e "/proc/vz" ] && [ ! -e "/proc/bc" ]; } \
+      && ! { tr '\0' '\n' < /proc/1/environ 2> /dev/null | grep -q '^container='; } \
+      && ! grep -qE 'VxID:[[:space:]]*[0-9]{2,}$' /proc/self/status 2> /dev/null; then
+      _DMI_RAW="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null)"
+    fi
   fi
   # Older dmidecode prints a banner and status lines on stdout ahead of the
   # value, so keep the last line that is none of them.
