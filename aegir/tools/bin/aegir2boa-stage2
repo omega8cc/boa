@@ -803,6 +803,28 @@ verb_check() {
   _info "target PHP pools: ${_pools:-none found}"
   _kv_set "${_STATE_DIR}/state/check.env" "TARGET_PHP_POOLS" "${_pools}"
 
+  # First factor the target's DB server ADVERTISES (D6 parity gate input).
+  # Not the same question as what a user is pinned to: PHP 5.6's mysqli dies
+  # at the handshake greeting, before the user's own plugin is consulted, so
+  # a D6 site adopted onto a caching_sha2 target bootstraps in CLI and serves
+  # its own 503 on the web. Read the greeting itself - it is the only
+  # version-agnostic answer (8.0 follows default_authentication_plugin, 8.4
+  # the first element of authentication_policy, 5.7 is native either way).
+  # The two variable reads are the fallback for a target without nc/strings;
+  # the greeting comes first, so it wins when both answer. An empty result
+  # is 'not readable', never 'not native' - this gate accuses only on a
+  # plugin it positively read.
+  local _tauth
+  _tauth="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" \
+    "if command -v nc >/dev/null 2>&1 && command -v strings >/dev/null 2>&1; then \
+       timeout 3 nc 127.0.0.1 3306 2>/dev/null | strings | grep -m1 -i password; \
+     fi; \
+     mysql -sN -e \"SHOW VARIABLES LIKE 'default_authentication_plugin'\" 2>/dev/null | awk '{print \$2}'; \
+     mysql -sN -e \"SHOW VARIABLES LIKE 'authentication_policy'\" 2>/dev/null | awk '{print \$2}'" \
+    2>>"${_LOG}" | grep -m1 . | tr -cd 'A-Za-z0-9_,*')"
+  _info "target DB advertised first factor: ${_tauth:-UNKNOWN}"
+  _kv_set "${_STATE_DIR}/state/check.env" "TARGET_DB_AUTH" "${_tauth}"
+
   # per-platform D-version reduce (route input + per-site parity)
   local _all_d7=YES _row _core
   while read -r _row; do
@@ -868,7 +890,11 @@ verb_check() {
     _dmaj="$(_d_major_of "${_plr}")"
     case "${_dmaj}" in
       6) echo "${_pools}" | grep -q '56' \
-           || { _alrt "site ${_uri}: D6 needs PHP 5.6 pool on target - MISSING (per-site FAIL)"; _fails=$(( _fails + 1 )); } ;;
+           || { _alrt "site ${_uri}: D6 needs PHP 5.6 pool on target - MISSING (per-site FAIL)"; _fails=$(( _fails + 1 )); }
+         case "${_tauth}" in
+           ""|mysql_native_password*) : ;;
+           *) _alrt "site ${_uri}: D6 needs the target to ADVERTISE mysql_native_password, it advertises ${_tauth} (per-site FAIL) - set authentication_policy = mysql_native_password,, in my.cnf (8.0 also default_authentication_plugin), restart mysql"; _fails=$(( _fails + 1 )) ;;
+         esac ;;
       7) : ;;
       0) _alrt "site ${_uri}: platform D-version undetected at ${_plr:-?}"; _fails=$(( _fails + 1 )) ;;
     esac
