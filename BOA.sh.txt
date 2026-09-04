@@ -2294,6 +2294,11 @@ _update_agents() {
         _validIPr=
         _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _dscUsr="/data/disk/${_tUsr}"
+        ### Resolve the owning group per account: this loop used to inherit
+        ### whatever the FPM/CLI loop above left behind, so the chowns below
+        ### stamped every tree with the last account's group (or, with that
+        ### loop's gate already closed, fell back to the login group).
+        _usrGroup=$(_acct_group "${_tUsr}")
         _hmPf=$(cat ${_dscUsr}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
