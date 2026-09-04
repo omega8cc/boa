@@ -707,23 +707,38 @@ _sql_conf_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DBST: Enable legacy mysql_native_password for Percona ${_DB_V}"
         fi
+        # 8.4 only: 8.0 builds the plugin in and has no such server option,
+        # so mysqld would refuse to start on the unknown variable.
         sed -i -E \
           -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
           -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
           /etc/mysql/my.cnf &> /dev/null
+      fi
+      if [ "${_DB_V}" = "8.0" ] || [ "${_DB_V}" = "8.4" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DBST: Advertise mysql_native_password first for Percona ${_DB_V}"
+        fi
         # Loading the plugin is not enough for legacy clients: the greeting
         # advertises the default first-factor plugin, and PHP 5.6 mysqli
         # aborts on a caching_sha2 greeting BEFORE the user's own plugin is
         # consulted, so a php56-pool site loses its DB on the web while CLI
         # drush stays healthy. Advertise native; caching_sha2 users still
         # authenticate via the client auth-switch (aegir2boa D-015).
+        # 8.0 greets with caching_sha2 as well and is not a corner case: it
+        # is a first-class series and the staged middle of every 5.7 -> 8.4
+        # upgrade, where a box sits for a whole run; written for 8.4 alone,
+        # every php56-pool site on such a box was dark on the web while CLI
+        # drush stayed healthy. authentication_policy exists since 8.0.27,
+        # the only 8.0 the repositories still serve.
         sed -i -E \
           -e "s/^#?\s*authentication_policy\s*=.*/authentication_policy=mysql_native_password,,/" \
           /etc/mysql/my.cnf &> /dev/null
         if ! grep -qE "^authentication_policy" /etc/mysql/my.cnf; then
           # my.cnf predates the template line (rolling fleet) - insert it
+          # under the section header, which every my.cnf carries (the 8.4
+          # plugin line is not there to anchor on for 8.0)
           sed -i -E \
-            "/^\s*mysql_native_password\s*=\s*ON/a authentication_policy=mysql_native_password,," \
+            "/^\[mysqld\]/a authentication_policy=mysql_native_password,," \
             /etc/mysql/my.cnf &> /dev/null
         fi
       fi
