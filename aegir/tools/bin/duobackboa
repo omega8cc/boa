@@ -1059,30 +1059,91 @@ _list() {
   ${_DCY_MN_CMD} list-current-files ${_NAME} ${_TARGET}
 }
 
+_acct_group() {
+  # Group that owns an account's tree. Derived, never a literal: an account
+  # converted to a private primary group named after itself gets that group,
+  # everything else (an unconverted box, root, www-data, an adopted odd
+  # group) falls back to 'users' -- so a tool landing on an unconverted or
+  # half-converted box leaves it exactly as it is today. Box-wide paths
+  # (/data/conf, /data/u, the shared cores) keep 'users' and never use this.
+  # $1 = account name (oN, oN.ftp, oN.<sub>) or a path under /data/disk/<oN>
+  # or /var/aegir (the master keeps 'users' in this phase).
+  local _a="${1}" _g
+  case "${_a}" in
+    /var/aegir|/var/aegir/*|aegir|root|www-data) echo "users"; return 0 ;;
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    */*) echo "users"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  [ -n "${_a}" ] || { echo "users"; return 0; }
+  _g=$(id -gn "${_a}" 2> /dev/null)
+  [ "${_g}" = "${_a}" ] || _g="users"
+  echo "${_g}"
+}
+
+# After a root-run restore: duplicity re-applies the archived ownership, so
+# a pre-conversion archive lands files in the box-wide group inside a
+# converted account, and a foreign box's archive lands them in whatever its
+# numbers map to here -- another account's group, readable by its
+# identities. The destination is resolved first (relative paths, and a
+# planted symlink under a tenant-writable directory, resolve to where the
+# files really are) and only a real path inside an account's tree is
+# touched: it is handed to that account's group (the inline form), then
+# instgrp reclaim redoes the whole account where it is installed (every
+# root, the marker rule, the DRIFT verdict). A restore staged anywhere else
+# is the operator's to follow with 'instgrp reclaim oN' once it is in place.
+# Verbatim in backboa, duobackboa, multiback and mybackup. $1 = restored dir.
+_acct_reclaim_restored() {
+  local _r _a _g
+  _r=$(realpath -e -- "$1" 2> /dev/null) || return 0
+  [ -d "${_r}" ] || return 0
+  case "${_r}" in
+    /data/disk/*) _a="${_r#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*)      _a="${_r#/home/}"; _a="${_a%%/*}"; _a="${_a%%.*}" ;;
+    *) return 0 ;;
+  esac
+  [ -n "${_a}" ] && [ "${_a}" != "all" ] && getent passwd "${_a}" > /dev/null 2>&1 || return 0
+  _g=$(_acct_group "${_a}" 2> /dev/null)
+  [ -n "${_g}" ] || _g="users"
+  find -P "${_r}" ! -group "${_g}" ! -group www-data ! -group root -execdir chgrp -h "${_g}" {} + 2> /dev/null
+  if [ -x "/opt/local/bin/instgrp" ]; then
+    bash /opt/local/bin/instgrp reclaim "${_a}" > /dev/null 2>&1
+  fi
+  return 0
+}
+
 _restore() {
+  local _rDst
   if [ $# = 2 ]; then
+    _rDst="$2"
     echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2"
     ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2
   else
+    _rDst="$3"
     echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
     ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
   fi
+  _acct_reclaim_restored "${_rDst}"
 }
 
 _retrieve() {
+  local _rDst
   if [ $# = 3 ]; then
+    _rDst="$2"
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
     echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2"
     ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2
   elif [ $# = 4 ]; then
+    _rDst="$3"
     _HST_DASH=$(echo -n $4 | tr . - 2>&1)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
     echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
     ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
   fi
+  _acct_reclaim_restored "${_rDst}"
 }
 
 if [ "$1" = "backup" ]; then

@@ -296,6 +296,37 @@ _send_restore_confirmation_email() {
   fi
 }
 
+# After a root-run restore: duplicity re-applies the archived ownership, so
+# a pre-conversion archive lands files in the box-wide group inside a
+# converted account, and a foreign box's archive lands them in whatever its
+# numbers map to here -- another account's group, readable by its
+# identities. The destination is resolved first (relative paths, and a
+# planted symlink under a tenant-writable directory, resolve to where the
+# files really are) and only a real path inside an account's tree is
+# touched: it is handed to that account's group (the inline form), then
+# instgrp reclaim redoes the whole account where it is installed (every
+# root, the marker rule, the DRIFT verdict). A restore staged anywhere else
+# is the operator's to follow with 'instgrp reclaim oN' once it is in place.
+# Verbatim in backboa, duobackboa, multiback and mybackup. $1 = restored dir.
+_acct_reclaim_restored() {
+  local _r _a _g
+  _r=$(realpath -e -- "$1" 2> /dev/null) || return 0
+  [ -d "${_r}" ] || return 0
+  case "${_r}" in
+    /data/disk/*) _a="${_r#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*)      _a="${_r#/home/}"; _a="${_a%%/*}"; _a="${_a%%.*}" ;;
+    *) return 0 ;;
+  esac
+  [ -n "${_a}" ] && [ "${_a}" != "all" ] && getent passwd "${_a}" > /dev/null 2>&1 || return 0
+  _g=$(_acct_group "${_a}" 2> /dev/null)
+  [ -n "${_g}" ] || _g="users"
+  find -P "${_r}" ! -group "${_g}" ! -group www-data ! -group root -execdir chgrp -h "${_g}" {} + 2> /dev/null
+  if [ -x "/opt/local/bin/instgrp" ]; then
+    bash /opt/local/bin/instgrp reclaim "${_a}" > /dev/null 2>&1
+  fi
+  return 0
+}
+
 # Function to restore backup
 _restore() {
   local _restore_path=$1
@@ -333,6 +364,13 @@ _restore() {
 
   echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
   eval "${_restore_command}" >> ${_LOGFILE}
+  # --no-restore-owner lands the tree root-owned: hand it to the account,
+  # owner and group, then the shared restore claim (every restored path,
+  # the whole account where instgrp is installed).
+  if [ -d "${_final_restore_target}" ]; then
+    chown -R -h -P "${_user}:$(_acct_group "${_user}")" "${_final_restore_target}" &> /dev/null
+  fi
+  _acct_reclaim_restored "${_final_restore_target}"
   if [ -n "${_userEmail}" ]; then
     _subject="MyBackup Restore Notification [${_user}] on [$(date)]"
     _send_restore_confirmation_email "${_userEmail}" "${_subject}"
@@ -656,7 +694,7 @@ if [[ $(whoami) == *.ftp ]]; then
   if ! _validate_restore_command "$@"; then
     echo "Error: Invalid command. The command has not been queued."
     # Optionally log invalid commands
-    echo "[$(date)] Invalid command attempted by $(whoami): $@" >> ${_user_run_dir}/mybackup_invalid_commands.log
+    echo "[$(date)] Invalid command attempted by $(whoami): $*" >> ${_user_run_dir}/mybackup_invalid_commands.log
     exit 1
   fi
 
