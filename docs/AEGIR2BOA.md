@@ -283,8 +283,9 @@ look on any failure.
 - **A fresh preflight report on the source.** The report lands under
   `/tmp`, which is tmpfs on many boxes — a reboot eats it, and `check`
   refuses a report from a different host. Re-run the preflight after any
-  reboot, and copy the `.txt`/`.env` pair somewhere durable for the
-  record.
+  reboot AND after the stage-1 flip: `check` reads the http service type
+  from the newest report, and a report taken before the flip still says
+  apache. Copy the `.txt`/`.env` pair somewhere durable for the record.
 - **Stage 1 signed off**: the source serves the whole estate on Nginx.
 - **Target PHP pools** for the estate's needs (a D6 site needs a php56
   pool on the target; `check` grades this per site).
@@ -296,11 +297,10 @@ look on any failure.
   "Site off-line" 503 on the web. The import pins each D6 site's DB
   user to `mysql_native_password` (and refuses, loudly, when the plugin
   is disabled), but the server-side default must also be native:
-  `authentication_policy = mysql_native_password,,` in my.cnf (8.4; on
-  8.0 use `default_authentication_plugin`). Current BOA sets this
-  automatically on Percona 8.4 (sql config sync, aegir2boa D-015) — on a
-  target whose BOA predates that change, add the line yourself and
-  restart mysql. Modern-PHP sites and `caching_sha2` users are
+  `authentication_policy = mysql_native_password,,` in my.cnf. Current
+  BOA writes it automatically on Percona 8.0 and 8.4 (sql config sync,
+  aegir2boa D-015) — on a target whose BOA predates that, add the line
+  yourself and restart mysql. Modern-PHP sites and `caching_sha2` users are
   unaffected — clients negotiate the switch. Without it the import FAILS
   the site honestly at its serve probe instead of adopting a site that
   cannot serve — though a probe that lands before the FPM agent maps the
@@ -497,7 +497,7 @@ discovery output — the route is never operator-asserted**:
 ### Order of operations
 
 ```
-[stage 0/1 done: preflight WARN-or-better for stage 2, box on nginx]
+[stage 0/1 done: box on nginx, THEN a fresh preflight WARN-or-better for stage 2]
 check → pre-mig → create → export → transfer →
 import (ON TARGET) → proxy → cert-sync --install-cron
 ```
@@ -943,6 +943,7 @@ deliberately:
 |---|---|
 | `check` dies: no preflight report / wrong host | run `aegir2boa-preflight` on THIS box now (reports are per-host and die with `/tmp`) |
 | `check` dies: stage-2 verdict FAIL | resolve the named reasons; re-run preflight |
+| `check` dies: `http_service_type=apache… - source is not nginx-mode` on a box that is on nginx | the newest preflight report predates the stage-1 flip — re-run `aegir2boa-preflight`, then `check` |
 | `check` dies: current nginx config fails `nginx -t` | fix the box first — the tool refuses to build on a broken config |
 | `check` dies: source DB newer generation than target | the source runs MySQL/Percona ≥ 8.0 (Ubuntu 20.04+ default) or MariaDB ≥ 10.6 and the target is pre-8.0 — use a Percona 8.4 target for this source |
 | `--live` refused: no prior CLEAN dry run | run the dry form of the same verb+scope first (every failed live consumes the token) |
