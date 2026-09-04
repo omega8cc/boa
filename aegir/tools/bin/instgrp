@@ -967,7 +967,7 @@ _do_revert() {
 }
 
 _do_status() {
-  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _nUsers=0 _nAcct=0 _nWeb=0 _nRoot=0 _nOther=0 _nNone=0 _foreign="" _prim_ok=YES _bad="" _verdict _rc=0
+  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _nUsers=0 _nAcct=0 _nWeb=0 _nRoot=0 _nOther=0 _nNone=0 _foreign="" _prim_ok=YES _held=NO _bad="" _verdict _rc=0
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   _gid=$(_gid_of "${_a}")
@@ -1030,6 +1030,18 @@ _do_status() {
     getent passwd "${_u}" > /dev/null 2>&1 || continue
     [ "$(_primary_of "${_u}")" = "${_a}" ] || _prim_ok=NO
   done
+  # A group carrying the account's name that none of its identities hold
+  # (a foreign primary or member): INIT refused to adopt it and convert
+  # refuses too. The account is simply unconverted behind that blocker,
+  # not inconsistent, and the verdict must say which.
+  if [ -n "${_gid}" ] && [ "${_prim_ok}" = "NO" ]; then
+    _held=YES
+    for _u in ${_ids}; do
+      getent passwd "${_u}" > /dev/null 2>&1 || continue
+      [ "$(_primary_of "${_u}")" = "${_a}" ] && _held=NO
+      id -nG "${_u}" 2> /dev/null | tr ' ' '\n' | grep -qx "${_a}" && _held=NO
+    done
+  fi
   if [ -n "${_bad}" ]; then
     _verdict="INCONSISTENT (${_bad# })"
     _rc=3
@@ -1045,8 +1057,10 @@ _do_status() {
       _verdict="DRIFT (${_nUsers} paths in group ${_USRG}, ${_nNone} in no group, ${_nOther} in a foreign group; re-run convert)"
       _rc=2
     fi
-  elif [ -z "${_gid}" ] && [ "${_mValid}" = "NO" ] && [ "${_nAcct}" -eq 0 ]; then
+  elif { [ -z "${_gid}" ] || [ "${_held}" = "YES" ]; } && [ "${_mValid}" = "NO" ] && [ "${_nAcct}" -eq 0 ]; then
     _verdict=UNCONVERTED
+    [ "${_held}" = "YES" ] \
+      && _verdict="UNCONVERTED (group name ${_a} held by [$(getent group "${_a}" | cut -d: -f4)]; free it before convert)"
     for _u in ${_ids}; do
       getent passwd "${_u}" > /dev/null 2>&1 || continue
       [ "$(_primary_of "${_u}")" = "${_USRG}" ] || { _verdict="INCONSISTENT (${_u} primary $(_primary_of "${_u}") without a group)"; _rc=3; }
