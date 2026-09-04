@@ -423,6 +423,23 @@ _do_check() {
   return "${_rc}"
 }
 
+# The lock this tool writes carries its pid; the wrappers touch theirs empty.
+# A killed instgrp (OOM, a stray kill -9) never reaches its EXIT trap, and the
+# leftover would block every BOA run and this tool's own repair verb until
+# clear.sh reaps it three hours later. A pid-carrying lock whose process is
+# gone can only be that leftover: a wrapper that found it would have refused
+# to start, and a wrapper's own lock never carries a pid.
+_reap_own_stale_lock() {
+  local _held
+  [ -s "/run/boa_run.pid" ] || return 0
+  _held=$(tr -cd '0-9' < /run/boa_run.pid 2> /dev/null)
+  [ -n "${_held}" ] || return 0
+  kill -0 "${_held}" 2> /dev/null && return 0
+  rm -f /run/boa_run.pid
+  _msg "reaped a stale run lock left by a killed instgrp (pid ${_held})"
+  _log "reaped a stale run lock left by a killed instgrp (pid ${_held})"
+}
+
 # Another BOA run must not overlap an identity change: the wrappers refuse to
 # start while /run/boa_run.pid exists, so holding it here gives the same mutual
 # exclusion and makes run-xdrago defer. The octopus arm already holds it.
@@ -430,11 +447,12 @@ _lock_gate() {
   if [ "${_FROM_OCTOPUS}" = "YES" ]; then
     return 0
   fi
+  _reap_own_stale_lock
   if [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
     || [ -e "/run/octopus_install_run.pid" ]; then
     _die "a BOA install or upgrade run is live (/run/*.pid); retry later"
   fi
-  touch /run/boa_run.pid
+  echo "$$" > /run/boa_run.pid
   _HELD_LOCK=YES
   trap '[ "${_HELD_LOCK}" = "YES" ] && rm -f /run/boa_run.pid' EXIT
 }
@@ -808,6 +826,7 @@ _do_reclaim() {
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # No lock is taken, but a live install or upgrade run owns the account's
   # identities and files right now: defer, every caller can retry.
+  [ "${_FROM_OCTOPUS}" != "YES" ] && _reap_own_stale_lock
   if [ "${_FROM_OCTOPUS}" != "YES" ] \
     && { [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] || [ -e "/run/octopus_install_run.pid" ]; }; then
     _alrt "${_a}: a BOA install or upgrade run is live (/run/*.pid); reclaim skipped, retry later"
