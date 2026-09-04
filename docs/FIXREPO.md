@@ -5,7 +5,8 @@ the backend user (`o1`) that PHP-FPM and Drush run as, and the limited shell
 user (`o1.ftp`) that people log in as over SFTP/SSH. As long as files carry
 the shared group with group-write and directories carry setgid, both sides
 can work on the same tree without permission clashes — and BOA provisions
-its own trees that way (`~/static` itself ships as `oN:users` mode `2775`).
+its own trees that way (`~/static` itself ships mode `2775`, owned by `oN` and
+the account's own group -- see `INSTGRP.md`).
 
 That model breaks whenever a codebase is created outside BOA's machinery:
 a `git clone` or `git pull` run as root (umask `022`), a tarball or
@@ -106,7 +107,9 @@ the job at hand.
 - **Ownership is out of scope.** `fixrepo` changes modes only, never
   owner or group — the mode/ownership split is deliberate across BOA's
   permission tooling. If a tree ended up root-owned (a root `git clone`),
-  first `chown -R oN:users` it, then run `fixrepo`.
+  first hand it to the account -- `chown -R oN:$(id -gn oN)`, the account's
+  own group (`users` only on an instance not yet converted, see `INSTGRP.md`)
+  -- then run `fixrepo`.
 - **Git worktrees and submodules.** When `.git` is a gitfile rather than
   a directory, the tree-wide permissions pass still runs, the git-specific
   steps are skipped, and the summary says so explicitly.

@@ -42,16 +42,17 @@ source box needs no BOA installation, no account and no credentials to do it:
 ```bash
 cd /usr/local/bin
 for t in aegir2boa-preflight aegir2boa-stage1 aegir2boa-stage2; do
-  wget https://files.boa.io/versions/lts/boa/aegir/tools/bin/$t
+  wget https://files.boa.io/versions/pro/boa/aegir/tools/bin/$t
   chmod 755 $t
 done
 ```
 
-Substitute `dev` or `pro` for `lts` to take the tools from another tree; the
-three trees carry the same tools. **Use the short tree token** — a path such
-as `versions/5.x-lts/...` returns an HTTP 200 "Under Construction" placeholder
-rather than a 404, so a typo yields a file that looks downloaded and is not a
-script. Check what you got: `head -1` must read `#!/bin/bash`.
+The path names the tree this copy of the documentation belongs to; the three
+trees carry the same tools, so take them from the tree your target server
+runs. **Use the short tree token** — a path such as `versions/5.x-lts/...`
+returns an HTTP 200 "Under Construction" placeholder rather than a 404, so a
+typo yields a file that looks downloaded and is not a script. Check what you
+got: `head -1` must read `#!/bin/bash`.
 
 Run them as root. `aegir2boa-stage2` is dual-resident: put the SAME script on
 the source and the target; source verbs refuse to run on a BOA box and target

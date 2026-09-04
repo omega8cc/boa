@@ -60,6 +60,10 @@ Each public main branch now includes two additional sub-branches with `-base` an
 2. Experimentation and testing should be done in the respective `-base` and `-edge` branches.
 3. Always tag updates and releases in **5.x-pro** or **5.x-lts** to ensure compatibility with BOA SKYNET auto-update procedures.
 
+### Testing on the dev tree
+
+The `dev` tree is where every change lands first, so the end-to-end test suites can run against it before anything reaches the `-base` branches. Boxes whose hostname ends in `.sslip.io` (wildcard DNS resolving to the IP embedded in the name, so a throwaway box needs no DNS setup) pass the dev-tree licence check without a per-box key: `boa in-dev public test.<ip-with-dashes>.sslip.io <email> o1` installs straight onto `dev`, and `barracuda up-dev` / `octopus up-dev` keep working on such a box. The waiver is dev-only — `pro` stays licensed on every hostname outside the fleet domains.
+
 ---
 
 This new branching scheme ensures greater flexibility, improves stability, and allows for faster innovation across our LTS and PRO offerings. If you have any questions or require guidance on adapting to these changes, please feel free to reach out.
