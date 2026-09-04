@@ -538,7 +538,14 @@ _fix_robots_txt() {
   if [ ! -e "${_Dir}/files/robots.txt" ] \
     && [ ! -e "${_Plr}/profiles/hostmaster" ] \
     && [ -d "${_Dir}/files" ]; then
-    _ROBOTS_TMP=$(mktemp "${_Dir}/.robots.XXXXXX" 2>/dev/null)
+    # curl -o re-opens the temp BY NAME after the fetch, so stage it in the
+    # root-only 0700 dir under the account root instead of the site dir, and
+    # skip the fetch when that dir cannot be had. The mv below is an atomic
+    # rename only while files/ shares the account's filesystem.
+    _ROBOTS_STG=$(_ctrl_stage_dir) || _ROBOTS_STG=
+    _ROBOTS_TMP=
+    [ -n "${_ROBOTS_STG}" ] \
+      && _ROBOTS_TMP=$(mktemp "${_ROBOTS_STG}/robots.XXXXXX" 2>/dev/null)
     if [ -n "${_ROBOTS_TMP}" ]; then
       # See _fix_llms_txt: our own 503 stubs send Retry-After: 3600 and curl
       # sleeps that between retries, so the retry sleep needs --retry-max-time;
