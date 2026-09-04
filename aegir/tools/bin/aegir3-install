@@ -176,6 +176,20 @@ install_base() {
   echo "postfix postfix/main_mailer_type select Local only" | debconf-set-selections
   echo "postfix postfix/mailname string ${_FQDN}" | debconf-set-selections
 
+  # Debian 11 left LTS on 2026-08-31 and its pools are being pruned on the
+  # regular and provider mirrors: the indexes still list packages whose
+  # files 404 (security builds first, then dependencies of the base suite).
+  # archive.debian.org carries the complete frozen suite; a throwaway
+  # vanilla box installs from it alone (no fresh Valid-Until there).
+  if grep -qs '^VERSION_CODENAME=bullseye' /etc/os-release; then
+    _info "Debian 11 is past LTS - installing from archive.debian.org"
+    rm -f /etc/apt/sources.list.d/hetzner-*.list
+    cat > /etc/apt/sources.list <<'EOF'
+deb http://archive.debian.org/debian bullseye main contrib non-free
+EOF
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99archive
+  fi
+
   apt-get update >>"${_LOG}" 2>&1 || _die "apt-get update failed"
 
   # DB engine per family, matching what a real legacy estate resolved:
