@@ -281,13 +281,21 @@ _primary_of() {
 }
 
 _valid_account() {
-  local _a="$1"
+  local _a="$1" _h _s
   [[ "${_a}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || return 1
   [ "${_a}" != "aegir" ] || return 1
   [ -d "/data/disk/${_a}" ] || return 1
   [ -e "/root/.${_a}.octopus.cnf" ] || return 1
-  [ "$(getent passwd "${_a}" 2> /dev/null | cut -d: -f6)" = "/data/disk/${_a}" ] || return 1
-  return 0
+  _h=$(getent passwd "${_a}" 2> /dev/null | cut -d: -f6)
+  [ "${_h}" = "/data/disk/${_a}" ] && return 0
+  # An interrupted group move parks the home at one of this tool's staging
+  # directories; the account is still this box's, and the read-only verbs
+  # (and every 'all' sweep) must keep seeing it, or the one account that
+  # needs the repair is the one that goes unreported.
+  for _s in ${_STAGE_DIRS}; do
+    [ "${_h}" = "${_s}" ] && return 0
+  done
+  return 1
 }
 
 # The account's lshell sub-users: passwd names <acct>.<x> that are neither the
@@ -1001,6 +1009,15 @@ _do_status() {
     getent passwd "${_u}" > /dev/null 2>&1 || { _msg "identity: ${_u} MISSING"; _bad="${_bad} ${_u}-missing"; continue; }
     _msg "identity: ${_u} primary=$(_primary_of "${_u}") groups=[$(id -nG "${_u}")]"
     _in_grp "${_u}" "${_USRG}" || { _alrt "${_u} is not in ${_USRG} (binary execute ACL)"; _bad="${_bad} ${_u}-no-users"; }
+    # A home field left at a staging directory is the trace of an interrupted
+    # group move; status is read-only, so it says so instead of repairing
+    # (convert, reclaim and revert repair it first; the 3-minute worker too).
+    _h=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
+    for _s in ${_STAGE_DIRS}; do
+      [ "${_h}" = "${_s}" ] || continue
+      _msg "home:     ${_u} at ${_h} (STAGED by an interrupted group move; run 'instgrp convert ${_a}')"
+      _bad="${_bad} ${_u}-home-staged"
+    done
   done
   for _u in $(_acct_fpm_users "${_a}"); do
     _msg "fpm:      ${_u} primary=$(_primary_of "${_u}") groups=[$(id -nG "${_u}")]"
