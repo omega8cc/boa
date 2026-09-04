@@ -297,10 +297,12 @@ look on any failure.
   "Site off-line" 503 on the web. The import pins each D6 site's DB
   user to `mysql_native_password` (and refuses, loudly, when the plugin
   is disabled), but the server-side default must also be native:
-  `authentication_policy = mysql_native_password,,` in my.cnf. Current
-  BOA writes it automatically on Percona 8.0 and 8.4 (sql config sync,
-  aegir2boa D-015) — on a target whose BOA predates that, add the line
-  yourself and restart mysql. Modern-PHP sites and `caching_sha2` users are
+  `authentication_policy = mysql_native_password,,` in my.cnf, and on 8.0
+  also `default_authentication_plugin = mysql_native_password`, which is
+  what 8.0's handshake greeting follows. Current BOA writes them
+  automatically on Percona 8.0 and 8.4 (sql config sync, aegir2boa D-015)
+  — on a target whose BOA predates that, add the lines yourself and
+  restart mysql. Modern-PHP sites and `caching_sha2` users are
   unaffected — clients negotiate the switch. Without it the import FAILS
   the site honestly at its serve probe instead of adopting a site that
   cannot serve — though a probe that lands before the FPM agent maps the
