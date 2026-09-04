@@ -2985,16 +2985,28 @@ _satellite_add_user_dirs() {
     # identity -- it is the binary execute ACL (root:users 0750), not a data
     # group. A same-named group left behind by an earlier purge is adopted
     # only while nobody holds it. _INSTANCE_GROUP=NO in the cnf keeps the
-    # box-wide primary group.
+    # box-wide primary group. Born converted only when the box is ready for
+    # it -- the tool present and every fetched root-run writer group-aware,
+    # the gate the upgrade arm's convert enforces: a pre-compat websh would
+    # lock the newborn out of its shell, an old nightly worker would
+    # re-flatten its tree. Otherwise it is born on the box-wide group and
+    # the next upgrade converts it.
     _ACCG="${_USRG}"
     if [ "${_INSTANCE_GROUP}" != "NO" ]; then
-      if ! getent group "${_USER}" > /dev/null 2>&1; then
-        addgroup --system "${_USER}" &> /dev/null
-      fi
-      if getent group "${_USER}" > /dev/null 2>&1 \
-        && [ -z "$(getent group "${_USER}" | cut -d: -f4)" ] \
-        && ! getent passwd | awk -F: -v g="$(getent group "${_USER}" | cut -d: -f3)" '$4 == g { f=1 } END { exit !f }'; then
-        _ACCG="${_USER}"
+      if [ -x "/opt/local/bin/instgrp" ] \
+        && bash /opt/local/bin/instgrp check > /dev/null 2>&1; then
+        if ! getent group "${_USER}" > /dev/null 2>&1; then
+          addgroup --system "${_USER}" &> /dev/null
+        fi
+        if getent group "${_USER}" > /dev/null 2>&1 \
+          && [ -z "$(getent group "${_USER}" | cut -d: -f4)" ] \
+          && ! getent passwd | awk -F: -v g="$(getent group "${_USER}" | cut -d: -f3)" '$4 == g { f=1 } END { exit !f }'; then
+          _ACCG="${_USER}"
+        else
+          _msg "NOTE: group ${_USER} exists and is held by someone else; ${_USER} is born on the box-wide group"
+        fi
+      else
+        _msg "NOTE: instgrp absent or the box not ready for the per-instance group (instgrp check); ${_USER} is born on the box-wide group, the next upgrade converts it"
       fi
     fi
     adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
@@ -3986,9 +3998,17 @@ _satellite_if_instance_group() {
   fi
   bash /opt/local/bin/instgrp convert ${_USER} --from-octopus
   _iGrc=$?
-  if [ "${_iGrc}" != "0" ]; then
-    _msg "ALERT: instgrp convert ${_USER} returned ${_iGrc}, see /var/log/boa/instgrp.log"
-  fi
+  # ALRT: is the token the octopus report classifier greps for; anything
+  # else leaves the run reported as a successful upgrade. A skipped account
+  # (busy, frozen) is unconverted after a fleet pass and nothing retries it
+  # before the next one, so it is reported too. Drift (paths written during
+  # the walk) is converted, finished by the next pass: a note.
+  case "${_iGrc}" in
+    0) ;;
+    2) _msg "NOTE: instgrp convert ${_USER} left paths to re-group (written during the walk); the next pass finishes them, see /var/log/boa/instgrp.log" ;;
+    5) _msg "NOTE: instgrp convert ${_USER} deferred: a fetched root-run writer on this box still carries the box-wide form (instgrp check); the next pass converts once the tools refresh" ;;
+    *) _msg "ALRT: instgrp convert ${_USER} returned ${_iGrc} (1 failed, 4 skipped busy/frozen), see /var/log/boa/instgrp.log" ;;
+  esac
   # The rest of this run writes with whatever group the account carries now.
   _ACCG=$(_acct_group "${_USER}")
 }

@@ -18,37 +18,63 @@
 #
 # Usage:
 #   instgrp status  <account>|all
-#   instgrp convert <account>|all [--from-octopus]
-#   instgrp revert  <account>
+#   instgrp convert <account>|all [--from-octopus] [--force]
+#   instgrp reclaim <account>|all
+#   instgrp revert  <account> [--keep-enabled]
 #   instgrp check
 #
 #   status   the marker, the group, every identity's group set, the FPM
 #            assertion and the per-group file counts under the account's
 #            roots; ends with one verdict line (CONVERTED, UNCONVERTED, DRIFT,
-#            INCONSISTENT). DRIFT = converted but files in group 'users' were
-#            written back (a stale tool, an import from an unconverted box, an
-#            operator chown): re-run convert, it is idempotent.
+#            INCONSISTENT). DRIFT = files under the roots are in a group that
+#            is not the account's: back in 'users' (a stale tool, an operator
+#            chown), in no group (a copy from another box), or in another
+#            NAMED group (a numeric gid collision on a copy or a root-run
+#            restore: that group's identities can read the files). Re-run
+#            convert (or reclaim), both are idempotent.
 #   convert  identities first (users supplementary, then the primary group),
 #            then a group-only, symlink-safe walk over the account's roots.
-#            A walk that cannot finish rolls the account back to the box-wide
-#            model (files, then identities) rather than leave it half done.
+#            An already converted account costs one read-only traversal
+#            (early-quit on the first path outside the group), no write. A
+#            walk that leaves residue (a write raced it: the hosting
+#            queue and the tenant's sessions keep running) is re-run; what
+#            still remains is reported as DRIFT and finished by the next
+#            pass -- the conversion is KEPT, never rolled back for files:
+#            a file left in 'users' is the old state, not a new exposure,
+#            while a rollback would leave the busiest accounts unconverted
+#            forever. Only a failed identity move rolls the account back.
 #            Refuses while another BOA run holds /run/boa_run.pid (the octopus
 #            arm passes --from-octopus because it holds that lock itself),
-#            waits a bounded time for the account's own provision tasks, and
+#            waits a bounded time for the account's own provision tasks,
+#            skips an account frozen for a migration (log/proxied.pid, the
+#            marker every other root writer honours; --force overrides), and
 #            refuses when any fetched root-run writer on the box predates the
 #            group-aware form (see check): converting under an old writer
 #            would be undone by its next pass, and an old websh would lock the
 #            tenant out of its shell. With 'all', one account's failure is
 #            logged and the loop goes on.
+#   reclaim  the file half only: every path under the account's roots that
+#            is not in the account's current group (users while unconverted),
+#            not www-data and not root takes the account's group; a marker
+#            that does not record THIS box's group is dropped. No identity
+#            change, no lock: safe after a root-run restore, on a migration
+#            destination, from the nightly.
 #   revert   the exact inverse, files first so no identity ever loses a group
-#            its files still carry; removes the group only once empty.
-#   check    the writer inventory only.
+#            its files still carry; removes the group only once no path and
+#            no identity carries it; writes _INSTANCE_GROUP=NO into the
+#            account's octopus cnf so the next upgrade does not convert it
+#            again (--keep-enabled leaves the cnf alone).
+#   check    the writer inventory: every fetched root-run writer listed as
+#            group-aware, stale, or absent on this box class.
 #
 # The octopus upgrade arm runs convert for every account by default; the
 # per-instance opt-out is _INSTANCE_GROUP=NO in /root/.<account>.octopus.cnf
 # (honoured by that arm, not by an explicit operator convert). Log:
 # /var/log/boa/instgrp.log. Exit: 0 done, 1 failed, 2 drift, 3 inconsistent,
-# 4 skipped busy.
+# 4 skipped (busy, frozen, or a live BOA run), 5 not ready (a fetched
+# writer still in the box-wide form; the next pass retries). Over 'all' the
+# worst class is returned: failed > inconsistent > drift > not ready >
+# skipped > done.
 #
 
 export HOME=/root
@@ -61,8 +87,15 @@ _LOG=/var/log/boa/instgrp.log
 _MARK_REL=log/instance-group.txt
 _WAIT_MAX="${_INSTGRP_WAIT_MAX:-300}"
 _FROM_OCTOPUS=NO
+_FORCE=NO
+_KEEP_ENABLED=NO
 _HELD_LOCK=NO
 _ACCT=""
+# The intended home of an identity whose primary group is being moved, one
+# file per identity, so a kill between the two usermod calls in _set_primary
+# can be repaired on the next invocation (see _repair_homes).
+_HOME_REC=/var/log/boa/instgrp.home
+_STAGE_DIRS="/root/.instgrp.home /var/backups/ltd/.pg-stage"
 
 _msg() {
   printf '%s\n' "$*"
@@ -102,8 +135,9 @@ _usage() {
   cat <<'EOF'
 Usage:
   instgrp status  <account>|all
-  instgrp convert <account>|all [--from-octopus]
-  instgrp revert  <account>
+  instgrp convert <account>|all [--from-octopus] [--force]
+  instgrp reclaim <account>|all
+  instgrp revert  <account> [--keep-enabled]
   instgrp check
 
   status   marker, group, every identity's group set, the FPM assertion and
@@ -111,12 +145,19 @@ Usage:
            line: CONVERTED, UNCONVERTED, DRIFT or INCONSISTENT.
   convert  identities first (users supplementary, then the primary group),
            then a group-only, symlink-safe walk over the account's roots.
-           Idempotent; re-run it on DRIFT. Rolls back if the walk fails.
-  revert   the exact inverse, files first; the group goes once it is empty.
+           Idempotent; re-run it on DRIFT. Residue after the walk is DRIFT,
+           never a rollback; only a failed identity move rolls back.
+  reclaim  the file half only: re-group every path under the roots to the
+           account's current group; no identity change, no lock.
+  revert   the exact inverse, files first; the group goes once nothing
+           carries it; writes _INSTANCE_GROUP=NO into the account's cnf.
   check    are the fetched root-run writers on this box group-aware?
 
   --from-octopus  the octopus upgrade arm holds /run/boa_run.pid itself.
-  Exit: 0 done, 1 failed, 2 drift, 3 inconsistent, 4 skipped (busy).
+  --force         convert an account frozen for a migration (log/proxied.pid).
+  --keep-enabled  revert without writing _INSTANCE_GROUP=NO into the cnf.
+  Exit: 0 done, 1 failed, 2 drift, 3 inconsistent, 4 skipped (busy, frozen,
+  a live BOA run), 5 not ready (writers still box-wide; retried next pass).
 EOF
   exit 1
 }
@@ -179,13 +220,60 @@ _set_primary() {
   _h=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
   [ -n "${_h}" ] || return 1
   mkdir -p "${_stage}" && chown root:root "${_stage}" && chmod 0700 "${_stage}"
+  # Recorded first: a kill, an OOM or a reboot between the two usermod calls
+  # leaves the passwd home at the staging dir, and the backend user's home
+  # is what every 'su - oN' and every provision run resolves.
+  [ -d /var/log/boa ] || mkdir -p /var/log/boa
+  printf '%s\n' "${_h}" > "${_HOME_REC}.${_u}"
   usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
   usermod -d "${_h}" "${_u}" > /dev/null 2>&1
   if [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" != "${_h}" ]; then
     _alrt "${_u}: home field left as $(getent passwd "${_u}" | cut -d: -f6), expected ${_h}"
     usermod -d "${_h}" "${_u}" > /dev/null 2>&1
   fi
+  # The record outlives a failed restore: it is what the next invocation
+  # (or the 3-minute worker) repairs from.
+  if [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" = "${_h}" ]; then
+    rm -f "${_HOME_REC}.${_u}"
+  else
+    _alrt "${_u}: home field still not ${_h}; the record ${_HOME_REC}.${_u} is kept for the next repair"
+  fi
   [ "$(_primary_of "${_u}")" = "${_g}" ]
+}
+
+# Any identity whose passwd home is one of the staging directories (this
+# tool's, or the limited-shell worker's) was caught between the two usermod
+# calls: put the recorded home back, or the one the name implies (an account
+# lives in /data/disk/<acct>, every other identity in /home/<name>). Runs
+# before anything else on every invocation, so the tool can always diagnose
+# and repair the state it may have left.
+_repair_homes() {
+  local _u _h _s _want
+  for _s in ${_STAGE_DIRS}; do
+    for _u in $(getent passwd | awk -F: -v s="${_s}" '$6 == s { print $1 }'); do
+      _want=""
+      [ -s "${_HOME_REC}.${_u}" ] && _want=$(head -1 "${_HOME_REC}.${_u}")
+      if [ -z "${_want}" ]; then
+        case "${_u}" in
+          *.*) _want="/home/${_u}" ;;
+          *)   _want="/data/disk/${_u}" ;;
+        esac
+      fi
+      if [ ! -d "${_want}" ]; then
+        _alrt "${_u}: home field is at ${_s} and ${_want} does not exist; not repaired"
+        continue
+      fi
+      usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+      _h=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
+      if [ "${_h}" = "${_want}" ]; then
+        _log "repaired home of ${_u}: ${_s} -> ${_want}"
+        _alrt "${_u}: home field was left at ${_s} by an interrupted group move; restored to ${_want}"
+        rm -f "${_HOME_REC}.${_u}"
+      else
+        _alrt "${_u}: home field is ${_h}, could not restore ${_want}"
+      fi
+    done
+  done
 }
 
 _primary_of() {
@@ -268,48 +356,71 @@ _acct_roots() {
 # Every fetched root-run writer that touches account trees must carry the
 # derived-group form before any account converts: an old fix-drupal script or
 # nightly worker re-flattens a converted tree on its next pass, and an old
-# websh (whole-string group tests) locks the tenant out of its shell. Present
-# and stale = not ready; absent = not installed on this box class, skipped.
+# websh (whole-string group tests) locks the tenant out of its shell. The
+# migration tools and the root-run restores are keyed on the token only their
+# fixed form carries (the destination/restore re-group pass), not on the
+# helper every compat-form copy already has. Present and stale = not ready;
+# absent = not installed on this box class, listed as such by check.
+_TOOLS_INVENTORY="\
+/opt/local/bin/websh:_in_grp \
+/usr/local/bin/fix-drupal-site-ownership.sh:_acct_group \
+/usr/local/bin/fix-drupal-platform-ownership.sh:_acct_group \
+/var/xdrago/manage_ltd_users.sh:_acct_group \
+/var/xdrago/manage_solr_config.sh:_acct_group \
+/var/xdrago/night/night.inc.sh:_acct_group \
+/var/xdrago/night/10-account.sh:_acct_group \
+/var/xdrago/night/20-sites.sh:_acct_group \
+/opt/local/bin/xoct:_acct_regroup_remote \
+/opt/local/bin/xcopy:_acct_regroup_remote \
+/opt/local/bin/xmass:_acct_regroup_remote \
+/opt/local/bin/mybackup:_acct_reclaim_restored \
+/opt/local/bin/backboa:_acct_reclaim_restored \
+/opt/local/bin/duobackboa:_acct_reclaim_restored \
+/opt/local/bin/multiback:_acct_reclaim_restored \
+/opt/local/bin/copydbackup:_acct_group \
+/opt/local/bin/syncpass:_acct_group \
+/opt/local/bin/octopus:_acct_group \
+/opt/local/bin/aegir2boa-stage2:_acct_group_on_target \
+/root/.remote_backups/run/create_readme.sh:_acct_group \
+/root/.remote_backups/run/create_config_readme.sh:_acct_group"
+_TOOLS_STALE=""
+_TOOLS_ABSENT=""
+_TOOLS_OK=""
 _tools_ready() {
-  local _stale="" _t _p _tok
-  for _t in \
-    "/opt/local/bin/websh:_in_grp" \
-    "/usr/local/bin/fix-drupal-site-ownership.sh:_acct_group" \
-    "/usr/local/bin/fix-drupal-platform-ownership.sh:_acct_group" \
-    "/var/xdrago/manage_ltd_users.sh:_acct_group" \
-    "/var/xdrago/manage_solr_config.sh:_acct_group" \
-    "/var/xdrago/night/night.inc.sh:_acct_group" \
-    "/var/xdrago/night/10-account.sh:_acct_group" \
-    "/var/xdrago/night/20-sites.sh:_acct_group" \
-    "/opt/local/bin/xoct:_acct_group" \
-    "/opt/local/bin/xcopy:_acct_group" \
-    "/opt/local/bin/xmass:_acct_group" \
-    "/opt/local/bin/mybackup:_acct_group" \
-    "/opt/local/bin/copydbackup:_acct_group" \
-    "/opt/local/bin/syncpass:_acct_group" \
-    "/opt/local/bin/octopus:_acct_group" \
-    "/root/.remote_backups/run/create_readme.sh:_acct_group" \
-    "/root/.remote_backups/run/create_config_readme.sh:_acct_group"; do
+  local _t _p _tok
+  _TOOLS_STALE=""
+  _TOOLS_ABSENT=""
+  _TOOLS_OK=""
+  for _t in ${_TOOLS_INVENTORY}; do
     _p="${_t%%:*}"
     _tok="${_t##*:}"
-    [ -f "${_p}" ] || continue
-    if ! grep -qE "^[[:space:]]*${_tok}\(\) \{" "${_p}" 2> /dev/null; then
-      _stale="${_stale} ${_p}"
+    if [ ! -f "${_p}" ]; then
+      _TOOLS_ABSENT="${_TOOLS_ABSENT} ${_p}"
+      continue
+    fi
+    if grep -qE "^[[:space:]]*${_tok}\(\) \{" "${_p}" 2> /dev/null; then
+      _TOOLS_OK="${_TOOLS_OK} ${_p}"
+    else
+      _TOOLS_STALE="${_TOOLS_STALE} ${_p}"
     fi
   done
-  if [ -n "${_stale}" ]; then
-    _alrt "writers still in the box-wide form (wait for the tools refresh, then retry):${_stale}"
+  if [ -n "${_TOOLS_STALE}" ]; then
+    _alrt "writers still in the box-wide form (wait for the tools refresh, then retry):${_TOOLS_STALE}"
     return 1
   fi
   return 0
 }
 
 _do_check() {
-  if _tools_ready; then
-    _info "every installed root-run writer carries the derived-group form"
-    return 0
+  local _p _rc=0
+  _tools_ready || _rc=3
+  for _p in ${_TOOLS_OK}; do _msg "ok:      ${_p}"; done
+  for _p in ${_TOOLS_ABSENT}; do _msg "absent:  ${_p}"; done
+  for _p in ${_TOOLS_STALE}; do _msg "STALE:   ${_p}"; done
+  if [ "${_rc}" = "0" ]; then
+    _info "every installed root-run writer carries the derived-group form ($(printf '%s\n' ${_TOOLS_OK} | wc -l) verified, $(printf '%s\n' ${_TOOLS_ABSENT} | grep -c . ) absent)"
   fi
-  return 3
+  return "${_rc}"
 }
 
 # Another BOA run must not overlap an identity change: the wrappers refuse to
@@ -373,8 +484,8 @@ _chgrp_keeps_dir_setgid() {
 # a half-migrated nsswitch cannot widen the match. chown names every inode it
 # could not change on stderr (chattr +i: EPERM for root too); those paths are
 # collected for the immutable pass, so nothing walks the tree twice.
-# $1 = from gid, $2 = to group, then roots. Leaves the failed paths in
-# ${_WALK_FAILED} (one per line).
+# $1 = from gid (empty: no bulk pass, the claim pass alone), $2 = to group,
+# then roots. Leaves the failed paths in ${_WALK_FAILED} (one per line).
 _WALK_FAILED=""
 _grp_walk() {
   local _from="$1" _to="$2" _r _keep _err
@@ -385,20 +496,28 @@ _grp_walk() {
   : > "${_err}"
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
-    if [ "${_keep}" = "NO" ]; then
-      find -P "${_r}" -type d -gid "${_from}" -perm -2000 \
-        -execdir sh -c 'g="$1"; shift; chgrp -h "$g" "$@" 2> /dev/null; chmod g+s "$@" 2> /dev/null' _ "${_to}" {} + 2> /dev/null
+    if [ -n "${_from}" ]; then
+      if [ "${_keep}" = "NO" ]; then
+        find -P "${_r}" -type d -gid "${_from}" -perm -2000 \
+          -execdir sh -c 'g="$1"; shift; chgrp -h "$g" "$@" 2> /dev/null; chmod g+s "$@" 2> /dev/null' _ "${_to}" {} + 2> /dev/null
+      fi
+      # LC_ALL=C: the error lines are parsed, and a UTF-8 locale would quote
+      # the path with curly quotes.
+      LC_ALL=C chown -R -h -P --from=":${_from}" ":${_to}" "${_r}" 2>> "${_err}" > /dev/null
     fi
-    # LC_ALL=C: the error lines are parsed, and a UTF-8 locale would quote
-    # the path with curly quotes.
-    LC_ALL=C chown -R -h -P --from=":${_from}" ":${_to}" "${_r}" 2>> "${_err}" > /dev/null
-    # A copy from another box (xoct, xcopy, a restore of a foreign archive)
-    # carries the source account's numeric gid, which has no name here unless
-    # this account is converted too: those paths sit in no group at all.
-    # They are this account's tree, so they take its group as well.
-    find -P "${_r}" -nogroup ! -group "${_WEBG}" -execdir chgrp -h "${_to}" {} + 2> /dev/null
+    # Everything under the roots is this account's tree. A copy from another
+    # box (xoct, xcopy, xmass, a root-run restore of a foreign archive)
+    # carries the source account's numeric gid: no name here (no group at
+    # all), or -- the ordinary case, every box allocates account gids from
+    # the same system range -- the gid of a DIFFERENT named group on this
+    # box, whose identities could then read the copied credential files.
+    # Both take the account's group; only the FPM group and root stay.
+    LC_ALL=C find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root \
+      -execdir chgrp -h "${_to}" {} + 2>> "${_err}"
   done
-  _WALK_FAILED=$(sed -n "s/^chown: changing group of '\(.*\)': Operation not permitted$/\1/p" "${_err}" 2> /dev/null)
+  # Both passes name the inodes they could not change (chattr +i: EPERM for
+  # root too); those go to the immutable pass.
+  _WALK_FAILED=$(sed -n "s/^ch\(own\|grp\): changing group of '\(.*\)': Operation not permitted$/\2/p" "${_err}" 2> /dev/null)
   rm -f "${_err}"
 }
 
@@ -426,23 +545,39 @@ _grp_fix_immutable() {
   done
 }
 
-_grp_left() {
-  local _gid="$1" _r
+# Residue = any path under the roots whose group is not the target group,
+# not the FPM group and not root. One early-quit traversal; the probe a
+# converted account pays instead of a walk.
+_grp_residue() {
+  local _to="$1" _r
   shift
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
-    find -P "${_r}" -gid "${_gid}" ! -group "${_WEBG}" -print -quit 2> /dev/null | grep -q . && return 0
+    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root -print -quit 2> /dev/null | grep -q . && return 0
   done
   return 1
 }
 
-_grp_left_list() {
+_grp_residue_list() {
+  local _to="$1" _r
+  shift
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root -printf '%G %p\n' 2> /dev/null | head -5
+  done
+}
+
+# Paths still carrying ONE numeric gid under the roots (the group about to be
+# deleted by revert or purge): an early-quit find, numeric so it works after
+# the name is gone.
+_gid_left() {
   local _gid="$1" _r
   shift
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
-    find -P "${_r}" -gid "${_gid}" ! -group "${_WEBG}" 2> /dev/null | head -5
+    find -P "${_r}" -gid "${_gid}" -print -quit 2> /dev/null | grep -q . && return 0
   done
+  return 1
 }
 
 # The marker sits in a directory the account owns, so a planted name there is
@@ -519,11 +654,47 @@ _undo_account() {
   [ -L "/data/disk/${_a}/${_MARK_REL}" ] || [ -f "/data/disk/${_a}/${_MARK_REL}" ] && rm -f "/data/disk/${_a}/${_MARK_REL}"
 }
 
+# Every identity of the account already on the account's primary group, with
+# the execute ACL still in its effective set.
+_ids_converted() {
+  local _a="$1" _u
+  shift
+  for _u in "$@"; do
+    getent passwd "${_u}" > /dev/null 2>&1 || return 1
+    [ "$(_primary_of "${_u}")" = "${_a}" ] || return 1
+    _in_grp "${_u}" "${_USRG}" || return 1
+  done
+  return 0
+}
+
+# The marker records THIS box's conversion: its gid must be the gid of the
+# account group here. A copy from another box carries the source's marker.
+_marker_valid() {
+  local _a="$1" _m="/data/disk/$1/${_MARK_REL}" _gid
+  _gid=$(_gid_of "${_a}")
+  [ -n "${_gid}" ] && [ -f "${_m}" ] && [ ! -L "${_m}" ] && grep -q " gid=${_gid}$" "${_m}" 2> /dev/null
+}
+
 _do_convert() {
-  local _a="$1" _subs _ids _u _uGid _aGid _roots
+  local _a="$1" _subs _ids _u _uGid _aGid _roots _pass=0
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
-  _tools_ready || { _fail "${_a}: not converted -- the box is not ready"; return 1; }
+  # A frozen account is served from another box mid-migration; every other
+  # root writer leaves it alone, and an operator's stage2 session may be
+  # running under the old group set. --force is the operator's override.
+  if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
+    _alrt "${_a}: frozen for a migration (log/proxied.pid), skipped this pass (--force overrides)"
+    _log "${_a}: SKIP frozen"
+    return 4
+  fi
+  # A writer still in the box-wide form is the expected state of a box whose
+  # fetched tools lag the tree on the first pass after a release: not a
+  # failure of this account, a deferral (rc 5) the next pass resolves.
+  if ! _tools_ready; then
+    _msg "${_a}: not converted this pass -- the box is not ready (see instgrp check)"
+    _log "${_a}: SKIP not ready"
+    return 5
+  fi
   _uGid=$(_gid_of "${_USRG}")
   [ -n "${_uGid}" ] || _die "group ${_USRG} not found"
   _subs=$(_acct_subusers "${_a}")
@@ -531,6 +702,22 @@ _do_convert() {
   for _u in ${_ids}; do
     getent passwd "${_u}" > /dev/null 2>&1 || { _fail "identity ${_u} does not exist"; return 1; }
   done
+  _aGid=$(_gid_of "${_a}")
+  _roots=$(_acct_roots "${_a}" 2> /dev/null)
+  # Already converted: one read-only traversal over the roots (early-quit on
+  # the first path outside the group), no write. This is what every later
+  # octopus upgrade pays on a converted account.
+  # shellcheck disable=SC2086
+  if [ -n "${_aGid}" ] && _group_is_ours "${_a}" && _ids_converted "${_a}" ${_ids}; then
+    _assert_fpm_apart "${_a}"
+    # shellcheck disable=SC2086
+    if ! _grp_residue "${_a}" ${_roots}; then
+      _marker_valid "${_a}" || _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
+      _info "${_a}: already converted (gid ${_aGid}), nothing to re-group"
+      return 0
+    fi
+    _msg "${_a}: identities converted, paths drifted -- re-grouping..."
+  fi
   if ! _wait_idle "${_a}"; then
     _alrt "${_a}: still busy after ${_WAIT_MAX}s, skipped this pass"
     _log "${_a}: SKIP busy"
@@ -579,28 +766,131 @@ _do_convert() {
   done
   _assert_fpm_apart "${_a}"
   _msg "${_a}: re-grouping files (${_USRG} -> ${_a}), this walks the whole account tree..."
-  # shellcheck disable=SC2086
-  _grp_walk "${_uGid}" "${_a}" ${_roots}
-  if [ -n "${_WALK_FAILED}" ]; then
-    printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_a}"
-  fi
-  # shellcheck disable=SC2086
-  if _grp_left "${_uGid}" ${_roots}; then
+  # The hosting queue is forced on during an octopus run and the tenant's
+  # own sessions keep their old group set, so a write can land in a not yet
+  # walked setgid directory while the walk runs. Residue is walked again,
+  # twice at most; what remains is DRIFT, finished by the next pass. The
+  # conversion is kept: a path left in 'users' is the old state, not a new
+  # exposure, and a rollback would leave the busiest accounts unconverted on
+  # every release.
+  while :; do
+    _pass=$((_pass + 1))
     # shellcheck disable=SC2086
-    _log "${_a}: walk left paths in ${_USRG}: $(_grp_left_list "${_uGid}" ${_roots} | tr '\n' ' ')"
-    _fail "${_a}: the walk cannot re-group every file (see ${_LOG}); rolling back"
-    _undo_account "${_a}" "${_aGid}" "${_roots}"
-    return 1
-  fi
-  _write_marker "${_a}" || { _undo_account "${_a}" "${_aGid}" "${_roots}"; return 1; }
-  _log "${_a}: CONVERTED identities=[${_ids}] roots=[$(printf '%s ' ${_roots})]"
+    _grp_walk "${_uGid}" "${_a}" ${_roots}
+    if [ -n "${_WALK_FAILED}" ]; then
+      printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_a}"
+    fi
+    # shellcheck disable=SC2086
+    _grp_residue "${_a}" ${_roots} || break
+    [ "${_pass}" -ge 3 ] && break
+    _msg "${_a}: paths were written during the walk, walking again (${_pass})..."
+  done
+  _write_marker "${_a}" || _alrt "${_a}: the marker could not be written; status reports the conversion without it"
+  _log "${_a}: CONVERTED identities=[${_ids}] roots=[$(printf '%s ' ${_roots})] walks=${_pass}"
   _info "${_a}: converted to per-instance group ${_a} (gid ${_aGid})"
   _msg "NOTE: a shell session logged in before this keeps its old group set until it reconnects"
+  # shellcheck disable=SC2086
+  if _grp_residue "${_a}" ${_roots}; then
+    # shellcheck disable=SC2086
+    _log "${_a}: DRIFT after ${_pass} walks: $(_grp_residue_list "${_a}" ${_roots} | tr '\n' ' ')"
+    _alrt "${_a}: converted, but paths written during the walk are still outside group ${_a} (see ${_LOG}); status reports DRIFT, the next pass finishes them"
+    return 2
+  fi
+  return 0
+}
+
+# The file half alone: every path under the roots takes the account's
+# current group. No identity change and no lock, so it is safe after a
+# root-run restore, on a migration destination and from the nightly.
+_do_reclaim() {
+  local _a="$1" _to _from _uGid _gid _roots _subs _ids _m _u _conv=NO _anyAcct=NO _anyUsers=NO
+  _ACCT="${_a}"
+  _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
+  # No lock is taken, but a live install or upgrade run owns the account's
+  # identities and files right now: defer, every caller can retry.
+  if [ "${_FROM_OCTOPUS}" != "YES" ] \
+    && { [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] || [ -e "/run/octopus_install_run.pid" ]; }; then
+    _alrt "${_a}: a BOA install or upgrade run is live (/run/*.pid); reclaim skipped, retry later"
+    _log "${_a}: RECLAIM skipped: a BOA run is live"
+    return 4
+  fi
+  _uGid=$(_gid_of "${_USRG}")
+  _gid=$(_gid_of "${_a}")
+  _subs=$(_acct_subusers "${_a}" 2> /dev/null)
+  _ids="${_a} ${_a}.ftp ${_subs}"
+  _roots=$(_acct_roots "${_a}" 2> /dev/null)
+  # The direction comes from the same evidence status reads, never from one
+  # identity's primary group alone: an identity that fell back to 'users'
+  # (a hand usermod, a restored passwd -- the state the 3-minute worker
+  # heals) must not turn a reclaim into a flatten of every credential file
+  # back to the box-wide group. Converted = the group exists and the marker
+  # records it, or any identity carries it as primary, or the tree does.
+  if [ -n "${_gid}" ]; then
+    _marker_valid "${_a}" && _conv=YES
+    for _u in ${_ids}; do
+      getent passwd "${_u}" > /dev/null 2>&1 || continue
+      if [ "$(_primary_of "${_u}")" = "${_a}" ]; then _anyAcct=YES; else _anyUsers=YES; fi
+    done
+    [ "${_anyAcct}" = "YES" ] && _conv=YES
+    # shellcheck disable=SC2086
+    if [ "${_conv}" = "NO" ] && _gid_left "${_gid}" ${_roots}; then _conv=YES; fi
+  fi
+  if [ "${_conv}" = "YES" ] && [ "${_anyUsers}" = "YES" ]; then
+    _alrt "${_a}: converted by its marker, files or identities, but an identity is not on group ${_a}; refusing to reclaim -- convert (or the identity heal) fixes the identities first"
+    _log "${_a}: RECLAIM refused: identities disagree"
+    return 3
+  fi
+  if [ "${_conv}" = "YES" ]; then
+    _to="${_a}"
+    _from="${_uGid}"
+  else
+    _to="${_USRG}"
+    _from="${_gid}"
+  fi
+  _m="/data/disk/${_a}/${_MARK_REL}"
+  # A clean tree costs one read-only traversal and no write: this is what
+  # every automated caller pays on an already consistent account.
+  # shellcheck disable=SC2086
+  if ! _grp_residue "${_to}" ${_roots}; then
+    if [ -f "${_m}" ] || [ -L "${_m}" ]; then
+      _marker_valid "${_a}" || rm -f "${_m}"
+    fi
+    # shellcheck disable=SC2086
+    if [ "${_to}" = "${_a}" ] && [ ! -f "${_m}" ] && _ids_converted "${_a}" ${_ids}; then
+      _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
+    fi
+    _info "${_a}: files already in group ${_to}, nothing to reclaim"
+    return 0
+  fi
+  _msg "${_a}: reclaiming files for group ${_to}..."
+  # shellcheck disable=SC2086
+  _grp_walk "${_from}" "${_to}" ${_roots}
+  if [ -n "${_WALK_FAILED}" ]; then
+    printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_to}"
+  fi
+  # A marker that does not record this box's group is a lie (it travelled
+  # with a copy, or the account is not converted here).
+  if [ -f "${_m}" ] || [ -L "${_m}" ]; then
+    _marker_valid "${_a}" || rm -f "${_m}"
+  fi
+  # shellcheck disable=SC2086
+  if [ "${_to}" = "${_a}" ] && [ ! -f "${_m}" ] && _ids_converted "${_a}" ${_ids}; then
+    _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
+  fi
+  # shellcheck disable=SC2086
+  if _grp_residue "${_to}" ${_roots}; then
+    # shellcheck disable=SC2086
+    _log "${_a}: RECLAIM group=${_to} DRIFT: $(_grp_residue_list "${_to}" ${_roots} | tr '\n' ' ')"
+    _alrt "${_a}: paths are still outside group ${_to} after the reclaim (see ${_LOG})"
+    return 2
+  fi
+  _log "${_a}: RECLAIMED group=${_to} roots=[$(printf '%s ' ${_roots})]"
+  _info "${_a}: files reclaimed for group ${_to}"
   return 0
 }
 
 _do_revert() {
-  local _a="$1" _gid _roots
+  local _a="$1" _gid _roots _cnf _rc=0
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   _gid=$(_gid_of "${_a}")
@@ -615,20 +905,50 @@ _do_revert() {
   # explicit order.
   _undo_account "${_a}" "${_gid}" "${_roots}"
   if [ -n "${_gid}" ]; then
-    if [ -z "$(getent group "${_a}" | cut -d: -f4)" ] \
+    # Files walked first, identities moved after: a writer running as the
+    # account during the walk still wrote the account group. Walk once more
+    # now that no identity carries it, and never delete a group that paths
+    # still carry -- they would be stranded in a dead numeric gid.
+    # shellcheck disable=SC2086
+    if _gid_left "${_gid}" ${_roots}; then
+      _msg "${_a}: paths were written during the walk, walking again..."
+      # shellcheck disable=SC2086
+      _grp_walk "${_gid}" "${_USRG}" ${_roots}
+      if [ -n "${_WALK_FAILED}" ]; then
+        printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_USRG}"
+      fi
+    fi
+    # shellcheck disable=SC2086
+    if _gid_left "${_gid}" ${_roots}; then
+      _alrt "group ${_a} (gid ${_gid}) still owns paths under the roots; left in place -- re-run revert"
+      _log "${_a}: group kept, paths still in gid ${_gid}"
+      _rc=2
+    elif [ -z "$(getent group "${_a}" | cut -d: -f4)" ] \
       && ! getent passwd | awk -F: -v g="${_gid}" '$4 == g { f=1 } END { exit !f }'; then
       groupdel "${_a}" > /dev/null 2>&1 && _log "${_a}: group removed"
     else
       _alrt "group ${_a} still has members or primary users; left in place"
+      _rc=2
     fi
+  fi
+  # The upgrade arm converts every account whose cnf does not say NO, so a
+  # bare revert would be undone by the next unattended octopus upgrade.
+  _cnf="/root/.${_a}.octopus.cnf"
+  if [ "${_KEEP_ENABLED}" != "YES" ] && [ -f "${_cnf}" ]; then
+    if grep -q "^_INSTANCE_GROUP=" "${_cnf}" 2> /dev/null; then
+      sed -i "s/^_INSTANCE_GROUP=.*/_INSTANCE_GROUP=NO/" "${_cnf}" 2> /dev/null
+    else
+      printf '\n_INSTANCE_GROUP=NO\n' >> "${_cnf}"
+    fi
+    _msg "NOTE: _INSTANCE_GROUP=NO written to ${_cnf}; remove it (or set YES) before the next upgrade to convert again"
   fi
   _log "${_a}: REVERTED"
   _info "${_a}: reverted to the box-wide group ${_USRG}"
-  return 0
+  return "${_rc}"
 }
 
 _do_status() {
-  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _nUsers=0 _nAcct=0 _nWeb=0 _nOther=0 _nNone=0 _prim_ok=YES _bad="" _verdict _rc=0
+  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _nUsers=0 _nAcct=0 _nWeb=0 _nRoot=0 _nOther=0 _nNone=0 _foreign="" _prim_ok=YES _bad="" _verdict _rc=0
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   _gid=$(_gid_of "${_a}")
@@ -675,11 +995,18 @@ _do_status() {
       if [ "${_g}" = "${_uGid}" ]; then _nUsers=$((_nUsers + _cnt))
       elif [ -n "${_gid}" ] && [ "${_g}" = "${_gid}" ]; then _nAcct=$((_nAcct + _cnt))
       elif [ "${_g}" = "${_wGid}" ]; then _nWeb=$((_nWeb + _cnt))
+      elif [ "${_g}" = "0" ]; then _nRoot=$((_nRoot + _cnt))
       elif ! getent group "${_g}" > /dev/null 2>&1; then _nNone=$((_nNone + _cnt))
-      else _nOther=$((_nOther + _cnt)); fi
+      else
+        # A NAMED group that is neither the account's nor the FPM's nor
+        # root: another account's group after a numeric gid collision on a
+        # copy or a root-run restore -- its identities can read these files.
+        _nOther=$((_nOther + _cnt))
+        _foreign="${_foreign} $(getent group "${_g}" | cut -d: -f1)(${_cnt})"
+      fi
     done < <(find -P "${_r}" -printf '%G\n' 2> /dev/null | sort | uniq -c)
   done
-  _msg "files:    ${_USRG}=${_nUsers} ${_a}=${_nAcct} ${_WEBG}=${_nWeb} nogroup=${_nNone} other=${_nOther} (roots: $(printf '%s ' ${_roots}))"
+  _msg "files:    ${_USRG}=${_nUsers} ${_a}=${_nAcct} ${_WEBG}=${_nWeb} root=${_nRoot} nogroup=${_nNone} foreign=${_nOther}${_foreign:+ [${_foreign# }]} (roots: $(printf '%s ' ${_roots}))"
   for _u in ${_ids}; do
     getent passwd "${_u}" > /dev/null 2>&1 || continue
     [ "$(_primary_of "${_u}")" = "${_a}" ] || _prim_ok=NO
@@ -687,11 +1014,16 @@ _do_status() {
   if [ -n "${_bad}" ]; then
     _verdict="INCONSISTENT (${_bad# })"
     _rc=3
-  elif [ -n "${_gid}" ] && [ "${_prim_ok}" = "YES" ] && [ "${_mValid}" = "YES" ]; then
-    if [ "${_nUsers}" -eq 0 ] && [ "${_nNone}" -eq 0 ]; then
+  elif [ -n "${_gid}" ] && [ "${_prim_ok}" = "YES" ]; then
+    # Identities converted: the verdict is about the files. The marker is
+    # bookkeeping -- an account born converted whose post hook could not run,
+    # or one whose copied marker was dropped, is converted all the same and
+    # the next convert rewrites it.
+    if [ "${_nUsers}" -eq 0 ] && [ "${_nNone}" -eq 0 ] && [ "${_nOther}" -eq 0 ]; then
       _verdict=CONVERTED
+      [ "${_mValid}" = "YES" ] || _verdict="CONVERTED (marker absent; the next convert rewrites it)"
     else
-      _verdict="DRIFT (${_nUsers} paths still in group ${_USRG}, ${_nNone} in no group; re-run convert)"
+      _verdict="DRIFT (${_nUsers} paths in group ${_USRG}, ${_nNone} in no group, ${_nOther} in a foreign group; re-run convert)"
       _rc=2
     fi
   elif [ -z "${_gid}" ] && [ "${_mValid}" = "NO" ] && [ "${_nAcct}" -eq 0 ]; then
@@ -700,6 +1032,12 @@ _do_status() {
       getent passwd "${_u}" > /dev/null 2>&1 || continue
       [ "$(_primary_of "${_u}")" = "${_USRG}" ] || { _verdict="INCONSISTENT (${_u} primary $(_primary_of "${_u}") without a group)"; _rc=3; }
     done
+    # Unconverted, but paths in no group or in another account's group are
+    # the same exposure class: reclaim puts them back on the box-wide group.
+    if [ "${_rc}" = "0" ] && { [ "${_nNone}" -gt 0 ] || [ "${_nOther}" -gt 0 ]; }; then
+      _verdict="DRIFT (unconverted; ${_nNone} paths in no group, ${_nOther} in a foreign group; run reclaim)"
+      _rc=2
+    fi
   else
     _verdict="INCONSISTENT (group=${_gid:-none} primaries=${_prim_ok} marker=${_mValid} ${_a}-files=${_nAcct})"
     _rc=3
@@ -718,26 +1056,63 @@ _all_accounts() {
   done
 }
 
+# The exit codes are not ordered by number; over 'all' the worst class wins:
+# failed > inconsistent > drift > not ready > skipped > done.
+_worse_rc() {
+  local _x="$1" _y="$2" _rx _ry
+  _rx=$(_rc_rank "${_x}")
+  _ry=$(_rc_rank "${_y}")
+  [ "${_ry}" -gt "${_rx}" ] && printf '%s' "${_y}" || printf '%s' "${_x}"
+}
+_rc_rank() {
+  case "$1" in
+    1) echo 6 ;; 3) echo 5 ;; 2) echo 4 ;; 5) echo 3 ;; 4) echo 2 ;; 0) echo 0 ;; *) echo 1 ;;
+  esac
+}
+
 _check_root
 _ACTION="$1"
 _TARGET=""
 [ -n "${_ACTION}" ] && shift
 case "${_ACTION}" in
-  status|convert|revert)
-    _TARGET="$1"
-    [ -n "${_TARGET}" ] && shift
+  status|convert|reclaim|revert)
+    case "$1" in
+      --*|"") ;;
+      *) _TARGET="$1"; shift ;;
+    esac
   ;;
 esac
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --from-octopus) _FROM_OCTOPUS=YES; shift ;;
+    --force)        _FORCE=YES; shift ;;
+    --keep-enabled) _KEEP_ENABLED=YES; shift ;;
     *) _usage ;;
   esac
 done
 case "${_ACTION}" in
+  convert|reclaim|revert) _repair_homes ;;
+esac
+case "${_ACTION}" in
   check)
     _do_check
     exit $?
+  ;;
+  reclaim)
+    [ -n "${_TARGET}" ] || _usage
+    _RC=0
+    if [ "${_TARGET}" = "all" ]; then
+      for _A in $(_all_accounts); do
+        _do_reclaim "${_A}"
+        _R=$?
+        _RC=$(_worse_rc "${_RC}" "${_R}")
+        _msg "-- ${_A}: rc=${_R}"
+      done
+    else
+      _do_reclaim "${_TARGET}"
+      _RC=$?
+    fi
+    exit "${_RC}"
   ;;
   status)
     [ -n "${_TARGET}" ] || _usage
@@ -746,7 +1121,7 @@ case "${_ACTION}" in
       for _A in $(_all_accounts); do
         _do_status "${_A}"
         _R=$?
-        [ "${_R}" -gt "${_RC}" ] && _RC="${_R}"
+        _RC=$(_worse_rc "${_RC}" "${_R}")
         echo
       done
     else
@@ -763,7 +1138,7 @@ case "${_ACTION}" in
       for _A in $(_all_accounts); do
         _do_convert "${_A}"
         _R=$?
-        [ "${_R}" -gt "${_RC}" ] && _RC="${_R}"
+        _RC=$(_worse_rc "${_RC}" "${_R}")
         _msg "-- ${_A}: rc=${_R}"
       done
     else

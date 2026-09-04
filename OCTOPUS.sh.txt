@@ -308,6 +308,55 @@ for f in ${_FL}; do
   source "${_libFnc}/${f}.sh.inc"
 done
 
+# This launcher is a loose file and the lib tree a tarball, and an edge
+# cache can serve a stale tarball behind a fresh launcher: the tree then
+# lacks a function this run calls ('command not found') and the step is
+# skipped with nothing in the report. Probe for the newest function the run
+# needs. On a miss, fetch a fresh tree ONCE per release stamp -- from the
+# origin this launcher itself came from, past any edge cache -- into a
+# scratch path, and swap it in only after it verified; the working tree is
+# never removed first, so a failed fetch cannot abort the upgrade. If the
+# tree still lacks the hook: continue when it at least carries the
+# derived-group form (the step is skipped, said with the token the report
+# classifier reads), abort when it predates that form too -- a pre-compat
+# satellite.sh.inc would write the box-wide group over converted accounts.
+if ! declare -F _satellite_if_instance_group > /dev/null 2>&1; then
+  _libRefetchMark="/opt/tmp/.libtree-refetch.${_X_VERSION:-unknown}"
+  if [ ! -e "${_libRefetchMark}" ]; then
+    echo "NOTE: the lib tree predates this launcher (_satellite_if_instance_group missing); fetching a fresh tree"
+    touch "${_libRefetchMark}"
+    rm -rf /opt/tmp/boa-refetch
+    mkdir -p /opt/tmp/boa-refetch
+    ( cd /opt/tmp/boa-refetch \
+      && _urlDev="https://files.boa.io/dev" _DL_NOCACHE=YES _get_dev_ext "boa.tar.gz" ) > /dev/null 2>&1
+    if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+      && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
+      && [ -e "/opt/tmp/boa-refetch/boa/lib/functions/helper.sh.inc" ] \
+      && grep -q "^_satellite_if_instance_group() {" /opt/tmp/boa-refetch/boa/lib/functions/satellite.sh.inc 2> /dev/null; then
+      rm -rf /opt/tmp/boa
+      mv -f /opt/tmp/boa-refetch/boa /opt/tmp/boa
+      chown -R root:root /opt/tmp/boa &> /dev/null
+      for f in ${_FL}; do
+        [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+        source "${_libFnc}/${f}.sh.inc"
+      done
+      echo "NOTE: fresh lib tree in place"
+    else
+      echo "NOTE: the fresh tree could not be fetched or verified; keeping the current one"
+    fi
+    rm -rf /opt/tmp/boa-refetch
+  fi
+  if ! declare -F _satellite_if_instance_group > /dev/null 2>&1; then
+    if declare -F _acct_group > /dev/null 2>&1; then
+      echo "ALRT: the lib tree still predates this launcher (a cached boa.tar.gz on the mirror edge?); the per-instance group step does not run this pass"
+      _satellite_if_instance_group() { return 0; }
+    else
+      echo "ALRT: the lib tree predates the derived-group form; this run would write the box-wide group over converted accounts, aborting"
+      _clean_pid_exit _stale_lib_tree
+    fi
+  fi
+fi
+
 
 ###
 ### Welcome msg

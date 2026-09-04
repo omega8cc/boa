@@ -375,15 +375,17 @@ _check_report() {
     || [[ "${_RESULT_FATAL}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
   fi
+  # A missing BYE (the run did not reach its end) is an alarm of its own;
+  # a present BYE must never CLEAR an alarm raised above -- it used to, so
+  # every completed run that also carried an ALRT line was mailed as a
+  # successful upgrade, and the ALRT token had no effect at all.
+  if ! [[ "${_RESULT_BYE}" =~ "BYE" ]] \
+    && ! [[ "${_RESULT_BYE}" =~ "binary file matches" ]]; then
+    _SEND_ALERT=YES
+  fi
   if [[ "${_RESULT_ALREADY}" =~ "This Ægir Instance is already up" ]] \
     || [[ "${_RESULT_ALREADY}" =~ "binary file matches" ]]; then
     _SEND_ALERT=NO
-  fi
-  if [[ "${_RESULT_BYE}" =~ "BYE" ]] \
-    || [[ "${_RESULT_BYE}" =~ "binary file matches" ]]; then
-    _SEND_ALERT=NO
-  else
-    _SEND_ALERT=YES
   fi
   if [ "${_SEND_ALERT}" = "YES" ]; then
     _send_alert
