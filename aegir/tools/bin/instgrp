@@ -388,7 +388,7 @@ _TOOLS_INVENTORY="\
 /opt/local/bin/copydbackup:_acct_group \
 /opt/local/bin/syncpass:_acct_group \
 /opt/local/bin/octopus:_acct_group \
-/opt/local/bin/aegir2boa-stage2:_acct_group_on_target \
+/usr/local/bin/aegir2boa-stage2|/opt/local/bin/aegir2boa-stage2:_acct_group_on_target \
 /root/.remote_backups/run/create_readme.sh:_acct_group \
 /root/.remote_backups/run/create_config_readme.sh:_acct_group"
 _TOOLS_STALE=""
@@ -402,6 +402,17 @@ _tools_ready() {
   for _t in ${_TOOLS_INVENTORY}; do
     _p="${_t%%:*}"
     _tok="${_t##*:}"
+    # A tool installed by hand (the migration tool is not fleet-fetched) may
+    # sit under either prefix: audit the first copy that exists, and name the
+    # documented one when neither does. Listed under one path only, the copy
+    # the docs install was never verified and read as absent on every box.
+    if [[ "${_p}" == *"|"* ]]; then
+      local _alt _first="${_p%%|*}"
+      for _alt in ${_p//|/ }; do
+        [ -f "${_alt}" ] && { _p="${_alt}"; break; }
+      done
+      [ -f "${_p}" ] || _p="${_first}"
+    fi
     if [ ! -f "${_p}" ]; then
       _TOOLS_ABSENT="${_TOOLS_ABSENT} ${_p}"
       continue
