@@ -478,7 +478,7 @@ _fix_llms_txt() {
     && [ ! -e "${_Plr}/profiles/hostmaster" ] \
     && [ -d "${_Dir}/files" ]; then
     # curl -o re-opens the temp BY NAME after the fetch, so a temp in the site
-    # dir can be swapped for a symlink during the ~10s retry window whenever
+    # dir can be swapped for a symlink during the bounded retry window whenever
     # _fix_static_permissions has that dir at 0775. Stage in the root-only 0700
     # dir under the account root instead. NB the mv below is an atomic rename
     # only while the store shares the account's filesystem: files/ may be a
@@ -489,7 +489,13 @@ _fix_llms_txt() {
     [ -n "${_LLMS_STG}" ] \
       && _LLMS_TMP=$(mktemp "${_LLMS_STG}/llms.XXXXXX" 2>/dev/null)
     if [ -n "${_LLMS_TMP}" ]; then
-      curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+      # The site answering here may be one of our own 503 stubs (suspended,
+      # off-line, mid-migration), which send Retry-After: 3600, and curl sleeps
+      # that between retries; --max-time bounds a single transfer only, so
+      # --retry-max-time is what keeps one such site from parking this account's
+      # whole nightly -- and with it the drift probe that runs after this loop.
+      curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
+        --retry 2 --retry-delay 5 --retry-max-time 30 \
         -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
         -o "${_LLMS_TMP}"
       echo >> "${_LLMS_TMP}"
@@ -534,7 +540,11 @@ _fix_robots_txt() {
     && [ -d "${_Dir}/files" ]; then
     _ROBOTS_TMP=$(mktemp "${_Dir}/.robots.XXXXXX" 2>/dev/null)
     if [ -n "${_ROBOTS_TMP}" ]; then
-      curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+      # See _fix_llms_txt: our own 503 stubs send Retry-After: 3600 and curl
+      # sleeps that between retries, so the retry sleep needs --retry-max-time;
+      # --max-time bounds one transfer only.
+      curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
+        --retry 2 --retry-delay 5 --retry-max-time 30 \
         -A iCab "http://${_Dom}/robots.txt?nocache=1&noredis=1" \
         -o "${_ROBOTS_TMP}"
       echo >> "${_ROBOTS_TMP}"
