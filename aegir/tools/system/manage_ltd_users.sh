@@ -1026,9 +1026,41 @@ _set_primary_group() {
   _h=$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)
   [ -n "${_h}" ] || return 1
   mkdir -p "${_stage}" && chown root:root "${_stage}" && chmod 0700 "${_stage}"
+  # Recorded first (the same record instgrp keeps): a kill between the two
+  # usermod calls leaves the passwd home at the staging dir, and
+  # _repair_staged_homes puts it back on the next pass.
+  [ -d /var/log/boa ] || mkdir -p /var/log/boa
+  printf '%s\n' "${_h}" > "/var/log/boa/instgrp.home.${_u}"
   usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
   usermod -d "${_h}" "${_u}" > /dev/null 2>&1
+  rm -f "/var/log/boa/instgrp.home.${_u}"
   [ "$(id -gn "${_u}" 2>/dev/null)" = "${_g}" ]
+}
+#
+# Any identity whose passwd home is a primary-group staging directory (this
+# worker's or instgrp's) was caught between the two usermod calls: put the
+# recorded home back, or the one the name implies. Every pass, first thing.
+_repair_staged_homes() {
+  local _s _u _want _rec
+  for _s in /var/backups/ltd/.pg-stage /root/.instgrp.home; do
+    for _u in $(getent passwd | awk -F: -v s="${_s}" '$6 == s { print $1 }'); do
+      _rec="/var/log/boa/instgrp.home.${_u}"
+      _want=""
+      [ -s "${_rec}" ] && _want=$(head -1 "${_rec}")
+      if [ -z "${_want}" ]; then
+        case "${_u}" in
+          *.*) _want="/home/${_u}" ;;
+          *)   _want="/data/disk/${_u}" ;;
+        esac
+      fi
+      [ -d "${_want}" ] || continue
+      usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+      if [ "$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)" = "${_want}" ]; then
+        echo "ALERT: ${_u} home field was left at ${_s} by an interrupted group move; restored to ${_want}"
+        rm -f "${_rec}"
+      fi
+    done
+  done
 }
 #
 # OK, update user.
@@ -2537,6 +2569,7 @@ _manage_site_drush_alias_mirror() {
 #
 # Manage Primary Users.
 _manage_user() {
+  _repair_staged_homes
   for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
@@ -2546,6 +2579,49 @@ _manage_user() {
       _mntPoint=""
       _USER=""
       _USER=$(echo ${_pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      # Identity heal: an account whose marker records THIS box's group but
+      # whose backend or shell identity fell back to the box-wide primary
+      # group (a hand usermod, a restored passwd) makes _acct_group fail open
+      # to 'users' and every root writer re-flatten the tree while the marker
+      # still reads converted. Move it back, 'users' listed first, as for the
+      # sub-users below.
+      # Converted = the group exists and the marker records it, or the backend
+      # or shell identity already carries it as primary (a born-converted
+      # account has no marker until its first upgrade).
+      _igMark="${_pthParentUsr}/log/instance-group.txt"
+      _igGid=$(getent group "${_USER}" 2>/dev/null | cut -d: -f3)
+      _igConv=NO
+      if [ -n "${_igGid}" ]; then
+        if [ -f "${_igMark}" ] && [ ! -L "${_igMark}" ] && grep -q " gid=${_igGid}$" "${_igMark}" 2>/dev/null; then
+          _igConv=YES
+        elif [ "$(id -gn ${_USER} 2>/dev/null)" = "${_USER}" ] || [ "$(id -gn ${_USER}.ftp 2>/dev/null)" = "${_USER}" ]; then
+          _igConv=YES
+        fi
+      fi
+      if [ "${_igConv}" = "YES" ]; then
+        for _igU in ${_USER} ${_USER}.ftp; do
+          getent passwd "${_igU}" >/dev/null 2>&1 || continue
+          [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] && continue
+          if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
+            usermod -aG users ${_igU}
+          fi
+          if getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
+            _set_primary_group ${_igU} ${_USER}
+            if [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] \
+              && id -nG ${_igU} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+              # Listed as a member too: provision's membership test reads
+              # the group database, where a primary group never shows.
+              getent group ${_USER} | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || gpasswd -a ${_igU} ${_USER} >/dev/null 2>&1
+              echo "Identity ${_igU} moved back to primary group ${_USER}"
+            elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
+              _set_primary_group ${_igU} users
+              echo "ALERT: ${_igU} lost group users on the primary move, reverted to users"
+            else
+              echo "ALERT: ${_igU} could not be moved to primary group ${_USER}; left on $(id -gn ${_igU} 2>/dev/null)"
+            fi
+          fi
+        done
+      fi
       # Group owning this account's tree, re-derived every iteration so no
       # value carries over to the next account. Falls back to the box-wide
       # default on an account that has no private group.

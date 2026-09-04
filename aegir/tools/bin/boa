@@ -3229,6 +3229,7 @@ _octopus_cleanup() {
         done
         pkill -9 -f gpg-agent
         IFS=$'\12'
+          _purgedUid=$(id -u "${_usEr}" 2>/dev/null)
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
             _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
             _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
@@ -3252,12 +3253,38 @@ _octopus_cleanup() {
           done;
         # The account's private group (per-instance group model) outlives
         # every deluser above; drop it once nothing holds it, or the GID is
-        # left for a later account to inherit.
+        # left for a later account to inherit. What the purge leaves on
+        # disk (a static store relocated under /mnt, the gems/npm trees)
+        # would keep the number and addgroup hands it to the next account:
+        # those paths go to root first, and the group stays while any path
+        # still carries it.
         _grpGid=$(getent group "${_usEr}" 2>/dev/null | cut -d: -f3)
-        if [ -n "${_grpGid}" ] \
-          && [ -z "$(getent group "${_usEr}" 2>/dev/null | cut -d: -f4)" ] \
-          && ! getent passwd | awk -F: -v g="${_grpGid}" '$4 == g { f=1 } END { exit !f }'; then
-          groupdel "${_usEr}" &> /dev/null && echo "removed group ${_usEr}"
+        if [ -n "${_grpGid}" ]; then
+          # The uid is recycled from the same system range as the gid, so
+          # the leftovers lose both numbers: root:root.
+          for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
+            /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* /mnt/*/files/${_usEr}; do
+            if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+              chown -R -h -P --from=":${_grpGid}" "root:root" "${_lftDir}" &> /dev/null
+              [ -n "${_purgedUid}" ] && chown -R -h -P --from="${_purgedUid}" "root:root" "${_lftDir}" &> /dev/null
+            fi
+          done
+          # -xdev never enters a mounted volume, so each mountpoint under
+          # /mnt is its own start point.
+          _grpLeft=$(find -P /data/disk /home /opt/user -xdev -gid "${_grpGid}" -print -quit 2>/dev/null)
+          if [ -z "${_grpLeft}" ]; then
+            for _mntDir in /mnt/*; do
+              [ -d "${_mntDir}" ] && mountpoint -q "${_mntDir}" 2>/dev/null || continue
+              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_grpGid}" -print -quit 2>/dev/null)
+              [ -n "${_grpLeft}" ] && break
+            done
+          fi
+          if [ -n "${_grpLeft}" ]; then
+            echo "group ${_usEr} kept: paths still carry gid ${_grpGid} (${_grpLeft})"
+          elif [ -z "$(getent group "${_usEr}" 2>/dev/null | cut -d: -f4)" ] \
+            && ! getent passwd | awk -F: -v g="${_grpGid}" '$4 == g { f=1 } END { exit !f }'; then
+            groupdel "${_usEr}" &> /dev/null && echo "removed group ${_usEr}"
+          fi
         fi
         echo
         echo "Cleanup complete"

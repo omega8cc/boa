@@ -991,8 +991,32 @@ _purge_cruft_machine() {
 
   # Both writes below land inside this account's own tree, so the group is
   # derived from the account rather than hardcoded; 'users' on an unconverted box.
-  local _acctGrp
+  local _acctGrp _igHit
   _acctGrp=$(_acct_group "${_HM_U}")
+  # Drift probe on a converted account: the credential-bearing paths
+  # (~/.drush aliases, backups, config, tools, the hostmaster sites, every
+  # drushrc.php under static) are re-grouped by the octopus arm only, so a
+  # stale writer or a hand chown between releases would sit unseen for a
+  # release cycle. One early-quit find; instgrp reclaim is the file half
+  # alone (no identities, no lock), idempotent, so the nightly may run it.
+  if [ "${_acctGrp}" != "users" ] && [ -x "/opt/local/bin/instgrp" ]; then
+    # backups may be a link into the static store (relocated backups): probe
+    # where the files are. The static leg is bounded to the depth where a
+    # site's drushrc.php lives (<platform>[/web]/sites/<uri>/drushrc.php),
+    # so the clean case does not traverse every files/ tree.
+    _igBak=$(readlink -f -- "${_usEr}/backups" 2>/dev/null)
+    _igHit=$(find -P ${_usEr}/.drush ${_igBak:-${_usEr}/backups} ${_usEr}/config ${_usEr}/tools \
+      ${_usEr}/aegir/distro/*/sites -xdev \
+      ! -group "${_acctGrp}" ! -group www-data ! -group root -print -quit 2>/dev/null)
+    if [ -z "${_igHit}" ]; then
+      _igHit=$(find -P ${_usEr}/static -xdev -maxdepth 5 -name drushrc.php \
+        ! -group "${_acctGrp}" ! -group www-data ! -group root -print -quit 2>/dev/null)
+    fi
+    if [ -n "${_igHit}" ]; then
+      echo "DRIFT: ${_HM_U}: paths outside group ${_acctGrp} (first: ${_igHit}); running instgrp reclaim"
+      bash /opt/local/bin/instgrp reclaim ${_HM_U}
+    fi
+  fi
   chown -R ${_HM_U}:${_acctGrp} ${_usEr}/tools/le
   # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
   # tenant, so the tenant can swap the directory for a symlink. mkdir -p then
