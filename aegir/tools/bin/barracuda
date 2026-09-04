@@ -2152,25 +2152,42 @@ _check_manufacturer_compatibility() {
     /usr/bin/apt-get update &> /dev/null
     ${_INITINS} dmidecode &> /dev/null
   fi
-  # Check if dmidecode is available
-  _DMI_TEST="$(which dmidecode)"
+  # Read the system manufacturer. A machine with no SMBIOS/DMI table answers
+  # with nothing, which is the normal state of a Xen paravirtualized guest
+  # domain or a container -- environments this tree lists as supported -- so an
+  # empty answer is never grounds for refusing to run.
+  local _DMI_RAW=""
+  _HOST_INFO=""
+  _DMI_TEST="$(command -v dmidecode 2> /dev/null)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO="$(dmidecode -s system-manufacturer)"
-  else
-    _HOST_INFO="Unknown, dmidecode not available"
+    _DMI_RAW="$("${_DMI_TEST}" -s system-manufacturer 2> /dev/null)"
+  elif [ -r "/sys/class/dmi/id/sys_vendor" ]; then
+    # Only when dmidecode is absent entirely, so the check is not left blind on
+    # a host where the package could not be installed. Never when dmidecode is
+    # merely silent: inside a container that file describes the HOST, and
+    # trusting it there would refuse a container running on an EC2 host.
+    _DMI_RAW="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null)"
   fi
-  # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  # Older dmidecode prints a banner and status lines on stdout ahead of the
+  # value, so keep the last line that is none of them.
+  _HOST_INFO="$(printf '%s\n' "${_DMI_RAW}" \
+    | grep -v '^# ' \
+    | grep -v '^SMBIOS .* present\.$' \
+    | grep -v '^Getting SMBIOS data ' \
+    | grep -v '^[[:space:]]*$' \
+    | tail -n1)"
+  # Amazon EC2 is the one manufacturer this refuses: it blocks the Devuan
+  # conversion BOA has to perform. Match the whole reading, as before, so an
+  # old dmidecode that prints a banner still matches.
+  if printf '%s\n' "${_DMI_RAW}" | grep -qi 'Amazon EC2'; then
     _VMFAMILY="AWS"
     echo "Not supported environment detected: ${_HOST_INFO}"
     echo "Please check https://docs.boa.io/self-hosting/before-you-install"
     echo "Bye!"
     _clean_pid_exit _check_manufacturer_compatibility_a
-  elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    echo "Mysterious environment: ${_HOST_INFO}"
-    echo "Please check https://docs.boa.io/self-hosting/before-you-install"
-    echo "Bye!"
-    _clean_pid_exit _check_manufacturer_compatibility_b
+  fi
+  if [ -z "${_HOST_INFO}" ]; then
+    echo "INFO: No DMI table here, system manufacturer unreadable, continuing"
   fi
 }
 
@@ -2311,6 +2328,10 @@ export _argQ="$4"
 _check_root_direct
 _set_tree_vars
 _if_display_help
+# Disabled here on purpose since 2024-09-08 (e89cd9007): an upgrade pass runs
+# on a host BOA already installed, and refusing it on a manufacturer string
+# would strand a live box. The definition earlier in this file is kept in step
+# with the copies in boa and the auto* drivers only so the family never drifts.
 ###_check_manufacturer_compatibility
 # A replication standby stays current -- system, stack, Percona and kernel
 # upgrades run here like on any BOA box -- but the Aegir master half of a

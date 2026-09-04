@@ -501,7 +501,7 @@ _if_running_as_root_barracuda() {
       fi
     fi
     # Check for Amazon EC2 in the system manufacturer field
-    if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+    if dmidecode -s system-manufacturer 2> /dev/null | grep -qi 'Amazon EC2'; then
       _VMFAMILY="AWS"
     fi
     _VM_TEST="$(uname -a)"
@@ -1367,7 +1367,7 @@ _tune_memory_limits() {
     _mrun "${_INITINS} dmidecode"
   fi
   # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  if dmidecode -s system-manufacturer 2> /dev/null | grep -qi 'Amazon EC2'; then
     _VMFAMILY="AWS"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then

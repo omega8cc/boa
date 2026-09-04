@@ -297,7 +297,17 @@ _if_running_as_root_barracuda
 ### Welcome msg
 ###
 echo " "
-_msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
+# A guest with no SMBIOS/DMI table reads back nothing here, so fall back to the
+# architecture rather than greeting an empty string. Same filters as the
+# manufacturer check, since an older dmidecode prefixes its own status lines.
+_WELCOME_HOST="$(dmidecode -s system-manufacturer 2> /dev/null \
+  | grep -v '^# ' \
+  | grep -v '^SMBIOS .* present\.$' \
+  | grep -v '^Getting SMBIOS data ' \
+  | grep -v '^[[:space:]]*$' \
+  | tail -n1)"
+[ -z "${_WELCOME_HOST}" ] && _WELCOME_HOST="$(uname -m)"
+_msg "Skynet Agent v.${_X_VERSION} on ${_WELCOME_HOST} welcomes you aboard!"
 echo " "
 sleep 3
 

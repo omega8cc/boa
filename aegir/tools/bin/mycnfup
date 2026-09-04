@@ -312,7 +312,7 @@ _check_root() {
       ${_INITINS} dmidecode &> /dev/null
     fi
     # Check for Amazon EC2 in the system manufacturer field
-    if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+    if dmidecode -s system-manufacturer 2> /dev/null | grep -qi 'Amazon EC2'; then
       _VMFAMILY="AWS"
     fi
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \

@@ -5516,7 +5516,7 @@ _satellite_detect_vm_family() {
     _VMFAMILY="XEN"
   fi
   # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  if dmidecode -s system-manufacturer 2> /dev/null | grep -qi 'Amazon EC2'; then
     _VMFAMILY="AWS"
   fi
   if [ "${_VMFAMILY}" = "AWS" ]; then

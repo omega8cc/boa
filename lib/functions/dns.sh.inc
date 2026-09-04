@@ -967,7 +967,7 @@ EOF
       _find_server_city
       [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
-      _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
+      _VENDOR="$(dmidecode -s system-manufacturer 2> /dev/null)"
       [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
       _msg "INSTALL START -> checkpoint: "
       cat <<EOF
@@ -1013,7 +1013,7 @@ EOF
       _find_server_city
       [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
-      _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
+      _VENDOR="$(dmidecode -s system-manufacturer 2> /dev/null)"
       [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
       echo " "
       _msg "UPGRADE START -> checkpoint: "

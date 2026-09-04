@@ -4484,15 +4484,15 @@ CSFSTANDBY
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
-    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f94 --guard /local/bin/autobeowulf
-    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f94 --guard /local/bin/autoexcalibur
+    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f93 --guard /local/bin/autobeowulf
+    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f93 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f76 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f38 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f37 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f82 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f68 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f66 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f67 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f65 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f95 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f82 --guard duplicity
@@ -4527,10 +4527,10 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f43 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
-    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f95 --guard /local/bin/autochimaera
-    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f95 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f86 --guard /local/bin/autoinit
-    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f94 --guard /local/bin/automini
+    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f94 --guard /local/bin/autochimaera
+    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f94 --guard /local/bin/autodaedalus
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f85 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f93 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f97 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f95 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f94 --guard /local/bin/copydbackup
@@ -4538,7 +4538,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f93 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
-    _fetch_versioned ${_optBin}/mycnfup "${_urlHmr}/${_tBn}/mycnfup" f97 --guard /local/bin/mycnfup
+    _fetch_versioned ${_optBin}/mycnfup "${_urlHmr}/${_tBn}/mycnfup" f96 --guard /local/bin/mycnfup
     _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --mode 755 --guard /local/bin/randpass
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f99 --guard /local/bin/setprio
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps

@@ -1019,7 +1019,22 @@ _status_vm_postinstall() {
   if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
-    [ -n "${_SYS_MANUFACTURER_LC}" ] && _generic_vm_postinstall
+    # Launch it whatever the manufacturer reads back. A guest with no
+    # SMBIOS/DMI table answers with nothing, and gating on a non-empty answer
+    # skipped the accelerated completion pass on exactly those hosts, leaving
+    # them to wait for the weekly upgrade instead of finishing within minutes.
+    #
+    # Bounded, because the arm above can stay true indefinitely on a host where
+    # CSF is never installed -- a VServer guest carrying cloud_vhost.pid, for
+    # one -- and this runs every five minutes. The first attempt is immediate,
+    # so a normal install still converges at once; a failing one now retries
+    # hourly instead of relaunching a full system pass twelve times an hour.
+    _VM_POST_STAMP="/var/log/boa/.vm_postinstall_attempt.pid"
+    if [ ! -e "${_VM_POST_STAMP}" ] \
+      || [ -n "$(find "${_VM_POST_STAMP}" -mmin +59 2> /dev/null)" ]; then
+      touch "${_VM_POST_STAMP}"
+      _generic_vm_postinstall
+    fi
   else
     _NEEDS_UPGRADE=NO
     echo "B _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
