@@ -119,6 +119,9 @@ done
 [ "\${_N}" = "1" ] || _MP=""
 for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
   [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
+  # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
+  # account's: the same root set the tool walks
+  case "\${_R}" in /home/*.web) continue ;; esac
   find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
 done
 _M="/data/disk/\${_A}/log/instance-group.txt"
