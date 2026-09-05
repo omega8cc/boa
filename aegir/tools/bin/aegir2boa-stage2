@@ -2433,8 +2433,12 @@ _peer_source() {
   fi
   [[ -s "${_key}.pub" ]] || { _info "[DRY] no public key yet - re-run with --live"; return 0; }
   _pub="$(cat "${_key}.pub")"
-  _msg "run this ON THE TARGET (as root), then re-run this verb:"
+  # the target refuses a bare --live without a CLEAN dry run of the same
+  # scope on that box, so print the pair the docs show, in order
+  _msg "run these ON THE TARGET (as root), the dry run first, then re-run this verb:"
   echo
+  echo "  aegir2boa-stage2 peer --source $(_peer_my_ip) \\"
+  echo "    --pubkey-file <(echo '${_pub}')"
   echo "  aegir2boa-stage2 peer --source $(_peer_my_ip) --live \\"
   echo "    --pubkey-file <(echo '${_pub}')"
   echo
