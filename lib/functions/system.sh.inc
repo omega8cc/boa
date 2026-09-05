@@ -6679,7 +6679,8 @@ _curl_install_src() {
     # right moment and restore it if the build fails.
     for _dir in "${_dirsToClean[@]}"; do
       if [ "${_dir}" = "/usr/lib/x86_64-linux-gnu" ] \
-        && [ ! -e "/usr/local/lib/${_allowedFile}" ]; then
+        && ! { [ -x "/usr/local/bin/curl" ] \
+          && /usr/local/bin/curl --version > /dev/null 2>&1; }; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "CLNP: Keeping the distro libcurl in ${_dir} until a BOA-built one exists"
         fi
@@ -6815,6 +6816,10 @@ _curl_install_src() {
           fi
           _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
           if [ -e "${_PKG_CONFIG_PATH}" ]; then
+            # configure honours PKG_CONFIG_PATH only through pkg-config itself
+            if ! _pkg_installed "pkg-config"; then
+              _mrun "${_INSTAPP} pkg-config"
+            fi
             cd /var/opt/curl-${_CURL_VRN}
             _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
               --with-openssl \
@@ -6843,14 +6848,17 @@ _curl_install_src() {
       # still work. The install itself is reported as failed by the OOPS
       # lines above and by the version check on the next pass.
       if [ ! -x "/usr/local/bin/curl" ] \
-        && [ -n "${_bkLibcurlPre}" ] \
-        && [ -d "${_bkLibcurlPre}" ] \
-        && ls "${_bkLibcurlPre}"/libcurl.so* > /dev/null 2>&1; then
-        mv -f "${_bkLibcurlPre}"/libcurl.so* /usr/lib/x86_64-linux-gnu/ 2> /dev/null
-        mv -f "${_bkLibcurlPre}"/libcurl.la /usr/lib/x86_64-linux-gnu/ 2> /dev/null
-        mv -f "${_bkLibcurlPre}"/libcurl.a /usr/lib/x86_64-linux-gnu/ 2> /dev/null
-        ldconfig 2> /dev/null
-        _msg "OOPS: cURL ${_CURL_VRN} was not installed; the distro libcurl was restored so downloads keep working"
+        && ! ls /usr/lib/x86_64-linux-gnu/libcurl.so.4.* > /dev/null 2>&1; then
+        for _bkDir in "${_bkLibcurlPre}" "${_backLegBase}_usr_lib_x86_64-linux-gnu"; do
+          [ -n "${_bkDir}" ] && [ -d "${_bkDir}" ] || continue
+          ls "${_bkDir}"/libcurl.so* > /dev/null 2>&1 || continue
+          mv -f "${_bkDir}"/libcurl.so* /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+          mv -f "${_bkDir}"/libcurl.la /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+          mv -f "${_bkDir}"/libcurl.a /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+          ldconfig 2> /dev/null
+          _msg "OOPS: cURL ${_CURL_VRN} was not installed; the distro libcurl was restored from ${_bkDir} so downloads keep working"
+          break
+        done
       fi
       if [ -x "/usr/local/bin/curl" ] \
         && [ ! -e "/var/log/boa/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
@@ -7998,7 +8006,11 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in build-essential libsasl2-modules time vim cvs makepasswd; do
+    # pkg-config is what lets the source builds below find the OpenSSL in
+    # /usr/local/ssl*: without it cURL's configure ignores PKG_CONFIG_PATH
+    # and fails with "OpenSSL libs and/or directories were not found".
+    # Daedalus images happen to carry it; a converted chimaera box does not.
+    for _PKG in build-essential pkg-config libsasl2-modules time vim cvs makepasswd; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi

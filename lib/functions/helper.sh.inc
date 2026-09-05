@@ -111,6 +111,24 @@ _not_supported_os() {
 
 #
 # Show only clean _msg and write details and errors to separate logs.
+# Wait (up to five minutes) for the dpkg/apt locks to be free. A converted
+# box keeps its image's unattended-upgrades and apt daily cron, and any of
+# them holding the lock made an install below fail with "Could not get
+# lock", an error _mrun keeps off the console -- packages then went silently
+# missing on chimaera and the source builds died later without them.
+_apt_lock_wait() {
+  local _i=0
+  while fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock > /dev/null 2>&1; do
+    _i=$((_i + 1))
+    if [ "${_i}" -eq 1 ] && [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "WAIT: another package manager holds the dpkg/apt lock, waiting for it..."
+    fi
+    [ "${_i}" -ge 60 ] && break
+    sleep 5
+  done
+  return 0
+}
+
 _mrun() {
   # Accept everything as one shell command string:
   #      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
@@ -119,6 +137,11 @@ _mrun() {
   if [ -z "${_cmd}" ]; then
     return 0
   fi
+  case "${_cmd}" in
+    *apt-get*|*aptitude*|*aptfast*|*"dpkg "*)
+      _apt_lock_wait
+      ;;
+  esac
   # stdout -> info log (silent on console)
   # stderr -> error log (silent on console)
   if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
