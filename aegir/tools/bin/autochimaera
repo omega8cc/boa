@@ -387,7 +387,10 @@ _if_remove_cloud_utils() {
     # --auto-remove would otherwise take with it; keep it installed.
     /usr/bin/apt-mark manual cloud-guest-utils > /dev/null 2>&1
     /usr/bin/apt-get update --allow-insecure-repositories 2> /dev/null
-    /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
+    # Some vendor images ship the package under a versioned name
+    # (Hetzner's Debian 11: cloud-init-22.4.2), which the fixed name misses.
+    _cldPkgs="cloud-utils cloud-init $(dpkg-query -W -f='${binary:Package} ' 'cloud-init*' 2> /dev/null)"
+    /usr/bin/apt-get remove ${_cldPkgs} -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get remove cloud-image-utils -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get autoremove --purge -y 2> /dev/null
     /usr/bin/apt-get autoclean -y 2> /dev/null

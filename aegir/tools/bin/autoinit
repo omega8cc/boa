@@ -125,7 +125,10 @@ _if_remove_cloud_utils() {
     fi
     _msg "[init] rcld ==> Removing problematic cloud-utils detected on this system..." >> "${_logInt}"
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    /usr/bin/apt-get remove cloud-utils cloud-init -y -qq >> "${_logSlt}"
+    # Some vendor images ship the package under a versioned name
+    # (Hetzner's Debian 11: cloud-init-22.4.2), which the fixed name misses.
+    _cldPkgs="cloud-utils cloud-init $(dpkg-query -W -f='${binary:Package} ' 'cloud-init*' 2> /dev/null)"
+    /usr/bin/apt-get remove ${_cldPkgs} -y -qq >> "${_logSlt}"
     /usr/bin/apt-get remove cloud-image-utils -y -qq >> "${_logSlt}"
     rm -f /etc/rc?.d/[SK]??cloud-* 2>/dev/null
     chmod -x /etc/init.d/cloud-init /etc/init.d/cloud-init-local \
