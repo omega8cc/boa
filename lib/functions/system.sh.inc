@@ -6664,8 +6664,22 @@ _curl_install_src() {
     # Variable to track if any broken symlinks were found and removed
     _ifAnySymlinksCleaned=NO
 
-    # Iterate over the directories and apply the _check_and_move function
+    # Iterate over the directories and apply the _check_and_move function.
+    # The multiarch directory is skipped until a BOA-built libcurl exists:
+    # on a box whose only curl is the distro one (bullseye/chimaera ship
+    # 4.7.0, buster/beowulf 4.5.0) that file IS the running curl's runtime,
+    # and retiring it here breaks every fetch that follows -- the prebuilt
+    # deb fetch, the openssh sources, the Percona key -- before any
+    # replacement has been built. The install arms below retire it at the
+    # right moment and restore it if the build fails.
     for _dir in "${_dirsToClean[@]}"; do
+      if [ "${_dir}" = "/usr/lib/x86_64-linux-gnu" ] \
+        && [ ! -e "/usr/local/lib/${_allowedFile}" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "CLNP: Keeping the distro libcurl in ${_dir} until a BOA-built one exists"
+        fi
+        continue
+      fi
       _check_and_move "${_dir}"
     done
 
@@ -6818,6 +6832,20 @@ _curl_install_src() {
         else
           _msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
         fi
+      fi
+      # A failed build must not leave the box without any curl: put the
+      # retired distro runtime back so the next fetch, and the next run,
+      # still work. The install itself is reported as failed by the OOPS
+      # lines above and by the version check on the next pass.
+      if [ ! -x "/usr/local/bin/curl" ] \
+        && [ -n "${_bkLibcurlPre}" ] \
+        && [ -d "${_bkLibcurlPre}" ] \
+        && ls "${_bkLibcurlPre}"/libcurl.so* > /dev/null 2>&1; then
+        mv -f "${_bkLibcurlPre}"/libcurl.so* /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+        mv -f "${_bkLibcurlPre}"/libcurl.la /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+        mv -f "${_bkLibcurlPre}"/libcurl.a /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+        ldconfig 2> /dev/null
+        _msg "OOPS: cURL ${_CURL_VRN} was not installed; the distro libcurl was restored so downloads keep working"
       fi
       if [ -x "/usr/local/bin/curl" ] \
         && [ ! -e "/var/log/boa/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
