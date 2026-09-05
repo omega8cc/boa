@@ -1293,7 +1293,8 @@ _xoct_runtime_oct() {
 # backend or the shell identity carries it as primary (one identity that
 # fell back to 'users' must not turn this into a flatten). Returns the
 # pass's rc (0 clean, 2 drift left, 3 identities disagree, 4 deferred: a
-# BOA run is live there). Verbatim in xoct, xcopy and xmass.
+# BOA run stayed live there for the whole bounded wait, so the inline form
+# ran instead of the tool). Verbatim in xoct, xcopy and xmass.
 # $1 = account on the destination, $2 = destination host.
 _acct_regroup_remote() {
   local _X_A="$1" _X_H="$2" _X_RC
@@ -1331,7 +1332,7 @@ for _M in /mnt/*; do
   [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
 done
 [ "\${_N}" = "1" ] || _MP=""
-for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* /opt/user/gems/"\${_A}"* /opt/user/npm/"\${_A}"* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
+for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
   [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
   find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
 done
