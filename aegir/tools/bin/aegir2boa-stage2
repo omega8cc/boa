@@ -736,7 +736,13 @@ verb_check() {
   # stage-2 verdict comes from the report scalars, never from its exit code
   local _v
   _v="$(_report_scalar A2B_STAGE2_VERDICT)"
-  _info "preflight stage-2 verdict: ${_v} (fail: $(_report_scalar A2B_STAGE2_FAIL_REASONS))"
+  # name the reasons that belong to the verdict: a WARN used to print an
+  # empty "(fail: )" while its reasons sat in the report
+  case "${_v}" in
+    FAIL) _info "preflight stage-2 verdict: FAIL (fail: $(_report_scalar A2B_STAGE2_FAIL_REASONS))" ;;
+    WARN) _info "preflight stage-2 verdict: WARN (warn: $(_report_scalar A2B_STAGE2_WARN_REASONS))" ;;
+    *)    _info "preflight stage-2 verdict: ${_v}" ;;
+  esac
   [[ "${_v}" = "FAIL" ]] && _die "preflight stage-2 verdict is FAIL - resolve its reasons first"
 
   # nginx-mode hard gate (B6) + box config health: every pause/proxy swap
@@ -752,7 +758,7 @@ verb_check() {
 
   # ssh to target (peer-established key)
   ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" true >>"${_LOG}" 2>&1 \
-    || _die "cannot ssh root@${_TARGET} with BatchMode - run the peer verb first (aegir2boa-stage2 peer --target ${_TARGET} --live); ssh detail in ${_LOG}"
+    || _die "cannot ssh root@${_TARGET} with BatchMode - run the peer verb first (aegir2boa-stage2 peer --target ${_TARGET}, then the same with --live); ssh detail in ${_LOG}"
   ssh -o BatchMode=yes "root@${_TARGET}" 'test -x /opt/local/bin/boa' >/dev/null 2>&1 \
     || _die "target ${_TARGET} does not look like a BOA box (/opt/local/bin/boa missing)"
   _info "target ${_TARGET}: ssh ok, BOA present"
@@ -964,6 +970,10 @@ verb_premig() {
     _qstate=systemd
     systemctl stop hosting-queued >>"${_LOG}" 2>&1
     systemctl disable hosting-queued >>"${_LOG}" 2>&1
+    # the daemon exits non-zero on SIGTERM, which leaves the unit "failed"
+    # rather than inactive; clear that so a status read after pre-mig says
+    # what happened (stopped on purpose), not that something crashed
+    systemctl reset-failed hosting-queued >>"${_LOG}" 2>&1 || true
   elif service hosting-queued status >/dev/null 2>&1; then
     _qstate=initd
     service hosting-queued stop >>"${_LOG}" 2>&1
