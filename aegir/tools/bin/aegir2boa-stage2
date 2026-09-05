@@ -1411,7 +1411,9 @@ verb_transfer() {
   ssh "root@${_TARGET}" "[ -x /opt/local/bin/instgrp ] || exit 0
     _t=0
     while :; do
-      bash /opt/local/bin/instgrp reclaim '${_ACCOUNT}'
+      # --force: a killed import can leave the target's own freeze marker
+      # behind; the adopted tree is what needs the file half
+      bash /opt/local/bin/instgrp reclaim '${_ACCOUNT}' --force
       _r=\$?
       [ \"\${_r}\" = \"4\" ] && [ \"\${_t}\" -lt 12 ] || exit \"\${_r}\"
       _t=\$((_t + 1))

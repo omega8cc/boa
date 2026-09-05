@@ -1306,7 +1306,11 @@ if [ -x /opt/local/bin/instgrp ]; then
   # bounded, rather than leave the copied tree in DRIFT until the nightly.
   _T=0
   while :; do
-    bash /opt/local/bin/instgrp reclaim "\${_A}"
+    # --force: the destination's own log/proxied.pid is its demotion artefact
+    # from an earlier cutover (a failback), not "served from elsewhere"; the
+    # tree this run just wrote is exactly what needs the file half, and the
+    # tool's freeze gate would otherwise refuse it for good
+    bash /opt/local/bin/instgrp reclaim "\${_A}" --force
     _R=\$?
     [ "\${_R}" = "4" ] && [ "\${_T}" -lt 12 ] || exit "\${_R}"
     _T=\$((_T + 1))
