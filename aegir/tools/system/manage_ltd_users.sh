@@ -1944,10 +1944,16 @@ _site_socket_inc_gen() {
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
     || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
-    sed -i "s/^${_hmFront} .*//g" ${_mltFpm}
-    wait
-    sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
-    wait
+    # a young account has no multi-fpm.info yet (the agents pass writes it
+    # later); the two seds below have nothing to clean there and only left
+    # "sed: can't read" in this worker's log every three minutes until it
+    # appeared
+    if [ -f "${_mltFpm}" ]; then
+      sed -i "s/^${_hmFront} .*//g" ${_mltFpm}
+      wait
+      sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
+      wait
+    fi
     _PHP_V="85 84 83 82 81 74"
     _phpFnd=NO
     for e in ${_PHP_V}; do
