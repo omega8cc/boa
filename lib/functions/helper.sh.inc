@@ -146,6 +146,32 @@ _apt_lock_wait() {
   return 0
 }
 
+# Devuan's merged <suite>-security hands the Debian-built packages to
+# deb.debian.org, which stops serving a pool once the matching Debian LTS ends
+# while the index still lists the files; apt then aborts the whole upgrade on
+# the 404s and a codename hop upgrades nothing. Run the apt-get verb once with
+# its output kept; when it died on such a pool, drop that stanza from
+# sources.list, refresh and say so. The callers' usual _mrun passes follow.
+_apt_run_heal_dead_security_pool() {
+  local _verb_args="$*" _outf="/var/opt/apt-hop-run.out" _dead
+  _apt_lock_wait
+  if bash -c -- "apt-get ${_verb_args}" > "${_outf}" 2>&1; then
+    rm -f "${_outf}"
+    return 0
+  fi
+  [ -n "${_LOG_INFO}" ] && cat "${_outf}" >> "${_LOG_INFO}"
+  _dead=""
+  if grep -q '404' "${_outf}"; then
+    _dead=$(grep -oE '^Err:[0-9]+ [^ ]+ [a-z]+-security' "${_outf}" | awk '{print $3}' | sort -u | head -1)
+  fi
+  rm -f "${_outf}"
+  [ -n "${_dead}" ] || return 0
+  _msg "NOTE: the ${_dead} pool is not served any more; the upgrade continues without it"
+  sed -i "/ ${_dead} /d" /etc/apt/sources.list
+  _mrun "apt-get update --allow-insecure-repositories"
+  return 0
+}
+
 _mrun() {
   # Accept everything as one shell command string:
   #      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"

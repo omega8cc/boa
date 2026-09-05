@@ -4479,7 +4479,7 @@ _run_apt_get_dist_upgrade() {
   fi
   _msg "INFO: Running apt-get upgrade..."
   _apt_clean_update_no_releaseinfo_change
-  _mrun "apt-get upgrade ${_dstUpArg}"
+  _apt_run_heal_dead_security_pool "upgrade ${_dstUpArg}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Running apt-get dist-upgrade..."
   fi
@@ -8598,7 +8598,7 @@ _if_post_major_os_upgrade() {
 
     _msg "INFO: Running dist-upgrade to complete the system upgrade..."
     _msg "WAIT: This may take a while, please wait..."
-    _mrun "apt-get dist-upgrade ${_dstUpArg}"
+    _apt_run_heal_dead_security_pool "dist-upgrade ${_dstUpArg}"
     _mrun "apt-get dist-upgrade ${_dstUpArg}"
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then

@@ -1358,9 +1358,11 @@ _install_with_aptitude_sql() {
       _msg "FATAL ERROR: now instead of waiting forever for a MySQLD that can never start."
       _msg "FATAL ERROR: Check network, DNS and apt keyring access to both repo.percona.com"
       _msg "FATAL ERROR: and the BOA mirrors (${_urlDev}), then run the install again."
-      if dpkg --audit 2>/dev/null | grep -q '^ '; then
-        _msg "FATAL ERROR: dpkg also reports packages left unconfigured (dpkg --audit); apt cannot"
-        _msg "FATAL ERROR: install anything on this box until they are fixed: run dpkg --configure -a first."
+      _unconf=$(dpkg-query -W -f='${Package} ${Status}\n' 2>/dev/null \
+        | awk '$NF=="half-configured"||$NF=="unpacked"||$NF=="half-installed"{print $1}' | tr '\n' ' ')
+      if [ -n "${_unconf}" ]; then
+        _msg "FATAL ERROR: dpkg also left packages unconfigured: ${_unconf}-- apt cannot install"
+        _msg "FATAL ERROR: anything on this box until they are fixed: run dpkg --configure -a first."
       fi
       rm -f /run/boa_sql_maintenance.pid
       _clean_pid_exit _db_server_install_5_7_unavailable

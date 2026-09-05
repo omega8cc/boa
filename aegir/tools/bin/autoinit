@@ -1191,11 +1191,54 @@ _autoinit_heal_grub_pc() {
 
 # Say so when dpkg leaves packages unconfigured after a hop: apt aborts every
 # later run on such a box, and the codename alone would suggest a clean move.
+_autoinit_dpkg_unconfigured() {
+  /usr/bin/dpkg-query -W -f='${Package} ${Status}\n' 2>/dev/null \
+    | awk '$NF=="half-configured"||$NF=="unpacked"||$NF=="half-installed"{print $1}' | tr '\n' ' '
+}
 _autoinit_dpkg_residue_warn() {
   local _left
-  _left=$(dpkg --audit 2>/dev/null | grep '^ ' | awk '{print $1}' | tr '\n' ' ')
+  _left=$(_autoinit_dpkg_unconfigured)
   [ -z "${_left}" ] && return 0
   _msg "[init][WARN] dpkg ==> packages left unconfigured after this step: ${_left}-- apt may fail until they are fixed" >> "${_logInt}"
+}
+
+# Before the install is launched: a package dpkg could not configure makes
+# every apt run fail, so the install would die minutes later with a reason
+# that points elsewhere. Heal once more, then refuse to launch.
+_autoinit_dpkg_residue_gate() {
+  [ -z "$(_autoinit_dpkg_unconfigured)" ] && return 0
+  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}" 2>&1
+  /usr/bin/dpkg --configure -a >> "${_logSlt}" 2>&1
+  [ -z "$(_autoinit_dpkg_unconfigured)" ] && return 0
+  _autoinit_dpkg_residue_warn
+  return 1
+}
+
+# Devuan's merged <suite>-security hands the Debian-built packages to
+# deb.debian.org, which stops serving a pool once the matching Debian LTS ends
+# (bullseye-security since 2026-08-31) while the index still lists the files.
+# apt then aborts the whole upgrade on the 404s: the hop upgrades nothing, the
+# next hop jumps two releases at once, and libc6 lands without libcrypt1.
+# Name the security suite such a failed run died on, or nothing.
+_autoinit_apt_dead_security_suite() {
+  local _outf="$1"
+  grep -q '404' "${_outf}" 2>/dev/null || return 1
+  grep -oE '^Err:[0-9]+ [^ ]+ [a-z]+-security' "${_outf}" 2>/dev/null | awk '{print $3}' | sort -u | head -1
+}
+
+# Run one apt verb of a hop; when it failed only because a security pool is
+# gone, take that stanza out of sources.list, refresh, and run it once more.
+_autoinit_apt_hop_run() {
+  local _verb="$1" _args="$2" _outf="/root/.autoinit-apt-hop.out" _rc _dead
+  /usr/bin/apt-get ${_verb} ${_args} > "${_outf}" 2>&1; _rc=$?
+  cat "${_outf}" >> "${_logSlt}"
+  [ "${_rc}" -eq 0 ] && return 0
+  _dead=$(_autoinit_apt_dead_security_suite "${_outf}")
+  [ -n "${_dead}" ] || return "${_rc}"
+  _msg "[init][WARN] apt ==> the ${_dead} pool is not served any more; running apt-get ${_verb} without it" >> "${_logInt}"
+  sed -i "/ ${_dead} /d" /etc/apt/sources.list
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}" 2>&1
+  /usr/bin/apt-get ${_verb} ${_args} >> "${_logSlt}" 2>&1
 }
 
 ###
@@ -1754,8 +1797,8 @@ _init_post_ready() {
   _autoinit_ensure_devuan_keyring
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
-  /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
-  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  _autoinit_apt_hop_run upgrade "${_nrmUpArg}"
+  _autoinit_apt_hop_run dist-upgrade "${_dstUpArg}"
   /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
 }
@@ -1782,7 +1825,7 @@ _init_offsystemd() {
     _msg "[init] offd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
     /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
   fi
-  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  _autoinit_apt_hop_run dist-upgrade "${_dstUpArg}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
 
   _init_base_sync
@@ -2025,7 +2068,7 @@ _init_cycle() {
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     fi
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
+    _autoinit_apt_hop_run upgrade "${_dstUpArg}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
@@ -2041,7 +2084,7 @@ _init_cycle() {
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+      _autoinit_apt_hop_run dist-upgrade "${_dstUpArg}"
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
@@ -2095,6 +2138,12 @@ _init_cycle() {
       # cron churn.
       if ! _init_no_systemd; then
         _msg "[init][ERROR] cycl ==> Conversion incomplete -- NOT launching boa install; see the nosd errors above" >> "${_logInt}"
+        sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
+        rm -f /run/autoinit.pid
+        exit 1
+      fi
+      if ! _autoinit_dpkg_residue_gate; then
+        _msg "[init][ERROR] cycl ==> Conversion incomplete -- NOT launching boa install; dpkg left packages unconfigured (the dpkg line above): run dpkg --configure -a and apt-get -f install, then run autoinit again" >> "${_logInt}"
         sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
         rm -f /run/autoinit.pid
         exit 1
