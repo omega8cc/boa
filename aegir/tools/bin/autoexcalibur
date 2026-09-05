@@ -145,7 +145,24 @@ _msg() {
 _barracuda_pass() {
   local _marker="$1"
   local _try=1
+  local _wait
+  local _held
   while :; do
+    # Another BOA run (the install's deferred octopus pass, a cron-fired
+    # upgrade) makes the wrapper refuse outright; wait for it rather than
+    # burn the retry on a box that is merely busy.
+    _wait=0
+    while :; do
+      _held=$(ls /run/boa_run.pid /run/boa_wait.pid /run/boa_system_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' ')
+      [ -z "${_held}" ] && break
+      if [ "${_wait}" -eq 0 ]; then
+        _msg "NOTE: another BOA run holds the lock (${_held}); waiting up to 60 minutes for it to finish" >> "${_logExc}"
+      fi
+      [ "${_wait}" -ge 3600 ] && break
+      sleep 30
+      _wait=$((_wait + 30))
+    done
+    [ "${_wait}" -gt 0 ] && _msg "NOTE: waited ${_wait} seconds for the other BOA run" >> "${_logExc}"
     [ -n "${_marker}" ] && rm -f "${_marker}"
     /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logExc}"
     wait
@@ -522,7 +539,7 @@ if [ -e "/root/.run-to-excalibur.cnf" ] \
   _msg "Launching standard barracuda up-${_tRee} system now" >> "${_logExc}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   _barracuda_pass "/root/.latest-barracuda-upgrade-finale.info"
-  _msg "The standard barracuda up-${_tRee} system completed" >> "${_logExc}"
+  [ -e "/root/.latest-barracuda-upgrade-finale.info" ] && _msg "The standard barracuda up-${_tRee} system completed" >> "${_logExc}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
     _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -570,7 +587,7 @@ if [ -e "/root/.run-to-excalibur.cnf" ] \
   _msg "to complete the first stage of major OS upgrade" >> "${_logExc}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   _barracuda_pass "/root/.latest-barracuda-upgrade-finale.info"
-  _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logExc}"
+  [ -e "/root/.latest-barracuda-upgrade-finale.info" ] && _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logExc}"
   echo " " >> "${_logExc}"
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
