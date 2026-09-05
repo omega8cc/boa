@@ -1975,7 +1975,8 @@ _site_socket_inc_gen() {
         _phpFnd=YES
       fi
     done
-    sed -i "s/ *$//g; /^$/d" ${_mltFpm}
+    # still absent when no PHP binary was found above and nothing appended
+    [ -f "${_mltFpm}" ] && sed -i "s/ *$//g; /^$/d" ${_mltFpm}
     wait
     touch ${_dscUsr}/log/no-lock-aegir-fpm.txt
     rm -f ${_dscUsr}/log/locked-aegir-fpm.txt
