@@ -1302,13 +1302,31 @@ _fetch_versioned() {
   if [[ -s "${_new}" ]]; then
     if [[ -e "${_dst}" ]] && cmp -s "${_new}" "${_dst}"; then
       rm -f "${_new}"                       # already current -- no disruption
+      # A serial CHANGE promises new content, so identical bytes mean the
+      # mirror answering us has not caught up with the publish yet (a passive
+      # mirror pulls the tree once a minute; measured 2026-09-06: a box fetched
+      # 66 s after the origin moved, received the previous bytes, and armed the
+      # new serial over them -- pinned stale until the revalidation window).
+      # Do not arm the marker on such a fetch; the next pass asks again. Bounded:
+      # a serial bumped without a content change must not refetch forever, so
+      # after an hour of identical answers the marker is armed anyway. A first
+      # install (no marker of any serial yet) keeps arming: the tarball-deployed
+      # copy legitimately equals the published one.
+      if [[ ! -e "${_ctl}" ]] && ls "${_pthLog}/${_cnm}.ctrl."* >/dev/null 2>&1; then
+        local _stl="${_pthLog}/${_cnm}.stale.${_srl}.${_tRee}.${_xSrl}.pid"
+        if [[ -z "$(find "${_stl}" -mmin +60 2>/dev/null)" ]]; then
+          [[ -e "${_stl}" ]] || touch "${_stl}"
+          echo "The ${_cnm} ${_srl} fetch returned the bytes already deployed -- mirror not caught up, retrying next pass"
+          return 0
+        fi
+      fi
     else
       chmod "${_mode}" "${_new}"
       chown "${_own}" "${_new}"
       mv -f "${_new}" "${_dst}"             # first install or self-heal (atomic)
     fi
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
-    rm -f "${_pthLog}/${_cnm}.ctrl."*
+    rm -f "${_pthLog}/${_cnm}.ctrl."* "${_pthLog}/${_cnm}.stale."*
     touch "${_ctl}"                         # (re-)arm marker + revalidation window
   elif [[ "${_cod}" == "304" ]]; then
     # The server confirmed the deployed copy is current, so this is success with an
