@@ -2121,6 +2121,12 @@ _init_setup() {
     fi
     _display_admin_email_info
     sleep 1
+    # the console hint above told the operator to wait for these two lines;
+    # every other route prints them from _init_finish, this one never did
+    echo
+    echo BOA ${_cmNd} completed
+    echo Bye
+    echo
     exit 0
   else
     _init_finish
