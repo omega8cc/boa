@@ -116,9 +116,26 @@ _not_supported_os() {
 # them holding the lock made an install below fail with "Could not get
 # lock", an error _mrun keeps off the console -- packages then went silently
 # missing on chimaera and the source builds died later without them.
+# 0 when some process holds one of the dpkg/apt lock files. fuser (psmisc)
+# is not on every fresh image, so fall back to a /proc scan of open files.
+_apt_lock_held() {
+  local _l _fd
+  if command -v fuser > /dev/null 2>&1; then
+    fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock > /dev/null 2>&1
+    return $?
+  fi
+  for _fd in /proc/[0-9]*/fd/*; do
+    _l="$(readlink "${_fd}" 2> /dev/null)" || continue
+    case "${_l}" in
+      /var/lib/dpkg/lock-frontend|/var/lib/dpkg/lock|/var/lib/apt/lists/lock) return 0 ;;
+    esac
+  done
+  return 1
+}
+
 _apt_lock_wait() {
   local _i=0
-  while fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock > /dev/null 2>&1; do
+  while _apt_lock_held; do
     _i=$((_i + 1))
     if [ "${_i}" -eq 1 ] && [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "WAIT: another package manager holds the dpkg/apt lock, waiting for it..."

@@ -6816,10 +6816,13 @@ _curl_install_src() {
           fi
           _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
           if [ -e "${_PKG_CONFIG_PATH}" ]; then
-            # configure honours PKG_CONFIG_PATH only through pkg-config itself
-            if ! _pkg_installed "pkg-config"; then
-              _mrun "${_INSTAPP} pkg-config"
-            fi
+            # configure honours PKG_CONFIG_PATH only through pkg-config itself,
+            # and refuses to build without libpsl since curl 8.6
+            for _PKG in pkg-config libpsl-dev; do
+              if ! _pkg_installed "${_PKG}"; then
+                _mrun "${_INSTAPP} ${_PKG}"
+              fi
+            done
             cd /var/opt/curl-${_CURL_VRN}
             _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
               --with-openssl \
@@ -8010,7 +8013,10 @@ _run_aptitude_deps_install() {
     # /usr/local/ssl*: without it cURL's configure ignores PKG_CONFIG_PATH
     # and fails with "OpenSSL libs and/or directories were not found".
     # Daedalus images happen to carry it; a converted chimaera box does not.
-    for _PKG in build-essential pkg-config libsasl2-modules time vim cvs makepasswd; do
+    # libpsl-dev: mandatory for the cURL source build since curl 8.6
+    # ("libpsl libs and/or directories were not found" otherwise); psmisc
+    # carries fuser, which the apt lock wait relies on.
+    for _PKG in build-essential pkg-config libpsl-dev psmisc libsasl2-modules time vim cvs makepasswd; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
