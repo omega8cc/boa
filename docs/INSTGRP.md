@@ -97,7 +97,7 @@ limited shell:
 ```sh
 instgrp status  oN | all
 instgrp convert oN | all [--from-octopus] [--force]
-instgrp reclaim oN | all
+instgrp reclaim oN | all [--force]
 instgrp revert  oN [--keep-enabled]
 instgrp check
 ```
