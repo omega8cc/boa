@@ -135,6 +135,33 @@ _msg() {
   echo "AutoDaedalus v.${_tRee} [$(date +%T)] ==> $*"
 }
 
+###
+### One barracuda system pass, verified by the marker it must leave behind.
+### A pass that ends without it did not run to its end (a licence gate that
+### could not reach its key server right after the reboot, a mirror not
+### answering yet): it is retried once after a minute, and a second miss is
+### logged loudly instead of parking the chain in silence.
+###
+_barracuda_pass() {
+  local _marker="$1"
+  local _try=1
+  while :; do
+    [ -n "${_marker}" ] && rm -f "${_marker}"
+    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
+    wait
+    [ -z "${_marker}" ] && return 0
+    [ -e "${_marker}" ] && return 0
+    if [ "${_try}" -ge 2 ]; then
+      _msg "ERROR: barracuda up-${_tRee} system ended twice without ${_marker}; the upgrade chain stops here" >> "${_logAds}"
+      _msg "ERROR: review the newest log in /var/backups/reports/up/barracuda/, fix the cause, then reboot or run this driver again to resume" >> "${_logAds}"
+      return 1
+    fi
+    _msg "WARN: barracuda up-${_tRee} system ended without ${_marker}; retrying once in 60 seconds" >> "${_logAds}"
+    sleep 60
+    _try=$((_try + 1))
+  done
+}
+
 _check_manufacturer_compatibility() {
   # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
@@ -480,8 +507,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   _msg "The barracuda php-idle disable completed" >> "${_logAds}"
   _msg "Launching standard barracuda up-${_tRee} system now" >> "${_logAds}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
-  wait
+  _barracuda_pass "/root/.latest-barracuda-upgrade-finale.info"
   _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAds}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
@@ -504,8 +530,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
     fi
     _msg "The first stage of major OS upgrade will start now" >> "${_logAds}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
-    wait
+    _barracuda_pass "/root/.run_post_major_os_upgrade.info"
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       _msg "The first stage of major OS upgrade completed" >> "${_logAds}"
       _msg "The system will reboot now" >> "${_logAds}"
@@ -527,8 +552,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   _msg "Launching post-reboot barracuda up-${_tRee} system" >> "${_logAds}"
   _msg "to complete the first stage of major OS upgrade" >> "${_logAds}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
-  wait
+  _barracuda_pass "/root/.latest-barracuda-upgrade-finale.info"
   _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logAds}"
   echo " " >> "${_logAds}"
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
@@ -568,8 +592,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     _msg "The second stage of major OS upgrade will start now" >> "${_logAds}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
-    wait
+    _barracuda_pass "/root/.run_post_major_os_upgrade.info"
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       _msg "The second stage of major OS upgrade completed" >> "${_logAds}"
       _msg "The system will reboot now" >> "${_logAds}"
@@ -592,8 +615,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   _msg "Launching the final post-second-reboot barracuda up-${_tRee} system" >> "${_logAds}"
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
-  wait
+  _barracuda_pass "/root/.latest-barracuda-upgrade-finale.info"
   [ -e "/root/.run-to-daedalus.cnf" ] && rm -f /root/.run-to-daedalus.cnf
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-daedalus-one.cnf

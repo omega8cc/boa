@@ -58,6 +58,14 @@ _verify_boa_keys() {
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
+    elif [ "${_allw}" = "YES" ]; then
+      # A fleet-domain host is allowed on its name alone; a key fetch that
+      # failed (resolver not up yet, key server unreachable) decides nothing
+      # for it, so it is noted and the tool proceeds.
+      echo
+      echo "NOTE: the key server could not be reached; ${_hName} is allowed by its hostname"
+      echo
+      rm -f /var/opt/_encN*
     else
       echo
       echo "Your system requires valid license to use this BOA feature"
