@@ -182,7 +182,10 @@ place: it belongs to the account.
   and runs `instgrp reclaim` on a hit; the 3-minute limited-shell worker
   moves an identity that fell back to the box-wide primary group (a hand
   `usermod`, a restored passwd) back onto the account's group; the octopus
-  upgrade re-converts. Nothing else re-groups a tree between those.
+  upgrade re-converts. Nothing else re-groups a tree between those. An
+  account frozen for a migration (`log/proxied.pid`) is outside all of it:
+  the nightly never visits it and `reclaim` skips it, so a frozen
+  destination is healed only by the migration tool's own pass (below).
 - Ægir backups, restores, clones and migrations need no conversion step:
   the extracting process is the account's backend user, so the restored
   files take the account's primary group. Root-run restores are different:
@@ -196,13 +199,16 @@ place: it belongs to the account.
   name has different GIDs on two boxes. rsync maps ids by name, and the
   source account's group has no name on a destination whose account is not
   converted, so a moved tree lands there in an unassigned numeric gid.
-  `xoct transfer`, `xcopy transfer` and a hand-run `xmass sync --live`
-  therefore run a group pass on the destination after every copy (`instgrp
-  reclaim` where the tool is installed: paths in no group, in `users` or in
-  another named group take the destination account's group, `users` while
-  unconverted; passed `--force`, because the destination's own
-  `log/proxied.pid`, if any, is its demotion artefact from an earlier
-  cutover, not an account served from elsewhere), the xmass legs map the source account's group onto the
+  `xoct transfer`, `xcopy transfer`, a hand-run `xmass sync --live` and
+  `aegir2boa-stage2 transfer` therefore run a group pass on the destination
+  after every copy (`instgrp reclaim` where the tool is installed: paths in
+  no group, in `users` or in another named group take the destination
+  account's group, `users` while unconverted; passed `--force`, because the
+  destination's own `log/proxied.pid`, if any, is its demotion artefact
+  from an earlier cutover — or, for stage2, a freeze left by a killed
+  import — not an account served from elsewhere; when the tool keeps
+  deferring behind a live BOA run, the same inline pass runs instead), the
+  xmass legs map the source account's group onto the
   destination account's group as they copy (so the 15-minute standby
   autosync never lands a foreign gid), and none of them carry the
   conversion marker -- it recorded the source box's
