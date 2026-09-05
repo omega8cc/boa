@@ -1828,6 +1828,31 @@ _xoct_wait_target_install_settled() {
   return 0
 }
 
+### Bounded wait until the TARGET holds no BOA run lock. Every account
+### install leaves a background octopus run behind (the in-flow post-install
+### upgrade, and the re-seeded run-upgrade.pid a repeated create arms), so the
+### next 'boa in-octopus' on the same target finds /run/boa_run.pid and the
+### launcher refuses with "Another BOA installer is running" -- a refusal the
+### create used to walk past and report complete. Wait it out here, bounded,
+### and let the caller fail when the box never goes quiet.
+_xoct_wait_target_quiet() {
+  local _t="$1" _w=0 _busy
+  local _max="${_XOCT_TARGET_QUIET_MAX_WAIT:-1800}"
+  case "${_max}" in ''|*[!0-9]*) _max=1800 ;; esac
+  while [ "${_w}" -lt "${_max}" ]; do
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '" 2>/dev/null)
+    if [ -z "${_busy}" ]; then
+      [ "${_w}" -gt 0 ] && echo "INFO: target ${_t} quiet after ${_w}s"
+      return 0
+    fi
+    [ "${_w}" -eq 0 ] && echo "INFO: a BOA run holds ${_t} (${_busy}); waiting up to ${_max}s before the install"
+    sleep 30
+    _w=$(( _w + 30 ))
+  done
+  echo "ALRT: target ${_t} still busy after ${_max}s (${_busy}); not launching the install into a refusal"
+  return 1
+}
+
 ### Bounded wait until BOA's own heavyweight jobs are quiet on THIS box;
 ### replaces the runbook's "wait ~5 minutes" guess before an import.
 _xoct_wait_boa_quiet() {
@@ -2425,6 +2450,7 @@ _migrate_prepare() {
         ### with their existing one -- suppress it for this install only,
         ### preserving any operator-set marker. An unreadable probe means
         ### "unknown": never touch, never remove someone else's marker.
+        _xoct_wait_target_quiet "${_tgt}" || exit 1
         _SILENT_MARKER=NO
         _SILENT_PROBE=$(ssh root@${_tgt} "[ -e /root/.silent.update.cnf ] && echo YES || echo NO" 2>/dev/null)
         if [ "${_SILENT_PROBE}" = "NO" ]; then
@@ -2446,9 +2472,22 @@ _migrate_prepare() {
         trap '[ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
+        _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
           ssh root@${_tgt} "rm -f /root/.silent.update.cnf"
           _SILENT_MARKER=NO
+        fi
+        ### The launcher exits 1 without installing when a run lock is held
+        ### (and the install can die for its own reasons): prove the account
+        ### exists before seeding anything, never report a refusal complete.
+        _TGT_BORN=$(ssh root@${_tgt} "getent passwd ${_TGT_HM_USER} >/dev/null 2>&1 \
+          && [ -e /root/.${_TGT_HM_USER}.octopus.cnf ] \
+          && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
+          && echo BORN" 2>/dev/null)
+        if [ "${_TGT_BORN}" != "BORN" ]; then
+          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
+          echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
+          exit 1
         fi
         ### Restore the single-flight lock's cleanup (see _take_verb_lock) --
         ### a bare `trap -` here would orphan ${_XOCT_LOCK_FILE} for the whole
