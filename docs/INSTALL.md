@@ -77,7 +77,7 @@
    cat /root/.autoinit-verbose.log
    ```
 
-   `autoinit` answers the one question that used to stop this step: a `grub-pc` whose boot-device answer is empty (hand-built and some vendor VMs) cannot be configured without a terminal, and every later `apt` run on the box fails on it. The verbose log then shows `grub ==> Seeding the empty grub-pc install device with /dev/sda` and the conversion carries on; any package `dpkg` still leaves unconfigured after a hop is listed in a `WARN: dpkg ==> packages left unconfigured` line.
+   `autoinit` answers the one question that used to stop this step: a `grub-pc` whose boot-device answer is empty (hand-built and some vendor VMs) cannot be configured without a terminal, and every later `apt` run on the box fails on it. The verbose log then shows `grub ==> Seeding the empty grub-pc install device with /dev/sda` and the conversion carries on; any package `dpkg` still leaves unconfigured after a hop is listed in a `WARN: dpkg ==> packages left unconfigured` line. Should packages still be unconfigured once the conversion is otherwise complete, `autoinit` repairs once more and, failing that, stops before the BOA install with an `ERROR` that names them and the two commands to run (`dpkg --configure -a`, `apt-get -f install`); running `autoinit` again then continues where it stopped.
 
    If the log nevertheless ends with a `grub-pc` warning, fix GRUB by hand before proceeding to the BOA stack install:
 
