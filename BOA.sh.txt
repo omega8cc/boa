@@ -4527,9 +4527,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f98 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f67 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f10 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f41 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f66 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f9 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f40 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f92 --guard /local/bin/autochimaera

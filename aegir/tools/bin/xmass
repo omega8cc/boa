@@ -180,10 +180,13 @@ _acct_regroup_remote() {
   [ -n "${_X_A}" ] && [ -n "${_X_H}" ] || return 0
   ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_X_H}" "bash -s" <<REMOTE
 _A='${_X_A}'
+_DEFERRED=0
 if [ -x /opt/local/bin/instgrp ]; then
   # A live run on the destination (its own octopus finisher, a tool
   # refresh) makes reclaim defer with rc 4 for a short window; wait it out,
-  # bounded, rather than leave the copied tree in DRIFT until the nightly.
+  # bounded. When it never clears, the inline form below runs instead: a
+  # destination carrying log/proxied.pid is never visited by the nightly
+  # (owl.sh skips it), so the pass must complete here or not at all.
   _T=0
   while :; do
     # --force: the destination's own log/proxied.pid is its demotion artefact
@@ -192,7 +195,8 @@ if [ -x /opt/local/bin/instgrp ]; then
     # tool's freeze gate would otherwise refuse it for good
     bash /opt/local/bin/instgrp reclaim "\${_A}" --force
     _R=\$?
-    [ "\${_R}" = "4" ] && [ "\${_T}" -lt 12 ] || exit "\${_R}"
+    [ "\${_R}" = "4" ] || exit "\${_R}"
+    [ "\${_T}" -lt 12 ] || { _DEFERRED=1; break; }
     _T=\$((_T + 1))
     sleep 15
   done
@@ -216,11 +220,15 @@ if [ -f "\${_M}" ]; then
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
   { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
 fi
+if [ "\${_DEFERRED}" = "1" ]; then
+  echo "INFO: target group pass for \${_A}: the tool deferred 13 times (a BOA run live there); the inline form ran instead, group \${_G}"
+  exit 4
+fi
 echo "INFO: target group pass for \${_A}: group \${_G} (inline form, instgrp not installed there)"
 exit 0
 REMOTE
   _X_RC=$?
-  [ "${_X_RC}" = "0" ] || echo "ALERT: target group pass for ${_X_A} on ${_X_H} returned ${_X_RC} (2 drift left, 3 identities disagree, 4 deferred, 255 ssh); run 'instgrp status ${_X_A}' there"
+  [ "${_X_RC}" = "0" ] || echo "ALERT: target group pass for ${_X_A} on ${_X_H} returned ${_X_RC} (2 drift left, 3 identities disagree, 4 deferred (the inline form ran), 255 ssh); run 'instgrp status ${_X_A}' there"
   return "${_X_RC}"
 }
 
