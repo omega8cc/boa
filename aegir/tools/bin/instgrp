@@ -19,7 +19,7 @@
 # Usage:
 #   instgrp status  <account>|all
 #   instgrp convert <account>|all [--from-octopus] [--force]
-#   instgrp reclaim <account>|all
+#   instgrp reclaim <account>|all [--force]
 #   instgrp revert  <account> [--keep-enabled]
 #   instgrp check
 #
@@ -136,7 +136,7 @@ _usage() {
 Usage:
   instgrp status  <account>|all
   instgrp convert <account>|all [--from-octopus] [--force]
-  instgrp reclaim <account>|all
+  instgrp reclaim <account>|all [--force]
   instgrp revert  <account> [--keep-enabled]
   instgrp check
 
@@ -154,7 +154,7 @@ Usage:
   check    are the fetched root-run writers on this box group-aware?
 
   --from-octopus  the octopus upgrade arm holds /run/boa_run.pid itself.
-  --force         convert an account frozen for a migration (log/proxied.pid).
+  --force         convert or reclaim an account frozen for a migration (log/proxied.pid).
   --keep-enabled  revert without writing _INSTANCE_GROUP=NO into the cnf.
   Exit: 0 done, 1 failed, 2 drift, 3 inconsistent, 4 skipped (busy, frozen,
   a live BOA run), 5 not ready (writers still box-wide; retried next pass).
@@ -843,6 +843,15 @@ _do_reclaim() {
   local _a="$1" _to _from _uGid _gid _roots _subs _ids _m _u _conv=NO _anyAcct=NO _anyUsers=NO
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
+  # The same freeze convert honours: a frozen account is served from another
+  # box mid-migration, and re-grouping its tree from the nightly's drift probe
+  # or a restore is a write into a tree in flight. --force is the operator's
+  # override, as for convert.
+  if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
+    _alrt "${_a}: frozen for a migration (log/proxied.pid), reclaim skipped this pass (--force overrides)"
+    _log "${_a}: RECLAIM skipped: frozen"
+    return 4
+  fi
   # No lock is taken, but a live install or upgrade run owns the account's
   # identities and files right now: defer, every caller can retry.
   [ "${_FROM_OCTOPUS}" != "YES" ] && _reap_own_stale_lock
