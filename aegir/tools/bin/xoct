@@ -2509,6 +2509,14 @@ _migrate_prepare() {
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      ### What the target's last pass actually configured (its octopus_log
+      ### line) and the per-site pin file it holds NOW, read before the seed
+      ### overwrites the witnesses: they decide below whether the enforced
+      ### upgrade has any work left to do.
+      _TGT_LAST_PASS=$(ssh root@${_tgt} "tail -1 /data/disk/${_TGT_HM_USER}/log/octopus_log.txt 2>/dev/null" 2>/dev/null)
+      _TGT_FPM_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'FPM [0-9.]+' | awk '{print $2}')
+      _TGT_CLI_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'CLI [0-9.]+' | awk '{print $2}')
+      _TGT_MULTI_WAS=$(ssh root@${_tgt} "md5sum /data/disk/${_TGT_HM_USER}/static/control/multi-fpm.info 2>/dev/null" 2>/dev/null | awk '{print $1}')
       _xoct_seed_target_control_pins "${_USR}" "/data/disk/${_TGT_HM_USER}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_sync_shell_credentials "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### Verify the pins actually took (catches the availability-fallback
@@ -2521,11 +2529,37 @@ _migrate_prepare() {
           echo "ALRT: ${_pinVar} differs after seeding: source=${_SRC_PIN} target=${_TGT_PIN}"
         fi
       done
+      ### The enforced upgrade exists to make the target's next octopus pass
+      ### apply the seeded pins. Arm it only when a pass still has work to
+      ### do: the last pass recorded a different FPM or CLI than the seeded
+      ### pin, or the per-site pin file changed under the seed, or no pass
+      ### has recorded anything yet. The previous guard keyed on
+      ### log/upgrademail.txt, which the silent install never writes, so
+      ### every repeated create re-armed a full pass on a converged account
+      ### and the target never went quiet between prep-target runs.
+      _SRC_FPM_PIN=$(grep "^_PHP_FPM_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+      _SRC_CLI_PIN=$(grep "^_PHP_CLI_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+      _TGT_MULTI_NOW=$(ssh root@${_tgt} "md5sum /data/disk/${_TGT_HM_USER}/static/control/multi-fpm.info 2>/dev/null" 2>/dev/null | awk '{print $1}')
+      _ARM_UPGRADE=NO
+      if [ -z "${_TGT_FPM_RUN}" ] || [ -z "${_TGT_CLI_RUN}" ]; then
+        _ARM_UPGRADE=YES
+      elif [ -n "${_SRC_FPM_PIN}" ] && [ "${_SRC_FPM_PIN}" != "${_TGT_FPM_RUN}" ]; then
+        _ARM_UPGRADE=YES
+      elif [ -n "${_SRC_CLI_PIN}" ] && [ "${_SRC_CLI_PIN}" != "${_TGT_CLI_RUN}" ]; then
+        _ARM_UPGRADE=YES
+      elif [ "${_TGT_MULTI_WAS}" != "${_TGT_MULTI_NOW}" ]; then
+        _ARM_UPGRADE=YES
+      fi
       ### Stale-pid cleanup FIRST, then the enforced-upgrade trigger: the
       ### historical order deleted the run-upgrade.pid it had just created.
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/static/control/*.pid"
-      ssh root@${_tgt} "test ! -e /data/disk/${_TGT_HM_USER}/log/upgrademail.txt && /bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info"
-      ssh root@${_tgt} "test ! -e /data/disk/${_TGT_HM_USER}/log/upgrademail.txt && /bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
+      if [ "${_ARM_UPGRADE}" = "YES" ]; then
+        ssh root@${_tgt} "/bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info"
+        ssh root@${_tgt} "/bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
+        echo "INFO: enforced upgrade armed on ${_tgt} for ${_TGT_HM_USER} (last pass FPM ${_TGT_FPM_RUN:-none} / CLI ${_TGT_CLI_RUN:-none}, pins FPM ${_SRC_FPM_PIN:-n/a} / CLI ${_SRC_CLI_PIN:-n/a})"
+      else
+        echo "INFO: ${_TGT_HM_USER} on ${_tgt} already runs FPM ${_TGT_FPM_RUN} / CLI ${_TGT_CLI_RUN} with the seeded pins; no upgrade armed"
+      fi
       echo "INFO: new octopus ${_TGT_HM_USER} setup on ${_tgt} complete"
     else
       echo "ALRT: new octopus ${_TGT_HM_USER} setup on ${_tgt} failed because of missing arguments"
