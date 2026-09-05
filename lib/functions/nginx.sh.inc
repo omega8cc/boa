@@ -758,10 +758,18 @@ _nginx_initd_check() {
     ### the daily logrotate cron fail and left nginx writing to the
     ### renamed log files until the next reload.
     _X_INIT_TEST_C=$(cat /etc/init.d/nginx | grep rotate 2>&1)
+    ### The passive-standby hold gates start() in this script (the escape
+    ### hatch /root/.standby.serve.cnf names it). A deployed copy that
+    ### predates the hold passes the three tests above and was never
+    ### refreshed, so an upgraded mirror still booted its web tier and
+    ### served its own panel until the watchdog caught up. Refresh on the
+    ### gate's absence too.
+    _X_INIT_TEST_D=$(cat /etc/init.d/nginx | grep standby.serve.cnf 2>&1)
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] \
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
-    && [[ "${_X_INIT_TEST_C}" =~ rotate ]]; then
+    && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
+    && [[ "${_X_INIT_TEST_D}" =~ standby.serve.cnf ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
   else
