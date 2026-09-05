@@ -8038,7 +8038,15 @@ _run_aptitude_deps_install() {
       _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
     fi
 
-    for _PKG in libssl-dev libssl3 mcrypt; do
+    # The runtime OpenSSL package is libssl3 from bookworm/daedalus on and
+    # libssl1.1 before that; asking aptitude for a name the suite does not
+    # carry fails the whole request ("Unable to locate package libssl3").
+    case "${_OS_CODE}" in
+      excalibur|daedalus|trixie|bookworm) _LIBSSL_PKG="libssl3" ;;
+      jessie) _LIBSSL_PKG="libssl1.0.0" ;;
+      *) _LIBSSL_PKG="libssl1.1" ;;
+    esac
+    for _PKG in libssl-dev ${_LIBSSL_PKG} mcrypt; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -8104,7 +8112,8 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils lspci; do
+    # lspci is a binary in pciutils, never a package of its own
+    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
