@@ -495,8 +495,13 @@ _update_conf_variable() {
   _conf_file="$3"
 
   if grep -qE "^#?${_var_name}=" "${_conf_file}"; then
-    # Variable exists, uncomment and update value
-    sed -i "s|^#\?${_var_name}=.*|${_var_name}=\"${_default_value}\"|g" "${_conf_file}"
+    # Variable exists, uncomment and update value. The value goes into the
+    # replacement side, where the delimiter, & and a backslash are special:
+    # _DEFAULT_NGINX_DOS_STOP carries | in its pattern, and unescaped it
+    # ended the expression early ("unknown option to `s'") on every box whose
+    # cnf already listed the key, so that default was never written there.
+    _safe_value=$(printf '%s' "${_default_value}" | sed -e 's/[\\&|]/\\&/g')
+    sed -i "s|^#\?${_var_name}=.*|${_var_name}=\"${_safe_value}\"|g" "${_conf_file}"
   else
     # Variable doesn't exist, append to the file
     echo "${_var_name}=\"${_default_value}\"" >> "${_conf_file}"
