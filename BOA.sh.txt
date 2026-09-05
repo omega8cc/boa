@@ -653,6 +653,15 @@ _verify_boa_keys() {
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
+    elif [ "${_allw}" = "YES" ]; then
+      # A fleet-domain or sslip.io host is allowed on its name alone; the key
+      # fetch that failed here decides nothing for it. Right after a reboot
+      # (the codename drivers relaunch within 30 seconds) DNS may not answer
+      # yet, and refusing then stopped a running upgrade chain silently.
+      echo
+      echo "NOTE: the key server could not be reached; ${_hName} is allowed on the ${_tRee} tree by its hostname"
+      echo
+      rm -f /var/opt/_encN*
     else
       echo
       echo "Your system requires valid license to use this BOA version (${_tRee})"
