@@ -77,6 +77,14 @@ cycle automatically (idling inactive PHP versions first to limit the rebuild sur
 otherwise it runs the normal system upgrade. Once 7.4 carries `intl`, detection is
 false and the plain upgrade path runs — so it is self-limiting.
 
+**`php-max` boxes are excluded.** When the weekly line carries `php-max` (every PHP
+version kept installed by policy — the builder mirrors, and any box that must be able
+to check or rebuild any version on demand), the wrapper never runs the cycle: the idle
+step would move every version no hosted site uses out of `/opt`, and the two passes
+would then rebuild the whole set from source twice. Such a box always takes the plain
+upgrade and logs one `INFO` line about the skipped cycle; if 7.4 `intl` is wanted
+there, use the manual procedure above.
+
 Notes:
 
 - This applies on **every branch** (dev/pro/lts) — the tier is irrelevant. It runs

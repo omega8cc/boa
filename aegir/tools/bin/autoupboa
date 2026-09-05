@@ -48,13 +48,31 @@ _php74_intl_missing() {
 _run_weekly_system_upgrade() {
   shift  ### drop the weekly-system keyword; "$@" is now the barracuda upgrade args
   local _bootMark="/var/log/boa/.php74_intl_bootstrap.active"
+  local _phpMax=NO
+  local _intlMissing=NO
+  local _arg=""
   ### resume safety: a leftover marker means a prior run pinned but did not unpin
   ### (the pin is ours, not an operator's), so clear it before deciding this run
   if [ -e "${_bootMark}" ]; then
     sed -i '/^_ICU_FORCE_VRN=/d' "${_barCnf}"
     rm -f "${_bootMark}"
   fi
-  if _php74_intl_missing; then
+  ### php-max keeps every PHP version installed by policy: the builder mirrors,
+  ### and any box that must be able to check or rebuild any version on demand.
+  ### The bootstrap below opens by idling every version no hosted site uses --
+  ### on such a box that is all but the default -- and its two passes would
+  ### then rebuild the whole set from source twice. Neither is wanted there, so
+  ### php-max always takes the plain upgrade; 7.4 intl on such a box is the
+  ### manual procedure in docs/ICU-PIN.md.
+  for _arg in "$@"; do
+    [ "${_arg}" = "php-max" ] && _phpMax=YES
+  done
+  _php74_intl_missing && _intlMissing=YES
+  if [ "${_intlMissing}" = "YES" ] && [ "${_phpMax}" = "YES" ]; then
+    echo "INFO: PHP 7.4 present without intl, but php-max keeps every version -- no idle, no ICU pin cycle (see docs/ICU-PIN.md)"
+    _intlMissing=NO
+  fi
+  if [ "${_intlMissing}" = "YES" ]; then
     echo "INFO: PHP 7.4 present without intl -- bootstrapping via temporary ICU 73 pin"
     touch "${_bootMark}"
     /opt/local/bin/barracuda php-idle disable
