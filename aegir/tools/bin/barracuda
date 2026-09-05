@@ -509,6 +509,11 @@ _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
+  elif [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    # No credentials and no Ægir master: an install that stopped before its
+    # database stage wrote them. The pass being re-run is what creates them.
+    echo "NOTE: no database credentials yet and no Ægir master: an unfinished install, continuing"
+    return 0
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
     echo "ALERT: Please fix this before trying again, giving up."
