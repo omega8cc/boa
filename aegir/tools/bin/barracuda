@@ -842,6 +842,12 @@ _check_php_cli() {
       rm -f /usr/bin/php-cli
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
+    elif [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+      # No PHP and no Ægir master: an install that stopped before its PHP
+      # stage. "Fix it and run the upgrade again" is what the fatal message
+      # asks for, and that upgrade is what installs PHP -- refusing here
+      # left such a box with no way forward but a wipe.
+      echo "NOTE: no PHP-CLI yet and no Ægir master: an unfinished install, continuing"
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
       echo "ERROR: BOA requires PHP 8.3 or newer"
