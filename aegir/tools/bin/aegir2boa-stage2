@@ -1404,24 +1404,65 @@ verb_transfer() {
     "root@${_TARGET}:${_dst}/src/a2b/nginx-ref/" 2>>"${_LOG}"
   # Everything staged above landed with this box's numeric gids; the
   # target's own tool hands the whole account tree to the account's group
-  # there (the inline chowns above cover a target without it). A live run
-  # on the target (its octopus finisher, a tool refresh) makes reclaim defer
-  # with rc 4 for a short window: wait it out, bounded, and say what was
-  # left rather than swallow it and leave the adopted tree in DRIFT.
-  ssh "root@${_TARGET}" "[ -x /opt/local/bin/instgrp ] || exit 0
-    _t=0
-    while :; do
-      # --force: a killed import can leave the target's own freeze marker
-      # behind; the adopted tree is what needs the file half
-      bash /opt/local/bin/instgrp reclaim '${_ACCOUNT}' --force
-      _r=\$?
-      [ \"\${_r}\" = \"4\" ] && [ \"\${_t}\" -lt 12 ] || exit \"\${_r}\"
-      _t=\$((_t + 1))
-      sleep 15
-    done" >>"${_LOG}" 2>&1
+  # there. A live run on the target (its octopus finisher, a tool refresh)
+  # makes reclaim defer with rc 4 for a short window: wait it out, bounded,
+  # then run the inline pass rather than leave the adopted tree in foreign
+  # gids -- a target carrying log/proxied.pid is outside the nightly.
+  # The remote body is the same pass xoct, xcopy and xmass run on their
+  # destinations (verbatim): the tool with --force, bounded while it defers,
+  # the inline form when it never stops deferring or is not installed.
+  ssh "root@${_TARGET}" "bash -s" <<REMOTE >>"${_LOG}" 2>&1
+_A='${_ACCOUNT}'
+_DEFERRED=0
+if [ -x /opt/local/bin/instgrp ]; then
+  # A live run on the destination (its own octopus finisher, a tool
+  # refresh) makes reclaim defer with rc 4 for a short window; wait it out,
+  # bounded. When it never clears, the inline form below runs instead: a
+  # destination carrying log/proxied.pid is never visited by the nightly
+  # (owl.sh skips it), so the pass must complete here or not at all.
+  _T=0
+  while :; do
+    # --force: the destination's own log/proxied.pid is its demotion artefact
+    # from an earlier cutover (a failback), not "served from elsewhere"; the
+    # tree this run just wrote is exactly what needs the file half, and the
+    # tool's freeze gate would otherwise refuse it for good
+    bash /opt/local/bin/instgrp reclaim "\${_A}" --force
+    _R=\$?
+    [ "\${_R}" = "4" ] || exit "\${_R}"
+    [ "\${_T}" -lt 12 ] || { _DEFERRED=1; break; }
+    _T=\$((_T + 1))
+    sleep 15
+  done
+fi
+_G=users
+if getent group "\${_A}" > /dev/null 2>&1; then
+  [ "\$(id -gn "\${_A}" 2>/dev/null)" = "\${_A}" ] && _G="\${_A}"
+  [ "\$(id -gn "\${_A}.ftp" 2>/dev/null)" = "\${_A}" ] && _G="\${_A}"
+fi
+_MP=""; _N=0
+for _M in /mnt/*; do
+  [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
+done
+[ "\${_N}" = "1" ] || _MP=""
+for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
+  [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+done
+_M="/data/disk/\${_A}/log/instance-group.txt"
+if [ -f "\${_M}" ]; then
+  _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
+  { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
+fi
+if [ "\${_DEFERRED}" = "1" ]; then
+  echo "INFO: target group pass for \${_A}: the tool deferred 13 times (a BOA run live there); the inline form ran instead, group \${_G}"
+  exit 4
+fi
+echo "INFO: target group pass for \${_A}: group \${_G} (inline form, instgrp not installed there)"
+exit 0
+REMOTE
   _rrc=$?
   [[ "${_rrc}" = "0" ]] \
-    || _alrt "target group pass for ${_ACCOUNT} returned ${_rrc} (2 drift left, 3 identities disagree, 4 deferred); run 'instgrp status ${_ACCOUNT}' on the target"
+    || _alrt "target group pass for ${_ACCOUNT} returned ${_rrc} (2 drift left, 3 identities disagree, 4 deferred (the inline form ran)); run 'instgrp status ${_ACCOUNT}' on the target"
   _msg "transfer complete - next: run 'import --account ${_ACCOUNT} --route ${_route}' ON THE TARGET"
 }
 
