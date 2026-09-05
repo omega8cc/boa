@@ -3000,6 +3000,21 @@ _satellite_hot_sauce_check() {
   fi
 }
 
+# A same-named group is HELD when another identity owns it: a listed member
+# or a user whose primary group it is, the account's own identities excepted
+# (their primary group IS the account's group once adopted or converted).
+# Shared by the useradd site (AegirSetupA, a child process) and the launcher's
+# post hook, which cannot pass a variable between them.
+_instance_group_held() {
+  local _g="$1" _gid _m
+  getent group "${_g}" > /dev/null 2>&1 || return 1
+  _m=$(getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -v -E "^${_g}(\.|$)")
+  [ -n "${_m}" ] && return 0
+  _gid=$(getent group "${_g}" | cut -d: -f3)
+  getent passwd | awk -F: -v g="${_gid}" -v u="${_g}" \
+    '$4 == g && $1 != u && index($1, u ".") != 1 { f=1 } END { exit !f }'
+}
+
 _satellite_add_user_dirs() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_add_user_dirs"
@@ -3039,8 +3054,7 @@ _satellite_add_user_dirs() {
           addgroup --system "${_USER}" &> /dev/null
         fi
         if getent group "${_USER}" > /dev/null 2>&1 \
-          && [ -z "$(getent group "${_USER}" | cut -d: -f4)" ] \
-          && ! getent passwd | awk -F: -v g="$(getent group "${_USER}" | cut -d: -f3)" '$4 == g { f=1 } END { exit !f }'; then
+          && ! _instance_group_held "${_USER}"; then
           _ACCG="${_USER}"
         else
           _msg "NOTE: group ${_USER} exists and is held by someone else; ${_USER} is born on the box-wide group"
@@ -4036,6 +4050,16 @@ _satellite_if_instance_group() {
     _msg "NOTE: instgrp not installed yet, ${_USER} keeps the box-wide group this pass"
     return 0
   fi
+  # INIT already found the group name held by another identity and said so
+  # when it created the account (in AegirSetupA, a child process, so the
+  # verdict is read again here from the group database); a convert now can
+  # only fail on the same name and would end the same run with an alarm on
+  # top of that note. The verdict of an INIT on a held name is the note; the
+  # upgrade arm alarms on every later pass until the name is freed.
+  if [ "$1" = "post" ] && _instance_group_held "${_USER}"; then
+    _msg "NOTE: ${_USER} stays on the box-wide group while the group name is held; free it, then the next upgrade converts (or run instgrp convert ${_USER})"
+    return 0
+  fi
   bash /opt/local/bin/instgrp convert ${_USER} --from-octopus
   _iGrc=$?
   # ALRT: is the token the octopus report classifier greps for; anything
@@ -4047,7 +4071,16 @@ _satellite_if_instance_group() {
     0) ;;
     2) _msg "NOTE: instgrp convert ${_USER} left paths to re-group (written during the walk); the next pass finishes them, see /var/log/boa/instgrp.log" ;;
     5) _msg "NOTE: instgrp convert ${_USER} deferred: a fetched root-run writer on this box still carries the box-wide form (instgrp check); the next pass converts once the tools refresh" ;;
-    *) _msg "ALRT: instgrp convert ${_USER} returned ${_iGrc} (1 failed, 4 skipped busy/frozen), see /var/log/boa/instgrp.log" ;;
+    *)
+      # name the exit class; the old text listed the code legend in a
+      # shape that read as a tally of accounts
+      case "${_iGrc}" in
+        1) _iGwhy="failed" ;;
+        3) _iGwhy="inconsistent: marker or files say converted while an identity is on the box-wide group" ;;
+        4) _iGwhy="skipped: busy or frozen" ;;
+        *) _iGwhy="unexpected exit code" ;;
+      esac
+      _msg "ALRT: instgrp convert ${_USER} returned ${_iGrc} (${_iGwhy}), see /var/log/boa/instgrp.log" ;;
   esac
   # The rest of this run writes with whatever group the account carries now.
   _ACCG=$(_acct_group "${_USER}")
