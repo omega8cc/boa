@@ -122,7 +122,9 @@ rewrites the marker. Every action logs one line to
 `reclaim` is the file half alone: every path under the roots takes the
 account's current group (`users` while unconverted), a marker that does not
 record this box's group is dropped. No identity change and no lock, so it
-is what a root-run restore, a migration destination and the nightly run.
+is what a root-run restore, a migration destination and the nightly run. It
+honours the migration freeze exactly as `convert` does: an account carrying
+`log/proxied.pid` is skipped (exit 4) unless `--force` is given.
 
 `revert` is the exact inverse: files first (so no identity ever loses a
 group its files still carry), then the primary groups back to `users`, the
