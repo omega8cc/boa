@@ -161,6 +161,7 @@ _resolve_vmnetfix_bin
 ###
 _init_sysv_net_repair() {
   _msg "[init] netr ==> Ensuring SysV init networking wiring..." >> "${_logInt}"
+  _autoinit_heal_grub_pc
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
 
@@ -1162,6 +1163,37 @@ _pkg_installed() {
   /usr/bin/dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
 }
 
+# A grub-pc whose debconf install-device answer is empty -- the shape of a
+# hand-built or vendor-imaged VM that never ran the grub-pc configuration --
+# cannot be configured under the noninteractive frontend, and dpkg then aborts
+# every apt run on the box, the release hops included, while the conversion
+# keeps reporting the new codename. Seed the answer from the disk carrying the
+# root filesystem (plain partitions only) so the pending configure can finish.
+_autoinit_heal_grub_pc() {
+  local _dev _disk _cur
+  _pkg_installed grub-pc || return 0
+  _cur=$(debconf-show grub-pc 2>/dev/null | grep 'grub-pc/install_devices:' | sed 's/.*install_devices: *//')
+  [ -n "${_cur}" ] && return 0
+  _dev=$(findmnt -no SOURCE / 2>/dev/null)
+  [ -b "${_dev}" ] || return 0
+  _disk=$(lsblk -no PKNAME "${_dev}" 2>/dev/null | head -1)
+  [ -n "${_disk}" ] || return 0
+  [ "$(lsblk -dno TYPE "/dev/${_disk}" 2>/dev/null)" = "disk" ] || return 0
+  _msg "[init] grub ==> Seeding the empty grub-pc install device with /dev/${_disk} so dpkg can configure it" >> "${_logInt}"
+  echo "grub-pc grub-pc/install_devices multiselect /dev/${_disk}" | debconf-set-selections >> "${_logSlt}" 2>&1
+  /usr/bin/dpkg --configure grub-pc >> "${_logSlt}" 2>&1 \
+    || _msg "[init][WARN] grub ==> grub-pc still refuses to configure; apt runs may keep failing on this box" >> "${_logInt}"
+}
+
+# Say so when dpkg leaves packages unconfigured after a hop: apt aborts every
+# later run on such a box, and the codename alone would suggest a clean move.
+_autoinit_dpkg_residue_warn() {
+  local _left
+  _left=$(dpkg --audit 2>/dev/null | grep '^ ' | awk '{print $1}' | tr '\n' ' ')
+  [ -z "${_left}" ] && return 0
+  _msg "[init][WARN] dpkg ==> packages left unconfigured after this step: ${_left}-- apt may fail until they are fixed" >> "${_logInt}"
+}
+
 ###
 ### Turn off AppArmor
 ###
@@ -1423,6 +1455,7 @@ _init_prepare() {
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
     update-grub >> "${_logSlt}"
     sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
@@ -1444,6 +1477,7 @@ _init_prepare() {
   else
     if [ ! -x "/usr/bin/mc" ]; then
       touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
       _if_off_apparmor
       if [ -e "/root/.autoinit-early-upgrade.cnf" ]; then
         _msg "[init] prep ==> Let's update existing system first..." >> "${_logInt}"
@@ -1729,6 +1763,7 @@ _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
   _msg "[init] offd ==> Launching a quick dist-upgrade..." >> "${_logInt}"
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
     rm -f /etc/apt/preferences.d/systemd
@@ -1758,6 +1793,7 @@ _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 
+  _autoinit_dpkg_residue_warn
   _msg "[init] offd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _msg "[init] offd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
 
@@ -1899,6 +1935,7 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
   _msg "[init] cycl ==> Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
@@ -2058,6 +2095,7 @@ _init_cycle() {
         rm -f /run/autoinit.pid
         exit 1
       fi
+  _autoinit_dpkg_residue_warn
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
@@ -2079,6 +2117,7 @@ _init_cycle() {
       sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
       _if_launch_boa_install
     else
+  _autoinit_dpkg_residue_warn
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
@@ -2152,6 +2191,7 @@ _init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
   # Free the dpkg lock for the whole init cycle: the daily unattended-upgrade
   # worker cmdline is "python3 /usr/bin/unattended-upgrade" -- match the
   # script path, bracketed so concurrent guards never match each other's
