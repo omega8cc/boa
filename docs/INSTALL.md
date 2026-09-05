@@ -77,7 +77,9 @@
    cat /root/.autoinit-verbose.log
    ```
 
-   If the verbose log shows a warning at the end mentioning a `grub` configuration error (for example, inability to configure `grub-pc`), you will need to fix GRUB before proceeding to the BOA stack installation. To do this, run:
+   `autoinit` answers the one question that used to stop this step: a `grub-pc` whose boot-device answer is empty (hand-built and some vendor VMs) cannot be configured without a terminal, and every later `apt` run on the box fails on it. The verbose log then shows `grub ==> Seeding the empty grub-pc install device with /dev/sda` and the conversion carries on; any package `dpkg` still leaves unconfigured after a hop is listed in a `WARN: dpkg ==> packages left unconfigured` line.
+
+   If the log nevertheless ends with a `grub-pc` warning, fix GRUB by hand before proceeding to the BOA stack install:
 
    ```sh
    DEBIAN_FRONTEND=dialog dpkg --configure grub-pc
