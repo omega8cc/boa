@@ -113,6 +113,16 @@ _if_remove_cloud_utils() {
   _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
     || [ -e "${_etcCloudCfgd}" ]; then
+    # Removed when PROVABLY safe (2026-08-27 ruling): a box that keeps live
+    # cloud-init grows a root-lock landmine in every snapshot taken of it,
+    # but some vendors hardwire networking to cloud-init, so the probe
+    # decides. Full mode keeps its unconditional removal (explicit operator
+    # intent); the preserve marker above keeps cloud-init regardless.
+    if [ ! -e "/root/.mode.selected.full.cnf" ] \
+      && ! _cloud_init_safe_to_remove; then
+      _msg "[init] rcld ==> cloud-init KEPT: classic networking not provably self-sufficient (vendor may hardwire networking to cloud-init)" >> "${_logInt}"
+      return 0
+    fi
     _msg "[init] rcld ==> Removing problematic cloud-utils detected on this system..." >> "${_logInt}"
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get remove cloud-utils cloud-init -y -qq >> "${_logSlt}"
@@ -1771,18 +1781,10 @@ _init_offsystemd() {
   _init_sysv_net_repair
   _init_vmnetfix_failsafe_install
 
-  # Removed when PROVABLY safe (2026-08-27 ruling): a box that keeps live
-  # cloud-init grows a root-lock landmine in every snapshot taken of it, but
-  # some vendors hardwire networking to cloud-init, so the probe decides.
-  # Full mode keeps its unconditional removal (explicit operator intent);
-  # /root/.preserve.cloud.init.cnf keeps cloud-init regardless.
-  if [ -e "/root/.mode.selected.full.cnf" ]; then
-    _if_remove_cloud_utils
-  elif _cloud_init_safe_to_remove; then
-    _if_remove_cloud_utils
-  else
-    _msg "[init] rcld ==> cloud-init KEPT: classic networking not provably self-sufficient (vendor may hardwire networking to cloud-init)" >> "${_logInt}"
-  fi
+  # Neutralized on every conversion; the function holds the whole decision
+  # (full mode, the networking probe, the preserve marker) so the codename
+  # drivers can carry it verbatim.
+  _if_remove_cloud_utils
 
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"

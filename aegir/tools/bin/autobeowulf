@@ -327,7 +327,43 @@ if [ -x "/opt/local/bin/killer" ]; then
   echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
 fi
 
+###
+### Decide whether cloud-init can be removed WITHOUT risking networking.
+###
+### Some vendors hardwire boot networking to cloud-init, and a box whose
+### interfaces are not self-sufficient under classic ifupdown loses its
+### network when cloud-init goes. Removal is safe exactly when classic
+### networking is PROVABLY complete: the default-route interface exists,
+### it carries an ifupdown stanza (dhcp or static), and DNS resolves
+### without cloud-init's help. Anything unverifiable means KEEP cloud-init:
+### a root-lock landmine in future snapshots is recoverable, a box that
+### boots without networking is not.
+_cloud_init_safe_to_remove() {
+  local _def _stanza
+  _def=$(ip -4 route show default 2>/dev/null | awk '{ print $5; exit }')
+  [ -n "${_def}" ] || return 1
+  _stanza=$(grep -hsE "^[[:space:]]*iface[[:space:]]+${_def}[[:space:]]+inet[[:space:]]+(dhcp|static)"     /etc/network/interfaces /etc/network/interfaces.d/* 2>/dev/null | head -n1)
+  [ -n "${_stanza}" ] || return 1
+  grep -qsE "^[[:space:]]*nameserver[[:space:]]+[0-9a-fA-F.:]+" /etc/resolv.conf || return 1
+  return 0
+}
+
+###
+### Remove cloud-init when it is safe to, keep it when it is not.
+###
+### Three independent reasons want it gone. It slows every reboot
+### considerably while present. Its per-instance modules re-run on every
+### SNAPSHOT RESTORE (the instance-id changes), and with the stock
+### disable_root/lock_passwd config that LOCKS the root account: the key is
+### on disk and correct while sshd refuses with "account is locked". And its
+### one useful job on a cloud box -- first-boot key injection -- is long over
+### on a box that is being upgraded. The vmnetfix drop-in only disables
+### cloud-init NETWORKING; the users module is the one that bites. Note the
+### kill-switch file (/etc/cloud/cloud-init.disabled) is a SYSTEMD-GENERATOR
+### mechanism and does nothing under sysvinit -- only real removal
+### neutralizes it here, which is why the rc links and init scripts go too.
 _if_remove_cloud_utils() {
+  [ -e "/root/.preserve.cloud.init.cnf" ] && return 0
   _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
   _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
   _aptCloudInit="/etc/apt/preferences.d/99linode-cloudinit"
@@ -336,19 +372,36 @@ _if_remove_cloud_utils() {
     || [ -e "${_aptAkamaiLst}" ] \
     || [ -e "${_aptCloudInit}" ] \
     || [ -e "${_etcCloudCfgd}" ]; then
+    # Removed when PROVABLY safe (2026-08-27 ruling): a box that keeps live
+    # cloud-init grows a root-lock landmine in every snapshot taken of it,
+    # but some vendors hardwire networking to cloud-init, so the probe
+    # decides. Full mode keeps its unconditional removal (explicit operator
+    # intent); the preserve marker above keeps cloud-init regardless.
+    if [ ! -e "/root/.mode.selected.full.cnf" ] \
+      && ! _cloud_init_safe_to_remove; then
+      _msg "cloud-init KEPT: classic networking not provably self-sufficient (vendor may hardwire networking to cloud-init)" >> "${_logAbf}"
+      return 0
+    fi
     _msg "Removing problematic cloud-utils detected on this system" >> "${_logAbf}"
+    # growpart lives in cloud-guest-utils, a dependency of cloud-utils that
+    # --auto-remove would otherwise take with it; keep it installed.
+    /usr/bin/apt-mark manual cloud-guest-utils > /dev/null 2>&1
     /usr/bin/apt-get update --allow-insecure-repositories 2> /dev/null
     /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get remove cloud-image-utils -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get autoremove --purge -y 2> /dev/null
     /usr/bin/apt-get autoclean -y 2> /dev/null
+    rm -f /etc/rc?.d/[SK]??cloud-* 2>/dev/null
+    chmod -x /etc/init.d/cloud-init /etc/init.d/cloud-init-local \
+      /etc/init.d/cloud-config /etc/init.d/cloud-final 2>/dev/null
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     [ -e "${_etcCloudCfgd}" ] && mv -f /etc/cloud /var/backups/
     [ -e "${_aptAkamaiLst}" ] && mv -f ${_aptAkamaiLst} /var/backups/
     [ -e "${_aptCloudInit}" ] && mv -f ${_aptCloudInit} /var/backups/
   fi
 }
 if [ "${_VMFAMILY}" != "AWS" ]; then
-  [ -e "/root/.mode.selected.full.cnf" ] && _if_remove_cloud_utils
+  _if_remove_cloud_utils
 fi
 
 _if_clean_boa_env() {

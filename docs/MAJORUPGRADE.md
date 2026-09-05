@@ -141,3 +141,8 @@ BOA automatically detects and fixes this by reinstalling all active PHP versions
 
 The expected downtime is per active PHP version, only while its own rebuild runs: seconds where the prebuilt packages are used, approximately 3-5 minutes where the source build runs.
 
+### NOTE on cloud-init
+
+Every run of the automated drivers (`autobeowulf`, `autochimaera`, `autodaedalus`, `autoexcalibur`) begins the way `autoinit` does on a fresh conversion: when cloud-init is present (`/etc/init.d/cloud-*`, `/etc/cloud/cloud.cfg.d`, or the Linode/Akamai `akamai-linux-team.list` source and `99linode-cloudinit` preference), the `cloud-utils`, `cloud-init` and `cloud-image-utils` packages are purged, the sysvinit rc links and the init scripts' exec bits are stripped, and `/etc/cloud` plus the vendor apt files are parked in `/var/backups`. A live cloud-init slows every reboot of the chain and re-runs its per-instance modules on every snapshot restore with the stock `disable_root`/`lock_passwd` settings, locking root while the key on disk is correct.
+
+The removal runs only when classic networking is provably self-sufficient -- the default-route interface exists, carries an `iface ... inet dhcp|static` stanza in `/etc/network/interfaces` or `interfaces.d/`, and `/etc/resolv.conf` names a nameserver -- because some vendors hardwire boot networking to cloud-init; otherwise cloud-init is kept and the driver log says `cloud-init KEPT`. `/root/.mode.selected.full.cnf` removes it unconditionally; `/root/.preserve.cloud.init.cnf` keeps it regardless. Amazon EC2 hosts skip the block.
