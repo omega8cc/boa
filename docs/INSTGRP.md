@@ -200,7 +200,9 @@ place: it belongs to the account.
   therefore run a group pass on the destination after every copy (`instgrp
   reclaim` where the tool is installed: paths in no group, in `users` or in
   another named group take the destination account's group, `users` while
-  unconverted), the xmass legs map the source account's group onto the
+  unconverted; passed `--force`, because the destination's own
+  `log/proxied.pid`, if any, is its demotion artefact from an earlier
+  cutover, not an account served from elsewhere), the xmass legs map the source account's group onto the
   destination account's group as they copy (so the 15-minute standby
   autosync never lands a foreign gid), and none of them carry the
   conversion marker -- it recorded the source box's
