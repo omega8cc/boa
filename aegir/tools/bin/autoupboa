@@ -503,7 +503,10 @@ _update_conf_variable() {
     _safe_value=$(printf '%s' "${_default_value}" | sed -e 's/[\\&|]/\\&/g')
     sed -i "s|^#\?${_var_name}=.*|${_var_name}=\"${_safe_value}\"|g" "${_conf_file}"
   else
-    # Variable doesn't exist, append to the file
+    # Variable doesn't exist, append to the file. Newline-terminate first:
+    # the cnf is operator-authored, and an unterminated last line would
+    # swallow the previous key into this one (the guard its siblings carry).
+    [ -n "$(tail -c1 "${_conf_file}" 2>/dev/null)" ] && echo >> "${_conf_file}"
     echo "${_var_name}=\"${_default_value}\"" >> "${_conf_file}"
   fi
 }
