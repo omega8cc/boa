@@ -1181,8 +1181,12 @@ _autoinit_heal_grub_pc() {
   [ "$(lsblk -dno TYPE "/dev/${_disk}" 2>/dev/null)" = "disk" ] || return 0
   _msg "[init] grub ==> Seeding the empty grub-pc install device with /dev/${_disk} so dpkg can configure it" >> "${_logInt}"
   echo "grub-pc grub-pc/install_devices multiselect /dev/${_disk}" | debconf-set-selections >> "${_logSlt}" 2>&1
-  /usr/bin/dpkg --configure grub-pc >> "${_logSlt}" 2>&1 \
-    || _msg "[init][WARN] grub ==> grub-pc still refuses to configure; apt runs may keep failing on this box" >> "${_logInt}"
+  # A configured package only needed the answer for its next upgrade; dpkg
+  # refuses to configure it again, so ask only when a configure is pending.
+  if /usr/bin/dpkg-query -W -f='${Status}' grub-pc 2>/dev/null | grep -qE 'half-configured|unpacked|half-installed'; then
+    /usr/bin/dpkg --configure grub-pc >> "${_logSlt}" 2>&1 \
+      || _msg "[init][WARN] grub ==> grub-pc still refuses to configure; apt runs may keep failing on this box" >> "${_logInt}"
+  fi
 }
 
 # Say so when dpkg leaves packages unconfigured after a hop: apt aborts every
