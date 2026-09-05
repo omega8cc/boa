@@ -36,7 +36,10 @@ the rest of the run, so the run already writes with the new group), and an
 account created after this ships is born converted -- when the box is ready
 for it: the tool present and every fetched root-run writer group-aware
 (`instgrp check`), else it is born on the box-wide group and the next
-upgrade converts it. Each conversion writes
+upgrade converts it. A group name already held by another identity (a
+member, or a user whose primary group it is) leaves the newborn on the
+box-wide group too, with a NOTE and no conversion attempt in that run;
+every later upgrade alarms until the name is freed. Each conversion writes
 `/data/disk/oN/log/instance-group.txt`. An account already converted costs
 one read-only traversal on every later upgrade (early-quit on the first path
 outside its group), no walk and no write.
