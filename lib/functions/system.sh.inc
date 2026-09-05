@@ -5580,7 +5580,12 @@ _sources_list_update() {
     _apt_sources_list_backup
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _TEST_MIRROR="$(_find_fast_devuan_mirror)"
-      if [ -n "${_LOCAL_DEVUAN_MIRROR}" ] && [ -n "${_TEST_MIRROR}" ]; then
+      if [ -n "${_FORCE_DEVUAN_MIRROR}" ]; then
+        # Set by the package stage when the chosen mirror proved unusable
+        # (its index lists pool files it no longer serves). Runtime only and
+        # never persisted, so the next run may pick a healthy fast mirror.
+        export _MIRROR="${_FORCE_DEVUAN_MIRROR}"
+      elif [ -n "${_LOCAL_DEVUAN_MIRROR}" ] && [ -n "${_TEST_MIRROR}" ]; then
         if [ "${_LOCAL_DEVUAN_MIRROR}" = "${_TEST_MIRROR}" ]; then
           export _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
           export _LOCAL_DEVUAN_MIRROR="${_LOCAL_DEVUAN_MIRROR}"
@@ -8139,6 +8144,27 @@ _run_aptitude_deps_install() {
     _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
     _EXTRA_APT="tree"
     _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
+  fi
+  # A mirror whose index lists pool files it no longer serves fails every
+  # install above with a 404 that _mrun keeps off the console, and the
+  # source builds that follow then die without a compiler. Verify the one
+  # package everything below depends on; when it is missing, switch this run
+  # to the deb.devuan.org redirector, rewrite sources.list and run the stage
+  # once more. Seen on chimaera while its mirrors thin out ahead of archival.
+  if [ "${_UPGRADE_MODE}" = "FULL" ] \
+    && [ "${_OS_DIST}" = "Devuan" ] \
+    && [ -z "${_APT_MIRROR_HEALED}" ] \
+    && ! _pkg_installed "build-essential"; then
+    export _APT_MIRROR_HEALED=YES
+    _msg "OOPS: build-essential is missing after the package pass; mirror ${_MIRROR} looks unusable, retrying via deb.devuan.org"
+    export _FORCE_DEVUAN_MIRROR="http://deb.devuan.org/merged"
+    _sources_list_update
+    _run_aptitude_deps_install
+    if _pkg_installed "build-essential"; then
+      _msg "INFO: build-essential installed via deb.devuan.org"
+    else
+      _msg "ERROR: build-essential is still missing; the source builds below will fail"
+    fi
   fi
 }
 
