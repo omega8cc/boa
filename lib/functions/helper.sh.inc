@@ -1223,16 +1223,24 @@ _apt_sources_list_write_canonical() {
     _sm="${_m}"
   elif [ "${_OS_DIST}" = "Debian" ]; then
     _hdr="## DEBIAN MAIN REPOSITORIES (canonical fallback)"
-    if [ "${_c}" = "buster" ] || [ "${_c}" = "stretch" ] || [ "${_c}" = "jessie" ]; then
-      _m="http://archive.debian.org/debian"
-      _sm="http://archive.debian.org/debian-security"
-      _sec="${_c}/updates"
-      _updates=NO
-    else
-      _m="http://deb.debian.org/debian"
-      _sm="http://security.debian.org/debian-security"
-      _sec="${_c}-security"
-    fi
+    _m="http://${_DEBIAN_LIVE_MIRROR:-deb.debian.org}/debian"
+    _sm="http://${_DEBIAN_SECURITY_MIRROR:-security.debian.org}/debian-security"
+    _sec="${_c}-security"
+    # From the list only, never a probe (same reason as the Devuan arm): an
+    # archived release lives on the archive, whose security pool keeps the
+    # old <suite>/updates naming for the releases archived under it.
+    case " ${_ARCHIVED_DEBIAN_SUITES:-jessie stretch buster} " in
+      *" ${_c} "*)
+        _m="http://${_ARCHIVE_DEBIAN_MIRROR:-archive.debian.org}/debian"
+        _sm="http://${_ARCHIVE_DEBIAN_MIRROR:-archive.debian.org}/debian-security"
+        _updates=NO
+        ;;
+    esac
+    case "${_c}" in
+      jessie|stretch|buster)
+        _sec="${_c}/updates"
+        ;;
+    esac
   else
     _msg "ERROR: cannot build a canonical ${_aptLiSys} for OS '${_OS_DIST}'"
     return 1

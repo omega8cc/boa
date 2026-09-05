@@ -61,8 +61,9 @@ _ARCHIVED_DEVUAN_SUITES="beowulf"
 _ARCHIVE_DEVUAN_MIRROR="http://archive.devuan.org/merged"
 _DEVUAN_LIVE_MIRRORS="https://mirrors.dotsrc.org/devuan/merged http://deb.devuan.org/merged https://mirror.akardam.net/devuan/merged https://mirror.hootsoftware.com/devuan/merged"
 
-# 0 the mirror serves the suite, 1 it does not, 2 nothing here can probe yet
-_devuan_suite_served() {
+# _apt_suite_served <base-url> <suite>: 0 the mirror serves the suite, 1 it
+# does not, 2 nothing here can probe yet. One probe for both distributions.
+_apt_suite_served() {
   local _rel="${1}/dists/${2}/Release"
   if command -v curl > /dev/null 2>&1; then
     curl -sIL --fail --max-redirs 3 --max-time 20 -A iCab -o /dev/null "${_rel}" 2> /dev/null && return 0
@@ -72,6 +73,10 @@ _devuan_suite_served() {
     return 1
   fi
   return 2
+}
+
+_devuan_suite_served() {
+  _apt_suite_served "$1" "$2"
 }
 
 ###
@@ -118,6 +123,112 @@ _pick_devuan_suite_mirror() {
   done
   _msg "ERROR: ${_suite} is served by no known Devuan mirror nor the archive; using the deb.devuan.org redirector" >&2
   echo "http://deb.devuan.org/merged"
+}
+
+# Debian moves a release to archive.debian.org once its LTS ends (bullseye's
+# ended 2026-08-31), and deb.debian.org then answers 404 for its Release file
+# while security.debian.org keeps or drops <suite>-security on its own
+# schedule. The two pools are therefore resolved separately, per suite, right
+# before sources.list is written; a security suite no host serves is left
+# out rather than written dead, because apt update fails on a 404 Release and
+# every install step behind it stalls. jessie, stretch and buster keep their
+# long-archived shape (the archive's security pool still uses the old
+# <suite>/updates naming for them). Adding a release to the list only saves
+# the probe; nothing needs editing when Debian archives the next one.
+_ARCHIVED_DEBIAN_SUITES="jessie stretch buster"
+_ARCHIVE_DEBIAN_MIRROR="archive.debian.org"
+_DEBIAN_LIVE_MIRROR="deb.debian.org"
+_DEBIAN_SECURITY_MIRROR="security.debian.org"
+
+# _pick_debian_suite_mirror <suite> [preferred-host]: the host to compose
+# "http://<host>/debian" from. The known-archived list short-circuits; the
+# preferred host (a configured local mirror, else deb.debian.org) is probed,
+# then deb.debian.org, then the archive. A box that cannot probe keeps the
+# preferred host, as it did before.
+_pick_debian_suite_mirror() {
+  local _suite="$1"
+  local _pref="$2"
+  local _try=""
+  local _srv=0
+  case " ${_ARCHIVED_DEBIAN_SUITES} " in
+    *" ${_suite} "*)
+      echo "${_ARCHIVE_DEBIAN_MIRROR}"
+      return 0
+      ;;
+  esac
+  : "${_pref:=${_DEBIAN_LIVE_MIRROR}}"
+  _apt_suite_served "http://${_pref}/debian" "${_suite}"
+  _srv=$?
+  if [ "${_srv}" -ne 1 ]; then
+    echo "${_pref}"
+    return 0
+  fi
+  for _try in "${_DEBIAN_LIVE_MIRROR}" "${_ARCHIVE_DEBIAN_MIRROR}"; do
+    [ "${_try}" != "${_pref}" ] || continue
+    if _apt_suite_served "http://${_try}/debian" "${_suite}"; then
+      _msg "NOTE: ${_suite} is no longer on ${_pref}; using ${_try}" >&2
+      echo "${_try}"
+      return 0
+    fi
+  done
+  _msg "ERROR: ${_suite} is served by no known Debian mirror nor the archive; using ${_DEBIAN_LIVE_MIRROR}" >&2
+  echo "${_DEBIAN_LIVE_MIRROR}"
+}
+
+# _debian_apt_sources_resolve <suite> [preferred-host] sets, for the
+# sources.list writers: _DEB_APT_MIRROR (host/debian), _DEB_APT_REPSRC (the
+# -updates suite on a live host, -backports on the archive for the
+# long-archived releases, empty when none is served), _DEB_SEC_MIRROR
+# (host/debian-security, empty when no host serves the security suite),
+# _DEB_SEC_REPSRC, and _DEB_BPO_SUITE (the -backports suite when it is
+# served from the chosen host, else empty).
+_debian_apt_sources_resolve() {
+  local _suite="$1"
+  local _pref="$2"
+  local _host=""
+  _DEB_APT_MIRROR=""
+  _DEB_APT_REPSRC=""
+  _DEB_SEC_MIRROR=""
+  _DEB_SEC_REPSRC=""
+  _DEB_BPO_SUITE=""
+  case "${_suite}" in
+    jessie|stretch|buster)
+      _DEB_APT_MIRROR="${_ARCHIVE_DEBIAN_MIRROR}/debian"
+      _DEB_APT_REPSRC="${_suite}-backports"
+      _DEB_SEC_MIRROR="${_ARCHIVE_DEBIAN_MIRROR}/debian-security"
+      _DEB_SEC_REPSRC="${_suite}/updates"
+      return 0
+      ;;
+  esac
+  _host="$(_pick_debian_suite_mirror "${_suite}" "${_pref}")"
+  _DEB_APT_MIRROR="${_host}/debian"
+  _DEB_APT_REPSRC="${_suite}-updates"
+  if [ "${_host}" = "${_ARCHIVE_DEBIAN_MIRROR}" ]; then
+    # The archive carries -updates for the releases archived so far, but
+    # nothing promises it; a verified miss drops the stanza.
+    _apt_suite_served "http://${_host}/debian" "${_DEB_APT_REPSRC}"
+    [ $? -ne 1 ] || _DEB_APT_REPSRC=""
+  fi
+  _DEB_SEC_REPSRC="${_suite}-security"
+  _apt_suite_served "http://${_DEBIAN_SECURITY_MIRROR}/debian-security" "${_DEB_SEC_REPSRC}"
+  case $? in
+    1)
+      if _apt_suite_served "http://${_ARCHIVE_DEBIAN_MIRROR}/debian-security" "${_DEB_SEC_REPSRC}"; then
+        _msg "NOTE: ${_DEB_SEC_REPSRC} is no longer on ${_DEBIAN_SECURITY_MIRROR}; using ${_ARCHIVE_DEBIAN_MIRROR}" >&2
+        _DEB_SEC_MIRROR="${_ARCHIVE_DEBIAN_MIRROR}/debian-security"
+      else
+        _msg "NOTE: ${_DEB_SEC_REPSRC} is served by no known host; the security stanza is left out" >&2
+      fi
+      ;;
+    *)
+      _DEB_SEC_MIRROR="${_DEBIAN_SECURITY_MIRROR}/debian-security"
+      ;;
+  esac
+  if [ "${_USE_BACKPORTS}" = "YES" ]; then
+    _apt_suite_served "http://${_host}/debian" "${_suite}-backports"
+    [ $? -eq 1 ] || _DEB_BPO_SUITE="${_suite}-backports"
+  fi
+  return 0
 }
 
 _if_fix_iptables_symlinks() {
@@ -5566,48 +5677,36 @@ _sources_list_update() {
       ### Belt-and-suspenders with the mirror resolution above: never compose
       ### an empty Debian mirror host into the deb lines below.
       [ -n "${_MIRROR}" ] || _MIRROR=deb.debian.org
-      if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-        _APT_MIRROR="archive.debian.org/debian"
-        _APT_REPSRC="${_OS_CODE}-backports"
-        _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_REPSRC="${_OS_CODE}/updates"
-      elif [ "${_OS_CODE}" = "buster" ]; then
-        _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OS_CODE}-updates"
-        _SEC_MIRROR="security.debian.org"
-        _SEC_REPSRC="${_OS_CODE}/updates"
-      elif [ "${_OS_CODE}" = "bullseye" ]; then
-        _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OS_CODE}-updates"
-        _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OS_CODE}-security"
-      elif [ "${_OS_CODE}" = "bookworm" ]; then
-        _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OS_CODE}-updates"
-        _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OS_CODE}-security"
-      elif [ "${_OS_CODE}" = "trixie" ]; then
-        _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OS_CODE}-updates"
-        _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OS_CODE}-security"
-      fi
+      # Resolved per suite against what the hosts serve today, so a release
+      # Debian has just archived (bullseye, 2026-08-31) is written from the
+      # archive instead of a dead deb.debian.org line.
+      _debian_apt_sources_resolve "${_OS_CODE}" "${_MIRROR}"
+      _APT_MIRROR="${_DEB_APT_MIRROR}"
+      _APT_REPSRC="${_DEB_APT_REPSRC}"
+      _SEC_MIRROR="${_DEB_SEC_MIRROR}"
+      _SEC_REPSRC="${_DEB_SEC_REPSRC}"
       echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
-      echo "" >> ${_aptLiSys}
-      echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-      echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-      if [ "${_USE_BACKPORTS}" = "YES" ]; then
+      if [ -n "${_APT_REPSRC}" ]; then
+        echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+        echo "" >> ${_aptLiSys}
+      fi
+      if [ -n "${_SEC_MIRROR}" ]; then
+        echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
+        echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      else
+        echo "## DEBIAN SECURITY UPDATES are no longer served for ${_OS_CODE}" >> ${_aptLiSys}
+      fi
+      if [ -n "${_DEB_BPO_SUITE}" ]; then
         echo "" >> ${_aptLiSys}
         echo "## DEBIAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
-        echo "deb http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-        echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb http://${_APT_MIRROR} ${_DEB_BPO_SUITE} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_APT_MIRROR} ${_DEB_BPO_SUITE} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       fi
     fi
     ### Verify the freshly written file; if generation produced a missing or
@@ -8926,48 +9025,36 @@ _if_major_os_upgrade() {
         fi
       fi
     else
-      if [ "${_NEW_OS_CODE}" = "stretch" ]; then
-        _NEW_APT_MIRROR="archive.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-backports"
-        _NEW_SEC_MIRROR="archive.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}/updates"
-      elif [ "${_NEW_OS_CODE}" = "buster" ]; then
-        _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
-        _NEW_SEC_MIRROR="security.debian.org"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}/updates"
-      elif [ "${_NEW_OS_CODE}" = "bullseye" ]; then
-        _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
-        _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
-      elif [ "${_NEW_OS_CODE}" = "bookworm" ]; then
-        _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
-        _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
-      elif [ "${_NEW_OS_CODE}" = "trixie" ]; then
-        _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
-        _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
-      fi
+      # The hop's TARGET suite must be served by the hosts written: a release
+      # Debian has archived since this chain was written (buster, and
+      # bullseye as of 2026-08-31) comes from the archive, resolved per pool.
+      _debian_apt_sources_resolve "${_NEW_OS_CODE}" ""
+      _NEW_APT_MIRROR="${_DEB_APT_MIRROR}"
+      _NEW_APT_REPSRC="${_DEB_APT_REPSRC}"
+      _NEW_SEC_MIRROR="${_DEB_SEC_MIRROR}"
+      _NEW_SEC_REPSRC="${_DEB_SEC_REPSRC}"
       echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
-      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
-      echo "" >> ${_aptLiSys}
-      echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-      echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-      if [ "${_USE_BACKPORTS}" = "YES" ]; then
+      if [ -n "${_NEW_APT_REPSRC}" ]; then
+        echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+        echo "" >> ${_aptLiSys}
+      fi
+      if [ -n "${_NEW_SEC_MIRROR}" ]; then
+        echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
+        echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      else
+        echo "## DEBIAN SECURITY UPDATES are no longer served for ${_NEW_OS_CODE}" >> ${_aptLiSys}
+      fi
+      if [ -n "${_DEB_BPO_SUITE}" ]; then
         echo "" >> ${_aptLiSys}
         echo "## DEBIAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
-        echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-        echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb http://${_NEW_APT_MIRROR} ${_DEB_BPO_SUITE} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_NEW_APT_MIRROR} ${_DEB_BPO_SUITE} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       fi
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
@@ -9834,7 +9921,7 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless nginx"
       elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_XTRA="openjdk-17-jre-headless nginx"
-        echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
+        echo "deb http://$(_pick_debian_suite_mirror bullseye)/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -9883,7 +9970,7 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless"
       elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_XTRA="openjdk-17-jre-headless"
-        echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
+        echo "deb http://$(_pick_debian_suite_mirror bullseye)/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         if [ "${_DEBUG_MODE}" = "YES" ]; then
