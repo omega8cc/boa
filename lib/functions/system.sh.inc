@@ -4985,7 +4985,10 @@ _php_install_deps() {
     fi
   fi
 
-  for _PKG in liblzf-dev libmagickwand-dev libonig-dev libsodium-dev libwebp-dev libxpm-dev libzip-dev; do
+  # libbz2-dev is asked for by every PHP configure (--with-bz2) and was only
+  # ever present by way of another package's dependencies; a box without it
+  # builds PHP a second time, without bz2.
+  for _PKG in libbz2-dev liblzf-dev libmagickwand-dev libonig-dev libsodium-dev libwebp-dev libxpm-dev libzip-dev; do
     if ! _pkg_installed "${_PKG}"; then
       _mrun "${_INSTAPP} ${_PKG}"
     fi
