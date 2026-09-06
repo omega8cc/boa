@@ -3317,7 +3317,11 @@ _octopus_cleanup() {
           | grep -vE "\.ftp$|\.web$"); do
           echo "${_subUsr}:/home/${_subUsr}" >> ${_zombie_dir}.purge.list
         done
-        pkill -9 -f gpg-agent
+        # only the purged account's agents (every user on the list): -f
+        # matched every gpg-agent on the box
+        for _gpgUsr in $(cut -d: -f1 ${_zombie_dir}.purge.list 2>/dev/null | sort -u); do
+          id -u "${_gpgUsr}" &> /dev/null && pkill -9 -u "${_gpgUsr}" gpg-agent &> /dev/null
+        done
         sort -u -o ${_zombie_dir}.purge.list ${_zombie_dir}.purge.list
         IFS=$'\12'
           _purgedUid=$(id -u "${_usEr}" 2>/dev/null)

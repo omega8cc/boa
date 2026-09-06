@@ -444,7 +444,9 @@ _satellite_remove_web_user() {
       chattr -i /home/${_WEB}/.drush/
     fi
     mkdir -p ${_vBs}/zombie/deleted
-    pkill -9 -f gpg-agent
+    # only this user's agent (none for a user that never existed): -f
+    # matched every gpg-agent on the box
+    id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
     deluser --remove-home --backup-to ${_vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -d "/home/${_WEB}/" ]; then
       rm -rf /home/${_WEB}/ &> /dev/null

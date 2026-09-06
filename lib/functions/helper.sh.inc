@@ -765,7 +765,8 @@ _mode_detection() {
           sed -i "s/^aegir.*//g" "${_sd_tmp}" &> /dev/null
           _sudoers_commit /etc/sudoers "${_sd_tmp}"
         fi
-        pkill -9 -f gpg-agent
+        # only this user's agent: -f matched every gpg-agent on the box
+        id -u aegir &> /dev/null && pkill -9 -u aegir gpg-agent &> /dev/null
         deluser aegir &> /dev/null
         rm -f /usr/bin/drush
       else
