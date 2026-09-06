@@ -716,7 +716,8 @@ _kill_zombies() {
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-          pkill -9 -f gpg-agent
+          # only this user's agent: -f matched every gpg-agent on the box
+          id -u "${_Existing}" &> /dev/null && pkill -9 -u "${_Existing}" gpg-agent &> /dev/null
           _disable_chattr ${_Existing}
           rm -rf /home/${_Existing}/.gnupg
           deluser \
@@ -1889,12 +1890,14 @@ _satellite_remove_web_user() {
     if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
       # "clean" also runs for a web user that never existed (every new
       # per-version pool): nothing to unlock there, and chattr says so on
-      # stderr three times per account into this worker's log
+      # stderr once per installed PHP into this worker's log
       [ -d "/home/${_WEB}/" ] && chattr -i /home/${_WEB}/
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
       fi
-      pkill -9 -f gpg-agent
+      # only this user's agent (none for a user that never existed): -f
+      # matched every gpg-agent on the box
+      id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
