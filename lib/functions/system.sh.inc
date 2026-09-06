@@ -1491,6 +1491,30 @@ _sql_pin_overrides() {
 
 #
 # Tune memory limits for PHP, Nginx and Percona.
+#
+# Floor the PHP CLI memory budget. Pure function of _USE_CLI (the tier
+# output), _RAM_TOTAL (installed RAM in MB) and _VMFAMILY; rewrites _USE_CLI
+# in place, so the Tier-2 harness can drive it directly. The CLI budget
+# (drush, Ægir backend tasks, cron) is one process per job, not a pool of
+# workers, so the tier fall-through below _USE=512 starves it: a 4 GB guest
+# with the default 2 GB reserve derived 466M, which no Drupal 11 distro
+# install survives (a Varbase install peaks near 600 MB and dies after its
+# last "module installed" line). Floor it at a quarter of the installed RAM,
+# never above the 1024 the next tier hands out; the OpenVZ pin stays
+# untouched and a failed RAM read leaves the derived value alone.
+_php_cli_floor_derive() {
+  local _cli_min
+  [ "${_VMFAMILY}" = "VZ" ] && return 0
+  [ "${_RAM_TOTAL:-0}" -ge 1 ] 2>/dev/null || return 0
+  _cli_min=$(( _RAM_TOTAL / 4 ))
+  if [ "${_cli_min}" -gt 1024 ]; then
+    _cli_min=1024
+  fi
+  if [ "${_USE_CLI:-0}" -lt "${_cli_min}" ]; then
+    _USE_CLI=${_cli_min}
+  fi
+}
+
 _tune_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _tune_memory_limits"
@@ -1718,6 +1742,7 @@ _tune_memory_limits() {
   if [ "${_USE_PHP}" -lt "${_USE_PHP_MIN}" ]; then
     _USE_PHP=${_USE_PHP_MIN}
   fi
+  _php_cli_floor_derive
   _USE_FPM=$(( _USE_PHP / 2 ))
   if [ "${_USE_FPM}" -lt "${_USE_FPM_MIN}" ]; then
     _USE_FPM=${_USE_FPM_MIN}
