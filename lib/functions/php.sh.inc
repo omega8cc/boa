@@ -3404,7 +3404,7 @@ _php_check_if_rebuild() {
     _PHP_FORCE_REINSTALL=NO
   fi
   _isSeg=
-  _isSeg=$(php -v | grep cli 2>&1)
+  _isSeg=$(php -v 2>/dev/null | grep cli 2>&1)
   if [[ ! "${_isSeg}" =~ "cli" ]] || [ -z "${_isSeg}" ]; then
     _msg "INFO: PHP rebuild required to fix broken libs..."
     _PHP_FORCE_REINSTALL=YES
@@ -3413,7 +3413,7 @@ _php_check_if_rebuild() {
     _PHP_FORCE_REINSTALL=NO
   fi
   _isOnig=
-  _isOnig=$(php -i | grep libonig 2>&1)
+  _isOnig=$(php -i 2>/dev/null | grep libonig 2>&1)
   if [[ "${_isOnig}" =~ "libonig.so" ]]; then
     _msg "INFO: PHP rebuild required to fix libonig..."
     _PHP_FORCE_REINSTALL=YES
@@ -3422,7 +3422,7 @@ _php_check_if_rebuild() {
     _PHP_FORCE_REINSTALL=NO
   fi
   _isIcu=
-  _isIcu=$(php -i | grep libicuio 2>&1)
+  _isIcu=$(php -i 2>/dev/null | grep libicuio 2>&1)
   if [[ "${_isIcu}" =~ "libicuio" ]] \
     || [ ! -e "/usr/local/lib/icu/current" ]; then
     _msg "INFO: PHP rebuild required to fix ICU support..."
