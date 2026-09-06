@@ -378,6 +378,9 @@ _systemd_remove_apt_cmd() {
   _apt_clean_update
   _mrun "apt-get purge systemd libnss-systemd -y -qq"
   _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Running apt-get autoclean..."
+  fi
   _mrun "apt-get autoclean -y -qq"
   _mrun "apt-get autoremove -y --purge --auto-remove -qq"
   _apt_clean_update
@@ -8643,6 +8646,9 @@ _if_post_major_os_upgrade() {
 
     _msg "INFO: Removing any packages orphaned by the migration process..."
     _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Running apt-get autoclean..."
+    fi
     _mrun "apt-get autoclean -y -qq"
     _mrun "apt-get autoremove -y --purge --auto-remove -qq"
 
@@ -12137,7 +12143,12 @@ _initd_update() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
-          _mrun "service php${e}-fpm start"
+          # A master that is already up refuses a second start ("Another
+          # FPM instance seems to already listen") and the old one keeps
+          # serving; ask the init script first instead of racing it.
+          if ! service php${e}-fpm status > /dev/null 2>&1; then
+            _mrun "service php${e}-fpm start"
+          fi
         fi
       done
     fi

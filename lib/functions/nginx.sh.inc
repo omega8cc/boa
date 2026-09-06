@@ -700,8 +700,9 @@ _nginx_install_upgrade() {
       # to build and the previous binary in place while the stamp would claim
       # the new version; say so instead of reporting a clean pass.
       _NGX_BUILT=$(/usr/sbin/nginx -v 2>&1 | grep -oE "nginx/[0-9.]+")
-      if [ "${_NGX_BUILT}" != "nginx/${_NGINX_VRN}" ]; then
-        _msg "OOPS: Nginx ${_NGINX_VRN} did not build (nginx -v reports ${_NGX_BUILT:-nothing}); the previous binary stays in place, check the errors log"
+      if [ ! -x "/var/opt/nginx-${_NGINX_VRN}/objs/nginx" ] \
+        || [ "${_NGX_BUILT}" != "nginx/${_NGINX_VRN}" ]; then
+        _msg "OOPS: Nginx ${_NGINX_VRN} did not build (no objs/nginx in the build tree, nginx -v reports ${_NGX_BUILT:-nothing}); the previous binary stays in place, check the errors log"
       fi
     fi
     ldconfig 2> /dev/null
