@@ -4490,6 +4490,9 @@ _run_apt_get_dist_upgrade() {
   _mrun "apt-get dist-upgrade ${_aptYesUnth}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   _mrun "apt-get install lsb-release ${_dstUpArg}"
+  # libc-bin's conffile just replaced /etc/ld.so.conf.d/libc.conf: put the BOA
+  # OpenSSL library paths back before anything links or downloads again.
+  _ssl_paths_sync
   ### Update rsyslog configuration early
   _rsyslog_config_update
   ### Reload key services if needed early
@@ -6221,6 +6224,11 @@ _ssl_install_src() {
   fi
 
   ###--------------------###
+  # A codename hop's dist-upgrade installs the distro's libc.conf over ours
+  # (--force-confnew), so the BOA-built curl resolves libssl.so.3 to the distro
+  # copy and every download here fails until the paths are back. Restore them
+  # before the first fetch.
+  _ssl_paths_sync
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
   fi
@@ -8641,6 +8649,7 @@ _if_post_major_os_upgrade() {
         _ensure_devuan_base_files
       fi
     fi
+    _ssl_paths_sync
 
     ### Update base-files on excalibur if needed
     if [ -e "/root/.top-excalibur.cnf" ]; then
