@@ -5525,38 +5525,82 @@ _xmass_refuse_role_clash() {
 
 ### The target must be COMPLETELY silent before anything lands on it that an
 ### octopus pass could collide with: every account install and every re-seed
-### (prep-target arms run-upgrade.pid per account) leaves a background pass
-### behind, and each pass queues platform verifies that the Aegir queue runs
-### minutes later -- so "prep-target complete" and "silent" are minutes
-### apart, and init's datadir swap or cutover's promotion must never land on a
-### target mid-pass. Silent means: no BOA run lock, no run-upgrade.pid armed
-### on any account (the runner would start another pass), every root's
-### hosting_task queue empty (nothing queued or processing) and no
-### dispatch/verify/installer process. Fail-closed on an unreadable probe.
+### leaves a background pass behind, and each pass queues platform verifies
+### that the Aegir queue runs minutes later -- so "prep-target complete" and
+### "silent" are minutes apart, and init's datadir swap must never land on a
+### target mid-pass. Silent means: no BOA run lock, no run-upgrade.pid armed on
+### any account (the runner would start another pass), every root's hosting_task
+### queue empty (nothing queued or processing, current revisions only -- the
+### frozen creation revisions of finished tasks keep status 0 forever, and a
+### queued row carries executed=NULL, never 0) and no dispatch/verify/installer
+### process. Every leg fails CLOSED: an unreadable root or an unreadable probe
+### counts as busy. Accounts are enumerated exactly as _xmass_enumerate_accounts
+### does (every /data/disk directory minus the blocklist -- names are not
+### assumed to match o*), plus the master root.
+###
+### Two scopes: 'full' (all four legs) for prep-target and init, where the
+### target is a working box whose runner consumes armed pids and whose panels
+### are its own; 'locks' (run locks + processes only) for cutover, where the
+### target is a replication standby -- its runner exits on /root/.standby.cnf
+### so an armed pid there is never consumed (the promotion clears it), and its
+### hosting_task rows are the SOURCE's, replicated.
 _xmass_target_silence_probe() {
-  local _t="$1"
-  _XMASS_TGT_STATE=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" '
+  local _t="$1" _scope="${2:-full}" _raw
+  _raw=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" '
     _p=$(ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr "\n" " ")
-    _a=$(ls /data/disk/o*/static/control/run-upgrade.pid 2>/dev/null | sed "s#/data/disk/##; s#/static.*##" | tr "\n" " ")
+    _a=""
     _q=""
-    for _r in aegir $(ls /data/disk/ 2>/dev/null | grep -E "^o[0-9]+[a-z]*$"); do
-      _c=$(su -s /bin/bash - "${_r}" -c "drush8 @hostmaster sqlq \"SELECT SUM(task_status=0 AND executed=0)+SUM(task_status=-1) FROM hosting_task\"" 2>/dev/null | tail -1 | tr -dc 0-9)
-      [ "${_c:-0}" != "0" ] && _q="${_q}${_r}=${_c} "
-    done
-    _d=$(ps -eo args | grep -c -E "[h]osting-tasks|[p]rovision-verify|[h]osting-dispatch|[O]CTOPUS.sh.txt\.o|[A]egirSetup[A-Z].sh.txt|[B]ARRACUDA.sh.txt")
-    echo "locks=[${_p}] armed=[${_a}] queue=[${_q}] procs=${_d}"' 2>/dev/null)
+    if [ "'"${_scope}"'" = "full" ]; then
+      _a=$(ls /data/disk/*/static/control/run-upgrade.pid 2>/dev/null | sed "s#/data/disk/##; s#/static.*##" | tr "\n" " ")
+      _roots="aegir"
+      for _d in $(find /data/disk -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
+        _n=$(basename "${_d}")
+        case "${_n}" in
+          arch|all|lost+found|lostfound|backups|codebases-cleanup|legacy|xusage) continue ;;
+        esac
+        _roots="${_roots} ${_n}"
+      done
+      for _r in ${_roots}; do
+        [ "${_r}" = "aegir" ] && [ ! -e /var/aegir/.drush/hostmaster.alias.drushrc.php ] && continue
+        _c=$(su -s /bin/bash - "${_r}" -c "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = -1 OR (t.task_status = 0 AND (t.executed IS NULL OR t.executed = 0))\"" 2>/dev/null | tail -1 | tr -d " ")
+        case "${_c}" in
+          "") _q="${_q}${_r}=? " ;;
+          *[!0-9]*) _q="${_q}${_r}=? " ;;
+          0) : ;;
+          *) _q="${_q}${_r}=${_c} " ;;
+        esac
+      done
+    fi
+    _d=$(ps -eww -o args | grep -c -E "[h]osting-tasks|[p]rovision-verify|[h]osting-dispatch|[O]CTOPUS.sh.txt\.|[A]egirSetup[A-Z].sh.txt|[B]ARRACUDA.sh.txt")
+    echo "XMSTATE locks=[${_p}] armed=[${_a}] queue=[${_q}] procs=${_d}"' 2>/dev/null)
+  _XMASS_TGT_STATE=$(printf '%s\n' "${_raw}" | grep '^XMSTATE ' | tail -1 | sed 's/^XMSTATE //')
   [ -z "${_XMASS_TGT_STATE}" ] && return 2
-  [ "${_XMASS_TGT_STATE}" = "locks=[] armed=[] queue=[] procs=0" ] && return 0
+  case "${_XMASS_TGT_STATE}" in
+    "locks=[] armed=[] queue=[] procs=0") return 0 ;;
+  esac
   return 1
 }
 
+### Bounded wait for the probe above. Two consecutive silent polls, the second
+### a few seconds after the first so an idle target is confirmed in seconds,
+### busy targets re-polled on a 47 s cadence that cannot phase-lock with the
+### per-minute crons whose transient ticks the process leg would otherwise see
+### every time. On timeout: 'die' refuses (init, cutover --live), 'warn'
+### reports and returns 1 (prep-target: nothing destructive follows there and
+### the next verb waits again). _XMASS_SKIP_TARGET_SILENCE=YES skips the wait
+### deliberately, loudly.
 _xmass_wait_target_silent() {
-  local _t="$1" _why="${2:-continuing}" _w=0 _ok=0 _rc
+  local _t="$1" _why="${2:-continuing}" _on_timeout="${3:-die}" _scope="${4:-full}"
+  local _w=0 _ok=0 _rc _last_alrt=-300
   local _max="${_XMASS_TARGET_SILENT_MAX_WAIT:-2400}"
   case "${_max}" in ''|*[!0-9]*) _max=2400 ;; esac
-  _info "Waiting for ${_t} to be completely silent before ${_why} (up to ${_max}s) ..."
-  while [ "${_w}" -le "${_max}" ]; do
-    _xmass_target_silence_probe "${_t}"
+  if [ "${_XMASS_SKIP_TARGET_SILENCE}" = "YES" ]; then
+    _alrt "_XMASS_SKIP_TARGET_SILENCE=YES: NOT waiting for ${_t} to be silent before ${_why}"
+    return 0
+  fi
+  _info "Waiting for ${_t} to be completely silent before ${_why} (scope ${_scope}, up to ${_max}s) ..."
+  while :; do
+    _xmass_target_silence_probe "${_t}" "${_scope}"
     _rc=$?
     if [ "${_rc}" -eq 0 ]; then
       _ok=$(( _ok + 1 ))
@@ -5564,18 +5608,28 @@ _xmass_wait_target_silent() {
         _info "  ${_t} silent on two consecutive polls (${_w}s)"
         return 0
       fi
-    else
-      _ok=0
+      sleep 10
+      _w=$(( _w + 10 ))
+      continue
+    fi
+    _ok=0
+    if [ $(( _w - _last_alrt )) -ge 300 ]; then
       if [ "${_rc}" -eq 2 ]; then
         _alrt "  cannot read the run state on ${_t} over ssh -- treating it as busy"
-      elif [ $(( _w % 300 )) -eq 0 ]; then
+      else
         _info "  ${_t} busy: ${_XMASS_TGT_STATE}"
       fi
+      _last_alrt="${_w}"
     fi
-    sleep 60
-    _w=$(( _w + 60 ))
+    [ "${_w}" -lt "${_max}" ] || break
+    sleep 47
+    _w=$(( _w + 47 ))
   done
-  _die "target ${_t} still busy after ${_max}s (${_XMASS_TGT_STATE}) -- an octopus" \
+  if [ "${_on_timeout}" = "warn" ]; then
+    _alrt "target ${_t} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus pass or its queued verifies are running there; the next verb waits for silence again"
+    return 1
+  fi
+  _die "target ${_t} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus" \
        " pass or its queued verifies are running there; let it finish, then re-run"
 }
 
@@ -5720,11 +5774,12 @@ _xmass_cmd_prep_target() {
   [ -n "${_failed}" ] \
     && _die "account preparation failed for:${_failed} -- fix the cause and re-run prep-target"
 
-  # Every seeded account runs a background octopus pass now, and each pass
-  # queues verifies: COMPLETE must mean the target is silent, not merely
-  # provisioned, or the operator's next verb lands on a box mid-pass.
-  _xmass_wait_target_silent "${_tgt}" "prep-target completes"
   _xmass_verify_target_accounts "${_tgt}" die
+  # Every seeded account runs a background octopus pass now, and each pass
+  # queues verifies: report the target silent before declaring COMPLETE. A
+  # timeout here is not a failure -- nothing destructive follows, and init
+  # waits for silence again -- so it warns and completes.
+  _xmass_wait_target_silent "${_tgt}" "prep-target completes" warn full || true
   _info ""
   _info "======================================================"
   _info "  xmass prep-target COMPLETE for ${_tgt}"
@@ -6004,7 +6059,7 @@ _xmass_cmd_init() {
   # The datadir swap below must never land on a target mid-pass: a
   # prep-target minutes ago left every seeded account an octopus pass and
   # its queued verifies. Wait for real silence, bounded, fail-closed.
-  _xmass_wait_target_silent "${_tgt}" "init replaces the target datadir"
+  _xmass_wait_target_silent "${_tgt}" "init replaces the target datadir" die full
 
   # Clear unfinished delete tasks BEFORE the panel databases travel.
   _xmass_clear_pending_deletes
@@ -7204,15 +7259,15 @@ _xmass_cmd_cutover() {
   # multi-mount) and reuse it for every account + shared store below.
   _xmass_resolve_target_mnt "${_tgt}"
 
-  # The promotion must not land on a target mid-pass either: --live waits for
-  # real silence (bounded, fail-closed); the DRY run reports a busy target as
-  # a DENY so the plan shows it before the window opens.
-  if [ "${_MODE}" = "LIVE" ]; then
-    _xmass_wait_target_silent "${_tgt}" "cutover promotes the target"
-  else
-    _xmass_target_silence_probe "${_tgt}"
+  # The promotion must not land on a target mid-pass either. The target is a
+  # standby here, so only its run locks and live installer/dispatch processes
+  # count ('locks' scope): its runner never consumes an armed pid and its
+  # panel rows are the source's. The DRY run reports a busy target as a DENY;
+  # --live waits for it below, after every cheap refusal.
+  if [ "${_MODE}" != "LIVE" ]; then
+    _xmass_target_silence_probe "${_tgt}" locks
     case $? in
-      1) _alrt "DENY: target ${_tgt} is busy (${_XMASS_TGT_STATE}) -- an octopus pass or its queued verifies are running; --live waits for silence, but plan around it"
+      1) _alrt "DENY: target ${_tgt} is busy (${_XMASS_TGT_STATE}) -- an octopus pass or a dispatch is running there; --live waits for it, but plan around it"
          _XMASS_NOT_CLEAN=YES ;;
       2) _alrt "DENY: cannot read the run state on ${_tgt} over ssh"
          _XMASS_NOT_CLEAN=YES ;;
@@ -7336,6 +7391,10 @@ _xmass_cmd_cutover() {
   _xmass_require_clean_dry "${_tgt}"
   _XMASS_STORE_RC=0
   _XMASS_RSYNC_RC=0
+
+  # Last wait before the first source mutation: the standby must hold no run
+  # lock and run no installer or dispatch when the promotion lands on it.
+  _xmass_wait_target_silent "${_tgt}" "cutover promotes the target" die locks
 
   # All gates passed: park cron + runners HERE instead of refusing -- the
   # box's own cron restores a pre-mig-time park within minutes, so demanding

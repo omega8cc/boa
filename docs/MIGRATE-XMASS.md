@@ -332,6 +332,32 @@ What it does, in order:
 
 The verb is idempotent: re-run it after fixing anything it refused on.
 
+### The target-silence gate (prep-target, init, cutover)
+
+Every account install and every re-seed on the target leaves a background
+octopus pass behind, and each pass queues platform verifies that the Ægir
+queue runs minutes later. A target is **silent** when it holds no BOA run
+lock (`/run/boa_run.pid`, `/run/boa_wait.pid`, `/run/octopus_install_run.pid`),
+no account has `static/control/run-upgrade.pid` armed, every root's
+`hosting_task` queue is empty (current revisions, queued or processing) and no
+dispatch, verify or installer process runs. The probe fails closed: an
+unreadable root or an unreadable target counts as busy.
+
+- `prep-target` reports the wait after its account verification; a timeout
+  there only warns (nothing destructive follows).
+- `init` waits, bounded, before its first target mutation and refuses on
+  timeout.
+- `cutover --live` waits, in the narrower run-locks-and-processes scope (the
+  target is a standby: its runner never consumes an armed pid and its panel
+  rows are the source's), after every cheap refusal and before the first
+  source mutation; the DRY run reports a busy target as a DENY.
+
+Knobs: `_XMASS_TARGET_SILENT_MAX_WAIT` (seconds, default 2400) and
+`_XMASS_SKIP_TARGET_SILENCE=YES` (skip the wait deliberately, logged). Related
+`xoct create` knobs: `_XOCT_TARGET_QUIET_MAX_WAIT` (wait for a quiet target
+before the account install, default 1800) and `_XOCT_CREATE_MAX_WAIT` (the
+post-install settle, default 900).
+
 ### Phase 1 — Initialise Replication (`xmass init`)
 
 Run on the **source** only.

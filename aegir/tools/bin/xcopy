@@ -662,9 +662,13 @@ _migrate_prepare() {
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
       echo "Waiting 8 minutes before attempting to run enforced post-install upgrade..."
       sleep 500
-      ssh root@${_tgt} "test ! -e /data/disk/${_TGT_HM_USER}/log/upgrademail.txt && /bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info"
-      ssh root@${_tgt} "test ! -e /data/disk/${_TGT_HM_USER}/log/upgrademail.txt && /bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
+      ### Arm the enforced post-install upgrade only when the install's own
+      ### in-flow upgrade has not run yet (octopus_log carries a single line).
+      ### The old guard keyed on log/upgrademail.txt, which a silent install
+      ### never writes, so it armed a full pass on every re-run; and the pid
+      ### cleanup ran AFTER the arm, deleting the trigger it had just created.
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/static/control/*.pid"
+      ssh root@${_tgt} "[ \$(wc -l < /data/disk/${_TGT_HM_USER}/log/octopus_log.txt 2>/dev/null || echo 0) -lt 2 ] && /bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info && /bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
       echo "INFO: new octopus ${_TGT_HM_USER} setup on ${_tgt} complete"
     else
       echo "ALRT: new octopus ${_TGT_HM_USER} setup on ${_tgt} failed because of missing arguments"
