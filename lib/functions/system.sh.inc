@@ -11357,7 +11357,9 @@ _lshell_install_upgrade() {
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
-      _mrun "${_usePip} install --upgrade pip --root-user-action ignore"
+      # PEP 668 (python 3.11+) refuses a system-wide pip upgrade without it, the
+      # same way the lshell install line below already asks.
+      _mrun "${_usePip} install --upgrade pip --break-system-packages --root-user-action ignore"
     else
       _mrun "${_usePip} install --upgrade pip"
     fi

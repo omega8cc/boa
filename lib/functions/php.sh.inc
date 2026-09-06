@@ -2993,7 +2993,7 @@ _php_not_used_disable() {
       _re=${_re//[^0-9]/}
       if [ -e "/etc/init.d/php${_re}-fpm" ]; then
         _mrun "service php${_re}-fpm force-quit"
-        _mrun "update-rc.d -f php${_re}-fpm _remove"
+        _mrun "update-rc.d -f php${_re}-fpm remove"
         rm -f ${_vBs}/initd-php${_re}-fpm
         mv -f /etc/init.d/php${_re}-fpm ${_vBs}/initd-php${_re}-fpm
         _msg "INFO: /etc/init.d/php${_re}-fpm moved to ${_vBs}/initd-php${_re}-fpm"
