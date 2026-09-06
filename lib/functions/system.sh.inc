@@ -8805,16 +8805,13 @@ _if_major_os_upgrade() {
   _RUNNING_MAJOR_OS_UPGRADE=NO
   _define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
-    # ICU precheck: a box pinned via _ICU_FORCE_VRN builds its pinned dotted
-    # dir (e.g. 73.1), not 76.1, so derive the expected dir from the resolver
-    # when pinned; the unset path keeps the historical 76.1 literal so the
-    # default major-OS-upgrade behaviour is unchanged.
-    if [ -n "${_ICU_FORCE_VRN}" ]; then
-      _resolve_icu_target
-      _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
-    else
-      _ICU_DOT="76.1"
-    fi
+    # ICU precheck: the dir a normal pass leaves behind is the one the resolver
+    # picks for THIS box (73.1 on chimaera and older, 76.1 from daedalus on, or
+    # the _ICU_FORCE_VRN pin), so ask the resolver rather than assume 76.1: the
+    # literal refused every hop off chimaera as "run a normal upgrade first".
+    _resolve_icu_target
+    _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
+    [ -z "${_ICU_DOT}" ] && _ICU_DOT="76.1"
     if [ ! -e "/usr/local/lib/icu/${_ICU_DOT}" ] \
       && [ "${_LOC_OS_CODE}" != "jessie" ]; then
       echo
