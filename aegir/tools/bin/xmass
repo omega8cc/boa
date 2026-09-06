@@ -5999,6 +5999,21 @@ _xmass_pre_mig() {
   _info "pre-mig complete on ${_hName}"
 }
 
+_xmass_drop_target_prepass_backups() {
+  local _t="$1" _oct _n
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _n=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+      "find /data/disk/${_oct}/backups/system -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' 2>/dev/null | wc -l" 2>/dev/null | tr -dc '0-9')
+    case "${_n}" in ''|0) continue ;; esac
+    if ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+      "find /data/disk/${_oct}/backups/system -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' -exec rm -rf {} +" 2>/dev/null; then
+      _info "  ${_oct}: dropped ${_n} pre-pass backup snapshot(s) of the target's own install on ${_t}"
+    else
+      _alrt "  ${_oct}: could not drop the pre-pass backup snapshots on ${_t}; the sync's delete guard may stop on them"
+    fi
+  done
+}
+
 _xmass_cmd_init() {
   _xmass_load_state
   if [ "${_XMASS_PHASE}" = "syncing" ] \
@@ -6060,6 +6075,16 @@ _xmass_cmd_init() {
   # prep-target minutes ago left every seeded account an octopus pass and
   # its queued verifies. Wait for real silence, bounded, fail-closed.
   _xmass_wait_target_silent "${_tgt}" "init replaces the target datadir" die full
+
+  # Every octopus pass the target ran while it was being provisioned (the
+  # install, its in-flow upgrade, the pin-seed pass) snapshotted its own empty
+  # hostmaster under backups/system/*-pre-*: thousands of files per pass that
+  # exist only on the target. The sync mirrors the source's backups/ with a
+  # bounded --delete, so that residue trips the delete guard on every target
+  # that ran two passes or more. The accounts here are fresh installs about to
+  # be overlaid by the source's trees; drop their own pre-pass snapshots now,
+  # counted and logged, so the guard keeps watching for real mass deletions.
+  _xmass_drop_target_prepass_backups "${_tgt}"
 
   # Clear unfinished delete tasks BEFORE the panel databases travel.
   _xmass_clear_pending_deletes

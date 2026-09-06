@@ -154,6 +154,18 @@ _quick_probe_release() {
     "${_fullbase}/dists/${_suite}/Release" >/dev/null 2>&1
 }
 
+# The pool is served by a different host on some mirrors (the merged layout's
+# Debian half is redirected offsite), and that host can be broken while
+# dists/ still verifies -- observed as an expired TLS chain on the redirect
+# target, which the Release probe above cannot see. Follow the redirects of a
+# pool path and accept any HTTP answer; only a transport or certificate
+# failure (curl's own exit code) rejects the mirror.
+_quick_probe_pool() {
+  _fullbase="$1"
+  curl -sSL -I -o /dev/null --max-time "${_PROBE_TIMEOUT}" \
+    "${_fullbase}/pool/DEBIAN/main/" >/dev/null 2>&1
+}
+
 # ===== Fetch the mirror list =================================================
 if [ -n "${_MIRROR_SRC_FILE}" ]; then
   cp -f "${_MIRROR_SRC_FILE}" "${_RAW_LIST}"
@@ -233,6 +245,9 @@ _process_block() {
   # Quick reliability probe (cheap)
   if [ "${_REQUIRE_QUICK_PROBE}" = "YES" ]; then
     if ! _quick_probe_release "${_apt_base}" "${_SUITE_DEFAULT}"; then
+      return 0
+    fi
+    if ! _quick_probe_pool "${_apt_base}"; then
       return 0
     fi
   fi
