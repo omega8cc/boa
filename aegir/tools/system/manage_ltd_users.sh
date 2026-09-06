@@ -1941,8 +1941,16 @@ _site_socket_inc_gen() {
   _hmstCli=$(cat ${_dscUsr}/log/cli.txt 2>&1)
   _hmstCli=$(echo -n ${_hmstCli} | tr -d "\n" 2>&1)
 
-  if [ ! -e "${_hmstAls}" ]; then
-    ln -sfn ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${_hmstAls}
+  # The <panel-fqdn> symlink to hostmaster.alias.drushrc.php was a crutch for
+  # accounts whose hostmaster internals an old migration had left half
+  # replaced; it also made the panel look like a site to anything that keys
+  # on <fqdn>.alias files. Purge it here, in the regular pass, so an account
+  # that still depends on it breaks visibly and is repaired BEFORE its next
+  # migration instead of carrying the defect to a new box. Only the exact
+  # crutch shape is removed; a real alias file of that name is left alone.
+  if [ -L "${_hmstAls}" ] \
+    && [ "$(readlink "${_hmstAls}" 2>/dev/null)" = "${_dscUsr}/.drush/hostmaster.alias.drushrc.php" ]; then
+    rm -f ${_hmstAls}
   fi
 
   _desymlink_planted "${_mltFpm}"
