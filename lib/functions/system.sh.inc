@@ -11371,6 +11371,21 @@ _fix_php_in_lshell_access() {
   fi
 }
 
+# The per-instance group's Octopus INIT/upgrade arm lives in this release's
+# libraries; instgrp (fetched, can land weeks earlier on a staged publish)
+# lets no account take its FIRST conversion until this stamp says the arm is
+# on the box. Written at the tail of every barracuda pass that runs this
+# release (next to the barracuda log line), never by the fetched channel.
+# .txt: the /var/log/boa sweeps match *.pid and *.log only.
+_instgrp_arm_stamp() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _instgrp_arm_stamp"
+    _debug_proc
+  fi
+  mkdir -p /var/log/boa &> /dev/null
+  echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-arm.ready.txt
+}
+
 _lshell_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _lshell_install_upgrade"

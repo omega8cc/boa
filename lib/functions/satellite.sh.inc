@@ -4072,7 +4072,7 @@ _satellite_if_instance_group() {
   case "${_iGrc}" in
     0) ;;
     2) _msg "NOTE: instgrp convert ${_USER} left paths to re-group (written during the walk); the next pass finishes them, see /var/log/boa/instgrp.log" ;;
-    5) _msg "NOTE: instgrp convert ${_USER} deferred: a fetched root-run writer on this box still carries the box-wide form (instgrp check); the next pass converts once the tools refresh" ;;
+    5) _msg "NOTE: instgrp convert ${_USER} deferred: a fetched root-run writer on this box still carries the box-wide form, or the release that carries this arm has not stamped the box yet (instgrp check); the next pass converts once the tools refresh or the BOA upgrade lands" ;;
     *)
       # name the exit class; the old text listed the code legend in a
       # shape that read as a tally of accounts

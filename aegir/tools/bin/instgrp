@@ -65,14 +65,16 @@
 #            account's octopus cnf so the next upgrade does not convert it
 #            again (--keep-enabled leaves the cnf alone).
 #   check    the writer inventory: every fetched root-run writer listed as
-#            group-aware, stale, or absent on this box class.
+#            group-aware, stale, or absent on this box class -- and whether
+#            the BOA release that carries the Octopus arm has stamped the box.
 #
 # The octopus upgrade arm runs convert for every account by default; the
 # per-instance opt-out is _INSTANCE_GROUP=NO in /root/.<account>.octopus.cnf
 # (honoured by that arm, not by an explicit operator convert). Log:
 # /var/log/boa/instgrp.log. Exit: 0 done, 1 failed, 2 drift, 3 inconsistent,
 # 4 skipped (busy, frozen, or a live BOA run), 5 not ready (a fetched
-# writer still in the box-wide form; the next pass retries). Over 'all' the
+# writer still in the box-wide form, or the release that carries the arm
+# has not stamped the box; the next pass retries). Over 'all' the
 # worst class is returned: failed > inconsistent > drift > not ready >
 # skipped > done.
 #
@@ -85,6 +87,14 @@ _USRG=users
 _WEBG=www-data
 _LOG=/var/log/boa/instgrp.log
 _MARK_REL=log/instance-group.txt
+# Written by the BOA release that carries the Octopus INIT/upgrade arm (the
+# barracuda pass; lib code that only ships with that release). The fetched
+# writers can land on a box weeks before its upgrade -- a staged publish --
+# and every writer this tool inventories is fetched, so without this stamp
+# "ready" would read true on a box whose Octopus and system libraries still
+# flatten trees to the box-wide group. .txt: the /var/log/boa sweeps match
+# *.pid and *.log only.
+_ARM_STAMP=/var/log/boa/instgrp-arm.ready.txt
 _WAIT_MAX="${_INSTGRP_WAIT_MAX:-300}"
 _FROM_OCTOPUS=NO
 _FORCE=NO
@@ -157,7 +167,8 @@ Usage:
   --force         convert or reclaim an account frozen for a migration (log/proxied.pid).
   --keep-enabled  revert without writing _INSTANCE_GROUP=NO into the cnf.
   Exit: 0 done, 1 failed, 2 drift, 3 inconsistent, 4 skipped (busy, frozen,
-  a live BOA run), 5 not ready (writers still box-wide; retried next pass).
+  a live BOA run), 5 not ready (writers still box-wide, or the arm's release
+  not on the box yet; retried next pass).
 EOF
   exit 1
 }
@@ -427,6 +438,10 @@ _tools_ready() {
     _alrt "writers still in the box-wide form (wait for the tools refresh, then retry):${_TOOLS_STALE}"
     return 1
   fi
+  if [ ! -s "${_ARM_STAMP}" ]; then
+    _alrt "the BOA release that carries the Octopus arm is not on this box yet (no ${_ARM_STAMP}); run the BOA upgrade, then retry"
+    return 1
+  fi
   return 0
 }
 
@@ -436,6 +451,11 @@ _do_check() {
   for _p in ${_TOOLS_OK}; do _msg "ok:      ${_p}"; done
   for _p in ${_TOOLS_ABSENT}; do _msg "absent:  ${_p}"; done
   for _p in ${_TOOLS_STALE}; do _msg "STALE:   ${_p}"; done
+  if [ -s "${_ARM_STAMP}" ]; then
+    _msg "arm:     $(head -c 80 "${_ARM_STAMP}" | tr -d '\n') (${_ARM_STAMP})"
+  else
+    _msg "arm:     ABSENT (${_ARM_STAMP}): the Octopus INIT/upgrade arm rides the BOA release; a first conversion waits for the upgrade"
+  fi
   if [ "${_rc}" = "0" ]; then
     _info "every installed root-run writer carries the derived-group form ($(printf '%s\n' ${_TOOLS_OK} | wc -l) verified, $(printf '%s\n' ${_TOOLS_ABSENT} | grep -c . ) absent)"
   fi
@@ -724,14 +744,6 @@ _do_convert() {
     _log "${_a}: SKIP frozen"
     return 4
   fi
-  # A writer still in the box-wide form is the expected state of a box whose
-  # fetched tools lag the tree on the first pass after a release: not a
-  # failure of this account, a deferral (rc 5) the next pass resolves.
-  if ! _tools_ready; then
-    _msg "${_a}: not converted this pass -- the box is not ready (see instgrp check)"
-    _log "${_a}: SKIP not ready"
-    return 5
-  fi
   _uGid=$(_gid_of "${_USRG}")
   [ -n "${_uGid}" ] || _die "group ${_USRG} not found"
   _subs=$(_acct_subusers "${_a}")
@@ -754,6 +766,17 @@ _do_convert() {
       return 0
     fi
     _msg "${_a}: identities converted, paths drifted -- re-grouping..."
+  fi
+  # Below this line the account changes group. A writer still in the box-wide
+  # form (the fetched tools lagging the tree on the first pass after a
+  # release) or a box the arm's release has not reached yet (a staged
+  # publish) is not a failure of this account: a deferral (rc 5) the next
+  # pass resolves. An already converted account took the read-only re-pass
+  # above regardless -- the gate stops a FIRST conversion, never maintenance.
+  if ! _tools_ready; then
+    _msg "${_a}: not converted this pass -- the box is not ready (see instgrp check)"
+    _log "${_a}: SKIP not ready"
+    return 5
   fi
   if ! _wait_idle "${_a}"; then
     _alrt "${_a}: still busy after ${_WAIT_MAX}s, skipped this pass"
