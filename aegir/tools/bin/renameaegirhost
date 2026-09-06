@@ -816,6 +816,27 @@ _rewrite_vhosts() {
       _maybe_run mv -f \'"${_F}"\' \'"${_NEW_F}"\'
     fi
   done
+
+  # The panel's SSL proxy include lives under the MASTER root's pre.d, keyed
+  # on the panel's old name. The account pass regenerates it for the new name
+  # once the new-name certificate exists, but nothing removed the old one: it
+  # kept naming a certificate under the old-name LE dir, and once that tree
+  # went (a purge, an LE cleanup) nginx failed its configtest box-wide. Park
+  # it with the other backups; never rewrite it in place, the new-name
+  # certificate is not there yet.
+  local _PRX _PRX_ACCT
+  case "${_AEGIR_ROOT}" in
+    /data/disk/*)
+      for _PRX_ACCT in "${_AEGIR_USER}" "${_OLD_ACCT}"; do
+        [ -n "${_PRX_ACCT}" ] || continue
+        _PRX="/var/aegir/config/server_master/nginx/pre.d/z_${_PRX_ACCT}.${_OLD_HOST}_ssl_proxy.conf"
+        [ -e "${_PRX}" ] || continue
+        _info "  park old-name panel SSL proxy include: $(basename "${_PRX}") -> ${_BACKUP_DIR}/"
+        _maybe_run mkdir -p \'"${_BACKUP_DIR}"\'
+        _maybe_run mv -f \'"${_PRX}"\' \'"${_BACKUP_DIR}/"\'
+      done
+    ;;
+  esac
 }
 
 ###-------------§4b OCTOPUS CONTROL CNF--###
