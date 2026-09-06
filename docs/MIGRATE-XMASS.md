@@ -287,6 +287,16 @@ xmass pre-mig source-host
 
 ### Phase 0.5 — Prepare the target (`xmass prep-target`)
 
+`prep-target` refuses a target that carries an Octopus account absent from the
+source's eligible list (a golden-master clone brings its own satellite along):
+the init datadir swap replaces the target's MySQL with the source's, where that
+account's panel database never existed, so it would come out of cutover as a
+broken leftover (panel 500, no sites, no DB user). Remove it first with BOA's
+own cleanup — `touch /data/disk/<oN>/log/CANCELLED` on the target, a
+`barracuda up-<tree> system noscreen` pass (drops its vhosts), then
+`boa cleanup detect` and `boa cleanup purge <oN>` — or set
+`_XMASS_ALLOW_TARGET_ONLY=YES` to proceed knowingly and purge after cutover.
+
 Run on the **source**, after `pre-mig` has completed on both hosts and before
 `init`. This is everything the target must have in place before its Octopus
 accounts exist and before `init` replaces its datadir:

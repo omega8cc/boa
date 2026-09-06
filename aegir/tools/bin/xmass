@@ -5709,6 +5709,39 @@ _xmass_wait_target_silent() {
        " pass or its queued verifies are running there; let it finish, then re-run"
 }
 
+_xmass_deny_target_only_accounts() {
+  # An Octopus account that exists on the target but not among the source's
+  # eligible accounts cannot survive init: the datadir swap replaces the
+  # target's MySQL with the source's, where that account's panel database
+  # never existed, and it comes out of cutover as a broken leftover (panel
+  # 500, no sites, no DB user). A golden-master clone carries exactly such a
+  # satellite. Refuse here, before anything is installed or replicated, and
+  # point at BOA's own removal path instead of inventing one: log/CANCELLED
+  # arms the vhost removal on the next barracuda pass, boa cleanup purges.
+  local _t="$1" _tgt_accts _a _extra=""
+  _tgt_accts=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
+    "for _d in /data/disk/o*; do [ -f \"\${_d}/.drush/hostmaster.alias.drushrc.php\" ] && [ ! -e \"\${_d}/log/CANCELLED\" ] && basename \"\${_d}\"; done" 2>/dev/null)
+  for _a in ${_tgt_accts}; do
+    case " ${_ELIGIBLE_ACCOUNTS} " in
+      *" ${_a} "*) ;;
+      *) _extra="${_extra} ${_a}" ;;
+    esac
+  done
+  [ -z "${_extra}" ] && return 0
+  if [ "${_XMASS_ALLOW_TARGET_ONLY}" = "YES" ]; then
+    _alrt "target ${_t} carries account(s) not on this source:${_extra} -- continuing on"
+    _alrt "_XMASS_ALLOW_TARGET_ONLY=YES; they will be BROKEN after init (their panel DB"
+    _alrt "does not exist in the source's datadir) and must be purged after cutover"
+    return 0
+  fi
+  _die "target ${_t} carries account(s) not on this source:${_extra} -- the init datadir" \
+       " swap would leave them without a panel database (broken leftovers). Remove them" \
+       " first with BOA's own cleanup: touch /data/disk/<oN>/log/CANCELLED there, run a" \
+       " 'barracuda up-<tree> system noscreen' pass (drops the vhosts), then" \
+       " 'boa cleanup detect' and 'boa cleanup purge <oN>'; or set" \
+       " _XMASS_ALLOW_TARGET_ONLY=YES to proceed knowingly"
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -5770,6 +5803,7 @@ _xmass_cmd_prep_target() {
   # the release number is compared. No override: "bring both boxes to the same
   # release" is always the correct action and is always available, and an
   # override here buys a box-wide outage.
+  _xmass_deny_target_only_accounts "${_tgt}"
   _xmass_assert_same_release "${_tgt}"
 
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
