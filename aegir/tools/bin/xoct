@@ -349,9 +349,7 @@ In your DNS records, replace the first address with the second."
 
   _MIG_COVERAGE_BLOCK="What the old address covers, and what it does not
 
-The old address forwards traffic only for the sites that were on it at the
-moment of the migration. Each of those was given its own forwarding entry,
-frozen exactly as it stood that day.
+The old address forwards traffic only for the sites that were on it at the moment of the migration. Each of those was given its own forwarding entry, frozen exactly as it stood that day.
 
 Anything you create from now on is not covered by it:
 
@@ -359,11 +357,7 @@ Anything you create from now on is not covered by it:
   - a site cloned or renamed on the new system,
   - a new domain, subdomain or alias added to a site you already have.
 
-For all of those, point DNS straight at the new address. There is nothing to
-wait for and nothing to switch over later. If one is pointed at the old address
-by mistake it will not load correctly, and on an https:// link the visitor's
-browser will also report a certificate problem, because the old address holds
-no certificate for a name it has never served."
+For all of those, point DNS straight at the new address. There is nothing to wait for and nothing to switch over later. If one is pointed at the old address by mistake it will not load correctly, and on an https:// link the visitor's browser will also report a certificate problem, because the old address holds no certificate for a name it has never served."
 
   ### The retirement notice carries only the address pair; its own body text
   ### is composed by the sender (with or without a withdrawal date).
@@ -380,11 +374,7 @@ no certificate for a name it has never served."
     _MIG_COVERAGE_BLOCK=""
     _MIG_DNS_BLOCK="Important: DNS for your sites
 
-Your sites keep their current addresses throughout the migration. Once it is
-finished you will receive a second message with your new address and with the
-DNS instructions that apply to your account, including what happens to your old
-address and at what pace to move DNS across. Please do not change any DNS
-records until you have that message."
+Your sites keep their current addresses throughout the migration. Once it is finished you will receive a second message with your new address and with the DNS instructions that apply to your account, including what happens to your old address and at what pace to move DNS across. Please do not change any DNS records until you have that message."
     return 0
   fi
 
@@ -393,25 +383,13 @@ records until you have that message."
       if [ -n "${_pd}" ]; then
         _MIG_DNS_BLOCK="Forwarding from your old address: temporary, until ${_pd}
 
-The old address has been kept in service and is forwarding traffic for your
-existing sites to the new address, so nothing goes dark while DNS propagates.
-This arrangement ends on ${_pd}. Please make sure DNS for every existing site
-points at the new address before then. From that date the old address stops
-answering, and any name still pointing at it will stop reaching your site.
+The old address has been kept in service and is forwarding traffic for your existing sites to the new address, so nothing goes dark while DNS propagates. This arrangement ends on ${_pd}. Please make sure DNS for every existing site points at the new address before then. From that date the old address stops answering, and any name still pointing at it will stop reaching your site.
 
-If you need more time, reply to this message and we will extend the date. There
-is no penalty for asking, and we would far rather move the date than have a
-site go dark."
+If you need more time, reply to this message and we will extend the date. There is no penalty for asking, and we would far rather move the date than have a site go dark."
       else
         _MIG_DNS_BLOCK="Forwarding from your old address: temporary
 
-The old address has been kept in service and is forwarding traffic for your
-existing sites to the new address, so nothing goes dark while DNS propagates.
-This arrangement is temporary and will be withdrawn once the migration has
-settled; we will tell you before that happens. Please move DNS for your
-existing sites across in your own time, but please do not leave it
-indefinitely: once the old address is retired, any name still pointing at it
-stops reaching your site."
+The old address has been kept in service and is forwarding traffic for your existing sites to the new address, so nothing goes dark while DNS propagates. This arrangement is temporary and will be withdrawn once the migration has settled; we will tell you before that happens. Please move DNS for your existing sites across in your own time, but please do not leave it indefinitely: once the old address is retired, any name still pointing at it stops reaching your site."
       fi
     ;;
     permanent)
@@ -420,39 +398,22 @@ stops reaching your site."
         _hdr="kept in place, with a date to work to"
         _dlp="
 
-We do have one date to work to. Please have DNS for all your existing sites
-moved to the new address by ${_pd}."
+We do have one date to work to. Please have DNS for all your existing sites moved to the new address by ${_pd}."
       fi
       _MIG_DNS_BLOCK="Forwarding from your old address: ${_hdr}
 
-The old address stays in service and keeps forwarding traffic for your existing
-sites to the new system. There is no cut-off date and no countdown, so there is
-no need to rush the DNS change. Move each site across at a normal pace,
-whenever it suits your own maintenance schedule.
+The old address stays in service and keeps forwarding traffic for your existing sites to the new system. There is no cut-off date and no countdown, so there is no need to rush the DNS change. Move each site across at a normal pace, whenever it suits your own maintenance schedule.
 
-Two things still make it worth finishing the move rather than leaving it
-indefinitely. A site served through the old address takes an extra network hop,
-so it is a little slower than one pointed straight at the new address. And, as
-set out below, only the sites that existed at migration time are covered, so
-you will be using the new address for anything new in any case. Bringing the
-rest across as you go keeps everything on one address.${_dlp}"
+Two things still make it worth finishing the move rather than leaving it indefinitely. A site served through the old address takes an extra network hop, so it is a little slower than one pointed straight at the new address. And, as set out below, only the sites that existed at migration time are covered, so you will be using the new address for anything new in any case. Bringing the rest across as you go keeps everything on one address.${_dlp}"
     ;;
     ha-switch)
       _MIG_DNS_BLOCK="Forwarding from your old address: your switch point
 
-Your service now runs as a live pair, a main system and a live mirror. The old
-address has been kept in service as the switch point between the two, so if the
-main system has to be taken out of service, traffic arriving at that address
-moves to the mirror without you doing anything.
+Your service now runs as a live pair, a main system and a live mirror. The old address has been kept in service as the switch point between the two, so if the main system has to be taken out of service, traffic arriving at that address moves to the mirror without you doing anything.
 
-The old address is therefore part of the design rather than a leftover from the
-migration, and there is no need to move DNS away from it for your existing
-sites. If you would prefer the shortest possible path and are content to handle
-a switch-over yourself, you can point DNS at the new address directly; please
-let us know if you do, so that we can keep your records straight.
+The old address is therefore part of the design rather than a leftover from the migration, and there is no need to move DNS away from it for your existing sites. If you would prefer the shortest possible path and are content to handle a switch-over yourself, you can point DNS at the new address directly; please let us know if you do, so that we can keep your records straight.
 
-Either way, sites and domains added from now on are not on the switch. They are
-served directly by the new system at the address above, as set out below."
+Either way, sites and domains added from now on are not on the switch. They are served directly by the new system at the address above, as set out below."
     ;;
     *)
       ### A retired (or unresolvable) policy has no honest forwarding story to
@@ -602,8 +563,7 @@ _send_notice_migration_change() {
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Update to the forwarding arrangement for ${_DOMAIN}" ${_CLIENT_EMAIL} && _MAIL_SENT=YES
 Hello,
 
-This is a short follow-up to the migration message you received earlier. The
-forwarding arrangement for your old address has changed.
+This is a short follow-up to the migration message you received earlier. The forwarding arrangement for your old address has changed.
 
 ${_MIG_DNS_BLOCK}
 
@@ -611,8 +571,7 @@ ${_MIG_COVERAGE_BLOCK}
 
 ${_MIG_ADDR_BLOCK}
 
-Nothing else from the earlier message has changed, and no action is needed on
-the new system.
+Nothing else from the earlier message has changed, and no action is needed on the new system.
 
 Kind regards,
 The BOA Dev Team
@@ -634,17 +593,11 @@ _send_notice_migration_retire() {
   local _pd="" _para1 _para2
   [ -n "${_MIG_RETIRE_DATE}" ] && _pd="$(_mig_pretty_date "${_MIG_RETIRE_DATE}")"
   if [ -n "${_pd}" ]; then
-    _para1="The forwarding on your old address, which has been carrying traffic for the
-sites that were on it at the time of your migration, is being withdrawn on
-${_pd}."
-    _para2="Please make sure that every one of your domains points at the new address
-below before that date. After it, any domain still pointing at the old address
-will stop reaching your site."
+    _para1="The forwarding on your old address, which has been carrying traffic for the sites that were on it at the time of your migration, is being withdrawn on ${_pd}."
+    _para2="Please make sure that every one of your domains points at the new address below before that date. After it, any domain still pointing at the old address will stop reaching your site."
   else
-    _para1="The forwarding on your old address, which has been carrying traffic for the
-sites that were on it at the time of your migration, has now been withdrawn."
-    _para2="From now on every domain must resolve to the new address below. If any of
-your domains still point at the old address, please update them now."
+    _para1="The forwarding on your old address, which has been carrying traffic for the sites that were on it at the time of your migration, has now been withdrawn."
+    _para2="From now on every domain must resolve to the new address below. If any of your domains still point at the old address, please update them now."
   fi
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
@@ -811,12 +764,45 @@ _migrate_sites() {
   ### ${_oct} still names the source; 'users' on an unconverted box, so the
   ### chowns below are unchanged there.
   _OCT_GRP=$(_acct_group "${_USR}")
+  ### The account's own control panel is never a site of this loop. The old
+  ### tool skipped it by accident of design -- no <fqdn>.alias existed for a
+  ### panel, only hostmaster.alias -- until the ltd-users pass began planting
+  ### a <fqdn> symlink to that alias, which made the panel look like a site
+  ### here: on proxy it then got a proxy vhost, and the target never serves a
+  ### source-named panel, so the panel answered 404 from the new box's
+  ### catch-all and the source lost its own monitoring canary. Identify the
+  ### panel by what it is (the hostmaster alias site_path), not by which
+  ### alias files happen to exist.
+  _HM_PANEL_FQDN=$(grep "site_path'" ${_USR}/.drush/hostmaster.alias.drushrc.php 2>/dev/null \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g")
+  _HM_PANEL_FQDN=$(basename "${_HM_PANEL_FQDN}" 2>/dev/null)
+  _HM_PANEL_FQDN=${_HM_PANEL_FQDN//[^a-zA-Z0-9.\-]/}
+  _XOCT_PANEL_RESTORED=NO
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     _Dom=`echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}'`
     _Vht="${_USR}/config/server_master/nginx/vhost.d/${_Dom}"
     _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
+    if [ -n "${_HM_PANEL_FQDN}" ] && [ "${_Dom}" = "${_HM_PANEL_FQDN}" ]; then
+      if [ "${_cmd}" = "proxy" ]; then
+        ### A conversion by the earlier code proxied the panel and saved the
+        ### real vhost as the dot-file; put it back so the panel serves
+        ### locally again (the reload below applies it).
+        if grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null \
+          && [ -s "${_Vhd}" ] \
+          && ! grep -q "Plain HTTP proxy (START)" "${_Vhd}" 2>/dev/null; then
+          mv -f ${_Vhd} ${_Vht}
+          chown ${_oct}:${_OCT_GRP} ${_Vht}
+          chmod 600 ${_Vht}
+          _XOCT_PANEL_RESTORED=YES
+          echo "INFO: control panel ${_Dom} on ${_oct}: local vhost restored (an earlier conversion had proxied it)"
+        fi
+        echo "INFO: control panel ${_Dom} on ${_oct} stays local in Drupal maintenance mode -- never proxied"
+      fi
+      continue
+    fi
     if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
       chown ${_oct}:${_OCT_GRP} ${_Vht}
       chmod 600 ${_Vht}
@@ -3996,6 +3982,14 @@ _migrate_init() {
           if [ -d "/var/lib/nginx/speed" ]; then
             find /var/lib/nginx/speed -type f -delete &> /dev/null
           fi
+          ### The panel stays online here as the box's monitoring canary, in
+          ### Drupal's own maintenance mode: clients can no longer log in or
+          ### queue tasks against a database that now lives on the target,
+          ### while an admin still can. Set at this point, not at export as
+          ### the old tool did: in the xmass flow the export path is never
+          ### reached, and set before promotion it would replicate INTO the
+          ### new production panel. Here the source has stopped replicating.
+          _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1" 2>&1 | tail -1
           ### Notify: a first conversion always sends the completion notice; a
           ### repair keeps quiet unless the promise itself changed (or
           ### --renotify). --no-notify suppresses either, and the suppression
