@@ -172,6 +172,17 @@ _apt_run_heal_dead_security_pool() {
   return 0
 }
 
+# Dev-server tracing used by both the master and the satellite paths; it lived
+# in the satellite include only, which the master never sources.
+_debug_proc() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    _msg "DBLS: `ls -la /usr/bin/sh`"
+    _msg "DBLS: `ls -la /bin/sh`"
+    _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
+    [ -e "/data/disk/${_USER}/.tmp/cache" ] && _msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
+  fi
+}
+
 _mrun() {
   # Accept everything as one shell command string:
   #      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"

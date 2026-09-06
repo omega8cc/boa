@@ -697,13 +697,19 @@ _if_extended_report() {
     echo            >> ${_UP_LOG}
     ps auxf         >> ${_UP_LOG}
     echo            >> ${_UP_LOG}
-    aureport        >> ${_UP_LOG}
+    if command -v aureport > /dev/null 2>&1; then
+      aureport      >> ${_UP_LOG}
+    fi
     echo            >> ${_UP_LOG}
-    aa-status | grep loaded   >> ${_UP_LOG}
-    aa-status | grep enforce  >> ${_UP_LOG}
-    aa-status | grep complain >> ${_UP_LOG}
+    if command -v aa-status > /dev/null 2>&1; then
+      aa-status | grep loaded   >> ${_UP_LOG}
+      aa-status | grep enforce  >> ${_UP_LOG}
+      aa-status | grep complain >> ${_UP_LOG}
+    fi
     echo            >> ${_UP_LOG}
-    aa-unconfined   >> ${_UP_LOG}
+    if command -v aa-unconfined > /dev/null 2>&1; then
+      aa-unconfined >> ${_UP_LOG}
+    fi
     echo            >> ${_UP_LOG}
     /opt/local/bin/boa info full >> ${_UP_LOG}
     echo            >> ${_UP_LOG}

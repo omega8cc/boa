@@ -149,14 +149,6 @@ _stage_bee() {
 
 #
 # Check key things in every proc.
-_debug_proc() {
-  if [ -e "/root/.dev.server.cnf" ]; then
-    _msg "DBLS: `ls -la /usr/bin/sh`"
-    _msg "DBLS: `ls -la /bin/sh`"
-    _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
-    [ -e "/data/disk/${_USER}/.tmp/cache" ] && _msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
-  fi
-}
 
 #
 # Count system CPUs.
