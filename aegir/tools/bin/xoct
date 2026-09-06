@@ -2163,6 +2163,10 @@ _migrate_prepare() {
         _XOCT_HM_DUMP_OK=NO
       fi
     _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1"
+    ### The panel serves anonymous pages from Drupal's page cache and a
+    ### variable change alone leaves the cached front page in place, so the
+    ### hold is invisible until the next cache clear: flush it here.
+    _run_drush8_hmr_cmd "cache-clear all" &> /dev/null
     ### The redirect pre-creates the file, so the old existence test read a
     ### failed mysqldump as success and stamped exported.pid over a zero-byte
     ### or truncated panel dump. Demand rc=0 AND a non-empty file.
@@ -4016,6 +4020,9 @@ _migrate_init() {
           ### reached, and set before promotion it would replicate INTO the
           ### new production panel. Here the source has stopped replicating.
           _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1" 2>&1 | tail -1
+          ### Flush the panel's page cache too, or anonymous visitors keep
+          ### getting the cached pre-hold front page instead of the 503.
+          _run_drush8_hmr_cmd "cache-clear all" &> /dev/null
           ### Notify: a first conversion always sends the completion notice; a
           ### repair keeps quiet unless the promise itself changed (or
           ### --renotify). --no-notify suppresses either, and the suppression

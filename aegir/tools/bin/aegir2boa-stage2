@@ -1248,6 +1248,8 @@ _export_hostmaster() {   # db-import route only
   chmod 600 "${_AEGIR_ROOT}/src/a2b/hostmaster.sql"
   # the frontend must not take writes that post-date its dump
   _as_aegir "drush @hostmaster vset --always-set maintenance_mode 1" >>"${_LOG}" 2>&1
+  # A cached anonymous front page would outlive the variable change.
+  _as_aegir "drush @hostmaster cache-clear all" >>"${_LOG}" 2>&1
   _marker_set "hostmaster.exported.pid"
   _info "hostmaster: exported (db ${_hdb}), frontend in maintenance mode"
   return 0

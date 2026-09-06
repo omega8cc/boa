@@ -4799,6 +4799,10 @@ _xmass_source_master_panel_maintenance() {
   _out=$(su -s /bin/bash - aegir -c "drush8 @hostmaster variable-set --always-set maintenance_mode 1" 2>&1 | tail -1)
   case "${_out}" in
     *"maintenance_mode was set to 1"*)
+      ### The panel serves anonymous pages from Drupal's page cache and a
+      ### variable change alone leaves the cached front page in place, so the
+      ### hold is invisible until the next cache clear: flush it here.
+      su -s /bin/bash - aegir -c "drush8 @hostmaster cache-clear all" &> /dev/null
       _info "  master panel: Drupal maintenance mode ON (stays online locally, admins only)"
     ;;
     *)
