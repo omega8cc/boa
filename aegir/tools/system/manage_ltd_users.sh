@@ -1927,6 +1927,9 @@ _site_socket_inc_gen() {
   _preFpm="${_dscUsr}/static/control/.prev-multi-fpm.info"
   _mltNgx="${_dscUsr}/static/control/.multi-nginx-fpm.pid"
   _fpmPth="${_dscUsr}/config/server_master/nginx/post.d"
+  # per account: an earlier account's forced regeneration must not carry
+  # over to every account after it in the same pass
+  _mltFpmUpdateForce=NO
 
   _hmFront=$(cat ${_dscUsr}/log/domain.txt 2>&1)
   _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
@@ -1971,7 +1974,9 @@ _site_socket_inc_gen() {
         elif [ "${e}" = 74 ]; then
           _phpDot=7.4
         fi
-        echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
+        # static/control itself is created later in this pass (behind the
+        # ftp home's clients link); until then there is nowhere to write
+        [ -d "${_dscUsr}/static/control" ] && echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
         _phpFnd=YES
       fi
     done
