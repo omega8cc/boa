@@ -3252,16 +3252,25 @@ _octopus_cleanup() {
       _zombie_dir="/var/backups/zombie/purged/${_usEr}/home/"
       _nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
       _nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
-      _sites_nr=$(ls /data/disk/${_usEr}/config/server_master/nginx/vhost.d | wc -l)
+      _sites_nr=$(ls /data/disk/${_usEr}/config/server_master/nginx/vhost.d 2>/dev/null | wc -l)
       if [ -d "/data/disk/${_usEr}/config/server_master/nginx/vhost.d" ] \
-        && [ "${_sites_nr}" = "0" ] \
         && [ -e "/data/disk/${_usEr}/log/cores.txt" ] \
         && [ -e "/data/disk/${_usEr}/log/CANCELLED" ]; then
         echo
         echo "Account to purge: ${_usEr}"
         echo
         mkdir -p ${_zombie_dir}
-        mv -f "${_nginx_inc}/${_usEr}.conf" ${_zombie_dir}
+        # A cancelled account's own vhosts (its panel at least) used to wait
+        # for the next barracuda pass to drop them, and this verb refused
+        # until then. The marker is the operator's order and the account's
+        # site data goes below regardless, so park them here: touching
+        # log/CANCELLED and running this verb is the whole procedure.
+        if [ "${_sites_nr}" != "0" ]; then
+          mkdir -p ${_zombie_dir}vhost.d
+          mv -f /data/disk/${_usEr}/config/server_master/nginx/vhost.d/* ${_zombie_dir}vhost.d/ 2>/dev/null
+          echo "parked ${_sites_nr} vhost file(s) of ${_usEr} in ${_zombie_dir}vhost.d/"
+        fi
+        [ -e "${_nginx_inc}/${_usEr}.conf" ] && mv -f "${_nginx_inc}/${_usEr}.conf" ${_zombie_dir}
         # Every panel SSL proxy include the account ever had: a renamed box
         # keeps the old-name one next to the new, and a single quoted mv of
         # the ls output moved neither -- nginx then failed its configtest on
@@ -3333,6 +3342,16 @@ _octopus_cleanup() {
               --remove-home \
               --backup-to /var/backups/zombie/purged/${_usEr}/home/ ${_usr_name} &> /dev/null
           done;
+        # deluser --remove-home is what takes the account tree away; when it
+        # refuses (no such user on a half-purged box, a user still held by a
+        # process) the tree stayed and a re-run found nothing more to do.
+        # Park whatever survived so the purge converges either way.
+        for _lftTree in /data/disk/${_usEr} /home/${_usEr}.ftp /home/${_usEr}.web /home/${_usEr}.*.web; do
+          if [ -d "${_lftTree}" ] && [ ! -L "${_lftTree}" ]; then
+            mkdir -p ${_zombie_dir}left
+            mv -f "${_lftTree}" ${_zombie_dir}left/ && echo "parked surviving tree ${_lftTree} in ${_zombie_dir}left/"
+          fi
+        done
         # The account's private group (per-instance group model) outlives
         # every deluser above; drop it once nothing holds it, or the GID is
         # left for a later account to inherit. What the purge leaves on
@@ -3380,7 +3399,7 @@ _octopus_cleanup() {
         echo "Cleanup complete"
       else
         echo
-        echo "OOPS.. ${_usEr} is either active, with existing vhosts or does not exist"
+        echo "OOPS.. ${_usEr} is not marked log/CANCELLED, has no cores.txt, or does not exist"
       fi
     fi
     echo
@@ -3439,6 +3458,12 @@ _octopus_unsuspend() {
 }
 
 _if_start_screen() {
+  # No controlling terminal (cron, ssh -c, a tool driving this verb): screen
+  # cannot attach, the verb printed "Must be connected to a terminal" and
+  # silently did nothing. Run inline instead; noscreen is then implied.
+  if [ ! -t 0 ] || [ ! -t 1 ]; then
+    return 0
+  fi
   if [ -e "/root/.autoinit.log" ] && [ ! -e "/lib/systemd/systemd" ]; then
     if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
       # Check if the user is inside a screen session
