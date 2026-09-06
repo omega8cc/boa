@@ -3392,7 +3392,10 @@ _php_check_if_rebuild() {
   fi
   _check_php_cli
   _isLber=
-  _isLber=$(php -i | grep liblber 2>&1)
+  # php cannot load after a codename hop until it is rebuilt (its old
+  # image libs are gone); keep the loader error out of the pass log, where the
+  # launcher reads it as a failed pass.
+  _isLber=$(php -i 2>/dev/null | grep liblber 2>&1)
   if [[ "${_isLber}" =~ "liblber" ]]; then
     _msg "INFO: PHP rebuild required to fix liblber..."
     _PHP_FORCE_REINSTALL=YES

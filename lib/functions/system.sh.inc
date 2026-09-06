@@ -8180,6 +8180,13 @@ _run_aptitude_deps_install() {
     _mrun "${_INSTAPP} ${_APT_XTRA}"
     _mrun "${_INSTAPP} ${_EXTRA_LIB_APT}"
     _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
+    # One unresolvable name fails the whole group and nothing lands; pick up
+    # whatever the group left behind one package at a time.
+    for _PKG in ${_EXTRA_PACKAGES}; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     _EXTRA_APT="tree"
     _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
   fi
@@ -8802,6 +8809,15 @@ _if_post_major_os_upgrade() {
       rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
     fi
     rm -f /var/log/boa/.*_crontab_*
+    # The hop's package moves ignore the hold on curl and put the distro
+    # binary back over the link to the BOA-built one, which then loads BOA's
+    # libcurl with a version warning on every call. Relink.
+    if [ -x "/usr/local/bin/curl" ] \
+      && [ "$(readlink -f /usr/bin/curl 2>/dev/null)" != "/usr/local/bin/curl" ]; then
+      mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
+      ln -sfn /usr/local/bin/curl /usr/bin/curl
+      _msg "INFO: /usr/bin/curl linked to the BOA-built curl again"
+    fi
     touch /root/.completed_post_major_os_upgrade.info
     _msg "INFO: The post_major_os_upgrade procedure is complete"
   fi

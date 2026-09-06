@@ -696,6 +696,13 @@ _nginx_install_upgrade() {
         --with-debug ${_NGINX_EXTRA}"
       _mrun "make -j $(nproc)"
       _mrun "make install"
+      # A configure that aborts before objs/Makefile leaves make with nothing
+      # to build and the previous binary in place while the stamp would claim
+      # the new version; say so instead of reporting a clean pass.
+      _NGX_BUILT=$(/usr/sbin/nginx -v 2>&1 | grep -oE "nginx/[0-9.]+")
+      if [ "${_NGX_BUILT}" != "nginx/${_NGINX_VRN}" ]; then
+        _msg "OOPS: Nginx ${_NGINX_VRN} did not build (nginx -v reports ${_NGX_BUILT:-nothing}); the previous binary stays in place, check the errors log"
+      fi
     fi
     ldconfig 2> /dev/null
     _nginx_clean_legacy_config
