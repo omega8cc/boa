@@ -1887,7 +1887,10 @@ _satellite_remove_web_user() {
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
-      chattr -i /home/${_WEB}/
+      # "clean" also runs for a web user that never existed (every new
+      # per-version pool): nothing to unlock there, and chattr says so on
+      # stderr three times per account into this worker's log
+      [ -d "/home/${_WEB}/" ] && chattr -i /home/${_WEB}/
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
       fi
@@ -3098,7 +3101,8 @@ else
     && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_HOME_NO_WILDCARD_CHMOD=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     chmod 700 /home/* &> /dev/null
   fi
-  chmod 0600 /var/log/lsh/*
+  # no lshell log yet on a young box: a bare glob prints "cannot access"
+  find /var/log/lsh -maxdepth 1 -type f -exec chmod 0600 {} + 2>/dev/null
   chmod 0440 /var/aegir/.drush/*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
   chmod 0400 /var/aegir/.drush/hm.alias.drushrc.php &> /dev/null
