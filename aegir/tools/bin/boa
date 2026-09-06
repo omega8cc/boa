@@ -3252,7 +3252,6 @@ _octopus_cleanup() {
       _zombie_dir="/var/backups/zombie/purged/${_usEr}/home/"
       _nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
       _nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
-      _nginx_prx=$(ls ${_nginx_ssl}/z_${_usEr}.*_ssl_proxy.conf 2>&1)
       _sites_nr=$(ls /data/disk/${_usEr}/config/server_master/nginx/vhost.d | wc -l)
       if [ -d "/data/disk/${_usEr}/config/server_master/nginx/vhost.d" ] \
         && [ "${_sites_nr}" = "0" ] \
@@ -3263,7 +3262,19 @@ _octopus_cleanup() {
         echo
         mkdir -p ${_zombie_dir}
         mv -f "${_nginx_inc}/${_usEr}.conf" ${_zombie_dir}
-        mv -f "${_nginx_prx}" ${_zombie_dir}
+        # Every panel SSL proxy include the account ever had: a renamed box
+        # keeps the old-name one next to the new, and a single quoted mv of
+        # the ls output moved neither -- nginx then failed its configtest on
+        # a certificate under the purged tree (live-observed 2026-09-06).
+        for _nginx_prx in ${_nginx_ssl}/z_${_usEr}.*_ssl_proxy.conf; do
+          [ -e "${_nginx_prx}" ] && mv -f "${_nginx_prx}" ${_zombie_dir}
+        done
+        # The account's own registration goes with it; a stale cnf misleads
+        # every later pass that reads /root/.<oN>.octopus.cnf.
+        mkdir -p ${_zombie_dir}root
+        for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc; do
+          [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
+        done
         echo "${_usEr}:/data/disk/${_usEr}" > ${_zombie_dir}.purge.list
         echo "${_usEr}.ftp:/home/${_usEr}.ftp" >> ${_zombie_dir}.purge.list
         echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
@@ -3280,6 +3291,16 @@ _octopus_cleanup() {
             echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
           fi
         done
+        # Pool files gone, workers still up: deluser refuses a user with
+        # running processes (the home is already removed by then), so the
+        # per-version web users survived every purge. Reload each affected
+        # FPM first; the loop below then finds nothing holding them.
+        for e in ${_PHP_V}; do
+          if grep -q "^${_usEr}\.${e}\.web:" ${_zombie_dir}.purge.list 2>/dev/null \
+            && [ -e "/etc/init.d/php${e}-fpm" ]; then
+            service php${e}-fpm reload &> /dev/null
+          fi
+        done
         # The account's limited-shell sub-users (oN.<client>) go with it:
         # they hold the account's private group as their primary group, and
         # a purged account has no clients left to serve.
@@ -3288,6 +3309,7 @@ _octopus_cleanup() {
           echo "${_subUsr}:/home/${_subUsr}" >> ${_zombie_dir}.purge.list
         done
         pkill -9 -f gpg-agent
+        sort -u -o ${_zombie_dir}.purge.list ${_zombie_dir}.purge.list
         IFS=$'\12'
           _purgedUid=$(id -u "${_usEr}" 2>/dev/null)
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
@@ -3345,6 +3367,14 @@ _octopus_cleanup() {
             && ! getent passwd | awk -F: -v g="${_grpGid}" '$4 == g { f=1 } END { exit !f }'; then
             groupdel "${_usEr}" &> /dev/null && echo "removed group ${_usEr}"
           fi
+        fi
+        if nginx -t &> /dev/null; then
+          service nginx reload &> /dev/null
+          echo "nginx configtest OK, reloaded"
+        else
+          echo "ALRT: nginx -t FAILS after the purge -- nginx keeps running the previous"
+          echo "ALRT: config, but the next reload or restart will fail; fix this NOW:"
+          nginx -t 2>&1 | head -3
         fi
         echo
         echo "Cleanup complete"
