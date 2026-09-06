@@ -7976,10 +7976,13 @@ _run_aptitude_deps_install() {
   # every run, like the rsyslog ensure above.
   if [ "${_OS_DIST}" = "Devuan" ]; then
     if ! _pkg_installed "devuan-keyring"; then
-      _mrun "${_INITINS} devuan-keyring"
+      # The keyring upgrade ships a new archive keyring file under
+      # /etc/apt/trusted.gpg.d and dpkg asks about the conffile; there is no
+      # terminal here and the new file is the one wanted, so say so.
+      _mrun "${_INITINS} -o Dpkg::Options::=--force-confnew devuan-keyring"
       if ! _pkg_installed "devuan-keyring"; then
         _mrun "${_APT_UPDATE} ${_aptAllow}"
-        _mrun "${_INITINS} devuan-keyring"
+        _mrun "${_INITINS} -o Dpkg::Options::=--force-confnew devuan-keyring"
       fi
       if ! _pkg_installed "devuan-keyring"; then
         _msg "WARN: devuan-keyring is missing -- APT cannot verify the Devuan archive, so unattended security upgrades will install nothing"
@@ -9126,10 +9129,13 @@ _if_major_os_upgrade() {
       ### suite it has just been pointed at.
       _apt_clean_update_no_releaseinfo_change
       _mrun "${_APT_UPDATE} ${_aptAllow}"
-      _mrun "${_INITINS} devuan-keyring"
+      # The keyring upgrade ships a new archive keyring file under
+      # /etc/apt/trusted.gpg.d and dpkg asks about the conffile; there is no
+      # terminal here and the new file is the one wanted, so say so.
+      _mrun "${_INITINS} -o Dpkg::Options::=--force-confnew devuan-keyring"
       if ! _pkg_installed "devuan-keyring"; then
         _mrun "${_APT_UPDATE} ${_aptAllow}"
-        _mrun "${_INITINS} devuan-keyring"
+        _mrun "${_INITINS} -o Dpkg::Options::=--force-confnew devuan-keyring"
         if ! _pkg_installed "devuan-keyring"; then
           _msg "WARN: devuan-keyring is missing after the sources switch -- APT cannot verify the new archive"
         fi
