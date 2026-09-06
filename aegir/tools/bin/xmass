@@ -6478,6 +6478,20 @@ _xmass_cmd_status() {
   if [ "${_XMASS_PHASE}" = "syncing" ] && [ -n "${_XMASS_TARGET_IP}" ]; then
     _tgt="${_XMASS_TARGET_IP}"
     _lag=$(_xmass_get_repl_lag 2>/dev/null || echo "unreachable")
+    # An empty read is not "0s": it is the replica status coming back blank,
+    # which on an 8.4 pair is the documented shape of the ACTIVE's root
+    # password rotation having replicated into the target while the
+    # target's /root/.my.cnf kept the old string. Name it instead of
+    # printing an empty number.
+    case "${_lag}" in
+      ''|*[!0-9]*)
+        [ "${_lag}" = "unreachable" ] || _lag="unreadable"
+        _alrt "replica status on ${_tgt} could not be read (${_lag}) -- if the target's"
+        _alrt "root client fails with 'Access denied', the source rotated its MySQL root"
+        _alrt "password since init: re-transfer /root/.my.cnf and /root/.my.pass.txt to"
+        _alrt "the target (the init/cutover step-10 form), then re-run status"
+      ;;
+    esac
   fi
   echo ""
   echo "======================================================"
@@ -7059,6 +7073,16 @@ _xmass_cutover_finish() {
   # half-proxied one -- the first failback drill had its hostmaster verify
   # fail exactly here, on a box still shaped as a proxy.
   _xmass_promotion_cleanup_target
+
+  # Step 12.8: Clear the migrated-in 503 gate BEFORE the renames. The rename
+  # tool ends every root with a serving gate that curls the renamed panel and
+  # sites; with the source's http-off.pid still riding in each account's
+  # static/control it can only ever see the 503/404 the gate produces, so it
+  # reported NOT SERVING on every account of a healthy cutover. Nothing
+  # reaches the target before DNS moves and the source proxies only from
+  # step 16, so serving here is safe; step 13.5 repeats the clear, idempotent,
+  # for a pid a rename pass may have re-imported.
+  _xmass_remove_http_off_target
 
   # Step 13: Run renameaegirhost on target for all Aegir roots.
   # This rewrites drush aliases, vhosts, and the Aegir DB to the new hostname,
