@@ -3111,7 +3111,39 @@ else
     && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_HOME_NO_WILDCARD_CHMOD=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     chmod 700 /home/* &> /dev/null
   fi
-  # no lshell log yet on a young box: a bare glob prints "cannot access"
+  # /var/log/lsh is written by the tenants themselves (group lshellg), so a
+  # tenant can plant any not-yet-used name there. The sticky bit (healed here:
+  # the dir predates it on old boxes) keeps one tenant from unlinking another's
+  # log and, with fs.protected_regular=2, from feeding a victim a foreign
+  # regular file. Root ignores the sticky bit, so only this pass can remove
+  # what a tenant left at someone else's name: anything that is not a regular
+  # *.log, and a *.log owned by a user other than the one its name claims (a
+  # recycled uid makes a dead tenant's log readable by the wrong tenant). An
+  # all-numeric owner is a dead uid: its log stays as history unless a live
+  # tenant of that name now needs the file it cannot open (0600, foreign).
+  # NUL-delimited records, owner first: a tenant-chosen name may carry a tab or
+  # a newline, and a record that fails to parse must never reach the rm. rm
+  # does not follow. The owner rule assumes lshell's default <user>.log naming
+  # (the shipped conf keeps logfilename unset); an admin who sets it, with
+  # either delimiter lshell's parser accepts and in any case, turns the rule
+  # off rather than losing every log on the next pass.
+  chmod 1770 /var/log/lsh &> /dev/null
+  find /var/log/lsh -mindepth 1 -maxdepth 1 \( ! -type f -o ! -name '*.log' \) \
+    -exec rm -rf {} + 2>/dev/null
+  if ! grep -qiE '^[[:space:]]*logfilename[[:space:]]*[:=]' /etc/lshell.conf 2>/dev/null; then
+    find /var/log/lsh -mindepth 1 -maxdepth 1 -type f -name '*.log' -printf '%u\0%f\0' 2>/dev/null \
+      | while IFS= read -r -d '' _lshOwner && IFS= read -r -d '' _lshName; do
+        [ -n "${_lshOwner}" ] && [ -n "${_lshName}" ] || continue
+        case "${_lshOwner}" in
+          *[!0-9]*) [ "${_lshName%.log}" = "${_lshOwner}" ] || rm -f "/var/log/lsh/${_lshName}" ;;
+          *) id -u "${_lshName%.log}" &> /dev/null && rm -f "/var/log/lsh/${_lshName}" ;;
+        esac
+      done
+  fi
+  # -type f refuses a planted link; a tenant swapping its OWN name between the
+  # lstat and the chmod is the house-wide check-then-act residual (chmod has no
+  # -h), bounded by the sweep above. A young box has no log yet, hence no bare
+  # glob (it printed "cannot access").
   find /var/log/lsh -maxdepth 1 -type f -exec chmod 0600 {} + 2>/dev/null
   chmod 0440 /var/aegir/.drush/*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null

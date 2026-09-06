@@ -11429,7 +11429,8 @@ _lshell_install_upgrade() {
     addgroup --system ltd-shell-more &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
-    chmod 770 /var/log/lsh &> /dev/null
+    # 1770: tenants write their own log here; the sticky bit keeps one off another's
+    chmod 1770 /var/log/lsh &> /dev/null
     touch ${_pthLog}/lshell-build-${_LSHELL_VRN}.log
     if [ -f "/var/xdrago/manage_ltd_users.sh" ]; then
       if [ "${_STATUS}" = "UPGRADE" ] \

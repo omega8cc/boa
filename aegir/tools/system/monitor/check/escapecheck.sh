@@ -199,7 +199,11 @@ _makeactions() {
     echo "${_line}" >> "${_LOGFILE}"
     echo "[${_NOW_IS}]:[$(date +%Y-%m-%d\ %H:%M)]:[${_line}]" >> "${_DEBUG_LOG}"
 
-  done < <(grep -i forbidden "${_LSH_LOG_DIR}"/*.log 2>/dev/null | tail --lines=999)
+  # Regular files only: the dir is tenant-writable (lshellg) and a bare glob let
+  # root grep through a planted symlink (fs.protected_regular gates O_CREAT
+  # opens only, never a plain read); -D skip keeps a FIFO swapped in under a
+  # name from blocking this run (and with it every later run behind the lock).
+  done < <(find "${_LSH_LOG_DIR}" -maxdepth 1 -type f -name '*.log' -exec grep -iH -D skip forbidden {} + 2>/dev/null | tail --lines=999)
 
   if [[ "${_status}" != "CLEAN" ]]; then
     _send_alert
