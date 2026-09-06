@@ -770,6 +770,7 @@ _check_report() {
   _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
   _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
+  _RESULT_OOPS=$(grep "OOPS:" ${_UP_LOG} 2>&1)
   _RESULT_LIB_ERR=$(grep "cannot open shared object file" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
     || [[ "${_RESULT_TEST_OK}" =~ "binary file matches" ]] \
@@ -816,6 +817,15 @@ _check_report() {
     || [[ "${_RESULT_FATAL}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (aborted) Barracuda upgrade"
+    _ONLY_REBOOT=NO
+  fi
+  # Every OOPS in the tree is a failure notice (a build that produced
+  # nothing, a download that never arrived); a pass carrying one is not a
+  # clean upgrade even when it ran to its end.
+  if [[ "${_RESULT_OOPS}" =~ "OOPS:" ]] \
+    || [[ "${_RESULT_OOPS}" =~ "binary file matches" ]]; then
+    _SEND_ALERT=YES
+    _ALERT_MSG="ALERT: Failed (oops) Barracuda upgrade"
     _ONLY_REBOOT=NO
   fi
   if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]] \

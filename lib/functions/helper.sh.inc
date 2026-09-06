@@ -1773,11 +1773,16 @@ _barracuda_log_update() {
   _LOG_DB_V=$(mysql -V 2>&1 \
     | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
     | head -1)
+  # The stamp names what runs, not what was wanted: a build that produced
+  # nothing leaves the previous binary in place.
+  _LOG_NGX_V=$(/usr/sbin/nginx -v 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1)
   _BARRACUDA_VERSION_INFO="$(date) / \
     ${_OS_DIST}.${_OS_CODE} / \
     ${_VIRT_IS} / \
     Barracuda ${_X_VERSION}-${_xSrl} / \
-    Nginx ${_NGINX_VRN} / \
+    Nginx ${_LOG_NGX_V:-${_NGINX_VRN}} / \
     PHP-MI ${_PHP_MULTI_INSTALL} / \
     FPM ${_PHP_FPM_VERSION} / \
     CLI ${_PHP_CLI_VERSION} / \

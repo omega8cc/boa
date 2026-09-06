@@ -693,7 +693,7 @@ _nginx_install_upgrade() {
         --with-openssl-opt='no-tests no-ssl3 enable-ktls zlib-dynamic enable-ec_nistp_64_gcc_128' \
         --with-cc-opt='-g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fPIC' \
         --with-ld-opt='-Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie' \
-        --with-debug ${_NGINX_EXTRA}"
+        --with-debug ${_NGINX_EXTRA} 2>&1 | tee /var/opt/nginx-configure.out"
       _mrun "make -j $(nproc)"
       _mrun "make install"
       # A configure that aborts before objs/Makefile leaves make with nothing
@@ -702,7 +702,9 @@ _nginx_install_upgrade() {
       _NGX_BUILT=$(/usr/sbin/nginx -v 2>&1 | grep -oE "nginx/[0-9.]+")
       if [ ! -x "/var/opt/nginx-${_NGINX_VRN}/objs/nginx" ] \
         || [ "${_NGX_BUILT}" != "nginx/${_NGINX_VRN}" ]; then
-        _msg "OOPS: Nginx ${_NGINX_VRN} did not build (no objs/nginx in the build tree, nginx -v reports ${_NGX_BUILT:-nothing}); the previous binary stays in place, check the errors log"
+        _msg "OOPS: Nginx ${_NGINX_VRN} did not build (no objs/nginx in the build tree, nginx -v reports ${_NGX_BUILT:-nothing}); the previous binary stays in place"
+        _NGX_CFG_ERR=$(grep -m1 "configure: error" /var/opt/nginx-configure.out 2>/dev/null)
+        [ -n "${_NGX_CFG_ERR}" ] && _msg "OOPS: nginx configure said: ${_NGX_CFG_ERR}"
       fi
     fi
     ldconfig 2> /dev/null
