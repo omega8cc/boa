@@ -45,7 +45,10 @@ _REQUIRE_QUICK_PROBE="YES"       # if YES, try fetching 1 byte of Release; drop 
 _PROBE_TIMEOUT="${_PROBE_TIMEOUT:-5}"  # seconds per probe
 
 # Static blacklist (comma-separated substrings matched vs FQDN or BaseURL), case-insensitive
-_BLACKLISTED_MIRRORS="${_BLACKLISTED_MIRRORS:-mirror.abmanagement.al}"
+# devuan.ipacct.com: dists/ verifies while its pool redirects to a host whose
+# TLS chain was expired (2026-09-05, three boxes in one day); the pool probe
+# below now catches that shape, the name stays out of the pick regardless
+_BLACKLISTED_MIRRORS="${_BLACKLISTED_MIRRORS:-mirror.abmanagement.al,devuan.ipacct.com}"
 
 # Output: flat list for ffmirror tester (one URL per line)
 _FF_LIST="${_FF_LIST:-/var/log/boa/devaun-fast-mirrors-list.txt}"
