@@ -78,10 +78,17 @@ upgrade arm holds it itself and says so with `--from-octopus`), waits a
 bounded time for the account's own provision tasks, skips a still-busy
 account and an account frozen for a migration (`log/proxied.pid`, the
 marker every other root writer honours; `--force` overrides), and defers
-(exit 5, a note in the upgrade report) while any fetched root-run writer on
-the box still carries the box-wide form (`instgrp check`): an old `fix-drupal-*` script or nightly worker
-would write `users` back on its next pass, and an old `websh` would lock
-the tenant out of its shell. A skipped or refused account is reported in
+a FIRST conversion (exit 5, a note in the upgrade report) while any fetched
+root-run writer on the box still carries the box-wide form, or while the BOA
+release that carries the Octopus arm has not stamped the box yet
+(`/var/log/boa/instgrp-arm.ready.txt`, written at the tail of that release's
+barracuda pass; `instgrp check` shows both): an old `fix-drupal-*` script or
+nightly worker would write `users` back on its next pass, an old `websh` would
+lock the tenant out of its shell, and on a box that only received the fetched
+tools ahead of its upgrade (a staged publish) the tar's own Octopus and system
+libraries still write the box-wide group. An account that is already
+converted takes its read-only re-pass regardless of the stamp. A skipped or
+refused account is reported in
 the upgrade report (the `ALRT:` line the octopus report reads); nothing
 retries it before the next upgrade.
 Every BOA writer over account trees derives the group per account
