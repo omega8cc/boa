@@ -299,7 +299,7 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _ARR+=("$arg") ;;
-	  esac
+      esac
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "php /data/disk/" ]]; then
@@ -317,7 +317,7 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _ARR+=("$arg") ;;
-	  esac
+      esac
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ php\ /mnt/.*/data/disk/ ]]; then
@@ -335,7 +335,7 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _ARR+=("$arg") ;;
-	  esac
+      esac
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "php /var/aegir/drush/drush.php " ]]; then
@@ -353,7 +353,7 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _ARR+=("$arg") ;;
-	  esac
+      esac
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush " ]]; then
@@ -526,7 +526,7 @@ if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _OCTO_SYS_ARR+=("$arg") ;;
-	  esac
+      esac
     done
     ### echo _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
   fi
