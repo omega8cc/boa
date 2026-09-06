@@ -1946,12 +1946,14 @@ _site_socket_inc_gen() {
   # replaced; it also made the panel look like a site to anything that keys
   # on <fqdn>.alias files. Purge it here, in the regular pass, so an account
   # that still depends on it breaks visibly and is repaired BEFORE its next
-  # migration instead of carrying the defect to a new box. Only the exact
-  # crutch shape is removed; a real alias file of that name is left alone.
-  if [ -L "${_hmstAls}" ] \
-    && [ "$(readlink "${_hmstAls}" 2>/dev/null)" = "${_dscUsr}/.drush/hostmaster.alias.drushrc.php" ]; then
-    rm -f ${_hmstAls}
-  fi
+  # migration instead of carrying the defect to a new box. Matched by shape,
+  # not by the current panel name: a renamed box keeps the old-name symlink
+  # too, and it is the same crutch. A real alias file is left alone.
+  for _hmstLnk in ${_dscUsr}/.drush/*.alias.drushrc.php; do
+    [ -L "${_hmstLnk}" ] || continue
+    [ "$(readlink "${_hmstLnk}" 2>/dev/null)" = "${_dscUsr}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    rm -f ${_hmstLnk}
+  done
 
   _desymlink_planted "${_mltFpm}"
   _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm} 2>&1)
