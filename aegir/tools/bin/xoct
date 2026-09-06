@@ -803,6 +803,10 @@ _migrate_sites() {
       fi
       continue
     fi
+    ### Every vhost past the panel skip is a site the conversion is expected
+    ### to touch; the verdict below tells "nothing to convert" apart from
+    ### "nothing converted" by this count.
+    _XOCT_PROXY_ELIGIBLE=$(( ${_XOCT_PROXY_ELIGIBLE:-0} + 1 ))
     if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
       chown ${_oct}:${_OCT_GRP} ${_Vht}
       chmod 600 ${_Vht}
@@ -3135,6 +3139,7 @@ _xoct_proxy_preflight() {
   _cnf="${_USR}/${_MIG_CNF_NAME}"
   _XOCT_PROXY_OK=0
   _XOCT_PROXY_FAIL=0
+  _XOCT_PROXY_ELIGIBLE=0
   _XOCT_WAS_PROXIED=NO
   [ -e "${_USR}/log/proxied.pid" ] && _XOCT_WAS_PROXIED=YES
   _XOCT_PEER_ACCT="${_dst:-${_oct}}"
@@ -3919,12 +3924,20 @@ _migrate_init() {
           ### _migrate_prepare >/var/log/boa/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
         if [ "${_cmd}" = "proxy" ]; then
           ### A failed conversion must never mail "complete" nor stamp the
-          ### account migrated: zero converted sites or any per-site failure
-          ### leaves proxied.pid absent and exits non-zero so callers (xmass
-          ### step 16) can see it. Re-running after the cause is fixed
-          ### converges: converted sites are kept and the saved vhost backups
-          ### are never overwritten.
-          if [ "${_XOCT_PROXY_FAIL:-0}" != "0" ] || [ "${_XOCT_PROXY_OK:-0}" = "0" ]; then
+          ### account migrated: any per-site failure, or zero converted sites
+          ### where there were sites to convert, leaves proxied.pid absent and
+          ### exits non-zero so callers (xmass step 16) can see it. Re-running
+          ### after the cause is fixed converges: converted sites are kept and
+          ### the saved vhost backups are never overwritten. An account that
+          ### holds nothing but its control panel has nothing to convert: it
+          ### is converted by definition (the panel stays local in maintenance
+          ### mode), so it is stamped, its gate is released and the client is
+          ### told that the panel moved -- a live cutover once left such an
+          ### account 503-gated on the source for a "0 site(s) converted".
+          if [ "${_XOCT_PROXY_ELIGIBLE:-0}" = "0" ] && [ "${_XOCT_PROXY_FAIL:-0}" = "0" ]; then
+            echo "INFO: nothing to proxy for ${_oct}: the account holds only its control panel -- treated as converted"
+          fi
+          if [ "${_XOCT_PROXY_FAIL:-0}" != "0" ] || { [ "${_XOCT_PROXY_OK:-0}" = "0" ] && [ "${_XOCT_PROXY_ELIGIBLE:-0}" != "0" ]; }; then
             echo "ALRT: proxy conversion for ${_oct}: ${_XOCT_PROXY_OK:-0} site(s) converted, ${_XOCT_PROXY_FAIL:-0} failed"
             echo "ERROR: NOT stamping proxied.pid and NOT mailing the client; fix the cause and re-run"
             if [ -n "${_XOCT_OLD_PEER}" ]; then
