@@ -273,6 +273,89 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
+  ### Absolute launchers come BEFORE the bare-verb branches below. Those
+  ### match "drush " anywhere in the line and then strip EVERY "drush" with
+  ### sed, so a launcher path was mangled whenever an argument also carried
+  ### the bare word: provision's own `cache-clear drush` (run from every
+  ### hostmaster site verify) became "php /var/aegir//.php ... cache-clear"
+  ### and was re-dispatched as "php <drush.php> php ...", which drush parses
+  ### as the `php` alias of core-cli -- fatal on PHP 8 (DRUPAL_ROOT undefined).
+  ### Account launchers survived only through the _OCTO_SYS_ARR path further
+  ### down; the master's /var/aegir/drush/drush.php and the global
+  ### /opt/tools/drush/N launcher had no such path and failed every master
+  ### site verify once /bin/sh became this wrapper.
+  elif [[ "${_ARGS}" =~ "php /opt/tools/" ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /opt/tools/drush/.*/drush/drush.php"`
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+	  esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "php /data/disk/" ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+	  esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ php\ /mnt/.*/data/disk/ ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /mnt/.*/data/disk/.*/tools/drush/drush.php"`
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+	  esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "php /var/aegir/drush/drush.php " ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /var/aegir/drush/drush.php"`
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+	  esac
+    done
+    ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush" | head -1`
@@ -354,60 +437,6 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _ARR+=("$arg") ;;
       esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "php /opt/tools/" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /opt/tools/drush/.*/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-	  esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "php /data/disk/" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-	  esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ php\ /mnt/.*/data/disk/ ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /mnt/.*/data/disk/.*/tools/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-	  esac
     done
     ### echo _ARR is ${_ARR}
   fi
