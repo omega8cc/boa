@@ -1128,6 +1128,24 @@ parked copy survives in `/var/backups`, `restore-solr` regenerates it from
 
 ---
 
+## Replication Transport (TLS)
+
+The replication stream carries every production row between two boxes that, in a
+cross-region estate, sit on different providers' networks, so `init` runs it over TLS:
+the `xmass_repl` user is created `REQUIRE SSL` (the source refuses a plain connection
+outright), the replica is configured with `SOURCE_SSL=1` (`MASTER_SSL=1` on 5.7/8.0)
+against the source's own server certificate (Percona generates one in the datadir,
+`auto_generate_certs=ON`; no CA is pinned -- the stream is encrypted against passive
+capture), and once the replica runs, `init` proves the session from both sides
+(`Source_SSL_Allowed: Yes` on the target, `connection_type = SSL/TLS` in the source's
+`performance_schema.threads`) and refuses a stream that is not TLS. A source whose MySQL
+has no TLS material stops before the replication user is created. `xmass status`
+prints the transport it can prove (`TLS`, `PLAIN`, or `unknown`). The rsync legs
+already travel over ssh.
+
+`_XMASS_PLAIN_REPLICATION=YES` runs the stream in the clear deliberately and loudly --
+for a source that cannot serve TLS; never the default.
+
 ## MySQL Credentials
 
 xtrabackup replaces the entire `/var/lib/mysql` directory on the target,

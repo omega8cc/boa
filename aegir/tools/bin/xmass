@@ -2023,6 +2023,7 @@ _xmass_detect_percona_version() {
     _XM_SHOW_STATUS="SHOW REPLICA STATUS"
     _XM_IO_FIELD="Replica_IO_Running"; _XM_SQL_FIELD="Replica_SQL_Running"
     _XM_LAG_FIELD="Seconds_Behind_Source"
+    _XM_SSL="SOURCE_SSL"; _XM_SSL_FIELD="Source_SSL_Allowed"
   else
     _XM_RESET_MASTER="RESET MASTER"
     _XM_CHANGE="CHANGE MASTER TO"
@@ -2033,6 +2034,7 @@ _xmass_detect_percona_version() {
     _XM_SHOW_STATUS="SHOW SLAVE STATUS"
     _XM_IO_FIELD="Slave_IO_Running"; _XM_SQL_FIELD="Slave_SQL_Running"
     _XM_LAG_FIELD="Seconds_Behind_Master"
+    _XM_SSL="MASTER_SSL"; _XM_SSL_FIELD="Master_SSL_Allowed"
   fi
   # 8.0+ default the replication user to caching_sha2_password, which refuses
   # password auth over the plain (non-TLS) replication connection unless the
@@ -2351,15 +2353,71 @@ REMOTEBASH
 
 ###-------------REPLICATION USER---------###
 
+# The replication stream carries every row of production between two boxes
+# that, in the cross-region estate, sit on different providers' networks. It
+# runs over TLS: the replication user is created REQUIRE SSL, so the server
+# refuses a plain connection outright, and the replica connects with
+# SOURCE_SSL/MASTER_SSL=1 against the source's own server certificate (Percona
+# generates one in the datadir by default, auto_generate_certs; no CA is
+# pinned, the stream is encrypted against passive capture, which is the
+# requirement recorded for the first cross-provider mirror). After the replica
+# starts, the source proves the session is SSL/TLS from performance_schema and
+# init refuses a stream that is not. _XMASS_PLAIN_REPLICATION=YES runs the
+# stream in the clear deliberately and loudly (a source whose MySQL was built
+# without TLS material). rsync legs already travel over ssh.
+_xmass_tls_mode() {
+  [ "${_XMASS_PLAIN_REPLICATION}" = "YES" ] && echo PLAIN || echo TLS
+}
+
+_xmass_source_tls_ready() {
+  local _cert _dir
+  if [ "$(_xmass_tls_mode)" = "PLAIN" ]; then
+    _alrt "_XMASS_PLAIN_REPLICATION=YES: the replication stream to ${_tgt} will run WITHOUT TLS"
+    return 0
+  fi
+  _cert=$(mysql --defaults-file=/root/.my.cnf -sNe "SHOW GLOBAL VARIABLES LIKE 'ssl_cert'" 2>/dev/null | awk '{print $2}')
+  _dir=$(mysql --defaults-file=/root/.my.cnf -sNe "SELECT @@datadir" 2>/dev/null)
+  case "${_cert}" in
+    "") ;;
+    /*) [ -s "${_cert}" ] && { _info "Source MySQL TLS material: ${_cert}"; return 0; } ;;
+    *)  [ -s "${_dir%/}/${_cert}" ] && { _info "Source MySQL TLS material: ${_dir%/}/${_cert}"; return 0; } ;;
+  esac
+  _die "MySQL on this source has no usable TLS material (ssl_cert='${_cert:-unset}') -- the replication" \
+       " stream to ${_tgt} would run in the clear. Enable TLS on the source (Percona generates" \
+       " certificates with auto_generate_certs=ON) or set _XMASS_PLAIN_REPLICATION=YES deliberately."
+}
+
 _xmass_create_repl_user() {
-  _info "Creating replication user '${_REPL_USER}'@'${_tgt}' on source ..."
+  local _require=""
+  _xmass_source_tls_ready
+  [ "$(_xmass_tls_mode)" = "TLS" ] && _require=" REQUIRE SSL"
+  _info "Creating replication user '${_REPL_USER}'@'${_tgt}' on source ($(_xmass_tls_mode)) ..."
   mysql --defaults-file=/root/.my.cnf <<SQLEOF
 DROP USER IF EXISTS '${_REPL_USER}'@'${_tgt}';
-CREATE USER '${_REPL_USER}'@'${_tgt}' IDENTIFIED BY '${_XMASS_REPL_PSWD}';
+CREATE USER '${_REPL_USER}'@'${_tgt}' IDENTIFIED BY '${_XMASS_REPL_PSWD}'${_require};
 GRANT REPLICATION SLAVE ON *.* TO '${_REPL_USER}'@'${_tgt}';
 FLUSH PRIVILEGES;
 SQLEOF
   _info "Replication user '${_REPL_USER}'@'${_tgt}' created: OK"
+}
+
+# Prove the running replica's session on the source is TLS, from the source's
+# own view (performance_schema.threads.connection_type) and the replica's
+# (Source/Master_SSL_Allowed). Fail closed in TLS mode.
+_xmass_verify_replication_tls() {
+  local _ct _allowed
+  [ "$(_xmass_tls_mode)" = "PLAIN" ] && { _alrt "Replication transport: PLAIN (deliberate)"; return 0; }
+  _allowed=$(ssh root@"${_tgt}" \
+    "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+     | grep '${_XM_SSL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
+  _ct=$(mysql --defaults-file=/root/.my.cnf -sNe \
+    "SELECT connection_type FROM performance_schema.threads WHERE processlist_user='${_REPL_USER}' AND connection_type IS NOT NULL ORDER BY thread_id DESC LIMIT 1" 2>/dev/null)
+  if [ "${_allowed}" = "Yes" ] && [ "${_ct}" = "SSL/TLS" ]; then
+    _info "Replication transport: TLS (${_XM_SSL_FIELD}=Yes on target, source session connection_type=SSL/TLS)"
+    return 0
+  fi
+  _die "Replication transport is NOT TLS (${_XM_SSL_FIELD}='${_allowed:-?}', source session connection_type='${_ct:-none}')" \
+       " -- refusing to carry production rows in the clear; set _XMASS_PLAIN_REPLICATION=YES only deliberately"
 }
 
 _xmass_drop_repl_user() {
@@ -2567,7 +2625,9 @@ _xmass_setup_slave() {
       || _alrt "could not set 5.7 parallel-apply on target (replica may lag single-threaded)"
   fi
 
-  _info "Configuring replication slave on target ${_tgt} ..."
+  local _XM_SSL_LINE=""
+  [ "$(_xmass_tls_mode)" = "TLS" ] && _XM_SSL_LINE="  ${_XM_SSL}=1,"
+  _info "Configuring replication slave on target ${_tgt} ($(_xmass_tls_mode)) ..."
   ssh root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf" <<SLAVEEOF
 ${_XM_RESET_MASTER};
 SET GLOBAL gtid_purged='${_gtid_set}';
@@ -2576,6 +2636,7 @@ ${_XM_CHANGE}
   ${_XM_USER}='${_REPL_USER}',
   ${_XM_PASSWORD}='${_XMASS_REPL_PSWD}',
 ${_XM_GET_PUBKEY}
+${_XM_SSL_LINE}
   ${_XM_AUTOPOS}=1;
 ${_XM_START};
 SLAVEEOF
@@ -2596,6 +2657,7 @@ SLAVEEOF
        | grep '${_XM_SQL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
     if [ "${_io}" = "Yes" ] && [ "${_sql}" = "Yes" ]; then
       _info "Replica running on target ${_tgt} (IO+SQL = Yes): OK"
+      _xmass_verify_replication_tls
       _xmass_hold_target_db
       return 0
     fi
@@ -6733,6 +6795,26 @@ _xmass_cmd_reset_phase() {
   _info "Phase set to '${_new}'. Confirm with 'xmass status'."
 }
 
+# One line for status: what the replica says it was told and what the source
+# sees on the live session. Read-only; degrades to "unknown" on an unreadable
+# side rather than guessing.
+_xmass_status_transport() {
+  local _allowed _ct
+  [ -n "${_XMASS_TARGET_IP}" ] || { echo "n/a"; return 0; }
+  _allowed=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_XMASS_TARGET_IP}" \
+    "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+     | grep '${_XM_SSL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
+  _ct=$(mysql --defaults-file=/root/.my.cnf -sNe \
+    "SELECT connection_type FROM performance_schema.threads WHERE processlist_user='${_REPL_USER}' AND connection_type IS NOT NULL ORDER BY thread_id DESC LIMIT 1" 2>/dev/null)
+  if [ "${_allowed}" = "Yes" ] && [ "${_ct}" = "SSL/TLS" ]; then
+    echo "TLS (${_XM_SSL_FIELD}=Yes, session SSL/TLS)"
+  elif [ -z "${_allowed}" ] && [ -z "${_ct}" ]; then
+    echo "unknown (no replica session readable)"
+  else
+    echo "PLAIN (${_XM_SSL_FIELD}=${_allowed:-?}, session ${_ct:-none})"
+  fi
+}
+
 _xmass_cmd_status() {
   _xmass_load_state
   _xmass_detect_percona_version   # set _XM_* replication dialect (init-only otherwise)
@@ -6766,6 +6848,7 @@ _xmass_cmd_status() {
   echo "  Init time        : ${_XMASS_INIT_TIME:-n/a}"
   echo "  Last file sync   : ${_XMASS_LAST_SYNC:-never}"
   echo "  Replication lag  : ${_lag}s"
+  echo "  Transport        : $(_xmass_status_transport)"
   echo "  Proxy default    : $( [ -s "${_MIG_BOX_MODE_FILE}" ] && head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null || echo "none (per-account records or fallback)" )"
   echo "======================================================"
   # Same table xoct renders: what each account's customer will be told and
