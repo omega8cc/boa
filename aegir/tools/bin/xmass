@@ -5881,8 +5881,20 @@ _xmass_cmd_prep_target() {
   _xmass_check_le_health
   _xmass_decide_transfer_method
 
+  # Every create leaves the target mid-motion (the in-flow post-install pass,
+  # the pass its seed arms, the verifies each pass queues), and 'boa in-octopus'
+  # refuses on any run lock -- so the target must be completely silent before
+  # EACH account, not only after the last one. xoct's own quiet wait is the
+  # backstop for direct use; here the full gate (locks, armed pids, every
+  # root's queue, processes, two consecutive polls) runs first, and a target
+  # that never settles fails that account instead of launching into a refusal.
   local _oct _rc _failed=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    if ! _xmass_wait_target_silent "${_tgt}" "creating ${_oct}" warn full; then
+      _alrt "not creating ${_oct}: ${_tgt} never went silent"
+      _failed="${_failed} ${_oct}"
+      continue
+    fi
     _info "Preparing account ${_oct} on ${_tgt} ..."
     if [ "${_XMASS_FIX_PHP}" = "YES" ]; then
       xoct create "${_oct}" "${_tgt}" --fix-php

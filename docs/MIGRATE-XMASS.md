@@ -380,8 +380,11 @@ no account has `static/control/run-upgrade.pid` armed, every root's
 dispatch, verify or installer process runs. The probe fails closed: an
 unreadable root or an unreadable target counts as busy.
 
-- `prep-target` reports the wait after its account verification; a timeout
-  there only warns (nothing destructive follows).
+- `prep-target` waits before **every** account create (each create leaves the
+  target mid-motion, and `boa in-octopus` refuses on any run lock -- an account
+  whose target never settles is reported failed instead of launched into a
+  refusal) and reports the wait again after its account verification; a
+  timeout at the end only warns (nothing destructive follows).
 - `init` waits, bounded, before its first target mutation and refuses on
   timeout.
 - `cutover --live` waits, in the narrower run-locks-and-processes scope (the
@@ -392,7 +395,8 @@ unreadable root or an unreadable target counts as busy.
 Knobs: `_XMASS_TARGET_SILENT_MAX_WAIT` (seconds, default 2400) and
 `_XMASS_SKIP_TARGET_SILENCE=YES` (skip the wait deliberately, logged). Related
 `xoct create` knobs: `_XOCT_TARGET_QUIET_MAX_WAIT` (wait for a quiet target
-before the account install, default 1800) and `_XOCT_CREATE_MAX_WAIT` (the
+before the account install -- no run lock and no armed `run-upgrade.pid`, held
+on two consecutive polls; default 1800) and `_XOCT_CREATE_MAX_WAIT` (the
 post-install settle, default 900).
 
 ### Phase 1 — Initialise Replication (`xmass init`)

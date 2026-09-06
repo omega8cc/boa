@@ -1814,24 +1814,37 @@ _xoct_wait_target_install_settled() {
   return 0
 }
 
-### Bounded wait until the TARGET holds no BOA run lock. Every account
-### install leaves a background octopus run behind (the in-flow post-install
-### upgrade, and the re-seeded run-upgrade.pid a repeated create arms), so the
-### next 'boa in-octopus' on the same target finds /run/boa_run.pid and the
-### launcher refuses with "Another BOA installer is running" -- a refusal the
-### create used to walk past and report complete. Wait it out here, bounded,
-### and let the caller fail when the box never goes quiet.
+### Bounded wait until the TARGET holds no BOA run lock AND no armed
+### run-upgrade.pid. Every account install leaves a background octopus run
+### behind (the in-flow post-install upgrade, and the re-seeded run-upgrade.pid
+### a create arms), so the next 'boa in-octopus' on the same target finds
+### /run/boa_run.pid and the launcher refuses with "Another BOA installer is
+### running" -- a refusal the create used to walk past and report complete.
+### An ARMED pid counts as busy: the runner consumes it on its next tick, so a
+### lock-free target with a pid armed is a pass that has not started yet (the
+### third account of a prep-target met exactly that: quiet by the lock probe,
+### refused seconds later by the pass the second account's seed had armed).
+### Chained passes also leave lock-free gaps of a few seconds between them,
+### so quiet must hold on two consecutive polls. Bounded; the caller fails
+### when the box never goes quiet.
 _xoct_wait_target_quiet() {
-  local _t="$1" _w=0 _busy
+  local _t="$1" _w=0 _busy _ok=0
   local _max="${_XOCT_TARGET_QUIET_MAX_WAIT:-1800}"
   case "${_max}" in ''|*[!0-9]*) _max=1800 ;; esac
   while [ "${_w}" -lt "${_max}" ]; do
-    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '" 2>/dev/null)
-    if [ -z "${_busy}" ]; then
-      [ "${_w}" -gt 0 ] && echo "INFO: target ${_t} quiet after ${_w}s"
-      return 0
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; ls /data/disk/*/static/control/run-upgrade.pid 2>/dev/null | sed 's#/data/disk/##; s#/static/control/run-upgrade.pid#:armed#' | tr '\n' ' '" 2>/dev/null)
+    if [ -z "${_busy// /}" ]; then
+      _ok=$(( _ok + 1 ))
+      if [ "${_ok}" -ge 2 ]; then
+        [ "${_w}" -gt 0 ] && echo "INFO: target ${_t} quiet after ${_w}s (two consecutive polls)"
+        return 0
+      fi
+      sleep 15
+      _w=$(( _w + 15 ))
+      continue
     fi
-    [ "${_w}" -eq 0 ] && echo "INFO: a BOA run holds ${_t} (${_busy}); waiting up to ${_max}s before the install"
+    _ok=0
+    [ "${_w}" -eq 0 ] && echo "INFO: a BOA run holds or is armed on ${_t} (${_busy}); waiting up to ${_max}s before the install"
     sleep 30
     _w=$(( _w + 30 ))
   done

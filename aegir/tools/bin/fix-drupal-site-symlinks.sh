@@ -101,16 +101,32 @@ if [ -n "${_caller}" ]; then
       fi
       # -f follows symlinks and ~oN/.drush is owned by the account (owner oN,
       # 0710), so a link planted here would let the caller nominate another
-      # account's alias -- and with it another account's site_path. But the
-      # account's OWN front-end alias is legitimately a symlink to
-      # hostmaster.alias.drushrc.php (manage_ltd_users.sh:1769-1771, re-made
-      # every 3 minutes), so refuse only a link that leaves this .drush dir.
+      # account's alias -- and with it another account's site_path; refuse a
+      # link that leaves this .drush dir. The account's OWN control panel has
+      # no per-site alias of its own: its alias is hostmaster.alias.drushrc.php
+      # (the <panel-fqdn> symlink to it was a crutch that manage_ltd_users.sh
+      # now purges, and it never existed during the install's first verify),
+      # so the panel is recognised by the uri that alias carries.
       _alias_f="/data/disk/${_caller_acct}/.drush/${_site}.alias.drushrc.php"
       _alias_r=$(realpath -e -- "${_alias_f}" 2>/dev/null)
       case "${_alias_r}" in
         "/data/disk/${_caller_acct}/.drush/"*) ;;
         *) _alias_r="" ;;
       esac
+      if [ -z "${_alias_r}" ] || [ ! -f "${_alias_r}" ]; then
+        _hm_f="/data/disk/${_caller_acct}/.drush/hostmaster.alias.drushrc.php"
+        _hm_r=$(realpath -e -- "${_hm_f}" 2>/dev/null)
+        case "${_hm_r}" in
+          "/data/disk/${_caller_acct}/.drush/"*) ;;
+          *) _hm_r="" ;;
+        esac
+        if [ -n "${_hm_r}" ] && [ -f "${_hm_r}" ]; then
+          _hm_uri=$(sed -n "s/.*'uri' *=> *'\([^']*\)'.*/\1/p" "${_hm_r}" 2>/dev/null | head -1)
+          if [ -n "${_hm_uri}" ] && [ "${_hm_uri}" = "${_site}" ]; then
+            _alias_r="${_hm_r}"
+          fi
+        fi
+      fi
       if [ -z "${_alias_r}" ] || [ ! -f "${_alias_r}" ]; then
         printf "Error: site '%s' is not owned by the caller account '%s'.\n" "${_site}" "${_caller_acct}" >&2
         exit 1
