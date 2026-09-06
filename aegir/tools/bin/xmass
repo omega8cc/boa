@@ -4623,10 +4623,16 @@ _xmass_report_queued_tasks() {
   # readonly flag the freeze just turned on. The old panels enter Drupal
   # maintenance mode at step 16 instead (xoct proxy per account, step 16.5
   # for the master), once the source has stopped replicating.
+  #
+  # hosting_task is keyed per node REVISION: every finished task leaves its
+  # creation revision frozen at task_status 0, and a queued row carries
+  # executed=NULL, never 0. Count the way the dispatcher does -- current
+  # revisions only, joined on node.vid -- or a box with years of history
+  # reports thousands of finished verifies and deletes as "travelling".
   local _oct _rows _total=0
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _rows=$(su -s /bin/bash - "${_oct}" -c \
-      "drush8 @hostmaster sqlq \"SELECT CONCAT(task_type,'=',COUNT(*)) FROM hosting_task WHERE task_status IN (0,-1) GROUP BY task_type\"" \
+      "drush8 @hostmaster sqlq \"SELECT CONCAT(t.task_type,'=',COUNT(*)) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = -1 OR (t.task_status = 0 AND (t.executed IS NULL OR t.executed = 0)) GROUP BY t.task_type\"" \
       2>/dev/null | tr '\n' ' ')
     _rows=$(echo ${_rows})
     if [ -n "${_rows}" ]; then
