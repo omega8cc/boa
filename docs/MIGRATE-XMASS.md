@@ -287,15 +287,15 @@ xmass pre-mig source-host
 
 ### Phase 0.5 — Prepare the target (`xmass prep-target`)
 
-`prep-target` refuses a target that carries an Octopus account absent from the
-source's eligible list (a golden-master clone brings its own satellite along):
-the init datadir swap replaces the target's MySQL with the source's, where that
-account's panel database never existed, so it would come out of cutover as a
-broken leftover (panel 500, no sites, no DB user). Remove it first with BOA's
-own cleanup — `touch /data/disk/<oN>/log/CANCELLED` on the target, a
-`barracuda up-<tree> system noscreen` pass (drops its vhosts), then
-`boa cleanup detect` and `boa cleanup purge <oN>` — or set
-`_XMASS_ALLOW_TARGET_ONLY=YES` to proceed knowingly and purge after cutover.
+`prep-target` deals with an Octopus account that exists on the target but not
+among the source's eligible accounts (a golden-master clone brings its own
+satellite along): the init datadir swap replaces the target's MySQL with the
+source's, where that account's panel database never existed, so it would come
+out of cutover as a broken leftover (panel 500, no sites, no DB user). A
+site-less one is a leftover by definition and is purged on the spot with BOA's
+own verb (`log/CANCELLED` + `boa cleanup purge`, everything parked under
+`/var/backups/zombie/purged/<oN>/`, nginx configtest proven); one that carries
+sites is refused (`_XMASS_ALLOW_TARGET_ONLY=YES` keeps it knowingly).
 
 Run on the **source**, after `pre-mig` has completed on both hosts and before
 `init`. This is everything the target must have in place before its Octopus
@@ -937,6 +937,11 @@ log single-threaded unless told otherwise, so on a busy source set
 right after `init` rather than raising the ceiling.
 
 ### Phase 4.5 — Verify (`xmass verify`)
+
+`verify` also opens every Ægir root's control panel on the target by its new
+name (`https://<panel>/user`, resolved straight at the target) and names any
+that does not answer 200/30x/401/403; cutover runs the same probe as its last
+step, so a cutover that ends with dead panels says so in its own output.
 
 Run on the **source** after the cutover. Read-only; changes nothing on either
 host:

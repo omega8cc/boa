@@ -5709,37 +5709,52 @@ _xmass_wait_target_silent() {
        " pass or its queued verifies are running there; let it finish, then re-run"
 }
 
-_xmass_deny_target_only_accounts() {
+_xmass_purge_target_only_accounts() {
   # An Octopus account that exists on the target but not among the source's
   # eligible accounts cannot survive init: the datadir swap replaces the
   # target's MySQL with the source's, where that account's panel database
   # never existed, and it comes out of cutover as a broken leftover (panel
   # 500, no sites, no DB user). A golden-master clone carries exactly such a
-  # satellite. Refuse here, before anything is installed or replicated, and
-  # point at BOA's own removal path instead of inventing one: log/CANCELLED
-  # arms the vhost removal on the next barracuda pass, boa cleanup purges.
-  local _t="$1" _tgt_accts _a _extra=""
+  # satellite. A site-less one is a leftover by definition and is purged
+  # here with BOA's own verb (log/CANCELLED + boa cleanup purge, which parks
+  # everything under /var/backups/zombie/purged/<oN>/ and proves nginx still
+  # loads); one that carries sites is refused, it is not ours to decide.
+  local _t="$1" _tgt_accts _a _nsites _out
   _tgt_accts=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
-    "for _d in /data/disk/o*; do [ -f \"\${_d}/.drush/hostmaster.alias.drushrc.php\" ] && [ ! -e \"\${_d}/log/CANCELLED\" ] && basename \"\${_d}\"; done" 2>/dev/null)
+    "for _d in /data/disk/o*; do [ -f \"\${_d}/.drush/hostmaster.alias.drushrc.php\" ] && basename \"\${_d}\"; done" 2>/dev/null)
   for _a in ${_tgt_accts}; do
     case " ${_ELIGIBLE_ACCOUNTS} " in
-      *" ${_a} "*) ;;
-      *) _extra="${_extra} ${_a}" ;;
+      *" ${_a} "*) continue ;;
+    esac
+    _nsites=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
+      "ls -d /data/disk/${_a}/distro/*/*/sites/*.* 2>/dev/null | grep -v -E '/sites/(all|default)\$' | wc -l" 2>/dev/null | tr -d ' ')
+    if [ "${_nsites}" != "0" ]; then
+      if [ "${_XMASS_ALLOW_TARGET_ONLY}" = "YES" ]; then
+        _alrt "target ${_t} account ${_a} is not on this source and carries ${_nsites} site(s);"
+        _alrt "kept on _XMASS_ALLOW_TARGET_ONLY=YES -- it will be BROKEN after init (no panel DB"
+        _alrt "in the source's datadir) and must be dealt with after cutover"
+        continue
+      fi
+      _die "target ${_t} account ${_a} is not on this source and carries ${_nsites:-?} site(s):" \
+           " not a clone leftover, refusing to purge it. Move or remove it there first" \
+           " (touch /data/disk/${_a}/log/CANCELLED, then 'boa cleanup purge ${_a} noscreen')," \
+           " or set _XMASS_ALLOW_TARGET_ONLY=YES to keep it knowingly"
+    fi
+    _info "  target-only account ${_a} has no sites (clone leftover): purging it with boa cleanup ..."
+    _out=$(ssh -o ConnectTimeout=20 -o BatchMode=yes root@"${_t}" \
+      "touch /data/disk/${_a}/log/CANCELLED && boa cleanup detect noscreen > /dev/null 2>&1; boa cleanup purge ${_a} noscreen 2>&1 | tail -4; [ ! -d /data/disk/${_a} ] && nginx -t > /dev/null 2>&1 && echo PURGE_OK" 2>/dev/null)
+    case "${_out}" in
+      *PURGE_OK*)
+        _info "  ${_a}: purged on ${_t} (parked under /var/backups/zombie/purged/${_a}/), nginx configtest OK"
+      ;;
+      *)
+        _die "purging target-only account ${_a} on ${_t} did not complete:" \
+             " $(echo "${_out}" | tr '\n' ' ')" \
+             " -- fix it there (boa cleanup purge ${_a} noscreen; nginx -t) and re-run prep-target"
+      ;;
     esac
   done
-  [ -z "${_extra}" ] && return 0
-  if [ "${_XMASS_ALLOW_TARGET_ONLY}" = "YES" ]; then
-    _alrt "target ${_t} carries account(s) not on this source:${_extra} -- continuing on"
-    _alrt "_XMASS_ALLOW_TARGET_ONLY=YES; they will be BROKEN after init (their panel DB"
-    _alrt "does not exist in the source's datadir) and must be purged after cutover"
-    return 0
-  fi
-  _die "target ${_t} carries account(s) not on this source:${_extra} -- the init datadir" \
-       " swap would leave them without a panel database (broken leftovers). Remove them" \
-       " first with BOA's own cleanup: touch /data/disk/<oN>/log/CANCELLED there, run a" \
-       " 'barracuda up-<tree> system noscreen' pass (drops the vhosts), then" \
-       " 'boa cleanup detect' and 'boa cleanup purge <oN>'; or set" \
-       " _XMASS_ALLOW_TARGET_ONLY=YES to proceed knowingly"
+  return 0
 }
 
 _xmass_cmd_prep_target() {
@@ -5803,7 +5818,7 @@ _xmass_cmd_prep_target() {
   # the release number is compared. No override: "bring both boxes to the same
   # release" is always the correct action and is always available, and an
   # override here buys a box-wide outage.
-  _xmass_deny_target_only_accounts "${_tgt}"
+  _xmass_purge_target_only_accounts "${_tgt}"
   _xmass_assert_same_release "${_tgt}"
 
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
@@ -5898,6 +5913,42 @@ _xmass_cmd_prep_target() {
   _info "======================================================"
 }
 
+_xmass_probe_target_panels() {
+  # Every Aegir root's control panel by its NEW name, straight at the target:
+  # the migrated panels answered 404 (platform-number skew) and the master
+  # 500 (dead db_name) after a cutover that reported success, and nobody
+  # would have known without opening them. $2 = die|warn.
+  local _t="$1" _how="$2" _roots _r _fq _code _bad="" _res=""
+  _roots=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
+    "for _d in /var/aegir /data/disk/o*; do _a=\"\${_d}/.drush/hostmaster.alias.drushrc.php\"; [ -f \"\${_a}\" ] || continue; [ -e \"\${_d}/log/CANCELLED\" ] && continue; _s=\$(grep \"site_path'\" \"\${_a}\" | head -1 | sed \"s/.*=>//; s/[' ,;]//g\"); echo \"\${_d} \$(basename \"\${_s}\")\"; done" 2>/dev/null)
+  [ -z "${_roots}" ] && { _alrt "could not list the target's Aegir roots for the panel probe (ssh?)"; return 0; }
+  case "${_t}" in
+    *[!0-9.]*) _res="" ;;
+    *) _res="--resolve" ;;
+  esac
+  while read -r _r _fq; do
+    [ -z "${_fq}" ] && continue
+    if [ -n "${_res}" ]; then
+      _code=$(curl -sk -o /dev/null -w '%{http_code}' -A iCab --max-time 30 --resolve "${_fq}:443:${_t}" "https://${_fq}/user" 2>/dev/null)
+    else
+      _code=$(curl -sk -o /dev/null -w '%{http_code}' -A iCab --max-time 30 "https://${_fq}/user" 2>/dev/null)
+    fi
+    case "${_code}" in
+      200|301|302|303|401|403) _info "  panel ${_fq} (${_r}): ${_code} OK" ;;
+      *) _alrt "  panel ${_fq} (${_r}): HTTP ${_code:-none} -- BROKEN"; _bad="${_bad} ${_fq}" ;;
+    esac
+  done <<< "${_roots}"
+  if [ -n "${_bad}" ]; then
+    if [ "${_how}" = "die" ]; then
+      _die "control panel(s) not serving on ${_t}:${_bad} -- inspect the vhost root/db_name and" \
+           " the panel platform row before going further"
+    fi
+    _alrt "control panel(s) not serving on ${_t}:${_bad}"
+    return 1
+  fi
+  return 0
+}
+
 _xmass_cmd_verify() {
   # Read-only post-cutover sweep replacing the manual checklist: one site per
   # account fetched twice >=5s apart direct-to-target (BOA answers fetch
@@ -5977,6 +6028,8 @@ _xmass_cmd_verify() {
   elif ! grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
     _alrt "migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line)"
   fi
+  _info "Control panels on the target, by their new names ..."
+  _xmass_probe_target_panels "${_tgt}" warn
   _info "verify sweep complete (read-only)"
 }
 
@@ -7370,6 +7423,12 @@ REMOTE
 
   # Cutover done: re-arm the watchdog on both hosts.
   _xmass_maint_off
+
+  # Step 18.9: every panel by its new name, before the phase is marked done --
+  # a cutover that ends with dead panels must say so in its own output.
+  _info "Control panels on the target, by their new names ..."
+  _xmass_probe_target_panels "${_tgt}" warn \
+    || _alrt "cutover completes with BROKEN control panel(s) -- see above; 'xmass verify' re-checks"
 
   _XMASS_PHASE="complete"
   # The save's phase=complete chokepoint also disarms a still-armed autosync
