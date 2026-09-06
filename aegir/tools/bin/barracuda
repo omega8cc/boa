@@ -779,6 +779,7 @@ _check_report() {
         || [[ "${_RESULT_LIB_ERR}" =~ "binary file matches" ]]; then
         _SEND_ALERT=YES
         _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
+    _ONLY_REBOOT=NO
       fi
     else
       _DO_NOTHING=YES
@@ -792,8 +793,10 @@ _check_report() {
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (apt) Barracuda upgrade"
   fi
+  _ONLY_REBOOT=NO
   if [[ "${_RESULT_KERNEL}" =~ "Your OS kernel" ]] \
     && [[ "${_RESULT_REBOOT}" =~ "Please reboot" ]]; then
+    [ "${_SEND_ALERT}" != "YES" ] && _ONLY_REBOOT=YES
     _SEND_ALERT=YES
     _ALERT_MSG="REBOOT: Your new system kernel requires boa reboot"
   fi
@@ -801,16 +804,19 @@ _check_report() {
     || [[ "${_RESULT_ALRT}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
+    _ONLY_REBOOT=NO
   fi
   if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]] \
     || [[ "${_RESULT_FATAL}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (aborted) Barracuda upgrade"
+    _ONLY_REBOOT=NO
   fi
   if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]] \
     || [[ "${_RESULT_LIB_ERR}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
+    _ONLY_REBOOT=NO
   fi
   if [ "${_SEND_ALERT}" = "YES" ]; then
     _send_alert
@@ -1601,7 +1607,11 @@ _up_finish() {
   # alert on. The prefix is kept intact so anything waiting on the documented
   # completion line still terminates -- including the operator the console
   # instructions above tell to watch for exactly that line.
-  if [ "${_SEND_ALERT}" = "YES" ]; then
+  # A pass whose only alert is the kernel notice finished cleanly; say what
+  # it needs instead of calling it errored.
+  if [ "${_SEND_ALERT}" = "YES" ] && [ "${_ONLY_REBOOT}" = "YES" ]; then
+    echo "BARRACUDA upgrade completed, REBOOT REQUIRED -- run 'boa reboot' (log: ${_UP_LOG})"
+  elif [ "${_SEND_ALERT}" = "YES" ]; then
     echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}"
   else
     echo BARRACUDA upgrade completed

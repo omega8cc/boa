@@ -5101,6 +5101,13 @@ _if_install_wkhtmltox() {
     fi
     _apt_clean_update
     for _PKG in gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf; do
+      # trixie and excalibur no longer ship wkhtmltopdf; the bundled build
+      # below is the only source there.
+      if [ "${_PKG}" = "wkhtmltopdf" ]; then
+        case "${_OS_CODE}" in
+          excalibur|trixie) continue ;;
+        esac
+      fi
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -5113,7 +5120,7 @@ _if_install_wkhtmltox() {
   if [ "${_OS_CODE}" = "jessie" ]; then
     _WOX_ITD=$(wkhtmltopdf --version 2>&1)
   fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
+  if [ "${_DEBUG_MODE}" = "YES" ] && [ -n "${_WOX_ITD}" ] && command -v wkhtmltopdf > /dev/null 2>&1; then
     _msg "INFO: Installed wkhtmltopdf version ${_WOX_ITD}"
   fi
 

@@ -2,6 +2,21 @@
 # _backup_to_dragon() moved to the shared helper.sh.inc (Octopus sources helper
 # but not sql). Callsites below still use it unchanged.
 
+#
+# The move_sql.sh wrapper arrives with /var/xdrago, which a fresh install does
+# not have yet; fall back to the init script until it exists.
+_move_sql() {
+  if [ -e "/var/xdrago/move_sql.sh" ]; then
+    if [ "$1" = "restart" ]; then
+      _mrun "bash /var/xdrago/move_sql.sh"
+    else
+      _mrun "bash /var/xdrago/move_sql.sh $1"
+    fi
+  else
+    _mrun "service mysql $1"
+  fi
+}
+
 _check_mysql_version() {
   _DB_V=
   if [ -x "/usr/sbin/aa-teardown" ]; then
@@ -550,7 +565,7 @@ _innodb_log_file_size_update() {
     _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   fi
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
-  _mrun "bash /var/xdrago/move_sql.sh stop"
+  _move_sql stop
   wait
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
@@ -590,11 +605,11 @@ _innodb_log_file_size_update() {
         echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
       fi
     fi
-    _mrun "bash /var/xdrago/move_sql.sh start"
+    _move_sql start
     wait
   else
     _msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
-    _mrun "bash /var/xdrago/move_sql.sh stop"
+    _move_sql stop
     wait
     sleep 180
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
@@ -635,7 +650,7 @@ _innodb_log_file_size_update() {
           echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
         fi
       fi
-      _mrun "bash /var/xdrago/move_sql.sh start"
+      _move_sql start
       wait
     else
       if [ "${_DB_V}" != "5.7" ]; then
@@ -1807,7 +1822,7 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
-          _mrun "bash /var/xdrago/move_sql.sh"
+          _move_sql restart
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
           _myRstrd=YES
@@ -2095,7 +2110,7 @@ _sql_root_credentials_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
-        _mrun "bash /var/xdrago/move_sql.sh"
+        _move_sql restart
         wait
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: ${_DB_SERVER} setup completed"
