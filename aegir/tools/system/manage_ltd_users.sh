@@ -2615,6 +2615,23 @@ _manage_user() {
       _mntPoint=""
       _USER=""
       _USER=$(echo ${_pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      # The nightly's per-account pass holds this account's home unlocked for
+      # minutes and relocks it at its end; a rebuild in flight here would meet
+      # that relock half way (EPERM on every write). Leave the account to the
+      # next pass while the marker names a live pass (a dead pid is a killed
+      # pass and its marker goes) -- but its lshell stanzas are emitted from
+      # the body skipped here, and the conf built this pass replaces the live
+      # one on any difference, so carry them over from the live file as they
+      # stand or its users would drop to [default] until the hold clears.
+      if [ -e "/run/night-account-${_USER}.pid" ]; then
+        if kill -0 "$(cat /run/night-account-${_USER}.pid 2>/dev/null)" 2>/dev/null; then
+          echo "skipping ${_USER}: the nightly per-account pass holds it"
+          echo >> ${_THIS_LTD_CONF}
+          awk -v u="${_USER}" '/^\[/ { p = ($0 ~ "^\\[" u "\\.") } p' /etc/lshell.conf >> ${_THIS_LTD_CONF}
+          continue
+        fi
+        rm -f /run/night-account-${_USER}.pid
+      fi
       # Identity heal: an account whose marker records THIS box's group but
       # whose backend or shell identity fell back to the box-wide primary
       # group (a hand usermod, a restored passwd) makes _acct_group fail open
@@ -3022,7 +3039,9 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   exit 0
 else
   rm -f /var/log/boa/wait-manage-ltd-users.pid
-  touch /run/manage_ltd_users.pid
+  # the pid, not a bare touch: the nightly's per-account pass waits only on a
+  # LIVE worker (every other reader tests existence and removes the file)
+  echo $$ > /run/manage_ltd_users.pid
   _count_cpu
   _find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null

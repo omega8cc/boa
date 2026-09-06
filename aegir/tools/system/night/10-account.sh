@@ -344,6 +344,26 @@ _account_process() {
       fi
     done
   fi
+  # The ltd worker rebuilds ~/.drush inside its own unlock/relock span every
+  # three minutes; the relock below landing on such a rebuild leaves it half
+  # done (EPERM on every write). Hold this account FIRST -- with the marker
+  # in place the worker will not enter it (its per-account guard) -- so the
+  # wait only has to cover a worker already inside this account's own span.
+  # The marker carries this pid: a killed pass must not hold the account.
+  echo $$ > /run/night-account-${_HM_U}.pid
+  # The worker's pid file names its pid: a worker killed mid-pass leaves the
+  # file behind until clear.sh sweeps it, and the nightly must not stall on a
+  # dead one. Bounded on purpose; proceeding after the bound is the old race
+  # narrowed to "worker still inside this account", so it leaves a witness.
+  _nightWait=0
+  while [ -e "/run/manage_ltd_users.pid" ] \
+    && kill -0 "$(cat /run/manage_ltd_users.pid 2>/dev/null)" 2>/dev/null \
+    && [ ${_nightWait} -lt 180 ]; do
+    sleep 5
+    _nightWait=$((_nightWait + 5))
+  done
+  [ ${_nightWait} -ge 180 ] \
+    && echo "${_HM_U}: the ltd worker is still running after ${_nightWait} s; unlocking anyway"
   _disable_chattr ${_HM_U}.ftp
   rm -rf /home/${_HM_U}.ftp/drush-backups
   if [ -e "${_THIS_HM_SITE}" ]; then
@@ -411,6 +431,7 @@ _account_process() {
   _le_account_report
   _ghost_account_report
   _enable_chattr ${_HM_U}.ftp
+  rm -f /run/night-account-${_HM_U}.pid
 }
 
 ### Per-account helpers relocated from owl.sh (hostmaster LE cert +
