@@ -4561,7 +4561,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f89 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f89 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f79 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f78 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f92 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f97 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f95 --guard /local/bin/codebasecheck

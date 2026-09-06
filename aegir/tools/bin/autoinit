@@ -1672,11 +1672,11 @@ _ensure_openssh_server() {
   fi
   if ! _pkg_installed "openssh-server"; then
     _msg "[init] Installing openssh-server" >> "${_logInt}"
-    ${_INITINS} ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+    _autoinit_apt_hop_run "install ssh openssh-server openssh-sftp-server task-ssh-server" "${_aptAllow} -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
   fi
   if ! _pkg_installed "ssh"; then
     _msg "[init] Installing ssh" >> "${_logInt}"
-    ${_INITINS} ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+    _autoinit_apt_hop_run "install ssh openssh-server openssh-sftp-server task-ssh-server" "${_aptAllow} -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
   fi
   # (optional) make sure it is enabled under sysvinit
   if [ -x "/etc/init.d/ssh" ]; then

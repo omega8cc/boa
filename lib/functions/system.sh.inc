@@ -378,7 +378,7 @@ _systemd_remove_apt_cmd() {
   _apt_clean_update
   _mrun "apt-get purge systemd libnss-systemd -y -qq"
   _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
-  _mrun "apt-get autoclean -y --purge --auto-remove -qq"
+  _mrun "apt-get autoclean -y -qq"
   _mrun "apt-get autoremove -y --purge --auto-remove -qq"
   _apt_clean_update
 }
@@ -4479,7 +4479,7 @@ _run_apt_get_dist_upgrade() {
   fi
   _msg "INFO: Running apt-get upgrade..."
   _apt_clean_update_no_releaseinfo_change
-  _apt_run_heal_dead_security_pool "upgrade ${_dstUpArg}"
+  _mrun "apt-get upgrade ${_dstUpArg}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Running apt-get dist-upgrade..."
   fi
@@ -4490,9 +4490,6 @@ _run_apt_get_dist_upgrade() {
   _mrun "apt-get dist-upgrade ${_aptYesUnth}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   _mrun "apt-get install lsb-release ${_dstUpArg}"
-  # libc-bin's conffile just replaced /etc/ld.so.conf.d/libc.conf: put the BOA
-  # OpenSSL library paths back before anything links or downloads again.
-  _ssl_paths_sync
   ### Update rsyslog configuration early
   _rsyslog_config_update
   ### Reload key services if needed early
@@ -8618,7 +8615,7 @@ _if_post_major_os_upgrade() {
 
     _msg "INFO: Removing any packages orphaned by the migration process..."
     _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
-    _mrun "apt-get autoclean -y --purge --auto-remove -qq"
+    _mrun "apt-get autoclean -y -qq"
     _mrun "apt-get autoremove -y --purge --auto-remove -qq"
 
     _msg "INFO: Running dist-upgrade to complete the system upgrade..."
@@ -9196,8 +9193,14 @@ _if_major_os_upgrade() {
       _mrun "apt-get install libtinfo6 ${_dstUpArg}"
     fi
     ###
-    ### Note that this upgrade does not complete the migration yet.
-    _mrun "apt-get upgrade ${_dstUpArg}"
+    ### Note that this upgrade does not complete the migration yet. The target
+    ### suite's security pool can be one the mirror no longer serves (the
+    ### chimaera pool since Debian 11 left LTS): drop it and go on rather
+    ### than let apt abort the whole move on the 404s. Devuan's own builds
+    ### rank below Debian's by version string, so allow the downgrades the
+    ### dist-upgrade below already allows.
+    _apt_run_heal_dead_security_pool "upgrade ${_dstUpArg} --allow-downgrades"
+    _mrun "apt-get upgrade ${_dstUpArg} --allow-downgrades"
     _mrun "apt-get install apt dpkg aptitude util-linux ${_dstUpArg}"
     ###
     ### Back to BOA stuff re-install as needed.
@@ -9251,7 +9254,7 @@ _if_major_os_upgrade() {
       #_mrun "apt-get full-upgrade ${_dstUpArg}"
       _mrun "apt-get install lsb-release ${_dstUpArg}"
     else
-      _mrun "apt-get upgrade ${_dstUpArg}"
+      _mrun "apt-get upgrade ${_dstUpArg} --allow-downgrades"
       _mrun "apt-get install lsb-release ${_dstUpArg}"
     fi
     ###
@@ -9264,7 +9267,7 @@ _if_major_os_upgrade() {
       #_mrun "apt-get full-upgrade ${_dstUpArg}"
       _mrun "apt-get install lsb-release ${_dstUpArg}"
     else
-      _mrun "apt-get upgrade ${_dstUpArg}"
+      _mrun "apt-get upgrade ${_dstUpArg} --allow-downgrades"
       _mrun "apt-get install lsb-release ${_dstUpArg}"
     fi
     _mrun "apt-get upgrade -y"
@@ -9310,13 +9313,16 @@ _if_major_os_upgrade() {
       _msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       echo
-      _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades"
+      _apt_run_heal_dead_security_pool "dist-upgrade ${_dstUpArg} --allow-downgrades"
       _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
       _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       _mrun "apt-get install lsb-release ${_dstUpArg}"
+      # libc-bin's conffile just replaced /etc/ld.so.conf.d/libc.conf: put the
+      # BOA OpenSSL library paths back before anything links or downloads.
+      _ssl_paths_sync
       ###
       if [ "${_LOC_OS_CODE}" = "daedalus" ] && [ "${_NEW_OS_CODE}" = "excalibur" ]; then
         _useFast=daedalus
