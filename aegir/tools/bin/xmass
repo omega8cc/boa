@@ -5968,51 +5968,87 @@ _xmass_probe_target_panels() {
 }
 
 _xmass_cmd_verify() {
-  # Read-only post-cutover sweep replacing the manual checklist: one site per
-  # account fetched twice >=5s apart direct-to-target (BOA answers fetch
-  # bursts with transient 200 soft-404 bodies, so spacing matters and a
-  # single fetch proves little), one relayed request through this source's
-  # proxy, plus the local leftovers that keep sites 503-gated and the cron/
+  # Read-only post-cutover sweep replacing the manual checklist: per account,
+  # one client-domain site (its name does not change at cutover) and one site
+  # under this box's own subdomain (renamed to the target's name by cutover
+  # step 13), each fetched twice >=5s apart direct-to-target (BOA answers
+  # fetch bursts with transient 200 soft-404 bodies, so spacing matters and a
+  # single fetch proves little); client-domain sites also get one relayed
+  # request through this source's proxy (a renamed site is not proxied: its
+  # old name is gone by design). The account's own control panel is never a
+  # site of this sweep -- it is probed by its new name below. A 401/403 that
+  # direct and relay agree on is a protected site serving as configured, not a
+  # breakage. Plus the local leftovers that keep sites 503-gated and the cron/
   # certificate-mirror state a long-lived proxy depends on.
   _xmass_enumerate_accounts
-  local _oct _dom _vhd _c1 _c2 _cr _cs
+  local _oct _dom _vhd _c1 _c2 _cr _cs _src_fqdn _tgt_fqdn _panel _sub _site _kind _dom_t _picked _ok
+  _src_fqdn=$(hostname -f 2>/dev/null)
+  _tgt_fqdn=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
+  [ -z "${_tgt_fqdn}" ] && _alrt "  cannot read the target's hostname over ssh -- renamed sites are probed by their old name"
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     if [ -e "/data/disk/${_oct}/static/control/http-off.pid" ]; then
       _alrt "  ${_oct}: http-off.pid still present on the source -- sites 503-gated here"
     fi
-    # Real site vhosts only: post-cutover the ASCII-first entry is always the
-    # dot-prefixed pre-proxy backup, and https.* companions are not domains.
-    _vhd=$(find /data/disk/${_oct}/config/server_master/nginx/vhost.d \
-      -maxdepth 1 -type f ! -name '.*' ! -name 'https.*' 2>/dev/null | sort | head -1)
-    if [ -z "${_vhd}" ]; then
-      _alrt "  ${_oct}: no vhosts found on the source"
-      continue
-    fi
-    _dom=$(basename "${_vhd}")
-    if ! printf '%s' "${_dom}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'; then
-      _alrt "  ${_oct}: skipping vhost '${_dom}' (not a plain domain name)"
-      continue
-    fi
-    _c1=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
-      --resolve "${_dom}:80:${_tgt}" "http://${_dom}/" 2>/dev/null)
-    sleep 6
-    _c2=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
-      --resolve "${_dom}:80:${_tgt}" "http://${_dom}/" 2>/dev/null)
-    _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
-      -H "Host: ${_dom}" "http://127.0.0.1/" 2>/dev/null)
-    _cs="-"
-    if [ -d "/data/disk/${_oct}/config/server_master/ssl.d/${_dom}" ]; then
-      _cs=$(curl -sk -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
-        --resolve "${_dom}:443:${_tgt}" "https://${_dom}/" 2>/dev/null)
-    fi
-    if { [ "${_c1}" = "200" ] || [ "${_c2}" = "200" ]; } \
-      && { [ "${_cr}" = "200" ] || [ "${_cr}" = "301" ] || [ "${_cr}" = "302" ]; }; then
-      _info "  ${_oct}: ${_dom} target=${_c1}/${_c2} relay=${_cr} https=${_cs}: OK"
-    else
-      _alrt "  ${_oct}: ${_dom} target=${_c1}/${_c2} relay=${_cr} https=${_cs} -- investigate"
-      _alrt "    (transient 200 'Page not found' bodies are BOA burst protection; re-run"
-      _alrt "    verify before recording a site broken)"
-    fi
+    _panel="${_oct}.${_src_fqdn}"
+    _sub=".${_oct}.${_src_fqdn}"
+    _picked=""
+    # Real site vhosts only: post-cutover the dot-prefixed entries are the
+    # pre-proxy backups, and https.* companions are not domains.
+    for _kind in client subdomain; do
+      _dom=""
+      for _vhd in $(find /data/disk/${_oct}/config/server_master/nginx/vhost.d \
+        -maxdepth 1 -type f ! -name '.*' ! -name 'https.*' 2>/dev/null | sort); do
+        _site=$(basename "${_vhd}")
+        printf '%s' "${_site}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' || continue
+        [ "${_site}" = "${_panel}" ] && continue
+        case "${_kind}" in
+          client)    case "${_site}" in *"${_sub}") continue ;; esac ;;
+          subdomain) case "${_site}" in *"${_sub}") : ;; *) continue ;; esac ;;
+        esac
+        _dom="${_site}"
+        break
+      done
+      [ -z "${_dom}" ] && continue
+      _picked="${_picked} ${_dom}"
+      _dom_t="${_dom}"
+      if [ "${_kind}" = "subdomain" ] && [ -n "${_tgt_fqdn}" ]; then
+        _dom_t="${_dom%${_src_fqdn}}${_tgt_fqdn}"
+      fi
+      _c1=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+        --resolve "${_dom_t}:80:${_tgt}" "http://${_dom_t}/" 2>/dev/null)
+      sleep 6
+      _c2=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+        --resolve "${_dom_t}:80:${_tgt}" "http://${_dom_t}/" 2>/dev/null)
+      _cr="-"
+      if [ "${_kind}" = "client" ]; then
+        _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+          -H "Host: ${_dom}" "http://127.0.0.1/" 2>/dev/null)
+      fi
+      _cs="-"
+      if [ -d "/data/disk/${_oct}/config/server_master/ssl.d/${_dom}" ]; then
+        _cs=$(curl -sk -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+          --resolve "${_dom_t}:443:${_tgt}" "https://${_dom_t}/" 2>/dev/null)
+      fi
+      _ok=NO
+      if [ "${_c1}" = "200" ] || [ "${_c2}" = "200" ] || [ "${_c1}" = "301" ] || [ "${_c1}" = "302" ]; then
+        if [ "${_cr}" = "-" ] || [ "${_cr}" = "200" ] || [ "${_cr}" = "301" ] || [ "${_cr}" = "302" ]; then
+          _ok=YES
+        fi
+      elif [ "${_c1}" = "401" ] || [ "${_c1}" = "403" ]; then
+        if [ "${_c1}" = "${_c2}" ] && { [ "${_cr}" = "-" ] || [ "${_cr}" = "${_c1}" ]; }; then
+          _ok=PROTECTED
+        fi
+      fi
+      case "${_ok}" in
+        YES)       _info "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs}: OK" ;;
+        PROTECTED) _info "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs}: OK (protected, same answer direct and relayed)" ;;
+        *)
+          _alrt "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs} -- investigate"
+          _alrt "    (transient 200 'Page not found' bodies are BOA burst protection; re-run"
+          _alrt "    verify before recording a site broken)" ;;
+      esac
+    done
+    [ -z "${_picked}" ] && _info "  ${_oct}: no site besides the control panel (probed below by its new name)"
   done
   # Materialisation acceptance: a dangling symlink on the TARGET under a synced
   # root is content that never travelled (or a link class the sweep only
