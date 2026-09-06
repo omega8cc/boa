@@ -4617,11 +4617,12 @@ _xmass_report_queued_tasks() {
   # migrate or a restore minutes before cutover should see it named here
   # instead of discovering it ran on the new box.
   #
-  # Deliberately NOT maintenance_mode. xoct sets it at export, but that path
-  # is never reached in the xmass flow, and porting it is not a lift: set
-  # before promotion it replicates INTO new production and leaves the new
-  # panel in maintenance, and set after the write freeze a `drush
-  # variable-set` is blocked by the readonly flag the freeze just turned on.
+  # Deliberately NOT maintenance_mode here: set before promotion it
+  # replicates INTO new production and leaves the new panel in maintenance,
+  # and set after the write freeze a `drush variable-set` is blocked by the
+  # readonly flag the freeze just turned on. The old panels enter Drupal
+  # maintenance mode at step 16 instead (xoct proxy per account, step 16.5
+  # for the master), once the source has stopped replicating.
   local _oct _rows _total=0
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _rows=$(su -s /bin/bash - "${_oct}" -c \
@@ -4717,6 +4718,26 @@ _xmass_convert_source_to_proxy() {
     fi
   done
   _info "Source proxy conversion via xoct complete"
+}
+
+_xmass_source_master_panel_maintenance() {
+  # Idempotent: variable-set converges, and a panel that cannot bootstrap
+  # is reported, not fatal -- the sites are already served by the target.
+  local _out
+  if [ ! -f "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    _info "  master panel: no hostmaster alias on this box; nothing to do"
+    return 0
+  fi
+  _out=$(su -s /bin/bash - aegir -c "drush8 @hostmaster variable-set --always-set maintenance_mode 1" 2>&1 | tail -1)
+  case "${_out}" in
+    *"maintenance_mode was set to 1"*)
+      _info "  master panel: Drupal maintenance mode ON (stays online locally, admins only)"
+    ;;
+    *)
+      _alrt "  master panel: could not set maintenance mode: ${_out}"
+    ;;
+  esac
+  return 0
 }
 
 ###-------------MIGRATION PROXY TRUST------###
@@ -4905,6 +4926,71 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   echo "PANEL-ERROR: no panel settings.php/drushrc.php under ${_R} (looked at ${_SP})"
   exit 1
 fi
+# The replicated panel DB names the SOURCE's hostmaster platform for the
+# panel site (distro/025 after years of upgrades there) while this box's
+# panel lives under its own, lower number (distro/005). Left alone, the
+# rename's queue verifies a platform whose path does not exist here --
+# hosting even tries to drush-make it -- and renders the panel vhost with
+# that root: 404 by the new name, and the master's vhost keeps its dead
+# db_name because its verify never got that far. The hollow-alias adoption
+# above only covers an alias that itself named the missing path; when the
+# target's own alias won the rsync -u race the alias is right and only the
+# DB row is stale. So always compare the DB's panel platform with the
+# on-disk one and repoint the row, as the old tool did on every import, and
+# rename the platform context to the on-disk number when that name is free
+# or held only by a deleted platform's leftover row, so alias file names
+# keep matching paths. Fail-closed: a panel whose platform cannot be
+# resolved would fail the rename anyway.
+_repoint_panel_platform() {
+  local _DB="$1" _DISK _DBP _PN _NEWNAME _HOLDER _HST _NUP
+  _DISK=$(dirname "$(dirname "${_SP}")")
+  _PN=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+    -e "SELECT s.platform FROM hosting_context c JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid WHERE c.name='hostmaster' LIMIT 1" 2>/dev/null)
+  case "${_PN}" in
+    ''|*[!0-9]*)
+      echo "PANEL-ERROR: cannot resolve the hostmaster site's platform in ${_DB}"
+      return 1
+    ;;
+  esac
+  _DBP=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+    -e "SELECT p.publish_path FROM hosting_platform p JOIN node n ON n.nid=p.nid AND n.vid=p.vid WHERE p.nid=${_PN} LIMIT 1" 2>/dev/null)
+  if [ -z "${_DBP}" ]; then
+    echo "PANEL-ERROR: no hosting_platform row for platform ${_PN} in ${_DB}"
+    return 1
+  fi
+  if [ "${_DBP}" = "${_DISK}" ]; then
+    echo "PANEL-OK: panel platform ${_PN} already names ${_DISK} in ${_DB}"
+    return 0
+  fi
+  if [ ! -e "${_DISK}/index.php" ]; then
+    echo "PANEL-ERROR: on-disk panel platform ${_DISK} has no index.php -- refusing to repoint ${_PN}"
+    return 1
+  fi
+  _NUP=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+    -e "UPDATE hosting_platform SET publish_path='${_DISK}' WHERE nid=${_PN} AND publish_path='${_DBP}'; SELECT ROW_COUNT();" 2>/dev/null | tail -1)
+  echo "PANEL-NOTE: hostmaster platform ${_PN} repointed ${_DBP} -> ${_DISK} in ${_DB} (rows=${_NUP})"
+  _NEWNAME="platform_$(basename "${_DISK}")"
+  _HOLDER=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+    -e "SELECT nid FROM hosting_context WHERE name='${_NEWNAME}' AND nid<>${_PN} LIMIT 1" 2>/dev/null)
+  if [ -n "${_HOLDER}" ]; then
+    _HST=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+      -e "SELECT p.status FROM hosting_platform p JOIN node n ON n.nid=p.nid AND n.vid=p.vid WHERE p.nid=${_HOLDER} LIMIT 1" 2>/dev/null)
+    if [ "${_HST}" = "-2" ]; then
+      mysql --defaults-file=/root/.my.cnf "${_DB}" \
+        -e "DELETE FROM hosting_context WHERE nid=${_HOLDER} AND name='${_NEWNAME}'" 2>/dev/null \
+        && echo "PANEL-NOTE: dropped leftover context ${_NEWNAME} of deleted platform ${_HOLDER}" \
+        && _HOLDER=""
+    fi
+  fi
+  if [ -z "${_HOLDER}" ]; then
+    mysql --defaults-file=/root/.my.cnf "${_DB}" \
+      -e "UPDATE hosting_context SET name='${_NEWNAME}' WHERE nid=${_PN}" 2>/dev/null \
+      && echo "PANEL-NOTE: platform ${_PN} context renamed to ${_NEWNAME}"
+  else
+    echo "PANEL-NOTE: context name ${_NEWNAME} is held by live platform ${_HOLDER}; platform ${_PN} keeps its name"
+  fi
+  return 0
+}
 _DEAD_DB=$(grep "options\['db_name'\]" "${_SP}/drushrc.php" | head -1 | sed "s/.*=//; s/[' ,;]//g")
 _DEAD_DB=${_DEAD_DB//[^a-zA-Z0-9_]/}
 if [ -z "${_DEAD_DB}" ]; then
@@ -4913,11 +4999,7 @@ if [ -z "${_DEAD_DB}" ]; then
 fi
 if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
     -e "SHOW DATABASES LIKE '${_DEAD_DB}'" 2>/dev/null)" ]; then
-  if [ -n "${_OLD_PLAT}" ] && [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ]; then
-    _NUP=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DEAD_DB}" \
-      -e "UPDATE hosting_platform SET publish_path='${_NEW_PLAT}' WHERE publish_path='${_OLD_PLAT}'; SELECT ROW_COUNT();" 2>/dev/null | tail -1)
-    echo "PANEL-NOTE: hostmaster platform row repointed ${_OLD_PLAT} -> ${_NEW_PLAT} in ${_DEAD_DB} (rows=${_NUP})"
-  fi
+  _repoint_panel_platform "${_DEAD_DB}" || exit 1
   echo "PANEL-OK: ${_R} panel DB ${_DEAD_DB} is live — nothing to rewire"
   exit 0
 fi
@@ -4941,16 +5023,10 @@ if [ -z "${_LIVE}" ]; then
   echo "PANEL-ERROR: dead panel DB ${_DEAD_DB} and no live hostmaster DB found for ${_R}"
   exit 1
 fi
-# Persist the adoption into the live DB. §8's hostmaster verify regenerates
-# the alias FROM the DB, so an alias-only correction is undone on the next
-# verify and the panel 404s from a hollow platform path. Path-keyed exact
-# match; the stale row already naming the adopted path (the source's own
-# platform history) carries no site and stays inert.
-if [ -n "${_OLD_PLAT}" ] && [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ]; then
-  _NUP=$(mysql --defaults-file=/root/.my.cnf -N -B "${_LIVE}" \
-    -e "UPDATE hosting_platform SET publish_path='${_NEW_PLAT}' WHERE publish_path='${_OLD_PLAT}'; SELECT ROW_COUNT();" 2>/dev/null | tail -1)
-  echo "PANEL-NOTE: hostmaster platform row repointed ${_OLD_PLAT} -> ${_NEW_PLAT} in ${_LIVE} (rows=${_NUP})"
-fi
+# Persist the platform truth into the live DB. §8's hostmaster verify
+# regenerates the alias FROM the DB, so an alias-only correction is undone
+# on the next verify and the panel 404s from a hollow platform path.
+_repoint_panel_platform "${_LIVE}" || exit 1
 # Aegir derives the site DB user from the DB name; enumerate its host
 # variants from mysql.user instead of assuming (@% vs @127.0.0.1 vs
 # @localhost all occur in the wild).
@@ -5924,6 +6000,50 @@ _xmass_force_tool_update() {
   return 0
 }
 
+_xmass_pre_mig_panel_sanity() {
+  # Every Aegir root's control panel must be coherent BEFORE anything is
+  # parked or synced: the rename and the panel rewire both resolve the panel
+  # through hosting_context 'hostmaster' and its platform row, so a panel
+  # that only works through a crutch -- the legacy <fqdn> alias symlink an
+  # old migration left behind -- fails on the target, not here where it is
+  # cheap to repair. Fail-closed on a panel the tools cannot resolve; the
+  # legacy symlink is reported, not removed (the regular ltd-users pass
+  # purges it; a panel that then misbehaves is repaired before migrating,
+  # so old defects never travel to a new box).
+  local _root _usr _als _root_disk _sp _fq _dbp
+  _info "Checking control panel coherence on every Aegir root ..."
+  for _root in /var/aegir $(ls -d /data/disk/o* 2>/dev/null); do
+    _als="${_root}/.drush/hostmaster.alias.drushrc.php"
+    [ -f "${_als}" ] || continue
+    _usr=$(basename "${_root}")
+    [ "${_root}" = "/var/aegir" ] && _usr=aegir
+    _root_disk=$(grep "root'" "${_als}" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+    _sp=$(grep "site_path'" "${_als}" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+    _fq=$(basename "${_sp}" 2>/dev/null)
+    if [ ! -e "${_root_disk}/index.php" ] || [ ! -f "${_sp}/settings.php" ]; then
+      _die "${_root}: the hostmaster alias names ${_root_disk} and ${_sp}, but the code or settings.php" \
+           " is missing there -- repair this control panel before migrating"
+    fi
+    _dbp=$(su -s /bin/bash - "${_usr}" -c \
+      "drush8 @hostmaster sqlq \"SELECT p.publish_path FROM hosting_context c JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid JOIN hosting_platform p ON p.nid=s.platform AND p.vid=(SELECT vid FROM node WHERE nid=s.platform) WHERE c.name='hostmaster' LIMIT 1\"" \
+      2>/dev/null | tail -1)
+    if [ -z "${_dbp}" ]; then
+      _die "${_root}: the panel DB has no resolvable 'hostmaster' site context" \
+           " -- repair this control panel before migrating"
+    fi
+    if [ "${_dbp}" != "${_root_disk}" ]; then
+      _die "${_root}: the panel's platform in the DB (${_dbp}) differs from its alias root (${_root_disk})" \
+           " -- repair this control panel before migrating"
+    fi
+    if [ -n "${_fq}" ] && [ -L "${_root}/.drush/${_fq}.alias.drushrc.php" ]; then
+      _alrt "  ${_root}: legacy ${_fq}.alias.drushrc.php symlink present -- the regular ltd-users pass"
+      _alrt "  purges it; if the panel then misbehaves, repair it BEFORE migrating"
+    fi
+    _info "  ${_root}: panel ${_fq} coherent (${_root_disk})"
+  done
+  return 0
+}
+
 _xmass_pre_mig() {
   # Stop BOA background jobs and exchange SSH keys between source and target.
   # Run on BOTH hosts: first on source (to publish its pub key),
@@ -5936,6 +6056,7 @@ _xmass_pre_mig() {
   # the published ones. Done here because pre-mig runs on BOTH hosts.
   _info "Forcing a tool refresh so this migration runs on current code ..."
   _xmass_force_tool_update
+  _xmass_pre_mig_panel_sanity
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_script}" ]; then
       mv -f "/var/xdrago/${_script}" "/var/xdrago/.${_script}.off"
@@ -7168,6 +7289,12 @@ REMOTE
     _alrt "or the BOA fetch pass restores it."
   fi
   _xmass_convert_source_to_proxy
+
+  # Step 16.5: The master panel is not an xoct account, so it gets the same
+  # treatment here: never proxied, kept online as this box's monitoring
+  # canary in Drupal's own maintenance mode (admins can still log in, nobody
+  # else can queue tasks against a database that now lives on the target).
+  _xmass_source_master_panel_maintenance
 
   # Step 17: Remove http-off.pid on source (belt-and-braces; xoct proxy
   # already removes it per account, but clean up any missed by xoct).

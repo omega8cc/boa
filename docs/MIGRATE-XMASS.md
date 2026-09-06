@@ -77,12 +77,25 @@ database). At cutover:
 8. Panel DB access is rewired on the target for every Ægir root: the datadir
    swap killed the target's own panel databases, so the live (replicated)
    hostmaster DB is rediscovered per root, its DB user's password reset, and
-   the surviving panel site dir's credentials rewritten to match.
+   the surviving panel site dir's credentials rewritten to match. The same
+   step reconciles the panel's **platform**: the replicated DB names the
+   source's hostmaster platform number (`distro/025` after years of upgrades
+   there) while the target's panel lives under its own, lower number; the
+   platform row is repointed at the on-disk platform and its `platform_NNN`
+   context renamed to match (when the name is free, or held only by a
+   deleted platform's leftover row). Without it the rename's queue verifies a
+   platform that does not exist here and renders the panel vhost with that
+   root — 404 by the new name.
 9. `renameaegirhost` runs on the target for every Ægir root (master +
    all Octopus accounts), replacing the source hostname with the target FQDN
    and running a 5-pass Ægir task queue per root.
 10. Target Solr starts (transaction logs pre-cleared for clean first start).
-11. Source vhosts are converted to proxy via `xoct proxy` per account.
+11. Source **site** vhosts are converted to proxy via `xoct proxy` per
+    account. The control panels are never proxied: each account's panel and
+    the master panel stay online on the source, in Drupal's own maintenance
+    mode (admins can still log in, nobody else can queue tasks against a
+    database that now lives on the target), as the old box's monitoring
+    canaries. The target does not serve source-named panels.
 12. DNS is updated; traffic flows directly to target.
 
 Typical total cutover window: **1–3 hours** (dominated by `renameaegirhost`
@@ -247,6 +260,20 @@ migration source otherwise goes on serving a root public key at the
 undefined-host URL indefinitely, and a later migration could fetch the wrong
 box's key from it. It also opens the firewall for the source, which the source
 can never arrange for itself.
+
+Right after the tool refresh, and before anything is parked, `pre-mig` checks
+every Ægir root's **control panel coherence**: the hostmaster alias must name
+a platform that exists on disk (with `index.php`) and a site dir with
+`settings.php`, the panel DB must resolve a `hostmaster` site context, and that
+site's platform row must name the same path as the alias. A panel the tools
+cannot resolve stops `pre-mig` (fail-closed) — it would fail the rename on the
+target, where it is far more expensive to repair. The legacy
+`<panel-fqdn>.alias.drushrc.php` symlink to the hostmaster alias (a crutch an
+old migration procedure left on accounts whose panel internals it had not fully
+replaced) is only reported here: BOA's regular ltd-users pass purges it on
+every box by default, so an account that still depended on it misbehaves
+visibly before its migration and is repaired then, instead of carrying the
+defect to a new box.
 
 **On source:**
 ```sh
@@ -846,7 +873,8 @@ first change to the source):
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual). Scoped to the real, dotted cores of the versions expected to **serve** on the target (used + ambiguous): a version this run deliberately denied has no service there by design, and its data trees travel with the sync regardless, so its cores are not reported |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
-| Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + vhost conversion + mode-selected notification); failures collect per account. First checks that `migration_proxy_certs.sh` exists **and is scheduled** here — from this point the source serves the proxied sites' TLS and only the daily mirror keeps it fresh |
+| Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + **site** vhost conversion + mode-selected notification); failures collect per account. The account's control panel is skipped by identity (the hostmaster alias `site_path`), never by which alias files exist: it keeps its local vhost and is put into Drupal maintenance mode. First checks that `migration_proxy_certs.sh` exists **and is scheduled** here — from this point the source serves the proxied sites' TLS and only the daily mirror keeps it fresh |
+| Step 16.5 | The master panel gets the same treatment on the source: never proxied, Drupal maintenance mode ON, online as the box's monitoring canary |
 | Step 17 | Remove `http-off.pid` from source accounts — a failed conversion keeps its 503 gate (its vhosts would otherwise serve the old local copy against a database that now lives on the target) |
 | Step 18 | Write `proxied.pid` for successfully converted accounts only |
 | Step 18.5 | Start cron and un-park the five runners **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later |
