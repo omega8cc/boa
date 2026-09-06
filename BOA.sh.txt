@@ -3050,22 +3050,25 @@ _if_fix_lshell() {
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
   _LSHELL_VRN=0.11.4
+  # 0.11.x needs Python 3.10+; a box whose python3 is older (chimaera 3.9,
+  # beowulf 3.7) keeps 0.10, which stays installable there so a broken shell
+  # on a legacy box still heals instead of failing the 0.11 build every pass.
+  _LSHELL_LEGACY_VRN=0.10
+  _pyMinor=$(python3 -c 'import sys; print(sys.version_info[1])' 2> /dev/null)
+  if [ -n "${_pyMinor}" ] && [ "${_pyMinor}" -lt 10 ] 2> /dev/null; then
+    _LSHELL_VRN="${_LSHELL_LEGACY_VRN}"
+  fi
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.11.4
-  # This fetched path exists to HEAL: a box whose lshell is missing or broken
-  # gets _LSHELL_VRN back on the next quiet pass without waiting for a
-  # barracuda upgrade (the incident case). A version step-up on a WORKING
-  # lshell rides the barracuda upgrade (_lshell_install_upgrade), so a staged
-  # publish of this file does not change the shell every tenant runs under.
-  # Hotfix: publish with _LSHELL_HOTFIX=YES and every box steps up to
-  # _LSHELL_VRN on its next pass; flip it back once the fleet is there.
-  _LSHELL_HOTFIX=NO
+  _LSHELL_CHK_VRN="${_LSHELL_VRN}"
+  # This fetched path keeps lshell current like every other key tool (a
+  # publish to a tree is its rollout), and it HEALS: a box whose lshell is
+  # missing or broken gets its version back on the next quiet pass without
+  # waiting for a barracuda upgrade (the incident case).
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell="$(which lshell)"
   # Broken shapes are read on the RAW output: the cut|awk token keeps one
   # word after the first hyphen, which turns "bad interpreter: ..." into
   # "bash:" and a Traceback into a path fragment -- neither matches anything.
-  # "Working" means the token is version-shaped; any other token heals.
   _LSHELL_RAW=$(${_isLshell} --version 2>&1 | tr -d "\n")
   _LSHELL_ITD=$(printf '%s' "${_LSHELL_RAW}" \
     | cut -d"-" -f2 \
@@ -3073,14 +3076,11 @@ _if_fix_lshell() {
   if [ -z "${_isLshell}" ] \
     || [ -z "${_PATH_LSHELL}" ] \
     || [ -z "${_LSHELL_ITD}" ] \
-    || [[ ! "${_LSHELL_ITD}" =~ ^[0-9]+\.[0-9]+ ]] \
+    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_RAW}" =~ "Traceback" ]] \
     || [[ "${_LSHELL_RAW}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_RAW}" =~ "ImportError" ]] \
     || [[ "${_LSHELL_RAW}" =~ "ModuleNotFoundError" ]]; then
-    _LSHELL_FORCE_REINSTALL=YES
-  elif [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
-    && [ "${_LSHELL_HOTFIX}" = "YES" ]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then

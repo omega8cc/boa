@@ -11391,7 +11391,14 @@ _lshell_install_upgrade() {
     _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_CHK_VRN=0.11.4
+  # 0.11.x needs Python 3.10+; a box whose python3 is older (chimaera 3.9,
+  # beowulf 3.7) keeps 0.10 instead of failing the 0.11 build on every pass
+  _LSHELL_LEGACY_VRN=0.10
+  _pyMinor=$(python3 -c 'import sys; print(sys.version_info[1])' 2> /dev/null)
+  if [ -n "${_pyMinor}" ] && [ "${_pyMinor}" -lt 10 ] 2> /dev/null; then
+    _LSHELL_VRN="${_LSHELL_LEGACY_VRN}"
+  fi
+  _LSHELL_CHK_VRN="${_LSHELL_VRN}"
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
