@@ -3049,9 +3049,9 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.11.3
+  _LSHELL_VRN=0.11.4
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.11.3
+  _LSHELL_CHK_VRN=0.11.4
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
