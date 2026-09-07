@@ -77,12 +77,25 @@ database). At cutover:
 8. Panel DB access is rewired on the target for every Ægir root: the datadir
    swap killed the target's own panel databases, so the live (replicated)
    hostmaster DB is rediscovered per root, its DB user's password reset, and
-   the surviving panel site dir's credentials rewritten to match.
+   the surviving panel site dir's credentials rewritten to match. The same
+   step reconciles the panel's **platform**: the replicated DB names the
+   source's hostmaster platform number (`distro/025` after years of upgrades
+   there) while the target's panel lives under its own, lower number; the
+   platform row is repointed at the on-disk platform and its `platform_NNN`
+   context renamed to match (when the name is free, or held only by a
+   deleted platform's leftover row). Without it the rename's queue verifies a
+   platform that does not exist here and renders the panel vhost with that
+   root — 404 by the new name.
 9. `renameaegirhost` runs on the target for every Ægir root (master +
    all Octopus accounts), replacing the source hostname with the target FQDN
    and running a 5-pass Ægir task queue per root.
 10. Target Solr starts (transaction logs pre-cleared for clean first start).
-11. Source vhosts are converted to proxy via `xoct proxy` per account.
+11. Source **site** vhosts are converted to proxy via `xoct proxy` per
+    account. The control panels are never proxied: each account's panel and
+    the master panel stay online on the source, in Drupal's own maintenance
+    mode (admins can still log in, nobody else can queue tasks against a
+    database that now lives on the target), as the old box's monitoring
+    canaries. The target does not serve source-named panels.
 12. DNS is updated; traffic flows directly to target.
 
 Typical total cutover window: **1–3 hours** (dominated by `renameaegirhost`
@@ -248,6 +261,20 @@ undefined-host URL indefinitely, and a later migration could fetch the wrong
 box's key from it. It also opens the firewall for the source, which the source
 can never arrange for itself.
 
+Right after the tool refresh, and before anything is parked, `pre-mig` checks
+every Ægir root's **control panel coherence**: the hostmaster alias must name
+a platform that exists on disk (with `index.php`) and a site dir with
+`settings.php`, the panel DB must resolve a `hostmaster` site context, and that
+site's platform row must name the same path as the alias. A panel the tools
+cannot resolve stops `pre-mig` (fail-closed) — it would fail the rename on the
+target, where it is far more expensive to repair. The legacy
+`<panel-fqdn>.alias.drushrc.php` symlink to the hostmaster alias (a crutch an
+old migration procedure left on accounts whose panel internals it had not fully
+replaced) is only reported here: BOA's regular ltd-users pass purges it on
+every box by default, so an account that still depended on it misbehaves
+visibly before its migration and is repaired then, instead of carrying the
+defect to a new box.
+
 **On source:**
 ```sh
 xmass pre-mig source-host
@@ -259,6 +286,16 @@ xmass pre-mig source-host
 ```
 
 ### Phase 0.5 — Prepare the target (`xmass prep-target`)
+
+`prep-target` deals with an Octopus account that exists on the target but not
+among the source's eligible accounts (a golden-master clone brings its own
+satellite along): the init datadir swap replaces the target's MySQL with the
+source's, where that account's panel database never existed, so it would come
+out of cutover as a broken leftover (panel 500, no sites, no DB user). A
+site-less one is a leftover by definition and is purged on the spot with BOA's
+own verb (`log/CANCELLED` + `boa cleanup purge`, everything parked under
+`/var/backups/zombie/purged/<oN>/`, nginx configtest proven); one that carries
+sites is refused (`_XMASS_ALLOW_TARGET_ONLY=YES` keeps it knowingly).
 
 Run on the **source**, after `pre-mig` has completed on both hosts and before
 `init`. This is everything the target must have in place before its Octopus
@@ -331,6 +368,36 @@ What it does, in order:
    is present on the target as a real install.
 
 The verb is idempotent: re-run it after fixing anything it refused on.
+
+### The target-silence gate (prep-target, init, cutover)
+
+Every account install and every re-seed on the target leaves a background
+octopus pass behind, and each pass queues platform verifies that the Ægir
+queue runs minutes later. A target is **silent** when it holds no BOA run
+lock (`/run/boa_run.pid`, `/run/boa_wait.pid`, `/run/octopus_install_run.pid`),
+no account has `static/control/run-upgrade.pid` armed, every root's
+`hosting_task` queue is empty (current revisions, queued or processing) and no
+dispatch, verify or installer process runs. The probe fails closed: an
+unreadable root or an unreadable target counts as busy.
+
+- `prep-target` waits before **every** account create (each create leaves the
+  target mid-motion, and `boa in-octopus` refuses on any run lock -- an account
+  whose target never settles is reported failed instead of launched into a
+  refusal) and reports the wait again after its account verification; a
+  timeout at the end only warns (nothing destructive follows).
+- `init` waits, bounded, before its first target mutation and refuses on
+  timeout.
+- `cutover --live` waits, in the narrower run-locks-and-processes scope (the
+  target is a standby: its runner never consumes an armed pid and its panel
+  rows are the source's), after every cheap refusal and before the first
+  source mutation; the DRY run reports a busy target as a DENY.
+
+Knobs: `_XMASS_TARGET_SILENT_MAX_WAIT` (seconds, default 2400) and
+`_XMASS_SKIP_TARGET_SILENCE=YES` (skip the wait deliberately, logged). Related
+`xoct create` knobs: `_XOCT_TARGET_QUIET_MAX_WAIT` (wait for a quiet target
+before the account install -- no run lock and no armed `run-upgrade.pid`, held
+on two consecutive polls; default 1800) and `_XOCT_CREATE_MAX_WAIT` (the
+post-install settle, default 900).
 
 ### Phase 1 — Initialise Replication (`xmass init`)
 
@@ -820,7 +887,8 @@ first change to the source):
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual). Scoped to the real, dotted cores of the versions expected to **serve** on the target (used + ambiguous): a version this run deliberately denied has no service there by design, and its data trees travel with the sync regardless, so its cores are not reported |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
-| Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + vhost conversion + mode-selected notification); failures collect per account. First checks that `migration_proxy_certs.sh` exists **and is scheduled** here — from this point the source serves the proxied sites' TLS and only the daily mirror keeps it fresh |
+| Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + **site** vhost conversion + mode-selected notification); failures collect per account. The account's control panel is skipped by identity (the hostmaster alias `site_path`), never by which alias files exist: it keeps its local vhost and is put into Drupal maintenance mode. First checks that `migration_proxy_certs.sh` exists **and is scheduled** here — from this point the source serves the proxied sites' TLS and only the daily mirror keeps it fresh |
+| Step 16.5 | The master panel gets the same treatment on the source: never proxied, Drupal maintenance mode ON, online as the box's monitoring canary |
 | Step 17 | Remove `http-off.pid` from source accounts — a failed conversion keeps its 503 gate (its vhosts would otherwise serve the old local copy against a database that now lives on the target) |
 | Step 18 | Write `proxied.pid` for successfully converted accounts only |
 | Step 18.5 | Start cron and un-park the five runners **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later |
@@ -873,6 +941,11 @@ log single-threaded unless told otherwise, so on a busy source set
 right after `init` rather than raising the ceiling.
 
 ### Phase 4.5 — Verify (`xmass verify`)
+
+`verify` also opens every Ægir root's control panel on the target by its new
+name (`https://<panel>/user`, resolved straight at the target) and names any
+that does not answer 200/30x/401/403; cutover runs the same probe as its last
+step, so a cutover that ends with dead panels says so in its own output.
 
 Run on the **source** after the cutover. Read-only; changes nothing on either
 host:
@@ -1054,6 +1127,24 @@ parked copy survives in `/var/backups`, `restore-solr` regenerates it from
 `install_solr_service.sh` applies.
 
 ---
+
+## Replication Transport (TLS)
+
+The replication stream carries every production row between two boxes that, in a
+cross-region estate, sit on different providers' networks, so `init` runs it over TLS:
+the `xmass_repl` user is created `REQUIRE SSL` (the source refuses a plain connection
+outright), the replica is configured with `SOURCE_SSL=1` (`MASTER_SSL=1` on 5.7/8.0)
+against the source's own server certificate (Percona generates one in the datadir,
+`auto_generate_certs=ON`; no CA is pinned -- the stream is encrypted against passive
+capture), and once the replica runs, `init` proves the session from both sides
+(`Source_SSL_Allowed: Yes` on the target, `connection_type = SSL/TLS` in the source's
+`performance_schema.threads`) and refuses a stream that is not TLS. A source whose MySQL
+has no TLS material stops before the replication user is created. `xmass status`
+prints the transport it can prove (`TLS`, `PLAIN`, or `unknown`). The rsync legs
+already travel over ssh.
+
+`_XMASS_PLAIN_REPLICATION=YES` runs the stream in the clear deliberately and loudly --
+for a source that cannot serve TLS; never the default.
 
 ## MySQL Credentials
 

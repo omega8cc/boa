@@ -2,6 +2,21 @@
 # _backup_to_dragon() moved to the shared helper.sh.inc (Octopus sources helper
 # but not sql). Callsites below still use it unchanged.
 
+#
+# The move_sql.sh wrapper arrives with /var/xdrago, which a fresh install does
+# not have yet; fall back to the init script until it exists.
+_move_sql() {
+  if [ -e "/var/xdrago/move_sql.sh" ]; then
+    if [ "$1" = "restart" ]; then
+      _mrun "bash /var/xdrago/move_sql.sh"
+    else
+      _mrun "bash /var/xdrago/move_sql.sh $1"
+    fi
+  else
+    _mrun "service mysql $1"
+  fi
+}
+
 _check_mysql_version() {
   _DB_V=
   if [ -x "/usr/sbin/aa-teardown" ]; then
@@ -550,7 +565,7 @@ _innodb_log_file_size_update() {
     _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   fi
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
-  _mrun "bash /var/xdrago/move_sql.sh stop"
+  _move_sql stop
   wait
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
@@ -590,11 +605,11 @@ _innodb_log_file_size_update() {
         echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
       fi
     fi
-    _mrun "bash /var/xdrago/move_sql.sh start"
+    _move_sql start
     wait
   else
     _msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
-    _mrun "bash /var/xdrago/move_sql.sh stop"
+    _move_sql stop
     wait
     sleep 180
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
@@ -635,7 +650,7 @@ _innodb_log_file_size_update() {
           echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /var/log/boa/.my.innodb_redo_log_capacity.txt
         fi
       fi
-      _mrun "bash /var/xdrago/move_sql.sh start"
+      _move_sql start
       wait
     else
       if [ "${_DB_V}" != "5.7" ]; then
@@ -681,6 +696,7 @@ _sql_conf_update() {
         -e "s/^#?\s*(syseventlog)/#\1/" \
         -e "s/^#?\s*(mysqlx)/#\1/" \
         -e "s/^#?\s*(authentication_policy)/#\1/" \
+        -e "s/^#?\s*(default_authentication_plugin)/#\1/" \
         /etc/mysql/my.cnf &> /dev/null
 
       if [ "${_DB_V}" = "5.7" ]; then
@@ -707,23 +723,53 @@ _sql_conf_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DBST: Enable legacy mysql_native_password for Percona ${_DB_V}"
         fi
+        # 8.4 only: 8.0 builds the plugin in and has no such server option,
+        # so mysqld would refuse to start on the unknown variable.
         sed -i -E \
           -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
           -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
           /etc/mysql/my.cnf &> /dev/null
+      fi
+      if [ "${_DB_V}" = "8.0" ] || [ "${_DB_V}" = "8.4" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DBST: Advertise mysql_native_password first for Percona ${_DB_V}"
+        fi
         # Loading the plugin is not enough for legacy clients: the greeting
         # advertises the default first-factor plugin, and PHP 5.6 mysqli
         # aborts on a caching_sha2 greeting BEFORE the user's own plugin is
         # consulted, so a php56-pool site loses its DB on the web while CLI
         # drush stays healthy. Advertise native; caching_sha2 users still
         # authenticate via the client auth-switch (aegir2boa D-015).
+        # 8.0 greets with caching_sha2 as well and is not a corner case: it
+        # is a first-class series and the staged middle of every 5.7 -> 8.4
+        # upgrade, where a box sits for a whole run; written for 8.4 alone,
+        # every php56-pool site on such a box was dark on the web while CLI
+        # drush stayed healthy. authentication_policy exists since 8.0.27,
+        # the only 8.0 the repositories still serve.
         sed -i -E \
           -e "s/^#?\s*authentication_policy\s*=.*/authentication_policy=mysql_native_password,,/" \
           /etc/mysql/my.cnf &> /dev/null
         if ! grep -qE "^authentication_policy" /etc/mysql/my.cnf; then
           # my.cnf predates the template line (rolling fleet) - insert it
+          # under the section header, which every my.cnf carries (the 8.4
+          # plugin line is not there to anchor on for 8.0)
           sed -i -E \
-            "/^\s*mysql_native_password\s*=\s*ON/a authentication_policy=mysql_native_password,," \
+            "/^\[mysqld\]/a authentication_policy=mysql_native_password,," \
+            /etc/mysql/my.cnf &> /dev/null
+        fi
+      fi
+      if [ "${_DB_V}" = "8.0" ]; then
+        # Measured on 8.0.46: with the policy alone the handshake still
+        # greets caching_sha2 -- on 8.0 the greeting follows
+        # default_authentication_plugin, which 8.4 removed (hence commented
+        # out above on every series and written here only). Both name the
+        # same plugin, which is what 8.0 requires of the pair.
+        sed -i -E \
+          -e "s/^#?\s*default_authentication_plugin\s*=.*/default_authentication_plugin=mysql_native_password/" \
+          /etc/mysql/my.cnf &> /dev/null
+        if ! grep -qE "^default_authentication_plugin" /etc/mysql/my.cnf; then
+          sed -i -E \
+            "/^\[mysqld\]/a default_authentication_plugin=mysql_native_password" \
             /etc/mysql/my.cnf &> /dev/null
         fi
       fi
@@ -1327,6 +1373,12 @@ _install_with_aptitude_sql() {
       _msg "FATAL ERROR: now instead of waiting forever for a MySQLD that can never start."
       _msg "FATAL ERROR: Check network, DNS and apt keyring access to both repo.percona.com"
       _msg "FATAL ERROR: and the BOA mirrors (${_urlDev}), then run the install again."
+      _unconf=$(dpkg-query -W -f='${Package} ${Status}\n' 2>/dev/null \
+        | awk '$NF=="half-configured"||$NF=="unpacked"||$NF=="half-installed"{print $1}' | tr '\n' ' ')
+      if [ -n "${_unconf}" ]; then
+        _msg "FATAL ERROR: dpkg also left packages unconfigured: ${_unconf}-- apt cannot install"
+        _msg "FATAL ERROR: anything on this box until they are fixed: run dpkg --configure -a first."
+      fi
       rm -f /run/boa_sql_maintenance.pid
       _clean_pid_exit _db_server_install_5_7_unavailable
     fi
@@ -1770,7 +1822,7 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
-          _mrun "bash /var/xdrago/move_sql.sh"
+          _move_sql restart
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
           _myRstrd=YES
@@ -2058,7 +2110,7 @@ _sql_root_credentials_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
-        _mrun "bash /var/xdrago/move_sql.sh"
+        _move_sql restart
         wait
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: ${_DB_SERVER} setup completed"

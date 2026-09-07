@@ -258,7 +258,7 @@ _TODAY=${_TODAY//[^0-9]/}
 
 ### modules, themes and libraries are names the tenant can plant: it can create
 ### the site dir itself under the group-writable sites/ (02771), and the
-### site-level code dirs are 02775 group users. The rm below and the find start
+### site-level code dirs are 02775 and group-writable. The rm below and the find start
 ### points walk THROUGH them, while _chmod_safe protects only the final
 ### component. None is ever legitimately a symlink at site level.
 for _d in modules themes libraries; do
@@ -281,7 +281,7 @@ fi
 find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
 ### The hostmaster site's drushrc.php carries the instance DB user (ALL
 ### PRIVILEGES) and only the backend user, its owner, ever reads it: no group
-### read, since group users is box-wide.
+### read at all, box-wide 'users' or the account's own group alike.
 if [[ "${site_path}" =~ /aegir/(distro|host_master)/ ]]; then
   _chmod_safe 0400 "${site_path}/drushrc.php"
 fi

@@ -24,6 +24,13 @@ _verify_boa_keys() {
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then
       _allw=YES
     fi
+    # *.sslip.io hostnames (wildcard DNS to the embedded IP, zero setup)
+    # pass on the dev tree only: test boxes run the dev tree end to end
+    # without a per-box key; pro stays licensed outside the fleet domains.
+    if [ "${_tRee}" = "dev" ] \
+      && [[ "${_hName}" =~ ".sslip.io"($) ]]; then
+      _allw=YES
+    fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
     curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
@@ -51,6 +58,14 @@ _verify_boa_keys() {
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
+    elif [ "${_allw}" = "YES" ]; then
+      # A fleet-domain host is allowed on its name alone; a key fetch that
+      # failed (resolver not up yet, key server unreachable) decides nothing
+      # for it, so it is noted and the tool proceeds.
+      echo
+      echo "NOTE: the key server could not be reached; ${_hName} is allowed by its hostname"
+      echo
+      rm -f /var/opt/_encN*
     else
       echo
       echo "Your system requires valid license to use this BOA feature"
