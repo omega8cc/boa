@@ -591,15 +591,38 @@ export USER=${USER}
 ### echo 9 is $9
 
 # Check PHP CLI version defined.
+#
+# Selection for an account identity, in this order:
+#   1. cli.info in ~/static/control -- read here directly, the same way the
+#      phpNN.info instant switches are, so it applies to the next command;
+#   2. the phpNN.info instant switches, layered on top below;
+#   3. /usr/bin/php when neither names an installed version.
+# The drush.php shebang pin in ~/tools/drush is no longer read for an
+# account. It is a copy the ltd worker derives from cli.info minutes later,
+# and reading it ran as the calling identity inside a tree a tenant shell is
+# not guaranteed to be able to open (the lshell Landlock domain covers
+# static, distro, clients and backups, not tools): a refused read looked
+# like "no pin", so drush and composer fell to the box default while the
+# markers, tested by stat in static/control, kept working. static/control is
+# the tenant's own tree in every shell, so the value comes from there, with
+# the same two-digit + installed-binary validation the markers get; anything
+# else in the file, or no file, means the box default until the worker
+# rewrites it. The master keeps its own read of /var/aegir/drush/drush.php:
+# it has no cli.info, and that shebang is where its pin lives.
 check_php_cli_version() {
   ### echo CHK start check_php_cli_version
+  _PHP_CLI=
   if [ "${HOME}" = "/var/aegir" ] && [ -f "/var/aegir/drush/drush.php" ]; then
     _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
   else
-    if [ -f "/data/disk/${_Y_USR}/tools/drush/drush.php" ]; then
-      _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
-    elif [ -f "/data/disk/${_Y_USR}/static/control/cli.info" ]; then
-      _PHP_CLI="php$(tr -d '.\n' < /data/disk/${_Y_USR}/static/control/cli.info)"
+    _CLI_INFO="/data/disk/${_Y_USR}/static/control/cli.info"
+    if [ -f "${_CLI_INFO}" ]; then
+      _CLI_VRN=$(head -c 8 "${_CLI_INFO}" 2> /dev/null | tr -cd '0-9')
+      case "${_CLI_VRN}" in
+        56|70|71|72|73|74|80|81|82|83|84|85)
+          [ -x "/opt/php${_CLI_VRN}/bin/php" ] && _PHP_CLI="php${_CLI_VRN}"
+          ;;
+      esac
     fi
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
