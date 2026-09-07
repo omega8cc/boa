@@ -1361,6 +1361,9 @@ _up_action() {
           fi
           bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
           wait
+          # the same interactive verdict as the plain run below
+          _NO_MAIL=YES
+          _check_report
         fi
       else
         sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"        ${_vBs}/${_filIncB}
