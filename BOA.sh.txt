@@ -478,8 +478,9 @@ _find_fast_mirror_early() {
       echo "files.aoboshi.com" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+      _BROKEN_FFMIRR_TEST=$(grep -E "ffmirror-ready|stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "ffmirror-ready" ]] \
+        || [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
@@ -1146,6 +1147,67 @@ _fix_sync_system_ssl_certs() {
 # of the deployed copy), so it must be a token the genuine file carries near
 # its end -- that placement is what makes it a truncation check as well.
 #
+# Per-fetch silence is deliberate (see _update_boa_tools): a failed fetch keeps
+# the working copy, arms no marker and is retried next pass, so a mirror hiccup
+# can never latch a tool as skipped. What was missing is the AGGREGATE: a pass
+# where all 148 fetches failed looked exactly like a pass where everything was
+# already current -- no line, rc 0 -- and a fresh box or a tree switch then kept
+# the previous tree's launchers with nothing to say so (seen 2026-09-06, cause
+# unpinned for a day for want of this line). Count the mute discards and say it
+# once per pass, in the log an operator actually reads: cron sends this script's
+# stdout to /dev/null.
+# A HEAD of the mirror ROOT cannot see the failure that actually costs a pass:
+# a mirror that serves / but not (yet) the versioned tree this box fetches from
+# -- an rsync mid-pull, or a tree that host never pulled. Every fetch under
+# ${_urlHmr} then fails and, one by one, silently. Probe the exact tree by
+# CONTENT, because a missing path here answers 200 with an HTML stub, and fall
+# back to the publisher rather than spending the pass on a mirror that has
+# nothing to give.
+_mirror_serves_tree() {
+  local _mir="$1" _probe
+  _probe=$(curl ${_crlGet} --max-time 30 \
+    "https://${_mir}/versions/${_tRee}/boa/aegir/conf/version/barracuda-version.txt" 2> /dev/null)
+  [[ "${_probe}" =~ ^BOA- ]]
+}
+
+_use_mirror_serving_tree() {
+  local _ctx="$1"
+  _mirror_serves_tree "${_USE_MIR}" && return 0
+  if [ "${_USE_MIR}" != "files.boa.io" ] && _mirror_serves_tree files.boa.io; then
+    echo "OOPS: ${_USE_MIR} serves no ${_tRee} tree (${_ctx}); using files.boa.io"
+    [ -d "${_pthLog}" ] \
+      && echo "$(date) OOPS: ${_USE_MIR} serves no ${_tRee} tree (${_ctx}); using files.boa.io" \
+        >> ${_pthLog}/mirror.incident.log
+    _USE_MIR=files.boa.io
+    _urlDev="https://${_USE_MIR}/dev"
+    return 0
+  fi
+  echo "OOPS: no mirror is serving the ${_tRee} tree right now (${_ctx})"
+  [ -d "${_pthLog}" ] \
+    && echo "$(date) OOPS: no mirror is serving the ${_tRee} tree right now (${_ctx})" \
+      >> ${_pthLog}/mirror.incident.log
+  return 1
+}
+
+_fetch_failed_note() {
+  _FETCH_FAIL_CNT=$(( ${_FETCH_FAIL_CNT:-0} + 1 ))
+  _FETCH_FAIL_LAST="$1"
+  _FETCH_FAIL_URL="$2"
+  _FETCH_FAIL_COD="$3"
+}
+
+_fetch_failed_report() {
+  local _ctx="$1" _msg
+  [ "${_FETCH_FAIL_CNT:-0}" -gt 0 ] 2> /dev/null || return 0
+  _msg="OOPS: ${_FETCH_FAIL_CNT} fetch(es) failed in ${_ctx} from ${_USE_MIR}"
+  _msg="${_msg} (last: ${_FETCH_FAIL_LAST} ${_FETCH_FAIL_COD}, ${_FETCH_FAIL_URL})"
+  echo "${_msg}"
+  if [ -d "${_pthLog}" ]; then
+    echo "$(date) ${_msg}" >> ${_pthLog}/mirror.incident.log
+  fi
+  _FETCH_FAIL_CNT=0
+}
+
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
@@ -1294,8 +1356,11 @@ _fetch_versioned() {
   # is absent on this mirror right now: discard it and keep the working copy,
   # exactly as for an empty fetch. This also matters more now that the block
   # above revalidates on a cadence, not only on a serial change.
+  local _noted=NO
   if [[ -s "${_new}" ]] && head -c 64 "${_new}" | grep -qiE '^[[:space:]]*<(html|!doctype|head)'; then
     rm -f "${_new}"
+    _fetch_failed_note "${_cnm}" "${_url}" "soft-404 (HTML stub)"
+    _noted=YES
   fi
   # Optional content sentinel: a caller can require a token the genuine file
   # carries NEAR ITS END (the check reads only the payload's last 4 KiB, so
@@ -1348,6 +1413,9 @@ _fetch_versioned() {
     touch "${_ctl}"
   else
     rm -f "${_new}"                         # fetch failed -- keep the working copy
+    # One note per failed fetch: a soft 404 already counted itself above, and
+    # its empty temp then lands here too.
+    [ "${_noted}" = "YES" ] || _fetch_failed_note "${_cnm}" "${_url}" "${_cod:-transport}"
   fi
   return 0
 }
@@ -1785,7 +1853,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f92
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f89
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f97
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f76
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f75
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f73
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f68
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f67
@@ -2541,6 +2609,7 @@ _update_agents() {
       touch ${_pthLog}/redis_backdrop.ctrl.${_xSrl}.log
     fi
   fi
+  _fetch_failed_report "the agents pass"
 }
 
 _fix_core_dgd() {
@@ -3118,7 +3187,12 @@ _if_fix_lshell() {
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
-      ${_usePip} install --upgrade pip --root-user-action ignore
+      # PEP 668 (python 3.11+) refuses a system-wide pip upgrade without it, so
+      # without the flag this printed a full "error: externally-managed-environment"
+      # block into every lshell install log and changed nothing. The upgrade arm in
+      # lib/functions/system.sh.inc asks the same way, and the two must not disagree
+      # about the state of the interpreter they share.
+      ${_usePip} install --upgrade pip --break-system-packages --root-user-action ignore
     else
       ${_usePip} install --upgrade pip
     fi
@@ -4492,6 +4566,7 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
+  _FETCH_FAIL_CNT=0
   # The ONE home for the core tool set every box carries. Runs on EVERY pass
   # (installer, Skynet-active, and _SKYNET_MODE=OFF key-tools paths alike) --
   # the old once-per-release updateBOAtools latch is retired, so a tool update
@@ -4554,7 +4629,7 @@ CSFSTANDBY
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f91
     _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f88
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f93
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f92
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f93
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f97
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f96
@@ -4585,7 +4660,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f82 --guard duplicity
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f93 --guard /local/bin/ffdevuan
-    _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f98 --guard /local/bin/ffmirror
+    _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f97 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f91 --guard /local/bin/instgrp
@@ -4718,6 +4793,7 @@ CSFSTANDBY
   # _MISC (755): misc user-space utilities
   chmod 755 ${_optBin}/{backchain,mybackup,randpass,sqlmagic,thinkdifferent,websh} &> /dev/null
 
+  _fetch_failed_report "the tools pass"
 }
 
 # Ensure /usr/sbin/ipset and /sbin/ipset both resolve to the actual ipset binary.
@@ -4777,6 +4853,7 @@ _if_update_boa_key_tools_only() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
+    _use_mirror_serving_tree "key tools only"
     _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
   _LSB_TEST="$(which lsb_release)"
@@ -5060,6 +5137,7 @@ _boa_setup() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
+    _use_mirror_serving_tree "setup"
     _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
 

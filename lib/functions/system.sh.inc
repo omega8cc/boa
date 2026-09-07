@@ -28,8 +28,9 @@ _find_fast_devuan_mirror() {
       echo "https://mirror.hootsoftware.com/devuan/merged" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
+      _BROKEN_FFMIRR_TEST=$(grep -E "ffmirror-ready|stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "ffmirror-ready" ]] \
+        || [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
         || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
