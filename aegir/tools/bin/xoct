@@ -1885,6 +1885,21 @@ _xoct_wait_boa_quiet() {
   return 0
 }
 
+### The md5 lines of the seed witness set, before and after a create's seed,
+### reduced to the names whose sum moved (a file that vanished or appeared
+### counts as moved). Keys are the exact paths md5sum printed, so fpm.info
+### and multi-fpm.info never alias each other.
+_xoct_seed_witness_delta() {   # 1 = was, 2 = now (md5sum output, one line per file)
+  local _key _w _n _out=""
+  for _key in $(printf '%s\n%s\n' "$1" "$2" | awk 'NF == 2 && !seen[$2]++ {print $2}'); do
+    _w=$(printf '%s\n' "$1" | awk -v k="${_key}" '$2 == k {print $1}')
+    _n=$(printf '%s\n' "$2" | awk -v k="${_key}" '$2 == k {print $1}')
+    [ "${_w}" = "${_n}" ] || _out="${_out}${_key##*/} "
+  done
+  _out="${_out% }"
+  printf '%s' "${_out:-a witness set of a different shape}"
+}
+
 _xoct_reconcile_panel_platform() {
   # Mirror of xmass step 12.5's panel platform drift handling (kept separate
   # by design -- mirror fixes, don't DRY). The imported hostmaster DB names
@@ -2532,7 +2547,7 @@ _migrate_prepare() {
       ### an earlier create armed that the runner has not consumed yet, and
       ### what the last pass actually configured (its octopus_log line). They
       ### decide below whether the enforced upgrade still has work to do.
-      _TGT_SEED_WAS=$(ssh root@${_tgt} "cd /data/disk/${_TGT_HM_USER} 2>/dev/null && md5sum /root/.${_TGT_HM_USER}.octopus.cnf static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null | awk '{print \$1}' | tr '\n' ' '" 2>/dev/null)
+      _TGT_SEED_WAS=$(ssh root@${_tgt} "cd /data/disk/${_TGT_HM_USER} 2>/dev/null && md5sum /root/.${_TGT_HM_USER}.octopus.cnf static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null" 2>/dev/null)
       _TGT_ARMED_WAS=$(ssh root@${_tgt} "[ -e /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid ] && echo YES" 2>/dev/null)
       _TGT_LAST_PASS=$(ssh root@${_tgt} "tail -1 /data/disk/${_TGT_HM_USER}/log/octopus_log.txt 2>/dev/null" 2>/dev/null)
       _TGT_FPM_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'FPM [0-9.]+' | awk '{print $2}')
@@ -2565,13 +2580,17 @@ _migrate_prepare() {
       [ -n "${_SRC_FPM_PIN}" ] || _SRC_FPM_PIN=$(grep "^_PHP_FPM_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
       _SRC_CLI_PIN=$(tr -dc '0-9.' < "${_USR}/static/control/cli.info" 2>/dev/null)
       [ -n "${_SRC_CLI_PIN}" ] || _SRC_CLI_PIN=$(grep "^_PHP_CLI_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
-      _TGT_SEED_NOW=$(ssh root@${_tgt} "cd /data/disk/${_TGT_HM_USER} 2>/dev/null && md5sum /root/.${_TGT_HM_USER}.octopus.cnf static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null | awk '{print \$1}' | tr '\n' ' '" 2>/dev/null)
+      _TGT_SEED_NOW=$(ssh root@${_tgt} "cd /data/disk/${_TGT_HM_USER} 2>/dev/null && md5sum /root/.${_TGT_HM_USER}.octopus.cnf static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null" 2>/dev/null)
       _ARM_UPGRADE=NO
       _ARM_WHY=""
       if [ "${_TGT_ARMED_WAS}" = "YES" ]; then
         _ARM_UPGRADE=YES; _ARM_WHY="an earlier create's upgrade is still armed"
       elif [ "${_TGT_SEED_WAS}" != "${_TGT_SEED_NOW}" ]; then
-        _ARM_UPGRADE=YES; _ARM_WHY="the seed changed the cnf or a control witness"
+        ### Name the witness: a converged account that re-arms on every
+        ### repeated create is a loop nobody can break from "the cnf or a
+        ### control witness" alone (a rig re-armed one pinned account that
+        ### way and the log could not say which file kept moving).
+        _ARM_UPGRADE=YES; _ARM_WHY="the seed changed: $(_xoct_seed_witness_delta "${_TGT_SEED_WAS}" "${_TGT_SEED_NOW}")"
       elif [ -z "${_TGT_FPM_RUN}" ] || [ -z "${_TGT_CLI_RUN}" ]; then
         _ARM_UPGRADE=YES; _ARM_WHY="no pass has recorded FPM/CLI yet"
       elif [ -n "${_SRC_FPM_PIN}" ] && [ "${_SRC_FPM_PIN}" != "${_TGT_FPM_RUN}" ]; then
