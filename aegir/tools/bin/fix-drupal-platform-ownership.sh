@@ -259,13 +259,38 @@ elif [ -e "${drupal_root}/../vendor" ]; then
   chown -h -R ${script_user}:${_code_group} ${drupal_root}/../vendor
 fi
 
-chown -h -R ${script_user}:${_code_group} \
-  ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+### The lists below span every core generation: a D7 tree has includes/ and
+### misc/ but no core/ or libraries/, a D8+ tree the reverse, and sites.php
+### or sites/all/drush/drushrc.php may not exist yet. chown reports each
+### absent path as an error, which put a dozen "cannot access" lines into
+### every install and upgrade report and trained readers to skip them. Chown
+### what is there; a dangling symlink is still a target, since -h owns the
+### link itself.
+_own_existing() {
+  local _mode="$1" _pth
+  shift
+  case "${_mode}" in
+    recursive|single) : ;;
+    *)
+      printf "Error: _own_existing: unknown mode %s\n" "${_mode}" >&2
+      exit 1
+      ;;
+  esac
+  for _pth in "$@"; do
+    [ -e "${_pth}" ] || [ -L "${_pth}" ] || continue
+    if [ "${_mode}" = "recursive" ]; then
+      chown -h -R "${script_user}:${_code_group}" "${_pth}"
+    else
+      chown -h "${script_user}:${_code_group}" "${_pth}"
+    fi
+  done
+}
 
-chown -h -R ${script_user}:${_code_group} \
+_own_existing recursive \
+  ${drupal_root}/sites/all/{modules,themes,libraries,drush} \
   ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core}
 
-chown -h ${script_user}:${_code_group} \
+_own_existing single \
   ${drupal_root}/sites/all/drush/drushrc.php \
   ${drupal_root}/sites \
   ${drupal_root}/sites/* \

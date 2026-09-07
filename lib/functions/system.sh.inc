@@ -28,8 +28,9 @@ _find_fast_devuan_mirror() {
       echo "https://mirror.hootsoftware.com/devuan/merged" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
+      _BROKEN_FFMIRR_TEST=$(grep -E "ffmirror-ready|stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "ffmirror-ready" ]] \
+        || [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
         || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
@@ -293,7 +294,8 @@ _if_reinstall_curl_src() {
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   _isCurl=$(curl --version 2>&1)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
-    _msg "OOPS: cURL is broken! Re-installing.."
+    # Healed right here; the rebuild's own OOPS lines report a failure.
+    _msg "NOTE: cURL is broken, re-installing it"
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -8236,7 +8238,7 @@ _run_aptitude_deps_install() {
     && [ -z "${_APT_MIRROR_HEALED}" ] \
     && ! _pkg_installed "build-essential"; then
     export _APT_MIRROR_HEALED=YES
-    _msg "OOPS: build-essential is missing after the package pass; mirror ${_MIRROR} looks unusable, retrying via deb.devuan.org"
+    _msg "NOTE: build-essential is missing after the package pass; mirror ${_MIRROR} looks unusable, retrying via deb.devuan.org"
     export _FORCE_DEVUAN_MIRROR="http://deb.devuan.org/merged"
     _sources_list_update
     _run_aptitude_deps_install
@@ -12068,6 +12070,21 @@ _fix_root_locked_shadow() {
   fi
 }
 
+# 0 when the php-fpm master of the given version runs: its pid file names a
+# live process running that version's fpm config. The shipped init script's
+# status action exits 0 in every state (the upstream php-fpm template), so
+# it cannot answer this question.
+_php_fpm_master_up() {
+  local _pid
+  [ -r "/run/php${1}-fpm.pid" ] || return 1
+  _pid=$(tr -d '[:space:]' < "/run/php${1}-fpm.pid" 2> /dev/null)
+  [ -n "${_pid}" ] || return 1
+  case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
+    *"php${1}-fpm.conf"*) return 0 ;;
+  esac
+  return 1
+}
+
 _initd_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _initd_update"
@@ -12145,8 +12162,13 @@ _initd_update() {
           _mrun "update-rc.d php${e}-fpm defaults"
           # A master that is already up refuses a second start ("Another
           # FPM instance seems to already listen") and the old one keeps
-          # serving; ask the init script first instead of racing it.
-          if ! service php${e}-fpm status > /dev/null 2>&1; then
+          # serving; start only a master that is down. The init script's
+          # status action cannot tell: it exits 0 whether the master runs,
+          # is stopped or is dead behind its pid file.
+          if ! _php_fpm_master_up "${e}"; then
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "INFO: php${e}-fpm is down, starting it"
+            fi
             _mrun "service php${e}-fpm start"
           fi
         fi
