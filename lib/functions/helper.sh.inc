@@ -111,7 +111,7 @@ _not_supported_os() {
 
 #
 # Show only clean _msg and write details and errors to separate logs.
-# Wait (up to five minutes) for the dpkg/apt locks to be free. A converted
+# Wait (up to twenty minutes) for the dpkg/apt locks to be free. A converted
 # box keeps its image's unattended-upgrades and apt daily cron, and any of
 # them holding the lock made an install below fail with "Could not get
 # lock", an error _mrun keeps off the console -- packages then went silently
@@ -140,7 +140,10 @@ _apt_lock_wait() {
     if [ "${_i}" -eq 1 ] && [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "WAIT: another package manager holds the dpkg/apt lock, waiting for it..."
     fi
-    [ "${_i}" -ge 60 ] && break
+    if [ "${_i}" -ge "${_APT_LOCK_WAIT_MAX:-240}" ]; then
+      _msg "WARN: the dpkg/apt lock is still held after $((_i * 5)) seconds; continuing without it"
+      break
+    fi
     sleep 5
   done
   return 0
