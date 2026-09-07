@@ -1916,6 +1916,11 @@ _update_agents() {
   # (as-shipped E2E catch).
   if ! grep -q "child-process confinement" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
+    # The template that arrives carries node, npm, npx and scp; the plan check
+    # below strips them again, but only once per release serial. Dropping its
+    # marker with the fetch ctrl keeps a mid-serial re-fetch from re-granting
+    # those commands to every tenant until the next release.
+    rm -f ${_pthLog}/node.lshell-fix-npx.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
