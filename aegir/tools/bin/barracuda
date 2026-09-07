@@ -761,17 +761,20 @@ _check_report() {
   sed -i "/^$/d"                 ${_UP_LOG}
   wait
   _SEND_ALERT=NO
-  _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG} 2>&1)
-  _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
-  _RESULT_KERNEL=$(grep "NOTE: Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
-  _RESULT_REBOOT=$(grep "NOTE: Please reboot this server" ${_UP_LOG} 2>&1)
-  _RESULT_ENJOY=$(grep "Enjoy your Ægir Hosting System" ${_UP_LOG} 2>&1)
-  _RESULT_RLLY=$(grep "RLLY: No errors" ${_UP_LOG} 2>&1)
-  _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
-  _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
-  _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
-  _RESULT_OOPS=$(grep "OOPS:" ${_UP_LOG} 2>&1)
-  _RESULT_LIB_ERR=$(grep "cannot open shared object file" ${_UP_LOG} 2>&1)
+  # Read the log as text: one NUL byte in it (the debug-mode drush timers
+  # print one) makes grep answer "binary file matches" for every pattern,
+  # and the checks below that look for the wording then never match.
+  _RESULT_TEST_OK=$(grep -a "INFO: Test OK" ${_UP_LOG} 2>&1)
+  _RESULT_TEST_CARD=$(grep -a "CARD: Now charging" ${_UP_LOG} 2>&1)
+  _RESULT_KERNEL=$(grep -a "NOTE: Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
+  _RESULT_REBOOT=$(grep -a "NOTE: Please reboot this server" ${_UP_LOG} 2>&1)
+  _RESULT_ENJOY=$(grep -a "Enjoy your Ægir Hosting System" ${_UP_LOG} 2>&1)
+  _RESULT_RLLY=$(grep -a "RLLY: No errors" ${_UP_LOG} 2>&1)
+  _RESULT_APT_FAIL=$(grep -a "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
+  _RESULT_ALRT=$(grep -a "ALRT" ${_UP_LOG} 2>&1)
+  _RESULT_FATAL=$(grep -a "FATAL ERROR" ${_UP_LOG} 2>&1)
+  _RESULT_OOPS=$(grep -a "OOPS:" ${_UP_LOG} 2>&1)
+  _RESULT_LIB_ERR=$(grep -a "cannot open shared object file" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
     || [[ "${_RESULT_TEST_OK}" =~ "binary file matches" ]] \
     || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]] \
