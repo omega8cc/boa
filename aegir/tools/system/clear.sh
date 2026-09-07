@@ -285,7 +285,23 @@ if [ ! -e "/run/boa_run.pid" ] \
   && ! _installer_alive; then
   _check_dns_curl
   rm -f /tmp/*error*
-  wget -qO- https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt | bash
+  # Piping straight into bash cannot tell "ran the meta-installer" from "the
+  # mirror served nothing": an empty body, or the mirror's HTML placeholder for
+  # a tree it does not carry, both leave bash with nothing to do and exit 0, so
+  # a box can stop self-updating every 5 minutes for hours and say nothing.
+  # Fetch first, require the file's own first line, and run it from stdin so the
+  # invocation stays exactly what it was (BASH_SOURCE, hence the per-caller apt
+  # cadence stamp, is read inside).
+  _boaShTmp=/var/opt/.boa.sh.txt.$$
+  if wget -q -O "${_boaShTmp}" https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt \
+    && grep -q "^export _tRee=" "${_boaShTmp}"; then
+    bash < "${_boaShTmp}"
+  else
+    [ -d "/var/log/boa" ] \
+      && echo "$(date) OOPS: ${_USE_MIR} served no usable BOA.sh.txt for the ${_tRee} tree" \
+        >> /var/log/boa/mirror.incident.log
+  fi
+  rm -f "${_boaShTmp}"
   wait
   bash /opt/local/bin/autoupboa
   wait

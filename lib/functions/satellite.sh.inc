@@ -148,9 +148,6 @@ _stage_bee() {
 }
 
 #
-# Check key things in every proc.
-
-#
 # Count system CPUs.
 _count_cpu() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then

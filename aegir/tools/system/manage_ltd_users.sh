@@ -40,6 +40,91 @@ _acct_group() {
   echo "${_g}"
 }
 
+# One channel for anything this pass has to say to the operator: a dated line
+# in the durable incident log, the pass log, and the same text mailed once a
+# day per condition unless _INCIDENT_REPORT is OFF. The box config is read
+# with grep, never sourced: this pass carries live loop state (_USER, _usrLtd,
+# _ALLD_DIR, _ESC_LUPASS) that sourcing the config would silently overwrite
+# mid-iteration.
+# $1 = rate-limit key ("" mails every pass), $2 = subject, $3 = detail
+_ltd_notice() {
+  local _key="${1}"
+  local _sub="${2}"
+  local _dtl="${3}"
+  local _stamp=""
+  local _mail=""
+  local _rprt=""
+  local _seen=0
+  mkdir -p /var/log/boa 2>/dev/null
+  echo "ALRT: ${_sub}${_dtl:+: ${_dtl}}"
+  echo "$(date) ${_sub}${_dtl:+: ${_dtl}}" \
+    >> /var/log/boa/manage_ltd.incident.log
+  if [ -n "${_key}" ]; then
+    _key="${_key//[^a-zA-Z0-9._-]/}"
+    _stamp="/var/log/boa/manage-ltd-${_key}.alerted"
+    _seen=$(stat -c %Y "${_stamp}" 2>/dev/null)
+    _seen=${_seen:-0}
+    if [ "$(( $(date +%s) - _seen ))" -lt 86400 ]; then
+      return 0
+    fi
+    touch "${_stamp}"
+  fi
+  _rprt=$(grep -m1 -iE "^[[:space:]]*(export[[:space:]]+)?_INCIDENT_REPORT=" \
+    /root/.barracuda.cnf 2>/dev/null | cut -d= -f2- | tr -cd 'A-Za-z')
+  _rprt="${_rprt^^}"
+  [ "${_rprt}" = "NO" ] && _rprt="OFF"
+  [ "${_rprt}" = "OFF" ] && return 0
+  _mail=$(grep -m1 -iE "^[[:space:]]*(export[[:space:]]+)?_MY_EMAIL=" \
+    /root/.barracuda.cnf 2>/dev/null | cut -d= -f2- | tr -d "\"' \\\\" | tr -d '\n')
+  [ -n "${_mail}" ] || return 0
+  [[ "$(s-nail -V 2>&1)" =~ "built for Linux" ]] || return 0
+  {
+    echo "${_sub} on ${_hName}"
+    echo
+    [ -n "${_dtl}" ] && echo "${_dtl}"
+    echo
+    echo "Logged to /var/log/boa/manage_ltd.incident.log"
+    echo
+    echo "--"
+    echo "This email has been sent by the BOA limited shell users worker"
+  } | s-nail -s "ALERT [${_hName}]: ${_sub}" ${_mail}
+}
+
+# Section headers that appear more than once in a generated lshell config.
+# lshell builds a strict ConfigParser and does not catch the duplicate-section
+# error its read() raises, so ONE repeated header refuses the WHOLE file and
+# every account on the box loses its shell -- not just the account named twice.
+# Headers are compared with trailing blanks trimmed, as the parser reads them.
+_ltd_conf_dup_sections() {
+  local _cnf="${1}"
+  [ -f "${_cnf}" ] || return 0
+  sed -e 's/[[:space:]]*$//' -e '/^\[/!d' "${_cnf}" | sort | uniq -d
+}
+
+# Keep only the LAST stanza of every repeated section, in place. That is the
+# precedence the satellite writer already uses when it re-emits an account (it
+# strips the existing section, then appends the fresh one), and the one the
+# account's own home follows: every client directory the pass visits re-points
+# ~/sites with ln -sfn, so the surviving stanza is the one whose client
+# directory the account is actually bound to when the pass ends.
+_dedup_ltd_conf_sections() {
+  local _cnf="${1}"
+  local _dup=""
+  [ -f "${_cnf}" ] || return 0
+  _dup=$(_ltd_conf_dup_sections "${_cnf}")
+  [ -n "${_dup}" ] || return 0
+  awk 'BEGIN { _keep = 1 }
+    { _hdr = $0; sub(/[[:space:]]*$/, "", _hdr) }
+    FNR == NR { if (_hdr ~ /^\[/) { _cnt[_hdr] += 1 } ; next }
+    _hdr ~ /^\[/ { _num[_hdr] += 1; _keep = (_num[_hdr] == _cnt[_hdr]) }
+    _keep' "${_cnf}" "${_cnf}" > "${_cnf}.dedup" \
+    && cat "${_cnf}.dedup" > "${_cnf}"
+  rm -f "${_cnf}.dedup"
+  _ltd_notice "dup-section" \
+    "repeated lshell sections collapsed to the last stanza in the generated config" \
+    "$(echo ${_dup} | tr '\n' ' ')"
+}
+
 # Passive-mirror tenant hold (2026-08-25 ruling: deny fully on standby).
 # A tenant login on a mirror is a WRITE channel into the synced trees --
 # credentials converge with the active BY DESIGN (.ssh synced, user store
@@ -703,7 +788,9 @@ _disable_chattr() {
 _kill_zombies() {
   for _Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
     _SEC_IDY=$(id -nG ${_Existing} 2>&1)
-    if [[ "${_SEC_IDY}" =~ "ltd-shell" ]] \
+    # Whole-word membership: a substring test also matches ltd-shell-more, the
+    # operator-only tier nothing automatic joins today.
+    if [[ " ${_SEC_IDY} " == *" ltd-shell "* ]] \
       && [ ! -z "${_Existing}" ] \
       && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
       && [[ ! "${_Existing}" =~ ".web"($) ]]; then
@@ -733,23 +820,85 @@ _kill_zombies() {
   for _Existing in `ls /home | cut -d '/' -f1 | sort`; do
     _isTest=${_Existing//[^a-z0-9]/}
     if [ ! -z "${_isTest}" ]; then
-      _SEC_IDY=$(id -nG ${_Existing} 2>&1)
-      if [[ "${_SEC_IDY}" =~ "No such user" ]] \
-        && [ ! -z "${_Existing}" ] \
-        && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
-        && [[ ! "${_Existing}" =~ ".web"($) ]]; then
-        _disable_chattr ${_Existing}
-        [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-        mv /home/${_Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}
-        _usrParent=$(echo ${_Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-        if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
-          rm -f /home/${_usrParent}.ftp/users/${_Existing}
+      # An orphan home is one with no passwd entry at all. The old test read
+      # id(1)'s error text for "No such user", but id reports it lowercase
+      # ("no such user") and =~ is case sensitive, so this arm never ran on any
+      # box. getent's EXIT STATUS is the test: no message to parse, no locale
+      # to depend on.
+      if ! getent passwd "${_Existing}" > /dev/null 2>&1; then
+        _usrParent=$(echo "${_Existing}" | cut -d. -f1 | awk '{ print $1}' 2>&1)
+        # Scoped hard, because repairing the test wakes this arm on every box
+        # at once: move only a real directory whose name carries the
+        # <instance>.<client> shape, whose instance user exists and owns a disk
+        # root. The old guard asked only that the name reduce to a non-empty
+        # [a-z0-9] string, which lost+found also satisfies. The client half
+        # allows a hyphen so a reserved-token account name stays sweepable.
+        # The mtime brake is the last of it, against a transient this arm cannot
+        # otherwise tell apart: a home staged by a migration before its account
+        # exists looks exactly like an orphan. xmass does not create one -- it
+        # stages sub-account .ssh under /var/backups/migrate-subuser-ssh
+        # precisely because the home is not there yet (xmass, the branch taken
+        # when the target has no such account) -- but this arm is newly
+        # destructive and must not race a path a later tool adds. An hour is
+        # nothing against an arm that has never run, and it is the same brake
+        # the ghost-revision reaper uses for the same reason.
+        if [ -d "/home/${_Existing}" ] \
+          && [ ! -L "/home/${_Existing}" ] \
+          && [[ "${_Existing}" =~ ^[a-z0-9]+\.[a-z0-9-]+$ ]] \
+          && [[ ! "${_Existing}" =~ \.ftp$ ]] \
+          && [[ ! "${_Existing}" =~ \.web$ ]] \
+          && [ ! -z "${_usrParent}" ] \
+          && getent passwd "${_usrParent}" > /dev/null 2>&1 \
+          && [ -d "/data/disk/${_usrParent}" ]; then
+          # The mtime brake alone does not hold: mv, cp -a, rsync -a and tar -xp
+          # all carry the source's mtime, so a home staged by any of them looks
+          # hours old the moment it lands (measured 2026-09-07). The clock that
+          # matters is how long THIS arm has seen the home without an account,
+          # so the first sighting only records a root-owned marker and the home
+          # moves on a later pass, once the marker is an hour old as well.
+          _ltd_orphan_seen="/var/backups/zombie/seen/${_Existing}"
+          if [ ! -e "${_ltd_orphan_seen}" ]; then
+            [ -d /var/backups/zombie/seen ] || mkdir -p /var/backups/zombie/seen
+            touch "${_ltd_orphan_seen}"
+          elif [ -z "$(find "/home/${_Existing}" -maxdepth 0 -mmin -60 2> /dev/null)" ] \
+            && [ -z "$(find "${_ltd_orphan_seen}" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
+            _disable_chattr "${_Existing}"
+            [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
+            # The per-pass log under /var/backups/ltd is erased on every release,
+            # and this arm moves a tenant's home aside on an arm that has never
+            # run before: record it where it survives, and record a failed move
+            # as what it is rather than as a move.
+            [ -d /var/log/boa ] || mkdir -p /var/log/boa
+            if mv "/home/${_Existing}" "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"; then
+              if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
+                rm -f "/home/${_usrParent}.ftp/users/${_Existing}"
+              fi
+              rm -f "${_ltd_orphan_seen}"
+              echo "Zombie from home.dir ${_Existing} killed"
+              echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; moved to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}" \
+                >> /var/log/boa/manage_ltd.incident.log
+            else
+              echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; mv to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing} FAILED, left in place" \
+                >> /var/log/boa/manage_ltd.incident.log
+            fi
+            echo
+          fi
         fi
-        echo Zombie from home.dir ${_Existing} killed
-        echo
       fi
     fi
   done
+  # A first-sighting marker outlives its reason once the account appears or the
+  # home goes away; drop it so a later home of the same name starts a new clock.
+  if [ -d "/var/backups/zombie/seen" ]; then
+    for _ltd_orphan_seen in /var/backups/zombie/seen/*; do
+      [ -e "${_ltd_orphan_seen}" ] || continue
+      _Existing=$(basename "${_ltd_orphan_seen}")
+      if getent passwd "${_Existing}" > /dev/null 2>&1 \
+        || [ ! -d "/home/${_Existing}" ]; then
+        rm -f "${_ltd_orphan_seen}"
+      fi
+    done
+  fi
 }
 #
 # Fix dot dirs.
@@ -882,6 +1031,15 @@ _manage_sec_user_drush_aliases() {
 #
 # OK, create user.
 _ok_create_user() {
+  # Reset the minted-password carriers on EVERY entry, not only on the branch
+  # that mints one. _manage_sec resets _usrLtd and _ALLD_DIR between accounts
+  # but never these, and _manage_user does not reset them between instances
+  # either, so a run that skips useradd because the home already exists would
+  # otherwise still hold the PREVIOUS account's password -- emit a stanza for
+  # an account that has no passwd entry and write that password into this
+  # account's store, across instances. Proven on a rig 2026-09-07.
+  _ESC_LUPASS=""
+  _LEN_LUPASS=0
   _usrLtdTest=${_usrLtd//[^a-z0-9]/}
   if [ ! -z "${_usrLtdTest}" ]; then
     _ADMIN="${_USER}.ftp"
@@ -916,8 +1074,6 @@ _ok_create_user() {
       # in every case -- it is the binary execute ACL, lshell included.
       usermod -aG users ${_usrLtd}
       adduser ${_usrLtd} ${_WEBG}
-      _ESC_LUPASS=""
-      _LEN_LUPASS=0
       # A migration carries /home/<admin>/users/<name> from the source box
       # before this user exists here; honour that stored password so the
       # client's sub-account credential survives the move, instead of
@@ -999,9 +1155,13 @@ _ok_create_user() {
       fi
     fi
     # A migration stages a sub-account's SSH keys here because the home did
-    # not exist on this box yet; adopt them now that it does, once.
+    # not exist on this box yet; adopt them now that it does, once. Only for an
+    # account that exists: a home with no passwd entry (the create path with an
+    # existing home) must not consume the staged copy -- the chown below could
+    # not resolve the owner and the rm -rf would destroy the only copy.
     if [ -d "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" ] \
-      && [ -d "${_usrLtdRoot}" ]; then
+      && [ -d "${_usrLtdRoot}" ] \
+      && getent passwd "${_usrLtd}" > /dev/null 2>&1; then
       cp -af "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" "${_usrLtdRoot}/"
       # Group half derived, not the user name: no group named after a
       # sub-user is ever created, so that chgrp half always failed.
@@ -1128,7 +1288,7 @@ _add_user_if_not_exists() {
       _manage_sec_user_drush_aliases
       _enable_chattr ${_usrLtd}
     elif [[ "${_ID_EXISTS}" =~ "${_usrLtd}" ]] \
-      && [[ "${_ID_SHELLS}" =~ "ltd-shell" ]]; then
+      && [[ " ${_ID_SHELLS} " == *" ltd-shell "* ]]; then
       echo "We will update user == ${_usrLtd} =="
       _disable_chattr ${_usrLtd}
       rm -rf /home/${_usrLtd}/drush-backups
@@ -1202,12 +1362,57 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
 done
 }
 #
+# Sub-account name for one client directory. The pass that creates the accounts
+# and the collision scan below must read a client directory identically, or the
+# scan would clear a name the pass then collides on -- so both go through here.
+_ltd_name_from_client_dir() {
+  local _dir="${1}"
+  local _nam=""
+  _nam=$(echo "${_dir}" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
+  _nam=${_nam//[^a-zA-Z0-9]/}
+  _nam=$(echo -n "${_nam}" | tr A-Z a-z 2>&1)
+  printf '%s\n' "${_nam}"
+}
+#
+# Two client directories that differ only in punctuation, case or a trailing
+# word collapse to ONE sub-account name, and both halves of the pass then emit
+# a stanza for it -- which the strict parser refuses, taking every shell on the
+# box down with it. The render side now collapses the repeat and the publish
+# side fails closed, so the box stays up; what remains is one account serving
+# two clients, and only renaming a client directory undoes that.
+#
+# Report it, never repair it here. Renaming the account would invalidate a login
+# the client already holds, dropping one would be an outage of its own, and
+# which of the two directories is the newcomer is not knowable from the listing
+# -- so the repair is the operator's, and this makes it visible and durable.
+_ltd_collision_scan() {
+  local _dir=""
+  local _nam=""
+  local _dup=""
+  local _hits=""
+  _dup=$(find ${_pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null \
+    | sort | while read -r _dir; do
+        _nam=$(_ltd_name_from_client_dir "${_dir}")
+        [ -n "${_nam}" ] && echo "${_nam}"
+      done | sort | uniq -d)
+  [ -n "${_dup}" ] || return 0
+  while read -r _nam; do
+    [ -n "${_nam}" ] || continue
+    _hits=$(find ${_pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null \
+      | sort | while read -r _dir; do
+          [ "$(_ltd_name_from_client_dir "${_dir}")" = "${_nam}" ] && echo "${_dir}"
+        done | tr '\n' ' ')
+    _ltd_notice "collide-${_USER}.${_nam}" \
+      "client directories collapse to one sub-account ${_USER}.${_nam}" \
+      "shared by: ${_hits}-- rename one client so the names differ by more than punctuation or case; until then the LAST directory listed owns both the shell paths and ~/sites, and the others are unreachable through that account"
+  done <<< "${_dup}"
+}
+#
 # Manage Secondary Users.
 _manage_sec() {
+_ltd_collision_scan
 for _Client in `find ${_pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
-  _usrLtd=$(echo ${_Client} | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
-  _usrLtd=${_usrLtd//[^a-zA-Z0-9]/}
-  _usrLtd=$(echo -n ${_usrLtd} | tr A-Z a-z 2>&1)
+  _usrLtd=$(_ltd_name_from_client_dir "${_Client}")
   if [ ! -z "${_usrLtd}" ]; then
     _usrLtd="${_USER}.${_usrLtd}"
     echo "_usrLtd is == ${_usrLtd} == at _manage_sec"
@@ -3079,12 +3284,25 @@ else
   _kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
-    _DIFF_T=$(diff -w -B ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
-    if [ ! -z "${_DIFF_T}" ]; then
-      cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
-      cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
+    _dedup_ltd_conf_sections "${_THIS_LTD_CONF}"
+    _DUP_SEC=$(_ltd_conf_dup_sections "${_THIS_LTD_CONF}")
+    if [ ! -z "${_DUP_SEC}" ]; then
+      # Fail closed. lshell refuses a config carrying a repeated section
+      # outright, so installing this one would take the shell away from EVERY
+      # account on the box; the config already in place is, at worst, stale by
+      # one pass. Keep the rejected file for forensics and publish nothing.
+      cp -af ${_THIS_LTD_CONF} /var/backups/ltd/old/lshell.conf-rejected-${_NOW}
+      _ltd_notice "dup-publish" \
+        "generated lshell config REJECTED, /etc/lshell.conf left as it was" \
+        "still repeated after the collapse: $(echo ${_DUP_SEC} | tr '\n' ' ')-- kept at /var/backups/ltd/old/lshell.conf-rejected-${_NOW}"
     else
-      rm -f ${_THIS_LTD_CONF}
+      _DIFF_T=$(diff -w -B ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
+      if [ ! -z "${_DIFF_T}" ]; then
+        cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
+        cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
+      else
+        rm -f ${_THIS_LTD_CONF}
+      fi
     fi
   fi
   if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
