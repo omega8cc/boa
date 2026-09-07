@@ -716,7 +716,8 @@ _kill_zombies() {
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-          pkill -9 -f gpg-agent
+          # only this user's agent: -f matched every gpg-agent on the box
+          id -u "${_Existing}" &> /dev/null && pkill -9 -u "${_Existing}" gpg-agent &> /dev/null
           _disable_chattr ${_Existing}
           rm -rf /home/${_Existing}/.gnupg
           deluser \
@@ -897,16 +898,23 @@ _ok_create_user() {
         # A user born on a held standby (users.txt arrives from the active
         # by sync) never gets a live shell, not even for one pass; record
         # it so promotion restores it like every other held tenant.
-        useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
         mkdir -p /var/log/boa 2>/dev/null
         grep -qxF "${_usrLtd}" /var/log/boa/standby-held-shells.txt 2>/dev/null \
           || echo "${_usrLtd}" >> /var/log/boa/standby-held-shells.txt
       elif [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-        useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
         echo "_usrLtdRoot is == ${_usrLtdRoot} == at _ok_create_user"
       else
-        useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
       fi
+      # The primary group is the account's own (-g above, users until the
+      # account carries its per-instance group); 'users' stays supplementary
+      # in every case -- it is the binary execute ACL, lshell included.
+      usermod -aG users ${_usrLtd}
       adduser ${_usrLtd} ${_WEBG}
       _ESC_LUPASS=""
       _LEN_LUPASS=0
@@ -1008,6 +1016,59 @@ _ok_create_user() {
   fi
 }
 #
+# Change a sub-user's primary group without usermod's own recursive lchown of
+# the home tree (shadow chown_tree: full pathnames, stops at the first
+# immutable inode -- and these homes carry chattr +i -- with the passwd entry
+# already rewritten). The home field points at an empty root-owned staging
+# dir for that one call and is put back at once; the group on the files is
+# the alias-copy leg's business.
+_set_primary_group() {
+  local _u="$1" _g="$2" _h _stage=/var/backups/ltd/.pg-stage
+  _h=$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)
+  [ -n "${_h}" ] || return 1
+  mkdir -p "${_stage}" && chown root:root "${_stage}" && chmod 0700 "${_stage}"
+  # Recorded first (the same record instgrp keeps): a kill between the two
+  # usermod calls leaves the passwd home at the staging dir, and
+  # _repair_staged_homes puts it back on the next pass.
+  [ -d /var/log/boa ] || mkdir -p /var/log/boa
+  printf '%s\n' "${_h}" > "/var/log/boa/instgrp.home.${_u}"
+  usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
+  usermod -d "${_h}" "${_u}" > /dev/null 2>&1
+  rm -f "/var/log/boa/instgrp.home.${_u}"
+  [ "$(id -gn "${_u}" 2>/dev/null)" = "${_g}" ]
+}
+#
+# Any identity whose passwd home is a primary-group staging directory (this
+# worker's or instgrp's) was caught between the two usermod calls: put the
+# recorded home back, or the one the name implies. Every pass, first thing.
+_repair_staged_homes() {
+  local _s _u _want _rec
+  for _s in /var/backups/ltd/.pg-stage /root/.instgrp.home; do
+    for _u in $(getent passwd | awk -F: -v s="${_s}" '$6 == s { print $1 }'); do
+      _rec="/var/log/boa/instgrp.home.${_u}"
+      _want=""
+      [ -s "${_rec}" ] && _want=$(head -1 "${_rec}")
+      if [ -z "${_want}" ]; then
+        case "${_u}" in
+          *.*) _want="/home/${_u}" ;;
+          *)   _want="/data/disk/${_u}" ;;
+        esac
+      fi
+      [ -d "${_want}" ] || continue
+      usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+      if [ "$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)" = "${_want}" ]; then
+        echo "ALERT: ${_u} home field was left at ${_s} by an interrupted group move; restored to ${_want}"
+        # the per-pass log under /var/backups/ltd is erased on every release;
+        # an identity incident belongs in the durable incident log too
+        mkdir -p /var/log/boa 2>/dev/null
+        echo "$(date) LTD home repair: ${_u} home field was left at ${_s} by an interrupted group move; restored to ${_want}" \
+          >> /var/log/boa/manage_ltd.incident.log
+        rm -f "${_rec}"
+      fi
+    done
+  done
+}
+#
 # OK, update user.
 _ok_update_user() {
   _usrLtdTest=${_usrLtd//[^a-z0-9]/}
@@ -1020,6 +1081,33 @@ _ok_update_user() {
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
       _manage_sec_user_drush_aliases
       chmod 700 ${_usrLtdRoot}
+      # 'users' is the binary execute ACL (root:users 0750, lshell included):
+      # every sub-user must be LISTED in it, independently of its primary
+      # group. The test reads the group database -- id -nG would answer yes
+      # through the primary gid alone, and a later primary move would then
+      # drop the group. Repairs an already-stripped identity on every pass.
+      if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
+        usermod -aG users ${_usrLtd}
+      fi
+      # A sub-user still on the box-wide primary group while its account
+      # carries the per-instance group (born under an older worker, or the
+      # account converted since) cannot read its 0440 alias copies: align it,
+      # only once the explicit 'users' membership above is in place, and
+      # verified after the move.
+      if [ "${_usrGroup}" != "users" ] \
+        && [ "$(id -gn ${_usrLtd} 2>/dev/null)" != "${_usrGroup}" ] \
+        && getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
+        _set_primary_group ${_usrLtd} ${_usrGroup}
+        if id -nG ${_usrLtd} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+          echo "Sub-user ${_usrLtd} moved to primary group ${_usrGroup}"
+        else
+          _set_primary_group ${_usrLtd} users
+          echo "ALERT: ${_usrLtd} lost group users on the primary move, reverted to users"
+          mkdir -p /var/log/boa 2>/dev/null
+          echo "$(date) LTD primary move: ${_usrLtd} lost group users on the primary move, reverted to users" \
+            >> /var/log/boa/manage_ltd.incident.log
+        fi
+      fi
     fi
     _fix_dot_dirs
     rm -f ${_usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
@@ -1800,11 +1888,16 @@ _satellite_remove_web_user() {
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
-      chattr -i /home/${_WEB}/
+      # "clean" also runs for a web user that never existed (every new
+      # per-version pool): nothing to unlock there, and chattr says so on
+      # stderr once per installed PHP into this worker's log
+      [ -d "/home/${_WEB}/" ] && chattr -i /home/${_WEB}/
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
       fi
-      pkill -9 -f gpg-agent
+      # only this user's agent (none for a user that never existed): -f
+      # matched every gpg-agent on the box
+      id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
@@ -1840,6 +1933,9 @@ _site_socket_inc_gen() {
   _preFpm="${_dscUsr}/static/control/.prev-multi-fpm.info"
   _mltNgx="${_dscUsr}/static/control/.multi-nginx-fpm.pid"
   _fpmPth="${_dscUsr}/config/server_master/nginx/post.d"
+  # per account: an earlier account's forced regeneration must not carry
+  # over to every account after it in the same pass
+  _mltFpmUpdateForce=NO
 
   _hmFront=$(cat ${_dscUsr}/log/domain.txt 2>&1)
   _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
@@ -1848,19 +1944,35 @@ _site_socket_inc_gen() {
   _hmstCli=$(cat ${_dscUsr}/log/cli.txt 2>&1)
   _hmstCli=$(echo -n ${_hmstCli} | tr -d "\n" 2>&1)
 
-  if [ ! -e "${_hmstAls}" ]; then
-    ln -sfn ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${_hmstAls}
-  fi
+  # The <panel-fqdn> symlink to hostmaster.alias.drushrc.php was a crutch for
+  # accounts whose hostmaster internals an old migration had left half
+  # replaced; it also made the panel look like a site to anything that keys
+  # on <fqdn>.alias files. Purge it here, in the regular pass, so an account
+  # that still depends on it breaks visibly and is repaired BEFORE its next
+  # migration instead of carrying the defect to a new box. Matched by shape,
+  # not by the current panel name: a renamed box keeps the old-name symlink
+  # too, and it is the same crutch. A real alias file is left alone.
+  for _hmstLnk in ${_dscUsr}/.drush/*.alias.drushrc.php; do
+    [ -L "${_hmstLnk}" ] || continue
+    [ "$(readlink "${_hmstLnk}" 2>/dev/null)" = "${_dscUsr}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    rm -f ${_hmstLnk}
+  done
 
   _desymlink_planted "${_mltFpm}"
   _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm} 2>&1)
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
     || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
-    sed -i "s/^${_hmFront} .*//g" ${_mltFpm}
-    wait
-    sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
-    wait
+    # a young account has no multi-fpm.info yet (the agents pass writes it
+    # later); the two seds below have nothing to clean there and only left
+    # "sed: can't read" in this worker's log every three minutes until it
+    # appeared
+    if [ -f "${_mltFpm}" ]; then
+      sed -i "s/^${_hmFront} .*//g" ${_mltFpm}
+      wait
+      sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
+      wait
+    fi
     _PHP_V="85 84 83 82 81 74"
     _phpFnd=NO
     for e in ${_PHP_V}; do
@@ -1878,11 +1990,14 @@ _site_socket_inc_gen() {
         elif [ "${e}" = 74 ]; then
           _phpDot=7.4
         fi
-        echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
+        # static/control itself is created later in this pass (behind the
+        # ftp home's clients link); until then there is nowhere to write
+        [ -d "${_dscUsr}/static/control" ] && echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
         _phpFnd=YES
       fi
     done
-    sed -i "s/ *$//g; /^$/d" ${_mltFpm}
+    # still absent when no PHP binary was found above and nothing appended
+    [ -f "${_mltFpm}" ] && sed -i "s/ *$//g; /^$/d" ${_mltFpm}
     wait
     touch ${_dscUsr}/log/no-lock-aegir-fpm.txt
     rm -f ${_dscUsr}/log/locked-aegir-fpm.txt
@@ -2490,6 +2605,7 @@ _manage_site_drush_alias_mirror() {
 #
 # Manage Primary Users.
 _manage_user() {
+  _repair_staged_homes
   for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
@@ -2499,6 +2615,66 @@ _manage_user() {
       _mntPoint=""
       _USER=""
       _USER=$(echo ${_pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      # The nightly's per-account pass holds this account's home unlocked for
+      # minutes and relocks it at its end; a rebuild in flight here would meet
+      # that relock half way (EPERM on every write). Leave the account to the
+      # next pass while the marker names a live pass (a dead pid is a killed
+      # pass and its marker goes) -- but its lshell stanzas are emitted from
+      # the body skipped here, and the conf built this pass replaces the live
+      # one on any difference, so carry them over from the live file as they
+      # stand or its users would drop to [default] until the hold clears.
+      if [ -e "/run/night-account-${_USER}.pid" ]; then
+        if kill -0 "$(cat /run/night-account-${_USER}.pid 2>/dev/null)" 2>/dev/null; then
+          echo "skipping ${_USER}: the nightly per-account pass holds it"
+          echo >> ${_THIS_LTD_CONF}
+          awk -v u="${_USER}" '/^\[/ { p = ($0 ~ "^\\[" u "\\.") } p' /etc/lshell.conf >> ${_THIS_LTD_CONF}
+          continue
+        fi
+        rm -f /run/night-account-${_USER}.pid
+      fi
+      # Identity heal: an account whose marker records THIS box's group but
+      # whose backend or shell identity fell back to the box-wide primary
+      # group (a hand usermod, a restored passwd) makes _acct_group fail open
+      # to 'users' and every root writer re-flatten the tree while the marker
+      # still reads converted. Move it back, 'users' listed first, as for the
+      # sub-users below.
+      # Converted = the group exists and the marker records it, or the backend
+      # or shell identity already carries it as primary (a born-converted
+      # account has no marker until its first upgrade).
+      _igMark="${_pthParentUsr}/log/instance-group.txt"
+      _igGid=$(getent group "${_USER}" 2>/dev/null | cut -d: -f3)
+      _igConv=NO
+      if [ -n "${_igGid}" ]; then
+        if [ -f "${_igMark}" ] && [ ! -L "${_igMark}" ] && grep -q " gid=${_igGid}$" "${_igMark}" 2>/dev/null; then
+          _igConv=YES
+        elif [ "$(id -gn ${_USER} 2>/dev/null)" = "${_USER}" ] || [ "$(id -gn ${_USER}.ftp 2>/dev/null)" = "${_USER}" ]; then
+          _igConv=YES
+        fi
+      fi
+      if [ "${_igConv}" = "YES" ]; then
+        for _igU in ${_USER} ${_USER}.ftp; do
+          getent passwd "${_igU}" >/dev/null 2>&1 || continue
+          [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] && continue
+          if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
+            usermod -aG users ${_igU}
+          fi
+          if getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
+            _set_primary_group ${_igU} ${_USER}
+            if [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] \
+              && id -nG ${_igU} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+              # Listed as a member too: provision's membership test reads
+              # the group database, where a primary group never shows.
+              getent group ${_USER} | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || gpasswd -a ${_igU} ${_USER} >/dev/null 2>&1
+              echo "Identity ${_igU} moved back to primary group ${_USER}"
+            elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
+              _set_primary_group ${_igU} users
+              echo "ALERT: ${_igU} lost group users on the primary move, reverted to users"
+            else
+              echo "ALERT: ${_igU} could not be moved to primary group ${_USER}; left on $(id -gn ${_igU} 2>/dev/null)"
+            fi
+          fi
+        done
+      fi
       # Group owning this account's tree, re-derived every iteration so no
       # value carries over to the next account. Falls back to the box-wide
       # default on an account that has no private group.
@@ -2863,7 +3039,9 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   exit 0
 else
   rm -f /var/log/boa/wait-manage-ltd-users.pid
-  touch /run/manage_ltd_users.pid
+  # the pid, not a bare touch: the nightly's per-account pass waits only on a
+  # LIVE worker (every other reader tests existence and removes the file)
+  echo $$ > /run/manage_ltd_users.pid
   _count_cpu
   _find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
@@ -2955,7 +3133,40 @@ else
     && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_HOME_NO_WILDCARD_CHMOD=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     chmod 700 /home/* &> /dev/null
   fi
-  chmod 0600 /var/log/lsh/*
+  # /var/log/lsh is written by the tenants themselves (group lshellg), so a
+  # tenant can plant any not-yet-used name there. The sticky bit (healed here:
+  # the dir predates it on old boxes) keeps one tenant from unlinking another's
+  # log and, with fs.protected_regular=2, from feeding a victim a foreign
+  # regular file. Root ignores the sticky bit, so only this pass can remove
+  # what a tenant left at someone else's name: anything that is not a regular
+  # *.log, and a *.log owned by a user other than the one its name claims (a
+  # recycled uid makes a dead tenant's log readable by the wrong tenant). An
+  # all-numeric owner is a dead uid: its log stays as history unless a live
+  # tenant of that name now needs the file it cannot open (0600, foreign).
+  # NUL-delimited records, owner first: a tenant-chosen name may carry a tab or
+  # a newline, and a record that fails to parse must never reach the rm. rm
+  # does not follow. The owner rule assumes lshell's default <user>.log naming
+  # (the shipped conf keeps logfilename unset); an admin who sets it, with
+  # either delimiter lshell's parser accepts and in any case, turns the rule
+  # off rather than losing every log on the next pass.
+  chmod 1770 /var/log/lsh &> /dev/null
+  find /var/log/lsh -mindepth 1 -maxdepth 1 \( ! -type f -o ! -name '*.log' \) \
+    -exec rm -rf {} + 2>/dev/null
+  if ! grep -qiE '^[[:space:]]*logfilename[[:space:]]*[:=]' /etc/lshell.conf 2>/dev/null; then
+    find /var/log/lsh -mindepth 1 -maxdepth 1 -type f -name '*.log' -printf '%u\0%f\0' 2>/dev/null \
+      | while IFS= read -r -d '' _lshOwner && IFS= read -r -d '' _lshName; do
+        [ -n "${_lshOwner}" ] && [ -n "${_lshName}" ] || continue
+        case "${_lshOwner}" in
+          *[!0-9]*) [ "${_lshName%.log}" = "${_lshOwner}" ] || rm -f "/var/log/lsh/${_lshName}" ;;
+          *) id -u "${_lshName%.log}" &> /dev/null && rm -f "/var/log/lsh/${_lshName}" ;;
+        esac
+      done
+  fi
+  # -type f refuses a planted link; a tenant swapping its OWN name between the
+  # lstat and the chmod is the house-wide check-then-act residual (chmod has no
+  # -h), bounded by the sweep above. A young box has no log yet, hence no bare
+  # glob (it printed "cannot access").
+  find /var/log/lsh -maxdepth 1 -type f -exec chmod 0600 {} + 2>/dev/null
   chmod 0440 /var/aegir/.drush/*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
   chmod 0400 /var/aegir/.drush/hm.alias.drushrc.php &> /dev/null

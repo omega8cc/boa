@@ -509,6 +509,11 @@ _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
+  elif [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    # No credentials and no Ægir master: an install that stopped before its
+    # database stage wrote them. The pass being re-run is what creates them.
+    echo "NOTE: no database credentials yet and no Ægir master: an unfinished install, continuing"
+    return 0
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
     echo "ALERT: Please fix this before trying again, giving up."
@@ -692,13 +697,19 @@ _if_extended_report() {
     echo            >> ${_UP_LOG}
     ps auxf         >> ${_UP_LOG}
     echo            >> ${_UP_LOG}
-    aureport        >> ${_UP_LOG}
+    if command -v aureport > /dev/null 2>&1; then
+      aureport      >> ${_UP_LOG}
+    fi
     echo            >> ${_UP_LOG}
-    aa-status | grep loaded   >> ${_UP_LOG}
-    aa-status | grep enforce  >> ${_UP_LOG}
-    aa-status | grep complain >> ${_UP_LOG}
+    if command -v aa-status > /dev/null 2>&1; then
+      aa-status | grep loaded   >> ${_UP_LOG}
+      aa-status | grep enforce  >> ${_UP_LOG}
+      aa-status | grep complain >> ${_UP_LOG}
+    fi
     echo            >> ${_UP_LOG}
-    aa-unconfined   >> ${_UP_LOG}
+    if command -v aa-unconfined > /dev/null 2>&1; then
+      aa-unconfined >> ${_UP_LOG}
+    fi
     echo            >> ${_UP_LOG}
     /opt/local/bin/boa info full >> ${_UP_LOG}
     echo            >> ${_UP_LOG}
@@ -759,6 +770,7 @@ _check_report() {
   _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
   _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
+  _RESULT_OOPS=$(grep "OOPS:" ${_UP_LOG} 2>&1)
   _RESULT_LIB_ERR=$(grep "cannot open shared object file" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
     || [[ "${_RESULT_TEST_OK}" =~ "binary file matches" ]] \
@@ -774,6 +786,7 @@ _check_report() {
         || [[ "${_RESULT_LIB_ERR}" =~ "binary file matches" ]]; then
         _SEND_ALERT=YES
         _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
+    _ONLY_REBOOT=NO
       fi
     else
       _DO_NOTHING=YES
@@ -787,8 +800,10 @@ _check_report() {
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (apt) Barracuda upgrade"
   fi
+  _ONLY_REBOOT=NO
   if [[ "${_RESULT_KERNEL}" =~ "Your OS kernel" ]] \
     && [[ "${_RESULT_REBOOT}" =~ "Please reboot" ]]; then
+    [ "${_SEND_ALERT}" != "YES" ] && _ONLY_REBOOT=YES
     _SEND_ALERT=YES
     _ALERT_MSG="REBOOT: Your new system kernel requires boa reboot"
   fi
@@ -796,16 +811,28 @@ _check_report() {
     || [[ "${_RESULT_ALRT}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
+    _ONLY_REBOOT=NO
   fi
   if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]] \
     || [[ "${_RESULT_FATAL}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (aborted) Barracuda upgrade"
+    _ONLY_REBOOT=NO
+  fi
+  # Every OOPS in the tree is a failure notice (a build that produced
+  # nothing, a download that never arrived); a pass carrying one is not a
+  # clean upgrade even when it ran to its end.
+  if [[ "${_RESULT_OOPS}" =~ "OOPS:" ]] \
+    || [[ "${_RESULT_OOPS}" =~ "binary file matches" ]]; then
+    _SEND_ALERT=YES
+    _ALERT_MSG="ALERT: Failed (oops) Barracuda upgrade"
+    _ONLY_REBOOT=NO
   fi
   if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]] \
     || [[ "${_RESULT_LIB_ERR}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
+    _ONLY_REBOOT=NO
   fi
   if [ "${_SEND_ALERT}" = "YES" ]; then
     _send_alert
@@ -842,6 +869,12 @@ _check_php_cli() {
       rm -f /usr/bin/php-cli
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
+    elif [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+      # No PHP and no Ægir master: an install that stopped before its PHP
+      # stage. "Fix it and run the upgrade again" is what the fatal message
+      # asks for, and that upgrade is what installs PHP -- refusing here
+      # left such a box with no way forward but a wipe.
+      echo "NOTE: no PHP-CLI yet and no Ægir master: an unfinished install, continuing"
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
       echo "ERROR: BOA requires PHP 8.3 or newer"
@@ -1590,7 +1623,11 @@ _up_finish() {
   # alert on. The prefix is kept intact so anything waiting on the documented
   # completion line still terminates -- including the operator the console
   # instructions above tell to watch for exactly that line.
-  if [ "${_SEND_ALERT}" = "YES" ]; then
+  # A pass whose only alert is the kernel notice finished cleanly; say what
+  # it needs instead of calling it errored.
+  if [ "${_SEND_ALERT}" = "YES" ] && [ "${_ONLY_REBOOT}" = "YES" ]; then
+    echo "BARRACUDA upgrade completed, REBOOT REQUIRED -- run 'boa reboot' (log: ${_UP_LOG})"
+  elif [ "${_SEND_ALERT}" = "YES" ]; then
     echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}"
   else
     echo BARRACUDA upgrade completed
@@ -2152,25 +2189,57 @@ _check_manufacturer_compatibility() {
     /usr/bin/apt-get update &> /dev/null
     ${_INITINS} dmidecode &> /dev/null
   fi
-  # Check if dmidecode is available
-  _DMI_TEST="$(which dmidecode)"
+  # Read the system manufacturer. A machine with no SMBIOS/DMI table answers
+  # with nothing, which is the normal state of a Xen paravirtualized guest
+  # domain or a container -- environments this tree lists as supported -- so an
+  # empty answer is never grounds for refusing to run.
+  local _DMI_RAW=""
+  _HOST_INFO=""
+  _DMI_TEST="$(command -v dmidecode 2> /dev/null)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO="$(dmidecode -s system-manufacturer)"
-  else
-    _HOST_INFO="Unknown, dmidecode not available"
+    _DMI_RAW="$("${_DMI_TEST}" -s system-manufacturer 2> /dev/null)"
+  elif [ -r "/sys/class/dmi/id/sys_vendor" ]; then
+    # Only when dmidecode is absent entirely, so the check is not left blind on
+    # a host where the package could not be installed. Never when dmidecode is
+    # merely silent, and never inside a container this can recognise: there
+    # that file describes the HOST, so a container on an EC2 host would be
+    # refused as EC2, and containers are on this tree's supported list. The
+    # apt install above is unchecked, so a container can reach this arm; left
+    # unread, it is the DMI-less guest it is and passes. The recognition set:
+    # Docker leaves /.dockerenv; systemd writes /run/systemd/container when
+    # it is the container's own PID 1; LXC, LXD, podman and nspawn set
+    # container= in PID 1's environment (matched at the start of a record,
+    # not as a substring); an OpenVZ guest has /proc/vz but not the host-only
+    # /proc/bc; a VServer guest carries the VxID that boa's _check_virt
+    # already greps for, same expression.
+    if [ ! -e "/.dockerenv" ] \
+      && [ ! -e "/run/systemd/container" ] \
+      && ! { [ -e "/proc/vz" ] && [ ! -e "/proc/bc" ]; } \
+      && ! { tr '\0' '\n' < /proc/1/environ 2> /dev/null | grep -q '^container='; } \
+      && ! grep -qE 'VxID:[[:space:]]*[0-9]{2,}$' /proc/self/status 2> /dev/null; then
+      _DMI_RAW="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null)"
+    fi
   fi
-  # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  # Older dmidecode prints a banner and status lines on stdout ahead of the
+  # value, so keep the last line that is none of them.
+  _HOST_INFO="$(printf '%s\n' "${_DMI_RAW}" \
+    | grep -v '^# ' \
+    | grep -v '^SMBIOS .* present\.$' \
+    | grep -v '^Getting SMBIOS data ' \
+    | grep -v '^[[:space:]]*$' \
+    | tail -n1)"
+  # Amazon EC2 is the one manufacturer this refuses: it blocks the Devuan
+  # conversion BOA has to perform. Match the whole reading, as before, so an
+  # old dmidecode that prints a banner still matches.
+  if printf '%s\n' "${_DMI_RAW}" | grep -qi 'Amazon EC2'; then
     _VMFAMILY="AWS"
     echo "Not supported environment detected: ${_HOST_INFO}"
     echo "Please check https://docs.boa.io/self-hosting/before-you-install"
     echo "Bye!"
     _clean_pid_exit _check_manufacturer_compatibility_a
-  elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    echo "Mysterious environment: ${_HOST_INFO}"
-    echo "Please check https://docs.boa.io/self-hosting/before-you-install"
-    echo "Bye!"
-    _clean_pid_exit _check_manufacturer_compatibility_b
+  fi
+  if [ -z "${_HOST_INFO}" ]; then
+    echo "INFO: No DMI table here, system manufacturer unreadable, continuing"
   fi
 }
 
@@ -2311,6 +2380,10 @@ export _argQ="$4"
 _check_root_direct
 _set_tree_vars
 _if_display_help
+# Disabled here on purpose since 2024-09-08 (e89cd9007): an upgrade pass runs
+# on a host BOA already installed, and refusing it on a manufacturer string
+# would strand a live box. The definition earlier in this file is kept in step
+# with the copies in boa and the auto* drivers only so the family never drifts.
 ###_check_manufacturer_compatibility
 # A replication standby stays current -- system, stack, Percona and kernel
 # upgrades run here like on any BOA box -- but the Aegir master half of a
