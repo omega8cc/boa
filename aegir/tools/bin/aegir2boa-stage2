@@ -354,8 +354,16 @@ _alias_val() {
 
 # parse a drushrc option (xoct:224-233 pattern), sanitized by the caller
 _drushrc_val() {
-  grep "options\['$2'\] = " "$1/drushrc.php" 2>/dev/null \
-    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g" | head -1
+  # var_export() literal: a single-quoted string in which only the quote and
+  # the backslash are escaped, or a bare integer. Read exactly those forms,
+  # so the charset gates downstream judge the real value, not a mangled one.
+  local _v
+  _v=$(sed -n "s/^[[:space:]]*\$options\[\x27$2\x27\][[:space:]]*=[[:space:]]*\x27\(.*\)\x27;[[:space:]]*$/\1/p" "$1/drushrc.php" 2>/dev/null | head -1)
+  if [[ -n "${_v}" ]]; then
+    printf '%s' "${_v}" | sed -e 's/\\\x27/\x27/g' -e 's/\\\\/\\/g'
+    return 0
+  fi
+  sed -n "s/^[[:space:]]*\$options\[\x27$2\x27\][[:space:]]*=[[:space:]]*\(-\{0,1\}[0-9]\{1,\}\);[[:space:]]*$/\1/p" "$1/drushrc.php" 2>/dev/null | head -1
 }
 
 # Drupal major of a platform tree

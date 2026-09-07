@@ -235,9 +235,20 @@ _migrate_sites() {
         echo "site ${_Dom} clean _DBN is ${_DBN}"
       fi
       if [ "${_cmd}" = "import" ]; then
-        _DBP=`cat ${_Dir}/drushrc.php | grep "options\['db_passwd'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-        echo "site ${_Dom} raw _DBP is ${_DBP}"
-        _DBP=${_DBP//[^a-zA-Z0-9_]/}
+        # drushrc.php is written with var_export(): the value is a single-quoted
+        # literal in which only the quote and the backslash are escaped. Read
+        # that literal back, then keep only what the generated-password charset
+        # admits: a password carrying anything else cannot be re-created below
+        # without corrupting it, so it is refused loudly (the empty value takes
+        # the existing skip path) instead of being rewritten into a different
+        # password.
+        _DBP_LIT=$(sed -n 's/^[[:space:]]*\$options\[\x27db_passwd\x27\][[:space:]]*=[[:space:]]*\x27\(.*\)\x27;[[:space:]]*$/\1/p' ${_Dir}/drushrc.php 2>/dev/null \
+          | head -1 | sed -e 's/\\\x27/\x27/g' -e 's/\\\\/\\/g')
+        _DBP=${_DBP_LIT//[^a-zA-Z0-9_]/}
+        if [ "${_DBP}" != "${_DBP_LIT}" ]; then
+          echo "ALRT: site ${_Dom} db_passwd carries characters outside the generated-password charset; not re-created here, fix its credentials by hand"
+          _DBP=""
+        fi
         echo "site ${_Dom} clean _DBP is ${_DBP}"
         if [ -e "${_Vhd}" ]; then
           mv -f ${_Vhd} ${_Vht}
