@@ -43,6 +43,7 @@ _PHP_FPM_MEMORY_LIMIT_FORCE=AUTO #-- Force per-pool memory_limit MB (min 64) or 
 _PHP_FPM_RAM_PCT=AUTO #------------- Percent of RAM for dedicated FPM (AUTO = 50)
 _PHP_FPM_CPU_FACTOR=AUTO #---------- CPU cores multiplier cap, dedicated (AUTO = 8)
 _PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
+_LTD_PLATFORM_CLIENTS="" #------ Client dirs that get a platform-level -dev shell account
 _STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (or YES), or myisam
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
