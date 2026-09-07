@@ -5788,36 +5788,87 @@ _xmass_purge_target_only_accounts() {
   # never existed, and it comes out of cutover as a broken leftover (panel
   # 500, no sites, no DB user). A golden-master clone carries exactly such a
   # satellite. A site-less one is a leftover by definition and is purged
-  # here with BOA's own verb (log/CANCELLED + boa cleanup purge, which parks
-  # everything under /var/backups/zombie/purged/<oN>/ and proves nginx still
-  # loads); one that carries sites is refused, it is not ours to decide.
-  local _t="$1" _tgt_accts _a _nsites _out
+  # here with BOA's own verb (log/CANCELLED + boa cleanup purge, which
+  # removes the account's backups, distro, src, static and undo trees
+  # outright where a static tree exists, parks whatever else the home holds
+  # under /var/backups/zombie/purged/<oN>/ and proves nginx still loads);
+  # one that carries sites is refused, it is not ours to decide. "Site-less"
+  # is read from three independent sources on the target, all of which must
+  # be empty: the registered site aliases (context_type site; the account's
+  # own control panel, identified by its site_path, set aside), the sites/
+  # directory of every registered platform (root from the platform aliases,
+  # which also reaches a platform behind a symlink), and a sweep for site
+  # directories under distro/, static/, platforms/ and aegir/ to the depth
+  # BOA itself builds (a directory carrying a dot directly under a sites/
+  # directory; the panel's own directory set aside by name, which also
+  # skips the copies left behind by earlier panel upgrades). An inventory
+  # that cannot be read is never treated as empty.
+  local _t="$1" _tgt_accts _a _inv _rmt _out _nA _nR _nD
   _tgt_accts=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
     "for _d in /data/disk/o*; do [ -f \"\${_d}/.drush/hostmaster.alias.drushrc.php\" ] && basename \"\${_d}\"; done" 2>/dev/null)
+  _rmt=$(cat <<'INVSH'
+_H=/data/disk/__ACCT__
+_P=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_H}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null | head -1)
+_PB=$(basename "${_P}" 2>/dev/null)
+_A=0
+for _f in "${_H}"/.drush/*.alias.drushrc.php; do
+  [ -e "${_f}" ] || continue
+  grep -q "'context_type' => 'site'" "${_f}" || continue
+  _sp=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_f}" | head -1)
+  [ -n "${_P}" ] && [ "${_sp}" = "${_P}" ] && continue
+  _A=$((_A + 1))
+done
+_R=0
+for _f in "${_H}"/.drush/platform_*.alias.drushrc.php; do
+  [ -e "${_f}" ] || continue
+  _r=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_f}" | head -1)
+  [ -n "${_r}" ] && [ -d "${_r}/sites" ] || continue
+  _n=$(find "${_r}/sites" -mindepth 1 -maxdepth 1 -xtype d -name '*.*' ! -name "${_PB:-/}" 2>/dev/null | wc -l | tr -d ' ')
+  _R=$((_R + ${_n:-0}))
+done
+_D=$(find "${_H}/distro" "${_H}/static" "${_H}/platforms" "${_H}/aegir" -maxdepth 8 -xtype d \
+  -regextype posix-egrep -regex '.*/sites/[^/]+\.[^/]+' ! -name "${_PB:-/}" 2>/dev/null | wc -l | tr -d ' ')
+echo "SITES=${_A}/${_R}/${_D}"
+INVSH
+)
   for _a in ${_tgt_accts}; do
     case " ${_ELIGIBLE_ACCOUNTS} " in
       *" ${_a} "*) continue ;;
     esac
-    _nsites=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
-      "ls -d /data/disk/${_a}/distro/*/*/sites/*.* 2>/dev/null | grep -v -E '/sites/(all|default)\$' | wc -l" 2>/dev/null | tr -d ' ')
-    if [ "${_nsites}" != "0" ]; then
-      if [ "${_XMASS_ALLOW_TARGET_ONLY}" = "YES" ]; then
-        _alrt "target ${_t} account ${_a} is not on this source and carries ${_nsites} site(s);"
-        _alrt "kept on _XMASS_ALLOW_TARGET_ONLY=YES -- it will be BROKEN after init (no panel DB"
-        _alrt "in the source's datadir) and must be dealt with after cutover"
-        continue
-      fi
-      _die "target ${_t} account ${_a} is not on this source and carries ${_nsites:-?} site(s):" \
-           " not a clone leftover, refusing to purge it. Move or remove it there first" \
-           " (touch /data/disk/${_a}/log/CANCELLED, then 'boa cleanup purge ${_a} noscreen')," \
-           " or set _XMASS_ALLOW_TARGET_ONLY=YES to keep it knowingly"
-    fi
+    _inv=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "${_rmt//__ACCT__/${_a}}" 2>/dev/null \
+      | grep "^SITES=" | tail -1)
+    case "${_inv}" in
+      SITES=0/0/0) ;;
+      SITES=*/*/*)
+        _nA="${_inv#SITES=}"; _nD="${_nA##*/}"; _nR="${_nA#*/}"; _nR="${_nR%/*}"; _nA="${_nA%%/*}"
+        if [ "${_XMASS_ALLOW_TARGET_ONLY}" = "YES" ]; then
+          _alrt "target ${_t} account ${_a} is not on this source and carries sites (${_nA} registered, ${_nR} on registered platforms, ${_nD} on disk);"
+          _alrt "kept on _XMASS_ALLOW_TARGET_ONLY=YES -- it will be BROKEN after init (no panel DB"
+          _alrt "in the source's datadir) and must be dealt with after cutover"
+          continue
+        fi
+        _die "target ${_t} account ${_a} is not on this source and carries sites" \
+             " (${_nA} registered, ${_nR} on registered platforms, ${_nD} on disk): not a clone leftover," \
+             " refusing to purge it. Move or remove it there first (touch /data/disk/${_a}/log/CANCELLED," \
+             " then 'boa cleanup purge ${_a} noscreen'), or set _XMASS_ALLOW_TARGET_ONLY=YES to keep it knowingly"
+      ;;
+      *)
+        if [ "${_XMASS_ALLOW_TARGET_ONLY}" = "YES" ]; then
+          _alrt "target ${_t} account ${_a} is not on this source and its site inventory could not be read;"
+          _alrt "kept on _XMASS_ALLOW_TARGET_ONLY=YES -- it will be BROKEN after init and must be dealt with after cutover"
+          continue
+        fi
+        _die "target ${_t} account ${_a} is not on this source and its site inventory could not be" \
+             " read over ssh (got '${_inv:-nothing}'): refusing to purge on an unknown." \
+             " Check the account there and re-run prep-target"
+      ;;
+    esac
     _info "  target-only account ${_a} has no sites (clone leftover): purging it with boa cleanup ..."
     _out=$(ssh -o ConnectTimeout=20 -o BatchMode=yes root@"${_t}" \
       "touch /data/disk/${_a}/log/CANCELLED && boa cleanup detect noscreen > /dev/null 2>&1; boa cleanup purge ${_a} noscreen 2>&1 | tail -4; [ ! -d /data/disk/${_a} ] && nginx -t > /dev/null 2>&1 && echo PURGE_OK" 2>/dev/null)
     case "${_out}" in
       *PURGE_OK*)
-        _info "  ${_a}: purged on ${_t} (parked under /var/backups/zombie/purged/${_a}/), nginx configtest OK"
+        _info "  ${_a}: purged on ${_t} (backups, distro, src, static and undo trees removed; the rest of the home parked under /var/backups/zombie/purged/${_a}/), nginx configtest OK"
       ;;
       *)
         _die "purging target-only account ${_a} on ${_t} did not complete:" \
