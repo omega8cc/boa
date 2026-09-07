@@ -511,9 +511,37 @@ if [[ "${_ARR}" =~ " aliases" ]] || [[ "${_ARR}" =~ " sa" ]]; then
   fi
 fi
 
+# "-c " is stripped from the drush arguments (2023, drush over SSH). It used
+# to be stripped from the WHOLE line, which also ate the -c of a grep behind
+# a pipe (drush8 status | grep -c x printed the lines, not a count); only the
+# drush segment, up to the first pipe, is touched now.
 if [[ "${_ARR}" =~ "-c " ]]; then
-  _R_M=`echo -n "${_ARR}" | grep -o "\-c "`
-  _ARR=`echo ${_ARR} | sed "s/\${_R_M}//g"`
+  _ARR_HEAD="${_ARR%%|*}"
+  _ARR_TAIL="${_ARR#"${_ARR_HEAD}"}"
+  _ARR="${_ARR_HEAD//-c /}${_ARR_TAIL}"
+fi
+
+# A tenant must not hand drush a config file: --config (and its short form
+# -c) loads a drushrc.php with include_once, i.e. runs the tenant's own PHP
+# as drush and smuggles every option the forbidden list refuses on the
+# command line (measured 2026-09-07: drush8 --config=<tenant file> status
+# executed the file through the real login chain). Refused before any
+# dispatch for the lshell identities; the Aegir backend and root are not
+# tenants and keep the option. The test reads the drush segment as typed,
+# up to the first pipe, so a -c behind a pipe (grep -c) is not a hit.
+_drush_config_refused() {
+  local _seg="${1%%|*}"
+  [[ "${_seg}" =~ (^|[[:space:]])--config(=|[[:space:]]|$) ]] && return 0
+  [[ "${_seg}" =~ (^|[[:space:]])-c([[:space:]]|$) ]] && return 0
+  return 1
+}
+if [[ "${_ARGS}" =~ "drush" ]] \
+  && { [[ $(whoami) == *.ftp ]] || _in_grp lshellg || _in_grp ltd-shell || _in_grp ltd-shell-more; } \
+  && _drush_config_refused "${_ARGS}"; then
+  echo
+  echo " This drush command is not available (D)"
+  echo
+  exit 0
 fi
 
 if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
