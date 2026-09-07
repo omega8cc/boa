@@ -1345,7 +1345,7 @@ _apt_sources_list_verify_or_canonical() {
   if _apt_sources_list_is_valid "${_aptLiSys}"; then
     return 0
   fi
-  _msg "OOPS: Generated ${_aptLiSys} is missing or invalid; enforcing canonical mirror"
+  _msg "NOTE: Generated ${_aptLiSys} is missing or invalid; enforcing canonical mirror"
   _apt_sources_list_write_canonical
 }
 
