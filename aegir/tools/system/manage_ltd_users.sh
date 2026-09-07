@@ -818,20 +818,42 @@ _kill_zombies() {
   for _Existing in `ls /home | cut -d '/' -f1 | sort`; do
     _isTest=${_Existing//[^a-z0-9]/}
     if [ ! -z "${_isTest}" ]; then
-      _SEC_IDY=$(id -nG ${_Existing} 2>&1)
-      if [[ "${_SEC_IDY}" =~ "No such user" ]] \
-        && [ ! -z "${_Existing}" ] \
-        && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
-        && [[ ! "${_Existing}" =~ ".web"($) ]]; then
-        _disable_chattr ${_Existing}
-        [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-        mv /home/${_Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}
-        _usrParent=$(echo ${_Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-        if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
-          rm -f /home/${_usrParent}.ftp/users/${_Existing}
+      # An orphan home is one with no passwd entry at all. The old test read
+      # id(1)'s error text for "No such user", but id reports it lowercase
+      # ("no such user") and =~ is case sensitive, so this arm never ran on any
+      # box. getent's EXIT STATUS is the test: no message to parse, no locale
+      # to depend on.
+      if ! getent passwd "${_Existing}" > /dev/null 2>&1; then
+        _usrParent=$(echo "${_Existing}" | cut -d. -f1 | awk '{ print $1}' 2>&1)
+        # Scoped hard, because repairing the test wakes this arm on every box
+        # at once: move only a real directory whose name carries the
+        # <instance>.<client> shape, whose instance user exists and owns a disk
+        # root. The old guard asked only that the name reduce to a non-empty
+        # [a-z0-9] string, which lost+found also satisfies. The client half
+        # allows a hyphen so a reserved-token account name stays sweepable.
+        if [ -d "/home/${_Existing}" ] \
+          && [ ! -L "/home/${_Existing}" ] \
+          && [[ "${_Existing}" =~ ^[a-z0-9]+\.[a-z0-9-]+$ ]] \
+          && [[ ! "${_Existing}" =~ \.ftp$ ]] \
+          && [[ ! "${_Existing}" =~ \.web$ ]] \
+          && [ ! -z "${_usrParent}" ] \
+          && getent passwd "${_usrParent}" > /dev/null 2>&1 \
+          && [ -d "/data/disk/${_usrParent}" ]; then
+          _disable_chattr "${_Existing}"
+          [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
+          mv "/home/${_Existing}" "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"
+          if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
+            rm -f "/home/${_usrParent}.ftp/users/${_Existing}"
+          fi
+          echo "Zombie from home.dir ${_Existing} killed"
+          # The per-pass log under /var/backups/ltd is erased on every release,
+          # and this arm moves a tenant's home aside on an arm that has never
+          # run before: record it where it survives.
+          [ -d /var/log/boa ] || mkdir -p /var/log/boa
+          echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; moved to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}" \
+            >> /var/log/boa/manage_ltd.incident.log
+          echo
         fi
-        echo Zombie from home.dir ${_Existing} killed
-        echo
       fi
     fi
   done
@@ -967,6 +989,15 @@ _manage_sec_user_drush_aliases() {
 #
 # OK, create user.
 _ok_create_user() {
+  # Reset the minted-password carriers on EVERY entry, not only on the branch
+  # that mints one. _manage_sec resets _usrLtd and _ALLD_DIR between accounts
+  # but never these, and _manage_user does not reset them between instances
+  # either, so a run that skips useradd because the home already exists would
+  # otherwise still hold the PREVIOUS account's password -- emit a stanza for
+  # an account that has no passwd entry and write that password into this
+  # account's store, across instances. Proven on a rig 2026-09-07.
+  _ESC_LUPASS=""
+  _LEN_LUPASS=0
   _usrLtdTest=${_usrLtd//[^a-z0-9]/}
   if [ ! -z "${_usrLtdTest}" ]; then
     _ADMIN="${_USER}.ftp"
@@ -1001,8 +1032,6 @@ _ok_create_user() {
       # in every case -- it is the binary execute ACL, lshell included.
       usermod -aG users ${_usrLtd}
       adduser ${_usrLtd} ${_WEBG}
-      _ESC_LUPASS=""
-      _LEN_LUPASS=0
       # A migration carries /home/<admin>/users/<name> from the source box
       # before this user exists here; honour that stored password so the
       # client's sub-account credential survives the move, instead of
