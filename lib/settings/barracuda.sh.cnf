@@ -1886,24 +1886,6 @@ _extract_archive_pre() {
 }
 
 
-###
-### Download and extract archive from dev/src mirror
-###
-_get_dev_src_pre() {
-  if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: _get_dev_src_pre in barracuda"
-  fi
-  if [ ! -z "${1}" ]; then
-    curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
-    if [ -e "$1" ]; then
-      _extract_archive_pre "$1"
-    else
-      echo "OOPS: $1 failed download from ${_urlDev}/src/$1"
-    fi
-  fi
-}
-
-
 #
 # Extract archive.
 _extract_archive() {
