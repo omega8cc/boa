@@ -40,14 +40,20 @@ _grp_set_is() {
   return 0
 }
 
+# lshell applies its noexec layer in the command line itself: every segment
+# outside allowed_shell_escape arrives as  LD_PRELOAD=<sudo_noexec.so> cmd ...
+# (an assignment prefix dash applies to that one command), so the text below
+# is handed to dash exactly as received. A branch here used to strip
+# "LD_PRELOAD...so" out of the line for ltd-shell-more members and exec the
+# rest straight into dash. It was written for the pre-0.10 lshell that
+# prepended the preload to the command text through its alias table; 0.10
+# moved it into the environment and 0.11 into the line per segment, so on
+# the fleet it could only fire on a member typing sudo_noexec.so into a
+# line (skipping this function's option parsing and argv[0] normalisation,
+# and re-running the line through an unquoted echo, word-split and
+# glob-expanded), and with the prefix in the line it stripped the layer
+# itself for that group (measured: every exec shape escaped). It is gone.
 _forward_to_dash() {
-  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && _in_grp ltd-shell-more; then
-    ### echo FWD 0 DIRECT
-    _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
-    ### echo _R_M is ${_R_M}
-    exec /bin/dash -c "${_R_M}"
-    exit 0
-  fi
   # Path to the underlying shell (dash in this case)
   _shell="/bin/dash"
   # Name under which the shell should think it was invoked
@@ -231,11 +237,15 @@ if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
   ### echo _ARGS CLEAN is ${_ARGS}
 fi
 
+# The sudo test below is a WORD test: since lshell 0.11.8 a tenant line can
+# carry LD_PRELOAD=<sudo_noexec.so path> on its non-escape segments (drush8
+# status | LD_PRELOAD=/usr/libexec/sudo/sudo_noexec.so grep x), and a bare
+# substring match on "sudo" sent every such line around this block.
 if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "git" ]] \
   && [[ ! "${_ARGS}" =~ "cd " ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
-  && [[ ! "${_ARGS}" =~ "sudo" ]]; then
+  && [[ ! "${_ARGS}" =~ (^|[[:space:]])sudo([[:space:]]|$) ]]; then
   _ARR=
   if [[ "${_ARGS}" =~ "/vendor/drush/drush/drush.php " ]]; then
     _R_M=`echo -n ${_ARGS}  | grep -o ".*/vendor/drush/drush/drush.php"`
@@ -273,86 +283,17 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "drush " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush"`
-    else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush"`
-    fi
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "drush8 " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush8"`
-    else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush8"`
-    fi
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "drush10 " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush10"`
-    else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush10"`
-    fi
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "drush11 " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush11"`
-    else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush11"`
-    fi
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
+  ### Absolute launchers come BEFORE the bare-verb branches below. Those
+  ### match "drush " anywhere in the line and then strip EVERY "drush" with
+  ### sed, so a launcher path was mangled whenever an argument also carried
+  ### the bare word: provision's own `cache-clear drush` (run from every
+  ### hostmaster site verify) became "php /var/aegir//.php ... cache-clear"
+  ### and was re-dispatched as "php <drush.php> php ...", which drush parses
+  ### as the `php` alias of core-cli -- fatal on PHP 8 (DRUPAL_ROOT undefined).
+  ### Account launchers survived only through the _OCTO_SYS_ARR path further
+  ### down; the master's /var/aegir/drush/drush.php and the global
+  ### /opt/tools/drush/N launcher had no such path and failed every master
+  ### site verify once /bin/sh became this wrapper.
   elif [[ "${_ARGS}" =~ "php /opt/tools/" ]]; then
     _R_M=`echo -n ${_ARGS} | grep -o "php /opt/tools/drush/.*/drush/drush.php"`
     ### echo _R_M is ${_R_M}
@@ -368,7 +309,7 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _ARR+=("$arg") ;;
-	  esac
+      esac
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "php /data/disk/" ]]; then
@@ -386,7 +327,7 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _ARR+=("$arg") ;;
-	  esac
+      esac
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ php\ /mnt/.*/data/disk/ ]]; then
@@ -404,7 +345,108 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _ARR+=("$arg") ;;
-	  esac
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "php /var/aegir/drush/drush.php " ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /var/aegir/drush/drush.php"`
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "drush " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush" | head -1`
+    else
+      # the token once: a drush command line names drush several times
+      # (the launcher path, the alias, an argument), grep -o printed each,
+      # and the multi-line token broke the sed below on every such call
+      _R_M=`echo -n ${_ARGS}  | grep -o "drush" | head -1`
+    fi
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "drush8 " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush8" | head -1`
+    else
+      _R_M=`echo -n ${_ARGS}  | grep -o "drush8" | head -1`
+    fi
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "drush10 " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush10" | head -1`
+    else
+      _R_M=`echo -n ${_ARGS}  | grep -o "drush10" | head -1`
+    fi
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "drush11 " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush11" | head -1`
+    else
+      _R_M=`echo -n ${_ARGS}  | grep -o "drush11" | head -1`
+    fi
+    ### echo _R_M is ${_R_M}
+    if [ -n "${_R_M}" ]; then
+      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    else
+      _CLR=
+    fi
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
     done
     ### echo _ARR is ${_ARR}
   fi
@@ -494,7 +536,7 @@ if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
       case ${_R_M} in
         $arg\ * | *\ $arg | *\ $arg\ *) ;;
         *) _OCTO_SYS_ARR+=("$arg") ;;
-	  esac
+      esac
     done
     ### echo _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
   fi
@@ -559,15 +601,38 @@ export USER=${USER}
 ### echo 9 is $9
 
 # Check PHP CLI version defined.
+#
+# Selection for an account identity, in this order:
+#   1. cli.info in ~/static/control -- read here directly, the same way the
+#      phpNN.info instant switches are, so it applies to the next command;
+#   2. the phpNN.info instant switches, layered on top below;
+#   3. /usr/bin/php when neither names an installed version.
+# The drush.php shebang pin in ~/tools/drush is no longer read for an
+# account. It is a copy the ltd worker derives from cli.info minutes later,
+# and reading it ran as the calling identity inside a tree a tenant shell is
+# not guaranteed to be able to open (the lshell Landlock domain covers
+# static, distro, clients and backups, not tools): a refused read looked
+# like "no pin", so drush and composer fell to the box default while the
+# markers, tested by stat in static/control, kept working. static/control is
+# the tenant's own tree in every shell, so the value comes from there, with
+# the same two-digit + installed-binary validation the markers get; anything
+# else in the file, or no file, means the box default until the worker
+# rewrites it. The master keeps its own read of /var/aegir/drush/drush.php:
+# it has no cli.info, and that shebang is where its pin lives.
 check_php_cli_version() {
   ### echo CHK start check_php_cli_version
+  _PHP_CLI=
   if [ "${HOME}" = "/var/aegir" ] && [ -f "/var/aegir/drush/drush.php" ]; then
     _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
   else
-    if [ -f "/data/disk/${_Y_USR}/tools/drush/drush.php" ]; then
-      _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
-    elif [ -f "/data/disk/${_Y_USR}/static/control/cli.info" ]; then
-      _PHP_CLI="php$(tr -d '.\n' < /data/disk/${_Y_USR}/static/control/cli.info)"
+    _CLI_INFO="/data/disk/${_Y_USR}/static/control/cli.info"
+    if [ -f "${_CLI_INFO}" ]; then
+      _CLI_VRN=$(head -c 8 "${_CLI_INFO}" 2> /dev/null | tr -cd '0-9')
+      case "${_CLI_VRN}" in
+        56|70|71|72|73|74|80|81|82|83|84|85)
+          [ -x "/opt/php${_CLI_VRN}/bin/php" ] && _PHP_CLI="php${_CLI_VRN}"
+          ;;
+      esac
     fi
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}

@@ -40,6 +40,91 @@ _acct_group() {
   echo "${_g}"
 }
 
+# One channel for anything this pass has to say to the operator: a dated line
+# in the durable incident log, the pass log, and the same text mailed once a
+# day per condition unless _INCIDENT_REPORT is OFF. The box config is read
+# with grep, never sourced: this pass carries live loop state (_USER, _usrLtd,
+# _ALLD_DIR, _ESC_LUPASS) that sourcing the config would silently overwrite
+# mid-iteration.
+# $1 = rate-limit key ("" mails every pass), $2 = subject, $3 = detail
+_ltd_notice() {
+  local _key="${1}"
+  local _sub="${2}"
+  local _dtl="${3}"
+  local _stamp=""
+  local _mail=""
+  local _rprt=""
+  local _seen=0
+  mkdir -p /var/log/boa 2>/dev/null
+  echo "ALRT: ${_sub}${_dtl:+: ${_dtl}}"
+  echo "$(date) ${_sub}${_dtl:+: ${_dtl}}" \
+    >> /var/log/boa/manage_ltd.incident.log
+  if [ -n "${_key}" ]; then
+    _key="${_key//[^a-zA-Z0-9._-]/}"
+    _stamp="/var/log/boa/manage-ltd-${_key}.alerted"
+    _seen=$(stat -c %Y "${_stamp}" 2>/dev/null)
+    _seen=${_seen:-0}
+    if [ "$(( $(date +%s) - _seen ))" -lt 86400 ]; then
+      return 0
+    fi
+    touch "${_stamp}"
+  fi
+  _rprt=$(grep -m1 -iE "^[[:space:]]*(export[[:space:]]+)?_INCIDENT_REPORT=" \
+    /root/.barracuda.cnf 2>/dev/null | cut -d= -f2- | tr -cd 'A-Za-z')
+  _rprt="${_rprt^^}"
+  [ "${_rprt}" = "NO" ] && _rprt="OFF"
+  [ "${_rprt}" = "OFF" ] && return 0
+  _mail=$(grep -m1 -iE "^[[:space:]]*(export[[:space:]]+)?_MY_EMAIL=" \
+    /root/.barracuda.cnf 2>/dev/null | cut -d= -f2- | tr -d "\"' \\\\" | tr -d '\n')
+  [ -n "${_mail}" ] || return 0
+  [[ "$(s-nail -V 2>&1)" =~ "built for Linux" ]] || return 0
+  {
+    echo "${_sub} on ${_hName}"
+    echo
+    [ -n "${_dtl}" ] && echo "${_dtl}"
+    echo
+    echo "Logged to /var/log/boa/manage_ltd.incident.log"
+    echo
+    echo "--"
+    echo "This email has been sent by the BOA limited shell users worker"
+  } | s-nail -s "ALERT [${_hName}]: ${_sub}" ${_mail}
+}
+
+# Section headers that appear more than once in a generated lshell config.
+# lshell builds a strict ConfigParser and does not catch the duplicate-section
+# error its read() raises, so ONE repeated header refuses the WHOLE file and
+# every account on the box loses its shell -- not just the account named twice.
+# Headers are compared with trailing blanks trimmed, as the parser reads them.
+_ltd_conf_dup_sections() {
+  local _cnf="${1}"
+  [ -f "${_cnf}" ] || return 0
+  sed -e 's/[[:space:]]*$//' -e '/^\[/!d' "${_cnf}" | sort | uniq -d
+}
+
+# Keep only the LAST stanza of every repeated section, in place. That is the
+# precedence the satellite writer already uses when it re-emits an account (it
+# strips the existing section, then appends the fresh one), and the one the
+# account's own home follows: every client directory the pass visits re-points
+# ~/sites with ln -sfn, so the surviving stanza is the one whose client
+# directory the account is actually bound to when the pass ends.
+_dedup_ltd_conf_sections() {
+  local _cnf="${1}"
+  local _dup=""
+  [ -f "${_cnf}" ] || return 0
+  _dup=$(_ltd_conf_dup_sections "${_cnf}")
+  [ -n "${_dup}" ] || return 0
+  awk 'BEGIN { _keep = 1 }
+    { _hdr = $0; sub(/[[:space:]]*$/, "", _hdr) }
+    FNR == NR { if (_hdr ~ /^\[/) { _cnt[_hdr] += 1 } ; next }
+    _hdr ~ /^\[/ { _num[_hdr] += 1; _keep = (_num[_hdr] == _cnt[_hdr]) }
+    _keep' "${_cnf}" "${_cnf}" > "${_cnf}.dedup" \
+    && cat "${_cnf}.dedup" > "${_cnf}"
+  rm -f "${_cnf}.dedup"
+  _ltd_notice "dup-section" \
+    "repeated lshell sections collapsed to the last stanza in the generated config" \
+    "$(echo ${_dup} | tr '\n' ' ')"
+}
+
 # Passive-mirror tenant hold (2026-08-25 ruling: deny fully on standby).
 # A tenant login on a mirror is a WRITE channel into the synced trees --
 # credentials converge with the active BY DESIGN (.ssh synced, user store
@@ -703,7 +788,9 @@ _disable_chattr() {
 _kill_zombies() {
   for _Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
     _SEC_IDY=$(id -nG ${_Existing} 2>&1)
-    if [[ "${_SEC_IDY}" =~ "ltd-shell" ]] \
+    # Whole-word membership: a substring test also matches ltd-shell-more, the
+    # operator-only tier nothing automatic joins today.
+    if [[ " ${_SEC_IDY} " == *" ltd-shell "* ]] \
       && [ ! -z "${_Existing}" ] \
       && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
       && [[ ! "${_Existing}" =~ ".web"($) ]]; then
@@ -716,7 +803,8 @@ _kill_zombies() {
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-          pkill -9 -f gpg-agent
+          # only this user's agent: -f matched every gpg-agent on the box
+          id -u "${_Existing}" &> /dev/null && pkill -9 -u "${_Existing}" gpg-agent &> /dev/null
           _disable_chattr ${_Existing}
           rm -rf /home/${_Existing}/.gnupg
           deluser \
@@ -732,23 +820,85 @@ _kill_zombies() {
   for _Existing in `ls /home | cut -d '/' -f1 | sort`; do
     _isTest=${_Existing//[^a-z0-9]/}
     if [ ! -z "${_isTest}" ]; then
-      _SEC_IDY=$(id -nG ${_Existing} 2>&1)
-      if [[ "${_SEC_IDY}" =~ "No such user" ]] \
-        && [ ! -z "${_Existing}" ] \
-        && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
-        && [[ ! "${_Existing}" =~ ".web"($) ]]; then
-        _disable_chattr ${_Existing}
-        [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-        mv /home/${_Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}
-        _usrParent=$(echo ${_Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-        if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
-          rm -f /home/${_usrParent}.ftp/users/${_Existing}
+      # An orphan home is one with no passwd entry at all. The old test read
+      # id(1)'s error text for "No such user", but id reports it lowercase
+      # ("no such user") and =~ is case sensitive, so this arm never ran on any
+      # box. getent's EXIT STATUS is the test: no message to parse, no locale
+      # to depend on.
+      if ! getent passwd "${_Existing}" > /dev/null 2>&1; then
+        _usrParent=$(echo "${_Existing}" | cut -d. -f1 | awk '{ print $1}' 2>&1)
+        # Scoped hard, because repairing the test wakes this arm on every box
+        # at once: move only a real directory whose name carries the
+        # <instance>.<client> shape, whose instance user exists and owns a disk
+        # root. The old guard asked only that the name reduce to a non-empty
+        # [a-z0-9] string, which lost+found also satisfies. The client half
+        # allows a hyphen so a reserved-token account name stays sweepable.
+        # The mtime brake is the last of it, against a transient this arm cannot
+        # otherwise tell apart: a home staged by a migration before its account
+        # exists looks exactly like an orphan. xmass does not create one -- it
+        # stages sub-account .ssh under /var/backups/migrate-subuser-ssh
+        # precisely because the home is not there yet (xmass, the branch taken
+        # when the target has no such account) -- but this arm is newly
+        # destructive and must not race a path a later tool adds. An hour is
+        # nothing against an arm that has never run, and it is the same brake
+        # the ghost-revision reaper uses for the same reason.
+        if [ -d "/home/${_Existing}" ] \
+          && [ ! -L "/home/${_Existing}" ] \
+          && [[ "${_Existing}" =~ ^[a-z0-9]+\.[a-z0-9-]+$ ]] \
+          && [[ ! "${_Existing}" =~ \.ftp$ ]] \
+          && [[ ! "${_Existing}" =~ \.web$ ]] \
+          && [ ! -z "${_usrParent}" ] \
+          && getent passwd "${_usrParent}" > /dev/null 2>&1 \
+          && [ -d "/data/disk/${_usrParent}" ]; then
+          # The mtime brake alone does not hold: mv, cp -a, rsync -a and tar -xp
+          # all carry the source's mtime, so a home staged by any of them looks
+          # hours old the moment it lands (measured 2026-09-07). The clock that
+          # matters is how long THIS arm has seen the home without an account,
+          # so the first sighting only records a root-owned marker and the home
+          # moves on a later pass, once the marker is an hour old as well.
+          _ltd_orphan_seen="/var/backups/zombie/seen/${_Existing}"
+          if [ ! -e "${_ltd_orphan_seen}" ]; then
+            [ -d /var/backups/zombie/seen ] || mkdir -p /var/backups/zombie/seen
+            touch "${_ltd_orphan_seen}"
+          elif [ -z "$(find "/home/${_Existing}" -maxdepth 0 -mmin -60 2> /dev/null)" ] \
+            && [ -z "$(find "${_ltd_orphan_seen}" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
+            _disable_chattr "${_Existing}"
+            [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
+            # The per-pass log under /var/backups/ltd is erased on every release,
+            # and this arm moves a tenant's home aside on an arm that has never
+            # run before: record it where it survives, and record a failed move
+            # as what it is rather than as a move.
+            [ -d /var/log/boa ] || mkdir -p /var/log/boa
+            if mv "/home/${_Existing}" "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"; then
+              if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
+                rm -f "/home/${_usrParent}.ftp/users/${_Existing}"
+              fi
+              rm -f "${_ltd_orphan_seen}"
+              echo "Zombie from home.dir ${_Existing} killed"
+              echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; moved to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}" \
+                >> /var/log/boa/manage_ltd.incident.log
+            else
+              echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; mv to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing} FAILED, left in place" \
+                >> /var/log/boa/manage_ltd.incident.log
+            fi
+            echo
+          fi
         fi
-        echo Zombie from home.dir ${_Existing} killed
-        echo
       fi
     fi
   done
+  # A first-sighting marker outlives its reason once the account appears or the
+  # home goes away; drop it so a later home of the same name starts a new clock.
+  if [ -d "/var/backups/zombie/seen" ]; then
+    for _ltd_orphan_seen in /var/backups/zombie/seen/*; do
+      [ -e "${_ltd_orphan_seen}" ] || continue
+      _Existing=$(basename "${_ltd_orphan_seen}")
+      if getent passwd "${_Existing}" > /dev/null 2>&1 \
+        || [ ! -d "/home/${_Existing}" ]; then
+        rm -f "${_ltd_orphan_seen}"
+      fi
+    done
+  fi
 }
 #
 # Fix dot dirs.
@@ -881,6 +1031,15 @@ _manage_sec_user_drush_aliases() {
 #
 # OK, create user.
 _ok_create_user() {
+  # Reset the minted-password carriers on EVERY entry, not only on the branch
+  # that mints one. _manage_sec resets _usrLtd and _ALLD_DIR between accounts
+  # but never these, and _manage_user does not reset them between instances
+  # either, so a run that skips useradd because the home already exists would
+  # otherwise still hold the PREVIOUS account's password -- emit a stanza for
+  # an account that has no passwd entry and write that password into this
+  # account's store, across instances. Proven on a rig 2026-09-07.
+  _ESC_LUPASS=""
+  _LEN_LUPASS=0
   _usrLtdTest=${_usrLtd//[^a-z0-9]/}
   if [ ! -z "${_usrLtdTest}" ]; then
     _ADMIN="${_USER}.ftp"
@@ -897,19 +1056,24 @@ _ok_create_user() {
         # A user born on a held standby (users.txt arrives from the active
         # by sync) never gets a live shell, not even for one pass; record
         # it so promotion restores it like every other held tenant.
-        useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
         mkdir -p /var/log/boa 2>/dev/null
         grep -qxF "${_usrLtd}" /var/log/boa/standby-held-shells.txt 2>/dev/null \
           || echo "${_usrLtd}" >> /var/log/boa/standby-held-shells.txt
       elif [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-        useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
         echo "_usrLtdRoot is == ${_usrLtdRoot} == at _ok_create_user"
       else
-        useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r ${_usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r \
+          -g ${_usrGroup:-users} ${_usrLtd}
       fi
+      # The primary group is the account's own (-g above, users until the
+      # account carries its per-instance group); 'users' stays supplementary
+      # in every case -- it is the binary execute ACL, lshell included.
+      usermod -aG users ${_usrLtd}
       adduser ${_usrLtd} ${_WEBG}
-      _ESC_LUPASS=""
-      _LEN_LUPASS=0
       # A migration carries /home/<admin>/users/<name> from the source box
       # before this user exists here; honour that stored password so the
       # client's sub-account credential survives the move, instead of
@@ -991,9 +1155,13 @@ _ok_create_user() {
       fi
     fi
     # A migration stages a sub-account's SSH keys here because the home did
-    # not exist on this box yet; adopt them now that it does, once.
+    # not exist on this box yet; adopt them now that it does, once. Only for an
+    # account that exists: a home with no passwd entry (the create path with an
+    # existing home) must not consume the staged copy -- the chown below could
+    # not resolve the owner and the rm -rf would destroy the only copy.
     if [ -d "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" ] \
-      && [ -d "${_usrLtdRoot}" ]; then
+      && [ -d "${_usrLtdRoot}" ] \
+      && getent passwd "${_usrLtd}" > /dev/null 2>&1; then
       cp -af "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" "${_usrLtdRoot}/"
       # Group half derived, not the user name: no group named after a
       # sub-user is ever created, so that chgrp half always failed.
@@ -1008,6 +1176,59 @@ _ok_create_user() {
   fi
 }
 #
+# Change a sub-user's primary group without usermod's own recursive lchown of
+# the home tree (shadow chown_tree: full pathnames, stops at the first
+# immutable inode -- and these homes carry chattr +i -- with the passwd entry
+# already rewritten). The home field points at an empty root-owned staging
+# dir for that one call and is put back at once; the group on the files is
+# the alias-copy leg's business.
+_set_primary_group() {
+  local _u="$1" _g="$2" _h _stage=/var/backups/ltd/.pg-stage
+  _h=$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)
+  [ -n "${_h}" ] || return 1
+  mkdir -p "${_stage}" && chown root:root "${_stage}" && chmod 0700 "${_stage}"
+  # Recorded first (the same record instgrp keeps): a kill between the two
+  # usermod calls leaves the passwd home at the staging dir, and
+  # _repair_staged_homes puts it back on the next pass.
+  [ -d /var/log/boa ] || mkdir -p /var/log/boa
+  printf '%s\n' "${_h}" > "/var/log/boa/instgrp.home.${_u}"
+  usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
+  usermod -d "${_h}" "${_u}" > /dev/null 2>&1
+  rm -f "/var/log/boa/instgrp.home.${_u}"
+  [ "$(id -gn "${_u}" 2>/dev/null)" = "${_g}" ]
+}
+#
+# Any identity whose passwd home is a primary-group staging directory (this
+# worker's or instgrp's) was caught between the two usermod calls: put the
+# recorded home back, or the one the name implies. Every pass, first thing.
+_repair_staged_homes() {
+  local _s _u _want _rec
+  for _s in /var/backups/ltd/.pg-stage /root/.instgrp.home; do
+    for _u in $(getent passwd | awk -F: -v s="${_s}" '$6 == s { print $1 }'); do
+      _rec="/var/log/boa/instgrp.home.${_u}"
+      _want=""
+      [ -s "${_rec}" ] && _want=$(head -1 "${_rec}")
+      if [ -z "${_want}" ]; then
+        case "${_u}" in
+          *.*) _want="/home/${_u}" ;;
+          *)   _want="/data/disk/${_u}" ;;
+        esac
+      fi
+      [ -d "${_want}" ] || continue
+      usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+      if [ "$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)" = "${_want}" ]; then
+        echo "ALERT: ${_u} home field was left at ${_s} by an interrupted group move; restored to ${_want}"
+        # the per-pass log under /var/backups/ltd is erased on every release;
+        # an identity incident belongs in the durable incident log too
+        mkdir -p /var/log/boa 2>/dev/null
+        echo "$(date) LTD home repair: ${_u} home field was left at ${_s} by an interrupted group move; restored to ${_want}" \
+          >> /var/log/boa/manage_ltd.incident.log
+        rm -f "${_rec}"
+      fi
+    done
+  done
+}
+#
 # OK, update user.
 _ok_update_user() {
   _usrLtdTest=${_usrLtd//[^a-z0-9]/}
@@ -1020,6 +1241,33 @@ _ok_update_user() {
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
       _manage_sec_user_drush_aliases
       chmod 700 ${_usrLtdRoot}
+      # 'users' is the binary execute ACL (root:users 0750, lshell included):
+      # every sub-user must be LISTED in it, independently of its primary
+      # group. The test reads the group database -- id -nG would answer yes
+      # through the primary gid alone, and a later primary move would then
+      # drop the group. Repairs an already-stripped identity on every pass.
+      if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
+        usermod -aG users ${_usrLtd}
+      fi
+      # A sub-user still on the box-wide primary group while its account
+      # carries the per-instance group (born under an older worker, or the
+      # account converted since) cannot read its 0440 alias copies: align it,
+      # only once the explicit 'users' membership above is in place, and
+      # verified after the move.
+      if [ "${_usrGroup}" != "users" ] \
+        && [ "$(id -gn ${_usrLtd} 2>/dev/null)" != "${_usrGroup}" ] \
+        && getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
+        _set_primary_group ${_usrLtd} ${_usrGroup}
+        if id -nG ${_usrLtd} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+          echo "Sub-user ${_usrLtd} moved to primary group ${_usrGroup}"
+        else
+          _set_primary_group ${_usrLtd} users
+          echo "ALERT: ${_usrLtd} lost group users on the primary move, reverted to users"
+          mkdir -p /var/log/boa 2>/dev/null
+          echo "$(date) LTD primary move: ${_usrLtd} lost group users on the primary move, reverted to users" \
+            >> /var/log/boa/manage_ltd.incident.log
+        fi
+      fi
     fi
     _fix_dot_dirs
     rm -f ${_usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
@@ -1040,7 +1288,7 @@ _add_user_if_not_exists() {
       _manage_sec_user_drush_aliases
       _enable_chattr ${_usrLtd}
     elif [[ "${_ID_EXISTS}" =~ "${_usrLtd}" ]] \
-      && [[ "${_ID_SHELLS}" =~ "ltd-shell" ]]; then
+      && [[ " ${_ID_SHELLS} " == *" ltd-shell "* ]]; then
       echo "We will update user == ${_usrLtd} =="
       _disable_chattr ${_usrLtd}
       rm -rf /home/${_usrLtd}/drush-backups
@@ -1114,12 +1362,57 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
 done
 }
 #
+# Sub-account name for one client directory. The pass that creates the accounts
+# and the collision scan below must read a client directory identically, or the
+# scan would clear a name the pass then collides on -- so both go through here.
+_ltd_name_from_client_dir() {
+  local _dir="${1}"
+  local _nam=""
+  _nam=$(echo "${_dir}" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
+  _nam=${_nam//[^a-zA-Z0-9]/}
+  _nam=$(echo -n "${_nam}" | tr A-Z a-z 2>&1)
+  printf '%s\n' "${_nam}"
+}
+#
+# Two client directories that differ only in punctuation, case or a trailing
+# word collapse to ONE sub-account name, and both halves of the pass then emit
+# a stanza for it -- which the strict parser refuses, taking every shell on the
+# box down with it. The render side now collapses the repeat and the publish
+# side fails closed, so the box stays up; what remains is one account serving
+# two clients, and only renaming a client directory undoes that.
+#
+# Report it, never repair it here. Renaming the account would invalidate a login
+# the client already holds, dropping one would be an outage of its own, and
+# which of the two directories is the newcomer is not knowable from the listing
+# -- so the repair is the operator's, and this makes it visible and durable.
+_ltd_collision_scan() {
+  local _dir=""
+  local _nam=""
+  local _dup=""
+  local _hits=""
+  _dup=$(find ${_pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null \
+    | sort | while read -r _dir; do
+        _nam=$(_ltd_name_from_client_dir "${_dir}")
+        [ -n "${_nam}" ] && echo "${_nam}"
+      done | sort | uniq -d)
+  [ -n "${_dup}" ] || return 0
+  while read -r _nam; do
+    [ -n "${_nam}" ] || continue
+    _hits=$(find ${_pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null \
+      | sort | while read -r _dir; do
+          [ "$(_ltd_name_from_client_dir "${_dir}")" = "${_nam}" ] && echo "${_dir}"
+        done | tr '\n' ' ')
+    _ltd_notice "collide-${_USER}.${_nam}" \
+      "client directories collapse to one sub-account ${_USER}.${_nam}" \
+      "shared by: ${_hits}-- rename one client so the names differ by more than punctuation or case; until then the LAST directory listed owns both the shell paths and ~/sites, and the others are unreachable through that account"
+  done <<< "${_dup}"
+}
+#
 # Manage Secondary Users.
 _manage_sec() {
+_ltd_collision_scan
 for _Client in `find ${_pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
-  _usrLtd=$(echo ${_Client} | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
-  _usrLtd=${_usrLtd//[^a-zA-Z0-9]/}
-  _usrLtd=$(echo -n ${_usrLtd} | tr A-Z a-z 2>&1)
+  _usrLtd=$(_ltd_name_from_client_dir "${_Client}")
   if [ ! -z "${_usrLtd}" ]; then
     _usrLtd="${_USER}.${_usrLtd}"
     echo "_usrLtd is == ${_usrLtd} == at _manage_sec"
@@ -1800,11 +2093,16 @@ _satellite_remove_web_user() {
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
-      chattr -i /home/${_WEB}/
+      # "clean" also runs for a web user that never existed (every new
+      # per-version pool): nothing to unlock there, and chattr says so on
+      # stderr once per installed PHP into this worker's log
+      [ -d "/home/${_WEB}/" ] && chattr -i /home/${_WEB}/
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
       fi
-      pkill -9 -f gpg-agent
+      # only this user's agent (none for a user that never existed): -f
+      # matched every gpg-agent on the box
+      id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
@@ -1840,6 +2138,9 @@ _site_socket_inc_gen() {
   _preFpm="${_dscUsr}/static/control/.prev-multi-fpm.info"
   _mltNgx="${_dscUsr}/static/control/.multi-nginx-fpm.pid"
   _fpmPth="${_dscUsr}/config/server_master/nginx/post.d"
+  # per account: an earlier account's forced regeneration must not carry
+  # over to every account after it in the same pass
+  _mltFpmUpdateForce=NO
 
   _hmFront=$(cat ${_dscUsr}/log/domain.txt 2>&1)
   _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
@@ -1848,19 +2149,35 @@ _site_socket_inc_gen() {
   _hmstCli=$(cat ${_dscUsr}/log/cli.txt 2>&1)
   _hmstCli=$(echo -n ${_hmstCli} | tr -d "\n" 2>&1)
 
-  if [ ! -e "${_hmstAls}" ]; then
-    ln -sfn ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${_hmstAls}
-  fi
+  # The <panel-fqdn> symlink to hostmaster.alias.drushrc.php was a crutch for
+  # accounts whose hostmaster internals an old migration had left half
+  # replaced; it also made the panel look like a site to anything that keys
+  # on <fqdn>.alias files. Purge it here, in the regular pass, so an account
+  # that still depends on it breaks visibly and is repaired BEFORE its next
+  # migration instead of carrying the defect to a new box. Matched by shape,
+  # not by the current panel name: a renamed box keeps the old-name symlink
+  # too, and it is the same crutch. A real alias file is left alone.
+  for _hmstLnk in ${_dscUsr}/.drush/*.alias.drushrc.php; do
+    [ -L "${_hmstLnk}" ] || continue
+    [ "$(readlink "${_hmstLnk}" 2>/dev/null)" = "${_dscUsr}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    rm -f ${_hmstLnk}
+  done
 
   _desymlink_planted "${_mltFpm}"
   _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm} 2>&1)
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
     || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
-    sed -i "s/^${_hmFront} .*//g" ${_mltFpm}
-    wait
-    sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
-    wait
+    # a young account has no multi-fpm.info yet (the agents pass writes it
+    # later); the two seds below have nothing to clean there and only left
+    # "sed: can't read" in this worker's log every three minutes until it
+    # appeared
+    if [ -f "${_mltFpm}" ]; then
+      sed -i "s/^${_hmFront} .*//g" ${_mltFpm}
+      wait
+      sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
+      wait
+    fi
     _PHP_V="85 84 83 82 81 74"
     _phpFnd=NO
     for e in ${_PHP_V}; do
@@ -1878,11 +2195,14 @@ _site_socket_inc_gen() {
         elif [ "${e}" = 74 ]; then
           _phpDot=7.4
         fi
-        echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
+        # static/control itself is created later in this pass (behind the
+        # ftp home's clients link); until then there is nowhere to write
+        [ -d "${_dscUsr}/static/control" ] && echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
         _phpFnd=YES
       fi
     done
-    sed -i "s/ *$//g; /^$/d" ${_mltFpm}
+    # still absent when no PHP binary was found above and nothing appended
+    [ -f "${_mltFpm}" ] && sed -i "s/ *$//g; /^$/d" ${_mltFpm}
     wait
     touch ${_dscUsr}/log/no-lock-aegir-fpm.txt
     rm -f ${_dscUsr}/log/locked-aegir-fpm.txt
@@ -2490,6 +2810,7 @@ _manage_site_drush_alias_mirror() {
 #
 # Manage Primary Users.
 _manage_user() {
+  _repair_staged_homes
   for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
@@ -2499,6 +2820,66 @@ _manage_user() {
       _mntPoint=""
       _USER=""
       _USER=$(echo ${_pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      # The nightly's per-account pass holds this account's home unlocked for
+      # minutes and relocks it at its end; a rebuild in flight here would meet
+      # that relock half way (EPERM on every write). Leave the account to the
+      # next pass while the marker names a live pass (a dead pid is a killed
+      # pass and its marker goes) -- but its lshell stanzas are emitted from
+      # the body skipped here, and the conf built this pass replaces the live
+      # one on any difference, so carry them over from the live file as they
+      # stand or its users would drop to [default] until the hold clears.
+      if [ -e "/run/night-account-${_USER}.pid" ]; then
+        if kill -0 "$(cat /run/night-account-${_USER}.pid 2>/dev/null)" 2>/dev/null; then
+          echo "skipping ${_USER}: the nightly per-account pass holds it"
+          echo >> ${_THIS_LTD_CONF}
+          awk -v u="${_USER}" '/^\[/ { p = ($0 ~ "^\\[" u "\\.") } p' /etc/lshell.conf >> ${_THIS_LTD_CONF}
+          continue
+        fi
+        rm -f /run/night-account-${_USER}.pid
+      fi
+      # Identity heal: an account whose marker records THIS box's group but
+      # whose backend or shell identity fell back to the box-wide primary
+      # group (a hand usermod, a restored passwd) makes _acct_group fail open
+      # to 'users' and every root writer re-flatten the tree while the marker
+      # still reads converted. Move it back, 'users' listed first, as for the
+      # sub-users below.
+      # Converted = the group exists and the marker records it, or the backend
+      # or shell identity already carries it as primary (a born-converted
+      # account has no marker until its first upgrade).
+      _igMark="${_pthParentUsr}/log/instance-group.txt"
+      _igGid=$(getent group "${_USER}" 2>/dev/null | cut -d: -f3)
+      _igConv=NO
+      if [ -n "${_igGid}" ]; then
+        if [ -f "${_igMark}" ] && [ ! -L "${_igMark}" ] && grep -q " gid=${_igGid}$" "${_igMark}" 2>/dev/null; then
+          _igConv=YES
+        elif [ "$(id -gn ${_USER} 2>/dev/null)" = "${_USER}" ] || [ "$(id -gn ${_USER}.ftp 2>/dev/null)" = "${_USER}" ]; then
+          _igConv=YES
+        fi
+      fi
+      if [ "${_igConv}" = "YES" ]; then
+        for _igU in ${_USER} ${_USER}.ftp; do
+          getent passwd "${_igU}" >/dev/null 2>&1 || continue
+          [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] && continue
+          if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
+            usermod -aG users ${_igU}
+          fi
+          if getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
+            _set_primary_group ${_igU} ${_USER}
+            if [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] \
+              && id -nG ${_igU} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+              # Listed as a member too: provision's membership test reads
+              # the group database, where a primary group never shows.
+              getent group ${_USER} | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || gpasswd -a ${_igU} ${_USER} >/dev/null 2>&1
+              echo "Identity ${_igU} moved back to primary group ${_USER}"
+            elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
+              _set_primary_group ${_igU} users
+              echo "ALERT: ${_igU} lost group users on the primary move, reverted to users"
+            else
+              echo "ALERT: ${_igU} could not be moved to primary group ${_USER}; left on $(id -gn ${_igU} 2>/dev/null)"
+            fi
+          fi
+        done
+      fi
       # Group owning this account's tree, re-derived every iteration so no
       # value carries over to the next account. Falls back to the box-wide
       # default on an account that has no private group.
@@ -2863,14 +3244,20 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   exit 0
 else
   rm -f /var/log/boa/wait-manage-ltd-users.pid
-  touch /run/manage_ltd_users.pid
+  # the pid, not a bare touch: the nightly's per-account pass waits only on a
+  # LIVE worker (every other reader tests existence and removes the file)
+  echo $$ > /run/manage_ltd_users.pid
   _count_cpu
   _find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
-  if [ ! -e "${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    _fix_node_in_lshell_access
-    touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
-  fi
+  # Unconditional, not once per release serial: this pass rebuilds
+  # /etc/lshell.conf from the template, and the template is replaced with the
+  # shipped one whenever the upgrade arm runs or the re-fetch trigger fires.
+  # A serial-gated check left the shipped list in place after such a replace,
+  # and the next pass then granted node, npm, npx and scp to every tenant.
+  # The check is two substitutions and a plan read, and it is idempotent.
+  _fix_node_in_lshell_access
+  touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
 #   if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
 #     _fix_php_in_lshell_access
 #     touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
@@ -2897,12 +3284,25 @@ else
   _kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
-    _DIFF_T=$(diff -w -B ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
-    if [ ! -z "${_DIFF_T}" ]; then
-      cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
-      cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
+    _dedup_ltd_conf_sections "${_THIS_LTD_CONF}"
+    _DUP_SEC=$(_ltd_conf_dup_sections "${_THIS_LTD_CONF}")
+    if [ ! -z "${_DUP_SEC}" ]; then
+      # Fail closed. lshell refuses a config carrying a repeated section
+      # outright, so installing this one would take the shell away from EVERY
+      # account on the box; the config already in place is, at worst, stale by
+      # one pass. Keep the rejected file for forensics and publish nothing.
+      cp -af ${_THIS_LTD_CONF} /var/backups/ltd/old/lshell.conf-rejected-${_NOW}
+      _ltd_notice "dup-publish" \
+        "generated lshell config REJECTED, /etc/lshell.conf left as it was" \
+        "still repeated after the collapse: $(echo ${_DUP_SEC} | tr '\n' ' ')-- kept at /var/backups/ltd/old/lshell.conf-rejected-${_NOW}"
     else
-      rm -f ${_THIS_LTD_CONF}
+      _DIFF_T=$(diff -w -B ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
+      if [ ! -z "${_DIFF_T}" ]; then
+        cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
+        cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
+      else
+        rm -f ${_THIS_LTD_CONF}
+      fi
     fi
   fi
   if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
@@ -2955,7 +3355,40 @@ else
     && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_HOME_NO_WILDCARD_CHMOD=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
     chmod 700 /home/* &> /dev/null
   fi
-  chmod 0600 /var/log/lsh/*
+  # /var/log/lsh is written by the tenants themselves (group lshellg), so a
+  # tenant can plant any not-yet-used name there. The sticky bit (healed here:
+  # the dir predates it on old boxes) keeps one tenant from unlinking another's
+  # log and, with fs.protected_regular=2, from feeding a victim a foreign
+  # regular file. Root ignores the sticky bit, so only this pass can remove
+  # what a tenant left at someone else's name: anything that is not a regular
+  # *.log, and a *.log owned by a user other than the one its name claims (a
+  # recycled uid makes a dead tenant's log readable by the wrong tenant). An
+  # all-numeric owner is a dead uid: its log stays as history unless a live
+  # tenant of that name now needs the file it cannot open (0600, foreign).
+  # NUL-delimited records, owner first: a tenant-chosen name may carry a tab or
+  # a newline, and a record that fails to parse must never reach the rm. rm
+  # does not follow. The owner rule assumes lshell's default <user>.log naming
+  # (the shipped conf keeps logfilename unset); an admin who sets it, with
+  # either delimiter lshell's parser accepts and in any case, turns the rule
+  # off rather than losing every log on the next pass.
+  chmod 1770 /var/log/lsh &> /dev/null
+  find /var/log/lsh -mindepth 1 -maxdepth 1 \( ! -type f -o ! -name '*.log' \) \
+    -exec rm -rf {} + 2>/dev/null
+  if ! grep -qiE '^[[:space:]]*logfilename[[:space:]]*[:=]' /etc/lshell.conf 2>/dev/null; then
+    find /var/log/lsh -mindepth 1 -maxdepth 1 -type f -name '*.log' -printf '%u\0%f\0' 2>/dev/null \
+      | while IFS= read -r -d '' _lshOwner && IFS= read -r -d '' _lshName; do
+        [ -n "${_lshOwner}" ] && [ -n "${_lshName}" ] || continue
+        case "${_lshOwner}" in
+          *[!0-9]*) [ "${_lshName%.log}" = "${_lshOwner}" ] || rm -f "/var/log/lsh/${_lshName}" ;;
+          *) id -u "${_lshName%.log}" &> /dev/null && rm -f "/var/log/lsh/${_lshName}" ;;
+        esac
+      done
+  fi
+  # -type f refuses a planted link; a tenant swapping its OWN name between the
+  # lstat and the chmod is the house-wide check-then-act residual (chmod has no
+  # -h), bounded by the sweep above. A young box has no log yet, hence no bare
+  # glob (it printed "cannot access").
+  find /var/log/lsh -maxdepth 1 -type f -exec chmod 0600 {} + 2>/dev/null
   chmod 0440 /var/aegir/.drush/*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
   chmod 0400 /var/aegir/.drush/hm.alias.drushrc.php &> /dev/null

@@ -106,6 +106,16 @@ not pinned to a 1 GB per-pool ceiling that triggers out-of-memory under load:
 Boxes with 4 GB or more are unchanged from the historical behaviour; only
 smaller boxes are lowered.
 
+The command-line PHP (`drush`, Ægir backend tasks, cron) gets its own floor: one
+process per job, not a pool of workers, so it is floored at a quarter of the
+installed RAM, capped at 1024 MB, whenever the RAM ladder derived less (a 4 GB
+box with the default 2 GB `_RESERVED_RAM` derived 466 MB, which no Drupal 11
+distribution install survives). Larger boxes already sit at 2048 MB or more
+from the ladder and are unchanged; the OpenVZ pin is not raised. The Drupal
+11 site-install itself applies the same floor to its own subprocess, and
+`~/static/control/install-memory.info` (a number of MB) pins that subprocess
+up or down, so an Ægir install is not held to an older php.ini.
+
 ### Control variables
 
 These per-instance overrides live in `/root/.<instance>.octopus.cnf` and all

@@ -113,9 +113,22 @@ _if_remove_cloud_utils() {
   _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
     || [ -e "${_etcCloudCfgd}" ]; then
+    # Removed when PROVABLY safe (2026-08-27 ruling): a box that keeps live
+    # cloud-init grows a root-lock landmine in every snapshot taken of it,
+    # but some vendors hardwire networking to cloud-init, so the probe
+    # decides. Full mode keeps its unconditional removal (explicit operator
+    # intent); the preserve marker above keeps cloud-init regardless.
+    if [ ! -e "/root/.mode.selected.full.cnf" ] \
+      && ! _cloud_init_safe_to_remove; then
+      _msg "[init] rcld ==> cloud-init KEPT: classic networking not provably self-sufficient (vendor may hardwire networking to cloud-init)" >> "${_logInt}"
+      return 0
+    fi
     _msg "[init] rcld ==> Removing problematic cloud-utils detected on this system..." >> "${_logInt}"
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    /usr/bin/apt-get remove cloud-utils cloud-init -y -qq >> "${_logSlt}"
+    # Some vendor images ship the package under a versioned name
+    # (Hetzner's Debian 11: cloud-init-22.4.2), which the fixed name misses.
+    _cldPkgs="cloud-utils cloud-init $(dpkg-query -W -f='${binary:Package} ' 'cloud-init*' 2> /dev/null)"
+    /usr/bin/apt-get remove ${_cldPkgs} -y -qq >> "${_logSlt}"
     /usr/bin/apt-get remove cloud-image-utils -y -qq >> "${_logSlt}"
     rm -f /etc/rc?.d/[SK]??cloud-* 2>/dev/null
     chmod -x /etc/init.d/cloud-init /etc/init.d/cloud-init-local \
@@ -148,6 +161,7 @@ _resolve_vmnetfix_bin
 ###
 _init_sysv_net_repair() {
   _msg "[init] netr ==> Ensuring SysV init networking wiring..." >> "${_logInt}"
+  _autoinit_heal_grub_pc
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
 
@@ -569,15 +583,49 @@ _init_mnfr() {
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
     ${_INITINS} dmidecode >> "${_logSlt}"
   fi
-  # Check if dmidecode is available
-  _DMI_TEST="$(which dmidecode)"
+  # Read the system manufacturer. A machine with no SMBIOS/DMI table answers
+  # with nothing, which is the normal state of a Xen paravirtualized guest
+  # domain or a container -- environments this tree lists as supported -- so an
+  # empty answer is never grounds for refusing to run.
+  local _DMI_RAW=""
+  _HOST_INFO=""
+  _DMI_TEST="$(command -v dmidecode 2> /dev/null)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO="$(dmidecode -s system-manufacturer)"
-  else
-    _HOST_INFO="Unknown, dmidecode not available"
+    _DMI_RAW="$("${_DMI_TEST}" -s system-manufacturer 2> /dev/null)"
+  elif [ -r "/sys/class/dmi/id/sys_vendor" ]; then
+    # Only when dmidecode is absent entirely, so the check is not left blind on
+    # a host where the package could not be installed. Never when dmidecode is
+    # merely silent, and never inside a container this can recognise: there
+    # that file describes the HOST, so a container on an EC2 host would be
+    # refused as EC2, and containers are on this tree's supported list. The
+    # apt install above is unchecked, so a container can reach this arm; left
+    # unread, it is the DMI-less guest it is and passes. The recognition set:
+    # Docker leaves /.dockerenv; systemd writes /run/systemd/container when
+    # it is the container's own PID 1; LXC, LXD, podman and nspawn set
+    # container= in PID 1's environment (matched at the start of a record,
+    # not as a substring); an OpenVZ guest has /proc/vz but not the host-only
+    # /proc/bc; a VServer guest carries the VxID that boa's _check_virt
+    # already greps for, same expression.
+    if [ ! -e "/.dockerenv" ] \
+      && [ ! -e "/run/systemd/container" ] \
+      && ! { [ -e "/proc/vz" ] && [ ! -e "/proc/bc" ]; } \
+      && ! { tr '\0' '\n' < /proc/1/environ 2> /dev/null | grep -q '^container='; } \
+      && ! grep -qE 'VxID:[[:space:]]*[0-9]{2,}$' /proc/self/status 2> /dev/null; then
+      _DMI_RAW="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null)"
+    fi
   fi
-  # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  # Older dmidecode prints a banner and status lines on stdout ahead of the
+  # value, so keep the last line that is none of them.
+  _HOST_INFO="$(printf '%s\n' "${_DMI_RAW}" \
+    | grep -v '^# ' \
+    | grep -v '^SMBIOS .* present\.$' \
+    | grep -v '^Getting SMBIOS data ' \
+    | grep -v '^[[:space:]]*$' \
+    | tail -n1)"
+  # Amazon EC2 is the one manufacturer this refuses: it blocks the Devuan
+  # conversion BOA has to perform. Match the whole reading, as before, so an
+  # old dmidecode that prints a banner still matches.
+  if printf '%s\n' "${_DMI_RAW}" | grep -qi 'Amazon EC2'; then
     _VMFAMILY="AWS"
     _msg "[init] mnfr ==> Not supported environment detected: ${_HOST_INFO}" >> "${_logInt}"
     _msg "[init] mnfr ==> Please check https://docs.boa.io/self-hosting/before-you-install" >> "${_logInt}"
@@ -588,16 +636,9 @@ _init_mnfr() {
     sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
     sed -i "s/.*killer.*//gi" /etc/crontab >> "${_logSlt}"
     exit 1
-  elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    _msg "[init] mnfr ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "[init] mnfr ==> Please check https://docs.boa.io/self-hosting/before-you-install" >> "${_logInt}"
-    _msg "[init] mnfr ==> Bye!" >> "${_logInt}"
-    echo "[init] mnfr ==> Mysterious environment: ${_HOST_INFO}"
-    echo "[init] mnfr ==> Please check https://docs.boa.io/self-hosting/before-you-install"
-    echo "[init] mnfr ==> Bye!"
-    sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
-    sed -i "s/.*killer.*//gi" /etc/crontab >> "${_logSlt}"
-    exit 1
+  fi
+  if [ -z "${_HOST_INFO}" ]; then
+    _msg "[init] mnfr ==> No DMI table here, system manufacturer unreadable, continuing" >> "${_logInt}"
   fi
 }
 
@@ -741,6 +782,33 @@ _autoinit_apt_trust_state() {
   return 0
 }
 
+# Devuan moves a release to archive.devuan.org once it is out of support, and
+# the live mirrors then answer 404 for its Release file. Every hop below the
+# current release transits such a suite sooner or later: beowulf is archived
+# today, and chimaera, the hop both bullseye and beowulf take, will follow.
+# Writing an unserved suite into sources.list is not a stalled hop but a box
+# left on systemd with unusable APT and a minutely cron that keeps rebooting
+# it, so the mirror is chosen before sources.list is touched (see
+# _pick_devuan_suite_mirror) and the repick below can reach the archive.
+# The archive publishes no -updates suite for any release, so that stanza is
+# written only when the chosen mirror is not the archive.
+_ARCHIVED_DEVUAN_SUITES="beowulf"
+_ARCHIVE_DEVUAN_MIRROR="http://archive.devuan.org/merged"
+_DEVUAN_LIVE_MIRRORS="https://mirrors.dotsrc.org/devuan/merged http://deb.devuan.org/merged https://mirror.akardam.net/devuan/merged https://mirror.hootsoftware.com/devuan/merged"
+
+# 0 the mirror serves the suite, 1 it does not, 2 nothing here can probe yet
+_devuan_suite_served() {
+  local _rel="${1}/dists/${2}/Release"
+  if command -v curl > /dev/null 2>&1; then
+    curl -sIL --fail --max-redirs 3 --max-time 20 -A iCab -o /dev/null "${_rel}" 2> /dev/null && return 0
+    return 1
+  elif command -v wget > /dev/null 2>&1; then
+    wget -q --spider --max-redirect=3 --timeout=20 --tries=2 --user-agent='iCab' "${_rel}" 2> /dev/null && return 0
+    return 1
+  fi
+  return 2
+}
+
 # Point sources.list at a different Devuan mirror, keeping the suite layout the
 # file already has. Used only when the current mirror serves metadata APT
 # refuses outright (an expired Release makes the whole suite unusable, so the
@@ -749,19 +817,29 @@ _autoinit_apt_trust_state() {
 _autoinit_repick_devuan_mirror() {
   _rpkOld=$(grep -m1 "^deb " /etc/apt/sources.list 2>/dev/null | awk '{print $2}')
   [ -n "${_rpkOld}" ] || return 1
+  _rpkSuite=$(grep -m1 "^deb " /etc/apt/sources.list 2>/dev/null | awk '{print $3}')
   _rpkNew=""
-  for _rpkTry in "https://mirrors.dotsrc.org/devuan/merged" \
-                 "http://deb.devuan.org/merged" \
-                 "https://mirror.akardam.net/devuan/merged" \
-                 "https://mirror.hootsoftware.com/devuan/merged"; do
-    if [ "${_rpkTry}" != "${_rpkOld}" ]; then
-      _rpkNew="${_rpkTry}"
-      break
+  # The archive closes the list: a suite Devuan retired since the hop was
+  # written is on no live mirror, and the walk would otherwise visit every
+  # live host for a Release file none of them has. A candidate that
+  # verifiably lacks the suite is skipped; one that has it, or that cannot
+  # be probed, is taken as before.
+  for _rpkTry in ${_DEVUAN_LIVE_MIRRORS} "${_ARCHIVE_DEVUAN_MIRROR}"; do
+    [ "${_rpkTry}" != "${_rpkOld}" ] || continue
+    if [ -n "${_rpkSuite}" ]; then
+      _devuan_suite_served "${_rpkTry}" "${_rpkSuite}"
+      [ "$?" -eq 1 ] && continue
     fi
+    _rpkNew="${_rpkTry}"
+    break
   done
   [ -n "${_rpkNew}" ] || return 1
   _msg "[init] trst ==> Re-pointing APT sources from ${_rpkOld} to ${_rpkNew}" >> "${_logInt}"
   sed -i "s|${_rpkOld}|${_rpkNew}|g" /etc/apt/sources.list
+  # The archive carries no -updates suite; a repointed line for one is a 404.
+  if [ "${_rpkNew}" = "${_ARCHIVE_DEVUAN_MIRROR}" ] && [ -n "${_rpkSuite}" ]; then
+    sed -i "/ ${_rpkSuite}-updates /d" /etc/apt/sources.list
+  fi
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}" 2>&1
   return 0
 }
@@ -1085,6 +1163,84 @@ _pkg_installed() {
   /usr/bin/dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
 }
 
+# A grub-pc whose debconf install-device answer is empty -- the shape of a
+# hand-built or vendor-imaged VM that never ran the grub-pc configuration --
+# cannot be configured under the noninteractive frontend, and dpkg then aborts
+# every apt run on the box, the release hops included, while the conversion
+# keeps reporting the new codename. Seed the answer from the disk carrying the
+# root filesystem (plain partitions only) so the pending configure can finish.
+_autoinit_heal_grub_pc() {
+  local _dev _disk _cur
+  _pkg_installed grub-pc || return 0
+  _cur=$(debconf-show grub-pc 2>/dev/null | grep 'grub-pc/install_devices:' | sed 's/.*install_devices: *//')
+  [ -n "${_cur}" ] && return 0
+  _dev=$(findmnt -no SOURCE / 2>/dev/null)
+  [ -b "${_dev}" ] || return 0
+  _disk=$(lsblk -no PKNAME "${_dev}" 2>/dev/null | head -1)
+  [ -n "${_disk}" ] || return 0
+  [ "$(lsblk -dno TYPE "/dev/${_disk}" 2>/dev/null)" = "disk" ] || return 0
+  _msg "[init] grub ==> Seeding the empty grub-pc install device with /dev/${_disk} so dpkg can configure it" >> "${_logInt}"
+  echo "grub-pc grub-pc/install_devices multiselect /dev/${_disk}" | debconf-set-selections >> "${_logSlt}" 2>&1
+  # A configured package only needed the answer for its next upgrade; dpkg
+  # refuses to configure it again, so ask only when a configure is pending.
+  if /usr/bin/dpkg-query -W -f='${Status}' grub-pc 2>/dev/null | grep -qE 'half-configured|unpacked|half-installed'; then
+    /usr/bin/dpkg --configure grub-pc >> "${_logSlt}" 2>&1 \
+      || _msg "[init][WARN] grub ==> grub-pc still refuses to configure; apt runs may keep failing on this box" >> "${_logInt}"
+  fi
+}
+
+# Say so when dpkg leaves packages unconfigured after a hop: apt aborts every
+# later run on such a box, and the codename alone would suggest a clean move.
+_autoinit_dpkg_unconfigured() {
+  /usr/bin/dpkg-query -W -f='${Package} ${Status}\n' 2>/dev/null \
+    | awk '$NF=="half-configured"||$NF=="unpacked"||$NF=="half-installed"{print $1}' | tr '\n' ' '
+}
+_autoinit_dpkg_residue_warn() {
+  local _left
+  _left=$(_autoinit_dpkg_unconfigured)
+  [ -z "${_left}" ] && return 0
+  _msg "[init][WARN] dpkg ==> packages left unconfigured after this step: ${_left}-- apt may fail until they are fixed" >> "${_logInt}"
+}
+
+# Before the install is launched: a package dpkg could not configure makes
+# every apt run fail, so the install would die minutes later with a reason
+# that points elsewhere. Heal once more, then refuse to launch.
+_autoinit_dpkg_residue_gate() {
+  [ -z "$(_autoinit_dpkg_unconfigured)" ] && return 0
+  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}" 2>&1
+  /usr/bin/dpkg --configure -a >> "${_logSlt}" 2>&1
+  [ -z "$(_autoinit_dpkg_unconfigured)" ] && return 0
+  _autoinit_dpkg_residue_warn
+  return 1
+}
+
+# Devuan's merged <suite>-security hands the Debian-built packages to
+# deb.debian.org, which stops serving a pool once the matching Debian LTS ends
+# (bullseye-security since 2026-08-31) while the index still lists the files.
+# apt then aborts the whole upgrade on the 404s: the hop upgrades nothing, the
+# next hop jumps two releases at once, and libc6 lands without libcrypt1.
+# Name the security suite such a failed run died on, or nothing.
+_autoinit_apt_dead_security_suite() {
+  local _outf="$1"
+  grep -q '404' "${_outf}" 2>/dev/null || return 1
+  grep -oE '^Err:[0-9]+ [^ ]+ [a-z]+-security' "${_outf}" 2>/dev/null | awk '{print $3}' | sort -u | head -1
+}
+
+# Run one apt verb of a hop; when it failed only because a security pool is
+# gone, take that stanza out of sources.list, refresh, and run it once more.
+_autoinit_apt_hop_run() {
+  local _verb="$1" _args="$2" _outf="/root/.autoinit-apt-hop.out" _rc _dead
+  /usr/bin/apt-get ${_verb} ${_args} > "${_outf}" 2>&1; _rc=$?
+  cat "${_outf}" >> "${_logSlt}"
+  [ "${_rc}" -eq 0 ] && return 0
+  _dead=$(_autoinit_apt_dead_security_suite "${_outf}")
+  [ -n "${_dead}" ] || return "${_rc}"
+  _msg "[init][WARN] apt ==> the ${_dead} pool is not served any more; running apt-get ${_verb} without it" >> "${_logInt}"
+  sed -i "/ ${_dead} /d" /etc/apt/sources.list
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}" 2>&1
+  /usr/bin/apt-get ${_verb} ${_args} >> "${_logSlt}" 2>&1
+}
+
 ###
 ### Turn off AppArmor
 ###
@@ -1346,6 +1502,7 @@ _init_prepare() {
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
     update-grub >> "${_logSlt}"
     sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
@@ -1367,6 +1524,7 @@ _init_prepare() {
   else
     if [ ! -x "/usr/bin/mc" ]; then
       touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
       _if_off_apparmor
       if [ -e "/root/.autoinit-early-upgrade.cnf" ]; then
         _msg "[init] prep ==> Let's update existing system first..." >> "${_logInt}"
@@ -1514,11 +1672,11 @@ _ensure_openssh_server() {
   fi
   if ! _pkg_installed "openssh-server"; then
     _msg "[init] Installing openssh-server" >> "${_logInt}"
-    ${_INITINS} ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+    _autoinit_apt_hop_run "install ssh openssh-server openssh-sftp-server task-ssh-server" "${_aptAllow} -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
   fi
   if ! _pkg_installed "ssh"; then
     _msg "[init] Installing ssh" >> "${_logInt}"
-    ${_INITINS} ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+    _autoinit_apt_hop_run "install ssh openssh-server openssh-sftp-server task-ssh-server" "${_aptAllow} -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
   fi
   # (optional) make sure it is enabled under sysvinit
   if [ -x "/etc/init.d/ssh" ]; then
@@ -1639,8 +1797,8 @@ _init_post_ready() {
   _autoinit_ensure_devuan_keyring
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
-  /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
-  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  _autoinit_apt_hop_run upgrade "${_nrmUpArg}"
+  _autoinit_apt_hop_run dist-upgrade "${_dstUpArg}"
   /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
 }
@@ -1652,6 +1810,7 @@ _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
   _msg "[init] offd ==> Launching a quick dist-upgrade..." >> "${_logInt}"
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
     rm -f /etc/apt/preferences.d/systemd
@@ -1666,7 +1825,7 @@ _init_offsystemd() {
     _msg "[init] offd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
     /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
   fi
-  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  _autoinit_apt_hop_run dist-upgrade "${_dstUpArg}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
 
   _init_base_sync
@@ -1681,6 +1840,7 @@ _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 
+  _autoinit_dpkg_residue_warn
   _msg "[init] offd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _msg "[init] offd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
 
@@ -1707,18 +1867,10 @@ _init_offsystemd() {
   _init_sysv_net_repair
   _init_vmnetfix_failsafe_install
 
-  # Removed when PROVABLY safe (2026-08-27 ruling): a box that keeps live
-  # cloud-init grows a root-lock landmine in every snapshot taken of it, but
-  # some vendors hardwire networking to cloud-init, so the probe decides.
-  # Full mode keeps its unconditional removal (explicit operator intent);
-  # /root/.preserve.cloud.init.cnf keeps cloud-init regardless.
-  if [ -e "/root/.mode.selected.full.cnf" ]; then
-    _if_remove_cloud_utils
-  elif _cloud_init_safe_to_remove; then
-    _if_remove_cloud_utils
-  else
-    _msg "[init] rcld ==> cloud-init KEPT: classic networking not provably self-sufficient (vendor may hardwire networking to cloud-init)" >> "${_logInt}"
-  fi
+  # Neutralized on every conversion; the function holds the whole decision
+  # (full mode, the networking probe, the preserve marker) so the codename
+  # drivers can carry it verbatim.
+  _if_remove_cloud_utils
 
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
@@ -1776,12 +1928,61 @@ _find_fast_devuan_mirror() {
 }
 
 ###
+### Pick the mirror that actually serves a suite
+###
+# _pick_devuan_suite_mirror <suite> [preferred-mirror]. The known-archived
+# list short-circuits. Otherwise the preferred mirror (the fast one when none
+# is given) is probed; if it has dropped the suite the other live mirrors are
+# walked, one host lagging being the common case, then the archive. A box
+# that cannot probe keeps the preferred mirror, as it did before. Nothing
+# serving the suite at all is logged and answered with the deb.devuan.org
+# redirector, the one host most likely to gain it. Its two messages go to
+# the init log through stderr (2>> log, then >&2): the caller captures this
+# function's stdout, so nothing but the mirror may ever reach it.
+_pick_devuan_suite_mirror() {
+  local _suite="$1"
+  local _pref="$2"
+  local _mrr=""
+  local _try=""
+  local _srv=0
+  case " ${_ARCHIVED_DEVUAN_SUITES} " in
+    *" ${_suite} "*)
+      echo "${_ARCHIVE_DEVUAN_MIRROR}"
+      return 0
+      ;;
+  esac
+  if [ -n "${_pref}" ]; then
+    _mrr="${_pref}"
+  else
+    _mrr=$(_find_fast_devuan_mirror)
+  fi
+  : "${_mrr:=https://mirrors.dotsrc.org/devuan/merged}"
+  _devuan_suite_served "${_mrr}" "${_suite}"
+  _srv=$?
+  if [ "${_srv}" -ne 1 ]; then
+    echo "${_mrr}"
+    return 0
+  fi
+  for _try in ${_DEVUAN_LIVE_MIRRORS} "${_ARCHIVE_DEVUAN_MIRROR}"; do
+    [ "${_try}" != "${_mrr}" ] || continue
+    if _devuan_suite_served "${_try}" "${_suite}"; then
+      _msg "[init] cycl ==> ${_suite} is no longer on ${_mrr}; using ${_try}" 2>> "${_logInt}" >&2
+      echo "${_try}"
+      return 0
+    fi
+  done
+  _msg "[init][ERROR] cycl ==> ${_suite} is served by no known Devuan mirror nor the archive; using the deb.devuan.org redirector" 2>> "${_logInt}" >&2
+  echo "http://deb.devuan.org/merged"
+}
+
+###
 ### Init cycle procedure
 ###
 _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
   _msg "[init] cycl ==> Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
@@ -1839,18 +2040,16 @@ _init_cycle() {
     wait
     _msg "[init] cycl ==> Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     _aptLiSys="/etc/apt/sources.list"
-    if [ "${_NEW_OS_CODE}" = "beowulf" ]; then
-      _TGT_MRR="http://archive.devuan.org/merged"
-    else
-      _TGT_MRR=$(_find_fast_devuan_mirror)
-    fi
+    _TGT_MRR=$(_pick_devuan_suite_mirror "${_NEW_OS_CODE}")
     : "${_TGT_MRR:=https://mirrors.dotsrc.org/devuan/merged}"
     _msg "[init] cycl ==> Using Devuan mirror: ${_TGT_MRR}" >> "${_logInt}"
     echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
     echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "" >> ${_aptLiSys}
-    if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
+    # Decided by the mirror chosen, not the suite name: the archive serves
+    # <suite>-security but no -updates for any release.
+    if [ "${_TGT_MRR}" != "${_ARCHIVE_DEVUAN_MIRROR}" ]; then
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
       echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
       echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
@@ -1869,7 +2068,7 @@ _init_cycle() {
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     fi
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
+    _autoinit_apt_hop_run upgrade "${_dstUpArg}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
@@ -1885,7 +2084,7 @@ _init_cycle() {
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+      _autoinit_apt_hop_run dist-upgrade "${_dstUpArg}"
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
@@ -1943,6 +2142,13 @@ _init_cycle() {
         rm -f /run/autoinit.pid
         exit 1
       fi
+      if ! _autoinit_dpkg_residue_gate; then
+        _msg "[init][ERROR] cycl ==> Conversion incomplete -- NOT launching boa install; dpkg left packages unconfigured (the dpkg line above): run dpkg --configure -a and apt-get -f install, then run autoinit again" >> "${_logInt}"
+        sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
+        rm -f /run/autoinit.pid
+        exit 1
+      fi
+  _autoinit_dpkg_residue_warn
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
@@ -1964,6 +2170,7 @@ _init_cycle() {
       sed -i "s/.*autoinit.*//gi" /etc/crontab >> "${_logSlt}"
       _if_launch_boa_install
     else
+  _autoinit_dpkg_residue_warn
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
@@ -2037,6 +2244,7 @@ _init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
+  _autoinit_heal_grub_pc
   # Free the dpkg lock for the whole init cycle: the daily unattended-upgrade
   # worker cmdline is "python3 /usr/bin/unattended-upgrade" -- match the
   # script path, bracketed so concurrent guards never match each other's

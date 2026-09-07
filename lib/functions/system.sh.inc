@@ -28,8 +28,9 @@ _find_fast_devuan_mirror() {
       echo "https://mirror.hootsoftware.com/devuan/merged" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
+      _BROKEN_FFMIRR_TEST=$(grep -E "ffmirror-ready|stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "ffmirror-ready" ]] \
+        || [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
         || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
@@ -45,6 +46,190 @@ _find_fast_devuan_mirror() {
     export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
   fi
   echo "${_USE_MIR}"
+}
+
+# Devuan moves a release to archive.devuan.org once it is out of support, and
+# the live mirrors then answer 404 for its Release file. Every hop below the
+# current release transits such a suite sooner or later: beowulf is archived
+# today, and chimaera, the hop both bullseye and beowulf take, will follow.
+# Writing an unserved suite into sources.list is not a stalled hop but a box
+# left on systemd with unusable APT and a minutely cron that keeps rebooting
+# it, so the mirror is chosen before sources.list is touched (see
+# _pick_devuan_suite_mirror) and the repick below can reach the archive.
+# The archive publishes no -updates suite for any release, so that stanza is
+# written only when the chosen mirror is not the archive.
+_ARCHIVED_DEVUAN_SUITES="beowulf"
+_ARCHIVE_DEVUAN_MIRROR="http://archive.devuan.org/merged"
+_DEVUAN_LIVE_MIRRORS="https://mirrors.dotsrc.org/devuan/merged http://deb.devuan.org/merged https://mirror.akardam.net/devuan/merged https://mirror.hootsoftware.com/devuan/merged"
+
+# _apt_suite_served <base-url> <suite>: 0 the mirror serves the suite, 1 it
+# does not, 2 nothing here can probe yet. One probe for both distributions.
+_apt_suite_served() {
+  local _rel="${1}/dists/${2}/Release"
+  if command -v curl > /dev/null 2>&1; then
+    curl -sIL --fail --max-redirs 3 --max-time 20 -A iCab -o /dev/null "${_rel}" 2> /dev/null && return 0
+    return 1
+  elif command -v wget > /dev/null 2>&1; then
+    wget -q --spider --max-redirect=3 --timeout=20 --tries=2 --user-agent='iCab' "${_rel}" 2> /dev/null && return 0
+    return 1
+  fi
+  return 2
+}
+
+_devuan_suite_served() {
+  _apt_suite_served "$1" "$2"
+}
+
+###
+### Pick the mirror that actually serves a suite
+###
+# _pick_devuan_suite_mirror <suite> [preferred-mirror]. The known-archived
+# list short-circuits. Otherwise the preferred mirror (the fast one when none
+# is given) is probed; if it has dropped the suite the other live mirrors are
+# walked, one host lagging being the common case, then the archive. A box
+# that cannot probe keeps the preferred mirror, as it did before. Nothing
+# serving the suite at all is logged and answered with the deb.devuan.org
+# redirector, the one host most likely to gain it.
+_pick_devuan_suite_mirror() {
+  local _suite="$1"
+  local _pref="$2"
+  local _mrr=""
+  local _try=""
+  local _srv=0
+  case " ${_ARCHIVED_DEVUAN_SUITES} " in
+    *" ${_suite} "*)
+      echo "${_ARCHIVE_DEVUAN_MIRROR}"
+      return 0
+      ;;
+  esac
+  if [ -n "${_pref}" ]; then
+    _mrr="${_pref}"
+  else
+    _mrr=$(_find_fast_devuan_mirror)
+  fi
+  : "${_mrr:=https://mirrors.dotsrc.org/devuan/merged}"
+  _devuan_suite_served "${_mrr}" "${_suite}"
+  _srv=$?
+  if [ "${_srv}" -ne 1 ]; then
+    echo "${_mrr}"
+    return 0
+  fi
+  for _try in ${_DEVUAN_LIVE_MIRRORS} "${_ARCHIVE_DEVUAN_MIRROR}"; do
+    [ "${_try}" != "${_mrr}" ] || continue
+    if _devuan_suite_served "${_try}" "${_suite}"; then
+      _msg "NOTE: ${_suite} is no longer on ${_mrr}; using ${_try}" >&2
+      echo "${_try}"
+      return 0
+    fi
+  done
+  _msg "ERROR: ${_suite} is served by no known Devuan mirror nor the archive; using the deb.devuan.org redirector" >&2
+  echo "http://deb.devuan.org/merged"
+}
+
+# Debian moves a release to archive.debian.org once its LTS ends (bullseye's
+# ended 2026-08-31), and deb.debian.org then answers 404 for its Release file
+# while security.debian.org keeps or drops <suite>-security on its own
+# schedule. The two pools are therefore resolved separately, per suite, right
+# before sources.list is written; a security suite no host serves is left
+# out rather than written dead, because apt update fails on a 404 Release and
+# every install step behind it stalls. jessie, stretch and buster keep their
+# long-archived shape (the archive's security pool still uses the old
+# <suite>/updates naming for them). Adding a release to the list only saves
+# the probe; nothing needs editing when Debian archives the next one.
+_ARCHIVED_DEBIAN_SUITES="jessie stretch buster"
+_ARCHIVE_DEBIAN_MIRROR="archive.debian.org"
+_DEBIAN_LIVE_MIRROR="deb.debian.org"
+_DEBIAN_SECURITY_MIRROR="security.debian.org"
+
+# _pick_debian_suite_mirror <suite> [preferred-host]: the host to compose
+# "http://<host>/debian" from. The known-archived list short-circuits; the
+# preferred host (a configured local mirror, else deb.debian.org) is probed,
+# then deb.debian.org, then the archive. A box that cannot probe keeps the
+# preferred host, as it did before.
+_pick_debian_suite_mirror() {
+  local _suite="$1"
+  local _pref="$2"
+  local _try=""
+  local _srv=0
+  case " ${_ARCHIVED_DEBIAN_SUITES} " in
+    *" ${_suite} "*)
+      echo "${_ARCHIVE_DEBIAN_MIRROR}"
+      return 0
+      ;;
+  esac
+  : "${_pref:=${_DEBIAN_LIVE_MIRROR}}"
+  _apt_suite_served "http://${_pref}/debian" "${_suite}"
+  _srv=$?
+  if [ "${_srv}" -ne 1 ]; then
+    echo "${_pref}"
+    return 0
+  fi
+  for _try in "${_DEBIAN_LIVE_MIRROR}" "${_ARCHIVE_DEBIAN_MIRROR}"; do
+    [ "${_try}" != "${_pref}" ] || continue
+    if _apt_suite_served "http://${_try}/debian" "${_suite}"; then
+      _msg "NOTE: ${_suite} is no longer on ${_pref}; using ${_try}" >&2
+      echo "${_try}"
+      return 0
+    fi
+  done
+  _msg "ERROR: ${_suite} is served by no known Debian mirror nor the archive; using ${_DEBIAN_LIVE_MIRROR}" >&2
+  echo "${_DEBIAN_LIVE_MIRROR}"
+}
+
+# _debian_apt_sources_resolve <suite> [preferred-host] sets, for the
+# sources.list writers: _DEB_APT_MIRROR (host/debian), _DEB_APT_REPSRC (the
+# -updates suite on a live host, -backports on the archive for the
+# long-archived releases, empty when none is served), _DEB_SEC_MIRROR
+# (host/debian-security, empty when no host serves the security suite),
+# _DEB_SEC_REPSRC, and _DEB_BPO_SUITE (the -backports suite when it is
+# served from the chosen host, else empty).
+_debian_apt_sources_resolve() {
+  local _suite="$1"
+  local _pref="$2"
+  local _host=""
+  _DEB_APT_MIRROR=""
+  _DEB_APT_REPSRC=""
+  _DEB_SEC_MIRROR=""
+  _DEB_SEC_REPSRC=""
+  _DEB_BPO_SUITE=""
+  case "${_suite}" in
+    jessie|stretch|buster)
+      _DEB_APT_MIRROR="${_ARCHIVE_DEBIAN_MIRROR}/debian"
+      _DEB_APT_REPSRC="${_suite}-backports"
+      _DEB_SEC_MIRROR="${_ARCHIVE_DEBIAN_MIRROR}/debian-security"
+      _DEB_SEC_REPSRC="${_suite}/updates"
+      return 0
+      ;;
+  esac
+  _host="$(_pick_debian_suite_mirror "${_suite}" "${_pref}")"
+  _DEB_APT_MIRROR="${_host}/debian"
+  _DEB_APT_REPSRC="${_suite}-updates"
+  if [ "${_host}" = "${_ARCHIVE_DEBIAN_MIRROR}" ]; then
+    # The archive carries -updates for the releases archived so far, but
+    # nothing promises it; a verified miss drops the stanza.
+    _apt_suite_served "http://${_host}/debian" "${_DEB_APT_REPSRC}"
+    [ $? -ne 1 ] || _DEB_APT_REPSRC=""
+  fi
+  _DEB_SEC_REPSRC="${_suite}-security"
+  _apt_suite_served "http://${_DEBIAN_SECURITY_MIRROR}/debian-security" "${_DEB_SEC_REPSRC}"
+  case $? in
+    1)
+      if _apt_suite_served "http://${_ARCHIVE_DEBIAN_MIRROR}/debian-security" "${_DEB_SEC_REPSRC}"; then
+        _msg "NOTE: ${_DEB_SEC_REPSRC} is no longer on ${_DEBIAN_SECURITY_MIRROR}; using ${_ARCHIVE_DEBIAN_MIRROR}" >&2
+        _DEB_SEC_MIRROR="${_ARCHIVE_DEBIAN_MIRROR}/debian-security"
+      else
+        _msg "NOTE: ${_DEB_SEC_REPSRC} is served by no known host; the security stanza is left out" >&2
+      fi
+      ;;
+    *)
+      _DEB_SEC_MIRROR="${_DEBIAN_SECURITY_MIRROR}/debian-security"
+      ;;
+  esac
+  if [ "${_USE_BACKPORTS}" = "YES" ]; then
+    _apt_suite_served "http://${_host}/debian" "${_suite}-backports"
+    [ $? -eq 1 ] || _DEB_BPO_SUITE="${_suite}-backports"
+  fi
+  return 0
 }
 
 _if_fix_iptables_symlinks() {
@@ -109,7 +294,8 @@ _if_reinstall_curl_src() {
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   _isCurl=$(curl --version 2>&1)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
-    _msg "OOPS: cURL is broken! Re-installing.."
+    # Healed right here; the rebuild's own OOPS lines report a failure.
+    _msg "NOTE: cURL is broken, re-installing it"
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -194,7 +380,10 @@ _systemd_remove_apt_cmd() {
   _apt_clean_update
   _mrun "apt-get purge systemd libnss-systemd -y -qq"
   _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
-  _mrun "apt-get autoclean -y --purge --auto-remove -qq"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Running apt-get autoclean..."
+  fi
+  _mrun "apt-get autoclean -y -qq"
   _mrun "apt-get autoremove -y --purge --auto-remove -qq"
   _apt_clean_update
 }
@@ -501,7 +690,7 @@ _if_running_as_root_barracuda() {
       fi
     fi
     # Check for Amazon EC2 in the system manufacturer field
-    if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+    if dmidecode -s system-manufacturer 2> /dev/null | grep -qi 'Amazon EC2'; then
       _VMFAMILY="AWS"
     fi
     _VM_TEST="$(uname -a)"
@@ -1307,6 +1496,30 @@ _sql_pin_overrides() {
 
 #
 # Tune memory limits for PHP, Nginx and Percona.
+#
+# Floor the PHP CLI memory budget. Pure function of _USE_CLI (the tier
+# output), _RAM_TOTAL (installed RAM in MB) and _VMFAMILY; rewrites _USE_CLI
+# in place, so the Tier-2 harness can drive it directly. The CLI budget
+# (drush, Ægir backend tasks, cron) is one process per job, not a pool of
+# workers, so the tier fall-through below _USE=512 starves it: a 4 GB guest
+# with the default 2 GB reserve derived 466M, which no Drupal 11 distro
+# install survives (a Varbase install peaks near 600 MB and dies after its
+# last "module installed" line). Floor it at a quarter of the installed RAM,
+# never above the 1024 the next tier hands out; the OpenVZ pin stays
+# untouched and a failed RAM read leaves the derived value alone.
+_php_cli_floor_derive() {
+  local _cli_min
+  [ "${_VMFAMILY}" = "VZ" ] && return 0
+  [ "${_RAM_TOTAL:-0}" -ge 1 ] 2>/dev/null || return 0
+  _cli_min=$(( _RAM_TOTAL / 4 ))
+  if [ "${_cli_min}" -gt 1024 ]; then
+    _cli_min=1024
+  fi
+  if [ "${_USE_CLI:-0}" -lt "${_cli_min}" ]; then
+    _USE_CLI=${_cli_min}
+  fi
+}
+
 _tune_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _tune_memory_limits"
@@ -1367,7 +1580,7 @@ _tune_memory_limits() {
     _mrun "${_INITINS} dmidecode"
   fi
   # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  if dmidecode -s system-manufacturer 2> /dev/null | grep -qi 'Amazon EC2'; then
     _VMFAMILY="AWS"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1534,6 +1747,7 @@ _tune_memory_limits() {
   if [ "${_USE_PHP}" -lt "${_USE_PHP_MIN}" ]; then
     _USE_PHP=${_USE_PHP_MIN}
   fi
+  _php_cli_floor_derive
   _USE_FPM=$(( _USE_PHP / 2 ))
   if [ "${_USE_FPM}" -lt "${_USE_FPM_MIN}" ]; then
     _USE_FPM=${_USE_FPM_MIN}
@@ -4801,7 +5015,10 @@ _php_install_deps() {
     fi
   fi
 
-  for _PKG in liblzf-dev libmagickwand-dev libonig-dev libsodium-dev libwebp-dev libxpm-dev libzip-dev; do
+  # libbz2-dev is asked for by every PHP configure (--with-bz2) and was only
+  # ever present by way of another package's dependencies; a box without it
+  # builds PHP a second time, without bz2.
+  for _PKG in libbz2-dev liblzf-dev libmagickwand-dev libonig-dev libsodium-dev libwebp-dev libxpm-dev libzip-dev; do
     if ! _pkg_installed "${_PKG}"; then
       _mrun "${_INSTAPP} ${_PKG}"
     fi
@@ -4911,6 +5128,13 @@ _if_install_wkhtmltox() {
     fi
     _apt_clean_update
     for _PKG in gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf; do
+      # trixie and excalibur no longer ship wkhtmltopdf; the bundled build
+      # below is the only source there.
+      if [ "${_PKG}" = "wkhtmltopdf" ]; then
+        case "${_OS_CODE}" in
+          excalibur|trixie) continue ;;
+        esac
+      fi
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -4923,7 +5147,7 @@ _if_install_wkhtmltox() {
   if [ "${_OS_CODE}" = "jessie" ]; then
     _WOX_ITD=$(wkhtmltopdf --version 2>&1)
   fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
+  if [ "${_DEBUG_MODE}" = "YES" ] && [ -n "${_WOX_ITD}" ] && command -v wkhtmltopdf > /dev/null 2>&1; then
     _msg "INFO: Installed wkhtmltopdf version ${_WOX_ITD}"
   fi
 
@@ -5396,7 +5620,12 @@ _sources_list_update() {
     _apt_sources_list_backup
     if [ "${_OS_DIST}" = "Devuan" ]; then
       _TEST_MIRROR="$(_find_fast_devuan_mirror)"
-      if [ -n "${_LOCAL_DEVUAN_MIRROR}" ] && [ -n "${_TEST_MIRROR}" ]; then
+      if [ -n "${_FORCE_DEVUAN_MIRROR}" ]; then
+        # Set by the package stage when the chosen mirror proved unusable
+        # (its index lists pool files it no longer serves). Runtime only and
+        # never persisted, so the next run may pick a healthy fast mirror.
+        export _MIRROR="${_FORCE_DEVUAN_MIRROR}"
+      elif [ -n "${_LOCAL_DEVUAN_MIRROR}" ] && [ -n "${_TEST_MIRROR}" ]; then
         if [ "${_LOCAL_DEVUAN_MIRROR}" = "${_TEST_MIRROR}" ]; then
           export _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
           export _LOCAL_DEVUAN_MIRROR="${_LOCAL_DEVUAN_MIRROR}"
@@ -5415,9 +5644,10 @@ _sources_list_update() {
           export _MIRROR="http://deb.devuan.org/merged"
         fi
       fi
-      if [ "${_OS_CODE}" = "beowulf" ]; then
-        export _MIRROR="http://archive.devuan.org/merged"
-      fi
+      # After the cnf writes above, so the archive is never persisted as the
+      # preferred mirror; it is chosen per suite, and only while needed.
+      _MIRROR="$(_pick_devuan_suite_mirror "${_OS_CODE}" "${_MIRROR}")"
+      export _MIRROR
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
@@ -5426,7 +5656,9 @@ _sources_list_update() {
       echo "deb ${_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src ${_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      if [ "${_OS_CODE}" != "beowulf" ]; then
+      # Decided by the mirror chosen, not the suite name: the archive serves
+      # <suite>-security but no -updates for any release.
+      if [ "${_MIRROR}" != "${_ARCHIVE_DEVUAN_MIRROR}" ]; then
         echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
         echo "deb ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "deb-src ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
@@ -5490,48 +5722,36 @@ _sources_list_update() {
       ### Belt-and-suspenders with the mirror resolution above: never compose
       ### an empty Debian mirror host into the deb lines below.
       [ -n "${_MIRROR}" ] || _MIRROR=deb.debian.org
-      if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-        _APT_MIRROR="archive.debian.org/debian"
-        _APT_REPSRC="${_OS_CODE}-backports"
-        _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_REPSRC="${_OS_CODE}/updates"
-      elif [ "${_OS_CODE}" = "buster" ]; then
-        _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OS_CODE}-updates"
-        _SEC_MIRROR="security.debian.org"
-        _SEC_REPSRC="${_OS_CODE}/updates"
-      elif [ "${_OS_CODE}" = "bullseye" ]; then
-        _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OS_CODE}-updates"
-        _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OS_CODE}-security"
-      elif [ "${_OS_CODE}" = "bookworm" ]; then
-        _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OS_CODE}-updates"
-        _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OS_CODE}-security"
-      elif [ "${_OS_CODE}" = "trixie" ]; then
-        _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OS_CODE}-updates"
-        _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OS_CODE}-security"
-      fi
+      # Resolved per suite against what the hosts serve today, so a release
+      # Debian has just archived (bullseye, 2026-08-31) is written from the
+      # archive instead of a dead deb.debian.org line.
+      _debian_apt_sources_resolve "${_OS_CODE}" "${_MIRROR}"
+      _APT_MIRROR="${_DEB_APT_MIRROR}"
+      _APT_REPSRC="${_DEB_APT_REPSRC}"
+      _SEC_MIRROR="${_DEB_SEC_MIRROR}"
+      _SEC_REPSRC="${_DEB_SEC_REPSRC}"
       echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
-      echo "" >> ${_aptLiSys}
-      echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-      echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-      if [ "${_USE_BACKPORTS}" = "YES" ]; then
+      if [ -n "${_APT_REPSRC}" ]; then
+        echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+        echo "" >> ${_aptLiSys}
+      fi
+      if [ -n "${_SEC_MIRROR}" ]; then
+        echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
+        echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      else
+        echo "## DEBIAN SECURITY UPDATES are no longer served for ${_OS_CODE}" >> ${_aptLiSys}
+      fi
+      if [ -n "${_DEB_BPO_SUITE}" ]; then
         echo "" >> ${_aptLiSys}
         echo "## DEBIAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
-        echo "deb http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-        echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb http://${_APT_MIRROR} ${_DEB_BPO_SUITE} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_APT_MIRROR} ${_DEB_BPO_SUITE} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       fi
     fi
     ### Verify the freshly written file; if generation produced a missing or
@@ -6038,6 +6258,11 @@ _ssl_install_src() {
   fi
 
   ###--------------------###
+  # A codename hop's dist-upgrade installs the distro's libc.conf over ours
+  # (--force-confnew), so the BOA-built curl resolves libssl.so.3 to the distro
+  # copy and every download here fails until the paths are back. Restore them
+  # before the first fetch.
+  _ssl_paths_sync
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
   fi
@@ -6489,8 +6714,23 @@ _curl_install_src() {
     # Variable to track if any broken symlinks were found and removed
     _ifAnySymlinksCleaned=NO
 
-    # Iterate over the directories and apply the _check_and_move function
+    # Iterate over the directories and apply the _check_and_move function.
+    # The multiarch directory is skipped until a BOA-built libcurl exists:
+    # on a box whose only curl is the distro one (bullseye/chimaera ship
+    # 4.7.0, buster/beowulf 4.5.0) that file IS the running curl's runtime,
+    # and retiring it here breaks every fetch that follows -- the prebuilt
+    # deb fetch, the openssh sources, the Percona key -- before any
+    # replacement has been built. The install arms below retire it at the
+    # right moment and restore it if the build fails.
     for _dir in "${_dirsToClean[@]}"; do
+      if [ "${_dir}" = "/usr/lib/x86_64-linux-gnu" ] \
+        && ! { [ -x "/usr/local/bin/curl" ] \
+          && /usr/local/bin/curl --version > /dev/null 2>&1; }; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "CLNP: Keeping the distro libcurl in ${_dir} until a BOA-built one exists"
+        fi
+        continue
+      fi
       _check_and_move "${_dir}"
     done
 
@@ -6621,6 +6861,13 @@ _curl_install_src() {
           fi
           _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
           if [ -e "${_PKG_CONFIG_PATH}" ]; then
+            # configure honours PKG_CONFIG_PATH only through pkg-config itself,
+            # and refuses to build without libpsl since curl 8.6
+            for _PKG in pkg-config libpsl-dev; do
+              if ! _pkg_installed "${_PKG}"; then
+                _mrun "${_INSTAPP} ${_PKG}"
+              fi
+            done
             cd /var/opt/curl-${_CURL_VRN}
             _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
               --with-openssl \
@@ -6643,6 +6890,23 @@ _curl_install_src() {
         else
           _msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
         fi
+      fi
+      # A failed build must not leave the box without any curl: put the
+      # retired distro runtime back so the next fetch, and the next run,
+      # still work. The install itself is reported as failed by the OOPS
+      # lines above and by the version check on the next pass.
+      if [ ! -x "/usr/local/bin/curl" ] \
+        && ! ls /usr/lib/x86_64-linux-gnu/libcurl.so.4.* > /dev/null 2>&1; then
+        for _bkDir in "${_bkLibcurlPre}" "${_backLegBase}_usr_lib_x86_64-linux-gnu"; do
+          [ -n "${_bkDir}" ] && [ -d "${_bkDir}" ] || continue
+          ls "${_bkDir}"/libcurl.so* > /dev/null 2>&1 || continue
+          mv -f "${_bkDir}"/libcurl.so* /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+          mv -f "${_bkDir}"/libcurl.la /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+          mv -f "${_bkDir}"/libcurl.a /usr/lib/x86_64-linux-gnu/ 2> /dev/null
+          ldconfig 2> /dev/null
+          _msg "OOPS: cURL ${_CURL_VRN} was not installed; the distro libcurl was restored from ${_bkDir} so downloads keep working"
+          break
+        done
       fi
       if [ -x "/usr/local/bin/curl" ] \
         && [ ! -e "/var/log/boa/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
@@ -7742,10 +8006,13 @@ _run_aptitude_deps_install() {
   # every run, like the rsyslog ensure above.
   if [ "${_OS_DIST}" = "Devuan" ]; then
     if ! _pkg_installed "devuan-keyring"; then
-      _mrun "${_INITINS} devuan-keyring"
+      # The keyring upgrade ships a new archive keyring file under
+      # /etc/apt/trusted.gpg.d and dpkg asks about the conffile; there is no
+      # terminal here and the new file is the one wanted, so say so.
+      _mrun "${_INITINS} -o Dpkg::Options::=--force-confnew devuan-keyring"
       if ! _pkg_installed "devuan-keyring"; then
         _mrun "${_APT_UPDATE} ${_aptAllow}"
-        _mrun "${_INITINS} devuan-keyring"
+        _mrun "${_INITINS} -o Dpkg::Options::=--force-confnew devuan-keyring"
       fi
       if ! _pkg_installed "devuan-keyring"; then
         _msg "WARN: devuan-keyring is missing -- APT cannot verify the Devuan archive, so unattended security upgrades will install nothing"
@@ -7790,7 +8057,14 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in build-essential libsasl2-modules time vim cvs makepasswd; do
+    # pkg-config is what lets the source builds below find the OpenSSL in
+    # /usr/local/ssl*: without it cURL's configure ignores PKG_CONFIG_PATH
+    # and fails with "OpenSSL libs and/or directories were not found".
+    # Daedalus images happen to carry it; a converted chimaera box does not.
+    # libpsl-dev: mandatory for the cURL source build since curl 8.6
+    # ("libpsl libs and/or directories were not found" otherwise); psmisc
+    # carries fuser, which the apt lock wait relies on.
+    for _PKG in build-essential pkg-config libpsl-dev psmisc libsasl2-modules time vim cvs makepasswd; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -7812,7 +8086,15 @@ _run_aptitude_deps_install() {
       _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
     fi
 
-    for _PKG in libssl-dev libssl3 mcrypt; do
+    # The runtime OpenSSL package is libssl3 from bookworm/daedalus on and
+    # libssl1.1 before that; asking aptitude for a name the suite does not
+    # carry fails the whole request ("Unable to locate package libssl3").
+    case "${_OS_CODE}" in
+      excalibur|daedalus|trixie|bookworm) _LIBSSL_PKG="libssl3" ;;
+      jessie) _LIBSSL_PKG="libssl1.0.0" ;;
+      *) _LIBSSL_PKG="libssl1.1" ;;
+    esac
+    for _PKG in libssl-dev ${_LIBSSL_PKG} mcrypt; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -7878,7 +8160,8 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils lspci; do
+    # lspci is a binary in pciutils, never a package of its own
+    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev pciutils; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -7934,8 +8217,36 @@ _run_aptitude_deps_install() {
     _mrun "${_INSTAPP} ${_APT_XTRA}"
     _mrun "${_INSTAPP} ${_EXTRA_LIB_APT}"
     _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
+    # One unresolvable name fails the whole group and nothing lands; pick up
+    # whatever the group left behind one package at a time.
+    for _PKG in ${_EXTRA_PACKAGES}; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     _EXTRA_APT="tree"
     _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
+  fi
+  # A mirror whose index lists pool files it no longer serves fails every
+  # install above with a 404 that _mrun keeps off the console, and the
+  # source builds that follow then die without a compiler. Verify the one
+  # package everything below depends on; when it is missing, switch this run
+  # to the deb.devuan.org redirector, rewrite sources.list and run the stage
+  # once more. Seen on chimaera while its mirrors thin out ahead of archival.
+  if [ "${_UPGRADE_MODE}" = "FULL" ] \
+    && [ "${_OS_DIST}" = "Devuan" ] \
+    && [ -z "${_APT_MIRROR_HEALED}" ] \
+    && ! _pkg_installed "build-essential"; then
+    export _APT_MIRROR_HEALED=YES
+    _msg "NOTE: build-essential is missing after the package pass; mirror ${_MIRROR} looks unusable, retrying via deb.devuan.org"
+    export _FORCE_DEVUAN_MIRROR="http://deb.devuan.org/merged"
+    _sources_list_update
+    _run_aptitude_deps_install
+    if _pkg_installed "build-essential"; then
+      _msg "INFO: build-essential installed via deb.devuan.org"
+    else
+      _msg "ERROR: build-essential is still missing; the source builds below will fail"
+    fi
   fi
 }
 
@@ -8337,12 +8648,15 @@ _if_post_major_os_upgrade() {
 
     _msg "INFO: Removing any packages orphaned by the migration process..."
     _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
-    _mrun "apt-get autoclean -y --purge --auto-remove -qq"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Running apt-get autoclean..."
+    fi
+    _mrun "apt-get autoclean -y -qq"
     _mrun "apt-get autoremove -y --purge --auto-remove -qq"
 
     _msg "INFO: Running dist-upgrade to complete the system upgrade..."
     _msg "WAIT: This may take a while, please wait..."
-    _mrun "apt-get dist-upgrade ${_dstUpArg}"
+    _apt_run_heal_dead_security_pool "dist-upgrade ${_dstUpArg}"
     _mrun "apt-get dist-upgrade ${_dstUpArg}"
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
@@ -8382,6 +8696,7 @@ _if_post_major_os_upgrade() {
         _ensure_devuan_base_files
       fi
     fi
+    _ssl_paths_sync
 
     ### Update base-files on excalibur if needed
     if [ -e "/root/.top-excalibur.cnf" ]; then
@@ -8534,6 +8849,15 @@ _if_post_major_os_upgrade() {
       rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
     fi
     rm -f /var/log/boa/.*_crontab_*
+    # The hop's package moves ignore the hold on curl and put the distro
+    # binary back over the link to the BOA-built one, which then loads BOA's
+    # libcurl with a version warning on every call. Relink.
+    if [ -x "/usr/local/bin/curl" ] \
+      && [ "$(readlink -f /usr/bin/curl 2>/dev/null)" != "/usr/local/bin/curl" ]; then
+      mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
+      ln -sfn /usr/local/bin/curl /usr/bin/curl
+      _msg "INFO: /usr/bin/curl linked to the BOA-built curl again"
+    fi
     touch /root/.completed_post_major_os_upgrade.info
     _msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
@@ -8546,16 +8870,13 @@ _if_major_os_upgrade() {
   _RUNNING_MAJOR_OS_UPGRADE=NO
   _define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
-    # ICU precheck: a box pinned via _ICU_FORCE_VRN builds its pinned dotted
-    # dir (e.g. 73.1), not 76.1, so derive the expected dir from the resolver
-    # when pinned; the unset path keeps the historical 76.1 literal so the
-    # default major-OS-upgrade behaviour is unchanged.
-    if [ -n "${_ICU_FORCE_VRN}" ]; then
-      _resolve_icu_target
-      _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
-    else
-      _ICU_DOT="76.1"
-    fi
+    # ICU precheck: the dir a normal pass leaves behind is the one the resolver
+    # picks for THIS box (73.1 on chimaera and older, 76.1 from daedalus on, or
+    # the _ICU_FORCE_VRN pin), so ask the resolver rather than assume 76.1: the
+    # literal refused every hop off chimaera as "run a normal upgrade first".
+    _resolve_icu_target
+    _ICU_DOT="${_ICU_TARGET_VRN/[_-]/.}"
+    [ -z "${_ICU_DOT}" ] && _ICU_DOT="76.1"
     if [ ! -e "/usr/local/lib/icu/${_ICU_DOT}" ] \
       && [ "${_LOC_OS_CODE}" != "jessie" ]; then
       echo
@@ -8798,9 +9119,7 @@ _if_major_os_upgrade() {
     ###
     ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
-      if [ "${_OS_CODE}" = "beowulf" ]; then
-        _TGT_MRR="http://archive.devuan.org/merged"
-      elif [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+      if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
         _TGT_MRR="${_LOCAL_DEVUAN_MIRROR}"
       else
         _DVN_MRR="$(_find_fast_devuan_mirror)"
@@ -8810,11 +9129,16 @@ _if_major_os_upgrade() {
           _TGT_MRR="http://deb.devuan.org/merged"
         fi
       fi
+      # The hop's TARGET suite must be served by the mirror written; an
+      # archived one moves to the archive (beowulf today, chimaera next).
+      _TGT_MRR="$(_pick_devuan_suite_mirror "${_NEW_OS_CODE}" "${_TGT_MRR}")"
       echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
       echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
+      # Decided by the mirror chosen, not the suite name: the archive serves
+      # <suite>-security but no -updates for any release.
+      if [ "${_TGT_MRR}" != "${_ARCHIVE_DEVUAN_MIRROR}" ]; then
         echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
         echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
@@ -8838,57 +9162,48 @@ _if_major_os_upgrade() {
       ### suite it has just been pointed at.
       _apt_clean_update_no_releaseinfo_change
       _mrun "${_APT_UPDATE} ${_aptAllow}"
-      _mrun "${_INITINS} devuan-keyring"
+      # The keyring upgrade ships a new archive keyring file under
+      # /etc/apt/trusted.gpg.d and dpkg asks about the conffile; there is no
+      # terminal here and the new file is the one wanted, so say so.
+      _mrun "${_INITINS} -o Dpkg::Options::=--force-confnew devuan-keyring"
       if ! _pkg_installed "devuan-keyring"; then
         _mrun "${_APT_UPDATE} ${_aptAllow}"
-        _mrun "${_INITINS} devuan-keyring"
+        _mrun "${_INITINS} -o Dpkg::Options::=--force-confnew devuan-keyring"
         if ! _pkg_installed "devuan-keyring"; then
           _msg "WARN: devuan-keyring is missing after the sources switch -- APT cannot verify the new archive"
         fi
       fi
     else
-      if [ "${_NEW_OS_CODE}" = "stretch" ]; then
-        _NEW_APT_MIRROR="archive.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-backports"
-        _NEW_SEC_MIRROR="archive.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}/updates"
-      elif [ "${_NEW_OS_CODE}" = "buster" ]; then
-        _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
-        _NEW_SEC_MIRROR="security.debian.org"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}/updates"
-      elif [ "${_NEW_OS_CODE}" = "bullseye" ]; then
-        _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
-        _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
-      elif [ "${_NEW_OS_CODE}" = "bookworm" ]; then
-        _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
-        _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
-      elif [ "${_NEW_OS_CODE}" = "trixie" ]; then
-        _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
-        _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
-      fi
+      # The hop's TARGET suite must be served by the hosts written: a release
+      # Debian has archived since this chain was written (buster, and
+      # bullseye as of 2026-08-31) comes from the archive, resolved per pool.
+      _debian_apt_sources_resolve "${_NEW_OS_CODE}" ""
+      _NEW_APT_MIRROR="${_DEB_APT_MIRROR}"
+      _NEW_APT_REPSRC="${_DEB_APT_REPSRC}"
+      _NEW_SEC_MIRROR="${_DEB_SEC_MIRROR}"
+      _NEW_SEC_REPSRC="${_DEB_SEC_REPSRC}"
       echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
-      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
-      echo "" >> ${_aptLiSys}
-      echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-      echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-      if [ "${_USE_BACKPORTS}" = "YES" ]; then
+      if [ -n "${_NEW_APT_REPSRC}" ]; then
+        echo "## DEBIAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+        echo "" >> ${_aptLiSys}
+      fi
+      if [ -n "${_NEW_SEC_MIRROR}" ]; then
+        echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
+        echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      else
+        echo "## DEBIAN SECURITY UPDATES are no longer served for ${_NEW_OS_CODE}" >> ${_aptLiSys}
+      fi
+      if [ -n "${_DEB_BPO_SUITE}" ]; then
         echo "" >> ${_aptLiSys}
         echo "## DEBIAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
-        echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
-        echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb http://${_NEW_APT_MIRROR} ${_DEB_BPO_SUITE} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+        echo "deb-src http://${_NEW_APT_MIRROR} ${_DEB_BPO_SUITE} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       fi
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
@@ -8917,8 +9232,14 @@ _if_major_os_upgrade() {
       _mrun "apt-get install libtinfo6 ${_dstUpArg}"
     fi
     ###
-    ### Note that this upgrade does not complete the migration yet.
-    _mrun "apt-get upgrade ${_dstUpArg}"
+    ### Note that this upgrade does not complete the migration yet. The target
+    ### suite's security pool can be one the mirror no longer serves (the
+    ### chimaera pool since Debian 11 left LTS): drop it and go on rather
+    ### than let apt abort the whole move on the 404s. Devuan's own builds
+    ### rank below Debian's by version string, so allow the downgrades the
+    ### dist-upgrade below already allows.
+    _apt_run_heal_dead_security_pool "upgrade ${_dstUpArg} --allow-downgrades"
+    _mrun "apt-get upgrade ${_dstUpArg} --allow-downgrades"
     _mrun "apt-get install apt dpkg aptitude util-linux ${_dstUpArg}"
     ###
     ### Back to BOA stuff re-install as needed.
@@ -8972,7 +9293,7 @@ _if_major_os_upgrade() {
       #_mrun "apt-get full-upgrade ${_dstUpArg}"
       _mrun "apt-get install lsb-release ${_dstUpArg}"
     else
-      _mrun "apt-get upgrade ${_dstUpArg}"
+      _mrun "apt-get upgrade ${_dstUpArg} --allow-downgrades"
       _mrun "apt-get install lsb-release ${_dstUpArg}"
     fi
     ###
@@ -8985,7 +9306,7 @@ _if_major_os_upgrade() {
       #_mrun "apt-get full-upgrade ${_dstUpArg}"
       _mrun "apt-get install lsb-release ${_dstUpArg}"
     else
-      _mrun "apt-get upgrade ${_dstUpArg}"
+      _mrun "apt-get upgrade ${_dstUpArg} --allow-downgrades"
       _mrun "apt-get install lsb-release ${_dstUpArg}"
     fi
     _mrun "apt-get upgrade -y"
@@ -9031,13 +9352,16 @@ _if_major_os_upgrade() {
       _msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       echo
-      _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades"
+      _apt_run_heal_dead_security_pool "dist-upgrade ${_dstUpArg} --allow-downgrades"
       _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
       _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       _mrun "apt-get install lsb-release ${_dstUpArg}"
+      # libc-bin's conffile just replaced /etc/ld.so.conf.d/libc.conf: put the
+      # BOA OpenSSL library paths back before anything links or downloads.
+      _ssl_paths_sync
       ###
       if [ "${_LOC_OS_CODE}" = "daedalus" ] && [ "${_NEW_OS_CODE}" = "excalibur" ]; then
         _useFast=daedalus
@@ -9755,7 +10079,7 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless nginx"
       elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_XTRA="openjdk-17-jre-headless nginx"
-        echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
+        echo "deb http://$(_pick_debian_suite_mirror bullseye)/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -9804,7 +10128,7 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless"
       elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_XTRA="openjdk-17-jre-headless"
-        echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
+        echo "deb http://$(_pick_debian_suite_mirror bullseye)/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -11055,12 +11379,34 @@ _fix_php_in_lshell_access() {
   fi
 }
 
+# The per-instance group's Octopus INIT/upgrade arm lives in this release's
+# libraries; instgrp (fetched, can land weeks earlier on a staged publish)
+# lets no account take its FIRST conversion until this stamp says the arm is
+# on the box. Written at the tail of every barracuda pass that runs this
+# release (next to the barracuda log line), never by the fetched channel.
+# .txt: the /var/log/boa sweeps match *.pid and *.log only.
+_instgrp_arm_stamp() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _instgrp_arm_stamp"
+    _debug_proc
+  fi
+  mkdir -p /var/log/boa &> /dev/null
+  echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-arm.ready.txt
+}
+
 _lshell_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_CHK_VRN=0.11.3
+  # 0.11.x needs Python 3.10+; a box whose python3 is older (chimaera 3.9,
+  # beowulf 3.7) keeps 0.10 instead of failing the 0.11 build on every pass
+  _LSHELL_LEGACY_VRN=0.10
+  _pyMinor=$(python3 -c 'import sys; print(sys.version_info[1])' 2> /dev/null)
+  if [ -n "${_pyMinor}" ] && [ "${_pyMinor}" -lt 10 ] 2> /dev/null; then
+    _LSHELL_VRN="${_LSHELL_LEGACY_VRN}"
+  fi
+  _LSHELL_CHK_VRN="${_LSHELL_VRN}"
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -11101,7 +11447,9 @@ _lshell_install_upgrade() {
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
-      _mrun "${_usePip} install --upgrade pip --root-user-action ignore"
+      # PEP 668 (python 3.11+) refuses a system-wide pip upgrade without it, the
+      # same way the lshell install line below already asks.
+      _mrun "${_usePip} install --upgrade pip --break-system-packages --root-user-action ignore"
     else
       _mrun "${_usePip} install --upgrade pip"
     fi
@@ -11142,7 +11490,8 @@ _lshell_install_upgrade() {
     addgroup --system ltd-shell-more &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
-    chmod 770 /var/log/lsh &> /dev/null
+    # 1770: tenants write their own log here; the sticky bit keeps one off another's
+    chmod 1770 /var/log/lsh &> /dev/null
     touch ${_pthLog}/lshell-build-${_LSHELL_VRN}.log
     if [ -f "/var/xdrago/manage_ltd_users.sh" ]; then
       if [ "${_STATUS}" = "UPGRADE" ] \
@@ -11721,6 +12070,21 @@ _fix_root_locked_shadow() {
   fi
 }
 
+# 0 when the php-fpm master of the given version runs: its pid file names a
+# live process running that version's fpm config. The shipped init script's
+# status action exits 0 in every state (the upstream php-fpm template), so
+# it cannot answer this question.
+_php_fpm_master_up() {
+  local _pid
+  [ -r "/run/php${1}-fpm.pid" ] || return 1
+  _pid=$(tr -d '[:space:]' < "/run/php${1}-fpm.pid" 2> /dev/null)
+  [ -n "${_pid}" ] || return 1
+  case "$(ps -p "${_pid}" -o args= 2> /dev/null)" in
+    *"php${1}-fpm.conf"*) return 0 ;;
+  esac
+  return 1
+}
+
 _initd_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _initd_update"
@@ -11796,7 +12160,17 @@ _initd_update() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
-          _mrun "service php${e}-fpm start"
+          # A master that is already up refuses a second start ("Another
+          # FPM instance seems to already listen") and the old one keeps
+          # serving; start only a master that is down. The init script's
+          # status action cannot tell: it exits 0 whether the master runs,
+          # is stopped or is dead behind its pid file.
+          if ! _php_fpm_master_up "${e}"; then
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "INFO: php${e}-fpm is down, starting it"
+            fi
+            _mrun "service php${e}-fpm start"
+          fi
         fi
       done
     fi

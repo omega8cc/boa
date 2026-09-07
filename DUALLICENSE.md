@@ -4,7 +4,7 @@
 
 - **LTS**: This public branch remains completely free to use without any commercial license, as it has been from the beginning (previously named HEAD or STABLE). This branch should be considered the **BOA Long Term Support** variant.
 
-- **DEV**: This public branch requires a commercial license for both installation and upgrades. It includes the latest features, security updates, bug fixes, and updated service versions. This branch should not be used in production without extensive testing.
+- **DEV**: This public branch requires a commercial license for both installation and upgrades. It includes the latest features, security updates, bug fixes, and updated service versions. This branch should not be used in production without extensive testing. One exception exists for testing: a system whose hostname ends in `.sslip.io` (a public wildcard DNS service that resolves any such name to the IP address embedded in it, so a throwaway test box needs no DNS setup) may install and upgrade the **DEV** branch without a license. This is how **BOA** itself tests every change end to end on **DEV** before it reaches **LTS** or **PRO**; it is not a production setup and does not extend to the **PRO** branch.
 
 - **PRO**: This public branch requires a commercial license and is available only as an upgrade from either LTS or DEV (or previous HEAD/STABLE). It offers new releases once ready, closely following the tested DEV branch.
 
