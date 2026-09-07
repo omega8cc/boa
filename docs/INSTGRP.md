@@ -36,7 +36,10 @@ the rest of the run, so the run already writes with the new group), and an
 account created after this ships is born converted -- when the box is ready
 for it: the tool present and every fetched root-run writer group-aware
 (`instgrp check`), else it is born on the box-wide group and the next
-upgrade converts it. Each conversion writes
+upgrade converts it. A group name already held by another identity (a
+member, or a user whose primary group it is) leaves the newborn on the
+box-wide group too, with a NOTE and no conversion attempt in that run;
+every later upgrade alarms until the name is freed. Each conversion writes
 `/data/disk/oN/log/instance-group.txt`. An account already converted costs
 one read-only traversal on every later upgrade (early-quit on the first path
 outside its group), no walk and no write.
@@ -75,10 +78,17 @@ upgrade arm holds it itself and says so with `--from-octopus`), waits a
 bounded time for the account's own provision tasks, skips a still-busy
 account and an account frozen for a migration (`log/proxied.pid`, the
 marker every other root writer honours; `--force` overrides), and defers
-(exit 5, a note in the upgrade report) while any fetched root-run writer on
-the box still carries the box-wide form (`instgrp check`): an old `fix-drupal-*` script or nightly worker
-would write `users` back on its next pass, and an old `websh` would lock
-the tenant out of its shell. A skipped or refused account is reported in
+a FIRST conversion (exit 5, a note in the upgrade report) while any fetched
+root-run writer on the box still carries the box-wide form, or while the BOA
+release that carries the Octopus arm has not stamped the box yet
+(`/var/log/boa/instgrp-arm.ready.txt`, written at the tail of that release's
+barracuda pass; `instgrp check` shows both): an old `fix-drupal-*` script or
+nightly worker would write `users` back on its next pass, an old `websh` would
+lock the tenant out of its shell, and on a box that only received the fetched
+tools ahead of its upgrade (a staged publish) the tar's own Octopus and system
+libraries still write the box-wide group. An account that is already
+converted takes its read-only re-pass regardless of the stamp. A skipped or
+refused account is reported in
 the upgrade report (the `ALRT:` line the octopus report reads); nothing
 retries it before the next upgrade.
 Every BOA writer over account trees derives the group per account
@@ -94,7 +104,7 @@ limited shell:
 ```sh
 instgrp status  oN | all
 instgrp convert oN | all [--from-octopus] [--force]
-instgrp reclaim oN | all
+instgrp reclaim oN | all [--force]
 instgrp revert  oN [--keep-enabled]
 instgrp check
 ```
@@ -119,7 +129,9 @@ rewrites the marker. Every action logs one line to
 `reclaim` is the file half alone: every path under the roots takes the
 account's current group (`users` while unconverted), a marker that does not
 record this box's group is dropped. No identity change and no lock, so it
-is what a root-run restore, a migration destination and the nightly run.
+is what a root-run restore, a migration destination and the nightly run. It
+honours the migration freeze exactly as `convert` does: an account carrying
+`log/proxied.pid` is skipped (exit 4) unless `--force` is given.
 
 `revert` is the exact inverse: files first (so no identity ever loses a
 group its files still carry), then the primary groups back to `users`, the
@@ -133,9 +145,12 @@ the account again (`--keep-enabled` leaves the cnf alone).
 
 `_INSTANCE_GROUP=NO` in `/root/.oN.octopus.cnf` keeps that account on the
 box-wide model: the upgrade arm skips it, and a fresh account carrying the
-line is born the old way (for a NEW account, create `/root/.oN.octopus.cnf`
-from the template with the line before `boa in-octopus`; the created-once
-cnf is reused). It does not undo a conversion already made — run
+line is born the old way. For a NEW account, create `/root/.oN.octopus.cnf`
+before `boa in-octopus` holding just two lines, `_USER="oN"` and
+`_INSTANCE_GROUP=NO`; the install completes the file with its defaults and
+keeps the seeded lines. Never copy another account's cnf for that: it carries
+the other account's `_DOMAIN` (the install puts the derived name back, with a
+NOTE). It does not undo a conversion already made — run
 `instgrp revert oN` for that, which writes the line itself. An explicit
 `instgrp convert` ignores the switch; it is the operator's order. The key
 is persisted per instance (written at install, appended with its default on
@@ -174,7 +189,10 @@ place: it belongs to the account.
   and runs `instgrp reclaim` on a hit; the 3-minute limited-shell worker
   moves an identity that fell back to the box-wide primary group (a hand
   `usermod`, a restored passwd) back onto the account's group; the octopus
-  upgrade re-converts. Nothing else re-groups a tree between those.
+  upgrade re-converts. Nothing else re-groups a tree between those. An
+  account frozen for a migration (`log/proxied.pid`) is outside all of it:
+  the nightly never visits it and `reclaim` skips it, so a frozen
+  destination is healed only by the migration tool's own pass (below).
 - Ægir backups, restores, clones and migrations need no conversion step:
   the extracting process is the account's backend user, so the restored
   files take the account's primary group. Root-run restores are different:
@@ -188,11 +206,16 @@ place: it belongs to the account.
   name has different GIDs on two boxes. rsync maps ids by name, and the
   source account's group has no name on a destination whose account is not
   converted, so a moved tree lands there in an unassigned numeric gid.
-  `xoct transfer`, `xcopy transfer` and a hand-run `xmass sync --live`
-  therefore run a group pass on the destination after every copy (`instgrp
-  reclaim` where the tool is installed: paths in no group, in `users` or in
-  another named group take the destination account's group, `users` while
-  unconverted), the xmass legs map the source account's group onto the
+  `xoct transfer`, `xcopy transfer`, a hand-run `xmass sync --live` and
+  `aegir2boa-stage2 transfer` therefore run a group pass on the destination
+  after every copy (`instgrp reclaim` where the tool is installed: paths in
+  no group, in `users` or in another named group take the destination
+  account's group, `users` while unconverted; passed `--force`, because the
+  destination's own `log/proxied.pid`, if any, is its demotion artefact
+  from an earlier cutover — or, for stage2, a freeze left by a killed
+  import — not an account served from elsewhere; when the tool keeps
+  deferring behind a live BOA run, the same inline pass runs instead), the
+  xmass legs map the source account's group onto the
   destination account's group as they copy (so the 15-minute standby
   autosync never lands a foreign gid), and none of them carry the
   conversion marker -- it recorded the source box's

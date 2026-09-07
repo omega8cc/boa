@@ -28,7 +28,8 @@ Suspend is completely separate from the two mechanisms it superficially
 resembles:
 
 - `log/CANCELLED` marks an instance for **cleanup/purge** (see
-  [CLEANUP.md](CLEANUP.md)) and arms vhost removal on the next `barracuda up-*`.
+  `boa cleanup detect|purge`); the purge parks any vhost the account still has,
+  so the marker plus the verb is the whole procedure.
   A suspended instance never enters that machinery.
 - `static/control/http-off.pid` is the **migration** web-off gate managed by
   `xoct`/`xmass` (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md)). It lives inside the
