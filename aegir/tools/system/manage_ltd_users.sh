@@ -788,7 +788,9 @@ _disable_chattr() {
 _kill_zombies() {
   for _Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
     _SEC_IDY=$(id -nG ${_Existing} 2>&1)
-    if [[ "${_SEC_IDY}" =~ "ltd-shell" ]] \
+    # Whole-word membership: a substring test also matches ltd-shell-more, the
+    # operator-only tier nothing automatic joins today.
+    if [[ " ${_SEC_IDY} " == *" ltd-shell "* ]] \
       && [ ! -z "${_Existing}" ] \
       && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
       && [[ ! "${_Existing}" =~ ".web"($) ]]; then
@@ -847,26 +849,56 @@ _kill_zombies() {
           && [[ ! "${_Existing}" =~ \.web$ ]] \
           && [ ! -z "${_usrParent}" ] \
           && getent passwd "${_usrParent}" > /dev/null 2>&1 \
-          && [ -d "/data/disk/${_usrParent}" ] \
-          && [ -z "$(find "/home/${_Existing}" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
-          _disable_chattr "${_Existing}"
-          [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-          mv "/home/${_Existing}" "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"
-          if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
-            rm -f "/home/${_usrParent}.ftp/users/${_Existing}"
+          && [ -d "/data/disk/${_usrParent}" ]; then
+          # The mtime brake alone does not hold: mv, cp -a, rsync -a and tar -xp
+          # all carry the source's mtime, so a home staged by any of them looks
+          # hours old the moment it lands (measured 2026-09-07). The clock that
+          # matters is how long THIS arm has seen the home without an account,
+          # so the first sighting only records a root-owned marker and the home
+          # moves on a later pass, once the marker is an hour old as well.
+          _ltd_orphan_seen="/var/backups/zombie/seen/${_Existing}"
+          if [ ! -e "${_ltd_orphan_seen}" ]; then
+            [ -d /var/backups/zombie/seen ] || mkdir -p /var/backups/zombie/seen
+            touch "${_ltd_orphan_seen}"
+          elif [ -z "$(find "/home/${_Existing}" -maxdepth 0 -mmin -60 2> /dev/null)" ] \
+            && [ -z "$(find "${_ltd_orphan_seen}" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
+            _disable_chattr "${_Existing}"
+            [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
+            # The per-pass log under /var/backups/ltd is erased on every release,
+            # and this arm moves a tenant's home aside on an arm that has never
+            # run before: record it where it survives, and record a failed move
+            # as what it is rather than as a move.
+            [ -d /var/log/boa ] || mkdir -p /var/log/boa
+            if mv "/home/${_Existing}" "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"; then
+              if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
+                rm -f "/home/${_usrParent}.ftp/users/${_Existing}"
+              fi
+              rm -f "${_ltd_orphan_seen}"
+              echo "Zombie from home.dir ${_Existing} killed"
+              echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; moved to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}" \
+                >> /var/log/boa/manage_ltd.incident.log
+            else
+              echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; mv to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing} FAILED, left in place" \
+                >> /var/log/boa/manage_ltd.incident.log
+            fi
+            echo
           fi
-          echo "Zombie from home.dir ${_Existing} killed"
-          # The per-pass log under /var/backups/ltd is erased on every release,
-          # and this arm moves a tenant's home aside on an arm that has never
-          # run before: record it where it survives.
-          [ -d /var/log/boa ] || mkdir -p /var/log/boa
-          echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; moved to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}" \
-            >> /var/log/boa/manage_ltd.incident.log
-          echo
         fi
       fi
     fi
   done
+  # A first-sighting marker outlives its reason once the account appears or the
+  # home goes away; drop it so a later home of the same name starts a new clock.
+  if [ -d "/var/backups/zombie/seen" ]; then
+    for _ltd_orphan_seen in /var/backups/zombie/seen/*; do
+      [ -e "${_ltd_orphan_seen}" ] || continue
+      _Existing=$(basename "${_ltd_orphan_seen}")
+      if getent passwd "${_Existing}" > /dev/null 2>&1 \
+        || [ ! -d "/home/${_Existing}" ]; then
+        rm -f "${_ltd_orphan_seen}"
+      fi
+    done
+  fi
 }
 #
 # Fix dot dirs.
@@ -1123,9 +1155,13 @@ _ok_create_user() {
       fi
     fi
     # A migration stages a sub-account's SSH keys here because the home did
-    # not exist on this box yet; adopt them now that it does, once.
+    # not exist on this box yet; adopt them now that it does, once. Only for an
+    # account that exists: a home with no passwd entry (the create path with an
+    # existing home) must not consume the staged copy -- the chown below could
+    # not resolve the owner and the rm -rf would destroy the only copy.
     if [ -d "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" ] \
-      && [ -d "${_usrLtdRoot}" ]; then
+      && [ -d "${_usrLtdRoot}" ] \
+      && getent passwd "${_usrLtd}" > /dev/null 2>&1; then
       cp -af "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" "${_usrLtdRoot}/"
       # Group half derived, not the user name: no group named after a
       # sub-user is ever created, so that chgrp half always failed.
@@ -1252,7 +1288,7 @@ _add_user_if_not_exists() {
       _manage_sec_user_drush_aliases
       _enable_chattr ${_usrLtd}
     elif [[ "${_ID_EXISTS}" =~ "${_usrLtd}" ]] \
-      && [[ "${_ID_SHELLS}" =~ "ltd-shell" ]]; then
+      && [[ " ${_ID_SHELLS} " == *" ltd-shell "* ]]; then
       echo "We will update user == ${_usrLtd} =="
       _disable_chattr ${_usrLtd}
       rm -rf /home/${_usrLtd}/drush-backups

@@ -139,19 +139,7 @@ sub find_domain
     $found = 1;
     $d =~ s/^www\.//g;
     $dx = $d;
-    $pthl=`cat /data/disk/*/.drush/$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
-    if ($pthl =~ /(No such file or directory)/) {
-      $pthl=`cat /data/disk/*/.drush/www.$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
-    }
-    if ($pthl =~ /(No such file or directory)/) {
-      $pthl=`cat /var/aegir/.drush/$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
-    }
-    if ($pthl =~ /(No such file or directory)/) {
-      $pthl=`cat /var/aegir/.drush/www.$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
-    }
-    local($w, $x, $y, $z) = split(/\s+/,$pthl);
-    $pthl = $z;
-    chomp ($pthl);
+    $pthl = &_alias_site_path($d);
     local($o, $p, $q, $r) = split(/\//,$pthl);
     $rx = $r;
     $disla = "/data/disk/$rx/config/server_master/nginx/vhost.d/$d";
@@ -172,6 +160,37 @@ sub find_domain
     $sysl =~ s/([";])/\\$1/g;
     chomp ($sysl);
   }
+}
+
+#############################################################################
+# The site alias lives in the instance's ~/.drush (or /var/aegir/.drush on the
+# master), under the bare or the www. name. Read it in Perl. The old backtick
+# pipeline went through /bin/sh, which on a BOA box is websh, and websh refuses
+# a root command line that names drush -- the alias path does -- so every
+# lookup captured that refusal instead of the site path; and its split into
+# four fields assumed the raw grep line, which the cut/awk/sed stages had
+# already reduced to one, so the instance name was never derived either.
+sub _alias_site_path
+{
+  local($name) = @_;
+  local(@cands) = ();
+  push(@cands, glob("/data/disk/*/.drush/$name.alias.drushrc.php"));
+  push(@cands, glob("/data/disk/*/.drush/www.$name.alias.drushrc.php"));
+  push(@cands, "/var/aegir/.drush/$name.alias.drushrc.php");
+  push(@cands, "/var/aegir/.drush/www.$name.alias.drushrc.php");
+  foreach $cand (@cands) {
+    next unless (-f $cand);
+    if (open(ALIAS, "<$cand")) {
+      while (<ALIAS>) {
+        if (/'site_path'\s*=>\s*'([^']+)'/) {
+          close(ALIAS);
+          return $1;
+        }
+      }
+      close(ALIAS);
+    }
+  }
+  return "";
 }
 
 #############################################################################
